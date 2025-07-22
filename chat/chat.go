@@ -1,15 +1,14 @@
-package main
+package chat
 
 import (
 	"context"
 	"net/http"
 
-	"github.com/micro/mu"
 	"github.com/micro/mu/app"
 	"github.com/micro/mu/llm"
 )
 
-func ChatHandler(w http.ResponseWriter, r *http.Request) {
+func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		// render chat
 		res := app.RenderHTML("Chat", "Chat with an LLM", `
@@ -39,11 +38,4 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 
 		// save the response
 	}
-}
-
-func main() {
-	mu.Handle("/chat", ChatHandler)
-
-	// serve the app
-	mu.Serve()
 }

@@ -1,31 +1,29 @@
-package mu
+package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"net/http"
 
 	"github.com/micro/mu/api"
 	"github.com/micro/mu/app"
+	"github.com/micro/mu/chat"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
 var ServeFlag = flag.Bool("serve", false, "Run the server")
 var AddressFlag = flag.String("address", ":8080", "Address for server")
 
-// Handle registers an app handler
-func Handle(path string, fn http.HandlerFunc) {
-	http.HandleFunc(path, fn)
-}
-
-// Serve starts the server
-func Serve() error {
+func main() {
 	flag.Parse()
 
 	if !*ServeFlag {
-		return errors.New("--serve not set")
+		fmt.Errorf("--serve not set")
+		return
 	}
+
+	// serve chat
+	http.HandleFunc("/chat", chat.Handler)
 
 	// serve the api
 	http.Handle("/api/", api.Serve())
@@ -51,8 +49,6 @@ func Serve() error {
 		http.DefaultServeMux.ServeHTTP(w, r)
 	})); err != nil {
 		fmt.Printf("Server error: %v\n", err)
-		return err
+		return
 	}
-
-	return nil
 }
