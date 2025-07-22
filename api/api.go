@@ -6,10 +6,6 @@ import (
 	"net/http"
 )
 
-type Api struct {
-	Endpoints []*Endpoint
-}
-
 type Endpoint struct {
 	Name        string
 	Path        string
