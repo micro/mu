@@ -73,12 +73,11 @@ var Template = `
   <body>
     <div id="head">
       <div id="brand">
-        <a href="/">&nbsp;Mu&nbsp;</a>
+        <a href="/">Mu</a>
       </div>
       <div id="nav">
         <a href="/">Home</a>
       </div>
-      <button id="install" hidden>Install App</button>
     </div>
     <div id="container">
       <div id="title">%s</div>
@@ -94,38 +93,6 @@ var Template = `
           {scope: '/'}
         )
       }
-  </script>
-  <script>
-        let installPrompt = null;
-        const installButton = document.querySelector("#install");
-
-        window.addEventListener("beforeinstallprompt", (event) => {
-          event.preventDefault();
-          installPrompt = event;
-          installButton.removeAttribute("hidden");
-        });
-
-        installButton.addEventListener("click", async () => {
-          if (!installPrompt) {
-            return;
-          }
-          const result = await installPrompt.prompt();
-          disableInAppInstallPrompt();
-        });
-
-        function disableInAppInstallPrompt() {
-          installPrompt = null;
-          installButton.setAttribute("hidden", "");
-        }
-
-        window.addEventListener("appinstalled", () => {
-          disableInAppInstallPrompt();
-        });
-
-        function disableInAppInstallPrompt() {
-          installPrompt = null;
-          installButton.setAttribute("hidden", "");
-        }
   </script>
   </body>
 </html>
