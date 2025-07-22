@@ -1,0 +1,23 @@
+{
+  "name": "Mu",
+  "short_name": "Mu",
+  "description": "Building blocks for apps",
+  "scope": "/",
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "display": "standalone", 
+  "icons": [
+      {
+        "src": "/icon-192.png",
+        "type": "image/png",
+        "sizes": "192x192",
+	"purpose": "maskable"
+      },
+      {
+        "src": "/mu.png",
+        "type": "image/png",
+        "sizes": "256x256"
+      }
+  ]
+}
