@@ -35,8 +35,8 @@ var Template = `
 	width: 100%%;
 	}
 	#head a { margin-right: 10px; color: black; font-weight: bold; text-decoration: none; }
-	#container { height: 100%%; max-width: 1024px; margin: 0 auto; padding: 25px;}
-	#content { padding-bottom: 100px; }
+	#container { height: auto; max-width: 1024px; margin: 0 auto; padding: 25px;}
+	#content { }
 	#content p { padding: 0 0 25px 0; margin: 0; }
 	#desc { margin-bottom: 10px; }
 	#title { margin-top: 50px; font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
@@ -126,6 +126,12 @@ func RenderString(v string) string {
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
 	return fmt.Sprintf(Template, title, title, desc, RenderString(text))
+}
+
+func ServeHTML(html string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(html))
+	})
 }
 
 // ServeStatic serves the static content in app/html

@@ -22,11 +22,19 @@ func main() {
 		return
 	}
 
+	// render the api markdwon
+	md := api.Markdown()
+	apiDoc := app.Render([]byte(md))
+	apiHTML := app.RenderHTML("API", "API documentation", string(apiDoc))
+
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
 
 	// serve the api
 	http.Handle("/api/", api.Serve())
+
+	// serve the api doc
+	http.Handle("/api", app.ServeHTML(apiHTML))
 
 	// serve the app
 	http.Handle("/", app.Serve())
