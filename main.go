@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/micro/mu/api"
 	"github.com/micro/mu/app"
@@ -52,6 +53,10 @@ func main() {
 				w.WriteHeader(http.StatusOK)
 				return
 			}
+		}
+
+		if v := len(r.URL.Path); v > 1 && strings.HasSuffix(r.URL.Path, "/") {
+			r.URL.Path = r.URL.Path[:v-1]
 		}
 
 		http.DefaultServeMux.ServeHTTP(w, r)
