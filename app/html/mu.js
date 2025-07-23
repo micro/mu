@@ -53,3 +53,38 @@ self.addEventListener('activate', function (e) {
     })
   )
 })
+
+function askLLM(url, el, div) {
+	var d = document.getElementById(div);
+
+	const formData = new FormData(el);
+	const data = {};
+
+	// Iterate over formData and populate the data object
+	for (let [key, value] of formData.entries()) {
+		data[key] = value;
+	}
+
+	console.log("sending", data);
+	document.getElementById("message").value = '';
+	d.innerHTML += `<div>You: ${data["message"]}</div>`;
+
+	fetch(url, {
+	  method: "POST",
+	  headers: {
+	      'Content-Type': 'application/json'
+	  },
+	  body: JSON.stringify(data)
+	}).then(response => response.json())
+	.then(result => {
+	    console.log('Success:', result);
+	    // Handle success, e.g., show a success message
+            d.innerHTML += `<div>LLM: ${result.answer}</div>`
+	})
+	.catch(error => {
+	    console.error('Error:', error);
+	    // Handle errors
+	});
+
+	return false;
+}

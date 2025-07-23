@@ -2,6 +2,9 @@ package chat
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/micro/mu/app"
@@ -13,11 +16,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// render chat
 		res := app.RenderHTML("Chat", "Chat with an LLM", `
 <style>
+#chat-form {
+	width: 100%;
+}
 #messages {
 	height: calc(100vh - 250px);
 	width: 100%;
 	border: 1px solid whitesmoke;
 	border-radius 5px;
+	text-align: left;
+	padding: 10px;
 }
 #message {
 	width: calc(100% - 45px);
@@ -27,14 +35,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 button {
 	padding: 10px;
 	margin-top: 10px;
+	width: auto;
 }
 button:hover {
 	cursor: pointer;
 }
 </style>
 <div id="messages"></div>
-<form id="chat-form" action="/chat" method="POST">
-<input id="message" type="message" autofocus>
+<form id="chat-form" action="/chat" method="POST" onsubmit="event.preventDefault(); askLLM('/chat', this, 'messages');">
+<input id="message" name="message" type="text" autofocus autocomplete=off>
 <button>-></button>
 </form>`)
 
@@ -43,19 +52,44 @@ button:hover {
 	}
 
 	if r.Method == "POST" {
-		// save the response
-		r.ParseForm()
+		data := make(map[string]interface{})
 
-		// get the message
-		msg := r.Form.Get("message")
+		if ct := r.Header.Get("Content-Type"); ct == "application/json" {
+			b, _ := ioutil.ReadAll(r.Body)
+			if len(b) == 0 {
+				return
+			}
+
+			json.Unmarshal(b, &data)
+
+			if data["message"] == nil {
+				return
+			}
+		} else {
+			// save the response
+			r.ParseForm()
+
+			// get the message
+			msg := r.Form.Get("message")
+
+			if len(msg) == 0 {
+				return
+			}
+
+			data["message"] = msg
+		}
 
 		// query the llm
-		resp := llm.Query(context.TODO(), nil, msg)
+		resp := llm.Query(context.TODO(), nil, fmt.Sprintf("%v", data["message"]))
 
 		if len(resp) == 0 {
 			return
 		}
 
 		// save the response
+		data["answer"] = resp
+		b, _ := json.Marshal(data)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(b)
 	}
 }

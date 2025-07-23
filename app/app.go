@@ -20,55 +20,11 @@ var Template = `
   <head>
     <title>%s | Mu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="manifest" href="/manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
-    <style>
-	html, body { height: 100%%; width: 100%%; margin: 0; padding: 0; font-family: "Nunito Sans", serif; }
-	a { color: #333333; }
-	a:visited { color: #333333;}
-	#head {
-	position: fixed;
-	background: white;
-	top: 0;
-	width: 100%%;
-	}
-	#head a { margin-right: 10px; color: black; font-weight: bold; text-decoration: none; }
-	#container { height: auto; max-width: 1024px; margin: 0 auto; padding: 25px;}
-	#content { }
-	#content p { padding: 0 0 25px 0; margin: 0; }
-	#desc { margin-bottom: 10px; }
-	#title { margin-top: 50px; font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
-	li { margin-bottom: 5px; }
-	code {
-	  background: whitesmoke;
-	  padding: 5px;
-	  border-radius: 5px;
-	}
-	.right {
-	  text-align: right;
-	}
-	.block {
-	    text-decoration: none;
-	    margin-bottom: 10px;
-	    border: 1px solid grey;
-	    border-radius: 5px;
-	    padding: 10px;
-	    display: block;
-	}
-	@media only screen and (max-width: 600px) {
-	  #head a { margin-right: 5px; }
-	}
-	#brand {
-	  display: inline-block;
-	  padding: 20px;
-	}
-	#nav {
-	 float: right;
-	 padding: 20px 20px 20px 0;
-	}
-    </style>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/mu.css">
   </head>
   <body>
     <div id="head">
@@ -85,7 +41,7 @@ var Template = `
       <div id="content">%s</div>
     </div>
     </div>
-
+  <script src="/mu.js"></script>
   <script>
       if (navigator.serviceWorker) {
         navigator.serviceWorker.register (
