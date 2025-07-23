@@ -54,6 +54,22 @@ self.addEventListener('activate', function (e) {
   )
 })
 
+function onLoad(div) {
+	console.log("loading messages");
+	let context = JSON.parse(sessionStorage.getItem("context"));
+        if (context == null) {
+		return
+	}
+	var d = document.getElementById(div);
+
+	console.log(context)
+	context.forEach(function(data) {
+	  console.log(data);
+	  d.innerHTML += `<div>You: ${data["message"]}</div>`;
+	  d.innerHTML += `<div>LLM: ${data["answer"]}</div>`;
+	})
+}
+
 function askLLM(url, el, div) {
 	var d = document.getElementById(div);
 
@@ -69,6 +85,12 @@ function askLLM(url, el, div) {
 	document.getElementById("message").value = '';
 	d.innerHTML += `<div>You: ${data["message"]}</div>`;
 
+	if (context == undefined) {
+	    context = [];
+        }
+ 
+        data["context"] = context;
+
 	fetch(url, {
 	  method: "POST",
 	  headers: {
@@ -80,6 +102,15 @@ function askLLM(url, el, div) {
 	    console.log('Success:', result);
 	    // Handle success, e.g., show a success message
             d.innerHTML += `<div>LLM: ${result.answer}</div>`
+
+	    // save the context
+	    let context = JSON.parse(sessionStorage.getItem("context"));
+		if (context == null) {
+		    context = [];
+		}
+ 
+            context.push({answer: result.answer, message: result.message});
+	    sessionStorage.setItem("context", JSON.stringify(context));
 	})
 	.catch(error => {
 	    console.error('Error:', error);

@@ -43,8 +43,12 @@ button:hover {
 </style>
 <div id="messages"></div>
 <form id="chat-form" action="/chat" method="POST" onsubmit="event.preventDefault(); askLLM('/chat', this, 'messages');">
+<input id="context" name="context" type="hidden">
 <input id="message" name="message" type="text" autofocus autocomplete=off>
 <button>-></button>
+<script>
+document.addEventListener('DOMContentLoaded', onLoad("messages"));
+</script>
 </form>`)
 
 		w.Write([]byte(res))
