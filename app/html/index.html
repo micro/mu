@@ -33,14 +33,16 @@
 	  float: right;
 	  padding: 20px;
 	}
-        .block {
+        .block, button {
             text-decoration: none;
             margin-bottom: 10px;
             border: 1px solid grey;
             border-radius: 5px;
             padding: 10px;
-            display: block;
         }
+	.block {
+           display: block;
+	}
 	#install:hover {
            cursor: pointer;
 	   background: whitesmoke;
@@ -53,15 +55,15 @@
         <a href="/">Mu</a>
       </div>
       <div id="nav">
-        <button id="install" class="block" hidden>Install</button>
+        <button id="install" hidden>Install</button>
       </div>
     </div>
     <div id="container">
       <div id="title">Mu</div>
       <div id="desc">Building blocks for life</div>
       <div id="content">
-        <a href="/chat" class="block">App - Start using the app</a>
-        <a href="/api" class="block">API - Use the free API</a>
+        <a href="/chat" class="block">App - Use the App</a>
+        <a href="/api" class="block">API - Use the API</a>
        </div>
     </div>
   <footer>
