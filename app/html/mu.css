@@ -4,8 +4,9 @@ a:visited { color: #333333;}
 code {
   width: 100%;
   background: whitesmoke;
-  padding: 10px;
+  padding: 15px;
   border-radius: 5px;
+  display: block;
 }
 footer { position: absolute; bottom: 50; text-align: center; width: 100%; }
 footer a { text-decoration: none; font-weight: bold; }
