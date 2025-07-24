@@ -2,17 +2,15 @@ package api
 
 import (
 	"fmt"
-
-	"net/http"
 )
 
 type Endpoint struct {
 	Name        string
 	Path        string
+	Method      string
 	Params      []*Param
 	Response    []*Value
 	Description string
-	Handler     http.Handler
 }
 
 type Param struct {
@@ -26,7 +24,46 @@ type Value struct {
 	Params []*Param
 }
 
-var Endpoints = []*Endpoint{}
+var Endpoints = []*Endpoint{{
+	Name:        "Chat",
+	Path:        "/chat",
+	Method:      "POST",
+	Description: "Chat with AI",
+	Params: []*Param{
+		{
+			Name:        "context",
+			Value:       "array",
+			Description: "Messages to use as context",
+		},
+		{
+			Name:        "message",
+			Value:       "string",
+			Description: "Message to send the AI",
+		},
+	},
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "context",
+					Value:       "array",
+					Description: "Messages used as context",
+				},
+				{
+					Name:        "message",
+					Value:       "string",
+					Description: "Message to sent the AI",
+				},
+				{
+					Name:        "answer",
+					Value:       "string",
+					Description: "The response from the AI",
+				},
+			},
+		},
+	},
+}}
 
 // Register an endpoint
 func Register(ep *Endpoint) {
@@ -44,24 +81,27 @@ func Markdown() string {
 
 	for _, endpoint := range Endpoints {
 		data += fmt.Sprintln()
-		data += "## " + endpoint.Name
-		data += fmt.Sprintln()
 		data += fmt.Sprintln("___")
-		data += fmt.Sprintln("\\")
+		data += "## " + endpoint.Name
 		data += fmt.Sprintln()
 		data += fmt.Sprintln()
 		data += fmt.Sprintln(endpoint.Description)
 		data += fmt.Sprintln()
-		data += fmt.Sprintf("URL: [`%s`](%s)", endpoint.Path, endpoint.Path)
+		data += fmt.Sprintf("```%s %s```", endpoint.Method, endpoint.Path)
 		data += fmt.Sprintln()
 
 		if endpoint.Params != nil {
 			data += fmt.Sprintln("#### Request")
 			data += fmt.Sprintln()
-			data += fmt.Sprintln("Format `JSON`")
+			data += fmt.Sprintln("Format: JSON")
 			data += fmt.Sprintln()
+			data += "| Field | Type | Description |"
+			data += fmt.Sprintln()
+			data += "| ----- | ---- | ----------- |"
+			data += fmt.Sprintln()
+
 			for _, param := range endpoint.Params {
-				data += fmt.Sprintf("- `%s` - **`%s`** - %s", param.Name, param.Value, param.Description)
+				data += fmt.Sprintf("|	%s	|	%s	|	%s	|", param.Name, param.Value, param.Description)
 				data += fmt.Sprintln()
 			}
 			data += fmt.Sprintln()
@@ -73,10 +113,15 @@ func Markdown() string {
 			data += fmt.Sprintln("#### Response")
 			data += fmt.Sprintln()
 			for _, resp := range endpoint.Response {
-				data += fmt.Sprintf("Format `%s`", resp.Type)
+				data += fmt.Sprintln()
+				data += fmt.Sprintf("Format: %s", resp.Type)
+				data += fmt.Sprintln()
+				data += "| Field | Type | Description |"
+				data += fmt.Sprintln()
+				data += "| ----- | ---- | ----------- |"
 				data += fmt.Sprintln()
 				for _, param := range resp.Params {
-					data += fmt.Sprintf("- `%s` - **`%s`** - %s", param.Name, param.Value, param.Description)
+					data += fmt.Sprintf("|	%s	|	%s	|	%s	|", param.Name, param.Value, param.Description)
 					data += fmt.Sprintln()
 				}
 			}
@@ -91,20 +136,4 @@ func Markdown() string {
 	}
 
 	return data
-}
-
-// Serve the /api/ handler
-func Serve() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for _, ep := range Endpoints {
-			if r.URL.Path != ep.Path {
-				continue
-			}
-
-			ep.Handler.ServeHTTP(w, r)
-			return
-		}
-
-		http.Error(w, "not found", 404)
-	})
 }

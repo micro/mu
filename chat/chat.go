@@ -20,15 +20,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	width: 100%;
 }
 #messages {
-	height: calc(100vh - 250px);
-	width: 100%;
-	border: 1px solid whitesmoke;
+	height: calc(100vh - 295px);
+	border: 1px solid darkgrey;
 	border-radius 5px;
 	text-align: left;
 	padding: 10px;
 }
 #message {
-	width: calc(100% - 45px);
+	width: calc(100% - 40px);
 	padding: 10px;
 	margin-top: 10px;
 }
@@ -75,16 +74,25 @@ document.addEventListener('DOMContentLoaded', onLoad("messages"));
 
 			// get the message
 			msg := r.Form.Get("message")
+			ctx := r.Form.Get("context")
 
 			if len(msg) == 0 {
 				return
 			}
 
+			var ictx interface{}
+			json.Unmarshal([]byte(ctx), &ictx)
 			data["message"] = msg
+			data["context"] = ictx
+		}
+
+		var ctx []string
+		if v := data["context"]; v != nil {
+			ctx, _ = v.([]string)
 		}
 
 		// query the llm
-		resp := llm.Query(context.TODO(), nil, fmt.Sprintf("%v", data["message"]))
+		resp := llm.Query(context.TODO(), ctx, fmt.Sprintf("%v", data["message"]))
 
 		if len(resp) == 0 {
 			return

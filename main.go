@@ -31,9 +31,6 @@ func main() {
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
 
-	// serve the api
-	http.Handle("/api/", api.Serve())
-
 	// serve the api doc
 	http.Handle("/api", app.ServeHTML(apiHTML))
 

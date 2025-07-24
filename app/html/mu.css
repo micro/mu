@@ -2,8 +2,9 @@ html, body { height: 100%; width: 100%; margin: 0; padding: 0; font-family: "Nun
 a { color: #333333; }
 a:visited { color: #333333;}
 code {
+  width: 100%;
   background: whitesmoke;
-  padding: 5px;
+  padding: 10px;
   border-radius: 5px;
 }
 footer { position: absolute; bottom: 50; text-align: center; width: 100%; }
@@ -14,10 +15,11 @@ footer a { text-decoration: none; font-weight: bold; }
 	width: 100%
 }
 #head a { margin-right: 10px; color: black; font-weight: bold; text-decoration: none; }
-#container { height: auto; max-width: 1600px; margin: 0 auto; padding: 100px 10px 10px 10px; text-align: center;}
-#content { text-align: center; max-width: 1024px; margin: 0 auto; padding: 10px; justify-items: center;}
+#container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 10px;}
+#content { max-width: 1024px; margin: 0 auto; text-align: left;}
 #desc { margin-bottom: 10px; }
-#title { margin-top: 50px; font-size: 3em; font-weight: bold; margin-bottom: 10px; }
+#main { max-width: 600px; justify-items: center; text-align: center; padding: 150px 10px 10px 10px; margin: 0 auto; }
+#title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
 #brand {
   display: inline-block;
   padding: 20px;
@@ -38,6 +40,28 @@ footer a { text-decoration: none; font-weight: bold; }
     padding: 10px;
     max-width: 450px;
     width: 100%;
+}
+table {
+  width: 100%;
+}
+table, td, th {
+  text-align: left;
+}
+th {
+  border-bottom: 1px solid darkgrey;
+}
+td {
+  border-bottom: 1px solid darkgrey;
+  padding: 5px 25px 5px 0;
+}
+ul {
+  list-style-type: none;
+}
+button {
+  background: white;
+}
+button:hover {
+  background: whitesmoke;
 }
 .block {
    display: block;
