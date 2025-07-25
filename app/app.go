@@ -34,6 +34,8 @@ var Template = `
       </div>
       <div id="nav">
         <a href="/">Home</a>
+        <a href="/api">API</a>
+        <a href="/chat">Chat</a>
       </div>
     </div>
     <div id="container">
