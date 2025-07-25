@@ -15,12 +15,12 @@ import (
 // on how well the LLM handles the context, especially for LLMs with < 7B parameters.
 // The prompt engineering is up to you, it's out of scope for the vector database.
 var systemPromptTpl = template.Must(template.New("system_prompt").Parse(`
-Answer the question in a very concise manner. Use an unbiased and compassionate tone. Do not repeat text. Don't make anything up. If you are not sure about something, just say that you don't know.
+Answer the question in a concise manner. Use an unbiased and compassionate tone. Do not repeat text. Don't make anything up. If you are not sure about something, just say that you don't know.
 {{- /* Stop here if no context is provided. The rest below is for handling contexts. */ -}}
 {{- if . -}}
-Answer the question solely based on the provided context. If the search results within the context are not relevant to the question, say I don't know.
+Answer the question keeping the context of the discussion in mind. If the results within the context are not relevant to the question, say I don't know.
 
-Anything between the following 'context' XML blocks is retrieved from the knowledge base, not part of the conversation with the user. The bullet points are ordered by relevance, so the first one is the most relevant.
+Anything between the following 'context' XML blocks can be used as part of the conversation with the user. The bullet points are ordered by time, so the first one is the oldest.
 
 <context>
     {{- if . -}}
@@ -29,8 +29,6 @@ Anything between the following 'context' XML blocks is retrieved from the knowle
     {{- end}}
 </context>
 {{- end -}}
-
-Don't mention the knowledge base, context or search results in your answer.
 `))
 
 // Query the LLM. Requires OPENAI_API_KEY to be set

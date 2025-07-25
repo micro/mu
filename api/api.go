@@ -36,9 +36,9 @@ var Endpoints = []*Endpoint{{
 			Description: "Messages to use as context",
 		},
 		{
-			Name:        "message",
+			Name:        "prompt",
 			Value:       "string",
-			Description: "Message to send the AI",
+			Description: "Prompt to send the AI",
 		},
 	},
 	Response: []*Value{
@@ -51,9 +51,9 @@ var Endpoints = []*Endpoint{{
 					Description: "Messages used as context",
 				},
 				{
-					Name:        "message",
+					Name:        "prompt",
 					Value:       "string",
-					Description: "Message to sent the AI",
+					Description: "Prompt you sent to the AI",
 				},
 				{
 					Name:        "answer",

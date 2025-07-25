@@ -14,7 +14,7 @@ import (
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		// render chat
-		res := app.RenderHTML("Chat", "Chat with an LLM", `
+		res := app.RenderHTML("Chat", "Chat with AI", `
 <style>
 #chat-form {
 	width: 100%;
@@ -25,8 +25,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	border-radius 5px;
 	text-align: left;
 	padding: 10px;
+	overflow-x: scroll;
 }
-#message {
+#prompt {
 	width: calc(100% - 40px);
 	padding: 10px;
 	margin-top: 10px;
@@ -43,7 +44,7 @@ button:hover {
 <div id="messages"></div>
 <form id="chat-form" action="/chat" method="POST" onsubmit="event.preventDefault(); askLLM('/chat', this, 'messages');">
 <input id="context" name="context" type="hidden">
-<input id="message" name="message" type="text" autofocus autocomplete=off>
+<input id="prompt" name="prompt" type="text" autofocus autocomplete=off>
 <button>-></button>
 <script>
 document.addEventListener('DOMContentLoaded', onLoad("messages"));
@@ -65,7 +66,7 @@ document.addEventListener('DOMContentLoaded', onLoad("messages"));
 
 			json.Unmarshal(b, &data)
 
-			if data["message"] == nil {
+			if data["prompt"] == nil {
 				return
 			}
 		} else {
@@ -73,7 +74,7 @@ document.addEventListener('DOMContentLoaded', onLoad("messages"));
 			r.ParseForm()
 
 			// get the message
-			msg := r.Form.Get("message")
+			msg := r.Form.Get("prompt")
 			ctx := r.Form.Get("context")
 
 			if len(msg) == 0 {
@@ -82,17 +83,20 @@ document.addEventListener('DOMContentLoaded', onLoad("messages"));
 
 			var ictx interface{}
 			json.Unmarshal([]byte(ctx), &ictx)
-			data["message"] = msg
+			data["prompt"] = msg
 			data["context"] = ictx
 		}
 
 		var ctx []string
-		if v := data["context"]; v != nil {
-			ctx, _ = v.([]string)
+		if vals := data["context"].([]interface{}); vals != nil {
+			for _, val := range vals {
+				b, _ := json.Marshal(val)
+				ctx = append(ctx, string(b))
+			}
 		}
 
 		// query the llm
-		resp := llm.Query(context.TODO(), ctx, fmt.Sprintf("%v", data["message"]))
+		resp := llm.Query(context.TODO(), ctx, fmt.Sprintf("%v", data["prompt"]))
 
 		if len(resp) == 0 {
 			return

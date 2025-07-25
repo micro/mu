@@ -65,9 +65,11 @@ function onLoad(div) {
 	console.log(context)
 	context.forEach(function(data) {
 	  console.log(data);
-	  d.innerHTML += `<div>You: ${data["message"]}</div>`;
+	  d.innerHTML += `<div>You: ${data["prompt"]}</div>`;
 	  d.innerHTML += `<div>LLM: ${data["answer"]}</div>`;
 	})
+
+	d.scrollTop = d.scrollHeight;
 }
 
 function askLLM(url, el, div) {
@@ -82,10 +84,13 @@ function askLLM(url, el, div) {
 	}
 
 	console.log("sending", data);
-	document.getElementById("message").value = '';
-	d.innerHTML += `<div>You: ${data["message"]}</div>`;
+	document.getElementById("prompt").value = '';
+	d.innerHTML += `<div>You: ${data["prompt"]}</div>`;
+	d.scrollTop = d.scrollHeight;
 
-	if (context == undefined) {
+	let context = JSON.parse(sessionStorage.getItem("context"));
+
+	if (context == null) {
 	    context = [];
         }
  
@@ -102,14 +107,16 @@ function askLLM(url, el, div) {
 	    console.log('Success:', result);
 	    // Handle success, e.g., show a success message
             d.innerHTML += `<div>LLM: ${result.answer}</div>`
+	    d.scrollTop = d.scrollHeight;
 
 	    // save the context
 	    let context = JSON.parse(sessionStorage.getItem("context"));
-		if (context == null) {
-		    context = [];
-		}
+
+	    if (context == null) {
+	        context = [];
+	    }
  
-            context.push({answer: result.answer, message: result.message});
+            context.push({answer: result.answer, prompt: result.prompt});
 	    sessionStorage.setItem("context", JSON.stringify(context));
 	})
 	.catch(error => {
