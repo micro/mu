@@ -74,7 +74,7 @@ func Register(ep *Endpoint) {
 func Markdown() string {
 	var data string
 
-	data += "# Endpoints"
+	data += "# API"
 	data += fmt.Sprintln()
 	data += fmt.Sprintln("A list of API endpoints")
 	data += fmt.Sprintln()

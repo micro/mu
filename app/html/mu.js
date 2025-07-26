@@ -54,7 +54,7 @@ self.addEventListener('activate', function (e) {
   )
 })
 
-function onLoad(div) {
+function loadMessages(div) {
 	console.log("loading messages");
 	let context = JSON.parse(sessionStorage.getItem("context"));
         if (context == null) {
@@ -126,3 +126,59 @@ function askLLM(url, el, div) {
 
 	return false;
 }
+
+function chat() {
+        loadMessages("messages");
+
+        // scroll to bottom of prompt
+        const prompt = document.getElementById('prompt'); // Your input element
+
+        const messages = document.getElementById('messages');
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                const viewportHeight = window.visualViewport.height;
+                const documentHeight = document.documentElement.clientHeight;
+
+                // If the viewport height has significantly decreased, the keyboard is likely open
+                if (viewportHeight < documentHeight) {
+                    // Adjust your layout. For example, you might set the height of your
+                    // messages container or add a class to shift content up.
+                    // This is a more advanced approach and requires careful calculation
+                    // of your layout.
+                    // Example: document.body.style.paddingBottom = (documentHeight - viewportHeight) + 'px';
+                    // Or: Make sure your input container stays at the bottom of the *visual* viewport.
+                    // You'd typically make your chat messages div fill the available height
+                    // and the input box positioned relative to the bottom of that.
+
+                    messages.style.height = viewportHeight - 150;
+                } else {
+                    // Keyboard closed, revert changes
+                    // document.body.style.paddingBottom = '0';
+                    messages.style.height = viewportHeight - 150;
+                }
+
+                // After adjusting, you might still want to call scrollIntoView
+                // to ensure the input is exactly where you want it.
+                messages.scrollTop = messages.scrollHeight;
+                //prompt.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                window.scrollTo(0, document.body.scrollHeight);
+            });
+        } else {
+            // Fallback for browsers not supporting visualViewport (e.g., older Android)
+            window.addEventListener('resize', () => {
+                // Similar logic as above, but window.innerHeight might behave differently
+                // depending on the browser.
+                //prompt.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                window.scrollTo(0, document.body.scrollHeight);
+            });
+        }
+}
+
+
+self.addEventListener('DOMContentLoaded', function() {
+	if (window.location.pathname == "/chat") {
+		chat();
+	}
+});
+

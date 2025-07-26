@@ -2,7 +2,7 @@ html, body { height: 100%; width: 100%; margin: 0; padding: 0; font-family: "Nun
 a { color: #333333; }
 a:visited { color: #333333;}
 code {
-  width: 100%;
+  width: auto;
   background: whitesmoke;
   padding: 15px;
   border-radius: 5px;
@@ -16,7 +16,7 @@ footer a { text-decoration: none; font-weight: bold; }
 	width: 100%
 }
 #head a { margin-right: 10px; color: black; font-weight: bold; text-decoration: none; }
-#container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 10px;}
+#container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px;}
 #content { max-width: 1024px; margin: 0 auto; text-align: left;}
 #desc { margin-bottom: 10px; }
 #main { max-width: 600px; justify-items: center; text-align: center; padding: 150px 10px 10px 10px; margin: 0 auto; }
@@ -71,9 +71,6 @@ button:hover {
 .right {
   text-align: right;
 }
-@media only screen and (max-width: 600px) {
-  #head a { margin-right: 5px; }
-}
 .you {
   font-size: small;
   font-weight: bold;
@@ -96,8 +93,8 @@ button:hover {
         height: calc(100vh - 200px);
         border-radius 5px;
         text-align: left;
-        padding: 10px;
         overflow-y: auto;
+	padding: 5px;
 }
 .message {
         margin-bottom: 10px;
@@ -114,4 +111,7 @@ button:hover {
         padding: 10px;
         margin-top: 10px;
         width: auto;
+}
+@media only screen and (max-width: 600px) {
+  #head a { margin-right: 5px; }
 }

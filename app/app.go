@@ -20,6 +20,7 @@ var Template = `
   <head>
     <title>%s | Mu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="%s">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
@@ -39,8 +40,6 @@ var Template = `
       </div>
     </div>
     <div id="container">
-      <div id="title">%s</div>
-      <div id="desc">%s</div>
       <div id="content">%s</div>
     </div>
     </div>
@@ -73,7 +72,7 @@ func Render(md []byte) []byte {
 
 // RenderHTML renders the given html in a template
 func RenderHTML(title, desc, html string) string {
-	return fmt.Sprintf(Template, title, title, desc, html)
+	return fmt.Sprintf(Template, title, desc, html)
 }
 
 // RenderString renders a markdown string as html
@@ -83,7 +82,7 @@ func RenderString(v string) string {
 
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
-	return fmt.Sprintf(Template, title, title, desc, RenderString(text))
+	return fmt.Sprintf(Template, title, desc, RenderString(text))
 }
 
 func ServeHTML(html string) http.Handler {
