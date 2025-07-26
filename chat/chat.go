@@ -15,35 +15,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		// render chat
 		res := app.RenderHTML("Chat", "Chat with AI", `
-<style>
-#chat-form {
-	width: 100%;
-	margin: 0;
-}
-#messages {
-	flex-grow: 1;
-	height: calc(100vh - 200px);
-	border: 1px solid darkgrey;
-	border-radius 5px;
-	text-align: left;
-	padding: 10px;
-	overflow-y: auto;
-}
-.message {
-	padding: 5px;
-}
-#prompt {
-	flex-shrink: 0;
-	width: calc(100% - 40px);
-	padding: 10px;
-	margin-top: 10px;
-}
-button {
-	padding: 10px;
-	margin-top: 10px;
-	width: auto;
-}
-</style>
 <div id="messages"></div>
 <form id="chat-form" action="/chat" method="POST" onsubmit="event.preventDefault(); askLLM('/chat', this, 'messages');">
 <input id="context" name="context" type="hidden">

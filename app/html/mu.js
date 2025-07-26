@@ -65,8 +65,8 @@ function onLoad(div) {
 	console.log(context)
 	context.forEach(function(data) {
 	  console.log(data);
-	  d.innerHTML += `<div class="message">You: ${data["prompt"]}</div>`;
-	  d.innerHTML += `<div class="message">LLM: ${data["answer"]}</div>`;
+	  d.innerHTML += `<div class="message"><span class="you">you</span>${data["prompt"]}</div>`;
+	  d.innerHTML += `<div class="message"><span class="llm">llm</span>${data["answer"]}</div>`;
 	})
 
 	d.scrollTop = d.scrollHeight;
@@ -85,7 +85,7 @@ function askLLM(url, el, div) {
 
 	console.log("sending", data);
 	document.getElementById("prompt").value = '';
-	d.innerHTML += `<div class="message">You: ${data["prompt"]}</div>`;
+	d.innerHTML += `<div class="message"><span class="you">you</span>${data["prompt"]}</div>`;
 	d.scrollTop = d.scrollHeight;
 
 	let context = JSON.parse(sessionStorage.getItem("context"));
@@ -106,7 +106,7 @@ function askLLM(url, el, div) {
 	.then(result => {
 	    console.log('Success:', result);
 	    // Handle success, e.g., show a success message
-            d.innerHTML += `<div class="message">LLM: ${result.answer}</div>`
+            d.innerHTML += `<div class="message"><span class="llm">llm</span>${result.answer}</div>`
 	    d.scrollTop = d.scrollHeight;
 
 	    // save the context

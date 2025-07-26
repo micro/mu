@@ -74,3 +74,44 @@ button:hover {
 @media only screen and (max-width: 600px) {
   #head a { margin-right: 5px; }
 }
+.you {
+  font-size: small;
+  font-weight: bold;
+  color: black;
+  display: block;
+}
+.llm {
+  font-size: small;
+  font-weight: bold;
+  color: darkgrey;
+  display: block;
+}
+
+#chat-form {
+        width: 100%;
+        margin: 0;
+}
+#messages {
+        flex-grow: 1;
+        height: calc(100vh - 200px);
+        border-radius 5px;
+        text-align: left;
+        padding: 10px;
+        overflow-y: auto;
+}
+.message {
+        margin-bottom: 10px;
+        width: 100%;
+        display: block;
+}
+#prompt {
+        flex-shrink: 0;
+        width: calc(100% - 40px);
+        padding: 10px;
+        margin-top: 10px;
+}
+#chat-form button {
+        padding: 10px;
+        margin-top: 10px;
+        width: auto;
+}
