@@ -19,7 +19,7 @@ Starting with:
 
 Coming soon
 
-- Posts - Social feed/news
+- News - Social feed/news
 - Inbox - Direct messaging
 - Wallet - Transact with crypto
 - Utilities - QR code scanner, etc
