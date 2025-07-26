@@ -25,9 +25,8 @@ footer a { text-decoration: none; font-weight: bold; }
   display: inline-block;
   padding: 20px;
 }
-#install:hover {
-   cursor: pointer;
-   background: whitesmoke;
+#install {
+   width: 100px;
 }
 #nav {
   float: right;
@@ -35,12 +34,14 @@ footer a { text-decoration: none; font-weight: bold; }
 }
 .block, button {
     text-decoration: none;
-    margin-bottom: 10px;
     border: 1px solid grey;
     border-radius: 5px;
     padding: 10px;
-    max-width: 450px;
-    width: 100%;
+    width: 250px;
+}
+.block:hover, button:hover {
+   cursor: pointer;
+   background: whitesmoke;
 }
 table {
   width: 100%;

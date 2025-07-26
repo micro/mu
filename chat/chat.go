@@ -18,16 +18,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 <style>
 #chat-form {
 	width: 100%;
+	margin: 0;
 }
 #messages {
-	height: calc(100vh - 295px);
+	flex-grow: 1;
+	height: calc(100vh - 200px);
 	border: 1px solid darkgrey;
 	border-radius 5px;
 	text-align: left;
 	padding: 10px;
-	overflow-x: scroll;
+	overflow-y: auto;
+}
+.message {
+	padding: 5px;
 }
 #prompt {
+	flex-shrink: 0;
 	width: calc(100% - 40px);
 	padding: 10px;
 	margin-top: 10px;
@@ -37,9 +43,6 @@ button {
 	margin-top: 10px;
 	width: auto;
 }
-button:hover {
-	cursor: pointer;
-}
 </style>
 <div id="messages"></div>
 <form id="chat-form" action="/chat" method="POST" onsubmit="event.preventDefault(); askLLM('/chat', this, 'messages');">
@@ -47,7 +50,53 @@ button:hover {
 <input id="prompt" name="prompt" type="text" autofocus autocomplete=off>
 <button>-></button>
 <script>
-document.addEventListener('DOMContentLoaded', onLoad("messages"));
+document.addEventListener('DOMContentLoaded', function() {
+	onLoad("messages");
+
+	// scroll to bottom of prompt
+	const prompt = document.getElementById('prompt'); // Your input element
+
+	const messages = document.getElementById('messages');
+
+	if (window.visualViewport) {
+	    window.visualViewport.addEventListener('resize', () => {
+		const viewportHeight = window.visualViewport.height;
+		const documentHeight = document.documentElement.clientHeight;
+
+		// If the viewport height has significantly decreased, the keyboard is likely open
+		if (viewportHeight < documentHeight) {
+		    // Adjust your layout. For example, you might set the height of your
+		    // messages container or add a class to shift content up.
+		    // This is a more advanced approach and requires careful calculation
+		    // of your layout.
+		    // Example: document.body.style.paddingBottom = (documentHeight - viewportHeight) + 'px';
+		    // Or: Make sure your input container stays at the bottom of the *visual* viewport.
+		    // You'd typically make your chat messages div fill the available height
+		    // and the input box positioned relative to the bottom of that.
+
+		    messages.style.height = viewportHeight - 200;
+		} else {
+		    // Keyboard closed, revert changes
+		    // document.body.style.paddingBottom = '0';
+		    messages.style.height = viewportHeight - 200;
+		}
+
+		// After adjusting, you might still want to call scrollIntoView
+		// to ensure the input is exactly where you want it.
+		messages.scrollTop = messages.scrollHeight;
+		//prompt.scrollIntoView({ behavior: 'smooth', block: 'end' });
+		window.scrollTo(0, document.body.scrollHeight);
+	    });
+	} else {
+	    // Fallback for browsers not supporting visualViewport (e.g., older Android)
+	    window.addEventListener('resize', () => {
+		// Similar logic as above, but window.innerHeight might behave differently
+		// depending on the browser.
+		//prompt.scrollIntoView({ behavior: 'smooth', block: 'end' });
+		window.scrollTo(0, document.body.scrollHeight);
+	    });
+	}
+});
 </script>
 </form>`)
 
