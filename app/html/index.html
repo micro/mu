@@ -1,0 +1,76 @@
+<html>
+  <head>
+    <title>Home | Mu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/mu.css">
+  </head>
+  <body>
+    <div id="head">
+      <div id="brand">
+        <a href="/">Mu</a>
+      </div>
+      <div id="nav">
+        <button id="install" hidden>Install</button>
+      </div>
+    </div>
+    <div id="container">
+	<div id="main">
+	   <div id="title">Mu</div>
+	   <div id="desc">Building blocks for life</div>
+	   <p><a href="/chat" class="block"><b>App</b> - Use the App</a></p>
+	   <p><a href="/api" class="block"><b>API</b> - Use the API</a></p>
+	</div>
+       </div>
+    </div>
+  <footer>
+    <center>
+	    <a href="https://github.com/micro/mu">GitHub</a>&nbsp;&nbsp;
+	    <a href="https://discord.gg/UmFkPbu32m">Discord</a>
+    </center>
+  </footer>
+  <script>
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.register (
+          '/mu.js',
+          {scope: '/'}
+        )
+      }
+  </script>
+  <script>
+        let installPrompt = null;
+        const installButton = document.querySelector("#install");
+
+        window.addEventListener("beforeinstallprompt", (event) => {
+          event.preventDefault();
+          installPrompt = event;
+          installButton.removeAttribute("hidden");
+        });
+
+        installButton.addEventListener("click", async () => {
+          if (!installPrompt) {
+            return;
+          }
+          const result = await installPrompt.prompt();
+          disableInAppInstallPrompt();
+        });
+
+        function disableInAppInstallPrompt() {
+          installPrompt = null;
+          installButton.setAttribute("hidden", "");
+        }
+
+        window.addEventListener("appinstalled", () => {
+          disableInAppInstallPrompt();
+        });
+
+        function disableInAppInstallPrompt() {
+          installPrompt = null;
+          installButton.setAttribute("hidden", "");
+        }
+  </script>
+  </body>
+</html>
