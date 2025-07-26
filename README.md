@@ -6,7 +6,7 @@ Building blocks for life
 
 What are the building blocks for life? Today we have a number of separate services that give us the things 
 we need for our daily digital habits; news, social, mail, chat, etc. It's all very disconnected and yet at 
-the same time, entirely commercialised. It is very hard to escape the advertising system, or cookies, popups, 
+the same time, entirely commercialised. It is very hard to escape the advertising system, cookies, popups, 
 endless noise. Twitter, reddit, tiktok, etc, its all noise at this point. So we look to build something new. 
 
 ## Features
