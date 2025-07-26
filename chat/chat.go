@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/micro/mu/app"
-	"github.com/micro/mu/llm"
 )
 
 var Template = app.RenderHTML("Chat", "Chat with AI", `
@@ -67,7 +66,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// query the llm
-		resp := llm.Query(context.TODO(), ctx, fmt.Sprintf("%v", data["prompt"]))
+		resp := askLLM(context.TODO(), ctx, fmt.Sprintf("%v", data["prompt"]))
 
 		if len(resp) == 0 {
 			return
