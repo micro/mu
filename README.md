@@ -13,10 +13,10 @@ Starting with:
 - API - Basic API
 - App - Installable PWA
 - Chat - LLM based chat UI
+- News - Latest news headlines
 
 Coming soon
 
-- News - Social feed/news
 - Inbox - Direct messaging
 - Wallet - Transact with crypto
 - Utilities - QR code scanner, etc
