@@ -92,9 +92,10 @@ button:hover {
         flex-grow: 1;
         height: calc(100vh - 200px);
         border-radius 5px;
+	border: 1px solid darkgrey;
         text-align: left;
         overflow-y: auto;
-	padding: 5px;
+	padding: 10px;
 }
 .message {
         margin-bottom: 10px;
