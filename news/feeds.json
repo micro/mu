@@ -1,5 +1,5 @@
 {
-  "Crypto": "https://crypto.news/feed/",
+  "Crypto": "https://www.coindesk.com/arc/outboundfeeds/rss",
   "Dev": "https://news.ycombinator.com/rss",
   "UK": "https://feeds.bbci.co.uk/news/rss.xml",
   "World": "https://www.aljazeera.com/xml/rss/all.xml",

@@ -32,16 +32,25 @@ footer a { text-decoration: none; font-weight: bold; }
   float: right;
   padding: 20px;
 }
+.block {
+   width: 250px;
+   display: block;
+}
 .block, button {
     text-decoration: none;
     border: 1px solid grey;
     border-radius: 5px;
     padding: 10px;
-    width: 250px;
 }
 .block:hover, button:hover {
    cursor: pointer;
    background: whitesmoke;
+}
+button {
+  background: white;
+}
+button:hover {
+  background: whitesmoke;
 }
 table {
   width: 100%;
@@ -59,15 +68,6 @@ td {
 ul {
   list-style-type: none;
 }
-button {
-  background: white;
-}
-button:hover {
-  background: whitesmoke;
-}
-.block {
-   display: block;
-}
 .right {
   text-align: right;
 }
@@ -83,7 +83,6 @@ button:hover {
   color: darkgrey;
   display: block;
 }
-
 #chat-form {
         width: 100%;
         margin: 0;
@@ -138,9 +137,12 @@ button:hover {
 .cover {
   width: 200px;
   height: auto;
+  min-height: 100px;
   margin-right: 10px;
   margin-bottom: 10px;
   display: inline-block;
+  border-radius: 3px;
+  background: whitesmoke;
 }
 .blurb {
  display: inline-block;

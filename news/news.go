@@ -69,7 +69,7 @@ var replace = []func(string) string{
 	func(v string) string {
 		parts := strings.Split(v, "</p>")
 		if len(parts) > 0 {
-			return parts[0] + "</p>"
+			return strings.Replace(parts[0], "<p>", "", 1)
 		}
 		return v
 	},
@@ -298,6 +298,7 @@ func parseFeed() {
 				val = fmt.Sprintf(`
 	<div class="news">
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
+	    <img class="cover">
 	    <div class="blurb">
 	      <span class="text">%s</span>
 	      <span class="description">%s</span>
