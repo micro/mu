@@ -14,7 +14,7 @@ import (
 // or pass it in the system prompt. The system prompt itself also has a big impact
 // on how well the LLM handles the context, especially for LLMs with < 7B parameters.
 // The prompt engineering is up to you, it's out of scope for the vector database.
-var systemPromptTpl = template.Must(template.New("system_prompt").Parse(`
+var systemPrompt = template.Must(template.New("system_prompt").Parse(`
 Answer the question in a concise manner. Use an unbiased and compassionate tone. Do not repeat text. Don't make anything up. If you are not sure about something, just say that you don't know.
 {{- /* Stop here if no context is provided. The rest below is for handling contexts. */ -}}
 {{- if . -}}
@@ -31,10 +31,10 @@ Anything between the following 'context' XML blocks can be used as part of the c
 {{- end -}}
 `))
 
-func askLLM(ctx context.Context, contexts []string, question string) string {
+func askLLM(ctx context.Context, prompt *Prompt) string {
 	openAIClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 	sb := &strings.Builder{}
-	err := systemPromptTpl.Execute(sb, contexts)
+	err := systemPrompt.Execute(sb, prompt.Context)
 	if err != nil {
 		panic(err)
 	}
@@ -44,7 +44,7 @@ func askLLM(ctx context.Context, contexts []string, question string) string {
 			Content: sb.String(),
 		}, {
 			Role:    openai.ChatMessageRoleUser,
-			Content: "Question: " + question,
+			Content: "Question: " + prompt.Question,
 		},
 	}
 	res, err := openAIClient.CreateChatCompletion(ctx, openai.ChatCompletionRequest{

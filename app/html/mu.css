@@ -112,6 +112,49 @@ button:hover {
         margin-top: 10px;
         width: auto;
 }
+.category {
+  margin-bottom: 5px;
+  display: block;
+}
+.head {
+  font-weight: bold;
+  margin-right: 10px;
+  text-decoration: none;
+}
+.headline {
+  margin-bottom: 20px;
+}
+.headline a {
+  font-weight: bold;
+  text-decoration: none;
+} 
+.news {
+  margin-bottom: 20px;
+}
+.news a {
+  text-decoration: none;
+}
+.cover {
+  width: 200px;
+  height: auto;
+  margin-right: 10px;
+  margin-bottom: 10px;
+  display: inline-block;
+}
+.blurb {
+ display: inline-block;
+ vertical-align: top;
+ max-width: 600px;
+}
+.text {
+  font-size: 1.2em;
+  font-weight: bold;
+  display: block;
+}
+.description {
+  font-size: 1em;
+  font-weight: normal;
+}
 @media only screen and (max-width: 600px) {
   #head a { margin-right: 5px; }
 }
