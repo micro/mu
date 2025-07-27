@@ -63,6 +63,23 @@ var Endpoints = []*Endpoint{{
 			},
 		},
 	},
+}, {
+	Name:        "News",
+	Path:        "/news",
+	Method:      "GET",
+	Description: "Read the news",
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "feed",
+					Value:       "array",
+					Description: "The news feed",
+				},
+			},
+		},
+	},
 }}
 
 // Register an endpoint

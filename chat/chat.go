@@ -10,6 +10,11 @@ import (
 	"github.com/micro/mu/app"
 )
 
+type Prompt struct {
+	Context  []string
+	Question string
+}
+
 var Template = app.RenderHTML("Chat", "Chat with AI", `
 <div id="messages"></div>
 <form id="chat-form" action="/chat" method="POST" onsubmit="event.preventDefault(); askLLM('/chat', this, 'messages');">
@@ -65,8 +70,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		prompt := &Prompt{
+			Context:  ctx,
+			Question: fmt.Sprintf("%v", data["prompt"]),
+		}
+
 		// query the llm
-		resp := askLLM(context.TODO(), ctx, fmt.Sprintf("%v", data["prompt"]))
+		resp := askLLM(context.TODO(), prompt)
 
 		if len(resp) == 0 {
 			return
