@@ -72,8 +72,8 @@ function loadMessages(div) {
 	d.scrollTop = d.scrollHeight;
 }
 
-function askLLM(url, el, div) {
-	var d = document.getElementById(div);
+function askLLM(el) {
+	var d = document.getElementById('messages');
 
 	const formData = new FormData(el);
 	const data = {};
@@ -96,7 +96,7 @@ function askLLM(url, el, div) {
  
         data["context"] = context;
 
-	fetch(url, {
+	fetch("/chat", {
 	  method: "POST",
 	  headers: {
 	      'Content-Type': 'application/json'

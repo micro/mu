@@ -17,7 +17,7 @@ type Prompt struct {
 
 var Template = app.RenderHTML("Chat", "Chat with AI", `
 <div id="messages"></div>
-<form id="chat-form" action="/chat" method="POST" onsubmit="event.preventDefault(); askLLM('/chat', this, 'messages');">
+<form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
 <input id="prompt" name="prompt" type="text" autofocus autocomplete=off>
 <button>-></button>
