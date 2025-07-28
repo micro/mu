@@ -49,3 +49,5 @@ Run it
 ```
 mu --serve
 ```
+
+Go to localhost:8081
