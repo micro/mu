@@ -19,7 +19,7 @@ var Template = `
 <html>
   <head>
     <title>%s | Mu</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
     <meta name="description" content="%s">
     <meta name="referrer" content="no-referrer"/>
     <link rel="preconnect" href="https://fonts.googleapis.com">
