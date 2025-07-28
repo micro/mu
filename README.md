@@ -44,6 +44,12 @@ Export API key
 export OPENAI_API_KEY=xxx
 ```
 
+Export path
+
+```
+export PATH=$HOME/go/bin:$PATH
+```
+
 Run it
 
 ```
