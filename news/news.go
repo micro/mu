@@ -4,9 +4,11 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -30,6 +32,8 @@ var status = map[string]*Feed{}
 var html string
 
 var feed []*Post
+
+var key = os.Getenv("CRYPTO_API_KEY")
 
 type Feed struct {
 	Name     string
@@ -58,6 +62,28 @@ type Metadata struct {
 	Url         string
 	Site        string
 }
+
+func getPrice(v ...string) map[string]string {
+	rsp, err := http.Get(fmt.Sprintf("https://min-api.cryptocompare.com/data/pricemulti?fsyms=%s&tsyms=USD&api_key=%s", strings.Join(v, ","), key))
+	if err != nil {
+		return nil
+	}
+	b, _ := ioutil.ReadAll(rsp.Body)
+	defer rsp.Body.Close()
+	var res map[string]interface{}
+	json.Unmarshal(b, &res)
+	if res == nil {
+		return nil
+	}
+	prices := map[string]string{}
+	for _, t := range v {
+		rsp := res[t].(map[string]interface{})
+		prices[t] = fmt.Sprintf("%v", rsp["USD"].(float64))
+	}
+	return prices
+}
+
+var tickers = []string{"BTC", "BNB", "ETH", "SOL"}
 
 var replace = []func(string) string{
 	func(v string) string {
@@ -141,6 +167,9 @@ func getMetadata(uri string) *Metadata {
 				continue
 			}
 			node.Attr = node.Attr[1:]
+			if len(node.Attr) < 2 {
+				continue
+			}
 		}
 
 		switch p[1] {
@@ -328,6 +357,25 @@ func parseFeed() {
 
 	headline := []byte(`<div class=section><hr id="headlines" class="anchor">`)
 
+	// get crypto prices
+	prices := getPrice(tickers...)
+
+	if prices != nil {
+		btc := prices["BTC"]
+		eth := prices["ETH"]
+		bnb := prices["BNB"]
+		sol := prices["SOL"]
+
+		var info []byte
+		info = append(info, []byte(`<div id="info"><b>Markets:</b>`)...)
+		info = append(info, []byte(`<span class="ticker">btc $`+btc+`</span>`)...)
+		info = append(info, []byte(`<span class="ticker">eth $`+eth+`</span>`)...)
+		info = append(info, []byte(`<span class="ticker">bnb $`+bnb+`</span>`)...)
+		info = append(info, []byte(`<span class="ticker">sol $`+sol+`</span>`)...)
+		info = append(info, []byte(`</div>`)...)
+		headline = append(headline, info...)
+	}
+
 	headline = append(headline, []byte(`<h1>Headlines</h1>`)...)
 
 	// create the headlines
@@ -340,7 +388,7 @@ func parseFeed() {
 			<div class="headline">
 			  <a href="#%s" class="category"><small>#%s</small></a>
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
-			   <span class="text">%s:</span>
+			   <span class="text">%s</span>
 			   <span class="description">%s</span>
 			  </a>
 			</div>`,

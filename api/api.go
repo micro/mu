@@ -107,6 +107,12 @@ func Markdown() string {
 		data += fmt.Sprintf("```%s %s```", endpoint.Method, endpoint.Path)
 		data += fmt.Sprintln()
 
+		data += fmt.Sprintln("#### Headers")
+		data += fmt.Sprintln()
+		data += fmt.Sprintln("Content-Type: application/json")
+		data += fmt.Sprintln()
+		data += fmt.Sprintln()
+
 		if endpoint.Params != nil {
 			data += fmt.Sprintln("#### Request")
 			data += fmt.Sprintln()

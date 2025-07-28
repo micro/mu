@@ -127,7 +127,10 @@ ul {
 .headline a {
   font-weight: bold;
   text-decoration: none;
-} 
+}
+.ticker {
+  margin-left: 10px;
+}
 .news {
   margin-bottom: 20px;
 }
