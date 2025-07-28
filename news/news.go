@@ -368,9 +368,9 @@ func parseFeed() {
 		var info []byte
 		//info = append(info, []byte(`<div id="info"><b>Markets:</b>`)...)
 		info = append(info, []byte(`<div id="info">`)...)
-		info = append(info, []byte(`<span class="ticker">btc $`+btc+`</span>`)...)
-		info = append(info, []byte(`<span class="ticker">eth $`+eth+`</span>`)...)
-		info = append(info, []byte(`<span class="ticker">bnb $`+bnb+`</span>`)...)
+		info = append(info, []byte(`<span class="ticker">BTC $`+btc+`</span>`)...)
+		info = append(info, []byte(`<span class="ticker">ETH $`+eth+`</span>`)...)
+		info = append(info, []byte(`<span class="ticker">BNB $`+bnb+`</span>`)...)
 		info = append(info, []byte(`</div>`)...)
 		headline = append(headline, info...)
 	}
