@@ -10,18 +10,21 @@ What are the building blocks for life? Today there are a number of services that
 
 Starting with:
 
-- API - Basic API
-- App - Installable PWA
-- Chat - LLM based chat UI
-- News - Latest news headlines
+- [x] API - Basic API
+- [x] App - Installable PWA
+- [x] Chat - LLM based chat UI
+- [x] News - Latest news headlines
 
 Coming soon
 
-- Inbox - Direct messaging
-- Wallet - Transact with crypto
-- Utilities - QR code scanner, etc
-- Services - Marketplace of services
+- [ ] Inbox - Direct messaging
+- [ ] Wallet - Transact with crypto
+- [ ] Utilities - QR code scanner, etc
+- [ ] Services - Marketplace of services
 
+## Payments
+
+One of the core things we'll look to feature is crypto payments. Using micro transactions for everything this should enable a sort of anti spam filtering but also promote a self sustainable model for long term maintenance and provide some sort of financial incentive to users for tipping good behaviour. In the long long term its also a way to charge for services.
 
 ## Usage
 
