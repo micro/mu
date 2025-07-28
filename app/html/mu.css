@@ -89,7 +89,7 @@ ul {
 }
 #messages {
         flex-grow: 1;
-        height: calc(100vh - 200px);
+        height: calc(100vh - 175px);
         border-radius 5px;
 	border: 1px solid darkgrey;
         text-align: left;

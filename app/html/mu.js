@@ -151,11 +151,13 @@ function chat() {
                     // You'd typically make your chat messages div fill the available height
                     // and the input box positioned relative to the bottom of that.
 
-                    messages.style.height = viewportHeight - 150;
+                    messages.style.height = viewportHeight - 175;
+		    window.visualViewport.height = window.visualViewport.height - 175;
                 } else {
                     // Keyboard closed, revert changes
                     // document.body.style.paddingBottom = '0';
-                    messages.style.height = viewportHeight - 150;
+                    messages.style.height = viewportHeight - 175;
+		    window.visualViewport.height = window.visualViewport.height - 175;
                 }
 
                 // After adjusting, you might still want to call scrollIntoView
