@@ -38,7 +38,7 @@ cd mu
 go install
 ```
 
-Export API key
+Export OpenAI API key
 
 ```
 export OPENAI_API_KEY=xxx
