@@ -15,6 +15,7 @@ Starting with:
 - [x] Chat - LLM based chat UI
 - [x] News - Latest news headlines
 - [x] Video - Video search interface
+
 Coming soon
 
 - [ ] Inbox - Direct messaging
