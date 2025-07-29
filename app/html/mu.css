@@ -163,4 +163,7 @@ ul {
 }
 @media only screen and (max-width: 600px) {
   #head a { margin-right: 5px; }
+  #messages {
+    height: calc(100vh - 200px);
+  }
 }

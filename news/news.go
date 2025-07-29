@@ -208,6 +208,19 @@ func getMetadata(uri string) *Metadata {
 }
 
 func parseFeed() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic in feed parser: %v\n", r)
+			// You can perform cleanup, logging, or other error handling here.
+			// For example, you might send an error to a channel to notify main.
+		}
+
+		fmt.Println("Relaunching feed parser in 1 minute")
+		time.Sleep(time.Minute)
+
+		go parseFeed()
+	}()
+
 	p := gofeed.NewParser()
 
 	data := []byte{}
