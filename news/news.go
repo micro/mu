@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -129,15 +130,15 @@ func backoff(attempts int) time.Duration {
 	return time.Duration(math.Pow(float64(attempts), math.E)) * time.Millisecond * 100
 }
 
-func getMetadata(uri string) *Metadata {
+func getMetadata(uri string) (*Metadata, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	d, err := goquery.NewDocument(u.String())
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	g := &Metadata{
@@ -204,7 +205,7 @@ func getMetadata(uri string) *Metadata {
 	//	return nil
 	//}
 
-	return g
+	return g, nil
 }
 
 func parseFeed() {
@@ -213,6 +214,7 @@ func parseFeed() {
 			fmt.Printf("Recovered from panic in feed parser: %v\n", r)
 			// You can perform cleanup, logging, or other error handling here.
 			// For example, you might send an error to a channel to notify main.
+			debug.PrintStack()
 		}
 
 		fmt.Println("Relaunching feed parser in 1 minute")
@@ -320,7 +322,11 @@ func parseFeed() {
 			}
 
 			// get meta
-			md := getMetadata(item.Link)
+			md, err := getMetadata(item.Link)
+			if err != nil {
+				fmt.Println("Error parsing", item.Link, err)
+				continue
+			}
 
 			var val string
 

@@ -179,6 +179,17 @@ function chat() {
 
 
 self.addEventListener('DOMContentLoaded', function() {
+	// set nav
+	var nav = document.getElementById("nav");
+	for (const el of nav.children) {
+		if (el.getAttribute("href") == window.location.pathname) {
+			el.setAttribute("class", "active");
+		} else {
+			el.classList.remove("active");
+		}
+	}
+
+	// load chat
 	if (window.location.pathname == "/chat") {
 		chat();
 	}

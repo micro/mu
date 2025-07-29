@@ -15,7 +15,11 @@ footer a { text-decoration: none; font-weight: bold; }
 	top: 0;
 	width: 100%
 }
-#head a { margin-right: 10px; color: black; font-weight: bold; text-decoration: none; }
+#head a { margin-right: 2px; color: black; font-weight: bold; text-decoration: none; padding: 5px 7px;}
+#head a.active, #head a:hover {
+    background: whitesmoke;
+    border-radius: 5px;
+}
 #container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px;}
 #content { max-width: 1024px; margin: 0 auto; text-align: left;}
 #desc { margin-bottom: 10px; }
@@ -23,14 +27,14 @@ footer a { text-decoration: none; font-weight: bold; }
 #title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
 #brand {
   display: inline-block;
-  padding: 20px;
+  padding: 15px;
 }
 #install {
    width: 100px;
 }
 #nav {
   float: right;
-  padding: 20px;
+  padding: 15px;
 }
 .block {
    width: 250px;
@@ -175,8 +179,7 @@ ul {
   font-weight: normal;
 }
 @media only screen and (max-width: 600px) {
-  #head a { margin-right: 5px; }
   #messages {
-    height: calc(100vh - 200px);
+    height: calc(100vh - 230px);
   }
 }
