@@ -138,7 +138,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			b, _ = json.Marshal(results)
+			res := map[string]interface{}{
+				"results": results,
+			}
+			b, _ = json.Marshal(res)
 			w.Write(b)
 			return
 		}
