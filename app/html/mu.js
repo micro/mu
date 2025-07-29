@@ -65,7 +65,7 @@ function loadMessages(div) {
 	console.log(context)
 	context.forEach(function(data) {
 	  console.log(data);
-	  d.innerHTML += `<div class="message"><span class="you">you</span>${data["prompt"]}</div>`;
+	  d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
 	  d.innerHTML += `<div class="message"><span class="llm">llm</span>${data["answer"]}</div>`;
 	})
 
@@ -85,7 +85,7 @@ function askLLM(el) {
 
 	console.log("sending", data);
 	document.getElementById("prompt").value = '';
-	d.innerHTML += `<div class="message"><span class="you">you</span>${data["prompt"]}</div>`;
+	d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
 	d.scrollTop = d.scrollHeight;
 
 	let context = JSON.parse(sessionStorage.getItem("context"));

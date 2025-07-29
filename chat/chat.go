@@ -83,7 +83,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// save the response
-		data["answer"] = resp
+		html := app.Render([]byte(resp))
+		data["answer"] = string(html)
 		b, _ := json.Marshal(data)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
