@@ -14,7 +14,7 @@ Starting with:
 - [x] App - Installable PWA
 - [x] Chat - LLM based chat UI
 - [x] News - Latest news headlines
-
+- [x] Video - Video search interface
 Coming soon
 
 - [ ] Inbox - Direct messaging
@@ -38,11 +38,21 @@ cd mu
 go install
 ```
 
-Export OpenAI API key
+## Keys
+
+Export OpenAI API key for chat
 
 ```
 export OPENAI_API_KEY=xxx
 ```
+
+Export CryptoCompare API key for market data
+
+```
+export CRYPTO_API_KEY=xxx
+```
+
+## Run
 
 Export path
 

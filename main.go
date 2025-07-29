@@ -10,6 +10,7 @@ import (
 	"github.com/micro/mu/app"
 	"github.com/micro/mu/chat"
 	"github.com/micro/mu/news"
+	"github.com/micro/mu/video"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -31,6 +32,9 @@ func main() {
 
 	// load the news
 	news.Load()
+
+	// serve video
+	http.HandleFunc("/video", video.Handler)
 
 	// serve news
 	http.HandleFunc("/news", news.Handler)

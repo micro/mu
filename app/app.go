@@ -39,6 +39,7 @@ var Template = `
         <a href="/api">API</a>
         <a href="/chat">Chat</a>
         <a href="/news">News</a>
+        <a href="/video">Video</a>
       </div>
     </div>
     <div id="container">

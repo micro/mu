@@ -80,6 +80,30 @@ var Endpoints = []*Endpoint{{
 			},
 		},
 	},
+}, {
+	Name:        "Video",
+	Path:        "/video",
+	Method:      "POST",
+	Description: "Search for videos",
+	Params: []*Param{
+		{
+			Name:        "q",
+			Value:       "string",
+			Description: "Video search query",
+		},
+	},
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "results",
+					Value:       "array",
+					Description: "Video search results",
+				},
+			},
+		},
+	},
 }}
 
 // Register an endpoint
@@ -91,14 +115,7 @@ func Register(ep *Endpoint) {
 func Markdown() string {
 	var data string
 
-	data += "# API"
-	data += fmt.Sprintln()
-	data += fmt.Sprintln("A list of API endpoints")
-	data += fmt.Sprintln()
-
 	for _, endpoint := range Endpoints {
-		data += fmt.Sprintln()
-		data += fmt.Sprintln("___")
 		data += "## " + endpoint.Name
 		data += fmt.Sprintln()
 		data += fmt.Sprintln()
@@ -155,6 +172,8 @@ func Markdown() string {
 		}
 
 		data += fmt.Sprintln()
+		data += fmt.Sprintln("\\")
+		data += fmt.Sprintln("\\")
 		data += fmt.Sprintln()
 	}
 

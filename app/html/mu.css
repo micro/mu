@@ -52,6 +52,15 @@ button {
 button:hover {
   background: whitesmoke;
 }
+input {
+  width: calc(100% - 40px);
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid darkgrey;
+}
+textarea:focus, input:focus{
+    outline: none;
+}
 table {
   width: 100%;
 }
