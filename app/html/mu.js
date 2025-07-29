@@ -62,6 +62,8 @@ function loadMessages(div) {
 	}
 	var d = document.getElementById(div);
 
+	d.innerHTML = '';
+
 	console.log(context)
 	context.forEach(function(data) {
 	  console.log(data);
@@ -87,6 +89,8 @@ function askLLM(el) {
 	document.getElementById("prompt").value = '';
 	d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
 	d.scrollTop = d.scrollHeight;
+
+	var prompt = data["prompt"];
 
 	let context = JSON.parse(sessionStorage.getItem("context"));
 
@@ -116,7 +120,7 @@ function askLLM(el) {
 	        context = [];
 	    }
  
-            context.push({answer: result.answer, prompt: result.prompt});
+            context.push({answer: result.answer, prompt: prompt});
 	    sessionStorage.setItem("context", JSON.stringify(context));
 	})
 	.catch(error => {
@@ -177,6 +181,9 @@ function chat() {
         }
 }
 
+function home() {
+        loadMessages("chat");
+}
 
 self.addEventListener('DOMContentLoaded', function() {
 	// set nav
@@ -184,14 +191,19 @@ self.addEventListener('DOMContentLoaded', function() {
 	for (const el of nav.children) {
 		if (el.getAttribute("href") == window.location.pathname) {
 			el.setAttribute("class", "active");
-		} else {
-			el.classList.remove("active");
+			continue
 		}
+		el.removeAttribute("class");
+		//el.classList.remove("active");
 	}
 
 	// load chat
 	if (window.location.pathname == "/chat") {
 		chat();
 	}
-});
 
+	// load home
+	if (window.location.pathname == "/home") {
+		home();
+	}
+});

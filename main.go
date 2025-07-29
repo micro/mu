@@ -45,6 +45,9 @@ func main() {
 	// serve the api doc
 	http.Handle("/api", app.ServeHTML(apiHTML))
 
+	// serve the home screen
+	http.Handle("/home", app.ServeHTML(app.Home))
+
 	// serve the app
 	http.Handle("/", app.Serve())
 

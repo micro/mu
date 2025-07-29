@@ -35,7 +35,7 @@ var Template = `
         <a href="/">Mu</a>
       </div>
       <div id="nav">
-        <a href="/">Home</a>
+        <a href="/home">Home</a>
         <a href="/api">API</a>
         <a href="/chat">Chat</a>
         <a href="/news">News</a>
@@ -57,6 +57,18 @@ var Template = `
   </body>
 </html>
 `
+
+var Home = RenderHTML("Home", "Welcome", `
+<h1>Welcome Home</h1>
+<form id="video" action="/video" method="POST">
+  <input name="query" id="query" placeholder="Search for videos" autocomplete=off autofocus>
+  <button>Find Video</button>
+</form>
+
+<h1>Recent Chat</h1>
+<div id="chat">No messages</div>
+<a href="/chat"><button>Load Chat</button></a>
+`)
 
 // Render a markdown document as html
 func Render(md []byte) []byte {

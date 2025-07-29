@@ -16,7 +16,11 @@ footer a { text-decoration: none; font-weight: bold; }
 	width: 100%
 }
 #head a { margin-right: 2px; color: black; font-weight: bold; text-decoration: none; padding: 5px 7px;}
-#head a.active, #head a:hover {
+#nav {
+    padding: 15px;
+    float: right;
+}
+#nav a.active, #nav a:hover {
     background: whitesmoke;
     border-radius: 5px;
 }
@@ -32,13 +36,12 @@ footer a { text-decoration: none; font-weight: bold; }
 #install {
    width: 100px;
 }
-#nav {
-  float: right;
-  padding: 15px;
-}
 .block {
-   width: 250px;
-   display: block;
+   width: 100px;
+   height: 30px;
+   line-height: 30px;
+   display: inline-block;
+   margin-bottom: 10px;
 }
 .block, button {
     text-decoration: none;
@@ -95,6 +98,21 @@ ul {
   font-weight: bold;
   color: darkgrey;
   display: block;
+}
+div#chat {
+  max-height: 200px;
+  max-width: 450px;
+  border: 1px solid darkgrey;
+  border-radius: 5px;
+  padding: 5px;
+  margin-bottom: 10px;
+}
+form#video {
+  max-width: 465px;
+}
+form#video input {
+  width: 100%;
+  margin-bottom: 10px;
 }
 #chat-form {
         width: 100%;

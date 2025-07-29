@@ -30,11 +30,11 @@ func embedVideo(id string) string {
 	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
 }
 
-func getResults(q string) (string, []*Result, error) {
+func getResults(query string) (string, []*Result, error) {
 	if Client == nil {
 		return "", nil, fmt.Errorf("No client")
 	}
-	resp, err := Client.Search.List([]string{"id", "snippet"}).Q(q).MaxResults(25).Do()
+	resp, err := Client.Search.List([]string{"id", "snippet"}).Q(query).MaxResults(25).Do()
 	if err != nil {
 		return "", nil, err
 	}
@@ -90,7 +90,7 @@ var Results = `
   }
 </style>
 <form action="/video" method="POST">
-  <input name="q" id="q" value="%s">
+  <input name="query" id="query" value="%s">
   <button>-></button>
 </form>
 <h1>Results</h1>
@@ -99,16 +99,8 @@ var Results = `
 </div>`
 
 var Template = `
-<style>
-.video {
-  width: 100%;
-  overflow: hidden;
-  padding-top: 56.25%;
-  position: relative;
-}
-</style>
 <form action="/video" method="POST">
-  <input name="q" id="q" placeholder=Search autocomplete=off autofocus>
+  <input name="query" id="query" placeholder=Search autocomplete=off autofocus>
   <button>-></button>
 </form>`
 
@@ -117,7 +109,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// if r.Method == "POST" {
 	if r.Method == "POST" {
-		var q string
+		var query string
 
 		if ct := r.Header.Get("Content-Type"); ct == "application/json" {
 			var data map[string]interface{}
@@ -125,14 +117,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			b, _ := ioutil.ReadAll(r.Body)
 			json.Unmarshal(b, &data)
 
-			if v := data["q"]; v != nil {
-				q = fmt.Sprintf("%v", v)
+			if v := data["query"]; v != nil {
+				query = fmt.Sprintf("%v", v)
 			} else {
 				return
 			}
 
 			// fetch results from api
-			_, results, err := getResults(q)
+			_, results, err := getResults(query)
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 				return
@@ -146,16 +138,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		q = r.Form.Get("q")
+		query = r.Form.Get("query")
 
 		// fetch results from api
-		results, _, err := getResults(q)
+		results, _, err := getResults(query)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 
-		html := app.RenderHTML("Video", q+" | Results", fmt.Sprintf(Results, q, results))
+		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, results))
 		w.Write([]byte(html))
 		return
 	}
