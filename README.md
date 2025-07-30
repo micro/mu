@@ -42,8 +42,7 @@ Download and install Mu
 
 ```
 git clone https://github.com/micro/mu
-cd mu
-go install
+cd mu && go install
 ```
 
 ### API Keys
