@@ -23,11 +23,22 @@ Coming soon
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
-## Usage
+## Hosting
 
-Go to [mu.xyz](https://mu.xyz)
+Go to [mu.xyz](https://mu.xyz) for the live version
 
-Otherwise install Go then;
+Otherwise see the install guide
+
+## Install
+
+Ensure you have [Go](https://go.dev/doc/install) installed
+
+Set your Go bin
+```
+export PATH=$HOME/go/bin:$PATH
+```
+
+Download and install Mu
 
 ```
 git clone https://github.com/micro/mu
@@ -35,35 +46,25 @@ cd mu
 go install
 ```
 
-## Keys
+## API Keys
 
-Export OpenAI API key for chat
+We need API keys for:
+
+- OpenAI
+- CryptoCompare
+- Youtube Data
+
+Export the following env vars
 
 ```
 export OPENAI_API_KEY=xxx
-```
-
-Export CryptoCompare API key for market data
-
-```
 export CRYPTO_API_KEY=xxx
-```
-
-Export Youtube data API key
-
-```
 export YOUTUBE_API_KEY=xxx
 ```
 
 ## Run
 
-Export path
-
-```
-export PATH=$HOME/go/bin:$PATH
-```
-
-Run it
+Then run the app
 
 ```
 mu --serve
