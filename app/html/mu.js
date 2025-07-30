@@ -74,6 +74,57 @@ function loadMessages(div) {
 	d.scrollTop = d.scrollHeight;
 }
 
+function askQuestion(el) {
+	const formData = new FormData(el);
+	const data = {};
+
+	// Iterate over formData and populate the data object
+	for (let [key, value] of formData.entries()) {
+		data[key] = value;
+	}
+
+	console.log("sending", data);
+
+	var prompt = data["prompt"];
+
+	let context = JSON.parse(sessionStorage.getItem("context"));
+
+	if (context == null) {
+	    context = [];
+        }
+ 
+        data["context"] = context;
+
+	fetch("/chat", {
+	  method: "POST",
+	  headers: {
+	      'Content-Type': 'application/json'
+	  },
+	  body: JSON.stringify(data)
+	}).then(response => response.json())
+	.then(result => {
+	    console.log('Success:', result);
+
+	    // save the context
+	    let context = JSON.parse(sessionStorage.getItem("context"));
+
+	    if (context == null) {
+	        context = [];
+	    }
+ 
+            context.push({answer: result.answer, prompt: prompt});
+	    sessionStorage.setItem("context", JSON.stringify(context));
+
+	    window.location.href = "/chat";
+	})
+	.catch(error => {
+	    console.error('Error:', error);
+	    // Handle errors
+	});
+
+	return false;
+}
+
 function askLLM(el) {
 	var d = document.getElementById('messages');
 
@@ -182,7 +233,7 @@ function chat() {
 }
 
 function home() {
-        loadMessages("chat");
+	return false;
 }
 
 self.addEventListener('DOMContentLoaded', function() {

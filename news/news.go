@@ -115,6 +115,7 @@ func saveHtml(head, data []byte) {
 	mutex.Lock()
 	content := fmt.Sprintf("<div>%s</div><div>%s</div>", string(head), string(data))
 	html = app.RenderHTML("News", "Read the news", content)
+	app.Save("news.html", html)
 	mutex.Unlock()
 }
 
@@ -444,6 +445,9 @@ func parseFeed() {
 	headlinesHtml = string(headline)
 	mutex.Unlock()
 
+	// save the headlines
+	app.Save("headlines.html", headlinesHtml)
+
 	// wait 10 minutes
 	time.Sleep(time.Minute * 10)
 
@@ -452,6 +456,14 @@ func parseFeed() {
 }
 
 func Load() {
+	// load headlines
+	b, _ := app.Load("headlines.html")
+	headlinesHtml = string(b)
+
+	// load news
+	b, _ = app.Load("news.html")
+	html = string(b)
+
 	// load the feeds
 	loadFeed()
 

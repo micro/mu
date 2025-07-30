@@ -20,16 +20,18 @@ var Home = `
 	<div id="video" class="card">
 	  <h1>Search Videos</h1>
 	  <form action="/video" method="POST">
-	    <input name="query" id="query" placeholder="Search for videos" autocomplete=off autofocus>
-	    <button>Find Video</button>
+	    <input name="query" id="query" placeholder="Search for videos" autocomplete=off>
+	    <button>Search</button>
 	  </form>
 	</div>
 
 	<!-- chat -->
-	<div class="card">
-	<h1>Recent Chat</h1>
-	<div id="chat">No messages</div>
-	<a href="/chat"><button>Load Chat</button></a>
+	<div id="chat" class="card">
+	<h1>Chat with AI</h1>
+	  <form action="/chat" method="POST" onsubmit="event.preventDefault(); askQuestion(this);">
+	    <input name="prompt" id="prompt" placeholder="Ask a question" autocomplete=off>
+	    <button>Submit</button>
+	  </form>
 	</div>
 </div>
 `

@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
@@ -86,6 +88,22 @@ func RenderString(v string) string {
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
 	return fmt.Sprintf(Template, title, desc, RenderString(text))
+}
+
+func Save(key, html string) error {
+	dir := os.ExpandEnv("$HOME/.mu")
+	path := filepath.Join(dir, "data")
+	file := filepath.Join(path, key)
+	os.MkdirAll(path, 0700)
+	os.WriteFile(file, []byte(html), 0644)
+	return nil
+}
+
+func Load(key string) ([]byte, error) {
+	dir := os.ExpandEnv("$HOME/.mu")
+	path := filepath.Join(dir, "data")
+	file := filepath.Join(path, key)
+	return os.ReadFile(file)
 }
 
 func ServeHTML(html string) http.Handler {

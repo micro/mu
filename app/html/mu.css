@@ -99,15 +99,6 @@ ul {
   color: darkgrey;
   display: block;
 }
-div#chat {
-  max-height: 200px;
-  max-width: 300px;
-  border: 1px solid darkgrey;
-  border-radius: 5px;
-  padding: 5px;
-  margin-bottom: 10px;
-  overflow-y: auto;
-}
 #home {
   margin-bottom: 25px;
   display: block;
@@ -122,13 +113,18 @@ div#chat {
 #video form {
   max-width: 465px;
 }
-#video form input {
+#video form input, #chat form input {
   width: 100%;
+  margin-top: 0;
   margin-bottom: 10px;
 }
 #chat-form {
         width: 100%;
         margin: 0;
+}
+div#chat {
+  max-height: 200px;
+  max-width: 300px;
 }
 .card {
   max-width: 600px;
