@@ -18,7 +18,8 @@ footer a { text-decoration: none; font-weight: bold; }
 #head a { margin-right: 2px; color: black; font-weight: bold; text-decoration: none; padding: 5px 7px;}
 #nav {
     padding: 15px;
-    float: right;
+    margin: 0 auto;
+    max-width: 1024px;
 }
 #nav a.active, #nav a:hover {
     background: whitesmoke;
@@ -136,7 +137,7 @@ div#chat {
 }
 #messages {
         flex-grow: 1;
-        height: calc(100vh - 175px);
+        height: calc(100vh - 225px);
         border-radius 5px;
 	border: 1px solid darkgrey;
         text-align: left;
@@ -181,6 +182,7 @@ div#chat {
 }
 .ticker {
   margin-right: 10px;
+  font-size: small;
 }
 .news {
   margin-bottom: 20px;
@@ -214,6 +216,9 @@ div#chat {
 }
 @media only screen and (max-width: 600px) {
   #messages {
-    height: calc(100vh - 230px);
+    height: calc(100vh - 285px);
+  }
+  .card {
+    margin: 0;
   }
 }
