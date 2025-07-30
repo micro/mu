@@ -30,10 +30,16 @@ var feeds = map[string]string{}
 
 var status = map[string]*Feed{}
 
+// cached news html
 var html string
 
+// cached headlines
+var headlinesHtml string
+
+// the cached feed
 var feed []*Post
 
+// crypto compare api key
 var key = os.Getenv("CRYPTO_API_KEY")
 
 type Feed struct {
@@ -245,6 +251,8 @@ func parseFeed() {
 
 	sort.Strings(sorted)
 
+	// all the news
+	var news []*Post
 	var headlines []*Post
 
 	for _, name := range sorted {
@@ -357,24 +365,31 @@ func parseFeed() {
 			}
 			data = append(data, []byte(val)...)
 
-			if i > 0 {
-				continue
-			}
-
-			headlines = append(headlines, &Post{
+			post := &Post{
 				Title:       item.Title,
 				Description: item.Description,
 				URL:         item.Link,
 				Published:   item.Published,
 				PostedAt:    *item.PublishedParsed,
 				Category:    name,
-			})
+			}
+
+			news = append(news, post)
+
+			if i > 0 {
+				continue
+			}
+
+			// add to headlines / 1 per category
+			headlines = append(headlines, post)
 		}
 
 		data = append(data, []byte(`</div>`)...)
 	}
 
-	headline := []byte(`<div class=section><hr id="headlines" class="anchor">`)
+	head = append(head, []byte(`<hr id="headlines" class="anchor">`)...)
+
+	headline := []byte(`<div class=section>`)
 
 	// get crypto prices
 	prices := getPrice(tickers...)
@@ -423,7 +438,10 @@ func parseFeed() {
 	saveHtml(head, data)
 
 	mutex.Lock()
-	feed = headlines
+	// set the feed
+	feed = news
+	// set the headlines
+	headlinesHtml = string(headline)
 	mutex.Unlock()
 
 	// wait 10 minutes
@@ -438,6 +456,13 @@ func Load() {
 	loadFeed()
 
 	go parseFeed()
+}
+
+func Headlines() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	return headlinesHtml
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {

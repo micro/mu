@@ -9,6 +9,7 @@ import (
 	"github.com/micro/mu/api"
 	"github.com/micro/mu/app"
 	"github.com/micro/mu/chat"
+	"github.com/micro/mu/home"
 	"github.com/micro/mu/news"
 	"github.com/micro/mu/video"
 )
@@ -42,11 +43,11 @@ func main() {
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
 
+	// serve the home screen
+	http.HandleFunc("/home", home.Handler)
+
 	// serve the api doc
 	http.Handle("/api", app.ServeHTML(apiHTML))
-
-	// serve the home screen
-	http.Handle("/home", app.ServeHTML(app.Home))
 
 	// serve the app
 	http.Handle("/", app.Serve())

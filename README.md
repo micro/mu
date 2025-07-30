@@ -53,6 +53,12 @@ Export CryptoCompare API key for market data
 export CRYPTO_API_KEY=xxx
 ```
 
+Export Youtube data API key
+
+```
+export YOUTUBE_API_KEY=xxx
+``
+
 ## Run
 
 Export path

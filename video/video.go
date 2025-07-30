@@ -34,7 +34,7 @@ func getResults(query string) (string, []*Result, error) {
 	if Client == nil {
 		return "", nil, fmt.Errorf("No client")
 	}
-	resp, err := Client.Search.List([]string{"id", "snippet"}).Q(query).MaxResults(25).Do()
+	resp, err := Client.Search.List([]string{"id", "snippet"}).Order("date").Q(query).MaxResults(25).Do()
 	if err != nil {
 		return "", nil, err
 	}

@@ -101,22 +101,42 @@ ul {
 }
 div#chat {
   max-height: 200px;
-  max-width: 450px;
+  max-width: 300px;
   border: 1px solid darkgrey;
   border-radius: 5px;
   padding: 5px;
   margin-bottom: 10px;
+  overflow-y: auto;
 }
-form#video {
+#home {
+  margin-bottom: 25px;
+  display: block;
+  height: 100%;
+}
+#home h1 {
+  margin-top: 0;
+}
+#news h1 {
+  margin-top: 15px;
+}
+#video form {
   max-width: 465px;
 }
-form#video input {
+#video form input {
   width: 100%;
   margin-bottom: 10px;
 }
 #chat-form {
         width: 100%;
         margin: 0;
+}
+.card {
+  max-width: 600px;
+  display: inline-block;
+  margin: 10px;
+  float: left;
+  min-width: 300px;
+  padding-bottom: 25px;
 }
 #messages {
         flex-grow: 1;
