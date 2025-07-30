@@ -23,11 +23,6 @@ Coming soon
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
-## Payments
-
-One of the core things we'll look to feature is crypto payments. Using micro transactions for everything this should enable a 
-sort of anti spam filtering but also promote a self sustainable model for long term maintenance and a way to charge for services.
-
 ## Usage
 
 Go to [mu.xyz](https://mu.xyz)
