@@ -46,7 +46,7 @@ cd mu
 go install
 ```
 
-## API Keys
+### API Keys
 
 We need API keys for:
 
@@ -62,7 +62,7 @@ export CRYPTO_API_KEY=xxx
 export YOUTUBE_API_KEY=xxx
 ```
 
-## Run
+### Run
 
 Then run the app
 
