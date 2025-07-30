@@ -25,7 +25,8 @@ Coming soon
 
 ## Payments
 
-One of the core things we'll look to feature is crypto payments. Using micro transactions for everything this should enable a sort of anti spam filtering but also promote a self sustainable model for long term maintenance and provide some sort of financial incentive to users for tipping good behaviour. In the long long term its also a way to charge for services.
+One of the core things we'll look to feature is crypto payments. Using micro transactions for everything this should enable a 
+sort of anti spam filtering but also promote a self sustainable model for long term maintenance and a way to charge for services.
 
 ## Usage
 
