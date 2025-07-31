@@ -34,7 +34,7 @@ func getResults(query string) (string, []*Result, error) {
 	if Client == nil {
 		return "", nil, fmt.Errorf("No client")
 	}
-	resp, err := Client.Search.List([]string{"id", "snippet"}).Order("date").Q(query).MaxResults(25).Do()
+	resp, err := Client.Search.List([]string{"id", "snippet"}).Q(query).MaxResults(25).Do()
 	if err != nil {
 		return "", nil, err
 	}
@@ -46,7 +46,7 @@ func getResults(query string) (string, []*Result, error) {
 		var id, url, desc string
 		kind := strings.Split(item.Id.Kind, "#")[1]
 		t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
-		desc = fmt.Sprintf(`[%s] published on %s`, kind, t.Format(time.RFC822))
+		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>Published on %s</small>`, kind, t.Format(time.RFC822))
 
 		switch kind {
 		case "video":
@@ -58,15 +58,21 @@ func getResults(query string) (string, []*Result, error) {
 		case "channel":
 			id = item.Id.ChannelId
 			url = "https://www.youtube.com/channel/" + id
-			desc = "[channel]"
+			desc = `<span class="highlight">channel</span>`
 		}
 
-		// returning json results
-		data = append(data, &Result{
+		res := &Result{
 			ID:   id,
 			Type: kind,
 			URL:  url,
-		})
+		}
+
+		if kind == "channel" {
+			data = append([]*Result{res}, data...)
+		} else {
+			// returning json results
+			data = append(data, res)
+		}
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 		results += fmt.Sprintf(`
