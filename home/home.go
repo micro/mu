@@ -12,13 +12,14 @@ var Home = `
 <div id="home">
 	<!-- news -->
 	<div id="news" class="card">
+	<h4>News</h4>
 	%s
 	<a href="/news"><button>Read more</button></a>
 	</div>
 
 	<!-- video -->
 	<div id="video" class="card">
-	  <h1>Search Videos</h1>
+ 	  <h4>Video</h4>
 	  <form action="/video" method="POST">
 	    <input name="query" id="query" placeholder="Search for videos" autocomplete=off>
 	    <button>Search</button>
@@ -27,7 +28,7 @@ var Home = `
 
 	<!-- chat -->
 	<div id="chat" class="card">
-	<h1>Chat with AI</h1>
+ 	  <h4>Chat</h4>
 	  <form action="/chat" method="POST" onsubmit="event.preventDefault(); askQuestion(this);">
 	    <input name="prompt" id="prompt" placeholder="Ask a question" autocomplete=off>
 	    <button>Submit</button>

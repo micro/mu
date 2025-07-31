@@ -134,6 +134,20 @@ div#chat {
   float: left;
   min-width: 300px;
   padding-bottom: 25px;
+  border: 1px solid darkgrey;
+  border-radius: 5px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+.card form {
+  margin-bottom: 0;
+}
+.card .category {
+  display: none;
 }
 #messages {
         flex-grow: 1;
@@ -226,7 +240,7 @@ div#chat {
     height: calc(100vh - 285px);
   }
   .card {
-    margin: 0;
+    margin: 0 0 20px 0;
   }
   .cover {
     display: block;
