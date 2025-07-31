@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/micro/mu/app"
+	"github.com/micro/mu/util"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -46,7 +47,7 @@ func getResults(query string) (string, []*Result, error) {
 		var id, url, desc string
 		kind := strings.Split(item.Id.Kind, "#")[1]
 		t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
-		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>Published on %s</small>`, kind, t.Format(time.RFC822))
+		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>Published %s</small>`, kind, util.TimeAgo(t))
 
 		switch kind {
 		case "video":
