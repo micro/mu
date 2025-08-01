@@ -17,6 +17,12 @@ var Home = `
 	<a href="/news"><button>Read more</button></a>
 	</div>
 
+	<!-- markets -->
+	<div id="markets" class="card">
+	  <h4>Markets</h4>
+	   %s
+	</div>
+
 	<!-- video -->
 	<div id="video" class="card">
  	  <h4>Video</h4>
@@ -39,9 +45,10 @@ var Home = `
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	headlines := news.Headlines()
+	markets := news.Markets()
 
 	// create homepage
-	homepage := fmt.Sprintf(Home, headlines)
+	homepage := fmt.Sprintf(Home, headlines, markets)
 
 	// render html
 	html := app.RenderHTML("Home", "The Mu homescreen", homepage)

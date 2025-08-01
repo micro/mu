@@ -123,10 +123,6 @@ ul {
         width: 100%;
         margin: 0;
 }
-div#chat {
-  max-height: 200px;
-  max-width: 300px;
-}
 .card {
   max-width: 600px;
   display: inline-block;
@@ -184,7 +180,7 @@ div#chat {
 }
 .head {
   font-weight: bold;
-  margin-right: 10px;
+  padding: 5px;
   text-decoration: none;
 }
 .headline {
@@ -241,6 +237,7 @@ div#chat {
   }
   .card {
     margin: 0 0 20px 0;
+    width: calc(100vw - 100px);
   }
   .cover {
     display: block;

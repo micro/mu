@@ -36,6 +36,9 @@ var html string
 // cached headlines
 var headlinesHtml string
 
+// markets
+var marketsHtml string
+
 // the cached feed
 var feed []*Post
 
@@ -407,7 +410,7 @@ func parseFeed() {
 		info = append(info, []byte(`<span class="ticker">ETH $`+eth+`</span>`)...)
 		info = append(info, []byte(`<span class="ticker">BNB $`+bnb+`</span>`)...)
 		info = append(info, []byte(`</div>`)...)
-		headline = append(headline, info...)
+		marketsHtml = string(info)
 	}
 
 	headline = append(headline, []byte(`<h1>Headlines</h1>`)...)
@@ -443,10 +446,12 @@ func parseFeed() {
 	feed = news
 	// set the headlines
 	headlinesHtml = string(headline)
-	mutex.Unlock()
-
 	// save the headlines
 	app.Save("headlines.html", headlinesHtml)
+	// save markets
+	app.Save("markets.html", marketsHtml)
+
+	mutex.Unlock()
 
 	// wait 10 minutes
 	time.Sleep(time.Minute * 10)
@@ -459,6 +464,10 @@ func Load() {
 	// load headlines
 	b, _ := app.Load("headlines.html")
 	headlinesHtml = string(b)
+
+	// save markets
+	b, _ = app.Load("markets.html")
+	marketsHtml = string(b)
 
 	// load news
 	b, _ = app.Load("news.html")
@@ -475,6 +484,13 @@ func Headlines() string {
 	defer mutex.RUnlock()
 
 	return headlinesHtml
+}
+
+func Markets() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	return marketsHtml
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
