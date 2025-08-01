@@ -126,7 +126,7 @@ ul {
 .card {
   max-width: 600px;
   display: inline-block;
-  margin: 10px;
+  margin-right: 20px;
   float: left;
   min-width: 300px;
   padding-bottom: 25px;
@@ -190,6 +190,9 @@ ul {
   font-weight: bold;
   text-decoration: none;
 }
+#info {
+  margin-bottom: 10px;
+}
 .ticker {
   margin-right: 10px;
   font-size: small;
@@ -231,13 +234,23 @@ ul {
   background: whitesmoke;
   padding: 3px;
 }
+.verse {
+  white-space: pre-wrap;
+  margin-bottom: 20px;
+}
+#reminder {
+  width: 300px;
+}
 @media only screen and (max-width: 600px) {
   #messages {
     height: calc(100vh - 285px);
   }
-  .card {
+  .head {
+    padding: 5px 10px 5px 2px;
+  }
+  .card, #reminder {
     margin: 0 0 20px 0;
-    width: calc(100vw - 100px);
+    width: calc(100vw - 85px);
   }
   .cover {
     display: block;

@@ -39,6 +39,9 @@ var headlinesHtml string
 // markets
 var marketsHtml string
 
+// reminder
+var reminderHtml string
+
 // the cached feed
 var feed []*Post
 
@@ -216,6 +219,47 @@ func getMetadata(uri string) (*Metadata, error) {
 	//}
 
 	return g, nil
+}
+
+func getReminder() {
+	uri := "https://reminder.dev/api/daily/latest"
+
+	resp, err := http.Get(uri)
+	if err != nil {
+		fmt.Println("Error getting reminder", err)
+		time.Sleep(time.Minute)
+
+		go getReminder()
+		return
+	}
+
+	b, _ := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	var data map[string]interface{}
+
+	err = json.Unmarshal(b, &data)
+	if err != nil {
+		fmt.Println("Error getting reminder", err)
+		time.Sleep(time.Minute)
+
+		go getReminder()
+		return
+	}
+
+	link := fmt.Sprintf("https://reminder.dev%s", data["links"].(map[string]interface{})["verse"].(string))
+
+	html := fmt.Sprintf(`<div class="verse">%s</div>`, data["verse"])
+	html += fmt.Sprintf(`<a href="%s"><button>See chapter</button></a>`, link)
+
+	mutex.Lock()
+	app.Save("reminder.html", html)
+	reminderHtml = html
+	mutex.Unlock()
+
+	time.Sleep(time.Hour)
+
+	go getReminder()
 }
 
 func parseFeed() {
@@ -469,6 +513,10 @@ func Load() {
 	b, _ = app.Load("markets.html")
 	marketsHtml = string(b)
 
+	b, _ = app.Load("reminder.html")
+
+	reminderHtml = string(b)
+
 	// load news
 	b, _ = app.Load("news.html")
 	html = string(b)
@@ -477,6 +525,8 @@ func Load() {
 	loadFeed()
 
 	go parseFeed()
+
+	go getReminder()
 }
 
 func Headlines() string {
@@ -491,6 +541,13 @@ func Markets() string {
 	defer mutex.RUnlock()
 
 	return marketsHtml
+}
+
+func Reminder() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	return reminderHtml
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {

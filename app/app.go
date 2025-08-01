@@ -60,6 +60,18 @@ var Template = `
 </html>
 `
 
+var CardTemplate = `
+<!-- %s -->
+<div id="%s" class="card">
+  <h4>%s</h4>
+  %s
+</div>
+`
+
+func Card(id, title, content string) string {
+	return fmt.Sprintf(CardTemplate, id, id, title, content)
+}
+
 // Render a markdown document as html
 func Render(md []byte) []byte {
 	// create markdown parser with extensions

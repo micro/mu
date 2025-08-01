@@ -3,52 +3,41 @@ package home
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/micro/mu/app"
 	"github.com/micro/mu/news"
 )
 
-var Home = `
-<div id="home">
-	<!-- news -->
-	<div id="news" class="card">
-	<h4>News</h4>
-	%s
-	<a href="/news"><button>Read more</button></a>
-	</div>
+var Template = `<div id="home">%s</div>`
 
-	<!-- markets -->
-	<div id="markets" class="card">
-	  <h4>Markets</h4>
-	   %s
-	</div>
-
-	<!-- video -->
-	<div id="video" class="card">
- 	  <h4>Video</h4>
-	  <form action="/video" method="POST">
-	    <input name="query" id="query" placeholder="Search for videos" autocomplete=off>
-	    <button>Search</button>
-	  </form>
-	</div>
-
-	<!-- chat -->
-	<div id="chat" class="card">
- 	  <h4>Chat</h4>
-	  <form action="/chat" method="POST" onsubmit="event.preventDefault(); askQuestion(this);">
-	    <input name="prompt" id="prompt" placeholder="Ask a question" autocomplete=off>
-	    <button>Submit</button>
-	  </form>
-	</div>
-</div>
-`
+func Cards(news, markets, reminder string) []string {
+	cards := []string{
+		app.Card("news", "News", fmt.Sprintf(`%s<a href="/news"><button>Read more</button></a>`, news)),
+		app.Card("reminder", "Daily Reminder", reminder),
+		app.Card("markets", "Markets", markets+`<a href=https://coinmarketcap.com/><button>Charts</button></a>`),
+		app.Card("video", "Video", `
+		  <form action="/video" method="POST">
+		    <input name="query" id="query" placeholder="Search for videos" autocomplete=off>
+		    <button>Search</button>
+		  </form>`),
+		app.Card("chat", "Chat", `
+			<form action="/chat" method="POST" onsubmit="event.preventDefault(); askQuestion(this);">
+			  <input name="prompt" id="prompt" placeholder="Ask a question" autocomplete=off>
+			  <button>Submit</button>
+			</form>`),
+	}
+	return cards
+}
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	headlines := news.Headlines()
 	markets := news.Markets()
+	reminder := news.Reminder()
 
 	// create homepage
-	homepage := fmt.Sprintf(Home, headlines, markets)
+	cards := strings.Join(Cards(headlines, markets, reminder), "\n")
+	homepage := fmt.Sprintf(Template, cards)
 
 	// render html
 	html := app.RenderHTML("Home", "The Mu homescreen", homepage)
