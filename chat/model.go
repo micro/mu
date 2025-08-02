@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+var DefaultModel = "gpt-4o-mini"
+
 // Model implements the ModelHandler interface
 type Model struct{}
 
@@ -20,6 +22,7 @@ func (m *Model) Generate(ctx context.Context, prompt *Prompt) (string, error) {
 	if err := systemPrompt.Execute(sb, prompt.Context); err != nil {
 		return "", err
 	}
+
 	// Supported models
 	openaiModels := map[string]bool{
 		"gpt-4o-mini":   true,

@@ -23,8 +23,8 @@ var Template = app.RenderHTML("Chat", "Chat with AI", `
 <input id="prompt" name="prompt" type="text" autofocus autocomplete=off>
 <button>-></button>
 <select name="model" id="model">
-  <option value="gpt-4o-mini">gpt-4o-mini</option>
   <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+  <option value="gpt-4o-mini">gpt-4o-mini</option>
 </select>
 </form>`)
 
@@ -48,6 +48,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if data["prompt"] == nil {
 				return
 			}
+			if v := data["model"]; v == nil {
+				data["model"] = DefaultModel
+			}
 		} else {
 			// save the response
 			r.ParseForm()
@@ -55,15 +58,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// get the message
 			msg := r.Form.Get("prompt")
 			ctx := r.Form.Get("context")
+			model := r.Form.Get("model")
 
 			if len(msg) == 0 {
 				return
 			}
-
+			if len(model) == 0 {
+				model = DefaultModel
+			}
 			var ictx interface{}
 			json.Unmarshal([]byte(ctx), &ictx)
 			data["prompt"] = msg
 			data["context"] = ictx
+			data["model"] = model
 		}
 
 		var ctx []string
@@ -76,6 +83,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		prompt := &Prompt{
+			Model:    fmt.Sprintf("%v", data["model"]),
 			Context:  ctx,
 			Question: fmt.Sprintf("%v", data["prompt"]),
 		}
