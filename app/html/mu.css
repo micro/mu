@@ -35,7 +35,9 @@ footer a { text-decoration: none; font-weight: bold; }
   padding: 15px;
 }
 #install {
+   float: right;
    width: 100px;
+   margin: 15px 15px 0 0;
 }
 .block {
    width: 100px;
@@ -65,6 +67,11 @@ input {
   padding: 10px;
   border-radius: 5px;
   border: 1px solid darkgrey;
+}
+select {
+    padding: 5px;
+    border-radius: 5px;
+    background: white;
 }
 textarea:focus, input:focus{
     outline: none;
@@ -167,7 +174,7 @@ ul {
         flex-shrink: 0;
         width: calc(100% - 40px);
         padding: 10px;
-        margin-top: 10px;
+        margin: 10px 0 10px 0;
 }
 #chat-form button {
         padding: 10px;

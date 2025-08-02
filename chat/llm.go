@@ -2,11 +2,7 @@ package chat
 
 import (
 	"context"
-	"os"
-	"strings"
 	"text/template"
-
-	"github.com/sashabaranov/go-openai"
 )
 
 // There are many different ways to provide the context to the LLM.
@@ -31,31 +27,7 @@ Anything between the following 'context' XML blocks can be used as part of the c
 {{- end -}}
 `))
 
-func askLLM(ctx context.Context, prompt *Prompt) string {
-	openAIClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
-	sb := &strings.Builder{}
-	err := systemPrompt.Execute(sb, prompt.Context)
-	if err != nil {
-		panic(err)
-	}
-	messages := []openai.ChatCompletionMessage{
-		{
-			Role:    openai.ChatMessageRoleSystem,
-			Content: sb.String(),
-		}, {
-			Role:    openai.ChatMessageRoleUser,
-			Content: "Question: " + prompt.Question,
-		},
-	}
-	res, err := openAIClient.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model:    openai.GPT4oMini,
-		Messages: messages,
-	})
-	if err != nil {
-		panic(err)
-	}
-	reply := res.Choices[0].Message.Content
-	reply = strings.TrimSpace(reply)
-
-	return reply
+func askLLM(ctx context.Context, prompt *Prompt) (string, error) {
+	m := new(Model)
+	return m.Generate(ctx, prompt)
 }
