@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
@@ -35,7 +37,7 @@ var Template = `
         <a href="/">Mu</a>
       </div>
       <div id="nav">
-        <a href="/">Home</a>
+        <a href="/home">Home</a>
         <a href="/api">API</a>
         <a href="/chat">Chat</a>
         <a href="/news">News</a>
@@ -57,6 +59,18 @@ var Template = `
   </body>
 </html>
 `
+
+var CardTemplate = `
+<!-- %s -->
+<div id="%s" class="card">
+  <h4>%s</h4>
+  %s
+</div>
+`
+
+func Card(id, title, content string) string {
+	return fmt.Sprintf(CardTemplate, id, id, title, content)
+}
 
 // Render a markdown document as html
 func Render(md []byte) []byte {
@@ -86,6 +100,22 @@ func RenderString(v string) string {
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
 	return fmt.Sprintf(Template, title, desc, RenderString(text))
+}
+
+func Save(key, html string) error {
+	dir := os.ExpandEnv("$HOME/.mu")
+	path := filepath.Join(dir, "data")
+	file := filepath.Join(path, key)
+	os.MkdirAll(path, 0700)
+	os.WriteFile(file, []byte(html), 0644)
+	return nil
+}
+
+func Load(key string) ([]byte, error) {
+	dir := os.ExpandEnv("$HOME/.mu")
+	path := filepath.Join(dir, "data")
+	file := filepath.Join(path, key)
+	return os.ReadFile(file)
 }
 
 func ServeHTML(html string) http.Handler {

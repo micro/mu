@@ -1,5 +1,5 @@
 html, body { height: 100%; width: 100%; margin: 0; padding: 0; font-family: "Nunito Sans", serif; }
-a { color: #333333; }
+a { color: #333333; text-decoration: none; font-size: 0.9em; }
 a:visited { color: #333333;}
 code {
   width: auto;
@@ -15,7 +15,16 @@ footer a { text-decoration: none; font-weight: bold; }
 	top: 0;
 	width: 100%
 }
-#head a { margin-right: 10px; color: black; font-weight: bold; text-decoration: none; }
+#head a { margin-right: 2px; color: black; font-weight: bold; text-decoration: none; padding: 5px 7px;}
+#nav {
+    padding: 0 15px 0 15px;
+    margin: 0 auto;
+    max-width: 1024px;
+}
+#nav a.active, #nav a:hover {
+    background: whitesmoke;
+    border-radius: 5px;
+}
 #container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px;}
 #content { max-width: 1024px; margin: 0 auto; text-align: left;}
 #desc { margin-bottom: 10px; }
@@ -23,18 +32,19 @@ footer a { text-decoration: none; font-weight: bold; }
 #title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
 #brand {
   display: inline-block;
-  padding: 20px;
+  padding: 15px;
 }
 #install {
+   float: right;
    width: 100px;
-}
-#nav {
-  float: right;
-  padding: 20px;
+   margin: 15px 15px 0 0;
 }
 .block {
-   width: 250px;
-   display: block;
+   width: 100px;
+   height: 30px;
+   line-height: 30px;
+   display: inline-block;
+   margin-bottom: 10px;
 }
 .block, button {
     text-decoration: none;
@@ -97,15 +107,56 @@ ul {
   color: darkgrey;
   display: block;
 }
+#home {
+  margin-bottom: 25px;
+  display: block;
+  height: 100%;
+}
+#home h1 {
+  margin-top: 0;
+}
+#news h1 {
+  margin-top: 15px;
+}
+#video form {
+  max-width: 465px;
+}
+#video form input, #chat form input {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
 #chat-form {
         width: 100%;
         margin: 0;
 }
+.card {
+  max-width: 600px;
+  display: inline-block;
+  margin-right: 20px;
+  float: left;
+  min-width: 300px;
+  padding-bottom: 25px;
+  border: 1px solid darkgrey;
+  border-radius: 5px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+.card form {
+  margin-bottom: 0;
+}
+.card .category {
+  display: none;
+}
 #messages {
         flex-grow: 1;
-        height: calc(100vh - 195px);
-        border-radius 5px;
+        border-radius: 5px;
 	border: 1px solid darkgrey;
+        height: calc(100vh - 225px);
         text-align: left;
         overflow-y: auto;
 	padding: 10px;
@@ -136,7 +187,7 @@ ul {
 }
 .head {
   font-weight: bold;
-  margin-right: 10px;
+  padding: 5px;
   text-decoration: none;
 }
 .headline {
@@ -146,8 +197,12 @@ ul {
   font-weight: bold;
   text-decoration: none;
 }
+#info {
+  margin-bottom: 10px;
+}
 .ticker {
   margin-right: 10px;
+  font-size: small;
 }
 .news {
   margin-bottom: 20px;
@@ -179,9 +234,32 @@ ul {
   font-size: 1em;
   font-weight: normal;
 }
+.highlight {
+  color: #333333;
+  font-size: small;
+  font-weight: bold;
+  background: whitesmoke;
+  padding: 3px;
+}
+.verse {
+  white-space: pre-wrap;
+  margin-bottom: 20px;
+}
+#reminder {
+  width: 300px;
+}
 @media only screen and (max-width: 600px) {
-  #head a { margin-right: 5px; }
   #messages {
-    height: calc(100vh - 200px);
+    height: calc(100vh - 285px);
+  }
+  .head {
+    padding: 5px 10px 5px 2px;
+  }
+  .card, #reminder {
+    margin: 0 0 20px 0;
+    width: calc(100vw - 85px);
+  }
+  .cover {
+    display: block;
   }
 }

@@ -46,16 +46,6 @@ var Endpoints = []*Endpoint{{
 			Type: "JSON",
 			Params: []*Param{
 				{
-					Name:        "context",
-					Value:       "array",
-					Description: "Messages used as context",
-				},
-				{
-					Name:        "prompt",
-					Value:       "string",
-					Description: "Prompt you sent to the AI",
-				},
-				{
 					Name:        "answer",
 					Value:       "string",
 					Description: "The response from the AI",
@@ -87,7 +77,7 @@ var Endpoints = []*Endpoint{{
 	Description: "Search for videos",
 	Params: []*Param{
 		{
-			Name:        "q",
+			Name:        "query",
 			Value:       "string",
 			Description: "Video search query",
 		},

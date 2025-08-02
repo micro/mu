@@ -62,6 +62,8 @@ function loadMessages(div) {
 	}
 	var d = document.getElementById(div);
 
+	d.innerHTML = '';
+
 	console.log(context)
 	context.forEach(function(data) {
 	  console.log(data);
@@ -70,6 +72,57 @@ function loadMessages(div) {
 	})
 
 	d.scrollTop = d.scrollHeight;
+}
+
+function askQuestion(el) {
+	const formData = new FormData(el);
+	const data = {};
+
+	// Iterate over formData and populate the data object
+	for (let [key, value] of formData.entries()) {
+		data[key] = value;
+	}
+
+	console.log("sending", data);
+
+	var prompt = data["prompt"];
+
+	let context = JSON.parse(sessionStorage.getItem("context"));
+
+	if (context == null) {
+	    context = [];
+        }
+ 
+        data["context"] = context;
+
+	fetch("/chat", {
+	  method: "POST",
+	  headers: {
+	      'Content-Type': 'application/json'
+	  },
+	  body: JSON.stringify(data)
+	}).then(response => response.json())
+	.then(result => {
+	    console.log('Success:', result);
+
+	    // save the context
+	    let context = JSON.parse(sessionStorage.getItem("context"));
+
+	    if (context == null) {
+	        context = [];
+	    }
+ 
+            context.push({answer: result.answer, prompt: prompt});
+	    sessionStorage.setItem("context", JSON.stringify(context));
+
+	    window.location.href = "/chat";
+	})
+	.catch(error => {
+	    console.error('Error:', error);
+	    // Handle errors
+	});
+
+	return false;
 }
 
 function askLLM(el) {
@@ -87,6 +140,8 @@ function askLLM(el) {
 	document.getElementById("prompt").value = '';
 	d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
 	d.scrollTop = d.scrollHeight;
+
+	var prompt = data["prompt"];
 
 	let context = JSON.parse(sessionStorage.getItem("context"));
 
@@ -116,7 +171,7 @@ function askLLM(el) {
 	        context = [];
 	    }
  
-            context.push({answer: result.answer, prompt: result.prompt});
+            context.push({answer: result.answer, prompt: prompt});
 	    sessionStorage.setItem("context", JSON.stringify(context));
 	})
 	.catch(error => {
@@ -151,13 +206,13 @@ function chat() {
                     // You'd typically make your chat messages div fill the available height
                     // and the input box positioned relative to the bottom of that.
 
-                    messages.style.height = viewportHeight - 175;
-		    window.visualViewport.height = window.visualViewport.height - 175;
+                    messages.style.height = viewportHeight - 230;
+		    window.visualViewport.height = window.visualViewport.height - 230;
                 } else {
                     // Keyboard closed, revert changes
                     // document.body.style.paddingBottom = '0';
-                    messages.style.height = viewportHeight - 175;
-		    window.visualViewport.height = window.visualViewport.height - 175;
+                    messages.style.height = viewportHeight - 230;
+		    window.visualViewport.height = window.visualViewport.height - 230;
                 }
 
                 // After adjusting, you might still want to call scrollIntoView
@@ -177,10 +232,29 @@ function chat() {
         }
 }
 
+function home() {
+	return false;
+}
 
 self.addEventListener('DOMContentLoaded', function() {
+	// set nav
+	var nav = document.getElementById("nav");
+	for (const el of nav.children) {
+		if (el.getAttribute("href") == window.location.pathname) {
+			el.setAttribute("class", "active");
+			continue
+		}
+		el.removeAttribute("class");
+		//el.classList.remove("active");
+	}
+
+	// load chat
 	if (window.location.pathname == "/chat") {
 		chat();
 	}
-});
 
+	// load home
+	if (window.location.pathname == "/home") {
+		home();
+	}
+});

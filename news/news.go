@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -29,10 +30,22 @@ var feeds = map[string]string{}
 
 var status = map[string]*Feed{}
 
+// cached news html
 var html string
 
+// cached headlines
+var headlinesHtml string
+
+// markets
+var marketsHtml string
+
+// reminder
+var reminderHtml string
+
+// the cached feed
 var feed []*Post
 
+// crypto compare api key
 var key = os.Getenv("CRYPTO_API_KEY")
 
 type Feed struct {
@@ -108,6 +121,7 @@ func saveHtml(head, data []byte) {
 	mutex.Lock()
 	content := fmt.Sprintf("<div>%s</div><div>%s</div>", string(head), string(data))
 	html = app.RenderHTML("News", "Read the news", content)
+	app.Save("news.html", html)
 	mutex.Unlock()
 }
 
@@ -129,15 +143,15 @@ func backoff(attempts int) time.Duration {
 	return time.Duration(math.Pow(float64(attempts), math.E)) * time.Millisecond * 100
 }
 
-func getMetadata(uri string) *Metadata {
+func getMetadata(uri string) (*Metadata, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	d, err := goquery.NewDocument(u.String())
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	g := &Metadata{
@@ -204,7 +218,48 @@ func getMetadata(uri string) *Metadata {
 	//	return nil
 	//}
 
-	return g
+	return g, nil
+}
+
+func getReminder() {
+	uri := "https://reminder.dev/api/daily/latest"
+
+	resp, err := http.Get(uri)
+	if err != nil {
+		fmt.Println("Error getting reminder", err)
+		time.Sleep(time.Minute)
+
+		go getReminder()
+		return
+	}
+
+	b, _ := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	var data map[string]interface{}
+
+	err = json.Unmarshal(b, &data)
+	if err != nil {
+		fmt.Println("Error getting reminder", err)
+		time.Sleep(time.Minute)
+
+		go getReminder()
+		return
+	}
+
+	link := fmt.Sprintf("https://reminder.dev%s", data["links"].(map[string]interface{})["verse"].(string))
+
+	html := fmt.Sprintf(`<div class="verse">%s</div>`, data["verse"])
+	html += fmt.Sprintf(`<a href="%s"><button>See chapter</button></a>`, link)
+
+	mutex.Lock()
+	app.Save("reminder.html", html)
+	reminderHtml = html
+	mutex.Unlock()
+
+	time.Sleep(time.Hour)
+
+	go getReminder()
 }
 
 func parseFeed() {
@@ -213,6 +268,7 @@ func parseFeed() {
 			fmt.Printf("Recovered from panic in feed parser: %v\n", r)
 			// You can perform cleanup, logging, or other error handling here.
 			// For example, you might send an error to a channel to notify main.
+			debug.PrintStack()
 		}
 
 		fmt.Println("Relaunching feed parser in 1 minute")
@@ -243,6 +299,8 @@ func parseFeed() {
 
 	sort.Strings(sorted)
 
+	// all the news
+	var news []*Post
 	var headlines []*Post
 
 	for _, name := range sorted {
@@ -320,7 +378,11 @@ func parseFeed() {
 			}
 
 			// get meta
-			md := getMetadata(item.Link)
+			md, err := getMetadata(item.Link)
+			if err != nil {
+				fmt.Println("Error parsing", item.Link, err)
+				continue
+			}
 
 			var val string
 
@@ -351,24 +413,31 @@ func parseFeed() {
 			}
 			data = append(data, []byte(val)...)
 
-			if i > 0 {
-				continue
-			}
-
-			headlines = append(headlines, &Post{
+			post := &Post{
 				Title:       item.Title,
 				Description: item.Description,
 				URL:         item.Link,
 				Published:   item.Published,
 				PostedAt:    *item.PublishedParsed,
 				Category:    name,
-			})
+			}
+
+			news = append(news, post)
+
+			if i > 0 {
+				continue
+			}
+
+			// add to headlines / 1 per category
+			headlines = append(headlines, post)
 		}
 
 		data = append(data, []byte(`</div>`)...)
 	}
 
-	headline := []byte(`<div class=section><hr id="headlines" class="anchor">`)
+	head = append(head, []byte(`<hr id="headlines" class="anchor">`)...)
+
+	headline := []byte(`<div class=section>`)
 
 	// get crypto prices
 	prices := getPrice(tickers...)
@@ -385,7 +454,7 @@ func parseFeed() {
 		info = append(info, []byte(`<span class="ticker">ETH $`+eth+`</span>`)...)
 		info = append(info, []byte(`<span class="ticker">BNB $`+bnb+`</span>`)...)
 		info = append(info, []byte(`</div>`)...)
-		headline = append(headline, info...)
+		marketsHtml = string(info)
 	}
 
 	headline = append(headline, []byte(`<h1>Headlines</h1>`)...)
@@ -417,7 +486,15 @@ func parseFeed() {
 	saveHtml(head, data)
 
 	mutex.Lock()
-	feed = headlines
+	// set the feed
+	feed = news
+	// set the headlines
+	headlinesHtml = string(headline)
+	// save the headlines
+	app.Save("headlines.html", headlinesHtml)
+	// save markets
+	app.Save("markets.html", marketsHtml)
+
 	mutex.Unlock()
 
 	// wait 10 minutes
@@ -428,10 +505,49 @@ func parseFeed() {
 }
 
 func Load() {
+	// load headlines
+	b, _ := app.Load("headlines.html")
+	headlinesHtml = string(b)
+
+	// save markets
+	b, _ = app.Load("markets.html")
+	marketsHtml = string(b)
+
+	b, _ = app.Load("reminder.html")
+
+	reminderHtml = string(b)
+
+	// load news
+	b, _ = app.Load("news.html")
+	html = string(b)
+
 	// load the feeds
 	loadFeed()
 
 	go parseFeed()
+
+	go getReminder()
+}
+
+func Headlines() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	return headlinesHtml
+}
+
+func Markets() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	return marketsHtml
+}
+
+func Reminder() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	return reminderHtml
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {

@@ -28,6 +28,18 @@ var Template = app.RenderHTML("Chat", "Chat with AI", `
 </select>
 </form>`)
 
+var Messages = `
+<div id="messages">%s</div>
+<form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
+<input id="context" name="context" type="hidden">
+<input id="prompt" name="prompt" type="text" autofocus autocomplete=off>
+<button>-></button>
+<select name="model" id="model">
+  <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+  <option value="gpt-4o-mini">gpt-4o-mini</option>
+</select>
+</form>`
+
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		w.Write([]byte(Template))
@@ -102,8 +114,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// save the response
 		html := app.Render([]byte(resp))
 		data["answer"] = string(html)
-		b, _ := json.Marshal(data)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
+
+		// if JSON request then respond with json
+		if ct := r.Header.Get("Content-Type"); ct == "application/json" {
+			b, _ := json.Marshal(data)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(b)
+			return
+		}
+
+		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, data["prompt"])
+		messages += fmt.Sprintf(`<div class="message"><span class="llm">llm</span><p>%v</p></div>`, data["answer"])
+
+		output := fmt.Sprintf(Messages, messages)
+		renderHTML := app.RenderHTML("Chat", "Chat with AI", output)
+
+		w.Write([]byte(renderHTML))
 	}
 }
