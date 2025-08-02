@@ -11,6 +11,7 @@ import (
 )
 
 type Prompt struct {
+	Model    string
 	Context  []string
 	Question string
 }
@@ -76,7 +77,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// query the llm
-		resp := askLLM(context.TODO(), prompt)
+		resp, err := askLLM(context.TODO(), prompt)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 
 		if len(resp) == 0 {
 			return
