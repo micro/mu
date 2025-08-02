@@ -467,11 +467,11 @@ func parseFeed() {
 	for _, h := range headlines {
 		val := fmt.Sprintf(`
 			<div class="headline">
-			  <a href="#%s" class="category"><small>#%s</small></a>
+			<a href="#%s" class="category">%s</a>
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
 			   <span class="text">%s</span>
-			   <span class="description">%s</span>
 			  </a>
+			 <span class="description">%s</span>
 			</div>`,
 			h.Category, h.Category, h.URL, h.Title, h.Description)
 		headline = append(headline, []byte(val)...)

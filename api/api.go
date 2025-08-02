@@ -40,6 +40,11 @@ var Endpoints = []*Endpoint{{
 			Value:       "string",
 			Description: "Prompt to send the AI",
 		},
+		{
+			Name:        "model",
+			Value:       "string",
+			Description: "Model to use. Supports gpt-4o-mini and gemini-2.5-flash",
+		},
 	},
 	Response: []*Value{
 		{

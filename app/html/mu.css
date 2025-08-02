@@ -183,7 +183,7 @@ ul {
 }
 .category {
   margin-bottom: 5px;
-  display: block;
+  display: inline-block;
 }
 .head {
   font-weight: bold;
@@ -230,16 +230,17 @@ ul {
   font-weight: bold;
   display: block;
 }
-.description {
-  font-size: 1em;
-  font-weight: normal;
-}
-.highlight {
+.highlight, .category {
   color: #333333;
   font-size: small;
   font-weight: bold;
   background: whitesmoke;
-  padding: 3px;
+  padding: 3px 5px;
+  border-radius: 5px;
+}
+.description, .description a {
+  font-size: 1em;
+  font-weight: normal;
 }
 .verse {
   white-space: pre-wrap;
