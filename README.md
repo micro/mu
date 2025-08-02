@@ -50,6 +50,7 @@ cd mu && go install
 We need API keys for:
 
 - OpenAI
+- Gemini
 - CryptoCompare
 - Youtube Data
 
@@ -57,8 +58,10 @@ Export the following env vars
 
 ```
 export OPENAI_API_KEY=xxx
+export GEMINI_API_KEY=xxx
 export CRYPTO_API_KEY=xxx
 export YOUTUBE_API_KEY=xxx
+
 ```
 
 ### Run
@@ -66,7 +69,7 @@ export YOUTUBE_API_KEY=xxx
 Then run the app
 
 ```
-mu --serve
+mu --srve
 ```
 
 Go to localhost:8081
