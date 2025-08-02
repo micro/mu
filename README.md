@@ -4,7 +4,7 @@ Building blocks for life
 
 # Overview
 
-What are the building blocks for life? There are services we use for our daily digital habits e.g news, video, mail, chat, etc but it's all very disconnected. The whole app ecosystem is also entirely commercialised. It's hard to escape ads, cookies, popups, paywalls, etc. The noise of Twitter, reddit, facebook and tiktok doesn't help either. So we're looking to build something new. 
+What are the building blocks for life? There are services we use for our daily digital habits e.g news, video, mail, chat, etc but it's all pretty disconnected and the whole app ecosystem itself is entirely commercialised. It's hard to escape ads, cookies, popups, paywalls, etc. The noise of Twitter, reddit, facebook and tiktok isn't helping either. So we're looking to build something new. 
 
 ## Features
 
