@@ -22,6 +22,10 @@ var Template = app.RenderHTML("Chat", "Chat with AI", `
 <input id="context" name="context" type="hidden">
 <input id="prompt" name="prompt" type="text" autofocus autocomplete=off>
 <button>-></button>
+<select name="model" id="model">
+  <option value="gpt-4o-mini">gpt-4o-mini</option>
+  <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+</select>
 </form>`)
 
 func Handler(w http.ResponseWriter, r *http.Request) {
