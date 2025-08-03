@@ -251,7 +251,7 @@ func getReminder() {
 	link := fmt.Sprintf("https://reminder.dev%s", data["links"].(map[string]interface{})["verse"].(string))
 
 	html := fmt.Sprintf(`<div class="verse">%s</div>`, data["verse"])
-	html += fmt.Sprintf(`<a href="%s"><button>See chapter</button></a>`, link)
+	html += fmt.Sprintf(`<a href="%s"><button>Continue</button></a>`, link)
 
 	mutex.Lock()
 	app.Save("reminder.html", html)

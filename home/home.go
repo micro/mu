@@ -14,7 +14,7 @@ var Template = `<div id="home">%s</div>`
 func Cards(news, markets, reminder string) []string {
 	cards := []string{
 		app.Card("news", "News", fmt.Sprintf(`%s<a href="/news"><button>Read more</button></a>`, news)),
-		app.Card("reminder", "Daily Reminder", reminder),
+		app.Card("reminder", "Reminder", reminder),
 		app.Card("markets", "Markets", markets+`<a href=https://coinmarketcap.com/><button>Charts</button></a>`),
 		app.Card("video", "Video", `
 		  <form action="/video" method="POST">
