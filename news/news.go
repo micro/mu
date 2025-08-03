@@ -270,12 +270,12 @@ func parseFeed() {
 			// You can perform cleanup, logging, or other error handling here.
 			// For example, you might send an error to a channel to notify main.
 			debug.PrintStack()
+
+			fmt.Println("Relaunching feed parser in 1 minute")
+			time.Sleep(time.Minute)
+
+			go parseFeed()
 		}
-
-		fmt.Println("Relaunching feed parser in 1 minute")
-		time.Sleep(time.Minute)
-
-		go parseFeed()
 	}()
 
 	fmt.Println("Parsing feed at", time.Now().String())
@@ -500,8 +500,8 @@ func parseFeed() {
 
 	mutex.Unlock()
 
-	// wait 10 minutes
-	time.Sleep(time.Minute * 10)
+	// wait an hour
+	time.Sleep(time.Hour)
 
 	// go again
 	go parseFeed()
