@@ -222,6 +222,7 @@ func getMetadata(uri string) (*Metadata, error) {
 }
 
 func getReminder() {
+	fmt.Println("Getting Reminder at", time.Now().String())
 	uri := "https://reminder.dev/api/daily/latest"
 
 	resp, err := http.Get(uri)
@@ -277,6 +278,7 @@ func parseFeed() {
 		go parseFeed()
 	}()
 
+	fmt.Println("Parsing feed at", time.Now().String())
 	p := gofeed.NewParser()
 
 	data := []byte{}
@@ -486,6 +488,7 @@ func parseFeed() {
 	saveHtml(head, data)
 
 	mutex.Lock()
+
 	// set the feed
 	feed = news
 	// set the headlines
@@ -501,7 +504,7 @@ func parseFeed() {
 	time.Sleep(time.Minute * 10)
 
 	// go again
-	parseFeed()
+	go parseFeed()
 }
 
 func Load() {

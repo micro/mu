@@ -1,11 +1,11 @@
-package util
+package video
 
 import (
 	"fmt"
 	"time"
 )
 
-func TimeAgo(d time.Time) string {
+func timeAgo(d time.Time) string {
 	timeAgo := ""
 	startDate := time.Now().Unix()
 	deltaMinutes := float64(startDate-d.Unix()) / 60.0

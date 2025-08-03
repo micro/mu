@@ -63,7 +63,7 @@ button:hover {
   background: whitesmoke;
 }
 input {
-  width: calc(100% - 40px);
+  width: calc(100% - 60px);
   padding: 10px;
   border-radius: 5px;
   border: 1px solid darkgrey;
@@ -127,8 +127,8 @@ ul {
   margin-bottom: 10px;
 }
 #chat-form {
-        width: 100%;
-        margin: 0;
+  width: 100%;
+  margin: 0;
 }
 .card {
   max-width: 600px;
@@ -172,9 +172,12 @@ ul {
 }
 #prompt {
         flex-shrink: 0;
-        width: calc(100% - 40px);
+        width: calc(100% - 60px);
         padding: 10px;
         margin: 10px 0 10px 0;
+}
+#query {
+        width: calc(100% - 75px);
 }
 #chat-form button {
         padding: 10px;

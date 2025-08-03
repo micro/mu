@@ -20,8 +20,8 @@ var Template = app.RenderHTML("Chat", "Chat with AI", `
 <div id="messages"></div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
-<input id="prompt" name="prompt" type="text" autofocus autocomplete=off>
-<button>-></button>
+<input id="prompt" name="prompt" type="text" placeholder="Enter a prompt" autofocus autocomplete=off>
+<button>Send</button>
 <select name="model" id="model">
   <option value="gemini-2.5-flash">gemini-2.5-flash</option>
   <option value="gpt-4o-mini">gpt-4o-mini</option>
@@ -32,8 +32,8 @@ var Messages = `
 <div id="messages">%s</div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
-<input id="prompt" name="prompt" type="text" autofocus autocomplete=off>
-<button>-></button>
+<input id="prompt" name="prompt" type="text" placeholder="Enter a prompt" autofocus autocomplete=off>
+<button>Send</button>
 <select name="model" id="model">
   <option value="gemini-2.5-flash">gemini-2.5-flash</option>
   <option value="gpt-4o-mini">gpt-4o-mini</option>
