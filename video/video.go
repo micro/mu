@@ -97,7 +97,7 @@ var Results = `
 </style>
 <form action="/video" method="POST">
   <input name="query" id="query" value="%s">
-  <button>-></button>
+  <button>Search</button>
 </form>
 <h1>Results</h1>
 <div id="results">
@@ -107,7 +107,7 @@ var Results = `
 var Template = `
 <form action="/video" method="POST">
   <input name="query" id="query" placeholder=Search autocomplete=off autofocus>
-  <button>-></button>
+  <button>Search</button>
 </form>`
 
 func Handler(w http.ResponseWriter, r *http.Request) {
