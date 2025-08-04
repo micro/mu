@@ -7,6 +7,7 @@ code {
   padding: 15px;
   border-radius: 5px;
   display: block;
+  white-space: pre-wrap;
 }
 footer { position: absolute; bottom: 50; text-align: center; width: 100%; }
 footer a { text-decoration: none; font-weight: bold; }
@@ -27,7 +28,7 @@ footer a { text-decoration: none; font-weight: bold; }
 }
 #container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px;}
 #content { max-width: 1024px; margin: 0 auto; text-align: left;}
-#desc { margin-bottom: 10px; }
+#desc { margin-bottom: 25px; }
 #main { max-width: 600px; justify-items: center; text-align: center; padding: 150px 10px 10px 10px; margin: 0 auto; }
 #title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
 #brand {
