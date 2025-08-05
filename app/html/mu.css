@@ -253,6 +253,13 @@ ul {
 #reminder {
   width: 300px;
 }
+#home:after {
+    content: ".";
+    display: block;
+    height: 0;
+    clear: both;
+    visibility: hidden;
+}
 @media only screen and (max-width: 600px) {
   #messages {
     height: calc(100vh - 285px);
