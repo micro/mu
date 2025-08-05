@@ -27,7 +27,7 @@ footer a { text-decoration: none; font-weight: bold; }
     border-radius: 5px;
 }
 #container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px;}
-#content { max-width: 1024px; margin: 0 auto; text-align: left;}
+#content { max-width: 1024px; margin: 0 auto; text-align: left; }
 #desc { margin-bottom: 25px; }
 #main { max-width: 600px; justify-items: center; text-align: center; padding: 150px 10px 10px 10px; margin: 0 auto; }
 #title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
@@ -264,7 +264,26 @@ ul {
     margin: 0 0 20px 0;
     width: calc(100vw - 85px);
   }
+  #home {
+    display: flex;
+    flex-direction: column;
+  }
   .cover {
     display: block;
+  }
+  #reminder {
+    order: 0;
+  }
+  #news {
+    order: 1;
+  }
+  #markets {
+    order: 2;
+  }
+  #chat {
+    order: 3;
+  }
+  #video {
+    order: 4;
   }
 }
