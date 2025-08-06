@@ -4,6 +4,10 @@ import (
 	"fmt"
 )
 
+const (
+	TokenHeader = "X-Micro-Token"
+)
+
 type Endpoint struct {
 	Name        string
 	Path        string
@@ -95,6 +99,11 @@ var Endpoints = []*Endpoint{{
 					Name:        "results",
 					Value:       "array",
 					Description: "Video search results",
+				},
+				{
+					Name:        "html",
+					Value:       "string",
+					Description: "Pre-rendered html string of results",
 				},
 			},
 		},

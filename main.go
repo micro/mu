@@ -11,6 +11,7 @@ import (
 	"github.com/micro/mu/chat"
 	"github.com/micro/mu/home"
 	"github.com/micro/mu/news"
+	"github.com/micro/mu/user"
 	"github.com/micro/mu/video"
 )
 
@@ -69,6 +70,52 @@ func main() {
 
 		if v := len(r.URL.Path); v > 1 && strings.HasSuffix(r.URL.Path, "/") {
 			r.URL.Path = r.URL.Path[:v-1]
+		}
+
+		var token string
+
+		// set via session
+		if c, err := r.Cookie("session"); err == nil && c != nil {
+			token = c.Value
+		}
+
+		if r.Method == "GET" {
+			if len(token) == 0 {
+				var secure bool
+
+				if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
+					secure = true
+				}
+
+				// set a new token
+				http.SetCookie(w, &http.Cookie{
+					Name:   "session",
+					Value:  user.GenerateToken(),
+					Secure: secure,
+				})
+			} else {
+				// deny access if invalid
+				if err := user.ValidateToken(token); err != nil {
+					http.Error(w, "invalid token", 401)
+					return
+				}
+			}
+		}
+
+		// check for session
+		if r.Method == "POST" {
+			// if token is invalid throw 401
+			if len(token) == 0 {
+				http.Error(w, "invalid token", 401)
+				return
+			}
+
+			// check the validity of the token
+			// deny access if invalid
+			if err := user.ValidateToken(token); err != nil {
+				http.Error(w, "invalid token", 401)
+				return
+			}
 		}
 
 		http.DefaultServeMux.ServeHTTP(w, r)

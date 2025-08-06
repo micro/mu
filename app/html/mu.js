@@ -232,6 +232,51 @@ function chat() {
         }
 }
 
+function getVideos(el) {
+	const formData = new FormData(el);
+	const data = {};
+
+	// Iterate over formData and populate the data object
+	for (let [key, value] of formData.entries()) {
+		data[key] = value;
+	}
+
+	console.log("sending", data);
+
+	fetch("/video", {
+	  method: "POST",
+	  headers: {
+	      'Content-Type': 'application/json'
+	  },
+	  body: JSON.stringify(data)
+	}).then(response => response.json())
+	.then(result => {
+	    console.log('Success:', result);
+		var d = document.getElementById('results');
+
+		if (d == null) {
+			d = document.createElement("div");
+			d.setAttribute("id", "results");
+
+			var content = document.getElementById('content');
+			content.innerHTML += "<h1>Results</h1>";
+			content.appendChild(d);
+		} else {
+			d.innerHTML = '';
+		}
+
+	    // Handle success, e.g., show a success message
+            d.innerHTML += result.html;
+	    document.getElementById('query').value = data["query"];
+	})
+	.catch(error => {
+	    console.error('Error:', error);
+	    // Handle errors
+	});
+
+	return false;
+}
+
 function home() {
 	return false;
 }

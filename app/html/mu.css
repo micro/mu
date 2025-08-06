@@ -9,8 +9,6 @@ code {
   display: block;
   white-space: pre-wrap;
 }
-footer { position: absolute; bottom: 50; text-align: center; width: 100%; }
-footer a { text-decoration: none; font-weight: bold; }
 #head {
 	background: white;
 	top: 0;

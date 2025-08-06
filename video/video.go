@@ -105,7 +105,18 @@ var Results = `
 </div>`
 
 var Template = `
-<form action="/video" method="POST">
+<style>
+  .thumbnail {
+    margin-bottom: 50px;
+  }
+  img {
+    border-radius: 10px;
+  }
+  h3 {
+    margin-bottom: 5px;
+  }
+</style>
+<form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;">
   <input name="query" id="query" placeholder=Search autocomplete=off autofocus>
   <button>Search</button>
 </form>`
@@ -130,7 +141,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// fetch results from api
-			_, results, err := getResults(query)
+			html, results, err := getResults(query)
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 				return
@@ -138,6 +149,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			res := map[string]interface{}{
 				"results": results,
+				"html":    html,
 			}
 			b, _ = json.Marshal(res)
 			w.Write(b)
