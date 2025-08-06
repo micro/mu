@@ -21,7 +21,7 @@ Starting with:
 Coming soon
 
 - [ ] Inbox - Web notifications
-- [ ] Wallet - Transact with crypto
+- [ ] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
