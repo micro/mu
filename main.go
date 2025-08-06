@@ -99,6 +99,14 @@ func main() {
 					http.Error(w, "invalid token", 401)
 					return
 				}
+
+				// got a valid token
+
+				if r.URL.Path == "/" {
+					// let's redirect to home
+					http.Redirect(w, r, "/home", 302)
+					return
+				}
 			}
 		}
 
