@@ -71,7 +71,7 @@ export YOUTUBE_API_KEY=xxx
 Then run the app
 
 ```
-mu --srve
+mu --serve
 ```
 
 Go to localhost:8081
