@@ -20,7 +20,7 @@ Starting with:
 
 Coming soon
 
-- [ ] Inbox - Direct messaging
+- [ ] Inbox - Web notifications
 - [ ] Wallet - Transact with crypto
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
