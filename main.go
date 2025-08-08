@@ -35,6 +35,9 @@ func main() {
 	// load the news
 	news.Load()
 
+	// load the videos
+	video.Load()
+
 	// serve video
 	http.HandleFunc("/video", video.Handler)
 
