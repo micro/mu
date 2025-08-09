@@ -106,6 +106,9 @@ func Load() {
 	b, _ := app.Load("videos.html")
 	videosHtml = string(b)
 
+	b, _ = app.Load("videos.json")
+	json.Unmarshal(b, &videos)
+
 	// load channels
 	loadChannels()
 
@@ -166,9 +169,13 @@ func loadVideos() {
 	head += `<hr>`
 
 	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body))
+	b, _ := json.Marshal(videos)
+	vidJson := string(b)
 
 	mutex.Lock()
 	app.Save("videos.html", vidHtml)
+	app.Save("videos.json", vidJson)
+	videos = vids
 	videosHtml = vidHtml
 	mutex.Unlock()
 
@@ -223,6 +230,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		case "playlistItem":
 			id = item.Snippet.ResourceId.VideoId
 			kind = category
+			url = "/video?id=" + id
 		case "video":
 			id = item.Snippet.ResourceId.VideoId
 			url = "/video?id=" + id
@@ -330,6 +338,8 @@ func getResults(query, channel string) (string, []*Result, error) {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
+	ct := r.Header.Get("Content-Type")
+
 	// create head
 	var head string
 	var chanNames []string
@@ -347,7 +357,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		var query string
 		var channel string
 
-		if ct := r.Header.Get("Content-Type"); ct == "application/json" {
+		if ct == "application/json" {
 			var data map[string]interface{}
 
 			b, _ := ioutil.ReadAll(r.Body)
@@ -413,18 +423,36 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// render watch page
 	if len(id) > 0 {
 		// get the page
+		tmpl := `<html>
+  <head>
+    <title>Video | Mu</title>
+  </head>
+  <body>
+  %s
+  </body>
+</html>
+`
 		html := fmt.Sprintf(`<div class="video" style="padding-top: 100px">%s</div>`, embedVideo(id))
-
-		rhtml := app.RenderHTML("Video", id, html)
+		rhtml := fmt.Sprintf(tmpl, html)
 		w.Write([]byte(rhtml))
 
 		return
 	}
 
 	// GET
-	mutex.RLock()
-	html := videosHtml
-	mutex.RUnlock()
 
-	w.Write([]byte(html))
+	var b []byte
+	mutex.RLock()
+	if ct == "application/json" {
+		data := map[string]interface{}{
+			"channels": videos,
+		}
+
+		b, _ = json.Marshal(data)
+	} else {
+		b = []byte(videosHtml)
+	}
+	mutex.RUnlock()
+	w.Write(b)
+
 }

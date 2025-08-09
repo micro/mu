@@ -82,6 +82,23 @@ var Endpoints = []*Endpoint{{
 }, {
 	Name:        "Video",
 	Path:        "/video",
+	Method:      "GET",
+	Description: "Latest videos",
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "channels",
+					Value:       "array",
+					Description: "Latest videos",
+				},
+			},
+		},
+	},
+}, {
+	Name:        "Video",
+	Path:        "/video",
 	Method:      "POST",
 	Description: "Search for videos",
 	Params: []*Param{

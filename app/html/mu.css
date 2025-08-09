@@ -31,10 +31,10 @@ code {
 #title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
 #brand {
   display: inline-block;
-  padding: 20px;
+  padding: 27px 27px 10px 27px;
 }
 #brand a {
-  padding: 0;
+  padding: 0
 }
 #install {
    float: right;

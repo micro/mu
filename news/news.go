@@ -422,6 +422,7 @@ func parseFeed() {
 				Published:   item.Published,
 				PostedAt:    *item.PublishedParsed,
 				Category:    name,
+				Image:       md.Image,
 			}
 
 			news = append(news, post)
