@@ -15,7 +15,6 @@ code {
 	width: 100%
 }
 #head a { margin-right: 2px; color: black; font-weight: bold; text-decoration: none; padding: 5px 7px;}
-
 #nav {
     padding: 0 20px 0 20px;
     margin: 0 auto;
@@ -33,6 +32,9 @@ code {
 #brand {
   display: inline-block;
   padding: 20px;
+}
+#brand a {
+  padding: 0;
 }
 #install {
    float: right;
