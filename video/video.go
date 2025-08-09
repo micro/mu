@@ -114,6 +114,8 @@ func Load() {
 }
 
 func loadVideos() {
+	fmt.Println("Loading videos")
+
 	mutex.RLock()
 	chans := channels
 	mutex.RUnlock()
@@ -128,7 +130,7 @@ func loadVideos() {
 
 	// get results
 	for channel, handle := range chans {
-		html, res, err := getChannel(handle)
+		html, res, err := getChannel(channel, handle)
 		if err != nil {
 			fmt.Println("Error getting channel", channel, handle, err)
 			continue
@@ -139,7 +141,6 @@ func loadVideos() {
 		// latest
 		body += res[0].Html
 
-		fmt.Println("got res", channel, handle, res, html)
 		vids[channel] = Channel{
 			Videos: res,
 			Html:   html,
@@ -166,10 +167,12 @@ func loadVideos() {
 
 	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body))
 
+	mutex.Lock()
 	app.Save("videos.html", vidHtml)
+	videosHtml = vidHtml
+	mutex.Unlock()
 
 	time.Sleep(time.Hour)
-
 	go loadVideos()
 }
 
@@ -179,7 +182,7 @@ func embedVideo(id string) string {
 	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
 }
 
-func getChannel(handle string) (string, []*Result, error) {
+func getChannel(category, handle string) (string, []*Result, error) {
 	if Client == nil {
 		return "", nil, fmt.Errorf("No client")
 	}
@@ -219,7 +222,7 @@ func getChannel(handle string) (string, []*Result, error) {
 		switch kind {
 		case "playlistItem":
 			id = item.Snippet.ResourceId.VideoId
-			kind = "video"
+			kind = category
 		case "video":
 			id = item.Snippet.ResourceId.VideoId
 			url = "/video?id=" + id
