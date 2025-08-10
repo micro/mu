@@ -37,10 +37,11 @@ type Channel struct {
 }
 
 type Result struct {
-	ID   string `json:"id"`
-	Type string `json:"type"`
-	URL  string `json:"url"`
-	Html string `json:"html"`
+	ID        string    `json:"id"`
+	Type      string    `json:"type"`
+	URL       string    `json:"url"`
+	Html      string    `json:"html"`
+	Published time.Time `json:"published"`
 }
 
 var Key = os.Getenv("YOUTUBE_API_KEY")
@@ -131,6 +132,8 @@ func loadVideos() {
 	var chanNames []string
 	body += `<h1>Latest</h1>`
 
+	var latest []*Result
+
 	// get results
 	for channel, handle := range chans {
 		html, res, err := getChannel(channel, handle)
@@ -142,7 +145,7 @@ func loadVideos() {
 			continue
 		}
 		// latest
-		body += res[0].Html
+		latest = append(latest, res[0])
 
 		vids[channel] = Channel{
 			Videos: res,
@@ -150,11 +153,22 @@ func loadVideos() {
 		}
 	}
 
+	// sort the latest by date
+	sort.Slice(latest, func(i, j int) bool {
+		return latest[i].Published.After(latest[j].Published)
+	})
+
+	// add to body
+	for _, res := range latest {
+		body += res.Html
+	}
+
 	// get chan names and sort
 	for channel, _ := range channels {
 		chanNames = append(chanNames, channel)
 	}
 
+	// sort channel names
 	sort.Strings(chanNames)
 
 	// create head for channels
@@ -246,9 +260,10 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>Published %s</small>`, kind, timeAgo(t))
 
 		res := &Result{
-			ID:   id,
-			Type: kind,
-			URL:  url,
+			ID:        id,
+			Type:      kind,
+			URL:       url,
+			Published: t,
 		}
 
 		if kind == "channel" {
@@ -315,6 +330,7 @@ func getResults(query, channel string) (string, []*Result, error) {
 			ID:   id,
 			Type: kind,
 			URL:  url,
+			Published: t,
 		}
 
 		if kind == "channel" {
