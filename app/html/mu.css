@@ -285,7 +285,6 @@ ul {
     padding: 10px;
   }
   .card, #reminder, #video {
-    margin: 0 0 20px 0;
     width: calc(100vw - 85px);
     min-width: calc(100vw - 85px);
     max-width: calc(100vw - 85px);
@@ -297,16 +296,16 @@ ul {
   .cover {
     display: block;
   }
+  #markets {
+    order: 1;
+  }
   #reminder {
     order: 0;
   }
-  #news {
-    order: 1;
-  }
-  #markets {
+  #video {
     order: 2;
   }
-  #video {
+  #news {
     order: 3;
   }
 }
