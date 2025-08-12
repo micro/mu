@@ -265,24 +265,30 @@ ul {
 }
 @media only screen and (max-width: 600px) {
   #head {
-    text-align: center;
-    padding: 0;
     border-top: 1px solid darkgrey;
     border-bottom: 1px solid darkgrey;
   }
   #brand {
-    padding: 10px 0 0 0;
+    padding: 10px;
+    display: block;
+    text-align: center;
+  }
+  #nav {
+    position: fixed;
+    bottom: 0;
+    padding: 20px;
+    display: block;
+    text-align: center;
+    background: white;
+    width: calc(100vw - 40px);
   }
   #container {
-    height: calc(100vh - 100px);
+    height: calc(100vh - 150px);
     overflow-y: scroll;
     display: block;
   }
   #messages {
-    height: calc(100vh - 285px);
-  }
-  #nav {
-    padding: 10px;
+    height: calc(100vh - 300px);
   }
   .card, #reminder, #video {
     width: calc(100vw - 85px);
