@@ -189,6 +189,7 @@ function chat() {
         const prompt = document.getElementById('prompt'); // Your input element
 
         const messages = document.getElementById('messages');
+        const container = document.getElementById('container');
 
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', () => {
@@ -205,14 +206,13 @@ function chat() {
                     // Or: Make sure your input container stays at the bottom of the *visual* viewport.
                     // You'd typically make your chat messages div fill the available height
                     // and the input box positioned relative to the bottom of that.
-
-                    messages.style.height = viewportHeight - 260;
-		    window.visualViewport.height = window.visualViewport.height - 260;
+                    messages.style.height = viewportHeight - 245;
+		    container.style.height = viewportHeight - 135;
                 } else {
                     // Keyboard closed, revert changes
                     // document.body.style.paddingBottom = '0';
-                    messages.style.height = viewportHeight - 260;
-		    window.visualViewport.height = window.visualViewport.height - 260;
+                    messages.style.height = viewportHeight - 245;
+		    container.style.height = viewportHeight - 135;
                 }
 
                 // After adjusting, you might still want to call scrollIntoView

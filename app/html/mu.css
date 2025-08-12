@@ -283,14 +283,20 @@ ul {
     width: calc(100vw - 40px);
   }
   #container {
-    height: calc(100vh - 150px);
+    height: calc(100vh - 175px);
     overflow-y: scroll;
+    display: block;
+  }
+  #content {
+    height: auto;
     display: block;
   }
   #messages {
     height: calc(100vh - 300px);
   }
   .card, #reminder, #video {
+    float: none;
+    display: block;
     width: calc(100vw - 85px);
     min-width: calc(100vw - 85px);
     max-width: calc(100vw - 85px);
