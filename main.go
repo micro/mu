@@ -8,10 +8,10 @@ import (
 
 	"github.com/micro/mu/api"
 	"github.com/micro/mu/app"
+	"github.com/micro/mu/auth"
 	"github.com/micro/mu/chat"
 	"github.com/micro/mu/home"
 	"github.com/micro/mu/news"
-	"github.com/micro/mu/user"
 	"github.com/micro/mu/video"
 )
 
@@ -93,12 +93,12 @@ func main() {
 				// set a new token
 				http.SetCookie(w, &http.Cookie{
 					Name:   "session",
-					Value:  user.GenerateToken(),
+					Value:  auth.GenerateToken(),
 					Secure: secure,
 				})
 			} else {
 				// deny access if invalid
-				if err := user.ValidateToken(token); err != nil {
+				if err := auth.ValidateToken(token); err != nil {
 					http.Error(w, "invalid token", 401)
 					return
 				}
@@ -123,7 +123,7 @@ func main() {
 
 			// check the validity of the token
 			// deny access if invalid
-			if err := user.ValidateToken(token); err != nil {
+			if err := auth.ValidateToken(token); err != nil {
 				http.Error(w, "invalid token", 401)
 				return
 			}
