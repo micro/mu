@@ -14,15 +14,10 @@ var Template = `<div id="home">%s</div>`
 
 func Cards(news, markets, reminder, latest string) []string {
 	cards := []string{
-		app.Card("news", "News", fmt.Sprintf(`%s<a href="/news" class="link">Read more</a>`, news)),
+		app.Card("news", "News", news),
 		app.Card("reminder", "Reminder", reminder),
-		app.Card("markets", "Markets", markets+`<a href="https://coinmarketcap.com/" class="link">Charts</a>`),
-		app.Card("video", "Video", latest+`<a href="/video" class="link">More</a>`),
-		app.Card("chat", "Chat", `
-			<form action="/chat" method="POST" onsubmit="event.preventDefault(); askQuestion(this);">
-			  <input name="prompt" id="prompt" placeholder="Ask a question" autocomplete=off>
-			  <button>Submit</button>
-			</form>`),
+		app.Card("markets", "Markets", markets),
+		app.Card("video", "Video", latest),
 	}
 	return cards
 }

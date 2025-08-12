@@ -18,14 +18,14 @@ code {
 #nav {
     padding: 0 20px 0 20px;
     margin: 0 auto;
-    max-width: 1024px;
+    max-width: 1280px;
 }
 #nav a.active, #nav a:hover, .head:hover {
     background: whitesmoke;
     border-radius: 5px;
 }
 #container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px;}
-#content { max-width: 1024px; margin: 0 auto; text-align: left; }
+#content { max-width: 1280px; margin: 0 auto; text-align: left; }
 #desc { margin-bottom: 25px; }
 #main { max-width: 600px; justify-items: center; text-align: center; padding: 150px 10px 10px 10px; margin: 0 auto; }
 #title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
@@ -118,8 +118,8 @@ ul {
 #news h1 {
   margin-top: 15px;
 }
-#video {
-  max-width: 300px;
+#markets, #reminder, #video {
+  max-width: 350px;
 }
 #video img {
   width: 100%;
@@ -141,11 +141,11 @@ ul {
   margin: 0;
 }
 .card {
-  max-width: 600px;
+  max-width: 750px;
   display: inline-block;
   margin-right: 20px;
   float: left;
-  min-width: 300px;
+  min-width: 350px;
   border: 1px solid darkgrey;
   border-radius: 5px;
   padding: 20px;
@@ -210,9 +210,6 @@ ul {
   font-weight: bold;
   text-decoration: none;
 }
-#info {
-  margin-bottom: 10px;
-}
 .ticker {
   margin-right: 10px;
   font-size: small;
@@ -258,11 +255,6 @@ ul {
 .verse {
   white-space: pre-wrap;
   margin-bottom: 20px;
-  max-height: 150px;
-  overflow-y: scroll;
-}
-#reminder {
-  width: 300px;
 }
 #home:after {
     content: ".";
@@ -295,6 +287,7 @@ ul {
   .card, #reminder, #video {
     margin: 0 0 20px 0;
     width: calc(100vw - 85px);
+    min-width: calc(100vw - 85px);
     max-width: calc(100vw - 85px);
   }
   #home {
@@ -313,10 +306,7 @@ ul {
   #markets {
     order: 2;
   }
-  #chat {
-    order: 3;
-  }
   #video {
-    order: 4;
+    order: 3;
   }
 }
