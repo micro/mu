@@ -24,9 +24,14 @@ var f embed.FS
 
 var mutex sync.RWMutex
 
+// category to channel mapping
 var channels = map[string]string{}
 
+// latest videos from channels
 var videos = map[string]Channel{}
+
+// latest video
+var latestHtml string
 
 // saved videos
 var videosHtml string
@@ -103,8 +108,12 @@ func loadChannels() {
 
 // Load videos
 func Load() {
+	// load latest video
+	b, _ := app.Load("latest.html")
+	latestHtml = string(b)
+
 	// load saved videos
-	b, _ := app.Load("videos.html")
+	b, _ = app.Load("videos.html")
 	videosHtml = string(b)
 
 	b, _ = app.Load("videos.json")
@@ -189,6 +198,8 @@ func loadVideos() {
 	mutex.Lock()
 	app.Save("videos.html", vidHtml)
 	app.Save("videos.json", vidJson)
+	app.Save("latest.html", latest[0].Html)
+	latestHtml = latest[0].Html
 	videos = vids
 	videosHtml = vidHtml
 	mutex.Unlock()
@@ -327,9 +338,9 @@ func getResults(query, channel string) (string, []*Result, error) {
 		}
 
 		res := &Result{
-			ID:   id,
-			Type: kind,
-			URL:  url,
+			ID:        id,
+			Type:      kind,
+			URL:       url,
 			Published: t,
 		}
 
@@ -349,6 +360,12 @@ func getResults(query, channel string) (string, []*Result, error) {
 	}
 
 	return results, data, nil
+}
+
+func Latest() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	return latestHtml
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {

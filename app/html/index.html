@@ -9,12 +9,6 @@
     <link rel="stylesheet" href="/mu.css">
   </head>
   <body>
-    <div id="head">
-      <div id="brand">
-        <a href="/">Mu</a>
-      </div>
-      <button id="install" hidden>Install</button>
-    </div>
     <div id="container">
 	<div id="main">
 	   <div id="title">Mu</div>
@@ -33,38 +27,6 @@
           {scope: '/'}
         )
       }
-  </script>
-  <script>
-        let installPrompt = null;
-        const installButton = document.querySelector("#install");
-
-        window.addEventListener("beforeinstallprompt", (event) => {
-          event.preventDefault();
-          installPrompt = event;
-          installButton.removeAttribute("hidden");
-        });
-
-        installButton.addEventListener("click", async () => {
-          if (!installPrompt) {
-            return;
-          }
-          const result = await installPrompt.prompt();
-          disableInAppInstallPrompt();
-        });
-
-        function disableInAppInstallPrompt() {
-          installPrompt = null;
-          installButton.setAttribute("hidden", "");
-        }
-
-        window.addEventListener("appinstalled", () => {
-          disableInAppInstallPrompt();
-        });
-
-        function disableInAppInstallPrompt() {
-          installPrompt = null;
-          installButton.setAttribute("hidden", "");
-        }
   </script>
   </body>
 </html>
