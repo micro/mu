@@ -53,6 +53,7 @@ We need API keys for:
 
 - OpenAI
 - Gemini
+- Fanar
 - CryptoCompare
 - Youtube Data
 
