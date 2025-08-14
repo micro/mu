@@ -2,7 +2,6 @@ package chat
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,9 +16,9 @@ var DefaultModel = "gpt-4o-mini"
 type Model struct{}
 
 // Generate calls the OpenAI or Gemini API with the selected model and prompt
-func (m *Model) Generate(ctx context.Context, prompt *Prompt) (string, error) {
+func (m *Model) Generate(rag []string, prompt *Prompt) (string, error) {
 	sb := &strings.Builder{}
-	if err := systemPrompt.Execute(sb, prompt.Context); err != nil {
+	if err := systemPrompt.Execute(sb, rag); err != nil {
 		return "", err
 	}
 
@@ -36,6 +35,30 @@ func (m *Model) Generate(ctx context.Context, prompt *Prompt) (string, error) {
 		"gemini-2.5-pro":        "gemini-2.5-pro",
 	}
 
+	messages := []map[string]string{
+		map[string]string{
+			"role":    "system",
+			"content": sb.String(),
+		},
+	}
+
+	for _, v := range prompt.Context {
+		messages = append(messages, map[string]string{
+			"role":    "user",
+			"content": v.Prompt,
+		})
+		messages = append(messages, map[string]string{
+			"role":    "assistant",
+			"content": v.Answer,
+		})
+	}
+
+	// add the question
+	messages = append(messages, map[string]string{
+		"role":    "user",
+		"content": prompt.Question,
+	})
+
 	if openaiModels[prompt.Model] {
 		openaiURL := "https://api.openai.com/v1/chat/completions"
 		apiKey := os.Getenv("OPENAI_API_KEY")
@@ -48,12 +71,10 @@ func (m *Model) Generate(ctx context.Context, prompt *Prompt) (string, error) {
 		if apiKey == "" {
 			return "", fmt.Errorf("OPENAI_API_KEY not set")
 		}
+
 		openaiReq := map[string]interface{}{
-			"model": prompt.Model,
-			"messages": []map[string]string{
-				{"role": "system", "content": sb.String()},
-				{"role": "user", "content": prompt.Question},
-			},
+			"model":    prompt.Model,
+			"messages": messages,
 		}
 		body, err := json.Marshal(openaiReq)
 		if err != nil {
@@ -103,10 +124,27 @@ func (m *Model) Generate(ctx context.Context, prompt *Prompt) (string, error) {
 		if apiKey == "" {
 			return "", fmt.Errorf("GEMINI_API_KEY not set")
 		}
+		var messages []map[string]interface{}
+
+		for _, v := range prompt.Context {
+			messages = append(messages, map[string]interface{}{
+				"parts": []map[string]string{
+					{"role": "user", "text": v.Prompt},
+				},
+			})
+			messages = append(messages, map[string]interface{}{
+				"parts": []map[string]string{
+					{"role": "model", "text": v.Answer},
+				},
+			})
+		}
 		geminiReq := map[string]interface{}{
-			"contents": []map[string]interface{}{
-				{"parts": []map[string]string{{"text": prompt.Question}}},
+			"system_instruction": map[string]interface{}{
+				"parts": []map[string]interface{}{
+					{"text": sb.String()},
+				},
 			},
+			"contents": messages,
 		}
 		body, err := json.Marshal(geminiReq)
 		if err != nil {

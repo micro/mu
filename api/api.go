@@ -37,7 +37,7 @@ var Endpoints = []*Endpoint{{
 		{
 			Name:        "context",
 			Value:       "array",
-			Description: "Messages to use as context",
+			Description: "Past messages to use as context; [{'prompt': xxx, 'answer': xxx}]",
 		},
 		{
 			Name:        "prompt",

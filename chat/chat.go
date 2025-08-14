@@ -1,7 +1,6 @@
 package chat
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,9 +10,17 @@ import (
 )
 
 type Prompt struct {
-	Model    string
-	Context  []string
-	Question string
+	Model    string  `json:"model"`
+	Context  History `json:"context"`
+	Question string  `json:"question"`
+}
+
+type History []Message
+
+// message history
+type Message struct {
+	Prompt string
+	Answer string
 }
 
 var Template = app.RenderHTML("Chat", "Chat with AI", `
@@ -70,8 +77,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			r.ParseForm()
 
 			// get the message
-			msg := r.Form.Get("prompt")
 			ctx := r.Form.Get("context")
+			msg := r.Form.Get("prompt")
 			model := r.Form.Get("model")
 
 			if len(msg) == 0 {
@@ -82,17 +89,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			var ictx interface{}
 			json.Unmarshal([]byte(ctx), &ictx)
-			data["prompt"] = msg
 			data["context"] = ictx
+			data["prompt"] = msg
 			data["model"] = model
 		}
 
-		var ctx []string
+		var ctx []Message
+
 		if vals := data["context"]; vals != nil {
 			cvals := vals.([]interface{})
 			for _, val := range cvals {
-				b, _ := json.Marshal(val)
-				ctx = append(ctx, string(b))
+				msg := val.(map[string]interface{})
+				prompt := fmt.Sprintf("%v", msg["prompt"])
+				answer := fmt.Sprintf("%v", msg["answer"])
+				ctx = append(ctx, Message{Prompt: prompt, Answer: answer})
 			}
 		}
 
@@ -103,7 +113,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// query the llm
-		resp, err := askLLM(context.TODO(), prompt)
+		resp, err := askLLM(prompt)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -125,6 +135,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Format a HTML response
 		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, data["prompt"])
 		messages += fmt.Sprintf(`<div class="message"><span class="llm">llm</span><p>%v</p></div>`, data["answer"])
 

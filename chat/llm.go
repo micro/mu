@@ -1,7 +1,6 @@
 package chat
 
 import (
-	"context"
 	"text/template"
 )
 
@@ -27,7 +26,7 @@ Anything between the following 'context' XML blocks can be used as part of the c
 {{- end -}}
 `))
 
-func askLLM(ctx context.Context, prompt *Prompt) (string, error) {
+func askLLM(prompt *Prompt) (string, error) {
 	m := new(Model)
-	return m.Generate(ctx, prompt)
+	return m.Generate(nil, prompt)
 }
