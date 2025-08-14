@@ -63,7 +63,7 @@ export OPENAI_API_KEY=xxx
 export GEMINI_API_KEY=xxx
 export CRYPTO_API_KEY=xxx
 export YOUTUBE_API_KEY=xxx
-
+export FANAR_API_KEY=xxx
 ```
 
 ### Run
