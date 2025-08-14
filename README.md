@@ -20,6 +20,7 @@ Starting with:
 
 Coming soon
 
+- [ ] Blog - Micro blogging 
 - [ ] Inbox - Web notifications
 - [ ] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
