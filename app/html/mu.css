@@ -125,9 +125,6 @@ ul {
   width: 100%;
   border-radius: 5px;
 }
-#video .thumbnail {
-  margin-bottom: 10px;
-}
 #video form {
   max-width: 465px;
 }
@@ -302,7 +299,7 @@ ul {
     max-width: calc(100vw - 85px);
   }
   #home {
-    display: flex;
+    display: block flex;
     flex-direction: column;
   }
   .cover {

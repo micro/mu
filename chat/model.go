@@ -25,6 +25,7 @@ func (m *Model) Generate(ctx context.Context, prompt *Prompt) (string, error) {
 
 	// Supported models
 	openaiModels := map[string]bool{
+		"Fanar":         true,
 		"gpt-4o-mini":   true,
 		"gpt-4-turbo":   true,
 		"gpt-3.5-turbo": true,
@@ -38,6 +39,12 @@ func (m *Model) Generate(ctx context.Context, prompt *Prompt) (string, error) {
 	if openaiModels[prompt.Model] {
 		openaiURL := "https://api.openai.com/v1/chat/completions"
 		apiKey := os.Getenv("OPENAI_API_KEY")
+
+		if prompt.Model == "Fanar" {
+			openaiURL = "https://api.fanar.qa/v1/chat/completions"
+			apiKey = os.Getenv("FANAR_API_KEY")
+		}
+
 		if apiKey == "" {
 			return "", fmt.Errorf("OPENAI_API_KEY not set")
 		}

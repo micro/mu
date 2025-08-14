@@ -23,6 +23,7 @@ var Template = app.RenderHTML("Chat", "Chat with AI", `
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autofocus autocomplete=off>
 <button>Send</button>
 <select name="model" id="model">
+  <option value="Fanar">fanar</option>
   <option value="gemini-2.5-flash">gemini-2.5-flash</option>
   <option value="gpt-4o-mini">gpt-4o-mini</option>
 </select>
@@ -35,6 +36,7 @@ var Messages = `
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autofocus autocomplete=off>
 <button>Send</button>
 <select name="model" id="model">
+  <option value="Fanar">fanar</option>
   <option value="gemini-2.5-flash">gemini-2.5-flash</option>
   <option value="gpt-4o-mini">gpt-4o-mini</option>
 </select>
