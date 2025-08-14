@@ -51,11 +51,11 @@ cd mu && go install
 
 We need API keys for:
 
-- OpenAI
-- Gemini
-- Fanar
-- CryptoCompare
-- Youtube Data
+- [OpenAI](https://openai.com)
+- [Gemini](https://aistudio.google.com/)
+- [Fanar](https://fanar.qa/)
+- [CryptoCompare](https://www.cryptocompare.com/)
+- [Youtube Data](https://developers.google.com/youtube/v3)
 
 Export the following env vars
 
