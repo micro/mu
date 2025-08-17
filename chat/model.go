@@ -23,11 +23,11 @@ func (m *Model) Generate(rag []string, prompt *Prompt) (string, error) {
 	}
 
 	// Supported models
-	openaiModels := map[string]bool{
-		"Fanar":         true,
-		"gpt-4o-mini":   true,
-		"gpt-4-turbo":   true,
-		"gpt-3.5-turbo": true,
+	openaiModels := map[string]string{
+		"Fanar":         "https://api.fanar.qa",
+		"gpt-4o-mini":   "https://api.openai.com/",
+		"gpt-4-turbo":   "https://api.openai.com/",
+		"gpt-3.5-turbo": "https://api.openai.com/",
 	}
 	geminiModels := map[string]string{
 		"gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
@@ -59,16 +59,15 @@ func (m *Model) Generate(rag []string, prompt *Prompt) (string, error) {
 		"content": prompt.Question,
 	})
 
-	if openaiModels[prompt.Model] {
-		openaiURL := "https://api.openai.com/v1/chat/completions"
+	if uri, ok := openaiModels[prompt.Model]; ok {
+		openaiURL := fmt.Sprintf("%s/v1/chat/completions", uri)
 		apiKey := os.Getenv("OPENAI_API_KEY")
 
 		if prompt.Model == "Fanar" {
-			openaiURL = "https://api.fanar.qa/v1/chat/completions"
 			apiKey = os.Getenv("FANAR_API_KEY")
 		}
 
-		if apiKey == "" {
+		if len(apiKey) == 0 {
 			return "", fmt.Errorf("OPENAI_API_KEY not set")
 		}
 

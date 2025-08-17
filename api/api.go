@@ -47,7 +47,7 @@ var Endpoints = []*Endpoint{{
 		{
 			Name:        "model",
 			Value:       "string",
-			Description: "Model to use. Supports gpt-4o-mini and gemini-2.5-flash",
+			Description: "Model to use. Supports fanar, gpt-4o-mini and gemini-2.5-flash",
 		},
 	},
 	Response: []*Value{

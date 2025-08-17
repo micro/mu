@@ -285,7 +285,7 @@ ul {
     display: block;
   }
   #content {
-    height: auto;
+    height: inherit;
     display: block;
   }
   #messages {
@@ -299,22 +299,10 @@ ul {
     max-width: calc(100vw - 85px);
   }
   #home {
-    display: block flex;
+    display: block;
     flex-direction: column;
   }
   .cover {
     display: block;
-  }
-  #markets {
-    order: 1;
-  }
-  #reminder {
-    order: 0;
-  }
-  #video {
-    order: 2;
-  }
-  #news {
-    order: 3;
   }
 }
