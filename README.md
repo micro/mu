@@ -50,21 +50,37 @@ cd mu && go install
 
 ### API Keys
 
-We need API keys for:
+We need API keys for the following
+
+#### Markets
+
+- [CryptoCompare](https://www.cryptocompare.com/)
+
+```
+export CRYPTO_API_KEY=xxx
+```
+
+#### Video
+
+- [Youtube Data](https://developers.google.com/youtube/v3)
+
+```
+export YOUTUBE_API_KEY=xxx
+```
+
+#### Models
+
+Specify the model via `--model` flag if you want to choose something instead of gpt-4o-mini
+
+Supported models
 
 - [OpenAI](https://openai.com)
 - [Gemini](https://aistudio.google.com/)
 - [Fanar](https://fanar.qa/)
-- [CryptoCompare](https://www.cryptocompare.com/)
-- [Youtube Data](https://developers.google.com/youtube/v3)
-
-Export the following env vars
 
 ```
 export OPENAI_API_KEY=xxx
 export GEMINI_API_KEY=xxx
-export CRYPTO_API_KEY=xxx
-export YOUTUBE_API_KEY=xxx
 export FANAR_API_KEY=xxx
 ```
 

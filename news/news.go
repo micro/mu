@@ -96,7 +96,7 @@ func getPrice(v ...string) map[string]string {
 	return prices
 }
 
-var tickers = []string{"BTC", "BNB", "ETH"}
+var tickers = []string{"BTC", "BNB", "ETH", "PAXG"}
 
 var replace = []func(string) string{
 	func(v string) string {
@@ -449,6 +449,7 @@ func parseFeed() {
 		btc := prices["BTC"]
 		eth := prices["ETH"]
 		bnb := prices["BNB"]
+		paxg := prices["PAXG"]
 
 		var info []byte
 		//info = append(info, []byte(`<div id="info"><b>Markets:</b>`)...)
@@ -456,6 +457,7 @@ func parseFeed() {
 		info = append(info, []byte(`<span class="ticker">BTC $`+btc+`</span>`)...)
 		info = append(info, []byte(`<span class="ticker">ETH $`+eth+`</span>`)...)
 		info = append(info, []byte(`<span class="ticker">BNB $`+bnb+`</span>`)...)
+		info = append(info, []byte(`<span class="ticker">PAXG $`+paxg+`</span>`)...)
 		info = append(info, []byte(`</div>`)...)
 		marketsHtml = string(info)
 	}
@@ -480,6 +482,7 @@ func parseFeed() {
 		headline = append(headline, []byte(val)...)
 	}
 
+	headline = append(headline, []byte(fmt.Sprintf("Updated %s", time.Now().Format(time.RFC850)))...)
 	headline = append(headline, []byte(`</div>`)...)
 
 	// set the headline

@@ -29,11 +29,6 @@ var Template = app.RenderHTML("Chat", "Chat with AI", `
 <input id="context" name="context" type="hidden">
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autofocus autocomplete=off>
 <button>Send</button>
-<select name="model" id="model">
-  <option value="Fanar">Fanar</option>
-  <option value="gemini-2.5-flash">Gemini</option>
-  <option value="gpt-4o-mini">OpenAI</option>
-</select>
 </form>`)
 
 var Messages = `
@@ -42,11 +37,6 @@ var Messages = `
 <input id="context" name="context" type="hidden">
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autofocus autocomplete=off>
 <button>Send</button>
-<select name="model" id="model">
-  <option value="Fanar">Fanar</option>
-  <option value="gemini-2.5-flash">Gemini</option>
-  <option value="gpt-4o-mini">OpenAI</option>
-</select>
 </form>`
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -69,9 +59,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if data["prompt"] == nil {
 				return
 			}
-			if v := data["model"]; v == nil {
-				data["model"] = DefaultModel
-			}
 		} else {
 			// save the response
 			r.ParseForm()
@@ -79,22 +66,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// get the message
 			ctx := r.Form.Get("context")
 			msg := r.Form.Get("prompt")
-			model := r.Form.Get("model")
 
 			if len(msg) == 0 {
 				return
-			}
-			if len(model) == 0 {
-				model = DefaultModel
 			}
 			var ictx interface{}
 			json.Unmarshal([]byte(ctx), &ictx)
 			data["context"] = ictx
 			data["prompt"] = msg
-			data["model"] = model
 		}
 
-		var ctx []Message
+		var context History
 
 		if vals := data["context"]; vals != nil {
 			cvals := vals.([]interface{})
@@ -102,14 +84,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				msg := val.(map[string]interface{})
 				prompt := fmt.Sprintf("%v", msg["prompt"])
 				answer := fmt.Sprintf("%v", msg["answer"])
-				ctx = append(ctx, Message{Prompt: prompt, Answer: answer})
+				context = append(context, Message{Prompt: prompt, Answer: answer})
 			}
 		}
 
+		q := fmt.Sprintf("%v", data["prompt"])
+
 		prompt := &Prompt{
-			Model:    fmt.Sprintf("%v", data["model"]),
-			Context:  ctx,
-			Question: fmt.Sprintf("%v", data["prompt"]),
+			Model:    DefaultModel,
+			Context:  context,
+			Question: q,
 		}
 
 		// query the llm
