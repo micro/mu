@@ -52,14 +52,6 @@ cd mu && go install
 
 We need API keys for the following
 
-#### Markets
-
-- [CryptoCompare](https://www.cryptocompare.com/)
-
-```
-export CRYPTO_API_KEY=xxx
-```
-
 #### Video
 
 - [Youtube Data](https://developers.google.com/youtube/v3)
@@ -72,7 +64,7 @@ export YOUTUBE_API_KEY=xxx
 
 Specify the model via `--model` flag if you want to choose something instead of gpt-4o-mini
 
-Supported models
+Supported models:
 
 - [OpenAI](https://openai.com)
 - [Gemini](https://aistudio.google.com/)

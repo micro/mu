@@ -24,6 +24,8 @@ func distanceOfTime(minutes float64) string {
 		return fmt.Sprintf("%d secs", int(minutes*60))
 	case minutes < 59:
 		return fmt.Sprintf("%d minutes", int(minutes))
+	case minutes < 100:
+		return fmt.Sprintf("%d hour", int(minutes/60))
 	case minutes < 1440:
 		return fmt.Sprintf("%d hours", int(minutes/60))
 	case minutes < 2880:

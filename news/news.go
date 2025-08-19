@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/micro/mu/app"
 	"github.com/mmcdole/gofeed"
+	"github.com/piquette/finance-go/future"
 )
 
 //go:embed feeds.json
@@ -76,9 +78,11 @@ type Metadata struct {
 	Site        string
 }
 
-func getPrice(v ...string) map[string]string {
-	rsp, err := http.Get(fmt.Sprintf("https://min-api.cryptocompare.com/data/pricemulti?fsyms=%s&tsyms=USD&api_key=%s", strings.Join(v, ","), key))
+func getPrices() map[string]float64 {
+	fmt.Println("Getting prices")
+	rsp, err := http.Get("https://api.coinbase.com/v2/exchange-rates?currency=USD")
 	if err != nil {
+		fmt.Println("Error getting prices", err)
 		return nil
 	}
 	b, _ := ioutil.ReadAll(rsp.Body)
@@ -88,15 +92,56 @@ func getPrice(v ...string) map[string]string {
 	if res == nil {
 		return nil
 	}
-	prices := map[string]string{}
-	for _, t := range v {
-		rsp := res[t].(map[string]interface{})
-		prices[t] = fmt.Sprintf("%v", rsp["USD"].(float64))
+
+	rates := res["data"].(map[string]interface{})["rates"].(map[string]interface{})
+	fmt.Println("Got rates", rates)
+
+	prices := map[string]float64{}
+
+	for k, t := range rates {
+		val, err := strconv.ParseFloat(t.(string), 64)
+		if err != nil {
+			continue
+		}
+		prices[k] = 1 / val
 	}
+
+	// special case for BNB
+	rsp, err = http.Get("https://api.coinbase.com/v2/exchange-rates?currency=BNB")
+	if err != nil {
+		fmt.Println("Error getting prices", err)
+		return nil
+	}
+	b, _ = ioutil.ReadAll(rsp.Body)
+	defer rsp.Body.Close()
+	json.Unmarshal(b, &res)
+	if res == nil {
+		return prices
+	}
+
+	rates = res["data"].(map[string]interface{})["rates"].(map[string]interface{})
+	val, err := strconv.ParseFloat(rates["USD"].(string), 64)
+	if err != nil {
+		return prices
+	}
+	prices["BNB"] = val
+
+	// let's get other prices
+	for key, ftr := range futures {
+		f, err := future.Get(ftr)
+		if err != nil {
+			fmt.Println("Failed to get future", key, ftr, err)
+			continue
+		}
+		prices[key] = f.Quote.RegularMarketPrice
+	}
+
 	return prices
 }
 
-var tickers = []string{"BTC", "BNB", "ETH", "PAXG"}
+var tickers = []string{"GBP", "BNB", "ETH", "BTC", "PAXG"}
+
+var futures = map[string]string{"OIL": "CL=F", "GOLD": "GC=F", "COFFEE": "KC=F", "OATS": "ZO=F", "WHEAT": "KE=F"}
 
 var replace = []func(string) string{
 	func(v string) string {
@@ -118,11 +163,9 @@ func saveHtml(head, data []byte) {
 	if len(data) == 0 {
 		return
 	}
-	mutex.Lock()
 	content := fmt.Sprintf("<div>%s</div><div>%s</div>", string(head), string(data))
 	html = app.RenderHTML("News", "Read the news", content)
 	app.Save("news.html", html)
-	mutex.Unlock()
 }
 
 func loadFeed() {
@@ -210,6 +253,11 @@ func getMetadata(uri string) (*Metadata, error) {
 			} else if len(g.Image) == 0 {
 				g.Image = node.Attr[1].Val
 			}
+
+			// relative url needs fixing
+			if len(g.Image) > 0 && g.Image[0] == '/' {
+				g.Image = fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, g.Image)
+			}
 		}
 	}
 
@@ -251,7 +299,7 @@ func getReminder() {
 	link := fmt.Sprintf("https://reminder.dev%s", data["links"].(map[string]interface{})["verse"].(string))
 
 	html := fmt.Sprintf(`<div class="verse">%s</div>`, data["verse"])
-	html += fmt.Sprintf(`<a href="%s"><button>Continue</button></a>`, link)
+	html += fmt.Sprintf(`<a href="%s"><button>More</button></a>`, link)
 
 	mutex.Lock()
 	app.Save("reminder.html", html)
@@ -394,7 +442,7 @@ func parseFeed() {
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover" src="%s">
 	    <div class="blurb">
-	      <span class="text">%s</span>
+	      <span class="title">%s</span>
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
@@ -406,7 +454,7 @@ func parseFeed() {
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover">
 	    <div class="blurb">
-	      <span class="text">%s</span>
+	      <span class="title">%s</span>
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
@@ -443,23 +491,38 @@ func parseFeed() {
 	headline := []byte(`<div class=section>`)
 
 	// get crypto prices
-	prices := getPrice(tickers...)
+	newPrices := getPrices()
 
-	if prices != nil {
-		btc := prices["BTC"]
-		eth := prices["ETH"]
-		bnb := prices["BNB"]
-		paxg := prices["PAXG"]
+	if newPrices != nil {
+		info := []byte(`<div id="tickers">`)
 
-		var info []byte
-		//info = append(info, []byte(`<div id="info"><b>Markets:</b>`)...)
-		info = append(info, []byte(`<div id="info">`)...)
-		info = append(info, []byte(`<span class="ticker">BTC $`+btc+`</span>`)...)
-		info = append(info, []byte(`<span class="ticker">ETH $`+eth+`</span>`)...)
-		info = append(info, []byte(`<span class="ticker">BNB $`+bnb+`</span>`)...)
-		info = append(info, []byte(`<span class="ticker">PAXG $`+paxg+`</span>`)...)
+		for _, ticker := range tickers {
+			price := newPrices[ticker]
+			fmt.Println("ticker", ticker, price)
+			line := fmt.Sprintf(`<span class="ticker">%s $%.2f</span>`, ticker, price)
+			info = append(info, []byte(line)...)
+		}
+
 		info = append(info, []byte(`</div>`)...)
 		marketsHtml = string(info)
+
+		info = []byte(`<div id="futures">`)
+
+		var futureKeys []string
+		for ftr, _ := range futures {
+			futureKeys = append(futureKeys, ftr)
+		}
+		sort.Strings(futureKeys)
+
+		for _, ftr := range futureKeys {
+			price := newPrices[ftr]
+			fmt.Println("future", ftr, price)
+			line := fmt.Sprintf(`<span class="ticker">%s $%.2f</span>`, ftr, price)
+			info = append(info, []byte(line)...)
+		}
+
+		info = append(info, []byte(`</div>`)...)
+		marketsHtml += string(info)
 	}
 
 	headline = append(headline, []byte(`<h1>Headlines</h1>`)...)
@@ -474,7 +537,7 @@ func parseFeed() {
 			<div class="headline">
 			<a href="#%s" class="category">%s</a>
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
-			   <span class="text">%s</span>
+			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
 			</div>`,
@@ -488,15 +551,14 @@ func parseFeed() {
 	// set the headline
 	data = append(headline, data...)
 
-	// save it
-	saveHtml(head, data)
-
 	mutex.Lock()
 
 	// set the feed
 	feed = news
 	// set the headlines
 	headlinesHtml = string(headline)
+	// save it
+	saveHtml(head, data)
 	// save the headlines
 	app.Save("headlines.html", headlinesHtml)
 	// save markets

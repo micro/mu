@@ -233,7 +233,7 @@ ul {
  vertical-align: top;
  max-width: 600px;
 }
-.text {
+.title {
   font-size: 1.2em;
   font-weight: bold;
   display: block;
@@ -260,6 +260,11 @@ ul {
     height: 0;
     clear: both;
     visibility: hidden;
+}
+#tickers, #futures {
+  display: inline-block;
+  width: 50%;
+  vertical-align: top;
 }
 @media only screen and (max-width: 600px) {
   #head {

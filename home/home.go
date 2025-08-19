@@ -12,7 +12,14 @@ import (
 
 var Template = `<div id="home">%s</div>`
 
+func Button(text, link string) string {
+	return fmt.Sprintf(`<br><a href="%s"><button>%s</button></a>`, link, text)
+}
+
 func Cards(news, markets, reminder, latest string) []string {
+	news += Button("More", "/news")
+	latest += Button("More", "/video")
+
 	cards := []string{
 		app.Card("news", "News", news),
 		app.Card("reminder", "Reminder", reminder),
