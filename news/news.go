@@ -143,6 +143,8 @@ var tickers = []string{"GBP", "BNB", "ETH", "BTC", "PAXG"}
 
 var futures = map[string]string{"OIL": "CL=F", "GOLD": "GC=F", "COFFEE": "KC=F", "OATS": "ZO=F", "WHEAT": "KE=F"}
 
+var futuresKeys = []string{"OIL", "OATS", "COFFEE", "WHEAT", "GOLD"}
+
 var replace = []func(string) string{
 	func(v string) string {
 		return strings.Replace(v, "© 2025 TechCrunch. All rights reserved. For personal use only.", "", -1)
@@ -499,7 +501,7 @@ func parseFeed() {
 		for _, ticker := range tickers {
 			price := newPrices[ticker]
 			fmt.Println("ticker", ticker, price)
-			line := fmt.Sprintf(`<span class="ticker">%s $%.2f</span>`, ticker, price)
+			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 			info = append(info, []byte(line)...)
 		}
 
@@ -508,16 +510,10 @@ func parseFeed() {
 
 		info = []byte(`<div id="futures">`)
 
-		var futureKeys []string
-		for ftr, _ := range futures {
-			futureKeys = append(futureKeys, ftr)
-		}
-		sort.Strings(futureKeys)
-
-		for _, ftr := range futureKeys {
-			price := newPrices[ftr]
-			fmt.Println("future", ftr, price)
-			line := fmt.Sprintf(`<span class="ticker">%s $%.2f</span>`, ftr, price)
+		for _, ticker := range futuresKeys {
+			price := newPrices[ticker]
+			fmt.Println("future", ticker, price)
+			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 			info = append(info, []byte(line)...)
 		}
 

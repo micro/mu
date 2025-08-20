@@ -24,6 +24,13 @@ code {
     background: whitesmoke;
     border-radius: 5px;
 }
+#nav img {
+  height: 20px;
+  width: auto;
+  display: inline-block;
+  margin-right: 5px;
+  vertical-align: bottom;
+}
 #container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px;}
 #content { max-width: 1280px; margin: 0 auto; text-align: left; }
 #desc { margin-bottom: 25px; }
@@ -207,11 +214,6 @@ ul {
   font-weight: bold;
   text-decoration: none;
 }
-.ticker {
-  display: block;
-  margin-right: 10px;
-  font-size: small;
-}
 .news {
   margin-bottom: 20px;
 }
@@ -253,6 +255,7 @@ ul {
 .verse {
   white-space: pre-wrap;
   margin-bottom: 20px;
+  font-size: 0.9em;
 }
 #home:after {
     content: ".";
@@ -262,9 +265,14 @@ ul {
     visibility: hidden;
 }
 #tickers, #futures {
-  display: inline-block;
   width: 50%;
   vertical-align: top;
+  display: inline-block;
+}
+.ticker {
+  font-size: small;
+  display: block;
+  margin-bottom: 10px;
 }
 @media only screen and (max-width: 600px) {
   #head {

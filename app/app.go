@@ -24,6 +24,10 @@ var Template = `
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
     <meta name="description" content="%s">
     <meta name="referrer" content="no-referrer"/>
+    <link rel="preload" href="/home.png" as="image">
+    <link rel="preload" href="/chat.png" as="image">
+    <link rel="preload" href="/news.png" as="image">
+    <link rel="preload" href="/video.png" as="image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
@@ -37,10 +41,10 @@ var Template = `
         <a href="/">Mu</a>
       </div>
       <div id="nav">
-        <a href="/home">Home</a>
-        <a href="/chat">Chat</a>
-        <a href="/news">News</a>
-        <a href="/video">Video</a>
+      <a href="/home"><img src="home.png" style="margin-bottom: 1px">Home</a>
+        <a href="/chat"><img src="chat.png">Chat</a>
+        <a href="/news"><img src="news.png">News</a>
+        <a href="/video"><img src="video.png">Video</a>
       </div>
     </div>
     <div id="container">
