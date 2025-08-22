@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
@@ -70,6 +71,21 @@ var CardTemplate = `
   %s
 </div>
 `
+
+func Head(app string, refs []string) string {
+	sort.Strings(refs)
+
+	var head string
+
+	// create head for channels
+	for _, ref := range refs {
+		head += fmt.Sprintf(`<a href="/%s#%s" class="head">%s</a>`, app, ref, ref)
+	}
+
+	head += `<hr>`
+
+	return head
+}
 
 func Card(id, title, content string) string {
 	return fmt.Sprintf(CardTemplate, id, id, title, content)

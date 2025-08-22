@@ -9,6 +9,10 @@ var URLS = [
 
 var CACHE_NAME = APP_PREFIX + VERSION
 
+let room = "";
+let context = [];
+let history = {};
+
 async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
@@ -54,17 +58,54 @@ self.addEventListener('activate', function (e) {
   )
 })
 
-function loadMessages(div) {
-	console.log("loading messages");
-	let context = JSON.parse(sessionStorage.getItem("context"));
-        if (context == null) {
+function loadContext() {
+	var ctx = history[room];
+	if (ctx == undefined || ctx == null || ctx == "undefined") {
+		context = [];
 		return
 	}
-	var d = document.getElementById(div);
+	context = ctx;
+}
 
-	d.innerHTML = '';
+function loadHistory() {
+	var ctx = sessionStorage.getItem("history");
+	console.log("Loading history", ctx)
+	if (ctx == undefined) {
+		console.log("History is undefined", ctx)
+		return
+	}
+	var val = JSON.parse(ctx);
+	if (val == null) {
+		console.log("Failed to parse history", val)
+		return
+	}
+	history = val;
+}
 
-	console.log(context)
+function loadRoom() {
+	// get the room
+	room = window.location.hash.replace("#", "");
+
+	if (room == "") {
+		room = "all";
+	}
+
+	console.log("Loading room", room)
+}
+
+function setHistory() {
+	sessionStorage.setItem("history", JSON.stringify(history));
+}
+
+function loadMessages() {
+	console.log("loading messages for:", room);
+
+	var d = document.getElementById("messages");
+
+	if (room != "all") {
+		d.innerHTML = '';
+	}
+
 	context.forEach(function(data) {
 	  console.log(data);
 	  d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
@@ -72,57 +113,6 @@ function loadMessages(div) {
 	})
 
 	d.scrollTop = d.scrollHeight;
-}
-
-function askQuestion(el) {
-	const formData = new FormData(el);
-	const data = {};
-
-	// Iterate over formData and populate the data object
-	for (let [key, value] of formData.entries()) {
-		data[key] = value;
-	}
-
-	console.log("sending", data);
-
-	var prompt = data["prompt"];
-
-	let context = JSON.parse(sessionStorage.getItem("context"));
-
-	if (context == null) {
-	    context = [];
-        }
- 
-        data["context"] = context;
-
-	fetch("/chat", {
-	  method: "POST",
-	  headers: {
-	      'Content-Type': 'application/json'
-	  },
-	  body: JSON.stringify(data)
-	}).then(response => response.json())
-	.then(result => {
-	    console.log('Success:', result);
-
-	    // save the context
-	    let context = JSON.parse(sessionStorage.getItem("context"));
-
-	    if (context == null) {
-	        context = [];
-	    }
- 
-            context.push({answer: result.answer, prompt: prompt});
-	    sessionStorage.setItem("context", JSON.stringify(context));
-
-	    window.location.href = "/chat";
-	})
-	.catch(error => {
-	    console.error('Error:', error);
-	    // Handle errors
-	});
-
-	return false;
 }
 
 function askLLM(el) {
@@ -143,13 +133,8 @@ function askLLM(el) {
 
 	var prompt = data["prompt"];
 
-	let context = JSON.parse(sessionStorage.getItem("context"));
-
-	if (context == null) {
-	    context = [];
-        }
- 
         data["context"] = context;
+	data["room"] = room;
 
 	fetch("/chat", {
 	  method: "POST",
@@ -165,14 +150,9 @@ function askLLM(el) {
 	    d.scrollTop = d.scrollHeight;
 
 	    // save the context
-	    let context = JSON.parse(sessionStorage.getItem("context"));
-
-	    if (context == null) {
-	        context = [];
-	    }
- 
             context.push({answer: result.answer, prompt: prompt});
-	    sessionStorage.setItem("context", JSON.stringify(context));
+	    history[room] = context;
+	    setHistory()
 	})
 	.catch(error => {
 	    console.error('Error:', error);
@@ -182,8 +162,11 @@ function askLLM(el) {
 	return false;
 }
 
-function chat() {
-        loadMessages("messages");
+function loadChat() {
+	loadRoom()
+	loadHistory()
+	loadContext()
+        loadMessages();
 
         // scroll to bottom of prompt
         const prompt = document.getElementById('prompt'); // Your input element
@@ -206,12 +189,12 @@ function chat() {
                     // Or: Make sure your input container stays at the bottom of the *visual* viewport.
                     // You'd typically make your chat messages div fill the available height
                     // and the input box positioned relative to the bottom of that.
-                    messages.style.height = viewportHeight - 200;
+                    messages.style.height = viewportHeight - 230;
 		    container.style.height = viewportHeight - 135;
                 } else {
                     // Keyboard closed, revert changes
                     // document.body.style.paddingBottom = '0';
-                    messages.style.height = viewportHeight - 200;
+                    messages.style.height = viewportHeight - 230;
 		    container.style.height = viewportHeight - 135;
                 }
 
@@ -275,11 +258,17 @@ function getVideos(el) {
 	});
 
 	return false;
-}
+};
 
-function home() {
-	return false;
-}
+self.addEventListener("hashchange", function(event) {
+	// load chat
+	if (window.location.pathname == "/chat") {
+		loadRoom()
+		loadHistory()
+		loadContext()
+		loadMessages();
+	}
+});
 
 self.addEventListener('DOMContentLoaded', function() {
 	// set nav
@@ -295,11 +284,6 @@ self.addEventListener('DOMContentLoaded', function() {
 
 	// load chat
 	if (window.location.pathname == "/chat") {
-		chat();
-	}
-
-	// load home
-	if (window.location.pathname == "/home") {
-		home();
+		loadChat();
 	}
 });

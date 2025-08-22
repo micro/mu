@@ -13,20 +13,21 @@ var systemPrompt = template.Must(template.New("system_prompt").Parse(`
 Answer the question in a concise manner. Use an unbiased and compassionate tone. Do not repeat text. Don't make anything up. If you are not sure about something, just say that you don't know.
 {{- /* Stop here if no context is provided. The rest below is for handling contexts. */ -}}
 {{- if . -}}
-Answer the question keeping the context of the discussion in mind. If the results within the context are not relevant to the question, say I don't know.
+Answer the question keeping the context of the discussion in mind. If the context is not relevant to the question, say I don't know.
 
-Anything between the following 'context' XML blocks can be used as part of the conversation with the user. The bullet points are ordered by time, so the first one is the oldest.
+Anything below can be used as part of the conversation with the user. The bullet points are ordered by time, so the first one is the oldest.
 
-<context>
+Context:
     {{- if . -}}
     {{- range $context := .}}
     - {{.}}{{end}}
     {{- end}}
-</context>
 {{- end -}}
 `))
 
+type LLM struct{}
+
 func askLLM(prompt *Prompt) (string, error) {
 	m := new(Model)
-	return m.Generate(nil, prompt)
+	return m.Generate(prompt)
 }

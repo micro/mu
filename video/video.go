@@ -37,8 +37,8 @@ var latestHtml string
 var videosHtml string
 
 type Channel struct {
-	Videos []*Result
-	Html   string
+	Videos []*Result `json:"videos"`
+	Html   string    `json:"html"`
 }
 
 type Result struct {
@@ -177,19 +177,20 @@ func loadVideos() {
 		chanNames = append(chanNames, channel)
 	}
 
+	// generate head
+	head = app.Head("video", chanNames)
+
 	// sort channel names
 	sort.Strings(chanNames)
 
 	// create head for channels
 	for _, channel := range chanNames {
-		head += fmt.Sprintf(`<a href="#%s" class="head">%s</a>`, channel, channel)
 		body += `<div class=section>`
 		body += `<hr id="` + channel + `" class="anchor">`
 		body += fmt.Sprintf(`<h1>%s</h1>`, channel)
 		body += vids[channel].Html
 		body += `</div>`
 	}
-	head += `<hr>`
 
 	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body))
 	b, _ := json.Marshal(videos)

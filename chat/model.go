@@ -12,13 +12,11 @@ import (
 
 var DefaultModel = "gpt-4o-mini"
 
-// Model implements the ModelHandler interface
 type Model struct{}
 
-// Generate calls the OpenAI or Gemini API with the selected model and prompt
-func (m *Model) Generate(rag []string, prompt *Prompt) (string, error) {
+func (m *Model) Generate(prompt *Prompt) (string, error) {
 	sb := &strings.Builder{}
-	if err := systemPrompt.Execute(sb, rag); err != nil {
+	if err := systemPrompt.Execute(sb, prompt.Rag); err != nil {
 		return "", err
 	}
 

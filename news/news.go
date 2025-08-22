@@ -59,13 +59,13 @@ type Feed struct {
 }
 
 type Post struct {
-	Title       string
-	Description string
-	URL         string
-	Published   string
-	Category    string
-	PostedAt    time.Time
-	Image       string
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	URL         string    `json:"url"`
+	Published   string    `json:"published"`
+	Category    string    `json:"category"`
+	PostedAt    time.Time `json:"posted_at"`
+	Image       string    `json:"image"`
 }
 
 type Metadata struct {
@@ -94,7 +94,6 @@ func getPrices() map[string]float64 {
 	}
 
 	rates := res["data"].(map[string]interface{})["rates"].(map[string]interface{})
-	fmt.Println("Got rates", rates)
 
 	prices := map[string]float64{}
 
@@ -349,6 +348,8 @@ func parseFeed() {
 	}
 	mutex.RUnlock()
 
+	head = []byte(app.Head("news", sorted))
+
 	sort.Strings(sorted)
 
 	// all the news
@@ -412,8 +413,6 @@ func parseFeed() {
 		// readd
 		status[name] = &stat
 		mutex.Unlock()
-
-		head = append(head, []byte(`<a href="#`+name+`" class="head">`+name+`</a>`)...)
 
 		data = append(data, []byte(`<div class=section>`)...)
 		data = append(data, []byte(`<hr id="`+name+`" class="anchor">`)...)
@@ -488,8 +487,6 @@ func parseFeed() {
 		data = append(data, []byte(`</div>`)...)
 	}
 
-	head = append(head, []byte(`<hr id="headlines" class="anchor">`)...)
-
 	headline := []byte(`<div class=section>`)
 
 	// get crypto prices
@@ -500,7 +497,6 @@ func parseFeed() {
 
 		for _, ticker := range tickers {
 			price := newPrices[ticker]
-			fmt.Println("ticker", ticker, price)
 			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 			info = append(info, []byte(line)...)
 		}
@@ -512,7 +508,6 @@ func parseFeed() {
 
 		for _, ticker := range futuresKeys {
 			price := newPrices[ticker]
-			fmt.Println("future", ticker, price)
 			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 			info = append(info, []byte(line)...)
 		}
@@ -531,7 +526,7 @@ func parseFeed() {
 	for _, h := range headlines {
 		val := fmt.Sprintf(`
 			<div class="headline">
-			<a href="#%s" class="category">%s</a>
+			<a href="/news#%s" class="category">%s</a>
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
 			   <span class="title">%s</span>
 			  </a>

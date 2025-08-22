@@ -163,17 +163,14 @@ ul {
 .card form {
   margin-bottom: 0;
 }
-.card .category {
-  display: none;
-}
 #messages {
         flex-grow: 1;
         border-radius: 5px;
 	border: 1px solid darkgrey;
-        height: calc(100vh - 200px);
+        height: calc(100vh - 230px);
         text-align: left;
         overflow-y: auto;
-	padding: 10px;
+	padding: 20px;
 }
 #messages p {
 	margin-top: 5px;
@@ -189,6 +186,13 @@ ul {
         width: calc(100% - 60px);
         padding: 10px;
         margin: 10px 0 10px 0;
+}
+#summary {
+  border-bottom: 1px solid darkgrey;
+  margin-bottom: 20px;
+}
+#summary p {
+  margin-bottom: 20px;
 }
 #query {
         width: calc(100% - 75px);
@@ -256,6 +260,8 @@ ul {
   white-space: pre-wrap;
   margin-bottom: 20px;
   font-size: 0.9em;
+  overflow-y: scroll;
+  max-height: 200px;
 }
 #home:after {
     content: ".";
@@ -303,7 +309,7 @@ ul {
     display: block;
   }
   #messages {
-    height: calc(100vh - 260px);
+    height: calc(100vh - 290px);
   }
   .card, #reminder, #video {
     float: none;

@@ -37,6 +37,9 @@ func main() {
 	apiDoc := app.Render([]byte(md))
 	apiHTML := app.RenderHTML("API", "API documentation", string(apiDoc))
 
+	// load the chat
+	chat.Load()
+
 	// load the news
 	news.Load()
 
