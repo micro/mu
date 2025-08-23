@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/micro/mu/app"
+	"github.com/micro/mu/data"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -109,14 +110,14 @@ func loadChannels() {
 // Load videos
 func Load() {
 	// load latest video
-	b, _ := app.Load("latest.html")
+	b, _ := data.Load("latest.html")
 	latestHtml = string(b)
 
 	// load saved videos
-	b, _ = app.Load("videos.html")
+	b, _ = data.Load("videos.html")
 	videosHtml = string(b)
 
-	b, _ = app.Load("videos.json")
+	b, _ = data.Load("videos.json")
 	json.Unmarshal(b, &videos)
 
 	// load channels
@@ -197,9 +198,9 @@ func loadVideos() {
 	vidJson := string(b)
 
 	mutex.Lock()
-	app.Save("videos.html", vidHtml)
-	app.Save("videos.json", vidJson)
-	app.Save("latest.html", latest[0].Html)
+	data.Save("videos.html", vidHtml)
+	data.Save("videos.json", vidJson)
+	data.Save("latest.html", latest[0].Html)
 	latestHtml = latest[0].Html
 	videos = vids
 	videosHtml = vidHtml

@@ -167,7 +167,7 @@ ul {
         flex-grow: 1;
         border-radius: 5px;
 	border: 1px solid darkgrey;
-        height: calc(100vh - 230px);
+        height: calc(100vh - 255px);
         text-align: left;
         overflow-y: auto;
 	padding: 20px;
@@ -309,7 +309,7 @@ ul {
     display: block;
   }
   #messages {
-    height: calc(100vh - 290px);
+    height: calc(100vh - 315px);
   }
   .card, #reminder, #video {
     float: none;

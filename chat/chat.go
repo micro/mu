@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/micro/mu/app"
+	"github.com/micro/mu/data"
 )
 
 //go:embed *.json
@@ -55,6 +56,7 @@ var summary string
 
 type Room struct {
 	Topic   string `json:"topic"`
+	Prompt  string `json:"prompt"`
 	Summary string `json:"summary"`
 }
 
@@ -91,7 +93,7 @@ func loadChats() {
 		resp, err := askLLM(&Prompt{
 			Rag:      []string{prompt},
 			Model:    "Fanar",
-			Question: "Provide a general summary or overview for the topic of discussion. The summary will be directly used so only provide the summary itself and nothing else. Keep it below 512 characters.",
+			Question: "Provide a brief summary for the topic based on your latest knowledge. The summary will be used as the description so only provide the summaryand nothing else. Keep it below 512 characters.",
 		})
 		if err != nil {
 			fmt.Println("Failed to generate prompt for topic:", topic, err)
@@ -99,6 +101,7 @@ func loadChats() {
 		}
 		newRooms[topic] = Room{
 			Topic:   topic,
+			Prompt:  prompt,
 			Summary: resp,
 		}
 
@@ -113,7 +116,7 @@ func loadChats() {
 	rooms = newRooms
 	summary = `<div id="summary">` + newSummary + `</div>`
 	b, _ := json.Marshal(rooms)
-	app.Save("rooms.json", string(b))
+	data.Save("rooms.json", string(b))
 	mutex.Unlock()
 
 	time.Sleep(time.Hour)

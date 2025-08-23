@@ -19,6 +19,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/micro/mu/app"
+	"github.com/micro/mu/data"
 	"github.com/mmcdole/gofeed"
 	"github.com/piquette/finance-go/future"
 )
@@ -160,13 +161,13 @@ var replace = []func(string) string{
 	},
 }
 
-func saveHtml(head, data []byte) {
-	if len(data) == 0 {
+func saveHtml(head, content []byte) {
+	if len(content) == 0 {
 		return
 	}
-	content := fmt.Sprintf("<div>%s</div><div>%s</div>", string(head), string(data))
-	html = app.RenderHTML("News", "Read the news", content)
-	app.Save("news.html", html)
+	body := fmt.Sprintf("<div>%s</div><div>%s</div>", string(head), string(content))
+	html = app.RenderHTML("News", "Read the news", body)
+	data.Save("news.html", html)
 }
 
 func loadFeed() {
@@ -286,9 +287,9 @@ func getReminder() {
 	b, _ := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 
-	var data map[string]interface{}
+	var val map[string]interface{}
 
-	err = json.Unmarshal(b, &data)
+	err = json.Unmarshal(b, &val)
 	if err != nil {
 		fmt.Println("Error getting reminder", err)
 		time.Sleep(time.Minute)
@@ -297,13 +298,13 @@ func getReminder() {
 		return
 	}
 
-	link := fmt.Sprintf("https://reminder.dev%s", data["links"].(map[string]interface{})["verse"].(string))
+	link := fmt.Sprintf("https://reminder.dev%s", val["links"].(map[string]interface{})["verse"].(string))
 
-	html := fmt.Sprintf(`<div class="verse">%s</div>`, data["verse"])
+	html := fmt.Sprintf(`<div class="verse">%s</div>`, val["verse"])
 	html += fmt.Sprintf(`<a href="%s"><button>More</button></a>`, link)
 
 	mutex.Lock()
-	app.Save("reminder.html", html)
+	data.Save("reminder.html", html)
 	reminderHtml = html
 	mutex.Unlock()
 
@@ -330,7 +331,7 @@ func parseFeed() {
 	fmt.Println("Parsing feed at", time.Now().String())
 	p := gofeed.NewParser()
 
-	data := []byte{}
+	content := []byte{}
 	head := []byte{}
 	urls := map[string]string{}
 	stats := map[string]Feed{}
@@ -414,9 +415,9 @@ func parseFeed() {
 		status[name] = &stat
 		mutex.Unlock()
 
-		data = append(data, []byte(`<div class=section>`)...)
-		data = append(data, []byte(`<hr id="`+name+`" class="anchor">`)...)
-		data = append(data, []byte(`<h1>`+name+`</h1>`)...)
+		content = append(content, []byte(`<div class=section>`)...)
+		content = append(content, []byte(`<hr id="`+name+`" class="anchor">`)...)
+		content = append(content, []byte(`<h1>`+name+`</h1>`)...)
 
 		for i, item := range f.Items {
 			// only 10 items
@@ -462,7 +463,7 @@ func parseFeed() {
 	</div>
 				`, item.Link, item.Title, item.Description)
 			}
-			data = append(data, []byte(val)...)
+			content = append(content, []byte(val)...)
 
 			post := &Post{
 				Title:       item.Title,
@@ -484,7 +485,7 @@ func parseFeed() {
 			headlines = append(headlines, post)
 		}
 
-		data = append(data, []byte(`</div>`)...)
+		content = append(content, []byte(`</div>`)...)
 	}
 
 	headline := []byte(`<div class=section>`)
@@ -540,7 +541,7 @@ func parseFeed() {
 	headline = append(headline, []byte(`</div>`)...)
 
 	// set the headline
-	data = append(headline, data...)
+	content = append(headline, content...)
 
 	mutex.Lock()
 
@@ -549,11 +550,11 @@ func parseFeed() {
 	// set the headlines
 	headlinesHtml = string(headline)
 	// save it
-	saveHtml(head, data)
+	saveHtml(head, content)
 	// save the headlines
-	app.Save("headlines.html", headlinesHtml)
+	data.Save("headlines.html", headlinesHtml)
 	// save markets
-	app.Save("markets.html", marketsHtml)
+	data.Save("markets.html", marketsHtml)
 
 	mutex.Unlock()
 
@@ -566,19 +567,19 @@ func parseFeed() {
 
 func Load() {
 	// load headlines
-	b, _ := app.Load("headlines.html")
+	b, _ := data.Load("headlines.html")
 	headlinesHtml = string(b)
 
 	// save markets
-	b, _ = app.Load("markets.html")
+	b, _ = data.Load("markets.html")
 	marketsHtml = string(b)
 
-	b, _ = app.Load("reminder.html")
+	b, _ = data.Load("reminder.html")
 
 	reminderHtml = string(b)
 
 	// load news
-	b, _ = app.Load("news.html")
+	b, _ = data.Load("news.html")
 	html = string(b)
 
 	// load the feeds
