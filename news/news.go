@@ -60,7 +60,7 @@ type Feed struct {
 }
 
 type Post struct {
-<<<<<<< HEAD
+	ID          string    `json:"id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	URL         string    `json:"url"`
@@ -68,16 +68,7 @@ type Post struct {
 	Category    string    `json:"category"`
 	PostedAt    time.Time `json:"posted_at"`
 	Image       string    `json:"image"`
-=======
-	Title       string
-	Description string
-	URL         string
-	Published   string
-	Category    string
-	PostedAt    time.Time
-	Image       string
-	Content string
->>>>>>> 271d5ec (post content)
+	Content     string    `json:"content"`
 }
 
 type Metadata struct {
@@ -479,6 +470,7 @@ func parseFeed() {
 			content = append(content, []byte(val)...)
 
 			post := &Post{
+				ID:          item.GUID,
 				Title:       item.Title,
 				Description: item.Description,
 				URL:         item.Link,
@@ -486,7 +478,7 @@ func parseFeed() {
 				PostedAt:    *item.PublishedParsed,
 				Category:    name,
 				Image:       md.Image,
-				Content: item.Content,
+				Content:     item.Content,
 			}
 
 			news = append(news, post)
@@ -547,9 +539,9 @@ func parseFeed() {
 			  </a>
 			 <span class="description">%s</span>
 			</div>`,
-			h.GUID, h.Category, h.Category, h.URL, h.Title, h.Description, h.Content)
+			h.ID, h.Category, h.Category, h.URL, h.Title, h.Description, h.Content)
 		if len(h.Content) > 0 {
-			val += fmt.Sprintf(`<a href="/news#%s">More</a>`, h.GUID)
+			val += fmt.Sprintf(`<a href="/news#%s">More</a>`, h.ID)
 		}
 		headline = append(headline, []byte(val)...)
 	}
