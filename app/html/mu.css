@@ -224,6 +224,9 @@ ul {
 .news a {
   text-decoration: none;
 }
+.post-content {
+  display: block;
+}
 .cover {
   width: 200px;
   height: auto;

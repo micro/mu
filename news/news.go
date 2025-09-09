@@ -60,6 +60,7 @@ type Feed struct {
 }
 
 type Post struct {
+<<<<<<< HEAD
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	URL         string    `json:"url"`
@@ -67,6 +68,16 @@ type Post struct {
 	Category    string    `json:"category"`
 	PostedAt    time.Time `json:"posted_at"`
 	Image       string    `json:"image"`
+=======
+	Title       string
+	Description string
+	URL         string
+	Published   string
+	Category    string
+	PostedAt    time.Time
+	Image       string
+	Content string
+>>>>>>> 271d5ec (post content)
 }
 
 type Metadata struct {
@@ -440,28 +451,30 @@ func parseFeed() {
 
 			if len(md.Image) > 0 {
 				val = fmt.Sprintf(`
-	<div class="news">
+	<div id="%s" class="news">
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover" src="%s">
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
+	      <span class="post-content">%s</span>
 	    </div>
 	  </a>
 	</div>
-				`, item.Link, md.Image, item.Title, item.Description)
+				`, item.GUID, item.Link, md.Image, item.Title, item.Description, item.Content)
 			} else {
 				val = fmt.Sprintf(`
-	<div class="news">
+	<div id="%s" class="news">
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover">
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
+	      <span class="post-content">%s</span>
 	    </div>
 	  </a>
 	</div>
-				`, item.Link, item.Title, item.Description)
+				`, item.GUID, item.Link, item.Title, item.Description, item.Content)
 			}
 			content = append(content, []byte(val)...)
 
@@ -473,6 +486,7 @@ func parseFeed() {
 				PostedAt:    *item.PublishedParsed,
 				Category:    name,
 				Image:       md.Image,
+				Content: item.Content,
 			}
 
 			news = append(news, post)
@@ -526,14 +540,17 @@ func parseFeed() {
 
 	for _, h := range headlines {
 		val := fmt.Sprintf(`
-			<div class="headline">
+			<div id="%s" class="headline">
 			<a href="/news#%s" class="category">%s</a>
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
 			</div>`,
-			h.Category, h.Category, h.URL, h.Title, h.Description)
+			h.GUID, h.Category, h.Category, h.URL, h.Title, h.Description, h.Content)
+		if len(h.Content) > 0 {
+			val += fmt.Sprintf(`<a href="/news#%s">More</a>`, h.GUID)
+		}
 		headline = append(headline, []byte(val)...)
 	}
 
