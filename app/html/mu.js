@@ -189,12 +189,12 @@ function loadChat() {
                     // Or: Make sure your input container stays at the bottom of the *visual* viewport.
                     // You'd typically make your chat messages div fill the available height
                     // and the input box positioned relative to the bottom of that.
-                    messages.style.height = viewportHeight - 255;
+                    messages.style.height = viewportHeight - 225;
 		    container.style.height = viewportHeight - 135;
                 } else {
                     // Keyboard closed, revert changes
                     // document.body.style.paddingBottom = '0';
-                    messages.style.height = viewportHeight - 255;
+                    messages.style.height = viewportHeight - 225;
 		    container.style.height = viewportHeight - 135;
                 }
 
