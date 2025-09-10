@@ -50,19 +50,26 @@ code {
    display: inline-block;
    margin-bottom: 10px;
 }
-.block, button, .link {
+.block, button {
     text-decoration: none;
     border: 1px solid grey;
     border-radius: 5px;
     padding: 10px;
 }
-.block:hover, button:hover, .link:hover {
+.block:hover, button:hover {
    cursor: pointer;
    background: whitesmoke;
 }
 .link {
-  display: inline-block;
+  display: block;
+  font-weight: bold;
+  text-decoration: none;
+  margin-top: 10px;
 }
+.link:hover {
+  text-decoration: underline;
+}
+
 button {
   background: white;
 }
@@ -225,6 +232,28 @@ ul {
   text-decoration: none;
 }
 .post-content {
+  display: none;
+  border: 1px solid darkgrey;
+  border-radius: 5px;
+  padding: 15px;
+  max-width: 800px;
+  overflow: auto;
+  margin-bottom: 20px;
+  margin-top: 20px;
+}
+.post-content img {
+  max-width: inherit;
+}
+.post-show {
+  cursor: pointer;
+  display: block;
+  width: 180px;
+  border: 1px solid darkgrey;
+  border-radius: 5px;
+  text-align: center;
+  padding: 10px;
+}
+.post-show:focus + .post-content {
   display: block;
 }
 .cover {
@@ -313,6 +342,9 @@ ul {
   }
   #messages {
     height: calc(100vh - 285px);
+  }
+  .post-show {
+    margin-top: 10px;
   }
   .card, #reminder, #video {
     float: none;

@@ -303,7 +303,7 @@ func getReminder() {
 	link := fmt.Sprintf("https://reminder.dev%s", val["links"].(map[string]interface{})["verse"].(string))
 
 	html := fmt.Sprintf(`<div class="verse">%s</div>`, val["verse"])
-	html += fmt.Sprintf(`<a href="%s"><button>More</button></a>`, link)
+	html += app.Link("Read More", link)
 
 	mutex.Lock()
 	data.Save("reminder.html", html)
@@ -448,11 +448,9 @@ func parseFeed() {
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
-	      <span class="post-content">%s</span>
 	    </div>
 	  </a>
-	</div>
-				`, item.GUID, item.Link, md.Image, item.Title, item.Description, item.Content)
+				`, item.GUID, item.Link, md.Image, item.Title, item.Description)
 			} else {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
@@ -461,12 +459,18 @@ func parseFeed() {
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
-	      <span class="post-content">%s</span>
 	    </div>
 	  </a>
-	</div>
-				`, item.GUID, item.Link, item.Title, item.Description, item.Content)
+				`, item.GUID, item.Link, item.Title, item.Description)
 			}
+			if len(item.Content) > 0 {
+				val += `<a class="post-show" tabindex="1">Read Article</a>`
+				val += fmt.Sprintf(`<span class="post-content">%s</span>`, item.Content)
+			}
+
+			// close div
+			val += `</div>`
+
 			content = append(content, []byte(val)...)
 
 			post := &Post{
@@ -532,17 +536,22 @@ func parseFeed() {
 
 	for _, h := range headlines {
 		val := fmt.Sprintf(`
-			<div id="%s" class="headline">
+			<div class="headline">
 			<a href="/news#%s" class="category">%s</a>
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
-			</div>`,
-			h.ID, h.Category, h.Category, h.URL, h.Title, h.Description, h.Content)
+			`, h.Category, h.Category, h.URL, h.Title, h.Description)
+
+		// add content
 		if len(h.Content) > 0 {
-			val += fmt.Sprintf(`<a href="/news#%s">More</a>`, h.ID)
+			val += app.Link("Read Article", "/news#"+h.ID)
 		}
+
+		// close val
+
+		val += `</div>`
 		headline = append(headline, []byte(val)...)
 	}
 

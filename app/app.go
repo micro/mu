@@ -70,6 +70,10 @@ var CardTemplate = `
 </div>
 `
 
+func Link(name, ref string) string {
+	return fmt.Sprintf(`<a href="%s" class="link">%s</a>`, ref, name)
+}
+
 func Head(app string, refs []string) string {
 	sort.Strings(refs)
 
