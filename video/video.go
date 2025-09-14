@@ -140,7 +140,6 @@ func loadVideos() {
 	var head string
 	var body string
 	var chanNames []string
-	body += `<h1>Latest</h1>`
 
 	var latest []*Result
 

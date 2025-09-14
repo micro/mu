@@ -126,8 +126,16 @@ function askLLM(el) {
 		data[key] = value;
 	}
 
+	var p = document.getElementBy.Id("prompt");
+
+	if (p.value == "") {
+		return false
+	}
+
+	// reset prompt
+	p.value = '';
+
 	console.log("sending", data);
-	document.getElementById("prompt").value = '';
 	d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
 	d.scrollTop = d.scrollHeight;
 

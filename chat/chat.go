@@ -87,7 +87,7 @@ func loadChats() {
 	fmt.Println("Loading rooms", time.Now().String())
 
 	newRooms := map[string]Room{}
-	newSummary := "<h1>Rooms</h1>"
+	newSummary := ""
 
 	for topic, prompt := range prompts {
 		resp, err := askLLM(&Prompt{

@@ -16,7 +16,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
+	nethtml "golang.org/x/net/html"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/micro/mu/app"
 	"github.com/micro/mu/data"
@@ -79,6 +81,7 @@ type Metadata struct {
 	Image       string
 	Url         string
 	Site        string
+	Content string
 }
 
 func getPrices() map[string]float64 {
@@ -265,6 +268,34 @@ func getMetadata(uri string) (*Metadata, error) {
 		}
 	}
 
+	// attempt to get the content
+	var fn func(*nethtml.Node)
+
+	fn = func(node *nethtml.Node) {
+		if node.Type == nethtml.TextNode {
+			first := node.Data[0]
+			last := node.Data[len(node.Data)-1]
+
+			if unicode.IsUpper(rune(first)) && last == '.' {
+				g.Content += fmt.Sprintf(`<p>%s</p>`, node.Data)
+			} else if first == '"' && last == '"' {
+				g.Content += fmt.Sprintf(`<p>%s</p>`, node.Data)
+			} else {
+				g.Content += fmt.Sprintf(` %s`, node.Data)
+			}
+		}
+		if node.FirstChild != nil {
+			for c := node.FirstChild; c != nil; c = c.NextSibling {
+				fn(c)
+			}
+		}
+	}
+
+	if strings.Contains(u.String(), "cnbc.com") {
+		for _, node := range d.Find(".ArticleBody-articleBody").Nodes {
+			fn(node)
+		}
+	}
 	//if len(g.Type) == 0 || len(g.Image) == 0 || len(g.Title) == 0 || len(g.Url) == 0 {
 	//	fmt.Println("Not returning", u.String())
 	//	return nil
@@ -438,6 +469,11 @@ func parseFeed() {
 				continue
 			}
 
+			// extracted content using goquery
+			if len(md.Content) > 0 && len(item.Content) == 0 {
+				item.Content = md.Content
+			}
+
 			var val string
 
 			if len(md.Image) > 0 {
@@ -527,8 +563,6 @@ func parseFeed() {
 		marketsHtml += string(info)
 	}
 
-	headline = append(headline, []byte(`<h1>Headlines</h1>`)...)
-
 	// create the headlines
 	sort.Slice(headlines, func(i, j int) bool {
 		return headlines[i].PostedAt.After(headlines[j].PostedAt)
@@ -555,7 +589,6 @@ func parseFeed() {
 		headline = append(headline, []byte(val)...)
 	}
 
-	headline = append(headline, []byte(fmt.Sprintf("Updated %s", time.Now().Format(time.RFC850)))...)
 	headline = append(headline, []byte(`</div>`)...)
 
 	// set the headline

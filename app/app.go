@@ -84,7 +84,7 @@ func Head(app string, refs []string) string {
 		head += fmt.Sprintf(`<a href="/%s#%s" class="head">%s</a>`, app, ref, ref)
 	}
 
-	head += `<hr>`
+	head += `<hr><br>`
 
 	return head
 }
