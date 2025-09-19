@@ -1,6 +1,6 @@
 # mu
 
-Building blocks for life
+One app for AI chat, news and video
 
 # Overview
 
