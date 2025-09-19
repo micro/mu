@@ -13,8 +13,8 @@ import (
 var Template = `<div id="home">%s</div>`
 
 func Cards(news, markets, reminder, latest string) []string {
-	news += app.Link("Read More", "/news")
-	latest += app.Link("Watch More", "/video")
+	news += app.Link("More", "/news")
+	latest += app.Link("More", "/video")
 
 	cards := []string{
 		app.Card("news", "News", news),

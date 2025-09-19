@@ -126,7 +126,7 @@ function askLLM(el) {
 		data[key] = value;
 	}
 
-	var p = document.getElementBy.Id("prompt");
+	var p = document.getElementById("prompt");
 
 	if (p.value == "") {
 		return false

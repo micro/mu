@@ -33,7 +33,7 @@ type Message struct {
 }
 
 var Template = `
-<div>%s</div>
+<div id="topics">%s</div>
 <div id="messages">%s</div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">

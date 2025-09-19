@@ -69,7 +69,7 @@ var Results = `
   <input name="query" id="query" value="%s">
   <button>Search</button>
 </form>
-<div>%s</div>
+<div id="topics">%s</div>
 <h1>Results</h1>
 <div id="results">
 %s
@@ -92,7 +92,7 @@ var Template = `
   <input name="query" id="query" placeholder=Search autocomplete=off autofocus>
   <button>Search</button>
 </form>
-<div>%s</div>
+<div id="topics">%s</div>
 <div>%s</div>
 `
 
@@ -210,7 +210,7 @@ func loadVideos() {
 }
 
 func embedVideo(id string) string {
-	u := "https://www.youtube.com/embed/" + id
+	u := "https://www.youtube.com/embed/" + id + "?autoplay=1&mute=0"
 	style := `style="position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none;"`
 	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
 }
@@ -269,7 +269,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			desc = `<span class="highlight">channel</span>`
 		}
 
-		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>Published %s</small>`, kind, timeAgo(t))
+		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>%s</small>`, kind, app.TimeAgo(t))
 
 		res := &Result{
 			ID:        id,
@@ -323,7 +323,7 @@ func getResults(query, channel string) (string, []*Result, error) {
 		var id, url, desc string
 		kind := strings.Split(item.Id.Kind, "#")[1]
 		t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
-		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>Published %s</small>`, kind, timeAgo(t))
+		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>Published %s</small>`, kind, app.TimeAgo(t))
 
 		switch kind {
 		case "video":

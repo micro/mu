@@ -48,7 +48,7 @@ code {
    height: 30px;
    line-height: 30px;
    display: inline-block;
-   margin-bottom: 10px;
+   margin: 10px;
 }
 .block, button {
     text-decoration: none;
@@ -295,12 +295,25 @@ ul {
   overflow-y: scroll;
   max-height: 200px;
 }
+.video {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+}
 #home:after {
     content: ".";
     display: block;
     height: 0;
     clear: both;
     visibility: hidden;
+}
+.text {
+  display: block;
+  font-size: 0.8em;
+  margin-top: 10px;
+}
+.blurb .text {
+  font-size: 0.9em;
 }
 #tickers, #futures {
   width: 50%;

@@ -18,12 +18,12 @@ import (
 	"time"
 	"unicode"
 
-	nethtml "golang.org/x/net/html"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/micro/mu/app"
 	"github.com/micro/mu/data"
 	"github.com/mmcdole/gofeed"
 	"github.com/piquette/finance-go/future"
+	nethtml "golang.org/x/net/html"
 )
 
 //go:embed feeds.json
@@ -81,7 +81,38 @@ type Metadata struct {
 	Image       string
 	Url         string
 	Site        string
-	Content string
+	Content     string
+}
+
+func getDomain(v string) string {
+	var host string
+
+	u, err := url.Parse(v)
+	if err == nil {
+		host = u.Hostname()
+	} else {
+		parts := strings.Split(v, "/")
+		if len(parts) < 3 {
+			return v
+		}
+		host = strings.TrimSpace(parts[2])
+	}
+
+	if strings.Contains(host, "github.io") {
+		return host
+	}
+
+	parts := strings.Split(host, ".")
+	if len(parts) == 2 {
+		return host
+	} else if len(parts) == 3 {
+		return strings.Join(parts[1:3], ".")
+	}
+	return host
+}
+
+func getSummary(post *Post) string {
+	return fmt.Sprintf(`Source: <i>%s</i> | %s`, getDomain(post.URL), app.TimeAgo(post.PostedAt))
 }
 
 func getPrices() map[string]float64 {
@@ -170,7 +201,7 @@ func saveHtml(head, content []byte) {
 	if len(content) == 0 {
 		return
 	}
-	body := fmt.Sprintf("<div>%s</div><div>%s</div>", string(head), string(content))
+	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
 	html = app.RenderHTML("News", "Read the news", body)
 	data.Save("news.html", html)
 }
@@ -334,7 +365,7 @@ func getReminder() {
 	link := fmt.Sprintf("https://reminder.dev%s", val["links"].(map[string]interface{})["verse"].(string))
 
 	html := fmt.Sprintf(`<div class="verse">%s</div>`, val["verse"])
-	html += app.Link("Read More", link)
+	html += app.Link("More", link)
 
 	mutex.Lock()
 	data.Save("reminder.html", html)
@@ -474,41 +505,7 @@ func parseFeed() {
 				item.Content = md.Content
 			}
 
-			var val string
-
-			if len(md.Image) > 0 {
-				val = fmt.Sprintf(`
-	<div id="%s" class="news">
-	  <a href="%s" rel="noopener noreferrer" target="_blank">
-	    <img class="cover" src="%s">
-	    <div class="blurb">
-	      <span class="title">%s</span>
-	      <span class="description">%s</span>
-	    </div>
-	  </a>
-				`, item.GUID, item.Link, md.Image, item.Title, item.Description)
-			} else {
-				val = fmt.Sprintf(`
-	<div id="%s" class="news">
-	  <a href="%s" rel="noopener noreferrer" target="_blank">
-	    <img class="cover">
-	    <div class="blurb">
-	      <span class="title">%s</span>
-	      <span class="description">%s</span>
-	    </div>
-	  </a>
-				`, item.GUID, item.Link, item.Title, item.Description)
-			}
-			if len(item.Content) > 0 {
-				val += `<a class="post-show" tabindex="1">Read Article</a>`
-				val += fmt.Sprintf(`<span class="post-content">%s</span>`, item.Content)
-			}
-
-			// close div
-			val += `</div>`
-
-			content = append(content, []byte(val)...)
-
+			// create post
 			post := &Post{
 				ID:          item.GUID,
 				Title:       item.Title,
@@ -522,6 +519,43 @@ func parseFeed() {
 			}
 
 			news = append(news, post)
+
+			var val string
+
+			if len(md.Image) > 0 {
+				val = fmt.Sprintf(`
+	<div id="%s" class="news">
+	  <a href="%s" rel="noopener noreferrer" target="_blank">
+	    <img class="cover" src="%s">
+	    <div class="blurb">
+	      <span class="title">%s</span>
+	      <span class="description">%s</span>
+	      <span class="text">%s</span>
+	    </div>
+	  </a>
+				`, item.GUID, item.Link, md.Image, item.Title, item.Description, getSummary(post))
+			} else {
+				val = fmt.Sprintf(`
+	<div id="%s" class="news">
+	  <a href="%s" rel="noopener noreferrer" target="_blank">
+	    <img class="cover">
+	    <div class="blurb">
+	      <span class="title">%s</span>
+	      <span class="description">%s</span>
+	      <span class="text">%s</span>
+	    </div>
+	  </a>
+				`, item.GUID, item.Link, item.Title, item.Description, getSummary(post))
+			}
+			if len(item.Content) > 0 {
+				val += `<a class="post-show" tabindex="1">Read Article</a>`
+				val += fmt.Sprintf(`<span class="post-content">%s</span>`, item.Content)
+			}
+
+			// close div
+			val += `</div>`
+
+			content = append(content, []byte(val)...)
 
 			if i > 0 {
 				continue
@@ -576,7 +610,8 @@ func parseFeed() {
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
-			`, h.Category, h.Category, h.URL, h.Title, h.Description)
+	      		 <span class="text">%s</span>
+			`, h.Category, h.Category, h.URL, h.Title, h.Description, getSummary(h))
 
 		// add content
 		if len(h.Content) > 0 {
