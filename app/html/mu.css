@@ -288,6 +288,9 @@ ul {
   font-size: 1em;
   font-weight: normal;
 }
+.description iframe {
+  display: none;
+}
 .verse {
   white-space: pre-wrap;
   margin-bottom: 20px;

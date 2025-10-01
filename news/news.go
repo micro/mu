@@ -22,9 +22,9 @@ import (
 	"github.com/micro/mu/app"
 	"github.com/micro/mu/data"
 	"github.com/mmcdole/gofeed"
+	"github.com/mrz1836/go-sanitize"
 	"github.com/piquette/finance-go/future"
 	nethtml "golang.org/x/net/html"
-	"github.com/mrz1836/go-sanitize"
 )
 
 //go:embed feeds.json
@@ -500,15 +500,24 @@ func parseFeed() {
 				item.Description = fn(item.Description)
 			}
 
-			if strings.HasPrefix(item.Link, "https://www.themwl.org/ar/") {
-				item.Link = strings.Replace(item.Link, "www.themwl.org/ar/", "www.themwl.org/en/", -1)
+			link := item.Link
+
+			fmt.Println("Checking link", link)
+
+			if strings.HasPrefix(link, "https://themwl.org/ar/") {
+				link = strings.Replace(link, "themwl.org/ar/", "themwl.org/en/", 1)
+				fmt.Println("Replacing mwl ar link", item.Link, link)
 			}
 
 			// get meta
-			md, err := getMetadata(item.Link)
+			md, err := getMetadata(link)
 			if err != nil {
-				fmt.Println("Error parsing", item.Link, err)
+				fmt.Println("Error parsing", link, err)
 				continue
+			}
+
+			if strings.Contains(link, "themwl.org") {
+				item.Title = md.Title
 			}
 
 			// extracted content using goquery
@@ -521,7 +530,7 @@ func parseFeed() {
 				ID:          item.GUID,
 				Title:       item.Title,
 				Description: item.Description,
-				URL:         item.Link,
+				URL:         link,
 				Published:   item.Published,
 				PostedAt:    *item.PublishedParsed,
 				Category:    name,
@@ -544,7 +553,7 @@ func parseFeed() {
 	      <span class="text">%s</span>
 	    </div>
 	  </a>
-				`, item.GUID, item.Link, md.Image, item.Title, item.Description, getSummary(post))
+				`, item.GUID, link, md.Image, item.Title, item.Description, getSummary(post))
 			} else {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
@@ -556,7 +565,7 @@ func parseFeed() {
 	      <span class="text">%s</span>
 	    </div>
 	  </a>
-				`, item.GUID, item.Link, item.Title, item.Description, getSummary(post))
+				`, item.GUID, link, item.Title, item.Description, getSummary(post))
 			}
 			if len(item.Content) > 0 {
 				val += `<a class="post-show" tabindex="1">Read Article</a>`

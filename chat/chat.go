@@ -93,7 +93,7 @@ func loadChats() {
 		resp, err := askLLM(&Prompt{
 			Rag:      []string{prompt},
 			Model:    "Fanar",
-			Question: "Provide a brief summary for the topic based on your latest knowledge. The summary will be used as the description so only provide the summaryand nothing else. Keep it below 512 characters.",
+			Question: "Provide a brief 10 point summary for the topic based on your current knowledge. Only provide the summary, nothing else. Keep it below 512 characters.",
 		})
 		if err != nil {
 			fmt.Println("Failed to generate prompt for topic:", topic, err)
