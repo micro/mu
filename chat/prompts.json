@@ -1,9 +1,9 @@
 {
   "Crypto": "Focus on cryptocurrency, blockchain technology, and the decentralized web, including Bitcoin, NFTs, and Web3.",
-  "Dev": "Focus on software development, engineering, and startups, covering programming, coding, and tech industry news.",
   "Finance": "Focus on financial markets, investing, and commodities analysis, including stocks, bonds, and macroeconomic trends.",
   "Politics": "Focus on current political affairs, government, and policy debates, both domestic and international.",
   "Tech": "Focus on consumer technology, hardware, apps, and digital trends.",
   "UK": "Focus on all topics related to the United Kingdom, including news, history, culture, and geography.",
-  "World": "Focus on global news, international events, and cross-cultural commentary."
+  "World": "Focus on global news, international events, and cross-cultural commentary.",
+  "Religion": "Focus on Islam and the Muslim world, events that are relevant to the Middle East and elsewhere."
 }

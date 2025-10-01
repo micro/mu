@@ -1,9 +1,9 @@
 {
   "Crypto": "CoinDesk",
-  "Dev": "ycombinator",
   "UK": "BBCNews",
   "World": "aljazeeraenglish",
   "Finance": "CNBCtelevision",
   "Tech": "TechCrunch",
-  "Politics": "guardiannews"
+  "Politics": "guardiannews",
+  "Religion": "mwlorg"
 }

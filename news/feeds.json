@@ -1,9 +1,9 @@
 {
   "Crypto": "https://www.coindesk.com/arc/outboundfeeds/rss",
-  "Dev": "https://news.ycombinator.com/rss",
   "UK": "https://feeds.bbci.co.uk/news/rss.xml",
   "World": "https://www.aljazeera.com/xml/rss/all.xml",
   "Finance": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
   "Tech": "https://techcrunch.com/feed/",
-  "Politics": "https://www.theguardian.com/politics/rss"
+  "Politics": "https://www.theguardian.com/politics/rss",
+  "Religion": "https://www.themwl.org/en/rss.xml"
 }
