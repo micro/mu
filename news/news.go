@@ -24,6 +24,7 @@ import (
 	"github.com/mmcdole/gofeed"
 	"github.com/piquette/finance-go/future"
 	nethtml "golang.org/x/net/html"
+	"github.com/mrz1836/go-sanitize"
 )
 
 //go:embed feeds.json
@@ -195,6 +196,9 @@ var replace = []func(string) string{
 		}
 		return v
 	},
+	func(v string) string {
+		return sanitize.HTML(v)
+	},
 }
 
 func saveHtml(head, content []byte) {
@@ -307,14 +311,17 @@ func getMetadata(uri string) (*Metadata, error) {
 			first := node.Data[0]
 			last := node.Data[len(node.Data)-1]
 
+			data := sanitize.HTML(node.Data)
+
 			if unicode.IsUpper(rune(first)) && last == '.' {
-				g.Content += fmt.Sprintf(`<p>%s</p>`, node.Data)
+				g.Content += fmt.Sprintf(`<p>%s</p>`, data)
 			} else if first == '"' && last == '"' {
-				g.Content += fmt.Sprintf(`<p>%s</p>`, node.Data)
+				g.Content += fmt.Sprintf(`<p>%s</p>`, data)
 			} else {
-				g.Content += fmt.Sprintf(` %s`, node.Data)
+				g.Content += fmt.Sprintf(` %s`, data)
 			}
 		}
+
 		if node.FirstChild != nil {
 			for c := node.FirstChild; c != nil; c = c.NextSibling {
 				fn(c)
@@ -491,6 +498,10 @@ func parseFeed() {
 
 			for _, fn := range replace {
 				item.Description = fn(item.Description)
+			}
+
+			if strings.HasPrefix(item.Link, "https://www.themwl.org/ar/") {
+				item.Link = strings.Replace(item.Link, "www.themwl.org/ar/", "www.themwl.org/en/", -1)
 			}
 
 			// get meta
