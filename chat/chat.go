@@ -37,7 +37,6 @@ var Template = `
 <div id="messages">%s</div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
-<input id="room" name="room" type="hidden">
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autofocus autocomplete=off>
 <button>Send</button>
 </form>`
@@ -78,7 +77,7 @@ func Load() {
 
 	sort.Strings(topics)
 
-	head = app.Head("chat", topics)
+	//head = app.Head("chat", topics)
 
 	go loadChats()
 }
@@ -90,11 +89,28 @@ func loadChats() {
 	newSummary := ""
 
 	for topic, prompt := range prompts {
+		// get the index
+		res, err := data.Search(prompt, 10, nil)
+		if err != nil {
+			fmt.Println("Failed to get index for prompt", prompt, err)
+			continue
+		}
+
+		var rag []string
+
+		for _, val := range res {
+			b, _ := json.Marshal(val)
+			rag = append(rag, string(b))
+		}
+
+		q := fmt.Sprintf("Provide a 10 point summary for the topic of %s based on your current knowledge. Only provide the summary, nothing else. Keep it below 512 characters.", topic)
+
 		resp, err := askLLM(&Prompt{
-			Rag:      []string{prompt},
+			Rag:      rag,
 			Model:    "Fanar",
-			Question: "Provide a brief 10 point summary for the topic based on your current knowledge. Only provide the summary, nothing else. Keep it below 512 characters.",
+			Question: q,
 		})
+
 		if err != nil {
 			fmt.Println("Failed to generate prompt for topic:", topic, err)
 			continue
@@ -109,12 +125,12 @@ func loadChats() {
 
 	for _, topic := range topics {
 		desc := newRooms[topic].Summary
-		newSummary += fmt.Sprintf(`<div><p><a href="#%s" class="title">%s</a><span class="description">%s</span></p></div>`, topic, topic, desc)
+		newSummary += fmt.Sprintf(`<hr id="%s" class="anchor"><h2>%s</h2><p><span class="description">%s</span></p>`, topic, topic, desc)
 	}
 
 	mutex.Lock()
 	rooms = newRooms
-	summary = `<div id="summary">` + newSummary + `</div>`
+	summary = `<div id="summary"><h1>Brief</h1>` + newSummary + `</div>`
 	b, _ := json.Marshal(rooms)
 	data.Save("rooms.json", string(b))
 	mutex.Unlock()
@@ -126,18 +142,6 @@ func loadChats() {
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		if ct := r.Header.Get("Content-Type"); ct == "application/json" {
-			mutex.RLock()
-			defer mutex.RUnlock()
-
-			data := map[string]interface{}{
-				"rooms": rooms,
-			}
-			b, _ := json.Marshal(data)
-			w.Write(b)
-			return
-		}
-
 		mutex.RLock()
 		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, head, summary))
 		mutex.RUnlock()
@@ -147,7 +151,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
-		data := make(map[string]interface{})
+		form := make(map[string]interface{})
 
 		if ct := r.Header.Get("Content-Type"); ct == "application/json" {
 			b, _ := ioutil.ReadAll(r.Body)
@@ -155,9 +159,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			json.Unmarshal(b, &data)
+			json.Unmarshal(b, &form)
 
-			if data["prompt"] == nil {
+			if form["prompt"] == nil {
 				return
 			}
 		} else {
@@ -167,21 +171,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// get the message
 			ctx := r.Form.Get("context")
 			msg := r.Form.Get("prompt")
-			room := r.Form.Get("room")
 
 			if len(msg) == 0 {
 				return
 			}
 			var ictx interface{}
 			json.Unmarshal([]byte(ctx), &ictx)
-			data["context"] = ictx
-			data["prompt"] = msg
-			data["room"] = room
+			form["context"] = ictx
+			form["prompt"] = msg
 		}
 
 		var context History
 
-		if vals := data["context"]; vals != nil {
+		if vals := form["context"]; vals != nil {
 			cvals := vals.([]interface{})
 			for _, val := range cvals {
 				msg := val.(map[string]interface{})
@@ -191,17 +193,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		q := fmt.Sprintf("%v", data["prompt"])
+		q := fmt.Sprintf("%v", form["prompt"])
+
+		res, err := data.Search(q, 10, nil)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 
 		var rag []string
-		room := fmt.Sprintf("%v", data["room"])
-		if len(room) > 0 {
-			mutex.RLock()
-			room, ok := rooms[room]
-			if ok {
-				rag = append(rag, room.Summary)
-			}
-			mutex.RUnlock()
+
+		for _, val := range res {
+			b, _ := json.Marshal(val)
+			rag = append(rag, string(b))
 		}
 
 		prompt := &Prompt{
@@ -224,19 +228,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// save the response
 		html := app.Render([]byte(resp))
-		data["answer"] = string(html)
+		form["answer"] = string(html)
 
 		// if JSON request then respond with json
 		if ct := r.Header.Get("Content-Type"); ct == "application/json" {
-			b, _ := json.Marshal(data)
+			b, _ := json.Marshal(form)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(b)
 			return
 		}
 
 		// Format a HTML response
-		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, data["prompt"])
-		messages += fmt.Sprintf(`<div class="message"><span class="llm">llm</span><p>%v</p></div>`, data["answer"])
+		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
+		messages += fmt.Sprintf(`<div class="message"><span class="llm">llm</span><p>%v</p></div>`, form["answer"])
 
 		output := fmt.Sprintf(Template, head, messages)
 		renderHTML := app.RenderHTML("Chat", "Chat with AI", output)

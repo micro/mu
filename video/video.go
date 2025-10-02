@@ -160,6 +160,25 @@ func loadVideos() {
 			Videos: res,
 			Html:   html,
 		}
+
+		// index at this point
+		go func() {
+			for _, res := range vids[channel].Videos {
+				id := res.ID
+				md := map[string]string{
+					"id":     res.ID,
+					"type":   res.Type,
+					"topic":  channel,
+					"url":    res.URL,
+					"posted": res.Published.String(),
+				}
+				val := res.Html
+
+				if err := data.Index(id, md, val); err != nil {
+					fmt.Println("Failed to index video", err)
+				}
+			}
+		}()
 	}
 
 	// sort the latest by date

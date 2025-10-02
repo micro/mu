@@ -583,6 +583,24 @@ func parseFeed() {
 
 			// add to headlines / 1 per category
 			headlines = append(headlines, post)
+
+			// index the doc
+			go func() {
+				id := post.ID
+				md := map[string]string{
+					"id":          post.ID,
+					"title":       post.Title,
+					"description": post.Description,
+					"url":         post.URL,
+					"posted":      post.PostedAt.String(),
+					"topic":       name,
+					"type":        "news",
+				}
+				if err := data.Index(id, md, val); err != nil {
+					fmt.Println("Error indexing news", err)
+				}
+			}()
+
 		}
 
 		content = append(content, []byte(`</div>`)...)

@@ -9,9 +9,7 @@ var URLS = [
 
 var CACHE_NAME = APP_PREFIX + VERSION
 
-let room = "";
 let context = [];
-let history = {};
 
 async function networkFirst(request) {
   try {
@@ -58,53 +56,10 @@ self.addEventListener('activate', function (e) {
   )
 })
 
-function loadContext() {
-	var ctx = history[room];
-	if (ctx == undefined || ctx == null || ctx == "undefined") {
-		context = [];
-		return
-	}
-	context = ctx;
-}
-
-function loadHistory() {
-	var ctx = sessionStorage.getItem("history");
-	console.log("Loading history", ctx)
-	if (ctx == undefined) {
-		console.log("History is undefined", ctx)
-		return
-	}
-	var val = JSON.parse(ctx);
-	if (val == null) {
-		console.log("Failed to parse history", val)
-		return
-	}
-	history = val;
-}
-
-function loadRoom() {
-	// get the room
-	room = window.location.hash.replace("#", "");
-
-	if (room == "") {
-		room = "all";
-	}
-
-	console.log("Loading room", room)
-}
-
-function setHistory() {
-	sessionStorage.setItem("history", JSON.stringify(history));
-}
-
 function loadMessages() {
-	console.log("loading messages for:", room);
+	console.log("loading messages"); 
 
 	var d = document.getElementById("messages");
-
-	if (room != "all") {
-		d.innerHTML = '';
-	}
 
 	context.forEach(function(data) {
 	  console.log(data);
@@ -142,7 +97,6 @@ function askLLM(el) {
 	var prompt = data["prompt"];
 
         data["context"] = context;
-	data["room"] = room;
 
 	fetch("/chat", {
 	  method: "POST",
@@ -159,8 +113,7 @@ function askLLM(el) {
 
 	    // save the context
             context.push({answer: result.answer, prompt: prompt});
-	    history[room] = context;
-	    setHistory()
+	    setContext();
 	})
 	.catch(error => {
 	    console.error('Error:', error);
@@ -170,9 +123,19 @@ function askLLM(el) {
 	return false;
 }
 
+function loadContext() {
+	var ctx = sessionStorage.getItem("context");
+	if (ctx == null || ctx == undefined || ctx == "") {
+		return
+	}
+	context = JSON.parse(ctx);
+}
+
+function setContext() {
+	sessionStorage.setItem("context", JSON.stringify(context));
+}
+
 function loadChat() {
-	loadRoom()
-	loadHistory()
 	loadContext()
         loadMessages();
 
@@ -271,8 +234,6 @@ function getVideos(el) {
 self.addEventListener("hashchange", function(event) {
 	// load chat
 	if (window.location.pathname == "/chat") {
-		loadRoom()
-		loadHistory()
 		loadContext()
 		loadMessages();
 	}
