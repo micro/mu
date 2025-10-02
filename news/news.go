@@ -19,12 +19,12 @@ import (
 	"unicode"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/micro/mu/app"
-	"github.com/micro/mu/data"
 	"github.com/mmcdole/gofeed"
 	"github.com/mrz1836/go-sanitize"
 	"github.com/piquette/finance-go/future"
 	nethtml "golang.org/x/net/html"
+	"mu/app"
+	"mu/data"
 )
 
 //go:embed feeds.json

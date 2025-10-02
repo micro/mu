@@ -1,4 +1,4 @@
-module github.com/micro/mu
+module mu
 
 go 1.24.1
 

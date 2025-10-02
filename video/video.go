@@ -14,10 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/micro/mu/app"
-	"github.com/micro/mu/data"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
+	"mu/app"
+	"mu/data"
 )
 
 //go:embed channels.json

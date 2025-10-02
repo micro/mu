@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/micro/mu/api"
-	"github.com/micro/mu/app"
-	"github.com/micro/mu/auth"
-	"github.com/micro/mu/chat"
-	"github.com/micro/mu/home"
-	"github.com/micro/mu/news"
-	"github.com/micro/mu/video"
+	"mu/api"
+	"mu/app"
+	"mu/auth"
+	"mu/chat"
+	"mu/home"
+	"mu/news"
+	"mu/video"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")

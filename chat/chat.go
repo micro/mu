@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/micro/mu/app"
-	"github.com/micro/mu/data"
+	"mu/app"
+	"mu/data"
 )
 
 //go:embed *.json

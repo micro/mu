@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/micro/mu/app"
-	"github.com/micro/mu/news"
-	"github.com/micro/mu/video"
+	"mu/app"
+	"mu/news"
+	"mu/video"
 )
 
 var Template = `<div id="home">%s</div>`
