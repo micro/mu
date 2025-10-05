@@ -56,7 +56,7 @@ var summary string
 type Room struct {
 	Topic   string `json:"topic"`
 	Prompt  string `json:"prompt"`
-	Summary string `json:"summary"`
+	Summary string `json:"summary,omitempty"`
 }
 
 func Load() {
@@ -66,10 +66,13 @@ func Load() {
 		fmt.Println("Error parsing topics.json", err)
 	}
 
-	b, _ = f.ReadFile("rooms.json")
+	b, _ = data.Load("rooms.json")
 	if err := json.Unmarshal(b, &rooms); err != nil {
 		fmt.Println("Error parsing rooms.json", err)
 	}
+
+	b, _ = data.Load("summary.html")
+	summary = string(b)
 
 	for topic, _ := range prompts {
 		topics = append(topics, topic)
@@ -90,7 +93,9 @@ func loadChats() {
 
 	for topic, prompt := range prompts {
 		// get the index
-		res, err := data.Search(prompt, 10, nil)
+		res, err := data.Search(prompt, 10, map[string]string{
+			"type": topic,
+		})
 		if err != nil {
 			fmt.Println("Failed to get index for prompt", prompt, err)
 			continue
@@ -99,11 +104,14 @@ func loadChats() {
 		var rag []string
 
 		for _, val := range res {
+			if len(val.Content) > 512 {
+				val.Content = val.Content[:512]
+			}
 			b, _ := json.Marshal(val)
 			rag = append(rag, string(b))
 		}
 
-		q := fmt.Sprintf("Provide a 10 point summary for the topic of %s based on your current knowledge. Only provide the summary, nothing else. Keep it below 512 characters.", topic)
+		q := fmt.Sprintf("Provide a 5 point summary for the topic of %s based on current information. Provide the summary as bullet points. Keep it below 512 characters. Most recent news first", topic)
 
 		resp, err := askLLM(&Prompt{
 			Rag:      rag,
@@ -125,6 +133,11 @@ func loadChats() {
 
 	for _, topic := range topics {
 		desc := newRooms[topic].Summary
+		if len(desc) == 0 {
+			continue
+		}
+		// render markdown
+		desc = string(app.Render([]byte(desc)))
 		newSummary += fmt.Sprintf(`<hr id="%s" class="anchor"><h2>%s</h2><p><span class="description">%s</span></p>`, topic, topic, desc)
 	}
 
@@ -133,6 +146,7 @@ func loadChats() {
 	summary = `<div id="summary"><h1>Brief</h1>` + newSummary + `</div>`
 	b, _ := json.Marshal(rooms)
 	data.Save("rooms.json", string(b))
+	data.Save("summary.html", summary)
 	mutex.Unlock()
 
 	time.Sleep(time.Hour)
@@ -204,6 +218,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		var rag []string
 
 		for _, val := range res {
+			if len(val.Content) > 512 {
+				val.Content = val.Content[:512]
+			}
 			b, _ := json.Marshal(val)
 			rag = append(rag, string(b))
 		}

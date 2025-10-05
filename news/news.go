@@ -401,6 +401,7 @@ func parseFeed() {
 
 	fmt.Println("Parsing feed at", time.Now().String())
 	p := gofeed.NewParser()
+	p.UserAgent = "Mu/0.1"
 
 	content := []byte{}
 	head := []byte{}
@@ -466,7 +467,7 @@ func parseFeed() {
 			// set the backoff
 			stat.Backoff = time.Now().Add(backoff(stat.Attempts))
 			// print the error
-			fmt.Printf("Error parsing %s: %v, attempt %d backoff until %v", feed, err, stat.Attempts, stat.Backoff)
+			fmt.Printf("Error parsing %s: %v, attempt %d backoff until %v\n", feed, err, stat.Attempts, stat.Backoff)
 
 			mutex.Lock()
 			status[name] = &stat
@@ -587,6 +588,10 @@ func parseFeed() {
 			// index the doc
 			go func() {
 				id := post.ID
+				if len(post.ID) == 0 {
+					return
+				}
+
 				md := map[string]string{
 					"id":          post.ID,
 					"title":       post.Title,

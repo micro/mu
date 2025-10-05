@@ -103,9 +103,6 @@ td {
   border-bottom: 1px solid darkgrey;
   padding: 5px 25px 5px 0;
 }
-ul {
-  list-style-type: none;
-}
 .right {
   text-align: right;
 }
@@ -215,7 +212,7 @@ ul {
 }
 .head {
   font-weight: bold;
-  padding: 5px 7px;
+  padding: 5px 6px;
   text-decoration: none;
 }
 .headline {
@@ -330,6 +327,9 @@ ul {
   margin-bottom: 10px;
 }
 @media only screen and (max-width: 600px) {
+  #topics {
+    text-align: center;
+  }
   #head {
     border-top: 1px solid darkgrey;
     border-bottom: 1px solid darkgrey;
