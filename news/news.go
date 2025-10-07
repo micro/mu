@@ -640,6 +640,18 @@ func parseFeed() {
 			price := newPrices[ticker]
 			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 			info = append(info, []byte(line)...)
+
+			// index prices
+			go func() {
+				id := fmt.Sprintf("%s-%v", ticker, time.Now().UnixNano())
+
+				data.Index(id, map[string]string{
+					"topic": "crypto",
+					"type":  "ticker",
+					"name":  ticker,
+					"price": fmt.Sprintf("%.2f", price),
+				}, line)
+			}()
 		}
 
 		info = append(info, []byte(`</div>`)...)
@@ -651,6 +663,17 @@ func parseFeed() {
 			price := newPrices[ticker]
 			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 			info = append(info, []byte(line)...)
+			// index prices
+			go func() {
+				id := fmt.Sprintf("%s-%v", ticker, time.Now().UnixNano())
+
+				data.Index(id, map[string]string{
+					"topic": "futures",
+					"type":  "ticker",
+					"name":  ticker,
+					"price": fmt.Sprintf("%.2f", price),
+				}, line)
+			}()
 		}
 
 		info = append(info, []byte(`</div>`)...)

@@ -94,7 +94,7 @@ func loadChats() {
 	for topic, prompt := range prompts {
 		// get the index
 		res, err := data.Search(prompt, 10, map[string]string{
-			"type": topic,
+			"topic": topic,
 		})
 		if err != nil {
 			fmt.Println("Failed to get index for prompt", prompt, err)
