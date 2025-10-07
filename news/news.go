@@ -1,6 +1,7 @@
 package news
 
 import (
+	"crypto/sha256"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -373,6 +374,22 @@ func getReminder() {
 
 	html := fmt.Sprintf(`<div class="verse">%s</div>`, val["verse"])
 	html += app.Link("More", link)
+
+	// index the reminder
+	go func(val map[string]interface{}) {
+		// create an id
+		h := sha256.New()
+		h.Write([]byte(link))
+		bs := h.Sum(nil)
+		id := fmt.Sprintf("%x", bs)
+
+		data.Index(id, map[string]string{
+			"topic": "reminder",
+			"type":  "verse",
+			"id":    id,
+			"url":   link,
+		}, fmt.Sprintf("%v", val["verse"]))
+	}(val)
 
 	mutex.Lock()
 	data.Save("reminder.html", html)
