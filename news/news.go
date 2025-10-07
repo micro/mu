@@ -646,10 +646,11 @@ func parseFeed() {
 				id := fmt.Sprintf("%s-%v", ticker, time.Now().UnixNano())
 
 				data.Index(id, map[string]string{
-					"topic": "crypto",
-					"type":  "ticker",
-					"name":  ticker,
-					"price": fmt.Sprintf("%.2f", price),
+					"topic":     "crypto",
+					"type":      "ticker",
+					"name":      ticker,
+					"price":     fmt.Sprintf("%.2f", price),
+					"timestamp": time.Now().String(),
 				}, line)
 			}()
 		}
@@ -668,10 +669,11 @@ func parseFeed() {
 				id := fmt.Sprintf("%s-%v", ticker, time.Now().UnixNano())
 
 				data.Index(id, map[string]string{
-					"topic": "futures",
-					"type":  "ticker",
-					"name":  ticker,
-					"price": fmt.Sprintf("%.2f", price),
+					"topic":     "futures",
+					"type":      "ticker",
+					"name":      ticker,
+					"price":     fmt.Sprintf("%.2f", price),
+					"timestamp": time.Now().String(),
 				}, line)
 			}()
 		}

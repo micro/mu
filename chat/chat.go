@@ -143,7 +143,7 @@ func loadChats() {
 
 	mutex.Lock()
 	rooms = newRooms
-	summary = `<div id="summary"><h1>Brief</h1>` + newSummary + `</div>`
+	summary = `<div id="summary">` + newSummary + `</div>`
 	b, _ := json.Marshal(rooms)
 	data.Save("rooms.json", string(b))
 	data.Save("summary.html", summary)
