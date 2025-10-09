@@ -46,6 +46,15 @@ func main() {
 	// load the videos
 	video.Load()
 
+	authenticated := map[string]bool{
+		"/video":   true,
+		"/news":    true,
+		"/chat":    true,
+		"/home":    true,
+		"/logout":  true,
+		"/session": true,
+		"/api":     true,
+	}
 	// serve video
 	http.HandleFunc("/video", video.Handler)
 
@@ -96,49 +105,24 @@ func main() {
 			token = c.Value
 		}
 
-		if r.Method == "GET" {
-			if len(token) == 0 {
-				var secure bool
+		var isAuthed bool
 
-				if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
-					secure = true
-				}
-
-				// set a new token
-				http.SetCookie(w, &http.Cookie{
-					Name:   "session",
-					Value:  auth.GenerateToken(),
-					Secure: secure,
-				})
-			} else {
-				// deny access if invalid
-				if err := auth.ValidateToken(token); err != nil {
-					http.Error(w, "invalid token", 401)
-					return
-				}
-
-				// got a valid token
-
-				if r.URL.Path == "/" {
-					// let's redirect to home
-					http.Redirect(w, r, "/home", 302)
-					return
-				}
+		for url, authed := range authenticated {
+			if strings.HasPrefix(r.URL.Path, url) {
+				isAuthed = authed
 			}
 		}
 
-		// check for session
-		if r.Method == "POST" {
-			// if token is invalid throw 401
-			if len(token) == 0 {
-				http.Error(w, "invalid token", 401)
+		// check token
+		if isAuthed {
+			// deny access if invalid
+			if err := auth.ValidateToken(token); err != nil {
+				http.Redirect(w, r, "/", 302)
 				return
 			}
 
-			// check the validity of the token
-			// deny access if invalid
-			if err := auth.ValidateToken(token); err != nil {
-				http.Error(w, "invalid token", 401)
+			if r.URL.Path == "/" {
+				http.Redirect(w, r, "/home", 302)
 				return
 			}
 		}

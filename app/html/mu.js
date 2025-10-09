@@ -151,7 +151,7 @@ function setSession() {
 	    console.log('Success:', sess);
 	    var acc = document.getElementById("account");
 	    if (sess.type == "account") {
-	      acc.innerHTML = "Logged in as " + sess.account;
+	      acc.innerHTML = "<a href='/logout'>Logout</a>";
 	    } else {
 	      acc.innerHTML = "<a href='/login'>Login</a>";   
 	    }

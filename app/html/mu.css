@@ -9,6 +9,39 @@ code {
   display: block;
   white-space: pre-wrap;
 }
+button {
+  background: white;
+}
+button:hover {
+  background: whitesmoke;
+}
+input {
+  width: calc(100% - 60px);
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid darkgrey;
+}
+select {
+    padding: 5px;
+    border-radius: 5px;
+    background: white;
+}
+textarea:focus, input:focus{
+    outline: none;
+}
+table {
+  width: 100%;
+}
+table, td, th {
+  text-align: left;
+}
+th {
+  border-bottom: 1px solid darkgrey;
+}
+td {
+  border-bottom: 1px solid darkgrey;
+  padding: 5px 25px 5px 0;
+}
 #head {
 	background: white;
 	top: 0;
@@ -70,39 +103,6 @@ code {
   text-decoration: underline;
 }
 
-button {
-  background: white;
-}
-button:hover {
-  background: whitesmoke;
-}
-input {
-  width: calc(100% - 60px);
-  padding: 10px;
-  border-radius: 5px;
-  border: 1px solid darkgrey;
-}
-select {
-    padding: 5px;
-    border-radius: 5px;
-    background: white;
-}
-textarea:focus, input:focus{
-    outline: none;
-}
-table {
-  width: 100%;
-}
-table, td, th {
-  text-align: left;
-}
-th {
-  border-bottom: 1px solid darkgrey;
-}
-td {
-  border-bottom: 1px solid darkgrey;
-  padding: 5px 25px 5px 0;
-}
 #account {
   padding: 10px;
   top: 0;
@@ -174,10 +174,15 @@ td {
   margin-bottom: 0;
 }
 #login, #signup {
-  max-width: 600px;
+  max-width: 400px;
+  margin: 0 auto;
 }
 #login input, #signup input {
   margin-bottom: 10px;
+  width: 100%;
+}
+#login button, #signup button {
+  width: 100%;
 }
 
 #messages {

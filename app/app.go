@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"regexp"
 	"sort"
 	"time"
 
@@ -75,26 +76,68 @@ var CardTemplate = `
 </div>
 `
 
-var LoginTemplate = RenderHTML("Login", "Account Login", `
-<h1>Login</h1>
-<form id="login" action="/login" method="POST">
-<input id="id" name="id" placeholder="Username">
-<input id="secret" name="secret" type="password" placeholder="Password">
-<br>
-<button>Login</button>
-</form>
-`)
+var LoginTemplate = `<html>
+  <head>
+    <title>Login | Mu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
+    <meta name="referrer" content="no-referrer"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/mu.css">
+  </head>
+  <body>
+    <div id="head">
+      <div id="brand">
+        <a href="/">Mu</a>
+      </div>
+    </div>
+    <div id="container">
+      <div id="content">
+	<form id="login" action="/login" method="POST">
+	  <h1>Login</h1>
+	  <input id="id" name="id" placeholder="Username">
+	  <input id="secret" name="secret" type="password" placeholder="Password">
+	  <br>
+	  <button>Login</button>
+	</form>
+      </div>
+    </div>
+  </body>
+</html>
+`
 
-var SignupTemplate = RenderHTML("Signup", "Account Signup", `
-<h1>Signup</h1>
-<form id="signup" action="/signup" method="POST">
-<input id="id" name="id" placeholder="Username">
-<input id="name" name="name" placeholder="Name">
-<input id="secret" name="secret" type="password" placeholder="Password">
-<br>
-<button>Signup</button>
-</form>
-`)
+var SignupTemplate = `<html>
+  <head>
+    <title>Signup | Mu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
+    <meta name="referrer" content="no-referrer"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/mu.css">
+  </head>
+  <body>
+    <div id="head">
+      <div id="brand">
+        <a href="/">Mu</a>
+      </div>
+    </div>
+    <div id="container">
+      <div id="content">
+	<form id="signup" action="/signup" method="POST">
+	  <h1>Signup</h1>
+	  <input id="id" name="id" placeholder="Username">
+	  <input id="name" name="name" placeholder="Name">
+  	  <input id="secret" name="secret" type="password" placeholder="Password">
+	  <br>
+	  <button>Signup</button>
+	</form>
+      </div>
+    </div>
+  </body>
+</html>
+`
 
 func Link(name, ref string) string {
 	return fmt.Sprintf(`<a href="%s" class="link">%s</a>`, ref, name)
@@ -179,6 +222,25 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		id := r.Form.Get("id")
 		name := r.Form.Get("name")
 		secret := r.Form.Get("secret")
+
+		const usernamePattern = "^[a-z][a-z0-9_]{3,23}$"
+
+		usernameRegex := regexp.MustCompile(usernamePattern)
+
+		if !usernameRegex.MatchString(id) {
+			http.Error(w, "invalid id", 401)
+			return
+		}
+
+		const passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9\\s]).{8,30}$"
+
+		// Compile the regex once
+		passwordRegex := regexp.MustCompile(passwordPattern)
+
+		if !passwordRegex.MatchString(secret) {
+			http.Error(w, "invalid secret", 401)
+			return
+		}
 
 		if len(id) == 0 {
 			http.Error(w, "missing id", 401)

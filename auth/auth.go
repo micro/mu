@@ -156,12 +156,7 @@ func ParseToken(tk string) (*Session, error) {
 	mutex.Unlock()
 
 	if !ok {
-		return &Session{
-			ID:      id.String(),
-			Token:   tk,
-			Type:    "-",
-			Account: "-",
-		}, nil
+		return nil, errors.New("session not found")
 	}
 
 	return sess, nil
@@ -173,15 +168,16 @@ func GenerateToken() string {
 }
 
 func ValidateToken(tk string) error {
-	dec, err := base64.StdEncoding.DecodeString(tk)
-	if err != nil {
-		return errors.New("invalid session")
+	if len(tk) == 0 {
+		return errors.New("invalid token")
 	}
 
-	_, err = uuid.Parse(string(dec))
+	sess, err := ParseToken(tk)
 	if err != nil {
+		return err
+	}
+	if sess.Type != "account" {
 		return errors.New("invalid session")
 	}
-
 	return nil
 }
