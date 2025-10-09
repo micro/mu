@@ -135,6 +135,33 @@ function setContext() {
 	sessionStorage.setItem("context", JSON.stringify(context));
 }
 
+function getCookie(name) {
+  var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  if (match) return match[2];
+}
+
+function setSession() {
+	fetch("/session", {
+	  method: "POST",
+	  headers: {
+	      'Content-Type': 'application/json'
+	  },
+	}).then(response => response.json())
+	.then(sess => {
+	    console.log('Success:', sess);
+	    var acc = document.getElementById("account");
+	    if (sess.type == "account") {
+	      acc.innerHTML = "Logged in as " + sess.account;
+	    } else {
+	      acc.innerHTML = "<a href='/login'>Login</a>";   
+	    }
+	})
+	.catch(error => {
+	    console.error('Error:', error);
+	    // Handle errors
+	});
+}
+
 function loadChat() {
 	loadContext()
         loadMessages();
@@ -255,4 +282,6 @@ self.addEventListener('DOMContentLoaded', function() {
 	if (window.location.pathname == "/chat") {
 		loadChat();
 	}
+
+	setSession();
 });

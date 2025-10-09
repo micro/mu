@@ -58,6 +58,12 @@ func main() {
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
 
+	// auth
+	http.HandleFunc("/login", app.Login)
+	http.HandleFunc("/logout", app.Logout)
+	http.HandleFunc("/signup", app.Signup)
+	http.HandleFunc("/session", app.Session)
+
 	// serve the api doc
 	http.Handle("/api", app.ServeHTML(apiHTML))
 

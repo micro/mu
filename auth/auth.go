@@ -26,10 +26,11 @@ type Account struct {
 }
 
 type Session struct {
-	ID      string `json:"id"`
-	Type    string `json:"type"`
-	Token   string `json:"token"`
-	Account string `json:"account"`
+	ID      string    `json:"id"`
+	Type    string    `json:"type"`
+	Token   string    `json:"token"`
+	Account string    `json:"account"`
+	Created time.Time `json:"created"`
 }
 
 func init() {
@@ -97,6 +98,7 @@ func Login(id, secret string) (*Session, error) {
 		Type:    "account",
 		Token:   base64.StdEncoding.EncodeToString([]byte(guid)),
 		Account: acc.ID,
+		Created: time.Now(),
 	}
 
 	// store the session

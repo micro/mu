@@ -2,11 +2,15 @@ package app
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
 	"sort"
+	"time"
+
+	"mu/auth"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
@@ -39,8 +43,9 @@ var Template = `
       <div id="brand">
         <a href="/">Mu</a>
       </div>
+      <div id="account">&nbsp;</div>
       <div id="nav">
-      <a href="/home"><img src="home.png" style="margin-bottom: 1px">Home</a>
+        <a href="/home"><img src="home.png" style="margin-bottom: 1px">Home</a>
         <a href="/chat"><img src="chat.png">Chat</a>
         <a href="/news"><img src="news.png">News</a>
         <a href="/video"><img src="video.png">Video</a>
@@ -70,6 +75,27 @@ var CardTemplate = `
 </div>
 `
 
+var LoginTemplate = RenderHTML("Login", "Account Login", `
+<h1>Login</h1>
+<form id="login" action="/login" method="POST">
+<input id="id" name="id" placeholder="Username">
+<input id="secret" name="secret" type="password" placeholder="Password">
+<br>
+<button>Login</button>
+</form>
+`)
+
+var SignupTemplate = RenderHTML("Signup", "Account Signup", `
+<h1>Signup</h1>
+<form id="signup" action="/signup" method="POST">
+<input id="id" name="id" placeholder="Username">
+<input id="name" name="name" placeholder="Name">
+<input id="secret" name="secret" type="password" placeholder="Password">
+<br>
+<button>Signup</button>
+</form>
+`)
+
 func Link(name, ref string) string {
 	return fmt.Sprintf(`<a href="%s" class="link">%s</a>`, ref, name)
 }
@@ -91,6 +117,151 @@ func Head(app string, refs []string) string {
 
 func Card(id, title, content string) string {
 	return fmt.Sprintf(CardTemplate, id, id, title, content)
+}
+
+// Login handler
+func Login(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		w.Write([]byte(LoginTemplate))
+		return
+	}
+
+	if r.Method == "POST" {
+		r.ParseForm()
+
+		id := r.Form.Get("id")
+		secret := r.Form.Get("secret")
+
+		if len(id) == 0 {
+			http.Error(w, "missing id", 401)
+			return
+		}
+		if len(secret) == 0 {
+			http.Error(w, "missing secret", 401)
+			return
+		}
+
+		sess, err := auth.Login(id, secret)
+		if err != nil {
+			http.Error(w, err.Error(), 401)
+			return
+		}
+
+		var secure bool
+
+		if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
+			secure = true
+		}
+
+		// set a new token
+		http.SetCookie(w, &http.Cookie{
+			Name:   "session",
+			Value:  sess.Token,
+			Secure: secure,
+		})
+
+		// return to home
+		http.Redirect(w, r, "/home", 302)
+		return
+	}
+}
+
+// Signup handler
+func Signup(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		w.Write([]byte(SignupTemplate))
+		return
+	}
+
+	if r.Method == "POST" {
+		r.ParseForm()
+
+		id := r.Form.Get("id")
+		name := r.Form.Get("name")
+		secret := r.Form.Get("secret")
+
+		if len(id) == 0 {
+			http.Error(w, "missing id", 401)
+			return
+		}
+		if len(name) == 0 {
+			http.Error(w, "missing name", 401)
+			return
+		}
+		if len(secret) == 0 {
+			http.Error(w, "missing secret", 401)
+			return
+		}
+
+		if err := auth.Create(&auth.Account{
+			ID:      id,
+			Secret:  secret,
+			Name:    name,
+			Created: time.Now(),
+		}); err != nil {
+			http.Error(w, err.Error(), 401)
+			return
+		}
+
+		// login
+		sess, err := auth.Login(id, secret)
+		if err != nil {
+			http.Error(w, err.Error(), 401)
+			return
+		}
+
+		var secure bool
+
+		if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
+			secure = true
+		}
+
+		// set a new token
+		http.SetCookie(w, &http.Cookie{
+			Name:   "session",
+			Value:  sess.Token,
+			Secure: secure,
+		})
+
+		// return to home
+		http.Redirect(w, r, "/home", 302)
+		return
+	}
+}
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Redirect(w, r, "/home", 302)
+		return
+	}
+
+	var secure bool
+
+	if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
+		secure = true
+	}
+	// set a new token
+	http.SetCookie(w, &http.Cookie{
+		Name:   "session",
+		Value:  "",
+		Secure: secure,
+	})
+	auth.Logout(sess.Token)
+	http.Redirect(w, r, "/home", 302)
+}
+
+// Session handler
+func Session(w http.ResponseWriter, r *http.Request) {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Error(w, err.Error(), 401)
+		return
+	}
+
+	b, _ := json.Marshal(sess)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
 }
 
 // Render a markdown document as html

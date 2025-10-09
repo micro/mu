@@ -103,6 +103,12 @@ td {
   border-bottom: 1px solid darkgrey;
   padding: 5px 25px 5px 0;
 }
+#account {
+  padding: 10px;
+  top: 0;
+  right: 0;
+  position: fixed;
+}
 .right {
   text-align: right;
 }
@@ -167,6 +173,13 @@ td {
 .card form {
   margin-bottom: 0;
 }
+#login, #signup {
+  max-width: 600px;
+}
+#login input, #signup input {
+  margin-bottom: 10px;
+}
+
 #messages {
         flex-grow: 1;
         border-radius: 5px;
