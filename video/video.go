@@ -43,11 +43,13 @@ type Channel struct {
 }
 
 type Result struct {
-	ID        string    `json:"id"`
-	Type      string    `json:"type"`
-	URL       string    `json:"url"`
-	Html      string    `json:"html"`
-	Published time.Time `json:"published"`
+	ID          string    `json:"id"`
+	Type        string    `json:"type"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	URL         string    `json:"url"`
+	Html        string    `json:"html"`
+	Published   time.Time `json:"published"`
 }
 
 var Key = os.Getenv("YOUTUBE_API_KEY")
@@ -166,11 +168,13 @@ func loadVideos() {
 			for _, res := range vids[channel].Videos {
 				id := res.ID
 				md := map[string]string{
-					"id":     res.ID,
-					"type":   res.Type,
-					"topic":  channel,
-					"url":    res.URL,
-					"posted": res.Published.String(),
+					"id":          res.ID,
+					"type":        res.Type,
+					"topic":       channel,
+					"title":       res.Title,
+					"description": res.Description,
+					"url":         res.URL,
+					"posted":      res.Published.String(),
 				}
 				val := res.Html
 
@@ -291,10 +295,12 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>%s</small>`, kind, app.TimeAgo(t))
 
 		res := &Result{
-			ID:        id,
-			Type:      kind,
-			URL:       url,
-			Published: t,
+			ID:          id,
+			Type:        kind,
+			Title:       item.Snippet.Title,
+			Description: item.Snippet.Description,
+			URL:         url,
+			Published:   t,
 		}
 
 		if kind == "channel" {

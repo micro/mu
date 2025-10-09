@@ -93,7 +93,7 @@ func loadChats() {
 
 	for topic, prompt := range prompts {
 		// get the index
-		res, err := data.Search(prompt, 10, map[string]string{
+		res, err := data.Search(prompt, 15, map[string]string{
 			"topic": topic,
 		})
 		if err != nil {
@@ -111,7 +111,14 @@ func loadChats() {
 			rag = append(rag, string(b))
 		}
 
-		q := fmt.Sprintf("Provide a 5 point summary for the topic of %s based on current information. Provide the summary as bullet points. Keep it below 512 characters. Most recent news first", topic)
+		q := fmt.Sprintf(`Provide a 3 bullet points summary for %s based on the context provided.
+Do not add any additional text. Do not respond except with the bullets. Keep it below 512 characters. In the 
+event 512 characters is not enough, go to what length is required, but try to stay under 1024 and remove links if needed.
+Do not use any additional sources. Order reverse chronologically. Crypto is cryptocurrency. Dev is developers.
+Use the url from the json metadata "url" field as the source. In the event its present don't specify anything.
+Use the title from the json metadata "title" field if present as the title. In the event its not present create a title. 
+Use the description from the json metadata "description" field as the summary. In the event its not present create a summary.
+Format each point like so e.g - **title**: summary [source](url)`, topic)
 
 		resp, err := askLLM(&Prompt{
 			Rag:      rag,
@@ -138,7 +145,7 @@ func loadChats() {
 		}
 		// render markdown
 		desc = string(app.Render([]byte(desc)))
-		newSummary += fmt.Sprintf(`<hr id="%s" class="anchor"><h2>%s</h2><p><span class="description">%s</span></p>`, topic, topic, desc)
+		newSummary += fmt.Sprintf(`<h2>%s</h2><p><span class="description">%s</span></p>`, topic, desc)
 	}
 
 	mutex.Lock()
