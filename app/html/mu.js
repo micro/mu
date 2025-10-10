@@ -283,5 +283,5 @@ self.addEventListener('DOMContentLoaded', function() {
 		loadChat();
 	}
 
-	setSession();
+	//setSession();
 });
