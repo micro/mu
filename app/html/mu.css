@@ -109,6 +109,9 @@ td {
   right: 0;
   position: fixed;
 }
+#account a {
+  padding: 5px;
+}
 .right {
   text-align: right;
 }

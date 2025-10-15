@@ -96,10 +96,11 @@ var LoginTemplate = `<html>
       <div id="content">
 	<form id="login" action="/login" method="POST">
 	  <h1>Login</h1>
-	  <input id="id" name="id" placeholder="Username">
-	  <input id="secret" name="secret" type="password" placeholder="Password">
+	  <input id="id" name="id" placeholder="Username" required>
+	  <input id="secret" name="secret" type="password" placeholder="Password" required>
 	  <br>
 	  <button>Login</button>
+	  <p>Or <a href="/signup">Signup</a></p>
 	</form>
       </div>
     </div>
@@ -127,11 +128,12 @@ var SignupTemplate = `<html>
       <div id="content">
 	<form id="signup" action="/signup" method="POST">
 	  <h1>Signup</h1>
-	  <input id="id" name="id" placeholder="Username">
-	  <input id="name" name="name" placeholder="Name">
-  	  <input id="secret" name="secret" type="password" placeholder="Password">
+	  <input id="id" name="id" placeholder="Username" required>
+	  <input id="name" name="name" placeholder="Name" required>
+  	  <input id="secret" name="secret" type="password" placeholder="Password" required>
 	  <br>
 	  <button>Signup</button>
+	  <p>Or <a href="/login">Login</a></p>
 	</form>
       </div>
     </div>
@@ -232,15 +234,10 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		const passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9\\s]).{8,30}$"
-
-		// Compile the regex once
-		passwordRegex := regexp.MustCompile(passwordPattern)
-
-		if !passwordRegex.MatchString(secret) {
+		if len(secret) < 6 {
 			http.Error(w, "invalid secret", 401)
-			return
 		}
+
 
 		if len(id) == 0 {
 			http.Error(w, "missing id", 401)
