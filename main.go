@@ -38,7 +38,7 @@ func main() {
 	apiHTML := app.RenderHTML("API", "API documentation", string(apiDoc))
 
 	// load the chat
-	chat.Load()
+	//chat.Load()
 
 	// load the news
 	news.Load()
@@ -120,8 +120,8 @@ func main() {
 				http.Redirect(w, r, "/", 302)
 				return
 			}
-
-			if r.URL.Path == "/" {
+		} else if r.URL.Path == "/" {
+			if err := auth.ValidateToken(token); err == nil {
 				http.Redirect(w, r, "/home", 302)
 				return
 			}

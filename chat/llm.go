@@ -16,7 +16,7 @@ Format the response in markdown.
 
 {{- /* Stop here if no context is provided. The rest below is for handling contexts. */ -}}
 {{- if . -}}
-Answer the question keeping the context of the discussion in mind. If the context is not relevant to the question, say I don't know.
+Answer the question keeping the context of the discussion in mind. If the context is not relevant to the question, use what you know from your knowledge base but don't make anything up.
 
 Anything below can be used as part of the conversation with the user. The bullet points are ordered by time, so the first one is the oldest.
 
