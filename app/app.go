@@ -29,6 +29,7 @@ var Template = `
     <meta name="description" content="%s">
     <meta name="referrer" content="no-referrer"/>
     <link rel="preload" href="/home.png" as="image">
+    <link rel="preload" href="/mail.png" as="image">
     <link rel="preload" href="/chat.png" as="image">
     <link rel="preload" href="/news.png" as="image">
     <link rel="preload" href="/video.png" as="image">
@@ -46,7 +47,8 @@ var Template = `
       </div>
       <div id="account">&nbsp;</div>
       <div id="nav">
-        <a href="/home"><img src="home.png" style="margin-bottom: 1px">Home</a>
+        <a href="/home"><img src="home.png" style="margin-bottom: 1px">&nbsp;</a>
+        <a href="/mail"><img src="mail.png">Mail</a>
         <a href="/chat"><img src="chat.png">Chat</a>
         <a href="/news"><img src="news.png">News</a>
         <a href="/video"><img src="video.png">Video</a>
@@ -100,7 +102,6 @@ var LoginTemplate = `<html>
 	  <input id="secret" name="secret" type="password" placeholder="Password" required>
 	  <br>
 	  <button>Login</button>
-	  <p>Or <a href="/signup">Signup</a></p>
 	</form>
       </div>
     </div>
@@ -133,7 +134,6 @@ var SignupTemplate = `<html>
   	  <input id="secret" name="secret" type="password" placeholder="Password" required>
 	  <br>
 	  <button>Signup</button>
-	  <p>Or <a href="/login">Login</a></p>
 	</form>
       </div>
     </div>
