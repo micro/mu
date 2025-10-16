@@ -113,6 +113,17 @@ func getDomain(v string) string {
 	return host
 }
 
+var Results = `
+<form action="/news" method="POST">
+  <input name="query" id="query" value="%s">
+  <button>Search</button>
+</form>
+<div id="topics">%s</div>
+<h1 style="margin-top: 0">Results</h1>
+<div id="results">
+%s
+</div>`
+
 func getSummary(post *Post) string {
 	return fmt.Sprintf(`Source: <i>%s</i> | %s`, getDomain(post.URL), app.TimeAgo(post.PostedAt))
 }
@@ -144,26 +155,6 @@ func getPrices() map[string]float64 {
 		prices[k] = 1 / val
 	}
 
-	// special case for BNB
-	rsp, err = http.Get("https://api.coinbase.com/v2/exchange-rates?currency=BNB")
-	if err != nil {
-		fmt.Println("Error getting prices", err)
-		return nil
-	}
-	b, _ = ioutil.ReadAll(rsp.Body)
-	defer rsp.Body.Close()
-	json.Unmarshal(b, &res)
-	if res == nil {
-		return prices
-	}
-
-	rates = res["data"].(map[string]interface{})["rates"].(map[string]interface{})
-	val, err := strconv.ParseFloat(rates["USD"].(string), 64)
-	if err != nil {
-		return prices
-	}
-	prices["BNB"] = val
-
 	// let's get other prices
 	for key, ftr := range futures {
 		f, err := future.Get(ftr)
@@ -177,7 +168,7 @@ func getPrices() map[string]float64 {
 	return prices
 }
 
-var tickers = []string{"GBP", "BNB", "ETH", "BTC", "PAXG"}
+var tickers = []string{"GBP", "XLM", "ETH", "BTC", "PAXG"}
 
 var futures = map[string]string{"OIL": "CL=F", "GOLD": "GC=F", "COFFEE": "KC=F", "OATS": "ZO=F", "WHEAT": "KE=F"}
 
@@ -207,6 +198,12 @@ func saveHtml(head, content []byte) {
 		return
 	}
 	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
+
+	body = `
+<form action="/news" method="POST">
+  <input name="query" id="query" value="" placeholder="Search">
+  <button>Search</button>
+</form>` + body
 	html = app.RenderHTML("News", "Read the news", body)
 	data.Save("news.html", html)
 }
@@ -785,6 +782,59 @@ func Reminder() string {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	defer mutex.RUnlock()
+
+	if r.Method == "POST" {
+		// TODO: deal with API request
+		r.ParseForm()
+
+		query := r.Form.Get("query")
+
+		if len(query) == 0 {
+			return
+		}
+
+		docs, err := data.Search(query, 10, map[string]string{
+			"type": "news",
+		})
+		if err != nil {
+			http.Error(w, err.Error(), 502)
+			return
+		}
+
+		var results string
+
+		for _, doc := range docs {
+			category := doc.Metadata["topic"]
+			url := doc.Metadata["url"]
+			title := doc.Metadata["title"]
+			desc := doc.Metadata["description"]
+			posted, _ := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", doc.Metadata["posted"])
+			summary := fmt.Sprintf(`Source: <i>%s</i> | %s`, getDomain(url), app.TimeAgo(posted))
+
+			results += fmt.Sprintf(`
+				<div class="news">
+				<a href="/news#%s" class="category">%s</a>
+				  <a href="%s" rel="noopener noreferrer" target="_blank">
+				   <span class="title">%s</span>
+				  </a>
+				 <span class="description">%s</span>
+				 <span class="text">%s</span></div>
+				`, category, category, url, title, desc, summary)
+
+		}
+
+		var sorted []string
+
+		for name, _ := range feeds {
+			sorted = append(sorted, name)
+		}
+
+		head := app.Head("news", sorted)
+
+		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
+		w.Write([]byte(html))
+		return
+	}
 
 	if ct := r.Header.Get("Content-Type"); ct == "application/json" {
 		resp := map[string]interface{}{

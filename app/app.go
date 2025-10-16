@@ -237,7 +237,6 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid secret", 401)
 		}
 
-
 		if len(id) == 0 {
 			http.Error(w, "missing id", 401)
 			return
