@@ -377,17 +377,29 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Check if this is a reply
 		replyTo := r.URL.Query().Get("reply_to")
 		subject := r.URL.Query().Get("subject")
+		originalBody := r.URL.Query().Get("original")
 		
 		composeHTML := `<div id="mail">
   <div class="mail-compose">
-    <h1>New Message</h1>
+    <h1>New Message</h1>`
+		
+		// Show original message if it's a reply
+		if originalBody != "" {
+			composeHTML += `
+    <div class="mail-compose-original">
+      <div class="mail-compose-original-label">Original message:</div>
+      ` + stdhtml.EscapeString(originalBody) + `
+    </div>`
+		}
+		
+		composeHTML += `
     <form action="/mail" method="POST">
       <input type="text" name="to" placeholder="To" value="` + stdhtml.EscapeString(replyTo) + `" required>
       <input type="text" name="subject" placeholder="Subject" value="` + stdhtml.EscapeString(subject) + `" required>
       <textarea name="body" placeholder="Type your message here..." required></textarea>
       <button type="submit">Send</button>
+      <a href="/mail" class="mail-compose-back">Cancel</a>
     </form>
-    <a href="/mail" class="mail-compose-back">← Back to Inbox</a>
   </div>
 </div>`
 		
@@ -460,30 +472,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			
 			// Truncate body for preview
 			preview := bodyEscaped
-			if len(preview) > 100 {
-				preview = preview[:100] + "..."
+			if len(preview) > 80 {
+				preview = preview[:80] + "..."
 			}
+			
+			// URL encode the original body for reply
+			replyURL := fmt.Sprintf("/mail?compose=true&reply_to=%s&subject=%s&original=%s", 
+				fromEscaped, 
+				stdhtml.EscapeString("Re: "+msg.Subject),
+				stdhtml.EscapeString(decryptedBody))
 			
 			content += fmt.Sprintf(`
 <div class="mail-item %s" data-from="%s" data-subject="%s" data-body="%s">
-  <div class="mail-item-content">
+  <div class="mail-item-content" onclick="window.location='%s'">
     <div class="mail-item-header">
       <span class="mail-item-from">%s</span>
       <span class="mail-item-time">%s</span>
     </div>
     <div class="mail-item-subject">%s</div>
     <div class="mail-item-preview">%s</div>
-    <div class="mail-item-actions">
-      <a href="/mail?compose=true&reply_to=%s&subject=%s" class="mail-btn">Reply</a>
-      <form action="/mail" method="POST" style="display: inline;">
-        <input type="hidden" name="action" value="read">
-        <input type="hidden" name="id" value="%s">
-        <button type="submit" class="mail-btn mail-btn-delete">Delete</button>
-      </form>
-    </div>
   </div>
+  <form action="/mail" method="POST" style="display: inline;">
+    <input type="hidden" name="action" value="read">
+    <input type="hidden" name="id" value="%s">
+    <button type="submit" class="mail-item-delete" title="Delete">🗑️</button>
+  </form>
 </div>
-			`, readClass, fromEscaped, subjectEscaped, bodyEscaped, fromEscaped, app.TimeAgo(msg.Sent), subjectEscaped, preview, fromEscaped, stdhtml.EscapeString("Re: "+msg.Subject), msg.ID)
+			`, readClass, fromEscaped, subjectEscaped, bodyEscaped, replyURL, fromEscaped, app.TimeAgo(msg.Sent), subjectEscaped, preview, msg.ID)
 		}
 		content += `</div>`
 	}

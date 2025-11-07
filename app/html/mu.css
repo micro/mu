@@ -347,7 +347,7 @@ td {
   display: block;
   margin-bottom: 10px;
 }
-/* Mail Styling - Gmail-inspired */
+/* Mail Styling - DM-inspired flat design */
 #mail {
   max-width: 100%;
   margin: 0 auto;
@@ -361,10 +361,11 @@ td {
   display: inline-block;
   background: #1a73e8;
   color: white;
-  padding: 12px 24px;
-  border-radius: 24px;
+  padding: 10px 20px;
+  border-radius: 4px;
   text-decoration: none;
   font-weight: 500;
+  font-size: 14px;
   margin-bottom: 20px;
   border: none;
   cursor: pointer;
@@ -375,62 +376,57 @@ td {
 .mail-search {
   width: 100%;
   max-width: 700px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 4px;
   margin-bottom: 20px;
   font-size: 14px;
   box-sizing: border-box;
 }
 .mail-list {
   max-width: 700px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
   background: white;
   overflow: hidden;
 }
 .mail-item {
   border-bottom: 1px solid #f0f0f0;
-  padding: 12px 16px;
-  cursor: pointer;
-  transition: background 0.1s;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  background: white;
 }
 .mail-item:last-child {
   border-bottom: none;
 }
-.mail-item:hover {
-  background: #f5f5f5;
-}
 .mail-item.unread {
-  background: #f9f9f9;
-  font-weight: 600;
-}
-.mail-item-select {
-  flex-shrink: 0;
+  background: #f8f9fa;
+  border-left: 3px solid #1a73e8;
+  padding-left: 13px;
 }
 .mail-item-content {
   flex: 1;
   min-width: 0;
+  cursor: pointer;
 }
 .mail-item-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 4px;
-  gap: 12px;
+  margin-bottom: 3px;
+  gap: 10px;
 }
 .mail-item-from {
   font-size: 14px;
   color: #202124;
-  font-weight: inherit;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 80px;
   flex-shrink: 1;
-  min-width: 100px;
 }
 .mail-item-time {
   font-size: 12px;
@@ -439,13 +435,12 @@ td {
   flex-shrink: 0;
 }
 .mail-item-subject {
-  font-size: 14px;
+  font-size: 13px;
   color: #202124;
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-weight: inherit;
 }
 .mail-item-preview {
   font-size: 13px;
@@ -454,36 +449,20 @@ td {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mail-item-actions {
-  display: none;
-  gap: 8px;
-  margin-top: 8px;
-}
-.mail-item:hover .mail-item-actions {
-  display: flex;
-}
-.mail-btn {
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  text-decoration: none;
+.mail-item-delete {
+  flex-shrink: 0;
+  background: none;
+  border: none;
   cursor: pointer;
-  border: 1px solid #dadce0;
-  background: white;
-  color: #3c4043;
-  display: inline-block;
-  text-align: center;
+  padding: 6px;
+  color: #5f6368;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.6;
 }
-.mail-btn:hover {
-  background: #f8f9fa;
-}
-.mail-btn-delete {
-  background: #d93025;
-  color: white;
-  border-color: #d93025;
-}
-.mail-btn-delete:hover {
-  background: #c5221f;
+.mail-item-delete:hover {
+  opacity: 1;
+  color: #d93025;
 }
 .mail-empty {
   text-align: center;
@@ -495,18 +474,31 @@ td {
 .mail-compose {
   max-width: 700px;
   background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
   padding: 20px;
 }
 .mail-compose h1 {
   font-size: 1.3em;
   margin-bottom: 20px;
 }
+.mail-compose-original {
+  background: #f8f9fa;
+  border-left: 3px solid #e0e0e0;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #5f6368;
+}
+.mail-compose-original-label {
+  font-weight: 500;
+  color: #202124;
+  margin-bottom: 6px;
+}
 .mail-compose input[type="text"],
 .mail-compose textarea {
   width: 100%;
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
@@ -515,13 +507,13 @@ td {
   box-sizing: border-box;
 }
 .mail-compose textarea {
-  min-height: 200px;
+  min-height: 150px;
   resize: vertical;
 }
 .mail-compose button {
   background: #1a73e8;
   color: white;
-  padding: 10px 24px;
+  padding: 8px 20px;
   border-radius: 4px;
   border: none;
   font-size: 14px;
@@ -533,7 +525,7 @@ td {
 }
 .mail-compose-back {
   display: inline-block;
-  margin-top: 16px;
+  margin-left: 12px;
   color: #1a73e8;
   text-decoration: none;
   font-size: 14px;
