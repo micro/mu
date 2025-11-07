@@ -3,6 +3,7 @@ package apps
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 	"sync"
@@ -209,7 +210,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
   <p>%s</p>
   <span class="text">Created: %s | Uses: %d</span>
 </div>
-`, a.ID, a.Name, a.Description, a.Created.Format("2006-01-02"), a.UseCount)
+`, html.EscapeString(a.ID), html.EscapeString(a.Name), html.EscapeString(a.Description), a.Created.Format("2006-01-02"), a.UseCount)
 		}
 	}
 
@@ -229,7 +230,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
   <p>%s</p>
   <span class="text">By: %s | Uses: %d</span>
 </div>
-`, a.ID, a.Name, a.Description, a.UserID, a.UseCount)
+`, html.EscapeString(a.ID), html.EscapeString(a.Name), html.EscapeString(a.Description), html.EscapeString(a.UserID), a.UseCount)
 		}
 		if pubAppsList == "" {
 			pubAppsList = "<p>No public apps from other users yet.</p>"
@@ -237,8 +238,8 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	}
 
 	page := fmt.Sprintf(PageTemplate, myAppsList, pubAppsList)
-	html := app.RenderHTML("Apps", "Create and manage your mini apps", page)
-	w.Write([]byte(html))
+	renderedHTML := app.RenderHTML("Apps", "Create and manage your mini apps", page)
+	w.Write([]byte(renderedHTML))
 }
 
 func handleCreate(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
@@ -336,11 +337,11 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, appI
 </html>`, a.Name, a.CSS, a.HTML, a.JS)
 
 	// Escape for iframe srcdoc
-	escapedHTML := escapeHTML(fullHTML)
+	escapedHTML := escapeHTMLForSrcDoc(fullHTML)
 
-	page := fmt.Sprintf(AppViewTemplate, a.Name, a.Description, a.UseCount, escapedHTML, appID)
-	html := app.RenderHTML(a.Name, a.Description, page)
-	w.Write([]byte(html))
+	page := fmt.Sprintf(AppViewTemplate, html.EscapeString(a.Name), html.EscapeString(a.Description), a.UseCount, escapedHTML, html.EscapeString(appID))
+	renderedHTML := app.RenderHTML(a.Name, a.Description, page)
+	w.Write([]byte(renderedHTML))
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request, sess *auth.Session, appID string) {
@@ -385,7 +386,7 @@ func handleDelete(w http.ResponseWriter, r *http.Request, sess *auth.Session, ap
 	w.WriteHeader(http.StatusOK)
 }
 
-func escapeHTML(s string) string {
+func escapeHTMLForSrcDoc(s string) string {
 	// Properly escape HTML for iframe srcdoc attribute
 	s = strings.ReplaceAll(s, "&", "&amp;")
 	s = strings.ReplaceAll(s, "\"", "&quot;")
