@@ -37,6 +37,10 @@ var latestHtml string
 // saved videos
 var videosHtml string
 
+// recent searches
+var recentSearches []string
+const maxRecentSearches = 10
+
 type Channel struct {
 	Videos []*Result `json:"videos"`
 	Html   string    `json:"html"`
@@ -66,11 +70,27 @@ var Results = `
   h3 {
     margin-bottom: 5px;
   }
+  .recent-searches {
+    margin-bottom: 20px;
+  }
+  .recent-search-item {
+    display: inline-block;
+    margin: 5px 10px 5px 0;
+    padding: 5px 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    text-decoration: none;
+    color: #333;
+  }
+  .recent-search-item:hover {
+    background-color: #e0e0e0;
+  }
 </style>
 <form action="/video" method="POST">
   <input name="query" id="query" value="%s">
   <button>Search</button>
 </form>
+%s
 <div id="topics">%s</div>
 <h1>Results</h1>
 <div id="results">
@@ -88,12 +108,28 @@ var Template = `
   h3 {
     margin-bottom: 5px;
   }
+  .recent-searches {
+    margin-bottom: 20px;
+  }
+  .recent-search-item {
+    display: inline-block;
+    margin: 5px 10px 5px 0;
+    padding: 5px 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    text-decoration: none;
+    color: #333;
+  }
+  .recent-search-item:hover {
+    background-color: #e0e0e0;
+  }
 </style>
 <!-- <form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;"> -->
 <form action="/video" method="POST">
   <input name="query" id="query" placeholder=Search autocomplete=off autofocus>
   <button>Search</button>
 </form>
+%s
 <div id="topics">%s</div>
 <div>%s</div>
 `
@@ -107,6 +143,67 @@ func loadChannels() {
 		fmt.Println("Error parsing channels.json", err)
 	}
 	mutex.Unlock()
+}
+
+// loadRecentSearches loads recent searches from disk
+func loadRecentSearches() {
+	b, err := data.Load("recent_searches.json")
+	if err != nil {
+		return
+	}
+	mutex.Lock()
+	if err := json.Unmarshal(b, &recentSearches); err != nil {
+		fmt.Println("Error parsing recent_searches.json", err)
+	}
+	mutex.Unlock()
+}
+
+// saveRecentSearch adds a search query to recent searches
+func saveRecentSearch(query string) {
+	if len(strings.TrimSpace(query)) == 0 {
+		return
+	}
+	
+	mutex.Lock()
+	defer mutex.Unlock()
+	
+	// Remove query if it already exists
+	for i, search := range recentSearches {
+		if search == query {
+			recentSearches = append(recentSearches[:i], recentSearches[i+1:]...)
+			break
+		}
+	}
+	
+	// Add to the beginning
+	recentSearches = append([]string{query}, recentSearches...)
+	
+	// Keep only maxRecentSearches
+	if len(recentSearches) > maxRecentSearches {
+		recentSearches = recentSearches[:maxRecentSearches]
+	}
+	
+	// Save to disk
+	b, _ := json.Marshal(recentSearches)
+	data.Save("recent_searches.json", string(b))
+}
+
+// getRecentSearchesHTML generates HTML for recent searches
+func getRecentSearchesHTML() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	
+	if len(recentSearches) == 0 {
+		return ""
+	}
+	
+	html := `<div class="recent-searches"><h3>Recent Searches</h3>`
+	for _, search := range recentSearches {
+		html += fmt.Sprintf(`<a href="#" class="recent-search-item" onclick="event.preventDefault(); document.getElementById('query').value='%s'; document.querySelector('form').submit();">%s</a>`, search, search)
+	}
+	html += `</div>`
+	
+	return html
 }
 
 // Load videos
@@ -124,6 +221,9 @@ func Load() {
 
 	// load channels
 	loadChannels()
+	
+	// load recent searches
+	loadRecentSearches()
 
 	// load fresh videos
 	go loadVideos()
@@ -215,7 +315,7 @@ func loadVideos() {
 		body += `</div>`
 	}
 
-	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body))
+	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, getRecentSearchesHTML(), head, body))
 	b, _ := json.Marshal(videos)
 	vidJson := string(b)
 
@@ -437,6 +537,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if len(query) == 0 && len(chanId) == 0 {
 				return
 			}
+			
+			// Save recent search
+			if len(query) > 0 {
+				saveRecentSearch(query)
+			}
 
 			// fetch results from api
 			html, results, err := getResults(query, chanId)
@@ -463,6 +568,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if len(query) == 0 && len(chanId) == 0 {
 			return
 		}
+		
+		// Save recent search
+		if len(query) > 0 {
+			saveRecentSearch(query)
+		}
 
 		// fetch results from api
 		results, _, err := getResults(query, chanId)
@@ -471,7 +581,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
+		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, getRecentSearchesHTML(), head, results))
 		w.Write([]byte(html))
 		return
 	}
