@@ -1,10 +1,17 @@
 package mail
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	stdhtml "html"
 	"net/http"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -16,15 +23,32 @@ import (
 
 var mutex sync.RWMutex
 
+// encryption key derived from environment or default
+var encryptionKey []byte
+
+func init() {
+	// Get encryption key from environment or generate a default one
+	keyStr := os.Getenv("MAIL_ENCRYPTION_KEY")
+	if keyStr == "" {
+		// Use a default key for development (in production, this should be set via env)
+		keyStr = "mu-mail-encryption-key-change-me-in-production"
+	}
+	// Derive a 32-byte key from the string
+	hash := sha256.Sum256([]byte(keyStr))
+	encryptionKey = hash[:]
+}
+
 // Message represents a mail message
+// Body is stored encrypted on the server
 type Message struct {
-	ID        string    `json:"id"`
-	From      string    `json:"from"`
-	To        string    `json:"to"`
-	Subject   string    `json:"subject"`
-	Body      string    `json:"body"`
-	Sent      time.Time `json:"sent"`
-	Read      bool      `json:"read"`
+	ID              string    `json:"id"`
+	From            string    `json:"from"`
+	To              string    `json:"to"`
+	Subject         string    `json:"subject"`
+	EncryptedBody   string    `json:"encrypted_body"`   // Base64 encoded encrypted body
+	Sent            time.Time `json:"sent"`
+	Read            bool      `json:"read"`
+	DeleteOnRead    bool      `json:"delete_on_read"`   // Auto-delete when marked as read
 }
 
 // all messages stored by recipient
@@ -48,11 +72,73 @@ var ComposeTemplate = `
 `
 
 func init() {
+	// Get encryption key from environment or generate a default one
+	keyStr := os.Getenv("MAIL_ENCRYPTION_KEY")
+	if keyStr == "" {
+		// Use a default key for development (in production, this should be set via env)
+		keyStr = "mu-mail-encryption-key-change-me-in-production"
+	}
+	// Derive a 32-byte key from the string
+	hash := sha256.Sum256([]byte(keyStr))
+	encryptionKey = hash[:]
+
 	// load messages from disk
 	b, _ := data.Load("messages.json")
 	if b != nil {
 		json.Unmarshal(b, &messages)
 	}
+}
+
+// encryptBody encrypts the message body using AES-GCM
+func encryptBody(plaintext string) (string, error) {
+	block, err := aes.NewCipher(encryptionKey)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// decryptBody decrypts the message body using AES-GCM
+func decryptBody(encrypted string) (string, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(encrypted)
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher(encryptionKey)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
 }
 
 // Load initializes the mail system
@@ -61,10 +147,17 @@ func Load() {
 }
 
 // SendMessage sends a message from one user to another
+// The message body is encrypted before storage
 func SendMessage(from, to, subject, body string) error {
 	// Check if recipient exists before sending
 	if !auth.AccountExists(to) {
 		return fmt.Errorf("recipient user '%s' does not exist", to)
+	}
+
+	// Encrypt the message body
+	encryptedBody, err := encryptBody(body)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt message: %v", err)
 	}
 
 	mutex.Lock()
@@ -72,13 +165,14 @@ func SendMessage(from, to, subject, body string) error {
 
 	// create message
 	msg := &Message{
-		ID:      fmt.Sprintf("%s-%d", from, time.Now().UnixNano()),
-		From:    from,
-		To:      to,
-		Subject: subject,
-		Body:    body,
-		Sent:    time.Now(),
-		Read:    false,
+		ID:            fmt.Sprintf("%s-%d", from, time.Now().UnixNano()),
+		From:          from,
+		To:            to,
+		Subject:       subject,
+		EncryptedBody: encryptedBody,
+		Sent:          time.Now(),
+		Read:          false,
+		DeleteOnRead:  true, // Enable auto-delete on read
 	}
 
 	// add to recipient's inbox
@@ -93,12 +187,12 @@ func SendMessage(from, to, subject, body string) error {
 	// NOTE: We intentionally do NOT index mail messages for security reasons.
 	// Mail is private communication between users and should not be searchable
 	// in a shared index that could potentially leak private data.
-	// Instead, mail is searchable client-side in the browser using local storage.
+	// Messages are encrypted at rest and auto-deleted when read.
 
 	return nil
 }
 
-// GetInbox retrieves all messages for a user
+// GetInbox retrieves all messages for a user and decrypts them
 func GetInbox(username string) []*Message {
 	mutex.RLock()
 	defer mutex.RUnlock()
@@ -118,19 +212,57 @@ func GetInbox(username string) []*Message {
 	return sorted
 }
 
-// MarkAsRead marks a message as read
+// GetDecryptedBody decrypts and returns the body of a message
+func GetDecryptedBody(msg *Message) string {
+	if msg.EncryptedBody == "" {
+		return ""
+	}
+	body, err := decryptBody(msg.EncryptedBody)
+	if err != nil {
+		fmt.Printf("Error decrypting message %s: %v\n", msg.ID, err)
+		return "[Error decrypting message]"
+	}
+	return body
+}
+
+// MarkAsRead marks a message as read and deletes it if DeleteOnRead is true
 func MarkAsRead(username, messageID string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	inbox := messages[username]
-	for _, msg := range inbox {
+	for i, msg := range inbox {
 		if msg.ID == messageID {
-			msg.Read = true
+			if msg.DeleteOnRead {
+				// Store-and-forward: Delete the message from server after reading
+				messages[username] = append(inbox[:i], inbox[i+1:]...)
+				fmt.Printf("Message %s deleted from server after being read by %s\n", messageID, username)
+			} else {
+				// Legacy behavior: just mark as read
+				msg.Read = true
+			}
 			data.SaveJSON("messages.json", messages)
 			break
 		}
 	}
+}
+
+// DeleteMessage allows a user to delete their own message
+// This only works for messages they received, not messages they sent
+func DeleteMessage(username, messageID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	inbox := messages[username]
+	for i, msg := range inbox {
+		if msg.ID == messageID {
+			// Remove the message
+			messages[username] = append(inbox[:i], inbox[i+1:]...)
+			data.SaveJSON("messages.json", messages)
+			return nil
+		}
+	}
+	return fmt.Errorf("message not found")
 }
 
 // GetUnreadCount returns the number of unread messages
@@ -213,8 +345,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Check if JSON response is requested via query parameter
 	if r.URL.Query().Get("format") == "json" {
 		inbox := GetInbox(username)
+		
+		// Create response with decrypted bodies for client-side search
+		type MessageResponse struct {
+			ID       string    `json:"id"`
+			From     string    `json:"from"`
+			To       string    `json:"to"`
+			Subject  string    `json:"subject"`
+			Body     string    `json:"body"` // Decrypted for client
+			Sent     time.Time `json:"sent"`
+			Read     bool      `json:"read"`
+		}
+		
+		var response []MessageResponse
+		for _, msg := range inbox {
+			response = append(response, MessageResponse{
+				ID:      msg.ID,
+				From:    msg.From,
+				To:      msg.To,
+				Subject: msg.Subject,
+				Body:    GetDecryptedBody(msg),
+				Sent:    msg.Sent,
+				Read:    msg.Read,
+			})
+		}
+		
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(inbox)
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
@@ -242,10 +399,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				style = "font-weight: bold;"
 			}
 			
+			// Decrypt the message body
+			decryptedBody := GetDecryptedBody(msg)
+			
 			// HTML escape all user-provided content to prevent XSS
 			fromEscaped := stdhtml.EscapeString(msg.From)
 			subjectEscaped := stdhtml.EscapeString(msg.Subject)
-			bodyEscaped := stdhtml.EscapeString(msg.Body)
+			bodyEscaped := stdhtml.EscapeString(decryptedBody)
+			
+			// Info text about auto-deletion
+			deleteInfo := ""
+			if msg.DeleteOnRead {
+				deleteInfo = `<div style="font-size: 0.75em; color: #999; margin-top: 5px;">⚠️ This message will be deleted from the server when marked as read</div>`
+			}
 			
 			content += fmt.Sprintf(`
 <div class="card mail-item" style="max-width: 100%%; margin-bottom: 15px;" data-from="%s" data-subject="%s" data-body="%s">
@@ -254,14 +420,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     <div style="font-size: 1.2em; margin: 5px 0;">%s</div>
     <div style="font-size: 0.9em; margin: 10px 0; white-space: pre-wrap;">%s</div>
     <div style="font-size: 0.8em; color: #666;">%s</div>
+    %s
     <form action="/mail" method="POST" style="display: inline;">
       <input type="hidden" name="action" value="read">
       <input type="hidden" name="id" value="%s">
-      <button type="submit" style="margin-top: 10px;">Mark as Read</button>
+      <button type="submit" style="margin-top: 10px;">Read & Delete</button>
     </form>
   </div>
 </div>
-			`, fromEscaped, subjectEscaped, bodyEscaped, style, fromEscaped, subjectEscaped, bodyEscaped, app.TimeAgo(msg.Sent), msg.ID)
+			`, fromEscaped, subjectEscaped, bodyEscaped, style, fromEscaped, subjectEscaped, bodyEscaped, app.TimeAgo(msg.Sent), deleteInfo, msg.ID)
 		}
 		content += `</div>`
 	}
