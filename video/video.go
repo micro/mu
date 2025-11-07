@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -60,8 +61,7 @@ type Result struct {
 var Key = os.Getenv("YOUTUBE_API_KEY")
 var Client, _ = youtube.NewService(context.TODO(), option.WithAPIKey(Key))
 
-var Results = `
-<style>
+var commonStyles = `
   .thumbnail {
     margin-bottom: 50px;
   }
@@ -86,6 +86,10 @@ var Results = `
   .recent-search-item:hover {
     background-color: #e0e0e0;
   }
+`
+
+var Results = `
+<style>` + commonStyles + `
 </style>
 <form action="/video" method="POST">
   <input name="query" id="query" value="%s">
@@ -99,31 +103,7 @@ var Results = `
 </div>`
 
 var Template = `
-<style>
-  .thumbnail {
-    margin-bottom: 50px;
-  }
-  img {
-    border-radius: 10px;
-  }
-  h3 {
-    margin-bottom: 5px;
-  }
-  .recent-searches {
-    margin-bottom: 20px;
-  }
-  .recent-search-item {
-    display: inline-block;
-    margin: 5px 10px 5px 0;
-    padding: 5px 10px;
-    background-color: #f0f0f0;
-    border-radius: 5px;
-    text-decoration: none;
-    color: #333;
-  }
-  .recent-search-item:hover {
-    background-color: #e0e0e0;
-  }
+<style>` + commonStyles + `
 </style>
 <!-- <form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;"> -->
 <form action="/video" method="POST">
@@ -185,7 +165,11 @@ func saveRecentSearch(query string) {
 	}
 
 	// Save to disk
-	b, _ := json.Marshal(recentSearches)
+	b, err := json.Marshal(recentSearches)
+	if err != nil {
+		fmt.Println("Error marshaling recent searches:", err)
+		return
+	}
 	data.Save("recent_searches.json", string(b))
 }
 
@@ -198,13 +182,14 @@ func getRecentSearchesHTML() string {
 		return ""
 	}
 
-	html := `<div class="recent-searches"><h3>Recent Searches</h3>`
+	htmlStr := `<div class="recent-searches"><h3>Recent Searches</h3>`
 	for _, search := range recentSearches {
-		html += fmt.Sprintf(`<a href="#" class="recent-search-item" onclick="event.preventDefault(); document.getElementById('query').value='%s'; document.querySelector('form').submit();">%s</a>`, search, search)
+		escapedSearch := html.EscapeString(search)
+		htmlStr += fmt.Sprintf(`<a href="#" class="recent-search-item" onclick="event.preventDefault(); document.getElementById('query').value='%s'; document.querySelector('form').submit();">%s</a>`, escapedSearch, escapedSearch)
 	}
-	html += `</div>`
+	htmlStr += `</div>`
 
-	return html
+	return htmlStr
 }
 
 // Load videos
