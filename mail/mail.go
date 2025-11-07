@@ -379,15 +379,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		subject := r.URL.Query().Get("subject")
 		
 		composeHTML := `<div id="mail">
-  <h1>Compose Mail</h1>
-  <form action="/mail" method="POST">
-    <input type="text" name="to" placeholder="To (username)" value="` + stdhtml.EscapeString(replyTo) + `" required><br>
-    <input type="text" name="subject" placeholder="Subject" value="` + stdhtml.EscapeString(subject) + `" required><br>
-    <textarea name="body" rows="10" placeholder="Message" required style="width: calc(100%% - 22px); padding: 10px; border-radius: 5px; border: 1px solid darkgrey; margin-bottom: 10px;"></textarea><br>
-    <button type="submit">Send</button>
-  </form>
-  <br>
-  <a href="/mail" class="link">Back to Inbox</a>
+  <div class="mail-compose">
+    <h1>New Message</h1>
+    <form action="/mail" method="POST">
+      <input type="text" name="to" placeholder="To" value="` + stdhtml.EscapeString(replyTo) + `" required>
+      <input type="text" name="subject" placeholder="Subject" value="` + stdhtml.EscapeString(subject) + `" required>
+      <textarea name="body" placeholder="Type your message here..." required></textarea>
+      <button type="submit">Send</button>
+    </form>
+    <a href="/mail" class="mail-compose-back">← Back to Inbox</a>
+  </div>
 </div>`
 		
 		html := app.RenderHTML("Compose Mail", "Send a message", composeHTML)
@@ -433,19 +434,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	
 	var content string
 	content += `<div id="mail">`
-	content += `<h1>Mail</h1>`
-	content += fmt.Sprintf(`<a href="/mail?compose=true" class="block"><b>Compose</b></a><br><br>`)
+	content += `<h1>Inbox</h1>`
+	content += `<a href="/mail?compose=true" class="mail-compose-btn">✏️ Compose</a>`
 	
 	// Add search box for client-side filtering
-	content += `
-<div style="max-width: 800px; margin-bottom: 20px;">
-  <input type="text" id="mailSearch" placeholder="Search mail..." oninput="filterMail()">
-</div>`
+	content += `<input type="text" id="mailSearch" class="mail-search" placeholder="Search mail" oninput="filterMail()">`
 	
 	if len(inbox) == 0 {
-		content += `<p>No messages in your inbox.</p>`
+		content += `<div class="mail-empty">No messages in your inbox.</div>`
 	} else {
-		content += `<div id="mailList" style="max-width: 800px;">`
+		content += `<div class="mail-list" id="mailList">`
 		for _, msg := range inbox {
 			readClass := ""
 			if !msg.Read {
@@ -460,40 +458,32 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			subjectEscaped := stdhtml.EscapeString(msg.Subject)
 			bodyEscaped := stdhtml.EscapeString(decryptedBody)
 			
-			// Info text about auto-deletion
-			deleteInfo := ""
-			if msg.DeleteOnRead {
-				deleteInfo = `<div class="mail-delete-warning">⚠️ This message will be deleted from the server when marked as read</div>`
-			}
-			
-			// Age-based warning for unread messages
-			age := time.Since(msg.Sent)
-			ageWarning := ""
-			if !msg.Read && age > 20*time.Hour {
-				hoursLeft := 24 - int(age.Hours())
-				ageWarning = fmt.Sprintf(`<div class="mail-age-warning">⏰ This message will auto-delete in ~%d hours if not read</div>`, hoursLeft)
+			// Truncate body for preview
+			preview := bodyEscaped
+			if len(preview) > 100 {
+				preview = preview[:100] + "..."
 			}
 			
 			content += fmt.Sprintf(`
 <div class="mail-item %s" data-from="%s" data-subject="%s" data-body="%s">
-  <div class="mail-header">
-    <span class="mail-from">From: %s</span>
-    <span class="mail-time">%s</span>
-  </div>
-  <div class="mail-subject">%s</div>
-  <div class="mail-body">%s</div>
-  %s
-  %s
-  <div class="mail-actions">
-    <a href="/mail?compose=true&reply_to=%s&subject=Re: %s" class="mail-btn mail-btn-secondary">Reply</a>
-    <form action="/mail" method="POST" style="display: inline;">
-      <input type="hidden" name="action" value="read">
-      <input type="hidden" name="id" value="%s">
-      <button type="submit" class="mail-btn mail-btn-primary">Read & Delete</button>
-    </form>
+  <div class="mail-item-content">
+    <div class="mail-item-header">
+      <span class="mail-item-from">%s</span>
+      <span class="mail-item-time">%s</span>
+    </div>
+    <div class="mail-item-subject">%s</div>
+    <div class="mail-item-preview">%s</div>
+    <div class="mail-item-actions">
+      <a href="/mail?compose=true&reply_to=%s&subject=%s" class="mail-btn">Reply</a>
+      <form action="/mail" method="POST" style="display: inline;">
+        <input type="hidden" name="action" value="read">
+        <input type="hidden" name="id" value="%s">
+        <button type="submit" class="mail-btn mail-btn-delete">Delete</button>
+      </form>
+    </div>
   </div>
 </div>
-			`, readClass, fromEscaped, subjectEscaped, bodyEscaped, fromEscaped, app.TimeAgo(msg.Sent), subjectEscaped, bodyEscaped, deleteInfo, ageWarning, fromEscaped, stdhtml.EscapeString(msg.Subject), msg.ID)
+			`, readClass, fromEscaped, subjectEscaped, bodyEscaped, fromEscaped, app.TimeAgo(msg.Sent), subjectEscaped, preview, fromEscaped, stdhtml.EscapeString("Re: "+msg.Subject), msg.ID)
 		}
 		content += `</div>`
 	}
