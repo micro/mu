@@ -160,12 +160,29 @@ func getPrices() map[string]float64 {
 
 	// let's get other prices
 	for key, ftr := range futures {
-		f, err := future.Get(ftr)
-		if err != nil {
-			fmt.Println("Failed to get future", key, ftr, err)
-			continue
-		}
-		prices[key] = f.Quote.RegularMarketPrice
+		// Use closure to safely handle potential panics from individual futures
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("Recovered from panic getting future %s (%s): %v\n", key, ftr, r)
+				}
+			}()
+			
+			f, err := future.Get(ftr)
+			if err != nil {
+				fmt.Println("Failed to get future", key, ftr, err)
+				return
+			}
+			if f == nil {
+				fmt.Println("Future returned nil for", key, ftr)
+				return
+			}
+			// Access the price, which may panic if Quote struct is malformed
+			price := f.Quote.RegularMarketPrice
+			if price > 0 {
+				prices[key] = price
+			}
+		}()
 	}
 
 	return prices
