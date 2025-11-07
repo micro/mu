@@ -46,6 +46,9 @@ var headlinesHtml string
 // markets
 var marketsHtml string
 
+// cached prices
+var cachedPrices map[string]float64
+
 // reminder
 var reminderHtml string
 
@@ -157,12 +160,29 @@ func getPrices() map[string]float64 {
 
 	// let's get other prices
 	for key, ftr := range futures {
-		f, err := future.Get(ftr)
-		if err != nil {
-			fmt.Println("Failed to get future", key, ftr, err)
-			continue
-		}
-		prices[key] = f.Quote.RegularMarketPrice
+		// Use closure to safely handle potential panics from individual futures
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("Recovered from panic getting future %s (%s): %v\n", key, ftr, r)
+				}
+			}()
+			
+			f, err := future.Get(ftr)
+			if err != nil {
+				fmt.Println("Failed to get future", key, ftr, err)
+				return
+			}
+			if f == nil {
+				fmt.Println("Future returned nil for", key, ftr)
+				return
+			}
+			// Access the price, which may panic if Quote struct is malformed
+			price := f.Quote.RegularMarketPrice
+			if price > 0 {
+				prices[key] = price
+			}
+		}()
 	}
 
 	return prices
@@ -170,7 +190,17 @@ func getPrices() map[string]float64 {
 
 var tickers = []string{"GBP", "XLM", "ETH", "BTC", "PAXG"}
 
-var futures = map[string]string{"OIL": "CL=F", "GOLD": "GC=F", "COFFEE": "KC=F", "OATS": "ZO=F", "WHEAT": "KE=F"}
+var futures = map[string]string{
+	"OIL":      "CL=F",
+	"GOLD":     "GC=F",
+	"COFFEE":   "KC=F",
+	"OATS":     "ZO=F",
+	"WHEAT":    "KE=F",
+	"SILVER":   "SI=F",
+	"COPPER":   "HG=F",
+	"CORN":     "ZC=F",
+	"SOYBEANS": "ZS=F",
+}
 
 var futuresKeys = []string{"OIL", "OATS", "COFFEE", "WHEAT", "GOLD"}
 
@@ -631,6 +661,11 @@ func parseFeed() {
 	newPrices := getPrices()
 
 	if newPrices != nil {
+		// Cache the prices for the markets page
+		mutex.Lock()
+		cachedPrices = newPrices
+		mutex.Unlock()
+
 		info := []byte(`<div id="tickers">`)
 
 		for _, ticker := range tickers {
@@ -723,6 +758,9 @@ func parseFeed() {
 	data.Save("headlines.html", headlinesHtml)
 	// save markets
 	data.Save("markets.html", marketsHtml)
+	
+	// save the prices as JSON for persistence
+	data.SaveJSON("prices.json", cachedPrices)
 
 	mutex.Unlock()
 
@@ -738,9 +776,20 @@ func Load() {
 	b, _ := data.Load("headlines.html")
 	headlinesHtml = string(b)
 
-	// save markets
+	// load markets
 	b, _ = data.Load("markets.html")
 	marketsHtml = string(b)
+	
+	// load cached prices
+	b, _ = data.Load("prices.json")
+	if len(b) > 0 {
+		var prices map[string]float64
+		if err := json.Unmarshal(b, &prices); err == nil {
+			mutex.Lock()
+			cachedPrices = prices
+			mutex.Unlock()
+		}
+	}
 
 	b, _ = data.Load("reminder.html")
 
@@ -846,4 +895,29 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write([]byte(html))
+}
+
+// GetAllPrices returns all cached prices
+func GetAllPrices() map[string]float64 {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	// Return a copy to avoid concurrent map access
+	prices := make(map[string]float64)
+	if cachedPrices != nil {
+		for k, v := range cachedPrices {
+			prices[k] = v
+		}
+	}
+	return prices
+}
+
+// GetHomepageTickers returns the list of tickers displayed on homepage
+func GetHomepageTickers() []string {
+	return append([]string{}, tickers...)
+}
+
+// GetHomepageFutures returns the list of futures displayed on homepage
+func GetHomepageFutures() []string {
+	return append([]string{}, futuresKeys...)
 }
