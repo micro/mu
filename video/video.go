@@ -88,6 +88,14 @@ var recentSearchesScript = `
   const MAX_RECENT_SEARCHES = 10;
   const STORAGE_KEY = 'mu_recent_video_searches';
 
+  function escapeHTML(text) {
+    return text.replace(/&/g, '&amp;')
+               .replace(/</g, '&lt;')
+               .replace(/>/g, '&gt;')
+               .replace(/"/g, '&quot;')
+               .replace(/'/g, '&#039;');
+  }
+
   function loadRecentSearches() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -134,7 +142,7 @@ var recentSearchesScript = `
     
     let html = '<div class="recent-searches"><h3>Recent Searches</h3>';
     searches.forEach(search => {
-      const escaped = search.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      const escaped = escapeHTML(search);
       html += '<a href="#" class="recent-search-item" data-query="' + escaped + '">' + escaped + '</a>';
     });
     html += '</div>';
@@ -146,8 +154,13 @@ var recentSearchesScript = `
       item.addEventListener('click', function(e) {
         e.preventDefault();
         const query = this.getAttribute('data-query');
-        document.getElementById('query').value = query;
-        document.querySelector('form').submit();
+        const queryInput = document.getElementById('query');
+        const form = this.closest('form') || document.querySelector('form');
+        
+        if (queryInput && form) {
+          queryInput.value = query;
+          form.submit();
+        }
       });
     });
   }
@@ -159,9 +172,9 @@ var recentSearchesScript = `
     const form = document.querySelector('form[action="/video"]');
     if (form) {
       form.addEventListener('submit', function() {
-        const query = document.getElementById('query').value;
-        if (query && query.trim()) {
-          saveRecentSearch(query.trim());
+        const queryInput = document.getElementById('query');
+        if (queryInput && queryInput.value && queryInput.value.trim()) {
+          saveRecentSearch(queryInput.value.trim());
         }
       });
     }
