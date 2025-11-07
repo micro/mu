@@ -8,6 +8,7 @@ import (
 
 	"mu/api"
 	"mu/app"
+	"mu/apps"
 	"mu/auth"
 	"mu/chat"
 	"mu/home"
@@ -51,6 +52,7 @@ func main() {
 		"/news":    true,
 		"/chat":    true,
 		"/home":    true,
+		"/apps":    true,
 		"/logout":  true,
 		"/session": true,
 		"/api":     true,
@@ -66,6 +68,10 @@ func main() {
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
+
+	// serve apps
+	http.HandleFunc("/apps/", apps.Handler)
+	http.HandleFunc("/apps", apps.Handler)
 
 	// auth
 	http.HandleFunc("/login", app.Login)
