@@ -39,6 +39,7 @@ var videosHtml string
 
 // recent searches
 var recentSearches []string
+
 const maxRecentSearches = 10
 
 type Channel struct {
@@ -163,10 +164,10 @@ func saveRecentSearch(query string) {
 	if len(strings.TrimSpace(query)) == 0 {
 		return
 	}
-	
+
 	mutex.Lock()
 	defer mutex.Unlock()
-	
+
 	// Remove query if it already exists
 	for i, search := range recentSearches {
 		if search == query {
@@ -174,15 +175,15 @@ func saveRecentSearch(query string) {
 			break
 		}
 	}
-	
+
 	// Add to the beginning
 	recentSearches = append([]string{query}, recentSearches...)
-	
+
 	// Keep only maxRecentSearches
 	if len(recentSearches) > maxRecentSearches {
 		recentSearches = recentSearches[:maxRecentSearches]
 	}
-	
+
 	// Save to disk
 	b, _ := json.Marshal(recentSearches)
 	data.Save("recent_searches.json", string(b))
@@ -192,17 +193,17 @@ func saveRecentSearch(query string) {
 func getRecentSearchesHTML() string {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	
+
 	if len(recentSearches) == 0 {
 		return ""
 	}
-	
+
 	html := `<div class="recent-searches"><h3>Recent Searches</h3>`
 	for _, search := range recentSearches {
 		html += fmt.Sprintf(`<a href="#" class="recent-search-item" onclick="event.preventDefault(); document.getElementById('query').value='%s'; document.querySelector('form').submit();">%s</a>`, search, search)
 	}
 	html += `</div>`
-	
+
 	return html
 }
 
@@ -221,7 +222,7 @@ func Load() {
 
 	// load channels
 	loadChannels()
-	
+
 	// load recent searches
 	loadRecentSearches()
 
@@ -537,7 +538,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if len(query) == 0 && len(chanId) == 0 {
 				return
 			}
-			
+
 			// Save recent search
 			if len(query) > 0 {
 				saveRecentSearch(query)
@@ -568,7 +569,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if len(query) == 0 && len(chanId) == 0 {
 			return
 		}
-		
+
 		// Save recent search
 		if len(query) > 0 {
 			saveRecentSearch(query)
