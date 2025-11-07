@@ -198,7 +198,6 @@ var futures = map[string]string{
 	"WHEAT":    "KE=F",
 	"SILVER":   "SI=F",
 	"COPPER":   "HG=F",
-	"NATGAS":   "NG=F",
 	"CORN":     "ZC=F",
 	"SOYBEANS": "ZS=F",
 }
@@ -759,6 +758,9 @@ func parseFeed() {
 	data.Save("headlines.html", headlinesHtml)
 	// save markets
 	data.Save("markets.html", marketsHtml)
+	
+	// save the prices as JSON for persistence
+	data.SaveJSON("prices.json", cachedPrices)
 
 	mutex.Unlock()
 
@@ -774,9 +776,20 @@ func Load() {
 	b, _ := data.Load("headlines.html")
 	headlinesHtml = string(b)
 
-	// save markets
+	// load markets
 	b, _ = data.Load("markets.html")
 	marketsHtml = string(b)
+	
+	// load cached prices
+	b, _ = data.Load("prices.json")
+	if len(b) > 0 {
+		var prices map[string]float64
+		if err := json.Unmarshal(b, &prices); err == nil {
+			mutex.Lock()
+			cachedPrices = prices
+			mutex.Unlock()
+		}
+	}
 
 	b, _ = data.Load("reminder.html")
 

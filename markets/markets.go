@@ -16,7 +16,7 @@ var additionalCrypto = []string{
 }
 
 // Additional futures to display (beyond homepage, these are already fetched)
-var additionalFutures = []string{"SILVER", "COPPER", "NATGAS", "CORN", "SOYBEANS"}
+var additionalFutures = []string{"SILVER", "COPPER", "CORN", "SOYBEANS"}
 
 var Template = `
 <style>
@@ -28,36 +28,42 @@ var Template = `
     border-bottom: 2px solid #333;
     padding-bottom: 10px;
   }
-  .price-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 15px;
-    margin-bottom: 20px;
+  .market-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
-  .price-item {
-    background: whitesmoke;
-    padding: 15px;
-    border-radius: 5px;
+  .market-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    background: white;
   }
-  .price-item .symbol {
+  .market-item:hover {
+    background: #f9f9f9;
+  }
+  .market-item .symbol {
     font-weight: bold;
-    font-size: 1.1em;
+    font-size: 1em;
     color: #333;
-    margin-bottom: 5px;
+    min-width: 100px;
   }
-  .price-item .price {
+  .market-item .price {
     font-size: 1em;
     color: #666;
+    text-align: right;
   }
 </style>
 <h1>Markets</h1>
 <div class="market-section">
   <h2>Cryptocurrency</h2>
-  <div class="price-grid">%s</div>
+  <div class="market-list">%s</div>
 </div>
 <div class="market-section">
   <h2>Commodities &amp; Futures</h2>
-  <div class="price-grid">%s</div>
+  <div class="market-list">%s</div>
 </div>
 `
 
@@ -77,7 +83,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	for _, ticker := range allCryptoTickers {
 		if price, ok := prices[ticker]; ok && price > 0 {
 			cryptoHTML += fmt.Sprintf(`
-				<div class="price-item">
+				<div class="market-item">
 					<div class="symbol">%s</div>
 					<div class="price">$%.2f</div>
 				</div>`, ticker, price)
@@ -90,7 +96,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	for _, key := range allFuturesKeys {
 		if price, ok := prices[key]; ok && price > 0 {
 			futuresHTML += fmt.Sprintf(`
-				<div class="price-item">
+				<div class="market-item">
 					<div class="symbol">%s</div>
 					<div class="price">$%.2f</div>
 				</div>`, key, price)
