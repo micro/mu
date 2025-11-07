@@ -55,8 +55,7 @@ type Result struct {
 var Key = os.Getenv("YOUTUBE_API_KEY")
 var Client, _ = youtube.NewService(context.TODO(), option.WithAPIKey(Key))
 
-var Results = `
-<style>
+var commonStyles = `
   .thumbnail {
     margin-bottom: 50px;
   }
@@ -66,37 +65,150 @@ var Results = `
   h3 {
     margin-bottom: 5px;
   }
+  .recent-searches {
+    margin-bottom: 20px;
+  }
+  .recent-search-item {
+    display: inline-block;
+    margin: 5px 10px 5px 0;
+    padding: 5px 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    text-decoration: none;
+    color: #333;
+    cursor: pointer;
+  }
+  .recent-search-item:hover {
+    background-color: #e0e0e0;
+  }
+`
+
+var recentSearchesScript = `
+<script>
+  const MAX_RECENT_SEARCHES = 10;
+  const STORAGE_KEY = 'mu_recent_video_searches';
+
+  function escapeHTML(text) {
+    return text.replace(/&/g, '&amp;')
+               .replace(/</g, '&lt;')
+               .replace(/>/g, '&gt;')
+               .replace(/"/g, '&quot;')
+               .replace(/'/g, '&#039;');
+  }
+
+  function loadRecentSearches() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.error('Error loading recent searches:', e);
+      return [];
+    }
+  }
+
+  function saveRecentSearch(query) {
+    if (!query || !query.trim()) return;
+    
+    try {
+      let searches = loadRecentSearches();
+      
+      // Remove if already exists
+      searches = searches.filter(s => s !== query);
+      
+      // Add to beginning
+      searches.unshift(query);
+      
+      // Keep only MAX_RECENT_SEARCHES
+      if (searches.length > MAX_RECENT_SEARCHES) {
+        searches = searches.slice(0, MAX_RECENT_SEARCHES);
+      }
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
+    } catch (e) {
+      console.error('Error saving recent search:', e);
+    }
+  }
+
+  function displayRecentSearches() {
+    const searches = loadRecentSearches();
+    const container = document.getElementById('recent-searches-container');
+    
+    if (!container) return;
+    
+    if (searches.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    
+    let html = '<div class="recent-searches"><h3>Recent Searches</h3>';
+    searches.forEach(search => {
+      const escaped = escapeHTML(search);
+      html += '<a href="#" class="recent-search-item" data-query="' + escaped + '">' + escaped + '</a>';
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+    
+    // Add click handlers
+    container.querySelectorAll('.recent-search-item').forEach(item => {
+      item.addEventListener('click', function(e) {
+        e.preventDefault();
+        const query = this.getAttribute('data-query');
+        const queryInput = document.getElementById('query');
+        const form = this.closest('form') || document.querySelector('form');
+        
+        if (queryInput && form) {
+          queryInput.value = query;
+          form.submit();
+        }
+      });
+    });
+  }
+
+  // Save search when form is submitted
+  document.addEventListener('DOMContentLoaded', function() {
+    displayRecentSearches();
+    
+    const form = document.querySelector('form[action="/video"]');
+    if (form) {
+      form.addEventListener('submit', function() {
+        const queryInput = document.getElementById('query');
+        if (queryInput && queryInput.value && queryInput.value.trim()) {
+          saveRecentSearch(queryInput.value.trim());
+        }
+      });
+    }
+  });
+</script>
+`
+
+var Results = `
+<style>` + commonStyles + `
 </style>
 <form action="/video" method="POST">
   <input name="query" id="query" value="%s">
   <button>Search</button>
 </form>
+<div id="recent-searches-container"></div>
 <div id="topics">%s</div>
 <h1>Results</h1>
 <div id="results">
 %s
-</div>`
+</div>
+` + recentSearchesScript
 
 var Template = `
-<style>
-  .thumbnail {
-    margin-bottom: 50px;
-  }
-  img {
-    border-radius: 10px;
-  }
-  h3 {
-    margin-bottom: 5px;
-  }
+<style>` + commonStyles + `
 </style>
 <!-- <form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;"> -->
 <form action="/video" method="POST">
   <input name="query" id="query" placeholder=Search autocomplete=off autofocus>
   <button>Search</button>
 </form>
+<div id="recent-searches-container"></div>
 <div id="topics">%s</div>
 <div>%s</div>
-`
+` + recentSearchesScript
 
 func loadChannels() {
 	// load the feeds file
