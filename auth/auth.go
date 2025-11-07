@@ -181,3 +181,11 @@ func ValidateToken(tk string) error {
 	}
 	return nil
 }
+
+// AccountExists checks if an account with the given ID exists
+func AccountExists(id string) bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+	_, exists := accounts[id]
+	return exists
+}

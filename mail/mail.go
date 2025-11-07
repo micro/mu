@@ -3,6 +3,7 @@ package mail
 import (
 	"encoding/json"
 	"fmt"
+	stdhtml "html"
 	"net/http"
 	"sort"
 	"sync"
@@ -61,6 +62,11 @@ func Load() {
 
 // SendMessage sends a message from one user to another
 func SendMessage(from, to, subject, body string) error {
+	// Check if recipient exists before sending
+	if !auth.AccountExists(to) {
+		return fmt.Errorf("recipient user '%s' does not exist", to)
+	}
+
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -87,6 +93,7 @@ func SendMessage(from, to, subject, body string) error {
 	// NOTE: We intentionally do NOT index mail messages for security reasons.
 	// Mail is private communication between users and should not be searchable
 	// in a shared index that could potentially leak private data.
+	// Instead, mail is searchable client-side in the browser using local storage.
 
 	return nil
 }
@@ -203,6 +210,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if JSON response is requested
+	if ct := r.Header.Get("Content-Type"); ct == "application/json" || r.URL.Query().Get("format") == "json" {
+		inbox := GetInbox(username)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(inbox)
+		return
+	}
+
 	// show inbox
 	inbox := GetInbox(username)
 	
@@ -211,22 +226,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	content += `<h1>Mail</h1>`
 	content += fmt.Sprintf(`<a href="/mail?compose=true" class="block"><b>Compose</b></a><br><br>`)
 	
+	// Add search box for client-side filtering
+	content += `
+<div style="max-width: 800px; margin-bottom: 20px;">
+  <input type="text" id="mailSearch" placeholder="Search mail..." style="width: calc(100%% - 22px); padding: 10px; border-radius: 5px; border: 1px solid darkgrey;" oninput="filterMail()">
+</div>`
+	
 	if len(inbox) == 0 {
 		content += `<p>No messages in your inbox.</p>`
 	} else {
-		content += `<div style="max-width: 800px;">`
+		content += `<div id="mailList" style="max-width: 800px;">`
 		for _, msg := range inbox {
 			style := ""
 			if !msg.Read {
 				style = "font-weight: bold;"
 			}
 			
+			// HTML escape all user-provided content to prevent XSS
+			fromEscaped := stdhtml.EscapeString(msg.From)
+			subjectEscaped := stdhtml.EscapeString(msg.Subject)
+			bodyEscaped := stdhtml.EscapeString(msg.Body)
+			
 			content += fmt.Sprintf(`
-<div class="card" style="max-width: 100%%; margin-bottom: 15px;">
+<div class="card mail-item" style="max-width: 100%%; margin-bottom: 15px;" data-from="%s" data-subject="%s" data-body="%s">
   <div style="%s">
     <div style="font-size: 0.9em; color: #666;">From: %s</div>
     <div style="font-size: 1.2em; margin: 5px 0;">%s</div>
-    <div style="font-size: 0.9em; margin: 10px 0;">%s</div>
+    <div style="font-size: 0.9em; margin: 10px 0; white-space: pre-wrap;">%s</div>
     <div style="font-size: 0.8em; color: #666;">%s</div>
     <form action="/mail" method="POST" style="display: inline;">
       <input type="hidden" name="action" value="read">
@@ -235,10 +261,44 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     </form>
   </div>
 </div>
-			`, style, msg.From, msg.Subject, msg.Body, app.TimeAgo(msg.Sent), msg.ID)
+			`, fromEscaped, subjectEscaped, bodyEscaped, style, fromEscaped, subjectEscaped, bodyEscaped, app.TimeAgo(msg.Sent), msg.ID)
 		}
 		content += `</div>`
 	}
+	
+	// Add JavaScript for client-side search
+	content += `
+<script>
+// Store mail data in sessionStorage for client-side search
+function storeMail() {
+  fetch('/mail?format=json')
+    .then(response => response.json())
+    .then(data => {
+      sessionStorage.setItem('mailData', JSON.stringify(data));
+    });
+}
+
+// Filter mail based on search input
+function filterMail() {
+  const searchTerm = document.getElementById('mailSearch').value.toLowerCase();
+  const mailItems = document.querySelectorAll('.mail-item');
+  
+  mailItems.forEach(item => {
+    const from = item.getAttribute('data-from').toLowerCase();
+    const subject = item.getAttribute('data-subject').toLowerCase();
+    const body = item.getAttribute('data-body').toLowerCase();
+    
+    if (from.includes(searchTerm) || subject.includes(searchTerm) || body.includes(searchTerm)) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+
+// Store mail on page load
+storeMail();
+</script>`
 	
 	content += `</div>`
 
