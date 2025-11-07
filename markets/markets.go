@@ -4,16 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 
 	"mu/app"
 	"mu/news"
 )
-
-var mutex sync.RWMutex
-
-// cached markets html
-var html string
 
 var Template = `
 <style>
@@ -50,9 +44,6 @@ var Template = `
 
 // Handler serves the markets page
 func Handler(w http.ResponseWriter, r *http.Request) {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
 	// Get the markets data from news package
 	marketsData := news.Markets()
 
@@ -64,7 +55,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if tickersStart := strings.Index(marketsData, `<div id="tickers">`); tickersStart != -1 {
 			tickersEnd := strings.Index(marketsData[tickersStart:], `</div>`)
 			if tickersEnd != -1 {
-				tickersHTML = marketsData[tickersStart : tickersStart+tickersEnd+6]
+				tickersHTML = marketsData[tickersStart : tickersStart+tickersEnd+len(`</div>`)]
 			}
 		}
 
@@ -72,7 +63,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if futuresStart := strings.Index(marketsData, `<div id="futures">`); futuresStart != -1 {
 			futuresEnd := strings.Index(marketsData[futuresStart:], `</div>`)
 			if futuresEnd != -1 {
-				futuresHTML = marketsData[futuresStart : futuresStart+futuresEnd+6]
+				futuresHTML = marketsData[futuresStart : futuresStart+futuresEnd+len(`</div>`)]
 			}
 		}
 	}
