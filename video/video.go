@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -37,11 +36,6 @@ var latestHtml string
 
 // saved videos
 var videosHtml string
-
-// recent searches
-var recentSearches []string
-
-const maxRecentSearches = 10
 
 type Channel struct {
 	Videos []*Result `json:"videos"`
@@ -82,10 +76,97 @@ var commonStyles = `
     border-radius: 5px;
     text-decoration: none;
     color: #333;
+    cursor: pointer;
   }
   .recent-search-item:hover {
     background-color: #e0e0e0;
   }
+`
+
+var recentSearchesScript = `
+<script>
+  const MAX_RECENT_SEARCHES = 10;
+  const STORAGE_KEY = 'mu_recent_video_searches';
+
+  function loadRecentSearches() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.error('Error loading recent searches:', e);
+      return [];
+    }
+  }
+
+  function saveRecentSearch(query) {
+    if (!query || !query.trim()) return;
+    
+    try {
+      let searches = loadRecentSearches();
+      
+      // Remove if already exists
+      searches = searches.filter(s => s !== query);
+      
+      // Add to beginning
+      searches.unshift(query);
+      
+      // Keep only MAX_RECENT_SEARCHES
+      if (searches.length > MAX_RECENT_SEARCHES) {
+        searches = searches.slice(0, MAX_RECENT_SEARCHES);
+      }
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
+    } catch (e) {
+      console.error('Error saving recent search:', e);
+    }
+  }
+
+  function displayRecentSearches() {
+    const searches = loadRecentSearches();
+    const container = document.getElementById('recent-searches-container');
+    
+    if (!container) return;
+    
+    if (searches.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    
+    let html = '<div class="recent-searches"><h3>Recent Searches</h3>';
+    searches.forEach(search => {
+      const escaped = search.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      html += '<a href="#" class="recent-search-item" data-query="' + escaped + '">' + escaped + '</a>';
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+    
+    // Add click handlers
+    container.querySelectorAll('.recent-search-item').forEach(item => {
+      item.addEventListener('click', function(e) {
+        e.preventDefault();
+        const query = this.getAttribute('data-query');
+        document.getElementById('query').value = query;
+        document.querySelector('form').submit();
+      });
+    });
+  }
+
+  // Save search when form is submitted
+  document.addEventListener('DOMContentLoaded', function() {
+    displayRecentSearches();
+    
+    const form = document.querySelector('form[action="/video"]');
+    if (form) {
+      form.addEventListener('submit', function() {
+        const query = document.getElementById('query').value;
+        if (query && query.trim()) {
+          saveRecentSearch(query.trim());
+        }
+      });
+    }
+  });
+</script>
 `
 
 var Results = `
@@ -95,12 +176,13 @@ var Results = `
   <input name="query" id="query" value="%s">
   <button>Search</button>
 </form>
-%s
+<div id="recent-searches-container"></div>
 <div id="topics">%s</div>
 <h1>Results</h1>
 <div id="results">
 %s
-</div>`
+</div>
+` + recentSearchesScript
 
 var Template = `
 <style>` + commonStyles + `
@@ -110,10 +192,10 @@ var Template = `
   <input name="query" id="query" placeholder=Search autocomplete=off autofocus>
   <button>Search</button>
 </form>
-%s
+<div id="recent-searches-container"></div>
 <div id="topics">%s</div>
 <div>%s</div>
-`
+` + recentSearchesScript
 
 func loadChannels() {
 	// load the feeds file
@@ -124,72 +206,6 @@ func loadChannels() {
 		fmt.Println("Error parsing channels.json", err)
 	}
 	mutex.Unlock()
-}
-
-// loadRecentSearches loads recent searches from disk
-func loadRecentSearches() {
-	b, err := data.Load("recent_searches.json")
-	if err != nil {
-		return
-	}
-	mutex.Lock()
-	if err := json.Unmarshal(b, &recentSearches); err != nil {
-		fmt.Println("Error parsing recent_searches.json", err)
-	}
-	mutex.Unlock()
-}
-
-// saveRecentSearch adds a search query to recent searches
-func saveRecentSearch(query string) {
-	if len(strings.TrimSpace(query)) == 0 {
-		return
-	}
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	// Remove query if it already exists
-	for i, search := range recentSearches {
-		if search == query {
-			recentSearches = append(recentSearches[:i], recentSearches[i+1:]...)
-			break
-		}
-	}
-
-	// Add to the beginning
-	recentSearches = append([]string{query}, recentSearches...)
-
-	// Keep only maxRecentSearches
-	if len(recentSearches) > maxRecentSearches {
-		recentSearches = recentSearches[:maxRecentSearches]
-	}
-
-	// Save to disk
-	b, err := json.Marshal(recentSearches)
-	if err != nil {
-		fmt.Println("Error marshaling recent searches:", err)
-		return
-	}
-	data.Save("recent_searches.json", string(b))
-}
-
-// getRecentSearchesHTML generates HTML for recent searches
-func getRecentSearchesHTML() string {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	if len(recentSearches) == 0 {
-		return ""
-	}
-
-	htmlStr := `<div class="recent-searches"><h3>Recent Searches</h3>`
-	for _, search := range recentSearches {
-		escapedSearch := html.EscapeString(search)
-		htmlStr += fmt.Sprintf(`<a href="#" class="recent-search-item" onclick="event.preventDefault(); document.getElementById('query').value='%s'; document.querySelector('form').submit();">%s</a>`, escapedSearch, escapedSearch)
-	}
-	htmlStr += `</div>`
-
-	return htmlStr
 }
 
 // Load videos
@@ -207,9 +223,6 @@ func Load() {
 
 	// load channels
 	loadChannels()
-
-	// load recent searches
-	loadRecentSearches()
 
 	// load fresh videos
 	go loadVideos()
@@ -301,7 +314,7 @@ func loadVideos() {
 		body += `</div>`
 	}
 
-	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, getRecentSearchesHTML(), head, body))
+	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body))
 	b, _ := json.Marshal(videos)
 	vidJson := string(b)
 
@@ -524,11 +537,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// Save recent search
-			if len(query) > 0 {
-				saveRecentSearch(query)
-			}
-
 			// fetch results from api
 			html, results, err := getResults(query, chanId)
 			if err != nil {
@@ -555,11 +563,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Save recent search
-		if len(query) > 0 {
-			saveRecentSearch(query)
-		}
-
 		// fetch results from api
 		results, _, err := getResults(query, chanId)
 		if err != nil {
@@ -567,7 +570,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, getRecentSearchesHTML(), head, results))
+		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
 		w.Write([]byte(html))
 		return
 	}
