@@ -44,9 +44,9 @@ func main() {
 	// load the news
 	news.Load()
 
+	// TODO: Re-enable video loading once API keys are configured
 	// load the videos
-	// Commented out for now - requires API keys
-	//video.Load()
+	// video.Load()
 
 	authenticated := map[string]bool{
 		"/video":   true,

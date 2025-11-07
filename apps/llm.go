@@ -34,11 +34,12 @@ Return ONLY the JSON, no additional text or explanation.`
 
 // GenerateApp uses LLM to generate app code from a prompt
 func GenerateApp(prompt, model string) (map[string]string, error) {
+	// TODO: Integrate with LLM to generate actual app code
 	// Use the chat LLM functionality to generate the app
 	fullPrompt := fmt.Sprintf(appGenerationPrompt, prompt)
 	
 	// For now, return a simple template structure
-	// In production, this would call the LLM
+	// In production, this would call the LLM with fullPrompt and model
 	result := map[string]string{
 		"html": `<!DOCTYPE html>
 <html>
@@ -74,7 +75,7 @@ func GenerateApp(prompt, model string) (map[string]string, error) {
 		"description": "A mini app generated from your prompt",
 	}
 	
-	// This is where we'd actually call the LLM
+	// Suppress unused variable warnings until LLM integration is complete
 	_ = fullPrompt
 	_ = chat.DefaultModel
 	_ = model

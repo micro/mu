@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -122,9 +123,17 @@ function deleteApp() {
 
 func init() {
 	// Load apps from disk
-	b, _ := data.Load("apps.json")
+	b, err := data.Load("apps.json")
+	if err != nil {
+		// File might not exist yet, which is fine for first run
+		return
+	}
+	
 	var allApps []App
-	json.Unmarshal(b, &allApps)
+	if err := json.Unmarshal(b, &allApps); err != nil {
+		fmt.Printf("Error loading apps: %v\n", err)
+		return
+	}
 	
 	for _, a := range allApps {
 		appsById[a.ID] = a
@@ -377,11 +386,11 @@ func handleDelete(w http.ResponseWriter, r *http.Request, sess *auth.Session, ap
 }
 
 func escapeHTML(s string) string {
-	// Basic HTML escaping for iframe srcdoc
-	s = fmt.Sprintf("%q", s)
-	// Remove the quotes added by %q
-	if len(s) >= 2 {
-		s = s[1 : len(s)-1]
-	}
+	// Properly escape HTML for iframe srcdoc attribute
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&#39;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
 	return s
 }

@@ -51,7 +51,7 @@ var Template = `
         <a href="/chat"><img src="chat.png">Chat</a>
         <a href="/news"><img src="news.png">News</a>
         <a href="/video"><img src="video.png">Video</a>
-        <a href="/apps"><img src="chat.png">Apps</a>
+        <a href="/apps"><img src="apps.png">Apps</a>
       </div>
     </div>
     <div id="container">
