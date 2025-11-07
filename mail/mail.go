@@ -84,15 +84,9 @@ func SendMessage(from, to, subject, body string) error {
 	// save to disk
 	data.SaveJSON("messages.json", messages)
 
-	// index the message for search
-	go func() {
-		data.Index(msg.ID, map[string]string{
-			"type":    "mail",
-			"from":    from,
-			"to":      to,
-			"subject": subject,
-		}, body)
-	}()
+	// NOTE: We intentionally do NOT index mail messages for security reasons.
+	// Mail is private communication between users and should not be searchable
+	// in a shared index that could potentially leak private data.
 
 	return nil
 }

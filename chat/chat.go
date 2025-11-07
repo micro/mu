@@ -216,6 +216,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		q := fmt.Sprintf("%v", form["prompt"])
 
+		// Search index for RAG context
+		// NOTE: We explicitly pass nil here to search all indexed content,
+		// but mail is intentionally NOT indexed for privacy/security reasons.
+		// If mail indexing is ever added, this must be updated to filter it out.
 		res, err := data.Search(q, 10, nil)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -225,6 +229,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		var rag []string
 
 		for _, val := range res {
+			// Security: Skip any mail content if it somehow got indexed
+			if val.Metadata["type"] == "mail" {
+				continue
+			}
 			if len(val.Content) > 512 {
 				val.Content = val.Content[:512]
 			}
