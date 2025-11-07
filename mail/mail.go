@@ -210,8 +210,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if JSON response is requested
-	if ct := r.Header.Get("Content-Type"); ct == "application/json" || r.URL.Query().Get("format") == "json" {
+	// Check if JSON response is requested via query parameter
+	if r.URL.Query().Get("format") == "json" {
 		inbox := GetInbox(username)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(inbox)
