@@ -3,11 +3,20 @@ package markets
 import (
 	"fmt"
 	"net/http"
-	"strings"
+	"sort"
 
 	"mu/app"
 	"mu/news"
 )
+
+// Additional tickers to display on the markets page (beyond the homepage summary)
+var additionalCrypto = []string{
+	"ADA", "SOL", "DOT", "AVAX", "MATIC", "LINK", "UNI", "ATOM", "XRP", "DOGE",
+	"LTC", "BCH", "ETC", "XMR", "ALGO", "VET", "FIL", "AAVE", "SNX", "CRV",
+}
+
+// Additional futures to display (beyond homepage, these are already fetched)
+var additionalFutures = []string{"SILVER", "COPPER", "NATGAS", "CORN", "SOYBEANS"}
 
 var Template = `
 <style>
@@ -19,56 +28,76 @@ var Template = `
     border-bottom: 2px solid #333;
     padding-bottom: 10px;
   }
-  #tickers, #futures {
-    display: flex;
-    flex-wrap: wrap;
+  .price-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 15px;
+    margin-bottom: 20px;
   }
-  #tickers .ticker, #futures .ticker {
+  .price-item {
     background: whitesmoke;
-    padding: 15px 20px;
+    padding: 15px;
     border-radius: 5px;
+  }
+  .price-item .symbol {
+    font-weight: bold;
     font-size: 1.1em;
+    color: #333;
+    margin-bottom: 5px;
+  }
+  .price-item .price {
+    font-size: 1em;
+    color: #666;
   }
 </style>
 <h1>Markets</h1>
 <div class="market-section">
   <h2>Cryptocurrency</h2>
-  %s
+  <div class="price-grid">%s</div>
 </div>
 <div class="market-section">
   <h2>Commodities &amp; Futures</h2>
-  %s
+  <div class="price-grid">%s</div>
 </div>
 `
 
-// Handler serves the markets page
+// Handler serves the markets page with extended market data
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// Get the markets data from news package
-	marketsData := news.Markets()
+	// Get all prices from the news package
+	prices := news.GetAllPrices()
 
-	var tickersHTML, futuresHTML string
+	var cryptoHTML, futuresHTML string
 
-	// Simple parsing: split by the two divs
-	if len(marketsData) > 0 {
-		// Extract tickers section
-		if tickersStart := strings.Index(marketsData, `<div id="tickers">`); tickersStart != -1 {
-			tickersEnd := strings.Index(marketsData[tickersStart:], `</div>`)
-			if tickersEnd != -1 {
-				tickersHTML = marketsData[tickersStart : tickersStart+tickersEnd+len(`</div>`)]
-			}
-		}
-
-		// Extract futures section
-		if futuresStart := strings.Index(marketsData, `<div id="futures">`); futuresStart != -1 {
-			futuresEnd := strings.Index(marketsData[futuresStart:], `</div>`)
-			if futuresEnd != -1 {
-				futuresHTML = marketsData[futuresStart : futuresStart+futuresEnd+len(`</div>`)]
-			}
+	// Build crypto section with homepage tickers + additional ones
+	allCryptoTickers := append(news.GetHomepageTickers(), additionalCrypto...)
+	
+	// Sort for consistent display
+	sort.Strings(allCryptoTickers)
+	
+	for _, ticker := range allCryptoTickers {
+		if price, ok := prices[ticker]; ok {
+			cryptoHTML += fmt.Sprintf(`
+				<div class="price-item">
+					<div class="symbol">%s</div>
+					<div class="price">$%.2f</div>
+				</div>`, ticker, price)
 		}
 	}
 
-	body := fmt.Sprintf(Template, tickersHTML, futuresHTML)
+	// Build futures section with homepage futures + additional ones
+	allFuturesKeys := append(news.GetHomepageFutures(), additionalFutures...)
+	
+	for _, key := range allFuturesKeys {
+		if price, ok := prices[key]; ok {
+			futuresHTML += fmt.Sprintf(`
+				<div class="price-item">
+					<div class="symbol">%s</div>
+					<div class="price">$%.2f</div>
+				</div>`, key, price)
+		}
+	}
+
+	body := fmt.Sprintf(Template, cryptoHTML, futuresHTML)
 	html := app.RenderHTML("Markets", "Market prices for crypto, commodities and futures", body)
 	w.Write([]byte(html))
 }
