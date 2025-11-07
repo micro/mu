@@ -11,6 +11,7 @@ import (
 	"mu/auth"
 	"mu/chat"
 	"mu/home"
+	"mu/mail"
 	"mu/news"
 	"mu/video"
 )
@@ -40,6 +41,9 @@ func main() {
 	// load the chat
 	//chat.Load()
 
+	// load the mail
+	mail.Load()
+
 	// load the news
 	news.Load()
 
@@ -50,6 +54,7 @@ func main() {
 		"/video":   true,
 		"/news":    true,
 		"/chat":    true,
+		"/mail":    true,
 		"/home":    true,
 		"/logout":  true,
 		"/session": true,
@@ -63,6 +68,9 @@ func main() {
 
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
+
+	// serve mail
+	http.HandleFunc("/mail", mail.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

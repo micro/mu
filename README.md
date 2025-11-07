@@ -1,6 +1,6 @@
 # mu
 
-One app for AI chat, news and video
+One app for mail, chat, news and video
 
 # Overview
 
@@ -14,6 +14,7 @@ Starting with:
 
 - [x] API - Basic API
 - [x] App - Installable PWA
+- [x] Mail - Internal mail server
 - [x] Chat - LLM based chat UI
 - [x] News - Latest news headlines
 - [x] Video - Video search interface

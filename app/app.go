@@ -48,6 +48,7 @@ var Template = `
       <div id="account">&nbsp;</div>
       <div id="nav">
         <a href="/home"><img src="home.png" style="margin-bottom: 1px">Home</a>
+        <a href="/mail"><img src="mail.png">Mail</a>
         <a href="/chat"><img src="chat.png">Chat</a>
         <a href="/news"><img src="news.png">News</a>
         <a href="/video"><img src="video.png">Video</a>

@@ -369,6 +369,9 @@ td {
     background: white;
     width: calc(100vw - 40px);
   }
+  #nav img {
+    margin-right: 0;
+  }
   #container {
     height: calc(100vh - 175px);
     overflow-y: scroll;
@@ -384,7 +387,7 @@ td {
   .post-show {
     margin-top: 10px;
   }
-  .card, #reminder, #video {
+  .card, #reminder, #video, #mail {
     float: none;
     display: block;
     width: calc(100vw - 85px);
