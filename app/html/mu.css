@@ -347,6 +347,103 @@ td {
   display: block;
   margin-bottom: 10px;
 }
+/* Mail Styling */
+.mail-item {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 15px;
+  background: white;
+  max-width: 100%;
+}
+.mail-item.unread {
+  border-left: 4px solid #4CAF50;
+  background: #f9fff9;
+}
+.mail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.mail-from {
+  font-size: 0.9em;
+  color: #666;
+  font-weight: 500;
+}
+.mail-time {
+  font-size: 0.8em;
+  color: #999;
+}
+.mail-subject {
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #333;
+}
+.mail-body {
+  font-size: 0.95em;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+  color: #444;
+  line-height: 1.5;
+}
+.mail-delete-warning {
+  font-size: 0.75em;
+  color: #ff9800;
+  margin: 8px 0;
+  padding: 6px 10px;
+  background: #fff3e0;
+  border-radius: 3px;
+  border-left: 3px solid #ff9800;
+}
+.mail-age-warning {
+  font-size: 0.75em;
+  color: #f44336;
+  margin: 8px 0;
+  padding: 6px 10px;
+  background: #ffebee;
+  border-radius: 3px;
+  border-left: 3px solid #f44336;
+}
+.mail-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+.mail-btn {
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-size: 0.9em;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  display: inline-block;
+  text-align: center;
+}
+.mail-btn-primary {
+  background: #4CAF50;
+  color: white;
+}
+.mail-btn-primary:hover {
+  background: #45a049;
+}
+.mail-btn-secondary {
+  background: #2196F3;
+  color: white;
+}
+.mail-btn-secondary:hover {
+  background: #0b7dda;
+}
+#mailSearch {
+  width: 100%;
+  max-width: 800px;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid darkgrey;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+}
 @media only screen and (max-width: 600px) {
   #topics {
     text-align: center;
@@ -393,6 +490,16 @@ td {
     width: calc(100vw - 85px);
     min-width: calc(100vw - 85px);
     max-width: calc(100vw - 85px);
+  }
+  .mail-item {
+    width: 100%;
+    max-width: 100%;
+  }
+  .mail-actions {
+    flex-direction: column;
+  }
+  .mail-btn {
+    width: 100%;
   }
   #home {
     display: block;

@@ -144,6 +144,43 @@ func decryptBody(encrypted string) (string, error) {
 // Load initializes the mail system
 func Load() {
 	fmt.Println("Mail system loaded")
+	
+	// Start background task to auto-delete old unread messages
+	go autoDeleteOldMessages()
+}
+
+// autoDeleteOldMessages runs periodically to delete unread messages older than 24 hours
+func autoDeleteOldMessages() {
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	
+	for range ticker.C {
+		mutex.Lock()
+		
+		now := time.Now()
+		deletedCount := 0
+		
+		for username, inbox := range messages {
+			filtered := []*Message{}
+			for _, msg := range inbox {
+				// Delete if unread and older than 24 hours
+				if !msg.Read && now.Sub(msg.Sent) > 24*time.Hour {
+					deletedCount++
+					fmt.Printf("Auto-deleted unread message %s (sent to %s) after 24 hours\n", msg.ID, username)
+				} else {
+					filtered = append(filtered, msg)
+				}
+			}
+			messages[username] = filtered
+		}
+		
+		if deletedCount > 0 {
+			data.SaveJSON("messages.json", messages)
+			fmt.Printf("Auto-deleted %d unread messages older than 24 hours\n", deletedCount)
+		}
+		
+		mutex.Unlock()
+	}
 }
 
 // SendMessage sends a message from one user to another
@@ -337,7 +374,23 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// GET - show inbox or compose form
 	if r.URL.Query().Get("compose") == "true" {
-		html := app.RenderHTML("Compose Mail", "Send a message", ComposeTemplate)
+		// Check if this is a reply
+		replyTo := r.URL.Query().Get("reply_to")
+		subject := r.URL.Query().Get("subject")
+		
+		composeHTML := `<div id="mail">
+  <h1>Compose Mail</h1>
+  <form action="/mail" method="POST">
+    <input type="text" name="to" placeholder="To (username)" value="` + stdhtml.EscapeString(replyTo) + `" required><br>
+    <input type="text" name="subject" placeholder="Subject" value="` + stdhtml.EscapeString(subject) + `" required><br>
+    <textarea name="body" rows="10" placeholder="Message" required style="width: calc(100%% - 22px); padding: 10px; border-radius: 5px; border: 1px solid darkgrey; margin-bottom: 10px;"></textarea><br>
+    <button type="submit">Send</button>
+  </form>
+  <br>
+  <a href="/mail" class="link">Back to Inbox</a>
+</div>`
+		
+		html := app.RenderHTML("Compose Mail", "Send a message", composeHTML)
 		w.Write([]byte(html))
 		return
 	}
@@ -386,7 +439,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Add search box for client-side filtering
 	content += `
 <div style="max-width: 800px; margin-bottom: 20px;">
-  <input type="text" id="mailSearch" placeholder="Search mail..." style="width: calc(100%% - 22px); padding: 10px; border-radius: 5px; border: 1px solid darkgrey;" oninput="filterMail()">
+  <input type="text" id="mailSearch" placeholder="Search mail..." oninput="filterMail()">
 </div>`
 	
 	if len(inbox) == 0 {
@@ -394,9 +447,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		content += `<div id="mailList" style="max-width: 800px;">`
 		for _, msg := range inbox {
-			style := ""
+			readClass := ""
 			if !msg.Read {
-				style = "font-weight: bold;"
+				readClass = "unread"
 			}
 			
 			// Decrypt the message body
@@ -410,25 +463,37 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Info text about auto-deletion
 			deleteInfo := ""
 			if msg.DeleteOnRead {
-				deleteInfo = `<div style="font-size: 0.75em; color: #999; margin-top: 5px;">⚠️ This message will be deleted from the server when marked as read</div>`
+				deleteInfo = `<div class="mail-delete-warning">⚠️ This message will be deleted from the server when marked as read</div>`
+			}
+			
+			// Age-based warning for unread messages
+			age := time.Since(msg.Sent)
+			ageWarning := ""
+			if !msg.Read && age > 20*time.Hour {
+				hoursLeft := 24 - int(age.Hours())
+				ageWarning = fmt.Sprintf(`<div class="mail-age-warning">⏰ This message will auto-delete in ~%d hours if not read</div>`, hoursLeft)
 			}
 			
 			content += fmt.Sprintf(`
-<div class="card mail-item" style="max-width: 100%%; margin-bottom: 15px;" data-from="%s" data-subject="%s" data-body="%s">
-  <div style="%s">
-    <div style="font-size: 0.9em; color: #666;">From: %s</div>
-    <div style="font-size: 1.2em; margin: 5px 0;">%s</div>
-    <div style="font-size: 0.9em; margin: 10px 0; white-space: pre-wrap;">%s</div>
-    <div style="font-size: 0.8em; color: #666;">%s</div>
-    %s
+<div class="mail-item %s" data-from="%s" data-subject="%s" data-body="%s">
+  <div class="mail-header">
+    <span class="mail-from">From: %s</span>
+    <span class="mail-time">%s</span>
+  </div>
+  <div class="mail-subject">%s</div>
+  <div class="mail-body">%s</div>
+  %s
+  %s
+  <div class="mail-actions">
+    <a href="/mail?compose=true&reply_to=%s&subject=Re: %s" class="mail-btn mail-btn-secondary">Reply</a>
     <form action="/mail" method="POST" style="display: inline;">
       <input type="hidden" name="action" value="read">
       <input type="hidden" name="id" value="%s">
-      <button type="submit" style="margin-top: 10px;">Read & Delete</button>
+      <button type="submit" class="mail-btn mail-btn-primary">Read & Delete</button>
     </form>
   </div>
 </div>
-			`, fromEscaped, subjectEscaped, bodyEscaped, style, fromEscaped, subjectEscaped, bodyEscaped, app.TimeAgo(msg.Sent), deleteInfo, msg.ID)
+			`, readClass, fromEscaped, subjectEscaped, bodyEscaped, fromEscaped, app.TimeAgo(msg.Sent), subjectEscaped, bodyEscaped, deleteInfo, ageWarning, fromEscaped, stdhtml.EscapeString(msg.Subject), msg.ID)
 		}
 		content += `</div>`
 	}
