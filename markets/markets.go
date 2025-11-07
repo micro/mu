@@ -75,7 +75,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(allCryptoTickers)
 	
 	for _, ticker := range allCryptoTickers {
-		if price, ok := prices[ticker]; ok {
+		if price, ok := prices[ticker]; ok && price > 0 {
 			cryptoHTML += fmt.Sprintf(`
 				<div class="price-item">
 					<div class="symbol">%s</div>
@@ -88,7 +88,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	allFuturesKeys := append(news.GetHomepageFutures(), additionalFutures...)
 	
 	for _, key := range allFuturesKeys {
-		if price, ok := prices[key]; ok {
+		if price, ok := prices[key]; ok && price > 0 {
 			futuresHTML += fmt.Sprintf(`
 				<div class="price-item">
 					<div class="symbol">%s</div>

@@ -874,8 +874,10 @@ func GetAllPrices() map[string]float64 {
 
 	// Return a copy to avoid concurrent map access
 	prices := make(map[string]float64)
-	for k, v := range cachedPrices {
-		prices[k] = v
+	if cachedPrices != nil {
+		for k, v := range cachedPrices {
+			prices[k] = v
+		}
 	}
 	return prices
 }
