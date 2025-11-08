@@ -81,6 +81,19 @@ var commonStyles = `
   .recent-search-item:hover {
     background-color: #e0e0e0;
   }
+	.recent-search-label {
+		margin-right: 8px;
+	}
+	.recent-search-close {
+		display: inline-block;
+		padding: 0 6px;
+		color: #666;
+		cursor: pointer;
+		font-weight: bold;
+	}
+	.recent-search-close:hover {
+		color: #000;
+	}
 `
 
 var recentSearchesScript = `
@@ -140,30 +153,60 @@ var recentSearchesScript = `
       return;
     }
     
-    let html = '<div class="recent-searches"><h3>Recent Searches</h3>';
-    searches.forEach(search => {
-      const escaped = escapeHTML(search);
-      html += '<a href="#" class="recent-search-item" data-query="' + escaped + '">' + escaped + '</a>';
-    });
-    html += '</div>';
+		let html = '<div class="recent-searches"><h3>Recent Searches</h3>';
+		searches.forEach(search => {
+			const escaped = escapeHTML(search);
+			// each item contains a label and a close button
+			html += '<span class="recent-search-item" data-query="' + escaped + '">'
+					 + '<span class="recent-search-label">' + escaped + '</span>'
+					 + '<span class="recent-search-close" title="Remove">&times;</span>'
+					 + '</span>';
+		});
+		html += '</div>';
     
     container.innerHTML = html;
     
     // Add click handlers
-    container.querySelectorAll('.recent-search-item').forEach(item => {
-      item.addEventListener('click', function(e) {
-        e.preventDefault();
-        const query = this.getAttribute('data-query');
-        const queryInput = document.getElementById('query');
-        const form = this.closest('form') || document.querySelector('form');
-        
-        if (queryInput && form) {
-          queryInput.value = query;
-          form.submit();
-        }
-      });
-    });
+		// Clicking the label triggers a search, clicking the close removes it
+		container.querySelectorAll('.recent-search-item').forEach(item => {
+			const label = item.querySelector('.recent-search-label');
+			const close = item.querySelector('.recent-search-close');
+
+			if (label) {
+				label.addEventListener('click', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+					const query = item.getAttribute('data-query');
+					const queryInput = document.getElementById('query');
+					const form = item.closest('form') || document.querySelector('form');
+					if (queryInput && form) {
+						queryInput.value = query;
+						form.submit();
+					}
+				});
+			}
+
+			if (close) {
+				close.addEventListener('click', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+					const q = item.getAttribute('data-query');
+					removeRecentSearch(q);
+				});
+			}
+		});
   }
+
+	function removeRecentSearch(query) {
+		try {
+			let searches = loadRecentSearches();
+			searches = searches.filter(s => s !== query);
+			localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
+			displayRecentSearches();
+		} catch (e) {
+			console.error('Error removing recent search:', e);
+		}
+	}
 
   // Save search when form is submitted
   document.addEventListener('DOMContentLoaded', function() {
