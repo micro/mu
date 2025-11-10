@@ -62,17 +62,13 @@ export YOUTUBE_API_KEY=xxx
 
 #### Models
 
-Specify the model via `--model` flag if you want to choose something instead of gpt-4o-mini
+Usage requires
 
-Supported models:
-
-- [OpenAI](https://openai.com)
-- [Gemini](https://aistudio.google.com/)
-- [Fanar](https://fanar.qa/)
+- [OpenAI](https://openai.com) - for embeddings
+- [Fanar](https://fanar.qa/) - for llm queries
 
 ```
 export OPENAI_API_KEY=xxx
-export GEMINI_API_KEY=xxx
 export FANAR_API_KEY=xxx
 ```
 

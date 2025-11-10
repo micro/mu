@@ -167,7 +167,7 @@ func getPrices() map[string]float64 {
 					fmt.Printf("Recovered from panic getting future %s (%s): %v\n", key, ftr, r)
 				}
 			}()
-			
+
 			f, err := future.Get(ftr)
 			if err != nil {
 				fmt.Println("Failed to get future", key, ftr, err)
@@ -758,7 +758,7 @@ func parseFeed() {
 	data.Save("headlines.html", headlinesHtml)
 	// save markets
 	data.Save("markets.html", marketsHtml)
-	
+
 	// save the prices as JSON for persistence
 	data.SaveJSON("prices.json", cachedPrices)
 
@@ -779,7 +779,7 @@ func Load() {
 	// load markets
 	b, _ = data.Load("markets.html")
 	marketsHtml = string(b)
-	
+
 	// load cached prices
 	b, _ = data.Load("prices.json")
 	if len(b) > 0 {

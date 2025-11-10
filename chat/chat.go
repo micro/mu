@@ -19,7 +19,6 @@ var f embed.FS
 
 type Prompt struct {
 	Rag      []string `json:"rag"`
-	Model    string   `json:"model"`
 	Context  History  `json:"context"`
 	Question string   `json:"question"`
 }
@@ -122,7 +121,6 @@ Format each point like so e.g - **title**: summary [source](url)`, topic)
 
 		resp, err := askLLM(&Prompt{
 			Rag:      rag,
-			Model:    "Fanar",
 			Question: q,
 		})
 
@@ -234,7 +232,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		prompt := &Prompt{
 			Rag:      rag,
-			Model:    DefaultModel,
 			Context:  context,
 			Question: q,
 		}

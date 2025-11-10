@@ -16,7 +16,6 @@ import (
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
-var ModelFlag = flag.String("model", "", "Set the model e.g Fanar, gpt-4o-mini, gemini-2.5-flash")
 var ServeFlag = flag.Bool("serve", false, "Run the server")
 var AddressFlag = flag.String("address", ":8080", "Address for server")
 
@@ -26,10 +25,6 @@ func main() {
 	if !*ServeFlag {
 		fmt.Errorf("--serve not set")
 		return
-	}
-
-	if md := *ModelFlag; len(md) > 0 {
-		chat.DefaultModel = md
 	}
 
 	// render the api markdwon
