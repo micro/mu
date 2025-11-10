@@ -11,7 +11,6 @@ import (
 	"mu/auth"
 	"mu/chat"
 	"mu/home"
-	"mu/markets"
 	"mu/news"
 	"mu/video"
 )
@@ -52,7 +51,6 @@ func main() {
 		"/news":    true,
 		"/chat":    true,
 		"/home":    true,
-		"/markets": true,
 		"/logout":  true,
 		"/session": true,
 		"/api":     true,
@@ -66,11 +64,12 @@ func main() {
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
 
-	// serve markets
-	http.HandleFunc("/markets", markets.Handler)
-
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
+
+	http.HandleFunc("/markets", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "https://coinmarketcap.com/", 302)
+	})
 
 	// auth
 	http.HandleFunc("/login", app.Login)
