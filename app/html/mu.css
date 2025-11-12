@@ -222,8 +222,24 @@ td {
 	padding: 20px;
 }
 #messages p {
-	margin-top: 5px;
-	margin-bottom: 5px;
+	margin-top: 8px;
+	margin-bottom: 12px;
+	line-height: 1.5;
+}
+#messages ul, #messages ol {
+	margin: 10px 0;
+	padding-left: 25px;
+}
+#messages li {
+	margin-bottom: 8px;
+	line-height: 1.5;
+}
+#messages h1, #messages h2, #messages h3 {
+	margin-top: 20px;
+	margin-bottom: 12px;
+}
+#messages code {
+	margin: 10px 0;
 }
 .message {
         margin-bottom: 10px;
