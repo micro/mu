@@ -68,6 +68,16 @@ var commonStyles = `
   .recent-searches {
     margin-bottom: 20px;
   }
+  .recent-searches h3 {
+    margin-bottom: 10px;
+    white-space: normal;
+  }
+  .recent-searches-scroll {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding: 5px 0;
+  }
   .recent-search-item {
     display: inline-block;
     margin: 5px 10px 5px 0;
@@ -77,6 +87,7 @@ var commonStyles = `
     text-decoration: none;
     color: #333;
     cursor: pointer;
+    white-space: nowrap;
   }
   .recent-search-item:hover {
     background-color: #e0e0e0;
@@ -153,7 +164,7 @@ var recentSearchesScript = `
       return;
     }
     
-		let html = '<div class="recent-searches"><h3>Recent Searches</h3>';
+		let html = '<div class="recent-searches"><h3>Recent Searches</h3><div class="recent-searches-scroll">';
 		searches.forEach(search => {
 			const escaped = escapeHTML(search);
 			// each item contains a label and a close button
@@ -162,7 +173,7 @@ var recentSearchesScript = `
 					 + '<span class="recent-search-close" title="Remove">&times;</span>'
 					 + '</span>';
 		});
-		html += '</div>';
+		html += '</div></div>';
     
     container.innerHTML = html;
     
