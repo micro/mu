@@ -395,7 +395,7 @@ td {
   }
   #container {
     height: calc(100vh - 175px);
-    overflow-y: scroll;
+    overflow-y: auto;
     display: block;
   }
   #content {
