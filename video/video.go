@@ -92,6 +92,16 @@ var commonStyles = `
   .recent-search-item:hover {
     background-color: #e0e0e0;
   }
+  .recent-search-item.active {
+    background-color: #333;
+    color: white;
+  }
+  .recent-search-item.active .recent-search-close {
+    color: #ccc;
+  }
+  .recent-search-item.active .recent-search-close:hover {
+    color: white;
+  }
 	.recent-search-label {
 		margin-right: 8px;
 	}
@@ -164,11 +174,17 @@ var recentSearchesScript = `
       return;
     }
     
+		// Get current query from input to highlight active search
+		const queryInput = document.getElementById('query');
+		const currentQuery = queryInput ? queryInput.value.trim() : '';
+    
 		let html = '<div class="recent-searches"><h3>Recent Searches</h3><div class="recent-searches-scroll">';
 		searches.forEach(search => {
 			const escaped = escapeHTML(search);
+			const isActive = currentQuery && search === currentQuery;
+			const activeClass = isActive ? ' active' : '';
 			// each item contains a label and a close button
-			html += '<span class="recent-search-item" data-query="' + escaped + '">'
+			html += '<span class="recent-search-item' + activeClass + '" data-query="' + escaped + '">'
 					 + '<span class="recent-search-label">' + escaped + '</span>'
 					 + '<span class="recent-search-close" title="Remove">&times;</span>'
 					 + '</span>';
@@ -188,6 +204,10 @@ var recentSearchesScript = `
 					e.preventDefault();
 					e.stopPropagation();
 					const query = item.getAttribute('data-query');
+					
+					// Move clicked search to front
+					saveRecentSearch(query);
+					
 					const queryInput = document.getElementById('query');
 					const form = item.closest('form') || document.querySelector('form');
 					if (queryInput && form) {
