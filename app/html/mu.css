@@ -67,6 +67,10 @@ td {
 #container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px;}
 #content { max-width: 1280px; margin: 0 auto; text-align: left; }
 #desc { margin-bottom: 25px; }
+#links {
+  max-width: 700px;
+  margin: 0 auto;
+}
 #main { max-width: 600px; justify-items: center; text-align: center; padding: 150px 10px 10px 10px; margin: 0 auto; }
 #title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
 #brand {
@@ -77,11 +81,21 @@ td {
   padding: 0
 }
 .block {
-   width: 100px;
-   height: 30px;
-   line-height: 30px;
+   width: auto;
+   min-width: 180px;
+   max-width: 300px;
+   height: auto;
+   min-height: 30px;
+   line-height: 1.4em;
    display: inline-block;
    margin: 10px;
+   vertical-align: top;
+   text-align: left;
+}
+.block b {
+   display: block;
+   margin-bottom: 3px;
+   font-size: 1em;
 }
 .block, button {
     text-decoration: none;
@@ -92,6 +106,14 @@ td {
 .block:hover, button:hover {
    cursor: pointer;
    background: whitesmoke;
+}
+.small {
+   font-size: 0.75em;
+   line-height: 1.3em;
+   color: #666;
+   font-weight: normal;
+   margin-top: 5px;
+   display: block;
 }
 .link {
   display: block;
@@ -397,5 +419,25 @@ td {
   }
   .cover {
     display: block;
+  }
+  #links {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #links .block {
+    width: calc(100vw - 80px);
+    max-width: 400px;
+    text-align: left;
+    padding: 15px;
+    margin: 8px;
+  }
+  #links .block b {
+    font-size: 1.1em;
+  }
+  #links .small {
+    font-size: 0.85em;
+    margin-top: 8px;
+    line-height: 1.4em;
   }
 }
