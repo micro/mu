@@ -62,6 +62,10 @@ func main() {
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
 
+	http.HandleFunc("/mail", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/home", 302)
+	})
+
 	http.HandleFunc("/markets", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "https://coinmarketcap.com/", 302)
 	})
