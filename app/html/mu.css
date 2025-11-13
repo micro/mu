@@ -64,7 +64,7 @@ td {
   margin-right: 5px;
   vertical-align: bottom;
 }
-#container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px;}
+#container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px; overflow: visible;}
 #content { max-width: 1280px; margin: 0 auto; text-align: left; }
 #desc { margin-bottom: 30px; }
 #links {
@@ -77,6 +77,19 @@ td {
 }
 #main { max-width: 800px; justify-items: center; text-align: center; padding: 150px 20px 50px 20px; margin: 0 auto; }
 #title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
+#install-pwa {
+  margin-top: 30px;
+  padding: 12px 24px;
+  font-size: 1em;
+  font-weight: bold;
+  background: #333;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+#install-pwa:hover {
+  background: #555;
+}
 #brand {
   display: inline-block;
   padding: 27px 27px 10px 27px;
