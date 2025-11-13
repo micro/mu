@@ -423,7 +423,8 @@ td {
     width: calc(100vw - 40px);
   }
   #container {
-    height: calc(100vh - 175px);
+    height: auto;
+    min-height: calc(100vh - 175px);
     overflow-y: auto;
     display: block;
   }
