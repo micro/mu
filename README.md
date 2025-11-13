@@ -1,6 +1,6 @@
 # mu
 
-One app for AI chat, news and video
+One home for mail, chat, news and video
 
 # Overview
 
