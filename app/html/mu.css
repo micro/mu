@@ -419,10 +419,13 @@ td {
     display: block;
   }
   #main {
-    padding: 80px 10px 50px 10px;
+    padding: 60px 10px 20px 10px;
   }
   #title {
     font-size: 2.5em;
+  }
+  #install-pwa {
+    margin-top: 15px;
   }
   #messages {
     height: calc(100vh - 285px);

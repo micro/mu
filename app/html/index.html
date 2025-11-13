@@ -39,16 +39,38 @@
            <div class="small">Email without Gmail</div>
          </a>
        </div>
+       <button id="install-pwa" style="display: none;">Install App</button>
 	</div>
        </div>
     </div>
   <script>
+      let deferredPrompt;
+      
       if (navigator.serviceWorker) {
         navigator.serviceWorker.register (
           '/mu.js',
           {scope: '/'}
         )
       }
+      
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const installButton = document.getElementById('install-pwa');
+        if (installButton) {
+          installButton.style.display = 'inline-block';
+        }
+      });
+      
+      document.getElementById('install-pwa')?.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        
+        deferredPrompt = null;
+        document.getElementById('install-pwa').style.display = 'none';
+      });
   </script>
   </body>
 </html>
