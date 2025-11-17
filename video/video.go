@@ -72,12 +72,6 @@ var commonStyles = `
     margin-bottom: 10px;
     white-space: normal;
   }
-  .recent-searches-scroll {
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-    padding: 5px 0;
-  }
   .recent-search-item {
     display: inline-block;
     margin: 5px 10px 5px 0;

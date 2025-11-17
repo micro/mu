@@ -66,8 +66,8 @@ td {
 }
 #container { height: auto; max-width: 1600px; margin: 0 auto; text-align: center; padding: 20px; overflow: visible;}
 #content { max-width: 1280px; margin: 0 auto; text-align: left; }
-#desc, #explain { margin-bottom: 10px; }
-#explain { font-style: italic; }
+#desc { margin-bottom: 10px; }
+#explain { margin-bottom: 20px; }
 #links {
   max-width: 800px;
   margin: 0 auto;
@@ -425,8 +425,7 @@ td {
     width: calc(100vw - 40px);
   }
   #container {
-    height: auto;
-    min-height: calc(100vh - 175px);
+    height: calc(100vh - 175px);
     overflow-y: auto;
     display: block;
   }
