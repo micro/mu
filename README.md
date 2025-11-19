@@ -4,7 +4,7 @@ The Muslim Network
 
 # Overview
 
-What are the building blocks for life? There are services we use for our daily digital habits e.g news, video, mail, chat, etc but it's all pretty exploitative now because of big tech. We can't escape ads, cookies, popups, paywalls, doomscrolling, swiping, exploits, etc. X, Instagram, YouTube, TikTok, etc only make it worse, a form of usury and profiteering. So we're looking to build something new, with Islamic values.
+What are the building blocks for life? There are services we use for our daily digital habits e.g news, video, mail, chat, etc but it's all pretty exploitative and addictive now because of big tech. We can't escape ads, cookies, popups, paywalls, doomscrolling, swiping, exploits, etc. X, Instagram, YouTube, TikTok, etc only make it worse, a form of usury and profiteering. So we're looking to build something new, with Islamic values.
 
 ## Features
 
