@@ -1,9 +1,9 @@
 {
-  "Crypto": "The topic is Cryptocurrency, stablecoins and DeFi. Including Bitcoin (BTC), ethereum (ETH), binance (BNB), and decentralized web3 networks.",
-  "Finance": "The topic is Financial markets, investing, and commodities analysis, including stocks, bonds, and macroeconomic trends.",
-  "Politics": "The topic is Current political affairs (UK, US, Middle East), government, and policy debates, both domestic and international.",
-  "Tech": "The topic is Consumer technology, hardware, apps, vibe coding, venture capital funding and AI agents, techcrunch.",
-  "UK": "The topic is Topics related to the United Kingdom (UK), including news, history, culture, and geography.",
-  "World": "The topic is World news, middle east, international events, war, and cross-cultural commentary, aljazeera.",
-  "Dev": "The topic is Hackernews, startups and developer related news. Reddit, HackerNews, GitHub and Ycombinator"
+  "Crypto": "What's happening in cryptocurrency right now?",
+  "Finance": "What's happening in the markets right now?",
+  "Politics": "What's happening in politics right now?",
+  "Tech": "What's happening in technology right now?",
+  "UK": "What's happening in the UK right now?",
+  "World": "What's happening in MENA right now?",
+  "Dev": "What's happening in startups right now?"
 }

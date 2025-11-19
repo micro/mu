@@ -91,17 +91,8 @@ func loadChats() {
 	newSummary := ""
 
 	for topic, prompt := range prompts {
-		q := fmt.Sprintf(`Provide a 3 bullet points summary for %s based on the context provided.
-Do not add any additional information. Do not respond except with the 3 bullets. Keep it below 512 characters but 
-ensure none of the content is cutoff. In the event 512 characters is not enough, increase the length as required.
-Do not use any additional sources. Order reverse chronologically. Crypto is cryptocurrency. Dev is developers.
-Use the url from the json metadata "url" field as the source. In the event its present don't specify anything.
-Use the title from the json metadata "title" field if present as the title. In the event its not present create a title. 
-Use the description from the json metadata "description" field as the summary. In the event its not present create a summary.
-Format each point like so e.g - **title**: summary [source](url)`, topic)
-
 		resp, err := askLLM(&Prompt{
-			Question: q,
+			Question: prompt,
 		})
 
 		if err != nil {
