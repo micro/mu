@@ -24,7 +24,7 @@ Coming soon:
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
-## Hosting
+## Usage
 
 Go to [mu.xyz](https://mu.xyz) for the live version
 
