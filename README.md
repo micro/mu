@@ -4,7 +4,7 @@ The Muslim Network
 
 # Overview
 
-What are the building blocks for life? There are services we use for our daily digital habits e.g news, video, mail, chat, etc but it's all pretty disconnected and the whole app ecosystem itself is entirely commercialised. We can't escape ads, cookies, popups, paywalls, doomscrolling, swiping, exploits, etc. X, Instagram, YouTube, TikTok, etc only make it worse. So we're looking to build something new. 
+What are the building blocks for life? There are services we use for our daily digital habits e.g news, video, mail, chat, etc but it's all pretty disconnected and the whole app ecosystem itself is entirely commercialised. We can't escape ads, cookies, popups, paywalls, doomscrolling, swiping, exploits, etc. X, Instagram, YouTube, TikTok, etc only make it worse. So we're looking to build something new, with Islamic values.
 
 ## Features
 
