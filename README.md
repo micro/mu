@@ -19,7 +19,7 @@ Starting with:
 Coming soon
 
 - [ ] Blog - Micro blogging 
-- [ ] Inbox - Web notifications
+- [ ] Mail - Email without Gmail
 - [ ] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
@@ -58,15 +58,13 @@ We need API keys for the following
 export YOUTUBE_API_KEY=xxx
 ```
 
-#### Models
+#### LLM Model
 
 Usage requires
 
-- [OpenAI](https://openai.com) - for embeddings
 - [Fanar](https://fanar.qa/) - for llm queries
 
 ```
-export OPENAI_API_KEY=xxx
 export FANAR_API_KEY=xxx
 ```
 
