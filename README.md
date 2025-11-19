@@ -16,7 +16,7 @@ Starting with:
 - [x] News - Latest news headlines
 - [x] Video - Video search interface
 
-Coming soon
+Coming soon:
 
 - [ ] Blog - Micro blogging 
 - [ ] Mail - Email without Gmail
