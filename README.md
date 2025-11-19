@@ -50,7 +50,7 @@ cd mu && go install
 
 We need API keys for the following
 
-#### Video
+#### Video Search
 
 - [Youtube Data](https://developers.google.com/youtube/v3)
 
