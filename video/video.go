@@ -566,7 +566,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(chanNames)
 	for _, channel := range chanNames {
-		head += fmt.Sprintf(`<a href="#%s" class="head">%s</a>`, channel, channel)
+		head += fmt.Sprintf(`<a href="/video#%s" class="head">%s</a>`, channel, channel)
 	}
 	head += `<hr>`
 
@@ -629,6 +629,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+
+		head = ""
 
 		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
 		w.Write([]byte(html))
