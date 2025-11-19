@@ -42,7 +42,7 @@ export PATH=$HOME/go/bin:$PATH
 Download and install Mu
 
 ```
-git clone https://github.com/micro/mu
+git clone https://github.com/asim/mu
 cd mu && go install
 ```
 
