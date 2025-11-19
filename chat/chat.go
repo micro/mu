@@ -91,25 +91,6 @@ func loadChats() {
 	newSummary := ""
 
 	for topic, prompt := range prompts {
-		// get the index
-		res, err := data.Search(prompt, 15, map[string]string{
-			"topic": topic,
-		})
-		if err != nil {
-			fmt.Println("Failed to get index for prompt", prompt, err)
-			continue
-		}
-
-		var rag []string
-
-		for _, val := range res {
-			if len(val.Content) > 512 {
-				val.Content = val.Content[:512]
-			}
-			b, _ := json.Marshal(val)
-			rag = append(rag, string(b))
-		}
-
 		q := fmt.Sprintf(`Provide a 3 bullet points summary for %s based on the context provided.
 Do not add any additional information. Do not respond except with the 3 bullets. Keep it below 512 characters but 
 ensure none of the content is cutoff. In the event 512 characters is not enough, increase the length as required.
@@ -120,7 +101,6 @@ Use the description from the json metadata "description" field as the summary. I
 Format each point like so e.g - **title**: summary [source](url)`, topic)
 
 		resp, err := askLLM(&Prompt{
-			Rag:      rag,
 			Question: q,
 		})
 
@@ -214,24 +194,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		q := fmt.Sprintf("%v", form["prompt"])
 
-		res, err := data.Search(q, 10, nil)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		var rag []string
-
-		for _, val := range res {
-			if len(val.Content) > 512 {
-				val.Content = val.Content[:512]
-			}
-			b, _ := json.Marshal(val)
-			rag = append(rag, string(b))
-		}
-
 		prompt := &Prompt{
-			Rag:      rag,
 			Context:  context,
 			Question: q,
 		}

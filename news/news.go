@@ -1,7 +1,6 @@
 package news
 
 import (
-	"crypto/sha256"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -117,10 +116,6 @@ func getDomain(v string) string {
 }
 
 var Results = `
-<form action="/news" method="POST">
-  <input name="query" id="query" value="%s">
-  <button>Search</button>
-</form>
 <div id="topics">%s</div>
 <h1 style="margin-top: 0">Results</h1>
 <div id="results">
@@ -228,12 +223,6 @@ func saveHtml(head, content []byte) {
 		return
 	}
 	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
-
-	body = `
-<form action="/news" method="POST">
-  <input name="query" id="query" value="" placeholder="Search">
-  <button>Search</button>
-</form>` + body
 	html = app.RenderHTML("News", "Read the news", body)
 	data.Save("news.html", html)
 }
@@ -401,22 +390,6 @@ func getReminder() {
 
 	html := fmt.Sprintf(`<div class="verse">%s</div>`, val["verse"])
 	html += app.Link("More", link)
-
-	// index the reminder
-	go func(val map[string]interface{}) {
-		// create an id
-		h := sha256.New()
-		h.Write([]byte(link))
-		bs := h.Sum(nil)
-		id := fmt.Sprintf("%x", bs)
-
-		data.Index(id, map[string]string{
-			"topic": "reminder",
-			"type":  "verse",
-			"id":    id,
-			"url":   link,
-		}, fmt.Sprintf("%v", val["verse"]))
-	}(val)
 
 	mutex.Lock()
 	data.Save("reminder.html", html)
@@ -628,28 +601,6 @@ func parseFeed() {
 
 			// add to headlines / 1 per category
 			headlines = append(headlines, post)
-
-			// index the doc
-			go func() {
-				id := post.ID
-				if len(post.ID) == 0 {
-					return
-				}
-
-				md := map[string]string{
-					"id":          post.ID,
-					"title":       post.Title,
-					"description": post.Description,
-					"url":         post.URL,
-					"posted":      post.PostedAt.String(),
-					"topic":       name,
-					"type":        "news",
-				}
-				if err := data.Index(id, md, val); err != nil {
-					fmt.Println("Error indexing news", err)
-				}
-			}()
-
 		}
 
 		content = append(content, []byte(`</div>`)...)
@@ -672,19 +623,6 @@ func parseFeed() {
 			price := newPrices[ticker]
 			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 			info = append(info, []byte(line)...)
-
-			// index prices
-			go func() {
-				id := fmt.Sprintf("%s-%v", ticker, time.Now().UnixNano())
-
-				data.Index(id, map[string]string{
-					"topic":     "crypto",
-					"type":      "ticker",
-					"name":      ticker,
-					"price":     fmt.Sprintf("%.2f", price),
-					"timestamp": time.Now().String(),
-				}, line)
-			}()
 		}
 
 		info = append(info, []byte(`</div>`)...)
@@ -696,18 +634,6 @@ func parseFeed() {
 			price := newPrices[ticker]
 			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 			info = append(info, []byte(line)...)
-			// index prices
-			go func() {
-				id := fmt.Sprintf("%s-%v", ticker, time.Now().UnixNano())
-
-				data.Index(id, map[string]string{
-					"topic":     "futures",
-					"type":      "ticker",
-					"name":      ticker,
-					"price":     fmt.Sprintf("%.2f", price),
-					"timestamp": time.Now().String(),
-				}, line)
-			}()
 		}
 
 		info = append(info, []byte(`</div>`)...)
@@ -831,59 +757,6 @@ func Reminder() string {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	defer mutex.RUnlock()
-
-	if r.Method == "POST" {
-		// TODO: deal with API request
-		r.ParseForm()
-
-		query := r.Form.Get("query")
-
-		if len(query) == 0 {
-			return
-		}
-
-		docs, err := data.Search(query, 10, map[string]string{
-			"type": "news",
-		})
-		if err != nil {
-			http.Error(w, err.Error(), 502)
-			return
-		}
-
-		var results string
-
-		for _, doc := range docs {
-			category := doc.Metadata["topic"]
-			url := doc.Metadata["url"]
-			title := doc.Metadata["title"]
-			desc := doc.Metadata["description"]
-			posted, _ := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", doc.Metadata["posted"])
-			summary := fmt.Sprintf(`Source: <i>%s</i> | %s`, getDomain(url), app.TimeAgo(posted))
-
-			results += fmt.Sprintf(`
-				<div class="news">
-				<a href="/news#%s" class="category">%s</a>
-				  <a href="%s" rel="noopener noreferrer" target="_blank">
-				   <span class="title">%s</span>
-				  </a>
-				 <span class="description">%s</span>
-				 <span class="text">%s</span></div>
-				`, category, category, url, title, desc, summary)
-
-		}
-
-		var sorted []string
-
-		for name, _ := range feeds {
-			sorted = append(sorted, name)
-		}
-
-		head := app.Head("news", sorted)
-
-		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
-		w.Write([]byte(html))
-		return
-	}
 
 	if ct := r.Header.Get("Content-Type"); ct == "application/json" {
 		resp := map[string]interface{}{
