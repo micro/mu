@@ -18,7 +18,7 @@ Starting with:
 
 Coming soon:
 
-- [ ] Blog - Micro blogging 
+- [ ] Blog - Micro blogging (WIP)
 - [ ] Mail - Email without Gmail
 - [ ] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
