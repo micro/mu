@@ -1,9 +1,9 @@
 {
-  "Crypto": "What's happening in cryptocurrency right now?",
-  "Finance": "What's happening in the markets right now?",
-  "Politics": "What's happening in politics right now?",
-  "Tech": "What's happening in technology right now?",
-  "UK": "What's happening in the UK right now?",
-  "World": "What's happening in MENA right now?",
-  "Dev": "What's happening in startups right now?"
+  "Crypto": "Summarize the top 3 cryptocurrency news stories today in 2-3 sentences total.",
+  "Finance": "Summarize the top 3 market/finance news stories today in 2-3 sentences total.",
+  "Politics": "Summarize the top 3 political news stories today in 2-3 sentences total.",
+  "Tech": "Summarize the top 3 technology news stories today in 2-3 sentences total.",
+  "UK": "Summarize the top 3 UK news stories today in 2-3 sentences total.",
+  "World": "Summarize the top 3 MENA news stories today in 2-3 sentences total.",
+  "Dev": "Summarize the top 3 startup/developer news stories today in 2-3 sentences total."
 }
