@@ -344,23 +344,31 @@ self.addEventListener("hashchange", function(event) {
 	// Don't reload on hash change - anchors should just scroll
 	if (window.location.hash) {
 		console.log('Hash changed to:', window.location.hash);
-		
-		// On chat page, scroll within messages box only
-		const messagesBox = document.getElementById('messages');
-		if (messagesBox && window.innerWidth <= 600) {
-			event.preventDefault();
-			const targetId = window.location.hash.substring(1);
-			const targetElement = document.getElementById(targetId);
-			if (targetElement) {
-				// Scroll the messages box, not the page
-				const offset = targetElement.offsetTop - messagesBox.offsetTop;
-				messagesBox.scrollTop = offset;
-			}
-		}
 	}
 });
 
 self.addEventListener('DOMContentLoaded', function() {
+	// Prevent page scroll on topic clicks for mobile chat
+	const topicsDiv = document.getElementById('topics');
+	const messagesBox = document.getElementById('messages');
+	
+	if (topicsDiv && messagesBox && window.innerWidth <= 600) {
+		topicsDiv.addEventListener('click', function(e) {
+			if (e.target.tagName === 'A' && e.target.hash) {
+				e.preventDefault();
+				const targetId = e.target.hash.substring(1);
+				const targetElement = document.getElementById(targetId);
+				if (targetElement) {
+					// Scroll only the messages box
+					const offset = targetElement.offsetTop - messagesBox.offsetTop;
+					messagesBox.scrollTop = offset - 10; // 10px offset for spacing
+					// Update hash without scrolling
+					history.replaceState(null, null, e.target.hash);
+				}
+			}
+		});
+	}
+	
 	// set nav
 	var nav = document.getElementById("nav");
 	for (const el of nav.children) {
