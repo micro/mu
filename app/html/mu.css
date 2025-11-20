@@ -214,8 +214,10 @@ td {
   margin-bottom: 25px;
   display: grid;
   grid-template-columns: 1fr 370px;
+  grid-auto-rows: auto;
   gap: 20px;
   height: 100%;
+  align-items: start;
 }
 #home h1 {
   margin-top: 0;
