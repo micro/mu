@@ -86,8 +86,8 @@ func updateCache() {
 		item := fmt.Sprintf(`<div class="post-item">
 			<strong>%s</strong><br>
 			<span style="white-space: pre-wrap;">%s</span><br>
-			<small style="color: #666;">%s</small>
-		</div>`, title, content, post.CreatedAt.Format("Jan 2, 2006 3:04 PM"))
+			<small style="color: #666;">%s by %s</small>
+		</div>`, title, content, app.TimeAgo(post.CreatedAt), post.Author)
 		preview = append(preview, item)
 	}
 	
@@ -108,8 +108,8 @@ func updateCache() {
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3>%s</h3>
 			<p style="white-space: pre-wrap;">%s</p>
-			<small style="color: #666;">Posted by %s on %s</small>
-		</div>`, title, post.Content, post.Author, post.CreatedAt.Format("January 2, 2006 at 3:04 PM"))
+			<small style="color: #666;">%s by %s</small>
+		</div>`, title, post.Content, app.TimeAgo(post.CreatedAt), post.Author)
 		fullList = append(fullList, item)
 	}
 	
@@ -156,8 +156,8 @@ func HomeFeed() string {
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3>%s</h3>
 			<p style="white-space: pre-wrap;">%s</p>
-			<small style="color: #666;">Posted by %s on %s</small>
-		</div>`, title, post.Content, post.Author, post.CreatedAt.Format("January 2, 2006 at 3:04 PM"))
+			<small style="color: #666;">%s by %s</small>
+		</div>`, title, post.Content, app.TimeAgo(post.CreatedAt), post.Author)
 		limitedList = append(limitedList, item)
 	}
 	

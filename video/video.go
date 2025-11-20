@@ -270,7 +270,7 @@ var Template = `
 </style>
 <!-- <form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;"> -->
 <form action="/video" method="POST">
-  <input name="query" id="query" placeholder=Search autocomplete=off autofocus>
+  <input name="query" id="query" placeholder=Search autocomplete=off>
   <button>Search</button>
 </form>
 <div id="recent-searches-container"></div>
