@@ -173,6 +173,35 @@ td {
 #home h1 {
   margin-top: 0;
 }
+#home-layout {
+  display: flex;
+  flex-direction: row;
+  gap: 30px;
+  align-items: flex-start;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+#feed-column {
+  flex: 1 1 600px;
+  max-width: 750px;
+  min-width: 0;
+}
+#feed-column h2 {
+  margin-top: 15px;
+  margin-bottom: 20px;
+}
+#info-sidebar {
+  flex: 0 1 350px;
+  min-width: 300px;
+}
+#info-sidebar .card {
+  float: none;
+  display: block;
+  margin-right: 0;
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: none;
+}
 #news h1 {
   margin-top: 15px;
 }
@@ -194,6 +223,43 @@ td {
 #chat-form {
   width: 100%;
   margin: 0;
+}
+#post-form-container {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fafafa;
+}
+#post-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#post-form input,
+#post-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+#post-form textarea {
+  resize: vertical;
+}
+#post-form button {
+  padding: 10px 20px;
+  font-size: 14px;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+#posts-list {
+  margin-top: 20px;
 }
 #posts-feed {
   max-width: 750px;
@@ -493,6 +559,22 @@ td {
   #home {
     display: block;
     flex-direction: column;
+  }
+  #home-layout {
+    flex-direction: column;
+    gap: 20px;
+  }
+  #feed-column {
+    max-width: 100%;
+    width: 100%;
+  }
+  #info-sidebar {
+    min-width: 0;
+    width: 100%;
+  }
+  #info-sidebar .card {
+    width: calc(100vw - 85px);
+    max-width: calc(100vw - 85px);
   }
   .cover {
     display: block;

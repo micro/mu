@@ -49,6 +49,7 @@ func main() {
 		"/video":   true,
 		"/news":    true,
 		"/chat":    true,
+		"/blog":    true,
 		"/home":    true,
 		"/logout":  true,
 		"/session": true,
@@ -62,6 +63,9 @@ func main() {
 
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
+
+	// serve blog (full list)
+	http.HandleFunc("/blog", blog.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

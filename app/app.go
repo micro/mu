@@ -31,6 +31,7 @@ var Template = `
     <link rel="preload" href="/home.png" as="image">
     <link rel="preload" href="/mail.png" as="image">
     <link rel="preload" href="/chat.png" as="image">
+    <link rel="preload" href="/blog.png" as="image">
     <link rel="preload" href="/news.png" as="image">
     <link rel="preload" href="/video.png" as="image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -47,8 +48,9 @@ var Template = `
       </div>
       <div id="account">&nbsp;</div>
       <div id="nav">
-        <a href="/home"><img src="home.png" style="margin-bottom: 1px">Home</a>
+        <a href="/home"><img src="home.png" style="margin-bottom: 1px; margin-right: 0"></a>
         <a href="/chat"><img src="chat.png">Chat</a>
+        <a href="/blog"><img src="blog.png">Blog</a>
         <a href="/news"><img src="news.png">News</a>
         <a href="/video"><img src="video.png">Video</a>
       </div>

@@ -134,13 +134,47 @@ func FullFeed() string {
 	return postsList
 }
 
+// HomeFeed returns HTML for limited posts (latest 10 for home page)
+func HomeFeed() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	
+	// Generate limited list for home page (latest 10 posts)
+	var limitedList []string
+	count := 10
+	if len(posts) < count {
+		count = len(posts)
+	}
+	
+	for i := 0; i < count; i++ {
+		post := posts[i]
+		title := post.Title
+		if title == "" {
+			title = "Untitled"
+		}
+		
+		item := fmt.Sprintf(`<div class="post-item">
+			<h3>%s</h3>
+			<p style="white-space: pre-wrap;">%s</p>
+			<small style="color: #666;">Posted by %s on %s</small>
+		</div>`, title, post.Content, post.Author, post.CreatedAt.Format("January 2, 2006 at 3:04 PM"))
+		limitedList = append(limitedList, item)
+	}
+	
+	if len(limitedList) == 0 {
+		return "<p>No posts yet. Be the first to share a thought!</p>"
+	}
+	
+	return strings.Join(limitedList, "\n<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>\n")
+}
+
 // PostingForm returns the HTML for the posting form
 func PostingForm(action string) string {
-	return fmt.Sprintf(`<div id="post-form-container" style="margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background: #fafafa;">
-		<form id="post-form" method="POST" action="%s" style="display: flex; flex-direction: column; gap: 10px;">
-			<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-			<textarea name="content" rows="4" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
-			<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer; align-self: flex-start;">Post</button>
+	return fmt.Sprintf(`<div id="post-form-container">
+		<form id="post-form" method="POST" action="%s">
+			<input type="text" name="title" placeholder="Title (optional)">
+			<textarea name="content" rows="4" placeholder="Share a thought. Be mindful of Allah" required></textarea>
+			<button type="submit">Post</button>
 		</form>
 	</div>`, action)
 }

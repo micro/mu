@@ -12,7 +12,7 @@ import (
 	"mu/video"
 )
 
-var Template = `<div id="home">%s</div>`
+var Template = `<div id="home"><div id="home-layout">%s</div></div>`
 
 func Cards(news, markets, reminder, latest string) []string {
 	news += app.Link("More", "/news")
@@ -71,23 +71,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	reminder := news.Reminder()
 	latest := video.Latest()
 
-	// Get the posting form and full feed
+	// Get the posting form and limited feed
 	postForm := blog.PostingForm("/home")
-	postsFeed := blog.FullFeed()
+	homeFeed := blog.HomeFeed()
 
-	// Create the feed section
-	feedSection := fmt.Sprintf(`<div id="posts-feed" style="max-width: 750px; margin-bottom: 30px;">
+	// Create the main feed column with More link
+	feedColumn := fmt.Sprintf(`<div id="feed-column">
 		<h2>Posts</h2>
 		%s
-		<hr style="margin: 20px 0; border: none; border-top: 2px solid #333;">
 		<div id="posts-list">%s</div>
-	</div>`, postForm, postsFeed)
+		<div style="text-align: center; margin-top: 30px;">
+			<a href="/blog" style="padding: 10px 20px; background: #333; color: white; border-radius: 5px; text-decoration: none; display: inline-block;">View All Posts</a>
+		</div>
+	</div>`, postForm, homeFeed)
 
-	// Create info cards
+	// Create info cards sidebar
 	cards := strings.Join(Cards(headlines, markets, reminder, latest), "\n")
+	sidebar := fmt.Sprintf(`<div id="info-sidebar">%s</div>`, cards)
 	
-	// Combine feed and cards
-	homepage := fmt.Sprintf(Template, feedSection+"\n"+cards)
+	// Combine feed and sidebar
+	homepage := fmt.Sprintf(Template, feedColumn+"\n"+sidebar)
 
 	// render html
 	html := app.RenderHTML("Home", "The Mu homescreen", homepage)
