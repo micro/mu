@@ -349,7 +349,8 @@ func loadVideos() {
 		return latest[i].Published.After(latest[j].Published)
 	})
 
-	// add to body
+	// add Latest heading and videos to body
+	body += "<h1>Latest</h1>"
 	for _, res := range latest {
 		body += res.Html
 	}

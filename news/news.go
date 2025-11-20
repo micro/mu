@@ -222,7 +222,7 @@ func saveHtml(head, content []byte) {
 	if len(content) == 0 {
 		return
 	}
-	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
+	body := fmt.Sprintf(`<h1>Headlines</h1><div id="topics">%s</div><div>%s</div>`, string(head), string(content))
 	html = app.RenderHTML("News", "Read the news", body)
 	data.Save("news.html", html)
 }
