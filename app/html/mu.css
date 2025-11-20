@@ -132,7 +132,7 @@ td {
 }
 
 #account {
-  display: none;
+  display: block;
 }
 
 #account a {
