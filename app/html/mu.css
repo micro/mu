@@ -698,11 +698,19 @@ td {
     overflow-x: scroll;
   }
   #head {
+    display: block;
+    text-align: center;
+    position: relative;
     border-top: 1px solid darkgrey;
     border-bottom: 1px solid darkgrey;
-    display: block;
     padding: 0;
-    text-align: center;
+  }
+  #account {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    margin-left: 0;
+    text-align: right;
   }
   #brand {
     padding: 10px;
