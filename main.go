@@ -55,6 +55,12 @@ func main() {
 		"/session": true,
 		"/api":     true,
 	}
+
+	// Static assets should not require authentication
+	staticPaths := []string{
+		".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", 
+		".ico", ".webmanifest", ".json",
+	}
 	// serve video
 	http.HandleFunc("/video", video.Handler)
 
@@ -118,9 +124,21 @@ func main() {
 
 		var isAuthed bool
 
-		for url, authed := range authenticated {
-			if strings.HasPrefix(r.URL.Path, url) {
-				isAuthed = authed
+		// Check if static asset - don't require auth
+		for _, ext := range staticPaths {
+			if strings.HasSuffix(r.URL.Path, ext) {
+				isAuthed = false
+				break
+			}
+		}
+
+		// Check if path requires authentication
+		if !isAuthed {
+			for url, authed := range authenticated {
+				if strings.HasPrefix(r.URL.Path, url) {
+					isAuthed = authed
+					break
+				}
 			}
 		}
 
