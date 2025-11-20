@@ -1,5 +1,5 @@
 var APP_PREFIX = 'mu_';
-var VERSION = 'v3';
+var VERSION = 'v4';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Static assets to cache on install
@@ -87,19 +87,17 @@ async function networkFirst(request) {
 }
 
 self.addEventListener('fetch', function (e) {
-  console.log('Fetch request : ' + e.request.url);
-  
   const url = new URL(e.request.url);
   
-  // Skip non-GET requests
-  if (e.request.method !== 'GET') {
-    e.respondWith(fetch(e.request));
+  // Don't intercept root path at all - let server handle redirects
+  if (url.pathname === '/' || url.pathname === '') {
     return;
   }
   
-  // Let root path redirects happen naturally (don't cache redirects)
-  if (url.pathname === '/') {
-    e.respondWith(fetch(e.request, { redirect: 'follow' }));
+  console.log('Fetch request : ' + e.request.url);
+  
+  // Skip non-GET requests
+  if (e.request.method !== 'GET') {
     return;
   }
   
