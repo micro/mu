@@ -628,6 +628,9 @@ td {
     flex-direction: column;
     height: auto;
   }
+  .home-left {
+    margin-bottom: 20px;
+  }
   .cover {
     display: block;
   }
