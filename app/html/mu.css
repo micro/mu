@@ -212,13 +212,8 @@ td {
 }
 #home {
   margin-bottom: 25px;
-  display: grid;
-  grid-template-columns: 1fr 370px;
-  grid-template-rows: repeat(auto-fill, auto);
-  gap: 20px;
+  display: block;
   height: 100%;
-  grid-auto-flow: dense;
-  align-items: start;
 }
 #home h1 {
   margin-top: 0;
@@ -226,33 +221,17 @@ td {
 #news h1 {
   margin-top: 15px;
 }
-#posts {
-  grid-column: 1;
-  grid-row: 1;
-  max-width: 100%;
-  clear: none;
-  float: none;
+#posts, #news {
+  max-width: 750px;
+  float: left;
+  clear: left;
   margin-right: 0;
 }
-#news {
-  grid-column: 1;
-  grid-row: 2;
-  max-width: 100%;
-  clear: none;
-  float: none;
+#reminder, #markets, #video {
+  max-width: 350px;
+  float: right;
+  clear: right;
   margin-right: 0;
-}
-#reminder {
-  grid-column: 2;
-  grid-row: 1;
-}
-#markets {
-  grid-column: 2;
-  grid-row: 2;
-}
-#video {
-  grid-column: 2;
-  grid-row: 3;
 }
 #markets, #reminder, #video {
   max-width: 100%;
