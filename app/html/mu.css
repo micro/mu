@@ -500,9 +500,13 @@ td {
     background: white;
     width: calc(100vw - 20px);
   }
-  #nav .label { display: none; }
-  #nav img { margin-right: 0; }
-  #head a { padding: 5px 6px; }
+  #nav .label {
+    display: inline-block;
+    font-size: 0.8em;
+    margin-left: 4px;
+  }
+  #nav img { margin-right: 2px; }
+  #head a { padding: 4px 5px; }
   #container {
     height: calc(100vh - 175px);
     overflow-y: auto;
