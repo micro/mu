@@ -1,9 +1,9 @@
 {
-  "Crypto": "Summarize the top 3 cryptocurrency news stories today in 2-3 sentences total.",
-  "Finance": "Summarize the top 3 market/finance news stories today in 2-3 sentences total.",
-  "Politics": "Summarize the top 3 political news stories today in 2-3 sentences total.",
-  "Tech": "Summarize the top 3 technology news stories today in 2-3 sentences total.",
-  "UK": "Summarize the top 3 UK news stories today in 2-3 sentences total.",
-  "World": "Summarize the top 3 MENA news stories today in 2-3 sentences total.",
-  "Dev": "Summarize the top 3 startup/developer news stories today in 2-3 sentences total."
+  "Crypto": "Provide 3 sentences explaining the current state and key trends in cryptocurrency markets.",
+  "Finance": "Provide 3 sentences explaining the current state and key trends in global financial markets.",
+  "Politics": "Provide 3 sentences explaining the current major political topics and trends.",
+  "Tech": "Provide 3 sentences explaining the current major trends and developments in technology.",
+  "UK": "Provide 3 sentences explaining the current major topics and trends in UK news.",
+  "World": "Provide 3 sentences explaining the current major topics and trends in MENA region.",
+  "Dev": "Provide 3 sentences explaining the current trends and hot topics in startups and development."
 }
