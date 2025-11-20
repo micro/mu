@@ -563,11 +563,11 @@ td {
     height: calc(100vh - 140px);
     overflow-y: auto;
     display: block;
-    padding-bottom: 80px;
   }
   #content {
     height: auto;
     display: block;
+    padding-bottom: 100px;
   }
   #main {
     padding: 20px;
@@ -580,6 +580,11 @@ td {
   }
   #messages {
     height: calc(100vh - 340px);
+    overflow-y: auto;
+  }
+  #chat-form {
+    position: relative;
+    z-index: 1;
   }
   .post-show {
     margin-top: 10px;
