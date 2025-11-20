@@ -502,6 +502,9 @@ td {
   margin-bottom: 10px;
 }
 @media only screen and (max-width: 600px) {
+  body {
+    overflow-x: hidden;
+  }
   #topics {
     text-align: center;
     overflow-x: scroll;
@@ -509,6 +512,9 @@ td {
   #head {
     border-top: 1px solid darkgrey;
     border-bottom: 1px solid darkgrey;
+    display: block;
+    padding: 0;
+    text-align: center;
   }
   #brand {
     padding: 10px;
@@ -527,6 +533,7 @@ td {
     background: white;
     border-top: 1px solid #ddd;
     z-index: 1000;
+    gap: 0;
   }
   #nav a {
     padding: 5px 8px;
