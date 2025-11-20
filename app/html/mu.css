@@ -4,7 +4,6 @@ html, body {
   margin: 0;
   padding: 0;
   font-family: "Nunito Sans", serif;
-  overscroll-behavior-y: none;
 }
 a {
   color: #333333;
