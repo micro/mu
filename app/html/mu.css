@@ -221,9 +221,11 @@ td {
 #news h1 {
   margin-top: 15px;
 }
-#posts, #news {
+#posts {
   max-width: 750px;
-  float: left;
+  clear: left;
+}
+#news {
   clear: left;
 }
 #markets, #reminder, #video {
