@@ -497,31 +497,37 @@ td {
   #nav {
     position: fixed;
     bottom: 0;
-    padding: 6px 8px;
+    left: 0;
+    right: 0;
+    padding: 8px 5px;
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
     align-items: center;
-    gap: 2px;
     background: white;
-    width: calc(100vw - 16px);
+    border-top: 1px solid #ddd;
+    z-index: 1000;
   }
   #nav a {
-    padding: 7px 3px;
-    margin-right: 0;
-    font-size: 1.05em;
-    display: inline-flex;
+    padding: 5px 8px;
+    margin: 0;
+    font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    white-space: nowrap;
-    flex: 1 1 0;
+    text-align: center;
+    flex: 1;
     min-width: 0;
   }
   #nav .label {
-    display: inline;
-    margin-left: 3px;
+    display: block;
+    margin-left: 0;
+    margin-top: 2px;
+    font-size: 0.75em;
   }
   #nav img {
-    margin-right: 2px;
+    margin-right: 0;
+    margin-bottom: 2px;
     height: 24px;
   }
   #head a { padding: 4px 5px; }
