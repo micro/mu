@@ -278,10 +278,11 @@ function loadChat() {
                 } else {
                     // Keyboard closed - reset to CSS default
                     messages.style.height = '';
+                    // Ensure no scroll on container
+                    container.scrollTop = 0;
                 }
 
                 messages.scrollTop = messages.scrollHeight;
-                window.scrollTo(0, document.body.scrollHeight);
             });
         }
 }
