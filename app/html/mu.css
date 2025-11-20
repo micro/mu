@@ -221,7 +221,7 @@ td {
 #news h1 {
   margin-top: 15px;
 }
-#markets, #reminder, #posts, #video {
+#markets, #reminder, #video {
   max-width: 350px;
 }
 #video img {

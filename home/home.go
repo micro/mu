@@ -21,10 +21,10 @@ func Cards(news, markets, reminder, posts, latest string) []string {
 	latest += app.Link("More", "/video")
 
 	cards := []string{
+		app.Card("posts", "Posts", posts),
 		app.Card("news", "News", news),
 		app.Card("reminder", "Reminder", reminder),
 		app.Card("markets", "Markets", markets),
-		app.Card("posts", "Posts", posts),
 		app.Card("video", "Video", latest),
 	}
 	return cards
