@@ -87,17 +87,22 @@ td {
   margin-left: 5px;
 }
 #container {
-  height: auto;
+  height: 100vh;
   max-width: 1600px;
   margin: 0 auto;
   text-align: center;
   padding: 20px;
-  overflow: visible;
+  padding-top: 80px;
+  padding-bottom: 20px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 #content {
   max-width: 1280px;
   margin: 0 auto;
   text-align: left;
+  height: 100%;
+  overflow: visible;
 }
 #desc {
   margin-bottom: 10px;
