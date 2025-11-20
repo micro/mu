@@ -1,3 +1,6 @@
+// ============================================
+// SERVICE WORKER CONFIGURATION
+// ============================================
 var APP_PREFIX = 'mu_';
 var VERSION = 'v5';
 var CACHE_NAME = APP_PREFIX + VERSION;
@@ -27,7 +30,9 @@ var PAGE_CACHE = [
   '/video'
 ];
 
-let context = [];
+// ============================================
+// CACHING STRATEGIES
+// ============================================
 
 // Cache-first strategy with network fallback
 async function cacheFirst(request) {
@@ -86,6 +91,10 @@ async function networkFirst(request) {
   }
 }
 
+// ============================================
+// SERVICE WORKER EVENT LISTENERS
+// ============================================
+
 self.addEventListener('fetch', function (e) {
   const url = new URL(e.request.url);
   
@@ -113,7 +122,7 @@ self.addEventListener('fetch', function (e) {
     // Network-first for API calls
     e.respondWith(networkFirst(e.request));
   }
-})
+});
 
 self.addEventListener('install', function (e) {
   console.log('Installing service worker version: ' + VERSION);
@@ -126,7 +135,7 @@ self.addEventListener('install', function (e) {
       return self.skipWaiting();
     })
   );
-})
+});
 
 self.addEventListener('activate', function (e) {
   console.log('Activating service worker version: ' + VERSION);
@@ -143,86 +152,179 @@ self.addEventListener('activate', function (e) {
       return self.clients.claim();
     })
   );
-})
+});
+
+// ============================================
+// CHAT FUNCTIONALITY
+// ============================================
+
+let context = [];
 
 function loadMessages() {
-	console.log("loading messages"); 
+  console.log("loading messages");
 
-	var d = document.getElementById("messages");
+  var d = document.getElementById("messages");
 
-	context.forEach(function(data) {
-	  console.log(data);
-	  d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
-	  d.innerHTML += `<div class="message"><span class="llm">llm</span>${data["answer"]}</div>`;
-	})
+  context.forEach(function(data) {
+    console.log(data);
+    d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
+    d.innerHTML += `<div class="message"><span class="llm">llm</span>${data["answer"]}</div>`;
+  });
 
-	d.scrollTop = d.scrollHeight;
+  d.scrollTop = d.scrollHeight;
 }
 
 function askLLM(el) {
-	var d = document.getElementById('messages');
+  var d = document.getElementById('messages');
 
-	const formData = new FormData(el);
-	const data = {};
+  const formData = new FormData(el);
+  const data = {};
 
-	// Iterate over formData and populate the data object
-	for (let [key, value] of formData.entries()) {
-		data[key] = value;
-	}
+  // Iterate over formData and populate the data object
+  for (let [key, value] of formData.entries()) {
+    data[key] = value;
+  }
 
-	var p = document.getElementById("prompt");
+  var p = document.getElementById("prompt");
 
-	if (p.value == "") {
-		return false
-	}
+  if (p.value == "") {
+    return false;
+  }
 
-	// reset prompt
-	p.value = '';
+  // reset prompt
+  p.value = '';
 
-	console.log("sending", data);
-	d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
-	d.scrollTop = d.scrollHeight;
+  console.log("sending", data);
+  d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
+  d.scrollTop = d.scrollHeight;
 
-	var prompt = data["prompt"];
+  var prompt = data["prompt"];
 
-        data["context"] = context;
+  data["context"] = context;
 
-	fetch("/chat", {
-	  method: "POST",
-	  headers: {
-	      'Content-Type': 'application/json'
-	  },
-	  body: JSON.stringify(data)
-	}).then(response => response.json())
-	.then(result => {
-	    console.log('Success:', result);
-	    // Handle success, e.g., show a success message
-            d.innerHTML += `<div class="message"><span class="llm">llm</span>${result.answer}</div>`
-	    d.scrollTop = d.scrollHeight;
+  fetch("/chat", {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  }).then(response => response.json())
+  .then(result => {
+    console.log('Success:', result);
+    d.innerHTML += `<div class="message"><span class="llm">llm</span>${result.answer}</div>`;
+    d.scrollTop = d.scrollHeight;
 
-	    // save the context
-            context.push({answer: result.answer, prompt: prompt});
-	    setContext();
-	})
-	.catch(error => {
-	    console.error('Error:', error);
-	    // Handle errors
-	});
+    // save the context
+    context.push({answer: result.answer, prompt: prompt});
+    setContext();
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
 
-	return false;
+  return false;
 }
 
 function loadContext() {
-	var ctx = sessionStorage.getItem("context");
-	if (ctx == null || ctx == undefined || ctx == "") {
-		return
-	}
-	context = JSON.parse(ctx);
+  var ctx = sessionStorage.getItem("context");
+  if (ctx == null || ctx == undefined || ctx == "") {
+    return;
+  }
+  context = JSON.parse(ctx);
 }
 
 function setContext() {
-	sessionStorage.setItem("context", JSON.stringify(context));
+  sessionStorage.setItem("context", JSON.stringify(context));
 }
+
+function loadChat() {
+  loadContext();
+  loadMessages();
+
+  // scroll to bottom of prompt
+  const prompt = document.getElementById('prompt');
+  const messages = document.getElementById('messages');
+  const container = document.getElementById('container');
+
+  // Only adjust for mobile keyboards when viewport is small
+  if (window.visualViewport && window.innerWidth <= 600) {
+    // Prevent scrolling when input gains focus
+    prompt.addEventListener('focus', () => {
+      container.style.overflow = 'hidden';
+      window.scrollTo(0, 0);
+    });
+
+    window.visualViewport.addEventListener('resize', () => {
+      const viewportHeight = window.visualViewport.height;
+      const documentHeight = document.documentElement.clientHeight;
+
+      // Keyboard opened
+      if (viewportHeight < documentHeight) {
+        messages.style.height = (viewportHeight - 280) + 'px';
+        container.style.overflow = 'hidden';
+      } else {
+        // Keyboard closed - reset to CSS default
+        messages.style.height = '';
+        // Ensure no scroll on container
+        container.scrollTop = 0;
+        window.scrollTo(0, 0);
+      }
+
+      messages.scrollTop = messages.scrollHeight;
+    });
+  }
+}
+
+// ============================================
+// VIDEO FUNCTIONALITY
+// ============================================
+
+function getVideos(el) {
+  const formData = new FormData(el);
+  const data = {};
+
+  // Iterate over formData and populate the data object
+  for (let [key, value] of formData.entries()) {
+    data[key] = value;
+  }
+
+  console.log("sending", data);
+
+  fetch("/video", {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  }).then(response => response.json())
+  .then(result => {
+    console.log('Success:', result);
+    var d = document.getElementById('results');
+
+    if (d == null) {
+      d = document.createElement("div");
+      d.setAttribute("id", "results");
+
+      var content = document.getElementById('content');
+      content.innerHTML += "<h1>Results</h1>";
+      content.appendChild(d);
+    } else {
+      d.innerHTML = '';
+    }
+
+    d.innerHTML += result.html;
+    document.getElementById('query').value = data["query"];
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+
+  return false;
+}
+
+// ============================================
+// SESSION MANAGEMENT
+// ============================================
 
 function getCookie(name) {
   var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
@@ -230,161 +332,81 @@ function getCookie(name) {
 }
 
 function setSession() {
-	fetch("/session", {
-	  method: "POST",
-	  headers: {
-	      'Content-Type': 'application/json'
-	  },
-	}).then(response => response.json())
-	.then(sess => {
-	    console.log('Success:', sess);
-	    var acc = document.getElementById("account");
-	    if (sess.type == "account") {
-	      acc.innerHTML = "<a href='/logout'>Logout</a>";
-	    } else {
-	      acc.innerHTML = "<a href='/login'>Login</a>";
-	      // If we're on a protected page but not logged in, redirect
-	      const protectedPaths = ['/home', '/chat', '/blog', '/news', '/video'];
-	      if (protectedPaths.includes(window.location.pathname)) {
-	        window.location.href = '/';
-	      }
-	    }
-	})
-	.catch(error => {
-	    console.error('Error:', error);
-	    // On error, redirect to home
-	    window.location.href = '/';
-	});
+  fetch("/session", {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json'
+    },
+  }).then(response => response.json())
+  .then(sess => {
+    console.log('Success:', sess);
+    var acc = document.getElementById("account");
+    if (sess.type == "account") {
+      acc.innerHTML = "<a href='/logout'>Logout</a>";
+    } else {
+      acc.innerHTML = "<a href='/login'>Login</a>";
+      // If we're on a protected page but not logged in, redirect
+      const protectedPaths = ['/home', '/chat', '/blog', '/news', '/video'];
+      if (protectedPaths.includes(window.location.pathname)) {
+        window.location.href = '/';
+      }
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    // On error, redirect to home
+    window.location.href = '/';
+  });
 }
 
-function loadChat() {
-	loadContext()
-        loadMessages();
-
-        // scroll to bottom of prompt
-        const prompt = document.getElementById('prompt');
-        const messages = document.getElementById('messages');
-        const container = document.getElementById('container');
-
-        // Only adjust for mobile keyboards when viewport is small
-        if (window.visualViewport && window.innerWidth <= 600) {
-            // Prevent scrolling when input gains focus
-            prompt.addEventListener('focus', () => {
-                container.style.overflow = 'hidden';
-                window.scrollTo(0, 0);
-            });
-
-            window.visualViewport.addEventListener('resize', () => {
-                const viewportHeight = window.visualViewport.height;
-                const documentHeight = document.documentElement.clientHeight;
-
-                // Keyboard opened
-                if (viewportHeight < documentHeight) {
-                    messages.style.height = (viewportHeight - 280) + 'px';
-                    container.style.overflow = 'hidden';
-                } else {
-                    // Keyboard closed - reset to CSS default
-                    messages.style.height = '';
-                    // Ensure no scroll on container
-                    container.scrollTop = 0;
-                    window.scrollTo(0, 0);
-                }
-
-                messages.scrollTop = messages.scrollHeight;
-            });
-        }
-}
-
-function getVideos(el) {
-	const formData = new FormData(el);
-	const data = {};
-
-	// Iterate over formData and populate the data object
-	for (let [key, value] of formData.entries()) {
-		data[key] = value;
-	}
-
-	console.log("sending", data);
-
-	fetch("/video", {
-	  method: "POST",
-	  headers: {
-	      'Content-Type': 'application/json'
-	  },
-	  body: JSON.stringify(data)
-	}).then(response => response.json())
-	.then(result => {
-	    console.log('Success:', result);
-		var d = document.getElementById('results');
-
-		if (d == null) {
-			d = document.createElement("div");
-			d.setAttribute("id", "results");
-
-			var content = document.getElementById('content');
-			content.innerHTML += "<h1>Results</h1>";
-			content.appendChild(d);
-		} else {
-			d.innerHTML = '';
-		}
-
-	    // Handle success, e.g., show a success message
-            d.innerHTML += result.html;
-	    document.getElementById('query').value = data["query"];
-	})
-	.catch(error => {
-	    console.error('Error:', error);
-	    // Handle errors
-	});
-
-	return false;
-};
+// ============================================
+// EVENT LISTENERS
+// ============================================
 
 self.addEventListener("hashchange", function(event) {
-	// Don't reload on hash change - anchors should just scroll
-	if (window.location.hash) {
-		console.log('Hash changed to:', window.location.hash);
-	}
+  // Don't reload on hash change - anchors should just scroll
+  if (window.location.hash) {
+    console.log('Hash changed to:', window.location.hash);
+  }
 });
 
 self.addEventListener('DOMContentLoaded', function() {
-	// Prevent page scroll on topic clicks for mobile chat
-	const topicsDiv = document.getElementById('topics');
-	const messagesBox = document.getElementById('messages');
-	
-	if (topicsDiv && messagesBox && window.innerWidth <= 600) {
-		topicsDiv.addEventListener('click', function(e) {
-			if (e.target.tagName === 'A' && e.target.hash) {
-				e.preventDefault();
-				const targetId = e.target.hash.substring(1);
-				const targetElement = document.getElementById(targetId);
-				if (targetElement) {
-					// Scroll only the messages box
-					const offset = targetElement.offsetTop - messagesBox.offsetTop;
-					messagesBox.scrollTop = offset - 10; // 10px offset for spacing
-					// Update hash without scrolling
-					history.replaceState(null, null, e.target.hash);
-				}
-			}
-		});
-	}
-	
-	// set nav
-	var nav = document.getElementById("nav");
-	for (const el of nav.children) {
-		if (el.getAttribute("href") == window.location.pathname) {
-			el.setAttribute("class", "active");
-			continue
-		}
-		el.removeAttribute("class");
-		//el.classList.remove("active");
-	}
+  // Prevent page scroll on topic clicks for mobile chat
+  const topicsDiv = document.getElementById('topics');
+  const messagesBox = document.getElementById('messages');
+  
+  if (topicsDiv && messagesBox && window.innerWidth <= 600) {
+    topicsDiv.addEventListener('click', function(e) {
+      if (e.target.tagName === 'A' && e.target.hash) {
+        e.preventDefault();
+        const targetId = e.target.hash.substring(1);
+        const targetElement = document.getElementById(targetId);
+        if (targetElement) {
+          // Scroll only the messages box
+          const offset = targetElement.offsetTop - messagesBox.offsetTop;
+          messagesBox.scrollTop = offset - 10; // 10px offset for spacing
+          // Update hash without scrolling
+          history.replaceState(null, null, e.target.hash);
+        }
+      }
+    });
+  }
+  
+  // set nav
+  var nav = document.getElementById("nav");
+  for (const el of nav.children) {
+    if (el.getAttribute("href") == window.location.pathname) {
+      el.setAttribute("class", "active");
+      continue;
+    }
+    el.removeAttribute("class");
+  }
 
-	// load chat
-	if (window.location.pathname == "/chat") {
-		loadChat();
-	}
+  // load chat
+  if (window.location.pathname == "/chat") {
+    loadChat();
+  }
 
-	// Check session status on page load
-	setSession();
+  // Check session status on page load
+  setSession();
 });
