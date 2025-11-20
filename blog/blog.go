@@ -85,7 +85,7 @@ func updateCache() {
 		
 		item := fmt.Sprintf(`<div class="post-item">
 			<strong>%s</strong><br>
-			<span>%s</span><br>
+			<span style="white-space: pre-wrap;">%s</span><br>
 			<small style="color: #666;">%s</small>
 		</div>`, title, content, post.CreatedAt.Format("Jan 2, 2006 3:04 PM"))
 		preview = append(preview, item)
