@@ -212,7 +212,9 @@ td {
 }
 #home {
   margin-bottom: 25px;
-  display: block;
+  display: grid;
+  grid-template-columns: 1fr 370px;
+  gap: 20px;
   height: 100%;
 }
 #home h1 {
@@ -221,16 +223,18 @@ td {
 #news h1 {
   margin-top: 15px;
 }
-#posts {
-  max-width: 750px;
+#posts, #news {
+  grid-column: 1;
+  max-width: 100%;
   clear: none;
-}
-#news {
-  max-width: 750px;
-  clear: none;
+  float: none;
+  margin-right: 0;
 }
 #markets, #reminder, #video {
-  max-width: 350px;
+  grid-column: 2;
+  max-width: 100%;
+  float: none;
+  margin-right: 0;
 }
 #video img {
   width: 100%;
