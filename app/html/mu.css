@@ -212,26 +212,32 @@ td {
 }
 #home {
   margin-bottom: 25px;
-  display: block;
+  display: flex;
+  gap: 20px;
   height: 100%;
+}
+.home-left, .home-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.home-left {
+  flex: 1;
+  max-width: 750px;
+}
+.home-right {
+  width: 370px;
+  flex-shrink: 0;
+}
+.home-left .card, .home-right .card {
+  margin: 0;
+  float: none;
 }
 #home h1 {
   margin-top: 0;
 }
 #news h1 {
   margin-top: 15px;
-}
-#posts, #news {
-  max-width: 750px;
-  float: left;
-  clear: left;
-  margin-right: 0;
-}
-#reminder, #markets, #video {
-  max-width: 350px;
-  float: right;
-  clear: right;
-  margin-right: 0;
 }
 #markets, #reminder, #video {
   max-width: 100%;

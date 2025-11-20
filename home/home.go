@@ -12,7 +12,10 @@ import (
 	"mu/video"
 )
 
-var Template = `<div id="home">%s</div>`
+var Template = `<div id="home">
+  <div class="home-left">%s</div>
+  <div class="home-right">%s</div>
+</div>`
 
 func Cards(news, markets, reminder, posts, latest string) []string {
 	news += app.Link("More", "/news")
@@ -20,14 +23,21 @@ func Cards(news, markets, reminder, posts, latest string) []string {
 	posts += app.Link("More", "/blog")
 	latest += app.Link("More", "/video")
 
-	cards := []string{
+	leftCards := []string{
 		app.Card("posts", "Posts", posts),
 		app.Card("news", "News", news),
+	}
+	
+	rightCards := []string{
 		app.Card("reminder", "Reminder", reminder),
 		app.Card("markets", "Markets", markets),
 		app.Card("video", "Video", latest),
 	}
-	return cards
+	
+	return []string{
+		strings.Join(leftCards, "\n"),
+		strings.Join(rightCards, "\n"),
+	}
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -75,8 +85,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	latest := video.Latest()
 
 	// create homepage
-	cards := strings.Join(Cards(headlines, markets, reminder, posts, latest), "\n")
-	homepage := fmt.Sprintf(Template, cards)
+	columns := Cards(headlines, markets, reminder, posts, latest)
+	homepage := fmt.Sprintf(Template, columns[0], columns[1])
 
 	// render html
 	html := app.RenderHTML("Home", "The Mu homescreen", homepage)
