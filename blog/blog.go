@@ -84,8 +84,8 @@ func updateCache() {
 		}
 		
 		item := fmt.Sprintf(`<div class="post-item">
-			<strong>%s</strong><br>
-			<span style="white-space: pre-wrap;">%s</span><br>
+			<h3>%s</h3>
+			<p style="white-space: pre-wrap;">%s</p>
 			<small style="color: #666;">%s by %s</small>
 		</div>`, title, content, app.TimeAgo(post.CreatedAt), post.Author)
 		preview = append(preview, item)
