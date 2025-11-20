@@ -1,10 +1,9 @@
 var APP_PREFIX = 'mu_';
-var VERSION = 'v2';
+var VERSION = 'v3';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Static assets to cache on install
 var STATIC_CACHE = [
-  '/',
   '/mu.css',
   '/mu.js',
   '/mu.png',
@@ -98,11 +97,16 @@ self.addEventListener('fetch', function (e) {
     return;
   }
   
+  // Let root path redirects happen naturally (don't cache redirects)
+  if (url.pathname === '/') {
+    e.respondWith(fetch(e.request, { redirect: 'follow' }));
+    return;
+  }
+  
   // Use cache-first for static assets and pages
   if (
     url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/) ||
-    PAGE_CACHE.includes(url.pathname) ||
-    url.pathname === '/'
+    PAGE_CACHE.includes(url.pathname)
   ) {
     e.respondWith(cacheFirst(e.request));
   } else {
