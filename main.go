@@ -122,37 +122,39 @@ func main() {
 			token = c.Value
 		}
 
-		var isAuthed bool
-
-		// Check if static asset - don't require auth
+		// Check if static asset - skip authentication entirely
+		isStaticAsset := false
 		for _, ext := range staticPaths {
 			if strings.HasSuffix(r.URL.Path, ext) {
-				isAuthed = false
+				isStaticAsset = true
 				break
 			}
 		}
 
-		// Check if path requires authentication
-		if !isAuthed {
+		// Skip auth check for static assets
+		if !isStaticAsset {
+			var isAuthed bool
+
+			// Check if path requires authentication
 			for url, authed := range authenticated {
 				if strings.HasPrefix(r.URL.Path, url) {
 					isAuthed = authed
 					break
 				}
 			}
-		}
 
-		// check token
-		if isAuthed {
-			// deny access if invalid
-			if err := auth.ValidateToken(token); err != nil {
-				http.Redirect(w, r, "/", 302)
-				return
-			}
-		} else if r.URL.Path == "/" {
-			if err := auth.ValidateToken(token); err == nil {
-				http.Redirect(w, r, "/home", 302)
-				return
+			// check token
+			if isAuthed {
+				// deny access if invalid
+				if err := auth.ValidateToken(token); err != nil {
+					http.Redirect(w, r, "/", 302)
+					return
+				}
+			} else if r.URL.Path == "/" {
+				if err := auth.ValidateToken(token); err == nil {
+					http.Redirect(w, r, "/home", 302)
+					return
+				}
 			}
 		}
 
