@@ -98,8 +98,6 @@ td {
   max-width: 1280px;
   margin: 0 auto;
   text-align: left;
-  height: 100%;
-  overflow: visible;
 }
 #desc {
   margin-bottom: 10px;
@@ -548,13 +546,18 @@ td {
     height: 24px;
   }
   #head a { padding: 4px 5px; }
+  #account {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
   #container {
-    height: auto;
+    height: calc(100vh - 140px);
     overflow-y: auto;
     display: block;
   }
   #content {
-    height: inherit;
+    height: auto;
     display: block;
   }
   #main {
