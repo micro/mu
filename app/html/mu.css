@@ -584,6 +584,13 @@ td {
     height: calc(100vh - 340px);
     overflow-y: auto;
   }
+  /* Prevent container scroll on chat page */
+  #messages ~ #chat-form {
+    margin-bottom: 0;
+  }
+  body:has(#messages) #container {
+    overflow: hidden;
+  }
   #chat-form {
     position: relative;
     z-index: 1;

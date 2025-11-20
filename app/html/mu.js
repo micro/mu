@@ -268,6 +268,12 @@ function loadChat() {
 
         // Only adjust for mobile keyboards when viewport is small
         if (window.visualViewport && window.innerWidth <= 600) {
+            // Prevent scrolling when input gains focus
+            prompt.addEventListener('focus', () => {
+                container.style.overflow = 'hidden';
+                window.scrollTo(0, 0);
+            });
+
             window.visualViewport.addEventListener('resize', () => {
                 const viewportHeight = window.visualViewport.height;
                 const documentHeight = document.documentElement.clientHeight;
@@ -275,11 +281,13 @@ function loadChat() {
                 // Keyboard opened
                 if (viewportHeight < documentHeight) {
                     messages.style.height = (viewportHeight - 280) + 'px';
+                    container.style.overflow = 'hidden';
                 } else {
                     // Keyboard closed - reset to CSS default
                     messages.style.height = '';
                     // Ensure no scroll on container
                     container.scrollTop = 0;
+                    window.scrollTo(0, 0);
                 }
 
                 messages.scrollTop = messages.scrollHeight;
