@@ -79,7 +79,7 @@ func Load() {
 
 	sort.Strings(topics)
 
-	//head = app.Head("chat", topics)
+	head = app.Head("chat", topics)
 
 	go loadChats()
 }
@@ -114,7 +114,10 @@ func loadChats() {
 		}
 		// render markdown
 		desc = string(app.Render([]byte(desc)))
+		newSummary += `<div class="section">`
+		newSummary += fmt.Sprintf(`<hr id="%s" class="anchor">`, topic)
 		newSummary += fmt.Sprintf(`<h2>%s</h2><p><span class="description">%s</span></p>`, topic, desc)
+		newSummary += `</div>`
 	}
 
 	mutex.Lock()
