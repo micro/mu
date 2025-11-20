@@ -36,7 +36,7 @@ var Template = `
 <div id="messages">%s</div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
-<input id="prompt" name="prompt" type="text" placeholder="Ask a question" autofocus autocomplete=off>
+<input id="prompt" name="prompt" type="text" placeholder="Ask a question" autocomplete=off>
 <button>Send</button>
 </form>`
 

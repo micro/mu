@@ -283,12 +283,12 @@ td {
   box-sizing: border-box;
 }
 .post-item {
-  margin-bottom: 20px;
-  padding-bottom: 15px;
+  margin-bottom: 15px;
+  padding-bottom: 0;
 }
 .post-item h3 {
   margin-top: 0;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .card {
   max-width: 750px;
