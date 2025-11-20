@@ -606,6 +606,7 @@ td {
   #home {
     display: block;
     flex-direction: column;
+    height: auto;
   }
   .cover {
     display: block;
