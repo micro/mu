@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"mu/app"
+	"mu/auth"
 	"mu/data"
 )
 
@@ -172,8 +173,15 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For now, use "Anonymous" as author until profile system is implemented
+	// Get the authenticated user
 	author := "Anonymous"
+	sess, err := auth.GetSession(r)
+	if err == nil {
+		acc, err := auth.GetAccount(sess.Account)
+		if err == nil {
+			author = acc.Name
+		}
+	}
 
 	// Create new post
 	post := &Post{

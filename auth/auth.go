@@ -77,6 +77,18 @@ func Delete(acc *Account) error {
 	return nil
 }
 
+func GetAccount(id string) (*Account, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	acc, ok := accounts[id]
+	if !ok {
+		return nil, errors.New("account does not exist")
+	}
+
+	return acc, nil
+}
+
 func Login(id, secret string) (*Session, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
