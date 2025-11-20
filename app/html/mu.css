@@ -222,8 +222,9 @@ td {
   margin-top: 15px;
 }
 #posts, #news {
-  float: none;
-  clear: both;
+  max-width: 750px;
+  float: left;
+  clear: left;
 }
 #markets, #reminder, #video {
   max-width: 350px;
