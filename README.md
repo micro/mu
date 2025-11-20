@@ -24,6 +24,10 @@ Coming soon:
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
+## Sustainability
+
+See [SUSTAINABILITY.md](SUSTAINABILITY.md) for information on how we plan to make this project financially sustainable while maintaining our core values and Islamic principles.
+
 ## Usage
 
 Go to [mu.xyz](https://mu.xyz) for the live version
