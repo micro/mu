@@ -9,6 +9,7 @@ import (
 	"mu/api"
 	"mu/app"
 	"mu/auth"
+	"mu/blog"
 	"mu/chat"
 	"mu/home"
 	"mu/news"
@@ -41,10 +42,14 @@ func main() {
 	// load the videos
 	video.Load()
 
+	// load the blog
+	blog.Load()
+
 	authenticated := map[string]bool{
 		"/video":   true,
 		"/news":    true,
 		"/chat":    true,
+		"/blog":    true,
 		"/home":    true,
 		"/logout":  true,
 		"/session": true,
@@ -58,6 +63,9 @@ func main() {
 
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
+
+	// serve blog
+	http.HandleFunc("/blog", blog.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

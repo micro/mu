@@ -195,6 +195,26 @@ td {
   width: 100%;
   margin: 0;
 }
+#blog {
+  max-width: 750px;
+}
+#blog h2 {
+  margin-top: 15px;
+}
+#blog-form {
+  max-width: 100%;
+}
+#blog-form input, #blog-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.post-item {
+  margin-bottom: 15px;
+}
+.post-item h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
 .card {
   max-width: 750px;
   display: inline-block;
