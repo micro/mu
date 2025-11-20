@@ -567,9 +567,7 @@ td {
   #content {
     height: auto;
     display: block;
-  }
-  #home {
-    padding-bottom: 90px;
+    padding-bottom: 100px;
   }
   #main {
     padding: 20px;
