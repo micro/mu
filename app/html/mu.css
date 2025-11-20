@@ -214,10 +214,9 @@ td {
   margin-bottom: 25px;
   display: grid;
   grid-template-columns: 1fr 370px;
-  grid-auto-rows: auto;
   gap: 20px;
   height: 100%;
-  align-items: start;
+  grid-auto-flow: dense;
 }
 #home h1 {
   margin-top: 0;
@@ -225,8 +224,17 @@ td {
 #news h1 {
   margin-top: 15px;
 }
-#posts, #news {
+#posts {
   grid-column: 1;
+  grid-row: 1;
+  max-width: 100%;
+  clear: none;
+  float: none;
+  margin-right: 0;
+}
+#news {
+  grid-column: 1;
+  grid-row: 2;
   max-width: 100%;
   clear: none;
   float: none;
@@ -236,8 +244,13 @@ td {
   grid-column: 2;
   grid-row: 1;
 }
-#markets, #video {
+#markets {
   grid-column: 2;
+  grid-row: 2;
+}
+#video {
+  grid-column: 2;
+  grid-row: 3;
 }
 #markets, #reminder, #video {
   max-width: 100%;
