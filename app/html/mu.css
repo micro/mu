@@ -93,13 +93,11 @@ td {
   text-align: center;
   padding: 20px;
   overflow: visible;
-  overscroll-behavior-y: contain;
 }
 #content {
   max-width: 1280px;
   margin: 0 auto;
   text-align: left;
-  overscroll-behavior-y: contain;
 }
 #desc {
   margin-bottom: 10px;
@@ -549,7 +547,6 @@ td {
   }
   #head a { padding: 4px 5px; }
   #container {
-    height: calc(100vh - 230px);
     overflow-y: auto;
     display: block;
   }
