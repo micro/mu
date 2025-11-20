@@ -64,16 +64,7 @@ var Template = `
         navigator.serviceWorker.register (
           '/mu.js',
           {scope: '/'}
-        ).then(function(registration) {
-          // Check for updates on page load
-          registration.update();
-        });
-        
-        // Listen for controller change (new service worker activated)
-        navigator.serviceWorker.addEventListener('controllerchange', function() {
-          console.log('New service worker activated, reloading page...');
-          window.location.reload();
-        });
+        );
       }
   </script>
   </body>
