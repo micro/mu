@@ -1,3 +1,6 @@
+/* ========================================
+   BASE STYLES
+   ======================================== */
 html, body {
   height: 100%;
   width: 100%;
@@ -5,14 +8,46 @@ html, body {
   padding: 0;
   font-family: "Nunito Sans", serif;
 }
+
 a {
   color: #333333;
   text-decoration: none;
   font-size: 0.9em;
 }
+
 a:visited {
   color: #333333;
 }
+
+button {
+  background: white;
+  border: 1px solid grey;
+  border-radius: 5px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: whitesmoke;
+}
+
+input {
+  width: calc(100% - 60px);
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid darkgrey;
+}
+
+select {
+  padding: 5px;
+  border-radius: 5px;
+  background: white;
+}
+
+textarea:focus, input:focus {
+  outline: none;
+}
+
 code {
   width: auto;
   background: whitesmoke;
@@ -21,39 +56,30 @@ code {
   display: block;
   white-space: pre-wrap;
 }
-button {
-  background: white;
-}
-button:hover {
-  background: whitesmoke;
-}
-input {
-  width: calc(100% - 60px);
-  padding: 10px;
-  border-radius: 5px;
-  border: 1px solid darkgrey;
-}
-select {
-  padding: 5px;
-  border-radius: 5px;
-  background: white;
-}
-textarea:focus, input:focus {
-  outline: none;
-}
+
 table {
   width: 100%;
 }
+
 table, td, th {
   text-align: left;
 }
+
 th {
   border-bottom: 1px solid darkgrey;
 }
+
 td {
   border-bottom: 1px solid darkgrey;
   padding: 5px 25px 5px 0;
 }
+
+/* ========================================
+   HEADER & NAVIGATION
+   ======================================== */
+/* ========================================
+   HEADER & NAVIGATION
+   ======================================== */
 #head {
   background: white;
   top: 0;
@@ -64,6 +90,7 @@ td {
   max-width: 1280px;
   margin: 0 auto;
 }
+
 #head a {
   margin-right: 2px;
   color: black;
@@ -71,15 +98,26 @@ td {
   text-decoration: none;
   padding: 5px 7px;
 }
+
+#brand {
+  padding: 20px 10px 20px 0;
+}
+
+#brand a {
+  padding: 0;
+}
+
 #nav {
   display: flex;
   align-items: center;
   gap: 5px;
 }
+
 #nav a.active, #nav a:hover, .head:hover {
   background: whitesmoke;
   border-radius: 5px;
 }
+
 #nav img {
   height: 20px;
   width: auto;
@@ -87,10 +125,26 @@ td {
   margin-right: 5px;
   vertical-align: bottom;
 }
+
 #nav .label {
   display: inline-block;
   margin-left: 5px;
 }
+
+#account {
+  display: none;
+}
+
+#account a {
+  padding: 5px;
+}
+
+/* ========================================
+   LAYOUT
+   ======================================== */
+/* ========================================
+   LAYOUT
+   ======================================== */
 #container {
   height: auto;
   max-width: 1600px;
@@ -99,28 +153,13 @@ td {
   padding: 20px;
   overflow: visible;
 }
+
 #content {
   max-width: 1280px;
   margin: 0 auto;
   text-align: left;
 }
-#title {
-  font-size: 2.5em;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-#desc {
-  margin-bottom: 10px;
-}
-#explain {
-  margin-bottom: 20px;
-}
-#links {
-  max-width: 800px;
-  margin: 0 auto;
-  display: flex;
-  gap: 15px;
-}
+
 #main {
   max-width: 800px;
   justify-items: center;
@@ -128,6 +167,89 @@ td {
   padding: 150px 20px 50px 20px;
   margin: 0 auto;
 }
+
+/* ========================================
+   HOME PAGE
+   ======================================== */
+#home {
+  margin-bottom: 25px;
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+#home:after {
+  content: ".";
+  display: block;
+  height: 0;
+  clear: both;
+  visibility: hidden;
+}
+
+#home h1 {
+  margin-top: 0;
+}
+
+.home-left, .home-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.home-left {
+  flex: 1;
+  max-width: 750px;
+}
+
+.home-right {
+  width: 370px;
+  flex-shrink: 0;
+}
+
+.home-left .card, .home-right .card {
+  margin: 0;
+  float: none;
+}
+
+/* ========================================
+   LANDING PAGE
+   ======================================== */
+/* ========================================
+   LANDING PAGE
+   ======================================== */
+#title {
+  font-size: 2.5em;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+#desc {
+  margin-bottom: 10px;
+}
+
+#explain {
+  margin-bottom: 20px;
+}
+
+#links {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  gap: 15px;
+}
+
+#links .block {
+  padding: 15px;
+  line-height: 1.4em;
+}
+
+#links .block b {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1.1em;
+  line-height: 1.2em;
+}
+
 #install-pwa {
   padding: 12px 24px;
   font-size: 1em;
@@ -137,185 +259,17 @@ td {
   border: none;
   cursor: pointer;
 }
+
 #install-pwa:hover {
   background: #555;
 }
-#brand {
-  padding: 20px 10px 20px 0;
-}
-#brand a {
-  padding: 0;
-}
-.block {
-  width: 220px;
-  height: auto;
-  display: block;
-  text-align: center;
-}
-#links .block {
-  padding: 15px;
-  line-height: 1.4em;
-}
-#links .block b {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 1.1em;
-  line-height: 1.2em;
-}
-.block, button {
-  text-decoration: none;
-  border: 1px solid grey;
-  border-radius: 5px;
-  padding: 10px;
-}
-.block:hover, button:hover {
-  cursor: pointer;
-  background: whitesmoke;
-}
-.small {
-  font-size: 0.8em;
-  line-height: 1.4em;
-  color: #666;
-  font-weight: normal;
-  display: block;
-}
-.link {
-  display: block;
-  font-weight: bold;
-  text-decoration: none;
-  margin-top: 10px;
-}
-.link:hover {
-  text-decoration: underline;
-}
 
-#account {
-  display: none;
-}
-#account a {
-  padding: 5px;
-}
-.right {
-  text-align: right;
-}
-.you {
-  font-size: small;
-  font-weight: bold;
-  color: black;
-  display: block;
-}
-.llm {
-  font-size: small;
-  font-weight: bold;
-  color: darkgrey;
-  display: block;
-}
-#home {
-  margin-bottom: 25px;
-  display: flex;
-  gap: 20px;
-  height: 100%;
-}
-.home-left, .home-right {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.home-left {
-  flex: 1;
-  max-width: 750px;
-}
-.home-right {
-  width: 370px;
-  flex-shrink: 0;
-}
-.home-left .card, .home-right .card {
-  margin: 0;
-  float: none;
-}
-#home h1 {
-  margin-top: 0;
-}
-#news h1 {
-  margin-top: 15px;
-}
-#markets, #reminder, #video {
-  max-width: 100%;
-  float: none;
-  margin-right: 0;
-}
-#video img {
-  width: 100%;
-  border-radius: 5px;
-}
-#video form {
-  max-width: 465px;
-}
-#video form input, #chat form input {
-  width: 100%;
-  margin-top: 0;
-  margin-bottom: 10px;
-}
-#chat-form {
-  width: 100%;
-  margin: 0;
-}
-#post-form-container {
-  margin-bottom: 30px;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  background: #fafafa;
-  max-width: 100%;
-}
-#post-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-#post-form input,
-#post-form textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-#post-form textarea {
-  resize: vertical;
-}
-#post-form button {
-  padding: 10px 20px;
-  font-size: 14px;
-  background-color: #333;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  align-self: flex-start;
-}
-#blog {
-  max-width: 750px;
-}
-#blog h2 {
-  margin-top: 15px;
-}
-#blog-form {
-  max-width: 100%;
-}
-#blog-form input, #blog-form textarea {
-  width: 100%;
-  box-sizing: border-box;
-}
-.post-item {
-  margin-bottom: 15px;
-  padding-bottom: 0;
-}
-.post-item h3 {
-  margin-top: 0;
-  margin-bottom: 8px;
-}
+/* ========================================
+   CARDS & BLOCKS
+   ======================================== */
+/* ========================================
+   CARDS & BLOCKS
+   ======================================== */
 .card {
   max-width: 750px;
   margin-right: 20px;
@@ -327,25 +281,35 @@ td {
   margin-bottom: 20px;
   padding-bottom: 25px;
 }
+
 .card h4 {
   margin-top: 0;
   margin-bottom: 10px;
 }
+
 .card form {
   margin-bottom: 0;
 }
-#login, #signup {
-  max-width: 400px;
-  margin: 0 auto;
-}
-#login input, #signup input {
-  margin-bottom: 10px;
-  width: 100%;
-}
-#login button, #signup button {
-  width: 100%;
+
+.block {
+  width: 220px;
+  height: auto;
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid grey;
+  border-radius: 5px;
+  padding: 10px;
 }
 
+.block:hover {
+  cursor: pointer;
+  background: whitesmoke;
+}
+
+/* ========================================
+   CHAT PAGE
+   ======================================== */
 #messages {
   flex-grow: 1;
   border-radius: 5px;
@@ -360,69 +324,153 @@ td {
   margin-bottom: 12px;
   line-height: 1.5;
 }
+
 #messages ul, #messages ol {
   margin: 10px 0;
   padding-left: 25px;
 }
+
 #messages li {
   margin-bottom: 8px;
   line-height: 1.5;
 }
+
 #messages h1, #messages h2, #messages h3 {
   margin-top: 20px;
   margin-bottom: 12px;
 }
+
 #messages code {
   margin: 10px 0;
 }
+
 .message {
   margin-bottom: 10px;
   width: 100%;
   display: block;
 }
+
+.you {
+  font-size: small;
+  font-weight: bold;
+  color: black;
+  display: block;
+}
+
+.llm {
+  font-size: small;
+  font-weight: bold;
+  color: darkgrey;
+  display: block;
+}
+
 #prompt {
   flex-shrink: 0;
   width: calc(100% - 60px);
   padding: 10px;
   margin: 10px 0;
 }
-#summary {
-  border-bottom: 1px solid darkgrey;
-  margin-bottom: 20px;
-}
-#summary p {
-  margin-bottom: 20px;
-}
+
 #query {
   width: calc(100% - 75px);
 }
+
+#chat-form {
+  width: 100%;
+  margin: 0;
+}
+
 #chat-form button {
   padding: 10px;
   margin-top: 10px;
   width: auto;
 }
-.category {
-  margin-bottom: 5px;
-  display: inline-block;
+
+#summary {
+  border-bottom: 1px solid darkgrey;
+  margin-bottom: 20px;
 }
+
+#summary p {
+  margin-bottom: 20px;
+}
+
 .head {
   font-weight: bold;
   padding: 5px 6px;
   text-decoration: none;
 }
-.headline {
-  margin-bottom: 20px;
+
+/* ========================================
+   BLOG PAGE
+   ======================================== */
+#blog {
+  max-width: 750px;
 }
-.headline a {
-  font-weight: bold;
-  text-decoration: none;
+
+#blog h2 {
+  margin-top: 15px;
 }
-.news {
-  margin-bottom: 20px;
+
+#blog-form {
+  max-width: 100%;
 }
-.news a {
-  text-decoration: none;
+
+#blog-form input, #blog-form textarea {
+  width: 100%;
+  box-sizing: border-box;
 }
+
+#post-form-container {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fafafa;
+  max-width: 100%;
+}
+
+#post-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#post-form input,
+#post-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+#post-form textarea {
+  resize: vertical;
+}
+
+#post-form button {
+  padding: 10px 20px;
+  font-size: 14px;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.post-item {
+  margin-bottom: 15px;
+  padding-bottom: 0;
+}
+
+.post-item h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
 .post-content {
   display: none;
   border: 1px solid darkgrey;
@@ -433,9 +481,11 @@ td {
   margin-bottom: 20px;
   margin-top: 20px;
 }
+
 .post-content img {
   max-width: inherit;
 }
+
 .post-show {
   cursor: pointer;
   display: block;
@@ -445,9 +495,143 @@ td {
   text-align: center;
   padding: 10px;
 }
+
 .post-show:focus + .post-content {
   display: block;
 }
+
+/* ========================================
+   NEWS PAGE
+   ======================================== */
+#news h1 {
+  margin-top: 15px;
+}
+
+.headline {
+  margin-bottom: 20px;
+}
+
+.headline a {
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.news {
+  margin-bottom: 20px;
+}
+
+.news a {
+  text-decoration: none;
+}
+
+/* ========================================
+   VIDEO PAGE
+   ======================================== */
+#video img {
+  width: 100%;
+  border-radius: 5px;
+}
+
+#video form {
+  max-width: 465px;
+}
+
+#video form input {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+/* ========================================
+   MARKETS & REMINDER
+   ======================================== */
+#markets, #reminder, #video {
+  max-width: 100%;
+  float: none;
+  margin-right: 0;
+}
+
+#tickers, #futures {
+  width: 50%;
+  vertical-align: top;
+  display: inline-block;
+}
+
+.ticker {
+  font-size: small;
+  display: block;
+  margin-bottom: 10px;
+}
+
+/* ========================================
+   AUTH PAGES
+   ======================================== */
+#login, #signup {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+#login input, #signup input {
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+#login button, #signup button {
+  width: 100%;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+.small {
+  font-size: 0.8em;
+  line-height: 1.4em;
+  color: #666;
+  font-weight: normal;
+  display: block;
+}
+
+.text {
+  display: block;
+  font-size: 0.8em;
+  margin-top: 10px;
+}
+
+.right {
+  text-align: right;
+}
+
+.link {
+  display: block;
+  font-weight: bold;
+  text-decoration: none;
+  margin-top: 10px;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.category {
+  margin-bottom: 5px;
+  display: inline-block;
+  color: #333333;
+  font-size: small;
+  font-weight: bold;
+  background: whitesmoke;
+  padding: 3px 5px;
+  border-radius: 5px;
+}
+
+.highlight {
+  color: #333333;
+  font-size: small;
+  font-weight: bold;
+  background: whitesmoke;
+  padding: 3px 5px;
+  border-radius: 5px;
+}
+
 .cover {
   width: 200px;
   height: auto;
@@ -458,32 +642,33 @@ td {
   border-radius: 3px;
   background: whitesmoke;
 }
+
 .blurb {
   display: inline-block;
   vertical-align: top;
   max-width: 600px;
 }
+
+.blurb .text {
+  font-size: 0.9em;
+}
+
 .title {
   font-size: 1.2em;
   font-weight: bold;
   display: block;
 }
-.highlight, .category {
-  color: #333333;
-  font-size: small;
-  font-weight: bold;
-  background: whitesmoke;
-  padding: 3px 5px;
-  border-radius: 5px;
-}
+
 .description, .description a {
   font-size: 1em;
   font-weight: normal;
   white-space: pre-wrap;
 }
+
 .description iframe {
   display: none;
 }
+
 .verse {
   white-space: pre-wrap;
   margin-bottom: 20px;
@@ -491,36 +676,16 @@ td {
   overflow-y: scroll;
   max-height: 200px;
 }
+
 .video {
   position: relative;
-  padding-bottom: 56.25%; /* 16:9 */
+  padding-bottom: 56.25%;
   height: 0;
 }
-#home:after {
-  content: ".";
-  display: block;
-  height: 0;
-  clear: both;
-  visibility: hidden;
-}
-.text {
-  display: block;
-  font-size: 0.8em;
-  margin-top: 10px;
-}
-.blurb .text {
-  font-size: 0.9em;
-}
-#tickers, #futures {
-  width: 50%;
-  vertical-align: top;
-  display: inline-block;
-}
-.ticker {
-  font-size: small;
-  display: block;
-  margin-bottom: 10px;
-}
+
+/* ========================================
+   MOBILE RESPONSIVE
+   ======================================== */
 @media only screen and (max-width: 600px) {
   body {
     overflow-x: hidden;
