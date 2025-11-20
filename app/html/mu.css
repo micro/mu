@@ -86,7 +86,6 @@ td {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 20px;
   max-width: 1280px;
   margin: 0 auto;
@@ -136,8 +135,6 @@ td {
 #account {
   display: block;
   margin-left: auto;
-  margin-right: 0;
-  position: static;
   z-index: 10;
 }
 
