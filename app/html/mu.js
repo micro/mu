@@ -1,16 +1,75 @@
 var APP_PREFIX = 'mu_';
-var VERSION = 'v1';
-var URLS = [    
-  `/`,
-  `/index.html`,
-  `/mu.png`,
-  `/mu.js`
-]
+var VERSION = 'v2';
+var CACHE_NAME = APP_PREFIX + VERSION;
 
-var CACHE_NAME = APP_PREFIX + VERSION
+// Static assets to cache on install
+var STATIC_CACHE = [
+  '/',
+  '/mu.css',
+  '/mu.js',
+  '/mu.png',
+  '/home.png',
+  '/chat.png',
+  '/blog.png',
+  '/news.png',
+  '/video.png',
+  '/mail.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.webmanifest'
+];
+
+// Pages to cache on first visit
+var PAGE_CACHE = [
+  '/home',
+  '/chat',
+  '/blog',
+  '/news',
+  '/video'
+];
 
 let context = [];
 
+// Cache-first strategy with network fallback
+async function cacheFirst(request) {
+  const cachedResponse = await caches.match(request);
+  if (cachedResponse) {
+    // Update cache in background if online
+    if (navigator.onLine) {
+      fetch(request).then(networkResponse => {
+        if (networkResponse.ok && request.method === 'GET') {
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(request, networkResponse.clone());
+          });
+        }
+      }).catch(() => {
+        // Silently fail - we already have cached version
+      });
+    }
+    return cachedResponse;
+  }
+  
+  // Not in cache, try network
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok && request.method === 'GET') {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    // Offline and not cached
+    return new Response('Offline - content not available', {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: new Headers({
+        'Content-Type': 'text/plain'
+      })
+    });
+  }
+}
+
+// Network-first for API calls
 async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
@@ -21,39 +80,65 @@ async function networkFirst(request) {
     return networkResponse;
   } catch (error) {
     const cachedResponse = await caches.match(request);
-    return cachedResponse || Response.error();
+    return cachedResponse || new Response('Offline', {
+      status: 503,
+      statusText: 'Service Unavailable'
+    });
   }
 }
 
 self.addEventListener('fetch', function (e) {
   console.log('Fetch request : ' + e.request.url);
-  e.respondWith(networkFirst(e.request));
+  
+  const url = new URL(e.request.url);
+  
+  // Skip non-GET requests
+  if (e.request.method !== 'GET') {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+  
+  // Use cache-first for static assets and pages
+  if (
+    url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/) ||
+    PAGE_CACHE.includes(url.pathname) ||
+    url.pathname === '/'
+  ) {
+    e.respondWith(cacheFirst(e.request));
+  } else {
+    // Network-first for API calls
+    e.respondWith(networkFirst(e.request));
+  }
 })
 
 self.addEventListener('install', function (e) {
+  console.log('Installing service worker version: ' + VERSION);
   e.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
-      console.log('Installing cache : ' + CACHE_NAME);
-      return cache.addAll(URLS)
+      console.log('Caching static assets');
+      return cache.addAll(STATIC_CACHE);
+    }).then(() => {
+      // Skip waiting to activate immediately
+      return self.skipWaiting();
     })
-  )
+  );
 })
 
 self.addEventListener('activate', function (e) {
+  console.log('Activating service worker version: ' + VERSION);
   e.waitUntil(
     caches.keys().then(function (keyList) {
-      var cacheWhitelist = keyList.filter(function (key) {
-        return key.indexOf(APP_PREFIX)
-      })
-      cacheWhitelist.push(CACHE_NAME);
-      return Promise.all(keyList.map(function (key, i) {
-        if (cacheWhitelist.indexOf(key) === -1) {
-          console.log('Deleting cache : ' + keyList[i] );
-          return caches.delete(keyList[i])
+      return Promise.all(keyList.map(function (key) {
+        if (key.startsWith(APP_PREFIX) && key !== CACHE_NAME) {
+          console.log('Deleting old cache: ' + key);
+          return caches.delete(key);
         }
-      }))
+      }));
+    }).then(() => {
+      // Take control of all clients immediately
+      return self.clients.claim();
     })
-  )
+  );
 })
 
 function loadMessages() {
