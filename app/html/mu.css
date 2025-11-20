@@ -75,15 +75,18 @@ td {
 #links {
   max-width: 800px;
   margin: 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
   gap: 15px;
-}
+    width: calc(100vw - 20px);
 #main { max-width: 800px; justify-items: center; text-align: center; padding: 150px 20px 50px 20px; margin: 0 auto; }
-#title { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
-#install-pwa {
-  margin-top: 30px;
+  #nav a { padding: 6px 4px; margin-right: 0; font-size: 0.95em; display: inline-flex; align-items: center; justify-content: center; }
+  #nav .label { display: inline; margin-left: 4px; }
+  #nav img { margin-right: 3px; height: 22px; }
+  #head a { padding: 5px 6px; }
   padding: 12px 24px;
   font-size: 1em;
   font-weight: bold;
