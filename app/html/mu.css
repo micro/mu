@@ -195,6 +195,20 @@ td {
   width: 100%;
   margin: 0;
 }
+#posts-feed {
+  max-width: 750px;
+  margin-bottom: 30px;
+}
+#posts-feed h2 {
+  margin-top: 15px;
+}
+#post-form-container {
+  max-width: 100%;
+}
+#post-form input, #post-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
 #blog {
   max-width: 750px;
 }
@@ -209,7 +223,8 @@ td {
   box-sizing: border-box;
 }
 .post-item {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
 }
 .post-item h3 {
   margin-top: 0;

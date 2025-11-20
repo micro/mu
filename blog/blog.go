@@ -127,6 +127,24 @@ func Preview() string {
 	return postsPreviewHtml
 }
 
+// FullFeed returns HTML for all posts (for home page feed)
+func FullFeed() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	return postsList
+}
+
+// PostingForm returns the HTML for the posting form
+func PostingForm(action string) string {
+	return fmt.Sprintf(`<div id="post-form-container" style="margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background: #fafafa;">
+		<form id="post-form" method="POST" action="%s" style="display: flex; flex-direction: column; gap: 10px;">
+			<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+			<textarea name="content" rows="4" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
+			<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer; align-self: flex-start;">Post</button>
+		</form>
+	</div>`, action)
+}
+
 // Handler serves the blog page
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
@@ -158,6 +176,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
+// CreatePost creates a new post and returns error if any
+func CreatePost(title, content, author string) error {
+	// Create new post
+	post := &Post{
+		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		Title:     title,
+		Content:   content,
+		Author:    author,
+		CreatedAt: time.Now(),
+	}
+
+	mutex.Lock()
+	// Add to beginning of slice (newest first)
+	posts = append([]*Post{post}, posts...)
+	mutex.Unlock()
+
+	// Save to disk
+	if err := save(); err != nil {
+		return err
+	}
+
+	// Update cached HTML
+	updateCache()
+
+	return nil
+}
+
 // handlePost processes the POST request to create a new blog post
 func handlePost(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
@@ -183,28 +228,11 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Create new post
-	post := &Post{
-		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
-		Title:     title,
-		Content:   content,
-		Author:    author,
-		CreatedAt: time.Now(),
-	}
-
-	mutex.Lock()
-	// Add to beginning of slice (newest first)
-	posts = append([]*Post{post}, posts...)
-	mutex.Unlock()
-
-	// Save to disk
-	if err := save(); err != nil {
+	// Create the post
+	if err := CreatePost(title, content, author); err != nil {
 		http.Error(w, "Failed to save post", http.StatusInternalServerError)
 		return
 	}
-
-	// Update cached HTML
-	updateCache()
 
 	// Redirect back to blog page
 	http.Redirect(w, r, "/blog", http.StatusSeeOther)
