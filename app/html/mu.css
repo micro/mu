@@ -229,7 +229,7 @@ td {
 #news {
   max-width: 100%;
   width: calc(100% - 390px);
-  clear: left;
+  clear: none;
 }
 #markets, #reminder, #video {
   max-width: 350px;
