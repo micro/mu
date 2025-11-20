@@ -58,6 +58,11 @@ td {
   background: white;
   top: 0;
   width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  max-width: 1280px;
+  margin: 0 auto;
 }
 #head a {
   margin-right: 2px;
@@ -67,9 +72,9 @@ td {
   padding: 5px 7px;
 }
 #nav {
-  padding: 0 20px;
-  margin: 0 auto;
-  max-width: 1280px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 #nav a.active, #nav a:hover, .head:hover {
   background: whitesmoke;
@@ -98,6 +103,11 @@ td {
   max-width: 1280px;
   margin: 0 auto;
   text-align: left;
+}
+#title {
+  font-size: 2.5em;
+  font-weight: bold;
+  margin-bottom: 10px;
 }
 #desc {
   margin-bottom: 10px;
@@ -131,8 +141,7 @@ td {
   background: #555;
 }
 #brand {
-  display: inline-block;
-  padding: 27px 27px 10px 27px;
+  padding: 20px 10px 20px 0;
 }
 #brand a {
   padding: 0;
@@ -181,10 +190,7 @@ td {
 }
 
 #account {
-  padding: 10px;
-  top: 0;
-  right: 0;
-  position: fixed;
+  display: none;
 }
 #account a {
   padding: 5px;
@@ -546,15 +552,11 @@ td {
     height: 24px;
   }
   #head a { padding: 4px 5px; }
-  #account {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-  }
   #container {
     height: calc(100vh - 140px);
     overflow-y: auto;
     display: block;
+    padding-bottom: 80px;
   }
   #content {
     height: auto;
