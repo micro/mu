@@ -230,8 +230,14 @@ td {
   float: none;
   margin-right: 0;
 }
-#markets, #reminder, #video {
+#reminder {
   grid-column: 2;
+  grid-row: 1;
+}
+#markets, #video {
+  grid-column: 2;
+}
+#markets, #reminder, #video {
   max-width: 100%;
   float: none;
   margin-right: 0;
