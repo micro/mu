@@ -1,5 +1,5 @@
 var APP_PREFIX = 'mu_';
-var VERSION = 'v4';
+var VERSION = 'v5';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Static assets to cache on install
@@ -89,15 +89,17 @@ async function networkFirst(request) {
 self.addEventListener('fetch', function (e) {
   const url = new URL(e.request.url);
   
-  // Don't intercept root path at all - let server handle redirects
-  if (url.pathname === '/' || url.pathname === '') {
-    return;
-  }
-  
   console.log('Fetch request : ' + e.request.url);
   
   // Skip non-GET requests
   if (e.request.method !== 'GET') {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+  
+  // For root path, use network-first to allow redirects
+  if (url.pathname === '/' || url.pathname === '') {
+    e.respondWith(fetch(e.request));
     return;
   }
   
@@ -240,12 +242,18 @@ function setSession() {
 	    if (sess.type == "account") {
 	      acc.innerHTML = "<a href='/logout'>Logout</a>";
 	    } else {
-	      acc.innerHTML = "<a href='/login'>Login</a>";   
+	      acc.innerHTML = "<a href='/login'>Login</a>";
+	      // If we're on a protected page but not logged in, redirect
+	      const protectedPaths = ['/home', '/chat', '/blog', '/news', '/video'];
+	      if (protectedPaths.includes(window.location.pathname)) {
+	        window.location.href = '/';
+	      }
 	    }
 	})
 	.catch(error => {
 	    console.error('Error:', error);
-	    // Handle errors
+	    // On error, redirect to home
+	    window.location.href = '/';
 	});
 }
 
@@ -370,5 +378,6 @@ self.addEventListener('DOMContentLoaded', function() {
 		loadChat();
 	}
 
-	//setSession();
+	// Check session status on page load
+	setSession();
 });
