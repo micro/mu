@@ -344,6 +344,19 @@ self.addEventListener("hashchange", function(event) {
 	// Don't reload on hash change - anchors should just scroll
 	if (window.location.hash) {
 		console.log('Hash changed to:', window.location.hash);
+		
+		// On chat page, scroll within messages box only
+		const messagesBox = document.getElementById('messages');
+		if (messagesBox && window.innerWidth <= 600) {
+			event.preventDefault();
+			const targetId = window.location.hash.substring(1);
+			const targetElement = document.getElementById(targetId);
+			if (targetElement) {
+				// Scroll the messages box, not the page
+				const offset = targetElement.offsetTop - messagesBox.offsetTop;
+				messagesBox.scrollTop = offset;
+			}
+		}
 	}
 });
 
