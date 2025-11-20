@@ -548,7 +548,7 @@ td {
   }
   #head a { padding: 4px 5px; }
   #container {
-    height: calc(100vh - 175px);
+    height: calc(100vh - 230px);
     overflow-y: auto;
     display: block;
   }
@@ -566,7 +566,7 @@ td {
     margin-top: 15px;
   }
   #messages {
-    height: calc(100vh - 285px);
+    height: calc(100vh - 340px);
   }
   .post-show {
     margin-top: 10px;
