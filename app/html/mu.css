@@ -222,10 +222,13 @@ td {
   margin-top: 15px;
 }
 #posts {
-  max-width: 750px;
-  clear: left;
+  max-width: 100%;
+  width: calc(100% - 390px);
+  clear: none;
 }
 #news {
+  max-width: 100%;
+  width: calc(100% - 390px);
   clear: left;
 }
 #markets, #reminder, #video {
