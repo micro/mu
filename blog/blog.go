@@ -192,7 +192,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Create the blog page with posting form
 	content := fmt.Sprintf(`<div id="blog">
-		<h1>Posts</h1>
 		<div style="margin-bottom: 30px;">
 			<form id="blog-form" method="POST" action="/blog" style="display: flex; flex-direction: column; gap: 10px;">
 				<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
