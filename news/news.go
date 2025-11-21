@@ -111,15 +111,21 @@ func htmlToText(html string) string {
 		if n.Type == nethtml.TextNode {
 			sb.WriteString(n.Data)
 		}
-		// Add space after block elements
 		if n.Type == nethtml.ElementNode {
+			// Process children first
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				extract(c)
+			}
+			// Add space after block elements
 			switch n.Data {
-			case "br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6":
+			case "br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "a":
 				sb.WriteString(" ")
 			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			extract(c)
+		} else {
+			// For non-element nodes, process children
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				extract(c)
+			}
 		}
 	}
 	extract(doc)
