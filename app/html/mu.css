@@ -513,7 +513,7 @@ td {
 }
 
 .post-content {
-  display: none;
+  display: none !important;
   border: 1px solid darkgrey;
   border-radius: 5px;
   padding: 15px;
@@ -538,7 +538,7 @@ td {
 }
 
 .post-show:focus + .post-content {
-  display: block;
+  display: block !important;
 }
 
 /* ========================================
