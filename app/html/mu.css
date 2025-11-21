@@ -801,6 +801,9 @@ td {
     margin-top: 1px;
     font-size: 0.75em;
   }
+  #logout-link .label {
+    display: none;
+  }
   #nav img {
     margin-right: 0;
     margin-bottom: 0;

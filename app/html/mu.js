@@ -228,11 +228,11 @@ function setSession() {
   }).then(response => response.json())
   .then(sess => {
     console.log('Success:', sess);
-    var acc = document.getElementById("account");
+    var logoutLink = document.getElementById("logout-link");
     if (sess.type == "account") {
-      acc.innerHTML = "<a href='/logout'>Logout</a>";
+      if (logoutLink) logoutLink.style.display = '';
     } else {
-      acc.innerHTML = "<a href='/login'>Login</a>";
+      if (logoutLink) logoutLink.style.display = 'none';
       // If we're on a protected page but not logged in, redirect
       const protectedPaths = ['/home', '/chat', '/blog', '/news', '/video'];
       if (protectedPaths.includes(window.location.pathname)) {
