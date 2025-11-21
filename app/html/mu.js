@@ -165,7 +165,7 @@ function loadChat() {
 
       // Keyboard opened
       if (viewportHeight < documentHeight) {
-        messages.style.height = (viewportHeight - 280) + 'px';
+        messages.style.height = (viewportHeight - 260) + 'px';
         container.style.overflow = 'hidden';
       } else {
         // Keyboard closed - reset to CSS default
