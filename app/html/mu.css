@@ -45,9 +45,9 @@ input {
   box-sizing: border-box;
 }
 
-#query {
-  width: calc(100vw - 200px);
-  max-width: 600px;
+#video form #query {
+  flex: 1;
+  width: auto;
 }
 
 select {
