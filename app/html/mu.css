@@ -190,6 +190,12 @@ td {
   text-align: left;
 }
 
+#page-title {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 2em;
+}
+
 #main {
   max-width: 800px;
   justify-items: center;
