@@ -757,7 +757,8 @@ td {
   }
   #container {
     display: block;
-    padding-top: 51px;
+    padding-top: 0;
+    margin-top: 0;
   }
   #content {
     margin-left: 0;
