@@ -127,16 +127,18 @@ function askLLM(el) {
   .then(result => {
     console.log('Success:', result);
     
-    // Stage the response word by word
-    const words = result.answer.split(' ');
+    // Stage the response character by character to preserve HTML formatting
+    const fullResponse = result.answer;
     let currentIndex = 0;
     
-    function addNextWord() {
-      if (currentIndex < words.length) {
-        responseContent.innerHTML += (currentIndex > 0 ? ' ' : '') + words[currentIndex];
-        currentIndex++;
+    function addNextChunk() {
+      if (currentIndex < fullResponse.length) {
+        const chunkSize = 5; // Add 5 characters at a time
+        const chunk = fullResponse.slice(currentIndex, currentIndex + chunkSize);
+        responseContent.innerHTML = fullResponse.slice(0, currentIndex + chunkSize);
+        currentIndex += chunkSize;
         d.scrollTop = d.scrollHeight;
-        setTimeout(addNextWord, 50); // 50ms delay between words
+        setTimeout(addNextChunk, 20); // 20ms delay
       } else {
         // Save context after full response is displayed
         context.push({answer: result.answer, prompt: prompt});
@@ -144,7 +146,7 @@ function askLLM(el) {
       }
     }
     
-    addNextWord();
+    addNextChunk();
   })
   .catch(error => {
     console.error('Error:', error);
