@@ -103,6 +103,14 @@ function askLLM(el) {
 
   console.log("sending", data);
   d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
+  
+  // Create placeholder for LLM response
+  const responseDiv = document.createElement('div');
+  responseDiv.className = 'message';
+  responseDiv.innerHTML = `<span class="llm">llm</span><div class="llm-response"></div>`;
+  d.appendChild(responseDiv);
+  const responseContent = responseDiv.querySelector('.llm-response');
+  
   d.scrollTop = d.scrollHeight;
 
   var prompt = data["prompt"];
@@ -118,15 +126,29 @@ function askLLM(el) {
   }).then(response => response.json())
   .then(result => {
     console.log('Success:', result);
-    d.innerHTML += `<div class="message"><span class="llm">llm</span>${result.answer}</div>`;
-    d.scrollTop = d.scrollHeight;
-
-    // save the context
-    context.push({answer: result.answer, prompt: prompt});
-    setContext();
+    
+    // Stage the response word by word
+    const words = result.answer.split(' ');
+    let currentIndex = 0;
+    
+    function addNextWord() {
+      if (currentIndex < words.length) {
+        responseContent.innerHTML += (currentIndex > 0 ? ' ' : '') + words[currentIndex];
+        currentIndex++;
+        d.scrollTop = d.scrollHeight;
+        setTimeout(addNextWord, 50); // 50ms delay between words
+      } else {
+        // Save context after full response is displayed
+        context.push({answer: result.answer, prompt: prompt});
+        setContext();
+      }
+    }
+    
+    addNextWord();
   })
   .catch(error => {
     console.error('Error:', error);
+    responseContent.innerHTML = 'Error: Failed to get response';
   });
 
   return false;
