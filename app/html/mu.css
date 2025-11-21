@@ -182,7 +182,7 @@ td {
   flex: 1;
   margin-left: 250px;
   max-width: 1280px;
-  padding: 10px 20px 20px 20px;
+  padding: 20px;
   text-align: left;
 }
 
@@ -410,7 +410,7 @@ td {
 
 #chat-form {
   width: 100%;
-  margin: 0;
+  margin: 15px 0 0 0;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -571,12 +571,14 @@ td {
 
 #video form {
   max-width: 465px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 #video form input {
-  width: 100%;
-  margin-top: 0;
-  margin-bottom: 10px;
+  flex: 1;
+  margin: 0;
 }
 
 /* ========================================
@@ -754,11 +756,10 @@ td {
   }
   #container {
     display: block;
-    margin-top: 51px;
   }
   #content {
     margin-left: 0;
-    padding: 5px 10px 10px 10px;
+    padding: 10px;
   }
   #nav-container {
     position: fixed;
