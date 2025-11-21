@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v51';
+var VERSION = 'v54';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -97,19 +97,6 @@ function switchTopic(t) {
   // Clear and reload messages
   const messages = document.getElementById('messages');
   messages.innerHTML = '';
-  
-  // Show topic summary as first message
-  if (roomsData && roomsData[t]) {
-    const room = roomsData[t];
-    const summary = room.Summary || room.summary;
-    
-    if (summary && summary.trim().length > 0) {
-      const summaryMsg = document.createElement('div');
-      summaryMsg.className = 'message system-message';
-      summaryMsg.innerHTML = `<strong>${t}</strong><p>${summary}</p>`;
-      messages.appendChild(summaryMsg);
-    }
-  }
   
   // Load conversation history for this topic
   loadMessages();
@@ -239,9 +226,9 @@ function loadChat() {
     topicLoaded = switchToTopicIfExists(hash);
   }
   
-  // Fallback to chat bubble topic if no valid hash was found
+  // Fallback to first topic if no valid hash was found
   if (!topicLoaded) {
-    switchTopic('💬');
+    switchTopic(topicLinks[0].textContent);
   }
 
   // scroll to bottom of prompt

@@ -36,7 +36,6 @@ var Template = `
 <div id="topic-selector">
   <div class="topic-tabs">%s</div>
 </div>
-<div id="topic-summary"></div>
 <div id="messages"></div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
@@ -49,19 +48,9 @@ var mutex sync.RWMutex
 
 var prompts = map[string]string{}
 
-var rooms = map[string]Room{}
-
 var topics = []string{}
 
 var head string
-
-var summary string
-
-type Room struct {
-	Topic   string `json:"topic"`
-	Prompt  string `json:"prompt"`
-	Summary string `json:"summary,omitempty"`
-}
 
 func Load() {
 	// load the feeds file
@@ -70,17 +59,6 @@ func Load() {
 		fmt.Println("Error parsing topics.json", err)
 	}
 
-	b, _ = data.LoadFile("rooms.json")
-	if err := json.Unmarshal(b, &rooms); err != nil {
-		fmt.Println("Error parsing rooms.json", err)
-	}
-
-	b, _ = data.LoadFile("summary.html")
-	summary = string(b)
-
-	// Add chat bubble as first topic
-	topics = append(topics, "💬")
-
 	for topic, _ := range prompts {
 		topics = append(topics, topic)
 	}
@@ -88,70 +66,6 @@ func Load() {
 	sort.Strings(topics)
 
 	head = app.Head("chat", topics)
-
-	go loadChats()
-}
-
-func loadChats() {
-	fmt.Println("Loading rooms", time.Now().String())
-
-	newRooms := map[string]Room{}
-	newSummary := ""
-
-	for topic, prompt := range prompts {
-		// Search for relevant content for each topic
-		ragEntries := data.Search(topic, 3)
-		var ragContext []string
-		for _, entry := range ragEntries {
-			contentStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-			if len(contentStr) > 500 {
-				contentStr = contentStr[:500]
-			}
-			ragContext = append(ragContext, contentStr)
-		}
-
-		resp, err := askLLM(&Prompt{
-			Rag:      ragContext,
-			Question: prompt,
-		})
-
-		if err != nil {
-			fmt.Println("Failed to generate prompt for topic:", topic, err)
-			continue
-		}
-		newRooms[topic] = Room{
-			Topic:   topic,
-			Prompt:  prompt,
-			Summary: resp,
-		}
-
-	}
-
-	for _, topic := range topics {
-		desc := newRooms[topic].Summary
-		if len(desc) == 0 {
-			continue
-		}
-		// render markdown
-		desc = string(app.Render([]byte(desc)))
-		newSummary += `<div class="message">`
-		newSummary += `<span class="llm">AI Brief</span>`
-		newSummary += fmt.Sprintf(`<strong>%s</strong>`, topic)
-		newSummary += fmt.Sprintf(`<div>%s</div>`, desc)
-		newSummary += `</div>`
-	}
-
-	mutex.Lock()
-	rooms = newRooms
-	summary = newSummary
-	b, _ := json.Marshal(rooms)
-	data.SaveFile("rooms.json", string(b))
-	data.SaveFile("summary.html", summary)
-	mutex.Unlock()
-
-	time.Sleep(time.Hour)
-
-	go loadChats()
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -161,11 +75,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Use Head() to format topics
 		topicTabs := app.Head("chat", topics)
 		
-		// Build rooms data as JSON for JavaScript
-		roomsJSON, _ := json.Marshal(rooms)
-		
 		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs))
-		tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var roomsData = %s;</script></body>`, roomsJSON), 1)
 		
 		mutex.RUnlock()
 
