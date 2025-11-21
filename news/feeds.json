@@ -5,5 +5,6 @@
   "Finance": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
   "Tech": "https://techcrunch.com/feed/",
   "Politics": "https://www.theguardian.com/politics/rss",
-  "Dev": "https://news.ycombinator.com/rss"
+  "Dev": "https://news.ycombinator.com/rss",
+  "Islam": "https://reminder.dev/rss"
 }
