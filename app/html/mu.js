@@ -2,10 +2,10 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v26';
+var VERSION = 'v28';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
-// Static assets to cache on install
+// Static assets to cache
 var STATIC_CACHE = [
   '/mu.css',
   '/mu.js',
@@ -21,143 +21,41 @@ var STATIC_CACHE = [
   '/manifest.webmanifest'
 ];
 
-// Pages to cache on first visit
-var PAGE_CACHE = [
-  '/home',
-  '/chat',
-  '/blog',
-  '/news',
-  '/video'
-];
-
-// ============================================
-// CACHING STRATEGIES
-// ============================================
-
-// Cache-first strategy with network fallback
-async function cacheFirst(request) {
-  const cachedResponse = await caches.match(request);
-  if (cachedResponse) {
-    // Update cache in background if online
-    if (navigator.onLine) {
-      fetch(request).then(networkResponse => {
-        if (networkResponse.ok && request.method === 'GET') {
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(request, networkResponse.clone());
-          });
-        }
-      }).catch(() => {
-        // Silently fail - we already have cached version
-      });
-    }
-    return cachedResponse;
-  }
-  
-  // Not in cache, try network
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok && request.method === 'GET') {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    // Offline and not cached
-    return new Response('Offline - content not available', {
-      status: 503,
-      statusText: 'Service Unavailable',
-      headers: new Headers({
-        'Content-Type': 'text/plain'
-      })
-    });
-  }
-}
-
-// Network-first for API calls
-async function networkFirst(request) {
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok && request.method === 'GET') {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    const cachedResponse = await caches.match(request);
-    return cachedResponse || new Response('Offline', {
-      status: 503,
-      statusText: 'Service Unavailable'
-    });
-  }
-}
-
 // ============================================
 // SERVICE WORKER EVENT LISTENERS
 // ============================================
 
 self.addEventListener('fetch', function (e) {
+  // Let browser handle all fetches naturally - only cache static assets
   const url = new URL(e.request.url);
   
-  console.log('Fetch request : ' + e.request.url);
-  
-  // Skip non-GET requests
   if (e.request.method !== 'GET') {
-    e.respondWith(fetch(e.request));
     return;
   }
   
-  // For root path, use network-first to allow redirects
-  if (url.pathname === '/' || url.pathname === '') {
-    e.respondWith(fetch(e.request));
-    return;
-  }
-  
-  // Use cache-first only for static assets (images, icons, manifest)
+  // Only intercept static assets
   if (url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/)) {
-    e.respondWith(cacheFirst(e.request));
-  } else {
-    // Network-only for pages - no caching to ensure fresh content
-    e.respondWith(fetch(e.request));
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request))
+    );
   }
 });
 
 self.addEventListener('install', function (e) {
-  console.log('Installing service worker version: ' + VERSION);
   e.waitUntil(
-    caches.open(CACHE_NAME).then(function (cache) {
-      console.log('Caching static assets');
-      return cache.addAll(STATIC_CACHE);
-    }).then(() => {
-      // Skip waiting to activate immediately
-      return self.skipWaiting();
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_CACHE))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', function (e) {
-  console.log('Activating service worker version: ' + VERSION);
   e.waitUntil(
-    caches.keys().then(function (keyList) {
-      return Promise.all(keyList.map(function (key) {
-        if (key.startsWith(APP_PREFIX) && key !== CACHE_NAME) {
-          console.log('Deleting old cache: ' + key);
-          return caches.delete(key);
-        }
-      }));
-    }).then(() => {
-      // Take control of all clients immediately
-      return self.clients.claim();
-    }).then(() => {
-      // Notify all clients that service worker has updated
-      return self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'SW_UPDATED',
-            version: VERSION
-          });
-        });
-      });
-    })
+    caches.keys().then(keys => 
+      Promise.all(
+        keys.filter(key => key.startsWith(APP_PREFIX) && key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      )
+    ).then(() => self.clients.claim())
   );
 });
 

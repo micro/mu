@@ -427,12 +427,6 @@ td {
   margin-bottom: 20px;
 }
 
-.head {
-  font-weight: bold;
-  padding: 5px 6px;
-  text-decoration: none;
-}
-
 /* ========================================
    BLOG PAGE
    ======================================== */
@@ -566,7 +560,6 @@ td {
 
 #video form {
   width: 100%;
-  max-width: 465px;
   margin: 0;
   display: flex !important;
   gap: 10px;
@@ -693,17 +686,6 @@ form #query {
   background: whitesmoke;
   padding: 3px 5px;
   border-radius: 5px;
-}
-
-.cover {
-  width: 200px;
-  height: auto;
-  min-height: 100px;
-  margin-right: 10px;
-  margin-bottom: 10px;
-  display: inline-block;
-  border-radius: 3px;
-  background: whitesmoke;
 }
 
 .blurb {
@@ -903,9 +885,6 @@ form #query {
   }
   .home-right {
     width: 100%;
-  }
-  .cover {
-    display: block;
   }
   #links {
     flex-direction: column;
