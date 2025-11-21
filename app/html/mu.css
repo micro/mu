@@ -403,11 +403,6 @@ td {
   box-sizing: border-box;
 }
 
-#query {
-  width: 100%;
-  box-sizing: border-box;
-}
-
 #chat-form {
   width: 100%;
   margin: 15px 0 0 0;
@@ -579,6 +574,7 @@ td {
 #video form input {
   flex: 1;
   margin: 0;
+  box-sizing: border-box;
 }
 
 /* ========================================
