@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v5';
+var VERSION = 'v6';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Static assets to cache on install
@@ -112,14 +112,11 @@ self.addEventListener('fetch', function (e) {
     return;
   }
   
-  // Use cache-first for static assets and pages
-  if (
-    url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/) ||
-    PAGE_CACHE.includes(url.pathname)
-  ) {
+  // Use cache-first only for static assets (images, icons, manifest)
+  if (url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/)) {
     e.respondWith(cacheFirst(e.request));
   } else {
-    // Network-first for API calls
+    // Network-first for pages and API calls to ensure fresh content
     e.respondWith(networkFirst(e.request));
   }
 });
@@ -150,6 +147,16 @@ self.addEventListener('activate', function (e) {
     }).then(() => {
       // Take control of all clients immediately
       return self.clients.claim();
+    }).then(() => {
+      // Notify all clients that service worker has updated
+      return self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: VERSION
+          });
+        });
+      });
     })
   );
 });
@@ -371,6 +378,17 @@ self.addEventListener("hashchange", function(event) {
 });
 
 self.addEventListener('DOMContentLoaded', function() {
+  // Listen for service worker updates
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (event.data && event.data.type === 'SW_UPDATED') {
+        console.log('Service worker updated to version:', event.data.version);
+        // Reload the page to get fresh content
+        window.location.reload();
+      }
+    });
+  }
+
   // Prevent page scroll on topic clicks for mobile chat
   const topicsDiv = document.getElementById('topics');
   const messagesBox = document.getElementById('messages');
