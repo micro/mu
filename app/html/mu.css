@@ -369,7 +369,6 @@ body:has(#messages) #content {
   display: flex;
   gap: var(--topic-gap);
   flex-wrap: wrap;
-  justify-content: space-between;
 }
 
 #topic-selector .head {
@@ -480,7 +479,6 @@ body:has(#messages) #content {
   display: flex;
   gap: var(--topic-gap);
   flex-wrap: wrap;
-  justify-content: space-between;
 }
 
 #prompt {
@@ -1002,13 +1000,12 @@ body:has(#messages) #content {
   }
   .topic-tabs, #topics {
     flex-wrap: nowrap;
-    gap: 4px;
-    justify-content: flex-start;
+    gap: 10px;
   }
   #topic-selector .head, #topics .head {
     white-space: nowrap;
-    font-size: 12px;
-    padding: 3px 0;
+    font-size: 13px;
+    padding: 4px 0;
   }
   #chat-form {
     position: relative;
