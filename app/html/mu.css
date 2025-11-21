@@ -897,6 +897,9 @@ form #query {
   .home-right {
     width: 100%;
   }
+  .cover {
+    display: block;
+  }
   #links {
     flex-direction: column;
     align-items: stretch;
