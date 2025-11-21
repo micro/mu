@@ -538,25 +538,31 @@ func parseFeed() {
 				item.Title = md.Title
 			}
 
-			// extracted content using goquery
-			if len(md.Content) > 0 && len(item.Content) == 0 {
-				item.Content = md.Content
-			}
+		// extracted content using goquery
+		if len(md.Content) > 0 && len(item.Content) == 0 {
+			item.Content = md.Content
+		}
 
-			// create post
-			post := &Post{
-				ID:          item.GUID,
-				Title:       item.Title,
-				Description: item.Description,
-				URL:         link,
-				Published:   item.Published,
-				PostedAt:    *item.PublishedParsed,
-				Category:    name,
-				Image:       md.Image,
-				Content:     item.Content,
-			}
+		// Handle nil PublishedParsed
+		var postedAt time.Time
+		if item.PublishedParsed != nil {
+			postedAt = *item.PublishedParsed
+		} else {
+			postedAt = time.Now()
+		}
 
-			news = append(news, post)
+		// create post
+		post := &Post{
+			ID:          item.GUID,
+			Title:       item.Title,
+			Description: item.Description,
+			URL:         link,
+			Published:   item.Published,
+			PostedAt:    postedAt,
+			Category:    name,
+			Image:       md.Image,
+			Content:     item.Content,
+		}			news = append(news, post)
 
 			// Index the article for search/RAG
 			data.Index(
