@@ -601,7 +601,7 @@ func parseFeed() {
 			}
 			if len(item.Content) > 0 {
 				val += `<a class="post-show" tabindex="1">Read Article</a>`
-				val += fmt.Sprintf(`<span class="post-content">%s</span>`, item.Content)
+				val += fmt.Sprintf(`<div class="post-content">%s</div>`, item.Content)
 			}
 
 			// close div
