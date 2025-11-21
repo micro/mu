@@ -347,11 +347,17 @@ td {
 /* ========================================
    CHAT PAGE
    ======================================== */
+body:has(#messages) #content {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 61px);
+  padding-bottom: 20px;
+}
+
 #messages {
   flex-grow: 1;
   border-radius: 5px;
   border: 1px solid darkgrey;
-  height: calc(100vh - 280px);
   text-align: left;
   overflow-y: auto;
   padding: 20px;
