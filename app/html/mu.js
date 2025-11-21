@@ -67,17 +67,12 @@ self.addEventListener('activate', function (e) {
 
 var context = [];
 
-function toggleSummaries() {
-  const summaries = document.getElementById('summaries');
-  const messages = document.getElementById('messages');
-  
-  if (summaries.style.display === 'none') {
-    summaries.style.display = 'block';
-    messages.style.display = 'none';
-  } else {
-    summaries.style.display = 'none';
-    messages.style.display = 'block';
-  }
+function openSummaries() {
+  document.getElementById('summaries-modal').style.display = 'block';
+}
+
+function closeSummaries() {
+  document.getElementById('summaries-modal').style.display = 'none';
 }
 
 function loadMessages() {

@@ -32,11 +32,16 @@ type Message struct {
 }
 
 var Template = `
-<div id="summaries" style="display: none;">%s</div>
+<div id="summaries-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeSummaries()">&times;</span>
+    <div id="summaries-content">%s</div>
+  </div>
+</div>
+<button id="summaries-btn" onclick="openSummaries()" style="position: fixed; bottom: 80px; right: 20px; z-index: 100; padding: 12px 16px; border-radius: 50%%; background: #333; color: white; border: none; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">📋</button>
 <div id="messages">%s</div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
-<button type="button" onclick="toggleSummaries()" style="margin-right: 10px;">Topics</button>
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autocomplete=off>
 <button>Send</button>
 </form>`
