@@ -76,12 +76,6 @@ var topic = '';
 function switchTopic(t) {
   topic = t;
   
-  // Update page title to show current topic
-  const pageTitle = document.getElementById('page-title');
-  if (pageTitle) {
-    pageTitle.textContent = `Chat - ${t}`;
-  }
-  
   // Update hidden input (only exists on chat page)
   const topicInput = document.getElementById('topic');
   if (topicInput) {
@@ -104,16 +98,21 @@ function switchTopic(t) {
   const messages = document.getElementById('messages');
   messages.innerHTML = '';
   
-  // Show topic summary at top (only if topic has a summary)
+  // Show topic summary at top
   const summaryDiv = document.getElementById('topic-summary');
   console.log('Switching to topic:', t);
   console.log('Room data:', roomsData ? roomsData[t] : 'No roomsData');
   
   if (roomsData && roomsData[t]) {
     const room = roomsData[t];
-    if (room.Summary) {
-      console.log('Found summary for', t, ':', room.Summary.substring(0, 100));
-      summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}</strong><div>${room.Summary}</div></div>`;
+    const summary = room.Summary || room.summary;
+    console.log('Summary value:', summary);
+    console.log('Summary type:', typeof summary);
+    console.log('Summary length:', summary ? summary.length : 0);
+    
+    if (summary && summary.trim().length > 0) {
+      console.log('Found summary for', t);
+      summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}</strong><div>${summary}</div></div>`;
       summaryDiv.style.display = 'block';
     } else {
       console.log('No summary for', t);
