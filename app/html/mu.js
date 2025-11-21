@@ -92,7 +92,7 @@ function switchTopic(t) {
   
   // Show topic summary at top (only if topic has a summary)
   const summaryDiv = document.getElementById('topic-summary');
-  if (t !== 'Main' && roomsData && roomsData[t] && roomsData[t].Summary) {
+  if (t !== 'All' && roomsData && roomsData[t] && roomsData[t].Summary) {
     const room = roomsData[t];
     summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}:</strong> ${room.Summary}</div>`;
   } else {
@@ -214,8 +214,8 @@ function askLLM(el) {
 }
 
 function loadChat() {
-  // Always default to Main topic
-  switchTopic('Main');
+  // Always default to All topic
+  switchTopic('All');
 
   // scroll to bottom of prompt
   const prompt = document.getElementById('prompt');

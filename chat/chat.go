@@ -155,8 +155,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		mutex.RLock()
 		
-		// Add Main topic as first option
-		allTopics := append([]string{"Main"}, topics...)
+		// Add All topic as first option
+		allTopics := append([]string{"All"}, topics...)
 		
 		// Use Head() to format topics as hashtag pills
 		topicTabs := app.Head("chat", allTopics)

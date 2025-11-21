@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"sort"
 	"time"
 
 	"mu/auth"
@@ -152,11 +153,17 @@ func Link(name, ref string) string {
 }
 
 func Head(app string, refs []string) string {
+	sort.Strings(refs)
+
 	var head string
 
 	// create head for channels
 	for _, ref := range refs {
-		head += fmt.Sprintf(`<a href="#" class="head highlight" onclick="event.preventDefault(); switchTopic('%s')">%s</a>`, ref, ref)
+		if ref == "All" {
+			head += fmt.Sprintf(`<a href="/%s" class="head highlight" onclick="event.preventDefault(); switchTopic('%s')">%s</a>`, app, ref, ref)
+		} else {
+			head += fmt.Sprintf(`<a href="/%s#%s" class="head highlight" onclick="event.preventDefault(); switchTopic('%s')">%s</a>`, app, ref, ref, ref)
+		}
 	}
 
 	return head
