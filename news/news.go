@@ -88,6 +88,48 @@ type Metadata struct {
 	Content     string
 }
 
+// htmlToText converts HTML to plain text with proper spacing
+func htmlToText(html string) string {
+	if html == "" {
+		return ""
+	}
+	
+	// Parse HTML
+	doc, err := nethtml.Parse(strings.NewReader(html))
+	if err != nil {
+		// If parsing fails, just strip tags the simple way
+		re := regexp.MustCompile(`<[^>]*>`)
+		text := re.ReplaceAllString(html, " ")
+		// Collapse multiple spaces
+		re2 := regexp.MustCompile(`\s+`)
+		return strings.TrimSpace(re2.ReplaceAllString(text, " "))
+	}
+	
+	var sb strings.Builder
+	var extract func(*nethtml.Node)
+	extract = func(n *nethtml.Node) {
+		if n.Type == nethtml.TextNode {
+			sb.WriteString(n.Data)
+		}
+		// Add space after block elements
+		if n.Type == nethtml.ElementNode {
+			switch n.Data {
+			case "br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6":
+				sb.WriteString(" ")
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			extract(c)
+		}
+	}
+	extract(doc)
+	
+	// Collapse multiple spaces and trim
+	text := sb.String()
+	re := regexp.MustCompile(`\s+`)
+	return strings.TrimSpace(re.ReplaceAllString(text, " "))
+}
+
 func getDomain(v string) string {
 	var host string
 
@@ -551,11 +593,14 @@ func parseFeed() {
 			postedAt = time.Now()
 		}
 
+		// Clean up description HTML
+		cleanDescription := htmlToText(item.Description)
+
 		// create post
 		post := &Post{
 			ID:          item.GUID,
 			Title:       item.Title,
-			Description: item.Description,
+			Description: cleanDescription,
 			URL:         link,
 			Published:   item.Published,
 			PostedAt:    postedAt,

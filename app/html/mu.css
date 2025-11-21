@@ -888,19 +888,7 @@ body:has(#messages) #content {
     font-size: 1em;
   }
   #account {
-    position: absolute;
-    right: 20px;
-  }
-  #account a {
-    padding: 4px 5px;
-  }
-  #account::after {
-    content: '';
-    display: block;
-    width: 24px;
-    height: 24px;
-    background: url('/logout.png') no-repeat center;
-    background-size: contain;
+    display: none;
   }
   #container {
     display: block;
