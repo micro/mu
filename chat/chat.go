@@ -124,7 +124,7 @@ func loadChats() {
 		desc = string(app.Render([]byte(desc)))
 		newSummary += `<div class="section">`
 		newSummary += fmt.Sprintf(`<hr id="%s" class="anchor">`, topic)
-		newSummary += fmt.Sprintf(`<h2>%s</h2><p><span class="description">%s</span></p>`, topic, desc)
+		newSummary += fmt.Sprintf(`<h3>%s</h3><p><span class="description">%s</span></p>`, topic, desc)
 		newSummary += `</div>`
 	}
 
