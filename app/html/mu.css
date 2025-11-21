@@ -843,11 +843,11 @@ td {
     width: 100%;
   }
   body:has(#messages) #content {
-    height: calc(100vh - 111px);
+    height: 100vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding-bottom: 60px;
+    padding-bottom: 0;
   }
   body:has(#messages) #topics {
     flex-shrink: 0;
@@ -855,6 +855,8 @@ td {
   #chat-form {
     position: relative;
     z-index: 1;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    margin-bottom: 60px;
   }
   .post-show {
     margin-top: 10px;
