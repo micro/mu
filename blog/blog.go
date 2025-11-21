@@ -65,17 +65,25 @@ func updateCache() {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	// Generate preview for home page (latest 3 posts)
+	// Generate preview for home page (latest 1 post)
 	var preview []string
-	count := 3
+	count := 1
 	if len(posts) < count {
 		count = len(posts)
 	}
 	for i := 0; i < count; i++ {
 		post := posts[i]
 		content := post.Content
-		if len(content) > 150 {
-			content = content[:150] + "..."
+		if len(content) > 500 {
+			// Find the last space before 500 chars
+			lastSpace := 500
+			for j := 499; j >= 0; j-- {
+				if content[j] == ' ' {
+					lastSpace = j
+					break
+				}
+			}
+			content = content[:lastSpace] + "..."
 		}
 
 		title := post.Title
