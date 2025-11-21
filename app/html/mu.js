@@ -74,10 +74,9 @@ function switchTopic(t) {
   // Update hidden input
   document.getElementById('topic').value = t;
   
-  // Update active tab using class 'head' instead of 'topic-tab'
-  document.querySelectorAll('.head').forEach(tab => {
-    const href = tab.getAttribute('href');
-    if (href && href.includes('#' + t)) {
+  // Update active tab - match by text content with hashtag
+  document.querySelectorAll('#topic-selector .head').forEach(tab => {
+    if (tab.textContent === '#' + t) {
       tab.classList.add('active');
     } else {
       tab.classList.remove('active');
@@ -215,7 +214,7 @@ function askLLM(el) {
 }
 
 function loadChat() {
-  // Initialize with Main topic
+  // Always default to Main topic
   switchTopic('Main');
 
   // scroll to bottom of prompt

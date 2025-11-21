@@ -153,13 +153,11 @@ func Link(name, ref string) string {
 }
 
 func Head(app string, refs []string) string {
-	sort.Strings(refs)
-
 	var head string
 
 	// create head for channels
 	for _, ref := range refs {
-		head += fmt.Sprintf(`<a href="/%s#%s" class="head">%s</a>`, app, ref, ref)
+		head += fmt.Sprintf(`<a href="#" class="head" onclick="event.preventDefault(); switchTopic('%s')">#%s</a>`, ref, ref)
 	}
 
 	return head
