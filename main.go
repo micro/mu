@@ -77,6 +77,9 @@ func main() {
 	// serve blog (full list)
 	http.HandleFunc("/blog", blog.Handler)
 
+	// serve individual blog post (public, no auth)
+	http.HandleFunc("/post", blog.PostHandler)
+
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
 

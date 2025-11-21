@@ -92,10 +92,10 @@ func updateCache() {
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
-			<h3>%s</h3>
+			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
 			<small style="color: #666;">%s by %s</small>
-		</div>`, title, content, app.TimeAgo(post.CreatedAt), post.Author)
+		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), post.Author)
 		preview = append(preview, item)
 	}
 
@@ -114,10 +114,10 @@ func updateCache() {
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
-			<h3>%s</h3>
+			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
 			<small style="color: #666;">%s by %s</small>
-		</div>`, title, post.Content, app.TimeAgo(post.CreatedAt), post.Author)
+		</div>`, post.ID, title, post.Content, app.TimeAgo(post.CreatedAt), post.Author)
 		fullList = append(fullList, item)
 	}
 
@@ -173,10 +173,10 @@ func HomeFeed() string {
 	}
 
 	item := fmt.Sprintf(`<div class="post-item">
-		<h3>%s</h3>
+		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<p style="white-space: pre-wrap;">%s</p>
 		<small style="color: #666;">%s by %s</small>
-	</div>`, title, content, app.TimeAgo(post.CreatedAt), post.Author)
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), post.Author)
 
 	return item
 }
@@ -249,7 +249,59 @@ func CreatePost(title, content, author string) error {
 	return nil
 }
 
+// GetPost retrieves a post by ID
+func GetPost(id string) *Post {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	for _, post := range posts {
+		if post.ID == id {
+			return post
+		}
+	}
+	return nil
+}
+
 // handlePost processes the POST request to create a new blog post
+// PostHandler serves individual blog posts (public, no auth required)
+func PostHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Redirect(w, r, "/blog", 302)
+		return
+	}
+
+	post := GetPost(id)
+	if post == nil {
+		http.Error(w, "Post not found", 404)
+		return
+	}
+
+	title := post.Title
+	if title == "" {
+		title = "Untitled"
+	}
+
+	content := fmt.Sprintf(`<div id="blog">
+		<h1>%s</h1>
+		<small style="color: #666;">%s by %s</small>
+		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
+		<div style="white-space: pre-wrap;">%s</div>
+		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
+		<a href="/blog">← Back to all posts</a>
+	</div>`, title, app.TimeAgo(post.CreatedAt), post.Author, post.Content)
+
+	html := app.RenderHTML(title, post.Content[:min(len(post.Content), 150)], content)
+	w.Write([]byte(html))
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func handlePost(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
