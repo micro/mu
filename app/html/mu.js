@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v54';
+var VERSION = 'v55';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -91,20 +91,11 @@ function switchTopic(t) {
     }
   });
   
-  // Load context for this topic
-  loadContext();
-  
-  // Clear and reload messages
-  const messages = document.getElementById('messages');
-  messages.innerHTML = '';
-  
-  // Load conversation history for this topic
-  loadMessages();
+  // Topics only affect RAG context, not conversation history
 }
 
 function loadContext() {
-  const key = `context-${topic}`;
-  const ctx = sessionStorage.getItem(key);
+  const ctx = sessionStorage.getItem('context');
   if (ctx == null || ctx == undefined || ctx == "") {
     context = [];
     return;
@@ -113,8 +104,7 @@ function loadContext() {
 }
 
 function setContext() {
-  const key = `context-${topic}`;
-  sessionStorage.setItem(key, JSON.stringify(context));
+  sessionStorage.setItem('context', JSON.stringify(context));
 }
 
 function loadMessages() {
@@ -219,14 +209,18 @@ function loadChat() {
     return;
   }
   
-  // Check if there's a hash in the URL and if it exists
+  // Load unified conversation history
+  loadContext();
+  loadMessages();
+  
+  // Check if there's a hash in the URL to set active topic
   let topicLoaded = false;
   if (window.location.hash) {
     const hash = window.location.hash.substring(1);
     topicLoaded = switchToTopicIfExists(hash);
   }
   
-  // Fallback to first topic if no valid hash was found
+  // Default to first topic if no valid hash was found
   if (!topicLoaded) {
     switchTopic(topicLinks[0].textContent);
   }
