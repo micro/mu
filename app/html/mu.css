@@ -568,17 +568,18 @@ td {
   width: 100%;
   max-width: 465px;
   margin: 0;
-  display: flex;
+  display: flex !important;
   gap: 10px;
   align-items: center;
 }
 
 #video form input, #video form #query {
-  flex: 1;
+  flex: 1 !important;
   padding: 10px;
   margin: 0;
   box-sizing: border-box;
   width: auto !important;
+  max-width: none !important;
 }
 
 #video form button {
@@ -586,6 +587,11 @@ td {
   margin: 0;
   width: auto;
   flex-shrink: 0;
+}
+
+#video #query {
+  flex: 1 !important;
+  width: auto !important;
 }
 
 /* ========================================
