@@ -218,14 +218,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			contextStr += fmt.Sprintf(" (Source: %s)", url)
 		}
 		ragContext = append(ragContext, contextStr)
-	}		prompt := &Prompt{
-			Rag:      ragContext,
-			Context:  context,
-			Question: q,
-		}
+	}
 
-		// query the llm
-		resp, err := askLLM(prompt)
+	prompt := &Prompt{
+		Rag:      ragContext,
+		Context:  context,
+		Question: q,
+	}
+
+	// query the llm
+	resp, err := askLLM(prompt)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
