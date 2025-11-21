@@ -65,6 +65,11 @@ self.addEventListener('activate', function (e) {
 // CHAT FUNCTIONALITY
 // ============================================
 
+// Constants
+const CHAT_TOPIC_SELECTOR = '#topic-selector .head';
+const TOPICS_SELECTOR = '#topics .head';
+const CHAT_PATH = '/chat';
+
 var context = [];
 var topic = '';
 
@@ -215,7 +220,7 @@ function askLLM(el) {
 
 function loadChat() {
   // Get topics from the page
-  const topicLinks = document.querySelectorAll('#topic-selector .head');
+  const topicLinks = document.querySelectorAll(CHAT_TOPIC_SELECTOR);
   
   // Guard against empty topic list
   if (topicLinks.length === 0) {
@@ -353,7 +358,7 @@ function setSession() {
 
 function highlightTopic(topicName) {
   // Specific selectors for topic elements
-  const selectors = ['#topic-selector .head', '#topics .head'];
+  const selectors = [CHAT_TOPIC_SELECTOR, TOPICS_SELECTOR];
   
   // Cache all matching elements to avoid multiple DOM queries
   const allTopicLinks = [];
@@ -372,7 +377,8 @@ function highlightTopic(topicName) {
   
   // Add active class to the matching topic
   allTopicLinks.forEach(link => {
-    if (link.textContent === topicName || link.getAttribute('href').endsWith(hashString)) {
+    const href = link.getAttribute('href');
+    if (link.textContent === topicName || (href && href.endsWith(hashString))) {
       link.classList.add('active');
     }
   });
@@ -380,7 +386,7 @@ function highlightTopic(topicName) {
 
 function switchToTopicIfExists(hash) {
   // Check if the topic exists in the selector
-  const topicLinks = document.querySelectorAll('#topic-selector .head');
+  const topicLinks = document.querySelectorAll(CHAT_TOPIC_SELECTOR);
   for (const link of topicLinks) {
     if (link.textContent === hash) {
       switchTopic(hash);
@@ -400,7 +406,7 @@ function handleHashChange() {
   highlightTopic(hash);
   
   // For chat page, switch to the topic if it exists
-  if (window.location.pathname === '/chat') {
+  if (window.location.pathname === CHAT_PATH) {
     switchToTopicIfExists(hash);
   }
 }
@@ -453,11 +459,11 @@ self.addEventListener('DOMContentLoaded', function() {
   }
 
   // load chat
-  if (window.location.pathname == "/chat") {
+  if (window.location.pathname == CHAT_PATH) {
     loadChat();
     
     // Add click handlers for chat topics
-    document.querySelectorAll('#topic-selector .head').forEach(link => {
+    document.querySelectorAll(CHAT_TOPIC_SELECTOR).forEach(link => {
       link.addEventListener('click', function(e) {
         e.preventDefault();
         const topicName = this.textContent;
@@ -469,7 +475,7 @@ self.addEventListener('DOMContentLoaded', function() {
   }
   
   // Handle hash on page load for topic highlighting (non-chat pages)
-  if (window.location.hash && window.location.pathname !== '/chat') {
+  if (window.location.hash && window.location.pathname !== CHAT_PATH) {
     handleHashChange();
   }
 

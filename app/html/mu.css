@@ -1,6 +1,10 @@
 /* ========================================
    BASE STYLES
    ======================================== */
+:root {
+  --topic-gap: 15px;
+}
+
 html, body {
   height: 100%;
   width: 100%;
@@ -363,7 +367,7 @@ body:has(#messages) #content {
 
 .topic-tabs {
   display: flex;
-  gap: 15px;
+  gap: var(--topic-gap);
   flex-wrap: wrap;
 }
 
@@ -466,7 +470,7 @@ body:has(#messages) #content {
   padding-bottom: 5px;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
-  gap: 15px;
+  gap: var(--topic-gap);
   flex-wrap: wrap;
 }
 
