@@ -97,8 +97,8 @@ func updateCache() {
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
-			<small style="color: #666;">%s by %s</small>
-		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author)
+			<small style="color: #666;">%s by %s · <a href="/post?id=%s" style="color: #666;">Share</a></small>
+		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author, post.ID)
 		preview = append(preview, item)
 	}
 
@@ -121,8 +121,8 @@ func updateCache() {
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
-			<small style="color: #666;">%s by %s</small>
-		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author)
+			<small style="color: #666;">%s by %s · <a href="/post?id=%s" style="color: #666;">Share</a></small>
+		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author, post.ID)
 		fullList = append(fullList, item)
 	}
 
