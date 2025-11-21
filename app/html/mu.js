@@ -220,24 +220,17 @@ function loadChat() {
   // Determine which topic to load
   let topicToLoad = '';
   
-  // Check if there's a hash in the URL
+  // Check if there's a hash in the URL and if it exists
   if (window.location.hash) {
     const hash = window.location.hash.substring(1);
-    // Check if this topic exists
-    for (const link of topicLinks) {
-      if (link.textContent === hash) {
-        topicToLoad = hash;
-        break;
-      }
+    if (switchToTopicIfExists(hash)) {
+      topicToLoad = hash;
     }
   }
   
-  // Fallback to first topic if no valid hash
+  // Fallback to first topic if no valid hash was found
   if (!topicToLoad && topicLinks.length > 0) {
     topicToLoad = topicLinks[0].textContent;
-  }
-  
-  if (topicToLoad) {
     switchTopic(topicToLoad);
   }
 
@@ -357,62 +350,60 @@ function setSession() {
 // EVENT LISTENERS
 // ============================================
 
-self.addEventListener("hashchange", function(event) {
-  // Handle hash changes for topic highlighting
-  if (window.location.hash) {
-    const hash = window.location.hash.substring(1); // Remove the '#'
-    console.log('Hash changed to:', hash);
-    
-    // Highlight the matching topic/tag
-    highlightTopic(hash);
-    
-    // For chat page, switch to the topic
-    if (window.location.pathname === '/chat') {
-      switchToTopicFromHash(hash);
-    }
-  }
-});
-
-self.addEventListener("popstate", function(event) {
-  // Handle browser back/forward navigation
-  if (window.location.hash) {
-    const hash = window.location.hash.substring(1);
-    highlightTopic(hash);
-    
-    if (window.location.pathname === '/chat') {
-      switchToTopicFromHash(hash);
-    }
-  }
-});
-
 function highlightTopic(topicName) {
   // Remove active class from all topic links - use more specific selectors
   const selectors = ['#topic-selector .head', '#topics .head'];
+  
+  // Cache all matching elements to avoid multiple DOM queries
+  const allTopicLinks = [];
   selectors.forEach(selector => {
-    document.querySelectorAll(selector).forEach(link => {
-      link.classList.remove('active');
-    });
+    const elements = document.querySelectorAll(selector);
+    allTopicLinks.push(...elements);
+  });
+  
+  // Remove active from all
+  allTopicLinks.forEach(link => {
+    link.classList.remove('active');
   });
   
   // Add active class to the matching topic
-  selectors.forEach(selector => {
-    document.querySelectorAll(selector).forEach(link => {
-      if (link.textContent === topicName || link.getAttribute('href').endsWith('#' + topicName)) {
-        link.classList.add('active');
-      }
-    });
+  allTopicLinks.forEach(link => {
+    if (link.textContent === topicName || link.getAttribute('href').endsWith('#' + topicName)) {
+      link.classList.add('active');
+    }
   });
 }
 
-function switchToTopicFromHash(hash) {
+function switchToTopicIfExists(hash) {
+  // Check if the topic exists in the selector
   const topicLinks = document.querySelectorAll('#topic-selector .head');
   for (const link of topicLinks) {
     if (link.textContent === hash) {
       switchTopic(hash);
-      break;
+      return true;
     }
   }
+  return false;
 }
+
+function handleHashChange() {
+  if (!window.location.hash) return;
+  
+  const hash = window.location.hash.substring(1);
+  console.log('Hash changed to:', hash);
+  
+  // Highlight the matching topic/tag
+  highlightTopic(hash);
+  
+  // For chat page, switch to the topic if it exists
+  if (window.location.pathname === '/chat') {
+    switchToTopicIfExists(hash);
+  }
+}
+
+self.addEventListener("hashchange", handleHashChange);
+
+self.addEventListener("popstate", handleHashChange);
 
 self.addEventListener('DOMContentLoaded', function() {
   // Listen for service worker updates
@@ -473,15 +464,9 @@ self.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Handle hash on page load for topic highlighting
-  if (window.location.hash) {
-    const hash = window.location.hash.substring(1);
-    highlightTopic(hash);
-    
-    // If on chat page and there's a hash, switch to that topic
-    if (window.location.pathname === '/chat') {
-      switchToTopicFromHash(hash);
-    }
+  // Handle hash on page load for topic highlighting (non-chat pages)
+  if (window.location.hash && window.location.pathname !== '/chat') {
+    handleHashChange();
   }
 
   // Check session status on page load
