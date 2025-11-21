@@ -11,6 +11,7 @@ import (
 	"mu/auth"
 	"mu/blog"
 	"mu/chat"
+	"mu/data"
 	"mu/home"
 	"mu/news"
 	"mu/video"
@@ -32,6 +33,9 @@ func main() {
 	md := api.Markdown()
 	apiDoc := app.Render([]byte(md))
 	apiHTML := app.RenderHTML("API", "API documentation", string(apiDoc))
+
+	// load the data index
+	data.Load()
 
 	// load the chat
 	chat.Load()
@@ -58,7 +62,7 @@ func main() {
 
 	// Static assets should not require authentication
 	staticPaths := []string{
-		".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", 
+		".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg",
 		".ico", ".webmanifest", ".json",
 	}
 	// serve video

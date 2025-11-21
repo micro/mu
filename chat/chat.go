@@ -65,12 +65,12 @@ func Load() {
 		fmt.Println("Error parsing topics.json", err)
 	}
 
-	b, _ = data.Load("rooms.json")
+	b, _ = data.LoadFile("rooms.json")
 	if err := json.Unmarshal(b, &rooms); err != nil {
 		fmt.Println("Error parsing rooms.json", err)
 	}
 
-	b, _ = data.Load("summary.html")
+	b, _ = data.LoadFile("summary.html")
 	summary = string(b)
 
 	for topic, _ := range prompts {
@@ -91,7 +91,16 @@ func loadChats() {
 	newSummary := ""
 
 	for topic, prompt := range prompts {
+		// Search for relevant content for each topic
+		ragEntries := data.Search(topic, 10)
+		var ragContext []string
+		for _, entry := range ragEntries {
+			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+			ragContext = append(ragContext, contextStr)
+		}
+
 		resp, err := askLLM(&Prompt{
+			Rag:      ragContext,
 			Question: prompt,
 		})
 
@@ -124,8 +133,8 @@ func loadChats() {
 	rooms = newRooms
 	summary = `<div id="summary">` + newSummary + `</div>`
 	b, _ := json.Marshal(rooms)
-	data.Save("rooms.json", string(b))
-	data.Save("summary.html", summary)
+	data.SaveFile("rooms.json", string(b))
+	data.SaveFile("summary.html", summary)
 	mutex.Unlock()
 
 	time.Sleep(time.Hour)
@@ -188,7 +197,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		q := fmt.Sprintf("%v", form["prompt"])
 
+		// Search the index for relevant context (RAG)
+		ragEntries := data.Search(q, 5)
+		var ragContext []string
+		for _, entry := range ragEntries {
+			// Format each entry as context
+			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+			if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+				contextStr += fmt.Sprintf(" (Source: %s)", url)
+			}
+			ragContext = append(ragContext, contextStr)
+		}
+
 		prompt := &Prompt{
+			Rag:      ragContext,
 			Context:  context,
 			Question: q,
 		}

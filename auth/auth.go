@@ -34,9 +34,9 @@ type Session struct {
 }
 
 func init() {
-	b, _ := data.Load("accounts.json")
+	b, _ := data.LoadFile("accounts.json")
 	json.Unmarshal(b, &accounts)
-	b, _ = data.Load("sessions.json")
+	b, _ = data.LoadFile("sessions.json")
 	json.Unmarshal(b, &sessions)
 }
 

@@ -27,13 +27,13 @@ func Cards(news, markets, reminder, posts, latest string) []string {
 		app.Card("posts", "Posts", posts),
 		app.Card("news", "News", news),
 	}
-	
+
 	rightCards := []string{
 		app.Card("reminder", "Reminder", reminder),
 		app.Card("markets", "Markets", markets),
 		app.Card("video", "Video", latest),
 	}
-	
+
 	return []string{
 		strings.Join(leftCards, "\n"),
 		strings.Join(rightCards, "\n"),

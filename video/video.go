@@ -292,14 +292,14 @@ func loadChannels() {
 // Load videos
 func Load() {
 	// load latest video
-	b, _ := data.Load("latest.html")
+	b, _ := data.LoadFile("latest.html")
 	latestHtml = string(b)
 
 	// load saved videos
-	b, _ = data.Load("videos.html")
+	b, _ = data.LoadFile("videos.html")
 	videosHtml = string(b)
 
-	b, _ = data.Load("videos.json")
+	b, _ = data.LoadFile("videos.json")
 	json.Unmarshal(b, &videos)
 
 	// load channels
@@ -379,9 +379,9 @@ func loadVideos() {
 	vidJson := string(b)
 
 	mutex.Lock()
-	data.Save("videos.html", vidHtml)
-	data.Save("videos.json", vidJson)
-	data.Save("latest.html", latest[0].Html)
+	data.SaveFile("videos.html", vidHtml)
+	data.SaveFile("videos.json", vidJson)
+	data.SaveFile("latest.html", latest[0].Html)
 	latestHtml = latest[0].Html
 	videos = vids
 	videosHtml = vidHtml
@@ -426,8 +426,8 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		return "", nil, err
 	}
 
-	var data []*Result
-	var results string
+	var results []*Result
+	var resultsHtml string
 
 	for _, item := range resp.Items {
 		var id, url, desc string
@@ -463,21 +463,36 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		}
 
 		if kind == "channel" {
-			data = append([]*Result{res}, data...)
+			results = append([]*Result{res}, results...)
 		} else {
 			// returning json results
-			data = append(data, res)
+			results = append(results, res)
 		}
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 		html := fmt.Sprintf(`
 			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
 			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
-		results += html
+		resultsHtml += html
 		res.Html = html
+
+		// Index the video for search/RAG
+		data.Index(
+			"video_"+id,
+			"video",
+			item.Snippet.Title,
+			item.Snippet.Description,
+			map[string]interface{}{
+				"url":       url,
+				"category":  category,
+				"channel":   item.Snippet.ChannelTitle,
+				"published": item.Snippet.PublishedAt,
+				"thumbnail": item.Snippet.Thumbnails.Medium.Url,
+			},
+		)
 	}
 
-	return results, data, nil
+	return resultsHtml, results, nil
 }
 
 func getResults(query, channel string) (string, []*Result, error) {
@@ -500,8 +515,8 @@ func getResults(query, channel string) (string, []*Result, error) {
 		return "", nil, err
 	}
 
-	var data []*Result
-	var results string
+	var results []*Result
+	var resultsHtml string
 
 	for _, item := range resp.Items {
 		var id, url, desc string
@@ -530,21 +545,21 @@ func getResults(query, channel string) (string, []*Result, error) {
 		}
 
 		if kind == "channel" {
-			data = append([]*Result{res}, data...)
+			results = append([]*Result{res}, results...)
 		} else {
 			// returning json results
-			data = append(data, res)
+			results = append(results, res)
 		}
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 		html := fmt.Sprintf(`
 			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
 			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
-		results += html
+		resultsHtml += html
 		res.Html = html
 	}
 
-	return results, data, nil
+	return resultsHtml, results, nil
 }
 
 func Latest() string {

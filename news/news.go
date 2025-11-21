@@ -224,7 +224,7 @@ func saveHtml(head, content []byte) {
 	}
 	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
 	html = app.RenderHTML("News", "Read the news", body)
-	data.Save("news.html", html)
+	data.SaveFile("news.html", html)
 }
 
 func loadFeed() {
@@ -392,7 +392,7 @@ func getReminder() {
 	html += app.Link("More", link)
 
 	mutex.Lock()
-	data.Save("reminder.html", html)
+	data.SaveFile("reminder.html", html)
 	reminderHtml = html
 	mutex.Unlock()
 
@@ -558,6 +558,20 @@ func parseFeed() {
 
 			news = append(news, post)
 
+			// Index the article for search/RAG
+			data.Index(
+				item.GUID,
+				"news",
+				item.Title,
+				item.Description+" "+item.Content,
+				map[string]interface{}{
+					"url":       link,
+					"category":  name,
+					"published": item.Published,
+					"image":     md.Image,
+				},
+			)
+
 			var val string
 
 			if len(md.Image) > 0 {
@@ -638,6 +652,20 @@ func parseFeed() {
 
 		info = append(info, []byte(`</div>`)...)
 		marketsHtml += string(info)
+
+		// Index all prices for search/RAG
+		for ticker, price := range newPrices {
+			data.Index(
+				"market_"+ticker,
+				"market",
+				ticker+" Price",
+				fmt.Sprintf("%s is currently trading at $%.2f", ticker, price),
+				map[string]interface{}{
+					"ticker": ticker,
+					"price":  price,
+				},
+			)
+		}
 	}
 
 	// create the headlines
@@ -681,9 +709,9 @@ func parseFeed() {
 	// save it
 	saveHtml(head, content)
 	// save the headlines
-	data.Save("headlines.html", headlinesHtml)
+	data.SaveFile("headlines.html", headlinesHtml)
 	// save markets
-	data.Save("markets.html", marketsHtml)
+	data.SaveFile("markets.html", marketsHtml)
 
 	// save the prices as JSON for persistence
 	data.SaveJSON("prices.json", cachedPrices)
@@ -699,15 +727,15 @@ func parseFeed() {
 
 func Load() {
 	// load headlines
-	b, _ := data.Load("headlines.html")
+	b, _ := data.LoadFile("headlines.html")
 	headlinesHtml = string(b)
 
 	// load markets
-	b, _ = data.Load("markets.html")
+	b, _ = data.LoadFile("markets.html")
 	marketsHtml = string(b)
 
 	// load cached prices
-	b, _ = data.Load("prices.json")
+	b, _ = data.LoadFile("prices.json")
 	if len(b) > 0 {
 		var prices map[string]float64
 		if err := json.Unmarshal(b, &prices); err == nil {
@@ -717,12 +745,12 @@ func Load() {
 		}
 	}
 
-	b, _ = data.Load("reminder.html")
+	b, _ = data.LoadFile("reminder.html")
 
 	reminderHtml = string(b)
 
 	// load news
-	b, _ = data.Load("news.html")
+	b, _ = data.LoadFile("news.html")
 	html = string(b)
 
 	// load the feeds

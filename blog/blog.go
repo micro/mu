@@ -35,7 +35,7 @@ type Post struct {
 
 // Load blog posts from disk
 func Load() {
-	b, err := data.Load("blog.json")
+	b, err := data.LoadFile("blog.json")
 	if err != nil {
 		posts = []*Post{}
 		return
@@ -77,12 +77,12 @@ func updateCache() {
 		if len(content) > 150 {
 			content = content[:150] + "..."
 		}
-		
+
 		title := post.Title
 		if title == "" {
 			title = "Untitled"
 		}
-		
+
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3>%s</h3>
 			<p style="white-space: pre-wrap;">%s</p>
@@ -90,7 +90,7 @@ func updateCache() {
 		</div>`, title, content, app.TimeAgo(post.CreatedAt), post.Author)
 		preview = append(preview, item)
 	}
-	
+
 	if len(preview) == 0 {
 		postsPreviewHtml = "<p>No posts yet. Be the first to share a thought!</p>"
 	} else {
@@ -104,7 +104,7 @@ func updateCache() {
 		if title == "" {
 			title = "Untitled"
 		}
-		
+
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3>%s</h3>
 			<p style="white-space: pre-wrap;">%s</p>
@@ -112,7 +112,7 @@ func updateCache() {
 		</div>`, title, post.Content, app.TimeAgo(post.CreatedAt), post.Author)
 		fullList = append(fullList, item)
 	}
-	
+
 	if len(fullList) == 0 {
 		postsList = "<p>No posts yet. Write something below!</p>"
 	} else {
@@ -138,21 +138,21 @@ func FullFeed() string {
 func HomeFeed() string {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	
+
 	// Generate limited list for home page (latest 10 posts)
 	var limitedList []string
 	count := 10
 	if len(posts) < count {
 		count = len(posts)
 	}
-	
+
 	for i := 0; i < count; i++ {
 		post := posts[i]
 		title := post.Title
 		if title == "" {
 			title = "Untitled"
 		}
-		
+
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3>%s</h3>
 			<p style="white-space: pre-wrap;">%s</p>
@@ -160,11 +160,11 @@ func HomeFeed() string {
 		</div>`, title, post.Content, app.TimeAgo(post.CreatedAt), post.Author)
 		limitedList = append(limitedList, item)
 	}
-	
+
 	if len(limitedList) == 0 {
 		return "<p>No posts yet. Be the first to share a thought!</p>"
 	}
-	
+
 	return strings.Join(limitedList, "\n<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>\n")
 }
 
