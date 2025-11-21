@@ -369,6 +369,7 @@ body:has(#messages) #content {
   display: flex;
   gap: var(--topic-gap);
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 #topic-selector .head {
@@ -479,6 +480,7 @@ body:has(#messages) #content {
   display: flex;
   gap: var(--topic-gap);
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 #prompt {
@@ -993,19 +995,20 @@ body:has(#messages) #content {
   body:has(#messages) #topics {
     flex-shrink: 0;
   }
-  #topic-selector {
+  #topic-selector, #topics {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
   }
-  .topic-tabs {
+  .topic-tabs, #topics {
     flex-wrap: nowrap;
-    gap: 8px;
+    gap: 4px;
+    justify-content: flex-start;
   }
-  #topic-selector .head {
+  #topic-selector .head, #topics .head {
     white-space: nowrap;
-    font-size: 13px;
-    padding: 4px 0;
+    font-size: 12px;
+    padding: 3px 0;
   }
   #chat-form {
     position: relative;
