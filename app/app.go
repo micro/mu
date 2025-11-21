@@ -48,16 +48,16 @@ var Template = `
       </div>
       <div id="account">&nbsp;</div>
     </div>
-    <div id="nav-container">
-      <div id="nav">
-				<a href="/home"><img src="home.png" style="margin-bottom: 1px"><span class="label">Home</span></a>
-				<a href="/chat"><img src="chat.png"><span class="label">Chat</span></a>
-				<a href="/blog"><img src="blog.png"><span class="label">Blog</span></a>
-				<a href="/news"><img src="news.png"><span class="label">News</span></a>
-				<a href="/video"><img src="video.png"><span class="label">Video</span></a>
-      </div>
-    </div>
     <div id="container">
+      <div id="nav-container">
+        <div id="nav">
+					<a href="/home"><img src="home.png" style="margin-bottom: 1px"><span class="label">Home</span></a>
+					<a href="/chat"><img src="chat.png"><span class="label">Chat</span></a>
+					<a href="/blog"><img src="blog.png"><span class="label">Blog</span></a>
+					<a href="/news"><img src="news.png"><span class="label">News</span></a>
+					<a href="/video"><img src="video.png"><span class="label">Video</span></a>
+        </div>
+      </div>
       <div id="content">%s</div>
     </div>
     </div>
