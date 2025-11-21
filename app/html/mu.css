@@ -397,18 +397,26 @@ body:has(#messages) #content {
 }
 
 .topic-brief {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.4;
-  padding: 8px 12px;
-  background: #f9f9f9;
-  border-left: 3px solid #ddd;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+  padding: 12px 15px;
+  background: #f0f7ff;
+  border-left: 4px solid #4a90e2;
   border-radius: 3px;
+  margin-bottom: 15px;
 }
 
 .topic-brief strong {
-  color: #333;
-  font-weight: 600;
+  color: #000;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.topic-brief div {
+  color: #555;
 }
 
 #messages {

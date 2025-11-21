@@ -76,6 +76,12 @@ var topic = '';
 function switchTopic(t) {
   topic = t;
   
+  // Update page title to show current topic
+  const pageTitle = document.getElementById('page-title');
+  if (pageTitle) {
+    pageTitle.textContent = `Chat - ${t}`;
+  }
+  
   // Update hidden input (only exists on chat page)
   const topicInput = document.getElementById('topic');
   if (topicInput) {
@@ -100,12 +106,23 @@ function switchTopic(t) {
   
   // Show topic summary at top (only if topic has a summary)
   const summaryDiv = document.getElementById('topic-summary');
-  if (roomsData && roomsData[t] && roomsData[t].Summary) {
+  console.log('Switching to topic:', t);
+  console.log('Room data:', roomsData ? roomsData[t] : 'No roomsData');
+  
+  if (roomsData && roomsData[t]) {
     const room = roomsData[t];
-    const renderedSummary = room.Summary;
-    summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}:</strong> <span>${renderedSummary}</span></div>`;
+    if (room.Summary) {
+      console.log('Found summary for', t, ':', room.Summary.substring(0, 100));
+      summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}</strong><div>${room.Summary}</div></div>`;
+      summaryDiv.style.display = 'block';
+    } else {
+      console.log('No summary for', t);
+      summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}</strong><div style="color: #999; font-style: italic;">Loading summary...</div></div>`;
+      summaryDiv.style.display = 'block';
+    }
   } else {
     summaryDiv.innerHTML = '';
+    summaryDiv.style.display = 'none';
   }
   
   // Load conversation history for this topic
