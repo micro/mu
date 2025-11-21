@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,16 +33,14 @@ type Message struct {
 }
 
 var Template = `
-<div id="summaries-modal" class="modal" style="display: none;">
-  <div class="modal-content">
-    <span class="modal-close" onclick="closeSummaries()">&times;</span>
-    <div id="summaries-content">%s</div>
-  </div>
+<div id="topic-selector">
+  <div class="topic-tabs">%s</div>
 </div>
-<button id="summaries-btn" onclick="openSummaries()" style="position: fixed; bottom: 80px; right: 20px; z-index: 100; padding: 12px 16px; border-radius: 50%%; background: #333; color: white; border: none; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">📋</button>
-<div id="messages">%s</div>
+<div id="topic-summary"></div>
+<div id="messages"></div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
+<input id="topic" name="topic" type="hidden">
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autocomplete=off>
 <button>Send</button>
 </form>`
@@ -155,7 +154,19 @@ func loadChats() {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		mutex.RLock()
-		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, summary, summary))
+		
+		// Build topic tabs HTML
+		var topicTabs string
+		for _, topic := range topics {
+			topicTabs += fmt.Sprintf(`<button class="topic-tab" data-topic="%s" onclick="switchTopic('%s')">%s</button>`, topic, topic, topic)
+		}
+		
+		// Build rooms data as JSON for JavaScript
+		roomsJSON, _ := json.Marshal(rooms)
+		
+		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs))
+		tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var roomsData = %s;</script></body>`, roomsJSON), 1)
+		
 		mutex.RUnlock()
 
 		w.Write([]byte(tmpl))
@@ -211,9 +222,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := fmt.Sprintf("%v", form["prompt"])
+	
+	// Get topic for enhanced RAG
+	topic := ""
+	if t := form["topic"]; t != nil {
+		topic = fmt.Sprintf("%v", t)
+	}
 
 	// Search the index for relevant context (RAG)
-	ragEntries := data.Search(q, 3)
+	// If topic is provided, use it as additional context for search
+	searchQuery := q
+	if len(topic) > 0 {
+		searchQuery = topic + " " + q
+	}
+	ragEntries := data.Search(searchQuery, 3)
 	var ragContext []string
 	for _, entry := range ragEntries {
 		// Format each entry as context

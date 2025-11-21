@@ -66,13 +66,59 @@ self.addEventListener('activate', function (e) {
 // ============================================
 
 var context = [];
+var topic = '';
 
-function openSummaries() {
-  document.getElementById('summaries-modal').style.display = 'block';
+function switchTopic(t) {
+  topic = t;
+  
+  // Update hidden input
+  document.getElementById('topic').value = t;
+  
+  // Update active tab
+  document.querySelectorAll('.topic-tab').forEach(tab => {
+    if (tab.dataset.topic === t) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+  
+  // Load context for this topic
+  loadContext();
+  
+  // Clear and reload messages
+  const messages = document.getElementById('messages');
+  messages.innerHTML = '';
+  
+  // Show topic summary at top
+  const summaryDiv = document.getElementById('topic-summary');
+  if (roomsData && roomsData[topic]) {
+    const room = roomsData[topic];
+    summaryDiv.innerHTML = `<div class="message"><span class="llm">AI Brief</span><strong>${topic}</strong><div>${room.Summary}</div></div>`;
+  } else {
+    summaryDiv.innerHTML = '';
+  }
+  
+  // Load conversation history for this topic
+  loadMessages();
+  
+  // Scroll to bottom
+  messages.scrollTop = messages.scrollHeight;
 }
 
-function closeSummaries() {
-  document.getElementById('summaries-modal').style.display = 'none';
+function loadContext() {
+  const key = `context-${topic}`;
+  const ctx = sessionStorage.getItem(key);
+  if (ctx == null || ctx == undefined || ctx == "") {
+    context = [];
+    return;
+  }
+  context = JSON.parse(ctx);
+}
+
+function setContext() {
+  const key = `context-${topic}`;
+  sessionStorage.setItem(key, JSON.stringify(context));
 }
 
 function loadMessages() {
@@ -99,6 +145,9 @@ function askLLM(el) {
   for (let [key, value] of formData.entries()) {
     data[key] = value;
   }
+  
+  // Add current topic for enhanced RAG
+  data["topic"] = topic;
 
   var p = document.getElementById("prompt");
 
@@ -164,21 +213,14 @@ function askLLM(el) {
   return false;
 }
 
-function loadContext() {
-  var ctx = sessionStorage.getItem("context");
-  if (ctx == null || ctx == undefined || ctx == "") {
-    return;
-  }
-  context = JSON.parse(ctx);
-}
-
-function setContext() {
-  sessionStorage.setItem("context", JSON.stringify(context));
-}
-
 function loadChat() {
-  loadContext();
-  loadMessages();
+  // Initialize with first topic if available
+  if (typeof roomsData !== 'undefined') {
+    const topics = Object.keys(roomsData);
+    if (topics.length > 0) {
+      switchTopic(topics[0]);
+    }
+  }
 
   // scroll to bottom of prompt
   const prompt = document.getElementById('prompt');
