@@ -152,6 +152,7 @@ function loadChat() {
   const prompt = document.getElementById('prompt');
   const messages = document.getElementById('messages');
   const container = document.getElementById('container');
+  const content = document.getElementById('content');
 
   // Only adjust for mobile keyboards when viewport is small
   if (window.visualViewport && window.innerWidth <= 600) {
@@ -162,6 +163,13 @@ function loadChat() {
     });
 
     window.visualViewport.addEventListener('resize', () => {
+      const viewportHeight = window.visualViewport.height;
+      
+      // Adjust content height based on actual visible viewport
+      if (content) {
+        content.style.height = (viewportHeight - 51) + 'px';
+      }
+      
       // Keep messages scrolled to bottom
       messages.scrollTop = messages.scrollHeight;
     });
