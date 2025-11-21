@@ -45,13 +45,9 @@ input {
   box-sizing: border-box;
 }
 
-form input {
-  width: 100%;
-}
-
-form[action="/video"] input {
-  flex: 1 !important;
-  width: auto !important;
+#query {
+  width: calc(100vw - 200px);
+  max-width: 600px;
 }
 
 select {
@@ -576,18 +572,9 @@ td {
 #video form {
   width: 100%;
   margin: 0;
-  display: flex !important;
+  display: flex;
   gap: 10px;
   align-items: center;
-}
-
-#video form input, #video form #query {
-  flex: 1 !important;
-  padding: 10px;
-  margin: 0;
-  box-sizing: border-box;
-  width: auto !important;
-  max-width: none !important;
 }
 
 #video form button {
@@ -595,22 +582,6 @@ td {
   margin: 0;
   width: auto;
   flex-shrink: 0;
-}
-
-#video #query {
-  flex: 1 !important;
-  width: auto !important;
-}
-
-#query {
-  flex: 1;
-  width: auto;
-  box-sizing: border-box;
-}
-
-form #query {
-  flex: 1 !important;
-  width: auto !important;
 }
 
 /* ========================================
