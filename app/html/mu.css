@@ -688,6 +688,17 @@ form #query {
   border-radius: 5px;
 }
 
+.cover {
+  width: 200px;
+  height: auto;
+  min-height: 100px;
+  margin-right: 10px;
+  margin-bottom: 10px;
+  display: inline-block;
+  border-radius: 3px;
+  background: whitesmoke;
+}
+
 .blurb {
   display: inline-block;
   vertical-align: top;
