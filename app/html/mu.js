@@ -349,13 +349,7 @@ self.addEventListener("hashchange", function(event) {
     
     // For chat page, switch to the topic
     if (window.location.pathname === '/chat') {
-      const topicLinks = document.querySelectorAll('#topic-selector .head');
-      for (const link of topicLinks) {
-        if (link.textContent === hash) {
-          switchTopic(hash);
-          break;
-        }
-      }
+      switchToTopicFromHash(hash);
     }
   }
 });
@@ -372,6 +366,16 @@ function highlightTopic(topicName) {
       link.classList.add('active');
     }
   });
+}
+
+function switchToTopicFromHash(hash) {
+  const topicLinks = document.querySelectorAll('#topic-selector .head');
+  for (const link of topicLinks) {
+    if (link.textContent === hash) {
+      switchTopic(hash);
+      break;
+    }
+  }
 }
 
 self.addEventListener('DOMContentLoaded', function() {
@@ -440,13 +444,7 @@ self.addEventListener('DOMContentLoaded', function() {
     
     // If on chat page and there's a hash, switch to that topic
     if (window.location.pathname === '/chat') {
-      const topicLinks = document.querySelectorAll('#topic-selector .head');
-      for (const link of topicLinks) {
-        if (link.textContent === hash) {
-          switchTopic(hash);
-          break;
-        }
-      }
+      switchToTopicFromHash(hash);
     }
   }
 
