@@ -82,30 +82,42 @@ td {
    ======================================== */
 #head {
   background: white;
-  top: 0;
   width: 100%;
   display: flex;
   align-items: center;
-  padding: 0 20px;
-  max-width: 1280px;
-  margin: 0 auto;
-  position: relative;
-}
-
-#head a {
-  margin-right: 2px;
-  color: black;
-  font-weight: bold;
-  text-decoration: none;
-  padding: 5px 7px;
+  justify-content: space-between;
+  padding: 20px 40px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 #brand {
-  padding: 20px 10px 20px 0;
+  flex: 0 0 auto;
 }
 
 #brand a {
-  padding: 0;
+  color: black;
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 1.2em;
+}
+
+#account {
+  flex: 0 0 auto;
+}
+
+#account a {
+  color: black;
+  font-weight: bold;
+  text-decoration: none;
+  padding: 5px 10px;
+}
+
+#nav-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 15px 0;
+  background: white;
 }
 
 #nav {
@@ -114,7 +126,15 @@ td {
   gap: 5px;
 }
 
-#nav a.active, #nav a:hover, .head:hover {
+#nav a {
+  margin-right: 2px;
+  color: black;
+  font-weight: bold;
+  text-decoration: none;
+  padding: 5px 7px;
+}
+
+#nav a.active, #nav a:hover {
   background: whitesmoke;
   border-radius: 5px;
 }
@@ -130,12 +150,6 @@ td {
 #nav .label {
   display: inline-block;
   margin-left: 5px;
-}
-
-#account {
-  display: block;
-  margin-left: auto;
-  z-index: 10;
 }
 
 #account a {
@@ -698,37 +712,30 @@ td {
     overflow-x: scroll;
   }
   #head {
-    display: block;
-    text-align: center;
-    position: relative;
-    border-top: 1px solid darkgrey;
-    border-bottom: 1px solid darkgrey;
-    padding: 0;
+    padding: 10px 20px;
+    border-bottom: 1px solid #ddd;
   }
-  #account {
-    position: absolute;
-    top: 10px;
-    right: 20px;
-    margin-left: 0;
-    text-align: right;
+  #brand a {
+    font-size: 1em;
   }
-  #brand {
-    padding: 10px;
-    display: block;
-    text-align: center;
+  #account a {
+    padding: 4px 5px;
   }
-  #nav {
+  #nav-container {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
+    padding: 0;
+    background: white;
+    border-top: 1px solid #ddd;
+    z-index: 1000;
+  }
+  #nav {
     padding: 5px 5px 3px 5px;
     display: flex;
     justify-content: space-around;
     align-items: center;
-    background: white;
-    border-top: 1px solid #ddd;
-    z-index: 1000;
     gap: 0;
   }
   #nav a {
@@ -754,7 +761,6 @@ td {
     margin-bottom: 0;
     height: 20px;
   }
-  #head a { padding: 4px 5px; }
   #container {
     height: calc(100vh - 140px);
     overflow-y: auto;
