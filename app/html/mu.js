@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v29';
+var VERSION = 'v30';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Static assets to cache

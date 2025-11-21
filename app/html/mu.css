@@ -436,9 +436,15 @@ td {
   margin-bottom: 20px;
 }
 
+.head {
+  font-weight: bold;
+  padding: 5px 6px;
+  text-decoration: none;
+}
+
 /* ========================================
    BLOG PAGE
-   ======================================== */
+   ========================================"
 #blog {
   max-width: 750px;
 }
