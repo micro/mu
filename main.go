@@ -53,7 +53,7 @@ func main() {
 		"/video":   true,
 		"/news":    true,
 		"/chat":    true,
-		"/blog":    true,
+		"/posts":   true,
 		"/home":    true,
 		"/logout":  true,
 		"/session": true,
@@ -75,7 +75,7 @@ func main() {
 	http.HandleFunc("/chat", chat.Handler)
 
 	// serve blog (full list)
-	http.HandleFunc("/blog", blog.Handler)
+	http.HandleFunc("/posts", blog.Handler)
 
 	// serve individual blog post (public, no auth)
 	http.HandleFunc("/post", blog.PostHandler)

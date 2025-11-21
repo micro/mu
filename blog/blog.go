@@ -213,7 +213,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Create the blog page with posting form
 	content := fmt.Sprintf(`<div id="blog">
 		<div style="margin-bottom: 30px;">
-			<form id="blog-form" method="POST" action="/blog" style="display: flex; flex-direction: column; gap: 10px;">
+			<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
 				<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<textarea name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
 				<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer; align-self: flex-start;">Post</button>
@@ -225,7 +225,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>
 	</div>`, list)
 
-	html := app.RenderHTML("Blog", "Share your thoughts", content)
+	html := app.RenderHTML("Posts", "Share your thoughts", content)
 	w.Write([]byte(html))
 }
 
@@ -274,7 +274,7 @@ func GetPost(id string) *Post {
 func PostHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		http.Redirect(w, r, "/blog", 302)
+		http.Redirect(w, r, "/posts", 302)
 		return
 	}
 
@@ -292,13 +292,12 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	linkedContent := linkify(post.Content)
 
 	content := fmt.Sprintf(`<div id="blog">
-		<h1>%s</h1>
 		<small style="color: #666;">%s by %s</small>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="white-space: pre-wrap;">%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
-		<a href="/blog">← Back to all posts</a>
-	</div>`, title, app.TimeAgo(post.CreatedAt), post.Author, linkedContent)
+		<a href="/posts">← Back to all posts</a>
+	</div>`, app.TimeAgo(post.CreatedAt), post.Author, linkedContent)
 
 	html := app.RenderHTML(title, post.Content[:min(len(post.Content), 150)], content)
 	w.Write([]byte(html))
