@@ -91,7 +91,7 @@ func loadChats() {
 
 	for topic, prompt := range prompts {
 		// Search for relevant content for each topic
-		ragEntries := data.Search(topic, 10)
+		ragEntries := data.Search(topic, 3)
 		var ragContext []string
 		for _, entry := range ragEntries {
 			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
@@ -195,11 +195,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		q := fmt.Sprintf("%v", form["prompt"])
+	q := fmt.Sprintf("%v", form["prompt"])
 
-		// Search the index for relevant context (RAG)
-		ragEntries := data.Search(q, 5)
-		var ragContext []string
+	// Search the index for relevant context (RAG)
+	ragEntries := data.Search(q, 3)
+	var ragContext []string
 		for _, entry := range ragEntries {
 			// Format each entry as context
 			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
