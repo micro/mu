@@ -170,16 +170,6 @@ td {
   font-size: 1.1em;
 }
 
-#topics-container {
-  position: fixed;
-  left: 250px;
-  top: 61px;
-  right: 0;
-  background: white;
-  z-index: 50;
-  padding: 10px 20px 0 20px;
-}
-
 /* ========================================
    LAYOUT
    ======================================== */
@@ -197,7 +187,6 @@ td {
   margin-left: 250px;
   max-width: 1280px;
   padding: 20px;
-  padding-top: 50px;
   text-align: left;
 }
 
@@ -776,14 +765,6 @@ td {
   #content {
     margin-left: 0;
     padding: 10px;
-    padding-top: 50px;
-  }
-  #topics-container {
-    position: fixed;
-    left: 0;
-    top: 51px;
-    right: 0;
-    padding: 5px 10px 0 10px;
   }
   #nav-container {
     position: fixed;

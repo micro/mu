@@ -59,7 +59,6 @@ var Template = `
 					<a id="logout-link" href="/logout"><img src="logout.png"><span class="label">Logout</span></a>
         </div>
       </div>
-      <div id="topics-container"></div>
       <div id="content">%s</div>
     </div>
     </div>

@@ -116,9 +116,7 @@ func getDomain(v string) string {
 }
 
 var Results = `
-<script>
-document.getElementById('topics-container').innerHTML = '<div id="topics">%s</div>';
-</script>
+<div id="topics">%s</div>
 <h1 style="margin-top: 0">Results</h1>
 <div id="results">
 %s
@@ -224,7 +222,7 @@ func saveHtml(head, content []byte) {
 	if len(content) == 0 {
 		return
 	}
-	body := fmt.Sprintf(`<script>document.getElementById('topics-container').innerHTML = '<div id="topics">%s</div>';</script><div>%s</div>`, string(head), string(content))
+	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
 	html = app.RenderHTML("News", "Read the news", body)
 	data.SaveFile("news.html", html)
 }
