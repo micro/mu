@@ -65,16 +65,24 @@ self.addEventListener('activate', function (e) {
 // CHAT FUNCTIONALITY
 // ============================================
 
+// Constants
+const CHAT_TOPIC_SELECTOR = '#topic-selector .head';
+const TOPICS_SELECTOR = '#topics .head';
+const CHAT_PATH = '/chat';
+
 var context = [];
 var topic = '';
 
 function switchTopic(t) {
   topic = t;
   
-  // Update hidden input
-  document.getElementById('topic').value = t;
+  // Update hidden input (only exists on chat page)
+  const topicInput = document.getElementById('topic');
+  if (topicInput) {
+    topicInput.value = t;
+  }
   
-  // Update active tab - match by text content without hashtag
+  // Update active tab - match by text content
   document.querySelectorAll('#topic-selector .head').forEach(tab => {
     if (tab.textContent === t) {
       tab.classList.add('active');
@@ -92,7 +100,7 @@ function switchTopic(t) {
   
   // Show topic summary at top (only if topic has a summary)
   const summaryDiv = document.getElementById('topic-summary');
-  if (t !== 'All' && roomsData && roomsData[t] && roomsData[t].Summary) {
+  if (roomsData && roomsData[t] && roomsData[t].Summary) {
     const room = roomsData[t];
     summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}:</strong> ${room.Summary}</div>`;
   } else {
@@ -214,8 +222,26 @@ function askLLM(el) {
 }
 
 function loadChat() {
-  // Always default to All topic
-  switchTopic('All');
+  // Get topics from the page
+  const topicLinks = document.querySelectorAll(CHAT_TOPIC_SELECTOR);
+  
+  // Guard against empty topic list
+  if (topicLinks.length === 0) {
+    console.warn('No topics available in chat');
+    return;
+  }
+  
+  // Check if there's a hash in the URL and if it exists
+  let topicLoaded = false;
+  if (window.location.hash) {
+    const hash = window.location.hash.substring(1);
+    topicLoaded = switchToTopicIfExists(hash);
+  }
+  
+  // Fallback to first topic if no valid hash was found
+  if (!topicLoaded) {
+    switchTopic(topicLinks[0].textContent);
+  }
 
   // scroll to bottom of prompt
   const prompt = document.getElementById('prompt');
@@ -333,12 +359,64 @@ function setSession() {
 // EVENT LISTENERS
 // ============================================
 
-self.addEventListener("hashchange", function(event) {
-  // Don't reload on hash change - anchors should just scroll
-  if (window.location.hash) {
-    console.log('Hash changed to:', window.location.hash);
+function highlightTopic(topicName) {
+  // Specific selectors for topic elements
+  const selectors = [CHAT_TOPIC_SELECTOR, TOPICS_SELECTOR];
+  
+  // Cache all matching elements to avoid multiple DOM queries
+  const allTopicLinks = [];
+  selectors.forEach(selector => {
+    const elements = document.querySelectorAll(selector);
+    allTopicLinks.push(...elements);
+  });
+  
+  // Remove active from all
+  allTopicLinks.forEach(link => {
+    link.classList.remove('active');
+  });
+  
+  // Cache the hash string to avoid repeated concatenation
+  const hashString = '#' + topicName;
+  
+  // Add active class to the matching topic
+  allTopicLinks.forEach(link => {
+    const href = link.getAttribute('href');
+    if (link.textContent === topicName || (href && href.endsWith(hashString))) {
+      link.classList.add('active');
+    }
+  });
+}
+
+function switchToTopicIfExists(hash) {
+  // Check if the topic exists in the selector
+  const topicLinks = document.querySelectorAll(CHAT_TOPIC_SELECTOR);
+  for (const link of topicLinks) {
+    if (link.textContent === hash) {
+      switchTopic(hash);
+      return true;
+    }
   }
-});
+  return false;
+}
+
+function handleHashChange() {
+  if (!window.location.hash) return;
+  
+  const hash = window.location.hash.substring(1);
+  console.log('Hash changed to:', hash);
+  
+  // Highlight the matching topic/tag
+  highlightTopic(hash);
+  
+  // For chat page, switch to the topic if it exists
+  if (window.location.pathname === CHAT_PATH) {
+    switchToTopicIfExists(hash);
+  }
+}
+
+self.addEventListener("hashchange", handleHashChange);
+
+self.addEventListener("popstate", handleHashChange);
 
 self.addEventListener('DOMContentLoaded', function() {
   // Listen for service worker updates
@@ -384,8 +462,24 @@ self.addEventListener('DOMContentLoaded', function() {
   }
 
   // load chat
-  if (window.location.pathname == "/chat") {
+  if (window.location.pathname == CHAT_PATH) {
     loadChat();
+    
+    // Add click handlers for chat topics
+    document.querySelectorAll(CHAT_TOPIC_SELECTOR).forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const topicName = this.textContent;
+        switchTopic(topicName);
+        // Update URL hash with pushState for proper browser history
+        history.pushState(null, null, '#' + topicName);
+      });
+    });
+  }
+  
+  // Handle hash on page load for topic highlighting (non-chat pages)
+  if (window.location.hash && window.location.pathname !== CHAT_PATH) {
+    handleHashChange();
   }
 
   // Check session status on page load

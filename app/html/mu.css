@@ -1,6 +1,10 @@
 /* ========================================
    BASE STYLES
    ======================================== */
+:root {
+  --topic-gap: 15px;
+}
+
 html, body {
   height: 100%;
   width: 100%;
@@ -363,28 +367,28 @@ body:has(#messages) #content {
 
 .topic-tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--topic-gap);
   flex-wrap: wrap;
 }
 
 #topic-selector .head {
-  padding: 4px 10px;
-  font-size: 13px;
-  background: whitesmoke;
-  border-radius: 5px;
+  padding: 5px 0;
+  font-size: 14px;
   text-decoration: none;
   color: #333;
-  transition: all 0.2s;
+  transition: color 0.2s;
   cursor: pointer;
+  font-weight: normal;
 }
 
 #topic-selector .head:hover {
-  background: #e0e0e0;
+  color: #000;
+  text-decoration: underline;
 }
 
 #topic-selector .head.active {
-  background: #333;
-  color: white;
+  color: #000;
+  text-decoration: underline;
   font-weight: bold;
 }
 
@@ -465,6 +469,9 @@ body:has(#messages) #content {
   margin-bottom: 10px;
   padding-bottom: 5px;
   border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  gap: var(--topic-gap);
+  flex-wrap: wrap;
 }
 
 #prompt {
@@ -542,8 +549,22 @@ body:has(#messages) #content {
 
 .head {
   font-weight: bold;
-  padding: 5px 6px;
+  padding: 5px 0;
   text-decoration: none;
+  color: #333;
+  transition: color 0.2s;
+  position: relative;
+}
+
+.head:hover {
+  color: #000;
+  text-decoration: underline;
+}
+
+.head.active {
+  color: #000;
+  text-decoration: underline;
+  font-weight: bold;
 }
 
 /* ========================================
