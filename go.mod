@@ -8,7 +8,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mmcdole/gofeed v1.3.0
 	github.com/mrz1836/go-sanitize v1.5.3
-	github.com/philippgille/chromem-go v0.7.0
 	github.com/piquette/finance-go v1.1.0
 	golang.org/x/crypto v0.40.0
 	golang.org/x/net v0.42.0
