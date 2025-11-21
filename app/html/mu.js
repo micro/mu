@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v55';
+var VERSION = 'v57';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -91,7 +91,15 @@ function switchTopic(t) {
     }
   });
   
-  // Topics only affect RAG context, not conversation history
+  // Add context change message to chat
+  const messages = document.getElementById('messages');
+  if (messages) {
+    const contextMsg = document.createElement('div');
+    contextMsg.className = 'context-message';
+    contextMsg.textContent = `Context set to ${t} - questions will be enhanced with ${t}-related information`;
+    messages.appendChild(contextMsg);
+    messages.scrollTop = messages.scrollHeight;
+  }
 }
 
 function loadContext() {
@@ -214,16 +222,11 @@ function loadChat() {
   loadMessages();
   
   // Check if there's a hash in the URL to set active topic
-  let topicLoaded = false;
   if (window.location.hash) {
     const hash = window.location.hash.substring(1);
-    topicLoaded = switchToTopicIfExists(hash);
+    switchToTopicIfExists(hash);
   }
-  
-  // Default to first topic if no valid hash was found
-  if (!topicLoaded) {
-    switchTopic(topicLinks[0].textContent);
-  }
+  // Otherwise no topic is selected by default
 
   // scroll to bottom of prompt
   const prompt = document.getElementById('prompt');
