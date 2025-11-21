@@ -94,8 +94,11 @@ func loadChats() {
 		ragEntries := data.Search(topic, 3)
 		var ragContext []string
 		for _, entry := range ragEntries {
-			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-			ragContext = append(ragContext, contextStr)
+			contentStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+			if len(contentStr) > 500 {
+				contentStr = contentStr[:500]
+			}
+			ragContext = append(ragContext, contentStr)
 		}
 
 		resp, err := askLLM(&Prompt{
@@ -183,33 +186,39 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			form["prompt"] = msg
 		}
 
-		var context History
+	var context History
 
-		if vals := form["context"]; vals != nil {
-			cvals := vals.([]interface{})
-			for _, val := range cvals {
-				msg := val.(map[string]interface{})
-				prompt := fmt.Sprintf("%v", msg["prompt"])
-				answer := fmt.Sprintf("%v", msg["answer"])
-				context = append(context, Message{Prompt: prompt, Answer: answer})
-			}
+	if vals := form["context"]; vals != nil {
+		cvals := vals.([]interface{})
+		// Keep only the last 5 messages to reduce context size
+		startIdx := 0
+		if len(cvals) > 5 {
+			startIdx = len(cvals) - 5
 		}
+		for _, val := range cvals[startIdx:] {
+			msg := val.(map[string]interface{})
+			prompt := fmt.Sprintf("%v", msg["prompt"])
+			answer := fmt.Sprintf("%v", msg["answer"])
+			context = append(context, Message{Prompt: prompt, Answer: answer})
+		}
+	}
 
 	q := fmt.Sprintf("%v", form["prompt"])
 
 	// Search the index for relevant context (RAG)
 	ragEntries := data.Search(q, 3)
 	var ragContext []string
-		for _, entry := range ragEntries {
-			// Format each entry as context
-			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-			if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-				contextStr += fmt.Sprintf(" (Source: %s)", url)
-			}
-			ragContext = append(ragContext, contextStr)
+	for _, entry := range ragEntries {
+		// Format each entry as context
+		contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+		if len(contextStr) > 500 {
+			contextStr = contextStr[:500]
 		}
-
-		prompt := &Prompt{
+		if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+			contextStr += fmt.Sprintf(" (Source: %s)", url)
+		}
+		ragContext = append(ragContext, contextStr)
+	}		prompt := &Prompt{
 			Rag:      ragContext,
 			Context:  context,
 			Question: q,
