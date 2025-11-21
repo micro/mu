@@ -772,6 +772,9 @@ td {
     margin-left: 0;
     padding: 10px;
   }
+  #page-title {
+    text-align: center;
+  }
   #nav-container {
     position: fixed;
     bottom: 0;
