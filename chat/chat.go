@@ -155,11 +155,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		mutex.RLock()
 		
-		// Build topic tabs HTML
-		var topicTabs string
-		for _, topic := range topics {
-			topicTabs += fmt.Sprintf(`<button class="topic-tab" data-topic="%s" onclick="switchTopic('%s')">%s</button>`, topic, topic, topic)
-		}
+		// Add Main topic as first option
+		allTopics := append([]string{"Main"}, topics...)
+		
+		// Use Head() to format topics as hashtag pills
+		topicTabs := app.Head("chat", allTopics)
 		
 		// Build rooms data as JSON for JavaScript
 		roomsJSON, _ := json.Marshal(rooms)

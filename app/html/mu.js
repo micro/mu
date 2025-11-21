@@ -74,9 +74,10 @@ function switchTopic(t) {
   // Update hidden input
   document.getElementById('topic').value = t;
   
-  // Update active tab
-  document.querySelectorAll('.topic-tab').forEach(tab => {
-    if (tab.dataset.topic === t) {
+  // Update active tab using class 'head' instead of 'topic-tab'
+  document.querySelectorAll('.head').forEach(tab => {
+    const href = tab.getAttribute('href');
+    if (href && href.includes('#' + t)) {
       tab.classList.add('active');
     } else {
       tab.classList.remove('active');
@@ -90,11 +91,11 @@ function switchTopic(t) {
   const messages = document.getElementById('messages');
   messages.innerHTML = '';
   
-  // Show topic summary at top
+  // Show topic summary at top (only if topic has a summary)
   const summaryDiv = document.getElementById('topic-summary');
-  if (roomsData && roomsData[topic]) {
-    const room = roomsData[topic];
-    summaryDiv.innerHTML = `<div class="message"><span class="llm">AI Brief</span><strong>${topic}</strong><div>${room.Summary}</div></div>`;
+  if (t !== 'Main' && roomsData && roomsData[t] && roomsData[t].Summary) {
+    const room = roomsData[t];
+    summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}:</strong> ${room.Summary}</div>`;
   } else {
     summaryDiv.innerHTML = '';
   }
@@ -214,13 +215,8 @@ function askLLM(el) {
 }
 
 function loadChat() {
-  // Initialize with first topic if available
-  if (typeof roomsData !== 'undefined') {
-    const topics = Object.keys(roomsData);
-    if (topics.length > 0) {
-      switchTopic(topics[0]);
-    }
-  }
+  // Initialize with Main topic
+  switchTopic('Main');
 
   // scroll to bottom of prompt
   const prompt = document.getElementById('prompt');
