@@ -160,21 +160,7 @@ function loadChat() {
     });
 
     window.visualViewport.addEventListener('resize', () => {
-      const viewportHeight = window.visualViewport.height;
-      const documentHeight = document.documentElement.clientHeight;
-
-      // Keyboard opened
-      if (viewportHeight < documentHeight) {
-        messages.style.height = (viewportHeight - 220) + 'px';
-        container.style.overflow = 'hidden';
-      } else {
-        // Keyboard closed - reset to CSS default
-        messages.style.height = '';
-        // Ensure no scroll on container
-        container.scrollTop = 0;
-        window.scrollTo(0, 0);
-      }
-
+      // Keep messages scrolled to bottom
       messages.scrollTop = messages.scrollHeight;
     });
   }
