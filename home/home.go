@@ -20,7 +20,7 @@ var Template = `<div id="home">
 func Cards(news, markets, reminder, posts, latest string) []string {
 	news += app.Link("More", "/news")
 	markets += app.Link("More", "/markets")
-	posts += app.Link("More", "/blog")
+	posts += app.Link("More", "/posts")
 	latest += app.Link("More", "/video")
 
 	leftCards := []string{
