@@ -1,9 +1,10 @@
 {
   "Crypto": "Provide 2 sentences explaining the current state and key trends in cryptocurrency markets.",
+  "Dev": "Provide 2 sentences explaining the current trends and hot topics in startups and development.",
   "Finance": "Provide 2 sentences explaining the current state and key trends in global financial markets.",
+  "Islam": "Provide 2 sentences explaining current topics and discussions in Islamic thought, scholarship, and community matters.",
   "Politics": "Provide 2 sentences explaining the current major political topics and trends.",
   "Tech": "Provide 2 sentences explaining the current major trends and developments in technology.",
   "UK": "Provide 2 sentences explaining the current major topics and trends in UK news.",
-  "World": "Provide 2 sentences explaining the current major topics and trends in MENA region.",
-  "Dev": "Provide 2 sentences explaining the current trends and hot topics in startups and development."
+  "World": "Provide 2 sentences explaining the current major topics and trends in MENA region."
 }
