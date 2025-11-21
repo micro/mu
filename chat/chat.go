@@ -32,9 +32,11 @@ type Message struct {
 }
 
 var Template = `
+<div id="summaries" style="display: none;">%s</div>
 <div id="messages">%s</div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
+<button type="button" onclick="toggleSummaries()" style="margin-right: 10px;">Topics</button>
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autocomplete=off>
 <button>Send</button>
 </form>`
@@ -148,7 +150,7 @@ func loadChats() {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		mutex.RLock()
-		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, summary))
+		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, summary, summary))
 		mutex.RUnlock()
 
 		w.Write([]byte(tmpl))

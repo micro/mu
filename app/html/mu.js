@@ -65,7 +65,20 @@ self.addEventListener('activate', function (e) {
 // CHAT FUNCTIONALITY
 // ============================================
 
-let context = [];
+var context = [];
+
+function toggleSummaries() {
+  const summaries = document.getElementById('summaries');
+  const messages = document.getElementById('messages');
+  
+  if (summaries.style.display === 'none') {
+    summaries.style.display = 'block';
+    messages.style.display = 'none';
+  } else {
+    summaries.style.display = 'none';
+    messages.style.display = 'block';
+  }
+}
 
 function loadMessages() {
   console.log("loading messages");
