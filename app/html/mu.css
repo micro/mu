@@ -565,7 +565,9 @@ td {
 }
 
 #video form {
+  width: 100%;
   max-width: 465px;
+  margin: 0;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -573,14 +575,16 @@ td {
 
 #video form input {
   flex: 1;
+  padding: 10px;
   margin: 0;
   box-sizing: border-box;
-  width: auto;
 }
 
 #video form button {
-  flex-shrink: 0;
+  padding: 10px 20px;
   margin: 0;
+  width: auto;
+  flex-shrink: 0;
 }
 
 /* ========================================
