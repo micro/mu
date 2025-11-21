@@ -48,6 +48,7 @@ input {
 #query {
   flex: 1 !important;
   width: auto !important;
+  min-width: 0 !important;
 }
 
 select {
