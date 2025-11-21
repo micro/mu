@@ -738,6 +738,7 @@ td {
     border-bottom: 1px solid #ddd;
     justify-content: center;
     position: relative;
+    min-height: 40px;
   }
   #brand {
     position: absolute;
