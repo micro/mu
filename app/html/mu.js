@@ -74,9 +74,9 @@ function switchTopic(t) {
   // Update hidden input
   document.getElementById('topic').value = t;
   
-  // Update active tab - match by text content with hashtag
+  // Update active tab - match by text content without hashtag
   document.querySelectorAll('#topic-selector .head').forEach(tab => {
-    if (tab.textContent === '#' + t) {
+    if (tab.textContent === t) {
       tab.classList.add('active');
     } else {
       tab.classList.remove('active');

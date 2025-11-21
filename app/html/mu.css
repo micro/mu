@@ -374,7 +374,8 @@ body:has(#messages) #content {
   border-radius: 5px;
   text-decoration: none;
   color: #333;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  cursor: pointer;
 }
 
 #topic-selector .head:hover {
