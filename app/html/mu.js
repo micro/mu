@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v25';
+var VERSION = 'v26';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Static assets to cache on install
@@ -116,8 +116,8 @@ self.addEventListener('fetch', function (e) {
   if (url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/)) {
     e.respondWith(cacheFirst(e.request));
   } else {
-    // Network-first for pages and API calls to ensure fresh content
-    e.respondWith(networkFirst(e.request));
+    // Network-only for pages - no caching to ensure fresh content
+    e.respondWith(fetch(e.request));
   }
 });
 

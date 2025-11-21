@@ -594,6 +594,17 @@ td {
   width: auto !important;
 }
 
+#query {
+  flex: 1;
+  width: auto;
+  box-sizing: border-box;
+}
+
+form #query {
+  flex: 1 !important;
+  width: auto !important;
+}
+
 /* ========================================
    MARKETS & REMINDER
    ======================================== */
@@ -838,22 +849,29 @@ td {
     margin-top: 15px;
   }
   #messages {
-    height: calc(100vh - 220px);
+    flex: 1;
     overflow-y: auto;
+    min-height: 0;
   }
   /* Prevent container scroll on chat page */
   #messages ~ #chat-form {
     margin-bottom: 0;
+    flex-shrink: 0;
   }
-  body:has(#messages) #container {
+  body:has(#messages) {
     overflow: hidden;
-    height: 100vh;
+    position: fixed;
+    width: 100%;
   }
   body:has(#messages) #content {
-    height: calc(100vh - 51px - 60px);
+    height: calc(100vh - 111px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    padding-bottom: 60px;
+  }
+  body:has(#messages) #topics {
+    flex-shrink: 0;
   }
   #chat-form {
     position: relative;
