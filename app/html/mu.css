@@ -757,6 +757,7 @@ td {
   }
   #container {
     display: block;
+    padding-top: 51px;
   }
   #content {
     margin-left: 0;
@@ -847,6 +848,10 @@ td {
     min-width: auto;
     max-width: 100%;
     box-sizing: border-box;
+  }
+  #video form {
+    display: flex;
+    max-width: 100%;
   }
   #home {
     display: block;
