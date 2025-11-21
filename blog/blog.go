@@ -134,38 +134,43 @@ func FullFeed() string {
 	return postsList
 }
 
-// HomeFeed returns HTML for limited posts (latest 10 for home page)
+// HomeFeed returns HTML for limited posts (latest 1 for home page)
 func HomeFeed() string {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	// Generate limited list for home page (latest 10 posts)
-	var limitedList []string
-	count := 10
-	if len(posts) < count {
-		count = len(posts)
-	}
-
-	for i := 0; i < count; i++ {
-		post := posts[i]
-		title := post.Title
-		if title == "" {
-			title = "Untitled"
-		}
-
-		item := fmt.Sprintf(`<div class="post-item">
-			<h3>%s</h3>
-			<p style="white-space: pre-wrap;">%s</p>
-			<small style="color: #666;">%s by %s</small>
-		</div>`, title, post.Content, app.TimeAgo(post.CreatedAt), post.Author)
-		limitedList = append(limitedList, item)
-	}
-
-	if len(limitedList) == 0 {
+	if len(posts) == 0 {
 		return "<p>No posts yet. Be the first to share a thought!</p>"
 	}
 
-	return strings.Join(limitedList, "\n<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>\n")
+	// Show only the latest post
+	post := posts[0]
+	title := post.Title
+	if title == "" {
+		title = "Untitled"
+	}
+
+	// Truncate content at word boundary (max 500 chars)
+	content := post.Content
+	if len(content) > 500 {
+		// Find the last space before 500 chars
+		lastSpace := 500
+		for i := 499; i >= 0; i-- {
+			if content[i] == ' ' {
+				lastSpace = i
+				break
+			}
+		}
+		content = content[:lastSpace] + "..."
+	}
+
+	item := fmt.Sprintf(`<div class="post-item">
+		<h3>%s</h3>
+		<p style="white-space: pre-wrap;">%s</p>
+		<small style="color: #666;">%s by %s</small>
+	</div>`, title, content, app.TimeAgo(post.CreatedAt), post.Author)
+
+	return item
 }
 
 // PostingForm returns the HTML for the posting form

@@ -6,6 +6,11 @@ import (
 )
 
 func TimeAgo(d time.Time) string {
+	// Handle zero time
+	if d.IsZero() {
+		return "just now"
+	}
+	
 	timeAgo := ""
 	startDate := time.Now().Unix()
 	deltaMinutes := float64(startDate-d.Unix()) / 60.0
@@ -21,7 +26,11 @@ func TimeAgo(d time.Time) string {
 func distanceOfTime(minutes float64) string {
 	switch {
 	case minutes < 1:
-		return fmt.Sprintf("%d secs", int(minutes*60))
+		secs := int(minutes * 60)
+		if secs < 1 {
+			secs = 1
+		}
+		return fmt.Sprintf("%d secs", secs)
 	case minutes < 59:
 		return fmt.Sprintf("%d minutes", int(minutes))
 	case minutes < 100:
