@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v41';
+var VERSION = 'v42';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -47,12 +47,17 @@ self.addEventListener('install', function (e) {
 
 self.addEventListener('activate', function (e) {
   e.waitUntil(
-    caches.keys().then(keys => 
-      Promise.all(
-        keys.filter(key => key.startsWith(APP_PREFIX) && key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys().then(keys => {
+      console.log('Clearing all old caches');
+      return Promise.all(
+        keys.map(key => {
+          if (key !== CACHE_NAME) {
+            console.log('Deleting cache:', key);
+            return caches.delete(key);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
