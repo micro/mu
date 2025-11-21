@@ -421,6 +421,7 @@ body:has(#messages) #content {
 
 #messages {
   flex-grow: 1;
+  min-height: 0;
   border-radius: 5px;
   border: 1px solid darkgrey;
   text-align: left;

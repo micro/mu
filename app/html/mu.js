@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v48';
+var VERSION = 'v49';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -113,9 +113,6 @@ function switchTopic(t) {
   
   // Load conversation history for this topic
   loadMessages();
-  
-  // Scroll to bottom
-  messages.scrollTop = messages.scrollHeight;
 }
 
 function loadContext() {
