@@ -56,7 +56,7 @@ var Template = `
 					<a href="/blog"><img src="blog.png"><span class="label">Blog</span></a>
 					<a href="/news"><img src="news.png"><span class="label">News</span></a>
 					<a href="/video"><img src="video.png"><span class="label">Video</span></a>
-					<a id="logout-link" href="/logout"><img src="logout.png"><span class="label">Logout</span></a>
+					<a id="logout-link" href="/logout"><img src="logout.png"><span class="label">Exit</span></a>
         </div>
       </div>
       <div id="content">%s</div>

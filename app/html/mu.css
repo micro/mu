@@ -801,16 +801,6 @@ td {
     margin-top: 1px;
     font-size: 0.7em;
   }
-  #logout-link .label {
-    display: none;
-  }
-  #logout-link {
-    padding: 3px 2px;
-  }
-  #logout-link img {
-    height: 18px;
-    width: 18px;
-  }
   #nav img {
     margin-right: 0;
     margin-bottom: 0;
