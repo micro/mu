@@ -74,7 +74,7 @@ function switchTopic(t) {
   // Update hidden input
   document.getElementById('topic').value = t;
   
-  // Update active tab - match by text content without hashtag
+  // Update active tab - match by text content
   document.querySelectorAll('#topic-selector .head').forEach(tab => {
     if (tab.textContent === t) {
       tab.classList.add('active');
@@ -92,7 +92,7 @@ function switchTopic(t) {
   
   // Show topic summary at top (only if topic has a summary)
   const summaryDiv = document.getElementById('topic-summary');
-  if (t !== 'All' && roomsData && roomsData[t] && roomsData[t].Summary) {
+  if (roomsData && roomsData[t] && roomsData[t].Summary) {
     const room = roomsData[t];
     summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}:</strong> ${room.Summary}</div>`;
   } else {
@@ -214,8 +214,13 @@ function askLLM(el) {
 }
 
 function loadChat() {
-  // Always default to All topic
-  switchTopic('All');
+  // Get topics from the page and default to the first one
+  const topicLinks = document.querySelectorAll('#topic-selector .head');
+  const firstTopic = topicLinks.length > 0 ? topicLinks[0].textContent : '';
+  
+  if (firstTopic) {
+    switchTopic(firstTopic);
+  }
 
   // scroll to bottom of prompt
   const prompt = document.getElementById('prompt');
@@ -334,11 +339,40 @@ function setSession() {
 // ============================================
 
 self.addEventListener("hashchange", function(event) {
-  // Don't reload on hash change - anchors should just scroll
+  // Handle hash changes for topic highlighting
   if (window.location.hash) {
-    console.log('Hash changed to:', window.location.hash);
+    const hash = window.location.hash.substring(1); // Remove the '#'
+    console.log('Hash changed to:', hash);
+    
+    // Highlight the matching topic/tag
+    highlightTopic(hash);
+    
+    // For chat page, switch to the topic
+    if (window.location.pathname === '/chat') {
+      const topicLinks = document.querySelectorAll('#topic-selector .head');
+      for (const link of topicLinks) {
+        if (link.textContent === hash) {
+          switchTopic(hash);
+          break;
+        }
+      }
+    }
   }
 });
+
+function highlightTopic(topicName) {
+  // Remove active class from all topic links
+  document.querySelectorAll('.head').forEach(link => {
+    link.classList.remove('active');
+  });
+  
+  // Add active class to the matching topic
+  document.querySelectorAll('.head').forEach(link => {
+    if (link.textContent === topicName || link.getAttribute('href').endsWith('#' + topicName)) {
+      link.classList.add('active');
+    }
+  });
+}
 
 self.addEventListener('DOMContentLoaded', function() {
   // Listen for service worker updates
@@ -386,6 +420,34 @@ self.addEventListener('DOMContentLoaded', function() {
   // load chat
   if (window.location.pathname == "/chat") {
     loadChat();
+    
+    // Add click handlers for chat topics
+    document.querySelectorAll('#topic-selector .head').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const topicName = this.textContent;
+        switchTopic(topicName);
+        // Update URL hash without triggering hashchange
+        history.replaceState(null, null, '#' + topicName);
+      });
+    });
+  }
+  
+  // Handle hash on page load for topic highlighting
+  if (window.location.hash) {
+    const hash = window.location.hash.substring(1);
+    highlightTopic(hash);
+    
+    // If on chat page and there's a hash, switch to that topic
+    if (window.location.pathname === '/chat') {
+      const topicLinks = document.querySelectorAll('#topic-selector .head');
+      for (const link of topicLinks) {
+        if (link.textContent === hash) {
+          switchTopic(hash);
+          break;
+        }
+      }
+    }
   }
 
   // Check session status on page load

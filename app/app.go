@@ -157,13 +157,9 @@ func Head(app string, refs []string) string {
 
 	var head string
 
-	// create head for channels
+	// create head for topics - plain text format with hash
 	for _, ref := range refs {
-		if ref == "All" {
-			head += fmt.Sprintf(`<a href="/%s" class="head highlight" onclick="event.preventDefault(); switchTopic('%s')">%s</a>`, app, ref, ref)
-		} else {
-			head += fmt.Sprintf(`<a href="/%s#%s" class="head highlight" onclick="event.preventDefault(); switchTopic('%s')">%s</a>`, app, ref, ref, ref)
-		}
+		head += fmt.Sprintf(`<a href="/%s#%s" class="head">%s</a>`, app, ref, ref)
 	}
 
 	return head
