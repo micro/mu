@@ -102,7 +102,8 @@ function switchTopic(t) {
   const summaryDiv = document.getElementById('topic-summary');
   if (roomsData && roomsData[t] && roomsData[t].Summary) {
     const room = roomsData[t];
-    summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}:</strong> ${room.Summary}</div>`;
+    const renderedSummary = room.Summary;
+    summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}:</strong> <span>${renderedSummary}</span></div>`;
   } else {
     summaryDiv.innerHTML = '';
   }
