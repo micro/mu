@@ -78,8 +78,8 @@ func Load() {
 	b, _ = data.LoadFile("summary.html")
 	summary = string(b)
 
-	// Add "All" as first topic
-	topics = append(topics, "All")
+	// Add chat bubble as first topic
+	topics = append(topics, "💬")
 
 	for topic, _ := range prompts {
 		topics = append(topics, topic)
