@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -86,6 +87,8 @@ func updateCache() {
 			content = content[:lastSpace] + "..."
 		}
 
+		linkedContent := linkify(content)
+
 		title := post.Title
 		if title == "" {
 			title = "Untitled"
@@ -95,7 +98,7 @@ func updateCache() {
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
 			<small style="color: #666;">%s by %s</small>
-		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), post.Author)
+		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author)
 		preview = append(preview, item)
 	}
 
@@ -113,11 +116,13 @@ func updateCache() {
 			title = "Untitled"
 		}
 
+		linkedContent := linkify(post.Content)
+
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
 			<small style="color: #666;">%s by %s</small>
-		</div>`, post.ID, title, post.Content, app.TimeAgo(post.CreatedAt), post.Author)
+		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author)
 		fullList = append(fullList, item)
 	}
 
@@ -172,11 +177,13 @@ func HomeFeed() string {
 		content = content[:lastSpace] + "..."
 	}
 
+	linkedContent := linkify(content)
+
 	item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<p style="white-space: pre-wrap;">%s</p>
 		<small style="color: #666;">%s by %s</small>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), post.Author)
+	</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author)
 
 	return item
 }
@@ -282,6 +289,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		title = "Untitled"
 	}
 
+	linkedContent := linkify(post.Content)
+
 	content := fmt.Sprintf(`<div id="blog">
 		<h1>%s</h1>
 		<small style="color: #666;">%s by %s</small>
@@ -289,7 +298,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<div style="white-space: pre-wrap;">%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<a href="/blog">← Back to all posts</a>
-	</div>`, title, app.TimeAgo(post.CreatedAt), post.Author, post.Content)
+	</div>`, title, app.TimeAgo(post.CreatedAt), post.Author, linkedContent)
 
 	html := app.RenderHTML(title, post.Content[:min(len(post.Content), 150)], content)
 	w.Write([]byte(html))
@@ -300,6 +309,12 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// linkify converts URLs in text to clickable links
+func linkify(text string) string {
+	urlPattern := regexp.MustCompile(`(https?://[^\s<>"]+)`)
+	return urlPattern.ReplaceAllString(text, `<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>`)
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
