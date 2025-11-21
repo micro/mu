@@ -45,6 +45,15 @@ input {
   box-sizing: border-box;
 }
 
+form input {
+  width: 100%;
+}
+
+form[action="/video"] input {
+  flex: 1 !important;
+  width: auto !important;
+}
+
 select {
   padding: 5px;
   border-radius: 5px;
