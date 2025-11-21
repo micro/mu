@@ -894,6 +894,14 @@ body:has(#messages) #content {
   #account a {
     padding: 4px 5px;
   }
+  #account::after {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 24px;
+    background: url('/logout.png') no-repeat center;
+    background-size: contain;
+  }
   #container {
     display: block;
     padding-top: 0;
@@ -927,25 +935,28 @@ body:has(#messages) #content {
     gap: 0;
   }
   #nav a {
-    padding: 3px 3px;
+    padding: 5px 3px;
     margin: 0;
-    font-size: 0.9em;
+    font-size: 1em;
     flex-direction: column;
     border-radius: 0;
     flex: 1;
     min-width: 0;
     text-align: center;
   }
+  #nav a#logout-link {
+    display: none;
+  }
   #nav .label {
     display: block;
-    margin-top: 1px;
-    font-size: 0.7em;
+    margin-top: 2px;
+    font-size: 0.75em;
   }
   #nav img {
     margin-right: 0;
     margin-bottom: 0;
-    height: 20px;
-    width: 20px;
+    height: 24px;
+    width: 24px;
   }
   #container {
     height: calc(100vh - 140px);
