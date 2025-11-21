@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
+	"time"
 
 	"mu/app"
 	"mu/data"
@@ -66,7 +68,7 @@ func Load() {
 	sort.Strings(topics)
 
 	head = app.Head("chat", topics)
-	
+
 	go generateSummaries()
 }
 
@@ -111,16 +113,16 @@ func generateSummaries() {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		mutex.RLock()
-		
+
 		// Use Head() to format topics
 		topicTabs := app.Head("chat", topics)
-		
+
 		// Pass summaries as JSON to frontend
 		summariesJSON, _ := json.Marshal(summaries)
-		
+
 		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs))
 		tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s;</script></body>`, summariesJSON), 1)
-		
+
 		mutex.RUnlock()
 
 		w.Write([]byte(tmpl))
@@ -158,59 +160,59 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			form["prompt"] = msg
 		}
 
-	var context History
+		var context History
 
-	if vals := form["context"]; vals != nil {
-		cvals := vals.([]interface{})
-		// Keep only the last 5 messages to reduce context size
-		startIdx := 0
-		if len(cvals) > 5 {
-			startIdx = len(cvals) - 5
+		if vals := form["context"]; vals != nil {
+			cvals := vals.([]interface{})
+			// Keep only the last 5 messages to reduce context size
+			startIdx := 0
+			if len(cvals) > 5 {
+				startIdx = len(cvals) - 5
+			}
+			for _, val := range cvals[startIdx:] {
+				msg := val.(map[string]interface{})
+				prompt := fmt.Sprintf("%v", msg["prompt"])
+				answer := fmt.Sprintf("%v", msg["answer"])
+				context = append(context, Message{Prompt: prompt, Answer: answer})
+			}
 		}
-		for _, val := range cvals[startIdx:] {
-			msg := val.(map[string]interface{})
-			prompt := fmt.Sprintf("%v", msg["prompt"])
-			answer := fmt.Sprintf("%v", msg["answer"])
-			context = append(context, Message{Prompt: prompt, Answer: answer})
+
+		q := fmt.Sprintf("%v", form["prompt"])
+
+		// Get topic for enhanced RAG
+		topic := ""
+		if t := form["topic"]; t != nil {
+			topic = fmt.Sprintf("%v", t)
 		}
-	}
 
-	q := fmt.Sprintf("%v", form["prompt"])
-	
-	// Get topic for enhanced RAG
-	topic := ""
-	if t := form["topic"]; t != nil {
-		topic = fmt.Sprintf("%v", t)
-	}
-
-	// Search the index for relevant context (RAG)
-	// If topic is provided, use it as additional context for search
-	searchQuery := q
-	if len(topic) > 0 {
-		searchQuery = topic + " " + q
-	}
-	ragEntries := data.Search(searchQuery, 3)
-	var ragContext []string
-	for _, entry := range ragEntries {
-		// Format each entry as context
-		contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-		if len(contextStr) > 500 {
-			contextStr = contextStr[:500]
+		// Search the index for relevant context (RAG)
+		// If topic is provided, use it as additional context for search
+		searchQuery := q
+		if len(topic) > 0 {
+			searchQuery = topic + " " + q
 		}
-		if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-			contextStr += fmt.Sprintf(" (Source: %s)", url)
+		ragEntries := data.Search(searchQuery, 3)
+		var ragContext []string
+		for _, entry := range ragEntries {
+			// Format each entry as context
+			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+			if len(contextStr) > 500 {
+				contextStr = contextStr[:500]
+			}
+			if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+				contextStr += fmt.Sprintf(" (Source: %s)", url)
+			}
+			ragContext = append(ragContext, contextStr)
 		}
-		ragContext = append(ragContext, contextStr)
-	}
 
-	prompt := &Prompt{
-		Rag:      ragContext,
-		Context:  context,
-		Question: q,
-	}
+		prompt := &Prompt{
+			Rag:      ragContext,
+			Context:  context,
+			Question: q,
+		}
 
-	// query the llm
-	resp, err := askLLM(prompt)
+		// query the llm
+		resp, err := askLLM(prompt)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return

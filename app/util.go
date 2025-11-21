@@ -10,7 +10,7 @@ func TimeAgo(d time.Time) string {
 	if d.IsZero() {
 		return "just now"
 	}
-	
+
 	timeAgo := ""
 	startDate := time.Now().Unix()
 	deltaMinutes := float64(startDate-d.Unix()) / 60.0

@@ -93,7 +93,7 @@ func htmlToText(html string) string {
 	if html == "" {
 		return ""
 	}
-	
+
 	// Parse HTML
 	doc, err := nethtml.Parse(strings.NewReader(html))
 	if err != nil {
@@ -104,7 +104,7 @@ func htmlToText(html string) string {
 		re2 := regexp.MustCompile(`\s+`)
 		return strings.TrimSpace(re2.ReplaceAllString(text, " "))
 	}
-	
+
 	var sb strings.Builder
 	var extract func(*nethtml.Node)
 	extract = func(n *nethtml.Node) {
@@ -129,7 +129,7 @@ func htmlToText(html string) string {
 		}
 	}
 	extract(doc)
-	
+
 	// Collapse multiple spaces and trim
 	text := sb.String()
 	re := regexp.MustCompile(`\s+`)
@@ -586,36 +586,36 @@ func parseFeed() {
 				item.Title = md.Title
 			}
 
-		// extracted content using goquery
-		if len(md.Content) > 0 && len(item.Content) == 0 {
-			item.Content = md.Content
-		}
+			// extracted content using goquery
+			if len(md.Content) > 0 && len(item.Content) == 0 {
+				item.Content = md.Content
+			}
 
-		// Handle nil PublishedParsed
-		var postedAt time.Time
-		if item.PublishedParsed != nil {
-			postedAt = *item.PublishedParsed
-		} else {
-			postedAt = time.Now()
-		}
+			// Handle nil PublishedParsed
+			var postedAt time.Time
+			if item.PublishedParsed != nil {
+				postedAt = *item.PublishedParsed
+			} else {
+				postedAt = time.Now()
+			}
 
-		// Clean up description HTML
-		cleanDescription := htmlToText(item.Description)
+			// Clean up description HTML
+			cleanDescription := htmlToText(item.Description)
 
-		// create post
-		post := &Post{
-			ID:          item.GUID,
-			Title:       item.Title,
-			Description: cleanDescription,
-			URL:         link,
-			Published:   item.Published,
-			PostedAt:    postedAt,
-			Category:    name,
-			Image:       md.Image,
-			Content:     item.Content,
-		}
+			// create post
+			post := &Post{
+				ID:          item.GUID,
+				Title:       item.Title,
+				Description: cleanDescription,
+				URL:         link,
+				Published:   item.Published,
+				PostedAt:    postedAt,
+				Category:    name,
+				Image:       md.Image,
+				Content:     item.Content,
+			}
 
-		news = append(news, post)
+			news = append(news, post)
 
 			// Index the article for search/RAG
 			data.Index(
