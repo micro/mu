@@ -38,10 +38,11 @@ button:hover {
 }
 
 input {
-  width: calc(100% - 60px);
+  width: 100%;
   padding: 10px;
   border-radius: 5px;
   border: 1px solid darkgrey;
+  box-sizing: border-box;
 }
 
 select {
@@ -722,9 +723,20 @@ td {
   #head {
     padding: 10px 20px;
     border-bottom: 1px solid #ddd;
+    justify-content: center;
+    position: relative;
+  }
+  #brand {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
   }
   #brand a {
     font-size: 1em;
+  }
+  #account {
+    position: absolute;
+    right: 20px;
   }
   #account a {
     padding: 4px 5px;
@@ -818,9 +830,10 @@ td {
   .card, #reminder, #video {
     float: none;
     display: block;
-    width: calc(100vw - 85px);
-    min-width: calc(100vw - 85px);
-    max-width: calc(100vw - 85px);
+    width: 100%;
+    min-width: auto;
+    max-width: 100%;
+    box-sizing: border-box;
   }
   #home {
     display: block;
@@ -829,6 +842,10 @@ td {
   }
   .home-left {
     margin-bottom: 20px;
+    width: 100%;
+  }
+  .home-right {
+    width: 100%;
   }
   .cover {
     display: block;
