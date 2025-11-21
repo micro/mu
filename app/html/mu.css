@@ -185,6 +185,7 @@ td {
 #content {
   flex: 1;
   margin-left: 250px;
+  margin-right: auto;
   max-width: 1280px;
   padding: 20px;
   text-align: left;
