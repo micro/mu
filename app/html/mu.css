@@ -1007,6 +1007,9 @@ body:has(#messages) #content {
     font-size: 14px;
     padding: 5px 0;
   }
+  #topic-summary {
+    display: none;
+  }
   #chat-form {
     position: relative;
     z-index: 1;
