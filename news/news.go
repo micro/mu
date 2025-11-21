@@ -562,7 +562,9 @@ func parseFeed() {
 			Category:    name,
 			Image:       md.Image,
 			Content:     item.Content,
-		}			news = append(news, post)
+		}
+
+		news = append(news, post)
 
 			// Index the article for search/RAG
 			data.Index(
