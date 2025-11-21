@@ -787,7 +787,7 @@ td {
     gap: 0;
   }
   #nav a {
-    padding: 3px 5px;
+    padding: 3px 3px;
     margin: 0;
     font-size: 0.9em;
     flex-direction: column;
@@ -799,10 +799,17 @@ td {
   #nav .label {
     display: block;
     margin-top: 1px;
-    font-size: 0.75em;
+    font-size: 0.7em;
   }
   #logout-link .label {
     display: none;
+  }
+  #logout-link {
+    padding: 3px 2px;
+  }
+  #logout-link img {
+    height: 18px;
+    width: 18px;
   }
   #nav img {
     margin-right: 0;
