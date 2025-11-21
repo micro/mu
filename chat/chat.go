@@ -123,7 +123,7 @@ func loadChats() {
 		// render markdown
 		desc = string(app.Render([]byte(desc)))
 		newSummary += `<div class="message">`
-		newSummary += `<span class="llm">AI</span>`
+		newSummary += `<span class="llm">AI Brief</span>`
 		newSummary += fmt.Sprintf(`<strong>%s</strong>`, topic)
 		newSummary += fmt.Sprintf(`<div>%s</div>`, desc)
 		newSummary += `</div>`
