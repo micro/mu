@@ -214,24 +214,25 @@ function askLLM(el) {
 }
 
 function loadChat() {
-  // Get topics from the page and default to the first one
+  // Get topics from the page
   const topicLinks = document.querySelectorAll('#topic-selector .head');
   
-  // Determine which topic to load
-  let topicToLoad = '';
+  // Guard against empty topic list
+  if (topicLinks.length === 0) {
+    console.warn('No topics available in chat');
+    return;
+  }
   
   // Check if there's a hash in the URL and if it exists
+  let topicLoaded = false;
   if (window.location.hash) {
     const hash = window.location.hash.substring(1);
-    if (switchToTopicIfExists(hash)) {
-      topicToLoad = hash;
-    }
+    topicLoaded = switchToTopicIfExists(hash);
   }
   
   // Fallback to first topic if no valid hash was found
-  if (!topicToLoad && topicLinks.length > 0) {
-    topicToLoad = topicLinks[0].textContent;
-    switchTopic(topicToLoad);
+  if (!topicLoaded) {
+    switchTopic(topicLinks[0].textContent);
   }
 
   // scroll to bottom of prompt
@@ -351,7 +352,7 @@ function setSession() {
 // ============================================
 
 function highlightTopic(topicName) {
-  // Remove active class from all topic links - use more specific selectors
+  // Specific selectors for topic elements
   const selectors = ['#topic-selector .head', '#topics .head'];
   
   // Cache all matching elements to avoid multiple DOM queries
@@ -366,9 +367,12 @@ function highlightTopic(topicName) {
     link.classList.remove('active');
   });
   
+  // Cache the hash string to avoid repeated concatenation
+  const hashString = '#' + topicName;
+  
   // Add active class to the matching topic
   allTopicLinks.forEach(link => {
-    if (link.textContent === topicName || link.getAttribute('href').endsWith('#' + topicName)) {
+    if (link.textContent === topicName || link.getAttribute('href').endsWith(hashString)) {
       link.classList.add('active');
     }
   });
