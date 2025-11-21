@@ -24,6 +24,10 @@ Coming soon:
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
+## Community 
+
+Join us on [Discord](https://discord.gg/jwTYuUVAGh) to discuss the development of Mu.
+
 ## Sustainability
 
 See [SUSTAINABILITY.md](SUSTAINABILITY.md) for information on how we plan to make this project financially sustainable while maintaining our core values and Islamic principles.
