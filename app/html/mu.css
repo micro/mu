@@ -1000,12 +1000,12 @@ body:has(#messages) #content {
   }
   .topic-tabs, #topics {
     flex-wrap: nowrap;
-    gap: 15px;
+    gap: 12px;
   }
   #topic-selector .head, #topics .head {
     white-space: nowrap;
-    font-size: 15px;
-    padding: 6px 0;
+    font-size: 14px;
+    padding: 5px 0;
   }
   #chat-form {
     position: relative;
