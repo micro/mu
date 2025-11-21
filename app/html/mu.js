@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v44';
+var VERSION = 'v46';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -98,30 +98,17 @@ function switchTopic(t) {
   const messages = document.getElementById('messages');
   messages.innerHTML = '';
   
-  // Show topic summary at top
-  const summaryDiv = document.getElementById('topic-summary');
-  console.log('Switching to topic:', t);
-  console.log('Room data:', roomsData ? roomsData[t] : 'No roomsData');
-  
+  // Show topic summary as first message
   if (roomsData && roomsData[t]) {
     const room = roomsData[t];
     const summary = room.Summary || room.summary;
-    console.log('Summary value:', summary);
-    console.log('Summary type:', typeof summary);
-    console.log('Summary length:', summary ? summary.length : 0);
     
     if (summary && summary.trim().length > 0) {
-      console.log('Found summary for', t);
-      summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}</strong><div>${summary}</div></div>`;
-      summaryDiv.style.display = 'block';
-    } else {
-      console.log('No summary for', t);
-      summaryDiv.innerHTML = `<div class="topic-brief"><strong>${t}</strong><div style="color: #999; font-style: italic;">Loading summary...</div></div>`;
-      summaryDiv.style.display = 'block';
+      const summaryMsg = document.createElement('div');
+      summaryMsg.className = 'message system-message';
+      summaryMsg.innerHTML = `<strong>${t}</strong><p>${summary}</p>`;
+      messages.appendChild(summaryMsg);
     }
-  } else {
-    summaryDiv.innerHTML = '';
-    summaryDiv.style.display = 'none';
   }
   
   // Load conversation history for this topic

@@ -472,6 +472,27 @@ body:has(#messages) #content {
   display: block;
 }
 
+.system-message {
+  background: #f0f7ff;
+  border-left: 4px solid #4a90e2;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  border-radius: 3px;
+}
+
+.system-message strong {
+  color: #000;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.system-message p {
+  color: #555;
+  margin: 0;
+}
+
 #topics {
   margin-bottom: 10px;
   padding-bottom: 5px;
@@ -1006,9 +1027,6 @@ body:has(#messages) #content {
     white-space: nowrap;
     font-size: 14px;
     padding: 5px 0;
-  }
-  #topic-summary {
-    display: none;
   }
   #chat-form {
     position: relative;
