@@ -2,13 +2,11 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v40';
+var VERSION = 'v41';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
-// Static assets to cache
+// Minimal caching - only icons
 var STATIC_CACHE = [
-  '/mu.css',
-  '/mu.js',
   '/mu.png',
   '/home.png',
   '/chat.png',
@@ -17,8 +15,7 @@ var STATIC_CACHE = [
   '/video.png',
   '/mail.png',
   '/icon-192.png',
-  '/icon-512.png',
-  '/manifest.webmanifest'
+  '/icon-512.png'
 ];
 
 // ============================================
@@ -26,15 +23,15 @@ var STATIC_CACHE = [
 // ============================================
 
 self.addEventListener('fetch', function (e) {
-  // Let browser handle all fetches naturally - only cache static assets
+  // Let browser handle all fetches naturally - only cache icons
   const url = new URL(e.request.url);
   
   if (e.request.method !== 'GET') {
     return;
   }
   
-  // Only intercept static assets
-  if (url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/)) {
+  // Only intercept icons
+  if (url.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/)) {
     e.respondWith(
       caches.match(e.request).then(cached => cached || fetch(e.request))
     );
