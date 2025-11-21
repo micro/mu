@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v33';
+var VERSION = 'v38';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Static assets to cache
@@ -165,7 +165,7 @@ function loadChat() {
 
       // Keyboard opened
       if (viewportHeight < documentHeight) {
-        messages.style.height = (viewportHeight - 260) + 'px';
+        messages.style.height = (viewportHeight - 220) + 'px';
         container.style.overflow = 'hidden';
       } else {
         // Keyboard closed - reset to CSS default
