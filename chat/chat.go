@@ -32,7 +32,6 @@ type Message struct {
 }
 
 var Template = `
-<div id="topics">%s</div>
 <div id="messages">%s</div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
@@ -145,7 +144,7 @@ func loadChats() {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		mutex.RLock()
-		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, head, summary))
+		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, summary))
 		mutex.RUnlock()
 
 		w.Write([]byte(tmpl))
