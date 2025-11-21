@@ -182,7 +182,7 @@ td {
   flex: 1;
   margin-left: 250px;
   max-width: 1280px;
-  padding: 20px;
+  padding: 10px 20px 20px 20px;
   text-align: left;
 }
 
@@ -392,13 +392,15 @@ td {
 
 #prompt {
   flex-shrink: 0;
-  width: calc(100% - 60px);
+  width: 100%;
   padding: 10px;
   margin: 10px 0;
+  box-sizing: border-box;
 }
 
 #query {
-  width: calc(100% - 75px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 #chat-form {
