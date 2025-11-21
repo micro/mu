@@ -258,7 +258,9 @@ var Results = `
   <button>Search</button>
 </form>
 <div id="recent-searches-container"></div>
-<div id="topics">%s</div>
+<script>
+document.getElementById('topics-container').innerHTML = '<div id="topics">%s</div>';
+</script>
 <h1>Results</h1>
 <div id="results">
 %s
@@ -274,7 +276,9 @@ var Template = `
   <button>Search</button>
 </form>
 <div id="recent-searches-container"></div>
-<div id="topics">%s</div>
+<script>
+document.getElementById('topics-container').innerHTML = '<div id="topics">%s</div>';
+</script>
 <div>%s</div>
 ` + recentSearchesScript
 
