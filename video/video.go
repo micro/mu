@@ -583,7 +583,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	for _, channel := range chanNames {
 		head += fmt.Sprintf(`<a href="/video#%s" class="head">%s</a>`, channel, channel)
 	}
-	head += `<hr>`
 
 	// if r.Method == "POST" {
 	if r.Method == "POST" {
