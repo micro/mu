@@ -122,15 +122,16 @@ func loadChats() {
 		}
 		// render markdown
 		desc = string(app.Render([]byte(desc)))
-		newSummary += `<div class="section">`
-		newSummary += fmt.Sprintf(`<hr id="%s" class="anchor">`, topic)
-		newSummary += fmt.Sprintf(`<h3>%s</h3><p><span class="description">%s</span></p>`, topic, desc)
+		newSummary += `<div class="message">`
+		newSummary += `<span class="llm">AI</span>`
+		newSummary += fmt.Sprintf(`<strong>%s</strong>`, topic)
+		newSummary += fmt.Sprintf(`<div>%s</div>`, desc)
 		newSummary += `</div>`
 	}
 
 	mutex.Lock()
 	rooms = newRooms
-	summary = `<div id="summary">` + newSummary + `</div>`
+	summary = newSummary
 	b, _ := json.Marshal(rooms)
 	data.SaveFile("rooms.json", string(b))
 	data.SaveFile("summary.html", summary)
