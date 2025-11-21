@@ -216,10 +216,29 @@ function askLLM(el) {
 function loadChat() {
   // Get topics from the page and default to the first one
   const topicLinks = document.querySelectorAll('#topic-selector .head');
-  const firstTopic = topicLinks.length > 0 ? topicLinks[0].textContent : '';
   
-  if (firstTopic) {
-    switchTopic(firstTopic);
+  // Determine which topic to load
+  let topicToLoad = '';
+  
+  // Check if there's a hash in the URL
+  if (window.location.hash) {
+    const hash = window.location.hash.substring(1);
+    // Check if this topic exists
+    for (const link of topicLinks) {
+      if (link.textContent === hash) {
+        topicToLoad = hash;
+        break;
+      }
+    }
+  }
+  
+  // Fallback to first topic if no valid hash
+  if (!topicToLoad && topicLinks.length > 0) {
+    topicToLoad = topicLinks[0].textContent;
+  }
+  
+  if (topicToLoad) {
+    switchTopic(topicToLoad);
   }
 
   // scroll to bottom of prompt
@@ -354,17 +373,34 @@ self.addEventListener("hashchange", function(event) {
   }
 });
 
+self.addEventListener("popstate", function(event) {
+  // Handle browser back/forward navigation
+  if (window.location.hash) {
+    const hash = window.location.hash.substring(1);
+    highlightTopic(hash);
+    
+    if (window.location.pathname === '/chat') {
+      switchToTopicFromHash(hash);
+    }
+  }
+});
+
 function highlightTopic(topicName) {
-  // Remove active class from all topic links
-  document.querySelectorAll('.head').forEach(link => {
-    link.classList.remove('active');
+  // Remove active class from all topic links - use more specific selectors
+  const selectors = ['#topic-selector .head', '#topics .head'];
+  selectors.forEach(selector => {
+    document.querySelectorAll(selector).forEach(link => {
+      link.classList.remove('active');
+    });
   });
   
   // Add active class to the matching topic
-  document.querySelectorAll('.head').forEach(link => {
-    if (link.textContent === topicName || link.getAttribute('href').endsWith('#' + topicName)) {
-      link.classList.add('active');
-    }
+  selectors.forEach(selector => {
+    document.querySelectorAll(selector).forEach(link => {
+      if (link.textContent === topicName || link.getAttribute('href').endsWith('#' + topicName)) {
+        link.classList.add('active');
+      }
+    });
   });
 }
 
@@ -431,8 +467,8 @@ self.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const topicName = this.textContent;
         switchTopic(topicName);
-        // Update URL hash without triggering hashchange
-        history.replaceState(null, null, '#' + topicName);
+        // Update URL hash with pushState for proper browser history
+        history.pushState(null, null, '#' + topicName);
       });
     });
   }
