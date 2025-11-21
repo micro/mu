@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v46';
+var VERSION = 'v48';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -242,9 +242,9 @@ function loadChat() {
     topicLoaded = switchToTopicIfExists(hash);
   }
   
-  // Fallback to first topic if no valid hash was found
+  // Fallback to "All" topic if no valid hash was found
   if (!topicLoaded) {
-    switchTopic(topicLinks[0].textContent);
+    switchTopic('All');
   }
 
   // scroll to bottom of prompt

@@ -473,24 +473,24 @@ body:has(#messages) #content {
 }
 
 .system-message {
-  background: #f0f7ff;
-  border-left: 4px solid #4a90e2;
-  padding: 12px 15px;
+  padding: 8px 0;
   margin-bottom: 15px;
-  border-radius: 3px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .system-message strong {
-  color: #000;
-  font-weight: 700;
+  font-size: small;
+  font-weight: bold;
+  color: darkgrey;
   display: block;
-  margin-bottom: 8px;
-  font-size: 15px;
+  margin-bottom: 4px;
 }
 
 .system-message p {
-  color: #555;
+  color: #666;
+  font-size: 14px;
   margin: 0;
+  line-height: 1.5;
 }
 
 #topics {

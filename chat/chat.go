@@ -78,6 +78,9 @@ func Load() {
 	b, _ = data.LoadFile("summary.html")
 	summary = string(b)
 
+	// Add "All" as first topic
+	topics = append(topics, "All")
+
 	for topic, _ := range prompts {
 		topics = append(topics, topic)
 	}
