@@ -46,6 +46,8 @@ var mutex sync.RWMutex
 
 var prompts = map[string]string{}
 
+var summaries = map[string]string{}
+
 var topics = []string{}
 
 var head string
@@ -64,6 +66,46 @@ func Load() {
 	sort.Strings(topics)
 
 	head = app.Head("chat", topics)
+	
+	go generateSummaries()
+}
+
+func generateSummaries() {
+	fmt.Println("Generating summaries", time.Now().String())
+
+	newSummaries := map[string]string{}
+
+	for topic, prompt := range prompts {
+		// Search for relevant content for each topic
+		ragEntries := data.Search(topic, 3)
+		var ragContext []string
+		for _, entry := range ragEntries {
+			contentStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+			if len(contentStr) > 500 {
+				contentStr = contentStr[:500]
+			}
+			ragContext = append(ragContext, contentStr)
+		}
+
+		resp, err := askLLM(&Prompt{
+			Rag:      ragContext,
+			Question: prompt,
+		})
+
+		if err != nil {
+			fmt.Println("Failed to generate summary for topic:", topic, err)
+			continue
+		}
+		newSummaries[topic] = resp
+	}
+
+	mutex.Lock()
+	summaries = newSummaries
+	mutex.Unlock()
+
+	time.Sleep(time.Hour)
+
+	go generateSummaries()
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +115,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Use Head() to format topics
 		topicTabs := app.Head("chat", topics)
 		
+		// Pass summaries as JSON to frontend
+		summariesJSON, _ := json.Marshal(summaries)
+		
 		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs))
+		tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s;</script></body>`, summariesJSON), 1)
 		
 		mutex.RUnlock()
 

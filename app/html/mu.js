@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v57';
+var VERSION = 'v58';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -91,13 +91,22 @@ function switchTopic(t) {
     }
   });
   
-  // Add context change message to chat
+  // Add context change message and summary to chat
   const messages = document.getElementById('messages');
   if (messages) {
     const contextMsg = document.createElement('div');
     contextMsg.className = 'context-message';
     contextMsg.textContent = `Context set to ${t} - questions will be enhanced with ${t}-related information`;
     messages.appendChild(contextMsg);
+    
+    // Show summary for this topic if available
+    if (typeof summaries !== 'undefined' && summaries[t]) {
+      const summaryMsg = document.createElement('div');
+      summaryMsg.className = 'message';
+      summaryMsg.innerHTML = `<span class="llm">AI Brief</span>${summaries[t]}`;
+      messages.appendChild(summaryMsg);
+    }
+    
     messages.scrollTop = messages.scrollHeight;
   }
 }
@@ -220,6 +229,21 @@ function loadChat() {
   // Load unified conversation history
   loadContext();
   loadMessages();
+  
+  // If no conversation exists, show general summaries
+  if (context.length === 0 && typeof summaries !== 'undefined') {
+    const messages = document.getElementById('messages');
+    const topics = Object.keys(summaries).sort();
+    
+    topics.forEach(topic => {
+      if (summaries[topic]) {
+        const summaryMsg = document.createElement('div');
+        summaryMsg.className = 'message';
+        summaryMsg.innerHTML = `<span class="llm">${topic}</span>${summaries[topic]}`;
+        messages.appendChild(summaryMsg);
+      }
+    });
+  }
   
   // Check if there's a hash in the URL to set active topic
   if (window.location.hash) {
