@@ -578,6 +578,11 @@ td {
   width: auto;
 }
 
+#video form button {
+  flex-shrink: 0;
+  margin: 0;
+}
+
 /* ========================================
    MARKETS & REMINDER
    ======================================== */
