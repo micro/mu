@@ -573,11 +573,12 @@ td {
   align-items: center;
 }
 
-#video form input {
+#video form input, #video form #query {
   flex: 1;
   padding: 10px;
   margin: 0;
   box-sizing: border-box;
+  width: auto !important;
 }
 
 #video form button {
