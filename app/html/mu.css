@@ -273,10 +273,11 @@ td {
 }
 
 #links {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  gap: 15px;
+  gap: 20px;
+  justify-content: center;
 }
 
 #links .block {
