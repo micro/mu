@@ -30,7 +30,7 @@ Join us on [Discord](https://discord.gg/jwTYuUVAGh) to discuss the development o
 
 ## Sustainability
 
-See [SUSTAINABILITY.md](SUSTAINABILITY.md) for information on how we plan to make this project financially sustainable.
+See [SUSTAINABILITY.md](SUSTAINABILITY.md) for information on how we plan to make this project sustainable.
 
 ## Usage
 
