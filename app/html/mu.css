@@ -202,7 +202,7 @@ td {
 }
 
 #main {
-  max-width: 800px;
+  max-width: 1200px;
   justify-items: center;
   text-align: center;
   padding: 150px 20px 50px 20px;
@@ -278,6 +278,7 @@ td {
   display: flex;
   gap: 20px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 #links .block {
