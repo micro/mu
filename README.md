@@ -4,7 +4,7 @@ The Muslim Network
 
 # Overview
 
-The services we use for our daily habits are now pretty exploited or addictive because of big tech. We can't escape ads, cookies, popups, paywalls, infinite scrolling, swiping and AI algorithms. X, Instagram, YouTube, TikTok, etc are focused on profit through usury. So we're looking to build something new, just the basics, but with Islamic values.
+The services we use daily are now exploited or addictive because of big tech. We can't escape ads, cookies, popups, paywalls, infinite scrolling, swiping and AI algorithms. X, Instagram, YouTube, TikTok, etc are focused on profit through usury. So we're looking to build something new, just the basics, but with Islamic values.
 
 ## Features
 
