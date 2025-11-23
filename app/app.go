@@ -138,11 +138,9 @@ var SignupTemplate = `<html>
 	<form id="signup" action="/signup" method="POST">
 	  <h1>Signup</h1>
 	  %s
-	  <input id="id" name="id" placeholder="Username" required>
-	  <p style="font-size: 0.9em; color: #666; margin: 5px 0;">Username must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>
-	  <input id="name" name="name" placeholder="Name" required>
-  	  <input id="secret" name="secret" type="password" placeholder="Password" required>
-	  <p style="font-size: 0.9em; color: #666; margin: 5px 0;">Password must be at least 6 characters</p>
+	  <input id="id" name="id" placeholder="Username (4-24 chars, lowercase)" required>
+	  <input id="name" name="name" placeholder="Name (optional)">
+  	  <input id="secret" name="secret" type="password" placeholder="Password (min 6 chars)" required>
 	  <br>
 	  <button>Signup</button>
 	</form>
@@ -247,11 +245,6 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`)))
 			return
 		}
-
-		if len(name) == 0 {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Name is required</p>`)))
-			return
-		}
 		
 		if len(secret) == 0 {
 			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Password is required</p>`)))
@@ -261,6 +254,11 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		if len(secret) < 6 {
 			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Password must be at least 6 characters</p>`)))
 			return
+		}
+		
+		// Use username as name if name is not provided
+		if len(name) == 0 {
+			name = id
 		}
 
 		if err := auth.Create(&auth.Account{
