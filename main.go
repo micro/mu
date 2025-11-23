@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"mu/admin"
 	"mu/api"
 	"mu/app"
 	"mu/auth"
@@ -37,6 +38,9 @@ func main() {
 	// load the data index
 	data.Load()
 
+	// load admin/flags
+	admin.Load()
+
 	// load the chat
 	chat.Load()
 
@@ -50,14 +54,16 @@ func main() {
 	blog.Load()
 
 	authenticated := map[string]bool{
-		"/video":   true,
-		"/news":    true,
-		"/chat":    true,
-		"/posts":   true,
-		"/home":    true,
-		"/logout":  true,
-		"/session": true,
-		"/api":     true,
+		"/video":    true,
+		"/news":     true,
+		"/chat":     true,
+		"/posts":    true,
+		"/home":     true,
+		"/logout":   true,
+		"/session":  true,
+		"/api":      true,
+		"/flag":     true,
+		"/moderate": true,
 	}
 
 	// Static assets should not require authentication
@@ -79,6 +85,12 @@ func main() {
 
 	// serve individual blog post (public, no auth)
 	http.HandleFunc("/post", blog.PostHandler)
+
+	// flag content
+	http.HandleFunc("/flag", admin.FlagHandler)
+
+	// moderation queue
+	http.HandleFunc("/moderate", admin.ModerateHandler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

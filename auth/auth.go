@@ -23,6 +23,7 @@ type Account struct {
 	Name    string    `json:"name"`
 	Secret  string    `json:"secret"`
 	Created time.Time `json:"created"`
+	Admin   bool      `json:"admin"`
 }
 
 type Session struct {

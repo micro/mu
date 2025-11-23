@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/admin"
 	"mu/app"
 	"mu/auth"
 	"mu/data"
@@ -54,6 +55,33 @@ func Load() {
 
 	// Update cached HTML
 	updateCache()
+	
+	// Register with admin system
+	admin.RegisterDeleter("post", &postDeleter{})
+}
+
+// postDeleter implements admin.ContentDeleter interface
+type postDeleter struct{}
+
+func (d *postDeleter) Delete(id string) error {
+	return DeletePost(id)
+}
+
+func (d *postDeleter) Get(id string) interface{} {
+	post := GetPost(id)
+	if post == nil {
+		return nil
+	}
+	return admin.PostContent{
+		Title:     post.Title,
+		Content:   post.Content,
+		Author:    post.Author,
+		CreatedAt: post.CreatedAt,
+	}
+}
+
+func (d *postDeleter) RefreshCache() {
+	updateCache()
 }
 
 // Save blog posts to disk
@@ -66,14 +94,17 @@ func updateCache() {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	// Generate preview for home page (latest 1 post)
+	// Generate preview for home page (latest 1 post, exclude flagged)
 	var preview []string
-	count := 1
-	if len(posts) < count {
-		count = len(posts)
-	}
-	for i := 0; i < count; i++ {
+	count := 0
+	for i := 0; i < len(posts) && count < 1; i++ {
 		post := posts[i]
+		// Skip flagged posts
+		if admin.IsHidden("post", post.ID) {
+			continue
+		}
+		count++
+
 		content := post.Content
 		if len(content) > 500 {
 			// Find the last space before 500 chars
@@ -108,9 +139,14 @@ func updateCache() {
 		postsPreviewHtml = strings.Join(preview, "\n")
 	}
 
-	// Generate full list for blog page
+	// Generate full list for blog page (exclude flagged posts)
 	var fullList []string
 	for _, post := range posts {
+		// Skip flagged posts
+		if admin.IsHidden("post", post.ID) {
+			continue
+		}
+
 		title := post.Title
 		if title == "" {
 			title = "Untitled"
@@ -121,8 +157,8 @@ func updateCache() {
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
-			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a></div>
-		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author, post.ID)
+			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a> · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a></div>
+		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author, post.ID, post.ID)
 		fullList = append(fullList, item)
 	}
 
@@ -212,6 +248,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Create the blog page with posting form
 	content := fmt.Sprintf(`<div id="blog">
+		<div style="margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+			<a href="/moderate" style="color: #666; text-decoration: none;">Moderate</a>
+		</div>
 		<div style="margin-bottom: 30px;">
 			<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
 				<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
@@ -267,6 +306,27 @@ func GetPost(id string) *Post {
 		}
 	}
 	return nil
+}
+
+// DeletePost removes a post by ID
+func DeletePost(id string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for i, post := range posts {
+		if post.ID == id {
+			posts = append(posts[:i], posts[i+1:]...)
+			save()
+			updateCache()
+			return nil
+		}
+	}
+	return fmt.Errorf("post not found")
+}
+
+// RefreshCache updates the cached HTML
+func RefreshCache() {
+	updateCache()
 }
 
 // handlePost processes the POST request to create a new blog post

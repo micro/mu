@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v60';
+var VERSION = 'v62';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -509,3 +509,32 @@ self.addEventListener('DOMContentLoaded', function() {
   // Check session status on page load
   setSession();
 });
+
+// Flag a post
+function flagPost(postId) {
+  if (!confirm('Flag this post as inappropriate? It will be hidden after 3 flags.')) {
+    return;
+  }
+  
+  fetch('/flag', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'type=post&id=' + encodeURIComponent(postId)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Post flagged. Flag count: ' + data.count);
+      if (data.count >= 3) {
+        location.reload();
+      }
+    } else {
+      alert(data.message || 'Failed to flag post');
+    }
+  })
+  .catch(error => {
+    console.error('Error flagging post:', error);
+    alert('Failed to flag post');
+  });
+}
+
