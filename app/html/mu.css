@@ -991,6 +991,9 @@ body:has(#messages) #content {
   #page-title {
     text-align: center;
   }
+  .info {
+    text-align: center;
+  }
   #blog .info {
     text-align: left;
   }
