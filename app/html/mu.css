@@ -1083,8 +1083,7 @@ body:has(#messages) #content {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding: 10px;
-    padding-bottom: 0;
+    padding: 15px 20px 0 20px;
   }
   body:has(#messages) #topics {
     flex-shrink: 0;
