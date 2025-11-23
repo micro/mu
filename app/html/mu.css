@@ -913,8 +913,11 @@ body:has(#messages) #content {
     margin-left: 0;
     padding: 10px;
   }
-  #page-title {
+  #page-title, #blog .info {
     text-align: center;
+  }
+  .post-item .info {
+    text-align: left;
   }
   #nav-container {
     position: fixed;
