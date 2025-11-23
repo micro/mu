@@ -958,7 +958,7 @@ body:has(#messages) #content {
     overflow-x: hidden;
   }
   #topics {
-    text-align: center;
+    justify-content: center;
     overflow-x: scroll;
   }
   #head {
@@ -986,7 +986,7 @@ body:has(#messages) #content {
   }
   #content {
     margin-left: 0;
-    padding: 10px;
+    padding: 15px 20px;
   }
   #page-title, #blog .info {
     text-align: center;
