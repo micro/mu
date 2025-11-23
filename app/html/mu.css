@@ -1046,7 +1046,7 @@ body:has(#messages) #content {
   #content {
     height: auto;
     display: block;
-    padding-bottom: 80px;
+    padding: 15px 20px 80px 20px;
   }
   #main {
     padding: 20px;
@@ -1095,7 +1095,7 @@ body:has(#messages) #content {
   }
   .topic-tabs, #topics {
     flex-wrap: nowrap;
-    gap: 12px;
+    gap: 8px;
   }
   #topic-selector .head, #topics .head {
     white-space: nowrap;
