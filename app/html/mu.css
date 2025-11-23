@@ -988,8 +988,11 @@ body:has(#messages) #content {
     margin-left: 0;
     padding: 15px 20px;
   }
-  #page-title, #blog .info {
+  #page-title {
     text-align: center;
+  }
+  #blog .info {
+    text-align: left;
   }
   .post-item .info {
     text-align: left;
