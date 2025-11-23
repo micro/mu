@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v58';
+var VERSION = 'v59';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -351,7 +351,7 @@ function setSession() {
     } else {
       if (logoutLink) logoutLink.style.display = 'none';
       // If we're on a protected page but not logged in, redirect
-      const protectedPaths = ['/home', '/chat', '/blog', '/news', '/video'];
+      const protectedPaths = ['/home', '/chat', '/blog', '/news', '/video', '/posts'];
       if (protectedPaths.includes(window.location.pathname)) {
         window.location.href = '/';
       }
@@ -359,8 +359,10 @@ function setSession() {
   })
   .catch(error => {
     console.error('Error:', error);
-    // On error, redirect to home
-    window.location.href = '/';
+    // On error, redirect to home (but not if viewing a public post)
+    if (!window.location.pathname.startsWith('/post')) {
+      window.location.href = '/';
+    }
   });
 }
 
