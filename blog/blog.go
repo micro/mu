@@ -248,10 +248,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Create the blog page with posting form
 	content := fmt.Sprintf(`<div id="blog">
-		<div style="margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-			<a href="/moderate" style="color: #666; text-decoration: none;">Moderate</a>
-		</div>
 		<div style="margin-bottom: 30px;">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+				<div></div>
+				<a href="/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
+			</div>
 			<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
 				<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<textarea name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
