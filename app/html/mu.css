@@ -958,7 +958,7 @@ body:has(#messages) #content {
     overflow-x: hidden;
   }
   #topics {
-    justify-content: center;
+    text-align: center;
     overflow-x: scroll;
   }
   #head {
