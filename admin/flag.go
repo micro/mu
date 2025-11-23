@@ -323,13 +323,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					<input type="hidden" name="action" value="approve">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
-					<button type="submit" style="padding: 8px 20px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 14px;">✓ Approve</button>
+					<button type="submit" style="padding: 4px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Approve</button>
 				</form>
 				<form method="POST" action="/moderate" style="display: inline;">
 					<input type="hidden" name="action" value="delete">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
-					<button type="submit" style="padding: 8px 20px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 14px;">✗ Delete</button>
+					<button type="submit" style="padding: 4px 10px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Delete</button>
 				</form>`,
 				item.ContentType, item.ContentID,
 				item.ContentType, item.ContentID)
@@ -349,7 +349,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 			</div>
 			<div style="margin-top: 15px; display: flex; gap: 10px;">
 				%s
-				<a href="/%s?id=%s" target="_blank" style="padding: 8px 20px; background: #6c757d; color: white; border: none; border-radius: 3px; text-decoration: none; font-size: 14px; display: inline-block;">👁 View</a>
+				<a href="/%s?id=%s" target="_blank" style="padding: 4px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; text-decoration: none; font-size: 12px; display: inline-block;">View</a>
 			</div>
 		</div>`,
 			item.ContentType,
