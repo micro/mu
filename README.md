@@ -15,10 +15,10 @@ Starting with:
 - [x] Chat - LLM based chat UI
 - [x] News - Latest news headlines
 - [x] Video - Video search interface
+- [x] Blog - Micro blogging
 
 Coming soon:
 
-- [ ] Blog - Micro blogging (WIP)
 - [ ] Mail - Email without Gmail
 - [ ] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
