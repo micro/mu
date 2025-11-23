@@ -142,11 +142,16 @@ func main() {
 		if !isStaticAsset {
 			var isAuthed bool
 
-			// Check if path requires authentication
-			for url, authed := range authenticated {
-				if strings.HasPrefix(r.URL.Path, url) {
-					isAuthed = authed
-					break
+			// Special case: /post should be public, not confused with /posts
+			if strings.HasPrefix(r.URL.Path, "/post") && !strings.HasPrefix(r.URL.Path, "/posts") {
+				isAuthed = false
+			} else {
+				// Check if path requires authentication
+				for url, authed := range authenticated {
+					if strings.HasPrefix(r.URL.Path, url) {
+						isAuthed = authed
+						break
+					}
 				}
 			}
 
