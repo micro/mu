@@ -56,10 +56,8 @@ func Load() {
 	json.Unmarshal(b, &flags)
 }
 
-func save() error {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
+func saveUnlocked() error {
+	// Caller must hold mutex lock
 	return data.SaveJSON("flags.json", flags)
 }
 
@@ -108,7 +106,7 @@ func Add(contentType, contentID, username string) (int, bool, error) {
 		item.Flagged = true
 	}
 
-	save()
+	saveUnlocked()
 	return item.FlagCount, false, nil
 }
 
@@ -172,7 +170,7 @@ func Approve(contentType, contentID string) error {
 		deleter.RefreshCache()
 	}
 	
-	return save()
+	return saveUnlocked()
 }
 
 // IsHidden checks if content is flagged/hidden
@@ -187,7 +185,12 @@ func Delete(contentType, contentID string) error {
 
 	mutex.Lock()
 	delete(flags, key)
+	err := saveUnlocked()
 	mutex.Unlock()
+
+	if err != nil {
+		return err
+	}
 
 	// Delete the actual content
 	if deleter, ok := deleters[contentType]; ok {
@@ -196,7 +199,7 @@ func Delete(contentType, contentID string) error {
 		}
 	}
 
-	return save()
+	return nil
 }
 
 // ============================================
