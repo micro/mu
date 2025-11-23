@@ -694,7 +694,6 @@ body:has(#messages) #content {
   font-size: small;
   color: #999;
   font-style: italic;
-  text-align: center;
   padding: 8px 0;
   margin: 10px 0;
   border-top: 1px solid #e0e0e0;
