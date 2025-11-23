@@ -13,7 +13,6 @@ html, body {
   font-family: "Nunito Sans", serif;
   box-sizing: border-box;
   overflow-x: hidden;
-  background-color: #f5f5f5;
 }
 
 *, *:before, *:after {
@@ -319,13 +318,11 @@ td {
   margin-right: 20px;
   float: left;
   min-width: 350px;
-  background: white;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
   padding: 20px;
   margin-bottom: 20px;
   padding-bottom: 25px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .card h4 {
@@ -343,18 +340,14 @@ td {
   display: block;
   text-align: center;
   text-decoration: none;
-  background: white;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
   padding: 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s, transform 0.2s;
 }
 
 .block:hover {
   cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+  background: whitesmoke;
 }
 
 /* ========================================
