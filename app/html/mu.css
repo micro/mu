@@ -691,12 +691,14 @@ body:has(#messages) #content {
    MODERATION PAGE
    ======================================== */
 #moderation .info-banner {
-  color: #666;
-  margin-bottom: 20px;
-  padding: 15px;
-  background: #e7f3ff;
-  border-left: 4px solid #007bff;
-  border-radius: 3px;
+  font-size: small;
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 8px 0;
+  margin: 10px 0;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .flagged-item {
