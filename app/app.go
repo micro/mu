@@ -56,7 +56,7 @@ var Template = `
 					<a href="/news"><img src="news.png"><span class="label">News</span></a>
 					<a href="/posts"><img src="post.png"><span class="label">Posts</span></a>
 					<a href="/video"><img src="video.png"><span class="label">Video</span></a>
-					<a id="logout-link" href="/logout"><img src="logout.png"><span class="label">Logout</span></a>
+					<a id="logout-link" href="/logout"%s><img src="logout.png"><span class="label">Logout</span></a>
         </div>
       </div>
       <div id="content">
@@ -349,7 +349,15 @@ func Render(md []byte) []byte {
 
 // RenderHTML renders the given html in a template
 func RenderHTML(title, desc, html string) string {
-	return fmt.Sprintf(Template, title, desc, title, html)
+	return RenderHTMLWithLogout(title, desc, html, true)
+}
+
+func RenderHTMLWithLogout(title, desc, html string, showLogout bool) string {
+	logoutStyle := ""
+	if !showLogout {
+		logoutStyle = ` style="display: none;"`
+	}
+	return fmt.Sprintf(Template, title, desc, logoutStyle, title, html)
 }
 
 // RenderString renders a markdown string as html

@@ -299,7 +299,14 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/posts">← Back to all posts</a>
 	</div>`, app.TimeAgo(post.CreatedAt), post.Author, linkedContent)
 
-	html := app.RenderHTML(title, post.Content[:min(len(post.Content), 150)], content)
+	// Check if user is authenticated to show logout link
+	var token string
+	if c, err := r.Cookie("session"); err == nil && c != nil {
+		token = c.Value
+	}
+	showLogout := auth.ValidateToken(token) == nil
+
+	html := app.RenderHTMLWithLogout(title, post.Content[:min(len(post.Content), 150)], content, showLogout)
 	w.Write([]byte(html))
 }
 
