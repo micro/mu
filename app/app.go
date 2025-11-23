@@ -105,6 +105,7 @@ var LoginTemplate = `<html>
       <div id="content">
 	<form id="login" action="/login" method="POST">
 	  <h1>Login</h1>
+	  %s
 	  <input id="id" name="id" placeholder="Username" required>
 	  <input id="secret" name="secret" type="password" placeholder="Password" required>
 	  <br>
@@ -136,9 +137,12 @@ var SignupTemplate = `<html>
       <div id="content">
 	<form id="signup" action="/signup" method="POST">
 	  <h1>Signup</h1>
+	  %s
 	  <input id="id" name="id" placeholder="Username" required>
+	  <p style="font-size: 0.9em; color: #666; margin: 5px 0;">Username must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>
 	  <input id="name" name="name" placeholder="Name" required>
   	  <input id="secret" name="secret" type="password" placeholder="Password" required>
+	  <p style="font-size: 0.9em; color: #666; margin: 5px 0;">Password must be at least 6 characters</p>
 	  <br>
 	  <button>Signup</button>
 	</form>
@@ -172,7 +176,7 @@ func Card(id, title, content string) string {
 // Login handler
 func Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		w.Write([]byte(LoginTemplate))
+		w.Write([]byte(fmt.Sprintf(LoginTemplate, "")))
 		return
 	}
 
@@ -183,17 +187,17 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		secret := r.Form.Get("secret")
 
 		if len(id) == 0 {
-			http.Error(w, "missing id", 401)
+			w.Write([]byte(fmt.Sprintf(LoginTemplate, `<p style="color: red;">Username is required</p>`)))
 			return
 		}
 		if len(secret) == 0 {
-			http.Error(w, "missing secret", 401)
+			w.Write([]byte(fmt.Sprintf(LoginTemplate, `<p style="color: red;">Password is required</p>`)))
 			return
 		}
 
 		sess, err := auth.Login(id, secret)
 		if err != nil {
-			http.Error(w, err.Error(), 401)
+			w.Write([]byte(fmt.Sprintf(LoginTemplate, `<p style="color: red;">Invalid username or password</p>`)))
 			return
 		}
 
@@ -219,7 +223,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 // Signup handler
 func Signup(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		w.Write([]byte(SignupTemplate))
+		w.Write([]byte(fmt.Sprintf(SignupTemplate, "")))
 		return
 	}
 
@@ -234,25 +238,28 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 
 		usernameRegex := regexp.MustCompile(usernamePattern)
 
-		if !usernameRegex.MatchString(id) {
-			http.Error(w, "invalid id", 401)
-			return
-		}
-
-		if len(secret) < 6 {
-			http.Error(w, "invalid secret", 401)
-		}
-
 		if len(id) == 0 {
-			http.Error(w, "missing id", 401)
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Username is required</p>`)))
 			return
 		}
+		
+		if !usernameRegex.MatchString(id) {
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`)))
+			return
+		}
+
 		if len(name) == 0 {
-			http.Error(w, "missing name", 401)
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Name is required</p>`)))
 			return
 		}
+		
 		if len(secret) == 0 {
-			http.Error(w, "missing secret", 401)
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Password is required</p>`)))
+			return
+		}
+		
+		if len(secret) < 6 {
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Password must be at least 6 characters</p>`)))
 			return
 		}
 
@@ -262,14 +269,14 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			Name:    name,
 			Created: time.Now(),
 		}); err != nil {
-			http.Error(w, err.Error(), 401)
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, fmt.Sprintf(`<p style="color: red;">%s</p>`, err.Error()))))
 			return
 		}
 
 		// login
 		sess, err := auth.Login(id, secret)
 		if err != nil {
-			http.Error(w, err.Error(), 401)
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Account created but login failed. Please try logging in.</p>`)))
 			return
 		}
 
