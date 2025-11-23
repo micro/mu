@@ -324,37 +324,35 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		actionButtons := ""
 		if isAdmin {
 			actionButtons = fmt.Sprintf(`
-				<form method="POST" action="/moderate" style="display: inline;">
+				<form method="POST" action="/moderate">
 					<input type="hidden" name="action" value="approve">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
-					<button type="submit" style="padding: 4px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Approve</button>
+					<button type="submit" class="btn-approve">Approve</button>
 				</form>
-				<form method="POST" action="/moderate" style="display: inline;">
+				<form method="POST" action="/moderate">
 					<input type="hidden" name="action" value="delete">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
-					<button type="submit" style="padding: 4px 10px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Delete</button>
+					<button type="submit" class="btn-delete">Delete</button>
 				</form>`,
 				item.ContentType, item.ContentID,
 				item.ContentType, item.ContentID)
 		}
 
-		html := fmt.Sprintf(`<div class="post-item" style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-			<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-				<div>
-					<span style="background: #666; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; text-transform: uppercase;">%s</span>
-					<h3 style="margin: 10px 0;">%s</h3>
-				</div>
+		html := fmt.Sprintf(`<div class="flagged-item">
+			<div>
+				<span class="content-type-badge">%s</span>
+				<h3>%s</h3>
 			</div>
 			%s
-			<div class="info" style="color: #666; font-size: small; margin-top: 10px;">
+			<div class="info">
 				%s by %s · Flags: %d · Status: %s<br>
 				Flagged by: %s
 			</div>
-			<div style="margin-top: 15px; display: flex; gap: 10px;">
+			<div class="actions">
 				%s
-				<a href="/%s?id=%s" target="_blank">View</a>
+				<a href="/%s?id=%s" target="_blank">view</a>
 			</div>
 		</div>`,
 			item.ContentType,
@@ -378,11 +376,11 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := fmt.Sprintf(`<div id="moderation">
-		<p style="color: #666; margin-bottom: 20px; padding: 15px; background: #e7f3ff; border-left: 4px solid #007bff; border-radius: 3px;">
+		<div class="info-banner">
 			<strong>Community Moderation</strong><br>
 			Review content that has been flagged by users. Content is automatically hidden after 3 flags. 
 			You can approve (clear flags) or delete the content permanently.
-		</p>
+		</div>
 		<div id="flagged-content">
 			%s
 		</div>

@@ -688,6 +688,80 @@ body:has(#messages) #content {
 }
 
 /* ========================================
+   MODERATION PAGE
+   ======================================== */
+#moderation .info-banner {
+  color: #666;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #e7f3ff;
+  border-left: 4px solid #007bff;
+  border-radius: 3px;
+}
+
+.flagged-item {
+  background: #fff3cd;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+.flagged-item h3 {
+  margin: 10px 0;
+}
+
+.flagged-item .info {
+  color: #666;
+  font-size: small;
+  margin-top: 10px;
+}
+
+.flagged-item .content-type-badge {
+  background: #666;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.flagged-item .actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.flagged-item .actions form {
+  display: inline;
+}
+
+.flagged-item .actions button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.flagged-item .btn-approve {
+  background: #28a745;
+  color: white;
+}
+
+.flagged-item .btn-approve:hover {
+  background: #218838;
+}
+
+.flagged-item .btn-delete {
+  background: #dc3545;
+  color: white;
+}
+
+.flagged-item .btn-delete:hover {
+  background: #c82333;
+}
+
+/* ========================================
    NEWS PAGE
    ======================================== */
 #news h1 {
