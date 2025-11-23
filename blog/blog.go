@@ -255,10 +255,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer; align-self: flex-start;">Post</button>
 			</form>
 		</div>
-		<hr style='margin: 30px 0; border: none; border-top: 2px solid #333;'>
-		<div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+		<div style="margin-bottom: 15px;">
 			<a href="/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
 		</div>
+		<hr style='margin: 0 0 30px 0; border: none; border-top: 2px solid #333;'>
 		<div id="posts-list">
 			%s
 		</div>
