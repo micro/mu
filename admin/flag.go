@@ -354,7 +354,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 			</div>
 			<div style="margin-top: 15px; display: flex; gap: 10px;">
 				%s
-				<a href="/%s?id=%s" target="_blank" style="padding: 4px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; text-decoration: none; font-size: 12px; display: inline-block;">View</a>
+				<a href="/%s?id=%s" target="_blank">View</a>
 			</div>
 		</div>`,
 			item.ContentType,
