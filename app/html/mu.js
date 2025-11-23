@@ -359,6 +359,8 @@ function setSession() {
   })
   .catch(error => {
     console.error('Error:', error);
+    var logoutLink = document.getElementById("logout-link");
+    if (logoutLink) logoutLink.style.display = 'none';
     // On error, redirect to home (but not if viewing a public post)
     if (!window.location.pathname.startsWith('/post')) {
       window.location.href = '/';
