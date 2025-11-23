@@ -236,6 +236,7 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if alreadyFlagged {
+		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"success": false, "message": "Already flagged"}`))
 		return
 	}
@@ -247,6 +248,7 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"success": true, "count": ` + fmt.Sprintf("%d", count) + `}`))
 }
 
