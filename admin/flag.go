@@ -161,16 +161,21 @@ func Approve(contentType, contentID string) error {
 	key := contentType + ":" + contentID
 
 	mutex.Lock()
-	defer mutex.Unlock()
-
 	delete(flags, key)
+	err := saveUnlocked()
+	mutex.Unlock()
+
+	if err != nil {
+		return err
+	}
 	
-	// Refresh the content cache
+	// Refresh the content cache after unlocking to avoid deadlock
+	// (RefreshCache may call back into admin.IsHidden which needs a lock)
 	if deleter, ok := deleters[contentType]; ok {
 		deleter.RefreshCache()
 	}
 	
-	return saveUnlocked()
+	return nil
 }
 
 // IsHidden checks if content is flagged/hidden
