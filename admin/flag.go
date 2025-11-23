@@ -370,7 +370,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		itemsList = append(itemsList, html)
 	}
 
-	listHTML := "<p style='color: #666;'>No flagged content. The community is behaving well! 🎉</p>"
+	listHTML := "<p style='color: #666;'>No flagged content. The community is doing well!</p>"
 	if len(itemsList) > 0 {
 		listHTML = strings.Join(itemsList, "\n")
 	}
