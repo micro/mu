@@ -991,13 +991,10 @@ body:has(#messages) #content {
   #page-title {
     text-align: center;
   }
-  .info {
+  #blog .info {
     text-align: center;
   }
-  #blog .info {
-    text-align: left;
-  }
-  .post-item .info {
+  #blog .post-item .info {
     text-align: left;
   }
   #nav-container {
