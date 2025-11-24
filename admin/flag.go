@@ -21,9 +21,9 @@ type FlaggedItem struct {
 	ContentType string    `json:"content_type"` // "post", "news", "video"
 	ContentID   string    `json:"content_id"`
 	FlagCount   int       `json:"flag_count"`
-	Flagged     bool      `json:"flagged"`     // Hidden from public view
-	FlaggedBy   []string  `json:"flagged_by"`  // Usernames who flagged
-	FlaggedAt   time.Time `json:"flagged_at"`  // First flag timestamp
+	Flagged     bool      `json:"flagged"`    // Hidden from public view
+	FlaggedBy   []string  `json:"flagged_by"` // Usernames who flagged
+	FlaggedAt   time.Time `json:"flagged_at"` // First flag timestamp
 }
 
 var (
@@ -168,13 +168,13 @@ func Approve(contentType, contentID string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Refresh the content cache after unlocking to avoid deadlock
 	// (RefreshCache may call back into admin.IsHidden which needs a lock)
 	if deleter, ok := deleters[contentType]; ok {
 		deleter.RefreshCache()
 	}
-	
+
 	return nil
 }
 

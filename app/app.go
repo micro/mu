@@ -240,22 +240,22 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Username is required</p>`)))
 			return
 		}
-		
+
 		if !usernameRegex.MatchString(id) {
 			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`)))
 			return
 		}
-		
+
 		if len(secret) == 0 {
 			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Password is required</p>`)))
 			return
 		}
-		
+
 		if len(secret) < 6 {
 			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Password must be at least 6 characters</p>`)))
 			return
 		}
-		
+
 		// Use username as name if name is not provided
 		if len(name) == 0 {
 			name = id

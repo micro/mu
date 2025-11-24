@@ -55,7 +55,7 @@ func Load() {
 
 	// Update cached HTML
 	updateCache()
-	
+
 	// Register with admin system
 	admin.RegisterDeleter("post", &postDeleter{})
 }
