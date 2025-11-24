@@ -14,8 +14,8 @@ Starting with:
 - [x] API - Basic API
 - [x] App - Installable PWA
 - [x] Chat - LLM based chat UI
-- [x] News - Latest news headlines
-- [x] Video - Video search interface
+- [x] News - RSS news headlines
+- [x] Video - YouTube API search
 - [x] Posts - Micro blogging like X
 
 Coming soon:
