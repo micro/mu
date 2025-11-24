@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"mu/auth"
@@ -330,6 +331,104 @@ func Session(w http.ResponseWriter, r *http.Request) {
 	b, _ := json.Marshal(sess)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
+}
+
+// Membership handler
+func Membership(w http.ResponseWriter, r *http.Request) {
+	// Check if coming from GoCardless
+	referer := r.Header.Get("Referer")
+	fromGoCardless := false
+	if referer != "" && (strings.Contains(referer, "gocardless.com") || strings.Contains(referer, "pay.gocardless.com")) {
+		fromGoCardless = true
+	}
+
+	// Check if user is logged in
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		// Not logged in
+		if fromGoCardless {
+			content := `<div style="max-width: 600px; margin: 0 auto; padding: 40px 20px; text-align: center;">
+				<h1 style="color: #28a745;">🎉 Thank you for becoming a member!</h1>
+				<p style="font-size: 1.1em; margin: 20px 0;">Your support helps keep Mu independent and sustainable.</p>
+				<p>Please login or signup to activate your membership.</p>
+				<div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+					<a href="/login" style="padding: 12px 30px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Login</a>
+					<a href="/signup" style="padding: 12px 30px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Signup</a>
+				</div>
+			</div>`
+			html := RenderHTML("Membership", "Thank you!", content)
+			w.Write([]byte(html))
+			return
+		}
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// User is logged in
+	acc, err := auth.GetAccount(sess.Account)
+	if err != nil {
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return
+	}
+
+	// If coming from GoCardless, activate membership
+	if fromGoCardless && !acc.Member {
+		acc.Member = true
+		auth.UpdateAccount(acc)
+	}
+
+	// Show membership page
+	membershipStatus := ""
+	if acc.Member {
+		membershipStatus = `<div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+			<strong>✓ You are a member!</strong> Thank you for supporting Mu.
+		</div>`
+	}
+
+	content := fmt.Sprintf(`<div style="max-width: 700px; margin: 0 auto;">
+		%s
+		<h2>Membership Benefits</h2>
+		<ul style="font-size: 1.1em; line-height: 1.8;">
+			<li>Vote on new features and platform direction</li>
+			<li>Exclusive access to latest updates</li>
+			<li>Priority support</li>
+			<li>Help keep Mu ad-free and sustainable</li>
+			<li>Join our Discord community</li>
+		</ul>
+
+		%s
+
+		<div style="background: #e7f3ff; padding: 20px; border-radius: 8px; margin-top: 30px; border-left: 4px solid #007bff;">
+			<h3 style="margin-top: 0;">💬 Join the Community</h3>
+			<p>Connect with other members, share feedback, and participate in discussions:</p>
+			<a href="https://discord.gg/jwTYuUVAGh" target="_blank" style="display: inline-block; padding: 10px 20px; background: #5865F2; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 10px;">
+				Join Discord →
+			</a>
+		</div>
+
+		<div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-top: 20px;">
+			<h3 style="margin-top: 0;">Support Through Sadaqah</h3>
+			<p>Prefer to make a voluntary donation? We welcome all forms of support to keep Mu independent.</p>
+		</div>
+	</div>`,
+		membershipStatus,
+		func() string {
+			if !acc.Member {
+				return `<div style="margin: 30px 0; padding: 30px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+					<h3 style="margin-top: 0;">Become a Member</h3>
+					<p style="font-size: 1.2em; font-weight: bold; margin: 20px 0;">£10 / month</p>
+					<p style="margin-bottom: 20px;">Secure payment via GoCardless Direct Debit</p>
+					<a href="https://pay.gocardless.com/BRT00046P56M824" style="display: inline-block; padding: 15px 40px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 1.1em;">
+						Become a Member →
+					</a>
+				</div>`
+			}
+			return ""
+		}(),
+	)
+
+	html := RenderHTML("Membership", "Support Mu", content)
+	w.Write([]byte(html))
 }
 
 // Render a markdown document as html

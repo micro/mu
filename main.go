@@ -92,6 +92,9 @@ func main() {
 	// moderation queue
 	http.HandleFunc("/moderate", admin.ModerateHandler)
 
+	// membership page (public - handles GoCardless redirects)
+	http.HandleFunc("/membership", app.Membership)
+
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
 

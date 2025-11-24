@@ -24,6 +24,7 @@ type Account struct {
 	Secret  string    `json:"secret"`
 	Created time.Time `json:"created"`
 	Admin   bool      `json:"admin"`
+	Member  bool      `json:"member"`
 }
 
 type Session struct {
@@ -88,6 +89,20 @@ func GetAccount(id string) (*Account, error) {
 	}
 
 	return acc, nil
+}
+
+func UpdateAccount(acc *Account) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if _, ok := accounts[acc.ID]; !ok {
+		return errors.New("account does not exist")
+	}
+
+	accounts[acc.ID] = acc
+	data.SaveJSON("accounts.json", accounts)
+
+	return nil
 }
 
 func Login(id, secret string) (*Session, error) {
