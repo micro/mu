@@ -358,7 +358,28 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(html))
 			return
 		}
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		// Show membership page to non-logged-in users
+		content := `<h2>Membership Benefits</h2>
+		<ul>
+			<li>Vote on new features and platform direction</li>
+			<li>Exclusive access to latest updates</li>
+			<li>Priority support</li>
+			<li>Help keep Mu ad-free and sustainable</li>
+			<li>Join our Discord community</li>
+		</ul>
+
+		<h3>Become a Member</h3>
+		<p>Secure payment via GoCardless Direct Debit</p>
+		<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Join</button></a></p>
+
+		<h3>💬 Join the Community</h3>
+		<p>Connect with other members, share feedback, and participate in discussions:</p>
+		<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank"><button>Join Discord</button></a></p>
+
+		<h3>Support Through Donation</h3>
+		<p>Prefer to make a one-time donation? <a href="/donation">Make a donation</a> to support Mu.</p>`
+		html := RenderHTML("Membership", "Support Mu", content)
+		w.Write([]byte(html))
 		return
 	}
 
