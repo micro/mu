@@ -345,11 +345,14 @@ function setSession() {
   }).then(response => response.json())
   .then(sess => {
     console.log('Success:', sess);
-    var logoutLink = document.getElementById("logout-link");
+    var navLoggedIn = document.getElementById("nav-logged-in");
+    var navLoggedOut = document.getElementById("nav-logged-out");
     if (sess.type == "account") {
-      if (logoutLink) logoutLink.style.display = '';
+      if (navLoggedIn) navLoggedIn.style.display = '';
+      if (navLoggedOut) navLoggedOut.style.display = 'none';
     } else {
-      if (logoutLink) logoutLink.style.display = 'none';
+      if (navLoggedIn) navLoggedIn.style.display = 'none';
+      if (navLoggedOut) navLoggedOut.style.display = '';
       // If we're on a protected page but not logged in, redirect
       const protectedPaths = ['/home', '/chat', '/blog', '/news', '/video', '/posts'];
       if (protectedPaths.includes(window.location.pathname)) {
@@ -359,8 +362,10 @@ function setSession() {
   })
   .catch(error => {
     console.error('Error:', error);
-    var logoutLink = document.getElementById("logout-link");
-    if (logoutLink) logoutLink.style.display = 'none';
+    var navLoggedIn = document.getElementById("nav-logged-in");
+    var navLoggedOut = document.getElementById("nav-logged-out");
+    if (navLoggedIn) navLoggedIn.style.display = 'none';
+    if (navLoggedOut) navLoggedOut.style.display = '';
     // On error, redirect to home (but not if viewing public pages)
     const publicPaths = ['/post', '/membership', '/donation'];
     const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));

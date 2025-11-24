@@ -52,12 +52,18 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav">
-					<a href="/home"><img src="home.png" style="margin-bottom: 1px"><span class="label">Home</span></a>
-					<a href="/chat"><img src="chat.png"><span class="label">Chat</span></a>
-					<a href="/news"><img src="news.png"><span class="label">News</span></a>
-					<a href="/posts"><img src="post.png"><span class="label">Posts</span></a>
-					<a href="/video"><img src="video.png"><span class="label">Video</span></a>
-					<a id="logout-link" href="/logout"%s><img src="logout.png"><span class="label">Logout</span></a>
+					<div id="nav-logged-in">
+						<a href="/home"><img src="home.png" style="margin-bottom: 1px"><span class="label">Home</span></a>
+						<a href="/chat"><img src="chat.png"><span class="label">Chat</span></a>
+						<a href="/news"><img src="news.png"><span class="label">News</span></a>
+						<a href="/posts"><img src="post.png"><span class="label">Posts</span></a>
+						<a href="/video"><img src="video.png"><span class="label">Video</span></a>
+						<a id="logout-link" href="/logout"%s><img src="logout.png"><span class="label">Logout</span></a>
+					</div>
+					<div id="nav-logged-out" style="display: none;">
+						<a href="/login"><button style="width: 100%%; margin-bottom: 10px;">Login</button></a>
+						<a href="/signup"><button style="width: 100%%; margin-bottom: 10px;">Signup</button></a>
+					</div>
         </div>
       </div>
       <div id="content">
