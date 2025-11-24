@@ -1030,6 +1030,13 @@ body:has(#messages) #content {
     justify-content: space-around;
     gap: 0;
   }
+  #nav-logged-in {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+    gap: 0;
+  }
   #nav a {
     padding: 5px 3px;
     margin: 0;
