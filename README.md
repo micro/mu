@@ -4,7 +4,7 @@ The Muslim Network
 
 # Overview
 
-Big tech failed us. They now fuel addictive behaviour to drive profit above all else. The tools no longer work for us, but instead we feed them. 
+Big tech failed us. They now fuel addictive behaviour to drive profit above all else. The tools no longer work for us, instead we feed them. 
 We're rebuilding services without ads, algorithms or exploits for a better way of life.
 
 ## Features
