@@ -40,7 +40,7 @@ https://mu.xyz/membership
 
 Go to [mu.xyz](https://mu.xyz) to try it out for free.
 
-## Install
+## Development 
 
 Ensure you have [Go](https://go.dev/doc/install) installed
 
