@@ -219,6 +219,23 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			Secure: secure,
 		})
 
+		// Check for pending membership activation
+		if pendingCookie, err := r.Cookie("pending_membership"); err == nil && pendingCookie.Value == "true" {
+			// Get account and activate membership
+			if acc, err := auth.GetAccount(sess.Account); err == nil {
+				acc.Member = true
+				auth.UpdateAccount(acc)
+			}
+			// Clear the pending cookie
+			http.SetCookie(w, &http.Cookie{
+				Name:     "pending_membership",
+				Value:    "",
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+			})
+		}
+
 		// return to home
 		http.Redirect(w, r, "/home", 302)
 		return
@@ -298,6 +315,23 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			Secure: secure,
 		})
 
+		// Check for pending membership activation
+		if pendingCookie, err := r.Cookie("pending_membership"); err == nil && pendingCookie.Value == "true" {
+			// Get account and activate membership
+			if acc, err := auth.GetAccount(sess.Account); err == nil {
+				acc.Member = true
+				auth.UpdateAccount(acc)
+			}
+			// Clear the pending cookie
+			http.SetCookie(w, &http.Cookie{
+				Name:     "pending_membership",
+				Value:    "",
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+			})
+		}
+
 		// return to home
 		http.Redirect(w, r, "/home", 302)
 		return
@@ -353,6 +387,15 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Not logged in
 		if fromGoCardless {
+			// Set a cookie to track pending membership activation
+			http.SetCookie(w, &http.Cookie{
+				Name:     "pending_membership",
+				Value:    "true",
+				Path:     "/",
+				MaxAge:   3600, // 1 hour
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
 			content := `<h1>Thank you for becoming a member!</h1>
 				<p>Your support helps keep Mu independent and sustainable.</p>
 				<p>Please login or signup to activate your membership.</p>
@@ -405,7 +448,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	// Show membership page
 	membershipStatus := ""
 	if acc.Member {
-		membershipStatus = `<p><strong>✓ You are a member!</strong> Thank you for supporting Mu.</p>`
+		membershipStatus = `<p><strong>You are a member!</strong> Thank you for supporting Mu.</p>`
 	}
 
 	content := fmt.Sprintf(`%s
