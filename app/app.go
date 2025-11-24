@@ -359,7 +359,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Show membership page to non-logged-in users
-		content := `<h2>Membership Benefits</h2>
+		content := `<h2>Benefits</h2>
 		<ul>
 			<li>Vote on new features and platform direction</li>
 			<li>Exclusive access to latest updates</li>
