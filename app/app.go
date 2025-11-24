@@ -347,15 +347,13 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Not logged in
 		if fromGoCardless {
-			content := `<div style="max-width: 600px; margin: 0 auto; padding: 40px 20px; text-align: center;">
-				<h1 style="color: #28a745;">🎉 Thank you for becoming a member!</h1>
-				<p style="font-size: 1.1em; margin: 20px 0;">Your support helps keep Mu independent and sustainable.</p>
+			content := `<h1>🎉 Thank you for becoming a member!</h1>
+				<p>Your support helps keep Mu independent and sustainable.</p>
 				<p>Please login or signup to activate your membership.</p>
-				<div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
-					<a href="/login" style="padding: 12px 30px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Login</a>
-					<a href="/signup" style="padding: 12px 30px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Signup</a>
-				</div>
-			</div>`
+				<p>
+					<a href="/login"><button>Login</button></a>
+					<a href="/signup"><button>Signup</button></a>
+				</p>`
 			html := RenderHTML("Membership", "Thank you!", content)
 			w.Write([]byte(html))
 			return
@@ -380,15 +378,12 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	// Show membership page
 	membershipStatus := ""
 	if acc.Member {
-		membershipStatus = `<div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-			<strong>✓ You are a member!</strong> Thank you for supporting Mu.
-		</div>`
+		membershipStatus = `<p><strong>✓ You are a member!</strong> Thank you for supporting Mu.</p>`
 	}
 
-	content := fmt.Sprintf(`<div style="max-width: 700px; margin: 0 auto;">
-		%s
+	content := fmt.Sprintf(`%s
 		<h2>Membership Benefits</h2>
-		<ul style="font-size: 1.1em; line-height: 1.8;">
+		<ul>
 			<li>Vote on new features and platform direction</li>
 			<li>Exclusive access to latest updates</li>
 			<li>Priority support</li>
@@ -398,36 +393,63 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		%s
 
-		<div style="background: #e7f3ff; padding: 20px; border-radius: 8px; margin-top: 30px; border-left: 4px solid #007bff;">
-			<h3 style="margin-top: 0;">💬 Join the Community</h3>
-			<p>Connect with other members, share feedback, and participate in discussions:</p>
-			<a href="https://discord.gg/jwTYuUVAGh" target="_blank" style="display: inline-block; padding: 10px 20px; background: #5865F2; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 10px;">
-				Join Discord →
-			</a>
-		</div>
+		<h3>💬 Join the Community</h3>
+		<p>Connect with other members, share feedback, and participate in discussions:</p>
+		<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank"><button>Join Discord</button></a></p>
 
-		<div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-top: 20px;">
-			<h3 style="margin-top: 0;">Support Through Sadaqah</h3>
-			<p>Prefer to make a voluntary donation? We welcome all forms of support to keep Mu independent.</p>
-		</div>
-	</div>`,
+		<h3>Support Through Donation</h3>
+		<p>Prefer to make a one-time donation? <a href="/donation">Make a donation</a> to support Mu.</p>`,
 		membershipStatus,
 		func() string {
 			if !acc.Member {
-				return `<div style="margin: 30px 0; padding: 30px; background: #f8f9fa; border-radius: 8px; text-align: center;">
-					<h3 style="margin-top: 0;">Become a Member</h3>
-					<p style="font-size: 1.2em; font-weight: bold; margin: 20px 0;">£10 / month</p>
-					<p style="margin-bottom: 20px;">Secure payment via GoCardless Direct Debit</p>
-					<a href="https://pay.gocardless.com/BRT00046P56M824" style="display: inline-block; padding: 15px 40px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 1.1em;">
-						Become a Member →
-					</a>
-				</div>`
+				return `<h3>Become a Member</h3>
+					<p>Secure payment via GoCardless Direct Debit</p>
+					<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Join</button></a></p>`
 			}
 			return ""
 		}(),
 	)
 
 	html := RenderHTML("Membership", "Support Mu", content)
+	w.Write([]byte(html))
+}
+
+// Donation handler
+func Donation(w http.ResponseWriter, r *http.Request) {
+	// Check if coming from GoCardless
+	referer := r.Header.Get("Referer")
+	fromGoCardless := false
+	if referer != "" && (strings.Contains(referer, "gocardless.com") || strings.Contains(referer, "pay.gocardless.com")) {
+		fromGoCardless = true
+	}
+
+	if fromGoCardless {
+		content := `<h1>🙏 Thank you for your donation!</h1>
+			<p>Your generous support helps keep Mu independent and sustainable.</p>
+			<p>Every contribution makes a difference in building a better internet.</p>
+			<p><a href="/"><button>Return Home</button></a></p>`
+		html := RenderHTML("Donation", "Thank you!", content)
+		w.Write([]byte(html))
+		return
+	}
+
+	// Show donation page
+	content := `<h2>Support Mu with a Donation</h2>
+		<p>Help us build a better internet, free from ads and algorithms.</p>
+		<p>Your one-time donation supports the ongoing development and operation of Mu.</p>
+		<h3>Why Donate?</h3>
+		<ul>
+			<li>Keep Mu ad-free and independent</li>
+			<li>Support development of new features</li>
+			<li>Help maintain server infrastructure</li>
+			<li>Enable us to focus on users, not profits</li>
+		</ul>
+		<p><a href="https://pay.gocardless.com/BRT00046P78DQWG"><button>Make a Donation</button></a></p>
+		<p>Secure payment via GoCardless</p>
+		<hr>
+		<p>Looking for recurring support? <a href="/membership">Become a member</a> instead.</p>`
+
+	html := RenderHTML("Donation", "Support Mu", content)
 	w.Write([]byte(html))
 }
 

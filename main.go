@@ -95,6 +95,9 @@ func main() {
 	// membership page (public - handles GoCardless redirects)
 	http.HandleFunc("/membership", app.Membership)
 
+	// donation page (public - handles GoCardless redirects)
+	http.HandleFunc("/donation", app.Donation)
+
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
 
