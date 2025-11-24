@@ -455,7 +455,7 @@ func Donation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Show donation page
-	content := `<h2>Support Mu with a Donation</h2>
+	content := `<h2>Support Mu</h2>
 		<p>Help us build a better internet, free from ads and algorithms.</p>
 		<p>Your one-time donation supports the ongoing development and operation of Mu.</p>
 		<h3>Why Donate?</h3>
