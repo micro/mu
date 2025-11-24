@@ -1,6 +1,6 @@
 # mu
 
-The Muslim Network
+The Micro Network
 
 # Overview
 
