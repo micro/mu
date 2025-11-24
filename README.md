@@ -33,8 +33,6 @@ See [MEMBERSHIP.md](MEMBERSHIP.md) for information on how we plan to make this p
 
 Go to [mu.xyz](https://mu.xyz) for the live version
 
-Otherwise see the install guide
-
 ## Install
 
 Ensure you have [Go](https://go.dev/doc/install) installed
