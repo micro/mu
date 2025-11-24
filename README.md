@@ -36,9 +36,9 @@ Ideally its just a flat fee, nothing more.
 
 https://mu.xyz/membership
 
-## Usage
+## Website
 
-Go to [mu.xyz](https://mu.xyz) for the live version
+Go to [mu.xyz](https://mu.xyz)
 
 ## Install
 
