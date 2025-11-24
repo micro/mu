@@ -38,7 +38,7 @@ https://mu.xyz/membership
 
 ## Website
 
-Go to [mu.xyz](https://mu.xyz)
+Go to [mu.xyz](https://mu.xyz) to try it out for free.
 
 ## Install
 
