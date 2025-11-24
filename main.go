@@ -53,6 +53,9 @@ func main() {
 	// load the blog
 	blog.Load()
 
+	// load the home cards
+	home.Load()
+
 	authenticated := map[string]bool{
 		"/video":      true,
 		"/news":       true,

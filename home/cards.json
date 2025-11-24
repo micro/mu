@@ -1,0 +1,41 @@
+{
+  "left": [
+    {
+      "id": "posts",
+      "title": "Posts",
+      "type": "posts",
+      "position": 0,
+      "link": "/posts"
+    },
+    {
+      "id": "news",
+      "title": "News",
+      "type": "news",
+      "position": 1,
+      "link": "/news"
+    }
+  ],
+  "right": [
+    {
+      "id": "reminder",
+      "title": "Reminder",
+      "type": "reminder",
+      "position": 0,
+      "link": ""
+    },
+    {
+      "id": "markets",
+      "title": "Markets",
+      "type": "markets",
+      "position": 1,
+      "link": "/markets"
+    },
+    {
+      "id": "video",
+      "title": "Video",
+      "type": "video",
+      "position": 2,
+      "link": "/video"
+    }
+  ]
+}
