@@ -347,7 +347,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Not logged in
 		if fromGoCardless {
-			content := `<h1>🎉 Thank you for becoming a member!</h1>
+			content := `<h1>Thank you for becoming a member!</h1>
 				<p>Your support helps keep Mu independent and sustainable.</p>
 				<p>Please login or signup to activate your membership.</p>
 				<p>
@@ -445,7 +445,7 @@ func Donation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if fromGoCardless {
-		content := `<h1>🙏 Thank you for your donation!</h1>
+		content := `<h1>Thank you for your donation!</h1>
 			<p>Your generous support helps keep Mu independent and sustainable.</p>
 			<p>Every contribution makes a difference in building a better internet.</p>
 			<p><a href="/"><button>Return Home</button></a></p>`
