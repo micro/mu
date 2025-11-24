@@ -4,7 +4,8 @@ The Muslim Network
 
 # Overview
 
-The services we use daily are now exploited or addictive because of big tech. We can't escape ads, cookies, popups, paywalls, infinite scrolling, swiping and AI algorithms. Today's social and tech platforms are focused on profit not user well being. So we're looking to build something new, just the basics, with Islamic values.
+Big tech failed us. They now fuel addictive behaviour to drive profit above all else. The tools no longer work for us, but instead we feed them. 
+We're rebuilding services without ads, algorithms or exploits for a better way of life.
 
 ## Features
 
