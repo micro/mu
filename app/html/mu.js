@@ -361,8 +361,10 @@ function setSession() {
     console.error('Error:', error);
     var logoutLink = document.getElementById("logout-link");
     if (logoutLink) logoutLink.style.display = 'none';
-    // On error, redirect to home (but not if viewing a public post)
-    if (!window.location.pathname.startsWith('/post')) {
+    // On error, redirect to home (but not if viewing public pages)
+    const publicPaths = ['/post', '/membership', '/donation'];
+    const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));
+    if (!isPublicPath) {
       window.location.href = '/';
     }
   });
