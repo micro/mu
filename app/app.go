@@ -370,7 +370,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		<h3>Become a Member</h3>
 		<p>Secure payment via GoCardless Direct Debit</p>
-		<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Join</button></a></p>
+		<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Join us</button></a></p>
 
 		<h3>💬 Join the Community</h3>
 		<p>Connect with other members, share feedback, and participate in discussions:</p>
@@ -425,7 +425,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 			if !acc.Member {
 				return `<h3>Become a Member</h3>
 					<p>Secure payment via GoCardless Direct Debit</p>
-					<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Join</button></a></p>`
+					<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Join us</button></a></p>`
 			}
 			return ""
 		}(),
