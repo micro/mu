@@ -54,16 +54,18 @@ func main() {
 	blog.Load()
 
 	authenticated := map[string]bool{
-		"/video":    true,
-		"/news":     true,
-		"/chat":     true,
-		"/posts":    true,
-		"/home":     true,
-		"/logout":   true,
-		"/session":  true,
-		"/api":      true,
-		"/flag":     true,
-		"/moderate": true,
+		"/video":      true,
+		"/news":       true,
+		"/chat":       true,
+		"/posts":      true,
+		"/home":       true,
+		"/logout":     true,
+		"/session":    true,
+		"/api":        true,
+		"/flag":       true,
+		"/moderate":   true,
+		"/membership": false,
+		"/donation":   false,
 	}
 
 	// Static assets should not require authentication
