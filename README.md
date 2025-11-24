@@ -36,7 +36,7 @@ Ideally its just a flat fee, nothing more.
 
 https://mu.xyz/membership
 
-## Website
+## Try it out 
 
 Go to [mu.xyz](https://mu.xyz) to try it out for free.
 
