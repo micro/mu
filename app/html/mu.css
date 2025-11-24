@@ -175,6 +175,18 @@ td {
   font-size: 1.1em;
 }
 
+#nav-logged-out {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#nav-logged-out button {
+  width: 100%;
+  padding: 12px;
+  font-size: 1em;
+}
+
 /* ========================================
    LAYOUT
    ======================================== */

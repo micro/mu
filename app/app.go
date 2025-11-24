@@ -61,8 +61,8 @@ var Template = `
 						<a id="logout-link" href="/logout"%s><img src="logout.png"><span class="label">Logout</span></a>
 					</div>
 					<div id="nav-logged-out" style="display: none;">
-						<a href="/login"><button style="width: 100%%; margin-bottom: 10px;">Login</button></a>
-						<a href="/signup"><button style="width: 100%%; margin-bottom: 10px;">Signup</button></a>
+						<a href="/login"><button>Login</button></a>
+						<a href="/signup"><button>Signup</button></a>
 					</div>
         </div>
       </div>
