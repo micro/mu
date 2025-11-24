@@ -16,7 +16,7 @@ Starting with:
 - [x] Chat - LLM based chat UI
 - [x] News - Latest news headlines
 - [x] Video - Video search interface
-- [x] Blog - Micro blogging
+- [x] Posts - Micro blogging like X
 
 Coming soon:
 
