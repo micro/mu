@@ -403,7 +403,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := fmt.Sprintf(`%s
-		<h2>Membership Benefits</h2>
+		<h2>Benefits</h2>
 		<ul>
 			<li>Vote on new features and platform direction</li>
 			<li>Exclusive access to latest updates</li>
