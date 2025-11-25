@@ -87,14 +87,14 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		<tbody>`
 
 	for _, user := range users {
-		adminBadge := ""
+		adminCheckbox := "☐"
 		if user.Admin {
-			adminBadge = "✓"
+			adminCheckbox = "☑"
 		}
 		
-		memberBadge := ""
+		memberCheckbox := "☐"
 		if user.Member {
-			memberBadge = "✓"
+			memberCheckbox = "☑"
 		}
 
 		createdStr := user.Created.Format("2006-01-02")
@@ -118,14 +118,14 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 					<form method="POST" style="display: inline;">
 						<input type="hidden" name="action" value="toggle_admin">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
-						<button type="submit" style="border: none; background: none; cursor: pointer; font-size: 1.2em;">` + adminBadge + `</button>
+						<button type="submit" style="border: none; background: none; cursor: pointer; font-size: 1.5em;">` + adminCheckbox + `</button>
 					</form>
 				</td>
 				<td style="text-align: center; padding: 10px; border-bottom: 1px solid #eee;">
 					<form method="POST" style="display: inline;">
 						<input type="hidden" name="action" value="toggle_member">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
-						<button type="submit" style="border: none; background: none; cursor: pointer; font-size: 1.2em;">` + memberBadge + `</button>
+						<button type="submit" style="border: none; background: none; cursor: pointer; font-size: 1.5em;">` + memberCheckbox + `</button>
 					</form>
 				</td>
 				<td style="text-align: center; padding: 10px; border-bottom: 1px solid #eee;">
