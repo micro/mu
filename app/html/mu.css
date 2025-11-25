@@ -977,17 +977,19 @@ body:has(#messages) #content {
   #head {
     padding: 10px 20px;
     border-bottom: 1px solid #ddd;
-    justify-content: center;
+    justify-content: space-between;
     position: relative;
     min-height: 40px;
   }
   #brand {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    position: static;
+    transform: none;
   }
   #brand a {
     font-size: 1em;
+  }
+  #account {
+    flex: 0 0 auto;
   }
   #container {
     display: block;
