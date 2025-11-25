@@ -60,7 +60,7 @@ var Template = `
 						<a href="/chat"><img src="chat.png"><span class="label">Chat</span></a>
 						<a href="/news"><img src="news.png"><span class="label">News</span></a>
 						<a href="/posts"><img src="post.png"><span class="label">Posts</span></a>
-						<a href="/video"><img src="video.png"><span class="label">Video</span></a>
+						<a href="/video"%s><img src="video.png"><span class="label">Video</span></a>
 					</div>
 					<div id="nav-logged-out" style="display: none;">
 						<a href="/login"><button>Login</button></a>
