@@ -87,16 +87,6 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		<tbody>`
 
 	for _, user := range users {
-		adminCheckbox := "☐"
-		if user.Admin {
-			adminCheckbox = "☑"
-		}
-		
-		memberCheckbox := "☐"
-		if user.Member {
-			memberCheckbox = "☑"
-		}
-
 		createdStr := user.Created.Format("2006-01-02")
 		
 		// Don't allow deleting yourself
@@ -118,14 +108,14 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 					<form method="POST" style="display: inline;">
 						<input type="hidden" name="action" value="toggle_admin">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
-						<button type="submit" style="border: none; background: none; cursor: pointer; font-size: 1.5em;">` + adminCheckbox + `</button>
+						<input type="checkbox" ` + func() string { if user.Admin { return "checked" }; return "" }() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
 					</form>
 				</td>
 				<td style="text-align: center; padding: 10px; border-bottom: 1px solid #eee;">
 					<form method="POST" style="display: inline;">
 						<input type="hidden" name="action" value="toggle_member">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
-						<button type="submit" style="border: none; background: none; cursor: pointer; font-size: 1.5em;">` + memberCheckbox + `</button>
+						<input type="checkbox" ` + func() string { if user.Member { return "checked" }; return "" }() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
 					</form>
 				</td>
 				<td style="text-align: center; padding: 10px; border-bottom: 1px solid #eee;">
