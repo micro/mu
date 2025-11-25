@@ -20,7 +20,7 @@ Starting with:
 
 Coming soon:
 
-- [ ] Mail - Email without Gmail
+- [ ] Mail - Private messaging
 - [ ] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
