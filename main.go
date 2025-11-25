@@ -63,6 +63,7 @@ func main() {
 		"/posts":      true,
 		"/home":       true,
 		"/logout":     true,
+		"/account":    true,
 		"/session":    true,
 		"/api":        true,
 		"/flag":       true,
@@ -122,6 +123,7 @@ func main() {
 	http.HandleFunc("/login", app.Login)
 	http.HandleFunc("/logout", app.Logout)
 	http.HandleFunc("/signup", app.Signup)
+	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/session", app.Session)
 
 	// serve the api doc

@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v62';
+var VERSION = 'v64';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -13,7 +13,7 @@ var STATIC_CACHE = [
   '/post.png',
   '/news.png',
   '/video.png',
-  '/logout.png',
+  '/account.png',
   '/icon-192.png',
   '/icon-512.png'
 ];
@@ -347,12 +347,15 @@ function setSession() {
     console.log('Success:', sess);
     var navLoggedIn = document.getElementById("nav-logged-in");
     var navLoggedOut = document.getElementById("nav-logged-out");
+    var accountHeader = document.getElementById("account-header");
     if (sess.type == "account") {
       if (navLoggedIn) navLoggedIn.style.display = '';
       if (navLoggedOut) navLoggedOut.style.display = 'none';
+      if (accountHeader) accountHeader.style.display = 'block';
     } else {
       if (navLoggedIn) navLoggedIn.style.display = 'none';
       if (navLoggedOut) navLoggedOut.style.display = '';
+      if (accountHeader) accountHeader.style.display = 'none';
       // If we're on a protected page but not logged in, redirect
       const protectedPaths = ['/home', '/chat', '/blog', '/news', '/video', '/posts'];
       if (protectedPaths.includes(window.location.pathname)) {

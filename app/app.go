@@ -35,6 +35,7 @@ var Template = `
     <link rel="preload" href="/post.png" as="image">
     <link rel="preload" href="/news.png" as="image">
     <link rel="preload" href="/video.png" as="image">
+    <link rel="preload" href="/account.png" as="image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
@@ -47,7 +48,9 @@ var Template = `
       <div id="brand">
         <a href="/">Mu</a>
       </div>
-      <div id="account">&nbsp;</div>
+      <div id="account">
+        <a id="account-header" href="/account" style="display: none;"><img src="/account.png" width="24" height="24"></a>
+      </div>
     </div>
     <div id="container">
       <div id="nav-container">
@@ -58,7 +61,6 @@ var Template = `
 						<a href="/news"><img src="news.png"><span class="label">News</span></a>
 						<a href="/posts"><img src="post.png"><span class="label">Posts</span></a>
 						<a href="/video"><img src="video.png"><span class="label">Video</span></a>
-						<a id="logout-link" href="/logout"%s><img src="logout.png"><span class="label">Logout</span></a>
 					</div>
 					<div id="nav-logged-out" style="display: none;">
 						<a href="/login"><button>Login</button></a>
@@ -336,6 +338,52 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/home", 302)
 		return
 	}
+}
+
+func Account(w http.ResponseWriter, r *http.Request) {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	acc, err := auth.GetAccount(sess.Account)
+	if err != nil {
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return
+	}
+
+	// Build membership section
+	membershipSection := ""
+	if acc.Member {
+		membershipSection = `<h3>Membership</h3>
+			<p><strong>✓ You are a member!</strong> Thank you for supporting Mu.</p>
+			<p><a href="/membership">View membership details</a></p>`
+	} else {
+		membershipSection = `<h3>Membership</h3>
+			<p>Support Mu and get exclusive benefits.</p>
+			<p><a href="/membership"><button>Become a Member</button></a></p>`
+	}
+
+	content := fmt.Sprintf(`<h2>Account Information</h2>
+		<p><strong>Username:</strong> %s</p>
+		<p><strong>Name:</strong> %s</p>
+		<p><strong>Member since:</strong> %s</p>
+		
+		<br>
+		%s
+		
+		<br>
+		<hr>
+		<p><a href="/logout"><button>Logout</button></a></p>`,
+		acc.ID,
+		acc.Name,
+		acc.Created.Format("January 2, 2006"),
+		membershipSection,
+	)
+
+	html := RenderHTML("Account", "Your Account", content)
+	w.Write([]byte(html))
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
