@@ -20,7 +20,7 @@ Starting with:
 
 Coming soon:
 
-- [ ] Mail - Private messages
+- [ ] Mail - Private inbox
 - [ ] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
