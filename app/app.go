@@ -605,7 +605,7 @@ func RenderString(v string) string {
 
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
-	return fmt.Sprintf(Template, title, desc, RenderString(text))
+	return fmt.Sprintf(Template, title, desc, "", title, RenderString(text))
 }
 
 func ServeHTML(html string) http.Handler {
