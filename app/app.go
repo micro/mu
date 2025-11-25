@@ -73,7 +73,6 @@ var Template = `
         %s
       </div>
     </div>
-    </div>
   <script>
       if (navigator.serviceWorker) {
         navigator.serviceWorker.register (
