@@ -13,10 +13,10 @@ Starting with:
 
 - [x] API - Basic API
 - [x] App - Installable PWA
-- [x] Chat - LLM based chat UI
-- [x] News - RSS news headlines
-- [x] Video - YouTube API search
-- [x] Posts - Micro blogging like X
+- [x] Chat - LLM chat UI
+- [x] News - RSS news feed
+- [x] Video - YouTube search
+- [x] Posts - Micro blogging
 
 Coming soon:
 
