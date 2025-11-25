@@ -67,6 +67,7 @@ func main() {
 		"/api":        true,
 		"/flag":       true,
 		"/moderate":   true,
+		"/admin":      true,
 		"/membership": false,
 		"/donation":   false,
 	}
@@ -96,6 +97,9 @@ func main() {
 
 	// moderation queue
 	http.HandleFunc("/moderate", admin.ModerateHandler)
+
+	// admin user management
+	http.HandleFunc("/admin", admin.AdminHandler)
 
 	// membership page (public - handles GoCardless redirects)
 	http.HandleFunc("/membership", app.Membership)

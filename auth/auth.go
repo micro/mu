@@ -105,6 +105,40 @@ func UpdateAccount(acc *Account) error {
 	return nil
 }
 
+func GetAllAccounts() []*Account {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	list := make([]*Account, 0, len(accounts))
+	for _, acc := range accounts {
+		list = append(list, acc)
+	}
+	return list
+}
+
+func DeleteAccount(id string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if _, ok := accounts[id]; !ok {
+		return errors.New("account does not exist")
+	}
+
+	delete(accounts, id)
+	
+	// Also delete any sessions for this account
+	for sid, sess := range sessions {
+		if sess.Account == id {
+			delete(sessions, sid)
+		}
+	}
+	
+	data.SaveJSON("accounts.json", accounts)
+	data.SaveJSON("sessions.json", sessions)
+
+	return nil
+}
+
 func Login(id, secret string) (*Session, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
