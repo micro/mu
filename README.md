@@ -30,7 +30,7 @@ Coming soon:
 Mu is a membership based network. Support, features and voting are available by via a subscription fee.
 
 What are the benefits to this? Sustainability of the platform. Ad free, algorithm free, etc. Direct voice to the team building and running the network. 
-This goes against the idea of a pricing plan or SaaS which is trying to sell you on something. Instead, yes you pay monthly, but to support the tools.
+This goes against the idea of a pricing plan which is trying to sell you on something. Instead, yes you pay monthly, but to support the tools.
 
 Ideally its just a flat fee, nothing more.
 
