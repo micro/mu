@@ -989,9 +989,6 @@ body:has(#messages) #content {
   #brand a {
     font-size: 1em;
   }
-  #account {
-    display: none;
-  }
   #container {
     display: block;
     padding-top: 0;
