@@ -12,7 +12,7 @@ Let's rebuild these services without ads, algorithms or exploits for a better wa
 Starting with:
 
 - [x] API - Basic API
-- [x] App - Installable PWA
+- [x] App - Basic PWA
 - [x] Chat - LLM chat UI
 - [x] News - RSS news feed
 - [x] Video - YouTube search
