@@ -73,15 +73,27 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 
 	content := `<h2>User Management</h2>
 	<p>Total Users: ` + fmt.Sprintf("%d", len(users)) + `</p>
-	<table style="width: 100%; border-collapse: collapse;">
+	<style>
+		.admin-table { width: 100%; border-collapse: collapse; }
+		.admin-table th { text-align: left; padding: 10px; border-bottom: 2px solid #ddd; }
+		.admin-table td { padding: 10px; border-bottom: 1px solid #eee; }
+		.admin-table .center { text-align: center; }
+		@media only screen and (max-width: 600px) {
+			.admin-table { font-size: 0.85em; }
+			.admin-table th, .admin-table td { padding: 5px 3px; }
+			.admin-table .created-col { display: none; }
+			.admin-table .delete-btn { padding: 3px 6px !important; font-size: 0.8em !important; }
+		}
+	</style>
+	<table class="admin-table">
 		<thead>
 			<tr>
-				<th style="text-align: left; padding: 10px; border-bottom: 2px solid #ddd;">Username</th>
-				<th style="text-align: left; padding: 10px; border-bottom: 2px solid #ddd;">Name</th>
-				<th style="text-align: left; padding: 10px; border-bottom: 2px solid #ddd;">Created</th>
-				<th style="text-align: center; padding: 10px; border-bottom: 2px solid #ddd;">Admin</th>
-				<th style="text-align: center; padding: 10px; border-bottom: 2px solid #ddd;">Member</th>
-				<th style="text-align: center; padding: 10px; border-bottom: 2px solid #ddd;">Actions</th>
+				<th>Username</th>
+				<th>Name</th>
+				<th class="created-col">Created</th>
+				<th class="center">Admin</th>
+				<th class="center">Member</th>
+				<th class="center">Actions</th>
 			</tr>
 		</thead>
 		<tbody>`
@@ -95,30 +107,30 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 			deleteButton = `<form method="POST" style="display: inline;" onsubmit="return confirm('Delete user ` + user.ID + `?');">
 				<input type="hidden" name="action" value="delete">
 				<input type="hidden" name="user_id" value="` + user.ID + `">
-				<button type="submit" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Delete</button>
+				<button type="submit" class="delete-btn" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Delete</button>
 			</form>`
 		}
 
 		content += `
 			<tr>
-				<td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>` + user.ID + `</strong></td>
-				<td style="padding: 10px; border-bottom: 1px solid #eee;">` + user.Name + `</td>
-				<td style="padding: 10px; border-bottom: 1px solid #eee;">` + createdStr + `</td>
-				<td style="text-align: center; padding: 10px; border-bottom: 1px solid #eee;">
+				<td><strong>` + user.ID + `</strong></td>
+				<td>` + user.Name + `</td>
+				<td class="created-col">` + createdStr + `</td>
+				<td class="center">
 					<form method="POST" style="display: inline;">
 						<input type="hidden" name="action" value="toggle_admin">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
 						<input type="checkbox" ` + func() string { if user.Admin { return "checked" }; return "" }() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
 					</form>
 				</td>
-				<td style="text-align: center; padding: 10px; border-bottom: 1px solid #eee;">
+				<td class="center">
 					<form method="POST" style="display: inline;">
 						<input type="hidden" name="action" value="toggle_member">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
 						<input type="checkbox" ` + func() string { if user.Member { return "checked" }; return "" }() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
 					</form>
 				</td>
-				<td style="text-align: center; padding: 10px; border-bottom: 1px solid #eee;">
+				<td class="center">
 					` + deleteButton + `
 				</td>
 			</tr>`
