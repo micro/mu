@@ -102,7 +102,7 @@ td {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 40px;
+  padding: 10px 40px;
   border-bottom: 1px solid #e0e0e0;
   position: fixed;
   top: 0;
@@ -975,11 +975,11 @@ body:has(#messages) #content {
     overflow-x: scroll;
   }
   #head {
-    padding: 10px 20px;
+    padding: 8px 15px;
     border-bottom: 1px solid #ddd;
     justify-content: space-between;
     position: relative;
-    min-height: 40px;
+    min-height: 36px;
   }
   #brand {
     position: static;
@@ -998,13 +998,13 @@ body:has(#messages) #content {
   }
   #content {
     margin-left: 0;
-    padding: 15px 20px;
+    padding: 10px 15px;
   }
   #page-title {
     text-align: left;
-    font-size: 1.3em;
+    font-size: 1.2em;
     margin-top: 0;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   #blog .info {
     text-align: center;
@@ -1027,7 +1027,7 @@ body:has(#messages) #content {
     z-index: 1000;
   }
   #nav {
-    padding: 5px 5px 3px 5px;
+    padding: 4px 5px 2px 5px;
     flex-direction: row;
     justify-content: space-around;
     gap: 0;
@@ -1118,11 +1118,11 @@ body:has(#messages) #content {
     height: 100vh;
   }
   body:has(#messages) #content {
-    height: calc(100vh - 51px - 60px);
+    height: calc(100vh - 46px - 52px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding: 15px 20px 0 20px;
+    padding: 10px 15px 0 15px;
   }
   body:has(#messages) #topics {
     flex-shrink: 0;
