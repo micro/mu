@@ -1124,7 +1124,7 @@ body:has(#messages) #content {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding: 10px 15px 60px 15px;
+    padding: 10px 15px 80px 15px;
   }
   body:has(#messages) #topics {
     flex-shrink: 0;
