@@ -1101,11 +1101,13 @@ body:has(#messages) #content {
     flex: 1;
     overflow-y: auto;
     min-height: 0;
+    padding-bottom: 10px;
   }
   /* Prevent container scroll on chat page */
   #messages ~ #chat-form {
     margin-bottom: 0;
     flex-shrink: 0;
+    padding-bottom: 10px;
   }
   body:has(#messages) {
     overflow: hidden;
@@ -1144,8 +1146,6 @@ body:has(#messages) #content {
   #chat-form {
     position: relative;
     z-index: 1;
-    margin-bottom: 52px;
-    padding-bottom: 0;
   }
   .post-show {
     margin-top: 10px;
