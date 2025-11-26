@@ -1144,8 +1144,8 @@ body:has(#messages) #content {
   #chat-form {
     position: relative;
     z-index: 1;
-    margin-bottom: 0;
-    padding-bottom: 52px;
+    margin-bottom: 52px;
+    padding-bottom: 0;
   }
   .post-show {
     margin-top: 10px;
