@@ -485,6 +485,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Redirect back to blog page
-	http.Redirect(w, r, "/blog", http.StatusSeeOther)
+	// Redirect back to posts page
+	http.Redirect(w, r, "/posts", http.StatusSeeOther)
 }
