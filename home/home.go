@@ -174,44 +174,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Refresh cards if cache expired (2 minute TTL)
 	RefreshCards()
 	
-	// Handle POST requests for creating posts
-	if r.Method == "POST" {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
-			return
-		}
-
-		title := strings.TrimSpace(r.FormValue("title"))
-		content := strings.TrimSpace(r.FormValue("content"))
-
-		if content == "" {
-			http.Error(w, "Content is required", http.StatusBadRequest)
-			return
-		}
-
-		// Get the authenticated user
-		author := "Anonymous"
-		sess, err := auth.GetSession(r)
-		if err == nil {
-			acc, err := auth.GetAccount(sess.Account)
-			if err == nil {
-				author = acc.Name
-			}
-		}
-
-		// Create the post
-		if err := blog.CreatePost(title, content, author); err != nil {
-			http.Error(w, "Failed to save post", http.StatusInternalServerError)
-			return
-		}
-
-		// Redirect back to home page
-		http.Redirect(w, r, "/home", http.StatusSeeOther)
-		return
-	}
-
-	// GET request - render the page
-	
 	// Get last visit time from cookie
 	var lastVisit time.Time
 	if cookie, err := r.Cookie("last_visit"); err == nil {

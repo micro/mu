@@ -32,6 +32,7 @@ type Post struct {
 	Title     string    `json:"title"`
 	Content   string    `json:"content"`
 	Author    string    `json:"author"`
+	AuthorID  string    `json:"author_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -125,11 +126,16 @@ func updateCache() {
 			title = "Untitled"
 		}
 
+		authorLink := post.Author
+		if post.AuthorID != "" {
+			authorLink = fmt.Sprintf(`<a href="/%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
 			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a></div>
-		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author, post.ID)
+		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
 		preview = append(preview, item)
 	}
 
@@ -154,11 +160,16 @@ func updateCache() {
 
 		linkedContent := linkify(post.Content)
 
+		authorLink := post.Author
+		if post.AuthorID != "" {
+			authorLink = fmt.Sprintf(`<a href="/%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
 			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a> · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a></div>
-		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author, post.ID, post.ID)
+		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID)
 		fullList = append(fullList, item)
 	}
 
@@ -227,11 +238,16 @@ func renderPostPreview(post *Post) string {
 
 	linkedContent := linkify(content)
 
+	authorLink := post.Author
+	if post.AuthorID != "" {
+		authorLink = fmt.Sprintf(`<a href="/%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+	}
+
 	item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<p style="white-space: pre-wrap;">%s</p>
 		<div class="info" style="color: #666; font-size: small;">%s by %s</div>
-	</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.Author)
+	</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink)
 
 	return item
 }
@@ -281,13 +297,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreatePost creates a new post and returns error if any
-func CreatePost(title, content, author string) error {
+func CreatePost(title, content, author, authorID string) error {
 	// Create new post
 	post := &Post{
 		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
 		Title:     title,
 		Content:   content,
 		Author:    author,
+		AuthorID:  authorID,
 		CreatedAt: time.Now(),
 	}
 
@@ -377,13 +394,18 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	linkedContent := linkify(post.Content)
 
+	authorLink := post.Author
+	if post.AuthorID != "" {
+		authorLink = fmt.Sprintf(`<a href="/%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+	}
+
 	content := fmt.Sprintf(`<div id="blog">
 	<div class="info" style="color: #666; font-size: small;">%s by %s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="white-space: pre-wrap;">%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<a href="/posts">← Back to all posts</a>
-	</div>`, app.TimeAgo(post.CreatedAt), post.Author, linkedContent)
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, linkedContent)
 
 	// Check if user is authenticated to show logout link
 	var token string
@@ -425,16 +447,18 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	// Get the authenticated user
 	author := "Anonymous"
+	authorID := ""
 	sess, err := auth.GetSession(r)
 	if err == nil {
 		acc, err := auth.GetAccount(sess.Account)
 		if err == nil {
 			author = acc.Name
+			authorID = acc.ID
 		}
 	}
 
 	// Create the post
-	if err := CreatePost(title, content, author); err != nil {
+	if err := CreatePost(title, content, author, authorID); err != nil {
 		http.Error(w, "Failed to save post", http.StatusInternalServerError)
 		return
 	}

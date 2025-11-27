@@ -404,13 +404,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		<p><strong>Name:</strong> %s</p>
 		<p><strong>Member since:</strong> %s</p>
 		<p><a href="/%s"><button>View Profile</button></a></p>
-		
 		<br>
 		%s
-		
 		<br>
 		%s
-		
 		<br>
 		<hr>
 		<p><a href="/logout"><button>Logout</button></a></p>`,
