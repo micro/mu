@@ -392,25 +392,27 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	languageSection := fmt.Sprintf(`<h3>Language</h3>
 		<p>Choose your preferred language. This helps with browser translation.</p>
-		<form action="/account" method="POST">
+		<form action="/account" method="POST" style="margin-top: 10px;">
 			<select name="language" style="padding: 8px; font-size: 14px;">
 				%s
 			</select>
 			<button type="submit" style="margin-left: 10px;">Save</button>
 		</form>`, languageOptions)
 
-	content := fmt.Sprintf(`<h2>Account Information</h2>
+	content := fmt.Sprintf(`<div style="max-width: 600px;">
+		<h2 style="margin-bottom: 15px;">Account Information</h2>
 		<p><strong>Username:</strong> %s</p>
 		<p><strong>Name:</strong> %s</p>
 		<p><strong>Member since:</strong> %s</p>
-		<p><a href="/%s"><button>View Profile</button></a></p>
-		<br>
-		%s
-		<br>
-		%s
-		<br>
-		<hr>
-		<p><a href="/logout"><button>Logout</button></a></p>`,
+		<p style="margin-top: 10px;"><a href="/%s"><button>View Profile</button></a></p>
+		
+		<div style="margin-top: 20px;">%s</div>
+		
+		<div style="margin-top: 20px;">%s</div>
+		
+		<hr style="margin: 20px 0;">
+		<p><a href="/logout"><button style="display: inline-flex; align-items: center; gap: 8px;"><img src="/logout.png" width="16" height="16" style="vertical-align: middle;">Logout</button></a></p>
+		</div>`,
 		acc.ID,
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
