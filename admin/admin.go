@@ -6,19 +6,19 @@ import (
 	"sort"
 
 	"mu/app"
-	"mu/user"
+	"mu/auth"
 )
 
 // AdminHandler shows the admin page with user management
 func AdminHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if user is admin
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	acc, err := user.GetAccount(sess.Account)
+	acc, err := auth.GetAccount(sess.Account)
 	if err != nil || !acc.Admin {
 		http.Error(w, "Forbidden - Admin access required", http.StatusForbidden)
 		return
@@ -39,7 +39,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		targetUser, err := user.GetAccount(userID)
+		targetUser, err := auth.GetAccount(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
@@ -48,12 +48,12 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		switch action {
 		case "toggle_admin":
 			targetUser.Admin = !targetUser.Admin
-			user.UpdateAccount(targetUser)
+			auth.UpdateAccount(targetUser)
 		case "toggle_member":
 			targetUser.Member = !targetUser.Member
-			user.UpdateAccount(targetUser)
+			auth.UpdateAccount(targetUser)
 		case "delete":
-			if err := user.DeleteAccount(userID); err != nil {
+			if err := auth.DeleteAccount(userID); err != nil {
 				http.Error(w, "Failed to delete user", http.StatusInternalServerError)
 				return
 			}
@@ -64,7 +64,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GET request - show user list
-	users := user.GetAllAccounts()
+	users := auth.GetAllAccounts()
 	
 	// Sort users by created date (newest first)
 	sort.Slice(users, func(i, j int) bool {

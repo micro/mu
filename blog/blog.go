@@ -12,7 +12,7 @@ import (
 
 	"mu/admin"
 	"mu/app"
-	"mu/user"
+	"mu/auth"
 	"mu/data"
 )
 
@@ -341,6 +341,20 @@ func RefreshCache() {
 	updateCache()
 }
 
+// GetPostsByAuthor returns all posts by a specific author (for user profiles)
+func GetPostsByAuthor(authorName string) []*Post {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	
+	var userPosts []*Post
+	for _, post := range posts {
+		if post.Author == authorName {
+			userPosts = append(userPosts, post)
+		}
+	}
+	return userPosts
+}
+
 // handlePost processes the POST request to create a new blog post
 // PostHandler serves individual blog posts (public, no auth required)
 func PostHandler(w http.ResponseWriter, r *http.Request) {
@@ -376,7 +390,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie("session"); err == nil && c != nil {
 		token = c.Value
 	}
-	showLogout := user.ValidateToken(token) == nil
+	showLogout := auth.ValidateToken(token) == nil
 
 	html := app.RenderHTMLWithLogout(title, post.Content[:min(len(post.Content), 150)], content, showLogout)
 	w.Write([]byte(html))
@@ -411,9 +425,9 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	// Get the authenticated user
 	author := "Anonymous"
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err == nil {
-		acc, err := user.GetAccount(sess.Account)
+		acc, err := auth.GetAccount(sess.Account)
 		if err == nil {
 			author = acc.Name
 		}

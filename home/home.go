@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"mu/app"
-	"mu/user"
+	"mu/auth"
 	"mu/blog"
 	"mu/news"
 	"mu/video"
@@ -191,9 +191,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Get the authenticated user
 		author := "Anonymous"
-		sess, err := user.GetSession(r)
+		sess, err := auth.GetSession(r)
 		if err == nil {
-			acc, err := user.GetAccount(sess.Account)
+			acc, err := auth.GetAccount(sess.Account)
 			if err == nil {
 				author = acc.Name
 			}

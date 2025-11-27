@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/user"
+	"mu/auth"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
@@ -201,7 +201,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sess, err := user.Login(id, secret)
+		sess, err := auth.Login(id, secret)
 		if err != nil {
 			w.Write([]byte(fmt.Sprintf(LoginTemplate, `<p style="color: red;">Invalid username or password</p>`)))
 			return
@@ -223,9 +223,9 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		// Check for pending membership activation
 		if pendingCookie, err := r.Cookie("pending_membership"); err == nil && pendingCookie.Value == "true" {
 			// Get account and activate membership
-			if acc, err := user.GetAccount(sess.Account); err == nil {
+			if acc, err := auth.GetAccount(sess.Account); err == nil {
 				acc.Member = true
-				user.UpdateAccount(acc)
+				auth.UpdateAccount(acc)
 			}
 			// Clear the pending cookie
 			http.SetCookie(w, &http.Cookie{
@@ -286,7 +286,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			name = id
 		}
 
-		if err := user.Create(&user.Account{
+		if err := auth.Create(&auth.Account{
 			ID:      id,
 			Secret:  secret,
 			Name:    name,
@@ -297,7 +297,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// login
-		sess, err := user.Login(id, secret)
+		sess, err := auth.Login(id, secret)
 		if err != nil {
 			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Account created but login failed. Please try logging in.</p>`)))
 			return
@@ -319,9 +319,9 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		// Check for pending membership activation
 		if pendingCookie, err := r.Cookie("pending_membership"); err == nil && pendingCookie.Value == "true" {
 			// Get account and activate membership
-			if acc, err := user.GetAccount(sess.Account); err == nil {
+			if acc, err := auth.GetAccount(sess.Account); err == nil {
 				acc.Member = true
-				user.UpdateAccount(acc)
+				auth.UpdateAccount(acc)
 			}
 			// Clear the pending cookie
 			http.SetCookie(w, &http.Cookie{
@@ -340,13 +340,13 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 func Account(w http.ResponseWriter, r *http.Request) {
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
-	acc, err := user.GetAccount(sess.Account)
+	acc, err := auth.GetAccount(sess.Account)
 	if err != nil {
 		http.Error(w, "Account not found", http.StatusNotFound)
 		return
@@ -358,7 +358,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		newLang := r.Form.Get("language")
 		if _, ok := SupportedLanguages[newLang]; ok {
 			acc.Language = newLang
-			user.UpdateAccount(acc)
+			auth.UpdateAccount(acc)
 		}
 		http.Redirect(w, r, "/account", http.StatusSeeOther)
 		return
@@ -403,6 +403,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		<p><strong>Username:</strong> %s</p>
 		<p><strong>Name:</strong> %s</p>
 		<p><strong>Member since:</strong> %s</p>
+		<p><a href="/%s"><button>View Profile</button></a></p>
 		
 		<br>
 		%s
@@ -416,6 +417,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.ID,
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
+		acc.ID,
 		membershipSection,
 		languageSection,
 	)
@@ -425,7 +427,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/home", 302)
 		return
@@ -442,13 +444,13 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		Value:  "",
 		Secure: secure,
 	})
-	user.Logout(sess.Token)
+	auth.Logout(sess.Token)
 	http.Redirect(w, r, "/home", 302)
 }
 
 // Session handler
 func Session(w http.ResponseWriter, r *http.Request) {
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err != nil {
 		http.Error(w, err.Error(), 401)
 		return
@@ -469,7 +471,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user is logged in
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err != nil {
 		// Not logged in
 		if fromGoCardless {
@@ -519,7 +521,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// User is logged in
-	acc, err := user.GetAccount(sess.Account)
+	acc, err := auth.GetAccount(sess.Account)
 	if err != nil {
 		http.Error(w, "Account not found", http.StatusNotFound)
 		return
@@ -528,7 +530,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	// If coming from GoCardless, activate membership
 	if fromGoCardless && !acc.Member {
 		acc.Member = true
-		user.UpdateAccount(acc)
+		auth.UpdateAccount(acc)
 	}
 
 	// Show membership page
@@ -633,11 +635,11 @@ var SupportedLanguages = map[string]string{
 
 // GetUserLanguage returns the language preference for the current user, defaults to "en"
 func GetUserLanguage(r *http.Request) string {
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err != nil {
 		return "en"
 	}
-	acc, err := user.GetAccount(sess.Account)
+	acc, err := auth.GetAccount(sess.Account)
 	if err != nil {
 		return "en"
 	}

@@ -9,6 +9,7 @@ import (
 	"mu/admin"
 	"mu/api"
 	"mu/app"
+	"mu/auth"
 	"mu/user"
 	"mu/blog"
 	"mu/chat"
@@ -188,15 +189,34 @@ func main() {
 			// check token
 			if isAuthed {
 				// deny access if invalid
-				if err := user.ValidateToken(token); err != nil {
+				if err := auth.ValidateToken(token); err != nil {
 					http.Redirect(w, r, "/", 302)
 					return
 				}
 			} else if r.URL.Path == "/" {
-				if err := user.ValidateToken(token); err == nil {
+				if err := auth.ValidateToken(token); err == nil {
 					http.Redirect(w, r, "/home", 302)
 					return
 				}
+			}
+		}
+
+		// Check if this is a user profile request (/@username or /username)
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path != "" && !strings.Contains(path, "/") && !strings.Contains(path, ".") {
+			// Check if path matches authenticated routes
+			isAuthRoute := false
+			for url := range authenticated {
+				if strings.HasPrefix("/"+path, url) {
+					isAuthRoute = true
+					break
+				}
+			}
+			
+			// If not an auth route and not a static file, treat as username profile
+			if !isAuthRoute && !isStaticAsset {
+				user.Profile(w, r)
+				return
 			}
 		}
 

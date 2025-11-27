@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"mu/app"
-	"mu/user"
+	"mu/auth"
 	"mu/data"
 )
 
@@ -228,9 +228,9 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the authenticated user
 	flagger := "Anonymous"
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err == nil {
-		acc, err := user.GetAccount(sess.Account)
+		acc, err := auth.GetAccount(sess.Account)
 		if err == nil {
 			flagger = acc.Name
 		}
@@ -269,9 +269,9 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if user is admin
 	isAdmin := false
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err == nil {
-		acc, err := user.GetAccount(sess.Account)
+		acc, err := auth.GetAccount(sess.Account)
 		if err == nil && acc.Admin {
 			isAdmin = true
 		}
@@ -414,13 +414,13 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user is admin
-	sess, err := user.GetSession(r)
+	sess, err := auth.GetSession(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	acc, err := user.GetAccount(sess.Account)
+	acc, err := auth.GetAccount(sess.Account)
 	if err != nil || !acc.Admin {
 		http.Error(w, "Admin access required", http.StatusForbidden)
 		return
