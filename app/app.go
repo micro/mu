@@ -500,7 +500,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 			<li>Vote on new features and platform direction</li>
 			<li>Exclusive access to latest updates</li>
 			<li>Help keep Mu ad-free and sustainable</li>
-			<li>Join our Discord community</li>
+			<li>Be part of our Discord community</li>
 		</ul>
 
 		<h3>Become a Member</h3>
