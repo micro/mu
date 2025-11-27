@@ -506,9 +506,9 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		<h3>Become a Member</h3>
 		<p>Secure payment via GoCardless Direct Debit</p>
-		<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Join us</button></a></p>
+		<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Payment Link</button></a></p>
 
-		<h3>💬 Join the Community</h3>
+		<h3>Join the Community</h3>
 		<p>Connect with other members, share feedback, and participate in discussions:</p>
 	<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank"><button>Join Discord</button></a></p>
 
@@ -543,9 +543,8 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 		<ul>
 			<li>Vote on new features and platform direction</li>
 			<li>Exclusive access to latest updates</li>
-			<li>Priority support</li>
 			<li>Help keep Mu ad-free and sustainable</li>
-			<li>Join our Discord community</li>
+			<li>Be part of our Discord community</li>
 		</ul>
 
 		%s
