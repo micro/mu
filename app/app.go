@@ -49,7 +49,7 @@ var Template = `
         <a href="/">Mu</a>
       </div>
       <div id="account">
-        <a id="account-header" href="/account" style="display: none;"><img src="/account.png" width="24" height="24"><span class="label">Account</span></a>
+        <a id="account-header" href="/account" style="display: none;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
       </div>
     </div>
     <div id="container">
