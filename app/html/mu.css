@@ -133,6 +133,13 @@ td {
   font-weight: bold;
   text-decoration: none;
   padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#account a .label {
+  font-size: 0.9em;
 }
 
 #nav-container {
@@ -993,6 +1000,9 @@ body:has(#messages) #content {
   #account {
     position: absolute;
     right: 15px;
+  }
+  #account a .label {
+    display: none;
   }
   #container {
     display: block;
