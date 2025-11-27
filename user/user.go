@@ -71,18 +71,15 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 	// Build the profile page content
 	content := fmt.Sprintf(`<div style="max-width: 750px;">
 		<div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333;">
-			<h2 style="margin: 0 0 10px 0;">%s</h2>
 			<p style="color: #666; margin: 0;">@%s</p>
 			<p style="color: #666; margin: 10px 0 0 0;">Member since %s</p>
 		</div>
 		
 		<h3 style="margin-bottom: 20px;">Posts (%d)</h3>
 		%s
-	</div>`, acc.Name, acc.ID, acc.Created.Format("January 2006"), postCount, userPosts)
+	</div>`, acc.ID, acc.Created.Format("January 2006"), postCount, userPosts)
 
-	// Render with name in browser title but empty page title to avoid duplicate
-	html := app.RenderHTMLWithLang("", fmt.Sprintf("%s (@%s)", acc.Name, acc.ID), content, "en")
-	// Fix the title tag to show the name
-	html = strings.Replace(html, "<title> | Mu</title>", fmt.Sprintf("<title>%s | Mu</title>", acc.Name), 1)
+	// Use name as page title
+	html := app.RenderHTML(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content)
 	w.Write([]byte(html))
 }
