@@ -631,11 +631,6 @@ var SupportedLanguages = map[string]string{
 	"zh": "中文",
 }
 
-// IsRTL returns true if the language is right-to-left
-func IsRTL(lang string) bool {
-	return lang == "ar"
-}
-
 // GetUserLanguage returns the language preference for the current user, defaults to "en"
 func GetUserLanguage(r *http.Request) string {
 	sess, err := auth.GetSession(r)
@@ -668,11 +663,7 @@ func RenderHTMLWithLang(title, desc, html, lang string) string {
 	if lang == "" {
 		lang = "en"
 	}
-	dirAttr := ""
-	if IsRTL(lang) {
-		dirAttr = ` dir="rtl"`
-	}
-	return fmt.Sprintf(Template, lang, title, desc, dirAttr, "", title, html)
+	return fmt.Sprintf(Template, lang, title, desc, "", "", title, html)
 }
 
 func RenderHTMLWithLogout(title, desc, html string, showLogout bool) string {
@@ -692,11 +683,7 @@ func RenderHTMLWithLogoutAndLang(title, desc, html string, showLogout bool, lang
 	if !showLogout {
 		logoutStyle = ` style="display: none;"`
 	}
-	dirAttr := ""
-	if IsRTL(lang) {
-		dirAttr = ` dir="rtl"`
-	}
-	return fmt.Sprintf(Template, lang, title, desc, dirAttr, logoutStyle, title, html)
+	return fmt.Sprintf(Template, lang, title, desc, "", logoutStyle, title, html)
 }
 
 // RenderString renders a markdown string as html
