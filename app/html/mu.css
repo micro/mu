@@ -140,7 +140,8 @@ td {
 
 #account a .label {
   font-size: 0.9em;
-  margin-left: -2px;
+  margin-left: 5px;
+  margin-top: 2px;
 }
 
 #nav-container {
