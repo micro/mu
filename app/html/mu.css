@@ -99,6 +99,7 @@ td {
 #head {
   background: white;
   width: 100%;
+  height: 61px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -109,6 +110,7 @@ td {
   left: 0;
   right: 0;
   z-index: 100;
+  box-sizing: border-box;
 }
 
 #brand {
@@ -976,8 +978,9 @@ body:has(#messages) #content {
     padding: 8px 15px;
     border-bottom: 1px solid #ddd;
     justify-content: space-between;
-    position: relative;
-    min-height: 36px;
+    position: fixed;
+    height: 52px;
+    box-sizing: border-box;
   }
   #brand {
     position: static;
@@ -991,7 +994,7 @@ body:has(#messages) #content {
   }
   #container {
     display: block;
-    padding-top: 0;
+    padding-top: 52px;
     margin-top: 0;
   }
   #content {
