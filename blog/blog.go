@@ -126,17 +126,17 @@ func updateCache() {
 			title = "Untitled"
 		}
 
-		authorLink := post.Author
-		if post.AuthorID != "" {
-			authorLink = fmt.Sprintf(`<a href="/%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
-		}
+	authorLink := post.Author
+	if post.AuthorID != "" {
+		authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+	}
 
-		item := fmt.Sprintf(`<div class="post-item">
-			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
-			<p style="white-space: pre-wrap;">%s</p>
-			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a></div>
-		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
-		preview = append(preview, item)
+	item := fmt.Sprintf(`<div class="post-item">
+		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
+		<p style="white-space: pre-wrap;">%s</p>
+		<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a></div>
+	</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
+	preview = append(preview, item)
 	}
 
 	if len(preview) == 0 {
@@ -162,7 +162,7 @@ func updateCache() {
 
 		authorLink := post.Author
 		if post.AuthorID != "" {
-			authorLink = fmt.Sprintf(`<a href="/%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+			authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
@@ -240,7 +240,7 @@ func renderPostPreview(post *Post) string {
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
-		authorLink = fmt.Sprintf(`<a href="/%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+		authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
 	}
 
 	item := fmt.Sprintf(`<div class="post-item">
@@ -396,7 +396,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
-		authorLink = fmt.Sprintf(`<a href="/%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+		authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
 	}
 
 	content := fmt.Sprintf(`<div id="blog">

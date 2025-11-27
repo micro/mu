@@ -201,37 +201,10 @@ func main() {
 			}
 		}
 
-		// Check if this is a user profile request (/@username or /username)
-		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path != "" && !strings.Contains(path, "/") && !strings.Contains(path, ".") && r.URL.RawQuery == "" {
-			// List of reserved paths that should NOT be treated as usernames
-			reservedPaths := map[string]bool{
-				"login":      true,
-				"logout":     true,
-				"signup":     true,
-				"account":    true,
-				"session":    true,
-				"home":       true,
-				"posts":      true,
-				"post":       true,
-				"chat":       true,
-				"news":       true,
-				"video":      true,
-				"api":        true,
-				"flag":       true,
-				"moderate":   true,
-				"admin":      true,
-				"membership": true,
-				"donation":   true,
-				"mail":       true,
-				"markets":    true,
-			}
-			
-			// If not a reserved path and not a static file, treat as username profile
-			if !reservedPaths[path] && !isStaticAsset {
-				user.Profile(w, r)
-				return
-			}
+		// Check if this is a user profile request (/@username)
+		if strings.HasPrefix(r.URL.Path, "/@") && !strings.Contains(r.URL.Path[2:], "/") {
+			user.Profile(w, r)
+			return
 		}
 
 		http.DefaultServeMux.ServeHTTP(w, r)

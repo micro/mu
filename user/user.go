@@ -10,10 +10,10 @@ import (
 	"mu/blog"
 )
 
-// Profile handler renders a user profile page at /[username]
+// Profile handler renders a user profile page at /@username
 func Profile(w http.ResponseWriter, r *http.Request) {
-	// Extract username from URL path
-	username := strings.TrimPrefix(r.URL.Path, "/")
+	// Extract username from URL path (remove /@ prefix)
+	username := strings.TrimPrefix(r.URL.Path, "/@")
 	username = strings.TrimSuffix(username, "/")
 	
 	if username == "" {
@@ -80,7 +80,7 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 		%s
 	</div>`, acc.Name, acc.ID, acc.Created.Format("January 2006"), postCount, userPosts)
 
-	// Render with user's name as title
-	html := app.RenderHTML(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content)
+	// Use empty page title to avoid duplicate name display, but set browser title
+	html := app.RenderHTML("", fmt.Sprintf("Profile of %s", acc.Name), content)
 	w.Write([]byte(html))
 }
