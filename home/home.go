@@ -173,34 +173,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Refresh cards if cache expired (2 minute TTL)
 	RefreshCards()
 	
-	// Get last visit time from cookie
-	var lastVisit time.Time
-	if cookie, err := r.Cookie("last_visit"); err == nil {
-		if ts, err := time.Parse(time.RFC3339, cookie.Value); err == nil {
-			lastVisit = ts
-		}
-	}
-	
-	// Set cookie for this visit
-	cookie := &http.Cookie{
-		Name:     "last_visit",
-		Value:    time.Now().Format(time.RFC3339),
-		Path:     "/",
-		MaxAge:   60 * 60 * 24 * 365, // 1 year
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-	}
-	http.SetCookie(w, cookie)
-	
 	var leftHTML []string
 	var rightHTML []string
 	
 	for _, card := range Cards {
-		// Skip cards that haven't updated since last visit
-		if !lastVisit.IsZero() && !card.UpdatedAt.After(lastVisit) {
-			continue
-		}
-		
 		content := card.CachedHTML
 		if strings.TrimSpace(content) == "" {
 			continue
@@ -221,9 +197,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// create homepage
 	var homepage string
 	if len(leftHTML) == 0 && len(rightHTML) == 0 {
-		// No new content - show caught up message with refresh link
+		// No content - show message
 		homepage = `<div id="home"><div class="home-left">` + 
-			app.Card("caught-up", "All Caught Up", "<p>You're all caught up! Check back later for new updates.</p><p><a href='/home/refresh'>Refresh now</a> to see all cards again.</p>") + 
+			app.Card("no-content", "Welcome", "<p>Welcome to Mu! Your personalized content will appear here.</p>") + 
 			`</div><div class="home-right"></div></div>`
 	} else {
 		homepage = fmt.Sprintf(Template, 

@@ -111,7 +111,6 @@ func main() {
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
-	http.HandleFunc("/home/refresh", home.RefreshHandler)
 
 	http.HandleFunc("/mail", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/home", 302)
