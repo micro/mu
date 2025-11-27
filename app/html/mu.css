@@ -99,11 +99,11 @@ td {
 #head {
   background: white;
   width: 100%;
-  height: 61px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 40px;
+  padding: 8px 40px;
   border-bottom: 1px solid #e0e0e0;
   position: fixed;
   top: 0;
@@ -138,9 +138,9 @@ td {
 #nav-container {
   position: fixed;
   left: 0;
-  top: 61px;
+  top: 50px;
   width: 250px;
-  height: calc(100vh - 61px);
+  height: calc(100vh - 50px);
   padding: 20px;
   background: white;
   border-right: 1px solid #e0e0e0;
@@ -197,8 +197,8 @@ td {
    ======================================== */
 #container {
   display: flex;
-  min-height: calc(100vh - 61px);
-  margin-top: 61px;
+  min-height: calc(100vh - 50px);
+  margin-top: 50px;
 }
 
 #content {
@@ -371,7 +371,7 @@ td {
 body:has(#messages) #content {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 61px);
+  height: calc(100vh - 50px);
   padding-bottom: 20px;
 }
 
@@ -975,11 +975,11 @@ body:has(#messages) #content {
     overflow-x: scroll;
   }
   #head {
-    padding: 8px 15px;
+    padding: 6px 15px;
     border-bottom: 1px solid #ddd;
     justify-content: space-between;
     position: fixed;
-    height: 52px;
+    height: 44px;
     box-sizing: border-box;
   }
   #brand {
@@ -994,7 +994,7 @@ body:has(#messages) #content {
   }
   #container {
     display: block;
-    padding-top: 52px;
+    padding-top: 44px;
     margin-top: 0;
   }
   #content {
@@ -1121,7 +1121,7 @@ body:has(#messages) #content {
     height: 100vh;
   }
   body:has(#messages) #content {
-    height: calc(100vh - 52px);
+    height: calc(100vh - 44px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
