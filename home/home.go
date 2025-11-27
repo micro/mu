@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"mu/app"
-	"mu/auth"
 	"mu/blog"
 	"mu/news"
 	"mu/video"
