@@ -42,6 +42,12 @@ var html string
 // cached news body (without full page wrapper)
 var newsBodyHtml string
 
+// cached topics html
+var topicsHtml string
+
+// cached headlines and content html
+var headlinesAndContentHtml string
+
 // cached headlines
 var headlinesHtml string
 
@@ -275,6 +281,8 @@ func saveHtml(head, content []byte) {
 	}
 	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
 	newsBodyHtml = body
+	topicsHtml = string(head)
+	headlinesAndContentHtml = string(content)
 	html = app.RenderHTML("News", "Read the news", body)
 	data.SaveFile("news.html", html)
 }
@@ -858,11 +866,18 @@ func Reminder() string {
 		return
 	}
 
-	// Build page with markets and reminder as cards, plus all news sections (which includes headlines)
-	content := fmt.Sprintf(`%s%s%s`,
+	// Build page: topics, then markets/reminder cards side by side, then headlines and content
+	content := fmt.Sprintf(`
+		<div id="topics">%s</div>
+		<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0;">
+			%s
+			%s
+		</div>
+		<div>%s</div>
+	`, topicsHtml, 
 		app.Card("markets", "Markets", marketsHtml),
 		app.Card("reminder", "Reminder", reminderHtml),
-		newsBodyHtml)
+		headlinesAndContentHtml)
 
 	html := app.RenderHTMLForRequest("News", "Latest news headlines", content, r)
 	w.Write([]byte(html))
