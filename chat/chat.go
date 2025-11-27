@@ -69,6 +69,15 @@ func Load() {
 
 	head = app.Head("chat", topics)
 
+	// Load existing summaries from disk
+	if b, err := data.LoadFile("chat_summaries.json"); err == nil {
+		if err := json.Unmarshal(b, &summaries); err != nil {
+			fmt.Println("Error loading summaries:", err)
+		} else {
+			fmt.Println("Loaded", len(summaries), "summaries from disk")
+		}
+	}
+
 	go generateSummaries()
 }
 
@@ -104,6 +113,13 @@ func generateSummaries() {
 	mutex.Lock()
 	summaries = newSummaries
 	mutex.Unlock()
+
+	// Save summaries to disk
+	if err := data.SaveJSON("chat_summaries.json", summaries); err != nil {
+		fmt.Println("Error saving summaries:", err)
+	} else {
+		fmt.Println("Saved", len(summaries), "summaries to disk")
+	}
 
 	time.Sleep(time.Hour)
 
