@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"mu/app"
-	"mu/auth"
+	"mu/user"
 	"mu/blog"
 	"mu/news"
 	"mu/video"
@@ -146,6 +146,23 @@ func RefreshCards() {
 	}
 }
 
+// RefreshHandler clears the last_visit cookie to show all cards again
+func RefreshHandler(w http.ResponseWriter, r *http.Request) {
+	// Clear the cookie
+	cookie := &http.Cookie{
+		Name:     "last_visit",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1, // Delete cookie
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, cookie)
+	
+	// Redirect back to home
+	http.Redirect(w, r, "/home", http.StatusSeeOther)
+}
+
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Handle POST requests for creating posts
 	if r.Method == "POST" {
@@ -164,9 +181,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Get the authenticated user
 		author := "Anonymous"
-		sess, err := auth.GetSession(r)
+		sess, err := user.GetSession(r)
 		if err == nil {
-			acc, err := auth.GetAccount(sess.Account)
+			acc, err := user.GetAccount(sess.Account)
 			if err == nil {
 				author = acc.Name
 			}
@@ -233,9 +250,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// create homepage
 	var homepage string
 	if len(leftHTML) == 0 && len(rightHTML) == 0 {
-		// No new content - show caught up message
+		// No new content - show caught up message with refresh link
 		homepage = `<div id="home"><div class="home-left">` + 
-			app.Card("caught-up", "All Caught Up", "<p>You're all caught up! Check back later for new updates.</p>") + 
+			app.Card("caught-up", "All Caught Up", "<p>You're all caught up! Check back later for new updates.</p><p><a href='/home/refresh'>Refresh now</a> to see all cards again.</p>") + 
 			`</div><div class="home-right"></div></div>`
 	} else {
 		homepage = fmt.Sprintf(Template, 

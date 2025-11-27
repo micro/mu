@@ -9,7 +9,7 @@ import (
 	"mu/admin"
 	"mu/api"
 	"mu/app"
-	"mu/auth"
+	"mu/user"
 	"mu/blog"
 	"mu/chat"
 	"mu/data"
@@ -110,6 +110,7 @@ func main() {
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
+	http.HandleFunc("/home/refresh", home.RefreshHandler)
 
 	http.HandleFunc("/mail", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/home", 302)
@@ -187,12 +188,12 @@ func main() {
 			// check token
 			if isAuthed {
 				// deny access if invalid
-				if err := auth.ValidateToken(token); err != nil {
+				if err := user.ValidateToken(token); err != nil {
 					http.Redirect(w, r, "/", 302)
 					return
 				}
 			} else if r.URL.Path == "/" {
-				if err := auth.ValidateToken(token); err == nil {
+				if err := user.ValidateToken(token); err == nil {
 					http.Redirect(w, r, "/home", 302)
 					return
 				}

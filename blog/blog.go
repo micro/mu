@@ -12,7 +12,7 @@ import (
 
 	"mu/admin"
 	"mu/app"
-	"mu/auth"
+	"mu/user"
 	"mu/data"
 )
 
@@ -368,7 +368,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie("session"); err == nil && c != nil {
 		token = c.Value
 	}
-	showLogout := auth.ValidateToken(token) == nil
+	showLogout := user.ValidateToken(token) == nil
 
 	html := app.RenderHTMLWithLogout(title, post.Content[:min(len(post.Content), 150)], content, showLogout)
 	w.Write([]byte(html))
@@ -403,9 +403,9 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	// Get the authenticated user
 	author := "Anonymous"
-	sess, err := auth.GetSession(r)
+	sess, err := user.GetSession(r)
 	if err == nil {
-		acc, err := auth.GetAccount(sess.Account)
+		acc, err := user.GetAccount(sess.Account)
 		if err == nil {
 			author = acc.Name
 		}

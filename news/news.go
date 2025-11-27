@@ -854,21 +854,12 @@ func Reminder() string {
 		return
 	}
 
-	// Build page with headlines, markets, and reminder
-	content := fmt.Sprintf(`
-		<div style="margin-bottom: 30px;">
-			<h2>Headlines</h2>
-			%s
-		</div>
-		<div style="margin-bottom: 30px;">
-			<h2>Markets</h2>
-			%s
-		</div>
-		<div>
-			<h2>Reminder</h2>
-			%s
-		</div>
-	`, headlinesHtml, marketsHtml, reminderHtml)
+	// Build page with headlines, markets, reminder as cards, and all news sections
+	content := fmt.Sprintf(`%s%s%s<div>%s</div>`,
+		app.Card("headlines", "Headlines", headlinesHtml),
+		app.Card("markets", "Markets", marketsHtml),
+		app.Card("reminder", "Reminder", reminderHtml),
+		html)
 
 	html := app.RenderHTMLForRequest("News", "Latest news headlines", content, r)
 	w.Write([]byte(html))
