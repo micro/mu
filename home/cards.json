@@ -1,17 +1,10 @@
 {
   "left": [
     {
-      "id": "posts",
-      "title": "Posts",
-      "type": "posts",
-      "position": 0,
-      "link": "/posts"
-    },
-    {
       "id": "news",
       "title": "News",
       "type": "news",
-      "position": 1,
+      "position": 0,
       "link": "/news"
     }
   ],
@@ -31,10 +24,17 @@
       "link": "/markets"
     },
     {
+      "id": "posts",
+      "title": "Posts",
+      "type": "posts",
+      "position": 2,
+      "link": "/posts"
+    },
+    {
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 2,
+      "position": 3,
       "link": "/video"
     }
   ]
