@@ -400,7 +400,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		</form>`, languageOptions)
 
 	content := fmt.Sprintf(`<div style="max-width: 600px;">
-		<h2 style="margin-bottom: 15px;">Account Information</h2>
+		<h2 style="margin-bottom: 15px;">Profile</h2>
 		<p><strong>Username:</strong> %s</p>
 		<p><strong>Name:</strong> %s</p>
 		<p><strong>Member since:</strong> %s</p>
