@@ -427,8 +427,29 @@ func min(a, b int) int {
 
 // linkify converts URLs in text to clickable links
 func linkify(text string) string {
+	// First, handle YouTube embeds (both youtube.com and youtu.be)
+	youtubePattern := regexp.MustCompile(`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:[^\s<>"]*)?`)
+	text = youtubePattern.ReplaceAllStringFunc(text, func(match string) string {
+		// Extract video ID
+		matches := youtubePattern.FindStringSubmatch(match)
+		if len(matches) > 1 {
+			videoID := matches[1]
+			return fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="https://www.youtube.com/embed/%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen></iframe></div>`, videoID)
+		}
+		return match
+	})
+	
+	// Then linkify remaining URLs
 	urlPattern := regexp.MustCompile(`(https?://[^\s<>"]+)`)
-	return urlPattern.ReplaceAllString(text, `<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>`)
+	text = urlPattern.ReplaceAllStringFunc(text, func(match string) string {
+		// Skip if already part of an iframe (already embedded)
+		if strings.Contains(match, "youtube.com/embed") {
+			return match
+		}
+		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>`, match, match)
+	})
+	
+	return text
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
