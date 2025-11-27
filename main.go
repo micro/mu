@@ -71,7 +71,7 @@ func main() {
 		"/moderate":   true,
 		"/admin":      true,
 		"/membership": false,
-		"/donation":   false,
+		"/donate":     false,
 	}
 
 	// Static assets should not require authentication
@@ -106,8 +106,8 @@ func main() {
 	// membership page (public - handles GoCardless redirects)
 	http.HandleFunc("/membership", app.Membership)
 
-	// donation page (public - handles GoCardless redirects)
-	http.HandleFunc("/donation", app.Donation)
+	// donate page (public - handles GoCardless redirects)
+	http.HandleFunc("/donate", app.Donate)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

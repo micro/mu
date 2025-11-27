@@ -510,11 +510,11 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		<h3>💬 Join the Community</h3>
 		<p>Connect with other members, share feedback, and participate in discussions:</p>
-		<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank"><button>Join Discord</button></a></p>
+	<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank"><button>Join Discord</button></a></p>
 
-		<h3>Support Through Donation</h3>
-		<p>Prefer to make a one-time donation? <a href="/donation">Make a donation</a> to support Mu.</p>`
-		html := RenderHTML("Membership", "Support Mu", content)
+	<h3>Support Through Donation</h3>
+	<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`
+	html := RenderHTML("Membership", "Support Mu", content)
 		w.Write([]byte(html))
 		return
 	}
@@ -550,13 +550,13 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		%s
 
-		<h3>💬 Join the Community</h3>
+		<h3>Join the Community</h3>
 		<p>Connect with other members, share feedback, and participate in discussions:</p>
-		<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank"><button>Join Discord</button></a></p>
+	<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank"><button>Join Discord</button></a></p>
 
-		<h3>Support Through Donation</h3>
-		<p>Prefer to make a one-time donation? <a href="/donation">Make a donation</a> to support Mu.</p>`,
-		membershipStatus,
+	<h3>Support Through Donation</h3>
+	<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`,
+	membershipStatus,
 		func() string {
 			if !acc.Member {
 				return `<h3>Become a Member</h3>
@@ -571,8 +571,8 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-// Donation handler
-func Donation(w http.ResponseWriter, r *http.Request) {
+// Donate handler
+func Donate(w http.ResponseWriter, r *http.Request) {
 	// Check if coming from GoCardless
 	referer := r.Header.Get("Referer")
 	fromGoCardless := false
@@ -585,7 +585,7 @@ func Donation(w http.ResponseWriter, r *http.Request) {
 			<p>Your generous support helps keep Mu independent and sustainable.</p>
 			<p>Every contribution makes a difference in building a better internet.</p>
 			<p><a href="/"><button>Return Home</button></a></p>`
-		html := RenderHTML("Donation", "Thank you!", content)
+		html := RenderHTML("Donate", "Thank you!", content)
 		w.Write([]byte(html))
 		return
 	}
@@ -606,7 +606,7 @@ func Donation(w http.ResponseWriter, r *http.Request) {
 		<hr>
 		<p>Looking for recurring support? <a href="/membership">Become a member</a> instead.</p>`
 
-	html := RenderHTML("Donation", "Support Mu", content)
+	html := RenderHTML("Donate", "Support Mu", content)
 	w.Write([]byte(html))
 }
 
