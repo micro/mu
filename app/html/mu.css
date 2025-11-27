@@ -135,11 +135,12 @@ td {
   padding: 5px 10px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 #account a .label {
   font-size: 0.9em;
+  margin-left: -2px;
 }
 
 #nav-container {
