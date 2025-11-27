@@ -411,7 +411,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		<div style="margin-top: 20px;">%s</div>
 		
 		<hr style="margin: 20px 0;">
-		<p><a href="/logout"><button style="display: inline-flex; align-items: center; gap: 8px;"><img src="/logout.png" width="16" height="16" style="vertical-align: middle;">Logout</button></a></p>
+		<p><a href="/logout"><button style="display: inline-flex; align-items: center; gap: 8px; background: #000; color: #fff; border: 1px solid #000;"><img src="/logout.png" width="16" height="16" style="vertical-align: middle; filter: brightness(0) invert(1);">Logout</button></a></p>
 		</div>`,
 		acc.ID,
 		acc.Name,
