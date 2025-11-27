@@ -977,20 +977,22 @@ body:has(#messages) #content {
   #head {
     padding: 6px 15px;
     border-bottom: 1px solid #ddd;
-    justify-content: space-between;
+    justify-content: center;
     position: fixed;
     height: 44px;
     box-sizing: border-box;
   }
   #brand {
-    position: static;
-    transform: none;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
   }
   #brand a {
     font-size: 1em;
   }
   #account {
-    flex: 0 0 auto;
+    position: absolute;
+    right: 15px;
   }
   #container {
     display: block;
