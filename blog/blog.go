@@ -94,7 +94,11 @@ func save() error {
 func updateCache() {
 	mutex.Lock()
 	defer mutex.Unlock()
+	updateCacheUnlocked()
+}
 
+// updateCacheUnlocked updates the cache without locking (caller must hold lock)
+func updateCacheUnlocked() {
 	// Generate preview for home page (latest 1 post, exclude flagged)
 	var preview []string
 	count := 0
@@ -346,7 +350,7 @@ func DeletePost(id string) error {
 		if post.ID == id {
 			posts = append(posts[:i], posts[i+1:]...)
 			save()
-			updateCache()
+			updateCacheUnlocked()
 			return nil
 		}
 	}
