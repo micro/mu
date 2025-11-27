@@ -285,6 +285,8 @@ func saveHtml(head, content []byte) {
 	headlinesAndContentHtml = string(content)
 	html = app.RenderHTML("News", "Read the news", body)
 	data.SaveFile("news.html", html)
+	data.SaveFile("topics.html", topicsHtml)
+	data.SaveFile("headlines_content.html", headlinesAndContentHtml)
 }
 
 func loadFeed() {
@@ -823,6 +825,14 @@ func Load() {
 	// load news
 	b, _ = data.LoadFile("news.html")
 	html = string(b)
+
+	// load topics
+	b, _ = data.LoadFile("topics.html")
+	topicsHtml = string(b)
+
+	// load headlines and content
+	b, _ = data.LoadFile("headlines_content.html")
+	headlinesAndContentHtml = string(b)
 
 	// load the feeds
 	loadFeed()
