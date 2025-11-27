@@ -1,12 +1,14 @@
 package home
 
 import (
+	"crypto/sha256"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"mu/app"
 	"mu/auth"
@@ -24,12 +26,15 @@ var Template = `<div id="home">
 </div>`
 
 type Card struct {
-	ID       string
-	Title    string
-	Column   string // "left" or "right"
-	Position int
-	Link     string
-	Content  func() string
+	ID          string
+	Title       string
+	Column      string // "left" or "right"
+	Position    int
+	Link        string
+	Content     func() string
+	CachedHTML  string    // Cached rendered content
+	ContentHash string    // Hash of content for change detection
+	UpdatedAt   time.Time // Last update timestamp
 }
 
 type CardConfig struct {
@@ -104,6 +109,41 @@ func Load() {
 		}
 		return Cards[i].Position < Cards[j].Position
 	})
+	// Start card refresh goroutine
+	go refreshCardsLoop()
+}
+
+// refreshCardsLoop regenerates card content hourly
+func refreshCardsLoop() {
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	
+	// Initial refresh
+	RefreshCards()
+	
+	for range ticker.C {
+		RefreshCards()
+	}
+}
+
+// RefreshCards updates card content and timestamps if content changed
+func RefreshCards() {
+	for i := range Cards {
+		card := &Cards[i]
+		
+		// Get fresh content
+		content := card.Content()
+		
+		// Calculate hash
+		hash := fmt.Sprintf("%x", sha256.Sum256([]byte(content)))
+		
+		// Only update if content changed
+		if hash != card.ContentHash {
+			card.CachedHTML = content
+			card.ContentHash = hash
+			card.UpdatedAt = time.Now()
+		}
+	}
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -144,11 +184,40 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GET request - render the page
+	
+	// Get last visit time from cookie
+	var lastVisit time.Time
+	if cookie, err := r.Cookie("last_visit"); err == nil {
+		if ts, err := time.Parse(time.RFC3339, cookie.Value); err == nil {
+			lastVisit = ts
+		}
+	}
+	
+	// Set cookie for this visit
+	cookie := &http.Cookie{
+		Name:     "last_visit",
+		Value:    time.Now().Format(time.RFC3339),
+		Path:     "/",
+		MaxAge:   60 * 60 * 24 * 365, // 1 year
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, cookie)
+	
 	var leftHTML []string
 	var rightHTML []string
 	
 	for _, card := range Cards {
-		content := card.Content()
+		// Skip cards that haven't updated since last visit
+		if !lastVisit.IsZero() && !card.UpdatedAt.After(lastVisit) {
+			continue
+		}
+		
+		content := card.CachedHTML
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
+		
 		// Add "More" link if card has a link URL
 		if card.Link != "" {
 			content += app.Link("More", card.Link)
@@ -162,9 +231,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create homepage
-	homepage := fmt.Sprintf(Template, 
-		strings.Join(leftHTML, "\n"),
-		strings.Join(rightHTML, "\n"))
+	var homepage string
+	if len(leftHTML) == 0 && len(rightHTML) == 0 {
+		// No new content - show caught up message
+		homepage = `<div id="home"><div class="home-left">` + 
+			app.Card("caught-up", "All Caught Up", "<p>You're all caught up! Check back later for new updates.</p>") + 
+			`</div><div class="home-right"></div></div>`
+	} else {
+		homepage = fmt.Sprintf(Template, 
+			strings.Join(leftHTML, "\n"),
+			strings.Join(rightHTML, "\n"))
+	}
 
 	// render html using user's language preference
 	html := app.RenderHTMLForRequest("Home", "The Mu homescreen", homepage, r)

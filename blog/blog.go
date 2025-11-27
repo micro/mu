@@ -194,6 +194,10 @@ func HomeFeed() string {
 
 	// Show only the latest post
 	post := posts[0]
+	return renderPostPreview(post)
+}
+
+func renderPostPreview(post *Post) string {
 	title := post.Title
 	if title == "" {
 		title = "Untitled"

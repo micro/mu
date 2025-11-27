@@ -841,7 +841,7 @@ func Reminder() string {
 	return reminderHtml
 }
 
-func Handler(w http.ResponseWriter, r *http.Request) {
+	func Handler(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
@@ -854,6 +854,23 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Build page with headlines, markets, and reminder
+	content := fmt.Sprintf(`
+		<div style="margin-bottom: 30px;">
+			<h2>Headlines</h2>
+			%s
+		</div>
+		<div style="margin-bottom: 30px;">
+			<h2>Markets</h2>
+			%s
+		</div>
+		<div>
+			<h2>Reminder</h2>
+			%s
+		</div>
+	`, headlinesHtml, marketsHtml, reminderHtml)
+
+	html := app.RenderHTMLForRequest("News", "Latest news headlines", content, r)
 	w.Write([]byte(html))
 }
 
