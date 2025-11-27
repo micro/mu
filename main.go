@@ -203,7 +203,7 @@ func main() {
 
 		// Check if this is a user profile request (/@username or /username)
 		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path != "" && !strings.Contains(path, "/") && !strings.Contains(path, ".") {
+		if path != "" && !strings.Contains(path, "/") && !strings.Contains(path, ".") && r.URL.RawQuery == "" {
 			// Check if path matches authenticated routes
 			isAuthRoute := false
 			for url := range authenticated {
