@@ -39,6 +39,9 @@ var status = map[string]*Feed{}
 // cached news html
 var html string
 
+// cached news body (without full page wrapper)
+var newsBodyHtml string
+
 // cached headlines
 var headlinesHtml string
 
@@ -271,6 +274,7 @@ func saveHtml(head, content []byte) {
 		return
 	}
 	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
+	newsBodyHtml = body
 	html = app.RenderHTML("News", "Read the news", body)
 	data.SaveFile("news.html", html)
 }
@@ -855,10 +859,10 @@ func Reminder() string {
 	}
 
 	// Build page with markets and reminder as cards, plus all news sections (which includes headlines)
-	content := fmt.Sprintf(`%s%s<div>%s</div>`,
+	content := fmt.Sprintf(`%s%s%s`,
 		app.Card("markets", "Markets", marketsHtml),
 		app.Card("reminder", "Reminder", reminderHtml),
-		html)
+		newsBodyHtml)
 
 	html := app.RenderHTMLForRequest("News", "Latest news headlines", content, r)
 	w.Write([]byte(html))
