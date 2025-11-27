@@ -876,19 +876,12 @@ func Reminder() string {
 		return
 	}
 
-	// Build page: topics, then markets/reminder cards side by side, then headlines and content
+	// Build page: topics, then headlines and content
 	content := fmt.Sprintf(`
 		<div id="topics">%s</div>
-		<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0;">
-			%s
-			%s
-		</div>
 		<h2>Headlines</h2>
 		<div>%s</div>
-	`, topicsHtml, 
-		app.Card("markets", "Markets", marketsHtml),
-		app.Card("reminder", "Reminder", reminderHtml),
-		headlinesAndContentHtml)
+	`, topicsHtml, headlinesAndContentHtml)
 
 	html := app.RenderHTMLForRequest("News", "Latest news headlines", content, r)
 	w.Write([]byte(html))
