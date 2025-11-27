@@ -883,6 +883,7 @@ func Reminder() string {
 			%s
 			%s
 		</div>
+		<h2>Headlines</h2>
 		<div>%s</div>
 	`, topicsHtml, 
 		app.Card("markets", "Markets", marketsHtml),
