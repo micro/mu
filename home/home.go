@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/app"
@@ -36,6 +37,12 @@ type Card struct {
 	ContentHash string    // Hash of content for change detection
 	UpdatedAt   time.Time // Last update timestamp
 }
+
+var (
+	lastRefresh time.Time
+	cacheMutex  sync.RWMutex
+	cacheTTL    = 2 * time.Minute
+)
 
 type CardConfig struct {
 	Left  []struct {
@@ -109,25 +116,23 @@ func Load() {
 		}
 		return Cards[i].Position < Cards[j].Position
 	})
-	// Start card refresh goroutine
-	go refreshCardsLoop()
-}
-
-// refreshCardsLoop regenerates card content hourly
-func refreshCardsLoop() {
-	ticker := time.NewTicker(1 * time.Hour)
-	defer ticker.Stop()
 	
-	// Initial refresh
+	// Do initial refresh
 	RefreshCards()
-	
-	for range ticker.C {
-		RefreshCards()
-	}
 }
 
 // RefreshCards updates card content and timestamps if content changed
 func RefreshCards() {
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+	
+	now := time.Now()
+	
+	// Check if cache is still valid
+	if now.Sub(lastRefresh) < cacheTTL {
+		return
+	}
+	
 	for i := range Cards {
 		card := &Cards[i]
 		
@@ -141,9 +146,11 @@ func RefreshCards() {
 		if hash != card.ContentHash {
 			card.CachedHTML = content
 			card.ContentHash = hash
-			card.UpdatedAt = time.Now()
+			card.UpdatedAt = now
 		}
 	}
+	
+	lastRefresh = now
 }
 
 // RefreshHandler clears the last_visit cookie to show all cards again
@@ -164,6 +171,9 @@ func RefreshHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// Refresh cards if cache expired (2 minute TTL)
+	RefreshCards()
+	
 	// Handle POST requests for creating posts
 	if r.Method == "POST" {
 		if err := r.ParseForm(); err != nil {
