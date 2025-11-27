@@ -203,18 +203,26 @@ func renderPostPreview(post *Post) string {
 		title = "Untitled"
 	}
 
-	// Truncate content at word boundary (max 500 chars)
+	// Truncate content to first paragraph (first double newline or max 300 chars)
 	content := post.Content
-	if len(content) > 500 {
-		// Find the last space before 500 chars
-		lastSpace := 500
-		for i := 499; i >= 0; i-- {
+	
+	// Look for double newline (paragraph break)
+	if idx := strings.Index(content, "\n\n"); idx > 0 && idx < 300 {
+		content = content[:idx] + "..."
+	} else if idx := strings.Index(content, "\r\n\r\n"); idx > 0 && idx < 300 {
+		content = content[:idx] + "..."
+	} else if len(content) > 300 {
+		// No paragraph break found, truncate at word boundary
+		lastSpace := 300
+		for i := 299; i >= 0 && i < len(content); i-- {
 			if content[i] == ' ' {
 				lastSpace = i
 				break
 			}
 		}
-		content = content[:lastSpace] + "..."
+		if lastSpace < len(content) {
+			content = content[:lastSpace] + "..."
+		}
 	}
 
 	linkedContent := linkify(content)
