@@ -113,11 +113,11 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 
 		content += `
 			<tr>
-				<td><strong>` + user.ID + `</strong></td>
+				<td><strong><a href="/@` + user.ID + `" style="color: inherit; text-decoration: none;">` + user.ID + `</a></strong></td>
 				<td>` + user.Name + `</td>
 				<td class="created-col">` + createdStr + `</td>
 				<td class="center">
-					<form method="POST" style="display: inline;">
+					<form method="POST" style="display: inline;">`
 						<input type="hidden" name="action" value="toggle_admin">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
 						<input type="checkbox" ` + func() string { if user.Admin { return "checked" }; return "" }() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
