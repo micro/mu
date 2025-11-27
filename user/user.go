@@ -54,11 +54,14 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		
+		// Linkify URLs and embed YouTube videos
+		linkedContent := blog.Linkify(content)
+		
 		userPosts += fmt.Sprintf(`<div class="post-item" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap; color: #333;">%s</p>
 			<div class="info" style="color: #666; font-size: small;">%s · <a href="/post?id=%s" style="color: #666;">Read more</a></div>
-		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), post.ID)
+		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
 	}
 	
 	if userPosts == "" {

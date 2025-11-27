@@ -119,7 +119,7 @@ func updateCache() {
 			content = content[:lastSpace] + "..."
 		}
 
-		linkedContent := linkify(content)
+		linkedContent := Linkify(content)
 
 		title := post.Title
 		if title == "" {
@@ -158,7 +158,7 @@ func updateCache() {
 			title = "Untitled"
 		}
 
-		linkedContent := linkify(post.Content)
+		linkedContent := Linkify(post.Content)
 
 		authorLink := post.Author
 		if post.AuthorID != "" {
@@ -236,7 +236,7 @@ func renderPostPreview(post *Post) string {
 		}
 	}
 
-	linkedContent := linkify(content)
+	linkedContent := Linkify(content)
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
@@ -392,7 +392,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		title = "Untitled"
 	}
 
-	linkedContent := linkify(post.Content)
+	linkedContent := Linkify(post.Content)
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
@@ -426,7 +426,8 @@ func min(a, b int) int {
 }
 
 // linkify converts URLs in text to clickable links
-func linkify(text string) string {
+// Linkify converts URLs in text to clickable links and embeds YouTube videos
+func Linkify(text string) string {
 	// First, handle YouTube embeds (both youtube.com and youtu.be)
 	youtubePattern := regexp.MustCompile(`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:[^\s<>"]*)?`)
 	text = youtubePattern.ReplaceAllStringFunc(text, func(match string) string {
@@ -434,7 +435,7 @@ func linkify(text string) string {
 		matches := youtubePattern.FindStringSubmatch(match)
 		if len(matches) > 1 {
 			videoID := matches[1]
-			return fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="https://www.youtube.com/embed/%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen></iframe></div>`, videoID)
+			return fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="/video?id=%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, videoID)
 		}
 		return match
 	})
@@ -443,7 +444,7 @@ func linkify(text string) string {
 	urlPattern := regexp.MustCompile(`(https?://[^\s<>"]+)`)
 	text = urlPattern.ReplaceAllStringFunc(text, func(match string) string {
 		// Skip if already part of an iframe (already embedded)
-		if strings.Contains(match, "youtube.com/embed") {
+		if strings.Contains(match, "/video?id=") {
 			return match
 		}
 		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>`, match, match)
