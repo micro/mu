@@ -392,9 +392,9 @@ func loadVideos() {
 }
 
 func embedVideo(id string) string {
-	u := "https://www.youtube.com/embed/" + id + "?autoplay=1&mute=0"
+	u := "https://www.youtube.com/embed/" + id
 	style := `style="position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none;"`
-	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
 }
 
 func getChannel(category, handle string) (string, []*Result, error) {
