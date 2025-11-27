@@ -1004,7 +1004,7 @@ body:has(#messages) #content {
     padding: 10px 15px;
   }
   #page-title {
-    text-align: left;
+    text-align: center;
     font-size: 1.2em;
     margin-top: 0;
     margin-bottom: 8px;
