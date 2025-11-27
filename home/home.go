@@ -166,8 +166,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		strings.Join(leftHTML, "\n"),
 		strings.Join(rightHTML, "\n"))
 
-	// render html
-	html := app.RenderHTML("Home", "The Mu homescreen", homepage)
+	// render html using user's language preference
+	html := app.RenderHTMLForRequest("Home", "The Mu homescreen", homepage, r)
 
 	w.Write([]byte(html))
 }
