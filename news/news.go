@@ -854,9 +854,8 @@ func Reminder() string {
 		return
 	}
 
-	// Build page with headlines, markets, reminder as cards, and all news sections
-	content := fmt.Sprintf(`%s%s%s<div>%s</div>`,
-		app.Card("headlines", "Headlines", headlinesHtml),
+	// Build page with markets and reminder as cards, plus all news sections (which includes headlines)
+	content := fmt.Sprintf(`%s%s<div>%s</div>`,
 		app.Card("markets", "Markets", marketsHtml),
 		app.Card("reminder", "Reminder", reminderHtml),
 		html)
