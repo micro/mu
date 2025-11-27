@@ -120,7 +120,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Pass summaries as JSON to frontend
 		summariesJSON, _ := json.Marshal(summaries)
 
-		tmpl := app.RenderHTML("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs))
+		tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
 		tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s;</script></body>`, summariesJSON), 1)
 
 		mutex.RUnlock()
@@ -239,7 +239,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		messages += fmt.Sprintf(`<div class="message"><span class="llm">llm</span><p>%v</p></div>`, form["answer"])
 
 		output := fmt.Sprintf(Template, head, messages)
-		renderHTML := app.RenderHTML("Chat", "Chat with AI", output)
+		renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
 
 		w.Write([]byte(renderHTML))
 	}

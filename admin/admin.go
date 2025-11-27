@@ -142,6 +142,6 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 	<br>
 	<p><a href="/moderate">Moderation Queue</a></p>`
 
-	html := app.RenderHTML("Admin", "User Management", content)
+	html := app.RenderHTMLForRequest("Admin", "User Management", content, r)
 	w.Write([]byte(html))
 }

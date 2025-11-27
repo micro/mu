@@ -19,12 +19,13 @@ var accounts = map[string]*Account{}
 var sessions = map[string]*Session{}
 
 type Account struct {
-	ID      string    `json:"id"`
-	Name    string    `json:"name"`
-	Secret  string    `json:"secret"`
-	Created time.Time `json:"created"`
-	Admin   bool      `json:"admin"`
-	Member  bool      `json:"member"`
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Secret   string    `json:"secret"`
+	Created  time.Time `json:"created"`
+	Admin    bool      `json:"admin"`
+	Member   bool      `json:"member"`
+	Language string    `json:"language"`
 }
 
 type Session struct {

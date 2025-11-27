@@ -386,7 +386,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		</div>
 	</div>`, listHTML)
 
-	html := app.RenderHTML("Moderate", "Review flagged content", content)
+	html := app.RenderHTMLForRequest("Moderate", "Review flagged content", content, r)
 	w.Write([]byte(html))
 }
 

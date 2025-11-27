@@ -23,7 +23,7 @@ import (
 var htmlFiles embed.FS
 
 var Template = `
-<html>
+<html lang="%s">
   <head>
     <title>%s | Mu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
@@ -43,7 +43,7 @@ var Template = `
     <link rel="stylesheet" href="/mu.css">
     <script src="/mu.js"></script>
   </head>
-  <body>
+  <body%s>
     <div id="head">
       <div id="brand">
         <a href="/">Mu</a>
@@ -93,7 +93,7 @@ var CardTemplate = `
 </div>
 `
 
-var LoginTemplate = `<html>
+var LoginTemplate = `<html lang="en">
   <head>
     <title>Login | Mu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
@@ -125,7 +125,7 @@ var LoginTemplate = `<html>
 </html>
 `
 
-var SignupTemplate = `<html>
+var SignupTemplate = `<html lang="en">
   <head>
     <title>Signup | Mu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
@@ -352,6 +352,18 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle POST to update language
+	if r.Method == "POST" {
+		r.ParseForm()
+		newLang := r.Form.Get("language")
+		if _, ok := SupportedLanguages[newLang]; ok {
+			acc.Language = newLang
+			auth.UpdateAccount(acc)
+		}
+		http.Redirect(w, r, "/account", http.StatusSeeOther)
+		return
+	}
+
 	// Build membership section
 	membershipSection := ""
 	if acc.Member {
@@ -364,10 +376,36 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			<p><a href="/membership"><button>Become a Member</button></a></p>`
 	}
 
+	// Build language options
+	currentLang := acc.Language
+	if currentLang == "" {
+		currentLang = "en"
+	}
+	languageOptions := ""
+	for code, name := range SupportedLanguages {
+		selected := ""
+		if code == currentLang {
+			selected = " selected"
+		}
+		languageOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, code, selected, name)
+	}
+
+	languageSection := fmt.Sprintf(`<h3>Language</h3>
+		<p>Choose your preferred language. This helps with browser translation.</p>
+		<form action="/account" method="POST">
+			<select name="language" style="padding: 8px; font-size: 14px;">
+				%s
+			</select>
+			<button type="submit" style="margin-left: 10px;">Save</button>
+		</form>`, languageOptions)
+
 	content := fmt.Sprintf(`<h2>Account Information</h2>
 		<p><strong>Username:</strong> %s</p>
 		<p><strong>Name:</strong> %s</p>
 		<p><strong>Member since:</strong> %s</p>
+		
+		<br>
+		%s
 		
 		<br>
 		%s
@@ -379,9 +417,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
 		membershipSection,
+		languageSection,
 	)
 
-	html := RenderHTML("Account", "Your Account", content)
+	html := RenderHTMLWithLang("Account", "Your Account", content, currentLang)
 	w.Write([]byte(html))
 }
 
@@ -585,9 +624,55 @@ func Render(md []byte) []byte {
 	return markdown.Render(doc, renderer)
 }
 
-// RenderHTML renders the given html in a template
+// SupportedLanguages maps language codes to their display names
+var SupportedLanguages = map[string]string{
+	"en": "English",
+	"ar": "العربية",
+	"zh": "中文",
+}
+
+// IsRTL returns true if the language is right-to-left
+func IsRTL(lang string) bool {
+	return lang == "ar"
+}
+
+// GetUserLanguage returns the language preference for the current user, defaults to "en"
+func GetUserLanguage(r *http.Request) string {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		return "en"
+	}
+	acc, err := auth.GetAccount(sess.Account)
+	if err != nil {
+		return "en"
+	}
+	if acc.Language == "" {
+		return "en"
+	}
+	return acc.Language
+}
+
+// RenderHTML renders the given html in a template with default language (English)
 func RenderHTML(title, desc, html string) string {
-	return RenderHTMLWithLogout(title, desc, html, true)
+	return RenderHTMLWithLang(title, desc, html, "en")
+}
+
+// RenderHTMLForRequest renders the given html in a template using the user's language preference
+func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
+	lang := GetUserLanguage(r)
+	return RenderHTMLWithLang(title, desc, html, lang)
+}
+
+// RenderHTMLWithLang renders the given html in a template with specified language
+func RenderHTMLWithLang(title, desc, html, lang string) string {
+	if lang == "" {
+		lang = "en"
+	}
+	dirAttr := ""
+	if IsRTL(lang) {
+		dirAttr = ` dir="rtl"`
+	}
+	return fmt.Sprintf(Template, lang, title, desc, dirAttr, "", title, html)
 }
 
 func RenderHTMLWithLogout(title, desc, html string, showLogout bool) string {
@@ -595,7 +680,23 @@ func RenderHTMLWithLogout(title, desc, html string, showLogout bool) string {
 	if !showLogout {
 		logoutStyle = ` style="display: none;"`
 	}
-	return fmt.Sprintf(Template, title, desc, logoutStyle, title, html)
+	return fmt.Sprintf(Template, "en", title, desc, "", logoutStyle, title, html)
+}
+
+// RenderHTMLWithLogoutAndLang renders the given html in a template with logout control and language
+func RenderHTMLWithLogoutAndLang(title, desc, html string, showLogout bool, lang string) string {
+	if lang == "" {
+		lang = "en"
+	}
+	logoutStyle := ""
+	if !showLogout {
+		logoutStyle = ` style="display: none;"`
+	}
+	dirAttr := ""
+	if IsRTL(lang) {
+		dirAttr = ` dir="rtl"`
+	}
+	return fmt.Sprintf(Template, lang, title, desc, dirAttr, logoutStyle, title, html)
 }
 
 // RenderString renders a markdown string as html
@@ -605,7 +706,7 @@ func RenderString(v string) string {
 
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
-	return fmt.Sprintf(Template, title, desc, "", title, RenderString(text))
+	return fmt.Sprintf(Template, "en", title, desc, "", "", title, RenderString(text))
 }
 
 func ServeHTML(html string) http.Handler {
