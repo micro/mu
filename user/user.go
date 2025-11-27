@@ -80,7 +80,7 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 		%s
 	</div>`, acc.Name, acc.ID, acc.Created.Format("January 2006"), postCount, userPosts)
 
-	// Use empty string for page title to avoid duplicate name display
-	html := app.RenderHTML("", fmt.Sprintf("Profile of %s", acc.Name), content)
+	// Render with user's name as title
+	html := app.RenderHTML(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content)
 	w.Write([]byte(html))
 }

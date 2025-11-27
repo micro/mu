@@ -30,19 +30,28 @@ func distanceOfTime(minutes float64) string {
 		if secs < 1 {
 			secs = 1
 		}
+		if secs == 1 {
+			return "1 sec"
+		}
 		return fmt.Sprintf("%d secs", secs)
+	case minutes < 2:
+		return "1 minute"
 	case minutes < 59:
 		return fmt.Sprintf("%d minutes", int(minutes))
 	case minutes < 100:
-		return fmt.Sprintf("%d hour", int(minutes/60))
+		hrs := int(minutes / 60)
+		if hrs == 1 {
+			return "1 hour"
+		}
+		return fmt.Sprintf("%d hours", hrs)
 	case minutes < 1440:
 		return fmt.Sprintf("%d hours", int(minutes/60))
 	case minutes < 2880:
-		return fmt.Sprintf("%d day", int(minutes/1440))
+		return "1 day"
 	case minutes < 43800:
 		return fmt.Sprintf("%d days", int(minutes/1440))
 	case minutes < 87600:
-		return fmt.Sprintf("%d month", int(minutes/43800))
+		return "1 month"
 	default:
 		return fmt.Sprintf("%d months", int(minutes/43800))
 	}
