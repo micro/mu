@@ -326,7 +326,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 						Timestamp: time.Now(),
 						IsLLM:     false,
 					}
-					room.Broadcast <- roomMsg
 				} else {
 					// Regular message - broadcast user message first
 					userMsg := RoomMessage{
