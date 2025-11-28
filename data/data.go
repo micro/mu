@@ -91,6 +91,13 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	saveIndex()
 }
 
+// GetByID retrieves an entry by its exact ID
+func GetByID(id string) *IndexEntry {
+	indexMutex.RLock()
+	defer indexMutex.RUnlock()
+	return index[id]
+}
+
 // Search performs keyword-based search and returns ranked results
 func Search(query string, limit int) []*IndexEntry {
 	keywords := extractKeywords(query)

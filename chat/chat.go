@@ -145,28 +145,28 @@ func getOrCreateRoom(id string) *ChatRoom {
 			room.URL = "/post?id=" + itemID
 		}
 	case "news":
-		// For news, we'll use the data index to fetch details
-		entries := data.Search(itemID, 1)
-		if len(entries) > 0 {
-			room.Title = entries[0].Title
-			room.Summary = entries[0].Content
+		// For news, lookup by exact ID
+		entry := data.GetByID(itemID)
+		if entry != nil {
+			room.Title = entry.Title
+			room.Summary = entry.Content
 			if len(room.Summary) > 200 {
 				room.Summary = room.Summary[:200] + "..."
 			}
-			if url, ok := entries[0].Metadata["url"].(string); ok {
+			if url, ok := entry.Metadata["url"].(string); ok {
 				room.URL = url
 			}
 		}
 	case "video":
-		// For videos, use data index
-		entries := data.Search(itemID, 1)
-		if len(entries) > 0 {
-			room.Title = entries[0].Title
-			room.Summary = entries[0].Content
+		// For videos, lookup by exact ID
+		entry := data.GetByID(itemID)
+		if entry != nil {
+			room.Title = entry.Title
+			room.Summary = entry.Content
 			if len(room.Summary) > 200 {
 				room.Summary = room.Summary[:200] + "..."
 			}
-			if url, ok := entries[0].Metadata["url"].(string); ok {
+			if url, ok := entry.Metadata["url"].(string); ok {
 				room.URL = url
 			}
 		}
