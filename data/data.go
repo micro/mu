@@ -139,6 +139,7 @@ func Search(query string, limit int) []*IndexEntry {
 	// Try vector search first
 	queryEmbedding, err := getEmbedding(query)
 	if err == nil && len(queryEmbedding) > 0 {
+		fmt.Printf("[SEARCH] Using vector search for: %s\n", query)
 		var results []SearchResult
 
 		for _, entry := range index {
@@ -176,10 +177,13 @@ func Search(query string, limit int) []*IndexEntry {
 	}
 
 	// Fallback to keyword search if vector search fails or returns no results
+	fmt.Printf("[SEARCH] Using keyword fallback for: %s\n", query)
 	keywords := extractKeywords(query)
 	if len(keywords) == 0 {
+		fmt.Printf("[SEARCH] No keywords extracted from query\n")
 		return nil
 	}
+	fmt.Printf("[SEARCH] Extracted keywords: %v\n", keywords)
 
 	var results []SearchResult
 

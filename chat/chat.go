@@ -564,6 +564,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		ragEntries := data.Search(searchQuery, 3)
 		var ragContext []string
 		for _, entry := range ragEntries {
+			// Debug: Show raw entry
+			fmt.Printf("[RAG DEBUG] Entry: Type=%s, Title=%s, Content=%s\n", entry.Type, entry.Title, entry.Content)
+			
 			// Format each entry as context
 			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
 			if len(contextStr) > 500 {
@@ -581,6 +584,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("[RAG] Found %d entries:\n", len(ragEntries))
 			for i, entry := range ragEntries {
 				fmt.Printf("  %d. [%s] %s\n", i+1, entry.Type, entry.Title)
+			}
+			fmt.Printf("[RAG] Context being sent to LLM:\n")
+			for i, ctx := range ragContext {
+				fmt.Printf("  %d. %s\n", i+1, ctx)
 			}
 		} else {
 			fmt.Printf("[RAG] Query: %s - NO RESULTS\n", searchQuery)
