@@ -180,7 +180,7 @@ var Results = `
 </div>`
 
 func getSummary(post *Post) string {
-	return fmt.Sprintf(`Source: <i>%s</i> | %s | <a href="/chat?id=%s>Discuss</a>`, getDomain(post.URL), app.TimeAgo(post.PostedAt), post.ID)
+	return fmt.Sprintf(`Source: <i>%s</i> | %s | <a href="/chat?id=%s">Discuss</a>`, getDomain(post.URL), app.TimeAgo(post.PostedAt), post.ID)
 }
 
 func getPrices() map[string]float64 {
