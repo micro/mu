@@ -11,7 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"mu/app"
+	"mu/auth"
+	"mu/blog"
 	"mu/data"
 )
 
@@ -54,6 +57,255 @@ var topics = []string{}
 
 var head string
 
+// WebSocket upgrader
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for now
+	},
+}
+
+// ChatRoom represents a discussion room for a specific item
+type ChatRoom struct {
+	ID          string                 // e.g., "post_123", "news_456", "video_789"
+	Type        string                 // "post", "news", "video"
+	Title       string                 // Item title
+	Summary     string                 // Item summary/description
+	URL         string                 // Original item URL
+	Messages    []RoomMessage          // Last 20 messages
+	Clients     map[*websocket.Conn]*Client // Connected clients
+	Broadcast   chan RoomMessage       // Broadcast channel
+	Register    chan *Client           // Register client
+	Unregister  chan *Client           // Unregister client
+	mutex       sync.RWMutex
+}
+
+// RoomMessage represents a message in a chat room
+type RoomMessage struct {
+	Username  string    `json:"username"`
+	UserID    string    `json:"user_id"`
+	Content   string    `json:"content"`
+	Timestamp time.Time `json:"timestamp"`
+	IsLLM     bool      `json:"is_llm"`
+}
+
+// Client represents a connected websocket client
+type Client struct {
+	Conn     *websocket.Conn
+	Username string
+	UserID   string
+	Room     *ChatRoom
+}
+
+var rooms = make(map[string]*ChatRoom)
+var roomsMutex sync.RWMutex
+
+// getOrCreateRoom gets an existing room or creates a new one
+func getOrCreateRoom(id string) *ChatRoom {
+	roomsMutex.Lock()
+	defer roomsMutex.Unlock()
+
+	if room, exists := rooms[id]; exists {
+		return room
+	}
+
+	// Parse the ID to determine type and fetch item details
+	parts := strings.SplitN(id, "_", 2)
+	if len(parts) != 2 {
+		return nil
+	}
+
+	itemType := parts[0]
+	itemID := parts[1]
+
+	room := &ChatRoom{
+		ID:         id,
+		Type:       itemType,
+		Clients:    make(map[*websocket.Conn]*Client),
+		Broadcast:  make(chan RoomMessage, 256),
+		Register:   make(chan *Client),
+		Unregister: make(chan *Client),
+		Messages:   make([]RoomMessage, 0, 20),
+	}
+
+	// Fetch item details based on type
+	switch itemType {
+	case "post":
+		if post := blog.GetPost(itemID); post != nil {
+			room.Title = post.Title
+			if room.Title == "" {
+				room.Title = "Untitled Post"
+			}
+			// Truncate content for summary
+			room.Summary = post.Content
+			if len(room.Summary) > 200 {
+				room.Summary = room.Summary[:200] + "..."
+			}
+			room.URL = "/post?id=" + itemID
+		}
+	case "news":
+		// For news, we'll use the data index to fetch details
+		entries := data.Search(itemID, 1)
+		if len(entries) > 0 {
+			room.Title = entries[0].Title
+			room.Summary = entries[0].Content
+			if len(room.Summary) > 200 {
+				room.Summary = room.Summary[:200] + "..."
+			}
+			if url, ok := entries[0].Metadata["url"].(string); ok {
+				room.URL = url
+			}
+		}
+	case "video":
+		// For videos, use data index
+		entries := data.Search(itemID, 1)
+		if len(entries) > 0 {
+			room.Title = entries[0].Title
+			room.Summary = entries[0].Content
+			if len(room.Summary) > 200 {
+				room.Summary = room.Summary[:200] + "..."
+			}
+			if url, ok := entries[0].Metadata["url"].(string); ok {
+				room.URL = url
+			}
+		}
+	}
+
+	rooms[id] = room
+	go room.run()
+
+	return room
+}
+
+// broadcastUserCount sends user count update to all clients
+func (room *ChatRoom) broadcastUserCount() {
+	room.mutex.RLock()
+	defer room.mutex.RUnlock()
+	
+	countMsg := map[string]interface{}{
+		"type":  "user_count",
+		"count": len(room.Clients),
+	}
+	
+	for conn := range room.Clients {
+		conn.WriteJSON(countMsg)
+	}
+}
+
+// run handles the chat room message broadcasting
+func (room *ChatRoom) run() {
+	for {
+		select {
+		case client := <-room.Register:
+			room.mutex.Lock()
+			room.Clients[client.Conn] = client
+			room.mutex.Unlock()
+			
+			// Broadcast user count update
+			room.broadcastUserCount()
+
+		case client := <-room.Unregister:
+			room.mutex.Lock()
+			if _, ok := room.Clients[client.Conn]; ok {
+				delete(room.Clients, client.Conn)
+				client.Conn.Close()
+			}
+			room.mutex.Unlock()
+			
+			// Broadcast user count update
+			room.broadcastUserCount()
+
+		case message := <-room.Broadcast:
+			// Add message to history (keep last 20)
+			room.mutex.Lock()
+			room.Messages = append(room.Messages, message)
+			if len(room.Messages) > 20 {
+				room.Messages = room.Messages[len(room.Messages)-20:]
+			}
+			room.mutex.Unlock()
+
+			// Broadcast to all clients
+			room.mutex.RLock()
+			for conn := range room.Clients {
+				err := conn.WriteJSON(message)
+				if err != nil {
+					conn.Close()
+					delete(room.Clients, conn)
+				}
+			}
+			room.mutex.RUnlock()
+		}
+	}
+}
+
+// handleWebSocket handles WebSocket connections for chat rooms
+func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		fmt.Println("WebSocket upgrade error:", err)
+		return
+	}
+
+	// Get user session
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		conn.Close()
+		return
+	}
+
+	acc, err := auth.GetAccount(sess.Account)
+	if acc == nil || err != nil {
+		conn.Close()
+		return
+	}
+
+	client := &Client{
+		Conn:     conn,
+		Username: acc.Name,
+		UserID:   acc.ID,
+		Room:     room,
+	}
+
+	room.Register <- client
+
+	// Send room history to new client
+	room.mutex.RLock()
+	for _, msg := range room.Messages {
+		conn.WriteJSON(msg)
+	}
+	room.mutex.RUnlock()
+
+	// Read messages from client
+	go func() {
+		defer func() {
+			room.Unregister <- client
+		}()
+
+		for {
+			var msg map[string]interface{}
+			err := conn.ReadJSON(&msg)
+			if err != nil {
+				break
+			}
+
+			if content, ok := msg["content"].(string); ok && len(content) > 0 {
+				roomMsg := RoomMessage{
+					Username:  client.Username,
+					UserID:    client.UserID,
+					Content:   content,
+					Timestamp: time.Now(),
+					IsLLM:     false,
+				}
+				room.Broadcast <- roomMsg
+
+				// If message starts with a question, optionally trigger LLM response
+				// This can be enhanced later
+			}
+		}
+	}()
+}
+
 func Load() {
 	// load the feeds file
 	b, _ := f.ReadFile("prompts.json")
@@ -67,6 +319,7 @@ func Load() {
 
 	sort.Strings(topics)
 
+	// Generate head with topics (rooms will be added dynamically)
 	head = app.Head("chat", topics)
 
 	// Load existing summaries from disk
@@ -127,17 +380,53 @@ func generateSummaries() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// Check if this is a room-based chat (e.g., /chat?id=post_123)
+	roomID := r.URL.Query().Get("id")
+	
+	// Check if this is a WebSocket upgrade request
+	if r.Header.Get("Upgrade") == "websocket" && roomID != "" {
+		room := getOrCreateRoom(roomID)
+		if room == nil {
+			http.Error(w, "Invalid room ID", http.StatusBadRequest)
+			return
+		}
+		handleWebSocket(w, r, room)
+		return
+	}
+
 	if r.Method == "GET" {
 		mutex.RLock()
 
-		// Use Head() to format topics
-		topicTabs := app.Head("chat", topics)
+		// Build topics list including room if specified
+		displayTopics := topics
+		if roomID != "" {
+			room := getOrCreateRoom(roomID)
+			if room == nil {
+				mutex.RUnlock()
+				http.Error(w, "Invalid room ID", http.StatusBadRequest)
+				return
+			}
+			// Add room as a topic
+			displayTopics = append([]string{room.Title}, topics...)
+		}
 
-		// Pass summaries as JSON to frontend
+		// Use Head() to format topics
+		topicTabs := app.Head("chat", displayTopics)
+
+		// Pass summaries and room info as JSON to frontend
 		summariesJSON, _ := json.Marshal(summaries)
+		roomData := map[string]interface{}{}
+		if roomID != "" {
+			room := getOrCreateRoom(roomID)
+			roomData["id"] = roomID
+			roomData["title"] = room.Title
+			roomData["summary"] = room.Summary
+			roomData["url"] = room.URL
+		}
+		roomJSON, _ := json.Marshal(roomData)
 
 		tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
-		tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s;</script></body>`, summariesJSON), 1)
+		tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var roomData = %s;</script></body>`, summariesJSON, roomJSON), 1)
 
 		mutex.RUnlock()
 
@@ -194,6 +483,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		q := fmt.Sprintf("%v", form["prompt"])
+
+		// Check if this is a direct message (starts with @username)
+		if strings.HasPrefix(strings.TrimSpace(q), "@") {
+			// Direct message - don't invoke LLM, just echo back
+			form["answer"] = "<p><em>Message sent. Direct messages are visible to everyone in this topic.</em></p>"
+			
+			// if JSON request then respond with json
+			if ct := r.Header.Get("Content-Type"); ct == "application/json" {
+				b, _ := json.Marshal(form)
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(b)
+				return
+			}
+
+			// Format a HTML response
+			messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
+			messages += fmt.Sprintf(`<div class="message"><span class="system">system</span><p>%v</p></div>`, form["answer"])
+
+			output := fmt.Sprintf(Template, head, messages)
+			renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
+
+			w.Write([]byte(renderHTML))
+			return
+		}
 
 		// Get topic for enhanced RAG
 		topic := ""

@@ -127,6 +127,27 @@ func main() {
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/session", app.Session)
 
+	// presence ping endpoint
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		sess, err := auth.GetSession(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		
+		acc, err := auth.GetAccount(sess.Account)
+		if acc == nil || err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		
+		auth.UpdatePresence(acc.ID)
+		
+		w.Header().Set("Content-Type", "application/json")
+		onlineCount := auth.GetOnlineCount()
+		w.Write([]byte(fmt.Sprintf(`{"status":"ok","online":%d}`, onlineCount)))
+	})
+
 	// serve the api doc
 	http.Handle("/api", app.ServeHTML(apiHTML))
 

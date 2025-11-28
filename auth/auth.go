@@ -18,6 +18,10 @@ var mutex sync.Mutex
 var accounts = map[string]*Account{}
 var sessions = map[string]*Session{}
 
+// User presence tracking
+var presenceMutex sync.RWMutex
+var userPresence = map[string]time.Time{} // username -> last seen time
+
 type Account struct {
 	ID       string    `json:"id"`
 	Name     string    `json:"name"`
@@ -243,4 +247,46 @@ func ValidateToken(tk string) error {
 		return errors.New("invalid session")
 	}
 	return nil
+}
+
+// UpdatePresence updates the last seen time for a user
+func UpdatePresence(username string) {
+	presenceMutex.Lock()
+	defer presenceMutex.Unlock()
+	userPresence[username] = time.Now()
+}
+
+// IsOnline checks if a user is online (seen within last 3 minutes)
+func IsOnline(username string) bool {
+	presenceMutex.RLock()
+	defer presenceMutex.RUnlock()
+	
+	lastSeen, exists := userPresence[username]
+	if !exists {
+		return false
+	}
+	
+	return time.Since(lastSeen) < 3*time.Minute
+}
+
+// GetOnlineUsers returns a list of currently online usernames
+func GetOnlineUsers() []string {
+	presenceMutex.RLock()
+	defer presenceMutex.RUnlock()
+	
+	var online []string
+	now := time.Now()
+	
+	for username, lastSeen := range userPresence {
+		if now.Sub(lastSeen) < 3*time.Minute {
+			online = append(online, username)
+		}
+	}
+	
+	return online
+}
+
+// GetOnlineCount returns the number of online users
+func GetOnlineCount() int {
+	return len(GetOnlineUsers())
 }

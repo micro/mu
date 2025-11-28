@@ -470,9 +470,10 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		}
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+		discussLink := fmt.Sprintf(`<a href="/chat?id=video_%s" style="color: #0066cc;">Discuss</a>`, id)
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
+			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s | %s</div>`,
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
 		resultsHtml += html
 		res.Html = html
 
@@ -552,9 +553,10 @@ func getResults(query, channel string) (string, []*Result, error) {
 		}
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+		discussLink := fmt.Sprintf(`<a href="/chat?id=video_%s" style="color: #0066cc;">Discuss</a>`, id)
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
+			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s | %s</div>`,
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
 		resultsHtml += html
 		res.Html = html
 	}

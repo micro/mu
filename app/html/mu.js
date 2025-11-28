@@ -548,3 +548,164 @@ function flagPost(postId) {
   });
 }
 
+
+// ============================================
+// PRESENCE TRACKING
+// ============================================
+
+// Ping server every 45 seconds to maintain presence
+function startPresencePing() {
+  // Initial ping
+  pingServer();
+  
+  // Set up recurring ping
+  setInterval(pingServer, 45000); // 45 seconds
+}
+
+function pingServer() {
+  fetch('/ping', {
+    method: 'POST',
+    credentials: 'include'
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.online !== undefined) {
+      updateGlobalOnlineCount(data.online);
+    }
+  })
+  .catch(err => {
+    console.log('Ping failed:', err);
+  });
+}
+
+function updateGlobalOnlineCount(count) {
+  const indicator = document.getElementById('online-indicator');
+  if (indicator) {
+    indicator.textContent = count + ' online';
+    indicator.style.display = 'inline';
+  }
+}
+
+// Start presence tracking when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startPresencePing);
+} else {
+  startPresencePing();
+}
+
+
+// ============================================
+// CHAT ROOM WEBSOCKET
+// ============================================
+
+let roomWs;
+let currentRoomId = null;
+
+function connectRoomWebSocket(roomId) {
+  if (roomWs) {
+    roomWs.close();
+  }
+  
+  currentRoomId = roomId;
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  roomWs = new WebSocket(protocol + '//' + window.location.host + '/chat?id=' + roomId);
+  
+  roomWs.onopen = function() {
+    console.log('Connected to room:', roomId);
+  };
+  
+  roomWs.onmessage = function(event) {
+    const msg = JSON.parse(event.data);
+    
+    if (msg.type === 'user_count') {
+      updateOnlineCount(msg.count);
+    } else {
+      displayRoomMessage(msg);
+    }
+  };
+  
+  roomWs.onclose = function() {
+    console.log('Disconnected from room');
+    if (currentRoomId === roomId) {
+      setTimeout(() => connectRoomWebSocket(roomId), 3000);
+    }
+  };
+  
+  roomWs.onerror = function(error) {
+    console.error('WebSocket error:', error);
+  };
+}
+
+function displayRoomMessage(msg) {
+  const messagesDiv = document.getElementById('messages');
+  if (!messagesDiv) return;
+  
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'message';
+  
+  const time = new Date(msg.timestamp).toLocaleTimeString();
+  const userSpan = msg.is_llm ? 
+    '<span class="llm">AI</span>' : 
+    '<span class="you">' + msg.username + '</span>';
+  
+  msgDiv.innerHTML = userSpan + ' <span style="color: #666; font-size: small;">(' + 
+    time + ')</span><p>' + msg.content + '</p>';
+  messagesDiv.appendChild(msgDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function sendRoomMessage(form) {
+  const input = form.querySelector('input[name="prompt"]');
+  if (!input) return;
+  
+  const content = input.value.trim();
+  
+  if (content && roomWs && roomWs.readyState === WebSocket.OPEN) {
+    roomWs.send(JSON.stringify({ content: content }));
+    input.value = '';
+  }
+}
+
+function updateOnlineCount(count) {
+  // Update in topic selector if it exists
+  const topicSelector = document.getElementById('topic-selector');
+  if (topicSelector) {
+    let onlineDiv = topicSelector.querySelector('.online-count');
+    if (!onlineDiv) {
+      onlineDiv = document.createElement('div');
+      onlineDiv.className = 'online-count';
+      onlineDiv.style.cssText = 'padding: 10px; color: #666; font-size: small; text-align: center;';
+      topicSelector.appendChild(onlineDiv);
+    }
+    onlineDiv.textContent = count + ' online';
+  }
+}
+
+// Initialize room chat on page load and when switching topics
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if we're in a room (from roomData injected by server)
+  if (typeof roomData !== 'undefined' && roomData.id) {
+    // Show room context info
+    const messages = document.getElementById('messages');
+    if (messages && roomData.summary) {
+      const contextDiv = document.createElement('div');
+      contextDiv.style.cssText = 'padding: 15px; background: #f5f5f5; border-radius: 8px; margin-bottom: 15px; color: #666;';
+      contextDiv.innerHTML = roomData.summary + 
+        (roomData.url ? '<br><a href="' + roomData.url + '" target="_blank" style="color: #0066cc; font-size: small;">View Original</a>' : '');
+      messages.parentNode.insertBefore(contextDiv, messages);
+    }
+    
+    // Connect WebSocket
+    connectRoomWebSocket(roomData.id);
+    
+    // Override chat form submission for room mode
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+      chatForm.onsubmit = function(e) {
+        e.preventDefault();
+        sendRoomMessage(this);
+        return false;
+      };
+    }
+  }
+});
