@@ -1,7 +1,12 @@
 package data
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -60,6 +65,7 @@ type IndexEntry struct {
 	Content   string                 `json:"content"`
 	Metadata  map[string]interface{} `json:"metadata"`
 	Keywords  []string               `json:"keywords"`
+	Embedding []float64              `json:"embedding"` // Vector embedding for semantic search
 	IndexedAt time.Time              `json:"indexed_at"`
 }
 
@@ -71,7 +77,18 @@ type SearchResult struct {
 
 // Index adds or updates an entry in the search index
 func Index(id, entryType, title, content string, metadata map[string]interface{}) {
-	keywords := extractKeywords(title + " " + content)
+	// Check if custom keywords are provided in metadata
+	var keywords []string
+	if customKeywords, ok := metadata["keywords"]; ok {
+		if keywordSlice, ok := customKeywords.([]string); ok {
+			keywords = keywordSlice
+		}
+	}
+	
+	// If no custom keywords, extract from title and content
+	if len(keywords) == 0 {
+		keywords = extractKeywords(title + " " + content)
+	}
 
 	entry := &IndexEntry{
 		ID:        id,
@@ -81,6 +98,22 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 		Metadata:  metadata,
 		Keywords:  keywords,
 		IndexedAt: time.Now(),
+	}
+
+	// Generate embedding for semantic search
+	textToEmbed := title
+	if len(content) > 0 {
+		// Combine title and beginning of content for better embeddings
+		maxContent := 500
+		if len(content) < maxContent {
+			maxContent = len(content)
+		}
+		textToEmbed = title + " " + content[:maxContent]
+	}
+	
+	embedding, err := getEmbedding(textToEmbed)
+	if err == nil && len(embedding) > 0 {
+		entry.Embedding = embedding
 	}
 
 	indexMutex.Lock()
@@ -98,15 +131,55 @@ func GetByID(id string) *IndexEntry {
 	return index[id]
 }
 
-// Search performs keyword-based search and returns ranked results
+// Search performs semantic vector search with keyword fallback
 func Search(query string, limit int) []*IndexEntry {
+	indexMutex.RLock()
+	defer indexMutex.RUnlock()
+
+	// Try vector search first
+	queryEmbedding, err := getEmbedding(query)
+	if err == nil && len(queryEmbedding) > 0 {
+		var results []SearchResult
+
+		for _, entry := range index {
+			if len(entry.Embedding) == 0 {
+				continue // Skip entries without embeddings
+			}
+			
+			similarity := cosineSimilarity(queryEmbedding, entry.Embedding)
+			if similarity > 0.3 { // Threshold to filter irrelevant results
+				results = append(results, SearchResult{
+					Entry: entry,
+					Score: similarity,
+				})
+			}
+		}
+
+		// Sort by similarity descending
+		sort.Slice(results, func(i, j int) bool {
+			return results[i].Score > results[j].Score
+		})
+
+		// Return top N results
+		if limit > 0 && len(results) > limit {
+			results = results[:limit]
+		}
+
+		entries := make([]*IndexEntry, len(results))
+		for i, r := range results {
+			entries[i] = r.Entry
+		}
+
+		if len(entries) > 0 {
+			return entries
+		}
+	}
+
+	// Fallback to keyword search if vector search fails or returns no results
 	keywords := extractKeywords(query)
 	if len(keywords) == 0 {
 		return nil
 	}
-
-	indexMutex.RLock()
-	defer indexMutex.RUnlock()
 
 	var results []SearchResult
 
@@ -259,4 +332,70 @@ func Load() {
 	defer indexMutex.Unlock()
 
 	json.Unmarshal(b, &index)
+}
+
+// ============================================
+// VECTOR EMBEDDINGS VIA OLLAMA
+// ============================================
+
+// getEmbedding generates a vector embedding for text using Ollama
+func getEmbedding(text string) ([]float64, error) {
+	if len(text) == 0 {
+		return nil, fmt.Errorf("empty text")
+	}
+
+	// Ollama embedding endpoint
+	url := "http://localhost:11434/api/embeddings"
+	
+	requestBody := map[string]interface{}{
+		"model":  "nomic-embed-text",
+		"prompt": text,
+	}
+	
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return nil, err
+	}
+	
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("ollama error: %s", string(body))
+	}
+	
+	var result struct {
+		Embedding []float64 `json:"embedding"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	
+	return result.Embedding, nil
+}
+
+// cosineSimilarity calculates cosine similarity between two vectors
+func cosineSimilarity(a, b []float64) float64 {
+	if len(a) != len(b) {
+		return 0.0
+	}
+	
+	var dotProduct, normA, normB float64
+	
+	for i := range a {
+		dotProduct += a[i] * b[i]
+		normA += a[i] * a[i]
+		normB += b[i] * b[i]
+	}
+	
+	if normA == 0 || normB == 0 {
+		return 0.0
+	}
+	
+	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }

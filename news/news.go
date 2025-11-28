@@ -732,15 +732,29 @@ func parseFeed() {
 		marketsHtml += string(info)
 
 		// Index all prices for search/RAG
+		tickerKeywords := map[string][]string{
+			"BTC":  {"bitcoin", "btc", "crypto"},
+			"ETH":  {"ethereum", "eth", "crypto"},
+			"XLM":  {"stellar", "xlm", "lumens", "crypto"},
+			"PAXG": {"pax", "gold", "paxg", "crypto"},
+			"GBP":  {"pound", "sterling", "gbp", "currency"},
+		}
+		
 		for ticker, price := range newPrices {
+			keywords := tickerKeywords[ticker]
+			if keywords == nil {
+				keywords = []string{strings.ToLower(ticker)}
+			}
+			
 			data.Index(
 				"market_"+ticker,
 				"market",
 				ticker+" Price",
 				fmt.Sprintf("%s is currently trading at $%.2f", ticker, price),
 				map[string]interface{}{
-					"ticker": ticker,
-					"price":  price,
+					"ticker":   ticker,
+					"price":    price,
+					"keywords": keywords,
 				},
 			)
 		}
