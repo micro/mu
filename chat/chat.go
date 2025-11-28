@@ -178,19 +178,18 @@ func getOrCreateRoom(id string) *ChatRoom {
 	return room
 }
 
-// broadcastUserCount sends user count update to all clients
-func (room *ChatRoom) broadcastUserCount() {
-	room.mutex.RLock()
-	defer room.mutex.RUnlock()
-	
+// sendUserCount sends user count to all clients without acquiring locks
+func (room *ChatRoom) sendUserCount(count int) {
 	countMsg := map[string]interface{}{
 		"type":  "user_count",
-		"count": len(room.Clients),
+		"count": count,
 	}
 	
+	room.mutex.RLock()
 	for conn := range room.Clients {
 		conn.WriteJSON(countMsg)
 	}
+	room.mutex.RUnlock()
 }
 
 // run handles the chat room message broadcasting
@@ -200,10 +199,11 @@ func (room *ChatRoom) run() {
 		case client := <-room.Register:
 			room.mutex.Lock()
 			room.Clients[client.Conn] = client
+			count := len(room.Clients)
 			room.mutex.Unlock()
 			
-			// Broadcast user count update
-			room.broadcastUserCount()
+			// Broadcast user count update (after releasing lock)
+			room.sendUserCount(count)
 
 		case client := <-room.Unregister:
 			room.mutex.Lock()
@@ -211,10 +211,11 @@ func (room *ChatRoom) run() {
 				delete(room.Clients, client.Conn)
 				client.Conn.Close()
 			}
+			count := len(room.Clients)
 			room.mutex.Unlock()
 			
-			// Broadcast user count update
-			room.broadcastUserCount()
+			// Broadcast user count update (after releasing lock)
+			room.sendUserCount(count)
 
 		case message := <-room.Broadcast:
 			// Add message to history (keep last 20)
@@ -422,6 +423,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			roomData["title"] = room.Title
 			roomData["summary"] = room.Summary
 			roomData["url"] = room.URL
+			roomData["isRoom"] = true
 		}
 		roomJSON, _ := json.Marshal(roomData)
 

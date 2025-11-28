@@ -581,7 +581,7 @@ function pingServer() {
 function updateGlobalOnlineCount(count) {
   const indicator = document.getElementById('online-indicator');
   if (indicator) {
-    indicator.textContent = count + ' online';
+    indicator.textContent = '· ' + count + ' online';
     indicator.style.display = 'inline';
   }
 }
@@ -685,14 +685,16 @@ function updateOnlineCount(count) {
 document.addEventListener('DOMContentLoaded', function() {
   // Check if we're in a room (from roomData injected by server)
   if (typeof roomData !== 'undefined' && roomData.id) {
-    // Show room context info
-    const messages = document.getElementById('messages');
-    if (messages && roomData.summary) {
+    // Show clear room context info at the top
+    const topicSelector = document.getElementById('topic-selector');
+    if (topicSelector) {
       const contextDiv = document.createElement('div');
-      contextDiv.style.cssText = 'padding: 15px; background: #f5f5f5; border-radius: 8px; margin-bottom: 15px; color: #666;';
-      contextDiv.innerHTML = roomData.summary + 
-        (roomData.url ? '<br><a href="' + roomData.url + '" target="_blank" style="color: #0066cc; font-size: small;">View Original</a>' : '');
-      messages.parentNode.insertBefore(contextDiv, messages);
+      contextDiv.id = 'discussion-context';
+      contextDiv.style.cssText = 'padding: 15px; background: #e8f4f8; border-left: 4px solid #0066cc; margin: 15px 0; border-radius: 4px;';
+      contextDiv.innerHTML = '<strong style="color: #0066cc;">Discussion: ' + roomData.title + '</strong>' +
+        '<p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">' + roomData.summary + '</p>' +
+        (roomData.url ? '<a href="' + roomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
+      topicSelector.parentNode.insertBefore(contextDiv, topicSelector.nextSibling);
     }
     
     // Connect WebSocket
@@ -706,6 +708,12 @@ document.addEventListener('DOMContentLoaded', function() {
         sendRoomMessage(this);
         return false;
       };
+      
+      // Update placeholder
+      const input = chatForm.querySelector('input[name="prompt"]');
+      if (input) {
+        input.placeholder = 'Type your message... (use @username for direct messages)';
+      }
     }
   }
 });

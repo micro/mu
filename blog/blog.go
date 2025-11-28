@@ -252,7 +252,11 @@ func renderPostPreview(post *Post) string {
 	item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<p style="white-space: pre-wrap;">%s</p>
-		<div class="info" style="color: #666; font-size: small;">%s by %s | <a href="/chat?id=post_%s" style="color: #0066cc;">Discuss</a></div>
+		<div class="info" style="color: #666; font-size: small;">
+			%s by %s
+			<span style="margin-left: 10px;">·</span>
+			<a href="/chat?id=post_%s" style="color: #0066cc; margin-left: 10px;">💬 Discuss</a>
+		</div>
 	</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
 
 	return item
