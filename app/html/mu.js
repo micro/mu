@@ -592,7 +592,7 @@ function pingServer() {
 function updateGlobalOnlineCount(count) {
   const indicator = document.getElementById('online-indicator');
   if (indicator) {
-    indicator.textContent = '· ' + count + ' online';
+    indicator.innerHTML = '<span style="margin: 0 8px; color: #ccc;">·</span>' + count + ' online';
     indicator.style.display = 'inline';
   }
 }
@@ -696,16 +696,17 @@ function updateOnlineCount(count) {
 document.addEventListener('DOMContentLoaded', function() {
   // Check if we're in a room (from roomData injected by server)
   if (typeof roomData !== 'undefined' && roomData.id) {
-    // Show clear room context info at the top
-    const topicSelector = document.getElementById('topic-selector');
-    if (topicSelector) {
+    // Show clear room context info at the top of content
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) {
       const contextDiv = document.createElement('div');
       contextDiv.id = 'discussion-context';
-      contextDiv.style.cssText = 'padding: 15px; background: #e8f4f8; border-left: 4px solid #0066cc; margin: 15px 0; border-radius: 4px;';
-      contextDiv.innerHTML = '<strong style="color: #0066cc;">Discussion: ' + roomData.title + '</strong>' +
-        '<p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">' + roomData.summary + '</p>' +
-        (roomData.url ? '<a href="' + roomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
-      topicSelector.parentNode.insertBefore(contextDiv, topicSelector.nextSibling);
+      contextDiv.style.cssText = 'padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: -20px -20px 20px -20px; border-radius: 8px;';
+      contextDiv.innerHTML = '<div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">💬 Discussion</div>' +
+        '<div style="font-size: 20px; font-weight: 600; margin-bottom: 12px;">' + roomData.title + '</div>' +
+        '<div style="font-size: 14px; opacity: 0.95; line-height: 1.5;">' + roomData.summary + '</div>' +
+        (roomData.url ? '<div style="margin-top: 12px;"><a href="' + roomData.url + '" target="_blank" style="color: white; text-decoration: underline; opacity: 0.9;">→ View Original</a></div>' : '');
+      pageTitle.parentNode.insertBefore(contextDiv, pageTitle.nextSibling);
     }
     
     // Connect WebSocket

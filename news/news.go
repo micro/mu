@@ -759,11 +759,11 @@ func parseFeed() {
 
 		// add content
 		if len(h.Content) > 0 {
-			val += app.Link("Read Article", "/news#"+h.ID)
+			val += ` ` + app.Link("Read Article", "/news#"+h.ID)
 		}
 		
 		// add discuss link
-		val += ` | ` + app.Link("Discuss", "/chat?id=news_"+h.ID)
+		val += ` <span style="margin: 0 5px;">·</span> <a href="/chat?id=news_` + h.ID + `" style="color: #0066cc;">💬 Discuss</a>`
 
 		// close val
 

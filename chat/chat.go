@@ -457,10 +457,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// get the message
 			ctx := r.Form.Get("context")
 			msg := r.Form.Get("prompt")
+			roomID := r.URL.Query().Get("id")
 
 			if len(msg) == 0 {
 				return
 			}
+			
+			// If in a room, this should be handled by WebSocket, not POST
+			if roomID != "" {
+				http.Error(w, "Room messages should use WebSocket", http.StatusBadRequest)
+				return
+			}
+			
 			var ictx interface{}
 			json.Unmarshal([]byte(ctx), &ictx)
 			form["context"] = ictx
