@@ -519,9 +519,16 @@ self.addEventListener('DOMContentLoaded', function() {
       link.addEventListener('click', function(e) {
         e.preventDefault();
         const topicName = this.textContent;
-        switchTopic(topicName);
-        // Update URL hash with pushState for proper browser history
-        history.pushState(null, null, '#' + topicName);
+        
+        // If we're in a room, navigate to regular chat with the topic hash
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('id')) {
+          window.location.href = '/chat#' + topicName;
+        } else {
+          // Regular chat - just switch topic and update hash
+          switchTopic(topicName);
+          history.pushState(null, null, '#' + topicName);
+        }
       });
     });
   }
