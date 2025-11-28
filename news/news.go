@@ -1,6 +1,7 @@
 package news
 
 import (
+	"crypto/md5"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -180,7 +181,11 @@ var Results = `
 </div>`
 
 func getSummary(post *Post) string {
-	return fmt.Sprintf(`Source: <i>%s</i> | %s | <a href="/chat?id=news_%s">Discuss</a>`, getDomain(post.URL), app.TimeAgo(post.PostedAt), post.ID)
+	discussLink := ""
+	if post.ID != "" {
+		discussLink = fmt.Sprintf(` | <a href="/chat?id=news_%s" style="color: inherit;">Discuss</a>`, post.ID)
+	}
+	return fmt.Sprintf(`Source: <i>%s</i> | %s%s`, getDomain(post.URL), app.TimeAgo(post.PostedAt), discussLink)
 }
 
 func getPrices() map[string]float64 {
@@ -616,9 +621,15 @@ func parseFeed() {
 			// Clean up description HTML
 			cleanDescription := htmlToText(item.Description)
 
+			// Generate ID - use GUID if available, otherwise hash the URL
+			itemID := item.GUID
+			if itemID == "" {
+				itemID = fmt.Sprintf("url_%x", md5.Sum([]byte(link)))
+			}
+
 			// create post
 			post := &Post{
-				ID:          item.GUID,
+				ID:          itemID,
 				Title:       item.Title,
 				Description: cleanDescription,
 				URL:         link,
@@ -633,7 +644,7 @@ func parseFeed() {
 
 			// Index the article for search/RAG
 			data.Index(
-				item.GUID,
+				itemID,
 				"news",
 				item.Title,
 				item.Description+" "+item.Content,
