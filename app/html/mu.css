@@ -1146,7 +1146,7 @@ body:has(#messages) #content {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding: 10px 15px 10px 15px;
+    padding: 10px 15px 80px 15px;
     box-sizing: border-box;
   }
   body:has(#messages) #topics {
