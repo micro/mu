@@ -206,38 +206,16 @@ func (room *ChatRoom) run() {
 			room.Clients[client.Conn] = client
 			room.mutex.Unlock()
 			
-			// Send join message to all clients
-			joinMsg := RoomMessage{
-				UserID:    client.UserID,
-				Content:   client.UserID + " has joined",
-				Timestamp: time.Now(),
-				IsLLM:     false,
-			}
-			room.Broadcast <- joinMsg
-			
 			// Broadcast updated user list
 			room.broadcastUserList()
 
 		case client := <-room.Unregister:
 			room.mutex.Lock()
-			userID := ""
 			if _, ok := room.Clients[client.Conn]; ok {
-				userID = client.UserID
 				delete(room.Clients, client.Conn)
 				client.Conn.Close()
 			}
 			room.mutex.Unlock()
-			
-			// Send leave message to all clients
-			if userID != "" {
-				leaveMsg := RoomMessage{
-					UserID:    userID,
-					Content:   userID + " has left",
-					Timestamp: time.Now(),
-					IsLLM:     false,
-				}
-				room.Broadcast <- leaveMsg
-			}
 			
 			// Broadcast updated user list
 			room.broadcastUserList()
