@@ -671,23 +671,26 @@ func parseFeed() {
 	    </div>
 	  </a>
 				`, item.GUID, link, item.Title, item.Description, getSummary(post))
-			}
-			if len(item.Content) > 0 {
-				val += `<a class="post-show" tabindex="1">Read Article</a>`
-				val += fmt.Sprintf(`<div class="post-content">%s</div>`, item.Content)
-			}
+		}
+		if len(item.Content) > 0 {
+			val += `<a class="post-show" tabindex="1">Read Article</a>`
+			val += fmt.Sprintf(`<div class="post-content">%s</div>`, item.Content)
+		}
+		
+		// add discuss link
+		val += ` <span style="margin: 0 5px;">·</span> <a href="/chat?id=` + item.GUID + `" style="color: inherit;">💬 Discuss</a>`
 
-			// close div
-			val += `</div>`
+		// close div
+		val += `</div>`
 
-			content = append(content, []byte(val)...)
+		content = append(content, []byte(val)...)
 
-			if i > 0 {
-				continue
-			}
+		if i > 0 {
+			continue
+		}
 
-			// add to headlines / 1 per category
-			headlines = append(headlines, post)
+		// add to headlines / 1 per category
+		headlines = append(headlines, post)
 		}
 
 		content = append(content, []byte(`</div>`)...)
@@ -762,8 +765,8 @@ func parseFeed() {
 			val += ` ` + app.Link("Read Article", "/news#"+h.ID)
 		}
 		
-		// add discuss link
-		val += ` <span style="margin: 0 5px;">·</span> <a href="/chat?id=news_` + h.ID + `" style="color: #0066cc;">💬 Discuss</a>`
+		// add discuss link inline with Read Article
+		val += ` <span style="margin: 0 5px;">·</span> <a href="/chat?id=` + h.ID + `" style="color: inherit;">💬 Discuss</a>`
 
 		// close val
 

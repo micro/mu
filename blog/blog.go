@@ -172,8 +172,8 @@ func updateCacheUnlocked() {
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<p style="white-space: pre-wrap;">%s</p>
-			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a> · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a></div>
-		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID)
+			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a> · <a href="/chat?id=post_%s" style="color: #666;">💬 Discuss</a> · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a></div>
+		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID, post.ID)
 		fullList = append(fullList, item)
 	}
 
