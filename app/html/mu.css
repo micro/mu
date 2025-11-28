@@ -1167,9 +1167,10 @@ body:has(#messages) #content {
     padding: 5px 0;
   }
   body:has(#messages) #messages {
-    flex: 0 1 auto;
-    max-height: calc(100vh - 250px);
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   #chat-form {
     flex: 0 0 auto;
