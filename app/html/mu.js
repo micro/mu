@@ -564,49 +564,6 @@ function flagPost(postId) {
 }
 
 
-// ============================================
-// PRESENCE TRACKING
-// ============================================
-
-// Ping server every 45 seconds to maintain presence
-function startPresencePing() {
-  // Initial ping
-  pingServer();
-  
-  // Set up recurring ping
-  setInterval(pingServer, 45000); // 45 seconds
-}
-
-function pingServer() {
-  fetch('/ping', {
-    method: 'POST',
-    credentials: 'include'
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.online !== undefined) {
-      updateGlobalOnlineCount(data.online);
-    }
-  })
-  .catch(err => {
-    console.log('Ping failed:', err);
-  });
-}
-
-function updateGlobalOnlineCount(count) {
-  const indicator = document.getElementById('online-indicator');
-  if (indicator) {
-    indicator.innerHTML = '<span style="margin: 0 8px; color: #ccc;">·</span>' + count + ' online';
-    indicator.style.display = 'inline';
-  }
-}
-
-// Start presence tracking when page loads
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startPresencePing);
-} else {
-  startPresencePing();
-}
 
 
 // ============================================
@@ -658,7 +615,6 @@ function displayRoomMessage(msg) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'message';
   
-  const time = new Date(msg.timestamp).toLocaleTimeString();
   const userSpan = msg.is_llm ? 
     '<span class="llm">AI</span>' : 
     '<span class="you">' + msg.username + '</span>';
@@ -667,8 +623,7 @@ function displayRoomMessage(msg) {
   // For user messages, escape HTML
   const content = msg.is_llm ? msg.content : msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
   
-  msgDiv.innerHTML = userSpan + ' <span style="color: #666; font-size: small;">(' + 
-    time + ')</span><p>' + content + '</p>';
+  msgDiv.innerHTML = userSpan + '<p>' + content + '</p>';
   messagesDiv.appendChild(msgDiv);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
