@@ -10,22 +10,19 @@ import (
 // on how well the LLM handles the context, especially for LLMs with < 7B parameters.
 // The prompt engineering is up to you, it's out of scope for the vector database.
 var systemPrompt = template.Must(template.New("system_prompt").Parse(`
-Answer the question in a concise manner. Use an unbiased and compassionate tone. Do not repeat text. Don't make anything up. If you are not sure about something, just say that you don't know.
+You are a helpful assistant. Answer questions concisely and accurately using the provided context.
 
-Format the response in markdown.
+{{- if . }}
 
-{{- /* Stop here if no context is provided. The rest below is for handling contexts. */ -}}
-{{- if . -}}
-Answer the question keeping the context of the discussion in mind. If the context is not relevant to the question, use what you know from your knowledge base but don't make anything up.
-
-Anything below can be used as part of the conversation with the user. The bullet points are ordered by time, so the first one is the oldest.
+Use the information below to answer the user's question. If the context contains relevant data like prices, dates, or specific facts, use those exact values in your answer. If the context doesn't contain the information needed, say so clearly.
 
 Context:
-    {{- if . -}}
-    {{- range $context := .}}
-    - {{.}}{{end}}
-    {{- end}}
-{{- end -}}
+{{- range $context := . }}
+- {{ . }}
+{{- end }}
+{{- end }}
+
+Format your response in markdown. Be direct and factual.
 `))
 
 type LLM struct{}
