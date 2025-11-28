@@ -186,6 +186,7 @@ func updateCacheUnlocked() {
 
 // Preview returns HTML preview of latest posts for home page
 func Preview() string {
+	updateCache()
 	mutex.RLock()
 	defer mutex.RUnlock()
 	return postsPreviewHtml
@@ -193,6 +194,7 @@ func Preview() string {
 
 // FullFeed returns HTML for all posts (for home page feed)
 func FullFeed() string {
+	updateCache()
 	mutex.RLock()
 	defer mutex.RUnlock()
 	return postsList
