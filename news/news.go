@@ -655,9 +655,9 @@ func parseFeed() {
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
-	      <span class="text">%s</span>
 	    </div>
 	  </a>
+	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
 				`, item.GUID, link, md.Image, item.Title, item.Description, getSummary(post))
 			} else {
 				val = fmt.Sprintf(`
@@ -667,9 +667,9 @@ func parseFeed() {
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
-	      <span class="text">%s</span>
 	    </div>
 	  </a>
+	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
 				`, item.GUID, link, item.Title, item.Description, getSummary(post))
 		}
 		
@@ -751,7 +751,7 @@ func parseFeed() {
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
-	      		 <span class="text">%s</span>
+			 <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
 			`, h.Category, h.Category, h.URL, h.Title, h.Description, getSummary(h))
 
 		// close val
