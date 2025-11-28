@@ -732,47 +732,15 @@ func parseFeed() {
 		marketsHtml += string(info)
 
 		// Index all prices for search/RAG
-		tickerNames := map[string]string{
-			"BTC":  "Bitcoin",
-			"ETH":  "Ethereum", 
-			"XLM":  "Stellar Lumens",
-			"PAXG": "PAX Gold",
-			"GBP":  "British Pound",
-		}
-		
-		tickerKeywords := map[string][]string{
-			"BTC":  {"bitcoin", "btc", "crypto", "cryptocurrency"},
-			"ETH":  {"ethereum", "eth", "crypto", "cryptocurrency"},
-			"XLM":  {"stellar", "xlm", "lumens", "crypto", "cryptocurrency"},
-			"PAXG": {"pax", "gold", "paxg", "crypto", "cryptocurrency"},
-			"GBP":  {"pound", "sterling", "gbp", "currency", "forex"},
-		}
-		
 		for ticker, price := range newPrices {
-			fullName := tickerNames[ticker]
-			if fullName == "" {
-				fullName = ticker
-			}
-			
-			keywords := tickerKeywords[ticker]
-			if keywords == nil {
-				keywords = []string{strings.ToLower(ticker)}
-			}
-			
-			// Create detailed content for better LLM responses
-			content := fmt.Sprintf("The current price of %s (%s) is $%.2f USD. ", fullName, ticker, price)
-			content += fmt.Sprintf("%s is trading at $%.2f. ", ticker, price)
-			content += fmt.Sprintf("Current %s price: $%.2f", fullName, price)
-			
 			data.Index(
 				"market_"+ticker,
 				"market",
-				fullName+" ("+ticker+") Price",
-				content,
+				ticker,
+				fmt.Sprintf("$%.2f", price),
 				map[string]interface{}{
-					"ticker":   ticker,
-					"price":    price,
-					"keywords": keywords,
+					"ticker": ticker,
+					"price":  price,
 				},
 			)
 		}

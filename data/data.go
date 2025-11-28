@@ -64,7 +64,6 @@ type IndexEntry struct {
 	Title     string                 `json:"title"`
 	Content   string                 `json:"content"`
 	Metadata  map[string]interface{} `json:"metadata"`
-	Keywords  []string               `json:"keywords"`
 	Embedding []float64              `json:"embedding"` // Vector embedding for semantic search
 	IndexedAt time.Time              `json:"indexed_at"`
 }
@@ -77,26 +76,12 @@ type SearchResult struct {
 
 // Index adds or updates an entry in the search index
 func Index(id, entryType, title, content string, metadata map[string]interface{}) {
-	// Check if custom keywords are provided in metadata
-	var keywords []string
-	if customKeywords, ok := metadata["keywords"]; ok {
-		if keywordSlice, ok := customKeywords.([]string); ok {
-			keywords = keywordSlice
-		}
-	}
-	
-	// If no custom keywords, extract from title and content
-	if len(keywords) == 0 {
-		keywords = extractKeywords(title + " " + content)
-	}
-
 	entry := &IndexEntry{
 		ID:        id,
 		Type:      entryType,
 		Title:     title,
 		Content:   content,
 		Metadata:  metadata,
-		Keywords:  keywords,
 		IndexedAt: time.Now(),
 	}
 
@@ -176,19 +161,23 @@ func Search(query string, limit int) []*IndexEntry {
 		}
 	}
 
-	// Fallback to keyword search if vector search fails or returns no results
-	fmt.Printf("[SEARCH] Using keyword fallback for: %s\n", query)
-	keywords := extractKeywords(query)
-	if len(keywords) == 0 {
-		fmt.Printf("[SEARCH] No keywords extracted from query\n")
-		return nil
-	}
-	fmt.Printf("[SEARCH] Extracted keywords: %v\n", keywords)
-
+	// Fallback: Simple text matching if vector search fails or returns no results
+	fmt.Printf("[SEARCH] Using text fallback for: %s\n", query)
+	queryLower := strings.ToLower(query)
 	var results []SearchResult
 
 	for _, entry := range index {
-		score := calculateRelevance(keywords, entry)
+		score := 0.0
+		titleLower := strings.ToLower(entry.Title)
+		contentLower := strings.ToLower(entry.Content)
+		
+		// Simple contains matching
+		if strings.Contains(titleLower, queryLower) {
+			score = 3.0
+		} else if strings.Contains(contentLower, queryLower) {
+			score = 1.0
+		}
+		
 		if score > 0 {
 			results = append(results, SearchResult{
 				Entry: entry,
@@ -245,76 +234,6 @@ func ClearIndex() {
 	index = make(map[string]*IndexEntry)
 	indexMutex.Unlock()
 	saveIndex()
-}
-
-// extractKeywords performs basic keyword extraction
-func extractKeywords(text string) []string {
-	// Convert to lowercase
-	text = strings.ToLower(text)
-
-	// Remove punctuation and split into words
-	words := strings.FieldsFunc(text, func(r rune) bool {
-		return !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-')
-	})
-
-	// Filter stop words and short words
-	stopWords := map[string]bool{
-		"the": true, "a": true, "an": true, "and": true, "or": true, "but": true,
-		"in": true, "on": true, "at": true, "to": true, "for": true, "of": true,
-		"with": true, "by": true, "from": true, "as": true, "is": true, "was": true,
-		"are": true, "were": true, "been": true, "be": true, "have": true, "has": true,
-		"had": true, "do": true, "does": true, "did": true, "will": true, "would": true,
-		"could": true, "should": true, "may": true, "might": true, "must": true,
-		"this": true, "that": true, "these": true, "those": true, "i": true, "you": true,
-		"he": true, "she": true, "it": true, "we": true, "they": true, "what": true,
-		"which": true, "who": true, "when": true, "where": true, "why": true, "how": true,
-	}
-
-	var keywords []string
-	seen := make(map[string]bool)
-
-	for _, word := range words {
-		if len(word) < 3 || stopWords[word] || seen[word] {
-			continue
-		}
-		keywords = append(keywords, word)
-		seen[word] = true
-	}
-
-	return keywords
-}
-
-// calculateRelevance scores an entry against query keywords
-func calculateRelevance(queryKeywords []string, entry *IndexEntry) float64 {
-	if len(queryKeywords) == 0 {
-		return 0
-	}
-
-	score := 0.0
-	titleLower := strings.ToLower(entry.Title)
-	contentLower := strings.ToLower(entry.Content)
-
-	for _, keyword := range queryKeywords {
-		// Title matches are worth more
-		if strings.Contains(titleLower, keyword) {
-			score += 3.0
-		}
-
-		// Content matches
-		if strings.Contains(contentLower, keyword) {
-			score += 1.0
-		}
-
-		// Keyword matches (pre-extracted)
-		for _, entryKeyword := range entry.Keywords {
-			if entryKeyword == keyword {
-				score += 2.0
-				break
-			}
-		}
-	}
-
-	return score
 }
 
 // saveIndex persists the index to disk
