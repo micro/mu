@@ -83,8 +83,7 @@ type ChatRoom struct {
 
 // RoomMessage represents a message in a chat room
 type RoomMessage struct {
-	Username  string    `json:"username"`
-	UserID    string    `json:"user_id"`
+	UserID    string    `json:"username"`
 	Content   string    `json:"content"`
 	Timestamp time.Time `json:"timestamp"`
 	IsLLM     bool      `json:"is_llm"`
@@ -92,10 +91,9 @@ type RoomMessage struct {
 
 // Client represents a connected websocket client
 type Client struct {
-	Conn     *websocket.Conn
-	Username string
-	UserID   string
-	Room     *ChatRoom
+	Conn   *websocket.Conn
+	UserID string
+	Room   *ChatRoom
 }
 
 var rooms = make(map[string]*ChatRoom)
@@ -183,7 +181,7 @@ func (room *ChatRoom) broadcastUserList() {
 	room.mutex.RLock()
 	usernames := make([]string, 0, len(room.Clients))
 	for _, client := range room.Clients {
-		usernames = append(usernames, client.Username)
+		usernames = append(usernames, client.UserID)
 	}
 	room.mutex.RUnlock()
 	
@@ -291,10 +289,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 	}
 
 	client := &Client{
-		Conn:     conn,
-		Username: acc.Name,
-		UserID:   acc.ID,
-		Room:     room,
+		Conn:   conn,
+		UserID: acc.ID,
+		Room:   room,
 	}
 
 	room.Register <- client
@@ -323,8 +320,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 				// Check if this is a direct message or should go to LLM
 				if strings.HasPrefix(strings.TrimSpace(content), "@") {
 					// Direct message - just broadcast it
-					roomMsg := RoomMessage{
-						Username:  client.Username,
+					room.Broadcast <- RoomMessage{
 						UserID:    client.UserID,
 						Content:   content,
 						Timestamp: time.Now(),
@@ -334,7 +330,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 				} else {
 					// Regular message - broadcast user message first
 					userMsg := RoomMessage{
-						Username:  client.Username,
 						UserID:    client.UserID,
 						Content:   content,
 						Timestamp: time.Now(),
@@ -372,8 +367,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 						resp, err := askLLM(prompt)
 						if err == nil && len(resp) > 0 {
 							llmMsg := RoomMessage{
-								Username:  "AI",
-								UserID:    "llm",
+								UserID:    "AI",
 								Content:   resp,
 								Timestamp: time.Now(),
 								IsLLM:     true,
