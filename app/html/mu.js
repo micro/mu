@@ -237,12 +237,16 @@ function loadChat() {
     return;
   }
   
-  // Load unified conversation history
-  loadContext();
-  loadMessages();
+  // Only load local conversation history if NOT in a room
+  // Rooms use WebSocket and server-side message history
+  const isRoom = (typeof roomData !== 'undefined' && roomData && roomData.id);
+  if (!isRoom) {
+    loadContext();
+    loadMessages();
+  }
   
-  // If no conversation exists, show general summaries
-  if (context.length === 0 && typeof summaries !== 'undefined') {
+  // If no conversation exists and not in a room, show general summaries
+  if (!isRoom && context.length === 0 && typeof summaries !== 'undefined') {
     const messages = document.getElementById('messages');
     const topics = Object.keys(summaries).sort();
     
