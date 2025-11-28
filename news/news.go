@@ -621,11 +621,8 @@ func parseFeed() {
 			// Clean up description HTML
 			cleanDescription := htmlToText(item.Description)
 
-			// Generate ID - use GUID if available, otherwise hash the URL
-			itemID := item.GUID
-			if itemID == "" {
-				itemID = fmt.Sprintf("url_%x", md5.Sum([]byte(link)))
-			}
+			// Generate stable ID from URL hash - more reliable than GUID which can change
+			itemID := fmt.Sprintf("%x", md5.Sum([]byte(link)))[:16]
 
 			// create post
 			post := &Post{
