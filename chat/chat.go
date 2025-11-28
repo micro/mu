@@ -449,21 +449,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		mutex.RLock()
 
-		// Build topics list including room if specified
-		displayTopics := topics
-		if roomID != "" {
-			room := getOrCreateRoom(roomID)
-			if room == nil {
-				mutex.RUnlock()
-				http.Error(w, "Invalid room ID", http.StatusBadRequest)
-				return
-			}
-			// Add room as a topic
-			displayTopics = append([]string{room.Title}, topics...)
-		}
-
-		// Use Head() to format topics
-		topicTabs := app.Head("chat", displayTopics)
+		// Use Head() to format topics (rooms don't appear in topic list)
+		topicTabs := app.Head("chat", topics)
 
 		// Pass summaries and room info as JSON to frontend
 		summariesJSON, _ := json.Marshal(summaries)

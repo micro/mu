@@ -465,19 +465,18 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		if kind == "channel" {
 			results = append([]*Result{res}, results...)
 		} else {
-			// returning json results
-			results = append(results, res)
-		}
+		// returning json results
+		results = append(results, res)
+	}
 
-		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
-		discussLink := fmt.Sprintf(`<span style="margin: 0 5px;">·</span><a href="/chat?id=video_%s" style="color: inherit;">💬 Discuss</a>`, id)
-		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
-		resultsHtml += html
-		res.Html = html
+	channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+	html := fmt.Sprintf(`
+		<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+		url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
+	resultsHtml += html
+	res.Html = html
 
-		// Index the video for search/RAG
+	// Index the video for search/RAG
 		data.Index(
 			"video_"+id,
 			"video",
@@ -553,10 +552,9 @@ func getResults(query, channel string) (string, []*Result, error) {
 		}
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
-		discussLink := fmt.Sprintf(`<span style="margin: 0 5px;">·</span><a href="/chat?id=video_%s" style="color: inherit;">💬 Discuss</a>`, id)
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
 		resultsHtml += html
 		res.Html = html
 	}

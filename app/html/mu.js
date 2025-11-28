@@ -699,14 +699,17 @@ function updateOnlineCount(count) {
 // Initialize room chat on page load and when switching topics
 document.addEventListener('DOMContentLoaded', function() {
   // Check if we're in a room (from roomData injected by server)
-  if (typeof roomData !== 'undefined' && roomData.id) {
+  // Use a local variable to avoid pollution across page loads
+  const currentRoomData = (typeof roomData !== 'undefined' && roomData && roomData.id) ? roomData : null;
+  
+  if (currentRoomData) {
     // Set the topic to the room title and display context like regular topics
-    topic = roomData.title;
+    topic = currentRoomData.title;
     
     // Update hidden input if it exists
     const topicInput = document.getElementById('topic');
     if (topicInput) {
-      topicInput.value = roomData.title;
+      topicInput.value = currentRoomData.title;
     }
     
     // Add context message to messages area with room summary
@@ -714,14 +717,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (messages) {
       const contextMsg = document.createElement('div');
       contextMsg.className = 'context-message';
-      contextMsg.innerHTML = 'Discussion: <strong>' + roomData.title + '</strong><br>' + 
-        '<span style="color: #666;">' + roomData.summary + '</span>' +
-        (roomData.url ? '<br><a href="' + roomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
+      contextMsg.innerHTML = 'Discussion: <strong>' + currentRoomData.title + '</strong><br>' + 
+        '<span style="color: #666;">' + currentRoomData.summary + '</span>' +
+        (currentRoomData.url ? '<br><a href="' + currentRoomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
       messages.appendChild(contextMsg);
     }
     
     // Connect WebSocket
-    connectRoomWebSocket(roomData.id);
+    connectRoomWebSocket(currentRoomData.id);
     
     // Override chat form submission for room mode
     const chatForm = document.getElementById('chat-form');
