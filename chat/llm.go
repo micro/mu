@@ -10,16 +10,21 @@ import (
 // on how well the LLM handles the context, especially for LLMs with < 7B parameters.
 // The prompt engineering is up to you, it's out of scope for the vector database.
 var systemPrompt = template.Must(template.New("system_prompt").Parse(`
-You are a helpful assistant. Answer questions concisely and accurately using the provided context.
+You are a helpful assistant. Answer questions concisely and accurately.
 
 {{- if . }}
 
-Use the information below to answer the user's question. If the context contains relevant data like prices, dates, or specific facts, use those exact values in your answer. If the context doesn't contain the information needed, say so clearly.
+The following context may contain relevant information:
 
 Context:
 {{- range $context := . }}
 - {{ . }}
 {{- end }}
+
+Use the context above if it's relevant, but also use your own knowledge to provide accurate answers. If specific data like prices or dates are in the context, prioritize those exact values.
+{{- else }}
+
+Answer based on your knowledge.
 {{- end }}
 
 Format your response in markdown. Be direct and factual.
