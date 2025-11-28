@@ -314,14 +314,34 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 
 					// Then invoke LLM and broadcast response
 					go func() {
-						// Build context from room title and summary
+						// Build context from room details
+						var ragContext []string
+						
+						// Add room context first (most important)
+						if room.Title != "" || room.Summary != "" {
+							roomContext := ""
+							if room.Title != "" {
+								roomContext = "Discussion topic: " + room.Title
+							}
+							if room.Summary != "" {
+								if roomContext != "" {
+									roomContext += ". "
+								}
+								roomContext += room.Summary
+							}
+							if room.URL != "" {
+								roomContext += " (Source: " + room.URL + ")"
+							}
+							ragContext = append(ragContext, roomContext)
+						}
+						
+						// Search for additional context (only if needed)
 						searchQuery := content
 						if room.Title != "" {
 							searchQuery = room.Title + " " + content
 						}
 						
-						ragEntries := data.Search(searchQuery, 3)
-						var ragContext []string
+						ragEntries := data.Search(searchQuery, 2) // Reduced to 2 since room context is primary
 						for _, entry := range ragEntries {
 							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
 							if len(contextStr) > 500 {
