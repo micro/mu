@@ -180,7 +180,7 @@ var Results = `
 </div>`
 
 func getSummary(post *Post) string {
-	return fmt.Sprintf(`Source: <i>%s</i> | %s`, getDomain(post.URL), app.TimeAgo(post.PostedAt))
+	return fmt.Sprintf(`Source: <i>%s</i> | %s | <a href="/chat?id=%s>Discuss</a>`, getDomain(post.URL), app.TimeAgo(post.PostedAt), post.ID)
 }
 
 func getPrices() map[string]float64 {
@@ -673,8 +673,6 @@ func parseFeed() {
 				`, item.GUID, link, item.Title, item.Description, getSummary(post))
 		}
 		
-		// add discuss link
-		val += `<a href="/chat?id=` + item.GUID + `" style="color: inherit;">Discuss</a>`
 
 		// close div
 		val += `</div>`
@@ -756,11 +754,7 @@ func parseFeed() {
 	      		 <span class="text">%s</span>
 			`, h.Category, h.Category, h.URL, h.Title, h.Description, getSummary(h))
 
-		// add discuss link inline with Read Article
-		val += `<a href="/chat?id=` + h.ID + `" style="color: inherit;">Discuss</a>`
-
 		// close val
-
 		val += `</div>`
 		headline = append(headline, []byte(val)...)
 	}
