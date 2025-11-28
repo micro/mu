@@ -457,11 +457,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		roomData := map[string]interface{}{}
 		if roomID != "" {
 			room := getOrCreateRoom(roomID)
-			roomData["id"] = roomID
-			roomData["title"] = room.Title
-			roomData["summary"] = room.Summary
-			roomData["url"] = room.URL
-			roomData["isRoom"] = true
+			if room != nil {
+				roomData["id"] = roomID
+				roomData["title"] = room.Title
+				roomData["summary"] = room.Summary
+				roomData["url"] = room.URL
+				roomData["isRoom"] = true
+			}
 		}
 		roomJSON, _ := json.Marshal(roomData)
 
