@@ -62,6 +62,17 @@ self.addEventListener('activate', function (e) {
 });
 
 // ============================================
+// PAGE JAVASCRIPT (only run in window context)
+// ============================================
+
+// Exit early if we're in service worker context
+if (typeof document === 'undefined') {
+  // We're in service worker context, don't execute page code
+  // Service worker code above will still run
+} else {
+  // We're in window context, execute page code
+
+// ============================================
 // CHAT FUNCTIONALITY
 // ============================================
 
@@ -717,3 +728,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
+
+} // End of window context check
