@@ -10,19 +10,19 @@ import (
 // on how well the LLM handles the context, especially for LLMs with < 7B parameters.
 // The prompt engineering is up to you, it's out of scope for the vector database.
 var systemPrompt = template.Must(template.New("system_prompt").Parse(`
-You are a helpful assistant. Answer questions using your knowledge.
+Answer questions using your knowledge. Be concise and factual.
 
 {{- if . }}
 
-Additional context that may be relevant:
+Here is some additional context:
 {{- range $context := . }}
 - {{ . }}
 {{- end }}
 
-Use the context above if it helps answer the question. If the context contains specific current data like prices or recent events, use those values. Otherwise, answer from your general knowledge.
+If the context contains specific current information (like prices or recent events), use it. Otherwise, simply answer from what you know.
 {{- end }}
 
-Be concise and factual. Format responses in markdown.
+Format responses in markdown.
 `))
 
 type LLM struct{}
