@@ -574,6 +574,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			ragContext = append(ragContext, contextStr)
 		}
+		
+		// Debug: Log what we found
+		if len(ragEntries) > 0 {
+			fmt.Printf("[RAG] Query: %s\n", searchQuery)
+			fmt.Printf("[RAG] Found %d entries:\n", len(ragEntries))
+			for i, entry := range ragEntries {
+				fmt.Printf("  %d. [%s] %s\n", i+1, entry.Type, entry.Title)
+			}
+		} else {
+			fmt.Printf("[RAG] Query: %s - NO RESULTS\n", searchQuery)
+		}
 
 		prompt := &Prompt{
 			Rag:      ragContext,
