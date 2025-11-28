@@ -672,13 +672,9 @@ func parseFeed() {
 	  </a>
 				`, item.GUID, link, item.Title, item.Description, getSummary(post))
 		}
-		if len(item.Content) > 0 {
-			val += `<a class="post-show" tabindex="1">Read Article</a>`
-			val += fmt.Sprintf(`<div class="post-content">%s</div>`, item.Content)
-		}
 		
 		// add discuss link
-		val += ` <span style="margin: 0 5px;">·</span> <a href="/chat?id=` + item.GUID + `" style="color: inherit;">💬 Discuss</a>`
+		val += `<a href="/chat?id=` + item.GUID + `" style="color: inherit;">Discuss</a>`
 
 		// close div
 		val += `</div>`
@@ -760,13 +756,8 @@ func parseFeed() {
 	      		 <span class="text">%s</span>
 			`, h.Category, h.Category, h.URL, h.Title, h.Description, getSummary(h))
 
-		// add content
-		if len(h.Content) > 0 {
-			val += ` ` + app.Link("Read Article", "/news#"+h.ID)
-		}
-		
 		// add discuss link inline with Read Article
-		val += ` <span style="margin: 0 5px;">·</span> <a href="/chat?id=` + h.ID + `" style="color: inherit;">💬 Discuss</a>`
+		val += `<a href="/chat?id=` + h.ID + `" style="color: inherit;">Discuss</a>`
 
 		// close val
 
