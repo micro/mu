@@ -659,8 +659,12 @@ function displayRoomMessage(msg) {
     '<span class="llm">AI</span>' : 
     '<span class="you">' + msg.username + '</span>';
   
+  // For LLM messages, content might be HTML (from markdown rendering)
+  // For user messages, escape HTML
+  const content = msg.is_llm ? msg.content : msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  
   msgDiv.innerHTML = userSpan + ' <span style="color: #666; font-size: small;">(' + 
-    time + ')</span><p>' + msg.content + '</p>';
+    time + ')</span><p>' + content + '</p>';
   messagesDiv.appendChild(msgDiv);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
@@ -696,17 +700,24 @@ function updateOnlineCount(count) {
 document.addEventListener('DOMContentLoaded', function() {
   // Check if we're in a room (from roomData injected by server)
   if (typeof roomData !== 'undefined' && roomData.id) {
-    // Show clear room context info at the top of content
-    const pageTitle = document.getElementById('page-title');
-    if (pageTitle) {
-      const contextDiv = document.createElement('div');
-      contextDiv.id = 'discussion-context';
-      contextDiv.style.cssText = 'padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: -20px -20px 20px -20px; border-radius: 8px;';
-      contextDiv.innerHTML = '<div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">💬 Discussion</div>' +
-        '<div style="font-size: 20px; font-weight: 600; margin-bottom: 12px;">' + roomData.title + '</div>' +
-        '<div style="font-size: 14px; opacity: 0.95; line-height: 1.5;">' + roomData.summary + '</div>' +
-        (roomData.url ? '<div style="margin-top: 12px;"><a href="' + roomData.url + '" target="_blank" style="color: white; text-decoration: underline; opacity: 0.9;">→ View Original</a></div>' : '');
-      pageTitle.parentNode.insertBefore(contextDiv, pageTitle.nextSibling);
+    // Set the topic to the room title and display context like regular topics
+    topic = roomData.title;
+    
+    // Update hidden input if it exists
+    const topicInput = document.getElementById('topic');
+    if (topicInput) {
+      topicInput.value = roomData.title;
+    }
+    
+    // Add context message to messages area with room summary
+    const messages = document.getElementById('messages');
+    if (messages) {
+      const contextMsg = document.createElement('div');
+      contextMsg.className = 'context-message';
+      contextMsg.innerHTML = 'Discussion: <strong>' + roomData.title + '</strong><br>' + 
+        '<span style="color: #666;">' + roomData.summary + '</span>' +
+        (roomData.url ? '<br><a href="' + roomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
+      messages.appendChild(contextMsg);
     }
     
     // Connect WebSocket
@@ -724,7 +735,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Update placeholder
       const input = chatForm.querySelector('input[name="prompt"]');
       if (input) {
-        input.placeholder = 'Type your message... (use @username for direct messages)';
+        input.placeholder = 'Type your message...';
       }
     }
   }

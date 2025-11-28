@@ -291,17 +291,68 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 			}
 
 			if content, ok := msg["content"].(string); ok && len(content) > 0 {
-				roomMsg := RoomMessage{
-					Username:  client.Username,
-					UserID:    client.UserID,
-					Content:   content,
-					Timestamp: time.Now(),
-					IsLLM:     false,
-				}
-				room.Broadcast <- roomMsg
+				// Check if this is a direct message or should go to LLM
+				if strings.HasPrefix(strings.TrimSpace(content), "@") {
+					// Direct message - just broadcast it
+					roomMsg := RoomMessage{
+						Username:  client.Username,
+						UserID:    client.UserID,
+						Content:   content,
+						Timestamp: time.Now(),
+						IsLLM:     false,
+					}
+					room.Broadcast <- roomMsg
+				} else {
+					// Regular message - broadcast user message first
+					userMsg := RoomMessage{
+						Username:  client.Username,
+						UserID:    client.UserID,
+						Content:   content,
+						Timestamp: time.Now(),
+						IsLLM:     false,
+					}
+					room.Broadcast <- userMsg
 
-				// If message starts with a question, optionally trigger LLM response
-				// This can be enhanced later
+					// Then invoke LLM and broadcast response
+					go func() {
+						// Build context from room title and summary
+						searchQuery := content
+						if room.Title != "" {
+							searchQuery = room.Title + " " + content
+						}
+						
+						ragEntries := data.Search(searchQuery, 3)
+						var ragContext []string
+						for _, entry := range ragEntries {
+							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+							if len(contextStr) > 500 {
+								contextStr = contextStr[:500]
+							}
+							if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+								contextStr += fmt.Sprintf(" (Source: %s)", url)
+							}
+							ragContext = append(ragContext, contextStr)
+						}
+
+						prompt := &Prompt{
+							Rag:      ragContext,
+							Context:  nil, // No history in rooms for now
+							Question: content,
+						}
+
+						resp, err := askLLM(prompt)
+						if err == nil && len(resp) > 0 {
+							llmMsg := RoomMessage{
+								Username:  "AI",
+								UserID:    "llm",
+								Content:   resp,
+								Timestamp: time.Now(),
+								IsLLM:     true,
+							}
+							room.Broadcast <- llmMsg
+						}
+					}()
+				}
 			}
 		}
 	}()
@@ -457,15 +508,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// get the message
 			ctx := r.Form.Get("context")
 			msg := r.Form.Get("prompt")
-			roomID := r.URL.Query().Get("id")
 
 			if len(msg) == 0 {
-				return
-			}
-			
-			// If in a room, this should be handled by WebSocket, not POST
-			if roomID != "" {
-				http.Error(w, "Room messages should use WebSocket", http.StatusBadRequest)
 				return
 			}
 			
