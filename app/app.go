@@ -50,7 +50,6 @@ var Template = `
       </div>
       <div id="account">
         <a id="account-header" href="/account" style="display: none;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
-        <span id="online-indicator" style="display: none; color: #999; font-size: 12px;"></span>
       </div>
     </div>
     <div id="container">
