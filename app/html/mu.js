@@ -626,13 +626,35 @@ function displayRoomMessage(msg) {
     '<span class="llm">AI</span>' : 
     '<span class="you">' + msg.username + '</span>';
   
-  // For LLM messages, content might be HTML (from markdown rendering)
-  // For user messages, escape HTML
-  const content = msg.is_llm ? msg.content : msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  let content;
+  if (msg.is_llm) {
+    // Render markdown for AI messages
+    content = renderMarkdown(msg.content);
+  } else {
+    // Escape HTML for user messages
+    content = msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  }
   
   msgDiv.innerHTML = userSpan + '<p>' + content + '</p>';
   messagesDiv.appendChild(msgDiv);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// Simple markdown renderer for common patterns
+function renderMarkdown(text) {
+  return text
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Italic
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Code blocks
+    .replace(/```(.+?)```/gs, '<pre><code>$1</code></pre>')
+    // Inline code
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    // Links
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
+    // Line breaks
+    .replace(/\n/g, '<br>');
 }
 
 function updateUserList(users) {
