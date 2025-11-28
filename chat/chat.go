@@ -178,6 +178,27 @@ func getOrCreateRoom(id string) *ChatRoom {
 	return room
 }
 
+// broadcastUserList sends the current list of usernames to all clients
+func (room *ChatRoom) broadcastUserList() {
+	room.mutex.RLock()
+	usernames := make([]string, 0, len(room.Clients))
+	for _, client := range room.Clients {
+		usernames = append(usernames, client.Username)
+	}
+	room.mutex.RUnlock()
+	
+	userListMsg := map[string]interface{}{
+		"type":  "user_list",
+		"users": usernames,
+	}
+	
+	room.mutex.RLock()
+	for conn := range room.Clients {
+		conn.WriteJSON(userListMsg)
+	}
+	room.mutex.RUnlock()
+}
+
 // run handles the chat room message broadcasting
 func (room *ChatRoom) run() {
 	for {
@@ -196,6 +217,9 @@ func (room *ChatRoom) run() {
 				IsLLM:     false,
 			}
 			room.Broadcast <- joinMsg
+			
+			// Broadcast updated user list
+			room.broadcastUserList()
 
 		case client := <-room.Unregister:
 			room.mutex.Lock()
@@ -218,6 +242,9 @@ func (room *ChatRoom) run() {
 				}
 				room.Broadcast <- leaveMsg
 			}
+			
+			// Broadcast updated user list
+			room.broadcastUserList()
 
 		case message := <-room.Broadcast:
 			// Add message to history (keep last 20)

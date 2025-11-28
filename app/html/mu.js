@@ -588,7 +588,12 @@ function connectRoomWebSocket(roomId) {
   
   roomWs.onmessage = function(event) {
     const msg = JSON.parse(event.data);
-    displayRoomMessage(msg);
+    
+    if (msg.type === 'user_list') {
+      updateUserList(msg.users);
+    } else {
+      displayRoomMessage(msg);
+    }
   };
   
   roomWs.onclose = function() {
@@ -621,6 +626,25 @@ function displayRoomMessage(msg) {
   msgDiv.innerHTML = userSpan + '<p>' + content + '</p>';
   messagesDiv.appendChild(msgDiv);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function updateUserList(users) {
+  const topicSelector = document.getElementById('topic-selector') || document.getElementById('topics');
+  if (!topicSelector) return;
+  
+  let userListDiv = topicSelector.querySelector('.user-list');
+  if (!userListDiv) {
+    userListDiv = document.createElement('div');
+    userListDiv.className = 'user-list';
+    userListDiv.style.cssText = 'padding: 5px 0; color: #666; font-size: small;';
+    topicSelector.appendChild(userListDiv);
+  }
+  
+  if (users && users.length > 0) {
+    userListDiv.innerHTML = '<strong>In room:</strong> ' + users.map(u => '@' + u).join(', ');
+  } else {
+    userListDiv.innerHTML = '';
+  }
 }
 
 function sendRoomMessage(form) {
