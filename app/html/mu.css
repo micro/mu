@@ -1119,10 +1119,9 @@ body:has(#messages) #content {
     margin-top: 15px;
   }
   #messages {
-    flex: 1;
+    flex: 1 1 0;
     overflow-y: auto;
     min-height: 0;
-    max-height: 100%;
     padding-bottom: 0;
   }
   /* Prevent container scroll on chat page */
@@ -1143,7 +1142,7 @@ body:has(#messages) #content {
     box-sizing: border-box;
   }
   body:has(#messages) #content {
-    height: calc(100vh - 44px - 56px);
+    height: calc(100vh - 100px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1170,9 +1169,8 @@ body:has(#messages) #content {
   #chat-form {
     flex-shrink: 0;
     background: white;
-    padding: 10px 0 0 0;
+    padding-top: 10px;
     margin: 0;
-    z-index: 10;
   }
   .post-show {
     margin-top: 10px;
