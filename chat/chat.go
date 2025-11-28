@@ -178,20 +178,6 @@ func getOrCreateRoom(id string) *ChatRoom {
 	return room
 }
 
-// sendUserCount sends user count to all clients without acquiring locks
-func (room *ChatRoom) sendUserCount(count int) {
-	countMsg := map[string]interface{}{
-		"type":  "user_count",
-		"count": count,
-	}
-	
-	room.mutex.RLock()
-	for conn := range room.Clients {
-		conn.WriteJSON(countMsg)
-	}
-	room.mutex.RUnlock()
-}
-
 // run handles the chat room message broadcasting
 func (room *ChatRoom) run() {
 	for {
@@ -199,23 +185,39 @@ func (room *ChatRoom) run() {
 		case client := <-room.Register:
 			room.mutex.Lock()
 			room.Clients[client.Conn] = client
-			count := len(room.Clients)
 			room.mutex.Unlock()
 			
-			// Broadcast user count update (after releasing lock)
-			room.sendUserCount(count)
+			// Send join message to all clients
+			joinMsg := RoomMessage{
+				Username:  client.Username,
+				UserID:    "system",
+				Content:   client.Username + " has joined",
+				Timestamp: time.Now(),
+				IsLLM:     false,
+			}
+			room.Broadcast <- joinMsg
 
 		case client := <-room.Unregister:
 			room.mutex.Lock()
+			username := ""
 			if _, ok := room.Clients[client.Conn]; ok {
+				username = client.Username
 				delete(room.Clients, client.Conn)
 				client.Conn.Close()
 			}
-			count := len(room.Clients)
 			room.mutex.Unlock()
 			
-			// Broadcast user count update (after releasing lock)
-			room.sendUserCount(count)
+			// Send leave message to all clients
+			if username != "" {
+				leaveMsg := RoomMessage{
+					Username:  username,
+					UserID:    "system",
+					Content:   username + " has left",
+					Timestamp: time.Now(),
+					IsLLM:     false,
+				}
+				room.Broadcast <- leaveMsg
+			}
 
 		case message := <-room.Broadcast:
 			// Add message to history (keep last 20)

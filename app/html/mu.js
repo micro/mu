@@ -143,7 +143,7 @@ function loadMessages() {
   context.forEach(function(data) {
     console.log(data);
     d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
-    d.innerHTML += `<div class="message"><span class="llm">llm</span>${data["answer"]}</div>`;
+    d.innerHTML += `<div class="message"><span class="llm">AI</span>${data["answer"]}</div>`;
   });
 
   d.scrollTop = d.scrollHeight;
@@ -178,7 +178,7 @@ function askLLM(el) {
   // Create placeholder for LLM response
   const responseDiv = document.createElement('div');
   responseDiv.className = 'message';
-  responseDiv.innerHTML = `<span class="llm">llm</span><div class="llm-response"></div>`;
+  responseDiv.innerHTML = `<span class="llm">AI</span><div class="llm-response"></div>`;
   d.appendChild(responseDiv);
   const responseContent = responseDiv.querySelector('.llm-response');
   
@@ -588,12 +588,7 @@ function connectRoomWebSocket(roomId) {
   
   roomWs.onmessage = function(event) {
     const msg = JSON.parse(event.data);
-    
-    if (msg.type === 'user_count') {
-      updateOnlineCount(msg.count);
-    } else {
-      displayRoomMessage(msg);
-    }
+    displayRoomMessage(msg);
   };
   
   roomWs.onclose = function() {
@@ -637,21 +632,6 @@ function sendRoomMessage(form) {
   if (content && roomWs && roomWs.readyState === WebSocket.OPEN) {
     roomWs.send(JSON.stringify({ content: content }));
     input.value = '';
-  }
-}
-
-function updateOnlineCount(count) {
-  // Update in topic selector if it exists
-  const topicSelector = document.getElementById('topic-selector');
-  if (topicSelector) {
-    let onlineDiv = topicSelector.querySelector('.online-count');
-    if (!onlineDiv) {
-      onlineDiv = document.createElement('div');
-      onlineDiv.className = 'online-count';
-      onlineDiv.style.cssText = 'padding: 10px; color: #666; font-size: small; text-align: center;';
-      topicSelector.appendChild(onlineDiv);
-    }
-    onlineDiv.textContent = count + ' online';
   }
 }
 
