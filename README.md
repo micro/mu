@@ -42,8 +42,6 @@ Basic concepts. The app contains **cards** displayed on the home screen. These a
 
 There are built in cards and then the idea would be that you could develop or include additional cards or micro apps through configuration or via some basic gist like code editor. Essentially creating a marketplace.
 
-More to explain later.
-
 ## Development 
 
 Ensure you have [Go](https://go.dev/doc/install) installed
