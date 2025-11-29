@@ -13,6 +13,7 @@ Starting with:
 
 - [x] API - Basic API
 - [x] App - Basic PWA
+- [x] Home - Overview
 - [x] Chat - LLM chat UI
 - [x] News - RSS news feed
 - [x] Video - YouTube search
@@ -34,6 +35,10 @@ Go to [mu.xyz](https://mu.xyz) to try it out for free.
 The homepage
 
 <img width="3728" height="1765" alt="image" src="https://github.com/user-attachments/assets/75e029f8-5802-49aa-9449-4902be5da805" />
+
+## Concepts
+
+Basic concepts. The app contains **Cards** displayed on the home screen. These are a sort of summary or overview. Each card links to a **micro app** or an external website. For example the latest Video "more" links to the /video page with videos by channel and search, whereas the markets card redirects to an external app. More to explain later.
 
 ## Development 
 
