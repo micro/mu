@@ -7,6 +7,12 @@ The Micro Network
 Big tech failed us. They now fuel addictive behaviour to drive profit above all else. The tools no longer work for us, instead we work for them. 
 Let's rebuild these services without ads, algorithms or exploits for a better way of life.
 
+## Screenshots
+
+A latest screenshots of the homepage
+
+<img width="3728" height="1765" alt="image" src="https://github.com/user-attachments/assets/75e029f8-5802-49aa-9449-4902be5da805" />
+
 ## Features
 
 Starting with:
