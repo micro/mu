@@ -9,7 +9,7 @@ Let's rebuild these services without ads, algorithms or exploits for a better wa
 
 ## Screenshots
 
-A latest screenshots of the homepage
+The homepage
 
 <img width="3728" height="1765" alt="image" src="https://github.com/user-attachments/assets/75e029f8-5802-49aa-9449-4902be5da805" />
 
