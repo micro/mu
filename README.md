@@ -89,6 +89,8 @@ Usage requires
 export FANAR_API_KEY=xxx
 ```
 
+For vector search see this [doc](VECTOR_SEARCH.md)
+
 ### Run
 
 Then run the app
