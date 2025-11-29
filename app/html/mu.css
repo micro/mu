@@ -369,14 +369,10 @@ hr[id], h1[id], .section h1 {
   display: block;
   text-align: center;
   text-decoration: none;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #f0f0f0;
   border-radius: 5px;
   padding: 10px;
-}
-
-.block:hover {
-  cursor: pointer;
-  background: whitesmoke;
+  background: #fafafa;
 }
 
 /* ========================================
