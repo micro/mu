@@ -51,6 +51,22 @@ git clone https://github.com/asim/mu
 cd mu && go install
 ```
 
+### Chat Prompts
+
+You can set the chat prompts in chat/prompts.json
+
+### Home Cards
+
+You can set the home cards in home/cards.json
+
+### News Feed
+
+You can set the RSS news feeds in news/feeds.json
+
+### Video Channels
+
+You can set the YouTube video channels in video/channels.json
+
 ### API Keys
 
 We need API keys for the following
