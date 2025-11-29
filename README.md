@@ -38,7 +38,7 @@ The homepage
 
 ## Concepts
 
-Basic concepts. The app contains **Cards** displayed on the home screen. These are a sort of summary or overview. Each card links to a **micro app** or an external website. For example the latest Video "more" links to the /video page with videos by channel and search, whereas the markets card redirects to an external app. More to explain later.
+Basic concepts. The app contains **cards** displayed on the home screen. These are a sort of summary or overview. Each card links to a **micro app** or an external website. For example the latest Video "more" links to the /video page with videos by channel and search, whereas the markets card redirects to an external app. More to explain later.
 
 ## Development 
 
