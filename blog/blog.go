@@ -477,6 +477,30 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Content validation: minimum length
+	if len(content) < 50 {
+		http.Error(w, "Post content must be at least 50 characters", http.StatusBadRequest)
+		return
+	}
+
+	// Spam detection: check for common test patterns
+	contentLower := strings.ToLower(content)
+	spamPatterns := []string{
+		"this is a test",
+		"test post",
+		"testing",
+		"asdf",
+		"qwerty",
+		"lorem ipsum",
+	}
+	
+	for _, pattern := range spamPatterns {
+		if strings.Contains(contentLower, pattern) && len(content) < 100 {
+			http.Error(w, "Post appears to be test content. Please share something meaningful.", http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Get the authenticated user
 	author := "Anonymous"
 	authorID := ""
