@@ -289,8 +289,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<div style="margin-bottom: 30px;">
 			<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
 				<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-				<textarea name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
-				<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer; align-self: flex-start;">Post</button>
+				<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
+				<div style="display: flex; justify-content: space-between; align-items: center;">
+					<span id="char-count" style="font-size: 12px; color: #666;">Minimum 50 characters</span>
+					<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Post</button>
+				</div>
 			</form>
 		</div>
 		<div style="margin-bottom: 15px;">
@@ -514,11 +517,16 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the post
+	postID := fmt.Sprintf("%d", time.Now().UnixNano())
 	if err := CreatePost(title, content, author, authorID); err != nil {
 		http.Error(w, "Failed to save post", http.StatusInternalServerError)
 		return
 	}
+	
+	// Run async LLM-based content moderation (non-blocking)
+	go admin.CheckContent("post", postID, title, content)
 
 	// Redirect back to posts page
 	http.Redirect(w, r, "/posts", http.StatusSeeOther)
 }
+

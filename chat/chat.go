@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"mu/admin"
 	"mu/app"
 	"mu/auth"
 	"mu/blog"
@@ -22,6 +23,7 @@ import (
 var f embed.FS
 
 type Prompt struct {
+	System   string   `json:"system"`   // System prompt override
 	Rag      []string `json:"rag"`
 	Context  History  `json:"context"`
 	Question string   `json:"question"`
@@ -391,6 +393,9 @@ func Load() {
 
 	// Generate head with topics (rooms will be added dynamically)
 	head = app.Head("chat", topics)
+	
+	// Register LLM analyzer for content moderation
+	admin.SetAnalyzer(&llmAnalyzer{})
 
 	// Load existing summaries from disk
 	if b, err := data.LoadFile("chat_summaries.json"); err == nil {
@@ -651,4 +656,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		w.Write([]byte(renderHTML))
 	}
+}
+
+// llmAnalyzer implements the admin.LLMAnalyzer interface
+type llmAnalyzer struct{}
+
+func (a *llmAnalyzer) Analyze(promptText, question string) (string, error) {
+	// Create a simple prompt for analysis
+	prompt := &Prompt{
+		System:   promptText,
+		Question: question,
+		Context:  nil,
+		Rag:      nil,
+	}
+	return askLLM(prompt)
 }

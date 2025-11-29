@@ -13,12 +13,18 @@ import (
 type Model struct{}
 
 func (m *Model) Generate(prompt *Prompt) (string, error) {
-	sb := &strings.Builder{}
-	if err := systemPrompt.Execute(sb, prompt.Rag); err != nil {
-		return "", err
+	var systemPromptText string
+	
+	// Use provided system prompt or generate from template
+	if prompt.System != "" {
+		systemPromptText = prompt.System
+	} else {
+		sb := &strings.Builder{}
+		if err := systemPrompt.Execute(sb, prompt.Rag); err != nil {
+			return "", err
+		}
+		systemPromptText = sb.String()
 	}
-
-	systemPromptText := sb.String()
 	
 	// Debug: Show what's being sent to LLM
 	fmt.Printf("[LLM] System prompt:\n%s\n", systemPromptText)

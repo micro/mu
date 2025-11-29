@@ -736,4 +736,45 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// ============================================
+// BLOG POST VALIDATION
+// ============================================
+
+// Validate blog post form on /posts page
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('blog-form');
+  if (!form) return;
+  
+  const textarea = document.getElementById('post-content');
+  const charCount = document.getElementById('char-count');
+  
+  if (!textarea || !charCount) return;
+  
+  function updateCharCount() {
+    const length = textarea.value.length;
+    const remaining = 50 - length;
+    
+    if (length < 50) {
+      charCount.textContent = 'Minimum 50 characters (' + remaining + ' more needed)';
+      charCount.style.color = '#dc3545';
+    } else {
+      charCount.textContent = length + ' characters';
+      charCount.style.color = '#28a745';
+    }
+  }
+  
+  textarea.addEventListener('input', updateCharCount);
+  
+  form.addEventListener('submit', function(e) {
+    if (textarea.value.length < 50) {
+      e.preventDefault();
+      alert('Post must be at least 50 characters long');
+      textarea.focus();
+      return false;
+    }
+  });
+  
+  updateCharCount();
+});
+
 } // End of window context check

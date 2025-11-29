@@ -29,3 +29,8 @@ func askLLM(prompt *Prompt) (string, error) {
 	m := new(Model)
 	return m.Generate(prompt)
 }
+
+// AskLLM is the exported version for use by other packages
+func AskLLM(prompt *Prompt) (string, error) {
+	return askLLM(prompt)
+}

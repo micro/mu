@@ -40,6 +40,13 @@ type ContentDeleter interface {
 
 var deleters = make(map[string]ContentDeleter)
 
+// LLMAnalyzer interface for content moderation
+type LLMAnalyzer interface {
+	Analyze(prompt, question string) (string, error)
+}
+
+var analyzer LLMAnalyzer
+
 // ============================================
 // INITIALIZATION
 // ============================================
@@ -64,6 +71,43 @@ func saveUnlocked() error {
 // RegisterDeleter registers a content type handler
 func RegisterDeleter(contentType string, deleter ContentDeleter) {
 	deleters[contentType] = deleter
+}
+
+// SetAnalyzer sets the LLM analyzer for content moderation
+func SetAnalyzer(a LLMAnalyzer) {
+	analyzer = a
+}
+
+// CheckContent analyzes content using LLM and flags if suspicious
+func CheckContent(contentType, itemID, title, content string) {
+	if analyzer == nil {
+		return
+	}
+
+	prompt := `You are a content moderator. Analyze the following content and respond with ONLY ONE WORD:
+- SPAM (if it's promotional spam or unwanted advertising)
+- TEST (if it's clearly a test post like "test", "hello world", etc.)
+- LOW_QUALITY (if it's very short, nonsensical, or has no value)
+- OK (if the content is fine)
+
+Respond with just the single word classification.`
+
+	question := fmt.Sprintf("Title: %s\n\nContent: %s", title, content)
+
+	resp, err := analyzer.Analyze(prompt, question)
+	if err != nil {
+		fmt.Printf("Moderation analysis error: %v\n", err)
+		return
+	}
+
+	resp = strings.TrimSpace(strings.ToUpper(resp))
+	fmt.Printf("Content moderation: %s %s -> %s\n", contentType, itemID, resp)
+
+	if resp == "SPAM" || resp == "TEST" || resp == "LOW_QUALITY" {
+		// Auto-flag by system (use "system" as username)
+		Add(contentType, itemID, "system")
+		fmt.Printf("Auto-flagged %s: %s (reason: %s)\n", contentType, itemID, resp)
+	}
 }
 
 // ============================================
