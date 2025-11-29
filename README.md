@@ -93,6 +93,7 @@ export YOUTUBE_API_KEY=xxx
 Usage requires
 
 - [Fanar](https://fanar.qa/) - for llm queries
+- Ollama - TODO
 
 ```
 export FANAR_API_KEY=xxx
