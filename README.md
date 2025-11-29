@@ -62,19 +62,19 @@ cd mu && go install
 
 ### Chat Prompts
 
-You can set the chat prompts in chat/prompts.json
+Set the chat prompts in chat/prompts.json
 
 ### Home Cards
 
-You can set the home cards in home/cards.json
+Set the home cards in home/cards.json
 
 ### News Feed
 
-You can set the RSS news feeds in news/feeds.json
+Set the RSS news feeds in news/feeds.json
 
 ### Video Channels
 
-You can set the YouTube video channels in video/channels.json
+Set the YouTube video channels in video/channels.json
 
 ### API Keys
 
