@@ -504,6 +504,48 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Advanced spam detection: check for low-quality content
+	// Allow URLs to pass through
+	hasURL := strings.Contains(content, "http://") || strings.Contains(content, "https://")
+	if !hasURL {
+		// Count words
+		wordCount := len(strings.Fields(content))
+		
+		// Require at least 3 words/spaces for non-URL content
+		if wordCount < 3 {
+			http.Error(w, "Post must contain at least 3 words. Share something meaningful.", http.StatusBadRequest)
+			return
+		}
+		
+		// Check for excessive repeated characters (e.g., "aaaaaa" or "asdfasdfasdf")
+		repeatedChars := 0
+		lastChar := rune(0)
+		for _, char := range content {
+			if char == lastChar && char != ' ' && char != '\n' {
+				repeatedChars++
+				if repeatedChars > 4 {
+					http.Error(w, "Post contains too many repeated characters. Please share something meaningful.", http.StatusBadRequest)
+					return
+				}
+			} else {
+				repeatedChars = 0
+			}
+			lastChar = char
+		}
+		
+		// Check character diversity (should have at least 10 unique characters for 50+ char posts)
+		uniqueChars := make(map[rune]bool)
+		for _, char := range strings.ToLower(content) {
+			if (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') {
+				uniqueChars[char] = true
+			}
+		}
+		if len(uniqueChars) < 10 {
+			http.Error(w, "Post lacks character diversity. Please share something meaningful.", http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Get the authenticated user
 	author := "Anonymous"
 	authorID := ""
