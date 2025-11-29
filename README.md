@@ -25,17 +25,6 @@ Coming soon:
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
-## Membership
-
-Mu is a membership based network. Support, features and voting are available by via a subscription fee.
-
-What are the benefits to this? Sustainability of the platform. Ad free, algorithm free, etc. Direct voice to the team building and running the network. 
-This goes against the idea of a pricing plan which is trying to sell you on something. Instead you pay monthly, but to support the tools.
-
-Ideally its just a flat fee, nothing more.
-
-https://mu.xyz/membership
-
 ## Try it out 
 
 Go to [mu.xyz](https://mu.xyz) to try it out for free.
