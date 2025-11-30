@@ -530,7 +530,9 @@ func EditHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Same validation as creating a post
-		if len(content) < 50 {
+		// Allow URLs to pass through without length check
+		hasURL := strings.Contains(content, "http://") || strings.Contains(content, "https://")
+		if !hasURL && len(content) < 50 {
 			http.Error(w, "Post content must be at least 50 characters", http.StatusBadRequest)
 			return
 		}
@@ -578,35 +580,17 @@ func RenderMarkdown(text string) string {
 
 // Linkify converts URLs in text to clickable links and embeds YouTube videos (for full post display)
 func Linkify(text string) string {
-	// First, replace YouTube URLs with placeholder tokens before markdown rendering
+	// Replace YouTube URLs with embeds
 	youtubePattern := regexp.MustCompile(`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:\S*)?`)
 	
-	placeholders := make(map[string]string)
-	counter := 0
-	
-	text = youtubePattern.ReplaceAllStringFunc(text, func(match string) string {
+	return youtubePattern.ReplaceAllStringFunc(text, func(match string) string {
 		matches := youtubePattern.FindStringSubmatch(match)
 		if len(matches) > 1 {
 			videoID := matches[1]
-			placeholder := fmt.Sprintf("__YOUTUBE_EMBED_%d__", counter)
-			embed := fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="/video?id=%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, videoID)
-			placeholders[placeholder] = embed
-			counter++
-			return placeholder
+			return fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="/video?id=%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, videoID)
 		}
 		return match
 	})
-	
-	// Now render markdown
-	rendered := string(app.Render([]byte(text)))
-	
-	// Replace placeholders with actual embeds
-	for placeholder, embed := range placeholders {
-		rendered = strings.ReplaceAll(rendered, "<p>"+placeholder+"</p>", embed)
-		rendered = strings.ReplaceAll(rendered, placeholder, embed)
-	}
-	
-	return rendered
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
