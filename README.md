@@ -4,7 +4,7 @@ The Micro Network
 
 ## Overview
 
-Mu is a personal web platform that provides essential online services without ads, algorithms, or tracking. 
+Mu is a personal app platform that provides essential online services without ads, algorithms, or tracking. 
 
 It includes:
 
