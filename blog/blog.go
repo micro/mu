@@ -141,8 +141,8 @@ func updateCacheUnlocked() {
 	item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<div>%s</div>
-		<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a></div>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
+		<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a> · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a></div>
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID)
 	preview = append(preview, item)
 	}
 
