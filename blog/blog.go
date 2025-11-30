@@ -458,7 +458,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			%s by %s · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a>%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
 		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
-		<div>%s</div>
+		<div style="margin-bottom: 20px;">%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<a href="/posts">← Back to all posts</a>
 	</div>`, app.TimeAgo(post.CreatedAt), authorLink, post.ID, editButton, post.ID, contentHTML)
