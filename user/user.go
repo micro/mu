@@ -62,7 +62,9 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 		<div style="color: #333; margin-bottom: 10px;">%s</div>
 		<div class="info" style="color: #666; font-size: small;">%s · <a href="/post?id=%s" style="color: #666;">Read more</a></div>
 	</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
-}	if userPosts == "" {
+}
+
+if userPosts == "" {
 		userPosts = "<p style='color: #666;'>No posts yet.</p>"
 	}
 
