@@ -455,13 +455,13 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	content := fmt.Sprintf(`<div id="blog">
 		<div class="info" style="color: #666; font-size: small;">
-			%s by %s · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a>%s
+			%s by %s · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a>%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
 		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div>%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<a href="/posts">← Back to all posts</a>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, post.ID, editButton, contentHTML)
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, post.ID, editButton, post.ID, contentHTML)
 
 	// Check if user is authenticated to show logout link
 	var token string
@@ -578,20 +578,33 @@ func RenderMarkdown(text string) string {
 
 // Linkify converts URLs in text to clickable links and embeds YouTube videos (for full post display)
 func Linkify(text string) string {
-	// First render markdown using the app package's markdown renderer
-	rendered := string(app.Render([]byte(text)))
+	// First, replace YouTube URLs with placeholder tokens before markdown rendering
+	youtubePattern := regexp.MustCompile(`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:\S*)?`)
 	
-	// Then handle YouTube embeds (both youtube.com and youtu.be)
-	youtubePattern := regexp.MustCompile(`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:[^\s<>"]*)?`)
-	rendered = youtubePattern.ReplaceAllStringFunc(rendered, func(match string) string {
-		// Extract video ID
+	placeholders := make(map[string]string)
+	counter := 0
+	
+	text = youtubePattern.ReplaceAllStringFunc(text, func(match string) string {
 		matches := youtubePattern.FindStringSubmatch(match)
 		if len(matches) > 1 {
 			videoID := matches[1]
-			return fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="/video?id=%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, videoID)
+			placeholder := fmt.Sprintf("__YOUTUBE_EMBED_%d__", counter)
+			embed := fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="/video?id=%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, videoID)
+			placeholders[placeholder] = embed
+			counter++
+			return placeholder
 		}
 		return match
 	})
+	
+	// Now render markdown
+	rendered := string(app.Render([]byte(text)))
+	
+	// Replace placeholders with actual embeds
+	for placeholder, embed := range placeholders {
+		rendered = strings.ReplaceAll(rendered, "<p>"+placeholder+"</p>", embed)
+		rendered = strings.ReplaceAll(rendered, placeholder, embed)
+	}
 	
 	return rendered
 }
