@@ -125,7 +125,7 @@ func updateCacheUnlocked() {
 			content = content[:lastSpace] + "..."
 		}
 		
-		// Add YouTube embeds
+		// Add links and YouTube embeds
 		content = Linkify(content)
 
 		title := post.Title
@@ -180,7 +180,7 @@ func updateCacheUnlocked() {
 			content = content[:lastSpace] + "..."
 		}
 		
-		// Add YouTube embeds
+		// Add links and YouTube embeds
 		content = Linkify(content)
 
 		authorLink := post.Author
@@ -253,9 +253,6 @@ func renderPostPreview(post *Post) string {
 		}
 		content = content[:lastSpace] + "..."
 	}
-	
-	// Add YouTube embeds
-	content = Linkify(content)
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
@@ -435,7 +432,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		title = "Untitled"
 	}
 
-	// Use Linkify to add YouTube embeds for full post view
+	// Add links and YouTube embeds for full post view
 	contentHTML := Linkify(post.Content)
 
 	authorLink := post.Author
