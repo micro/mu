@@ -30,6 +30,8 @@ Coming soon:
 
 Go to [mu.xyz](https://mu.xyz) to try it out for free.
 
+See the [Screenshots](#screenshots)
+
 ## Concepts
 
 Basic concepts. The app contains **cards** displayed on the home screen. These are a sort of summary or overview. Each card links to a **micro app** or an external website. For example the latest Video "more" links to the /video page with videos by channel and search, whereas the markets card redirects to an external app. 
@@ -97,6 +99,12 @@ For vector search see this [doc](VECTOR_SEARCH.md)
 
 Then run the app
 
+```
+mu --serve
+```
+
+Go to localhost:8081
+
 ## Screenshots
 
 ### Home
@@ -123,9 +131,3 @@ Then run the app
 
 <img width="2768" height="1524" alt="Screenshot 2025-11-30 08 08 04" src="https://github.com/user-attachments/assets/e0ee732c-733a-41b9-ba85-9bbfeafc5503" />
 
-
-```
-mu --serve
-```
-
-Go to localhost:8081
