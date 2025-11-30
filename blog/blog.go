@@ -28,12 +28,13 @@ var postsPreviewHtml string
 var postsList string
 
 type Post struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	Author    string    `json:"author"`
-	AuthorID  string    `json:"author_id"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	Content     string    `json:"content"`      // Raw markdown content
+	ContentHTML string    `json:"content_html"` // Rendered HTML
+	Author      string    `json:"author"`
+	AuthorID    string    `json:"author_id"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // Load blog posts from disk
@@ -110,20 +111,11 @@ func updateCacheUnlocked() {
 		}
 		count++
 
-		content := post.Content
+		// Use pre-rendered HTML, truncate for preview
+		content := post.ContentHTML
 		if len(content) > 500 {
-			// Find the last space before 500 chars
-			lastSpace := 500
-			for j := 499; j >= 0; j-- {
-				if content[j] == ' ' {
-					lastSpace = j
-					break
-				}
-			}
-			content = content[:lastSpace] + "..."
+			content = content[:500] + "..."
 		}
-
-		linkedContent := Linkify(content)
 
 		title := post.Title
 		if title == "" {
@@ -137,9 +129,9 @@ func updateCacheUnlocked() {
 
 	item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
-		<p style="white-space: pre-wrap;">%s</p>
+		<div>%s</div>
 		<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a></div>
-	</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
 	preview = append(preview, item)
 	}
 
@@ -162,7 +154,11 @@ func updateCacheUnlocked() {
 			title = "Untitled"
 		}
 
-		linkedContent := Linkify(post.Content)
+		// Use pre-rendered HTML, truncate for list view
+		content := post.ContentHTML
+		if len(content) > 800 {
+			content = content[:800] + "..."
+		}
 
 		authorLink := post.Author
 		if post.AuthorID != "" {
@@ -171,9 +167,9 @@ func updateCacheUnlocked() {
 
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
-			<p style="white-space: pre-wrap;">%s</p>
+			<div>%s</div>
 			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a> · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a> · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a></div>
-		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID, post.ID)
+		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID, post.ID)
 		fullList = append(fullList, item)
 	}
 
@@ -220,29 +216,19 @@ func renderPostPreview(post *Post) string {
 		title = "Untitled"
 	}
 
-	// Truncate content to first paragraph (first double newline or max 300 chars)
-	content := post.Content
+	// Use pre-rendered HTML and truncate for preview
+	content := post.ContentHTML
 	
-	// Look for double newline (paragraph break)
-	if idx := strings.Index(content, "\n\n"); idx > 0 && idx < 300 {
-		content = content[:idx] + "..."
-	} else if idx := strings.Index(content, "\r\n\r\n"); idx > 0 && idx < 300 {
-		content = content[:idx] + "..."
-	} else if len(content) > 300 {
-		// No paragraph break found, truncate at word boundary
-		lastSpace := 300
-		for i := 299; i >= 0 && i < len(content); i-- {
-			if content[i] == ' ' {
-				lastSpace = i
-				break
-			}
-		}
-		if lastSpace < len(content) {
-			content = content[:lastSpace] + "..."
+	// Strip HTML tags for length calculation and truncation
+	strippedContent := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(content, "")
+	
+	// Truncate to ~300 chars
+	if len(strippedContent) > 300 {
+		// Truncate the HTML content approximately
+		if len(content) > 500 {
+			content = content[:500] + "..."
 		}
 	}
-
-	linkedContent := Linkify(content)
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
@@ -251,13 +237,13 @@ func renderPostPreview(post *Post) string {
 
 	item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
-		<p style="white-space: pre-wrap;">%s</p>
+		<div>%s</div>
 		<div class="info" style="color: #666; font-size: small;">
 			%s by %s
 			<span style="margin-left: 10px;">·</span>
 			<a href="/chat?id=post_%s" style="color: #0066cc; margin-left: 10px;">💬 Discuss</a>
 		</div>
-	</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
 
 	return item
 }
@@ -311,14 +297,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // CreatePost creates a new post and returns error if any
 func CreatePost(title, content, author, authorID string) error {
+	// Render markdown to HTML with YouTube embeds
+	contentHTML := Linkify(content)
+	
 	// Create new post
 	post := &Post{
-		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
-		Title:     title,
-		Content:   content,
-		Author:    author,
-		AuthorID:  authorID,
-		CreatedAt: time.Now(),
+		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
+		Title:       title,
+		Content:     content,
+		ContentHTML: contentHTML,
+		Author:      author,
+		AuthorID:    authorID,
+		CreatedAt:   time.Now(),
 	}
 
 	mutex.Lock()
@@ -368,6 +358,9 @@ func DeletePost(id string) error {
 
 // UpdatePost updates an existing post
 func UpdatePost(id, title, content string) error {
+	// Render markdown to HTML with YouTube embeds
+	contentHTML := Linkify(content)
+	
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -375,6 +368,7 @@ func UpdatePost(id, title, content string) error {
 		if post.ID == id {
 			posts[i].Title = title
 			posts[i].Content = content
+			posts[i].ContentHTML = contentHTML
 			save()
 			updateCacheUnlocked()
 			return nil
@@ -422,7 +416,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		title = "Untitled"
 	}
 
-	linkedContent := Linkify(post.Content)
+	// Use pre-rendered HTML
+	contentHTML := post.ContentHTML
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
@@ -443,10 +438,10 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	<div class="info" style="color: #666; font-size: small;">%s by %s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		%s
-		<div style="white-space: pre-wrap;">%s</div>
+		<div>%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<a href="/posts">← Back to all posts</a>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, linkedContent)
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, contentHTML)
 
 	// Check if user is authenticated to show logout link
 	var token string
