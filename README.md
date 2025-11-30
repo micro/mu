@@ -30,7 +30,7 @@ Coming soon:
 
 Go to [mu.xyz](https://mu.xyz) to try it out for free.
 
-See the [Screenshots](#screenshots) before using it.
+See the [Screenshots](#screenshots) before signing up.
 
 ## Concepts
 
