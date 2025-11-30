@@ -50,6 +50,20 @@ func Load() {
 		return
 	}
 
+	// Migrate existing posts: generate ContentHTML if missing
+	needsSave := false
+	for i, post := range posts {
+		if post.ContentHTML == "" && post.Content != "" {
+			posts[i].ContentHTML = Linkify(post.Content)
+			needsSave = true
+		}
+	}
+	
+	if needsSave {
+		save()
+		fmt.Println("Migrated", len(posts), "posts to include ContentHTML")
+	}
+
 	// Sort posts by creation time (newest first)
 	sort.Slice(posts, func(i, j int) bool {
 		return posts[i].CreatedAt.After(posts[j].CreatedAt)
@@ -222,11 +236,11 @@ func renderPostPreview(post *Post) string {
 	// Strip HTML tags for length calculation and truncation
 	strippedContent := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(content, "")
 	
-	// Truncate to ~300 chars
-	if len(strippedContent) > 300 {
+	// Truncate to ~256 chars
+	if len(strippedContent) > 256 {
 		// Truncate the HTML content approximately
-		if len(content) > 500 {
-			content = content[:500] + "..."
+		if len(content) > 400 {
+			content = content[:400] + "..."
 		}
 	}
 
@@ -430,18 +444,22 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		acc, err := auth.GetAccount(sess.Account)
 		if err == nil && acc.ID == post.AuthorID {
-			editButton = fmt.Sprintf(`<a href="/post/edit?id=%s" style="display: inline-block; padding: 5px 12px; background: #333; color: white; text-decoration: none; border-radius: 3px; font-size: 14px; margin-bottom: 10px;">✏️ Edit</a>`, post.ID)
+			editButton = `<a href="/post/edit?id=` + post.ID + `" style="color: #0066cc; margin-left: 10px;">✏️ Edit</a>`
 		}
 	}
 
 	content := fmt.Sprintf(`<div id="blog">
 	<div class="info" style="color: #666; font-size: small;">%s by %s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
-		%s
 		<div>%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
-		<a href="/posts">← Back to all posts</a>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, contentHTML)
+		<div style="color: #666; font-size: small;">
+			<a href="/posts">← Back to all posts</a>
+			<span style="margin-left: 10px;">·</span>
+			<a href="/chat?id=post_%s" style="color: #0066cc; margin-left: 10px;">💬 Discuss</a>
+			%s
+		</div>
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, contentHTML, post.ID, editButton)
 
 	// Check if user is authenticated to show logout link
 	var token string
