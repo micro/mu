@@ -366,6 +366,23 @@ func DeletePost(id string) error {
 	return fmt.Errorf("post not found")
 }
 
+// UpdatePost updates an existing post
+func UpdatePost(id, title, content string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for i, post := range posts {
+		if post.ID == id {
+			posts[i].Title = title
+			posts[i].Content = content
+			save()
+			updateCacheUnlocked()
+			return nil
+		}
+	}
+	return fmt.Errorf("post not found")
+}
+
 // RefreshCache updates the cached HTML
 func RefreshCache() {
 	updateCache()
@@ -412,13 +429,24 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
 	}
 
+	// Check if current user is the author (to show edit button)
+	var editButton string
+	sess, err := auth.GetSession(r)
+	if err == nil {
+		acc, err := auth.GetAccount(sess.Account)
+		if err == nil && acc.ID == post.AuthorID {
+			editButton = fmt.Sprintf(`<a href="/post/edit?id=%s" style="display: inline-block; padding: 5px 12px; background: #333; color: white; text-decoration: none; border-radius: 3px; font-size: 14px; margin-bottom: 10px;">✏️ Edit</a>`, post.ID)
+		}
+	}
+
 	content := fmt.Sprintf(`<div id="blog">
 	<div class="info" style="color: #666; font-size: small;">%s by %s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
+		%s
 		<div style="white-space: pre-wrap;">%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<a href="/posts">← Back to all posts</a>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, linkedContent)
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, linkedContent)
 
 	// Check if user is authenticated to show logout link
 	var token string
@@ -438,12 +466,104 @@ func min(a, b int) int {
 	return b
 }
 
-// linkify converts URLs in text to clickable links
+// EditHandler serves the post edit form
+func EditHandler(w http.ResponseWriter, r *http.Request) {
+	// Must be authenticated
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	acc, err := auth.GetAccount(sess.Account)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Redirect(w, r, "/posts", http.StatusSeeOther)
+		return
+	}
+
+	post := GetPost(id)
+	if post == nil {
+		http.Error(w, "Post not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if user is the author
+	if post.AuthorID != acc.ID {
+		http.Error(w, "Forbidden - you can only edit your own posts", http.StatusForbidden)
+		return
+	}
+
+	// Handle POST - update the post
+	if r.Method == "POST" {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			return
+		}
+
+		title := strings.TrimSpace(r.FormValue("title"))
+		content := strings.TrimSpace(r.FormValue("content"))
+
+		if content == "" {
+			http.Error(w, "Content is required", http.StatusBadRequest)
+			return
+		}
+
+		// Same validation as creating a post
+		if len(content) < 50 {
+			http.Error(w, "Post content must be at least 50 characters", http.StatusBadRequest)
+			return
+		}
+
+		if err := UpdatePost(id, title, content); err != nil {
+			http.Error(w, "Failed to update post", http.StatusInternalServerError)
+			return
+		}
+
+		http.Redirect(w, r, "/post?id="+id, http.StatusSeeOther)
+		return
+	}
+
+	// GET - show edit form
+	title := post.Title
+	if title == "" {
+		title = "Edit Post"
+	} else {
+		title = "Edit: " + title
+	}
+
+	content := fmt.Sprintf(`<div id="blog">
+		<h2>Edit Post</h2>
+		<form method="POST" action="/post/edit?id=%s" style="display: flex; flex-direction: column; gap: 10px;">
+			<input type="text" name="title" placeholder="Title (optional)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+			<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: monospace;">%s</textarea>
+			<div style="font-size: 12px; color: #666; margin-top: -5px;">
+				Supports markdown: **bold**, *italic*, ` + "`code`" + `, ` + "```" + ` for code blocks, # headers, - lists
+			</div>
+			<div style="display: flex; gap: 10px;">
+				<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Save Changes</button>
+				<a href="/post?id=%s" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
+			</div>
+		</form>
+	</div>`, post.ID, post.Title, post.Content, post.ID)
+
+	html := app.RenderHTMLForRequest("Edit Post", title, content, r)
+	w.Write([]byte(html))
+}
+
 // Linkify converts URLs in text to clickable links and embeds YouTube videos
 func Linkify(text string) string {
-	// First, handle YouTube embeds (both youtube.com and youtu.be)
+	// First render markdown using the app package's markdown renderer
+	rendered := string(app.Render([]byte(text)))
+	
+	// Then handle YouTube embeds (both youtube.com and youtu.be)
 	youtubePattern := regexp.MustCompile(`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:[^\s<>"]*)?`)
-	text = youtubePattern.ReplaceAllStringFunc(text, func(match string) string {
+	rendered = youtubePattern.ReplaceAllStringFunc(rendered, func(match string) string {
 		// Extract video ID
 		matches := youtubePattern.FindStringSubmatch(match)
 		if len(matches) > 1 {
@@ -453,17 +573,7 @@ func Linkify(text string) string {
 		return match
 	})
 	
-	// Then linkify remaining URLs
-	urlPattern := regexp.MustCompile(`(https?://[^\s<>"]+)`)
-	text = urlPattern.ReplaceAllStringFunc(text, func(match string) string {
-		// Skip if already part of an iframe (already embedded)
-		if strings.Contains(match, "/video?id=") {
-			return match
-		}
-		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>`, match, match)
-	})
-	
-	return text
+	return rendered
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {

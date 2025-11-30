@@ -94,6 +94,9 @@ func main() {
 	// serve individual blog post (public, no auth)
 	http.HandleFunc("/post", blog.PostHandler)
 
+	// edit blog post
+	http.HandleFunc("/post/edit", blog.EditHandler)
+
 	// flag content
 	http.HandleFunc("/flag", admin.FlagHandler)
 
