@@ -391,7 +391,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	languageSection := fmt.Sprintf(`<h3>Language</h3>
-		<p>Choose your preferred language. This helps with browser translation.</p>
+		<p>Sets the page language to help your browser offer automatic translation.</p>
 		<form action="/account" method="POST" style="margin-top: 10px;">
 			<select name="language" style="padding: 8px; font-size: 14px;">
 				%s
