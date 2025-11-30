@@ -15,6 +15,7 @@ It includes:
 - **API** - REST API for programmatic access
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
+
 ## Motivation
 
 Big tech failed us. They now fuel addictive behaviour to drive profit above all else. The tools no longer work for us, instead we work for them. 
@@ -51,7 +52,7 @@ Basic concepts. The app contains **cards** displayed on the home screen. These a
 
 There are built in cards and then the idea would be that you could develop or include additional cards or micro apps through configuration or via some basic gist like code editor. Essentially creating a marketplace.
 
-## Development 
+## Self Hosting
 
 Ensure you have [Go](https://go.dev/doc/install) installed
 
