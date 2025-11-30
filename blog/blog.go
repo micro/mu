@@ -125,8 +125,8 @@ func updateCacheUnlocked() {
 			content = content[:lastSpace] + "..."
 		}
 		
-		// Now render markdown (no embeds in preview)
-		content = RenderMarkdown(content)
+		// Add YouTube embeds
+		content = Linkify(content)
 
 		title := post.Title
 		if title == "" {
@@ -180,8 +180,8 @@ func updateCacheUnlocked() {
 			content = content[:lastSpace] + "..."
 		}
 		
-		// Now render markdown (no embeds in list)
-		content = RenderMarkdown(content)
+		// Add YouTube embeds
+		content = Linkify(content)
 
 		authorLink := post.Author
 		if post.AuthorID != "" {
@@ -254,8 +254,8 @@ func renderPostPreview(post *Post) string {
 		content = content[:lastSpace] + "..."
 	}
 	
-	// Now render markdown (no embeds in preview)
-	content = RenderMarkdown(content)
+	// Add YouTube embeds
+	content = Linkify(content)
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
