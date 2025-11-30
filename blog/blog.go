@@ -28,13 +28,12 @@ var postsPreviewHtml string
 var postsList string
 
 type Post struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Content     string    `json:"content"`      // Raw markdown content
-	ContentHTML string    `json:"content_html"` // Rendered HTML with embeds
-	Author      string    `json:"author"`
-	AuthorID    string    `json:"author_id"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"` // Raw markdown content
+	Author    string    `json:"author"`
+	AuthorID  string    `json:"author_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Load blog posts from disk
@@ -327,13 +326,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func CreatePost(title, content, author, authorID string) error {
 	// Create new post
 	post := &Post{
-		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
-		Title:       title,
-		Content:     content,
-		ContentHTML: Linkify(content), // Render at creation time
-		Author:      author,
-		AuthorID:    authorID,
-		CreatedAt:   time.Now(),
+		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		Title:     title,
+		Content:   content,
+		Author:    author,
+		AuthorID:  authorID,
+		CreatedAt: time.Now(),
 	}
 
 	mutex.Lock()
@@ -390,7 +388,6 @@ func UpdatePost(id, title, content string) error {
 		if post.ID == id {
 			posts[i].Title = title
 			posts[i].Content = content
-			posts[i].ContentHTML = Linkify(content) // Re-render at edit time
 			save()
 			updateCacheUnlocked()
 			return nil
@@ -438,11 +435,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		title = "Untitled"
 	}
 
-	// Use pre-rendered HTML, fallback to rendering if missing
-	contentHTML := post.ContentHTML
-	if contentHTML == "" {
-		contentHTML = Linkify(post.Content)
-	}
+	// Use Linkify to add YouTube embeds for full post view
+	contentHTML := Linkify(post.Content)
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
