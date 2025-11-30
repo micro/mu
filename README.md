@@ -2,7 +2,19 @@
 
 The Micro Network
 
-# Overview
+## Overview
+
+Mu is a self-hosted personal web platform that provides essential online services without ads, algorithms, or tracking. It includes:
+
+- **Chat** - AI-powered assistant with contextual discussions
+- **Posts** - Microblogging and community sharing
+- **News** - Curated RSS feeds and market data
+- **Video** - YouTube search and viewing
+- **API** - REST API for programmatic access
+
+Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz). All your data stays under your control.
+
+## Motivation
 
 Big tech failed us. They now fuel addictive behaviour to drive profit above all else. The tools no longer work for us, instead we work for them. 
 Let's rebuild these services without ads, algorithms or exploits for a better way of life.
@@ -26,11 +38,11 @@ Coming soon:
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
-## Try it out 
+## Hosted Version
 
-Go to [mu.xyz](https://mu.xyz) to try it out for free.
+**Mu is free to use** at [mu.xyz](https://mu.xyz). Create an account and start using it immediately - no credit card required.
 
-See the [Screenshots](#screenshots) before signing up.
+Optional membership is available to support ongoing development and hosting costs. Members get early access to new features and a voice in the project's direction. This is entirely optional - the platform remains free for all users.
 
 ## Concepts
 
