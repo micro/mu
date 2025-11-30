@@ -14,8 +14,7 @@ It includes:
 - **Video** - YouTube search and viewing
 - **API** - REST API for programmatic access
 
-Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz). All your data stays under your control.
-
+Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 ## Motivation
 
 Big tech failed us. They now fuel addictive behaviour to drive profit above all else. The tools no longer work for us, instead we work for them. 
