@@ -127,6 +127,10 @@ func updateCacheUnlocked() {
 
 		// Use pre-rendered HTML, truncate for preview
 		content := post.ContentHTML
+		
+		// Strip any embeds from preview
+		content = StripEmbeds(content)
+		
 		if len(content) > 500 {
 			content = content[:500] + "..."
 		}
@@ -170,6 +174,10 @@ func updateCacheUnlocked() {
 
 		// Use pre-rendered HTML, truncate for list view
 		content := post.ContentHTML
+		
+		// Strip any embeds from list view
+		content = StripEmbeds(content)
+		
 		if len(content) > 800 {
 			content = content[:800] + "..."
 		}
@@ -232,6 +240,9 @@ func renderPostPreview(post *Post) string {
 
 	// Use pre-rendered HTML and truncate for preview
 	content := post.ContentHTML
+	
+	// Strip any embeds from preview
+	content = StripEmbeds(content)
 	
 	// Strip HTML tags for length calculation and truncation
 	strippedContent := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(content, "")
@@ -444,22 +455,19 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		acc, err := auth.GetAccount(sess.Account)
 		if err == nil && acc.ID == post.AuthorID {
-			editButton = `<a href="/post/edit?id=` + post.ID + `" style="color: #0066cc; margin-left: 10px;">✏️ Edit</a>`
+			editButton = ` · <a href="/post/edit?id=` + post.ID + `" style="color: #666;">Edit</a>`
 		}
 	}
 
 	content := fmt.Sprintf(`<div id="blog">
-	<div class="info" style="color: #666; font-size: small;">%s by %s</div>
+		<div class="info" style="color: #666; font-size: small;">
+			%s by %s · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a>%s
+		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div>%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
-		<div style="color: #666; font-size: small;">
-			<a href="/posts">← Back to all posts</a>
-			<span style="margin-left: 10px;">·</span>
-			<a href="/chat?id=post_%s" style="color: #0066cc; margin-left: 10px;">💬 Discuss</a>
-			%s
-		</div>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, contentHTML, post.ID, editButton)
+		<a href="/posts">← Back to all posts</a>
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, post.ID, editButton, contentHTML)
 
 	// Check if user is authenticated to show logout link
 	var token string
@@ -572,6 +580,13 @@ func EditHandler(w http.ResponseWriter, r *http.Request) {
 // RenderMarkdown converts markdown to HTML without embeds (for storage)
 func RenderMarkdown(text string) string {
 	return string(app.Render([]byte(text)))
+}
+
+// StripEmbeds removes iframe embeds from HTML (for previews)
+func StripEmbeds(html string) string {
+	// Remove YouTube iframes
+	iframePattern := regexp.MustCompile(`<div[^>]*><iframe[^>]*></iframe></div>`)
+	return iframePattern.ReplaceAllString(html, "")
 }
 
 // Linkify converts URLs in text to clickable links and embeds YouTube videos (for display)
