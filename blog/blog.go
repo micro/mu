@@ -547,15 +547,12 @@ func EditHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GET - show edit form
-	title := post.Title
-	if title == "" {
-		title = "Edit Post"
-	} else {
-		title = "Edit: " + title
+	pageTitle := "Edit Post"
+	if post.Title != "" {
+		pageTitle = "Edit: " + post.Title
 	}
 
 	content := fmt.Sprintf(`<div id="blog">
-		<h2>Edit Post</h2>
 		<form method="POST" action="/post/edit?id=%s" style="display: flex; flex-direction: column; gap: 10px;">
 			<input type="text" name="title" placeholder="Title (optional)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 			<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: monospace;">%s</textarea>
@@ -569,7 +566,7 @@ func EditHandler(w http.ResponseWriter, r *http.Request) {
 		</form>
 	</div>`, post.ID, post.Title, post.Content, post.ID)
 
-	html := app.RenderHTMLForRequest("Edit Post", title, content, r)
+	html := app.RenderHTMLForRequest(pageTitle, "", content, r)
 	w.Write([]byte(html))
 }
 
