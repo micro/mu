@@ -866,11 +866,12 @@ func Reminder() string {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	if ct := r.Header.Get("Content-Type"); ct == "application/json" {
+	if accept := r.Header.Get("Accept"); accept == "application/json" {
 		resp := map[string]interface{}{
 			"feed": feed,
 		}
 		b, _ := json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
 		return
 	}

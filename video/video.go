@@ -677,12 +677,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b []byte
 	mutex.RLock()
-	if ct == "application/json" {
+	if accept := r.Header.Get("Accept"); accept == "application/json" {
 		data := map[string]interface{}{
 			"channels": videos,
 		}
 
 		b, _ = json.Marshal(data)
+		w.Header().Set("Content-Type", "application/json")
 	} else {
 		b = []byte(videosHtml)
 	}
