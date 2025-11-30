@@ -4,7 +4,9 @@ The Micro Network
 
 ## Overview
 
-Mu is a self-hosted personal web platform that provides essential online services without ads, algorithms, or tracking. It includes:
+Mu is a personal web platform that provides essential online services without ads, algorithms, or tracking. 
+
+It includes:
 
 - **Chat** - AI-powered assistant with contextual discussions
 - **Posts** - Microblogging and community sharing
