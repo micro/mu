@@ -54,7 +54,7 @@ func Load() {
 	needsSave := false
 	for i, post := range posts {
 		if post.ContentHTML == "" && post.Content != "" {
-			posts[i].ContentHTML = Linkify(post.Content)
+			posts[i].ContentHTML = RenderMarkdown(post.Content)
 			needsSave = true
 		}
 	}
@@ -311,8 +311,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // CreatePost creates a new post and returns error if any
 func CreatePost(title, content, author, authorID string) error {
-	// Render markdown to HTML with YouTube embeds
-	contentHTML := Linkify(content)
+	// Render markdown to HTML (without embeds for storage)
+	contentHTML := RenderMarkdown(content)
 	
 	// Create new post
 	post := &Post{
@@ -372,8 +372,8 @@ func DeletePost(id string) error {
 
 // UpdatePost updates an existing post
 func UpdatePost(id, title, content string) error {
-	// Render markdown to HTML with YouTube embeds
-	contentHTML := Linkify(content)
+	// Render markdown to HTML (without embeds for storage)
+	contentHTML := RenderMarkdown(content)
 	
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -430,8 +430,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		title = "Untitled"
 	}
 
-	// Use pre-rendered HTML
-	contentHTML := post.ContentHTML
+	// Use Linkify to add YouTube embeds for full post view
+	contentHTML := Linkify(post.Content)
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
@@ -569,7 +569,12 @@ func EditHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-// Linkify converts URLs in text to clickable links and embeds YouTube videos
+// RenderMarkdown converts markdown to HTML without embeds (for storage)
+func RenderMarkdown(text string) string {
+	return string(app.Render([]byte(text)))
+}
+
+// Linkify converts URLs in text to clickable links and embeds YouTube videos (for display)
 func Linkify(text string) string {
 	// First render markdown using the app package's markdown renderer
 	rendered := string(app.Render([]byte(text)))
