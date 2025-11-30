@@ -120,6 +120,133 @@ var Endpoints = []*Endpoint{{
 			},
 		},
 	},
+}, {
+	Name:        "Posts",
+	Path:        "/posts",
+	Method:      "GET",
+	Description: "Get all blog posts",
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "posts",
+					Value:       "array",
+					Description: "Array of post objects",
+				},
+			},
+		},
+	},
+}, {
+	Name:        "Create Post",
+	Path:        "/post",
+	Method:      "POST",
+	Description: "Create a new blog post",
+	Params: []*Param{
+		{
+			Name:        "title",
+			Value:       "string",
+			Description: "Post title (optional)",
+		},
+		{
+			Name:        "content",
+			Value:       "string",
+			Description: "Post content (minimum 50 characters)",
+		},
+	},
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "success",
+					Value:       "boolean",
+					Description: "Whether the post was created successfully",
+				},
+				{
+					Name:        "id",
+					Value:       "string",
+					Description: "The ID of the created post",
+				},
+			},
+		},
+	},
+}, {
+	Name:        "Get Post",
+	Path:        "/post?id={id}",
+	Method:      "GET",
+	Description: "Get a single blog post by ID",
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "id",
+					Value:       "string",
+					Description: "Post ID",
+				},
+				{
+					Name:        "title",
+					Value:       "string",
+					Description: "Post title",
+				},
+				{
+					Name:        "content",
+					Value:       "string",
+					Description: "Post content (raw markdown)",
+				},
+				{
+					Name:        "author",
+					Value:       "string",
+					Description: "Author name",
+				},
+				{
+					Name:        "author_id",
+					Value:       "string",
+					Description: "Author ID",
+				},
+				{
+					Name:        "created_at",
+					Value:       "string",
+					Description: "Post creation timestamp",
+				},
+			},
+		},
+	},
+}, {
+	Name:        "Update Post",
+	Path:        "/post?id={id}",
+	Method:      "PATCH",
+	Description: "Update an existing blog post (author only)",
+	Params: []*Param{
+		{
+			Name:        "title",
+			Value:       "string",
+			Description: "Post title (optional)",
+		},
+		{
+			Name:        "content",
+			Value:       "string",
+			Description: "Post content (minimum 50 characters)",
+		},
+	},
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "success",
+					Value:       "boolean",
+					Description: "Whether the post was updated successfully",
+				},
+				{
+					Name:        "id",
+					Value:       "string",
+					Description: "The ID of the updated post",
+				},
+			},
+		},
+	},
 }}
 
 // Register an endpoint

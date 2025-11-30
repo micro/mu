@@ -290,6 +290,23 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Return JSON if requested
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		mutex.RLock()
+		// Filter out flagged posts
+		var visiblePosts []*Post
+		for _, post := range posts {
+			if !admin.IsHidden("post", post.ID) {
+				visiblePosts = append(visiblePosts, post)
+			}
+		}
+		mutex.RUnlock()
+		
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(visiblePosts)
+		return
+	}
+
 	mutex.RLock()
 	list := postsList
 	mutex.RUnlock()
@@ -413,9 +430,87 @@ func GetPostsByAuthor(authorName string) []*Post {
 }
 
 // handlePost processes the POST request to create a new blog post
-// PostHandler serves individual blog posts (public, no auth required)
+// PostHandler serves individual blog posts (public, no auth required) and handles PATCH for editing
+// Supports both HTML and JSON requests
 func PostHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
+	
+	// Handle POST to create new post (no id required)
+	if r.Method == "POST" && id == "" {
+		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
+		
+		var title, content string
+		
+		if isJSON {
+			var req struct {
+				Title   string `json:"title"`
+				Content string `json:"content"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "Invalid JSON", http.StatusBadRequest)
+				return
+			}
+			title = strings.TrimSpace(req.Title)
+			content = strings.TrimSpace(req.Content)
+		} else {
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Failed to parse form", http.StatusBadRequest)
+				return
+			}
+			title = strings.TrimSpace(r.FormValue("title"))
+			content = strings.TrimSpace(r.FormValue("content"))
+		}
+		
+		// Validate content
+		if content == "" {
+			http.Error(w, "Content is required", http.StatusBadRequest)
+			return
+		}
+		
+		if len(content) < 50 {
+			hasURL := strings.Contains(content, "http://") || strings.Contains(content, "https://")
+			if !hasURL {
+				http.Error(w, "Post content must be at least 50 characters", http.StatusBadRequest)
+				return
+			}
+		}
+		
+		// Get authenticated user
+		author := "Anonymous"
+		authorID := ""
+		sess, err := auth.GetSession(r)
+		if err == nil {
+			acc, err := auth.GetAccount(sess.Account)
+			if err == nil {
+				author = acc.Name
+				authorID = acc.ID
+			}
+		}
+		
+		// Create post
+		postID := fmt.Sprintf("%d", time.Now().UnixNano())
+		if err := CreatePost(title, content, author, authorID); err != nil {
+			http.Error(w, "Failed to save post", http.StatusInternalServerError)
+			return
+		}
+		
+		// Run async LLM-based content moderation
+		go admin.CheckContent("post", postID, title, content)
+		
+		if isJSON {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"id":      postID,
+			})
+			return
+		}
+		
+		http.Redirect(w, r, "/posts", http.StatusSeeOther)
+		return
+	}
+	
+	// For other methods, id is required
 	if id == "" {
 		http.Redirect(w, r, "/posts", 302)
 		return
@@ -424,6 +519,135 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	post := GetPost(id)
 	if post == nil {
 		http.Error(w, "Post not found", 404)
+		return
+	}
+
+	// Handle PATCH - update the post
+	if r.Method == "PATCH" || (r.Method == "POST" && r.FormValue("_method") == "PATCH") {
+		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
+		
+		// Must be authenticated
+		sess, err := auth.GetSession(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		acc, err := auth.GetAccount(sess.Account)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if user is the author
+		if post.AuthorID != acc.ID {
+			http.Error(w, "Forbidden - you can only edit your own posts", http.StatusForbidden)
+			return
+		}
+
+		var title, content string
+		
+		if isJSON {
+			var req struct {
+				Title   string `json:"title"`
+				Content string `json:"content"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "Invalid JSON", http.StatusBadRequest)
+				return
+			}
+			title = strings.TrimSpace(req.Title)
+			content = strings.TrimSpace(req.Content)
+		} else {
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Failed to parse form", http.StatusBadRequest)
+				return
+			}
+			title = strings.TrimSpace(r.FormValue("title"))
+			content = strings.TrimSpace(r.FormValue("content"))
+		}
+
+		if content == "" {
+			http.Error(w, "Content is required", http.StatusBadRequest)
+			return
+		}
+
+		// Same validation as creating a post
+		hasURL := strings.Contains(content, "http://") || strings.Contains(content, "https://")
+		if !hasURL && len(content) < 50 {
+			http.Error(w, "Post content must be at least 50 characters", http.StatusBadRequest)
+			return
+		}
+
+		if err := UpdatePost(id, title, content); err != nil {
+			http.Error(w, "Failed to update post", http.StatusInternalServerError)
+			return
+		}
+
+		if isJSON {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"id":      id,
+			})
+			return
+		}
+
+		http.Redirect(w, r, "/post?id="+id, http.StatusSeeOther)
+		return
+	}
+	
+	// GET - return JSON if requested
+	if r.Method == "GET" && strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(post)
+		return
+	}
+
+	// Check if edit mode is requested
+	if r.URL.Query().Get("edit") == "true" {
+		// Must be authenticated
+		sess, err := auth.GetSession(r)
+		if err != nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		acc, err := auth.GetAccount(sess.Account)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if user is the author
+		if post.AuthorID != acc.ID {
+			http.Error(w, "Forbidden - you can only edit your own posts", http.StatusForbidden)
+			return
+		}
+
+		// Show edit form
+		pageTitle := "Edit Post"
+		if post.Title != "" {
+			pageTitle = "Edit: " + post.Title
+		}
+
+		content := fmt.Sprintf(`<div id="blog">
+			<form method="POST" action="/post?id=%s" style="display: flex; flex-direction: column; gap: 10px;">
+				<input type="hidden" name="_method" value="PATCH">
+				<input type="text" name="title" placeholder="Title (optional)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+				<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: monospace;">%s</textarea>
+				<div style="font-size: 12px; color: #666; margin-top: -5px;">
+					Supports markdown: **bold**, *italic*, ` + "`code`" + `, ` + "```" + ` for code blocks, # headers, - lists
+				</div>
+				<div style="display: flex; gap: 10px;">
+					<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Save Changes</button>
+					<a href="/post?id=%s" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
+				</div>
+			</form>
+		</div>`, post.ID, post.Title, post.Content, post.ID)
+
+		html := app.RenderHTMLForRequest(pageTitle, "", content, r)
+		w.Write([]byte(html))
 		return
 	}
 
@@ -446,7 +670,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		acc, err := auth.GetAccount(sess.Account)
 		if err == nil && acc.ID == post.AuthorID {
-			editButton = ` · <a href="/post/edit?id=` + post.ID + `" style="color: #666;">Edit</a>`
+			editButton = ` · <a href="/post?id=` + post.ID + `&edit=true" style="color: #666;">Edit</a>`
 		}
 	}
 
@@ -479,94 +703,6 @@ func min(a, b int) int {
 }
 
 // EditHandler serves the post edit form
-func EditHandler(w http.ResponseWriter, r *http.Request) {
-	// Must be authenticated
-	sess, err := auth.GetSession(r)
-	if err != nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		http.Redirect(w, r, "/posts", http.StatusSeeOther)
-		return
-	}
-
-	post := GetPost(id)
-	if post == nil {
-		http.Error(w, "Post not found", http.StatusNotFound)
-		return
-	}
-
-	// Check if user is the author
-	if post.AuthorID != acc.ID {
-		http.Error(w, "Forbidden - you can only edit your own posts", http.StatusForbidden)
-		return
-	}
-
-	// Handle POST - update the post
-	if r.Method == "POST" {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
-			return
-		}
-
-		title := strings.TrimSpace(r.FormValue("title"))
-		content := strings.TrimSpace(r.FormValue("content"))
-
-		if content == "" {
-			http.Error(w, "Content is required", http.StatusBadRequest)
-			return
-		}
-
-		// Same validation as creating a post
-		// Allow URLs to pass through without length check
-		hasURL := strings.Contains(content, "http://") || strings.Contains(content, "https://")
-		if !hasURL && len(content) < 50 {
-			http.Error(w, "Post content must be at least 50 characters", http.StatusBadRequest)
-			return
-		}
-
-		if err := UpdatePost(id, title, content); err != nil {
-			http.Error(w, "Failed to update post", http.StatusInternalServerError)
-			return
-		}
-
-		http.Redirect(w, r, "/post?id="+id, http.StatusSeeOther)
-		return
-	}
-
-	// GET - show edit form
-	pageTitle := "Edit Post"
-	if post.Title != "" {
-		pageTitle = "Edit: " + post.Title
-	}
-
-	content := fmt.Sprintf(`<div id="blog">
-		<form method="POST" action="/post/edit?id=%s" style="display: flex; flex-direction: column; gap: 10px;">
-			<input type="text" name="title" placeholder="Title (optional)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-			<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: monospace;">%s</textarea>
-			<div style="font-size: 12px; color: #666; margin-top: -5px;">
-				Supports markdown: **bold**, *italic*, ` + "`code`" + `, ` + "```" + ` for code blocks, # headers, - lists
-			</div>
-			<div style="display: flex; gap: 10px;">
-				<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Save Changes</button>
-				<a href="/post?id=%s" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
-			</div>
-		</form>
-	</div>`, post.ID, post.Title, post.Content, post.ID)
-
-	html := app.RenderHTMLForRequest(pageTitle, "", content, r)
-	w.Write([]byte(html))
-}
-
 // RenderMarkdown converts markdown to HTML without embeds (for storage/previews)
 func RenderMarkdown(text string) string {
 	return string(app.Render([]byte(text)))
