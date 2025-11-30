@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"sort"
@@ -329,6 +330,28 @@ func loadFeed() {
 	mutex.Unlock()
 }
 
+func getMetadataPath(uri string) string {
+	// Generate stable ID from URL hash
+	itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
+	return filepath.Join("news", "metadata", itemID+".json")
+}
+
+func loadCachedMetadata(uri string) (*Metadata, bool) {
+	path := getMetadataPath(uri)
+	var md Metadata
+	if err := data.LoadJSON(path, &md); err != nil {
+		return nil, false
+	}
+	return &md, true
+}
+
+func saveCachedMetadata(uri string, md *Metadata) {
+	path := getMetadataPath(uri)
+	if err := data.SaveJSON(path, md); err != nil {
+		fmt.Println("Error saving metadata:", err)
+	}
+}
+
 func backoff(attempts int) time.Duration {
 	if attempts > 13 {
 		return time.Hour
@@ -337,6 +360,11 @@ func backoff(attempts int) time.Duration {
 }
 
 func getMetadata(uri string) (*Metadata, error) {
+	// Check cache first
+	if cached, exists := loadCachedMetadata(uri); exists {
+		return cached, nil
+	}
+
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -446,6 +474,9 @@ func getMetadata(uri string) (*Metadata, error) {
 	//	fmt.Println("Not returning", u.String())
 	//	return nil
 	//}
+
+	// Cache the metadata
+	saveCachedMetadata(uri, g)
 
 	return g, nil
 }
@@ -690,7 +721,7 @@ func parseFeed() {
 	    </div>
 	  </a>
 	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
-				`, item.GUID, link, md.Image, item.Title, item.Description, getSummary(post))
+				`, item.GUID, link, md.Image, item.Title, cleanDescription, getSummary(post))
 			} else {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
@@ -702,7 +733,7 @@ func parseFeed() {
 	    </div>
 	  </a>
 	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
-				`, item.GUID, link, item.Title, item.Description, getSummary(post))
+				`, item.GUID, link, item.Title, cleanDescription, getSummary(post))
 		}
 		
 

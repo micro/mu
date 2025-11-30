@@ -42,10 +42,27 @@ func SaveJSON(key string, val interface{}) error {
 	dir := os.ExpandEnv("$HOME/.mu")
 	path := filepath.Join(dir, "data")
 	file := filepath.Join(path, key)
-	os.MkdirAll(path, 0700)
+	
+	// Create all parent directories
+	fileDir := filepath.Dir(file)
+	os.MkdirAll(fileDir, 0700)
+	
 	os.WriteFile(file, b, 0644)
 
 	return nil
+}
+
+func LoadJSON(key string, val interface{}) error {
+	dir := os.ExpandEnv("$HOME/.mu")
+	path := filepath.Join(dir, "data")
+	file := filepath.Join(path, key)
+	
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	
+	return json.Unmarshal(b, val)
 }
 
 // ============================================
