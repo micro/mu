@@ -28,13 +28,12 @@ var postsPreviewHtml string
 var postsList string
 
 type Post struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Content     string    `json:"content"`      // Raw markdown content
-	ContentHTML string    `json:"content_html"` // Rendered HTML
-	Author      string    `json:"author"`
-	AuthorID    string    `json:"author_id"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"` // Raw markdown content
+	Author    string    `json:"author"`
+	AuthorID  string    `json:"author_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Load blog posts from disk
@@ -48,20 +47,6 @@ func Load() {
 	if err := json.Unmarshal(b, &posts); err != nil {
 		posts = []*Post{}
 		return
-	}
-
-	// Migrate existing posts: generate ContentHTML if missing
-	needsSave := false
-	for i, post := range posts {
-		if post.ContentHTML == "" && post.Content != "" {
-			posts[i].ContentHTML = RenderMarkdown(post.Content)
-			needsSave = true
-		}
-	}
-	
-	if needsSave {
-		save()
-		fmt.Println("Migrated", len(posts), "posts to include ContentHTML")
 	}
 
 	// Sort posts by creation time (newest first)
@@ -126,14 +111,22 @@ func updateCacheUnlocked() {
 		count++
 
 		// Use pre-rendered HTML, truncate for preview
-		content := post.ContentHTML
+		content := post.Content
 		
-		// Strip any embeds from preview
-		content = StripEmbeds(content)
-		
-		if len(content) > 500 {
-			content = content[:500] + "..."
+		// Truncate plain text before rendering
+		if len(content) > 300 {
+			lastSpace := 300
+			for i := 299; i >= 0 && i < len(content); i-- {
+				if content[i] == ' ' {
+					lastSpace = i
+					break
+				}
+			}
+			content = content[:lastSpace] + "..."
 		}
+		
+		// Now render markdown (no embeds in preview)
+		content = RenderMarkdown(content)
 
 		title := post.Title
 		if title == "" {
@@ -173,14 +166,22 @@ func updateCacheUnlocked() {
 		}
 
 		// Use pre-rendered HTML, truncate for list view
-		content := post.ContentHTML
+		content := post.Content
 		
-		// Strip any embeds from list view
-		content = StripEmbeds(content)
-		
-		if len(content) > 800 {
-			content = content[:800] + "..."
+		// Truncate plain text before rendering  
+		if len(content) > 500 {
+			lastSpace := 500
+			for i := 499; i >= 0 && i < len(content); i-- {
+				if content[i] == ' ' {
+					lastSpace = i
+					break
+				}
+			}
+			content = content[:lastSpace] + "..."
 		}
+		
+		// Now render markdown (no embeds in list)
+		content = RenderMarkdown(content)
 
 		authorLink := post.Author
 		if post.AuthorID != "" {
@@ -239,21 +240,22 @@ func renderPostPreview(post *Post) string {
 	}
 
 	// Use pre-rendered HTML and truncate for preview
-	content := post.ContentHTML
+	content := post.Content
 	
-	// Strip any embeds from preview
-	content = StripEmbeds(content)
-	
-	// Strip HTML tags for length calculation and truncation
-	strippedContent := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(content, "")
-	
-	// Truncate to ~256 chars
-	if len(strippedContent) > 256 {
-		// Truncate the HTML content approximately
-		if len(content) > 400 {
-			content = content[:400] + "..."
+	// Truncate plain text before rendering
+	if len(content) > 256 {
+		lastSpace := 256
+		for i := 255; i >= 0 && i < len(content); i-- {
+			if content[i] == ' ' {
+				lastSpace = i
+				break
+			}
 		}
+		content = content[:lastSpace] + "..."
 	}
+	
+	// Now render markdown (no embeds in preview)
+	content = RenderMarkdown(content)
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
@@ -322,18 +324,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // CreatePost creates a new post and returns error if any
 func CreatePost(title, content, author, authorID string) error {
-	// Render markdown to HTML (without embeds for storage)
-	contentHTML := RenderMarkdown(content)
-	
 	// Create new post
 	post := &Post{
-		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
-		Title:       title,
-		Content:     content,
-		ContentHTML: contentHTML,
-		Author:      author,
-		AuthorID:    authorID,
-		CreatedAt:   time.Now(),
+		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		Title:     title,
+		Content:   content,
+		Author:    author,
+		AuthorID:  authorID,
+		CreatedAt: time.Now(),
 	}
 
 	mutex.Lock()
@@ -383,9 +381,6 @@ func DeletePost(id string) error {
 
 // UpdatePost updates an existing post
 func UpdatePost(id, title, content string) error {
-	// Render markdown to HTML (without embeds for storage)
-	contentHTML := RenderMarkdown(content)
-	
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -393,7 +388,6 @@ func UpdatePost(id, title, content string) error {
 		if post.ID == id {
 			posts[i].Title = title
 			posts[i].Content = content
-			posts[i].ContentHTML = contentHTML
 			save()
 			updateCacheUnlocked()
 			return nil
@@ -577,19 +571,12 @@ func EditHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-// RenderMarkdown converts markdown to HTML without embeds (for storage)
+// RenderMarkdown converts markdown to HTML without embeds (for storage/previews)
 func RenderMarkdown(text string) string {
 	return string(app.Render([]byte(text)))
 }
 
-// StripEmbeds removes iframe embeds from HTML (for previews)
-func StripEmbeds(html string) string {
-	// Remove YouTube iframes
-	iframePattern := regexp.MustCompile(`<div[^>]*><iframe[^>]*></iframe></div>`)
-	return iframePattern.ReplaceAllString(html, "")
-}
-
-// Linkify converts URLs in text to clickable links and embeds YouTube videos (for display)
+// Linkify converts URLs in text to clickable links and embeds YouTube videos (for full post display)
 func Linkify(text string) string {
 	// First render markdown using the app package's markdown renderer
 	rendered := string(app.Render([]byte(text)))
