@@ -122,14 +122,38 @@ func htmlToText(html string) string {
 			sb.WriteString(n.Data)
 		}
 		if n.Type == nethtml.ElementNode {
-			// Process children first
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				extract(c)
-			}
-			// Add space after block elements
-			switch n.Data {
-			case "br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "a":
+			// Preserve <a> tags with their href
+			if n.Data == "a" {
+				var href string
+				for _, attr := range n.Attr {
+					if attr.Key == "href" {
+						href = attr.Val
+						break
+					}
+				}
+				if href != "" {
+					sb.WriteString(`<a href="`)
+					sb.WriteString(href)
+					sb.WriteString(`" target="_blank" rel="noopener noreferrer">`)
+				}
+				// Process children
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					extract(c)
+				}
+				if href != "" {
+					sb.WriteString("</a>")
+				}
 				sb.WriteString(" ")
+			} else {
+				// For other elements, process children but don't preserve the tag
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					extract(c)
+				}
+				// Add space after block elements
+				switch n.Data {
+				case "br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6":
+					sb.WriteString(" ")
+				}
 			}
 		} else {
 			// For non-element nodes, process children
