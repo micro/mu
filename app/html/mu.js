@@ -580,12 +580,41 @@ function flagPost(postId) {
 let roomWs;
 let currentRoomId = null;
 
+function getSessionStorageKey(roomId) {
+  return 'chat_room_' + roomId;
+}
+
+function saveMessageToSession(roomId, msg) {
+  const key = getSessionStorageKey(roomId);
+  const messages = JSON.parse(sessionStorage.getItem(key) || '[]');
+  messages.push(msg);
+  // Keep last 50 messages in session
+  if (messages.length > 50) {
+    messages.shift();
+  }
+  sessionStorage.setItem(key, JSON.stringify(messages));
+}
+
+function loadMessagesFromSession(roomId) {
+  const key = getSessionStorageKey(roomId);
+  return JSON.parse(sessionStorage.getItem(key) || '[]');
+}
+
 function connectRoomWebSocket(roomId) {
   if (roomWs) {
     roomWs.close();
   }
   
   currentRoomId = roomId;
+  
+  // Load and display messages from sessionStorage
+  const messagesDiv = document.getElementById('messages');
+  if (messagesDiv) {
+    messagesDiv.innerHTML = '';
+    const savedMessages = loadMessagesFromSession(roomId);
+    savedMessages.forEach(msg => displayRoomMessage(msg, false));
+  }
+  
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   roomWs = new WebSocket(protocol + '//' + window.location.host + '/chat?id=' + roomId);
   
@@ -599,7 +628,8 @@ function connectRoomWebSocket(roomId) {
     if (msg.type === 'user_list') {
       updateUserList(msg.users);
     } else {
-      displayRoomMessage(msg);
+      saveMessageToSession(roomId, msg);
+      displayRoomMessage(msg, true);
     }
   };
   
@@ -615,7 +645,7 @@ function connectRoomWebSocket(roomId) {
   };
 }
 
-function displayRoomMessage(msg) {
+function displayRoomMessage(msg, shouldScroll = true) {
   const messagesDiv = document.getElementById('messages');
   if (!messagesDiv) return;
   
@@ -637,7 +667,10 @@ function displayRoomMessage(msg) {
   
   msgDiv.innerHTML = userSpan + '<p>' + content + '</p>';
   messagesDiv.appendChild(msgDiv);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  
+  if (shouldScroll) {
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
 }
 
 // Simple markdown renderer for common patterns

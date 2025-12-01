@@ -68,14 +68,17 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// ChatRoom represents a discussion room for a specific item
+// ChatRoom represents a discussion room for a specific item.
+// Room state is ephemeral - messages exist only in memory while the server runs.
+// The last 20 messages are kept in memory for new joiners.
+// Client-side sessionStorage is used so participants see their conversation until they leave.
 type ChatRoom struct {
 	ID         string                      // e.g., "post_123", "news_456", "video_789"
 	Type       string                      // "post", "news", "video"
 	Title      string                      // Item title
 	Summary    string                      // Item summary/description
 	URL        string                      // Original item URL
-	Messages   []RoomMessage               // Last 20 messages
+	Messages   []RoomMessage               // Last 20 messages (in-memory only)
 	Clients    map[*websocket.Conn]*Client // Connected clients
 	Broadcast  chan RoomMessage            // Broadcast channel
 	Register   chan *Client                // Register client
