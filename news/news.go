@@ -282,23 +282,74 @@ var futures = map[string]string{
 
 var futuresKeys = []string{"OIL", "OATS", "COFFEE", "WHEAT", "GOLD"}
 
-var replace = []func(string) string{
-	func(v string) string {
-		return strings.Replace(v, "© 2025 TechCrunch. All rights reserved. For personal use only.", "", -1)
+// ContentParser functions clean up feed descriptions
+type ContentParser struct {
+	Name      string
+	FeedNames []string // Apply to these feeds only (empty = all feeds)
+	Parse     func(string) string
+}
+
+var contentParsers = []ContentParser{
+	{
+		Name:      "Strip HackerNews Comments",
+		FeedNames: []string{"Dev"},
+		Parse: func(desc string) string {
+			if strings.TrimSpace(desc) == "Comments" {
+				return ""
+			}
+			return desc
+		},
 	},
-	func(v string) string {
-		return regexp.MustCompile(`<img .*>`).ReplaceAllString(v, "")
+	{
+		Name: "Strip TechCrunch Copyright",
+		Parse: func(desc string) string {
+			return strings.Replace(desc, "© 2025 TechCrunch. All rights reserved. For personal use only.", "", -1)
+		},
 	},
-	func(v string) string {
-		parts := strings.Split(v, "</p>")
-		if len(parts) > 0 {
-			return strings.Replace(parts[0], "<p>", "", 1)
+	{
+		Name: "Remove Images",
+		Parse: func(desc string) string {
+			return regexp.MustCompile(`<img .*>`).ReplaceAllString(desc, "")
+		},
+	},
+	{
+		Name: "Extract First Paragraph",
+		Parse: func(desc string) string {
+			parts := strings.Split(desc, "</p>")
+			if len(parts) > 0 {
+				return strings.Replace(parts[0], "<p>", "", 1)
+			}
+			return desc
+		},
+	},
+	{
+		Name: "Sanitize HTML",
+		Parse: func(desc string) string {
+			return sanitize.HTML(desc)
+		},
+	},
+}
+
+// applyContentParsers applies all relevant parsers to a description
+func applyContentParsers(desc string, feedName string) string {
+	for _, parser := range contentParsers {
+		// If parser has specific feed names, check if current feed matches
+		if len(parser.FeedNames) > 0 {
+			matched := false
+			for _, name := range parser.FeedNames {
+				if name == feedName {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
 		}
-		return v
-	},
-	func(v string) string {
-		return sanitize.HTML(v)
-	},
+		// Apply the parser
+		desc = parser.Parse(desc)
+	}
+	return desc
 }
 
 func saveHtml(head, content []byte) {
@@ -628,9 +679,8 @@ func parseFeed() {
 				break
 			}
 
-			for _, fn := range replace {
-				item.Description = fn(item.Description)
-			}
+			// Apply content parsers to clean up description
+			item.Description = applyContentParsers(item.Description, name)
 
 			link := item.Link
 
