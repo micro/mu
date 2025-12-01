@@ -306,6 +306,7 @@ func saveHtml(head, content []byte) {
 	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
 	newsBodyHtml = body
 	data.SaveFile("news.html", newsBodyHtml)
+	fmt.Printf("[NEWS] Saved news.html (%d bytes)\n", len(newsBodyHtml))
 }
 
 func loadFeed() {
