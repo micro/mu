@@ -116,13 +116,17 @@ func updateCache() {
 
 // updateCacheUnlocked updates the cache without locking (caller must hold lock)
 func updateCacheUnlocked() {
-	// Generate preview for home page (latest 1 post, exclude flagged)
+	// Generate preview for home page (latest 1 post, exclude flagged and new accounts)
 	var preview []string
 	count := 0
 	for i := 0; i < len(posts) && count < 1; i++ {
 		post := posts[i]
 		// Skip flagged posts
 		if admin.IsHidden("post", post.ID) {
+			continue
+		}
+		// Skip posts from new accounts (< 24 hours old)
+		if post.AuthorID != "" && auth.IsNewAccount(post.AuthorID) {
 			continue
 		}
 		count++
@@ -174,6 +178,11 @@ func updateCacheUnlocked() {
 	for _, post := range posts {
 		// Skip flagged posts
 		if admin.IsHidden("post", post.ID) {
+			continue
+		}
+
+		// Skip posts from new accounts (< 24 hours old)
+		if post.AuthorID != "" && auth.IsNewAccount(post.AuthorID) {
 			continue
 		}
 
@@ -532,6 +541,14 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				author = acc.Name
 				authorID = acc.ID
+				
+				// Check if account can post (30 minute minimum)
+				if !auth.CanPost(acc.ID) {
+					accountAge := time.Since(acc.Created).Round(time.Minute)
+					remaining := (30*time.Minute - time.Since(acc.Created)).Round(time.Minute)
+					http.Error(w, fmt.Sprintf("New accounts must wait 30 minutes before posting. Your account is %v old. Please wait %v more.", accountAge, remaining), http.StatusForbidden)
+					return
+				}
 			}
 		}
 

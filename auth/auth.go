@@ -204,6 +204,19 @@ func GetSession(r *http.Request) (*Session, error) {
 		return nil, err
 	}
 
+	// Validate that the account still exists
+	mutex.Lock()
+	_, accountExists := accounts[sess.Account]
+	if !accountExists {
+		// Account was deleted, invalidate the session
+		delete(sessions, sess.ID)
+	}
+	mutex.Unlock()
+
+	if !accountExists {
+		return nil, errors.New("account no longer exists")
+	}
+
 	return sess, nil
 }
 
@@ -284,6 +297,43 @@ func GetOnlineUsers() []string {
 	}
 
 	return online
+}
+
+// CanPost checks if an account is old enough to post (30 minutes)
+func CanPost(accountID string) bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	acc, exists := accounts[accountID]
+	if !exists {
+		return false
+	}
+
+	// Admins and members can always post
+	if acc.Admin || acc.Member {
+		return true
+	}
+
+	// Account must be at least 30 minutes old
+	return time.Since(acc.Created) >= 30*time.Minute
+}
+
+// IsNewAccount checks if account is less than 24 hours old
+func IsNewAccount(accountID string) bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	acc, exists := accounts[accountID]
+	if !exists {
+		return false
+	}
+
+	// Admins and members are never considered "new"
+	if acc.Admin || acc.Member {
+		return false
+	}
+
+	return time.Since(acc.Created) < 24*time.Hour
 }
 
 // GetOnlineCount returns the number of online users
