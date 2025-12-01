@@ -737,19 +737,26 @@ document.addEventListener('DOMContentLoaded', function() {
       topicInput.value = currentRoomData.title;
     }
     
-    // Add context message to messages area with room summary
-    const messages = document.getElementById('messages');
-    if (messages) {
-      const contextMsg = document.createElement('div');
-      contextMsg.className = 'context-message';
-      contextMsg.innerHTML = 'Discussion: <strong>' + currentRoomData.title + '</strong><br>' + 
-        '<span style="color: #666;">' + currentRoomData.summary + '</span>' +
-        (currentRoomData.url ? '<br><a href="' + currentRoomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
-      messages.appendChild(contextMsg);
-    }
-    
-    // Connect WebSocket
+    // Connect WebSocket first (this will clear messages and load sessionStorage)
     connectRoomWebSocket(currentRoomData.id);
+    
+    // Then add context message to messages area with room summary
+    // Do this after a brief delay to ensure WebSocket connection is established
+    setTimeout(() => {
+      const messages = document.getElementById('messages');
+      if (messages) {
+        // Check if context message already exists
+        if (!messages.querySelector('.context-message')) {
+          const contextMsg = document.createElement('div');
+          contextMsg.className = 'context-message';
+          contextMsg.innerHTML = 'Discussion: <strong>' + currentRoomData.title + '</strong><br>' + 
+            '<span style="color: #666;">' + currentRoomData.summary + '</span>' +
+            (currentRoomData.url ? '<br><a href="' + currentRoomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
+          // Insert at the top
+          messages.insertBefore(contextMsg, messages.firstChild);
+        }
+      }
+    }, 100);
     
     // Override chat form submission for room mode
     const chatForm = document.getElementById('chat-form');

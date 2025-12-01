@@ -57,6 +57,23 @@ func Load() {
 	// Update cached HTML
 	updateCache()
 
+	// Index all existing posts for search/RAG
+	go func() {
+		for _, post := range posts {
+			app.Log("blog", "Indexing existing post: %s", post.Title)
+			data.Index(
+				post.ID,
+				"post",
+				post.Title,
+				post.Content,
+				map[string]interface{}{
+					"url":    "/post?id=" + post.ID,
+					"author": post.Author,
+				},
+			)
+		}
+	}()
+
 	// Register with admin system
 	admin.RegisterDeleter("post", &postDeleter{})
 }
@@ -361,6 +378,21 @@ func CreatePost(title, content, author, authorID string) error {
 	// Update cached HTML
 	updateCache()
 
+	// Index the post for search/RAG
+	go func(id, title, content, author string) {
+		app.Log("blog", "Indexing post: %s", title)
+		data.Index(
+			id,
+			"post",
+			title,
+			content,
+			map[string]interface{}{
+				"url":    "/post?id=" + id,
+				"author": author,
+			},
+		)
+	}(post.ID, post.Title, post.Content, post.Author)
+
 	return nil
 }
 
@@ -398,12 +430,28 @@ func UpdatePost(id, title, content string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	for i, post := range posts {
+	for _, post := range posts {
 		if post.ID == id {
-			posts[i].Title = title
-			posts[i].Content = content
+			post.Title = title
+			post.Content = content
 			save()
 			updateCacheUnlocked()
+			
+			// Re-index the updated post
+			go func(id, title, content, author string) {
+				app.Log("blog", "Re-indexing updated post: %s", title)
+				data.Index(
+					id,
+					"post",
+					title,
+					content,
+					map[string]interface{}{
+						"url":    "/post?id=" + id,
+						"author": author,
+					},
+				)
+			}(post.ID, post.Title, post.Content, post.Author)
+			
 			return nil
 		}
 	}

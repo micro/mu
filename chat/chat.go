@@ -135,7 +135,9 @@ func getOrCreateRoom(id string) *ChatRoom {
 	// Fetch item details based on type
 	switch itemType {
 	case "post":
-		if post := blog.GetPost(itemID); post != nil {
+		post := blog.GetPost(itemID)
+		app.Log("chat", "Looking up post %s, found: %v", itemID, post != nil)
+		if post != nil {
 			room.Title = post.Title
 			if room.Title == "" {
 				room.Title = "Untitled Post"
@@ -146,6 +148,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 				room.Summary = room.Summary[:200] + "..."
 			}
 			room.URL = "/post?id=" + itemID
+			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
 		}
 	case "news":
 		// For news, lookup by exact ID
