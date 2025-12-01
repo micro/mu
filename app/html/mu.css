@@ -336,6 +336,21 @@ hr[id], h1[id], .section h1 {
   background: #555;
 }
 
+.cta-button {
+  padding: 12px 24px;
+  font-size: 1em;
+  font-weight: bold;
+  background: #333;
+  color: white;
+  border: none;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.cta-button:hover {
+  background: #555;
+}
+
 /* ========================================
    CARDS & BLOCKS
    ======================================== */
