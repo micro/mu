@@ -672,11 +672,26 @@ func parseFeed() {
 
 			cleanDescription := htmlToText(desc)
 
-			// Truncate to first sentence or 250 chars, whichever comes first
-			if idx := strings.Index(cleanDescription, ". "); idx > 0 && idx < 250 {
-				cleanDescription = cleanDescription[:idx+1]
-			} else if len(cleanDescription) > 250 {
-				cleanDescription = cleanDescription[:247] + "..."
+			// Truncate to first sentence (look for period followed by space, newline, or end)
+			maxLen := 250
+			if len(cleanDescription) > maxLen {
+				// Look for sentence end within first 250 chars
+				truncated := cleanDescription[:maxLen]
+				if idx := strings.Index(truncated, ". "); idx > 0 {
+					cleanDescription = truncated[:idx+1]
+				} else if idx := strings.Index(truncated, ".\n"); idx > 0 {
+					cleanDescription = truncated[:idx+1]
+				} else {
+					cleanDescription = truncated[:247] + "..."
+				}
+			} else {
+				// Text is under 250 chars, look for first sentence
+				if idx := strings.Index(cleanDescription, ". "); idx > 0 {
+					cleanDescription = cleanDescription[:idx+1]
+				} else if idx := strings.Index(cleanDescription, ".\n"); idx > 0 {
+					cleanDescription = cleanDescription[:idx+1]
+				}
+				// If no sentence break found, keep the whole thing
 			}
 
 			// Generate stable ID from URL hash - more reliable than GUID which can change
