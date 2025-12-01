@@ -385,7 +385,7 @@ function setSession() {
     if (navLoggedIn) navLoggedIn.style.display = 'none';
     if (navLoggedOut) navLoggedOut.style.display = '';
     // On error, redirect to home (but not if viewing public pages)
-    const publicPaths = ['/post', '/membership', '/donation'];
+    const publicPaths = ['/post', '/membership', '/donate'];
     const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));
     if (!isPublicPath) {
       window.location.href = '/';
