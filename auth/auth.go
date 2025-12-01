@@ -130,14 +130,14 @@ func DeleteAccount(id string) error {
 	}
 
 	delete(accounts, id)
-	
+
 	// Also delete any sessions for this account
 	for sid, sess := range sessions {
 		if sess.Account == id {
 			delete(sessions, sid)
 		}
 	}
-	
+
 	data.SaveJSON("accounts.json", accounts)
 	data.SaveJSON("sessions.json", sessions)
 
@@ -260,12 +260,12 @@ func UpdatePresence(username string) {
 func IsOnline(username string) bool {
 	presenceMutex.RLock()
 	defer presenceMutex.RUnlock()
-	
+
 	lastSeen, exists := userPresence[username]
 	if !exists {
 		return false
 	}
-	
+
 	return time.Since(lastSeen) < 3*time.Minute
 }
 
@@ -273,16 +273,16 @@ func IsOnline(username string) bool {
 func GetOnlineUsers() []string {
 	presenceMutex.RLock()
 	defer presenceMutex.RUnlock()
-	
+
 	var online []string
 	now := time.Now()
-	
+
 	for username, lastSeen := range userPresence {
 		if now.Sub(lastSeen) < 3*time.Minute {
 			online = append(online, username)
 		}
 	}
-	
+
 	return online
 }
 

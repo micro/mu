@@ -513,7 +513,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 	<h3>Support Through Donation</h3>
 	<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`
-	html := RenderHTML("Membership", "Support Mu", content)
+		html := RenderHTML("Membership", "Support Mu", content)
 		w.Write([]byte(html))
 		return
 	}
@@ -554,7 +554,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 	<h3>Support Through Donation</h3>
 	<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`,
-	membershipStatus,
+		membershipStatus,
 		func() string {
 			if !acc.Member {
 				return `<h3>Become a Member</h3>

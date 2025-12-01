@@ -665,14 +665,14 @@ func parseFeed() {
 
 			// Clean up description HTML
 			desc := item.Description
-			
+
 			// Convert plain text newlines to em dashes
 			if !strings.Contains(desc, "<") {
 				desc = strings.ReplaceAll(desc, "\n", " — ")
 			}
-			
+
 			cleanDescription := htmlToText(desc)
-			
+
 			// Truncate to first sentence or 250 chars, whichever comes first
 			if idx := strings.Index(cleanDescription, ". "); idx > 0 && idx < 250 {
 				cleanDescription = cleanDescription[:idx+1]
@@ -738,20 +738,19 @@ func parseFeed() {
 	  </a>
 	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
 				`, item.GUID, link, item.Title, cleanDescription, getSummary(post))
-		}
-		
+			}
 
-		// close div
-		val += `</div>`
+			// close div
+			val += `</div>`
 
-		content = append(content, []byte(val)...)
+			content = append(content, []byte(val)...)
 
-		if i > 0 {
-			continue
-		}
+			if i > 0 {
+				continue
+			}
 
-		// add to headlines / 1 per category
-		headlines = append(headlines, post)
+			// add to headlines / 1 per category
+			headlines = append(headlines, post)
 		}
 
 		content = append(content, []byte(`</div>`)...)
@@ -920,7 +919,7 @@ func Reminder() string {
 	return reminderHtml
 }
 
-	func Handler(w http.ResponseWriter, r *http.Request) {
+func Handler(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	defer mutex.RUnlock()
 

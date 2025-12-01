@@ -65,7 +65,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 
 	// GET request - show user list
 	users := auth.GetAllAccounts()
-	
+
 	// Sort users by created date (newest first)
 	sort.Slice(users, func(i, j int) bool {
 		return users[i].Created.After(users[j].Created)
@@ -100,7 +100,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, user := range users {
 		createdStr := user.Created.Format("2006-01-02")
-		
+
 		// Don't allow deleting yourself
 		deleteButton := ""
 		if user.ID != acc.ID {
@@ -120,14 +120,24 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 					<form method="POST" style="display: inline;">
 						<input type="hidden" name="action" value="toggle_admin">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
-						<input type="checkbox" ` + func() string { if user.Admin { return "checked" }; return "" }() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
+						<input type="checkbox" ` + func() string {
+			if user.Admin {
+				return "checked"
+			}
+			return ""
+		}() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
 					</form>
 				</td>
 				<td class="center">
 					<form method="POST" style="display: inline;">
 						<input type="hidden" name="action" value="toggle_member">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
-						<input type="checkbox" ` + func() string { if user.Member { return "checked" }; return "" }() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
+						<input type="checkbox" ` + func() string {
+			if user.Member {
+				return "checked"
+			}
+			return ""
+		}() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
 					</form>
 				</td>
 				<td class="center">

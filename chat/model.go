@@ -14,7 +14,7 @@ type Model struct{}
 
 func (m *Model) Generate(prompt *Prompt) (string, error) {
 	var systemPromptText string
-	
+
 	// Use provided system prompt or generate from template
 	if prompt.System != "" {
 		systemPromptText = prompt.System
@@ -25,7 +25,7 @@ func (m *Model) Generate(prompt *Prompt) (string, error) {
 		}
 		systemPromptText = sb.String()
 	}
-	
+
 	// Debug: Show what's being sent to LLM
 	fmt.Printf("[LLM] System prompt:\n%s\n", systemPromptText)
 	fmt.Printf("[LLM] Question: %s\n", prompt.Question)

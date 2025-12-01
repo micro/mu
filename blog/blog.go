@@ -112,7 +112,7 @@ func updateCacheUnlocked() {
 
 		// Use pre-rendered HTML, truncate for preview
 		content := post.Content
-		
+
 		// Truncate plain text before rendering
 		if len(content) > 300 {
 			lastSpace := 300
@@ -124,7 +124,7 @@ func updateCacheUnlocked() {
 			}
 			content = content[:lastSpace] + "..."
 		}
-		
+
 		// Add links and YouTube embeds
 		content = Linkify(content)
 
@@ -133,17 +133,17 @@ func updateCacheUnlocked() {
 			title = "Untitled"
 		}
 
-	authorLink := post.Author
-	if post.AuthorID != "" {
-		authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
-	}
+		authorLink := post.Author
+		if post.AuthorID != "" {
+			authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+		}
 
-	item := fmt.Sprintf(`<div class="post-item">
+		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<div style="margin-bottom: 10px;">%s</div>
 		<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Link</a> · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a></div>
 	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID)
-	preview = append(preview, item)
+		preview = append(preview, item)
 	}
 
 	if len(preview) == 0 {
@@ -167,8 +167,8 @@ func updateCacheUnlocked() {
 
 		// Use pre-rendered HTML, truncate for list view
 		content := post.Content
-		
-		// Truncate plain text before rendering  
+
+		// Truncate plain text before rendering
 		if len(content) > 500 {
 			lastSpace := 500
 			for i := 499; i >= 0 && i < len(content); i-- {
@@ -179,7 +179,7 @@ func updateCacheUnlocked() {
 			}
 			content = content[:lastSpace] + "..."
 		}
-		
+
 		// Add links and YouTube embeds
 		content = Linkify(content)
 
@@ -241,7 +241,7 @@ func renderPostPreview(post *Post) string {
 
 	// Use pre-rendered HTML and truncate for preview
 	content := post.Content
-	
+
 	// Truncate plain text before rendering
 	if len(content) > 256 {
 		lastSpace := 256
@@ -301,7 +301,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		mutex.RUnlock()
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(visiblePosts)
 		return
@@ -419,7 +419,7 @@ func RefreshCache() {
 func GetPostsByAuthor(authorName string) []*Post {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	
+
 	var userPosts []*Post
 	for _, post := range posts {
 		if post.Author == authorName {
@@ -434,13 +434,13 @@ func GetPostsByAuthor(authorName string) []*Post {
 // Supports both HTML and JSON requests
 func PostHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
-	
+
 	// Handle POST to create new post (no id required)
 	if r.Method == "POST" && id == "" {
 		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
-		
+
 		var title, content string
-		
+
 		if isJSON {
 			var req struct {
 				Title   string `json:"title"`
@@ -460,13 +460,13 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			title = strings.TrimSpace(r.FormValue("title"))
 			content = strings.TrimSpace(r.FormValue("content"))
 		}
-		
+
 		// Validate content
 		if content == "" {
 			http.Error(w, "Content is required", http.StatusBadRequest)
 			return
 		}
-		
+
 		if len(content) < 50 {
 			hasURL := strings.Contains(content, "http://") || strings.Contains(content, "https://")
 			if !hasURL {
@@ -474,7 +474,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		
+
 		// Get authenticated user
 		author := "Anonymous"
 		authorID := ""
@@ -486,17 +486,17 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 				authorID = acc.ID
 			}
 		}
-		
+
 		// Create post
 		postID := fmt.Sprintf("%d", time.Now().UnixNano())
 		if err := CreatePost(title, content, author, authorID); err != nil {
 			http.Error(w, "Failed to save post", http.StatusInternalServerError)
 			return
 		}
-		
+
 		// Run async LLM-based content moderation
 		go admin.CheckContent("post", postID, title, content)
-		
+
 		if isJSON {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{
@@ -505,11 +505,11 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		
+
 		http.Redirect(w, r, "/posts", http.StatusSeeOther)
 		return
 	}
-	
+
 	// For other methods, id is required
 	if id == "" {
 		http.Redirect(w, r, "/posts", 302)
@@ -525,7 +525,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	// Handle PATCH - update the post
 	if r.Method == "PATCH" || (r.Method == "POST" && r.FormValue("_method") == "PATCH") {
 		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
-		
+
 		// Must be authenticated
 		sess, err := auth.GetSession(r)
 		if err != nil {
@@ -546,7 +546,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var title, content string
-		
+
 		if isJSON {
 			var req struct {
 				Title   string `json:"title"`
@@ -596,7 +596,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/post?id="+id, http.StatusSeeOther)
 		return
 	}
-	
+
 	// GET - return JSON if requested
 	if r.Method == "GET" && strings.Contains(r.Header.Get("Accept"), "application/json") {
 		w.Header().Set("Content-Type", "application/json")
@@ -637,7 +637,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 				<input type="text" name="title" placeholder="Title (optional)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: monospace;">%s</textarea>
 				<div style="font-size: 12px; color: #666; margin-top: -5px;">
-					Supports markdown: **bold**, *italic*, ` + "`code`" + `, ` + "```" + ` for code blocks, # headers, - lists
+					Supports markdown: **bold**, *italic*, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
 				</div>
 				<div style="display: flex; gap: 10px;">
 					<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Save Changes</button>
@@ -714,7 +714,7 @@ func Linkify(text string) string {
 	text = strings.ReplaceAll(text, "&", "&amp;")
 	text = strings.ReplaceAll(text, "<", "&lt;")
 	text = strings.ReplaceAll(text, ">", "&gt;")
-	
+
 	// Replace YouTube URLs with embeds first
 	youtubePattern := regexp.MustCompile(`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:\S*)?`)
 	text = youtubePattern.ReplaceAllStringFunc(text, func(match string) string {
@@ -725,7 +725,7 @@ func Linkify(text string) string {
 		}
 		return match
 	})
-	
+
 	// Convert other URLs to links
 	urlPattern := regexp.MustCompile(`https?://[^\s<]+`)
 	text = urlPattern.ReplaceAllStringFunc(text, func(match string) string {
@@ -735,10 +735,10 @@ func Linkify(text string) string {
 		}
 		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>`, match, match)
 	})
-	
+
 	// Convert newlines to <br>
 	text = strings.ReplaceAll(text, "\n", "<br>")
-	
+
 	return text
 }
 
@@ -772,7 +772,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		"qwerty",
 		"lorem ipsum",
 	}
-	
+
 	for _, pattern := range spamPatterns {
 		if strings.Contains(contentLower, pattern) && len(content) < 100 {
 			http.Error(w, "Post appears to be test content. Please share something meaningful.", http.StatusBadRequest)
@@ -786,13 +786,13 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	if !hasURL {
 		// Count words
 		wordCount := len(strings.Fields(content))
-		
+
 		// Require at least 3 words/spaces for non-URL content
 		if wordCount < 3 {
 			http.Error(w, "Post must contain at least 3 words. Share something meaningful.", http.StatusBadRequest)
 			return
 		}
-		
+
 		// Check for excessive repeated characters (e.g., "aaaaaa" or "asdfasdfasdf")
 		repeatedChars := 0
 		lastChar := rune(0)
@@ -808,7 +808,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 			}
 			lastChar = char
 		}
-		
+
 		// Check character diversity (should have at least 10 unique characters for 50+ char posts)
 		uniqueChars := make(map[rune]bool)
 		for _, char := range strings.ToLower(content) {
@@ -840,11 +840,10 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to save post", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Run async LLM-based content moderation (non-blocking)
 	go admin.CheckContent("post", postID, title, content)
 
 	// Redirect back to posts page
 	http.Redirect(w, r, "/posts", http.StatusSeeOther)
 }
-

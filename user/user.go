@@ -15,7 +15,7 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 	// Extract username from URL path (remove /@ prefix)
 	username := strings.TrimPrefix(r.URL.Path, "/@")
 	username = strings.TrimSuffix(username, "/")
-	
+
 	if username == "" {
 		http.Redirect(w, r, "/home", 302)
 		return
@@ -32,13 +32,13 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 	var userPosts string
 	posts := blog.GetPostsByAuthor(acc.Name)
 	postCount := len(posts)
-	
+
 	for _, post := range posts {
 		title := post.Title
 		if title == "" {
 			title = "Untitled"
 		}
-		
+
 		// Truncate content
 		content := post.Content
 		if len(content) > 300 {
@@ -49,22 +49,22 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 			}
-		if lastSpace < len(content) {
-			content = content[:lastSpace] + "..."
+			if lastSpace < len(content) {
+				content = content[:lastSpace] + "..."
+			}
 		}
-	}
-	
-	// Linkify URLs and embed YouTube videos
-	linkedContent := blog.Linkify(content)
-	
-	userPosts += fmt.Sprintf(`<div class="post-item" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
+
+		// Linkify URLs and embed YouTube videos
+		linkedContent := blog.Linkify(content)
+
+		userPosts += fmt.Sprintf(`<div class="post-item" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<div style="color: #333; margin-bottom: 10px;">%s</div>
 		<div class="info" style="color: #666; font-size: small;">%s · <a href="/post?id=%s" style="color: #666;">Read more</a></div>
 	</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
-}
+	}
 
-if userPosts == "" {
+	if userPosts == "" {
 		userPosts = "<p style='color: #666;'>No posts yet.</p>"
 	}
 

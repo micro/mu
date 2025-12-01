@@ -10,12 +10,12 @@ import (
 	"mu/api"
 	"mu/app"
 	"mu/auth"
-	"mu/user"
 	"mu/blog"
 	"mu/chat"
 	"mu/data"
 	"mu/home"
 	"mu/news"
+	"mu/user"
 	"mu/video"
 )
 
@@ -134,15 +134,15 @@ func main() {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		
+
 		acc, err := auth.GetAccount(sess.Account)
 		if acc == nil || err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		
+
 		auth.UpdatePresence(acc.ID)
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		onlineCount := auth.GetOnlineCount()
 		w.Write([]byte(fmt.Sprintf(`{"status":"ok","online":%d}`, onlineCount)))
