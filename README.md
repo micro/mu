@@ -8,10 +8,10 @@ Mu is a personal app platform that provides essential online services without ad
 
 It includes:
 
-- **Chat** - AI-powered assistant with contextual discussions
+- **Chat** - AI assistant with contextual discussions
 - **News** - Curated RSS feeds and market data
 - **Posts** - Microblogging and community sharing
-- **Video** - YouTube search and viewing
+- **Video** - YouTube search and Ad-free viewing
 - **App** - A progressive web app for mobile
 - **API** - REST API for programmatic access
 
