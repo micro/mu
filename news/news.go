@@ -44,12 +44,6 @@ var html string
 // cached news body (without full page wrapper)
 var newsBodyHtml string
 
-// cached topics html
-var topicsHtml string
-
-// cached headlines and content html
-var headlinesAndContentHtml string
-
 // cached headlines
 var headlinesHtml string
 
@@ -311,12 +305,8 @@ func saveHtml(head, content []byte) {
 	}
 	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
 	newsBodyHtml = body
-	topicsHtml = string(head)
-	headlinesAndContentHtml = string(content)
 	html = app.RenderHTML("News", "Read the news", body)
 	data.SaveFile("news.html", html)
-	data.SaveFile("topics.html", topicsHtml)
-	data.SaveFile("headlines_content.html", headlinesAndContentHtml)
 }
 
 func loadFeed() {
@@ -674,7 +664,21 @@ func parseFeed() {
 			}
 
 			// Clean up description HTML
-			cleanDescription := htmlToText(item.Description)
+			desc := item.Description
+			
+			// Convert plain text newlines to em dashes
+			if !strings.Contains(desc, "<") {
+				desc = strings.ReplaceAll(desc, "\n", " — ")
+			}
+			
+			cleanDescription := htmlToText(desc)
+			
+			// Truncate to first sentence or 250 chars, whichever comes first
+			if idx := strings.Index(cleanDescription, ". "); idx > 0 && idx < 250 {
+				cleanDescription = cleanDescription[:idx+1]
+			} else if len(cleanDescription) > 250 {
+				cleanDescription = cleanDescription[:247] + "..."
+			}
 
 			// Generate stable ID from URL hash - more reliable than GUID which can change
 			itemID := fmt.Sprintf("%x", md5.Sum([]byte(link)))[:16]
@@ -876,17 +880,16 @@ func Load() {
 
 	reminderHtml = string(b)
 
-	// load news
+	// load news body and html
 	b, _ = data.LoadFile("news.html")
 	html = string(b)
-
-	// load topics
-	b, _ = data.LoadFile("topics.html")
-	topicsHtml = string(b)
-
-	// load headlines and content
-	b, _ = data.LoadFile("headlines_content.html")
-	headlinesAndContentHtml = string(b)
+	// Extract body content from saved HTML for serving
+	// The newsBodyHtml will be rebuilt by parseFeed, but load from file for immediate serving
+	if len(html) > 0 {
+		// Parse out just the body content between the main content divs
+		// For now just set newsBodyHtml from the full html - parseFeed will update it
+		newsBodyHtml = html
+	}
 
 	// load the feeds
 	loadFeed()
@@ -931,15 +934,9 @@ func Reminder() string {
 		return
 	}
 
-	// Build page: topics, then headlines and content
-	content := fmt.Sprintf(`
-		<div id="topics">%s</div>
-		<h2>Headlines</h2>
-		<div>%s</div>
-	`, topicsHtml, headlinesAndContentHtml)
-
-	html := app.RenderHTMLForRequest("News", "Latest news headlines", content, r)
-	w.Write([]byte(html))
+	// Serve the pre-built news body with user-specific rendering
+	renderedHtml := app.RenderHTMLForRequest("News", "Latest news headlines", newsBodyHtml, r)
+	w.Write([]byte(renderedHtml))
 }
 
 // GetAllPrices returns all cached prices
