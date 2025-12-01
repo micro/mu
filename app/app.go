@@ -19,9 +19,35 @@ import (
 	"github.com/gomarkdown/markdown/parser"
 )
 
-// Log prints a formatted log message with a package prefix
+// ANSI color codes
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorBlue   = "\033[34m"
+	colorPurple = "\033[35m"
+	colorCyan   = "\033[36m"
+	colorWhite  = "\033[37m"
+)
+
+// Package color mapping
+var pkgColors = map[string]string{
+	"news":  colorCyan,
+	"chat":  colorGreen,
+	"video": colorPurple,
+	"blog":  colorYellow,
+	"app":   colorBlue,
+}
+
+// Log prints a formatted log message with a colored package prefix
 func Log(pkg string, format string, args ...interface{}) {
-	fmt.Printf("[%s] "+format+"\n", append([]interface{}{pkg}, args...)...)
+	color := pkgColors[pkg]
+	if color == "" {
+		color = colorWhite
+	}
+	prefix := fmt.Sprintf("%s[%s]%s ", color, pkg, colorReset)
+	fmt.Printf(prefix+format+"\n", args...)
 }
 
 //go:embed html/*
