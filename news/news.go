@@ -305,8 +305,7 @@ func saveHtml(head, content []byte) {
 	}
 	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
 	newsBodyHtml = body
-	html = app.RenderHTML("News", "Read the news", body)
-	data.SaveFile("news.html", html)
+	data.SaveFile("news.html", newsBodyHtml)
 }
 
 func loadFeed() {
