@@ -93,6 +93,20 @@ type SearchResult struct {
 
 // Index adds or updates an entry in the search index
 func Index(id, entryType, title, content string, metadata map[string]interface{}) {
+	// Check if already indexed (skip if exists and recent)
+	indexMutex.RLock()
+	if existing, exists := index[id]; exists {
+		// If indexed within last 5 minutes, skip re-indexing
+		if time.Since(existing.IndexedAt) < 5*time.Minute {
+			indexMutex.RUnlock()
+			fmt.Printf("[data] Skipping re-index of %s (indexed %v ago)\n", id, time.Since(existing.IndexedAt).Round(time.Second))
+			return
+		}
+	}
+	indexMutex.RUnlock()
+
+	fmt.Printf("[data] Indexing %s: %s\n", entryType, title)
+
 	entry := &IndexEntry{
 		ID:        id,
 		Type:      entryType,
