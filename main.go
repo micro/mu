@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"mu/admin"
 	"mu/api"
@@ -154,20 +159,21 @@ func main() {
 	// serve the app
 	http.Handle("/", app.Serve())
 
-	fmt.Println("Starting server on", *AddressFlag)
+	// Create server with handler
+	server := &http.Server{
+		Addr: *AddressFlag,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if *EnvFlag == "dev" {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-	if err := http.ListenAndServe(*AddressFlag, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if *EnvFlag == "dev" {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
+				if r.Method == "OPTIONS" {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
 			}
-		}
 
 		if v := len(r.URL.Path); v > 1 && strings.HasSuffix(r.URL.Path, "/") {
 			r.URL.Path = r.URL.Path[:v-1]
@@ -228,8 +234,33 @@ func main() {
 		}
 
 		http.DefaultServeMux.ServeHTTP(w, r)
-	})); err != nil {
-		fmt.Printf("Server error: %v\n", err)
-		return
+	}),
 	}
+
+	// Channel to listen for interrupt signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start server in a goroutine
+	go func() {
+		app.Log("main", "Starting server on %s", *AddressFlag)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			app.Log("main", "Server error: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	<-quit
+	app.Log("main", "Shutting down server...")
+
+	// Create shutdown context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Attempt graceful shutdown
+	if err := server.Shutdown(ctx); err != nil {
+		app.Log("main", "Server forced to shutdown: %v", err)
+	}
+
+	app.Log("main", "Server stopped")
 }
