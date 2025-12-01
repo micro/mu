@@ -105,13 +105,18 @@ var roomsMutex sync.RWMutex
 
 // getOrCreateRoom gets an existing room or creates a new one
 func getOrCreateRoom(id string) *ChatRoom {
+	start := time.Now()
+	app.Log("chat", "[getOrCreateRoom] Start for %s", id)
+	
 	// Check if room exists first (fast path with read lock)
 	roomsMutex.RLock()
 	if room, exists := rooms[id]; exists {
 		roomsMutex.RUnlock()
+		app.Log("chat", "[getOrCreateRoom] Found existing room %s (took %v)", id, time.Since(start))
 		return room
 	}
 	roomsMutex.RUnlock()
+	app.Log("chat", "[getOrCreateRoom] Room %s not found, creating new (took %v so far)", id, time.Since(start))
 
 	// Parse the ID to determine type and fetch item details
 	parts := strings.SplitN(id, "_", 2)
@@ -197,6 +202,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 	// Check again if another goroutine created it while we were fetching data
 	if existingRoom, exists := rooms[id]; exists {
 		roomsMutex.Unlock()
+		app.Log("chat", "[getOrCreateRoom] Race - room %s created by another goroutine (total time %v)", id, time.Since(start))
 		return existingRoom
 	}
 	rooms[id] = room
@@ -204,6 +210,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 
 	go room.run()
 
+	app.Log("chat", "[getOrCreateRoom] Created room %s (total time %v)", id, time.Since(start))
 	return room
 }
 
@@ -508,13 +515,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Get room data with timeout to prevent hanging
 		roomData := map[string]interface{}{}
 		if roomID != "" {
+			app.Log("chat", "GET request for room: %s", roomID)
 			type roomResult struct {
 				room *ChatRoom
 			}
 			resultChan := make(chan roomResult, 1)
 			
 			go func() {
+				app.Log("chat", "Starting getOrCreateRoom for: %s", roomID)
 				room := getOrCreateRoom(roomID)
+				app.Log("chat", "getOrCreateRoom completed for: %s, room=%v", roomID, room != nil)
 				resultChan <- roomResult{room: room}
 			}()
 			
@@ -526,10 +536,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					roomData["summary"] = result.room.Summary
 					roomData["url"] = result.room.URL
 					roomData["isRoom"] = true
+					app.Log("chat", "Room data loaded for: %s", roomID)
+				} else {
+					app.Log("chat", "Room is nil for: %s", roomID)
 				}
 			case <-time.After(5 * time.Second):
-				app.Log("chat", "Timeout creating room %s", roomID)
-				http.Error(w, "Room creation timeout - please try again", http.StatusRequestTimeout)
+				app.Log("chat", "TIMEOUT creating room %s - likely blocked on data.GetByID()", roomID)
+				http.Error(w, "Room creation timeout - server may be busy indexing content. Please try again.", http.StatusRequestTimeout)
 				return
 			}
 		}
