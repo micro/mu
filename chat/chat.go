@@ -15,7 +15,6 @@ import (
 	"mu/admin"
 	"mu/app"
 	"mu/auth"
-	"mu/blog"
 	"mu/data"
 )
 
@@ -137,68 +136,59 @@ func getOrCreateRoom(id string) *ChatRoom {
 	// Fetch item details based on type (OUTSIDE roomsMutex to avoid deadlocks)
 	switch itemType {
 	case "post":
-		post := blog.GetPost(itemID)
-		app.Log("chat", "Looking up post %s, found: %v", itemID, post != nil)
-		if post != nil {
-			room.Title = post.Title
+		// For posts, lookup by exact ID from index (posts are now indexed)
+		app.Log("chat", "Attempting to get post %s from index", itemID)
+		entry := data.GetByID(itemID)
+		app.Log("chat", "Looking up post %s, found: %v", itemID, entry != nil)
+		if entry != nil {
+			room.Title = entry.Title
 			if room.Title == "" {
 				room.Title = "Untitled Post"
 			}
-			// Truncate content for summary
-			room.Summary = post.Content
+			room.Summary = entry.Content
 			if len(room.Summary) > 200 {
 				room.Summary = room.Summary[:200] + "..."
 			}
 			room.URL = "/post?id=" + itemID
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
+		} else {
+			app.Log("chat", "Post %s not found in index", itemID)
 		}
 	case "news":
-		// For news, lookup by exact ID with timeout protection
-		entryChan := make(chan *data.IndexEntry, 1)
-		go func() {
-			entryChan <- data.GetByID(itemID)
-		}()
-		
-		select {
-		case entry := <-entryChan:
-			app.Log("chat", "Looking up news item %s, found: %v", itemID, entry != nil)
-			if entry != nil {
-				room.Title = entry.Title
-				room.Summary = entry.Content
-				if len(room.Summary) > 200 {
-					room.Summary = room.Summary[:200] + "..."
-				}
-				if url, ok := entry.Metadata["url"].(string); ok {
-					room.URL = url
-				}
-				app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
+		// For news, lookup by exact ID
+		app.Log("chat", "Attempting to get news item %s from index", itemID)
+		entry := data.GetByID(itemID)
+		app.Log("chat", "Looking up news item %s, found: %v", itemID, entry != nil)
+		if entry != nil {
+			room.Title = entry.Title
+			room.Summary = entry.Content
+			if len(room.Summary) > 200 {
+				room.Summary = room.Summary[:200] + "..."
 			}
-		case <-time.After(2 * time.Second):
-			app.Log("chat", "Timeout looking up news item %s - continuing without context", itemID)
+			if url, ok := entry.Metadata["url"].(string); ok {
+				room.URL = url
+			}
+			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
+		} else {
+			app.Log("chat", "News item %s not found in index", itemID)
 		}
 	case "video":
-		// For videos, lookup by exact ID with timeout protection
-		entryChan := make(chan *data.IndexEntry, 1)
-		go func() {
-			entryChan <- data.GetByID(itemID)
-		}()
-		
-		select {
-		case entry := <-entryChan:
-			app.Log("chat", "Looking up video item %s, found: %v", itemID, entry != nil)
-			if entry != nil {
-				room.Title = entry.Title
-				room.Summary = entry.Content
-				if len(room.Summary) > 200 {
-					room.Summary = room.Summary[:200] + "..."
-				}
-				if url, ok := entry.Metadata["url"].(string); ok {
-					room.URL = url
-				}
-				app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
+		// For videos, lookup by exact ID
+		app.Log("chat", "Attempting to get video item %s from index", itemID)
+		entry := data.GetByID(itemID)
+		app.Log("chat", "Looking up video item %s, found: %v", itemID, entry != nil)
+		if entry != nil {
+			room.Title = entry.Title
+			room.Summary = entry.Content
+			if len(room.Summary) > 200 {
+				room.Summary = room.Summary[:200] + "..."
 			}
-		case <-time.After(2 * time.Second):
-			app.Log("chat", "Timeout looking up video item %s - continuing without context", itemID)
+			if url, ok := entry.Metadata["url"].(string); ok {
+				room.URL = url
+			}
+			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
+		} else {
+			app.Log("chat", "Video item %s not found in index", itemID)
 		}
 	}
 
@@ -515,22 +505,37 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" {
-		// Pass summaries and room info as JSON to frontend
-		// Don't hold mutex while creating room (can be slow)
+		// Get room data with timeout to prevent hanging
 		roomData := map[string]interface{}{}
 		if roomID != "" {
-			room := getOrCreateRoom(roomID)
-			if room != nil {
-				roomData["id"] = roomID
-				roomData["title"] = room.Title
-				roomData["summary"] = room.Summary
-				roomData["url"] = room.URL
-				roomData["isRoom"] = true
+			type roomResult struct {
+				room *ChatRoom
+			}
+			resultChan := make(chan roomResult, 1)
+			
+			go func() {
+				room := getOrCreateRoom(roomID)
+				resultChan <- roomResult{room: room}
+			}()
+			
+			select {
+			case result := <-resultChan:
+				if result.room != nil {
+					roomData["id"] = roomID
+					roomData["title"] = result.room.Title
+					roomData["summary"] = result.room.Summary
+					roomData["url"] = result.room.URL
+					roomData["isRoom"] = true
+				}
+			case <-time.After(5 * time.Second):
+				app.Log("chat", "Timeout creating room %s", roomID)
+				http.Error(w, "Room creation timeout - please try again", http.StatusRequestTimeout)
+				return
 			}
 		}
 
+		// Now acquire mutex only for reading chat config
 		mutex.RLock()
-		// Use Head() to format topics (rooms don't appear in topic list)
 		topicTabs := app.Head("chat", topics)
 		summariesJSON, _ := json.Marshal(summaries)
 		mutex.RUnlock()
