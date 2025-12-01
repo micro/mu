@@ -249,7 +249,7 @@ func (room *ChatRoom) run() {
 func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		app.Log("chat", "WebSocket upgrade error:", err)
+		app.Log("chat", "WebSocket upgrade error: %v", err)
 		return
 	}
 
@@ -382,7 +382,7 @@ func Load() {
 	// load the feeds file
 	b, _ := f.ReadFile("prompts.json")
 	if err := json.Unmarshal(b, &prompts); err != nil {
-		app.Log("chat", "Error parsing topics.json", err)
+		app.Log("chat", "Error parsing topics.json: %v", err)
 	}
 
 	for topic, _ := range prompts {
@@ -400,9 +400,9 @@ func Load() {
 	// Load existing summaries from disk
 	if b, err := data.LoadFile("chat_summaries.json"); err == nil {
 		if err := json.Unmarshal(b, &summaries); err != nil {
-			app.Log("chat", "Error loading summaries:", err)
+			app.Log("chat", "Error loading summaries: %v", err)
 		} else {
-			app.Log("chat", "Loaded", len(summaries), "summaries from disk")
+			app.Log("chat", "Loaded %d summaries from disk", len(summaries))
 		}
 	}
 
@@ -410,7 +410,7 @@ func Load() {
 }
 
 func generateSummaries() {
-	app.Log("chat", "Generating summaries", time.Now().String())
+	app.Log("chat", "Generating summaries at %s", time.Now().String())
 
 	newSummaries := map[string]string{}
 
@@ -432,7 +432,7 @@ func generateSummaries() {
 		})
 
 		if err != nil {
-			app.Log("chat", "Failed to generate summary for topic:", topic, err)
+			app.Log("chat", "Failed to generate summary for topic %s: %v", topic, err)
 			continue
 		}
 		newSummaries[topic] = resp
@@ -444,9 +444,9 @@ func generateSummaries() {
 
 	// Save summaries to disk
 	if err := data.SaveJSON("chat_summaries.json", summaries); err != nil {
-		app.Log("chat", "Error saving summaries:", err)
+		app.Log("chat", "Error saving summaries: %v", err)
 	} else {
-		app.Log("chat", "Saved", len(summaries), "summaries to disk")
+		app.Log("chat", "Saved %d summaries to disk", len(summaries))
 	}
 
 	time.Sleep(time.Hour)
@@ -590,7 +590,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		var ragContext []string
 		for _, entry := range ragEntries {
 			// Debug: Show raw entry
-			app.Log("chat", "[RAG DEBUG] Entry: Type=%s, Title=%s, Content=%s\n", entry.Type, entry.Title, entry.Content)
+			app.Log("chat", "[RAG DEBUG] Entry: Type=%s, Title=%s, Content=%s", entry.Type, entry.Title, entry.Content)
 
 			// Format each entry as context
 			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
@@ -605,17 +605,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Debug: Log what we found
 		if len(ragEntries) > 0 {
-			app.Log("chat", "[RAG] Query: %s\n", searchQuery)
-			app.Log("chat", "[RAG] Found %d entries:\n", len(ragEntries))
+			app.Log("chat", "[RAG] Query: %s", searchQuery)
+			app.Log("chat", "[RAG] Found %d entries:", len(ragEntries))
 			for i, entry := range ragEntries {
-				app.Log("chat", "  %d. [%s] %s\n", i+1, entry.Type, entry.Title)
+				app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
 			}
-			app.Log("chat", "[RAG] Context being sent to LLM:\n")
+			app.Log("chat", "[RAG] Context being sent to LLM:")
 			for i, ctx := range ragContext {
-				app.Log("chat", "  %d. %s\n", i+1, ctx)
+				app.Log("chat", "  %d. %s", i+1, ctx)
 			}
 		} else {
-			app.Log("chat", "[RAG] Query: %s - NO RESULTS\n", searchQuery)
+			app.Log("chat", "[RAG] Query: %s - NO RESULTS", searchQuery)
 		}
 
 		prompt := &Prompt{
