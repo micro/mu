@@ -13,6 +13,9 @@ import (
 	"mu/data"
 )
 
+// Import blog to get new account posts - will be set by blog package to avoid circular import
+var GetNewAccountPosts func() []PostContent
+
 // ============================================
 // DATA STRUCTURES
 // ============================================
@@ -364,14 +367,27 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user is admin
+	// Check if user is admin or member
 	isAdmin := false
+	isMember := false
 	sess, err := auth.GetSession(r)
 	if err == nil {
 		acc, err := auth.GetAccount(sess.Account)
-		if err == nil && acc.Admin {
-			isAdmin = true
+		if err == nil {
+			if acc.Admin {
+				isAdmin = true
+				isMember = true
+			}
+			if acc.Member {
+				isMember = true
+			}
 		}
+	}
+
+	// Only allow admin or member access
+	if !isMember {
+		http.Error(w, "Forbidden - Admin or Member access required", http.StatusForbidden)
+		return
 	}
 
 	flaggedItems := GetAll()
@@ -472,16 +488,68 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		listHTML = strings.Join(itemsList, "\n")
 	}
 
+	// Get new account posts section
+	newAccountPostsHTML := ""
+	if GetNewAccountPosts != nil {
+		newPosts := GetNewAccountPosts()
+		if len(newPosts) > 0 {
+			var newPostsList []string
+			for _, post := range newPosts {
+				title := post.Title
+				if title == "" {
+					title = "Untitled"
+				}
+
+				content := post.Content
+				if len(content) > 300 {
+					content = content[:300] + "..."
+				}
+
+				item := fmt.Sprintf(`<div class="flagged-item">
+				<div>
+					<span class="content-type-badge">post</span>
+					<h3>%s</h3>
+				</div>
+				<p style="white-space: pre-wrap;">%s</p>
+				<div class="info">
+					%s by %s · New Account (< 24h) · Hidden from homepage
+				</div>
+				<div class="actions">
+					<a href="/post?id=%s" target="_blank">view</a> · 
+					<a href="/flag?type=post&id=%s" style="color: #d00;">flag</a>
+				</div>
+			</div>`,
+					title,
+					content,
+					app.TimeAgo(post.CreatedAt),
+					post.Author,
+					post.ID,
+					post.ID)
+
+				newPostsList = append(newPostsList, item)
+			}
+
+			newAccountPostsHTML = fmt.Sprintf(`
+				<h2 style="margin-top: 2em;">New Account Posts (< 24 hours old)</h2>
+				<p style="color: #666; margin-bottom: 1em;">These posts are hidden from the public homepage but can still be flagged if inappropriate.</p>
+				<div id="new-account-posts">
+					%s
+				</div>`, strings.Join(newPostsList, "\n"))
+		}
+	}
+
 	content := fmt.Sprintf(`<div id="moderation">
 		<div class="info-banner">
 			<strong>Community Moderation</strong><br>
 			Review content that has been flagged by users. Content is automatically hidden after 3 flags. 
 			You can approve (clear flags) or delete the content permanently.
 		</div>
+		<h2>Flagged Content</h2>
 		<div id="flagged-content">
 			%s
 		</div>
-	</div>`, listHTML)
+		%s
+	</div>`, listHTML, newAccountPostsHTML)
 
 	html := app.RenderHTMLForRequest("Moderate", "Review flagged content", content, r)
 	w.Write([]byte(html))
@@ -543,8 +611,10 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 
 // PostContent represents post data for display
 type PostContent struct {
+	ID        string
 	Title     string
 	Content   string
 	Author    string
 	CreatedAt time.Time
 }
+

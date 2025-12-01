@@ -76,6 +76,7 @@ func Load() {
 
 	// Register with admin system
 	admin.RegisterDeleter("post", &postDeleter{})
+	admin.GetNewAccountPosts = getNewAccountPostsForAdmin
 }
 
 // postDeleter implements admin.ContentDeleter interface
@@ -97,6 +98,34 @@ func (d *postDeleter) Get(id string) interface{} {
 		CreatedAt: post.CreatedAt,
 	}
 }
+
+// getNewAccountPostsForAdmin returns posts from new accounts for the moderation page
+func getNewAccountPostsForAdmin() []admin.PostContent {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var result []admin.PostContent
+	for _, post := range posts {
+		// Skip flagged/hidden posts
+		if admin.IsHidden("post", post.ID) {
+			continue
+		}
+
+		// Only include posts from new accounts
+		if post.AuthorID != "" && auth.IsNewAccount(post.AuthorID) {
+			result = append(result, admin.PostContent{
+				ID:        post.ID,
+				Title:     post.Title,
+				Content:   post.Content,
+				Author:    post.Author,
+				CreatedAt: post.CreatedAt,
+			})
+		}
+	}
+
+	return result
+}
+
 
 func (d *postDeleter) RefreshCache() {
 	updateCache()
