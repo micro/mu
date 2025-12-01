@@ -291,12 +291,27 @@ type ContentParser struct {
 
 var contentParsers = []ContentParser{
 	{
-		Name:      "Strip HackerNews Comments",
+		Name:      "Strip HackerNews Comments-Only Descriptions",
 		FeedNames: []string{"Dev"},
 		Parse: func(desc string) string {
-			if strings.TrimSpace(desc) == "Comments" {
+			// HN items with no description have: <![CDATA[<a href="...">Comments</a>]]>
+			// Strip CDATA wrapper
+			desc = strings.TrimSpace(desc)
+			desc = strings.TrimPrefix(desc, "<![CDATA[")
+			desc = strings.TrimSuffix(desc, "]]>")
+			desc = strings.TrimSpace(desc)
+			
+			// If it's just a link to HN comments with "Comments" text, strip it
+			if strings.HasPrefix(desc, `<a href="https://news.ycombinator.com/item?id=`) && 
+			   strings.HasSuffix(desc, `">Comments</a>`) {
 				return ""
 			}
+			
+			// Also catch the plain text version
+			if desc == "Comments" {
+				return ""
+			}
+			
 			return desc
 		},
 	},
