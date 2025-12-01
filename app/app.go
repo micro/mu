@@ -19,6 +19,11 @@ import (
 	"github.com/gomarkdown/markdown/parser"
 )
 
+// Log prints a formatted log message with a package prefix
+func Log(pkg string, format string, args ...interface{}) {
+	fmt.Printf("[%s] "+format+"\n", append([]interface{}{pkg}, args...)...)
+}
+
 //go:embed html/*
 var htmlFiles embed.FS
 

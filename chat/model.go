@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"mu/app"
 )
 
 type Model struct{}
@@ -27,8 +29,8 @@ func (m *Model) Generate(prompt *Prompt) (string, error) {
 	}
 
 	// Debug: Show what's being sent to LLM
-	fmt.Printf("[LLM] System prompt:\n%s\n", systemPromptText)
-	fmt.Printf("[LLM] Question: %s\n", prompt.Question)
+	app.Log("chat", "[LLM] System prompt:\n%s\n", systemPromptText)
+	app.Log("chat", "[LLM] Question: %s\n", prompt.Question)
 
 	messages := []map[string]string{
 		map[string]string{

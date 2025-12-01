@@ -208,10 +208,10 @@ func getSummary(post *Post) string {
 }
 
 func getPrices() map[string]float64 {
-	fmt.Println("Getting prices")
+	app.Log("news", "Getting prices")
 	rsp, err := http.Get("https://api.coinbase.com/v2/exchange-rates?currency=USD")
 	if err != nil {
-		fmt.Println("Error getting prices", err)
+		app.Log("news", "Error getting prices: %v", err)
 		return nil
 	}
 	b, _ := ioutil.ReadAll(rsp.Body)
@@ -235,22 +235,23 @@ func getPrices() map[string]float64 {
 	}
 
 	// let's get other prices
+	app.Log("news", "Getting futures prices...")
 	for key, ftr := range futures {
 		// Use closure to safely handle potential panics from individual futures
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Printf("Recovered from panic getting future %s (%s): %v\n", key, ftr, r)
+					app.Log("news", "Recovered from panic getting future %s (%s): %v", key, ftr, r)
 				}
 			}()
 
 			f, err := future.Get(ftr)
 			if err != nil {
-				fmt.Println("Failed to get future", key, ftr, err)
+				app.Log("news", "Failed to get future %s (%s): %v", key, ftr, err)
 				return
 			}
 			if f == nil {
-				fmt.Println("Future returned nil for", key, ftr)
+				app.Log("news", "Future returned nil for %s (%s)", key, ftr)
 				return
 			}
 			// Access the price, which may panic if Quote struct is malformed
@@ -261,6 +262,7 @@ func getPrices() map[string]float64 {
 		}()
 	}
 
+	app.Log("news", "Finished getting all prices")
 	return prices
 }
 
@@ -306,7 +308,7 @@ func saveHtml(head, content []byte) {
 	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
 	newsBodyHtml = body
 	data.SaveFile("news.html", newsBodyHtml)
-	fmt.Printf("[NEWS] Saved news.html (%d bytes)\n", len(newsBodyHtml))
+	app.Log("news", "Saved news.html (%d bytes)", len(newsBodyHtml))
 }
 
 func loadFeed() {
@@ -338,7 +340,7 @@ func loadCachedMetadata(uri string) (*Metadata, bool) {
 func saveCachedMetadata(uri string, md *Metadata) {
 	path := getMetadataPath(uri)
 	if err := data.SaveJSON(path, md); err != nil {
-		fmt.Println("Error saving metadata:", err)
+		app.Log("news", "Error saving metadata: %v", err)
 	}
 }
 
@@ -477,7 +479,7 @@ func getReminder() {
 
 	resp, err := http.Get(uri)
 	if err != nil {
-		fmt.Println("Error getting reminder", err)
+		app.Log("news", "Error getting reminder: %v", err)
 		time.Sleep(time.Minute)
 
 		go getReminder()
@@ -491,7 +493,7 @@ func getReminder() {
 
 	err = json.Unmarshal(b, &val)
 	if err != nil {
-		fmt.Println("Error getting reminder", err)
+		app.Log("news", "Error getting reminder: %v", err)
 		time.Sleep(time.Minute)
 
 		go getReminder()
@@ -632,17 +634,17 @@ func parseFeed() {
 
 			link := item.Link
 
-			fmt.Println("Checking link", link)
+			app.Log("news", "Checking link %s", link)
 
 			if strings.HasPrefix(link, "https://themwl.org/ar/") {
 				link = strings.Replace(link, "themwl.org/ar/", "themwl.org/en/", 1)
-				fmt.Println("Replacing mwl ar link", item.Link, link)
+				app.Log("news", "Replacing mwl ar link %s -> %s", item.Link, link)
 			}
 
 			// get meta
 			md, err := getMetadata(link)
 			if err != nil {
-				fmt.Println("Error parsing", link, err)
+				app.Log("news", "Error parsing %s: %v", link, err)
 				continue
 			}
 
@@ -775,6 +777,7 @@ func parseFeed() {
 
 	// get crypto prices
 	newPrices := getPrices()
+	app.Log("news", "Finished getting prices")
 
 	if newPrices != nil {
 		// Cache the prices for the markets page

@@ -284,7 +284,7 @@ func loadChannels() {
 	// unpack into feeds
 	mutex.Lock()
 	if err := json.Unmarshal(data, &channels); err != nil {
-		fmt.Println("Error parsing channels.json", err)
+		app.Log("video", "Error parsing channels.json", err)
 	}
 	mutex.Unlock()
 }
@@ -310,7 +310,7 @@ func Load() {
 }
 
 func loadVideos() {
-	fmt.Println("Loading videos")
+	app.Log("video", "Loading videos")
 
 	mutex.RLock()
 	chans := channels
@@ -329,7 +329,7 @@ func loadVideos() {
 	for channel, handle := range chans {
 		html, res, err := getChannel(channel, handle)
 		if err != nil {
-			fmt.Println("Error getting channel", channel, handle, err)
+			app.Log("video", "Error getting channel", channel, handle, err)
 			continue
 		}
 		if len(res) == 0 {
@@ -417,8 +417,8 @@ func getChannel(category, handle string) (string, []*Result, error) {
 	uploadsPlaylistID := channel.ContentDetails.RelatedPlaylists.Uploads
 	channelID := channel.Id
 
-	fmt.Printf("Channel ID for @%s: %s\n", handle, channelID)
-	fmt.Printf("Uploads Playlist ID: %s\n", uploadsPlaylistID)
+	app.Log("video", "Channel ID for @%s: %s\n", handle, channelID)
+	app.Log("video", "Uploads Playlist ID: %s\n", uploadsPlaylistID)
 
 	listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(uploadsPlaylistID).MaxResults(25)
 	resp, err := listVideosCall.Do()
