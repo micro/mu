@@ -13,6 +13,7 @@ It includes:
 - **News** - Curated RSS feeds and market data
 - **Video** - YouTube search and viewing
 - **API** - REST API for programmatic access
+- **PWA** - A progressive web app for mobile
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
