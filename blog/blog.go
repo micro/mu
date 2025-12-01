@@ -810,8 +810,11 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Spam detection: check for common test patterns
+	// Spam detection: check for common test patterns and inappropriate content
 	contentLower := strings.ToLower(content)
+	titleLower := strings.ToLower(title)
+	combined := titleLower + " " + contentLower
+	
 	spamPatterns := []string{
 		"this is a test",
 		"test post",
@@ -819,11 +822,20 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		"asdf",
 		"qwerty",
 		"lorem ipsum",
+		"topkek",
+		"lmao",
+		"lmfao",
+		"lol",
+		"haha",
+		"hehe",
+		"dawg",
+		"bruh",
+		"yolo",
 	}
 
 	for _, pattern := range spamPatterns {
-		if strings.Contains(contentLower, pattern) && len(content) < 100 {
-			http.Error(w, "Post appears to be test content. Please share something meaningful.", http.StatusBadRequest)
+		if strings.Contains(combined, pattern) && len(content) < 200 {
+			http.Error(w, "Post appears to be spam or inappropriate. Please share meaningful content.", http.StatusBadRequest)
 			return
 		}
 	}

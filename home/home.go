@@ -152,6 +152,14 @@ func RefreshCards() {
 	lastRefresh = now
 }
 
+// ForceRefresh forces an immediate cache refresh (for admin actions)
+func ForceRefresh() {
+	cacheMutex.Lock()
+	lastRefresh = time.Time{} // Reset to zero to force refresh
+	cacheMutex.Unlock()
+	RefreshCards()
+}
+
 // RefreshHandler clears the last_visit cookie to show all cards again
 func RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	// Clear the cookie

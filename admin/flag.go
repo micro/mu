@@ -218,6 +218,12 @@ func Approve(contentType, contentID string) error {
 	if deleter, ok := deleters[contentType]; ok {
 		deleter.RefreshCache()
 	}
+	
+	// Force home page refresh
+	go func() {
+		// Dynamically import to avoid circular dependency
+		// This will be handled by the deleter's RefreshCache already
+	}()
 
 	return nil
 }
@@ -226,6 +232,51 @@ func Approve(contentType, contentID string) error {
 func IsHidden(contentType, contentID string) bool {
 	_, flagged := GetFlags(contentType, contentID)
 	return flagged
+}
+
+// AdminFlag immediately hides content (for admin use)
+func AdminFlag(contentType, contentID, username string) error {
+	key := contentType + ":" + contentID
+
+	mutex.Lock()
+	if item, exists := flags[key]; exists {
+		item.FlagCount = 3
+		item.Flagged = true
+		if !contains(item.FlaggedBy, username) {
+			item.FlaggedBy = append(item.FlaggedBy, username+" (admin)")
+		}
+	} else {
+		flags[key] = &FlaggedItem{
+			ContentType: contentType,
+			ContentID:   contentID,
+			FlagCount:   3,
+			Flagged:     true,
+			FlaggedBy:   []string{username + " (admin)"},
+			FlaggedAt:   time.Now(),
+		}
+	}
+	err := saveUnlocked()
+	mutex.Unlock()
+
+	if err != nil {
+		return err
+	}
+
+	// Refresh cache immediately
+	if deleter, ok := deleters[contentType]; ok {
+		go deleter.RefreshCache()
+	}
+
+	return nil
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }
 
 // Delete removes both the flag and the content
@@ -246,6 +297,8 @@ func Delete(contentType, contentID string) error {
 		if err := deleter.Delete(contentID); err != nil {
 			return err
 		}
+		// Refresh cache immediately after deletion
+		go deleter.RefreshCache()
 	}
 
 	return nil
