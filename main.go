@@ -175,66 +175,66 @@ func main() {
 				}
 			}
 
-		if v := len(r.URL.Path); v > 1 && strings.HasSuffix(r.URL.Path, "/") {
-			r.URL.Path = r.URL.Path[:v-1]
-		}
-
-		var token string
-
-		// set via session
-		if c, err := r.Cookie("session"); err == nil && c != nil {
-			token = c.Value
-		}
-
-		// Check if static asset - skip authentication entirely
-		isStaticAsset := false
-		for _, ext := range staticPaths {
-			if strings.HasSuffix(r.URL.Path, ext) {
-				isStaticAsset = true
-				break
+			if v := len(r.URL.Path); v > 1 && strings.HasSuffix(r.URL.Path, "/") {
+				r.URL.Path = r.URL.Path[:v-1]
 			}
-		}
 
-		// Skip auth check for static assets
-		if !isStaticAsset {
-			var isAuthed bool
+			var token string
 
-			// Special case: /post should be public, not confused with /posts
-			if strings.HasPrefix(r.URL.Path, "/post") && !strings.HasPrefix(r.URL.Path, "/posts") {
-				isAuthed = false
-			} else {
-				// Check if path requires authentication
-				for url, authed := range authenticated {
-					if strings.HasPrefix(r.URL.Path, url) {
-						isAuthed = authed
-						break
+			// set via session
+			if c, err := r.Cookie("session"); err == nil && c != nil {
+				token = c.Value
+			}
+
+			// Check if static asset - skip authentication entirely
+			isStaticAsset := false
+			for _, ext := range staticPaths {
+				if strings.HasSuffix(r.URL.Path, ext) {
+					isStaticAsset = true
+					break
+				}
+			}
+
+			// Skip auth check for static assets
+			if !isStaticAsset {
+				var isAuthed bool
+
+				// Special case: /post should be public, not confused with /posts
+				if strings.HasPrefix(r.URL.Path, "/post") && !strings.HasPrefix(r.URL.Path, "/posts") {
+					isAuthed = false
+				} else {
+					// Check if path requires authentication
+					for url, authed := range authenticated {
+						if strings.HasPrefix(r.URL.Path, url) {
+							isAuthed = authed
+							break
+						}
+					}
+				}
+
+				// check token
+				if isAuthed {
+					// deny access if invalid
+					if err := auth.ValidateToken(token); err != nil {
+						http.Redirect(w, r, "/", 302)
+						return
+					}
+				} else if r.URL.Path == "/" {
+					if err := auth.ValidateToken(token); err == nil {
+						http.Redirect(w, r, "/home", 302)
+						return
 					}
 				}
 			}
 
-			// check token
-			if isAuthed {
-				// deny access if invalid
-				if err := auth.ValidateToken(token); err != nil {
-					http.Redirect(w, r, "/", 302)
-					return
-				}
-			} else if r.URL.Path == "/" {
-				if err := auth.ValidateToken(token); err == nil {
-					http.Redirect(w, r, "/home", 302)
-					return
-				}
+			// Check if this is a user profile request (/@username)
+			if strings.HasPrefix(r.URL.Path, "/@") && !strings.Contains(r.URL.Path[2:], "/") {
+				user.Profile(w, r)
+				return
 			}
-		}
 
-		// Check if this is a user profile request (/@username)
-		if strings.HasPrefix(r.URL.Path, "/@") && !strings.Contains(r.URL.Path[2:], "/") {
-			user.Profile(w, r)
-			return
-		}
-
-		http.DefaultServeMux.ServeHTTP(w, r)
-	}),
+			http.DefaultServeMux.ServeHTTP(w, r)
+		}),
 	}
 
 	// Channel to listen for interrupt signals
