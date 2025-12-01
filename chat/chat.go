@@ -106,12 +106,13 @@ var roomsMutex sync.RWMutex
 
 // getOrCreateRoom gets an existing room or creates a new one
 func getOrCreateRoom(id string) *ChatRoom {
-	roomsMutex.Lock()
-	defer roomsMutex.Unlock()
-
+	// Check if room exists first (fast path with read lock)
+	roomsMutex.RLock()
 	if room, exists := rooms[id]; exists {
+		roomsMutex.RUnlock()
 		return room
 	}
+	roomsMutex.RUnlock()
 
 	// Parse the ID to determine type and fetch item details
 	parts := strings.SplitN(id, "_", 2)
@@ -122,6 +123,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 	itemType := parts[0]
 	itemID := parts[1]
 
+	// Create room structure (outside any locks)
 	room := &ChatRoom{
 		ID:         id,
 		Type:       itemType,
@@ -132,7 +134,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 		Messages:   make([]RoomMessage, 0, 20),
 	}
 
-	// Fetch item details based on type
+	// Fetch item details based on type (OUTSIDE roomsMutex to avoid deadlocks)
 	switch itemType {
 	case "post":
 		post := blog.GetPost(itemID)
@@ -182,7 +184,16 @@ func getOrCreateRoom(id string) *ChatRoom {
 		}
 	}
 
+	// Now acquire write lock only for the map update
+	roomsMutex.Lock()
+	// Check again if another goroutine created it while we were fetching data
+	if existingRoom, exists := rooms[id]; exists {
+		roomsMutex.Unlock()
+		return existingRoom
+	}
 	rooms[id] = room
+	roomsMutex.Unlock()
+
 	go room.run()
 
 	return room
