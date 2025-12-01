@@ -930,7 +930,7 @@ body:has(#messages) #content {
   margin-bottom: 10px;
   display: inline-block;
   border-radius: 3px;
-  background: whitesmoke;
+  background: #1a1a1a;
 }
 
 .blurb {
