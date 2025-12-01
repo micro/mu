@@ -143,8 +143,26 @@ func getOrCreateRoom(id string) *ChatRoom {
 	case "post":
 		// For posts, lookup by exact ID from index (posts are now indexed)
 		app.Log("chat", "Attempting to get post %s from index", itemID)
-		entry := data.GetByID(itemID)
-		app.Log("chat", "Looking up post %s, found: %v", itemID, entry != nil)
+		
+		// Try with a timeout to avoid blocking during heavy indexing
+		entryChan := make(chan *data.IndexEntry, 1)
+		go func() {
+			entryChan <- data.GetByID(itemID)
+		}()
+		
+		var entry *data.IndexEntry
+		select {
+		case entry = <-entryChan:
+			app.Log("chat", "Looking up post %s, found: %v", itemID, entry != nil)
+		case <-time.After(2 * time.Second):
+			app.Log("chat", "Timeout getting post %s from index, will create room with minimal context", itemID)
+			// Create room with minimal context
+			room.Title = "Post Discussion"
+			room.Summary = "Loading post content..."
+			room.URL = "/post?id=" + itemID
+			break
+		}
+		
 		if entry != nil {
 			room.Title = entry.Title
 			if room.Title == "" {
@@ -156,14 +174,33 @@ func getOrCreateRoom(id string) *ChatRoom {
 			}
 			room.URL = "/post?id=" + itemID
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
-		} else {
+		} else if room.Title == "" {
 			app.Log("chat", "Post %s not found in index", itemID)
+			room.Title = "Post Discussion"
+			room.URL = "/post?id=" + itemID
 		}
 	case "news":
 		// For news, lookup by exact ID
 		app.Log("chat", "Attempting to get news item %s from index", itemID)
-		entry := data.GetByID(itemID)
-		app.Log("chat", "Looking up news item %s, found: %v", itemID, entry != nil)
+		
+		// Try with a timeout to avoid blocking during heavy indexing
+		entryChan := make(chan *data.IndexEntry, 1)
+		go func() {
+			entryChan <- data.GetByID(itemID)
+		}()
+		
+		var entry *data.IndexEntry
+		select {
+		case entry = <-entryChan:
+			app.Log("chat", "Looking up news item %s, found: %v", itemID, entry != nil)
+		case <-time.After(2 * time.Second):
+			app.Log("chat", "Timeout getting news %s from index, will create room with minimal context", itemID)
+			// Create room with minimal context
+			room.Title = "News Discussion"
+			room.Summary = "Loading article content..."
+			break
+		}
+		
 		if entry != nil {
 			room.Title = entry.Title
 			room.Summary = entry.Content
@@ -174,14 +211,32 @@ func getOrCreateRoom(id string) *ChatRoom {
 				room.URL = url
 			}
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
-		} else {
+		} else if room.Title == "" {
 			app.Log("chat", "News item %s not found in index", itemID)
+			room.Title = "News Discussion"
 		}
 	case "video":
 		// For videos, lookup by exact ID
 		app.Log("chat", "Attempting to get video item %s from index", itemID)
-		entry := data.GetByID(itemID)
-		app.Log("chat", "Looking up video item %s, found: %v", itemID, entry != nil)
+		
+		// Try with a timeout to avoid blocking during heavy indexing
+		entryChan := make(chan *data.IndexEntry, 1)
+		go func() {
+			entryChan <- data.GetByID(itemID)
+		}()
+		
+		var entry *data.IndexEntry
+		select {
+		case entry = <-entryChan:
+			app.Log("chat", "Looking up video item %s, found: %v", itemID, entry != nil)
+		case <-time.After(2 * time.Second):
+			app.Log("chat", "Timeout getting video %s from index, will create room with minimal context", itemID)
+			// Create room with minimal context
+			room.Title = "Video Discussion"
+			room.Summary = "Loading video content..."
+			break
+		}
+		
 		if entry != nil {
 			room.Title = entry.Title
 			room.Summary = entry.Content
@@ -192,8 +247,9 @@ func getOrCreateRoom(id string) *ChatRoom {
 				room.URL = url
 			}
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
-		} else {
+		} else if room.Title == "" {
 			app.Log("chat", "Video item %s not found in index", itemID)
+			room.Title = "Video Discussion"
 		}
 	}
 
