@@ -284,6 +284,8 @@ func getEmbedding(text string) ([]float64, error) {
 		return nil, fmt.Errorf("empty text")
 	}
 
+	fmt.Printf("[data] Generating embedding for text (length: %d)\n", len(text))
+
 	// Ollama embedding endpoint
 	url := "http://localhost:11434/api/embeddings"
 

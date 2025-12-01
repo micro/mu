@@ -765,19 +765,22 @@ func parseFeed() {
 
 			news = append(news, post)
 
-			// Index the article for search/RAG
-			data.Index(
-				itemID,
-				"news",
-				item.Title,
-				item.Description+" "+item.Content,
-				map[string]interface{}{
-					"url":       link,
-					"category":  name,
-					"published": item.Published,
-					"image":     md.Image,
-				},
-			)
+			// Index the article for search/RAG (async)
+			go func(id, title, desc, content, link, category string, published string, image string) {
+				app.Log("news", "Indexing article: %s", title)
+				data.Index(
+					id,
+					"news",
+					title,
+					desc+" "+content,
+					map[string]interface{}{
+						"url":       link,
+						"category":  category,
+						"published": published,
+						"image":     image,
+					},
+				)
+			}(itemID, item.Title, item.Description, item.Content, link, name, item.Published, md.Image)
 
 			var val string
 
@@ -857,19 +860,22 @@ func parseFeed() {
 		info = append(info, []byte(`</div>`)...)
 		marketsHtml += string(info)
 
-		// Index all prices for search/RAG
-		for ticker, price := range newPrices {
-			data.Index(
-				"market_"+ticker,
-				"market",
-				ticker,
-				fmt.Sprintf("$%.2f", price),
-				map[string]interface{}{
-					"ticker": ticker,
-					"price":  price,
-				},
-			)
-		}
+		// Index all prices for search/RAG (async)
+		go func(prices map[string]float64) {
+			app.Log("news", "Indexing %d market prices", len(prices))
+			for ticker, price := range prices {
+				data.Index(
+					"market_"+ticker,
+					"market",
+					ticker,
+					fmt.Sprintf("$%.2f", price),
+					map[string]interface{}{
+						"ticker": ticker,
+						"price":  price,
+					},
+				)
+			}
+		}(newPrices)
 	}
 
 	// create the headlines
