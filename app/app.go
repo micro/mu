@@ -342,9 +342,13 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 
 		// set a new token
 		http.SetCookie(w, &http.Cookie{
-			Name:   "session",
-			Value:  sess.Token,
-			Secure: secure,
+			Name:     "session",
+			Value:    sess.Token,
+			Path:     "/",
+			MaxAge:   2592000,
+			Secure:   secure,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
 		})
 
 		// Check for pending membership activation
@@ -468,11 +472,15 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
 		secure = true
 	}
-	// set a new token
+	// delete the session cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:   "session",
-		Value:  "",
-		Secure: secure,
+		Name:     "session",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		Secure:   secure,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
 	})
 	auth.Logout(sess.Token)
 	http.Redirect(w, r, "/home", 302)
