@@ -150,6 +150,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 	case "news":
 		// For news, lookup by exact ID
 		entry := data.GetByID(itemID)
+		app.Log("chat", "Looking up news item %s, found: %v", itemID, entry != nil)
 		if entry != nil {
 			room.Title = entry.Title
 			room.Summary = entry.Content
@@ -159,10 +160,12 @@ func getOrCreateRoom(id string) *ChatRoom {
 			if url, ok := entry.Metadata["url"].(string); ok {
 				room.URL = url
 			}
+			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
 		}
 	case "video":
 		// For videos, lookup by exact ID
 		entry := data.GetByID(itemID)
+		app.Log("chat", "Looking up video item %s, found: %v", itemID, entry != nil)
 		if entry != nil {
 			room.Title = entry.Title
 			room.Summary = entry.Content
@@ -172,6 +175,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 			if url, ok := entry.Metadata["url"].(string); ok {
 				room.URL = url
 			}
+			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
 		}
 	}
 
@@ -338,6 +342,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 								roomContext += " (Source: " + room.URL + ")"
 							}
 							ragContext = append(ragContext, roomContext)
+							app.Log("chat", "Added room context: %s", roomContext)
+						} else {
+							app.Log("chat", "No room context available - Title: '%s', Summary: '%s'", room.Title, room.Summary)
 						}
 
 						// Search for additional context (only if needed)
@@ -347,6 +354,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 						}
 
 						ragEntries := data.Search(searchQuery, 2) // Reduced to 2 since room context is primary
+						app.Log("chat", "Search for '%s' returned %d results", searchQuery, len(ragEntries))
 						for _, entry := range ragEntries {
 							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
 							if len(contextStr) > 500 {
@@ -357,6 +365,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 							}
 							ragContext = append(ragContext, contextStr)
 						}
+
+						app.Log("chat", "Total RAG context items: %d", len(ragContext))
 
 						prompt := &Prompt{
 							Rag:      ragContext,
