@@ -226,21 +226,8 @@ td {
 }
 
 /* Scroll offset for anchor links to account for fixed header */
-:target,
-[id]:target,
-hr[id], h1[id], h2[id], h3[id], h4[id], h5[id], h6[id], 
-.section h1, .section h2, .section h3 {
-  scroll-margin-top: 70px;
-}
-
-/* Desktop-specific scroll offset (50px header + 20px padding) */
-@media only screen and (min-width: 601px) {
-  :target,
-  [id]:target,
-  hr[id], h1[id], h2[id], h3[id], h4[id], h5[id], h6[id],
-  .section h1, .section h2, .section h3 {
-    scroll-margin-top: 60px;
-  }
+html {
+  scroll-padding-top: 70px;
 }
 
 #main {
