@@ -226,8 +226,14 @@ td {
 }
 
 /* Scroll offset for anchor links to account for fixed header */
-html {
-  scroll-padding-top: 70px;
+* {
+  scroll-margin-top: 60px;
+}
+
+@media only screen and (max-width: 600px) {
+  * {
+    scroll-margin-top: 54px;
+  }
 }
 
 #main {
