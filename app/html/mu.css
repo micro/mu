@@ -227,6 +227,7 @@ td {
 
 /* Scroll offset for anchor links to account for fixed header */
 .anchor {
+  scroll-margin-top: 60px;
   margin: 50px 0;
 }
 
