@@ -226,8 +226,8 @@ td {
 }
 
 /* Scroll offset for anchor links to account for fixed header */
-hr[id], h1[id], .section h1 {
-  scroll-margin-top: 60px;
+hr[id], h1[id], h2[id], h3[id], h4[id], h5[id], h6[id], .section h1, .section h2, .section h3 {
+  scroll-margin-top: 70px;
 }
 
 #main {
