@@ -198,26 +198,13 @@ function askLLM(el) {
   .then(result => {
     console.log('Success:', result);
     
-    // Stage the response character by character to preserve HTML formatting
-    const fullResponse = result.answer;
-    let currentIndex = 0;
+    // Display the full response immediately
+    responseContent.innerHTML = result.answer;
+    d.scrollTop = d.scrollHeight;
     
-    function addNextChunk() {
-      if (currentIndex < fullResponse.length) {
-        const chunkSize = 5; // Add 5 characters at a time
-        const chunk = fullResponse.slice(currentIndex, currentIndex + chunkSize);
-        responseContent.innerHTML = fullResponse.slice(0, currentIndex + chunkSize);
-        currentIndex += chunkSize;
-        d.scrollTop = d.scrollHeight;
-        setTimeout(addNextChunk, 20); // 20ms delay
-      } else {
-        // Save context after full response is displayed
-        context.push({answer: result.answer, prompt: prompt});
-        setContext();
-      }
-    }
-    
-    addNextChunk();
+    // Save context after response is displayed
+    context.push({answer: result.answer, prompt: prompt});
+    setContext();
   })
   .catch(error => {
     console.error('Error:', error);
