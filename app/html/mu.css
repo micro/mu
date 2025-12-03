@@ -866,7 +866,8 @@ body:has(#messages) #content {
 }
 
 #news form input {
-  flex: 1;
+  width: 90%;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
