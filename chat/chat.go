@@ -432,7 +432,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 							app.Log("chat", "No room context available - Title: '%s', Summary: '%s'", room.Title, room.Summary)
 						}
 
-						// Perform multiple searches to gather comprehensive context
+						// Stage 1: Retrieve candidate results with snippets
 						seenIDs := make(map[string]bool)
 						
 						// Search 1: Question + title context for related content
@@ -440,21 +440,93 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 						if room.Title != "" {
 							searchQuery1 = room.Title + " " + content
 						}
-						ragEntries1 := data.Search(searchQuery1, 5)
+						ragEntries1 := data.Search(searchQuery1, 10)
 						app.Log("chat", "Search 1 (title+question) for '%s' returned %d results", searchQuery1, len(ragEntries1))
 						
 						// Search 2: Just the question to find directly relevant content
-						ragEntries2 := data.Search(content, 5)
+						ragEntries2 := data.Search(content, 10)
 						app.Log("chat", "Search 2 (question only) for '%s' returned %d results", content, len(ragEntries2))
 						
-						// Combine and deduplicate results
+						// Combine and deduplicate results, create snippets for reranking
+						type Candidate struct {
+							Entry   *data.IndexEntry
+							Snippet string
+						}
+						var candidates []Candidate
 						allEntries := append(ragEntries1, ragEntries2...)
+						
 						for _, entry := range allEntries {
 							if seenIDs[entry.ID] {
 								continue
 							}
 							seenIDs[entry.ID] = true
 							
+							// Create short snippet for reranking (title + first 150 chars)
+							snippet := entry.Title + ": "
+							if len(entry.Content) > 150 {
+								snippet += entry.Content[:150] + "..."
+							} else {
+								snippet += entry.Content
+							}
+							
+							candidates = append(candidates, Candidate{
+								Entry:   entry,
+								Snippet: snippet,
+							})
+						}
+						
+						app.Log("chat", "Stage 1: Found %d unique candidates", len(candidates))
+						
+						// Stage 2: Rerank - ask LLM to pick most relevant sources
+						var selectedEntries []*data.IndexEntry
+						
+						if len(candidates) > 5 {
+							// Build reranking prompt
+							snippetList := ""
+							for i, c := range candidates {
+								snippetList += fmt.Sprintf("%d. %s\n", i+1, c.Snippet)
+							}
+							
+							rerankPrompt := &Prompt{
+								System: "You are a search relevance expert. Given a question and a list of document snippets, return ONLY the numbers (comma-separated) of the 3-5 most relevant documents that would help answer the question. Example: 1,3,5",
+								Question: fmt.Sprintf("Question: %s\n\nDocuments:\n%s\n\nMost relevant document numbers:", content, snippetList),
+							}
+							
+							rerankResp, err := askLLM(rerankPrompt)
+							if err == nil && len(rerankResp) > 0 {
+								app.Log("chat", "Stage 2: Reranking response: %s", rerankResp)
+								
+								// Parse comma-separated numbers
+								parts := strings.Split(strings.TrimSpace(rerankResp), ",")
+								for _, part := range parts {
+									part = strings.TrimSpace(part)
+									// Extract first number from the part (handles "1." or "1" format)
+									var num int
+									if _, err := fmt.Sscanf(part, "%d", &num); err == nil {
+										if num > 0 && num <= len(candidates) {
+											selectedEntries = append(selectedEntries, candidates[num-1].Entry)
+										}
+									}
+									if len(selectedEntries) >= 5 {
+										break
+									}
+								}
+								app.Log("chat", "Stage 2: Selected %d documents after reranking", len(selectedEntries))
+							}
+						}
+						
+						// If reranking failed or we have <=5 candidates, use all
+						if len(selectedEntries) == 0 {
+							for _, c := range candidates {
+								selectedEntries = append(selectedEntries, c.Entry)
+								if len(selectedEntries) >= 5 {
+									break
+								}
+							}
+						}
+						
+						// Stage 3: Build full context from selected entries
+						for _, entry := range selectedEntries {
 							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
 							if len(contextStr) > 1000 {
 								contextStr = contextStr[:1000] + "..."
@@ -465,7 +537,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 							ragContext = append(ragContext, contextStr)
 						}
 
-						app.Log("chat", "Total RAG context items: %d", len(ragContext))
+						app.Log("chat", "Stage 3: Total RAG context items: %d", len(ragContext))
 
 						prompt := &Prompt{
 							Rag:      ragContext,
