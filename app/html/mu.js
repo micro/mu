@@ -114,7 +114,7 @@ function switchTopic(t) {
     if (typeof summaries !== 'undefined' && summaries[t]) {
       const summaryMsg = document.createElement('div');
       summaryMsg.className = 'message';
-      summaryMsg.innerHTML = `<span class="llm">AI Brief</span>${summaries[t]}`;
+      summaryMsg.innerHTML = `<span class="llm">AI Brief</span><p>${renderMarkdown(summaries[t])}</p>`;
       messages.appendChild(summaryMsg);
     }
     
@@ -254,7 +254,7 @@ function loadChat() {
       if (summaries[topic]) {
         const summaryMsg = document.createElement('div');
         summaryMsg.className = 'message';
-        summaryMsg.innerHTML = `<span class="llm">${topic}</span>${summaries[topic]}`;
+        summaryMsg.innerHTML = `<span class="llm">${topic}</span><p>${renderMarkdown(summaries[topic])}</p>`;
         messages.appendChild(summaryMsg);
       }
     });
