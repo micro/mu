@@ -698,6 +698,41 @@ func getReminder() {
 	reminderHtml = html
 	mutex.Unlock()
 
+	// Index the daily card content for search/RAG
+	// Extract all rich fields from the API response
+	verse := val["verse"].(string)
+	name := ""
+	if v, ok := val["name"]; ok {
+		name = v.(string)
+	}
+	hadith := ""
+	if h, ok := val["hadith"]; ok {
+		hadith = h.(string)
+	}
+	message := ""
+	if m, ok := val["message"]; ok {
+		message = m.(string)
+	}
+	updated := ""
+	if u, ok := val["updated"]; ok {
+		updated = u.(string)
+	}
+	
+	// Combine all content for comprehensive indexing
+	content := fmt.Sprintf("Name of Allah: %s\n\nVerse: %s\n\nHadith: %s\n\n%s", name, verse, hadith, message)
+	
+	data.Index(
+		"reminder_card_daily",
+		"reminder",
+		"Daily Islamic Reminder",
+		content,
+		map[string]interface{}{
+			"url":     link,
+			"updated": updated,
+			"source":  "card",
+		},
+	)
+
 	time.Sleep(time.Hour)
 
 	go getReminder()
@@ -1007,6 +1042,7 @@ func parseFeed() {
 		// Index all prices for search/RAG (async)
 		go func(prices map[string]float64) {
 			app.Log("news", "Indexing %d market prices", len(prices))
+			timestamp := time.Now().Format(time.RFC3339)
 			for ticker, price := range prices {
 				data.Index(
 					"market_"+ticker,
@@ -1014,8 +1050,9 @@ func parseFeed() {
 					ticker,
 					fmt.Sprintf("$%.2f", price),
 					map[string]interface{}{
-						"ticker": ticker,
-						"price":  price,
+						"ticker":  ticker,
+						"price":   price,
+						"updated": timestamp,
 					},
 				)
 			}
