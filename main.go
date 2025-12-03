@@ -62,6 +62,10 @@ func main() {
 	// load the home cards
 	home.Load()
 
+	// Enable indexing after all content is loaded
+	// This allows the priority queue to process new items first
+	data.StartIndexing()
+
 	authenticated := map[string]bool{
 		"/video":      true,
 		"/news":       true,

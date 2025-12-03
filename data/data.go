@@ -126,9 +126,20 @@ func LoadJSON(key string, val interface{}) error {
 // ============================================
 
 var (
-	indexMutex sync.RWMutex
-	index      = make(map[string]*IndexEntry)
+	indexMutex    sync.RWMutex
+	index         = make(map[string]*IndexEntry)
+	indexQueue    = make(chan *indexJob, 1000)
+	indexingReady = make(chan struct{})
 )
+
+type indexJob struct {
+	id       string
+	entryType string
+	title    string
+	content  string
+	metadata map[string]interface{}
+	priority int // 0 = high (new), 1 = low (re-index)
+}
 
 // IndexEntry represents a searchable piece of content
 type IndexEntry struct {
@@ -147,40 +158,127 @@ type SearchResult struct {
 	Score float64
 }
 
-// Index adds or updates an entry in the search index
+// Index adds or updates an entry in the search index (async via queue)
 func Index(id, entryType, title, content string, metadata map[string]interface{}) {
-	// Check if already indexed (skip if exists and recent)
+	// Check if already indexed to determine priority
 	indexMutex.RLock()
-	if existing, exists := index[id]; exists {
-		// If indexed within last 30 seconds, skip re-indexing
-		if time.Since(existing.IndexedAt) < 30*time.Second {
-			indexMutex.RUnlock()
-			fmt.Printf("[data] Skipping re-index of %s (indexed %v ago)\n", id, time.Since(existing.IndexedAt).Round(time.Second))
-			return
-		}
-	}
+	existing, exists := index[id]
 	indexMutex.RUnlock()
 
-	fmt.Printf("[data] Indexing %s: %s\n", entryType, title)
+	// Skip if recently indexed (within 30 seconds)
+	if exists && time.Since(existing.IndexedAt) < 30*time.Second {
+		fmt.Printf("[data] Skipping re-index of %s (indexed %v ago)\n", id, time.Since(existing.IndexedAt).Round(time.Second))
+		return
+	}
+
+	job := &indexJob{
+		id:       id,
+		entryType: entryType,
+		title:    title,
+		content:  content,
+		metadata: metadata,
+		priority: 0, // High priority (new)
+	}
+
+	// If already exists, it's a re-index (lower priority)
+	if exists {
+		job.priority = 1
+	}
+
+	// Try to queue non-blocking
+	select {
+	case indexQueue <- job:
+		// Queued successfully
+	default:
+		fmt.Printf("[data] Index queue full, dropping job for %s\n", id)
+	}
+}
+
+// processIndexQueue is a background worker that processes index jobs
+func processIndexQueue() {
+	// Wait for system to be ready
+	<-indexingReady
+	
+	fmt.Println("[data] Index worker started")
+	
+	// High and low priority queues
+	highPriority := []*indexJob{}
+	lowPriority := []*indexJob{}
+	
+	for {
+		var job *indexJob
+		
+		// Process high priority first
+		if len(highPriority) > 0 {
+			job = highPriority[0]
+			highPriority = highPriority[1:]
+		} else if len(lowPriority) > 0 {
+			// Only process low priority if no high priority items
+			job = lowPriority[0]
+			lowPriority = lowPriority[1:]
+		} else {
+			// Wait for new job
+			job = <-indexQueue
+		}
+		
+		// Sort into priority queues
+		if job.priority == 0 {
+			// High priority - process immediately
+			performIndex(job)
+		} else {
+			// Low priority - add to queue
+			lowPriority = append(lowPriority, job)
+			
+			// Drain incoming queue into priority queues
+			for len(indexQueue) > 0 {
+				newJob := <-indexQueue
+				if newJob.priority == 0 {
+					highPriority = append(highPriority, newJob)
+				} else {
+					lowPriority = append(lowPriority, newJob)
+				}
+			}
+			
+			// Process one high priority if available
+			if len(highPriority) > 0 {
+				job = highPriority[0]
+				highPriority = highPriority[1:]
+				performIndex(job)
+			} else if len(lowPriority) > 0 {
+				// Process the low priority item we queued
+				job = lowPriority[0]
+				lowPriority = lowPriority[1:]
+				performIndex(job)
+			}
+		}
+		
+		// Small delay to prevent CPU spinning
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// performIndex does the actual indexing work
+func performIndex(job *indexJob) {
+	fmt.Printf("[data] Indexing %s: %s\n", job.entryType, job.title)
 
 	entry := &IndexEntry{
-		ID:        id,
-		Type:      entryType,
-		Title:     title,
-		Content:   content,
-		Metadata:  metadata,
+		ID:        job.id,
+		Type:      job.entryType,
+		Title:     job.title,
+		Content:   job.content,
+		Metadata:  job.metadata,
 		IndexedAt: time.Now(),
 	}
 
 	// Generate embedding for semantic search
-	textToEmbed := title
-	if len(content) > 0 {
+	textToEmbed := job.title
+	if len(job.content) > 0 {
 		// Combine title and beginning of content for better embeddings
 		maxContent := 500
-		if len(content) < maxContent {
-			maxContent = len(content)
+		if len(job.content) < maxContent {
+			maxContent = len(job.content)
 		}
-		textToEmbed = title + " " + content[:maxContent]
+		textToEmbed = job.title + " " + job.content[:maxContent]
 	}
 
 	embedding, err := getEmbedding(textToEmbed)
@@ -189,11 +287,21 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	}
 
 	indexMutex.Lock()
-	index[id] = entry
+	index[job.id] = entry
 	indexMutex.Unlock()
 
-	// Persist to disk
-	saveIndex()
+	// Persist to disk (async)
+	go saveIndex()
+}
+
+// StartIndexing signals that the system is ready for indexing
+func StartIndexing() {
+	select {
+	case indexingReady <- struct{}{}:
+		fmt.Println("[data] Indexing enabled")
+	default:
+		// Already started
+	}
 }
 
 // GetByID retrieves an entry by its exact ID
@@ -383,6 +491,9 @@ func Load() {
 	defer indexMutex.Unlock()
 
 	json.Unmarshal(b, &index)
+	
+	// Start background indexing worker
+	go processIndexQueue()
 }
 
 // ============================================
