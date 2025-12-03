@@ -108,7 +108,7 @@ Usage requires
 export FANAR_API_KEY=xxx
 ```
 
-For vector search see this [doc](VECTOR_SEARCH.md)
+For vector search see this [doc](docs/VECTOR_SEARCH.md)
 
 ### Run
 
