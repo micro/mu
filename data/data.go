@@ -156,21 +156,51 @@ func Search(query string, limit int) []*IndexEntry {
 	queryEmbedding, err := getEmbedding(query)
 	if err == nil && len(queryEmbedding) > 0 {
 		fmt.Printf("[SEARCH] Using vector search for: %s\n", query)
-		var results []SearchResult
-
+		
+		// Convert map to slice for parallel processing
+		entries := make([]*IndexEntry, 0, len(index))
 		for _, entry := range index {
-			if len(entry.Embedding) == 0 {
-				continue // Skip entries without embeddings
-			}
-
-			similarity := cosineSimilarity(queryEmbedding, entry.Embedding)
-			if similarity > 0.3 { // Threshold to filter irrelevant results
-				results = append(results, SearchResult{
-					Entry: entry,
-					Score: similarity,
-				})
+			if len(entry.Embedding) > 0 {
+				entries = append(entries, entry)
 			}
 		}
+
+		// Parallel search using goroutines
+		numWorkers := 4
+		chunkSize := (len(entries) + numWorkers - 1) / numWorkers
+		resultsChan := make(chan []SearchResult, numWorkers)
+
+		for i := 0; i < numWorkers; i++ {
+			start := i * chunkSize
+			end := start + chunkSize
+			if end > len(entries) {
+				end = len(entries)
+			}
+			if start >= len(entries) {
+				break
+			}
+
+			go func(chunk []*IndexEntry) {
+				var localResults []SearchResult
+				for _, entry := range chunk {
+					similarity := cosineSimilarity(queryEmbedding, entry.Embedding)
+					if similarity > 0.3 { // Threshold to filter irrelevant results
+						localResults = append(localResults, SearchResult{
+							Entry: entry,
+							Score: similarity,
+						})
+					}
+				}
+				resultsChan <- localResults
+			}(entries[start:end])
+		}
+
+		// Collect results from all workers
+		var results []SearchResult
+		for i := 0; i < numWorkers && i*chunkSize < len(entries); i++ {
+			results = append(results, <-resultsChan...)
+		}
+		close(resultsChan)
 
 		// Sort by similarity descending
 		sort.Slice(results, func(i, j int) bool {
@@ -182,13 +212,13 @@ func Search(query string, limit int) []*IndexEntry {
 			results = results[:limit]
 		}
 
-		entries := make([]*IndexEntry, len(results))
+		finalEntries := make([]*IndexEntry, len(results))
 		for i, r := range results {
-			entries[i] = r.Entry
+			finalEntries[i] = r.Entry
 		}
 
-		if len(entries) > 0 {
-			return entries
+		if len(finalEntries) > 0 {
+			return finalEntries
 		}
 	}
 

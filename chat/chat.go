@@ -169,8 +169,8 @@ func getOrCreateRoom(id string) *ChatRoom {
 				room.Title = "Untitled Post"
 			}
 			room.Summary = entry.Content
-			if len(room.Summary) > 200 {
-				room.Summary = room.Summary[:200] + "..."
+			if len(room.Summary) > 2000 {
+				room.Summary = room.Summary[:2000] + "..."
 			}
 			room.URL = "/post?id=" + itemID
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
@@ -204,8 +204,8 @@ func getOrCreateRoom(id string) *ChatRoom {
 		if entry != nil {
 			room.Title = entry.Title
 			room.Summary = entry.Content
-			if len(room.Summary) > 200 {
-				room.Summary = room.Summary[:200] + "..."
+			if len(room.Summary) > 2000 {
+				room.Summary = room.Summary[:2000] + "..."
 			}
 			if url, ok := entry.Metadata["url"].(string); ok {
 				room.URL = url
@@ -240,8 +240,8 @@ func getOrCreateRoom(id string) *ChatRoom {
 		if entry != nil {
 			room.Title = entry.Title
 			room.Summary = entry.Content
-			if len(room.Summary) > 200 {
-				room.Summary = room.Summary[:200] + "..."
+			if len(room.Summary) > 2000 {
+				room.Summary = room.Summary[:2000] + "..."
 			}
 			if url, ok := entry.Metadata["url"].(string); ok {
 				room.URL = url
@@ -432,18 +432,32 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 							app.Log("chat", "No room context available - Title: '%s', Summary: '%s'", room.Title, room.Summary)
 						}
 
-						// Search for additional context (only if needed)
-						searchQuery := content
+						// Perform multiple searches to gather comprehensive context
+						seenIDs := make(map[string]bool)
+						
+						// Search 1: Question + title context for related content
+						searchQuery1 := content
 						if room.Title != "" {
-							searchQuery = room.Title + " " + content
+							searchQuery1 = room.Title + " " + content
 						}
-
-						ragEntries := data.Search(searchQuery, 2) // Reduced to 2 since room context is primary
-						app.Log("chat", "Search for '%s' returned %d results", searchQuery, len(ragEntries))
-						for _, entry := range ragEntries {
+						ragEntries1 := data.Search(searchQuery1, 5)
+						app.Log("chat", "Search 1 (title+question) for '%s' returned %d results", searchQuery1, len(ragEntries1))
+						
+						// Search 2: Just the question to find directly relevant content
+						ragEntries2 := data.Search(content, 5)
+						app.Log("chat", "Search 2 (question only) for '%s' returned %d results", content, len(ragEntries2))
+						
+						// Combine and deduplicate results
+						allEntries := append(ragEntries1, ragEntries2...)
+						for _, entry := range allEntries {
+							if seenIDs[entry.ID] {
+								continue
+							}
+							seenIDs[entry.ID] = true
+							
 							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-							if len(contextStr) > 500 {
-								contextStr = contextStr[:500]
+							if len(contextStr) > 1000 {
+								contextStr = contextStr[:1000] + "..."
 							}
 							if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
 								contextStr += fmt.Sprintf(" (Source: %s)", url)

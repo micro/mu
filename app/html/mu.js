@@ -749,8 +749,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!messages.querySelector('.context-message')) {
           const contextMsg = document.createElement('div');
           contextMsg.className = 'context-message';
+          
+          // Extract first sentence from summary (up to first period or 200 chars)
+          let shortSummary = currentRoomData.summary;
+          const firstPeriod = shortSummary.indexOf('. ');
+          if (firstPeriod !== -1) {
+            shortSummary = shortSummary.substring(0, firstPeriod + 1);
+          } else if (shortSummary.length > 200) {
+            shortSummary = shortSummary.substring(0, 200) + '...';
+          }
+          
           contextMsg.innerHTML = 'Discussion: <strong>' + currentRoomData.title + '</strong><br>' + 
-            '<span style="color: #666;">' + currentRoomData.summary + '</span>' +
+            '<span style="color: #666;">' + shortSummary + '</span>' +
             (currentRoomData.url ? '<br><a href="' + currentRoomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
           // Insert at the top
           messages.insertBefore(contextMsg, messages.firstChild);

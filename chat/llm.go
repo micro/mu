@@ -14,10 +14,12 @@ Answer questions concisely and accurately. Be helpful and direct.
 
 {{- if . }}
 
-Here is some information that may be useful:
+Here is information from multiple sources that may help answer the question. Synthesize information across sources to provide a complete answer:
 {{- range $context := . }}
 - {{ . }}
 {{- end }}
+
+If the question asks about something specific (like "where did X move?"), provide all relevant details including what happened, where things moved to, any current status, and related information found in the sources.
 {{- end }}
 
 Format responses in markdown. For brief summaries (2-3 sentences), use plain paragraph text without bullets, lists, or asterisks.
