@@ -91,6 +91,7 @@ type Metadata struct {
 	Url         string
 	Site        string
 	Content     string
+	Comments    string // Comments/discussion context from any source
 }
 
 // htmlToText converts HTML to plain text with proper spacing
@@ -497,11 +498,15 @@ func getMetadata(uri string) (*Metadata, error) {
 		}
 	}
 
-	// attempt to get the content
+	// attempt to get the content from article body
 	var fn func(*nethtml.Node)
 
 	fn = func(node *nethtml.Node) {
 		if node.Type == nethtml.TextNode {
+			if len(node.Data) < 10 {
+				return // Skip very short text nodes
+			}
+			
 			first := node.Data[0]
 			last := node.Data[len(node.Data)-1]
 
@@ -523,9 +528,46 @@ func getMetadata(uri string) (*Metadata, error) {
 		}
 	}
 
-	if strings.Contains(u.String(), "cnbc.com") {
-		for _, node := range d.Find(".ArticleBody-articleBody").Nodes {
+	// Extract content from common article selectors
+	selectors := []string{
+		".ArticleBody-articleBody", // CNBC
+		"article",                   // Generic
+		".article-body",             // Common
+		".post-content",             // Common
+		".entry-content",            // WordPress
+		"[itemprop='articleBody']",  // Schema.org
+		".story-body",               // BBC-style
+		"main article",              // Semantic HTML
+	}
+	
+	contentExtracted := false
+	for _, selector := range selectors {
+		nodes := d.Find(selector).Nodes
+		if len(nodes) > 0 {
+			for _, node := range nodes {
+				fn(node)
+			}
+			if len(g.Content) > 200 {
+				contentExtracted = true
+				break
+			}
+		}
+	}
+	
+	// If no content extracted and it's not a HackerNews link, try to get paragraphs
+	if !contentExtracted && !strings.Contains(u.Host, "news.ycombinator.com") {
+		for _, node := range d.Find("p").Nodes {
+			if node.Parent != nil {
+				// Skip paragraphs in nav, footer, sidebar
+				parent := node.Parent.Data
+				if parent == "nav" || parent == "footer" || parent == "aside" {
+					continue
+				}
+			}
 			fn(node)
+			if len(g.Content) > 2000 {
+				break // Limit content extraction
+			}
 		}
 	}
 	//if len(g.Type) == 0 || len(g.Image) == 0 || len(g.Title) == 0 || len(g.Url) == 0 {
@@ -533,10 +575,90 @@ func getMetadata(uri string) (*Metadata, error) {
 	//	return nil
 	//}
 
+	// Fetch discussion/comments based on source
+	if strings.Contains(uri, "news.ycombinator.com/item?id=") {
+		// Extract HackerNews story ID
+		hnID := ""
+		if idx := strings.Index(uri, "id="); idx != -1 {
+			hnID = uri[idx+3:]
+			if idx := strings.IndexAny(hnID, "&?#"); idx != -1 {
+				hnID = hnID[:idx]
+			}
+		}
+		if hnID != "" {
+			comments, err := fetchHNComments(hnID)
+			if err == nil && len(comments) > 0 {
+				g.Comments = comments
+				app.Log("news", "Fetched comments for HN story %s (%d chars)", hnID, len(comments))
+			}
+		}
+	}
+	// Future: Add other comment sources here (Reddit, forums, etc.)
+
 	// Cache the metadata
 	saveCachedMetadata(uri, g)
 
 	return g, nil
+}
+
+// fetchHNComments fetches top-level comments from a HackerNews story
+func fetchHNComments(storyID string) (string, error) {
+	apiURL := fmt.Sprintf("https://hacker-news.firebaseio.com/v0/item/%s.json", storyID)
+	
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var story struct {
+		Comments []int `json:"kids"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&story); err != nil {
+		return "", err
+	}
+
+	// Fetch top 10 comments for context
+	var comments []string
+	maxComments := 10
+	for i, commentID := range story.Comments {
+		if i >= maxComments {
+			break
+		}
+
+		commentURL := fmt.Sprintf("https://hacker-news.firebaseio.com/v0/item/%d.json", commentID)
+		commentResp, err := http.Get(commentURL)
+		if err != nil {
+			continue
+		}
+
+		var comment struct {
+			Text string `json:"text"`
+			By   string `json:"by"`
+		}
+
+		if err := json.NewDecoder(commentResp.Body).Decode(&comment); err != nil {
+			commentResp.Body.Close()
+			continue
+		}
+		commentResp.Body.Close()
+
+		if comment.Text != "" {
+			// Strip HTML tags from comment
+			cleanText := sanitize.HTML(comment.Text)
+			comments = append(comments, fmt.Sprintf("[%s]: %s", comment.By, cleanText))
+		}
+
+		// Rate limit: small delay between requests
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	if len(comments) > 0 {
+		return "Discussion: " + strings.Join(comments, " | "), nil
+	}
+
+	return "", nil
 }
 
 func getReminder() {
@@ -781,13 +903,20 @@ func parseFeed() {
 			news = append(news, post)
 
 			// Index the article for search/RAG (async)
-			go func(id, title, desc, content, link, category string, published string, image string) {
+			go func(id, title, desc, content, comments, link, category string, published string, image string) {
 				app.Log("news", "Indexing article: %s", title)
+				
+				// Combine all content: description + article content + comments
+				fullContent := desc + " " + content
+				if len(comments) > 0 {
+					fullContent += " " + comments
+				}
+				
 				data.Index(
 					id,
 					"news",
 					title,
-					desc+" "+content,
+					fullContent,
 					map[string]interface{}{
 						"url":       link,
 						"category":  category,
@@ -795,7 +924,7 @@ func parseFeed() {
 						"image":     image,
 					},
 				)
-			}(itemID, item.Title, item.Description, item.Content, link, name, item.Published, md.Image)
+			}(itemID, item.Title, item.Description, item.Content, md.Comments, link, name, item.Published, md.Image)
 
 			var val string
 
