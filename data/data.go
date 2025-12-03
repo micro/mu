@@ -172,6 +172,7 @@ func LoadJSON(key string, val interface{}) error {
 var (
 	indexMutex        sync.RWMutex
 	index             = make(map[string]*IndexEntry)
+	embeddings        = make(map[string][]float64) // Stored separately from index
 	savePending       = false
 	saveMutex         sync.Mutex
 	embeddingCache    = make(map[string][]float64) // Cache query embeddings
@@ -229,8 +230,14 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	}
 	
 	// Preserve existing embedding if content hasn't changed
-	if exists && existing.Title == title && existing.Content == content && len(existing.Embedding) > 0 {
-		entry.Embedding = existing.Embedding
+	if exists && existing.Title == title && existing.Content == content {
+		indexMutex.RLock()
+		if emb, hasEmb := embeddings[id]; hasEmb && len(emb) > 0 {
+			// Keep the existing embedding
+			indexMutex.RUnlock()
+		} else {
+			indexMutex.RUnlock()
+		}
 	}
 
 	indexMutex.Lock()
@@ -247,7 +254,11 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	})
 
 	// Only queue for embedding if we don't already have one
-	if len(entry.Embedding) == 0 {
+	indexMutex.RLock()
+	_, hasEmbedding := embeddings[id]
+	indexMutex.RUnlock()
+	
+	if !hasEmbedding {
 		select {
 		case embeddingQueue <- id:
 		default:
@@ -278,13 +289,9 @@ func embeddingWorker() {
 	for id := range embeddingQueue {
 		// Check if we've hit the embedding limit
 		indexMutex.RLock()
-		embeddingCount := 0
-		for _, e := range index {
-			if len(e.Embedding) > 0 {
-				embeddingCount++
-			}
-		}
+		embeddingCount := len(embeddings)
 		entry := index[id]
+		_, hasEmbedding := embeddings[id]
 		indexMutex.RUnlock()
 
 		if embeddingCount >= maxIndexEmbeddings {
@@ -292,7 +299,7 @@ func embeddingWorker() {
 			continue
 		}
 
-		if entry == nil || len(entry.Embedding) > 0 {
+		if entry == nil || hasEmbedding {
 			continue
 		}
 
@@ -315,11 +322,12 @@ func embeddingWorker() {
 
 		if len(embedding) > 0 {
 			indexMutex.Lock()
-			if entry := index[id]; entry != nil {
-				entry.Embedding = embedding
+			if index[id] != nil {
+				embeddings[id] = embedding
 			}
 			indexMutex.Unlock()
 			go saveIndex()
+			go saveEmbeddings()
 		}
 
 		// Rate limit: 1 embedding per 200ms to avoid overwhelming Ollama
@@ -345,14 +353,8 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 		opt(options)
 	}
 
-	// Check if we have any embeddings in the index
-	hasEmbeddings := false
-	for _, entry := range index {
-		if len(entry.Embedding) > 0 && (options.Type == "" || entry.Type == options.Type) {
-			hasEmbeddings = true
-			break
-		}
-	}
+	// Check if we have any embeddings
+	hasEmbeddings := len(embeddings) > 0
 
 	// Try vector search if embeddings exist
 	if hasEmbeddings {
@@ -387,11 +389,12 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 			// Simple linear search through entries with embeddings
 			var results []SearchResult
 			for _, entry := range index {
-				if len(entry.Embedding) == 0 || (options.Type != "" && entry.Type != options.Type) {
+				emb, hasEmb := embeddings[entry.ID]
+				if !hasEmb || len(emb) == 0 || (options.Type != "" && entry.Type != options.Type) {
 					continue
 				}
 
-				similarity := cosineSimilarity(queryEmbedding, entry.Embedding)
+				similarity := cosineSimilarity(queryEmbedding, emb)
 				if similarity > 0.3 {
 					results = append(results, SearchResult{
 						Entry: entry,
@@ -496,8 +499,10 @@ func GetByType(entryType string, limit int) []*IndexEntry {
 func ClearIndex() {
 	indexMutex.Lock()
 	index = make(map[string]*IndexEntry)
+	embeddings = make(map[string][]float64)
 	indexMutex.Unlock()
 	saveIndex()
+	saveEmbeddings()
 }
 
 // saveIndex persists the index to disk
@@ -523,16 +528,78 @@ func saveIndex() {
 	saveMutex.Unlock()
 }
 
-// Load loads the index from disk
-func Load() {
-	b, err := LoadFile("index.json")
-	if err != nil {
+var (
+	embSavePending = false
+	embSaveMutex   sync.Mutex
+)
+
+// saveEmbeddings persists embeddings to disk separately
+func saveEmbeddings() {
+	// Debounce saves
+	embSaveMutex.Lock()
+	if embSavePending {
+		embSaveMutex.Unlock()
 		return
 	}
+	embSavePending = true
+	embSaveMutex.Unlock()
 
-	indexMutex.Lock()
-	json.Unmarshal(b, &index)
-	indexMutex.Unlock()
+	// Wait a bit to batch multiple updates
+	time.Sleep(1 * time.Second)
+
+	indexMutex.RLock()
+	SaveJSON("embeddings.json", embeddings)
+	indexMutex.RUnlock()
+
+	embSaveMutex.Lock()
+	embSavePending = false
+	embSaveMutex.Unlock()
+}
+
+// Load loads the index and embeddings from disk
+func Load() {
+	// Load index (may contain old format with embeddings inline)
+	b, err := LoadFile("index.json")
+	if err == nil {
+		indexMutex.Lock()
+		// First try to load as old format (with embeddings)
+		var oldIndex map[string]*struct {
+			ID        string                 `json:"id"`
+			Type      string                 `json:"type"`
+			Title     string                 `json:"title"`
+			Content   string                 `json:"content"`
+			Metadata  map[string]interface{} `json:"metadata,omitempty"`
+			IndexedAt time.Time              `json:"indexed_at"`
+			Embedding []float64              `json:"embedding,omitempty"`
+		}
+		
+		if err := json.Unmarshal(b, &oldIndex); err == nil {
+			// Migrate old format to new format
+			for id, old := range oldIndex {
+				index[id] = &IndexEntry{
+					ID:        old.ID,
+					Type:      old.Type,
+					Title:     old.Title,
+					Content:   old.Content,
+					Metadata:  old.Metadata,
+					IndexedAt: old.IndexedAt,
+				}
+				// Extract embedding if present
+				if len(old.Embedding) > 0 {
+					embeddings[id] = old.Embedding
+				}
+			}
+		}
+		indexMutex.Unlock()
+	}
+
+	// Load embeddings (if new format exists, it will override migrated ones)
+	b, err = LoadFile("embeddings.json")
+	if err == nil {
+		indexMutex.Lock()
+		json.Unmarshal(b, &embeddings)
+		indexMutex.Unlock()
+	}
 }
 
 // ============================================
