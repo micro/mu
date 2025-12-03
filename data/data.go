@@ -170,10 +170,16 @@ func LoadJSON(key string, val interface{}) error {
 // ============================================
 
 var (
-	indexMutex  sync.RWMutex
-	index       = make(map[string]*IndexEntry)
-	savePending = false
-	saveMutex   sync.Mutex
+	indexMutex        sync.RWMutex
+	index             = make(map[string]*IndexEntry)
+	savePending       = false
+	saveMutex         sync.Mutex
+	embeddingCache    = make(map[string][]float64) // Cache query embeddings
+	embeddingCacheMu  sync.RWMutex
+	maxEmbeddingCache = 100 // Maximum cached query embeddings
+	embeddingQueue    = make(chan string, 100)
+	embeddingEnabled  = false
+	embeddingMutex    sync.Mutex
 )
 
 // IndexEntry represents a searchable piece of content
@@ -226,13 +232,72 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 		},
 	})
 
+	// Queue for embedding generation (non-blocking)
+	select {
+	case embeddingQueue <- id:
+	default:
+		// Queue full, skip
+	}
+
 	// Persist to disk (debounced)
 	go saveIndex()
 }
 
-// StartIndexing is kept for compatibility
+// StartIndexing enables background embedding generation
 func StartIndexing() {
-	fmt.Println("[data] Indexing ready (now always active)")
+	embeddingMutex.Lock()
+	if embeddingEnabled {
+		embeddingMutex.Unlock()
+		return
+	}
+	embeddingEnabled = true
+	embeddingMutex.Unlock()
+
+	fmt.Println("[data] Starting background embedding worker")
+	go embeddingWorker()
+}
+
+// embeddingWorker processes the embedding queue with rate limiting
+func embeddingWorker() {
+	for id := range embeddingQueue {
+		// Get entry
+		indexMutex.RLock()
+		entry := index[id]
+		indexMutex.RUnlock()
+
+		if entry == nil || len(entry.Embedding) > 0 {
+			continue
+		}
+
+		// Generate embedding
+		textToEmbed := entry.Title
+		if len(entry.Content) > 0 {
+			maxContent := 500
+			if len(entry.Content) < maxContent {
+				maxContent = len(entry.Content)
+			}
+			textToEmbed = entry.Title + " " + entry.Content[:maxContent]
+		}
+
+		embedding, err := getEmbedding(textToEmbed)
+		if err != nil {
+			fmt.Printf("[data] Failed to generate embedding for %s: %v\n", id, err)
+			time.Sleep(1 * time.Second) // Back off on error
+			continue
+		}
+
+		if len(embedding) > 0 {
+			indexMutex.Lock()
+			if entry := index[id]; entry != nil {
+				entry.Embedding = embedding
+			}
+			indexMutex.Unlock()
+			go saveIndex()
+		}
+
+		// Rate limit: 1 embedding per 200ms to avoid overwhelming Ollama
+		time.Sleep(200 * time.Millisecond)
+	}
 }
 
 // GetByID retrieves an entry by its exact ID
@@ -242,7 +307,7 @@ func GetByID(id string) *IndexEntry {
 	return index[id]
 }
 
-// Search performs text-based search (embeddings disabled for now to save memory)
+// Search performs semantic vector search with text fallback
 func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 	indexMutex.RLock()
 	defer indexMutex.RUnlock()
@@ -253,7 +318,78 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 		opt(options)
 	}
 
-	// Use text search only
+	// Check if we have any embeddings in the index
+	hasEmbeddings := false
+	for _, entry := range index {
+		if len(entry.Embedding) > 0 && (options.Type == "" || entry.Type == options.Type) {
+			hasEmbeddings = true
+			break
+		}
+	}
+
+	// Try vector search if embeddings exist
+	if hasEmbeddings {
+		// Check cache first
+		embeddingCacheMu.RLock()
+		queryEmbedding, cached := embeddingCache[query]
+		embeddingCacheMu.RUnlock()
+
+		// Generate embedding if not cached
+		if !cached {
+			var err error
+			queryEmbedding, err = getEmbedding(query)
+			if err == nil && len(queryEmbedding) > 0 {
+				// Cache it
+				embeddingCacheMu.Lock()
+				if len(embeddingCache) >= maxEmbeddingCache {
+					// Clear cache if too large
+					embeddingCache = make(map[string][]float64)
+				}
+				embeddingCache[query] = queryEmbedding
+				embeddingCacheMu.Unlock()
+			}
+		}
+
+		if len(queryEmbedding) > 0 {
+			fmt.Printf("[SEARCH] Using vector search for: %s (type: %s)\n", query, options.Type)
+
+			// Simple linear search through entries with embeddings
+			var results []SearchResult
+			for _, entry := range index {
+				if len(entry.Embedding) == 0 || (options.Type != "" && entry.Type != options.Type) {
+					continue
+				}
+
+				similarity := cosineSimilarity(queryEmbedding, entry.Embedding)
+				if similarity > 0.3 {
+					results = append(results, SearchResult{
+						Entry: entry,
+						Score: similarity,
+					})
+				}
+			}
+
+			// Sort by similarity descending
+			sort.Slice(results, func(i, j int) bool {
+				return results[i].Score > results[j].Score
+			})
+
+			// Return top N results
+			if limit > 0 && len(results) > limit {
+				results = results[:limit]
+			}
+
+			if len(results) > 0 {
+				entries := make([]*IndexEntry, len(results))
+				for i, r := range results {
+					entries[i] = r.Entry
+				}
+				return entries
+			}
+		}
+	}
+
+	// Fallback to text search
 	fmt.Printf("[SEARCH] Using text search for: %s (type: %s)\n", query, options.Type)
 	queryLower := strings.ToLower(query)
 	var results []SearchResult
