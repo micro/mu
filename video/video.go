@@ -257,8 +257,8 @@ var Results = `
   <input name="query" id="query" value="%s">
   <button>Search</button>
 </form>
-<div id="recent-searches-container"></div>
 <div id="topics">%s</div>
+<div id="recent-searches-container"></div>
 <h1>Results</h1>
 <div id="results">
 %s
@@ -273,8 +273,8 @@ var Template = `
   <input name="query" id="query" placeholder=Search autocomplete=off>
   <button>Search</button>
 </form>
-<div id="recent-searches-container"></div>
 <div id="topics">%s</div>
+<div id="recent-searches-container"></div>
 <div>%s</div>
 ` + recentSearchesScript
 
@@ -616,8 +616,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), 500)
 				return
 			}
-
-			head = ""
 
 			html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
 			w.Write([]byte(html))
