@@ -21,15 +21,7 @@ import (
 var f embed.FS
 
 var Template = `<div id="home">
-  <div class="home-left">
-    <div class="card" id="home-chat">
-      <form id="home-chat-form" action="/chat" method="POST">
-        <input type="hidden" name="context" value="[]">
-        <input type="text" name="prompt" placeholder="Ask a question..." autocomplete="off" required>
-        <button type="submit">Ask</button>
-      </form>
-    </div>
-%s</div>
+  <div class="home-left">%s</div>
   <div class="home-right">%s</div>
 </div>`
 
@@ -192,6 +184,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var leftHTML []string
 	var rightHTML []string
 
+	// Add chat card at the top of the left column
+	chatForm := `<form id="home-chat-form" action="/chat" method="POST">
+  <input type="hidden" name="context" value="[]">
+  <input type="text" name="prompt" placeholder="Ask a question..." autocomplete="off" required>
+  <button type="submit">Ask</button>
+</form>`
+	leftHTML = append(leftHTML, app.Card("home-chat", "Chat", chatForm))
+
 	for _, card := range Cards {
 		content := card.CachedHTML
 		if strings.TrimSpace(content) == "" {
@@ -212,16 +212,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// create homepage
 	var homepage string
-	if len(leftHTML) == 0 && len(rightHTML) == 0 {
-		// No content - show message
-		homepage = `<div id="home"><div class="home-left">` +
-			app.Card("no-content", "Welcome", "<p>Welcome to Mu! Your personalized content will appear here.</p>") +
-			`</div><div class="home-right"></div></div>`
-	} else {
-		homepage = fmt.Sprintf(Template,
-			strings.Join(leftHTML, "\n"),
-			strings.Join(rightHTML, "\n"))
+	if len(leftHTML) == 1 && len(rightHTML) == 0 {
+		// Only chat card - show welcome message too
+		leftHTML = append(leftHTML, app.Card("no-content", "Welcome", "<p>Welcome to Mu! Your personalized content will appear here.</p>"))
 	}
+	
+	homepage = fmt.Sprintf(Template,
+		strings.Join(leftHTML, "\n"),
+		strings.Join(rightHTML, "\n"))
 
 	// render html using user's language preference
 	html := app.RenderHTMLForRequest("Home", "The Mu homescreen", homepage, r)
