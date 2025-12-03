@@ -175,6 +175,8 @@ var (
 	embeddingQueue  = make(chan string, 1000) // Queue of IDs needing embeddings
 	embeddingReady  = false                    // Flag to track if embedding generation is enabled
 	embeddingMutex  sync.RWMutex
+	savePending     = false // Flag to track if a save is already scheduled
+	saveMutex       sync.Mutex
 )
 
 // IndexEntry represents a searchable piece of content
@@ -506,10 +508,27 @@ func ClearIndex() {
 
 // saveIndex persists the index to disk
 func saveIndex() {
-	indexMutex.RLock()
-	defer indexMutex.RUnlock()
+	// Debounce saves - only save once even if called multiple times
+	saveMutex.Lock()
+	if savePending {
+		saveMutex.Unlock()
+		return
+	}
+	savePending = true
+	saveMutex.Unlock()
 
-	SaveJSON("index.json", index)
+	// Wait a bit to batch multiple index updates
+	time.Sleep(1 * time.Second)
+
+	indexMutex.RLock()
+	data := index
+	indexMutex.RUnlock()
+
+	SaveJSON("index.json", data)
+
+	saveMutex.Lock()
+	savePending = false
+	saveMutex.Unlock()
 }
 
 // Load loads the index from disk
