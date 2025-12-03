@@ -1242,15 +1242,21 @@ body:has(#messages) #content {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    justify-content: center;
   }
   .topic-tabs, #topics {
     flex-wrap: nowrap;
     gap: 8px;
+    justify-content: center;
   }
   #topic-selector .head, #topics .head {
     white-space: nowrap;
     font-size: 14px;
     padding: 5px 0;
+  }
+  /* Center post page action links on mobile */
+  #blog > div:first-child {
+    text-align: center;
   }
   body:has(#messages) #messages {
     flex: 1 1 auto;
