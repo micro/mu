@@ -372,10 +372,10 @@ func saveHtml(head, content []byte) {
 	if len(content) == 0 {
 		return
 	}
-	searchForm := `<form action="/news" method="GET" style="margin-bottom: 20px;">
-		<input name="q" placeholder="Search news" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; width: 300px;">
-		<button type="submit" style="padding: 10px 20px; font-size: 14px;">Search</button>
-	</form>`
+	searchForm := `<form action="/news" method="GET">
+  <input name="q" placeholder="Search news">
+  <button>Search</button>
+</form>`
 	body := fmt.Sprintf(`<div id="topics">%s</div>%s<div>%s</div>`, string(head), searchForm, string(content))
 	newsBodyHtml = body
 	data.SaveFile("news.html", newsBodyHtml)
@@ -1230,16 +1230,16 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	results := data.Search(query, 20)
 	
 	var searchResults []byte
-	searchResults = append(searchResults, []byte(`<form action="/news" method="GET" style="margin-bottom: 20px;">
-		<input name="q" value="`+query+`" placeholder="Search news" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; width: 300px;">
-		<button type="submit" style="padding: 10px 20px; font-size: 14px;">Search</button>
-		<a href="/news" style="margin-left: 10px; color: #666; text-decoration: none;">Clear</a>
-	</form>`)...)
+	searchResults = append(searchResults, []byte(`<form action="/news" method="GET">
+  <input name="q" value="`+query+`" placeholder="Search news">
+  <button>Search</button>
+  <a href="/news" style="margin-left: 10px; color: #666; text-decoration: none;">Clear</a>
+</form>`)...)
 	
 	if len(results) == 0 {
 		searchResults = append(searchResults, []byte(`<p>No results found for "`+query+`"</p>`)...)
 	} else {
-		searchResults = append(searchResults, []byte(fmt.Sprintf(`<h2>Search Results for "%s" (%d articles)</h2>`, query, len(results)))...)
+		searchResults = append(searchResults, []byte(fmt.Sprintf(`<h2>Results for "%s" (%d articles)</h2>`, query, len(results)))...)
 		
 		for _, entry := range results {
 			if entry.Type != "news" {
@@ -1255,7 +1255,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 			url := ""
 			category := ""
 			image := ""
-			published := ""
+			publishedAt := time.Time{}
 			
 			if v, ok := entry.Metadata["url"].(string); ok {
 				url = v
@@ -1267,7 +1267,17 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 				image = v
 			}
 			if v, ok := entry.Metadata["published"].(string); ok {
-				published = v
+				// Parse RFC3339 or RFC1123 format
+				if t, err := time.Parse(time.RFC3339, v); err == nil {
+					publishedAt = t
+				} else if t, err := time.Parse(time.RFC1123, v); err == nil {
+					publishedAt = t
+				}
+			}
+			
+			timeAgo := ""
+			if !publishedAt.IsZero() {
+				timeAgo = app.TimeAgo(publishedAt)
 			}
 			
 			discussLink := fmt.Sprintf(` | <a href="/chat?id=news_%s" style="color: inherit;">Discuss</a>`, entry.ID)
@@ -1284,7 +1294,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
     </div>
   </a>
   <div style="font-size: 0.8em; margin-top: 5px; color: #666;"><span class="highlight">%s</span> | %s%s</div>
-</div>`, entry.ID, url, image, title, description, category, published, discussLink)
+</div>`, entry.ID, url, image, title, description, category, timeAgo, discussLink)
 			} else {
 				article = fmt.Sprintf(`
 <div id="%s" class="news">
@@ -1296,14 +1306,14 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
     </div>
   </a>
   <div style="font-size: 0.8em; margin-top: 5px; color: #666;"><span class="highlight">%s</span> | %s%s</div>
-</div>`, entry.ID, url, title, description, category, published, discussLink)
+</div>`, entry.ID, url, title, description, category, timeAgo, discussLink)
 			}
 			
 			searchResults = append(searchResults, []byte(article)...)
 		}
 	}
 	
-	html := app.RenderHTMLForRequest("News Search", query, string(searchResults), r)
+	html := app.RenderHTMLForRequest("News", query, string(searchResults), r)
 	w.Write([]byte(html))
 }
 
