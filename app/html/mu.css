@@ -1280,7 +1280,7 @@ body:has(#messages) #content {
     max-width: 100%;
   }
   #home {
-    display: block;
+    display: flex;
     flex-direction: column;
     height: auto;
   }
@@ -1290,6 +1290,26 @@ body:has(#messages) #content {
   }
   .home-right {
     width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  #home-chat {
+    order: 1;
+  }
+  #reminder {
+    order: 2;
+  }
+  #markets {
+    order: 3;
+  }
+  #news {
+    order: 4;
+  }
+  #posts {
+    order: 5;
+  }
+  #video {
+    order: 6;
   }
   .cover {
     display: block;

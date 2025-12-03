@@ -1,13 +1,5 @@
 {
-  "left": [
-    {
-      "id": "news",
-      "title": "News",
-      "type": "news",
-      "position": 0,
-      "link": "/news"
-    }
-  ],
+  "left": [],
   "right": [
     {
       "id": "reminder",
@@ -31,10 +23,17 @@
       "link": "/posts"
     },
     {
+      "id": "news",
+      "title": "News",
+      "type": "news",
+      "position": 3,
+      "link": "/news"
+    },
+    {
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 3,
+      "position": 4,
       "link": "/video"
     }
   ]
