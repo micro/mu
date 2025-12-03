@@ -1237,14 +1237,15 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 </form>`)...)
 	
 	if len(results) == 0 {
-		searchResults = append(searchResults, []byte(`<p>No results found for "`+query+`"</p>`)...)
+		searchResults = append(searchResults, []byte(`<p>No results found</p>`)
 	} else {
-		searchResults = append(searchResults, []byte(fmt.Sprintf(`<h2>Results for "%s" (%d articles)</h2>`, query, len(results)))...)
+		searchResults = append(searchResults, []byte(`<h2>Results</h2>`)
 		
 		for _, entry := range results {
 			
 			title := entry.Title
-			description := entry.Content
+			// Clean HTML from description and truncate
+			description := htmlToText(entry.Content)
 			if len(description) > 300 {
 				description = description[:300] + "..."
 			}
