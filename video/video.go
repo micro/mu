@@ -664,21 +664,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// render watch page
 	if len(id) > 0 {
-		// get the page
-		tmpl := `<html>
-  <head>
-    <title>Video | Mu</title>
-  </head>
-  <body>
-  %s
-  </body>
-</html>
-`
-		discussLink := fmt.Sprintf(`<div style="text-align: center; margin-top: 20px;"><a href="/chat?id=video_%s" style="color: #0066cc; font-size: 16px;">💬 Discuss this video</a></div>`, id)
-		html := fmt.Sprintf(`<div class="video" style="padding-top: 100px">%s%s</div>`, embedVideo(id), discussLink)
-		rhtml := fmt.Sprintf(tmpl, html)
-		w.Write([]byte(rhtml))
-
+		discussLink := fmt.Sprintf(`<div style="margin-bottom: 15px;"><a href="/chat?id=video_%s" style="color: #666; text-decoration: none; font-size: 14px;">💬 Discuss</a></div>`, id)
+		videoEmbed := fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin-bottom: 20px;"><iframe src="https://www.youtube.com/embed/%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, id)
+		content := discussLink + videoEmbed
+		html := app.RenderHTMLForRequest("Video", "Watch video", content, r)
+		w.Write([]byte(html))
 		return
 	}
 
