@@ -75,98 +75,35 @@ var Endpoints = []*Endpoint{{
 		},
 	},
 }, {
-	Name:        "Video",
-	Path:        "/video",
-	Method:      "GET",
-	Description: "Latest videos",
-	Response: []*Value{
-		{
-			Type: "JSON",
-			Params: []*Param{
-				{
-					Name:        "channels",
-					Value:       "array",
-					Description: "Latest videos",
-				},
-			},
-		},
-	},
-}, {
-	Name:        "Video",
-	Path:        "/video",
+	Name:        "News Search",
+	Path:        "/news",
 	Method:      "POST",
-	Description: "Search for videos",
+	Description: "Search for news articles",
 	Params: []*Param{
 		{
 			Name:        "query",
 			Value:       "string",
-			Description: "Video search query",
+			Description: "News search query",
 		},
 	},
 	Response: []*Value{
 		{
 			Type: "JSON",
 			Params: []*Param{
+				{
+					Name:        "query",
+					Value:       "string",
+					Description: "The search query",
+				},
 				{
 					Name:        "results",
 					Value:       "array",
-					Description: "Video search results",
+					Description: "Array of news article objects with id, title, description, url, category, image, published",
 				},
 				{
-					Name:        "html",
-					Value:       "string",
-					Description: "Pre-rendered html string of results",
-				},
-			},
-		},
-	},
-}, {
-	Name:        "Posts",
-	Path:        "/posts",
-	Method:      "GET",
-	Description: "Get all blog posts",
-	Response: []*Value{
-		{
-			Type: "JSON",
-			Params: []*Param{
-				{
-					Name:        "posts",
-					Value:       "array",
-					Description: "Array of post objects",
-				},
-			},
-		},
-	},
-}, {
-	Name:        "Create Post",
-	Path:        "/post",
-	Method:      "POST",
-	Description: "Create a new blog post",
-	Params: []*Param{
-		{
-			Name:        "title",
-			Value:       "string",
-			Description: "Post title (optional)",
-		},
-		{
-			Name:        "content",
-			Value:       "string",
-			Description: "Post content (minimum 50 characters)",
-		},
-	},
-	Response: []*Value{
-		{
-			Type: "JSON",
-			Params: []*Param{
-				{
-					Name:        "success",
-					Value:       "boolean",
-					Description: "Whether the post was created successfully",
-				},
-				{
-					Name:        "id",
-					Value:       "string",
-					Description: "The ID of the created post",
+					Name:        "count",
+					Value:       "number",
+					Description: "Number of results returned",
 				},
 			},
 		},
@@ -243,6 +180,103 @@ var Endpoints = []*Endpoint{{
 					Name:        "id",
 					Value:       "string",
 					Description: "The ID of the updated post",
+				},
+			},
+		},
+	},
+}, {
+	Name:        "Create Post",
+	Path:        "/post",
+	Method:      "POST",
+	Description: "Create a new blog post",
+	Params: []*Param{
+		{
+			Name:        "title",
+			Value:       "string",
+			Description: "Post title (optional)",
+		},
+		{
+			Name:        "content",
+			Value:       "string",
+			Description: "Post content (minimum 50 characters)",
+		},
+	},
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "success",
+					Value:       "boolean",
+					Description: "Whether the post was created successfully",
+				},
+				{
+					Name:        "id",
+					Value:       "string",
+					Description: "The ID of the created post",
+				},
+			},
+		},
+	},
+}, {
+	Name:        "Posts",
+	Path:        "/posts",
+	Method:      "GET",
+	Description: "Get all blog posts",
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "posts",
+					Value:       "array",
+					Description: "Array of post objects",
+				},
+			},
+		},
+	},
+}, {
+	Name:        "Video",
+	Path:        "/video",
+	Method:      "GET",
+	Description: "Latest videos",
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "channels",
+					Value:       "array",
+					Description: "Latest videos",
+				},
+			},
+		},
+	},
+}, {
+	Name:        "Video Search",
+	Path:        "/video",
+	Method:      "POST",
+	Description: "Search for videos",
+	Params: []*Param{
+		{
+			Name:        "query",
+			Value:       "string",
+			Description: "Video search query",
+		},
+	},
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "results",
+					Value:       "array",
+					Description: "Video search results",
+				},
+				{
+					Name:        "html",
+					Value:       "string",
+					Description: "Pre-rendered html string of results",
 				},
 			},
 		},

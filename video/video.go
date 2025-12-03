@@ -253,7 +253,7 @@ var recentSearchesScript = `
 var Results = `
 <style>` + commonStyles + `
 </style>
-<form id="video-search" action="/video" method="POST">
+<form id="video-search" action="/video" method="GET">
   <input name="query" id="query" value="%s">
   <button>Search</button>
 </form>
@@ -269,7 +269,7 @@ var Template = `
 <style>` + commonStyles + `
 </style>
 <!-- <form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;"> -->
-<form id="video-search" action="/video" method="POST">
+<form id="video-search" action="/video" method="GET">
   <input name="query" id="query" placeholder=Search autocomplete=off>
   <button>Search</button>
 </form>
@@ -604,6 +604,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(chanNames)
 	for _, channel := range chanNames {
 		head += fmt.Sprintf(`<a href="/video#%s" class="head">%s</a>`, channel, channel)
+	}
+
+	// Handle GET with query parameter (search)
+	if r.Method == "GET" {
+		query := r.URL.Query().Get("query")
+		if len(query) > 0 {
+			// fetch results from api
+			results, _, err := getResults(query, "")
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+			head = ""
+
+			html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
+			w.Write([]byte(html))
+			return
+		}
 	}
 
 	// if r.Method == "POST" {

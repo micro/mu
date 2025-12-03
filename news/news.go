@@ -373,7 +373,7 @@ func saveHtml(head, content []byte) {
 		return
 	}
 	searchForm := `<form id="news-search" action="/news" method="GET">
-  <input name="q" placeholder="Search news">
+  <input name="query" placeholder="Search news">
   <button>Search</button>
 </form>`
 	body := fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, string(head), string(content))
@@ -1200,8 +1200,56 @@ func Reminder() string {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	ct := r.Header.Get("Content-Type")
+	
+	// Handle POST with JSON (API endpoint)
+	if r.Method == "POST" && ct == "application/json" {
+		var reqData map[string]interface{}
+		b, _ := ioutil.ReadAll(r.Body)
+		json.Unmarshal(b, &reqData)
+		
+		query := ""
+		if v := reqData["query"]; v != nil {
+			query = fmt.Sprintf("%v", v)
+		}
+		
+		if query == "" {
+			http.Error(w, "query required", 400)
+			return
+		}
+		
+		// Search indexed news articles with type filter
+		results := data.Search(query, 20, data.WithType("news"))
+		
+		// Format results for JSON response
+		var articles []map[string]interface{}
+		for _, entry := range results {
+			article := map[string]interface{}{
+				"id":          entry.ID,
+				"title":       entry.Title,
+				"description": htmlToText(entry.Content),
+				"url":         entry.Metadata["url"],
+				"category":    entry.Metadata["category"],
+				"image":       entry.Metadata["image"],
+				"published":   entry.Metadata["published"],
+			}
+			articles = append(articles, article)
+		}
+		
+		resp := map[string]interface{}{
+			"query":   query,
+			"results": articles,
+			"count":   len(articles),
+		}
+		
+		b, _ = json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(b)
+		return
+	}
+	
 	// Handle search query
-	query := r.URL.Query().Get("q")
+	query := r.URL.Query().Get("query")
 	if query != "" {
 		handleSearch(w, r, query)
 		return
@@ -1231,7 +1279,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	
 	var searchResults []byte
 	searchResults = append(searchResults, []byte(`<form id="news-search" action="/news" method="GET">
-  <input name="q" value="`+query+`" placeholder="Search news">
+  <input name="query" value="`+query+`" placeholder="Search news">
   <button>Search</button>
   <a href="/news" style="margin-left: 10px; color: #666; text-decoration: none;">Clear</a>
 </form>`)...)
