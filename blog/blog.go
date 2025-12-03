@@ -365,26 +365,45 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	list := postsList
 	mutex.RUnlock()
 
-	// Create the blog page with posting form
-	content := fmt.Sprintf(`<div id="blog">
-		<div style="margin-bottom: 30px;">
-			<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
-				<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-				<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
-				<div style="display: flex; justify-content: space-between; align-items: center;">
-					<span id="char-count" style="font-size: 12px; color: #666;">Minimum 50 characters</span>
-					<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Post</button>
-				</div>
-			</form>
-		</div>
-		<div style="margin-bottom: 15px;">
-			<a href="/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
-		</div>
-		<hr style='margin: 0 0 30px 0; border: none; border-top: 2px solid #333;'>
-		<div id="posts-list">
-			%s
-		</div>
-	</div>`, list)
+	// Check if write mode is requested
+	showWriteForm := r.URL.Query().Get("write") == "true"
+
+	var content string
+	if showWriteForm {
+		// Show the posting form
+		content = fmt.Sprintf(`<div id="blog">
+			<div style="margin-bottom: 30px;">
+				<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
+					<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
+					<div style="display: flex; justify-content: space-between; align-items: center;">
+						<span id="char-count" style="font-size: 12px; color: #666;">Minimum 50 characters</span>
+						<div style="display: flex; gap: 10px;">
+							<a href="/posts" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
+							<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Post</button>
+						</div>
+					</div>
+				</form>
+			</div>
+			<hr style='margin: 0 0 30px 0; border: none; border-top: 2px solid #333;'>
+			<div id="posts-list">
+				%s
+			</div>
+		</div>`, list)
+	} else {
+		// Show posts list with write link
+		content = fmt.Sprintf(`<div id="blog">
+			<div style="margin-bottom: 15px;">
+				<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
+				<span style="margin: 0 8px; color: #ccc;">·</span>
+				<a href="/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
+			</div>
+			<hr style='margin: 0 0 30px 0; border: none; border-top: 2px solid #333;'>
+			<div id="posts-list">
+				%s
+			</div>
+		</div>`, list)
+	}
 
 	html := app.RenderHTMLForRequest("Posts", "Share your thoughts", content, r)
 	w.Write([]byte(html))
