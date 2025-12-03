@@ -271,6 +271,79 @@ func getOrCreateRoom(id string) *Room {
 	rooms[id] = room
 	roomsMutex.Unlock()
 
+	// Subscribe to index complete events via channel
+	go func() {
+		sub := data.Subscribe(data.EventIndexComplete)
+		defer sub.Close()
+
+		// Wait for either index event or timeout
+		timeout := time.After(5 * time.Second)
+
+		for {
+			select {
+			case event, ok := <-sub.Chan:
+				if !ok {
+					// Channel closed
+					return
+				}
+				if itemID, ok := event.Data["id"].(string); ok {
+					// Check if this is our room's item
+					parts := strings.SplitN(room.ID, "_", 2)
+					if len(parts) == 2 && parts[1] == itemID {
+						// Fetch updated entry
+						entry := data.GetByID(itemID)
+						if entry != nil {
+							room.mutex.Lock()
+							room.Title = entry.Title
+							room.Summary = entry.Content
+							if len(room.Summary) > 2000 {
+								room.Summary = room.Summary[:2000] + "..."
+							}
+							if url, ok := entry.Metadata["url"].(string); ok {
+								room.URL = url
+							}
+							room.mutex.Unlock()
+							app.Log("chat", "Updated room %s context from index event", room.ID)
+							return // Got content, done
+						}
+					}
+				}
+				// Not our item, keep waiting
+
+			case <-timeout:
+				// Fallback: Try fetching directly
+				room.mutex.RLock()
+				hasContent := room.Summary != "" && room.Summary != "Loading article content..." &&
+					room.Summary != "Loading post content..." && room.Summary != "Loading video content..."
+				room.mutex.RUnlock()
+
+				if !hasContent {
+					app.Log("chat", "Room %s still has no content after 5s, attempting direct fetch", room.ID)
+					parts := strings.SplitN(room.ID, "_", 2)
+					if len(parts) == 2 {
+						entry := data.GetByID(parts[1])
+						if entry != nil {
+							room.mutex.Lock()
+							room.Title = entry.Title
+							room.Summary = entry.Content
+							if len(room.Summary) > 2000 {
+								room.Summary = room.Summary[:2000] + "..."
+							}
+							if url, ok := entry.Metadata["url"].(string); ok {
+								room.URL = url
+							}
+							room.mutex.Unlock()
+							app.Log("chat", "Updated room %s context via fallback", room.ID)
+						} else {
+							app.Log("chat", "Room %s item still not indexed after 5s", room.ID)
+						}
+					}
+				}
+				return // Done after timeout
+			}
+		}
+	}()
+
 	go room.run()
 
 	app.Log("chat", "[getOrCreateRoom] Created room %s (total time %v)", id, time.Since(start))
@@ -581,15 +654,15 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							Question: content,
 						}
 
-							resp, err := askLLM(prompt)
-							if err == nil && len(resp) > 0 {
-								llmMsg := RoomMessage{
-									UserID:    "AI",
-									Content:   resp,
-									Timestamp: time.Now(),
-									IsLLM:     true,
-								}
-								room.Broadcast <- llmMsg
+						resp, err := askLLM(prompt)
+						if err == nil && len(resp) > 0 {
+							llmMsg := RoomMessage{
+								UserID:    "AI",
+								Content:   resp,
+								Timestamp: time.Now(),
+								IsLLM:     true,
+							}
+							room.Broadcast <- llmMsg
 						}
 					}()
 				}

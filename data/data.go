@@ -22,6 +22,7 @@ import (
 // Event types
 const (
 	EventRefreshHNComments = "refresh_hn_comments"
+	EventIndexComplete     = "index_complete"
 )
 
 // Event represents a data event
@@ -45,29 +46,72 @@ func WithType(entryType string) SearchOption {
 	}
 }
 
-// EventHandler is a function that handles events
-type EventHandler func(Event)
-
-var (
-	eventMutex    sync.RWMutex
-	eventHandlers = make(map[string][]EventHandler)
-)
-
-// Subscribe registers a handler for a specific event type
-func Subscribe(eventType string, handler EventHandler) {
-	eventMutex.Lock()
-	defer eventMutex.Unlock()
-	eventHandlers[eventType] = append(eventHandlers[eventType], handler)
+// EventSubscription represents an active subscription
+type EventSubscription struct {
+	Chan      chan Event
+	eventType string
+	id        string
 }
 
-// Publish sends an event to all registered handlers
+var (
+	eventMutex       sync.RWMutex
+	eventSubscribers = make(map[string]map[string]chan Event) // eventType -> subscriberID -> channel
+	subscriberIDSeq  int
+)
+
+// Subscribe creates a channel-based subscription for a specific event type
+func Subscribe(eventType string) *EventSubscription {
+	eventMutex.Lock()
+	defer eventMutex.Unlock()
+
+	// Generate unique subscriber ID
+	subscriberIDSeq++
+	id := fmt.Sprintf("sub_%d", subscriberIDSeq)
+
+	// Create buffered channel to prevent blocking
+	ch := make(chan Event, 10)
+
+	// Initialize map if needed
+	if eventSubscribers[eventType] == nil {
+		eventSubscribers[eventType] = make(map[string]chan Event)
+	}
+
+	eventSubscribers[eventType][id] = ch
+
+	return &EventSubscription{
+		Chan:      ch,
+		eventType: eventType,
+		id:        id,
+	}
+}
+
+// Close closes the channel and removes the subscription
+func (s *EventSubscription) Close() {
+	eventMutex.Lock()
+	defer eventMutex.Unlock()
+
+	if subscribers, ok := eventSubscribers[s.eventType]; ok {
+		if ch, ok := subscribers[s.id]; ok {
+			close(ch)
+			delete(subscribers, s.id)
+		}
+	}
+}
+
+// Publish sends an event to all subscribers
 func Publish(event Event) {
 	eventMutex.RLock()
-	handlers := eventHandlers[event.Type]
+	subscribers := eventSubscribers[event.Type]
 	eventMutex.RUnlock()
 
-	for _, handler := range handlers {
-		go handler(event) // Run handlers asynchronously
+	// Send to channel subscribers (non-blocking)
+	for _, ch := range subscribers {
+		select {
+		case ch <- event:
+			// Sent successfully
+		default:
+			// Channel full, skip (subscriber should have buffer or be reading)
+		}
 	}
 }
 
@@ -133,12 +177,12 @@ var (
 )
 
 type indexJob struct {
-	id       string
+	id        string
 	entryType string
-	title    string
-	content  string
-	metadata map[string]interface{}
-	priority int // 0 = high (new), 1 = low (re-index)
+	title     string
+	content   string
+	metadata  map[string]interface{}
+	priority  int // 0 = high (new), 1 = low (re-index)
 }
 
 // IndexEntry represents a searchable piece of content
@@ -172,12 +216,12 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	}
 
 	job := &indexJob{
-		id:       id,
+		id:        id,
 		entryType: entryType,
-		title:    title,
-		content:  content,
-		metadata: metadata,
-		priority: 0, // High priority (new)
+		title:     title,
+		content:   content,
+		metadata:  metadata,
+		priority:  0, // High priority (new)
 	}
 
 	// If already exists, it's a re-index (lower priority)
@@ -194,20 +238,45 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	}
 }
 
+// IndexSync performs synchronous indexing (blocks until complete)
+// Use this when you need the item immediately available (e.g., for room lookups)
+func IndexSync(id, entryType, title, content string, metadata map[string]interface{}) {
+	// Check if already indexed
+	indexMutex.RLock()
+	existing, exists := index[id]
+	indexMutex.RUnlock()
+
+	// Skip if recently indexed (within 30 seconds)
+	if exists && time.Since(existing.IndexedAt) < 30*time.Second {
+		fmt.Printf("[data] Skipping re-index of %s (indexed %v ago)\n", id, time.Since(existing.IndexedAt).Round(time.Second))
+		return
+	}
+
+	// Perform immediate indexing
+	performIndex(&indexJob{
+		id:        id,
+		entryType: entryType,
+		title:     title,
+		content:   content,
+		metadata:  metadata,
+		priority:  0,
+	})
+}
+
 // processIndexQueue is a background worker that processes index jobs
 func processIndexQueue() {
 	// Wait for system to be ready
 	<-indexingReady
-	
+
 	fmt.Println("[data] Index worker started")
-	
+
 	// High and low priority queues
 	highPriority := []*indexJob{}
 	lowPriority := []*indexJob{}
-	
+
 	for {
 		var job *indexJob
-		
+
 		// Process high priority first
 		if len(highPriority) > 0 {
 			job = highPriority[0]
@@ -220,7 +289,7 @@ func processIndexQueue() {
 			// Wait for new job
 			job = <-indexQueue
 		}
-		
+
 		// Sort into priority queues
 		if job.priority == 0 {
 			// High priority - process immediately
@@ -228,7 +297,7 @@ func processIndexQueue() {
 		} else {
 			// Low priority - add to queue
 			lowPriority = append(lowPriority, job)
-			
+
 			// Drain incoming queue into priority queues
 			for len(indexQueue) > 0 {
 				newJob := <-indexQueue
@@ -238,7 +307,7 @@ func processIndexQueue() {
 					lowPriority = append(lowPriority, newJob)
 				}
 			}
-			
+
 			// Process one high priority if available
 			if len(highPriority) > 0 {
 				job = highPriority[0]
@@ -251,7 +320,7 @@ func processIndexQueue() {
 				performIndex(job)
 			}
 		}
-		
+
 		// Small delay to prevent CPU spinning
 		time.Sleep(10 * time.Millisecond)
 	}
@@ -289,6 +358,15 @@ func performIndex(job *indexJob) {
 	indexMutex.Lock()
 	index[job.id] = entry
 	indexMutex.Unlock()
+
+	// Publish event that indexing is complete
+	Publish(Event{
+		Type: EventIndexComplete,
+		Data: map[string]interface{}{
+			"id":   job.id,
+			"type": job.entryType,
+		},
+	})
 
 	// Persist to disk (async)
 	go saveIndex()
@@ -402,7 +480,7 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 		if options.Type != "" && entry.Type != options.Type {
 			continue
 		}
-		
+
 		score := 0.0
 		titleLower := strings.ToLower(entry.Title)
 		contentLower := strings.ToLower(entry.Content)
@@ -491,7 +569,7 @@ func Load() {
 	defer indexMutex.Unlock()
 
 	json.Unmarshal(b, &index)
-	
+
 	// Start background indexing worker
 	go processIndexQueue()
 }

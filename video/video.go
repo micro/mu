@@ -474,13 +474,13 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		if kind == "video" {
 			discussLink = fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, id)
 		}
-		
+
 		// For internal video links, no target blank. For external links (playlist/channel), use target blank
 		target := ""
 		if kind == "playlist" || kind == "channel" {
 			target = ` target="_blank"`
 		}
-		
+
 		html := fmt.Sprintf(`
 		<div class="thumbnail"><a href="%s"%s><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
 			url, target, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
@@ -567,13 +567,13 @@ func getResults(query, channel string) (string, []*Result, error) {
 		if kind == "video" {
 			discussLink = fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, id)
 		}
-		
+
 		// For internal video links, no target blank. For external links (playlist/channel), use target blank
 		target := ""
 		if kind == "playlist" || kind == "channel" {
 			target = ` target="_blank"`
 		}
-		
+
 		html := fmt.Sprintf(`
 			<div class="thumbnail"><a href="%s"%s><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
 			url, target, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
@@ -615,7 +615,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Search query must not exceed 256 characters", http.StatusBadRequest)
 				return
 			}
-			
+
 			// fetch results from api
 			results, _, err := getResults(query, "")
 			if err != nil {

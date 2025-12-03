@@ -953,7 +953,7 @@ func parseFeed() {
 			news = append(news, post)
 
 			// Index the article for search/RAG (async)
-			// Always index to keep timestamps current
+			// Rooms will subscribe to index events and update when ready
 			// Note: getMetadata() already caches, so we're not refetching unless needed
 			go func(id, title, desc, content, comments, link, category string, postedAt time.Time, image string) {
 				// Combine all content: description + article content + comments
@@ -1127,12 +1127,15 @@ func parseFeed() {
 
 func Load() {
 	// Subscribe to refresh events
-	data.Subscribe(data.EventRefreshHNComments, func(event data.Event) {
-		if url, ok := event.Data["url"].(string); ok {
-			app.Log("news", "Received refresh request for: %s", url)
-			RefreshHNMetadata(url)
+	sub := data.Subscribe(data.EventRefreshHNComments)
+	go func() {
+		for event := range sub.Chan {
+			if url, ok := event.Data["url"].(string); ok {
+				app.Log("news", "Received refresh request for: %s", url)
+				RefreshHNMetadata(url)
+			}
 		}
-	})
+	}()
 
 	// load headlines
 	b, _ := data.LoadFile("headlines.html")
@@ -1199,26 +1202,26 @@ func Reminder() string {
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	ct := r.Header.Get("Content-Type")
-	
+
 	// Handle POST with JSON (API endpoint)
 	if r.Method == "POST" && ct == "application/json" {
 		var reqData map[string]interface{}
 		b, _ := ioutil.ReadAll(r.Body)
 		json.Unmarshal(b, &reqData)
-		
+
 		query := ""
 		if v := reqData["query"]; v != nil {
 			query = fmt.Sprintf("%v", v)
 		}
-		
+
 		if query == "" {
 			http.Error(w, "query required", 400)
 			return
 		}
-		
+
 		// Search indexed news articles with type filter
 		results := data.Search(query, 20, data.WithType("news"))
-		
+
 		// Format results for JSON response
 		var articles []map[string]interface{}
 		for _, entry := range results {
@@ -1233,19 +1236,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			articles = append(articles, article)
 		}
-		
+
 		resp := map[string]interface{}{
 			"query":   query,
 			"results": articles,
 			"count":   len(articles),
 		}
-		
+
 		b, _ = json.Marshal(resp)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
 		return
 	}
-	
+
 	// Handle search query
 	query := r.URL.Query().Get("query")
 	if query != "" {
@@ -1279,33 +1282,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	// Search indexed news articles with type filter
 	results := data.Search(query, 20, data.WithType("news"))
-	
+
 	var searchResults []byte
 	searchResults = append(searchResults, []byte(`<form id="news-search" action="/news" method="GET">
   <input name="query" value="`+query+`" placeholder="Search news">
   <button>Search</button>
   <a href="/news" style="margin-left: 10px; color: #666; text-decoration: none;">Clear</a>
 </form>`)...)
-	
+
 	if len(results) == 0 {
 		searchResults = append(searchResults, []byte("<p>No results found</p>")...)
 	} else {
 		searchResults = append(searchResults, []byte("<h2>Results</h2>")...)
-		
+
 		for _, entry := range results {
-			
+
 			title := entry.Title
 			// Clean HTML from description and truncate
 			description := htmlToText(entry.Content)
 			if len(description) > 300 {
 				description = description[:300] + "..."
 			}
-			
+
 			url := ""
 			category := ""
 			image := ""
 			postedAt := time.Time{}
-			
+
 			if v, ok := entry.Metadata["url"].(string); ok {
 				url = v
 			}
@@ -1318,14 +1321,14 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 			if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
 				postedAt = v
 			}
-			
+
 			timeAgo := ""
 			if !postedAt.IsZero() {
 				timeAgo = app.TimeAgo(postedAt)
 			}
-			
+
 			discussLink := fmt.Sprintf(` | <a href="/chat?id=news_%s" style="color: inherit;">Discuss</a>`, entry.ID)
-			
+
 			var article string
 			if image != "" {
 				article = fmt.Sprintf(`
@@ -1352,11 +1355,11 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
   <div style="font-size: 0.8em; margin-top: 5px; color: #666;"><span class="highlight">%s</span> | %s%s</div>
 </div>`, entry.ID, url, title, description, category, timeAgo, discussLink)
 			}
-			
+
 			searchResults = append(searchResults, []byte(article)...)
 		}
 	}
-	
+
 	html := app.RenderHTMLForRequest("News", query, string(searchResults), r)
 	w.Write([]byte(html))
 }
