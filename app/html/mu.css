@@ -841,10 +841,16 @@ body:has(#messages) #content {
 
 #video form {
   width: 100%;
-  margin: 0;
+  margin: 0 0 20px 0;
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+#video form input {
+  width: 90%;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 #video form button {
@@ -859,7 +865,7 @@ body:has(#messages) #content {
    ======================================== */
 #news-search {
   width: 100%;
-  margin: 0;
+  margin: 0 0 20px 0;
   display: flex;
   gap: 10px;
   align-items: center;
