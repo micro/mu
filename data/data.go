@@ -170,13 +170,10 @@ func LoadJSON(key string, val interface{}) error {
 // ============================================
 
 var (
-	indexMutex      sync.RWMutex
-	index           = make(map[string]*IndexEntry)
-	embeddingQueue  = make(chan string, 1000) // Queue of IDs needing embeddings
-	embeddingReady  = false                    // Flag to track if embedding generation is enabled
-	embeddingMutex  sync.RWMutex
-	savePending     = false // Flag to track if a save is already scheduled
-	saveMutex       sync.Mutex
+	indexMutex  sync.RWMutex
+	index       = make(map[string]*IndexEntry)
+	savePending = false
+	saveMutex   sync.Mutex
 )
 
 // IndexEntry represents a searchable piece of content
@@ -196,23 +193,17 @@ type SearchResult struct {
 	Score float64
 }
 
-// Index adds or updates an entry in the search index immediately (synchronous)
-// Embedding generation is queued separately for async processing
+// Index adds or updates an entry in the search index immediately
 func Index(id, entryType, title, content string, metadata map[string]interface{}) {
-	// Check if already indexed
 	indexMutex.RLock()
 	existing, exists := index[id]
 	indexMutex.RUnlock()
 
 	// Skip if recently indexed (within 30 seconds)
 	if exists && time.Since(existing.IndexedAt) < 30*time.Second {
-		fmt.Printf("[data] Skipping re-index of %s (indexed %v ago)\n", id, time.Since(existing.IndexedAt).Round(time.Second))
 		return
 	}
 
-	fmt.Printf("[data] Indexing %s: %s\n", entryType, title)
-
-	// Create entry immediately (without embedding)
 	entry := &IndexEntry{
 		ID:        id,
 		Type:      entryType,
@@ -222,7 +213,6 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 		IndexedAt: time.Now(),
 	}
 
-	// Add to index immediately for text search
 	indexMutex.Lock()
 	index[id] = entry
 	indexMutex.Unlock()
@@ -236,106 +226,13 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 		},
 	})
 
-	// Queue for embedding generation (async)
-	select {
-	case embeddingQueue <- id:
-		// Queued successfully
-	default:
-		fmt.Printf("[data] Embedding queue full, skipping embedding for %s\n", id)
-	}
-
-	// Persist to disk (async)
+	// Persist to disk (debounced)
 	go saveIndex()
 }
 
-// processEmbeddingQueue is a background worker that generates embeddings
-func processEmbeddingQueue() {
-	fmt.Println("[data] Embedding worker started (waiting for StartIndexing signal)")
-
-	for {
-		// Check if embedding generation is enabled
-		embeddingMutex.RLock()
-		enabled := embeddingReady
-		embeddingMutex.RUnlock()
-
-		if !enabled {
-			// Not ready yet, wait a bit and check again
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
-		// Wait for ID to process
-		var id string
-		select {
-		case id = <-embeddingQueue:
-			// Got an ID
-		case <-time.After(100 * time.Millisecond):
-			// Timeout, loop to check enabled flag again
-			continue
-		}
-
-		// Get the entry
-		indexMutex.RLock()
-		entry := index[id]
-		indexMutex.RUnlock()
-
-		if entry == nil {
-			fmt.Printf("[data] Entry %s not found for embedding generation\n", id)
-			continue
-		}
-
-		// Skip if already has embedding
-		if len(entry.Embedding) > 0 {
-			fmt.Printf("[data] Entry %s already has embedding, skipping\n", id)
-			continue
-		}
-
-		fmt.Printf("[data] Generating embedding for %s: %s\n", entry.Type, entry.Title)
-
-		// Generate embedding
-		textToEmbed := entry.Title
-		if len(entry.Content) > 0 {
-			// Combine title and beginning of content for better embeddings
-			maxContent := 500
-			if len(entry.Content) < maxContent {
-				maxContent = len(entry.Content)
-			}
-			textToEmbed = entry.Title + " " + entry.Content[:maxContent]
-		}
-
-		embedding, err := getEmbedding(textToEmbed)
-		if err != nil {
-			fmt.Printf("[data] Failed to generate embedding for %s: %v\n", id, err)
-			continue
-		}
-
-		if len(embedding) > 0 {
-			// Update entry with embedding
-			indexMutex.Lock()
-			if entry := index[id]; entry != nil {
-				entry.Embedding = embedding
-			}
-			indexMutex.Unlock()
-
-			// Persist to disk (async)
-			go saveIndex()
-		}
-
-		// Small delay to prevent overwhelming Ollama
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-// StartIndexing signals that the system is ready for embedding generation
-// Note: Indexing itself is now synchronous and doesn't need to be "started"
+// StartIndexing is kept for compatibility
 func StartIndexing() {
-	embeddingMutex.Lock()
-	defer embeddingMutex.Unlock()
-
-	if !embeddingReady {
-		embeddingReady = true
-		fmt.Println("[data] Embedding generation enabled")
-	}
+	fmt.Println("[data] Indexing ready (now always active)")
 }
 
 // GetByID retrieves an entry by its exact ID
@@ -535,17 +432,12 @@ func saveIndex() {
 func Load() {
 	b, err := LoadFile("index.json")
 	if err != nil {
-		// Start background embedding worker even if no existing index
-		go processEmbeddingQueue()
 		return
 	}
 
 	indexMutex.Lock()
 	json.Unmarshal(b, &index)
 	indexMutex.Unlock()
-
-	// Start background embedding worker after releasing the lock
-	go processEmbeddingQueue()
 }
 
 // ============================================
