@@ -839,7 +839,7 @@ body:has(#messages) #content {
   border-radius: 5px;
 }
 
-#video form {
+#video-search {
   width: 100%;
   margin: 0 0 20px 0;
   display: flex;
@@ -847,13 +847,13 @@ body:has(#messages) #content {
   align-items: center;
 }
 
-#video form input {
+#video-search input {
   width: 90%;
   flex: 0 1 auto;
   min-width: 0;
 }
 
-#video form button {
+#video-search button {
   padding: 10px 20px;
   margin: 0;
   width: auto;
@@ -1237,7 +1237,7 @@ body:has(#messages) #content {
     max-width: 100%;
     box-sizing: border-box;
   }
-  #video form {
+  #video-search {
     display: flex;
     max-width: 100%;
   }

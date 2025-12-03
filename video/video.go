@@ -253,7 +253,7 @@ var recentSearchesScript = `
 var Results = `
 <style>` + commonStyles + `
 </style>
-<form action="/video" method="POST">
+<form id="video-search" action="/video" method="POST">
   <input name="query" id="query" value="%s">
   <button>Search</button>
 </form>
@@ -269,7 +269,7 @@ var Template = `
 <style>` + commonStyles + `
 </style>
 <!-- <form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;"> -->
-<form action="/video" method="POST">
+<form id="video-search" action="/video" method="POST">
   <input name="query" id="query" placeholder=Search autocomplete=off>
   <button>Search</button>
 </form>
