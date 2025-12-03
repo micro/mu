@@ -879,7 +879,7 @@ func parseFeed() {
 			}
 
 			// get meta
-			md, freshlyFetched, err := getMetadata(link)
+			md, _, err := getMetadata(link)
 			if err != nil {
 				app.Log("news", "Error parsing %s: %v", link, err)
 				continue
