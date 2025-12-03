@@ -827,12 +827,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Search the index for relevant context (RAG)
-		// If topic is provided, use it as additional context for search
-		searchQuery := q
-		if len(topic) > 0 {
-			searchQuery = topic + " " + q
-		}
-		ragEntries := data.Search(searchQuery, 3)
+		// Search directly with the user's query to find best matches
+		ragEntries := data.Search(q, 5)
 		var ragContext []string
 		for _, entry := range ragEntries {
 			// Debug: Show raw entry
@@ -851,7 +847,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Debug: Log what we found
 		if len(ragEntries) > 0 {
-			app.Log("chat", "[RAG] Query: %s", searchQuery)
+			app.Log("chat", "[RAG] Query: %s", q)
 			app.Log("chat", "[RAG] Found %d entries:", len(ragEntries))
 			for i, entry := range ragEntries {
 				app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
@@ -861,7 +857,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				app.Log("chat", "  %d. %s", i+1, ctx)
 			}
 		} else {
-			app.Log("chat", "[RAG] Query: %s - NO RESULTS", searchQuery)
+			app.Log("chat", "[RAG] Query: %s - NO RESULTS", q)
 		}
 
 		prompt := &Prompt{
