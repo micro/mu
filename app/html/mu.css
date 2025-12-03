@@ -865,6 +865,11 @@ body:has(#messages) #content {
   align-items: center;
 }
 
+#news form input {
+  flex: 1;
+  min-width: 0;
+}
+
 #news form button {
   padding: 10px 20px;
   margin: 0;

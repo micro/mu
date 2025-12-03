@@ -376,7 +376,7 @@ func saveHtml(head, content []byte) {
   <input name="q" placeholder="Search news">
   <button>Search</button>
 </form>`
-	body := fmt.Sprintf(`<div id="topics">%s</div>%s<div>%s</div>`, string(head), searchForm, string(content))
+	body := fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, string(head), string(content))
 	newsBodyHtml = body
 	data.SaveFile("news.html", newsBodyHtml)
 	app.Log("news", "Saved news.html (%d bytes)", len(newsBodyHtml))
