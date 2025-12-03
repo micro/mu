@@ -474,9 +474,16 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		if kind == "video" {
 			discussLink = fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, id)
 		}
+		
+		// For internal video links, no target blank. For external links (playlist/channel), use target blank
+		target := ""
+		if kind == "playlist" || kind == "channel" {
+			target = ` target="_blank"`
+		}
+		
 		html := fmt.Sprintf(`
-		<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+		<div class="thumbnail"><a href="%s"%s><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
+			url, target, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
 		resultsHtml += html
 		res.Html = html
 
@@ -560,9 +567,16 @@ func getResults(query, channel string) (string, []*Result, error) {
 		if kind == "video" {
 			discussLink = fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, id)
 		}
+		
+		// For internal video links, no target blank. For external links (playlist/channel), use target blank
+		target := ""
+		if kind == "playlist" || kind == "channel" {
+			target = ` target="_blank"`
+		}
+		
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s" target="_blank"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+			<div class="thumbnail"><a href="%s"%s><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
+			url, target, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
 		resultsHtml += html
 		res.Html = html
 	}
