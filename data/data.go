@@ -242,7 +242,7 @@ func GetByID(id string) *IndexEntry {
 	return index[id]
 }
 
-// Search performs semantic vector search with keyword fallback
+// Search performs text-based search (embeddings disabled for now to save memory)
 func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 	indexMutex.RLock()
 	defer indexMutex.RUnlock()
@@ -253,78 +253,8 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 		opt(options)
 	}
 
-	// Try vector search first
-	queryEmbedding, err := getEmbedding(query)
-	if err == nil && len(queryEmbedding) > 0 {
-		fmt.Printf("[SEARCH] Using vector search for: %s (type: %s)\n", query, options.Type)
-
-		// Convert map to slice for parallel processing, optionally filtering by type
-		entries := make([]*IndexEntry, 0, len(index))
-		for _, entry := range index {
-			if len(entry.Embedding) > 0 && (options.Type == "" || entry.Type == options.Type) {
-				entries = append(entries, entry)
-			}
-		}
-
-		// Parallel search using goroutines
-		numWorkers := 4
-		chunkSize := (len(entries) + numWorkers - 1) / numWorkers
-		resultsChan := make(chan []SearchResult, numWorkers)
-
-		for i := 0; i < numWorkers; i++ {
-			start := i * chunkSize
-			end := start + chunkSize
-			if end > len(entries) {
-				end = len(entries)
-			}
-			if start >= len(entries) {
-				break
-			}
-
-			go func(chunk []*IndexEntry) {
-				var localResults []SearchResult
-				for _, entry := range chunk {
-					similarity := cosineSimilarity(queryEmbedding, entry.Embedding)
-					if similarity > 0.3 { // Threshold to filter irrelevant results
-						localResults = append(localResults, SearchResult{
-							Entry: entry,
-							Score: similarity,
-						})
-					}
-				}
-				resultsChan <- localResults
-			}(entries[start:end])
-		}
-
-		// Collect results from all workers
-		var results []SearchResult
-		for i := 0; i < numWorkers && i*chunkSize < len(entries); i++ {
-			results = append(results, <-resultsChan...)
-		}
-		close(resultsChan)
-
-		// Sort by similarity descending
-		sort.Slice(results, func(i, j int) bool {
-			return results[i].Score > results[j].Score
-		})
-
-		// Return top N results
-		if limit > 0 && len(results) > limit {
-			results = results[:limit]
-		}
-
-		finalEntries := make([]*IndexEntry, len(results))
-		for i, r := range results {
-			finalEntries[i] = r.Entry
-		}
-
-		if len(finalEntries) > 0 {
-			return finalEntries
-		}
-	}
-
-	// Fallback: Simple text matching if vector search fails or returns no results
-	fmt.Printf("[SEARCH] Using text fallback for: %s (type: %s)\n", query, options.Type)
+	// Use text search only
+	fmt.Printf("[SEARCH] Using text search for: %s (type: %s)\n", query, options.Type)
 	queryLower := strings.ToLower(query)
 	var results []SearchResult
 
@@ -418,10 +348,8 @@ func saveIndex() {
 	time.Sleep(1 * time.Second)
 
 	indexMutex.RLock()
-	data := index
+	SaveJSON("index.json", index)
 	indexMutex.RUnlock()
-
-	SaveJSON("index.json", data)
 
 	saveMutex.Lock()
 	savePending = false
