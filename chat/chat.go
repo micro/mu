@@ -211,9 +211,13 @@ func getOrCreateRoom(id string) *ChatRoom {
 				room.URL = url
 			}
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
-		} else if room.Title == "" {
-			app.Log("chat", "News item %s not found in index", itemID)
-			room.Title = "News Discussion"
+		} else {
+			if room.Title == "" {
+				app.Log("chat", "News item %s not found in index", itemID)
+				room.Title = "News Discussion"
+			}
+			// If entry not found but we have a title, log it
+			app.Log("chat", "News item %s not indexed yet, using title only: %s", itemID, room.Title)
 		}
 	case "video":
 		// For videos, lookup by exact ID
@@ -422,6 +426,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 									roomContext += ". "
 								}
 								roomContext += room.Summary
+							} else if room.Title != "" && room.Title != "News Discussion" {
+								// If we have title but no content, make it clear this is what we're discussing
+								roomContext += ". The article content is not yet available, answer based on related sources about this topic."
 							}
 							if room.URL != "" {
 								roomContext += " (Source: " + room.URL + ")"
@@ -435,9 +442,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 						// Stage 1: Retrieve candidate results with snippets
 						seenIDs := make(map[string]bool)
 						
+						// Exclude the current room's article from search results
+						currentRoomID := room.ID[strings.Index(room.ID, "_")+1:]
+						seenIDs[currentRoomID] = true
+						
 						// Search 1: Question + title context for related content
 						searchQuery1 := content
-						if room.Title != "" {
+						if room.Title != "" && room.Title != "News Discussion" && room.Title != "Post Discussion" && room.Title != "Video Discussion" {
 							searchQuery1 = room.Title + " " + content
 						}
 						ragEntries1 := data.Search(searchQuery1, 10)

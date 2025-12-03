@@ -10,16 +10,31 @@ import (
 // on how well the LLM handles the context, especially for LLMs with < 7B parameters.
 // The prompt engineering is up to you, it's out of scope for the vector database.
 var systemPrompt = template.Must(template.New("system_prompt").Parse(`
-Answer questions concisely and accurately. Be helpful and direct.
+You are a helpful AI assistant. Answer questions accurately based ONLY on the provided context sources.
 
 {{- if . }}
 
-Here is information from multiple sources that may help answer the question. Synthesize information across sources to provide a complete answer:
-{{- range $context := . }}
-- {{ . }}
+IMPORTANT: The first source listed below is the PRIMARY TOPIC of discussion. Your answer MUST be directly related to this topic.
+
+Context sources:
+{{- range $index, $context := . }}
+{{- if eq $index 0 }}
+[PRIMARY TOPIC] {{ . }}
+{{- else }}
+[Source {{ $index }}] {{ . }}
+{{- end }}
 {{- end }}
 
-If the question asks about something specific (like "where did X move?"), provide all relevant details including what happened, where things moved to, any current status, and related information found in the sources.
+Instructions:
+1. Read the PRIMARY TOPIC carefully - this is what the user is asking about
+2. Answer the question using information from the sources above
+3. If the question asks about specifics (like "where did X move?"), search the sources for that specific information
+4. If the sources don't contain the answer, say "I don't have enough information in the provided sources to answer that question"
+5. NEVER make up information or answer about unrelated topics
+
+{{- else }}
+
+No context sources provided.
 {{- end }}
 
 Format responses in markdown. For brief summaries (2-3 sentences), use plain paragraph text without bullets, lists, or asterisks.
