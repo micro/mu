@@ -564,8 +564,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						// Stage 3: Build full context from selected entries
 						for _, entry := range selectedEntries {
 							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-							if len(contextStr) > 1000 {
-								contextStr = contextStr[:1000] + "..."
+							if len(contextStr) > 600 {
+								contextStr = contextStr[:600] + "..."
 							}
 							if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
 								contextStr += fmt.Sprintf(" (Source: %s)", url)
@@ -776,10 +776,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		if vals := form["context"]; vals != nil {
 			cvals := vals.([]interface{})
-			// Keep only the last 5 messages to reduce context size
+			// Keep only the last 3 messages to reduce context size and fit 4096 token limit
 			startIdx := 0
-			if len(cvals) > 5 {
-				startIdx = len(cvals) - 5
+			if len(cvals) > 3 {
+				startIdx = len(cvals) - 3
 			}
 			for _, val := range cvals[startIdx:] {
 				msg := val.(map[string]interface{})
@@ -834,10 +834,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Debug: Show raw entry
 			app.Log("chat", "[RAG DEBUG] Entry: Type=%s, Title=%s, Content=%s", entry.Type, entry.Title, entry.Content)
 
-			// Format each entry as context
+			// Format each entry as context (600 chars to fit within 4096 token limit)
 			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-			if len(contextStr) > 500 {
-				contextStr = contextStr[:500]
+			if len(contextStr) > 600 {
+				contextStr = contextStr[:600] + "..."
 			}
 			if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
 				contextStr += fmt.Sprintf(" (Source: %s)", url)
