@@ -807,8 +807,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
 			messages += fmt.Sprintf(`<div class="message"><span class="system">system</span><p>%v</p></div>`, form["answer"])
 
-			output := fmt.Sprintf(Template, head, messages)
+			mutex.RLock()
+			topicTabs := app.Head("chat", topics)
+			mutex.RUnlock()
+
+			output := fmt.Sprintf(Template, topicTabs)
 			renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
+			renderHTML = strings.Replace(renderHTML, `<div id="messages"></div>`, fmt.Sprintf(`<div id="messages">%s</div>`, messages), 1)
 
 			w.Write([]byte(renderHTML))
 			return
@@ -891,8 +896,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
 		messages += fmt.Sprintf(`<div class="message"><span class="llm">llm</span><p>%v</p></div>`, form["answer"])
 
-		output := fmt.Sprintf(Template, head, messages)
+		mutex.RLock()
+		topicTabs := app.Head("chat", topics)
+		mutex.RUnlock()
+
+		output := fmt.Sprintf(Template, topicTabs)
 		renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
+		renderHTML = strings.Replace(renderHTML, `<div id="messages"></div>`, fmt.Sprintf(`<div id="messages">%s</div>`, messages), 1)
 
 		w.Write([]byte(renderHTML))
 	}

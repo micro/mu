@@ -22,6 +22,7 @@ var f embed.FS
 
 var Template = `<div id="home-chat">
   <form id="home-chat-form" action="/chat" method="POST">
+    <input type="hidden" name="context" value="[]">
     <input type="text" name="prompt" placeholder="Ask a question..." autocomplete="off" required>
     <button type="submit">Ask</button>
   </form>
