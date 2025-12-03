@@ -152,8 +152,8 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	// Check if already indexed (skip if exists and recent)
 	indexMutex.RLock()
 	if existing, exists := index[id]; exists {
-		// If indexed within last 5 minutes, skip re-indexing
-		if time.Since(existing.IndexedAt) < 5*time.Minute {
+		// If indexed within last 30 seconds, skip re-indexing
+		if time.Since(existing.IndexedAt) < 30*time.Second {
 			indexMutex.RUnlock()
 			fmt.Printf("[data] Skipping re-index of %s (indexed %v ago)\n", id, time.Since(existing.IndexedAt).Round(time.Second))
 			return

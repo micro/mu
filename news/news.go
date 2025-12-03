@@ -952,31 +952,29 @@ func parseFeed() {
 
 			news = append(news, post)
 
-			// Index the article for search/RAG only if metadata was freshly fetched (async)
-			if freshlyFetched {
-				go func(id, title, desc, content, comments, link, category string, published string, image string) {
-					app.Log("news", "Indexing article: %s", title)
+			// Index the article for search/RAG (async)
+			// Always index to keep timestamps current
+			// Note: getMetadata() already caches, so we're not refetching unless needed
+			go func(id, title, desc, content, comments, link, category string, postedAt time.Time, image string) {
+				// Combine all content: description + article content + comments
+				fullContent := desc + " " + content
+				if len(comments) > 0 {
+					fullContent += " " + comments
+				}
 
-					// Combine all content: description + article content + comments
-					fullContent := desc + " " + content
-					if len(comments) > 0 {
-						fullContent += " " + comments
-					}
-
-					data.Index(
-						id,
-						"news",
-						title,
-						fullContent,
-						map[string]interface{}{
-							"url":       link,
-							"category":  category,
-							"published": published,
-							"image":     image,
-						},
-					)
-				}(itemID, item.Title, item.Description, item.Content, md.Comments, link, name, item.Published, md.Image)
-			}
+				data.Index(
+					id,
+					"news",
+					title,
+					fullContent,
+					map[string]interface{}{
+						"url":       link,
+						"category":  category,
+						"posted_at": postedAt,
+						"image":     image,
+					},
+				)
+			}(itemID, item.Title, item.Description, item.Content, md.Comments, link, name, postedAt, md.Image)
 
 			var val string
 
@@ -1231,7 +1229,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				"url":         entry.Metadata["url"],
 				"category":    entry.Metadata["category"],
 				"image":       entry.Metadata["image"],
-				"published":   entry.Metadata["published"],
+				"posted_at":   entry.Metadata["posted_at"],
 			}
 			articles = append(articles, article)
 		}
@@ -1301,7 +1299,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 			url := ""
 			category := ""
 			image := ""
-			publishedAt := time.Time{}
+			postedAt := time.Time{}
 			
 			if v, ok := entry.Metadata["url"].(string); ok {
 				url = v
@@ -1312,18 +1310,13 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 			if v, ok := entry.Metadata["image"].(string); ok {
 				image = v
 			}
-			if v, ok := entry.Metadata["published"].(string); ok {
-				// Parse RFC3339 or RFC1123 format
-				if t, err := time.Parse(time.RFC3339, v); err == nil {
-					publishedAt = t
-				} else if t, err := time.Parse(time.RFC1123, v); err == nil {
-					publishedAt = t
-				}
+			if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
+				postedAt = v
 			}
 			
 			timeAgo := ""
-			if !publishedAt.IsZero() {
-				timeAgo = app.TimeAgo(publishedAt)
+			if !postedAt.IsZero() {
+				timeAgo = app.TimeAgo(postedAt)
 			}
 			
 			discussLink := fmt.Sprintf(` | <a href="/chat?id=news_%s" style="color: inherit;">Discuss</a>`, entry.ID)
