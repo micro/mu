@@ -1,4 +1,4 @@
-# Design
+# System Design
 
 This document covers the design philosophy, architecture, and technical decisions for Mu.
 
