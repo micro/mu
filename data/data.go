@@ -173,7 +173,8 @@ var (
 	indexMutex    sync.RWMutex
 	index         = make(map[string]*IndexEntry)
 	indexQueue    = make(chan *indexJob, 1000)
-	indexingReady = make(chan struct{})
+	indexingReady = false // Flag to track if indexing is enabled
+	indexingMutex sync.RWMutex
 )
 
 type indexJob struct {
@@ -265,16 +266,24 @@ func IndexSync(id, entryType, title, content string, metadata map[string]interfa
 
 // processIndexQueue is a background worker that processes index jobs
 func processIndexQueue() {
-	// Wait for system to be ready
-	<-indexingReady
-
-	fmt.Println("[data] Index worker started")
+	fmt.Println("[data] Index worker started (waiting for StartIndexing signal)")
 
 	// High and low priority queues
 	highPriority := []*indexJob{}
 	lowPriority := []*indexJob{}
 
 	for {
+		// Check if indexing is enabled
+		indexingMutex.RLock()
+		enabled := indexingReady
+		indexingMutex.RUnlock()
+
+		if !enabled {
+			// Not ready yet, wait a bit and check again
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
 		var job *indexJob
 
 		// Process high priority first
@@ -286,8 +295,14 @@ func processIndexQueue() {
 			job = lowPriority[0]
 			lowPriority = lowPriority[1:]
 		} else {
-			// Wait for new job
-			job = <-indexQueue
+			// Wait for new job (with timeout to check enabled flag)
+			select {
+			case job = <-indexQueue:
+				// Got a job
+			case <-time.After(100 * time.Millisecond):
+				// Timeout, loop to check enabled flag again
+				continue
+			}
 		}
 
 		// Sort into priority queues
@@ -374,11 +389,12 @@ func performIndex(job *indexJob) {
 
 // StartIndexing signals that the system is ready for indexing
 func StartIndexing() {
-	select {
-	case indexingReady <- struct{}{}:
+	indexingMutex.Lock()
+	defer indexingMutex.Unlock()
+
+	if !indexingReady {
+		indexingReady = true
 		fmt.Println("[data] Indexing enabled")
-	default:
-		// Already started
 	}
 }
 

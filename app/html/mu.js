@@ -264,6 +264,9 @@ function loadChat() {
     const form = document.getElementById('chat-form');
     if (promptInput && form) {
       promptInput.value = autoPrompt;
+      // Clear URL parameter after reading it to prevent re-asking on refresh
+      const newUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, document.title, newUrl);
       setTimeout(function() { askLLM(form); }, 100);
     }
   }
