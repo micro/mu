@@ -516,15 +516,16 @@ func saveIndex() {
 func Load() {
 	b, err := LoadFile("index.json")
 	if err != nil {
+		// Start background embedding worker even if no existing index
+		go processEmbeddingQueue()
 		return
 	}
 
 	indexMutex.Lock()
-	defer indexMutex.Unlock()
-
 	json.Unmarshal(b, &index)
+	indexMutex.Unlock()
 
-	// Start background embedding worker
+	// Start background embedding worker after releasing the lock
 	go processEmbeddingQueue()
 }
 
