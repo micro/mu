@@ -855,6 +855,24 @@ body:has(#messages) #content {
 }
 
 /* ========================================
+   NEWS
+   ======================================== */
+#news form {
+  width: 100%;
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+#news form button {
+  padding: 10px 20px;
+  margin: 0;
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* ========================================
    MARKETS & REMINDER
    ======================================== */
 #markets, #reminder, #video {
