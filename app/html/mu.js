@@ -594,12 +594,15 @@ function connectRoomWebSocket(roomId) {
   
   currentRoomId = roomId;
   
-  // Load and display messages from sessionStorage
+  // Clear messages div (we'll get history from server)
   const messagesDiv = document.getElementById('messages');
   if (messagesDiv) {
+    // Keep only the context message if it exists
+    const contextMsg = messagesDiv.querySelector('.context-message');
     messagesDiv.innerHTML = '';
-    const savedMessages = loadMessagesFromSession(roomId);
-    savedMessages.forEach(msg => displayRoomMessage(msg, false));
+    if (contextMsg) {
+      messagesDiv.appendChild(contextMsg);
+    }
   }
   
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
