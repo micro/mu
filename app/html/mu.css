@@ -857,7 +857,7 @@ body:has(#messages) #content {
 /* ========================================
    NEWS
    ======================================== */
-#news form {
+#news-search {
   width: 100%;
   margin: 0;
   display: flex;
@@ -865,13 +865,13 @@ body:has(#messages) #content {
   align-items: center;
 }
 
-#news form input {
+#news-search input {
   width: 90%;
   flex: 0 1 auto;
   min-width: 0;
 }
 
-#news form button {
+#news-search button {
   padding: 10px 20px;
   margin: 0;
   width: auto;

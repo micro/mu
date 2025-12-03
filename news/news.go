@@ -372,7 +372,7 @@ func saveHtml(head, content []byte) {
 	if len(content) == 0 {
 		return
 	}
-	searchForm := `<form action="/news" method="GET">
+	searchForm := `<form id="news-search" action="/news" method="GET">
   <input name="q" placeholder="Search news">
   <button>Search</button>
 </form>`
@@ -1230,7 +1230,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	results := data.Search(query, 20)
 	
 	var searchResults []byte
-	searchResults = append(searchResults, []byte(`<form action="/news" method="GET">
+	searchResults = append(searchResults, []byte(`<form id="news-search" action="/news" method="GET">
   <input name="q" value="`+query+`" placeholder="Search news">
   <button>Search</button>
   <a href="/news" style="margin-left: 10px; color: #666; text-decoration: none;">Clear</a>
