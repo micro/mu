@@ -20,7 +20,7 @@ Here is some information that may be useful:
 {{- end }}
 {{- end }}
 
-Format responses in markdown.
+Format responses in markdown. For brief summaries (2-3 sentences), use plain paragraph text without bullets, lists, or asterisks.
 `))
 
 type LLM struct{}

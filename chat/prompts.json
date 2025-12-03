@@ -1,10 +1,10 @@
 {
-  "Crypto": "Provide 2 sentences explaining the current state and key trends in cryptocurrency markets.",
-  "Dev": "Provide 2 sentences explaining the current trends and hot topics in startups and development.",
-  "Finance": "Provide 2 sentences explaining the current state and key trends in global financial markets.",
-  "Islam": "Provide 2 sentences explaining current topics and discussions in Islamic thought, scholarship, and community matters.",
-  "Politics": "Provide 2 sentences explaining the current major political topics and trends.",
-  "Tech": "Provide 2 sentences explaining the current major trends and developments in technology.",
-  "UK": "Provide 2 sentences explaining the current major topics and trends in UK news.",
-  "World": "Provide 2 sentences explaining the current major topics and trends in MENA region."
+  "Crypto": "Write exactly 2-3 concise sentences about the current state and key trends in cryptocurrency markets. Use plain text only, no bullets, asterisks, or special formatting.",
+  "Dev": "Write exactly 2-3 concise sentences about current trends and hot topics in startups and development. Use plain text only, no bullets, asterisks, or special formatting.",
+  "Finance": "Write exactly 2-3 concise sentences about the current state and key trends in global financial markets. Use plain text only, no bullets, asterisks, or special formatting.",
+  "Islam": "Write exactly 2-3 concise sentences about current topics and discussions in Islamic thought, scholarship, and community matters. Use plain text only, no bullets, asterisks, or special formatting.",
+  "Politics": "Write exactly 2-3 concise sentences about current major political topics and trends. Use plain text only, no bullets, asterisks, or special formatting.",
+  "Tech": "Write exactly 2-3 concise sentences about current major trends and developments in technology. Use plain text only, no bullets, asterisks, or special formatting.",
+  "UK": "Write exactly 2-3 concise sentences about current major topics and trends in UK news. Use plain text only, no bullets, asterisks, or special formatting.",
+  "World": "Write exactly 2-3 concise sentences about current major topics and trends in MENA region. Use plain text only, no bullets, asterisks, or special formatting."
 }
