@@ -809,7 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const remaining = 50 - length;
     
     if (length < 50) {
-      charCount.textContent = 'Minimum 50 characters (' + remaining + ' more needed)';
+      charCount.textContent = 'Min 50 chars (' + remaining + ' more)';
       charCount.style.color = '#dc3545';
     } else {
       charCount.textContent = length + ' characters';
