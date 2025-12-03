@@ -1226,8 +1226,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
-	// Search indexed news articles
-	results := data.Search(query, 20)
+	// Search indexed news articles with type filter
+	results := data.Search(query, 20, data.WithType("news"))
 	
 	var searchResults []byte
 	searchResults = append(searchResults, []byte(`<form id="news-search" action="/news" method="GET">
@@ -1242,9 +1242,6 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		searchResults = append(searchResults, []byte(fmt.Sprintf(`<h2>Results for "%s" (%d articles)</h2>`, query, len(results)))...)
 		
 		for _, entry := range results {
-			if entry.Type != "news" {
-				continue
-			}
 			
 			title := entry.Title
 			description := entry.Content

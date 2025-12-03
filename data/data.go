@@ -30,6 +30,21 @@ type Event struct {
 	Data map[string]interface{}
 }
 
+// SearchOptions configures search behavior
+type SearchOptions struct {
+	Type string
+}
+
+// SearchOption is a functional option for configuring search
+type SearchOption func(*SearchOptions)
+
+// WithType filters search results by entry type
+func WithType(entryType string) SearchOption {
+	return func(opts *SearchOptions) {
+		opts.Type = entryType
+	}
+}
+
 // EventHandler is a function that handles events
 type EventHandler func(Event)
 
@@ -189,19 +204,25 @@ func GetByID(id string) *IndexEntry {
 }
 
 // Search performs semantic vector search with keyword fallback
-func Search(query string, limit int) []*IndexEntry {
+func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 	indexMutex.RLock()
 	defer indexMutex.RUnlock()
+
+	// Apply options
+	options := &SearchOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
 
 	// Try vector search first
 	queryEmbedding, err := getEmbedding(query)
 	if err == nil && len(queryEmbedding) > 0 {
-		fmt.Printf("[SEARCH] Using vector search for: %s\n", query)
+		fmt.Printf("[SEARCH] Using vector search for: %s (type: %s)\n", query, options.Type)
 
-		// Convert map to slice for parallel processing
+		// Convert map to slice for parallel processing, optionally filtering by type
 		entries := make([]*IndexEntry, 0, len(index))
 		for _, entry := range index {
-			if len(entry.Embedding) > 0 {
+			if len(entry.Embedding) > 0 && (options.Type == "" || entry.Type == options.Type) {
 				entries = append(entries, entry)
 			}
 		}
@@ -264,11 +285,16 @@ func Search(query string, limit int) []*IndexEntry {
 	}
 
 	// Fallback: Simple text matching if vector search fails or returns no results
-	fmt.Printf("[SEARCH] Using text fallback for: %s\n", query)
+	fmt.Printf("[SEARCH] Using text fallback for: %s (type: %s)\n", query, options.Type)
 	queryLower := strings.ToLower(query)
 	var results []SearchResult
 
 	for _, entry := range index {
+		// Filter by type if specified
+		if options.Type != "" && entry.Type != options.Type {
+			continue
+		}
+		
 		score := 0.0
 		titleLower := strings.ToLower(entry.Title)
 		contentLower := strings.ToLower(entry.Content)
