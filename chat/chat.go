@@ -766,6 +766,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			// Limit prompt length to prevent abuse
+			if len(msg) > 500 {
+				http.Error(w, "Prompt must not exceed 500 characters", http.StatusBadRequest)
+				return
+			}
+
 			var ictx interface{}
 			json.Unmarshal([]byte(ctx), &ictx)
 			form["context"] = ictx

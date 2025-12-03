@@ -1249,6 +1249,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Handle search query
 	query := r.URL.Query().Get("query")
 	if query != "" {
+		// Limit query length to prevent abuse
+		if len(query) > 256 {
+			http.Error(w, "Search query must not exceed 256 characters", http.StatusBadRequest)
+			return
+		}
 		handleSearch(w, r, query)
 		return
 	}

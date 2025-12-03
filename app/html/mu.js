@@ -811,6 +811,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (length < 50) {
       charCount.textContent = 'Min 50 chars (' + remaining + ' more)';
       charCount.style.color = '#dc3545';
+    } else if (length > 10000) {
+      charCount.textContent = length + ' chars (max 10,000 exceeded!)';
+      charCount.style.color = '#dc3545';
     } else {
       charCount.textContent = length + ' characters';
       charCount.style.color = '#28a745';
@@ -823,6 +826,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (textarea.value.length < 50) {
       e.preventDefault();
       alert('Post must be at least 50 characters long');
+      textarea.focus();
+      return false;
+    }
+    if (textarea.value.length > 10000) {
+      e.preventDefault();
+      alert('Post must not exceed 10,000 characters');
       textarea.focus();
       return false;
     }

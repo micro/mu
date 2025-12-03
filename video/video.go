@@ -610,6 +610,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		query := r.URL.Query().Get("query")
 		if len(query) > 0 {
+			// Limit query length to prevent abuse
+			if len(query) > 256 {
+				http.Error(w, "Search query must not exceed 256 characters", http.StatusBadRequest)
+				return
+			}
+			
 			// fetch results from api
 			results, _, err := getResults(query, "")
 			if err != nil {

@@ -868,9 +868,13 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Content validation: minimum length
+	// Content validation: minimum and maximum length
 	if len(content) < 50 {
 		http.Error(w, "Post content must be at least 50 characters", http.StatusBadRequest)
+		return
+	}
+	if len(content) > 10000 {
+		http.Error(w, "Post content must not exceed 10,000 characters", http.StatusBadRequest)
 		return
 	}
 
