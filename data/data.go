@@ -176,7 +176,8 @@ var (
 	saveMutex         sync.Mutex
 	embeddingCache    = make(map[string][]float64) // Cache query embeddings
 	embeddingCacheMu  sync.RWMutex
-	maxEmbeddingCache = 100 // Maximum cached query embeddings
+	maxEmbeddingCache = 100  // Maximum cached query embeddings
+	maxIndexEmbeddings = 1000 // Maximum index entries with embeddings
 	embeddingQueue    = make(chan string, 100)
 	embeddingEnabled  = false
 	embeddingMutex    sync.Mutex
@@ -205,9 +206,17 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	existing, exists := index[id]
 	indexMutex.RUnlock()
 
-	// Skip if recently indexed (within 30 seconds)
-	if exists && time.Since(existing.IndexedAt) < 30*time.Second {
-		return
+	// Skip if already exists with same title/content and recent
+	if exists {
+		contentSame := existing.Title == title && existing.Content == content
+		
+		// If content is the same and indexed recently, skip entirely
+		if contentSame && time.Since(existing.IndexedAt) < 5*time.Minute {
+			return
+		}
+		
+		// If content changed or it's been a while, allow re-index
+		// (This allows metadata like comments to be updated)
 	}
 
 	entry := &IndexEntry{
@@ -217,6 +226,11 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 		Content:   content,
 		Metadata:  metadata,
 		IndexedAt: time.Now(),
+	}
+	
+	// Preserve existing embedding if content hasn't changed
+	if exists && existing.Title == title && existing.Content == content && len(existing.Embedding) > 0 {
+		entry.Embedding = existing.Embedding
 	}
 
 	indexMutex.Lock()
@@ -232,11 +246,13 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 		},
 	})
 
-	// Queue for embedding generation (non-blocking)
-	select {
-	case embeddingQueue <- id:
-	default:
-		// Queue full, skip
+	// Only queue for embedding if we don't already have one
+	if len(entry.Embedding) == 0 {
+		select {
+		case embeddingQueue <- id:
+		default:
+			// Queue full, skip
+		}
 	}
 
 	// Persist to disk (debounced)
@@ -260,10 +276,21 @@ func StartIndexing() {
 // embeddingWorker processes the embedding queue with rate limiting
 func embeddingWorker() {
 	for id := range embeddingQueue {
-		// Get entry
+		// Check if we've hit the embedding limit
 		indexMutex.RLock()
+		embeddingCount := 0
+		for _, e := range index {
+			if len(e.Embedding) > 0 {
+				embeddingCount++
+			}
+		}
 		entry := index[id]
 		indexMutex.RUnlock()
+
+		if embeddingCount >= maxIndexEmbeddings {
+			fmt.Printf("[data] Hit embedding limit (%d), skipping new embeddings\n", maxIndexEmbeddings)
+			continue
+		}
 
 		if entry == nil || len(entry.Embedding) > 0 {
 			continue
@@ -339,11 +366,15 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 			var err error
 			queryEmbedding, err = getEmbedding(query)
 			if err == nil && len(queryEmbedding) > 0 {
-				// Cache it
+				// Cache it with proper limit
 				embeddingCacheMu.Lock()
+				// Remove oldest entry if at limit
 				if len(embeddingCache) >= maxEmbeddingCache {
-					// Clear cache if too large
-					embeddingCache = make(map[string][]float64)
+					// Just clear a random entry (simple approach)
+					for k := range embeddingCache {
+						delete(embeddingCache, k)
+						break
+					}
 				}
 				embeddingCache[query] = queryEmbedding
 				embeddingCacheMu.Unlock()
