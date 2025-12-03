@@ -114,7 +114,7 @@ function switchTopic(t) {
     if (typeof summaries !== 'undefined' && summaries[t]) {
       const summaryMsg = document.createElement('div');
       summaryMsg.className = 'message';
-      summaryMsg.innerHTML = `<span class="llm">AI Brief</span><p>${renderMarkdown(summaries[t])}</p>`;
+      summaryMsg.innerHTML = `<span class="llm">AI Summary</span><p>${renderMarkdown(summaries[t])}</p>`;
       messages.appendChild(summaryMsg);
     }
     
