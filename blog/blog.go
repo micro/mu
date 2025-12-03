@@ -126,7 +126,6 @@ func getNewAccountPostsForAdmin() []admin.PostContent {
 	return result
 }
 
-
 func (d *postDeleter) RefreshCache() {
 	updateCache()
 }
@@ -474,7 +473,7 @@ func UpdatePost(id, title, content string) error {
 			post.Content = content
 			save()
 			updateCacheUnlocked()
-			
+
 			// Re-index the updated post
 			go func(id, title, content, author string) {
 				app.Log("blog", "Re-indexing updated post: %s", title)
@@ -489,7 +488,7 @@ func UpdatePost(id, title, content string) error {
 					},
 				)
 			}(post.ID, post.Title, post.Content, post.Author)
-			
+
 			return nil
 		}
 	}
@@ -570,7 +569,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				author = acc.Name
 				authorID = acc.ID
-				
+
 				// Check if account can post (30 minute minimum)
 				if !auth.CanPost(acc.ID) {
 					accountAge := time.Since(acc.Created).Round(time.Minute)
@@ -860,7 +859,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	contentLower := strings.ToLower(content)
 	titleLower := strings.ToLower(title)
 	combined := titleLower + " " + contentLower
-	
+
 	spamPatterns := []string{
 		"this is a test",
 		"test post",

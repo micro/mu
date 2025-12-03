@@ -67,22 +67,24 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// ChatRoom represents a discussion room for a specific item.
+// Room represents a discussion room for a specific item.
 // Room state is ephemeral - messages exist only in memory while the server runs.
 // The last 20 messages are kept in memory for new joiners.
 // Client-side sessionStorage is used so participants see their conversation until they leave.
-type ChatRoom struct {
-	ID         string                      // e.g., "post_123", "news_456", "video_789"
-	Type       string                      // "post", "news", "video"
-	Title      string                      // Item title
-	Summary    string                      // Item summary/description
-	URL        string                      // Original item URL
-	Messages   []RoomMessage               // Last 20 messages (in-memory only)
-	Clients    map[*websocket.Conn]*Client // Connected clients
-	Broadcast  chan RoomMessage            // Broadcast channel
-	Register   chan *Client                // Register client
-	Unregister chan *Client                // Unregister client
-	mutex      sync.RWMutex
+type Room struct {
+	ID          string                      // e.g., "post_123", "news_456", "video_789"
+	Type        string                      // "post", "news", "video"
+	Title       string                      // Item title
+	Summary     string                      // Item summary/description
+	URL         string                      // Original item URL
+	Topic       string                      // News topic (e.g., "Dev", "World", etc.)
+	LastRefresh time.Time                   // Last time external content was refreshed
+	Messages    []RoomMessage               // Last 20 messages (in-memory only)
+	Clients     map[*websocket.Conn]*Client // Connected clients
+	Broadcast   chan RoomMessage            // Broadcast channel
+	Register    chan *Client                // Register client
+	Unregister  chan *Client                // Unregister client
+	mutex       sync.RWMutex
 }
 
 // RoomMessage represents a message in a chat room
@@ -97,17 +99,17 @@ type RoomMessage struct {
 type Client struct {
 	Conn   *websocket.Conn
 	UserID string
-	Room   *ChatRoom
+	Room   *Room
 }
 
-var rooms = make(map[string]*ChatRoom)
+var rooms = make(map[string]*Room)
 var roomsMutex sync.RWMutex
 
 // getOrCreateRoom gets an existing room or creates a new one
-func getOrCreateRoom(id string) *ChatRoom {
+func getOrCreateRoom(id string) *Room {
 	start := time.Now()
 	app.Log("chat", "[getOrCreateRoom] Start for %s", id)
-	
+
 	// Check if room exists first (fast path with read lock)
 	roomsMutex.RLock()
 	if room, exists := rooms[id]; exists {
@@ -128,7 +130,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 	itemID := parts[1]
 
 	// Create room structure (outside any locks)
-	room := &ChatRoom{
+	room := &Room{
 		ID:         id,
 		Type:       itemType,
 		Clients:    make(map[*websocket.Conn]*Client),
@@ -143,13 +145,13 @@ func getOrCreateRoom(id string) *ChatRoom {
 	case "post":
 		// For posts, lookup by exact ID from index (posts are now indexed)
 		app.Log("chat", "Attempting to get post %s from index", itemID)
-		
+
 		// Try with a timeout to avoid blocking during heavy indexing
 		entryChan := make(chan *data.IndexEntry, 1)
 		go func() {
 			entryChan <- data.GetByID(itemID)
 		}()
-		
+
 		var entry *data.IndexEntry
 		select {
 		case entry = <-entryChan:
@@ -162,7 +164,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 			room.URL = "/post?id=" + itemID
 			break
 		}
-		
+
 		if entry != nil {
 			room.Title = entry.Title
 			if room.Title == "" {
@@ -182,13 +184,13 @@ func getOrCreateRoom(id string) *ChatRoom {
 	case "news":
 		// For news, lookup by exact ID
 		app.Log("chat", "Attempting to get news item %s from index", itemID)
-		
+
 		// Try with a timeout to avoid blocking during heavy indexing
 		entryChan := make(chan *data.IndexEntry, 1)
 		go func() {
 			entryChan <- data.GetByID(itemID)
 		}()
-		
+
 		var entry *data.IndexEntry
 		select {
 		case entry = <-entryChan:
@@ -200,7 +202,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 			room.Summary = "Loading article content..."
 			break
 		}
-		
+
 		if entry != nil {
 			room.Title = entry.Title
 			room.Summary = entry.Content
@@ -222,13 +224,13 @@ func getOrCreateRoom(id string) *ChatRoom {
 	case "video":
 		// For videos, lookup by exact ID
 		app.Log("chat", "Attempting to get video item %s from index", itemID)
-		
+
 		// Try with a timeout to avoid blocking during heavy indexing
 		entryChan := make(chan *data.IndexEntry, 1)
 		go func() {
 			entryChan <- data.GetByID(itemID)
 		}()
-		
+
 		var entry *data.IndexEntry
 		select {
 		case entry = <-entryChan:
@@ -240,7 +242,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 			room.Summary = "Loading video content..."
 			break
 		}
-		
+
 		if entry != nil {
 			room.Title = entry.Title
 			room.Summary = entry.Content
@@ -275,7 +277,7 @@ func getOrCreateRoom(id string) *ChatRoom {
 }
 
 // broadcastUserList sends the current list of usernames to all clients
-func (room *ChatRoom) broadcastUserList() {
+func (room *Room) broadcastUserList() {
 	room.mutex.RLock()
 	usernames := make([]string, 0, len(room.Clients))
 	for _, client := range room.Clients {
@@ -296,7 +298,7 @@ func (room *ChatRoom) broadcastUserList() {
 }
 
 // run handles the chat room message broadcasting
-func (room *ChatRoom) run() {
+func (room *Room) run() {
 	for {
 		select {
 		case client := <-room.Register:
@@ -342,7 +344,7 @@ func (room *ChatRoom) run() {
 }
 
 // handleWebSocket handles WebSocket connections for chat rooms
-func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
+func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		app.Log("chat", "WebSocket upgrade error: %v", err)
@@ -412,6 +414,30 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 
 					// Then invoke LLM and broadcast response
 					go func() {
+						// If this is a Dev (HN) discussion, trigger comment refresh via event
+						// But throttle to once per 5 minutes to avoid excessive API calls
+						if room.Topic == "Dev" && room.URL != "" {
+							room.mutex.RLock()
+							lastRefresh := room.LastRefresh
+							room.mutex.RUnlock()
+
+							if time.Since(lastRefresh) > 5*time.Minute {
+								room.mutex.Lock()
+								room.LastRefresh = time.Now()
+								room.mutex.Unlock()
+
+								app.Log("chat", "Publishing refresh event for: %s", room.URL)
+								data.Publish(data.Event{
+									Type: data.EventRefreshHNComments,
+									Data: map[string]interface{}{
+										"url": room.URL,
+									},
+								})
+							} else {
+								app.Log("chat", "Skipping comment refresh for %s (last refresh %v ago)", room.URL, time.Since(lastRefresh).Round(time.Second))
+							}
+						}
+
 						// Build context from room details
 						var ragContext []string
 
@@ -437,15 +463,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 							app.Log("chat", "Added room context: %s", roomContext)
 						} else {
 							app.Log("chat", "No room context available - Title: '%s', Summary: '%s'", room.Title, room.Summary)
-						}
-
-						// Stage 1: Retrieve candidate results with snippets
+						} // Stage 1: Retrieve candidate results with snippets
 						seenIDs := make(map[string]bool)
-						
+
 						// Exclude the current room's article from search results
 						currentRoomID := room.ID[strings.Index(room.ID, "_")+1:]
 						seenIDs[currentRoomID] = true
-						
+
 						// Search 1: Question + title context for related content
 						searchQuery1 := content
 						if room.Title != "" && room.Title != "News Discussion" && room.Title != "Post Discussion" && room.Title != "Video Discussion" {
@@ -453,11 +477,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 						}
 						ragEntries1 := data.Search(searchQuery1, 10)
 						app.Log("chat", "Search 1 (title+question) for '%s' returned %d results", searchQuery1, len(ragEntries1))
-						
+
 						// Search 2: Just the question to find directly relevant content
 						ragEntries2 := data.Search(content, 10)
 						app.Log("chat", "Search 2 (question only) for '%s' returned %d results", content, len(ragEntries2))
-						
+
 						// Combine and deduplicate results, create snippets for reranking
 						type Candidate struct {
 							Entry   *data.IndexEntry
@@ -465,13 +489,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 						}
 						var candidates []Candidate
 						allEntries := append(ragEntries1, ragEntries2...)
-						
+
 						for _, entry := range allEntries {
 							if seenIDs[entry.ID] {
 								continue
 							}
 							seenIDs[entry.ID] = true
-							
+
 							// Create short snippet for reranking (title + first 150 chars)
 							snippet := entry.Title + ": "
 							if len(entry.Content) > 150 {
@@ -479,34 +503,34 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 							} else {
 								snippet += entry.Content
 							}
-							
+
 							candidates = append(candidates, Candidate{
 								Entry:   entry,
 								Snippet: snippet,
 							})
 						}
-						
+
 						app.Log("chat", "Stage 1: Found %d unique candidates", len(candidates))
-						
+
 						// Stage 2: Rerank - ask LLM to pick most relevant sources
 						var selectedEntries []*data.IndexEntry
-						
+
 						if len(candidates) > 5 {
 							// Build reranking prompt
 							snippetList := ""
 							for i, c := range candidates {
 								snippetList += fmt.Sprintf("%d. %s\n", i+1, c.Snippet)
 							}
-							
+
 							rerankPrompt := &Prompt{
-								System: "You are a search relevance expert. Given a question and a list of document snippets, return ONLY the numbers (comma-separated) of the 3-5 most relevant documents that would help answer the question. Example: 1,3,5",
+								System:   "You are a search relevance expert. Given a question and a list of document snippets, return ONLY the numbers (comma-separated) of the 3-5 most relevant documents that would help answer the question. Example: 1,3,5",
 								Question: fmt.Sprintf("Question: %s\n\nDocuments:\n%s\n\nMost relevant document numbers:", content, snippetList),
 							}
-							
+
 							rerankResp, err := askLLM(rerankPrompt)
 							if err == nil && len(rerankResp) > 0 {
 								app.Log("chat", "Stage 2: Reranking response: %s", rerankResp)
-								
+
 								// Parse comma-separated numbers
 								parts := strings.Split(strings.TrimSpace(rerankResp), ",")
 								for _, part := range parts {
@@ -525,7 +549,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 								app.Log("chat", "Stage 2: Selected %d documents after reranking", len(selectedEntries))
 							}
 						}
-						
+
 						// If reranking failed or we have <=5 candidates, use all
 						if len(selectedEntries) == 0 {
 							for _, c := range candidates {
@@ -535,7 +559,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 								}
 							}
 						}
-						
+
 						// Stage 3: Build full context from selected entries
 						for _, entry := range selectedEntries {
 							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
@@ -556,15 +580,15 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *ChatRoom) {
 							Question: content,
 						}
 
-						resp, err := askLLM(prompt)
-						if err == nil && len(resp) > 0 {
-							llmMsg := RoomMessage{
-								UserID:    "AI",
-								Content:   resp,
-								Timestamp: time.Now(),
-								IsLLM:     true,
-							}
-							room.Broadcast <- llmMsg
+							resp, err := askLLM(prompt)
+							if err == nil && len(resp) > 0 {
+								llmMsg := RoomMessage{
+									UserID:    "AI",
+									Content:   resp,
+									Timestamp: time.Now(),
+									IsLLM:     true,
+								}
+								room.Broadcast <- llmMsg
 						}
 					}()
 				}
@@ -670,17 +694,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if roomID != "" {
 			app.Log("chat", "GET request for room: %s", roomID)
 			type roomResult struct {
-				room *ChatRoom
+				room *Room
 			}
 			resultChan := make(chan roomResult, 1)
-			
+
 			go func() {
 				app.Log("chat", "Starting getOrCreateRoom for: %s", roomID)
 				room := getOrCreateRoom(roomID)
 				app.Log("chat", "getOrCreateRoom completed for: %s, room=%v", roomID, room != nil)
 				resultChan <- roomResult{room: room}
 			}()
-			
+
 			select {
 			case result := <-resultChan:
 				if result.room != nil {

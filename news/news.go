@@ -301,18 +301,18 @@ var contentParsers = []ContentParser{
 			desc = strings.TrimPrefix(desc, "<![CDATA[")
 			desc = strings.TrimSuffix(desc, "]]>")
 			desc = strings.TrimSpace(desc)
-			
+
 			// If it's just a link to HN comments with "Comments" text, strip it
-			if strings.HasPrefix(desc, `<a href="https://news.ycombinator.com/item?id=`) && 
-			   strings.HasSuffix(desc, `">Comments</a>`) {
+			if strings.HasPrefix(desc, `<a href="https://news.ycombinator.com/item?id=`) &&
+				strings.HasSuffix(desc, `">Comments</a>`) {
 				return ""
 			}
-			
+
 			// Also catch the plain text version
 			if desc == "Comments" {
 				return ""
 			}
-			
+
 			return desc
 		},
 	},
@@ -517,7 +517,7 @@ func getMetadata(uri string) (*Metadata, bool, error) {
 			if len(node.Data) < 10 {
 				return // Skip very short text nodes
 			}
-			
+
 			first := node.Data[0]
 			last := node.Data[len(node.Data)-1]
 
@@ -542,15 +542,15 @@ func getMetadata(uri string) (*Metadata, bool, error) {
 	// Extract content from common article selectors
 	selectors := []string{
 		".ArticleBody-articleBody", // CNBC
-		"article",                   // Generic
-		".article-body",             // Common
-		".post-content",             // Common
-		".entry-content",            // WordPress
-		"[itemprop='articleBody']",  // Schema.org
-		".story-body",               // BBC-style
-		"main article",              // Semantic HTML
+		"article",                  // Generic
+		".article-body",            // Common
+		".post-content",            // Common
+		".entry-content",           // WordPress
+		"[itemprop='articleBody']", // Schema.org
+		".story-body",              // BBC-style
+		"main article",             // Semantic HTML
 	}
-	
+
 	contentExtracted := false
 	for _, selector := range selectors {
 		nodes := d.Find(selector).Nodes
@@ -564,7 +564,7 @@ func getMetadata(uri string) (*Metadata, bool, error) {
 			}
 		}
 	}
-	
+
 	// If no content extracted and it's not a HackerNews link, try to get paragraphs
 	if !contentExtracted && !strings.Contains(u.Host, "news.ycombinator.com") {
 		for _, node := range d.Find("p").Nodes {
@@ -597,7 +597,7 @@ func getMetadata(uri string) (*Metadata, bool, error) {
 			}
 		}
 		if hnID != "" {
-			comments, err := fetchHNComments(hnID)
+			comments, err := FetchHNComments(hnID)
 			if err == nil && len(comments) > 0 {
 				g.Comments = comments
 				app.Log("news", "Fetched comments for HN story %s (%d chars)", hnID, len(comments))
@@ -612,10 +612,10 @@ func getMetadata(uri string) (*Metadata, bool, error) {
 	return g, true, nil // true = freshly fetched
 }
 
-// fetchHNComments fetches top-level comments from a HackerNews story
-func fetchHNComments(storyID string) (string, error) {
+// FetchHNComments fetches top-level comments from a HackerNews story
+func FetchHNComments(storyID string) (string, error) {
 	apiURL := fmt.Sprintf("https://hacker-news.firebaseio.com/v0/item/%s.json", storyID)
-	
+
 	resp, err := http.Get(apiURL)
 	if err != nil {
 		return "", err
@@ -625,7 +625,7 @@ func fetchHNComments(storyID string) (string, error) {
 	var story struct {
 		Comments []int `json:"kids"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&story); err != nil {
 		return "", err
 	}
@@ -728,10 +728,10 @@ func getReminder() {
 	if u, ok := val["updated"]; ok {
 		updated = u.(string)
 	}
-	
+
 	// Combine all content for comprehensive indexing
 	content := fmt.Sprintf("Name of Allah: %s\n\nVerse: %s\n\nHadith: %s\n\n%s", name, verse, hadith, message)
-	
+
 	data.Index(
 		"reminder_card_daily",
 		"reminder",
@@ -951,26 +951,26 @@ func parseFeed() {
 			// Index the article for search/RAG only if metadata was freshly fetched (async)
 			if freshlyFetched {
 				go func(id, title, desc, content, comments, link, category string, published string, image string) {
-				app.Log("news", "Indexing article: %s", title)
-				
-				// Combine all content: description + article content + comments
-				fullContent := desc + " " + content
-				if len(comments) > 0 {
-					fullContent += " " + comments
-				}
-				
-				data.Index(
-					id,
-					"news",
-					title,
-					fullContent,
-					map[string]interface{}{
-						"url":       link,
-						"category":  category,
-						"published": published,
-						"image":     image,
-					},
-				)
+					app.Log("news", "Indexing article: %s", title)
+
+					// Combine all content: description + article content + comments
+					fullContent := desc + " " + content
+					if len(comments) > 0 {
+						fullContent += " " + comments
+					}
+
+					data.Index(
+						id,
+						"news",
+						title,
+						fullContent,
+						map[string]interface{}{
+							"url":       link,
+							"category":  category,
+							"published": published,
+							"image":     image,
+						},
+					)
 				}(itemID, item.Title, item.Description, item.Content, md.Comments, link, name, item.Published, md.Image)
 			}
 
@@ -1124,6 +1124,14 @@ func parseFeed() {
 }
 
 func Load() {
+	// Subscribe to refresh events
+	data.Subscribe(data.EventRefreshHNComments, func(event data.Event) {
+		if url, ok := event.Data["url"].(string); ok {
+			app.Log("news", "Received refresh request for: %s", url)
+			RefreshHNMetadata(url)
+		}
+	})
+
 	// load headlines
 	b, _ := data.LoadFile("headlines.html")
 	headlinesHtml = string(b)
@@ -1229,4 +1237,69 @@ func GetHomepageTickers() []string {
 // GetHomepageFutures returns the list of futures displayed on homepage
 func GetHomepageFutures() []string {
 	return append([]string{}, futuresKeys...)
+}
+
+// RefreshHNMetadata forces a refresh of HN article metadata with fresh comments
+// Returns the updated metadata with new comments, or nil if not an HN article
+func RefreshHNMetadata(uri string) (*Metadata, error) {
+	if !strings.Contains(uri, "news.ycombinator.com/item?id=") {
+		return nil, fmt.Errorf("not a HackerNews article")
+	}
+
+	// Extract HN story ID
+	hnID := ""
+	if idx := strings.Index(uri, "id="); idx != -1 {
+		hnID = uri[idx+3:]
+		if idx := strings.IndexAny(hnID, "&?#"); idx != -1 {
+			hnID = hnID[:idx]
+		}
+	}
+
+	if hnID == "" {
+		return nil, fmt.Errorf("could not extract HN story ID from URL")
+	}
+
+	// Fetch fresh comments
+	comments, err := FetchHNComments(hnID)
+	if err != nil {
+		app.Log("news", "Error fetching fresh HN comments: %v", err)
+		// Don't fail the whole request, just return without comments
+	}
+
+	// Load cached metadata
+	md, exists := loadCachedMetadata(uri)
+	if !exists {
+		// If no cache, fetch full metadata
+		md, _, err := getMetadata(uri)
+		return md, err
+	}
+
+	// Update comments and timestamp
+	md.Comments = comments
+	md.Created = time.Now().UnixNano()
+
+	// Save updated metadata
+	saveCachedMetadata(uri, md)
+
+	// Reindex with fresh comments so RAG can find them
+	if exists {
+		fullContent := md.Description + " " + md.Content
+		if len(comments) > 0 {
+			fullContent += " " + comments
+		}
+		data.Index(
+			fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16],
+			"news",
+			md.Title,
+			fullContent,
+			map[string]interface{}{
+				"url":      uri,
+				"category": "Dev",
+			},
+		)
+		app.Log("news", "Reindexed HN article with fresh comments for RAG: %s", uri)
+	}
+
+	app.Log("news", "Refreshed HN metadata for %s with %d chars of comments", uri, len(comments))
+	return md, nil
 }

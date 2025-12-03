@@ -15,6 +15,47 @@ import (
 	"time"
 )
 
+// ============================================
+// EVENT SYSTEM
+// ============================================
+
+// Event types
+const (
+	EventRefreshHNComments = "refresh_hn_comments"
+)
+
+// Event represents a data event
+type Event struct {
+	Type string
+	Data map[string]interface{}
+}
+
+// EventHandler is a function that handles events
+type EventHandler func(Event)
+
+var (
+	eventMutex    sync.RWMutex
+	eventHandlers = make(map[string][]EventHandler)
+)
+
+// Subscribe registers a handler for a specific event type
+func Subscribe(eventType string, handler EventHandler) {
+	eventMutex.Lock()
+	defer eventMutex.Unlock()
+	eventHandlers[eventType] = append(eventHandlers[eventType], handler)
+}
+
+// Publish sends an event to all registered handlers
+func Publish(event Event) {
+	eventMutex.RLock()
+	handlers := eventHandlers[event.Type]
+	eventMutex.RUnlock()
+
+	for _, handler := range handlers {
+		go handler(event) // Run handlers asynchronously
+	}
+}
+
 // SaveFile saves data to disk
 func SaveFile(key, val string) error {
 	dir := os.ExpandEnv("$HOME/.mu")
@@ -156,7 +197,7 @@ func Search(query string, limit int) []*IndexEntry {
 	queryEmbedding, err := getEmbedding(query)
 	if err == nil && len(queryEmbedding) > 0 {
 		fmt.Printf("[SEARCH] Using vector search for: %s\n", query)
-		
+
 		// Convert map to slice for parallel processing
 		entries := make([]*IndexEntry, 0, len(index))
 		for _, entry := range index {

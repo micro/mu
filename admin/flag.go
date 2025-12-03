@@ -221,7 +221,7 @@ func Approve(contentType, contentID string) error {
 	if deleter, ok := deleters[contentType]; ok {
 		deleter.RefreshCache()
 	}
-	
+
 	// Force home page refresh
 	go func() {
 		// Dynamically import to avoid circular dependency
@@ -617,4 +617,3 @@ type PostContent struct {
 	Author    string
 	CreatedAt time.Time
 }
-
