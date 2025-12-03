@@ -539,11 +539,23 @@ body:has(#messages) #content {
   display: block;
 }
 
-.llm {
+.llm, .ai {
   font-size: small;
   font-weight: bold;
   color: darkgrey;
   display: block;
+}
+
+.loading-dots {
+  display: inline-block;
+  animation: loading-dots 1.5s infinite;
+  letter-spacing: 2px;
+}
+
+@keyframes loading-dots {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60%, 100% { content: '...'; }
 }
 
 .context-message {

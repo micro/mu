@@ -175,12 +175,12 @@ function askLLM(el) {
   console.log("sending", data);
   d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
   
-  // Create placeholder for LLM response
+  // Create placeholder for AI response with loading dots
   const responseDiv = document.createElement('div');
   responseDiv.className = 'message';
-  responseDiv.innerHTML = `<span class="llm">AI</span><div class="llm-response"></div>`;
+  responseDiv.innerHTML = `<span class="ai">ai</span><div class="ai-response"><span class="loading-dots">...</span></div>`;
   d.appendChild(responseDiv);
-  const responseContent = responseDiv.querySelector('.llm-response');
+  const responseContent = responseDiv.querySelector('.ai-response');
   
   d.scrollTop = d.scrollHeight;
 
@@ -232,8 +232,12 @@ function loadChat() {
     loadMessages();
   }
   
-  // If no conversation exists and not in a room, show general summaries
-  if (!isRoom && context.length === 0 && typeof summaries !== 'undefined') {
+  // Auto-submit prompt if coming from home page
+  const urlParams = new URLSearchParams(window.location.search);
+  const autoPrompt = urlParams.get('prompt');
+  
+  // If no conversation exists and not in a room and not auto-prompting, show general summaries
+  if (!isRoom && context.length === 0 && !autoPrompt && typeof summaries !== 'undefined') {
     const messages = document.getElementById('messages');
     const topics = Object.keys(summaries).sort();
     
@@ -253,6 +257,16 @@ function loadChat() {
     switchToTopicIfExists(hash);
   }
   // Otherwise no topic is selected by default
+
+  // Auto-submit prompt after checking for summaries
+  if (autoPrompt) {
+    const promptInput = document.getElementById('prompt');
+    const form = document.getElementById('chat-form');
+    if (promptInput && form) {
+      promptInput.value = autoPrompt;
+      setTimeout(function() { askLLM(form); }, 100);
+    }
+  }
 
   // scroll to bottom of prompt
   const prompt = document.getElementById('prompt');

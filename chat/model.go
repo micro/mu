@@ -22,7 +22,7 @@ func (m *Model) Generate(prompt *Prompt) (string, error) {
 		systemPromptText = prompt.System
 	} else {
 		sb := &strings.Builder{}
-		if err := systemPrompt.Execute(sb, prompt.Rag); err != nil {
+		if err := systemPrompt.Execute(sb, prompt); err != nil {
 			return "", err
 		}
 		systemPromptText = sb.String()

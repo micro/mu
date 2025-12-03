@@ -10,14 +10,14 @@ import (
 // on how well the LLM handles the context, especially for LLMs with < 7B parameters.
 // The prompt engineering is up to you, it's out of scope for the vector database.
 var systemPrompt = template.Must(template.New("system_prompt").Parse(`
-You are a helpful AI assistant. Answer questions accurately based ONLY on the provided context sources.
+You are a helpful AI assistant.{{if .Topic}} The user has selected the "{{.Topic}}" topic for this conversation.{{end}} Answer questions accurately based ONLY on the provided context sources.
 
-{{- if . }}
+{{- if .Rag }}
 
 IMPORTANT: The first source listed below is the PRIMARY TOPIC of discussion. Your answer MUST be directly related to this topic.
 
 Context sources:
-{{- range $index, $context := . }}
+{{- range $index, $context := .Rag }}
 {{- if eq $index 0 }}
 [PRIMARY TOPIC] {{ . }}
 {{- else }}

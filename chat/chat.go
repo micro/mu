@@ -23,6 +23,7 @@ var f embed.FS
 
 type Prompt struct {
 	System   string   `json:"system"` // System prompt override
+	Topic    string   `json:"topic"`  // User-selected topic/context
 	Rag      []string `json:"rag"`
 	Context  History  `json:"context"`
 	Question string   `json:"question"`
@@ -864,6 +865,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		prompt := &Prompt{
+			Topic:    topic,
 			Rag:      ragContext,
 			Context:  context,
 			Question: q,
@@ -894,7 +896,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Format a HTML response
 		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
-		messages += fmt.Sprintf(`<div class="message"><span class="llm">llm</span><p>%v</p></div>`, form["answer"])
+		messages += fmt.Sprintf(`<div class="message"><span class="ai">ai</span><p>%v</p></div>`, form["answer"])
 
 		mutex.RLock()
 		topicTabs := app.Head("chat", topics)

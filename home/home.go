@@ -185,8 +185,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var rightHTML []string
 
 	// Add chat card at the top of the left column
-	chatForm := `<form id="home-chat-form" action="/chat" method="POST">
-  <input type="hidden" name="context" value="[]">
+	chatForm := `<form id="home-chat-form" action="/chat" method="GET">
   <input type="text" name="prompt" placeholder="Ask a question..." autocomplete="off" required>
   <button type="submit">Ask</button>
 </form>`
