@@ -418,20 +418,31 @@ func backoff(attempts int) time.Duration {
 	return time.Duration(math.Pow(float64(attempts), math.E)) * time.Millisecond * 100
 }
 
-func getMetadata(uri string) (*Metadata, error) {
+func getMetadata(uri string) (*Metadata, bool, error) {
 	// Check cache first
 	if cached, exists := loadCachedMetadata(uri); exists {
-		return cached, nil
+		// Only refresh HN articles (for new comments), regular articles don't change
+		isHN := strings.Contains(uri, "news.ycombinator.com/item?id=")
+		if isHN {
+			age := time.Since(time.Unix(0, cached.Created))
+			if age < time.Hour {
+				return cached, false, nil // false = from cache
+			}
+			app.Log("news", "HN metadata cache expired for %s (age: %v), refetching comments", uri, age.Round(time.Minute))
+		} else {
+			// Non-HN articles: use cache indefinitely
+			return cached, false, nil
+		}
 	}
 
 	u, err := url.Parse(uri)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	d, err := goquery.NewDocument(u.String())
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	g := &Metadata{
@@ -598,7 +609,7 @@ func getMetadata(uri string) (*Metadata, error) {
 	// Cache the metadata
 	saveCachedMetadata(uri, g)
 
-	return g, nil
+	return g, true, nil // true = freshly fetched
 }
 
 // fetchHNComments fetches top-level comments from a HackerNews story
@@ -864,7 +875,7 @@ func parseFeed() {
 			}
 
 			// get meta
-			md, err := getMetadata(link)
+			md, freshlyFetched, err := getMetadata(link)
 			if err != nil {
 				app.Log("news", "Error parsing %s: %v", link, err)
 				continue
@@ -937,8 +948,9 @@ func parseFeed() {
 
 			news = append(news, post)
 
-			// Index the article for search/RAG (async)
-			go func(id, title, desc, content, comments, link, category string, published string, image string) {
+			// Index the article for search/RAG only if metadata was freshly fetched (async)
+			if freshlyFetched {
+				go func(id, title, desc, content, comments, link, category string, published string, image string) {
 				app.Log("news", "Indexing article: %s", title)
 				
 				// Combine all content: description + article content + comments
@@ -959,7 +971,8 @@ func parseFeed() {
 						"image":     image,
 					},
 				)
-			}(itemID, item.Title, item.Description, item.Content, md.Comments, link, name, item.Published, md.Image)
+				}(itemID, item.Title, item.Description, item.Content, md.Comments, link, name, item.Published, md.Image)
+			}
 
 			var val string
 
