@@ -1237,9 +1237,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 </form>`)...)
 	
 	if len(results) == 0 {
-		searchResults = append(searchResults, []byte(`<p>No results found</p>`)
+		searchResults = append(searchResults, []byte("<p>No results found</p>")...)
 	} else {
-		searchResults = append(searchResults, []byte(`<h2>Results</h2>`)
+		searchResults = append(searchResults, []byte("<h2>Results</h2>")...)
 		
 		for _, entry := range results {
 			
