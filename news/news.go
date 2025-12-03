@@ -372,7 +372,11 @@ func saveHtml(head, content []byte) {
 	if len(content) == 0 {
 		return
 	}
-	body := fmt.Sprintf(`<div id="topics">%s</div><div>%s</div>`, string(head), string(content))
+	searchForm := `<form action="/news" method="GET" style="margin-bottom: 20px;">
+		<input name="q" placeholder="Search news" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; width: 300px;">
+		<button type="submit" style="padding: 10px 20px; font-size: 14px;">Search</button>
+	</form>`
+	body := fmt.Sprintf(`<div id="topics">%s</div>%s<div>%s</div>`, string(head), searchForm, string(content))
 	newsBodyHtml = body
 	data.SaveFile("news.html", newsBodyHtml)
 	app.Log("news", "Saved news.html (%d bytes)", len(newsBodyHtml))
@@ -1196,6 +1200,13 @@ func Reminder() string {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// Handle search query
+	query := r.URL.Query().Get("q")
+	if query != "" {
+		handleSearch(w, r, query)
+		return
+	}
+
 	mutex.RLock()
 	defer mutex.RUnlock()
 
@@ -1212,6 +1223,88 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Serve the pre-built news body with user-specific rendering
 	renderedHtml := app.RenderHTMLForRequest("News", "Latest news headlines", newsBodyHtml, r)
 	w.Write([]byte(renderedHtml))
+}
+
+func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
+	// Search indexed news articles
+	results := data.Search(query, 20)
+	
+	var searchResults []byte
+	searchResults = append(searchResults, []byte(`<form action="/news" method="GET" style="margin-bottom: 20px;">
+		<input name="q" value="`+query+`" placeholder="Search news" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; width: 300px;">
+		<button type="submit" style="padding: 10px 20px; font-size: 14px;">Search</button>
+		<a href="/news" style="margin-left: 10px; color: #666; text-decoration: none;">Clear</a>
+	</form>`)...)
+	
+	if len(results) == 0 {
+		searchResults = append(searchResults, []byte(`<p>No results found for "`+query+`"</p>`)...)
+	} else {
+		searchResults = append(searchResults, []byte(fmt.Sprintf(`<h2>Search Results for "%s" (%d articles)</h2>`, query, len(results)))...)
+		
+		for _, entry := range results {
+			if entry.Type != "news" {
+				continue
+			}
+			
+			title := entry.Title
+			description := entry.Content
+			if len(description) > 300 {
+				description = description[:300] + "..."
+			}
+			
+			url := ""
+			category := ""
+			image := ""
+			published := ""
+			
+			if v, ok := entry.Metadata["url"].(string); ok {
+				url = v
+			}
+			if v, ok := entry.Metadata["category"].(string); ok {
+				category = v
+			}
+			if v, ok := entry.Metadata["image"].(string); ok {
+				image = v
+			}
+			if v, ok := entry.Metadata["published"].(string); ok {
+				published = v
+			}
+			
+			discussLink := fmt.Sprintf(` | <a href="/chat?id=news_%s" style="color: inherit;">Discuss</a>`, entry.ID)
+			
+			var article string
+			if image != "" {
+				article = fmt.Sprintf(`
+<div id="%s" class="news">
+  <a href="%s" rel="noopener noreferrer" target="_blank">
+    <img class="cover" src="%s">
+    <div class="blurb">
+      <span class="title">%s</span>
+      <span class="description">%s</span>
+    </div>
+  </a>
+  <div style="font-size: 0.8em; margin-top: 5px; color: #666;"><span class="highlight">%s</span> | %s%s</div>
+</div>`, entry.ID, url, image, title, description, category, published, discussLink)
+			} else {
+				article = fmt.Sprintf(`
+<div id="%s" class="news">
+  <a href="%s" rel="noopener noreferrer" target="_blank">
+    <img class="cover">
+    <div class="blurb">
+      <span class="title">%s</span>
+      <span class="description">%s</span>
+    </div>
+  </a>
+  <div style="font-size: 0.8em; margin-top: 5px; color: #666;"><span class="highlight">%s</span> | %s%s</div>
+</div>`, entry.ID, url, title, description, category, published, discussLink)
+			}
+			
+			searchResults = append(searchResults, []byte(article)...)
+		}
+	}
+	
+	html := app.RenderHTMLForRequest("News Search", query, string(searchResults), r)
+	w.Write([]byte(html))
 }
 
 // GetAllPrices returns all cached prices
