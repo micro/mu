@@ -255,6 +255,33 @@ td {
   height: 100%;
 }
 
+#home-chat {
+  margin-bottom: 20px;
+}
+
+#home-chat-form {
+  display: flex;
+  gap: 10px;
+  max-width: 750px;
+  margin: 0 auto;
+}
+
+#home-chat-form input {
+  flex: 1;
+  padding: 12px 15px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 0;
+}
+
+#home-chat-form button {
+  padding: 12px 24px;
+  font-size: 16px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 #home:after {
   content: ".";
   display: block;

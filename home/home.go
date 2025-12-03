@@ -20,7 +20,13 @@ import (
 //go:embed cards.json
 var f embed.FS
 
-var Template = `<div id="home">
+var Template = `<div id="home-chat">
+  <form id="home-chat-form" action="/chat" method="POST">
+    <input type="text" name="prompt" placeholder="Ask a question..." autocomplete="off" required>
+    <button type="submit">Ask</button>
+  </form>
+</div>
+<div id="home">
   <div class="home-left">%s</div>
   <div class="home-right">%s</div>
 </div>`
