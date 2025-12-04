@@ -265,6 +265,37 @@ var Results = `
 </div>
 ` + recentSearchesScript
 
+var PlaylistView = `
+<style>` + commonStyles + `
+</style>
+<form id="video-search" action="/video" method="GET">
+  <input name="query" id="query" placeholder="Search">
+  <button>Search</button>
+</form>
+<div id="topics">%s</div>
+<div id="recent-searches-container"></div>
+<h1>Playlist</h1>
+<div id="results">
+%s
+</div>
+` + recentSearchesScript
+
+var ChannelView = `
+<style>` + commonStyles + `
+</style>
+<form id="video-search" action="/video" method="GET">
+  <input name="query" id="query" placeholder="Search">
+  <button>Search</button>
+</form>
+<div id="topics">%s</div>
+<div id="recent-searches-container"></div>
+<h1>Channel</h1>
+%s
+<div id="results">
+%s
+</div>
+` + recentSearchesScript
+
 var Template = `
 <style>` + commonStyles + `
 </style>
@@ -470,15 +501,11 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		}
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
-		discussLink := ""
-		if kind == "video" {
-			discussLink = fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, id)
-		}
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-		<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+		<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
 		resultsHtml += html
 		res.Html = html
 
@@ -558,15 +585,11 @@ func getResults(query, channel string) (string, []*Result, error) {
 		}
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
-		discussLink := ""
-		if kind == "video" {
-			discussLink = fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, id)
-		}
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
 		resultsHtml += html
 		res.Html = html
 	}
@@ -698,6 +721,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Get playlist details
+		playlistCall := Client.Playlists.List([]string{"snippet"}).Id(playlistID)
+		playlistResp, err := playlistCall.Do()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		playlistTitle := "Playlist"
+		playlistDesc := ""
+		if len(playlistResp.Items) > 0 {
+			playlistTitle = playlistResp.Items[0].Snippet.Title
+			playlistDesc = playlistResp.Items[0].Snippet.Description
+			if len(playlistDesc) > 500 {
+				playlistDesc = playlistDesc[:500] + "..."
+			}
+			if playlistDesc != "" {
+				playlistDesc = "<p>" + playlistDesc + "</p>"
+			}
+		}
+
 		listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistID).MaxResults(50)
 		resp, err := listVideosCall.Do()
 		if err != nil {
@@ -711,20 +755,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			desc := fmt.Sprintf(`<span class="highlight">video</span> | <small>%s</small>`, app.TimeAgo(t))
 			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
-			discussLink := fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, videoID)
 
 			html := fmt.Sprintf(`
-		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-				videoID, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+				videoID, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
 			resultsHtml += html
 		}
 
-		playlistTitle := "Playlist"
-		if len(resp.Items) > 0 {
-			playlistTitle = resp.Items[0].Snippet.Title
-		}
-
-		html := app.RenderHTML("Video", playlistTitle, fmt.Sprintf(Results, "", head, resultsHtml))
+		content := fmt.Sprintf(PlaylistView, head, playlistDesc+resultsHtml)
+		html := app.RenderHTML("Video", playlistTitle, content)
 		w.Write([]byte(html))
 		return
 	}
@@ -750,6 +789,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		channelTitle := channelResp.Items[0].Snippet.Title
+		channelDesc := channelResp.Items[0].Snippet.Description
+		if len(channelDesc) > 500 {
+			channelDesc = channelDesc[:500] + "..."
+		}
+		channelInfo := ""
+		if channelDesc != "" {
+			channelInfo = "<p>" + channelDesc + "</p>"
+		}
+
 		uploadsPlaylistID := channelResp.Items[0].ContentDetails.RelatedPlaylists.Uploads
 
 		listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(uploadsPlaylistID).MaxResults(50)
@@ -765,15 +813,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			desc := fmt.Sprintf(`<span class="highlight">video</span> | <small>%s</small>`, app.TimeAgo(t))
 			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
-			discussLink := fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, videoID)
 
 			html := fmt.Sprintf(`
-		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-				videoID, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+				videoID, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
 			resultsHtml += html
 		}
 
-		html := app.RenderHTML("Video", channelTitle, fmt.Sprintf(Results, "", head, resultsHtml))
+		content := fmt.Sprintf(ChannelView, head, channelInfo, resultsHtml)
+		html := app.RenderHTML("Video", channelTitle, content)
 		w.Write([]byte(html))
 		return
 	}
