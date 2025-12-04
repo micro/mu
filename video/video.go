@@ -747,14 +747,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		var resultsHtml string
 		for _, item := range resp.Items {
+			if item.Snippet == nil || item.Snippet.ResourceId == nil {
+				continue
+			}
 			videoID := item.Snippet.ResourceId.VideoId
+			if videoID == "" {
+				continue
+			}
+			
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			desc := fmt.Sprintf(`<span class="highlight">video</span> | <small>%s</small>`, app.TimeAgo(t))
 			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 
+			thumbnailURL := ""
+			if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
+				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
+			}
+
 			html := fmt.Sprintf(`
 		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
-				videoID, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
+				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
 			resultsHtml += html
 		}
 
