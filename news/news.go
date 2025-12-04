@@ -1322,12 +1322,16 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 				postedAt = v
 			}
 
+			// Build summary info like regular news display
+			source := getDomain(url)
 			timeAgo := ""
 			if !postedAt.IsZero() {
 				timeAgo = app.TimeAgo(postedAt)
 			}
 
-			discussLink := fmt.Sprintf(` | <a href="/chat?id=news_%s" style="color: inherit;">Discuss</a>`, entry.ID)
+			// Format: Category | Source: domain | timestamp | Discuss
+			summary := fmt.Sprintf(`<span class="highlight">%s</span> | Source: <i>%s</i> | %s | <a href="/chat?id=news_%s" style="color: inherit;">Discuss</a>`, 
+				category, source, timeAgo, entry.ID)
 
 			var article string
 			if image != "" {
@@ -1340,8 +1344,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
       <span class="description">%s</span>
     </div>
   </a>
-  <div style="font-size: 0.8em; margin-top: 5px; color: #666;"><span class="highlight">%s</span> | %s%s</div>
-</div>`, entry.ID, url, image, title, description, category, timeAgo, discussLink)
+  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
+</div>`, entry.ID, url, image, title, description, summary)
 			} else {
 				article = fmt.Sprintf(`
 <div id="%s" class="news">
@@ -1352,8 +1356,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
       <span class="description">%s</span>
     </div>
   </a>
-  <div style="font-size: 0.8em; margin-top: 5px; color: #666;"><span class="highlight">%s</span> | %s%s</div>
-</div>`, entry.ID, url, title, description, category, timeAgo, discussLink)
+  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
+</div>`, entry.ID, url, title, description, summary)
 			}
 
 			searchResults = append(searchResults, []byte(article)...)
