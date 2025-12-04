@@ -64,9 +64,9 @@ type CardConfig struct {
 var Cards []Card
 
 func Load() {
-	data, _ := f.ReadFile("cards.json")
+	b, _ := f.ReadFile("cards.json")
 	var config CardConfig
-	if err := json.Unmarshal(data, &config); err != nil {
+	if err := json.Unmarshal(b, &config); err != nil {
 		fmt.Println("Error loading cards.json:", err)
 		return
 	}
