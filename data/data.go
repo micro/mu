@@ -408,14 +408,80 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 				return results[i].Score > results[j].Score
 			})
 
-			// Return top N results
-			if limit > 0 && len(results) > limit {
-				results = results[:limit]
+			fmt.Printf("[SEARCH] Vector search found %d results\n", len(results))
+
+			// Always also do text search to catch exact keyword matches
+			// that semantic search might miss
+			queryLower := strings.ToLower(query)
+			textResults := make(map[string]float64) // ID -> score
+			
+			for _, entry := range index {
+				// Filter by type if specified
+				if options.Type != "" && entry.Type != options.Type {
+					continue
+				}
+
+				score := 0.0
+				titleLower := strings.ToLower(entry.Title)
+				contentLower := strings.ToLower(entry.Content)
+
+				// Simple contains matching with higher weight for title matches
+				if strings.Contains(titleLower, queryLower) {
+					score = 5.0 // Boosted title match score to rank above low semantic scores
+				} else if strings.Contains(contentLower, queryLower) {
+					score = 2.0 // Boosted content match score
+				}
+
+				if score > 0 {
+					textResults[entry.ID] = score
+				}
 			}
 
-			if len(results) > 0 {
-				entries := make([]*IndexEntry, len(results))
-				for i, r := range results {
+			fmt.Printf("[SEARCH] Text search found %d additional exact matches\n", len(textResults))
+
+			// Merge vector and text results, preferring text matches for exact keywords
+			mergedResults := make(map[string]SearchResult)
+			for _, r := range results {
+				mergedResults[r.Entry.ID] = r
+			}
+			
+			// Add or boost text search results
+			for id, textScore := range textResults {
+				if existing, found := mergedResults[id]; found {
+					// Entry found in both - boost the score if text match is better
+					if textScore > existing.Score {
+						existing.Score = textScore
+						mergedResults[id] = existing
+					}
+				} else {
+					// New entry from text search only
+					if entry := index[id]; entry != nil {
+						mergedResults[id] = SearchResult{
+							Entry: entry,
+							Score: textScore,
+						}
+					}
+				}
+			}
+
+			// Convert back to slice and sort
+			var finalResults []SearchResult
+			for _, r := range mergedResults {
+				finalResults = append(finalResults, r)
+			}
+			
+			sort.Slice(finalResults, func(i, j int) bool {
+				return finalResults[i].Score > finalResults[j].Score
+			})
+
+			// Return top N results
+			if limit > 0 && len(finalResults) > limit {
+				finalResults = finalResults[:limit]
+			}
+
+			if len(finalResults) > 0 {
+				entries := make([]*IndexEntry, len(finalResults))
+				for i, r := range finalResults {
 					entries[i] = r.Entry
 				}
 				return entries
@@ -423,8 +489,8 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 		}
 	}
 
-	// Fallback to text search
-	fmt.Printf("[SEARCH] Using text search for: %s (type: %s)\n", query, options.Type)
+	// Fallback to pure text search if no embeddings available
+	fmt.Printf("[SEARCH] Using pure text search for: %s (type: %s)\n", query, options.Type)
 	queryLower := strings.ToLower(query)
 	var results []SearchResult
 
