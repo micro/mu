@@ -140,6 +140,12 @@ func updateCache() {
 	mutex.Lock()
 	defer mutex.Unlock()
 	updateCacheUnlocked()
+	
+	// Publish event to refresh home page cache
+	data.Publish(data.Event{
+		Type: "blog_updated",
+		Data: map[string]interface{}{},
+	})
 }
 
 // updateCacheUnlocked updates the cache without locking (caller must hold lock)

@@ -118,6 +118,14 @@ func Load() {
 
 	// Do initial refresh
 	RefreshCards()
+	
+	// Subscribe to blog update events
+	go func() {
+		sub := data.Subscribe("blog_updated")
+		for range sub.Chan {
+			ForceRefresh()
+		}
+	}()
 }
 
 // RefreshCards updates card content and timestamps if content changed
