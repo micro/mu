@@ -668,8 +668,10 @@ function displayRoomMessage(msg, shouldScroll = true) {
     // Render markdown for AI messages
     content = renderMarkdown(msg.content);
   } else {
-    // Escape HTML for user messages
-    content = msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    // Escape HTML and linkify URLs for user messages
+    content = msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    content = linkifyText(content);
+    content = content.replace(/\n/g, '<br>');
   }
   
   msgDiv.innerHTML = userSpan + '<p>' + content + '</p>';
@@ -678,6 +680,12 @@ function displayRoomMessage(msg, shouldScroll = true) {
   if (shouldScroll) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
+}
+
+// Linkify URLs in text
+function linkifyText(text) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 
 // Simple markdown renderer for common patterns
