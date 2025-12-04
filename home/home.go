@@ -13,6 +13,7 @@ import (
 
 	"mu/app"
 	"mu/blog"
+	"mu/data"
 	"mu/news"
 	"mu/video"
 )
