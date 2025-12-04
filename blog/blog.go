@@ -375,7 +375,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div style="margin-bottom: 30px;">
 				<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
 					<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px; max-height: 600px;"></textarea>
+					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px;"></textarea>
 					<div style="display: flex; justify-content: space-between; align-items: center;">
 						<span id="char-count" style="font-size: 12px; color: #666;">Min 50 chars</span>
 						<div style="display: flex; gap: 10px;">
@@ -389,10 +389,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				const textarea = document.getElementById('post-content');
 				const charCount = document.getElementById('char-count');
 				
+				// Calculate max height based on viewport
+				function getMaxHeight() {
+					// Reserve space for title input (60px), buttons (60px), header (100px), padding (80px)
+					const reserved = 300;
+					return Math.max(200, window.innerHeight - reserved);
+				}
+				
 				// Auto-grow textarea
 				function autoGrow() {
 					textarea.style.height = 'auto';
-					textarea.style.height = Math.min(textarea.scrollHeight, 600) + 'px';
+					const maxHeight = getMaxHeight();
+					textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
 				}
 				
 				// Update character count
@@ -411,6 +419,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					autoGrow();
 					updateCharCount();
 				});
+				
+				// Recalculate on window resize
+				window.addEventListener('resize', autoGrow);
 				
 				// Initial setup
 				autoGrow();
