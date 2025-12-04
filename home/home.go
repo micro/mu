@@ -193,13 +193,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var leftHTML []string
 	var rightHTML []string
 
-	// Add chat card at the top of the left column
-	chatForm := `<form id="home-chat-form" action="/chat" method="GET">
-  <input type="text" name="prompt" placeholder="Ask a question..." autocomplete="off" required>
-  <button type="submit">Ask</button>
-</form>`
-	leftHTML = append(leftHTML, app.Card("home-chat", "Chat", chatForm))
-
 	for _, card := range Cards {
 		content := card.CachedHTML
 		if strings.TrimSpace(content) == "" {
@@ -219,9 +212,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create homepage
-	var homepage string
-	if len(leftHTML) == 1 && len(rightHTML) == 0 {
-		// Only chat card - show welcome message too
+	if len(leftHTML) == 0 && len(rightHTML) == 0 {
+		// No content - show welcome message
 		leftHTML = append(leftHTML, app.Card("no-content", "Welcome", "<p>Welcome to Mu! Your personalized content will appear here.</p>"))
 	}
 
