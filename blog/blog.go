@@ -375,7 +375,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div style="margin-bottom: 30px;">
 				<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
 					<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-					<textarea id="post-content" name="content" rows="12" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
+					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px; max-height: 600px;"></textarea>
 					<div style="display: flex; justify-content: space-between; align-items: center;">
 						<span id="char-count" style="font-size: 12px; color: #666;">Min 50 chars</span>
 						<div style="display: flex; gap: 10px;">
@@ -385,6 +385,36 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					</div>
 				</form>
 			</div>
+			<script>
+				const textarea = document.getElementById('post-content');
+				const charCount = document.getElementById('char-count');
+				
+				// Auto-grow textarea
+				function autoGrow() {
+					textarea.style.height = 'auto';
+					textarea.style.height = Math.min(textarea.scrollHeight, 600) + 'px';
+				}
+				
+				// Update character count
+				function updateCharCount() {
+					const len = textarea.value.length;
+					if (len < 50) {
+						charCount.textContent = 'Min 50 chars (' + len + ')';
+						charCount.style.color = '#666';
+					} else {
+						charCount.textContent = len + ' chars';
+						charCount.style.color = '#666';
+					}
+				}
+				
+				textarea.addEventListener('input', function() {
+					autoGrow();
+					updateCharCount();
+				});
+				
+				// Initial setup
+				autoGrow();
+			</script>
 		</div>`
 	} else {
 		// Show posts list with write link
