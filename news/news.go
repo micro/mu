@@ -1318,20 +1318,26 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 			if v, ok := entry.Metadata["image"].(string); ok {
 				image = v
 			}
+			// Handle posted_at which might be time.Time or string (from JSON)
 			if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
 				postedAt = v
+			} else if v, ok := entry.Metadata["posted_at"].(string); ok {
+				// Try parsing from RFC3339 format (JSON serialization)
+				if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+					postedAt = parsed
+				}
 			}
 
-			// Build summary info like regular news display
-			source := getDomain(url)
-			timeAgo := ""
-			if !postedAt.IsZero() {
-				timeAgo = app.TimeAgo(postedAt)
+			// Create a Post struct to use getSummary() - keeps format consistent
+			post := &Post{
+				ID:       entry.ID,
+				Title:    title,
+				URL:      url,
+				Category: category,
+				PostedAt: postedAt,
 			}
-
-			// Format: Category | Source: domain | timestamp | Discuss
-			summary := fmt.Sprintf(`<span class="highlight">%s</span> | Source: <i>%s</i> | %s | <a href="/chat?id=news_%s" style="color: inherit;">Discuss</a>`, 
-				category, source, timeAgo, entry.ID)
+			
+			summary := getSummary(post)
 
 			var article string
 			if image != "" {
