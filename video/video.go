@@ -444,10 +444,10 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			url = "/video?id=" + id
 		case "playlist":
 			id = item.Snippet.PlaylistId
-			url = "https://youtube.com/playlist?list=" + id
+			url = "/video?playlist=" + id
 		case "channel":
 			id = item.Snippet.ChannelId
-			url = "https://www.youtube.com/channel/" + id
+			url = "/video?channel=" + id
 			desc = `<span class="highlight">channel</span>`
 		}
 
@@ -475,15 +475,10 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			discussLink = fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, id)
 		}
 
-		// For internal video links, no target blank. For external links (playlist/channel), use target blank
-		target := ""
-		if kind == "playlist" || kind == "channel" {
-			target = ` target="_blank"`
-		}
-
+		// All links are now internal
 		html := fmt.Sprintf(`
-		<div class="thumbnail"><a href="%s"%s><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-			url, target, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+		<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
 		resultsHtml += html
 		res.Html = html
 
@@ -541,10 +536,10 @@ func getResults(query, channel string) (string, []*Result, error) {
 			url = "/video?id=" + id
 		case "playlist":
 			id = item.Id.PlaylistId
-			url = "https://youtube.com/playlist?list=" + id
+			url = "/video?playlist=" + id
 		case "channel":
 			id = item.Id.ChannelId
-			url = "https://www.youtube.com/channel/" + id
+			url = "/video?channel=" + id
 			desc = `<span class="highlight">channel</span>`
 		}
 
@@ -568,15 +563,10 @@ func getResults(query, channel string) (string, []*Result, error) {
 			discussLink = fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, id)
 		}
 
-		// For internal video links, no target blank. For external links (playlist/channel), use target blank
-		target := ""
-		if kind == "playlist" || kind == "channel" {
-			target = ` target="_blank"`
-		}
-
+		// All links are now internal
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s"%s><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
-			url, target, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
 		resultsHtml += html
 		res.Html = html
 	}
@@ -698,6 +688,95 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Watch video
 	id := r.Form.Get("id")
+	playlistID := r.Form.Get("playlist")
+	channelID := r.Form.Get("channel")
+
+	// Handle playlist view
+	if len(playlistID) > 0 {
+		if Client == nil {
+			http.Error(w, "YouTube API not available", 500)
+			return
+		}
+
+		listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistID).MaxResults(50)
+		resp, err := listVideosCall.Do()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		var resultsHtml string
+		for _, item := range resp.Items {
+			videoID := item.Snippet.ResourceId.VideoId
+			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+			desc := fmt.Sprintf(`<span class="highlight">video</span> | <small>%s</small>`, app.TimeAgo(t))
+			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+			discussLink := fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, videoID)
+
+			html := fmt.Sprintf(`
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
+				videoID, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+			resultsHtml += html
+		}
+
+		playlistTitle := "Playlist"
+		if len(resp.Items) > 0 {
+			playlistTitle = resp.Items[0].Snippet.Title
+		}
+
+		html := app.RenderHTML("Video", playlistTitle, fmt.Sprintf(Results, "", head, resultsHtml))
+		w.Write([]byte(html))
+		return
+	}
+
+	// Handle channel view
+	if len(channelID) > 0 {
+		if Client == nil {
+			http.Error(w, "YouTube API not available", 500)
+			return
+		}
+
+		// Get channel uploads playlist
+		channelCall := Client.Channels.List([]string{"contentDetails", "snippet"}).Id(channelID)
+		channelResp, err := channelCall.Do()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		if len(channelResp.Items) == 0 {
+			http.Error(w, "Channel not found", 404)
+			return
+		}
+
+		channelTitle := channelResp.Items[0].Snippet.Title
+		uploadsPlaylistID := channelResp.Items[0].ContentDetails.RelatedPlaylists.Uploads
+
+		listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(uploadsPlaylistID).MaxResults(50)
+		resp, err := listVideosCall.Do()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		var resultsHtml string
+		for _, item := range resp.Items {
+			videoID := item.Snippet.ResourceId.VideoId
+			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+			desc := fmt.Sprintf(`<span class="highlight">video</span> | <small>%s</small>`, app.TimeAgo(t))
+			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+			discussLink := fmt.Sprintf(` | <a href="/chat?id=video_%s" style="color: inherit;">Discuss</a>`, videoID)
+
+			html := fmt.Sprintf(`
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s | %s%s</div>`,
+				videoID, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc, discussLink)
+			resultsHtml += html
+		}
+
+		html := app.RenderHTML("Video", channelTitle, fmt.Sprintf(Results, "", head, resultsHtml))
+		w.Write([]byte(html))
+		return
+	}
 
 	// render watch page
 	if len(id) > 0 {
