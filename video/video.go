@@ -724,7 +724,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Get playlist details
 		playlistCall := Client.Playlists.List([]string{"snippet"}).Id(playlistID)
 		playlistResp, err := playlistCall.Do()
-		
+
 		playlistTitle := "Playlist"
 		playlistDesc := ""
 		if err == nil && playlistResp != nil && len(playlistResp.Items) > 0 {
@@ -754,7 +754,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if videoID == "" {
 				continue
 			}
-			
+
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			desc := fmt.Sprintf(`<span class="highlight">video</span> | <small>%s</small>`, app.TimeAgo(t))
 			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
@@ -824,7 +824,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if videoID == "" {
 				continue
 			}
-			
+
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			desc := fmt.Sprintf(`<span class="highlight">video</span> | <small>%s</small>`, app.TimeAgo(t))
 			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)

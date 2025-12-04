@@ -1336,7 +1336,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 				Category: category,
 				PostedAt: postedAt,
 			}
-			
+
 			summary := getSummary(post)
 
 			var article string

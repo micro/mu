@@ -119,7 +119,7 @@ func Load() {
 
 	// Do initial refresh
 	RefreshCards()
-	
+
 	// Subscribe to blog update events
 	go func() {
 		sub := data.Subscribe("blog_updated")

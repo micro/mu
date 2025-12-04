@@ -170,18 +170,18 @@ func LoadJSON(key string, val interface{}) error {
 // ============================================
 
 var (
-	indexMutex        sync.RWMutex
-	index             = make(map[string]*IndexEntry)
-	embeddings        = make(map[string][]float64) // Stored separately from index
-	savePending       = false
-	saveMutex         sync.Mutex
-	embeddingCache    = make(map[string][]float64) // Cache query embeddings
-	embeddingCacheMu  sync.RWMutex
-	maxEmbeddingCache = 100  // Maximum cached query embeddings
+	indexMutex         sync.RWMutex
+	index              = make(map[string]*IndexEntry)
+	embeddings         = make(map[string][]float64) // Stored separately from index
+	savePending        = false
+	saveMutex          sync.Mutex
+	embeddingCache     = make(map[string][]float64) // Cache query embeddings
+	embeddingCacheMu   sync.RWMutex
+	maxEmbeddingCache  = 100  // Maximum cached query embeddings
 	maxIndexEmbeddings = 1000 // Maximum index entries with embeddings
-	embeddingQueue    = make(chan string, 100)
-	embeddingEnabled  = false
-	embeddingMutex    sync.Mutex
+	embeddingQueue     = make(chan string, 100)
+	embeddingEnabled   = false
+	embeddingMutex     sync.Mutex
 )
 
 // IndexEntry represents a searchable piece of content
@@ -210,12 +210,12 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	// Skip if already exists with same title/content and recent
 	if exists {
 		contentSame := existing.Title == title && existing.Content == content
-		
+
 		// If content is the same and indexed recently, skip entirely
 		if contentSame && time.Since(existing.IndexedAt) < 5*time.Minute {
 			return
 		}
-		
+
 		// If content changed or it's been a while, allow re-index
 		// (This allows metadata like comments to be updated)
 	}
@@ -228,7 +228,7 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 		Metadata:  metadata,
 		IndexedAt: time.Now(),
 	}
-	
+
 	// Preserve existing embedding if content hasn't changed
 	if exists && existing.Title == title && existing.Content == content {
 		indexMutex.RLock()
@@ -257,7 +257,7 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	indexMutex.RLock()
 	_, hasEmbedding := embeddings[id]
 	indexMutex.RUnlock()
-	
+
 	if !hasEmbedding {
 		select {
 		case embeddingQueue <- id:
@@ -414,7 +414,7 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 			// that semantic search might miss
 			queryLower := strings.ToLower(query)
 			textResults := make(map[string]float64) // ID -> score
-			
+
 			for _, entry := range index {
 				// Filter by type if specified
 				if options.Type != "" && entry.Type != options.Type {
@@ -444,7 +444,7 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 			for _, r := range results {
 				mergedResults[r.Entry.ID] = r
 			}
-			
+
 			// Add or boost text search results
 			for id, textScore := range textResults {
 				if existing, found := mergedResults[id]; found {
@@ -469,7 +469,7 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 			for _, r := range mergedResults {
 				finalResults = append(finalResults, r)
 			}
-			
+
 			sort.Slice(finalResults, func(i, j int) bool {
 				return finalResults[i].Score > finalResults[j].Score
 			})
@@ -638,7 +638,7 @@ func Load() {
 			IndexedAt time.Time              `json:"indexed_at"`
 			Embedding []float64              `json:"embedding,omitempty"`
 		}
-		
+
 		if err := json.Unmarshal(b, &oldIndex); err == nil {
 			// Migrate old format to new format
 			for id, old := range oldIndex {
