@@ -217,7 +217,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		leftHTML = append(leftHTML, app.Card("no-content", "Welcome", "<p>Welcome to Mu! Your personalized content will appear here.</p>"))
 	}
 
-	homepage = fmt.Sprintf(Template,
+	homepage := fmt.Sprintf(Template,
 		strings.Join(leftHTML, "\n"),
 		strings.Join(rightHTML, "\n"))
 
