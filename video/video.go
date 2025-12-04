@@ -724,14 +724,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Get playlist details
 		playlistCall := Client.Playlists.List([]string{"snippet"}).Id(playlistID)
 		playlistResp, err := playlistCall.Do()
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
+		
 		playlistTitle := "Playlist"
 		playlistDesc := ""
-		if len(playlistResp.Items) > 0 {
+		if err == nil && playlistResp != nil && len(playlistResp.Items) > 0 {
 			playlistTitle = playlistResp.Items[0].Snippet.Title
 			playlistDesc = playlistResp.Items[0].Snippet.Description
 			if len(playlistDesc) > 500 {
