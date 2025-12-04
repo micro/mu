@@ -370,12 +370,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var content string
 	if showWriteForm {
-		// Show the posting form
-		content = fmt.Sprintf(`<div id="blog">
+		// Show only the posting form
+		content = `<div id="blog">
 			<div style="margin-bottom: 30px;">
 				<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
 					<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
+					<textarea id="post-content" name="content" rows="12" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
 					<div style="display: flex; justify-content: space-between; align-items: center;">
 						<span id="char-count" style="font-size: 12px; color: #666;">Min 50 chars</span>
 						<div style="display: flex; gap: 10px;">
@@ -385,11 +385,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					</div>
 				</form>
 			</div>
-			<hr style='margin: 0 0 30px 0; border: none; border-top: 2px solid #333;'>
-			<div id="posts-list">
-				%s
-			</div>
-		</div>`, list)
+		</div>`
 	} else {
 		// Show posts list with write link
 		content = fmt.Sprintf(`<div id="blog">
