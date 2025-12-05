@@ -231,18 +231,13 @@ td {
   margin: 50px 0;
 }
 
-@media only screen and (max-width: 600px) {
-  .anchor {
-    margin: 30px 0;
-  }
-}
-
 #main {
   max-width: 900px;
   justify-items: center;
   text-align: center;
   padding: 25px;
   margin: 0 auto;
+  margin-top: 75px;
 }
 
 /* ========================================
@@ -1064,6 +1059,9 @@ body:has(#messages) #content {
   body {
     overflow-x: hidden;
   }
+  .anchor {
+    margin: 30px 0;
+  }
   #topics {
     text-align: center;
     overflow-x: scroll;
@@ -1190,7 +1188,7 @@ body:has(#messages) #content {
   }
   #main {
     padding: 20px;
-    margin-top: 20px;
+    margin-top: 75px;
   }
   #title {
     font-size: 2.5em;
