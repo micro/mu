@@ -19,7 +19,6 @@ Rooms are ephemeral (in-memory only) and maintain:
 - Last 20 messages in server memory
 - Full message history in client sessionStorage
 - Real-time WebSocket communication
-- User presence tracking
 
 ### Content Indexing
 
