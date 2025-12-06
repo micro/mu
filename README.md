@@ -41,17 +41,25 @@ Coming soon:
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
-## Hosted Version
+## Screenshots
 
-**Mu is free to use** at [mu.xyz](https://mu.xyz). Create an account and start using it immediately - no credit card required.
+### Home
 
-Optional membership is available to support ongoing development and hosting costs. Members get early access to new features and a voice in the project's direction. This is entirely optional - the platform remains free for all users.
+<img width="3728" height="1765" alt="image" src="https://github.com/user-attachments/assets/75e029f8-5802-49aa-9449-4902be5da805" />
+
+[View more screenshots](docs/SCREENSHOTS.md)
 
 ## Concepts
 
 Basic concepts. The app contains **cards** displayed on the home screen. These are a sort of summary or overview. Each card links to a **micro app** or an external website. For example the latest Video "more" links to the /video page with videos by channel and search, whereas the markets card redirects to an external app. 
 
 There are built in cards and then the idea would be that you could develop or include additional cards or micro apps through configuration or via some basic gist like code editor. Essentially creating a marketplace.
+
+## Hosted Version
+
+**Mu is free to use** at [mu.xyz](https://mu.xyz). Create an account and start using it immediately - no credit card required.
+
+Optional membership is available to support ongoing development and hosting costs. Members get early access to new features and a voice in the project's direction. This is entirely optional - the platform remains free for all users.
 
 ## Self Hosting
 
@@ -69,19 +77,21 @@ git clone https://github.com/asim/mu
 cd mu && go install
 ```
 
-### Chat Prompts
+### Configuration
+
+#### Chat Prompts
 
 Set the chat prompts in chat/prompts.json
 
-### Home Cards
+#### Home Cards
 
 Set the home cards in home/cards.json
 
-### News Feed
+#### News Feed
 
 Set the RSS news feeds in news/feeds.json
 
-### Video Channels
+#### Video Channels
 
 Set the YouTube video channels in video/channels.json
 
@@ -149,10 +159,8 @@ Additional documentation is available in the [docs](docs/) folder:
 - [Contextual Discussions](docs/CONTEXTUAL_DISCUSSIONS.md) - Chat context and discussion features
 - [Screenshots](docs/SCREENSHOTS.md) - Application screenshots
 
-## Screenshots
+## License
 
-### Home
+Mu is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
 
-<img width="3728" height="1765" alt="image" src="https://github.com/user-attachments/assets/75e029f8-5802-49aa-9449-4902be5da805" />
-
-[View more screenshots](docs/SCREENSHOTS.md)
+This means you are free to use, modify, and distribute this software, but if you run a modified version on a server and let others interact with it, you must make your modified source code available under the same license.
