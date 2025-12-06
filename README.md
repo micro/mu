@@ -99,14 +99,34 @@ export YOUTUBE_API_KEY=xxx
 
 #### LLM Model
 
-Usage requires
+**Ollama (Default)**
 
-- [Fanar](https://fanar.qa/) - for llm queries
-- Ollama - TODO
+By default, Mu uses [Ollama](https://ollama.ai/) for LLM queries. Install and run Ollama locally:
+
+```
+# Install Ollama from https://ollama.ai/
+# Pull a model (e.g., llama3.2)
+ollama pull llama3.2
+
+# Ollama runs on http://localhost:11434 by default
+```
+
+Optional environment variables:
+```
+export MODEL_NAME=llama3.2              # Default model
+export MODEL_API_URL=http://localhost:11434  # Ollama API URL
+```
+
+**Fanar (Optional)**
+
+Alternatively, use [Fanar](https://fanar.qa/) by setting the API key:
 
 ```
 export FANAR_API_KEY=xxx
+export FANAR_API_URL=https://api.fanar.qa  # Optional, this is the default
 ```
+
+When `FANAR_API_KEY` is set, Mu will use Fanar instead of Ollama.
 
 For vector search see this [doc](docs/VECTOR_SEARCH.md)
 
