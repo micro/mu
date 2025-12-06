@@ -19,8 +19,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 
 ## Motivation
 
-Big tech failed us. They now fuel addictive behaviour to drive profit above all else. The tools no longer work for us, instead we work for them. 
-Let's rebuild these services without ads, algorithms or exploits for a better way of life.
+Technology should empower people, not exploit them. Mu is built on the principle of servitude. Tools that serve humanity with humility, respect privacy, and enable meaningful connection without addiction, surveillance, or manipulation.
 
 ## Features
 
