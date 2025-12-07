@@ -21,8 +21,11 @@ import (
 
 // Event types
 const (
-	EventRefreshHNComments = "refresh_hn_comments"
-	EventIndexComplete     = "index_complete"
+	EventRefreshHNComments  = "refresh_hn_comments"
+	EventIndexComplete      = "index_complete"
+	EventNewArticleMetadata = "new_article_metadata"
+	EventGenerateSummary    = "generate_summary"
+	EventSummaryGenerated   = "summary_generated"
 )
 
 // Event represents a data event

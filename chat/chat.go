@@ -699,6 +699,44 @@ func Load() {
 		}
 	}
 
+	// Subscribe to summary generation requests
+	summaryRequestSub := data.Subscribe(data.EventGenerateSummary)
+	go func() {
+		for event := range summaryRequestSub.Chan {
+			uri, okUri := event.Data["uri"].(string)
+			content, okContent := event.Data["content"].(string)
+			eventType, okType := event.Data["type"].(string)
+			
+			if okUri && okContent && okType {
+				app.Log("chat", "Received summary generation request for %s (%s)", uri, eventType)
+				
+				// Generate summary using LLM
+				prompt := &Prompt{
+					System:   "You are a helpful assistant that creates concise summaries of news articles. Provide a clear, factual 2-3 sentence summary that captures the key points.",
+					Question: fmt.Sprintf("Summarize this article:\n\n%s", content),
+				}
+				
+				summary, err := askLLM(prompt)
+				if err != nil {
+					app.Log("chat", "Error generating summary for %s: %v", uri, err)
+					continue
+				}
+				
+				// Publish the generated summary
+				data.Publish(data.Event{
+					Type: data.EventSummaryGenerated,
+					Data: map[string]interface{}{
+						"uri":     uri,
+						"summary": summary,
+						"type":    eventType,
+					},
+				})
+				
+				app.Log("chat", "Published generated summary for %s", uri)
+			}
+		}
+	}()
+
 	go generateSummaries()
 }
 

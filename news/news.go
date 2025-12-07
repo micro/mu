@@ -92,6 +92,7 @@ type Metadata struct {
 	Site        string
 	Content     string
 	Comments    string // Comments/discussion context from any source
+	Summary     string // LLM-generated summary for chat context
 }
 
 // htmlToText converts HTML to plain text with proper spacing
@@ -621,7 +622,49 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 	// Cache the metadata
 	saveCachedMetadata(uri, g)
 
+	// Request LLM summary generation via event (non-blocking)
+	go requestArticleSummary(uri, g)
+
 	return g, true, nil // true = freshly fetched
+}
+
+// requestArticleSummary publishes a request for LLM summary generation
+func requestArticleSummary(uri string, md *Metadata) {
+	// Skip if we already have a summary
+	if md.Summary != "" {
+		return
+	}
+
+	// Prepare content for summarization
+	contentToSummarize := md.Title
+	if md.Description != "" {
+		contentToSummarize += "\n\n" + md.Description
+	}
+	if md.Content != "" {
+		// Limit content length to avoid overwhelming the LLM
+		content := htmlToText(md.Content)
+		if len(content) > 2000 {
+			content = content[:2000]
+		}
+		contentToSummarize += "\n\n" + content
+	}
+
+	// Skip if there's not enough content
+	if len(contentToSummarize) < 100 {
+		return
+	}
+
+	app.Log("news", "Requesting summary generation for %s", uri)
+
+	// Publish summary generation request
+	data.Publish(data.Event{
+		Type: data.EventGenerateSummary,
+		Data: map[string]interface{}{
+			"uri":     uri,
+			"content": contentToSummarize,
+			"type":    "news",
+		},
+	})
 }
 
 // FetchHNComments fetches top-level comments from a HackerNews story
@@ -963,9 +1006,15 @@ func parseFeed() {
 			// Index the article for search/RAG (async)
 			// Rooms will subscribe to index events and update when ready
 			// Note: getMetadata() already caches, so we're not refetching unless needed
-			go func(id, title, desc, content, comments, link, category string, postedAt time.Time, image string) {
-				// Combine all content: description + article content + comments
-				fullContent := desc + " " + content
+			go func(id, title, desc, content, comments, summary, link, category string, postedAt time.Time, image string) {
+				// Use LLM summary if available, otherwise combine description + content
+				var fullContent string
+				if summary != "" {
+					fullContent = summary
+				} else {
+					fullContent = desc + " " + content
+				}
+				
 				if len(comments) > 0 {
 					fullContent += " " + comments
 				}
@@ -982,7 +1031,7 @@ func parseFeed() {
 						"image":     image,
 					},
 				)
-			}(itemID, item.Title, item.Description, item.Content, md.Comments, link, name, postedAt, md.Image)
+			}(itemID, item.Title, item.Description, item.Content, md.Comments, md.Summary, link, name, postedAt, md.Image)
 
 			var val string
 
@@ -1141,6 +1190,46 @@ func Load() {
 			if url, ok := event.Data["url"].(string); ok {
 				app.Log("news", "Received refresh request for: %s", url)
 				RefreshHNMetadata(url)
+			}
+		}
+	}()
+
+	// Subscribe to summary generation responses
+	summarySub := data.Subscribe(data.EventSummaryGenerated)
+	go func() {
+		for event := range summarySub.Chan {
+			uri, okUri := event.Data["uri"].(string)
+			summary, okSummary := event.Data["summary"].(string)
+			eventType, okType := event.Data["type"].(string)
+			
+			if okUri && okSummary && okType && eventType == "news" {
+				app.Log("news", "Received generated summary for: %s", uri)
+				
+				// Load existing metadata
+				md, exists := loadCachedMetadata(uri)
+				if exists {
+					// Update with summary
+					md.Summary = summary
+					md.Created = time.Now().UnixNano()
+					saveCachedMetadata(uri, md)
+					
+					// Re-index with the new summary
+					// Get the itemID from URI
+					itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
+					
+					// Re-index with summary as content
+					data.Index(
+						itemID,
+						"news",
+						md.Title,
+						summary, // Use summary as content for chat context
+						map[string]interface{}{
+							"url": uri,
+						},
+					)
+					
+					app.Log("news", "Updated and re-indexed article with summary: %s", uri)
+				}
 			}
 		}
 	}()
