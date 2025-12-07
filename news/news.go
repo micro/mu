@@ -1217,15 +1217,25 @@ func Load() {
 					// Get the itemID from URI
 					itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
 					
+					// Get existing index entry to preserve metadata
+					existing := data.GetByID(itemID)
+					metadata := map[string]interface{}{
+						"url": uri,
+					}
+					if existing != nil {
+						// Preserve existing metadata fields
+						for k, v := range existing.Metadata {
+							metadata[k] = v
+						}
+					}
+					
 					// Re-index with summary as content
 					data.Index(
 						itemID,
 						"news",
 						md.Title,
 						summary, // Use summary as content for chat context
-						map[string]interface{}{
-							"url": uri,
-						},
+						metadata,
 					)
 					
 					app.Log("news", "Updated and re-indexed article with summary: %s", uri)
