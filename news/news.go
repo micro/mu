@@ -422,10 +422,10 @@ func backoff(attempts int) time.Duration {
 	return time.Duration(math.Pow(float64(attempts), math.E)) * time.Millisecond * 100
 }
 
-func getMetadata(uri string) (*Metadata, bool, error) {
+func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 	// Check cache first
 	if cached, exists := loadCachedMetadata(uri); exists {
-		// Only refresh HN articles (for new comments), regular articles don't change
+		// For HN articles: refresh after 1 hour (for new comments)
 		isHN := strings.Contains(uri, "news.ycombinator.com/item?id=")
 		if isHN {
 			age := time.Since(time.Unix(0, cached.Created))
@@ -434,8 +434,16 @@ func getMetadata(uri string) (*Metadata, bool, error) {
 			}
 			app.Log("news", "HN metadata cache expired for %s (age: %v), refetching comments", uri, age.Round(time.Minute))
 		} else {
-			// Non-HN articles: use cache indefinitely
-			return cached, false, nil
+			// For regular articles: check if our cached metadata is older than the published date
+			// This means the article was updated after we cached it
+			cachedTime := time.Unix(0, cached.Created)
+			if !publishedAt.IsZero() && cachedTime.Before(publishedAt) {
+				app.Log("news", "Article updated after cache for %s (cached: %v, published: %v), refetching", 
+					uri, cachedTime.Format(time.RFC3339), publishedAt.Format(time.RFC3339))
+			} else {
+				// Cache is still valid
+				return cached, false, nil
+			}
 		}
 	}
 
@@ -878,8 +886,16 @@ func parseFeed() {
 				app.Log("news", "Replacing mwl ar link %s -> %s", item.Link, link)
 			}
 
+			// Handle nil PublishedParsed first, so we can pass it to getMetadata
+			var postedAt time.Time
+			if item.PublishedParsed != nil {
+				postedAt = *item.PublishedParsed
+			} else {
+				postedAt = time.Now()
+			}
+
 			// get meta
-			md, _, err := getMetadata(link)
+			md, _, err := getMetadata(link, postedAt)
 			if err != nil {
 				app.Log("news", "Error parsing %s: %v", link, err)
 				continue
@@ -892,14 +908,6 @@ func parseFeed() {
 			// extracted content using goquery
 			if len(md.Content) > 0 && len(item.Content) == 0 {
 				item.Content = md.Content
-			}
-
-			// Handle nil PublishedParsed
-			var postedAt time.Time
-			if item.PublishedParsed != nil {
-				postedAt = *item.PublishedParsed
-			} else {
-				postedAt = time.Now()
 			}
 
 			// Clean up description HTML
@@ -1429,8 +1437,8 @@ func RefreshHNMetadata(uri string) (*Metadata, error) {
 	// Load cached metadata
 	md, exists := loadCachedMetadata(uri)
 	if !exists {
-		// If no cache, fetch full metadata
-		md, _, err := getMetadata(uri)
+		// If no cache, fetch full metadata (use zero time since we don't have publish date here)
+		md, _, err := getMetadata(uri, time.Time{})
 		return md, err
 	}
 
