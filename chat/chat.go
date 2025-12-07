@@ -712,7 +712,7 @@ func Load() {
 				
 				// Generate summary using LLM
 				prompt := &Prompt{
-					System:   "You are a helpful assistant that creates concise summaries of news articles. Provide a clear, factual 2-3 sentence summary that captures the key points.",
+					System:   "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear, factual sentences that capture the key points.",
 					Question: fmt.Sprintf("Summarize this article:\n\n%s", content),
 				}
 				
