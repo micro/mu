@@ -729,7 +729,7 @@ func FetchHNComments(storyID string) (string, error) {
 
 func getReminder() {
 	fmt.Println("Getting Reminder at", time.Now().String())
-	uri := "https://reminder.dev/api/daily/latest"
+	uri := "https://reminder.dev/api/latest"
 
 	resp, err := http.Get(uri)
 	if err != nil {
