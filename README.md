@@ -159,6 +159,10 @@ Additional documentation is available in the [docs](docs/) folder:
 - [Contextual Discussions](docs/CONTEXTUAL_DISCUSSIONS.md) - Chat context and discussion features
 - [Screenshots](docs/SCREENSHOTS.md) - Application screenshots
 
+## Development 
+
+Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this. Read the [code of ethics](https://github.com/asim/mu/issues/52) issue first.
+
 ## License
 
 Mu is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
