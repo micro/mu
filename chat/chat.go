@@ -706,22 +706,22 @@ func Load() {
 			uri, okUri := event.Data["uri"].(string)
 			content, okContent := event.Data["content"].(string)
 			eventType, okType := event.Data["type"].(string)
-			
+
 			if okUri && okContent && okType {
 				app.Log("chat", "Received summary generation request for %s (%s)", uri, eventType)
-				
+
 				// Generate summary using LLM
 				prompt := &Prompt{
 					System:   "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear, factual sentences that capture the key points.",
 					Question: fmt.Sprintf("Summarize this article:\n\n%s", content),
 				}
-				
+
 				summary, err := askLLM(prompt)
 				if err != nil {
 					app.Log("chat", "Error generating summary for %s: %v", uri, err)
 					continue
 				}
-				
+
 				// Publish the generated summary
 				data.Publish(data.Event{
 					Type: data.EventSummaryGenerated,
@@ -731,7 +731,7 @@ func Load() {
 						"type":    eventType,
 					},
 				})
-				
+
 				app.Log("chat", "Published generated summary for %s", uri)
 			}
 		}

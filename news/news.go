@@ -439,7 +439,7 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 			// This means the article was updated after we cached it
 			cachedTime := time.Unix(0, cached.Created)
 			if !publishedAt.IsZero() && cachedTime.Before(publishedAt) {
-				app.Log("news", "Article updated after cache for %s (cached: %v, published: %v), refetching", 
+				app.Log("news", "Article updated after cache for %s (cached: %v, published: %v), refetching",
 					uri, cachedTime.Format(time.RFC3339), publishedAt.Format(time.RFC3339))
 			} else {
 				// Cache is still valid
@@ -1014,7 +1014,7 @@ func parseFeed() {
 				} else {
 					fullContent = desc + " " + content
 				}
-				
+
 				if len(comments) > 0 {
 					fullContent += " " + comments
 				}
@@ -1201,10 +1201,10 @@ func Load() {
 			uri, okUri := event.Data["uri"].(string)
 			summary, okSummary := event.Data["summary"].(string)
 			eventType, okType := event.Data["type"].(string)
-			
+
 			if okUri && okSummary && okType && eventType == "news" {
 				app.Log("news", "Received generated summary for: %s", uri)
-				
+
 				// Load existing metadata
 				md, exists := loadCachedMetadata(uri)
 				if exists {
@@ -1212,11 +1212,11 @@ func Load() {
 					md.Summary = summary
 					md.Created = time.Now().UnixNano()
 					saveCachedMetadata(uri, md)
-					
+
 					// Re-index with the new summary
 					// Get the itemID from URI
 					itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
-					
+
 					// Get existing index entry to preserve metadata
 					existing := data.GetByID(itemID)
 					metadata := map[string]interface{}{
@@ -1228,7 +1228,7 @@ func Load() {
 							metadata[k] = v
 						}
 					}
-					
+
 					// Re-index with summary as content
 					data.Index(
 						itemID,
@@ -1237,7 +1237,7 @@ func Load() {
 						summary, // Use summary as content for chat context
 						metadata,
 					)
-					
+
 					app.Log("news", "Updated and re-indexed article with summary: %s", uri)
 				}
 			}
