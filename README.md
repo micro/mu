@@ -6,7 +6,7 @@ The Micro Network
 
 A personal app platform that provides services without ads, algorithms, or exploits.
 
-It includes:
+### Features
 
 - **Home** - One place to catchup with everything
 - **Chat** - AI assistant with contextual discussions
@@ -22,7 +22,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 
 Technology should empower people, not exploit them. Mu is built on the principle of servitude. Tools that serve humanity with humility, respect privacy, and enable meaningful connection without addiction, surveillance, or manipulation.
 
-## Features
+## Roadmap
 
 Starting with:
 
