@@ -20,7 +20,8 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 
 ## Motivation
 
-Technology should empower people, not exploit them. Mu is built on the principle of servitude. Tools that serve humanity with humility, respect privacy, and enable meaningful connection without addiction, surveillance, or manipulation.
+Technology should empower people, not exploit them. Mu is built with the idea that tools should serve humanity,
+respect privacy and enable consumption without addiction, exploitation or manipulation.
 
 ## Roadmap
 
