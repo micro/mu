@@ -48,7 +48,7 @@ Coming soon:
 
 <img width="3728" height="1765" alt="image" src="https://github.com/user-attachments/assets/75e029f8-5802-49aa-9449-4902be5da805" />
 
-[View more screenshots](docs/SCREENSHOTS.md)
+[View more](docs/SCREENSHOTS.md)
 
 ## Concepts
 
