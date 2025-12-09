@@ -80,6 +80,8 @@ cd mu && go install
 
 ### Configuration
 
+To reconfigure prompts, topics, cards, etc you can adjust the following json files. The binary will need to be recompiled as they are embedded at build time.
+
 #### Chat Prompts
 
 Set the chat prompts in chat/prompts.json
