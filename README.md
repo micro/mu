@@ -13,7 +13,7 @@ A personal app platform that provides services without ads, algorithms, or explo
 - **News** - Curated RSS feeds and market data
 - **Posts** - Microblogging and community sharing
 - **Video** - YouTube search and Ad-free viewing
-- **App** - A progressive web app for mobile
+- **App** - Progressive web app for desktop and mobile
 - **API** - REST API for programmatic access
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
