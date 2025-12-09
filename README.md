@@ -166,7 +166,7 @@ Additional documentation is available in the [docs](docs/) folder:
 
 ## Development 
 
-Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this. Read the [code of ethics](https://github.com/asim/mu/issues/52) issue first.
+Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this.
 
 ## License
 
