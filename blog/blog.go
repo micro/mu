@@ -993,16 +993,19 @@ func Linkify(text string) string {
 	// Extract YouTube URLs and replace with placeholders before markdown processing
 	youtubePattern := regexp.MustCompile(`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:\S*)?`)
 	
-	// Store YouTube video IDs
-	var videoIDs []string
-	placeholder := "___YOUTUBE_PLACEHOLDER_%d___"
+	// Store YouTube video IDs with their placeholders
+	placeholders := make(map[string]string)
+	placeholderIdx := 0
 	
-	// Replace YouTube URLs with placeholders
+	// Replace YouTube URLs with unique placeholders
 	processedText := youtubePattern.ReplaceAllStringFunc(text, func(match string) string {
 		matches := youtubePattern.FindStringSubmatch(match)
 		if len(matches) > 1 {
-			videoIDs = append(videoIDs, matches[1])
-			return fmt.Sprintf(placeholder, len(videoIDs)-1)
+			videoID := matches[1]
+			placeholder := fmt.Sprintf("YOUTUBEVIDEO%dPLACEHOLDER", placeholderIdx)
+			placeholders[placeholder] = videoID
+			placeholderIdx++
+			return placeholder
 		}
 		return match
 	})
@@ -1011,12 +1014,11 @@ func Linkify(text string) string {
 	html := string(app.Render([]byte(processedText)))
 
 	// Replace placeholders with YouTube embeds
-	for i, videoID := range videoIDs {
-		placeholderText := fmt.Sprintf(placeholder, i)
+	for placeholder, videoID := range placeholders {
 		embed := fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="/video?id=%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, videoID)
-		html = strings.ReplaceAll(html, placeholderText, embed)
+		html = strings.ReplaceAll(html, placeholder, embed)
 		// Also handle if it got wrapped in <p> tags by markdown
-		html = strings.ReplaceAll(html, "<p>"+placeholderText+"</p>", embed)
+		html = strings.ReplaceAll(html, "<p>"+placeholder+"</p>", embed)
 	}
 
 	return html
