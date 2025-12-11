@@ -414,14 +414,17 @@ function setSession() {
     console.log('Success:', sess);
     var accountHeader = document.getElementById("account-header");
     var loginHeader = document.getElementById("login-header");
+    var mailHeader = document.getElementById("mail-header");
     
     if (sess.type == "account") {
       isAuthenticated = true;
       if (accountHeader) accountHeader.style.display = 'block';
       if (loginHeader) loginHeader.style.display = 'none';
+      if (mailHeader) mailHeader.style.display = 'inline-block';
     } else {
       isAuthenticated = false;
       if (accountHeader) accountHeader.style.display = 'none';
+      if (mailHeader) mailHeader.style.display = 'none';
       if (loginHeader) {
         loginHeader.style.display = 'block';
         // Update login link to include redirect parameter
@@ -440,7 +443,9 @@ function setSession() {
     isAuthenticated = false;
     var accountHeader = document.getElementById("account-header");
     var loginHeader = document.getElementById("login-header");
+    var mailHeader = document.getElementById("mail-header");
     if (accountHeader) accountHeader.style.display = 'none';
+    if (mailHeader) mailHeader.style.display = 'none';
     if (loginHeader) {
       loginHeader.style.display = 'block';
       // Update login link to include redirect parameter for unauthenticated users

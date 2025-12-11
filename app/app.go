@@ -81,6 +81,7 @@ var Template = `
         <a href="/">Mu</a>
       </div>
       <div id="account">
+        <a id="mail-header" href="/mail" style="display: none; margin-right: 15px;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Mail</span></a>
         <a id="account-header" href="/account" style="display: none;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
         <a id="login-header" href="/login" style="display: none;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Login</span></a>
       </div>
