@@ -76,6 +76,72 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle POST - send message
+	if r.Method == "POST" {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			return
+		}
+
+		to := strings.TrimSpace(r.FormValue("to"))
+		subject := strings.TrimSpace(r.FormValue("subject"))
+		body := strings.TrimSpace(r.FormValue("body"))
+
+		if to == "" || subject == "" || body == "" {
+			http.Error(w, "All fields are required", http.StatusBadRequest)
+			return
+		}
+
+		// Get recipient account
+		toAcc, err := auth.GetAccount(to)
+		if err != nil {
+			http.Error(w, "Recipient not found", http.StatusNotFound)
+			return
+		}
+
+		// Send the message
+		if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, ""); err != nil {
+			http.Error(w, "Failed to send message", http.StatusInternalServerError)
+			return
+		}
+
+		// Redirect to inbox
+		http.Redirect(w, r, "/mail", http.StatusSeeOther)
+		return
+	}
+
+	// Check if compose mode
+	if r.URL.Query().Get("compose") == "true" {
+		to := r.URL.Query().Get("to")
+		subject := r.URL.Query().Get("subject")
+		
+		composeForm := fmt.Sprintf(`
+			<div style="margin-bottom: 20px;">
+				<a href="/mail"><button>← Back to Inbox</button></a>
+			</div>
+			<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 15px; max-width: 600px;">
+				<div>
+					<label for="to" style="display: block; margin-bottom: 5px; font-weight: bold;">To:</label>
+					<input type="text" id="to" name="to" value="%s" required style="width: 100%%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+				</div>
+				<div>
+					<label for="subject" style="display: block; margin-bottom: 5px; font-weight: bold;">Subject:</label>
+					<input type="text" id="subject" name="subject" value="%s" required style="width: 100%%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+				</div>
+				<div>
+					<label for="body" style="display: block; margin-bottom: 5px; font-weight: bold;">Message:</label>
+					<textarea id="body" name="body" rows="10" required style="width: 100%%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
+				</div>
+				<div>
+					<button type="submit" style="padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 4px; cursor: pointer;">Send Message</button>
+				</div>
+			</form>
+		`, to, subject)
+		
+		w.Write([]byte(app.RenderHTML("Compose Message", "", composeForm)))
+		return
+	}
+
 	// Get messages for this user
 	mutex.RLock()
 	var inbox []*Message
