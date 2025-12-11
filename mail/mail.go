@@ -142,7 +142,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Display the message
-		replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s`, msg.FromID, url.QueryEscape("Re: "+msg.Subject))
+		replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`, msg.FromID, url.QueryEscape("Re: "+msg.Subject), msgID)
 		
 		messageView := fmt.Sprintf(`
 			<div style="margin-bottom: 20px;">
@@ -183,9 +183,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		pageTitle := "Compose Message"
 		if replyTo != "" {
 			backLink = "/mail?id=" + replyTo
-			if subject != "" {
-				pageTitle = subject
-			}
+			pageTitle = subject
 		}
 		
 		composeForm := fmt.Sprintf(`
@@ -209,9 +207,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					<button type="submit" style="padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 4px; cursor: pointer;">Send Message</button>
 				</div>
 			</form>
-		`, to, subject)
+		`, backLink, to, subject)
 		
-		w.Write([]byte(app.RenderHTML("Compose Message", "", composeForm)))
+		w.Write([]byte(app.RenderHTML(pageTitle, "", composeForm)))
 		return
 	}
 
@@ -271,8 +269,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				unreadIndicator = `<span style="color: #0066cc; font-weight: bold;">●</span> `
 			}
 
-			replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s`,
-				msg.FromID, url.QueryEscape(fmt.Sprintf("Re: %s", msg.Subject)))
+			replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`,
+				msg.FromID, url.QueryEscape(fmt.Sprintf("Re: %s", msg.Subject)), msg.ID)
 
 			item := fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
 				<div style="margin-bottom: 5px;">
