@@ -266,7 +266,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Inbox view - show sender with unread indicator
 			unreadIndicator := ""
 			if !msg.Read {
-				unreadIndicator = `<span style="color: #0066cc; font-weight: bold;">●</span> `
+				unreadIndicator = `<span style="color: #999; font-size: 12px;">●</span> `
 			}
 
 			replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`,
