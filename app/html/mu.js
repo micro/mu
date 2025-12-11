@@ -415,10 +415,11 @@ function setSession() {
       if (accountHeader) accountHeader.style.display = 'none';
       
       // Update login button to include redirect parameter
-      const loginLink = navLoggedOut && navLoggedOut.querySelector('a[href="/login"]');
-      if (loginLink && window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+      const loginLink = navLoggedOut && navLoggedOut.querySelector('a[href^="/login"]');
+      if (loginLink && window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/') {
         const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
         loginLink.href = '/login?redirect=' + redirectUrl;
+        console.log('Updated login link to:', loginLink.href);
       }
     }
     updateChatFormState();
