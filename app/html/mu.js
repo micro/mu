@@ -81,6 +81,7 @@ const CHAT_TOPIC_SELECTOR = '#topic-selector .head';
 const TOPICS_SELECTOR = '#topics .head';
 const CHAT_PATH = '/chat';
 
+var isAuthenticated = false;
 var context = [];
 var topic = '';
 
