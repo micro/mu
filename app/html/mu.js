@@ -418,7 +418,7 @@ function setSession() {
     
     if (sess.type == "account") {
       isAuthenticated = true;
-      if (accountHeader) accountHeader.style.display = 'block';
+      if (accountHeader) accountHeader.style.display = 'inline-block';
       if (loginHeader) loginHeader.style.display = 'none';
       if (mailHeader) mailHeader.style.display = 'inline-block';
     } else {
@@ -426,7 +426,7 @@ function setSession() {
       if (accountHeader) accountHeader.style.display = 'none';
       if (mailHeader) mailHeader.style.display = 'none';
       if (loginHeader) {
-        loginHeader.style.display = 'block';
+        loginHeader.style.display = 'inline-block';
         // Update login link to include redirect parameter
         if (window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/') {
           const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
