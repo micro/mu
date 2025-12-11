@@ -852,6 +852,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
+		// Require authentication to send messages
+		if _, err := auth.GetSession(r); err != nil {
+			http.Error(w, "Authentication required to chat", http.StatusUnauthorized)
+			return
+		}
+
 		form := make(map[string]interface{})
 
 		if ct := r.Header.Get("Content-Type"); ct == "application/json" {

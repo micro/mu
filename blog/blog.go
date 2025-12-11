@@ -374,6 +374,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Check if write mode is requested
 	showWriteForm := r.URL.Query().Get("write") == "true"
 
+	// Require authentication for write mode
+	if showWriteForm {
+		if _, err := auth.GetSession(r); err != nil {
+			http.Error(w, "Authentication required to create posts", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	var content string
 	if showWriteForm {
 		// Show only the posting form
@@ -434,18 +442,28 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			</script>
 		</div>`
 	} else {
-		// Show posts list with write link
-		content = fmt.Sprintf(`<div id="blog">
-			<div style="margin-bottom: 15px;">
+		// Show posts list with conditional write link
+		var actions string
+		if _, err := auth.GetSession(r); err == nil {
+			// User is authenticated, show write and moderate links
+			actions = `<div style="margin-bottom: 15px;">
 				<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
 				<span style="margin: 0 8px; color: #ccc;">·</span>
 				<a href="/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
-			</div>
+			</div>`
+		} else {
+			// Guest user, show login prompt
+			actions = `<div style="margin-bottom: 15px; color: #666; font-size: 14px;">
+				<a href="/login" style="color: #666; text-decoration: none;">Login</a> to write a post
+			</div>`
+		}
+		content = fmt.Sprintf(`<div id="blog">
+			%s
 			<hr style='margin: 0 0 30px 0; border: none; border-top: 2px solid #333;'>
 			<div id="posts-list">
 				%s
 			</div>
-		</div>`, list)
+		</div>`, actions, list)
 	}
 
 	html := app.RenderHTMLForRequest("Posts", "Share your thoughts", content, r)
@@ -898,6 +916,13 @@ func Linkify(text string) string {
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
+	// Require authentication for posting
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Error(w, "Authentication required to create posts", http.StatusUnauthorized)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
@@ -993,16 +1018,13 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Get the authenticated user
+	// Get the authenticated user (session already validated at function start)
 	author := "Anonymous"
 	authorID := ""
-	sess, err := auth.GetSession(r)
+	acc, err := auth.GetAccount(sess.Account)
 	if err == nil {
-		acc, err := auth.GetAccount(sess.Account)
-		if err == nil {
-			author = acc.Name
-			authorID = acc.ID
-		}
+		author = acc.Name
+		authorID = acc.ID
 	}
 
 	// Create the post

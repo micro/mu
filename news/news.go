@@ -26,6 +26,7 @@ import (
 	"github.com/piquette/finance-go/future"
 	nethtml "golang.org/x/net/html"
 	"mu/app"
+	"mu/auth"
 	"mu/data"
 )
 
@@ -1312,6 +1313,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle POST with JSON (API endpoint)
 	if r.Method == "POST" && ct == "application/json" {
+		// Require authentication for search
+		if _, err := auth.GetSession(r); err != nil {
+			http.Error(w, "Authentication required to search", http.StatusUnauthorized)
+			return
+		}
+
 		var reqData map[string]interface{}
 		b, _ := ioutil.ReadAll(r.Body)
 		json.Unmarshal(b, &reqData)
@@ -1359,6 +1366,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Handle search query
 	query := r.URL.Query().Get("query")
 	if query != "" {
+		// Require authentication for search
+		if _, err := auth.GetSession(r); err != nil {
+			http.Error(w, "Authentication required to search", http.StatusUnauthorized)
+			return
+		}
+
 		// Limit query length to prevent abuse
 		if len(query) > 256 {
 			http.Error(w, "Search query must not exceed 256 characters", http.StatusBadRequest)

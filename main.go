@@ -67,11 +67,11 @@ func main() {
 	data.StartIndexing()
 
 	authenticated := map[string]bool{
-		"/video":      true,
-		"/news":       true,
-		"/chat":       true,
-		"/posts":      true,
-		"/home":       true,
+		"/video":      false, // Public viewing, auth for interactive features
+		"/news":       false, // Public viewing, auth for search
+		"/chat":       false, // Public viewing, auth for chatting
+		"/home":       false, // Public viewing
+		"/posts":      false, // Public viewing, auth for posting
 		"/logout":     true,
 		"/account":    true,
 		"/session":    true,
