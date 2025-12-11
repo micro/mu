@@ -915,7 +915,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<h3 style="margin-top: 30px;">Comments</h3>
 		%s
 		<a href="/posts" style="margin-top: 20px; display: inline-block;">← Back to all posts</a>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, post.ID, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
