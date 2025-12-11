@@ -990,19 +990,34 @@ func RenderMarkdown(text string) string {
 
 // Linkify converts markdown to HTML and embeds YouTube videos (for full post display)
 func Linkify(text string) string {
-	// First render markdown to HTML
-	html := string(app.Render([]byte(text)))
-
-	// Then replace YouTube URLs with embeds
+	// Extract YouTube URLs and replace with placeholders before markdown processing
 	youtubePattern := regexp.MustCompile(`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:\S*)?`)
-	html = youtubePattern.ReplaceAllStringFunc(html, func(match string) string {
+	
+	// Store YouTube video IDs
+	var videoIDs []string
+	placeholder := "___YOUTUBE_PLACEHOLDER_%d___"
+	
+	// Replace YouTube URLs with placeholders
+	processedText := youtubePattern.ReplaceAllStringFunc(text, func(match string) string {
 		matches := youtubePattern.FindStringSubmatch(match)
 		if len(matches) > 1 {
-			videoID := matches[1]
-			return fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="/video?id=%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, videoID)
+			videoIDs = append(videoIDs, matches[1])
+			return fmt.Sprintf(placeholder, len(videoIDs)-1)
 		}
 		return match
 	})
+
+	// Render markdown to HTML
+	html := string(app.Render([]byte(processedText)))
+
+	// Replace placeholders with YouTube embeds
+	for i, videoID := range videoIDs {
+		placeholderText := fmt.Sprintf(placeholder, i)
+		embed := fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="/video?id=%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, videoID)
+		html = strings.ReplaceAll(html, placeholderText, embed)
+		// Also handle if it got wrapped in <p> tags by markdown
+		html = strings.ReplaceAll(html, "<p>"+placeholderText+"</p>", embed)
+	}
 
 	return html
 }
