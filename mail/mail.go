@@ -176,10 +176,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("compose") == "true" {
 		to := r.URL.Query().Get("to")
 		subject := r.URL.Query().Get("subject")
+		replyTo := r.URL.Query().Get("reply_to")
+		
+		// Determine back link and page title
+		backLink := "/mail"
+		pageTitle := "Compose Message"
+		if replyTo != "" {
+			backLink = "/mail?id=" + replyTo
+			if subject != "" {
+				pageTitle = subject
+			}
+		}
 		
 		composeForm := fmt.Sprintf(`
 			<div style="margin-bottom: 20px;">
-				<a href="/mail"><button>← Back to Inbox</button></a>
+				<a href="%s"><button>← Back</button></a>
 			</div>
 			<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 15px; max-width: 600px;">
 				<div>
@@ -384,4 +395,25 @@ func DeleteMessage(msgID, userID string) error {
 		}
 	}
 	return fmt.Errorf("message not found")
+}
+
+// UnreadCountHandler returns unread message count as JSON
+func UnreadCountHandler(w http.ResponseWriter, r *http.Request) {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"count": 0})
+		return
+	}
+
+	acc, err := auth.GetAccount(sess.Account)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"count": 0})
+		return
+	}
+
+	count := GetUnreadCount(acc.ID)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"count": count})
 }

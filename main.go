@@ -131,6 +131,7 @@ func main() {
 
 	// serve mail inbox
 	http.HandleFunc("/mail", mail.Handler)
+	http.HandleFunc("/mail/unread", mail.UnreadCountHandler)
 
 	http.HandleFunc("/markets", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "https://coinmarketcap.com/", 302)

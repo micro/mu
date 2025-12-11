@@ -420,7 +420,21 @@ function setSession() {
       isAuthenticated = true;
       if (accountHeader) accountHeader.style.display = 'inline-block';
       if (loginHeader) loginHeader.style.display = 'none';
-      if (mailHeader) mailHeader.style.display = 'inline-block';
+      if (mailHeader) {
+        mailHeader.style.display = 'inline-block';
+        // Fetch unread count
+        fetch('/mail/unread')
+          .then(res => res.json())
+          .then(data => {
+            if (data.count > 0) {
+              const badge = document.createElement('span');
+              badge.id = 'mail-badge';
+              badge.textContent = data.count;
+              badge.style.cssText = 'background: #dc3545; color: white; border-radius: 10px; padding: 2px 6px; font-size: 11px; margin-left: 3px; font-weight: bold;';
+              mailHeader.appendChild(badge);
+            }
+          });
+      }
     } else {
       isAuthenticated = false;
       if (accountHeader) accountHeader.style.display = 'none';
