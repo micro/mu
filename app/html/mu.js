@@ -429,8 +429,8 @@ function setSession() {
             if (data.count > 0) {
               const badge = document.createElement('span');
               badge.id = 'mail-badge';
-              badge.textContent = data.count;
-              badge.style.cssText = 'color: #999; font-size: 11px; margin-left: 3px;';
+              badge.textContent = ' (' + data.count + ')';
+              badge.style.cssText = 'color: #999; font-size: 11px;';
               mailHeader.appendChild(badge);
             }
           });
