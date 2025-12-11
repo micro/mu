@@ -463,7 +463,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 func Logout(w http.ResponseWriter, r *http.Request) {
 	sess, err := auth.GetSession(r)
 	if err != nil {
-		http.Redirect(w, r, "/home", 302)
+		http.Redirect(w, r, "/", 302)
 		return
 	}
 
@@ -483,7 +483,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 	auth.Logout(sess.Token)
-	http.Redirect(w, r, "/home", 302)
+	http.Redirect(w, r, "/", 302)
 }
 
 // Session handler
