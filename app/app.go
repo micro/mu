@@ -82,22 +82,17 @@ var Template = `
       </div>
       <div id="account">
         <a id="account-header" href="/account" style="display: none;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
+        <a id="login-header" href="/login" style="display: none;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Login</span></a>
       </div>
     </div>
     <div id="container">
       <div id="nav-container">
         <div id="nav">
-					<div id="nav-logged-in">
-						<a href="/home"><img src="/home.png" style="margin-bottom: 1px"><span class="label">Home</span></a>
-						<a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
-						<a href="/news"><img src="/news.png"><span class="label">News</span></a>
-						<a href="/posts"><img src="/post.png"><span class="label">Posts</span></a>
-						<a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
-					</div>
-					<div id="nav-logged-out" style="display: none;">
-						<a href="/login"><button>Login</button></a>
-						<a href="/signup"><button>Signup</button></a>
-					</div>
+					<a href="/home"><img src="/home.png" style="margin-bottom: 1px"><span class="label">Home</span></a>
+					<a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
+					<a href="/news"><img src="/news.png"><span class="label">News</span></a>
+					<a href="/posts"><img src="/post.png"><span class="label">Posts</span></a>
+					<a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
         </div>
       </div>
       <div id="content">
