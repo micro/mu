@@ -401,7 +401,14 @@ function setSession() {
     if (!response.ok) {
       throw new Error('Not authenticated');
     }
-    return response.json();
+    return response.text().then(text => {
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error('Failed to parse session response:', text.substring(0, 100));
+        throw new Error('Invalid session response');
+      }
+    });
   })
   .then(sess => {
     console.log('Success:', sess);
