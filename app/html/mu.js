@@ -430,7 +430,7 @@ function setSession() {
               const badge = document.createElement('span');
               badge.id = 'mail-badge';
               badge.textContent = ' (' + data.count + ')';
-              badge.style.cssText = 'color: #999; font-size: 11px;';
+              badge.style.cssText = 'color: #999; font-size: 14px;';
               mailHeader.appendChild(badge);
             }
           });
