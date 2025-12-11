@@ -80,10 +80,10 @@ var Template = `
       <div id="brand">
         <a href="/">Mu</a>
       </div>
-      <div id="account">
-        <a id="mail-header" href="/mail" style="display: none; margin-right: 5px;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Inbox</span></a>
-        <a id="account-header" href="/account" style="display: none;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
-        <a id="login-header" href="/login" style="display: none;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Login</span></a>
+      <div id="account" style="-webkit-tap-highlight-color: transparent;">
+        <a id="mail-header" href="/mail" style="display: none; margin-right: 5px; -webkit-tap-highlight-color: transparent;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Inbox</span></a>
+        <a id="account-header" href="/account" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
+        <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Login</span></a>
       </div>
     </div>
     <div id="container">
