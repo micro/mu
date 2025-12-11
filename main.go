@@ -74,7 +74,7 @@ func main() {
 		"/posts":      false, // Public viewing, auth for posting
 		"/logout":     true,
 		"/account":    true,
-		"/session":    true,
+		"/session":    false, // Public - used to check auth status
 		"/api":        true,
 		"/flag":       true,
 		"/moderate":   true,

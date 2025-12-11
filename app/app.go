@@ -506,7 +506,13 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 func Session(w http.ResponseWriter, r *http.Request) {
 	sess, err := auth.GetSession(r)
 	if err != nil {
-		http.Error(w, err.Error(), 401)
+		// Return guest session instead of error
+		guestSess := map[string]string{
+			"type": "guest",
+		}
+		b, _ := json.Marshal(guestSess)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(b)
 		return
 	}
 
