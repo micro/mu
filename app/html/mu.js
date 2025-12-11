@@ -375,11 +375,6 @@ function setSession() {
       if (navLoggedIn) navLoggedIn.style.display = 'none';
       if (navLoggedOut) navLoggedOut.style.display = '';
       if (accountHeader) accountHeader.style.display = 'none';
-      // If we're on a protected page but not logged in, redirect
-      const protectedPaths = ['/home', '/chat', '/blog', '/news', '/video', '/posts'];
-      if (protectedPaths.includes(window.location.pathname)) {
-        window.location.href = '/';
-      }
     }
   })
   .catch(error => {
@@ -388,12 +383,6 @@ function setSession() {
     var navLoggedOut = document.getElementById("nav-logged-out");
     if (navLoggedIn) navLoggedIn.style.display = 'none';
     if (navLoggedOut) navLoggedOut.style.display = '';
-    // On error, redirect to home (but not if viewing public pages)
-    const publicPaths = ['/post', '/membership', '/donate'];
-    const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));
-    if (!isPublicPath) {
-      window.location.href = '/';
-    }
   });
 }
 
