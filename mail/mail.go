@@ -49,12 +49,9 @@ func Load() {
 	app.Log("mail", "Loaded %d messages", len(messages))
 }
 
-// Save messages to disk
+// Save messages to disk (caller must hold mutex)
 func save() error {
-	mutex.RLock()
 	b, err := json.Marshal(messages)
-	mutex.RUnlock()
-
 	if err != nil {
 		return err
 	}
@@ -340,9 +337,10 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo string) error {
 
 	mutex.Lock()
 	messages = append([]*Message{msg}, messages...)
+	err := save()
 	mutex.Unlock()
 
-	return save()
+	return err
 }
 
 // GetUnreadCount returns the number of unread messages for a user
