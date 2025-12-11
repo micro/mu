@@ -76,10 +76,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle POST - send message
+	// Handle POST - send message or delete
 	if r.Method == "POST" {
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			return
+		}
+
+		// Check if this is a delete action
+		if r.FormValue("_method") == "DELETE" {
+			msgID := r.FormValue("id")
+			if err := DeleteMessage(msgID, acc.ID); err != nil {
+				http.Error(w, "Failed to delete message", http.StatusInternalServerError)
+				return
+			}
+			http.Redirect(w, r, "/mail", http.StatusSeeOther)
 			return
 		}
 
@@ -107,6 +118,60 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Redirect to inbox
 		http.Redirect(w, r, "/mail", http.StatusSeeOther)
+		return
+	}
+
+	// Check if viewing a specific message
+	msgID := r.URL.Query().Get("id")
+	if msgID != "" {
+		mutex.RLock()
+		var msg *Message
+		for _, m := range messages {
+			if m.ID == msgID && (m.ToID == acc.ID || m.FromID == acc.ID) {
+				msg = m
+				break
+			}
+		}
+		mutex.RUnlock()
+
+		if msg == nil {
+			http.Error(w, "Message not found", http.StatusNotFound)
+			return
+		}
+
+		// Mark as read if recipient is viewing
+		if msg.ToID == acc.ID && !msg.Read {
+			MarkAsRead(msgID, acc.ID)
+		}
+
+		// Display the message
+		replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s`, msg.FromID, url.QueryEscape("Re: "+msg.Subject))
+		
+		messageView := fmt.Sprintf(`
+			<div style="margin-bottom: 20px;">
+				<a href="/mail"><button>← Back to Inbox</button></a>
+			</div>
+			<div style="border: 1px solid #eee; padding: 20px; border-radius: 5px;">
+				<h2 style="margin-top: 0;">%s</h2>
+				<div style="color: #666; margin-bottom: 20px;">
+					<strong>From:</strong> <a href="/@%s">%s</a><br>
+					<strong>Date:</strong> %s
+				</div>
+				<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+				<div style="white-space: pre-wrap; margin: 20px 0;">%s</div>
+				<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+				<div style="display: flex; gap: 10px;">
+					<a href="%s"><button>Reply</button></a>
+					<form method="POST" action="/mail" style="display: inline;">
+						<input type="hidden" name="_method" value="DELETE">
+						<input type="hidden" name="id" value="%s">
+						<button type="submit" onclick="return confirm('Delete this message?')" style="background-color: #dc3545; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Delete</button>
+					</form>
+				</div>
+			</div>
+		`, msg.Subject, msg.FromID, msg.From, app.TimeAgo(msg.CreatedAt), msg.Body, replyLink, msg.ID)
+
+		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
 	}
 
@@ -142,65 +207,118 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check which view to show (inbox or sent)
+	view := r.URL.Query().Get("view")
+	if view == "" {
+		view = "inbox"
+	}
+
 	// Get messages for this user
 	mutex.RLock()
-	var inbox []*Message
+	var mailbox []*Message
 	unreadCount := 0
-	for _, msg := range messages {
-		if msg.ToID == acc.ID {
-			inbox = append(inbox, msg)
-			if !msg.Read {
-				unreadCount++
+	
+	if view == "sent" {
+		// Show sent messages
+		for _, msg := range messages {
+			if msg.FromID == acc.ID {
+				mailbox = append(mailbox, msg)
+			}
+		}
+	} else {
+		// Show inbox (received messages)
+		for _, msg := range messages {
+			if msg.ToID == acc.ID {
+				mailbox = append(mailbox, msg)
+				if !msg.Read {
+					unreadCount++
+				}
 			}
 		}
 	}
 	mutex.RUnlock()
 
 	// Sort by newest first
-	sort.Slice(inbox, func(i, j int) bool {
-		return inbox[i].CreatedAt.After(inbox[j].CreatedAt)
+	sort.Slice(mailbox, func(i, j int) bool {
+		return mailbox[i].CreatedAt.After(mailbox[j].CreatedAt)
 	})
 
-	// Render inbox
+	// Render messages
 	var items []string
-	for _, msg := range inbox {
-		unreadIndicator := ""
-		if !msg.Read {
-			unreadIndicator = `<span style="color: #0066cc; font-weight: bold;">●</span> `
+	for _, msg := range mailbox {
+		if view == "sent" {
+			// Sent view - show recipient
+			item := fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
+				<div style="margin-bottom: 5px;">
+					<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
+				</div>
+				<div style="color: #666; font-size: 14px; margin-bottom: 5px;">To: <a href="/@%s" style="color: #666;">%s</a></div>
+				<div style="color: #999; font-size: 12px;">%s</div>
+			</div>`, msg.ID, msg.Subject, msg.ToID, msg.To, app.TimeAgo(msg.CreatedAt))
+			items = append(items, item)
+		} else {
+			// Inbox view - show sender with unread indicator
+			unreadIndicator := ""
+			if !msg.Read {
+				unreadIndicator = `<span style="color: #0066cc; font-weight: bold;">●</span> `
+			}
+
+			replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s`,
+				msg.FromID, url.QueryEscape(fmt.Sprintf("Re: %s", msg.Subject)))
+
+			item := fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
+				<div style="margin-bottom: 5px;">
+					%s<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
+				</div>
+				<div style="color: #666; font-size: 14px; margin-bottom: 5px;">From: <a href="/@%s" style="color: #666;">%s</a> · <a href="%s" style="color: #666;">Reply</a></div>
+				<div style="color: #999; font-size: 12px;">%s</div>
+			</div>`, unreadIndicator, msg.ID, msg.Subject, msg.FromID, msg.From, replyLink, app.TimeAgo(msg.CreatedAt))
+
+			items = append(items, item)
 		}
-
-		replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&reply_to=%s&subject=%s`,
-			msg.FromID, msg.ID, url.QueryEscape(fmt.Sprintf("Re: %s", msg.Subject)))
-
-		item := fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
-			<div style="margin-bottom: 5px;">
-				%s<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
-			</div>
-			<div style="color: #666; font-size: 14px; margin-bottom: 5px;">From: <a href="/@%s" style="color: #666;">%s</a> · <a href="%s" style="color: #666;">Reply</a></div>
-			<div style="color: #999; font-size: 12px;">%s</div>
-		</div>`, unreadIndicator, msg.ID, msg.Subject, msg.FromID, msg.From, replyLink, app.TimeAgo(msg.CreatedAt))
-
-		items = append(items, item)
 	}
 
 	content := ""
 	if len(items) == 0 {
-		content = `<p style="color: #666; padding: 20px;">No messages yet.</p>`
+		if view == "sent" {
+			content = `<p style="color: #666; padding: 20px;">No sent messages yet.</p>`
+		} else {
+			content = `<p style="color: #666; padding: 20px;">No messages yet.</p>`
+		}
 	} else {
 		content = strings.Join(items, "")
 	}
 
 	title := "Mail"
-	if unreadCount > 0 {
+	if view == "sent" {
+		title = "Sent Mail"
+	} else if unreadCount > 0 {
 		title = fmt.Sprintf("Mail (%d new)", unreadCount)
+	}
+
+	// Tab navigation
+	inboxStyle := "padding: 10px 20px; text-decoration: none; color: #333; border-bottom: 2px solid #333;"
+	sentStyle := "padding: 10px 20px; text-decoration: none; color: #666; border-bottom: 2px solid transparent;"
+	if view == "sent" {
+		inboxStyle = "padding: 10px 20px; text-decoration: none; color: #666; border-bottom: 2px solid transparent;"
+		sentStyle = "padding: 10px 20px; text-decoration: none; color: #333; border-bottom: 2px solid #333;"
 	}
 
 	html := fmt.Sprintf(`
 		<div style="margin-bottom: 20px;">
 			<a href="/mail?compose=true"><button>Compose</button></a>
 		</div>
-		<div id="inbox">%s</div>
-	`, content)
+		<div style="border-bottom: 1px solid #eee; margin-bottom: 20px;">
+			<a href="/mail" style="%s">Inbox%s</a>
+			<a href="/mail?view=sent" style="%s">Sent</a>
+		</div>
+		<div id="mailbox">%s</div>
+	`, inboxStyle, func() string {
+		if unreadCount > 0 {
+			return fmt.Sprintf(" (%d)", unreadCount)
+		}
+		return ""
+	}(), sentStyle, content)
 
 	w.Write([]byte(app.RenderHTML(title, "Your messages", html)))
 }
@@ -249,6 +367,21 @@ func MarkAsRead(msgID, userID string) error {
 	for _, msg := range messages {
 		if msg.ID == msgID && msg.ToID == userID {
 			msg.Read = true
+			return save()
+		}
+	}
+	return fmt.Errorf("message not found")
+}
+
+// DeleteMessage removes a message
+func DeleteMessage(msgID, userID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for i, msg := range messages {
+		// Allow deletion if user is sender or recipient
+		if msg.ID == msgID && (msg.FromID == userID || msg.ToID == userID) {
+			messages = append(messages[:i], messages[i+1:]...)
 			return save()
 		}
 	}
