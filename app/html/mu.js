@@ -221,7 +221,8 @@ function askLLM(el) {
   .catch(error => {
     console.error('Error:', error);
     if (error.message === 'Authentication required') {
-      responseContent.innerHTML = 'Please <a href="/login">login</a> to chat';
+      const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      responseContent.innerHTML = 'Please <a href="/login?redirect=' + redirectUrl + '">login</a> to chat';
     } else {
       responseContent.innerHTML = 'Error: Failed to get response';
     }
@@ -412,6 +413,13 @@ function setSession() {
       if (navLoggedIn) navLoggedIn.style.display = 'none';
       if (navLoggedOut) navLoggedOut.style.display = '';
       if (accountHeader) accountHeader.style.display = 'none';
+      
+      // Update login button to include redirect parameter
+      const loginLink = navLoggedOut && navLoggedOut.querySelector('a[href="/login"]');
+      if (loginLink && window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+        const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        loginLink.href = '/login?redirect=' + redirectUrl;
+      }
     }
     updateChatFormState();
     updateSearchFormsState();
@@ -437,10 +445,20 @@ function updateChatFormState() {
       chatPrompt.placeholder = 'Ask a question';
       chatPrompt.disabled = false;
       chatButton.disabled = false;
+      chatPrompt.style.cursor = '';
+      chatButton.style.cursor = '';
+      chatPrompt.onclick = null;
+      chatButton.onclick = null;
     } else {
       chatPrompt.placeholder = 'Login to chat';
       chatPrompt.disabled = true;
       chatButton.disabled = true;
+      chatPrompt.style.cursor = 'pointer';
+      chatButton.style.cursor = 'pointer';
+      const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      const redirectToLogin = () => window.location.href = '/login?redirect=' + redirectUrl;
+      chatPrompt.onclick = redirectToLogin;
+      chatButton.onclick = redirectToLogin;
     }
   }
 }
@@ -455,10 +473,20 @@ function updateSearchFormsState() {
       newsQuery.placeholder = 'Search news';
       newsQuery.disabled = false;
       newsBtn.disabled = false;
+      newsQuery.style.cursor = '';
+      newsBtn.style.cursor = '';
+      newsQuery.onclick = null;
+      newsBtn.onclick = null;
     } else {
       newsQuery.placeholder = 'Login to search';
       newsQuery.disabled = true;
       newsBtn.disabled = true;
+      newsQuery.style.cursor = 'pointer';
+      newsBtn.style.cursor = 'pointer';
+      const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      const redirectToLogin = () => window.location.href = '/login?redirect=' + redirectUrl;
+      newsQuery.onclick = redirectToLogin;
+      newsBtn.onclick = redirectToLogin;
     }
   }
   
@@ -470,10 +498,20 @@ function updateSearchFormsState() {
     if (isAuthenticated) {
       videoQuery.disabled = false;
       videoBtn.disabled = false;
+      videoQuery.style.cursor = '';
+      videoBtn.style.cursor = '';
+      videoQuery.onclick = null;
+      videoBtn.onclick = null;
     } else {
       videoQuery.placeholder = 'Login to search';
       videoQuery.disabled = true;
       videoBtn.disabled = true;
+      videoQuery.style.cursor = 'pointer';
+      videoBtn.style.cursor = 'pointer';
+      const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      const redirectToLogin = () => window.location.href = '/login?redirect=' + redirectUrl;
+      videoQuery.onclick = redirectToLogin;
+      videoBtn.onclick = redirectToLogin;
     }
   }
 }

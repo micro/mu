@@ -454,7 +454,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// Guest user, show login prompt
 			actions = `<div style="margin-bottom: 15px; color: #666; font-size: 14px;">
-				<a href="/login" style="color: #666; text-decoration: none;">Login</a> to write a post
+				<a href="/login?redirect=/posts" style="color: #666; text-decoration: none;">Login</a> to write a post
 			</div>`
 		}
 		content = fmt.Sprintf(`<div id="blog">

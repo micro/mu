@@ -268,8 +268,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
-		// return to home
-		http.Redirect(w, r, "/home", 302)
+		// Check for redirect parameter, default to home
+		redirectTo := r.URL.Query().Get("redirect")
+		if redirectTo == "" {
+			redirectTo = "/home"
+		}
+		http.Redirect(w, r, redirectTo, 302)
 		return
 	}
 }
