@@ -150,6 +150,12 @@ function loadMessages() {
 }
 
 function askLLM(el) {
+  // Check authentication first
+  if (!isAuthenticated) {
+    alert('Please login to chat');
+    return false;
+  }
+
   var d = document.getElementById('messages');
 
   const formData = new FormData(el);
@@ -194,7 +200,12 @@ function askLLM(el) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(data)
-  }).then(response => response.json())
+  }).then(response => {
+    if (response.status === 401) {
+      throw new Error('Authentication required');
+    }
+    return response.json();
+  })
   .then(result => {
     console.log('Success:', result);
     
@@ -208,7 +219,11 @@ function askLLM(el) {
   })
   .catch(error => {
     console.error('Error:', error);
-    responseContent.innerHTML = 'Error: Failed to get response';
+    if (error.message === 'Authentication required') {
+      responseContent.innerHTML = 'Please <a href="/login">login</a> to chat';
+    } else {
+      responseContent.innerHTML = 'Error: Failed to get response';
+    }
   });
 
   return false;
@@ -297,6 +312,9 @@ function loadChat() {
       messages.scrollTop = messages.scrollHeight;
     });
   }
+  
+  // Update chat form state based on authentication
+  updateChatFormState();
 }
 
 // ============================================
@@ -304,6 +322,12 @@ function loadChat() {
 // ============================================
 
 function getVideos(el) {
+  // Check authentication first
+  if (!isAuthenticated) {
+    alert('Please login to search');
+    return false;
+  }
+
   const formData = new FormData(el);
   const data = {};
 
@@ -320,7 +344,12 @@ function getVideos(el) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(data)
-  }).then(response => response.json())
+  }).then(response => {
+    if (response.status === 401) {
+      throw new Error('Authentication required');
+    }
+    return response.json();
+  })
   .then(result => {
     console.log('Success:', result);
     var d = document.getElementById('results');
@@ -341,6 +370,11 @@ function getVideos(el) {
   })
   .catch(error => {
     console.error('Error:', error);
+    if (error.message === 'Authentication required') {
+      alert('Please login to search videos');
+    } else {
+      alert('Error: Failed to search videos');
+    }
   });
 
   return false;
@@ -368,22 +402,79 @@ function setSession() {
     var navLoggedOut = document.getElementById("nav-logged-out");
     var accountHeader = document.getElementById("account-header");
     if (sess.type == "account") {
+      isAuthenticated = true;
       if (navLoggedIn) navLoggedIn.style.display = '';
       if (navLoggedOut) navLoggedOut.style.display = 'none';
       if (accountHeader) accountHeader.style.display = 'block';
     } else {
+      isAuthenticated = false;
       if (navLoggedIn) navLoggedIn.style.display = 'none';
       if (navLoggedOut) navLoggedOut.style.display = '';
       if (accountHeader) accountHeader.style.display = 'none';
     }
+    updateChatFormState();
+    updateSearchFormsState();
   })
   .catch(error => {
     console.error('Error:', error);
+    isAuthenticated = false;
     var navLoggedIn = document.getElementById("nav-logged-in");
     var navLoggedOut = document.getElementById("nav-logged-out");
     if (navLoggedIn) navLoggedIn.style.display = 'none';
     if (navLoggedOut) navLoggedOut.style.display = '';
+    updateChatFormState();
+    updateSearchFormsState();
   });
+}
+
+function updateChatFormState() {
+  const chatPrompt = document.getElementById('prompt');
+  const chatButton = document.querySelector('#chat-form button');
+  
+  if (chatPrompt && chatButton) {
+    if (isAuthenticated) {
+      chatPrompt.placeholder = 'Ask a question';
+      chatPrompt.disabled = false;
+      chatButton.disabled = false;
+    } else {
+      chatPrompt.placeholder = 'Login to chat';
+      chatPrompt.disabled = true;
+      chatButton.disabled = true;
+    }
+  }
+}
+
+function updateSearchFormsState() {
+  // Update news search form
+  const newsQuery = document.getElementById('news-query');
+  const newsBtn = document.getElementById('news-search-btn');
+  
+  if (newsQuery && newsBtn) {
+    if (isAuthenticated) {
+      newsQuery.placeholder = 'Search news';
+      newsQuery.disabled = false;
+      newsBtn.disabled = false;
+    } else {
+      newsQuery.placeholder = 'Login to search';
+      newsQuery.disabled = true;
+      newsBtn.disabled = true;
+    }
+  }
+  
+  // Update video search form
+  const videoQuery = document.getElementById('query');
+  const videoBtn = document.getElementById('video-search-btn');
+  
+  if (videoQuery && videoBtn) {
+    if (isAuthenticated) {
+      videoQuery.disabled = false;
+      videoBtn.disabled = false;
+    } else {
+      videoQuery.placeholder = 'Login to search';
+      videoQuery.disabled = true;
+      videoBtn.disabled = true;
+    }
+  }
 }
 
 // ============================================
@@ -529,6 +620,30 @@ self.addEventListener('DOMContentLoaded', function() {
   // Handle hash on page load for topic highlighting (non-chat pages)
   if (window.location.hash && window.location.pathname !== CHAT_PATH) {
     handleHashChange();
+  }
+  
+  // Prevent news search form submission when not authenticated
+  const newsSearchForm = document.getElementById('news-search');
+  if (newsSearchForm) {
+    newsSearchForm.addEventListener('submit', function(e) {
+      if (!isAuthenticated) {
+        e.preventDefault();
+        alert('Please login to search news');
+        return false;
+      }
+    });
+  }
+  
+  // Prevent video search form submission when not authenticated
+  const videoSearchForm = document.getElementById('video-search');
+  if (videoSearchForm) {
+    videoSearchForm.addEventListener('submit', function(e) {
+      if (!isAuthenticated) {
+        e.preventDefault();
+        alert('Please login to search videos');
+        return false;
+      }
+    });
   }
 
   // Check session status on page load

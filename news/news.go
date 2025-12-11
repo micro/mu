@@ -375,8 +375,8 @@ func saveHtml(head, content []byte) {
 		return
 	}
 	searchForm := `<form id="news-search" action="/news" method="GET">
-  <input name="query" placeholder="Search news">
-  <button>Search</button>
+  <input id="news-query" name="query" placeholder="Search news">
+  <button id="news-search-btn">Search</button>
 </form>`
 	body := fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, string(head), string(content))
 	newsBodyHtml = body

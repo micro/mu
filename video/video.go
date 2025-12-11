@@ -256,7 +256,7 @@ var Results = `
 </style>
 <form id="video-search" action="/video" method="GET">
   <input name="query" id="query" value="%s">
-  <button>Search</button>
+  <button id="video-search-btn">Search</button>
 </form>
 <div id="topics">%s</div>
 <div id="recent-searches-container"></div>
