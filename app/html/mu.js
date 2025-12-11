@@ -397,7 +397,12 @@ function setSession() {
     headers: {
       'Content-Type': 'application/json'
     },
-  }).then(response => response.json())
+  }).then(response => {
+    if (!response.ok) {
+      throw new Error('Not authenticated');
+    }
+    return response.json();
+  })
   .then(sess => {
     console.log('Success:', sess);
     var navLoggedIn = document.getElementById("nav-logged-in");
@@ -432,6 +437,15 @@ function setSession() {
     var navLoggedOut = document.getElementById("nav-logged-out");
     if (navLoggedIn) navLoggedIn.style.display = 'none';
     if (navLoggedOut) navLoggedOut.style.display = '';
+    
+    // Update login button to include redirect parameter for unauthenticated users
+    const loginLink = navLoggedOut && navLoggedOut.querySelector('a[href^="/login"]');
+    if (loginLink && window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/') {
+      const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      loginLink.href = '/login?redirect=' + redirectUrl;
+      console.log('Updated login link to:', loginLink.href);
+    }
+    
     updateChatFormState();
     updateSearchFormsState();
   });
