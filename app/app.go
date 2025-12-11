@@ -142,7 +142,7 @@ var LoginTemplate = `<html lang="en">
     </div>
     <div id="container">
       <div id="content">
-	<form id="login" action="/login" method="POST">
+	<form id="login" action="/login%s" method="POST">
 	  <h1>Login</h1>
 	  %s
 	  <input id="id" name="id" placeholder="Username" required>
@@ -213,7 +213,12 @@ func Card(id, title, content string) string {
 // Login handler
 func Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		w.Write([]byte(fmt.Sprintf(LoginTemplate, "")))
+		// Preserve redirect parameter in form action
+		redirectParam := ""
+		if redirect := r.URL.Query().Get("redirect"); redirect != "" {
+			redirectParam = "?redirect=" + url.QueryEscape(redirect)
+		}
+		w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, "")))
 		return
 	}
 
@@ -223,18 +228,24 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		id := r.Form.Get("id")
 		secret := r.Form.Get("secret")
 
+		// Preserve redirect parameter for error messages
+		redirectParam := ""
+		if redirect := r.URL.Query().Get("redirect"); redirect != "" {
+			redirectParam = "?redirect=" + url.QueryEscape(redirect)
+		}
+
 		if len(id) == 0 {
-			w.Write([]byte(fmt.Sprintf(LoginTemplate, `<p style="color: red;">Username is required</p>`)))
+			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p style="color: red;">Username is required</p>`)))
 			return
 		}
 		if len(secret) == 0 {
-			w.Write([]byte(fmt.Sprintf(LoginTemplate, `<p style="color: red;">Password is required</p>`)))
+			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p style="color: red;">Password is required</p>`)))
 			return
 		}
 
 		sess, err := auth.Login(id, secret)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf(LoginTemplate, `<p style="color: red;">Invalid username or password</p>`)))
+			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p style="color: red;">Invalid username or password</p>`)))
 			return
 		}
 
