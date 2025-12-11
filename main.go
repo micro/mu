@@ -19,6 +19,7 @@ import (
 	"mu/chat"
 	"mu/data"
 	"mu/home"
+	"mu/mail"
 	"mu/news"
 	"mu/user"
 	"mu/video"
@@ -59,6 +60,9 @@ func main() {
 	// load the blog
 	blog.Load()
 
+	// load the mail
+	mail.Load()
+
 	// load the home cards
 	home.Load()
 
@@ -72,6 +76,7 @@ func main() {
 		"/chat":       false, // Public viewing, auth for chatting
 		"/home":       false, // Public viewing
 		"/posts":      false, // Public viewing, auth for posting
+		"/mail":       true,  // Require auth for inbox
 		"/logout":     true,
 		"/account":    true,
 		"/session":    false, // Public - used to check auth status
@@ -103,6 +108,9 @@ func main() {
 	// serve individual blog post (public, no auth)
 	http.HandleFunc("/post", blog.PostHandler)
 
+	// handle comments on posts
+	http.HandleFunc("/post/", blog.CommentHandler)
+
 	// flag content
 	http.HandleFunc("/flag", admin.FlagHandler)
 
@@ -121,9 +129,8 @@ func main() {
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
 
-	http.HandleFunc("/mail", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/home", 302)
-	})
+	// serve mail inbox
+	http.HandleFunc("/mail", mail.Handler)
 
 	http.HandleFunc("/markets", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "https://coinmarketcap.com/", 302)

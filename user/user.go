@@ -68,16 +68,27 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 		userPosts = "<p style='color: #666;'>No posts yet.</p>"
 	}
 
+	// Check if viewing own profile
+	sess, _ := auth.GetSession(r)
+	isOwnProfile := sess != nil && sess.Account == username
+	
+	// Build message link (only show if not own profile)
+	messageLink := ""
+	if !isOwnProfile {
+		messageLink = fmt.Sprintf(`<p style="margin: 15px 0 0 0;"><a href="/mail?compose=true&to=%s" style="color: #666;">Send a message</a></p>`, acc.ID)
+	}
+
 	// Build the profile page content
 	content := fmt.Sprintf(`<div style="max-width: 750px;">
 		<div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333;">
 			<p style="color: #666; margin: 0;">@%s</p>
 			<p style="color: #666; margin: 10px 0 0 0;">Member since %s</p>
+			%s
 		</div>
 		
 		<h3 style="margin-bottom: 20px;">Posts (%d)</h3>
 		%s
-	</div>`, acc.ID, acc.Created.Format("January 2006"), postCount, userPosts)
+	</div>`, acc.ID, acc.Created.Format("January 2006"), messageLink, postCount, userPosts)
 
 	// Use name as page title
 	html := app.RenderHTML(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content)

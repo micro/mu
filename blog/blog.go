@@ -21,6 +21,9 @@ var mutex sync.RWMutex
 // cached blog posts
 var posts []*Post
 
+// cached comments
+var comments []*Comment
+
 // cached HTML for home page preview
 var postsPreviewHtml string
 
@@ -31,6 +34,15 @@ type Post struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
 	Content   string    `json:"content"` // Raw markdown content
+	Author    string    `json:"author"`
+	AuthorID  string    `json:"author_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Comment struct {
+	ID        string    `json:"id"`
+	PostID    string    `json:"post_id"`
+	Content   string    `json:"content"`
 	Author    string    `json:"author"`
 	AuthorID  string    `json:"author_id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -52,6 +64,19 @@ func Load() {
 	// Sort posts by creation time (newest first)
 	sort.Slice(posts, func(i, j int) bool {
 		return posts[i].CreatedAt.After(posts[j].CreatedAt)
+	})
+
+	// Load comments
+	commentData, err := data.LoadFile("comments.json")
+	if err == nil {
+		json.Unmarshal(commentData, &comments)
+	} else {
+		comments = []*Comment{}
+	}
+
+	// Sort comments by creation time (oldest first for threading)
+	sort.Slice(comments, func(i, j int) bool {
+		return comments[i].CreatedAt.Before(comments[j].CreatedAt)
 	})
 
 	// Update cached HTML
@@ -196,7 +221,7 @@ func updateCacheUnlocked() {
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<div style="margin-bottom: 10px;">%s</div>
-		<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Read</a> · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a></div>
+		<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Read</a> · <a href="/post?id=%s" style="color: #666;">Reply</a></div>
 	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID)
 		preview = append(preview, item)
 	}
@@ -251,7 +276,7 @@ func updateCacheUnlocked() {
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 			<div style="margin-bottom: 10px;">%s</div>
-			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Read</a> · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a> · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a></div>
+			<div class="info" style="color: #666; font-size: small;">%s by %s · <a href="/post?id=%s" style="color: #666;">Read</a> · <a href="/post?id=%s" style="color: #666;">Reply</a> · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a></div>
 		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID, post.ID)
 		fullList = append(fullList, item)
 	}
@@ -325,7 +350,7 @@ func renderPostPreview(post *Post) string {
 		<div class="info" style="color: #666; font-size: small;">
 			%s by %s
 			<span style="margin-left: 10px;">·</span>
-			<a href="/chat?id=post_%s" style="color: #0066cc; margin-left: 10px;">💬 Discuss</a>
+			<a href="/post?id=%s" style="color: #0066cc; margin-left: 10px;">💬 Reply</a>
 		</div>
 	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
 
@@ -511,6 +536,39 @@ func CreatePost(title, content, author, authorID string) error {
 	}(post.ID, post.Title, post.Content, post.Author)
 
 	return nil
+}
+
+// CreateComment adds a comment to a post
+func CreateComment(postID, content, author, authorID string) error {
+	comment := &Comment{
+		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		PostID:    postID,
+		Content:   content,
+		Author:    author,
+		AuthorID:  authorID,
+		CreatedAt: time.Now(),
+	}
+
+	mutex.Lock()
+	comments = append(comments, comment)
+	mutex.Unlock()
+
+	// Save to disk
+	return data.SaveJSON("comments.json", comments)
+}
+
+// GetComments retrieves all comments for a post
+func GetComments(postID string) []*Comment {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var postComments []*Comment
+	for _, comment := range comments {
+		if comment.PostID == postID {
+			postComments = append(postComments, comment)
+		}
+	}
+	return postComments
 }
 
 // GetPost retrieves a post by ID
@@ -849,13 +907,15 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	content := fmt.Sprintf(`<div id="blog">
 		<div class="info" style="color: #666; font-size: small;">
-			%s by %s · <a href="/chat?id=post_%s" style="color: #666;">Discuss</a>%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
+			%s by %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
 		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="margin-bottom: 20px;">%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
-		<a href="/posts">← Back to all posts</a>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, post.ID, editButton, post.ID, contentHTML)
+		<h3 style="margin-top: 30px;">Comments</h3>
+		%s
+		<a href="/posts" style="margin-top: 20px; display: inline-block;">← Back to all posts</a>
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, post.ID, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
@@ -873,6 +933,53 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// renderComments displays comments for a post
+func renderComments(postID string, r *http.Request) string {
+	postComments := GetComments(postID)
+	
+	var commentsHTML strings.Builder
+	
+	// Add comment form if authenticated
+	_, err := auth.GetSession(r)
+	isAuthenticated := err == nil
+	
+	if isAuthenticated {
+		commentsHTML.WriteString(fmt.Sprintf(`
+			<form method="POST" action="/post/%s/comment" style="margin: 20px 0; display: flex; flex-direction: column; gap: 10px;">
+				<textarea name="content" rows="3" placeholder="Add a comment..." required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
+				<div>
+					<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Add Comment</button>
+				</div>
+			</form>
+		`, postID))
+	} else {
+		commentsHTML.WriteString(`<p style="color: #666; margin: 20px 0;"><a href="/login" style="color: #0066cc;">Login</a> to add a comment</p>`)
+	}
+	
+	if len(postComments) == 0 {
+		commentsHTML.WriteString(`<p style="color: #999; font-style: italic; margin: 20px 0;">No comments yet. Be the first to comment!</p>`)
+		return commentsHTML.String()
+	}
+	
+	commentsHTML.WriteString(`<div style="margin-top: 20px;">`)
+	for _, comment := range postComments {
+		authorLink := comment.Author
+		if comment.AuthorID != "" {
+			authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #0066cc;">%s</a>`, comment.AuthorID, comment.Author)
+		}
+		
+		commentsHTML.WriteString(fmt.Sprintf(`
+			<div style="padding: 15px; background: #f9f9f9; border-radius: 5px; margin-bottom: 10px;">
+				<div style="color: #666; font-size: 12px; margin-bottom: 5px;">%s by %s</div>
+				<div style="white-space: pre-wrap;">%s</div>
+			</div>
+		`, app.TimeAgo(comment.CreatedAt), authorLink, comment.Content))
+	}
+	commentsHTML.WriteString(`</div>`)
+	
+	return commentsHTML.String()
 }
 
 // EditHandler serves the post edit form
@@ -1039,4 +1146,67 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	// Redirect back to posts page
 	http.Redirect(w, r, "/posts", http.StatusSeeOther)
+}
+
+// CommentHandler handles comment submissions
+func CommentHandler(w http.ResponseWriter, r *http.Request) {
+	// Only handle /post/{postID}/comment paths
+	if !strings.Contains(r.URL.Path, "/comment") {
+		// Not a comment path, pass through to PostHandler
+		PostHandler(w, r)
+		return
+	}
+
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Require authentication
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Extract post ID from URL path (/post/{postID}/comment)
+	path := strings.TrimPrefix(r.URL.Path, "/post/")
+	path = strings.TrimSuffix(path, "/comment")
+	postID := path
+
+	// Verify post exists
+	post := GetPost(postID)
+	if post == nil {
+		http.Error(w, "Post not found", http.StatusNotFound)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	content := strings.TrimSpace(r.FormValue("content"))
+	if content == "" {
+		http.Error(w, "Comment content is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get the authenticated user
+	author := "Anonymous"
+	authorID := ""
+	acc, err := auth.GetAccount(sess.Account)
+	if err == nil {
+		author = acc.Name
+		authorID = acc.ID
+	}
+
+	// Create the comment
+	if err := CreateComment(postID, content, author, authorID); err != nil {
+		http.Error(w, "Failed to save comment", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect back to the post
+	http.Redirect(w, r, "/post?id="+postID, http.StatusSeeOther)
 }
