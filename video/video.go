@@ -271,7 +271,7 @@ var PlaylistView = `
 </style>
 <form id="video-search" action="/video" method="GET">
   <input name="query" id="query" placeholder="Search">
-  <button>Search</button>
+  <button id="video-search-btn">Search</button>
 </form>
 <div id="topics">%s</div>
 <div id="recent-searches-container"></div>
@@ -286,7 +286,7 @@ var ChannelView = `
 </style>
 <form id="video-search" action="/video" method="GET">
   <input name="query" id="query" placeholder="Search">
-  <button>Search</button>
+  <button id="video-search-btn">Search</button>
 </form>
 <div id="topics">%s</div>
 <div id="recent-searches-container"></div>
@@ -303,7 +303,7 @@ var Template = `
 <!-- <form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;"> -->
 <form id="video-search" action="/video" method="GET">
   <input name="query" id="query" placeholder=Search autocomplete=off>
-  <button>Search</button>
+  <button id="video-search-btn">Search</button>
 </form>
 <div id="topics">%s</div>
 <div id="recent-searches-container"></div>
