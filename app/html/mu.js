@@ -263,7 +263,7 @@ function loadChat() {
       if (summaries[topic]) {
         const summaryMsg = document.createElement('div');
         summaryMsg.className = 'message';
-        const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(topic)}" style="color: inherit; font-size: 0.9em; opacity: 0.8;">→ Discuss</a>`;
+        const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(topic)}" style="color: #666; font-size: 0.75em;">→ Discuss</a>`;
         summaryMsg.innerHTML = `<span class="llm">${topic}</span><p>${renderMarkdown(summaries[topic])}</p><div>${discussLink}</div>`;
         messages.appendChild(summaryMsg);
       }

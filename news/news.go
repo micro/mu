@@ -1411,6 +1411,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 
 	articleHtml := fmt.Sprintf(`
+		<div id="news-article">
 			%s
 			<h1 style="margin-top: 0; margin-bottom: 15px;">%s</h1>
 			<div style="color: #666; margin-bottom: 20px; font-size: 0.9em;">
@@ -1424,6 +1425,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc;">Read Original Article →</a>
 				<span style="margin: 0 8px;">·</span>
 				<a href="/chat?id=news_%s" style="color: #0066cc;">Discuss</a>
+			</div>
+			<div style="margin-top: 30px;">
+				<a href="/news" style="color: #666; text-decoration: none;">← Back to news</a>
 			</div>
 		</div>
 	`, imageSection, title, categoryBadge, app.TimeAgo(postedAt), getDomain(url), description, summarySection, url, articleID)
