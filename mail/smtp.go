@@ -2,6 +2,7 @@ package mail
 
 import (
 	"bytes"
+	"encoding/base64"
 	"io"
 	"log"
 	"mime"
@@ -198,6 +199,27 @@ func (s *Session) Data(r io.Reader) error {
 			return err
 		}
 		body = string(bodyBytes)
+		
+		// Check if body is base64 encoded
+		transferEncoding := msg.Header.Get("Content-Transfer-Encoding")
+		if strings.ToLower(transferEncoding) == "base64" {
+			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(body)); err == nil {
+				body = string(decoded)
+				app.Log("mail", "Decoded base64 email body")
+			}
+		}
+		
+		// Additional check: if the body looks entirely like base64 (no header specified),
+		// try decoding it as a fallback for improperly formatted emails
+		if transferEncoding == "" && looksLikeBase64(body) {
+			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(body)); err == nil {
+				// Verify the decoded content is valid UTF-8 text
+				if isValidUTF8Text(decoded) {
+					body = string(decoded)
+					app.Log("mail", "Decoded base64-looking email body (no encoding header)")
+				}
+			}
+		}
 	}
 
 	// Process each recipient
@@ -281,9 +303,17 @@ func parseMultipart(body io.Reader, boundary string) string {
 		}
 
 		contentType := part.Header.Get("Content-Type")
+		transferEncoding := part.Header.Get("Content-Transfer-Encoding")
 		partBody, err := io.ReadAll(part)
 		if err != nil {
 			continue
+		}
+		
+		// Decode if base64 encoded
+		if strings.ToLower(transferEncoding) == "base64" {
+			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(partBody))); err == nil {
+				partBody = decoded
+			}
 		}
 
 		// Prefer text/plain, fallback to text/html

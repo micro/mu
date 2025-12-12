@@ -1,6 +1,7 @@
 package mail
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -210,6 +211,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			MarkAsRead(msgID, acc.ID)
 		}
 
+		// Decode body if it looks base64 encoded
+		displayBody := msg.Body
+		if looksLikeBase64(displayBody) {
+			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(displayBody)); err == nil {
+				if isValidUTF8Text(decoded) {
+					displayBody = string(decoded)
+					app.Log("mail", "Decoded base64 body for display")
+				}
+			}
+		}
+
 		// Display the message
 		replySubject := msg.Subject
 		if !strings.HasPrefix(strings.ToLower(msg.Subject), "re:") {
@@ -252,7 +264,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					%s
 				</div>
 			</div>
-		`, msg.Subject, msg.FromID, msg.From, app.TimeAgo(msg.CreatedAt), msg.Body, replyLink, msg.ID, blockButton)
+		`, msg.Subject, msg.FromID, msg.From, app.TimeAgo(msg.CreatedAt), displayBody, replyLink, msg.ID, blockButton)
 
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
@@ -529,13 +541,23 @@ func renderInboxMessage(msg *Message, indent int, viewerID string) string {
 		replyIndicator = `<span style="color: #999; margin-right: 5px;">↳</span>`
 	}
 
+	// Format From field - only link to user profile if it's an internal user (no @)
+	fromDisplay := msg.From
+	if IsExternalEmail(msg.FromID) {
+		// External email - don't link to user profile
+		fromDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.From)
+	} else {
+		// Internal user - link to profile
+		fromDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.FromID, msg.From)
+	}
+
 	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;%s">
 		<div style="margin-bottom: 5px;">
 			%s%s<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
 		</div>
-		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">From: <a href="/@%s" style="color: #666;">%s</a> · <a href="%s" style="color: #666;">Reply</a></div>
+		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">From: %s · <a href="%s" style="color: #666;">Reply</a></div>
 		<div style="color: #999; font-size: 12px;">%s</div>
-	</div>`, marginLeft, replyIndicator, unreadIndicator, msg.ID, msg.Subject, msg.FromID, msg.From, replyLink, app.TimeAgo(msg.CreatedAt))
+	</div>`, marginLeft, replyIndicator, unreadIndicator, msg.ID, msg.Subject, fromDisplay, replyLink, app.TimeAgo(msg.CreatedAt))
 }
 
 // renderSentMessage renders a single sent message
@@ -837,4 +859,46 @@ func GetBlocklist() *Blocklist {
 		Emails: append([]string{}, blocklist.Emails...),
 		IPs:    append([]string{}, blocklist.IPs...),
 	}
+}
+
+// looksLikeBase64 checks if a string appears to be base64 encoded
+func looksLikeBase64(s string) bool {
+	s = strings.TrimSpace(s)
+	
+	// Must be reasonable length (not empty, not too short)
+	if len(s) < 20 {
+		return false
+	}
+	
+	// Base64 strings should be mostly base64 characters (a-zA-Z0-9+/=)
+	validChars := 0
+	for _, c := range s {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+		   (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=' || c == '\n' || c == '\r' {
+			validChars++
+		}
+	}
+	
+	// If more than 90% of characters are valid base64 chars, likely base64
+	return float64(validChars)/float64(len(s)) > 0.9
+}
+
+// isValidUTF8Text checks if decoded bytes are valid UTF-8 text
+func isValidUTF8Text(data []byte) bool {
+	// Check if it's valid UTF-8
+	if !strings.HasPrefix(string(data), "\xff\xfe") && !strings.HasPrefix(string(data), "\xfe\xff") {
+		text := string(data)
+		// Should contain mostly printable characters
+		printable := 0
+		for _, r := range text {
+			if r >= 32 || r == '\t' || r == '\n' || r == '\r' {
+				printable++
+			}
+		}
+		// If more than 90% printable, consider it valid text
+		if len(text) > 0 && float64(printable)/float64(len(text)) > 0.9 {
+			return true
+		}
+	}
+	return false
 }
