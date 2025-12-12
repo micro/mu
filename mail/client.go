@@ -120,8 +120,14 @@ func LoadDKIMConfig(domain, selector string) error {
 // SendExternalEmail sends an email to an external address via direct relay (no SMTP needed)
 // Returns the generated Message-ID for threading purposes
 func SendExternalEmail(displayName, from, to, subject, body, replyToMsgID string) (string, error) {
+	// Extract username from email for Message-ID (in case from is full email)
+	username := from
+	if strings.Contains(from, "@") {
+		username = strings.Split(from, "@")[0]
+	}
+	
 	// Generate Message-ID for threading
-	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), from, GetConfiguredDomain())
+	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, GetConfiguredDomain())
 
 	// Build email message
 	var msg bytes.Buffer
