@@ -47,7 +47,10 @@ var Template = `
 <input id="topic" name="topic" type="hidden">
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autocomplete=off>
 <button>Send</button>
-</form>`
+</form>
+<div id="chat-back-link" style="margin-top: 20px; text-align: center; display: none;">
+  <a href="#" onclick="window.history.back(); return false;" style="color: #666; text-decoration: none;">← Back</a>
+</div>`
 
 var mutex sync.RWMutex
 

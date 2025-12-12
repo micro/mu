@@ -228,7 +228,6 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 	bl := getBlocklist()
 
 	content := `<h2>Mail Blocklist</h2>
-	<p><a href="/admin">← Back to Admin</a></p>
 	
 	<style>
 		.blocklist-section { margin: 20px 0; }
@@ -322,7 +321,10 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 		content += `<p>No blocked IPs</p>`
 	}
 
-	content += `</div>`
+	content += `</div>
+	<div style="margin-top: 30px;">
+		<p><a href="/admin">← Back to Admin</a></p>
+	</div>`
 
 	html := app.RenderHTMLForRequest("Admin", "Mail Blocklist", content, r)
 	w.Write([]byte(html))

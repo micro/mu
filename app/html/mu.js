@@ -936,6 +936,12 @@ document.addEventListener('DOMContentLoaded', function() {
       topicInput.value = currentRoomData.title;
     }
     
+    // Show back link for room
+    const backLink = document.getElementById('chat-back-link');
+    if (backLink) {
+      backLink.style.display = 'block';
+    }
+    
     // Connect WebSocket first (this will clear messages and load sessionStorage)
     connectRoomWebSocket(currentRoomData.id);
     

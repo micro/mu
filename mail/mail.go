@@ -330,9 +330,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	messageView := fmt.Sprintf(`
-	<div style="margin-bottom: 20px;">
-		<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
-	</div>
+	<div style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Conversation with: %s</div>
 	<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
 	%s
@@ -348,6 +346,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				%s
 			</div>
 		</form>
+		<div style="margin-top: 20px;">
+			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
+		</div>
+	</div>
 	</div>
 `, otherParty, threadHTML.String(), otherParty, replySubject, rootID, msg.ID, blockButton)
 	w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
@@ -368,10 +370,8 @@ if r.URL.Query().Get("compose") == "true" {
 		}
 
 		composeForm := fmt.Sprintf(`
-			<div style="margin-bottom: 20px;">
-				<a href="%s" style="color: #666; text-decoration: none;">← Back</a>
-			</div>
-			<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 10px; max-width: 600px;">
+			<div style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
+			<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 10px;">
 				<input type="hidden" name="reply_to" value="%s">
 				<input type="text" name="to" placeholder="To: username or email" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<input type="text" name="subject" placeholder="Subject" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
@@ -381,7 +381,11 @@ if r.URL.Query().Get("compose") == "true" {
 					<a href="%s" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
 				</div>
 			</form>
-		`, backLink, replyTo, to, subject, backLink)
+			<div style="margin-top: 20px;">
+				<a href="%s" style="color: #666; text-decoration: none;">← Back</a>
+			</div>
+			</div>
+		`, replyTo, to, subject, backLink, backLink)
 
 		w.Write([]byte(app.RenderHTML(pageTitle, "", composeForm)))
 		return

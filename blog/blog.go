@@ -905,10 +905,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	content := fmt.Sprintf(`<div id="blog">
-		<div style="margin-bottom: 20px;">
-			<a href="/posts" style="color: #666; text-decoration: none;">← Back to posts</a>
-		</div>
+	content := fmt.Sprintf(`<div style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
+	<div id="blog">
 		<div class="info" style="color: #666; font-size: small;">
 			%s by %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
 		</div>
@@ -917,6 +915,10 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<h3 style="margin-top: 30px;">Comments</h3>
 		%s
+		<div style="margin-top: 30px;">
+			<a href="/posts" style="color: #666; text-decoration: none;">← Back to posts</a>
+		</div>
+	</div>
 	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
