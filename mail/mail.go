@@ -534,11 +534,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	html := fmt.Sprintf(`
 		<div style="margin-bottom: 20px;">
-			<a href="/mail?compose=true"><button style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 14px;">✉️ New Message</button></a>
+			<a href="/mail?compose=true"><button style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 14px;">New Message</button></a>
 		</div>
 		<div style="border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; display: flex; gap: 5px;">
-			<a href="/mail" style="%s">💬 Inbox%s</a>
-			<a href="/mail?view=sent" style="%s">📤 Sent</a>
+			<a href="/mail" style="%s">Inbox%s</a>
+			<a href="/mail?view=sent" style="%s">Sent</a>
 		</div>
 		<div id="mailbox" style="background-color: white; border-radius: 8px; padding: 20px; max-width: 900px; margin: 0 auto;">%s</div>
 	`, inboxStyle, func() string {
