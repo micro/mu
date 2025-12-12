@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -225,56 +224,64 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Convert URLs to clickable links
 		displayBody = linkifyURLs(displayBody)
 
-		// Display the message
+		// Prepare reply subject
 		replySubject := msg.Subject
 		if !strings.HasPrefix(strings.ToLower(msg.Subject), "re:") {
 			replySubject = "Re: " + msg.Subject
 		}
-		replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`, msg.FromID, url.QueryEscape(replySubject), msgID)
 
-// Add block link if sender is external email and user is admin
-	blockButton := ""
-	if acc.Admin && IsExternalEmail(msg.FromID) {
-		blockButton = fmt.Sprintf(`
+		// Add block link if sender is external email and user is admin
+		blockButton := ""
+		if acc.Admin && IsExternalEmail(msg.FromID) {
+			blockButton = fmt.Sprintf(`
 			<span style="margin: 0 8px;">·</span>
 			<a href="#" onclick="if(confirm('Block %s from sending mail?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='block_sender';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='sender_email';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='msg_id';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #666;">Block Sender</a>
 		`, msg.FromID, msg.FromID, msg.ID)
 		}
 
-		// Format From field - only link to user profile if it's an internal user
-		fromDisplayFull := msg.From
-		if IsExternalEmail(msg.FromID) {
-			// External email - show name and email address
-			if msg.From != msg.FromID {
-				fromDisplayFull = fmt.Sprintf(`%s &lt;%s&gt;`, msg.From, msg.FromID)
-			} else {
-				fromDisplayFull = msg.FromID
-			}
-		} else {
-		fromDisplayFull = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.FromID, msg.FromID)
-	}
-
 	// Build thread view - find all messages in this conversation
 	var thread []*Message
 	mutex.RLock()
-	// Find root message
+	// Find root message by traversing ReplyTo chain
 	rootID := msgID
-	if msg.ReplyTo != "" {
-		// Try to find root
+	current := msg
+	for current.ReplyTo != "" {
+		found := false
 		for _, m := range messages {
-			if m.ID == msg.ReplyTo && (m.FromID == acc.ID || m.ToID == acc.ID) {
+			if m.ID == current.ReplyTo && (m.FromID == acc.ID || m.ToID == acc.ID) {
 				rootID = m.ID
+				current = m
+				found = true
 				break
+			}
+		}
+		if !found {
+			break
+		}
+	}
+	
+	// Collect all messages in thread recursively
+	threadIDs := make(map[string]bool)
+	threadIDs[rootID] = true
+	
+	// Keep looking for replies until no more found
+	changed := true
+	for changed {
+		changed = false
+		for _, m := range messages {
+			if (m.FromID == acc.ID || m.ToID == acc.ID) && !threadIDs[m.ID] {
+				if threadIDs[m.ReplyTo] {
+					threadIDs[m.ID] = true
+					changed = true
+				}
 			}
 		}
 	}
 	
-	// Collect all messages in thread
+	// Collect messages
 	for _, m := range messages {
-		if m.ID == rootID || m.ReplyTo == rootID {
-			if m.FromID == acc.ID || m.ToID == acc.ID {
-				thread = append(thread, m)
-			}
+		if threadIDs[m.ID] {
+			thread = append(thread, m)
 		}
 	}
 	mutex.RUnlock()
@@ -316,20 +323,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), msgBody))
 	}
 
+	// Determine the other party in the conversation
+	otherParty := msg.FromID
+	if msg.FromID == acc.ID {
+		otherParty = msg.ToID
+	}
+	
 	messageView := fmt.Sprintf(`
 	<div style="margin-bottom: 20px;">
 		<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 	</div>
-	<div style="color: #666; font-size: small; margin-bottom: 20px;">From: %s</div>
+	<div style="color: #666; font-size: small; margin-bottom: 20px;">Conversation with: %s</div>
 	<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
 	%s
-	<div style="color: #666; font-size: 14px; margin-top: 20px;">
-		<a href="%s" style="color: #666;">Reply</a>
-		<span style="margin: 0 8px;">·</span>
-		<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545;">Delete</a>
-		%s
+	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+		<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 15px;">
+			<input type="hidden" name="to" value="%s">
+			<input type="hidden" name="subject" value="%s">
+			<input type="hidden" name="reply_to" value="%s">
+			<textarea name="body" placeholder="Write your reply..." required style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: inherit; min-height: 100px; resize: vertical;"></textarea>
+			<div style="display: flex; gap: 10px; align-items: center;">
+				<button type="submit" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Send</button>
+				<a href="#" onclick="if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545; text-decoration: none;">Delete</a>
+				%s
+			</div>
+		</form>
 	</div>
-`, fromDisplayFull, threadHTML.String(), replyLink, msg.ID, blockButton)
+`, otherParty, threadHTML.String(), otherParty, replySubject, rootID, msg.ID, blockButton)
 	w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 	return
 }
