@@ -52,7 +52,7 @@ func ConfigureSMTP() {
 	if pass := os.Getenv("SMTP_PASSWORD"); pass != "" {
 		smtpConfig.Password = pass
 	}
-	app.Log("smtp-client", "SMTP client configured: %s:%s", smtpConfig.Host, smtpConfig.Port)
+	app.Log("mail", "SMTP client configured: %s:%s", smtpConfig.Host, smtpConfig.Port)
 }
 
 // Global DKIM config - optional, auto-loaded if keys exist
@@ -155,17 +155,17 @@ func SendExternalEmail(from, fromEmail, to, subject, body string) error {
 	// Connect to the SMTP server
 	addr := smtpConfig.Host + ":" + smtpConfig.Port
 
-	app.Log("smtp-client", "Sending email from %s to %s via %s", fromEmail, to, addr)
+	app.Log("mail", "Sending email from %s to %s via %s", fromEmail, to, addr)
 
 	// Send the email
 	// For localhost or internal relay, we don't need authentication
 	err := smtp.SendMail(addr, nil, fromEmail, []string{to}, message)
 	if err != nil {
-		app.Log("smtp-client", "Error sending email: %v", err)
+		app.Log("mail", "Error sending email: %v", err)
 		return fmt.Errorf("failed to send email: %v", err)
 	}
 
-	app.Log("smtp-client", "Email sent successfully to %s", to)
+	app.Log("mail", "Email sent successfully to %s (server accepted)", to)
 	return nil
 }
 

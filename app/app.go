@@ -39,6 +39,7 @@ var pkgColors = map[string]string{
 	"video": colorPurple,
 	"blog":  colorYellow,
 	"app":   colorBlue,
+	"mail":  colorRed,
 }
 
 // Log prints a formatted log message with a colored package prefix

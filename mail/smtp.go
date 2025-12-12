@@ -57,14 +57,14 @@ func (bkd *Backend) NewSession(conn *smtp.Conn) (smtp.Session, error) {
 
 	// Check rate limit for this IP
 	if !checkIPRateLimit(ip) {
-		app.Log("smtp", "Rate limit exceeded for IP: %s", ip)
+		app.Log("mail", "Rate limit exceeded for IP: %s", ip)
 		return nil, &smtp.SMTPError{
 			Code:    421,
 			Message: "Too many connections from your IP. Please try again later.",
 		}
 	}
 
-	app.Log("smtp", "New SMTP session from IP: %s", ip)
+	app.Log("mail", "New SMTP session from IP: %s", ip)
 	return &Session{remoteIP: ip}, nil
 }
 
@@ -78,11 +78,11 @@ type Session struct {
 // Mail is called when the MAIL FROM command is received
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	s.from = from
-	app.Log("smtp", "Mail from: %s (IP: %s)", from, s.remoteIP)
+	app.Log("mail", "Mail from: %s (IP: %s)", from, s.remoteIP)
 
 	// Check blocklist first
 	if IsBlocked(from, s.remoteIP) {
-		app.Log("smtp", "Rejected blocked sender: %s (IP: %s)", from, s.remoteIP)
+		app.Log("mail", "Rejected blocked sender: %s (IP: %s)", from, s.remoteIP)
 		return &smtp.SMTPError{
 			Code:    554,
 			Message: "Transaction failed: sender blocked",
@@ -91,7 +91,7 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 
 	// Check sender rate limit
 	if !checkSenderRateLimit(from) {
-		app.Log("smtp", "Rate limit exceeded for sender: %s", from)
+		app.Log("mail", "Rate limit exceeded for sender: %s", from)
 		return &smtp.SMTPError{
 			Code:    421,
 			Message: "Too many messages from this sender. Please try again later.",
@@ -100,7 +100,7 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 
 	// Verify SPF record for sender domain
 	if !verifySPF(from, s.remoteIP) {
-		app.Log("smtp", "SPF verification failed for %s from IP %s", from, s.remoteIP)
+		app.Log("mail", "SPF verification failed for %s from IP %s", from, s.remoteIP)
 		// Log but don't reject - many legitimate servers have misconfigured SPF
 		// In production you might want to reject or flag these
 	}
@@ -131,7 +131,7 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	// Verify the user exists in our system
 	_, err = auth.GetAccount(username)
 	if err != nil {
-		app.Log("smtp", "Rejected mail for non-existent user: %s", username)
+		app.Log("mail", "Rejected mail for non-existent user: %s", username)
 		return &smtp.SMTPError{
 			Code:    550,
 			Message: "User not found",
@@ -139,7 +139,7 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	}
 
 	s.to = append(s.to, to)
-	app.Log("smtp", "Accepting mail for local user: %s", username)
+	app.Log("mail", "Accepting mail for local user: %s", username)
 	return nil
 }
 
@@ -154,7 +154,7 @@ func (s *Session) Data(r io.Reader) error {
 	// Parse the email
 	msg, err := mail.ReadMessage(bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		app.Log("smtp", "Error parsing email: %v", err)
+		app.Log("mail", "Error parsing email: %v", err)
 		return err
 	}
 
@@ -191,7 +191,7 @@ func (s *Session) Data(r io.Reader) error {
 		// Plain text or HTML - read directly
 		bodyBytes, err := io.ReadAll(msg.Body)
 		if err != nil {
-			app.Log("smtp", "Error reading body: %v", err)
+			app.Log("mail", "Error reading body: %v", err)
 			return err
 		}
 		body = string(bodyBytes)
@@ -211,7 +211,7 @@ func (s *Session) Data(r io.Reader) error {
 		// Look up the recipient account
 		toAcc, err := auth.GetAccount(toUsername)
 		if err != nil {
-			app.Log("smtp", "Recipient not found: %s", toUsername)
+			app.Log("mail", "Recipient not found: %s", toUsername)
 			continue
 		}
 
@@ -222,7 +222,7 @@ func (s *Session) Data(r io.Reader) error {
 			senderName = fromAddr.Name
 		}
 
-		app.Log("smtp", "Saving message from %s to %s: %s", senderName, toAcc.Name, subject)
+		app.Log("mail", "Saving message from %s to %s: %s", senderName, toAcc.Name, subject)
 
 		if err := SendMessage(
 			senderName,
@@ -233,12 +233,12 @@ func (s *Session) Data(r io.Reader) error {
 			body,
 			"",
 		); err != nil {
-			app.Log("smtp", "Error saving message: %v", err)
+			app.Log("mail", "Error saving message: %v", err)
 			continue
 		}
 	}
 
-	app.Log("smtp", "Email processed successfully")
+	app.Log("mail", "Email processed successfully")
 	return nil
 }
 
@@ -310,8 +310,8 @@ func StartSMTPServer(addr string) error {
 	// Start rate limit cleanup goroutine
 	go cleanupRateLimits()
 
-	app.Log("smtp", "Starting SMTP server (receive only) on %s", addr)
-	app.Log("smtp", "Rate limits: %d connections/hour per IP, %d messages/day per sender",
+	app.Log("mail", "Starting SMTP server (receive only) on %s", addr)
+	app.Log("mail", "Rate limits: %d connections/hour per IP, %d messages/day per sender",
 		maxIPConnections, maxSenderMessages)
 
 	if err := s.ListenAndServe(); err != nil {
@@ -328,7 +328,7 @@ func StartSMTPServerIfEnabled() bool {
 	// Check if SMTP is enabled
 	smtpEnabled := os.Getenv("SMTP_ENABLED")
 	if smtpEnabled == "" || smtpEnabled == "false" || smtpEnabled == "0" {
-		app.Log("smtp", "SMTP server disabled (set SMTP_ENABLED=true to enable)")
+		app.Log("mail", "SMTP server disabled (set SMTP_ENABLED=true to enable)")
 		return false
 	}
 
@@ -346,7 +346,7 @@ func StartSMTPServerIfEnabled() bool {
 	// Start server in goroutine
 	go func() {
 		if err := StartSMTPServer(smtpServerAddr); err != nil {
-			app.Log("smtp", "SMTP server error: %v", err)
+			app.Log("mail", "SMTP server error: %v", err)
 		}
 	}()
 
@@ -422,7 +422,7 @@ func verifySPF(from string, ip string) bool {
 
 	parts := strings.Split(fromAddr.Address, "@")
 	if len(parts) != 2 {
-		app.Log("smtp", "Invalid email format for SPF check: %s", from)
+		app.Log("mail", "Invalid email format for SPF check: %s", from)
 		return false
 	}
 
@@ -431,7 +431,7 @@ func verifySPF(from string, ip string) bool {
 	// Look up SPF record (TXT records starting with "v=spf1")
 	txtRecords, err := net.LookupTXT(domain)
 	if err != nil {
-		app.Log("smtp", "No SPF record found for domain %s: %v", domain, err)
+		app.Log("mail", "No SPF record found for domain %s: %v", domain, err)
 		return false
 	}
 
@@ -445,7 +445,7 @@ func verifySPF(from string, ip string) bool {
 	}
 
 	if spfRecord == "" {
-		app.Log("smtp", "No SPF record found for domain %s", domain)
+		app.Log("mail", "No SPF record found for domain %s", domain)
 		return false
 	}
 
@@ -458,9 +458,9 @@ func verifySPF(from string, ip string) bool {
 			allowedIP := strings.TrimPrefix(token, "ip4:")
 			if strings.Contains(allowedIP, "/") {
 				// CIDR notation - would need proper CIDR matching
-				app.Log("smtp", "SPF CIDR check not fully implemented: %s", allowedIP)
+				app.Log("mail", "SPF CIDR check not fully implemented: %s", allowedIP)
 			} else if allowedIP == ip {
-				app.Log("smtp", "SPF passed: IP %s matches %s", ip, allowedIP)
+				app.Log("mail", "SPF passed: IP %s matches %s", ip, allowedIP)
 				return true
 			}
 		}
@@ -470,7 +470,7 @@ func verifySPF(from string, ip string) bool {
 			if err == nil {
 				for _, domainIP := range ips {
 					if domainIP.String() == ip {
-						app.Log("smtp", "SPF passed: IP %s matches domain A record", ip)
+						app.Log("mail", "SPF passed: IP %s matches domain A record", ip)
 						return true
 					}
 				}
@@ -478,12 +478,12 @@ func verifySPF(from string, ip string) bool {
 		}
 		// "+all" or "~all" or "?all" - permissive policies
 		if token == "+all" || token == "~all" || token == "?all" {
-			app.Log("smtp", "SPF permissive policy: %s", token)
+			app.Log("mail", "SPF permissive policy: %s", token)
 			return true
 		}
 	}
 
-	app.Log("smtp", "SPF check inconclusive for %s from IP %s (record: %s)", from, ip, spfRecord)
+	app.Log("mail", "SPF check inconclusive for %s from IP %s (record: %s)", from, ip, spfRecord)
 	// Return true for now - we don't want to be too strict initially
 	return true
 }
@@ -517,7 +517,7 @@ func cleanupRateLimits() {
 		
 		rateLimitMutex.Unlock()
 
-		app.Log("smtp", "Cleaned up rate limit entries (IPs: %d, Senders: %d)",
+		app.Log("mail", "Cleaned up rate limit entries (IPs: %d, Senders: %d)",
 			ipCount, senderCount)
 	}
 }
