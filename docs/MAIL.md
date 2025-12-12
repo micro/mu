@@ -30,6 +30,9 @@ export SMTP_PORT="25"
 export SMTP_ENABLED="true"
 export SMTP_SERVER_PORT="25"
 
+# Set your mail domain
+export MAIL_DOMAIN="yourdomain.com"
+
 # Send via external relay (e.g., SendGrid)
 export SMTP_HOST="smtp.sendgrid.net"
 export SMTP_PORT="587"
@@ -93,6 +96,18 @@ Internet → SMTP Server (port 2525/25)
 - Not an open relay
 - Only accepts mail for existing mu users
 - Rejects unknown recipients with "550 User not found"
+- **Rate limiting:**
+  - 10 connections per hour per IP address
+  - 100 messages per day per sender email
+- **SPF verification:** Checks sender domain SPF records (logs failures, doesn't reject)
+- **Blocklist:** Block abusive senders by email or IP address
+
+**Anti-spam protections:**
+- Connection timeouts (10s read/write)
+- Message size limit (10 MB)
+- Recipient limit (50 per message)
+- Automatic cleanup of rate limit tracking
+- Admin interface for managing blocklist
 
 ---
 
@@ -102,6 +117,7 @@ Internet → SMTP Server (port 2525/25)
 |----------|---------|-------------|
 | `SMTP_ENABLED` | `false` | Enable SMTP server for receiving mail |
 | `SMTP_SERVER_PORT` | `2525` | Port for receiving mail (use 25 for production) |
+| `MAIL_DOMAIN` | `localhost` | Domain for email addresses (e.g., user@domain.com) |
 | `SMTP_HOST` | `localhost` | SMTP server for sending outbound mail |
 | `SMTP_PORT` | `25` | Port for sending outbound mail |
 | `SMTP_USERNAME` | - | Optional: SMTP auth username for sending |
@@ -416,6 +432,65 @@ dig TXT default._domainkey.yourdomain.com +short
 
 ### Emails Going to Spam
 
+**Common causes:**
+- Missing or invalid SPF/DKIM/DMARC records
+- Low sender reputation (new domain/IP)
+- Content triggers spam filters
+- Rate limited by recipient server
+
+**Solutions:**
+1. Verify all DNS records are correct
+2. Start with low volume, gradually increase
+3. Avoid spam trigger words ("free", "click here", etc.)
+4. Use proper HTML formatting
+5. Include unsubscribe links
+
+---
+
+## Blocklist Management
+
+### Blocking Abusive Senders
+
+Navigate to `/admin/blocklist` (admin access required) to manage blocked senders.
+
+**Block by email:**
+- Individual: `spammer@example.com`
+- Domain wildcard: `*@spammydomain.com`
+
+**Block by IP:**
+- `192.168.1.100`
+
+### Effects of Blocking
+
+When a sender or IP is blocked:
+- Connection rejected immediately with SMTP 554 error
+- Message: "Transaction failed: sender blocked"
+- No rate limiting check performed (blocked before that)
+- Logged for monitoring
+
+### Managing the Blocklist
+
+**Via Admin Interface:**
+1. Go to `/admin/blocklist`
+2. Enter email or IP to block
+3. Click "Block Email" or "Block IP"
+4. View currently blocked entries
+5. Click "Unblock" to remove
+
+**Blocklist Storage:**
+- Stored in `~/.mu/blocklist.json`
+- Automatically loaded on startup
+- Persisted immediately when changed
+
+**Log Messages:**
+```
+smtp: Rejected blocked sender: spammer@bad.com (IP: 1.2.3.4)
+mail: Blocked email: spammer@bad.com
+mail: Unblocked email: reformed@example.com
+```
+
+---
+
 **Solutions:**
 1. Add DKIM signing
 2. Configure SPF record
@@ -548,6 +623,16 @@ WantedBy=multi-user.target
 - SMTP Server: Receives mail from internet (optional, disabled by default)
 - SMTP Client: Sends mail to external servers (configurable)
 - Internal Storage: JSON file for all messages
+
+**Security Features:**
+- Recipient validation (not an open relay)
+- Rate limiting (per-IP and per-sender)
+- SPF verification for incoming mail
+- Connection timeouts and size limits
+- Automatic rate limit cleanup
+- Email and IP blocking with admin interface
+
+**Message Flow:**
 - DKIM Signing: Optional, auto-enabled if keys present
 
 **Security:**

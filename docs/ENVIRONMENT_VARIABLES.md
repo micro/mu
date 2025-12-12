@@ -44,6 +44,7 @@ export MODEL_API_URL="http://localhost:11434"   # Default: http://localhost:1143
 # Enable SMTP server for receiving mail from the internet
 export SMTP_ENABLED="true"               # Default: false (disabled)
 export SMTP_SERVER_PORT="2525"           # Default: 2525 (use 25 for production)
+export MAIL_DOMAIN="yourdomain.com"      # Default: localhost (or DKIM_DOMAIN)
 ```
 
 **Note:** SMTP server is **disabled by default**. Set `SMTP_ENABLED=true` to enable mail reception.
@@ -126,6 +127,7 @@ export DKIM_DOMAIN="yourdomain.com"
 | `YOUTUBE_API_KEY` | - | YouTube API key for video functionality |
 | `SMTP_ENABLED` | `false` | Enable SMTP server for receiving mail |
 | `SMTP_SERVER_PORT` | `2525` | Port for receiving incoming mail |
+| `MAIL_DOMAIN` | `localhost` | Domain for email addresses (falls back to `DKIM_DOMAIN`) |
 | `SMTP_HOST` | `localhost` | SMTP server for sending outbound mail |
 | `SMTP_PORT` | `25` | Port for sending outbound mail |
 | `SMTP_USERNAME` | - | Optional SMTP authentication username |
@@ -150,6 +152,7 @@ YOUTUBE_API_KEY=your-youtube-api-key
 # SMTP Server (disabled by default)
 SMTP_ENABLED=true
 SMTP_SERVER_PORT=2525
+MAIL_DOMAIN=yourdomain.com
 
 # SMTP Client
 SMTP_HOST=smtp.gmail.com
@@ -190,6 +193,7 @@ Environment="YOUTUBE_API_KEY=your-youtube-api-key"
 # SMTP
 Environment="SMTP_ENABLED=true"
 Environment="SMTP_SERVER_PORT=25"
+Environment="MAIL_DOMAIN=yourdomain.com"
 Environment="SMTP_HOST=smtp.sendgrid.net"
 Environment="SMTP_PORT=587"
 Environment="SMTP_USERNAME=apikey"
@@ -230,6 +234,7 @@ docker run -d \
   -e YOUTUBE_API_KEY=your-youtube-api-key \
   -e SMTP_ENABLED=true \
   -e SMTP_SERVER_PORT=25 \
+  -e MAIL_DOMAIN=yourdomain.com \
   -e SMTP_HOST=smtp.sendgrid.net \
   -e SMTP_PORT=587 \
   -e SMTP_USERNAME=apikey \

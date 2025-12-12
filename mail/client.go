@@ -181,3 +181,17 @@ func GetEmailForUser(username, domain string) string {
 	}
 	return username + "@" + domain
 }
+
+// GetConfiguredDomain returns the configured mail domain
+// Checks MAIL_DOMAIN first, falls back to DKIM_DOMAIN, then "localhost"
+func GetConfiguredDomain() string {
+	domain := os.Getenv("MAIL_DOMAIN")
+	if domain == "" {
+		// Fallback to DKIM_DOMAIN for backward compatibility
+		domain = os.Getenv("DKIM_DOMAIN")
+	}
+	if domain == "" {
+		domain = "localhost"
+	}
+	return domain
+}
