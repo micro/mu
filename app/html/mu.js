@@ -115,7 +115,8 @@ function switchTopic(t) {
     if (typeof summaries !== 'undefined' && summaries[t]) {
       const summaryMsg = document.createElement('div');
       summaryMsg.className = 'message';
-      summaryMsg.innerHTML = `<span class="llm">AI Summary</span><p>${renderMarkdown(summaries[t])}</p>`;
+      const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" style="color: inherit; font-size: 0.9em; opacity: 0.8;">→ Discuss</a>`;
+      summaryMsg.innerHTML = `<span class="llm">AI Summary</span><p>${renderMarkdown(summaries[t])}</p><div>${discussLink}</div>`;
       messages.appendChild(summaryMsg);
     }
     
@@ -262,7 +263,8 @@ function loadChat() {
       if (summaries[topic]) {
         const summaryMsg = document.createElement('div');
         summaryMsg.className = 'message';
-        summaryMsg.innerHTML = `<span class="llm">${topic}</span><p>${renderMarkdown(summaries[topic])}</p>`;
+        const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(topic)}" style="color: inherit; font-size: 0.9em; opacity: 0.8;">→ Discuss</a>`;
+        summaryMsg.innerHTML = `<span class="llm">${topic}</span><p>${renderMarkdown(summaries[topic])}</p><div>${discussLink}</div>`;
         messages.appendChild(summaryMsg);
       }
     });

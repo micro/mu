@@ -258,6 +258,18 @@ func getOrCreateRoom(id string) *Room {
 			app.Log("chat", "Video item %s not found in index", itemID)
 			room.Title = "Video Discussion"
 		}
+	case "chat":
+		// For chat topics, use the topic name from summaries
+		room.Title = itemID + " Discussion"
+		mutex.RLock()
+		if summary, exists := summaries[itemID]; exists {
+			room.Summary = summary
+		} else {
+			room.Summary = "General discussion about " + itemID
+		}
+		mutex.RUnlock()
+		room.Topic = itemID
+		app.Log("chat", "Created chat room for topic: %s", itemID)
 	}
 
 	// Now acquire write lock only for the map update
