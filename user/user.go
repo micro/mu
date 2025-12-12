@@ -82,7 +82,7 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 	content := fmt.Sprintf(`<div style="max-width: 750px;">
 		<div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333;">
 			<p style="color: #666; margin: 0;">@%s</p>
-			<p style="color: #666; margin: 10px 0 0 0;">Member since %s</p>
+			<p style="color: #666; margin: 10px 0 0 0;">Joined %s</p>
 			%s
 		</div>
 		

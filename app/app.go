@@ -451,7 +451,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		<h2 style="margin-bottom: 15px;">Profile</h2>
 		<p><strong>Username:</strong> %s</p>
 		<p><strong>Name:</strong> %s</p>
-		<p><strong>Member since:</strong> %s</p>
+		<p><strong>Joined:</strong> %s</p>
 		<p style="margin-top: 10px;"><a href="/@%s"><button>Public Profile</button></a></p>
 		
 		<div style="margin-top: 20px;">%s</div>
