@@ -120,7 +120,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Failed to delete message", http.StatusInternalServerError)
 				return
 			}
-			http.Redirect(w, r, "/mail", http.StatusSeeOther)
+			// Redirect back to the thread if return_to is specified, otherwise inbox
+			returnTo := r.FormValue("return_to")
+			if returnTo != "" {
+				http.Redirect(w, r, "/mail?id="+returnTo, http.StatusSeeOther)
+			} else {
+				http.Redirect(w, r, "/mail", http.StatusSeeOther)
+			}
 			return
 		}
 
@@ -197,8 +203,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Redirect to inbox
-		http.Redirect(w, r, "/mail", http.StatusSeeOther)
+		// Redirect back to thread if replying, otherwise to inbox
+		// Check if this was a reply (has reply_to parameter or id in URL)
+		threadID := r.URL.Query().Get("id")
+		if threadID != "" {
+			// Return to the thread view
+			http.Redirect(w, r, "/mail?id="+threadID, http.StatusSeeOther)
+		} else if replyTo != "" {
+			// Return to the original message being replied to
+			http.Redirect(w, r, "/mail?id="+replyTo, http.StatusSeeOther)
+		} else {
+			// New message, go to inbox
+			http.Redirect(w, r, "/mail", http.StatusSeeOther)
+		}
 		return
 	}
 
@@ -335,9 +352,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		
 		threadHTML.WriteString(fmt.Sprintf(`
 		<div style="padding: 20px 0; border-bottom: 1px solid #eee;">
-			<div style="color: #666; font-size: small; margin-bottom: 10px;">%s · %s</div>
+			<div style="color: #666; font-size: small; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+				<span>%s · %s</span>
+				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #999; font-size: 0.9em;">Delete</a>
+			</div>
 			<div style="white-space: pre-wrap; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word;">%s</div>
-		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), msgBody))
+		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody))
 	}
 
 	// Determine the other party in the thread

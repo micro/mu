@@ -223,13 +223,61 @@ func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) 
 		app.Log("mail", "WARNING: No SMTP AUTH credentials - mail sending will likely fail")
 	}
 
-	// Send the email
-	err := smtp.SendMail(addr, auth, fromEmail, []string{to}, message)
+	// Send the email using manual connection for better control
+	// Connect to SMTP server
+	c, err := smtp.Dial(addr)
 	if err != nil {
-		app.Log("mail", "✗ SMTP Error: %v", err)
-		app.Log("mail", "Failed to send email from %s to %s", fromEmail, to)
-		return "", fmt.Errorf("failed to send email: %v", err)
+		app.Log("mail", "✗ Failed to connect to SMTP server: %v", err)
+		return "", fmt.Errorf("failed to connect to SMTP server: %v", err)
 	}
+	defer c.Close()
+
+	// Say HELO
+	if err := c.Hello("localhost"); err != nil {
+		app.Log("mail", "✗ HELO failed: %v", err)
+		return "", fmt.Errorf("HELO failed: %v", err)
+	}
+
+	// Authenticate if credentials provided
+	if auth != nil {
+		if err := c.Auth(auth); err != nil {
+			app.Log("mail", "✗ SMTP AUTH failed: %v", err)
+			return "", fmt.Errorf("SMTP AUTH failed: %v", err)
+		}
+		app.Log("mail", "✓ SMTP AUTH successful")
+	}
+
+	// Set sender
+	if err := c.Mail(fromEmail); err != nil {
+		app.Log("mail", "✗ MAIL FROM failed: %v", err)
+		return "", fmt.Errorf("MAIL FROM failed: %v", err)
+	}
+
+	// Set recipient
+	if err := c.Rcpt(to); err != nil {
+		app.Log("mail", "✗ RCPT TO failed: %v", err)
+		return "", fmt.Errorf("RCPT TO failed: %v", err)
+	}
+
+	// Send data
+	wc, err := c.Data()
+	if err != nil {
+		app.Log("mail", "✗ DATA command failed: %v", err)
+		return "", fmt.Errorf("DATA command failed: %v", err)
+	}
+	_, err = wc.Write(message)
+	if err != nil {
+		app.Log("mail", "✗ Failed to write message: %v", err)
+		return "", fmt.Errorf("failed to write message: %v", err)
+	}
+	err = wc.Close()
+	if err != nil {
+		app.Log("mail", "✗ Failed to close data writer: %v", err)
+		return "", fmt.Errorf("failed to close data writer: %v", err)
+	}
+
+	// Quit
+	c.Quit()
 
 	app.Log("mail", "✓ Email sent successfully")
 	app.Log("mail", "SMTP server accepted message to %s", to)
