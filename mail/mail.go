@@ -254,19 +254,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				fromDisplayFull = msg.FromID
 			}
 		} else {
-			fromDisplayFull = fmt.Sprintf(`<a href="/@%s">%s</a>`, msg.FromID, msg.From)
-		}
+		fromDisplayFull = fmt.Sprintf(`<a href="/@%s">%s</a>`, msg.FromID, msg.FromID)
+	}
 
-		messageView := fmt.Sprintf(`
-			<div style="margin-bottom: 20px;">
-				<a href="/mail"><button>← Back to Inbox</button></a>
-			</div>
-			<div style="border: 1px solid #eee; padding: 20px; border-radius: 5px;">
-				<h2 style="margin-top: 0;">%s</h2>
-				<div style="color: #666; margin-bottom: 20px;">
-					<strong>From:</strong> %s<br>
-					<strong>Date:</strong> %s
-				</div>
+	messageView := fmt.Sprintf(`
+		<div style="margin-bottom: 20px;">
+			<a href="/mail"><button>← Back to Inbox</button></a>
 				<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
 				<div style="white-space: pre-wrap; margin: 20px 0;">%s</div>
 				<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
@@ -568,7 +561,7 @@ func renderInboxMessage(msg *Message, indent int, viewerID string) string {
 		}
 	} else {
 		// Internal user - link to profile
-		fromDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.FromID, msg.From)
+		fromDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.FromID, msg.FromID)
 	}
 
 	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;%s">
