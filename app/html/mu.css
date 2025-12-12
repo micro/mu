@@ -218,10 +218,9 @@ td {
 
 #content {
   flex: 1;
-  margin-left: 250px;
-  margin-right: auto;
-  max-width: 800px;
-  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 40px;
   text-align: left;
 }
 
@@ -296,7 +295,7 @@ td {
 
 .home-left {
   flex: 1;
-  max-width: 750px;
+  min-width: 0;
 }
 
 .home-right {
