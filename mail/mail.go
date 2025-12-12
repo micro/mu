@@ -584,9 +584,6 @@ if r.URL.Query().Get("compose") == "true" {
 
 	// Get messages for this user
 	mutex.RLock()
-	var mailbox []*Message
-	unreadCount := 0
-
 	// Get user's inbox - O(1) lookup
 	userInbox := inboxes[acc.ID]
 	mutex.RUnlock()
