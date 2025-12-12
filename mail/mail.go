@@ -124,6 +124,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Check if this is a delete thread action
+		if r.FormValue("action") == "delete_thread" {
+			msgID := r.FormValue("msg_id")
+			if err := DeleteThread(msgID, acc.ID); err != nil {
+				http.Error(w, "Failed to delete conversation", http.StatusInternalServerError)
+				return
+			}
+			http.Redirect(w, r, "/mail", http.StatusSeeOther)
+			return
+		}
+
 		// Check if this is a block sender action (admin only)
 		if r.FormValue("action") == "block_sender" {
 			senderEmail := r.FormValue("sender_email")
@@ -158,6 +169,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
 			// Use just the username (acc.ID) as display name, not acc.Name which might contain @
 			displayName := acc.ID
+			
+			// Send external email (connects to localhost SMTP server which relays)
 			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, body, replyTo)
 			if err != nil {
 				http.Error(w, "Failed to send email: "+err.Error(), http.StatusInternalServerError)
@@ -351,7 +364,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div style="color: #666; font-size: 14px;">
 				<a href="#" onclick="this.closest('form').submit(); return false;" style="color: #666;">Send</a>
 				<span style="margin: 0 8px;">·</span>
-				<a href="#" onclick="if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545;">Delete</a>
+				<a href="#" onclick="if(confirm('Delete this entire conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545;">Delete Conversation</a>
 				%s
 			</div>
 		</form>
@@ -714,6 +727,78 @@ func DeleteMessage(msgID, userID string) error {
 		}
 	}
 	return fmt.Errorf("message not found")
+}
+
+// DeleteThread removes all messages in a conversation thread
+func DeleteThread(msgID, userID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Find the message
+	var msg *Message
+	for _, m := range messages {
+		if m.ID == msgID && (m.FromID == userID || m.ToID == userID) {
+			msg = m
+			break
+		}
+	}
+
+	if msg == nil {
+		return fmt.Errorf("message not found")
+	}
+
+	// Find root message by traversing ReplyTo chain
+	rootID := msgID
+	current := msg
+	for current.ReplyTo != "" {
+		found := false
+		for _, m := range messages {
+			if m.ID == current.ReplyTo && (m.FromID == userID || m.ToID == userID) {
+				rootID = m.ID
+				current = m
+				found = true
+				break
+			}
+		}
+		if !found {
+			break
+		}
+	}
+
+	// Collect all messages in thread recursively
+	threadIDs := make(map[string]bool)
+	threadIDs[rootID] = true
+
+	// Keep looking for replies until no more found
+	changed := true
+	for changed {
+		changed = false
+		for _, m := range messages {
+			if (m.FromID == userID || m.ToID == userID) && !threadIDs[m.ID] {
+				if threadIDs[m.ReplyTo] {
+					threadIDs[m.ID] = true
+					changed = true
+				}
+			}
+		}
+	}
+
+	// Delete all messages in thread
+	var remaining []*Message
+	for _, m := range messages {
+		if !threadIDs[m.ID] {
+			remaining = append(remaining, m)
+		}
+	}
+
+	deleted := len(messages) - len(remaining)
+	if deleted == 0 {
+		return fmt.Errorf("no messages to delete")
+	}
+
+	messages = remaining
+	app.Log("mail", "Deleted %d messages from thread for user %s", deleted, userID)
+	return save()
 }
 
 // UnreadCountHandler returns unread message count as JSON

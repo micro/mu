@@ -207,9 +207,24 @@ func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) 
 	app.Log("mail", "To: %s", to)
 	app.Log("mail", "Message size: %d bytes", len(message))
 
+	// Use SMTP authentication when connecting to localhost
+	// This uses internal shared credentials (not user passwords)
+	var auth smtp.Auth
+	internalUser := os.Getenv("SMTP_USER")
+	internalPassword := os.Getenv("SMTP_PASSWORD")
+	
+	if internalUser != "" && internalPassword != "" {
+		auth = smtp.PlainAuth("", internalUser, internalPassword, smtpConfig.Host)
+		app.Log("mail", "Using internal SMTP AUTH credentials")
+	} else if smtpConfig.Username != "" && smtpConfig.Password != "" {
+		auth = smtp.PlainAuth("", smtpConfig.Username, smtpConfig.Password, smtpConfig.Host)
+		app.Log("mail", "Using SMTP AUTH from config: %s", smtpConfig.Username)
+	} else {
+		app.Log("mail", "WARNING: No SMTP AUTH credentials - mail sending will likely fail")
+	}
+
 	// Send the email
-	// For localhost or internal relay, we don't need authentication
-	err := smtp.SendMail(addr, nil, fromEmail, []string{to}, message)
+	err := smtp.SendMail(addr, auth, fromEmail, []string{to}, message)
 	if err != nil {
 		app.Log("mail", "✗ SMTP Error: %v", err)
 		app.Log("mail", "Failed to send email from %s to %s", fromEmail, to)

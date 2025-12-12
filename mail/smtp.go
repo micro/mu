@@ -3,13 +3,16 @@ package mail
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"log"
 	"mime"
 	"mime/multipart"
 	"net"
 	"net/mail"
+	"net/smtp"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +20,7 @@ import (
 	"mu/app"
 	"mu/auth"
 
-	"github.com/emersion/go-smtp"
+	smtpd "github.com/emersion/go-smtp"
 )
 
 // Rate limiting configuration
@@ -48,7 +51,7 @@ type Backend struct{}
 
 // NewSession creates a new SMTP session
 // No authentication required - this server only RECEIVES mail
-func (bkd *Backend) NewSession(conn *smtp.Conn) (smtp.Session, error) {
+func (bkd *Backend) NewSession(conn *smtpd.Conn) (smtpd.Session, error) {
 	// Extract IP address
 	remoteAddr := conn.Conn().RemoteAddr().String()
 	ip, _, err := net.SplitHostPort(remoteAddr)
@@ -59,7 +62,7 @@ func (bkd *Backend) NewSession(conn *smtp.Conn) (smtp.Session, error) {
 	// Check rate limit for this IP
 	if !checkIPRateLimit(ip) {
 		app.Log("mail", "Rate limit exceeded for IP: %s", ip)
-		return nil, &smtp.SMTPError{
+		return nil, &smtpd.SMTPError{
 			Code:    421,
 			Message: "Too many connections from your IP. Please try again later.",
 		}
@@ -71,20 +74,30 @@ func (bkd *Backend) NewSession(conn *smtp.Conn) (smtp.Session, error) {
 
 // Session represents an SMTP session for RECEIVING mail
 type Session struct {
-	from     string
-	to       []string
-	remoteIP string
+	from        string
+	to          []string
+	remoteIP    string
+	isLocalhost bool // True if connecting from localhost (trusted internal client)
 }
 
 // Mail is called when the MAIL FROM command is received
-func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
+func (s *Session) Mail(from string, opts *smtpd.MailOptions) error {
 	s.from = from
+	
+	// Check if connection is from localhost (trusted internal Go app)
+	s.isLocalhost = s.remoteIP == "127.0.0.1" || s.remoteIP == "::1" || strings.HasPrefix(s.remoteIP, "127.0.0.") || s.remoteIP == "[::1]"
+	
+	if s.isLocalhost {
+		app.Log("mail", "Mail from: %s (localhost - trusted internal client)", from)
+		return nil // Trust localhost connections from our web app
+	}
+	
 	app.Log("mail", "Mail from: %s (IP: %s)", from, s.remoteIP)
 
 	// Check blocklist first
 	if IsBlocked(from, s.remoteIP) {
 		app.Log("mail", "Rejected blocked sender: %s (IP: %s)", from, s.remoteIP)
-		return &smtp.SMTPError{
+		return &smtpd.SMTPError{
 			Code:    554,
 			Message: "Transaction failed: sender blocked",
 		}
@@ -93,7 +106,7 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	// Check sender rate limit
 	if !checkSenderRateLimit(from) {
 		app.Log("mail", "Rate limit exceeded for sender: %s", from)
-		return &smtp.SMTPError{
+		return &smtpd.SMTPError{
 			Code:    421,
 			Message: "Too many messages from this sender. Please try again later.",
 		}
@@ -109,9 +122,44 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	return nil
 }
 
+// AuthPlain implements PLAIN authentication
+func (s *Session) AuthPlain(username, password string) error {
+	// Only allow auth from localhost
+	if !s.isLocalhost {
+		app.Log("mail", "SMTP AUTH rejected: not from localhost")
+		return &smtpd.SMTPError{
+			Code:    530,
+			Message: "Authentication not available",
+		}
+	}
+	
+	// Check for internal web app authentication using shared secret
+	internalUser := os.Getenv("SMTP_USER")
+	internalPassword := os.Getenv("SMTP_PASSWORD")
+	
+	if internalUser != "" && internalPassword != "" {
+		// Verify against internal credentials (for web app)
+		if username == internalUser && password == internalPassword {
+			app.Log("mail", "✓ SMTP AUTH successful for internal web app from localhost")
+			return nil
+		}
+	}
+	
+	app.Log("mail", "SMTP AUTH failed: invalid credentials for user %s", username)
+	return &smtpd.SMTPError{
+		Code:    535,
+		Message: "Authentication failed",
+	}
+}
+
+// Logout is called when the connection is closed
+func (s *Session) Logout() error {
+	return nil
+}
+
 // Rcpt is called when the RCPT TO command is received
-// Validates that the recipient is a local user
-func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
+// Validates that the recipient is a local user OR allows external if authenticated OR from localhost
+func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	// Extract username from email address
 	toAddr, err := mail.ParseAddress(to)
 	if err != nil {
@@ -121,7 +169,7 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	// Get username (part before @)
 	parts := strings.Split(toAddr.Address, "@")
 	if len(parts) == 0 {
-		return &smtp.SMTPError{
+		return &smtpd.SMTPError{
 			Code:    550,
 			Message: "Invalid recipient address",
 		}
@@ -129,11 +177,38 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 
 	username := parts[0]
 
-	// Verify the user exists in our system
+	// If from localhost (trusted internal client), allow any recipient
+	// But still require SMTP AUTH to prevent abuse
+	if s.isLocalhost {
+		s.to = append(s.to, to)
+		app.Log("mail", "Accepting recipient %s from localhost (authenticated internal client)", to)
+		return nil
+	}
+
+	// Not from localhost - ONLY accept mail for LOCAL users (not an open relay)
+	// First check if recipient domain matches our domain
+	if len(parts) < 2 {
+		app.Log("mail", "Rejected mail: no domain specified in recipient")
+		return &smtpd.SMTPError{
+			Code:    550,
+			Message: "Invalid recipient address",
+		}
+	}
+	
+	recipientDomain := parts[1]
+	if recipientDomain != GetConfiguredDomain() {
+		app.Log("mail", "Rejected mail for external domain %s (not an open relay)", recipientDomain)
+		return &smtpd.SMTPError{
+			Code:    550,
+			Message: "Relay access denied",
+		}
+	}
+	
+	// Domain matches - verify user exists
 	_, err = auth.GetAccount(username)
 	if err != nil {
 		app.Log("mail", "Rejected mail for non-existent user: %s", username)
-		return &smtp.SMTPError{
+		return &smtpd.SMTPError{
 			Code:    550,
 			Message: "User not found",
 		}
@@ -142,6 +217,110 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	s.to = append(s.to, to)
 	app.Log("mail", "Accepting mail for local user: %s", username)
 	return nil
+}
+
+// relayToExternal delivers email to an external SMTP server
+func relayToExternal(from, to string, data []byte) error {
+	// Extract domain from recipient address
+	parts := strings.Split(to, "@")
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid email address: %s", to)
+	}
+	domain := parts[1]
+
+	// Look up MX records for the domain
+	mxRecords, err := net.LookupMX(domain)
+	if err != nil || len(mxRecords) == 0 {
+		app.Log("mail", "No MX records found for %s, trying domain directly", domain)
+		// Fallback to domain directly if no MX records
+		mxRecords = []*net.MX{{Host: domain, Pref: 10}}
+	}
+
+	// Sort MX records by preference (lower is higher priority)
+	sort.Slice(mxRecords, func(i, j int) bool {
+		return mxRecords[i].Pref < mxRecords[j].Pref
+	})
+
+	// Try each MX record until one succeeds
+	var lastErr error
+	for _, mx := range mxRecords {
+		host := strings.TrimSuffix(mx.Host, ".")
+		app.Log("mail", "Attempting relay to %s (MX for %s)", host, domain)
+		
+		// Try port 25 (standard SMTP)
+		addr := net.JoinHostPort(host, "25")
+		
+		// Connect with timeout
+		conn, err := net.DialTimeout("tcp", addr, 30*time.Second)
+		if err != nil {
+			app.Log("mail", "Failed to connect to %s: %v", addr, err)
+			lastErr = err
+			continue
+		}
+		defer conn.Close()
+
+		// Create SMTP client
+		client, err := smtp.NewClient(conn, host)
+		if err != nil {
+			app.Log("mail", "Failed to create SMTP client for %s: %v", host, err)
+			lastErr = err
+			continue
+		}
+		defer client.Close()
+
+		// Say HELO/EHLO
+		hostname := GetConfiguredDomain()
+		if err := client.Hello(hostname); err != nil {
+			app.Log("mail", "HELO failed for %s: %v", host, err)
+			lastErr = err
+			continue
+		}
+
+		// MAIL FROM
+		if err := client.Mail(from); err != nil {
+			app.Log("mail", "MAIL FROM failed for %s: %v", host, err)
+			lastErr = err
+			continue
+		}
+
+		// RCPT TO
+		if err := client.Rcpt(to); err != nil {
+			app.Log("mail", "RCPT TO failed for %s: %v", host, err)
+			lastErr = err
+			continue
+		}
+
+		// DATA
+		wc, err := client.Data()
+		if err != nil {
+			app.Log("mail", "DATA command failed for %s: %v", host, err)
+			lastErr = err
+			continue
+		}
+
+		// Write email data
+		if _, err := wc.Write(data); err != nil {
+			app.Log("mail", "Failed to write data to %s: %v", host, err)
+			lastErr = err
+			wc.Close()
+			continue
+		}
+
+		// Close data writer
+		if err := wc.Close(); err != nil {
+			app.Log("mail", "Failed to close data writer for %s: %v", host, err)
+			lastErr = err
+			continue
+		}
+
+		// QUIT
+		client.Quit()
+		
+		app.Log("mail", "✓ Successfully relayed email to %s via %s", to, host)
+		return nil
+	}
+
+	return fmt.Errorf("failed to relay to any MX server for %s: %v", domain, lastErr)
 }
 
 // Data is called when the DATA command is received
@@ -230,10 +409,30 @@ func (s *Session) Data(r io.Reader) error {
 			toAddr = &mail.Address{Address: recipient}
 		}
 
-		// Extract username from email (everything before @)
-		toUsername := strings.Split(toAddr.Address, "@")[0]
+		// Extract domain from email
+		parts := strings.Split(toAddr.Address, "@")
+		if len(parts) != 2 {
+			app.Log("mail", "Invalid recipient address: %s", recipient)
+			continue
+		}
+		toUsername := parts[0]
+		toDomain := parts[1]
 
-		// Look up the recipient account
+		// Check if this is an external recipient
+		isExternal := toDomain != GetConfiguredDomain()
+		
+		if isExternal && s.isLocalhost {
+			// Relay to external SMTP server
+			app.Log("mail", "Relaying to external address: %s", toAddr.Address)
+			if err := relayToExternal(s.from, toAddr.Address, buf.Bytes()); err != nil {
+				app.Log("mail", "Error relaying to %s: %v", toAddr.Address, err)
+				continue
+			}
+			app.Log("mail", "✓ Successfully relayed to %s", toAddr.Address)
+			continue
+		}
+
+		// Look up the recipient account (local user)
 		toAcc, err := auth.GetAccount(toUsername)
 		if err != nil {
 			app.Log("mail", "Recipient not found: %s", toUsername)
@@ -341,17 +540,12 @@ func (s *Session) Reset() {
 	s.to = []string{}
 }
 
-// Logout is called when the connection is closed
-func (s *Session) Logout() error {
-	return nil
-}
-
 // StartSMTPServer starts the SMTP server for RECEIVING mail only
 // This is NOT an open relay - it only accepts mail for local users
 func StartSMTPServer(addr string) error {
 	be := &Backend{}
 
-	s := smtp.NewServer(be)
+	s := smtpd.NewServer(be)
 
 	s.Addr = addr
 	s.Domain = GetConfiguredDomain()
@@ -359,12 +553,14 @@ func StartSMTPServer(addr string) error {
 	s.WriteTimeout = 10 * time.Second
 	s.MaxMessageBytes = 1024 * 1024 * 10 // 10 MB
 	s.MaxRecipients = 50
-	s.AllowInsecureAuth = false // No auth needed for receiving
+	s.AllowInsecureAuth = true // Allow AUTH on localhost for outbound
 
 	// Start rate limit cleanup goroutine
 	go cleanupRateLimits()
 
-	app.Log("mail", "Starting SMTP server (receive only) on %s", addr)
+	app.Log("mail", "Starting SMTP server on %s", addr)
+	app.Log("mail", "  - Inbound: Accepts mail for local users (no auth required)")
+	app.Log("mail", "  - Outbound: Relays mail for authenticated users only")
 	app.Log("mail", "Rate limits: %d connections/hour per IP, %d messages/day per sender",
 		maxIPConnections, maxSenderMessages)
 
