@@ -463,19 +463,22 @@ func (s *Session) Data(r io.Reader) error {
 
 		// Try to find original message for threading
 		var replyToID string
+		
+		// Try In-Reply-To first
 		if inReplyTo != "" {
 			if origMsg := FindMessageByMessageID(inReplyTo); origMsg != nil {
 				replyToID = origMsg.ID
 				app.Log("mail", "Threading reply using In-Reply-To: %s", inReplyTo)
 			}
 		}
-		// If In-Reply-To didn't match, try References (last one is usually the direct parent)
+		
+		// If In-Reply-To didn't work, try ALL References headers (not just last one)
 		if replyToID == "" && references != "" {
 			refs := strings.Fields(references)
-			for i := len(refs) - 1; i >= 0; i-- {
-				if origMsg := FindMessageByMessageID(refs[i]); origMsg != nil {
+			for _, ref := range refs {
+				if origMsg := FindMessageByMessageID(ref); origMsg != nil {
 					replyToID = origMsg.ID
-					app.Log("mail", "Threading reply using References: %s", refs[i])
+					app.Log("mail", "Threading reply using References: %s", ref)
 					break
 				}
 			}

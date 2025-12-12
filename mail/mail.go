@@ -59,6 +59,11 @@ func Load() {
 		messages = []*Message{}
 	} else {
 		app.Log("mail", "Loaded %d messages", len(messages))
+		
+		// Fix threading for any messages with broken chains
+		// This handles cases where messages replied to an intermediate message
+		// but we need them to point to a message that actually exists
+		fixThreading()
 	}
 
 	// Load blocklist
@@ -80,6 +85,43 @@ func Load() {
 	if err := LoadDKIMConfig(dkimDomain, dkimSelector); err != nil {
 		app.Log("mail", "DKIM signing disabled: %v", err)
 	}
+}
+
+// fixThreading repairs broken threading relationships after loading
+func fixThreading() {
+	fixed := 0
+	
+	for _, msg := range messages {
+		if msg.ReplyTo == "" {
+			continue // Root message, nothing to fix
+		}
+		
+		// Check if the parent exists
+		if GetMessageUnlocked(msg.ReplyTo) != nil {
+			continue // Parent exists, threading is fine
+		}
+		
+		// Parent doesn't exist - try to find ANY message with matching MessageID
+		// by looking through References in the message (if we stored them)
+		// For now, just mark as orphaned
+		app.Log("mail", "Message %s has missing parent %s - marking as root", msg.ID, msg.ReplyTo)
+		msg.ReplyTo = ""
+		fixed++
+	}
+	
+	if fixed > 0 {
+		app.Log("mail", "Fixed threading for %d orphaned messages", fixed)
+	}
+}
+
+// GetMessageUnlocked finds a message without locking (for internal use when lock is held)
+func GetMessageUnlocked(msgID string) *Message {
+	for _, msg := range messages {
+		if msg.ID == msgID {
+			return msg
+		}
+	}
+	return nil
 }
 
 // Save messages to disk (caller must hold mutex)
