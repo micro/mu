@@ -595,13 +595,9 @@ if r.URL.Query().Get("compose") == "true" {
 		userInbox = &Inbox{Threads: make(map[string]*Thread)}
 	}
 
-	// Sort by newest first
-	sort.Slice(mailbox, func(i, j int) bool {
-		return mailbox[i].CreatedAt.After(mailbox[j].CreatedAt)
-	})
-
 	// Render threads from pre-organized inbox
 	var items []string
+	unreadCount := 0
 	if view == "inbox" {
 		app.Log("mail", "Rendering inbox with %d threads for user %s", len(userInbox.Threads), acc.Name)
 
@@ -628,9 +624,6 @@ if r.URL.Query().Get("compose") == "true" {
 			if thread.Root.ToID == acc.ID || thread.Latest.ToID == acc.ID {
 				// Inbox message - show latest preview, link to root
 				items = append(items, renderThreadPreview(thread.Root.ID, thread.Latest, acc.ID, thread.HasUnread))
-			} else if thread.Root.FromID == acc.ID {
-				// Sent message
-				items = append(items, renderSentMessage(thread.Root))
 			}
 		}
 	} else {
@@ -729,9 +722,9 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
 	
 	html := fmt.Sprintf(`
-		<div style="padding: 12px; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
+		<div style="padding: 15px 0; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
 			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-				<strong>%s%s</strong>
+				<strong style="font-size: 16px;">%s%s</strong>
 				<span style="color: #888; font-size: 12px;">%s</span>
 			</div>
 			<div style="color: #666; font-size: 14px; margin-bottom: 4px;">%s</div>
@@ -771,9 +764,9 @@ func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string)
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
 	
 	html := fmt.Sprintf(`
-		<div style="padding: 12px; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
+		<div style="padding: 15px 0; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
 			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-				<strong>%s</strong>
+				<strong style="font-size: 16px;">%s</strong>
 				<span style="color: #888; font-size: 12px;">%s</span>
 			</div>
 			<div style="color: #666; font-size: 14px; margin-bottom: 4px;">%s</div>
