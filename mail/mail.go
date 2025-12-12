@@ -241,6 +241,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				</form>`, msg.FromID, msg.ID, msg.FromID)
 		}
 
+		// Format From field - only link to user profile if it's an internal user
+		fromDisplayFull := msg.From
+		if !IsExternalEmail(msg.FromID) {
+			fromDisplayFull = fmt.Sprintf(`<a href="/@%s">%s</a>`, msg.FromID, msg.From)
+		}
+
 		messageView := fmt.Sprintf(`
 			<div style="margin-bottom: 20px;">
 				<a href="/mail"><button>← Back to Inbox</button></a>
@@ -248,7 +254,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div style="border: 1px solid #eee; padding: 20px; border-radius: 5px;">
 				<h2 style="margin-top: 0;">%s</h2>
 				<div style="color: #666; margin-bottom: 20px;">
-					<strong>From:</strong> <a href="/@%s">%s</a><br>
+					<strong>From:</strong> %s<br>
 					<strong>Date:</strong> %s
 				</div>
 				<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
@@ -264,7 +270,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					%s
 				</div>
 			</div>
-		`, msg.Subject, msg.FromID, msg.From, app.TimeAgo(msg.CreatedAt), displayBody, replyLink, msg.ID, blockButton)
+		`, msg.Subject, fromDisplayFull, app.TimeAgo(msg.CreatedAt), displayBody, replyLink, msg.ID, blockButton)
 
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
@@ -562,24 +568,40 @@ func renderInboxMessage(msg *Message, indent int, viewerID string) string {
 
 // renderSentMessage renders a single sent message
 func renderSentMessage(msg *Message) string {
+	// Format To field - only link to user profile if it's an internal user
+	toDisplay := msg.To
+	if !IsExternalEmail(msg.ToID) {
+		toDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.ToID, msg.To)
+	} else {
+		toDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.To)
+	}
+	
 	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
 		<div style="margin-bottom: 5px;">
 			<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
 		</div>
-		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">To: <a href="/@%s" style="color: #666;">%s</a></div>
+		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">To: %s</div>
 		<div style="color: #999; font-size: 12px;">%s</div>
-	</div>`, msg.ID, msg.Subject, msg.ToID, msg.To, app.TimeAgo(msg.CreatedAt))
+	</div>`, msg.ID, msg.Subject, toDisplay, app.TimeAgo(msg.CreatedAt))
 }
 
 // renderSentMessageInThread renders a sent message as part of a thread in inbox view
 func renderSentMessageInThread(msg *Message) string {
+	// Format To field - only link to user profile if it's an internal user
+	toDisplay := msg.To
+	if !IsExternalEmail(msg.ToID) {
+		toDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.ToID, msg.To)
+	} else {
+		toDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.To)
+	}
+	
 	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee; background-color: #f9f9f9;">
 		<div style="margin-bottom: 5px;">
 			<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
 		</div>
-		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">You sent to: <a href="/@%s" style="color: #666;">%s</a></div>
+		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">You sent to: %s</div>
 		<div style="color: #999; font-size: 12px;">%s</div>
-	</div>`, msg.ID, msg.Subject, msg.ToID, msg.To, app.TimeAgo(msg.CreatedAt))
+	</div>`, msg.ID, msg.Subject, toDisplay, app.TimeAgo(msg.CreatedAt))
 }
 
 // SendMessage creates and saves a new message
