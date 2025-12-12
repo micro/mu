@@ -1411,7 +1411,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 
 	articleHtml := fmt.Sprintf(`
-		<div style="max-width: 800px; margin: 0 auto;">
+		<div style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
 			<div style="margin-bottom: 20px;">
 				<a href="/news"><button>← Back to News</button></a>
 			</div>
@@ -1439,7 +1439,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		</div>
 	`, imageSection, title, categoryBadge, app.TimeAgo(postedAt), getDomain(url), description, summarySection, url, articleID)
 
-	w.Write([]byte(app.RenderHTML(title, "", articleHtml)))
+	w.Write([]byte(app.RenderHTML("", "", articleHtml)))
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
