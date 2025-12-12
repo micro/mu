@@ -1391,7 +1391,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	// Build the article page
 	imageSection := ""
 	if image != "" {
-		imageSection = fmt.Sprintf(`<img src="%s" style="max-width: 100%%; height: auto; border-radius: 8px; margin-bottom: 20px;">`, image)
+		imageSection = fmt.Sprintf(`<img src="%s" style="max-width: 100%%; max-height: 300px; width: auto; height: auto; object-fit: cover; border-radius: 8px; margin-bottom: 20px;">`, image)
 	}
 
 	summarySection := ""
