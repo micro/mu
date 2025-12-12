@@ -3,6 +3,7 @@ package mail
 import (
 	"bytes"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -240,6 +241,19 @@ func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) 
 
 	// Authenticate if credentials provided
 	if auth != nil {
+		// Try STARTTLS first for PLAIN auth to work
+		if ok, _ := c.Extension("STARTTLS"); ok {
+			config := &tls.Config{
+				InsecureSkipVerify: true, // Skip verification for localhost
+				ServerName:         smtpConfig.Host,
+			}
+			if err := c.StartTLS(config); err != nil {
+				app.Log("mail", "✗ STARTTLS failed: %v", err)
+				return "", fmt.Errorf("STARTTLS failed: %v", err)
+			}
+			app.Log("mail", "✓ STARTTLS successful")
+		}
+		
 		if err := c.Auth(auth); err != nil {
 			app.Log("mail", "✗ SMTP AUTH failed: %v", err)
 			return "", fmt.Errorf("SMTP AUTH failed: %v", err)
