@@ -154,8 +154,20 @@ func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) 
 
 	message := msgBuf.Bytes()
 
+	// Log the email headers (before DKIM signing)
+	app.Log("mail", "=== Outbound Email Headers ===")
+	app.Log("mail", "From: %s <%s>", from, fromEmail)
+	app.Log("mail", "To: %s", to)
+	app.Log("mail", "Subject: %s", subject)
+	app.Log("mail", "Message-ID: %s", messageID)
+	if replyToMsgID != "" {
+		app.Log("mail", "Reply-To-ID: %s", replyToMsgID)
+	}
+	app.Log("mail", "Body length: %d bytes", len(body))
+
 	// Sign with DKIM if configured
 	if dkimConfig != nil {
+		app.Log("dkim", "Attempting DKIM signing with domain=%s, selector=%s", dkimConfig.Domain, dkimConfig.Selector)
 		options := &dkim.SignOptions{
 			Domain:   dkimConfig.Domain,
 			Selector: dkimConfig.Selector,
@@ -164,28 +176,39 @@ func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) 
 
 		var signedBuf bytes.Buffer
 		if err := dkim.Sign(&signedBuf, bytes.NewReader(message), options); err != nil {
-			app.Log("dkim", "Warning: DKIM signing failed: %v", err)
+			app.Log("dkim", "WARNING: DKIM signing failed: %v", err)
 			// Continue without DKIM signature
 		} else {
 			message = signedBuf.Bytes()
-			app.Log("dkim", "Email signed with DKIM")
+			app.Log("dkim", "✓ Email signed with DKIM successfully")
 		}
+	} else {
+		app.Log("dkim", "WARNING: DKIM not configured - email will be sent without signature")
 	}
 
 	// Connect to the SMTP server
 	addr := smtpConfig.Host + ":" + smtpConfig.Port
 
-	app.Log("mail", "Sending email from %s to %s via %s", fromEmail, to, addr)
+	app.Log("mail", "=== SMTP Connection ===")
+	app.Log("mail", "SMTP Server: %s", addr)
+	app.Log("mail", "SMTP Host: %s", smtpConfig.Host)
+	app.Log("mail", "SMTP Port: %s", smtpConfig.Port)
+	app.Log("mail", "From: %s", fromEmail)
+	app.Log("mail", "To: %s", to)
+	app.Log("mail", "Message size: %d bytes", len(message))
 
 	// Send the email
 	// For localhost or internal relay, we don't need authentication
 	err := smtp.SendMail(addr, nil, fromEmail, []string{to}, message)
 	if err != nil {
-		app.Log("mail", "Error sending email: %v", err)
+		app.Log("mail", "✗ SMTP Error: %v", err)
+		app.Log("mail", "Failed to send email from %s to %s", fromEmail, to)
 		return "", fmt.Errorf("failed to send email: %v", err)
 	}
 
-	app.Log("mail", "Email sent successfully to %s (server accepted)", to)
+	app.Log("mail", "✓ Email sent successfully")
+	app.Log("mail", "SMTP server accepted message to %s", to)
+	app.Log("mail", "Message-ID: %s", messageID)
 	return messageID, nil
 }
 
