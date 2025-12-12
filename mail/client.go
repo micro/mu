@@ -171,6 +171,7 @@ func SendExternalEmail(displayName, from, to, subject, body, replyToMsgID string
 	app.Log("mail", "To: %s", to)
 	app.Log("mail", "Subject: %s", subject)
 	app.Log("mail", "Message-ID: %s", messageID)
+	app.Log("mail", "Message headers preview: %s", string(message[:min(500, len(message))]))
 
 	// Call relay function directly (no SMTP needed!)
 	if err := RelayToExternal(from, to, message); err != nil {
