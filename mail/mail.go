@@ -647,7 +647,8 @@ if r.URL.Query().Get("compose") == "true" {
 		})
 		
 		for _, thread := range threads {
-			items = append(items, renderSentMessage(thread.Root))
+			// Show latest message in thread, not just root
+			items = append(items, renderSentThreadPreview(thread.Root.ID, thread.Latest, acc.ID))
 		}
 	}
 
@@ -737,6 +738,48 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 			<div style="color: #999; font-size: 13px;">%s</div>
 		</div>
 	`, rootID, unreadIndicator, fromDisplay, relativeTime, latestMsg.Subject, bodyPreview)
+
+	return html
+}
+
+// renderSentThreadPreview renders a sent thread preview showing latest message
+func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string) string {
+	// Format recipient name/email (use latest message recipient)
+	toDisplay := latestMsg.ToID
+	if !IsExternalEmail(latestMsg.ToID) {
+		// Internal user
+		toDisplay = latestMsg.ToID
+	} else if latestMsg.To != latestMsg.ToID {
+		// External with name
+		toDisplay = latestMsg.To
+	}
+
+	// Truncate body for preview
+	bodyPreview := latestMsg.Body
+	if strings.HasPrefix(bodyPreview, "base64:") || len(bodyPreview) > 500 {
+		bodyPreview = "[Message]"
+	} else {
+		if len(bodyPreview) > 100 {
+			bodyPreview = bodyPreview[:100] + "..."
+		}
+		bodyPreview = strings.ReplaceAll(bodyPreview, "\n", " ")
+		if len(bodyPreview) > 80 {
+			bodyPreview = bodyPreview[:80] + "..."
+		}
+	}
+
+	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
+	
+	html := fmt.Sprintf(`
+		<div style="padding: 12px; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+				<strong>%s</strong>
+				<span style="color: #888; font-size: 12px;">%s</span>
+			</div>
+			<div style="color: #666; font-size: 14px; margin-bottom: 4px;">%s</div>
+			<div style="color: #999; font-size: 13px;">to %s</div>
+		</div>
+	`, rootID, latestMsg.Subject, relativeTime, bodyPreview, toDisplay)
 
 	return html
 }
