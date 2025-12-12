@@ -521,7 +521,7 @@ body:has(#messages) #content {
 }
 
 .message {
-  margin-bottom: 10px;
+  margin-bottom: 30px;
   width: 100%;
   display: block;
 }
