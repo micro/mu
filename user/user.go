@@ -75,7 +75,7 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 	// Build message link (only show if not own profile)
 	messageLink := ""
 	if !isOwnProfile {
-		messageLink = fmt.Sprintf(`<p style="margin: 15px 0 0 0;"><a href="/mail?compose=true&to=%s" style="color: #666;"><img src="/mail.png" width="16" height="16" style="vertical-align: middle; margin-right: 3px;"> Send a message</a></p>`, acc.ID)
+		messageLink = fmt.Sprintf(`<p style="margin: 15px 0 0 0;"><a href="/mail?compose=true&to=%s" style="color: #666;">Send a message</a></p>`, acc.ID)
 	}
 
 	// Build the profile page content
