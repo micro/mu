@@ -513,39 +513,59 @@ if r.URL.Query().Get("compose") == "true" {
 	if view == "inbox" {
 		app.Log("mail", "Rendering inbox with %d messages for user %s", len(mailbox), acc.Name)
 
-		// Group messages into threads
-		// Track which messages have been rendered
+		// Build threads with their latest message time
+		type Thread struct {
+			Root         *Message
+			LatestTime   time.Time
+			HasUnread    bool
+			MessageCount int
+		}
+		
+		threads := []*Thread{}
 		rendered := make(map[string]bool)
 		
-		// For each message, show only the root of the thread
+		// For each message, find its root and build thread info
 		for _, msg := range mailbox {
-			// Skip if already rendered as part of a thread
 			if rendered[msg.ID] {
 				continue
 			}
 			
-			// If this is a reply, find the root
+			// Walk up to find the TRUE root
 			rootMsg := msg
-			if msg.ReplyTo != "" {
-				// Try to find the root message
+			visited := make(map[string]bool)
+			for rootMsg.ReplyTo != "" && !visited[rootMsg.ID] {
+				visited[rootMsg.ID] = true
+				found := false
 				mutex.RLock()
 				for _, candidate := range messages {
-					if candidate.ID == msg.ReplyTo && (candidate.FromID == acc.ID || candidate.ToID == acc.ID) {
+					if candidate.ID == rootMsg.ReplyTo && (candidate.FromID == acc.ID || candidate.ToID == acc.ID) {
 						rootMsg = candidate
+						found = true
 						break
 					}
 				}
 				mutex.RUnlock()
+				if !found {
+					break
+				}
 			}
 			
-			// Mark this thread as rendered
-			rendered[rootMsg.ID] = true
+			// Skip if this root was already processed
+			if rendered[rootMsg.ID] {
+				continue
+			}
 			
-			// Find all messages in this thread (recursively) and check if any are unread
-			hasUnread := !rootMsg.Read && rootMsg.ToID == acc.ID
+			// Build thread info
+			thread := &Thread{
+				Root:       rootMsg,
+				LatestTime: rootMsg.CreatedAt,
+				HasUnread:  !rootMsg.Read && rootMsg.ToID == acc.ID,
+			}
+			
+			rendered[rootMsg.ID] = true
 			threadMessages := []string{rootMsg.ID}
 			
-			// Recursively find all children in the thread
+			// Find all children recursively
 			mutex.RLock()
 			for i := 0; i < len(threadMessages); i++ {
 				parentID := threadMessages[i]
@@ -554,8 +574,11 @@ if r.URL.Query().Get("compose") == "true" {
 						if !rendered[candidate.ID] {
 							rendered[candidate.ID] = true
 							threadMessages = append(threadMessages, candidate.ID)
+							if candidate.CreatedAt.After(thread.LatestTime) {
+								thread.LatestTime = candidate.CreatedAt
+							}
 							if !candidate.Read && candidate.ToID == acc.ID {
-								hasUnread = true
+								thread.HasUnread = true
 							}
 						}
 					}
@@ -563,11 +586,21 @@ if r.URL.Query().Get("compose") == "true" {
 			}
 			mutex.RUnlock()
 			
-			// Render the root message with unread indicator if ANY message in thread is unread
-			if rootMsg.ToID == acc.ID {
-				items = append(items, renderInboxMessageWithUnread(rootMsg, 0, acc.ID, hasUnread))
-			} else if rootMsg.FromID == acc.ID {
-				items = append(items, renderSentMessage(rootMsg))
+			thread.MessageCount = len(threadMessages)
+			threads = append(threads, thread)
+		}
+		
+		// Sort threads by latest message time
+		sort.Slice(threads, func(i, j int) bool {
+			return threads[i].LatestTime.After(threads[j].LatestTime)
+		})
+		
+		// Render threads
+		for _, thread := range threads {
+			if thread.Root.ToID == acc.ID {
+				items = append(items, renderInboxMessageWithUnread(thread.Root, 0, acc.ID, thread.HasUnread))
+			} else if thread.Root.FromID == acc.ID {
+				items = append(items, renderSentMessage(thread.Root))
 			}
 		}
 	} else {
