@@ -144,6 +144,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		to := strings.TrimSpace(r.FormValue("to"))
 		subject := strings.TrimSpace(r.FormValue("subject"))
 		body := strings.TrimSpace(r.FormValue("body"))
+		replyTo := strings.TrimSpace(r.FormValue("reply_to"))
 
 		if to == "" || subject == "" || body == "" {
 			http.Error(w, "All fields are required", http.StatusBadRequest)
@@ -160,7 +161,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Store a copy in sent messages for the sender
-			if err := SendMessage(acc.Name, acc.ID, to, to, subject, body, ""); err != nil {
+			if err := SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo); err != nil {
 				app.Log("mail", "Warning: Failed to store sent message: %v", err)
 			}
 		} else {
@@ -172,7 +173,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Send the internal message
-			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, ""); err != nil {
+			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, replyTo); err != nil {
 				http.Error(w, "Failed to send message", http.StatusInternalServerError)
 				return
 			}
@@ -269,6 +270,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				<a href="%s"><button>← Back</button></a>
 			</div>
 			<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 15px; max-width: 600px;">
+				<input type="hidden" name="reply_to" value="%s">
 				<div>
 					<label for="to" style="display: block; margin-bottom: 5px; font-weight: bold;">To:</label>
 					<input type="text" id="to" name="to" value="%s" required style="width: 100%%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
@@ -285,7 +287,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					<button type="submit" style="padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 4px; cursor: pointer;">Send Message</button>
 				</div>
 			</form>
-		`, backLink, to, subject)
+		`, backLink, replyTo, to, subject)
 
 		w.Write([]byte(app.RenderHTML(pageTitle, "", composeForm)))
 		return
@@ -327,38 +329,67 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return mailbox[i].CreatedAt.After(mailbox[j].CreatedAt)
 	})
 
-	// Render messages
+	// Group messages into threads for inbox view
 	var items []string
-	for _, msg := range mailbox {
-		if view == "sent" {
-			// Sent view - show recipient
-			item := fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
-				<div style="margin-bottom: 5px;">
-					<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
-				</div>
-				<div style="color: #666; font-size: 14px; margin-bottom: 5px;">To: <a href="/@%s" style="color: #666;">%s</a></div>
-				<div style="color: #999; font-size: 12px;">%s</div>
-			</div>`, msg.ID, msg.Subject, msg.ToID, msg.To, app.TimeAgo(msg.CreatedAt))
-			items = append(items, item)
-		} else {
-			// Inbox view - show sender with unread indicator
-			unreadIndicator := ""
-			if !msg.Read {
-				unreadIndicator = `<span style="color: #999; font-size: 12px;">●</span> `
+	if view == "inbox" {
+		// Create a map of message ID to message for quick lookup
+		msgMap := make(map[string]*Message)
+		for _, msg := range mailbox {
+			msgMap[msg.ID] = msg
+		}
+
+		// Track which messages have been rendered (to avoid duplicates)
+		rendered := make(map[string]bool)
+
+		// Render top-level messages and their replies
+		for _, msg := range mailbox {
+			// Skip if already rendered as part of a thread
+			if rendered[msg.ID] {
+				continue
 			}
 
-			replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`,
-				msg.FromID, url.QueryEscape(fmt.Sprintf("Re: %s", msg.Subject)), msg.ID)
+			// If this is a reply, skip it (will be rendered with parent)
+			if msg.ReplyTo != "" {
+				continue
+			}
 
-			item := fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
-				<div style="margin-bottom: 5px;">
-					%s<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
-				</div>
-				<div style="color: #666; font-size: 14px; margin-bottom: 5px;">From: <a href="/@%s" style="color: #666;">%s</a> · <a href="%s" style="color: #666;">Reply</a></div>
-				<div style="color: #999; font-size: 12px;">%s</div>
-			</div>`, unreadIndicator, msg.ID, msg.Subject, msg.FromID, msg.From, replyLink, app.TimeAgo(msg.CreatedAt))
+			// Render the main message
+			items = append(items, renderInboxMessage(msg, 0, acc.ID))
+			rendered[msg.ID] = true
 
-			items = append(items, item)
+			// Find and render all replies to this message
+			var replies []*Message
+			for _, candidate := range mailbox {
+				if candidate.ReplyTo == msg.ID {
+					replies = append(replies, candidate)
+				}
+			}
+
+			// Sort replies by date (oldest first for natural conversation flow)
+			sort.Slice(replies, func(i, j int) bool {
+				return replies[i].CreatedAt.Before(replies[j].CreatedAt)
+			})
+
+			// Render replies with indentation
+			for _, reply := range replies {
+				if !rendered[reply.ID] {
+					items = append(items, renderInboxMessage(reply, 1, acc.ID))
+					rendered[reply.ID] = true
+				}
+			}
+		}
+
+		// Render any orphaned replies (where parent was deleted or is in sent folder)
+		for _, msg := range mailbox {
+			if !rendered[msg.ID] {
+				items = append(items, renderInboxMessage(msg, 0, acc.ID))
+				rendered[msg.ID] = true
+			}
+		}
+	} else {
+		// Sent view - simple list
+		for _, msg := range mailbox {
+			items = append(items, renderSentMessage(msg))
 		}
 	}
 
@@ -405,6 +436,44 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}(), sentStyle, content)
 
 	w.Write([]byte(app.RenderHTML(title, "Your messages", html)))
+}
+
+// renderInboxMessage renders a single inbox message with optional indentation
+func renderInboxMessage(msg *Message, indent int, viewerID string) string {
+	unreadIndicator := ""
+	if !msg.Read {
+		unreadIndicator = `<span style="color: #999; font-size: 12px;">●</span> `
+	}
+
+	replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`,
+		msg.FromID, url.QueryEscape(fmt.Sprintf("Re: %s", msg.Subject)), msg.ID)
+
+	// Add indentation for replies
+	marginLeft := ""
+	replyIndicator := ""
+	if indent > 0 {
+		marginLeft = fmt.Sprintf(" margin-left: %dpx;", indent*30)
+		replyIndicator = `<span style="color: #999; margin-right: 5px;">↳</span>`
+	}
+
+	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;%s">
+		<div style="margin-bottom: 5px;">
+			%s%s<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
+		</div>
+		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">From: <a href="/@%s" style="color: #666;">%s</a> · <a href="%s" style="color: #666;">Reply</a></div>
+		<div style="color: #999; font-size: 12px;">%s</div>
+	</div>`, marginLeft, replyIndicator, unreadIndicator, msg.ID, msg.Subject, msg.FromID, msg.From, replyLink, app.TimeAgo(msg.CreatedAt))
+}
+
+// renderSentMessage renders a single sent message
+func renderSentMessage(msg *Message) string {
+	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
+		<div style="margin-bottom: 5px;">
+			<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
+		</div>
+		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">To: <a href="/@%s" style="color: #666;">%s</a></div>
+		<div style="color: #999; font-size: 12px;">%s</div>
+	</div>`, msg.ID, msg.Subject, msg.ToID, msg.To, app.TimeAgo(msg.CreatedAt))
 }
 
 // SendMessage creates and saves a new message
