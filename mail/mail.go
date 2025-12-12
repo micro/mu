@@ -951,23 +951,46 @@ func isValidUTF8Text(data []byte) bool {
 
 // linkifyURLs converts URLs in text to clickable HTML links
 func linkifyURLs(text string) string {
-	// Regular expression to match URLs
-	// Matches http://, https://, and www. URLs
-	urlPattern := `(https?://[^\s<]+[^\s<.,;:!?'")\]]|www\.[^\s<]+[^\s<.,;:!?'")\]])`
-	
-	// Replace URLs with HTML links
 	result := ""
 	lastIndex := 0
 	
 	for i := 0; i < len(text); i++ {
 		// Check for http:// or https://
-		if strings.HasPrefix(text[i:], "http://") || strings.HasPrefix(text[i:], "https://") {
+		if strings.HasPrefix(text[i:], "http://") || strings.HasPrefix(text[i:], "https://") || strings.HasPrefix(text[i:], "www.") {
+			// Add text before the URL
+			result += text[lastIndex:i]
+			
 			// Find the end of the URL
 			end := i
 			for end < len(text) && !isURLTerminator(text[end]) {
 				end++
 			}
 			
+			url := text[i:end]
+			// Add http:// prefix for www. URLs
+			href := url
+			if strings.HasPrefix(url, "www.") {
+				href = "http://" + url
+			}
+			
+			// Create clickable link
+			result += fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">%s</a>`, href, url)
+			
+			lastIndex = end
+			i = end - 1 // -1 because loop will increment
+		}
+	}
+	
+	// Add remaining text
+	result += text[lastIndex:]
+	return result
+}
+
+// isURLTerminator checks if a character ends a URL
+func isURLTerminator(c byte) bool {
+	return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '<' || c == '>' || 
+	       c == '"' || c == '\'' || c == ')' || c == ']' || c == '}' || c == ',' || c == ';'
+}
 			// Add text before URL
 			result += text[lastIndex:i]
 			
