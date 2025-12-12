@@ -21,6 +21,22 @@ var mutex sync.RWMutex
 // stored messages
 var messages []*Message
 
+// Inbox organizes messages by thread for a user
+type Inbox struct {
+	Threads map[string]*Thread // threadID -> Thread
+}
+
+// Thread represents a conversation thread
+type Thread struct {
+	Root      *Message
+	Messages  []*Message
+	Latest    *Message
+	HasUnread bool
+}
+
+// inboxes maps userID to their organized inbox
+var inboxes map[string]*Inbox
+
 // Blocklist for blocking abusive senders
 type Blocklist struct {
 	Emails []string `json:"emails"` // Blocked email addresses
@@ -45,6 +61,7 @@ type Message struct {
 	Body      string    `json:"body"`
 	Read      bool      `json:"read"`
 	ReplyTo   string    `json:"reply_to"`   // ID of message this is replying to
+	ThreadID  string    `json:"thread_id"`  // Root message ID for O(1) thread grouping
 	MessageID string    `json:"message_id"` // Email Message-ID header for threading
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -55,15 +72,18 @@ func Load() {
 	b, err := data.LoadFile("mail.json")
 	if err != nil {
 		messages = []*Message{}
+		inboxes = make(map[string]*Inbox)
 	} else if err := json.Unmarshal(b, &messages); err != nil {
 		messages = []*Message{}
+		inboxes = make(map[string]*Inbox)
 	} else {
 		app.Log("mail", "Loaded %d messages", len(messages))
 		
 		// Fix threading for any messages with broken chains
-		// This handles cases where messages replied to an intermediate message
-		// but we need them to point to a message that actually exists
 		fixThreading()
+		
+		// Build inbox structures organized by thread
+		rebuildInboxes()
 	}
 
 	// Load blocklist
@@ -87,30 +107,58 @@ func Load() {
 	}
 }
 
-// fixThreading repairs broken threading relationships after loading
+// fixThreading repairs broken threading relationships and computes ThreadID after loading
 func fixThreading() {
 	fixed := 0
 	
+	// First pass: fix orphaned messages
 	for _, msg := range messages {
 		if msg.ReplyTo == "" {
-			continue // Root message, nothing to fix
+			continue
 		}
 		
 		// Check if the parent exists
-		if GetMessageUnlocked(msg.ReplyTo) != nil {
-			continue // Parent exists, threading is fine
+		if GetMessageUnlocked(msg.ReplyTo) == nil {
+			// Parent doesn't exist - mark as orphaned
+			app.Log("mail", "Message %s has missing parent %s - marking as root", msg.ID, msg.ReplyTo)
+			msg.ReplyTo = ""
+			fixed++
 		}
-		
-		// Parent doesn't exist - mark as orphaned (will show as root)
-		app.Log("mail", "Message %s has missing parent %s - marking as root", msg.ID, msg.ReplyTo)
-		msg.ReplyTo = ""
-		fixed++
+	}
+	
+	// Second pass: compute ThreadID for all messages
+	for _, msg := range messages {
+		threadID := computeThreadID(msg)
+		if msg.ThreadID != threadID {
+			msg.ThreadID = threadID
+			fixed++
+		}
 	}
 	
 	if fixed > 0 {
-		app.Log("mail", "Fixed threading for %d orphaned messages", fixed)
+		app.Log("mail", "Fixed threading for %d messages", fixed)
 		save()
 	}
+}
+
+// computeThreadID walks up the chain to find the root message ID
+func computeThreadID(msg *Message) string {
+	if msg.ReplyTo == "" {
+		return msg.ID // This is the root
+	}
+	
+	// Walk up the chain
+	visited := make(map[string]bool)
+	current := msg
+	for current.ReplyTo != "" && !visited[current.ID] {
+		visited[current.ID] = true
+		parent := GetMessageUnlocked(current.ReplyTo)
+		if parent == nil {
+			break // Parent doesn't exist, current is root
+		}
+		current = parent
+	}
+	return current.ID
 }
 
 // GetMessageUnlocked finds a message without locking (for internal use when lock is held)
@@ -121,6 +169,62 @@ func GetMessageUnlocked(msgID string) *Message {
 		}
 	}
 	return nil
+}
+
+// rebuildInboxes reconstructs inbox structures from messages (must hold mutex)
+func rebuildInboxes() {
+	inboxes = make(map[string]*Inbox)
+	
+	for _, msg := range messages {
+		// Add to sender's inbox (sent messages)
+		if msg.FromID != "" {
+			if inboxes[msg.FromID] == nil {
+				inboxes[msg.FromID] = &Inbox{Threads: make(map[string]*Thread)}
+			}
+			addMessageToInbox(inboxes[msg.FromID], msg, msg.FromID)
+		}
+		
+		// Add to recipient's inbox
+		if msg.ToID != "" && msg.ToID != msg.FromID {
+			if inboxes[msg.ToID] == nil {
+				inboxes[msg.ToID] = &Inbox{Threads: make(map[string]*Thread)}
+			}
+			addMessageToInbox(inboxes[msg.ToID], msg, msg.ToID)
+		}
+	}
+}
+
+// addMessageToInbox adds a message to an inbox's thread structure
+func addMessageToInbox(inbox *Inbox, msg *Message, userID string) {
+	threadID := msg.ThreadID
+	if threadID == "" {
+		threadID = msg.ID
+	}
+	
+	thread := inbox.Threads[threadID]
+	if thread == nil {
+		// New thread
+		rootMsg := GetMessageUnlocked(threadID)
+		if rootMsg == nil {
+			rootMsg = msg
+		}
+		thread = &Thread{
+			Root:      rootMsg,
+			Messages:  []*Message{msg},
+			Latest:    msg,
+			HasUnread: !msg.Read && msg.ToID == userID,
+		}
+		inbox.Threads[threadID] = thread
+	} else {
+		// Add to existing thread
+		thread.Messages = append(thread.Messages, msg)
+		if msg.CreatedAt.After(thread.Latest.CreatedAt) {
+			thread.Latest = msg
+		}
+		if !msg.Read && msg.ToID == userID {
+			thread.HasUnread = true
+		}
+	}
 }
 
 // Save messages to disk (caller must hold mutex)
@@ -483,130 +587,67 @@ if r.URL.Query().Get("compose") == "true" {
 	var mailbox []*Message
 	unreadCount := 0
 
-	if view == "sent" {
-		// Show sent messages
-		for _, msg := range messages {
-			if msg.FromID == acc.ID {
-				mailbox = append(mailbox, msg)
-			}
-		}
-	} else {
-		// Show inbox (received messages)
-		for _, msg := range messages {
-			if msg.ToID == acc.ID {
-				mailbox = append(mailbox, msg)
-				if !msg.Read {
-					unreadCount++
-				}
-			}
-		}
-	}
+	// Get user's inbox - O(1) lookup
+	userInbox := inboxes[acc.ID]
 	mutex.RUnlock()
+	
+	if userInbox == nil {
+		userInbox = &Inbox{Threads: make(map[string]*Thread)}
+	}
 
 	// Sort by newest first
 	sort.Slice(mailbox, func(i, j int) bool {
 		return mailbox[i].CreatedAt.After(mailbox[j].CreatedAt)
 	})
 
-	// Group messages into threads for inbox view
+	// Render threads from pre-organized inbox
 	var items []string
 	if view == "inbox" {
-		app.Log("mail", "Rendering inbox with %d messages for user %s", len(mailbox), acc.Name)
+		app.Log("mail", "Rendering inbox with %d threads for user %s", len(userInbox.Threads), acc.Name)
 
-		// Build threads with their latest message time
-		type Thread struct {
-			Root         *Message
-			LatestTime   time.Time
-			HasUnread    bool
-			MessageCount int
-		}
-		
-		threads := []*Thread{}
-		rendered := make(map[string]bool)
-		
-		// For each message, find its root and build thread info
-		for _, msg := range mailbox {
-			if rendered[msg.ID] {
-				continue
-			}
-			
-			// Walk up to find the TRUE root
-			rootMsg := msg
-			visited := make(map[string]bool)
-			for rootMsg.ReplyTo != "" && !visited[rootMsg.ID] {
-				visited[rootMsg.ID] = true
-				found := false
-				mutex.RLock()
-				for _, candidate := range messages {
-					if candidate.ID == rootMsg.ReplyTo && (candidate.FromID == acc.ID || candidate.ToID == acc.ID) {
-						rootMsg = candidate
-						found = true
-						break
-					}
-				}
-				mutex.RUnlock()
-				if !found {
-					break
-				}
-			}
-			
-			// Skip if this root was already processed
-			if rendered[rootMsg.ID] {
-				continue
-			}
-			
-			// Build thread info
-			thread := &Thread{
-				Root:       rootMsg,
-				LatestTime: rootMsg.CreatedAt,
-				HasUnread:  !rootMsg.Read && rootMsg.ToID == acc.ID,
-			}
-			
-			rendered[rootMsg.ID] = true
-			threadMessages := []string{rootMsg.ID}
-			
-			// Find all children recursively
-			mutex.RLock()
-			for i := 0; i < len(threadMessages); i++ {
-				parentID := threadMessages[i]
-				for _, candidate := range messages {
-					if candidate.ReplyTo == parentID && (candidate.FromID == acc.ID || candidate.ToID == acc.ID) {
-						if !rendered[candidate.ID] {
-							rendered[candidate.ID] = true
-							threadMessages = append(threadMessages, candidate.ID)
-							if candidate.CreatedAt.After(thread.LatestTime) {
-								thread.LatestTime = candidate.CreatedAt
-							}
-							if !candidate.Read && candidate.ToID == acc.ID {
-								thread.HasUnread = true
-							}
-						}
-					}
-				}
-			}
-			mutex.RUnlock()
-			
-			thread.MessageCount = len(threadMessages)
+		// Convert threads to slice for sorting
+		threads := make([]*Thread, 0, len(userInbox.Threads))
+		for _, thread := range userInbox.Threads {
 			threads = append(threads, thread)
+			
+			// Count unread messages
+			for _, msg := range thread.Messages {
+				if msg.ToID == acc.ID && !msg.Read {
+					unreadCount++
+				}
+			}
 		}
 		
 		// Sort threads by latest message time
 		sort.Slice(threads, func(i, j int) bool {
-			return threads[i].LatestTime.After(threads[j].LatestTime)
+			return threads[i].Latest.CreatedAt.After(threads[j].Latest.CreatedAt)
 		})
 		
 		// Render threads
 		for _, thread := range threads {
-			if thread.Root.ToID == acc.ID {
-				items = append(items, renderInboxMessageWithUnread(thread.Root, 0, acc.ID, thread.HasUnread))
+			if thread.Root.ToID == acc.ID || thread.Latest.ToID == acc.ID {
+				// Inbox message - show latest preview, link to root
+				items = append(items, renderThreadPreview(thread.Root.ID, thread.Latest, acc.ID, thread.HasUnread))
 			} else if thread.Root.FromID == acc.ID {
+				// Sent message
 				items = append(items, renderSentMessage(thread.Root))
 			}
 		}
 	} else {
-		// Sent view - simple list
-		for _, msg := range mailbox {
-			items = append(items, renderSentMessage(msg))
+		// Sent view - show threads where user is sender
+		threads := make([]*Thread, 0)
+		for _, thread := range userInbox.Threads {
+			if thread.Root.FromID == acc.ID {
+				threads = append(threads, thread)
+			}
+		}
+		
+		sort.Slice(threads, func(i, j int) bool {
+			return threads[i].Latest.CreatedAt.After(threads[j].Latest.CreatedAt)
+		})
+		
+		for _, thread := range threads {
+			items = append(items, renderSentMessage(thread.Root))
 		}
 	}
 
@@ -653,6 +694,51 @@ if r.URL.Query().Get("compose") == "true" {
 	}(), sentStyle, content)
 
 	w.Write([]byte(app.RenderHTML(title, "Your messages", html)))
+}
+
+// renderThreadPreview renders a thread preview showing the latest message but linking to root
+func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, hasUnread bool) string {
+	unreadIndicator := ""
+	if hasUnread {
+		unreadIndicator = `<span style="color: #007bff; font-weight: bold;">● </span>`
+	}
+
+	// Format sender name/email
+	fromDisplay := latestMsg.FromID
+	if !IsExternalEmail(latestMsg.FromID) {
+		fromDisplay = latestMsg.FromID
+	} else if latestMsg.From != latestMsg.FromID {
+		fromDisplay = latestMsg.From
+	}
+
+	// Truncate body for preview
+	bodyPreview := latestMsg.Body
+	if strings.HasPrefix(bodyPreview, "base64:") || len(bodyPreview) > 500 {
+		bodyPreview = "[Message]"
+	} else {
+		if len(bodyPreview) > 100 {
+			bodyPreview = bodyPreview[:100] + "..."
+		}
+		bodyPreview = strings.ReplaceAll(bodyPreview, "\n", " ")
+		if len(bodyPreview) > 80 {
+			bodyPreview = bodyPreview[:80] + "..."
+		}
+	}
+
+	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
+	
+	html := fmt.Sprintf(`
+		<div style="padding: 12px; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+				<strong>%s%s</strong>
+				<span style="color: #888; font-size: 12px;">%s</span>
+			</div>
+			<div style="color: #666; font-size: 14px; margin-bottom: 4px;">%s</div>
+			<div style="color: #999; font-size: 13px;">%s</div>
+		</div>
+	`, rootID, unreadIndicator, fromDisplay, relativeTime, latestMsg.Subject, bodyPreview)
+
+	return html
 }
 
 // renderInboxMessageWithUnread renders a single inbox message with explicit unread flag
@@ -750,9 +836,22 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 		MessageID: messageID,
 		CreatedAt: time.Now(),
 	}
-
+	
+	// Compute ThreadID
 	mutex.Lock()
+	if replyTo != "" {
+		parent := GetMessageUnlocked(replyTo)
+		if parent != nil {
+			msg.ThreadID = computeThreadID(parent)
+		} else {
+			msg.ThreadID = msg.ID // Orphaned reply becomes its own root
+		}
+	} else {
+		msg.ThreadID = msg.ID // Root message
+	}
+	
 	messages = append([]*Message{msg}, messages...)
+	rebuildInboxes()
 	err := save()
 	mutex.Unlock()
 
@@ -765,9 +864,14 @@ func GetUnreadCount(userID string) int {
 	defer mutex.RUnlock()
 
 	count := 0
-	for _, msg := range messages {
-		if msg.ToID == userID && !msg.Read {
-			count++
+	userInbox := inboxes[userID]
+	if userInbox != nil {
+		for _, thread := range userInbox.Threads {
+			for _, msg := range thread.Messages {
+				if msg.ToID == userID && !msg.Read {
+					count++
+				}
+			}
 		}
 	}
 	return count
@@ -826,6 +930,7 @@ func DeleteMessage(msgID, userID string) error {
 		// Allow deletion if user is sender or recipient
 		if msg.ID == msgID && (msg.FromID == userID || msg.ToID == userID) {
 			messages = append(messages[:i], messages[i+1:]...)
+			rebuildInboxes()
 			return save()
 		}
 	}
@@ -850,46 +955,16 @@ func DeleteThread(msgID, userID string) error {
 		return fmt.Errorf("message not found")
 	}
 
-	// Find root message by traversing ReplyTo chain
-	rootID := msgID
-	current := msg
-	for current.ReplyTo != "" {
-		found := false
-		for _, m := range messages {
-			if m.ID == current.ReplyTo && (m.FromID == userID || m.ToID == userID) {
-				rootID = m.ID
-				current = m
-				found = true
-				break
-			}
-		}
-		if !found {
-			break
-		}
+	// Use ThreadID for O(1) thread identification
+	threadID := msg.ThreadID
+	if threadID == "" {
+		threadID = computeThreadID(msg)
 	}
 
-	// Collect all messages in thread recursively
-	threadIDs := make(map[string]bool)
-	threadIDs[rootID] = true
-
-	// Keep looking for replies until no more found
-	changed := true
-	for changed {
-		changed = false
-		for _, m := range messages {
-			if (m.FromID == userID || m.ToID == userID) && !threadIDs[m.ID] {
-				if threadIDs[m.ReplyTo] {
-					threadIDs[m.ID] = true
-					changed = true
-				}
-			}
-		}
-	}
-
-	// Delete all messages in thread
+	// Delete all messages in this thread
 	var remaining []*Message
 	for _, m := range messages {
-		if !threadIDs[m.ID] {
+		if m.ThreadID != threadID {
 			remaining = append(remaining, m)
 		}
 	}
@@ -900,6 +975,7 @@ func DeleteThread(msgID, userID string) error {
 	}
 
 	messages = remaining
+	rebuildInboxes()
 	app.Log("mail", "Deleted %d messages from thread for user %s", deleted, userID)
 	return save()
 }
