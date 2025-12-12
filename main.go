@@ -71,22 +71,22 @@ func main() {
 	data.StartIndexing()
 
 	authenticated := map[string]bool{
-		"/video":      false, // Public viewing, auth for interactive features
-		"/news":       false, // Public viewing, auth for search
-		"/chat":       false, // Public viewing, auth for chatting
-		"/home":       false, // Public viewing
-		"/posts":      false, // Public viewing, auth for posting
-		"/mail":       true,  // Require auth for inbox
-		"/logout":           true,
-		"/account":          true,
-		"/session":          false, // Public - used to check auth status
-		"/api":              true,
-		"/flag":             true,
-		"/moderate":         true,
-		"/admin":            true,
-		"/admin/blocklist":  true,
-		"/membership":       false,
-		"/donate":           false,
+		"/video":           false, // Public viewing, auth for interactive features
+		"/news":            false, // Public viewing, auth for search
+		"/chat":            false, // Public viewing, auth for chatting
+		"/home":            false, // Public viewing
+		"/posts":           false, // Public viewing, auth for posting
+		"/mail":            true,  // Require auth for inbox
+		"/logout":          true,
+		"/account":         true,
+		"/session":         false, // Public - used to check auth status
+		"/api":             true,
+		"/flag":            true,
+		"/moderate":        true,
+		"/admin":           true,
+		"/admin/blocklist": true,
+		"/membership":      false,
+		"/donate":          false,
 	}
 
 	// Static assets should not require authentication

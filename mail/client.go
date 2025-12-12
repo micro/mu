@@ -131,7 +131,7 @@ func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) 
 	msgBuf.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
 	msgBuf.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
 	msgBuf.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
-	
+
 	// Add In-Reply-To and References if this is a reply
 	if replyToMsgID != "" {
 		if origMsg := FindMessageByMessageID(replyToMsgID); origMsg != nil {
@@ -145,7 +145,7 @@ func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) 
 			msgBuf.WriteString(fmt.Sprintf("References: %s\r\n", origMsg.MessageID))
 		}
 	}
-	
+
 	msgBuf.WriteString("MIME-Version: 1.0\r\n")
 	msgBuf.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
 	msgBuf.WriteString("\r\n")

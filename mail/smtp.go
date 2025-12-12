@@ -199,7 +199,7 @@ func (s *Session) Data(r io.Reader) error {
 			return err
 		}
 		body = string(bodyBytes)
-		
+
 		// Check if body is base64 encoded
 		transferEncoding := msg.Header.Get("Content-Transfer-Encoding")
 		if strings.ToLower(transferEncoding) == "base64" {
@@ -208,7 +208,7 @@ func (s *Session) Data(r io.Reader) error {
 				app.Log("mail", "Decoded base64 email body")
 			}
 		}
-		
+
 		// Additional check: if the body looks entirely like base64 (no header specified),
 		// try decoding it as a fallback for improperly formatted emails
 		if transferEncoding == "" && looksLikeBase64(body) {
@@ -308,7 +308,7 @@ func parseMultipart(body io.Reader, boundary string) string {
 		if err != nil {
 			continue
 		}
-		
+
 		// Decode if base64 encoded
 		if strings.ToLower(transferEncoding) == "base64" {
 			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(partBody))); err == nil {
@@ -549,7 +549,7 @@ func cleanupRateLimits() {
 
 	for range ticker.C {
 		rateLimitMutex.Lock()
-		
+
 		now := time.Now()
 
 		// Cleanup IP connections
@@ -568,7 +568,7 @@ func cleanupRateLimits() {
 
 		ipCount := len(ipConnections)
 		senderCount := len(senderMessages)
-		
+
 		rateLimitMutex.Unlock()
 
 		app.Log("mail", "Cleaned up rate limit entries (IPs: %d, Senders: %d)",

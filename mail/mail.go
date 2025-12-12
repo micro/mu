@@ -45,7 +45,7 @@ type Message struct {
 	Subject   string    `json:"subject"`
 	Body      string    `json:"body"`
 	Read      bool      `json:"read"`
-	ReplyTo   string    `json:"reply_to"` // ID of message this is replying to
+	ReplyTo   string    `json:"reply_to"`   // ID of message this is replying to
 	MessageID string    `json:"message_id"` // Email Message-ID header for threading
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -221,7 +221,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		
+
 		// Convert URLs to clickable links
 		displayBody = linkifyURLs(displayBody)
 
@@ -254,26 +254,53 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				fromDisplayFull = msg.FromID
 			}
 		} else {
-		fromDisplayFull = fmt.Sprintf(`<a href="/@%s">%s</a>`, msg.FromID, msg.FromID)
-	}
+			fromDisplayFull = fmt.Sprintf(`<a href="/@%s">%s</a>`, msg.FromID, msg.FromID)
+		}
 
-	messageView := fmt.Sprintf(`
+		// Determine if this is a sent message (from viewer) or received
+		isSentByViewer := msg.FromID == acc.ID
+		bubbleStyle := ""
+		bubbleColor := ""
+		textColor := "color: #202124;"
+
+		if isSentByViewer {
+			// Sent message - right aligned, blue bubble
+			bubbleStyle = "display: flex; justify-content: flex-end; margin: 20px auto; max-width: 900px;"
+			bubbleColor = "background-color: #007bff; color: white;"
+			textColor = "color: white;"
+		} else {
+			// Received message - left aligned, gray bubble
+			bubbleStyle = "display: flex; justify-content: flex-start; margin: 20px auto; max-width: 900px;"
+			bubbleColor = "background-color: #f1f3f4; color: #202124;"
+		}
+
+		messageView := fmt.Sprintf(`
 		<div style="margin-bottom: 20px;">
-			<a href="/mail"><button>← Back to Inbox</button></a>
-				<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
-				<div style="white-space: pre-wrap; margin: 20px 0;">%s</div>
-				<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
-				<div style="display: flex; gap: 10px;">
-					<a href="%s"><button>Reply</button></a>
-					<form method="POST" action="/mail" style="display: inline;">
-						<input type="hidden" name="_method" value="DELETE">
-						<input type="hidden" name="id" value="%s">
-						<button type="submit" onclick="return confirm('Delete this message?')" style="background-color: #dc3545; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Delete</button>
-					</form>
-					%s
+			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
+		</div>
+		<div style="%s">
+			<div style="max-width: 80%%; border-radius: 18px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); %s">
+				<div style="margin-bottom: 12px; font-size: 12px; opacity: 0.8;">
+					%s%s · %s
 				</div>
+				<div style="font-size: 18px; font-weight: 600; margin-bottom: 16px; %s">%s</div>
+				<div style="white-space: pre-wrap; line-height: 1.6; %s">%s</div>
 			</div>
-		`, msg.Subject, fromDisplayFull, app.TimeAgo(msg.CreatedAt), displayBody, replyLink, msg.ID, blockButton)
+		</div>
+		<div style="max-width: 900px; margin: 20px auto; color: #666; font-size: 14px;">
+			<a href="%s" style="color: #666;">Reply</a>
+			<span style="margin: 0 8px;">·</span>
+			<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545;">Delete</a>
+			%s
+		</div>
+	`, bubbleStyle, bubbleColor,
+			func() string {
+				if isSentByViewer {
+					return "You → "
+				}
+				return "From: "
+			}(),
+			fromDisplayFull, app.TimeAgo(msg.CreatedAt), textColor, msg.Subject, textColor, displayBody, replyLink, msg.ID, blockButton)
 
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
@@ -295,27 +322,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		composeForm := fmt.Sprintf(`
 			<div style="margin-bottom: 20px;">
-				<a href="%s"><button>← Back</button></a>
+				<a href="%s" style="color: #666; text-decoration: none;">← Back</a>
 			</div>
-			<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 15px; max-width: 600px;">
+			<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 10px; max-width: 600px;">
 				<input type="hidden" name="reply_to" value="%s">
-				<div>
-					<label for="to" style="display: block; margin-bottom: 5px; font-weight: bold;">To:</label>
-					<input type="text" id="to" name="to" value="%s" required style="width: 100%%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-				</div>
-				<div>
-					<label for="subject" style="display: block; margin-bottom: 5px; font-weight: bold;">Subject:</label>
-					<input type="text" id="subject" name="subject" value="%s" required style="width: 100%%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-				</div>
-				<div>
-					<label for="body" style="display: block; margin-bottom: 5px; font-weight: bold;">Message:</label>
-					<textarea id="body" name="body" rows="10" required style="width: 100%%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
-				</div>
-				<div>
-					<button type="submit" style="padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 4px; cursor: pointer;">Send Message</button>
+				<input type="text" name="to" placeholder="To: username or email" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+				<input type="text" name="subject" placeholder="Subject" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+				<textarea name="body" rows="10" placeholder="Write your message..." required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 200px;"></textarea>
+				<div style="display: flex; gap: 10px;">
+					<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
+					<a href="%s" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
 				</div>
 			</form>
-		`, backLink, replyTo, to, subject)
+		`, backLink, replyTo, to, subject, backLink)
 
 		w.Write([]byte(app.RenderHTML(pageTitle, "", composeForm)))
 		return
@@ -361,7 +380,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var items []string
 	if view == "inbox" {
 		app.Log("mail", "Rendering inbox with %d messages for user %s", len(mailbox), acc.Name)
-		
+
 		// Build a complete thread context including sent messages
 		// This allows us to thread replies to messages we sent
 		mutex.RLock()
@@ -372,7 +391,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		mutex.RUnlock()
-		
+
 		// Create a map of inbox messages for quick lookup
 		msgMap := make(map[string]*Message)
 		for _, msg := range mailbox {
@@ -397,7 +416,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			replies []*Message
 		}
 		threads := []thread{}
-		
+
 		// First pass: identify which inbox messages are replies and which are roots
 		for _, msg := range mailbox {
 			if msg.ReplyTo != "" {
@@ -451,12 +470,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					threads = append(threads, t)
 					rendered[msg.ID] = true
 					for _, r := range t.replies {
-							rendered[r.ID] = true
+						rendered[r.ID] = true
 					}
 				}
 			}
 		}
-		
+
 		// Render all threads
 		for _, t := range threads {
 			// Render root (could be from inbox or sent)
@@ -472,7 +491,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				items = append(items, renderInboxMessage(reply, 1, acc.ID))
 			}
 		}
-		
+
 		// Render any unrendered messages as orphans
 		for _, msg := range mailbox {
 			if !rendered[msg.ID] {
@@ -515,13 +534,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	html := fmt.Sprintf(`
 		<div style="margin-bottom: 20px;">
-			<a href="/mail?compose=true"><button>Compose</button></a>
+			<a href="/mail?compose=true"><button style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 14px;">✉️ New Message</button></a>
 		</div>
-		<div style="border-bottom: 1px solid #eee; margin-bottom: 20px;">
-			<a href="/mail" style="%s">Inbox%s</a>
-			<a href="/mail?view=sent" style="%s">Sent</a>
+		<div style="border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; display: flex; gap: 5px;">
+			<a href="/mail" style="%s">💬 Inbox%s</a>
+			<a href="/mail?view=sent" style="%s">📤 Sent</a>
 		</div>
-		<div id="mailbox">%s</div>
+		<div id="mailbox" style="background-color: white; border-radius: 8px; padding: 20px; max-width: 900px; margin: 0 auto;">%s</div>
 	`, inboxStyle, func() string {
 		if unreadCount > 0 {
 			return fmt.Sprintf(" (%d)", unreadCount)
@@ -532,45 +551,41 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(app.RenderHTML(title, "Your messages", html)))
 }
 
-// renderInboxMessage renders a single inbox message with optional indentation
+// renderInboxMessage renders a single inbox message as a chat bubble (left-aligned)
 func renderInboxMessage(msg *Message, indent int, viewerID string) string {
 	unreadIndicator := ""
 	if !msg.Read {
-		unreadIndicator = `<span style="color: #999; font-size: 12px;">●</span> `
+		unreadIndicator = `<span style="display: inline-block; width: 8px; height: 8px; background-color: #007bff; border-radius: 50%; margin-left: 8px;"></span>`
 	}
 
-	replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`,
-		msg.FromID, url.QueryEscape(fmt.Sprintf("Re: %s", msg.Subject)), msg.ID)
-
-	// Add indentation for replies
-	marginLeft := ""
-	replyIndicator := ""
-	if indent > 0 {
-		marginLeft = fmt.Sprintf(" margin-left: %dpx;", indent*30)
-		replyIndicator = `<span style="color: #999; margin-right: 5px;">↳</span>`
+	// Format sender name/email
+	fromDisplay := msg.FromID
+	if !IsExternalEmail(msg.FromID) {
+		// Internal user - just show username
+		fromDisplay = msg.FromID
+	} else if msg.From != msg.FromID {
+		// External with name
+		fromDisplay = msg.From
 	}
 
-	// Format From field - only link to user profile if it's an internal user (no @)
-	fromDisplay := msg.From
-	if IsExternalEmail(msg.FromID) {
-		// External email - show name and email address
-		if msg.From != msg.FromID {
-			fromDisplay = fmt.Sprintf(`<span style="color: #666;">%s &lt;%s&gt;</span>`, msg.From, msg.FromID)
-		} else {
-			fromDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.FromID)
-		}
-	} else {
-		// Internal user - link to profile
-		fromDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.FromID, msg.FromID)
+	// Truncate body for preview (first 100 chars)
+	bodyPreview := msg.Body
+	if len(bodyPreview) > 100 {
+		bodyPreview = bodyPreview[:100] + "..."
 	}
+	bodyPreview = strings.ReplaceAll(bodyPreview, "\n", " ")
 
-	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;%s">
-		<div style="margin-bottom: 5px;">
-			%s%s<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
+	return fmt.Sprintf(`
+	<div style="display: flex; justify-content: flex-start; margin: 15px 0;">
+		<div style="max-width: 70%%; background-color: #f1f3f4; border-radius: 18px; padding: 12px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+			<div style="font-size: 12px; color: #5f6368; margin-bottom: 4px;">%s%s</div>
+			<a href="/mail?id=%s" style="text-decoration: none; color: inherit;">
+				<div style="font-weight: 500; margin-bottom: 4px; color: #202124;">%s</div>
+				<div style="color: #5f6368; font-size: 14px;">%s</div>
+			</a>
+			<div style="font-size: 11px; color: #9aa0a6; margin-top: 6px;">%s</div>
 		</div>
-		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">From: %s · <a href="%s" style="color: #666;">Reply</a></div>
-		<div style="color: #999; font-size: 12px;">%s</div>
-	</div>`, marginLeft, replyIndicator, unreadIndicator, msg.ID, msg.Subject, fromDisplay, replyLink, app.TimeAgo(msg.CreatedAt))
+	</div>`, fromDisplay, unreadIndicator, msg.ID, msg.Subject, bodyPreview, app.TimeAgo(msg.CreatedAt))
 }
 
 // renderSentMessage renders a single sent message
@@ -587,7 +602,7 @@ func renderSentMessage(msg *Message) string {
 	} else {
 		toDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.ToID, msg.To)
 	}
-	
+
 	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
 		<div style="margin-bottom: 5px;">
 			<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
@@ -597,28 +612,36 @@ func renderSentMessage(msg *Message) string {
 	</div>`, msg.ID, msg.Subject, toDisplay, app.TimeAgo(msg.CreatedAt))
 }
 
-// renderSentMessageInThread renders a sent message as part of a thread in inbox view
+// renderSentMessageInThread renders a sent message as part of a thread in inbox view (right-aligned bubble)
 func renderSentMessageInThread(msg *Message) string {
-	// Format To field - only link to user profile if it's an internal user
-	toDisplay := msg.To
-	if IsExternalEmail(msg.ToID) {
-		// External email - show name and email address
-		if msg.To != msg.ToID {
-			toDisplay = fmt.Sprintf(`<span style="color: #666;">%s &lt;%s&gt;</span>`, msg.To, msg.ToID)
-		} else {
-			toDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.ToID)
-		}
-	} else {
-		toDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.ToID, msg.To)
+	// Format recipient name/email
+	toDisplay := msg.ToID
+	if !IsExternalEmail(msg.ToID) {
+		// Internal user - just show username
+		toDisplay = msg.ToID
+	} else if msg.To != msg.ToID {
+		// External with name
+		toDisplay = msg.To
 	}
-	
-	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee; background-color: #f9f9f9;">
-		<div style="margin-bottom: 5px;">
-			<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
+
+	// Truncate body for preview (first 100 chars)
+	bodyPreview := msg.Body
+	if len(bodyPreview) > 100 {
+		bodyPreview = bodyPreview[:100] + "..."
+	}
+	bodyPreview = strings.ReplaceAll(bodyPreview, "\n", " ")
+
+	return fmt.Sprintf(`
+	<div style="display: flex; justify-content: flex-end; margin: 15px 0;">
+		<div style="max-width: 70%%; background-color: #007bff; color: white; border-radius: 18px; padding: 12px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+			<div style="font-size: 12px; opacity: 0.9; margin-bottom: 4px;">You → %s</div>
+			<a href="/mail?id=%s" style="text-decoration: none; color: inherit;">
+				<div style="font-weight: 500; margin-bottom: 4px;">%s</div>
+				<div style="font-size: 14px; opacity: 0.95;">%s</div>
+			</a>
+			<div style="font-size: 11px; opacity: 0.8; margin-top: 6px; text-align: right;">%s</div>
 		</div>
-		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">You sent to: %s</div>
-		<div style="color: #999; font-size: 12px;">%s</div>
-	</div>`, msg.ID, msg.Subject, toDisplay, app.TimeAgo(msg.CreatedAt))
+	</div>`, toDisplay, msg.ID, msg.Subject, bodyPreview, app.TimeAgo(msg.CreatedAt))
 }
 
 // SendMessage creates and saves a new message
@@ -903,21 +926,21 @@ func GetBlocklist() *Blocklist {
 // looksLikeBase64 checks if a string appears to be base64 encoded
 func looksLikeBase64(s string) bool {
 	s = strings.TrimSpace(s)
-	
+
 	// Must be reasonable length (not empty, not too short)
 	if len(s) < 20 {
 		return false
 	}
-	
+
 	// Base64 strings should be mostly base64 characters (a-zA-Z0-9+/=)
 	validChars := 0
 	for _, c := range s {
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
-		   (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=' || c == '\n' || c == '\r' {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=' || c == '\n' || c == '\r' {
 			validChars++
 		}
 	}
-	
+
 	// If more than 90% of characters are valid base64 chars, likely base64
 	return float64(validChars)/float64(len(s)) > 0.9
 }
@@ -946,34 +969,34 @@ func isValidUTF8Text(data []byte) bool {
 func linkifyURLs(text string) string {
 	result := ""
 	lastIndex := 0
-	
+
 	for i := 0; i < len(text); i++ {
 		// Check for http:// or https://
 		if strings.HasPrefix(text[i:], "http://") || strings.HasPrefix(text[i:], "https://") || strings.HasPrefix(text[i:], "www.") {
 			// Add text before the URL
 			result += text[lastIndex:i]
-			
+
 			// Find the end of the URL
 			end := i
 			for end < len(text) && !isURLTerminator(text[end]) {
 				end++
 			}
-			
+
 			url := text[i:end]
 			// Add http:// prefix for www. URLs
 			href := url
 			if strings.HasPrefix(url, "www.") {
 				href = "http://" + url
 			}
-			
+
 			// Create clickable link
 			result += fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">%s</a>`, href, url)
-			
+
 			lastIndex = end
 			i = end - 1 // -1 because loop will increment
 		}
 	}
-	
+
 	// Add remaining text
 	result += text[lastIndex:]
 	return result
@@ -981,6 +1004,6 @@ func linkifyURLs(text string) string {
 
 // isURLTerminator checks if a character ends a URL
 func isURLTerminator(c byte) bool {
-	return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '<' || c == '>' || 
-	       c == '"' || c == '\'' || c == ')' || c == ']' || c == '}' || c == ',' || c == ';'
+	return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '<' || c == '>' ||
+		c == '"' || c == '\'' || c == ')' || c == ']' || c == '}' || c == ',' || c == ';'
 }

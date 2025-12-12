@@ -1308,13 +1308,13 @@ func formatSummary(text string) string {
 	// Split by double newlines for paragraphs
 	paragraphs := strings.Split(text, "\n\n")
 	var formatted []string
-	
+
 	for _, para := range paragraphs {
 		para = strings.TrimSpace(para)
 		if para == "" {
 			continue
 		}
-		
+
 		// Check if it's a bullet point list (lines starting with -, *, or •)
 		lines := strings.Split(para, "\n")
 		isList := false
@@ -1325,7 +1325,7 @@ func formatSummary(text string) string {
 				break
 			}
 		}
-		
+
 		if isList {
 			// Format as HTML list
 			formatted = append(formatted, "<ul style=\"margin: 10px 0; padding-left: 20px;\">")
@@ -1346,7 +1346,7 @@ func formatSummary(text string) string {
 			formatted = append(formatted, fmt.Sprintf("<p style=\"margin: 10px 0;\">%s</p>", para))
 		}
 	}
-	
+
 	return strings.Join(formatted, "")
 }
 
@@ -1413,7 +1413,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	articleHtml := fmt.Sprintf(`
 		<div style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
 			<div style="margin-bottom: 20px;">
-				<a href="/news"><button>← Back to News</button></a>
+				<a href="/news" style="color: #666; text-decoration: none;">← Back to news</a>
 			</div>
 			%s
 			<h1 style="margin-top: 0; margin-bottom: 15px;">%s</h1>
@@ -1424,17 +1424,10 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<p>%s</p>
 			</div>
 			%s
-			<div style="margin-top: 20px;">
-				<a href="%s" target="_blank" rel="noopener noreferrer">
-					<button style="background-color: #333; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;">
-						Read Original Article →
-					</button>
-				</a>
-				<a href="/chat?id=news_%s" style="margin-left: 10px;">
-					<button style="background-color: #666; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;">
-						Discuss
-					</button>
-				</a>
+			<div style="margin-top: 20px; color: #666; font-size: 14px;">
+				<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc;">Read Original Article →</a>
+				<span style="margin: 0 8px;">·</span>
+				<a href="/chat?id=news_%s" style="color: #0066cc;">💬 Discuss</a>
 			</div>
 		</div>
 	`, imageSection, title, categoryBadge, app.TimeAgo(postedAt), getDomain(url), description, summarySection, url, articleID)
