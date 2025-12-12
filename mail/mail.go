@@ -221,6 +221,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+		
+		// Convert URLs to clickable links
+		displayBody = linkifyURLs(displayBody)
 
 		// Display the message
 		replySubject := msg.Subject
@@ -243,7 +246,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Format From field - only link to user profile if it's an internal user
 		fromDisplayFull := msg.From
-		if !IsExternalEmail(msg.FromID) {
+		if IsExternalEmail(msg.FromID) {
+			// External email - show name and email address
+			if msg.From != msg.FromID {
+				fromDisplayFull = fmt.Sprintf(`%s &lt;%s&gt;`, msg.From, msg.FromID)
+			} else {
+				fromDisplayFull = msg.FromID
+			}
+		} else {
 			fromDisplayFull = fmt.Sprintf(`<a href="/@%s">%s</a>`, msg.FromID, msg.From)
 		}
 
@@ -550,8 +560,12 @@ func renderInboxMessage(msg *Message, indent int, viewerID string) string {
 	// Format From field - only link to user profile if it's an internal user (no @)
 	fromDisplay := msg.From
 	if IsExternalEmail(msg.FromID) {
-		// External email - don't link to user profile
-		fromDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.From)
+		// External email - show name and email address
+		if msg.From != msg.FromID {
+			fromDisplay = fmt.Sprintf(`<span style="color: #666;">%s &lt;%s&gt;</span>`, msg.From, msg.FromID)
+		} else {
+			fromDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.FromID)
+		}
 	} else {
 		// Internal user - link to profile
 		fromDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.FromID, msg.From)
@@ -570,10 +584,15 @@ func renderInboxMessage(msg *Message, indent int, viewerID string) string {
 func renderSentMessage(msg *Message) string {
 	// Format To field - only link to user profile if it's an internal user
 	toDisplay := msg.To
-	if !IsExternalEmail(msg.ToID) {
-		toDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.ToID, msg.To)
+	if IsExternalEmail(msg.ToID) {
+		// External email - show name and email address
+		if msg.To != msg.ToID {
+			toDisplay = fmt.Sprintf(`<span style="color: #666;">%s &lt;%s&gt;</span>`, msg.To, msg.ToID)
+		} else {
+			toDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.ToID)
+		}
 	} else {
-		toDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.To)
+		toDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.ToID, msg.To)
 	}
 	
 	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee;">
@@ -589,10 +608,15 @@ func renderSentMessage(msg *Message) string {
 func renderSentMessageInThread(msg *Message) string {
 	// Format To field - only link to user profile if it's an internal user
 	toDisplay := msg.To
-	if !IsExternalEmail(msg.ToID) {
-		toDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.ToID, msg.To)
+	if IsExternalEmail(msg.ToID) {
+		// External email - show name and email address
+		if msg.To != msg.ToID {
+			toDisplay = fmt.Sprintf(`<span style="color: #666;">%s &lt;%s&gt;</span>`, msg.To, msg.ToID)
+		} else {
+			toDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.ToID)
+		}
 	} else {
-		toDisplay = fmt.Sprintf(`<span style="color: #666;">%s</span>`, msg.To)
+		toDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, msg.ToID, msg.To)
 	}
 	
 	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee; background-color: #f9f9f9;">
@@ -923,4 +947,64 @@ func isValidUTF8Text(data []byte) bool {
 		}
 	}
 	return false
+}
+
+// linkifyURLs converts URLs in text to clickable HTML links
+func linkifyURLs(text string) string {
+	// Regular expression to match URLs
+	// Matches http://, https://, and www. URLs
+	urlPattern := `(https?://[^\s<]+[^\s<.,;:!?'")\]]|www\.[^\s<]+[^\s<.,;:!?'")\]])`
+	
+	// Replace URLs with HTML links
+	result := ""
+	lastIndex := 0
+	
+	for i := 0; i < len(text); i++ {
+		// Check for http:// or https://
+		if strings.HasPrefix(text[i:], "http://") || strings.HasPrefix(text[i:], "https://") {
+			// Find the end of the URL
+			end := i
+			for end < len(text) && !isURLTerminator(text[end]) {
+				end++
+			}
+			
+			// Add text before URL
+			result += text[lastIndex:i]
+			
+			// Add clickable link
+			url := text[i:end]
+			result += fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">%s</a>`, url, url)
+			
+			lastIndex = end
+			i = end - 1
+		} else if strings.HasPrefix(text[i:], "www.") {
+			// Find the end of the URL
+			end := i
+			for end < len(text) && !isURLTerminator(text[end]) {
+				end++
+			}
+			
+			// Add text before URL
+			result += text[lastIndex:i]
+			
+			// Add clickable link with http:// prefix
+			url := text[i:end]
+			result += fmt.Sprintf(`<a href="http://%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">%s</a>`, url, url)
+			
+			lastIndex = end
+			i = end - 1
+		}
+	}
+	
+	// Add remaining text
+	result += text[lastIndex:]
+	
+	return result
+}
+
+// isURLTerminator checks if a character marks the end of a URL
+func isURLTerminator(c byte) bool {
+	return c == ' ' || c == '\n' || c == '\r' || c == '\t' || 
+	       c == '<' || c == '>' || c == '"' || c == '\'' ||
+	       c == ',' || c == ';' || c == ')' || c == ']'
 }
