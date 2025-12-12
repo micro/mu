@@ -627,10 +627,18 @@ if r.URL.Query().Get("compose") == "true" {
 			}
 		}
 	} else {
-		// Sent view - show threads where user is sender
+		// Sent view - show threads where user has sent at least one message
 		threads := make([]*Thread, 0)
 		for _, thread := range userInbox.Threads {
-			if thread.Root.FromID == acc.ID {
+			// Check if user has sent any message in this thread
+			hasSent := false
+			for _, msg := range thread.Messages {
+				if msg.FromID == acc.ID {
+					hasSent = true
+					break
+				}
+			}
+			if hasSent {
 				threads = append(threads, thread)
 			}
 		}
