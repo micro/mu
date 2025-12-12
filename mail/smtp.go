@@ -114,19 +114,6 @@ func (bkd *Backend) NewSession(conn *smtpd.Conn) (smtpd.Session, error) {
 	return &Session{remoteIP: ip}, nil
 }
 
-// findThreadRoot walks up the ReplyTo chain to find the root message
-func findThreadRoot(msg *Message) string {
-	root := msg
-	for root.ReplyTo != "" {
-		parent := GetMessage(root.ReplyTo)
-		if parent == nil {
-			break // Parent doesn't exist, this is the root
-		}
-		root = parent
-	}
-	return root.ID
-}
-
 // Session represents an SMTP session for RECEIVING mail
 type Session struct {
 	from        string
@@ -480,9 +467,8 @@ func (s *Session) Data(r io.Reader) error {
 		// Try In-Reply-To first
 		if inReplyTo != "" {
 			if origMsg := FindMessageByMessageID(inReplyTo); origMsg != nil {
-				// Thread to the ROOT of the conversation, not just the immediate parent
-				replyToID = findThreadRoot(origMsg)
-				app.Log("mail", "Threading reply using In-Reply-To: %s -> root: %s", inReplyTo, replyToID)
+				replyToID = origMsg.ID
+				app.Log("mail", "Threading reply using In-Reply-To: %s", inReplyTo)
 			}
 		}
 		
@@ -491,9 +477,8 @@ func (s *Session) Data(r io.Reader) error {
 			refs := strings.Fields(references)
 			for _, ref := range refs {
 				if origMsg := FindMessageByMessageID(ref); origMsg != nil {
-					// Thread to the ROOT of the conversation
-					replyToID = findThreadRoot(origMsg)
-					app.Log("mail", "Threading reply using References: %s -> root: %s", ref, replyToID)
+					replyToID = origMsg.ID
+					app.Log("mail", "Threading reply using References: %s", ref)
 					break
 				}
 			}

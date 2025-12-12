@@ -96,37 +96,20 @@ func fixThreading() {
 			continue // Root message, nothing to fix
 		}
 		
-		// Find the parent
-		parent := GetMessageUnlocked(msg.ReplyTo)
-		if parent == nil {
-			// Parent doesn't exist - mark as root
-			app.Log("mail", "Message %s has missing parent %s - marking as root", msg.ID, msg.ReplyTo)
-			msg.ReplyTo = ""
-			fixed++
-			continue
+		// Check if the parent exists
+		if GetMessageUnlocked(msg.ReplyTo) != nil {
+			continue // Parent exists, threading is fine
 		}
 		
-		// Walk up to find the root
-		root := parent
-		for root.ReplyTo != "" {
-			nextParent := GetMessageUnlocked(root.ReplyTo)
-			if nextParent == nil {
-				break // This is as far as we can go
-			}
-			root = nextParent
-		}
-		
-		// If we're not already pointing to the root, fix it
-		if msg.ReplyTo != root.ID {
-			app.Log("mail", "Rethreading message %s: %s -> %s (root)", msg.ID, msg.ReplyTo, root.ID)
-			msg.ReplyTo = root.ID
-			fixed++
-		}
+		// Parent doesn't exist - mark as orphaned (will show as root)
+		app.Log("mail", "Message %s has missing parent %s - marking as root", msg.ID, msg.ReplyTo)
+		msg.ReplyTo = ""
+		fixed++
 	}
 	
 	if fixed > 0 {
-		app.Log("mail", "Fixed threading for %d messages", fixed)
-		save() // Save the fixed threading
+		app.Log("mail", "Fixed threading for %d orphaned messages", fixed)
+		save()
 	}
 }
 
