@@ -155,8 +155,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Check if recipient is external (has @domain)
 		if IsExternalEmail(to) {
 			// Send external email via SMTP
-			fromEmail := GetEmailForUser(acc.Name, GetConfiguredDomain())
-			messageID, err := SendExternalEmail(acc.Name, fromEmail, to, subject, body, replyTo)
+			fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
+			// Use just the username (acc.ID) as display name, not acc.Name which might contain @
+			displayName := acc.ID
+			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, body, replyTo)
 			if err != nil {
 				http.Error(w, "Failed to send email: "+err.Error(), http.StatusInternalServerError)
 				return

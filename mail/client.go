@@ -134,15 +134,25 @@ func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) 
 
 	// Add In-Reply-To and References if this is a reply
 	if replyToMsgID != "" {
+		app.Log("mail", "This is a reply - looking up original message with ID: %s", replyToMsgID)
 		if origMsg := FindMessageByMessageID(replyToMsgID); origMsg != nil {
 			if origMsg.MessageID != "" {
 				msgBuf.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", origMsg.MessageID))
 				msgBuf.WriteString(fmt.Sprintf("References: %s\r\n", origMsg.MessageID))
+				app.Log("mail", "✓ Found original via FindMessageByMessageID, using Message-ID: %s", origMsg.MessageID)
+			} else {
+				app.Log("mail", "⚠ Found original message but it has no MessageID")
 			}
-		} else if origMsg := GetMessage(replyToMsgID); origMsg != nil && origMsg.MessageID != "" {
-			// Try looking up by our internal ID
-			msgBuf.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", origMsg.MessageID))
-			msgBuf.WriteString(fmt.Sprintf("References: %s\r\n", origMsg.MessageID))
+		} else if origMsg := GetMessage(replyToMsgID); origMsg != nil {
+			if origMsg.MessageID != "" {
+				msgBuf.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", origMsg.MessageID))
+				msgBuf.WriteString(fmt.Sprintf("References: %s\r\n", origMsg.MessageID))
+				app.Log("mail", "✓ Found original via GetMessage, using Message-ID: %s", origMsg.MessageID)
+			} else {
+				app.Log("mail", "⚠ Found original message but it has no MessageID")
+			}
+		} else {
+			app.Log("mail", "⚠ Could not find original message - reply will not be threaded")
 		}
 	}
 
