@@ -49,6 +49,48 @@ type senderRateLimit struct {
 // This is NOT an open relay - it only accepts mail for local users
 type Backend struct{}
 
+// Login authenticates a user. Required for AUTH support.
+func (bkd *Backend) Login(conn *smtpd.Conn, username, password string) (smtpd.Session, error) {
+	// Extract IP address
+	remoteAddr := conn.Conn().RemoteAddr().String()
+	ip, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		ip = remoteAddr
+	}
+	
+	// Only allow auth from localhost
+	isLocalhost := ip == "127.0.0.1" || ip == "::1" || strings.HasPrefix(ip, "127.0.0.") || ip == "[::1]"
+	
+	if !isLocalhost {
+		app.Log("mail", "Backend AUTH rejected: not from localhost (IP: %s)", ip)
+		return nil, &smtpd.SMTPError{
+			Code:    530,
+			Message: "Authentication not available",
+		}
+	}
+	
+	// Check for internal web app authentication using shared secret
+	internalUser := os.Getenv("SMTP_USER")
+	internalPassword := os.Getenv("SMTP_PASSWORD")
+	
+	if internalUser != "" && internalPassword != "" {
+		if username == internalUser && password == internalPassword {
+			app.Log("mail", "✓ Backend AUTH successful for internal web app")
+			// Create session with isLocalhost flag set
+			return &Session{
+				remoteIP:    ip,
+				isLocalhost: true,
+			}, nil
+		}
+	}
+	
+	app.Log("mail", "Backend AUTH failed for user: %s", username)
+	return nil, &smtpd.SMTPError{
+		Code:    535,
+		Message: "Authentication failed",
+	}
+}
+
 // NewSession creates a new SMTP session
 // No authentication required - this server only RECEIVES mail
 func (bkd *Backend) NewSession(conn *smtpd.Conn) (smtpd.Session, error) {
@@ -120,36 +162,6 @@ func (s *Session) Mail(from string, opts *smtpd.MailOptions) error {
 	}
 
 	return nil
-}
-
-// AuthPlain implements PLAIN authentication
-func (s *Session) AuthPlain(username, password string) error {
-	// Only allow auth from localhost
-	if !s.isLocalhost {
-		app.Log("mail", "SMTP AUTH rejected: not from localhost")
-		return &smtpd.SMTPError{
-			Code:    530,
-			Message: "Authentication not available",
-		}
-	}
-	
-	// Check for internal web app authentication using shared secret
-	internalUser := os.Getenv("SMTP_USER")
-	internalPassword := os.Getenv("SMTP_PASSWORD")
-	
-	if internalUser != "" && internalPassword != "" {
-		// Verify against internal credentials (for web app)
-		if username == internalUser && password == internalPassword {
-			app.Log("mail", "✓ SMTP AUTH successful for internal web app from localhost")
-			return nil
-		}
-	}
-	
-	app.Log("mail", "SMTP AUTH failed: invalid credentials for user %s", username)
-	return &smtpd.SMTPError{
-		Code:    535,
-		Message: "Authentication failed",
-	}
 }
 
 // Logout is called when the connection is closed
