@@ -1304,6 +1304,52 @@ func Reminder() string {
 	return reminderHtml
 }
 
+func formatSummary(text string) string {
+	// Split by double newlines for paragraphs
+	paragraphs := strings.Split(text, "\n\n")
+	var formatted []string
+	
+	for _, para := range paragraphs {
+		para = strings.TrimSpace(para)
+		if para == "" {
+			continue
+		}
+		
+		// Check if it's a bullet point list (lines starting with -, *, or •)
+		lines := strings.Split(para, "\n")
+		isList := false
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") || strings.HasPrefix(trimmed, "• ") {
+				isList = true
+				break
+			}
+		}
+		
+		if isList {
+			// Format as HTML list
+			formatted = append(formatted, "<ul style=\"margin: 10px 0; padding-left: 20px;\">")
+			for _, line := range lines {
+				trimmed := strings.TrimSpace(line)
+				if trimmed == "" {
+					continue
+				}
+				// Remove bullet markers
+				trimmed = strings.TrimPrefix(trimmed, "- ")
+				trimmed = strings.TrimPrefix(trimmed, "* ")
+				trimmed = strings.TrimPrefix(trimmed, "• ")
+				formatted = append(formatted, fmt.Sprintf("<li>%s</li>", trimmed))
+			}
+			formatted = append(formatted, "</ul>")
+		} else {
+			// Regular paragraph
+			formatted = append(formatted, fmt.Sprintf("<p style=\"margin: 10px 0;\">%s</p>", para))
+		}
+	}
+	
+	return strings.Join(formatted, "")
+}
+
 func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string) {
 	// Get article from index
 	entry := data.GetByID(articleID)
@@ -1350,11 +1396,13 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	summarySection := ""
 	if summary != "" {
+		// Format the summary: split by double newlines into paragraphs, handle bullet points
+		formattedSummary := formatSummary(summary)
 		summarySection = fmt.Sprintf(`
 			<div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
 				<h3 style="margin-top: 0;">Summary</h3>
-				<p style="margin-bottom: 0; white-space: pre-wrap;">%s</p>
-			</div>`, summary)
+				<div style="line-height: 1.6;">%s</div>
+			</div>`, formattedSummary)
 	}
 
 	categoryBadge := ""
