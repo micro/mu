@@ -337,6 +337,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if view == "inbox" {
 		app.Log("mail", "Rendering inbox with %d messages for user %s", len(mailbox), acc.Name)
 		
+		// For threading to work properly, we need to look at both sent and received messages
+		// Get all messages involving this user (sent or received)
+		mutex.RLock()
+		allUserMessages := make(map[string]*Message)
+		for _, msg := range messages {
+			if msg.FromID == acc.ID || msg.ToID == acc.ID {
+				allUserMessages[msg.ID] = msg
+			}
+		}
+		mutex.RUnlock()
+		
 		// Create a map of message ID to message for quick lookup
 		msgMap := make(map[string]*Message)
 		for _, msg := range mailbox {
@@ -356,9 +367,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			// If this is a reply, skip it (will be rendered with parent)
+			// If this is a reply, check if the parent is in our inbox
+			// If parent is in inbox, skip (will be rendered with parent)
+			// If parent is NOT in inbox (e.g., it's a sent message), treat this as top-level
 			if msg.ReplyTo != "" {
-				continue
+				if _, inInbox := msgMap[msg.ReplyTo]; inInbox {
+					// Parent is in inbox, skip (will render as reply)
+					continue
+				}
+				// Parent is not in inbox (probably a sent message), render as top-level
 			}
 
 			// Render the main message
@@ -390,6 +407,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Render any orphaned replies (where parent was deleted or is in sent folder)
 		for _, msg := range mailbox {
 			if !rendered[msg.ID] {
+				app.Log("mail", "Rendering orphaned message: %s (replyTo=%s)", msg.ID, msg.ReplyTo)
 				items = append(items, renderInboxMessage(msg, 0, acc.ID))
 				rendered[msg.ID] = true
 			}
