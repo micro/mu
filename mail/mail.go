@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -22,31 +23,45 @@ var messages []*Message
 
 type Message struct {
 	ID        string    `json:"id"`
-	From      string    `json:"from"`       // Sender username
-	FromID    string    `json:"from_id"`    // Sender account ID
-	To        string    `json:"to"`         // Recipient username
-	ToID      string    `json:"to_id"`      // Recipient account ID
+	From      string    `json:"from"`    // Sender username
+	FromID    string    `json:"from_id"` // Sender account ID
+	To        string    `json:"to"`      // Recipient username
+	ToID      string    `json:"to_id"`   // Recipient account ID
 	Subject   string    `json:"subject"`
 	Body      string    `json:"body"`
 	Read      bool      `json:"read"`
-	ReplyTo   string    `json:"reply_to"`   // ID of message this is replying to
+	ReplyTo   string    `json:"reply_to"` // ID of message this is replying to
 	CreatedAt time.Time `json:"created_at"`
 }
 
 // Load messages from disk
+// Load messages from disk and configure SMTP/DKIM
 func Load() {
 	b, err := data.LoadFile("mail.json")
 	if err != nil {
 		messages = []*Message{}
-		return
-	}
-
-	if err := json.Unmarshal(b, &messages); err != nil {
+	} else if err := json.Unmarshal(b, &messages); err != nil {
 		messages = []*Message{}
-		return
+	} else {
+		app.Log("mail", "Loaded %d messages", len(messages))
 	}
 
-	app.Log("mail", "Loaded %d messages", len(messages))
+	// Configure SMTP client from environment variables
+	ConfigureSMTP()
+
+	// Try to load DKIM config if keys exist (optional)
+	dkimDomain := os.Getenv("DKIM_DOMAIN")
+	if dkimDomain == "" {
+		dkimDomain = "localhost"
+	}
+	dkimSelector := os.Getenv("DKIM_SELECTOR")
+	if dkimSelector == "" {
+		dkimSelector = "default"
+	}
+
+	if err := LoadDKIMConfig(dkimDomain, dkimSelector); err != nil {
+		app.Log("mail", "DKIM signing disabled: %v", err)
+	}
 }
 
 // Save messages to disk (caller must hold mutex)
@@ -100,17 +115,32 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Get recipient account
-		toAcc, err := auth.GetAccount(to)
-		if err != nil {
-			http.Error(w, "Recipient not found", http.StatusNotFound)
-			return
-		}
+		// Check if recipient is external (has @domain)
+		if IsExternalEmail(to) {
+			// Send external email via SMTP
+			fromEmail := GetEmailForUser(acc.Name, "localhost") // Use configured domain
+			if err := SendExternalEmail(acc.Name, fromEmail, to, subject, body); err != nil {
+				http.Error(w, "Failed to send email: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
 
-		// Send the message
-		if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, ""); err != nil {
-			http.Error(w, "Failed to send message", http.StatusInternalServerError)
-			return
+			// Store a copy in sent messages for the sender
+			if err := SendMessage(acc.Name, acc.ID, to, to, subject, body, ""); err != nil {
+				app.Log("mail", "Warning: Failed to store sent message: %v", err)
+			}
+		} else {
+			// Internal recipient - look up user account
+			toAcc, err := auth.GetAccount(to)
+			if err != nil {
+				http.Error(w, "Recipient not found", http.StatusNotFound)
+				return
+			}
+
+			// Send the internal message
+			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, ""); err != nil {
+				http.Error(w, "Failed to send message", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		// Redirect to inbox
@@ -143,7 +173,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Display the message
 		replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`, msg.FromID, url.QueryEscape("Re: "+msg.Subject), msgID)
-		
+
 		messageView := fmt.Sprintf(`
 			<div style="margin-bottom: 20px;">
 				<a href="/mail"><button>← Back to Inbox</button></a>
@@ -177,7 +207,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		to := r.URL.Query().Get("to")
 		subject := r.URL.Query().Get("subject")
 		replyTo := r.URL.Query().Get("reply_to")
-		
+
 		// Determine back link and page title
 		backLink := "/mail"
 		pageTitle := "Compose Message"
@@ -185,7 +215,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			backLink = "/mail?id=" + replyTo
 			pageTitle = subject
 		}
-		
+
 		composeForm := fmt.Sprintf(`
 			<div style="margin-bottom: 20px;">
 				<a href="%s"><button>← Back</button></a>
@@ -208,7 +238,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				</div>
 			</form>
 		`, backLink, to, subject)
-		
+
 		w.Write([]byte(app.RenderHTML(pageTitle, "", composeForm)))
 		return
 	}
@@ -223,7 +253,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	var mailbox []*Message
 	unreadCount := 0
-	
+
 	if view == "sent" {
 		// Show sent messages
 		for _, msg := range messages {

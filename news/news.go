@@ -9,7 +9,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
@@ -59,9 +58,6 @@ var reminderHtml string
 
 // the cached feed
 var feed []*Post
-
-// crypto compare api key
-var key = os.Getenv("CRYPTO_API_KEY")
 
 type Feed struct {
 	Name     string

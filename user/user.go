@@ -71,7 +71,7 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 	// Check if viewing own profile
 	sess, _ := auth.GetSession(r)
 	isOwnProfile := sess != nil && sess.Account == username
-	
+
 	// Build message link (only show if not own profile)
 	messageLink := ""
 	if !isOwnProfile {

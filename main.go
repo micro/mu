@@ -60,7 +60,7 @@ func main() {
 	// load the blog
 	blog.Load()
 
-	// load the mail
+	// load the mail (also configures SMTP and DKIM)
 	mail.Load()
 
 	// load the home cards
@@ -252,6 +252,9 @@ func main() {
 	// Channel to listen for interrupt signals
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start SMTP server if enabled (disabled by default)
+	mail.StartSMTPServerIfEnabled()
 
 	// Start server in a goroutine
 	go func() {

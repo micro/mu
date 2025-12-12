@@ -938,13 +938,13 @@ func min(a, b int) int {
 // renderComments displays comments for a post
 func renderComments(postID string, r *http.Request) string {
 	postComments := GetComments(postID)
-	
+
 	var commentsHTML strings.Builder
-	
+
 	// Add comment form if authenticated
 	_, err := auth.GetSession(r)
 	isAuthenticated := err == nil
-	
+
 	if isAuthenticated {
 		commentsHTML.WriteString(fmt.Sprintf(`
 			<form method="POST" action="/post/%s/comment" style="margin: 20px 0; display: flex; flex-direction: column; gap: 10px;">
@@ -957,19 +957,19 @@ func renderComments(postID string, r *http.Request) string {
 	} else {
 		commentsHTML.WriteString(`<p style="color: #666; margin: 20px 0;"><a href="/login" style="color: #0066cc;">Login</a> to add a comment</p>`)
 	}
-	
+
 	if len(postComments) == 0 {
 		commentsHTML.WriteString(`<p style="color: #999; font-style: italic; margin: 20px 0;">No comments yet. Be the first to comment!</p>`)
 		return commentsHTML.String()
 	}
-	
+
 	commentsHTML.WriteString(`<div style="margin-top: 20px;">`)
 	for _, comment := range postComments {
 		authorLink := comment.Author
 		if comment.AuthorID != "" {
 			authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #0066cc;">%s</a>`, comment.AuthorID, comment.Author)
 		}
-		
+
 		commentsHTML.WriteString(fmt.Sprintf(`
 			<div style="padding: 15px; background: #f9f9f9; border-radius: 5px; margin-bottom: 10px;">
 				<div style="color: #666; font-size: 12px; margin-bottom: 5px;">%s by %s</div>
@@ -978,7 +978,7 @@ func renderComments(postID string, r *http.Request) string {
 		`, app.TimeAgo(comment.CreatedAt), authorLink, comment.Content))
 	}
 	commentsHTML.WriteString(`</div>`)
-	
+
 	return commentsHTML.String()
 }
 
