@@ -466,22 +466,33 @@ func (s *Session) Data(r io.Reader) error {
 		
 		// Try In-Reply-To first
 		if inReplyTo != "" {
+			app.Log("mail", "Looking for In-Reply-To: %s", inReplyTo)
 			if origMsg := FindMessageByMessageID(inReplyTo); origMsg != nil {
 				replyToID = origMsg.ID
-				app.Log("mail", "Threading reply using In-Reply-To: %s", inReplyTo)
+				app.Log("mail", "✓ Threading reply using In-Reply-To: %s -> %s", inReplyTo, replyToID)
+			} else {
+				app.Log("mail", "✗ In-Reply-To not found: %s", inReplyTo)
 			}
 		}
 		
 		// If In-Reply-To didn't work, try ALL References headers
 		if replyToID == "" && references != "" {
+			app.Log("mail", "Trying References: %s", references)
 			refs := strings.Fields(references)
 			for _, ref := range refs {
 				if origMsg := FindMessageByMessageID(ref); origMsg != nil {
 					replyToID = origMsg.ID
-					app.Log("mail", "Threading reply using References: %s", ref)
+					app.Log("mail", "✓ Threading reply using References: %s -> %s", ref, replyToID)
 					break
 				}
 			}
+			if replyToID == "" {
+				app.Log("mail", "✗ No matching references found in: %s", references)
+			}
+		}
+		
+		if replyToID == "" && (inReplyTo != "" || references != "") {
+			app.Log("mail", "⚠ Failed to thread message - will appear as new conversation")
 		}
 
 		if err := SendMessage(
