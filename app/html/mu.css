@@ -136,6 +136,12 @@ td {
   display: flex;
   align-items: center;
   gap: 4px;
+  border-radius: 5px;
+  transition: background 0.2s;
+}
+
+#account a:hover {
+  background: whitesmoke;
 }
 
 #account a .label {
@@ -723,6 +729,21 @@ body:has(#messages) #content {
 .post-item {
   margin-bottom: 15px;
   padding-bottom: 0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.post-item:hover {
+  background: #fafafa;
+}
+
+.message-item {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.message-item:hover {
+  background: #fafafa;
 }
 
 .post-item h3 {

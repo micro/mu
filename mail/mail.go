@@ -232,16 +232,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`, msg.FromID, url.QueryEscape(replySubject), msgID)
 
-		// Add block button if sender is external email and user is admin
-		blockButton := ""
-		if acc.Admin && IsExternalEmail(msg.FromID) {
-			blockButton = fmt.Sprintf(`
-				<form method="POST" action="/mail" style="display: inline;">
-					<input type="hidden" name="action" value="block_sender">
-					<input type="hidden" name="sender_email" value="%s">
-					<input type="hidden" name="msg_id" value="%s">
-					<button type="submit" onclick="return confirm('Block %s from sending mail?')" style="background-color: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Block Sender</button>
-				</form>`, msg.FromID, msg.ID, msg.FromID)
+// Add block link if sender is external email and user is admin
+	blockButton := ""
+	if acc.Admin && IsExternalEmail(msg.FromID) {
+		blockButton = fmt.Sprintf(`
+			<span style="margin: 0 8px;">·</span>
+			<a href="#" onclick="if(confirm('Block %s from sending mail?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='block_sender';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='sender_email';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='msg_id';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #666;">Block Sender</a>
+		`, msg.FromID, msg.FromID, msg.ID)
 		}
 
 		// Format From field - only link to user profile if it's an internal user
@@ -323,20 +320,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	<div style="margin-bottom: 20px;">
 		<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 	</div>
-	<div style="margin-bottom: 20px;">
-		<h2 style="margin: 0 0 10px 0;">%s</h2>
-		<div style="color: #666; font-size: small;">From: %s</div>
-	</div>
+	<div style="color: #666; font-size: small; margin-bottom: 20px;">From: %s</div>
 	<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
 	%s
-	<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
-	<div style="color: #666; font-size: 14px;">
+	<div style="color: #666; font-size: 14px; margin-top: 20px;">
 		<a href="%s" style="color: #666;">Reply</a>
 		<span style="margin: 0 8px;">·</span>
 		<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545;">Delete</a>
 		%s
 	</div>
-`, msg.Subject, fromDisplayFull, threadHTML.String(), replyLink, msg.ID, blockButton)
+`, fromDisplayFull, threadHTML.String(), replyLink, msg.ID, blockButton)
 	w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 	return
 }
