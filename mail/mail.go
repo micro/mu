@@ -541,14 +541,23 @@ if r.URL.Query().Get("compose") == "true" {
 			// Mark this thread as rendered
 			rendered[rootMsg.ID] = true
 			
-			// Find all messages in this thread and check if any are unread
+			// Find all messages in this thread (recursively) and check if any are unread
 			hasUnread := !rootMsg.Read && rootMsg.ToID == acc.ID
+			threadMessages := []string{rootMsg.ID}
+			
+			// Recursively find all children in the thread
 			mutex.RLock()
-			for _, candidate := range messages {
-				if candidate.ReplyTo == rootMsg.ID && (candidate.FromID == acc.ID || candidate.ToID == acc.ID) {
-					rendered[candidate.ID] = true
-					if !candidate.Read && candidate.ToID == acc.ID {
-						hasUnread = true
+			for i := 0; i < len(threadMessages); i++ {
+				parentID := threadMessages[i]
+				for _, candidate := range messages {
+					if candidate.ReplyTo == parentID && (candidate.FromID == acc.ID || candidate.ToID == acc.ID) {
+						if !rendered[candidate.ID] {
+							rendered[candidate.ID] = true
+							threadMessages = append(threadMessages, candidate.ID)
+							if !candidate.Read && candidate.ToID == acc.ID {
+								hasUnread = true
+							}
+						}
 					}
 				}
 			}
