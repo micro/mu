@@ -523,7 +523,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	messageView := fmt.Sprintf(`
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	%s
-	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+	<div style="margin-top: 30px; padding-top: 20px;">
 		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
