@@ -198,7 +198,11 @@ func rebuildInboxes() {
 func addMessageToInbox(inbox *Inbox, msg *Message, userID string) {
 	threadID := msg.ThreadID
 	if threadID == "" {
-		threadID = msg.ID
+		// Compute ThreadID if missing
+		threadID = computeThreadID(msg)
+		if threadID == "" {
+			threadID = msg.ID
+		}
 	}
 	
 	thread := inbox.Threads[threadID]
@@ -518,7 +522,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	
 	messageView := fmt.Sprintf(`
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
-	<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
 	%s
 	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
 		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;">
