@@ -199,11 +199,11 @@ var Results = `
 </div>`
 
 func getSummary(post *Post) string {
-	discussLink := ""
+	readLink := ""
 	if post.ID != "" {
-		discussLink = fmt.Sprintf(` | <a href="/chat?id=news_%s" style="color: inherit;">Discuss</a>`, post.ID)
+		readLink = fmt.Sprintf(` | <a href="/news?id=%s" style="color: inherit;">Read</a>`, post.ID)
 	}
-	return fmt.Sprintf(`Source: <i>%s</i> | %s%s`, getDomain(post.URL), app.TimeAgo(post.PostedAt), discussLink)
+	return fmt.Sprintf(`Source: <i>%s</i> | %s%s`, getDomain(post.URL), app.TimeAgo(post.PostedAt), readLink)
 }
 
 func getPrices() map[string]float64 {
@@ -1304,8 +1304,104 @@ func Reminder() string {
 	return reminderHtml
 }
 
+func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string) {
+	// Get article from index
+	entry := data.GetByID(articleID)
+	if entry == nil {
+		http.Error(w, "Article not found", http.StatusNotFound)
+		return
+	}
+
+	// Extract metadata
+	url := ""
+	category := ""
+	image := ""
+	postedAt := time.Time{}
+	summary := ""
+
+	if v, ok := entry.Metadata["url"].(string); ok {
+		url = v
+	}
+	if v, ok := entry.Metadata["category"].(string); ok {
+		category = v
+	}
+	if v, ok := entry.Metadata["image"].(string); ok {
+		image = v
+	}
+	if v, ok := entry.Metadata["summary"].(string); ok {
+		summary = v
+	}
+	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
+		postedAt = v
+	} else if v, ok := entry.Metadata["posted_at"].(string); ok {
+		if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+			postedAt = parsed
+		}
+	}
+
+	title := entry.Title
+	description := htmlToText(entry.Content)
+
+	// Build the article page
+	imageSection := ""
+	if image != "" {
+		imageSection = fmt.Sprintf(`<img src="%s" style="max-width: 100%%; height: auto; border-radius: 8px; margin-bottom: 20px;">`, image)
+	}
+
+	summarySection := ""
+	if summary != "" {
+		summarySection = fmt.Sprintf(`
+			<div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+				<h3 style="margin-top: 0;">Summary</h3>
+				<p style="margin-bottom: 0; white-space: pre-wrap;">%s</p>
+			</div>`, summary)
+	}
+
+	categoryBadge := ""
+	if category != "" {
+		categoryBadge = fmt.Sprintf(`<span style="background-color: #e0e0e0; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; margin-right: 10px;">%s</span>`, category)
+	}
+
+	articleHtml := fmt.Sprintf(`
+		<div style="max-width: 800px; margin: 0 auto;">
+			<div style="margin-bottom: 20px;">
+				<a href="/news"><button>← Back to News</button></a>
+			</div>
+			%s
+			<h1 style="margin-top: 0; margin-bottom: 15px;">%s</h1>
+			<div style="color: #666; margin-bottom: 20px; font-size: 0.9em;">
+				%s<span>%s | Source: <i>%s</i></span>
+			</div>
+			<div style="margin-bottom: 30px; line-height: 1.6;">
+				<p>%s</p>
+			</div>
+			%s
+			<div style="margin-top: 20px;">
+				<a href="%s" target="_blank" rel="noopener noreferrer">
+					<button style="background-color: #333; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;">
+						Read Original Article →
+					</button>
+				</a>
+				<a href="/chat?id=news_%s" style="margin-left: 10px;">
+					<button style="background-color: #666; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;">
+						Discuss
+					</button>
+				</a>
+			</div>
+		</div>
+	`, imageSection, title, categoryBadge, app.TimeAgo(postedAt), getDomain(url), description, summarySection, url, articleID)
+
+	w.Write([]byte(app.RenderHTML(title, "", articleHtml)))
+}
+
 func Handler(w http.ResponseWriter, r *http.Request) {
 	ct := r.Header.Get("Content-Type")
+
+	// Handle viewing individual news article
+	if articleID := r.URL.Query().Get("id"); articleID != "" {
+		handleArticleView(w, r, articleID)
+		return
+	}
 
 	// Handle POST with JSON (API endpoint)
 	if r.Method == "POST" && ct == "application/json" {

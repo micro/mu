@@ -211,7 +211,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Display the message
-		replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`, msg.FromID, url.QueryEscape("Re: "+msg.Subject), msgID)
+		replySubject := msg.Subject
+		if !strings.HasPrefix(strings.ToLower(msg.Subject), "re:") {
+			replySubject = "Re: " + msg.Subject
+		}
+		replyLink := fmt.Sprintf(`/mail?compose=true&to=%s&subject=%s&reply_to=%s`, msg.FromID, url.QueryEscape(replySubject), msgID)
 
 		// Add block button if sender is external email and user is admin
 		blockButton := ""
@@ -337,79 +341,122 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if view == "inbox" {
 		app.Log("mail", "Rendering inbox with %d messages for user %s", len(mailbox), acc.Name)
 		
-		// For threading to work properly, we need to look at both sent and received messages
-		// Get all messages involving this user (sent or received)
+		// Build a complete thread context including sent messages
+		// This allows us to thread replies to messages we sent
 		mutex.RLock()
-		allUserMessages := make(map[string]*Message)
+		threadContext := make(map[string]*Message)
 		for _, msg := range messages {
 			if msg.FromID == acc.ID || msg.ToID == acc.ID {
-				allUserMessages[msg.ID] = msg
+				threadContext[msg.ID] = msg
 			}
 		}
 		mutex.RUnlock()
 		
-		// Create a map of message ID to message for quick lookup
+		// Create a map of inbox messages for quick lookup
 		msgMap := make(map[string]*Message)
 		for _, msg := range mailbox {
 			msgMap[msg.ID] = msg
 			if msg.ReplyTo != "" {
-				app.Log("mail", "Message %s (from %s, subject: %s) has replyTo=%s", msg.ID, msg.From, msg.Subject, msg.ReplyTo)
+				app.Log("mail", "Inbox message %s (from %s, subject: %s) has replyTo=%s", msg.ID, msg.From, msg.Subject, msg.ReplyTo)
+				// Check if parent exists
+				if parent, exists := threadContext[msg.ReplyTo]; exists {
+					app.Log("mail", "  -> Parent found: %s (from %s, in sent: %v)", parent.ID, parent.From, parent.FromID == acc.ID)
+				} else {
+					app.Log("mail", "  -> Parent NOT found in thread context")
+				}
 			}
 		}
 
 		// Track which messages have been rendered (to avoid duplicates)
 		rendered := make(map[string]bool)
 
-		// Render top-level messages and their replies
+		// Build thread groups: find root messages and their replies
+		type thread struct {
+			root    *Message
+			replies []*Message
+		}
+		threads := []thread{}
+		
+		// First pass: identify which inbox messages are replies and which are roots
 		for _, msg := range mailbox {
-			// Skip if already rendered as part of a thread
-			if rendered[msg.ID] {
-				continue
-			}
-
-			// If this is a reply, check if the parent is in our inbox
-			// If parent is in inbox, skip (will be rendered with parent)
-			// If parent is NOT in inbox (e.g., it's a sent message), treat this as top-level
 			if msg.ReplyTo != "" {
+				// This is a reply - check if parent is in inbox
 				if _, inInbox := msgMap[msg.ReplyTo]; inInbox {
-					// Parent is in inbox, skip (will render as reply)
+					// Parent is in inbox, will be handled when we process the parent
 					continue
 				}
-				// Parent is not in inbox (probably a sent message), render as top-level
-			}
-
-			// Render the main message
-			items = append(items, renderInboxMessage(msg, 0, acc.ID))
-			rendered[msg.ID] = true
-
-			// Find and render all replies to this message
-			var replies []*Message
-			for _, candidate := range mailbox {
-				if candidate.ReplyTo == msg.ID {
-					replies = append(replies, candidate)
+				// Parent is not in inbox (probably a sent message)
+				// Treat this as a root and try to build thread from parent
+				if parent, exists := threadContext[msg.ReplyTo]; exists {
+					// We have the parent from thread context (sent message)
+					// Create a thread starting from the parent
+					if !rendered[parent.ID] {
+						t := thread{root: parent}
+						// Find all inbox messages that are replies to this parent
+						for _, candidate := range mailbox {
+							if candidate.ReplyTo == parent.ID {
+								t.replies = append(t.replies, candidate)
+							}
+						}
+						sort.Slice(t.replies, func(i, j int) bool {
+							return t.replies[i].CreatedAt.Before(t.replies[j].CreatedAt)
+						})
+						threads = append(threads, t)
+						rendered[parent.ID] = true
+						for _, r := range t.replies {
+							rendered[r.ID] = true
+						}
+					}
+				} else {
+					// Parent doesn't exist, treat as orphan
+					if !rendered[msg.ID] {
+						threads = append(threads, thread{root: msg})
+						rendered[msg.ID] = true
+					}
 				}
-			}
-
-			// Sort replies by date (oldest first for natural conversation flow)
-			sort.Slice(replies, func(i, j int) bool {
-				return replies[i].CreatedAt.Before(replies[j].CreatedAt)
-			})
-
-			// Render replies with indentation
-			for _, reply := range replies {
-				if !rendered[reply.ID] {
-					items = append(items, renderInboxMessage(reply, 1, acc.ID))
-					rendered[reply.ID] = true
+			} else {
+				// This is a root message (no replyTo)
+				if !rendered[msg.ID] {
+					t := thread{root: msg}
+					// Find all replies in inbox
+					for _, candidate := range mailbox {
+						if candidate.ReplyTo == msg.ID {
+							t.replies = append(t.replies, candidate)
+						}
+					}
+					sort.Slice(t.replies, func(i, j int) bool {
+						return t.replies[i].CreatedAt.Before(t.replies[j].CreatedAt)
+					})
+					threads = append(threads, t)
+					rendered[msg.ID] = true
+					for _, r := range t.replies {
+							rendered[r.ID] = true
+					}
 				}
 			}
 		}
-
-		// Render any orphaned replies (where parent was deleted or is in sent folder)
+		
+		// Render all threads
+		for _, t := range threads {
+			// Render root (could be from inbox or sent)
+			if t.root.ToID == acc.ID {
+				// Root is in our inbox
+				items = append(items, renderInboxMessage(t.root, 0, acc.ID))
+			} else if t.root.FromID == acc.ID {
+				// Root is from our sent messages - show as "You sent"
+				items = append(items, renderSentMessageInThread(t.root))
+			}
+			// Render replies
+			for _, reply := range t.replies {
+				items = append(items, renderInboxMessage(reply, 1, acc.ID))
+			}
+		}
+		
+		// Render any unrendered messages as orphans
 		for _, msg := range mailbox {
 			if !rendered[msg.ID] {
-				app.Log("mail", "Rendering orphaned message: %s (replyTo=%s)", msg.ID, msg.ReplyTo)
+				app.Log("mail", "Rendering orphaned inbox message: %s (replyTo=%s)", msg.ID, msg.ReplyTo)
 				items = append(items, renderInboxMessage(msg, 0, acc.ID))
-				rendered[msg.ID] = true
 			}
 		}
 	} else {
@@ -498,6 +545,17 @@ func renderSentMessage(msg *Message) string {
 			<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
 		</div>
 		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">To: <a href="/@%s" style="color: #666;">%s</a></div>
+		<div style="color: #999; font-size: 12px;">%s</div>
+	</div>`, msg.ID, msg.Subject, msg.ToID, msg.To, app.TimeAgo(msg.CreatedAt))
+}
+
+// renderSentMessageInThread renders a sent message as part of a thread in inbox view
+func renderSentMessageInThread(msg *Message) string {
+	return fmt.Sprintf(`<div class="message-item" style="padding: 15px; border-bottom: 1px solid #eee; background-color: #f9f9f9;">
+		<div style="margin-bottom: 5px;">
+			<strong><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></strong>
+		</div>
+		<div style="color: #666; font-size: 14px; margin-bottom: 5px;">You sent to: <a href="/@%s" style="color: #666;">%s</a></div>
 		<div style="color: #999; font-size: 12px;">%s</div>
 	</div>`, msg.ID, msg.Subject, msg.ToID, msg.To, app.TimeAgo(msg.CreatedAt))
 }
