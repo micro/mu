@@ -3,11 +3,9 @@ package mail
 import (
 	"bytes"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"net/smtp"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +16,7 @@ import (
 	"github.com/emersion/go-msgauth/dkim"
 )
 
-// SMTPConfig holds the SMTP client configuration
+// DKIMConfig holds the DKIM signing configuration
 type SMTPConfig struct {
 	Host     string
 	Port     string
@@ -119,66 +117,40 @@ func LoadDKIMConfig(domain, selector string) error {
 	return nil
 }
 
-// SendExternalEmail sends an email to an external address via SMTP with optional DKIM signing
+// SendExternalEmail sends an email to an external address via direct relay (no SMTP needed)
 // Returns the generated Message-ID for threading purposes
-func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) (string, error) {
-	// Generate unique Message-ID
-	messageID := fmt.Sprintf("<%d@%s>", time.Now().UnixNano(), GetConfiguredDomain())
+func SendExternalEmail(displayName, from, to, subject, body, replyToMsgID string) (string, error) {
+	// Generate Message-ID for threading
+	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), from, GetConfiguredDomain())
 
-	// Construct the email message
-	var msgBuf bytes.Buffer
-	msgBuf.WriteString(fmt.Sprintf("From: %s <%s>\r\n", from, fromEmail))
-	msgBuf.WriteString(fmt.Sprintf("To: %s\r\n", to))
-	msgBuf.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
-	msgBuf.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
-	msgBuf.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
-
-	// Add In-Reply-To and References if this is a reply
-	if replyToMsgID != "" {
-		app.Log("mail", "This is a reply - looking up original message with ID: %s", replyToMsgID)
-		if origMsg := FindMessageByMessageID(replyToMsgID); origMsg != nil {
-			if origMsg.MessageID != "" {
-				msgBuf.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", origMsg.MessageID))
-				msgBuf.WriteString(fmt.Sprintf("References: %s\r\n", origMsg.MessageID))
-				app.Log("mail", "✓ Found original via FindMessageByMessageID, using Message-ID: %s", origMsg.MessageID)
-			} else {
-				app.Log("mail", "⚠ Found original message but it has no MessageID")
-			}
-		} else if origMsg := GetMessage(replyToMsgID); origMsg != nil {
-			if origMsg.MessageID != "" {
-				msgBuf.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", origMsg.MessageID))
-				msgBuf.WriteString(fmt.Sprintf("References: %s\r\n", origMsg.MessageID))
-				app.Log("mail", "✓ Found original via GetMessage, using Message-ID: %s", origMsg.MessageID)
-			} else {
-				app.Log("mail", "⚠ Found original message but it has no MessageID")
-			}
-		} else {
-			app.Log("mail", "⚠ Could not find original message - reply will not be threaded")
-		}
+	// Build email message
+	var msg bytes.Buffer
+	
+	// Headers
+	fromHeader := from
+	if displayName != "" {
+		fromHeader = fmt.Sprintf("%s <%s>", displayName, from)
 	}
-
-	msgBuf.WriteString("MIME-Version: 1.0\r\n")
-	msgBuf.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
-	msgBuf.WriteString("\r\n")
-	msgBuf.WriteString(body)
-	msgBuf.WriteString("\r\n")
-
-	message := msgBuf.Bytes()
-
-	// Log the email headers (before DKIM signing)
-	app.Log("mail", "=== Outbound Email Headers ===")
-	app.Log("mail", "From: %s <%s>", from, fromEmail)
-	app.Log("mail", "To: %s", to)
-	app.Log("mail", "Subject: %s", subject)
-	app.Log("mail", "Message-ID: %s", messageID)
+	msg.WriteString(fmt.Sprintf("From: %s\r\n", fromHeader))
+	msg.WriteString(fmt.Sprintf("To: %s\r\n", to))
+	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
+	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
+	
 	if replyToMsgID != "" {
-		app.Log("mail", "Reply-To-ID: %s", replyToMsgID)
+		msg.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", replyToMsgID))
+		msg.WriteString(fmt.Sprintf("References: %s\r\n", replyToMsgID))
 	}
-	app.Log("mail", "Body length: %d bytes", len(body))
+	
+	msg.WriteString("MIME-Version: 1.0\r\n")
+	msg.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+	msg.WriteString("\r\n")
+	msg.WriteString(body)
+	
+	message := msg.Bytes()
 
-	// Sign with DKIM if configured
+	// Apply DKIM signing if configured
 	if dkimConfig != nil {
-		app.Log("dkim", "Attempting DKIM signing with domain=%s, selector=%s", dkimConfig.Domain, dkimConfig.Selector)
 		options := &dkim.SignOptions{
 			Domain:   dkimConfig.Domain,
 			Selector: dkimConfig.Selector,
@@ -188,114 +160,25 @@ func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) 
 		var signedBuf bytes.Buffer
 		if err := dkim.Sign(&signedBuf, bytes.NewReader(message), options); err != nil {
 			app.Log("dkim", "WARNING: DKIM signing failed: %v", err)
-			// Continue without DKIM signature
 		} else {
 			message = signedBuf.Bytes()
 			app.Log("dkim", "✓ Email signed with DKIM successfully")
 		}
-	} else {
-		app.Log("dkim", "WARNING: DKIM not configured - email will be sent without signature")
 	}
 
-	// Connect to the SMTP server
-	addr := smtpConfig.Host + ":" + smtpConfig.Port
-
-	app.Log("mail", "=== SMTP Connection ===")
-	app.Log("mail", "SMTP Server: %s", addr)
-	app.Log("mail", "SMTP Host: %s", smtpConfig.Host)
-	app.Log("mail", "SMTP Port: %s", smtpConfig.Port)
-	app.Log("mail", "From: %s", fromEmail)
+	app.Log("mail", "=== Direct Relay (Internal) ===")
+	app.Log("mail", "From: %s <%s>", displayName, from)
 	app.Log("mail", "To: %s", to)
-	app.Log("mail", "Message size: %d bytes", len(message))
-
-	// Use SMTP authentication when connecting to localhost
-	// This uses internal shared credentials (not user passwords)
-	var auth smtp.Auth
-	internalUser := os.Getenv("SMTP_USER")
-	internalPassword := os.Getenv("SMTP_PASSWORD")
-	
-	if internalUser != "" && internalPassword != "" {
-		auth = smtp.PlainAuth("", internalUser, internalPassword, smtpConfig.Host)
-		app.Log("mail", "Using internal SMTP AUTH credentials")
-	} else if smtpConfig.Username != "" && smtpConfig.Password != "" {
-		auth = smtp.PlainAuth("", smtpConfig.Username, smtpConfig.Password, smtpConfig.Host)
-		app.Log("mail", "Using SMTP AUTH from config: %s", smtpConfig.Username)
-	} else {
-		app.Log("mail", "WARNING: No SMTP AUTH credentials - mail sending will likely fail")
-	}
-
-	// Send the email using manual connection for better control
-	// Connect to SMTP server
-	c, err := smtp.Dial(addr)
-	if err != nil {
-		app.Log("mail", "✗ Failed to connect to SMTP server: %v", err)
-		return "", fmt.Errorf("failed to connect to SMTP server: %v", err)
-	}
-	defer c.Close()
-
-	// Say HELO
-	if err := c.Hello("localhost"); err != nil {
-		app.Log("mail", "✗ HELO failed: %v", err)
-		return "", fmt.Errorf("HELO failed: %v", err)
-	}
-
-	// Authenticate if credentials provided
-	if auth != nil {
-		// Try STARTTLS first for PLAIN auth to work
-		if ok, _ := c.Extension("STARTTLS"); ok {
-			config := &tls.Config{
-				InsecureSkipVerify: true, // Skip verification for localhost
-				ServerName:         smtpConfig.Host,
-			}
-			if err := c.StartTLS(config); err != nil {
-				app.Log("mail", "✗ STARTTLS failed: %v", err)
-				return "", fmt.Errorf("STARTTLS failed: %v", err)
-			}
-			app.Log("mail", "✓ STARTTLS successful")
-		}
-		
-		if err := c.Auth(auth); err != nil {
-			app.Log("mail", "✗ SMTP AUTH failed: %v", err)
-			return "", fmt.Errorf("SMTP AUTH failed: %v", err)
-		}
-		app.Log("mail", "✓ SMTP AUTH successful")
-	}
-
-	// Set sender
-	if err := c.Mail(fromEmail); err != nil {
-		app.Log("mail", "✗ MAIL FROM failed: %v", err)
-		return "", fmt.Errorf("MAIL FROM failed: %v", err)
-	}
-
-	// Set recipient
-	if err := c.Rcpt(to); err != nil {
-		app.Log("mail", "✗ RCPT TO failed: %v", err)
-		return "", fmt.Errorf("RCPT TO failed: %v", err)
-	}
-
-	// Send data
-	wc, err := c.Data()
-	if err != nil {
-		app.Log("mail", "✗ DATA command failed: %v", err)
-		return "", fmt.Errorf("DATA command failed: %v", err)
-	}
-	_, err = wc.Write(message)
-	if err != nil {
-		app.Log("mail", "✗ Failed to write message: %v", err)
-		return "", fmt.Errorf("failed to write message: %v", err)
-	}
-	err = wc.Close()
-	if err != nil {
-		app.Log("mail", "✗ Failed to close data writer: %v", err)
-		return "", fmt.Errorf("failed to close data writer: %v", err)
-	}
-
-	// Quit
-	c.Quit()
-
-	app.Log("mail", "✓ Email sent successfully")
-	app.Log("mail", "SMTP server accepted message to %s", to)
+	app.Log("mail", "Subject: %s", subject)
 	app.Log("mail", "Message-ID: %s", messageID)
+
+	// Call relay function directly (no SMTP needed!)
+	if err := RelayToExternal(from, to, message); err != nil {
+		app.Log("mail", "✗ Failed to relay email: %v", err)
+		return "", fmt.Errorf("failed to relay email: %v", err)
+	}
+
+	app.Log("mail", "✓ Email relayed successfully")
 	return messageID, nil
 }
 

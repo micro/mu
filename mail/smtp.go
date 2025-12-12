@@ -232,7 +232,8 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 }
 
 // relayToExternal delivers email to an external SMTP server
-func relayToExternal(from, to string, data []byte) error {
+// RelayToExternal sends email directly to an external SMTP server (exported for internal use)
+func RelayToExternal(from, to string, data []byte) error {
 	// Extract domain from recipient address
 	parts := strings.Split(to, "@")
 	if len(parts) != 2 {
@@ -436,7 +437,7 @@ func (s *Session) Data(r io.Reader) error {
 		if isExternal && s.isLocalhost {
 			// Relay to external SMTP server
 			app.Log("mail", "Relaying to external address: %s", toAddr.Address)
-			if err := relayToExternal(s.from, toAddr.Address, buf.Bytes()); err != nil {
+			if err := RelayToExternal(s.from, toAddr.Address, buf.Bytes()); err != nil {
 				app.Log("mail", "Error relaying to %s: %v", toAddr.Address, err)
 				continue
 			}
