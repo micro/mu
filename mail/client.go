@@ -119,13 +119,33 @@ func LoadDKIMConfig(domain, selector string) error {
 }
 
 // SendExternalEmail sends an email to an external address via SMTP with optional DKIM signing
-func SendExternalEmail(from, fromEmail, to, subject, body string) error {
+// Returns the generated Message-ID for threading purposes
+func SendExternalEmail(from, fromEmail, to, subject, body, replyToMsgID string) (string, error) {
+	// Generate unique Message-ID
+	messageID := fmt.Sprintf("<%d@%s>", time.Now().UnixNano(), GetConfiguredDomain())
+
 	// Construct the email message
 	var msgBuf bytes.Buffer
 	msgBuf.WriteString(fmt.Sprintf("From: %s <%s>\r\n", from, fromEmail))
 	msgBuf.WriteString(fmt.Sprintf("To: %s\r\n", to))
 	msgBuf.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
 	msgBuf.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
+	msgBuf.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
+	
+	// Add In-Reply-To and References if this is a reply
+	if replyToMsgID != "" {
+		if origMsg := FindMessageByMessageID(replyToMsgID); origMsg != nil {
+			if origMsg.MessageID != "" {
+				msgBuf.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", origMsg.MessageID))
+				msgBuf.WriteString(fmt.Sprintf("References: %s\r\n", origMsg.MessageID))
+			}
+		} else if origMsg := GetMessage(replyToMsgID); origMsg != nil && origMsg.MessageID != "" {
+			// Try looking up by our internal ID
+			msgBuf.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", origMsg.MessageID))
+			msgBuf.WriteString(fmt.Sprintf("References: %s\r\n", origMsg.MessageID))
+		}
+	}
+	
 	msgBuf.WriteString("MIME-Version: 1.0\r\n")
 	msgBuf.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
 	msgBuf.WriteString("\r\n")
@@ -162,11 +182,11 @@ func SendExternalEmail(from, fromEmail, to, subject, body string) error {
 	err := smtp.SendMail(addr, nil, fromEmail, []string{to}, message)
 	if err != nil {
 		app.Log("mail", "Error sending email: %v", err)
-		return fmt.Errorf("failed to send email: %v", err)
+		return "", fmt.Errorf("failed to send email: %v", err)
 	}
 
 	app.Log("mail", "Email sent successfully to %s (server accepted)", to)
-	return nil
+	return messageID, nil
 }
 
 // IsExternalEmail checks if an email address is external (contains @domain)

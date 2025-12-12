@@ -45,6 +45,7 @@ type Message struct {
 	Body      string    `json:"body"`
 	Read      bool      `json:"read"`
 	ReplyTo   string    `json:"reply_to"` // ID of message this is replying to
+	MessageID string    `json:"message_id"` // Email Message-ID header for threading
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -155,13 +156,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if IsExternalEmail(to) {
 			// Send external email via SMTP
 			fromEmail := GetEmailForUser(acc.Name, GetConfiguredDomain())
-			if err := SendExternalEmail(acc.Name, fromEmail, to, subject, body); err != nil {
+			messageID, err := SendExternalEmail(acc.Name, fromEmail, to, subject, body, replyTo)
+			if err != nil {
 				http.Error(w, "Failed to send email: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 
 			// Store a copy in sent messages for the sender
-			if err := SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo); err != nil {
+			if err := SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo, messageID); err != nil {
 				app.Log("mail", "Warning: Failed to store sent message: %v", err)
 			}
 		} else {
@@ -173,7 +175,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Send the internal message
-			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, replyTo); err != nil {
+			app.Log("mail", "Sending internal message from %s to %s with replyTo=%s", acc.Name, toAcc.Name, replyTo)
+			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, replyTo, ""); err != nil {
 				http.Error(w, "Failed to send message", http.StatusInternalServerError)
 				return
 			}
@@ -332,10 +335,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Group messages into threads for inbox view
 	var items []string
 	if view == "inbox" {
+		app.Log("mail", "Rendering inbox with %d messages for user %s", len(mailbox), acc.Name)
+		
 		// Create a map of message ID to message for quick lookup
 		msgMap := make(map[string]*Message)
 		for _, msg := range mailbox {
 			msgMap[msg.ID] = msg
+			if msg.ReplyTo != "" {
+				app.Log("mail", "Message %s (from %s, subject: %s) has replyTo=%s", msg.ID, msg.From, msg.Subject, msg.ReplyTo)
+			}
 		}
 
 		// Track which messages have been rendered (to avoid duplicates)
@@ -477,7 +485,7 @@ func renderSentMessage(msg *Message) string {
 }
 
 // SendMessage creates and saves a new message
-func SendMessage(from, fromID, to, toID, subject, body, replyTo string) error {
+func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID string) error {
 	msg := &Message{
 		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
 		From:      from,
@@ -488,6 +496,7 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo string) error {
 		Body:      body,
 		Read:      false,
 		ReplyTo:   replyTo,
+		MessageID: messageID,
 		CreatedAt: time.Now(),
 	}
 
@@ -525,6 +534,36 @@ func MarkAsRead(msgID, userID string) error {
 		}
 	}
 	return fmt.Errorf("message not found")
+}
+
+// FindMessageByMessageID finds a message by its email Message-ID header
+func FindMessageByMessageID(messageID string) *Message {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	if messageID == "" {
+		return nil
+	}
+
+	for _, msg := range messages {
+		if msg.MessageID == messageID {
+			return msg
+		}
+	}
+	return nil
+}
+
+// GetMessage finds a message by its internal ID
+func GetMessage(msgID string) *Message {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	for _, msg := range messages {
+		if msg.ID == msgID {
+			return msg
+		}
+	}
+	return nil
 }
 
 // DeleteMessage removes a message

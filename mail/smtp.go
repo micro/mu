@@ -162,6 +162,9 @@ func (s *Session) Data(r io.Reader) error {
 	from := msg.Header.Get("From")
 	subject := msg.Header.Get("Subject")
 	contentType := msg.Header.Get("Content-Type")
+	messageID := msg.Header.Get("Message-ID")
+	inReplyTo := msg.Header.Get("In-Reply-To")
+	references := msg.Header.Get("References")
 
 	// Parse sender email
 	fromAddr, err := mail.ParseAddress(from)
@@ -224,6 +227,26 @@ func (s *Session) Data(r io.Reader) error {
 
 		app.Log("mail", "Saving message from %s to %s: %s", senderName, toAcc.Name, subject)
 
+		// Try to find original message for threading
+		var replyToID string
+		if inReplyTo != "" {
+			if origMsg := FindMessageByMessageID(inReplyTo); origMsg != nil {
+				replyToID = origMsg.ID
+				app.Log("mail", "Threading reply using In-Reply-To: %s", inReplyTo)
+			}
+		}
+		// If In-Reply-To didn't match, try References (last one is usually the direct parent)
+		if replyToID == "" && references != "" {
+			refs := strings.Fields(references)
+			for i := len(refs) - 1; i >= 0; i-- {
+				if origMsg := FindMessageByMessageID(refs[i]); origMsg != nil {
+					replyToID = origMsg.ID
+					app.Log("mail", "Threading reply using References: %s", refs[i])
+					break
+				}
+			}
+		}
+
 		if err := SendMessage(
 			senderName,
 			fromAddr.Address, // Use email as sender ID
@@ -231,7 +254,8 @@ func (s *Session) Data(r io.Reader) error {
 			toAcc.ID,
 			subject,
 			body,
-			"",
+			replyToID,
+			messageID,
 		); err != nil {
 			app.Log("mail", "Error saving message: %v", err)
 			continue
