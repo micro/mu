@@ -128,7 +128,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if r.FormValue("action") == "delete_thread" {
 			msgID := r.FormValue("msg_id")
 			if err := DeleteThread(msgID, acc.ID); err != nil {
-				http.Error(w, "Failed to delete conversation", http.StatusInternalServerError)
+				http.Error(w, "Failed to delete thread", http.StatusInternalServerError)
 				return
 			}
 			http.Redirect(w, r, "/mail", http.StatusSeeOther)
@@ -249,7 +249,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`, msg.FromID, msg.FromID, msg.ID)
 		}
 
-	// Build thread view - find all messages in this conversation
+	// Build thread view - find all messages in this thread
 	var thread []*Message
 	mutex.RLock()
 	// Find root message by traversing ReplyTo chain
@@ -340,7 +340,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), msgBody))
 	}
 
-	// Determine the other party in the conversation
+	// Determine the other party in the thread
 	otherParty := msg.FromID
 	if msg.FromID == acc.ID {
 		otherParty = msg.ToID
@@ -352,7 +352,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	messageView := fmt.Sprintf(`
-	<div style="color: #666; font-size: small; margin-bottom: 20px;">Conversation with: %s</div>
+	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
 	%s
 	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -364,7 +364,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div style="color: #666; font-size: 14px;">
 				<a href="#" onclick="this.closest('form').submit(); return false;" style="color: #666;">Send</a>
 				<span style="margin: 0 8px;">·</span>
-				<a href="#" onclick="if(confirm('Delete this entire conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545;">Delete Conversation</a>
+				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545;">Delete Thread</a>
 				%s
 			</div>
 		</form>
@@ -452,7 +452,7 @@ if r.URL.Query().Get("compose") == "true" {
 	if view == "inbox" {
 		app.Log("mail", "Rendering inbox with %d messages for user %s", len(mailbox), acc.Name)
 
-		// Group messages by conversation (thread)
+		// Group messages into threads
 		// Track which messages have been rendered
 		rendered := make(map[string]bool)
 		
@@ -729,7 +729,7 @@ func DeleteMessage(msgID, userID string) error {
 	return fmt.Errorf("message not found")
 }
 
-// DeleteThread removes all messages in a conversation thread
+// DeleteThread removes all messages in a thread
 func DeleteThread(msgID, userID string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
