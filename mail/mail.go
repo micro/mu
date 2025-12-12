@@ -205,11 +205,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Mark as read if recipient is viewing
-		if msg.ToID == acc.ID && !msg.Read {
-			MarkAsRead(msgID, acc.ID)
-		}
-
 		// Decode body if it looks base64 encoded
 		displayBody := msg.Body
 		if looksLikeBase64(displayBody) {
@@ -290,6 +285,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(thread, func(i, j int) bool {
 		return thread[i].CreatedAt.Before(thread[j].CreatedAt)
 	})
+
+	// Mark all unread messages in this thread as read (if user is recipient)
+	for _, m := range thread {
+		if m.ToID == acc.ID && !m.Read {
+			MarkAsRead(m.ID, acc.ID)
+		}
+	}
 
 	// Render thread
 	var threadHTML strings.Builder
