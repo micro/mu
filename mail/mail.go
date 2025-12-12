@@ -308,14 +308,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		
 		isSent := m.FromID == acc.ID
 		authorDisplay := m.FromID
-		if !IsExternalEmail(m.FromID) {
-			authorDisplay = m.FromID
-		} else if m.From != m.FromID {
-			authorDisplay = m.From
-		}
-		
 		if isSent {
 			authorDisplay = "You"
+		} else if !IsExternalEmail(m.FromID) {
+			// Internal user - add profile link
+			authorDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, m.FromID, m.FromID)
+		} else if m.From != m.FromID {
+			// External email with display name
+			authorDisplay = m.From
 		}
 		
 		threadHTML.WriteString(fmt.Sprintf(`
@@ -330,21 +330,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if msg.FromID == acc.ID {
 		otherParty = msg.ToID
 	}
+	// Format other party with profile link if internal user
+	otherPartyDisplay := otherParty
+	if !IsExternalEmail(otherParty) {
+		otherPartyDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, otherParty, otherParty)
+	}
 	
 	messageView := fmt.Sprintf(`
-	<div style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Conversation with: %s</div>
 	<hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
 	%s
 	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-		<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 15px;">
+		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
 			<textarea name="body" placeholder="Write your reply..." required style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: inherit; min-height: 100px; resize: vertical;"></textarea>
-			<div style="display: flex; gap: 10px; align-items: center;">
-				<button type="submit" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Send</button>
-				<a href="#" onclick="if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545; text-decoration: none;">Delete</a>
+			<div style="color: #666; font-size: 14px;">
+				<a href="#" onclick="this.closest('form').submit(); return false;" style="color: #666;">Send</a>
+				<span style="margin: 0 8px;">·</span>
+				<a href="#" onclick="if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545;">Delete</a>
 				%s
 			</div>
 		</form>
@@ -352,8 +357,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 		</div>
 	</div>
-	</div>
-`, otherParty, threadHTML.String(), otherParty, replySubject, rootID, msg.ID, blockButton)
+`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, rootID, msg.ID, blockButton)
 	w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 	return
 }
@@ -372,20 +376,19 @@ if r.URL.Query().Get("compose") == "true" {
 		}
 
 		composeForm := fmt.Sprintf(`
-			<div style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
 			<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 10px;">
 				<input type="hidden" name="reply_to" value="%s">
 				<input type="text" name="to" placeholder="To: username or email" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<input type="text" name="subject" placeholder="Subject" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<textarea name="body" rows="10" placeholder="Write your message..." required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 200px;"></textarea>
-				<div style="display: flex; gap: 10px;">
-					<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
-					<a href="%s" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
+				<div style="color: #666; font-size: 14px;">
+					<a href="#" onclick="this.closest('form').submit(); return false;" style="color: #666;">Send</a>
+					<span style="margin: 0 8px;">·</span>
+					<a href="%s" style="color: #666;">Cancel</a>
 				</div>
 			</form>
 			<div style="margin-top: 20px;">
 				<a href="%s" style="color: #666; text-decoration: none;">← Back</a>
-			</div>
 			</div>
 		`, replyTo, to, subject, backLink, backLink)
 
@@ -462,18 +465,22 @@ if r.URL.Query().Get("compose") == "true" {
 			// Mark this thread as rendered
 			rendered[rootMsg.ID] = true
 			
-			// Find all messages in this thread and mark them as rendered
+			// Find all messages in this thread and check if any are unread
+			hasUnread := !rootMsg.Read && rootMsg.ToID == acc.ID
 			mutex.RLock()
 			for _, candidate := range messages {
 				if candidate.ReplyTo == rootMsg.ID && (candidate.FromID == acc.ID || candidate.ToID == acc.ID) {
 					rendered[candidate.ID] = true
+					if !candidate.Read && candidate.ToID == acc.ID {
+						hasUnread = true
+					}
 				}
 			}
 			mutex.RUnlock()
 			
-			// Render the root message only
+			// Render the root message with unread indicator if ANY message in thread is unread
 			if rootMsg.ToID == acc.ID {
-				items = append(items, renderInboxMessage(rootMsg, 0, acc.ID))
+				items = append(items, renderInboxMessageWithUnread(rootMsg, 0, acc.ID, hasUnread))
 			} else if rootMsg.FromID == acc.ID {
 				items = append(items, renderSentMessage(rootMsg))
 			}
@@ -530,10 +537,10 @@ if r.URL.Query().Get("compose") == "true" {
 	w.Write([]byte(app.RenderHTML(title, "Your messages", html)))
 }
 
-// renderInboxMessage renders a single inbox message as a post-like item
-func renderInboxMessage(msg *Message, indent int, viewerID string) string {
+// renderInboxMessageWithUnread renders a single inbox message with explicit unread flag
+func renderInboxMessageWithUnread(msg *Message, indent int, viewerID string, hasUnread bool) string {
 	unreadIndicator := ""
-	if !msg.Read {
+	if hasUnread {
 		unreadIndicator = `<span style="color: #007bff; font-weight: bold;">● </span>`
 	}
 

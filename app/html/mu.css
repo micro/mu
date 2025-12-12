@@ -220,8 +220,8 @@ td {
   flex: 1;
   margin-left: 250px;
   margin-right: auto;
-  max-width: 1280px;
-  padding: 20px 60px;
+  max-width: 800px;
+  padding: 20px;
   text-align: left;
 }
 
@@ -535,9 +535,9 @@ body:has(#messages) #content {
 }
 
 .llm, .ai {
-  font-size: small;
+  font-size: 0.9em;
   font-weight: bold;
-  color: darkgrey;
+  color: black;
   display: block;
 }
 

@@ -1411,7 +1411,6 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 
 	articleHtml := fmt.Sprintf(`
-		<div style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
 			%s
 			<h1 style="margin-top: 0; margin-bottom: 15px;">%s</h1>
 			<div style="color: #666; margin-bottom: 20px; font-size: 0.9em;">
