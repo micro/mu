@@ -216,13 +216,22 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 		}
 	}
 	
-	// Domain matches - verify user exists
-	_, err = auth.GetAccount(username)
+	// Domain matches - verify user exists and has mail access
+	acc, err := auth.GetAccount(username)
 	if err != nil {
 		app.Log("mail", "Rejected mail for non-existent user: %s", username)
 		return &smtpd.SMTPError{
 			Code:    550,
 			Message: "User not found",
+		}
+	}
+	
+	// Check if user has mail access (admin or member)
+	if !acc.Admin && !acc.Member {
+		app.Log("mail", "Rejected mail for user without mail access: %s", username)
+		return &smtpd.SMTPError{
+			Code:    550,
+			Message: "Mail access restricted to members only",
 		}
 	}
 

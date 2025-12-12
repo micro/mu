@@ -504,7 +504,7 @@ func Session(w http.ResponseWriter, r *http.Request) {
 	sess, err := auth.GetSession(r)
 	if err != nil {
 		// Return guest session instead of error
-		guestSess := map[string]string{
+		guestSess := map[string]interface{}{
 			"type": "guest",
 		}
 		b, _ := json.Marshal(guestSess)
@@ -513,7 +513,21 @@ func Session(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, _ := json.Marshal(sess)
+	// Get account to include admin/member status
+	acc, err := auth.GetAccount(sess.Account)
+	response := map[string]interface{}{
+		"id":      sess.ID,
+		"type":    sess.Type,
+		"account": sess.Account,
+		"created": sess.Created,
+	}
+	
+	if err == nil {
+		response["admin"] = acc.Admin
+		response["member"] = acc.Member
+	}
+
+	b, _ := json.Marshal(response)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
 }

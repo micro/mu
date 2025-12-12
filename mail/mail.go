@@ -255,6 +255,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Restrict mail to admins and members only
+	if !acc.Admin && !acc.Member {
+		http.Error(w, "Mail access restricted to members only", http.StatusForbidden)
+		return
+	}
+
 	// Handle POST - send message or delete
 	if r.Method == "POST" {
 		if err := r.ParseForm(); err != nil {
@@ -1035,6 +1041,13 @@ func UnreadCountHandler(w http.ResponseWriter, r *http.Request) {
 
 	acc, err := auth.GetAccount(sess.Account)
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"count": 0})
+		return
+	}
+
+	// Restrict mail to admins and members only
+	if !acc.Admin && !acc.Member {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]int{"count": 0})
 		return

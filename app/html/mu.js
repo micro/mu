@@ -422,7 +422,8 @@ function setSession() {
       isAuthenticated = true;
       if (accountHeader) accountHeader.style.display = 'inline-block';
       if (loginHeader) loginHeader.style.display = 'none';
-      if (mailHeader) {
+      // Only show mail for admins and members
+      if (mailHeader && (sess.admin || sess.member)) {
         mailHeader.style.display = 'inline-block';
         // Fetch unread count
         fetch('/mail/unread')
