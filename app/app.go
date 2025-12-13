@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -414,14 +415,17 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	// Build membership section
 	membershipSection := ""
-	if acc.Member {
-		membershipSection = `<h3>Membership</h3>
-			<p><strong>✓ You are a member!</strong> Thank you for supporting Mu.</p>
-			<p><a href="/membership">View membership details</a></p>`
-	} else {
-		membershipSection = `<h3>Membership</h3>
-			<p>Support Mu and get exclusive benefits.</p>
-			<p><a href="/membership">Become a Member →</a></p>`
+	membershipURL := os.Getenv("MEMBERSHIP_URL")
+	if membershipURL != "" {
+		if acc.Member {
+			membershipSection = `<h3>Membership</h3>
+				<p><strong>✓ You are a member!</strong> Thank you for supporting Mu.</p>
+				<p><a href="/membership">View membership details</a></p>`
+		} else {
+			membershipSection = `<h3>Membership</h3>
+				<p>Support Mu and get exclusive benefits.</p>
+				<p><a href="/membership">Become a Member →</a></p>`
+		}
 	}
 
 	// Build language options
@@ -534,18 +538,29 @@ func Session(w http.ResponseWriter, r *http.Request) {
 
 // Membership handler
 func Membership(w http.ResponseWriter, r *http.Request) {
-	// Check if coming from GoCardless
+	membershipURL := os.Getenv("MEMBERSHIP_URL")
+	
+	// Check if membership is enabled
+	if membershipURL == "" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	// Check if coming from payment provider by parsing domain from membership URL
 	referer := r.Header.Get("Referer")
-	fromGoCardless := false
-	if referer != "" && (strings.Contains(referer, "gocardless.com") || strings.Contains(referer, "pay.gocardless.com")) {
-		fromGoCardless = true
+	fromPaymentProvider := false
+	if referer != "" && membershipURL != "" {
+		u, err := url.Parse(membershipURL)
+		if err == nil && u.Host != "" {
+			fromPaymentProvider = strings.Contains(referer, u.Host)
+		}
 	}
 
 	// Check if user is logged in
 	sess, err := auth.GetSession(r)
 	if err != nil {
 		// Not logged in
-		if fromGoCardless {
+		if fromPaymentProvider {
 			// Set a cookie to track pending membership activation
 			http.SetCookie(w, &http.Cookie{
 				Name:     "pending_membership",
@@ -567,7 +582,28 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Show membership page to non-logged-in users
-		content := `<h2>Benefits</h2>
+		paymentSection := ""
+		if membershipURL != "" {
+			paymentSection = fmt.Sprintf(`<h3>Become a Member</h3>
+		<p><a href="%s">Payment Link →</a></p>`, membershipURL)
+		}
+
+		supportSection := ""
+		supportURL := os.Getenv("SUPPORT_URL")
+		if supportURL != "" {
+			supportSection = fmt.Sprintf(`<h3>Join the Community</h3>
+		<p>Connect with other members, share feedback, and participate in discussions:</p>
+		<p><a href="%s" target="_blank">Join Community →</a></p>`, supportURL)
+		}
+
+		donationSection := ""
+		donationURL := os.Getenv("DONATION_URL")
+		if donationURL != "" {
+			donationSection = `<h3>Support Through Donation</h3>
+		<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`
+		}
+
+		content := fmt.Sprintf(`<h2>Benefits</h2>
 		<ul>
 			<li>Vote on new features and platform direction</li>
 			<li>Exclusive access to latest updates</li>
@@ -575,16 +611,11 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 			<li>Be part of our Discord community</li>
 		</ul>
 
-		<h3>Become a Member</h3>
-		<p>Secure payment via GoCardless Direct Debit</p>
-		<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Payment Link</button></a></p>
+		%s
 
-		<h3>Join the Community</h3>
-		<p>Connect with other members, share feedback, and participate in discussions:</p>
-	<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank">Join Discord →</a></p>
+		%s
 
-	<h3>Support Through Donation</h3>
-	<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`
+		%s`, paymentSection, supportSection, donationSection)
 		html := RenderHTML("Membership", "Support Mu", content)
 		w.Write([]byte(html))
 		return
@@ -597,8 +628,8 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If coming from GoCardless, activate membership
-	if fromGoCardless && !acc.Member {
+	// If coming from payment provider, activate membership
+	if fromPaymentProvider && !acc.Member {
 		acc.Member = true
 		auth.UpdateAccount(acc)
 	}
@@ -607,6 +638,27 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	membershipStatus := ""
 	if acc.Member {
 		membershipStatus = `<p><strong>You are a member!</strong> Thank you for supporting Mu.</p>`
+	}
+
+	paymentSection := ""
+	if !acc.Member && membershipURL != "" {
+		paymentSection = fmt.Sprintf(`<h3>Become a Member</h3>
+				<p><a href="%s">Payment Link →</a></p>`, membershipURL)
+	}
+
+	supportSection := ""
+	supportURL := os.Getenv("SUPPORT_URL")
+	if supportURL != "" {
+		supportSection = fmt.Sprintf(`<h3>Join the Community</h3>
+		<p>Connect with other members, share feedback, and participate in discussions:</p>
+		<p><a href="%s" target="_blank">Join Community →</a></p>`, supportURL)
+	}
+
+	donationSection := ""
+	donationURL := os.Getenv("DONATION_URL")
+	if donationURL != "" {
+		donationSection = `<h3>Support Through Donation</h3>
+		<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`
 	}
 
 	content := fmt.Sprintf(`%s
@@ -620,21 +672,13 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		%s
 
-		<h3>Join the Community</h3>
-		<p>Connect with other members, share feedback, and participate in discussions:</p>
-	<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank"><button>Join Discord</button></a></p>
+		%s
 
-	<h3>Support Through Donation</h3>
-	<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`,
+		%s`,
 		membershipStatus,
-		func() string {
-			if !acc.Member {
-				return `<h3>Become a Member</h3>
-					<p>Secure payment via GoCardless Direct Debit</p>
-					<p><a href="https://pay.gocardless.com/BRT00046P56M824">Payment Link →</a></p>`
-			}
-			return ""
-		}(),
+		paymentSection,
+		supportSection,
+		donationSection,
 	)
 
 	html := RenderHTML("Membership", "Support Mu", content)
@@ -643,14 +687,20 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 // Donate handler
 func Donate(w http.ResponseWriter, r *http.Request) {
-	// Check if coming from GoCardless
-	referer := r.Header.Get("Referer")
-	fromGoCardless := false
-	if referer != "" && (strings.Contains(referer, "gocardless.com") || strings.Contains(referer, "pay.gocardless.com")) {
-		fromGoCardless = true
+	donationURL := os.Getenv("DONATION_URL")
+	
+	// Check if donations are enabled
+	if donationURL == "" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
 	}
 
-	if fromGoCardless {
+	// Check if coming from payment provider
+	referer := r.Header.Get("Referer")
+	u, err := url.Parse(donationURL)
+	fromPaymentProvider := err == nil && u.Host != "" && strings.Contains(referer, u.Host)
+
+	if fromPaymentProvider {
 		content := `<h1>Thank you for your donation!</h1>
 			<p>Your generous support helps keep Mu independent and sustainable.</p>
 			<p>Every contribution makes a difference in building a better internet.</p>
@@ -661,7 +711,14 @@ func Donate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Show donation page
-	content := `<h2>Support Mu</h2>
+	membershipLink := ""
+	membershipURL := os.Getenv("MEMBERSHIP_URL")
+	if membershipURL != "" {
+		membershipLink = `<hr>
+		<p>Looking for recurring support? <a href="/membership">Become a member</a> instead.</p>`
+	}
+	
+	content := fmt.Sprintf(`<h2>Support Mu</h2>
 		<p>Help us build a better internet, free from ads and algorithms.</p>
 		<p>Your one-time donation supports the ongoing development and operation of Mu.</p>
 		<h3>Why Donate?</h3>
@@ -671,10 +728,8 @@ func Donate(w http.ResponseWriter, r *http.Request) {
 			<li>Help maintain server infrastructure</li>
 			<li>Enable us to focus on users, not profits</li>
 		</ul>
-		<p><a href="https://pay.gocardless.com/BRT00046P78DQWG">Make a Donation →</a></p>
-		<p>Secure payment via GoCardless</p>
-		<hr>
-		<p>Looking for recurring support? <a href="/membership">Become a member</a> instead.</p>`
+		<p><a href="%s">Make a Donation →</a></p>
+		%s`, donationURL, membershipLink)
 
 	html := RenderHTML("Donate", "Support Mu", content)
 	w.Write([]byte(html))
