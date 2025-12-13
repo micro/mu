@@ -514,9 +514,12 @@ func (s *Session) Data(r io.Reader) error {
 }
 
 // parseMultipart extracts text content from a multipart MIME message
+// If there's only one attachment and no text body, returns the attachment content
 func parseMultipart(body io.Reader, boundary string) string {
 	mr := multipart.NewReader(body, boundary)
 	var textPlain, textHTML string
+	var attachmentBody []byte
+	var attachmentContentType string
 
 	for {
 		part, err := mr.NextPart()
@@ -529,6 +532,7 @@ func parseMultipart(body io.Reader, boundary string) string {
 
 		contentType := part.Header.Get("Content-Type")
 		transferEncoding := part.Header.Get("Content-Transfer-Encoding")
+		contentDisposition := part.Header.Get("Content-Disposition")
 		partBody, err := io.ReadAll(part)
 		if err != nil {
 			continue
@@ -541,11 +545,18 @@ func parseMultipart(body io.Reader, boundary string) string {
 			}
 		}
 
+		// Check if this is an attachment
+		isAttachment := strings.Contains(contentDisposition, "attachment")
+		
 		// Prefer text/plain, fallback to text/html
-		if strings.Contains(contentType, "text/plain") {
+		if strings.Contains(contentType, "text/plain") && !isAttachment {
 			textPlain = string(partBody)
-		} else if strings.Contains(contentType, "text/html") {
+		} else if strings.Contains(contentType, "text/html") && !isAttachment {
 			textHTML = string(partBody)
+		} else if isAttachment || strings.Contains(contentType, "application/") {
+			// Store attachment info (we'll only use it if there's no text body)
+			attachmentBody = partBody
+			attachmentContentType = contentType
 		}
 	}
 
@@ -555,6 +566,15 @@ func parseMultipart(body io.Reader, boundary string) string {
 	}
 	if textHTML != "" {
 		return strings.TrimSpace(textHTML)
+	}
+	
+	// If no text body but there's an attachment (like DMARC reports), return the attachment
+	if len(attachmentBody) > 0 {
+		// For gzip attachments, store as base64 for safe storage
+		if strings.Contains(attachmentContentType, "gzip") || strings.Contains(attachmentContentType, "zip") {
+			return base64.StdEncoding.EncodeToString(attachmentBody)
+		}
+		return string(attachmentBody)
 	}
 
 	return ""
