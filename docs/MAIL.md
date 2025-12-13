@@ -13,35 +13,25 @@ Users can send messages to each other by username. No SMTP needed.
 
 ### External Email Support
 ```bash
-# Enable SMTP receiving
-export SMTP_ENABLED="true"
-export SMTP_SERVER_PORT="2525"
-
-# Configure sending (optional - for external addresses)
-export SMTP_HOST="localhost"
-export SMTP_PORT="25"
+# Set SMTP port (optional, defaults to 2525)
+export MAIL_PORT="2525"
 
 ./mu --serve --address :8080
 ```
 
+The SMTP server always runs to receive mail. Configure DNS MX records to route mail to your server.
+
 ### Production Setup
 ```bash
-# Enable SMTP on port 25
-export SMTP_ENABLED="true"
-export SMTP_SERVER_PORT="25"
+# Use standard SMTP port
+export MAIL_PORT="25"
 
 # Set your mail domain
 export MAIL_DOMAIN="yourdomain.com"
 
-# Send via external relay (e.g., SendGrid)
-export SMTP_HOST="smtp.sendgrid.net"
-export SMTP_PORT="587"
-export SMTP_USERNAME="apikey"
-export SMTP_PASSWORD="your-key"
-
-# DKIM signing (optional)
+# DKIM signing (optional but recommended)
 ./scripts/generate-dkim-keys.sh yourdomain.com
-export DKIM_DOMAIN="yourdomain.com"
+export MAIL_SELECTOR="default"
 
 ./mu --serve --address :8080
 ```
@@ -115,42 +105,42 @@ Internet → SMTP Server (port 2525/25)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SMTP_ENABLED` | `false` | Enable SMTP server for receiving mail |
-| `SMTP_SERVER_PORT` | `2525` | Port for receiving mail (use 25 for production) |
+| `MAIL_PORT` | `2525` | Port for receiving mail (use 25 for production) |
 | `MAIL_DOMAIN` | `localhost` | Domain for email addresses (e.g., user@domain.com) |
-| `SMTP_HOST` | `localhost` | SMTP server for sending outbound mail |
-| `SMTP_PORT` | `25` | Port for sending outbound mail |
-| `SMTP_USERNAME` | - | Optional: SMTP auth username for sending |
-| `SMTP_PASSWORD` | - | Optional: SMTP auth password for sending |
-| `DKIM_DOMAIN` | `localhost` | Domain for DKIM signing |
-| `DKIM_SELECTOR` | `default` | DKIM selector (DNS record name) |
+| `MAIL_SELECTOR` | `default` | DKIM selector (DNS record name) |
 
-**All configuration is automatic** - just set environment variables and start mu.
+**SMTP server always runs** - no enable flag needed. Just configure DNS to route mail.
+
+**Access Control:**
+- Mail functionality is restricted to admins and members only
+- Set user roles via the admin interface
+
+**How Sending Works:**
+- Internal messages (username only) are stored directly in mail.json
+- External emails (@domain) are relayed to their mail servers using MX lookups
+- DKIM signing is applied automatically if configured
+- No external SMTP relay needed - mu sends directly to recipient mail servers
 
 ---
 
 ## SMTP Server Setup
 
-The SMTP server receives mail from the internet.
+The SMTP server always runs to receive mail from the internet.
 
-### Enable SMTP Server
+### Configure Port
 
 ```bash
-export SMTP_ENABLED="true"
-export SMTP_SERVER_PORT="2525"  # Development
-# export SMTP_SERVER_PORT="25"  # Production
+export MAIL_PORT="2525"  # Development
+# export MAIL_PORT="25"   # Production
 ```
+
+Default is `:2525` for local testing without requiring root privileges.
 
 ### Status Messages
 
-**Enabled:**
+**On startup:**
 ```
 smtp: Starting SMTP server (receive only) on :2525
-```
-
-**Disabled (default):**
-```
-smtp: SMTP server disabled (set SMTP_ENABLED=true to enable)
 ```
 
 ### How It Works
@@ -175,49 +165,32 @@ The server only accepts mail for valid local users. It cannot be used to relay s
 
 ---
 
-## SMTP Client Setup
+## Sending External Email
 
-The SMTP client sends mail to external addresses.
+Mu sends external emails directly to recipient mail servers using MX lookups. No external SMTP relay required.
 
-### Configure Sending
+### How It Works
+
+1. User sends to external address (e.g., bob@gmail.com)
+2. Mu looks up MX records for gmail.com
+3. Connects directly to Gmail's mail servers
+4. Delivers email with DKIM signature (if configured)
+5. Stores copy in sender's sent folder
+
+### DKIM Signing
+
+DKIM signatures are automatically added to outbound emails if keys are configured. This improves deliverability and prevents spam filtering.
 
 ```bash
-# Use localhost (default)
-export SMTP_HOST="localhost"
-export SMTP_PORT="25"
+# Generate keys
+./scripts/generate-dkim-keys.sh yourdomain.com
 
-# Or use external relay
-export SMTP_HOST="smtp.sendgrid.net"
-export SMTP_PORT="587"
-export SMTP_USERNAME="apikey"
-export SMTP_PASSWORD="your-key"
+# Configure
+export MAIL_DOMAIN="yourdomain.com"
+export MAIL_SELECTOR="default"
 ```
 
-### Popular SMTP Providers
-
-**Gmail:**
-```bash
-export SMTP_HOST="smtp.gmail.com"
-export SMTP_PORT="587"
-export SMTP_USERNAME="your-email@gmail.com"
-export SMTP_PASSWORD="your-app-password"
-```
-
-**SendGrid:**
-```bash
-export SMTP_HOST="smtp.sendgrid.net"
-export SMTP_PORT="587"
-export SMTP_USERNAME="apikey"
-export SMTP_PASSWORD="your-sendgrid-api-key"
-```
-
-**Mailgun:**
-```bash
-export SMTP_HOST="smtp.mailgun.org"
-export SMTP_PORT="587"
-export SMTP_USERNAME="postmaster@yourdomain.com"
-export SMTP_PASSWORD="your-mailgun-password"
-```
+**No SMTP credentials needed** - Mu handles everything directly.
 
 ---
 
@@ -266,11 +239,11 @@ openssl rsa -in ~/.mu/keys/dkim.key -pubout -outform PEM | \
 ### Configure DKIM
 
 ```bash
-export DKIM_DOMAIN="yourdomain.com"
-export DKIM_SELECTOR="default"
+export MAIL_DOMAIN="yourdomain.com"
+export MAIL_SELECTOR="default"
 ```
 
-**Note:** DKIM automatically enables if keys exist. No other config needed.
+**Note:** DKIM automatically enables if keys exist at `~/.mu/keys/dkim.key`. No other config needed.
 
 ### Status Messages
 
@@ -387,9 +360,13 @@ EOF
 
 **Issue:** No "Starting SMTP server" message
 
-**Fix:**
+**Check:**
+1. Port already in use? Try a different port
+2. Permission issue? Port 25 requires root/capabilities
+
+**Test port availability:**
 ```bash
-export SMTP_ENABLED="true"
+lsof -i :2525
 ```
 
 ### Mail to External Address Fails
@@ -397,13 +374,18 @@ export SMTP_ENABLED="true"
 **Issue:** "Failed to send email"
 
 **Check:**
-1. SMTP_HOST and SMTP_PORT configured?
-2. Credentials correct (if using relay)?
-3. Firewall blocking outbound port 25/587?
+1. DNS resolving MX records correctly?
+2. Firewall blocking outbound port 25?
+3. Server IP not blacklisted?
+
+**Test MX lookup:**
+```bash
+dig +short MX gmail.com
+```
 
 **Test connection:**
 ```bash
-telnet $SMTP_HOST $SMTP_PORT
+telnet mx.example.com 25
 ```
 
 ### DKIM Not Signing

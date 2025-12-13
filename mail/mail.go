@@ -89,15 +89,12 @@ func Load() {
 	// Load blocklist
 	loadBlocklist()
 
-	// Configure SMTP client from environment variables
-	ConfigureSMTP()
-
 	// Try to load DKIM config if keys exist (optional)
-	dkimDomain := os.Getenv("DKIM_DOMAIN")
+	dkimDomain := os.Getenv("MAIL_DOMAIN")
 	if dkimDomain == "" {
 		dkimDomain = "localhost"
 	}
-	dkimSelector := os.Getenv("DKIM_SELECTOR")
+	dkimSelector := os.Getenv("MAIL_SELECTOR")
 	if dkimSelector == "" {
 		dkimSelector = "default"
 	}

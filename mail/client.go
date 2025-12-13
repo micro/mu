@@ -16,42 +16,11 @@ import (
 	"github.com/emersion/go-msgauth/dkim"
 )
 
-// DKIMConfig holds the DKIM signing configuration
-type SMTPConfig struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
-}
-
 // DKIMConfig holds DKIM signing configuration
 type DKIMConfig struct {
 	Domain     string
 	Selector   string
 	PrivateKey *rsa.PrivateKey
-}
-
-// Global SMTP config - can be configured via environment variables
-var smtpConfig = &SMTPConfig{
-	Host: "localhost",
-	Port: "25",
-}
-
-// ConfigureSMTP updates SMTP client configuration from environment variables
-func ConfigureSMTP() {
-	if host := os.Getenv("SMTP_HOST"); host != "" {
-		smtpConfig.Host = host
-	}
-	if port := os.Getenv("SMTP_PORT"); port != "" {
-		smtpConfig.Port = port
-	}
-	if user := os.Getenv("SMTP_USERNAME"); user != "" {
-		smtpConfig.Username = user
-	}
-	if pass := os.Getenv("SMTP_PASSWORD"); pass != "" {
-		smtpConfig.Password = pass
-	}
-	app.Log("mail", "SMTP client configured: %s:%s", smtpConfig.Host, smtpConfig.Port)
 }
 
 // Global DKIM config - optional, auto-loaded if keys exist
@@ -203,13 +172,8 @@ func GetEmailForUser(username, domain string) string {
 }
 
 // GetConfiguredDomain returns the configured mail domain
-// Checks MAIL_DOMAIN first, falls back to DKIM_DOMAIN, then "localhost"
 func GetConfiguredDomain() string {
 	domain := os.Getenv("MAIL_DOMAIN")
-	if domain == "" {
-		// Fallback to DKIM_DOMAIN for backward compatibility
-		domain = os.Getenv("DKIM_DOMAIN")
-	}
 	if domain == "" {
 		domain = "localhost"
 	}

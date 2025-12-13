@@ -69,22 +69,7 @@ func (bkd *Backend) Login(conn *smtpd.Conn, username, password string) (smtpd.Se
 		}
 	}
 	
-	// Check for internal web app authentication using shared secret
-	internalUser := os.Getenv("SMTP_USER")
-	internalPassword := os.Getenv("SMTP_PASSWORD")
-	
-	if internalUser != "" && internalPassword != "" {
-		if username == internalUser && password == internalPassword {
-			app.Log("mail", "✓ Backend AUTH successful for internal web app")
-			// Create session with isLocalhost flag set
-			return &Session{
-				remoteIP:    ip,
-				isLocalhost: true,
-			}, nil
-		}
-	}
-	
-	app.Log("mail", "Backend AUTH failed for user: %s", username)
+	app.Log("mail", "Backend AUTH failed: no valid credentials configured")
 	return nil, &smtpd.SMTPError{
 		Code:    535,
 		Message: "Authentication failed",
@@ -608,18 +593,10 @@ func StartSMTPServer(addr string) error {
 	return nil
 }
 
-// StartSMTPServerIfEnabled starts the SMTP server if enabled via environment variable
-// Returns true if server was started, false if disabled
+// StartSMTPServerIfEnabled starts the SMTP server
 func StartSMTPServerIfEnabled() bool {
-	// Check if SMTP is enabled
-	smtpEnabled := os.Getenv("SMTP_ENABLED")
-	if smtpEnabled == "" || smtpEnabled == "false" || smtpEnabled == "0" {
-		app.Log("mail", "SMTP server disabled (set SMTP_ENABLED=true to enable)")
-		return false
-	}
-
 	// Get server port from environment
-	smtpServerAddr := os.Getenv("SMTP_SERVER_PORT")
+	smtpServerAddr := os.Getenv("MAIL_PORT")
 	if smtpServerAddr == "" {
 		smtpServerAddr = ":2525" // Default to 2525 for local testing
 	}
