@@ -17,7 +17,7 @@
   /* Colors */
   --card-border: #e0e0e0;
   --card-background: #ffffff;
-  --hover-background: #f5f5f5;
+  --hover-background: #fafafa;
   --divider: #eee;
   --text-primary: #333;
   --text-secondary: #666;
@@ -786,6 +786,26 @@ body:has(#messages) #content {
   background: var(--hover-background);
 }
 
+/* Posts inside home cards - no border/background */
+.card .post-item {
+  border: none;
+  border-bottom: 1px solid #f5f5f5;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--spacing-sm) 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.card .post-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.card .post-item:hover {
+  background: transparent;
+  opacity: 0.8;
+}
+
 .message-item {
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
@@ -942,17 +962,20 @@ body:has(#messages) #content {
 }
 
 .headline {
-  border: var(--border-width) solid var(--card-border);
-  border-radius: var(--border-radius);
-  padding: var(--item-padding);
-  background: var(--card-background);
-  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid #f5f5f5;
+  margin-bottom: var(--spacing-sm);
   transition: background var(--transition-fast);
   cursor: pointer;
 }
 
+.headline:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
 .headline:hover {
-  background: var(--hover-background);
+  opacity: 0.8;
 }
 
 .headline a {
@@ -993,12 +1016,33 @@ body:has(#messages) #content {
   background: var(--hover-background);
 }
 
+/* News inside home cards - no border/background */
+.card .news {
+  border: none;
+  border-bottom: 1px solid #f5f5f5;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--spacing-sm) 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.card .news:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.card .news:hover {
+  background: transparent;
+  opacity: 0.8;
+}
+
 .news a {
   text-decoration: none;
   color: var(--text-primary);
 }
 
 .news .cover {
+  max-width: 200px;
   width: 100%;
   border-radius: var(--border-radius);
   margin-bottom: var(--spacing-sm);
@@ -1044,12 +1088,33 @@ body:has(#messages) #content {
   background: var(--hover-background);
 }
 
+/* Thumbnails inside home cards - no border/background */
+.card .thumbnail {
+  border: none;
+  border-bottom: 1px solid #f5f5f5;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--spacing-sm) 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.card .thumbnail:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.card .thumbnail:hover {
+  background: transparent;
+  opacity: 0.8;
+}
+
 .thumbnail a {
   text-decoration: none;
   color: var(--text-primary);
 }
 
 .thumbnail img {
+  max-width: 320px;
   width: 100%;
   border-radius: var(--border-radius);
   margin-bottom: var(--spacing-sm);
