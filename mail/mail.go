@@ -1,9 +1,12 @@
 package mail
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -460,37 +463,59 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		
 		// Check if body is raw binary data (ZIP file starts with "PK")
 		if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
-			isAttachment = true
-			attachmentName = "attachment.zip"
-			if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
-				attachmentName = "dmarc-report.zip"
+			// Try to extract and display ZIP contents
+			if extracted := extractZipContents([]byte(trimmed), msg.FromID); extracted != "" {
+				displayBody = fmt.Sprintf(`<div style="padding: 12px; background: #f8f9fa; border-left: 3px solid #007bff; margin: 10px 0;">
+					<div style="font-size: 14px; color: #666; margin-bottom: 8px;">📎 ZIP Archive</div>
+					<pre style="background: white; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.4;">%s</pre>
+					<div style="margin-top: 8px;">
+						<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download ZIP</a>
+					</div>
+				</div>`, extracted, msg.ID)
+				app.Log("mail", "Extracted and displayed ZIP contents (%d bytes)", len(trimmed))
+			} else if len(trimmed) > 0 {
+				isAttachment = true
+				attachmentName = "attachment.zip"
+				if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
+					attachmentName = "dmarc-report.zip"
+				}
+				displayBody = fmt.Sprintf(`<div style="padding: 10px; background: #f8f9fa; border-left: 3px solid #999; margin: 10px 0;">
+					<div style="font-size: 14px; color: #666;">📎 %s <span style="color: #999;">(%d bytes)</span></div>
+					<div style="margin-top: 6px;">
+						<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download</a>
+					</div>
+				</div>`, attachmentName, len(trimmed), msg.ID, attachmentName)
+				app.Log("mail", "Detected raw ZIP attachment: %s (%d bytes)", attachmentName, len(trimmed))
 			}
-			displayBody = fmt.Sprintf(`<div style="padding: 20px; background: #f5f5f5; border-radius: 4px; margin: 10px 0;">
-				<div style="font-weight: bold; margin-bottom: 10px;">📎 Attachment: %s</div>
-				<div style="color: #666; font-size: 14px;">Binary attachment detected (ZIP file, %d bytes)</div>
-				<div style="margin-top: 10px;">
-					<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Download</a>
-				</div>
-			</div>`, attachmentName, len(trimmed), msg.ID, attachmentName)
-			app.Log("mail", "Detected raw ZIP attachment: %s (%d bytes)", attachmentName, len(trimmed))
 		} else if looksLikeBase64(displayBody) {
 			// Try base64 decode
 			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
 				// Check if decoded data is a ZIP file
 				if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
-					isAttachment = true
-					attachmentName = "attachment.zip"
-					if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
-						attachmentName = "dmarc-report.zip"
+					// Try to extract and display ZIP contents
+					if extracted := extractZipContents(decoded, msg.FromID); extracted != "" {
+						displayBody = fmt.Sprintf(`<div style="padding: 12px; background: #f8f9fa; border-left: 3px solid #007bff; margin: 10px 0;">
+							<div style="font-size: 14px; color: #666; margin-bottom: 8px;">📎 ZIP Archive</div>
+							<pre style="background: white; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.4;">%s</pre>
+							<div style="margin-top: 8px;">
+								<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download ZIP</a>
+							</div>
+						</div>`, extracted, msg.ID)
+						app.Log("mail", "Extracted and displayed base64-encoded ZIP contents (%d bytes)", len(decoded))
+					} else if len(decoded) > 0 {
+						isAttachment = true
+						attachmentName = "attachment.zip"
+						if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
+							attachmentName = "dmarc-report.zip"
+						}
+						displayBody = fmt.Sprintf(`<div style="padding: 10px; background: #f8f9fa; border-left: 3px solid #999; margin: 10px 0;">
+							<div style="font-size: 14px; color: #666;">📎 %s <span style="color: #999;">(%d bytes)</span></div>
+							<div style="margin-top: 6px;">
+								<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download</a>
+							</div>
+						</div>`, attachmentName, len(decoded), msg.ID, attachmentName)
+						app.Log("mail", "Detected base64-encoded ZIP attachment: %s (%d bytes)", attachmentName, len(decoded))
 					}
-					displayBody = fmt.Sprintf(`<div style="padding: 20px; background: #f5f5f5; border-radius: 4px; margin: 10px 0;">
-						<div style="font-weight: bold; margin-bottom: 10px;">📎 Attachment: %s</div>
-						<div style="color: #666; font-size: 14px;">Binary attachment detected (ZIP file, %d bytes)</div>
-						<div style="margin-top: 10px;">
-							<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Download</a>
-						</div>
-					</div>`, attachmentName, len(decoded), msg.ID, attachmentName)
-					app.Log("mail", "Detected base64-encoded ZIP attachment: %s (%d bytes)", attachmentName, len(decoded))
 				} else if isValidUTF8Text(decoded) {
 					displayBody = string(decoded)
 					app.Log("mail", "Decoded base64 body for display")
@@ -586,34 +611,56 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Check for raw ZIP file
 			trimmedBody := strings.TrimSpace(msgBody)
 			if len(trimmedBody) >= 2 && trimmedBody[0] == 'P' && trimmedBody[1] == 'K' {
-				msgIsAttachment = true
-				attachName := "attachment.zip"
-				if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
-					attachName = "dmarc-report.zip"
+				// Try to extract and display ZIP contents
+				if extracted := extractZipContents([]byte(trimmedBody), m.FromID); extracted != "" {
+					msgBody = fmt.Sprintf(`<div style="padding: 12px; background: #f8f9fa; border-left: 3px solid #007bff; margin: 10px 0;">
+						<div style="font-size: 14px; color: #666; margin-bottom: 8px;">📎 ZIP Archive</div>
+						<pre style="background: white; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.4;">%s</pre>
+						<div style="margin-top: 8px;">
+							<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download ZIP</a>
+						</div>
+					</div>`, extracted, m.ID)
+					msgIsAttachment = true
+				} else if len(trimmedBody) > 0 {
+					msgIsAttachment = true
+					attachName := "attachment.zip"
+					if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
+						attachName = "dmarc-report.zip"
+					}
+					msgBody = fmt.Sprintf(`<div style="padding: 10px; background: #f8f9fa; border-left: 3px solid #999; margin: 10px 0;">
+						<div style="font-size: 14px; color: #666;">📎 %s <span style="color: #999;">(%d bytes)</span></div>
+						<div style="margin-top: 6px;">
+							<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download</a>
+						</div>
+					</div>`, attachName, len(trimmedBody), m.ID, attachName)
 				}
-				msgBody = fmt.Sprintf(`<div style="padding: 20px; background: #f5f5f5; border-radius: 4px; margin: 10px 0;">
-					<div style="font-weight: bold; margin-bottom: 10px;">📎 Attachment: %s</div>
-					<div style="color: #666; font-size: 14px;">Binary attachment detected (ZIP file, %d bytes)</div>
-					<div style="margin-top: 10px;">
-						<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Download</a>
-					</div>
-				</div>`, attachName, len(trimmedBody), m.ID, attachName)
 			} else if looksLikeBase64(msgBody) {
 				if decoded, err := base64.StdEncoding.DecodeString(trimmedBody); err == nil {
 					// Check if decoded data is ZIP
 					if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
-						msgIsAttachment = true
-						attachName := "attachment.zip"
-						if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
-							attachName = "dmarc-report.zip"
+						// Try to extract and display ZIP contents
+						if extracted := extractZipContents(decoded, m.FromID); extracted != "" {
+							msgBody = fmt.Sprintf(`<div style="padding: 12px; background: #f8f9fa; border-left: 3px solid #007bff; margin: 10px 0;">
+								<div style="font-size: 14px; color: #666; margin-bottom: 8px;">📎 ZIP Archive</div>
+								<pre style="background: white; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.4;">%s</pre>
+								<div style="margin-top: 8px;">
+									<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download ZIP</a>
+								</div>
+							</div>`, extracted, m.ID)
+							msgIsAttachment = true
+						} else if len(decoded) > 0 {
+							msgIsAttachment = true
+							attachName := "attachment.zip"
+							if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
+								attachName = "dmarc-report.zip"
+							}
+							msgBody = fmt.Sprintf(`<div style="padding: 10px; background: #f8f9fa; border-left: 3px solid #999; margin: 10px 0;">
+								<div style="font-size: 14px; color: #666;">📎 %s <span style="color: #999;">(%d bytes)</span></div>
+								<div style="margin-top: 6px;">
+									<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download</a>
+								</div>
+							</div>`, attachName, len(decoded), m.ID, attachName)
 						}
-						msgBody = fmt.Sprintf(`<div style="padding: 20px; background: #f5f5f5; border-radius: 4px; margin: 10px 0;">
-							<div style="font-weight: bold; margin-bottom: 10px;">📎 Attachment: %s</div>
-							<div style="color: #666; font-size: 14px;">Binary attachment detected (ZIP file, %d bytes)</div>
-							<div style="margin-top: 10px;">
-								<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Download</a>
-							</div>
-						</div>`, attachName, len(decoded), m.ID, attachName)
 					} else if isValidUTF8Text(decoded) {
 						msgBody = string(decoded)
 					}
@@ -1434,4 +1481,91 @@ func linkifyURLs(text string) string {
 func isURLTerminator(c byte) bool {
 	return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '<' || c == '>' ||
 		c == '"' || c == '\'' || c == ')' || c == ']' || c == '}' || c == ',' || c == ';'
+}
+
+// extractZipContents extracts all files from a ZIP archive and returns their contents as a string
+// Only extracts if sender is a trusted DMARC reporter
+func extractZipContents(data []byte, senderEmail string) string {
+	// Only auto-extract from trusted DMARC report senders
+	trustedSenders := []string{
+		"@google.com",
+		"@yahoo.com",
+		"@outlook.com",
+		"@microsoft.com",
+		"@amazon.com",
+		"@apple.com",
+	}
+	
+	// Check if sender contains "dmarc" OR is from a trusted domain
+	isTrusted := strings.Contains(strings.ToLower(senderEmail), "dmarc")
+	if !isTrusted {
+		senderLower := strings.ToLower(senderEmail)
+		for _, domain := range trustedSenders {
+			if strings.HasSuffix(senderLower, domain) {
+				isTrusted = true
+				break
+			}
+		}
+	}
+	
+	if !isTrusted {
+		return "" // Don't auto-extract from unknown senders
+	}
+	
+	// Size limit: 10MB
+	if len(data) > 10*1024*1024 {
+		return ""
+	}
+
+	reader := bytes.NewReader(data)
+	zipReader, err := zip.NewReader(reader, int64(len(data)))
+	if err != nil {
+		return ""
+	}
+	
+	// Limit number of files
+	if len(zipReader.File) > 10 {
+		return ""
+	}
+
+	var result strings.Builder
+	for i, file := range zipReader.File {
+		// Limit individual file size: 5MB
+		if file.UncompressedSize64 > 5*1024*1024 {
+			continue
+		}
+		
+		if i > 0 {
+			result.WriteString("\n\n" + strings.Repeat("=", 80) + "\n\n")
+		}
+		
+		result.WriteString(fmt.Sprintf("File: %s (%d bytes)\n", file.Name, file.UncompressedSize64))
+		result.WriteString(strings.Repeat("-", 80) + "\n\n")
+		
+		rc, err := file.Open()
+		if err != nil {
+			result.WriteString(fmt.Sprintf("Error opening file: %v\n", err))
+			continue
+		}
+		
+		content, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			result.WriteString(fmt.Sprintf("Error reading file: %v\n", err))
+			continue
+		}
+		
+		// Only display text content (XML, TXT, etc) - never execute or render HTML
+		if isValidUTF8Text(content) {
+			result.WriteString(string(content))
+		} else {
+			result.WriteString(fmt.Sprintf("[Binary file, %d bytes - not displayed]\n", len(content)))
+		}
+	}
+	
+	if result.Len() == 0 {
+		return ""
+	}
+	
+	return result.String()
 }
