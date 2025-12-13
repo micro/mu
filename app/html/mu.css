@@ -536,7 +536,9 @@ body:has(#messages) #content {
 #messages {
   flex-grow: 1;
   min-height: 0;
+  border: 1px solid #ddd;
   border-radius: 5px;
+  padding: 15px;
   text-align: left;
   overflow-y: auto;
 }
