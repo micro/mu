@@ -465,13 +465,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
 			// Try to extract and display ZIP contents
 			if extracted := extractZipContents([]byte(trimmed), msg.FromID); extracted != "" {
-				displayBody = fmt.Sprintf(`<div style="padding: 12px; background: #f8f9fa; border-left: 3px solid #007bff; margin: 10px 0;">
-					<div style="font-size: 14px; color: #666; margin-bottom: 8px;">📎 ZIP Archive</div>
-					<pre style="background: white; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.4;">%s</pre>
-					<div style="margin-top: 8px;">
-						<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download ZIP</a>
-					</div>
-				</div>`, extracted, msg.ID)
+				displayBody = fmt.Sprintf(`<div style="padding: 10px; background: #f8f9fa; border-left: 3px solid #007bff; margin: 10px 0;">
+					<div style="font-size: 14px; color: #666; margin-bottom: 8px;">📎 ZIP Archive <a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="font-size: 13px; color: #007bff; text-decoration: none; margin-left: 10px;">↓ Download ZIP</a></div>
+					<details style="margin-top: 8px;">
+						<summary style="cursor: pointer; color: #007bff; font-size: 13px;">View contents</summary>
+						<pre style="background: white; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.4; margin-top: 8px;">%s</pre>
+					</details>
+				</div>`, msg.ID, extracted)
 				app.Log("mail", "Extracted and displayed ZIP contents (%d bytes)", len(trimmed))
 			} else if len(trimmed) > 0 {
 				isAttachment = true
@@ -485,7 +485,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download</a>
 					</div>
 				</div>`, attachmentName, len(trimmed), msg.ID, attachmentName)
-				app.Log("mail", "Detected raw ZIP attachment: %s (%d bytes)", attachmentName, len(trimmed))
+				app.Log("mail", "Detected raw ZIP attachment (extraction not available): %s (%d bytes)", attachmentName, len(trimmed))
 			}
 		} else if looksLikeBase64(displayBody) {
 			// Try base64 decode
@@ -1520,18 +1520,24 @@ func extractZipContents(data []byte, senderEmail string) string {
 	reader := bytes.NewReader(data)
 	zipReader, err := zip.NewReader(reader, int64(len(data)))
 	if err != nil {
+		app.Log("mail", "Failed to read ZIP: %v", err)
 		return ""
 	}
 	
 	// Limit number of files
 	if len(zipReader.File) > 10 {
+		app.Log("mail", "ZIP has too many files: %d", len(zipReader.File))
 		return ""
 	}
+	
+	app.Log("mail", "Extracting ZIP from %s: %d files", senderEmail, len(zipReader.File))
 
 	var result strings.Builder
+	filesExtracted := 0
 	for i, file := range zipReader.File {
 		// Limit individual file size: 5MB
 		if file.UncompressedSize64 > 5*1024*1024 {
+			app.Log("mail", "Skipping large file: %s (%d bytes)", file.Name, file.UncompressedSize64)
 			continue
 		}
 		
@@ -1545,6 +1551,7 @@ func extractZipContents(data []byte, senderEmail string) string {
 		rc, err := file.Open()
 		if err != nil {
 			result.WriteString(fmt.Sprintf("Error opening file: %v\n", err))
+			app.Log("mail", "Failed to open file %s: %v", file.Name, err)
 			continue
 		}
 		
@@ -1552,16 +1559,27 @@ func extractZipContents(data []byte, senderEmail string) string {
 		rc.Close()
 		if err != nil {
 			result.WriteString(fmt.Sprintf("Error reading file: %v\n", err))
+			app.Log("mail", "Failed to read file %s: %v", file.Name, err)
 			continue
 		}
 		
 		// Only display text content (XML, TXT, etc) - never execute or render HTML
 		if isValidUTF8Text(content) {
 			result.WriteString(string(content))
+			filesExtracted++
+			app.Log("mail", "Extracted text file: %s (%d bytes)", file.Name, len(content))
 		} else {
 			result.WriteString(fmt.Sprintf("[Binary file, %d bytes - not displayed]\n", len(content)))
+			app.Log("mail", "Skipped binary file: %s", file.Name)
 		}
 	}
+	
+	if filesExtracted == 0 {
+		app.Log("mail", "No text files extracted from ZIP")
+		return ""
+	}
+	
+	app.Log("mail", "Successfully extracted %d files from ZIP", filesExtracted)
 	
 	if result.Len() == 0 {
 		return ""
