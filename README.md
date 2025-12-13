@@ -37,7 +37,7 @@ Starting with:
 
 Coming soon:
 
-- [ ] Mail - Private messaging
+- [ ] Mail - Private messenger 
 - [ ] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
