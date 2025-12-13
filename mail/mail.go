@@ -392,9 +392,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Decode the attachment
+		trimmed := strings.TrimSpace(msg.Body)
+		
+		// Check if it's raw binary data (ZIP file)
+		if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
+			filename := "attachment.zip"
+			if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
+				filename = "dmarc-report.zip"
+			}
+			
+			w.Header().Set("Content-Type", "application/zip")
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(trimmed)))
+			w.Write([]byte(trimmed))
+			return
+		}
+		
+		// Try base64 decode
 		if looksLikeBase64(msg.Body) {
-			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(msg.Body)); err == nil {
+			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
 				// Determine filename and content type
 				filename := "attachment.bin"
 				contentType := "application/octet-stream"
@@ -440,17 +456,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		isAttachment := false
 		attachmentName := ""
 
-		// Try to decode as base64 if it looks encoded OR starts with "PK" (not decoded yet)
-		shouldTryDecode := looksLikeBase64(displayBody) || strings.HasPrefix(strings.TrimSpace(displayBody), "PK")
+		trimmed := strings.TrimSpace(displayBody)
 		
-		if shouldTryDecode {
-			trimmed := strings.TrimSpace(displayBody)
+		// Check if body is raw binary data (ZIP file starts with "PK")
+		if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
+			isAttachment = true
+			attachmentName = "attachment.zip"
+			if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
+				attachmentName = "dmarc-report.zip"
+			}
+			displayBody = fmt.Sprintf(`<div style="padding: 20px; background: #f5f5f5; border-radius: 4px; margin: 10px 0;">
+				<div style="font-weight: bold; margin-bottom: 10px;">📎 Attachment: %s</div>
+				<div style="color: #666; font-size: 14px;">Binary attachment detected (ZIP file, %d bytes)</div>
+				<div style="margin-top: 10px;">
+					<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Download</a>
+				</div>
+			</div>`, attachmentName, len(trimmed), msg.ID, attachmentName)
+			app.Log("mail", "Detected raw ZIP attachment: %s (%d bytes)", attachmentName, len(trimmed))
+		} else if looksLikeBase64(displayBody) {
+			// Try base64 decode
 			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
-				// Check if it's a ZIP file (DMARC reports, etc)
+				// Check if decoded data is a ZIP file
 				if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 					isAttachment = true
 					attachmentName = "attachment.zip"
-					// For DMARC reports, use a more descriptive name
 					if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
 						attachmentName = "dmarc-report.zip"
 					}
@@ -461,15 +490,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Download</a>
 						</div>
 					</div>`, attachmentName, len(decoded), msg.ID, attachmentName)
-					app.Log("mail", "Detected ZIP attachment: %s (%d bytes)", attachmentName, len(decoded))
+					app.Log("mail", "Detected base64-encoded ZIP attachment: %s (%d bytes)", attachmentName, len(decoded))
 				} else if isValidUTF8Text(decoded) {
 					displayBody = string(decoded)
 					app.Log("mail", "Decoded base64 body for display")
 				}
-			} else if strings.HasPrefix(trimmed, "PK") {
-				// If "PK" is literal and not base64, it's already binary data displayed as text
-				// This shouldn't happen but handle it gracefully
-				app.Log("mail", "Warning: Body starts with PK but failed base64 decode: %v", err)
 			}
 		}
 
