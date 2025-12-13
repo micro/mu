@@ -36,48 +36,33 @@ export MODEL_API_URL="http://localhost:11434"   # Default: http://localhost:1143
 
 **TODO:** The Ollama endpoint (`http://localhost:11434`) and embedding model (`nomic-embed-text`) are currently hardcoded in `data/data.go`. Consider making these configurable via `MODEL_API_URL` and a new `EMBEDDING_MODEL` environment variable.
 
-## SMTP Configuration
-
-### SMTP Server (Receiving Mail)
+## Mail Configuration
 
 ```bash
-# Enable SMTP server for receiving mail from the internet
-export SMTP_ENABLED="true"               # Default: false (disabled)
-export SMTP_SERVER_PORT="2525"           # Default: 2525 (use 25 for production)
-export MAIL_DOMAIN="yourdomain.com"      # Default: localhost (or DKIM_DOMAIN)
+# SMTP server port for receiving mail
+export MAIL_PORT="2525"              # Default: 2525 (use 25 for production)
+
+# Mail domain for email addresses
+export MAIL_DOMAIN="yourdomain.com"  # Default: localhost
+
+# DKIM signing selector (requires keys in ~/.mu/keys/dkim.key)
+export MAIL_SELECTOR="default"       # Default: default
 ```
 
-**Note:** SMTP server is **disabled by default**. Set `SMTP_ENABLED=true` to enable mail reception.
-
-### SMTP Client (Sending Mail)
-
-```bash
-# Configuration for sending mail to external servers
-export SMTP_HOST="smtp.gmail.com"       # Default: localhost
-export SMTP_PORT="587"                  # Default: 25
-export SMTP_USERNAME="your@email.com"   # Optional
-export SMTP_PASSWORD="your-password"    # Optional
-```
-
-### DKIM Configuration
-
-```bash
-# DKIM signing (optional, requires keys in ~/.mu/keys/dkim.key)
-export DKIM_DOMAIN="yourdomain.com"     # Default: localhost
-export DKIM_SELECTOR="default"          # Default: default
-```
+**Notes:**
+- SMTP server always runs automatically
+- Mu sends external emails directly to recipient mail servers (no relay needed)
+- DKIM signing enables automatically if keys exist at `~/.mu/keys/dkim.key`
+- Mail access is restricted to admins and members only
 
 ## Example Usage
 
 ### Development (Local Testing)
 
 ```bash
-# Receive on port 2525, send to local SMTP
-export SMTP_ENABLED="true"
-export SMTP_SERVER_PORT="2525"
-export SMTP_HOST="localhost"
-export SMTP_PORT="25"
-export DKIM_DOMAIN="localhost"
+# SMTP server on port 2525
+export MAIL_PORT="2525"
+export MAIL_DOMAIN="localhost"
 
 ./mu --serve --address :8080
 ```
@@ -85,19 +70,12 @@ export DKIM_DOMAIN="localhost"
 ### Production
 
 ```bash
-# Receive on standard port 25
-export SMTP_ENABLED="true"
-export SMTP_SERVER_PORT="25"
+# SMTP server on standard port 25
+export MAIL_PORT="25"
 
-# Send via external relay (e.g., SendGrid, Mailgun)
-export SMTP_HOST="smtp.sendgrid.net"
-export SMTP_PORT="587"
-export SMTP_USERNAME="apikey"
-export SMTP_PASSWORD="your-sendgrid-api-key"
-
-# DKIM for your domain
-export DKIM_DOMAIN="yourdomain.com"
-export DKIM_SELECTOR="default"
+# Your domain and DKIM configuration
+export MAIL_DOMAIN="yourdomain.com"
+export MAIL_SELECTOR="default"
 
 ./mu --serve --address :8080
 ```

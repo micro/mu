@@ -522,27 +522,17 @@ Add the DNS TXT record from output.
 ### 3. Environment Variables
 
 ```bash
-# SMTP Server
-export SMTP_ENABLED="true"
-export SMTP_SERVER_PORT="25"
-
-# SMTP Client (using SendGrid)
-export SMTP_HOST="smtp.sendgrid.net"
-export SMTP_PORT="587"
-export SMTP_USERNAME="apikey"
-export SMTP_PASSWORD="your-sendgrid-key"
-
-# DKIM
-export DKIM_DOMAIN="yourdomain.com"
-export DKIM_SELECTOR="default"
+# Mail configuration
+export MAIL_PORT="25"
+export MAIL_DOMAIN="yourdomain.com"
+export MAIL_SELECTOR="default"
 ```
 
 ### 4. Firewall
 
 ```bash
-# Allow SMTP ports
+# Allow SMTP port
 sudo ufw allow 25/tcp
-sudo ufw allow 587/tcp
 ```
 
 ### 5. Start Service
@@ -557,7 +547,6 @@ sudo ufw allow 587/tcp
 # Check logs
 # Should see:
 # - "DKIM signing enabled for domain yourdomain.com"
-# - "SMTP client configured: smtp.sendgrid.net:587"
 # - "Starting SMTP server (receive only) on :25"
 
 # Test receiving
@@ -582,13 +571,9 @@ Type=simple
 User=mu
 WorkingDirectory=/opt/mu
 
-Environment="SMTP_ENABLED=true"
-Environment="SMTP_SERVER_PORT=25"
-Environment="SMTP_HOST=smtp.sendgrid.net"
-Environment="SMTP_PORT=587"
-Environment="SMTP_USERNAME=apikey"
-Environment="SMTP_PASSWORD=your-key"
-Environment="DKIM_DOMAIN=yourdomain.com"
+Environment="MAIL_PORT=25"
+Environment="MAIL_DOMAIN=yourdomain.com"
+Environment="MAIL_SELECTOR=default"
 
 ExecStart=/opt/mu/mu --serve --address :8080
 Restart=always
