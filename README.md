@@ -34,10 +34,10 @@ Starting with:
 - [x] News - RSS news feed
 - [x] Video - YouTube search
 - [x] Posts - Micro blogging
+- [x] Mail - Private messaging 
 
 Coming soon:
 
-- [ ] Mail - Private messaging 
 - [ ] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
