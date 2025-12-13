@@ -780,6 +780,7 @@ body:has(#messages) #content {
   margin-bottom: var(--spacing-md);
   cursor: pointer;
   transition: background var(--transition-fast);
+  max-width: 750px;
 }
 
 .post-item:hover {
@@ -942,20 +943,18 @@ body:has(#messages) #content {
 }
 
 .headline {
-  padding: var(--spacing-sm) 0;
-  border-bottom: 1px solid #f5f5f5;
-  margin-bottom: var(--spacing-sm);
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: var(--item-padding);
+  background: var(--card-background);
+  margin-bottom: var(--spacing-md);
   transition: background var(--transition-fast);
   cursor: pointer;
-}
-
-.headline:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
+  max-width: 600px;
 }
 
 .headline:hover {
-  opacity: 0.8;
+  background: var(--hover-background);
 }
 
 .headline a {
@@ -990,6 +989,7 @@ body:has(#messages) #content {
   margin-bottom: var(--spacing-md);
   transition: background var(--transition-fast);
   cursor: pointer;
+  max-width: 600px;
 }
 
 .news:hover {
@@ -1042,6 +1042,7 @@ body:has(#messages) #content {
   margin-bottom: var(--spacing-md);
   transition: background var(--transition-fast);
   cursor: pointer;
+  max-width: 400px;
 }
 
 .thumbnail:hover {
