@@ -786,26 +786,6 @@ body:has(#messages) #content {
   background: var(--hover-background);
 }
 
-/* Posts inside home cards - no border/background */
-.card .post-item {
-  border: none;
-  border-bottom: 1px solid #f5f5f5;
-  border-radius: 0;
-  background: transparent;
-  padding: var(--spacing-sm) 0;
-  margin-bottom: var(--spacing-sm);
-}
-
-.card .post-item:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-.card .post-item:hover {
-  background: transparent;
-  opacity: 0.8;
-}
-
 .message-item {
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
@@ -1016,26 +996,6 @@ body:has(#messages) #content {
   background: var(--hover-background);
 }
 
-/* News inside home cards - no border/background */
-.card .news {
-  border: none;
-  border-bottom: 1px solid #f5f5f5;
-  border-radius: 0;
-  background: transparent;
-  padding: var(--spacing-sm) 0;
-  margin-bottom: var(--spacing-sm);
-}
-
-.card .news:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-.card .news:hover {
-  background: transparent;
-  opacity: 0.8;
-}
-
 .news a {
   text-decoration: none;
   color: var(--text-primary);
@@ -1086,26 +1046,6 @@ body:has(#messages) #content {
 
 .thumbnail:hover {
   background: var(--hover-background);
-}
-
-/* Thumbnails inside home cards - no border/background */
-.card .thumbnail {
-  border: none;
-  border-bottom: 1px solid #f5f5f5;
-  border-radius: 0;
-  background: transparent;
-  padding: var(--spacing-sm) 0;
-  margin-bottom: var(--spacing-sm);
-}
-
-.card .thumbnail:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-.card .thumbnail:hover {
-  background: transparent;
-  opacity: 0.8;
 }
 
 .thumbnail a {
