@@ -688,11 +688,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Card-style layout for messages
 			threadHTML.WriteString(fmt.Sprintf(`
 		<div style="border: 1px solid #e0e0e0; border-radius: 5px; padding: 20px; margin-bottom: 20px; background: white;">
-			<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-				<div style="font-size: 14px; color: #666;">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+				<div style="font-size: 14px; color: #666; flex: 1;">
 					<strong style="color: #333;">%s</strong> · <span style="color: #999;">%s</span>
 				</div>
-				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #999; font-size: 20px; text-decoration: none; line-height: 1; margin-left: 10px;">×</a>
+				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #ccc; font-size: 24px; text-decoration: none; line-height: 1; padding: 0 5px; flex-shrink: 0;">×</a>
 			</div>
 			<div style="white-space: pre-wrap; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; color: #333;">%s</div>
 		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody))
