@@ -539,10 +539,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
 							displayBody = dmarcHTML
 							isAttachment = true // Skip linkifyURLs for pre-rendered HTML
-							app.Log("mail", "Rendered DMARC report from ZIP (%d bytes)", len(decoded))
+							app.Log("mail", "SET displayBody to DMARC HTML (%d bytes)", len(dmarcHTML))
 						} else {
 							displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, html.EscapeString(extracted))
-							app.Log("mail", "Extracted and displayed ZIP contents (%d bytes)", len(decoded))
+							app.Log("mail", "SET displayBody to raw XML in pre tags (%d bytes)", len(extracted))
 						}
 					} else {
 						// Extraction failed - show download link
@@ -1838,5 +1838,7 @@ func renderDMARCReport(xmlData string) string {
 		html.WriteString(`</tbody></table>`)
 	}
 
-	return html.String()
+	result := html.String()
+	app.Log("mail", "renderDMARCReport returning %d bytes of HTML", len(result))
+	return result
 }
