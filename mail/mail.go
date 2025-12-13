@@ -466,13 +466,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
 			// Try to extract and display ZIP contents
 			if extracted := extractZipContents([]byte(trimmed), msg.FromID); extracted != "" {
-				displayBody = fmt.Sprintf(`<div style="padding: 10px; background: #f8f9fa; border-left: 3px solid #007bff; margin: 10px 0;">
-					<div style="font-size: 14px; color: #666; margin-bottom: 8px;">📎 ZIP Archive <a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="font-size: 13px; color: #007bff; text-decoration: none; margin-left: 10px;">↓ Download ZIP</a></div>
-					<details style="margin-top: 8px;">
-						<summary style="cursor: pointer; color: #007bff; font-size: 13px;">View contents</summary>
-						<pre style="background: white; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.4; margin-top: 8px;">%s</pre>
+				displayBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 15px 0; text-align: center;">
+					<div style="font-size: 16px; color: #495057; margin-bottom: 12px; font-weight: 500;">📎 ZIP Archive - Extracted Contents</div>
+					<details style="text-align: left; margin: 15px 0;">
+						<summary style="cursor: pointer; color: #007bff; font-weight: 500; margin-bottom: 10px;">View extracted files</summary>
+						<pre style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.6; margin-top: 10px; border: 1px solid #e0e0e0;">%s</pre>
 					</details>
-				</div>`, msg.ID, extracted)
+					<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500; margin-top: 10px;">Download ZIP</a>
+				</div>`, extracted, msg.ID)
 				app.Log("mail", "Extracted and displayed ZIP contents (%d bytes)", len(trimmed))
 			} else if len(trimmed) > 0 {
 				isAttachment = true
@@ -480,11 +481,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
 					attachmentName = "dmarc-report.zip"
 				}
-				displayBody = fmt.Sprintf(`<div style="padding: 10px; background: #f8f9fa; border-left: 3px solid #999; margin: 10px 0;">
-					<div style="font-size: 14px; color: #666;">📎 %s <span style="color: #999;">(%d bytes)</span></div>
-					<div style="margin-top: 6px;">
-						<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download</a>
-					</div>
+				displayBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 30px; margin: 15px 0; text-align: center;">
+					<div style="font-size: 16px; color: #495057; margin-bottom: 8px; font-weight: 500;">📎 %s</div>
+					<div style="color: #6c757d; font-size: 14px; margin-bottom: 20px;">%d bytes</div>
+					<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500;">Download</a>
 				</div>`, attachmentName, len(trimmed), msg.ID, attachmentName)
 				app.Log("mail", "Detected raw ZIP attachment (extraction not available): %s (%d bytes)", attachmentName, len(trimmed))
 			}
@@ -495,12 +495,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 					// Try to extract and display ZIP contents
 					if extracted := extractZipContents(decoded, msg.FromID); extracted != "" {
-						displayBody = fmt.Sprintf(`<div style="padding: 12px; background: #f8f9fa; border-left: 3px solid #007bff; margin: 10px 0;">
-							<div style="font-size: 14px; color: #666; margin-bottom: 8px;">📎 ZIP Archive</div>
-							<pre style="background: white; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.4;">%s</pre>
-							<div style="margin-top: 8px;">
-								<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download ZIP</a>
-							</div>
+						displayBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 5px; padding: 30px; margin: 15px 0; text-align: center;">
+							<div style="font-size: 16px; color: #495057; margin-bottom: 12px; font-weight: 500;">📎 ZIP Archive - Extracted Contents</div>
+							<details style="text-align: left; margin: 15px 0;">
+								<summary style="cursor: pointer; color: #007bff; font-weight: 500; margin-bottom: 10px;">View extracted files</summary>
+								<pre style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.6; margin-top: 10px; border: 1px solid #e0e0e0;">%s</pre>
+							</details>
+							<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500; margin-top: 10px;">Download ZIP</a>
 						</div>`, extracted, msg.ID)
 						app.Log("mail", "Extracted and displayed base64-encoded ZIP contents (%d bytes)", len(decoded))
 					} else if len(decoded) > 0 {
@@ -509,11 +510,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
 							attachmentName = "dmarc-report.zip"
 						}
-						displayBody = fmt.Sprintf(`<div style="padding: 10px; background: #f8f9fa; border-left: 3px solid #999; margin: 10px 0;">
-							<div style="font-size: 14px; color: #666;">📎 %s <span style="color: #999;">(%d bytes)</span></div>
-							<div style="margin-top: 6px;">
-								<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="font-size: 13px; color: #007bff; text-decoration: none;">↓ Download</a>
-							</div>
+						displayBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 5px; padding: 30px; margin: 15px 0; text-align: center;">
+							<div style="font-size: 16px; color: #495057; margin-bottom: 8px; font-weight: 500;">📎 %s</div>
+							<div style="color: #6c757d; font-size: 14px; margin-bottom: 20px;">%d bytes</div>
+							<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500;">Download</a>
 						</div>`, attachmentName, len(decoded), msg.ID, attachmentName)
 						app.Log("mail", "Detected base64-encoded ZIP attachment: %s (%d bytes)", attachmentName, len(decoded))
 					}
@@ -641,7 +641,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 						// Try to extract and display ZIP contents
 						if extracted := extractZipContents(decoded, m.FromID); extracted != "" {
-							msgBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 15px 0; text-align: center;">
+							msgBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 5px; padding: 30px; margin: 15px 0; text-align: center;">
 								<div style="font-size: 16px; color: #495057; margin-bottom: 12px; font-weight: 500;">📎 ZIP Archive - Extracted Contents</div>
 								<details style="text-align: left; margin: 15px 0;">
 									<summary style="cursor: pointer; color: #007bff; font-weight: 500; margin-bottom: 10px;">View extracted files</summary>
@@ -656,7 +656,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
 								attachName = "dmarc-report.zip"
 							}
-							msgBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 30px; margin: 15px 0; text-align: center;">
+							msgBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 5px; padding: 30px; margin: 15px 0; text-align: center;">
 								<div style="font-size: 16px; color: #495057; margin-bottom: 8px; font-weight: 500;">📎 %s</div>
 								<div style="color: #6c757d; font-size: 14px; margin-bottom: 20px;">%d bytes</div>
 								<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500;">Download</a>
@@ -687,12 +687,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			// Card-style layout for messages
 			threadHTML.WriteString(fmt.Sprintf(`
-		<div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #eee;">
+		<div style="border: 1px solid #e0e0e0; border-radius: 5px; padding: 20px; margin-bottom: 20px; background: white;">
+			<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
 				<div style="font-size: 14px; color: #666;">
 					<strong style="color: #333;">%s</strong> · <span style="color: #999;">%s</span>
 				</div>
-				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #999; font-size: 18px; text-decoration: none; line-height: 1;">×</a>
+				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #999; font-size: 20px; text-decoration: none; line-height: 1; margin-left: 10px;">×</a>
 			</div>
 			<div style="white-space: pre-wrap; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; color: #333;">%s</div>
 		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody))
