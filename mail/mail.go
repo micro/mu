@@ -6,7 +6,9 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"os"
@@ -494,8 +496,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		} else if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
 			// ZIP file - try to extract contents for display
 			if extracted := extractZipContents([]byte(trimmed), msg.FromID); extracted != "" {
-				displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, extracted)
-				app.Log("mail", "Extracted and displayed raw ZIP contents (%d bytes)", len(trimmed))
+				// Try to render as DMARC report
+				if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
+					displayBody = dmarcHTML
+					app.Log("mail", "Rendered DMARC report from raw ZIP (%d bytes)", len(trimmed))
+				} else {
+					displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, html.EscapeString(extracted))
+					app.Log("mail", "Extracted and displayed raw ZIP contents (%d bytes)", len(trimmed))
+				}
 			} else {
 				// Extraction failed - show download link
 				isAttachment = true
@@ -646,7 +654,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			} else if len(trimmedBody) >= 2 && trimmedBody[0] == 'P' && trimmedBody[1] == 'K' {
 				// ZIP file - try to extract
 				if extracted := extractZipContents([]byte(trimmedBody), m.FromID); extracted != "" {
-					msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, extracted)
+					msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(extracted))
 				} else {
 					// Extraction failed - show download link
 					msgIsAttachment = true
@@ -664,14 +672,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							if content, err := io.ReadAll(reader); err == nil {
 								reader.Close()
 								if isValidUTF8Text(content) {
-									msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, string(content))
+									msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(string(content)))
 								}
 							}
 						}
 					} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 						// ZIP file - try to extract
 						if extracted := extractZipContents(decoded, m.FromID); extracted != "" {
-							msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, extracted)
+							msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(extracted))
 						} else {
 							// Extraction failed - show download link
 							msgIsAttachment = true
@@ -1646,4 +1654,137 @@ func extractZipContents(data []byte, senderEmail string) string {
 	}
 	
 	return result.String()
+}
+
+// DMARC XML structures
+type DMARCReport struct {
+	XMLName        xml.Name       `xml:"feedback"`
+	ReportMetadata ReportMetadata `xml:"report_metadata"`
+	PolicyPublished PolicyPublished `xml:"policy_published"`
+	Records        []Record       `xml:"record"`
+}
+
+type ReportMetadata struct {
+	OrgName   string    `xml:"org_name"`
+	Email     string    `xml:"email"`
+	ReportID  string    `xml:"report_id"`
+	DateRange DateRange `xml:"date_range"`
+}
+
+type DateRange struct {
+	Begin int64 `xml:"begin"`
+	End   int64 `xml:"end"`
+}
+
+type PolicyPublished struct {
+	Domain string `xml:"domain"`
+	ADKIM  string `xml:"adkim"`
+	ASPF   string `xml:"aspf"`
+	P      string `xml:"p"`
+	SP     string `xml:"sp"`
+	Pct    int    `xml:"pct"`
+}
+
+type Record struct {
+	Row        Row        `xml:"row"`
+	Identifiers Identifiers `xml:"identifiers"`
+	AuthResults AuthResults `xml:"auth_results"`
+}
+
+type Row struct {
+	SourceIP        string          `xml:"source_ip"`
+	Count           int             `xml:"count"`
+	PolicyEvaluated PolicyEvaluated `xml:"policy_evaluated"`
+}
+
+type PolicyEvaluated struct {
+	Disposition string `xml:"disposition"`
+	DKIM        string `xml:"dkim"`
+	SPF         string `xml:"spf"`
+}
+
+type Identifiers struct {
+	HeaderFrom string `xml:"header_from"`
+}
+
+type AuthResults struct {
+	DKIM []DKIMResult `xml:"dkim"`
+	SPF  []SPFResult  `xml:"spf"`
+}
+
+type DKIMResult struct {
+	Domain   string `xml:"domain"`
+	Result   string `xml:"result"`
+	Selector string `xml:"selector"`
+}
+
+type SPFResult struct {
+	Domain string `xml:"domain"`
+	Result string `xml:"result"`
+}
+
+// renderDMARCReport parses DMARC XML and renders it as HTML tables
+func renderDMARCReport(xmlData string) string {
+	var report DMARCReport
+	if err := xml.Unmarshal([]byte(xmlData), &report); err != nil {
+		// Not a DMARC report or invalid XML - return empty to fall back to raw display
+		return ""
+	}
+
+	var html strings.Builder
+	
+	// Report metadata
+	html.WriteString(`<div style="margin-bottom: 20px;">`)
+	html.WriteString(fmt.Sprintf(`<h4 style="margin: 0 0 10px 0;">DMARC Report from %s</h4>`, report.ReportMetadata.OrgName))
+	html.WriteString(`<table style="border-collapse: collapse; width: 100%; font-size: 13px;">`)
+	html.WriteString(fmt.Sprintf(`<tr><td style="padding: 4px 8px; background: #f5f5f5;"><strong>Report ID:</strong></td><td style="padding: 4px 8px;">%s</td></tr>`, report.ReportMetadata.ReportID))
+	html.WriteString(fmt.Sprintf(`<tr><td style="padding: 4px 8px; background: #f5f5f5;"><strong>Domain:</strong></td><td style="padding: 4px 8px;">%s</td></tr>`, report.PolicyPublished.Domain))
+	html.WriteString(fmt.Sprintf(`<tr><td style="padding: 4px 8px; background: #f5f5f5;"><strong>Policy:</strong></td><td style="padding: 4px 8px;">%s</td></tr>`, report.PolicyPublished.P))
+	html.WriteString(`</table></div>`)
+
+	// Records table
+	if len(report.Records) > 0 {
+		html.WriteString(`<h4 style="margin: 0 0 10px 0;">Email Results</h4>`)
+		html.WriteString(`<table style="border-collapse: collapse; width: 100%; font-size: 12px; border: 1px solid #ddd;">`)
+		html.WriteString(`<thead><tr style="background: #f5f5f5;">`)
+		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Source IP</th>`)
+		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Count</th>`)
+		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">DKIM</th>`)
+		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">SPF</th>`)
+		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Disposition</th>`)
+		html.WriteString(`</tr></thead><tbody>`)
+
+		for _, record := range report.Records {
+			dkimResult := "none"
+			if len(record.AuthResults.DKIM) > 0 {
+				dkimResult = record.AuthResults.DKIM[0].Result
+			}
+			spfResult := "none"
+			if len(record.AuthResults.SPF) > 0 {
+				spfResult = record.AuthResults.SPF[0].Result
+			}
+
+			// Color code results
+			dkimColor := "#d4edda" // green
+			if dkimResult != "pass" {
+				dkimColor = "#f8d7da" // red
+			}
+			spfColor := "#d4edda"
+			if spfResult != "pass" {
+				spfColor = "#f8d7da"
+			}
+
+			html.WriteString(`<tr>`)
+			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd;">%s</td>`, record.Row.SourceIP))
+			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd;">%d</td>`, record.Row.Count))
+			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd; background: %s;">%s</td>`, dkimColor, dkimResult))
+			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd; background: %s;">%s</td>`, spfColor, spfResult))
+			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd;">%s</td>`, record.Row.PolicyEvaluated.Disposition))
+			html.WriteString(`</tr>`)
+		}
+
+		html.WriteString(`</tbody></table>`)
+	}
+
+	return html.String()
 }
