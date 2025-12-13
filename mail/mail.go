@@ -581,14 +581,49 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		var threadHTML strings.Builder
 		for _, m := range thread {
 			msgBody := m.Body
-			if looksLikeBase64(msgBody) {
-				if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(msgBody)); err == nil {
-					if isValidUTF8Text(decoded) {
+			msgIsAttachment := false
+			
+			// Check for raw ZIP file
+			trimmedBody := strings.TrimSpace(msgBody)
+			if len(trimmedBody) >= 2 && trimmedBody[0] == 'P' && trimmedBody[1] == 'K' {
+				msgIsAttachment = true
+				attachName := "attachment.zip"
+				if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
+					attachName = "dmarc-report.zip"
+				}
+				msgBody = fmt.Sprintf(`<div style="padding: 20px; background: #f5f5f5; border-radius: 4px; margin: 10px 0;">
+					<div style="font-weight: bold; margin-bottom: 10px;">📎 Attachment: %s</div>
+					<div style="color: #666; font-size: 14px;">Binary attachment detected (ZIP file, %d bytes)</div>
+					<div style="margin-top: 10px;">
+						<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Download</a>
+					</div>
+				</div>`, attachName, len(trimmedBody), m.ID, attachName)
+			} else if looksLikeBase64(msgBody) {
+				if decoded, err := base64.StdEncoding.DecodeString(trimmedBody); err == nil {
+					// Check if decoded data is ZIP
+					if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
+						msgIsAttachment = true
+						attachName := "attachment.zip"
+						if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
+							attachName = "dmarc-report.zip"
+						}
+						msgBody = fmt.Sprintf(`<div style="padding: 20px; background: #f5f5f5; border-radius: 4px; margin: 10px 0;">
+							<div style="font-weight: bold; margin-bottom: 10px;">📎 Attachment: %s</div>
+							<div style="color: #666; font-size: 14px;">Binary attachment detected (ZIP file, %d bytes)</div>
+							<div style="margin-top: 10px;">
+								<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Download</a>
+							</div>
+						</div>`, attachName, len(decoded), m.ID, attachName)
+					} else if isValidUTF8Text(decoded) {
 						msgBody = string(decoded)
 					}
 				}
 			}
-			msgBody = linkifyURLs(msgBody)
+			
+			// Only linkify if not an attachment
+			if !msgIsAttachment {
+				msgBody = linkifyURLs(msgBody)
+			}
 
 			isSent := m.FromID == acc.ID
 			authorDisplay := m.FromID
