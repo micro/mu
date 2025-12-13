@@ -398,6 +398,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		trimmed := strings.TrimSpace(msg.Body)
 		
+		// Check if it's gzip (should not be downloaded, just displayed)
+		if len(trimmed) >= 2 && trimmed[0] == 0x1f && trimmed[1] == 0x8b {
+			http.Error(w, "This content should be displayed inline, not downloaded", http.StatusBadRequest)
+			return
+		}
+		
 		// Check if it's raw binary data (ZIP file)
 		if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
 			filename := "attachment.zip"
@@ -415,6 +421,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Try base64 decode
 		if looksLikeBase64(msg.Body) {
 			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
+				// Check if it's gzip (should be displayed, not downloaded)
+				if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
+					http.Error(w, "This content should be displayed inline, not downloaded", http.StatusBadRequest)
+					return
+				}
+				
 				// Determine filename and content type
 				filename := "attachment.bin"
 				contentType := "application/octet-stream"
@@ -470,8 +482,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					if isValidUTF8Text(content) {
 						displayBody = string(content)
 						app.Log("mail", "Decompressed gzip body for display (%d bytes)", len(content))
+					} else {
+						app.Log("mail", "Gzip content is not valid text")
 					}
+				} else {
+					app.Log("mail", "Failed to read gzip: %v", err)
 				}
+			} else {
+				app.Log("mail", "Failed to create gzip reader: %v", err)
 			}
 		} else if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
 			// ZIP file - show download link
