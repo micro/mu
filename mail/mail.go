@@ -919,8 +919,8 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
 
 	html := fmt.Sprintf(`
-		<div class="thread-preview" style="padding: 15px; border-bottom: 1px solid #eee; position: relative; cursor: pointer; transition: background 0.2s;" onclick="window.location.href='/mail?id=%s'" onmouseover="this.style.background='#f5f5f5'; this.querySelector('.delete-btn').style.display='block';" onmouseout="this.style.background=''; this.querySelector('.delete-btn').style.display='none';">
-			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="position: absolute; top: 15px; right: 15px; color: #ccc; text-decoration: none; font-size: 24px; line-height: 1; display: none;" title="Delete conversation">×</a>
+		<div class="thread-preview" onclick="window.location.href='/mail?id=%s'">
+			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" title="Delete conversation">×</a>
 			<div style="margin-bottom: 4px;">
 				<strong style="font-size: 16px;">%s%s</strong>
 			</div>
@@ -964,8 +964,8 @@ func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string)
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
 
 	html := fmt.Sprintf(`
-		<div class="thread-preview" style="padding: 15px; border-bottom: 1px solid #eee; position: relative; cursor: pointer; transition: background 0.2s;" onclick="window.location.href='/mail?id=%s'" onmouseover="this.style.background='#f5f5f5'; this.querySelector('.delete-btn').style.display='block';" onmouseout="this.style.background=''; this.querySelector('.delete-btn').style.display='none';">
-			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="position: absolute; top: 15px; right: 15px; color: #ccc; text-decoration: none; font-size: 24px; line-height: 1; display: none;" title="Delete conversation">×</a>
+		<div class="thread-preview" onclick="window.location.href='/mail?id=%s'">
+			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" title="Delete conversation">×</a>
 			<div style="margin-bottom: 4px;">
 				<strong style="font-size: 16px;">%s</strong>
 			</div>

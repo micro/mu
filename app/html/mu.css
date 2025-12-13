@@ -1352,3 +1352,46 @@ body:has(#messages) #content {
     line-height: 1.4em;
   }
 }
+
+/* ========================================
+   MAIL/MESSAGING
+   ======================================== */
+.thread-preview {
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.thread-preview:hover {
+  background: #f5f5f5;
+}
+
+.thread-preview .delete-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  color: #ccc;
+  text-decoration: none;
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* Desktop: hide delete button, show on hover */
+@media (min-width: 769px) {
+  .thread-preview .delete-btn {
+    display: none;
+  }
+  
+  .thread-preview:hover .delete-btn {
+    display: block;
+  }
+}
+
+/* Mobile: always show delete button */
+@media (max-width: 768px) {
+  .thread-preview .delete-btn {
+    display: block;
+  }
+}
