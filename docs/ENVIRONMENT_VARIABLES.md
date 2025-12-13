@@ -36,13 +36,15 @@ export MODEL_API_URL="http://localhost:11434"   # Default: http://localhost:1143
 
 **TODO:** The Ollama endpoint (`http://localhost:11434`) and embedding model (`nomic-embed-text`) are currently hardcoded in `data/data.go`. Consider making these configurable via `MODEL_API_URL` and a new `EMBEDDING_MODEL` environment variable.
 
-## Mail Configuration
+## Messaging Configuration
+
+Messaging system uses SMTP protocol for delivery.
 
 ```bash
-# SMTP server port for receiving mail
+# SMTP server port for receiving messages
 export MAIL_PORT="2525"              # Default: 2525 (use 25 for production)
 
-# Mail domain for email addresses
+# Domain for message addresses
 export MAIL_DOMAIN="yourdomain.com"  # Default: localhost
 
 # DKIM signing selector (requires keys in ~/.mu/keys/dkim.key)
@@ -51,16 +53,16 @@ export MAIL_SELECTOR="default"       # Default: default
 
 **Notes:**
 - SMTP server always runs automatically
-- Mu sends external emails directly to recipient mail servers (no relay needed)
+- Mu delivers external messages directly to recipient servers via SMTP (no relay needed)
 - DKIM signing enables automatically if keys exist at `~/.mu/keys/dkim.key`
-- Mail access is restricted to admins and members only
+- Messaging access is restricted to admins and members only
 
 ## Example Usage
 
 ### Development (Local Testing)
 
 ```bash
-# SMTP server on port 2525
+# Messaging server on port 2525
 export MAIL_PORT="2525"
 export MAIL_DOMAIN="localhost"
 
@@ -70,7 +72,7 @@ export MAIL_DOMAIN="localhost"
 ### Production
 
 ```bash
-# SMTP server on standard port 25
+# Messaging server on standard SMTP port 25
 export MAIL_PORT="25"
 
 # Your domain and DKIM configuration
@@ -89,8 +91,8 @@ export MAIL_SELECTOR="default"
 | `MODEL_NAME` | `llama3.2` | Ollama model name (if Fanar not configured) |
 | `MODEL_API_URL` | `http://localhost:11434` | Ollama API endpoint (also used for vector search embeddings) |
 | `YOUTUBE_API_KEY` | - | YouTube API key for video functionality |
-| `MAIL_PORT` | `2525` | Port for SMTP server (use 25 for production) |
-| `MAIL_DOMAIN` | `localhost` | Your domain for email addresses |
+| `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |
+| `MAIL_DOMAIN` | `localhost` | Your domain for message addresses |
 | `MAIL_SELECTOR` | `default` | DKIM selector for DNS lookup |
 
 ## .env File (Optional)
@@ -107,7 +109,7 @@ MODEL_API_URL=http://localhost:11434
 # YouTube
 YOUTUBE_API_KEY=your-youtube-api-key
 
-# Mail (SMTP server always runs)
+# Messaging (uses SMTP protocol)
 MAIL_PORT=2525
 MAIL_DOMAIN=yourdomain.com
 MAIL_SELECTOR=default
@@ -138,7 +140,7 @@ Environment="FANAR_API_URL=https://api.fanar.ai"
 # YouTube
 Environment="YOUTUBE_API_KEY=your-youtube-api-key"
 
-# Mail
+# Messaging
 Environment="MAIL_PORT=25"
 Environment="MAIL_DOMAIN=yourdomain.com"
 Environment="MAIL_SELECTOR=default"
@@ -200,6 +202,6 @@ docker run -d \
 | Chat | `FANAR_API_KEY` or Ollama (`MODEL_NAME`, `MODEL_API_URL`) |
 | Vector Search | Ollama with `nomic-embed-text` model (`MODEL_API_URL`) |
 | Video | `YOUTUBE_API_KEY` |
-| Mail (Receive/Send) | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
+| Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
 | Access Control | User must be admin or member |
 

@@ -42,6 +42,7 @@ mu/
 ├── chat/             # LLM chat with RAG (Retrieval Augmented Generation)
 ├── data/             # Data layer (file storage, indexing, vector search, events)
 ├── home/             # Home page cards
+├── mail/             # Messaging system (uses SMTP protocol for delivery)
 ├── news/             # RSS feeds, HN comments, market data
 ├── user/             # User profiles and settings
 └── video/            # YouTube search and playback
@@ -94,6 +95,16 @@ Microblogging platform:
 - **Author Attribution** - Tied to user accounts
 - **Edit/Delete** - Author-only modification
 - **Optional Write Mode** - `?write=true` parameter
+
+### Messaging (`mail/`)
+
+User-to-user messaging system:
+- **Internal Messages** - Direct user-to-user communication
+- **External Messages** - Delivered via SMTP protocol to external addresses
+- **SMTP Server** - Receives incoming messages from internet
+- **DKIM Signing** - Authenticates outbound messages
+- **Threading** - Conversation view with replies
+- **Access Control** - Restricted to admins and members
 
 ### App (`app/`)
 

@@ -160,7 +160,7 @@ Go to localhost:8081
 Additional documentation is available in the [docs](docs/) folder:
 
 - [Design Documentation](docs/DESIGN.md) - Architecture and design decisions
-- [Mail System](docs/MAIL.md) - Complete mail setup guide (SMTP, DKIM, external email)
+- [Messaging System](docs/MESSAGING_SYSTEM.md) - Complete messaging and mail setup guide
 - [Environment Variables](docs/ENVIRONMENT_VARIABLES.md) - All configuration options
 - [Contextual Discussions](docs/CONTEXTUAL_DISCUSSIONS.md) - Chat context and discussion features
 - [Vector Search](docs/VECTOR_SEARCH.md) - Setting up vector embeddings for semantic search

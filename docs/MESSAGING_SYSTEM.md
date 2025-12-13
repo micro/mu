@@ -1,6 +1,6 @@
-# Mail System Guide
+# Messaging System Guide
 
-Complete guide for mu's mail system supporting internal messages and external email.
+Complete guide for mu's messaging system. Messages are delivered using mail/SMTP protocols, supporting both internal user-to-user messaging and external email communication.
 
 ## Quick Start
 
@@ -9,9 +9,9 @@ Complete guide for mu's mail system supporting internal messages and external em
 # No configuration needed
 ./mu --serve --address :8080
 ```
-Users can send messages to each other by username. No SMTP needed.
+Users can send messages to each other by username. Messages stored locally, no external SMTP required.
 
-### External Email Support
+### External Message Support
 ```bash
 # Set SMTP port (optional, defaults to 2525)
 export MAIL_PORT="2525"
@@ -42,8 +42,8 @@ export MAIL_SELECTOR="default"
 
 1. [How It Works](#how-it-works)
 2. [Environment Variables](#environment-variables)
-3. [SMTP Server Setup](#smtp-server-setup)
-4. [SMTP Client Setup](#smtp-client-setup)
+3. [SMTP Server Setup (Receiving)](#smtp-server-setup)
+4. [Message Delivery (Sending)](#smtp-client-setup)
 5. [DKIM Setup](#dkim-setup)
 6. [DNS Configuration](#dns-configuration)
 7. [Testing](#testing)
@@ -115,17 +115,17 @@ Internet → SMTP Server (port 2525/25)
 - Mail functionality is restricted to admins and members only
 - Set user roles via the admin interface
 
-**How Sending Works:**
-- Internal messages (username only) are stored directly in mail.json
-- External emails (@domain) are relayed to their mail servers using MX lookups
+**How Message Delivery Works:**
+- Internal messages (username only) are stored directly in the local database
+- External messages (@domain) are sent via SMTP protocol to recipient mail servers using MX lookups
 - DKIM signing is applied automatically if configured
-- No external SMTP relay needed - mu sends directly to recipient mail servers
+- No external SMTP relay needed - direct delivery to recipient servers
 
 ---
 
-## SMTP Server Setup
+## SMTP Server Setup (Receiving Messages)
 
-The SMTP server always runs to receive mail from the internet.
+The messaging system uses SMTP protocol to receive messages from the internet.
 
 ### Configure Port
 
@@ -165,16 +165,16 @@ The server only accepts mail for valid local users. It cannot be used to relay s
 
 ---
 
-## Sending External Email
+## Message Delivery (Sending)
 
-Mu sends external emails directly to recipient mail servers using MX lookups. No external SMTP relay required.
+The messaging system delivers messages using SMTP protocol. External messages are sent directly to recipient mail servers using MX lookups. No external relay required.
 
 ### How It Works
 
-1. User sends to external address (e.g., bob@gmail.com)
-2. Mu looks up MX records for gmail.com
-3. Connects directly to Gmail's mail servers
-4. Delivers email with DKIM signature (if configured)
+1. User sends message to external address (e.g., bob@gmail.com)
+2. System looks up MX records for gmail.com
+3. Connects directly to Gmail's mail servers via SMTP
+4. Delivers message with DKIM signature (if configured)
 5. Stores copy in sender's sent folder
 
 ### DKIM Signing
@@ -190,13 +190,13 @@ export MAIL_DOMAIN="yourdomain.com"
 export MAIL_SELECTOR="default"
 ```
 
-**No SMTP credentials needed** - Mu handles everything directly.
+**No SMTP credentials needed** - Direct delivery handles everything.
 
 ---
 
 ## DKIM Setup
 
-DKIM adds digital signatures to outbound emails to prove authenticity.
+DKIM adds digital signatures to outbound messages to prove authenticity and improve deliverability.
 
 ### Why Use DKIM?
 
