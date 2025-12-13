@@ -440,8 +440,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		isAttachment := false
 		attachmentName := ""
 
-		if looksLikeBase64(displayBody) {
-			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(displayBody)); err == nil {
+		// Try to decode as base64 if it looks encoded OR starts with "PK" (not decoded yet)
+		shouldTryDecode := looksLikeBase64(displayBody) || strings.HasPrefix(strings.TrimSpace(displayBody), "PK")
+		
+		if shouldTryDecode {
+			trimmed := strings.TrimSpace(displayBody)
+			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
 				// Check if it's a ZIP file (DMARC reports, etc)
 				if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 					isAttachment = true
@@ -462,6 +466,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					displayBody = string(decoded)
 					app.Log("mail", "Decoded base64 body for display")
 				}
+			} else if strings.HasPrefix(trimmed, "PK") {
+				// If "PK" is literal and not base64, it's already binary data displayed as text
+				// This shouldn't happen but handle it gracefully
+				app.Log("mail", "Warning: Body starts with PK but failed base64 decode: %v", err)
 			}
 		}
 
