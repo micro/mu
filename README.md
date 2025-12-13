@@ -10,6 +10,7 @@ A personal app platform that provides services without ads, algorithms, or explo
 
 - **Home** - One place to catchup with everything
 - **Chat** - AI assistant with contextual discussions
+- **Mail** - Private messaging and outbound SMTP 
 - **News** - Curated RSS feeds and market data
 - **Posts** - Microblogging and community sharing
 - **Video** - YouTube search and Ad-free viewing
