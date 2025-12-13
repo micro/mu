@@ -1141,7 +1141,7 @@ func parseFeed() {
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
-			 <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
+			 <div class="summary">%s</div>
 			`, h.Category, h.Category, h.URL, h.Title, h.Description, getSummary(h))
 
 		// close val
@@ -1603,7 +1603,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
       <span class="description">%s</span>
     </div>
   </a>
-  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
+  <div class="summary">%s</div>
 </div>`, entry.ID, url, image, title, description, summary)
 			} else {
 				article = fmt.Sprintf(`
@@ -1615,7 +1615,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
       <span class="description">%s</span>
     </div>
   </a>
-  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
+  <div class="summary">%s</div>
 </div>`, entry.ID, url, title, description, summary)
 			}
 

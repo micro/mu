@@ -421,7 +421,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	} else {
 		membershipSection = `<h3>Membership</h3>
 			<p>Support Mu and get exclusive benefits.</p>
-			<p><a href="/membership"><button>Become a Member</button></a></p>`
+			<p><a href="/membership">Become a Member →</a></p>`
 	}
 
 	// Build language options
@@ -452,14 +452,14 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		<p><strong>Username:</strong> %s</p>
 		<p><strong>Name:</strong> %s</p>
 		<p><strong>Joined:</strong> %s</p>
-		<p style="margin-top: 10px;"><a href="/@%s"><button>Public Profile</button></a></p>
+		<p style="margin-top: 10px;"><a href="/@%s">View Public Profile →</a></p>
 		
 		<div style="margin-top: 20px;">%s</div>
 		
 		<div style="margin-top: 20px;">%s</div>
 		
 		<hr style="margin: 20px 0;">
-		<p><a href="/logout"><button style="display: inline-flex; align-items: center; gap: 8px; background: #000; color: #fff; border: 1px solid #000;"><img src="/logout.png" width="16" height="16" style="vertical-align: middle; filter: brightness(0) invert(1);">Logout</button></a></p>
+		<p><a href="/logout" style="color: #dc3545; font-weight: bold;">Logout</a></p>
 		</div>`,
 		acc.ID,
 		acc.Name,
@@ -469,7 +469,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		languageSection,
 	)
 
-	html := RenderHTMLWithLang("Account", "Your Account", content, currentLang)
+	html := RenderHTML("Account", "Account", content)
 	w.Write([]byte(html))
 }
 
@@ -559,8 +559,8 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 				<p>Your support helps keep Mu independent and sustainable.</p>
 				<p>Please login or signup to activate your membership.</p>
 				<p>
-					<a href="/login"><button>Login</button></a>
-					<a href="/signup"><button>Signup</button></a>
+					<a href="/login" style="margin-right: 15px;">Login</a>
+					<a href="/signup">Signup</a>
 				</p>`
 			html := RenderHTML("Membership", "Thank you!", content)
 			w.Write([]byte(html))
@@ -581,7 +581,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		<h3>Join the Community</h3>
 		<p>Connect with other members, share feedback, and participate in discussions:</p>
-	<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank"><button>Join Discord</button></a></p>
+	<p><a href="https://discord.gg/jwTYuUVAGh" target="_blank">Join Discord →</a></p>
 
 	<h3>Support Through Donation</h3>
 	<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`
@@ -631,7 +631,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 			if !acc.Member {
 				return `<h3>Become a Member</h3>
 					<p>Secure payment via GoCardless Direct Debit</p>
-					<p><a href="https://pay.gocardless.com/BRT00046P56M824"><button>Payment Link</button></a></p>`
+					<p><a href="https://pay.gocardless.com/BRT00046P56M824">Payment Link →</a></p>`
 			}
 			return ""
 		}(),
@@ -654,7 +654,7 @@ func Donate(w http.ResponseWriter, r *http.Request) {
 		content := `<h1>Thank you for your donation!</h1>
 			<p>Your generous support helps keep Mu independent and sustainable.</p>
 			<p>Every contribution makes a difference in building a better internet.</p>
-			<p><a href="/"><button>Return Home</button></a></p>`
+			<p><a href="/">← Return Home</a></p>`
 		html := RenderHTML("Donate", "Thank you!", content)
 		w.Write([]byte(html))
 		return
@@ -671,7 +671,7 @@ func Donate(w http.ResponseWriter, r *http.Request) {
 			<li>Help maintain server infrastructure</li>
 			<li>Enable us to focus on users, not profits</li>
 		</ul>
-		<p><a href="https://pay.gocardless.com/BRT00046P78DQWG"><button>Make a Donation</button></a></p>
+		<p><a href="https://pay.gocardless.com/BRT00046P78DQWG">Make a Donation →</a></p>
 		<p>Secure payment via GoCardless</p>
 		<hr>
 		<p>Looking for recurring support? <a href="/membership">Become a member</a> instead.</p>`

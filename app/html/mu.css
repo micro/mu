@@ -1,8 +1,44 @@
 /* ========================================
    BASE STYLES
    ======================================== */
+/* THEME: Minimalist Black & White
+   - Clean black/white color scheme
+   - Subtle grey borders (#e0e0e0) on cards
+   - Cards for content grouping with consistent padding
+   - Links for navigation (underline on hover)
+   - Buttons only for form submissions
+   - No heavy buttons or CTAs
+   - Consistent spacing using design tokens
+   ======================================== */
 :root {
   --topic-gap: 15px;
+  
+  /* Design System Tokens */
+  /* Colors */
+  --card-border: #e0e0e0;
+  --card-background: #ffffff;
+  --hover-background: #f5f5f5;
+  --divider: #eee;
+  --text-primary: #333;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --accent-blue: #007bff;
+  --accent-blue-hover: #0056b3;
+  
+  /* Spacing */
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 15px;
+  --spacing-lg: 20px;
+  --spacing-xl: 24px;
+  --item-padding: 15px;
+  
+  /* Borders */
+  --border-radius: 5px;
+  --border-width: 1px;
+  
+  /* Transitions */
+  --transition-fast: 0.2s;
 }
 
 html, body {
@@ -19,27 +55,49 @@ html, body {
   box-sizing: inherit;
 }
 
+/* Links - minimalist style with hover underline */
 a {
-  color: black;
+  color: #000;
   text-decoration: none;
   font-size: 0.9em;
   font-weight: bold;
+  transition: opacity var(--transition-fast);
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 a:visited {
-  color: black;
+  color: #000;
 }
 
+/* External links - blue to indicate leaving site */
+a[target="_blank"],
+a[rel*="noopener"] {
+  color: #007bff;
+}
+
+a[target="_blank"]:visited,
+a[rel*="noopener"]:visited {
+  color: #0056b3;
+}
+
+/* Buttons for forms only - minimalist theme */
 button {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 5px;
-  padding: 10px;
+  background: #000;
+  color: #fff;
+  border: 1px solid #000;
+  border-radius: var(--border-radius);
+  padding: 10px 15px;
   cursor: pointer;
+  font-size: 14px;
+  transition: all var(--transition-fast);
 }
 
 button:hover {
-  background: whitesmoke;
+  background: #333;
+  border-color: #333;
 }
 
 input {
@@ -363,24 +421,6 @@ td {
   background: #555;
 }
 
-.cta-button {
-  padding: 12px 24px;
-  font-size: 1em;
-  font-weight: bold;
-  background: #333;
-  color: white;
-  border: none;
-  cursor: pointer;
-  margin-right: 10px;
-}
-
-.cta-button:hover {
-  background: #555;
-}
-
-/* ========================================
-   CARDS & BLOCKS
-   ======================================== */
 /* ========================================
    CARDS & BLOCKS
    ======================================== */
@@ -389,11 +429,11 @@ td {
   margin-right: 20px;
   float: left;
   min-width: 350px;
-  border: 1px solid #e0e0e0;
-  border-radius: 5px;
-  padding: 20px;
-  margin-bottom: 20px;
-  padding-bottom: 25px;
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: var(--item-padding);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-lg);
 }
 
 .card h4 {
@@ -411,10 +451,15 @@ td {
   display: block;
   text-align: center;
   text-decoration: none;
-  border: 1px solid #f0f0f0;
-  border-radius: 5px;
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
   padding: 10px;
-  background: #fafafa;
+  background: var(--card-background);
+  transition: background var(--transition-fast);
+}
+
+.block:hover {
+  background: var(--hover-background);
 }
 
 /* ========================================
@@ -521,23 +566,25 @@ body:has(#messages) #content {
 }
 
 .message {
-  margin-bottom: 30px;
+  margin-bottom: var(--spacing-lg);
   width: 100%;
   display: block;
 }
 
 .you {
-  font-size: small;
+  font-size: 0.85em;
   font-weight: bold;
-  color: black;
+  color: var(--text-primary);
   display: block;
+  margin-bottom: var(--spacing-xs);
 }
 
-.llm, .ai {
-  font-size: 0.9em;
+.llm, .ai, .system {
+  font-size: 0.85em;
   font-weight: bold;
-  color: black;
+  color: var(--text-primary);
   display: block;
+  margin-bottom: var(--spacing-xs);
 }
 
 .loading-dots {
@@ -726,28 +773,61 @@ body:has(#messages) #content {
 }
 
 .post-item {
-  margin-bottom: 15px;
-  padding-bottom: 0;
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: var(--item-padding);
+  background: var(--card-background);
+  margin-bottom: var(--spacing-md);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .post-item:hover {
-  background: #fafafa;
+  background: var(--hover-background);
 }
 
 .message-item {
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: var(--item-padding);
+  background: var(--card-background);
+  margin-bottom: var(--spacing-md);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .message-item:hover {
-  background: #fafafa;
+  background: var(--hover-background);
 }
 
 .post-item h3 {
   margin-top: 0;
   margin-bottom: 8px;
+}
+
+.post-item h3 a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.post-item > div {
+  margin-bottom: 10px;
+}
+
+.post-item .info {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  margin-top: var(--spacing-sm);
+  margin-bottom: 0;
+}
+
+.post-item .info a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.post-item .info a:hover {
+  text-decoration: underline;
 }
 
 .post-content {
@@ -862,25 +942,128 @@ body:has(#messages) #content {
 }
 
 .headline {
-  margin-bottom: 20px;
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: var(--item-padding);
+  background: var(--card-background);
+  margin-bottom: var(--spacing-md);
+  transition: background var(--transition-fast);
+  cursor: pointer;
+}
+
+.headline:hover {
+  background: var(--hover-background);
 }
 
 .headline a {
   font-weight: bold;
   text-decoration: none;
+  color: var(--text-primary);
+}
+
+.headline .title {
+  display: block;
+  font-size: 1em;
+  margin: var(--spacing-sm) 0;
+}
+
+.headline .description {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+.headline .summary {
+  font-size: 0.8em;
+  margin-top: 5px;
+  color: var(--text-secondary);
 }
 
 .news {
-  margin-bottom: 20px;
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: var(--item-padding);
+  background: var(--card-background);
+  margin-bottom: var(--spacing-md);
+  transition: background var(--transition-fast);
+  cursor: pointer;
+}
+
+.news:hover {
+  background: var(--hover-background);
 }
 
 .news a {
   text-decoration: none;
+  color: var(--text-primary);
+}
+
+.news .cover {
+  width: 100%;
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-sm);
+}
+
+.news .blurb {
+  display: block;
+}
+
+.news .title {
+  display: block;
+  font-weight: bold;
+  font-size: 1em;
+  margin-bottom: var(--spacing-xs);
+}
+
+.news .description {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+.news .summary {
+  font-size: 0.8em;
+  margin-top: 5px;
+  color: var(--text-secondary);
 }
 
 /* ========================================
    VIDEO PAGE
    ======================================== */
+.thumbnail {
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: var(--item-padding);
+  background: var(--card-background);
+  margin-bottom: var(--spacing-md);
+  transition: background var(--transition-fast);
+  cursor: pointer;
+}
+
+.thumbnail:hover {
+  background: var(--hover-background);
+}
+
+.thumbnail a {
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+.thumbnail img {
+  width: 100%;
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-sm);
+}
+
+.thumbnail h3 {
+  margin: var(--spacing-sm) 0;
+  font-size: 1em;
+}
+
+.video {
+  margin-bottom: var(--spacing-lg);
+}
+
 #video img {
   width: 100%;
   border-radius: 5px;
@@ -995,6 +1178,7 @@ body:has(#messages) #content {
   font-weight: bold;
   text-decoration: none;
   margin-top: 10px;
+  color: #000;
 }
 
 .link:hover {
@@ -1204,10 +1388,10 @@ body:has(#messages) #content {
   #content {
     height: auto;
     display: block;
-    padding: 15px 20px 80px 20px;
+    padding: 15px 15px 80px 15px;
   }
   #main {
-    padding: 20px;
+    padding: 15px;
     margin-top: 75px;
   }
   #title {
@@ -1357,15 +1541,15 @@ body:has(#messages) #content {
    MAIL/MESSAGING
    ======================================== */
 .thread-preview {
-  padding: 15px;
-  border-bottom: 1px solid #eee;
+  padding: var(--item-padding);
+  border-bottom: var(--border-width) solid var(--divider);
   position: relative;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .thread-preview:hover {
-  background: #f5f5f5;
+  background: var(--hover-background);
 }
 
 .thread-preview .delete-btn {
@@ -1398,11 +1582,11 @@ body:has(#messages) #content {
 
 /* Thread message card */
 .thread-message {
-  border: 1px solid #e0e0e0;
-  border-radius: 5px;
-  padding: 20px;
-  margin-bottom: 20px;
-  background: white;
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: var(--item-padding);
+  margin-bottom: var(--spacing-md);
+  background: var(--card-background);
 }
 
 .thread-message-header {
@@ -1448,8 +1632,8 @@ body:has(#messages) #content {
 /* Attachment blocks */
 .attachment-block {
   background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 5px;
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
   padding: 30px;
   margin: 15px 0;
   text-align: center;
