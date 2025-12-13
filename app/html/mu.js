@@ -115,7 +115,7 @@ function switchTopic(t) {
     if (typeof summaries !== 'undefined' && summaries[t]) {
       const summaryMsg = document.createElement('div');
       summaryMsg.className = 'message';
-      const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" style="color: inherit; font-size: 0.9em; opacity: 0.8;">→ Discuss</a>`;
+      const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" style="color: inherit; font-size: 0.9em; opacity: 0.8;">→ Discuss with AI</a>`;
       summaryMsg.innerHTML = `<span class="llm">AI Summary</span><p>${renderMarkdown(summaries[t])}</p><div>${discussLink}</div>`;
       messages.appendChild(summaryMsg);
     }
@@ -263,7 +263,7 @@ function loadChat() {
       if (summaries[topic]) {
         const summaryMsg = document.createElement('div');
         summaryMsg.className = 'message';
-        const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(topic)}" style="color: #666; font-size: 0.75em;">→ Discuss</a>`;
+        const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(topic)}" style="color: #666; font-size: 0.75em;">→ Discuss with AI</a>`;
         summaryMsg.innerHTML = `<span class="llm">${topic}</span><p>${renderMarkdown(summaries[topic])}</p><div>${discussLink}</div>`;
         messages.appendChild(summaryMsg);
       }
@@ -903,7 +903,7 @@ function updateUserList(users) {
   }
   
   if (users && users.length > 0) {
-    userListDiv.innerHTML = '<strong>In room:</strong> ' + users.map(u => '@' + u).join(', ');
+    userListDiv.innerHTML = '<strong>Who\'s here:</strong> ' + users.map(u => '@' + u).join(', ');
   } else {
     userListDiv.innerHTML = '';
   }

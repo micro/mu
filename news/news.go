@@ -1424,7 +1424,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			<div style="margin-top: 20px; color: #666; font-size: 14px;">
 				<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc;">Read Original Article →</a>
 				<span style="margin: 0 8px;">·</span>
-				<a href="/chat?id=news_%s" style="color: #0066cc;">Discuss</a>
+				<a href="/chat?id=news_%s" style="color: #0066cc;">Discuss with AI</a>
 			</div>
 			<div style="margin-top: 30px;">
 				<a href="/news" style="color: #666; text-decoration: none;">← Back to news</a>
