@@ -494,7 +494,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		} else if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
 			// ZIP file - try to extract contents for display
 			if extracted := extractZipContents([]byte(trimmed), msg.FromID); extracted != "" {
-				displayBody = extracted
+				displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, extracted)
 				app.Log("mail", "Extracted and displayed raw ZIP contents (%d bytes)", len(trimmed))
 			} else {
 				// Extraction failed - show download link
@@ -639,14 +639,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					if content, err := io.ReadAll(reader); err == nil {
 						reader.Close()
 						if isValidUTF8Text(content) {
-							msgBody = string(content)
+							msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, string(content))
 						}
 					}
 				}
 			} else if len(trimmedBody) >= 2 && trimmedBody[0] == 'P' && trimmedBody[1] == 'K' {
 				// ZIP file - try to extract
 				if extracted := extractZipContents([]byte(trimmedBody), m.FromID); extracted != "" {
-					msgBody = extracted
+					msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, extracted)
 				} else {
 					// Extraction failed - show download link
 					msgIsAttachment = true
@@ -664,14 +664,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							if content, err := io.ReadAll(reader); err == nil {
 								reader.Close()
 								if isValidUTF8Text(content) {
-									msgBody = string(content)
+									msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, string(content))
 								}
 							}
 						}
 					} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 						// ZIP file - try to extract
 						if extracted := extractZipContents(decoded, m.FromID); extracted != "" {
-							msgBody = extracted
+							msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, extracted)
 						} else {
 							// Extraction failed - show download link
 							msgIsAttachment = true
