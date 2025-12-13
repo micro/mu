@@ -1756,8 +1756,11 @@ func renderDMARCReport(xmlData string) string {
 	var report DMARCReport
 	if err := xml.Unmarshal([]byte(xmlData), &report); err != nil {
 		// Not a DMARC report or invalid XML - return empty to fall back to raw display
+		app.Log("mail", "Failed to parse as DMARC report: %v", err)
 		return ""
 	}
+	
+	app.Log("mail", "Successfully parsed DMARC report from %s", report.ReportMetadata.OrgName)
 
 	var html strings.Builder
 	
