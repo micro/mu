@@ -495,13 +495,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 					// Try to extract and display ZIP contents
 					if extracted := extractZipContents(decoded, msg.FromID); extracted != "" {
-						displayBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 5px; padding: 30px; margin: 15px 0; text-align: center;">
-							<div style="font-size: 16px; color: #495057; margin-bottom: 12px; font-weight: 500;">📎 ZIP Archive - Extracted Contents</div>
-							<details style="text-align: left; margin: 15px 0;">
-								<summary style="cursor: pointer; color: #007bff; font-weight: 500; margin-bottom: 10px;">View extracted files</summary>
-								<pre style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.6; margin-top: 10px; border: 1px solid #e0e0e0;">%s</pre>
+						displayBody = fmt.Sprintf(`<div class="attachment-block">
+							<div class="attachment-title">📎 ZIP Archive - Extracted Contents</div>
+							<details class="attachment-details">
+								<summary class="attachment-summary">View extracted files</summary>
+								<pre class="attachment-content">%s</pre>
 							</details>
-							<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500; margin-top: 10px;">Download ZIP</a>
+							<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" class="attachment-download-btn">Download ZIP</a>
 						</div>`, extracted, msg.ID)
 						app.Log("mail", "Extracted and displayed base64-encoded ZIP contents (%d bytes)", len(decoded))
 					} else if len(decoded) > 0 {
@@ -510,10 +510,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
 							attachmentName = "dmarc-report.zip"
 						}
-						displayBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 5px; padding: 30px; margin: 15px 0; text-align: center;">
-							<div style="font-size: 16px; color: #495057; margin-bottom: 8px; font-weight: 500;">📎 %s</div>
-							<div style="color: #6c757d; font-size: 14px; margin-bottom: 20px;">%d bytes</div>
-							<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500;">Download</a>
+						displayBody = fmt.Sprintf(`<div class="attachment-block">
+							<div class="attachment-title">📎 %s</div>
+							<div class="attachment-size">%d bytes</div>
+							<a href="/mail?action=download_attachment&msg_id=%s" download="%s" class="attachment-download-btn">Download</a>
 						</div>`, attachmentName, len(decoded), msg.ID, attachmentName)
 						app.Log("mail", "Detected base64-encoded ZIP attachment: %s (%d bytes)", attachmentName, len(decoded))
 					}
@@ -641,13 +641,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 						// Try to extract and display ZIP contents
 						if extracted := extractZipContents(decoded, m.FromID); extracted != "" {
-							msgBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 5px; padding: 30px; margin: 15px 0; text-align: center;">
-								<div style="font-size: 16px; color: #495057; margin-bottom: 12px; font-weight: 500;">📎 ZIP Archive - Extracted Contents</div>
-								<details style="text-align: left; margin: 15px 0;">
-									<summary style="cursor: pointer; color: #007bff; font-weight: 500; margin-bottom: 10px;">View extracted files</summary>
-									<pre style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.6; margin-top: 10px; border: 1px solid #e0e0e0;">%s</pre>
+							msgBody = fmt.Sprintf(`<div class="attachment-block">
+								<div class="attachment-title">📎 ZIP Archive - Extracted Contents</div>
+								<details class="attachment-details">
+									<summary class="attachment-summary">View extracted files</summary>
+									<pre class="attachment-content">%s</pre>
 								</details>
-								<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500; margin-top: 10px;">Download ZIP</a>
+								<a href="/mail?action=download_attachment&msg_id=%s" download="dmarc-report.zip" class="attachment-download-btn">Download ZIP</a>
 							</div>`, extracted, m.ID)
 							msgIsAttachment = true
 						} else if len(decoded) > 0 {
@@ -656,10 +656,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
 								attachName = "dmarc-report.zip"
 							}
-							msgBody = fmt.Sprintf(`<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 5px; padding: 30px; margin: 15px 0; text-align: center;">
-								<div style="font-size: 16px; color: #495057; margin-bottom: 8px; font-weight: 500;">📎 %s</div>
-								<div style="color: #6c757d; font-size: 14px; margin-bottom: 20px;">%d bytes</div>
-								<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500;">Download</a>
+							msgBody = fmt.Sprintf(`<div class="attachment-block">
+								<div class="attachment-title">📎 %s</div>
+								<div class="attachment-size">%d bytes</div>
+								<a href="/mail?action=download_attachment&msg_id=%s" download="%s" class="attachment-download-btn">Download</a>
 							</div>`, attachName, len(decoded), m.ID, attachName)
 						}
 					} else if isValidUTF8Text(decoded) {
@@ -679,7 +679,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				authorDisplay = "You"
 			} else if !IsExternalEmail(m.FromID) {
 				// Internal user - add profile link
-				authorDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #007bff;">%s</a>`, m.FromID, m.FromID)
+				authorDisplay = fmt.Sprintf(`<a href="/@%s" class="mail-link">%s</a>`, m.FromID, m.FromID)
 			} else if m.From != m.FromID {
 				// External email with display name
 				authorDisplay = m.From
@@ -687,14 +687,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			// Card-style layout for messages
 			threadHTML.WriteString(fmt.Sprintf(`
-		<div style="border: 1px solid #e0e0e0; border-radius: 5px; padding: 20px; margin-bottom: 20px; background: white;">
-			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-				<div style="flex: 1; min-width: 0;">
-					<strong style="color: #333; font-size: 14px;">%s</strong> <span style="color: #999; font-size: 13px;">· %s</span>
+		<div class="thread-message">
+			<div class="thread-message-header">
+				<div class="thread-message-header-text">
+					<span class="thread-message-author">%s</span> <span class="thread-message-time">· %s</span>
 				</div>
-				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #ccc; font-size: 24px; text-decoration: none; line-height: 1; padding: 0 5px; flex-shrink: 0;">×</a>
+				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" class="thread-message-delete">×</a>
 			</div>
-			<div style="white-space: pre-wrap; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; color: #333;">%s</div>
+			<div class="thread-message-body">%s</div>
 		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody))
 		}
 
@@ -706,7 +706,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Format other party with profile link if internal user
 		otherPartyDisplay := otherParty
 		if !IsExternalEmail(otherParty) {
-			otherPartyDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, otherParty, otherParty)
+			otherPartyDisplay = fmt.Sprintf(`<a href="/@%s" class="mail-link-muted">%s</a>`, otherParty, otherParty)
 		}
 
 		messageView := fmt.Sprintf(`

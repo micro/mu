@@ -1395,3 +1395,135 @@ body:has(#messages) #content {
     display: block;
   }
 }
+
+/* Thread message card */
+.thread-message {
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: white;
+}
+
+.thread-message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.thread-message-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.thread-message-author {
+  color: #333;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.thread-message-time {
+  color: #999;
+  font-size: 13px;
+}
+
+.thread-message-delete {
+  color: #ccc;
+  font-size: 24px;
+  text-decoration: none;
+  line-height: 1;
+  padding: 0 5px;
+  flex-shrink: 0;
+}
+
+.thread-message-body {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  color: #333;
+}
+
+/* Attachment blocks */
+.attachment-block {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 30px;
+  margin: 15px 0;
+  text-align: center;
+}
+
+.attachment-title {
+  font-size: 16px;
+  color: #495057;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.attachment-size {
+  color: #6c757d;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.attachment-details {
+  text-align: left;
+  margin: 15px 0;
+}
+
+.attachment-summary {
+  cursor: pointer;
+  color: #007bff;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.attachment-content {
+  background: white;
+  padding: 15px;
+  border-radius: 5px;
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 10px;
+  border: 1px solid #e0e0e0;
+}
+
+.attachment-download-btn {
+  display: inline-block;
+  background: #007bff;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: 500;
+  margin-top: 10px;
+}
+
+.attachment-download-btn:hover {
+  background: #0056b3;
+  color: white;
+}
+
+/* Links */
+.mail-link {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.mail-link:hover {
+  text-decoration: underline;
+}
+
+.mail-link-muted {
+  color: #666;
+  text-decoration: none;
+}
+
+.mail-link-muted:hover {
+  color: #333;
+}
