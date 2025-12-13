@@ -919,18 +919,18 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
 
 	html := fmt.Sprintf(`
-		<div style="padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-			<div style="flex: 1; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
-				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-					<strong style="font-size: 16px;">%s%s</strong>
-					<span style="color: #888; font-size: 12px;">%s</span>
-				</div>
-				<div style="color: #666; font-size: 14px; margin-bottom: 4px;">%s</div>
-				<div style="color: #999; font-size: 13px;">%s</div>
+		<div class="thread-preview" style="padding: 15px; border-bottom: 1px solid #eee; position: relative; cursor: pointer; transition: background 0.2s;" onclick="window.location.href='/mail?id=%s'" onmouseover="this.style.background='#f5f5f5'; this.querySelector('.delete-btn').style.display='block';" onmouseout="this.style.background=''; this.querySelector('.delete-btn').style.display='none';">
+			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="position: absolute; top: 15px; right: 15px; color: #ccc; text-decoration: none; font-size: 24px; line-height: 1; display: none;" title="Delete conversation">×</a>
+			<div style="margin-bottom: 4px;">
+				<strong style="font-size: 16px;">%s%s</strong>
 			</div>
-			<a href="#" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #999; text-decoration: none; padding: 0 10px; font-size: 20px;" title="Delete conversation">×</a>
+			<div style="color: #666; font-size: 14px; margin-bottom: 4px;">%s</div>
+			<div style="display: flex; justify-content: space-between; align-items: center;">
+				<div style="color: #999; font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">%s</div>
+				<span style="color: #888; font-size: 12px; margin-left: 10px; flex-shrink: 0;">%s</span>
+			</div>
 		</div>
-	`, rootID, unreadIndicator, fromDisplay, relativeTime, latestMsg.Subject, bodyPreview, rootID)
+	`, rootID, rootID, unreadIndicator, fromDisplay, latestMsg.Subject, bodyPreview, relativeTime)
 
 	return html
 }
@@ -964,18 +964,18 @@ func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string)
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
 
 	html := fmt.Sprintf(`
-		<div style="padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-			<div style="flex: 1; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
-				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-					<strong style="font-size: 16px;">%s</strong>
-					<span style="color: #888; font-size: 12px;">%s</span>
-				</div>
-				<div style="color: #666; font-size: 14px; margin-bottom: 4px;">%s</div>
-				<div style="color: #999; font-size: 13px;">to %s</div>
+		<div class="thread-preview" style="padding: 15px; border-bottom: 1px solid #eee; position: relative; cursor: pointer; transition: background 0.2s;" onclick="window.location.href='/mail?id=%s'" onmouseover="this.style.background='#f5f5f5'; this.querySelector('.delete-btn').style.display='block';" onmouseout="this.style.background=''; this.querySelector('.delete-btn').style.display='none';">
+			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="position: absolute; top: 15px; right: 15px; color: #ccc; text-decoration: none; font-size: 24px; line-height: 1; display: none;" title="Delete conversation">×</a>
+			<div style="margin-bottom: 4px;">
+				<strong style="font-size: 16px;">%s</strong>
 			</div>
-			<a href="#" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #999; text-decoration: none; padding: 0 10px; font-size: 20px;" title="Delete conversation">×</a>
+			<div style="color: #666; font-size: 14px; margin-bottom: 4px;">to %s</div>
+			<div style="display: flex; justify-content: space-between; align-items: center;">
+				<div style="color: #999; font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">%s</div>
+				<span style="color: #888; font-size: 12px; margin-left: 10px; flex-shrink: 0;">%s</span>
+			</div>
 		</div>
-	`, rootID, latestMsg.Subject, relativeTime, bodyPreview, toDisplay, rootID)
+	`, rootID, rootID, latestMsg.Subject, toDisplay, bodyPreview, relativeTime)
 
 	return html
 }
