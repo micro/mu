@@ -462,9 +462,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		trimmed := strings.TrimSpace(displayBody)
 		
-		// Check if body is raw binary data (ZIP file starts with "PK")
-		if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
-			// Just show download link for ZIP files
+		// Check if body is gzip compressed (DMARC reports are often .xml.gz)
+		if len(trimmed) >= 2 && trimmed[0] == 0x1f && trimmed[1] == 0x8b {
+			if reader, err := gzip.NewReader(strings.NewReader(trimmed)); err == nil {
+				if content, err := io.ReadAll(reader); err == nil {
+					reader.Close()
+					if isValidUTF8Text(content) {
+						displayBody = string(content)
+						app.Log("mail", "Decompressed gzip body for display (%d bytes)", len(content))
+					}
+				}
+			}
+		} else if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
+			// ZIP file - show download link
 			isAttachment = true
 			attachmentName = "attachment.zip"
 			if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
@@ -475,9 +485,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		} else if looksLikeBase64(displayBody) {
 			// Try base64 decode
 			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
-				// Check if decoded data is a ZIP file
-				if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
-					// Just show download link for ZIP files
+				// Check if decoded data is gzip compressed
+				if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
+					if reader, err := gzip.NewReader(bytes.NewReader(decoded)); err == nil {
+						if content, err := io.ReadAll(reader); err == nil {
+							reader.Close()
+							if isValidUTF8Text(content) {
+								displayBody = string(content)
+								app.Log("mail", "Decompressed base64-encoded gzip body for display (%d bytes)", len(content))
+							}
+						}
+					}
+				} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
+					// ZIP file - show download link
 					isAttachment = true
 					attachmentName = "attachment.zip"
 					if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
@@ -577,10 +597,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			msgBody := m.Body
 			msgIsAttachment := false
 			
-			// Check for raw ZIP file
+			// Check for gzip or ZIP file
 			trimmedBody := strings.TrimSpace(msgBody)
-			if len(trimmedBody) >= 2 && trimmedBody[0] == 'P' && trimmedBody[1] == 'K' {
-				// Just show download link for ZIP files
+			if len(trimmedBody) >= 2 && trimmedBody[0] == 0x1f && trimmedBody[1] == 0x8b {
+				// Gzip compressed - decompress and display
+				if reader, err := gzip.NewReader(strings.NewReader(trimmedBody)); err == nil {
+					if content, err := io.ReadAll(reader); err == nil {
+						reader.Close()
+						if isValidUTF8Text(content) {
+							msgBody = string(content)
+						}
+					}
+				}
+			} else if len(trimmedBody) >= 2 && trimmedBody[0] == 'P' && trimmedBody[1] == 'K' {
+				// ZIP file - show download link
 				msgIsAttachment = true
 				attachName := "attachment.zip"
 				if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
@@ -589,9 +619,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				msgBody = fmt.Sprintf(`📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a>`, m.ID, attachName, attachName)
 			} else if looksLikeBase64(msgBody) {
 				if decoded, err := base64.StdEncoding.DecodeString(trimmedBody); err == nil {
-					// Check if decoded data is ZIP
-					if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
-						// Just show download link for ZIP files
+					// Check if decoded data is gzip
+					if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
+						if reader, err := gzip.NewReader(bytes.NewReader(decoded)); err == nil {
+							if content, err := io.ReadAll(reader); err == nil {
+								reader.Close()
+								if isValidUTF8Text(content) {
+									msgBody = string(content)
+								}
+							}
+						}
+					} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
+						// ZIP file - show download link
 						msgIsAttachment = true
 						attachName := "attachment.zip"
 						if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
