@@ -585,7 +585,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 		paymentSection := ""
 		if membershipURL != "" {
 			paymentSection = fmt.Sprintf(`<h3>Become a Member</h3>
-		<p><a href="%s">Payment Link →</a></p>`, membershipURL)
+		<p><a href="%s" target="_blank">Payment Link →</a></p>`, membershipURL)
 		}
 
 		supportSection := ""
@@ -643,7 +643,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	paymentSection := ""
 	if !acc.Member && membershipURL != "" {
 		paymentSection = fmt.Sprintf(`<h3>Become a Member</h3>
-				<p><a href="%s">Payment Link →</a></p>`, membershipURL)
+				<p><a href="%s" target="_blank">Payment Link →</a></p>`, membershipURL)
 	}
 
 	supportSection := ""
