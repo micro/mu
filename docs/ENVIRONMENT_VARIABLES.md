@@ -57,6 +57,28 @@ export MAIL_SELECTOR="default"       # Default: default
 - DKIM signing enables automatically if keys exist at `~/.mu/keys/dkim.key`
 - Messaging access is restricted to admins and members only
 
+## Payment Configuration (Optional)
+
+Enable paid memberships and donations to support your instance. All variables are optional - leave empty for a free instance.
+
+```bash
+# Membership payment URL (e.g., subscription/recurring payment link)
+export MEMBERSHIP_URL="https://gocardless.com/your-membership-link"
+
+# One-time donation URL
+export DONATION_URL="https://gocardless.com/your-donation-link"
+
+# Community/support URL (e.g., Discord, forum)
+export SUPPORT_URL="https://discord.gg/your-invite"
+```
+
+**Notes:**
+- Use any payment provider (GoCardless, Stripe, PayPal, etc.)
+- Payment callbacks are verified by extracting the domain from your URLs
+- When empty, payment/donation features are hidden
+- Links appear on `/membership` and `/donate` pages
+- Members still need to be granted member status manually via admin panel
+
 ## Example Usage
 
 ### Development (Local Testing)
@@ -94,6 +116,9 @@ export MAIL_SELECTOR="default"
 | `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |
 | `MAIL_DOMAIN` | `localhost` | Your domain for message addresses |
 | `MAIL_SELECTOR` | `default` | DKIM selector for DNS lookup |
+| `MEMBERSHIP_URL` | - | Payment link for recurring membership (optional) |
+| `DONATION_URL` | - | Payment link for one-time donations (optional) |
+| `SUPPORT_URL` | - | Community/support link like Discord (optional) |
 
 ## .env File (Optional)
 
@@ -113,6 +138,11 @@ YOUTUBE_API_KEY=your-youtube-api-key
 MAIL_PORT=2525
 MAIL_DOMAIN=yourdomain.com
 MAIL_SELECTOR=default
+
+# Payment (optional - leave empty for free instance)
+MEMBERSHIP_URL=https://gocardless.com/your-membership-link
+DONATION_URL=https://gocardless.com/your-donation-link
+SUPPORT_URL=https://discord.gg/your-invite
 ```
 
 Load and run:
@@ -144,6 +174,11 @@ Environment="YOUTUBE_API_KEY=your-youtube-api-key"
 Environment="MAIL_PORT=25"
 Environment="MAIL_DOMAIN=yourdomain.com"
 Environment="MAIL_SELECTOR=default"
+
+# Payment (optional)
+Environment="MEMBERSHIP_URL=https://gocardless.com/your-membership-link"
+Environment="DONATION_URL=https://gocardless.com/your-donation-link"
+Environment="SUPPORT_URL=https://discord.gg/your-invite"
 
 ExecStart=/opt/mu/mu --serve --address :8080
 Restart=always
@@ -177,6 +212,9 @@ docker run -d \
   -e MAIL_PORT=25 \
   -e MAIL_DOMAIN=yourdomain.com \
   -e MAIL_SELECTOR=default \
+  -e MEMBERSHIP_URL=https://gocardless.com/your-membership-link \
+  -e DONATION_URL=https://gocardless.com/your-donation-link \
+  -e SUPPORT_URL=https://discord.gg/your-invite \
   -v ~/.mu:/root/.mu \
   mu:latest
 ```
@@ -203,5 +241,6 @@ docker run -d \
 | Vector Search | Ollama with `nomic-embed-text` model (`MODEL_API_URL`) |
 | Video | `YOUTUBE_API_KEY` |
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
+| Payments | `MEMBERSHIP_URL`, `DONATION_URL` (optional: `SUPPORT_URL`) |
 | Access Control | User must be admin or member |
 
