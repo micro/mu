@@ -535,8 +535,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 					// ZIP file - try to extract contents for display
 					if extracted := extractZipContents(decoded, msg.FromID); extracted != "" {
-						displayBody = extracted
-						app.Log("mail", "Extracted and displayed ZIP contents (%d bytes)", len(decoded))
+						// Try to render as DMARC report
+						if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
+							displayBody = dmarcHTML
+							app.Log("mail", "Rendered DMARC report from ZIP (%d bytes)", len(decoded))
+						} else {
+							displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, html.EscapeString(extracted))
+							app.Log("mail", "Extracted and displayed ZIP contents (%d bytes)", len(decoded))
+						}
 					} else {
 						// Extraction failed - show download link
 						isAttachment = true
