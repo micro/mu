@@ -80,20 +80,6 @@ export MAIL_SELECTOR="default"
 ./mu --serve --address :8080
 ```
 
-### Using Gmail SMTP
-
-```bash
-# Use Gmail to send outbound mail
-export SMTP_HOST="smtp.gmail.com"
-export SMTP_PORT="587"
-export SMTP_USERNAME="your-email@gmail.com"
-export SMTP_PASSWORD="your-app-password"  # Use app-specific password
-
-export DKIM_DOMAIN="yourdomain.com"
-
-./mu --serve --address :8080
-```
-
 ## All Environment Variables
 
 | Variable | Default | Description |
@@ -103,15 +89,9 @@ export DKIM_DOMAIN="yourdomain.com"
 | `MODEL_NAME` | `llama3.2` | Ollama model name (if Fanar not configured) |
 | `MODEL_API_URL` | `http://localhost:11434` | Ollama API endpoint (also used for vector search embeddings) |
 | `YOUTUBE_API_KEY` | - | YouTube API key for video functionality |
-| `SMTP_ENABLED` | `false` | Enable SMTP server for receiving mail |
-| `SMTP_SERVER_PORT` | `2525` | Port for receiving incoming mail |
-| `MAIL_DOMAIN` | `localhost` | Domain for email addresses (falls back to `DKIM_DOMAIN`) |
-| `SMTP_HOST` | `localhost` | SMTP server for sending outbound mail |
-| `SMTP_PORT` | `25` | Port for sending outbound mail |
-| `SMTP_USERNAME` | - | Optional SMTP authentication username |
-| `SMTP_PASSWORD` | - | Optional SMTP authentication password |
-| `DKIM_DOMAIN` | `localhost` | Domain for DKIM signing |
-| `DKIM_SELECTOR` | `default` | DKIM selector for DNS lookup |
+| `MAIL_PORT` | `2525` | Port for SMTP server (use 25 for production) |
+| `MAIL_DOMAIN` | `localhost` | Your domain for email addresses |
+| `MAIL_SELECTOR` | `default` | DKIM selector for DNS lookup |
 
 ## .env File (Optional)
 
@@ -127,20 +107,10 @@ MODEL_API_URL=http://localhost:11434
 # YouTube
 YOUTUBE_API_KEY=your-youtube-api-key
 
-# SMTP Server (disabled by default)
-SMTP_ENABLED=true
-SMTP_SERVER_PORT=2525
+# Mail (SMTP server always runs)
+MAIL_PORT=2525
 MAIL_DOMAIN=yourdomain.com
-
-# SMTP Client
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-
-# DKIM
-DKIM_DOMAIN=yourdomain.com
-DKIM_SELECTOR=default
+MAIL_SELECTOR=default
 ```
 
 Load and run:
