@@ -329,8 +329,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if IsExternalEmail(to) {
 			// Send external email via SMTP
 			fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
-			// Use just the username (acc.ID) as display name, not acc.Name which might contain @
-			displayName := acc.ID
+			// Use the account name as display name
+			displayName := acc.Name
 
 			// Send external email (connects to localhost SMTP server which relays)
 			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, body, replyTo)
@@ -679,32 +679,23 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				authorDisplay = "You"
 			} else if !IsExternalEmail(m.FromID) {
 				// Internal user - add profile link
-				authorDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, m.FromID, m.FromID)
+				authorDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #007bff;">%s</a>`, m.FromID, m.FromID)
 			} else if m.From != m.FromID {
 				// External email with display name
 				authorDisplay = m.From
 			}
 
-			// Chat-style layout: sent messages on right, received on left
-			var messageStyle string
-			if isSent {
-				// Your messages: right-aligned, blue accent
-				messageStyle = `max-width: 70%; margin-left: auto; margin-right: 0; background: #e3f2fd; border: 1px solid #90caf9; border-radius: 12px; padding: 12px;`
-			} else {
-				// Their messages: left-aligned, gray
-				messageStyle = `max-width: 70%; margin-left: 0; margin-right: auto; background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 12px; padding: 12px;`
-			}
-
+			// Card-style layout for messages
 			threadHTML.WriteString(fmt.Sprintf(`
-		<div style="padding: 10px 0;">
-			<div style="%s">
-				<div style="color: #666; font-size: 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-					<span><strong>%s</strong> · %s</span>
-					<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #999; font-size: 11px; text-decoration: none;">×</a>
+		<div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #eee;">
+				<div style="font-size: 14px; color: #666;">
+					<strong style="color: #333;">%s</strong> · <span style="color: #999;">%s</span>
 				</div>
-				<div style="white-space: pre-wrap; line-height: 1.5; word-wrap: break-word; overflow-wrap: break-word;">%s</div>
+				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #999; font-size: 18px; text-decoration: none; line-height: 1;">×</a>
 			</div>
-		</div>`, messageStyle, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody))
+			<div style="white-space: pre-wrap; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; color: #333;">%s</div>
+		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody))
 		}
 
 		// Determine the other party in the thread
