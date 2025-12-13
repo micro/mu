@@ -384,15 +384,20 @@ func (s *Session) Data(r io.Reader) error {
 			app.Log("mail", "Error reading body: %v", err)
 			return err
 		}
-		body = string(bodyBytes)
 
 		// Check if body is base64 encoded
 		transferEncoding := msg.Header.Get("Content-Transfer-Encoding")
 		if strings.ToLower(transferEncoding) == "base64" {
-			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(body)); err == nil {
-				body = string(decoded)
-				app.Log("mail", "Decoded base64 email body")
-			}
+			// Body is already base64 - keep it that way for storage
+			body = string(bodyBytes)
+			app.Log("mail", "Keeping base64-encoded body as-is")
+		} else if isValidUTF8Text(bodyBytes) {
+			// Valid text content - store as-is
+			body = string(bodyBytes)
+		} else {
+			// Binary content (attachments, etc) - base64 encode for safe storage
+			body = base64.StdEncoding.EncodeToString(bodyBytes)
+			app.Log("mail", "Base64 encoded binary body for safe storage (%d bytes)", len(bodyBytes))
 		}
 
 		// Additional check: if the body looks entirely like base64 (no header specified),

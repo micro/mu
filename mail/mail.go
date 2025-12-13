@@ -3,6 +3,7 @@ package mail
 import (
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -1509,11 +1510,42 @@ func extractZipContents(data []byte, senderEmail string) string {
 	}
 	
 	if !isTrusted {
+		app.Log("mail", "Not extracting ZIP - sender not trusted: %s", senderEmail)
 		return "" // Don't auto-extract from unknown senders
 	}
 	
 	// Size limit: 10MB
 	if len(data) > 10*1024*1024 {
+		app.Log("mail", "ZIP too large: %d bytes", len(data))
+		return ""
+	}
+	
+	// Log first few bytes for debugging
+	if len(data) >= 4 {
+		app.Log("mail", "ZIP signature: %02x %02x %02x %02x", data[0], data[1], data[2], data[3])
+	}
+	
+	// Check if it's actually gzip (DMARC reports are often .xml.gz)
+	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
+		app.Log("mail", "Detected gzip format, attempting to decompress")
+		reader, err := gzip.NewReader(bytes.NewReader(data))
+		if err != nil {
+			app.Log("mail", "Failed to create gzip reader: %v", err)
+			return ""
+		}
+		defer reader.Close()
+		
+		content, err := io.ReadAll(reader)
+		if err != nil {
+			app.Log("mail", "Failed to read gzip: %v", err)
+			return ""
+		}
+		
+		if isValidUTF8Text(content) {
+			app.Log("mail", "Successfully decompressed gzip file (%d bytes)", len(content))
+			return string(content)
+		}
+		app.Log("mail", "Gzip content is not valid text")
 		return ""
 	}
 
