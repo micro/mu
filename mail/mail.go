@@ -538,6 +538,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						// Try to render as DMARC report
 						if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
 							displayBody = dmarcHTML
+							isAttachment = true // Skip linkifyURLs for pre-rendered HTML
 							app.Log("mail", "Rendered DMARC report from ZIP (%d bytes)", len(decoded))
 						} else {
 							displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, html.EscapeString(extracted))
@@ -660,7 +661,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			} else if len(trimmedBody) >= 2 && trimmedBody[0] == 'P' && trimmedBody[1] == 'K' {
 				// ZIP file - try to extract
 				if extracted := extractZipContents([]byte(trimmedBody), m.FromID); extracted != "" {
-					msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(extracted))
+					// Try to render as DMARC report
+					if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
+						msgBody = dmarcHTML
+						msgIsAttachment = true // Skip linkifyURLs for pre-rendered HTML
+					} else {
+						msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(extracted))
+					}
 				} else {
 					// Extraction failed - show download link
 					msgIsAttachment = true
@@ -685,7 +692,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
 						// ZIP file - try to extract
 						if extracted := extractZipContents(decoded, m.FromID); extracted != "" {
-							msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(extracted))
+							// Try to render as DMARC report
+							if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
+								msgBody = dmarcHTML
+								msgIsAttachment = true // Skip linkifyURLs for pre-rendered HTML
+							} else {
+								msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(extracted))
+							}
 						} else {
 							// Extraction failed - show download link
 							msgIsAttachment = true
@@ -1759,6 +1772,8 @@ type SPFResult struct {
 
 // renderDMARCReport parses DMARC XML and renders it as HTML tables
 func renderDMARCReport(xmlData string) string {
+	app.Log("mail", "renderDMARCReport called with %d bytes, first 200 chars: %s", len(xmlData), xmlData[:min(200, len(xmlData))])
+	
 	var report DMARCReport
 	if err := xml.Unmarshal([]byte(xmlData), &report); err != nil {
 		// Not a DMARC report or invalid XML - return empty to fall back to raw display
