@@ -778,12 +778,6 @@ body:has(#messages) #content {
   padding: var(--item-padding);
   background: var(--card-background);
   margin-bottom: var(--spacing-md);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.post-item:hover {
-  background: var(--hover-background);
 }
 
 .message-item {
@@ -792,12 +786,6 @@ body:has(#messages) #content {
   padding: var(--item-padding);
   background: var(--card-background);
   margin-bottom: var(--spacing-md);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.message-item:hover {
-  background: var(--hover-background);
 }
 
 .post-item h3 {
@@ -951,12 +939,6 @@ body:has(#messages) #content {
   padding: var(--item-padding);
   background: var(--card-background);
   margin-bottom: var(--spacing-md);
-  transition: background var(--transition-fast);
-  cursor: pointer;
-}
-
-.headline:hover {
-  background: var(--hover-background);
 }
 
 .headline a {
@@ -989,12 +971,6 @@ body:has(#messages) #content {
   padding: var(--item-padding);
   background: var(--card-background);
   margin-bottom: var(--spacing-md);
-  transition: background var(--transition-fast);
-  cursor: pointer;
-}
-
-.news:hover {
-  background: var(--hover-background);
 }
 
 .news a {
@@ -1045,12 +1021,6 @@ body:has(#messages) #content {
   padding: var(--item-padding);
   background: var(--card-background);
   margin-bottom: var(--spacing-md);
-  transition: background var(--transition-fast);
-  cursor: pointer;
-}
-
-.thumbnail:hover {
-  background: var(--hover-background);
 }
 
 .thumbnail a {
