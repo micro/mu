@@ -1602,6 +1602,8 @@ func extractZipContents(data []byte, senderEmail string) string {
 
 	var result strings.Builder
 	filesExtracted := 0
+	var singleFileContent string // Store content if it's a single file
+	
 	for i, file := range zipReader.File {
 		// Limit individual file size: 5MB
 		if file.UncompressedSize64 > 5*1024*1024 {
@@ -1609,15 +1611,13 @@ func extractZipContents(data []byte, senderEmail string) string {
 			continue
 		}
 		
-		if i > 0 {
-			result.WriteString("\n\n" + strings.Repeat("=", 80) + "\n\n")
-		}
-		
-		result.WriteString(fmt.Sprintf("File: %s (%d bytes)\n", file.Name, file.UncompressedSize64))
-		result.WriteString(strings.Repeat("-", 80) + "\n\n")
-		
 		rc, err := file.Open()
 		if err != nil {
+			if i > 0 {
+				result.WriteString("\n\n" + strings.Repeat("=", 80) + "\n\n")
+			}
+			result.WriteString(fmt.Sprintf("File: %s (%d bytes)\n", file.Name, file.UncompressedSize64))
+			result.WriteString(strings.Repeat("-", 80) + "\n\n")
 			result.WriteString(fmt.Sprintf("Error opening file: %v\n", err))
 			app.Log("mail", "Failed to open file %s: %v", file.Name, err)
 			continue
@@ -1626,6 +1626,11 @@ func extractZipContents(data []byte, senderEmail string) string {
 		content, err := io.ReadAll(rc)
 		rc.Close()
 		if err != nil {
+			if i > 0 {
+				result.WriteString("\n\n" + strings.Repeat("=", 80) + "\n\n")
+			}
+			result.WriteString(fmt.Sprintf("File: %s (%d bytes)\n", file.Name, file.UncompressedSize64))
+			result.WriteString(strings.Repeat("-", 80) + "\n\n")
 			result.WriteString(fmt.Sprintf("Error reading file: %v\n", err))
 			app.Log("mail", "Failed to read file %s: %v", file.Name, err)
 			continue
@@ -1633,10 +1638,28 @@ func extractZipContents(data []byte, senderEmail string) string {
 		
 		// Only display text content (XML, TXT, etc) - never execute or render HTML
 		if isValidUTF8Text(content) {
-			result.WriteString(string(content))
 			filesExtracted++
-			app.Log("mail", "Extracted text file: %s (%d bytes)", file.Name, len(content))
+			
+			// If single file, store raw content without headers
+			if len(zipReader.File) == 1 {
+				singleFileContent = string(content)
+				app.Log("mail", "Extracted single text file: %s (%d bytes)", file.Name, len(content))
+			} else {
+				// Multiple files - add headers
+				if i > 0 {
+					result.WriteString("\n\n" + strings.Repeat("=", 80) + "\n\n")
+				}
+				result.WriteString(fmt.Sprintf("File: %s (%d bytes)\n", file.Name, file.UncompressedSize64))
+				result.WriteString(strings.Repeat("-", 80) + "\n\n")
+				result.WriteString(string(content))
+				app.Log("mail", "Extracted text file: %s (%d bytes)", file.Name, len(content))
+			}
 		} else {
+			if i > 0 {
+				result.WriteString("\n\n" + strings.Repeat("=", 80) + "\n\n")
+			}
+			result.WriteString(fmt.Sprintf("File: %s (%d bytes)\n", file.Name, file.UncompressedSize64))
+			result.WriteString(strings.Repeat("-", 80) + "\n\n")
 			result.WriteString(fmt.Sprintf("[Binary file, %d bytes - not displayed]\n", len(content)))
 			app.Log("mail", "Skipped binary file: %s", file.Name)
 		}
@@ -1648,6 +1671,11 @@ func extractZipContents(data []byte, senderEmail string) string {
 	}
 	
 	app.Log("mail", "Successfully extracted %d files from ZIP", filesExtracted)
+	
+	// For single file ZIPs (like DMARC reports), return raw content
+	if len(zipReader.File) == 1 && singleFileContent != "" {
+		return singleFileContent
+	}
 	
 	if result.Len() == 0 {
 		return ""
