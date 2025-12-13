@@ -78,10 +78,10 @@ func Load() {
 		inboxes = make(map[string]*Inbox)
 	} else {
 		app.Log("mail", "Loaded %d messages", len(messages))
-		
+
 		// Fix threading for any messages with broken chains
 		fixThreading()
-		
+
 		// Build inbox structures organized by thread
 		rebuildInboxes()
 	}
@@ -107,13 +107,13 @@ func Load() {
 // fixThreading repairs broken threading relationships and computes ThreadID after loading
 func fixThreading() {
 	fixed := 0
-	
+
 	// First pass: fix orphaned messages
 	for _, msg := range messages {
 		if msg.ReplyTo == "" {
 			continue
 		}
-		
+
 		// Check if the parent exists
 		if GetMessageUnlocked(msg.ReplyTo) == nil {
 			// Parent doesn't exist - mark as orphaned
@@ -122,7 +122,7 @@ func fixThreading() {
 			fixed++
 		}
 	}
-	
+
 	// Second pass: compute ThreadID for all messages
 	for _, msg := range messages {
 		threadID := computeThreadID(msg)
@@ -131,7 +131,7 @@ func fixThreading() {
 			fixed++
 		}
 	}
-	
+
 	if fixed > 0 {
 		app.Log("mail", "Fixed threading for %d messages", fixed)
 		save()
@@ -143,7 +143,7 @@ func computeThreadID(msg *Message) string {
 	if msg.ReplyTo == "" {
 		return msg.ID // This is the root
 	}
-	
+
 	// Walk up the chain
 	visited := make(map[string]bool)
 	current := msg
@@ -171,7 +171,7 @@ func GetMessageUnlocked(msgID string) *Message {
 // rebuildInboxes reconstructs inbox structures from messages (must hold mutex)
 func rebuildInboxes() {
 	inboxes = make(map[string]*Inbox)
-	
+
 	for _, msg := range messages {
 		// Add to sender's inbox (sent messages)
 		if msg.FromID != "" {
@@ -180,7 +180,7 @@ func rebuildInboxes() {
 			}
 			addMessageToInbox(inboxes[msg.FromID], msg, msg.FromID)
 		}
-		
+
 		// Add to recipient's inbox
 		if msg.ToID != "" && msg.ToID != msg.FromID {
 			if inboxes[msg.ToID] == nil {
@@ -201,7 +201,7 @@ func addMessageToInbox(inbox *Inbox, msg *Message, userID string) {
 			threadID = msg.ID
 		}
 	}
-	
+
 	thread := inbox.Threads[threadID]
 	if thread == nil {
 		// New thread
@@ -327,7 +327,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
 			// Use just the username (acc.ID) as display name, not acc.Name which might contain @
 			displayName := acc.ID
-			
+
 			// Send external email (connects to localhost SMTP server which relays)
 			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, body, replyTo)
 			if err != nil {
@@ -373,6 +373,52 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if viewing a specific message
 	msgID := r.URL.Query().Get("id")
+	action := r.URL.Query().Get("action")
+
+	// Handle download attachment action
+	if action == "download_attachment" && msgID != "" {
+		mutex.RLock()
+		var msg *Message
+		for _, m := range messages {
+			if m.ID == msgID && (m.ToID == acc.ID || m.FromID == acc.ID) {
+				msg = m
+				break
+			}
+		}
+		mutex.RUnlock()
+
+		if msg == nil {
+			http.Error(w, "Message not found", http.StatusNotFound)
+			return
+		}
+
+		// Decode the attachment
+		if looksLikeBase64(msg.Body) {
+			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(msg.Body)); err == nil {
+				// Determine filename and content type
+				filename := "attachment.bin"
+				contentType := "application/octet-stream"
+
+				if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
+					filename = "attachment.zip"
+					contentType = "application/zip"
+					if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
+						filename = "dmarc-report.zip"
+					}
+				}
+
+				w.Header().Set("Content-Type", contentType)
+				w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", len(decoded)))
+				w.Write(decoded)
+				return
+			}
+		}
+
+		http.Error(w, "Attachment not found or invalid", http.StatusBadRequest)
+		return
+	}
+
 	if msgID != "" {
 		mutex.RLock()
 		var msg *Message
@@ -391,17 +437,38 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Decode body if it looks base64 encoded
 		displayBody := msg.Body
+		isAttachment := false
+		attachmentName := ""
+
 		if looksLikeBase64(displayBody) {
 			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(displayBody)); err == nil {
-				if isValidUTF8Text(decoded) {
+				// Check if it's a ZIP file (DMARC reports, etc)
+				if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
+					isAttachment = true
+					attachmentName = "attachment.zip"
+					// For DMARC reports, use a more descriptive name
+					if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
+						attachmentName = "dmarc-report.zip"
+					}
+					displayBody = fmt.Sprintf(`<div style="padding: 20px; background: #f5f5f5; border-radius: 4px; margin: 10px 0;">
+						<div style="font-weight: bold; margin-bottom: 10px;">📎 Attachment: %s</div>
+						<div style="color: #666; font-size: 14px;">Binary attachment detected (ZIP file, %d bytes)</div>
+						<div style="margin-top: 10px;">
+							<a href="/mail?action=download_attachment&msg_id=%s" download="%s" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Download</a>
+						</div>
+					</div>`, attachmentName, len(decoded), msg.ID, attachmentName)
+					app.Log("mail", "Detected ZIP attachment: %s (%d bytes)", attachmentName, len(decoded))
+				} else if isValidUTF8Text(decoded) {
 					displayBody = string(decoded)
 					app.Log("mail", "Decoded base64 body for display")
 				}
 			}
 		}
 
-		// Convert URLs to clickable links
-		displayBody = linkifyURLs(displayBody)
+		// Convert URLs to clickable links (skip if it's an attachment)
+		if !isAttachment {
+			displayBody = linkifyURLs(displayBody)
+		}
 
 		// Prepare reply subject
 		replySubject := msg.Subject
@@ -418,91 +485,91 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`, msg.FromID, msg.FromID, msg.ID)
 		}
 
-	// Build thread view - find all messages in this thread
-	var thread []*Message
-	mutex.RLock()
-	// Find root message by traversing ReplyTo chain
-	rootID := msgID
-	current := msg
-	for current.ReplyTo != "" {
-		found := false
-		for _, m := range messages {
-			if m.ID == current.ReplyTo && (m.FromID == acc.ID || m.ToID == acc.ID) {
-				rootID = m.ID
-				current = m
-				found = true
+		// Build thread view - find all messages in this thread
+		var thread []*Message
+		mutex.RLock()
+		// Find root message by traversing ReplyTo chain
+		rootID := msgID
+		current := msg
+		for current.ReplyTo != "" {
+			found := false
+			for _, m := range messages {
+				if m.ID == current.ReplyTo && (m.FromID == acc.ID || m.ToID == acc.ID) {
+					rootID = m.ID
+					current = m
+					found = true
+					break
+				}
+			}
+			if !found {
 				break
 			}
 		}
-		if !found {
-			break
+
+		// Collect all messages in thread recursively
+		threadIDs := make(map[string]bool)
+		threadIDs[rootID] = true
+
+		// Keep looking for replies until no more found
+		changed := true
+		for changed {
+			changed = false
+			for _, m := range messages {
+				if (m.FromID == acc.ID || m.ToID == acc.ID) && !threadIDs[m.ID] {
+					if threadIDs[m.ReplyTo] {
+						threadIDs[m.ID] = true
+						changed = true
+					}
+				}
+			}
 		}
-	}
-	
-	// Collect all messages in thread recursively
-	threadIDs := make(map[string]bool)
-	threadIDs[rootID] = true
-	
-	// Keep looking for replies until no more found
-	changed := true
-	for changed {
-		changed = false
+
+		// Collect messages
 		for _, m := range messages {
-			if (m.FromID == acc.ID || m.ToID == acc.ID) && !threadIDs[m.ID] {
-				if threadIDs[m.ReplyTo] {
-					threadIDs[m.ID] = true
-					changed = true
-				}
+			if threadIDs[m.ID] {
+				thread = append(thread, m)
 			}
 		}
-	}
-	
-	// Collect messages
-	for _, m := range messages {
-		if threadIDs[m.ID] {
-			thread = append(thread, m)
-		}
-	}
-	mutex.RUnlock()
-	
-	// Sort thread by time
-	sort.Slice(thread, func(i, j int) bool {
-		return thread[i].CreatedAt.Before(thread[j].CreatedAt)
-	})
+		mutex.RUnlock()
 
-	// Mark all unread messages in this thread as read (if user is recipient)
-	for _, m := range thread {
-		if m.ToID == acc.ID && !m.Read {
-			MarkAsRead(m.ID, acc.ID)
-		}
-	}
+		// Sort thread by time
+		sort.Slice(thread, func(i, j int) bool {
+			return thread[i].CreatedAt.Before(thread[j].CreatedAt)
+		})
 
-	// Render thread
-	var threadHTML strings.Builder
-	for _, m := range thread {
-		msgBody := m.Body
-		if looksLikeBase64(msgBody) {
-			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(msgBody)); err == nil {
-				if isValidUTF8Text(decoded) {
-					msgBody = string(decoded)
-				}
+		// Mark all unread messages in this thread as read (if user is recipient)
+		for _, m := range thread {
+			if m.ToID == acc.ID && !m.Read {
+				MarkAsRead(m.ID, acc.ID)
 			}
 		}
-		msgBody = linkifyURLs(msgBody)
-		
-		isSent := m.FromID == acc.ID
-		authorDisplay := m.FromID
-		if isSent {
-			authorDisplay = "You"
-		} else if !IsExternalEmail(m.FromID) {
-			// Internal user - add profile link
-			authorDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, m.FromID, m.FromID)
-		} else if m.From != m.FromID {
-			// External email with display name
-			authorDisplay = m.From
-		}
-		
-		threadHTML.WriteString(fmt.Sprintf(`
+
+		// Render thread
+		var threadHTML strings.Builder
+		for _, m := range thread {
+			msgBody := m.Body
+			if looksLikeBase64(msgBody) {
+				if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(msgBody)); err == nil {
+					if isValidUTF8Text(decoded) {
+						msgBody = string(decoded)
+					}
+				}
+			}
+			msgBody = linkifyURLs(msgBody)
+
+			isSent := m.FromID == acc.ID
+			authorDisplay := m.FromID
+			if isSent {
+				authorDisplay = "You"
+			} else if !IsExternalEmail(m.FromID) {
+				// Internal user - add profile link
+				authorDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, m.FromID, m.FromID)
+			} else if m.From != m.FromID {
+				// External email with display name
+				authorDisplay = m.From
+			}
+
+			threadHTML.WriteString(fmt.Sprintf(`
 		<div style="padding: 20px 0; border-bottom: 1px solid #eee;">
 			<div style="color: #666; font-size: small; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
 				<span>%s · %s</span>
@@ -510,20 +577,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			</div>
 			<div style="white-space: pre-wrap; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word;">%s</div>
 		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody))
-	}
+		}
 
-	// Determine the other party in the thread
-	otherParty := msg.FromID
-	if msg.FromID == acc.ID {
-		otherParty = msg.ToID
-	}
-	// Format other party with profile link if internal user
-	otherPartyDisplay := otherParty
-	if !IsExternalEmail(otherParty) {
-		otherPartyDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, otherParty, otherParty)
-	}
-	
-	messageView := fmt.Sprintf(`
+		// Determine the other party in the thread
+		otherParty := msg.FromID
+		if msg.FromID == acc.ID {
+			otherParty = msg.ToID
+		}
+		// Format other party with profile link if internal user
+		otherPartyDisplay := otherParty
+		if !IsExternalEmail(otherParty) {
+			otherPartyDisplay = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, otherParty, otherParty)
+		}
+
+		messageView := fmt.Sprintf(`
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	%s
 	<div style="margin-top: 30px; padding-top: 20px;">
@@ -544,15 +611,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>
 	</div>
 `, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, rootID, msg.ID, blockButton)
-	w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
-	return
-}
+		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
+		return
+	}
 
-// Check if compose mode
-if r.URL.Query().Get("compose") == "true" {
-	to := r.URL.Query().Get("to")
-	subject := r.URL.Query().Get("subject")
-	replyTo := r.URL.Query().Get("reply_to")
+	// Check if compose mode
+	if r.URL.Query().Get("compose") == "true" {
+		to := r.URL.Query().Get("to")
+		subject := r.URL.Query().Get("subject")
+		replyTo := r.URL.Query().Get("reply_to")
 		// Determine back link and page title
 		backLink := "/mail"
 		pageTitle := "New Message"
@@ -593,7 +660,7 @@ if r.URL.Query().Get("compose") == "true" {
 	// Get user's inbox - O(1) lookup
 	userInbox := inboxes[acc.ID]
 	mutex.RUnlock()
-	
+
 	if userInbox == nil {
 		userInbox = &Inbox{Threads: make(map[string]*Thread)}
 	}
@@ -608,7 +675,7 @@ if r.URL.Query().Get("compose") == "true" {
 		threads := make([]*Thread, 0, len(userInbox.Threads))
 		for _, thread := range userInbox.Threads {
 			threads = append(threads, thread)
-			
+
 			// Count unread messages
 			for _, msg := range thread.Messages {
 				if msg.ToID == acc.ID && !msg.Read {
@@ -616,12 +683,12 @@ if r.URL.Query().Get("compose") == "true" {
 				}
 			}
 		}
-		
+
 		// Sort threads by latest message time
 		sort.Slice(threads, func(i, j int) bool {
 			return threads[i].Latest.CreatedAt.After(threads[j].Latest.CreatedAt)
 		})
-		
+
 		// Render threads
 		for _, thread := range threads {
 			if thread.Root.ToID == acc.ID || thread.Latest.ToID == acc.ID {
@@ -645,11 +712,11 @@ if r.URL.Query().Get("compose") == "true" {
 				threads = append(threads, thread)
 			}
 		}
-		
+
 		sort.Slice(threads, func(i, j int) bool {
 			return threads[i].Latest.CreatedAt.After(threads[j].Latest.CreatedAt)
 		})
-		
+
 		for _, thread := range threads {
 			// Show latest message in thread, not just root
 			items = append(items, renderSentThreadPreview(thread.Root.ID, thread.Latest, acc.ID))
@@ -731,7 +798,7 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 	}
 
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
-	
+
 	html := fmt.Sprintf(`
 		<div style="padding: 15px 0; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
 			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -773,7 +840,7 @@ func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string)
 	}
 
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
-	
+
 	html := fmt.Sprintf(`
 		<div style="padding: 15px 0; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.location.href='/mail?id=%s'">
 			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -883,7 +950,7 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 		MessageID: messageID,
 		CreatedAt: time.Now(),
 	}
-	
+
 	// Compute ThreadID
 	mutex.Lock()
 	if replyTo != "" {
@@ -896,7 +963,7 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 	} else {
 		msg.ThreadID = msg.ID // Root message
 	}
-	
+
 	messages = append([]*Message{msg}, messages...)
 	rebuildInboxes()
 	err := save()
