@@ -503,6 +503,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		} else if looksLikeBase64(displayBody) {
 			// Try base64 decode
 			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
+				// Log first few bytes for debugging
+				if len(decoded) >= 4 {
+					app.Log("mail", "Decoded body first bytes: %02x %02x %02x %02x", decoded[0], decoded[1], decoded[2], decoded[3])
+				}
 				// Check if decoded data is gzip compressed
 				if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
 					if reader, err := gzip.NewReader(bytes.NewReader(decoded)); err == nil {
