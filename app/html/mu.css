@@ -780,7 +780,6 @@ body:has(#messages) #content {
   margin-bottom: var(--spacing-md);
   cursor: pointer;
   transition: background var(--transition-fast);
-  max-width: 750px;
 }
 
 .post-item:hover {
@@ -938,6 +937,10 @@ body:has(#messages) #content {
 /* ========================================
    NEWS PAGE
    ======================================== */
+#news {
+  max-width: 750px;
+}
+
 #news h1 {
   margin-top: 15px;
 }
@@ -950,7 +953,6 @@ body:has(#messages) #content {
   margin-bottom: var(--spacing-md);
   transition: background var(--transition-fast);
   cursor: pointer;
-  max-width: 600px;
 }
 
 .headline:hover {
@@ -989,7 +991,6 @@ body:has(#messages) #content {
   margin-bottom: var(--spacing-md);
   transition: background var(--transition-fast);
   cursor: pointer;
-  max-width: 600px;
 }
 
 .news:hover {
@@ -1034,6 +1035,10 @@ body:has(#messages) #content {
 /* ========================================
    VIDEO PAGE
    ======================================== */
+#video {
+  max-width: 750px;
+}
+
 .thumbnail {
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
@@ -1042,7 +1047,6 @@ body:has(#messages) #content {
   margin-bottom: var(--spacing-md);
   transition: background var(--transition-fast);
   cursor: pointer;
-  max-width: 400px;
 }
 
 .thumbnail:hover {
