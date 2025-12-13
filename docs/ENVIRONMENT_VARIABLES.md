@@ -138,18 +138,10 @@ Environment="FANAR_API_URL=https://api.fanar.ai"
 # YouTube
 Environment="YOUTUBE_API_KEY=your-youtube-api-key"
 
-# SMTP
-Environment="SMTP_ENABLED=true"
-Environment="SMTP_SERVER_PORT=25"
+# Mail
+Environment="MAIL_PORT=25"
 Environment="MAIL_DOMAIN=yourdomain.com"
-Environment="SMTP_HOST=smtp.sendgrid.net"
-Environment="SMTP_PORT=587"
-Environment="SMTP_USERNAME=apikey"
-Environment="SMTP_PASSWORD=your-key"
-
-# DKIM
-Environment="DKIM_DOMAIN=yourdomain.com"
-Environment="DKIM_SELECTOR=default"
+Environment="MAIL_SELECTOR=default"
 
 ExecStart=/opt/mu/mu --serve --address :8080
 Restart=always
@@ -180,14 +172,9 @@ docker run -d \
   -p 25:25 \
   -e FANAR_API_KEY=your-fanar-api-key \
   -e YOUTUBE_API_KEY=your-youtube-api-key \
-  -e SMTP_ENABLED=true \
-  -e SMTP_SERVER_PORT=25 \
+  -e MAIL_PORT=25 \
   -e MAIL_DOMAIN=yourdomain.com \
-  -e SMTP_HOST=smtp.sendgrid.net \
-  -e SMTP_PORT=587 \
-  -e SMTP_USERNAME=apikey \
-  -e SMTP_PASSWORD=your-key \
-  -e DKIM_DOMAIN=yourdomain.com \
+  -e MAIL_SELECTOR=default \
   -v ~/.mu:/root/.mu \
   mu:latest
 ```
@@ -213,7 +200,6 @@ docker run -d \
 | Chat | `FANAR_API_KEY` or Ollama (`MODEL_NAME`, `MODEL_API_URL`) |
 | Vector Search | Ollama with `nomic-embed-text` model (`MODEL_API_URL`) |
 | Video | `YOUTUBE_API_KEY` |
-| Receive Email | `SMTP_ENABLED=true`, `SMTP_SERVER_PORT` |
-| Send External Email | `SMTP_HOST`, `SMTP_PORT` |
-| DKIM Signing | Keys in `~/.mu/keys/`, `DKIM_DOMAIN` |
+| Mail (Receive/Send) | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
+| Access Control | User must be admin or member |
 
