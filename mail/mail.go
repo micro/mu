@@ -492,14 +492,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				app.Log("mail", "Failed to create gzip reader: %v", err)
 			}
 		} else if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
-			// ZIP file - show download link
-			isAttachment = true
-			attachmentName = "attachment.zip"
-			if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
-				attachmentName = "dmarc-report.zip"
+			// ZIP file - try to extract contents for display
+			if extracted := extractZipContents([]byte(trimmed), msg.FromID); extracted != "" {
+				displayBody = extracted
+				app.Log("mail", "Extracted and displayed raw ZIP contents (%d bytes)", len(trimmed))
+			} else {
+				// Extraction failed - show download link
+				isAttachment = true
+				attachmentName = "attachment.zip"
+				if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
+					attachmentName = "dmarc-report.zip"
+				}
+				displayBody = fmt.Sprintf(`<p>📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a></p>`, msg.ID, attachmentName, attachmentName)
+				app.Log("mail", "Could not extract raw ZIP, showing download link: %s (%d bytes)", attachmentName, len(trimmed))
 			}
-			displayBody = fmt.Sprintf(`<p>📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a></p>`, msg.ID, attachmentName, attachmentName)
-			app.Log("mail", "Detected raw ZIP attachment: %s (%d bytes)", attachmentName, len(trimmed))
 		} else if looksLikeBase64(displayBody) {
 			// Try base64 decode
 			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
@@ -519,14 +525,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 				} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
-					// ZIP file - show download link
-					isAttachment = true
-					attachmentName = "attachment.zip"
-					if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
-						attachmentName = "dmarc-report.zip"
+					// ZIP file - try to extract contents for display
+					if extracted := extractZipContents(decoded, msg.FromID); extracted != "" {
+						displayBody = extracted
+						app.Log("mail", "Extracted and displayed ZIP contents (%d bytes)", len(decoded))
+					} else {
+						// Extraction failed - show download link
+						isAttachment = true
+						attachmentName = "attachment.zip"
+						if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
+							attachmentName = "dmarc-report.zip"
+						}
+						displayBody = fmt.Sprintf(`<p>📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a></p>`, msg.ID, attachmentName, attachmentName)
+						app.Log("mail", "Could not extract ZIP, showing download link: %s (%d bytes)", attachmentName, len(decoded))
 					}
-					displayBody = fmt.Sprintf(`<p>📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a></p>`, msg.ID, attachmentName, attachmentName)
-					app.Log("mail", "Detected base64-encoded ZIP attachment: %s (%d bytes)", attachmentName, len(decoded))
 				} else if isValidUTF8Text(decoded) {
 					displayBody = string(decoded)
 					app.Log("mail", "Decoded base64 body for display")
@@ -632,13 +644,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			} else if len(trimmedBody) >= 2 && trimmedBody[0] == 'P' && trimmedBody[1] == 'K' {
-				// ZIP file - show download link
-				msgIsAttachment = true
-				attachName := "attachment.zip"
-				if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
-					attachName = "dmarc-report.zip"
+				// ZIP file - try to extract
+				if extracted := extractZipContents([]byte(trimmedBody), m.FromID); extracted != "" {
+					msgBody = extracted
+				} else {
+					// Extraction failed - show download link
+					msgIsAttachment = true
+					attachName := "attachment.zip"
+					if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
+						attachName = "dmarc-report.zip"
+					}
+					msgBody = fmt.Sprintf(`📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a>`, m.ID, attachName, attachName)
 				}
-				msgBody = fmt.Sprintf(`📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a>`, m.ID, attachName, attachName)
 			} else if looksLikeBase64(msgBody) {
 				if decoded, err := base64.StdEncoding.DecodeString(trimmedBody); err == nil {
 					// Check if decoded data is gzip
@@ -652,13 +669,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							}
 						}
 					} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
-						// ZIP file - show download link
-						msgIsAttachment = true
-						attachName := "attachment.zip"
-						if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
-							attachName = "dmarc-report.zip"
+						// ZIP file - try to extract
+						if extracted := extractZipContents(decoded, m.FromID); extracted != "" {
+							msgBody = extracted
+						} else {
+							// Extraction failed - show download link
+							msgIsAttachment = true
+							attachName := "attachment.zip"
+							if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
+								attachName = "dmarc-report.zip"
+							}
+							msgBody = fmt.Sprintf(`📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a>`, m.ID, attachName, attachName)
 						}
-						msgBody = fmt.Sprintf(`📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a>`, m.ID, attachName, attachName)
 					} else if isValidUTF8Text(decoded) {
 						msgBody = string(decoded)
 					}
