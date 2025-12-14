@@ -1122,7 +1122,11 @@ body:has(#messages) #content {
 .ticker {
   font-size: small;
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.ticker:last-child {
+  margin-bottom: 0;
 }
 
 /* ========================================
@@ -1234,7 +1238,7 @@ body:has(#messages) #content {
 
 .verse {
   white-space: pre-wrap;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   font-size: 0.9em;
   overflow-y: scroll;
   max-height: 200px;
