@@ -1105,6 +1105,14 @@ body:has(#messages) #content {
   margin-right: 0;
 }
 
+.item {
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: var(--item-padding);
+  background: var(--card-background);
+  margin-bottom: var(--spacing-md);
+}
+
 #tickers, #futures {
   width: 50%;
   vertical-align: top;
