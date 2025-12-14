@@ -1086,7 +1086,7 @@ func parseFeed() {
 		cachedPrices = newPrices
 		mutex.Unlock()
 
-		info := []byte(`<div id="tickers">`)
+		info := []byte(`<div class="item"><div id="tickers">`)
 
 		for _, ticker := range tickers {
 			price := newPrices[ticker]
@@ -1105,7 +1105,7 @@ func parseFeed() {
 			info = append(info, []byte(line)...)
 		}
 
-		info = append(info, []byte(`</div>`)...)
+		info = append(info, []byte(`</div></div>`)...)
 		marketsHtml += string(info)
 
 		// Index all prices for search/RAG (async)
