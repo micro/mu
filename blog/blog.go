@@ -284,7 +284,7 @@ func updateCacheUnlocked() {
 	if len(fullList) == 0 {
 		postsList = "<p>No posts yet. Write something below!</p>"
 	} else {
-		postsList = strings.Join(fullList, "\n<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>\n")
+		postsList = strings.Join(fullList, "\n")
 	}
 }
 
@@ -484,7 +484,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		content = fmt.Sprintf(`<div id="blog">
 			%s
-			<hr style='margin: 0 0 30px 0; border: none; border-top: 2px solid #333;'>
 			<div id="posts-list">
 				%s
 			</div>

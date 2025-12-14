@@ -58,7 +58,7 @@ var Client, _ = youtube.NewService(context.TODO(), option.WithAPIKey(Key))
 
 var commonStyles = `
   .thumbnail {
-    margin-bottom: 50px;
+    margin-bottom: 20px;
   }
   img {
     border-radius: 10px;
