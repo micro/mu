@@ -398,6 +398,8 @@ td {
 #links .block {
   padding: 15px;
   line-height: 1.4em;
+  min-height: 135px;
+  box-sizing: border-box;
 }
 
 #links .block b {
