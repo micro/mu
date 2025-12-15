@@ -572,15 +572,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			replySubject = "Re: " + msg.Subject
 		}
 
-		// Add block link if sender is external email and user is admin
-		blockButton := ""
-		if acc.Admin && IsExternalEmail(msg.FromID) {
-			blockButton = fmt.Sprintf(`
-			<span style="margin: 0 8px;">·</span>
-			<a href="#" onclick="if(confirm('Block %s from sending mail?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='block_sender';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='sender_email';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='msg_id';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #666;">Block Sender</a>
-		`, msg.FromID, msg.FromID, msg.ID)
-		}
-
 		// Build thread view - find all messages in this thread
 		var thread []*Message
 		mutex.RLock()
@@ -753,6 +744,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		otherPartyDisplay := otherParty
 		if !IsExternalEmail(otherParty) {
 			otherPartyDisplay = fmt.Sprintf(`<a href="/@%s" class="mail-link-muted">%s</a>`, otherParty, otherParty)
+		}
+
+		// Add block link if other party is external email and user is admin
+		blockButton := ""
+		if acc.Admin && IsExternalEmail(otherParty) {
+			blockButton = fmt.Sprintf(`
+			<span style="margin: 0 8px;">·</span>
+			<a href="#" onclick="if(confirm('Block %s from sending mail?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='block_sender';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='sender_email';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='msg_id';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #666;">Block Sender</a>
+		`, otherParty, otherParty, msg.ID)
 		}
 
 		messageView := fmt.Sprintf(`

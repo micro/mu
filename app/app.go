@@ -451,6 +451,16 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			<button type="submit" style="margin-left: 10px;">Save</button>
 		</form>`, languageOptions)
 
+	// Admin section
+	adminSection := ""
+	if acc.Admin {
+		adminSection = `<div style="margin-top: 20px;">
+			<h3>Admin</h3>
+			<p><a href="/admin">User Management →</a></p>
+			<p><a href="/moderate">Moderation Queue →</a></p>
+		</div>`
+	}
+
 	content := fmt.Sprintf(`<div style="max-width: 600px;">
 		<h2 style="margin-bottom: 15px;">Profile</h2>
 		<p><strong>Username:</strong> %s</p>
@@ -462,6 +472,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		
 		<div style="margin-top: 20px;">%s</div>
 		
+		%s
+		
 		<hr style="margin: 20px 0;">
 		<p><a href="/logout" style="color: #dc3545; font-weight: bold;">Logout</a></p>
 		</div>`,
@@ -471,6 +483,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.ID,
 		membershipSection,
 		languageSection,
+		adminSection,
 	)
 
 	html := RenderHTML("Account", "Account", content)

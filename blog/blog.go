@@ -469,13 +469,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Show posts list with conditional write link
 		var actions string
-		if _, err := auth.GetSession(r); err == nil {
-			// User is authenticated, show write and moderate links
-			actions = `<div style="margin-bottom: 15px;">
-				<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
-				<span style="margin: 0 8px; color: #ccc;">·</span>
-				<a href="/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
-			</div>`
+		if sess, err := auth.GetSession(r); err == nil {
+			// Get account to check member status
+			if acc, err := auth.GetAccount(sess.Account); err == nil && acc.Member {
+				// User is authenticated and is a member, show write and moderate links
+				actions = `<div style="margin-bottom: 15px;">
+					<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
+					<span style="margin: 0 8px; color: #ccc;">·</span>
+					<a href="/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
+				</div>`
+			} else if err == nil {
+				// User is authenticated but not a member, show only write link
+				actions = `<div style="margin-bottom: 15px;">
+					<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
+				</div>`
+			}
 		} else {
 			// Guest user, show login prompt
 			actions = `<div style="margin-bottom: 15px; color: #666; font-size: 14px;">
