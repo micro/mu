@@ -362,7 +362,7 @@ func PostingForm(action string) string {
 	return fmt.Sprintf(`<div id="post-form-container">
 		<form id="post-form" method="POST" action="%s">
 			<input type="text" name="title" placeholder="Title (optional)">
-			<textarea name="content" rows="4" placeholder="Share a thought. Be mindful of Allah" required></textarea>
+			<textarea name="content" rows="4" placeholder="Share a thought. Be mindful of Allah" required style="font-family: 'Nunito Sans', serif;"></textarea>
 			<button type="submit">Post</button>
 		</form>
 	</div>`, action)
@@ -414,7 +414,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div style="margin-bottom: 30px;">
 				<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
 					<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px;"></textarea>
+					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px;"></textarea>
 					<div style="display: flex; justify-content: space-between; align-items: center;">
 						<span id="char-count" style="font-size: 12px; color: #666;">Min 50 chars</span>
 						<div style="display: flex; gap: 10px;">
@@ -470,16 +470,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Show posts list with conditional write link
 		var actions string
 		if sess, err := auth.GetSession(r); err == nil {
-			// Get account to check member status
-			if acc, err := auth.GetAccount(sess.Account); err == nil && acc.Member {
-				// User is authenticated and is a member, show write and moderate links
+			// Get account to check member/admin status
+			if acc, err := auth.GetAccount(sess.Account); err == nil && (acc.Member || acc.Admin) {
+				// User is authenticated and is a member or admin, show write and moderate links
 				actions = `<div style="margin-bottom: 15px;">
 					<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
 					<span style="margin: 0 8px; color: #ccc;">·</span>
 					<a href="/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
 				</div>`
 			} else if err == nil {
-				// User is authenticated but not a member, show only write link
+				// User is authenticated but not a member or admin, show only write link
 				actions = `<div style="margin-bottom: 15px;">
 					<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
 				</div>`
@@ -873,7 +873,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			<form method="POST" action="/post?id=%s" style="display: flex; flex-direction: column; gap: 10px;">
 				<input type="hidden" name="_method" value="PATCH">
 				<input type="text" name="title" placeholder="Title (optional)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-				<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: monospace;">%s</textarea>
+				<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: 'Nunito Sans', serif;">%s</textarea>
 				<div style="font-size: 12px; color: #666; margin-top: -5px;">
 					Supports markdown: **bold**, *italic*, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
 				</div>
@@ -957,7 +957,7 @@ func renderComments(postID string, r *http.Request) string {
 	if isAuthenticated {
 		commentsHTML.WriteString(fmt.Sprintf(`
 			<form method="POST" action="/post/%s/comment" style="margin: 20px 0; display: flex; flex-direction: column; gap: 10px;">
-				<textarea name="content" rows="3" placeholder="Add a comment..." required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
+				<textarea name="content" rows="3" placeholder="Add a comment..." required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
 				<div>
 					<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Add Comment</button>
 				</div>
