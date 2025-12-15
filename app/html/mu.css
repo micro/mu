@@ -124,7 +124,7 @@ textarea:focus, input:focus {
 
 code {
   width: auto;
-  background: whitesmoke;
+  background: #f9f9f9;
   padding: 15px;
   border-radius: 5px;
   display: block;
@@ -199,7 +199,7 @@ td {
 }
 
 #account a:hover {
-  background: whitesmoke;
+  background: #f9f9f9;
 }
 
 #account a .label {
@@ -237,7 +237,7 @@ td {
 }
 
 #nav a.active, #nav a:hover {
-  background: whitesmoke;
+  background: #f9f9f9;
 }
 
 #nav img {
@@ -437,7 +437,7 @@ td {
   padding: var(--item-padding);
   margin-bottom: var(--spacing-md);
   padding-bottom: var(--spacing-lg);
-  background: whitesmoke;
+  background: #f9f9f9;
 }
 
 .card h4 {
@@ -1196,7 +1196,7 @@ body:has(#messages) #content {
   color: #333333;
   font-size: small;
   font-weight: bold;
-  background: whitesmoke;
+  background: #f9f9f9;
   padding: 3px 5px;
   border-radius: 5px;
 }
@@ -1205,7 +1205,7 @@ body:has(#messages) #content {
   color: #333333;
   font-size: small;
   font-weight: bold;
-  background: whitesmoke;
+  background: #f9f9f9;
   padding: 3px 5px;
   border-radius: 5px;
 }
