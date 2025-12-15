@@ -1407,7 +1407,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	categoryBadge := ""
 	if category != "" {
-		categoryBadge = fmt.Sprintf(`<span style="background-color: #f9f9f9; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-family: 'Nunito Sans', serif; font-weight: normal; margin-right: 10px;">%s</span>`, category)
+		categoryBadge = fmt.Sprintf(`<span style="background-color: #e8e8e8; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-family: 'Nunito Sans', serif; font-weight: normal; margin-right: 10px;">%s</span>`, category)
 	}
 
 	articleHtml := fmt.Sprintf(`
