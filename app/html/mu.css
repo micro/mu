@@ -437,6 +437,7 @@ td {
   padding: var(--item-padding);
   margin-bottom: var(--spacing-md);
   padding-bottom: var(--spacing-lg);
+  background: whitesmoke;
 }
 
 .card h4 {
