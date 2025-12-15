@@ -983,8 +983,15 @@ body:has(#messages) #content {
 .news .cover {
   max-width: 200px;
   width: 100%;
+  max-height: 300px;
+  object-fit: cover;
   border-radius: var(--border-radius);
   margin-bottom: var(--spacing-sm);
+}
+
+.news .cover[src=""],
+.news .cover:not([src]) {
+  display: none;
 }
 
 .news .blurb {
@@ -1203,11 +1210,18 @@ body:has(#messages) #content {
   width: 200px;
   height: auto;
   min-height: 100px;
+  max-height: 300px;
+  object-fit: cover;
   margin-right: 10px;
   margin-bottom: 10px;
   display: inline-block;
   border-radius: 3px;
   background: #1a1a1a;
+}
+
+.cover[src=""],
+.cover:not([src]) {
+  display: none;
 }
 
 .blurb {
