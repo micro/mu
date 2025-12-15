@@ -94,13 +94,13 @@ func SendExternalEmail(displayName, from, to, subject, body, replyToMsgID string
 	if strings.Contains(from, "@") {
 		username = strings.Split(from, "@")[0]
 	}
-	
+
 	// Generate Message-ID for threading
 	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, GetConfiguredDomain())
 
 	// Build email message
 	var msg bytes.Buffer
-	
+
 	// Headers
 	fromHeader := from
 	if displayName != "" {
@@ -111,17 +111,17 @@ func SendExternalEmail(displayName, from, to, subject, body, replyToMsgID string
 	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
 	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
 	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
-	
+
 	if replyToMsgID != "" {
 		msg.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", replyToMsgID))
 		msg.WriteString(fmt.Sprintf("References: %s\r\n", replyToMsgID))
 	}
-	
+
 	msg.WriteString("MIME-Version: 1.0\r\n")
 	msg.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
 	msg.WriteString("\r\n")
 	msg.WriteString(body)
-	
+
 	message := msg.Bytes()
 
 	// Apply DKIM signing if configured

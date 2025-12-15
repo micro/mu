@@ -69,33 +69,43 @@ http.Redirect(w, r, "/home", 302)
 return
 }
 
-	// Handle POST request for status update
-	if r.Method == "POST" {
-		sess, err := auth.GetSession(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
+// Handle POST request for status update
+if r.Method == "POST" {
+sess, err := auth.GetSession(r)
+if err != nil {
+http.Error(w, "Unauthorized", http.StatusUnauthorized)
+return
+}
 
-		// Only allow updating own status
-		if sess.Account != username {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
+// Only allow updating own status
+if sess.Account != username {
+http.Error(w, "Forbidden", http.StatusForbidden)
+return
+}
 
-		status := r.FormValue("status")
-		if len(status) > 100 {
-			status = status[:100]
-		}
+status := r.FormValue("status")
+if len(status) > 100 {
+status = status[:100]
+}
 
-		profile := GetProfile(sess.Account)
-		profile.Status = status
-		UpdateProfile(profile)
+profile := GetProfile(sess.Account)
+profile.Status = status
+UpdateProfile(profile)
 
-		// Redirect back to profile
-		http.Redirect(w, r, "/@"+sess.Account, http.StatusSeeOther)
-		return
-	}
+// Redirect back to profile
+http.Redirect(w, r, "/@"+sess.Account, http.StatusSeeOther)
+return
+}
+
+// Get the user account
+acc, err := auth.GetAccount(username)
+if err != nil {
+http.Error(w, "User not found", 404)
+return
+}
+
+// Get all posts by this user
+var userPosts string
 posts := blog.GetPostsByAuthor(acc.Name)
 postCount := len(posts)
 
@@ -124,14 +134,15 @@ content = content[:lastSpace] + "..."
 linkedContent := blog.Linkify(content)
 
 userPosts += fmt.Sprintf(`<div class="post-item" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
-			<h3><a href="/post?id=%s">%s</a></h3>
-			<div style="margin-bottom: 10px;">%s</div>
-			<div class="info">%s · <a href="/post?id=%s">Read more</a></div>
-		</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
+<h3><a href="/post?id=%s">%s</a></h3>
+<div style="margin-bottom: 10px;">%s</div>
+<div class="info">%s · <a href="/post?id=%s">Read more</a></div>
+</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
 }
 
 if userPosts == "" {
-		userPosts = "<p class='info'>No posts yet.</p>"
+userPosts = "<p class='info'>No posts yet.</p>"
+}
 
 // Get user profile
 profile := GetProfile(acc.ID)
@@ -143,26 +154,30 @@ isOwnProfile := sess != nil && sess.Account == username
 // Build status section
 statusSection := ""
 if profile.Status != "" {
-statusSection = fmt.Sprintf(`<p style="color: #666; margin: 10px 0 0 0; font-style: italic;">"%s"</p>`, profile.Status)
+statusSection = fmt.Sprintf(`<p class="info" style="font-style: italic; margin: 10px 0 0 0;">"%s"</p>`, profile.Status)
 }
 
 // Build status edit form (only for own profile)
 statusEditForm := ""
 if isOwnProfile {
 statusEditForm = fmt.Sprintf(`
-		<form method="POST" style="margin-top: 15px;">
+<form method="POST" style="margin-top: 15px;">
+<input type="text" name="status" placeholder="Set your status..." value="%s" maxlength="100" style="width: 100%%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 5px; box-sizing: border-box;">
+<button type="submit" style="margin-top: 8px;">Update Status</button>
+</form>`, profile.Status)
+}
 
 // Build message link (only show if not own profile)
 messageLink := ""
 if !isOwnProfile {
-messageLink = fmt.Sprintf(`<p style="margin: 15px 0 0 0;"><a href="/mail?compose=true&to=%s" style="color: #666;">Send a message</a></p>`, acc.ID)
+messageLink = fmt.Sprintf(`<p style="margin: 15px 0 0 0;"><a href="/mail?compose=true&to=%s">Send a message</a></p>`, acc.ID)
 }
 
 // Build the profile page content
 content := fmt.Sprintf(`<div style="max-width: 750px;">
 <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333;">
-<p style="color: #666; margin: 0;">@%s</p>
-<p style="color: #666; margin: 10px 0 0 0;">Joined %s</p>
+<p class="info" style="margin: 0;">@%s</p>
+<p class="info" style="margin: 10px 0 0 0;">Joined %s</p>
 %s
 %s
 %s

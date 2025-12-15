@@ -57,10 +57,10 @@ func (bkd *Backend) Login(conn *smtpd.Conn, username, password string) (smtpd.Se
 	if err != nil {
 		ip = remoteAddr
 	}
-	
+
 	// Only allow auth from localhost
 	isLocalhost := ip == "127.0.0.1" || ip == "::1" || strings.HasPrefix(ip, "127.0.0.") || ip == "[::1]"
-	
+
 	if !isLocalhost {
 		app.Log("mail", "Backend AUTH rejected: not from localhost (IP: %s)", ip)
 		return nil, &smtpd.SMTPError{
@@ -68,7 +68,7 @@ func (bkd *Backend) Login(conn *smtpd.Conn, username, password string) (smtpd.Se
 			Message: "Authentication not available",
 		}
 	}
-	
+
 	app.Log("mail", "Backend AUTH failed: no valid credentials configured")
 	return nil, &smtpd.SMTPError{
 		Code:    535,
@@ -110,15 +110,15 @@ type Session struct {
 // Mail is called when the MAIL FROM command is received
 func (s *Session) Mail(from string, opts *smtpd.MailOptions) error {
 	s.from = from
-	
+
 	// Check if connection is from localhost (trusted internal Go app)
 	s.isLocalhost = s.remoteIP == "127.0.0.1" || s.remoteIP == "::1" || strings.HasPrefix(s.remoteIP, "127.0.0.") || s.remoteIP == "[::1]"
-	
+
 	if s.isLocalhost {
 		app.Log("mail", "Mail from: %s (localhost - trusted internal client)", from)
 		return nil // Trust localhost connections from our web app
 	}
-	
+
 	app.Log("mail", "Mail from: %s (IP: %s)", from, s.remoteIP)
 
 	// Check blocklist first
@@ -191,7 +191,7 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 			Message: "Invalid recipient address",
 		}
 	}
-	
+
 	recipientDomain := parts[1]
 	if recipientDomain != GetConfiguredDomain() {
 		app.Log("mail", "Rejected mail for external domain %s (not an open relay)", recipientDomain)
@@ -200,7 +200,7 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 			Message: "Relay access denied",
 		}
 	}
-	
+
 	// Domain matches - verify user exists and has mail access
 	acc, err := auth.GetAccount(username)
 	if err != nil {
@@ -210,7 +210,7 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 			Message: "User not found",
 		}
 	}
-	
+
 	// Check if user has mail access (admin or member)
 	if !acc.Admin && !acc.Member {
 		app.Log("mail", "Rejected mail for user without mail access: %s", username)
@@ -253,10 +253,10 @@ func RelayToExternal(from, to string, data []byte) error {
 	for _, mx := range mxRecords {
 		host := strings.TrimSuffix(mx.Host, ".")
 		app.Log("mail", "Attempting relay to %s (MX for %s)", host, domain)
-		
+
 		// Try port 25 (standard SMTP)
 		addr := net.JoinHostPort(host, "25")
-		
+
 		// Connect with timeout
 		conn, err := net.DialTimeout("tcp", addr, 30*time.Second)
 		if err != nil {
@@ -322,7 +322,7 @@ func RelayToExternal(from, to string, data []byte) error {
 
 		// QUIT
 		client.Quit()
-		
+
 		app.Log("mail", "✓ Successfully relayed email to %s via %s", to, host)
 		return nil
 	}
@@ -432,7 +432,7 @@ func (s *Session) Data(r io.Reader) error {
 
 		// Check if this is an external recipient
 		isExternal := toDomain != GetConfiguredDomain()
-		
+
 		if isExternal && s.isLocalhost {
 			// Relay to external SMTP server
 			app.Log("mail", "Relaying to external address: %s", toAddr.Address)
@@ -462,7 +462,7 @@ func (s *Session) Data(r io.Reader) error {
 
 		// Try to find original message for threading
 		var replyToID string
-		
+
 		// Try In-Reply-To first
 		if inReplyTo != "" {
 			app.Log("mail", "Looking for In-Reply-To: %s", inReplyTo)
@@ -473,7 +473,7 @@ func (s *Session) Data(r io.Reader) error {
 				app.Log("mail", "✗ In-Reply-To not found: %s", inReplyTo)
 			}
 		}
-		
+
 		// If In-Reply-To didn't work, try ALL References headers
 		if replyToID == "" && references != "" {
 			app.Log("mail", "Trying References: %s", references)
@@ -489,7 +489,7 @@ func (s *Session) Data(r io.Reader) error {
 				app.Log("mail", "✗ No matching references found in: %s", references)
 			}
 		}
-		
+
 		if replyToID == "" && (inReplyTo != "" || references != "") {
 			app.Log("mail", "⚠ Failed to thread message - will appear as new conversation")
 		}
@@ -547,7 +547,7 @@ func parseMultipart(body io.Reader, boundary string) string {
 
 		// Check if this is an attachment
 		isAttachment := strings.Contains(contentDisposition, "attachment")
-		
+
 		// Prefer text/plain, fallback to text/html
 		if strings.Contains(contentType, "text/plain") && !isAttachment {
 			textPlain = string(partBody)
@@ -567,7 +567,7 @@ func parseMultipart(body io.Reader, boundary string) string {
 	if textHTML != "" {
 		return strings.TrimSpace(textHTML)
 	}
-	
+
 	// If no text body but there's an attachment (like DMARC reports), return the attachment
 	if len(attachmentBody) > 0 {
 		// For gzip attachments, store as base64 for safe storage

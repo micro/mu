@@ -525,7 +525,7 @@ func Session(w http.ResponseWriter, r *http.Request) {
 		"account": sess.Account,
 		"created": sess.Created,
 	}
-	
+
 	if err == nil {
 		response["admin"] = acc.Admin
 		response["member"] = acc.Member
@@ -539,7 +539,7 @@ func Session(w http.ResponseWriter, r *http.Request) {
 // Membership handler
 func Membership(w http.ResponseWriter, r *http.Request) {
 	membershipURL := os.Getenv("MEMBERSHIP_URL")
-	
+
 	// Check if membership is enabled
 	if membershipURL == "" {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -690,7 +690,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 // Donate handler
 func Donate(w http.ResponseWriter, r *http.Request) {
 	donationURL := os.Getenv("DONATION_URL")
-	
+
 	// Check if donations are enabled
 	if donationURL == "" {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -719,7 +719,7 @@ func Donate(w http.ResponseWriter, r *http.Request) {
 		membershipLink = `<hr>
 		<p>Looking for recurring support? <a href="/membership">Become a member</a> instead.</p>`
 	}
-	
+
 	content := fmt.Sprintf(`<h2>Support Mu</h2>
 		<p>Help us build a better internet, free from ads and algorithms.</p>
 		<p>Your one-time donation supports the ongoing development and operation of Mu.</p>

@@ -399,27 +399,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		trimmed := strings.TrimSpace(msg.Body)
-		
+
 		// Check if it's gzip (should not be downloaded, just displayed)
 		if len(trimmed) >= 2 && trimmed[0] == 0x1f && trimmed[1] == 0x8b {
 			http.Error(w, "This content should be displayed inline, not downloaded", http.StatusBadRequest)
 			return
 		}
-		
+
 		// Check if it's raw binary data (ZIP file)
 		if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
 			filename := "attachment.zip"
 			if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
 				filename = "dmarc-report.zip"
 			}
-			
+
 			w.Header().Set("Content-Type", "application/zip")
 			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(trimmed)))
 			w.Write([]byte(trimmed))
 			return
 		}
-		
+
 		// Try base64 decode
 		if looksLikeBase64(msg.Body) {
 			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
@@ -428,7 +428,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, "This content should be displayed inline, not downloaded", http.StatusBadRequest)
 					return
 				}
-				
+
 				// Determine filename and content type
 				filename := "attachment.bin"
 				contentType := "application/octet-stream"
@@ -475,7 +475,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		attachmentName := ""
 
 		trimmed := strings.TrimSpace(displayBody)
-		
+
 		// Check if body is gzip compressed (DMARC reports are often .xml.gz)
 		if len(trimmed) >= 2 && trimmed[0] == 0x1f && trimmed[1] == 0x8b {
 			if reader, err := gzip.NewReader(strings.NewReader(trimmed)); err == nil {
@@ -645,7 +645,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		for _, m := range thread {
 			msgBody := m.Body
 			msgIsAttachment := false
-			
+
 			// Check for gzip or ZIP file
 			trimmedBody := strings.TrimSpace(msgBody)
 			if len(trimmedBody) >= 2 && trimmedBody[0] == 0x1f && trimmedBody[1] == 0x8b {
@@ -713,7 +713,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
-			
+
 			// Only linkify if not an attachment
 			if !msgIsAttachment {
 				msgBody = linkifyURLs(msgBody)
@@ -1551,7 +1551,7 @@ func extractZipContents(data []byte, senderEmail string) string {
 		"@amazon.com",
 		"@apple.com",
 	}
-	
+
 	// Check if sender contains "dmarc" OR is from a trusted domain
 	isTrusted := strings.Contains(strings.ToLower(senderEmail), "dmarc")
 	if !isTrusted {
@@ -1563,23 +1563,23 @@ func extractZipContents(data []byte, senderEmail string) string {
 			}
 		}
 	}
-	
+
 	if !isTrusted {
 		app.Log("mail", "Not extracting ZIP - sender not trusted: %s", senderEmail)
 		return "" // Don't auto-extract from unknown senders
 	}
-	
+
 	// Size limit: 10MB
 	if len(data) > 10*1024*1024 {
 		app.Log("mail", "ZIP too large: %d bytes", len(data))
 		return ""
 	}
-	
+
 	// Log first few bytes for debugging
 	if len(data) >= 4 {
 		app.Log("mail", "ZIP signature: %02x %02x %02x %02x", data[0], data[1], data[2], data[3])
 	}
-	
+
 	// Check if it's actually gzip (DMARC reports are often .xml.gz)
 	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
 		app.Log("mail", "Detected gzip format, attempting to decompress")
@@ -1589,13 +1589,13 @@ func extractZipContents(data []byte, senderEmail string) string {
 			return ""
 		}
 		defer reader.Close()
-		
+
 		content, err := io.ReadAll(reader)
 		if err != nil {
 			app.Log("mail", "Failed to read gzip: %v", err)
 			return ""
 		}
-		
+
 		if isValidUTF8Text(content) {
 			app.Log("mail", "Successfully decompressed gzip file (%d bytes)", len(content))
 			return string(content)
@@ -1610,26 +1610,26 @@ func extractZipContents(data []byte, senderEmail string) string {
 		app.Log("mail", "Failed to read ZIP: %v", err)
 		return ""
 	}
-	
+
 	// Limit number of files
 	if len(zipReader.File) > 10 {
 		app.Log("mail", "ZIP has too many files: %d", len(zipReader.File))
 		return ""
 	}
-	
+
 	app.Log("mail", "Extracting ZIP from %s: %d files", senderEmail, len(zipReader.File))
 
 	var result strings.Builder
 	filesExtracted := 0
 	var singleFileContent string // Store content if it's a single file
-	
+
 	for i, file := range zipReader.File {
 		// Limit individual file size: 5MB
 		if file.UncompressedSize64 > 5*1024*1024 {
 			app.Log("mail", "Skipping large file: %s (%d bytes)", file.Name, file.UncompressedSize64)
 			continue
 		}
-		
+
 		rc, err := file.Open()
 		if err != nil {
 			if i > 0 {
@@ -1641,7 +1641,7 @@ func extractZipContents(data []byte, senderEmail string) string {
 			app.Log("mail", "Failed to open file %s: %v", file.Name, err)
 			continue
 		}
-		
+
 		content, err := io.ReadAll(rc)
 		rc.Close()
 		if err != nil {
@@ -1654,11 +1654,11 @@ func extractZipContents(data []byte, senderEmail string) string {
 			app.Log("mail", "Failed to read file %s: %v", file.Name, err)
 			continue
 		}
-		
+
 		// Only display text content (XML, TXT, etc) - never execute or render HTML
 		if isValidUTF8Text(content) {
 			filesExtracted++
-			
+
 			// If single file, store raw content without headers
 			if len(zipReader.File) == 1 {
 				singleFileContent = string(content)
@@ -1683,32 +1683,32 @@ func extractZipContents(data []byte, senderEmail string) string {
 			app.Log("mail", "Skipped binary file: %s", file.Name)
 		}
 	}
-	
+
 	if filesExtracted == 0 {
 		app.Log("mail", "No text files extracted from ZIP")
 		return ""
 	}
-	
+
 	app.Log("mail", "Successfully extracted %d files from ZIP", filesExtracted)
-	
+
 	// For single file ZIPs (like DMARC reports), return raw content
 	if len(zipReader.File) == 1 && singleFileContent != "" {
 		return singleFileContent
 	}
-	
+
 	if result.Len() == 0 {
 		return ""
 	}
-	
+
 	return result.String()
 }
 
 // DMARC XML structures
 type DMARCReport struct {
-	XMLName        xml.Name       `xml:"feedback"`
-	ReportMetadata ReportMetadata `xml:"report_metadata"`
+	XMLName         xml.Name        `xml:"feedback"`
+	ReportMetadata  ReportMetadata  `xml:"report_metadata"`
 	PolicyPublished PolicyPublished `xml:"policy_published"`
-	Records        []Record       `xml:"record"`
+	Records         []Record        `xml:"record"`
 }
 
 type ReportMetadata struct {
@@ -1733,7 +1733,7 @@ type PolicyPublished struct {
 }
 
 type Record struct {
-	Row        Row        `xml:"row"`
+	Row         Row         `xml:"row"`
 	Identifiers Identifiers `xml:"identifiers"`
 	AuthResults AuthResults `xml:"auth_results"`
 }
@@ -1773,18 +1773,18 @@ type SPFResult struct {
 // renderDMARCReport parses DMARC XML and renders it as HTML tables
 func renderDMARCReport(xmlData string) string {
 	app.Log("mail", "renderDMARCReport called with %d bytes, first 200 chars: %s", len(xmlData), xmlData[:min(200, len(xmlData))])
-	
+
 	var report DMARCReport
 	if err := xml.Unmarshal([]byte(xmlData), &report); err != nil {
 		// Not a DMARC report or invalid XML - return empty to fall back to raw display
 		app.Log("mail", "Failed to parse as DMARC report: %v", err)
 		return ""
 	}
-	
+
 	app.Log("mail", "Successfully parsed DMARC report from %s", report.ReportMetadata.OrgName)
 
 	var html strings.Builder
-	
+
 	// Report metadata
 	html.WriteString(`<div style="margin-bottom: 20px;">`)
 	html.WriteString(fmt.Sprintf(`<h4 style="margin: 0 0 10px 0;">DMARC Report from %s</h4>`, report.ReportMetadata.OrgName))
