@@ -85,7 +85,7 @@ var Template = `
       <div id="account" style="-webkit-tap-highlight-color: transparent;">
         <a id="mail-header" href="/mail" style="display: none; margin-right: 2px; -webkit-tap-highlight-color: transparent;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Inbox</span></a>
         <a id="account-header" href="/account" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
-        <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Login</span></a>
+        <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><b>Login</b></a>
       </div>
     </div>
     <div id="container">
@@ -149,6 +149,7 @@ var LoginTemplate = `<html lang="en">
 	  <br>
 	  <button>Login</button>
 	</form>
+	<p style="text-align: center; margin-top: 20px;"><a href="/signup">Sign up</a> if you don't have an account</p>
       </div>
     </div>
   </body>
@@ -182,6 +183,7 @@ var SignupTemplate = `<html lang="en">
 	  <br>
 	  <button>Signup</button>
 	</form>
+	<p style="text-align: center; margin-top: 20px;"><a href="/login">Login</a> if you have an account</p>
       </div>
     </div>
   </body>
