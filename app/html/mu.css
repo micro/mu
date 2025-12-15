@@ -1203,7 +1203,7 @@ body:has(#messages) #content {
 
 .highlight {
   color: #333333;
-  font-size: small;
+  font-size: 0.85em;
   font-weight: bold;
   background: #e8e8e8;
   padding: 3px 5px;
