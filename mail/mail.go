@@ -764,10 +764,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
 			<textarea name="body" placeholder="Write your reply..." required style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; resize: vertical;"></textarea>
-			<div style="color: #666; font-size: 14px;">
-				<a href="#" onclick="this.closest('form').submit(); return false;" style="color: #666;">Send</a>
-				<span style="margin: 0 8px;">·</span>
-				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545;">Delete Thread</a>
+			<div style="display: flex; gap: 10px; align-items: center;">
+				<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
+				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545; font-size: 14px;">Delete Thread</a>
 				%s
 			</div>
 		</form>
@@ -799,12 +798,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				<input type="text" name="to" placeholder="To: username or email" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<input type="text" name="subject" placeholder="Subject" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<textarea name="body" rows="10" placeholder="Write your message..." required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 200px;"></textarea>
-				<div style="color: #666; font-size: 14px;">
-					<a href="#" onclick="this.closest('form').submit(); return false;" style="color: #666;">Send</a>
-					<span style="margin: 0 8px;">·</span>
-					<a href="%s" style="color: #666;">Cancel</a>
-				</div>
-			</form>
+			<div style="display: flex; gap: 10px; align-items: center;">
+				<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
+				<a href="%s" style="color: #666; font-size: 14px;">Cancel</a>
 			<div style="margin-top: 20px;">
 				<a href="%s" style="color: #666; text-decoration: none;">← Back</a>
 			</div>

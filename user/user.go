@@ -15,10 +15,10 @@ import (
 )
 
 var profileMutex sync.RWMutex
-var profiles = map[string]*UserProfile{}
+var profiles = map[string]*Profile{}
 
-// UserProfile stores additional user information beyond the Account
-type UserProfile struct {
+// Profile stores additional user information beyond the Account
+type Profile struct {
 	UserID    string    `json:"user_id"`
 	Status    string    `json:"status"`     // User's custom status message
 	UpdatedAt time.Time `json:"updated_at"` // When the profile was last updated
@@ -30,13 +30,13 @@ func init() {
 }
 
 // GetProfile retrieves a user's profile, creating a default one if it doesn't exist
-func GetProfile(userID string) *UserProfile {
+func GetProfile(userID string) *Profile {
 	profileMutex.RLock()
 	profile, exists := profiles[userID]
 	profileMutex.RUnlock()
 
 	if !exists {
-		profile = &UserProfile{
+		profile = &Profile{
 			UserID:    userID,
 			Status:    "",
 			UpdatedAt: time.Now(),
@@ -47,7 +47,7 @@ func GetProfile(userID string) *UserProfile {
 }
 
 // UpdateProfile saves a user's profile
-func UpdateProfile(profile *UserProfile) error {
+func UpdateProfile(profile *Profile) error {
 	profileMutex.Lock()
 	defer profileMutex.Unlock()
 
@@ -58,8 +58,8 @@ func UpdateProfile(profile *UserProfile) error {
 	return nil
 }
 
-// Profile handler renders a user profile page at /@username
-func Profile(w http.ResponseWriter, r *http.Request) {
+// Handler renders a user profile page at /@username
+func Handler(w http.ResponseWriter, r *http.Request) {
 	// Extract username from URL path (remove /@ prefix)
 	username := strings.TrimPrefix(r.URL.Path, "/@")
 	username = strings.TrimSuffix(username, "/")

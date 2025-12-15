@@ -234,10 +234,10 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 		.blocklist-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
 		.blocklist-table th { text-align: left; padding: 10px; border-bottom: 2px solid #ddd; }
 		.blocklist-table td { padding: 10px; border-bottom: 1px solid #eee; }
-		.block-form { margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 5px; }
-		.block-form input[type="text"] { padding: 8px; width: 300px; max-width: 100%; }
-		.block-form button { padding: 8px 15px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 10px; }
-		.unblock-btn { background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+		.block-form { margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px; }
+		.block-form input[type="text"] { padding: 8px; width: 300px; max-width: 100%; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+		.block-form button { padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px; font-size: 14px; }
+		.unblock-btn { background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px; }
 	</style>
 
 	<div class="blocklist-section">

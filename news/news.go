@@ -1407,7 +1407,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	categoryBadge := ""
 	if category != "" {
-		categoryBadge = fmt.Sprintf(`<span style="background-color: #e0e0e0; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; margin-right: 10px;">%s</span>`, category)
+		categoryBadge = fmt.Sprintf(`<span style="background-color: #f9f9f9; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-family: 'Nunito Sans', serif; font-weight: normal; margin-right: 10px;">%s</span>`, category)
 	}
 
 	articleHtml := fmt.Sprintf(`
@@ -1422,9 +1422,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			</div>
 			%s
 			<div style="margin-top: 20px; color: #666; font-size: 14px;">
-				<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc;">Read Original Article →</a>
+				<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc;">Read Original →</a>
 				<span style="margin: 0 8px;">·</span>
-				<a href="/chat?id=news_%s" style="color: #0066cc;">Discuss with AI</a>
+				<a href="/chat?id=news_%s" style="color: #0066cc;">Discuss with AI →</a>
 			</div>
 			<div style="margin-top: 30px;">
 				<a href="/news" style="color: #666; text-decoration: none;">← Back to news</a>

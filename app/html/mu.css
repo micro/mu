@@ -903,11 +903,11 @@ body:has(#messages) #content {
 }
 
 .flagged-item .actions button {
-  padding: 4px 10px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 3px;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .flagged-item .btn-approve {
@@ -1196,7 +1196,7 @@ body:has(#messages) #content {
   color: #333333;
   font-size: small;
   font-weight: bold;
-  background: #f9f9f9;
+  background: #e8e8e8;
   padding: 3px 5px;
   border-radius: 5px;
 }
@@ -1205,7 +1205,7 @@ body:has(#messages) #content {
   color: #333333;
   font-size: small;
   font-weight: bold;
-  background: #f9f9f9;
+  background: #e8e8e8;
   padding: 3px 5px;
   border-radius: 5px;
 }
@@ -1546,6 +1546,32 @@ body:has(#messages) #content {
   #links .small {
     font-size: 0.85em;
     line-height: 1.4em;
+  }
+  
+  /* Ensure proper touch targets for buttons on mobile */
+  button {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+  
+  /* Form buttons with consistent mobile sizing */
+  form button[type="submit"] {
+    min-height: 44px;
+    padding: 12px 20px;
+  }
+  
+  /* Prevent iOS zoom on input focus */
+  input, textarea, select {
+    font-size: 16px;
+  }
+  
+  /* Ensure inputs are mobile-friendly */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    -webkit-appearance: none;
+    appearance: none;
   }
 }
 

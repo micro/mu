@@ -245,7 +245,7 @@ func main() {
 
 			// Check if this is a user profile request (/@username)
 			if strings.HasPrefix(r.URL.Path, "/@") && !strings.Contains(r.URL.Path[2:], "/") {
-				user.Profile(w, r)
+				user.Handler(w, r)
 				return
 			}
 
