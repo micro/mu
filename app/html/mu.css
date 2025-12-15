@@ -400,6 +400,7 @@ td {
   line-height: 1.4em;
   min-height: 135px;
   box-sizing: border-box;
+  position: relative;
 }
 
 #links .block b {
