@@ -10,7 +10,7 @@ A personal app platform that provides services without ads, algorithms, or explo
 
 - **Home** - One place to catchup with everything
 - **Chat** - AI assistant with contextual discussions
-- **Mail** - Private messaging and outbound SMTP 
+- **Mail** - Private messaging and outbound SMTP (member-only)
 - **News** - Curated RSS feeds and market data
 - **Posts** - Microblogging and community sharing
 - **Video** - YouTube search and Ad-free viewing
@@ -61,7 +61,7 @@ There are built in cards and then the idea would be that you could develop or in
 
 **Mu is free to use** at [mu.xyz](https://mu.xyz). Create an account and start using it immediately - no credit card required.
 
-Optional membership is available to support ongoing development and hosting costs. Members get early access to new features and a voice in the project's direction. This is entirely optional - the platform remains free for all users.
+Optional membership is available to support ongoing development and hosting costs. Members get access to premium features like Mail, early access to new features, and a voice in the project's direction. Most features remain free for all users.
 
 ## Self Hosting
 

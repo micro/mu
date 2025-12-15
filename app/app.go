@@ -605,6 +605,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		content := fmt.Sprintf(`<h2>Benefits</h2>
 		<ul>
+			<li>Access to Mail - private messaging and email</li>
 			<li>Vote on new features and platform direction</li>
 			<li>Exclusive access to latest updates</li>
 			<li>Help keep Mu ad-free and sustainable</li>
@@ -664,6 +665,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	content := fmt.Sprintf(`%s
 		<h2>Benefits</h2>
 		<ul>
+			<li>Access to Mail - private messaging and outbound SMTP</li>
 			<li>Vote on new features and platform direction</li>
 			<li>Exclusive access to latest updates</li>
 			<li>Help keep Mu ad-free and sustainable</li>
