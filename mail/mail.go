@@ -801,9 +801,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div style="display: flex; gap: 10px; align-items: center;">
 				<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
 				<a href="%s" style="color: #666; font-size: 14px;">Cancel</a>
-			<div style="margin-top: 20px;">
-				<a href="%s" style="color: #666; text-decoration: none;">← Back</a>
 			</div>
+		</form>
+		<div style="margin-top: 20px;">
+			<a href="%s" style="color: #666; text-decoration: none;">← Back</a>
+		</div>
 		`, replyTo, to, subject, backLink, backLink)
 
 		w.Write([]byte(app.RenderHTML(pageTitle, "", composeForm)))
