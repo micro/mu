@@ -806,6 +806,7 @@ body:has(#messages) #content {
 
 .post-item > div {
   margin-bottom: 10px;
+  font-size: 0.9em;
 }
 
 .post-item .info {
