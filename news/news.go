@@ -956,9 +956,15 @@ func parseFeed() {
 			// Convert plain text newlines to em dashes
 			if !strings.Contains(desc, "<") {
 				desc = strings.ReplaceAll(desc, "\n", " — ")
-			// Remove any double emdashes that may have been created
-			desc = strings.ReplaceAll(desc, "— —", "—")
-			desc = strings.ReplaceAll(desc, "—  —", "—")
+				// Remove any double emdashes that may have been created
+				desc = strings.ReplaceAll(desc, "— —", "—")
+				desc = strings.ReplaceAll(desc, "—  —", "—")
+			}
+
+			cleanDescription := htmlToText(desc)
+
+			// Truncate to first sentence (look for period followed by space, newline, or end)
+			maxLen := 250
 			if len(cleanDescription) > maxLen {
 				// Look for sentence end within first 250 chars
 				truncated := cleanDescription[:maxLen]
