@@ -758,12 +758,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		messageView := fmt.Sprintf(`
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	%s
-	<div style="margin-top: 30px; padding-top: 20px;">
+	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
 		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
-			<textarea name="body" placeholder="Write your reply..." required style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: inherit; min-height: 100px; resize: vertical;"></textarea>
+			<textarea name="body" placeholder="Write your reply..." required style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; resize: vertical;"></textarea>
 			<div style="color: #666; font-size: 14px;">
 				<a href="#" onclick="this.closest('form').submit(); return false;" style="color: #666;">Send</a>
 				<span style="margin: 0 8px;">·</span>
@@ -798,7 +798,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				<input type="hidden" name="reply_to" value="%s">
 				<input type="text" name="to" placeholder="To: username or email" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<input type="text" name="subject" placeholder="Subject" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-				<textarea name="body" rows="10" placeholder="Write your message..." required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 200px;"></textarea>
+				<textarea name="body" rows="10" placeholder="Write your message..." required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 200px;"></textarea>
 				<div style="color: #666; font-size: 14px;">
 					<a href="#" onclick="this.closest('form').submit(); return false;" style="color: #666;">Send</a>
 					<span style="margin: 0 8px;">·</span>
