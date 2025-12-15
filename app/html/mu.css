@@ -953,6 +953,10 @@ body:has(#messages) #content {
   color: var(--text-primary);
 }
 
+.headline a.category {
+  font-weight: normal;
+}
+
 .headline .title {
   display: block;
   font-size: 1em;
