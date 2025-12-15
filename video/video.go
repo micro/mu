@@ -483,7 +483,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			desc = `<span class="highlight">channel</span>`
 		}
 
-		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>%s</small>`, kind, app.TimeAgo(t))
+		desc = fmt.Sprintf(`<a href="/video#%s" class="highlight">%s</a> | <small>%s</small>`, kind, kind, app.TimeAgo(t))
 
 		res := &Result{
 			ID:          id,
