@@ -416,10 +416,71 @@ func updateCacheUnlocked() {
 
 // Preview returns HTML preview of latest posts for home page
 func Preview() string {
-	updateCache()
+	// Generate fresh HTML with current timestamps instead of using cache
 	mutex.RLock()
 	defer mutex.RUnlock()
-	return postsPreviewHtml
+	
+	if len(posts) == 0 {
+		return "<p>No posts yet. Be the first to share a thought!</p>"
+	}
+	
+	// Get latest 1 post (exclude flagged and new accounts)
+	var preview []string
+	count := 0
+	for i := 0; i < len(posts) && count < 1; i++ {
+		post := posts[i]
+		// Skip flagged posts
+		if admin.IsHidden("post", post.ID) {
+			continue
+		}
+		// Skip posts from new accounts (< 24 hours old)
+		if post.AuthorID != "" && auth.IsNewAccount(post.AuthorID) {
+			continue
+		}
+		count++
+
+		content := post.Content
+		if len(content) > 300 {
+			lastSpace := 300
+			for i := 299; i >= 0 && i < len(content); i-- {
+				if content[i] == ' ' {
+					lastSpace = i
+					break
+				}
+			}
+			content = content[:lastSpace] + "..."
+		}
+
+		content = Linkify(content)
+
+		title := post.Title
+		if title == "" {
+			title = "Untitled"
+		}
+
+		authorLink := post.Author
+		if post.AuthorID != "" {
+			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
+		}
+
+		tagsHtml := ""
+		if post.Tags != "" {
+			tagsHtml = fmt.Sprintf(` · <span class="category">%s</span>`, post.Tags)
+		}
+
+		// Generate fresh timestamp
+		item := fmt.Sprintf(`<div class="post-item">
+		<h3><a href="/post?id=%s">%s</a></h3>
+		<div>%s</div>
+		<div class="info">%s · Posted by %s%s · <a href="/post?id=%s">Reply</a></div>
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, post.ID)
+		preview = append(preview, item)
+	}
+
+	if len(preview) == 0 {
+		return "<p>No posts yet. Be the first to share a thought!</p>"
+	}
+	return strings.Join(preview, "\n")
 }
 
 // FullFeed returns HTML for all posts (for home page feed)

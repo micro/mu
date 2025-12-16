@@ -1214,10 +1214,17 @@ func parseFeed() {
 				postContent = md.Summary
 			}
 
+			// Use metadata title if RSS title is empty
+			itemTitle := item.Title
+			if itemTitle == "" && md.Title != "" {
+				itemTitle = md.Title
+				app.Log("news", "Using metadata title for %s: %s", link, itemTitle)
+			}
+
 			// create post
 			post := &Post{
 				ID:          itemID,
-				Title:       item.Title,
+				Title:       itemTitle,
 				Description: cleanDescription,
 				URL:         link,
 				Published:   item.Published,
@@ -1259,7 +1266,7 @@ func parseFeed() {
 						"summary":     summary,
 					},
 				)
-			}(itemID, item.Title, item.Description, item.Content, md.Comments, md.Summary, link, name, postedAt, md.Image)
+			}(itemID, itemTitle, item.Description, item.Content, md.Comments, md.Summary, link, name, postedAt, md.Image)
 
 			var val string
 
@@ -1275,7 +1282,7 @@ func parseFeed() {
 	    </div>
 	  </a>
 	  <div class="summary">%s</div>
-				`, item.GUID, link, md.Image, getCategoryBadge(post), item.Title, cleanDescription, getSummary(post))
+				`, item.GUID, link, md.Image, getCategoryBadge(post), itemTitle, cleanDescription, getSummary(post))
 			} else {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
@@ -1288,7 +1295,7 @@ func parseFeed() {
 	    </div>
 	  </a>
 	  <div class="summary">%s</div>
-				`, item.GUID, link, getCategoryBadge(post), item.Title, cleanDescription, getSummary(post))
+				`, item.GUID, link, getCategoryBadge(post), itemTitle, cleanDescription, getSummary(post))
 			}
 			
 			// close div
@@ -1550,10 +1557,8 @@ func Load() {
 }
 
 func Headlines() string {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	return headlinesHtml
+	// Generate fresh HTML with current timestamps
+	return generateHeadlinesHtml()
 }
 
 func Markets() string {
@@ -1652,6 +1657,39 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 
 	title := entry.Title
+	
+	// Debug logging
+	app.Log("news", "Article view: ID=%s, Title='%s', URL='%s'", articleID, title, url)
+	
+	// If title or description is empty, try to fetch fresh metadata
+	// But only use metadata values if they're actually better than what we have
+	if (title == "" || description == "") && url != "" {
+		app.Log("news", "Fetching metadata because title='%s' desc='%s'", title, description)
+		md, _, err := getMetadata(url, postedAt)
+		if err == nil {
+			app.Log("news", "Got metadata: Title='%s', Desc='%s'", md.Title, md.Description)
+			// Only use metadata title if our current title is empty AND metadata has one
+			if title == "" && md.Title != "" {
+				title = md.Title
+			}
+			// Only use metadata description if our current description is empty AND metadata has one
+			if description == "" && md.Description != "" {
+				description = md.Description
+			}
+			// Always use metadata image and summary if available (these are enhancements)
+			if image == "" && md.Image != "" {
+				image = md.Image
+			}
+			if summary == "" && md.Summary != "" {
+				summary = md.Summary
+			}
+		} else {
+			app.Log("news", "Error fetching metadata: %v", err)
+		}
+	}
+	
+	app.Log("news", "Final title='%s', desc='%s'", title, description)
+	
 	// Use description from metadata if available, otherwise fall back to indexed content
 	if description == "" {
 		description = htmlToText(entry.Content)

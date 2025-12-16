@@ -600,9 +600,49 @@ func getResults(query, channel string) (string, []*Result, error) {
 }
 
 func Latest() string {
+	// Generate fresh HTML with current timestamps from cached data
 	mutex.RLock()
 	defer mutex.RUnlock()
-	return latestHtml
+	
+	// Collect all latest videos from each channel
+	var latest []*Result
+	for _, channel := range videos {
+		if len(channel.Videos) > 0 {
+			latest = append(latest, channel.Videos[0])
+		}
+	}
+	
+	// Sort by published date
+	sort.Slice(latest, func(i, j int) bool {
+		return latest[i].Published.After(latest[j].Published)
+	})
+	
+	// Get the most recent
+	if len(latest) == 0 {
+		return ""
+	}
+	
+	// Use cached HTML but update timestamp
+	// Parse the HTML to extract thumbnail and title, regenerate info section
+	res := latest[0]
+	
+	// Build fresh description with current timestamp
+	desc := app.TimeAgo(res.Published)
+	if res.Type == "playlist" {
+		desc += " · playlist"
+	} else {
+		desc += " · video"
+	}
+	
+	// Extract thumbnail URL from the cached HTML (simpler than storing it separately)
+	// Or just use YouTube's thumbnail API which is predictable
+	thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+	
+	html := fmt.Sprintf(`
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+		res.URL, thumbnailURL, res.Title, desc)
+	
+	return html
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
