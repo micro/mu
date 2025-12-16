@@ -1530,15 +1530,16 @@ func renderEmailBody(body string, isAttachment bool) string {
 		// Render markdown to HTML
 		rendered := app.RenderString(body)
 		
-		// Clean up excessive whitespace in rendered HTML
-		// Replace multiple consecutive newlines/whitespace with single space
-		rendered = strings.ReplaceAll(rendered, "\n\n", "\n")
-		rendered = strings.ReplaceAll(rendered, "\n", " ")
+		// Clean up excessive whitespace while preserving HTML structure
+		// Collapse multiple newlines into single newlines
+		for strings.Contains(rendered, "\n\n\n") {
+			rendered = strings.ReplaceAll(rendered, "\n\n\n", "\n\n")
+		}
 		
-		// Clean up whitespace around HTML tags
-		rendered = strings.ReplaceAll(rendered, "> <", "><")
-		rendered = strings.ReplaceAll(rendered, ">  <", "><")
-		rendered = strings.ReplaceAll(rendered, ">   <", "><")
+		// Remove newlines that are just between tags (no content)
+		// This preserves formatting inside tags but removes empty space between them
+		rendered = strings.ReplaceAll(rendered, ">\n<", "><")
+		rendered = strings.ReplaceAll(rendered, ">\n\n<", "><")
 		
 		return rendered
 	}
