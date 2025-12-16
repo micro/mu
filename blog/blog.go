@@ -342,8 +342,8 @@ func updateCacheUnlocked() {
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">%s · Posted by %s%s · <a href="/post?id=%s">Reply</a></div>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, post.ID)
+		<div class="info">%s · Posted by %s%s</div>
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml)
 		preview = append(preview, item)
 	}
 
@@ -402,8 +402,8 @@ func updateCacheUnlocked() {
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s">%s</a></h3>
 			<div>%s</div>
-			<div class="info">%s · Posted by %s%s · <a href="/post?id=%s">Reply</a> · <a href="#" onclick="flagPost('%s'); return false;">Flag</a></div>
-		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, post.ID, post.ID)
+			<div class="info">%s · Posted by %s%s</div>
+		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml)
 		fullList = append(fullList, item)
 	}
 
@@ -472,8 +472,8 @@ func Preview() string {
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">%s · Posted by %s%s · <a href="/post?id=%s">Reply</a></div>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, post.ID)
+		<div class="info">%s · Posted by %s%s</div>
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml)
 		preview = append(preview, item)
 	}
 
