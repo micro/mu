@@ -332,6 +332,7 @@ func loadChannels() {
 	if err := json.Unmarshal(data, &channels); err != nil {
 		app.Log("video", "Error parsing channels.json", err)
 	}
+	app.Log("video", "Loaded %d channels from channels.json", len(channels))
 	mutex.Unlock()
 }
 
@@ -343,10 +344,13 @@ func Load() {
 	// load saved videos.json
 	b, _ := data.LoadFile("videos.json")
 	json.Unmarshal(b, &videos)
+	
+	app.Log("video", "Loaded %d channels from videos.json", len(videos))
 
 	// Regenerate HTML from cached JSON data
 	if len(videos) > 0 {
 		regenerateHTML()
+		app.Log("video", "Regenerated HTML from cached data")
 	} else {
 		// load saved HTML files if no JSON data
 		b, _ = data.LoadFile("latest.html")
@@ -354,6 +358,7 @@ func Load() {
 
 		b, _ = data.LoadFile("videos.html")
 		videosHtml = string(b)
+		app.Log("video", "No cached JSON, loaded HTML files")
 	}
 
 	// load fresh videos
@@ -378,6 +383,14 @@ func regenerateHTML() {
 			// Populate Category if missing (for old cached data)
 			if video.Category == "" {
 				video.Category = channel
+			}
+			// Try to get Channel name from indexed metadata if missing
+			if video.Channel == "" {
+				if indexed := data.GetByID("video_" + video.ID); indexed != nil {
+					if ch, ok := indexed.Metadata["channel"].(string); ok {
+						video.Channel = ch
+					}
+				}
 			}
 			latest = append(latest, video)
 		}
@@ -460,14 +473,17 @@ func loadVideos() {
 
 	// get results
 	for channel, handle := range chans {
+		app.Log("video", "Fetching channel: %s (@%s)", channel, handle)
 		html, res, err := getChannel(channel, handle)
 		if err != nil {
-			app.Log("video", "Error getting channel", channel, handle, err)
+			app.Log("video", "Error getting channel %s (@%s): %v", channel, handle, err)
 			continue
 		}
 		if len(res) == 0 {
+			app.Log("video", "No results for channel %s (@%s)", channel, handle)
 			continue
 		}
+		app.Log("video", "Got %d videos for channel %s", len(res), channel)
 		// latest
 		latest = append(latest, res[0])
 
@@ -762,18 +778,31 @@ func Latest() string {
 	res := latest[0]
 
 	// Build fresh description with current timestamp, channel, and category
-	desc := fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`, 
-		app.TimeAgo(res.Published),
-		res.Category,
-		res.Category)
+	var desc string
+	if res.Category != "" {
+		desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`, 
+			app.TimeAgo(res.Published),
+			res.Category,
+			res.Category)
+	} else {
+		desc = app.TimeAgo(res.Published)
+	}
 
 	// Extract thumbnail URL from the cached HTML (simpler than storing it separately)
 	// Or just use YouTube's thumbnail API which is predictable
 	thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
 
+	// Build info section with channel if available
+	var info string
+	if res.Channel != "" {
+		info = res.Channel + " · " + desc
+	} else {
+		info = desc
+	}
+
 	html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s · %s</div></div>`,
-		res.URL, thumbnailURL, res.Title, res.Channel, desc)
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+		res.URL, thumbnailURL, res.Title, info)
 
 	return html
 }
