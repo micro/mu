@@ -201,15 +201,11 @@ var Results = `
 </div>`
 
 func getSummary(post *Post) string {
-	readLink := ""
-	if post.ID != "" {
-		readLink = fmt.Sprintf(` · <a href="/news?id=%s" style="color: inherit;">Read</a>`, post.ID)
-	}
 	timestamp := ""
 	if !post.PostedAt.IsZero() {
 		timestamp = app.TimeAgo(post.PostedAt) + " · "
 	}
-	return fmt.Sprintf(`%sSource: <i>%s</i>%s`, timestamp, getDomain(post.URL), readLink)
+	return fmt.Sprintf(`%sSource: <i>%s</i>`, timestamp, getDomain(post.URL))
 }
 
 func getCategoryBadge(post *Post) string {
@@ -439,29 +435,25 @@ func generateNewsHtml() string {
 			if len(post.Image) > 0 {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
-	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover" src="%s">
 	    <div class="blurb">
 	      %s
-	      <span class="title">%s</span>
+	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  </a>
 	  <div class="summary">%s</div>
-				`, post.ID, link, post.Image, getCategoryBadge(post), post.Title, cleanDescription, getSummary(post))
+				`, post.ID, post.Image, getCategoryBadge(post), link, post.Title, cleanDescription, getSummary(post))
 			} else {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
-	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover">
 	    <div class="blurb">
 	      %s
-	      <span class="title">%s</span>
+	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  </a>
 	  <div class="summary">%s</div>
-				`, post.ID, link, getCategoryBadge(post), post.Title, cleanDescription, getSummary(post))
+				`, post.ID, getCategoryBadge(post), link, post.Title, cleanDescription, getSummary(post))
 			}
 
 			val += `</div>`
@@ -525,13 +517,11 @@ func generateHeadlinesHtml() string {
 
 		val := fmt.Sprintf(`
 		<div class="headline">
-		  <a href="%s" rel="noopener noreferrer" target="_blank">
 		   %s
-		   <span class="title">%s</span>
-		  </a>
+		   <a href="%s"><span class="title">%s</span></a>
 		 <span class="description">%s</span>
 		 <div class="summary">%s</div>
-		`, link, getCategoryBadge(h), h.Title, h.Description, getSummary(h))
+		`, getCategoryBadge(h), link, h.Title, h.Description, getSummary(h))
 
 		val += `</div>`
 		headline = append(headline, []byte(val)...)
