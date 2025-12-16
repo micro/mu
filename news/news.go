@@ -1045,6 +1045,12 @@ func parseFeed() {
 			// Generate stable ID from URL hash - more reliable than GUID which can change
 			itemID := fmt.Sprintf("%x", md5.Sum([]byte(link)))[:16]
 
+			// Use summary as content if available, otherwise use RSS content
+			content := item.Content
+			if md.Summary != "" {
+				content = md.Summary
+			}
+
 			// create post
 			post := &Post{
 				ID:          itemID,
@@ -1055,7 +1061,7 @@ func parseFeed() {
 				PostedAt:    postedAt,
 				Category:    name,
 				Image:       md.Image,
-				Content:     item.Content,
+				Content:     content,
 			}
 
 			news = append(news, post)
