@@ -560,12 +560,12 @@ func parseMultipart(body io.Reader, boundary string) string {
 		}
 	}
 
-	// Return text/plain if available, otherwise text/html
-	if textPlain != "" {
-		return strings.TrimSpace(textPlain)
-	}
+	// Return text/html if available (already formatted), otherwise text/plain
 	if textHTML != "" {
 		return strings.TrimSpace(textHTML)
+	}
+	if textPlain != "" {
+		return strings.TrimSpace(textPlain)
 	}
 
 	// If no text body but there's an attachment (like DMARC reports), return the attachment

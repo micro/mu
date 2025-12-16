@@ -1492,30 +1492,34 @@ func isValidUTF8Text(data []byte) bool {
 
 // looksLikeMarkdown checks if text contains markdown formatting
 func looksLikeMarkdown(text string) bool {
-	// Check for common markdown patterns
-	patterns := []string{
-		"**",  // bold
-		"__",  // bold
-		"*",   // italic
-		"_",   // italic
-		"`",   // code
+	// Check for definitive markdown patterns (require full syntax)
+	definitivePatterns := []string{
+		"**",  // bold (needs two asterisks)
+		"__",  // bold (needs two underscores)
 		"```", // code block
-		"#",   // headers
-		"- ",  // lists
-		"* ",  // lists
-		"[",   // links
-		"](",  // links
+		"- ",  // unordered list
+		"* ",  // unordered list (at start)
 	}
-
-	count := 0
-	for _, pattern := range patterns {
+	
+	for _, pattern := range definitivePatterns {
 		if strings.Contains(text, pattern) {
-			count++
-			if count >= 2 { // At least 2 markdown patterns
-				return true
-			}
+			return true
 		}
 	}
+	
+	// Check for markdown links [text](url) - need both parts
+	if strings.Contains(text, "[") && strings.Contains(text, "](") {
+		return true
+	}
+	
+	// Check for headers (# at start of line)
+	lines := strings.Split(text, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "# ") {
+			return true
+		}
+	}
+	
 	return false
 }
 
