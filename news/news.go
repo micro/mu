@@ -559,6 +559,8 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 		"[itemprop='articleBody']", // Schema.org
 		".story-body",              // BBC-style
 		"main article",             // Semantic HTML
+		".content",                 // Generic content class
+		"#content",                 // Generic content ID
 	}
 
 	contentExtracted := false
