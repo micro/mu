@@ -374,7 +374,12 @@ func regenerateHTML() {
 	// Collect latest from cached data
 	for channel, channelData := range videos {
 		if len(channelData.Videos) > 0 {
-			latest = append(latest, channelData.Videos[0])
+			video := channelData.Videos[0]
+			// Populate Category if missing (for old cached data)
+			if video.Category == "" {
+				video.Category = channel
+			}
+			latest = append(latest, video)
 		}
 		chanNames = append(chanNames, channel)
 	}
@@ -387,14 +392,31 @@ func regenerateHTML() {
 	// Generate latest HTML
 	if len(latest) > 0 {
 		res := latest[0]
-		desc := fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`, 
-			app.TimeAgo(res.Published),
-			res.Category,
-			res.Category)
+		
+		// Build description with category if available
+		var desc string
+		if res.Category != "" {
+			desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`, 
+				app.TimeAgo(res.Published),
+				res.Category,
+				res.Category)
+		} else {
+			desc = app.TimeAgo(res.Published)
+		}
+		
 		thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+		
+		// Build info section with channel if available
+		var info string
+		if res.Channel != "" {
+			info = res.Channel + " · " + desc
+		} else {
+			info = desc
+		}
+		
 		latestHtml = fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s · %s</div></div>`,
-			res.URL, thumbnailURL, res.Title, res.Channel, desc)
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+			res.URL, thumbnailURL, res.Title, info)
 
 		// add to body
 		for _, res := range latest {
