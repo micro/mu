@@ -1027,10 +1027,12 @@ func parseFeed() {
 					title,
 					fullContent,
 					map[string]interface{}{
-						"url":       link,
-						"category":  category,
-						"posted_at": postedAt,
-						"image":     image,
+						"url":         link,
+						"category":    category,
+						"posted_at":   postedAt,
+						"image":       image,
+						"description": desc,
+						"summary":     summary,
 					},
 				)
 			}(itemID, item.Title, item.Description, item.Content, md.Comments, md.Summary, link, name, postedAt, md.Image)
@@ -1389,6 +1391,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	image := ""
 	postedAt := time.Time{}
 	summary := ""
+	description := ""
 
 	if v, ok := entry.Metadata["url"].(string); ok {
 		url = v
@@ -1398,6 +1401,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 	if v, ok := entry.Metadata["image"].(string); ok {
 		image = v
+	}
+	if v, ok := entry.Metadata["description"].(string); ok {
+		description = v
 	}
 	if v, ok := entry.Metadata["summary"].(string); ok {
 		summary = v
@@ -1411,7 +1417,10 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 
 	title := entry.Title
-	description := htmlToText(entry.Content)
+	// Use description from metadata if available, otherwise fall back to indexed content
+	if description == "" {
+		description = htmlToText(entry.Content)
+	}
 
 	// Build the article page
 	imageSection := ""
@@ -1435,6 +1444,15 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		categoryBadge = fmt.Sprintf(`<span class="category" style="margin-right: 10px;">%s</span>`, category)
 	}
 
+	// Build description section
+	descriptionSection := ""
+	if description != "" {
+		descriptionSection = fmt.Sprintf(`
+			<div style="margin-bottom: 20px; line-height: 1.6;">
+				<p>%s</p>
+			</div>`, description)
+	}
+
 	articleHtml := fmt.Sprintf(`
 		<div id="news-article">
 			%s
@@ -1442,9 +1460,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			<div style="color: #666; margin-bottom: 20px; font-size: 0.9em;">
 				%s<span>%s | Source: <i>%s</i></span>
 			</div>
-			<div style="margin-bottom: 30px; line-height: 1.6;">
-				<p>%s</p>
-			</div>
+			%s
 			%s
 			<div style="margin-top: 20px; color: #666; font-size: 14px;">
 				<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc;">Read Original →</a>
@@ -1455,7 +1471,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="/news" style="color: #666; text-decoration: none;">← Back to news</a>
 			</div>
 		</div>
-	`, imageSection, title, categoryBadge, app.TimeAgo(postedAt), getDomain(url), description, summarySection, url, articleID)
+	`, imageSection, title, categoryBadge, app.TimeAgo(postedAt), getDomain(url), descriptionSection, summarySection, url, articleID)
 
 	w.Write([]byte(app.RenderHTML("", "", articleHtml)))
 }
