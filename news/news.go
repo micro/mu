@@ -1079,18 +1079,35 @@ func parseFeed() {
 		content = append(content, []byte(`</div>`)...)
 	}
 
-	headline := []byte(`<div class=section>`)
-
 	// get crypto prices
 	newPrices := getPrices()
 	app.Log("news", "Finished getting prices")
 
+	var marketsTickerHtml string
 	if newPrices != nil {
 		// Cache the prices for the markets page
 		mutex.Lock()
 		cachedPrices = newPrices
 		mutex.Unlock()
 
+		// Build horizontal markets ticker (crypto first, then futures)
+		var tickerItems []string
+		
+		// Add crypto prices first
+		for _, ticker := range tickers {
+			price := newPrices[ticker]
+			tickerItems = append(tickerItems, fmt.Sprintf(`<span class="market-ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price))
+		}
+		
+		// Add futures prices
+		for _, ticker := range futuresKeys {
+			price := newPrices[ticker]
+			tickerItems = append(tickerItems, fmt.Sprintf(`<span class="market-ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price))
+		}
+		
+		marketsTickerHtml = fmt.Sprintf(`<div class="markets-ticker-container"><div class="markets-ticker">%s</div></div>`, strings.Join(tickerItems, ""))
+
+		// Keep legacy markets HTML format for /markets page
 		info := []byte(`<div class="item"><div id="tickers">`)
 
 		for _, ticker := range tickers {
@@ -1137,6 +1154,9 @@ func parseFeed() {
 	sort.Slice(headlines, func(i, j int) bool {
 		return headlines[i].PostedAt.After(headlines[j].PostedAt)
 	})
+
+	// Start with markets ticker, then section for headlines
+	headline := []byte(marketsTickerHtml + `<div class=section>`)
 
 	for _, h := range headlines {
 		val := fmt.Sprintf(`

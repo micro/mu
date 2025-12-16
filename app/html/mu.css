@@ -1111,6 +1111,36 @@ body:has(#messages) #content {
 /* ========================================
    MARKETS & REMINDER
    ======================================== */
+
+/* Horizontal markets ticker */
+.markets-ticker-container {
+  margin-bottom: 15px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.markets-ticker-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.markets-ticker {
+  display: flex;
+  gap: 15px;
+  white-space: nowrap;
+  padding: 10px 0;
+}
+
+.market-ticker {
+  font-size: 0.95em;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Legacy markets card styles (for /markets page) */
 #markets, #reminder, #video {
   max-width: 100%;
   float: none;

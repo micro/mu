@@ -17,24 +17,17 @@
       "link": ""
     },
     {
-      "id": "markets",
-      "title": "Markets",
-      "type": "markets",
-      "position": 1,
-      "link": "/markets"
-    },
-    {
       "id": "posts",
       "title": "Posts",
       "type": "posts",
-      "position": 2,
+      "position": 1,
       "link": "/posts"
     },
     {
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 3,
+      "position": 2,
       "link": "/video"
     }
   ]
