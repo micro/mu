@@ -337,22 +337,87 @@ func loadChannels() {
 
 // Load videos
 func Load() {
-	// load latest video
-	b, _ := data.LoadFile("latest.html")
-	latestHtml = string(b)
-
-	// load saved videos
-	b, _ = data.LoadFile("videos.html")
-	videosHtml = string(b)
-
-	b, _ = data.LoadFile("videos.json")
-	json.Unmarshal(b, &videos)
-
 	// load channels
 	loadChannels()
 
+	// load saved videos.json
+	b, _ := data.LoadFile("videos.json")
+	json.Unmarshal(b, &videos)
+
+	// Regenerate HTML from cached JSON data
+	if len(videos) > 0 {
+		regenerateHTML()
+	} else {
+		// load saved HTML files if no JSON data
+		b, _ = data.LoadFile("latest.html")
+		latestHtml = string(b)
+
+		b, _ = data.LoadFile("videos.html")
+		videosHtml = string(b)
+	}
+
 	// load fresh videos
 	go loadVideos()
+}
+
+// regenerateHTML creates HTML from cached video data
+func regenerateHTML() {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	var head string
+	var body string
+	var chanNames []string
+
+	var latest []*Result
+
+	// Collect latest from cached data
+	for channel, channelData := range videos {
+		if len(channelData.Videos) > 0 {
+			latest = append(latest, channelData.Videos[0])
+		}
+		chanNames = append(chanNames, channel)
+	}
+
+	// sort the latest by date
+	sort.Slice(latest, func(i, j int) bool {
+		return latest[i].Published.After(latest[j].Published)
+	})
+
+	// Generate latest HTML
+	if len(latest) > 0 {
+		res := latest[0]
+		desc := fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`, 
+			app.TimeAgo(res.Published),
+			res.Category,
+			res.Category)
+		thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+		latestHtml = fmt.Sprintf(`
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s · %s</div></div>`,
+			res.URL, thumbnailURL, res.Title, res.Channel, desc)
+
+		// add to body
+		for _, res := range latest {
+			body += res.Html
+		}
+	}
+
+	// generate head
+	head = app.Head("video", chanNames)
+
+	// sort channel names
+	sort.Strings(chanNames)
+
+	// create body for channels
+	for _, channel := range chanNames {
+		body += `<div class=section>`
+		body += `<hr id="` + channel + `" class="anchor">`
+		body += fmt.Sprintf(`<h1>%s</h1>`, channel)
+		body += videos[channel].Html
+		body += `</div>`
+	}
+
+	videosHtml = app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body))
 }
 
 func loadVideos() {
