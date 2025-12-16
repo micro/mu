@@ -313,10 +313,6 @@ td {
   height: 100%;
 }
 
-#home-chat {
-  padding: 15px;
-}
-
 #home-chat-form {
   display: flex;
   gap: 10px;
