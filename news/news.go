@@ -393,6 +393,149 @@ func saveHtml(head, content []byte) {
 	app.Log("news", "Saved news.html (%d bytes)", len(newsBodyHtml))
 }
 
+// generateNewsHtml generates fresh HTML from the feed data with current timestamps
+func generateNewsHtml() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var content []byte
+	var categories = make(map[string][]*Post)
+	
+	// Group posts by category
+	for _, post := range feed {
+		categories[post.Category] = append(categories[post.Category], post)
+	}
+	
+	// Sort categories
+	var sortedCategories []string
+	for cat := range categories {
+		sortedCategories = append(sortedCategories, cat)
+	}
+	sort.Strings(sortedCategories)
+	
+	// Generate HTML for each category
+	for _, cat := range sortedCategories {
+		posts := categories[cat]
+		if len(posts) == 0 {
+			continue
+		}
+		
+		content = append(content, []byte(`<div class=section>`)...)
+		content = append(content, []byte(`<hr id="`+cat+`" class="anchor">`)...)
+		content = append(content, []byte(`<h1>`+cat+`</h1>`)...)
+		
+		for _, post := range posts {
+			cleanDescription := strings.TrimSpace(post.Description)
+			if len(cleanDescription) > 300 {
+				cleanDescription = cleanDescription[:300] + "..."
+			}
+			
+			link := post.URL
+			if post.ID != "" {
+				link = "/news?id=" + post.ID
+			}
+			
+			var val string
+			if len(post.Image) > 0 {
+				val = fmt.Sprintf(`
+	<div id="%s" class="news">
+	  <a href="%s" rel="noopener noreferrer" target="_blank">
+	    <img class="cover" src="%s">
+	    <div class="blurb">
+	      %s
+	      <span class="title">%s</span>
+	      <span class="description">%s</span>
+	    </div>
+	  </a>
+	  <div class="summary">%s</div>
+				`, post.ID, link, post.Image, getCategoryBadge(post), post.Title, cleanDescription, getSummary(post))
+			} else {
+				val = fmt.Sprintf(`
+	<div id="%s" class="news">
+	  <a href="%s" rel="noopener noreferrer" target="_blank">
+	    <img class="cover">
+	    <div class="blurb">
+	      %s
+	      <span class="title">%s</span>
+	      <span class="description">%s</span>
+	    </div>
+	  </a>
+	  <div class="summary">%s</div>
+				`, post.ID, link, getCategoryBadge(post), post.Title, cleanDescription, getSummary(post))
+			}
+			
+			val += `</div>`
+			content = append(content, []byte(val)...)
+		}
+		
+		content = append(content, []byte(`</div>`)...)
+	}
+	
+	searchForm := `<form id="news-search" action="/news" method="GET">
+  <input id="news-query" name="query" placeholder="Search news">
+  <button id="news-search-btn">Search</button>
+</form>`
+	
+	// Generate headlines
+	headlines := generateHeadlinesHtml()
+	
+	// Get topics header
+	var sortedFeeds []string
+	for name := range feeds {
+		sortedFeeds = append(sortedFeeds, name)
+	}
+	sort.Strings(sortedFeeds)
+	head := app.Head("news", sortedFeeds)
+	
+	return fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, head, headlines+string(content))
+}
+
+// generateHeadlinesHtml generates fresh HTML for headlines with current timestamps
+func generateHeadlinesHtml() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	
+	// Get first post from each category for headlines
+	seenCategories := make(map[string]bool)
+	var headlines []*Post
+	
+	for _, post := range feed {
+		if !seenCategories[post.Category] {
+			headlines = append(headlines, post)
+			seenCategories[post.Category] = true
+		}
+		if len(headlines) >= 10 {
+			break
+		}
+	}
+	
+	// Sort by posted date
+	sort.Slice(headlines, func(i, j int) bool {
+		return headlines[i].PostedAt.After(headlines[j].PostedAt)
+	})
+	
+	var headline []byte
+	headline = append(headline, []byte(`<div class="headlines">`)...)
+	
+	for _, h := range headlines {
+		val := fmt.Sprintf(`
+		<div class="headline">
+		  <a href="%s" rel="noopener noreferrer" target="_blank">
+		   %s
+		   <span class="title">%s</span>
+		  </a>
+		 <span class="description">%s</span>
+		 <div class="summary">%s</div>
+		`, h.URL, getCategoryBadge(h), h.Title, h.Description, getSummary(h))
+		
+		val += `</div>`
+		headline = append(headline, []byte(val)...)
+	}
+	
+	headline = append(headline, []byte(`</div>`)...)
+	return string(headline)
+}
+
 func loadFeed() {
 	// load the feeds file
 	data, _ := f.ReadFile("feeds.json")
@@ -1123,16 +1266,16 @@ func parseFeed() {
 			if len(md.Image) > 0 {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
-	  %s
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover" src="%s">
 	    <div class="blurb">
+	      %s
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
-	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
-				`, item.GUID, getCategoryBadge(post), link, md.Image, item.Title, cleanDescription, getSummary(post))
+	  <div class="summary">%s</div>
+				`, item.GUID, link, md.Image, getCategoryBadge(post), item.Title, cleanDescription, getSummary(post))
 			} else {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
@@ -1144,7 +1287,7 @@ func parseFeed() {
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
-	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
+	  <div class="summary">%s</div>
 				`, item.GUID, link, getCategoryBadge(post), item.Title, cleanDescription, getSummary(post))
 			}
 			
@@ -1649,20 +1792,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mutex.RLock()
-	defer mutex.RUnlock()
+	hasContent := len(feed) > 0
+	mutex.RUnlock()
 
 	if accept := r.Header.Get("Accept"); accept == "application/json" {
+		mutex.RLock()
 		resp := map[string]interface{}{
 			"feed": feed,
 		}
+		mutex.RUnlock()
 		b, _ := json.Marshal(resp)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
 		return
 	}
 
-	// Serve the pre-built news body with user-specific rendering
-	renderedHtml := app.RenderHTMLForRequest("News", "Latest news headlines", newsBodyHtml, r)
+	// Generate HTML on-demand with fresh timestamps
+	body := newsBodyHtml // fallback to cached for initial load
+	if hasContent {
+		body = generateNewsHtml()
+	}
+	renderedHtml := app.RenderHTMLForRequest("News", "Latest news headlines", body, r)
 	w.Write([]byte(renderedHtml))
 }
 
