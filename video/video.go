@@ -533,7 +533,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 				"url":       url,
 				"category":  category,
 				"channel":   item.Snippet.ChannelTitle,
-				"published": item.Snippet.PublishedAt,
+				"published": t,
 				"thumbnail": item.Snippet.Thumbnails.Medium.Url,
 			},
 		)

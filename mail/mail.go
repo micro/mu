@@ -561,10 +561,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Convert URLs to clickable links (skip if it's an attachment)
-		if !isAttachment {
-			displayBody = linkifyURLs(displayBody)
-		}
+		// Process email body - renders markdown if detected, otherwise linkifies URLs
+		displayBody = renderEmailBody(displayBody, isAttachment)
 
 		// Prepare reply subject
 		replySubject := msg.Subject
@@ -705,10 +703,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// Only linkify if not an attachment
-			if !msgIsAttachment {
-				msgBody = linkifyURLs(msgBody)
-			}
+			// Process email body - renders markdown if detected, otherwise linkifies URLs
+			msgBody = renderEmailBody(msgBody, msgIsAttachment)
 
 			isSent := m.FromID == acc.ID
 			authorDisplay := m.FromID
@@ -1492,6 +1488,51 @@ func isValidUTF8Text(data []byte) bool {
 		}
 	}
 	return false
+}
+
+// looksLikeMarkdown checks if text contains markdown formatting
+func looksLikeMarkdown(text string) bool {
+	// Check for common markdown patterns
+	patterns := []string{
+		"**",    // bold
+		"__",    // bold
+		"*",     // italic
+		"_",     // italic
+		"`",     // code
+		"```",   // code block
+		"#",     // headers
+		"- ",    // lists
+		"* ",    // lists
+		"[",     // links
+		"](", // links
+	}
+	
+	count := 0
+	for _, pattern := range patterns {
+		if strings.Contains(text, pattern) {
+			count++
+			if count >= 2 { // At least 2 markdown patterns
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// renderEmailBody processes email body - renders markdown if detected, otherwise linkifies URLs
+func renderEmailBody(body string, isAttachment bool) string {
+	if isAttachment {
+		return body
+	}
+	
+	// Check if body looks like markdown
+	if looksLikeMarkdown(body) {
+		// Render markdown to HTML
+		return app.RenderString(body)
+	}
+	
+	// Otherwise just linkify URLs
+	return linkifyURLs(body)
 }
 
 // linkifyURLs converts URLs in text to clickable HTML links
