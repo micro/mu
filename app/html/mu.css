@@ -1018,6 +1018,13 @@ body:has(#messages) #content {
   color: var(--text-secondary);
 }
 
+/* Video info styling */
+.thumbnail .info {
+  font-size: 0.8em;
+  margin-top: 5px;
+  color: var(--text-secondary);
+}
+
 /* ========================================
    VIDEO PAGE
    ======================================== */

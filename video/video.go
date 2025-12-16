@@ -505,7 +505,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-		<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
+		<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div style="font-size: 0.8em; color: #666; margin-top: 5px;">%s · %s</div></div>`,
 			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
 		resultsHtml += html
 		res.Html = html
