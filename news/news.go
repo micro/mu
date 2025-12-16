@@ -80,16 +80,18 @@ type Post struct {
 }
 
 type Metadata struct {
-	Created     int64
-	Title       string
-	Description string
-	Type        string
-	Image       string
-	Url         string
-	Site        string
-	Content     string
-	Comments    string // Comments/discussion context from any source
-	Summary     string // LLM-generated summary for chat context
+	Created            int64
+	Title              string
+	Description        string
+	Type               string
+	Image              string
+	Url                string
+	Site               string
+	Content            string
+	Comments           string // Comments/discussion context from any source
+	Summary            string // LLM-generated summary for chat context
+	SummaryRequestedAt int64  // Last time we requested summary generation
+	SummaryAttempts    int    // Number of times we've requested a summary
 }
 
 // htmlToText converts HTML to plain text with proper spacing
@@ -428,9 +430,12 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 		if isHN {
 			age := time.Since(time.Unix(0, cached.Created))
 			if age < time.Hour {
-				// Still request summary if we don't have one yet
+				// Request summary if we don't have one yet, with smart retry
 				if cached.Summary == "" {
-					go requestArticleSummary(uri, cached)
+					shouldRetry := shouldRequestSummary(cached)
+					if shouldRetry {
+						go requestArticleSummary(uri, cached)
+					}
 				}
 				return cached, false, nil // false = from cache
 			}
@@ -444,9 +449,12 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 					uri, cachedTime.Format(time.RFC3339), publishedAt.Format(time.RFC3339))
 			} else {
 				// Cache is still valid
-				// Still request summary if we don't have one yet
+				// Request summary if we don't have one yet, with smart retry
 				if cached.Summary == "" {
-					go requestArticleSummary(uri, cached)
+					shouldRetry := shouldRequestSummary(cached)
+					if shouldRetry {
+						go requestArticleSummary(uri, cached)
+					}
 				}
 				return cached, false, nil
 			}
@@ -635,6 +643,40 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 	return g, true, nil // true = freshly fetched
 }
 
+// shouldRequestSummary determines if we should retry requesting a summary
+// Uses exponential backoff: 5min, 30min, 2hr, 6hr, 24hr, then stop
+func shouldRequestSummary(md *Metadata) bool {
+	// Never requested before
+	if md.SummaryRequestedAt == 0 {
+		return true
+	}
+
+	// Stop retrying after 5 attempts
+	if md.SummaryAttempts >= 5 {
+		return false
+	}
+
+	// Calculate backoff duration based on attempts
+	var backoffDuration time.Duration
+	switch md.SummaryAttempts {
+	case 0:
+		backoffDuration = 0 // First attempt, no delay
+	case 1:
+		backoffDuration = 5 * time.Minute
+	case 2:
+		backoffDuration = 30 * time.Minute
+	case 3:
+		backoffDuration = 2 * time.Hour
+	case 4:
+		backoffDuration = 6 * time.Hour
+	default:
+		backoffDuration = 24 * time.Hour
+	}
+
+	timeSinceLastRequest := time.Since(time.Unix(0, md.SummaryRequestedAt))
+	return timeSinceLastRequest >= backoffDuration
+}
+
 // requestArticleSummary publishes a request for LLM summary generation
 func requestArticleSummary(uri string, md *Metadata) {
 	// Skip if we already have a summary
@@ -661,7 +703,12 @@ func requestArticleSummary(uri string, md *Metadata) {
 		return
 	}
 
-	app.Log("news", "Requesting summary generation for %s", uri)
+	// Update request tracking
+	md.SummaryRequestedAt = time.Now().UnixNano()
+	md.SummaryAttempts++
+	saveCachedMetadata(uri, md)
+
+	app.Log("news", "Requesting summary generation for %s (attempt %d)", uri, md.SummaryAttempts)
 
 	// Publish summary generation request
 	data.Publish(data.Event{
