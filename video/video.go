@@ -483,7 +483,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			desc = `<span class="highlight">channel</span>`
 		}
 
-		desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a> · <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, app.TimeAgo(t), kind, kind, url)
+		desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`, app.TimeAgo(t), kind, kind)
 
 		res := &Result{
 			ID:          id,
@@ -505,7 +505,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-		<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+		<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
 		resultsHtml += html
 		res.Html = html
@@ -561,11 +561,11 @@ func getResults(query, channel string) (string, []*Result, error) {
 		case "video":
 			id = item.Id.VideoId
 			url = "/video?id=" + id
-			desc = fmt.Sprintf(`%s · <span class="highlight">%s</span> · <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, app.TimeAgo(t), kind, url)
+			desc = fmt.Sprintf(`%s · <span class="highlight">%s</span>`, app.TimeAgo(t), kind)
 		case "playlist":
 			id = item.Id.PlaylistId
 			url = "/video?playlist=" + id
-			desc = fmt.Sprintf(`%s · <span class="highlight">%s</span> · <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, app.TimeAgo(t), kind, url)
+			desc = fmt.Sprintf(`%s · <span class="highlight">%s</span>`, app.TimeAgo(t), kind)
 		case "channel":
 			id = item.Id.ChannelId
 			url = "/video?channel=" + id
@@ -590,7 +590,7 @@ func getResults(query, channel string) (string, []*Result, error) {
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
 		resultsHtml += html
 		res.Html = html
@@ -779,7 +779,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			html := fmt.Sprintf(`
-		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
 			resultsHtml += html
 		}
@@ -849,7 +849,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			html := fmt.Sprintf(`
-		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s | %s</div>`,
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
 			resultsHtml += html
 		}

@@ -203,7 +203,7 @@ var Results = `
 func getSummary(post *Post) string {
 	readLink := ""
 	if post.ID != "" {
-		readLink = fmt.Sprintf(` | <a href="/news?id=%s" style="color: inherit;">Read</a>`, post.ID)
+		readLink = fmt.Sprintf(` · <a href="/news?id=%s" style="color: inherit;">Read</a>`, post.ID)
 	}
 	timestamp := ""
 	if !post.PostedAt.IsZero() {
@@ -1136,18 +1136,18 @@ func parseFeed() {
 			} else {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
-	  %s
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover">
 	    <div class="blurb">
+	      %s
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
 	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
-				`, item.GUID, getCategoryBadge(post), link, item.Title, cleanDescription, getSummary(post))
+				`, item.GUID, link, getCategoryBadge(post), item.Title, cleanDescription, getSummary(post))
 			}
-
+			
 			// close div
 			val += `</div>`
 
@@ -1247,11 +1247,12 @@ func parseFeed() {
 		val := fmt.Sprintf(`
 			<div class="headline">
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
+			   %s
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
 			 <div class="summary">%s</div>
-			`, h.URL, h.Title, h.Description, getSummary(h))
+			`, h.URL, getCategoryBadge(h), h.Title, h.Description, getSummary(h))
 
 		// close val
 		val += `</div>`
