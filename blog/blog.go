@@ -43,7 +43,7 @@ type Post struct {
 	Content   string    `json:"content"` // Raw markdown content
 	Author    string    `json:"author"`
 	AuthorID  string    `json:"author_id"`
-	Tags      string    `json:"tags"`      // Comma-separated tags
+	Tags      string    `json:"tags"` // Comma-separated tags
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -419,11 +419,11 @@ func Preview() string {
 	// Generate fresh HTML with current timestamps instead of using cache
 	mutex.RLock()
 	defer mutex.RUnlock()
-	
+
 	if len(posts) == 0 {
 		return "<p>No posts yet. Be the first to share a thought!</p>"
 	}
-	
+
 	// Get latest 1 post (exclude flagged and new accounts)
 	var preview []string
 	count := 0
@@ -743,7 +743,7 @@ func CreatePost(title, content, author, authorID, tags string) error {
 // autoTagPost requests AI categorization via pubsub
 func autoTagPost(postID, title, content string) {
 	app.Log("blog", "Requesting tag generation for post: %s", postID)
-	
+
 	// Publish tag generation request
 	data.Publish(data.Event{
 		Type: data.EventGenerateTag,

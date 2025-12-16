@@ -400,41 +400,41 @@ func generateNewsHtml() string {
 
 	var content []byte
 	var categories = make(map[string][]*Post)
-	
+
 	// Group posts by category
 	for _, post := range feed {
 		categories[post.Category] = append(categories[post.Category], post)
 	}
-	
+
 	// Sort categories
 	var sortedCategories []string
 	for cat := range categories {
 		sortedCategories = append(sortedCategories, cat)
 	}
 	sort.Strings(sortedCategories)
-	
+
 	// Generate HTML for each category
 	for _, cat := range sortedCategories {
 		posts := categories[cat]
 		if len(posts) == 0 {
 			continue
 		}
-		
+
 		content = append(content, []byte(`<div class=section>`)...)
 		content = append(content, []byte(`<hr id="`+cat+`" class="anchor">`)...)
 		content = append(content, []byte(`<h1>`+cat+`</h1>`)...)
-		
+
 		for _, post := range posts {
 			cleanDescription := strings.TrimSpace(post.Description)
 			if len(cleanDescription) > 300 {
 				cleanDescription = cleanDescription[:300] + "..."
 			}
-			
+
 			link := post.URL
 			if post.ID != "" {
 				link = "/news?id=" + post.ID
 			}
-			
+
 			var val string
 			if len(post.Image) > 0 {
 				val = fmt.Sprintf(`
@@ -463,22 +463,22 @@ func generateNewsHtml() string {
 	  <div class="summary">%s</div>
 				`, post.ID, link, getCategoryBadge(post), post.Title, cleanDescription, getSummary(post))
 			}
-			
+
 			val += `</div>`
 			content = append(content, []byte(val)...)
 		}
-		
+
 		content = append(content, []byte(`</div>`)...)
 	}
-	
+
 	searchForm := `<form id="news-search" action="/news" method="GET">
   <input id="news-query" name="query" placeholder="Search news">
   <button id="news-search-btn">Search</button>
 </form>`
-	
+
 	// Generate headlines
 	headlines := generateHeadlinesHtml()
-	
+
 	// Get topics header
 	var sortedFeeds []string
 	for name := range feeds {
@@ -486,7 +486,7 @@ func generateNewsHtml() string {
 	}
 	sort.Strings(sortedFeeds)
 	head := app.Head("news", sortedFeeds)
-	
+
 	return fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, head, headlines+string(content))
 }
 
@@ -494,11 +494,11 @@ func generateNewsHtml() string {
 func generateHeadlinesHtml() string {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	
+
 	// Get first post from each category for headlines
 	seenCategories := make(map[string]bool)
 	var headlines []*Post
-	
+
 	for _, post := range feed {
 		if !seenCategories[post.Category] {
 			headlines = append(headlines, post)
@@ -508,15 +508,15 @@ func generateHeadlinesHtml() string {
 			break
 		}
 	}
-	
+
 	// Sort by posted date
 	sort.Slice(headlines, func(i, j int) bool {
 		return headlines[i].PostedAt.After(headlines[j].PostedAt)
 	})
-	
+
 	var headline []byte
 	headline = append(headline, []byte(`<div class="headlines">`)...)
-	
+
 	for _, h := range headlines {
 		val := fmt.Sprintf(`
 		<div class="headline">
@@ -527,11 +527,11 @@ func generateHeadlinesHtml() string {
 		 <span class="description">%s</span>
 		 <div class="summary">%s</div>
 		`, h.URL, getCategoryBadge(h), h.Title, h.Description, getSummary(h))
-		
+
 		val += `</div>`
 		headline = append(headline, []byte(val)...)
 	}
-	
+
 	headline = append(headline, []byte(`</div>`)...)
 	return string(headline)
 }
@@ -1310,7 +1310,7 @@ func parseFeed() {
 	  <div class="summary">%s</div>
 				`, item.GUID, link, getCategoryBadge(post), itemTitle, cleanDescription, getSummary(post))
 			}
-			
+
 			// close div
 			val += `</div>`
 
@@ -1340,19 +1340,19 @@ func parseFeed() {
 
 		// Build horizontal markets ticker (crypto first, then futures)
 		var tickerItems []string
-		
+
 		// Add crypto prices first
 		for _, ticker := range tickers {
 			price := newPrices[ticker]
 			tickerItems = append(tickerItems, fmt.Sprintf(`<span class="market-ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price))
 		}
-		
+
 		// Add futures prices
 		for _, ticker := range futuresKeys {
 			price := newPrices[ticker]
 			tickerItems = append(tickerItems, fmt.Sprintf(`<span class="market-ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price))
 		}
-		
+
 		marketsTickerHtml = fmt.Sprintf(`<div class="markets-ticker-container"><div class="markets-ticker">%s</div></div>`, strings.Join(tickerItems, ""))
 
 		// Keep legacy markets HTML format for /markets page
@@ -1494,18 +1494,27 @@ func Load() {
 					metadata := map[string]interface{}{
 						"url": uri,
 					}
+					title := md.Title
 					if existing != nil {
 						// Preserve existing metadata fields
 						for k, v := range existing.Metadata {
 							metadata[k] = v
 						}
+						// Preserve existing title if metadata title is empty
+						// RSS feeds often have better titles than scraped metadata
+						if title == "" && existing.Title != "" {
+							title = existing.Title
+							app.Log("news", "Preserving existing RSS title: '%s'", title)
+						}
 					}
+					// Update metadata with summary
+					metadata["summary"] = summary
 
 					// Re-index with summary as content
 					data.Index(
 						itemID,
 						"news",
-						md.Title,
+						title,
 						summary, // Use summary as content for chat context
 						metadata,
 					)
@@ -1670,10 +1679,10 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 
 	title := entry.Title
-	
+
 	// Debug logging
 	app.Log("news", "Article view: ID=%s, Title='%s', URL='%s'", articleID, title, url)
-	
+
 	// If title or description is empty, try to fetch fresh metadata
 	// But only use metadata values if they're actually better than what we have
 	if (title == "" || description == "") && url != "" {
@@ -1700,9 +1709,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			app.Log("news", "Error fetching metadata: %v", err)
 		}
 	}
-	
+
 	app.Log("news", "Final title='%s', desc='%s'", title, description)
-	
+
 	// Use description from metadata if available, otherwise fall back to indexed content
 	if description == "" {
 		description = htmlToText(entry.Content)

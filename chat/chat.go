@@ -788,13 +788,13 @@ func Load() {
 
 				// Trim and validate the tag
 				tag = strings.TrimSpace(tag)
-				
+
 				// Skip if LLM couldn't categorize
 				if tag == "None" || tag == "none" || tag == "" {
 					app.Log("chat", "Post %s could not be categorized, skipping tag", postID)
 					continue
 				}
-				
+
 				// Validate against prompts map keys
 				validTag := false
 				for topic := range prompts {

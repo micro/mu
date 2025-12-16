@@ -1494,19 +1494,19 @@ func isValidUTF8Text(data []byte) bool {
 func looksLikeMarkdown(text string) bool {
 	// Check for common markdown patterns
 	patterns := []string{
-		"**",    // bold
-		"__",    // bold
-		"*",     // italic
-		"_",     // italic
-		"`",     // code
-		"```",   // code block
-		"#",     // headers
-		"- ",    // lists
-		"* ",    // lists
-		"[",     // links
-		"](", // links
+		"**",  // bold
+		"__",  // bold
+		"*",   // italic
+		"_",   // italic
+		"`",   // code
+		"```", // code block
+		"#",   // headers
+		"- ",  // lists
+		"* ",  // lists
+		"[",   // links
+		"](",  // links
 	}
-	
+
 	count := 0
 	for _, pattern := range patterns {
 		if strings.Contains(text, pattern) {
@@ -1524,13 +1524,13 @@ func renderEmailBody(body string, isAttachment bool) string {
 	if isAttachment {
 		return body
 	}
-	
+
 	// Check if body looks like markdown
 	if looksLikeMarkdown(body) {
 		// Render markdown to HTML
 		return app.RenderString(body)
 	}
-	
+
 	// Otherwise just linkify URLs
 	return linkifyURLs(body)
 }
