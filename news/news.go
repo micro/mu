@@ -634,11 +634,20 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 	}
 	// Future: Add other comment sources here (Reddit, forums, etc.)
 
+	// Preserve existing summary if we already have one
+	if existing, exists := loadCachedMetadata(uri); exists && existing.Summary != "" {
+		g.Summary = existing.Summary
+		g.SummaryRequestedAt = existing.SummaryRequestedAt
+		g.SummaryAttempts = existing.SummaryAttempts
+	}
+
 	// Cache the metadata
 	saveCachedMetadata(uri, g)
 
-	// Request LLM summary generation via event (non-blocking)
-	go requestArticleSummary(uri, g)
+	// Request LLM summary generation via event (non-blocking) only if we don't have one
+	if g.Summary == "" {
+		go requestArticleSummary(uri, g)
+	}
 
 	return g, true, nil // true = freshly fetched
 }
