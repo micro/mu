@@ -180,8 +180,8 @@ var (
 	saveMutex          sync.Mutex
 	embeddingCache     = make(map[string][]float64) // Cache query embeddings
 	embeddingCacheMu   sync.RWMutex
-	maxEmbeddingCache  = 100  // Maximum cached query embeddings
-	maxIndexEmbeddings = 1000 // Maximum index entries with embeddings
+	maxEmbeddingCache  = 100   // Maximum cached query embeddings
+	maxIndexEmbeddings = 10000 // Maximum index entries with embeddings
 	embeddingQueue     = make(chan string, 100)
 	embeddingEnabled   = false
 	embeddingMutex     sync.Mutex
@@ -210,17 +210,32 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	existing, exists := index[id]
 	indexMutex.RUnlock()
 
-	// Skip if already exists with same title/content and recent
+	// Skip if already exists with same title/content
 	if exists {
 		contentSame := existing.Title == title && existing.Content == content
 
-		// If content is the same and indexed recently, skip entirely
-		if contentSame && time.Since(existing.IndexedAt) < 5*time.Minute {
+		// If content is the same, skip entirely (no need to re-index)
+		if contentSame {
+			// Still update metadata if it changed (e.g., new comments)
+			if metadata != nil {
+				metadataChanged := false
+				for k, v := range metadata {
+					if existingVal, ok := existing.Metadata[k]; !ok || existingVal != v {
+						metadataChanged = true
+						break
+					}
+				}
+				if metadataChanged {
+					indexMutex.Lock()
+					existing.Metadata = metadata
+					indexMutex.Unlock()
+					go saveIndex()
+				}
+			}
 			return
 		}
 
-		// If content changed or it's been a while, allow re-index
-		// (This allows metadata like comments to be updated)
+		// Content changed, allow re-index
 	}
 
 	entry := &IndexEntry{
