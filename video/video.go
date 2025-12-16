@@ -51,12 +51,24 @@ type Result struct {
 	URL         string    `json:"url"`
 	Html        string    `json:"html"`
 	Published   time.Time `json:"published"`
-	Channel     string    `json:"channel"`
-	Category    string    `json:"category"`
+	Channel     string    `json:"channel,omitempty"`
+	Category    string    `json:"category,omitempty"`
 }
 
 var Key = os.Getenv("YOUTUBE_API_KEY")
-var Client, _ = youtube.NewService(context.TODO(), option.WithAPIKey(Key))
+
+var Client *youtube.Service
+
+func init() {
+	var err error
+	Client, err = youtube.NewService(context.TODO(), option.WithAPIKey(Key))
+	if err != nil {
+		app.Log("video", "Failed to initialize YouTube client: %v", err)
+	}
+	if Key == "" {
+		app.Log("video", "WARNING: YOUTUBE_API_KEY environment variable not set")
+	}
+}
 
 var commonStyles = `
   .thumbnail {
@@ -382,6 +394,17 @@ func loadVideos() {
 	sort.Slice(latest, func(i, j int) bool {
 		return latest[i].Published.After(latest[j].Published)
 	})
+
+	// Check if we got any videos
+	if len(latest) == 0 {
+		app.Log("video", "WARNING: No videos loaded from any channel. Check YouTube API key and channel handles.")
+		mutex.Lock()
+		videos = vids
+		mutex.Unlock()
+		time.Sleep(time.Hour)
+		go loadVideos()
+		return
+	}
 
 	// add to body
 	for _, res := range latest {
