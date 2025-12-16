@@ -1528,7 +1528,19 @@ func renderEmailBody(body string, isAttachment bool) string {
 	// Check if body looks like markdown
 	if looksLikeMarkdown(body) {
 		// Render markdown to HTML
-		return app.RenderString(body)
+		rendered := app.RenderString(body)
+		
+		// Clean up excessive whitespace in rendered HTML
+		// Replace multiple consecutive newlines/whitespace with single space
+		rendered = strings.ReplaceAll(rendered, "\n\n", "\n")
+		rendered = strings.ReplaceAll(rendered, "\n", " ")
+		
+		// Clean up whitespace around HTML tags
+		rendered = strings.ReplaceAll(rendered, "> <", "><")
+		rendered = strings.ReplaceAll(rendered, ">  <", "><")
+		rendered = strings.ReplaceAll(rendered, ">   <", "><")
+		
+		return rendered
 	}
 
 	// Otherwise just linkify URLs
