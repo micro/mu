@@ -648,6 +648,9 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		resultsHtml += html
 		res.Html = html
 
+		// Append to results
+		results = append(results, res)
+
 		// Index the video for search/RAG
 		data.Index(
 			"video_"+id,
