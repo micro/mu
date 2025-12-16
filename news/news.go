@@ -518,6 +518,11 @@ func generateHeadlinesHtml() string {
 	headline = append(headline, []byte(`<div class="headlines">`)...)
 
 	for _, h := range headlines {
+		link := h.URL
+		if h.ID != "" {
+			link = "/news?id=" + h.ID
+		}
+
 		val := fmt.Sprintf(`
 		<div class="headline">
 		  <a href="%s" rel="noopener noreferrer" target="_blank">
@@ -526,7 +531,7 @@ func generateHeadlinesHtml() string {
 		  </a>
 		 <span class="description">%s</span>
 		 <div class="summary">%s</div>
-		`, h.URL, getCategoryBadge(h), h.Title, h.Description, getSummary(h))
+		`, link, getCategoryBadge(h), h.Title, h.Description, getSummary(h))
 
 		val += `</div>`
 		headline = append(headline, []byte(val)...)
