@@ -464,7 +464,20 @@ func getChannel(category, handle string) (string, []*Result, error) {
 	for _, item := range resp.Items {
 		var id, url, desc string
 		kind := strings.Split(item.Kind, "#")[1]
-		t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+		
+		// Parse ISO 8601 timestamp with multiple format attempts
+		var t time.Time
+		var err error
+		if t, err = time.Parse(time.RFC3339, item.Snippet.PublishedAt); err != nil {
+			// Try with milliseconds
+			if t, err = time.Parse("2006-01-02T15:04:05.000Z", item.Snippet.PublishedAt); err != nil {
+				// Try without timezone
+				if t, err = time.Parse("2006-01-02T15:04:05", item.Snippet.PublishedAt); err != nil {
+					app.Log("video", "Failed to parse ISO 8601 timestamp for %s: '%s' - using current time", item.Snippet.Title, item.Snippet.PublishedAt)
+					t = time.Now()
+				}
+			}
+		}
 
 		switch kind {
 		case "playlistItem":
@@ -555,7 +568,20 @@ func getResults(query, channel string) (string, []*Result, error) {
 	for _, item := range resp.Items {
 		var id, url, desc string
 		kind := strings.Split(item.Id.Kind, "#")[1]
-		t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+		
+		// Parse ISO 8601 timestamp with multiple format attempts
+		var t time.Time
+		var err error
+		if t, err = time.Parse(time.RFC3339, item.Snippet.PublishedAt); err != nil {
+			// Try with milliseconds
+			if t, err = time.Parse("2006-01-02T15:04:05.000Z", item.Snippet.PublishedAt); err != nil {
+				// Try without timezone
+				if t, err = time.Parse("2006-01-02T15:04:05", item.Snippet.PublishedAt); err != nil {
+					app.Log("video", "Failed to parse ISO 8601 timestamp for %s: '%s' - using current time", item.Snippet.Title, item.Snippet.PublishedAt)
+					t = time.Now()
+				}
+			}
+		}
 
 		switch kind {
 		case "video":

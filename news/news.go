@@ -1150,7 +1150,20 @@ func parseFeed() {
 			var postedAt time.Time
 			if item.PublishedParsed != nil {
 				postedAt = *item.PublishedParsed
+			} else if item.Published != "" {
+				// Try parsing the Published string directly
+				if parsed, err := time.Parse(time.RFC1123Z, item.Published); err == nil {
+					postedAt = parsed
+				} else if parsed, err := time.Parse(time.RFC3339, item.Published); err == nil {
+					postedAt = parsed
+				} else {
+					app.Log("news", "Failed to parse timestamp for %s: %s - using current time", link, item.Published)
+					// Use current time as approximation since it's in RSS feed (likely recent)
+					postedAt = time.Now()
+				}
 			} else {
+				app.Log("news", "No timestamp available for %s - using current time", link)
+				// Use current time as approximation since it's in RSS feed (likely recent)
 				postedAt = time.Now()
 			}
 
