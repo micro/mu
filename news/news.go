@@ -428,6 +428,10 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 		if isHN {
 			age := time.Since(time.Unix(0, cached.Created))
 			if age < time.Hour {
+				// Still request summary if we don't have one yet
+				if cached.Summary == "" {
+					go requestArticleSummary(uri, cached)
+				}
 				return cached, false, nil // false = from cache
 			}
 			app.Log("news", "HN metadata cache expired for %s (age: %v), refetching comments", uri, age.Round(time.Minute))
@@ -440,6 +444,10 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 					uri, cachedTime.Format(time.RFC3339), publishedAt.Format(time.RFC3339))
 			} else {
 				// Cache is still valid
+				// Still request summary if we don't have one yet
+				if cached.Summary == "" {
+					go requestArticleSummary(uri, cached)
+				}
 				return cached, false, nil
 			}
 		}
