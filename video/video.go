@@ -415,8 +415,10 @@ func loadVideos() {
 	mutex.Lock()
 	data.SaveFile("videos.html", vidHtml)
 	data.SaveFile("videos.json", vidJson)
-	data.SaveFile("latest.html", latest[0].Html)
-	latestHtml = latest[0].Html
+	if len(latest) > 0 {
+		data.SaveFile("latest.html", latest[0].Html)
+		latestHtml = latest[0].Html
+	}
 	videos = vids
 	videosHtml = vidHtml
 	mutex.Unlock()
