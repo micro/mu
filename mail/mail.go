@@ -1500,18 +1500,18 @@ func looksLikeMarkdown(text string) bool {
 		"- ",  // unordered list
 		"* ",  // unordered list (at start)
 	}
-	
+
 	for _, pattern := range definitivePatterns {
 		if strings.Contains(text, pattern) {
 			return true
 		}
 	}
-	
+
 	// Check for markdown links [text](url) - need both parts
 	if strings.Contains(text, "[") && strings.Contains(text, "](") {
 		return true
 	}
-	
+
 	// Check for headers (# at start of line)
 	lines := strings.Split(text, "\n")
 	for _, line := range lines {
@@ -1519,7 +1519,7 @@ func looksLikeMarkdown(text string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -1533,18 +1533,18 @@ func renderEmailBody(body string, isAttachment bool) string {
 	if looksLikeMarkdown(body) {
 		// Render markdown to HTML
 		rendered := app.RenderString(body)
-		
+
 		// Clean up excessive whitespace while preserving HTML structure
 		// Collapse multiple newlines into single newlines
 		for strings.Contains(rendered, "\n\n\n") {
 			rendered = strings.ReplaceAll(rendered, "\n\n\n", "\n\n")
 		}
-		
+
 		// Remove newlines that are just between tags (no content)
 		// This preserves formatting inside tags but removes empty space between them
 		rendered = strings.ReplaceAll(rendered, ">\n<", "><")
 		rendered = strings.ReplaceAll(rendered, ">\n\n<", "><")
-		
+
 		return rendered
 	}
 

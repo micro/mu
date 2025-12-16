@@ -344,7 +344,7 @@ func Load() {
 	// load saved videos.json
 	b, _ := data.LoadFile("videos.json")
 	json.Unmarshal(b, &videos)
-	
+
 	app.Log("video", "Loaded %d channels from videos.json", len(videos))
 
 	// Regenerate HTML from cached JSON data
@@ -405,20 +405,20 @@ func regenerateHTML() {
 	// Generate latest HTML
 	if len(latest) > 0 {
 		res := latest[0]
-		
+
 		// Build description with category if available
 		var desc string
 		if res.Category != "" {
-			desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`, 
+			desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`,
 				app.TimeAgo(res.Published),
 				res.Category,
 				res.Category)
 		} else {
 			desc = app.TimeAgo(res.Published)
 		}
-		
+
 		thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
-		
+
 		// Build info section with channel if available
 		var info string
 		if res.Channel != "" {
@@ -426,7 +426,7 @@ func regenerateHTML() {
 		} else {
 			info = desc
 		}
-		
+
 		latestHtml = fmt.Sprintf(`
 	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
 			res.URL, thumbnailURL, res.Title, info)
@@ -635,8 +635,8 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			Description: item.Snippet.Description,
 			URL:         url,
 			Published:   t,
-		Channel:     item.Snippet.ChannelTitle,
-		Category:    category,
+			Channel:     item.Snippet.ChannelTitle,
+			Category:    category,
 		}
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
@@ -780,7 +780,7 @@ func Latest() string {
 	// Build fresh description with current timestamp, channel, and category
 	var desc string
 	if res.Category != "" {
-		desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`, 
+		desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`,
 			app.TimeAgo(res.Published),
 			res.Category,
 			res.Category)
