@@ -10,24 +10,31 @@
   ],
   "right": [
     {
+      "id": "chat",
+      "title": "Chat",
+      "type": "chat",
+      "position": 0,
+      "link": ""
+    },
+    {
       "id": "reminder",
       "title": "Reminder",
       "type": "reminder",
-      "position": 0,
+      "position": 1,
       "link": ""
     },
     {
       "id": "posts",
       "title": "Posts",
       "type": "posts",
-      "position": 1,
+      "position": 2,
       "link": "/posts"
     },
     {
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 2,
+      "position": 3,
       "link": "/video"
     }
   ]

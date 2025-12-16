@@ -26,6 +26,15 @@ var Template = `<div id="home">
   <div class="home-right">%s</div>
 </div>`
 
+func ChatCard() string {
+	return `<div id="home-chat">
+		<form id="home-chat-form" action="/chat" method="GET">
+			<input type="text" name="prompt" placeholder="Ask a question" required>
+			<button type="submit">Ask</button>
+		</form>
+	</div>`
+}
+
 type Card struct {
 	ID          string
 	Title       string
@@ -73,6 +82,7 @@ func Load() {
 
 	// Map of card types to their content functions
 	cardFunctions := map[string]func() string{
+		"chat":     ChatCard,
 		"news":     news.Headlines,
 		"markets":  news.Markets,
 		"reminder": news.Reminder,
