@@ -1107,7 +1107,7 @@ func parseFeed() {
 			tickerItems = append(tickerItems, fmt.Sprintf(`<span class="market-ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price))
 		}
 		
-		marketsTickerHtml = fmt.Sprintf(`<div class="markets-ticker-container"><div class="markets-ticker">%s</div></div>`, strings.Join(tickerItems, ""))
+		marketsTickerHtml = fmt.Sprintf(`<div class="markets-ticker-container"><div style="font-weight: bold; margin-bottom: 8px; font-size: 0.9em;">Markets</div><div class="markets-ticker">%s</div></div>`, strings.Join(tickerItems, ""))
 
 		// Keep legacy markets HTML format for /markets page
 		info := []byte(`<div class="item"><div id="tickers">`)

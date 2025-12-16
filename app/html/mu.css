@@ -1135,7 +1135,7 @@ body:has(#messages) #content {
 }
 
 .market-ticker {
-  font-size: 0.95em;
+  font-size: 0.85em;
   display: inline-block;
   flex-shrink: 0;
 }
