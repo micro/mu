@@ -1,6 +1,7 @@
 package blog
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,6 +17,9 @@ import (
 	"mu/data"
 )
 
+//go:embed topics.json
+var topicsJSON []byte
+
 var mutex sync.RWMutex
 
 // cached blog posts
@@ -30,12 +34,16 @@ var postsPreviewHtml string
 // cached HTML for full blog page
 var postsList string
 
+// Valid topics/categories for posts
+var topics []string
+
 type Post struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
 	Content   string    `json:"content"` // Raw markdown content
 	Author    string    `json:"author"`
 	AuthorID  string    `json:"author_id"`
+	Tags      string    `json:"tags"`      // Comma-separated tags
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -48,8 +56,115 @@ type Comment struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Load blog posts from disk
+// tagRegex validates tag format: alphanumeric only
+var tagRegex = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+
+// GetTopics returns the list of valid topics/categories
+func GetTopics() []string {
+	return topics
+}
+
+// parseTags parses comma-separated tags, validates, and normalizes them
+func parseTags(input string) string {
+	if input == "" {
+		return ""
+	}
+
+	// Split by comma
+	parts := strings.Split(input, ",")
+	var validTags []string
+	seen := make(map[string]bool)
+
+	for _, part := range parts {
+		tag := strings.TrimSpace(part)
+		if tag == "" {
+			continue
+		}
+
+		// Check if it's alphanumeric
+		if !tagRegex.MatchString(tag) {
+			continue
+		}
+
+		// Normalize: capitalize first letter
+		tag = strings.ToUpper(tag[:1]) + strings.ToLower(tag[1:])
+
+		// Check for duplicates
+		if seen[tag] {
+			continue
+		}
+		seen[tag] = true
+
+		validTags = append(validTags, tag)
+	}
+
+	return strings.Join(validTags, ", ")
+}
+
+// Load initializes the blog package and sets up event subscriptions
 func Load() {
+	// Load topics from embedded JSON
+	if err := json.Unmarshal(topicsJSON, &topics); err != nil {
+		app.Log("blog", "Error loading topics: %v", err)
+		topics = []string{"Crypto", "Dev", "Finance", "Islam", "Politics", "Tech", "UK", "World"}
+	}
+
+	// Subscribe to tag generation responses
+	tagSub := data.Subscribe(data.EventTagGenerated)
+	go func() {
+		for event := range tagSub.Chan {
+			postID, okID := event.Data["post_id"].(string)
+			tag, okTag := event.Data["tag"].(string)
+			eventType, okType := event.Data["type"].(string)
+
+			if okID && okTag && okType && eventType == "post" {
+				app.Log("blog", "Received generated tag for post: %s", postID)
+
+				// Update the post with the tag
+				mutex.Lock()
+				var post *Post
+				for _, p := range posts {
+					if p.ID == postID {
+						p.Tags = tag
+						post = p
+						break
+					}
+				}
+				mutex.Unlock()
+
+				if post == nil {
+					app.Log("blog", "Post %s not found for tagging", postID)
+					continue
+				}
+
+				// Save to disk
+				if err := save(); err != nil {
+					app.Log("blog", "Error saving auto-tag for post %s: %v", postID, err)
+					continue
+				}
+
+				// Update cached HTML
+				updateCache()
+
+				// Re-index with the new tag
+				data.Index(
+					post.ID,
+					"post",
+					post.Title,
+					post.Content,
+					map[string]interface{}{
+						"url":    "/post?id=" + post.ID,
+						"author": post.Author,
+						"tags":   post.Tags,
+					},
+				)
+
+				app.Log("blog", "Auto-tagged post %s with: %s", postID, tag)
+			}
+		}
+	}()
+
+	// Load existing posts from disk
 	b, err := data.LoadFile("blog.json")
 	if err != nil {
 		posts = []*Post{}
@@ -94,6 +209,7 @@ func Load() {
 				map[string]interface{}{
 					"url":    "/post?id=" + post.ID,
 					"author": post.Author,
+					"tags":   post.Tags,
 				},
 			)
 		}
@@ -218,11 +334,16 @@ func updateCacheUnlocked() {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
 		}
 
+		tagsHtml := ""
+		if post.Tags != "" {
+			tagsHtml = fmt.Sprintf(` · <span class="category">%s</span>`, post.Tags)
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">Posted by %s · <a href="/post?id=%s">Reply</a></div>
-	</div>`, post.ID, title, content, authorLink, post.ID)
+		<div class="info">%s · Posted by %s%s · <a href="/post?id=%s">Reply</a></div>
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, post.ID)
 		preview = append(preview, item)
 	}
 
@@ -273,11 +394,16 @@ func updateCacheUnlocked() {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
 		}
 
+		tagsHtml := ""
+		if post.Tags != "" {
+			tagsHtml = fmt.Sprintf(` · <span class="category">%s</span>`, post.Tags)
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s">%s</a></h3>
 			<div>%s</div>
-			<div class="info">Posted by %s · <a href="/post?id=%s">Reply</a> · <a href="#" onclick="flagPost('%s'); return false;">Flag</a></div>
-		</div>`, post.ID, title, content, authorLink, post.ID, post.ID)
+			<div class="info">%s · Posted by %s%s · <a href="/post?id=%s">Reply</a> · <a href="#" onclick="flagPost('%s'); return false;">Flag</a></div>
+		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, post.ID, post.ID)
 		fullList = append(fullList, item)
 	}
 
@@ -363,6 +489,7 @@ func PostingForm(action string) string {
 		<form id="post-form" method="POST" action="%s">
 			<input type="text" name="title" placeholder="Title (optional)">
 			<textarea name="content" rows="4" placeholder="Share a thought. Be mindful of Allah" required style="font-family: 'Nunito Sans', serif;"></textarea>
+			<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" style="font-size: 0.9em;">
 			<button type="submit">Post</button>
 		</form>
 	</div>`, action)
@@ -503,7 +630,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreatePost creates a new post and returns error if any
-func CreatePost(title, content, author, authorID string) error {
+func CreatePost(title, content, author, authorID, tags string) error {
 	// Create new post
 	post := &Post{
 		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
@@ -511,6 +638,7 @@ func CreatePost(title, content, author, authorID string) error {
 		Content:   content,
 		Author:    author,
 		AuthorID:  authorID,
+		Tags:      tags,
 		CreatedAt: time.Now(),
 	}
 
@@ -528,7 +656,7 @@ func CreatePost(title, content, author, authorID string) error {
 	updateCache()
 
 	// Index the post for search/RAG
-	go func(id, title, content, author string) {
+	go func(id, title, content, author, tags string) {
 		app.Log("blog", "Indexing post: %s", title)
 		data.Index(
 			id,
@@ -538,11 +666,33 @@ func CreatePost(title, content, author, authorID string) error {
 			map[string]interface{}{
 				"url":    "/post?id=" + id,
 				"author": author,
+				"tags":   tags,
 			},
 		)
-	}(post.ID, post.Title, post.Content, post.Author)
+	}(post.ID, post.Title, post.Content, post.Author, post.Tags)
+
+	// Auto-tag if no tags provided
+	if tags == "" {
+		go autoTagPost(post.ID, title, content)
+	}
 
 	return nil
+}
+
+// autoTagPost requests AI categorization via pubsub
+func autoTagPost(postID, title, content string) {
+	app.Log("blog", "Requesting tag generation for post: %s", postID)
+	
+	// Publish tag generation request
+	data.Publish(data.Event{
+		Type: data.EventGenerateTag,
+		Data: map[string]interface{}{
+			"post_id": postID,
+			"title":   title,
+			"content": content,
+			"type":    "post",
+		},
+	})
 }
 
 // CreateComment adds a comment to a post
@@ -669,12 +819,13 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" && id == "" {
 		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
 
-		var title, content string
+		var title, content, tags string
 
 		if isJSON {
 			var req struct {
 				Title   string `json:"title"`
 				Content string `json:"content"`
+				Tags    string `json:"tags"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -682,6 +833,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			title = strings.TrimSpace(req.Title)
 			content = strings.TrimSpace(req.Content)
+			tags = parseTags(req.Tags)
 		} else {
 			if err := r.ParseForm(); err != nil {
 				http.Error(w, "Failed to parse form", http.StatusBadRequest)
@@ -689,6 +841,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			title = strings.TrimSpace(r.FormValue("title"))
 			content = strings.TrimSpace(r.FormValue("content"))
+			tags = parseTags(r.FormValue("tags"))
 		}
 
 		// Validate content
@@ -727,7 +880,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Create post
 		postID := fmt.Sprintf("%d", time.Now().UnixNano())
-		if err := CreatePost(title, content, author, authorID); err != nil {
+		if err := CreatePost(title, content, author, authorID, tags); err != nil {
 			http.Error(w, "Failed to save post", http.StatusInternalServerError)
 			return
 		}
@@ -914,7 +1067,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	content := fmt.Sprintf(`<div id="blog">
 		<div class="info" style="color: #666; font-size: small;">
-			Posted by %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
+			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
 		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="margin-bottom: 20px;">%s</div>
@@ -924,7 +1077,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<div style="margin-top: 30px;">
 			<a href="/posts" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
-	</div>`, authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
@@ -981,10 +1134,10 @@ func renderComments(postID string, r *http.Request) string {
 
 		commentsHTML.WriteString(fmt.Sprintf(`
 			<div style="padding: 15px; background: #f9f9f9; border-radius: 5px; margin-bottom: 10px;">
-				<div style="color: #666; font-size: 12px; margin-bottom: 5px;">%s</div>
+				<div style="color: #666; font-size: 12px; margin-bottom: 5px;">%s · %s</div>
 				<div style="white-space: pre-wrap;">%s</div>
 			</div>
-		`, authorLink, comment.Content))
+		`, app.TimeAgo(comment.CreatedAt), authorLink, comment.Content))
 	}
 	commentsHTML.WriteString(`</div>`)
 
@@ -1034,6 +1187,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	title := strings.TrimSpace(r.FormValue("title"))
 	content := strings.TrimSpace(r.FormValue("content"))
+	tags := parseTags(r.FormValue("tags"))
 
 	if content == "" {
 		http.Error(w, "Content is required", http.StatusBadRequest)
@@ -1133,7 +1287,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	// Create the post
 	postID := fmt.Sprintf("%d", time.Now().UnixNano())
-	if err := CreatePost(title, content, author, authorID); err != nil {
+	if err := CreatePost(title, content, author, authorID, tags); err != nil {
 		http.Error(w, "Failed to save post", http.StatusInternalServerError)
 		return
 	}

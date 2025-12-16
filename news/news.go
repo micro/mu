@@ -205,7 +205,18 @@ func getSummary(post *Post) string {
 	if post.ID != "" {
 		readLink = fmt.Sprintf(` | <a href="/news?id=%s" style="color: inherit;">Read</a>`, post.ID)
 	}
-	return fmt.Sprintf(`Source: <i>%s</i> | <a href="/news#%s" class="category">%s</a>%s`, getDomain(post.URL), post.Category, post.Category, readLink)
+	timestamp := ""
+	if !post.PostedAt.IsZero() {
+		timestamp = app.TimeAgo(post.PostedAt) + " · "
+	}
+	return fmt.Sprintf(`%sSource: <i>%s</i>%s`, timestamp, getDomain(post.URL), readLink)
+}
+
+func getCategoryBadge(post *Post) string {
+	if post.Category == "" {
+		return ""
+	}
+	return fmt.Sprintf(`<a href="/news#%s" class="category" style="display: inline-block; margin-bottom: 5px;">%s</a>`, post.Category, post.Category)
 }
 
 func getPrices() map[string]float64 {
@@ -1112,6 +1123,7 @@ func parseFeed() {
 			if len(md.Image) > 0 {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
+	  %s
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover" src="%s">
 	    <div class="blurb">
@@ -1120,10 +1132,11 @@ func parseFeed() {
 	    </div>
 	  </a>
 	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
-				`, item.GUID, link, md.Image, item.Title, cleanDescription, getSummary(post))
+				`, item.GUID, getCategoryBadge(post), link, md.Image, item.Title, cleanDescription, getSummary(post))
 			} else {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
+	  %s
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover">
 	    <div class="blurb">
@@ -1132,7 +1145,7 @@ func parseFeed() {
 	    </div>
 	  </a>
 	  <div style="font-size: 0.8em; margin-top: 5px; color: #666;">%s</div>
-				`, item.GUID, link, item.Title, cleanDescription, getSummary(post))
+				`, item.GUID, getCategoryBadge(post), link, item.Title, cleanDescription, getSummary(post))
 			}
 
 			// close div
@@ -1265,6 +1278,8 @@ func parseFeed() {
 
 	// save the prices as JSON for persistence
 	data.SaveJSON("prices.json", cachedPrices)
+	// save the feed as JSON for persistence
+	data.SaveJSON("feed.json", feed)
 
 	mutex.Unlock()
 
@@ -1352,6 +1367,17 @@ func Load() {
 		if err := json.Unmarshal(b, &prices); err == nil {
 			mutex.Lock()
 			cachedPrices = prices
+			mutex.Unlock()
+		}
+	}
+
+	// load cached feed
+	b, _ = data.LoadFile("feed.json")
+	if len(b) > 0 {
+		var cachedFeed []*Post
+		if err := json.Unmarshal(b, &cachedFeed); err == nil {
+			mutex.Lock()
+			feed = cachedFeed
 			mutex.Unlock()
 		}
 	}
@@ -1460,6 +1486,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	image := ""
 	summary := ""
 	description := ""
+	var postedAt time.Time
 
 	if v, ok := entry.Metadata["url"].(string); ok {
 		url = v
@@ -1475,6 +1502,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 	if v, ok := entry.Metadata["summary"].(string); ok {
 		summary = v
+	}
+	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
+		postedAt = v
 	}
 
 	title := entry.Title
@@ -1502,7 +1532,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	categoryBadge := ""
 	if category != "" {
-		categoryBadge = fmt.Sprintf(`<span class="category" style="margin-right: 10px;">%s</span>`, category)
+		categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 10px;"><span class="category">%s</span></div>`, category)
 	}
 
 	// Build description section
@@ -1517,9 +1547,10 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	articleHtml := fmt.Sprintf(`
 		<div id="news-article">
 			%s
+			%s
 			<h1 style="margin-top: 0; margin-bottom: 15px;">%s</h1>
 			<div style="color: #666; margin-bottom: 20px; font-size: 0.9em;">
-				%s<span>Source: <i>%s</i></span>
+				<span>%s · Source: <i>%s</i></span>
 			</div>
 			%s
 			%s
@@ -1532,7 +1563,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="/news" style="color: #666; text-decoration: none;">← Back to news</a>
 			</div>
 		</div>
-	`, imageSection, title, categoryBadge, getDomain(url), descriptionSection, summarySection, url, articleID)
+	`, imageSection, categoryBadge, title, app.TimeAgo(postedAt), getDomain(url), descriptionSection, summarySection, url, articleID)
 
 	w.Write([]byte(app.RenderHTML("", "", articleHtml)))
 }

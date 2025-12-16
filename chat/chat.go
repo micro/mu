@@ -752,6 +752,79 @@ func Load() {
 		}
 	}()
 
+	// Subscribe to tag generation requests
+	tagRequestSub := data.Subscribe(data.EventGenerateTag)
+	go func() {
+		for event := range tagRequestSub.Chan {
+			postID, okID := event.Data["post_id"].(string)
+			title, okTitle := event.Data["title"].(string)
+			content, okContent := event.Data["content"].(string)
+			eventType, okType := event.Data["type"].(string)
+
+			if okID && okTitle && okContent && okType && eventType == "post" {
+				app.Log("chat", "Received tag generation request for post %s", postID)
+
+				// Get valid topics from prompts map
+				var topics []string
+				for topic := range prompts {
+					topics = append(topics, topic)
+				}
+				if len(topics) == 0 {
+					app.Log("chat", "No topics available for tag generation")
+					continue
+				}
+
+				// Generate tag using LLM with predefined categories
+				prompt := &Prompt{
+					System:   fmt.Sprintf("You are a content categorization assistant. Your task is to categorize posts into ONE of these categories ONLY: %s. If the post does not clearly fit into any of these categories, respond with 'None'. Respond with ONLY the category name or 'None', nothing else.", strings.Join(topics, ", ")),
+					Question: fmt.Sprintf("Categorize this post:\n\nTitle: %s\n\nContent: %s\n\nWhich single category best fits this post?", title, content),
+				}
+
+				tag, err := askLLM(prompt)
+				if err != nil {
+					app.Log("chat", "Error generating tag for post %s: %v", postID, err)
+					continue
+				}
+
+				// Trim and validate the tag
+				tag = strings.TrimSpace(tag)
+				
+				// Skip if LLM couldn't categorize
+				if tag == "None" || tag == "none" || tag == "" {
+					app.Log("chat", "Post %s could not be categorized, skipping tag", postID)
+					continue
+				}
+				
+				// Validate against prompts map keys
+				validTag := false
+				for topic := range prompts {
+					if strings.EqualFold(tag, topic) {
+						tag = topic // Use the proper casing from map key
+						validTag = true
+						break
+					}
+				}
+
+				if !validTag {
+					app.Log("chat", "Invalid tag returned for post %s: '%s', skipping tag", postID, tag)
+					continue
+				}
+
+				// Publish the generated tag
+				data.Publish(data.Event{
+					Type: data.EventTagGenerated,
+					Data: map[string]interface{}{
+						"post_id": postID,
+						"tag":     tag,
+						"type":    eventType,
+					},
+				})
+
+				app.Log("chat", "Published generated tag for post %s: %s", postID, tag)
+			}
+		}
+	}()
+
 	go generateSummaries()
 }
 

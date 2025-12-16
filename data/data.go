@@ -26,6 +26,8 @@ const (
 	EventNewArticleMetadata = "new_article_metadata"
 	EventGenerateSummary    = "generate_summary"
 	EventSummaryGenerated   = "summary_generated"
+	EventGenerateTag        = "generate_tag"
+	EventTagGenerated       = "tag_generated"
 )
 
 // Event represents a data event

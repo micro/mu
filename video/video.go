@@ -483,7 +483,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			desc = `<span class="highlight">channel</span>`
 		}
 
-		desc = fmt.Sprintf(`<a href="/video#%s" class="highlight">%s</a> | <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, kind, kind, url)
+		desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a> · <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, app.TimeAgo(t), kind, kind, url)
 
 		res := &Result{
 			ID:          id,
@@ -561,11 +561,11 @@ func getResults(query, channel string) (string, []*Result, error) {
 		case "video":
 			id = item.Id.VideoId
 			url = "/video?id=" + id
-			desc = fmt.Sprintf(`<span class="highlight">%s</span> | <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, kind, url)
+			desc = fmt.Sprintf(`%s · <span class="highlight">%s</span> · <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, app.TimeAgo(t), kind, url)
 		case "playlist":
 			id = item.Id.PlaylistId
 			url = "/video?playlist=" + id
-			desc = fmt.Sprintf(`<span class="highlight">%s</span> | <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, kind, url)
+			desc = fmt.Sprintf(`%s · <span class="highlight">%s</span> · <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, app.TimeAgo(t), kind, url)
 		case "channel":
 			id = item.Id.ChannelId
 			url = "/video?channel=" + id
@@ -770,7 +770,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
-			desc := fmt.Sprintf(`<span class="highlight">video</span> | <small>%s</small>`, app.TimeAgo(t))
+			desc := fmt.Sprintf(`<span class="highlight">video</span> · <small>%s</small>`, app.TimeAgo(t))
 			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 
 			thumbnailURL := ""
@@ -840,7 +840,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
-			desc := fmt.Sprintf(`<span class="highlight">video</span> | <small>%s</small>`, app.TimeAgo(t))
+			desc := fmt.Sprintf(`<span class="highlight">video</span> · <small>%s</small>`, app.TimeAgo(t))
 			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 
 			thumbnailURL := ""
