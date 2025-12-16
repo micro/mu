@@ -205,7 +205,7 @@ func getSummary(post *Post) string {
 	if post.ID != "" {
 		readLink = fmt.Sprintf(` | <a href="/news?id=%s" style="color: inherit;">Read</a>`, post.ID)
 	}
-	return fmt.Sprintf(`<a href="/news#%s" class="category">%s</a> | Source: <i>%s</i>%s`, post.Category, post.Category, getDomain(post.URL), readLink)
+	return fmt.Sprintf(`Source: <i>%s</i> | <a href="/news#%s" class="category">%s</a>%s`, getDomain(post.URL), post.Category, post.Category, readLink)
 }
 
 func getPrices() map[string]float64 {
@@ -1233,13 +1233,12 @@ func parseFeed() {
 	for _, h := range headlines {
 		val := fmt.Sprintf(`
 			<div class="headline">
-			<a href="/news#%s" class="category">%s</a>
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
 			 <div class="summary">%s</div>
-			`, h.Category, h.Category, h.URL, h.Title, h.Description, getSummary(h))
+			`, h.URL, h.Title, h.Description, getSummary(h))
 
 		// close val
 		val += `</div>`
