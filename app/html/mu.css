@@ -1018,6 +1018,68 @@ body:has(#messages) #content {
   color: var(--text-secondary);
 }
 
+/* News Article View */
+#news-article h1 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.8em;
+}
+
+#news-article .article-meta {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  font-size: 0.9em;
+}
+
+#news-article .article-image {
+  max-width: 100%;
+  max-height: 300px;
+  width: auto;
+  height: auto;
+  object-fit: cover;
+  border-radius: var(--border-radius);
+  margin-bottom: 20px;
+}
+
+#news-article .article-summary {
+  background-color: #f5f5f5;
+  padding: 20px;
+  border-radius: var(--border-radius);
+  margin-bottom: 20px;
+}
+
+#news-article .article-summary h3 {
+  margin-top: 0;
+}
+
+#news-article .article-summary > div {
+  line-height: 1.6;
+}
+
+#news-article .article-description {
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+#news-article .article-actions {
+  margin-top: 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+#news-article .article-actions a {
+  color: #0066cc;
+}
+
+#news-article .article-back {
+  margin-top: 30px;
+}
+
+#news-article .article-back a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
 /* Video info styling */
 .thumbnail .info {
   font-size: 0.8em;

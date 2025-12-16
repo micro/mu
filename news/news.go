@@ -1698,7 +1698,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	// Build the article page
 	imageSection := ""
 	if image != "" {
-		imageSection = fmt.Sprintf(`<img src="%s" style="max-width: 100%%; max-height: 300px; width: auto; height: auto; object-fit: cover; border-radius: 8px; margin-bottom: 20px;">`, image)
+		imageSection = fmt.Sprintf(`<img src="%s" class="article-image">`, image)
 	}
 
 	summarySection := ""
@@ -1706,9 +1706,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		// Format the summary: split by double newlines into paragraphs, handle bullet points
 		formattedSummary := formatSummary(summary)
 		summarySection = fmt.Sprintf(`
-			<div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-				<h3 style="margin-top: 0;">Summary</h3>
-				<div style="line-height: 1.6;">%s</div>
+			<div class="article-summary">
+				<h3>Summary</h3>
+				<div>%s</div>
 			</div>`, formattedSummary)
 	}
 
@@ -1720,29 +1720,26 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	// Build description section
 	descriptionSection := ""
 	if description != "" {
-		descriptionSection = fmt.Sprintf(`
-			<div style="margin-bottom: 20px; line-height: 1.6;">
-				<p>%s</p>
-			</div>`, description)
+		descriptionSection = fmt.Sprintf(`<div class="article-description"><p>%s</p></div>`, description)
 	}
 
 	articleHtml := fmt.Sprintf(`
 		<div id="news-article">
 			%s
 			%s
-			<h1 style="margin-top: 0; margin-bottom: 15px;">%s</h1>
-			<div style="color: #666; margin-bottom: 20px; font-size: 0.9em;">
+			<h1>%s</h1>
+			<div class="article-meta">
 				<span>%s · Source: <i>%s</i></span>
 			</div>
 			%s
 			%s
-			<div style="margin-top: 20px; color: #666; font-size: 14px;">
-				<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc;">Read Original →</a>
+			<div class="article-actions">
+				<a href="%s" target="_blank" rel="noopener noreferrer">Read Original →</a>
 				<span style="margin: 0 8px;">·</span>
-				<a href="/chat?id=news_%s" style="color: #0066cc;">Discuss with AI →</a>
+				<a href="/chat?id=news_%s">Discuss with AI →</a>
 			</div>
-			<div style="margin-top: 30px;">
-				<a href="/news" style="color: #666; text-decoration: none;">← Back to news</a>
+			<div class="article-back">
+				<a href="/news">← Back to news</a>
 			</div>
 		</div>
 	`, imageSection, categoryBadge, title, app.TimeAgo(postedAt), getDomain(url), descriptionSection, summarySection, url, articleID)
