@@ -483,7 +483,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			desc = `<span class="highlight">channel</span>`
 		}
 
-		desc = fmt.Sprintf(`<a href="/video#%s" class="highlight">%s</a> | <small>%s</small>`, kind, kind, app.TimeAgo(t))
+		desc = fmt.Sprintf(`<a href="/video#%s" class="highlight">%s</a> | <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, kind, kind, url)
 
 		res := &Result{
 			ID:          id,
@@ -556,15 +556,16 @@ func getResults(query, channel string) (string, []*Result, error) {
 		var id, url, desc string
 		kind := strings.Split(item.Id.Kind, "#")[1]
 		t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
-		desc = fmt.Sprintf(`<span class="highlight">%s</span> | <small>Published %s</small>`, kind, app.TimeAgo(t))
 
 		switch kind {
 		case "video":
 			id = item.Id.VideoId
 			url = "/video?id=" + id
+			desc = fmt.Sprintf(`<span class="highlight">%s</span> | <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, kind, url)
 		case "playlist":
 			id = item.Id.PlaylistId
 			url = "/video?playlist=" + id
+			desc = fmt.Sprintf(`<span class="highlight">%s</span> | <a href="%s" target="_blank" rel="noopener noreferrer">Watch</a>`, kind, url)
 		case "channel":
 			id = item.Id.ChannelId
 			url = "/video?channel=" + id

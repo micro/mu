@@ -221,8 +221,8 @@ func updateCacheUnlocked() {
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">%s by %s · <a href="/post?id=%s">Reply</a></div>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
+		<div class="info">Posted by %s · <a href="/post?id=%s">Reply</a></div>
+	</div>`, post.ID, title, content, authorLink, post.ID)
 		preview = append(preview, item)
 	}
 
@@ -276,8 +276,8 @@ func updateCacheUnlocked() {
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s">%s</a></h3>
 			<div>%s</div>
-			<div class="info">%s by %s · <a href="/post?id=%s">Reply</a> · <a href="#" onclick="flagPost('%s'); return false;">Flag</a></div>
-		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID, post.ID)
+			<div class="info">Posted by %s · <a href="/post?id=%s">Reply</a> · <a href="#" onclick="flagPost('%s'); return false;">Flag</a></div>
+		</div>`, post.ID, title, content, authorLink, post.ID, post.ID)
 		fullList = append(fullList, item)
 	}
 
@@ -348,11 +348,11 @@ func renderPostPreview(post *Post) string {
 		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<div style="margin-bottom: 10px;">%s</div>
 		<div class="info" style="color: #666; font-size: small;">
-			%s by %s
+			Posted by %s
 			<span style="margin-left: 10px;">·</span>
 			<a href="/post?id=%s" style="color: #0066cc; margin-left: 10px;">Reply</a>
 		</div>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, post.ID)
+	</div>`, post.ID, title, content, authorLink, post.ID)
 
 	return item
 }
@@ -914,7 +914,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	content := fmt.Sprintf(`<div id="blog">
 		<div class="info" style="color: #666; font-size: small;">
-			%s by %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
+			Posted by %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
 		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="margin-bottom: 20px;">%s</div>
@@ -924,7 +924,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<div style="margin-top: 30px;">
 			<a href="/posts" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
@@ -981,10 +981,10 @@ func renderComments(postID string, r *http.Request) string {
 
 		commentsHTML.WriteString(fmt.Sprintf(`
 			<div style="padding: 15px; background: #f9f9f9; border-radius: 5px; margin-bottom: 10px;">
-				<div style="color: #666; font-size: 12px; margin-bottom: 5px;">%s by %s</div>
+				<div style="color: #666; font-size: 12px; margin-bottom: 5px;">%s</div>
 				<div style="white-space: pre-wrap;">%s</div>
 			</div>
-		`, app.TimeAgo(comment.CreatedAt), authorLink, comment.Content))
+		`, authorLink, comment.Content))
 	}
 	commentsHTML.WriteString(`</div>`)
 

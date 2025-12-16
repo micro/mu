@@ -205,7 +205,7 @@ func getSummary(post *Post) string {
 	if post.ID != "" {
 		readLink = fmt.Sprintf(` | <a href="/news?id=%s" style="color: inherit;">Read</a>`, post.ID)
 	}
-	return fmt.Sprintf(`Source: <i>%s</i> | %s%s`, getDomain(post.URL), app.TimeAgo(post.PostedAt), readLink)
+	return fmt.Sprintf(`<a href="/news#%s" class="category">%s</a> | Source: <i>%s</i>%s`, post.Category, post.Category, getDomain(post.URL), readLink)
 }
 
 func getPrices() map[string]float64 {
@@ -1459,7 +1459,6 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	url := ""
 	category := ""
 	image := ""
-	postedAt := time.Time{}
 	summary := ""
 	description := ""
 
@@ -1477,13 +1476,6 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 	if v, ok := entry.Metadata["summary"].(string); ok {
 		summary = v
-	}
-	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
-		postedAt = v
-	} else if v, ok := entry.Metadata["posted_at"].(string); ok {
-		if parsed, err := time.Parse(time.RFC3339, v); err == nil {
-			postedAt = parsed
-		}
 	}
 
 	title := entry.Title
@@ -1528,7 +1520,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			%s
 			<h1 style="margin-top: 0; margin-bottom: 15px;">%s</h1>
 			<div style="color: #666; margin-bottom: 20px; font-size: 0.9em;">
-				%s<span>%s | Source: <i>%s</i></span>
+				%s<span>Source: <i>%s</i></span>
 			</div>
 			%s
 			%s
@@ -1541,7 +1533,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="/news" style="color: #666; text-decoration: none;">← Back to news</a>
 			</div>
 		</div>
-	`, imageSection, title, categoryBadge, app.TimeAgo(postedAt), getDomain(url), descriptionSection, summarySection, url, articleID)
+	`, imageSection, title, categoryBadge, getDomain(url), descriptionSection, summarySection, url, articleID)
 
 	w.Write([]byte(app.RenderHTML("", "", articleHtml)))
 }
