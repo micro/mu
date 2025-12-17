@@ -171,6 +171,10 @@ Additional documentation is available in the [docs](docs/) folder:
 
 Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this.
 
+## Sponsor
+
+You can sponsor the project if its of interest using [GitHub Sponsors](https://github.com/sponsors/asim)
+
 ## License
 
 Mu is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
