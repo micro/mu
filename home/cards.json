@@ -6,13 +6,6 @@
       "type": "news",
       "position": 0,
       "link": "/news"
-    },
-    {
-      "id": "markets",
-      "title": "Markets",
-      "type": "markets",
-      "position": 1,
-      "link": "/markets"
     }
   ],
   "right": [
@@ -31,10 +24,17 @@
       "link": ""
     },
     {
+      "id": "markets",
+      "title": "Markets",
+      "type": "markets",
+      "position": 2,
+      "link": "/markets"
+    },
+    {
       "id": "posts",
       "title": "Posts",
       "type": "posts",
-      "position": 2,
+      "position": 3,
       "link": "/posts"
     },
     {
