@@ -274,7 +274,7 @@ func getPrices() map[string]float64 {
 	return prices
 }
 
-var tickers = []string{"ETH", "BTC", "PAXG", "XLM", "GBP"}
+var tickers = []string{"GBP", "XLM", "ETH", "BTC", "PAXG"}
 
 var futures = map[string]string{
 	"OIL":      "CL=F",
