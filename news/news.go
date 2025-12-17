@@ -1398,8 +1398,7 @@ func parseFeed() {
 		return headlines[i].PostedAt.After(headlines[j].PostedAt)
 	})
 
-	// Start with markets ticker, then section for headlines
-	headline := []byte(marketsTickerHtml + `<div class=section>`)
+	headline := []byte(`<div class=section>`)
 
 	for _, h := range headlines {
 		val := fmt.Sprintf(`
