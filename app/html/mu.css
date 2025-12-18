@@ -276,10 +276,12 @@ td {
 
 #content {
   flex: 1;
-  max-width: calc(100% - 180px);
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px 40px;
   text-align: left;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 #page-title {
@@ -360,6 +362,18 @@ td {
 .home-left .card, .home-right .card {
   margin: 0;
   float: none;
+  min-width: 350px;
+}
+
+/* Switch to single column when there's not enough space for two columns + sidebar */
+@media only screen and (max-width: 1100px) {
+  #home {
+    flex-direction: column;
+  }
+  
+  .home-right {
+    width: 100%;
+  }
 }
 
 /* ========================================
