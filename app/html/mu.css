@@ -1367,25 +1367,18 @@ body:has(#messages) #content {
 /* ========================================
    MOBILE RESPONSIVE
    ======================================== */
-/* For screens wider than mobile but still need sidebar spacing */
-@media only screen and (min-width: 601px) {
-  #main {
-    margin-left: 270px; /* 250px sidebar + 20px gap */
-  }
-  
-  #content {
-    margin-left: 270px;
-  }
-  
-  #home {
-    margin-left: 270px;
-    padding-left: 20px;
+/* Desktop: account for sidebar */
+@media only screen and (min-width: 901px) {
+  body {
+    padding-left: 250px; /* Account for fixed sidebar */
   }
 }
 
-@media only screen and (max-width: 600px) {
+/* Tablet/Mobile: move nav to bottom */
+@media only screen and (max-width: 900px) {
   body {
     overflow-x: hidden;
+    padding-left: 0; /* Remove sidebar padding */
   }
   .anchor {
     margin: 30px 0;
