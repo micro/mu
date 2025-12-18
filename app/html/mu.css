@@ -1391,6 +1391,11 @@ body:has(#messages) #content {
   
   #content {
     padding: 15px;
+    max-width: 100%; /* Override 1200px max-width on smaller screens */
+  }
+  
+  #main {
+    max-width: 100%; /* Override on smaller screens */
   }
   
   .anchor {
@@ -1750,6 +1755,12 @@ body:has(#messages) #content {
 @media only screen and (max-width: 900px) {
   .thread-message {
     padding: 10px;
+  }
+  
+  .thread-message textarea,
+  .thread-message input {
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
