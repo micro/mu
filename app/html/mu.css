@@ -436,6 +436,14 @@ td {
   background: #f9f9f9;
 }
 
+/* Reduce card min-width on smaller screens */
+@media only screen and (max-width: 900px) {
+  .card {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
 .card h4 {
   margin-top: 0;
   margin-bottom: 10px;
@@ -1380,6 +1388,11 @@ body:has(#messages) #content {
     overflow-x: hidden;
     padding-left: 0; /* Remove sidebar padding */
   }
+  
+  #content {
+    padding: 15px;
+  }
+  
   .anchor {
     margin: 30px 0;
   }
@@ -1730,6 +1743,14 @@ body:has(#messages) #content {
   padding: var(--item-padding);
   margin-bottom: var(--spacing-md);
   background: var(--card-background);
+  max-width: 100%;
+}
+
+/* Reduce thread message padding on smaller screens */
+@media only screen and (max-width: 900px) {
+  .thread-message {
+    padding: 10px;
+  }
 }
 
 .thread-message-header {
@@ -1770,6 +1791,8 @@ body:has(#messages) #content {
   word-wrap: break-word;
   overflow-wrap: break-word;
   color: #333;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* Attachment blocks */
