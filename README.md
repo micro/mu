@@ -112,7 +112,7 @@ We need API keys for the following
 export YOUTUBE_API_KEY=xxx
 ```
 
-#### LLM Model
+#### Chat Model
 
 **Ollama (Default)**
 
