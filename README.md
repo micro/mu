@@ -21,8 +21,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 
 ## Motivation
 
-Technology should empower people, not exploit them. Mu is built with the idea that tools should serve humanity,
-respect privacy and enable consumption without addiction, exploitation or manipulation.
+I'm a bit tired of the big tech US centric led social and app platforms. I can't control any of it. Lots of addictive tendencies. Seems easier to turn them into API and data providers and rebuild the UX on top. That includes chat, news, mail, video.
 
 ## Roadmap
 
