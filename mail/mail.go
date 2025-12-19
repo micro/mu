@@ -762,7 +762,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	%s
 	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="document.getElementById('reply-body-hidden').value=document.getElementById('reply-body').innerText + document.getElementById('quoted-text-content').innerText;">
+		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim();if(!replyText){alert('Please write a reply');return false;}var quotedText=document.getElementById('quoted-text-content').innerText;document.getElementById('reply-body-hidden').value=replyText+(quotedText?'\n\n'+quotedText:'');return true;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
