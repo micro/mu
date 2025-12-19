@@ -118,8 +118,11 @@ func SendExternalEmail(displayName, from, to, subject, body, replyToMsgID string
 	}
 
 	msg.WriteString("MIME-Version: 1.0\r\n")
-	msg.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+	msg.WriteString("Content-Type: text/plain; charset=utf-8; format=flowed\r\n")
 	msg.WriteString("\r\n")
+	// Ensure proper line endings (CRLF) for email standards
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	body = strings.ReplaceAll(body, "\n", "\r\n")
 	msg.WriteString(body)
 
 	message := msg.Bytes()

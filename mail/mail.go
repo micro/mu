@@ -1531,11 +1531,22 @@ func formatQuotedText(msg *Message, senderName string) string {
 	body = stripHTMLTags(body)
 	body = strings.TrimSpace(body)
 	
-	// Add > prefix to each line
+	// Add > prefix to each line with proper space after >
 	lines := strings.Split(body, "\n")
 	var quotedLines []string
 	for _, line := range lines {
-		quotedLines = append(quotedLines, "> "+line)
+		// Trim any existing leading > characters to avoid double-quoting
+		line = strings.TrimSpace(line)
+		for strings.HasPrefix(line, ">") {
+			line = strings.TrimPrefix(line, ">")
+			line = strings.TrimSpace(line)
+		}
+		// Add proper quote prefix with space
+		if line == "" {
+			quotedLines = append(quotedLines, ">")
+		} else {
+			quotedLines = append(quotedLines, "> "+line)
+		}
 	}
 	
 	return citation + strings.Join(quotedLines, "\n")
