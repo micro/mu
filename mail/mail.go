@@ -1620,14 +1620,34 @@ func makeQuotedTextCollapsible(body string) string {
 			before := body[:idx]
 			after := body[idx:]
 			
-			// Add collapsible wrapper
-			collapsed := before + fmt.Sprintf(`
-<div style="margin: 5px 0;">
-	<a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color: #0066cc; text-decoration: none; font-size: 13px;"><span style="color:#888">▸</span> Show quoted text</a>
-</div>
-<div id="%s" style="display: none; border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px; color: #666;">
-	%s
-</div>`, quoteID, quoteID, after)
+			// Look backwards from the blockquote to find a citation line
+			// Common patterns: "On [date], [name] wrote:" or lines ending with "wrote:"
+			citationStart := idx
+			beforeLines := strings.Split(before, "<br>")
+			if len(beforeLines) == 0 {
+				beforeLines = strings.Split(before, "\n")
+			}
+			
+			// Check last few lines before the blockquote
+			for i := len(beforeLines) - 1; i >= 0 && i >= len(beforeLines)-3; i-- {
+				line := beforeLines[i]
+				lowerLine := strings.ToLower(strings.TrimSpace(line))
+				
+				// Check if it's a citation line
+				if (strings.Contains(lowerLine, "wrote:") || strings.Contains(lowerLine, "writes:")) && 
+				   (strings.HasPrefix(lowerLine, "on ") || strings.Contains(lowerLine, ",")) {
+					// Found citation line - include it in the collapsible section
+					citationStart = strings.LastIndex(body[:idx], line)
+					if citationStart >= 0 {
+						before = body[:citationStart]
+						after = body[citationStart:]
+						break
+					}
+				}
+			}
+			
+			// Add collapsible wrapper with minimal whitespace
+			collapsed := before + fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, after)
 			
 			return collapsed
 		}
@@ -1682,13 +1702,7 @@ func makeQuotedTextCollapsible(body string) string {
 				// End of quoted section - output the collapsible quote
 				if len(quotedLines) > 0 {
 					quoteID := fmt.Sprintf("quote-%d-%d", time.Now().UnixNano(), i)
-					result.WriteString(fmt.Sprintf(`
-<div style="margin: 5px 0;">
-	<a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color: #0066cc; text-decoration: none; font-size: 13px;"><span style="color:#888">▸</span> Show quoted text</a>
-</div>
-<div id="%s" style="display: none; border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px; color: #666;">
-	%s
-</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
+					result.WriteString(fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
 					quotedLines = nil
 				}
 				inQuote = false
@@ -1704,13 +1718,7 @@ func makeQuotedTextCollapsible(body string) string {
 	// Handle any remaining quoted lines at the end
 	if inQuote && len(quotedLines) > 0 {
 		quoteID := fmt.Sprintf("quote-%d-end", time.Now().UnixNano())
-		result.WriteString(fmt.Sprintf(`
-<div style="margin: 5px 0;">
-	<a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color: #0066cc; text-decoration: none; font-size: 13px;"><span style="color:#888">▸</span> Show quoted text</a>
-</div>
-<div id="%s" style="display: none; border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px; color: #666;">
-	%s
-</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
+		result.WriteString(fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
 	}
 	
 	resultStr := result.String()
