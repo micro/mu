@@ -1902,3 +1902,14 @@ body:has(#messages) #content {
 .mail-link-muted:hover {
   color: #333;
 }
+
+/* Contenteditable placeholder styling */
+[contenteditable][placeholder]:empty:before {
+  content: attr(placeholder);
+  color: #999;
+  cursor: text;
+}
+
+[contenteditable]:focus {
+  outline: none;
+}
