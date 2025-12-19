@@ -1642,8 +1642,16 @@ func renderEmailBody(body string, isAttachment bool) string {
 
 // makeQuotedTextCollapsible wraps quoted text in a collapsible section like Gmail
 func makeQuotedTextCollapsible(body string) string {
+	// Quick check - if no quotes present, return as-is
+	hasBlockquote := strings.Contains(body, "<blockquote")
+	hasTextQuote := strings.Contains(body, ">") && (strings.Contains(body, "&gt;") || strings.Contains(body, "\n>"))
+	
+	if !hasBlockquote && !hasTextQuote {
+		return body
+	}
+	
 	// Check for HTML blockquote tags
-	if strings.Contains(body, "<blockquote") {
+	if hasBlockquote {
 		// Generate a unique ID for this quoted section
 		quoteID := fmt.Sprintf("quote-%d", time.Now().UnixNano())
 		
