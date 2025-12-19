@@ -1619,6 +1619,13 @@ func stripHTMLTags(s string) string {
 	text = strings.ReplaceAll(text, "&quot;", "\"")
 	text = strings.ReplaceAll(text, "&#39;", "'")
 	
+	// Trim leading whitespace from each line to remove HTML indentation
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimLeft(line, " \t")
+	}
+	text = strings.Join(lines, "\n")
+	
 	return text
 }
 
