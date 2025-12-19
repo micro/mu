@@ -1599,11 +1599,103 @@ func renderEmailBody(body string, isAttachment bool) string {
 		rendered = strings.ReplaceAll(rendered, ">\n<", "><")
 		rendered = strings.ReplaceAll(rendered, ">\n\n<", "><")
 
-		return rendered
+		return makeQuotedTextCollapsible(rendered)
 	}
 
-	// Otherwise just linkify URLs
-	return linkifyURLs(body)
+	// Otherwise just linkify URLs and handle quoted text
+	linked := linkifyURLs(body)
+	return makeQuotedTextCollapsible(linked)
+}
+
+// makeQuotedTextCollapsible wraps quoted text in a collapsible section like Gmail
+func makeQuotedTextCollapsible(body string) string {
+	// Check for HTML blockquote tags
+	if strings.Contains(body, "<blockquote") {
+		// Generate a unique ID for this quoted section
+		quoteID := fmt.Sprintf("quote-%d", time.Now().UnixNano())
+		
+		// Find the blockquote and wrap it
+		idx := strings.Index(body, "<blockquote")
+		if idx >= 0 {
+			before := body[:idx]
+			after := body[idx:]
+			
+			// Add collapsible wrapper
+			collapsed := before + fmt.Sprintf(`
+<div style="margin: 10px 0;">
+	<a href="#" onclick="document.getElementById('%s').style.display=document.getElementById('%s').style.display==='none'?'block':'none';this.textContent=this.textContent==='···'?'Hide quoted text':'···';return false;" style="color: #666; text-decoration: none; font-size: 14px;">···</a>
+</div>
+<div id="%s" style="display: none; border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px; color: #666;">
+	%s
+</div>`, quoteID, quoteID, quoteID, after)
+			
+			return collapsed
+		}
+	}
+	
+	// Check for plain text quoted lines (starting with >)
+	lines := strings.Split(body, "\n")
+	var result strings.Builder
+	var quotedLines []string
+	inQuote := false
+	
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		isQuoted := strings.HasPrefix(trimmed, "&gt;") || strings.HasPrefix(trimmed, ">")
+		
+		if isQuoted {
+			if !inQuote {
+				// Start of quoted section
+				inQuote = true
+			}
+			// Remove the > prefix for cleaner display
+			cleaned := strings.TrimPrefix(trimmed, "&gt;")
+			cleaned = strings.TrimPrefix(cleaned, ">")
+			cleaned = strings.TrimSpace(cleaned)
+			quotedLines = append(quotedLines, cleaned)
+		} else {
+			if inQuote {
+				// End of quoted section - output the collapsible quote
+				if len(quotedLines) > 0 {
+					quoteID := fmt.Sprintf("quote-%d-%d", time.Now().UnixNano(), i)
+					result.WriteString(fmt.Sprintf(`
+<div style="margin: 10px 0;">
+	<a href="#" onclick="document.getElementById('%s').style.display=document.getElementById('%s').style.display==='none'?'block':'none';this.textContent=this.textContent==='···'?'Hide quoted text':'···';return false;" style="color: #666; text-decoration: none; font-size: 14px;">···</a>
+</div>
+<div id="%s" style="display: none; border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px; color: #666;">
+	%s
+</div>`, quoteID, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
+					quotedLines = nil
+				}
+				inQuote = false
+			}
+			// Output non-quoted line
+			if i > 0 {
+				result.WriteString("<br>")
+			}
+			result.WriteString(line)
+		}
+	}
+	
+	// Handle any remaining quoted lines at the end
+	if inQuote && len(quotedLines) > 0 {
+		quoteID := fmt.Sprintf("quote-%d-end", time.Now().UnixNano())
+		result.WriteString(fmt.Sprintf(`
+<div style="margin: 10px 0;">
+	<a href="#" onclick="document.getElementById('%s').style.display=document.getElementById('%s').style.display==='none'?'block':'none';this.textContent=this.textContent==='···'?'Hide quoted text':'···';return false;" style="color: #666; text-decoration: none; font-size: 14px;">···</a>
+</div>
+<div id="%s" style="display: none; border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px; color: #666;">
+	%s
+</div>`, quoteID, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
+	}
+	
+	resultStr := result.String()
+	// Only return the processed version if we found quotes
+	if inQuote || strings.Contains(resultStr, "quote-") {
+		return resultStr
+	}
+	
+	return body
 }
 
 // linkifyURLs converts URLs in text to clickable HTML links
