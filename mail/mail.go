@@ -947,6 +947,8 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 	if strings.HasPrefix(bodyPreview, "base64:") || len(bodyPreview) > 500 {
 		bodyPreview = "[Message]"
 	} else {
+		// Strip HTML tags for preview to prevent layout issues
+		bodyPreview = stripHTMLTags(bodyPreview)
 		if len(bodyPreview) > 100 {
 			bodyPreview = bodyPreview[:100] + "..."
 		}
@@ -992,6 +994,8 @@ func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string)
 	if strings.HasPrefix(bodyPreview, "base64:") || len(bodyPreview) > 500 {
 		bodyPreview = "[Message]"
 	} else {
+		// Strip HTML tags for preview to prevent layout issues
+		bodyPreview = stripHTMLTags(bodyPreview)
 		if len(bodyPreview) > 100 {
 			bodyPreview = bodyPreview[:100] + "..."
 		}
@@ -1043,6 +1047,8 @@ func renderInboxMessageWithUnread(msg *Message, indent int, viewerID string, has
 	if strings.HasPrefix(bodyPreview, "base64:") || len(bodyPreview) > 500 {
 		bodyPreview = "[Message]"
 	} else {
+		// Strip HTML tags for preview to prevent layout issues
+		bodyPreview = stripHTMLTags(bodyPreview)
 		if len(bodyPreview) > 100 {
 			bodyPreview = bodyPreview[:100] + "..."
 		}
@@ -1078,6 +1084,8 @@ func renderSentMessage(msg *Message) string {
 	if strings.HasPrefix(bodyPreview, "base64:") || len(bodyPreview) > 500 {
 		bodyPreview = "[Message]"
 	} else {
+		// Strip HTML tags for preview to prevent layout issues
+		bodyPreview = stripHTMLTags(bodyPreview)
 		if len(bodyPreview) > 100 {
 			bodyPreview = bodyPreview[:100] + "..."
 		}
@@ -1521,6 +1529,39 @@ func looksLikeMarkdown(text string) bool {
 	}
 
 	return false
+}
+
+// stripHTMLTags removes HTML tags from a string, leaving only text content
+// This is used for email previews to prevent HTML from breaking the layout
+func stripHTMLTags(s string) string {
+	// Simple tag stripper - removes anything between < and >
+	var result strings.Builder
+	inTag := false
+	
+	for _, char := range s {
+		if char == '<' {
+			inTag = true
+			continue
+		}
+		if char == '>' {
+			inTag = false
+			continue
+		}
+		if !inTag {
+			result.WriteRune(char)
+		}
+	}
+	
+	// Decode common HTML entities
+	text := result.String()
+	text = strings.ReplaceAll(text, "&nbsp;", " ")
+	text = strings.ReplaceAll(text, "&amp;", "&")
+	text = strings.ReplaceAll(text, "&lt;", "<")
+	text = strings.ReplaceAll(text, "&gt;", ">")
+	text = strings.ReplaceAll(text, "&quot;", "\"")
+	text = strings.ReplaceAll(text, "&#39;", "'")
+	
+	return text
 }
 
 // renderEmailBody processes email body - renders markdown if detected, otherwise linkifies URLs
