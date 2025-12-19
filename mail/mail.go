@@ -735,6 +735,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		quotedBodyHTML := html.EscapeString(quotedBody)
 		quotedBodyHTML = strings.ReplaceAll(quotedBodyHTML, "\n", "<br>")
 
+		// Get the root ID for reply threading - this is the ID of the latest message being replied to
+		replyToID := latestMsg.ID
+
 		messageView := fmt.Sprintf(`
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	%s
@@ -759,7 +762,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 		</div>
 	</div>
-`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, rootID, quotedBodyHTML, msg.ID, blockButton)
+`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, quotedBodyHTML, msg.ID, blockButton)
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
 	}
