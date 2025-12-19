@@ -1538,7 +1538,7 @@ func looksLikeMarkdown(text string) bool {
 func formatQuotedText(msg *Message, senderName string) string {
 	// Build citation line like "On [date], [sender] wrote:"
 	dateStr := msg.CreatedAt.Format("Mon, 2 Jan 2006, 15:04")
-	citation := fmt.Sprintf("\n\nOn %s, %s wrote:\n", dateStr, senderName)
+	citation := fmt.Sprintf("On %s, %s wrote:\n", dateStr, senderName)
 	
 	// Get the raw body and strip any HTML to plain text for quoting
 	body := msg.Body
