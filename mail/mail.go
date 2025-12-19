@@ -570,50 +570,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			replySubject = "Re: " + msg.Subject
 		}
 
-		// Build thread view - find all messages in this thread
+		// Build thread view - use pre-built inbox structure for efficiency
 		var thread []*Message
 		mutex.RLock()
-		// Find root message by traversing ReplyTo chain
-		rootID := msgID
-		current := msg
-		for current.ReplyTo != "" {
-			found := false
-			for _, m := range messages {
-				if m.ID == current.ReplyTo && (m.FromID == acc.ID || m.ToID == acc.ID) {
-					rootID = m.ID
-					current = m
-					found = true
-					break
-				}
-			}
-			if !found {
-				break
+		
+		// Get thread ID from the message
+		threadID := msg.ThreadID
+		if threadID == "" {
+			threadID = computeThreadID(msg)
+			if threadID == "" {
+				threadID = msg.ID
 			}
 		}
-
-		// Collect all messages in thread recursively
-		threadIDs := make(map[string]bool)
-		threadIDs[rootID] = true
-
-		// Keep looking for replies until no more found
-		changed := true
-		for changed {
-			changed = false
-			for _, m := range messages {
-				if (m.FromID == acc.ID || m.ToID == acc.ID) && !threadIDs[m.ID] {
-					if threadIDs[m.ReplyTo] {
-						threadIDs[m.ID] = true
-						changed = true
-					}
-				}
-			}
-		}
-
-		// Collect messages
-		for _, m := range messages {
-			if threadIDs[m.ID] {
-				thread = append(thread, m)
-			}
+		
+		// Look up thread from inbox structure
+		inbox := inboxes[acc.ID]
+		if inbox != nil && inbox.Threads[threadID] != nil {
+			// Use pre-built thread
+			thread = append([]*Message{}, inbox.Threads[threadID].Messages...)
+		} else {
+			// Fallback: build thread manually (shouldn't normally happen)
+			thread = []*Message{msg}
 		}
 		mutex.RUnlock()
 
