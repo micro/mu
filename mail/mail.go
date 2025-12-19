@@ -1744,7 +1744,12 @@ func makeQuotedTextCollapsible(body string) string {
 		
 		if isQuoted {
 			if !inQuote {
-				// Start of quoted section
+				// Start of quoted section - remove trailing <br> from result if present
+				resultStr := result.String()
+				if strings.HasSuffix(resultStr, "<br>") {
+					result.Reset()
+					result.WriteString(strings.TrimSuffix(resultStr, "<br>"))
+				}
 				inQuote = true
 			}
 			if isCitationLine {
@@ -1767,8 +1772,24 @@ func makeQuotedTextCollapsible(body string) string {
 				}
 				inQuote = false
 			}
-			// Output non-quoted line
-			if i > 0 {
+			// Output non-quoted line - skip empty lines before quoted section
+			if trimmed == "" && i > 0 {
+				// Check if next line is a quote to avoid extra blank lines
+				if i+1 < len(lines) {
+					nextTrimmed := strings.TrimSpace(lines[i+1])
+					lowerNextLine := strings.ToLower(nextTrimmed)
+					isNextQuoted := strings.HasPrefix(nextTrimmed, "&gt;") || strings.HasPrefix(nextTrimmed, ">")
+					isNextCitation := (strings.HasPrefix(lowerNextLine, "on ") && strings.Contains(lowerNextLine, "wrote:")) ||
+					                  (strings.Contains(lowerNextLine, ",") && strings.Contains(lowerNextLine, "wrote:"))
+					
+					if isNextQuoted || isNextCitation {
+						// Skip this empty line, don't add <br>
+						continue
+					}
+				}
+			}
+			
+			if i > 0 && result.Len() > 0 {
 				result.WriteString("<br>")
 			}
 			result.WriteString(line)
