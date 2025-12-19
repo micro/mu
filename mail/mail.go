@@ -1563,6 +1563,11 @@ func formatQuotedText(msg *Message, senderName string) string {
 		}
 	}
 	
+	// Trim leading empty quoted lines
+	for len(quotedLines) > 0 && strings.TrimSpace(quotedLines[0]) == ">" {
+		quotedLines = quotedLines[1:]
+	}
+	
 	// Trim trailing empty quoted lines to avoid excessive whitespace
 	for len(quotedLines) > 0 && strings.TrimSpace(quotedLines[len(quotedLines)-1]) == ">" {
 		quotedLines = quotedLines[:len(quotedLines)-1]
