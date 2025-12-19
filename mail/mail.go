@@ -751,6 +751,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`, otherParty, otherParty, msg.ID)
 		}
 
+		// Build quoted text from the latest message for the reply form
+		latestMsg := thread[len(thread)-1]
+		quotedBody := formatQuotedText(latestMsg, otherParty)
+
 		messageView := fmt.Sprintf(`
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	%s
@@ -759,7 +763,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
-			<textarea name="body" placeholder="Write your reply..." required style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; resize: vertical;"></textarea>
+			<textarea name="body" placeholder="Write your reply..." required style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; resize: vertical;">%s</textarea>
 			<div style="display: flex; gap: 10px; align-items: center;">
 				<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
 				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545; font-size: 14px;">Delete Thread</a>
@@ -770,7 +774,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 		</div>
 	</div>
-`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, rootID, msg.ID, blockButton)
+`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, rootID, quotedBody, msg.ID, blockButton)
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
 	}
@@ -1531,6 +1535,27 @@ func looksLikeMarkdown(text string) bool {
 	return false
 }
 
+// formatQuotedText formats a message as quoted text for replies (Gmail-style)
+func formatQuotedText(msg *Message, senderName string) string {
+	// Build citation line like "On [date], [sender] wrote:"
+	dateStr := msg.CreatedAt.Format("Mon, 2 Jan 2006, 15:04")
+	citation := fmt.Sprintf("\n\nOn %s, %s wrote:\n", dateStr, senderName)
+	
+	// Get the raw body and strip any HTML to plain text for quoting
+	body := msg.Body
+	body = stripHTMLTags(body)
+	body = strings.TrimSpace(body)
+	
+	// Add > prefix to each line
+	lines := strings.Split(body, "\n")
+	var quotedLines []string
+	for _, line := range lines {
+		quotedLines = append(quotedLines, "> "+line)
+	}
+	
+	return citation + strings.Join(quotedLines, "\n")
+}
+
 // stripHTMLTags removes HTML tags from a string, leaving only text content
 // This is used for email previews to prevent HTML from breaking the layout
 func stripHTMLTags(s string) string {
@@ -1647,7 +1672,7 @@ func makeQuotedTextCollapsible(body string) string {
 			}
 			
 			// Add collapsible wrapper with minimal whitespace
-			collapsed := before + fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, after)
+			collapsed := before + fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▾</span> Hide quoted text</a></div><div id="%s" style="display:block;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, after)
 			
 			return collapsed
 		}
@@ -1702,7 +1727,7 @@ func makeQuotedTextCollapsible(body string) string {
 				// End of quoted section - output the collapsible quote
 				if len(quotedLines) > 0 {
 					quoteID := fmt.Sprintf("quote-%d-%d", time.Now().UnixNano(), i)
-					result.WriteString(fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
+					result.WriteString(fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▾</span> Hide quoted text</a></div><div id="%s" style="display:block;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
 					quotedLines = nil
 				}
 				inQuote = false
@@ -1718,7 +1743,7 @@ func makeQuotedTextCollapsible(body string) string {
 	// Handle any remaining quoted lines at the end
 	if inQuote && len(quotedLines) > 0 {
 		quoteID := fmt.Sprintf("quote-%d-end", time.Now().UnixNano())
-		result.WriteString(fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
+		result.WriteString(fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▾</span> Hide quoted text</a></div><div id="%s" style="display:block;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
 	}
 	
 	resultStr := result.String()
