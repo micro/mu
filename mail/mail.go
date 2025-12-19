@@ -1534,6 +1534,19 @@ func looksLikeMarkdown(text string) bool {
 // stripHTMLTags removes HTML tags from a string, leaving only text content
 // This is used for email previews to prevent HTML from breaking the layout
 func stripHTMLTags(s string) string {
+	// First, convert block-level HTML elements to newlines to preserve structure
+	s = strings.ReplaceAll(s, "<br>", "\n")
+	s = strings.ReplaceAll(s, "<br/>", "\n")
+	s = strings.ReplaceAll(s, "<br />", "\n")
+	s = strings.ReplaceAll(s, "</p>", "\n")
+	s = strings.ReplaceAll(s, "</div>", "\n")
+	s = strings.ReplaceAll(s, "</blockquote>", "\n")
+	s = strings.ReplaceAll(s, "</li>", "\n")
+	s = strings.ReplaceAll(s, "</tr>", "\n")
+	s = strings.ReplaceAll(s, "</h1>", "\n")
+	s = strings.ReplaceAll(s, "</h2>", "\n")
+	s = strings.ReplaceAll(s, "</h3>", "\n")
+	
 	// Simple tag stripper - removes anything between < and >
 	var result strings.Builder
 	inTag := false
