@@ -734,6 +734,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// HTML escape the quoted body for display in the collapsed section
 		quotedBodyHTML := html.EscapeString(quotedBody)
 		quotedBodyHTML = strings.ReplaceAll(quotedBodyHTML, "\n", "<br>")
+		// Also escape for use in hidden input value attribute
+		quotedBodyValue := html.EscapeString(quotedBody)
 
 		// Get the root ID for reply threading - this is the ID of the latest message being replied to
 		replyToID := latestMsg.ID
@@ -742,11 +744,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	%s
 	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim();if(!replyText){alert('Please write a reply');return false;}var quotedText=document.getElementById('quoted-text-content').innerText;document.getElementById('reply-body-hidden').value=replyText+(quotedText?'\n\n'+quotedText:'');return true;">
+		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim();if(!replyText){alert('Please write a reply');return false;}var quotedText=document.getElementById('quoted-text-raw').value;document.getElementById('reply-body-hidden').value=replyText+(quotedText?'\n\n'+quotedText:'');return true;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
 			<input type="hidden" id="reply-body-hidden" name="body" value="">
+			<input type="hidden" id="quoted-text-raw" value="%s">
 			<div id="reply-body" contenteditable="true" style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; outline: none; background: white;" placeholder="Write your reply..."></div>
 			<div style="margin:3px 0 0 0">
 				<a href="#" onclick="var el=document.getElementById('quoted-text-content');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a>
@@ -762,7 +765,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 		</div>
 	</div>
-`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, quotedBodyHTML, msg.ID, blockButton)
+`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, quotedBodyValue, quotedBodyHTML, msg.ID, blockButton)
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
 	}
@@ -842,7 +845,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Render threads
 		for _, thread := range threads {
-			if thread.Root.ToID == acc.ID || thread.Latest.ToID == acc.ID {
+			// Show threads where user is either sender or recipient of any message
+			userInThread := false
+			for _, msg := range thread.Messages {
+				if msg.ToID == acc.ID {
+					userInThread = true
+					break
+				}
+			}
+			if userInThread {
 				// Inbox message - show latest preview, link to root
 				items = append(items, renderThreadPreview(thread.Root.ID, thread.Latest, acc.ID, thread.HasUnread))
 			}
