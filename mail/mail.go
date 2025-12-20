@@ -751,7 +751,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<input type="hidden" id="reply-body-hidden" name="body" value="">
 			<input type="hidden" id="quoted-text-raw" value="%s">
 			<div id="reply-body" contenteditable="true" style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; outline: none; background: white;" placeholder="Write your reply..."></div>
-			<div style="margin:12px 0 0 0">
+			<div style="margin:10px 0 0 0">
 				<a href="#" onclick="var el=document.getElementById('quoted-text-content');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a>
 			</div>
 			<div id="quoted-text-content" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666;font-size:13px;">%s</div>
@@ -1707,7 +1707,7 @@ func makeQuotedTextCollapsible(body string) string {
 			}
 			
 			// Add collapsible wrapper with minimal whitespace
-			collapsed := before + fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, after)
+			collapsed := before + fmt.Sprintf(`<div style="margin:10px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, after)
 			
 			return collapsed
 		}
@@ -1767,7 +1767,7 @@ func makeQuotedTextCollapsible(body string) string {
 				// End of quoted section - output the collapsible quote
 				if len(quotedLines) > 0 {
 					quoteID := fmt.Sprintf("quote-%d-%d", time.Now().UnixNano(), i)
-					result.WriteString(fmt.Sprintf(`<div style="margin:3px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
+					result.WriteString(fmt.Sprintf(`<div style="margin:10px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
 					quotedLines = nil
 				}
 				inQuote = false
