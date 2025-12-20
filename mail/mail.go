@@ -1657,11 +1657,51 @@ func renderEmailBody(body string, isAttachment bool) string {
 // makeQuotedTextCollapsible wraps quoted text in a collapsible section like Gmail
 func makeQuotedTextCollapsible(body string) string {
 	// Quick check - if no quotes present, return as-is
+	hasGmailQuote := strings.Contains(body, "gmail_quote")
 	hasBlockquote := strings.Contains(body, "<blockquote")
 	hasTextQuote := strings.Contains(body, ">") && (strings.Contains(body, "&gt;") || strings.Contains(body, "\n>"))
 	
-	if !hasBlockquote && !hasTextQuote {
+	if !hasGmailQuote && !hasBlockquote && !hasTextQuote {
 		return body
+	}
+	
+	// Check for Gmail's quote wrapper
+	if hasGmailQuote {
+		// Find the gmail_quote div
+		idx := strings.Index(body, "gmail_quote")
+		if idx > 0 {
+			// Find the start of the div tag
+			divStart := strings.LastIndex(body[:idx], "<div")
+			if divStart >= 0 {
+				before := body[:divStart]
+				after := body[divStart:]
+				
+				// Generate a unique ID for this quoted section
+				quoteID := fmt.Sprintf("quote-%d", time.Now().UnixNano())
+				
+				// Wrap the gmail_quote div in collapsible section
+				collapsed := before + fmt.Sprintf(`<div style="margin:10px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, after)
+				
+				return collapsed
+			}
+		}
+	}
+	
+	// Check for <blockquote type="cite"> (Thunderbird, Apple Mail)
+	if strings.Contains(body, `type="cite"`) || strings.Contains(body, `type='cite'`) {
+		idx := strings.Index(body, "<blockquote")
+		if idx >= 0 {
+			before := body[:idx]
+			after := body[idx:]
+			
+			// Generate a unique ID for this quoted section
+			quoteID := fmt.Sprintf("quote-%d", time.Now().UnixNano())
+			
+			// Wrap in collapsible section
+			collapsed := before + fmt.Sprintf(`<div style="margin:10px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, after)
+			
+			return collapsed
+		}
 	}
 	
 	// Check for HTML blockquote tags
