@@ -245,6 +245,13 @@ func save() error {
 }
 
 // Handler for /mail (inbox)
+// Handler handles mail-related requests
+// 
+// Email Flow:
+// - Internal messages: stored directly as HTML, displayed in threads
+// - External emails: sent as multipart/alternative (plain text + HTML) with threading headers
+// - Threading: uses In-Reply-To and References headers, no quoted text bloat
+// - Display: emails shown as-is in thread view, full conversation visible
 func Handler(w http.ResponseWriter, r *http.Request) {
 	sess, err := auth.GetSession(r)
 	if err != nil {
@@ -317,16 +324,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Send message
+		// The form can submit in two ways:
+		// 1. Compose form: simple "body" field with plain text
+		// 2. Reply form: "body_plain" and "body_html" fields for multipart
 		to := strings.TrimSpace(r.FormValue("to"))
 		subject := strings.TrimSpace(r.FormValue("subject"))
 		bodyPlain := strings.TrimSpace(r.FormValue("body_plain"))
 		bodyHTML := strings.TrimSpace(r.FormValue("body_html"))
-		// Fallback to "body" field for backward compatibility (compose form)
+		
+		// Fallback to "body" field for compose form (auto-convert to HTML)
 		if bodyPlain == "" && bodyHTML == "" {
 			body := strings.TrimSpace(r.FormValue("body"))
 			if body != "" {
 				bodyPlain = body
-				// Convert plain text to HTML
 				bodyHTML = html.EscapeString(body)
 				bodyHTML = strings.ReplaceAll(bodyHTML, "\n", "<br>")
 			}
@@ -340,31 +351,29 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Check if recipient is external (has @domain)
 		if IsExternalEmail(to) {
-			// Send external email via SMTP
+			// External email - send via SMTP with multipart/alternative (plain text + HTML)
 			fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
-			// Use the account name as display name
 			displayName := acc.Name
 
-			// Send external email (connects to localhost SMTP server which relays)
+			// Send multipart email with threading headers
 			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, bodyPlain, bodyHTML, replyTo)
 			if err != nil {
 				http.Error(w, "Failed to send email: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			// Store the HTML version in sent messages for the sender
+			// Store HTML version in sent messages for the sender
 			if err := SendMessage(acc.Name, acc.ID, to, to, subject, bodyHTML, replyTo, messageID); err != nil {
 				app.Log("mail", "Warning: Failed to store sent message: %v", err)
 			}
 		} else {
-			// Internal recipient - look up user account
+			// Internal message - store HTML version directly
 			toAcc, err := auth.GetAccount(to)
 			if err != nil {
 				http.Error(w, "Recipient not found", http.StatusNotFound)
 				return
 			}
 
-			// Send the internal message - use HTML version for consistency
 			app.Log("mail", "Sending internal message from %s to %s with replyTo=%s", acc.Name, toAcc.Name, replyTo)
 			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, bodyHTML, replyTo, ""); err != nil {
 				http.Error(w, "Failed to send message", http.StatusInternalServerError)
@@ -1533,44 +1542,6 @@ func looksLikeMarkdown(text string) bool {
 	return false
 }
 
-// formatQuotedText formats a message as quoted text for replies (Gmail-style)
-// Returns both plain text and HTML versions
-func formatQuotedText(msg *Message, senderName string) (plainText string, htmlText string) {
-	// Build citation line like "On [date], [sender] wrote:"
-	dateStr := msg.CreatedAt.Format("Mon, 2 Jan 2006, 15:04")
-	citation := fmt.Sprintf("On %s, %s wrote:", dateStr, senderName)
-	
-	// Get the raw body and strip any HTML to plain text for quoting
-	body := msg.Body
-	body = stripHTMLTags(body)
-	body = strings.TrimSpace(body)
-	
-	// Plain text version with > prefixes
-	lines := strings.Split(body, "\n")
-	var quotedLines []string
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		// Remove existing > prefixes to avoid double-quoting
-		for strings.HasPrefix(line, ">") {
-			line = strings.TrimPrefix(line, ">")
-			line = strings.TrimSpace(line)
-		}
-		if line == "" {
-			quotedLines = append(quotedLines, ">")
-		} else {
-			quotedLines = append(quotedLines, "> "+line)
-		}
-	}
-	plainText = citation + "\n" + strings.Join(quotedLines, "\n")
-	
-	// HTML version with blockquote
-	quotedBody := html.EscapeString(body)
-	quotedBody = strings.ReplaceAll(quotedBody, "\n", "<br>")
-	htmlText = fmt.Sprintf("%s<blockquote style=\"margin: 0 0 0 10px; padding-left: 10px; border-left: 2px solid #ccc; color: #666;\">%s</blockquote>", citation, quotedBody)
-	
-	return plainText, htmlText
-}
-
 // stripHTMLTags removes HTML tags from a string, leaving only text content
 // This is used for email previews to prevent HTML from breaking the layout
 func stripHTMLTags(s string) string {
@@ -1636,160 +1607,22 @@ func renderEmailBody(body string, isAttachment bool) string {
 		rendered := app.RenderString(body)
 
 		// Clean up excessive whitespace while preserving HTML structure
-		// Collapse multiple newlines into single newlines
 		for strings.Contains(rendered, "\n\n\n") {
 			rendered = strings.ReplaceAll(rendered, "\n\n\n", "\n\n")
 		}
 
-		// Remove newlines that are just between tags (no content)
-		// This preserves formatting inside tags but removes empty space between them
+		// Remove newlines between tags
 		rendered = strings.ReplaceAll(rendered, ">\n<", "><")
 		rendered = strings.ReplaceAll(rendered, ">\n\n<", "><")
 
-		return makeQuotedTextCollapsible(rendered)
+		return rendered
 	}
 
-	// Otherwise just linkify URLs and handle quoted text
-	linked := linkifyURLs(body)
-	return makeQuotedTextCollapsible(linked)
+	// Otherwise just linkify URLs
+	return linkifyURLs(body)
 }
 
-// makeQuotedTextCollapsible wraps quoted text in a collapsible section like Gmail
-func makeQuotedTextCollapsible(body string) string {
-	// Quick check - if no quotes present, return as-is
-	hasGmailQuote := strings.Contains(body, "gmail_quote")
-	hasBlockquote := strings.Contains(body, "<blockquote")
-	hasTextQuote := strings.Contains(body, ">") && (strings.Contains(body, "&gt;") || strings.Contains(body, "\n>"))
-	
-	if !hasGmailQuote && !hasBlockquote && !hasTextQuote {
-		return body
-	}
-	
-	// Check for Gmail's quote wrapper
-	if hasGmailQuote {
-		// Find the gmail_quote div
-		idx := strings.Index(body, "gmail_quote")
-		if idx > 0 {
-			// Find the start of the div tag
-			divStart := strings.LastIndex(body[:idx], "<div")
-			if divStart >= 0 {
-				before := body[:divStart]
-				after := body[divStart:]
-				
-				// Generate a unique ID for this quoted section
-				quoteID := fmt.Sprintf("quote-%d", time.Now().UnixNano())
-				
-				// Wrap the gmail_quote div in collapsible section
-				collapsed := before + fmt.Sprintf(`<div style="margin:10px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, after)
-				
-				return collapsed
-			}
-		}
-	}
-	
-	
-	// Don't auto-collapse generic blockquotes - only collapse gmail_quote divs and plain text > quotes
-	// Regular blockquotes might be part of message content
-	
-	// Check for plain text quoted lines (starting with >)
-	lines := strings.Split(body, "\n")
-	var result strings.Builder
-	var quotedLines []string
-	inQuote := false
-	
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		isQuoted := strings.HasPrefix(trimmed, "&gt;") || strings.HasPrefix(trimmed, ">")
-		
-		// Check if this is an email citation line (e.g., "On [date], [name] wrote:")
-		isCitationLine := false
-		if !isQuoted && !inQuote {
-			lowerLine := strings.ToLower(trimmed)
-			// Common patterns: "On [date]..." or "From:" or "[date]..." ending with "wrote:"
-			if (strings.HasPrefix(lowerLine, "on ") && strings.Contains(lowerLine, "wrote:")) ||
-			   (strings.Contains(lowerLine, ",") && strings.Contains(lowerLine, "wrote:")) ||
-			   (strings.HasPrefix(lowerLine, "from:") && strings.Contains(lowerLine, "@")) {
-				// Look ahead to see if next line is quoted
-				if i+1 < len(lines) {
-					nextTrimmed := strings.TrimSpace(lines[i+1])
-					if strings.HasPrefix(nextTrimmed, "&gt;") || strings.HasPrefix(nextTrimmed, ">") {
-						isCitationLine = true
-						isQuoted = true // Treat it as start of quote
-					}
-				}
-			}
-		}
-		
-		if isQuoted {
-			if !inQuote {
-				// Start of quoted section - remove trailing <br> from result if present
-				resultStr := result.String()
-				if strings.HasSuffix(resultStr, "<br>") {
-					result.Reset()
-					result.WriteString(strings.TrimSuffix(resultStr, "<br>"))
-				}
-				inQuote = true
-			}
-			if isCitationLine {
-				// Include the citation line as-is
-				quotedLines = append(quotedLines, line)
-			} else {
-				// Remove the > prefix for cleaner display
-				cleaned := strings.TrimPrefix(trimmed, "&gt;")
-				cleaned = strings.TrimPrefix(cleaned, ">")
-				cleaned = strings.TrimSpace(cleaned)
-				quotedLines = append(quotedLines, cleaned)
-			}
-		} else {
-			if inQuote {
-				// End of quoted section - output the collapsible quote
-				if len(quotedLines) > 0 {
-					quoteID := fmt.Sprintf("quote-%d-%d", time.Now().UnixNano(), i)
-					result.WriteString(fmt.Sprintf(`<div style="margin:10px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
-					quotedLines = nil
-				}
-				inQuote = false
-			}
-			// Output non-quoted line - skip empty lines before quoted section
-			if trimmed == "" && i > 0 {
-				// Check if next line is a quote to avoid extra blank lines
-				if i+1 < len(lines) {
-					nextTrimmed := strings.TrimSpace(lines[i+1])
-					lowerNextLine := strings.ToLower(nextTrimmed)
-					isNextQuoted := strings.HasPrefix(nextTrimmed, "&gt;") || strings.HasPrefix(nextTrimmed, ">")
-					isNextCitation := (strings.HasPrefix(lowerNextLine, "on ") && strings.Contains(lowerNextLine, "wrote:")) ||
-					                  (strings.Contains(lowerNextLine, ",") && strings.Contains(lowerNextLine, "wrote:"))
-					
-					if isNextQuoted || isNextCitation {
-						// Skip this empty line, don't add <br>
-						continue
-					}
-				}
-			}
-			
-			if i > 0 && result.Len() > 0 {
-				result.WriteString("<br>")
-			}
-			result.WriteString(line)
-		}
-	}
-	
-	// Handle any remaining quoted lines at the end
-	if inQuote && len(quotedLines) > 0 {
-		quoteID := fmt.Sprintf("quote-%d-end", time.Now().UnixNano())
-		result.WriteString(fmt.Sprintf(`<div style="margin:10px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, strings.Join(quotedLines, "<br>")))
-	}
-	
-	resultStr := result.String()
-	// Only return the processed version if we found quotes
-	if inQuote || strings.Contains(resultStr, "quote-") {
-		return resultStr
-	}
-	
-	return body
-}
-
-// linkifyURLs converts URLs in text to clickable HTML links
+// looksLikeMarkdown detects if text contains markdown formatting
 func linkifyURLs(text string) string {
 	result := ""
 	lastIndex := 0
