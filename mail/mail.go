@@ -742,9 +742,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Build quoted text from the latest message for the reply form
 		latestMsg := thread[len(thread)-1]
 		quotedBodyPlain, quotedBodyHTML := formatQuotedText(latestMsg, otherParty)
-		// Escape the HTML quoted body for display in the collapsed section
-		quotedBodyHTMLDisplay := html.EscapeString(quotedBodyHTML)
-		quotedBodyHTMLDisplay = strings.ReplaceAll(quotedBodyHTMLDisplay, "\n", "<br>")
+		// For display in browser, use HTML version directly (will be rendered)
+		quotedBodyHTMLDisplay := quotedBodyHTML
 		// Escape for use in hidden input value attributes
 		quotedBodyPlainValue := html.EscapeString(quotedBodyPlain)
 		quotedBodyHTMLValue := html.EscapeString(quotedBodyHTML)
