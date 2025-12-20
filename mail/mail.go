@@ -1687,22 +1687,6 @@ func makeQuotedTextCollapsible(body string) string {
 		}
 	}
 	
-	// Check for <blockquote type="cite"> (Thunderbird, Apple Mail)
-	if strings.Contains(body, `type="cite"`) || strings.Contains(body, `type='cite'`) {
-		idx := strings.Index(body, "<blockquote")
-		if idx >= 0 {
-			before := body[:idx]
-			after := body[idx:]
-			
-			// Generate a unique ID for this quoted section
-			quoteID := fmt.Sprintf("quote-%d", time.Now().UnixNano())
-			
-			// Wrap in collapsible section
-			collapsed := before + fmt.Sprintf(`<div style="margin:10px 0 0 0"><a href="#" onclick="var el=document.getElementById('%s');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a></div><div id="%s" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666">%s</div>`, quoteID, quoteID, after)
-			
-			return collapsed
-		}
-	}
 	
 	// Check for HTML blockquote tags
 	if hasBlockquote {
