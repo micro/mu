@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -259,6 +260,23 @@ func main() {
 
 	// Start SMTP server if enabled (disabled by default)
 	mail.StartSMTPServerIfEnabled()
+
+	// Log initial memory usage
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	app.Log("main", "Startup complete. Memory: Alloc=%dMB Sys=%dMB NumGC=%d", m.Alloc/1024/1024, m.Sys/1024/1024, m.NumGC)
+
+	// Start memory monitoring goroutine
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			app.Log("main", "Memory: Alloc=%dMB Sys=%dMB NumGC=%d Goroutines=%d", 
+				m.Alloc/1024/1024, m.Sys/1024/1024, m.NumGC, runtime.NumGoroutine())
+		}
+	}()
 
 	// Start server in a goroutine
 	go func() {

@@ -49,7 +49,8 @@ func Log(pkg string, format string, args ...interface{}) {
 	if color == "" {
 		color = colorWhite
 	}
-	prefix := fmt.Sprintf("%s[%s]%s ", color, pkg, colorReset)
+	timestamp := time.Now().Format("15:04:05")
+	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
 	fmt.Printf(prefix+format+"\n", args...)
 }
 
