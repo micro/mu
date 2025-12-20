@@ -319,10 +319,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		to := strings.TrimSpace(r.FormValue("to"))
 		subject := strings.TrimSpace(r.FormValue("subject"))
-		body := strings.TrimSpace(r.FormValue("body"))
+		bodyPlain := strings.TrimSpace(r.FormValue("body_plain"))
+		bodyHTML := strings.TrimSpace(r.FormValue("body_html"))
+		// Fallback to "body" field for backward compatibility (compose form)
+		if bodyPlain == "" && bodyHTML == "" {
+			body := strings.TrimSpace(r.FormValue("body"))
+			if body != "" {
+				bodyPlain = body
+				// Convert plain text to HTML
+				bodyHTML = html.EscapeString(body)
+				bodyHTML = strings.ReplaceAll(bodyHTML, "\n", "<br>")
+			}
+		}
 		replyTo := strings.TrimSpace(r.FormValue("reply_to"))
 
-		if to == "" || subject == "" || body == "" {
+		if to == "" || subject == "" || (bodyPlain == "" && bodyHTML == "") {
 			http.Error(w, "All fields are required", http.StatusBadRequest)
 			return
 		}
@@ -335,14 +346,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			displayName := acc.Name
 
 			// Send external email (connects to localhost SMTP server which relays)
-			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, body, replyTo)
+			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, bodyPlain, bodyHTML, replyTo)
 			if err != nil {
 				http.Error(w, "Failed to send email: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			// Store a copy in sent messages for the sender
-			if err := SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo, messageID); err != nil {
+			// Store the HTML version in sent messages for the sender
+			if err := SendMessage(acc.Name, acc.ID, to, to, subject, bodyHTML, replyTo, messageID); err != nil {
 				app.Log("mail", "Warning: Failed to store sent message: %v", err)
 			}
 		} else {
@@ -353,9 +364,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// Send the internal message
+			// Send the internal message - use HTML version for consistency
 			app.Log("mail", "Sending internal message from %s to %s with replyTo=%s", acc.Name, toAcc.Name, replyTo)
-			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, replyTo, ""); err != nil {
+			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, bodyHTML, replyTo, ""); err != nil {
 				http.Error(w, "Failed to send message", http.StatusInternalServerError)
 				return
 			}
@@ -730,12 +741,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Build quoted text from the latest message for the reply form
 		latestMsg := thread[len(thread)-1]
-		quotedBody := formatQuotedText(latestMsg, otherParty)
-		// HTML escape the quoted body for display in the collapsed section
-		quotedBodyHTML := html.EscapeString(quotedBody)
-		quotedBodyHTML = strings.ReplaceAll(quotedBodyHTML, "\n", "<br>")
-		// Also escape for use in hidden input value attribute
-		quotedBodyValue := html.EscapeString(quotedBody)
+		quotedBodyPlain, quotedBodyHTML := formatQuotedText(latestMsg, otherParty)
+		// Escape the HTML quoted body for display in the collapsed section
+		quotedBodyHTMLDisplay := html.EscapeString(quotedBodyHTML)
+		quotedBodyHTMLDisplay = strings.ReplaceAll(quotedBodyHTMLDisplay, "\n", "<br>")
+		// Escape for use in hidden input value attributes
+		quotedBodyPlainValue := html.EscapeString(quotedBodyPlain)
+		quotedBodyHTMLValue := html.EscapeString(quotedBodyHTML)
 
 		// Get the root ID for reply threading - this is the ID of the latest message being replied to
 		replyToID := latestMsg.ID
@@ -744,12 +756,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	%s
 	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}var quotedText=document.getElementById('quoted-text-raw').value;document.getElementById('reply-body-hidden').value=replyText+(quotedText?'\n'+quotedText:'');return true;">
+		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}var quotedPlain=document.getElementById('quoted-text-plain').value;var quotedHTML=document.getElementById('quoted-text-html').value;document.getElementById('reply-body-plain').value=replyText+(quotedPlain?'\n\n'+quotedPlain:'');var replyHTML=replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');document.getElementById('reply-body-html').value=replyHTML+(quotedHTML?'\n'+quotedHTML:'');return true;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
-			<input type="hidden" id="reply-body-hidden" name="body" value="">
-			<input type="hidden" id="quoted-text-raw" value="%s">
+			<input type="hidden" id="reply-body-plain" name="body_plain" value="">
+			<input type="hidden" id="reply-body-html" name="body_html" value="">
+			<input type="hidden" id="quoted-text-plain" value="%s">
+			<input type="hidden" id="quoted-text-html" value="%s">
 			<div id="reply-body" contenteditable="true" style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; outline: none; background: white;" placeholder="Write your reply..."></div>
 			<div style="margin:10px 0 0 0">
 				<a href="#" onclick="var el=document.getElementById('quoted-text-content');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a>
@@ -765,7 +779,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 		</div>
 	</div>
-`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, quotedBodyValue, quotedBodyHTML, msg.ID, blockButton)
+`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, quotedBodyPlainValue, quotedBodyHTMLValue, quotedBodyHTMLDisplay, msg.ID, blockButton)
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
 	}
@@ -1535,45 +1549,41 @@ func looksLikeMarkdown(text string) bool {
 }
 
 // formatQuotedText formats a message as quoted text for replies (Gmail-style)
-func formatQuotedText(msg *Message, senderName string) string {
+// Returns both plain text and HTML versions
+func formatQuotedText(msg *Message, senderName string) (plainText string, htmlText string) {
 	// Build citation line like "On [date], [sender] wrote:"
 	dateStr := msg.CreatedAt.Format("Mon, 2 Jan 2006, 15:04")
-	citation := fmt.Sprintf("On %s, %s wrote:\n", dateStr, senderName)
+	citation := fmt.Sprintf("On %s, %s wrote:", dateStr, senderName)
 	
 	// Get the raw body and strip any HTML to plain text for quoting
 	body := msg.Body
 	body = stripHTMLTags(body)
 	body = strings.TrimSpace(body)
 	
-	// Add > prefix to each line with proper space after >
+	// Plain text version with > prefixes
 	lines := strings.Split(body, "\n")
 	var quotedLines []string
 	for _, line := range lines {
-		// Trim any existing leading > characters to avoid double-quoting
 		line = strings.TrimSpace(line)
+		// Remove existing > prefixes to avoid double-quoting
 		for strings.HasPrefix(line, ">") {
 			line = strings.TrimPrefix(line, ">")
 			line = strings.TrimSpace(line)
 		}
-		// Add proper quote prefix with space
 		if line == "" {
 			quotedLines = append(quotedLines, ">")
 		} else {
 			quotedLines = append(quotedLines, "> "+line)
 		}
 	}
+	plainText = citation + "\n" + strings.Join(quotedLines, "\n")
 	
-	// Trim leading empty quoted lines
-	for len(quotedLines) > 0 && strings.TrimSpace(quotedLines[0]) == ">" {
-		quotedLines = quotedLines[1:]
-	}
+	// HTML version with blockquote
+	quotedBody := html.EscapeString(body)
+	quotedBody = strings.ReplaceAll(quotedBody, "\n", "<br>")
+	htmlText = fmt.Sprintf("%s<blockquote style=\"margin: 0 0 0 10px; padding-left: 10px; border-left: 2px solid #ccc; color: #666;\">%s</blockquote>", citation, quotedBody)
 	
-	// Trim trailing empty quoted lines to avoid excessive whitespace
-	for len(quotedLines) > 0 && strings.TrimSpace(quotedLines[len(quotedLines)-1]) == ">" {
-		quotedLines = quotedLines[:len(quotedLines)-1]
-	}
-	
-	return citation + strings.Join(quotedLines, "\n")
+	return plainText, htmlText
 }
 
 // stripHTMLTags removes HTML tags from a string, leaving only text content

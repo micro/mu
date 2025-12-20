@@ -88,7 +88,7 @@ func LoadDKIMConfig(domain, selector string) error {
 
 // SendExternalEmail sends an email to an external address via direct relay (no SMTP needed)
 // Returns the generated Message-ID for threading purposes
-func SendExternalEmail(displayName, from, to, subject, body, replyToMsgID string) (string, error) {
+func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML string, replyToMsgID string) (string, error) {
 	// Extract username from email for Message-ID (in case from is full email)
 	username := from
 	if strings.Contains(from, "@") {
@@ -97,6 +97,9 @@ func SendExternalEmail(displayName, from, to, subject, body, replyToMsgID string
 
 	// Generate Message-ID for threading
 	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, GetConfiguredDomain())
+	
+	// Generate boundary for multipart
+	boundary := fmt.Sprintf("----=_Part_%d", time.Now().UnixNano())
 
 	// Build email message
 	var msg bytes.Buffer
@@ -118,12 +121,31 @@ func SendExternalEmail(displayName, from, to, subject, body, replyToMsgID string
 	}
 
 	msg.WriteString("MIME-Version: 1.0\r\n")
-	msg.WriteString("Content-Type: text/plain; charset=utf-8; format=flowed\r\n")
+	msg.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary))
 	msg.WriteString("\r\n")
-	// Ensure proper line endings (CRLF) for email standards
-	body = strings.ReplaceAll(body, "\r\n", "\n")
-	body = strings.ReplaceAll(body, "\n", "\r\n")
-	msg.WriteString(body)
+	
+	// Plain text part
+	msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	msg.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+	msg.WriteString("Content-Transfer-Encoding: 7bit\r\n")
+	msg.WriteString("\r\n")
+	bodyPlain = strings.ReplaceAll(bodyPlain, "\r\n", "\n")
+	bodyPlain = strings.ReplaceAll(bodyPlain, "\n", "\r\n")
+	msg.WriteString(bodyPlain)
+	msg.WriteString("\r\n\r\n")
+	
+	// HTML part
+	msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	msg.WriteString("Content-Type: text/html; charset=utf-8\r\n")
+	msg.WriteString("Content-Transfer-Encoding: 7bit\r\n")
+	msg.WriteString("\r\n")
+	bodyHTML = strings.ReplaceAll(bodyHTML, "\r\n", "\n")
+	bodyHTML = strings.ReplaceAll(bodyHTML, "\n", "\r\n")
+	msg.WriteString(bodyHTML)
+	msg.WriteString("\r\n\r\n")
+	
+	// End boundary
+	msg.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
 
 	message := msg.Bytes()
 
