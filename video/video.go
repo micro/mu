@@ -1,6 +1,7 @@
 package video
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -25,6 +26,13 @@ import (
 var f embed.FS
 
 var mutex sync.RWMutex
+
+// Buffer pool for reducing allocations in HTML building
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
 
 // category to channel mapping
 var channels = map[string]string{}
@@ -371,7 +379,9 @@ func regenerateHTML() {
 	defer mutex.Unlock()
 
 	var head string
-	var body string
+	body := bufferPool.Get().(*bytes.Buffer)
+	body.Reset()
+	defer bufferPool.Put(body)
 	var chanNames []string
 
 	var latest []*Result
@@ -433,7 +443,7 @@ func regenerateHTML() {
 
 		// add to body
 		for _, res := range latest {
-			body += res.Html
+			body.WriteString(res.Html)
 		}
 	}
 
@@ -445,14 +455,14 @@ func regenerateHTML() {
 
 	// create body for channels
 	for _, channel := range chanNames {
-		body += `<div class=section>`
-		body += `<hr id="` + channel + `" class="anchor">`
-		body += fmt.Sprintf(`<h1>%s</h1>`, channel)
-		body += videos[channel].Html
-		body += `</div>`
+		body.WriteString(`<div class=section>`)
+		body.WriteString(`<hr id="` + channel + `" class="anchor">`)
+		fmt.Fprintf(body, `<h1>%s</h1>`, channel)
+		body.WriteString(videos[channel].Html)
+		body.WriteString(`</div>`)
 	}
 
-	videosHtml = app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body))
+	videosHtml = app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String()))
 }
 
 func loadVideos() {
@@ -466,7 +476,9 @@ func loadVideos() {
 
 	// create head
 	var head string
-	var body string
+	body := bufferPool.Get().(*bytes.Buffer)
+	body.Reset()
+	defer bufferPool.Put(body)
 	var chanNames []string
 
 	var latest []*Result
@@ -511,7 +523,7 @@ func loadVideos() {
 
 	// add to body
 	for _, res := range latest {
-		body += res.Html
+		body.WriteString(res.Html)
 	}
 
 	// get chan names and sort
@@ -527,14 +539,14 @@ func loadVideos() {
 
 	// create head for channels
 	for _, channel := range chanNames {
-		body += `<div class=section>`
-		body += `<hr id="` + channel + `" class="anchor">`
-		body += fmt.Sprintf(`<h1>%s</h1>`, channel)
-		body += vids[channel].Html
-		body += `</div>`
+		body.WriteString(`<div class=section>`)
+		body.WriteString(`<hr id="` + channel + `" class="anchor">`)
+		fmt.Fprintf(body, `<h1>%s</h1>`, channel)
+		body.WriteString(vids[channel].Html)
+		body.WriteString(`</div>`)
 	}
 
-	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body))
+	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String()))
 	b, _ := json.Marshal(videos)
 	vidJson := string(b)
 
@@ -589,7 +601,9 @@ func getChannel(category, handle string) (string, []*Result, error) {
 	}
 
 	var results []*Result
-	var resultsHtml string
+	buf := bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufferPool.Put(buf)
 
 	for _, item := range resp.Items {
 		var id, url, desc string
@@ -645,7 +659,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		html := fmt.Sprintf(`
 	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s · %s</div></div>`,
 			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
-		resultsHtml += html
+		buf.WriteString(html)
 		res.Html = html
 
 		// Append to results
@@ -667,7 +681,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		)
 	}
 
-	return resultsHtml, results, nil
+	return buf.String(), results, nil
 }
 
 func getResults(query, channel string) (string, []*Result, error) {
@@ -691,7 +705,9 @@ func getResults(query, channel string) (string, []*Result, error) {
 	}
 
 	var results []*Result
-	var resultsHtml string
+	buf := bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufferPool.Put(buf)
 
 	for _, item := range resp.Items {
 		var id, url, desc string
@@ -746,11 +762,11 @@ func getResults(query, channel string) (string, []*Result, error) {
 		html := fmt.Sprintf(`
 			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
-		resultsHtml += html
+		buf.WriteString(html)
 		res.Html = html
 	}
 
-	return resultsHtml, results, nil
+	return buf.String(), results, nil
 }
 
 func Latest() string {
@@ -816,15 +832,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	ct := r.Header.Get("Content-Type")
 
 	// create head
-	var head string
 	var chanNames []string
 	for channel, _ := range channels {
 		chanNames = append(chanNames, channel)
 	}
 	sort.Strings(chanNames)
+	
+	headBuf := bufferPool.Get().(*bytes.Buffer)
+	headBuf.Reset()
+	defer bufferPool.Put(headBuf)
+	
 	for _, channel := range chanNames {
-		head += fmt.Sprintf(`<a href="/video#%s" class="head">%s</a>`, channel, channel)
+		fmt.Fprintf(headBuf, `<a href="/video#%s" class="head">%s</a>`, channel, channel)
 	}
+	head := headBuf.String()
 
 	// Handle GET with query parameter (search)
 	if r.Method == "GET" {
@@ -964,7 +985,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var resultsHtml string
+		resultsBuf := bufferPool.Get().(*bytes.Buffer)
+		resultsBuf.Reset()
+		defer bufferPool.Put(resultsBuf)
+		
 		for _, item := range resp.Items {
 			if item.Snippet == nil || item.Snippet.ResourceId == nil {
 				continue
@@ -983,13 +1007,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
 
-			html := fmt.Sprintf(`
+			fmt.Fprintf(resultsBuf, `
 		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
-			resultsHtml += html
 		}
 
-		content := fmt.Sprintf(PlaylistView, head, playlistDesc+resultsHtml)
+		content := fmt.Sprintf(PlaylistView, head, playlistDesc+resultsBuf.String())
 		html := app.RenderHTML("Video", playlistTitle, content)
 		w.Write([]byte(html))
 		return
@@ -1034,7 +1057,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var resultsHtml string
+		resultsBuf := bufferPool.Get().(*bytes.Buffer)
+		resultsBuf.Reset()
+		defer bufferPool.Put(resultsBuf)
+		
 		for _, item := range resp.Items {
 			if item.Snippet == nil || item.Snippet.ResourceId == nil {
 				continue
@@ -1053,13 +1079,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
 
-			html := fmt.Sprintf(`
+			fmt.Fprintf(resultsBuf, `
 		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
-			resultsHtml += html
 		}
 
-		content := fmt.Sprintf(ChannelView, head, channelInfo, resultsHtml)
+		content := fmt.Sprintf(ChannelView, head, channelInfo, resultsBuf.String())
 		html := app.RenderHTML("Video", channelTitle, content)
 		w.Write([]byte(html))
 		return
