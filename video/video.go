@@ -1,7 +1,6 @@
 package video
 
 import (
-	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -26,13 +25,6 @@ import (
 var f embed.FS
 
 var mutex sync.RWMutex
-
-// Buffer pool for reducing allocations in HTML building
-var bufferPool = sync.Pool{
-	New: func() interface{} {
-		return new(bytes.Buffer)
-	},
-}
 
 // category to channel mapping
 var channels = map[string]string{}
@@ -379,9 +371,7 @@ func regenerateHTML() {
 	defer mutex.Unlock()
 
 	var head string
-	body := bufferPool.Get().(*bytes.Buffer)
-	body.Reset()
-	defer bufferPool.Put(body)
+	var body strings.Builder
 	var chanNames []string
 
 	var latest []*Result
@@ -457,7 +447,7 @@ func regenerateHTML() {
 	for _, channel := range chanNames {
 		body.WriteString(`<div class=section>`)
 		body.WriteString(`<hr id="` + channel + `" class="anchor">`)
-		fmt.Fprintf(body, `<h1>%s</h1>`, channel)
+		fmt.Fprintf(&body, `<h1>%s</h1>`, channel)
 		body.WriteString(videos[channel].Html)
 		body.WriteString(`</div>`)
 	}
@@ -476,9 +466,7 @@ func loadVideos() {
 
 	// create head
 	var head string
-	body := bufferPool.Get().(*bytes.Buffer)
-	body.Reset()
-	defer bufferPool.Put(body)
+	var body strings.Builder
 	var chanNames []string
 
 	var latest []*Result
@@ -541,7 +529,7 @@ func loadVideos() {
 	for _, channel := range chanNames {
 		body.WriteString(`<div class=section>`)
 		body.WriteString(`<hr id="` + channel + `" class="anchor">`)
-		fmt.Fprintf(body, `<h1>%s</h1>`, channel)
+		fmt.Fprintf(&body, `<h1>%s</h1>`, channel)
 		body.WriteString(vids[channel].Html)
 		body.WriteString(`</div>`)
 	}
@@ -601,9 +589,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 	}
 
 	var results []*Result
-	buf := bufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer bufferPool.Put(buf)
+	var sb strings.Builder
 
 	for _, item := range resp.Items {
 		var id, url, desc string
@@ -659,7 +645,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		html := fmt.Sprintf(`
 	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s · %s</div></div>`,
 			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
-		buf.WriteString(html)
+		sb.WriteString(html)
 		res.Html = html
 
 		// Append to results
@@ -681,7 +667,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		)
 	}
 
-	return buf.String(), results, nil
+	return sb.String(), results, nil
 }
 
 func getResults(query, channel string) (string, []*Result, error) {
@@ -705,9 +691,7 @@ func getResults(query, channel string) (string, []*Result, error) {
 	}
 
 	var results []*Result
-	buf := bufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer bufferPool.Put(buf)
+	var sb strings.Builder
 
 	for _, item := range resp.Items {
 		var id, url, desc string
@@ -762,11 +746,11 @@ func getResults(query, channel string) (string, []*Result, error) {
 		html := fmt.Sprintf(`
 			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
-		buf.WriteString(html)
+		sb.WriteString(html)
 		res.Html = html
 	}
 
-	return buf.String(), results, nil
+	return sb.String(), results, nil
 }
 
 func Latest() string {
@@ -838,14 +822,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(chanNames)
 	
-	headBuf := bufferPool.Get().(*bytes.Buffer)
-	headBuf.Reset()
-	defer bufferPool.Put(headBuf)
-	
+	var headSB strings.Builder
 	for _, channel := range chanNames {
-		fmt.Fprintf(headBuf, `<a href="/video#%s" class="head">%s</a>`, channel, channel)
+		fmt.Fprintf(&headSB, `<a href="/video#%s" class="head">%s</a>`, channel, channel)
 	}
-	head := headBuf.String()
+	head := headSB.String()
 
 	// Handle GET with query parameter (search)
 	if r.Method == "GET" {
@@ -985,10 +966,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resultsBuf := bufferPool.Get().(*bytes.Buffer)
-		resultsBuf.Reset()
-		defer bufferPool.Put(resultsBuf)
-		
+		var resultsSB strings.Builder
 		for _, item := range resp.Items {
 			if item.Snippet == nil || item.Snippet.ResourceId == nil {
 				continue
@@ -1007,12 +985,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
 
-			fmt.Fprintf(resultsBuf, `
+			fmt.Fprintf(&resultsSB, `
 		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
 		}
 
-		content := fmt.Sprintf(PlaylistView, head, playlistDesc+resultsBuf.String())
+		content := fmt.Sprintf(PlaylistView, head, playlistDesc+resultsSB.String())
 		html := app.RenderHTML("Video", playlistTitle, content)
 		w.Write([]byte(html))
 		return
@@ -1057,10 +1035,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resultsBuf := bufferPool.Get().(*bytes.Buffer)
-		resultsBuf.Reset()
-		defer bufferPool.Put(resultsBuf)
-		
+		var resultsSB strings.Builder
 		for _, item := range resp.Items {
 			if item.Snippet == nil || item.Snippet.ResourceId == nil {
 				continue
@@ -1079,12 +1054,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
 
-			fmt.Fprintf(resultsBuf, `
+			fmt.Fprintf(&resultsSB, `
 		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
 				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
 		}
 
-		content := fmt.Sprintf(ChannelView, head, channelInfo, resultsBuf.String())
+		content := fmt.Sprintf(ChannelView, head, channelInfo, resultsSB.String())
 		html := app.RenderHTML("Video", channelTitle, content)
 		w.Write([]byte(html))
 		return

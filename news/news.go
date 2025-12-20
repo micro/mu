@@ -1,7 +1,6 @@
 package news
 
 import (
-	"bytes"
 	"crypto/md5"
 	"embed"
 	"encoding/json"
@@ -41,13 +40,6 @@ var status = map[string]*Feed{}
 
 // Semaphore to limit concurrent metadata fetches (reduces memory spike on startup)
 var metadataFetchSem = make(chan struct{}, 10) // Allow max 10 concurrent fetches
-
-// Buffer pool for reducing allocations in HTML building
-var bufferPool = sync.Pool{
-	New: func() interface{} {
-		return new(bytes.Buffer)
-	},
-}
 
 // cached news html
 var html string
@@ -1351,31 +1343,28 @@ func parseFeed() {
 		cachedPrices = newPrices
 		mutex.Unlock()
 
-		// Keep legacy markets HTML format for /markets page - use buffer pool
-		buf := bufferPool.Get().(*bytes.Buffer)
-		buf.Reset()
-		defer bufferPool.Put(buf)
-
-		buf.WriteString(`<div class="item"><div id="tickers">`)
+		// Keep legacy markets HTML format for /markets page
+		var sb strings.Builder
+		sb.WriteString(`<div class="item"><div id="tickers">`)
 
 		for _, ticker := range tickers {
 			price := newPrices[ticker]
-			fmt.Fprintf(buf, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
+			fmt.Fprintf(&sb, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 		}
 
-		buf.WriteString(`</div>`)
-		marketsHtml = buf.String()
+		sb.WriteString(`</div>`)
+		marketsHtml = sb.String()
 
-		buf.Reset()
-		buf.WriteString(`<div id="futures">`)
+		sb.Reset()
+		sb.WriteString(`<div id="futures">`)
 
 		for _, ticker := range futuresKeys {
 			price := newPrices[ticker]
-			fmt.Fprintf(buf, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
+			fmt.Fprintf(&sb, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 		}
 
-		buf.WriteString(`</div></div>`)
-		marketsHtml += buf.String()
+		sb.WriteString(`</div></div>`)
+		marketsHtml += sb.String()
 
 		// Index all prices for search/RAG
 		app.Log("news", "Indexing %d market prices", len(newPrices))
@@ -1395,19 +1384,16 @@ func parseFeed() {
 		}
 	}
 
-	// create the headlines - use buffer pool
+	// create the headlines
 	sort.Slice(headlines, func(i, j int) bool {
 		return headlines[i].PostedAt.After(headlines[j].PostedAt)
 	})
 
-	buf := bufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer bufferPool.Put(buf)
-
-	buf.WriteString(`<div class=section>`)
+	var sb strings.Builder
+	sb.WriteString(`<div class=section>`)
 
 	for _, h := range headlines {
-		fmt.Fprintf(buf, `
+		fmt.Fprintf(&sb, `
 			<div class="headline">
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
 			   %s
@@ -1418,21 +1404,21 @@ func parseFeed() {
 			`, h.URL, getCategoryBadge(h), h.Title, h.Description, getSummary(h))
 
 		// close val
-		buf.WriteString(`</div>`)
+		sb.WriteString(`</div>`)
 	}
 
-	buf.WriteString(`</div>`)
+	sb.WriteString(`</div>`)
 
 	// set the headline
-	headline := buf.Bytes()
-	content = append(headline, content...)
+	headlineHtml := sb.String()
+	content = append([]byte(headlineHtml), content...)
 
 	mutex.Lock()
 
 	// set the feed
 	feed = news
 	// set the headlines
-	headlinesHtml = string(headline)
+	headlinesHtml = headlineHtml
 	// save it
 	saveHtml(head, content)
 	// save the headlines
