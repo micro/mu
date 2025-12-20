@@ -739,35 +739,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`, otherParty, otherParty, msg.ID)
 		}
 
-		// Build quoted text from the latest message for the reply form
-		latestMsg := thread[len(thread)-1]
-		quotedBodyPlain, quotedBodyHTML := formatQuotedText(latestMsg, otherParty)
-		// For display in browser, use HTML version directly (will be rendered)
-		quotedBodyHTMLDisplay := quotedBodyHTML
-		// Escape for use in hidden input value attributes
-		quotedBodyPlainValue := html.EscapeString(quotedBodyPlain)
-		quotedBodyHTMLValue := html.EscapeString(quotedBodyHTML)
-
 		// Get the root ID for reply threading - this is the ID of the latest message being replied to
+		latestMsg := thread[len(thread)-1]
 		replyToID := latestMsg.ID
 
 		messageView := fmt.Sprintf(`
 	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
 	%s
 	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}var quotedPlain=document.getElementById('quoted-text-plain').value;var quotedHTML=document.getElementById('quoted-text-html').value;document.getElementById('reply-body-plain').value=replyText+(quotedPlain?'\n\n'+quotedPlain:'');var replyHTML=replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');document.getElementById('reply-body-html').value=replyHTML+(quotedHTML?'\n'+quotedHTML:'');return true;">
+		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}document.getElementById('reply-body-plain').value=replyText;var replyHTML=replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');document.getElementById('reply-body-html').value=replyHTML;return true;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
 			<input type="hidden" id="reply-body-plain" name="body_plain" value="">
 			<input type="hidden" id="reply-body-html" name="body_html" value="">
-			<input type="hidden" id="quoted-text-plain" value="%s">
-			<input type="hidden" id="quoted-text-html" value="%s">
 			<div id="reply-body" contenteditable="true" style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; outline: none; background: white;" placeholder="Write your reply..."></div>
-			<div style="margin:10px 0 0 0">
-				<a href="#" onclick="var el=document.getElementById('quoted-text-content');el.style.display=el.style.display==='none'?'block':'none';this.innerHTML=el.style.display==='none'?'<span style=\'color:#888\'>▸</span> Show quoted text':'<span style=\'color:#888\'>▾</span> Hide quoted text';return false;" style="color:#0066cc;text-decoration:none;font-size:13px"><span style="color:#888">▸</span> Show quoted text</a>
-			</div>
-			<div id="quoted-text-content" style="display:none;border-left:2px solid #ccc;padding-left:10px;margin:5px 0 0 5px;color:#666;font-size:13px;">%s</div>
 			<div style="display: flex; gap: 10px; align-items: center;">
 				<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
 				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545; font-size: 14px;">Delete Thread</a>
@@ -778,7 +764,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 		</div>
 	</div>
-`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, quotedBodyPlainValue, quotedBodyHTMLValue, quotedBodyHTMLDisplay, msg.ID, blockButton)
+`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton)
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
 	}
