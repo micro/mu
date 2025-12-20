@@ -1183,6 +1183,22 @@ func MarkAsRead(msgID, userID string) error {
 	for _, msg := range messages {
 		if msg.ID == msgID && msg.ToID == userID {
 			msg.Read = true
+			
+			// Update thread's HasUnread status
+			if inbox := inboxes[userID]; inbox != nil {
+				if thread := inbox.Threads[msg.ThreadID]; thread != nil {
+					// Check if any messages in this thread are still unread
+					hasUnread := false
+					for _, threadMsg := range thread.Messages {
+						if !threadMsg.Read && threadMsg.ToID == userID {
+							hasUnread = true
+							break
+						}
+					}
+					thread.HasUnread = hasUnread
+				}
+			}
+			
 			return save()
 		}
 	}
