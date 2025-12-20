@@ -1244,37 +1244,33 @@ func parseFeed() {
 
 			news = append(news, post)
 
-			// Index the article for search/RAG (async)
-			// Rooms will subscribe to index events and update when ready
-			// Note: getMetadata() already caches, so we're not refetching unless needed
-			go func(id, title, desc, content, comments, summary, link, category string, postedAt time.Time, image string) {
-				// Use LLM summary if available, otherwise combine description + content
-				var fullContent string
-				if summary != "" {
-					fullContent = summary
-				} else {
-					fullContent = desc + " " + content
-				}
+			// Index the article for search/RAG
+			// Use LLM summary if available, otherwise combine description + content
+			var fullContent string
+			if md.Summary != "" {
+				fullContent = md.Summary
+			} else {
+				fullContent = item.Description + " " + item.Content
+			}
 
-				if len(comments) > 0 {
-					fullContent += " " + comments
-				}
+			if len(md.Comments) > 0 {
+				fullContent += " " + md.Comments
+			}
 
-				data.Index(
-					id,
-					"news",
-					title,
-					fullContent,
-					map[string]interface{}{
-						"url":         link,
-						"category":    category,
-						"posted_at":   postedAt,
-						"image":       image,
-						"description": desc,
-						"summary":     summary,
-					},
-				)
-			}(itemID, itemTitle, item.Description, item.Content, md.Comments, md.Summary, link, name, postedAt, md.Image)
+			data.Index(
+				itemID,
+				"news",
+				itemTitle,
+				fullContent,
+				map[string]interface{}{
+					"url":         link,
+					"category":    name,
+					"posted_at":   postedAt,
+					"image":       md.Image,
+					"description": item.Description,
+					"summary":     md.Summary,
+				},
+			)
 
 			var val string
 
@@ -1355,24 +1351,22 @@ func parseFeed() {
 		info = append(info, []byte(`</div></div>`)...)
 		marketsHtml += string(info)
 
-		// Index all prices for search/RAG (async)
-		go func(prices map[string]float64) {
-			app.Log("news", "Indexing %d market prices", len(prices))
-			timestamp := time.Now().Format(time.RFC3339)
-			for ticker, price := range prices {
-				data.Index(
-					"market_"+ticker,
-					"market",
-					ticker,
-					fmt.Sprintf("$%.2f", price),
-					map[string]interface{}{
-						"ticker":  ticker,
-						"price":   price,
-						"updated": timestamp,
-					},
-				)
-			}
-		}(newPrices)
+		// Index all prices for search/RAG
+		app.Log("news", "Indexing %d market prices", len(newPrices))
+		timestamp := time.Now().Format(time.RFC3339)
+		for ticker, price := range newPrices {
+			data.Index(
+				"market_"+ticker,
+				"market",
+				ticker,
+				fmt.Sprintf("$%.2f", price),
+				map[string]interface{}{
+					"ticker":  ticker,
+					"price":   price,
+					"updated": timestamp,
+				},
+			)
+		}
 	}
 
 	// create the headlines

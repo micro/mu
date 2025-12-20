@@ -246,7 +246,7 @@ func save() error {
 
 // Handler for /mail (inbox)
 // Handler handles mail-related requests
-// 
+//
 // Email Flow:
 // - Internal messages: stored directly as HTML, displayed in threads
 // - External emails: sent as multipart/alternative (plain text + HTML) with threading headers
@@ -332,7 +332,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		subject := strings.TrimSpace(r.FormValue("subject"))
 		bodyPlain := strings.TrimSpace(r.FormValue("body_plain"))
 		bodyHTML := strings.TrimSpace(r.FormValue("body_html"))
-		
+
 		// Fallback to "body" field for compose form (auto-convert to HTML)
 		if bodyPlain == "" && bodyHTML == "" {
 			body := strings.TrimSpace(r.FormValue("body"))
@@ -593,7 +593,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Build thread view - use pre-built inbox structure for efficiency
 		var thread []*Message
 		mutex.RLock()
-		
+
 		// Get thread ID from the message
 		threadID := msg.ThreadID
 		if threadID == "" {
@@ -602,7 +602,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				threadID = msg.ID
 			}
 		}
-		
+
 		// Look up thread from inbox structure
 		inbox := inboxes[acc.ID]
 		if inbox != nil && inbox.Threads[threadID] != nil {
@@ -1183,7 +1183,7 @@ func MarkAsRead(msgID, userID string) error {
 	for _, msg := range messages {
 		if msg.ID == msgID && msg.ToID == userID {
 			msg.Read = true
-			
+
 			// Update thread's HasUnread status
 			if inbox := inboxes[userID]; inbox != nil {
 				if thread := inbox.Threads[msg.ThreadID]; thread != nil {
@@ -1198,7 +1198,7 @@ func MarkAsRead(msgID, userID string) error {
 					thread.HasUnread = hasUnread
 				}
 			}
-			
+
 			return save()
 		}
 	}
@@ -1573,11 +1573,11 @@ func stripHTMLTags(s string) string {
 	s = strings.ReplaceAll(s, "</h1>", "\n")
 	s = strings.ReplaceAll(s, "</h2>", "\n")
 	s = strings.ReplaceAll(s, "</h3>", "\n")
-	
+
 	// Simple tag stripper - removes anything between < and >
 	var result strings.Builder
 	inTag := false
-	
+
 	for _, char := range s {
 		if char == '<' {
 			inTag = true
@@ -1591,7 +1591,7 @@ func stripHTMLTags(s string) string {
 			result.WriteRune(char)
 		}
 	}
-	
+
 	// Decode common HTML entities
 	text := result.String()
 	text = strings.ReplaceAll(text, "&nbsp;", " ")
@@ -1600,14 +1600,14 @@ func stripHTMLTags(s string) string {
 	text = strings.ReplaceAll(text, "&gt;", ">")
 	text = strings.ReplaceAll(text, "&quot;", "\"")
 	text = strings.ReplaceAll(text, "&#39;", "'")
-	
+
 	// Trim leading whitespace from each line to remove HTML indentation
 	lines := strings.Split(text, "\n")
 	for i, line := range lines {
 		lines[i] = strings.TrimLeft(line, " \t")
 	}
 	text = strings.Join(lines, "\n")
-	
+
 	return text
 }
 

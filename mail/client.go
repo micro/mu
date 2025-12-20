@@ -98,7 +98,7 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 
 	// Generate unique Message-ID for threading
 	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, GetConfiguredDomain())
-	
+
 	// Generate boundary for multipart
 	boundary := fmt.Sprintf("----=_Part_%d", time.Now().UnixNano())
 
@@ -124,7 +124,7 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 	msg.WriteString("MIME-Version: 1.0\r\n")
 	msg.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary))
 	msg.WriteString("\r\n")
-	
+
 	// Plain text part
 	msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
 	msg.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
@@ -134,7 +134,7 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 	bodyPlain = strings.ReplaceAll(bodyPlain, "\n", "\r\n")
 	msg.WriteString(bodyPlain)
 	msg.WriteString("\r\n\r\n")
-	
+
 	// HTML part
 	msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
 	msg.WriteString("Content-Type: text/html; charset=utf-8\r\n")
@@ -144,7 +144,7 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 	bodyHTML = strings.ReplaceAll(bodyHTML, "\n", "\r\n")
 	msg.WriteString(bodyHTML)
 	msg.WriteString("\r\n\r\n")
-	
+
 	// End boundary
 	msg.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
 

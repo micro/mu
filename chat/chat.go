@@ -76,19 +76,21 @@ var upgrader = websocket.Upgrader{
 // The last 20 messages are kept in memory for new joiners.
 // Client-side sessionStorage is used so participants see their conversation until they leave.
 type Room struct {
-	ID          string                      // e.g., "post_123", "news_456", "video_789"
-	Type        string                      // "post", "news", "video"
-	Title       string                      // Item title
-	Summary     string                      // Item summary/description
-	URL         string                      // Original item URL
-	Topic       string                      // News topic (e.g., "Dev", "World", etc.)
-	LastRefresh time.Time                   // Last time external content was refreshed
-	Messages    []RoomMessage               // Last 20 messages (in-memory only)
-	Clients     map[*websocket.Conn]*Client // Connected clients
-	Broadcast   chan RoomMessage            // Broadcast channel
-	Register    chan *Client                // Register client
-	Unregister  chan *Client                // Unregister client
-	mutex       sync.RWMutex
+	ID           string                      // e.g., "post_123", "news_456", "video_789"
+	Type         string                      // "post", "news", "video"
+	Title        string                      // Item title
+	Summary      string                      // Item summary/description
+	URL          string                      // Original item URL
+	Topic        string                      // News topic (e.g., "Dev", "World", etc.)
+	LastRefresh  time.Time                   // Last time external content was refreshed
+	LastActivity time.Time                   // Last time room had any activity (for cleanup)
+	Messages     []RoomMessage               // Last 20 messages (in-memory only)
+	Clients      map[*websocket.Conn]*Client // Connected clients
+	Broadcast    chan RoomMessage            // Broadcast channel
+	Register     chan *Client                // Register client
+	Unregister   chan *Client                // Unregister client
+	Shutdown     chan bool                   // Signal for graceful shutdown
+	mutex        sync.RWMutex
 }
 
 // RoomMessage represents a message in a chat room
@@ -135,13 +137,15 @@ func getOrCreateRoom(id string) *Room {
 
 	// Create room structure (outside any locks)
 	room := &Room{
-		ID:         id,
-		Type:       itemType,
-		Clients:    make(map[*websocket.Conn]*Client),
-		Broadcast:  make(chan RoomMessage, 256),
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		Messages:   make([]RoomMessage, 0, 20),
+		ID:           id,
+		Type:         itemType,
+		Clients:      make(map[*websocket.Conn]*Client),
+		Broadcast:    make(chan RoomMessage, 256),
+		Register:     make(chan *Client),
+		Unregister:   make(chan *Client),
+		Shutdown:     make(chan bool),
+		Messages:     make([]RoomMessage, 0, 20),
+		LastActivity: time.Now(),
 	}
 
 	// Fetch item details based on type (OUTSIDE roomsMutex to avoid deadlocks)
@@ -390,9 +394,21 @@ func (room *Room) broadcastUserList() {
 func (room *Room) run() {
 	for {
 		select {
+		case <-room.Shutdown:
+			// Graceful shutdown - close all client connections
+			room.mutex.Lock()
+			for conn := range room.Clients {
+				conn.Close()
+			}
+			room.Clients = make(map[*websocket.Conn]*Client)
+			room.mutex.Unlock()
+			app.Log("chat", "Room %s shut down", room.ID)
+			return
+
 		case client := <-room.Register:
 			room.mutex.Lock()
 			room.Clients[client.Conn] = client
+			room.LastActivity = time.Now()
 			room.mutex.Unlock()
 
 			// Broadcast updated user list
@@ -404,6 +420,7 @@ func (room *Room) run() {
 				delete(room.Clients, client.Conn)
 				client.Conn.Close()
 			}
+			room.LastActivity = time.Now()
 			room.mutex.Unlock()
 
 			// Broadcast updated user list
@@ -416,6 +433,7 @@ func (room *Room) run() {
 			if len(room.Messages) > 20 {
 				room.Messages = room.Messages[len(room.Messages)-20:]
 			}
+			room.LastActivity = time.Now()
 			room.mutex.Unlock()
 
 			// Broadcast to all clients
@@ -826,6 +844,7 @@ func Load() {
 	}()
 
 	go generateSummaries()
+	go cleanupIdleRooms()
 }
 
 func generateSummaries() {
@@ -1129,4 +1148,51 @@ func (a *llmAnalyzer) Analyze(promptText, question string) (string, error) {
 		Rag:      nil,
 	}
 	return askLLM(prompt)
+}
+
+// cleanupIdleRooms periodically removes idle chat rooms to prevent memory leaks
+func cleanupIdleRooms() {
+	ticker := time.NewTicker(15 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		now := time.Now()
+		idleThreshold := 30 * time.Minute
+
+		roomsMutex.Lock()
+		var toDelete []string
+
+		for roomID, room := range rooms {
+			room.mutex.RLock()
+			clientCount := len(room.Clients)
+			lastActivity := room.LastActivity
+			room.mutex.RUnlock()
+
+			// Remove room if it has no clients and has been idle for threshold
+			if clientCount == 0 && now.Sub(lastActivity) > idleThreshold {
+				toDelete = append(toDelete, roomID)
+			}
+		}
+
+		// Delete idle rooms
+		for _, roomID := range toDelete {
+			if room, exists := rooms[roomID]; exists {
+				// Signal room to shutdown
+				select {
+				case room.Shutdown <- true:
+				// Shutdown signal sent
+				default:
+					// Channel might be full or already shutting down, skip
+				}
+				delete(rooms, roomID)
+				app.Log("chat", "Cleaned up idle room: %s (total rooms: %d)", roomID, len(rooms))
+			}
+		}
+
+		roomsMutex.Unlock()
+
+		if len(toDelete) > 0 {
+			app.Log("chat", "Cleaned up %d idle rooms (remaining: %d)", len(toDelete), len(rooms))
+		}
+	}
 }

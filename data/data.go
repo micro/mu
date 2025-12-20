@@ -174,19 +174,30 @@ func LoadJSON(key string, val interface{}) error {
 // SIMPLE INDEXING & SEARCH FOR RAG
 // ============================================
 
+// IndexWork represents a work item for the indexing queue
+type IndexWork struct {
+	ID       string
+	Type     string
+	Title    string
+	Content  string
+	Metadata map[string]interface{}
+}
+
 var (
-	indexMutex         sync.RWMutex
-	index              = make(map[string]*IndexEntry)
-	embeddings         = make(map[string][]float64) // Stored separately from index
-	savePending        = false
-	saveMutex          sync.Mutex
-	embeddingCache     = make(map[string][]float64) // Cache query embeddings
-	embeddingCacheMu   sync.RWMutex
-	maxEmbeddingCache  = 100   // Maximum cached query embeddings
-	maxIndexEmbeddings = 10000 // Maximum index entries with embeddings
-	embeddingQueue     = make(chan string, 100)
-	embeddingEnabled   = false
-	embeddingMutex     sync.Mutex
+	indexMutex          sync.RWMutex
+	index               = make(map[string]*IndexEntry)
+	embeddings          = make(map[string][]float64) // Stored separately from index
+	savePending         = false
+	saveMutex           sync.Mutex
+	embeddingCache      = make(map[string][]float64) // Cache query embeddings
+	embeddingCacheMu    sync.RWMutex
+	maxEmbeddingCache   = 100   // Maximum cached query embeddings
+	maxIndexEmbeddings  = 10000 // Maximum index entries with embeddings
+	embeddingQueue      = make(chan string, 100)
+	embeddingEnabled    = false
+	embeddingMutex      sync.Mutex
+	indexWorkQueue      = make(chan IndexWork, 500) // Buffer up to 500 pending index operations
+	indexWorkersStarted = false
 )
 
 // IndexEntry represents a searchable piece of content
@@ -206,22 +217,46 @@ type SearchResult struct {
 	Score float64
 }
 
-// Index adds or updates an entry in the search index immediately
+// Index queues an entry to be added or updated in the search index
 func Index(id, entryType, title, content string, metadata map[string]interface{}) {
+	// Queue the work instead of processing immediately
+	select {
+	case indexWorkQueue <- IndexWork{
+		ID:       id,
+		Type:     entryType,
+		Title:    title,
+		Content:  content,
+		Metadata: metadata,
+	}:
+		// Work queued successfully
+	default:
+		// Queue full, process synchronously to avoid dropping
+		processIndexWork(IndexWork{
+			ID:       id,
+			Type:     entryType,
+			Title:    title,
+			Content:  content,
+			Metadata: metadata,
+		})
+	}
+}
+
+// processIndexWork does the actual indexing work
+func processIndexWork(work IndexWork) {
 	indexMutex.RLock()
-	existing, exists := index[id]
+	existing, exists := index[work.ID]
 	indexMutex.RUnlock()
 
 	// Skip if already exists with same title/content
 	if exists {
-		contentSame := existing.Title == title && existing.Content == content
+		contentSame := existing.Title == work.Title && existing.Content == work.Content
 
 		// If content is the same, skip entirely (no need to re-index)
 		if contentSame {
 			// Still update metadata if it changed (e.g., new comments)
-			if metadata != nil {
+			if work.Metadata != nil {
 				metadataChanged := false
-				for k, v := range metadata {
+				for k, v := range work.Metadata {
 					if existingVal, ok := existing.Metadata[k]; !ok || existingVal != v {
 						metadataChanged = true
 						break
@@ -229,7 +264,7 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 				}
 				if metadataChanged {
 					indexMutex.Lock()
-					existing.Metadata = metadata
+					existing.Metadata = work.Metadata
 					indexMutex.Unlock()
 					go saveIndex()
 				}
@@ -241,18 +276,18 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	}
 
 	entry := &IndexEntry{
-		ID:        id,
-		Type:      entryType,
-		Title:     title,
-		Content:   content,
-		Metadata:  metadata,
+		ID:        work.ID,
+		Type:      work.Type,
+		Title:     work.Title,
+		Content:   work.Content,
+		Metadata:  work.Metadata,
 		IndexedAt: time.Now(),
 	}
 
 	// Preserve existing embedding if content hasn't changed
-	if exists && existing.Title == title && existing.Content == content {
+	if exists && existing.Title == work.Title && existing.Content == work.Content {
 		indexMutex.RLock()
-		if emb, hasEmb := embeddings[id]; hasEmb && len(emb) > 0 {
+		if emb, hasEmb := embeddings[work.ID]; hasEmb && len(emb) > 0 {
 			// Keep the existing embedding
 			indexMutex.RUnlock()
 		} else {
@@ -261,26 +296,26 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	}
 
 	indexMutex.Lock()
-	index[id] = entry
+	index[work.ID] = entry
 	indexMutex.Unlock()
 
 	// Publish event that indexing is complete
 	Publish(Event{
 		Type: EventIndexComplete,
 		Data: map[string]interface{}{
-			"id":   id,
-			"type": entryType,
+			"id":   work.ID,
+			"type": work.Type,
 		},
 	})
 
 	// Only queue for embedding if we don't already have one
 	indexMutex.RLock()
-	_, hasEmbedding := embeddings[id]
+	_, hasEmbedding := embeddings[work.ID]
 	indexMutex.RUnlock()
 
 	if !hasEmbedding {
 		select {
-		case embeddingQueue <- id:
+		case embeddingQueue <- work.ID:
 		default:
 			// Queue full, skip
 		}
@@ -290,7 +325,7 @@ func Index(id, entryType, title, content string, metadata map[string]interface{}
 	go saveIndex()
 }
 
-// StartIndexing enables background embedding generation
+// StartIndexing enables background embedding generation and index workers
 func StartIndexing() {
 	embeddingMutex.Lock()
 	if embeddingEnabled {
@@ -302,6 +337,23 @@ func StartIndexing() {
 
 	fmt.Println("[data] Starting background embedding worker")
 	go embeddingWorker()
+
+	// Start index workers if not already started
+	if !indexWorkersStarted {
+		indexWorkersStarted = true
+		numWorkers := 4 // Use 4 workers to process index queue
+		fmt.Printf("[data] Starting %d index workers\n", numWorkers)
+		for i := 0; i < numWorkers; i++ {
+			go indexWorker(i)
+		}
+	}
+}
+
+// indexWorker processes items from the index work queue
+func indexWorker(id int) {
+	for work := range indexWorkQueue {
+		processIndexWork(work)
+	}
 }
 
 // embeddingWorker processes the embedding queue with rate limiting
