@@ -1,6 +1,7 @@
 package news
 
 import (
+	"bytes"
 	"crypto/md5"
 	"embed"
 	"encoding/json"
@@ -37,6 +38,16 @@ var mutex sync.RWMutex
 var feeds = map[string]string{}
 
 var status = map[string]*Feed{}
+
+// Semaphore to limit concurrent metadata fetches (reduces memory spike on startup)
+var metadataFetchSem = make(chan struct{}, 10) // Allow max 10 concurrent fetches
+
+// Buffer pool for reducing allocations in HTML building
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
 
 // cached news html
 var html string
@@ -222,8 +233,8 @@ func getPrices() map[string]float64 {
 		app.Log("news", "Error getting prices: %v", err)
 		return nil
 	}
-	b, _ := ioutil.ReadAll(rsp.Body)
 	defer rsp.Body.Close()
+	b, _ := ioutil.ReadAll(rsp.Body)
 	var res map[string]interface{}
 	json.Unmarshal(b, &res)
 	if res == nil {
@@ -610,12 +621,24 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 		}
 	}
 
+	// Acquire semaphore to limit concurrent fetches (prevents memory spike)
+	metadataFetchSem <- struct{}{}
+	defer func() { <-metadataFetchSem }()
+
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, false, err
 	}
 
-	d, err := goquery.NewDocument(u.String())
+	// Fetch HTML with proper resource cleanup
+	resp, err := http.Get(u.String())
+	if err != nil {
+		return nil, false, err
+	}
+	defer resp.Body.Close()
+
+	// Parse HTML
+	d, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
 		return nil, false, err
 	}
@@ -951,9 +974,9 @@ func getReminder() {
 		go getReminder()
 		return
 	}
+	defer resp.Body.Close()
 
 	b, _ := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
 
 	var val map[string]interface{}
 
@@ -1328,28 +1351,31 @@ func parseFeed() {
 		cachedPrices = newPrices
 		mutex.Unlock()
 
-		// Keep legacy markets HTML format for /markets page
-		info := []byte(`<div class="item"><div id="tickers">`)
+		// Keep legacy markets HTML format for /markets page - use buffer pool
+		buf := bufferPool.Get().(*bytes.Buffer)
+		buf.Reset()
+		defer bufferPool.Put(buf)
+
+		buf.WriteString(`<div class="item"><div id="tickers">`)
 
 		for _, ticker := range tickers {
 			price := newPrices[ticker]
-			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
-			info = append(info, []byte(line)...)
+			fmt.Fprintf(buf, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 		}
 
-		info = append(info, []byte(`</div>`)...)
-		marketsHtml = string(info)
+		buf.WriteString(`</div>`)
+		marketsHtml = buf.String()
 
-		info = []byte(`<div id="futures">`)
+		buf.Reset()
+		buf.WriteString(`<div id="futures">`)
 
 		for _, ticker := range futuresKeys {
 			price := newPrices[ticker]
-			line := fmt.Sprintf(`<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
-			info = append(info, []byte(line)...)
+			fmt.Fprintf(buf, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
 		}
 
-		info = append(info, []byte(`</div></div>`)...)
-		marketsHtml += string(info)
+		buf.WriteString(`</div></div>`)
+		marketsHtml += buf.String()
 
 		// Index all prices for search/RAG
 		app.Log("news", "Indexing %d market prices", len(newPrices))
@@ -1369,15 +1395,19 @@ func parseFeed() {
 		}
 	}
 
-	// create the headlines
+	// create the headlines - use buffer pool
 	sort.Slice(headlines, func(i, j int) bool {
 		return headlines[i].PostedAt.After(headlines[j].PostedAt)
 	})
 
-	headline := []byte(`<div class=section>`)
+	buf := bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufferPool.Put(buf)
+
+	buf.WriteString(`<div class=section>`)
 
 	for _, h := range headlines {
-		val := fmt.Sprintf(`
+		fmt.Fprintf(buf, `
 			<div class="headline">
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
 			   %s
@@ -1388,13 +1418,13 @@ func parseFeed() {
 			`, h.URL, getCategoryBadge(h), h.Title, h.Description, getSummary(h))
 
 		// close val
-		val += `</div>`
-		headline = append(headline, []byte(val)...)
+		buf.WriteString(`</div>`)
 	}
 
-	headline = append(headline, []byte(`</div>`)...)
+	buf.WriteString(`</div>`)
 
 	// set the headline
+	headline := buf.Bytes()
 	content = append(headline, content...)
 
 	mutex.Lock()
