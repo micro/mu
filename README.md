@@ -170,7 +170,7 @@ Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this.
 
 ## Membership 
 
-You can sponsor the project if its of interest using [GitHub Sponsors](https://github.com/sponsors/asim) or membership is available via [Patreon](https://patreon.com/muxyz) to support ongoing development and hosting costs. Members get access to premium features like Mail, early access to new features, and a voice in the project's direction. Most features remain free for all users.
+You can sponsor the project using [GitHub Sponsors](https://github.com/sponsors/asim) or membership is available via [Patreon](https://patreon.com/muxyz) to support ongoing development and hosting costs. Members get access to premium features like Mail, early access to new features, and a voice in the project's direction. Most features remain free for all users.
 
 ## License
 
