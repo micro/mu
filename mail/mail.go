@@ -1619,8 +1619,8 @@ func renderEmailBody(body string, isAttachment bool) string {
 
 	// Check if body is HTML (from external emails)
 	if looksLikeHTML(body) {
-		// Return HTML as-is to display it properly
-		return body
+		// Extract body content and clean up email-specific HTML
+		return extractHTMLBody(body)
 	}
 
 	// Check if body looks like markdown
@@ -1642,6 +1642,49 @@ func renderEmailBody(body string, isAttachment bool) string {
 
 	// Otherwise just linkify URLs
 	return linkifyURLs(body)
+}
+
+// extractHTMLBody extracts and cleans content from HTML email
+func extractHTMLBody(htmlContent string) string {
+	// Remove DOCTYPE and XML declarations
+	htmlContent = strings.ReplaceAll(htmlContent, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>", "")
+	
+	// Remove Outlook/MSO conditional comments
+	for strings.Contains(htmlContent, "<!--[if") {
+		start := strings.Index(htmlContent, "<!--[if")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(htmlContent[start:], "<![endif]-->")
+		if end == -1 {
+			break
+		}
+		htmlContent = htmlContent[:start] + htmlContent[start+end+12:]
+	}
+	
+	// Try to extract just the body content
+	bodyStart := strings.Index(strings.ToLower(htmlContent), "<body")
+	bodyEnd := strings.Index(strings.ToLower(htmlContent), "</body>")
+	
+	if bodyStart != -1 && bodyEnd != -1 {
+		// Find the end of the opening body tag
+		bodyTagEnd := strings.Index(htmlContent[bodyStart:], ">")
+		if bodyTagEnd != -1 {
+			bodyStart = bodyStart + bodyTagEnd + 1
+			htmlContent = htmlContent[bodyStart:bodyEnd]
+		}
+	}
+	
+	// If extraction failed or no body tag, strip HTML and show as plain text
+	if bodyStart == -1 || bodyEnd == -1 || strings.TrimSpace(htmlContent) == "" {
+		plainText := stripHTMLTags(htmlContent)
+		return linkifyURLs(plainText)
+	}
+	
+	// Clean up the extracted HTML content
+	htmlContent = strings.TrimSpace(htmlContent)
+	
+	return htmlContent
 }
 
 // looksLikeHTML detects if content is HTML (from external emails)
