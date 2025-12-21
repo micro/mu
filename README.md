@@ -19,6 +19,12 @@ A personal app platform that provides services without ads, algorithms, or explo
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
+### Gated Features
+
+Mail is a gated feature for members and admins only. You can enable it in the admin area if you are self hosting by making the user a member or admin.
+
+Other features that have potential to be spammed or trigger runaway costs may also be gated in future. We'll go step by step.
+
 ## Motivation
 
 I'm tired of the big tech US led social and app platforms. We can't control any of it. Lots of addictive tendencies. It seems easier to turn them into API and data providers and rebuild the UX on top. That includes chat, news, mail, video.
