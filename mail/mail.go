@@ -1646,15 +1646,21 @@ func renderEmailBody(body string, isAttachment bool) string {
 }
 
 // extractHTMLBody extracts and cleans content from HTML email
-funcDecode quoted-printable encoding if present (3D = equals sign, etc.)
-	if strings.Contains(htmlContent, "3D") || strings.Contains(htmlContent, "=\n") {
+func extractHTMLBody(htmlContent string) string {
+	// Detect and decode quoted-printable encoding
+	// Signs: contains =3D (encoded =), =\n (soft line breaks), or has many = signs at line ends
+	isQuotedPrintable := strings.Contains(htmlContent, "=3D") ||
+		strings.Contains(htmlContent, "=\n") ||
+		strings.Contains(htmlContent, "=\r\n") ||
+		looksLikeQuotedPrintable(htmlContent)
+	
+	if isQuotedPrintable {
 		reader := quotedprintable.NewReader(strings.NewReader(htmlContent))
 		if decoded, err := io.ReadAll(reader); err == nil {
 			htmlContent = string(decoded)
 		}
 	}
 	
-	//  extractHTMLBody(htmlContent string) string {
 	// Remove DOCTYPE and XML declarations
 	htmlContent = strings.ReplaceAll(htmlContent, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>", "")
 	
@@ -1694,6 +1700,23 @@ funcDecode quoted-printable encoding if present (3D = equals sign, etc.)
 	htmlContent = strings.TrimSpace(htmlContent)
 	
 	return htmlContent
+}
+
+// looksLikeQuotedPrintable detects if content appears to be quoted-printable encoded
+func looksLikeQuotedPrintable(text string) bool {
+	// Count lines ending with = (soft line breaks)
+	lines := strings.Split(text, "\n")
+	softBreaks := 0
+	
+	for _, line := range lines {
+		line = strings.TrimRight(line, "\r")
+		if strings.HasSuffix(line, "=") {
+			softBreaks++
+		}
+	}
+	
+	// If more than 5 lines end with =, it's likely quoted-printable
+	return softBreaks > 5
 }
 
 // looksLikeHTML detects if content is HTML (from external emails)
