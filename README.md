@@ -56,7 +56,7 @@ Basic concepts. The app contains **cards** displayed on the home screen. These a
 
 There are built in cards and then the idea would be that you could develop or include additional cards or micro apps through configuration or via some basic gist like code editor. Essentially creating a marketplace.
 
-## Hosted Version
+## Free Hosting
 
 **Mu is free to use** at [mu.xyz](https://mu.xyz). Create an account and start using it immediately - no credit card required.
 
