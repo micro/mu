@@ -1677,26 +1677,10 @@ func extractHTMLBody(htmlContent string) string {
 	// Clean up the HTML content
 	htmlContent = strings.TrimSpace(htmlContent)
 	
-	// Add CSS to constrain images to reasonable viewport width while preserving email layout
-	// Insert the style tag right after <head> or before </head> if it exists
-	styleTag := `<style>img { max-width: 800px !important; height: auto !important; }</style>`
-	
-	if strings.Contains(strings.ToLower(htmlContent), "<head") {
-		// Find </head> and insert before it
-		headEndIdx := strings.Index(strings.ToLower(htmlContent), "</head>")
-		if headEndIdx != -1 {
-			htmlContent = htmlContent[:headEndIdx] + styleTag + htmlContent[headEndIdx:]
-		}
-	} else if strings.Contains(strings.ToLower(htmlContent), "<body") {
-		// No head tag, insert before body
-		bodyIdx := strings.Index(strings.ToLower(htmlContent), "<body")
-		if bodyIdx != -1 {
-			htmlContent = htmlContent[:bodyIdx] + styleTag + htmlContent[bodyIdx:]
-		}
-	} else {
-		// No html structure, just wrap it
-		htmlContent = styleTag + htmlContent
-	}
+	// Wrap the entire email in a constrained container with CSS to fix table/image sizing
+	// This prevents emails from being too wide while preserving their internal styling
+	wrapper := `<div style="max-width: 800px; overflow-x: auto;"><style>img { max-width: 100%% !important; height: auto !important; } table { max-width: 100%% !important; }</style>%s</div>`
+	htmlContent = fmt.Sprintf(wrapper, htmlContent)
 	
 	return htmlContent
 }

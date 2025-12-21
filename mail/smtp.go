@@ -575,7 +575,7 @@ func parseMultipart(body io.Reader, boundary string) string {
 		}
 	}
 
-	// Return text/html if available (already formatted), otherwise text/plain
+	// Prefer HTML for rich content (images, formatting), fallback to plain text
 	if textHTML != "" {
 		return strings.TrimSpace(textHTML)
 	}
