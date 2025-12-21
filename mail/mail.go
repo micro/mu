@@ -1699,9 +1699,8 @@ func extractHTMLBody(htmlContent string) string {
 	// Clean up the extracted HTML content
 	htmlContent = strings.TrimSpace(htmlContent)
 	
-	// Wrap in a constrained container with email-specific styling
-	// Reset excessive margins/padding that email clients add
-	htmlContent = fmt.Sprintf(`<div style="max-width: 600px; overflow-x: auto; word-wrap: break-word;"><style scoped>p { margin: 0.5em 0; } table { max-width: 100%%; } img { max-width: 100%%; height: auto; }</style>%s</div>`, htmlContent)
+	// Add CSS to constrain images and tables, but let email use its own width styling
+	htmlContent = fmt.Sprintf(`<div style="overflow-x: auto; word-wrap: break-word;"><style scoped>img { max-width: 100%%; height: auto; } table { max-width: 100%%; }</style>%s</div>`, htmlContent)
 	
 	return htmlContent
 }
@@ -1756,7 +1755,7 @@ func looksLikeHTML(text string) bool {
 	return false
 }
 
-// looksLikeMarkdown detects if text contains markdown formatting
+// linkifyURLs converts URLs in text to clickable links and preserves line breaks
 func linkifyURLs(text string) string {
 	result := ""
 	lastIndex := 0
@@ -1765,7 +1764,7 @@ func linkifyURLs(text string) string {
 		// Check for http:// or https://
 		if strings.HasPrefix(text[i:], "http://") || strings.HasPrefix(text[i:], "https://") || strings.HasPrefix(text[i:], "www.") {
 			// Add text before the URL
-			result += text[lastIndex:i]
+			result += html.EscapeString(text[lastIndex:i])
 
 			// Find the end of the URL
 			end := i
@@ -1781,7 +1780,7 @@ func linkifyURLs(text string) string {
 			}
 
 			// Create clickable link
-			result += fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">%s</a>`, href, url)
+			result += fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">%s</a>`, href, html.EscapeString(url))
 
 			lastIndex = end
 			i = end - 1 // -1 because loop will increment
@@ -1789,7 +1788,12 @@ func linkifyURLs(text string) string {
 	}
 
 	// Add remaining text
-	result += text[lastIndex:]
+	result += html.EscapeString(text[lastIndex:])
+	
+	// Convert newlines to <br> tags for proper display
+	result = strings.ReplaceAll(result, "\r\n", "<br>")
+	result = strings.ReplaceAll(result, "\n", "<br>")
+	
 	return result
 }
 
