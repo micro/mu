@@ -1699,8 +1699,9 @@ func extractHTMLBody(htmlContent string) string {
 	// Clean up the extracted HTML content
 	htmlContent = strings.TrimSpace(htmlContent)
 	
-	// Add CSS to constrain images and tables, but let email use its own width styling
-	htmlContent = fmt.Sprintf(`<div style="overflow-x: auto; word-wrap: break-word;"><style scoped>img { max-width: 100%%; height: auto; } table { max-width: 100%%; }</style>%s</div>`, htmlContent)
+	// Add CSS to constrain images with !important to override email inline styles
+	// Also strip out any <style> tags from the email to prevent width constraints
+	htmlContent = fmt.Sprintf(`<div style="overflow-x: auto; word-wrap: break-word;"><style>img { max-width: 100%% !important; height: auto !important; } table { max-width: 100%% !important; }</style>%s</div>`, htmlContent)
 	
 	return htmlContent
 }
