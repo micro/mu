@@ -60,8 +60,6 @@ There are built in cards and then the idea would be that you could develop or in
 
 **Mu is free to use** at [mu.xyz](https://mu.xyz). Create an account and start using it immediately - no credit card required.
 
-Optional membership is available to support ongoing development and hosting costs. Members get access to premium features like Mail, early access to new features, and a voice in the project's direction. Most features remain free for all users.
-
 ## Self Hosting
 
 Ensure you have [Go](https://go.dev/doc/install) installed
@@ -170,9 +168,9 @@ Additional documentation is available in the [docs](docs/) folder:
 
 Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this.
 
-## Sponsor
+## Membership 
 
-You can sponsor the project if its of interest using [GitHub Sponsors](https://github.com/sponsors/asim)
+You can sponsor the project if its of interest using [GitHub Sponsors](https://github.com/sponsors/asim) or membership is available via [Patreon](https://patreon.com/muxyz) to support ongoing development and hosting costs. Members get access to premium features like Mail, early access to new features, and a voice in the project's direction. Most features remain free for all users.
 
 ## License
 
