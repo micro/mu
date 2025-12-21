@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"mime/quotedprintable"
 	"net/http"
 	"os"
 	"sort"
@@ -1645,7 +1646,15 @@ func renderEmailBody(body string, isAttachment bool) string {
 }
 
 // extractHTMLBody extracts and cleans content from HTML email
-func extractHTMLBody(htmlContent string) string {
+funcDecode quoted-printable encoding if present (3D = equals sign, etc.)
+	if strings.Contains(htmlContent, "3D") || strings.Contains(htmlContent, "=\n") {
+		reader := quotedprintable.NewReader(strings.NewReader(htmlContent))
+		if decoded, err := io.ReadAll(reader); err == nil {
+			htmlContent = string(decoded)
+		}
+	}
+	
+	//  extractHTMLBody(htmlContent string) string {
 	// Remove DOCTYPE and XML declarations
 	htmlContent = strings.ReplaceAll(htmlContent, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>", "")
 	
