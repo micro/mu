@@ -1392,7 +1392,7 @@ body:has(#messages) #content {
 /* Desktop: account for sidebar */
 @media only screen and (min-width: 901px) {
   #nav-container ~ #content {
-    padding-left: 180px; /* Account for fixed sidebar */
+    padding-left: 200px; /* Account for fixed sidebar */
   }
 }
 
