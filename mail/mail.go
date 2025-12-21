@@ -1661,9 +1661,6 @@ func extractHTMLBody(htmlContent string) string {
 		}
 	}
 	
-	// Remove DOCTYPE and XML declarations
-	htmlContent = strings.ReplaceAll(htmlContent, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>", "")
-	
 	// Remove Outlook/MSO conditional comments
 	for strings.Contains(htmlContent, "<!--[if") {
 		start := strings.Index(htmlContent, "<!--[if")
@@ -1677,31 +1674,29 @@ func extractHTMLBody(htmlContent string) string {
 		htmlContent = htmlContent[:start] + htmlContent[start+end+12:]
 	}
 	
-	// Try to extract just the body content
-	bodyStart := strings.Index(strings.ToLower(htmlContent), "<body")
-	bodyEnd := strings.Index(strings.ToLower(htmlContent), "</body>")
-	
-	if bodyStart != -1 && bodyEnd != -1 {
-		// Find the end of the opening body tag
-		bodyTagEnd := strings.Index(htmlContent[bodyStart:], ">")
-		if bodyTagEnd != -1 {
-			bodyStart = bodyStart + bodyTagEnd + 1
-			htmlContent = htmlContent[bodyStart:bodyEnd]
-		}
-	}
-	
-	// If extraction failed or no body tag, strip HTML and show as plain text
-	if bodyStart == -1 || bodyEnd == -1 || strings.TrimSpace(htmlContent) == "" {
-		plainText := stripHTMLTags(htmlContent)
-		return linkifyURLs(plainText)
-	}
-	
-	// Clean up the extracted HTML content
+	// Clean up the HTML content
 	htmlContent = strings.TrimSpace(htmlContent)
 	
-	// Add CSS to constrain images with !important to override email inline styles
-	// Also strip out any <style> tags from the email to prevent width constraints
-	htmlContent = fmt.Sprintf(`<div style="overflow-x: auto; word-wrap: break-word;"><style>img { max-width: 100%% !important; height: auto !important; } table { max-width: 100%% !important; }</style>%s</div>`, htmlContent)
+	// Add CSS to constrain images to reasonable viewport width while preserving email layout
+	// Insert the style tag right after <head> or before </head> if it exists
+	styleTag := `<style>img { max-width: 800px !important; height: auto !important; }</style>`
+	
+	if strings.Contains(strings.ToLower(htmlContent), "<head") {
+		// Find </head> and insert before it
+		headEndIdx := strings.Index(strings.ToLower(htmlContent), "</head>")
+		if headEndIdx != -1 {
+			htmlContent = htmlContent[:headEndIdx] + styleTag + htmlContent[headEndIdx:]
+		}
+	} else if strings.Contains(strings.ToLower(htmlContent), "<body") {
+		// No head tag, insert before body
+		bodyIdx := strings.Index(strings.ToLower(htmlContent), "<body")
+		if bodyIdx != -1 {
+			htmlContent = htmlContent[:bodyIdx] + styleTag + htmlContent[bodyIdx:]
+		}
+	} else {
+		// No html structure, just wrap it
+		htmlContent = styleTag + htmlContent
+	}
 	
 	return htmlContent
 }
