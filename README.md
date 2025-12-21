@@ -60,6 +60,10 @@ There are built in cards and then the idea would be that you could develop or in
 
 **Mu is free to use** at [mu.xyz](https://mu.xyz). Create an account and start using it immediately - no credit card required.
 
+## Paid Hosting
+
+Contact asim@mu.xyz or file an issue to discuss custom hosting.
+
 ## Self Hosting
 
 Ensure you have [Go](https://go.dev/doc/install) installed
