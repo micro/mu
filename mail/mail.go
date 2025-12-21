@@ -1661,7 +1661,7 @@ func extractHTMLBody(htmlContent string) string {
 		}
 	}
 	
-	// Remove Outlook/MSO conditional comments
+	// Remove Outlook/MSO conditional comments (they break rendering)
 	for strings.Contains(htmlContent, "<!--[if") {
 		start := strings.Index(htmlContent, "<!--[if")
 		if start == -1 {
@@ -1674,15 +1674,8 @@ func extractHTMLBody(htmlContent string) string {
 		htmlContent = htmlContent[:start] + htmlContent[start+end+12:]
 	}
 	
-	// Clean up the HTML content
-	htmlContent = strings.TrimSpace(htmlContent)
-	
-	// Wrap the entire email in a constrained container with CSS to fix table/image sizing
-	// This prevents emails from being too wide while preserving their internal styling
-	wrapper := `<div style="max-width: 800px; overflow-x: auto;"><style>img { max-width: 100%% !important; height: auto !important; } table { max-width: 100%% !important; }</style>%s</div>`
-	htmlContent = fmt.Sprintf(wrapper, htmlContent)
-	
-	return htmlContent
+	// Return the HTML as-is - let the email's own styling work
+	return strings.TrimSpace(htmlContent)
 }
 
 // looksLikeQuotedPrintable detects if content appears to be quoted-printable encoded
