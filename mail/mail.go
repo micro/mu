@@ -1617,6 +1617,12 @@ func renderEmailBody(body string, isAttachment bool) string {
 		return body
 	}
 
+	// Check if body is HTML (from external emails)
+	if looksLikeHTML(body) {
+		// Return HTML as-is to display it properly
+		return body
+	}
+
 	// Check if body looks like markdown
 	if looksLikeMarkdown(body) {
 		// Render markdown to HTML
@@ -1636,6 +1642,39 @@ func renderEmailBody(body string, isAttachment bool) string {
 
 	// Otherwise just linkify URLs
 	return linkifyURLs(body)
+}
+
+// looksLikeHTML detects if content is HTML (from external emails)
+func looksLikeHTML(text string) bool {
+	text = strings.TrimSpace(text)
+	
+	// Check for common HTML indicators
+	htmlIndicators := []string{
+		"<!DOCTYPE html",
+		"<!doctype html",
+		"<html",
+		"<HTML",
+	}
+	
+	for _, indicator := range htmlIndicators {
+		if strings.HasPrefix(strings.ToLower(text), strings.ToLower(indicator)) {
+			return true
+		}
+	}
+	
+	// Check if it starts with common HTML tags
+	if strings.HasPrefix(text, "<") {
+		// Look for typical HTML structure tags
+		htmlTags := []string{"<html", "<head", "<body", "<div", "<p", "<table", "<span"}
+		textLower := strings.ToLower(text)
+		for _, tag := range htmlTags {
+			if strings.HasPrefix(textLower, tag) {
+				return true
+			}
+		}
+	}
+	
+	return false
 }
 
 // looksLikeMarkdown detects if text contains markdown formatting
