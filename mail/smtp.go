@@ -8,6 +8,7 @@ import (
 	"log"
 	"mime"
 	"mime/multipart"
+	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"net/smtp"
@@ -385,17 +386,26 @@ func (s *Session) Data(r io.Reader) error {
 			return err
 		}
 
-		// Check if body is base64 encoded
+		// Decode based on transfer encoding
 		transferEncoding := msg.Header.Get("Content-Transfer-Encoding")
 		if strings.ToLower(transferEncoding) == "base64" {
-			// Body is already base64 - keep it that way for storage
-			body = string(bodyBytes)
-			app.Log("mail", "Keeping base64-encoded body as-is")
-		} else if isValidUTF8Text(bodyBytes) {
-			// Valid text content - store as-is
+			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(bodyBytes))); err == nil {
+				bodyBytes = decoded
+				app.Log("mail", "Decoded base64 body (%d bytes)", len(bodyBytes))
+			}
+		} else if strings.ToLower(transferEncoding) == "quoted-printable" {
+			reader := quotedprintable.NewReader(bytes.NewReader(bodyBytes))
+			if decoded, err := io.ReadAll(reader); err == nil {
+				bodyBytes = decoded
+				app.Log("mail", "Decoded quoted-printable body (%d bytes)", len(bodyBytes))
+			}
+		}
+
+		// Store the decoded content
+		if isValidUTF8Text(bodyBytes) {
 			body = string(bodyBytes)
 		} else {
-			// Binary content (attachments, etc) - base64 encode for safe storage
+			// Binary content - base64 encode for safe storage
 			body = base64.StdEncoding.EncodeToString(bodyBytes)
 			app.Log("mail", "Base64 encoded binary body for safe storage (%d bytes)", len(bodyBytes))
 		}
@@ -538,9 +548,14 @@ func parseMultipart(body io.Reader, boundary string) string {
 			continue
 		}
 
-		// Decode if base64 encoded
+		// Decode based on transfer encoding
 		if strings.ToLower(transferEncoding) == "base64" {
 			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(partBody))); err == nil {
+				partBody = decoded
+			}
+		} else if strings.ToLower(transferEncoding) == "quoted-printable" {
+			reader := quotedprintable.NewReader(bytes.NewReader(partBody))
+			if decoded, err := io.ReadAll(reader); err == nil {
 				partBody = decoded
 			}
 		}
