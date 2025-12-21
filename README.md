@@ -21,7 +21,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 
 ## Motivation
 
-I'm a bit tired of the big tech US centric led social and app platforms. I can't control any of it. Lots of addictive tendencies. Seems easier to turn them into API and data providers and rebuild the UX on top. That includes chat, news, mail, video.
+I'm tired of the big tech US centric led social and app platforms. We can't control any of it. Lots of addictive tendencies. It seems easier to turn them into API and data providers and rebuild the UX on top. That includes chat, news, mail, video.
 
 ## Roadmap
 
