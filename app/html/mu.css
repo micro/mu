@@ -1391,12 +1391,8 @@ body:has(#messages) #content {
    ======================================== */
 /* Desktop: account for sidebar */
 @media only screen and (min-width: 901px) {
-  body {
+  #nav-container ~ #content {
     padding-left: 180px; /* Account for fixed sidebar */
-  }
-  
-  body.index-page {
-    padding-left: 0; /* Index page doesn't have a sidebar */
   }
 }
 
@@ -1404,7 +1400,6 @@ body:has(#messages) #content {
 @media only screen and (max-width: 900px) {
   body {
     overflow-x: hidden;
-    padding-left: 0; /* Remove sidebar padding */
   }
   
   #content {
