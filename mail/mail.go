@@ -1699,6 +1699,10 @@ func extractHTMLBody(htmlContent string) string {
 	// Clean up the extracted HTML content
 	htmlContent = strings.TrimSpace(htmlContent)
 	
+	// Wrap in a constrained container with email-specific styling
+	// Reset excessive margins/padding that email clients add
+	htmlContent = fmt.Sprintf(`<div style="max-width: 600px; overflow-x: auto; word-wrap: break-word;"><style scoped>p { margin: 0.5em 0; } table { max-width: 100%%; } img { max-width: 100%%; height: auto; }</style>%s</div>`, htmlContent)
+	
 	return htmlContent
 }
 
