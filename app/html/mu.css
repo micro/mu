@@ -1394,6 +1394,10 @@ body:has(#messages) #content {
   body {
     padding-left: 180px; /* Account for fixed sidebar */
   }
+  
+  body.index-page {
+    padding-left: 0; /* Index page doesn't have a sidebar */
+  }
 }
 
 /* Tablet/Mobile: move nav to bottom */
