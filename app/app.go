@@ -259,9 +259,13 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 		// set a new token
 		http.SetCookie(w, &http.Cookie{
-			Name:   "session",
-			Value:  sess.Token,
-			Secure: secure,
+			Name:     "session",
+			Value:    sess.Token,
+			Path:     "/",
+			MaxAge:   2592000,
+			Secure:   secure,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
 		})
 
 		// Check for pending membership activation
