@@ -601,22 +601,22 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 		paymentSection := ""
 		if membershipURL != "" {
 			paymentSection = fmt.Sprintf(`<h3>Become a Member</h3>
-		<p><a href="%s" target="_blank">Payment Link →</a></p>`, membershipURL)
+		<p><a href="%s" target="_blank">Join Link →</a></p>`, membershipURL)
 		}
 
 		supportSection := ""
 		supportURL := os.Getenv("SUPPORT_URL")
 		if supportURL != "" {
-			supportSection = fmt.Sprintf(`<h3>Join the Community</h3>
-		<p>Connect with other members, share feedback, and participate in discussions:</p>
-		<p><a href="%s" target="_blank">Join Community →</a></p>`, supportURL)
+			supportSection = fmt.Sprintf(`<h3>Support or Feedback</h3>
+		<p>Having issues or want to provide feedback</p>
+		<p><a href="%s" target="_blank">Contact us →</a></p>`, supportURL)
 		}
 
 		donationSection := ""
 		donationURL := os.Getenv("DONATION_URL")
 		if donationURL != "" {
-			donationSection = `<h3>Support Through Donation</h3>
-		<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`
+			donationSection = `<h3>Donate</h3>
+		<p>Make a one-time donation <a href="/donate">Make a donation</a> to support Mu.</p>`
 		}
 
 		content := fmt.Sprintf(`<h2>Benefits</h2>
@@ -660,22 +660,22 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	paymentSection := ""
 	if !acc.Member && membershipURL != "" {
 		paymentSection = fmt.Sprintf(`<h3>Become a Member</h3>
-				<p><a href="%s" target="_blank">Payment Link →</a></p>`, membershipURL)
+				<p><a href="%s" target="_blank">Join Link →</a></p>`, membershipURL)
 	}
 
 	supportSection := ""
 	supportURL := os.Getenv("SUPPORT_URL")
 	if supportURL != "" {
-		supportSection = fmt.Sprintf(`<h3>Join the Community</h3>
-		<p>Connect with other members, share feedback, and participate in discussions:</p>
-		<p><a href="%s" target="_blank">Join Community →</a></p>`, supportURL)
+		supportSection = fmt.Sprintf(`<h3>Support or Feedback</h3>
+		<p>Having issues or want to provide feedback</p>
+		<p><a href="%s" target="_blank">Contact us →</a></p>`, supportURL)
 	}
 
 	donationSection := ""
 	donationURL := os.Getenv("DONATION_URL")
 	if donationURL != "" {
-		donationSection = `<h3>Support Through Donation</h3>
-		<p>Prefer to make a one-time donation? <a href="/donate">Make a donation</a> to support Mu.</p>`
+		donationSection = `<h3>Donate</h3>
+		<p>Make a one-time donation <a href="/donate">Make a donation</a> to support Mu.</p>`
 	}
 
 	content := fmt.Sprintf(`%s
