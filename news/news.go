@@ -1958,6 +1958,16 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
   </a>
   <div class="summary">%s</div>
 </div>`, entry.ID, url, title, description, categoryBadge, summary)
+		}
+
+		searchResults = append(searchResults, []byte(article)...)
+	}
+
+	html := app.RenderHTMLForRequest("News", query, string(searchResults), r)
+	w.Write([]byte(html))
+}
+
+// GetAllPrices returns all cached prices
 func GetAllPrices() map[string]float64 {
 	mutex.RLock()
 	defer mutex.RUnlock()
