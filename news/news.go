@@ -1962,16 +1962,10 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 
 		searchResults = append(searchResults, []byte(article)...)
 	}
+	}
 
 	html := app.RenderHTMLForRequest("News", query, string(searchResults), r)
 	w.Write([]byte(html))
-}
-
-// GetAllPrices returns all cached prices
-func GetAllPrices() map[string]float64 {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
 	// Return a copy to avoid concurrent map access
 	prices := make(map[string]float64)
 	if cachedPrices != nil {
