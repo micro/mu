@@ -1965,6 +1965,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 
 	html := app.RenderHTMLForRequest("News", query, string(searchResults), r)
 	w.Write([]byte(html))
+}
 
 // GetAllPrices returns all cached prices
 func GetAllPrices() map[string]float64 {
