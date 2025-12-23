@@ -741,7 +741,7 @@ body:has(#messages) #content {
    BLOG PAGE
    ======================================== */
 #blog {
-  max-width: 750px;
+  max-width: 900px;
 }
 
 #blog h2 {
