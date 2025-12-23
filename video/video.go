@@ -54,6 +54,7 @@ type Result struct {
 	Channel     string    `json:"channel,omitempty"`
 	ChannelID   string    `json:"channel_id,omitempty"`
 	Category    string    `json:"category,omitempty"`
+	PlaylistID  string    `json:"playlist_id,omitempty"`
 }
 
 var Key = os.Getenv("YOUTUBE_API_KEY")
@@ -385,11 +386,18 @@ func regenerateHTML() {
 			if video.Category == "" {
 				video.Category = channel
 			}
-			// Try to get Channel name from indexed metadata if missing
-			if video.Channel == "" {
+			// Try to get Channel name and ID from indexed metadata if missing
+			if video.Channel == "" || video.ChannelID == "" {
 				if indexed := data.GetByID("video_" + video.ID); indexed != nil {
-					if ch, ok := indexed.Metadata["channel"].(string); ok {
-						video.Channel = ch
+					if video.Channel == "" {
+						if ch, ok := indexed.Metadata["channel"].(string); ok {
+							video.Channel = ch
+						}
+					}
+					if video.ChannelID == "" {
+						if chID, ok := indexed.Metadata["channel_id"].(string); ok {
+							video.ChannelID = chID
+						}
 					}
 				}
 			}
@@ -632,6 +640,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			Channel:     item.Snippet.ChannelTitle,
 			ChannelID:   item.Snippet.ChannelId,
 			Category:    category,
+			PlaylistID:  uploadsPlaylistID,
 		}
 
 		// All links are now internal
@@ -720,10 +729,17 @@ func getResults(query, channel string) (string, []*Result, error) {
 		}
 
 		res := &Result{
-			ID:        id,
-			Type:      kind,
-			URL:       url,
-			Published: t,
+			ID:         id,
+			Type:       kind,
+			Title:      item.Snippet.Title,
+			URL:        url,
+			Published:  t,
+			Channel:    item.Snippet.ChannelTitle,
+			ChannelID:  item.Snippet.ChannelId,
+		}
+		
+		if kind == "playlist" {
+			res.PlaylistID = id
 		}
 
 		if kind == "channel" {
@@ -920,7 +936,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			desc := fmt.Sprintf(`<span class="highlight">video</span> · <small>%s</small>`, app.TimeAgo(t))
-			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+			channel := fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 
 			thumbnailURL := ""
 			if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
@@ -989,7 +1005,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			desc := fmt.Sprintf(`<span class="highlight">video</span> · <small>%s</small>`, app.TimeAgo(t))
-			channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+			channel := fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 
 			thumbnailURL := ""
 			if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
