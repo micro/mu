@@ -215,7 +215,7 @@ func getCategoryBadge(post *Post) string {
 	if post.Category == "" {
 		return ""
 	}
-	return fmt.Sprintf(`<a href="/news#%s" class="category" style="display: inline-block; margin-bottom: 5px;">%s</a>`, post.Category, post.Category)
+	return fmt.Sprintf(`<a href="/news#%s" class="category">%s</a>`, post.Category, post.Category)
 }
 
 func getPrices() map[string]float64 {
@@ -438,7 +438,7 @@ func generateNewsHtml() string {
 			if len(post.Image) > 0 {
 				categoryBadge := ""
 				if post.Category != "" {
-					categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, post.Category)
+					categoryBadge = fmt.Sprintf(`<div class="category-header"><span class="category">%s</span></div>`, post.Category)
 				}
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
@@ -453,7 +453,7 @@ func generateNewsHtml() string {
 			} else {
 				categoryBadge := ""
 				if post.Category != "" {
-					categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, post.Category)
+					categoryBadge = fmt.Sprintf(`<div class="category-header"><span class="category">%s</span></div>`, post.Category)
 				}
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
@@ -528,7 +528,7 @@ func generateHeadlinesHtml() string {
 
 		categoryBadge := ""
 		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, h.Category)
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><span class="category">%s</span></div>`, h.Category)
 		}
 
 		val := fmt.Sprintf(`
@@ -1200,7 +1200,7 @@ func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
 func formatFeedItemHTML(post *Post, itemGUID string) string {
 	categoryBadge := ""
 	if post.Category != "" {
-		categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, post.Category)
+		categoryBadge = fmt.Sprintf(`<div class="category-header"><span class="category">%s</span></div>`, post.Category)
 	}
 	summary := getSummary(post)
 
@@ -1361,7 +1361,7 @@ func generateHeadlinesHTML(headlines []*Post) string {
 	for _, h := range headlines {
 		categoryBadge := ""
 		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, h.Category)
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><span class="category">%s</span></div>`, h.Category)
 		}
 		fmt.Fprintf(&sb, `
 			<div class="headline">
@@ -1918,7 +1918,7 @@ func formatSearchResult(entry *data.IndexEntry) string {
 
 	categoryBadge := ""
 	if category != "" {
-		categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, category)
+		categoryBadge = fmt.Sprintf(`<div class="category-header"><span class="category">%s</span></div>`, category)
 	}
 
 	if image != "" {

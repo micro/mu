@@ -1158,9 +1158,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	tagsHtml := formatTags(post.Tags)
 	if tagsHtml != "" {
-		tagsHtml = `<div style="margin-bottom: 12px;">` + tagsHtml + `</div>`
+		tagsHtml = `<div class="category-header">` + tagsHtml + `</div>`
 	}
-
 	content := fmt.Sprintf(`<div id="blog">
 		%s
 		<div class="info" style="color: #666; font-size: small;">

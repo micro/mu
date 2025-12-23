@@ -409,7 +409,7 @@ func regenerateHTML() {
 		// Build category badge if available
 		var categoryBadge string
 		if res.Category != "" {
-			categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><a href="/video#%s" class="highlight">%s</a></div>`,
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/video#%s" class="highlight">%s</a></div>`,
 				res.Category,
 				res.Category)
 		}
@@ -636,7 +636,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 
 		// Build category badge
-		categoryBadge := fmt.Sprintf(`<div style="margin-bottom: 5px;"><a href="/video#%s" class="highlight">%s</a></div>`,
+		categoryBadge := fmt.Sprintf(`<div class="category-header"><a href="/video#%s" class="highlight">%s</a></div>`,
 			category, category)
 
 		// All links are now internal

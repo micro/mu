@@ -1319,6 +1319,10 @@ body:has(#messages) #content {
   border-radius: 5px;
 }
 
+.category-header {
+  margin-bottom: 12px;
+}
+
 .highlight {
   color: #333333;
   font-size: small;
