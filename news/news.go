@@ -434,6 +434,12 @@ func generateNewsHtml() string {
 				link = "/news?id=" + post.ID
 			}
 
+			summary := getSummary(post)
+			summaryLink := ""
+			if post.ID != "" {
+				summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read Summary</a>`, post.ID)
+			}
+
 			var val string
 			if len(post.Image) > 0 {
 				categoryBadge := ""
@@ -448,8 +454,8 @@ func generateNewsHtml() string {
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s</div>
-				`, post.ID, categoryBadge, post.Image, link, post.Title, cleanDescription, getSummary(post))
+	  <div class="summary">%s%s</div>
+				`, post.ID, categoryBadge, post.Image, link, post.Title, cleanDescription, summary, summaryLink)
 			} else {
 				categoryBadge := ""
 				if post.Category != "" {
@@ -463,8 +469,8 @@ func generateNewsHtml() string {
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s</div>
-				`, post.ID, categoryBadge, link, post.Title, cleanDescription, getSummary(post))
+	  <div class="summary">%s%s</div>
+				`, post.ID, categoryBadge, link, post.Title, cleanDescription, summary, summaryLink)
 			}
 
 			val += `</div>`
