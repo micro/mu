@@ -991,6 +991,15 @@ body:has(#messages) #content {
   color: var(--text-secondary);
 }
 
+.headline .summary a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.headline .summary a:hover {
+  text-decoration: underline;
+}
+
 .news {
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
@@ -1039,6 +1048,15 @@ body:has(#messages) #content {
   font-size: 0.8em;
   margin-top: 5px;
   color: var(--text-secondary);
+}
+
+.news .summary a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.news .summary a:hover {
+  text-decoration: underline;
 }
 
 /* News Article View */
