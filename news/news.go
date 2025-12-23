@@ -1928,13 +1928,13 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 
 			summary := getSummary(post)
 
-		categoryBadge := ""
-		if category != "" {
-			categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, category)
-		}
+			categoryBadge := ""
+			if category != "" {
+				categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, category)
+			}
 
-		var article string
-		if image != "" {
+			var article string
+			if image != "" {
 			article = fmt.Sprintf(`
 <div id="%s" class="news">
   <a href="%s" rel="noopener noreferrer" target="_blank">
