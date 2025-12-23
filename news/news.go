@@ -445,10 +445,10 @@ func generateNewsHtml() string {
 	    <img class="cover" src="%s">
 	    <div class="blurb">
 	      <a href="%s"><span class="title">%s</span></a>
-	      <span class="description">%s%s</span>
+	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s</div>
-				`, post.ID, post.Image, link, post.Title, cleanDescription, categoryBadge, getSummary(post))
+	  <div class="summary">%s%s</div>
+				`, post.ID, post.Image, link, post.Title, cleanDescription, getSummary(post), categoryBadge)
 			} else {
 				categoryBadge := ""
 				if post.Category != "" {
@@ -459,10 +459,10 @@ func generateNewsHtml() string {
 	    <img class="cover">
 	    <div class="blurb">
 	      <a href="%s"><span class="title">%s</span></a>
-	      <span class="description">%s%s</span>
+	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s</div>
-				`, post.ID, link, post.Title, cleanDescription, categoryBadge, getSummary(post))
+	  <div class="summary">%s%s</div>
+				`, post.ID, link, post.Title, cleanDescription, getSummary(post), categoryBadge)
 			}
 
 			val += `</div>`
@@ -532,9 +532,9 @@ func generateHeadlinesHtml() string {
 		val := fmt.Sprintf(`
 		<div class="headline">
 		   <a href="%s"><span class="title">%s</span></a>
-		 <span class="description">%s%s</span>
-		 <div class="summary">%s</div>
-		`, link, h.Title, h.Description, categoryBadge, getSummary(h))
+		 <span class="description">%s</span>
+		 <div class="summary">%s%s</div>
+		`, link, h.Title, h.Description, getSummary(h), categoryBadge)
 
 		val += `</div>`
 		headline = append(headline, []byte(val)...)
@@ -1868,8 +1868,71 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(renderedHtml))
 }
 
+// formatSearchResult formats a single search result entry as HTML
+func formatSearchResult(entry *data.IndexEntry) string {
+	title := entry.Title
+	description := htmlToText(entry.Content)
+	if len(description) > 300 {
+		description = description[:300] + "..."
+	}
+
+	// Extract metadata
+	url, _ := entry.Metadata["url"].(string)
+	category, _ := entry.Metadata["category"].(string)
+	image, _ := entry.Metadata["image"].(string)
+	
+	var postedAt time.Time
+	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
+		postedAt = v
+	} else if v, ok := entry.Metadata["posted_at"].(string); ok {
+		if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+			postedAt = parsed
+		}
+	}
+
+	// Create a Post struct to use getSummary()
+	post := &Post{
+		ID:       entry.ID,
+		Title:    title,
+		URL:      url,
+		Category: category,
+		PostedAt: postedAt,
+	}
+	summary := getSummary(post)
+
+	categoryBadge := ""
+	if category != "" {
+		categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, category)
+	}
+
+	if image != "" {
+		return fmt.Sprintf(`
+<div id="%s" class="news">
+  <a href="%s" rel="noopener noreferrer" target="_blank">
+    <img class="cover" src="%s">
+    <div class="blurb">
+      <span class="title">%s</span>
+      <span class="description">%s</span>
+    </div>
+  </a>
+  <div class="summary">%s%s</div>
+</div>`, entry.ID, url, image, title, description, summary, categoryBadge)
+	}
+
+	return fmt.Sprintf(`
+<div id="%s" class="news">
+  <a href="%s" rel="noopener noreferrer" target="_blank">
+    <img class="cover">
+    <div class="blurb">
+      <span class="title">%s</span>
+      <span class="description">%s</span>
+    </div>
+  </a>
+  <div class="summary">%s%s</div>
+</div>`, entry.ID, url, title, description, summary, categoryBadge)
+}
+
 func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
-	// Search indexed news articles with type filter
 	results := data.Search(query, 20, data.WithType("news"))
 
 	var searchResults []byte
@@ -1883,85 +1946,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		searchResults = append(searchResults, []byte("<p>No results found</p>")...)
 	} else {
 		searchResults = append(searchResults, []byte("<h2>Results</h2>")...)
-
 		for _, entry := range results {
-
-			title := entry.Title
-			// Clean HTML from description and truncate
-			description := htmlToText(entry.Content)
-			if len(description) > 300 {
-				description = description[:300] + "..."
-			}
-
-			url := ""
-			category := ""
-			image := ""
-			postedAt := time.Time{}
-
-			if v, ok := entry.Metadata["url"].(string); ok {
-				url = v
-			}
-			if v, ok := entry.Metadata["category"].(string); ok {
-				category = v
-			}
-			if v, ok := entry.Metadata["image"].(string); ok {
-				image = v
-			}
-			// Handle posted_at which might be time.Time or string (from JSON)
-			if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
-				postedAt = v
-			} else if v, ok := entry.Metadata["posted_at"].(string); ok {
-				// Try parsing from RFC3339 format (JSON serialization)
-				if parsed, err := time.Parse(time.RFC3339, v); err == nil {
-					postedAt = parsed
-				}
-			}
-
-			// Create a Post struct to use getSummary() - keeps format consistent
-			post := &Post{
-				ID:       entry.ID,
-				Title:    title,
-				URL:      url,
-				Category: category,
-				PostedAt: postedAt,
-			}
-
-			summary := getSummary(post)
-
-			categoryBadge := ""
-			if category != "" {
-				categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, category)
-			}
-
-			var article string
-			if image != "" {
-			article = fmt.Sprintf(`
-<div id="%s" class="news">
-  <a href="%s" rel="noopener noreferrer" target="_blank">
-    <img class="cover" src="%s">
-    <div class="blurb">
-      <span class="title">%s</span>
-      <span class="description">%s%s</span>
-    </div>
-  </a>
-  <div class="summary">%s</div>
-</div>`, entry.ID, url, image, title, description, categoryBadge, summary)
-		} else {
-			article = fmt.Sprintf(`
-<div id="%s" class="news">
-  <a href="%s" rel="noopener noreferrer" target="_blank">
-    <img class="cover">
-    <div class="blurb">
-      <span class="title">%s</span>
-      <span class="description">%s%s</span>
-    </div>
-  </a>
-  <div class="summary">%s</div>
-</div>`, entry.ID, url, title, description, categoryBadge, summary)
+			searchResults = append(searchResults, []byte(formatSearchResult(entry))...)
 		}
-
-		searchResults = append(searchResults, []byte(article)...)
-	}
 	}
 
 	html := app.RenderHTMLForRequest("News", query, string(searchResults), r)
