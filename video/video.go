@@ -547,8 +547,28 @@ func loadVideos() {
 	data.SaveFile("videos.html", vidHtml)
 	data.SaveFile("videos.json", vidJson)
 	if len(latest) > 0 {
-		data.SaveFile("latest.html", latest[0].Html)
-		latestHtml = latest[0].Html
+		// Generate proper latest HTML with channel and category links
+		res := latest[0]
+		thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+		
+		var info string
+		if res.Channel != "" {
+			channelLink := res.Channel
+			if res.ChannelID != "" {
+				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
+			}
+			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
+		} else {
+			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
+		}
+		if res.Category != "" {
+			info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
+		}
+		
+		latestHtml = fmt.Sprintf(`
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+			res.URL, thumbnailURL, res.Title, info)
+		data.SaveFile("latest.html", latestHtml)
 	}
 	videos = vids
 	videosHtml = vidHtml
