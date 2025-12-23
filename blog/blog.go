@@ -486,17 +486,18 @@ func Preview() string {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
 		}
 
-		tagsHtml := ""
-		if post.Tags != "" {
-			tagsHtml = fmt.Sprintf(` · <span class="category">%s</span>`, post.Tags)
+		tagsHtml := formatTags(post.Tags)
+		if tagsHtml != "" {
+			tagsHtml = `<div class="category-header">` + tagsHtml + `</div>`
 		}
 
 		// Generate fresh timestamp
 		item := fmt.Sprintf(`<div class="post-item">
+		%s
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">%s · Posted by %s%s</div>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml)
+		<div class="info">%s · Posted by %s</div>
+	</div>`, tagsHtml, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink)
 		preview = append(preview, item)
 	}
 

@@ -779,14 +779,11 @@ func Latest() string {
 	res := latest[0]
 
 	// Build fresh description with current timestamp, channel, and category
-	var desc string
+	var categoryBadge string
 	if res.Category != "" {
-		desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`,
-			app.TimeAgo(res.Published),
+		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/video#%s" class="highlight">%s</a></div>`,
 			res.Category,
 			res.Category)
-	} else {
-		desc = app.TimeAgo(res.Published)
 	}
 
 	// Extract thumbnail URL from the cached HTML (simpler than storing it separately)
@@ -796,14 +793,14 @@ func Latest() string {
 	// Build info section with channel if available
 	var info string
 	if res.Channel != "" {
-		info = res.Channel + " · " + desc
+		info = res.Channel + " · " + app.TimeAgo(res.Published)
 	} else {
-		info = desc
+		info = app.TimeAgo(res.Published)
 	}
 
 	html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
-		res.URL, thumbnailURL, res.Title, info)
+	<div class="thumbnail">%s<a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+		categoryBadge, res.URL, thumbnailURL, res.Title, info)
 
 	return html
 }
