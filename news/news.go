@@ -1436,12 +1436,25 @@ func parseFeed() {
 		indexMarketPrices(newPrices)
 	}
 
-	// Generate headlines HTML
+	// Generate headlines HTML - filter to one per category
 	sort.Slice(allHeadlines, func(i, j int) bool {
 		return allHeadlines[i].PostedAt.After(allHeadlines[j].PostedAt)
 	})
 
-	headlineHtml := generateHeadlinesHTML(allHeadlines)
+	// Filter to one headline per category
+	seenCategories := make(map[string]bool)
+	var filteredHeadlines []*Post
+	for _, post := range allHeadlines {
+		if !seenCategories[post.Category] {
+			filteredHeadlines = append(filteredHeadlines, post)
+			seenCategories[post.Category] = true
+		}
+		if len(filteredHeadlines) >= 10 {
+			break
+		}
+	}
+
+	headlineHtml := generateHeadlinesHTML(filteredHeadlines)
 	allContent = append([]byte(headlineHtml), allContent...)
 
 	// Save everything
