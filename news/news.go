@@ -1799,7 +1799,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		</div>
 	`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(url), categoryBadge, descriptionSection, summarySection, url, articleID)
 
-	w.Write([]byte(app.RenderHTML("", "", articleHtml)))
+	w.Write([]byte(app.RenderHTML(title, title, articleHtml)))
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
