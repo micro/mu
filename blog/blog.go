@@ -603,6 +603,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				<form id="blog-form" method="POST" action="/posts" style="display: flex; flex-direction: column; gap: 10px;">
 					<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px;"></textarea>
+					<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 					<div style="display: flex; justify-content: space-between; align-items: center;">
 						<span id="char-count" style="font-size: 12px; color: #666;">Min 50 chars</span>
 						<div style="display: flex; gap: 10px;">
@@ -819,7 +820,7 @@ func DeletePost(id string) error {
 }
 
 // UpdatePost updates an existing post
-func UpdatePost(id, title, content string) error {
+func UpdatePost(id, title, content, tags string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -827,11 +828,12 @@ func UpdatePost(id, title, content string) error {
 		if post.ID == id {
 			post.Title = title
 			post.Content = content
+			post.Tags = tags
 			save()
 			updateCacheUnlocked()
 
 			// Re-index the updated post
-			go func(id, title, content, author string) {
+			go func(id, title, content, author, tags string) {
 				app.Log("blog", "Re-indexing updated post: %s", title)
 				data.Index(
 					id,
@@ -841,9 +843,10 @@ func UpdatePost(id, title, content string) error {
 					map[string]interface{}{
 						"url":    "/post?id=" + id,
 						"author": author,
+						"tags":   tags,
 					},
 				)
-			}(post.ID, post.Title, post.Content, post.Author)
+			}(post.ID, post.Title, post.Content, post.Author, post.Tags)
 
 			return nil
 		}
@@ -997,12 +1000,13 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var title, content string
+		var title, content, tags string
 
 		if isJSON {
 			var req struct {
 				Title   string `json:"title"`
 				Content string `json:"content"`
+				Tags    string `json:"tags"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -1010,6 +1014,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			title = strings.TrimSpace(req.Title)
 			content = strings.TrimSpace(req.Content)
+			tags = parseTags(req.Tags)
 		} else {
 			if err := r.ParseForm(); err != nil {
 				http.Error(w, "Failed to parse form", http.StatusBadRequest)
@@ -1017,6 +1022,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			title = strings.TrimSpace(r.FormValue("title"))
 			content = strings.TrimSpace(r.FormValue("content"))
+			tags = parseTags(r.FormValue("tags"))
 		}
 
 		if content == "" {
@@ -1031,7 +1037,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := UpdatePost(id, title, content); err != nil {
+		if err := UpdatePost(id, title, content, tags); err != nil {
 			http.Error(w, "Failed to update post", http.StatusInternalServerError)
 			return
 		}
@@ -1088,15 +1094,16 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 				<input type="hidden" name="_method" value="PATCH">
 				<input type="text" name="title" placeholder="Title (optional)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: 'Nunito Sans', serif;">%s</textarea>
+				<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<div style="font-size: 12px; color: #666; margin-top: -5px;">
-					Supports markdown: **bold**, *italic*, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
+					Supports markdown: **bold**, *italic**, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
 				</div>
 				<div style="display: flex; gap: 10px;">
 					<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Save Changes</button>
 					<a href="/post?id=%s" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
 				</div>
 			</form>
-		</div>`, post.ID, post.Title, post.Content, post.ID)
+		</div>`, post.ID, post.Title, post.Content, post.Tags, post.ID)
 
 		html := app.RenderHTMLForRequest(pageTitle, "", content, r)
 		w.Write([]byte(html))
@@ -1126,9 +1133,14 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	tagsHtml := ""
+	if post.Tags != "" {
+		tagsHtml = ` · <span class="category">` + post.Tags + `</span>`
+	}
+
 	content := fmt.Sprintf(`<div id="blog">
 		<div class="info" style="color: #666; font-size: small;">
-			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
+			%s · %s%s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
 		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="margin-bottom: 20px;">%s</div>
@@ -1138,7 +1150,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<div style="margin-top: 30px;">
 			<a href="/posts" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
