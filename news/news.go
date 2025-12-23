@@ -438,31 +438,33 @@ func generateNewsHtml() string {
 			if len(post.Image) > 0 {
 				categoryBadge := ""
 				if post.Category != "" {
-					categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, post.Category)
+					categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
 				}
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
+	    %s
 	    <img class="cover" src="%s">
 	    <div class="blurb">
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s%s</div>
-				`, post.ID, post.Image, link, post.Title, cleanDescription, getSummary(post), categoryBadge)
+	  <div class="summary">%s</div>
+				`, post.ID, categoryBadge, post.Image, link, post.Title, cleanDescription, getSummary(post))
 			} else {
 				categoryBadge := ""
 				if post.Category != "" {
-					categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, post.Category)
+					categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
 				}
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
+	    %s
 	    <img class="cover">
 	    <div class="blurb">
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s%s</div>
-				`, post.ID, link, post.Title, cleanDescription, getSummary(post), categoryBadge)
+	  <div class="summary">%s</div>
+				`, post.ID, categoryBadge, link, post.Title, cleanDescription, getSummary(post))
 			}
 
 			val += `</div>`
@@ -526,16 +528,17 @@ func generateHeadlinesHtml() string {
 
 		categoryBadge := ""
 		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, h.Category)
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, h.Category)
 		}
 		summary := getSummary(h)
 
 		val := fmt.Sprintf(`
 		<div class="headline">
+		   %s
 		   <a href="%s"><span class="title">%s</span></a>
 		 <span class="description">%s</span>
-		 <div class="summary">%s%s</div>
-		`, link, h.Title, h.Description, summary, categoryBadge)
+		 <div class="summary">%s</div>
+		`, categoryBadge, link, h.Title, h.Description, summary)
 
 		val += `</div>`
 		headline = append(headline, []byte(val)...)
@@ -1198,13 +1201,14 @@ func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
 func formatFeedItemHTML(post *Post, itemGUID string) string {
 	categoryBadge := ""
 	if post.Category != "" {
-		categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, post.Category)
+		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
 	}
-	summary := getSummary(post) + categoryBadge
+	summary := getSummary(post)
 
 	if len(post.Image) > 0 {
 		return fmt.Sprintf(`
 	<div id="%s" class="news">
+	  %s
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover" src="%s">
 	    <div class="blurb">
@@ -1213,11 +1217,12 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	    </div>
 	  </a>
 	  <div class="summary">%s</div>
-</div>`, itemGUID, post.URL, post.Image, post.Title, post.Description, summary)
+</div>`, itemGUID, categoryBadge, post.URL, post.Image, post.Title, post.Description, summary)
 	}
 
 	return fmt.Sprintf(`
 	<div id="%s" class="news">
+	  %s
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover">
 	    <div class="blurb">
@@ -1226,7 +1231,7 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	    </div>
 	  </a>
 	  <div class="summary">%s</div>
-</div>`, itemGUID, post.URL, post.Title, post.Description, summary)
+</div>`, itemGUID, categoryBadge, post.URL, post.Title, post.Description, summary)
 }
 
 // processFeedCategory fetches and processes all items from a single feed category
@@ -1357,17 +1362,18 @@ func generateHeadlinesHTML(headlines []*Post) string {
 	for _, h := range headlines {
 		categoryBadge := ""
 		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, h.Category)
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, h.Category)
 		}
 		summary := getSummary(h)
 		fmt.Fprintf(&sb, `
 			<div class="headline">
+			   %s
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
-			 <div class="summary">%s%s</div>
-			`, h.URL, h.Title, h.Description, summary, categoryBadge)
+			 <div class="summary">%s</div>
+			`, categoryBadge, h.URL, h.Title, h.Description, summary)
 		sb.WriteString(`</div>`)
 	}
 
@@ -1744,7 +1750,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	categoryBadge := ""
 	if category != "" {
-		categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, category)
+		categoryBadge = fmt.Sprintf(` · <a href="/news#%s" class="category">%s</a>`, category, category)
 	}
 
 	// Build description section
