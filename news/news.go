@@ -1799,7 +1799,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		</div>
 	`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(url), categoryBadge, descriptionSection, summarySection, url, articleID)
 
-	w.Write([]byte(app.RenderHTML(title, title, articleHtml)))
+	// Use title for browser tab, but empty page title since article already has its own H1
+	pageHTML := fmt.Sprintf(app.Template, "en", title, title, "", "", "", articleHtml)
+	w.Write([]byte(pageHTML))
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
