@@ -55,6 +55,7 @@ type Result struct {
 	ChannelID   string    `json:"channel_id,omitempty"`
 	Category    string    `json:"category,omitempty"`
 	PlaylistID  string    `json:"playlist_id,omitempty"`
+	Thumbnail   string    `json:"thumbnail,omitempty"`
 }
 
 var Key = os.Getenv("YOUTUBE_API_KEY")
@@ -415,7 +416,10 @@ func regenerateHTML() {
 	if len(latest) > 0 {
 		res := latest[0]
 
-		thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+		thumbnailURL := res.Thumbnail
+		if thumbnailURL == "" {
+			thumbnailURL = fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+		}
 
 		// Build info section with channel and category
 		var info string
@@ -549,7 +553,10 @@ func loadVideos() {
 	if len(latest) > 0 {
 		// Generate proper latest HTML with channel and category links
 		res := latest[0]
-		thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+		thumbnailURL := res.Thumbnail
+		if thumbnailURL == "" {
+			thumbnailURL = fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+		}
 		
 		var info string
 		if res.Channel != "" {
@@ -650,6 +657,11 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			url = "/video?channel=" + id
 		}
 
+		thumbnailURL := ""
+		if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
+			thumbnailURL = item.Snippet.Thumbnails.Medium.Url
+		}
+
 		res := &Result{
 			ID:          id,
 			Type:        kind,
@@ -661,12 +673,13 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			ChannelID:   item.Snippet.ChannelId,
 			Category:    category,
 			PlaylistID:  uploadsPlaylistID,
+			Thumbnail:   thumbnailURL,
 		}
 
 		// All links are now internal
 		html := fmt.Sprintf(`
 	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a></div></div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category)
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category)
 		sb.WriteString(html)
 		res.Html = html
 
@@ -680,11 +693,12 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			item.Snippet.Title,
 			item.Snippet.Description,
 			map[string]interface{}{
-				"url":       url,
-				"category":  category,
-				"channel":   item.Snippet.ChannelTitle,
-				"published": t,
-				"thumbnail": item.Snippet.Thumbnails.Medium.Url,
+				"url":        url,
+				"category":   category,
+				"channel":    item.Snippet.ChannelTitle,
+				"channel_id": item.Snippet.ChannelId,
+				"published":  t,
+				"thumbnail":  thumbnailURL,
 			},
 		)
 	}
@@ -748,6 +762,11 @@ func getResults(query, channel string) (string, []*Result, error) {
 			desc = `<span class="highlight">channel</span>`
 		}
 
+		thumbnailURL := ""
+		if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
+			thumbnailURL = item.Snippet.Thumbnails.Medium.Url
+		}
+
 		res := &Result{
 			ID:         id,
 			Type:       kind,
@@ -756,6 +775,7 @@ func getResults(query, channel string) (string, []*Result, error) {
 			Published:  t,
 			Channel:    item.Snippet.ChannelTitle,
 			ChannelID:  item.Snippet.ChannelId,
+			Thumbnail:  thumbnailURL,
 		}
 		
 		if kind == "playlist" {
@@ -772,7 +792,7 @@ func getResults(query, channel string) (string, []*Result, error) {
 		// All links are now internal
 		html := fmt.Sprintf(`
 			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
 		sb.WriteString(html)
 		res.Html = html
 	}
