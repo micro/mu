@@ -73,6 +73,64 @@ if (typeof document === 'undefined') {
   // We're in window context, execute page code
 
 // ============================================
+// TIMESTAMP UPDATES
+// ============================================
+
+function timeAgo(timestamp) {
+  const now = Math.floor(Date.now() / 1000);
+  const deltaMinutes = (now - timestamp) / 60;
+  
+  if (deltaMinutes <= 523440) { // less than 363 days
+    return distanceOfTime(deltaMinutes) + ' ago';
+  } else {
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  }
+}
+
+function distanceOfTime(minutes) {
+  if (minutes < 1) {
+    const secs = Math.max(1, Math.floor(minutes * 60));
+    return secs === 1 ? '1 sec' : secs + ' secs';
+  } else if (minutes < 2) {
+    return '1 minute';
+  } else if (minutes < 60) {
+    return Math.floor(minutes) + ' minutes';
+  } else if (minutes < 1440) {
+    const hrs = Math.floor(minutes / 60);
+    return hrs === 1 ? '1 hour' : hrs + ' hours';
+  } else if (minutes < 2880) {
+    return '1 day';
+  } else if (minutes < 43800) {
+    return Math.floor(minutes / 1440) + ' days';
+  } else if (minutes < 87600) {
+    return '1 month';
+  } else {
+    return Math.floor(minutes / 43800) + ' months';
+  }
+}
+
+function updateTimestamps() {
+  document.querySelectorAll('[data-timestamp]').forEach(el => {
+    const timestamp = parseInt(el.dataset.timestamp);
+    if (!isNaN(timestamp) && timestamp > 0) {
+      el.textContent = timeAgo(timestamp);
+    }
+  });
+}
+
+// Update timestamps immediately and then every minute
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    updateTimestamps();
+    setInterval(updateTimestamps, 60000);
+  });
+} else {
+  updateTimestamps();
+  setInterval(updateTimestamps, 60000);
+}
+
+// ============================================
 // CHAT FUNCTIONALITY
 // ============================================
 

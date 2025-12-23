@@ -206,7 +206,7 @@ var Results = `
 func getSummary(post *Post) string {
 	timestamp := ""
 	if !post.PostedAt.IsZero() {
-		timestamp = app.TimeAgo(post.PostedAt) + " · "
+		timestamp = fmt.Sprintf(`<span data-timestamp="%d">%s</span> · `, post.PostedAt.Unix(), app.TimeAgo(post.PostedAt))
 	}
 	return fmt.Sprintf(`%sSource: <i>%s</i>`, timestamp, getDomain(post.URL))
 }
@@ -479,8 +479,10 @@ func generateNewsHtml() string {
   <button id="news-search-btn">Search</button>
 </form>`
 
-	// Generate headlines
-	headlines := generateHeadlinesHtml()
+	// Get cached headlines
+	mutex.RLock()
+	headlines := headlinesHtml
+	mutex.RUnlock()
 
 	// Get topics header
 	var sortedFeeds []string
@@ -494,6 +496,7 @@ func generateNewsHtml() string {
 }
 
 // generateHeadlinesHtml generates fresh HTML for headlines with current timestamps
+// Deprecated: This function is no longer used. Headlines are now cached.
 func generateHeadlinesHtml() string {
 	mutex.RLock()
 	defer mutex.RUnlock()
@@ -1583,8 +1586,11 @@ func Load() {
 }
 
 func Headlines() string {
-	// Generate fresh HTML with current timestamps
-	return generateHeadlinesHtml()
+	// Use cached HTML for efficiency
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	return headlinesHtml
 }
 
 func Markets() string {
@@ -1755,7 +1761,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			%s
 			<h1>%s</h1>
 			<div class="article-meta">
-				<span>%s · Source: <i>%s</i>%s</span>
+				<span><span data-timestamp="%d">%s</span> · Source: <i>%s</i>%s</span>
 			</div>
 			%s
 			%s
@@ -1768,7 +1774,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="/news">← Back to news</a>
 			</div>
 		</div>
-	`, imageSection, title, app.TimeAgo(postedAt), getDomain(url), categoryBadge, descriptionSection, summarySection, url, articleID)
+	`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(url), categoryBadge, descriptionSection, summarySection, url, articleID)
 
 	w.Write([]byte(app.RenderHTML("", "", articleHtml)))
 }

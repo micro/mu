@@ -364,8 +364,8 @@ func updateCacheUnlocked() {
 		%s
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">%s · Posted by %s</div>
-	</div>`, tagsHtml, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink)
+		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s</div>
+	</div>`, tagsHtml, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink)
 		preview = append(preview, item)
 	}
 
@@ -425,8 +425,8 @@ func updateCacheUnlocked() {
 			%s
 			<h3><a href="/post?id=%s">%s</a></h3>
 			<div>%s</div>
-			<div class="info">%s · Posted by %s</div>
-		</div>`, tagsHtml, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink)
+			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s</div>
+		</div>`, tagsHtml, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink)
 		fullList = append(fullList, item)
 	}
 
@@ -439,10 +439,15 @@ func updateCacheUnlocked() {
 
 // Preview returns HTML preview of latest posts for home page
 func Preview() string {
-	// Generate fresh HTML with current timestamps instead of using cache
+	// Use cached HTML for efficiency
 	mutex.RLock()
 	defer mutex.RUnlock()
 
+	return postsPreviewHtml
+}
+
+// Deprecated: Use Preview() instead which now uses cache
+func previewUncached() string {
 	if len(posts) == 0 {
 		return "<p>No posts yet. Be the first to share a thought!</p>"
 	}
@@ -506,28 +511,6 @@ func Preview() string {
 		return "<p>No posts yet. Be the first to share a thought!</p>"
 	}
 	return strings.Join(preview, "\n")
-}
-
-// FullFeed returns HTML for all posts (for home page feed)
-func FullFeed() string {
-	updateCache()
-	mutex.RLock()
-	defer mutex.RUnlock()
-	return postsList
-}
-
-// HomeFeed returns HTML for limited posts (latest 1 for home page)
-func HomeFeed() string {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	if len(posts) == 0 {
-		return "<p>No posts yet. Be the first to share a thought!</p>"
-	}
-
-	// Show only the latest post
-	post := posts[0]
-	return renderPostPreview(post)
 }
 
 func renderPostPreview(post *Post) string {

@@ -411,9 +411,9 @@ func regenerateHTML() {
 		// Build info section with channel and category
 		var info string
 		if res.Channel != "" {
-			info = res.Channel + " · " + app.TimeAgo(res.Published)
+			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, res.Channel, res.Published.Unix(), app.TimeAgo(res.Published))
 		} else {
-			info = app.TimeAgo(res.Published)
+			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
 		}
 		if res.Category != "" {
 			info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
@@ -743,51 +743,11 @@ func getResults(query, channel string) (string, []*Result, error) {
 }
 
 func Latest() string {
-	// Generate fresh HTML with current timestamps from cached data
+	// Use cached HTML for efficiency
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	// Collect all latest videos from each channel
-	var latest []*Result
-	for _, channel := range videos {
-		if len(channel.Videos) > 0 {
-			latest = append(latest, channel.Videos[0])
-		}
-	}
-
-	// Sort by published date
-	sort.Slice(latest, func(i, j int) bool {
-		return latest[i].Published.After(latest[j].Published)
-	})
-
-	// Get the most recent
-	if len(latest) == 0 {
-		return ""
-	}
-
-	// Use cached HTML but update timestamp
-	// Parse the HTML to extract thumbnail and title, regenerate info section
-	res := latest[0]
-
-	// Build fresh description with current timestamp, channel, and category
-	thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
-
-	// Build info section with channel and category
-	var info string
-	if res.Channel != "" {
-		info = res.Channel + " · " + app.TimeAgo(res.Published)
-	} else {
-		info = app.TimeAgo(res.Published)
-	}
-	if res.Category != "" {
-		info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
-	}
-
-	html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
-		res.URL, thumbnailURL, res.Title, info)
-
-	return html
+	return latestHtml
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
