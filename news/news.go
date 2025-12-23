@@ -443,7 +443,7 @@ func generateNewsHtml() string {
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
 	    %s
-	    <img class="cover" src="%s">
+	    <img class="cover" src="%s" referrerpolicy="no-referrer" onerror="this.style.display='none'">
 	    <div class="blurb">
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
@@ -1213,7 +1213,7 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	<div id="%s" class="news">
 	  %s
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
-	    <img class="cover" src="%s">
+	    <img class="cover" src="%s" referrerpolicy="no-referrer" onerror="this.style.display='none'">
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
@@ -1743,7 +1743,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	// Build the article page
 	imageSection := ""
 	if image != "" {
-		imageSection = fmt.Sprintf(`<img src="%s" class="article-image">`, image)
+		imageSection = fmt.Sprintf(`<img src="%s" class="article-image" referrerpolicy="no-referrer" onerror="this.style.display='none'">`, image)
 	}
 
 	summarySection := ""
