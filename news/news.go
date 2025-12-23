@@ -1277,7 +1277,6 @@ func processFeedCategory(name, feedURL string, p *gofeed.Parser, stats map[strin
 	// Build HTML and collect posts
 	var content []byte
 	var posts []*Post
-	var firstPost *Post
 
 	content = append(content, []byte(`<div class=section>`)...)
 	content = append(content, []byte(`<hr id="`+name+`" class="anchor">`)...)
@@ -1297,20 +1296,11 @@ func processFeedCategory(name, feedURL string, p *gofeed.Parser, stats map[strin
 		posts = append(posts, post)
 		itemHTML := formatFeedItemHTML(post, item.GUID)
 		content = append(content, []byte(itemHTML)...)
-
-		if i == 0 {
-			firstPost = post
-		}
 	}
 
 	content = append(content, []byte(`</div>`)...)
 
-	var headlines []*Post
-	if firstPost != nil {
-		headlines = append(headlines, firstPost)
-	}
-
-	return content, headlines, &stat
+	return content, posts, &stat
 }
 
 // generateMarketsHTML creates the markets HTML from price data
