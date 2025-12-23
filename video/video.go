@@ -406,27 +406,22 @@ func regenerateHTML() {
 	if len(latest) > 0 {
 		res := latest[0]
 
-		// Build category badge if available
-		var categoryBadge string
-		if res.Category != "" {
-			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/video#%s" class="highlight">%s</a></div>`,
-				res.Category,
-				res.Category)
-		}
-
 		thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
 
-		// Build info section with channel if available
+		// Build info section with channel and category
 		var info string
 		if res.Channel != "" {
 			info = res.Channel + " · " + app.TimeAgo(res.Published)
 		} else {
 			info = app.TimeAgo(res.Published)
 		}
+		if res.Category != "" {
+			info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
+		}
 
 		latestHtml = fmt.Sprintf(`
-	<div class="thumbnail">%s<a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
-			categoryBadge, res.URL, thumbnailURL, res.Title, info)
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+			res.URL, thumbnailURL, res.Title, info)
 
 		// add to body
 		for _, res := range latest {
@@ -635,14 +630,10 @@ func getChannel(category, handle string) (string, []*Result, error) {
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 
-		// Build category badge
-		categoryBadge := fmt.Sprintf(`<div class="category-header"><a href="/video#%s" class="highlight">%s</a></div>`,
-			category, category)
-
 		// All links are now internal
 		html := fmt.Sprintf(`
-	<div class="thumbnail">%s<a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s · %s</div></div>`,
-			categoryBadge, url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, app.TimeAgo(t))
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s · %s · <a href="/video#%s" class="highlight">%s</a></div></div>`,
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, app.TimeAgo(t), category, category)
 		sb.WriteString(html)
 		res.Html = html
 
@@ -779,28 +770,22 @@ func Latest() string {
 	res := latest[0]
 
 	// Build fresh description with current timestamp, channel, and category
-	var categoryBadge string
-	if res.Category != "" {
-		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/video#%s" class="highlight">%s</a></div>`,
-			res.Category,
-			res.Category)
-	}
-
-	// Extract thumbnail URL from the cached HTML (simpler than storing it separately)
-	// Or just use YouTube's thumbnail API which is predictable
 	thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
 
-	// Build info section with channel if available
+	// Build info section with channel and category
 	var info string
 	if res.Channel != "" {
 		info = res.Channel + " · " + app.TimeAgo(res.Published)
 	} else {
 		info = app.TimeAgo(res.Published)
 	}
+	if res.Category != "" {
+		info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
+	}
 
 	html := fmt.Sprintf(`
-	<div class="thumbnail">%s<a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
-		categoryBadge, res.URL, thumbnailURL, res.Title, info)
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+		res.URL, thumbnailURL, res.Title, info)
 
 	return html
 }

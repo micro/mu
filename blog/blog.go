@@ -486,18 +486,19 @@ func Preview() string {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
 		}
 
-		tagsHtml := formatTags(post.Tags)
-		if tagsHtml != "" {
-			tagsHtml = `<div class="category-header">` + tagsHtml + `</div>`
+		tagsHtml := ""
+		if post.Tags != "" {
+			for _, tag := range strings.Split(post.Tags, ",") {
+				tagsHtml += fmt.Sprintf(` · <span class="category">%s</span>`, strings.TrimSpace(tag))
+			}
 		}
 
 		// Generate fresh timestamp
 		item := fmt.Sprintf(`<div class="post-item">
-		%s
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">%s · Posted by %s</div>
-	</div>`, tagsHtml, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink)
+		<div class="info">%s · Posted by %s%s</div>
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml)
 		preview = append(preview, item)
 	}
 
@@ -1157,14 +1158,15 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tagsHtml := formatTags(post.Tags)
-	if tagsHtml != "" {
-		tagsHtml = `<div class="category-header">` + tagsHtml + `</div>`
+	tagsHtml := ""
+	if post.Tags != "" {
+		for _, tag := range strings.Split(post.Tags, ",") {
+			tagsHtml += fmt.Sprintf(` · <span class="category">%s</span>`, strings.TrimSpace(tag))
+		}
 	}
 	content := fmt.Sprintf(`<div id="blog">
-		%s
 		<div class="info" style="color: #666; font-size: small;">
-			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
+			%s · %s%s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
 		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="margin-bottom: 20px;">%s</div>
@@ -1174,7 +1176,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<div style="margin-top: 30px;">
 			<a href="/posts" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
-	</div>`, tagsHtml, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
