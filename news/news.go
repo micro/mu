@@ -1728,7 +1728,8 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 
 	summarySection := ""
-	if summary != "" {
+	// Only show summary if it's different from the description
+	if summary != "" && summary != description {
 		// Format the summary: split by double newlines into paragraphs, handle bullet points
 		formattedSummary := formatSummary(summary)
 		summarySection = fmt.Sprintf(`
