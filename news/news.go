@@ -1353,6 +1353,11 @@ func generateHeadlinesHTML(headlines []*Post) string {
 	sb.WriteString(`<div class=section>`)
 
 	for _, h := range headlines {
+		link := h.URL
+		if h.ID != "" {
+			link = "/news?id=" + h.ID
+		}
+
 		categoryBadge := ""
 		if h.Category != "" {
 			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, h.Category)
@@ -1361,12 +1366,12 @@ func generateHeadlinesHTML(headlines []*Post) string {
 		fmt.Fprintf(&sb, `
 			<div class="headline">
 			   %s
-			  <a href="%s" rel="noopener noreferrer" target="_blank">
+			  <a href="%s">
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
 			 <div class="summary">%s</div>
-			`, categoryBadge, h.URL, h.Title, h.Description, summary)
+			`, categoryBadge, link, h.Title, h.Description, summary)
 		sb.WriteString(`</div>`)
 	}
 
