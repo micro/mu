@@ -52,6 +52,7 @@ type Result struct {
 	Html        string    `json:"html"`
 	Published   time.Time `json:"published"`
 	Channel     string    `json:"channel,omitempty"`
+	ChannelID   string    `json:"channel_id,omitempty"`
 	Category    string    `json:"category,omitempty"`
 }
 
@@ -411,7 +412,11 @@ func regenerateHTML() {
 		// Build info section with channel and category
 		var info string
 		if res.Channel != "" {
-			info = fmt.Sprintf(`<a href="/video?channel=%s">%s</a> · <span data-timestamp="%d">%s</span>`, res.Channel, res.Channel, res.Published.Unix(), app.TimeAgo(res.Published))
+			channelLink := res.Channel
+			if res.ChannelID != "" {
+				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
+			}
+			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
 		} else {
 			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
 		}
@@ -625,13 +630,14 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			URL:         url,
 			Published:   t,
 			Channel:     item.Snippet.ChannelTitle,
+			ChannelID:   item.Snippet.ChannelId,
 			Category:    category,
 		}
 
 		// All links are now internal
 		html := fmt.Sprintf(`
 	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a></div></div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, item.Snippet.ChannelTitle, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category)
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category)
 		sb.WriteString(html)
 		res.Html = html
 
@@ -730,7 +736,7 @@ func getResults(query, channel string) (string, []*Result, error) {
 		// All links are now internal
 		html := fmt.Sprintf(`
 			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s</div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, item.Snippet.ChannelTitle, item.Snippet.ChannelTitle, desc)
+			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
 		sb.WriteString(html)
 		res.Html = html
 	}
