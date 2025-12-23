@@ -4,7 +4,7 @@ The Micro Network
 
 ## Overview
 
-A personal app platform that provides services without ads, algorithms, or exploits.
+A personal app platform that provides services without ads, algorithms, or tracking.
 
 ### Features
 
