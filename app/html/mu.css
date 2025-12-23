@@ -1313,7 +1313,7 @@ body:has(#messages) #content {
   display: inline-block;
   color: #333333;
   font-size: small;
-  font-weight: normal;
+  font-weight: bold;
   background: #e8e8e8;
   padding: 3px 5px;
   border-radius: 5px;
@@ -1322,7 +1322,7 @@ body:has(#messages) #content {
 .highlight {
   color: #333333;
   font-size: small;
-  font-weight: normal;
+  font-weight: bold;
   background: #e8e8e8;
   padding: 3px 5px;
   border-radius: 5px;
