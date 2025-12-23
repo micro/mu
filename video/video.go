@@ -406,15 +406,12 @@ func regenerateHTML() {
 	if len(latest) > 0 {
 		res := latest[0]
 
-		// Build description with category if available
-		var desc string
+		// Build category badge if available
+		var categoryBadge string
 		if res.Category != "" {
-			desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`,
-				app.TimeAgo(res.Published),
+			categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><a href="/video#%s" class="highlight">%s</a></div>`,
 				res.Category,
 				res.Category)
-		} else {
-			desc = app.TimeAgo(res.Published)
 		}
 
 		thumbnailURL := fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
@@ -422,14 +419,14 @@ func regenerateHTML() {
 		// Build info section with channel if available
 		var info string
 		if res.Channel != "" {
-			info = res.Channel + " · " + desc
+			info = res.Channel + " · " + app.TimeAgo(res.Published)
 		} else {
-			info = desc
+			info = app.TimeAgo(res.Published)
 		}
 
 		latestHtml = fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
-			res.URL, thumbnailURL, res.Title, info)
+	<div class="thumbnail">%s<a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+			categoryBadge, res.URL, thumbnailURL, res.Title, info)
 
 		// add to body
 		for _, res := range latest {
@@ -592,7 +589,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 	var sb strings.Builder
 
 	for _, item := range resp.Items {
-		var id, url, desc string
+		var id, url string
 		kind := strings.Split(item.Kind, "#")[1]
 
 		// Parse ISO 8601 timestamp with multiple format attempts
@@ -623,10 +620,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		case "channel":
 			id = item.Snippet.ChannelId
 			url = "/video?channel=" + id
-			desc = `<span class="highlight">channel</span>`
 		}
-
-		desc = fmt.Sprintf(`%s · <a href="/video#%s" class="highlight">%s</a>`, app.TimeAgo(t), kind, kind)
 
 		res := &Result{
 			ID:          id,
@@ -641,10 +635,14 @@ func getChannel(category, handle string) (string, []*Result, error) {
 
 		channel := fmt.Sprintf(`<a href="https://youtube.com/channel/%s" target="_blank">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
 
+		// Build category badge
+		categoryBadge := fmt.Sprintf(`<div style="margin-bottom: 5px;"><a href="/video#%s" class="highlight">%s</a></div>`,
+			category, category)
+
 		// All links are now internal
 		html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s · %s</div></div>`,
-			url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, desc)
+	<div class="thumbnail">%s<a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s · %s</div></div>`,
+			categoryBadge, url, item.Snippet.Thumbnails.Medium.Url, item.Snippet.Title, channel, app.TimeAgo(t))
 		sb.WriteString(html)
 		res.Html = html
 

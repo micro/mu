@@ -438,31 +438,33 @@ func generateNewsHtml() string {
 			if len(post.Image) > 0 {
 				categoryBadge := ""
 				if post.Category != "" {
-					categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, post.Category)
+					categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, post.Category)
 				}
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
 	    <img class="cover" src="%s">
 	    <div class="blurb">
+	      %s
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s%s</div>
-				`, post.ID, post.Image, link, post.Title, cleanDescription, getSummary(post), categoryBadge)
+	  <div class="summary">%s</div>
+				`, post.ID, post.Image, categoryBadge, link, post.Title, cleanDescription, getSummary(post))
 			} else {
 				categoryBadge := ""
 				if post.Category != "" {
-					categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, post.Category)
+					categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, post.Category)
 				}
 				val = fmt.Sprintf(`
 	<div id="%s" class="news">
 	    <img class="cover">
 	    <div class="blurb">
+	      %s
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s%s</div>
-				`, post.ID, link, post.Title, cleanDescription, getSummary(post), categoryBadge)
+	  <div class="summary">%s</div>
+				`, post.ID, categoryBadge, link, post.Title, cleanDescription, getSummary(post))
 			}
 
 			val += `</div>`
@@ -526,15 +528,16 @@ func generateHeadlinesHtml() string {
 
 		categoryBadge := ""
 		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, h.Category)
+			categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, h.Category)
 		}
 
 		val := fmt.Sprintf(`
 		<div class="headline">
+		   %s
 		   <a href="%s"><span class="title">%s</span></a>
 		 <span class="description">%s</span>
-		 <div class="summary">%s%s</div>
-		`, link, h.Title, h.Description, getSummary(h), categoryBadge)
+		 <div class="summary">%s</div>
+		`, categoryBadge, link, h.Title, h.Description, getSummary(h))
 
 		val += `</div>`
 		headline = append(headline, []byte(val)...)
@@ -1041,266 +1044,168 @@ func getReminder() {
 	go getReminder()
 }
 
-func parseFeed() {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("Recovered from panic in feed parser: %v\n", r)
-			// You can perform cleanup, logging, or other error handling here.
-			// For example, you might send an error to a channel to notify main.
-			debug.PrintStack()
+// parseFeedItem processes a single RSS feed item and returns a Post
+func parseFeedItem(item *gofeed.Item, categoryName string) (*Post, error) {
+	// Apply content parsers to clean up description
+	item.Description = applyContentParsers(item.Description, categoryName)
 
-			fmt.Println("Relaunching feed parser in 1 minute")
-			time.Sleep(time.Minute)
+	link := item.Link
+	app.Log("news", "Checking link %s", link)
 
-			go parseFeed()
-		}
-	}()
-
-	fmt.Println("Parsing feed at", time.Now().String())
-	p := gofeed.NewParser()
-	p.UserAgent = "Mu/0.1"
-
-	content := []byte{}
-	head := []byte{}
-	urls := map[string]string{}
-	stats := map[string]Feed{}
-
-	var sorted []string
-
-	mutex.RLock()
-	for name, url := range feeds {
-		sorted = append(sorted, name)
-		urls[name] = url
-
-		if stat, ok := status[name]; ok {
-			stats[name] = *stat
-		}
+	if strings.HasPrefix(link, "https://themwl.org/ar/") {
+		link = strings.Replace(link, "themwl.org/ar/", "themwl.org/en/", 1)
+		app.Log("news", "Replacing mwl ar link %s -> %s", item.Link, link)
 	}
-	mutex.RUnlock()
 
-	head = []byte(app.Head("news", sorted))
+	// Parse publish timestamp
+	postedAt := parsePublishTime(item)
 
-	sort.Strings(sorted)
+	// Get metadata
+	md, _, err := getMetadata(link, postedAt)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing metadata: %w", err)
+	}
 
-	// all the news
-	var news []*Post
-	var headlines []*Post
+	if strings.Contains(link, "themwl.org") {
+		item.Title = md.Title
+	}
 
-	for _, name := range sorted {
-		feed := urls[name]
+	// Use extracted content if available
+	if len(md.Content) > 0 && len(item.Content) == 0 {
+		item.Content = md.Content
+	}
 
-		// check last attempt
-		stat, ok := stats[name]
-		if !ok {
-			stat = Feed{
-				Name: name,
-				URL:  feed,
+	// Clean and truncate description
+	cleanDescription := cleanAndTruncateDescription(item.Description)
+
+	// Generate stable ID from URL hash
+	itemID := fmt.Sprintf("%x", md5.Sum([]byte(link)))[:16]
+
+	// Use summary as post content if available
+	postContent := item.Content
+	if md.Summary != "" {
+		postContent = md.Summary
+	}
+
+	// Use metadata title if RSS title is empty
+	itemTitle := item.Title
+	if itemTitle == "" && md.Title != "" {
+		itemTitle = md.Title
+		app.Log("news", "Using metadata title for %s: %s", link, itemTitle)
+	}
+
+	post := &Post{
+		ID:          itemID,
+		Title:       itemTitle,
+		Description: cleanDescription,
+		URL:         link,
+		Published:   item.Published,
+		PostedAt:    postedAt,
+		Category:    categoryName,
+		Image:       md.Image,
+		Content:     postContent,
+	}
+
+	// Index the article for search/RAG
+	indexArticle(post, item, md)
+
+	return post, nil
+}
+
+// parsePublishTime extracts and parses the publish time from a feed item
+func parsePublishTime(item *gofeed.Item) time.Time {
+	if item.PublishedParsed != nil {
+		return *item.PublishedParsed
+	}
+
+	if item.Published != "" {
+		// Try common date formats
+		formats := []string{time.RFC1123Z, time.RFC3339}
+		for _, format := range formats {
+			if parsed, err := time.Parse(format, item.Published); err == nil {
+				return parsed
 			}
-
-			mutex.Lock()
-			status[name] = &stat
-			mutex.Unlock()
 		}
+		app.Log("news", "Failed to parse timestamp for %s: %s - using current time", item.Link, item.Published)
+	} else {
+		app.Log("news", "No timestamp available for %s - using current time", item.Link)
+	}
 
-		// it's a reattempt, so we need to check what's going on
-		if stat.Attempts > 0 {
-			// there is still some time on the clock
-			if time.Until(stat.Backoff) > time.Duration(0) {
-				// skip this iteration
-				continue
-			}
+	return time.Now()
+}
 
-			// otherwise we've just hit our threshold
-			fmt.Println("Reattempting to pull", feed)
+// cleanAndTruncateDescription cleans HTML and truncates description to first sentence
+func cleanAndTruncateDescription(desc string) string {
+	// Convert plain text newlines to em dashes
+	if !strings.Contains(desc, "<") {
+		desc = strings.ReplaceAll(desc, "\n", " — ")
+		desc = strings.ReplaceAll(desc, "— —", "—")
+		desc = strings.ReplaceAll(desc, "—  —", "—")
+	}
+
+	cleanDescription := htmlToText(desc)
+
+	// Truncate to first sentence (max 250 chars)
+	maxLen := 250
+	if len(cleanDescription) > maxLen {
+		truncated := cleanDescription[:maxLen]
+		if idx := strings.Index(truncated, ". "); idx > 0 {
+			return truncated[:idx+1]
 		}
-
-		// parse the feed
-		f, err := p.ParseURL(feed)
-		if err != nil {
-			// up the attempts
-			stat.Attempts++
-			// set the error
-			stat.Error = err
-			// set the backoff
-			stat.Backoff = time.Now().Add(backoff(stat.Attempts))
-			// print the error
-			fmt.Printf("Error parsing %s: %v, attempt %d backoff until %v\n", feed, err, stat.Attempts, stat.Backoff)
-
-			mutex.Lock()
-			status[name] = &stat
-			mutex.Unlock()
-
-			// skip ahead
-			continue
+		if idx := strings.Index(truncated, ".\n"); idx > 0 {
+			return truncated[:idx+1]
 		}
+		return truncated[:247] + "..."
+	}
 
-		mutex.Lock()
-		// successful pull
-		stat.Attempts = 0
-		stat.Backoff = time.Time{}
-		stat.Error = nil
+	// Look for first sentence break
+	if idx := strings.Index(cleanDescription, ". "); idx > 0 {
+		return cleanDescription[:idx+1]
+	}
+	if idx := strings.Index(cleanDescription, ".\n"); idx > 0 {
+		return cleanDescription[:idx+1]
+	}
 
-		// readd
-		status[name] = &stat
-		mutex.Unlock()
+	return cleanDescription
+}
 
-		content = append(content, []byte(`<div class=section>`)...)
-		content = append(content, []byte(`<hr id="`+name+`" class="anchor">`)...)
-		content = append(content, []byte(`<h1>`+name+`</h1>`)...)
+// indexArticle indexes an article for search/RAG
+func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
+	// Use LLM summary if available, otherwise combine description + content
+	fullContent := item.Description + " " + item.Content
+	if md.Summary != "" {
+		fullContent = md.Summary
+	}
+	if len(md.Comments) > 0 {
+		fullContent += " " + md.Comments
+	}
 
-		for i, item := range f.Items {
-			// only 10 items
-			if i >= 10 {
-				break
-			}
+	data.Index(
+		post.ID,
+		"news",
+		post.Title,
+		fullContent,
+		map[string]interface{}{
+			"url":         post.URL,
+			"category":    post.Category,
+			"posted_at":   post.PostedAt,
+			"image":       post.Image,
+			"description": item.Description,
+			"summary":     md.Summary,
+		},
+	)
+}
 
-			// Apply content parsers to clean up description
-			item.Description = applyContentParsers(item.Description, name)
+// formatFeedItemHTML formats a single feed item as HTML
+func formatFeedItemHTML(post *Post, itemGUID string) string {
+	categoryBadge := ""
+	if post.Category != "" {
+		categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, post.Category)
+	}
+	summary := getSummary(post)
 
-			link := item.Link
-
-			app.Log("news", "Checking link %s", link)
-
-			if strings.HasPrefix(link, "https://themwl.org/ar/") {
-				link = strings.Replace(link, "themwl.org/ar/", "themwl.org/en/", 1)
-				app.Log("news", "Replacing mwl ar link %s -> %s", item.Link, link)
-			}
-
-			// Handle nil PublishedParsed first, so we can pass it to getMetadata
-			var postedAt time.Time
-			if item.PublishedParsed != nil {
-				postedAt = *item.PublishedParsed
-			} else if item.Published != "" {
-				// Try parsing the Published string directly
-				if parsed, err := time.Parse(time.RFC1123Z, item.Published); err == nil {
-					postedAt = parsed
-				} else if parsed, err := time.Parse(time.RFC3339, item.Published); err == nil {
-					postedAt = parsed
-				} else {
-					app.Log("news", "Failed to parse timestamp for %s: %s - using current time", link, item.Published)
-					// Use current time as approximation since it's in RSS feed (likely recent)
-					postedAt = time.Now()
-				}
-			} else {
-				app.Log("news", "No timestamp available for %s - using current time", link)
-				// Use current time as approximation since it's in RSS feed (likely recent)
-				postedAt = time.Now()
-			}
-
-			// get meta
-			md, _, err := getMetadata(link, postedAt)
-			if err != nil {
-				app.Log("news", "Error parsing %s: %v", link, err)
-				continue
-			}
-
-			if strings.Contains(link, "themwl.org") {
-				item.Title = md.Title
-			}
-
-			// extracted content using goquery
-			if len(md.Content) > 0 && len(item.Content) == 0 {
-				item.Content = md.Content
-			}
-
-			// Clean up description HTML
-			desc := item.Description
-
-			// Convert plain text newlines to em dashes
-			if !strings.Contains(desc, "<") {
-				desc = strings.ReplaceAll(desc, "\n", " — ")
-				// Remove any double emdashes that may have been created
-				desc = strings.ReplaceAll(desc, "— —", "—")
-				desc = strings.ReplaceAll(desc, "—  —", "—")
-			}
-
-			cleanDescription := htmlToText(desc)
-
-			// Truncate to first sentence (look for period followed by space, newline, or end)
-			maxLen := 250
-			if len(cleanDescription) > maxLen {
-				// Look for sentence end within first 250 chars
-				truncated := cleanDescription[:maxLen]
-				if idx := strings.Index(truncated, ". "); idx > 0 {
-					cleanDescription = truncated[:idx+1]
-				} else if idx := strings.Index(truncated, ".\n"); idx > 0 {
-					cleanDescription = truncated[:idx+1]
-				} else {
-					cleanDescription = truncated[:247] + "..."
-				}
-			} else {
-				// Text is under 250 chars, look for first sentence
-				if idx := strings.Index(cleanDescription, ". "); idx > 0 {
-					cleanDescription = cleanDescription[:idx+1]
-				} else if idx := strings.Index(cleanDescription, ".\n"); idx > 0 {
-					cleanDescription = cleanDescription[:idx+1]
-				}
-				// If no sentence break found, keep the whole thing
-			}
-
-			// Generate stable ID from URL hash - more reliable than GUID which can change
-			itemID := fmt.Sprintf("%x", md5.Sum([]byte(link)))[:16]
-
-			// Use summary as post content if available, otherwise use RSS content
-			postContent := item.Content
-			if md.Summary != "" {
-				postContent = md.Summary
-			}
-
-			// Use metadata title if RSS title is empty
-			itemTitle := item.Title
-			if itemTitle == "" && md.Title != "" {
-				itemTitle = md.Title
-				app.Log("news", "Using metadata title for %s: %s", link, itemTitle)
-			}
-
-			// create post
-			post := &Post{
-				ID:          itemID,
-				Title:       itemTitle,
-				Description: cleanDescription,
-				URL:         link,
-				Published:   item.Published,
-				PostedAt:    postedAt,
-				Category:    name,
-				Image:       md.Image,
-				Content:     postContent,
-			}
-
-			news = append(news, post)
-
-			// Index the article for search/RAG
-			// Use LLM summary if available, otherwise combine description + content
-			var fullContent string
-			if md.Summary != "" {
-				fullContent = md.Summary
-			} else {
-				fullContent = item.Description + " " + item.Content
-			}
-
-			if len(md.Comments) > 0 {
-				fullContent += " " + md.Comments
-			}
-
-			data.Index(
-				itemID,
-				"news",
-				itemTitle,
-				fullContent,
-				map[string]interface{}{
-					"url":         link,
-					"category":    name,
-					"posted_at":   postedAt,
-					"image":       md.Image,
-					"description": item.Description,
-					"summary":     md.Summary,
-				},
-			)
-
-			var val string
-
-			if len(md.Image) > 0 {
-				val = fmt.Sprintf(`
+	if len(post.Image) > 0 {
+		return fmt.Sprintf(`
 	<div id="%s" class="news">
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover" src="%s">
@@ -1311,9 +1216,10 @@ func parseFeed() {
 	    </div>
 	  </a>
 	  <div class="summary">%s</div>
-				`, item.GUID, link, md.Image, getCategoryBadge(post), itemTitle, cleanDescription, getSummary(post))
-			} else {
-				val = fmt.Sprintf(`
+</div>`, itemGUID, post.URL, post.Image, categoryBadge, post.Title, post.Description, summary)
+	}
+
+	return fmt.Sprintf(`
 	<div id="%s" class="news">
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
 	    <img class="cover">
@@ -1324,85 +1230,139 @@ func parseFeed() {
 	    </div>
 	  </a>
 	  <div class="summary">%s</div>
-				`, item.GUID, link, getCategoryBadge(post), itemTitle, cleanDescription, getSummary(post))
-			}
+</div>`, itemGUID, post.URL, categoryBadge, post.Title, post.Description, summary)
+}
 
-			// close div
-			val += `</div>`
-
-			content = append(content, []byte(val)...)
-
-			if i > 0 {
-				continue
-			}
-
-			// add to headlines / 1 per category
-			headlines = append(headlines, post)
-		}
-
-		content = append(content, []byte(`</div>`)...)
-	}
-
-	// get crypto prices
-	newPrices := getPrices()
-	app.Log("news", "Finished getting prices")
-
-	if newPrices != nil {
-		// Cache the prices for the markets page
+// processFeedCategory fetches and processes all items from a single feed category
+func processFeedCategory(name, feedURL string, p *gofeed.Parser, stats map[string]Feed) ([]byte, []*Post, *Feed) {
+	stat, ok := stats[name]
+	if !ok {
+		stat = Feed{Name: name, URL: feedURL}
 		mutex.Lock()
-		cachedPrices = newPrices
+		status[name] = &stat
 		mutex.Unlock()
+	}
 
-		// Keep legacy markets HTML format for /markets page
-		var sb strings.Builder
-		sb.WriteString(`<div class="item"><div id="tickers">`)
+	// Check if we should retry based on backoff
+	if stat.Attempts > 0 && time.Until(stat.Backoff) > 0 {
+		return nil, nil, &stat
+	}
 
-		for _, ticker := range tickers {
-			price := newPrices[ticker]
-			fmt.Fprintf(&sb, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
+	if stat.Attempts > 0 {
+		fmt.Println("Reattempting to pull", feedURL)
+	}
+
+	// Parse the feed
+	f, err := p.ParseURL(feedURL)
+	if err != nil {
+		stat.Attempts++
+		stat.Error = err
+		stat.Backoff = time.Now().Add(backoff(stat.Attempts))
+		fmt.Printf("Error parsing %s: %v, attempt %d backoff until %v\n", feedURL, err, stat.Attempts, stat.Backoff)
+		mutex.Lock()
+		status[name] = &stat
+		mutex.Unlock()
+		return nil, nil, &stat
+	}
+
+	// Successful pull - reset stats
+	stat.Attempts = 0
+	stat.Backoff = time.Time{}
+	stat.Error = nil
+	mutex.Lock()
+	status[name] = &stat
+	mutex.Unlock()
+
+	// Build HTML and collect posts
+	var content []byte
+	var posts []*Post
+	var firstPost *Post
+
+	content = append(content, []byte(`<div class=section>`)...)
+	content = append(content, []byte(`<hr id="`+name+`" class="anchor">`)...)
+	content = append(content, []byte(`<h1>`+name+`</h1>`)...)
+
+	for i, item := range f.Items {
+		if i >= 10 {
+			break
 		}
 
-		sb.WriteString(`</div>`)
-		marketsHtml = sb.String()
-
-		sb.Reset()
-		sb.WriteString(`<div id="futures">`)
-
-		for _, ticker := range futuresKeys {
-			price := newPrices[ticker]
-			fmt.Fprintf(&sb, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
+		post, err := parseFeedItem(item, name)
+		if err != nil {
+			app.Log("news", "Error parsing item from %s: %v", feedURL, err)
+			continue
 		}
 
-		sb.WriteString(`</div></div>`)
-		marketsHtml += sb.String()
+		posts = append(posts, post)
+		itemHTML := formatFeedItemHTML(post, item.GUID)
+		content = append(content, []byte(itemHTML)...)
 
-		// Index all prices for search/RAG
-		app.Log("news", "Indexing %d market prices", len(newPrices))
-		timestamp := time.Now().Format(time.RFC3339)
-		for ticker, price := range newPrices {
-			data.Index(
-				"market_"+ticker,
-				"market",
-				ticker,
-				fmt.Sprintf("$%.2f", price),
-				map[string]interface{}{
-					"ticker":  ticker,
-					"price":   price,
-					"updated": timestamp,
-				},
-			)
+		if i == 0 {
+			firstPost = post
 		}
 	}
 
-	// create the headlines
-	sort.Slice(headlines, func(i, j int) bool {
-		return headlines[i].PostedAt.After(headlines[j].PostedAt)
-	})
+	content = append(content, []byte(`</div>`)...)
 
+	var headlines []*Post
+	if firstPost != nil {
+		headlines = append(headlines, firstPost)
+	}
+
+	return content, headlines, &stat
+}
+
+// generateMarketsHTML creates the markets HTML from price data
+func generateMarketsHTML(prices map[string]float64) string {
+	var sb strings.Builder
+	sb.WriteString(`<div class="item"><div id="tickers">`)
+
+	for _, ticker := range tickers {
+		price := prices[ticker]
+		fmt.Fprintf(&sb, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
+	}
+
+	sb.WriteString(`</div>`)
+
+	sb.WriteString(`<div id="futures">`)
+	for _, ticker := range futuresKeys {
+		price := prices[ticker]
+		fmt.Fprintf(&sb, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
+	}
+	sb.WriteString(`</div></div>`)
+
+	return sb.String()
+}
+
+// indexMarketPrices indexes all market prices for search/RAG
+func indexMarketPrices(prices map[string]float64) {
+	app.Log("news", "Indexing %d market prices", len(prices))
+	timestamp := time.Now().Format(time.RFC3339)
+	for ticker, price := range prices {
+		data.Index(
+			"market_"+ticker,
+			"market",
+			ticker,
+			fmt.Sprintf("$%.2f", price),
+			map[string]interface{}{
+				"ticker":  ticker,
+				"price":   price,
+				"updated": timestamp,
+			},
+		)
+	}
+}
+
+// generateHeadlinesHTML creates the headlines HTML section
+func generateHeadlinesHTML(headlines []*Post) string {
 	var sb strings.Builder
 	sb.WriteString(`<div class=section>`)
 
 	for _, h := range headlines {
+		categoryBadge := ""
+		if h.Category != "" {
+			categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, h.Category)
+		}
 		fmt.Fprintf(&sb, `
 			<div class="headline">
 			  <a href="%s" rel="noopener noreferrer" target="_blank">
@@ -1411,42 +1371,98 @@ func parseFeed() {
 			  </a>
 			 <span class="description">%s</span>
 			 <div class="summary">%s</div>
-			`, h.URL, getCategoryBadge(h), h.Title, h.Description, getSummary(h))
-
-		// close val
+			`, h.URL, categoryBadge, h.Title, h.Description, getSummary(h))
 		sb.WriteString(`</div>`)
 	}
 
 	sb.WriteString(`</div>`)
+	return sb.String()
+}
 
-	// set the headline
-	headlineHtml := sb.String()
-	content = append([]byte(headlineHtml), content...)
+func parseFeed() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic in feed parser: %v\n", r)
+			debug.PrintStack()
+			fmt.Println("Relaunching feed parser in 1 minute")
+			time.Sleep(time.Minute)
+			go parseFeed()
+		}
+	}()
 
+	fmt.Println("Parsing feed at", time.Now().String())
+	p := gofeed.NewParser()
+	p.UserAgent = "Mu/0.1"
+
+	// Collect feed URLs and stats
+	var sorted []string
+	urls := map[string]string{}
+	stats := map[string]Feed{}
+
+	mutex.RLock()
+	for name, url := range feeds {
+		sorted = append(sorted, name)
+		urls[name] = url
+		if stat, ok := status[name]; ok {
+			stats[name] = *stat
+		}
+	}
+	mutex.RUnlock()
+
+	sort.Strings(sorted)
+
+	// Process all feeds
+	var allContent []byte
+	var allNews []*Post
+	var allHeadlines []*Post
+
+	for _, name := range sorted {
+		feedURL := urls[name]
+		content, headlines, _ := processFeedCategory(name, feedURL, p, stats)
+		if content != nil {
+			allContent = append(allContent, content...)
+		}
+		if headlines != nil {
+			allHeadlines = append(allHeadlines, headlines...)
+			allNews = append(allNews, headlines...)
+		}
+	}
+
+	// Get crypto prices and generate markets HTML
+	newPrices := getPrices()
+	app.Log("news", "Finished getting prices")
+
+	if newPrices != nil {
+		mutex.Lock()
+		cachedPrices = newPrices
+		mutex.Unlock()
+
+		marketsHtml = generateMarketsHTML(newPrices)
+		indexMarketPrices(newPrices)
+	}
+
+	// Generate headlines HTML
+	sort.Slice(allHeadlines, func(i, j int) bool {
+		return allHeadlines[i].PostedAt.After(allHeadlines[j].PostedAt)
+	})
+
+	headlineHtml := generateHeadlinesHTML(allHeadlines)
+	allContent = append([]byte(headlineHtml), allContent...)
+
+	// Save everything
+	head := []byte(app.Head("news", sorted))
 	mutex.Lock()
-
-	// set the feed
-	feed = news
-	// set the headlines
+	feed = allNews
 	headlinesHtml = headlineHtml
-	// save it
-	saveHtml(head, content)
-	// save the headlines
+	saveHtml(head, allContent)
 	data.SaveFile("headlines.html", headlinesHtml)
-	// save markets
 	data.SaveFile("markets.html", marketsHtml)
-
-	// save the prices as JSON for persistence
 	data.SaveJSON("prices.json", cachedPrices)
-	// save the feed as JSON for persistence
 	data.SaveJSON("feed.json", feed)
-
 	mutex.Unlock()
 
-	// wait an hour
+	// Wait an hour and go again
 	time.Sleep(time.Hour)
-
-	// go again
 	go parseFeed()
 }
 
@@ -1902,7 +1918,7 @@ func formatSearchResult(entry *data.IndexEntry) string {
 
 	categoryBadge := ""
 	if category != "" {
-		categoryBadge = fmt.Sprintf(` · <span class="category">%s</span>`, category)
+		categoryBadge = fmt.Sprintf(`<div style="margin-bottom: 5px;"><span class="category">%s</span></div>`, category)
 	}
 
 	if image != "" {
@@ -1911,12 +1927,13 @@ func formatSearchResult(entry *data.IndexEntry) string {
   <a href="%s" rel="noopener noreferrer" target="_blank">
     <img class="cover" src="%s">
     <div class="blurb">
+      %s
       <span class="title">%s</span>
       <span class="description">%s</span>
     </div>
   </a>
-  <div class="summary">%s%s</div>
-</div>`, entry.ID, url, image, title, description, summary, categoryBadge)
+  <div class="summary">%s</div>
+</div>`, entry.ID, url, image, categoryBadge, title, description, summary)
 	}
 
 	return fmt.Sprintf(`
@@ -1924,12 +1941,13 @@ func formatSearchResult(entry *data.IndexEntry) string {
   <a href="%s" rel="noopener noreferrer" target="_blank">
     <img class="cover">
     <div class="blurb">
+      %s
       <span class="title">%s</span>
       <span class="description">%s</span>
     </div>
   </a>
-  <div class="summary">%s%s</div>
-</div>`, entry.ID, url, title, description, summary, categoryBadge)
+  <div class="summary">%s</div>
+</div>`, entry.ID, url, categoryBadge, title, description, summary)
 }
 
 func handleSearch(w http.ResponseWriter, r *http.Request, query string) {

@@ -64,6 +64,27 @@ func GetTopics() []string {
 	return topics
 }
 
+// formatTags splits comma-separated tags and formats them as individual badges
+func formatTags(tags string) string {
+	if tags == "" {
+		return ""
+	}
+	
+	parts := strings.Split(tags, ",")
+	var badges []string
+	for _, tag := range parts {
+		tag = strings.TrimSpace(tag)
+		if tag != "" {
+			badges = append(badges, fmt.Sprintf(`<span class="category">%s</span>`, tag))
+		}
+	}
+	
+	if len(badges) == 0 {
+		return ""
+	}
+	return strings.Join(badges, " ")
+}
+
 // parseTags parses comma-separated tags, validates, and normalizes them
 func parseTags(input string) string {
 	if input == "" {
@@ -334,16 +355,17 @@ func updateCacheUnlocked() {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
 		}
 
-		tagsHtml := ""
-		if post.Tags != "" {
-			tagsHtml = fmt.Sprintf(` · <span class="category">%s</span>`, post.Tags)
+		tagsHtml := formatTags(post.Tags)
+		if tagsHtml != "" {
+			tagsHtml = `<div style="margin-bottom: 8px;">` + tagsHtml + `</div>`
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
+		%s
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">%s · Posted by %s%s</div>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml)
+		<div class="info">%s · Posted by %s</div>
+	</div>`, tagsHtml, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink)
 		preview = append(preview, item)
 	}
 
@@ -394,16 +416,17 @@ func updateCacheUnlocked() {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
 		}
 
-		tagsHtml := ""
-		if post.Tags != "" {
-			tagsHtml = fmt.Sprintf(` · <span class="category">%s</span>`, post.Tags)
+		tagsHtml := formatTags(post.Tags)
+		if tagsHtml != "" {
+			tagsHtml = `<div style="margin-bottom: 8px;">` + tagsHtml + `</div>`
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
+			%s
 			<h3><a href="/post?id=%s">%s</a></h3>
 			<div>%s</div>
-			<div class="info">%s · Posted by %s%s</div>
-		</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml)
+			<div class="info">%s · Posted by %s</div>
+		</div>`, tagsHtml, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink)
 		fullList = append(fullList, item)
 	}
 
@@ -1133,14 +1156,15 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tagsHtml := ""
-	if post.Tags != "" {
-		tagsHtml = ` · <span class="category">` + post.Tags + `</span>`
+	tagsHtml := formatTags(post.Tags)
+	if tagsHtml != "" {
+		tagsHtml = `<div style="margin-bottom: 12px;">` + tagsHtml + `</div>`
 	}
 
 	content := fmt.Sprintf(`<div id="blog">
+		%s
 		<div class="info" style="color: #666; font-size: small;">
-			%s · %s%s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
+			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
 		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="margin-bottom: 20px;">%s</div>
@@ -1150,7 +1174,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<div style="margin-top: 30px;">
 			<a href="/posts" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, tagsHtml, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
