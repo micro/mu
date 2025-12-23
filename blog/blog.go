@@ -25,6 +25,9 @@ var mutex sync.RWMutex
 // cached blog posts
 var posts []*Post
 
+// postsMap for O(1) lookups by ID
+var postsMap map[string]*Post
+
 // cached comments
 var comments []*Comment
 
@@ -45,6 +48,7 @@ type Post struct {
 	AuthorID  string    `json:"author_id"`
 	Tags      string    `json:"tags"` // Comma-separated tags
 	CreatedAt time.Time `json:"created_at"`
+	Comments  []*Comment `json:"-"` // Not persisted, populated on load
 }
 
 type Comment struct {
@@ -202,6 +206,12 @@ func Load() {
 		return posts[i].CreatedAt.After(posts[j].CreatedAt)
 	})
 
+	// Build postsMap for O(1) lookups
+	postsMap = make(map[string]*Post)
+	for _, post := range posts {
+		postsMap[post.ID] = post
+	}
+
 	// Load comments
 	commentData, err := data.LoadFile("comments.json")
 	if err == nil {
@@ -214,6 +224,9 @@ func Load() {
 	sort.Slice(comments, func(i, j int) bool {
 		return comments[i].CreatedAt.Before(comments[j].CreatedAt)
 	})
+
+	// Link comments to posts
+	populateComments()
 
 	// Update cached HTML
 	updateCache()
@@ -292,6 +305,35 @@ func (d *postDeleter) RefreshCache() {
 	updateCache()
 }
 
+// countComments returns the number of comments for a given post
+func countComments(post *Post) int {
+	if post == nil {
+		return 0
+	}
+	return len(post.Comments)
+}
+
+// populateComments links comments to their respective posts
+func populateComments() {
+	// Clear existing comments on posts
+	for _, post := range posts {
+		post.Comments = nil
+	}
+	
+	// Build a map for quick lookup
+	postMap := make(map[string]*Post)
+	for _, post := range posts {
+		postMap[post.ID] = post
+	}
+	
+	// Link comments to posts
+	for _, comment := range comments {
+		if post, ok := postMap[comment.PostID]; ok {
+			post.Comments = append(post.Comments, comment)
+		}
+	}
+}
+
 // Save blog posts to disk
 func save() error {
 	return data.SaveJSON("blog.json", posts)
@@ -360,12 +402,21 @@ func updateCacheUnlocked() {
 			tagsHtml = `<div style="margin-bottom: 8px;">` + tagsHtml + `</div>`
 		}
 
+		// Add Reply/Replies count
+		commentCount := countComments(post)
+		replyLink := ""
+		if commentCount == 0 {
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Reply</a>`, post.ID)
+		} else {
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 		%s
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s</div>
-	</div>`, tagsHtml, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink)
+		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
+	</div>`, tagsHtml, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink)
 		preview = append(preview, item)
 	}
 
@@ -421,12 +472,21 @@ func updateCacheUnlocked() {
 			tagsHtml = `<div style="margin-bottom: 8px;">` + tagsHtml + `</div>`
 		}
 
+		// Add Reply/Replies count
+		commentCount := countComments(post)
+		replyLink := ""
+		if commentCount == 0 {
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Reply</a>`, post.ID)
+		} else {
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 			%s
 			<h3><a href="/post?id=%s">%s</a></h3>
 			<div>%s</div>
-			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s</div>
-		</div>`, tagsHtml, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink)
+			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
+		</div>`, tagsHtml, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink)
 		fullList = append(fullList, item)
 	}
 
@@ -498,12 +558,21 @@ func previewUncached() string {
 			}
 		}
 
+		// Add Reply/Replies count
+		commentCount := countComments(post)
+		replyLink := ""
+		if commentCount == 0 {
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Reply</a>`, post.ID)
+		} else {
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
+		}
+
 		// Generate fresh timestamp
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">%s · Posted by %s%s</div>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml)
+		<div class="info">%s · Posted by %s%s%s</div>
+	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, replyLink)
 		preview = append(preview, item)
 	}
 
@@ -715,6 +784,8 @@ func CreatePost(title, content, author, authorID, tags string) error {
 	mutex.Lock()
 	// Add to beginning of slice (newest first)
 	posts = append([]*Post{post}, posts...)
+	// Add to map for O(1) lookups
+	postsMap[post.ID] = post
 	mutex.Unlock()
 
 	// Save to disk
@@ -778,6 +849,13 @@ func CreateComment(postID, content, author, authorID string) error {
 
 	mutex.Lock()
 	comments = append(comments, comment)
+	
+	// Add comment directly to the post's Comments slice using map lookup
+	if post := postsMap[postID]; post != nil {
+		post.Comments = append(post.Comments, comment)
+	}
+	
+	updateCacheUnlocked()
 	mutex.Unlock()
 
 	// Save to disk
@@ -789,6 +867,12 @@ func GetComments(postID string) []*Comment {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
+	// Get from post's Comments field using map lookup
+	if post := postsMap[postID]; post != nil {
+		return post.Comments
+	}
+	
+	// Fallback: iterate through comments array (shouldn't happen normally)
 	var postComments []*Comment
 	for _, comment := range comments {
 		if comment.PostID == postID {
@@ -803,12 +887,7 @@ func GetPost(id string) *Post {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	for _, post := range posts {
-		if post.ID == id {
-			return post
-		}
-	}
-	return nil
+	return postsMap[id]
 }
 
 // DeletePost removes a post by ID
@@ -816,15 +895,25 @@ func DeletePost(id string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	// Check if post exists in map first
+	if _, exists := postsMap[id]; !exists {
+		return fmt.Errorf("post not found")
+	}
+	
+	// Remove from map
+	delete(postsMap, id)
+	
+	// Remove from slice
 	for i, post := range posts {
 		if post.ID == id {
 			posts = append(posts[:i], posts[i+1:]...)
-			save()
-			updateCacheUnlocked()
-			return nil
+			break
 		}
 	}
-	return fmt.Errorf("post not found")
+	
+	save()
+	updateCacheUnlocked()
+	return nil
 }
 
 // UpdatePost updates an existing post
@@ -832,34 +921,34 @@ func UpdatePost(id, title, content, tags string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	for _, post := range posts {
-		if post.ID == id {
-			post.Title = title
-			post.Content = content
-			post.Tags = tags
-			save()
-			updateCacheUnlocked()
-
-			// Re-index the updated post
-			go func(id, title, content, author, tags string) {
-				app.Log("blog", "Re-indexing updated post: %s", title)
-				data.Index(
-					id,
-					"post",
-					title,
-					content,
-					map[string]interface{}{
-						"url":    "/post?id=" + id,
-						"author": author,
-						"tags":   tags,
-					},
-				)
-			}(post.ID, post.Title, post.Content, post.Author, post.Tags)
-
-			return nil
-		}
+	post := postsMap[id]
+	if post == nil {
+		return fmt.Errorf("post not found")
 	}
-	return fmt.Errorf("post not found")
+	
+	post.Title = title
+	post.Content = content
+	post.Tags = tags
+	save()
+	updateCacheUnlocked()
+
+	// Re-index the updated post
+	go func(id, title, content, author, tags string) {
+		app.Log("blog", "Re-indexing updated post: %s", title)
+		data.Index(
+			id,
+			"post",
+			title,
+			content,
+			map[string]interface{}{
+				"url":    "/post?id=" + id,
+				"author": author,
+				"tags":   tags,
+			},
+		)
+	}(post.ID, post.Title, post.Content, post.Author, post.Tags)
+
+	return nil
 }
 
 // RefreshCache updates the cached HTML

@@ -1207,6 +1207,12 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
 	}
 	summary := getSummary(post)
+	
+	// Add Read Summary link on the right side of source
+	summaryLink := ""
+	if post.ID != "" {
+		summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read Summary</a>`, post.ID)
+	}
 
 	if len(post.Image) > 0 {
 		return fmt.Sprintf(`
@@ -1219,8 +1225,8 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
-	  <div class="summary">%s</div>
-</div>`, itemGUID, categoryBadge, post.URL, post.Image, post.Title, post.Description, summary)
+	  <div class="summary">%s%s</div>
+</div>`, itemGUID, categoryBadge, post.URL, post.Image, post.Title, post.Description, summary, summaryLink)
 	}
 
 	return fmt.Sprintf(`
@@ -1233,8 +1239,8 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
-	  <div class="summary">%s</div>
-</div>`, itemGUID, categoryBadge, post.URL, post.Title, post.Description, summary)
+	  <div class="summary">%s%s</div>
+</div>`, itemGUID, categoryBadge, post.URL, post.Title, post.Description, summary, summaryLink)
 }
 
 // processFeedCategory fetches and processes all items from a single feed category
@@ -1363,6 +1369,13 @@ func generateHeadlinesHTML(headlines []*Post) string {
 			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, h.Category)
 		}
 		summary := getSummary(h)
+		
+		// Add Read Summary link on the right side of source
+		summaryLink := ""
+		if h.ID != "" {
+			summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read Summary</a>`, h.ID)
+		}
+		
 		fmt.Fprintf(&sb, `
 			<div class="headline">
 			   %s
@@ -1370,8 +1383,8 @@ func generateHeadlinesHTML(headlines []*Post) string {
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
-			 <div class="summary">%s</div>
-			`, categoryBadge, link, h.Title, h.Description, summary)
+			 <div class="summary">%s%s</div>
+			`, categoryBadge, link, h.Title, h.Description, summary, summaryLink)
 		sb.WriteString(`</div>`)
 	}
 
