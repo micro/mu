@@ -363,6 +363,7 @@ td {
   margin: 0;
   float: none;
   min-width: 350px;
+  max-width: none;  /* Allow cards to expand in home columns */
 }
 
 /* Switch to single column when there's not enough space for two columns + sidebar */
