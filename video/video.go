@@ -544,7 +544,7 @@ func loadVideos() {
 	}
 
 	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String()))
-	b, _ := json.Marshal(videos)
+	b, _ := json.Marshal(vids)
 	vidJson := string(b)
 
 	mutex.Lock()
