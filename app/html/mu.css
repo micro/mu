@@ -986,7 +986,7 @@ body:has(#messages) #content {
 }
 
 .headline .summary {
-  font-size: 0.8em;
+  font-size: 0.9em;
   margin-top: 5px;
   color: var(--text-secondary);
 }
@@ -1045,7 +1045,7 @@ body:has(#messages) #content {
 }
 
 .news .summary {
-  font-size: 0.8em;
+  font-size: 0.9em;
   margin-top: 5px;
   color: var(--text-secondary);
 }
