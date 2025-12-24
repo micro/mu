@@ -437,7 +437,7 @@ func generateNewsHtml() string {
 			summary := getSummary(post)
 			summaryLink := ""
 			if post.ID != "" {
-				summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read Summary</a>`, post.ID)
+				summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, post.ID)
 			}
 
 			var val string
@@ -1217,7 +1217,7 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	// Add Read Summary link on the right side of source
 	summaryLink := ""
 	if post.ID != "" {
-		summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read Summary</a>`, post.ID)
+		summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, post.ID)
 	}
 
 	if len(post.Image) > 0 {
@@ -1379,7 +1379,7 @@ func generateHeadlinesHTML(headlines []*Post) string {
 		// Add Read Summary link on the right side of source
 		summaryLink := ""
 		if h.ID != "" {
-			summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read Summary</a>`, h.ID)
+			summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, h.ID)
 		}
 		
 		fmt.Fprintf(&sb, `
@@ -1811,6 +1811,8 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="%s" target="_blank" rel="noopener noreferrer">Read Original →</a>
 				<span style="margin: 0 8px;">·</span>
 				<a href="/chat?id=news_%s">Discuss with AI →</a>
+				<span style="margin: 0 8px;">·</span>
+				<a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;">Share →</a>
 			</div>
 			<div class="article-back">
 				<a href="/news">← Back to news</a>

@@ -830,7 +830,7 @@ body:has(#messages) #content {
 
 .post-item .info {
   color: var(--text-secondary);
-  font-size: 0.9em;
+  font-size: 0.8em;
   margin-top: var(--spacing-sm);
   margin-bottom: 0;
 }
@@ -976,18 +976,19 @@ body:has(#messages) #content {
 .headline .title {
   display: block;
   font-size: 1em;
-  margin: var(--spacing-sm) 0;
+  margin: var(--spacing-sm) 0 0 0;
 }
 
 .headline .description {
   display: block;
   color: var(--text-secondary);
   font-size: 0.9em;
+  margin-bottom: var(--spacing-xs);
 }
 
 .headline .summary {
-  font-size: 0.9em;
-  margin-top: 5px;
+  font-size: 0.8em;
+  margin-top: var(--spacing-sm);
   color: var(--text-secondary);
 }
 
@@ -1035,18 +1036,19 @@ body:has(#messages) #content {
   display: block;
   font-weight: bold;
   font-size: 1em;
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: 0;
 }
 
 .news .description {
   display: block;
   color: var(--text-secondary);
   font-size: 0.9em;
+  margin-bottom: var(--spacing-xs);
 }
 
 .news .summary {
-  font-size: 0.9em;
-  margin-top: 5px;
+  font-size: 0.8em;
+  margin-top: var(--spacing-sm);
   color: var(--text-secondary);
 }
 
@@ -1124,7 +1126,7 @@ body:has(#messages) #content {
 /* Video info styling */
 .thumbnail .info {
   font-size: 0.8em;
-  margin-top: 5px;
+  margin-top: var(--spacing-sm);
   color: var(--text-secondary);
 }
 

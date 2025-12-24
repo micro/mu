@@ -1238,7 +1238,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	content := fmt.Sprintf(`<div id="blog">
 		<div class="info" style="color: #666; font-size: small;">
-			%s · %s%s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a>
+			%s · %s%s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" style="color: #666;">Share</a>
 		</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="margin-bottom: 20px;">%s</div>
