@@ -1130,6 +1130,10 @@ body:has(#messages) #content {
   color: var(--text-secondary);
 }
 
+.thumbnail .info a {
+  font-size: 1em; /* Inherit parent's 0.8em, don't compound with base a's 0.9em */
+}
+
 /* ========================================
    VIDEO PAGE
    ======================================== */
