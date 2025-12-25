@@ -23,10 +23,10 @@ var topicsJSON []byte
 var mutex sync.RWMutex
 
 // cached blog posts
-var blog []*Post
+var posts []*Post
 
-// blogMap for O(1) lookups by ID
-var blogMap map[string]*Post
+// postsMap for O(1) lookups by ID
+var postsMap map[string]*Post
 
 // cached comments
 var comments []*Comment
@@ -251,7 +251,7 @@ func Load() {
 
 	// Register with admin system
 	admin.RegisterDeleter("post", &postDeleter{})
-	admin.GetNewAccountPosts = getNewAccountPostsForAdmin
+	admin.GetNewAccountBlog = getNewAccountBlogForAdmin
 }
 
 // postDeleter implements admin.ContentDeleter interface
@@ -316,7 +316,7 @@ func countComments(post *Post) int {
 // populateComments links comments to their respective blog posts
 func populateComments() {
 	// Clear existing comments on blog posts
-	for _, post := range blog {
+	for _, post := range posts {
 		post.Comments = nil
 	}
 
@@ -491,9 +491,9 @@ func updateCacheUnlocked() {
 	}
 
 	if len(fullList) == 0 {
-		blogList = "<p>No blog posts yet. Write something below!</p>"
+		postsList = "<p>No blog posts yet. Write something below!</p>"
 	} else {
-		blogList = strings.Join(fullList, "\n")
+		postsList = strings.Join(fullList, "\n")
 	}
 }
 
