@@ -82,11 +82,11 @@ func Load() {
 
 	// Map of card types to their content functions
 	cardFunctions := map[string]func() string{
+		"blog":     blog.Preview,
 		"chat":     ChatCard,
 		"news":     news.Headlines,
 		"markets":  news.Markets,
 		"reminder": news.Reminder,
-		"posts":    blog.Preview,
 		"video":    video.Latest,
 	}
 

@@ -53,7 +53,7 @@ func updateCacheUnlocked()   // Internal cache update
 ```
 
 **Issues**:
-- `Preview()` regenerates HTML on every call despite having `postsPreviewHtml` cache
+- `Preview()` regenerates HTML on every call despite having `blogPreviewHtml` cache
 - Has an `updateCache()` function but doesn't use it for the Preview method
 - Publishes `blog_updated` event but home page doesn't subscribe to it
 - Good: Has structured `Post` type with proper fields
@@ -362,7 +362,7 @@ updateTimestamps(); // Initial call
 If the full solution seems too complex, a minimal fix would be:
 
 1. **Standardize caching behavior**: Make all `Preview()`, `Headlines()`, `Latest()` methods use their caches consistently
-2. **Fix blog.Preview()**: Use the `postsPreviewHtml` cache instead of regenerating
+2. **Fix blog.Preview()**: Use the `blogPreviewHtml` cache instead of regenerating
 3. **Fix news.Headlines()**: Cache the generated HTML instead of regenerating
 4. **Fix video.Latest()**: Use the `latestHtml` cache
 5. **Add cache refresh on updates**: Call update functions when data changes

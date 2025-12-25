@@ -9,10 +9,10 @@ A personal app platform that provides services without ads, algorithms, or track
 ### Features
 
 - **Home** - One place to catchup with everything
+- **Blog** - Microblogging and community sharing
 - **Chat** - AI assistant with contextual discussions
 - **Mail** - Private messaging and email inbox 
 - **News** - Curated RSS feeds and market data
-- **Posts** - Microblogging and community sharing
 - **Video** - YouTube search and Ad-free viewing
 - **App** - Progressive web app for desktop and mobile
 - **API** - REST API for programmatic access
@@ -36,10 +36,10 @@ Starting with:
 - [x] API - Basic API
 - [x] App - Basic PWA
 - [x] Home - Overview
+- [x] Blog - Micro blogging
 - [x] Chat - LLM chat UI
 - [x] News - RSS news feed
 - [x] Video - YouTube search
-- [x] Posts - Micro blogging
 - [x] Mail - Private messaging 
 
 Coming soon:

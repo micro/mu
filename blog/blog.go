@@ -23,10 +23,10 @@ var topicsJSON []byte
 var mutex sync.RWMutex
 
 // cached blog posts
-var posts []*Post
+var blog []*Post
 
-// postsMap for O(1) lookups by ID
-var postsMap map[string]*Post
+// blogMap for O(1) lookups by ID
+var blogMap map[string]*Post
 
 // cached comments
 var comments []*Comment
@@ -274,8 +274,8 @@ func (d *postDeleter) Get(id string) interface{} {
 	}
 }
 
-// getNewAccountPostsForAdmin returns posts from new accounts for the moderation page
-func getNewAccountPostsForAdmin() []admin.PostContent {
+// getNewAccountBlogForAdmin returns blog posts from new accounts for the moderation page
+func getNewAccountBlogForAdmin() []admin.PostContent {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
@@ -313,10 +313,10 @@ func countComments(post *Post) int {
 	return len(post.Comments)
 }
 
-// populateComments links comments to their respective posts
+// populateComments links comments to their respective blog posts
 func populateComments() {
-	// Clear existing comments on posts
-	for _, post := range posts {
+	// Clear existing comments on blog posts
+	for _, post := range blog {
 		post.Comments = nil
 	}
 
@@ -491,9 +491,9 @@ func updateCacheUnlocked() {
 	}
 
 	if len(fullList) == 0 {
-		postsList = "<p>No posts yet. Write something below!</p>"
+		blogList = "<p>No blog posts yet. Write something below!</p>"
 	} else {
-		postsList = strings.Join(fullList, "\n")
+		blogList = strings.Join(fullList, "\n")
 	}
 }
 
@@ -667,7 +667,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Require authentication for write mode
 	if showWriteForm {
 		if _, err := auth.GetSession(r); err != nil {
-			http.Error(w, "Authentication required to create posts", http.StatusUnauthorized)
+			http.Error(w, "Authentication required to create blog posts", http.StatusUnauthorized)
 			return
 		}
 	}

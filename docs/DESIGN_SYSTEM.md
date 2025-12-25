@@ -10,7 +10,7 @@
 - Padding: `20px`
 - Background: `white` (implied)
 - Margin bottom: `20px`
-- **Used in**: Home page cards (news, posts, reminders)
+- **Used in**: Home page cards (news, blog, reminders)
 
 #### 2. **Block Component** (`.block`)
 - Border: `1px solid #f0f0f0`
@@ -103,7 +103,7 @@
 ### Component Standards
 
 #### 1. **Content Card** (Unified)
-All content items (posts, news, videos, chat messages) should use:
+All content items (blog posts, news, videos, chat messages) should use:
 - Border: `1px solid var(--card-border)`
 - Border radius: `var(--border-radius)`
 - Padding: `var(--spacing-lg)`

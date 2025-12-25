@@ -76,7 +76,7 @@ func main() {
 		"/news":            false, // Public viewing, auth for search
 		"/chat":            false, // Public viewing, auth for chatting
 		"/home":            false, // Public viewing
-		"/posts":           false, // Public viewing, auth for posting
+		"/blog":            false, // Public viewing, auth for posting
 		"/mail":            true,  // Require auth for inbox
 		"/logout":          true,
 		"/account":         true,
@@ -105,7 +105,7 @@ func main() {
 	http.HandleFunc("/chat", chat.Handler)
 
 	// serve blog (full list)
-	http.HandleFunc("/posts", blog.Handler)
+	http.HandleFunc("/blog", blog.Handler)
 
 	// serve individual blog post (public, no auth)
 	http.HandleFunc("/post", blog.PostHandler)
@@ -215,8 +215,8 @@ func main() {
 			if !isStaticAsset {
 				var isAuthed bool
 
-				// Special case: /post should be public, not confused with /posts
-				if strings.HasPrefix(r.URL.Path, "/post") && !strings.HasPrefix(r.URL.Path, "/posts") {
+				// Special case: /post should be public, not confused with /blog
+				if strings.HasPrefix(r.URL.Path, "/post") && !strings.HasPrefix(r.URL.Path, "/blog") {
 					isAuthed = false
 				} else {
 					// Check if path requires authentication

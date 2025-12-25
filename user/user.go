@@ -141,7 +141,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if userPosts == "" {
-		userPosts = "<p class='info'>No posts yet.</p>"
+		userPosts = "<p class='info'>No blog posts yet.</p>"
 	}
 
 	// Get user profile

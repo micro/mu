@@ -219,8 +219,8 @@ var Endpoints = []*Endpoint{{
 		},
 	},
 }, {
-	Name:        "Posts",
-	Path:        "/posts",
+	Name:        "Blog",
+	Path:        "/blog",
 	Method:      "GET",
 	Description: "Get all blog posts",
 	Response: []*Value{

@@ -1684,7 +1684,7 @@ body:has(#messages) #content {
   #news {
     order: 4;
   }
-  #posts {
+  #blog {
     order: 5;
   }
   #video {

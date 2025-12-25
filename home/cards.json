@@ -31,11 +31,11 @@
       "link": "/markets"
     },
     {
-      "id": "posts",
-      "title": "Posts",
-      "type": "posts",
+      "id": "blog",
+      "title": "Blog",
+      "type": "blog",
       "position": 3,
-      "link": "/posts"
+      "link": "/blog"
     },
     {
       "id": "video",

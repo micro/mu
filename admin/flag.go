@@ -13,8 +13,8 @@ import (
 	"mu/data"
 )
 
-// Import blog to get new account posts - will be set by blog package to avoid circular import
-var GetNewAccountPosts func() []PostContent
+// Import blog to get new account blog posts - will be set by blog package to avoid circular import
+var GetNewAccountBlog func() []PostContent
 
 // ============================================
 // DATA STRUCTURES
@@ -488,10 +488,10 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		listHTML = strings.Join(itemsList, "\n")
 	}
 
-	// Get new account posts section
+	// Get new account blog posts section
 	newAccountPostsHTML := ""
-	if GetNewAccountPosts != nil {
-		newPosts := GetNewAccountPosts()
+	if GetNewAccountBlog != nil {
+		newPosts := GetNewAccountBlog()
 		if len(newPosts) > 0 {
 			var newPostsList []string
 			for _, post := range newPosts {
@@ -530,9 +530,9 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			newAccountPostsHTML = fmt.Sprintf(`
-				<h2 style="margin-top: 2em;">New Account Posts (< 24 hours old)</h2>
-				<p style="color: #666; margin-bottom: 1em;">These posts are hidden from the public homepage but can still be flagged if inappropriate.</p>
-				<div id="new-account-posts">
+				<h2 style="margin-top: 2em;">New Account Blog Posts (< 24 hours old)</h2>
+				<p style="color: #666; margin-bottom: 1em;">These blog posts are hidden from the public homepage but can still be flagged if inappropriate.</p>
+				<div id="new-account-blog">
 					%s
 				</div>`, strings.Join(newPostsList, "\n"))
 		}

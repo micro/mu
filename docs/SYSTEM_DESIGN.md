@@ -38,7 +38,7 @@ mu/
 ├── api/              # REST API definitions and docs
 ├── app/              # Core app rendering (HTML, CSS, JS, PWA)
 ├── auth/             # Authentication and user management
-├── blog/             # Posts/microblogging
+├── blog/             # Blog posts/microblogging
 ├── chat/             # LLM chat with RAG (Retrieval Augmented Generation)
 ├── data/             # Data layer (file storage, indexing, vector search, events)
 ├── home/             # Home page cards
@@ -53,7 +53,7 @@ mu/
 ### Data Layer (`data/`)
 
 The data package provides:
-- **File Storage** - JSON files on disk for posts, metadata, user data
+- **File Storage** - JSON files on disk for blog posts, metadata, user data
 - **Vector Search** - Embeddings for semantic search across content
 - **Event System** - Pub/sub for decoupled component communication
 - **Index** - In-memory search index for fast queries
@@ -91,7 +91,7 @@ YouTube integration:
 ### Blog (`blog/`)
 
 Microblogging platform:
-- **Markdown Support** - Posts written in markdown
+- **Markdown Support** - Blog posts written in markdown
 - **Author Attribution** - Tied to user accounts
 - **Edit/Delete** - Author-only modification
 - **Optional Write Mode** - `?write=true` parameter
@@ -122,7 +122,7 @@ REST endpoints:
 - `GET /video` - Video channels
 - `POST /video` - Search videos
 - `POST /chat` - AI chat
-- `GET /posts` - All posts
+- `GET /blog` - All blog posts
 - `POST /post` - Create post
 - `GET /post?id={id}` - Get post
 - `PATCH /post?id={id}` - Update post

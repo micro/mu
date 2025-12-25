@@ -1054,7 +1054,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // BLOG POST VALIDATION
 // ============================================
 
-// Validate blog post form on /posts page
+// Validate blog post form on /blog page
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('blog-form');
   if (!form) return;
