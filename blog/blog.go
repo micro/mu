@@ -764,7 +764,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>`, actions, list)
 	}
 
-	html := app.RenderHTMLForRequest("Posts", "Share your thoughts", content, r)
+	html := app.RenderHTMLForRequest("Blog", "Share your thoughts", content, r)
 	w.Write([]byte(html))
 }
 
