@@ -557,7 +557,7 @@ func loadVideos() {
 		if thumbnailURL == "" {
 			thumbnailURL = fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
 		}
-		
+
 		var info string
 		if res.Channel != "" {
 			channelLink := res.Channel
@@ -571,7 +571,7 @@ func loadVideos() {
 		if res.Category != "" {
 			info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
 		}
-		
+
 		latestHtml = fmt.Sprintf(`
 	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
 			res.URL, thumbnailURL, res.Title, info)
@@ -768,16 +768,16 @@ func getResults(query, channel string) (string, []*Result, error) {
 		}
 
 		res := &Result{
-			ID:         id,
-			Type:       kind,
-			Title:      item.Snippet.Title,
-			URL:        url,
-			Published:  t,
-			Channel:    item.Snippet.ChannelTitle,
-			ChannelID:  item.Snippet.ChannelId,
-			Thumbnail:  thumbnailURL,
+			ID:        id,
+			Type:      kind,
+			Title:     item.Snippet.Title,
+			URL:       url,
+			Published: t,
+			Channel:   item.Snippet.ChannelTitle,
+			ChannelID: item.Snippet.ChannelId,
+			Thumbnail: thumbnailURL,
 		}
-		
+
 		if kind == "playlist" {
 			res.PlaylistID = id
 		}
@@ -819,7 +819,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		chanNames = append(chanNames, channel)
 	}
 	sort.Strings(chanNames)
-	
+
 	var headSB strings.Builder
 	for _, channel := range chanNames {
 		fmt.Fprintf(&headSB, `<a href="/video#%s" class="head">%s</a>`, channel, channel)

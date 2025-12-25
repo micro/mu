@@ -1213,7 +1213,7 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
 	}
 	summary := getSummary(post)
-	
+
 	// Add Read Summary link on the right side of source
 	summaryLink := ""
 	if post.ID != "" {
@@ -1375,13 +1375,13 @@ func generateHeadlinesHTML(headlines []*Post) string {
 			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, h.Category)
 		}
 		summary := getSummary(h)
-		
+
 		// Add Read Summary link on the right side of source
 		summaryLink := ""
 		if h.ID != "" {
 			summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, h.ID)
 		}
-		
+
 		fmt.Fprintf(&sb, `
 			<div class="headline">
 			   %s
@@ -1941,7 +1941,7 @@ func formatSearchResult(entry *data.IndexEntry) string {
 	url, _ := entry.Metadata["url"].(string)
 	category, _ := entry.Metadata["category"].(string)
 	image, _ := entry.Metadata["image"].(string)
-	
+
 	var postedAt time.Time
 	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
 		postedAt = v

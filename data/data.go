@@ -739,11 +739,11 @@ func Load() {
 		json.Unmarshal(b, &embeddings)
 		indexMutex.Unlock()
 		fmt.Printf("[data] Loaded %d embeddings from disk\n", len(embeddings))
-		
+
 		// Calculate approximate memory usage
 		embeddingMemoryMB := float64(len(embeddings)) * 768 * 8 / 1024 / 1024
 		indexMemoryMB := float64(len(index)) * 2 / 1024 // Rough estimate: ~2KB per entry
-		fmt.Printf("[data] Estimated memory: %.1f MB (embeddings) + %.1f MB (index) = %.1f MB total\n", 
+		fmt.Printf("[data] Estimated memory: %.1f MB (embeddings) + %.1f MB (index) = %.1f MB total\n",
 			embeddingMemoryMB, indexMemoryMB, embeddingMemoryMB+indexMemoryMB)
 	}
 }

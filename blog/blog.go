@@ -41,13 +41,13 @@ var postsList string
 var topics []string
 
 type Post struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"` // Raw markdown content
-	Author    string    `json:"author"`
-	AuthorID  string    `json:"author_id"`
-	Tags      string    `json:"tags"` // Comma-separated tags
-	CreatedAt time.Time `json:"created_at"`
+	ID        string     `json:"id"`
+	Title     string     `json:"title"`
+	Content   string     `json:"content"` // Raw markdown content
+	Author    string     `json:"author"`
+	AuthorID  string     `json:"author_id"`
+	Tags      string     `json:"tags"` // Comma-separated tags
+	CreatedAt time.Time  `json:"created_at"`
 	Comments  []*Comment `json:"-"` // Not persisted, populated on load
 }
 
@@ -73,7 +73,7 @@ func formatTags(tags string) string {
 	if tags == "" {
 		return ""
 	}
-	
+
 	parts := strings.Split(tags, ",")
 	var badges []string
 	for _, tag := range parts {
@@ -82,7 +82,7 @@ func formatTags(tags string) string {
 			badges = append(badges, fmt.Sprintf(`<span class="category">%s</span>`, tag))
 		}
 	}
-	
+
 	if len(badges) == 0 {
 		return ""
 	}
@@ -319,13 +319,13 @@ func populateComments() {
 	for _, post := range posts {
 		post.Comments = nil
 	}
-	
+
 	// Build a map for quick lookup
 	postMap := make(map[string]*Post)
 	for _, post := range posts {
 		postMap[post.ID] = post
 	}
-	
+
 	// Link comments to posts
 	for _, comment := range comments {
 		if post, ok := postMap[comment.PostID]; ok {
@@ -742,7 +742,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				actions = `<div style="margin-bottom: 15px;">
 					<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
 					<span style="margin: 0 8px; color: #ccc;">·</span>
-					<a href="/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
+					<a href="/admin/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
 				</div>`
 			} else if err == nil {
 				// User is authenticated but not a member or admin, show only write link
@@ -849,12 +849,12 @@ func CreateComment(postID, content, author, authorID string) error {
 
 	mutex.Lock()
 	comments = append(comments, comment)
-	
+
 	// Add comment directly to the post's Comments slice using map lookup
 	if post := postsMap[postID]; post != nil {
 		post.Comments = append(post.Comments, comment)
 	}
-	
+
 	updateCacheUnlocked()
 	mutex.Unlock()
 
@@ -871,7 +871,7 @@ func GetComments(postID string) []*Comment {
 	if post := postsMap[postID]; post != nil {
 		return post.Comments
 	}
-	
+
 	// Fallback: iterate through comments array (shouldn't happen normally)
 	var postComments []*Comment
 	for _, comment := range comments {
@@ -899,10 +899,10 @@ func DeletePost(id string) error {
 	if _, exists := postsMap[id]; !exists {
 		return fmt.Errorf("post not found")
 	}
-	
+
 	// Remove from map
 	delete(postsMap, id)
-	
+
 	// Remove from slice
 	for i, post := range posts {
 		if post.ID == id {
@@ -910,7 +910,7 @@ func DeletePost(id string) error {
 			break
 		}
 	}
-	
+
 	save()
 	updateCacheUnlocked()
 	return nil
@@ -925,7 +925,7 @@ func UpdatePost(id, title, content, tags string) error {
 	if post == nil {
 		return fmt.Errorf("post not found")
 	}
-	
+
 	post.Title = title
 	post.Content = content
 	post.Tags = tags

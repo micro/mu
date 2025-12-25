@@ -464,7 +464,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		adminSection = `<div style="margin-top: 20px;">
 			<h3>Admin</h3>
 			<p><a href="/admin">User Management →</a></p>
-			<p><a href="/moderate">Moderation Queue →</a></p>
+			<p><a href="/admin/moderate">Moderation Queue →</a></p>
 		</div>`
 	}
 

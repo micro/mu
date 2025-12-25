@@ -151,7 +151,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		</tbody>
 	</table>
 	<br>
-	<p><a href="/admin/blocklist">Mail Blocklist</a> | <a href="/moderate">Moderation Queue</a></p>`
+	<p><a href="/admin/blocklist">Mail Blocklist</a> | <a href="/admin/moderate">Moderation Queue</a></p>`
 
 	html := app.RenderHTMLForRequest("Admin", "User Management", content, r)
 	w.Write([]byte(html))

@@ -1210,6 +1210,7 @@ func MarkAsRead(msgID, userID string) error {
 						}
 						thread.HasUnread = hasUnread
 					}
+				}
 			}
 
 			return save()
@@ -1637,14 +1638,14 @@ func extractHTMLBody(htmlContent string) string {
 		strings.Contains(htmlContent, "=\n") ||
 		strings.Contains(htmlContent, "=\r\n") ||
 		looksLikeQuotedPrintable(htmlContent)
-	
+
 	if isQuotedPrintable {
 		reader := quotedprintable.NewReader(strings.NewReader(htmlContent))
 		if decoded, err := io.ReadAll(reader); err == nil {
 			htmlContent = string(decoded)
 		}
 	}
-	
+
 	// Remove Outlook/MSO conditional comments (they break rendering)
 	for strings.Contains(htmlContent, "<!--[if") {
 		start := strings.Index(htmlContent, "<!--[if")
@@ -1657,7 +1658,7 @@ func extractHTMLBody(htmlContent string) string {
 		}
 		htmlContent = htmlContent[:start] + htmlContent[start+end+12:]
 	}
-	
+
 	// Return the HTML as-is - let the email's own styling work
 	return strings.TrimSpace(htmlContent)
 }
@@ -1667,14 +1668,14 @@ func looksLikeQuotedPrintable(text string) bool {
 	// Count lines ending with = (soft line breaks)
 	lines := strings.Split(text, "\n")
 	softBreaks := 0
-	
+
 	for _, line := range lines {
 		line = strings.TrimRight(line, "\r")
 		if strings.HasSuffix(line, "=") {
 			softBreaks++
 		}
 	}
-	
+
 	// If more than 5 lines end with =, it's likely quoted-printable
 	return softBreaks > 5
 }
@@ -1682,7 +1683,7 @@ func looksLikeQuotedPrintable(text string) bool {
 // looksLikeHTML detects if content is HTML (from external emails)
 func looksLikeHTML(text string) bool {
 	text = strings.TrimSpace(text)
-	
+
 	// Check for common HTML indicators
 	htmlIndicators := []string{
 		"<!DOCTYPE html",
@@ -1690,13 +1691,13 @@ func looksLikeHTML(text string) bool {
 		"<html",
 		"<HTML",
 	}
-	
+
 	for _, indicator := range htmlIndicators {
 		if strings.HasPrefix(strings.ToLower(text), strings.ToLower(indicator)) {
 			return true
 		}
 	}
-	
+
 	// Check if it starts with common HTML tags
 	if strings.HasPrefix(text, "<") {
 		// Look for typical HTML structure tags
@@ -1708,7 +1709,7 @@ func looksLikeHTML(text string) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -1746,11 +1747,11 @@ func linkifyURLs(text string) string {
 
 	// Add remaining text
 	result += html.EscapeString(text[lastIndex:])
-	
+
 	// Convert newlines to <br> tags for proper display
 	result = strings.ReplaceAll(result, "\r\n", "<br>")
 	result = strings.ReplaceAll(result, "\n", "<br>")
-	
+
 	return result
 }
 

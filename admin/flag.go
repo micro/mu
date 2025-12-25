@@ -437,13 +437,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		actionButtons := ""
 		if isAdmin {
 			actionButtons = fmt.Sprintf(`
-				<form method="POST" action="/moderate">
+				<form method="POST" action="/admin/moderate">
 					<input type="hidden" name="action" value="approve">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
 					<button type="submit" class="btn-approve">Approve</button>
 				</form>
-				<form method="POST" action="/moderate">
+				<form method="POST" action="/admin/moderate">
 					<input type="hidden" name="action" value="delete">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
@@ -594,11 +594,11 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 	switch action {
 	case "approve":
 		Approve(contentType, contentID)
-		http.Redirect(w, r, "/moderate", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
 
 	case "delete":
 		Delete(contentType, contentID)
-		http.Redirect(w, r, "/moderate", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
 
 	default:
 		http.Error(w, "Invalid action", http.StatusBadRequest)

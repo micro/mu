@@ -83,8 +83,8 @@ func main() {
 		"/session":         false, // Public - used to check auth status
 		"/api":             true,
 		"/flag":            true,
-		"/moderate":        true,
 		"/admin":           true,
+		"/admin/moderate":  true,
 		"/admin/blocklist": true,
 		"/membership":      false,
 		"/donate":          false,
@@ -110,17 +110,17 @@ func main() {
 	// serve individual blog post (public, no auth)
 	http.HandleFunc("/post", blog.PostHandler)
 
-	// handle comments on posts
+	// handle comments on posts /post/{id}/comment
 	http.HandleFunc("/post/", blog.CommentHandler)
 
 	// flag content
 	http.HandleFunc("/flag", admin.FlagHandler)
 
-	// moderation queue
-	http.HandleFunc("/moderate", admin.ModerateHandler)
-
 	// admin user management
 	http.HandleFunc("/admin", admin.AdminHandler)
+
+	// moderation queue
+	http.HandleFunc("/admin/moderate", admin.ModerateHandler)
 
 	// mail blocklist management
 	http.HandleFunc("/admin/blocklist", admin.BlocklistHandler)
@@ -272,7 +272,7 @@ func main() {
 		for range ticker.C {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
-			app.Log("main", "Memory: Alloc=%dMB Sys=%dMB NumGC=%d Goroutines=%d", 
+			app.Log("main", "Memory: Alloc=%dMB Sys=%dMB NumGC=%d Goroutines=%d",
 				m.Alloc/1024/1024, m.Sys/1024/1024, m.NumGC, runtime.NumGoroutine())
 		}
 	}()
