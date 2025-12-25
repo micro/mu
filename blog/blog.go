@@ -740,20 +740,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if acc, err := auth.GetAccount(sess.Account); err == nil && (acc.Member || acc.Admin) {
 				// User is authenticated and is a member or admin, show write and moderate links
 				actions = `<div style="margin-bottom: 15px;">
-					<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
+					<a href="/blog?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
 					<span style="margin: 0 8px; color: #ccc;">·</span>
 					<a href="/admin/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
 				</div>`
 			} else if err == nil {
 				// User is authenticated but not a member or admin, show only write link
 				actions = `<div style="margin-bottom: 15px;">
-					<a href="/posts?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
+					<a href="/blog?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
 				</div>`
 			}
 		} else {
 			// Guest user, show login prompt
 			actions = `<div style="margin-bottom: 15px; color: #666; font-size: 14px;">
-				<a href="/login?redirect=/posts" style="color: #666; text-decoration: none;">Login</a> to write a post
+				<a href="/login?redirect=/blog" style="color: #666; text-decoration: none;">Login</a> to write a post
 			</div>`
 		}
 		content = fmt.Sprintf(`<div id="blog">
