@@ -30,7 +30,8 @@ var messages []*Message
 
 // Inbox organizes messages by thread for a user
 type Inbox struct {
-	Threads map[string]*Thread // threadID -> Thread
+	Threads     map[string]*Thread // threadID -> Thread
+	UnreadCount int                // Cached unread message count
 }
 
 // Thread represents a conversation thread
@@ -183,7 +184,7 @@ func rebuildInboxes() {
 		// Add to sender's inbox (sent messages)
 		if msg.FromID != "" {
 			if inboxes[msg.FromID] == nil {
-				inboxes[msg.FromID] = &Inbox{Threads: make(map[string]*Thread)}
+				inboxes[msg.FromID] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
 			}
 			addMessageToInbox(inboxes[msg.FromID], msg, msg.FromID)
 		}
@@ -191,7 +192,7 @@ func rebuildInboxes() {
 		// Add to recipient's inbox
 		if msg.ToID != "" && msg.ToID != msg.FromID {
 			if inboxes[msg.ToID] == nil {
-				inboxes[msg.ToID] = &Inbox{Threads: make(map[string]*Thread)}
+				inboxes[msg.ToID] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
 			}
 			addMessageToInbox(inboxes[msg.ToID], msg, msg.ToID)
 		}
@@ -209,6 +210,7 @@ func addMessageToInbox(inbox *Inbox, msg *Message, userID string) {
 		}
 	}
 
+	isUnread := !msg.Read && msg.ToID == userID
 	thread := inbox.Threads[threadID]
 	if thread == nil {
 		// New thread
@@ -220,17 +222,21 @@ func addMessageToInbox(inbox *Inbox, msg *Message, userID string) {
 			Root:      rootMsg,
 			Messages:  []*Message{msg},
 			Latest:    msg,
-			HasUnread: !msg.Read && msg.ToID == userID,
+			HasUnread: isUnread,
 		}
 		inbox.Threads[threadID] = thread
+		if isUnread {
+			inbox.UnreadCount++
+		}
 	} else {
 		// Add to existing thread
 		thread.Messages = append(thread.Messages, msg)
 		if msg.CreatedAt.After(thread.Latest.CreatedAt) {
 			thread.Latest = msg
 		}
-		if !msg.Read && msg.ToID == userID {
+		if isUnread {
 			thread.HasUnread = true
+			inbox.UnreadCount++
 		}
 	}
 }
@@ -818,6 +824,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		view = "inbox"
 	}
 
+	// Check if requesting unread count only
+	if r.URL.Query().Get("unread") == "count" {
+		mutex.RLock()
+		count := 0
+		if inbox := inboxes[acc.ID]; inbox != nil {
+			count = inbox.UnreadCount
+		}
+		mutex.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"count": count})
+		return
+	}
+
 	// Get messages for this user
 	mutex.RLock()
 	// Get user's inbox - O(1) lookup
@@ -825,12 +845,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	mutex.RUnlock()
 
 	if userInbox == nil {
-		userInbox = &Inbox{Threads: make(map[string]*Thread)}
+		userInbox = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
 	}
 
 	// Render threads from pre-organized inbox
 	var items []string
-	unreadCount := 0
+	unreadCount := userInbox.UnreadCount // Use cached count instead of recalculating
 	if view == "inbox" {
 		app.Log("mail", "Rendering inbox with %d threads for user %s", len(userInbox.Threads), acc.Name)
 
@@ -838,13 +858,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		threads := make([]*Thread, 0, len(userInbox.Threads))
 		for _, thread := range userInbox.Threads {
 			threads = append(threads, thread)
-
-			// Count unread messages
-			for _, msg := range thread.Messages {
-				if msg.ToID == acc.ID && !msg.Read {
-					unreadCount++
-				}
-			}
 		}
 
 		// Sort threads by latest message time
@@ -1162,18 +1175,10 @@ func GetUnreadCount(userID string) int {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	count := 0
-	userInbox := inboxes[userID]
-	if userInbox != nil {
-		for _, thread := range userInbox.Threads {
-			for _, msg := range thread.Messages {
-				if msg.ToID == userID && !msg.Read {
-					count++
-				}
-			}
-		}
+	if inbox := inboxes[userID]; inbox != nil {
+		return inbox.UnreadCount
 	}
-	return count
+	return 0
 }
 
 // MarkAsRead marks a message as read
@@ -1183,21 +1188,28 @@ func MarkAsRead(msgID, userID string) error {
 
 	for _, msg := range messages {
 		if msg.ID == msgID && msg.ToID == userID {
-			msg.Read = true
+			if !msg.Read {
+				msg.Read = true
 
-			// Update thread's HasUnread status
-			if inbox := inboxes[userID]; inbox != nil {
-				if thread := inbox.Threads[msg.ThreadID]; thread != nil {
-					// Check if any messages in this thread are still unread
-					hasUnread := false
-					for _, threadMsg := range thread.Messages {
-						if !threadMsg.Read && threadMsg.ToID == userID {
-							hasUnread = true
-							break
+				// Update thread's HasUnread status and decrement UnreadCount
+				if inbox := inboxes[userID]; inbox != nil {
+					if thread := inbox.Threads[msg.ThreadID]; thread != nil {
+						// Decrement unread count
+						inbox.UnreadCount--
+						if inbox.UnreadCount < 0 {
+							inbox.UnreadCount = 0
 						}
+
+						// Check if any messages in this thread are still unread
+						hasUnread := false
+						for _, threadMsg := range thread.Messages {
+							if !threadMsg.Read && threadMsg.ToID == userID {
+								hasUnread = true
+								break
+							}
+						}
+						thread.HasUnread = hasUnread
 					}
-					thread.HasUnread = hasUnread
-				}
 			}
 
 			return save()
@@ -1293,34 +1305,6 @@ func DeleteThread(msgID, userID string) error {
 	rebuildInboxes()
 	app.Log("mail", "Deleted %d messages from thread for user %s", deleted, userID)
 	return save()
-}
-
-// UnreadCountHandler returns unread message count as JSON
-func UnreadCountHandler(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]int{"count": 0})
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]int{"count": 0})
-		return
-	}
-
-	// Restrict mail to admins and members only
-	if !acc.Admin && !acc.Member {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]int{"count": 0})
-		return
-	}
-
-	count := GetUnreadCount(acc.ID)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]int{"count": count})
 }
 
 // ============================================

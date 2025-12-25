@@ -484,7 +484,7 @@ function setSession() {
       if (mailHeader && (sess.admin || sess.member)) {
         mailHeader.style.display = 'inline-block';
         // Fetch unread count
-        fetch('/mail/unread')
+        fetch('/mail?unread=count')
           .then(res => res.json())
           .then(data => {
             if (data.count > 0) {
