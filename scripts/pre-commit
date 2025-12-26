@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# Pre-commit hook that runs tests to prevent regressions
+#
+# To install this hook, run:
+#   cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+#
+# Or use: ./scripts/install-hooks.sh
+#
+
+set -e
+
+echo "Running tests before commit..."
+
+# Run all tests with -short flag to skip long-running tests
+if ! go test ./... -short; then
+    echo ""
+    echo "❌ Tests failed. Commit aborted."
+    echo "Fix the failing tests before committing."
+    echo ""
+    echo "To skip this check (not recommended), use:"
+    echo "  git commit --no-verify"
+    exit 1
+fi
+
+echo "✅ All tests passed!"
+exit 0

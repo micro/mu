@@ -168,6 +168,18 @@ Additional documentation is available in the [docs](docs/) folder:
 
 ## Development 
 
+### Git Hooks
+
+Install git hooks to run tests before commits:
+
+```bash
+./scripts/install-hooks.sh
+```
+
+This will prevent commits if tests fail, helping catch regressions early. See [scripts/README.md](scripts/README.md) for more details.
+
+### Contributing
+
 Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this.
 
 ## Sponsorship 
