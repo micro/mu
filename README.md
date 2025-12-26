@@ -19,7 +19,7 @@ A personal app platform that provides services without ads, algorithms, or track
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
-## Motivation
+## Rationale
 
 I'm tired of big tech app platforms. We can't control any of it. Lots of addictive tendencies. It seems easier to turn them into API and data providers and rebuild the UX on top. That includes chat, news, mail, video.
 
