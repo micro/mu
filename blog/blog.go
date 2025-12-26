@@ -1058,13 +1058,13 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Redirect(w, r, "/posts", http.StatusSeeOther)
+		http.Redirect(w, r, "/blog", http.StatusSeeOther)
 		return
 	}
 
 	// For other methods, id is required
 	if id == "" {
-		http.Redirect(w, r, "/posts", 302)
+		http.Redirect(w, r, "/blog", 302)
 		return
 	}
 
@@ -1152,6 +1152,46 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle DELETE - remove the post
+	if r.Method == "DELETE" || (r.Method == "POST" && r.FormValue("_method") == "DELETE") {
+		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
+
+		// Must be authenticated
+		sess, err := auth.GetSession(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		acc, err := auth.GetAccount(sess.Account)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if user is the author
+		if post.AuthorID != acc.ID {
+			http.Error(w, "Forbidden - you can only delete your own posts", http.StatusForbidden)
+			return
+		}
+
+		if err := DeletePost(id); err != nil {
+			http.Error(w, "Failed to delete post", http.StatusInternalServerError)
+			return
+		}
+
+		if isJSON {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+			})
+			return
+		}
+
+		http.Redirect(w, r, "/blog", http.StatusSeeOther)
+		return
+	}
+
 	// GET - return JSON if requested
 	if r.Method == "GET" && strings.Contains(r.Header.Get("Accept"), "application/json") {
 		w.Header().Set("Content-Type", "application/json")
@@ -1220,13 +1260,13 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
 	}
 
-	// Check if current user is the author (to show edit button)
+	// Check if current user is the author (to show edit and delete buttons)
 	var editButton string
 	sess, err := auth.GetSession(r)
 	if err == nil {
 		acc, err := auth.GetAccount(sess.Account)
 		if err == nil && acc.ID == post.AuthorID {
-			editButton = ` · <a href="/post?id=` + post.ID + `&edit=true" style="color: #666;">Edit</a>`
+			editButton = ` · <a href="/post?id=` + post.ID + `&edit=true" style="color: #666;">Edit</a> · <a href="#" onclick="if(confirm('Delete this post?')){var f=document.createElement('form');f.method='POST';f.action='/post?id=` + post.ID + `';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" style="color: #d9534f;">Delete</a>`
 		}
 	}
 
@@ -1246,7 +1286,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<h3 style="margin-top: 30px;">Comments</h3>
 		%s
 		<div style="margin-top: 30px;">
-			<a href="/posts" style="color: #666; text-decoration: none;">← Back to posts</a>
+			<a href="/blog" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
 	</div>`, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
@@ -1467,7 +1507,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	go admin.CheckContent("post", postID, title, content)
 
 	// Redirect back to posts page
-	http.Redirect(w, r, "/posts", http.StatusSeeOther)
+	http.Redirect(w, r, "/blog", http.StatusSeeOther)
 }
 
 // CommentHandler handles comment submissions
