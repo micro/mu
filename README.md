@@ -9,7 +9,7 @@ A personal app platform that provides services without ads, algorithms, or track
 ### Features
 
 - **App** - Progressive web app for desktop and mobile
-- **API** - REST API for programmatic access
+- **API** - Basic API for docs and programmatic access
 - **Home** - One place to catchup with everything
 - **Blog** - Microblogging and community sharing
 - **Chat** - AI assistant with contextual discussions
