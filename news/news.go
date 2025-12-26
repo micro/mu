@@ -412,6 +412,13 @@ func generateNewsHtml() string {
 	}
 	sort.Strings(sortedCategories)
 
+	// Sort posts within each category by timestamp (newest first)
+	for _, posts := range categories {
+		sort.Slice(posts, func(i, j int) bool {
+			return posts[i].PostedAt.After(posts[j].PostedAt)
+		})
+	}
+
 	// Generate HTML for each category
 	for _, cat := range sortedCategories {
 		posts := categories[cat]
@@ -1104,10 +1111,26 @@ func parseFeedItem(item *gofeed.Item, categoryName string) (*Post, error) {
 		app.Log("news", "Using metadata title for %s: %s", link, itemTitle)
 	}
 
+	// Use metadata description if RSS description is empty
+	finalDescription := cleanDescription
+	if finalDescription == "" && md.Description != "" {
+		finalDescription = md.Description
+		// Truncate to a reasonable length
+		if len(finalDescription) > 250 {
+			truncated := finalDescription[:250]
+			if idx := strings.Index(truncated, ". "); idx > 0 {
+				finalDescription = truncated[:idx+1]
+			} else {
+				finalDescription = truncated[:247] + "..."
+			}
+		}
+		app.Log("news", "Using metadata description for %s", link)
+	}
+
 	post := &Post{
 		ID:          itemID,
 		Title:       itemTitle,
-		Description: cleanDescription,
+		Description: finalDescription,
 		URL:         link,
 		Published:   item.Published,
 		PostedAt:    postedAt,
