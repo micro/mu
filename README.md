@@ -60,7 +60,7 @@ Basic concepts. The app contains **cards** displayed on the home screen. These a
 
 ## Paid Hosting
 
-Contact asim@mu.xyz or file an issue to discuss custom hosting.
+Contact asim@mu.xyz or file an issue to discuss managed hosting.
 
 ## Self Hosting
 
