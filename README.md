@@ -58,7 +58,7 @@ Basic concepts. The app contains **cards** displayed on the home screen. These a
 
 **Mu is free to use** at [mu.xyz](https://mu.xyz). Create an account and start using it immediately - no credit card required.
 
-## Managed Hosting
+## Paid Hosting
 
 Contact asim@mu.xyz or file an issue to discuss custom hosting.
 
