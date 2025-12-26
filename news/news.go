@@ -1787,10 +1787,8 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	app.Log("news", "Final title='%s', desc='%s'", title, description)
 
-	// Use description from metadata if available, otherwise fall back to indexed content
-	if description == "" {
-		description = htmlToText(entry.Content)
-	}
+	// Don't fall back to entry.Content for description - that might contain AI-generated summary
+	// Keep description and summary clearly separated
 
 	// Build the article page
 	imageSection := ""
@@ -1799,13 +1797,13 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 
 	summarySection := ""
-	// Only show summary if it's different from the description
-	if summary != "" && summary != description {
+	// Always show summary in its own section when available (clearly labeled as AI-generated)
+	if summary != "" {
 		// Format the summary: split by double newlines into paragraphs, handle bullet points
 		formattedSummary := formatSummary(summary)
 		summarySection = fmt.Sprintf(`
 			<div class="article-summary">
-				<h3>Summary</h3>
+				<h3>AI Summary</h3>
 				<div>%s</div>
 			</div>`, formattedSummary)
 	}
