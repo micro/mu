@@ -432,10 +432,10 @@ func updateCacheUnlocked() {
 
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s">%s</a></h3>
-		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 		%s
+		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 		<div>%s</div>
-	</div>`, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, tagsHtml, content)
+	</div>`, post.ID, title, tagsHtml, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
 		preview = append(preview, item)
 	}
 
@@ -521,10 +521,10 @@ func updateCacheUnlocked() {
 
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s">%s</a></h3>
-			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 			%s
+			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 			<div>%s</div>
-		</div>`, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, tagsHtml, content)
+		</div>`, post.ID, title, tagsHtml, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
 		fullList = append(fullList, item)
 	}
 
@@ -1430,10 +1430,10 @@ var title, content, tags string
 	}
 	
 	content := fmt.Sprintf(`<div id="blog">
+		%s
 		<div class="info" style="color: #666; font-size: small;">
 			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" style="color: #666;">Share</a>
 		</div>
-		%s
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="margin-bottom: 20px;">%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
@@ -1442,7 +1442,7 @@ var title, content, tags string
 		<div style="margin-top: 30px;">
 			<a href="/blog" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, tagsDisplay, contentHTML, renderComments(post.ID, r))
+	</div>`, tagsDisplay, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
