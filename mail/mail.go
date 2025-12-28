@@ -412,6 +412,29 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	msgID := r.URL.Query().Get("id")
 	action := r.URL.Query().Get("action")
 
+	// Handle view raw source action
+	if action == "view_raw" && msgID != "" {
+		mutex.RLock()
+		var msg *Message
+		for _, m := range messages {
+			if m.ID == msgID && (m.ToID == acc.ID || m.FromID == acc.ID) {
+				msg = m
+				break
+			}
+		}
+		mutex.RUnlock()
+
+		if msg == nil {
+			http.Error(w, "Message not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte(fmt.Sprintf("From: %s\nTo: %s\nSubject: %s\nDate: %s\n\n%s", 
+			msg.FromID, msg.ToID, msg.Subject, msg.CreatedAt.Format(time.RFC1123), msg.Body)))
+		return
+	}
+
 	// Handle download attachment action
 	if action == "download_attachment" && msgID != "" {
 		mutex.RLock()
@@ -777,6 +800,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div style="display: flex; gap: 10px; align-items: center;">
 				<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
 				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545; font-size: 14px;">Delete Thread</a>
+				<span style="margin: 0 8px;">·</span>
+				<a href="/mail?action=view_raw&msg_id=%s" style="color: #666; font-size: 14px;" target="_blank">View Raw</a>
 				%s
 			</div>
 		</form>
@@ -784,7 +809,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 		</div>
 	</div>
-`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton)
+`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, msg.ID, blockButton)
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
 	}
@@ -1717,6 +1742,18 @@ func renderEmailBody(body string, isAttachment bool) string {
 		return body
 	}
 
+	// Check if body contains PGP signed message
+	if strings.Contains(body, "-----BEGIN PGP SIGNATURE-----") {
+		// For signed messages, extract the cleartext before the signature
+		sigIdx := strings.Index(body, "-----BEGIN PGP SIGNATURE-----")
+		if sigIdx > 0 {
+			// The actual message is before the signature
+			cleartext := strings.TrimSpace(body[:sigIdx])
+			app.Log("mail", "Extracted cleartext from PGP signed message")
+			body = cleartext
+		}
+	}
+	
 	// Check if body contains PGP encrypted message
 	if strings.Contains(body, "-----BEGIN PGP MESSAGE-----") {
 		decrypted, err := decryptPGPMessage(body)

@@ -560,6 +560,12 @@ func parseMultipart(body io.Reader, boundary string) string {
 			}
 		}
 
+		// Skip PGP signature parts - they're not the actual message content
+		if strings.Contains(contentType, "application/pgp-signature") {
+			app.Log("mail", "Skipping PGP signature part")
+			continue
+		}
+
 		// Check if this is an attachment
 		isAttachment := strings.Contains(contentDisposition, "attachment")
 
