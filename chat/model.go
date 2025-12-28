@@ -60,6 +60,19 @@ func (m *Model) Generate(prompt *Prompt) (string, error) {
 	fanarAPIKey := os.Getenv("FANAR_API_KEY")
 	fanarAPIURL := os.Getenv("FANAR_API_URL")
 
+	// Check for Anthropic configuration
+	anthropicAPIKey := os.Getenv("ANTHROPIC_API_KEY")
+
+	// Priority: Anthropic > Fanar > Ollama
+	if anthropicAPIKey != "" {
+		// Use Anthropic Claude
+		modelName := os.Getenv("ANTHROPIC_MODEL")
+		if modelName == "" {
+			modelName = "claude-haiku-4.5-20250311" // Default to Claude Haiku 4.5
+		}
+		return generateWithAnthropic(anthropicAPIKey, modelName, systemPromptText, messages)
+	}
+
 	// Default to Ollama if Fanar is not configured
 	if fanarAPIKey == "" {
 		// Use Ollama as default
@@ -186,5 +199,91 @@ func generateWithFanar(apiURL, apiKey string, messages []map[string]string) (str
 	if fanarResp.Error != nil {
 		return "", fmt.Errorf("%v", fanarResp.Error)
 	}
+	return content, nil
+}
+// generateWithAnthropic generates a response using Anthropic Claude API
+func generateWithAnthropic(apiKey, modelName, systemPrompt string, messages []map[string]string) (string, error) {
+	apiURL := "https://api.anthropic.com/v1/messages"
+
+	app.Log("chat", "[LLM] Using Anthropic Claude with model %s", modelName)
+
+	// Anthropic API expects a different format - extract user/assistant messages
+	// and use the systemPrompt separately
+	var anthropicMessages []map[string]string
+	for _, msg := range messages {
+		// Skip system messages as we handle them separately
+		if msg["role"] == "system" {
+			continue
+		}
+		anthropicMessages = append(anthropicMessages, msg)
+	}
+
+	anthropicReq := map[string]interface{}{
+		"model":      modelName,
+		"max_tokens": 4096,
+		"messages":   anthropicMessages,
+	}
+
+	// Add system prompt if provided
+	if systemPrompt != "" {
+		anthropicReq["system"] = systemPrompt
+	}
+
+	body, err := json.Marshal(anthropicReq)
+	if err != nil {
+		return "", err
+	}
+
+	httpReq, err := http.NewRequest("POST", apiURL, bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-api-key", apiKey)
+	httpReq.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to Anthropic API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var anthropicResp struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+		Error struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+
+	if err := json.Unmarshal(respBody, &anthropicResp); err != nil {
+		return "", fmt.Errorf("failed to parse Anthropic response: %v", err)
+	}
+
+	if anthropicResp.Error.Message != "" {
+		return "", fmt.Errorf("anthropic error: %s", anthropicResp.Error.Message)
+	}
+
+	var content string
+	for _, c := range anthropicResp.Content {
+		if c.Type == "text" {
+			content += c.Text
+		}
+	}
+
+	if content == "" {
+		return "", fmt.Errorf("no content in Anthropic response")
+	}
+
 	return content, nil
 }

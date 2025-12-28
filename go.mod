@@ -21,7 +21,9 @@ require (
 	cloud.google.com/go/auth v0.16.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
+	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
+	github.com/cloudflare/circl v1.6.0 // indirect
 	github.com/emersion/go-msgauth v0.7.0 // indirect
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect
 	github.com/emersion/go-smtp v0.24.0 // indirect
