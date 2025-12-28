@@ -1429,9 +1429,6 @@ var title, content, tags string
 		tagsDisplay = fmt.Sprintf(`<div class="post-tags">%s</div>`, tagsHtml)
 	}
 	
-	// Add title to content
-	pageTitle := title
-	
 	content := fmt.Sprintf(`<div id="blog">
 		%s
 		<h1>%s</h1>
