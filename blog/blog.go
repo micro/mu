@@ -703,16 +703,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px;"></textarea>
 					<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-					<select name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
-						<option value="public" selected>Public</option>
-						<option value="private">Private (Members only)</option>
-					</select>
 					<div style="display: flex; justify-content: space-between; align-items: center;">
-						<span id="char-count" style="font-size: 12px; color: #666;">Min 50 chars</span>
+						<select name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
+							<option value="public" selected>Public</option>
+							<option value="private">Private (Members only)</option>
+						</select>
 						<div style="display: flex; gap: 10px;">
 							<a href="/blog" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
 							<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Post</button>
 						</div>
+					</div>
+					<div style="font-size: 12px; color: #666;">
+						<span id="char-count">Min 50 chars</span>
 					</div>
 				</form>
 			</div>
