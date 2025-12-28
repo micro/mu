@@ -402,20 +402,23 @@ func updateCacheUnlocked() {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
 		}
 
-		tagsHtml := formatTags(post.Tags)
-		if tagsHtml != "" {
-			tagsHtml = `<div style="margin-bottom: 8px;">` + tagsHtml + `</div>`
+		tagsHtml := ""
+		if post.Tags != "" {
+			tagsHtml = formatTags(post.Tags)
 		}
 
 		// Add private badge if post is private
-		privateBadge := ""
 		if post.Private {
-			privateBadge = ` <span class="category" style="background-color: #d9534f; color: white;">Private</span>`
-			if tagsHtml == "" {
-				tagsHtml = `<div style="margin-bottom: 8px;">` + privateBadge + `</div>`
+			privateBadge := `<span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+			if tagsHtml != "" {
+				tagsHtml = tagsHtml + " " + privateBadge
 			} else {
-				tagsHtml = strings.Replace(tagsHtml, `</div>`, privateBadge+`</div>`, 1)
+				tagsHtml = privateBadge
 			}
+		}
+		
+		if tagsHtml != "" {
+			tagsHtml = `<div style="margin-top: 8px;">` + tagsHtml + `</div>`
 		}
 
 		// Add Reply/Replies count
@@ -428,11 +431,11 @@ func updateCacheUnlocked() {
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
-		%s
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
 		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
-	</div>`, tagsHtml, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink)
+		%s
+	</div>`, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, tagsHtml)
 		preview = append(preview, item)
 	}
 
@@ -488,20 +491,23 @@ func updateCacheUnlocked() {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
 		}
 
-		tagsHtml := formatTags(post.Tags)
-		if tagsHtml != "" {
-			tagsHtml = `<div style="margin-bottom: 8px;">` + tagsHtml + `</div>`
+		tagsHtml := ""
+		if post.Tags != "" {
+			tagsHtml = formatTags(post.Tags)
 		}
 
 		// Add private badge if post is private
-		privateBadge := ""
 		if post.Private {
-			privateBadge = ` <span class="category" style="background-color: #d9534f; color: white;">Private</span>`
-			if tagsHtml == "" {
-				tagsHtml = `<div style="margin-bottom: 8px;">` + privateBadge + `</div>`
+			privateBadge := `<span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+			if tagsHtml != "" {
+				tagsHtml = tagsHtml + " " + privateBadge
 			} else {
-				tagsHtml = strings.Replace(tagsHtml, `</div>`, privateBadge+`</div>`, 1)
+				tagsHtml = privateBadge
 			}
+		}
+		
+		if tagsHtml != "" {
+			tagsHtml = `<div style="margin-top: 8px;">` + tagsHtml + `</div>`
 		}
 
 		// Add Reply/Replies count
@@ -514,11 +520,11 @@ func updateCacheUnlocked() {
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
-			%s
 			<h3><a href="/post?id=%s">%s</a></h3>
 			<div>%s</div>
 			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
-		</div>`, tagsHtml, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink)
+			%s
+		</div>`, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, tagsHtml)
 		fullList = append(fullList, item)
 	}
 
