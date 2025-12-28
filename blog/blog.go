@@ -1414,19 +1414,26 @@ var title, content, tags string
 	tagsHtml := ""
 	if post.Tags != "" {
 		for _, tag := range strings.Split(post.Tags, ",") {
-			tagsHtml += fmt.Sprintf(` · <span class="category">%s</span>`, strings.TrimSpace(tag))
+			tagsHtml += fmt.Sprintf(`<span class="category">%s</span> `, strings.TrimSpace(tag))
 		}
 	}
 	
 	// Add private badge if post is private
 	if post.Private {
-		tagsHtml += ` · <span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+		tagsHtml += `<span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+	}
+	
+	// Format tags for display (on separate line if present)
+	tagsDisplay := ""
+	if tagsHtml != "" {
+		tagsDisplay = fmt.Sprintf(`<div style="margin-top: 8px; font-size: small;">%s</div>`, tagsHtml)
 	}
 	
 	content := fmt.Sprintf(`<div id="blog">
 		<div class="info" style="color: #666; font-size: small;">
-			%s · %s%s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" style="color: #666;">Share</a>
+			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" style="color: #666;">Share</a>
 		</div>
+		%s
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
 		<div style="margin-bottom: 20px;">%s</div>
 		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
@@ -1435,7 +1442,7 @@ var title, content, tags string
 		<div style="margin-top: 30px;">
 			<a href="/blog" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
-	</div>`, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, tagsDisplay, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
