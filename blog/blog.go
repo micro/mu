@@ -432,10 +432,10 @@ func updateCacheUnlocked() {
 
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s">%s</a></h3>
-		<div>%s</div>
 		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 		%s
-	</div>`, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, tagsHtml)
+		<div>%s</div>
+	</div>`, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, tagsHtml, content)
 		preview = append(preview, item)
 	}
 
@@ -521,10 +521,10 @@ func updateCacheUnlocked() {
 
 		item := fmt.Sprintf(`<div class="post-item">
 			<h3><a href="/post?id=%s">%s</a></h3>
-			<div>%s</div>
 			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 			%s
-		</div>`, post.ID, title, content, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, tagsHtml)
+			<div>%s</div>
+		</div>`, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, tagsHtml, content)
 		fullList = append(fullList, item)
 	}
 
@@ -1426,7 +1426,7 @@ var title, content, tags string
 	// Format tags for display (on separate line if present)
 	tagsDisplay := ""
 	if tagsHtml != "" {
-		tagsDisplay = fmt.Sprintf(`<div style="margin-top: 8px; font-size: small;">%s</div>`, tagsHtml)
+		tagsDisplay = fmt.Sprintf(`<div class="post-tags">%s</div>`, tagsHtml)
 	}
 	
 	content := fmt.Sprintf(`<div id="blog">

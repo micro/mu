@@ -844,6 +844,11 @@ body:has(#messages) #content {
   text-decoration: underline;
 }
 
+.post-tags {
+  margin-top: 8px;
+  font-size: small;
+}
+
 .post-content {
   display: none !important;
   border: 1px solid darkgrey;
@@ -1491,6 +1496,11 @@ body:has(#messages) #content {
   }
   #blog .post-item .info {
     text-align: left;
+  }
+  #blog .post-tags {
+    text-align: center;
+    margin-top: 8px;
+    font-size: small;
   }
   #nav-container {
     position: fixed;
