@@ -407,6 +407,17 @@ func updateCacheUnlocked() {
 			tagsHtml = `<div style="margin-bottom: 8px;">` + tagsHtml + `</div>`
 		}
 
+		// Add private badge if post is private
+		privateBadge := ""
+		if post.Private {
+			privateBadge = ` <span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+			if tagsHtml == "" {
+				tagsHtml = `<div style="margin-bottom: 8px;">` + privateBadge + `</div>`
+			} else {
+				tagsHtml = strings.Replace(tagsHtml, `</div>`, privateBadge+`</div>`, 1)
+			}
+		}
+
 		// Add Reply/Replies count
 		commentCount := countComments(post)
 		replyLink := ""
@@ -480,6 +491,17 @@ func updateCacheUnlocked() {
 		tagsHtml := formatTags(post.Tags)
 		if tagsHtml != "" {
 			tagsHtml = `<div style="margin-bottom: 8px;">` + tagsHtml + `</div>`
+		}
+
+		// Add private badge if post is private
+		privateBadge := ""
+		if post.Private {
+			privateBadge = ` <span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+			if tagsHtml == "" {
+				tagsHtml = `<div style="margin-bottom: 8px;">` + privateBadge + `</div>`
+			} else {
+				tagsHtml = strings.Replace(tagsHtml, `</div>`, privateBadge+`</div>`, 1)
+			}
 		}
 
 		// Add Reply/Replies count
@@ -1389,6 +1411,12 @@ var title, content, tags string
 			tagsHtml += fmt.Sprintf(` · <span class="category">%s</span>`, strings.TrimSpace(tag))
 		}
 	}
+	
+	// Add private badge if post is private
+	if post.Private {
+		tagsHtml += ` · <span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+	}
+	
 	content := fmt.Sprintf(`<div id="blog">
 		<div class="info" style="color: #666; font-size: small;">
 			%s · %s%s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" style="color: #666;">Share</a>
