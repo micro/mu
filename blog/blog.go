@@ -1431,7 +1431,6 @@ var title, content, tags string
 	
 	content := fmt.Sprintf(`<div id="blog">
 		%s
-		<h1>%s</h1>
 		<div class="info" style="color: #666; font-size: small;">
 			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" style="color: #666;">Share</a>
 		</div>
@@ -1443,7 +1442,7 @@ var title, content, tags string
 		<div style="margin-top: 30px;">
 			<a href="/blog" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
-	</div>`, tagsDisplay, title, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, tagsDisplay, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
