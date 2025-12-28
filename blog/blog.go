@@ -431,11 +431,11 @@ func updateCacheUnlocked() {
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
-		<h3><a href="/post?id=%s">%s</a></h3>
 		%s
+		<h3><a href="/post?id=%s">%s</a></h3>
 		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 		<div>%s</div>
-	</div>`, post.ID, title, tagsHtml, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
+	</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
 		preview = append(preview, item)
 	}
 
@@ -520,11 +520,11 @@ func updateCacheUnlocked() {
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
-			<h3><a href="/post?id=%s">%s</a></h3>
 			%s
+			<h3><a href="/post?id=%s">%s</a></h3>
 			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 			<div>%s</div>
-		</div>`, post.ID, title, tagsHtml, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
+		</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
 		fullList = append(fullList, item)
 	}
 
@@ -1429,8 +1429,12 @@ var title, content, tags string
 		tagsDisplay = fmt.Sprintf(`<div class="post-tags">%s</div>`, tagsHtml)
 	}
 	
+	// Add title to content
+	pageTitle := title
+	
 	content := fmt.Sprintf(`<div id="blog">
 		%s
+		<h1>%s</h1>
 		<div class="info" style="color: #666; font-size: small;">
 			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" style="color: #666;">Share</a>
 		</div>
@@ -1442,7 +1446,7 @@ var title, content, tags string
 		<div style="margin-top: 30px;">
 			<a href="/blog" style="color: #666; text-decoration: none;">← Back to posts</a>
 		</div>
-	</div>`, tagsDisplay, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, tagsDisplay, title, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	// Check if user is authenticated to show logout link
 	var token string
