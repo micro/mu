@@ -706,7 +706,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					<div style="display: flex; justify-content: space-between; align-items: center;">
 						<select id="post-visibility" name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
 							<option value="public" selected>Public</option>
-							<option value="private">Private (Members only)</option>
+							<option value="private">Private (Members)</option>
 						</select>
 						<div style="display: flex; gap: 10px;">
 							<a href="/blog" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
@@ -994,7 +994,7 @@ func DeletePost(id string) error {
 }
 
 // UpdatePost updates an existing post
-func UpdatePost(id, title, content, tags string) error {
+func UpdatePost(id, title, content, tags string, private bool) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -1006,6 +1006,7 @@ func UpdatePost(id, title, content, tags string) error {
 	post.Title = title
 	post.Content = content
 	post.Tags = tags
+	post.Private = private
 	save()
 	updateCacheUnlocked()
 
@@ -1194,12 +1195,14 @@ var title, content, tags string
 		}
 
 		var title, content, tags string
+		var private bool
 
 		if isJSON {
 			var req struct {
-				Title   string `json:"title"`
-				Content string `json:"content"`
-				Tags    string `json:"tags"`
+				Title      string `json:"title"`
+				Content    string `json:"content"`
+				Tags       string `json:"tags"`
+				Visibility string `json:"visibility"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -1208,6 +1211,7 @@ var title, content, tags string
 			title = strings.TrimSpace(req.Title)
 			content = strings.TrimSpace(req.Content)
 			tags = parseTags(req.Tags)
+			private = req.Visibility == "private"
 		} else {
 			if err := r.ParseForm(); err != nil {
 				http.Error(w, "Failed to parse form", http.StatusBadRequest)
@@ -1216,6 +1220,7 @@ var title, content, tags string
 			title = strings.TrimSpace(r.FormValue("title"))
 			content = strings.TrimSpace(r.FormValue("content"))
 			tags = parseTags(r.FormValue("tags"))
+			private = r.FormValue("visibility") == "private"
 		}
 
 		if content == "" {
@@ -1230,7 +1235,7 @@ var title, content, tags string
 			return
 		}
 
-		if err := UpdatePost(id, title, content, tags); err != nil {
+		if err := UpdatePost(id, title, content, tags, private); err != nil {
 			http.Error(w, "Failed to update post", http.StatusInternalServerError)
 			return
 		}
@@ -1322,12 +1327,24 @@ var title, content, tags string
 			pageTitle = "Edit: " + post.Title
 		}
 
+		publicSelected := ""
+		privateSelected := ""
+		if post.Private {
+			privateSelected = "selected"
+		} else {
+			publicSelected = "selected"
+		}
+
 		content := fmt.Sprintf(`<div id="blog">
 			<form method="POST" action="/post?id=%s" style="display: flex; flex-direction: column; gap: 10px;">
 				<input type="hidden" name="_method" value="PATCH">
 				<input type="text" name="title" placeholder="Title (optional)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: 'Nunito Sans', serif;">%s</textarea>
 				<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+				<select name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
+					<option value="public" %s>Public</option>
+					<option value="private" %s>Private (Members)</option>
+				</select>
 				<div style="font-size: 12px; color: #666; margin-top: -5px;">
 					Supports markdown: **bold**, *italic**, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
 				</div>
@@ -1336,7 +1353,7 @@ var title, content, tags string
 					<a href="/post?id=%s" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
 				</div>
 			</form>
-		</div>`, post.ID, post.Title, post.Content, post.Tags, post.ID)
+		</div>`, post.ID, post.Title, post.Content, post.Tags, publicSelected, privateSelected, post.ID)
 
 		html := app.RenderHTMLForRequest(pageTitle, "", content, r)
 		w.Write([]byte(html))
