@@ -759,7 +759,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" class="thread-message-delete">×</a>
 			</div>
 			<div class="thread-message-body">%s</div>
-		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody))
+			<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 12px;">
+				<a href="/mail?action=view_raw&msg_id=%s" style="color: #666;" target="_blank">View Raw</a>
+			</div>
+		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody, m.ID))
 		}
 
 		// Determine the other party in the thread
@@ -800,8 +803,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div style="display: flex; gap: 10px; align-items: center;">
 				<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
 				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545; font-size: 14px;">Delete Thread</a>
-				<span style="margin: 0 8px;">·</span>
-				<a href="/mail?action=view_raw&msg_id=%s" style="color: #666; font-size: 14px;" target="_blank">View Raw</a>
 				%s
 			</div>
 		</form>
@@ -809,7 +810,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
 		</div>
 	</div>
-`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, msg.ID, blockButton)
+`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton)
 		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
 		return
 	}
