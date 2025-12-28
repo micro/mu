@@ -700,11 +700,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		content = `<div id="blog">
 			<div style="margin-bottom: 30px;">
 				<form id="blog-form" method="POST" action="/blog" style="display: flex; flex-direction: column; gap: 10px;">
-					<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+					<input type="text" id="post-title" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px;"></textarea>
-					<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+					<input type="text" id="post-tags" name="tags" placeholder="Tags (optional, comma-separated)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 					<div style="display: flex; justify-content: space-between; align-items: center;">
-						<select name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
+						<select id="post-visibility" name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
 							<option value="public" selected>Public</option>
 							<option value="private">Private (Members only)</option>
 						</select>
@@ -719,8 +719,45 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				</form>
 			</div>
 			<script>
+				const form = document.getElementById('blog-form');
+				const titleInput = document.getElementById('post-title');
 				const textarea = document.getElementById('post-content');
+				const tagsInput = document.getElementById('post-tags');
+				const visibilitySelect = document.getElementById('post-visibility');
 				const charCount = document.getElementById('char-count');
+				
+				// Restore form values from localStorage
+				function restoreFormValues() {
+					const savedTitle = localStorage.getItem('blog-post-title');
+					const savedContent = localStorage.getItem('blog-post-content');
+					const savedTags = localStorage.getItem('blog-post-tags');
+					const savedVisibility = localStorage.getItem('blog-post-visibility');
+					
+					if (savedTitle) titleInput.value = savedTitle;
+					if (savedContent) textarea.value = savedContent;
+					if (savedTags) tagsInput.value = savedTags;
+					if (savedVisibility) visibilitySelect.value = savedVisibility;
+					
+					// Update character count and auto-grow
+					updateCharCount();
+					autoGrow();
+				}
+				
+				// Save form values to localStorage
+				function saveFormValues() {
+					localStorage.setItem('blog-post-title', titleInput.value);
+					localStorage.setItem('blog-post-content', textarea.value);
+					localStorage.setItem('blog-post-tags', tagsInput.value);
+					localStorage.setItem('blog-post-visibility', visibilitySelect.value);
+				}
+				
+				// Clear form values from localStorage
+				function clearFormValues() {
+					localStorage.removeItem('blog-post-title');
+					localStorage.removeItem('blog-post-content');
+					localStorage.removeItem('blog-post-tags');
+					localStorage.removeItem('blog-post-visibility');
+				}
 				
 				// Calculate max height based on viewport
 				function getMaxHeight() {
@@ -748,16 +785,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				
+				// Save on input
+				titleInput.addEventListener('input', saveFormValues);
+				tagsInput.addEventListener('input', saveFormValues);
+				visibilitySelect.addEventListener('change', saveFormValues);
+				
 				textarea.addEventListener('input', function() {
 					autoGrow();
 					updateCharCount();
+					saveFormValues();
+				});
+				
+				// Clear on successful submit
+				form.addEventListener('submit', function() {
+					clearFormValues();
 				});
 				
 				// Recalculate on window resize
 				window.addEventListener('resize', autoGrow);
 				
 				// Initial setup
-				autoGrow();
+				restoreFormValues();
 			</script>
 		</div>`
 	} else {
