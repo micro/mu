@@ -530,6 +530,7 @@ func parseMultipart(body io.Reader, boundary string) string {
 	var textPlain, textHTML string
 	var attachmentBody []byte
 	var attachmentContentType string
+	var allParts []string // Store all parts to avoid data loss
 
 	for {
 		part, err := mr.NextPart()
@@ -548,6 +549,10 @@ func parseMultipart(body io.Reader, boundary string) string {
 			continue
 		}
 
+		// Log what we're seeing
+		app.Log("mail", "MIME part: Content-Type=%s, Transfer-Encoding=%s, Disposition=%s, Size=%d", 
+			contentType, transferEncoding, contentDisposition, len(partBody))
+
 		// Decode based on transfer encoding
 		if strings.ToLower(transferEncoding) == "base64" {
 			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(partBody))); err == nil {
@@ -560,9 +565,10 @@ func parseMultipart(body io.Reader, boundary string) string {
 			}
 		}
 
-		// Skip PGP signature parts - they're not the actual message content
+		// Store PGP signatures with marker - don't discard any data
 		if strings.Contains(contentType, "application/pgp-signature") {
-			app.Log("mail", "Skipping PGP signature part")
+			app.Log("mail", "Found PGP signature part (%d bytes)", len(partBody))
+			allParts = append(allParts, fmt.Sprintf("\n\n[PGP Signature]\n%s", string(partBody)))
 			continue
 		}
 
@@ -572,33 +578,46 @@ func parseMultipart(body io.Reader, boundary string) string {
 		// Prefer text/plain, fallback to text/html
 		if strings.Contains(contentType, "text/plain") && !isAttachment {
 			textPlain = string(partBody)
+			app.Log("mail", "Found text/plain part (%d bytes)", len(partBody))
 		} else if strings.Contains(contentType, "text/html") && !isAttachment {
 			textHTML = string(partBody)
+			app.Log("mail", "Found text/html part (%d bytes)", len(partBody))
 		} else if isAttachment || strings.Contains(contentType, "application/") {
 			// Store attachment info (we'll only use it if there's no text body)
 			attachmentBody = partBody
 			attachmentContentType = contentType
+			app.Log("mail", "Found attachment: %s (%d bytes)", contentType, len(partBody))
+		} else {
+			// Unknown part type - preserve it
+			app.Log("mail", "Unknown part type: %s (%d bytes) - preserving", contentType, len(partBody))
+			allParts = append(allParts, fmt.Sprintf("\n\n[%s]\n%s", contentType, string(partBody)))
 		}
 	}
 
+	// Build result - prefer HTML/plain text but append any extra parts
+	var result string
+	
 	// Prefer HTML for rich content (images, formatting), fallback to plain text
 	if textHTML != "" {
-		return strings.TrimSpace(textHTML)
-	}
-	if textPlain != "" {
-		return strings.TrimSpace(textPlain)
-	}
-
-	// If no text body but there's an attachment (like DMARC reports), return the attachment
-	if len(attachmentBody) > 0 {
+		result = strings.TrimSpace(textHTML)
+	} else if textPlain != "" {
+		result = strings.TrimSpace(textPlain)
+	} else if len(attachmentBody) > 0 {
+		// If no text body but there's an attachment (like DMARC reports), return the attachment
 		// For gzip attachments, store as base64 for safe storage
 		if strings.Contains(attachmentContentType, "gzip") || strings.Contains(attachmentContentType, "zip") {
-			return base64.StdEncoding.EncodeToString(attachmentBody)
+			result = base64.StdEncoding.EncodeToString(attachmentBody)
+		} else {
+			result = string(attachmentBody)
 		}
-		return string(attachmentBody)
 	}
 
-	return ""
+	// Append any other parts we found (like PGP signatures)
+	for _, part := range allParts {
+		result += part
+	}
+
+	return result
 }
 
 // Reset is called when the RSET command is received
