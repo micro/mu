@@ -107,9 +107,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Get all posts by this user
 	var userPosts string
 	posts := blog.GetPostsByAuthor(acc.Name)
-	postCount := len(posts)
-
+	
+	// Check if viewer is a member/admin
+	isMember := false
+	if sess, err := auth.GetSession(r); err == nil {
+		if viewerAcc, err := auth.GetAccount(sess.Account); err == nil {
+			isMember = viewerAcc.Member || viewerAcc.Admin
+		}
+	}
+	
+	// Filter private posts for non-members
+	var visiblePosts []*blog.Post
 	for _, post := range posts {
+		if !post.Private || isMember {
+			visiblePosts = append(visiblePosts, post)
+		}
+	}
+	
+	postCount := len(visiblePosts)
+
+	for _, post := range visiblePosts {
 		title := post.Title
 		if title == "" {
 			title = "Untitled"

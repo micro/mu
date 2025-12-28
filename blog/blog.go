@@ -43,10 +43,11 @@ var topics []string
 type Post struct {
 	ID        string     `json:"id"`
 	Title     string     `json:"title"`
-	Content   string     `json:"content"` // Raw markdown content
+	Content   string     `json:"content"`  // Raw markdown content
 	Author    string     `json:"author"`
 	AuthorID  string     `json:"author_id"`
 	Tags      string     `json:"tags"` // Comma-separated tags
+	Private   bool       `json:"private"`
 	CreatedAt time.Time  `json:"created_at"`
 	Comments  []*Comment `json:"-"` // Not persisted, populated on load
 }
@@ -363,6 +364,10 @@ func updateCacheUnlocked() {
 		if admin.IsHidden("post", post.ID) {
 			continue
 		}
+		// Skip private posts (home page shows only public posts)
+		if post.Private {
+			continue
+		}
 		// Skip posts from new accounts (< 24 hours old)
 		if post.AuthorID != "" && auth.IsNewAccount(post.AuthorID) {
 			continue
@@ -431,6 +436,11 @@ func updateCacheUnlocked() {
 	for _, post := range posts {
 		// Skip flagged posts
 		if admin.IsHidden("post", post.ID) {
+			continue
+		}
+
+		// Skip private posts (blog list shows only public posts)
+		if post.Private {
 			continue
 		}
 
@@ -643,10 +653,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Return JSON if requested
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		mutex.RLock()
-		// Filter out flagged posts
+		// Check if user is a member/admin
+		isMember := false
+		if sess, err := auth.GetSession(r); err == nil {
+			if acc, err := auth.GetAccount(sess.Account); err == nil {
+				isMember = acc.Member || acc.Admin
+			}
+		}
+		
+		// Filter out flagged posts and private posts (unless member)
 		var visiblePosts []*Post
 		for _, post := range posts {
 			if !admin.IsHidden("post", post.ID) {
+				// Skip private posts for non-members
+				if post.Private && !isMember {
+					continue
+				}
 				visiblePosts = append(visiblePosts, post)
 			}
 		}
@@ -681,6 +703,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					<input type="text" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px;"></textarea>
 					<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
+					<select name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
+						<option value="public" selected>Public</option>
+						<option value="private">Private (Members only)</option>
+					</select>
 					<div style="display: flex; justify-content: space-between; align-items: center;">
 						<span id="char-count" style="font-size: 12px; color: #666;">Min 50 chars</span>
 						<div style="display: flex; gap: 10px;">
@@ -769,7 +795,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreatePost creates a new post and returns error if any
-func CreatePost(title, content, author, authorID, tags string) error {
+func CreatePost(title, content, author, authorID, tags string, private bool) error {
 	// Create new post
 	post := &Post{
 		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
@@ -778,6 +804,7 @@ func CreatePost(title, content, author, authorID, tags string) error {
 		Author:    author,
 		AuthorID:  authorID,
 		Tags:      tags,
+		Private:   private,
 		CreatedAt: time.Now(),
 	}
 
@@ -980,29 +1007,33 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" && id == "" {
 		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
 
-		var title, content, tags string
+var title, content, tags string
+	var private bool
 
-		if isJSON {
-			var req struct {
-				Title   string `json:"title"`
-				Content string `json:"content"`
-				Tags    string `json:"tags"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				http.Error(w, "Invalid JSON", http.StatusBadRequest)
-				return
-			}
-			title = strings.TrimSpace(req.Title)
-			content = strings.TrimSpace(req.Content)
-			tags = parseTags(req.Tags)
-		} else {
-			if err := r.ParseForm(); err != nil {
-				http.Error(w, "Failed to parse form", http.StatusBadRequest)
-				return
-			}
-			title = strings.TrimSpace(r.FormValue("title"))
-			content = strings.TrimSpace(r.FormValue("content"))
-			tags = parseTags(r.FormValue("tags"))
+	if isJSON {
+		var req struct {
+			Title   string `json:"title"`
+			Content string `json:"content"`
+			Tags    string `json:"tags"`
+			Private bool   `json:"private"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		title = strings.TrimSpace(req.Title)
+		content = strings.TrimSpace(req.Content)
+		tags = parseTags(req.Tags)
+		private = req.Private
+	} else {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			return
+		}
+		title = strings.TrimSpace(r.FormValue("title"))
+		content = strings.TrimSpace(r.FormValue("content"))
+		tags = parseTags(r.FormValue("tags"))
+		private = r.FormValue("visibility") == "private"
 		}
 
 		// Validate content
@@ -1041,7 +1072,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Create post
 		postID := fmt.Sprintf("%d", time.Now().UnixNano())
-		if err := CreatePost(title, content, author, authorID, tags); err != nil {
+		if err := CreatePost(title, content, author, authorID, tags, private); err != nil {
 			http.Error(w, "Failed to save post", http.StatusInternalServerError)
 			return
 		}
@@ -1072,6 +1103,21 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if post == nil {
 		http.Error(w, "Post not found", 404)
 		return
+	}
+
+	// Check if post is private and user is not a member
+	if post.Private {
+		sess, err := auth.GetSession(r)
+		isMember := false
+		if err == nil {
+			if acc, err := auth.GetAccount(sess.Account); err == nil {
+				isMember = acc.Member || acc.Admin
+			}
+		}
+		if !isMember {
+			http.Error(w, "This post is private and only visible to members", http.StatusForbidden)
+			return
+		}
 	}
 
 	// Handle PATCH - update the post
@@ -1399,6 +1445,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	title := strings.TrimSpace(r.FormValue("title"))
 	content := strings.TrimSpace(r.FormValue("content"))
 	tags := parseTags(r.FormValue("tags"))
+	private := r.FormValue("visibility") == "private"
 
 	if content == "" {
 		http.Error(w, "Content is required", http.StatusBadRequest)
@@ -1498,7 +1545,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	// Create the post
 	postID := fmt.Sprintf("%d", time.Now().UnixNano())
-	if err := CreatePost(title, content, author, authorID, tags); err != nil {
+	if err := CreatePost(title, content, author, authorID, tags, private); err != nil {
 		http.Error(w, "Failed to save post", http.StatusInternalServerError)
 		return
 	}
