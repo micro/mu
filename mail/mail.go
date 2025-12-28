@@ -760,7 +760,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			</div>
 			<div class="thread-message-body">%s</div>
 			<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 12px;">
-				<a href="/mail?action=view_raw&msg_id=%s" style="color: #666;" target="_blank">View Raw</a>
+				<a href="/mail?action=view_raw&id=%s" style="color: #666;" target="_blank">View Raw</a>
 			</div>
 		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody, m.ID))
 		}
