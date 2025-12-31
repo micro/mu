@@ -29,6 +29,28 @@ type Value struct {
 }
 
 var Endpoints = []*Endpoint{{
+	Name:        "Get Chat Info",
+	Path:        "/chat",
+	Method:      "GET",
+	Description: "Get available chat topics and summaries",
+	Response: []*Value{
+		{
+			Type: "JSON",
+			Params: []*Param{
+				{
+					Name:        "topics",
+					Value:       "array",
+					Description: "Available chat topics/categories",
+				},
+				{
+					Name:        "summaries",
+					Value:       "object",
+					Description: "Topic summaries and context information",
+				},
+			},
+		},
+	},
+}, {
 	Name:        "Chat",
 	Path:        "/chat",
 	Method:      "POST",

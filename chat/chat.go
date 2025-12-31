@@ -908,6 +908,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" {
+		// Check if JSON response is requested
+		isJSON := strings.Contains(r.Header.Get("Accept"), "application/json")
+
 		// Get room data with timeout to prevent hanging
 		roomData := map[string]interface{}{}
 		if roomID != "" {
@@ -945,10 +948,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Now acquire mutex only for reading chat config
 		mutex.RLock()
-		topicTabs := app.Head("chat", topics)
-		summariesJSON, _ := json.Marshal(summaries)
+		topicsData := topics
+		summariesData := summaries
 		mutex.RUnlock()
 
+		// Return JSON if requested
+		if isJSON {
+			w.Header().Set("Content-Type", "application/json")
+			response := map[string]interface{}{
+				"topics":    topicsData,
+				"summaries": summariesData,
+			}
+			if len(roomData) > 0 {
+				response["room"] = roomData
+			}
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		// Return HTML
+		topicTabs := app.Head("chat", topicsData)
+		summariesJSON, _ := json.Marshal(summariesData)
 		roomJSON, _ := json.Marshal(roomData)
 
 		tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
