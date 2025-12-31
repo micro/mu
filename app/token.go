@@ -34,6 +34,15 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check for _method override for DELETE
+	if r.Method == "POST" {
+		r.ParseForm()
+		if r.FormValue("_method") == "DELETE" {
+			handleDeleteToken(w, r, acc.ID)
+			return
+		}
+	}
+
 	switch r.Method {
 	case "GET":
 		// Check if JSON API request
@@ -69,14 +78,14 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID string) {
 
 		tokenRows += fmt.Sprintf(`
 			<tr>
-				<td style="padding: 12px; border-bottom: 1px solid #eee;">%s</td>
-				<td style="padding: 12px; border-bottom: 1px solid #eee;">%s</td>
-				<td style="padding: 12px; border-bottom: 1px solid #eee;">%s</td>
-				<td style="padding: 12px; border-bottom: 1px solid #eee;">%s</td>
-				<td style="padding: 12px; border-bottom: 1px solid #eee;">
+				<td>%s</td>
+				<td>%s</td>
+				<td>%s</td>
+				<td>%s</td>
+				<td>
 					<form method="POST" action="/token?id=%s" style="display: inline;" onsubmit="return confirm('Delete this token?');">
 						<input type="hidden" name="_method" value="DELETE">
-						<button type="submit" style="background: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px;">Delete</button>
+						<button type="submit">Delete</button>
 					</form>
 				</td>
 			</tr>`,
@@ -93,59 +102,53 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID string) {
 	}
 
 	content := fmt.Sprintf(`
-		<div style="max-width: 900px;">
-			<h2>API Tokens</h2>
-			<p>Personal Access Tokens (PATs) for API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>
-			
-			<div id="token-result" style="display: none; margin: 20px 0; padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px;">
-				<strong>✓ Token Created!</strong>
-				<p style="margin: 10px 0;">Copy this token now - you won't see it again:</p>
-				<div style="background: #f8f9fa; padding: 10px; border-radius: 3px; font-family: monospace; word-break: break-all;" id="new-token"></div>
-			</div>
-
-			<h3 style="margin-top: 30px;">Your Tokens</h3>
-			<table style="width: 100%%; border-collapse: collapse; margin: 20px 0;">
-				<thead>
-					<tr style="background: #f8f9fa;">
-						<th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Name</th>
-						<th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Permissions</th>
-						<th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Last Used</th>
-						<th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Expires</th>
-						<th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					%s
-				</tbody>
-			</table>
-
-			<h3 style="margin-top: 40px;">Create New Token</h3>
-			<form id="create-token-form" onsubmit="createToken(event)" style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
-				<div style="margin-bottom: 15px;">
-					<label style="display: block; margin-bottom: 5px; font-weight: bold;">Token Name *</label>
-					<input type="text" name="name" required placeholder="e.g., CI/CD Pipeline" 
-					       style="width: 100%%; padding: 8px; border: 1px solid #ccc; border-radius: 3px;">
-					<small style="color: #666;">Descriptive name to identify this token</small>
-				</div>
-				
-				<div style="margin-bottom: 15px;">
-					<label style="display: block; margin-bottom: 5px; font-weight: bold;">Expiration</label>
-					<select name="expires_in" style="width: 100%%; padding: 8px; border: 1px solid #ccc; border-radius: 3px;">
-						<option value="0">Never</option>
-						<option value="7">7 days</option>
-						<option value="30">30 days</option>
-						<option value="90" selected>90 days</option>
-						<option value="365">1 year</option>
-					</select>
-				</div>
-				
-				<button type="submit" style="background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 3px; font-size: 16px;">
-					Generate Token
-				</button>
-			</form>
-
-			<p style="margin-top: 20px;"><a href="/account">← Back to Account</a> · <a href="/api">API Docs</a></p>
+		<p>Personal Access Tokens (PATs) for API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>
+		
+		<div id="token-result" style="display: none; margin: 20px 0; padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px;">
+			<strong>✓ Token Created!</strong>
+			<p style="margin: 10px 0;">Copy this token now - you won't see it again:</p>
+			<pre id="new-token" style="background: #fff; padding: 10px; border: 1px solid #c3e6cb; border-radius: 3px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;"></pre>
 		</div>
+
+		<h3 style="margin-top: 30px;">Your Tokens</h3>
+		<table>
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>Permissions</th>
+					<th>Last Used</th>
+					<th>Expires</th>
+					<th>Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				%s
+			</tbody>
+		</table>
+
+		<h3 style="margin-top: 40px;">Create New Token</h3>
+		<form id="create-token-form" onsubmit="createToken(event)" style="margin: 20px 0;">
+			<div style="margin-bottom: 15px;">
+				<label style="display: block; margin-bottom: 5px;">Token Name *</label>
+				<input type="text" name="name" required placeholder="e.g., CI/CD Pipeline">
+				<small style="color: #666;">Descriptive name to identify this token</small>
+			</div>
+			
+			<div style="margin-bottom: 15px;">
+				<label style="display: block; margin-bottom: 5px;">Expiration</label>
+				<select name="expires_in">
+					<option value="0">Never</option>
+					<option value="7">7 days</option>
+					<option value="30">30 days</option>
+					<option value="90" selected>90 days</option>
+					<option value="365">1 year</option>
+				</select>
+			</div>
+			
+			<button type="submit">Generate Token</button>
+		</form>
+
+		<p style="margin-top: 20px;"><a href="/account">← Back to Account</a> · <a href="/api">API Docs</a></p>
 
 		<script>
 		async function createToken(e) {
@@ -304,9 +307,15 @@ func handleDeleteToken(w http.ResponseWriter, r *http.Request, accountID string)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Token deleted successfully",
-	})
+	// Check if JSON request
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Token deleted successfully",
+		})
+	} else {
+		// Redirect back to token page for form submission
+		http.Redirect(w, r, "/token", http.StatusSeeOther)
+	}
 }
