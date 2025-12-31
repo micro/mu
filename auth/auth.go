@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,7 @@ import (
 var mutex sync.Mutex
 var accounts = map[string]*Account{}
 var sessions = map[string]*Session{}
+var tokens = map[string]*Token{} // PAT tokens: tokenID -> Token
 
 // User presence tracking
 var presenceMutex sync.RWMutex
@@ -40,11 +42,25 @@ type Session struct {
 	Created time.Time `json:"created"`
 }
 
+// Token represents a Personal Access Token (PAT) for API automation
+type Token struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`        // User-friendly name for the token
+	Token       string    `json:"token"`       // The actual token value (hashed in storage)
+	Account     string    `json:"account"`     // Account ID this token belongs to
+	Created     time.Time `json:"created"`
+	LastUsed    time.Time `json:"last_used"`
+	ExpiresAt   time.Time `json:"expires_at"`  // Optional expiration
+	Permissions []string  `json:"permissions"` // e.g., "read", "write", "admin"
+}
+
 func init() {
 	b, _ := data.LoadFile("accounts.json")
 	json.Unmarshal(b, &accounts)
 	b, _ = data.LoadFile("sessions.json")
 	json.Unmarshal(b, &sessions)
+	b, _ = data.LoadFile("tokens.json")
+	json.Unmarshal(b, &tokens)
 }
 
 func Create(acc *Account) error {
@@ -190,34 +206,61 @@ func Logout(tk string) error {
 }
 
 func GetSession(r *http.Request) (*Session, error) {
+	// Try cookie first
 	c, err := r.Cookie("session")
-	if err != nil {
-		return nil, err
+	if err == nil && c != nil {
+		sess, err := ParseToken(c.Value)
+		if err == nil {
+			// Validate that the account still exists
+			mutex.Lock()
+			_, accountExists := accounts[sess.Account]
+			if !accountExists {
+				// Account was deleted, invalidate the session
+				delete(sessions, sess.ID)
+			}
+			mutex.Unlock()
+
+			if !accountExists {
+				return nil, errors.New("account no longer exists")
+			}
+
+			return sess, nil
+		}
 	}
 
-	if c == nil {
-		return nil, errors.New("session not found")
+	// Try Authorization header (PAT or Bearer token)
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		// Support both "Bearer <token>" and just "<token>"
+		token := authHeader
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token = authHeader[7:]
+		}
+
+		accountID, err := ValidatePAT(token)
+		if err == nil {
+			// Create a pseudo-session for PAT
+			return &Session{
+				Type:    "token",
+				Account: accountID,
+			}, nil
+		}
 	}
 
-	sess, err := ParseToken(c.Value)
-	if err != nil {
-		return nil, err
+	// Try X-Micro-Token header (legacy)
+	tokenHeader := r.Header.Get("X-Micro-Token")
+	if tokenHeader != "" {
+		accountID, err := ValidatePAT(tokenHeader)
+		if err == nil {
+			// Create a pseudo-session for PAT
+			return &Session{
+				Type:    "token",
+				Account: accountID,
+			}, nil
+		}
 	}
 
-	// Validate that the account still exists
-	mutex.Lock()
-	_, accountExists := accounts[sess.Account]
-	if !accountExists {
-		// Account was deleted, invalidate the session
-		delete(sessions, sess.ID)
-	}
-	mutex.Unlock()
-
-	if !accountExists {
-		return nil, errors.New("account no longer exists")
-	}
-
-	return sess, nil
+	return nil, errors.New("session not found")
 }
 
 func ParseToken(tk string) (*Session, error) {
@@ -252,14 +295,22 @@ func ValidateToken(tk string) error {
 		return errors.New("invalid token")
 	}
 
+	// Try session token first
 	sess, err := ParseToken(tk)
-	if err != nil {
-		return err
+	if err == nil {
+		if sess.Type != "account" {
+			return errors.New("invalid session")
+		}
+		return nil
 	}
-	if sess.Type != "account" {
-		return errors.New("invalid session")
+
+	// Try PAT token
+	_, err = ValidatePAT(tk)
+	if err == nil {
+		return nil
 	}
-	return nil
+
+	return errors.New("invalid token")
 }
 
 // UpdatePresence updates the last seen time for a user
@@ -339,4 +390,136 @@ func IsNewAccount(accountID string) bool {
 // GetOnlineCount returns the number of online users
 func GetOnlineCount() int {
 	return len(GetOnlineUsers())
+}
+
+// ============================================
+// Personal Access Token (PAT) Management
+// ============================================
+
+// CreateToken creates a new Personal Access Token for an account
+func CreateToken(accountID, name string, permissions []string, expiresAt time.Time) (*Token, string, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Verify account exists
+	_, exists := accounts[accountID]
+	if !exists {
+		return nil, "", errors.New("account does not exist")
+	}
+
+	// Generate a cryptographically secure token
+	tokenBytes := make([]byte, 32)
+	_, err := rand.Read(tokenBytes)
+	if err != nil {
+		return nil, "", err
+	}
+	rawToken := base64.URLEncoding.EncodeToString(tokenBytes)
+
+	// Hash the token for storage
+	hash, err := bcrypt.GenerateFromPassword([]byte(rawToken), 10)
+	if err != nil {
+		return nil, "", err
+	}
+
+	tokenID := uuid.New().String()
+	token := &Token{
+		ID:          tokenID,
+		Name:        name,
+		Token:       string(hash),
+		Account:     accountID,
+		Created:     time.Now(),
+		LastUsed:    time.Time{},
+		ExpiresAt:   expiresAt,
+		Permissions: permissions,
+	}
+
+	tokens[tokenID] = token
+	data.SaveJSON("tokens.json", tokens)
+
+	// Return the unhashed token only once (user must save it)
+	return token, rawToken, nil
+}
+
+// ValidatePAT validates a Personal Access Token and returns the associated account ID
+func ValidatePAT(rawToken string) (string, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Check all tokens to find a match
+	for _, token := range tokens {
+		// Check if token matches (compare hash)
+		err := bcrypt.CompareHashAndPassword([]byte(token.Token), []byte(rawToken))
+		if err == nil {
+			// Check if expired
+			if !token.ExpiresAt.IsZero() && time.Now().After(token.ExpiresAt) {
+				return "", errors.New("token expired")
+			}
+
+			// Update last used time
+			token.LastUsed = time.Now()
+			data.SaveJSON("tokens.json", tokens)
+
+			return token.Account, nil
+		}
+	}
+
+	return "", errors.New("invalid token")
+}
+
+// ListTokens returns all PAT tokens for an account (with hashed values)
+func ListTokens(accountID string) []*Token {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	var result []*Token
+	for _, token := range tokens {
+		if token.Account == accountID {
+			result = append(result, token)
+		}
+	}
+	return result
+}
+
+// DeleteToken removes a PAT token
+func DeleteToken(tokenID, accountID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	token, exists := tokens[tokenID]
+	if !exists {
+		return errors.New("token does not exist")
+	}
+
+	// Verify the token belongs to the account
+	if token.Account != accountID {
+		return errors.New("unauthorized")
+	}
+
+	delete(tokens, tokenID)
+	data.SaveJSON("tokens.json", tokens)
+
+	return nil
+}
+
+// GetTokenByID retrieves a token by ID (for display purposes)
+func GetTokenByID(tokenID string) (*Token, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	token, exists := tokens[tokenID]
+	if !exists {
+		return nil, errors.New("token does not exist")
+	}
+
+	return token, nil
+}
+
+// HasPermission checks if a token has a specific permission
+func (t *Token) HasPermission(perm string) bool {
+	for _, p := range t.Permissions {
+		if p == perm || p == "all" {
+			return true
+		}
+	}
+	return false
 }

@@ -283,6 +283,235 @@ var Endpoints = []*Endpoint{{
 	},
 }}
 
+// Additional endpoints for tokens and mail
+func init() {
+	// Token management endpoints
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "List Tokens",
+		Path:        "/token",
+		Method:      "GET",
+		Description: "List all Personal Access Tokens for authenticated user",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "tokens",
+						Value:       "array",
+						Description: "Array of token objects with id, name, created, last_used, expires_at, permissions",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Create Token",
+		Path:        "/token",
+		Method:      "POST",
+		Description: "Create a new Personal Access Token for API automation",
+		Params: []*Param{
+			{
+				Name:        "name",
+				Value:       "string",
+				Description: "Token name/description",
+			},
+			{
+				Name:        "permissions",
+				Value:       "array",
+				Description: "Permissions array (e.g., ['read', 'write']). Default: ['read', 'write']",
+			},
+			{
+				Name:        "expires_in",
+				Value:       "number",
+				Description: "Expiration in days (0 = never expires). Default: 0",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "success",
+						Value:       "boolean",
+						Description: "Whether token was created",
+					},
+					{
+						Name:        "id",
+						Value:       "string",
+						Description: "Token ID",
+					},
+					{
+						Name:        "token",
+						Value:       "string",
+						Description: "The actual token (SAVE IT - shown only once!)",
+					},
+					{
+						Name:        "name",
+						Value:       "string",
+						Description: "Token name",
+					},
+					{
+						Name:        "created",
+						Value:       "string",
+						Description: "Creation timestamp",
+					},
+					{
+						Name:        "expires_at",
+						Value:       "string",
+						Description: "Expiration timestamp (if set)",
+					},
+					{
+						Name:        "permissions",
+						Value:       "array",
+						Description: "Token permissions",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Delete Token",
+		Path:        "/token?id={id}",
+		Method:      "DELETE",
+		Description: "Delete a Personal Access Token",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "success",
+						Value:       "boolean",
+						Description: "Whether token was deleted",
+					},
+					{
+						Name:        "message",
+						Value:       "string",
+						Description: "Success message",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Delete Post",
+		Path:        "/post?id={id}",
+		Method:      "DELETE",
+		Description: "Delete a blog post (author only)",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "success",
+						Value:       "boolean",
+						Description: "Whether the post was deleted",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "User Profile",
+		Path:        "/@{username}",
+		Method:      "GET",
+		Description: "Get user profile and their posts",
+		Response: []*Value{
+			{
+				Type: "HTML",
+				Params: []*Param{
+					{
+						Name:        "html",
+						Value:       "string",
+						Description: "Rendered user profile page",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Update User Status",
+		Path:        "/@{username}",
+		Method:      "POST",
+		Description: "Update user status message (own profile only)",
+		Params: []*Param{
+			{
+				Name:        "status",
+				Value:       "string",
+				Description: "Status message (max 100 characters)",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "Redirect",
+				Params: []*Param{
+					{
+						Name:        "location",
+						Value:       "string",
+						Description: "Redirects to user profile",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Add Comment",
+		Path:        "/post/{id}/comment",
+		Method:      "POST",
+		Description: "Add a comment to a blog post",
+		Params: []*Param{
+			{
+				Name:        "content",
+				Value:       "string",
+				Description: "Comment content (minimum 10 characters)",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "Redirect",
+				Params: []*Param{
+					{
+						Name:        "location",
+						Value:       "string",
+						Description: "Redirects back to the post",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Search Data",
+		Path:        "/search",
+		Method:      "GET",
+		Description: "Search across all indexed content (posts, news, videos)",
+		Params: []*Param{
+			{
+				Name:        "q",
+				Value:       "string",
+				Description: "Search query",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "results",
+						Value:       "array",
+						Description: "Search results with type, id, title, content, score",
+					},
+				},
+			},
+		},
+	})
+}
+
 // Register an endpoint
 func Register(ep *Endpoint) {
 	Endpoints = append(Endpoints, ep)
@@ -291,6 +520,30 @@ func Register(ep *Endpoint) {
 // Markdown API document
 func Markdown() string {
 	var data string
+
+	// Add authentication section
+	data += "# API Documentation\n\n"
+	data += "## Authentication\n\n"
+	data += "All authenticated endpoints require either:\n\n"
+	data += "1. **Session Cookie** - Obtained via web login\n"
+	data += "2. **Personal Access Token (PAT)** - For API automation\n\n"
+	data += "### Using PAT Tokens\n\n"
+	data += "Include your PAT in the request using one of these methods:\n\n"
+	data += "- **Authorization header**: `Authorization: Bearer YOUR_TOKEN`\n"
+	data += "- **X-Micro-Token header**: `X-Micro-Token: YOUR_TOKEN`\n\n"
+	data += "Example:\n"
+	data += "```bash\n"
+	data += "curl -H \"Authorization: Bearer YOUR_TOKEN\" \\\n"
+	data += "     -H \"Content-Type: application/json\" \\\n"
+	data += "     https://example.com/api/endpoint\n"
+	data += "```\n\n"
+	data += "### Creating a PAT Token\n\n"
+	data += "1. Log in to your account via the web interface\n"
+	data += "2. Navigate to `/token` endpoint\n"
+	data += "3. Create a new token with desired permissions\n"
+	data += "4. **Save the token immediately** - it's only shown once!\n\n"
+	data += "---\n\n"
+	data += "## Endpoints\n\n"
 
 	for _, endpoint := range Endpoints {
 		data += "## " + endpoint.Name

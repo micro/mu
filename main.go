@@ -80,6 +80,7 @@ func main() {
 		"/mail":            true,  // Require auth for inbox
 		"/logout":          true,
 		"/account":         true,
+		"/token":           true, // PAT token management
 		"/session":         false, // Public - used to check auth status
 		"/api":             true,
 		"/flag":            true,
@@ -147,6 +148,7 @@ func main() {
 	http.HandleFunc("/signup", app.Signup)
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/session", app.Session)
+	http.HandleFunc("/token", app.TokenHandler)
 
 	// presence ping endpoint
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
@@ -197,9 +199,27 @@ func main() {
 
 			var token string
 
-			// set via session
+			// set via session cookie
 			if c, err := r.Cookie("session"); err == nil && c != nil {
 				token = c.Value
+			}
+
+			// Try Authorization header (Bearer token or PAT)
+			if token == "" {
+				authHeader := r.Header.Get("Authorization")
+				if authHeader != "" {
+					// Support both "Bearer <token>" and just "<token>"
+					if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+						token = authHeader[7:]
+					} else {
+						token = authHeader
+					}
+				}
+			}
+
+			// Try X-Micro-Token header (legacy support)
+			if token == "" {
+				token = r.Header.Get("X-Micro-Token")
 			}
 
 			// Check if static asset - skip authentication entirely

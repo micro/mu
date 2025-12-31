@@ -468,12 +468,21 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		</div>`
 	}
 
+	// API Tokens section
+	tokensSection := `<div style="margin-top: 20px;">
+		<h3>API Tokens</h3>
+		<p>Personal Access Tokens for API automation.</p>
+		<p><a href="/token">Manage Tokens →</a></p>
+	</div>`
+
 	content := fmt.Sprintf(`<div style="max-width: 600px;">
 		<h2 style="margin-bottom: 15px;">Profile</h2>
 		<p><strong>Username:</strong> %s</p>
 		<p><strong>Name:</strong> %s</p>
 		<p><strong>Joined:</strong> %s</p>
 		<p style="margin-top: 10px;"><a href="/@%s">View Public Profile →</a></p>
+		
+		<div style="margin-top: 20px;">%s</div>
 		
 		<div style="margin-top: 20px;">%s</div>
 		
@@ -490,6 +499,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.ID,
 		membershipSection,
 		languageSection,
+		tokensSection,
 		adminSection,
 	)
 
