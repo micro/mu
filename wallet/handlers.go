@@ -531,10 +531,9 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If user has existing Stripe customer, use it
+	// Otherwise, let Stripe collect email during checkout
 	if acc.StripeCustomerID != "" {
 		params.Customer = stripe.String(acc.StripeCustomerID)
-	} else {
-		params.CustomerEmail = stripe.String(sess.Account) // Use account ID as email placeholder
 	}
 
 	params.AddMetadata("user_id", sess.Account)
