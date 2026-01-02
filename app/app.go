@@ -635,7 +635,11 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	if isMember {
 		content.WriteString(`<p style="margin-top: 15px;">✓ You're a member</p>`)
 	} else if stripeMembershipConfigured {
-		content.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/subscribe">Subscribe →</a></p>`)
+		if isLoggedIn {
+			content.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/subscribe">Subscribe →</a></p>`)
+		} else {
+			content.WriteString(`<p style="margin-top: 15px;"><a href="/login?redirect=%2Fwallet%2Fsubscribe">Subscribe →</a></p>`)
+		}
 	} else if membershipURL != "" {
 		content.WriteString(fmt.Sprintf(`<p style="margin-top: 15px;"><a href="%s" target="_blank">Subscribe →</a></p>`, membershipURL))
 	} else {
