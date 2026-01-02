@@ -13,14 +13,16 @@ import (
 	"mu/auth"
 
 	"github.com/stripe/stripe-go/v76"
-	"github.com/stripe/stripe-go/v76/checkout/session"
+	portalsession "github.com/stripe/stripe-go/v76/billingportal/session"
+	checkoutsession "github.com/stripe/stripe-go/v76/checkout/session"
 	"github.com/stripe/stripe-go/v76/webhook"
 )
 
 var (
-	StripeSecretKey      = os.Getenv("STRIPE_SECRET_KEY")
-	StripePublishableKey = os.Getenv("STRIPE_PUBLISHABLE_KEY")
-	StripeWebhookSecret  = os.Getenv("STRIPE_WEBHOOK_SECRET")
+	StripeSecretKey        = os.Getenv("STRIPE_SECRET_KEY")
+	StripePublishableKey   = os.Getenv("STRIPE_PUBLISHABLE_KEY")
+	StripeWebhookSecret    = os.Getenv("STRIPE_WEBHOOK_SECRET")
+	StripeMembershipPrice  = os.Getenv("STRIPE_MEMBERSHIP_PRICE") // Monthly subscription price ID
 )
 
 // Price IDs from environment (set up in Stripe Dashboard)
@@ -45,34 +47,47 @@ func WalletPage(userID string) string {
 	transactions := GetTransactions(userID, 20)
 
 	// Check if user is member/admin
+	var acc *auth.Account
 	isMember := false
 	isAdmin := false
-	if acc, err := auth.GetAccount(userID); err == nil {
+	hasSubscription := false
+	if a, err := auth.GetAccount(userID); err == nil {
+		acc = a
 		isMember = acc.Member
 		isAdmin = acc.Admin
+		hasSubscription = acc.StripeSubscriptionID != ""
 	}
 
 	var sb strings.Builder
 
-	// Balance section
-	sb.WriteString(`<div class="wallet-container">`)
+	// Status section
 	sb.WriteString(`<h2>Your Wallet</h2>`)
 
 	if isMember || isAdmin {
-		sb.WriteString(`<div class="wallet-balance unlimited">`)
-		sb.WriteString(`<div class="balance-label">Status</div>`)
+		// Member/Admin status card
+		sb.WriteString(`<div class="card" style="background: #f0fff4; border-color: #22c55e;">`)
+		sb.WriteString(`<div style="text-align: center; padding: 20px;">`)
 		if isAdmin {
-			sb.WriteString(`<div class="balance-amount">Admin</div>`)
+			sb.WriteString(`<div style="font-size: 14px; color: #666; margin-bottom: 5px;">Status</div>`)
+			sb.WriteString(`<div style="font-size: 32px; font-weight: bold; color: #22c55e;">Admin</div>`)
 		} else {
-			sb.WriteString(`<div class="balance-amount">Member</div>`)
+			sb.WriteString(`<div style="font-size: 14px; color: #666; margin-bottom: 5px;">Status</div>`)
+			sb.WriteString(`<div style="font-size: 32px; font-weight: bold; color: #22c55e;">Member</div>`)
 		}
-		sb.WriteString(`<div class="balance-note">Unlimited searches included</div>`)
+		sb.WriteString(`<div style="font-size: 14px; color: #666; margin-top: 10px;">Unlimited searches included</div>`)
+		if hasSubscription && IsStripeConfigured() {
+			sb.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/manage">Manage subscription →</a></p>`)
+		}
+		sb.WriteString(`</div>`)
 		sb.WriteString(`</div>`)
 	} else {
-		sb.WriteString(`<div class="wallet-balance">`)
-		sb.WriteString(`<div class="balance-label">Credit Balance</div>`)
-		sb.WriteString(fmt.Sprintf(`<div class="balance-amount">%s</div>`, FormatCredits(wallet.Balance)))
-		sb.WriteString(fmt.Sprintf(`<div class="balance-credits">%d credits</div>`, wallet.Balance))
+		// Credit balance card
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(`<div style="text-align: center; padding: 20px;">`)
+		sb.WriteString(`<div style="font-size: 14px; color: #666; margin-bottom: 5px;">Credit Balance</div>`)
+		sb.WriteString(fmt.Sprintf(`<div style="font-size: 32px; font-weight: bold;">%s</div>`, FormatCredits(wallet.Balance)))
+		sb.WriteString(fmt.Sprintf(`<div style="font-size: 14px; color: #666;">%d credits</div>`, wallet.Balance))
+		sb.WriteString(`</div>`)
 		sb.WriteString(`</div>`)
 
 		// Daily quota section
@@ -81,80 +96,94 @@ func WalletPage(userID string) string {
 			usedPct = 100
 		}
 
-		sb.WriteString(`<div class="daily-quota">`)
+		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Daily Free Searches</h3>`)
-		sb.WriteString(`<div class="quota-bar">`)
-		sb.WriteString(fmt.Sprintf(`<div class="quota-used" style="width: %.0f%%"></div>`, usedPct))
+		sb.WriteString(`<div style="background: #e5e5e5; height: 8px; border-radius: 4px; overflow: hidden; margin: 15px 0;">`)
+		sb.WriteString(fmt.Sprintf(`<div style="background: #000; height: 100%%; width: %.0f%%; transition: width 0.3s;"></div>`, usedPct))
 		sb.WriteString(`</div>`)
-		sb.WriteString(fmt.Sprintf(`<div class="quota-text">%d of %d remaining today</div>`, freeRemaining, FreeDailySearches))
-		sb.WriteString(`<div class="quota-note">Resets at midnight UTC</div>`)
+		sb.WriteString(fmt.Sprintf(`<p style="margin: 0;"><strong>%d of %d remaining today</strong></p>`, freeRemaining, FreeDailySearches))
+		sb.WriteString(`<p style="font-size: 12px; color: #666; margin-top: 5px;">Resets at midnight UTC</p>`)
 		sb.WriteString(`</div>`)
 
-		// Topup section
-		sb.WriteString(`<div class="topup-section">`)
-		sb.WriteString(`<h3>Top Up Credits</h3>`)
-		sb.WriteString(`<p class="topup-info">1 credit = 1p • Use credits when daily free searches are exhausted</p>`)
-		sb.WriteString(`<div class="topup-options">`)
-
-		for _, tier := range TopupTiers {
-			bonusLabel := ""
-			if tier.BonusPct > 0 {
-				bonusLabel = fmt.Sprintf(`<span class="bonus">+%d%% bonus</span>`, tier.BonusPct)
-			}
-			sb.WriteString(fmt.Sprintf(`<button class="topup-btn" onclick="topupCredits(%d)">`, tier.Amount))
-			sb.WriteString(fmt.Sprintf(`<span class="price">£%.2f</span>`, float64(tier.Amount)/100))
-			sb.WriteString(fmt.Sprintf(`<span class="credits">%d credits</span>`, tier.Credits))
-			sb.WriteString(bonusLabel)
-			sb.WriteString(`</button>`)
+		// Membership upsell
+		if IsStripeConfigured() && StripeMembershipPrice != "" {
+			sb.WriteString(`<div class="card" style="background: #fafafa;">`)
+			sb.WriteString(`<h3>Become a Member</h3>`)
+			sb.WriteString(`<p>Get unlimited searches and support Mu's development.</p>`)
+			sb.WriteString(`<ul style="margin: 15px 0; padding-left: 20px;">`)
+			sb.WriteString(`<li>Unlimited news, video, and chat searches</li>`)
+			sb.WriteString(`<li>Access to private messaging</li>`)
+			sb.WriteString(`<li>Support independent development</li>`)
+			sb.WriteString(`</ul>`)
+			sb.WriteString(`<p><a href="/wallet/subscribe">Subscribe →</a></p>`)
+			sb.WriteString(`</div>`)
 		}
 
-		sb.WriteString(`</div>`)
-		sb.WriteString(`</div>`)
+		// Topup section (only if Stripe configured)
+		if IsStripeConfigured() {
+			sb.WriteString(`<div class="card">`)
+			sb.WriteString(`<h3>Top Up Credits</h3>`)
+			sb.WriteString(`<p style="color: #666; font-size: 14px;">1 credit = 1p • Use credits when daily free searches are exhausted</p>`)
+			sb.WriteString(`<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 15px;">`)
+
+			for _, tier := range TopupTiers {
+				bonusLabel := ""
+				if tier.BonusPct > 0 {
+					bonusLabel = fmt.Sprintf(`<span style="background: #22c55e; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-top: 5px; display: inline-block;">+%d%%</span>`, tier.BonusPct)
+				}
+				sb.WriteString(fmt.Sprintf(`<button onclick="topupCredits(%d)" style="display: flex; flex-direction: column; align-items: center; padding: 15px; background: white; border: 1px solid var(--card-border);">`, tier.Amount))
+				sb.WriteString(fmt.Sprintf(`<span style="font-size: 20px; font-weight: bold;">£%.2f</span>`, float64(tier.Amount)/100))
+				sb.WriteString(fmt.Sprintf(`<span style="font-size: 12px; color: #666;">%d credits</span>`, tier.Credits))
+				sb.WriteString(bonusLabel)
+				sb.WriteString(`</button>`)
+			}
+
+			sb.WriteString(`</div>`)
+			sb.WriteString(`</div>`)
+		}
 	}
 
 	// Pricing info
-	sb.WriteString(`<div class="pricing-info">`)
+	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Credit Costs</h3>`)
-	sb.WriteString(`<table class="pricing-table">`)
-	sb.WriteString(`<tr><th>Feature</th><th>Cost</th></tr>`)
-	sb.WriteString(fmt.Sprintf(`<tr><td>News Search</td><td>%d credit%s</td></tr>`, CostNewsSearch, pluralize(CostNewsSearch)))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Video Search</td><td>%d credit%s</td></tr>`, CostVideoSearch, pluralize(CostVideoSearch)))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Chat AI Query</td><td>%d credit%s</td></tr>`, CostChatQuery, pluralize(CostChatQuery)))
+	sb.WriteString(`<table style="width: 100%; border-collapse: collapse;">`)
+	sb.WriteString(`<tr style="border-bottom: 1px solid var(--divider);"><th style="text-align: left; padding: 10px 0;">Feature</th><th style="text-align: right; padding: 10px 0;">Cost</th></tr>`)
+	sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid var(--divider);"><td style="padding: 10px 0;">News Search</td><td style="text-align: right; padding: 10px 0;">%d credit%s</td></tr>`, CostNewsSearch, pluralize(CostNewsSearch)))
+	sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid var(--divider);"><td style="padding: 10px 0;">Video Search</td><td style="text-align: right; padding: 10px 0;">%d credit%s</td></tr>`, CostVideoSearch, pluralize(CostVideoSearch)))
+	sb.WriteString(fmt.Sprintf(`<tr><td style="padding: 10px 0;">Chat AI Query</td><td style="text-align: right; padding: 10px 0;">%d credit%s</td></tr>`, CostChatQuery, pluralize(CostChatQuery)))
 	sb.WriteString(`</table>`)
-	sb.WriteString(`<p class="pricing-note"><a href="/plans">View all plans</a> • Members get unlimited access</p>`)
+	sb.WriteString(`<p style="font-size: 12px; color: #666; margin-top: 15px; margin-bottom: 0;"><a href="/plans">View all plans</a> • Members get unlimited access</p>`)
 	sb.WriteString(`</div>`)
 
 	// Transaction history
 	if len(transactions) > 0 {
-		sb.WriteString(`<div class="transaction-history">`)
+		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Transaction History</h3>`)
-		sb.WriteString(`<table class="transactions-table">`)
-		sb.WriteString(`<tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>`)
+		sb.WriteString(`<table style="width: 100%; border-collapse: collapse; font-size: 14px;">`)
+		sb.WriteString(`<tr style="border-bottom: 1px solid var(--divider);"><th style="text-align: left; padding: 10px 0;">Date</th><th style="text-align: left; padding: 10px 0;">Type</th><th style="text-align: right; padding: 10px 0;">Amount</th><th style="text-align: right; padding: 10px 0;">Balance</th></tr>`)
 
 		for _, tx := range transactions {
 			typeLabel := tx.Operation
 			if tx.Type == TxTopup {
 				typeLabel = "Top Up"
 			}
-			amountClass := "debit"
+			amountColor := "#dc2626"
 			amountPrefix := "-"
 			if tx.Amount > 0 {
-				amountClass = "credit"
+				amountColor = "#22c55e"
 				amountPrefix = "+"
 			}
-			sb.WriteString(fmt.Sprintf(`<tr>
-				<td>%s</td>
-				<td>%s</td>
-				<td class="%s">%s%d</td>
-				<td>%d</td>
-			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountClass, amountPrefix, abs(tx.Amount), tx.Balance))
+			sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid var(--divider);">
+				<td style="padding: 10px 0;">%s</td>
+				<td style="padding: 10px 0;">%s</td>
+				<td style="text-align: right; padding: 10px 0; color: %s;">%s%d</td>
+				<td style="text-align: right; padding: 10px 0;">%d</td>
+			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountColor, amountPrefix, abs(tx.Amount), tx.Balance))
 		}
 
 		sb.WriteString(`</table>`)
 		sb.WriteString(`</div>`)
 	}
-
-	sb.WriteString(`</div>`)
 
 	// Add JavaScript for topup
 	sb.WriteString(`
@@ -178,46 +207,6 @@ async function topupCredits(amount) {
 }
 </script>`)
 
-	// Add CSS
-	sb.WriteString(`
-<style>
-.wallet-container { max-width: 600px; margin: 0 auto; }
-.wallet-balance { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
-.wallet-balance.unlimited { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-.balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 5px; }
-.balance-amount { font-size: 48px; font-weight: bold; }
-.balance-credits { font-size: 14px; opacity: 0.9; }
-.balance-note { font-size: 14px; margin-top: 10px; }
-.daily-quota { background: #f5f5f5; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-.daily-quota h3 { margin: 0 0 15px 0; }
-.quota-bar { background: #ddd; height: 20px; border-radius: 10px; overflow: hidden; }
-.quota-used { background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; transition: width 0.3s; }
-.quota-text { margin-top: 10px; font-weight: bold; }
-.quota-note { font-size: 12px; color: #666; margin-top: 5px; }
-.topup-section { margin-bottom: 20px; }
-.topup-section h3 { margin-bottom: 10px; }
-.topup-info { color: #666; font-size: 14px; margin-bottom: 15px; }
-.topup-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-.topup-btn { background: white; border: 2px solid #667eea; border-radius: 10px; padding: 15px 10px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; }
-.topup-btn:hover { background: #667eea; color: white; }
-.topup-btn:hover .bonus { background: white; color: #667eea; }
-.topup-btn .price { font-size: 24px; font-weight: bold; }
-.topup-btn .credits { font-size: 12px; color: #666; }
-.topup-btn:hover .credits { color: rgba(255,255,255,0.8); }
-.topup-btn .bonus { background: #4CAF50; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-top: 5px; }
-.pricing-info { background: #f9f9f9; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-.pricing-info h3 { margin: 0 0 15px 0; }
-.pricing-table { width: 100%; border-collapse: collapse; }
-.pricing-table th, .pricing-table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-.pricing-note { font-size: 12px; color: #666; margin-top: 15px; margin-bottom: 0; }
-.transaction-history { margin-top: 20px; }
-.transaction-history h3 { margin-bottom: 15px; }
-.transactions-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.transactions-table th, .transactions-table td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
-.transactions-table .credit { color: #4CAF50; }
-.transactions-table .debit { color: #f44336; }
-</style>`)
-
 	return sb.String()
 }
 
@@ -225,31 +214,16 @@ async function topupCredits(amount) {
 func QuotaExceededPage(operation string, cost int) string {
 	var sb strings.Builder
 
-	sb.WriteString(`<div class="quota-exceeded">`)
+	sb.WriteString(`<div class="card" style="max-width: 500px; margin: 50px auto; text-align: center;">`)
 	sb.WriteString(`<h2>Daily Limit Reached</h2>`)
 	sb.WriteString(`<p>You've used your 10 free searches for today.</p>`)
-	sb.WriteString(`<div class="options">`)
-	sb.WriteString(`<h3>Options</h3>`)
-	sb.WriteString(`<ul>`)
-	sb.WriteString(`<li>Wait until midnight UTC for more free searches</li>`)
-	sb.WriteString(fmt.Sprintf(`<li><a href="/wallet">Use credits</a> (%d credit%s for this search)</li>`, cost, pluralize(cost)))
-	sb.WriteString(`<li><a href="/plans">View all plans</a></li>`)
+	sb.WriteString(`<h3 style="margin-top: 20px;">Options</h3>`)
+	sb.WriteString(`<ul style="text-align: left; margin: 15px 0;">`)
+	sb.WriteString(`<li style="margin: 10px 0;">Wait until midnight UTC for more free searches</li>`)
+	sb.WriteString(fmt.Sprintf(`<li style="margin: 10px 0;"><a href="/wallet">Use credits</a> (%d credit%s for this search)</li>`, cost, pluralize(cost)))
+	sb.WriteString(`<li style="margin: 10px 0;"><a href="/plans">View all plans</a></li>`)
 	sb.WriteString(`</ul>`)
 	sb.WriteString(`</div>`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`
-<style>
-.quota-exceeded { max-width: 500px; margin: 50px auto; padding: 30px; background: #f5f5f5; border-radius: 12px; text-align: center; }
-.quota-exceeded h2 { color: #333; margin-bottom: 15px; }
-.quota-exceeded p { color: #666; }
-.quota-exceeded .options { text-align: left; margin-top: 20px; }
-.quota-exceeded h3 { font-size: 16px; margin-bottom: 10px; }
-.quota-exceeded ul { margin-top: 10px; list-style: none; padding: 0; }
-.quota-exceeded li { margin: 12px 0; padding: 10px; background: white; border-radius: 8px; }
-.quota-exceeded a { color: #667eea; text-decoration: none; }
-.quota-exceeded a:hover { text-decoration: underline; }
-</style>`)
 
 	return sb.String()
 }
@@ -277,6 +251,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleWalletPage(w, r)
 	case path == "/wallet/topup" && r.Method == "POST":
 		handleTopup(w, r)
+	case path == "/wallet/subscribe" && r.Method == "GET":
+		handleSubscribePage(w, r)
+	case path == "/wallet/subscribe" && r.Method == "POST":
+		handleSubscribe(w, r)
+	case path == "/wallet/manage":
+		handleManageSubscription(w, r)
 	case path == "/wallet/success":
 		handleSuccess(w, r)
 	case path == "/wallet/cancel":
@@ -378,7 +358,7 @@ func handleTopup(w http.ResponseWriter, r *http.Request) {
 	params.AddMetadata("credits", strconv.Itoa(tier.Credits))
 	params.AddMetadata("amount", strconv.Itoa(tier.Amount))
 
-	checkoutSession, err := session.New(params)
+	checkoutSession, err := checkoutsession.New(params)
 	if err != nil {
 		app.Log("wallet", "Stripe checkout error: %v", err)
 		w.Header().Set("Content-Type", "application/json")
@@ -398,41 +378,229 @@ func handleSuccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Show success page
-	content := `
-<div class="payment-result success">
-	<h2>✓ Payment Successful</h2>
+	// Check if this was a subscription or credit purchase
+	sessionType := r.URL.Query().Get("type")
+	
+	var content string
+	if sessionType == "subscription" {
+		content = `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #f0fff4; border-color: #22c55e;">
+	<h2 style="color: #22c55e;">✓ Welcome, Member!</h2>
+	<p>Your membership is now active. Enjoy unlimited searches!</p>
+	<p style="margin-top: 20px;"><a href="/wallet">View Wallet →</a></p>
+</div>`
+	} else {
+		content = `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #f0fff4; border-color: #22c55e;">
+	<h2 style="color: #22c55e;">✓ Payment Successful</h2>
 	<p>Your credits have been added to your wallet.</p>
-	<a href="/wallet" class="btn">View Wallet</a>
-</div>
-<style>
-.payment-result { max-width: 400px; margin: 50px auto; padding: 40px; text-align: center; border-radius: 15px; }
-.payment-result.success { background: #d4edda; color: #155724; }
-.payment-result h2 { margin-bottom: 15px; }
-.payment-result .btn { display: inline-block; margin-top: 20px; padding: 12px 30px; background: #155724; color: white; text-decoration: none; border-radius: 8px; }
-</style>`
+	<p style="margin-top: 20px;"><a href="/wallet">View Wallet →</a></p>
+</div>`
+	}
 
-	html := app.RenderHTMLForRequest("Payment Successful", "Your credits have been added", content, r)
+	html := app.RenderHTMLForRequest("Payment Successful", "Your payment was successful", content, r)
 	w.Write([]byte(html))
 	_ = sess // Used for potential future user-specific success messages
 }
 
 func handleCancel(w http.ResponseWriter, r *http.Request) {
-	content := `
-<div class="payment-result cancelled">
-	<h2>Payment Cancelled</h2>
+	content := `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #fffbeb; border-color: #f59e0b;">
+	<h2 style="color: #d97706;">Payment Cancelled</h2>
 	<p>Your payment was cancelled. No charges were made.</p>
-	<a href="/wallet" class="btn">Back to Wallet</a>
-</div>
-<style>
-.payment-result { max-width: 400px; margin: 50px auto; padding: 40px; text-align: center; border-radius: 15px; }
-.payment-result.cancelled { background: #fff3cd; color: #856404; }
-.payment-result h2 { margin-bottom: 15px; }
-.payment-result .btn { display: inline-block; margin-top: 20px; padding: 12px 30px; background: #856404; color: white; text-decoration: none; border-radius: 8px; }
-</style>`
+	<p style="margin-top: 20px;"><a href="/wallet">Back to Wallet →</a></p>
+</div>`
 
 	html := app.RenderHTMLForRequest("Payment Cancelled", "Your payment was cancelled", content, r)
 	w.Write([]byte(html))
+}
+
+// handleSubscribePage shows the subscription checkout page
+func handleSubscribePage(w http.ResponseWriter, r *http.Request) {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Redirect(w, r, "/login", 302)
+		return
+	}
+
+	acc, err := auth.GetAccount(sess.Account)
+	if err != nil {
+		http.Error(w, "Account not found", 404)
+		return
+	}
+
+	// Already a member
+	if acc.Member {
+		http.Redirect(w, r, "/wallet", 302)
+		return
+	}
+
+	// Check if Stripe subscriptions are configured
+	if !IsStripeConfigured() || StripeMembershipPrice == "" {
+		content := `<div class="card" style="max-width: 500px; margin: 50px auto; text-align: center;">
+	<h2>Memberships Not Available</h2>
+	<p>Stripe subscriptions are not configured for this instance.</p>
+	<p style="margin-top: 20px;"><a href="/membership">View membership info →</a></p>
+</div>`
+		html := app.RenderHTMLForRequest("Subscribe", "Become a member", content, r)
+		w.Write([]byte(html))
+		return
+	}
+
+	content := `<div class="card" style="max-width: 500px; margin: 50px auto;">
+	<h2>Become a Member</h2>
+	<p>Get unlimited access to all features with a monthly subscription.</p>
+	
+	<h3 style="margin-top: 20px;">What's included:</h3>
+	<ul style="margin: 15px 0; padding-left: 20px;">
+		<li>Unlimited news searches</li>
+		<li>Unlimited video searches</li>
+		<li>Unlimited AI chat queries</li>
+		<li>Access to private messaging</li>
+		<li>Support independent development</li>
+	</ul>
+	
+	<p style="margin-top: 20px; text-align: center;">
+		<button onclick="startSubscription()" style="padding: 15px 40px; font-size: 16px;">Subscribe Now</button>
+	</p>
+	<p style="font-size: 12px; color: #666; text-align: center; margin-top: 10px;">Cancel anytime • Managed by Stripe</p>
+</div>
+
+<script>
+async function startSubscription() {
+	try {
+		const resp = await fetch('/wallet/subscribe', {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'}
+		});
+		const data = await resp.json();
+		if (data.url) {
+			window.location.href = data.url;
+		} else if (data.error) {
+			alert('Error: ' + data.error);
+		}
+	} catch (err) {
+		alert('Failed to start checkout: ' + err.message);
+	}
+}
+</script>`
+
+	html := app.RenderHTMLForRequest("Subscribe", "Become a member", content, r)
+	w.Write([]byte(html))
+}
+
+// handleSubscribe creates a Stripe subscription checkout session
+func handleSubscribe(w http.ResponseWriter, r *http.Request) {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(401)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Authentication required"})
+		return
+	}
+
+	if !IsStripeConfigured() || StripeMembershipPrice == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Subscriptions not configured"})
+		return
+	}
+
+	acc, err := auth.GetAccount(sess.Account)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Account not found"})
+		return
+	}
+
+	// Already a member
+	if acc.Member {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Already a member"})
+		return
+	}
+
+	// Build domain for redirect URLs
+	scheme := "https"
+	if r.TLS == nil && !strings.Contains(r.Host, "localhost") {
+		scheme = "http"
+	}
+	domain := fmt.Sprintf("%s://%s", scheme, r.Host)
+
+	// Create checkout session for subscription
+	params := &stripe.CheckoutSessionParams{
+		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{{
+			Price:    stripe.String(StripeMembershipPrice),
+			Quantity: stripe.Int64(1),
+		}},
+		SuccessURL:        stripe.String(domain + "/wallet/success?type=subscription&session_id={CHECKOUT_SESSION_ID}"),
+		CancelURL:         stripe.String(domain + "/wallet/cancel"),
+		ClientReferenceID: stripe.String(sess.Account),
+	}
+
+	// If user has existing Stripe customer, use it
+	if acc.StripeCustomerID != "" {
+		params.Customer = stripe.String(acc.StripeCustomerID)
+	} else {
+		params.CustomerEmail = stripe.String(sess.Account) // Use account ID as email placeholder
+	}
+
+	params.AddMetadata("user_id", sess.Account)
+	params.AddMetadata("type", "subscription")
+
+	checkoutSession, err := checkoutsession.New(params)
+	if err != nil {
+		app.Log("wallet", "Stripe subscription checkout error: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create checkout session"})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"url": checkoutSession.URL})
+}
+
+// handleManageSubscription redirects to Stripe billing portal
+func handleManageSubscription(w http.ResponseWriter, r *http.Request) {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Redirect(w, r, "/login", 302)
+		return
+	}
+
+	acc, err := auth.GetAccount(sess.Account)
+	if err != nil {
+		http.Error(w, "Account not found", 404)
+		return
+	}
+
+	if acc.StripeCustomerID == "" {
+		http.Redirect(w, r, "/wallet", 302)
+		return
+	}
+
+	// Build domain for redirect URLs
+	scheme := "https"
+	if r.TLS == nil && !strings.Contains(r.Host, "localhost") {
+		scheme = "http"
+	}
+	domain := fmt.Sprintf("%s://%s", scheme, r.Host)
+
+	// Create billing portal session
+	params := &stripe.BillingPortalSessionParams{
+		Customer:  stripe.String(acc.StripeCustomerID),
+		ReturnURL: stripe.String(domain + "/wallet"),
+	}
+
+	portalSession, err := portalsession.New(params)
+	if err != nil {
+		app.Log("wallet", "Failed to create billing portal session: %v", err)
+		http.Error(w, "Failed to access billing portal", 500)
+		return
+	}
+
+	http.Redirect(w, r, portalSession.URL, 302)
 }
 
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
@@ -471,34 +639,141 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		userID := checkoutSession.ClientReferenceID
-		creditsStr := checkoutSession.Metadata["credits"]
-		credits, _ := strconv.Atoi(creditsStr)
+		sessionType := checkoutSession.Metadata["type"]
 
-		if userID == "" || credits == 0 {
-			app.Log("wallet", "Invalid webhook data: userID=%s credits=%d", userID, credits)
-			http.Error(w, "Invalid metadata", 400)
+		if sessionType == "subscription" {
+			// Handle subscription checkout completion
+			handleSubscriptionCreated(userID, &checkoutSession)
+		} else {
+			// Handle credit top-up
+			creditsStr := checkoutSession.Metadata["credits"]
+			credits, _ := strconv.Atoi(creditsStr)
+
+			if userID == "" || credits == 0 {
+				app.Log("wallet", "Invalid webhook data: userID=%s credits=%d", userID, credits)
+				http.Error(w, "Invalid metadata", 400)
+				return
+			}
+
+			// Add credits to wallet
+			err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
+				"stripe_session_id": checkoutSession.ID,
+				"payment_intent":    checkoutSession.PaymentIntent,
+				"amount_total":      checkoutSession.AmountTotal,
+			})
+			if err != nil {
+				app.Log("wallet", "Failed to add credits: %v", err)
+				http.Error(w, "Failed to add credits", 500)
+				return
+			}
+
+			app.Log("wallet", "Added %d credits to user %s (session: %s)", credits, userID, checkoutSession.ID)
+		}
+
+	case "customer.subscription.created", "customer.subscription.updated":
+		var sub stripe.Subscription
+		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
+			app.Log("wallet", "Failed to parse subscription: %v", err)
+			http.Error(w, "Invalid subscription data", 400)
 			return
 		}
 
-		// Add credits to wallet
-		err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
-			"stripe_session_id": checkoutSession.ID,
-			"payment_intent":    checkoutSession.PaymentIntent,
-			"amount_total":      checkoutSession.AmountTotal,
-		})
-		if err != nil {
-			app.Log("wallet", "Failed to add credits: %v", err)
-			http.Error(w, "Failed to add credits", 500)
+		// Find user by customer ID
+		userID := findUserByCustomerID(sub.Customer.ID)
+		if userID == "" {
+			app.Log("wallet", "No user found for customer %s", sub.Customer.ID)
+			// Not an error - might be a subscription we don't track
+			w.WriteHeader(200)
 			return
 		}
 
-		app.Log("wallet", "Added %d credits to user %s (session: %s)", credits, userID, checkoutSession.ID)
+		// Update member status based on subscription status
+		if sub.Status == stripe.SubscriptionStatusActive || sub.Status == stripe.SubscriptionStatusTrialing {
+			setMemberStatus(userID, true, sub.Customer.ID, sub.ID)
+			app.Log("wallet", "Activated membership for user %s (subscription: %s)", userID, sub.ID)
+		}
+
+	case "customer.subscription.deleted":
+		var sub stripe.Subscription
+		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
+			app.Log("wallet", "Failed to parse subscription: %v", err)
+			http.Error(w, "Invalid subscription data", 400)
+			return
+		}
+
+		// Find user by customer ID
+		userID := findUserByCustomerID(sub.Customer.ID)
+		if userID == "" {
+			app.Log("wallet", "No user found for customer %s", sub.Customer.ID)
+			w.WriteHeader(200)
+			return
+		}
+
+		// Revoke member status
+		setMemberStatus(userID, false, sub.Customer.ID, "")
+		app.Log("wallet", "Revoked membership for user %s (subscription cancelled)", userID)
+
+	case "invoice.payment_failed":
+		app.Log("wallet", "Invoice payment failed: %s", string(event.Data.Raw))
 
 	case "payment_intent.payment_failed":
 		app.Log("wallet", "Payment failed: %s", string(event.Data.Raw))
 	}
 
 	w.WriteHeader(200)
+}
+
+// handleSubscriptionCreated processes a successful subscription checkout
+func handleSubscriptionCreated(userID string, session *stripe.CheckoutSession) {
+	if userID == "" {
+		app.Log("wallet", "No user ID in subscription checkout")
+		return
+	}
+
+	// Get the subscription details
+	customerID := ""
+	subscriptionID := ""
+	
+	if session.Customer != nil {
+		customerID = session.Customer.ID
+	}
+	if session.Subscription != nil {
+		subscriptionID = session.Subscription.ID
+	}
+
+	// Update user account
+	setMemberStatus(userID, true, customerID, subscriptionID)
+	app.Log("wallet", "Subscription created for user %s (customer: %s, subscription: %s)", userID, customerID, subscriptionID)
+}
+
+// findUserByCustomerID finds a user account by their Stripe customer ID
+func findUserByCustomerID(customerID string) string {
+	accounts := auth.GetAllAccounts()
+	for _, acc := range accounts {
+		if acc.StripeCustomerID == customerID {
+			return acc.ID
+		}
+	}
+	return ""
+}
+
+// setMemberStatus updates a user's member status and Stripe IDs
+func setMemberStatus(userID string, isMember bool, customerID, subscriptionID string) {
+	acc, err := auth.GetAccount(userID)
+	if err != nil {
+		app.Log("wallet", "Failed to get account %s: %v", userID, err)
+		return
+	}
+
+	acc.Member = isMember
+	if customerID != "" {
+		acc.StripeCustomerID = customerID
+	}
+	acc.StripeSubscriptionID = subscriptionID
+
+	if err := auth.UpdateAccount(acc); err != nil {
+		app.Log("wallet", "Failed to update account %s: %v", userID, err)
+	}
 }
 
 // IsStripeConfigured returns true if Stripe is properly configured

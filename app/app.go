@@ -420,25 +420,76 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build wallet section
-	walletSection := `<h3>Wallet</h3>
-		<p>Credits for pay-as-you-go access beyond your daily free quota.</p>
-		<p><a href="/wallet">View Wallet →</a> · <a href="/plans">View Plans →</a></p>`
+	// Build status/balance section (shown first)
+	var statusSection string
+	if acc.Admin {
+		statusSection = `<div class="card" style="background: #f0fff4; border-color: #22c55e;">
+			<div style="text-align: center; padding: 10px;">
+				<div style="font-size: 14px; color: #666;">Status</div>
+				<div style="font-size: 28px; font-weight: bold; color: #22c55e;">Admin</div>
+				<div style="font-size: 14px; color: #666; margin-top: 5px;">Unlimited access</div>
+			</div>
+		</div>`
+	} else if acc.Member {
+		statusSection = `<div class="card" style="background: #f0fff4; border-color: #22c55e;">
+			<div style="text-align: center; padding: 10px;">
+				<div style="font-size: 14px; color: #666;">Status</div>
+				<div style="font-size: 28px; font-weight: bold; color: #22c55e;">Member</div>
+				<div style="font-size: 14px; color: #666; margin-top: 5px;">Unlimited access</div>
+			</div>
+		</div>`
+	} else {
+		// Show credit balance for regular users
+		statusSection = `<div class="card">
+			<div style="text-align: center; padding: 10px;">
+				<div style="font-size: 14px; color: #666;">Daily Free Searches</div>
+				<div style="font-size: 28px; font-weight: bold;">10 / day</div>
+				<div style="font-size: 14px; color: #666; margin-top: 5px;">Then use credits or become a member</div>
+			</div>
+		</div>`
+	}
+
+	// Wallet link
+	walletSection := `<div class="card">
+		<h3>Wallet</h3>
+		<p>Manage credits and view transaction history.</p>
+		<p><a href="/wallet">View Wallet →</a></p>
+	</div>`
 
 	// Build membership section
 	membershipSection := ""
 	membershipURL := os.Getenv("MEMBERSHIP_URL")
-	if membershipURL != "" {
+	stripeMembershipConfigured := os.Getenv("STRIPE_MEMBERSHIP_PRICE") != "" && os.Getenv("STRIPE_SECRET_KEY") != ""
+	
+	if membershipURL != "" || stripeMembershipConfigured {
 		if acc.Member {
-			membershipSection = `<h3>Membership</h3>
-				<p><strong>✓ You are a member!</strong> Thank you for supporting Mu.</p>
-				<p><a href="/membership">View membership details</a></p>`
-		} else {
-			membershipSection = `<h3>Membership</h3>
-				<p>Support Mu and get exclusive benefits.</p>
-				<p><a href="/membership">Become a Member →</a></p>`
+			membershipSection = `<div class="card">
+				<h3>Membership</h3>
+				<p><strong>✓ Active Member</strong></p>
+				<p><a href="/membership">View details →</a></p>
+			</div>`
+		} else if !acc.Admin {
+			membershipSection = `<div class="card">
+				<h3>Membership</h3>
+				<p>Get unlimited access and support Mu.</p>
+				<p><a href="/wallet/subscribe">Become a Member →</a></p>
+			</div>`
 		}
 	}
+
+	// Profile section
+	profileSection := fmt.Sprintf(`<div class="card">
+		<h3>Profile</h3>
+		<p><strong>Username:</strong> %s</p>
+		<p><strong>Name:</strong> %s</p>
+		<p><strong>Joined:</strong> %s</p>
+		<p style="margin-top: 15px;"><a href="/@%s">View Public Profile →</a></p>
+	</div>`,
+		acc.ID,
+		acc.Name,
+		acc.Created.Format("January 2, 2006"),
+		acc.ID,
+	)
 
 	// Build language options
 	currentLang := acc.Language
@@ -454,58 +505,49 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		languageOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, code, selected, name)
 	}
 
-	languageSection := fmt.Sprintf(`<h3>Language</h3>
+	languageSection := fmt.Sprintf(`<div class="card">
+		<h3>Language</h3>
 		<p>Sets the page language to help your browser offer automatic translation.</p>
 		<form action="/account" method="POST" style="margin-top: 10px;">
 			<select name="language" style="padding: 8px; font-size: 14px;">
 				%s
 			</select>
 			<button type="submit" style="margin-left: 10px;">Save</button>
-		</form>`, languageOptions)
+		</form>
+	</div>`, languageOptions)
+
+	// API Tokens section
+	tokensSection := `<div class="card">
+		<h3>API Tokens</h3>
+		<p>Personal Access Tokens for API automation.</p>
+		<p><a href="/token">Manage Tokens →</a></p>
+	</div>`
 
 	// Admin section
 	adminSection := ""
 	if acc.Admin {
-		adminSection = `<div style="margin-top: 20px;">
+		adminSection = `<div class="card">
 			<h3>Admin</h3>
 			<p><a href="/admin">User Management →</a></p>
 			<p><a href="/admin/moderate">Moderation Queue →</a></p>
 		</div>`
 	}
 
-	// API Tokens section
-	tokensSection := `<div style="margin-top: 20px;">
-		<h3>API Tokens</h3>
-		<p>Personal Access Tokens for API automation.</p>
-		<p><a href="/token">Manage Tokens →</a></p>
-	</div>`
-
-	content := fmt.Sprintf(`<div style="max-width: 600px;">
-		<h2 style="margin-bottom: 15px;">Profile</h2>
-		<p><strong>Username:</strong> %s</p>
-		<p><strong>Name:</strong> %s</p>
-		<p><strong>Joined:</strong> %s</p>
-		<p style="margin-top: 10px;"><a href="/@%s">View Public Profile →</a></p>
-		
-		<div style="margin-top: 20px;">%s</div>
-		
-		<div style="margin-top: 20px;">%s</div>
-		
-		<div style="margin-top: 20px;">%s</div>
-		
-		<div style="margin-top: 20px;">%s</div>
-		
+	content := fmt.Sprintf(`<h2>Account</h2>
 		%s
-		
-		<hr style="margin: 20px 0;">
-		<p><a href="/logout" style="color: #dc3545; font-weight: bold;">Logout</a></p>
+		%s
+		%s
+		%s
+		%s
+		%s
+		%s
+		<div class="card">
+			<p><a href="/logout" style="color: #dc2626;">Logout</a></p>
 		</div>`,
-		acc.ID,
-		acc.Name,
-		acc.Created.Format("January 2, 2006"),
-		acc.ID,
+		statusSection,
 		walletSection,
 		membershipSection,
+		profileSection,
 		languageSection,
 		tokensSection,
 		adminSection,
