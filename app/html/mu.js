@@ -475,11 +475,16 @@ function setSession() {
     var accountHeader = document.getElementById("account-header");
     var loginHeader = document.getElementById("login-header");
     var mailHeader = document.getElementById("mail-header");
+    var walletHeader = document.getElementById("wallet-header");
     
     if (sess.type == "account") {
       isAuthenticated = true;
       if (accountHeader) accountHeader.style.display = 'inline-block';
       if (loginHeader) loginHeader.style.display = 'none';
+      // Show wallet for logged-in users (not admins/members who have unlimited)
+      if (walletHeader && !sess.admin && !sess.member) {
+        walletHeader.style.display = 'inline-block';
+      }
       // Only show mail for admins and members
       if (mailHeader && (sess.admin || sess.member)) {
         mailHeader.style.display = 'inline-block';
@@ -500,6 +505,7 @@ function setSession() {
       isAuthenticated = false;
       if (accountHeader) accountHeader.style.display = 'none';
       if (mailHeader) mailHeader.style.display = 'none';
+      if (walletHeader) walletHeader.style.display = 'none';
       if (loginHeader) {
         loginHeader.style.display = 'inline-block';
         // Update login link to include redirect parameter
@@ -519,8 +525,10 @@ function setSession() {
     var accountHeader = document.getElementById("account-header");
     var loginHeader = document.getElementById("login-header");
     var mailHeader = document.getElementById("mail-header");
+    var walletHeader = document.getElementById("wallet-header");
     if (accountHeader) accountHeader.style.display = 'none';
     if (mailHeader) mailHeader.style.display = 'none';
+    if (walletHeader) walletHeader.style.display = 'none';
     if (loginHeader) {
       loginHeader.style.display = 'block';
       // Update login link to include redirect parameter for unauthenticated users

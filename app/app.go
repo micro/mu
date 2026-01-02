@@ -85,6 +85,7 @@ var Template = `
       </div>
       <div id="account" style="-webkit-tap-highlight-color: transparent;">
         <a id="mail-header" href="/mail" style="display: none; margin-right: 2px; -webkit-tap-highlight-color: transparent;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Inbox</span></a>
+        <a id="wallet-header" href="/wallet" style="display: none; margin-right: 2px; -webkit-tap-highlight-color: transparent;"><img src="/wallet.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Wallet</span></a>
         <a id="account-header" href="/account" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
         <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><b>Login</b></a>
       </div>
