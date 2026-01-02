@@ -61,51 +61,54 @@ func WalletPage(userID string) string {
 	var sb strings.Builder
 
 	if isMember || isAdmin {
-		// Member/Admin - simple status
+		// Member/Admin status
 		sb.WriteString(`<div class="card">`)
+		sb.WriteString(`<h3>Status</h3>`)
 		if isAdmin {
-			sb.WriteString(`<p><strong>Admin</strong> · Unlimited access</p>`)
+			sb.WriteString(`<p>Admin · Unlimited access</p>`)
 		} else {
-			sb.WriteString(`<p><strong>Member</strong> · Unlimited access</p>`)
+			sb.WriteString(`<p>Member · Unlimited access</p>`)
 		}
 		if hasSubscription && IsStripeConfigured() {
 			sb.WriteString(`<p><a href="/wallet/manage">Manage subscription →</a></p>`)
 		}
 		sb.WriteString(`</div>`)
 	} else {
-		// Regular user - show balance with top-up link
+		// Balance
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(fmt.Sprintf(`<p style="font-size: 20px; margin: 0;"><strong>%d credits</strong></p>`, wallet.Balance))
+		sb.WriteString(`<h3>Balance</h3>`)
+		sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
 		if IsStripeConfigured() {
-			sb.WriteString(`<p style="margin-top: 10px;"><a href="/wallet/topup">Top up →</a></p>`)
+			sb.WriteString(`<p><a href="/wallet/topup">Top up →</a></p>`)
 		}
 		sb.WriteString(`</div>`)
 
 		// Daily quota
 		sb.WriteString(`<div class="card">`)
+		sb.WriteString(`<h3>Free Searches</h3>`)
 		usedPct := float64(usage.Searches) / float64(FreeDailySearches) * 100
 		if usedPct > 100 {
 			usedPct = 100
 		}
-		sb.WriteString(`<p><strong>Free searches today</strong></p>`)
 		sb.WriteString(`<div style="background: #eee; height: 6px; border-radius: 3px; margin: 10px 0;">`)
 		sb.WriteString(fmt.Sprintf(`<div style="background: #000; height: 100%%; width: %.0f%%; border-radius: 3px;"></div>`, usedPct))
 		sb.WriteString(`</div>`)
 		sb.WriteString(fmt.Sprintf(`<p style="font-size: 14px; color: #666;">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, FreeDailySearches))
 		sb.WriteString(`</div>`)
 
-		// Membership link
+		// Subscription
 		if IsStripeConfigured() && StripeMembershipPrice != "" {
 			sb.WriteString(`<div class="card">`)
-			sb.WriteString(`<p><strong>Unlimited access?</strong> <a href="/wallet/subscribe">Become a member →</a></p>`)
+			sb.WriteString(`<h3>Subscription</h3>`)
+			sb.WriteString(`<p>Unlimited access · <a href="/wallet/subscribe">Subscribe →</a></p>`)
 			sb.WriteString(`</div>`)
 		}
 	}
 
 	// Credit costs
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<p><strong>Credit costs</strong></p>`)
-	sb.WriteString(fmt.Sprintf(`<p style="font-size: 14px; color: #666;">News %dp · Video %dp · Chat %dp</p>`, CostNewsSearch, CostVideoSearch, CostChatQuery))
+	sb.WriteString(`<h3>Costs</h3>`)
+	sb.WriteString(fmt.Sprintf(`<p>News %dp · Video %dp · Chat %dp</p>`, CostNewsSearch, CostVideoSearch, CostChatQuery))
 	sb.WriteString(`</div>`)
 
 	// Transaction history
