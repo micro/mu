@@ -114,9 +114,9 @@ func WalletPage(userID string) string {
 	// Transaction history
 	if len(transactions) > 0 {
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Transaction History</h3>`)
+		sb.WriteString(`<h3>History</h3>`)
 		sb.WriteString(`<table style="width: 100%; border-collapse: collapse; font-size: 14px;">`)
-		sb.WriteString(`<tr style="border-bottom: 1px solid var(--divider);"><th style="text-align: left; padding: 10px 0;">Date</th><th style="text-align: left; padding: 10px 0;">Type</th><th style="text-align: right; padding: 10px 0;">Amount</th><th style="text-align: right; padding: 10px 0;">Balance</th></tr>`)
+		sb.WriteString(`<tr style="border-bottom: 1px solid #eee;"><th style="text-align: left; padding: 10px 0;">Date</th><th style="text-align: left; padding: 10px 0;">Type</th><th style="text-align: right; padding: 10px 0;">Amount</th><th style="text-align: right; padding: 10px 0;">Balance</th></tr>`)
 
 		for _, tx := range transactions {
 			typeLabel := tx.Operation
@@ -127,7 +127,7 @@ func WalletPage(userID string) string {
 			if tx.Amount > 0 {
 				amountPrefix = "+"
 			}
-			sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid var(--divider);">
+			sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid #eee;">
 				<td style="padding: 10px 0;">%s</td>
 				<td style="padding: 10px 0;">%s</td>
 				<td style="text-align: right; padding: 10px 0;">%s%d</td>
@@ -238,8 +238,7 @@ func handleTopupPage(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<p><strong>Top Up Credits</strong></p>`)
+	sb.WriteString(`<h3>Top Up</h3>`)
 	sb.WriteString(`<p style="font-size: 14px; color: #666;">1 credit = 1p</p>`)
 
 	for _, tier := range TopupTiers {
@@ -247,11 +246,9 @@ func handleTopupPage(w http.ResponseWriter, r *http.Request) {
 		if tier.BonusPct > 0 {
 			bonus = fmt.Sprintf(" (+%d%%)", tier.BonusPct)
 		}
-		sb.WriteString(fmt.Sprintf(`<p style="margin-top: 15px;"><a href="#" onclick="topup(%d); return false;">£%d → %d credits%s</a></p>`,
+		sb.WriteString(fmt.Sprintf(`<p><a href="#" onclick="topup(%d); return false;">£%d → %d credits%s</a></p>`,
 			tier.Amount, tier.Amount/100, tier.Credits, bonus))
 	}
-
-	sb.WriteString(`</div>`)
 
 	sb.WriteString(`
 <script>

@@ -469,33 +469,33 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := fmt.Sprintf(`<div class="card">
-	<h3>Plan</h3>
-	<p>%s</p>
-	<p><a href="/wallet">View wallet →</a></p>
-	%s
+<h3>Plan</h3>
+<p>%s</p>
+<p><a href="/wallet">View wallet →</a></p>
+%s
 </div>
 
 <div class="card">
-	<h3>Profile</h3>
-	<p><strong>Username:</strong> %s</p>
-	<p><strong>Name:</strong> %s</p>
-	<p><strong>Joined:</strong> %s</p>
-	<p><a href="/@%s">View public profile →</a></p>
+<h3>Profile</h3>
+<p><strong>Username:</strong> %s</p>
+<p><strong>Name:</strong> %s</p>
+<p><strong>Joined:</strong> %s</p>
+<p><a href="/@%s">View public profile →</a></p>
 </div>
 
 <div class="card">
-	<h3>Language</h3>
-	<form action="/account" method="POST" style="display: flex; align-items: center; gap: 10px;">
-		<select name="language" style="padding: 6px; font-size: 14px;">%s</select>
-		<button type="submit">Save</button>
-	</form>
+<h3>Language</h3>
+<form action="/account" method="POST" style="display: flex; align-items: center; gap: 10px;">
+	<select name="language" style="padding: 6px; font-size: 14px;">%s</select>
+	<button type="submit">Save</button>
+</form>
 </div>
 
 <div class="card">
-	<h3>Settings</h3>
-	<p><a href="/token">API Tokens →</a></p>
-	%s
-	<p><a href="/logout" style="color: #c00;">Logout</a></p>
+<h3>Settings</h3>
+<p><a href="/token">API Tokens →</a></p>
+%s
+<p><a href="/logout" style="color: #c00;">Logout</a></p>
 </div>`,
 		statusLine,
 		membershipLink,
@@ -585,51 +585,71 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Build simple plans list
 	var content strings.Builder
 
-	// Free
+	// 3-column pricing grid with responsive class
+	content.WriteString(`<style>
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; }
+@media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr; } }
+.pricing-grid .card { margin-bottom: 0; }
+</style>`)
+	content.WriteString(`<div class="pricing-grid">`)
+
+	// Free tier
 	content.WriteString(`<div class="card">
-<p><strong>Free</strong></p>
-<p>10 searches/day · News, video, and chat</p>`)
+<h3>Free</h3>
+<p style="font-size: 24px; font-weight: bold; margin: 10px 0;">£0</p>
+<p>10 searches/day</p>
+<p>News, video, and chat</p>
+<p>Resets at midnight</p>`)
 	if !isLoggedIn {
-		content.WriteString(`<p><a href="/signup">Sign up →</a></p>`)
+		content.WriteString(`<p style="margin-top: 15px;"><a href="/signup">Sign up →</a></p>`)
+	} else {
+		content.WriteString(`<p style="margin-top: 15px; color: #666;">Your baseline</p>`)
 	}
 	content.WriteString(`</div>`)
 
 	// Pay as you go
 	content.WriteString(`<div class="card">
-<p><strong>Pay as you go</strong></p>
-<p>Top up from £5 · 1p news, 2p video, 3p chat · Never expires</p>`)
+<h3>Pay as you go</h3>
+<p style="font-size: 24px; font-weight: bold; margin: 10px 0;">From £5</p>
+<p>Top up your wallet</p>
+<p>1p news · 2p video · 3p chat</p>
+<p>Credits never expire</p>`)
 	if isLoggedIn && !isMember {
-		content.WriteString(`<p><a href="/wallet/topup">Top up →</a></p>`)
+		content.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/topup">Top up →</a></p>`)
 	} else if !isLoggedIn {
-		content.WriteString(`<p><a href="/signup">Sign up first →</a></p>`)
+		content.WriteString(`<p style="margin-top: 15px;"><a href="/signup">Sign up first →</a></p>`)
+	} else {
+		content.WriteString(`<p style="margin-top: 15px; color: #666;">Not needed</p>`)
 	}
 	content.WriteString(`</div>`)
 
 	// Membership
 	content.WriteString(`<div class="card">
-<p><strong>Member · £11/month</strong></p>
-<p>Unlimited everything · Mail access · Support development</p>`)
+<h3>Member</h3>
+<p style="font-size: 24px; font-weight: bold; margin: 10px 0;">£11<span style="font-size: 14px; font-weight: normal;">/month</span></p>
+<p>Unlimited searches</p>
+<p>Unlimited chat AI</p>
+<p>Mail access</p>`)
 	if isMember {
-		content.WriteString(`<p>✓ You're a member</p>`)
+		content.WriteString(`<p style="margin-top: 15px;">✓ You're a member</p>`)
 	} else if stripeMembershipConfigured {
-		content.WriteString(`<p><a href="/wallet/subscribe">Subscribe →</a></p>`)
+		content.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/subscribe">Subscribe →</a></p>`)
 	} else if membershipURL != "" {
-		content.WriteString(fmt.Sprintf(`<p><a href="%s" target="_blank">Subscribe →</a></p>`, membershipURL))
+		content.WriteString(fmt.Sprintf(`<p style="margin-top: 15px;"><a href="%s" target="_blank">Subscribe →</a></p>`, membershipURL))
 	} else {
-		content.WriteString(`<p style="color: #666;">Coming soon</p>`)
+		content.WriteString(`<p style="margin-top: 15px; color: #666;">Coming soon</p>`)
 	}
 	content.WriteString(`</div>`)
 
+	content.WriteString(`</div>`) // end grid
+
 	// FAQ
-	content.WriteString(`<div class="card">
-<p><strong>Questions</strong></p>
-<p style="margin-top: 10px;"><em>Why charge?</em> Running AI costs money. Free tier covers casual use.</p>
-<p><em>Do credits expire?</em> No.</p>
-<p><em>Can I cancel?</em> Anytime.</p>
-</div>`)
+	content.WriteString(`<h3>Questions</h3>
+<p><strong>Why charge for searches?</strong><br>Running AI and API calls costs money. The free tier covers casual use.</p>
+<p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
+<p><strong>Can I cancel membership?</strong><br>Yes, anytime. Managed through Stripe.</p>`)
 
 	html := RenderHTMLForRequest("Plans", "Choose how you use Mu", content.String(), r)
 	w.Write([]byte(html))

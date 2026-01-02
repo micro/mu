@@ -440,9 +440,7 @@ td {
    ======================================== */
 .card {
   max-width: 750px;
-  margin-right: 20px;
-  float: left;
-  min-width: 350px;
+  display: block;
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
   padding: var(--item-padding);
@@ -454,7 +452,6 @@ td {
 /* Reduce card min-width on smaller screens */
 @media only screen and (max-width: 900px) {
   .card {
-    min-width: 0;
     max-width: 100%;
   }
 }
