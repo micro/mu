@@ -27,6 +27,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
+	"mu/wallet"
 )
 
 //go:embed feeds.json
@@ -1858,7 +1859,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Handle POST with JSON (API endpoint)
 	if r.Method == "POST" && ct == "application/json" {
 		// Require authentication for search
-		if _, err := auth.GetSession(r); err != nil {
+		sess, err := auth.GetSession(r)
+		if err != nil {
 			http.Error(w, "Authentication required to search", http.StatusUnauthorized)
 			return
 		}
@@ -1877,8 +1879,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Check quota before search
+		canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpNewsSearch)
+		if !canProceed {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(402) // Payment Required
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "quota_exceeded",
+				"message": "Daily search limit reached. Please top up credits or upgrade to member.",
+				"cost":    cost,
+			})
+			return
+		}
+
 		// Search indexed news articles with type filter
 		results := data.Search(query, 20, data.WithType("news"))
+
+		// Consume quota after successful search
+		wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
 
 		// Format results for JSON response
 		var articles []map[string]interface{}
@@ -2017,7 +2035,26 @@ func formatSearchResult(entry *data.IndexEntry) string {
 }
 
 func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
+	// Check quota before search
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Error(w, "Authentication required to search", http.StatusUnauthorized)
+		return
+	}
+
+	canProceed, _, cost, err := wallet.CheckQuota(sess.Account, wallet.OpNewsSearch)
+	if !canProceed {
+		// Show quota exceeded page
+		content := wallet.QuotaExceededPage(wallet.OpNewsSearch, cost)
+		html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
+		w.Write([]byte(html))
+		return
+	}
+
 	results := data.Search(query, 20, data.WithType("news"))
+
+	// Consume quota after successful search
+	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
 
 	var searchResults []byte
 	searchResults = append(searchResults, []byte(`<form id="news-search" action="/news" method="GET">

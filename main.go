@@ -24,6 +24,7 @@ import (
 	"mu/news"
 	"mu/user"
 	"mu/video"
+	"mu/wallet"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -80,7 +81,7 @@ func main() {
 		"/mail":            true,  // Require auth for inbox
 		"/logout":          true,
 		"/account":         true,
-		"/token":           true, // PAT token management
+		"/token":           true,  // PAT token management
 		"/session":         false, // Public - used to check auth status
 		"/api":             true,
 		"/flag":            true,
@@ -88,7 +89,9 @@ func main() {
 		"/admin/moderate":  true,
 		"/admin/blocklist": true,
 		"/membership":      false,
+		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
+		"/wallet":          true,  // Require auth for wallet
 	}
 
 	// Static assets should not require authentication
@@ -129,8 +132,15 @@ func main() {
 	// membership page (public - handles GoCardless redirects)
 	http.HandleFunc("/membership", app.Membership)
 
+	// plans page (public - overview of options)
+	http.HandleFunc("/plans", app.Plans)
+
 	// donate page (public - handles GoCardless redirects)
 	http.HandleFunc("/donate", app.Donate)
+
+	// wallet - credits and payments
+	http.HandleFunc("/wallet", wallet.Handler)
+	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

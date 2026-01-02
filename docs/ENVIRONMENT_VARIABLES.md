@@ -79,6 +79,49 @@ export SUPPORT_URL="https://discord.gg/your-invite"
 - Links appear on `/membership` and `/donate` pages
 - Members still need to be granted member status manually via admin panel
 
+## Stripe Configuration (Credits/Wallet)
+
+Enable credit top-ups via Stripe for pay-as-you-go access. Users get 10 free searches per day, then need credits.
+
+```bash
+# Stripe API keys (from Stripe Dashboard)
+export STRIPE_SECRET_KEY="sk_live_xxx"
+export STRIPE_PUBLISHABLE_KEY="pk_live_xxx"
+export STRIPE_WEBHOOK_SECRET="whsec_xxx"
+
+# Optional: Pre-configured Stripe Price IDs
+# If not set, dynamic pricing is used
+export STRIPE_PRICE_500="price_xxx"   # £5 → 500 credits
+export STRIPE_PRICE_1000="price_xxx"  # £10 → 1,050 credits
+export STRIPE_PRICE_2500="price_xxx"  # £25 → 2,750 credits
+export STRIPE_PRICE_5000="price_xxx"  # £50 → 5,750 credits
+```
+
+### Quota Configuration
+
+```bash
+# Daily free searches for non-members (default: 10)
+export FREE_DAILY_SEARCHES="10"
+
+# Credit costs per operation (default: 1, 2, 3)
+export CREDIT_COST_NEWS="1"    # News search
+export CREDIT_COST_VIDEO="2"   # Video search (YouTube API cost)
+export CREDIT_COST_CHAT="3"    # Chat AI query (LLM cost)
+```
+
+**Notes:**
+- 1 credit = £0.01 (1 penny)
+- Members and admins get unlimited access (no quotas)
+- Credits never expire
+- Top-up tiers: £5 (500), £10 (1,050 +5%), £25 (2,750 +10%), £50 (5,750 +15%)
+
+### Stripe Webhook Setup
+
+1. In Stripe Dashboard, go to Developers → Webhooks
+2. Add endpoint: `https://yourdomain.com/wallet/webhook`
+3. Select events: `checkout.session.completed`
+4. Copy the signing secret to `STRIPE_WEBHOOK_SECRET`
+
 ## Example Usage
 
 ### Development (Local Testing)
@@ -119,6 +162,13 @@ export MAIL_SELECTOR="default"
 | `MEMBERSHIP_URL` | - | Payment link for recurring membership (optional) |
 | `DONATION_URL` | - | Payment link for one-time donations (optional) |
 | `SUPPORT_URL` | - | Community/support link like Discord (optional) |
+| `STRIPE_SECRET_KEY` | - | Stripe secret key for credit top-ups |
+| `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key |
+| `STRIPE_WEBHOOK_SECRET` | - | Stripe webhook signing secret |
+| `FREE_DAILY_SEARCHES` | `10` | Daily free searches for non-members |
+| `CREDIT_COST_NEWS` | `1` | Credits per news search |
+| `CREDIT_COST_VIDEO` | `2` | Credits per video search |
+| `CREDIT_COST_CHAT` | `3` | Credits per chat query |
 
 ## .env File (Optional)
 
@@ -143,6 +193,11 @@ MAIL_SELECTOR=default
 MEMBERSHIP_URL=https://gocardless.com/your-membership-link
 DONATION_URL=https://gocardless.com/your-donation-link
 SUPPORT_URL=https://discord.gg/your-invite
+
+# Stripe (optional - for credit top-ups)
+STRIPE_SECRET_KEY=sk_live_xxx
+STRIPE_PUBLISHABLE_KEY=pk_live_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
 ```
 
 Load and run:
@@ -180,6 +235,11 @@ Environment="MEMBERSHIP_URL=https://gocardless.com/your-membership-link"
 Environment="DONATION_URL=https://gocardless.com/your-donation-link"
 Environment="SUPPORT_URL=https://discord.gg/your-invite"
 
+# Stripe (optional)
+Environment="STRIPE_SECRET_KEY=sk_live_xxx"
+Environment="STRIPE_PUBLISHABLE_KEY=pk_live_xxx"
+Environment="STRIPE_WEBHOOK_SECRET=whsec_xxx"
+
 ExecStart=/opt/mu/mu --serve --address :8080
 Restart=always
 
@@ -215,6 +275,9 @@ docker run -d \
   -e MEMBERSHIP_URL=https://gocardless.com/your-membership-link \
   -e DONATION_URL=https://gocardless.com/your-donation-link \
   -e SUPPORT_URL=https://discord.gg/your-invite \
+  -e STRIPE_SECRET_KEY=sk_live_xxx \
+  -e STRIPE_PUBLISHABLE_KEY=pk_live_xxx \
+  -e STRIPE_WEBHOOK_SECRET=whsec_xxx \
   -v ~/.mu:/root/.mu \
   mu:latest
 ```
@@ -233,6 +296,12 @@ docker run -d \
 4. Create credentials (API Key)
 5. Required for video search/playback
 
+### Stripe
+1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
+2. Get API keys from Developers → API Keys
+3. Set up webhook endpoint at Developers → Webhooks
+4. Required for credit top-ups
+
 ## Feature Requirements
 
 | Feature | Required Environment Variables |
@@ -242,5 +311,6 @@ docker run -d \
 | Video | `YOUTUBE_API_KEY` |
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
 | Payments | `MEMBERSHIP_URL`, `DONATION_URL` (optional: `SUPPORT_URL`) |
+| Credit Top-ups | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
 | Access Control | User must be admin or member |
 

@@ -19,6 +19,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
+	"mu/wallet"
 )
 
 //go:embed channels.json
@@ -831,7 +832,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("query")
 		if len(query) > 0 {
 			// Require authentication for search
-			if _, err := auth.GetSession(r); err != nil {
+			sess, err := auth.GetSession(r)
+			if err != nil {
 				http.Error(w, "Authentication required to search", http.StatusUnauthorized)
 				return
 			}
@@ -842,12 +844,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			// Check quota before search
+			canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoSearch)
+			if !canProceed {
+				content := wallet.QuotaExceededPage(wallet.OpVideoSearch, cost)
+				html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
+				w.Write([]byte(html))
+				return
+			}
+
 			// fetch results from api
 			results, _, err := getResults(query, "")
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 				return
 			}
+
+			// Consume quota after successful search
+			wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
 
 			html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
 			w.Write([]byte(html))
@@ -858,7 +872,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// if r.Method == "POST" {
 	if r.Method == "POST" {
 		// Require authentication for search
-		if _, err := auth.GetSession(r); err != nil {
+		sess, err := auth.GetSession(r)
+		if err != nil {
 			http.Error(w, "Authentication required to search", http.StatusUnauthorized)
 			return
 		}
@@ -867,16 +882,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		var channel string
 
 		if ct == "application/json" {
-			var data map[string]interface{}
+			var reqData map[string]interface{}
 
 			b, _ := ioutil.ReadAll(r.Body)
-			json.Unmarshal(b, &data)
+			json.Unmarshal(b, &reqData)
 
-			if v := data["query"]; v != nil {
+			if v := reqData["query"]; v != nil {
 				query = fmt.Sprintf("%v", v)
 			}
 
-			if v := data["channel"]; v != nil {
+			if v := reqData["channel"]; v != nil {
 				channel = fmt.Sprintf("%v", v)
 			}
 
@@ -888,11 +903,31 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			// Check quota before search (only for actual queries, not channel browsing)
+			if len(query) > 0 {
+				canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoSearch)
+				if !canProceed {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(402) // Payment Required
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"error":   "quota_exceeded",
+						"message": "Daily search limit reached. Please top up credits or upgrade to member.",
+						"cost":    cost,
+					})
+					return
+				}
+			}
+
 			// fetch results from api
 			html, results, err := getResults(query, chanId)
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 				return
+			}
+
+			// Consume quota after successful search (only for actual queries)
+			if len(query) > 0 {
+				wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
 			}
 
 			res := map[string]interface{}{
@@ -914,11 +949,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Check quota before search (only for actual queries, not channel browsing)
+		if len(query) > 0 {
+			canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoSearch)
+			if !canProceed {
+				content := wallet.QuotaExceededPage(wallet.OpVideoSearch, cost)
+				html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
+				w.Write([]byte(html))
+				return
+			}
+		}
+
 		// fetch results from api
 		results, _, err := getResults(query, chanId)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
+		}
+
+		// Consume quota after successful search (only for actual queries)
+		if len(query) > 0 {
+			wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
 		}
 
 		head = ""

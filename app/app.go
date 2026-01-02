@@ -420,6 +420,11 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Build wallet section
+	walletSection := `<h3>Wallet</h3>
+		<p>Credits for pay-as-you-go access beyond your daily free quota.</p>
+		<p><a href="/wallet">View Wallet →</a> · <a href="/plans">View Plans →</a></p>`
+
 	// Build membership section
 	membershipSection := ""
 	membershipURL := os.Getenv("MEMBERSHIP_URL")
@@ -488,6 +493,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		
 		<div style="margin-top: 20px;">%s</div>
 		
+		<div style="margin-top: 20px;">%s</div>
+		
 		%s
 		
 		<hr style="margin: 20px 0;">
@@ -497,6 +504,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
 		acc.ID,
+		walletSection,
 		membershipSection,
 		languageSection,
 		tokensSection,
@@ -564,6 +572,141 @@ func Session(w http.ResponseWriter, r *http.Request) {
 	b, _ := json.Marshal(response)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
+}
+
+// Plans handler - shows available options
+func Plans(w http.ResponseWriter, r *http.Request) {
+	membershipURL := os.Getenv("MEMBERSHIP_URL")
+
+	// Check if user is logged in and their status
+	isMember := false
+	isLoggedIn := false
+	if sess, err := auth.GetSession(r); err == nil {
+		isLoggedIn = true
+		if acc, err := auth.GetAccount(sess.Account); err == nil {
+			isMember = acc.Member || acc.Admin
+		}
+	}
+
+	// Build the page
+	var content strings.Builder
+
+	content.WriteString(`<div class="plans-page">
+<h2>How Mu Works</h2>
+<p class="intro">Mu is a utility. Use it for free, pay for what you need, or support us with membership.</p>
+
+<div class="plans-grid">`)
+
+	// Free tier
+	content.WriteString(`
+<div class="plan-card">
+	<h3>Free</h3>
+	<div class="plan-price">£0</div>
+	<ul>
+		<li>10 searches per day</li>
+		<li>News, video, and chat</li>
+		<li>Resets at midnight UTC</li>
+	</ul>`)
+	if !isLoggedIn {
+		content.WriteString(`<a href="/signup" class="plan-btn">Sign Up</a>`)
+	} else {
+		content.WriteString(`<span class="plan-current">Your baseline</span>`)
+	}
+	content.WriteString(`</div>`)
+
+	// Pay-as-you-go
+	content.WriteString(`
+<div class="plan-card">
+	<h3>Pay as you go</h3>
+	<div class="plan-price">From £5</div>
+	<ul>
+		<li>Top up your wallet</li>
+		<li>1p per news search</li>
+		<li>2p per video search</li>
+		<li>3p per chat query</li>
+		<li>Credits never expire</li>
+	</ul>`)
+	if isLoggedIn && !isMember {
+		content.WriteString(`<a href="/wallet" class="plan-btn">Top Up</a>`)
+	} else if !isLoggedIn {
+		content.WriteString(`<a href="/signup" class="plan-btn secondary">Sign up first</a>`)
+	} else {
+		content.WriteString(`<span class="plan-current">Not needed</span>`)
+	}
+	content.WriteString(`</div>`)
+
+	// Membership
+	content.WriteString(`
+<div class="plan-card featured">
+	<h3>Member</h3>
+	<div class="plan-price">£11<span>/month</span></div>
+	<ul>
+		<li>Unlimited searches</li>
+		<li>Unlimited chat AI</li>
+		<li>Access to Mail</li>
+		<li>Support Mu's development</li>
+		<li>Discord community</li>
+	</ul>`)
+	if isMember {
+		content.WriteString(`<span class="plan-current">✓ You're a member</span>`)
+	} else if membershipURL != "" {
+		content.WriteString(fmt.Sprintf(`<a href="%s" class="plan-btn primary" target="_blank">Become a Member</a>`, membershipURL))
+	} else {
+		content.WriteString(`<span class="plan-unavailable">Coming soon</span>`)
+	}
+	content.WriteString(`</div>`)
+
+	content.WriteString(`</div>`) // end plans-grid
+
+	// FAQ section
+	content.WriteString(`
+<div class="plans-faq">
+	<h3>Questions</h3>
+	<details>
+		<summary>Why charge for searches?</summary>
+		<p>Running AI and API calls costs money. The free tier covers casual use. Credits let you pay only for what you use beyond that.</p>
+	</details>
+	<details>
+		<summary>Do credits expire?</summary>
+		<p>No. Once you top up, your credits are yours until you use them.</p>
+	</details>
+	<details>
+		<summary>What does membership include?</summary>
+		<p>Unlimited access to all features (no quotas, no credits needed), plus Mail for private messaging, and access to our Discord community.</p>
+	</details>
+</div>`)
+
+	content.WriteString(`</div>`) // end plans-page
+
+	// CSS
+	content.WriteString(`
+<style>
+.plans-page { max-width: 900px; margin: 0 auto; padding: 20px; }
+.plans-page .intro { color: #666; margin-bottom: 30px; }
+.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 40px; }
+.plan-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 25px; }
+.plan-card.featured { border-color: #667eea; border-width: 2px; }
+.plan-card h3 { margin: 0 0 10px 0; font-size: 20px; }
+.plan-price { font-size: 32px; font-weight: bold; margin-bottom: 20px; }
+.plan-price span { font-size: 16px; font-weight: normal; color: #666; }
+.plan-card ul { list-style: none; padding: 0; margin: 0 0 20px 0; }
+.plan-card li { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+.plan-card li:last-child { border-bottom: none; }
+.plan-btn { display: block; text-align: center; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: 500; }
+.plan-btn.primary { background: #667eea; color: white; }
+.plan-btn.secondary { background: #f0f0f0; color: #333; }
+.plan-btn:not(.primary):not(.secondary) { background: #333; color: white; }
+.plan-current { display: block; text-align: center; padding: 12px 20px; color: #666; font-size: 14px; }
+.plan-unavailable { display: block; text-align: center; padding: 12px 20px; color: #999; font-size: 14px; }
+.plans-faq { margin-top: 40px; }
+.plans-faq h3 { margin-bottom: 20px; }
+.plans-faq details { margin-bottom: 10px; padding: 15px; background: #f9f9f9; border-radius: 8px; }
+.plans-faq summary { cursor: pointer; font-weight: 500; }
+.plans-faq p { margin: 10px 0 0 0; color: #666; }
+</style>`)
+
+	html := RenderHTMLForRequest("Plans", "Choose how you use Mu", content.String(), r)
+	w.Write([]byte(html))
 }
 
 // Membership handler
@@ -636,8 +779,8 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 		content := fmt.Sprintf(`<h2>Benefits</h2>
 		<ul>
 			<li>Access to Mail - private messaging and email</li>
+			<li>Unlimited searches - news, video, and chat AI</li>
 			<li>Vote on new features and platform direction</li>
-			<li>Exclusive access to latest updates</li>
 			<li>Help keep Mu ad-free and sustainable</li>
 			<li>Be part of our Discord community</li>
 		</ul>
@@ -696,8 +839,8 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 		<h2>Benefits</h2>
 		<ul>
 			<li>Access to Mail - private messaging and email</li>
+			<li>Unlimited searches - news, video, and chat AI</li>
 			<li>Vote on new features and platform direction</li>
-			<li>Exclusive access to latest updates</li>
 			<li>Help keep Mu ad-free and sustainable</li>
 			<li>Be part of our Discord community</li>
 		</ul>
@@ -706,7 +849,9 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		%s
 
-		%s`,
+		%s
+		
+		<p style="margin-top: 30px; color: #666;"><a href="/plans">View all plans →</a></p>`,
 		membershipStatus,
 		paymentSection,
 		supportSection,
