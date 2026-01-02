@@ -481,10 +481,8 @@ function setSession() {
       isAuthenticated = true;
       if (accountHeader) accountHeader.style.display = 'inline-block';
       if (loginHeader) loginHeader.style.display = 'none';
-      // Show wallet for logged-in users (not admins/members who have unlimited)
-      if (walletHeader && !sess.admin && !sess.member) {
-        walletHeader.style.display = 'inline-block';
-      }
+      // Show wallet for all logged-in users
+      if (walletHeader) walletHeader.style.display = 'inline-block';
       // Only show mail for admins and members
       if (mailHeader && (sess.admin || sess.member)) {
         mailHeader.style.display = 'inline-block';
