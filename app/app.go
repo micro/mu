@@ -420,82 +420,31 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build status/balance section (shown first)
-	var statusSection string
-	if acc.Admin {
-		statusSection = `<div class="card">
-			<h3>Status</h3>
-			<p><strong>Admin</strong> · Unlimited access</p>
-		</div>`
-	} else if acc.Member {
-		statusSection = `<div class="card">
-			<h3>Status</h3>
-			<p><strong>Member</strong> · Unlimited access</p>
-		</div>`
-	} else {
-		// Show quota info for regular users
-		statusSection = `<div class="card">
-			<h3>Status</h3>
-			<p><strong>10 free searches / day</strong></p>
-			<p style="font-size: 14px; color: var(--text-secondary);">Then use credits or become a member</p>
-		</div>`
-	}
-
-	// Wallet link
-	walletSection := `<div class="card">
-		<h3>Wallet</h3>
-		<p>Manage credits and view transaction history.</p>
-		<p><a href="/wallet">View Wallet →</a></p>
-	</div>`
-
-	// Build membership section
-	membershipSection := ""
+	// Build membership info
 	membershipURL := os.Getenv("MEMBERSHIP_URL")
 	stripeMembershipConfigured := os.Getenv("STRIPE_MEMBERSHIP_PRICE") != "" && os.Getenv("STRIPE_SECRET_KEY") != ""
-	
-	if acc.Member {
-		if stripeMembershipConfigured {
-			membershipSection = `<div class="card">
-				<h3>Membership</h3>
-				<p><strong>✓ Active</strong></p>
-				<p><a href="/wallet/manage">Manage subscription →</a></p>
-			</div>`
-		} else {
-			membershipSection = `<div class="card">
-				<h3>Membership</h3>
-				<p><strong>✓ Active</strong></p>
-				<p><a href="/membership">View details →</a></p>
-			</div>`
-		}
-	} else if !acc.Admin {
-		if stripeMembershipConfigured {
-			membershipSection = `<div class="card">
-				<h3>Membership</h3>
-				<p>Get unlimited access and support Mu.</p>
-				<p><a href="/wallet/subscribe">Become a Member →</a></p>
-			</div>`
-		} else if membershipURL != "" {
-			membershipSection = `<div class="card">
-				<h3>Membership</h3>
-				<p>Get unlimited access and support Mu.</p>
-				<p><a href="/membership">Become a Member →</a></p>
-			</div>`
-		}
+
+	// Status line
+	var statusLine string
+	if acc.Admin {
+		statusLine = "<strong>Admin</strong> · Unlimited access"
+	} else if acc.Member {
+		statusLine = "<strong>Member</strong> · Unlimited access"
+	} else {
+		statusLine = "10 free searches/day · <a href=\"/wallet\">Top up</a> or <a href=\"/plans\">become a member</a>"
 	}
 
-	// Profile section
-	profileSection := fmt.Sprintf(`<div class="card">
-		<h3>Profile</h3>
-		<p><strong>Username:</strong> %s</p>
-		<p><strong>Name:</strong> %s</p>
-		<p><strong>Joined:</strong> %s</p>
-		<p style="margin-top: 15px;"><a href="/@%s">View Public Profile →</a></p>
-	</div>`,
-		acc.ID,
-		acc.Name,
-		acc.Created.Format("January 2, 2006"),
-		acc.ID,
-	)
+	// Membership link
+	var membershipLink string
+	if acc.Member && stripeMembershipConfigured {
+		membershipLink = `<a href="/wallet/manage">Manage subscription →</a>`
+	} else if acc.Member {
+		membershipLink = `<a href="/membership">View membership →</a>`
+	} else if !acc.Admin && stripeMembershipConfigured {
+		membershipLink = `<a href="/wallet/subscribe">Become a member →</a>`
+	} else if !acc.Admin && membershipURL != "" {
+		membershipLink = `<a href="/membership">Become a member →</a>`
+	}
 
 	// Build language options
 	currentLang := acc.Language
@@ -511,52 +460,47 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		languageOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, code, selected, name)
 	}
 
-	languageSection := fmt.Sprintf(`<div class="card">
-		<h3>Language</h3>
-		<p>Sets the page language for automatic translation.</p>
-		<form action="/account" method="POST" style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
-			<select name="language" style="padding: 8px; font-size: 14px; width: auto;">
-				%s
-			</select>
-			<button type="submit">Save</button>
-		</form>
-	</div>`, languageOptions)
-
-	// API Tokens section
-	tokensSection := `<div class="card">
-		<h3>API Tokens</h3>
-		<p>Personal Access Tokens for API automation.</p>
-		<p><a href="/token">Manage Tokens →</a></p>
-	</div>`
-
-	// Admin section
-	adminSection := ""
+	// Admin links
+	adminLinks := ""
 	if acc.Admin {
-		adminSection = `<div class="card">
-			<h3>Admin</h3>
-			<p><a href="/admin">User Management →</a></p>
-			<p><a href="/admin/moderate">Moderation Queue →</a></p>
-		</div>`
+		adminLinks = `<p><a href="/admin">User Management →</a></p>
+		<p><a href="/admin/moderate">Moderation Queue →</a></p>`
 	}
 
-	content := fmt.Sprintf(`<h2>Account</h2>
-		%s
-		%s
-		%s
-		%s
-		%s
-		%s
-		%s
-		<div class="card">
-			<p><a href="/logout" style="color: #dc2626;">Logout</a></p>
-		</div>`,
-		statusSection,
-		walletSection,
-		membershipSection,
-		profileSection,
-		languageSection,
-		tokensSection,
-		adminSection,
+	content := fmt.Sprintf(`<div class="card">
+	<p>%s</p>
+	<p><a href="/wallet">View wallet →</a></p>
+	%s
+</div>
+
+<div class="card">
+	<p><strong>Username:</strong> %s</p>
+	<p><strong>Name:</strong> %s</p>
+	<p><strong>Joined:</strong> %s</p>
+	<p><a href="/@%s">View public profile →</a></p>
+</div>
+
+<div class="card">
+	<p><strong>Language:</strong></p>
+	<form action="/account" method="POST" style="display: flex; align-items: center; gap: 10px;">
+		<select name="language" style="padding: 6px; font-size: 14px;">%s</select>
+		<button type="submit">Save</button>
+	</form>
+</div>
+
+<div class="card">
+	<p><a href="/token">API Tokens →</a></p>
+	%s
+	<p><a href="/logout" style="color: #c00;">Logout</a></p>
+</div>`,
+		statusLine,
+		membershipLink,
+		acc.ID,
+		acc.Name,
+		acc.Created.Format("January 2, 2006"),
+		acc.ID,
+		languageOptions,
+		adminLinks,
 	)
 
 	html := RenderHTML("Account", "Account", content)
@@ -637,124 +581,51 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Build the page
+	// Build simple plans list
 	var content strings.Builder
 
-	content.WriteString(`<div class="plans-page">
-<h2>How Mu Works</h2>
-<p class="intro">Mu is a utility. Use it for free, pay for what you need, or support us with membership.</p>
-
-<div class="plans-grid">`)
-
-	// Free tier
-	content.WriteString(`
-<div class="plan-card">
-	<h3>Free</h3>
-	<div class="plan-price">£0</div>
-	<ul>
-		<li>10 searches per day</li>
-		<li>News, video, and chat</li>
-		<li>Resets at midnight UTC</li>
-	</ul>`)
+	// Free
+	content.WriteString(`<div class="card">
+<p><strong>Free</strong></p>
+<p>10 searches/day · News, video, and chat</p>`)
 	if !isLoggedIn {
-		content.WriteString(`<a href="/signup" class="plan-btn">Sign Up</a>`)
-	} else {
-		content.WriteString(`<span class="plan-current">Your baseline</span>`)
+		content.WriteString(`<p><a href="/signup">Sign up →</a></p>`)
 	}
 	content.WriteString(`</div>`)
 
-	// Pay-as-you-go
-	content.WriteString(`
-<div class="plan-card">
-	<h3>Pay as you go</h3>
-	<div class="plan-price">From £5</div>
-	<ul>
-		<li>Top up your wallet</li>
-		<li>1p per news search</li>
-		<li>2p per video search</li>
-		<li>3p per chat query</li>
-		<li>Credits never expire</li>
-	</ul>`)
+	// Pay as you go
+	content.WriteString(`<div class="card">
+<p><strong>Pay as you go</strong></p>
+<p>Top up from £5 · 1p news, 2p video, 3p chat · Never expires</p>`)
 	if isLoggedIn && !isMember {
-		content.WriteString(`<a href="/wallet" class="plan-btn">Top Up</a>`)
+		content.WriteString(`<p><a href="/wallet/topup">Top up →</a></p>`)
 	} else if !isLoggedIn {
-		content.WriteString(`<a href="/signup" class="plan-btn secondary">Sign up first</a>`)
-	} else {
-		content.WriteString(`<span class="plan-current">Not needed</span>`)
+		content.WriteString(`<p><a href="/signup">Sign up first →</a></p>`)
 	}
 	content.WriteString(`</div>`)
 
 	// Membership
-	content.WriteString(`
-<div class="plan-card featured">
-	<h3>Member</h3>
-	<div class="plan-price">£11<span>/month</span></div>
-	<ul>
-		<li>Unlimited searches</li>
-		<li>Unlimited chat AI</li>
-		<li>Access to Mail</li>
-		<li>Support Mu's development</li>
-		<li>Discord community</li>
-	</ul>`)
+	content.WriteString(`<div class="card">
+<p><strong>Member · £11/month</strong></p>
+<p>Unlimited everything · Mail access · Support development</p>`)
 	if isMember {
-		content.WriteString(`<span class="plan-current">✓ You're a member</span>`)
+		content.WriteString(`<p>✓ You're a member</p>`)
 	} else if stripeMembershipConfigured {
-		content.WriteString(`<a href="/wallet/subscribe" class="plan-btn primary">Become a Member</a>`)
+		content.WriteString(`<p><a href="/wallet/subscribe">Subscribe →</a></p>`)
 	} else if membershipURL != "" {
-		content.WriteString(fmt.Sprintf(`<a href="%s" class="plan-btn primary" target="_blank">Become a Member</a>`, membershipURL))
+		content.WriteString(fmt.Sprintf(`<p><a href="%s" target="_blank">Subscribe →</a></p>`, membershipURL))
 	} else {
-		content.WriteString(`<span class="plan-unavailable">Coming soon</span>`)
+		content.WriteString(`<p style="color: #666;">Coming soon</p>`)
 	}
 	content.WriteString(`</div>`)
 
-	content.WriteString(`</div>`) // end plans-grid
-
-	// FAQ section
-	content.WriteString(`
-<div class="plans-faq">
-	<h3>Questions</h3>
-	<details>
-		<summary>Why charge for searches?</summary>
-		<p>Running AI and API calls costs money. The free tier covers casual use. Credits let you pay only for what you use beyond that.</p>
-	</details>
-	<details>
-		<summary>Do credits expire?</summary>
-		<p>No. Once you top up, your credits are yours until you use them.</p>
-	</details>
-	<details>
-		<summary>What does membership include?</summary>
-		<p>Unlimited access to all features (no quotas, no credits needed), plus Mail for private messaging, and access to our Discord community.</p>
-	</details>
+	// FAQ
+	content.WriteString(`<div class="card">
+<p><strong>Questions</strong></p>
+<p style="margin-top: 10px;"><em>Why charge?</em> Running AI costs money. Free tier covers casual use.</p>
+<p><em>Do credits expire?</em> No.</p>
+<p><em>Can I cancel?</em> Anytime.</p>
 </div>`)
-
-	content.WriteString(`</div>`) // end plans-page
-
-	// CSS
-	content.WriteString(`
-<style>
-.plans-page { max-width: 900px; margin: 0 auto; padding: 20px; }
-.plans-page .intro { color: #666; margin-bottom: 30px; }
-.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 40px; }
-.plan-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 25px; }
-.plan-card.featured { border-color: #667eea; border-width: 2px; }
-.plan-card h3 { margin: 0 0 10px 0; font-size: 20px; }
-.plan-price { font-size: 32px; font-weight: bold; margin-bottom: 20px; }
-.plan-price span { font-size: 16px; font-weight: normal; color: #666; }
-.plan-card ul { list-style: none; padding: 0; margin: 0 0 20px 0; }
-.plan-card li { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-.plan-card li:last-child { border-bottom: none; }
-.plan-btn { display: block; text-align: center; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: 500; }
-.plan-btn.primary { background: #667eea; color: white; }
-.plan-btn.secondary { background: #f0f0f0; color: #333; }
-.plan-btn:not(.primary):not(.secondary) { background: #333; color: white; }
-.plan-current { display: block; text-align: center; padding: 12px 20px; color: #666; font-size: 14px; }
-.plan-unavailable { display: block; text-align: center; padding: 12px 20px; color: #999; font-size: 14px; }
-.plans-faq { margin-top: 40px; }
-.plans-faq h3 { margin-bottom: 20px; }
-.plans-faq details { margin-bottom: 10px; padding: 15px; background: #f9f9f9; border-radius: 8px; }
-.plans-faq summary { cursor: pointer; font-weight: 500; }
-.plans-faq p { margin: 10px 0 0 0; color: #666; }
-</style>`)
 
 	html := RenderHTMLForRequest("Plans", "Choose how you use Mu", content.String(), r)
 	w.Write([]byte(html))

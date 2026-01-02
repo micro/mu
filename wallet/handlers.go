@@ -60,93 +60,52 @@ func WalletPage(userID string) string {
 
 	var sb strings.Builder
 
-	// Status section
-	sb.WriteString(`<h2>Your Wallet</h2>`)
-
 	if isMember || isAdmin {
-		// Member/Admin status card
+		// Member/Admin - simple status
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Status</h3>`)
 		if isAdmin {
-			sb.WriteString(`<p><strong>Admin</strong> · Unlimited searches</p>`)
+			sb.WriteString(`<p><strong>Admin</strong> · Unlimited access</p>`)
 		} else {
-			sb.WriteString(`<p><strong>Member</strong> · Unlimited searches</p>`)
+			sb.WriteString(`<p><strong>Member</strong> · Unlimited access</p>`)
 		}
 		if hasSubscription && IsStripeConfigured() {
 			sb.WriteString(`<p><a href="/wallet/manage">Manage subscription →</a></p>`)
 		}
 		sb.WriteString(`</div>`)
 	} else {
-		// Credit balance card
+		// Regular user - show balance with top-up link
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Credit Balance</h3>`)
-		sb.WriteString(fmt.Sprintf(`<p style="font-size: 24px; font-weight: bold; margin: 10px 0;">%s</p>`, FormatCredits(wallet.Balance)))
-		sb.WriteString(fmt.Sprintf(`<p style="font-size: 14px; color: var(--text-secondary);">%d credits available</p>`, wallet.Balance))
+		sb.WriteString(fmt.Sprintf(`<p style="font-size: 20px; margin: 0;"><strong>%d credits</strong></p>`, wallet.Balance))
+		if IsStripeConfigured() {
+			sb.WriteString(`<p style="margin-top: 10px;"><a href="/wallet/topup">Top up →</a></p>`)
+		}
 		sb.WriteString(`</div>`)
 
-		// Daily quota section
+		// Daily quota
+		sb.WriteString(`<div class="card">`)
 		usedPct := float64(usage.Searches) / float64(FreeDailySearches) * 100
 		if usedPct > 100 {
 			usedPct = 100
 		}
-
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Daily Free Searches</h3>`)
-		sb.WriteString(`<div style="background: var(--card-border); height: 8px; border-radius: 4px; overflow: hidden; margin: 15px 0;">`)
-		sb.WriteString(fmt.Sprintf(`<div style="background: #000; height: 100%%; width: %.0f%%; transition: width 0.3s;"></div>`, usedPct))
+		sb.WriteString(`<p><strong>Free searches today</strong></p>`)
+		sb.WriteString(`<div style="background: #eee; height: 6px; border-radius: 3px; margin: 10px 0;">`)
+		sb.WriteString(fmt.Sprintf(`<div style="background: #000; height: 100%%; width: %.0f%%; border-radius: 3px;"></div>`, usedPct))
 		sb.WriteString(`</div>`)
-		sb.WriteString(fmt.Sprintf(`<p style="margin: 0;"><strong>%d of %d remaining today</strong></p>`, freeRemaining, FreeDailySearches))
-		sb.WriteString(`<p style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">Resets at midnight UTC</p>`)
+		sb.WriteString(fmt.Sprintf(`<p style="font-size: 14px; color: #666;">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, FreeDailySearches))
 		sb.WriteString(`</div>`)
 
-		// Membership upsell
+		// Membership link
 		if IsStripeConfigured() && StripeMembershipPrice != "" {
 			sb.WriteString(`<div class="card">`)
-			sb.WriteString(`<h3>Become a Member</h3>`)
-			sb.WriteString(`<p>Get unlimited searches and support Mu.</p>`)
-			sb.WriteString(`<ul style="margin: 15px 0; padding-left: 20px;">`)
-			sb.WriteString(`<li>Unlimited news, video, and chat</li>`)
-			sb.WriteString(`<li>Access to private messaging</li>`)
-			sb.WriteString(`<li>Support independent development</li>`)
-			sb.WriteString(`</ul>`)
-			sb.WriteString(`<p><a href="/wallet/subscribe">Subscribe →</a></p>`)
-			sb.WriteString(`</div>`)
-		}
-
-		// Topup section (only if Stripe configured)
-		if IsStripeConfigured() {
-			sb.WriteString(`<div class="card">`)
-			sb.WriteString(`<h3>Top Up Credits</h3>`)
-			sb.WriteString(`<p style="color: var(--text-secondary); font-size: 14px;">1 credit = 1p · Use when free searches are exhausted</p>`)
-			sb.WriteString(`<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 15px;">`)
-
-			for _, tier := range TopupTiers {
-				bonusLabel := ""
-				if tier.BonusPct > 0 {
-					bonusLabel = fmt.Sprintf(`<span style="font-size: 10px; color: var(--text-secondary);">+%d%% bonus</span>`, tier.BonusPct)
-				}
-				sb.WriteString(fmt.Sprintf(`<button onclick="topupCredits(%d)" style="display: flex; flex-direction: column; align-items: center; padding: 15px; background: var(--card-background); border: 1px solid var(--card-border);">`, tier.Amount))
-				sb.WriteString(fmt.Sprintf(`<span style="font-size: 18px; font-weight: bold;">£%.2f</span>`, float64(tier.Amount)/100))
-				sb.WriteString(fmt.Sprintf(`<span style="font-size: 12px; color: var(--text-secondary);">%d credits</span>`, tier.Credits))
-				sb.WriteString(bonusLabel)
-				sb.WriteString(`</button>`)
-			}
-
-			sb.WriteString(`</div>`)
+			sb.WriteString(`<p><strong>Unlimited access?</strong> <a href="/wallet/subscribe">Become a member →</a></p>`)
 			sb.WriteString(`</div>`)
 		}
 	}
 
-	// Pricing info
+	// Credit costs
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Credit Costs</h3>`)
-	sb.WriteString(`<table style="width: 100%; border-collapse: collapse;">`)
-	sb.WriteString(`<tr style="border-bottom: 1px solid var(--divider);"><th style="text-align: left; padding: 10px 0;">Feature</th><th style="text-align: right; padding: 10px 0;">Cost</th></tr>`)
-	sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid var(--divider);"><td style="padding: 10px 0;">News Search</td><td style="text-align: right; padding: 10px 0;">%d credit%s</td></tr>`, CostNewsSearch, pluralize(CostNewsSearch)))
-	sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid var(--divider);"><td style="padding: 10px 0;">Video Search</td><td style="text-align: right; padding: 10px 0;">%d credit%s</td></tr>`, CostVideoSearch, pluralize(CostVideoSearch)))
-	sb.WriteString(fmt.Sprintf(`<tr><td style="padding: 10px 0;">Chat AI Query</td><td style="text-align: right; padding: 10px 0;">%d credit%s</td></tr>`, CostChatQuery, pluralize(CostChatQuery)))
-	sb.WriteString(`</table>`)
-	sb.WriteString(`<p style="font-size: 12px; color: var(--text-secondary); margin-top: 15px; margin-bottom: 0;"><a href="/plans">View all plans</a> · Members get unlimited access</p>`)
+	sb.WriteString(`<p><strong>Credit costs</strong></p>`)
+	sb.WriteString(fmt.Sprintf(`<p style="font-size: 14px; color: #666;">News %dp · Video %dp · Chat %dp</p>`, CostNewsSearch, CostVideoSearch, CostChatQuery))
 	sb.WriteString(`</div>`)
 
 	// Transaction history
@@ -241,6 +200,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/wallet" && r.Method == "GET":
 		handleWalletPage(w, r)
+	case path == "/wallet/topup" && r.Method == "GET":
+		handleTopupPage(w, r)
 	case path == "/wallet/topup" && r.Method == "POST":
 		handleTopup(w, r)
 	case path == "/wallet/subscribe" && r.Method == "GET":
@@ -258,6 +219,61 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+func handleTopupPage(w http.ResponseWriter, r *http.Request) {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Redirect(w, r, "/login", 302)
+		return
+	}
+
+	if !IsStripeConfigured() {
+		http.Redirect(w, r, "/wallet", 302)
+		return
+	}
+
+	var sb strings.Builder
+
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<p><strong>Top Up Credits</strong></p>`)
+	sb.WriteString(`<p style="font-size: 14px; color: #666;">1 credit = 1p</p>`)
+
+	for _, tier := range TopupTiers {
+		bonus := ""
+		if tier.BonusPct > 0 {
+			bonus = fmt.Sprintf(" (+%d%%)", tier.BonusPct)
+		}
+		sb.WriteString(fmt.Sprintf(`<p style="margin-top: 15px;"><a href="#" onclick="topup(%d); return false;">£%d → %d credits%s</a></p>`,
+			tier.Amount, tier.Amount/100, tier.Credits, bonus))
+	}
+
+	sb.WriteString(`</div>`)
+
+	sb.WriteString(`
+<script>
+async function topup(amount) {
+	try {
+		const resp = await fetch('/wallet/topup', {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({amount: amount})
+		});
+		const data = await resp.json();
+		if (data.url) {
+			window.location.href = data.url;
+		} else if (data.error) {
+			alert('Error: ' + data.error);
+		}
+	} catch (err) {
+		alert('Failed: ' + err.message);
+	}
+}
+</script>`)
+
+	html := app.RenderHTMLForRequest("Top Up", "Add credits", sb.String(), r)
+	_ = sess
+	w.Write([]byte(html))
 }
 
 func handleWalletPage(w http.ResponseWriter, r *http.Request) {
@@ -426,37 +442,24 @@ func handleSubscribePage(w http.ResponseWriter, r *http.Request) {
 
 	// Check if Stripe subscriptions are configured
 	if !IsStripeConfigured() || StripeMembershipPrice == "" {
-		content := `<div class="card" style="max-width: 500px; margin: 50px auto; text-align: center;">
-	<h2>Memberships Not Available</h2>
-	<p>Stripe subscriptions are not configured for this instance.</p>
-	<p style="margin-top: 20px;"><a href="/membership">View membership info →</a></p>
+		content := `<div class="card">
+<p>Memberships are not available at this time.</p>
+<p><a href="/membership">View membership info →</a></p>
 </div>`
 		html := app.RenderHTMLForRequest("Subscribe", "Become a member", content, r)
 		w.Write([]byte(html))
 		return
 	}
 
-	content := `<div class="card" style="max-width: 500px; margin: 50px auto;">
-	<h2>Become a Member</h2>
-	<p>Get unlimited access to all features with a monthly subscription.</p>
-	
-	<h3 style="margin-top: 20px;">What's included:</h3>
-	<ul style="margin: 15px 0; padding-left: 20px;">
-		<li>Unlimited news searches</li>
-		<li>Unlimited video searches</li>
-		<li>Unlimited AI chat queries</li>
-		<li>Access to private messaging</li>
-		<li>Support independent development</li>
-	</ul>
-	
-	<p style="margin-top: 20px; text-align: center;">
-		<button onclick="startSubscription()" style="padding: 15px 40px; font-size: 16px;">Subscribe Now</button>
-	</p>
-	<p style="font-size: 12px; color: #666; text-align: center; margin-top: 10px;">Cancel anytime • Managed by Stripe</p>
+	content := `<div class="card">
+<p><strong>Become a Member</strong></p>
+<p>Unlimited searches, chat, and mail access.</p>
+<p style="margin-top: 15px;"><a href="#" onclick="subscribe(); return false;">Subscribe now →</a></p>
+<p style="font-size: 12px; color: #666;">Cancel anytime · Managed by Stripe</p>
 </div>
 
 <script>
-async function startSubscription() {
+async function subscribe() {
 	try {
 		const resp = await fetch('/wallet/subscribe', {
 			method: 'POST',
@@ -469,7 +472,7 @@ async function startSubscription() {
 			alert('Error: ' + data.error);
 		}
 	} catch (err) {
-		alert('Failed to start checkout: ' + err.message);
+		alert('Failed: ' + err.message);
 	}
 }
 </script>`
