@@ -1727,11 +1727,83 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		return
 	}
 
-	// Check if user is authenticated - article summaries require login
+	// Extract metadata first (needed for both guest and logged-in views)
+	articleURL := ""
+	category := ""
+	image := ""
+	summary := ""
+	description := ""
+	var postedAt time.Time
+
+	if v, ok := entry.Metadata["url"].(string); ok {
+		articleURL = v
+	}
+	if v, ok := entry.Metadata["category"].(string); ok {
+		category = v
+	}
+	if v, ok := entry.Metadata["image"].(string); ok {
+		image = v
+	}
+	if v, ok := entry.Metadata["description"].(string); ok {
+		description = v
+	}
+	if v, ok := entry.Metadata["summary"].(string); ok {
+		summary = v
+	}
+	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
+		postedAt = v
+	}
+
+	title := entry.Title
+
+	// Check if user is authenticated
 	sess, err := auth.GetSession(r)
-	if err != nil {
-		// Redirect to login
-		http.Redirect(w, r, "/login?redirect=/news?id="+articleID, http.StatusSeeOther)
+	isGuest := err != nil
+
+	// For guests: show article preview but hide AI summary
+	if isGuest {
+		imageSection := ""
+		if image != "" {
+			imageSection = fmt.Sprintf(`<img src="%s" class="article-image" referrerpolicy="no-referrer" onerror="this.style.display='none'">`, image)
+		}
+
+		categoryBadge := ""
+		if category != "" {
+			categoryBadge = fmt.Sprintf(` · <a href="/news#%s" class="category">%s</a>`, category, category)
+		}
+
+		descriptionSection := ""
+		if description != "" {
+			descriptionSection = fmt.Sprintf(`<div class="article-description"><p>%s</p></div>`, description)
+		}
+
+		// Show login prompt instead of AI summary
+		summarySection := `
+			<div class="article-summary" style="background: #f9f9f9; border: 1px dashed #ddd;">
+				<h3>AI Summary</h3>
+				<p style="color: #666;"><a href="/login?redirect=/news?id=` + articleID + `">Login</a> to read the AI-generated summary.</p>
+			</div>`
+
+		articleHtml := fmt.Sprintf(`
+			<div id="news-article">
+				%s
+				<h1>%s</h1>
+				<div class="article-meta">
+					<span><span data-timestamp="%d">%s</span> · Source: <i>%s</i>%s</span>
+				</div>
+				%s
+				%s
+				<div class="article-actions">
+					<a href="%s" target="_blank" rel="noopener noreferrer">Read Original →</a>
+				</div>
+				<div class="article-back">
+					<a href="/news">← Back to news</a>
+				</div>
+			</div>
+		`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL)
+
+		pageHTML := fmt.Sprintf(app.Template, "en", title, title, "", "", "", articleHtml)
+		w.Write([]byte(pageHTML))
 		return
 	}
 
@@ -1761,43 +1833,14 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	// Consume quota for article summary view
 	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSummary)
 
-	// Extract metadata
-	url := ""
-	category := ""
-	image := ""
-	summary := ""
-	description := ""
-	var postedAt time.Time
-
-	if v, ok := entry.Metadata["url"].(string); ok {
-		url = v
-	}
-	if v, ok := entry.Metadata["category"].(string); ok {
-		category = v
-	}
-	if v, ok := entry.Metadata["image"].(string); ok {
-		image = v
-	}
-	if v, ok := entry.Metadata["description"].(string); ok {
-		description = v
-	}
-	if v, ok := entry.Metadata["summary"].(string); ok {
-		summary = v
-	}
-	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
-		postedAt = v
-	}
-
-	title := entry.Title
-
 	// Debug logging
-	app.Log("news", "Article view: ID=%s, Title='%s', URL='%s'", articleID, title, url)
+	app.Log("news", "Article view: ID=%s, Title='%s', URL='%s'", articleID, title, articleURL)
 
 	// If title or description is empty, try to fetch fresh metadata
 	// But only use metadata values if they're actually better than what we have
-	if (title == "" || description == "") && url != "" {
+	if (title == "" || description == "") && articleURL != "" {
 		app.Log("news", "Fetching metadata because title='%s' desc='%s'", title, description)
-		md, _, err := getMetadata(url, postedAt)
+		md, _, err := getMetadata(articleURL, postedAt)
 		if err == nil {
 			app.Log("news", "Got metadata: Title='%s', Desc='%s'", md.Title, md.Description)
 			// Only use metadata title if our current title is empty AND metadata has one
@@ -1874,7 +1917,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="/news">← Back to news</a>
 			</div>
 		</div>
-	`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(url), categoryBadge, descriptionSection, summarySection, url, articleID)
+	`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL, articleID)
 
 	// Use title for browser tab, but empty page title since article already has its own H1
 	pageHTML := fmt.Sprintf(app.Template, "en", title, title, "", "", "", articleHtml)

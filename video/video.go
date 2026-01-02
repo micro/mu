@@ -1116,31 +1116,53 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// render watch page
 	if len(id) > 0 {
-		// Check if user is authenticated - watching videos requires login
+		youtubeURL := "https://www.youtube.com/watch?v=" + id
+		thumbnailURL := "https://img.youtube.com/vi/" + id + "/maxresdefault.jpg"
+
+		// Check if user is authenticated
 		sess, err := auth.GetSession(r)
-		if err != nil {
-			// Redirect to login
-			http.Redirect(w, r, "/login?redirect=/video?id="+id, http.StatusSeeOther)
+		isGuest := err != nil
+
+		// For guests: show thumbnail with options to login or go to YouTube
+		if isGuest {
+			guestHtml := fmt.Sprintf(`
+				<div class="card" style="text-align: center; padding: 40px; max-width: 640px; margin: 40px auto;">
+					<img src="%s" style="width: 100%%; border-radius: 8px; margin-bottom: 20px;" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+					<h2>Watch Video</h2>
+					<p style="color: #666; margin: 20px 0;">Login to watch ad-free, or view on YouTube.</p>
+					<p style="margin: 20px 0;">
+						<a href="/login?redirect=/video?id=%s" style="display: inline-block; padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 4px; margin-right: 10px;">Login to watch</a>
+						<a href="%s" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 10px 20px; border: 1px solid #000; text-decoration: none; border-radius: 4px;">Watch on YouTube →</a>
+					</p>
+					<p style="margin-top: 20px;"><a href="/video">← Back to videos</a></p>
+				</div>
+			`, thumbnailURL, id, id, youtubeURL)
+			pageHTML := fmt.Sprintf(app.Template, "en", "Video", "Video", "", "", "", guestHtml)
+			w.Write([]byte(pageHTML))
 			return
 		}
 
 		// Check quota for watching video
 		canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoWatch)
 		if !canProceed {
-			// Show paywall page
+			// Show paywall page with YouTube fallback
 			credits := "credit"
 			if cost != 1 {
 				credits = "credits"
 			}
 			paywallHtml := fmt.Sprintf(`
-				<div class="card" style="text-align: center; padding: 40px;">
+				<div class="card" style="text-align: center; padding: 40px; max-width: 640px; margin: 40px auto;">
+					<img src="%s" style="width: 100%%; border-radius: 8px; margin-bottom: 20px;" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
 					<h2>Watch Video</h2>
 					<p>Watching ad-free videos costs %d %s.</p>
 					<p style="color: #666; margin: 20px 0;">Your balance: %d credits</p>
-					<p><a href="/wallet/topup">Top up credits →</a></p>
+					<p style="margin: 20px 0;">
+						<a href="/wallet/topup" style="display: inline-block; padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 4px; margin-right: 10px;">Top up credits</a>
+						<a href="%s" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 10px 20px; border: 1px solid #000; text-decoration: none; border-radius: 4px;">Watch on YouTube →</a>
+					</p>
 					<p style="margin-top: 20px;"><a href="/video">← Back to videos</a></p>
 				</div>
-			`, cost, credits, wallet.GetBalance(sess.Account))
+			`, thumbnailURL, id, cost, credits, wallet.GetBalance(sess.Account), youtubeURL)
 			pageHTML := fmt.Sprintf(app.Template, "en", "Credits Required", "Credits Required", "", "", "", paywallHtml)
 			w.WriteHeader(http.StatusPaymentRequired)
 			w.Write([]byte(pageHTML))
