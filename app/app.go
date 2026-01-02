@@ -423,29 +423,21 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// Build status/balance section (shown first)
 	var statusSection string
 	if acc.Admin {
-		statusSection = `<div class="card" style="background: #f0fff4; border-color: #22c55e;">
-			<div style="text-align: center; padding: 10px;">
-				<div style="font-size: 14px; color: #666;">Status</div>
-				<div style="font-size: 28px; font-weight: bold; color: #22c55e;">Admin</div>
-				<div style="font-size: 14px; color: #666; margin-top: 5px;">Unlimited access</div>
-			</div>
+		statusSection = `<div class="card">
+			<h3>Status</h3>
+			<p><strong>Admin</strong> · Unlimited access</p>
 		</div>`
 	} else if acc.Member {
-		statusSection = `<div class="card" style="background: #f0fff4; border-color: #22c55e;">
-			<div style="text-align: center; padding: 10px;">
-				<div style="font-size: 14px; color: #666;">Status</div>
-				<div style="font-size: 28px; font-weight: bold; color: #22c55e;">Member</div>
-				<div style="font-size: 14px; color: #666; margin-top: 5px;">Unlimited access</div>
-			</div>
+		statusSection = `<div class="card">
+			<h3>Status</h3>
+			<p><strong>Member</strong> · Unlimited access</p>
 		</div>`
 	} else {
-		// Show credit balance for regular users
+		// Show quota info for regular users
 		statusSection = `<div class="card">
-			<div style="text-align: center; padding: 10px;">
-				<div style="font-size: 14px; color: #666;">Daily Free Searches</div>
-				<div style="font-size: 28px; font-weight: bold;">10 / day</div>
-				<div style="font-size: 14px; color: #666; margin-top: 5px;">Then use credits or become a member</div>
-			</div>
+			<h3>Status</h3>
+			<p><strong>10 free searches / day</strong></p>
+			<p style="font-size: 14px; color: var(--text-secondary);">Then use credits or become a member</p>
 		</div>`
 	}
 
@@ -461,18 +453,32 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	membershipURL := os.Getenv("MEMBERSHIP_URL")
 	stripeMembershipConfigured := os.Getenv("STRIPE_MEMBERSHIP_PRICE") != "" && os.Getenv("STRIPE_SECRET_KEY") != ""
 	
-	if membershipURL != "" || stripeMembershipConfigured {
-		if acc.Member {
+	if acc.Member {
+		if stripeMembershipConfigured {
 			membershipSection = `<div class="card">
 				<h3>Membership</h3>
-				<p><strong>✓ Active Member</strong></p>
+				<p><strong>✓ Active</strong></p>
+				<p><a href="/wallet/manage">Manage subscription →</a></p>
+			</div>`
+		} else {
+			membershipSection = `<div class="card">
+				<h3>Membership</h3>
+				<p><strong>✓ Active</strong></p>
 				<p><a href="/membership">View details →</a></p>
 			</div>`
-		} else if !acc.Admin {
+		}
+	} else if !acc.Admin {
+		if stripeMembershipConfigured {
 			membershipSection = `<div class="card">
 				<h3>Membership</h3>
 				<p>Get unlimited access and support Mu.</p>
 				<p><a href="/wallet/subscribe">Become a Member →</a></p>
+			</div>`
+		} else if membershipURL != "" {
+			membershipSection = `<div class="card">
+				<h3>Membership</h3>
+				<p>Get unlimited access and support Mu.</p>
+				<p><a href="/membership">Become a Member →</a></p>
 			</div>`
 		}
 	}
@@ -507,12 +513,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	languageSection := fmt.Sprintf(`<div class="card">
 		<h3>Language</h3>
-		<p>Sets the page language to help your browser offer automatic translation.</p>
-		<form action="/account" method="POST" style="margin-top: 10px;">
-			<select name="language" style="padding: 8px; font-size: 14px;">
+		<p>Sets the page language for automatic translation.</p>
+		<form action="/account" method="POST" style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+			<select name="language" style="padding: 8px; font-size: 14px; width: auto;">
 				%s
 			</select>
-			<button type="submit" style="margin-left: 10px;">Save</button>
+			<button type="submit">Save</button>
 		</form>
 	</div>`, languageOptions)
 
@@ -619,6 +625,7 @@ func Session(w http.ResponseWriter, r *http.Request) {
 // Plans handler - shows available options
 func Plans(w http.ResponseWriter, r *http.Request) {
 	membershipURL := os.Getenv("MEMBERSHIP_URL")
+	stripeMembershipConfigured := os.Getenv("STRIPE_MEMBERSHIP_PRICE") != "" && os.Getenv("STRIPE_SECRET_KEY") != ""
 
 	// Check if user is logged in and their status
 	isMember := false
@@ -691,6 +698,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	</ul>`)
 	if isMember {
 		content.WriteString(`<span class="plan-current">✓ You're a member</span>`)
+	} else if stripeMembershipConfigured {
+		content.WriteString(`<a href="/wallet/subscribe" class="plan-btn primary">Become a Member</a>`)
 	} else if membershipURL != "" {
 		content.WriteString(fmt.Sprintf(`<a href="%s" class="plan-btn primary" target="_blank">Become a Member</a>`, membershipURL))
 	} else {

@@ -65,29 +65,23 @@ func WalletPage(userID string) string {
 
 	if isMember || isAdmin {
 		// Member/Admin status card
-		sb.WriteString(`<div class="card" style="background: #f0fff4; border-color: #22c55e;">`)
-		sb.WriteString(`<div style="text-align: center; padding: 20px;">`)
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(`<h3>Status</h3>`)
 		if isAdmin {
-			sb.WriteString(`<div style="font-size: 14px; color: #666; margin-bottom: 5px;">Status</div>`)
-			sb.WriteString(`<div style="font-size: 32px; font-weight: bold; color: #22c55e;">Admin</div>`)
+			sb.WriteString(`<p><strong>Admin</strong> · Unlimited searches</p>`)
 		} else {
-			sb.WriteString(`<div style="font-size: 14px; color: #666; margin-bottom: 5px;">Status</div>`)
-			sb.WriteString(`<div style="font-size: 32px; font-weight: bold; color: #22c55e;">Member</div>`)
+			sb.WriteString(`<p><strong>Member</strong> · Unlimited searches</p>`)
 		}
-		sb.WriteString(`<div style="font-size: 14px; color: #666; margin-top: 10px;">Unlimited searches included</div>`)
 		if hasSubscription && IsStripeConfigured() {
-			sb.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/manage">Manage subscription →</a></p>`)
+			sb.WriteString(`<p><a href="/wallet/manage">Manage subscription →</a></p>`)
 		}
-		sb.WriteString(`</div>`)
 		sb.WriteString(`</div>`)
 	} else {
 		// Credit balance card
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<div style="text-align: center; padding: 20px;">`)
-		sb.WriteString(`<div style="font-size: 14px; color: #666; margin-bottom: 5px;">Credit Balance</div>`)
-		sb.WriteString(fmt.Sprintf(`<div style="font-size: 32px; font-weight: bold;">%s</div>`, FormatCredits(wallet.Balance)))
-		sb.WriteString(fmt.Sprintf(`<div style="font-size: 14px; color: #666;">%d credits</div>`, wallet.Balance))
-		sb.WriteString(`</div>`)
+		sb.WriteString(`<h3>Credit Balance</h3>`)
+		sb.WriteString(fmt.Sprintf(`<p style="font-size: 24px; font-weight: bold; margin: 10px 0;">%s</p>`, FormatCredits(wallet.Balance)))
+		sb.WriteString(fmt.Sprintf(`<p style="font-size: 14px; color: var(--text-secondary);">%d credits available</p>`, wallet.Balance))
 		sb.WriteString(`</div>`)
 
 		// Daily quota section
@@ -98,20 +92,20 @@ func WalletPage(userID string) string {
 
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Daily Free Searches</h3>`)
-		sb.WriteString(`<div style="background: #e5e5e5; height: 8px; border-radius: 4px; overflow: hidden; margin: 15px 0;">`)
+		sb.WriteString(`<div style="background: var(--card-border); height: 8px; border-radius: 4px; overflow: hidden; margin: 15px 0;">`)
 		sb.WriteString(fmt.Sprintf(`<div style="background: #000; height: 100%%; width: %.0f%%; transition: width 0.3s;"></div>`, usedPct))
 		sb.WriteString(`</div>`)
 		sb.WriteString(fmt.Sprintf(`<p style="margin: 0;"><strong>%d of %d remaining today</strong></p>`, freeRemaining, FreeDailySearches))
-		sb.WriteString(`<p style="font-size: 12px; color: #666; margin-top: 5px;">Resets at midnight UTC</p>`)
+		sb.WriteString(`<p style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">Resets at midnight UTC</p>`)
 		sb.WriteString(`</div>`)
 
 		// Membership upsell
 		if IsStripeConfigured() && StripeMembershipPrice != "" {
-			sb.WriteString(`<div class="card" style="background: #fafafa;">`)
+			sb.WriteString(`<div class="card">`)
 			sb.WriteString(`<h3>Become a Member</h3>`)
-			sb.WriteString(`<p>Get unlimited searches and support Mu's development.</p>`)
+			sb.WriteString(`<p>Get unlimited searches and support Mu.</p>`)
 			sb.WriteString(`<ul style="margin: 15px 0; padding-left: 20px;">`)
-			sb.WriteString(`<li>Unlimited news, video, and chat searches</li>`)
+			sb.WriteString(`<li>Unlimited news, video, and chat</li>`)
 			sb.WriteString(`<li>Access to private messaging</li>`)
 			sb.WriteString(`<li>Support independent development</li>`)
 			sb.WriteString(`</ul>`)
@@ -123,17 +117,17 @@ func WalletPage(userID string) string {
 		if IsStripeConfigured() {
 			sb.WriteString(`<div class="card">`)
 			sb.WriteString(`<h3>Top Up Credits</h3>`)
-			sb.WriteString(`<p style="color: #666; font-size: 14px;">1 credit = 1p • Use credits when daily free searches are exhausted</p>`)
+			sb.WriteString(`<p style="color: var(--text-secondary); font-size: 14px;">1 credit = 1p · Use when free searches are exhausted</p>`)
 			sb.WriteString(`<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 15px;">`)
 
 			for _, tier := range TopupTiers {
 				bonusLabel := ""
 				if tier.BonusPct > 0 {
-					bonusLabel = fmt.Sprintf(`<span style="background: #22c55e; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-top: 5px; display: inline-block;">+%d%%</span>`, tier.BonusPct)
+					bonusLabel = fmt.Sprintf(`<span style="font-size: 10px; color: var(--text-secondary);">+%d%% bonus</span>`, tier.BonusPct)
 				}
-				sb.WriteString(fmt.Sprintf(`<button onclick="topupCredits(%d)" style="display: flex; flex-direction: column; align-items: center; padding: 15px; background: white; border: 1px solid var(--card-border);">`, tier.Amount))
-				sb.WriteString(fmt.Sprintf(`<span style="font-size: 20px; font-weight: bold;">£%.2f</span>`, float64(tier.Amount)/100))
-				sb.WriteString(fmt.Sprintf(`<span style="font-size: 12px; color: #666;">%d credits</span>`, tier.Credits))
+				sb.WriteString(fmt.Sprintf(`<button onclick="topupCredits(%d)" style="display: flex; flex-direction: column; align-items: center; padding: 15px; background: var(--card-background); border: 1px solid var(--card-border);">`, tier.Amount))
+				sb.WriteString(fmt.Sprintf(`<span style="font-size: 18px; font-weight: bold;">£%.2f</span>`, float64(tier.Amount)/100))
+				sb.WriteString(fmt.Sprintf(`<span style="font-size: 12px; color: var(--text-secondary);">%d credits</span>`, tier.Credits))
 				sb.WriteString(bonusLabel)
 				sb.WriteString(`</button>`)
 			}
@@ -152,7 +146,7 @@ func WalletPage(userID string) string {
 	sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid var(--divider);"><td style="padding: 10px 0;">Video Search</td><td style="text-align: right; padding: 10px 0;">%d credit%s</td></tr>`, CostVideoSearch, pluralize(CostVideoSearch)))
 	sb.WriteString(fmt.Sprintf(`<tr><td style="padding: 10px 0;">Chat AI Query</td><td style="text-align: right; padding: 10px 0;">%d credit%s</td></tr>`, CostChatQuery, pluralize(CostChatQuery)))
 	sb.WriteString(`</table>`)
-	sb.WriteString(`<p style="font-size: 12px; color: #666; margin-top: 15px; margin-bottom: 0;"><a href="/plans">View all plans</a> • Members get unlimited access</p>`)
+	sb.WriteString(`<p style="font-size: 12px; color: var(--text-secondary); margin-top: 15px; margin-bottom: 0;"><a href="/plans">View all plans</a> · Members get unlimited access</p>`)
 	sb.WriteString(`</div>`)
 
 	// Transaction history
@@ -167,18 +161,16 @@ func WalletPage(userID string) string {
 			if tx.Type == TxTopup {
 				typeLabel = "Top Up"
 			}
-			amountColor := "#dc2626"
 			amountPrefix := "-"
 			if tx.Amount > 0 {
-				amountColor = "#22c55e"
 				amountPrefix = "+"
 			}
 			sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid var(--divider);">
 				<td style="padding: 10px 0;">%s</td>
 				<td style="padding: 10px 0;">%s</td>
-				<td style="text-align: right; padding: 10px 0; color: %s;">%s%d</td>
+				<td style="text-align: right; padding: 10px 0;">%s%d</td>
 				<td style="text-align: right; padding: 10px 0;">%d</td>
-			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountColor, amountPrefix, abs(tx.Amount), tx.Balance))
+			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountPrefix, abs(tx.Amount), tx.Balance))
 		}
 
 		sb.WriteString(`</table>`)
