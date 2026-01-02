@@ -109,7 +109,13 @@ func WalletPage(userID string) string {
 	// Credit costs
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Costs</h3>`)
-	sb.WriteString(fmt.Sprintf(`<p>News %dp · Video %dp · Chat %dp</p>`, CostNewsSearch, CostVideoSearch, CostChatQuery))
+	sb.WriteString(`<table style="width: 100%; font-size: 14px;">`)
+	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td style="text-align: right;">%dp</td></tr>`, CostNewsSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>News article</td><td style="text-align: right;">%dp</td></tr>`, CostNewsSummary))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td style="text-align: right;">%dp</td></tr>`, CostVideoSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Video watch</td><td style="text-align: right;">%dp</td></tr>`, CostVideoWatch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td style="text-align: right;">%dp</td></tr>`, CostChatQuery))
+	sb.WriteString(`</table>`)
 	sb.WriteString(`</div>`)
 
 	// Transaction history

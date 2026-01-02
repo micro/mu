@@ -29,7 +29,9 @@ Every registered user gets **10 free searches per day**:
 | Feature | Cost | Why |
 |---------|------|-----|
 | News Search | 1 credit (1p) | Indexed search |
+| News Article | 1 credit (1p) | AI-generated summary |
 | Video Search | 2 credits (2p) | YouTube API cost |
+| Video Watch | 2 credits (2p) | Ad-free viewing |
 | Chat AI Query | 3 credits (3p) | LLM inference cost |
 
 ### Who Pays What
@@ -147,7 +149,9 @@ STRIPE_PRICE_5000="price_xxx"  # £50
 # Quota (optional - these are defaults)
 FREE_DAILY_SEARCHES="10"
 CREDIT_COST_NEWS="1"
+CREDIT_COST_NEWS_SUMMARY="1"
 CREDIT_COST_VIDEO="2"
+CREDIT_COST_VIDEO_WATCH="2"
 CREDIT_COST_CHAT="3"
 ```
 

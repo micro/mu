@@ -1727,6 +1727,40 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		return
 	}
 
+	// Check if user is authenticated - article summaries require login
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		// Redirect to login
+		http.Redirect(w, r, "/login?redirect=/news?id="+articleID, http.StatusSeeOther)
+		return
+	}
+
+	// Check quota for viewing article summary
+	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpNewsSummary)
+	if !canProceed {
+		// Show paywall page
+		credits := "credit"
+		if cost != 1 {
+			credits = "credits"
+		}
+		paywallHtml := fmt.Sprintf(`
+			<div class="card" style="text-align: center; padding: 40px;">
+				<h2>Article Summary</h2>
+				<p>Reading AI-generated summaries costs %d %s.</p>
+				<p style="color: #666; margin: 20px 0;">Your balance: %d credits</p>
+				<p><a href="/wallet/topup">Top up credits →</a></p>
+				<p style="margin-top: 20px;"><a href="/news">← Back to news</a></p>
+			</div>
+		`, cost, credits, wallet.GetBalance(sess.Account))
+		pageHTML := fmt.Sprintf(app.Template, "en", "Credits Required", "Credits Required", "", "", "", paywallHtml)
+		w.WriteHeader(http.StatusPaymentRequired)
+		w.Write([]byte(pageHTML))
+		return
+	}
+
+	// Consume quota for article summary view
+	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSummary)
+
 	// Extract metadata
 	url := ""
 	category := ""

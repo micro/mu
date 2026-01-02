@@ -1116,6 +1116,40 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// render watch page
 	if len(id) > 0 {
+		// Check if user is authenticated - watching videos requires login
+		sess, err := auth.GetSession(r)
+		if err != nil {
+			// Redirect to login
+			http.Redirect(w, r, "/login?redirect=/video?id="+id, http.StatusSeeOther)
+			return
+		}
+
+		// Check quota for watching video
+		canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoWatch)
+		if !canProceed {
+			// Show paywall page
+			credits := "credit"
+			if cost != 1 {
+				credits = "credits"
+			}
+			paywallHtml := fmt.Sprintf(`
+				<div class="card" style="text-align: center; padding: 40px;">
+					<h2>Watch Video</h2>
+					<p>Watching ad-free videos costs %d %s.</p>
+					<p style="color: #666; margin: 20px 0;">Your balance: %d credits</p>
+					<p><a href="/wallet/topup">Top up credits →</a></p>
+					<p style="margin-top: 20px;"><a href="/video">← Back to videos</a></p>
+				</div>
+			`, cost, credits, wallet.GetBalance(sess.Account))
+			pageHTML := fmt.Sprintf(app.Template, "en", "Credits Required", "Credits Required", "", "", "", paywallHtml)
+			w.WriteHeader(http.StatusPaymentRequired)
+			w.Write([]byte(pageHTML))
+			return
+		}
+
+		// Consume quota for video watch
+		wallet.ConsumeQuota(sess.Account, wallet.OpVideoWatch)
+
 		// get the page
 		tmpl := `<html>
   <head>
