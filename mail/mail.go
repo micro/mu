@@ -276,11 +276,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Restrict mail to admins and members only
-	if !acc.Admin && !acc.Member {
-		http.Error(w, "Mail access restricted to members only", http.StatusForbidden)
-		return
-	}
+	// All users can access mail for internal DMs
+	// External email is restricted to members only (checked at send time)
 
 	// Handle POST - send message or delete
 	if r.Method == "POST" {
@@ -362,6 +359,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Check if recipient is external (has @domain)
 		if IsExternalEmail(to) {
+			// External email requires membership
+			if !acc.Admin && !acc.Member {
+				http.Error(w, "External email is a member-only feature. Upgrade to send emails outside Mu.", http.StatusForbidden)
+				return
+			}
+
 			// External email - send via SMTP with multipart/alternative (plain text + HTML)
 			fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
 			displayName := acc.Name
