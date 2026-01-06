@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v65';
+var VERSION = 'v66';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -161,33 +161,38 @@ function switchTopic(t) {
     }
   });
   
-  // Connect to the topic's chat room
+  // Clear messages and show new context
+  const messages = document.getElementById('messages');
+  if (messages) {
+    messages.innerHTML = '';
+    const contextMsg = document.createElement('div');
+    contextMsg.className = 'context-message';
+    let summary = '';
+    if (typeof summaries !== 'undefined' && summaries[t]) {
+      summary = '<br><span style="color: #666;">' + summaries[t] + '</span>';
+    }
+    contextMsg.innerHTML = '<strong>' + t + ' Discussion</strong>' + summary;
+    messages.appendChild(contextMsg);
+  }
+  
+  // Connect to the topic's chat room (only if authenticated)
   const roomId = 'chat_' + t;
-  connectRoomWebSocket(roomId);
+  if (isAuthenticated) {
+    connectRoomWebSocket(roomId);
+  }
   
   // Update URL without reload
   history.pushState(null, null, '/chat?id=' + roomId);
-  
-  // Show context message for this topic
-  setTimeout(() => {
-    const messages = document.getElementById('messages');
-    if (messages && !messages.querySelector('.context-message')) {
-      const contextMsg = document.createElement('div');
-      contextMsg.className = 'context-message';
-      let summary = '';
-      if (typeof summaries !== 'undefined' && summaries[t]) {
-        summary = '<br><span style="color: #666;">' + summaries[t] + '</span>';
-      }
-      contextMsg.innerHTML = '<strong>' + t + ' Discussion</strong>' + summary;
-      messages.insertBefore(contextMsg, messages.firstChild);
-    }
-  }, 100);
   
   // Override form to use room messaging
   const chatForm = document.getElementById('chat-form');
   if (chatForm) {
     chatForm.onsubmit = function(e) {
       e.preventDefault();
+      if (!isAuthenticated) {
+        alert('Please login to chat');
+        return false;
+      }
       sendRoomMessage(this);
       return false;
     };
@@ -885,7 +890,8 @@ function connectRoomWebSocket(roomId) {
   
   roomWs.onclose = function() {
     console.log('Disconnected from room');
-    if (currentRoomId === roomId) {
+    // Only reconnect if authenticated and still on same room
+    if (isAuthenticated && currentRoomId === roomId) {
       setTimeout(() => connectRoomWebSocket(roomId), 3000);
     }
   };
