@@ -116,6 +116,35 @@ type Client struct {
 var rooms = make(map[string]*Room)
 var roomsMutex sync.RWMutex
 
+// saveRoomMessages persists room messages to disk
+func saveRoomMessages(roomID string, messages []RoomMessage) {
+	filename := "room_" + strings.ReplaceAll(roomID, "/", "_") + ".json"
+	b, err := json.Marshal(messages)
+	if err != nil {
+		app.Log("chat", "Error marshaling room messages: %v", err)
+		return
+	}
+	if err := data.SaveFile(filename, string(b)); err != nil {
+		app.Log("chat", "Error saving room messages: %v", err)
+	}
+}
+
+// loadRoomMessages loads persisted room messages from disk
+func loadRoomMessages(roomID string) []RoomMessage {
+	filename := "room_" + strings.ReplaceAll(roomID, "/", "_") + ".json"
+	b, err := data.LoadFile(filename)
+	if err != nil {
+		return nil
+	}
+	var messages []RoomMessage
+	if err := json.Unmarshal(b, &messages); err != nil {
+		app.Log("chat", "Error unmarshaling room messages: %v", err)
+		return nil
+	}
+	app.Log("chat", "Loaded %d messages for room %s", len(messages), roomID)
+	return messages
+}
+
 // getOrCreateRoom gets an existing room or creates a new one
 func getOrCreateRoom(id string) *Room {
 	start := time.Now()
@@ -281,6 +310,10 @@ func getOrCreateRoom(id string) *Room {
 		}
 		mutex.RUnlock()
 		room.Topic = itemID
+		// Load persisted messages
+		if saved := loadRoomMessages(id); saved != nil {
+			room.Messages = saved
+		}
 		app.Log("chat", "Created chat room for topic: %s", itemID)
 	}
 
@@ -440,7 +473,14 @@ func (room *Room) run() {
 				room.Messages = room.Messages[len(room.Messages)-20:]
 			}
 			room.LastActivity = time.Now()
+			messagesToSave := make([]RoomMessage, len(room.Messages))
+			copy(messagesToSave, room.Messages)
 			room.mutex.Unlock()
+
+			// Persist messages for topic chat rooms
+			if strings.HasPrefix(room.ID, "chat_") {
+				go saveRoomMessages(room.ID, messagesToSave)
+			}
 
 			// Broadcast to all clients
 			room.mutex.RLock()
