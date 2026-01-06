@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/semaphore"
@@ -19,6 +20,12 @@ var (
 	// Limit concurrent LLM requests to prevent memory bloat when API is slow/rate-limited
 	llmSemaphore = semaphore.NewWeighted(5)
 	llmTimeout   = 60 * time.Second
+
+	// Rate limiter for Fanar API (10 requests per minute)
+	// Using a simple token bucket: track last request times
+	fanarRateMu     sync.Mutex
+	fanarLastMinute []time.Time
+	fanarMaxPerMin  = 8 // Leave some headroom below 10
 )
 
 type Model struct{}
@@ -169,7 +176,49 @@ func generateWithOllama(apiURL, modelName string, messages []map[string]string) 
 }
 
 // generateWithFanar generates a response using Fanar API
+// checkFanarRateLimit returns true if we can make a request, false if rate limited
+func checkFanarRateLimit() bool {
+	fanarRateMu.Lock()
+	defer fanarRateMu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-time.Minute)
+
+	// Remove requests older than 1 minute
+	var recent []time.Time
+	for _, t := range fanarLastMinute {
+		if t.After(cutoff) {
+			recent = append(recent, t)
+		}
+	}
+	fanarLastMinute = recent
+
+	// Check if we're under the limit
+	if len(fanarLastMinute) >= fanarMaxPerMin {
+		return false
+	}
+
+	// Record this request
+	fanarLastMinute = append(fanarLastMinute, now)
+	return true
+}
+
 func generateWithFanar(apiURL, apiKey string, messages []map[string]string) (string, error) {
+	// Check rate limit before making request
+	if !checkFanarRateLimit() {
+		app.Log("chat", "[LLM] Fanar rate limit reached (max %d/min), waiting...", fanarMaxPerMin)
+		// Wait up to 10 seconds for a slot
+		for i := 0; i < 10; i++ {
+			time.Sleep(time.Second)
+			if checkFanarRateLimit() {
+				break
+			}
+			if i == 9 {
+				return "", fmt.Errorf("fanar rate limit exceeded, please try again in a minute")
+			}
+		}
+	}
+
 	fanarURL := fmt.Sprintf("%s/v1/chat/completions", apiURL)
 
 	app.Log("chat", "[LLM] Using Fanar at %s", apiURL)

@@ -143,7 +143,30 @@ export FANAR_API_URL=https://api.fanar.qa  # Optional, this is the default
 
 When `FANAR_API_KEY` is set, Mu will use Fanar instead of Ollama.
 
+**Note:** Fanar has a rate limit of 10 requests per minute. Mu enforces this limit automatically.
+
+**Anthropic Claude (Optional)**
+
+You can also use Anthropic's Claude API:
+
+```
+export ANTHROPIC_API_KEY=xxx
+export ANTHROPIC_MODEL=claude-haiku-4.5-20250311  # Optional, this is the default
+```
+
+Priority order: Anthropic > Fanar > Ollama
+
 For vector search see this [doc](docs/VECTOR_SEARCH.md)
+
+### Data Storage
+
+By default, Mu stores search index and embeddings in JSON files loaded into memory. For production use with large datasets, enable SQLite storage to reduce memory usage:
+
+```
+export MU_USE_SQLITE=1
+```
+
+This stores the search index and embeddings in SQLite (`~/.mu/data/index.db`) instead of RAM. Migration from JSON happens automatically on first startup.
 
 ### Run
 
