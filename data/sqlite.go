@@ -30,11 +30,15 @@ func initDB() error {
 		os.MkdirAll(filepath.Dir(dbPath), 0700)
 
 		var err error
-		db, err = sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_synchronous=NORMAL")
+		db, err = sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_synchronous=NORMAL&_busy_timeout=10000")
 		if err != nil {
 			initErr = fmt.Errorf("failed to open database: %w", err)
 			return
 		}
+
+		// SQLite works best with limited connections
+		db.SetMaxOpenConns(1) // Serialize all access to avoid locks
+		db.SetMaxIdleConns(1)
 
 		// Create tables
 		_, err = db.Exec(`
