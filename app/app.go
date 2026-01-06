@@ -601,6 +601,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p style="font-size: 24px; font-weight: bold; margin: 10px 0;">£0</p>
 <p>10 searches/day</p>
 <p>News, video, and chat</p>
+<p>Direct message other users</p>
 <p>Resets at midnight</p>`)
 	if !isLoggedIn {
 		content.WriteString(`<p style="margin-top: 15px;"><a href="/signup">Sign up →</a></p>`)
@@ -631,7 +632,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p style="font-size: 24px; font-weight: bold; margin: 10px 0;">£11<span style="font-size: 14px; font-weight: normal;">/month</span></p>
 <p>Unlimited searches</p>
 <p>Unlimited chat AI</p>
-<p>Mail access</p>`)
+<p>External email</p>`)
 	if isMember {
 		content.WriteString(`<p style="margin-top: 15px;">✓ You're a member</p>`)
 	} else if stripeMembershipConfigured {
@@ -728,7 +729,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 
 		content := fmt.Sprintf(`<h2>Benefits</h2>
 		<ul>
-			<li>Access to Mail - private messaging and email</li>
+			<li>External email - send and receive real email</li>
 			<li>Unlimited searches - news, video, and chat AI</li>
 			<li>Vote on new features and platform direction</li>
 			<li>Help keep Mu ad-free and sustainable</li>
@@ -788,7 +789,7 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	content := fmt.Sprintf(`%s
 		<h2>Benefits</h2>
 		<ul>
-			<li>Access to Mail - private messaging and email</li>
+			<li>External email - send and receive real email</li>
 			<li>Unlimited searches - news, video, and chat AI</li>
 			<li>Vote on new features and platform direction</li>
 			<li>Help keep Mu ad-free and sustainable</li>
