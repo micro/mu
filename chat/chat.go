@@ -86,6 +86,7 @@ type Room struct {
 	Topic        string                      // News topic (e.g., "Dev", "World", etc.)
 	LastRefresh  time.Time                   // Last time external content was refreshed
 	LastActivity time.Time                   // Last time room had any activity (for cleanup)
+	LastAIMsg    time.Time                   // Last time AI sent an auto-message
 	Messages     []RoomMessage               // Last 20 messages (in-memory only)
 	Clients      map[*websocket.Conn]*Client // Connected clients
 	Broadcast    chan RoomMessage            // Broadcast channel
@@ -366,6 +367,7 @@ func getOrCreateRoom(id string) *Room {
 	}()
 
 	go room.run()
+	room.startAIAutoResponse()
 
 	app.Log("chat", "[getOrCreateRoom] Created room %s (total time %v)", id, time.Since(start))
 	return room
@@ -450,6 +452,91 @@ func (room *Room) run() {
 			room.mutex.RUnlock()
 		}
 	}
+}
+
+// startAIAutoResponse starts a goroutine that sends AI messages when topic rooms are quiet
+func (room *Room) startAIAutoResponse() {
+	// Only for topic chat rooms
+	if !strings.HasPrefix(room.ID, "chat_") {
+		return
+	}
+
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-room.Shutdown:
+				return
+			case <-ticker.C:
+				room.mutex.RLock()
+				numClients := len(room.Clients)
+				lastActivity := room.LastActivity
+				lastAI := room.LastAIMsg
+				numMessages := len(room.Messages)
+				room.mutex.RUnlock()
+
+				// Only trigger if:
+				// - There are users in the room
+				// - Room has been quiet for 30+ seconds
+				// - AI hasn't spoken in last 2 minutes
+				// - Room has few messages (conversation starter)
+				if numClients > 0 &&
+					time.Since(lastActivity) > 30*time.Second &&
+					time.Since(lastAI) > 2*time.Minute &&
+					numMessages < 5 {
+
+					room.sendAIGreeting()
+				}
+			}
+		}
+	}()
+}
+
+// sendAIGreeting sends a conversation-starting message from AI
+func (room *Room) sendAIGreeting() {
+	topicName := strings.TrimPrefix(room.ID, "chat_")
+
+	// Get the topic summary if available
+	mutex.RLock()
+	summary := summaries[topicName]
+	mutex.RUnlock()
+
+	var prompt *Prompt
+	if summary != "" {
+		prompt = &Prompt{
+			System:   "You are a friendly chat participant in a " + topicName + " discussion room. Start a brief, engaging conversation based on the current summary. Ask a thought-provoking question or share an interesting observation. Keep it to 1-2 sentences. Be conversational, not formal.",
+			Question: "Current " + topicName + " summary: " + summary + "\n\nStart a conversation:",
+			Priority: PriorityLow,
+		}
+	} else {
+		prompt = &Prompt{
+			System:   "You are a friendly chat participant in a " + topicName + " discussion room. Start a brief, engaging conversation about " + topicName + ". Ask a thought-provoking question or share an interesting observation. Keep it to 1-2 sentences. Be conversational, not formal.",
+			Question: "Start a conversation about " + topicName + ":",
+			Priority: PriorityLow,
+		}
+	}
+
+	resp, err := askLLM(prompt)
+	if err != nil || resp == "" {
+		app.Log("chat", "AI greeting failed for room %s: %v", room.ID, err)
+		return
+	}
+
+	msg := RoomMessage{
+		UserID:    "AI",
+		Content:   resp,
+		Timestamp: time.Now(),
+		IsLLM:     true,
+	}
+
+	room.mutex.Lock()
+	room.LastAIMsg = time.Now()
+	room.mutex.Unlock()
+
+	room.Broadcast <- msg
+	app.Log("chat", "AI greeting sent to room %s", room.ID)
 }
 
 // handleWebSocket handles WebSocket connections for chat rooms

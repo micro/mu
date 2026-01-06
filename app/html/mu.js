@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v64';
+var VERSION = 'v65';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -161,24 +161,36 @@ function switchTopic(t) {
     }
   });
   
-  // Add context change message and summary to chat
-  const messages = document.getElementById('messages');
-  if (messages) {
-    const contextMsg = document.createElement('div');
-    contextMsg.className = 'context-message';
-    contextMsg.textContent = `Context set to ${t} - questions will be enhanced with ${t}-related information`;
-    messages.appendChild(contextMsg);
-    
-    // Show summary for this topic if available
-    if (typeof summaries !== 'undefined' && summaries[t]) {
-      const summaryMsg = document.createElement('div');
-      summaryMsg.className = 'message';
-      const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" style="color: inherit; font-size: 0.9em; opacity: 0.8;">→ Discuss with AI</a>`;
-      summaryMsg.innerHTML = `<span class="llm">AI Summary</span><p>${renderMarkdown(summaries[t])}</p><div>${discussLink}</div>`;
-      messages.appendChild(summaryMsg);
+  // Connect to the topic's chat room
+  const roomId = 'chat_' + t;
+  connectRoomWebSocket(roomId);
+  
+  // Update URL without reload
+  history.pushState(null, null, '/chat?id=' + roomId);
+  
+  // Show context message for this topic
+  setTimeout(() => {
+    const messages = document.getElementById('messages');
+    if (messages && !messages.querySelector('.context-message')) {
+      const contextMsg = document.createElement('div');
+      contextMsg.className = 'context-message';
+      let summary = '';
+      if (typeof summaries !== 'undefined' && summaries[t]) {
+        summary = '<br><span style="color: #666;">' + summaries[t] + '</span>';
+      }
+      contextMsg.innerHTML = '<strong>' + t + ' Discussion</strong>' + summary;
+      messages.insertBefore(contextMsg, messages.firstChild);
     }
-    
-    messages.scrollTop = messages.scrollHeight;
+  }, 100);
+  
+  // Override form to use room messaging
+  const chatForm = document.getElementById('chat-form');
+  if (chatForm) {
+    chatForm.onsubmit = function(e) {
+      e.preventDefault();
+      sendRoomMessage(this);
+      return false;
+    };
   }
 }
 
@@ -300,48 +312,39 @@ function loadChat() {
     return;
   }
   
-  // Only load local conversation history if NOT in a room
-  // Rooms use WebSocket and server-side message history
-  const isRoom = (typeof roomData !== 'undefined' && roomData && roomData.id);
-  if (!isRoom) {
-    loadContext();
-    loadMessages();
-  }
-  
-  // Auto-submit prompt if coming from home page
+  // Check if we're already in a specific room (from URL)
   const urlParams = new URLSearchParams(window.location.search);
+  const roomId = urlParams.get('id');
   const autoPrompt = urlParams.get('prompt');
   
-  // If no conversation exists and not in a room and not auto-prompting, show general summaries
-  if (!isRoom && context.length === 0 && !autoPrompt && typeof summaries !== 'undefined') {
-    const messages = document.getElementById('messages');
-    const topics = Object.keys(summaries).sort();
-    
-    topics.forEach(topic => {
-      if (summaries[topic]) {
-        const summaryMsg = document.createElement('div');
-        summaryMsg.className = 'message';
-        const discussLink = `<a href="/chat?id=chat_${encodeURIComponent(topic)}" style="color: #666; font-size: 0.75em;">→ Discuss with AI</a>`;
-        summaryMsg.innerHTML = `<span class="llm">${topic}</span><p>${renderMarkdown(summaries[topic])}</p><div>${discussLink}</div>`;
-        messages.appendChild(summaryMsg);
+  // If we have a room ID, we're already in room mode (handled by DOMContentLoaded)
+  // If not, default to first topic room
+  if (!roomId && !autoPrompt) {
+    // Get first topic and connect to it
+    const firstTopic = topicLinks[0]?.textContent;
+    if (firstTopic) {
+      switchTopic(firstTopic);
+    }
+  } else if (roomId && roomId.startsWith('chat_')) {
+    // Extract topic from room ID and highlight it
+    const topicName = roomId.replace('chat_', '');
+    document.querySelectorAll('#topic-selector .head').forEach(tab => {
+      if (tab.textContent === topicName) {
+        tab.classList.add('active');
+      } else {
+        tab.classList.remove('active');
       }
     });
   }
   
-  // Check if there's a hash in the URL to set active topic
-  if (window.location.hash) {
-    const hash = window.location.hash.substring(1);
-    switchToTopicIfExists(hash);
-  }
-  // Otherwise no topic is selected by default
-
-  // Auto-submit prompt after checking for summaries
+  // Auto-submit prompt if provided (legacy support)
   if (autoPrompt) {
+    loadContext();
+    loadMessages();
     const promptInput = document.getElementById('prompt');
     const form = document.getElementById('chat-form');
     if (promptInput && form) {
       promptInput.value = autoPrompt;
-      // Clear URL parameter after reading it to prevent re-asking on refresh
       const newUrl = window.location.pathname + window.location.hash;
       window.history.replaceState({}, document.title, newUrl);
       setTimeout(function() { askLLM(form); }, 100);
@@ -483,8 +486,8 @@ function setSession() {
       if (loginHeader) loginHeader.style.display = 'none';
       // Show wallet for all logged-in users
       if (walletHeader) walletHeader.style.display = 'inline-block';
-      // Only show mail for admins and members
-      if (mailHeader && (sess.admin || sess.member)) {
+      // Show mail for all logged-in users (DMs free, external email for members)
+      if (mailHeader) {
         mailHeader.style.display = 'inline-block';
         // Fetch unread count
         fetch('/mail?unread=count')
@@ -743,21 +746,12 @@ self.addEventListener('DOMContentLoaded', function() {
   if (window.location.pathname == CHAT_PATH) {
     loadChat();
     
-    // Add click handlers for chat topics
+    // Add click handlers for chat topics - always switch rooms
     document.querySelectorAll(CHAT_TOPIC_SELECTOR).forEach(link => {
       link.addEventListener('click', function(e) {
         e.preventDefault();
         const topicName = this.textContent;
-        
-        // If we're in a room, navigate to regular chat with the topic hash
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('id')) {
-          window.location.href = '/chat#' + topicName;
-        } else {
-          // Regular chat - just switch topic and update hash
-          switchTopic(topicName);
-          history.pushState(null, null, '#' + topicName);
-        }
+        switchTopic(topicName);
       });
     });
   }
