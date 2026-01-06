@@ -16,16 +16,23 @@ import (
 	"mu/app"
 )
 
+// LLM request priorities
+const (
+	PriorityHigh   = 0 // User-facing chat
+	PriorityMedium = 1 // Headlines/topic summaries  
+	PriorityLow    = 2 // Background article summaries
+)
+
 var (
 	// Limit concurrent LLM requests to prevent memory bloat when API is slow/rate-limited
 	llmSemaphore = semaphore.NewWeighted(5)
 	llmTimeout   = 60 * time.Second
 
 	// Rate limiter for Fanar API (10 requests per minute)
-	// Using a simple token bucket: track last request times
-	fanarRateMu     sync.Mutex
-	fanarLastMinute []time.Time
-	fanarMaxPerMin  = 8 // Leave some headroom below 10
+	fanarRateMu      sync.Mutex
+	fanarLastMinute  []time.Time
+	fanarMaxPerMin   = 8 // Leave headroom below 10
+	fanarHighPending int // Count of high-priority requests waiting
 )
 
 type Model struct{}
@@ -119,7 +126,7 @@ func (m *Model) Generate(prompt *Prompt) (string, error) {
 		fanarAPIURL = "https://api.fanar.qa" // Default Fanar URL
 	}
 
-	return generateWithFanar(fanarAPIURL, fanarAPIKey, messages)
+	return generateWithFanar(fanarAPIURL, fanarAPIKey, messages, prompt.Priority)
 }
 
 // generateWithOllama generates a response using Ollama API
@@ -177,7 +184,8 @@ func generateWithOllama(apiURL, modelName string, messages []map[string]string) 
 
 // generateWithFanar generates a response using Fanar API
 // checkFanarRateLimit returns true if we can make a request, false if rate limited
-func checkFanarRateLimit() bool {
+// priority: 0=high (chat), 1=medium (headlines), 2=low (background)
+func checkFanarRateLimit(priority int) bool {
 	fanarRateMu.Lock()
 	defer fanarRateMu.Unlock()
 
@@ -193,8 +201,22 @@ func checkFanarRateLimit() bool {
 	}
 	fanarLastMinute = recent
 
-	// Check if we're under the limit
-	if len(fanarLastMinute) >= fanarMaxPerMin {
+	// Reserve slots for high-priority requests
+	// Low priority can only use up to 4 slots, medium up to 6, high up to 8
+	var maxForPriority int
+	switch priority {
+	case PriorityHigh:
+		maxForPriority = fanarMaxPerMin
+	case PriorityMedium:
+		maxForPriority = 6
+	case PriorityLow:
+		maxForPriority = 4
+	default:
+		maxForPriority = 4
+	}
+
+	// Check if we're under the limit for this priority
+	if len(fanarLastMinute) >= maxForPriority {
 		return false
 	}
 
@@ -203,17 +225,43 @@ func checkFanarRateLimit() bool {
 	return true
 }
 
-func generateWithFanar(apiURL, apiKey string, messages []map[string]string) (string, error) {
+// GetFanarRateStatus returns current rate limit status for monitoring
+func GetFanarRateStatus() (used, max int) {
+	fanarRateMu.Lock()
+	defer fanarRateMu.Unlock()
+	
+	now := time.Now()
+	cutoff := now.Add(-time.Minute)
+	count := 0
+	for _, t := range fanarLastMinute {
+		if t.After(cutoff) {
+			count++
+		}
+	}
+	return count, fanarMaxPerMin
+}
+
+func generateWithFanar(apiURL, apiKey string, messages []map[string]string, priority int) (string, error) {
 	// Check rate limit before making request
-	if !checkFanarRateLimit() {
-		app.Log("chat", "[LLM] Fanar rate limit reached (max %d/min), waiting...", fanarMaxPerMin)
-		// Wait up to 10 seconds for a slot
-		for i := 0; i < 10; i++ {
+	if !checkFanarRateLimit(priority) {
+		// High priority waits longer, low priority fails fast
+		maxWait := 3
+		if priority == PriorityHigh {
+			maxWait = 15
+		} else if priority == PriorityMedium {
+			maxWait = 8
+		}
+
+		app.Log("chat", "[LLM] Fanar rate limit reached (priority %d), waiting up to %ds...", priority, maxWait)
+		for i := 0; i < maxWait; i++ {
 			time.Sleep(time.Second)
-			if checkFanarRateLimit() {
+			if checkFanarRateLimit(priority) {
 				break
 			}
-			if i == 9 {
+			if i == maxWait-1 {
+				if priority == PriorityLow {
+					return "", fmt.Errorf("rate limit exceeded for background task, will retry later")
+				}
 				return "", fmt.Errorf("fanar rate limit exceeded, please try again in a minute")
 			}
 		}

@@ -23,11 +23,12 @@ import (
 var f embed.FS
 
 type Prompt struct {
-	System   string   `json:"system"` // System prompt override
-	Topic    string   `json:"topic"`  // User-selected topic/context
+	System   string   `json:"system"`   // System prompt override
+	Topic    string   `json:"topic"`    // User-selected topic/context
 	Rag      []string `json:"rag"`
 	Context  History  `json:"context"`
 	Question string   `json:"question"`
+	Priority int      `json:"priority"` // 0=high (chat), 1=medium, 2=low (background)
 }
 
 type History []Message
@@ -630,9 +631,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 								snippetList += fmt.Sprintf("%d. %s\n", i+1, c.Snippet)
 							}
 
+							// Reranking is medium priority - skip if rate limited rather than block chat
 							rerankPrompt := &Prompt{
 								System:   "You are a search relevance expert. Given a question and a list of document snippets, return ONLY the numbers (comma-separated) of the 3-5 most relevant documents that would help answer the question. Example: 1,3,5",
 								Question: fmt.Sprintf("Question: %s\n\nDocuments:\n%s\n\nMost relevant document numbers:", content, snippetList),
+								Priority: PriorityMedium, // Medium priority - skip if rate limited
 							}
 
 							rerankResp, err := askLLM(rerankPrompt)
@@ -744,10 +747,11 @@ func Load() {
 			if okUri && okContent && okType {
 				app.Log("chat", "Received summary generation request for %s (%s)", uri, eventType)
 
-				// Generate summary using LLM
+				// Generate summary using LLM (low priority - background task)
 				prompt := &Prompt{
 					System:   "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear, factual sentences that capture the key points.",
 					Question: fmt.Sprintf("Summarize this article:\n\n%s", content),
+					Priority: PriorityLow, // Low priority for background article summaries
 				}
 
 				summary, err := askLLM(prompt)
@@ -793,10 +797,11 @@ func Load() {
 					continue
 				}
 
-				// Generate tag using LLM with predefined categories
+				// Generate tag using LLM with predefined categories (low priority)
 				prompt := &Prompt{
 					System:   fmt.Sprintf("You are a content categorization assistant. Your task is to categorize posts into ONE of these categories ONLY: %s. If the post does not clearly fit into any of these categories, respond with 'None'. Respond with ONLY the category name or 'None', nothing else.", strings.Join(topics, ", ")),
 					Question: fmt.Sprintf("Categorize this post:\n\nTitle: %s\n\nContent: %s\n\nWhich single category best fits this post?", title, content),
+					Priority: PriorityLow, // Low priority for background tag generation
 				}
 
 				tag, err := askLLM(prompt)
@@ -868,6 +873,7 @@ func generateSummaries() {
 		resp, err := askLLM(&Prompt{
 			Rag:      ragContext,
 			Question: prompt,
+			Priority: PriorityMedium, // Medium priority for topic summaries
 		})
 
 		if err != nil {
@@ -875,6 +881,9 @@ func generateSummaries() {
 			continue
 		}
 		newSummaries[topic] = resp
+
+		// Stagger requests to avoid rate limit spikes
+		time.Sleep(10 * time.Second)
 	}
 
 	mutex.Lock()
@@ -888,7 +897,8 @@ func generateSummaries() {
 		app.Log("chat", "Saved %d summaries to disk", len(summaries))
 	}
 
-	time.Sleep(time.Hour)
+	// Generate topic summaries every 4 hours (not hourly) to reduce LLM calls
+	time.Sleep(4 * time.Hour)
 
 	go generateSummaries()
 }
