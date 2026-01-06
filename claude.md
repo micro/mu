@@ -45,3 +45,11 @@ ssh mu 'sudo systemctl restart mu'
   - Enable with `MU_USE_SQLITE=1` environment variable
   - Migration happens automatically on first load
   - Original JSON files preserved as backup
+  - Memory reduced from ~750MB to ~40MB
+- LLM rate limiting and priority queue:
+  - Fanar limit: 10 req/min, we use max 8 with priority tiers
+  - Priority High (chat): 8 slots, 15s wait
+  - Priority Medium (headlines/rerank): 6 slots, 8s wait  
+  - Priority Low (article summaries/tags): 4 slots, 3s wait
+  - Topic summaries: every 4 hours (was hourly)
+  - Article summaries cached in metadata JSON files
