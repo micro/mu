@@ -2,19 +2,37 @@ package chat
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
+	"golang.org/x/sync/semaphore"
 	"mu/app"
+)
+
+var (
+	// Limit concurrent LLM requests to prevent memory bloat when API is slow/rate-limited
+	llmSemaphore = semaphore.NewWeighted(5)
+	llmTimeout   = 60 * time.Second
 )
 
 type Model struct{}
 
 func (m *Model) Generate(prompt *Prompt) (string, error) {
+	// Acquire semaphore to limit concurrent requests
+	ctx, cancel := context.WithTimeout(context.Background(), llmTimeout+5*time.Second)
+	defer cancel()
+
+	if err := llmSemaphore.Acquire(ctx, 1); err != nil {
+		return "", fmt.Errorf("LLM request queue full, please try again later")
+	}
+	defer llmSemaphore.Release(1)
+
 	var systemPromptText string
 
 	// Use provided system prompt or generate from template
@@ -120,7 +138,7 @@ func generateWithOllama(apiURL, modelName string, messages []map[string]string) 
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: llmTimeout}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to Ollama: %v (make sure Ollama is running at %s)", err, apiURL)
@@ -170,10 +188,10 @@ func generateWithFanar(apiURL, apiKey string, messages []map[string]string) (str
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
-	client := &http.Client{}
+	client := &http.Client{Timeout: llmTimeout}
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("fanar API request failed: %v", err)
 	}
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
@@ -243,7 +261,7 @@ func generateWithAnthropic(apiKey, modelName, systemPrompt string, messages []ma
 	httpReq.Header.Set("x-api-key", apiKey)
 	httpReq.Header.Set("anthropic-version", "2023-06-01")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: llmTimeout}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to Anthropic API: %v", err)
