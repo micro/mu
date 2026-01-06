@@ -13,6 +13,7 @@ jobs:
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: root
+          port: 61194
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             cd /root/go/src/github/micro/mu
