@@ -184,6 +184,10 @@ type IndexWork struct {
 }
 
 var (
+	// UseSQLite enables SQLite backend instead of in-memory maps
+	// Set via MU_USE_SQLITE=1 environment variable
+	UseSQLite = os.Getenv("MU_USE_SQLITE") == "1"
+
 	indexMutex          sync.RWMutex
 	index               = make(map[string]*IndexEntry)
 	embeddings          = make(map[string][]float64) // Stored separately from index
@@ -219,6 +223,14 @@ type SearchResult struct {
 
 // Index queues an entry to be added or updated in the search index
 func Index(id, entryType, title, content string, metadata map[string]interface{}) {
+	// Use SQLite backend if enabled
+	if UseSQLite {
+		if err := IndexSQLite(id, entryType, title, content, metadata); err != nil {
+			fmt.Printf("[data] SQLite index error: %v\n", err)
+		}
+		return
+	}
+
 	// Queue the work instead of processing immediately
 	select {
 	case indexWorkQueue <- IndexWork{
@@ -409,6 +421,15 @@ func embeddingWorker() {
 
 // GetByID retrieves an entry by its exact ID
 func GetByID(id string) *IndexEntry {
+	if UseSQLite {
+		entry, err := GetByIDSQLite(id)
+		if err != nil {
+			fmt.Printf("[data] SQLite GetByID error: %v\n", err)
+			return nil
+		}
+		return entry
+	}
+
 	indexMutex.RLock()
 	defer indexMutex.RUnlock()
 	return index[id]
@@ -416,6 +437,15 @@ func GetByID(id string) *IndexEntry {
 
 // Search performs semantic vector search with text fallback
 func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
+	if UseSQLite {
+		results, err := SearchSQLite(query, limit, opts...)
+		if err != nil {
+			fmt.Printf("[data] SQLite Search error: %v\n", err)
+			return nil
+		}
+		return results
+	}
+
 	indexMutex.RLock()
 	defer indexMutex.RUnlock()
 
@@ -611,6 +641,15 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 
 // GetByType returns all entries of a specific type
 func GetByType(entryType string, limit int) []*IndexEntry {
+	if UseSQLite {
+		results, err := GetByTypeSQLite(entryType, limit)
+		if err != nil {
+			fmt.Printf("[data] SQLite GetByType error: %v\n", err)
+			return nil
+		}
+		return results
+	}
+
 	indexMutex.RLock()
 	defer indexMutex.RUnlock()
 
@@ -696,6 +735,21 @@ func saveEmbeddings() {
 
 // Load loads the index and embeddings from disk
 func Load() {
+	// If SQLite is enabled, migrate from JSON and use SQLite
+	if UseSQLite {
+		fmt.Println("[data] SQLite backend enabled")
+		if err := MigrateFromJSON(); err != nil {
+			fmt.Printf("[data] Migration error: %v\n", err)
+		}
+		// Get stats
+		entries, embCount, err := GetIndexStats()
+		if err == nil {
+			fmt.Printf("[data] SQLite index: %d entries, %d embeddings\n", entries, embCount)
+		}
+		return
+	}
+
+	// Legacy in-memory loading
 	// Load index (may contain old format with embeddings inline)
 	b, err := LoadFile("index.json")
 	if err == nil {

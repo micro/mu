@@ -41,3 +41,7 @@ ssh mu 'sudo systemctl restart mu'
 
 - Memory leak fix: Added 60s timeout and semaphore (max 5 concurrent) to LLM API calls
 - Security: Moved from running as root to dedicated `mu` user with systemd
+- SQLite migration: Index and embeddings moved from in-memory JSON to SQLite
+  - Enable with `MU_USE_SQLITE=1` environment variable
+  - Migration happens automatically on first load
+  - Original JSON files preserved as backup
