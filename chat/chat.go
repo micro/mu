@@ -106,9 +106,11 @@ type RoomMessage struct {
 
 // Client represents a connected websocket client
 type Client struct {
-	Conn   *websocket.Conn
-	UserID string
-	Room   *Room
+	Conn        *websocket.Conn
+	UserID      string
+	Room        *Room
+	InAIConvo   bool      // true if user started a conversation with @ai
+	LastAIReply time.Time // when AI last replied to this user
 }
 
 var rooms = make(map[string]*Room)
@@ -598,9 +600,18 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				}
 				room.Broadcast <- userMsg
 
-				// Only invoke AI if mentioned with @ai or @AI
+				// Check if AI should respond:
+				// 1. User mentioned @ai - start conversation
+				// 2. User is in active AI conversation (within 2 min of last AI reply)
 				contentLower := strings.ToLower(content)
-				if strings.Contains(contentLower, "@ai") {
+				mentionedAI := strings.Contains(contentLower, "@ai")
+				inActiveConvo := client.InAIConvo && time.Since(client.LastAIReply) < 2*time.Minute
+
+				if mentionedAI {
+					client.InAIConvo = true
+				}
+
+				if mentionedAI || inActiveConvo {
 					go func() {
 						// If this is a Dev (HN) discussion, trigger comment refresh via event
 						// But throttle to once per 5 minutes to avoid excessive API calls
@@ -764,14 +775,29 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 						app.Log("chat", "Stage 3: Total RAG context items: %d", len(ragContext))
 
+						// Build conversation history from recent room messages
+						var history History
+						room.mutex.RLock()
+						for _, m := range room.Messages {
+							if m.IsLLM {
+								history = append(history, Message{Answer: m.Content})
+							} else {
+								history = append(history, Message{Prompt: m.UserID + ": " + m.Content})
+							}
+						}
+						room.mutex.RUnlock()
+
 						prompt := &Prompt{
 							Rag:      ragContext,
-							Context:  nil, // No history in rooms for now
+							Context:  history,
 							Question: content,
 						}
 
 						resp, err := askLLM(prompt)
 						if err == nil && len(resp) > 0 {
+							// Update client's AI conversation state
+							client.LastAIReply = time.Now()
+
 							llmMsg := RoomMessage{
 								UserID:    "AI",
 								Content:   resp,
