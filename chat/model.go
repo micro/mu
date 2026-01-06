@@ -31,7 +31,7 @@ var (
 	// Rate limiter for Fanar API (10 requests per minute)
 	fanarRateMu      sync.Mutex
 	fanarLastMinute  []time.Time
-	fanarMaxPerMin   = 8 // Leave headroom below 10
+	fanarMaxPerMin   = 35 // Mu's share of 50/min limit (Malten gets ~15)
 	fanarHighPending int // Count of high-priority requests waiting
 )
 
@@ -202,17 +202,17 @@ func checkFanarRateLimit(priority int) bool {
 	fanarLastMinute = recent
 
 	// Reserve slots for high-priority requests
-	// Low priority can only use up to 4 slots, medium up to 6, high up to 8
+	// With 35/min budget: low=15, medium=25, high=35
 	var maxForPriority int
 	switch priority {
 	case PriorityHigh:
-		maxForPriority = fanarMaxPerMin
+		maxForPriority = fanarMaxPerMin // 35 - user chat
 	case PriorityMedium:
-		maxForPriority = 6
+		maxForPriority = 25 // headlines, reranking
 	case PriorityLow:
-		maxForPriority = 4
+		maxForPriority = 15 // background summaries
 	default:
-		maxForPriority = 4
+		maxForPriority = 15
 	}
 
 	// Check if we're under the limit for this priority
