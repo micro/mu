@@ -589,26 +589,18 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 			}
 
 			if content, ok := msg["content"].(string); ok && len(content) > 0 {
-				// Check if this is a direct message or should go to LLM
-				if strings.HasPrefix(strings.TrimSpace(content), "@") {
-					// Direct message - just broadcast it
-					room.Broadcast <- RoomMessage{
-						UserID:    client.UserID,
-						Content:   content,
-						Timestamp: time.Now(),
-						IsLLM:     false,
-					}
-				} else {
-					// Regular message - broadcast user message first
-					userMsg := RoomMessage{
-						UserID:    client.UserID,
-						Content:   content,
-						Timestamp: time.Now(),
-						IsLLM:     false,
-					}
-					room.Broadcast <- userMsg
+				// Broadcast user message
+				userMsg := RoomMessage{
+					UserID:    client.UserID,
+					Content:   content,
+					Timestamp: time.Now(),
+					IsLLM:     false,
+				}
+				room.Broadcast <- userMsg
 
-					// Then invoke LLM and broadcast response
+				// Only invoke AI if mentioned with @ai or @AI
+				contentLower := strings.ToLower(content)
+				if strings.Contains(contentLower, "@ai") {
 					go func() {
 						// If this is a Dev (HN) discussion, trigger comment refresh via event
 						// But throttle to once per 5 minutes to avoid excessive API calls
