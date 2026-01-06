@@ -20,4 +20,4 @@ jobs:
             git pull origin main
             source ~/.env
             go install
-            sudo systemctl restart mu
+            sudo -n systemctl restart mu
