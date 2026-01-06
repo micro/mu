@@ -1846,7 +1846,6 @@ body:has(#messages) #content {
 }
 
 .thread-message-body {
-  white-space: pre-wrap;
   line-height: 1.6;
   word-wrap: break-word;
   overflow-wrap: break-word;
