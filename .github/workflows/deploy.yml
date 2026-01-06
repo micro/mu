@@ -12,14 +12,12 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
-          username: root
+          username: mu
           port: 61194
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
-            cd /root/go/src/github/micro/mu
+            cd ~/src/mu
             git pull origin main
             source ~/.env
             go install
-            killall mu || true
-            sleep 1
-            nohup ~/go/bin/mu --serve --address=:8081 &> ~/mu.log &
+            sudo systemctl restart mu
