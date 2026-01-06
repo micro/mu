@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v66';
+var VERSION = 'v67';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -143,16 +143,17 @@ var isAuthenticated = false;
 var context = [];
 var topic = '';
 
-function switchTopic(t) {
+// Show topic context without connecting to WebSocket
+function showTopicContext(t) {
   topic = t;
   
-  // Update hidden input (only exists on chat page)
+  // Update hidden input
   const topicInput = document.getElementById('topic');
   if (topicInput) {
     topicInput.value = t;
   }
   
-  // Update active tab - match by text content
+  // Update active tab
   document.querySelectorAll('#topic-selector .head').forEach(tab => {
     if (tab.textContent === t) {
       tab.classList.add('active');
@@ -161,7 +162,7 @@ function switchTopic(t) {
     }
   });
   
-  // Clear messages and show new context
+  // Show context message
   const messages = document.getElementById('messages');
   if (messages) {
     messages.innerHTML = '';
@@ -175,14 +176,20 @@ function switchTopic(t) {
     messages.appendChild(contextMsg);
   }
   
-  // Connect to the topic's chat room (only if authenticated)
+  // Update URL
+  const roomId = 'chat_' + t;
+  history.replaceState(null, null, '/chat?id=' + roomId);
+}
+
+function switchTopic(t) {
+  // Show context first
+  showTopicContext(t);
+  
+  // Connect to WebSocket if authenticated
   const roomId = 'chat_' + t;
   if (isAuthenticated) {
     connectRoomWebSocket(roomId);
   }
-  
-  // Update URL without reload
-  history.pushState(null, null, '/chat?id=' + roomId);
   
   // Override form to use room messaging
   const chatForm = document.getElementById('chat-form');
@@ -322,15 +329,20 @@ function loadChat() {
   const roomId = urlParams.get('id');
   const autoPrompt = urlParams.get('prompt');
   
-  // If we have a room ID, we're already in room mode (handled by DOMContentLoaded)
-  // If not, default to first topic room
-  if (!roomId && !autoPrompt) {
-    // Get first topic and connect to it
+  // If we have a chat room ID from URL, show that topic
+  if (roomId && roomId.startsWith('chat_')) {
+    const topicName = roomId.replace('chat_', '');
+    // Just show the context, don't connect WebSocket yet (wait for auth check)
+    showTopicContext(topicName);
+  } else if (!roomId && !autoPrompt) {
+    // No room specified - show first topic context
     const firstTopic = topicLinks[0]?.textContent;
     if (firstTopic) {
-      switchTopic(firstTopic);
+      showTopicContext(firstTopic);
     }
-  } else if (roomId && roomId.startsWith('chat_')) {
+  }
+  
+  if (roomId && roomId.startsWith('chat_')) {
     // Extract topic from room ID and highlight it
     const topicName = roomId.replace('chat_', '');
     document.querySelectorAll('#topic-selector .head').forEach(tab => {
