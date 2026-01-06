@@ -18,5 +18,8 @@ jobs:
           script: |
             cd /root/go/src/github/micro/mu
             git pull origin main
+            source ~/.env
             go install
             killall mu || true
+            sleep 1
+            nohup ~/go/bin/mu --serve --address=:8081 &> ~/mu.log &
