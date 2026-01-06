@@ -386,11 +386,18 @@ func MigrateFromJSON() error {
 	}
 
 	// Check if migration already done
-	var count int
-	err = db.QueryRow(`SELECT COUNT(*) FROM index_entries`).Scan(&count)
-	if err == nil && count > 0 {
-		fmt.Printf("[data] SQLite already has %d entries, skipping migration\n", count)
+	var indexCount, embCount int
+	db.QueryRow(`SELECT COUNT(*) FROM index_entries`).Scan(&indexCount)
+	db.QueryRow(`SELECT COUNT(*) FROM embeddings`).Scan(&embCount)
+
+	if indexCount > 0 && embCount > 0 {
+		fmt.Printf("[data] SQLite already has %d entries and %d embeddings, skipping migration\n", indexCount, embCount)
 		return nil
+	}
+
+	if indexCount > 0 {
+		fmt.Printf("[data] SQLite has %d entries but %d embeddings, migrating embeddings only\n", indexCount, embCount)
+		return migrateEmbeddings()
 	}
 
 	fmt.Println("[data] Starting migration from JSON to SQLite...")
@@ -506,6 +513,61 @@ func MigrateFromJSON() error {
 	fmt.Printf("[data] Migrated %d embeddings\n", embMigrated)
 	fmt.Println("[data] Migration complete!")
 
+	return nil
+}
+
+// migrateEmbeddings migrates only embeddings (when index already exists)
+func migrateEmbeddings() error {
+	db, err := getDB()
+	if err != nil {
+		return err
+	}
+
+	b, err := LoadFile("embeddings.json")
+	if err != nil {
+		fmt.Println("[data] No embeddings.json to migrate")
+		return nil
+	}
+
+	var oldEmbeddings map[string][]float64
+	if err := json.Unmarshal(b, &oldEmbeddings); err != nil {
+		return fmt.Errorf("failed to parse embeddings.json: %w", err)
+	}
+
+	fmt.Printf("[data] Migrating %d embeddings...\n", len(oldEmbeddings))
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(`INSERT OR REPLACE INTO embeddings (id, embedding) VALUES (?, ?)`)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	embMigrated := 0
+	for id, emb := range oldEmbeddings {
+		embBytes := float64SliceToBytes(emb)
+		_, err := stmt.Exec(id, embBytes)
+		if err != nil {
+			fmt.Printf("[data] Failed to migrate embedding %s: %v\n", id, err)
+			continue
+		}
+		embMigrated++
+
+		if embMigrated%1000 == 0 {
+			fmt.Printf("[data] Migrated %d embeddings...\n", embMigrated)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit embeddings migration: %w", err)
+	}
+
+	fmt.Printf("[data] Migrated %d embeddings\n", embMigrated)
 	return nil
 }
 
