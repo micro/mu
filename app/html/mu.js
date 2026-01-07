@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v69';
+var VERSION = 'v70';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -949,7 +949,7 @@ function displayRoomMessage(msg, shouldScroll = true) {
   
   const userSpan = msg.is_llm ? 
     '<span class="llm">AI</span>' : 
-    '<span class="you"><a href="/@' + msg.username + '" style="color: inherit; text-decoration: none;">' + msg.username + '</a></span>';
+    '<span class="you"><a href="/@' + msg.username + '">' + msg.username + '</a></span>';
   
   let content;
   if (msg.is_llm) {
@@ -1006,7 +1006,10 @@ function updateUserList(users) {
   }
   
   if (users && users.length > 0) {
-    userListDiv.innerHTML = '<strong>Who\'s here:</strong> ' + users.map(u => '<a href="/@' + u + '" style="color: inherit;">@' + u + '</a>').join(', ');
+    userListDiv.innerHTML = '<strong>Who\'s here:</strong> ' + users.map(u => {
+      if (u === 'ai') return '@ai';
+      return '<a href="/@' + u + '" style="color: inherit;">@' + u + '</a>';
+    }).join(', ');
   } else {
     userListDiv.innerHTML = '';
   }
