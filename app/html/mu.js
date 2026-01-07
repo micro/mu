@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v68';
+var VERSION = 'v69';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -949,7 +949,7 @@ function displayRoomMessage(msg, shouldScroll = true) {
   
   const userSpan = msg.is_llm ? 
     '<span class="llm">AI</span>' : 
-    '<span class="you">' + msg.username + '</span>';
+    '<span class="you"><a href="/@' + msg.username + '" style="color: inherit; text-decoration: none;">' + msg.username + '</a></span>';
   
   let content;
   if (msg.is_llm) {
@@ -1006,7 +1006,7 @@ function updateUserList(users) {
   }
   
   if (users && users.length > 0) {
-    userListDiv.innerHTML = '<strong>Who\'s here:</strong> ' + users.map(u => '@' + u).join(', ');
+    userListDiv.innerHTML = '<strong>Who\'s here:</strong> ' + users.map(u => '<a href="/@' + u + '" style="color: inherit;">@' + u + '</a>').join(', ');
   } else {
     userListDiv.innerHTML = '';
   }
@@ -1144,5 +1144,76 @@ document.addEventListener('DOMContentLoaded', function() {
   
   updateCharCount();
 });
+
+// ============================================
+// PRESENCE WEBSOCKET (HOME PAGE)
+// ============================================
+
+let presenceWs;
+let presenceReconnectTimer;
+
+function connectPresence() {
+  if (presenceWs && presenceWs.readyState === WebSocket.OPEN) {
+    return;
+  }
+  
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  presenceWs = new WebSocket(protocol + '//' + window.location.host + '/presence');
+  
+  presenceWs.onopen = function() {
+    console.log('Connected to presence');
+    // Send heartbeat every 30s to stay marked as online
+    setInterval(() => {
+      if (presenceWs && presenceWs.readyState === WebSocket.OPEN) {
+        presenceWs.send(JSON.stringify({type: 'ping'}));
+      }
+    }, 30000);
+  };
+  
+  presenceWs.onmessage = function(event) {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'presence') {
+      updatePresenceDisplay(msg.users, msg.count);
+    }
+  };
+  
+  presenceWs.onclose = function() {
+    console.log('Presence disconnected');
+    // Reconnect after 5s
+    if (presenceReconnectTimer) clearTimeout(presenceReconnectTimer);
+    presenceReconnectTimer = setTimeout(connectPresence, 5000);
+  };
+  
+  presenceWs.onerror = function(error) {
+    console.error('Presence WebSocket error:', error);
+  };
+}
+
+function updatePresenceDisplay(users, count) {
+  const presenceContent = document.getElementById('presence-content');
+  if (!presenceContent) return;
+  
+  if (count === 0) {
+    presenceContent.innerHTML = '<span class="info">No one else is here right now</span>';
+  } else if (count === 1) {
+    const userLink = '<a href="/@' + users[0] + '" style="color: inherit;">@' + users[0] + '</a>';
+    presenceContent.innerHTML = userLink + ' is here';
+  } else if (count <= 5) {
+    const userLinks = users.map(u => '<a href="/@' + u + '" style="color: inherit;">@' + u + '</a>').join(', ');
+    presenceContent.innerHTML = userLinks + ' are here';
+  } else {
+    // Show first 3 users and count of others
+    const firstThree = users.slice(0, 3).map(u => '<a href="/@' + u + '" style="color: inherit;">@' + u + '</a>').join(', ');
+    presenceContent.innerHTML = firstThree + ' and ' + (count - 3) + ' others are here';
+  }
+}
+
+// Connect to presence on home page
+if (window.location.pathname === '/home' || window.location.pathname === '/') {
+  document.addEventListener('DOMContentLoaded', function() {
+    // Small delay to let session check complete first
+    setTimeout(connectPresence, 500);
+  });
+}
 
 } // End of window context check

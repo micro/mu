@@ -22,6 +22,7 @@ import (
 	"mu/home"
 	"mu/mail"
 	"mu/news"
+	"mu/presence"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -67,6 +68,9 @@ func main() {
 
 	// load the home cards
 	home.Load()
+
+	// load presence tracking
+	presence.Load()
 
 	// Enable indexing after all content is loaded
 	// This allows the priority queue to process new items first
@@ -159,6 +163,9 @@ func main() {
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/session", app.Session)
 	http.HandleFunc("/token", app.TokenHandler)
+
+	// presence WebSocket endpoint
+	http.HandleFunc("/presence", presence.Handler)
 
 	// presence ping endpoint
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
