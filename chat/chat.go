@@ -419,7 +419,7 @@ func (room *Room) broadcastUserList() {
 
 	// Always include AI in topic chat rooms
 	if strings.HasPrefix(room.ID, "chat_") {
-		usernames = append(usernames, "AI")
+		usernames = append(usernames, "ai")
 	}
 
 	userListMsg := map[string]interface{}{
@@ -572,7 +572,7 @@ func (room *Room) sendAIGreeting() {
 	}
 
 	msg := RoomMessage{
-		UserID:    "AI",
+		UserID:    "ai",
 		Content:   resp,
 		Timestamp: time.Now(),
 		IsLLM:     true,
@@ -850,7 +850,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							client.LastAIReply = time.Now()
 
 							llmMsg := RoomMessage{
-								UserID:    "AI",
+								UserID:    "ai",
 								Content:   resp,
 								Timestamp: time.Now(),
 								IsLLM:     true,
