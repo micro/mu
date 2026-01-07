@@ -313,8 +313,15 @@ func getOrCreateRoom(id string) *Room {
 		// Load persisted messages
 		if saved := loadRoomMessages(id); saved != nil {
 			room.Messages = saved
+			// Find last AI message time to prevent duplicate greetings
+			for i := len(saved) - 1; i >= 0; i-- {
+				if saved[i].IsLLM {
+					room.LastAIMsg = saved[i].Timestamp
+					break
+				}
+			}
 		}
-		app.Log("chat", "Created chat room for topic: %s", itemID)
+		app.Log("chat", "Created chat room for topic: %s (lastAI: %v)", itemID, room.LastAIMsg)
 	}
 
 	// Now acquire write lock only for the map update
@@ -526,13 +533,13 @@ func (room *Room) startAIAutoResponse() {
 
 				// Only trigger if:
 				// - There are users in the room
-				// - Room has been quiet for 30+ seconds
-				// - AI hasn't spoken in last 2 minutes
-				// - Room has few messages (conversation starter)
+				// - Room has been quiet for 2+ minutes
+				// - AI hasn't spoken in last 10 minutes
+				// - Room has no messages yet (first greeting only)
 				if numClients > 0 &&
-					time.Since(lastActivity) > 30*time.Second &&
-					time.Since(lastAI) > 2*time.Minute &&
-					numMessages < 5 {
+					time.Since(lastActivity) > 2*time.Minute &&
+					time.Since(lastAI) > 10*time.Minute &&
+					numMessages == 0 {
 
 					room.sendAIGreeting()
 				}
