@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v67';
+var VERSION = 'v68';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -142,6 +142,25 @@ const CHAT_PATH = '/chat';
 var isAuthenticated = false;
 var context = [];
 var topic = '';
+
+// Show all topic summaries with join links (landing page)
+function showAllTopicSummaries() {
+  const messages = document.getElementById('messages');
+  if (!messages || typeof summaries === 'undefined') return;
+  
+  messages.innerHTML = '';
+  const topics = Object.keys(summaries).sort();
+  
+  topics.forEach(t => {
+    if (summaries[t]) {
+      const summaryMsg = document.createElement('div');
+      summaryMsg.className = 'message';
+      const joinLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" style="color: #007bff; font-size: 0.85em;">Join discussion →</a>`;
+      summaryMsg.innerHTML = `<span class="llm">${t}</span><p>${summaries[t]}</p><div style="margin-top: 8px;">${joinLink}</div>`;
+      messages.appendChild(summaryMsg);
+    }
+  });
+}
 
 // Show topic context without connecting to WebSocket
 function showTopicContext(t) {
@@ -329,22 +348,10 @@ function loadChat() {
   const roomId = urlParams.get('id');
   const autoPrompt = urlParams.get('prompt');
   
-  // If we have a chat room ID from URL, show that topic
+  // If we have a chat room ID from URL, join that room
   if (roomId && roomId.startsWith('chat_')) {
     const topicName = roomId.replace('chat_', '');
-    // Just show the context, don't connect WebSocket yet (wait for auth check)
-    showTopicContext(topicName);
-  } else if (!roomId && !autoPrompt) {
-    // No room specified - show first topic context
-    const firstTopic = topicLinks[0]?.textContent;
-    if (firstTopic) {
-      showTopicContext(firstTopic);
-    }
-  }
-  
-  if (roomId && roomId.startsWith('chat_')) {
-    // Extract topic from room ID and highlight it
-    const topicName = roomId.replace('chat_', '');
+    // Highlight the active tab
     document.querySelectorAll('#topic-selector .head').forEach(tab => {
       if (tab.textContent === topicName) {
         tab.classList.add('active');
@@ -352,6 +359,26 @@ function loadChat() {
         tab.classList.remove('active');
       }
     });
+    // Show context and connect if authenticated
+    showTopicContext(topicName);
+    // Connect after auth check completes
+    setTimeout(() => {
+      if (isAuthenticated) {
+        connectRoomWebSocket(roomId);
+        // Override form for room messaging
+        const chatForm = document.getElementById('chat-form');
+        if (chatForm) {
+          chatForm.onsubmit = function(e) {
+            e.preventDefault();
+            sendRoomMessage(this);
+            return false;
+          };
+        }
+      }
+    }, 500);
+  } else if (!roomId && !autoPrompt) {
+    // No room specified - show all topic summaries with join links
+    showAllTopicSummaries();
   }
   
   // Auto-submit prompt if provided (legacy support)
