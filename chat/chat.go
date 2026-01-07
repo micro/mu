@@ -411,11 +411,16 @@ func getOrCreateRoom(id string) *Room {
 // broadcastUserList sends the current list of usernames to all clients
 func (room *Room) broadcastUserList() {
 	room.mutex.RLock()
-	usernames := make([]string, 0, len(room.Clients))
+	usernames := make([]string, 0, len(room.Clients)+1)
 	for _, client := range room.Clients {
 		usernames = append(usernames, client.UserID)
 	}
 	room.mutex.RUnlock()
+
+	// Always include AI in topic chat rooms
+	if strings.HasPrefix(room.ID, "chat_") {
+		usernames = append(usernames, "AI")
+	}
 
 	userListMsg := map[string]interface{}{
 		"type":  "user_list",
@@ -643,15 +648,21 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				// Check if AI should respond:
 				// 1. User mentioned @ai - start conversation
 				// 2. User is in active AI conversation (within 2 min of last AI reply)
+				// 3. User is alone in the room (AI keeps them company)
 				contentLower := strings.ToLower(content)
 				mentionedAI := strings.Contains(contentLower, "@ai")
 				inActiveConvo := client.InAIConvo && time.Since(client.LastAIReply) < 2*time.Minute
 
-				if mentionedAI {
+				// Check if user is alone in a topic chat room
+				room.mutex.RLock()
+				isAlone := strings.HasPrefix(room.ID, "chat_") && len(room.Clients) == 1
+				room.mutex.RUnlock()
+
+				if mentionedAI || isAlone {
 					client.InAIConvo = true
 				}
 
-				if mentionedAI || inActiveConvo {
+				if mentionedAI || inActiveConvo || isAlone {
 					go func() {
 						// If this is a Dev (HN) discussion, trigger comment refresh via event
 						// But throttle to once per 5 minutes to avoid excessive API calls
