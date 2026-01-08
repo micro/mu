@@ -53,3 +53,33 @@ ssh mu 'sudo systemctl restart mu'
   - Priority Low (article summaries/tags): 4 slots, 3s wait
   - Topic summaries: every 4 hours (was hourly)
   - Article summaries cached in metadata JSON files
+
+
+## Mobile Home Screen Optimization - In Progress
+
+### Status
+Reverted all previous mobile changes. Starting fresh with CSS-only approach.
+
+### Current State
+- Commit `86c09c4` - clean state after revert
+- Made ONE CSS change in `app/html/mu.css` around line 1673:
+  - Added `order: 2` to `.home-left` 
+  - Added `order: 1` to `.home-right`
+  - Added `.headline .description { display: none; }` in mobile media query
+- Server keeps crashing locally (missing Ollama, YouTube API etc) - test on production instead
+
+### Goal
+Minimal CSS-only changes in `@media (max-width: 900px)` section:
+1. Hide `.headline .description` on mobile
+2. Reorder columns: `.home-right` (reminder/markets) before `.home-left` (news)
+3. Keep timestamps/source info visible
+4. Do NOT touch desktop styles or HTML structure
+
+### Files Changed
+- `app/html/mu.css` - mobile media query section around line 1673
+
+### Next Steps
+1. Push current change to test on production
+2. Verify desktop is unchanged
+3. Verify mobile shows reminder/markets before news
+4. Verify mobile hides description but keeps info line

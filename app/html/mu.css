@@ -1673,29 +1673,18 @@ body:has(#messages) #content {
   .home-left {
     margin-bottom: 20px;
     width: 100%;
+    order: 2;  /* News comes after right column */
   }
   .home-right {
     width: 100%;
     display: flex;
     flex-direction: column;
+    order: 1;  /* Reminder/Markets come first */
   }
-  #home-chat {
-    order: 1;
-  }
-  #reminder {
-    order: 2;
-  }
-  #markets {
-    order: 3;
-  }
-  #news {
-    order: 4;
-  }
-  #blog {
-    order: 5;
-  }
-  #video {
-    order: 6;
+  
+  /* Hide news description on mobile */
+  .headline .description {
+    display: none;
   }
   .cover {
     display: block;
