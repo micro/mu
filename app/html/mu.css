@@ -366,12 +366,17 @@ td {
   max-width: none;  /* Allow cards to expand in home columns */
 }
 
-/* Home page left column: cards have borders, but content inside does not */
-.home-left .card .headline {
+/* Home page: cards have borders, but content inside does not */
+.home-left .card .headline,
+.home-left .card .item,
+.home-left .card .post-item,
+.home-left .card .thumbnail,
+.home-right .card .headline,
+.home-right .card .item,
+.home-right .card .post-item,
+.home-right .card .thumbnail {
   border: none;
   padding: 0;
-  padding-left: 0;
-  padding-right: 0;
   background: transparent;
 }
 
