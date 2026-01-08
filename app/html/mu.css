@@ -380,11 +380,6 @@ td {
   background: transparent;
 }
 
-/* Hide description in news headlines on home page */
-.home-left .card .headline .description {
-  display: none;
-}
-
 /* Switch to single column when there's not enough space for two columns + sidebar */
 @media only screen and (max-width: 1100px) {
   #home {
