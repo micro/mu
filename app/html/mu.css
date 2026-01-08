@@ -446,7 +446,7 @@ td {
   padding: var(--item-padding);
   margin-bottom: var(--spacing-md);
   padding-bottom: var(--spacing-lg);
-  background: #f9f9f9;
+  background: var(--card-background);
 }
 
 /* Reduce card min-width on smaller screens */
