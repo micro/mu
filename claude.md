@@ -55,31 +55,18 @@ ssh mu 'sudo systemctl restart mu'
   - Article summaries cached in metadata JSON files
 
 
-## Mobile Home Screen Optimization - In Progress
+## Mobile Home Screen Optimization - COMPLETE
 
-### Status
-Reverted all previous mobile changes. Starting fresh with CSS-only approach.
+### Summary
+Minimal CSS-only changes to optimize mobile home screen:
+- Column reordering: sidebar (Who's Here, Chat, Reminder, Markets) appears before news
+- Headline descriptions hidden on mobile (keeps title, timestamp, source)
+- Desktop layout unchanged
 
-### Current State
-- Commit `86c09c4` - clean state after revert
-- Made ONE CSS change in `app/html/mu.css` around line 1673:
-  - Added `order: 2` to `.home-left` 
-  - Added `order: 1` to `.home-right`
-  - Added `.headline .description { display: none; }` in mobile media query
-- Server keeps crashing locally (missing Ollama, YouTube API etc) - test on production instead
+### Commit
+`9b663db` - WIP: Mobile home - reorder columns, hide description
 
-### Goal
-Minimal CSS-only changes in `@media (max-width: 900px)` section:
-1. Hide `.headline .description` on mobile
-2. Reorder columns: `.home-right` (reminder/markets) before `.home-left` (news)
-3. Keep timestamps/source info visible
-4. Do NOT touch desktop styles or HTML structure
-
-### Files Changed
-- `app/html/mu.css` - mobile media query section around line 1673
-
-### Next Steps
-1. Push current change to test on production
-2. Verify desktop is unchanged
-3. Verify mobile shows reminder/markets before news
-4. Verify mobile hides description but keeps info line
+### Verified
+- ✅ Mobile: sidebar first, then news
+- ✅ Mobile: descriptions hidden
+- ✅ Desktop: two-column layout preserved with descriptions visible
