@@ -212,9 +212,9 @@ td {
   position: fixed;
   left: 0;
   top: 50px;
-  width: 180px;
+  width: 220px;
   height: calc(100vh - 50px);
-  padding: 15px;
+  padding: 25px;
   background: white;
   border-right: 1px solid #e0e0e0;
 }
@@ -1432,7 +1432,7 @@ body:has(#messages) #content {
 /* Desktop: account for sidebar */
 @media only screen and (min-width: 901px) {
   #nav-container ~ #content {
-    padding-left: 200px; /* Account for fixed sidebar */
+    padding-left: 240px; /* Account for fixed sidebar */
   }
 }
 
