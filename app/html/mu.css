@@ -366,11 +366,13 @@ td {
   max-width: none;  /* Allow cards to expand in home columns */
 }
 
-/* Remove border from home page section cards - content inside has its own borders */
-.home-left .card {
+/* Home page left column: cards have borders, but content inside does not */
+.home-left .card .headline {
   border: none;
   padding: 0;
-  padding-bottom: 0;
+  padding-left: 0;
+  padding-right: 0;
+  background: transparent;
 }
 
 /* Switch to single column when there's not enough space for two columns + sidebar */
