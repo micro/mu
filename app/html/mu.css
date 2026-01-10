@@ -1313,7 +1313,7 @@ body:has(#messages) #content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
+  padding: 5px 0;
   border-bottom: 1px solid var(--border-color, #f0f0f0);
 }
 
@@ -1322,12 +1322,12 @@ body:has(#messages) #content {
 }
 
 .market-item:nth-child(odd) {
-  padding-right: 16px;
+  padding-right: 12px;
   border-right: 1px solid var(--border-color, #f0f0f0);
 }
 
 .market-item:nth-child(even) {
-  padding-left: 16px;
+  padding-left: 12px;
 }
 
 .market-symbol {
