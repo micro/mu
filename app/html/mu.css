@@ -1396,25 +1396,31 @@ body:has(#messages) #content {
 .category {
   margin-bottom: 5px;
   display: inline-block;
-  color: #333333;
-  font-size: small;
-  font-weight: bold;
-  background: #e8e8e8;
-  padding: 3px 5px;
-  border-radius: 5px;
+  color: #666;
+  font-size: 0.75em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: transparent;
+  padding: 3px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
 }
 
 .category-header {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .highlight {
-  color: #333333;
-  font-size: small;
-  font-weight: bold;
-  background: #e8e8e8;
-  padding: 3px 5px;
-  border-radius: 5px;
+  color: #666;
+  font-size: 0.75em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: transparent;
+  padding: 3px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
 }
 
 .cover {
