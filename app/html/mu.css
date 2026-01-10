@@ -512,11 +512,9 @@ td {
 .card h4 {
   margin-top: 0;
   margin-bottom: var(--spacing-sm);
-  font-size: 0.875em;
+  font-size: 1em;
   font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
+  color: var(--text-primary);
 }
 
 .card form {
