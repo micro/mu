@@ -1338,7 +1338,7 @@ body:has(#messages) #content {
 }
 
 .market-price {
-  font-size: 0.9em;
+  font-size: 0.8em;
   font-weight: 600;
   color: #1a1a1a;
   font-variant-numeric: tabular-nums;
