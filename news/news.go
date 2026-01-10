@@ -1345,21 +1345,18 @@ func processFeedCategory(name, feedURL string, p *gofeed.Parser, stats map[strin
 // generateMarketsHTML creates the markets HTML from price data
 func generateMarketsHTML(prices map[string]float64) string {
 	var sb strings.Builder
-	sb.WriteString(`<div class="item"><div id="tickers">`)
+	sb.WriteString(`<div class="market-grid">`)
 
-	for _, ticker := range tickers {
+	// Combine all tickers into one unified grid
+	allTickers := append([]string{}, tickers...)
+	allTickers = append(allTickers, futuresKeys...)
+
+	for _, ticker := range allTickers {
 		price := prices[ticker]
-		fmt.Fprintf(&sb, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
+		fmt.Fprintf(&sb, `<div class="market-item"><span class="market-symbol">%s</span><span class="market-price">$%.2f</span></div>`, ticker, price)
 	}
 
 	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<div id="futures">`)
-	for _, ticker := range futuresKeys {
-		price := prices[ticker]
-		fmt.Fprintf(&sb, `<span class="ticker"><span class="highlight">%s</span>&nbsp;&nbsp;$%.2f</span>`, ticker, price)
-	}
-	sb.WriteString(`</div></div>`)
 
 	return sb.String()
 }

@@ -1283,20 +1283,46 @@ body:has(#messages) #content {
   margin-bottom: var(--spacing-md);
 }
 
-#tickers, #futures {
-  width: 50%;
-  vertical-align: top;
-  display: inline-block;
+/* Professional market ticker grid */
+.market-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
 }
 
-.ticker {
-  font-size: small;
-  display: block;
-  margin-bottom: 8px;
+.market-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color, #f0f0f0);
 }
 
-.ticker:last-child {
-  margin-bottom: 0;
+.market-item:nth-last-child(-n+2) {
+  border-bottom: none;
+}
+
+.market-item:nth-child(odd) {
+  padding-right: 16px;
+  border-right: 1px solid var(--border-color, #f0f0f0);
+}
+
+.market-item:nth-child(even) {
+  padding-left: 16px;
+}
+
+.market-symbol {
+  font-size: 0.8em;
+  color: #666;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.market-price {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ========================================
