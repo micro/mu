@@ -771,23 +771,30 @@ body:has(#messages) #content {
 }
 
 .head {
-  font-weight: bold;
-  padding: 5px 0;
+  display: inline-block;
+  color: var(--accent-color) !important;
+  font-size: 10px !important;
+  font-weight: bold !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: transparent;
+  padding: 2px 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
   text-decoration: none;
-  color: #333;
-  transition: color 0.2s;
-  position: relative;
+  margin-right: 4px;
+  transition: all var(--transition-fast);
 }
 
 .head:hover {
-  color: #000;
-  text-decoration: underline;
+  background: var(--hover-background);
+  text-decoration: none;
 }
 
 .head.active {
-  color: #000;
-  text-decoration: underline;
-  font-weight: bold;
+  background: var(--accent-color);
+  color: white !important;
+  border-color: var(--accent-color);
 }
 
 /* ========================================

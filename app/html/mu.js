@@ -155,7 +155,7 @@ function showAllTopicSummaries() {
     if (summaries[t]) {
       const summaryMsg = document.createElement('div');
       summaryMsg.className = 'message';
-      const joinLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" class="link" style="display: inline; font-size: 0.85em;">Join discussion →</a>`;
+      const joinLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" class="category">Join discussion →</a>`;
       summaryMsg.innerHTML = `<span class="llm">${t}</span><p>${summaries[t]}</p><div style="margin-top: 8px;">${joinLink}</div>`;
       messages.appendChild(summaryMsg);
     }
