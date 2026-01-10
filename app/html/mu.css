@@ -368,10 +368,29 @@ td {
 
 /* Home page: cards have borders, but content inside does not */
 .home-left .card .headline,
+.home-right .card .headline {
+  border: none;
+  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  border-radius: 0;
+  padding: 12px 0;
+  margin-bottom: 0;
+  background: transparent;
+}
+
+.home-left .card .headline:last-of-type,
+.home-right .card .headline:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.home-left .card .headline:first-of-type,
+.home-right .card .headline:first-of-type {
+  padding-top: 0;
+}
+
 .home-left .card .item,
 .home-left .card .post-item,
 .home-left .card .thumbnail,
-.home-right .card .headline,
 .home-right .card .item,
 .home-right .card .post-item,
 .home-right .card .thumbnail {
