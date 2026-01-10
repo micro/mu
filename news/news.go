@@ -1347,9 +1347,15 @@ func generateMarketsHTML(prices map[string]float64) string {
 	var sb strings.Builder
 	sb.WriteString(`<div class="market-grid">`)
 
-	// Combine all tickers into one unified grid
+	// Combine all tickers and sort by name length (shortest first)
 	allTickers := append([]string{}, tickers...)
 	allTickers = append(allTickers, futuresKeys...)
+	sort.Slice(allTickers, func(i, j int) bool {
+		if len(allTickers[i]) != len(allTickers[j]) {
+			return len(allTickers[i]) < len(allTickers[j])
+		}
+		return allTickers[i] < allTickers[j] // alphabetic for same length
+	})
 
 	for _, ticker := range allTickers {
 		price := prices[ticker]
