@@ -1323,7 +1323,6 @@ body:has(#messages) #content {
 
 .market-item:nth-child(odd) {
   padding-right: 12px;
-  border-right: 1px solid var(--border-color, #f0f0f0);
 }
 
 .market-item:nth-child(even) {
