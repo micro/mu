@@ -85,15 +85,15 @@ a:visited {
   color: #000;
 }
 
-/* External links - blue to indicate leaving site */
+/* External links - same color as other links for consistency */
 a[target="_blank"],
 a[rel*="noopener"] {
-  color: #007bff;
+  color: var(--text-primary);
 }
 
 a[target="_blank"]:visited,
 a[rel*="noopener"]:visited {
-  color: #0056b3;
+  color: var(--text-primary);
 }
 
 /* Buttons for forms only - minimalist theme */
