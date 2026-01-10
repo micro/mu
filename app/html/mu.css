@@ -1393,11 +1393,11 @@ body:has(#messages) #content {
   text-decoration: underline;
 }
 
-.category {
-  margin-bottom: 5px;
+.category,
+.highlight {
   display: inline-block;
   color: #888;
-  font-size: 0.7em;
+  font-size: 10px;
   font-weight: normal;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1411,16 +1411,8 @@ body:has(#messages) #content {
   margin-bottom: 8px;
 }
 
-.highlight {
-  color: #888;
-  font-size: 0.7em;
-  font-weight: normal;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: transparent;
-  padding: 2px 6px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
+.category-header .category {
+  margin-bottom: 0;
 }
 
 .cover {
