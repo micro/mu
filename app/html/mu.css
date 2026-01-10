@@ -1400,7 +1400,7 @@ a.highlight {
   display: inline-block;
   color: #0d7377 !important;
   font-size: 10px !important;
-  font-weight: 500 !important;
+  font-weight: bold !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: transparent;
