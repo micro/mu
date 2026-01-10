@@ -778,23 +778,19 @@ body:has(#messages) #content {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   background: transparent;
-  padding: 2px 6px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
+  padding: 0;
+  border: none;
   text-decoration: none;
-  margin-right: 4px;
-  transition: all var(--transition-fast);
+  margin-right: 8px;
+  transition: color var(--transition-fast);
 }
 
 .head:hover {
-  background: var(--hover-background);
-  text-decoration: none;
+  text-decoration: underline;
 }
 
 .head.active {
-  background: var(--accent-color);
-  color: white !important;
-  border-color: var(--accent-color);
+  text-decoration: underline;
 }
 
 /* ========================================
