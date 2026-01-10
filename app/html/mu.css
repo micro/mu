@@ -1398,15 +1398,14 @@ body:has(#messages) #content {
 a.category,
 a.highlight {
   display: inline-block;
-  color: #888 !important;
+  color: #0d7377 !important;
   font-size: 10px !important;
-  font-weight: normal !important;
+  font-weight: 500 !important;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   background: transparent;
-  padding: 2px 6px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
+  padding: 0;
+  border: none;
   text-decoration: none;
 }
 
