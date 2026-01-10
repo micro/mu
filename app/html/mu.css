@@ -1975,8 +1975,8 @@ a.highlight {
 
 .attachment-summary {
   cursor: pointer;
-  color: #007bff;
-  font-weight: 500;
+  color: var(--text-primary);
+  font-weight: var(--font-weight-medium);
   margin-bottom: 10px;
 }
 
@@ -1995,23 +1995,23 @@ a.highlight {
 
 .attachment-download-btn {
   display: inline-block;
-  background: #007bff;
+  background: var(--text-primary);
   color: white;
   padding: 12px 24px;
-  border-radius: 5px;
+  border-radius: var(--border-radius);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   margin-top: 10px;
 }
 
 .attachment-download-btn:hover {
-  background: #0056b3;
+  background: #333;
   color: white;
 }
 
 /* Links */
 .mail-link {
-  color: #007bff;
+  color: var(--text-primary);
   text-decoration: none;
 }
 
