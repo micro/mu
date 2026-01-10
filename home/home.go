@@ -23,13 +23,7 @@ var f embed.FS
 
 var Template = `<div id="home">
   <div class="home-left">%s</div>
-  <div class="home-right">
-    <div id="presence" class="card">
-      <h4>Who's Here</h4>
-      <div id="presence-content"><span class="info">Connecting...</span></div>
-    </div>
-    %s
-  </div>
+  <div class="home-right">%s</div>
 </div>`
 
 func ChatCard() string {
