@@ -14,31 +14,44 @@
   --topic-gap: 15px;
   
   /* Design System Tokens */
-  /* Colors */
-  --card-border: #e0e0e0;
+  /* Colors - slightly warmed up grays */
+  --card-border: #e8e8e8;
   --card-background: #ffffff;
   --hover-background: #fafafa;
-  --divider: #eee;
-  --text-primary: #333;
-  --text-secondary: #666;
-  --text-muted: #999;
+  --divider: #f0f0f0;
+  --border-color: #f0f0f0;
+  --text-primary: #1a1a1a;
+  --text-secondary: #555;
+  --text-muted: #888;
+  --accent-color: #0d7377;
   --accent-blue: #007bff;
   --accent-blue-hover: #0056b3;
   
-  /* Spacing */
-  --spacing-xs: 8px;
-  --spacing-sm: 12px;
-  --spacing-md: 15px;
-  --spacing-lg: 20px;
-  --spacing-xl: 24px;
-  --item-padding: 15px;
+  /* Spacing - consistent scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --item-padding: 16px;
   
   /* Borders */
-  --border-radius: 5px;
+  --border-radius: 6px;
   --border-width: 1px;
   
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.06);
+  
+  /* Typography */
+  --line-height: 1.6;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
   /* Transitions */
-  --transition-fast: 0.2s;
+  --transition-fast: 0.15s ease;
 }
 
 html, body {
@@ -226,18 +239,24 @@ td {
 }
 
 #nav a {
-  color: black;
-  font-weight: bold;
+  color: var(--text-primary);
+  font-weight: var(--font-weight-medium);
   text-decoration: none;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: var(--border-radius);
   display: flex;
   align-items: center;
-  transition: background 0.2s;
+  transition: all var(--transition-fast);
 }
 
-#nav a.active, #nav a:hover {
-  background: #f9f9f9;
+#nav a:hover {
+  background: var(--hover-background);
+  color: var(--text-primary);
+}
+
+#nav a.active {
+  background: var(--hover-background);
+  font-weight: var(--font-weight-semibold);
 }
 
 #nav img {
@@ -480,6 +499,7 @@ td {
   margin-bottom: var(--spacing-md);
   padding-bottom: var(--spacing-lg);
   background: var(--card-background);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Reduce card min-width on smaller screens */
@@ -491,7 +511,12 @@ td {
 
 .card h4 {
   margin-top: 0;
-  margin-bottom: 10px;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.875em;
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
 }
 
 .card form {
@@ -1003,37 +1028,47 @@ body:has(#messages) #content {
 }
 
 .headline a {
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
   text-decoration: none;
   color: var(--text-primary);
+  transition: color var(--transition-fast);
+}
+
+.headline a:hover {
+  color: var(--accent-color);
+  text-decoration: none;
 }
 
 .headline .title {
   display: block;
   font-size: 1em;
+  line-height: 1.4;
   margin: var(--spacing-sm) 0 0 0;
 }
 
 .headline .description {
   display: block;
   color: var(--text-secondary);
-  font-size: 0.9em;
+  font-size: 0.875em;
+  line-height: var(--line-height);
   margin-bottom: var(--spacing-xs);
 }
 
 .headline .summary {
-  font-size: 0.8em;
+  font-size: 0.75em;
   margin-top: var(--spacing-sm);
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .headline .summary a {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   text-decoration: none;
+  transition: color var(--transition-fast);
 }
 
 .headline .summary a:hover {
-  text-decoration: underline;
+  color: var(--accent-color);
+  text-decoration: none;
 }
 
 .news {
@@ -1313,12 +1348,12 @@ body:has(#messages) #content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  padding: 6px 8px;
 }
 
-.market-item:nth-last-child(-n+2) {
-  border-bottom: none;
+.market-item:nth-child(4n+1),
+.market-item:nth-child(4n+2) {
+  background: var(--hover-background);
 }
 
 .market-item:nth-child(odd) {
@@ -1330,16 +1365,16 @@ body:has(#messages) #content {
 }
 
 .market-symbol {
-  font-size: 0.8em;
-  color: #666;
-  font-weight: 500;
+  font-size: 0.75em;
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
   letter-spacing: 0.02em;
 }
 
 .market-price {
-  font-size: 0.8em;
-  font-weight: 600;
-  color: #1a1a1a;
+  font-size: 0.75em;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
