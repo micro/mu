@@ -155,8 +155,9 @@ function showAllTopicSummaries() {
     if (summaries[t]) {
       const summaryMsg = document.createElement('div');
       summaryMsg.className = 'message';
-      const joinLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" class="category">Join discussion →</a>`;
-      summaryMsg.innerHTML = `<span class="llm">${t}</span><p>${summaries[t]}</p><div style="margin-top: 8px;">${joinLink}</div>`;
+      const topicBadge = `<span class="category">${t}</span>`;
+      const joinLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" class="link" style="display: inline; margin-top: 8px;">Join discussion →</a>`;
+      summaryMsg.innerHTML = `${topicBadge}<p>${summaries[t]}</p>${joinLink}`;
       messages.appendChild(summaryMsg);
     }
   });
