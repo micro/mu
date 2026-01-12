@@ -1541,15 +1541,13 @@ a.highlight {
   }
   #topics, #topic-selector {
     text-align: center;
-    overflow-x: auto;
   }
   .topic-tabs, #topics {
-    gap: 10px;
-    flex-wrap: nowrap;
+    gap: 8px;
+    justify-content: center;
   }
   #topic-selector .head, #topics .head {
-    font-size: 13px;
-    white-space: nowrap;
+    font-size: 12px;
   }
   #head {
     padding: 6px 15px;
