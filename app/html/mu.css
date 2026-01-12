@@ -1539,9 +1539,17 @@ a.highlight {
   .anchor {
     margin: 30px 0;
   }
-  #topics {
+  #topics, #topic-selector {
     text-align: center;
-    overflow-x: scroll;
+    overflow-x: auto;
+  }
+  .topic-tabs, #topics {
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+  #topic-selector .head, #topics .head {
+    font-size: 13px;
+    white-space: nowrap;
   }
   #head {
     padding: 6px 15px;
