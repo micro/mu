@@ -1718,20 +1718,8 @@ a.highlight {
   body:has(#messages) #topics {
     flex-shrink: 0;
   }
-  #topic-selector, #topics {
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    justify-content: center;
-  }
-  .topic-tabs, #topics {
-    flex-wrap: nowrap;
-    gap: 8px;
-    justify-content: center;
-  }
   #topic-selector .head, #topics .head {
-    white-space: nowrap;
-    font-size: 14px;
+    font-size: 12px;
     padding: 5px 0;
   }
   /* Center post page action links on mobile */
