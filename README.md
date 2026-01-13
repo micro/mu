@@ -42,6 +42,48 @@ Coming soon:
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
+## Micro Apps
+
+Mu includes an AI-powered micro app builder. Users can create single-page web apps from natural language prompts.
+
+### Features
+
+- **Generate Apps** - Describe what you want, AI builds it
+- **Iterate** - Refine with follow-up instructions
+- **Persist Data** - Apps can store user data via the Mu SDK
+- **Share** - Make apps public for others to use
+
+### SDK
+
+Apps have access to the Mu SDK (`window.mu`):
+
+```javascript
+// Persistent storage (per-user, per-app)
+await mu.db.get('key');
+await mu.db.set('key', value);
+await mu.db.delete('key');
+await mu.db.list();
+
+// User context
+mu.user.id       // User ID or null
+mu.user.name     // Display name or null
+mu.user.loggedIn // Boolean
+
+// App context
+mu.app.id        // App's unique ID
+mu.app.name      // App's name
+```
+
+### Featured Apps
+
+- [/apps/todo](https://mu.xyz/apps/todo) - Task management
+- [/apps/timer](https://mu.xyz/apps/timer) - Focus/pomodoro timer
+- [/apps/expenses](https://mu.xyz/apps/expenses) - Expense tracking
+
+### Documentation
+
+See [/apps/docs](https://mu.xyz/apps/docs) for full SDK reference.
+
 ## Screenshots
 
 ### Home
