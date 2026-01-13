@@ -1102,6 +1102,12 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 		visibility = "Public"
 	}
 
+	// Get only the first line of description (original prompt, not change history)
+	description := a.Description
+	if idx := strings.Index(description, "\n"); idx > 0 {
+		description = description[:idx]
+	}
+
 	viewHTML := fmt.Sprintf(`
 <style>
 .app-frame {
@@ -1117,7 +1123,7 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 <p>%s</p>
 <iframe class="app-frame" sandbox="allow-scripts" srcdoc="%s"></iframe>
 <p style="margin-top: 20px;"><a href="/apps">← Back to Apps</a></p>
-`, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), html.EscapeString(a.Description), html.EscapeString(a.Code))
+`, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), html.EscapeString(description), html.EscapeString(a.Code))
 
 	w.Write([]byte(app.RenderHTML(a.Name, a.Name, viewHTML)))
 }
