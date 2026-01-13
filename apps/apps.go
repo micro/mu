@@ -203,9 +203,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Create new app form
 		handleNew(w, r, sess)
 	case strings.HasSuffix(path, "/edit"):
-		// Edit app
+		// Edit app (legacy - redirects to develop)
 		id := strings.TrimSuffix(path, "/edit")
-		handleEdit(w, r, sess, id)
+		http.Redirect(w, r, "/apps/"+id+"/develop", 302)
+	case strings.HasSuffix(path, "/develop"):
+		// Iterative development mode
+		id := strings.TrimSuffix(path, "/develop")
+		handleDevelop(w, r, sess, id)
 	case strings.HasSuffix(path, "/preview"):
 		// Preview app (renders just the app code)
 		id := strings.TrimSuffix(path, "/preview")
@@ -746,6 +750,285 @@ window.onload = function() { previewApp(); };
 `, errHTML, html.EscapeString(a.Name), html.EscapeString(a.Description), html.EscapeString(a.Code), publicChecked, a.ID)
 
 	w.Write([]byte(app.RenderHTML("Edit App", "Edit: "+a.Name, formHTML)))
+}
+
+// handleDevelop provides iterative AI-assisted app development
+func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
+	if sess == nil {
+		http.Redirect(w, r, "/login?redirect=/apps/"+id+"/develop", 302)
+		return
+	}
+
+	a := GetApp(id)
+	if a == nil {
+		http.Error(w, "App not found", 404)
+		return
+	}
+
+	if a.AuthorID != sess.Account {
+		http.Error(w, "Not authorized", 403)
+		return
+	}
+
+	var message string
+
+	if r.Method == "POST" {
+		r.ParseForm()
+		action := r.FormValue("action")
+		instruction := strings.TrimSpace(r.FormValue("instruction"))
+		name := strings.TrimSpace(r.FormValue("name"))
+		public := r.FormValue("public") == "on"
+
+		if name != "" {
+			a.Name = name
+		}
+		a.Public = public
+
+		switch action {
+		case "modify":
+			if instruction == "" {
+				message = "Please describe what you want to change"
+			} else {
+				modified, err := modifyAppCode(a.Code, instruction)
+				if err != nil {
+					message = "Modification failed: " + err.Error()
+				} else {
+					a.Code = modified
+					// Append instruction to description history
+					if a.Description != "" {
+						a.Description = a.Description + "\n• " + instruction
+					} else {
+						a.Description = "• " + instruction
+					}
+					// Auto-save after successful modification
+					UpdateApp(id, a.Name, a.Description, a.Code, a.Public, sess.Account)
+					message = "✓ Applied: " + instruction
+				}
+			}
+		case "save":
+			if err := UpdateApp(id, a.Name, a.Description, a.Code, a.Public, sess.Account); err != nil {
+				message = "Save failed: " + err.Error()
+			} else {
+				http.Redirect(w, r, "/apps/"+id, 302)
+				return
+			}
+		}
+	}
+
+	renderDevelopForm(w, a, message)
+}
+
+// modifyAppCode uses AI to make targeted changes to existing code
+func modifyAppCode(currentCode, instruction string) (string, error) {
+	systemPrompt := `You are an expert web developer. You will receive existing HTML/CSS/JS code and an instruction for how to modify it.
+
+Rules:
+1. Output ONLY the complete modified HTML file - no markdown, no code fences, no explanations
+2. Make targeted changes based on the instruction - don't rewrite everything unnecessarily
+3. Preserve the existing structure and style unless asked to change it
+4. Keep all existing functionality unless asked to change it
+5. Start with <!DOCTYPE html> and end with </html>
+
+Current code:
+` + currentCode + `
+
+Apply this modification and output the complete updated HTML file:`
+
+	llmPrompt := &chat.Prompt{
+		System:   systemPrompt,
+		Question: instruction,
+		Priority: chat.PriorityHigh,
+	}
+
+	response, err := chat.AskLLM(llmPrompt)
+	if err != nil {
+		return "", err
+	}
+
+	// Clean up response
+	response = strings.TrimSpace(response)
+	response = strings.TrimPrefix(response, "```html")
+	response = strings.TrimPrefix(response, "```")
+	response = strings.TrimSuffix(response, "```")
+	response = strings.TrimSpace(response)
+
+	// Ensure it starts with DOCTYPE
+	if !strings.HasPrefix(strings.ToLower(response), "<!doctype") {
+		if idx := strings.Index(strings.ToLower(response), "<!doctype"); idx > 0 {
+			response = response[idx:]
+		}
+	}
+
+	return response, nil
+}
+
+func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
+	publicChecked := ""
+	if a.Public {
+		publicChecked = "checked"
+	}
+
+	messageHTML := ""
+	if message != "" {
+		color := "#c00"
+		if strings.HasPrefix(message, "✓") {
+			color = "#080"
+		}
+		messageHTML = fmt.Sprintf(`<div style="color: %s; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;">%s</div>`, color, html.EscapeString(message))
+	}
+
+	// Parse history from description
+	historyHTML := ""
+	if a.Description != "" {
+		lines := strings.Split(a.Description, "\n")
+		historyHTML = `<div class="history"><strong>Changes:</strong><ul>`
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				line = strings.TrimPrefix(line, "• ")
+				historyHTML += fmt.Sprintf(`<li>%s</li>`, html.EscapeString(line))
+			}
+		}
+		historyHTML += `</ul></div>`
+	}
+
+	formHTML := fmt.Sprintf(`
+<style>
+.develop-container {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+.preview-section {
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	overflow: hidden;
+	background: #fff;
+}
+.preview-frame {
+	width: 100%%;;
+	height: 400px;
+	border: none;
+	display: block;
+}
+.instruction-section {
+	background: #f9f9f9;
+	padding: 20px;
+	border-radius: 8px;
+}
+.instruction-input {
+	width: 100%%;;
+	padding: 12px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-size: 15px;
+	font-family: inherit;
+	margin-bottom: 10px;
+	box-sizing: border-box;
+}
+.button {
+	padding: 10px 20px;
+	background: #333;
+	color: white;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+}
+.button:hover { background: #555; }
+.button-secondary {
+	background: #666;
+}
+.history {
+	margin-top: 15px;
+	font-size: 13px;
+	color: #666;
+}
+.history ul {
+	margin: 5px 0 0 20px;
+	padding: 0;
+}
+.history li {
+	margin: 3px 0;
+}
+.meta-section {
+	display: flex;
+	gap: 15px;
+	align-items: center;
+	margin-top: 15px;
+	padding-top: 15px;
+	border-top: 1px solid #ddd;
+}
+.meta-section input[type="text"] {
+	padding: 8px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-size: 14px;
+}
+.checkbox-group {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+.code-toggle {
+	margin-top: 15px;
+}
+.code-toggle summary {
+	cursor: pointer;
+	color: #666;
+	font-size: 13px;
+}
+.code-editor {
+	width: 100%%;;
+	min-height: 300px;
+	font-family: monospace;
+	font-size: 12px;
+	padding: 10px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	margin-top: 10px;
+	box-sizing: border-box;
+}
+</style>
+
+<div class="develop-container">
+  <div class="preview-section">
+    <iframe id="preview" class="preview-frame" sandbox="allow-scripts" srcdoc="%s"></iframe>
+  </div>
+  
+  <form method="POST" class="instruction-section">
+    %s
+    <input type="text" name="instruction" class="instruction-input" placeholder="Describe what you want to change..." autofocus>
+    <button type="submit" name="action" value="modify" class="button">Apply Change</button>
+    <button type="submit" name="action" value="save" class="button button-secondary" style="margin-left: 10px;">Done</button>
+    <a href="/apps/%s" style="margin-left: 10px; color: #666;">Cancel</a>
+    
+    %s
+    
+    <div class="meta-section">
+      <label>Name: <input type="text" name="name" value="%s"></label>
+      <div class="checkbox-group">
+        <input type="checkbox" name="public" id="public" %s>
+        <label for="public">Public</label>
+      </div>
+    </div>
+    
+    <details class="code-toggle">
+      <summary>Show code</summary>
+      <textarea class="code-editor" name="code" id="code-editor" onchange="updatePreview()">%s</textarea>
+    </details>
+  </form>
+</div>
+
+<script>
+function updatePreview() {
+  var code = document.getElementById('code-editor').value;
+  document.getElementById('preview').srcdoc = code;
+}
+</script>
+`, html.EscapeString(a.Code), messageHTML, a.ID, historyHTML, html.EscapeString(a.Name), publicChecked, html.EscapeString(a.Code))
+
+	w.Write([]byte(app.RenderHTML("Develop: "+a.Name, "Develop: "+a.Name, formHTML)))
 }
 
 func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
