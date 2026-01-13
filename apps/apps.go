@@ -12,6 +12,7 @@ import (
 
 	"mu/app"
 	"mu/auth"
+	"mu/chat"
 	"mu/data"
 )
 
@@ -355,18 +356,43 @@ func handleNew(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		name := strings.TrimSpace(r.FormValue("name"))
-		description := strings.TrimSpace(r.FormValue("description"))
+		promptText := strings.TrimSpace(r.FormValue("prompt"))
 		code := r.FormValue("code")
 		public := r.FormValue("public") == "on"
+		action := r.FormValue("action") // "generate" or "save"
 
 		if name == "" {
-			renderNewForm(w, "Name is required", name, description, code, public)
+			renderNewForm(w, "Name is required", name, promptText, code, public, false)
 			return
 		}
 
-		a, err := CreateApp(name, description, code, sess.Account, sess.Account, public)
+		// Generate code from prompt
+		if action == "generate" {
+			if promptText == "" {
+				renderNewForm(w, "Please describe what you want to build", name, promptText, code, public, false)
+				return
+			}
+
+			generated, err := generateAppCode(promptText)
+			if err != nil {
+				renderNewForm(w, "Generation failed: "+err.Error(), name, promptText, code, public, false)
+				return
+			}
+
+			// Show form with generated code
+			renderNewForm(w, "", name, promptText, generated, public, true)
+			return
+		}
+
+		// Save the app
+		if code == "" {
+			renderNewForm(w, "Generate code first or write your own", name, promptText, code, public, false)
+			return
+		}
+
+		a, err := CreateApp(name, promptText, code, sess.Account, sess.Account, public)
 		if err != nil {
-			renderNewForm(w, err.Error(), name, description, code, public)
+			renderNewForm(w, err.Error(), name, promptText, code, public, true)
 			return
 		}
 
@@ -374,30 +400,56 @@ func handleNew(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 		return
 	}
 
-	renderNewForm(w, "", "", "", defaultTemplate(), false)
+	renderNewForm(w, "", "", "", "", false, false)
 }
 
-func defaultTemplate() string {
-	return `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      padding: 20px;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-  </style>
-</head>
-<body>
-  <h1>My App</h1>
-  <p>Edit this template to build your micro app.</p>
-</body>
-</html>`
+// generateAppCode uses AI to generate HTML/CSS/JS from a prompt
+func generateAppCode(prompt string) (string, error) {
+	systemPrompt := `You are an expert web developer. Generate a complete, self-contained single-page web application based on the user's description.
+
+Rules:
+1. Output ONLY valid HTML - no markdown, no code fences, no explanations
+2. Include all CSS in a <style> tag in the <head>
+3. Include all JavaScript in a <script> tag before </body>
+4. Use modern, clean design with good typography
+5. Make it mobile-responsive
+6. Use system-ui font stack
+7. The app must be fully functional and self-contained
+8. Do not use any external dependencies or CDNs
+9. Start with <!DOCTYPE html> and end with </html>
+
+Generate the complete HTML file now:`
+
+	llmPrompt := &chat.Prompt{
+		System:   systemPrompt,
+		Question: prompt,
+		Priority: chat.PriorityHigh,
+	}
+
+	response, err := chat.AskLLM(llmPrompt)
+	if err != nil {
+		return "", err
+	}
+
+	// Clean up response - remove any markdown code fences if present
+	response = strings.TrimSpace(response)
+	response = strings.TrimPrefix(response, "```html")
+	response = strings.TrimPrefix(response, "```")
+	response = strings.TrimSuffix(response, "```")
+	response = strings.TrimSpace(response)
+
+	// Ensure it starts with DOCTYPE
+	if !strings.HasPrefix(strings.ToLower(response), "<!doctype") {
+		// Try to find where HTML starts
+		if idx := strings.Index(strings.ToLower(response), "<!doctype"); idx > 0 {
+			response = response[idx:]
+		}
+	}
+
+	return response, nil
 }
 
-func renderNewForm(w http.ResponseWriter, errMsg, name, description, code string, public bool) {
+func renderNewForm(w http.ResponseWriter, errMsg, name, prompt, code string, public bool, hasCode bool) {
 	publicChecked := ""
 	if public {
 		publicChecked = "checked"
@@ -406,6 +458,40 @@ func renderNewForm(w http.ResponseWriter, errMsg, name, description, code string
 	errHTML := ""
 	if errMsg != "" {
 		errHTML = fmt.Sprintf(`<div style="color: red; margin-bottom: 15px;">%s</div>`, html.EscapeString(errMsg))
+	}
+
+	// Show code section only after generation
+	codeSection := ""
+	if hasCode {
+		codeSection = fmt.Sprintf(`
+  <div class="form-group">
+    <label>Generated Code</label>
+    <textarea name="code" id="code-editor">%s</textarea>
+  </div>
+  <div class="form-group checkbox-group">
+    <input type="checkbox" name="public" id="public" %s>
+    <label for="public" style="font-weight: normal;">Make this app public</label>
+  </div>
+  <div style="margin-bottom: 15px;">
+    <button type="submit" name="action" value="save" class="button">Save App</button>
+    <button type="button" class="button button-secondary" onclick="previewApp()">Preview</button>
+    <button type="submit" name="action" value="generate" class="button button-secondary">Regenerate</button>
+  </div>
+  <iframe id="preview" class="preview-frame" sandbox="allow-scripts"></iframe>
+  <script>
+  function previewApp() {
+    var code = document.getElementById('code-editor').value;
+    var iframe = document.getElementById('preview');
+    iframe.srcdoc = code;
+  }
+  // Auto-preview on load
+  window.onload = function() { previewApp(); };
+  </script>`, html.EscapeString(code), publicChecked)
+	} else {
+		codeSection = `
+  <div>
+    <button type="submit" name="action" value="generate" class="button">Generate App</button>
+  </div>`
 	}
 
 	formHTML := fmt.Sprintf(`
@@ -420,10 +506,14 @@ func renderNewForm(w http.ResponseWriter, errMsg, name, description, code string
 	box-sizing: border-box;
 	font-family: inherit;
 }
-.form-group textarea {
+.form-group textarea#prompt {
+	min-height: 100px;
+	font-family: inherit;
+}
+.form-group textarea#code-editor {
 	font-family: monospace;
 	font-size: 13px;
-	min-height: 400px;
+	min-height: 300px;
 }
 .checkbox-group {
 	display: flex;
@@ -449,41 +539,27 @@ func renderNewForm(w http.ResponseWriter, errMsg, name, description, code string
 	height: 400px;
 	border: 1px solid #ddd;
 	border-radius: 4px;
-	margin-top: 20px;
+}
+.hint {
+	font-size: 13px;
+	color: #666;
+	margin-top: 5px;
 }
 </style>
 %s
 <form method="POST" id="app-form">
   <div class="form-group">
     <label>Name</label>
-    <input type="text" name="name" value="%s" required>
+    <input type="text" name="name" value="%s" placeholder="My Calculator" required>
   </div>
   <div class="form-group">
-    <label>Description</label>
-    <input type="text" name="description" value="%s" placeholder="Brief description of what this app does">
+    <label>What do you want to build?</label>
+    <textarea name="prompt" id="prompt" placeholder="A simple calculator with add, subtract, multiply, divide buttons and a display showing the result">%s</textarea>
+    <div class="hint">Describe your app in plain English. Be specific about features and layout.</div>
   </div>
-  <div class="form-group">
-    <label>Code (HTML/CSS/JS)</label>
-    <textarea name="code" id="code-editor">%s</textarea>
-  </div>
-  <div class="form-group checkbox-group">
-    <input type="checkbox" name="public" id="public" %s>
-    <label for="public" style="font-weight: normal;">Make this app public</label>
-  </div>
-  <div>
-    <button type="submit" class="button">Save App</button>
-    <button type="button" class="button button-secondary" onclick="previewApp()">Preview</button>
-  </div>
+  %s
 </form>
-<iframe id="preview" class="preview-frame" sandbox="allow-scripts"></iframe>
-<script>
-function previewApp() {
-  var code = document.getElementById('code-editor').value;
-  var iframe = document.getElementById('preview');
-  iframe.srcdoc = code;
-}
-</script>
-`, errHTML, html.EscapeString(name), html.EscapeString(description), html.EscapeString(code), publicChecked)
+`, errHTML, html.EscapeString(name), html.EscapeString(prompt), codeSection)
 
 	w.Write([]byte(app.RenderHTML("New App", "Create New App", formHTML)))
 }
@@ -508,16 +584,54 @@ func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 	if r.Method == "POST" {
 		r.ParseForm()
 		name := strings.TrimSpace(r.FormValue("name"))
-		description := strings.TrimSpace(r.FormValue("description"))
+		promptText := strings.TrimSpace(r.FormValue("prompt"))
 		code := r.FormValue("code")
 		public := r.FormValue("public") == "on"
+		action := r.FormValue("action")
 
 		if name == "" {
+			a.Name = name
+			a.Description = promptText
+			a.Code = code
+			a.Public = public
 			renderEditForm(w, a, "Name is required")
 			return
 		}
 
-		if err := UpdateApp(id, name, description, code, public, sess.Account); err != nil {
+		// Regenerate code from prompt
+		if action == "generate" {
+			if promptText == "" {
+				a.Name = name
+				a.Description = promptText
+				a.Code = code
+				a.Public = public
+				renderEditForm(w, a, "Please describe what you want to build")
+				return
+			}
+
+			generated, err := generateAppCode(promptText)
+			if err != nil {
+				a.Name = name
+				a.Description = promptText
+				a.Code = code
+				a.Public = public
+				renderEditForm(w, a, "Generation failed: "+err.Error())
+				return
+			}
+
+			a.Name = name
+			a.Description = promptText
+			a.Code = generated
+			a.Public = public
+			renderEditForm(w, a, "")
+			return
+		}
+
+		if err := UpdateApp(id, name, promptText, code, public, sess.Account); err != nil {
+			a.Name = name
+			a.Description = promptText
+			a.Code = code
+			a.Public = public
 			renderEditForm(w, a, err.Error())
 			return
 		}
@@ -552,10 +666,14 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
 	box-sizing: border-box;
 	font-family: inherit;
 }
-.form-group textarea {
+.form-group textarea#prompt {
+	min-height: 80px;
+	font-family: inherit;
+}
+.form-group textarea#code-editor {
 	font-family: monospace;
 	font-size: 13px;
-	min-height: 400px;
+	min-height: 300px;
 }
 .checkbox-group {
 	display: flex;
@@ -583,6 +701,11 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
 	border-radius: 4px;
 	margin-top: 20px;
 }
+.hint {
+	font-size: 13px;
+	color: #666;
+	margin-top: 5px;
+}
 </style>
 %s
 <form method="POST" id="app-form">
@@ -591,8 +714,9 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
     <input type="text" name="name" value="%s" required>
   </div>
   <div class="form-group">
-    <label>Description</label>
-    <input type="text" name="description" value="%s" placeholder="Brief description of what this app does">
+    <label>Prompt</label>
+    <textarea name="prompt" id="prompt" placeholder="Describe what you want to build...">%s</textarea>
+    <div class="hint">Edit the prompt and click Regenerate to create new code.</div>
   </div>
   <div class="form-group">
     <label>Code (HTML/CSS/JS)</label>
@@ -603,8 +727,9 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
     <label for="public" style="font-weight: normal;">Make this app public</label>
   </div>
   <div>
-    <button type="submit" class="button">Save Changes</button>
+    <button type="submit" name="action" value="save" class="button">Save Changes</button>
     <button type="button" class="button button-secondary" onclick="previewApp()">Preview</button>
+    <button type="submit" name="action" value="generate" class="button button-secondary">Regenerate</button>
     <a href="/apps/%s" style="margin-left: 10px;">Cancel</a>
   </div>
 </form>
