@@ -488,20 +488,28 @@ Generate the complete HTML file now:`
 func renderNewForm(w http.ResponseWriter, errMsg, name, prompt string) {
 	errHTML := ""
 	if errMsg != "" {
-		errHTML = fmt.Sprintf(`<p style="color: #c00;">%s</p>`, html.EscapeString(errMsg))
+		errHTML = fmt.Sprintf(`<div style="color: red; margin-bottom: 15px;">%s</div>`, html.EscapeString(errMsg))
 	}
 
 	formHTML := fmt.Sprintf(`
 <style>
 .form-group { margin-bottom: 15px; }
 .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+.form-group input[type="text"], .form-group textarea {
+	width: 100%%;;
+	padding: 12px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	box-sizing: border-box;
+	font-family: inherit;
+	font-size: 16px;
+}
 .form-group textarea {
 	min-height: 120px;
-	resize: vertical;
 }
 .hint {
 	font-size: 13px;
-	color: var(--text-muted, #888);
+	color: #666;
 	margin-top: 5px;
 }
 </style>
@@ -875,13 +883,13 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 
 	messageHTML := ""
 	if hasError {
-		messageHTML = fmt.Sprintf(`<p style="color: #c00;">Generation failed: %s</p>`, html.EscapeString(a.Error))
+		messageHTML = fmt.Sprintf(`<div style="color: #c00; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;">Generation failed: %s</div>`, html.EscapeString(a.Error))
 	} else if message != "" {
 		color := "#c00"
 		if strings.HasPrefix(message, "✓") {
 			color = "#080"
 		}
-		messageHTML = fmt.Sprintf(`<p style="color: %s;">%s</p>`, color, html.EscapeString(message))
+		messageHTML = fmt.Sprintf(`<div style="color: %s; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;">%s</div>`, color, html.EscapeString(message))
 	}
 
 	// Parse history from description
@@ -939,8 +947,8 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	gap: 20px;
 }
 .preview-section {
-	border: 1px solid var(--card-border, #e8e8e8);
-	border-radius: var(--border-radius, 6px);
+	border: 1px solid #ddd;
+	border-radius: 8px;
 	overflow: hidden;
 	background: #fff;
 }
@@ -951,18 +959,27 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	display: block;
 }
 .instruction-section {
-	background: var(--hover-background, #fafafa);
+	background: #f9f9f9;
 	padding: 20px;
-	border-radius: var(--border-radius, 6px);
+	border-radius: 8px;
 }
 .instruction-input {
 	width: 100%%;;
-	margin-bottom: 15px;
+	padding: 12px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-size: 15px;
+	font-family: inherit;
+	margin-bottom: 10px;
+	box-sizing: border-box;
+}
+.instruction-input:disabled {
+	background: #eee;
 }
 .history {
 	margin-top: 15px;
 	font-size: 13px;
-	color: var(--text-secondary, #555);
+	color: #666;
 }
 .history ul {
 	margin: 5px 0 0 20px;
@@ -977,10 +994,14 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	align-items: center;
 	margin-top: 15px;
 	padding-top: 15px;
-	border-top: 1px solid var(--divider, #f0f0f0);
+	border-top: 1px solid #ddd;
 	flex-wrap: wrap;
 }
 .meta-section input[type="text"] {
+	padding: 8px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-size: 14px;
 	width: auto;
 }
 .checkbox-group {
@@ -996,7 +1017,7 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 }
 .code-toggle summary {
 	cursor: pointer;
-	color: var(--text-secondary, #555);
+	color: #666;
 	font-size: 13px;
 }
 .code-editor {
@@ -1004,8 +1025,11 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	min-height: 300px;
 	font-family: monospace;
 	font-size: 12px;
+	padding: 10px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
 	margin-top: 10px;
-	resize: vertical;
+	box-sizing: border-box;
 }
 </style>
 
@@ -1037,6 +1061,10 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
     </details>
   </form>
 </div>
+
+<script>
+// Manual code editing requires page refresh to see changes
+</script>
 %s
 `, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), pollingScript)
 
