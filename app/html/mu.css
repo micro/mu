@@ -1544,11 +1544,11 @@ a.highlight {
     -webkit-overflow-scrolling: touch;
   }
   .topic-tabs, #topics {
-    gap: 8px;
+    gap: 6px;
     flex-wrap: nowrap;
   }
   #topic-selector .head, #topics .head {
-    font-size: 12px;
+    font-size: 11px;
     white-space: nowrap;
   }
   #head {
@@ -1581,7 +1581,7 @@ a.highlight {
   }
   #content {
     margin-left: 0;
-    padding: 10px 8px;
+    padding: 10px 15px;
   }
   #page-title {
     text-align: center;
