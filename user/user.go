@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mu/app"
+	"mu/apps"
 	"mu/auth"
 	"mu/blog"
 	"mu/data"
@@ -190,6 +191,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		messageLink = fmt.Sprintf(`<p style="margin: 15px 0 0 0;"><a href="/mail?compose=true&to=%s">Send a message</a></p>`, acc.ID)
 	}
 
+	// Build apps section
+	userApps := apps.GetUserApps(acc.ID)
+	var appsSection string
+	if len(userApps) > 0 {
+		appsSection = fmt.Sprintf(`<h3 style="margin-bottom: 20px;">Apps (%d)</h3><div style="margin-bottom: 30px;">`, len(userApps))
+		for _, a := range userApps {
+			if !a.Public && !isOwnProfile {
+				continue // Skip private apps for non-owners
+			}
+			appsSection += fmt.Sprintf(`<p><a href="/apps/%s">%s</a></p>`, a.ID, a.Name)
+		}
+		appsSection += `</div>`
+	}
+
 	// Build the profile page content
 	content := fmt.Sprintf(`<div style="max-width: 750px;">
 <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333;">
@@ -200,9 +215,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 %s
 </div>
 
+%s
+
 <h3 style="margin-bottom: 20px;">Posts (%d)</h3>
 %s
-</div>`, acc.ID, acc.Created.Format("January 2006"), statusSection, statusEditForm, messageLink, postCount, userPosts)
+</div>`, acc.ID, acc.Created.Format("January 2006"), statusSection, statusEditForm, messageLink, appsSection, postCount, userPosts)
 
 	// Use name as page title
 	html := app.RenderHTML(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content)

@@ -287,7 +287,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 
 	// Create button (if logged in)
 	if sess != nil {
-		content.WriteString(`<div style="margin-bottom: 20px;"><a href="/apps/new" class="button">+ New App</a></div>`)
+		content.WriteString(`<p style="margin-bottom: 20px;"><a href="/apps/new">+ New App</a></p>`)
 	}
 
 	// User's apps
@@ -299,7 +299,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 		}
 		content.WriteString(`</div>`)
 	} else if sess != nil {
-		content.WriteString(`<p style="color: #666;">You haven't created any apps yet.</p>`)
+		content.WriteString(`<p class="info">You haven't created any apps yet.</p>`)
 	}
 
 	// Public apps (exclude user's own)
@@ -332,10 +332,10 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	gap: 15px;
 }
 .app-card {
-	border: 1px solid #ddd;
-	border-radius: 8px;
-	padding: 15px;
-	background: #fff;
+	border: 1px solid var(--card-border, #e8e8e8);
+	border-radius: var(--border-radius, 6px);
+	padding: var(--item-padding, 16px);
+	background: var(--card-background, #fff);
 }
 .app-card:hover {
 	border-color: #999;
@@ -343,32 +343,27 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 .app-card h4 {
 	margin: 0 0 8px 0;
 }
+.app-card h4 a {
+	text-decoration: none;
+}
 .app-card p {
 	margin: 0 0 10px 0;
-	color: #666;
+	color: var(--text-secondary, #555);
 	font-size: 14px;
 }
 .app-card .meta {
 	font-size: 12px;
-	color: #999;
+	color: var(--text-muted, #888);
 }
 .app-card .actions {
 	margin-top: 10px;
 }
 .app-card .actions a {
-	margin-right: 10px;
+	margin-right: 15px;
 	font-size: 13px;
 }
-.button {
-	display: inline-block;
-	padding: 8px 16px;
-	background: #333;
-	color: #fff;
-	text-decoration: none;
-	border-radius: 4px;
-}
-.button:hover {
-	background: #555;
+.app-card .actions a.delete {
+	color: #c00;
 }
 </style>`
 
@@ -381,7 +376,15 @@ func renderAppCard(a *App, isOwner bool) string {
 	b.WriteString(`<div class="app-card">`)
 	b.WriteString(fmt.Sprintf(`<h4><a href="/apps/%s">%s</a></h4>`, a.ID, html.EscapeString(a.Name)))
 	if a.Description != "" {
-		b.WriteString(fmt.Sprintf(`<p>%s</p>`, html.EscapeString(a.Description)))
+		// Truncate description to first line or 100 chars
+		desc := a.Description
+		if idx := strings.Index(desc, "\n"); idx > 0 {
+			desc = desc[:idx]
+		}
+		if len(desc) > 100 {
+			desc = desc[:100] + "..."
+		}
+		b.WriteString(fmt.Sprintf(`<p>%s</p>`, html.EscapeString(desc)))
 	}
 	b.WriteString(fmt.Sprintf(`<div class="meta">by %s`, html.EscapeString(a.Author)))
 	if a.Public {
@@ -392,8 +395,8 @@ func renderAppCard(a *App, isOwner bool) string {
 	b.WriteString(`</div>`)
 	if isOwner {
 		b.WriteString(`<div class="actions">`)
-		b.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit">Edit</a>`, a.ID))
-		b.WriteString(fmt.Sprintf(`<a href="/apps/%s/delete" onclick="return confirm('Delete this app?')">Delete</a>`, a.ID))
+		b.WriteString(fmt.Sprintf(`<a href="/apps/%s/develop">Edit</a>`, a.ID))
+		b.WriteString(fmt.Sprintf(`<a href="/apps/%s/delete" class="delete" onclick="return confirm('Delete this app?')">Delete</a>`, a.ID))
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
@@ -485,44 +488,25 @@ Generate the complete HTML file now:`
 func renderNewForm(w http.ResponseWriter, errMsg, name, prompt string) {
 	errHTML := ""
 	if errMsg != "" {
-		errHTML = fmt.Sprintf(`<div style="color: red; margin-bottom: 15px;">%s</div>`, html.EscapeString(errMsg))
+		errHTML = fmt.Sprintf(`<p style="color: #c00;">%s</p>`, html.EscapeString(errMsg))
 	}
 
 	formHTML := fmt.Sprintf(`
 <style>
 .form-group { margin-bottom: 15px; }
 .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-.form-group input[type="text"], .form-group textarea {
-	width: 100%%;
-	padding: 12px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	box-sizing: border-box;
-	font-family: inherit;
-	font-size: 16px;
-}
 .form-group textarea {
 	min-height: 120px;
+	resize: vertical;
 }
-.button { 
-	padding: 12px 24px; 
-	background: #333; 
-	color: white; 
-	border: none; 
-	border-radius: 4px; 
-	cursor: pointer;
-	font-size: 16px;
-	width: 100%%;
-}
-.button:hover { background: #555; }
 .hint {
 	font-size: 13px;
-	color: #666;
+	color: var(--text-muted, #888);
 	margin-top: 5px;
 }
 </style>
 %s
-<form method="POST">
+<form method="POST" style="max-width: 600px;">
   <div class="form-group">
     <label>Name</label>
     <input type="text" name="name" value="%s" placeholder="Pomodoro Timer" required autofocus>
@@ -533,7 +517,7 @@ func renderNewForm(w http.ResponseWriter, errMsg, name, prompt string) {
     <div class="hint">Describe your app in plain English. Be specific about features and layout.</div>
   </div>
   <div>
-    <button type="submit" class="button">Create App</button>
+    <button type="submit">Create App</button>
   </div>
 </form>
 `, errHTML, html.EscapeString(name), html.EscapeString(prompt))
@@ -891,13 +875,13 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 
 	messageHTML := ""
 	if hasError {
-		messageHTML = fmt.Sprintf(`<div style="color: #c00; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;">Generation failed: %s</div>`, html.EscapeString(a.Error))
+		messageHTML = fmt.Sprintf(`<p style="color: #c00;">Generation failed: %s</p>`, html.EscapeString(a.Error))
 	} else if message != "" {
 		color := "#c00"
 		if strings.HasPrefix(message, "✓") {
 			color = "#080"
 		}
-		messageHTML = fmt.Sprintf(`<div style="color: %s; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;">%s</div>`, color, html.EscapeString(message))
+		messageHTML = fmt.Sprintf(`<p style="color: %s;">%s</p>`, color, html.EscapeString(message))
 	}
 
 	// Parse history from description
@@ -955,8 +939,8 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	gap: 20px;
 }
 .preview-section {
-	border: 1px solid #ddd;
-	border-radius: 8px;
+	border: 1px solid var(--card-border, #e8e8e8);
+	border-radius: var(--border-radius, 6px);
 	overflow: hidden;
 	background: #fff;
 }
@@ -967,41 +951,18 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	display: block;
 }
 .instruction-section {
-	background: #f9f9f9;
+	background: var(--hover-background, #fafafa);
 	padding: 20px;
-	border-radius: 8px;
+	border-radius: var(--border-radius, 6px);
 }
 .instruction-input {
 	width: 100%%;;
-	padding: 12px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	font-size: 15px;
-	font-family: inherit;
-	margin-bottom: 10px;
-	box-sizing: border-box;
-}
-.instruction-input:disabled {
-	background: #eee;
-}
-.button {
-	padding: 10px 20px;
-	background: #333;
-	color: white;
-	border: none;
-	border-radius: 4px;
-	cursor: pointer;
-	font-size: 14px;
-}
-.button:hover { background: #555; }
-.button:disabled { background: #999; cursor: not-allowed; }
-.button-secondary {
-	background: #666;
+	margin-bottom: 15px;
 }
 .history {
 	margin-top: 15px;
 	font-size: 13px;
-	color: #666;
+	color: var(--text-secondary, #555);
 }
 .history ul {
 	margin: 5px 0 0 20px;
@@ -1016,25 +977,26 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	align-items: center;
 	margin-top: 15px;
 	padding-top: 15px;
-	border-top: 1px solid #ddd;
+	border-top: 1px solid var(--divider, #f0f0f0);
+	flex-wrap: wrap;
 }
 .meta-section input[type="text"] {
-	padding: 8px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	font-size: 14px;
+	width: auto;
 }
 .checkbox-group {
 	display: flex;
 	align-items: center;
 	gap: 5px;
 }
+.checkbox-group input[type="checkbox"] {
+	width: auto;
+}
 .code-toggle {
 	margin-top: 15px;
 }
 .code-toggle summary {
 	cursor: pointer;
-	color: #666;
+	color: var(--text-secondary, #555);
 	font-size: 13px;
 }
 .code-editor {
@@ -1042,11 +1004,8 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	min-height: 300px;
 	font-family: monospace;
 	font-size: 12px;
-	padding: 10px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
 	margin-top: 10px;
-	box-sizing: border-box;
+	resize: vertical;
 }
 </style>
 
@@ -1058,9 +1017,9 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
   <form method="POST" class="instruction-section">
     %s
     <input type="text" name="instruction" class="instruction-input" placeholder="Describe what you want to change..." %s autofocus>
-    <button type="submit" name="action" value="modify" class="button" %s>Apply Change</button>
-    <button type="submit" name="action" value="save" class="button button-secondary" style="margin-left: 10px;" %s>Done</button>
-    <a href="/apps/%s" style="margin-left: 10px; color: #666;">Cancel</a>
+    <button type="submit" name="action" value="modify" %s>Apply Change</button>
+    <button type="submit" name="action" value="save" style="margin-left: 10px;" %s>Done</button>
+    <a href="/apps/%s" style="margin-left: 15px;">Cancel</a>
     
     %s
     
@@ -1074,14 +1033,10 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
     
     <details class="code-toggle">
       <summary>Show code</summary>
-      <textarea class="code-editor" name="code" id="code-editor" onchange="updatePreview()" %s>%s</textarea>
+      <textarea class="code-editor" name="code" id="code-editor" %s>%s</textarea>
     </details>
   </form>
 </div>
-
-<script>
-// Manual code editing requires page refresh to see changes
-</script>
 %s
 `, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), pollingScript)
 
@@ -1108,10 +1063,10 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 	var actions string
 	if isOwner {
 		actions = fmt.Sprintf(`
-		<div style="margin-bottom: 20px;">
-			<a href="/apps/%s/edit" class="button">Edit</a>
-			<a href="/apps/%s/delete" class="button button-danger" onclick="return confirm('Delete this app?')">Delete</a>
-		</div>`, a.ID, a.ID)
+		<p style="margin-bottom: 20px;">
+			<a href="/apps/%s/develop">Edit</a>
+			<a href="/apps/%s/delete" style="color: #c00; margin-left: 15px;" onclick="return confirm('Delete this app?')">Delete</a>
+		</p>`, a.ID, a.ID)
 	}
 
 	visibility := "Private"
@@ -1119,41 +1074,24 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 		visibility = "Public"
 	}
 
-	html := fmt.Sprintf(`
+	viewHTML := fmt.Sprintf(`
 <style>
-.button { 
-	display: inline-block;
-	padding: 8px 16px; 
-	background: #333; 
-	color: white; 
-	text-decoration: none;
-	border-radius: 4px; 
-	margin-right: 10px;
-}
-.button:hover { background: #555; }
-.button-danger { background: #c00; }
-.button-danger:hover { background: #a00; }
 .app-frame {
 	width: 100%%;
 	height: 500px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
+	border: 1px solid var(--card-border, #e8e8e8);
+	border-radius: var(--border-radius, 6px);
 	background: white;
-}
-.meta {
-	color: #666;
-	font-size: 14px;
-	margin-bottom: 20px;
 }
 </style>
 %s
-<div class="meta">by %s · %s · Updated %s</div>
+<p class="info">by %s · %s · Updated %s</p>
 <p>%s</p>
 <iframe class="app-frame" sandbox="allow-scripts" srcdoc="%s"></iframe>
 <p style="margin-top: 20px;"><a href="/apps">← Back to Apps</a></p>
 `, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), html.EscapeString(a.Description), html.EscapeString(a.Code))
 
-	w.Write([]byte(app.RenderHTML(a.Name, a.Name, html)))
+	w.Write([]byte(app.RenderHTML(a.Name, a.Name, viewHTML)))
 }
 
 // handleLoading serves a loading spinner page for the preview iframe
