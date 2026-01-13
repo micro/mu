@@ -104,12 +104,70 @@ Apps run in sandboxed iframe: `sandbox="allow-scripts"`
 - No parent frame access
 - No forms, popups, same-origin
 
-### Next Steps (not yet implemented)
+### Mu SDK (January 2026)
 
-- Data storage API for apps (let apps persist user data)
-- Access to platform data (news, markets, etc.)
-- Wallet integration (charge for apps)
-- App versioning
+JavaScript SDK automatically injected into every app:
+
+```javascript
+// Database - per-app, per-user storage (100KB quota)
+mu.db.get(key)      // async - retrieve value
+mu.db.set(key, val) // async - store value
+mu.db.delete(key)   // async - delete key
+mu.db.list()        // async - list all keys
+mu.db.quota()       // async - {used, limit} in bytes
+
+// User context
+mu.user.id          // string or null
+mu.user.name        // string or null  
+mu.user.loggedIn    // boolean
+
+// App context
+mu.app.id           // string
+mu.app.name         // string
+```
+
+Backend: `/apps/api` - RPC endpoint, method routing via `method` field.
+Storage: `~/.mu/apps.db` SQLite database.
+
+### Featured Apps (to build)
+
+Three reference apps to validate the platform:
+
+1. **Todo** (`/apps/todo`) - Task management
+   - Add/complete/delete tasks
+   - Persists via mu.db
+   
+2. **Timer** (`/apps/timer`) - Pomodoro/focus timer
+   - 25min work / 5min break cycles
+   - Session tracking
+   - Will need: mu.notify() for alerts
+   
+3. **Expenses** (`/apps/expenses`) - Expense tracking
+   - Log expenses with amount/category/date
+   - Weekly/monthly summaries
+   - More complex data patterns
+
+Reserved single-word URLs redirect to featured/canonical versions.
+
+### Roadmap
+
+**Now:**
+- [ ] Build three featured apps (Todo, Timer, Expenses)
+- [ ] Add `/apps/docs` - SDK documentation page
+- [ ] Update README.md with micro apps section
+- [ ] Reserve single-word app URLs
+
+**Next:**
+- [ ] App forking - copy public apps to customize
+- [ ] Public discovery - better browse/search for public apps
+- [ ] App templates - pre-built starting points
+- [ ] Quota/limits UI - show storage usage per app
+
+**Future SDK extensions:**
+- [ ] `mu.ai.complete(prompt)` - LLM access from apps
+- [ ] `mu.notify(title, body)` - Push notifications
+- [ ] `mu.pay(amount)` - Wallet integration
+- [ ] Platform data access (news, markets, etc.)
 
 ## Vision / Business Context
 
