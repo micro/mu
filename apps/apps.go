@@ -850,6 +850,8 @@ Rules:
 3. Preserve the existing structure and style unless asked to change it
 4. Keep all existing functionality unless asked to change it
 5. Start with <!DOCTYPE html> and end with </html>
+6. NEVER use placeholder comments like "// ...existing code..." - always include the full actual code
+7. Output must be complete, valid, runnable HTML
 
 Mu SDK (automatically available as window.mu):
 - mu.db.get(key) - retrieve stored value (async)
