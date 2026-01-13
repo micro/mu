@@ -37,6 +37,90 @@ ssh mu 'ps aux | grep "[/]home/mu/go/bin/mu"'
 ssh mu 'sudo systemctl restart mu'
 ```
 
+## Test Account
+
+Credentials stored in `~/.mu-test/credentials`:
+- Username: `shelleytest`
+- Password: `shelley123`
+
+## Micro Apps Feature (January 2026)
+
+AI-powered app builder allowing users to create single-page web apps from natural language prompts.
+
+### Routes
+
+- `/apps` - List user's apps and public apps
+- `/apps/new` - Create new app (name + prompt → async generation)
+- `/apps/{id}` - View app in sandboxed iframe
+- `/apps/{id}/develop` - Iterative AI development mode
+- `/apps/{id}/preview` - Raw HTML preview for embedding
+- `/apps/{id}/status` - JSON status for polling (generating/ready/error)
+- `/apps/{id}/delete` - Delete app
+
+### Flow
+
+1. User enters name + prompt at `/apps/new`
+2. Click "Create App" → immediately redirects to `/develop`
+3. Shows loading spinner, polls `/status` every 2 seconds
+4. When ready, page auto-refreshes with preview
+5. User iterates: "Add a reset button" → Apply Change → preview updates
+6. Changes are auto-saved, history tracked in description field
+7. Click "Done" when finished
+
+### Key Files
+
+- `apps/apps.go` - All app logic, handlers, AI generation
+- Data stored in `~/.mu/data/apps.json`
+
+### App Model
+
+```go
+type App struct {
+    ID          string    // Unix nano timestamp
+    Name        string
+    Description string    // Prompt + change history
+    Code        string    // HTML/CSS/JS
+    Author      string
+    AuthorID    string
+    Public      bool
+    Status      string    // "generating", "ready", "error"
+    Error       string
+    CreatedAt   time.Time
+    UpdatedAt   time.Time
+}
+```
+
+### AI Prompts
+
+- `generateAppCode()` - Creates new app from scratch
+- `modifyAppCode()` - Makes targeted changes to existing code
+
+Both use `chat.AskLLM()` with PriorityHigh.
+
+### Security
+
+Apps run in sandboxed iframe: `sandbox="allow-scripts"`
+- JavaScript allowed
+- No parent frame access
+- No forms, popups, same-origin
+
+### Next Steps (not yet implemented)
+
+- Data storage API for apps (let apps persist user data)
+- Access to platform data (news, markets, etc.)
+- Wallet integration (charge for apps)
+- App versioning
+
+## Vision / Business Context
+
+Mu is an ethical tech platform for developers' digital daily habits:
+- News, video, markets, chat, blog, reminders - without ads/tracking/addiction
+- The goal is **10x efficiency**: 10 minutes on Mu replaces 100 minutes across 6 platforms
+- Micro apps turn it into a **super app platform** where users can build and share tools
+- Agent's job: filter content, generate apps, reduce consumption time - not maximize engagement
+- Target audience: developers (2000+ GitHub followers from go-micro)
+- Islamic values embedded (reminder system, ethical tech principles)
+
 ## Recent Fixes
 
 - Memory leak fix: Added 60s timeout and semaphore (max 5 concurrent) to LLM API calls
