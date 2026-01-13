@@ -33,7 +33,7 @@ func initDB() error {
 		os.MkdirAll(dir, 0700)
 
 		var err error
-		db, err = sql.Open("sqlite", dbPath+"?_journal_mode=WAL")
+		db, err = sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL")
 		if err != nil {
 			initErr = err
 			return
