@@ -237,6 +237,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Get session (optional for viewing public apps)
 	sess, _ := auth.GetSession(r)
 
+	// Reserved single-word app URLs
+	reservedApps := map[string]string{
+		"todo":     "1768341615408024989",
+		"timer":    "1768342273851959552",
+		"expenses": "1768342520623825814",
+	}
+
 	switch {
 	case path == "" || path == "/":
 		// List apps
@@ -244,6 +251,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case path == "new":
 		// Create new app form
 		handleNew(w, r, sess)
+	case path == "docs":
+		// SDK documentation
+		handleSDKDocs(w, r)
+	case reservedApps[strings.ToLower(path)] != "":
+		// Reserved app name -> redirect to the featured app
+		http.Redirect(w, r, "/apps/"+reservedApps[strings.ToLower(path)], 302)
 	case path == "loading":
 		// Loading page for iframe
 		handleLoading(w, r)
@@ -1155,6 +1168,67 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 `, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), html.EscapeString(description), a.ID)
 
 	w.Write([]byte(app.RenderHTML(a.Name, a.Name, viewHTML)))
+}
+
+// handleSDKDocs serves the SDK documentation page
+func handleSDKDocs(w http.ResponseWriter, r *http.Request) {
+	docs := `
+<h2>Mu SDK</h2>
+<p>The Mu SDK is automatically available in all apps as <code>window.mu</code>.</p>
+
+<h3>Database (mu.db)</h3>
+<p>Per-user persistent storage. 100KB quota per app.</p>
+<pre>
+// Get a value
+const value = await mu.db.get('key');
+
+// Set a value (can be any JSON-serializable data)
+await mu.db.set('key', value);
+
+// Delete a key
+await mu.db.delete('key');
+
+// List all keys
+const keys = await mu.db.list();
+
+// Check quota
+const {used, limit} = await mu.db.quota();
+</pre>
+
+<h3>User Context (mu.user)</h3>
+<pre>
+mu.user.id        // User ID (string) or null if not logged in
+mu.user.name      // User's display name or null
+mu.user.loggedIn  // boolean
+</pre>
+
+<h3>App Context (mu.app)</h3>
+<pre>
+mu.app.id    // This app's unique ID
+mu.app.name  // This app's name
+</pre>
+
+<h3>Example: Todo App</h3>
+<pre>
+// Load todos on startup
+let todos = [];
+const saved = await mu.db.get('todos');
+if (saved) todos = JSON.parse(saved);
+
+// Save after changes
+function saveTodos() {
+  mu.db.set('todos', JSON.stringify(todos));
+}
+</pre>
+
+<h3>Featured Apps</h3>
+<ul>
+<li><a href="/apps/todo">Todo</a> - Task management</li>
+<li><a href="/apps/timer">Timer</a> - Focus/pomodoro timer</li>
+<li><a href="/apps/expenses">Expenses</a> - Expense tracking</li>
+</ul>
+`
+	w.Write([]byte(app.RenderHTML("SDK Documentation", "Mu SDK", docs)))
 }
 
 // handleLoading serves a loading spinner page for the preview iframe
