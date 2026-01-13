@@ -1544,7 +1544,7 @@ a.highlight {
     -webkit-overflow-scrolling: touch;
   }
   .topic-tabs, #topics {
-    gap: 6px;
+    gap: 5px;
     flex-wrap: nowrap;
   }
   #topic-selector .head, #topics .head {
