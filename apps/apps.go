@@ -25,6 +25,8 @@ type App struct {
 	Author      string    `json:"author"`      // Display name
 	AuthorID    string    `json:"author_id"`   // User ID
 	Public      bool      `json:"public"`      // Whether app is publicly listed
+	Status      string    `json:"status"`      // "generating", "ready", "error"
+	Error       string    `json:"error"`       // Error message if generation failed
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -126,6 +128,11 @@ func CreateApp(name, description, code, author, authorID string, public bool) (*
 	defer mutex.Unlock()
 
 	now := time.Now()
+	status := "ready"
+	if code == "" {
+		status = "generating"
+	}
+
 	a := &App{
 		ID:          fmt.Sprintf("%d", now.UnixNano()),
 		Name:        name,
@@ -134,6 +141,7 @@ func CreateApp(name, description, code, author, authorID string, public bool) (*
 		Author:      author,
 		AuthorID:    authorID,
 		Public:      public,
+		Status:      status,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -143,6 +151,35 @@ func CreateApp(name, description, code, author, authorID string, public bool) (*
 	if err := saveApps(); err != nil {
 		return nil, err
 	}
+
+	return a, nil
+}
+
+// CreateAppAsync creates an app and generates code in the background
+func CreateAppAsync(name, prompt, author, authorID string) (*App, error) {
+	// Create app with empty code, status "generating"
+	a, err := CreateApp(name, prompt, "", author, authorID, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate code in background
+	go func() {
+		code, err := generateAppCode(prompt)
+		
+		mutex.Lock()
+		defer mutex.Unlock()
+		
+		if err != nil {
+			a.Status = "error"
+			a.Error = err.Error()
+		} else {
+			a.Code = code
+			a.Status = "ready"
+		}
+		a.UpdatedAt = time.Now()
+		saveApps()
+	}()
 
 	return a, nil
 }
@@ -218,6 +255,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Delete app
 		id := strings.TrimSuffix(path, "/delete")
 		handleDelete(w, r, sess, id)
+	case strings.HasSuffix(path, "/status"):
+		// Status API for polling
+		id := strings.TrimSuffix(path, "/status")
+		handleStatus(w, r, id)
 	default:
 		// View app
 		handleView(w, r, sess, path)
@@ -361,50 +402,30 @@ func handleNew(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 		r.ParseForm()
 		name := strings.TrimSpace(r.FormValue("name"))
 		promptText := strings.TrimSpace(r.FormValue("prompt"))
-		code := r.FormValue("code")
-		public := r.FormValue("public") == "on"
-		action := r.FormValue("action") // "generate" or "save"
 
 		if name == "" {
-			renderNewForm(w, "Name is required", name, promptText, code, public, false)
+			renderNewForm(w, "Name is required", name, promptText)
 			return
 		}
 
-		// Generate code from prompt
-		if action == "generate" {
-			if promptText == "" {
-				renderNewForm(w, "Please describe what you want to build", name, promptText, code, public, false)
-				return
-			}
-
-			generated, err := generateAppCode(promptText)
-			if err != nil {
-				renderNewForm(w, "Generation failed: "+err.Error(), name, promptText, code, public, false)
-				return
-			}
-
-			// Show form with generated code
-			renderNewForm(w, "", name, promptText, generated, public, true)
+		if promptText == "" {
+			renderNewForm(w, "Please describe what you want to build", name, promptText)
 			return
 		}
 
-		// Save the app
-		if code == "" {
-			renderNewForm(w, "Generate code first or write your own", name, promptText, code, public, false)
-			return
-		}
-
-		a, err := CreateApp(name, promptText, code, sess.Account, sess.Account, public)
+		// Create app and start async generation
+		a, err := CreateAppAsync(name, promptText, sess.Account, sess.Account)
 		if err != nil {
-			renderNewForm(w, err.Error(), name, promptText, code, public, true)
+			renderNewForm(w, err.Error(), name, promptText)
 			return
 		}
 
-		http.Redirect(w, r, "/apps/"+a.ID, 302)
+		// Immediately redirect to develop page
+		http.Redirect(w, r, "/apps/"+a.ID+"/develop", 302)
 		return
 	}
 
-	renderNewForm(w, "", "", "", "", false, false)
+	renderNewForm(w, "", "", "")
 }
 
 // generateAppCode uses AI to generate HTML/CSS/JS from a prompt
@@ -453,49 +474,10 @@ Generate the complete HTML file now:`
 	return response, nil
 }
 
-func renderNewForm(w http.ResponseWriter, errMsg, name, prompt, code string, public bool, hasCode bool) {
-	publicChecked := ""
-	if public {
-		publicChecked = "checked"
-	}
-
+func renderNewForm(w http.ResponseWriter, errMsg, name, prompt string) {
 	errHTML := ""
 	if errMsg != "" {
 		errHTML = fmt.Sprintf(`<div style="color: red; margin-bottom: 15px;">%s</div>`, html.EscapeString(errMsg))
-	}
-
-	// Show code section only after generation
-	codeSection := ""
-	if hasCode {
-		codeSection = fmt.Sprintf(`
-  <div class="form-group">
-    <label>Generated Code</label>
-    <textarea name="code" id="code-editor">%s</textarea>
-  </div>
-  <div class="form-group checkbox-group">
-    <input type="checkbox" name="public" id="public" %s>
-    <label for="public" style="font-weight: normal;">Make this app public</label>
-  </div>
-  <div style="margin-bottom: 15px;">
-    <button type="submit" name="action" value="save" class="button">Save App</button>
-    <button type="button" class="button button-secondary" onclick="previewApp()">Preview</button>
-    <button type="submit" name="action" value="generate" class="button button-secondary">Regenerate</button>
-  </div>
-  <iframe id="preview" class="preview-frame" sandbox="allow-scripts"></iframe>
-  <script>
-  function previewApp() {
-    var code = document.getElementById('code-editor').value;
-    var iframe = document.getElementById('preview');
-    iframe.srcdoc = code;
-  }
-  // Auto-preview on load
-  window.onload = function() { previewApp(); };
-  </script>`, html.EscapeString(code), publicChecked)
-	} else {
-		codeSection = `
-  <div>
-    <button type="submit" name="action" value="generate" class="button">Generate App</button>
-  </div>`
 	}
 
 	formHTML := fmt.Sprintf(`
@@ -504,46 +486,27 @@ func renderNewForm(w http.ResponseWriter, errMsg, name, prompt, code string, pub
 .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-group input[type="text"], .form-group textarea {
 	width: 100%%;
-	padding: 8px;
+	padding: 12px;
 	border: 1px solid #ddd;
 	border-radius: 4px;
 	box-sizing: border-box;
 	font-family: inherit;
+	font-size: 16px;
 }
-.form-group textarea#prompt {
-	min-height: 100px;
-	font-family: inherit;
-}
-.form-group textarea#code-editor {
-	font-family: monospace;
-	font-size: 13px;
-	min-height: 300px;
-}
-.checkbox-group {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+.form-group textarea {
+	min-height: 120px;
 }
 .button { 
-	padding: 10px 20px; 
+	padding: 12px 24px; 
 	background: #333; 
 	color: white; 
 	border: none; 
 	border-radius: 4px; 
 	cursor: pointer;
-	font-size: 14px;
+	font-size: 16px;
+	width: 100%%;
 }
 .button:hover { background: #555; }
-.button-secondary {
-	background: #666;
-	margin-left: 10px;
-}
-.preview-frame {
-	width: 100%%;
-	height: 400px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-}
 .hint {
 	font-size: 13px;
 	color: #666;
@@ -551,19 +514,21 @@ func renderNewForm(w http.ResponseWriter, errMsg, name, prompt, code string, pub
 }
 </style>
 %s
-<form method="POST" id="app-form">
+<form method="POST">
   <div class="form-group">
     <label>Name</label>
-    <input type="text" name="name" value="%s" placeholder="My Calculator" required>
+    <input type="text" name="name" value="%s" placeholder="Pomodoro Timer" required autofocus>
   </div>
   <div class="form-group">
     <label>What do you want to build?</label>
-    <textarea name="prompt" id="prompt" placeholder="A simple calculator with add, subtract, multiply, divide buttons and a display showing the result">%s</textarea>
+    <textarea name="prompt" placeholder="A pomodoro timer with 25 minute work sessions and 5 minute breaks, start/pause/reset buttons, and a session counter">%s</textarea>
     <div class="hint">Describe your app in plain English. Be specific about features and layout.</div>
   </div>
-  %s
+  <div>
+    <button type="submit" class="button">Create App</button>
+  </div>
 </form>
-`, errHTML, html.EscapeString(name), html.EscapeString(prompt), codeSection)
+`, errHTML, html.EscapeString(name), html.EscapeString(prompt))
 
 	w.Write([]byte(app.RenderHTML("New App", "Create New App", formHTML)))
 }
@@ -868,8 +833,14 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 		publicChecked = "checked"
 	}
 
+	// Check if still generating
+	isGenerating := a.Status == "generating"
+	hasError := a.Status == "error"
+
 	messageHTML := ""
-	if message != "" {
+	if hasError {
+		messageHTML = fmt.Sprintf(`<div style="color: #c00; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;">Generation failed: %s</div>`, html.EscapeString(a.Error))
+	} else if message != "" {
 		color := "#c00"
 		if strings.HasPrefix(message, "✓") {
 			color = "#080"
@@ -890,6 +861,43 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 			}
 		}
 		historyHTML += `</ul></div>`
+	}
+
+	// Loading state preview content
+	previewContent := a.Code
+	if isGenerating {
+		previewContent = `<!DOCTYPE html><html><head><style>
+			body { font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f5f5f5; }
+			.loader { text-align: center; color: #666; }
+			.spinner { width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: #333; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+			@keyframes spin { to { transform: rotate(360deg); } }
+		</style></head><body><div class="loader"><div class="spinner"></div>Generating your app...</div></body></html>`
+	}
+
+	// Polling script for generating state
+	pollingScript := ""
+	if isGenerating {
+		pollingScript = fmt.Sprintf(`
+<script>
+(function poll() {
+	fetch('/apps/%s/status')
+		.then(r => r.json())
+		.then(data => {
+			if (data.status === 'ready' || data.status === 'error') {
+				window.location.reload();
+			} else {
+				setTimeout(poll, 2000);
+			}
+		})
+		.catch(() => setTimeout(poll, 2000));
+})();
+</script>`, a.ID)
+	}
+
+	// Disable form inputs while generating
+	disabledAttr := ""
+	if isGenerating {
+		disabledAttr = "disabled"
 	}
 
 	formHTML := fmt.Sprintf(`
@@ -926,6 +934,9 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	margin-bottom: 10px;
 	box-sizing: border-box;
 }
+.instruction-input:disabled {
+	background: #eee;
+}
 .button {
 	padding: 10px 20px;
 	background: #333;
@@ -936,6 +947,7 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	font-size: 14px;
 }
 .button:hover { background: #555; }
+.button:disabled { background: #999; cursor: not-allowed; }
 .button-secondary {
 	background: #666;
 }
@@ -998,24 +1010,24 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
   
   <form method="POST" class="instruction-section">
     %s
-    <input type="text" name="instruction" class="instruction-input" placeholder="Describe what you want to change..." autofocus>
-    <button type="submit" name="action" value="modify" class="button">Apply Change</button>
-    <button type="submit" name="action" value="save" class="button button-secondary" style="margin-left: 10px;">Done</button>
+    <input type="text" name="instruction" class="instruction-input" placeholder="Describe what you want to change..." %s autofocus>
+    <button type="submit" name="action" value="modify" class="button" %s>Apply Change</button>
+    <button type="submit" name="action" value="save" class="button button-secondary" style="margin-left: 10px;" %s>Done</button>
     <a href="/apps/%s" style="margin-left: 10px; color: #666;">Cancel</a>
     
     %s
     
     <div class="meta-section">
-      <label>Name: <input type="text" name="name" value="%s"></label>
+      <label>Name: <input type="text" name="name" value="%s" %s></label>
       <div class="checkbox-group">
-        <input type="checkbox" name="public" id="public" %s>
+        <input type="checkbox" name="public" id="public" %s %s>
         <label for="public">Public</label>
       </div>
     </div>
     
     <details class="code-toggle">
       <summary>Show code</summary>
-      <textarea class="code-editor" name="code" id="code-editor" onchange="updatePreview()">%s</textarea>
+      <textarea class="code-editor" name="code" id="code-editor" onchange="updatePreview()" %s>%s</textarea>
     </details>
   </form>
 </div>
@@ -1026,7 +1038,8 @@ function updatePreview() {
   document.getElementById('preview').srcdoc = code;
 }
 </script>
-`, html.EscapeString(a.Code), messageHTML, a.ID, historyHTML, html.EscapeString(a.Name), publicChecked, html.EscapeString(a.Code))
+%s
+`, html.EscapeString(previewContent), messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), pollingScript)
 
 	w.Write([]byte(app.RenderHTML("Develop: "+a.Name, "Develop: "+a.Name, formHTML)))
 }
@@ -1109,6 +1122,28 @@ func handlePreview(w http.ResponseWriter, r *http.Request, id string) {
 	// Preview returns raw HTML for embedding
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(a.Code))
+}
+
+// handleStatus returns app status as JSON for polling
+func handleStatus(w http.ResponseWriter, r *http.Request, id string) {
+	a := GetApp(id)
+	if a == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		w.Write([]byte(`{"error": "not found"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	status := a.Status
+	if status == "" {
+		status = "ready"
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": status,
+		"error":  a.Error,
+		"hasCode": a.Code != "",
+	})
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
