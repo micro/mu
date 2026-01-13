@@ -454,6 +454,19 @@ Rules:
 8. Do not use any external dependencies or CDNs
 9. Start with <!DOCTYPE html> and end with </html>
 
+Mu SDK (automatically available as window.mu):
+- mu.db.get(key) - retrieve stored value (async)
+- mu.db.set(key, value) - store value persistently (async)
+- mu.db.delete(key) - delete a key (async)
+- mu.db.list() - list all keys (async)
+- mu.user.id - current user's ID (null if not logged in)
+- mu.user.name - current user's name
+- mu.user.loggedIn - boolean
+- mu.app.id - this app's ID
+- mu.app.name - this app's name
+
+Use mu.db for any data that should persist across page refreshes. Data is stored per-user.
+
 Generate the complete HTML file now:`
 
 	llmPrompt := &chat.Prompt{
@@ -702,7 +715,7 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
     <a href="/apps/%s" style="margin-left: 10px;">Cancel</a>
   </div>
 </form>
-<iframe id="preview" class="preview-frame" sandbox="allow-scripts"></iframe>
+<iframe id="preview" class="preview-frame" sandbox="allow-scripts allow-same-origin"></iframe>
 <script>
 function previewApp() {
   var code = document.getElementById('code-editor').value;
@@ -837,6 +850,19 @@ Rules:
 3. Preserve the existing structure and style unless asked to change it
 4. Keep all existing functionality unless asked to change it
 5. Start with <!DOCTYPE html> and end with </html>
+
+Mu SDK (automatically available as window.mu):
+- mu.db.get(key) - retrieve stored value (async)
+- mu.db.set(key, value) - store value persistently (async)
+- mu.db.delete(key) - delete a key (async) 
+- mu.db.list() - list all keys (async)
+- mu.user.id - current user's ID (null if not logged in)
+- mu.user.name - current user's name
+- mu.user.loggedIn - boolean
+- mu.app.id - this app's ID
+- mu.app.name - this app's name
+
+Use mu.db for any data that should persist. Data is per-user.
 
 Current code:
 ` + currentCode + `
@@ -1035,7 +1061,7 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 
 <div class="develop-container">
   <div class="preview-section">
-    <iframe id="preview" class="preview-frame" sandbox="allow-scripts" src="%s"></iframe>
+    <iframe id="preview" class="preview-frame" sandbox="allow-scripts allow-same-origin" src="%s"></iframe>
   </div>
   
   <form method="POST" class="instruction-section">
@@ -1121,7 +1147,7 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 %s
 <p class="info">by %s · %s · Updated %s</p>
 <p>%s</p>
-<iframe class="app-frame" sandbox="allow-scripts" srcdoc="%s"></iframe>
+<iframe class="app-frame" sandbox="allow-scripts allow-same-origin" srcdoc="%s"></iframe>
 <p style="margin-top: 20px;"><a href="/apps">← Back to Apps</a></p>
 `, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), html.EscapeString(description), html.EscapeString(a.Code))
 
@@ -1178,9 +1204,21 @@ func handlePreview(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 
-	// Preview returns raw HTML for embedding
+	// Get user info for SDK
+	var userID, userName string
+	if sess, _ := auth.GetSession(r); sess != nil {
+		userID = sess.Account
+		if acc, err := auth.GetAccount(sess.Account); err == nil {
+			userName = acc.Name
+		}
+	}
+
+	// Inject SDK into the HTML
+	html := InjectSDK(a.Code, a.ID, a.Name, userID, userName)
+
+	// Preview returns HTML with SDK injected
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(a.Code))
+	w.Write([]byte(html))
 }
 
 // handleStatus returns app status as JSON for polling

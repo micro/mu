@@ -154,6 +154,7 @@ func main() {
 	// serve micro apps
 	http.HandleFunc("/apps", apps.Handler)
 	http.HandleFunc("/apps/", apps.Handler)
+	http.HandleFunc("/apps/api", apps.HandleAPIRequest)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
