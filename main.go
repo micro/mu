@@ -15,6 +15,7 @@ import (
 	"mu/admin"
 	"mu/api"
 	"mu/app"
+	"mu/apps"
 	"mu/auth"
 	"mu/blog"
 	"mu/chat"
@@ -72,6 +73,9 @@ func main() {
 	// load presence tracking
 	presence.Load()
 
+	// load micro apps
+	apps.Load()
+
 	// Enable indexing after all content is loaded
 	// This allows the priority queue to process new items first
 	data.StartIndexing()
@@ -96,6 +100,7 @@ func main() {
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          true,  // Require auth for wallet
+		"/apps":            false, // Public viewing, auth for creating
 	}
 
 	// Static assets should not require authentication
@@ -145,6 +150,10 @@ func main() {
 	// wallet - credits and payments
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
+
+	// serve micro apps
+	http.HandleFunc("/apps", apps.Handler)
+	http.HandleFunc("/apps/", apps.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
