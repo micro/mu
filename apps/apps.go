@@ -1134,6 +1134,18 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 		description = description[:idx]
 	}
 
+	// Get user info for SDK injection
+	var userID, userName string
+	if sess != nil {
+		userID = sess.Account
+		if acc, err := auth.GetAccount(sess.Account); err == nil {
+			userName = acc.Name
+		}
+	}
+
+	// Inject SDK into the app code
+	appCode := InjectSDK(a.Code, a.ID, a.Name, userID, userName)
+
 	viewHTML := fmt.Sprintf(`
 <style>
 .app-frame {
@@ -1149,7 +1161,7 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 <p>%s</p>
 <iframe class="app-frame" sandbox="allow-scripts allow-same-origin" srcdoc="%s"></iframe>
 <p style="margin-top: 20px;"><a href="/apps">← Back to Apps</a></p>
-`, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), html.EscapeString(description), html.EscapeString(a.Code))
+`, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), html.EscapeString(description), html.EscapeString(appCode))
 
 	w.Write([]byte(app.RenderHTML(a.Name, a.Name, viewHTML)))
 }
