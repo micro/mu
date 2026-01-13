@@ -1540,14 +1540,16 @@ a.highlight {
     margin: 30px 0;
   }
   #topics, #topic-selector {
-    text-align: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .topic-tabs, #topics {
     gap: 8px;
-    justify-content: center;
+    flex-wrap: nowrap;
   }
   #topic-selector .head, #topics .head {
     font-size: 12px;
+    white-space: nowrap;
   }
   #head {
     padding: 6px 15px;
