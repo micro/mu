@@ -157,6 +157,11 @@ func CreateApp(name, description, code, author, authorID string, public bool) (*
 
 // CreateAppAsync creates an app and generates code in the background
 func CreateAppAsync(name, prompt, author, authorID string) (*App, error) {
+	// Content moderation
+	if isBlockedContent(prompt) || isBlockedContent(name) {
+		return nil, fmt.Errorf("this request contains content that goes against our values")
+	}
+
 	// Create app with empty code, status "generating"
 	a, err := CreateApp(name, prompt, "", author, authorID, false)
 	if err != nil {
@@ -239,6 +244,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case path == "new":
 		// Create new app form
 		handleNew(w, r, sess)
+	case path == "loading":
+		// Loading page for iframe
+		handleLoading(w, r)
 	case strings.HasSuffix(path, "/edit"):
 		// Edit app (legacy - redirects to develop)
 		id := strings.TrimSuffix(path, "/edit")
@@ -718,6 +726,25 @@ window.onload = function() { previewApp(); };
 }
 
 // handleDevelop provides iterative AI-assisted app development
+// Blocked terms for content moderation
+var blockedTerms = []string{
+	"gambling", "casino", "bet", "betting", "slots", "poker",
+	"porn", "pornography", "xxx", "adult content", "nsfw",
+	"alcohol", "beer", "wine", "liquor", "drunk",
+	"haram", "interest calculator", "riba",
+}
+
+// isBlockedContent checks if prompt contains unethical content
+func isBlockedContent(text string) bool {
+	lower := strings.ToLower(text)
+	for _, term := range blockedTerms {
+		if strings.Contains(lower, term) {
+			return true
+		}
+	}
+	return false
+}
+
 func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
 	if sess == nil {
 		http.Redirect(w, r, "/login?redirect=/apps/"+id+"/develop", 302)
@@ -735,8 +762,6 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 		return
 	}
 
-	var message string
-
 	if r.Method == "POST" {
 		r.ParseForm()
 		action := r.FormValue("action")
@@ -752,35 +777,62 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 		switch action {
 		case "modify":
 			if instruction == "" {
-				message = "Please describe what you want to change"
-			} else {
+				renderDevelopForm(w, a, "Please describe what you want to change")
+				return
+			}
+			
+			// Content moderation
+			if isBlockedContent(instruction) {
+				renderDevelopForm(w, a, "This request contains content that goes against our values")
+				return
+			}
+
+			// Set status to generating and kick off async modification
+			mutex.Lock()
+			a.Status = "generating"
+			a.Error = ""
+			saveApps()
+			mutex.Unlock()
+
+			// Async modification
+			go func() {
 				modified, err := modifyAppCode(a.Code, instruction)
+				
+				mutex.Lock()
+				defer mutex.Unlock()
+				
 				if err != nil {
-					message = "Modification failed: " + err.Error()
+					a.Status = "error"
+					a.Error = err.Error()
 				} else {
 					a.Code = modified
+					a.Status = "ready"
 					// Append instruction to description history
 					if a.Description != "" {
 						a.Description = a.Description + "\n• " + instruction
 					} else {
 						a.Description = "• " + instruction
 					}
-					// Auto-save after successful modification
-					UpdateApp(id, a.Name, a.Description, a.Code, a.Public, sess.Account)
-					message = "✓ Applied: " + instruction
 				}
-			}
+				a.UpdatedAt = time.Now()
+				saveApps()
+			}()
+
+			// Redirect to same page (will show spinner)
+			http.Redirect(w, r, "/apps/"+id+"/develop", 303)
+			return
+
 		case "save":
 			if err := UpdateApp(id, a.Name, a.Description, a.Code, a.Public, sess.Account); err != nil {
-				message = "Save failed: " + err.Error()
-			} else {
-				http.Redirect(w, r, "/apps/"+id, 302)
+				renderDevelopForm(w, a, "Save failed: "+err.Error())
 				return
 			}
+			http.Redirect(w, r, "/apps/"+id, 302)
+			return
 		}
 	}
 
-	renderDevelopForm(w, a, message)
+	renderDevelopForm(w, a, "")
 }
 
 // modifyAppCode uses AI to make targeted changes to existing code
@@ -863,15 +915,10 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 		historyHTML += `</ul></div>`
 	}
 
-	// Loading state preview content
-	previewContent := a.Code
+	// Preview URL - use /preview endpoint to avoid escaping issues
+	previewURL := fmt.Sprintf("/apps/%s/preview", a.ID)
 	if isGenerating {
-		previewContent = `<!DOCTYPE html><html><head><style>
-			body { font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f5f5f5; }
-			.loader { text-align: center; color: #666; }
-			.spinner { width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: #333; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
-			@keyframes spin { to { transform: rotate(360deg); } }
-		</style></head><body><div class="loader"><div class="spinner"></div>Generating your app...</div></body></html>`
+		previewURL = "/apps/loading" // Special loading page
 	}
 
 	// Polling script for generating state
@@ -1005,7 +1052,7 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 
 <div class="develop-container">
   <div class="preview-section">
-    <iframe id="preview" class="preview-frame" sandbox="allow-scripts" srcdoc="%s"></iframe>
+    <iframe id="preview" class="preview-frame" sandbox="allow-scripts" src="%s"></iframe>
   </div>
   
   <form method="POST" class="instruction-section">
@@ -1033,13 +1080,10 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 </div>
 
 <script>
-function updatePreview() {
-  var code = document.getElementById('code-editor').value;
-  document.getElementById('preview').srcdoc = code;
-}
+// Manual code editing requires page refresh to see changes
 </script>
 %s
-`, html.EscapeString(previewContent), messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), pollingScript)
+`, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), pollingScript)
 
 	w.Write([]byte(app.RenderHTML("Develop: "+a.Name, "Develop: "+a.Name, formHTML)))
 }
@@ -1110,6 +1154,49 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 `, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), html.EscapeString(a.Description), html.EscapeString(a.Code))
 
 	w.Write([]byte(app.RenderHTML(a.Name, a.Name, html)))
+}
+
+// handleLoading serves a loading spinner page for the preview iframe
+func handleLoading(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+	font-family: system-ui, sans-serif;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100vh;
+	margin: 0;
+	background: #f5f5f5;
+}
+.loader {
+	text-align: center;
+	color: #666;
+}
+.spinner {
+	width: 40px;
+	height: 40px;
+	border: 3px solid #ddd;
+	border-top-color: #333;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	margin: 0 auto 15px;
+}
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+</style>
+</head>
+<body>
+<div class="loader">
+	<div class="spinner"></div>
+	Applying changes...
+</div>
+</body>
+</html>`))
 }
 
 func handlePreview(w http.ResponseWriter, r *http.Request, id string) {
