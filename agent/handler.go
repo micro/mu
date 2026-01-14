@@ -274,6 +274,7 @@ function formatMarkdown(text) {
 	if (!text) return '';
 	// Basic markdown formatting
 	return text
+		.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
 		.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
 		.replace(/\*(.*?)\*/g, '<em>$1</em>')
 		.replace(/\n/g, '<br>');
