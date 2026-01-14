@@ -243,7 +243,7 @@ td {
 }
 
 #micro-messages:empty::before {
-  content: "Ask me anything...";
+  content: "Ask a question...";
   color: var(--text-muted);
   font-style: italic;
 }
