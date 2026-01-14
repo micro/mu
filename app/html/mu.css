@@ -224,6 +224,12 @@ td {
   margin-top: 2px;
 }
 
+#voice-icon {
+  font-size: 20px;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
 #nav-container {
   position: fixed;
   left: 0;

@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v72';
+var VERSION = 'v73';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1171,27 +1171,19 @@ function initVoiceAssistant() {
   voiceRecognition.interimResults = true;
   voiceRecognition.lang = 'en-US';
 
-  // Create voice indicator
-  voiceIndicator = document.createElement('div');
-  voiceIndicator.id = 'voice-indicator';
-  voiceIndicator.innerHTML = '🎤';
-  voiceIndicator.style.cssText = 'position: fixed; bottom: 80px; right: 15px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent-color, #0d7377); border: none; display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s; color: white;';
-  voiceIndicator.title = 'Say "Hey Micro" or tap to activate';
+  // Use the header voice button instead of floating
+  voiceIndicator = document.getElementById('voice-header');
+  const voiceIcon = document.getElementById('voice-icon');
   
-  // Add label below icon on mobile
-  const voiceLabel = document.createElement('div');
-  voiceLabel.id = 'voice-label';
-  voiceLabel.textContent = 'Tap or say "Hey Micro"';
-  voiceLabel.style.cssText = 'position: fixed; bottom: 60px; right: 15px; font-size: 10px; color: #666; text-align: center; width: 80px; z-index: 9998; display: none;';
-  document.body.appendChild(voiceLabel);
+  if (!voiceIndicator || !voiceIcon) {
+    console.log('Voice assistant: Voice header element not found');
+    return;
+  }
   
-  // Show label briefly on first load
-  setTimeout(() => {
-    voiceLabel.style.display = 'block';
-    setTimeout(() => { voiceLabel.style.display = 'none'; }, 5000);
-  }, 2000);
+  voiceIndicator.style.display = 'inline-block';
   
-  voiceIndicator.onclick = () => {
+  voiceIndicator.onclick = (e) => {
+    e.preventDefault();
     if (!voiceListening) {
       startVoiceListening();
     } else if (!voiceWakeDetected) {
@@ -1199,7 +1191,6 @@ function initVoiceAssistant() {
       activateVoiceCommand();
     }
   };
-  document.body.appendChild(voiceIndicator);
 
   voiceRecognition.onresult = (event) => {
     let transcript = '';
@@ -1227,8 +1218,9 @@ function initVoiceAssistant() {
       
       if (command) {
         voiceCommandBuffer = command;
-        voiceIndicator.innerHTML = '💬';
-        voiceIndicator.title = 'Hearing: ' + command;
+        const voiceIcon = document.getElementById('voice-icon');
+        if (voiceIcon) voiceIcon.textContent = '💬';
+        if (voiceIndicator) voiceIndicator.title = 'Hearing: ' + command;
         
         // Reset timeout for end of speech
         if (voiceTimeout) clearTimeout(voiceTimeout);
@@ -1249,10 +1241,13 @@ function initVoiceAssistant() {
 
   voiceRecognition.onerror = (event) => {
     console.log('Voice error:', event.error);
+    const voiceIcon = document.getElementById('voice-icon');
     if (event.error === 'not-allowed') {
-      voiceIndicator.innerHTML = '🔇';
-      voiceIndicator.title = 'Microphone access denied';
-      voiceIndicator.style.opacity = '0.5';
+      if (voiceIcon) voiceIcon.textContent = '🔇';
+      if (voiceIndicator) {
+        voiceIndicator.title = 'Microphone access denied';
+        voiceIndicator.style.opacity = '0.5';
+      }
     } else if (event.error !== 'no-speech') {
       // Restart on recoverable errors
       setTimeout(startVoiceListening, 1000);
@@ -1280,9 +1275,12 @@ function startVoiceListening() {
     voiceListening = true;
     voiceWakeDetected = false;
     voiceCommandBuffer = '';
+    const voiceIcon = document.getElementById('voice-icon');
+    if (voiceIcon) {
+      voiceIcon.textContent = '🎤';
+      voiceIcon.style.opacity = '1';
+    }
     if (voiceIndicator) {
-      voiceIndicator.innerHTML = '🎤';
-      voiceIndicator.style.background = 'var(--accent-color, #0d7377)';
       voiceIndicator.title = 'Say "Hey Micro" or tap to activate';
     }
     console.log('Voice listening started');
@@ -1294,10 +1292,14 @@ function startVoiceListening() {
 function activateVoiceCommand() {
   voiceWakeDetected = true;
   voiceCommandBuffer = '';
+  const voiceIcon = document.getElementById('voice-icon');
+  if (voiceIcon) {
+    voiceIcon.textContent = '👂';
+    voiceIcon.style.background = '#f5a623';
+    voiceIcon.style.borderRadius = '50%';
+    voiceIcon.style.padding = '2px';
+  }
   if (voiceIndicator) {
-    voiceIndicator.innerHTML = '👂';
-    voiceIndicator.style.background = '#f5a623';
-    voiceIndicator.style.color = 'white';
     voiceIndicator.title = 'Listening for command...';
   }
   // Audio feedback
@@ -1325,10 +1327,14 @@ function activateVoiceCommand() {
 function resetVoiceState() {
   voiceWakeDetected = false;
   voiceCommandBuffer = '';
+  const voiceIcon = document.getElementById('voice-icon');
+  if (voiceIcon) {
+    voiceIcon.textContent = '🎤';
+    voiceIcon.style.background = '';
+    voiceIcon.style.borderRadius = '';
+    voiceIcon.style.padding = '';
+  }
   if (voiceIndicator) {
-    voiceIndicator.innerHTML = '🎤';
-    voiceIndicator.style.background = 'var(--accent-color, #0d7377)';
-    voiceIndicator.style.color = 'white';
     voiceIndicator.title = 'Say "Hey Micro" or tap to activate';
   }
 }
@@ -1336,8 +1342,11 @@ function resetVoiceState() {
 function executeVoiceCommand(command) {
   console.log('Executing voice command:', command);
   
+  const voiceIcon = document.getElementById('voice-icon');
+  if (voiceIcon) {
+    voiceIcon.textContent = '⏳';
+  }
   if (voiceIndicator) {
-    voiceIndicator.innerHTML = '⏳';
     voiceIndicator.title = 'Processing: ' + command;
   }
 
@@ -1350,12 +1359,13 @@ function executeVoiceCommand(command) {
   .then(r => r.json())
   .then(result => {
     console.log('Agent result:', result);
+    const voiceIcon = document.getElementById('voice-icon');
     
     if (result.success) {
       // Handle navigation actions (like video play)
       if (result.action === 'navigate' && result.url) {
-        voiceIndicator.innerHTML = '✓';
-        voiceIndicator.title = result.answer || 'Done!';
+        if (voiceIcon) voiceIcon.textContent = '✓';
+        if (voiceIndicator) voiceIndicator.title = result.answer || 'Done!';
         // Navigate to the URL (video will autoplay)
         setTimeout(() => {
           window.location.href = result.url;
@@ -1364,8 +1374,8 @@ function executeVoiceCommand(command) {
       }
       
       // Show success feedback
-      voiceIndicator.innerHTML = '✓';
-      voiceIndicator.title = result.answer || 'Done!';
+      if (voiceIcon) voiceIcon.textContent = '✓';
+      if (voiceIndicator) voiceIndicator.title = result.answer || 'Done!';
       
       // Speak the response if available
       if (result.answer && 'speechSynthesis' in window) {
@@ -1374,8 +1384,8 @@ function executeVoiceCommand(command) {
         speechSynthesis.speak(utterance);
       }
     } else {
-      voiceIndicator.innerHTML = '❌';
-      voiceIndicator.title = result.answer || 'Something went wrong';
+      if (voiceIcon) voiceIcon.textContent = '❌';
+      if (voiceIndicator) voiceIndicator.title = result.answer || 'Something went wrong';
     }
     
     // Reset after a moment
@@ -1383,8 +1393,9 @@ function executeVoiceCommand(command) {
   })
   .catch(err => {
     console.error('Voice command error:', err);
-    voiceIndicator.innerHTML = '❌';
-    voiceIndicator.title = 'Error processing command';
+    const voiceIcon = document.getElementById('voice-icon');
+    if (voiceIcon) voiceIcon.textContent = '❌';
+    if (voiceIndicator) voiceIndicator.title = 'Error processing command';
     setTimeout(resetVoiceState, 3000);
   });
 
