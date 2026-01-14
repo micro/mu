@@ -16,6 +16,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
+	"mu/news"
 	"mu/wallet"
 )
 
@@ -832,6 +833,36 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						}
 
 						app.Log("chat", "Stage 3: Total RAG context items: %d", len(ragContext))
+
+						// Stage 4: Inject real-time price data for financial queries
+						contentLowerForPrices := strings.ToLower(content)
+						priceKeywords := []string{"price", "btc", "bitcoin", "eth", "ethereum", "crypto", "stock", "market", "trading", "worth", "value", "gold", "silver", "oil"}
+						needsPrices := false
+						for _, kw := range priceKeywords {
+							if strings.Contains(contentLowerForPrices, kw) {
+								needsPrices = true
+								break
+							}
+						}
+						// Also check if in Crypto topic
+						if room.Topic == "Crypto" || strings.Contains(strings.ToLower(room.Title), "crypto") || strings.Contains(strings.ToLower(room.Title), "bitcoin") {
+							needsPrices = true
+						}
+						
+						if needsPrices {
+							prices := news.GetAllPrices()
+							if len(prices) > 0 {
+								priceInfo := "CURRENT MARKET PRICES (real-time data): "
+								priceList := []string{}
+								for symbol, price := range prices {
+									priceList = append(priceList, fmt.Sprintf("%s: $%.2f", symbol, price))
+								}
+								priceInfo += strings.Join(priceList, ", ")
+								// Prepend prices so they're seen as authoritative
+								ragContext = append([]string{priceInfo}, ragContext...)
+								app.Log("chat", "Injected real-time prices: %d symbols", len(prices))
+							}
+						}
 
 						// Build conversation history from recent room messages
 						var history History
