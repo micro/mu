@@ -287,6 +287,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
+	r.ParseForm()
+	searchQuery := strings.TrimSpace(r.FormValue("q"))
+	
 	var userApps []*App
 	var userID string
 	if sess != nil {
@@ -298,47 +301,171 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 
 	var content strings.Builder
 
-	// Create button (if logged in)
+	// Search bar and create button
+	content.WriteString(`<div class="apps-header">`)
 	if sess != nil {
-		content.WriteString(`<p style="margin-bottom: 20px;"><a href="/apps/new">+ New App</a></p>`)
+		content.WriteString(`<a href="/apps/new" class="new-app-btn">+ New App</a>`)
+	}
+	content.WriteString(`
+		<form class="apps-search" action="/apps" method="GET">
+			<input type="text" name="q" placeholder="Search apps..." value="` + html.EscapeString(searchQuery) + `">
+			<button type="submit">Search</button>
+		</form>
+	</div>`)
+
+	// Featured apps section (always show at top)
+	featuredIDs := []string{"1768341615408024989", "1768342273851959552", "1768342520623825814"} // todo, timer, expenses
+	var featuredApps []*App
+	for _, id := range featuredIDs {
+		if a := GetApp(id); a != nil {
+			featuredApps = append(featuredApps, a)
+		}
+	}
+	
+	if len(featuredApps) > 0 && searchQuery == "" {
+		content.WriteString(`<div class="featured-section">`)
+		content.WriteString(`<h3>Featured Apps</h3>`)
+		content.WriteString(`<div class="featured-grid">`)
+		for _, a := range featuredApps {
+			content.WriteString(renderFeaturedCard(a))
+		}
+		content.WriteString(`</div></div>`)
+	}
+
+	// Filter apps by search query
+	filterApps := func(apps []*App, query string) []*App {
+		if query == "" {
+			return apps
+		}
+		query = strings.ToLower(query)
+		var filtered []*App
+		for _, a := range apps {
+			if strings.Contains(strings.ToLower(a.Name), query) ||
+				strings.Contains(strings.ToLower(a.Description), query) {
+				filtered = append(filtered, a)
+			}
+		}
+		return filtered
 	}
 
 	// User's apps
-	if len(userApps) > 0 {
+	filteredUserApps := filterApps(userApps, searchQuery)
+	if len(filteredUserApps) > 0 {
 		content.WriteString(`<h3>My Apps</h3>`)
 		content.WriteString(`<div class="apps-grid">`)
-		for _, a := range userApps {
+		for _, a := range filteredUserApps {
 			content.WriteString(renderAppCard(a, true))
 		}
 		content.WriteString(`</div>`)
-	} else if sess != nil {
+	} else if sess != nil && searchQuery == "" {
 		content.WriteString(`<p class="info">You haven't created any apps yet.</p>`)
 	}
 
-	// Public apps (exclude user's own)
+	// Public apps (exclude user's own and featured)
 	var otherPublic []*App
+	featuredSet := make(map[string]bool)
+	for _, id := range featuredIDs {
+		featuredSet[id] = true
+	}
 	for _, a := range publicApps {
-		if a.AuthorID != userID {
+		if a.AuthorID != userID && !featuredSet[a.ID] {
 			otherPublic = append(otherPublic, a)
 		}
 	}
-
-	if len(otherPublic) > 0 {
-		content.WriteString(`<h3 style="margin-top: 30px;">Public Apps</h3>`)
+	
+	filteredPublic := filterApps(otherPublic, searchQuery)
+	if len(filteredPublic) > 0 {
+		content.WriteString(`<h3 style="margin-top: 30px;">Community Apps</h3>`)
 		content.WriteString(`<div class="apps-grid">`)
-		for _, a := range otherPublic {
+		for _, a := range filteredPublic {
 			content.WriteString(renderAppCard(a, false))
 		}
 		content.WriteString(`</div>`)
 	}
 
-	if len(userApps) == 0 && len(otherPublic) == 0 && sess == nil {
+	if searchQuery != "" && len(filteredUserApps) == 0 && len(filteredPublic) == 0 {
+		content.WriteString(`<p class="info">No apps found matching "` + html.EscapeString(searchQuery) + `"</p>`)
+	}
+
+	if len(userApps) == 0 && len(otherPublic) == 0 && sess == nil && searchQuery == "" {
 		content.WriteString(`<p>No apps yet. <a href="/login">Login</a> to create one.</p>`)
 	}
 
 	// Add CSS for grid
 	style := `
 <style>
+.apps-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 25px;
+	flex-wrap: wrap;
+	gap: 15px;
+}
+.new-app-btn {
+	padding: 10px 20px;
+	background: var(--accent-color, #0d7377);
+	color: white;
+	text-decoration: none;
+	border-radius: var(--border-radius, 6px);
+	font-weight: 500;
+}
+.new-app-btn:hover {
+	opacity: 0.9;
+}
+.apps-search {
+	display: flex;
+	gap: 10px;
+}
+.apps-search input {
+	padding: 10px 15px;
+	border: 1px solid var(--card-border, #e8e8e8);
+	border-radius: var(--border-radius, 6px);
+	font-size: 14px;
+	min-width: 200px;
+}
+.apps-search button {
+	padding: 10px 20px;
+	background: #333;
+	color: white;
+	border: none;
+	border-radius: var(--border-radius, 6px);
+	cursor: pointer;
+}
+.featured-section {
+	margin-bottom: 30px;
+	padding-bottom: 20px;
+	border-bottom: 1px solid var(--divider, #f0f0f0);
+}
+.featured-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 15px;
+	margin-top: 15px;
+}
+.featured-card {
+	border: 2px solid var(--accent-color, #0d7377);
+	border-radius: var(--border-radius, 6px);
+	padding: 20px;
+	text-align: center;
+	background: var(--card-background, #fff);
+	transition: transform 0.15s ease;
+}
+.featured-card:hover {
+	transform: translateY(-2px);
+}
+.featured-card h4 {
+	margin: 0 0 8px 0;
+}
+.featured-card h4 a {
+	text-decoration: none;
+	color: var(--accent-color, #0d7377);
+}
+.featured-card p {
+	margin: 0;
+	font-size: 13px;
+	color: var(--text-secondary, #555);
+}
 .apps-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -382,6 +509,24 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 
 	html := style + content.String()
 	w.Write([]byte(app.RenderHTML("Apps", "Micro Apps", html)))
+}
+
+func renderFeaturedCard(a *App) string {
+	var b strings.Builder
+	b.WriteString(`<div class="featured-card">`)
+	b.WriteString(fmt.Sprintf(`<h4><a href="/apps/%s">%s</a></h4>`, a.ID, html.EscapeString(a.Name)))
+	if a.Description != "" {
+		desc := a.Description
+		if idx := strings.Index(desc, "\n"); idx > 0 {
+			desc = desc[:idx]
+		}
+		if len(desc) > 60 {
+			desc = desc[:60] + "..."
+		}
+		b.WriteString(fmt.Sprintf(`<p>%s</p>`, html.EscapeString(desc)))
+	}
+	b.WriteString(`</div>`)
+	return b.String()
 }
 
 func renderAppCard(a *App, isOwner bool) string {
