@@ -106,11 +106,11 @@ type RoomMessage struct {
 
 // Client represents a connected websocket client
 type Client struct {
-	Conn        *websocket.Conn
-	UserID      string
-	Room        *Room
-	InAIConvo   bool      // true if user started a conversation with @ai
-	LastAIReply time.Time // when AI last replied to this user
+	Conn          *websocket.Conn
+	UserID        string
+	Room          *Room
+	InMicroConvo  bool      // true if user started a conversation with @micro
+	LastMicroReply time.Time // when micro last replied to this user
 }
 
 var rooms = make(map[string]*Room)
@@ -424,9 +424,9 @@ func (room *Room) broadcastUserList() {
 	}
 	room.mutex.RUnlock()
 
-	// Always include AI in topic chat rooms
+	// Always include micro in topic chat rooms
 	if strings.HasPrefix(room.ID, "chat_") {
-		usernames = append(usernames, "ai")
+		usernames = append(usernames, "micro")
 	}
 
 	userListMsg := map[string]interface{}{
@@ -579,7 +579,7 @@ func (room *Room) sendAIGreeting() {
 	}
 
 	msg := RoomMessage{
-		UserID:    "ai",
+		UserID:    "micro",
 		Content:   resp,
 		Timestamp: time.Now(),
 		IsLLM:     true,
@@ -652,24 +652,24 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				}
 				room.Broadcast <- userMsg
 
-				// Check if AI should respond:
-				// 1. User mentioned @ai - start conversation
-				// 2. User is in active AI conversation (within 2 min of last AI reply)
-				// 3. User is alone in the room (AI keeps them company)
+				// Check if micro should respond:
+				// 1. User mentioned @micro - start conversation
+				// 2. User is in active micro conversation (within 2 min of last micro reply)
+				// 3. User is alone in the room (micro keeps them company)
 				contentLower := strings.ToLower(content)
-				mentionedAI := strings.Contains(contentLower, "@ai")
-				inActiveConvo := client.InAIConvo && time.Since(client.LastAIReply) < 2*time.Minute
+				mentionedMicro := strings.Contains(contentLower, "@micro")
+				inActiveConvo := client.InMicroConvo && time.Since(client.LastMicroReply) < 2*time.Minute
 
 				// Check if user is alone in a topic chat room
 				room.mutex.RLock()
 				isAlone := strings.HasPrefix(room.ID, "chat_") && len(room.Clients) == 1
 				room.mutex.RUnlock()
 
-				if mentionedAI || isAlone {
-					client.InAIConvo = true
+				if mentionedMicro || isAlone {
+					client.InMicroConvo = true
 				}
 
-				if mentionedAI || inActiveConvo || isAlone {
+				if mentionedMicro || inActiveConvo || isAlone {
 					go func() {
 						// If this is a Dev (HN) discussion, trigger comment refresh via event
 						// But throttle to once per 5 minutes to avoid excessive API calls
@@ -853,11 +853,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 						resp, err := askLLM(prompt)
 						if err == nil && len(resp) > 0 {
-							// Update client's AI conversation state
-							client.LastAIReply = time.Now()
+							// Update client's micro conversation state
+							client.LastMicroReply = time.Now()
 
 							llmMsg := RoomMessage{
-								UserID:    "ai",
+								UserID:    "micro",
 								Content:   resp,
 								Timestamp: time.Now(),
 								IsLLM:     true,
@@ -1341,7 +1341,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Format a HTML response
 		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
-		messages += fmt.Sprintf(`<div class="message"><span class="ai">ai</span><p>%v</p></div>`, form["answer"])
+		messages += fmt.Sprintf(`<div class="message"><span class="micro">micro</span><p>%v</p></div>`, form["answer"])
 
 		mutex.RLock()
 		topicTabs := app.Head("chat", topics)

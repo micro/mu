@@ -393,7 +393,7 @@ function askLLM(el) {
   // Create placeholder for AI response with loading dots
   const responseDiv = document.createElement('div');
   responseDiv.className = 'message';
-  responseDiv.innerHTML = `<span class="ai">ai</span><div class="ai-response"><span class="loading-dots">...</span></div>`;
+  responseDiv.innerHTML = `<span class="micro">micro</span><div class="ai-response"><span class="loading-dots">...</span></div>`;
   d.appendChild(responseDiv);
   const responseContent = responseDiv.querySelector('.ai-response');
   
@@ -990,20 +990,28 @@ function loadMessagesFromSession(roomId) {
 }
 
 function connectRoomWebSocket(roomId) {
+  // Don't reconnect if already connected to this room
+  if (roomWs && roomWs.readyState === WebSocket.OPEN && currentRoomId === roomId) {
+    return;
+  }
+  
   if (roomWs) {
     roomWs.close();
   }
   
+  const isReconnect = currentRoomId === roomId;
   currentRoomId = roomId;
   
-  // Clear messages div (we'll get history from server)
-  const messagesDiv = document.getElementById('messages');
-  if (messagesDiv) {
-    // Keep only the context message if it exists
-    const contextMsg = messagesDiv.querySelector('.context-message');
-    messagesDiv.innerHTML = '';
-    if (contextMsg) {
-      messagesDiv.appendChild(contextMsg);
+  // Only clear messages on initial connect, not on reconnect
+  if (!isReconnect) {
+    const messagesDiv = document.getElementById('messages');
+    if (messagesDiv) {
+      // Keep only the context message if it exists
+      const contextMsg = messagesDiv.querySelector('.context-message');
+      messagesDiv.innerHTML = '';
+      if (contextMsg) {
+        messagesDiv.appendChild(contextMsg);
+      }
     }
   }
   
@@ -1046,7 +1054,7 @@ function displayRoomMessage(msg, shouldScroll = true) {
   msgDiv.className = 'message';
   
   const userSpan = msg.is_llm ? 
-    '<span class="llm">AI</span>' : 
+    '<span class="llm">micro</span>' : 
     '<span class="you"><a href="/@' + msg.username + '">' + msg.username + '</a></span>';
   
   let content;
@@ -1105,7 +1113,7 @@ function updateUserList(users) {
   
   if (users && users.length > 0) {
     userListDiv.innerHTML = '<strong>Who\'s here:</strong> ' + users.map(u => {
-      if (u === 'ai') return '@ai';
+      if (u === 'micro') return '@micro';
       return '<a href="/@' + u + '" style="color: inherit;">@' + u + '</a>';
     }).join(', ');
   } else {

@@ -869,7 +869,7 @@ body:has(#messages) #content {
   margin-bottom: var(--spacing-xs);
 }
 
-.llm, .ai, .system {
+.llm, .ai, .micro, .system {
   font-size: 0.85em;
   font-weight: bold;
   color: var(--text-primary);
