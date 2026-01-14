@@ -871,6 +871,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if requesting preview for account page
+	if r.URL.Query().Get("preview") == "1" {
+		preview := GetRecentThreadsPreview(acc.ID, 3)
+		unread := GetUnreadCount(acc.ID)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"html":   preview,
+			"unread": unread,
+		})
+		return
+	}
+
 	// Get messages for this user
 	mutex.RLock()
 	// Get user's inbox - O(1) lookup
@@ -1212,6 +1225,61 @@ func GetUnreadCount(userID string) int {
 		return inbox.UnreadCount
 	}
 	return 0
+}
+
+// GetRecentThreadsPreview returns HTML preview of recent threads for account page
+func GetRecentThreadsPreview(userID string, limit int) string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	inbox := inboxes[userID]
+	if inbox == nil || len(inbox.Threads) == 0 {
+		return `<p style="color: #888;">No messages</p>`
+	}
+
+	// Get threads and sort by latest
+	threads := make([]*Thread, 0, len(inbox.Threads))
+	for _, thread := range inbox.Threads {
+		// Only include threads where user received messages
+		for _, msg := range thread.Messages {
+			if msg.ToID == userID {
+				threads = append(threads, thread)
+				break
+			}
+		}
+	}
+
+	if len(threads) == 0 {
+		return `<p style="color: #888;">No messages</p>`
+	}
+
+	sort.Slice(threads, func(i, j int) bool {
+		return threads[i].Latest.CreatedAt.After(threads[j].Latest.CreatedAt)
+	})
+
+	if limit > 0 && len(threads) > limit {
+		threads = threads[:limit]
+	}
+
+	var b strings.Builder
+	for _, thread := range threads {
+		msg := thread.Latest
+		unreadDot := ""
+		if thread.HasUnread {
+			unreadDot = `<span style="color: #0d7377; margin-right: 5px;">●</span>`
+		}
+		// Truncate body
+		body := msg.Body
+		if len(body) > 50 {
+			body = body[:50] + "..."
+		}
+		b.WriteString(fmt.Sprintf(`<div style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+			%s<strong>%s</strong>
+			<span style="color: #888; font-size: 13px; margin-left: 8px;">%s</span>
+		</div>`, unreadDot, html.EscapeString(msg.From), html.EscapeString(body)))
+	}
+
+	return b.String()
 }
 
 // MarkAsRead marks a message as read

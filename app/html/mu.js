@@ -522,36 +522,25 @@ function setSession() {
     console.log('Success:', sess);
     var accountHeader = document.getElementById("account-header");
     var loginHeader = document.getElementById("login-header");
-    var mailHeader = document.getElementById("mail-header");
-    var walletHeader = document.getElementById("wallet-header");
+    var accountBadge = document.getElementById("account-badge");
     
     if (sess.type == "account") {
       isAuthenticated = true;
       if (accountHeader) accountHeader.style.display = 'inline-block';
       if (loginHeader) loginHeader.style.display = 'none';
-      // Show wallet for all logged-in users
-      if (walletHeader) walletHeader.style.display = 'inline-block';
-      // Show mail for all logged-in users (DMs free, external email for members)
-      if (mailHeader) {
-        mailHeader.style.display = 'inline-block';
-        // Fetch unread count
-        fetch('/mail?unread=count')
-          .then(res => res.json())
-          .then(data => {
-            if (data.count > 0) {
-              const badge = document.createElement('span');
-              badge.id = 'mail-badge';
-              badge.textContent = ' (' + data.count + ')';
-              badge.style.cssText = 'color: #999; font-size: 14px;';
-              mailHeader.appendChild(badge);
-            }
-          });
-      }
+      // Fetch unread mail count for badge on account icon
+      fetch('/mail?unread=count')
+        .then(res => res.json())
+        .then(data => {
+          if (data.count > 0 && accountBadge) {
+            accountBadge.textContent = data.count > 9 ? '9+' : data.count;
+            accountBadge.style.display = 'inline';
+          }
+        })
+        .catch(() => {});
     } else {
       isAuthenticated = false;
       if (accountHeader) accountHeader.style.display = 'none';
-      if (mailHeader) mailHeader.style.display = 'none';
-      if (walletHeader) walletHeader.style.display = 'none';
       if (loginHeader) {
         loginHeader.style.display = 'inline-block';
         // Update login link to include redirect parameter
@@ -570,11 +559,7 @@ function setSession() {
     isAuthenticated = false;
     var accountHeader = document.getElementById("account-header");
     var loginHeader = document.getElementById("login-header");
-    var mailHeader = document.getElementById("mail-header");
-    var walletHeader = document.getElementById("wallet-header");
     if (accountHeader) accountHeader.style.display = 'none';
-    if (mailHeader) mailHeader.style.display = 'none';
-    if (walletHeader) walletHeader.style.display = 'none';
     if (loginHeader) {
       loginHeader.style.display = 'block';
       // Update login link to include redirect parameter for unauthenticated users

@@ -84,9 +84,7 @@ var Template = `
         <a href="/">Mu</a>
       </div>
       <div id="account" style="-webkit-tap-highlight-color: transparent;">
-        <a id="mail-header" href="/mail" style="display: none; margin-right: 2px; -webkit-tap-highlight-color: transparent;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Inbox</span></a>
-        <a id="wallet-header" href="/wallet" style="display: none; margin-right: 2px; -webkit-tap-highlight-color: transparent;"><img src="/wallet.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Wallet</span></a>
-        <a id="account-header" href="/account" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
+        <a id="account-header" href="/account" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span id="account-badge" style="display: none; position: relative; top: -8px; left: -6px; background: #0d7377; color: white; font-size: 10px; padding: 1px 5px; border-radius: 10px; font-weight: bold;"></span></a>
         <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><b>Login</b></a>
       </div>
     </div>
@@ -469,9 +467,15 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := fmt.Sprintf(`<div class="card">
-<h3>Plan</h3>
+<h3>Inbox<span id="inbox-badge"></span></h3>
+<div id="inbox-preview"><p style="color: #888;">Loading...</p></div>
+<p><a href="/mail">View all messages →</a></p>
+</div>
+
+<div class="card">
+<h3>Wallet</h3>
+<p id="wallet-balance" style="font-size: 24px; font-weight: bold; margin: 10px 0;">...</p>
 <p>%s</p>
-<p><a href="/wallet">View wallet →</a></p>
 %s
 </div>
 
@@ -501,7 +505,32 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <p><a href="/token">API Tokens →</a></p>
 %s
 <p><a href="/logout" style="color: #c00;">Logout</a></p>
-</div>`,
+</div>
+
+<script>
+// Fetch inbox preview
+fetch('/mail?preview=1')
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('inbox-preview').innerHTML = data.html || '<p style="color: #888;">No messages</p>';
+    if (data.unread > 0) {
+      document.getElementById('inbox-badge').innerHTML = ' <span style="background: #0d7377; color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px;">' + data.unread + '</span>';
+    }
+  })
+  .catch(() => {
+    document.getElementById('inbox-preview').innerHTML = '<p style="color: #888;">No messages</p>';
+  });
+
+// Fetch wallet balance
+fetch('/wallet?balance=1')
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('wallet-balance').textContent = (data.balance || 0) + ' credits';
+  })
+  .catch(() => {
+    document.getElementById('wallet-balance').textContent = '0 credits';
+  });
+</script>`,
 		statusLine,
 		membershipLink,
 		acc.ID,
