@@ -14,6 +14,7 @@ import (
 	"mu/auth"
 	"mu/chat"
 	"mu/data"
+	"mu/wallet"
 )
 
 // App represents a user-created micro app
@@ -646,12 +647,22 @@ func handleNew(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 			return
 		}
 
+		// Check quota for app creation
+		canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpAppCreate)
+		if !canProceed {
+			renderNewForm(w, fmt.Sprintf("Insufficient credits. Creating an app costs %d credits.", cost), name, promptText)
+			return
+		}
+
 		// Create app and start async generation
 		a, err := CreateAppAsync(name, promptText, sess.Account, sess.Account)
 		if err != nil {
 			renderNewForm(w, err.Error(), name, promptText)
 			return
 		}
+
+		// Consume quota
+		wallet.ConsumeQuota(sess.Account, wallet.OpAppCreate)
 
 		// Immediately redirect to develop page
 		http.Redirect(w, r, "/apps/"+a.ID+"/develop", 302)
@@ -1013,6 +1024,16 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 				renderDevelopForm(w, a, "This request contains content that goes against our values")
 				return
 			}
+
+			// Check quota for app modification
+			canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpAppModify)
+			if !canProceed {
+				renderDevelopForm(w, a, fmt.Sprintf("Insufficient credits. Modifying an app costs %d credits.", cost))
+				return
+			}
+
+			// Consume quota upfront for modification
+			wallet.ConsumeQuota(sess.Account, wallet.OpAppModify)
 
 			// Set status to generating and kick off async modification
 			mutex.Lock()

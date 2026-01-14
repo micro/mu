@@ -2,12 +2,14 @@ package agent
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/websocket"
 	"mu/app"
 	"mu/auth"
+	"mu/wallet"
 )
 
 var wsUpgrader = websocket.Upgrader{
@@ -400,9 +402,25 @@ func handleRun(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 		return
 	}
 
+	// Check quota
+	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpAgentRun)
+	if !canProceed {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   fmt.Sprintf("Insufficient credits. This operation costs %d credits.", cost),
+		})
+		return
+	}
+
 	// Create and run agent
 	agent := New(sess.Account)
 	result := agent.Run(req.Task)
+
+	// Consume quota on success
+	if result.Success {
+		wallet.ConsumeQuota(sess.Account, wallet.OpAgentRun)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)

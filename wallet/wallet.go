@@ -22,6 +22,9 @@ var (
 	CostVideoWatch   = getEnvInt("CREDIT_COST_VIDEO_WATCH", 2)
 	CostChatQuery    = getEnvInt("CREDIT_COST_CHAT", 3)
 	CostChatRoom     = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
+	CostAppCreate    = getEnvInt("CREDIT_COST_APP_CREATE", 5)
+	CostAppModify    = getEnvInt("CREDIT_COST_APP_MODIFY", 3)
+	CostAgentRun     = getEnvInt("CREDIT_COST_AGENT", 5)
 	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
@@ -33,6 +36,9 @@ const (
 	OpVideoWatch   = "video_watch"
 	OpChatQuery    = "chat_query"
 	OpChatRoom     = "chat_room"
+	OpAppCreate    = "app_create"
+	OpAppModify    = "app_modify"
+	OpAgentRun     = "agent_run"
 	OpTopup        = "topup"
 	OpRefund       = "refund"
 )
@@ -334,6 +340,12 @@ func GetOperationCost(operation string) int {
 		return CostChatQuery
 	case OpChatRoom:
 		return CostChatRoom
+	case OpAppCreate:
+		return CostAppCreate
+	case OpAppModify:
+		return CostAppModify
+	case OpAgentRun:
+		return CostAgentRun
 	default:
 		return 1
 	}
