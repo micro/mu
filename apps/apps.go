@@ -650,20 +650,8 @@ Generate the complete HTML file now:`
 		return "", err
 	}
 
-	// Clean up response - remove any markdown code fences if present
-	response = strings.TrimSpace(response)
-	response = strings.TrimPrefix(response, "```html")
-	response = strings.TrimPrefix(response, "```")
-	response = strings.TrimSuffix(response, "```")
-	response = strings.TrimSpace(response)
-
-	// Ensure it starts with DOCTYPE
-	if !strings.HasPrefix(strings.ToLower(response), "<!doctype") {
-		// Try to find where HTML starts
-		if idx := strings.Index(strings.ToLower(response), "<!doctype"); idx > 0 {
-			response = response[idx:]
-		}
-	}
+	// Clean up response - extract just the HTML portion
+	response = cleanLLMResponse(response)
 
 	return response, nil
 }
@@ -1004,6 +992,21 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 			}
 			http.Redirect(w, r, "/apps/"+id, 302)
 			return
+
+		case "save_code":
+			// Save code from textarea (manual editing)
+			code := r.FormValue("code")
+			if code != "" {
+				a.Code = code
+				a.UpdatedAt = time.Now()
+				if err := UpdateApp(id, a.Name, a.Description, a.Code, a.Public, sess.Account); err != nil {
+					renderDevelopForm(w, a, "Save failed: "+err.Error())
+					return
+				}
+			}
+			// Redirect back to develop page to refresh preview
+			http.Redirect(w, r, "/apps/"+id+"/develop", 303)
+			return
 		}
 	}
 
@@ -1058,21 +1061,42 @@ Apply this modification and output the complete updated HTML file:`
 		return "", err
 	}
 
-	// Clean up response
+	// Clean up response - extract just the HTML portion
+	response = cleanLLMResponse(response)
+
+	return response, nil
+}
+
+// cleanLLMResponse extracts clean HTML from LLM response, removing any markdown
+// code fences, explanatory comments, or other text before/after the HTML
+func cleanLLMResponse(response string) string {
 	response = strings.TrimSpace(response)
+
+	// Remove markdown code fences if present
 	response = strings.TrimPrefix(response, "```html")
 	response = strings.TrimPrefix(response, "```")
 	response = strings.TrimSuffix(response, "```")
 	response = strings.TrimSpace(response)
 
-	// Ensure it starts with DOCTYPE
-	if !strings.HasPrefix(strings.ToLower(response), "<!doctype") {
-		if idx := strings.Index(strings.ToLower(response), "<!doctype"); idx > 0 {
-			response = response[idx:]
-		}
+	lower := strings.ToLower(response)
+
+	// Find where HTML starts (<!DOCTYPE or <html)
+	start := strings.Index(lower, "<!doctype")
+	if start == -1 {
+		start = strings.Index(lower, "<html")
+	}
+	if start > 0 {
+		response = response[start:]
+		lower = strings.ToLower(response)
 	}
 
-	return response, nil
+	// Find where HTML ends (</html>) and truncate anything after
+	end := strings.LastIndex(lower, "</html>")
+	if end > 0 {
+		response = response[:end+7] // +7 for len("</html>")
+	}
+
+	return strings.TrimSpace(response)
 }
 
 func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
@@ -1262,15 +1286,31 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
     <details class="code-toggle">
       <summary>Show code</summary>
       <textarea class="code-editor" name="code" id="code-editor" %s>%s</textarea>
+      <div style="margin-top: 10px;">
+        <button type="submit" name="action" value="save_code" %s>Save Code</button>
+        <span style="margin-left: 10px; font-size: 13px; color: #666;">Save changes and refresh preview</span>
+      </div>
     </details>
   </form>
 </div>
 
 <script>
-// Manual code editing requires page refresh to see changes
+// Auto-save on Ctrl+S / Cmd+S
+document.getElementById('code-editor').addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    const form = this.closest('form');
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'action';
+    input.value = 'save_code';
+    form.appendChild(input);
+    form.submit();
+  }
+});
 </script>
 %s
-`, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), pollingScript)
+`, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), disabledAttr, pollingScript)
 
 	w.Write([]byte(app.RenderHTML("Develop: "+a.Name, "Develop: "+a.Name, formHTML)))
 }
