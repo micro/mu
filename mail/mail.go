@@ -1268,10 +1268,14 @@ func GetRecentThreadsPreview(userID string, limit int) string {
 		if thread.HasUnread {
 			unreadDot = `<span style="color: #0d7377; margin-right: 5px;">●</span>`
 		}
-		// Truncate body
-		body := msg.Body
+		// Strip HTML and truncate body for preview
+		body := stripHTMLTags(msg.Body)
+		body = strings.TrimSpace(body)
 		if len(body) > 50 {
 			body = body[:50] + "..."
+		}
+		if body == "" {
+			body = "(no preview)"
 		}
 		b.WriteString(fmt.Sprintf(`<div style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
 			%s<strong>%s</strong>
