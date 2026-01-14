@@ -472,11 +472,23 @@ Mu SDK (automatically available as window.mu):
 - mu.db.set(key, value) - store value persistently (async)
 - mu.db.delete(key) - delete a key (async)
 - mu.db.list() - list all keys (async)
+- mu.fetch(url) - fetch any URL (server-side proxy, bypasses CORS) - returns {ok, status, text(), json()}
 - mu.user.id - current user's ID (null if not logged in)
 - mu.user.name - current user's name
 - mu.user.loggedIn - boolean
 - mu.app.id - this app's ID
 - mu.app.name - this app's name
+- mu.theme.get(name) - get CSS variable value (e.g., mu.theme.get('accent-color'))
+
+IMPORTANT: For fetching external URLs, ALWAYS use mu.fetch() instead of fetch() to avoid CORS issues.
+
+Theme CSS variables are automatically available (use var(--mu-*)):
+--mu-text-primary, --mu-text-secondary, --mu-text-muted
+--mu-accent-color, --mu-accent-blue
+--mu-card-background, --mu-card-border, --mu-hover-background
+--mu-spacing-xs/sm/md/lg/xl, --mu-border-radius
+--mu-shadow-sm, --mu-shadow-md, --mu-transition-fast
+--mu-font-family
 
 Use mu.db for any data that should persist across page refreshes. Data is stored per-user.
 
@@ -871,11 +883,17 @@ Mu SDK (automatically available as window.mu):
 - mu.db.set(key, value) - store value persistently (async)
 - mu.db.delete(key) - delete a key (async) 
 - mu.db.list() - list all keys (async)
+- mu.fetch(url) - fetch any URL (server-side proxy, bypasses CORS) - returns {ok, status, text(), json()}
 - mu.user.id - current user's ID (null if not logged in)
 - mu.user.name - current user's name
 - mu.user.loggedIn - boolean
 - mu.app.id - this app's ID
 - mu.app.name - this app's name
+- mu.theme.get(name) - get CSS variable value
+
+IMPORTANT: For fetching external URLs, ALWAYS use mu.fetch() instead of fetch() to avoid CORS issues.
+
+Theme CSS variables available: --mu-text-primary, --mu-accent-color, --mu-spacing-*, --mu-border-radius, etc.
 
 Use mu.db for any data that should persist. Data is per-user.
 
@@ -1195,6 +1213,40 @@ const keys = await mu.db.list();
 const {used, limit} = await mu.db.quota();
 </pre>
 
+<h3>Fetch (mu.fetch)</h3>
+<p>Server-side proxy for fetching external URLs. Bypasses CORS restrictions.</p>
+<pre>
+// Fetch any URL (no CORS issues!)
+const response = await mu.fetch('https://api.example.com/data');
+if (response.ok) {
+  const text = await response.text();
+  const json = await response.json();
+}
+</pre>
+<p><strong>Always use mu.fetch() instead of fetch() for external URLs.</strong></p>
+
+<h3>Theme (mu.theme)</h3>
+<p>CSS variables are automatically injected. Use them for consistent styling.</p>
+<pre>
+/* Available CSS variables */
+var(--mu-text-primary)      /* #1a1a1a */
+var(--mu-text-secondary)    /* #555 */
+var(--mu-text-muted)        /* #888 */
+var(--mu-accent-color)      /* #0d7377 */
+var(--mu-accent-blue)       /* #007bff */
+var(--mu-card-background)   /* #ffffff */
+var(--mu-card-border)       /* #e8e8e8 */
+var(--mu-hover-background)  /* #fafafa */
+var(--mu-spacing-xs/sm/md/lg/xl)
+var(--mu-border-radius)     /* 6px */
+var(--mu-shadow-sm)
+var(--mu-shadow-md)
+var(--mu-font-family)
+
+/* Get value in JS */
+const color = mu.theme.get('accent-color');
+</pre>
+
 <h3>User Context (mu.user)</h3>
 <pre>
 mu.user.id        // User ID (string) or null if not logged in
@@ -1208,16 +1260,14 @@ mu.app.id    // This app's unique ID
 mu.app.name  // This app's name
 </pre>
 
-<h3>Example: Todo App</h3>
+<h3>Example: Web Browser App</h3>
 <pre>
-// Load todos on startup
-let todos = [];
-const saved = await mu.db.get('todos');
-if (saved) todos = JSON.parse(saved);
-
-// Save after changes
-function saveTodos() {
-  mu.db.set('todos', JSON.stringify(todos));
+// Fetch a webpage (mu.fetch bypasses CORS)
+const url = document.getElementById('url').value;
+const response = await mu.fetch(url);
+if (response.ok) {
+  const html = await response.text();
+  document.getElementById('content').textContent = html;
 }
 </pre>
 

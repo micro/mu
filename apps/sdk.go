@@ -3,11 +3,45 @@ package apps
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"mu/auth"
 )
+
+// Theme CSS variables injected into every app
+const ThemeCSS = `
+<style id="mu-theme">
+:root {
+  /* Mu Design Tokens */
+  --mu-card-border: #e8e8e8;
+  --mu-card-background: #ffffff;
+  --mu-hover-background: #fafafa;
+  --mu-divider: #f0f0f0;
+  --mu-border-color: #f0f0f0;
+  --mu-text-primary: #1a1a1a;
+  --mu-text-secondary: #555;
+  --mu-text-muted: #888;
+  --mu-accent-color: #0d7377;
+  --mu-accent-blue: #007bff;
+  
+  --mu-spacing-xs: 4px;
+  --mu-spacing-sm: 8px;
+  --mu-spacing-md: 16px;
+  --mu-spacing-lg: 24px;
+  --mu-spacing-xl: 32px;
+  
+  --mu-border-radius: 6px;
+  --mu-shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --mu-shadow-md: 0 4px 6px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.06);
+  --mu-transition-fast: 0.15s ease;
+  
+  --mu-font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+</style>
+`
 
 // SDK is the JavaScript SDK injected into every app
 // Uses fetch to call the parent API (works with sandboxed iframes)
@@ -75,6 +109,27 @@ const SDK = `
       async quota() {
         return call('db.quota', {});
       }
+    },
+    
+    // Fetch proxy (bypasses CORS restrictions)
+    async fetch(url, options = {}) {
+      const result = await call('fetch', { url, method: options.method || 'GET' });
+      return {
+        ok: result.status >= 200 && result.status < 300,
+        status: result.status,
+        statusText: result.statusText,
+        text: async () => result.text,
+        json: async () => JSON.parse(result.text),
+        headers: result.headers
+      };
+    },
+    
+    // Theme utilities
+    theme: {
+      // Get CSS variable value
+      get(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue('--mu-' + name).trim();
+      }
     }
   };
   
@@ -89,13 +144,14 @@ func GenerateSDK(appID, appName, userID, userName string) string {
 	return fmt.Sprintf(SDK, appID, appName, userID, userName)
 }
 
-// InjectSDK injects the SDK into HTML content
+// InjectSDK injects the SDK and theme CSS into HTML content
 func InjectSDK(html, appID, appName, userID, userName string) string {
 	sdk := GenerateSDK(appID, appName, userID, userName)
+	injection := ThemeCSS + sdk
 	
 	// Try to inject before </head>
 	if idx := strings.Index(strings.ToLower(html), "</head>"); idx > 0 {
-		return html[:idx] + sdk + html[idx:]
+		return html[:idx] + injection + html[idx:]
 	}
 	
 	// Try to inject after <body>
@@ -104,12 +160,12 @@ func InjectSDK(html, appID, appName, userID, userName string) string {
 		closeIdx := strings.Index(html[idx:], ">")
 		if closeIdx > 0 {
 			insertPoint := idx + closeIdx + 1
-			return html[:insertPoint] + sdk + html[insertPoint:]
+			return html[:insertPoint] + injection + html[insertPoint:]
 		}
 	}
 	
 	// Fallback: prepend to content
-	return sdk + html
+	return injection + html
 }
 
 // HandleAPIRequest handles postMessage API requests from apps
@@ -202,6 +258,18 @@ func HandleAPIRequest(w http.ResponseWriter, r *http.Request) {
 			result = map[string]int64{"used": used, "limit": limit}
 		}
 
+	case "fetch":
+		url, _ := req.Params["url"].(string)
+		method, _ := req.Params["method"].(string)
+		if method == "" {
+			method = "GET"
+		}
+		if url == "" {
+			err = fmt.Errorf("url required")
+		} else {
+			result, err = ProxyFetch(url, method)
+		}
+
 	default:
 		err = fmt.Errorf("unknown method: %s", req.Method)
 	}
@@ -216,4 +284,51 @@ func HandleAPIRequest(w http.ResponseWriter, r *http.Request) {
 			"result": result,
 		})
 	}
+}
+
+// ProxyFetch fetches a URL server-side to bypass CORS
+func ProxyFetch(url, method string) (map[string]interface{}, error) {
+	// Basic URL validation
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		return nil, fmt.Errorf("invalid URL: must start with http:// or https://")
+	}
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("invalid request: %v", err)
+	}
+	
+	// Set a reasonable user agent
+	req.Header.Set("User-Agent", "Mu/1.0 (mu.xyz proxy)")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Read body (limit to 1MB)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+	if err != nil {
+		return nil, fmt.Errorf("read failed: %v", err)
+	}
+
+	// Convert headers to simple map
+	headers := make(map[string]string)
+	for k, v := range resp.Header {
+		if len(v) > 0 {
+			headers[k] = v[0]
+		}
+	}
+
+	return map[string]interface{}{
+		"status":     resp.StatusCode,
+		"statusText": resp.Status,
+		"text":       string(body),
+		"headers":    headers,
+	}, nil
 }
