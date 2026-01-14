@@ -16,7 +16,6 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
-	"mu/news"
 	"mu/wallet"
 )
 
@@ -850,17 +849,22 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						}
 						
 						if needsPrices {
-							prices := news.GetAllPrices()
-							if len(prices) > 0 {
+							// Query the data index for market prices (indexed by news package)
+							marketEntries := data.GetByType("market", 50)
+							if len(marketEntries) > 0 {
 								priceInfo := "CURRENT MARKET PRICES (real-time data): "
 								priceList := []string{}
-								for symbol, price := range prices {
-									priceList = append(priceList, fmt.Sprintf("%s: $%.2f", symbol, price))
+								for _, entry := range marketEntries {
+									if price, ok := entry.Metadata["price"].(float64); ok {
+										priceList = append(priceList, fmt.Sprintf("%s: $%.2f", entry.Title, price))
+									}
 								}
-								priceInfo += strings.Join(priceList, ", ")
-								// Prepend prices so they're seen as authoritative
-								ragContext = append([]string{priceInfo}, ragContext...)
-								app.Log("chat", "Injected real-time prices: %d symbols", len(prices))
+								if len(priceList) > 0 {
+									priceInfo += strings.Join(priceList, ", ")
+									// Prepend prices so they're seen as authoritative
+									ragContext = append([]string{priceInfo}, ragContext...)
+									app.Log("chat", "Injected real-time prices from data index: %d symbols", len(priceList))
+								}
 							}
 						}
 
