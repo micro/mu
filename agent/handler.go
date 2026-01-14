@@ -5,9 +5,18 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/websocket"
 	"mu/app"
 	"mu/auth"
 )
+
+var wsUpgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 // Handler handles /agent routes
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -26,6 +35,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleAgentUI(w, r, sess)
 	case path == "run":
 		handleRun(w, r, sess)
+	case path == "ws":
+		handleWebSocket(w, r, sess)
 	default:
 		http.NotFound(w, r)
 	}
@@ -117,6 +128,50 @@ func handleAgentUI(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	color: var(--text-muted, #888);
 	margin-top: 10px;
 }
+.progress {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.step-progress {
+	padding: 12px;
+	background: var(--hover-background, #fafafa);
+	border-radius: 6px;
+	border-left: 3px solid var(--accent-color, #0d7377);
+}
+.step-progress.running {
+	animation: pulse 1.5s ease-in-out infinite;
+}
+.step-progress .icon {
+	font-size: 14px;
+}
+.step-progress .tool {
+	font-family: monospace;
+	font-weight: bold;
+}
+.step-progress .thought {
+	font-size: 13px;
+	color: var(--text-muted, #888);
+	margin-top: 4px;
+}
+@keyframes pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.6; }
+}
+.spinner {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--accent-color, #0d7377);
+	border-top-color: transparent;
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+	margin-right: 8px;
+	vertical-align: middle;
+}
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
 .agent-results {
 	margin: 15px 0;
 }
@@ -184,6 +239,9 @@ func handleAgentUI(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 const input = document.getElementById('task-input');
 const output = document.getElementById('output');
 const btn = document.getElementById('run-btn');
+let ws = null;
+let steps = [];
+let actionData = null;
 
 function setTask(el) {
 	input.value = el.querySelector('code').textContent;
@@ -197,82 +255,119 @@ input.addEventListener('keydown', (e) => {
 	}
 });
 
-async function runAgent() {
+function runAgent() {
 	const task = input.value.trim();
 	if (!task) return;
 	
 	btn.disabled = true;
-	output.innerHTML = '<div class="loading">Working...</div>';
+	steps = [];
+	actionData = null;
+	output.innerHTML = '<div class="loading"><span class="spinner"></span> Working...</div>';
 	output.classList.add('loading');
 	
-	try {
-		const resp = await fetch('/agent/run', {
-			method: 'POST',
-			headers: {'Content-Type': 'application/json'},
-			body: JSON.stringify({task: task})
-		});
+	// Use WebSocket for streaming
+	const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+	ws = new WebSocket(wsProtocol + '//' + location.host + '/agent/ws');
+	
+	ws.onopen = () => {
+		ws.send(JSON.stringify({task: task}));
+	};
+	
+	ws.onmessage = (event) => {
+		const msg = JSON.parse(event.data);
 		
-		const result = await resp.json();
-		
-		let html = '';
-		
-		if (result.success) {
-			html += '<div class="answer">' + formatMarkdown(result.answer) + '</div>';
-			
-			if (result.html) {
-				html += result.html;
-			}
-			
-			// Auto-navigate for video play actions
-			if (result.action === 'navigate' && result.url) {
-				if (result.url.includes('/video?id=')) {
-					// For videos, show play button prominently and auto-redirect
-					html += '<p style="margin-top:15px"><a href="' + result.url + '" class="action-link" style="display:inline-block;padding:12px 24px;background:var(--accent-color,#0d7377);color:white;text-decoration:none;border-radius:6px;">▶ Play Video</a></p>';
-					// Auto-redirect after a short delay
-					setTimeout(() => { window.location.href = result.url; }, 1500);
-				} else {
-					html += '<p><a href="' + result.url + '" class="action-link">→ Go there now</a></p>';
-				}
-			}
-		} else {
-			html += '<div class="answer error">' + (result.answer || 'Something went wrong') + '</div>';
+		if (msg.type === 'step') {
+			steps.push(msg.step);
+			updateProgress();
+		} else if (msg.type === 'done') {
+			showResult(msg.result);
+			ws.close();
+		} else if (msg.type === 'error') {
+			output.innerHTML = '<div class="answer error">' + msg.error + '</div>';
+			output.classList.remove('loading');
+			btn.disabled = false;
+			ws.close();
 		}
-		
-		// Show steps (collapsed by default for successful results)
-		if (result.steps && result.steps.length > 0) {
-			html += '<details class="steps"><summary>Steps (' + result.steps.length + ')</summary>';
-			for (const step of result.steps) {
-				html += '<div class="step">';
-				if (step.thought) {
-					html += '<div class="thought">' + step.thought + '</div>';
-				}
-				html += '<span class="tool">' + step.tool + '</span>';
-				if (step.result && step.result.error) {
-					html += ' <span style="color:red">Error: ' + step.result.error + '</span>';
-				}
-				html += '</div>';
-			}
-			html += '</details>';
-		}
-		
-		if (result.duration) {
-			html += '<div class="duration">Completed in ' + result.duration + '</div>';
-		}
-		
-		output.innerHTML = html;
+	};
+	
+	ws.onerror = () => {
+		output.innerHTML = '<div class="answer error">Connection error</div>';
 		output.classList.remove('loading');
+		btn.disabled = false;
+	};
+	
+	ws.onclose = () => {
+		btn.disabled = false;
+	};
+}
+
+function updateProgress() {
+	let html = '<div class="progress">';
+	for (const step of steps) {
+		const icon = step.result ? (step.result.success ? '✓' : '✗') : '...';
+		const status = step.result ? '' : ' running';
+		html += '<div class="step-progress' + status + '">';
+		html += '<span class="icon">' + icon + '</span> ';
+		html += '<span class="tool">' + step.tool + '</span>';
+		if (step.thought) {
+			html += '<div class="thought">' + step.thought + '</div>';
+		}
+		// Show HTML results inline (like video thumbnails)
+		if (step.result && step.result.html) {
+			html += step.result.html;
+		}
+		html += '</div>';
+	}
+	html += '</div>';
+	output.innerHTML = html;
+	output.classList.remove('loading');
+}
+
+function showResult(result) {
+	let html = '';
+	
+	if (result.success) {
+		html += '<div class="answer">' + formatMarkdown(result.answer) + '</div>';
 		
-	} catch (err) {
-		output.innerHTML = '<div class="answer error">Error: ' + err.message + '</div>';
-		output.classList.remove('loading');
+		if (result.html) {
+			html += result.html;
+		}
+		
+		if (result.action === 'navigate' && result.url) {
+			if (result.url.includes('/video?id=')) {
+				html += '<p style="margin-top:15px"><a href="' + result.url + '" class="action-link" style="display:inline-block;padding:12px 24px;background:var(--accent-color,#0d7377);color:white;text-decoration:none;border-radius:6px;">▶ Play Video</a></p>';
+				setTimeout(() => { window.location.href = result.url; }, 1500);
+			} else {
+				html += '<p><a href="' + result.url + '" class="action-link">→ Go there now</a></p>';
+			}
+		}
+	} else {
+		html += '<div class="answer error">' + (result.answer || 'Something went wrong') + '</div>';
 	}
 	
-	btn.disabled = false;
+	if (steps.length > 0) {
+		html += '<details class="steps"><summary>Steps (' + steps.length + ')</summary>';
+		for (const step of steps) {
+			html += '<div class="step">';
+			if (step.thought) html += '<div class="thought">' + step.thought + '</div>';
+			html += '<span class="tool">' + step.tool + '</span>';
+			if (step.result && step.result.error) {
+				html += ' <span style="color:red">Error: ' + step.result.error + '</span>';
+			}
+			html += '</div>';
+		}
+		html += '</details>';
+	}
+	
+	if (result.duration) {
+		html += '<div class="duration">Completed in ' + result.duration + '</div>';
+	}
+	
+	output.innerHTML = html;
 }
 
 function formatMarkdown(text) {
 	if (!text) return '';
-	// Basic markdown formatting
 	return text
 		.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
 		.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -312,4 +407,47 @@ func handleRun(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+// handleWebSocket handles WebSocket connections for streaming agent results
+func handleWebSocket(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
+	conn, err := wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		app.Log("agent", "WebSocket upgrade error: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Read the task from the client
+	var req struct {
+		Task string `json:"task"`
+	}
+	if err := conn.ReadJSON(&req); err != nil {
+		conn.WriteJSON(map[string]interface{}{"type": "error", "error": "Invalid request"})
+		return
+	}
+
+	if req.Task == "" {
+		conn.WriteJSON(map[string]interface{}{"type": "error", "error": "Task is required"})
+		return
+	}
+
+	app.Log("agent", "WebSocket task from %s: %s", sess.Account, req.Task)
+
+	// Create agent and run with streaming callback
+	agent := New(sess.Account)
+	
+	result := agent.RunStreaming(req.Task, func(step *Step, final bool) {
+		// Send each step as it completes
+		conn.WriteJSON(map[string]interface{}{
+			"type": "step",
+			"step": step,
+		})
+	})
+
+	// Send final result
+	conn.WriteJSON(map[string]interface{}{
+		"type":   "done",
+		"result": result,
+	})
 }

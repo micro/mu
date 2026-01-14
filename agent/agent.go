@@ -10,6 +10,9 @@ import (
 	"mu/chat"
 )
 
+// StepCallback is called when a step completes (for streaming)
+type StepCallback func(step *Step, final bool)
+
 // Tool represents a capability the agent can use
 type Tool struct {
 	Name        string                 `json:"name"`
@@ -271,6 +274,117 @@ Current user: %s`, toolsJSON, a.userID)
 		} else {
 			step.Result = &ToolResult{Success: false, Error: fmt.Sprintf("Unknown tool: %s", step.Tool)}
 			result.Answer = fmt.Sprintf("Unknown tool: %s", step.Tool)
+			break
+		}
+	}
+	
+	result.Duration = time.Since(start).String()
+	return result
+}
+
+// RunStreaming executes the agent and calls the callback after each step
+func (a *Agent) RunStreaming(task string, onStep StepCallback) *Result {
+	start := time.Now()
+	
+	result := &Result{
+		Steps: []*Step{},
+	}
+	
+	toolsJSON := a.buildToolsPrompt()
+	
+	systemPrompt := fmt.Sprintf(`You are an AI agent for the Mu platform. You help users accomplish tasks by using the available tools.
+
+Available tools:
+%s
+
+You must respond with valid JSON in this exact format:
+{
+  "thought": "Your reasoning about what to do next",
+  "tool": "tool_name",
+  "parameters": { "param1": "value1" }
+}
+
+Rules:
+1. Think step by step about what you need to do
+2. Use one tool at a time
+3. After each tool result, decide if you need more steps or can provide final_answer
+4. Use video_search to find videos, then video_play to play a specific result
+5. Use news_search to find articles, then news_read to get full content
+6. Always end with final_answer when done
+7. Be concise and efficient - minimize steps
+
+Current user: %s`, toolsJSON, a.userID)
+
+	var context chat.History
+	currentPrompt := task
+	
+	for i := 0; i < a.maxSteps; i++ {
+		llmPrompt := &chat.Prompt{
+			System:   systemPrompt,
+			Question: currentPrompt,
+			Context:  context,
+			Priority: chat.PriorityHigh,
+		}
+		
+		response, err := chat.AskLLM(llmPrompt)
+		if err != nil {
+			result.Success = false
+			result.Answer = fmt.Sprintf("Error: %v", err)
+			break
+		}
+		
+		step, err := a.parseStep(response)
+		if err != nil {
+			app.Log("agent", "Failed to parse step: %v, response: %s", err, response)
+			result.Answer = response
+			result.Success = true
+			break
+		}
+		
+		result.Steps = append(result.Steps, step)
+		
+		if tool, ok := a.tools[step.Tool]; ok {
+			params, _ := step.Parameters.(map[string]interface{})
+			toolResult, err := tool.Execute(params)
+			if err != nil {
+				step.Result = &ToolResult{Success: false, Error: err.Error()}
+			} else {
+				step.Result = toolResult
+			}
+			
+			if step.Result != nil && step.Result.Action != "" {
+				result.Action = step.Result.Action
+				result.URL = step.Result.URL
+				result.HTML = step.Result.HTML
+			}
+			
+			// Stream the step to client
+			isFinal := step.Tool == "final_answer"
+			if onStep != nil {
+				onStep(step, isFinal)
+			}
+			
+			if isFinal {
+				result.Success = true
+				if answer, ok := params["answer"].(string); ok {
+					result.Answer = answer
+				}
+				break
+			}
+			
+			resultJSON, _ := json.Marshal(step.Result)
+			context = append(context, chat.Message{
+				Prompt: currentPrompt,
+				Answer: response,
+			})
+			currentPrompt = fmt.Sprintf("Tool result: %s\n\nWhat's next?", string(resultJSON))
+			
+		} else {
+			step.Result = &ToolResult{Success: false, Error: fmt.Sprintf("Unknown tool: %s", step.Tool)}
+			result.Answer = fmt.Sprintf("Unknown tool: %s", step.Tool)
+			if onStep != nil {
+				onStep(step, true)
+			}
 			break
 		}
 	}
