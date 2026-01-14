@@ -24,7 +24,6 @@ import (
 	"mu/home"
 	"mu/mail"
 	"mu/news"
-	"mu/presence"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -71,8 +70,8 @@ func main() {
 	// load the home cards
 	home.Load()
 
-	// load presence tracking
-	presence.Load()
+	// load user presence tracking
+	user.Load()
 
 	// load micro apps
 	apps.Load()
@@ -181,7 +180,7 @@ func main() {
 	http.HandleFunc("/token", app.TokenHandler)
 
 	// presence WebSocket endpoint
-	http.HandleFunc("/presence", presence.Handler)
+	http.HandleFunc("/presence", user.PresenceHandler)
 
 	// presence ping endpoint
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {

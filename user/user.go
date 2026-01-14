@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"mu/app"
 	"mu/apps"
 	"mu/auth"
@@ -25,9 +26,139 @@ type Profile struct {
 	UpdatedAt time.Time `json:"updated_at"` // When the profile was last updated
 }
 
+// Presence tracking
+var (
+	presenceClients      = make(map[*websocket.Conn]*PresenceClient)
+	presenceClientsMutex sync.RWMutex
+)
+
+var presenceUpgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+// PresenceClient represents a connected user for presence tracking
+type PresenceClient struct {
+	Conn     *websocket.Conn
+	UserID   string
+	LastSeen time.Time
+}
+
+// PresenceMessage is sent to clients
+type PresenceMessage struct {
+	Type  string   `json:"type"`
+	Users []string `json:"users"`
+	Count int      `json:"count"`
+}
+
 func init() {
 	b, _ := data.LoadFile("profiles.json")
 	json.Unmarshal(b, &profiles)
+}
+
+// Load initializes presence broadcasting
+func Load() {
+	go presenceBroadcaster()
+}
+
+func presenceBroadcaster() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		broadcastPresence()
+	}
+}
+
+func broadcastPresence() {
+	users := auth.GetOnlineUsers()
+
+	msg := PresenceMessage{
+		Type:  "presence",
+		Users: users,
+		Count: len(users),
+	}
+
+	data, _ := json.Marshal(msg)
+
+	presenceClientsMutex.RLock()
+	for conn := range presenceClients {
+		err := conn.WriteMessage(websocket.TextMessage, data)
+		if err != nil {
+			conn.Close()
+		}
+	}
+	presenceClientsMutex.RUnlock()
+}
+
+// PresenceHandler handles WebSocket connections for presence
+func PresenceHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := presenceUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		app.Log("user", "WebSocket upgrade error: %v", err)
+		return
+	}
+
+	var userID string
+	if sess, err := auth.GetSession(r); err == nil {
+		userID = sess.Account
+		auth.UpdatePresence(userID)
+	}
+
+	client := &PresenceClient{
+		Conn:     conn,
+		UserID:   userID,
+		LastSeen: time.Now(),
+	}
+
+	presenceClientsMutex.Lock()
+	presenceClients[conn] = client
+	presenceClientsMutex.Unlock()
+
+	if userID != "" {
+		app.Log("user", "Presence connected: %s (total: %d)", userID, len(presenceClients))
+	}
+
+	// Send current user list immediately
+	users := auth.GetOnlineUsers()
+	msg := PresenceMessage{
+		Type:  "presence",
+		Users: users,
+		Count: len(users),
+	}
+	msgData, _ := json.Marshal(msg)
+	conn.WriteMessage(websocket.TextMessage, msgData)
+
+	// Handle incoming messages (pings to keep presence alive)
+	go func() {
+		defer func() {
+			presenceClientsMutex.Lock()
+			delete(presenceClients, conn)
+			presenceClientsMutex.Unlock()
+			conn.Close()
+			if userID != "" {
+				app.Log("user", "Presence disconnected: %s", userID)
+			}
+		}()
+
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				break
+			}
+			if userID != "" {
+				auth.UpdatePresence(userID)
+			}
+			presenceClientsMutex.Lock()
+			if c, ok := presenceClients[conn]; ok {
+				c.LastSeen = time.Now()
+			}
+			presenceClientsMutex.Unlock()
+		}
+	}()
 }
 
 // GetProfile retrieves a user's profile, creating a default one if it doesn't exist

@@ -141,7 +141,6 @@ func (a *Agent) videoPlay(params map[string]interface{}) (*ToolResult, error) {
 		Data:    map[string]string{"url": url, "video_id": videoID},
 		Action:  "navigate",
 		URL:     url,
-		HTML:    fmt.Sprintf(`<p>Playing video: <a href="%s">Watch now</a></p>`, url),
 	}, nil
 }
 
