@@ -173,7 +173,7 @@ function sendMicroMessage() {
   // Add loading message
   const assistantMsg = document.createElement('div');
   assistantMsg.className = 'micro-msg assistant';
-  assistantMsg.innerHTML = '<span class="loading">Thinking...</span>';
+  assistantMsg.innerHTML = '<span class="loading">Working...</span>';
   messages.appendChild(assistantMsg);
   
   messages.scrollTop = messages.scrollHeight;
