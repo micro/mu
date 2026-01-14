@@ -1585,7 +1585,6 @@ func GetUserAppsPreview(userID string, limit int) string {
 	for _, a := range userApps {
 		b.WriteString(fmt.Sprintf(`<a href="/apps/%s" class="app-preview-item">%s</a>`, a.ID, html.EscapeString(a.Name)))
 	}
-	b.WriteString(`<a href="/apps" class="app-preview-more">more →</a>`)
 	b.WriteString(`</div>`)
 	return b.String()
 }

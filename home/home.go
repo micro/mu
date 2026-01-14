@@ -209,7 +209,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if sess, err := auth.GetSession(r); err == nil && sess != nil {
 		appsPreview := apps.GetUserAppsPreview(sess.Account, 5)
 		if appsPreview != "" {
-			leftHTML = append(leftHTML, app.Card("my-apps", "My Apps", appsPreview))
+			leftHTML = append(leftHTML, app.Card("my-apps", "My Apps", appsPreview+app.Link("More", "/apps")))
 		}
 	}
 
