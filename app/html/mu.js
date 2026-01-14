@@ -878,17 +878,6 @@ self.addEventListener('DOMContentLoaded', function() {
     el.removeAttribute("class");
   }
 
-  // Mobile logout handler - clicking account icon on mobile logs out
-  if (window.innerWidth <= 600) {
-    const account = document.getElementById('account');
-    if (account) {
-      account.style.cursor = 'pointer';
-      account.addEventListener('click', function() {
-        window.location.href = '/logout';
-      });
-    }
-  }
-
   // load chat
   if (window.location.pathname == CHAT_PATH) {
     loadChat();

@@ -315,19 +315,19 @@ td {
 /* Mobile adjustments */
 @media (max-width: 600px) {
   #micro-dialog {
-    padding-top: 0;
-    align-items: flex-end;
+    padding-top: 60px;
+    align-items: flex-start;
   }
   
   #micro-modal {
     width: 100%;
     max-width: 100%;
-    border-radius: 16px 16px 0 0;
-    max-height: 85vh;
+    border-radius: 0 0 16px 16px;
+    max-height: 70vh;
   }
   
   #micro-messages {
-    max-height: 60vh;
+    max-height: 50vh;
   }
 }
 
