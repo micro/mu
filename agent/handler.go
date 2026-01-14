@@ -202,7 +202,7 @@ async function runAgent() {
 	if (!task) return;
 	
 	btn.disabled = true;
-	output.innerHTML = '<div class="loading">Thinking...</div>';
+	output.innerHTML = '<div class="loading">Working...</div>';
 	output.classList.add('loading');
 	
 	try {
@@ -223,8 +223,16 @@ async function runAgent() {
 				html += result.html;
 			}
 			
+			// Auto-navigate for video play actions
 			if (result.action === 'navigate' && result.url) {
-				html += '<p><a href="' + result.url + '" class="action-link">→ Go there now</a></p>';
+				if (result.url.includes('/video?id=')) {
+					// For videos, show play button prominently and auto-redirect
+					html += '<p style="margin-top:15px"><a href="' + result.url + '" class="action-link" style="display:inline-block;padding:12px 24px;background:var(--accent-color,#0d7377);color:white;text-decoration:none;border-radius:6px;">▶ Play Video</a></p>';
+					// Auto-redirect after a short delay
+					setTimeout(() => { window.location.href = result.url; }, 1500);
+				} else {
+					html += '<p><a href="' + result.url + '" class="action-link">→ Go there now</a></p>';
+				}
 			}
 		} else {
 			html += '<div class="answer error">' + (result.answer || 'Something went wrong') + '</div>';
