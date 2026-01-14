@@ -225,9 +225,11 @@ td {
 }
 
 #voice-icon {
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: bold;
   line-height: 1;
   transition: all 0.2s;
+  color: var(--accent-color, #0d7377);
 }
 
 #nav-container {
