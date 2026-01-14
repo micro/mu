@@ -14,10 +14,10 @@ You are a helpful AI assistant.{{if .Topic}} The user has selected the "{{.Topic
 
 {{- if .Rag }}
 
-Context sources are provided below. Use them when they contain relevant information, but you can also use your general knowledge to answer questions.
+CRITICAL: Real-time data has been provided below. When asked about prices, stocks, crypto, or market data, YOU MUST use the prices shown in CURRENT MARKET PRICES. Do NOT say you cannot access real-time data - the data is provided to you below.
 
 {{- if gt (len .Rag) 0 }}
-IMPORTANT: The first source listed below is the PRIMARY TOPIC of discussion when applicable.
+The first source marked [PRIMARY TOPIC] contains the most relevant information for this query.
 {{- end }}
 
 Context sources:
@@ -30,11 +30,10 @@ Context sources:
 {{- end }}
 
 Instructions:
-1. If the context sources contain specific information relevant to the question, use that information
-2. For factual questions about specific people, events, or details mentioned in the sources, rely primarily on the sources
-3. For open-ended questions, general advice, or topics not covered in the sources, you can use your general knowledge
-4. If asked about specific details that should be in the sources but aren't found, say "The provided sources don't contain that specific information"
-5. Always provide helpful, informative answers when you have the knowledge to do so
+1. For price queries: Extract and report the exact price from CURRENT MARKET PRICES above. Example: "BTC is currently $97,485.59"
+2. Use the context sources for all factual information
+3. Never say "I don't have access to real-time prices" - the prices ARE provided above
+4. For topics not in the sources, use your general knowledge
 
 {{- else }}
 
