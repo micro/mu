@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v75';
+var VERSION = 'v76';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1183,12 +1183,13 @@ function initVoiceAssistant() {
   voiceIndicator.style.display = 'inline-block';
   
   voiceIndicator.onclick = () => {
-    if (!voiceListening) {
-      startVoiceListening();
-    } else if (!voiceWakeDetected) {
-      // Manual activation - treat as wake word detected
-      activateVoiceCommand();
+    if (voiceWakeDetected) {
+      // Already listening, ignore
+      return;
     }
+    // Tap activates command mode directly
+    startVoiceListening();
+    setTimeout(activateVoiceCommand, 100); // Small delay to let recognition start
   };
 
   voiceRecognition.onresult = (event) => {
@@ -1202,39 +1203,34 @@ function initVoiceAssistant() {
       }
     }
 
-    transcript = transcript.toLowerCase().trim();
+    transcript = transcript.trim();
     console.log('Voice heard:', transcript, 'final:', isFinal);
 
     if (!voiceWakeDetected) {
-      // Listen for wake word
-      if (transcript.includes('micro') || transcript.includes('hey micro') || transcript.includes('hey micro')) {
-        activateVoiceCommand();
-      }
-    } else {
-      // Collecting command after wake word
-      // Remove wake word from beginning if present
-      let command = transcript.replace(/^(hey\s+)?micro\s*/i, '').trim();
+      // Not activated yet, ignore
+      return;
+    }
+    
+    // Collecting command
+    if (transcript) {
+      voiceCommandBuffer = transcript;
+      const voiceIcon = document.getElementById('voice-icon');
+      if (voiceIcon) voiceIcon.textContent = '...';
+      if (voiceIndicator) voiceIndicator.title = 'Hearing: ' + transcript;
       
-      if (command) {
-        voiceCommandBuffer = command;
-        const voiceIcon = document.getElementById('voice-icon');
-        if (voiceIcon) voiceIcon.textContent = '...';
-        if (voiceIndicator) voiceIndicator.title = 'Hearing: ' + command;
-        
-        // Reset timeout for end of speech
-        if (voiceTimeout) clearTimeout(voiceTimeout);
-        voiceTimeout = setTimeout(() => {
-          if (voiceCommandBuffer) {
-            executeVoiceCommand(voiceCommandBuffer);
-          }
-        }, 1500); // Wait 1.5s of silence before executing
-      }
+      // Reset timeout for end of speech
+      if (voiceTimeout) clearTimeout(voiceTimeout);
+      voiceTimeout = setTimeout(() => {
+        if (voiceCommandBuffer) {
+          executeVoiceCommand(voiceCommandBuffer);
+        }
+      }, 1500); // Wait 1.5s of silence before executing
+    }
 
-      if (isFinal && voiceCommandBuffer) {
-        // Execute immediately on final result
-        if (voiceTimeout) clearTimeout(voiceTimeout);
-        executeVoiceCommand(voiceCommandBuffer);
-      }
+    if (isFinal && voiceCommandBuffer) {
+      // Execute immediately on final result
+      if (voiceTimeout) clearTimeout(voiceTimeout);
+      executeVoiceCommand(voiceCommandBuffer);
     }
   };
 
@@ -1249,23 +1245,25 @@ function initVoiceAssistant() {
       if (voiceIndicator) {
         voiceIndicator.title = 'Microphone access denied';
       }
-    } else if (event.error !== 'no-speech') {
-      // Restart on recoverable errors
-      setTimeout(startVoiceListening, 1000);
+    } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      // Only restart on certain recoverable errors, and only if we were actively listening
+      if (voiceWakeDetected) {
+        setTimeout(startVoiceListening, 1000);
+      }
     }
   };
 
   voiceRecognition.onend = () => {
     console.log('Voice recognition ended');
     voiceListening = false;
-    // Auto-restart if not manually stopped
-    if (voiceIndicator && !voiceIndicator.style.opacity) {
+    // Only auto-restart if we were in the middle of a command
+    if (voiceWakeDetected && voiceCommandBuffer) {
       setTimeout(startVoiceListening, 500);
     }
   };
 
-  // Start listening
-  startVoiceListening();
+  // Don't auto-start - wait for tap or wake word detection via another method
+  // For now, voice is tap-to-activate only
 }
 
 function startVoiceListening() {
