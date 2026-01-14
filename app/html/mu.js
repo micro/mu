@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v70';
+var VERSION = 'v71';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -540,6 +540,8 @@ function setSession() {
           }
         })
         .catch(() => {});
+      // Initialize voice assistant for authenticated users
+      tryInitVoiceAssistant();
     } else {
       isAuthenticated = false;
       if (accountHeader) accountHeader.style.display = 'none';
@@ -1138,6 +1140,251 @@ document.addEventListener('DOMContentLoaded', function() {
   
   updateCharCount();
 });
+
+// ============================================
+// VOICE ASSISTANT ("Hey Micro")
+// ============================================
+
+let voiceRecognition = null;
+let voiceListening = false;
+let voiceWakeDetected = false;
+let voiceCommandBuffer = '';
+let voiceTimeout = null;
+let voiceIndicator = null;
+
+function initVoiceAssistant() {
+  // Check browser support
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.log('Voice assistant: Speech recognition not supported');
+    return;
+  }
+
+  // Only init for authenticated users
+  if (!isAuthenticated) {
+    console.log('Voice assistant: Not authenticated');
+    return;
+  }
+
+  voiceRecognition = new SpeechRecognition();
+  voiceRecognition.continuous = true;
+  voiceRecognition.interimResults = true;
+  voiceRecognition.lang = 'en-US';
+
+  // Create voice indicator
+  voiceIndicator = document.createElement('div');
+  voiceIndicator.id = 'voice-indicator';
+  voiceIndicator.innerHTML = '🎤';
+  voiceIndicator.style.cssText = 'position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: var(--card-background, #fff); border: 2px solid var(--card-border, #e8e8e8); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: all 0.2s;';
+  voiceIndicator.title = 'Say "Hey Micro" or tap to activate';
+  voiceIndicator.onclick = () => {
+    if (!voiceListening) {
+      startVoiceListening();
+    } else if (!voiceWakeDetected) {
+      // Manual activation - treat as wake word detected
+      activateVoiceCommand();
+    }
+  };
+  document.body.appendChild(voiceIndicator);
+
+  voiceRecognition.onresult = (event) => {
+    let transcript = '';
+    let isFinal = false;
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        isFinal = true;
+      }
+    }
+
+    transcript = transcript.toLowerCase().trim();
+    console.log('Voice heard:', transcript, 'final:', isFinal);
+
+    if (!voiceWakeDetected) {
+      // Listen for wake word
+      if (transcript.includes('micro') || transcript.includes('hey micro') || transcript.includes('hey micro')) {
+        activateVoiceCommand();
+      }
+    } else {
+      // Collecting command after wake word
+      // Remove wake word from beginning if present
+      let command = transcript.replace(/^(hey\s+)?micro\s*/i, '').trim();
+      
+      if (command) {
+        voiceCommandBuffer = command;
+        voiceIndicator.innerHTML = '💬';
+        voiceIndicator.title = 'Hearing: ' + command;
+        
+        // Reset timeout for end of speech
+        if (voiceTimeout) clearTimeout(voiceTimeout);
+        voiceTimeout = setTimeout(() => {
+          if (voiceCommandBuffer) {
+            executeVoiceCommand(voiceCommandBuffer);
+          }
+        }, 1500); // Wait 1.5s of silence before executing
+      }
+
+      if (isFinal && voiceCommandBuffer) {
+        // Execute immediately on final result
+        if (voiceTimeout) clearTimeout(voiceTimeout);
+        executeVoiceCommand(voiceCommandBuffer);
+      }
+    }
+  };
+
+  voiceRecognition.onerror = (event) => {
+    console.log('Voice error:', event.error);
+    if (event.error === 'not-allowed') {
+      voiceIndicator.innerHTML = '🔇';
+      voiceIndicator.title = 'Microphone access denied';
+      voiceIndicator.style.opacity = '0.5';
+    } else if (event.error !== 'no-speech') {
+      // Restart on recoverable errors
+      setTimeout(startVoiceListening, 1000);
+    }
+  };
+
+  voiceRecognition.onend = () => {
+    console.log('Voice recognition ended');
+    voiceListening = false;
+    // Auto-restart if not manually stopped
+    if (voiceIndicator && !voiceIndicator.style.opacity) {
+      setTimeout(startVoiceListening, 500);
+    }
+  };
+
+  // Start listening
+  startVoiceListening();
+}
+
+function startVoiceListening() {
+  if (voiceListening || !voiceRecognition) return;
+  
+  try {
+    voiceRecognition.start();
+    voiceListening = true;
+    voiceWakeDetected = false;
+    voiceCommandBuffer = '';
+    if (voiceIndicator) {
+      voiceIndicator.innerHTML = '🎤';
+      voiceIndicator.style.background = 'var(--card-background, #fff)';
+      voiceIndicator.title = 'Say "Hey Micro" or tap to activate';
+    }
+    console.log('Voice listening started');
+  } catch (e) {
+    console.log('Voice start error:', e);
+  }
+}
+
+function activateVoiceCommand() {
+  voiceWakeDetected = true;
+  voiceCommandBuffer = '';
+  if (voiceIndicator) {
+    voiceIndicator.innerHTML = '👂';
+    voiceIndicator.style.background = 'var(--accent-color, #0d7377)';
+    voiceIndicator.style.color = 'white';
+    voiceIndicator.title = 'Listening for command...';
+  }
+  // Audio feedback
+  try {
+    const audio = new AudioContext();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.connect(gain);
+    gain.connect(audio.destination);
+    osc.frequency.value = 800;
+    gain.gain.value = 0.1;
+    osc.start();
+    osc.stop(audio.currentTime + 0.1);
+  } catch(e) {}
+  
+  // Timeout if no command received
+  if (voiceTimeout) clearTimeout(voiceTimeout);
+  voiceTimeout = setTimeout(() => {
+    if (voiceWakeDetected && !voiceCommandBuffer) {
+      resetVoiceState();
+    }
+  }, 5000);
+}
+
+function resetVoiceState() {
+  voiceWakeDetected = false;
+  voiceCommandBuffer = '';
+  if (voiceIndicator) {
+    voiceIndicator.innerHTML = '🎤';
+    voiceIndicator.style.background = 'var(--card-background, #fff)';
+    voiceIndicator.style.color = '';
+    voiceIndicator.title = 'Say "Hey Micro" or tap to activate';
+  }
+}
+
+function executeVoiceCommand(command) {
+  console.log('Executing voice command:', command);
+  
+  if (voiceIndicator) {
+    voiceIndicator.innerHTML = '⏳';
+    voiceIndicator.title = 'Processing: ' + command;
+  }
+
+  // Send to agent
+  fetch('/agent/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: command })
+  })
+  .then(r => r.json())
+  .then(result => {
+    console.log('Agent result:', result);
+    
+    if (result.success) {
+      // Handle navigation actions (like video play)
+      if (result.action === 'navigate' && result.url) {
+        voiceIndicator.innerHTML = '✓';
+        voiceIndicator.title = result.answer || 'Done!';
+        // Navigate to the URL (video will autoplay)
+        setTimeout(() => {
+          window.location.href = result.url;
+        }, 500);
+        return;
+      }
+      
+      // Show success feedback
+      voiceIndicator.innerHTML = '✓';
+      voiceIndicator.title = result.answer || 'Done!';
+      
+      // Speak the response if available
+      if (result.answer && 'speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(result.answer.substring(0, 200));
+        utterance.rate = 1.1;
+        speechSynthesis.speak(utterance);
+      }
+    } else {
+      voiceIndicator.innerHTML = '❌';
+      voiceIndicator.title = result.answer || 'Something went wrong';
+    }
+    
+    // Reset after a moment
+    setTimeout(resetVoiceState, 3000);
+  })
+  .catch(err => {
+    console.error('Voice command error:', err);
+    voiceIndicator.innerHTML = '❌';
+    voiceIndicator.title = 'Error processing command';
+    setTimeout(resetVoiceState, 3000);
+  });
+
+  // Reset state for next command
+  voiceWakeDetected = false;
+  voiceCommandBuffer = '';
+}
+
+// Initialize voice assistant after session is established
+function tryInitVoiceAssistant() {
+  if (isAuthenticated && !voiceRecognition) {
+    initVoiceAssistant();
+  }
+}
 
 // ============================================
 // PRESENCE WEBSOCKET (HOME PAGE)

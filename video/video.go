@@ -587,9 +587,16 @@ func loadVideos() {
 }
 
 func embedVideo(id string) string {
+	return embedVideoWithAutoplay(id, false)
+}
+
+func embedVideoWithAutoplay(id string, autoplay bool) string {
 	u := "https://www.youtube.com/embed/" + id
+	if autoplay {
+		u += "?autoplay=1"
+	}
 	style := `style="position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none;"`
-	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
 }
 
 func getChannel(category, handle string) (string, []*Result, error) {
@@ -1172,6 +1179,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Consume quota for video watch
 		wallet.ConsumeQuota(sess.Account, wallet.OpVideoWatch)
 
+		// Check if autoplay is requested
+		autoplay := r.Form.Get("autoplay") == "1"
+
 		// get the page
 		tmpl := `<html>
   <head>
@@ -1182,7 +1192,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
   </body>
 </html>
 `
-		html := fmt.Sprintf(`<div class="video" style="padding-top: 100px">%s</div>`, embedVideo(id))
+		html := fmt.Sprintf(`<div class="video" style="padding-top: 100px">%s</div>`, embedVideoWithAutoplay(id, autoplay))
 		rhtml := fmt.Sprintf(tmpl, html)
 		w.Write([]byte(rhtml))
 

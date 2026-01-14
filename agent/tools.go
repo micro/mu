@@ -134,7 +134,7 @@ func (a *Agent) videoPlay(params map[string]interface{}) (*ToolResult, error) {
 	
 	app.Log("agent", "Video play: %s", videoID)
 	
-	url := fmt.Sprintf("/video?id=%s", videoID)
+	url := fmt.Sprintf("/video?id=%s&autoplay=1", videoID)
 	
 	return &ToolResult{
 		Success: true,
