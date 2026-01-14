@@ -27,6 +27,7 @@ type App struct {
 	Public      bool      `json:"public"`      // Whether app is publicly listed
 	Status      string    `json:"status"`      // "generating", "ready", "error"
 	Error       string    `json:"error"`       // Error message if generation failed
+	Retries     int       `json:"retries"`     // Number of generation retries
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -40,6 +41,9 @@ var (
 func Load() {
 	loadApps()
 	app.Log("apps", "Loaded %d apps", len(apps))
+	
+	// Resume any stuck generations from previous run
+	resumeStuckGenerations()
 }
 
 func loadApps() {
@@ -59,6 +63,58 @@ func loadApps() {
 		return
 	}
 	apps = loaded
+}
+
+const maxGenerationRetries = 3
+
+// resumeStuckGenerations finds apps stuck in "generating" status and retries them
+func resumeStuckGenerations() {
+	mutex.RLock()
+	var stuckApps []*App
+	for _, a := range apps {
+		if a.Status == "generating" {
+			stuckApps = append(stuckApps, a)
+		}
+	}
+	mutex.RUnlock()
+
+	for _, a := range stuckApps {
+		if a.Retries >= maxGenerationRetries {
+			app.Log("apps", "App %s (%s) exceeded max retries, marking as error", a.ID, a.Name)
+			mutex.Lock()
+			a.Status = "error"
+			a.Error = "Generation failed after multiple retries"
+			a.UpdatedAt = time.Now()
+			saveApps()
+			mutex.Unlock()
+			continue
+		}
+
+		app.Log("apps", "Resuming generation for app %s (%s), retry %d", a.ID, a.Name, a.Retries+1)
+		
+		// Resume generation in background
+		go func(app_ *App) {
+			code, err := generateAppCode(app_.Description)
+			
+			mutex.Lock()
+			defer mutex.Unlock()
+			
+			app_.Retries++
+			if err != nil {
+				if app_.Retries >= maxGenerationRetries {
+					app_.Status = "error"
+					app_.Error = err.Error()
+				}
+				// else keep status as "generating" for next restart to retry
+			} else {
+				app_.Code = code
+				app_.Status = "ready"
+				app_.Error = ""
+			}
+			app_.UpdatedAt = time.Now()
+			saveApps()
+		}(a)
+	}
 }
 
 func saveApps() error {
