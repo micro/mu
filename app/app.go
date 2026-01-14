@@ -100,7 +100,7 @@ var Template = `
         </div>
         <div id="micro-messages"></div>
         <form id="micro-form" onsubmit="sendMicroMessage(); return false;">
-          <input type="text" id="micro-input" placeholder="Ask micro anything..." autocomplete="off">
+          <input type="text" id="micro-input" placeholder="Ask a question..." autocomplete="off">
           <button type="submit">Send</button>
         </form>
       </div>
