@@ -8,8 +8,8 @@ A personal app platform that provides services without ads, algorithms, or track
 
 ### Features
 
-- **App** - Progressive web app for desktop and mobile
-- **API** - Basic API for docs and programmatic access
+- **PWA** - Progressive web app for desktop and mobile
+- **API** - Authenticated API for programmatic access
 - **Home** - One place to catchup with everything
 - **Agent** - AI assistant that does things for you
 - **Apps** - Build and share micro apps with AI
@@ -21,9 +21,6 @@ A personal app platform that provides services without ads, algorithms, or track
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
-## Rationale
-
-I'm tired of big tech platforms. We can't control any of them. Lots of addictive tendencies. It seems easier to turn them into API and data providers and rebuild the UX on top. Starting with blog, chat, news, mail and video.
 
 ## Roadmap
 
@@ -39,10 +36,7 @@ Starting with:
 - [x] News - RSS news feed
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
-
-Coming soon:
-
-- [ ] Wallet - Credits for usage
+- [x] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
