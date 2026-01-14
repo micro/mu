@@ -522,25 +522,28 @@ function setSession() {
     console.log('Success:', sess);
     var accountHeader = document.getElementById("account-header");
     var loginHeader = document.getElementById("login-header");
-    var accountBadge = document.getElementById("account-badge");
+    var mailHeader = document.getElementById("mail-header");
+    var mailBadge = document.getElementById("mail-badge");
     
     if (sess.type == "account") {
       isAuthenticated = true;
       if (accountHeader) accountHeader.style.display = 'inline-block';
+      if (mailHeader) mailHeader.style.display = 'inline-block';
       if (loginHeader) loginHeader.style.display = 'none';
-      // Fetch unread mail count for badge on account icon
+      // Fetch unread mail count for badge
       fetch('/mail?unread=count')
         .then(res => res.json())
         .then(data => {
-          if (data.count > 0 && accountBadge) {
-            accountBadge.textContent = data.count > 9 ? '9+' : data.count;
-            accountBadge.style.display = 'inline';
+          if (data.count > 0 && mailBadge) {
+            mailBadge.textContent = data.count > 9 ? '9+' : data.count;
+            mailBadge.style.display = 'inline';
           }
         })
         .catch(() => {});
     } else {
       isAuthenticated = false;
       if (accountHeader) accountHeader.style.display = 'none';
+      if (mailHeader) mailHeader.style.display = 'none';
       if (loginHeader) {
         loginHeader.style.display = 'inline-block';
         // Update login link to include redirect parameter
@@ -558,8 +561,10 @@ function setSession() {
     console.error('Error:', error);
     isAuthenticated = false;
     var accountHeader = document.getElementById("account-header");
+    var mailHeader = document.getElementById("mail-header");
     var loginHeader = document.getElementById("login-header");
     if (accountHeader) accountHeader.style.display = 'none';
+    if (mailHeader) mailHeader.style.display = 'none';
     if (loginHeader) {
       loginHeader.style.display = 'block';
       // Update login link to include redirect parameter for unauthenticated users
