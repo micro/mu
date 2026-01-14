@@ -1171,7 +1171,7 @@ function initVoiceAssistant() {
   voiceRecognition.interimResults = true;
   voiceRecognition.lang = 'en-US';
 
-  // Use the header voice button instead of floating
+  // Use the header voice button in brand area
   voiceIndicator = document.getElementById('voice-header');
   const voiceIcon = document.getElementById('voice-icon');
   
@@ -1180,9 +1180,11 @@ function initVoiceAssistant() {
     return;
   }
   
-  voiceIndicator.style.display = 'inline-block';
-  
-  voiceIndicator.onclick = () => {
+  // Clicking the mic icon activates voice, clicking @micro text goes to /agent
+  voiceIcon.style.cursor = 'pointer';
+  voiceIcon.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (voiceWakeDetected) {
       // Already listening, ignore
       return;
@@ -1239,7 +1241,7 @@ function initVoiceAssistant() {
     const voiceIcon = document.getElementById('voice-icon');
     if (event.error === 'not-allowed') {
       if (voiceIcon) {
-        voiceIcon.textContent = '@';
+        voiceIcon.textContent = '🎤';
         voiceIcon.style.opacity = '0.3';
       }
       if (voiceIndicator) {
@@ -1276,12 +1278,12 @@ function startVoiceListening() {
     voiceCommandBuffer = '';
     const voiceIcon = document.getElementById('voice-icon');
     if (voiceIcon) {
-      voiceIcon.textContent = '@';
+      voiceIcon.textContent = '🎤';
       voiceIcon.style.opacity = '1';
       voiceIcon.style.background = '';
     }
     if (voiceIndicator) {
-      voiceIndicator.title = 'Say "Hey Micro" or tap';
+      voiceIndicator.title = 'Tap mic to speak';
     }
     console.log('Voice listening started');
   } catch (e) {
@@ -1294,7 +1296,7 @@ function activateVoiceCommand() {
   voiceCommandBuffer = '';
   const voiceIcon = document.getElementById('voice-icon');
   if (voiceIcon) {
-    voiceIcon.textContent = '@';
+    voiceIcon.textContent = '🎤';
     voiceIcon.style.background = '#f5a623';
     voiceIcon.style.color = 'white';
     voiceIcon.style.borderRadius = '50%';
@@ -1330,14 +1332,14 @@ function resetVoiceState() {
   voiceCommandBuffer = '';
   const voiceIcon = document.getElementById('voice-icon');
   if (voiceIcon) {
-    voiceIcon.textContent = '@';
+    voiceIcon.textContent = '🎤';
     voiceIcon.style.background = '';
     voiceIcon.style.color = '';
     voiceIcon.style.borderRadius = '';
     voiceIcon.style.padding = '';
   }
   if (voiceIndicator) {
-    voiceIndicator.title = 'Say "Hey Micro" or tap';
+    voiceIndicator.title = 'Tap mic to speak';
   }
 }
 
