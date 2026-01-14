@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"mu/app"
+	"mu/apps"
+	"mu/auth"
 	"mu/blog"
 	"mu/data"
 	"mu/news"
@@ -202,6 +204,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var leftHTML []string
 	var rightHTML []string
+
+	// Check if user is logged in and show their apps at the top
+	if sess, err := auth.GetSession(r); err == nil && sess != nil {
+		appsPreview := apps.GetUserAppsPreview(sess.Account, 5)
+		if appsPreview != "" {
+			leftHTML = append(leftHTML, app.Card("my-apps", "My Apps", appsPreview))
+		}
+	}
 
 	for _, card := range Cards {
 		content := card.CachedHTML

@@ -418,6 +418,37 @@ td {
   background: transparent;
 }
 
+/* Apps preview on home page */
+.apps-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.apps-preview .app-preview-item {
+  display: inline-block;
+  padding: 8px 14px;
+  background: var(--hover-background, #fafafa);
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  font-size: 14px;
+  font-weight: 500;
+  transition: border-color var(--transition-fast);
+}
+
+.apps-preview .app-preview-item:hover {
+  border-color: var(--accent-color, #0d7377);
+  text-decoration: none;
+}
+
+.apps-preview .app-preview-more {
+  display: inline-block;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+}
+
 /* Switch to single column when there's not enough space for two columns + sidebar */
 @media only screen and (max-width: 1100px) {
   #home {
