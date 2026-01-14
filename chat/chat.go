@@ -145,6 +145,89 @@ func loadRoomMessages(roomID string) []RoomMessage {
 	return messages
 }
 
+// handlePatternMatch handles predictable queries with direct lookups, skipping LLM
+func handlePatternMatch(content string, room *Room) string {
+	contentLower := strings.ToLower(strings.TrimSpace(content))
+	// Remove @micro mention for pattern matching
+	contentLower = strings.ReplaceAll(contentLower, "@micro", "")
+	contentLower = strings.TrimSpace(contentLower)
+
+	// Price patterns: "btc price", "price of btc", "eth price", "what is btc", etc.
+	pricePatterns := []struct {
+		patterns []string
+		symbol   string
+		name     string
+	}{
+		{[]string{"btc price", "bitcoin price", "price of btc", "price of bitcoin", "what is btc", "what's btc", "how much is btc", "how much is bitcoin"}, "BTC", "Bitcoin"},
+		{[]string{"eth price", "ethereum price", "price of eth", "price of ethereum", "what is eth", "what's eth", "how much is eth", "how much is ethereum"}, "ETH", "Ethereum"},
+		{[]string{"gold price", "price of gold", "what is gold", "how much is gold", "xau price"}, "XAU", "Gold"},
+		{[]string{"silver price", "price of silver", "what is silver", "how much is silver", "xag price"}, "XAG", "Silver"},
+		{[]string{"sol price", "solana price", "price of sol", "price of solana", "what is sol", "how much is sol"}, "SOL", "Solana"},
+		{[]string{"doge price", "dogecoin price", "price of doge", "what is doge", "how much is doge"}, "DOGE", "Dogecoin"},
+	}
+
+	for _, p := range pricePatterns {
+		for _, pattern := range p.patterns {
+			if contentLower == pattern || strings.HasPrefix(contentLower, pattern+" ") || strings.HasSuffix(contentLower, " "+pattern) {
+				// Look up price from data index
+				entry := data.GetByID("market_" + p.symbol)
+				if entry != nil {
+					if price, ok := entry.Metadata["price"].(float64); ok {
+						if price >= 1000 {
+							return fmt.Sprintf("%s (%s) is currently **$%.2f**", p.name, p.symbol, price)
+						} else if price >= 1 {
+							return fmt.Sprintf("%s (%s) is currently **$%.2f**", p.name, p.symbol, price)
+						} else {
+							return fmt.Sprintf("%s (%s) is currently **$%.4f**", p.name, p.symbol, price)
+						}
+					}
+				}
+				return fmt.Sprintf("I don't have current price data for %s", p.name)
+			}
+		}
+	}
+
+	// Generic "X price" pattern - try to match any symbol
+	if strings.HasSuffix(contentLower, " price") {
+		symbol := strings.ToUpper(strings.TrimSuffix(contentLower, " price"))
+		if len(symbol) >= 2 && len(symbol) <= 6 {
+			entry := data.GetByID("market_" + symbol)
+			if entry != nil {
+				if price, ok := entry.Metadata["price"].(float64); ok {
+					if price >= 1000 {
+						return fmt.Sprintf("%s is currently **$%.2f**", symbol, price)
+					} else if price >= 1 {
+						return fmt.Sprintf("%s is currently **$%.2f**", symbol, price)
+					} else {
+						return fmt.Sprintf("%s is currently **$%.4f**", symbol, price)
+					}
+				}
+			}
+		}
+	}
+
+	// "price of X" pattern
+	if strings.HasPrefix(contentLower, "price of ") {
+		symbol := strings.ToUpper(strings.TrimPrefix(contentLower, "price of "))
+		if len(symbol) >= 2 && len(symbol) <= 6 {
+			entry := data.GetByID("market_" + symbol)
+			if entry != nil {
+				if price, ok := entry.Metadata["price"].(float64); ok {
+					if price >= 1000 {
+						return fmt.Sprintf("%s is currently **$%.2f**", symbol, price)
+					} else if price >= 1 {
+						return fmt.Sprintf("%s is currently **$%.2f**", symbol, price)
+					} else {
+						return fmt.Sprintf("%s is currently **$%.4f**", symbol, price)
+					}
+				}
+			}
+		}
+	}
+
+	return "" // No pattern match
+}
+
 // getOrCreateRoom gets an existing room or creates a new one
 func getOrCreateRoom(id string) *Room {
 	start := time.Now()
@@ -671,6 +754,20 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 				if mentionedMicro || inActiveConvo || isAlone {
 					go func() {
+						// Pattern matching for predictable queries - skip LLM for direct lookups
+						if response := handlePatternMatch(content, room); response != "" {
+							app.Log("chat", "Pattern match hit, skipping LLM")
+							client.LastMicroReply = time.Now()
+							llmMsg := RoomMessage{
+								UserID:    "micro",
+								Content:   response,
+								Timestamp: time.Now(),
+								IsLLM:     true,
+							}
+							room.Broadcast <- llmMsg
+							return
+						}
+
 						// If this is a Dev (HN) discussion, trigger comment refresh via event
 						// But throttle to once per 5 minutes to avoid excessive API calls
 						if room.Topic == "Dev" && room.URL != "" {
