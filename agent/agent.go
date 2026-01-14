@@ -244,25 +244,20 @@ Current user: %s`, toolsJSON, a.userID)
 				step.Result = toolResult
 			}
 			
+			// Propagate action/URL from tool results (before checking final_answer)
+			if step.Result != nil && step.Result.Action != "" {
+				result.Action = step.Result.Action
+				result.URL = step.Result.URL
+				result.HTML = step.Result.HTML
+			}
+			
 			// Check if this is the final answer
 			if step.Tool == "final_answer" {
 				result.Success = true
 				if answer, ok := params["answer"].(string); ok {
 					result.Answer = answer
 				}
-				if step.Result != nil {
-					result.HTML = step.Result.HTML
-					result.Action = step.Result.Action
-					result.URL = step.Result.URL
-				}
 				break
-			}
-			
-			// Propagate action/URL from tool results
-			if step.Result != nil && step.Result.Action != "" {
-				result.Action = step.Result.Action
-				result.URL = step.Result.URL
-				result.HTML = step.Result.HTML
 			}
 			
 			// Add to context for next iteration
