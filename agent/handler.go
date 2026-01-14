@@ -47,8 +47,7 @@ func handleAgentUI(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	content := `
 <style>
 .agent-container {
-	max-width: 700px;
-	margin: 0 auto;
+	width: 100%;
 }
 .agent-input {
 	display: flex;
