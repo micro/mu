@@ -152,10 +152,10 @@ Reserved single-word URLs redirect to featured/canonical versions.
 ### Roadmap
 
 **Now:**
-- [ ] Build three featured apps (Todo, Timer, Expenses)
-- [ ] Add `/apps/docs` - SDK documentation page
-- [ ] Update README.md with micro apps section
-- [ ] Reserve single-word app URLs
+- [x] Build three featured apps (Todo, Timer, Expenses) ✓
+- [x] Add `/apps/docs` - SDK documentation page ✓
+- [x] Update README.md with micro apps section ✓
+- [x] Reserve single-word app URLs ✓
 
 **Next:**
 - [ ] App forking - copy public apps to customize
@@ -168,6 +168,50 @@ Reserved single-word URLs redirect to featured/canonical versions.
 - [ ] `mu.notify(title, body)` - Push notifications
 - [ ] `mu.pay(amount)` - Wallet integration
 - [ ] Platform data access (news, markets, etc.)
+
+## Agent Feature (January 2026)
+
+AI agent that can execute tasks across mu services using natural language commands.
+
+### Route
+- `/agent` - Agent UI (requires login)
+- `/agent/run` - POST endpoint to execute tasks
+
+### Architecture
+
+The agent uses a tool-based architecture with LLM-driven multi-step reasoning:
+
+```
+User Request → LLM decides tool → Execute tool → Observe result → Repeat or answer
+```
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `video_search` | Search YouTube for videos |
+| `video_play` | Play a specific video by ID |
+| `news_search` | Search news articles |
+| `news_read` | Get full article content |
+| `app_create` | Create a new micro app |
+| `app_modify` | Modify an existing app |
+| `app_list` | List user's or public apps |
+| `market_price` | Get current market prices |
+| `final_answer` | Provide the final response |
+
+### Example Commands
+
+- "Play bingo songs" → Searches video, returns play link
+- "Find news about AI" → Searches news, returns headlines
+- "What's the price of Bitcoin?" → Returns BTC price
+- "Create an app that tracks my water intake" → Creates and generates app
+- "Show my apps" → Lists user's apps
+
+### Key Files
+
+- `agent/agent.go` - Core agent loop and tool definitions
+- `agent/tools.go` - Tool implementations
+- `agent/handler.go` - HTTP handlers and UI
 
 ## Vision / Business Context
 
