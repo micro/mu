@@ -32,6 +32,7 @@ type Account struct {
 	Admin                bool      `json:"admin"`
 	Member               bool      `json:"member"`
 	Language             string    `json:"language"`
+	Widgets              []string  `json:"widgets,omitempty"` // App IDs to show as home widgets
 	StripeCustomerID     string    `json:"stripe_customer_id,omitempty"`
 	StripeSubscriptionID string    `json:"stripe_subscription_id,omitempty"`
 }

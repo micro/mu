@@ -205,9 +205,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var leftHTML []string
 	var rightHTML []string
 
-	// Check if user is logged in and show their apps at the top
+	// Check if user is logged in
+	var userID string
 	if sess, err := auth.GetSession(r); err == nil && sess != nil {
-		appsPreview := apps.GetUserAppsPreview(sess.Account, 5)
+		userID = sess.Account
+		
+		// Show user's widget apps as cards
+		widgetIDs := apps.GetUserWidgets(userID)
+		for _, widgetID := range widgetIDs {
+			if a := apps.GetApp(widgetID); a != nil {
+				// Render as embedded iframe widget
+				widgetHTML := fmt.Sprintf(`<iframe src="/apps/%s/embed" style="width: 100%%; height: 200px; border: none; border-radius: 4px;"></iframe>`,
+					a.ID)
+				rightHTML = append(rightHTML, app.Card("widget-"+a.ID, a.Name, widgetHTML+app.Link("Open", "/apps/"+a.ID)))
+			}
+		}
+		
+		// Show user's own apps preview
+		appsPreview := apps.GetUserAppsPreview(userID, 5)
 		if appsPreview != "" {
 			leftHTML = append(leftHTML, app.Card("my-apps", "My Apps", appsPreview+app.Link("More", "/apps")))
 		}

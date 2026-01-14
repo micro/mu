@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v71';
+var VERSION = 'v72';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1175,8 +1175,22 @@ function initVoiceAssistant() {
   voiceIndicator = document.createElement('div');
   voiceIndicator.id = 'voice-indicator';
   voiceIndicator.innerHTML = '🎤';
-  voiceIndicator.style.cssText = 'position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: var(--card-background, #fff); border: 2px solid var(--card-border, #e8e8e8); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: all 0.2s;';
+  voiceIndicator.style.cssText = 'position: fixed; bottom: 80px; right: 15px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent-color, #0d7377); border: none; display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s; color: white;';
   voiceIndicator.title = 'Say "Hey Micro" or tap to activate';
+  
+  // Add label below icon on mobile
+  const voiceLabel = document.createElement('div');
+  voiceLabel.id = 'voice-label';
+  voiceLabel.textContent = 'Tap or say "Hey Micro"';
+  voiceLabel.style.cssText = 'position: fixed; bottom: 60px; right: 15px; font-size: 10px; color: #666; text-align: center; width: 80px; z-index: 9998; display: none;';
+  document.body.appendChild(voiceLabel);
+  
+  // Show label briefly on first load
+  setTimeout(() => {
+    voiceLabel.style.display = 'block';
+    setTimeout(() => { voiceLabel.style.display = 'none'; }, 5000);
+  }, 2000);
+  
   voiceIndicator.onclick = () => {
     if (!voiceListening) {
       startVoiceListening();
@@ -1268,7 +1282,7 @@ function startVoiceListening() {
     voiceCommandBuffer = '';
     if (voiceIndicator) {
       voiceIndicator.innerHTML = '🎤';
-      voiceIndicator.style.background = 'var(--card-background, #fff)';
+      voiceIndicator.style.background = 'var(--accent-color, #0d7377)';
       voiceIndicator.title = 'Say "Hey Micro" or tap to activate';
     }
     console.log('Voice listening started');
@@ -1282,7 +1296,7 @@ function activateVoiceCommand() {
   voiceCommandBuffer = '';
   if (voiceIndicator) {
     voiceIndicator.innerHTML = '👂';
-    voiceIndicator.style.background = 'var(--accent-color, #0d7377)';
+    voiceIndicator.style.background = '#f5a623';
     voiceIndicator.style.color = 'white';
     voiceIndicator.title = 'Listening for command...';
   }
@@ -1313,8 +1327,8 @@ function resetVoiceState() {
   voiceCommandBuffer = '';
   if (voiceIndicator) {
     voiceIndicator.innerHTML = '🎤';
-    voiceIndicator.style.background = 'var(--card-background, #fff)';
-    voiceIndicator.style.color = '';
+    voiceIndicator.style.background = 'var(--accent-color, #0d7377)';
+    voiceIndicator.style.color = 'white';
     voiceIndicator.title = 'Say "Hey Micro" or tap to activate';
   }
 }

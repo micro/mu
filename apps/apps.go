@@ -272,6 +272,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Preview app (renders just the app code)
 		id := strings.TrimSuffix(path, "/preview")
 		handlePreview(w, r, id)
+	case strings.HasSuffix(path, "/embed"):
+		// Embed app as widget (minimal iframe-friendly version)
+		id := strings.TrimSuffix(path, "/embed")
+		handleEmbed(w, r, id)
+	case strings.HasSuffix(path, "/widget"):
+		// Add/remove app from home widgets
+		id := strings.TrimSuffix(path, "/widget")
+		handleWidget(w, r, sess, id)
 	case strings.HasSuffix(path, "/delete"):
 		// Delete app
 		id := strings.TrimSuffix(path, "/delete")
@@ -1341,6 +1349,16 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 		</p>`, a.ID, a.ID)
 	}
 
+	// Widget button for logged-in users (only for public apps or own apps)
+	var widgetButton string
+	if sess != nil && (a.Public || isOwner) {
+		if IsWidgetForUser(a.ID, sess.Account) {
+			widgetButton = fmt.Sprintf(`<a href="/apps/%s/widget?action=remove" class="widget-btn remove">✓ On Home</a>`, a.ID)
+		} else {
+			widgetButton = fmt.Sprintf(`<a href="/apps/%s/widget?action=add" class="widget-btn add">+ Add to Home</a>`, a.ID)
+		}
+	}
+
 	visibility := "Private"
 	if a.Public {
 		visibility = "Public"
@@ -1362,13 +1380,29 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 	border-radius: var(--border-radius, 6px);
 	background: white;
 }
+.widget-btn {
+	display: inline-block;
+	padding: 6px 12px;
+	border-radius: 4px;
+	text-decoration: none;
+	font-size: 13px;
+	margin-left: 15px;
+}
+.widget-btn.add {
+	background: var(--accent-color, #0d7377);
+	color: white;
+}
+.widget-btn.remove {
+	background: #eee;
+	color: #333;
+}
 </style>
 %s
-<p class="info">by %s · %s · Updated %s</p>
+<p class="info">by %s · %s · Updated %s %s</p>
 <p>%s</p>
 <iframe class="app-frame" sandbox="allow-scripts allow-same-origin" src="/apps/%s/preview"></iframe>
 <p style="margin-top: 20px;"><a href="/apps">← Back to Apps</a></p>
-`, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), html.EscapeString(description), a.ID)
+`, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), widgetButton, html.EscapeString(description), a.ID)
 
 	w.Write([]byte(app.RenderHTML(a.Name, a.Name, viewHTML)))
 }
@@ -1533,6 +1567,38 @@ func handlePreview(w http.ResponseWriter, r *http.Request, id string) {
 	w.Write([]byte(html))
 }
 
+// handleEmbed serves app as embeddable widget for home cards
+func handleEmbed(w http.ResponseWriter, r *http.Request, id string) {
+	a := GetApp(id)
+	if a == nil {
+		http.Error(w, "App not found", 404)
+		return
+	}
+
+	// Only public apps can be embedded
+	if !a.Public {
+		http.Error(w, "App is not public", 403)
+		return
+	}
+
+	// Get user info for SDK
+	var userID, userName string
+	if sess, _ := auth.GetSession(r); sess != nil {
+		userID = sess.Account
+		if acc, err := auth.GetAccount(sess.Account); err == nil {
+			userName = acc.Name
+		}
+	}
+
+	// Inject SDK into the HTML
+	html := InjectSDK(a.Code, a.ID, a.Name, userID, userName)
+
+	// Allow embedding in iframes
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+	w.Write([]byte(html))
+}
+
 // handleStatus returns app status as JSON for polling
 func handleStatus(w http.ResponseWriter, r *http.Request, id string) {
 	a := GetApp(id)
@@ -1567,6 +1633,85 @@ func handleDelete(w http.ResponseWriter, r *http.Request, sess *auth.Session, id
 	}
 
 	http.Redirect(w, r, "/apps", 302)
+}
+
+// handleWidget adds or removes an app from user's home widgets
+func handleWidget(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
+	if sess == nil {
+		http.Redirect(w, r, "/login", 302)
+		return
+	}
+
+	a := GetApp(id)
+	if a == nil {
+		http.Error(w, "App not found", 404)
+		return
+	}
+
+	// App must be public or owned by user
+	if !a.Public && a.AuthorID != sess.Account {
+		http.Error(w, "App is not public", 403)
+		return
+	}
+
+	acc, err := auth.GetAccount(sess.Account)
+	if err != nil {
+		http.Error(w, "Account not found", 500)
+		return
+	}
+
+	action := r.URL.Query().Get("action")
+	
+	// Check if already in widgets
+	hasWidget := false
+	var newWidgets []string
+	for _, wid := range acc.Widgets {
+		if wid == id {
+			hasWidget = true
+			if action == "remove" {
+				continue // Skip this widget (remove it)
+			}
+		}
+		newWidgets = append(newWidgets, wid)
+	}
+
+	if action == "add" && !hasWidget {
+		// Limit to 5 widgets max
+		if len(newWidgets) >= 5 {
+			http.Error(w, "Maximum 5 widgets allowed", 400)
+			return
+		}
+		newWidgets = append(newWidgets, id)
+	}
+
+	acc.Widgets = newWidgets
+	auth.UpdateAccount(acc)
+
+	// Redirect back to the app page
+	http.Redirect(w, r, "/apps/"+id, 302)
+}
+
+// IsWidgetForUser checks if an app is in user's widgets
+func IsWidgetForUser(appID, userID string) bool {
+	acc, err := auth.GetAccount(userID)
+	if err != nil {
+		return false
+	}
+	for _, wid := range acc.Widgets {
+		if wid == appID {
+			return true
+		}
+	}
+	return false
+}
+
+// GetUserWidgets returns user's widget app IDs
+func GetUserWidgets(userID string) []string {
+	acc, err := auth.GetAccount(userID)
+	if err != nil {
+		return nil
+	}
+	return acc.Widgets
 }
 
 // GetUserAppsPreview returns HTML preview of user's apps for home page
