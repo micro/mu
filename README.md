@@ -11,6 +11,8 @@ A personal app platform that provides services without ads, algorithms, or track
 - **App** - Progressive web app for desktop and mobile
 - **API** - Basic API for docs and programmatic access
 - **Home** - One place to catchup with everything
+- **Agent** - AI assistant that does things for you
+- **Apps** - Build and share micro apps with AI
 - **Blog** - Microblogging and community sharing
 - **Chat** - AI assistant with contextual discussions
 - **Mail** - Private messaging and email inbox 
@@ -30,6 +32,8 @@ Starting with:
 - [x] API - Basic API
 - [x] App - Basic PWA
 - [x] Home - Overview
+- [x] Agent - AI assistant
+- [x] Apps - Micro app builder
 - [x] Blog - Micro blogging
 - [x] Chat - LLM chat UI
 - [x] News - RSS news feed
