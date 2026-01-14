@@ -1450,14 +1450,16 @@ body:has(#messages) #content {
 
 .link {
   display: block;
-  font-weight: bold;
+  font-weight: 500;
   text-decoration: none;
-  margin-top: 10px;
-  color: #000;
+  margin-top: 12px;
+  color: var(--text-muted, #888);
+  font-size: 13px;
 }
 
 .link:hover {
-  text-decoration: underline;
+  color: var(--accent-color, #0d7377);
+  text-decoration: none;
 }
 
 .category,
