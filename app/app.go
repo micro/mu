@@ -84,10 +84,25 @@ var Template = `
         <a href="/">Mu</a>
       </div>
       <div id="account" style="-webkit-tap-highlight-color: transparent;">
-        <a href="/agent" style="-webkit-tap-highlight-color: transparent;">@micro</a>
+        <a href="#" id="micro-trigger" onclick="openMicroDialog(); return false;" style="-webkit-tap-highlight-color: transparent;">@micro</a>
         <a id="mail-header" href="/mail" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Inbox</span><span id="mail-badge" style="display: none; position: relative; top: -8px; left: -6px; background: #0d7377; color: white; font-size: 10px; padding: 1px 5px; border-radius: 10px; font-weight: bold;"></span></a>
         <a id="account-header" href="/account" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
         <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><b>Login</b></a>
+      </div>
+    </div>
+    <!-- Micro Dialog -->
+    <div id="micro-dialog" style="display: none;">
+      <div id="micro-overlay" onclick="closeMicroDialog()"></div>
+      <div id="micro-modal">
+        <div id="micro-header">
+          <span>@micro</span>
+          <button onclick="closeMicroDialog()" id="micro-close">&times;</button>
+        </div>
+        <div id="micro-messages"></div>
+        <form id="micro-form" onsubmit="sendMicroMessage(); return false;">
+          <input type="text" id="micro-input" placeholder="Ask micro anything..." autocomplete="off">
+          <button type="submit">Send</button>
+        </form>
       </div>
     </div>
     <div id="container">

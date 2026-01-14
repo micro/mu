@@ -131,6 +131,111 @@ if (document.readyState === 'loading') {
 }
 
 // ============================================
+// MICRO DIALOG
+// ============================================
+
+function openMicroDialog() {
+  const dialog = document.getElementById('micro-dialog');
+  if (dialog) {
+    dialog.style.display = 'flex';
+    const input = document.getElementById('micro-input');
+    if (input) {
+      setTimeout(() => input.focus(), 100);
+    }
+    // Prevent body scroll on mobile
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeMicroDialog() {
+  const dialog = document.getElementById('micro-dialog');
+  if (dialog) {
+    dialog.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
+function sendMicroMessage() {
+  const input = document.getElementById('micro-input');
+  const messages = document.getElementById('micro-messages');
+  
+  if (!input || !messages || !input.value.trim()) return;
+  
+  const query = input.value.trim();
+  input.value = '';
+  
+  // Add user message
+  const userMsg = document.createElement('div');
+  userMsg.className = 'micro-msg user';
+  userMsg.innerHTML = '<span>' + escapeHtml(query) + '</span>';
+  messages.appendChild(userMsg);
+  
+  // Add loading message
+  const assistantMsg = document.createElement('div');
+  assistantMsg.className = 'micro-msg assistant';
+  assistantMsg.innerHTML = '<span class="loading">Thinking...</span>';
+  messages.appendChild(assistantMsg);
+  
+  messages.scrollTop = messages.scrollHeight;
+  
+  // Send to agent
+  fetch('/agent/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: query })
+  })
+  .then(r => {
+    if (r.status === 401) {
+      throw new Error('login');
+    }
+    return r.json();
+  })
+  .then(result => {
+    if (result.success && result.answer) {
+      assistantMsg.innerHTML = '<span>' + formatMicroResponse(result.answer) + '</span>';
+      
+      // Handle navigation
+      if (result.action === 'navigate' && result.url) {
+        setTimeout(() => {
+          window.location.href = result.url;
+        }, 1000);
+      }
+    } else {
+      assistantMsg.innerHTML = '<span>' + (result.answer || 'Sorry, I couldn\'t help with that.') + '</span>';
+    }
+    messages.scrollTop = messages.scrollHeight;
+  })
+  .catch(err => {
+    if (err.message === 'login') {
+      assistantMsg.innerHTML = '<span>Please <a href="/login">login</a> to use @micro</span>';
+    } else {
+      assistantMsg.innerHTML = '<span>Something went wrong. Try again.</span>';
+    }
+    messages.scrollTop = messages.scrollHeight;
+  });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatMicroResponse(text) {
+  // Basic markdown-like formatting
+  return escapeHtml(text)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+// Close dialog on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeMicroDialog();
+  }
+});
+
+// ============================================
 // CHAT FUNCTIONALITY
 // ============================================
 
