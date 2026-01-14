@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"mu/admin"
+	"mu/agent"
 	"mu/api"
 	"mu/app"
 	"mu/apps"
@@ -101,6 +102,7 @@ func main() {
 		"/donate":          false,
 		"/wallet":          true,  // Require auth for wallet
 		"/apps":            false, // Public viewing, auth for creating
+		"/agent":           true,  // Require auth for agent
 	}
 
 	// Static assets should not require authentication
@@ -155,6 +157,10 @@ func main() {
 	http.HandleFunc("/apps", apps.Handler)
 	http.HandleFunc("/apps/", apps.Handler)
 	http.HandleFunc("/apps/api", apps.HandleAPIRequest)
+
+	// serve agent
+	http.HandleFunc("/agent", agent.Handler)
+	http.HandleFunc("/agent/", agent.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
