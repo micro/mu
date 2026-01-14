@@ -197,6 +197,9 @@ td {
 
 #account {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 #account a {
@@ -1603,6 +1606,10 @@ a.highlight {
   #account {
     position: absolute;
     right: 15px;
+    gap: 0;
+  }
+  #account a {
+    padding: 5px;
   }
   #account a .label {
     display: none;
