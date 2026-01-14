@@ -86,7 +86,7 @@ var Template = `
       <div id="account" style="-webkit-tap-highlight-color: transparent;">
         <a id="mail-header" href="/mail" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Inbox</span><span id="mail-badge" style="display: none; position: relative; top: -8px; left: -6px; background: #0d7377; color: white; font-size: 10px; padding: 1px 5px; border-radius: 10px; font-weight: bold;"></span></a>
         <a id="account-header" href="/account" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
-        <span id="voice-header" style="display: none; cursor: pointer; padding: 5px 10px;" title="Say 'Hey Micro' or tap"><span id="voice-icon">@</span></span>
+        <span id="voice-header" style="display: none; cursor: pointer; padding: 5px 10px;" title="Say 'Hey Micro' or tap"><span id="voice-icon">@</span><span class="label">micro</span></span>
         <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><b>Login</b></a>
       </div>
     </div>
