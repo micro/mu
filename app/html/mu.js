@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v74';
+var VERSION = 'v75';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1182,8 +1182,7 @@ function initVoiceAssistant() {
   
   voiceIndicator.style.display = 'inline-block';
   
-  voiceIndicator.onclick = (e) => {
-    e.preventDefault();
+  voiceIndicator.onclick = () => {
     if (!voiceListening) {
       startVoiceListening();
     } else if (!voiceWakeDetected) {
