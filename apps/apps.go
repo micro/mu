@@ -688,10 +688,14 @@ Rules:
 9. Start with <!DOCTYPE html> and end with </html>
 
 Mu SDK (automatically available as window.mu):
-- mu.db.get(key) - retrieve stored value (async)
-- mu.db.set(key, value) - store value persistently (async)
+- mu.db.get(key) - retrieve stored value from server (async, syncs across devices)
+- mu.db.set(key, value) - store value persistently on server (async)
 - mu.db.delete(key) - delete a key (async)
 - mu.db.list() - list all keys (async)
+- mu.cache.get(key) - get cached value from localStorage (async, returns null if expired)
+- mu.cache.set(key, value, {ttl: seconds}) - cache value locally with optional TTL (async)
+- mu.cache.delete(key) - delete cached item (async)
+- mu.cache.clear() - clear all cached items for this app (async)
 - mu.fetch(url) - fetch any URL (server-side proxy, bypasses CORS) - returns {ok, status, text(), json()}
 - mu.user.id - current user's ID (null if not logged in)
 - mu.user.name - current user's name
@@ -701,6 +705,7 @@ Mu SDK (automatically available as window.mu):
 - mu.theme.get(name) - get CSS variable value (e.g., mu.theme.get('accent-color'))
 
 IMPORTANT: For fetching external URLs, ALWAYS use mu.fetch() instead of fetch() to avoid CORS issues.
+IMPORTANT: Use mu.cache for API responses (fast, local). Use mu.db for user data (persistent, syncs across devices).
 
 Theme CSS variables are automatically available (use var(--mu-*)):
 --mu-text-primary, --mu-text-secondary, --mu-text-muted
@@ -710,7 +715,7 @@ Theme CSS variables are automatically available (use var(--mu-*)):
 --mu-shadow-sm, --mu-shadow-md, --mu-transition-fast
 --mu-font-family
 
-Use mu.db for any data that should persist across page refreshes. Data is stored per-user.
+Use mu.cache for API responses to avoid fetching on every page load. Use mu.db for user data that should sync across devices.
 
 Generate the complete HTML file now:`
 
@@ -1112,10 +1117,13 @@ Rules:
 7. Output must be complete, valid, runnable HTML
 
 Mu SDK (automatically available as window.mu):
-- mu.db.get(key) - retrieve stored value (async)
-- mu.db.set(key, value) - store value persistently (async)
+- mu.db.get(key) - retrieve stored value from server (async, syncs across devices)
+- mu.db.set(key, value) - store value persistently on server (async)
 - mu.db.delete(key) - delete a key (async) 
 - mu.db.list() - list all keys (async)
+- mu.cache.get(key) - get cached value from localStorage (async, returns null if expired)
+- mu.cache.set(key, value, {ttl: seconds}) - cache value locally with optional TTL (async)
+- mu.cache.delete(key) - delete cached item (async)
 - mu.fetch(url) - fetch any URL (server-side proxy, bypasses CORS) - returns {ok, status, text(), json()}
 - mu.user.id - current user's ID (null if not logged in)
 - mu.user.name - current user's name
@@ -1125,10 +1133,7 @@ Mu SDK (automatically available as window.mu):
 - mu.theme.get(name) - get CSS variable value
 
 IMPORTANT: For fetching external URLs, ALWAYS use mu.fetch() instead of fetch() to avoid CORS issues.
-
-Theme CSS variables available: --mu-text-primary, --mu-accent-color, --mu-spacing-*, --mu-border-radius, etc.
-
-Use mu.db for any data that should persist. Data is per-user.
+IMPORTANT: Use mu.cache for API responses (fast, local). Use mu.db for user data (persistent, syncs across devices).
 
 Current code:
 ` + currentCode + `
