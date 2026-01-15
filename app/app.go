@@ -643,7 +643,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <h3>Pay as you go</h3>
 <p style="font-size: 24px; font-weight: bold; margin: 10px 0;">From £5</p>
 <p>Top up your wallet</p>
-<p>1p news · 2p video · 3p chat</p>
+<p>1 credit = 1p</p>
+<p>News 1 · Video 2 · Chat 3 · Apps 5</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isMember {
 		content.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/topup">Top up →</a></p>`)

@@ -29,10 +29,14 @@ Every registered user gets **10 free searches per day**:
 | Feature | Cost | Why |
 |---------|------|-----|
 | News Search | 1 credit (1p) | Indexed search |
-| News Article | 1 credit (1p) | AI-generated summary |
+| News Summary | 1 credit (1p) | AI-generated summary |
 | Video Search | 2 credits (2p) | YouTube API cost |
 | Video Watch | 2 credits (2p) | Ad-free viewing |
 | Chat AI Query | 3 credits (3p) | LLM inference cost |
+| Chat Room | 1 credit (1p) | Room creation |
+| App Create | 5 credits (5p) | AI app generation |
+| App Modify | 3 credits (3p) | AI app modification |
+| Agent Run | 5 credits (5p) | Agent task execution |
 
 ### Who Pays What
 
