@@ -84,7 +84,7 @@ var Template = `
         <a href="/">Mu</a>
       </div>
       <div id="account" style="-webkit-tap-highlight-color: transparent;">
-        <a id="mail-header" href="/mail" style="display: none; -webkit-tap-highlight-color: transparent; position: relative;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span id="mail-badge" style="display: none; position: absolute; top: -6px; right: -6px; background: #e53935; color: white; font-size: 10px; min-width: 16px; height: 16px; line-height: 16px; text-align: center; padding: 0 4px; border-radius: 8px; font-weight: bold;"></span><span class="label">Inbox</span></a>
+        <a id="mail-header" href="/mail" style="display: none; -webkit-tap-highlight-color: transparent; position: relative;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span id="mail-badge" style="display: none; position: absolute; top: 0px; right: -8px; background: #e53935; color: white; font-size: 9px; min-width: 14px; height: 14px; line-height: 14px; text-align: center; padding: 0 3px; border-radius: 7px; font-weight: bold;"></span><span class="label">Inbox</span></a>
         <a id="account-header" href="/account" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
         <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><b>Login</b></a>
       </div>
