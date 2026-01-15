@@ -1125,7 +1125,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 								history = append(history, Message{Answer: m.Content})
 								// Extract key phrases from AI responses for context
 								if len(m.Content) > 50 {
-									recentTopics = append(recentTopics, m.Content[:200])
+									topicLen := min(200, len(m.Content))
+									recentTopics = append(recentTopics, m.Content[:topicLen])
 								}
 							} else {
 								history = append(history, Message{Prompt: m.UserID + ": " + m.Content})
