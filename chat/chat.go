@@ -1173,25 +1173,41 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 								}
 								
 								if searchTopic != "" {
-									// Extract key terms from the topic for better search
-									// Take first 100 chars and let the search engine handle it
-									searchQuery := searchTopic
-									if len(searchQuery) > 100 {
-										searchQuery = searchQuery[:100]
-									}
-									app.Log("chat", "Stage 5: Searching based on topic: %s", searchQuery[:min(50, len(searchQuery))])
+									// Try multiple search strategies
+									var topicEntries []*data.IndexEntry
 									
-									// Search for related content
-									topicEntries := data.Search(searchQuery, 5)
-									app.Log("chat", "Stage 5: Found %d entries from topic search", len(topicEntries))
-									
-									// If no results, try with just the room summary which likely has keywords
-									if len(topicEntries) == 0 && room.Summary != "" {
-										app.Log("chat", "Stage 5: Trying room summary search: %s", room.Summary[:min(50, len(room.Summary))])
-										topicEntries = data.Search(room.Summary, 5)
-										app.Log("chat", "Stage 5: Found %d entries from summary search", len(topicEntries))
+									// Strategy 1: Extract likely named entities (capitalized words) for targeted search
+									words := strings.Fields(searchTopic)
+									var namedEntities []string
+									for _, word := range words {
+										// Skip common words, keep likely names/entities
+										cleanWord := strings.Trim(word, ".,!?;:'\"")
+										if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
+											// Skip common words that start with caps
+											lowerWord := strings.ToLower(cleanWord)
+											if lowerWord != "the" && lowerWord != "this" && lowerWord != "that" &&
+												lowerWord != "here" && lowerWord != "there" && lowerWord != "during" &&
+												lowerWord != "however" && lowerWord != "unfortunately" && lowerWord != "certainly" &&
+												lowerWord != "regarding" && lowerWord != "absolutely" && lowerWord != "sure" {
+												namedEntities = append(namedEntities, cleanWord)
+											}
+										}
 									}
-									app.Log("chat", "Stage 5: Found %d entries from topic search", len(topicEntries))
+									
+									if len(namedEntities) >= 2 {
+										// Search with named entities (e.g., "Nigel Farage Nadhim Zahawi")
+										entitySearch := strings.Join(namedEntities[:min(4, len(namedEntities))], " ")
+										app.Log("chat", "Stage 5: Searching with entities: %s", entitySearch)
+										topicEntries = data.Search(entitySearch, 5)
+									}
+									
+									// Strategy 2: If entity search fails, try topic keyword
+									if len(topicEntries) == 0 && room.Topic != "" {
+										app.Log("chat", "Stage 5: Trying topic search: %s", room.Topic)
+										topicEntries = data.Search(room.Topic, 5)
+									}
+									
+									app.Log("chat", "Stage 5: Found %d entries from search", len(topicEntries))
 									
 									for _, entry := range topicEntries {
 										contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
