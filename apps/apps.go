@@ -79,6 +79,19 @@ func Load() {
 			llmCacheTTL = time.Duration(seconds) * time.Second
 		}
 	}
+	
+	// Start periodic cache cleanup (every hour or when TTL expires, whichever is longer)
+	cleanupInterval := llmCacheTTL
+	if cleanupInterval < time.Hour {
+		cleanupInterval = time.Hour
+	}
+	go func() {
+		ticker := time.NewTicker(cleanupInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			clearExpiredLLMCache()
+		}
+	}()
 }
 
 // hashPrompt creates a deterministic hash of a prompt for caching
@@ -92,7 +105,12 @@ func hashPrompt(systemPrompt, userPrompt string) string {
 func getCachedLLMResponse(systemPrompt, userPrompt string) (string, bool) {
 	hash := hashPrompt(systemPrompt, userPrompt)
 	if val, ok := llmCache.Load(hash); ok {
-		cached := val.(cachedLLMResponse)
+		cached, ok := val.(cachedLLMResponse)
+		if !ok {
+			// Invalid cache entry, remove it
+			llmCache.Delete(hash)
+			return "", false
+		}
 		// Check if cache entry is still valid
 		if time.Since(cached.Timestamp) < llmCacheTTL {
 			app.Log("apps", "LLM cache hit for prompt hash: %s", hash[:8])
@@ -115,11 +133,18 @@ func cacheLLMResponse(systemPrompt, userPrompt, code string) {
 	app.Log("apps", "LLM response cached for prompt hash: %s", hash[:8])
 }
 
-// clearExpiredLLMCache removes expired entries from the cache (can be called periodically)
+// clearExpiredLLMCache removes expired entries from the cache
+// Called automatically during cache access, but can also be called explicitly
 func clearExpiredLLMCache() {
 	count := 0
 	llmCache.Range(func(key, value interface{}) bool {
-		cached := value.(cachedLLMResponse)
+		cached, ok := value.(cachedLLMResponse)
+		if !ok {
+			// Invalid cache entry, remove it
+			llmCache.Delete(key)
+			count++
+			return true
+		}
 		if time.Since(cached.Timestamp) >= llmCacheTTL {
 			llmCache.Delete(key)
 			count++
@@ -127,7 +152,7 @@ func clearExpiredLLMCache() {
 		return true
 	})
 	if count > 0 {
-		app.Log("apps", "Cleared %d expired LLM cache entries", count)
+		app.Log("apps", "Cleared %d expired/invalid LLM cache entries", count)
 	}
 }
 
