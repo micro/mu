@@ -1427,6 +1427,7 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
         <input type="checkbox" name="public" id="public" %s %s>
         <label for="public">Public</label>
       </div>
+      <button type="submit" name="action" value="save" %s>Save</button>
     </div>
     
     <details class="code-toggle">
@@ -1456,7 +1457,7 @@ document.getElementById('code-editor').addEventListener('keydown', function(e) {
 });
 </script>
 %s
-`, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, html.EscapeString(a.Summary), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), disabledAttr, pollingScript)
+`, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, html.EscapeString(a.Summary), disabledAttr, publicChecked, disabledAttr, disabledAttr, disabledAttr, html.EscapeString(a.Code), disabledAttr, pollingScript)
 
 	w.Write([]byte(app.RenderHTML("Develop: "+a.Name, "Develop: "+a.Name, formHTML)))
 }
