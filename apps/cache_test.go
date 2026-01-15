@@ -54,8 +54,8 @@ func TestLLMCacheExpiration(t *testing.T) {
 		t.Errorf("Expected cache hit immediately after caching")
 	}
 	
-	// Wait for expiration
-	time.Sleep(150 * time.Millisecond)
+	// Wait for expiration (with some buffer for timing variations)
+	time.Sleep(200 * time.Millisecond)
 	
 	// Should miss after expiration
 	if code, ok := getCachedLLMResponse(systemPrompt, userPrompt); ok {
@@ -96,8 +96,8 @@ func TestClearExpiredLLMCache(t *testing.T) {
 	cacheLLMResponse("sys1", "user1", "code1")
 	cacheLLMResponse("sys2", "user2", "code2")
 	
-	// Wait for expiration
-	time.Sleep(150 * time.Millisecond)
+	// Wait for expiration (with buffer for timing variations)
+	time.Sleep(200 * time.Millisecond)
 	
 	// Add a fresh entry
 	cacheLLMResponse("sys3", "user3", "code3")

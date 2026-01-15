@@ -95,8 +95,10 @@ func Load() {
 }
 
 // hashPrompt creates a deterministic hash of a prompt for caching
+// Uses length-prefixed format to avoid hash collisions
 func hashPrompt(systemPrompt, userPrompt string) string {
-	combined := systemPrompt + "|" + userPrompt
+	// Use length-prefixed format: "len(system)|system|len(user)|user"
+	combined := fmt.Sprintf("%d|%s|%d|%s", len(systemPrompt), systemPrompt, len(userPrompt), userPrompt)
 	h := sha256.Sum256([]byte(combined))
 	return hex.EncodeToString(h[:])
 }
