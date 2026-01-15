@@ -130,6 +130,48 @@ const SDK = `
       get(name) {
         return getComputedStyle(document.documentElement).getPropertyValue('--mu-' + name).trim();
       }
+    },
+    
+    // Cache API (client-side localStorage with TTL)
+    cache: {
+      _prefix: 'mu_cache_' + appId + '_',
+      
+      async get(key) {
+        try {
+          const item = localStorage.getItem(this._prefix + key);
+          if (!item) return null;
+          const { value, expires } = JSON.parse(item);
+          if (expires && Date.now() > expires) {
+            localStorage.removeItem(this._prefix + key);
+            return null;
+          }
+          return value;
+        } catch (e) {
+          return null;
+        }
+      },
+      
+      async set(key, value, options = {}) {
+        const item = {
+          value,
+          expires: options.ttl ? Date.now() + (options.ttl * 1000) : null
+        };
+        localStorage.setItem(this._prefix + key, JSON.stringify(item));
+        return true;
+      },
+      
+      async delete(key) {
+        localStorage.removeItem(this._prefix + key);
+        return true;
+      },
+      
+      async clear() {
+        const prefix = this._prefix;
+        Object.keys(localStorage)
+          .filter(k => k.startsWith(prefix))
+          .forEach(k => localStorage.removeItem(k));
+        return true;
+      }
     }
   };
   

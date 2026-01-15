@@ -1529,6 +1529,26 @@ if (response.ok) {
 </pre>
 <p><strong>Always use mu.fetch() instead of fetch() for external URLs.</strong></p>
 
+<h3>Cache (mu.cache)</h3>
+<p>Client-side caching with TTL support. Uses localStorage - data persists across page loads but not across devices.</p>
+<pre>
+// Cache data with 1 hour TTL
+await mu.cache.set('markets', data, { ttl: 3600 });
+
+// Get cached value (returns null if expired or missing)
+const data = await mu.cache.get('markets');
+
+// Cache without expiration
+await mu.cache.set('settings', prefs);
+
+// Delete cached item
+await mu.cache.delete('markets');
+
+// Clear all cached items for this app
+await mu.cache.clear();
+</pre>
+<p><strong>Use mu.cache for API responses and temporary data. Use mu.db for persistent user data that syncs across devices.</strong></p>
+
 <h3>Theme (mu.theme)</h3>
 <p>CSS variables are automatically injected. Use them for consistent styling.</p>
 <pre>
