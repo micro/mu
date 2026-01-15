@@ -1120,6 +1120,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						var history History
 						var recentTopics []string // Track topics from recent messages for context
 						room.mutex.RLock()
+						app.Log("chat", "Building history from %d room messages", len(room.Messages))
 						for _, m := range room.Messages {
 							if m.IsLLM {
 								history = append(history, Message{Answer: m.Content})
@@ -1133,6 +1134,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							}
 						}
 						room.mutex.RUnlock()
+						app.Log("chat", "Built %d history items, %d recentTopics", len(history), len(recentTopics))
 
 						// Stage 5: Check if user wants more details - fetch full article
 						app.Log("chat", "Stage 5: checking isMoreInfoRequest for: %s", content)
