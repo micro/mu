@@ -1417,22 +1417,19 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 
 	isOwner := sess != nil && sess.Account == a.AuthorID
 
-	var actions string
+	// Build edit/delete links inline with info (like blog posts)
+	var editLinks string
 	if isOwner {
-		actions = fmt.Sprintf(`
-		<p style="margin-bottom: 20px;">
-			<a href="/apps/%s/develop">Edit</a>
-			<a href="/apps/%s/delete" style="color: #c00; margin-left: 15px;" onclick="return confirm('Delete this app?')">Delete</a>
-		</p>`, a.ID, a.ID)
+		editLinks = fmt.Sprintf(` · <a href="/apps/%s/develop" style="color: #666;">Edit</a> · <a href="/apps/%s/delete" style="color: #d9534f;" onclick="return confirm('Delete this app?')">Delete</a>`, a.ID, a.ID)
 	}
 
 	// Widget button for logged-in users (only for public apps or own apps)
 	var widgetButton string
 	if sess != nil && (a.Public || isOwner) {
 		if IsWidgetForUser(a.ID, sess.Account) {
-			widgetButton = fmt.Sprintf(`<a href="/apps/%s/widget?action=remove" class="widget-btn remove">✓ On Home</a>`, a.ID)
+			widgetButton = fmt.Sprintf(`<p><a href="/apps/%s/widget?action=remove" class="widget-btn remove">✓ On Home</a></p>`, a.ID)
 		} else {
-			widgetButton = fmt.Sprintf(`<a href="/apps/%s/widget?action=add" class="widget-btn add">+ Add to Home</a>`, a.ID)
+			widgetButton = fmt.Sprintf(`<p><a href="/apps/%s/widget?action=add" class="widget-btn add">+ Add to Home</a></p>`, a.ID)
 		}
 	}
 
@@ -1462,8 +1459,7 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 	padding: 6px 12px;
 	border-radius: 4px;
 	text-decoration: none;
-	font-size: 13px;
-	margin-left: 15px;
+	font-size: small;
 }
 .widget-btn.add {
 	background: var(--accent-color, #0d7377);
@@ -1473,13 +1469,25 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 	background: #eee;
 	color: #333;
 }
+.app-info {
+	color: #666;
+	font-size: small;
+	margin-bottom: 15px;
+}
+.app-info a {
+	color: #666;
+	text-decoration: none;
+}
+.app-info a:hover {
+	text-decoration: underline;
+}
 </style>
+<div class="app-info">%s · by %s · %s%s</div>
 %s
-<p class="info">by %s · %s · Updated %s %s</p>
 <p>%s</p>
 <iframe class="app-frame" sandbox="allow-scripts allow-same-origin" src="/apps/%s/preview"></iframe>
 <p style="margin-top: 20px;"><a href="/apps">← Back to Apps</a></p>
-`, actions, html.EscapeString(a.Author), visibility, a.UpdatedAt.Format("Jan 2, 2006"), widgetButton, html.EscapeString(description), a.ID)
+`, app.TimeAgo(a.UpdatedAt), html.EscapeString(a.Author), visibility, editLinks, widgetButton, html.EscapeString(description), a.ID)
 
 	w.Write([]byte(app.RenderHTML(a.Name, a.Name, viewHTML)))
 }
