@@ -762,6 +762,11 @@ Generate the complete HTML file now:`
 	// Clean up response - extract just the HTML portion
 	response = cleanLLMResponse(response)
 
+	// Validate the response is complete and valid
+	if err := validateModifiedCode(response); err != nil {
+		return "", fmt.Errorf("LLM returned invalid code: %v", err)
+	}
+
 	return response, nil
 }
 
@@ -1260,6 +1265,11 @@ Apply this modification and output the complete updated HTML file:`
 	// Clean up response - extract just the HTML portion
 	response = cleanLLMResponse(response)
 
+	// Validate the response is complete and valid
+	if err := validateModifiedCode(response); err != nil {
+		return "", fmt.Errorf("LLM returned invalid code: %v", err)
+	}
+
 	return response, nil
 }
 
@@ -1293,6 +1303,37 @@ func cleanLLMResponse(response string) string {
 	}
 
 	return strings.TrimSpace(response)
+}
+
+// validateModifiedCode checks if the LLM response is valid HTML
+func validateModifiedCode(code string) error {
+	lower := strings.ToLower(code)
+	
+	// Must have basic HTML structure
+	if !strings.Contains(lower, "<html") {
+		return fmt.Errorf("missing <html> tag")
+	}
+	if !strings.Contains(lower, "</html>") {
+		return fmt.Errorf("missing </html> tag - response may be truncated")
+	}
+	if !strings.Contains(lower, "<body") {
+		return fmt.Errorf("missing <body> tag")
+	}
+	if !strings.Contains(lower, "</body>") {
+		return fmt.Errorf("missing </body> tag - response may be truncated")
+	}
+	
+	// Check for obvious truncation markers
+	if strings.Contains(lower, "...existing") || strings.Contains(lower, "// ...") || strings.Contains(lower, "/* ...") {
+		return fmt.Errorf("response contains placeholder comments instead of actual code")
+	}
+	
+	// Minimum reasonable size (avoid empty or stub responses)
+	if len(code) < 100 {
+		return fmt.Errorf("response too short - likely incomplete")
+	}
+	
+	return nil
 }
 
 func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
