@@ -312,8 +312,48 @@ td {
   opacity: 0.9;
 }
 
+/* Floating Action Button for @micro */
+#micro-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 99;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#micro-fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+#micro-fab:active {
+  transform: scale(0.95);
+}
+
 /* Mobile adjustments */
 @media (max-width: 600px) {
+  #micro-fab {
+    bottom: 80px;
+    right: 16px;
+    width: 52px;
+    height: 52px;
+    font-size: 22px;
+  }
+  
   #micro-dialog {
     padding: 60px 10px 10px 10px;
     align-items: flex-start;

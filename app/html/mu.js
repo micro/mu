@@ -629,13 +629,13 @@ function setSession() {
     var loginHeader = document.getElementById("login-header");
     var mailHeader = document.getElementById("mail-header");
     var mailBadge = document.getElementById("mail-badge");
-    var microTrigger = document.getElementById("micro-trigger");
+    var microFab = document.getElementById("micro-fab");
     
     if (sess.type == "account") {
       isAuthenticated = true;
       if (accountHeader) accountHeader.style.display = 'inline-block';
       if (mailHeader) mailHeader.style.display = 'inline-block';
-      if (microTrigger) microTrigger.style.display = 'inline-block';
+      if (microFab) microFab.style.display = 'flex';
       if (loginHeader) loginHeader.style.display = 'none';
       // Fetch unread mail count for badge
       fetch('/mail?unread=count')
@@ -653,7 +653,7 @@ function setSession() {
       isAuthenticated = false;
       if (accountHeader) accountHeader.style.display = 'none';
       if (mailHeader) mailHeader.style.display = 'none';
-      if (microTrigger) microTrigger.style.display = 'none';
+      if (microFab) microFab.style.display = 'none';
       if (loginHeader) {
         loginHeader.style.display = 'inline-block';
         // Update login link to include redirect parameter
@@ -673,10 +673,10 @@ function setSession() {
     var accountHeader = document.getElementById("account-header");
     var mailHeader = document.getElementById("mail-header");
     var loginHeader = document.getElementById("login-header");
-    var microTrigger = document.getElementById("micro-trigger");
+    var microFab = document.getElementById("micro-fab");
     if (accountHeader) accountHeader.style.display = 'none';
     if (mailHeader) mailHeader.style.display = 'none';
-    if (microTrigger) microTrigger.style.display = 'none';
+    if (microFab) microFab.style.display = 'none';
     if (loginHeader) {
       loginHeader.style.display = 'block';
       // Update login link to include redirect parameter for unauthenticated users

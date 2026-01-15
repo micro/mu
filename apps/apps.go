@@ -21,7 +21,8 @@ import (
 type App struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
-	Description string    `json:"description"` // Brief description of what the app does
+	Summary     string    `json:"summary"`     // Short user-facing description (auto-generated, editable)
+	Description string    `json:"description"` // Prompt history (internal)
 	Code        string    `json:"code"`        // HTML/CSS/JS code
 	Author      string    `json:"author"`      // Display name
 	AuthorID    string    `json:"author_id"`   // User ID
@@ -238,6 +239,10 @@ func CreateAppAsync(name, prompt, author, authorID string) (*App, error) {
 		} else {
 			a.Code = code
 			a.Status = "ready"
+			// Generate summary from prompt (don't block on error)
+			if summary, err := generateAppSummary(prompt); err == nil {
+				a.Summary = summary
+			}
 		}
 		a.UpdatedAt = time.Now()
 		saveApps()
@@ -247,7 +252,7 @@ func CreateAppAsync(name, prompt, author, authorID string) (*App, error) {
 }
 
 // UpdateApp updates an existing app
-func UpdateApp(id, name, description, code string, public bool, userID string) error {
+func UpdateApp(id, name, summary, description, code string, public bool, userID string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -258,6 +263,7 @@ func UpdateApp(id, name, description, code string, public bool, userID string) e
 				return fmt.Errorf("not authorized")
 			}
 			a.Name = name
+			a.Summary = summary
 			a.Description = description
 			a.Code = code
 			a.Public = public
@@ -580,11 +586,15 @@ func renderFeaturedCard(a *App) string {
 	var b strings.Builder
 	b.WriteString(`<div class="featured-card">`)
 	b.WriteString(fmt.Sprintf(`<h4><a href="/apps/%s">%s</a></h4>`, a.ID, html.EscapeString(a.Name)))
-	if a.Description != "" {
-		desc := a.Description
+	// Use Summary if available, otherwise fall back to first line of Description
+	desc := a.Summary
+	if desc == "" && a.Description != "" {
+		desc = a.Description
 		if idx := strings.Index(desc, "\n"); idx > 0 {
 			desc = desc[:idx]
 		}
+	}
+	if desc != "" {
 		if len(desc) > 60 {
 			desc = desc[:60] + "..."
 		}
@@ -598,12 +608,15 @@ func renderAppCard(a *App, isOwner bool) string {
 	var b strings.Builder
 	b.WriteString(`<div class="app-card">`)
 	b.WriteString(fmt.Sprintf(`<h4><a href="/apps/%s">%s</a></h4>`, a.ID, html.EscapeString(a.Name)))
-	if a.Description != "" {
-		// Truncate description to first line or 100 chars
-		desc := a.Description
+	// Use Summary if available, otherwise fall back to first line of Description
+	desc := a.Summary
+	if desc == "" && a.Description != "" {
+		desc = a.Description
 		if idx := strings.Index(desc, "\n"); idx > 0 {
 			desc = desc[:idx]
 		}
+	}
+	if desc != "" {
 		if len(desc) > 100 {
 			desc = desc[:100] + "..."
 		}
@@ -736,6 +749,35 @@ Generate the complete HTML file now:`
 	return response, nil
 }
 
+// generateAppSummary generates a short user-facing description from the prompt
+func generateAppSummary(prompt string) (string, error) {
+	systemPrompt := `Generate a brief, user-friendly description of this app in ONE sentence (max 80 characters). 
+Output ONLY the description text, nothing else. No quotes, no prefix, no explanation.
+Example: "Track daily tasks with categories and due dates"`
+
+	llmPrompt := &chat.Prompt{
+		System:   systemPrompt,
+		Question: prompt,
+		Priority: chat.PriorityLow,
+	}
+
+	response, err := chat.AskLLM(llmPrompt)
+	if err != nil {
+		return "", err
+	}
+
+	// Clean up - remove quotes and trim
+	response = strings.TrimSpace(response)
+	response = strings.Trim(response, `"'`)
+	
+	// Enforce max length
+	if len(response) > 100 {
+		response = response[:97] + "..."
+	}
+
+	return response, nil
+}
+
 func renderNewForm(w http.ResponseWriter, errMsg, name, prompt string) {
 	errHTML := ""
 	if errMsg != "" {
@@ -804,6 +846,7 @@ func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 	if r.Method == "POST" {
 		r.ParseForm()
 		name := strings.TrimSpace(r.FormValue("name"))
+		summary := strings.TrimSpace(r.FormValue("summary"))
 		promptText := strings.TrimSpace(r.FormValue("prompt"))
 		code := r.FormValue("code")
 		public := r.FormValue("public") == "on"
@@ -811,6 +854,7 @@ func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 
 		if name == "" {
 			a.Name = name
+			a.Summary = summary
 			a.Description = promptText
 			a.Code = code
 			a.Public = public
@@ -822,6 +866,7 @@ func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 		if action == "generate" {
 			if promptText == "" {
 				a.Name = name
+				a.Summary = summary
 				a.Description = promptText
 				a.Code = code
 				a.Public = public
@@ -832,6 +877,7 @@ func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 			generated, err := generateAppCode(promptText)
 			if err != nil {
 				a.Name = name
+			a.Summary = summary
 				a.Description = promptText
 				a.Code = code
 				a.Public = public
@@ -840,6 +886,7 @@ func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 			}
 
 			a.Name = name
+			a.Summary = summary
 			a.Description = promptText
 			a.Code = generated
 			a.Public = public
@@ -847,8 +894,9 @@ func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 			return
 		}
 
-		if err := UpdateApp(id, name, promptText, code, public, sess.Account); err != nil {
+		if err := UpdateApp(id, name, summary, promptText, code, public, sess.Account); err != nil {
 			a.Name = name
+			a.Summary = summary
 			a.Description = promptText
 			a.Code = code
 			a.Public = public
@@ -934,6 +982,11 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
     <input type="text" name="name" value="%s" required>
   </div>
   <div class="form-group">
+    <label>Summary</label>
+    <input type="text" name="summary" value="%s" placeholder="A brief description of what this app does" maxlength="100">
+    <div class="hint">Short description shown in app listings (auto-generated, editable).</div>
+  </div>
+  <div class="form-group">
     <label>Prompt</label>
     <textarea name="prompt" id="prompt" placeholder="Describe what you want to build...">%s</textarea>
     <div class="hint">Edit the prompt and click Regenerate to create new code.</div>
@@ -963,7 +1016,7 @@ function previewApp() {
 // Load preview on page load
 window.onload = function() { previewApp(); };
 </script>
-`, errHTML, html.EscapeString(a.Name), html.EscapeString(a.Description), html.EscapeString(a.Code), publicChecked, a.ID)
+`, errHTML, html.EscapeString(a.Name), html.EscapeString(a.Summary), html.EscapeString(a.Description), html.EscapeString(a.Code), publicChecked, a.ID)
 
 	w.Write([]byte(app.RenderHTML("Edit App", "Edit: "+a.Name, formHTML)))
 }
@@ -1076,7 +1129,7 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 			return
 
 		case "save":
-			if err := UpdateApp(id, a.Name, a.Description, a.Code, a.Public, sess.Account); err != nil {
+			if err := UpdateApp(id, a.Name, a.Summary, a.Description, a.Code, a.Public, sess.Account); err != nil {
 				renderDevelopForm(w, a, "Save failed: "+err.Error())
 				return
 			}
@@ -1089,7 +1142,7 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 			if code != "" {
 				a.Code = code
 				a.UpdatedAt = time.Now()
-				if err := UpdateApp(id, a.Name, a.Description, a.Code, a.Public, sess.Account); err != nil {
+				if err := UpdateApp(id, a.Name, a.Summary, a.Description, a.Code, a.Public, sess.Account); err != nil {
 					renderDevelopForm(w, a, "Save failed: "+err.Error())
 					return
 				}
@@ -1443,10 +1496,13 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 		visibility = "Public"
 	}
 
-	// Get only the first line of description (original prompt, not change history)
-	description := a.Description
-	if idx := strings.Index(description, "\n"); idx > 0 {
-		description = description[:idx]
+	// Use Summary if available, otherwise fall back to first line of Description
+	description := a.Summary
+	if description == "" && a.Description != "" {
+		description = a.Description
+		if idx := strings.Index(description, "\n"); idx > 0 {
+			description = description[:idx]
+		}
 	}
 
 	// Get user info for SDK injection
