@@ -346,8 +346,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			body := strings.TrimSpace(r.FormValue("body"))
 			if body != "" {
 				bodyPlain = body
-				bodyHTML = html.EscapeString(body)
-				bodyHTML = strings.ReplaceAll(bodyHTML, "\n", "<br>")
+				// Convert plain text to HTML - only escape < > & to preserve special chars
+				// Don't escape quotes or apostrophes as they're safe in HTML content
+				bodyHTML = convertPlainTextToHTML(body)
 			}
 		}
 		replyTo := strings.TrimSpace(r.FormValue("reply_to"))
@@ -2309,4 +2310,21 @@ func renderDMARCReport(xmlData string) string {
 	result := html.String()
 	app.Log("mail", "renderDMARCReport returning %d bytes of HTML", len(result))
 	return result
+}
+
+// convertPlainTextToHTML converts plain text to HTML for email
+// Only escapes < > & characters, preserves apostrophes and quotes for natural text
+func convertPlainTextToHTML(text string) string {
+	// Use html.EscapeString for proper escaping, then selectively unescape quotes and apostrophes
+	// This is more maintainable than manual escaping
+	escaped := html.EscapeString(text)
+	
+	// Unescape apostrophes and double quotes - they're safe in HTML content
+	escaped = strings.ReplaceAll(escaped, "&#39;", "'")
+	escaped = strings.ReplaceAll(escaped, "&#34;", "\"")
+	
+	// Convert newlines to <br> tags
+	escaped = strings.ReplaceAll(escaped, "\n", "<br>")
+	
+	return escaped
 }

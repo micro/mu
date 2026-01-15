@@ -140,6 +140,24 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 	msg.WriteString("Content-Type: text/html; charset=utf-8\r\n")
 	msg.WriteString("Content-Transfer-Encoding: 7bit\r\n")
 	msg.WriteString("\r\n")
+	
+	// Wrap HTML content in proper HTML structure for better email client compatibility
+	// Check if HTML already has proper structure
+	htmlLower := strings.ToLower(bodyHTML)
+	if !strings.Contains(htmlLower, "<html") && !strings.Contains(htmlLower, "<!doctype") {
+		// No HTML structure - wrap in basic HTML document
+		bodyHTML = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333; max-width: 100%%;">
+%s
+</body>
+</html>`, bodyHTML)
+	}
+	
 	bodyHTML = strings.ReplaceAll(bodyHTML, "\r\n", "\n")
 	bodyHTML = strings.ReplaceAll(bodyHTML, "\n", "\r\n")
 	msg.WriteString(bodyHTML)
