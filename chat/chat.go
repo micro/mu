@@ -228,192 +228,6 @@ func handlePatternMatch(content string, room *Room) string {
 	return "" // No pattern match
 }
 
-// isMoreInfoRequest checks if user is asking for more details about something
-func isMoreInfoRequest(content string) bool {
-	contentLower := strings.ToLower(content)
-	moreInfoPhrases := []string{
-		"more detail", "tell me more", "more info", "full article",
-		"read more", "expand on", "elaborate", "further info",
-		"what else", "anything else", "more about", "go deeper",
-		"full story", "complete story", "more information",
-		"can you explain more", "explain further", "dig deeper",
-	}
-	for _, phrase := range moreInfoPhrases {
-		if strings.Contains(contentLower, phrase) {
-			return true
-		}
-	}
-	return false
-}
-
-// extractURLsFromContext finds URLs from recent RAG context or room messages
-// Returns both external URLs (http/https) and internal URLs (/video, /news, etc.)
-func extractURLsFromContext(room *Room, ragContext []string) []string {
-	var urls []string
-	seen := make(map[string]bool)
-	
-	// Check room URL first
-	if room.URL != "" {
-		if strings.HasPrefix(room.URL, "http") || strings.HasPrefix(room.URL, "/") {
-			urls = append(urls, room.URL)
-			seen[room.URL] = true
-			app.Log("chat", "extractURLs: found room URL: %s", room.URL)
-		}
-	}
-	
-	// Extract URLs from context strings (Source: url)
-	for _, ctx := range ragContext {
-		if idx := strings.Index(ctx, "(Source: "); idx != -1 {
-			end := strings.Index(ctx[idx:], ")")
-			if end != -1 {
-				url := ctx[idx+9 : idx+end]
-				if !seen[url] && (strings.HasPrefix(url, "http") || strings.HasPrefix(url, "/")) {
-					urls = append(urls, url)
-					seen[url] = true
-					app.Log("chat", "extractURLs: found context URL: %s", url)
-				}
-			}
-		}
-	}
-	
-	// Also check recent room messages for URLs (in case user is discussing a specific item)
-	room.mutex.RLock()
-	for _, msg := range room.Messages {
-		// Look for http/https URLs in message content
-		words := strings.Fields(msg.Content)
-		for _, word := range words {
-			if strings.HasPrefix(word, "http://") || strings.HasPrefix(word, "https://") {
-				// Clean up punctuation at end
-				word = strings.TrimRight(word, ".,;:!?)")
-				if !seen[word] {
-					urls = append(urls, word)
-					seen[word] = true
-					app.Log("chat", "extractURLs: found message URL: %s", word)
-				}
-			}
-		}
-	}
-	room.mutex.RUnlock()
-	
-	app.Log("chat", "extractURLs: total URLs found: %d", len(urls))
-	return urls
-}
-
-// getContentFromURL gets content from a URL - uses index for internal URLs, HTTP fetch for external
-// getContentFromURL gets content from a URL - uses index for internal URLs, HTTP fetch for external
-func getContentFromURL(url string) (string, error) {
-	// Handle internal URLs by looking up in index
-	if strings.HasPrefix(url, "/") {
-		// Parse internal URL to get ID
-		// e.g., /video?id=xxx -> video_xxx, /news?id=xxx -> news_xxx
-		var entryID string
-		if strings.HasPrefix(url, "/video?id=") {
-			entryID = "video_" + strings.TrimPrefix(url, "/video?id=")
-		} else if strings.HasPrefix(url, "/news?id=") {
-			entryID = strings.TrimPrefix(url, "/news?id=")
-		} else if strings.HasPrefix(url, "/post?id=") {
-			entryID = strings.TrimPrefix(url, "/post?id=")
-		}
-		
-		if entryID != "" {
-			entry := data.GetByID(entryID)
-			if entry != nil {
-				content := entry.Title + "\n\n" + entry.Content
-				app.Log("chat", "getContentFromURL: found internal content for %s (%d chars)", url, len(content))
-				return content, nil
-			}
-			app.Log("chat", "getContentFromURL: internal URL %s not found in index (tried ID: %s)", url, entryID)
-		}
-		return "", fmt.Errorf("internal URL not found: %s", url)
-	}
-	
-	// External URL - fetch via HTTP
-	return fetchURLContent(url)
-}
-
-// fetchURLContent fetches and extracts text content from a URL
-func fetchURLContent(url string) (string, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MuBot/1.0)")
-	
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-	
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	
-	// Extract text content (simple approach - strip HTML tags)
-	content := string(body)
-	
-	// Remove script and style tags with content
-	for _, tag := range []string{"script", "style", "noscript", "head"} {
-		for {
-			start := strings.Index(strings.ToLower(content), "<"+tag)
-			if start == -1 {
-				break
-			}
-			end := strings.Index(strings.ToLower(content[start:]), "</"+tag+">")
-			if end == -1 {
-				end = strings.Index(content[start:], ">")
-				if end != -1 {
-					content = content[:start] + content[start+end+1:]
-				} else {
-					break
-				}
-			} else {
-				content = content[:start] + content[start+end+len("</"+tag+">"):]
-			}
-		}
-	}
-	
-	// Remove remaining HTML tags
-	var result strings.Builder
-	inTag := false
-	for _, r := range content {
-		if r == '<' {
-			inTag = true
-		} else if r == '>' {
-			inTag = false
-			result.WriteRune(' ')
-		} else if !inTag {
-			result.WriteRune(r)
-		}
-	}
-	
-	// Clean up whitespace
-	text := result.String()
-	lines := strings.Split(text, "\n")
-	var cleanLines []string
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if len(line) > 20 { // Skip very short lines (likely nav elements)
-			cleanLines = append(cleanLines, line)
-		}
-	}
-	
-	text = strings.Join(cleanLines, "\n")
-	
-	// Limit to reasonable size
-	if len(text) > 8000 {
-		text = text[:8000] + "..."
-	}
-	
-	return text, nil
-}
-
 // getOrCreateRoom gets an existing room or creates a new one
 func getOrCreateRoom(id string) *Room {
 	start := time.Now()
@@ -1005,170 +819,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							app.Log("chat", "No room context available - Title: '%s', Summary: '%s'", room.Title, room.Summary)
 						}
 
-						// Skip RAG for referential queries (pronouns) - let LLM use conversation context
-						pronouns := []string{"him", "her", "them", "they", "it", "this", "that", "he", "she"}
-						contentLower := strings.ToLower(content)
-						skipRAG := false
-						for _, p := range pronouns {
-							if strings.Contains(contentLower, " "+p+" ") || strings.HasSuffix(contentLower, " "+p) || strings.HasPrefix(contentLower, p+" ") {
-								skipRAG = true
-								app.Log("chat", "Skipping RAG for referential query (contains '%s')", p)
-								break
-							}
-						}
-
-						if !skipRAG {
-							// Stage 1: Retrieve candidate results with snippets
-							seenIDs := make(map[string]bool)
-
-							// Exclude the current room's article from search results
-							currentRoomID := room.ID[strings.Index(room.ID, "_")+1:]
-							seenIDs[currentRoomID] = true
-
-							// Search 1: Question + title context for related content
-							searchQuery1 := content
-							if room.Title != "" && room.Title != "News Discussion" && room.Title != "Post Discussion" && room.Title != "Video Discussion" {
-								searchQuery1 = room.Title + " " + content
-							}
-							ragEntries1 := data.Search(searchQuery1, 10)
-							app.Log("chat", "Search 1 (title+question) for '%s' returned %d results", searchQuery1, len(ragEntries1))
-
-							// Search 2: Just the question to find directly relevant content
-							ragEntries2 := data.Search(content, 10)
-							app.Log("chat", "Search 2 (question only) for '%s' returned %d results", content, len(ragEntries2))
-
-							// Combine and deduplicate results, create snippets for reranking
-							type Candidate struct {
-								Entry   *data.IndexEntry
-								Snippet string
-							}
-							var candidates []Candidate
-						allEntries := append(ragEntries1, ragEntries2...)
-
-						for _, entry := range allEntries {
-							if seenIDs[entry.ID] {
-								continue
-							}
-							seenIDs[entry.ID] = true
-
-							// Create short snippet for reranking (title + first 150 chars)
-							snippet := entry.Title + ": "
-							if len(entry.Content) > 150 {
-								snippet += entry.Content[:150] + "..."
-							} else {
-								snippet += entry.Content
-							}
-
-							candidates = append(candidates, Candidate{
-								Entry:   entry,
-								Snippet: snippet,
-							})
-						}
-
-						app.Log("chat", "Stage 1: Found %d unique candidates", len(candidates))
-
-						// Stage 2: Rerank - ask LLM to pick most relevant sources
-						var selectedEntries []*data.IndexEntry
-
-						if len(candidates) > 5 {
-							// Build reranking prompt
-							snippetList := ""
-							for i, c := range candidates {
-								snippetList += fmt.Sprintf("%d. %s\n", i+1, c.Snippet)
-							}
-
-							// Reranking is medium priority - skip if rate limited rather than block chat
-							rerankPrompt := &Prompt{
-								System:   "You are a search relevance expert. Given a question and a list of document snippets, return ONLY the numbers (comma-separated) of the 3-5 most relevant documents that would help answer the question. Example: 1,3,5",
-								Question: fmt.Sprintf("Question: %s\n\nDocuments:\n%s\n\nMost relevant document numbers:", content, snippetList),
-								Priority: PriorityMedium, // Medium priority - skip if rate limited
-							}
-
-							rerankResp, err := askLLM(rerankPrompt)
-							if err == nil && len(rerankResp) > 0 {
-								app.Log("chat", "Stage 2: Reranking response: %s", rerankResp)
-
-								// Parse comma-separated numbers
-								parts := strings.Split(strings.TrimSpace(rerankResp), ",")
-								for _, part := range parts {
-									part = strings.TrimSpace(part)
-									// Extract first number from the part (handles "1." or "1" format)
-									var num int
-									if _, err := fmt.Sscanf(part, "%d", &num); err == nil {
-										if num > 0 && num <= len(candidates) {
-											selectedEntries = append(selectedEntries, candidates[num-1].Entry)
-										}
-									}
-									if len(selectedEntries) >= 5 {
-										break
-									}
-								}
-								app.Log("chat", "Stage 2: Selected %d documents after reranking", len(selectedEntries))
-							}
-						}
-
-						// If reranking failed or we have <=5 candidates, use all
-						if len(selectedEntries) == 0 {
-							for _, c := range candidates {
-								selectedEntries = append(selectedEntries, c.Entry)
-								if len(selectedEntries) >= 5 {
-									break
-								}
-							}
-						}
-
-						// Stage 3: Build full context from selected entries
-						for _, entry := range selectedEntries {
-							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-							if len(contextStr) > 600 {
-								contextStr = contextStr[:600] + "..."
-							}
-							if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-								contextStr += fmt.Sprintf(" (Source: %s)", url)
-							}
-							ragContext = append(ragContext, contextStr)
-						}
-
-						app.Log("chat", "Stage 3: Total RAG context items: %d", len(ragContext))
-						} // end if !skipRAG
-
-						// Stage 4: Inject real-time price data for financial queries
-						contentLowerForPrices := strings.ToLower(content)
-						priceKeywords := []string{"price", "btc", "bitcoin", "eth", "ethereum", "crypto", "stock", "market", "trading", "worth", "value", "gold", "silver", "oil"}
-						needsPrices := false
-						for _, kw := range priceKeywords {
-							if strings.Contains(contentLowerForPrices, kw) {
-								needsPrices = true
-								break
-							}
-						}
-						// Also check if in Crypto topic
-						if room.Topic == "Crypto" || strings.Contains(strings.ToLower(room.Title), "crypto") || strings.Contains(strings.ToLower(room.Title), "bitcoin") {
-							needsPrices = true
-						}
-						
-						if needsPrices {
-							// Query the data index for market prices (indexed by news package)
-							marketEntries := data.GetByType("market", 50)
-							if len(marketEntries) > 0 {
-								priceInfo := "CURRENT MARKET PRICES (real-time data): "
-								priceList := []string{}
-								for _, entry := range marketEntries {
-									if price, ok := entry.Metadata["price"].(float64); ok {
-										priceList = append(priceList, fmt.Sprintf("%s: $%.2f", entry.Title, price))
-									}
-								}
-								if len(priceList) > 0 {
-									priceInfo += strings.Join(priceList, ", ")
-									// Prepend prices so they're seen as authoritative
-									ragContext = append([]string{priceInfo}, ragContext...)
-									app.Log("chat", "Injected real-time prices from data index: %d symbols", len(priceList))
-								}
-							}
-						}
-
-						// Build conversation history from recent room messages
-						// Pair consecutive user/assistant messages for proper LLM context
+						// Build conversation history from recent room messages FIRST
+						// So we can extract entities for follow-up queries
 						var history History
 						var recentTopics []string // Track topics from recent messages for context
 						room.mutex.RLock()
@@ -1197,142 +849,54 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						}
 						room.mutex.RUnlock()
 						app.Log("chat", "Built %d history pairs, %d recentTopics", len(history), len(recentTopics))
-						
-						// Debug: show last 2 history pairs
-						for i := max(0, len(history)-2); i < len(history); i++ {
-							promptSnippet := history[i].Prompt
-							if len(promptSnippet) > 100 {
-								promptSnippet = promptSnippet[:100] + "..."
+
+						// Check if this is a follow-up query with pronouns
+						pronouns := []string{"him", "her", "them", "they", "it", "this", "that", "he", "she"}
+						contentLower := strings.ToLower(content)
+						isFollowUp := false
+						for _, p := range pronouns {
+							if strings.Contains(contentLower, " "+p+" ") || strings.HasSuffix(contentLower, " "+p) || strings.HasPrefix(contentLower, p+" ") {
+								isFollowUp = true
+								break
 							}
-							answerSnippet := history[i].Answer
-							if len(answerSnippet) > 100 {
-								answerSnippet = answerSnippet[:100] + "..."
-							}
-							app.Log("chat", "[HISTORY %d] User: %s", i, promptSnippet)
-							app.Log("chat", "[HISTORY %d] Assistant: %s", i, answerSnippet)
 						}
 
-						// Stage 5: Check if user wants more details - fetch full article
-						app.Log("chat", "Stage 5: checking isMoreInfoRequest for: %s", content)
-						if isMoreInfoRequest(content) {
-							app.Log("chat", "Stage 5: User IS asking for more info")
-							
-							// First check if we have any URLs in current context
-							urls := extractURLsFromContext(room, ragContext)
-							
-							// If no URLs found but we have recent topics, search based on conversation
-							if len(urls) == 0 && len(recentTopics) > 0 {
-								// Find the best topic to search - prefer ones with named entities
-								// Start from most recent but skip generic responses
-								var searchTopic string
-								genericPhrases := []string{"at this time", "no additional", "for ongoing", "for continuous", "check established", "to clarify"}
-								
-								for i := len(recentTopics) - 1; i >= 0; i-- {
-									topic := recentTopics[i]
-									topicLower := strings.ToLower(topic)
-									isGeneric := false
-									for _, phrase := range genericPhrases {
-										if strings.Contains(topicLower, phrase) {
-											isGeneric = true
+						// For follow-up queries, extract entities from conversation for better search
+						searchContent := content
+						if isFollowUp && len(recentTopics) > 0 {
+							var entities []string
+							lastTopic := recentTopics[len(recentTopics)-1]
+							for _, word := range strings.Fields(lastTopic) {
+								cleanWord := strings.Trim(word, ".,!?;:'\"()")
+								if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
+									lower := strings.ToLower(cleanWord)
+									if lower != "the" && lower != "this" && lower != "that" && lower != "and" {
+										entities = append(entities, cleanWord)
+										if len(entities) >= 3 {
 											break
 										}
 									}
-									if !isGeneric {
-										searchTopic = topic
-										break
-									}
-								}
-								
-								// If all topics seem generic, use the first one (likely has the original info)
-								if searchTopic == "" && len(recentTopics) > 0 {
-									searchTopic = recentTopics[0]
-								}
-								
-								if searchTopic != "" {
-									// Try multiple search strategies
-									var topicEntries []*data.IndexEntry
-									
-									// Strategy 1: Extract likely named entities (capitalized words) for targeted search
-									words := strings.Fields(searchTopic)
-									var namedEntities []string
-									skipWords := map[string]bool{
-										"the": true, "this": true, "that": true, "here": true, "there": true,
-										"during": true, "however": true, "unfortunately": true, "certainly": true,
-										"regarding": true, "absolutely": true, "sure": true, "focusing": true,
-										"let": true, "recap": true, "clarify": true, "course": true, "know": true,
-										"far": true, "what": true, "beyond": true, "basic": true, "key": true,
-										"main": true, "central": true, "currently": true, "recent": true,
-										"here's": true, "it's": true, "hasn't": true, "doesn't": true, "isn't": true,
-									}
-									for _, word := range words {
-										// Skip common words, keep likely names/entities
-										cleanWord := strings.Trim(word, ".,!?;:'\"")
-										if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
-											lowerWord := strings.ToLower(cleanWord)
-											if !skipWords[lowerWord] {
-												namedEntities = append(namedEntities, cleanWord)
-											}
-										}
-									}
-									
-									if len(namedEntities) >= 2 {
-										// Search with named entities (e.g., "Nigel Farage Nadhim Zahawi")
-										entitySearch := strings.Join(namedEntities[:min(4, len(namedEntities))], " ")
-										app.Log("chat", "Stage 5: Searching with entities: %s", entitySearch)
-										topicEntries = data.Search(entitySearch, 5)
-									}
-									
-									// Strategy 2: If entity search fails, try topic keyword
-									if len(topicEntries) == 0 && room.Topic != "" {
-										app.Log("chat", "Stage 5: Trying topic search: %s", room.Topic)
-										topicEntries = data.Search(room.Topic, 5)
-									}
-									
-									app.Log("chat", "Stage 5: Found %d entries from search", len(topicEntries))
-									
-									for _, entry := range topicEntries {
-										contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-										if len(contextStr) > 600 {
-											contextStr = contextStr[:600] + "..."
-										}
-										if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-											contextStr += fmt.Sprintf(" (Source: %s)", url)
-										}
-										ragContext = append(ragContext, contextStr)
-									}
-									
-									// Re-extract URLs after adding topic search results
-									urls = extractURLsFromContext(room, ragContext)
 								}
 							}
-							
-							app.Log("chat", "Stage 5: Found %d URLs in context", len(urls))
-							if len(urls) > 0 {
-								app.Log("chat", "User asking for more info, getting content from: %s", urls[0])
-							
-							// Send progress message
-							progressMsg := RoomMessage{
-								UserID:    "micro",
-								Content:   "Let me get the full article for you...",
-								Timestamp: time.Now(),
-								IsLLM:     true,
-							}
-							room.Broadcast <- progressMsg
-							
-							// Get the article content from index (already parsed/summarized)
-							articleContent, err := getContentFromURL(urls[0])
-							if err == nil && len(articleContent) > 100 {
-								// Prepend the full article content
-								fullArticle := fmt.Sprintf("FULL ARTICLE CONTENT from %s:\n\n%s", urls[0], articleContent)
-								ragContext = append([]string{fullArticle}, ragContext...)
-								// Modify the question to tell LLM we already sent a progress message
-								content = content + "\n\n[Note: A progress message has already been shown to the user. Do not add any preamble like 'Let me provide...' - just give the information directly.]"
-								app.Log("chat", "Got full article content: %d chars", len(articleContent))
-							} else {
-								app.Log("chat", "Failed to get article: %v", err)
+							if len(entities) > 0 {
+								searchContent = strings.Join(entities, " ") + " " + content
+								app.Log("chat", "Follow-up: searching for '%s'", searchContent)
 							}
 						}
-					}
+
+						// Simple RAG: search and build context
+						ragEntries := data.Search(searchContent, 5)
+						for _, entry := range ragEntries {
+							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+							if len(contextStr) > 600 {
+								contextStr = contextStr[:600] + "..."
+							}
+							if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+								contextStr += fmt.Sprintf(" (Source: %s)", url)
+							}
+							ragContext = append(ragContext, contextStr)
+						}
+						app.Log("chat", "RAG: found %d results for '%s'", len(ragEntries), searchContent)
 
 						prompt := &Prompt{
 							Rag:      ragContext,
@@ -1342,9 +906,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 						resp, err := askLLM(prompt)
 						if err == nil && len(resp) > 0 {
-							// Update client's micro conversation state
 							client.LastMicroReply = time.Now()
-
 							llmMsg := RoomMessage{
 								UserID:    "micro",
 								Content:   resp,
@@ -1761,8 +1323,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			topic = fmt.Sprintf("%v", t)
 		}
 
-		// Skip RAG for follow-up queries - let LLM use conversation history
-		// RAG returns garbage for "what about him" and overrides good context
+		// Check if this is a follow-up query with pronouns
 		var ragContext []string
 		qLower := strings.ToLower(q)
 		pronouns := []string{" him", " her", " them", " they", " it ", " this", " that", " he ", " she "}
@@ -1774,31 +1335,58 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		
-		if !isFollowUp {
-			// Search the index for relevant context (RAG)
-			ragEntries := data.Search(q, 5)
-			for _, entry := range ragEntries {
-				// Format each entry as context (600 chars to fit within 4096 token limit)
-				contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-				if len(contextStr) > 600 {
-					contextStr = contextStr[:600] + "..."
+		// For follow-up queries, extract entity from conversation and search for that
+		searchQuery := q
+		if isFollowUp && len(context) > 0 {
+			// Extract named entities from the most recent exchange
+			var entities []string
+			lastMsg := context[len(context)-1]
+			// Check both prompt and answer for entities
+			for _, text := range []string{lastMsg.Prompt, lastMsg.Answer} {
+				words := strings.Fields(text)
+				for _, word := range words {
+					cleanWord := strings.Trim(word, ".,!?;:'\"()<>")
+					if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
+						lower := strings.ToLower(cleanWord)
+						if lower != "the" && lower != "this" && lower != "that" && lower != "and" && lower != "who" && lower != "what" {
+							entities = append(entities, cleanWord)
+							if len(entities) >= 3 {
+								break
+							}
+						}
+					}
 				}
-				if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-					contextStr += fmt.Sprintf(" (Source: %s)", url)
+				if len(entities) >= 3 {
+					break
 				}
-				ragContext = append(ragContext, contextStr)
 			}
+			if len(entities) > 0 {
+				searchQuery = strings.Join(entities, " ") + " news"
+				app.Log("chat", "[POST] Follow-up query: resolved to search '%s'", searchQuery)
+			}
+		}
 
-			// Debug: Log what we found
-			if len(ragEntries) > 0 {
-				app.Log("chat", "[RAG] Query: %s", q)
-				app.Log("chat", "[RAG] Found %d entries:", len(ragEntries))
-				for i, entry := range ragEntries {
-					app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
-				}
+		// Search the index for relevant context (RAG)
+		ragEntries := data.Search(searchQuery, 5)
+		for _, entry := range ragEntries {
+			// Format each entry as context (600 chars to fit within 4096 token limit)
+			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+			if len(contextStr) > 600 {
+				contextStr = contextStr[:600] + "..."
 			}
-		} else {
-			app.Log("chat", "[POST] Skipping RAG for follow-up query: %s", q)
+			if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+				contextStr += fmt.Sprintf(" (Source: %s)", url)
+			}
+			ragContext = append(ragContext, contextStr)
+		}
+
+		// Debug: Log what we found
+		if len(ragEntries) > 0 {
+			app.Log("chat", "[RAG] Query: %s, Search: %s", q, searchQuery)
+			app.Log("chat", "[RAG] Found %d entries:", len(ragEntries))
+			for i, entry := range ragEntries {
+				app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
+			}
 		}
 
 		// Debug: Log conversation context being passed
