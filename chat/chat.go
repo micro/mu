@@ -1005,90 +1005,44 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							app.Log("chat", "No room context available - Title: '%s', Summary: '%s'", room.Title, room.Summary)
 						}
 
-						// Resolve pronouns by extracting entities from recent conversation
-						searchContent := content
+						// Skip RAG for referential queries (pronouns) - let LLM use conversation context
 						pronouns := []string{"him", "her", "them", "they", "it", "this", "that", "he", "she"}
 						contentLower := strings.ToLower(content)
-						hasPronoun := false
+						skipRAG := false
 						for _, p := range pronouns {
 							if strings.Contains(contentLower, " "+p+" ") || strings.HasSuffix(contentLower, " "+p) || strings.HasPrefix(contentLower, p+" ") {
-								hasPronoun = true
+								skipRAG = true
+								app.Log("chat", "Skipping RAG for referential query (contains '%s')", p)
 								break
 							}
 						}
-						if hasPronoun {
-							// Extract likely person names from recent messages (consecutive capitalized words)
-							room.mutex.RLock()
-							var personNames []string
-							skipWords := map[string]bool{
-								"the": true, "this": true, "that": true, "what": true, "when": true,
-								"where": true, "which": true, "who": true, "how": true, "why": true,
-								"yes": true, "sure": true, "here": true, "there": true, "i": true,
-								"british": true, "brexit": true, "european": true, "union": true,
-								"party": true, "uk": true, "london": true, "reform": true, "over": true,
-								"recently": true, "meanwhile": true, "independence": true,
+
+						if !skipRAG {
+							// Stage 1: Retrieve candidate results with snippets
+							seenIDs := make(map[string]bool)
+
+							// Exclude the current room's article from search results
+							currentRoomID := room.ID[strings.Index(room.ID, "_")+1:]
+							seenIDs[currentRoomID] = true
+
+							// Search 1: Question + title context for related content
+							searchQuery1 := content
+							if room.Title != "" && room.Title != "News Discussion" && room.Title != "Post Discussion" && room.Title != "Video Discussion" {
+								searchQuery1 = room.Title + " " + content
 							}
-							for i := len(room.Messages) - 1; i >= 0 && len(personNames) < 2; i-- {
-								msg := room.Messages[i]
-								words := strings.Fields(msg.Content)
-								// Look for consecutive capitalized words (likely names)
-								for j := 0; j < len(words)-1; j++ {
-									w1 := strings.Trim(words[j], ".,!?;:'\"")
-									w2 := strings.Trim(words[j+1], ".,!?;:'\"")
-									if len(w1) > 2 && len(w2) > 2 &&
-										w1[0] >= 'A' && w1[0] <= 'Z' &&
-										w2[0] >= 'A' && w2[0] <= 'Z' &&
-										!skipWords[strings.ToLower(w1)] && !skipWords[strings.ToLower(w2)] {
-										name := w1 + " " + w2
-										found := false
-										for _, n := range personNames {
-											if n == name {
-												found = true
-												break
-											}
-										}
-										if !found {
-											personNames = append(personNames, name)
-											if len(personNames) >= 2 {
-												break
-											}
-										}
-									}
-								}
+							ragEntries1 := data.Search(searchQuery1, 10)
+							app.Log("chat", "Search 1 (title+question) for '%s' returned %d results", searchQuery1, len(ragEntries1))
+
+							// Search 2: Just the question to find directly relevant content
+							ragEntries2 := data.Search(content, 10)
+							app.Log("chat", "Search 2 (question only) for '%s' returned %d results", content, len(ragEntries2))
+
+							// Combine and deduplicate results, create snippets for reranking
+							type Candidate struct {
+								Entry   *data.IndexEntry
+								Snippet string
 							}
-							room.mutex.RUnlock()
-							if len(personNames) > 0 {
-								// Append just the person names to search
-								searchContent = content + " " + strings.Join(personNames, " ")
-								app.Log("chat", "Resolved pronouns, enriched search: %s", searchContent)
-							}
-						}
-
-						// Stage 1: Retrieve candidate results with snippets
-						seenIDs := make(map[string]bool)
-
-						// Exclude the current room's article from search results
-						currentRoomID := room.ID[strings.Index(room.ID, "_")+1:]
-						seenIDs[currentRoomID] = true
-
-						// Search 1: Question + title context for related content
-						searchQuery1 := searchContent
-						if room.Title != "" && room.Title != "News Discussion" && room.Title != "Post Discussion" && room.Title != "Video Discussion" {
-							searchQuery1 = room.Title + " " + searchContent
-						}
-						ragEntries1 := data.Search(searchQuery1, 10)
-						app.Log("chat", "Search 1 (title+question) for '%s' returned %d results", searchQuery1, len(ragEntries1))
-
-						// Search 2: Just the question to find directly relevant content
-						ragEntries2 := data.Search(searchContent, 10)
-						app.Log("chat", "Search 2 (question only) for '%s' returned %d results", searchContent, len(ragEntries2))
-
-						// Combine and deduplicate results, create snippets for reranking
-						type Candidate struct {
-							Entry   *data.IndexEntry
-							Snippet string
-						}
-						var candidates []Candidate
+							var candidates []Candidate
 						allEntries := append(ragEntries1, ragEntries2...)
 
 						for _, entry := range allEntries {
@@ -1176,6 +1130,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						}
 
 						app.Log("chat", "Stage 3: Total RAG context items: %d", len(ragContext))
+						} // end if !skipRAG
 
 						// Stage 4: Inject real-time price data for financial queries
 						contentLowerForPrices := strings.ToLower(content)
