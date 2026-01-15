@@ -183,7 +183,15 @@ export FANAR_API_URL=https://api.fanar.qa  # Optional, this is the default
 
 When `FANAR_API_KEY` is set, Mu will use Fanar instead of Ollama.
 
-**Note:** Fanar has a rate limit of 10 requests per minute. Mu enforces this limit automatically.
+**Note:** Fanar has a rate limit of 10 requests per minute. Mu enforces this limit automatically and caches LLM responses to reduce redundant API calls.
+
+**Performance Optimization:**
+
+```
+export MU_LLM_CACHE_TTL=3600  # Cache LLM responses for 1 hour (default)
+```
+
+LLM response caching significantly improves app generation speed by caching responses for identical prompts. Subsequent requests for the same app (e.g., "todo app") return instantly from cache.
 
 **Anthropic Claude (Optional)**
 
@@ -227,6 +235,8 @@ Additional documentation is available in the [docs](docs/) folder:
 - [Environment Variables](docs/ENVIRONMENT_VARIABLES.md) - All configuration options
 - [Contextual Discussions](docs/CONTEXTUAL_DISCUSSIONS.md) - Chat context and discussion features
 - [Vector Search](docs/VECTOR_SEARCH.md) - Setting up vector embeddings for semantic search
+- [WASM/QuickJS Isolation](docs/WASM_QUICKJS_ISOLATION.md) - Analysis of WASM/QuickJS vs iframe isolation
+- [Fanar Performance](docs/FANAR_PERFORMANCE_IMPROVEMENTS.md) - Performance optimization strategies
 - [Screenshots](docs/SCREENSHOTS.md) - Application screenshots
 
 ## Development 
