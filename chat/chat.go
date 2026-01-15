@@ -228,6 +228,135 @@ func handlePatternMatch(content string, room *Room) string {
 	return "" // No pattern match
 }
 
+// isMoreInfoRequest checks if user is asking for more details about something
+func isMoreInfoRequest(content string) bool {
+	contentLower := strings.ToLower(content)
+	moreInfoPhrases := []string{
+		"more detail", "tell me more", "more info", "full article",
+		"read more", "expand on", "elaborate", "further info",
+		"what else", "anything else", "more about", "go deeper",
+		"full story", "complete story", "more information",
+		"can you explain more", "explain further", "dig deeper",
+	}
+	for _, phrase := range moreInfoPhrases {
+		if strings.Contains(contentLower, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// extractURLsFromContext finds URLs from recent RAG context or room
+func extractURLsFromContext(room *Room, ragContext []string) []string {
+	var urls []string
+	seen := make(map[string]bool)
+	
+	// Check room URL first
+	if room.URL != "" {
+		urls = append(urls, room.URL)
+		seen[room.URL] = true
+	}
+	
+	// Extract URLs from context strings (Source: url)
+	for _, ctx := range ragContext {
+		if idx := strings.Index(ctx, "(Source: "); idx != -1 {
+			end := strings.Index(ctx[idx:], ")")
+			if end != -1 {
+				url := ctx[idx+9 : idx+end]
+				if !seen[url] && strings.HasPrefix(url, "http") {
+					urls = append(urls, url)
+					seen[url] = true
+				}
+			}
+		}
+	}
+	
+	return urls
+}
+
+// fetchURLContent fetches and extracts text content from a URL
+func fetchURLContent(url string) (string, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MuBot/1.0)")
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	
+	// Extract text content (simple approach - strip HTML tags)
+	content := string(body)
+	
+	// Remove script and style tags with content
+	for _, tag := range []string{"script", "style", "noscript", "head"} {
+		for {
+			start := strings.Index(strings.ToLower(content), "<"+tag)
+			if start == -1 {
+				break
+			}
+			end := strings.Index(strings.ToLower(content[start:]), "</"+tag+">")
+			if end == -1 {
+				end = strings.Index(content[start:], ">")
+				if end != -1 {
+					content = content[:start] + content[start+end+1:]
+				} else {
+					break
+				}
+			} else {
+				content = content[:start] + content[start+end+len("</"+tag+">"):]
+			}
+		}
+	}
+	
+	// Remove remaining HTML tags
+	var result strings.Builder
+	inTag := false
+	for _, r := range content {
+		if r == '<' {
+			inTag = true
+		} else if r == '>' {
+			inTag = false
+			result.WriteRune(' ')
+		} else if !inTag {
+			result.WriteRune(r)
+		}
+	}
+	
+	// Clean up whitespace
+	text := result.String()
+	lines := strings.Split(text, "\n")
+	var cleanLines []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if len(line) > 20 { // Skip very short lines (likely nav elements)
+			cleanLines = append(cleanLines, line)
+		}
+	}
+	
+	text = strings.Join(cleanLines, "\n")
+	
+	// Limit to reasonable size
+	if len(text) > 8000 {
+		text = text[:8000] + "..."
+	}
+	
+	return text, nil
+}
+
 // getOrCreateRoom gets an existing room or creates a new one
 func getOrCreateRoom(id string) *Room {
 	start := time.Now()
@@ -976,6 +1105,34 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							}
 						}
 						room.mutex.RUnlock()
+
+						// Stage 5: Check if user wants more details - fetch full article
+						if isMoreInfoRequest(content) {
+							urls := extractURLsFromContext(room, ragContext)
+							if len(urls) > 0 {
+								app.Log("chat", "User asking for more info, fetching URL: %s", urls[0])
+								
+								// Send progress message
+								progressMsg := RoomMessage{
+									UserID:    "micro",
+									Content:   "Let me fetch the full article for you...",
+									Timestamp: time.Now(),
+									IsLLM:     true,
+								}
+								room.Broadcast <- progressMsg
+								
+								// Fetch the article content
+								articleContent, err := fetchURLContent(urls[0])
+								if err == nil && len(articleContent) > 100 {
+									// Prepend the full article content
+									fullArticle := fmt.Sprintf("FULL ARTICLE CONTENT from %s:\n\n%s", urls[0], articleContent)
+									ragContext = append([]string{fullArticle}, ragContext...)
+									app.Log("chat", "Fetched full article content: %d chars", len(articleContent))
+								} else {
+									app.Log("chat", "Failed to fetch article: %v", err)
+								}
+							}
+						}
 
 						prompt := &Prompt{
 							Rag:      ragContext,
