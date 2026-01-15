@@ -1213,16 +1213,21 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 									// Strategy 1: Extract likely named entities (capitalized words) for targeted search
 									words := strings.Fields(searchTopic)
 									var namedEntities []string
+									skipWords := map[string]bool{
+										"the": true, "this": true, "that": true, "here": true, "there": true,
+										"during": true, "however": true, "unfortunately": true, "certainly": true,
+										"regarding": true, "absolutely": true, "sure": true, "focusing": true,
+										"let": true, "recap": true, "clarify": true, "course": true, "know": true,
+										"far": true, "what": true, "beyond": true, "basic": true, "key": true,
+										"main": true, "central": true, "currently": true, "recent": true,
+										"here's": true, "it's": true, "hasn't": true, "doesn't": true, "isn't": true,
+									}
 									for _, word := range words {
 										// Skip common words, keep likely names/entities
 										cleanWord := strings.Trim(word, ".,!?;:'\"")
 										if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
-											// Skip common words that start with caps
 											lowerWord := strings.ToLower(cleanWord)
-											if lowerWord != "the" && lowerWord != "this" && lowerWord != "that" &&
-												lowerWord != "here" && lowerWord != "there" && lowerWord != "during" &&
-												lowerWord != "however" && lowerWord != "unfortunately" && lowerWord != "certainly" &&
-												lowerWord != "regarding" && lowerWord != "absolutely" && lowerWord != "sure" {
+											if !skipWords[lowerWord] {
 												namedEntities = append(namedEntities, cleanWord)
 											}
 										}
