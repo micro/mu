@@ -1299,6 +1299,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 								// Prepend the full article content
 								fullArticle := fmt.Sprintf("FULL ARTICLE CONTENT from %s:\n\n%s", urls[0], articleContent)
 								ragContext = append([]string{fullArticle}, ragContext...)
+								// Modify the question to tell LLM we already sent a progress message
+								content = content + "\n\n[Note: A progress message has already been shown to the user. Do not add any preamble like 'Let me provide...' - just give the information directly.]"
 								app.Log("chat", "Got full article content: %d chars", len(articleContent))
 							} else {
 								app.Log("chat", "Failed to get article: %v", err)
