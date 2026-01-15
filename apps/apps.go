@@ -1,10 +1,13 @@
 package apps
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -46,7 +49,17 @@ type App struct {
 var (
 	mutex sync.RWMutex
 	apps  []*App
+	
+	// LLM response cache to reduce redundant API calls
+	llmCache      sync.Map // map[string]cachedLLMResponse
+	llmCacheTTL   = 1 * time.Hour // Cache responses for 1 hour
 )
+
+// cachedLLMResponse stores a cached LLM response
+type cachedLLMResponse struct {
+	Code      string
+	Timestamp time.Time
+}
 
 // Load initializes the apps package
 func Load() {
@@ -55,6 +68,63 @@ func Load() {
 	
 	// Resume any stuck generations from previous run
 	resumeStuckGenerations()
+	
+	// Configure cache TTL from environment
+	if ttlStr := os.Getenv("MU_LLM_CACHE_TTL"); ttlStr != "" {
+		if ttl, err := time.ParseDuration(ttlStr + "s"); err == nil {
+			llmCacheTTL = ttl
+		}
+	}
+}
+
+// hashPrompt creates a deterministic hash of a prompt for caching
+func hashPrompt(systemPrompt, userPrompt string) string {
+	combined := systemPrompt + "|" + userPrompt
+	h := sha256.Sum256([]byte(combined))
+	return hex.EncodeToString(h[:])
+}
+
+// getCachedLLMResponse retrieves a cached LLM response if available and not expired
+func getCachedLLMResponse(systemPrompt, userPrompt string) (string, bool) {
+	hash := hashPrompt(systemPrompt, userPrompt)
+	if val, ok := llmCache.Load(hash); ok {
+		cached := val.(cachedLLMResponse)
+		// Check if cache entry is still valid
+		if time.Since(cached.Timestamp) < llmCacheTTL {
+			app.Log("apps", "LLM cache hit for prompt hash: %s", hash[:8])
+			return cached.Code, true
+		}
+		// Cache expired, delete it
+		llmCache.Delete(hash)
+		app.Log("apps", "LLM cache expired for prompt hash: %s", hash[:8])
+	}
+	return "", false
+}
+
+// cacheLLMResponse stores an LLM response in the cache
+func cacheLLMResponse(systemPrompt, userPrompt, code string) {
+	hash := hashPrompt(systemPrompt, userPrompt)
+	llmCache.Store(hash, cachedLLMResponse{
+		Code:      code,
+		Timestamp: time.Now(),
+	})
+	app.Log("apps", "LLM response cached for prompt hash: %s", hash[:8])
+}
+
+// clearExpiredLLMCache removes expired entries from the cache (can be called periodically)
+func clearExpiredLLMCache() {
+	count := 0
+	llmCache.Range(func(key, value interface{}) bool {
+		cached := value.(cachedLLMResponse)
+		if time.Since(cached.Timestamp) >= llmCacheTTL {
+			llmCache.Delete(key)
+			count++
+		}
+		return true
+	})
+	if count > 0 {
+		app.Log("apps", "Cleared %d expired LLM cache entries", count)
+	}
 }
 
 func loadApps() {
@@ -748,6 +818,11 @@ Use mu.cache for API responses to avoid fetching on every page load. Use mu.db f
 
 Generate the complete HTML file now:`
 
+	// Check cache first
+	if code, ok := getCachedLLMResponse(systemPrompt, prompt); ok {
+		return code, nil
+	}
+
 	llmPrompt := &chat.Prompt{
 		System:   systemPrompt,
 		Question: prompt,
@@ -766,6 +841,9 @@ Generate the complete HTML file now:`
 	if err := validateModifiedCode(response); err != nil {
 		return "", fmt.Errorf("LLM returned invalid code: %v", err)
 	}
+
+	// Cache the successful response
+	cacheLLMResponse(systemPrompt, prompt, response)
 
 	return response, nil
 }
@@ -1251,6 +1329,15 @@ Current code:
 
 Apply this modification and output the complete updated HTML file:`
 
+	// Create a cache key that includes both the current code and instruction
+	// This allows caching of identical modifications to the same code
+	cacheKey := hashPrompt(systemPrompt, instruction)
+	
+	// Check cache first
+	if code, ok := getCachedLLMResponse(systemPrompt, instruction); ok {
+		return code, nil
+	}
+
 	llmPrompt := &chat.Prompt{
 		System:   systemPrompt,
 		Question: instruction,
@@ -1269,6 +1356,12 @@ Apply this modification and output the complete updated HTML file:`
 	if err := validateModifiedCode(response); err != nil {
 		return "", fmt.Errorf("LLM returned invalid code: %v", err)
 	}
+
+	// Cache the successful response
+	cacheLLMResponse(systemPrompt, instruction, response)
+	
+	// Avoid "declared and not used" error
+	_ = cacheKey
 
 	return response, nil
 }
