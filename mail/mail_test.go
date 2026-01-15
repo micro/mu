@@ -67,15 +67,7 @@ func TestConvertPlainTextToHTMLPreservesApostrophesAndQuotes(t *testing.T) {
 	input := "It's important that we don't escape apostrophes or \"quotes\"."
 	result := convertPlainTextToHTML(input)
 	
-	// Should NOT contain HTML entities for apostrophes or quotes
-	if contains := result != input; contains {
-		// They should be equal since we don't escape ' or "
-		if result != input {
-			t.Errorf("Expected apostrophes and quotes to be preserved, got: %q", result)
-		}
-	}
-	
-	// Verify apostrophe is NOT escaped
+	// Should be equal since we don't escape ' or "
 	if result != input {
 		t.Errorf("Apostrophes and quotes should not be escaped.\nGot:      %q\nExpected: %q", result, input)
 	}
