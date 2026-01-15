@@ -247,15 +247,18 @@ func isMoreInfoRequest(content string) bool {
 }
 
 // extractURLsFromContext finds URLs from recent RAG context or room messages
+// Returns both external URLs (http/https) and internal URLs (/video, /news, etc.)
 func extractURLsFromContext(room *Room, ragContext []string) []string {
 	var urls []string
 	seen := make(map[string]bool)
 	
 	// Check room URL first
-	if room.URL != "" && strings.HasPrefix(room.URL, "http") {
-		urls = append(urls, room.URL)
-		seen[room.URL] = true
-		app.Log("chat", "extractURLs: found room URL: %s", room.URL)
+	if room.URL != "" {
+		if strings.HasPrefix(room.URL, "http") || strings.HasPrefix(room.URL, "/") {
+			urls = append(urls, room.URL)
+			seen[room.URL] = true
+			app.Log("chat", "extractURLs: found room URL: %s", room.URL)
+		}
 	}
 	
 	// Extract URLs from context strings (Source: url)
@@ -264,7 +267,7 @@ func extractURLsFromContext(room *Room, ragContext []string) []string {
 			end := strings.Index(ctx[idx:], ")")
 			if end != -1 {
 				url := ctx[idx+9 : idx+end]
-				if !seen[url] && strings.HasPrefix(url, "http") {
+				if !seen[url] && (strings.HasPrefix(url, "http") || strings.HasPrefix(url, "/")) {
 					urls = append(urls, url)
 					seen[url] = true
 					app.Log("chat", "extractURLs: found context URL: %s", url)
@@ -294,6 +297,37 @@ func extractURLsFromContext(room *Room, ragContext []string) []string {
 	
 	app.Log("chat", "extractURLs: total URLs found: %d", len(urls))
 	return urls
+}
+
+// getContentFromURL gets content from a URL - uses index for internal URLs, HTTP fetch for external
+func getContentFromURL(url string) (string, error) {
+	// Handle internal URLs by looking up in index
+	if strings.HasPrefix(url, "/") {
+		// Parse internal URL to get ID
+		// e.g., /video?id=xxx -> video_xxx, /news?id=xxx -> news_xxx
+		var entryID string
+		if strings.HasPrefix(url, "/video?id=") {
+			entryID = "video_" + strings.TrimPrefix(url, "/video?id=")
+		} else if strings.HasPrefix(url, "/news?id=") {
+			entryID = "news_" + strings.TrimPrefix(url, "/news?id=")
+		} else if strings.HasPrefix(url, "/post?id=") {
+			entryID = strings.TrimPrefix(url, "/post?id=")
+		}
+		
+		if entryID != "" {
+			entry := data.GetByID(entryID)
+			if entry != nil {
+				content := entry.Title + "\n\n" + entry.Content
+				app.Log("chat", "getContentFromURL: found internal content for %s (%d chars)", url, len(content))
+				return content, nil
+			}
+			app.Log("chat", "getContentFromURL: internal URL %s not found in index (tried ID: %s)", url, entryID)
+		}
+		return "", fmt.Errorf("internal URL not found: %s", url)
+	}
+	
+	// External URL - fetch via HTTP
+	return fetchURLContent(url)
 }
 
 // fetchURLContent fetches and extracts text content from a URL
@@ -1227,26 +1261,26 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							
 							app.Log("chat", "Stage 5: Found %d URLs in context", len(urls))
 							if len(urls) > 0 {
-								app.Log("chat", "User asking for more info, fetching URL: %s", urls[0])
+								app.Log("chat", "User asking for more info, getting content from: %s", urls[0])
 								
 								// Send progress message
 								progressMsg := RoomMessage{
 									UserID:    "micro",
-									Content:   "Let me fetch the full article for you...",
+									Content:   "Let me get the full article for you...",
 									Timestamp: time.Now(),
 									IsLLM:     true,
 								}
 								room.Broadcast <- progressMsg
 								
-								// Fetch the article content
-								articleContent, err := fetchURLContent(urls[0])
+								// Get the article content (internal lookup or external fetch)
+								articleContent, err := getContentFromURL(urls[0])
 								if err == nil && len(articleContent) > 100 {
 									// Prepend the full article content
 									fullArticle := fmt.Sprintf("FULL ARTICLE CONTENT from %s:\n\n%s", urls[0], articleContent)
 									ragContext = append([]string{fullArticle}, ragContext...)
-									app.Log("chat", "Fetched full article content: %d chars", len(articleContent))
+									app.Log("chat", "Got full article content: %d chars", len(articleContent))
 								} else {
-									app.Log("chat", "Failed to fetch article: %v", err)
+									app.Log("chat", "Failed to get article: %v", err)
 								}
 							}
 						}
