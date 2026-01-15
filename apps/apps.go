@@ -1013,7 +1013,7 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
     <a href="/apps/%s" style="margin-left: 10px;">Cancel</a>
   </div>
 </form>
-<iframe id="preview" class="preview-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+<iframe id="preview" class="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
 <script>
 function previewApp() {
   var code = document.getElementById('code-editor').value;
@@ -1405,7 +1405,7 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 
 <div class="develop-container">
   <div class="preview-section">
-    <iframe id="preview" class="preview-frame" sandbox="allow-scripts allow-same-origin" src="%s"></iframe>
+    <iframe id="preview" class="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms" src="%s"></iframe>
   </div>
   
   <form method="POST" class="instruction-section">
@@ -1546,7 +1546,7 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 <div class="app-info">%s · by %s · %s%s</div>
 %s
 <p>%s</p>
-<iframe class="app-frame" sandbox="allow-scripts allow-same-origin" src="/apps/%s/preview"></iframe>
+<iframe class="app-frame" sandbox="allow-scripts allow-same-origin allow-forms" src="/apps/%s/preview"></iframe>
 <p style="margin-top: 20px;"><a href="/apps">← Back to Apps</a></p>
 `, app.TimeAgo(a.UpdatedAt), html.EscapeString(a.Author), visibility, editLinks, widgetButton, html.EscapeString(description), a.ID)
 
