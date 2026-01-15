@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -167,28 +168,44 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		return nil, err
 	}
 
-	likeQuery := "%" + query + "%"
-	var rows *sql.Rows
-	var queryErr error
-
-	if options.Type != "" {
-		rows, queryErr = db.Query(`
-			SELECT id, type, title, content, metadata, indexed_at
-			FROM index_entries
-			WHERE (title LIKE ? OR content LIKE ?) AND type = ?
-			ORDER BY indexed_at DESC
-			LIMIT ?
-		`, likeQuery, likeQuery, options.Type, limit)
-	} else {
-		rows, queryErr = db.Query(`
-			SELECT id, type, title, content, metadata, indexed_at
-			FROM index_entries
-			WHERE title LIKE ? OR content LIKE ?
-			ORDER BY indexed_at DESC
-			LIMIT ?
-		`, likeQuery, likeQuery, limit)
+	// Split query into words and build WHERE clause that matches all words
+	words := strings.Fields(query)
+	if len(words) == 0 {
+		return nil, nil
 	}
 
+	// Build WHERE conditions: each word must appear in title OR content
+	var conditions []string
+	var args []interface{}
+	for _, word := range words {
+		if len(word) < 3 {
+			continue // Skip very short words
+		}
+		likeWord := "%" + word + "%"
+		conditions = append(conditions, "(title LIKE ? OR content LIKE ?)")
+		args = append(args, likeWord, likeWord)
+	}
+
+	if len(conditions) == 0 {
+		return nil, nil
+	}
+
+	whereClause := strings.Join(conditions, " AND ")
+	if options.Type != "" {
+		whereClause = "(" + whereClause + ") AND type = ?"
+		args = append(args, options.Type)
+	}
+	args = append(args, limit)
+
+	queryStr := fmt.Sprintf(`
+		SELECT id, type, title, content, metadata, indexed_at
+		FROM index_entries
+		WHERE %s
+		ORDER BY indexed_at DESC
+		LIMIT ?
+	`, whereClause)
+
+	rows, queryErr := db.Query(queryStr, args...)
 	if queryErr != nil {
 		return nil, queryErr
 	}
