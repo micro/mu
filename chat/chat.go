@@ -246,15 +246,16 @@ func isMoreInfoRequest(content string) bool {
 	return false
 }
 
-// extractURLsFromContext finds URLs from recent RAG context or room
+// extractURLsFromContext finds URLs from recent RAG context or room messages
 func extractURLsFromContext(room *Room, ragContext []string) []string {
 	var urls []string
 	seen := make(map[string]bool)
 	
 	// Check room URL first
-	if room.URL != "" {
+	if room.URL != "" && strings.HasPrefix(room.URL, "http") {
 		urls = append(urls, room.URL)
 		seen[room.URL] = true
+		app.Log("chat", "extractURLs: found room URL: %s", room.URL)
 	}
 	
 	// Extract URLs from context strings (Source: url)
@@ -266,11 +267,32 @@ func extractURLsFromContext(room *Room, ragContext []string) []string {
 				if !seen[url] && strings.HasPrefix(url, "http") {
 					urls = append(urls, url)
 					seen[url] = true
+					app.Log("chat", "extractURLs: found context URL: %s", url)
 				}
 			}
 		}
 	}
 	
+	// Also check recent room messages for URLs (in case user is discussing a specific item)
+	room.mutex.RLock()
+	for _, msg := range room.Messages {
+		// Look for http/https URLs in message content
+		words := strings.Fields(msg.Content)
+		for _, word := range words {
+			if strings.HasPrefix(word, "http://") || strings.HasPrefix(word, "https://") {
+				// Clean up punctuation at end
+				word = strings.TrimRight(word, ".,;:!?)")
+				if !seen[word] {
+					urls = append(urls, word)
+					seen[word] = true
+					app.Log("chat", "extractURLs: found message URL: %s", word)
+				}
+			}
+		}
+	}
+	room.mutex.RUnlock()
+	
+	app.Log("chat", "extractURLs: total URLs found: %d", len(urls))
 	return urls
 }
 
@@ -1107,8 +1129,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						room.mutex.RUnlock()
 
 						// Stage 5: Check if user wants more details - fetch full article
+						app.Log("chat", "Stage 5: checking isMoreInfoRequest for: %s", content)
 						if isMoreInfoRequest(content) {
+							app.Log("chat", "Stage 5: User IS asking for more info")
 							urls := extractURLsFromContext(room, ragContext)
+							app.Log("chat", "Stage 5: Found %d URLs in context", len(urls))
 							if len(urls) > 0 {
 								app.Log("chat", "User asking for more info, fetching URL: %s", urls[0])
 								
