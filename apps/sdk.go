@@ -15,7 +15,7 @@ import (
 const ThemeCSS = `
 <style id="mu-theme">
 :root {
-  /* Mu Design Tokens */
+  /* Mu Design Tokens (prefixed) */
   --mu-card-border: #e8e8e8;
   --mu-card-background: #ffffff;
   --mu-hover-background: #fafafa;
@@ -26,6 +26,14 @@ const ThemeCSS = `
   --mu-text-muted: #888;
   --mu-accent-color: #0d7377;
   --mu-accent-blue: #007bff;
+  
+  /* Non-prefixed aliases (for convenience) */
+  --accent-color: #0d7377;
+  --accent-blue: #007bff;
+  --text-primary: #1a1a1a;
+  --text-secondary: #555;
+  --text-muted: #888;
+  --border-color: #f0f0f0;
   
   --mu-spacing-xs: 4px;
   --mu-spacing-sm: 8px;
@@ -126,9 +134,16 @@ const SDK = `
     
     // Theme utilities
     theme: {
-      // Get CSS variable value
+      // Get CSS variable value (supports both 'accent-color' and 'accentColor')
       get(name) {
-        return getComputedStyle(document.documentElement).getPropertyValue('--mu-' + name).trim();
+        // Convert camelCase to kebab-case
+        const kebabName = name.replace(/([A-Z])/g, '-$1').toLowerCase();
+        // Try prefixed first, then non-prefixed
+        let value = getComputedStyle(document.documentElement).getPropertyValue('--mu-' + kebabName).trim();
+        if (!value) {
+          value = getComputedStyle(document.documentElement).getPropertyValue('--' + kebabName).trim();
+        }
+        return value;
       }
     },
     
