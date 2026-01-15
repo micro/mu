@@ -1017,40 +1017,49 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							}
 						}
 						if hasPronoun {
-							// Extract named entities from recent messages
+							// Extract likely person names from recent messages (consecutive capitalized words)
 							room.mutex.RLock()
-							var recentEntities []string
+							var personNames []string
 							skipWords := map[string]bool{
 								"the": true, "this": true, "that": true, "what": true, "when": true,
 								"where": true, "which": true, "who": true, "how": true, "why": true,
-								"yes": true, "sure": true, "here": true, "there": true,
+								"yes": true, "sure": true, "here": true, "there": true, "i": true,
+								"british": true, "brexit": true, "european": true, "union": true,
+								"party": true, "uk": true, "london": true, "reform": true, "over": true,
+								"recently": true, "meanwhile": true, "independence": true,
 							}
-							for i := len(room.Messages) - 1; i >= 0 && len(recentEntities) < 5; i-- {
+							for i := len(room.Messages) - 1; i >= 0 && len(personNames) < 2; i-- {
 								msg := room.Messages[i]
 								words := strings.Fields(msg.Content)
-								for _, word := range words {
-									cleanWord := strings.Trim(word, ".,!?;:'\"")
-									if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
-										if !skipWords[strings.ToLower(cleanWord)] {
-											// Check if it's a likely proper noun (not already in recentEntities)
-											found := false
-											for _, e := range recentEntities {
-												if e == cleanWord {
-													found = true
-													break
-												}
+								// Look for consecutive capitalized words (likely names)
+								for j := 0; j < len(words)-1; j++ {
+									w1 := strings.Trim(words[j], ".,!?;:'\"")
+									w2 := strings.Trim(words[j+1], ".,!?;:'\"")
+									if len(w1) > 2 && len(w2) > 2 &&
+										w1[0] >= 'A' && w1[0] <= 'Z' &&
+										w2[0] >= 'A' && w2[0] <= 'Z' &&
+										!skipWords[strings.ToLower(w1)] && !skipWords[strings.ToLower(w2)] {
+										name := w1 + " " + w2
+										found := false
+										for _, n := range personNames {
+											if n == name {
+												found = true
+												break
 											}
-											if !found {
-												recentEntities = append(recentEntities, cleanWord)
+										}
+										if !found {
+											personNames = append(personNames, name)
+											if len(personNames) >= 2 {
+												break
 											}
 										}
 									}
 								}
 							}
 							room.mutex.RUnlock()
-							if len(recentEntities) > 0 {
-								// Append entities to search query
-								searchContent = content + " " + strings.Join(recentEntities, " ")
+							if len(personNames) > 0 {
+								// Append just the person names to search
+								searchContent = content + " " + strings.Join(personNames, " ")
 								app.Log("chat", "Resolved pronouns, enriched search: %s", searchContent)
 							}
 						}
