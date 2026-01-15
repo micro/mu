@@ -1063,11 +1063,13 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 		action := r.FormValue("action")
 		instruction := strings.TrimSpace(r.FormValue("instruction"))
 		name := strings.TrimSpace(r.FormValue("name"))
+		summary := strings.TrimSpace(r.FormValue("summary"))
 		public := r.FormValue("public") == "on"
 
 		if name != "" {
 			a.Name = name
 		}
+		a.Summary = summary
 		a.Public = public
 
 		switch action {
@@ -1420,6 +1422,7 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
     
     <div class="meta-section">
       <label>Name: <input type="text" name="name" value="%s" %s></label>
+      <label>Summary: <input type="text" name="summary" value="%s" placeholder="Short description" maxlength="100" %s style="width: 250px;"></label>
       <div class="checkbox-group">
         <input type="checkbox" name="public" id="public" %s %s>
         <label for="public">Public</label>
@@ -1453,7 +1456,7 @@ document.getElementById('code-editor').addEventListener('keydown', function(e) {
 });
 </script>
 %s
-`, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), disabledAttr, pollingScript)
+`, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, html.EscapeString(a.Summary), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), disabledAttr, pollingScript)
 
 	w.Write([]byte(app.RenderHTML("Develop: "+a.Name, "Develop: "+a.Name, formHTML)))
 }
