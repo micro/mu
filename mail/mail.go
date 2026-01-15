@@ -341,19 +341,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		bodyPlain := strings.TrimSpace(r.FormValue("body_plain"))
 		bodyHTML := strings.TrimSpace(r.FormValue("body_html"))
 
-		// Fallback to "body" field for compose form (auto-convert to HTML)
+		// Fallback to "body" field for compose form
 		if bodyPlain == "" && bodyHTML == "" {
 			body := strings.TrimSpace(r.FormValue("body"))
 			if body != "" {
 				bodyPlain = body
-				// Convert plain text to HTML - only escape < > & to preserve special chars
-				// Don't escape quotes or apostrophes as they're safe in HTML content
-				bodyHTML = convertPlainTextToHTML(body)
 			}
 		}
 		replyTo := strings.TrimSpace(r.FormValue("reply_to"))
 
-		if to == "" || subject == "" || (bodyPlain == "" && bodyHTML == "") {
+		if to == "" || subject == "" || bodyPlain == "" {
 			http.Error(w, "All fields are required", http.StatusBadRequest)
 			return
 		}
@@ -370,19 +367,23 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
 			displayName := acc.Name
 
+			// Convert plain text to HTML only for the external email
+			// The HTML version has <br> for newlines and escapes dangerous chars
+			htmlBody := convertPlainTextToHTML(bodyPlain)
+
 			// Send multipart email with threading headers
-			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, bodyPlain, bodyHTML, replyTo)
+			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, bodyPlain, htmlBody, replyTo)
 			if err != nil {
 				http.Error(w, "Failed to send email: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			// Store HTML version in sent messages for the sender
-			if err := SendMessage(acc.Name, acc.ID, to, to, subject, bodyHTML, replyTo, messageID); err != nil {
+			// Store plain text in sent messages - render to HTML only at display time
+			if err := SendMessage(acc.Name, acc.ID, to, to, subject, bodyPlain, replyTo, messageID); err != nil {
 				app.Log("mail", "Warning: Failed to store sent message: %v", err)
 			}
 		} else {
-			// Internal message - store HTML version directly
+			// Internal message - store plain text, render at display time
 			toAcc, err := auth.GetAccount(to)
 			if err != nil {
 				http.Error(w, "Recipient not found", http.StatusNotFound)
@@ -390,7 +391,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			app.Log("mail", "Sending internal message from %s to %s with replyTo=%s", acc.Name, toAcc.Name, replyTo)
-			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, bodyHTML, replyTo, ""); err != nil {
+			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, bodyPlain, replyTo, ""); err != nil {
 				http.Error(w, "Failed to send message", http.StatusInternalServerError)
 				return
 			}
