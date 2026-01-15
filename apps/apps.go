@@ -6,6 +6,7 @@ import (
 	"html"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,21 +18,29 @@ import (
 	"mu/wallet"
 )
 
+// CodeVersion stores a previous version of app code
+type CodeVersion struct {
+	Code      string    `json:"code"`
+	Label     string    `json:"label"`      // What change was made
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // App represents a user-created micro app
 type App struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Summary     string    `json:"summary"`     // Short user-facing description (auto-generated, editable)
-	Description string    `json:"description"` // Prompt history (internal)
-	Code        string    `json:"code"`        // HTML/CSS/JS code
-	Author      string    `json:"author"`      // Display name
-	AuthorID    string    `json:"author_id"`   // User ID
-	Public      bool      `json:"public"`      // Whether app is publicly listed
-	Status      string    `json:"status"`      // "generating", "ready", "error"
-	Error       string    `json:"error"`       // Error message if generation failed
-	Retries     int       `json:"retries"`     // Number of generation retries
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          string        `json:"id"`
+	Name        string        `json:"name"`
+	Summary     string        `json:"summary"`      // Short user-facing description (auto-generated, editable)
+	Description string        `json:"description"`  // Prompt history (internal)
+	Code        string        `json:"code"`         // HTML/CSS/JS code
+	CodeHistory []CodeVersion `json:"code_history"` // Previous code versions (max 10)
+	Author      string        `json:"author"`       // Display name
+	AuthorID    string        `json:"author_id"`    // User ID
+	Public      bool          `json:"public"`       // Whether app is publicly listed
+	Status      string        `json:"status"`       // "generating", "ready", "error"
+	Error       string        `json:"error"`        // Error message if generation failed
+	Retries     int           `json:"retries"`      // Number of generation retries
+	CreatedAt   time.Time     `json:"created_at"`
+	UpdatedAt   time.Time     `json:"updated_at"`
 }
 
 var (
@@ -1102,6 +1111,13 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 			// Consume quota upfront for modification
 			wallet.ConsumeQuota(sess.Account, wallet.OpAppModify)
 
+			// Save current code to history before modification
+			previousCode := a.Code
+			previousLabel := "Before: " + instruction
+			if len(previousLabel) > 60 {
+				previousLabel = previousLabel[:57] + "..."
+			}
+
 			// Set status to generating and kick off async modification
 			mutex.Lock()
 			a.Status = "generating"
@@ -1111,7 +1127,7 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 
 			// Async modification
 			go func() {
-				modified, err := modifyAppCode(a.Code, instruction)
+				modified, err := modifyAppCode(previousCode, instruction)
 				
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -1120,6 +1136,15 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 					a.Status = "error"
 					a.Error = err.Error()
 				} else {
+					// Save to history before updating code (keep max 10 versions)
+					a.CodeHistory = append(a.CodeHistory, CodeVersion{
+						Code:      previousCode,
+						Label:     previousLabel,
+						CreatedAt: time.Now(),
+					})
+					if len(a.CodeHistory) > 10 {
+						a.CodeHistory = a.CodeHistory[len(a.CodeHistory)-10:]
+					}
 					a.Code = modified
 					a.Status = "ready"
 					// Append instruction to description history
@@ -1148,6 +1173,35 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 				return
 			}
 			http.Redirect(w, r, "/apps/"+id, 302)
+			return
+
+		case "revert":
+			// Revert to a previous version
+			versionStr := r.FormValue("version")
+			versionIdx, err := strconv.Atoi(versionStr)
+			if err != nil || versionIdx < 0 || versionIdx >= len(a.CodeHistory) {
+				renderDevelopForm(w, a, "Invalid version")
+				return
+			}
+			
+			// Save current code to history before reverting
+			mutex.Lock()
+			a.CodeHistory = append(a.CodeHistory, CodeVersion{
+				Code:      a.Code,
+				Label:     "Before revert",
+				CreatedAt: time.Now(),
+			})
+			if len(a.CodeHistory) > 10 {
+				a.CodeHistory = a.CodeHistory[len(a.CodeHistory)-10:]
+			}
+			// Restore the selected version
+			a.Code = a.CodeHistory[versionIdx].Code
+			a.Status = "ready"
+			a.UpdatedAt = time.Now()
+			saveApps()
+			mutex.Unlock()
+			
+			renderDevelopForm(w, a, "✓ Reverted to previous version")
 			return
 		}
 	}
@@ -1277,6 +1331,23 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 		historyHTML += `</ul></div>`
 	}
 
+	// Version history for reverting
+	versionHTML := ""
+	if len(a.CodeHistory) > 0 {
+		versionHTML = `<div class="version-history"><strong>Previous Versions:</strong><ul>`
+		// Show most recent first
+		for i := len(a.CodeHistory) - 1; i >= 0; i-- {
+			v := a.CodeHistory[i]
+			timeStr := v.CreatedAt.Format("Jan 2 15:04")
+			versionHTML += fmt.Sprintf(`<li>
+				<span class="version-label">%s</span>
+				<span class="version-time">%s</span>
+				<button type="submit" name="action" value="revert" class="revert-btn" onclick="this.form.version.value='%d'">Revert</button>
+			</li>`, html.EscapeString(v.Label), timeStr, i)
+		}
+		versionHTML += `</ul><input type="hidden" name="version" value=""></div>`
+	}
+
 	// Preview URL - use /preview endpoint to avoid escaping issues
 	previewURL := fmt.Sprintf("/apps/%s/preview", a.ID)
 	if isGenerating {
@@ -1358,6 +1429,42 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 .history li {
 	margin: 3px 0;
 }
+.version-history {
+	margin-top: 15px;
+	font-size: 13px;
+	color: #666;
+	padding-top: 15px;
+	border-top: 1px solid #eee;
+}
+.version-history ul {
+	margin: 5px 0 0 0;
+	padding: 0;
+	list-style: none;
+}
+.version-history li {
+	margin: 5px 0;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.version-label {
+	flex: 1;
+}
+.version-time {
+	color: #999;
+	font-size: 12px;
+}
+.revert-btn {
+	padding: 2px 8px;
+	font-size: 12px;
+	background: #f5f5f5;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	cursor: pointer;
+}
+.revert-btn:hover {
+	background: #eee;
+}
 .meta-section {
 	display: flex;
 	gap: 15px;
@@ -1415,6 +1522,7 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
     <a href="/apps/%s" style="margin-left: 15px;">Cancel</a>
     
     %s
+    %s
     
     <div class="meta-section">
       <label>Name: <input type="text" name="name" value="%s" %s></label>
@@ -1453,7 +1561,7 @@ document.getElementById('code-editor').addEventListener('keydown', function(e) {
 });
 </script>
 %s
-`, previewURL, messageHTML, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, html.EscapeString(a.Summary), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), disabledAttr, pollingScript)
+`, previewURL, messageHTML, disabledAttr, disabledAttr, a.ID, historyHTML, versionHTML, html.EscapeString(a.Name), disabledAttr, html.EscapeString(a.Summary), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), disabledAttr, pollingScript)
 
 	w.Write([]byte(app.RenderHTML("Develop: "+a.Name, "Develop: "+a.Name, formHTML)))
 }
