@@ -2315,11 +2315,13 @@ func renderDMARCReport(xmlData string) string {
 // convertPlainTextToHTML converts plain text to HTML for email
 // Only escapes < > & characters, preserves apostrophes and quotes for natural text
 func convertPlainTextToHTML(text string) string {
-	// Escape only the minimal set of characters needed for HTML safety
-	// < > & are dangerous, but ' and " are safe in HTML content
-	escaped := strings.ReplaceAll(text, "&", "&amp;")   // Must be first
-	escaped = strings.ReplaceAll(escaped, "<", "&lt;")
-	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
+	// Use html.EscapeString for proper escaping, then selectively unescape quotes and apostrophes
+	// This is more maintainable than manual escaping
+	escaped := html.EscapeString(text)
+	
+	// Unescape apostrophes and double quotes - they're safe in HTML content
+	escaped = strings.ReplaceAll(escaped, "&#39;", "'")
+	escaped = strings.ReplaceAll(escaped, "&#34;", "\"")
 	
 	// Convert newlines to <br> tags
 	escaped = strings.ReplaceAll(escaped, "\n", "<br>")
