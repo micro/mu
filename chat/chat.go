@@ -300,19 +300,17 @@ func extractURLsFromContext(room *Room, ragContext []string) []string {
 }
 
 // getContentFromURL gets content from a URL - uses index for internal URLs, HTTP fetch for external
-// For news items, if fetchSource is true, will try to fetch the original article
-func getContentFromURL(url string, fetchSource bool) (string, error) {
+// getContentFromURL gets content from a URL - uses index for internal URLs, HTTP fetch for external
+func getContentFromURL(url string) (string, error) {
 	// Handle internal URLs by looking up in index
 	if strings.HasPrefix(url, "/") {
 		// Parse internal URL to get ID
 		// e.g., /video?id=xxx -> video_xxx, /news?id=xxx -> news_xxx
 		var entryID string
-		var isNews bool
 		if strings.HasPrefix(url, "/video?id=") {
 			entryID = "video_" + strings.TrimPrefix(url, "/video?id=")
 		} else if strings.HasPrefix(url, "/news?id=") {
 			entryID = strings.TrimPrefix(url, "/news?id=")
-			isNews = true
 		} else if strings.HasPrefix(url, "/post?id=") {
 			entryID = strings.TrimPrefix(url, "/post?id=")
 		}
@@ -320,18 +318,6 @@ func getContentFromURL(url string, fetchSource bool) (string, error) {
 		if entryID != "" {
 			entry := data.GetByID(entryID)
 			if entry != nil {
-				// For news items, try to fetch the original article if requested
-				if isNews && fetchSource {
-					if sourceURL, ok := entry.Metadata["url"].(string); ok && sourceURL != "" {
-						app.Log("chat", "getContentFromURL: fetching source article from %s", sourceURL)
-						sourceContent, err := fetchURLContent(sourceURL)
-						if err == nil && len(sourceContent) > len(entry.Content) {
-							app.Log("chat", "getContentFromURL: got source article (%d chars vs %d indexed)", len(sourceContent), len(entry.Content))
-							return entry.Title + "\n\n" + sourceContent, nil
-						}
-						app.Log("chat", "getContentFromURL: source fetch failed or shorter, using index: %v", err)
-					}
-				}
 				content := entry.Title + "\n\n" + entry.Content
 				app.Log("chat", "getContentFromURL: found internal content for %s (%d chars)", url, len(content))
 				return content, nil
@@ -1292,9 +1278,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							}
 							room.Broadcast <- progressMsg
 							
-							// Get the article content (internal lookup or external fetch)
-							// Pass fetchSource=true to try to get the original article for news items
-							articleContent, err := getContentFromURL(urls[0], true)
+							// Get the article content from index (already parsed/summarized)
+							articleContent, err := getContentFromURL(urls[0])
 							if err == nil && len(articleContent) > 100 {
 								// Prepend the full article content
 								fullArticle := fmt.Sprintf("FULL ARTICLE CONTENT from %s:\n\n%s", urls[0], articleContent)
