@@ -71,8 +71,12 @@ func Load() {
 	
 	// Configure cache TTL from environment
 	if ttlStr := os.Getenv("MU_LLM_CACHE_TTL"); ttlStr != "" {
-		if ttl, err := time.ParseDuration(ttlStr + "s"); err == nil {
+		// Parse duration, expecting seconds as a number or duration string like "3600s", "1h"
+		if ttl, err := time.ParseDuration(ttlStr); err == nil {
 			llmCacheTTL = ttl
+		} else if seconds, err := strconv.Atoi(ttlStr); err == nil {
+			// Fallback: if it's just a number, treat as seconds
+			llmCacheTTL = time.Duration(seconds) * time.Second
 		}
 	}
 }
@@ -1329,10 +1333,6 @@ Current code:
 
 Apply this modification and output the complete updated HTML file:`
 
-	// Create a cache key that includes both the current code and instruction
-	// This allows caching of identical modifications to the same code
-	cacheKey := hashPrompt(systemPrompt, instruction)
-	
 	// Check cache first
 	if code, ok := getCachedLLMResponse(systemPrompt, instruction); ok {
 		return code, nil
@@ -1359,9 +1359,6 @@ Apply this modification and output the complete updated HTML file:`
 
 	// Cache the successful response
 	cacheLLMResponse(systemPrompt, instruction, response)
-	
-	// Avoid "declared and not used" error
-	_ = cacheKey
 
 	return response, nil
 }

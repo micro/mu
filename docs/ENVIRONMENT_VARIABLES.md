@@ -22,10 +22,10 @@ export MODEL_API_URL="http://localhost:11434"   # Default: http://localhost:1143
 
 ```bash
 # LLM response caching (reduces API calls for repeated prompts)
-export MU_LLM_CACHE_TTL="3600"  # Cache duration in seconds (default: 3600 = 1 hour)
+export MU_LLM_CACHE_TTL="3600"  # Cache duration: "3600" (seconds) or "1h" (duration format)
 ```
 
-**Note:** LLM response caching automatically caches app generation and modification requests, significantly reducing API calls and improving response times for similar prompts.
+**Note:** LLM response caching automatically caches app generation and modification requests, significantly reducing API calls and improving response times for similar prompts. Accepts either a number (seconds) or a Go duration string (e.g., "1h", "30m", "3600s").
 
 ## YouTube Configuration
 
@@ -179,7 +179,7 @@ export MAIL_SELECTOR="default"
 | `FANAR_API_URL` | `https://api.fanar.ai` | Fanar API endpoint |
 | `MODEL_NAME` | `llama3.2` | Ollama model name (if Fanar not configured) |
 | `MODEL_API_URL` | `http://localhost:11434` | Ollama API endpoint (also used for vector search embeddings) |
-| `MU_LLM_CACHE_TTL` | `3600` | LLM response cache duration in seconds |
+| `MU_LLM_CACHE_TTL` | `3600` | LLM response cache duration (seconds or Go duration like "1h") |
 | `YOUTUBE_API_KEY` | - | YouTube API key for video functionality |
 | `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |
 | `MAIL_DOMAIN` | `localhost` | Your domain for message addresses |
