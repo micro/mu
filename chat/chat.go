@@ -1139,11 +1139,14 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						if isMoreInfoRequest(content) {
 							app.Log("chat", "Stage 5: User IS asking for more info")
 							
-							// If we have no URLs from current RAG, search based on recent conversation
-							if len(ragContext) == 0 && len(recentTopics) > 0 {
+							// First check if we have any URLs in current context
+							urls := extractURLsFromContext(room, ragContext)
+							
+							// If no URLs found but we have recent topics, search based on conversation
+							if len(urls) == 0 && len(recentTopics) > 0 {
 								// Use the most recent AI response to search for relevant content
 								lastTopic := recentTopics[len(recentTopics)-1]
-								app.Log("chat", "Stage 5: No RAG context, searching based on recent topic: %s", lastTopic[:min(50, len(lastTopic))])
+								app.Log("chat", "Stage 5: No URLs in context, searching based on recent topic: %s", lastTopic[:min(50, len(lastTopic))])
 								
 								// Search for related content
 								topicEntries := data.Search(lastTopic, 5)
@@ -1159,9 +1162,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 									}
 									ragContext = append(ragContext, contextStr)
 								}
+								
+								// Re-extract URLs after adding topic search results
+								urls = extractURLsFromContext(room, ragContext)
 							}
 							
-							urls := extractURLsFromContext(room, ragContext)
 							app.Log("chat", "Stage 5: Found %d URLs in context", len(urls))
 							if len(urls) > 0 {
 								app.Log("chat", "User asking for more info, fetching URL: %s", urls[0])
