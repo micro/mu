@@ -222,7 +222,7 @@ var recentSearchesScript = `
 					saveRecentSearch(query);
 					
 					const queryInput = document.getElementById('query');
-					const form = item.closest('form') || document.querySelector('form');
+					const form = document.getElementById('video-search');
 					if (queryInput && form) {
 						queryInput.value = query;
 						form.submit();
