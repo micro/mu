@@ -1003,7 +1003,59 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							app.Log("chat", "Added room context: %s", roomContext)
 						} else {
 							app.Log("chat", "No room context available - Title: '%s', Summary: '%s'", room.Title, room.Summary)
-						} // Stage 1: Retrieve candidate results with snippets
+						}
+
+						// Resolve pronouns by extracting entities from recent conversation
+						searchContent := content
+						pronouns := []string{"him", "her", "them", "they", "it", "this", "that", "he", "she"}
+						contentLower := strings.ToLower(content)
+						hasPronoun := false
+						for _, p := range pronouns {
+							if strings.Contains(contentLower, " "+p+" ") || strings.HasSuffix(contentLower, " "+p) || strings.HasPrefix(contentLower, p+" ") {
+								hasPronoun = true
+								break
+							}
+						}
+						if hasPronoun {
+							// Extract named entities from recent messages
+							room.mutex.RLock()
+							var recentEntities []string
+							skipWords := map[string]bool{
+								"the": true, "this": true, "that": true, "what": true, "when": true,
+								"where": true, "which": true, "who": true, "how": true, "why": true,
+								"yes": true, "sure": true, "here": true, "there": true,
+							}
+							for i := len(room.Messages) - 1; i >= 0 && len(recentEntities) < 5; i-- {
+								msg := room.Messages[i]
+								words := strings.Fields(msg.Content)
+								for _, word := range words {
+									cleanWord := strings.Trim(word, ".,!?;:'\"")
+									if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
+										if !skipWords[strings.ToLower(cleanWord)] {
+											// Check if it's a likely proper noun (not already in recentEntities)
+											found := false
+											for _, e := range recentEntities {
+												if e == cleanWord {
+													found = true
+													break
+												}
+											}
+											if !found {
+												recentEntities = append(recentEntities, cleanWord)
+											}
+										}
+									}
+								}
+							}
+							room.mutex.RUnlock()
+							if len(recentEntities) > 0 {
+								// Append entities to search query
+								searchContent = content + " " + strings.Join(recentEntities, " ")
+								app.Log("chat", "Resolved pronouns, enriched search: %s", searchContent)
+							}
+						}
+
+						// Stage 1: Retrieve candidate results with snippets
 						seenIDs := make(map[string]bool)
 
 						// Exclude the current room's article from search results
@@ -1011,16 +1063,16 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						seenIDs[currentRoomID] = true
 
 						// Search 1: Question + title context for related content
-						searchQuery1 := content
+						searchQuery1 := searchContent
 						if room.Title != "" && room.Title != "News Discussion" && room.Title != "Post Discussion" && room.Title != "Video Discussion" {
-							searchQuery1 = room.Title + " " + content
+							searchQuery1 = room.Title + " " + searchContent
 						}
 						ragEntries1 := data.Search(searchQuery1, 10)
 						app.Log("chat", "Search 1 (title+question) for '%s' returned %d results", searchQuery1, len(ragEntries1))
 
 						// Search 2: Just the question to find directly relevant content
-						ragEntries2 := data.Search(content, 10)
-						app.Log("chat", "Search 2 (question only) for '%s' returned %d results", content, len(ragEntries2))
+						ragEntries2 := data.Search(searchContent, 10)
+						app.Log("chat", "Search 2 (question only) for '%s' returned %d results", searchContent, len(ragEntries2))
 
 						// Combine and deduplicate results, create snippets for reranking
 						type Candidate struct {
