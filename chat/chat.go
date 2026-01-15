@@ -1168,24 +1168,35 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						}
 
 						// Build conversation history from recent room messages
+						// Pair consecutive user/assistant messages for proper LLM context
 						var history History
 						var recentTopics []string // Track topics from recent messages for context
 						room.mutex.RLock()
 						app.Log("chat", "Building history from %d room messages", len(room.Messages))
+						
+						var currentPrompt string
 						for _, m := range room.Messages {
 							if m.IsLLM {
-								history = append(history, Message{Answer: m.Content})
+								// This is an AI response - pair it with the previous user prompt
+								if currentPrompt != "" {
+									history = append(history, Message{
+										Prompt: currentPrompt,
+										Answer: m.Content,
+									})
+									currentPrompt = ""
+								}
 								// Extract key phrases from AI responses for context
 								if len(m.Content) > 50 {
 									topicLen := min(200, len(m.Content))
 									recentTopics = append(recentTopics, m.Content[:topicLen])
 								}
 							} else {
-								history = append(history, Message{Prompt: m.UserID + ": " + m.Content})
+								// User message - save for pairing with next AI response
+								currentPrompt = m.UserID + ": " + m.Content
 							}
 						}
 						room.mutex.RUnlock()
-						app.Log("chat", "Built %d history items, %d recentTopics", len(history), len(recentTopics))
+						app.Log("chat", "Built %d history pairs, %d recentTopics", len(history), len(recentTopics))
 
 						// Stage 5: Check if user wants more details - fetch full article
 						app.Log("chat", "Stage 5: checking isMoreInfoRequest for: %s", content)
