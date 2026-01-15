@@ -1173,10 +1173,24 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 								}
 								
 								if searchTopic != "" {
-									app.Log("chat", "Stage 5: Searching based on topic: %s", searchTopic[:min(50, len(searchTopic))])
+									// Extract key terms from the topic for better search
+									// Take first 100 chars and let the search engine handle it
+									searchQuery := searchTopic
+									if len(searchQuery) > 100 {
+										searchQuery = searchQuery[:100]
+									}
+									app.Log("chat", "Stage 5: Searching based on topic: %s", searchQuery[:min(50, len(searchQuery))])
 									
 									// Search for related content
-									topicEntries := data.Search(searchTopic, 5)
+									topicEntries := data.Search(searchQuery, 5)
+									app.Log("chat", "Stage 5: Found %d entries from topic search", len(topicEntries))
+									
+									// If no results, try with just the room summary which likely has keywords
+									if len(topicEntries) == 0 && room.Summary != "" {
+										app.Log("chat", "Stage 5: Trying room summary search: %s", room.Summary[:min(50, len(room.Summary))])
+										topicEntries = data.Search(room.Summary, 5)
+										app.Log("chat", "Stage 5: Found %d entries from summary search", len(topicEntries))
+									}
 									app.Log("chat", "Stage 5: Found %d entries from topic search", len(topicEntries))
 									
 									for _, entry := range topicEntries {
