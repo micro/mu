@@ -1197,6 +1197,20 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						}
 						room.mutex.RUnlock()
 						app.Log("chat", "Built %d history pairs, %d recentTopics", len(history), len(recentTopics))
+						
+						// Debug: show last 2 history pairs
+						for i := max(0, len(history)-2); i < len(history); i++ {
+							promptSnippet := history[i].Prompt
+							if len(promptSnippet) > 100 {
+								promptSnippet = promptSnippet[:100] + "..."
+							}
+							answerSnippet := history[i].Answer
+							if len(answerSnippet) > 100 {
+								answerSnippet = answerSnippet[:100] + "..."
+							}
+							app.Log("chat", "[HISTORY %d] User: %s", i, promptSnippet)
+							app.Log("chat", "[HISTORY %d] Assistant: %s", i, answerSnippet)
+						}
 
 						// Stage 5: Check if user wants more details - fetch full article
 						app.Log("chat", "Stage 5: checking isMoreInfoRequest for: %s", content)
@@ -1748,13 +1762,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Search the index for relevant context (RAG)
-		// Search directly with the user's query to find best matches
 		ragEntries := data.Search(q, 5)
 		var ragContext []string
 		for _, entry := range ragEntries {
-			// Debug: Show raw entry
-			app.Log("chat", "[RAG DEBUG] Entry: Type=%s, Title=%s, Content=%s", entry.Type, entry.Title, entry.Content)
-
 			// Format each entry as context (600 chars to fit within 4096 token limit)
 			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
 			if len(contextStr) > 600 {
@@ -1773,12 +1783,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			for i, entry := range ragEntries {
 				app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
 			}
-			app.Log("chat", "[RAG] Context being sent to LLM:")
-			for i, ctx := range ragContext {
-				app.Log("chat", "  %d. %s", i+1, ctx)
-			}
-		} else {
-			app.Log("chat", "[RAG] Query: %s - NO RESULTS", q)
+		}
+
+		// Debug: Log conversation context being passed
+		app.Log("chat", "[POST] Conversation history has %d messages", len(context))
+		for i, msg := range context {
+			app.Log("chat", "[POST] History[%d] Q: %.50s... A: %.50s...", i, msg.Prompt, msg.Answer)
 		}
 
 		prompt := &Prompt{
