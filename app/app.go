@@ -659,8 +659,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Member</h3>
 <p style="font-size: 24px; font-weight: bold; margin: 10px 0;">£11<span style="font-size: 14px; font-weight: normal;">/month</span></p>
-<p>Unlimited searches</p>
-<p>Unlimited chat AI</p>
+<p><strong>Unlimited access</strong></p>
+<p>All features, no limits</p>
 <p>External email</p>`)
 	if isMember {
 		content.WriteString(`<p style="margin-top: 15px;">✓ You're a member</p>`)
