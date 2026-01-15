@@ -252,7 +252,7 @@ func CreateAppAsync(name, prompt, author, authorID string) (*App, error) {
 }
 
 // UpdateApp updates an existing app
-func UpdateApp(id, name, summary, description, code string, public bool, userID string) error {
+func UpdateApp(id, name, summary, description, code, status string, public bool, userID string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -267,6 +267,12 @@ func UpdateApp(id, name, summary, description, code string, public bool, userID 
 			a.Description = description
 			a.Code = code
 			a.Public = public
+			if status != "" {
+				a.Status = status
+				if status == "ready" {
+					a.Error = ""
+				}
+			}
 			a.UpdatedAt = time.Now()
 			return saveApps()
 		}
@@ -894,7 +900,7 @@ func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 			return
 		}
 
-		if err := UpdateApp(id, name, summary, promptText, code, public, sess.Account); err != nil {
+		if err := UpdateApp(id, name, summary, promptText, code, "", public, sess.Account); err != nil {
 			a.Name = name
 			a.Summary = summary
 			a.Description = promptText
@@ -1131,26 +1137,16 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 			return
 
 		case "save":
-			if err := UpdateApp(id, a.Name, a.Summary, a.Description, a.Code, a.Public, sess.Account); err != nil {
+			// Save all: name, summary, code, public, and reset status
+			code := r.FormValue("code")
+			if code != "" {
+				a.Code = code
+			}
+			if err := UpdateApp(id, a.Name, a.Summary, a.Description, a.Code, "ready", a.Public, sess.Account); err != nil {
 				renderDevelopForm(w, a, "Save failed: "+err.Error())
 				return
 			}
 			http.Redirect(w, r, "/apps/"+id, 302)
-			return
-
-		case "save_code":
-			// Save code from textarea (manual editing)
-			code := r.FormValue("code")
-			if code != "" {
-				a.Code = code
-				a.UpdatedAt = time.Now()
-				if err := UpdateApp(id, a.Name, a.Summary, a.Description, a.Code, a.Public, sess.Account); err != nil {
-					renderDevelopForm(w, a, "Save failed: "+err.Error())
-					return
-				}
-			}
-			// Redirect back to develop page to refresh preview
-			http.Redirect(w, r, "/apps/"+id+"/develop", 303)
 			return
 		}
 	}
@@ -1415,7 +1411,6 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
     %s
     <input type="text" name="instruction" class="instruction-input" placeholder="Describe what you want to change..." %s autofocus>
     <button type="submit" name="action" value="modify" %s>Apply Change</button>
-    <button type="submit" name="action" value="save" style="margin-left: 10px;" %s>Done</button>
     <a href="/apps/%s" style="margin-left: 15px;">Cancel</a>
     
     %s
@@ -1427,17 +1422,17 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
         <input type="checkbox" name="public" id="public" %s %s>
         <label for="public">Public</label>
       </div>
-      <button type="submit" name="action" value="save" %s>Save</button>
     </div>
     
     <details class="code-toggle">
       <summary>Show code</summary>
       <textarea class="code-editor" name="code" id="code-editor" %s>%s</textarea>
-      <div style="margin-top: 10px;">
-        <button type="submit" name="action" value="save_code" %s>Save Code</button>
-        <span style="margin-left: 10px; font-size: 13px; color: #666;">Save changes and refresh preview</span>
-      </div>
     </details>
+    
+    <div style="margin-top: 15px;">
+      <button type="submit" name="action" value="save" %s>Save</button>
+      <span style="margin-left: 10px; font-size: 13px; color: #666;">Save all changes</span>
+    </div>
   </form>
 </div>
 
@@ -1450,14 +1445,14 @@ document.getElementById('code-editor').addEventListener('keydown', function(e) {
     const input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'action';
-    input.value = 'save_code';
+    input.value = 'save';
     form.appendChild(input);
     form.submit();
   }
 });
 </script>
 %s
-`, previewURL, messageHTML, disabledAttr, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, html.EscapeString(a.Summary), disabledAttr, publicChecked, disabledAttr, disabledAttr, disabledAttr, html.EscapeString(a.Code), disabledAttr, pollingScript)
+`, previewURL, messageHTML, disabledAttr, disabledAttr, a.ID, historyHTML, html.EscapeString(a.Name), disabledAttr, html.EscapeString(a.Summary), disabledAttr, publicChecked, disabledAttr, disabledAttr, html.EscapeString(a.Code), disabledAttr, pollingScript)
 
 	w.Write([]byte(app.RenderHTML("Develop: "+a.Name, "Develop: "+a.Name, formHTML)))
 }
