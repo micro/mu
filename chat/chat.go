@@ -1761,28 +1761,44 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			topic = fmt.Sprintf("%v", t)
 		}
 
-		// Search the index for relevant context (RAG)
-		ragEntries := data.Search(q, 5)
+		// Skip RAG for follow-up queries - let LLM use conversation history
+		// RAG returns garbage for "what about him" and overrides good context
 		var ragContext []string
-		for _, entry := range ragEntries {
-			// Format each entry as context (600 chars to fit within 4096 token limit)
-			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-			if len(contextStr) > 600 {
-				contextStr = contextStr[:600] + "..."
+		qLower := strings.ToLower(q)
+		pronouns := []string{" him", " her", " them", " they", " it ", " this", " that", " he ", " she "}
+		isFollowUp := false
+		for _, p := range pronouns {
+			if strings.Contains(qLower, p) {
+				isFollowUp = true
+				break
 			}
-			if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-				contextStr += fmt.Sprintf(" (Source: %s)", url)
-			}
-			ragContext = append(ragContext, contextStr)
 		}
-
-		// Debug: Log what we found
-		if len(ragEntries) > 0 {
-			app.Log("chat", "[RAG] Query: %s", q)
-			app.Log("chat", "[RAG] Found %d entries:", len(ragEntries))
-			for i, entry := range ragEntries {
-				app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
+		
+		if !isFollowUp {
+			// Search the index for relevant context (RAG)
+			ragEntries := data.Search(q, 5)
+			for _, entry := range ragEntries {
+				// Format each entry as context (600 chars to fit within 4096 token limit)
+				contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+				if len(contextStr) > 600 {
+					contextStr = contextStr[:600] + "..."
+				}
+				if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+					contextStr += fmt.Sprintf(" (Source: %s)", url)
+				}
+				ragContext = append(ragContext, contextStr)
 			}
+
+			// Debug: Log what we found
+			if len(ragEntries) > 0 {
+				app.Log("chat", "[RAG] Query: %s", q)
+				app.Log("chat", "[RAG] Found %d entries:", len(ragEntries))
+				for i, entry := range ragEntries {
+					app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
+				}
+			}
+		} else {
+			app.Log("chat", "[POST] Skipping RAG for follow-up query: %s", q)
 		}
 
 		// Debug: Log conversation context being passed
