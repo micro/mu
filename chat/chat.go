@@ -1118,10 +1118,15 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 						// Build conversation history from recent room messages
 						var history History
+						var recentTopics []string // Track topics from recent messages for context
 						room.mutex.RLock()
 						for _, m := range room.Messages {
 							if m.IsLLM {
 								history = append(history, Message{Answer: m.Content})
+								// Extract key phrases from AI responses for context
+								if len(m.Content) > 50 {
+									recentTopics = append(recentTopics, m.Content[:200])
+								}
 							} else {
 								history = append(history, Message{Prompt: m.UserID + ": " + m.Content})
 							}
@@ -1132,6 +1137,29 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						app.Log("chat", "Stage 5: checking isMoreInfoRequest for: %s", content)
 						if isMoreInfoRequest(content) {
 							app.Log("chat", "Stage 5: User IS asking for more info")
+							
+							// If we have no URLs from current RAG, search based on recent conversation
+							if len(ragContext) == 0 && len(recentTopics) > 0 {
+								// Use the most recent AI response to search for relevant content
+								lastTopic := recentTopics[len(recentTopics)-1]
+								app.Log("chat", "Stage 5: No RAG context, searching based on recent topic: %s", lastTopic[:min(50, len(lastTopic))])
+								
+								// Search for related content
+								topicEntries := data.Search(lastTopic, 5)
+								app.Log("chat", "Stage 5: Found %d entries from topic search", len(topicEntries))
+								
+								for _, entry := range topicEntries {
+									contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+									if len(contextStr) > 600 {
+										contextStr = contextStr[:600] + "..."
+									}
+									if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+										contextStr += fmt.Sprintf(" (Source: %s)", url)
+									}
+									ragContext = append(ragContext, contextStr)
+								}
+							}
+							
 							urls := extractURLsFromContext(room, ragContext)
 							app.Log("chat", "Stage 5: Found %d URLs in context", len(urls))
 							if len(urls) > 0 {
