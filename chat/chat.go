@@ -1146,27 +1146,53 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							
 							// If no URLs found but we have recent topics, search based on conversation
 							if len(urls) == 0 && len(recentTopics) > 0 {
-								// Use the most recent AI response to search for relevant content
-								lastTopic := recentTopics[len(recentTopics)-1]
-								app.Log("chat", "Stage 5: No URLs in context, searching based on recent topic: %s", lastTopic[:min(50, len(lastTopic))])
+								// Find the best topic to search - prefer ones with named entities
+								// Start from most recent but skip generic responses
+								var searchTopic string
+								genericPhrases := []string{"at this time", "no additional", "for ongoing", "for continuous", "check established", "to clarify"}
 								
-								// Search for related content
-								topicEntries := data.Search(lastTopic, 5)
-								app.Log("chat", "Stage 5: Found %d entries from topic search", len(topicEntries))
-								
-								for _, entry := range topicEntries {
-									contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-									if len(contextStr) > 600 {
-										contextStr = contextStr[:600] + "..."
+								for i := len(recentTopics) - 1; i >= 0; i-- {
+									topic := recentTopics[i]
+									topicLower := strings.ToLower(topic)
+									isGeneric := false
+									for _, phrase := range genericPhrases {
+										if strings.Contains(topicLower, phrase) {
+											isGeneric = true
+											break
+										}
 									}
-									if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-										contextStr += fmt.Sprintf(" (Source: %s)", url)
+									if !isGeneric {
+										searchTopic = topic
+										break
 									}
-									ragContext = append(ragContext, contextStr)
 								}
 								
-								// Re-extract URLs after adding topic search results
-								urls = extractURLsFromContext(room, ragContext)
+								// If all topics seem generic, use the first one (likely has the original info)
+								if searchTopic == "" && len(recentTopics) > 0 {
+									searchTopic = recentTopics[0]
+								}
+								
+								if searchTopic != "" {
+									app.Log("chat", "Stage 5: Searching based on topic: %s", searchTopic[:min(50, len(searchTopic))])
+									
+									// Search for related content
+									topicEntries := data.Search(searchTopic, 5)
+									app.Log("chat", "Stage 5: Found %d entries from topic search", len(topicEntries))
+									
+									for _, entry := range topicEntries {
+										contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+										if len(contextStr) > 600 {
+											contextStr = contextStr[:600] + "..."
+										}
+										if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+											contextStr += fmt.Sprintf(" (Source: %s)", url)
+										}
+										ragContext = append(ragContext, contextStr)
+									}
+									
+									// Re-extract URLs after adding topic search results
+									urls = extractURLsFromContext(room, ragContext)
+								}
 							}
 							
 							app.Log("chat", "Stage 5: Found %d URLs in context", len(urls))
