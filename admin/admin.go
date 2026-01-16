@@ -13,22 +13,16 @@ import (
 // AdminHandler shows the admin page with user management
 func AdminHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if user is admin
-	sess, err := auth.GetSession(r)
+	_, acc, err := auth.RequireAdmin(r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil || !acc.Admin {
-		http.Error(w, "Forbidden - Admin access required", http.StatusForbidden)
+		app.Forbidden(w, r, "Admin access required")
 		return
 	}
 
 	// Handle POST requests for user management actions
 	if r.Method == "POST" {
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			app.BadRequest(w, r, "Failed to parse form")
 			return
 		}
 
@@ -36,13 +30,13 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		userID := r.FormValue("user_id")
 
 		if userID == "" {
-			http.Error(w, "User ID required", http.StatusBadRequest)
+			app.BadRequest(w, r, "User ID required")
 			return
 		}
 
 		targetUser, err := auth.GetAccount(userID)
 		if err != nil {
-			http.Error(w, "User not found", http.StatusNotFound)
+			app.NotFound(w, r, "User not found")
 			return
 		}
 

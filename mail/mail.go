@@ -264,15 +264,9 @@ func save() error {
 // - Threading: uses In-Reply-To and References headers, no quoted text bloat
 // - Display: emails shown as-is in thread view, full conversation visible
 func Handler(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusUnauthorized)
+		app.Unauthorized(w, r)
 		return
 	}
 
@@ -282,7 +276,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Handle POST - send message or delete
 	if r.Method == "POST" {
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			app.BadRequest(w, r, "Failed to parse form")
 			return
 		}
 
@@ -290,7 +284,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if r.FormValue("_method") == "DELETE" {
 			msgID := r.FormValue("id")
 			if err := DeleteMessage(msgID, acc.ID); err != nil {
-				http.Error(w, "Failed to delete message", http.StatusInternalServerError)
+				app.ServerError(w, r, "Failed to delete message")
 				return
 			}
 			// Redirect back to the thread if return_to is specified, otherwise inbox

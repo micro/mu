@@ -86,6 +86,52 @@ func RespondError(w http.ResponseWriter, status int, message string) {
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
+// Error writes an error response, using JSON if the client expects it, otherwise plain text
+func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
+	if WantsJSON(r) || SendsJSON(r) {
+		RespondError(w, status, message)
+		return
+	}
+	http.Error(w, message, status)
+}
+
+// Unauthorized writes a 401 error response
+func Unauthorized(w http.ResponseWriter, r *http.Request) {
+	Error(w, r, http.StatusUnauthorized, "Authentication required")
+}
+
+// Forbidden writes a 403 error response
+func Forbidden(w http.ResponseWriter, r *http.Request, message string) {
+	if message == "" {
+		message = "Forbidden"
+	}
+	Error(w, r, http.StatusForbidden, message)
+}
+
+// BadRequest writes a 400 error response
+func BadRequest(w http.ResponseWriter, r *http.Request, message string) {
+	if message == "" {
+		message = "Bad request"
+	}
+	Error(w, r, http.StatusBadRequest, message)
+}
+
+// NotFound writes a 404 error response
+func NotFound(w http.ResponseWriter, r *http.Request, message string) {
+	if message == "" {
+		message = "Not found"
+	}
+	Error(w, r, http.StatusNotFound, message)
+}
+
+// ServerError writes a 500 error response
+func ServerError(w http.ResponseWriter, r *http.Request, message string) {
+	if message == "" {
+		message = "Internal server error"
+	}
+	Error(w, r, http.StatusInternalServerError, message)
+}
+
 // Respond writes either JSON or HTML based on the Accept header
 // If resp.Data is provided, it will be used for JSON responses
 // If resp.HTML is provided, it will be wrapped in the page template for HTML responses

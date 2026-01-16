@@ -722,7 +722,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	// Require authentication for write mode
 	if showWriteForm {
 		if _, err := auth.GetSession(r); err != nil {
-			http.Error(w, "Authentication required to create blog posts", http.StatusUnauthorized)
+			app.Unauthorized(w, r)
 			return
 		}
 	}

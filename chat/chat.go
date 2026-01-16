@@ -1210,9 +1210,9 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 // handlePostChat handles POST /chat - send a chat message
 func handlePostChat(w http.ResponseWriter, r *http.Request) {
 	// Require authentication to send messages
-	sess, err := auth.GetSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
-		http.Error(w, "Authentication required to chat", http.StatusUnauthorized)
+		app.Unauthorized(w, r)
 		return
 	}
 

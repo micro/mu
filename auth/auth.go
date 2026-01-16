@@ -266,6 +266,50 @@ func GetSession(r *http.Request) (*Session, error) {
 	return nil, errors.New("session not found")
 }
 
+// RequireSession returns the session and account, or an error if not authenticated
+// This is a convenience function that combines GetSession and GetAccount
+func RequireSession(r *http.Request) (*Session, *Account, error) {
+	sess, err := GetSession(r)
+	if err != nil {
+		return nil, nil, errors.New("authentication required")
+	}
+
+	acc, err := GetAccount(sess.Account)
+	if err != nil {
+		return nil, nil, errors.New("account not found")
+	}
+
+	return sess, acc, nil
+}
+
+// RequireAdmin returns the session and account if the user is an admin, or an error
+func RequireAdmin(r *http.Request) (*Session, *Account, error) {
+	sess, acc, err := RequireSession(r)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if !acc.Admin {
+		return nil, nil, errors.New("admin access required")
+	}
+
+	return sess, acc, nil
+}
+
+// RequireMember returns the session and account if the user is a member or admin, or an error
+func RequireMember(r *http.Request) (*Session, *Account, error) {
+	sess, acc, err := RequireSession(r)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if !acc.Member && !acc.Admin {
+		return nil, nil, errors.New("member access required")
+	}
+
+	return sess, acc, nil
+}
+
 func ParseToken(tk string) (*Session, error) {
 	dec, err := base64.StdEncoding.DecodeString(tk)
 	if err != nil {
