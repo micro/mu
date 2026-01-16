@@ -94,15 +94,11 @@ See [/apps/docs](https://mu.xyz/apps/docs) for full SDK reference.
 
 Basic concepts. The app contains **cards** displayed on the home screen. These are a sort of summary or overview. Each card links to a **micro app** or an external website. For example the latest Video "more" links to the /video page with videos by channel and search, whereas the markets card redirects to an external app. 
 
-## Free Hosting
+## Hosting
 
-**Mu is free to use** at [mu.xyz](https://mu.xyz). Create an account and start using it immediately - no credit card required.
+**Mu is free to start**. See [mu.xyz](https://mu.xyz). Create an account and start using it immediately.
 
-## Paid Hosting
-
-Contact asim@mu.xyz or file an issue to discuss managed hosting.
-
-## Self Hosting
+### Self Hosting
 
 Ensure you have [Go](https://go.dev/doc/install) installed
 
