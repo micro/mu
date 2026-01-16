@@ -223,3 +223,11 @@ func GetConfiguredDomain() string {
 	}
 	return domain
 }
+
+// DKIMStatus returns the current DKIM configuration status
+func DKIMStatus() (enabled bool, domain, selector string) {
+	if dkimConfig == nil {
+		return false, "", ""
+	}
+	return true, dkimConfig.Domain, dkimConfig.Selector
+}

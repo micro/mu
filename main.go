@@ -102,6 +102,7 @@ func main() {
 		"/wallet":          true,  // Require auth for wallet
 		"/apps":            false, // Public viewing, auth for creating
 		"/agent":           true,  // Require auth for agent
+		"/status":          false, // Public - server health status
 	}
 
 	// Static assets should not require authentication
@@ -178,6 +179,10 @@ func main() {
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/session", app.Session)
 	http.HandleFunc("/token", app.TokenHandler)
+
+	// status page - public health check
+	app.DKIMStatusFunc = mail.DKIMStatus
+	http.HandleFunc("/status", app.StatusHandler)
 
 	// presence WebSocket endpoint
 	http.HandleFunc("/presence", user.PresenceHandler)
