@@ -399,7 +399,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	</div>`)
 
 	// Featured apps section (always show at top)
-	featuredIDs := []string{"1768488729487639148", "1768342273851959552", "1768342520623825814"} // todo, timer, expenses
+	featuredIDs := []string{"1768341615408024989", "1768342273851959552", "1768342520623825814"} // todo, timer, expenses
 	var featuredApps []*App
 	for _, id := range featuredIDs {
 		if a := GetApp(id); a != nil {
