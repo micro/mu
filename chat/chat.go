@@ -1132,190 +1132,193 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == "GET" {
-		// Check if JSON response is requested
-		isJSON := strings.Contains(r.Header.Get("Accept"), "application/json")
+	switch r.Method {
+	case "GET":
+		handleGetChat(w, r, roomID)
+	case "POST":
+		handlePostChat(w, r)
+	}
+}
 
-		// Get room data with timeout to prevent hanging
-		roomData := map[string]interface{}{}
-		if roomID != "" {
-			app.Log("chat", "GET request for room: %s", roomID)
-			type roomResult struct {
-				room *Room
-			}
-			resultChan := make(chan roomResult, 1)
-
-			go func() {
-				app.Log("chat", "Starting getOrCreateRoom for: %s", roomID)
-				room := getOrCreateRoom(roomID)
-				app.Log("chat", "getOrCreateRoom completed for: %s, room=%v", roomID, room != nil)
-				resultChan <- roomResult{room: room}
-			}()
-
-			select {
-			case result := <-resultChan:
-				if result.room != nil {
-					roomData["id"] = roomID
-					roomData["title"] = result.room.Title
-					roomData["summary"] = result.room.Summary
-					roomData["url"] = result.room.URL
-					roomData["isRoom"] = true
-					app.Log("chat", "Room data loaded for: %s", roomID)
-				} else {
-					app.Log("chat", "Room is nil for: %s", roomID)
-				}
-			case <-time.After(5 * time.Second):
-				app.Log("chat", "TIMEOUT creating room %s - likely blocked on data.GetByID()", roomID)
-				http.Error(w, "Room creation timeout - server may be busy indexing content. Please try again.", http.StatusRequestTimeout)
-				return
-			}
+// handleGetChat handles GET /chat - returns chat info as JSON or HTML
+func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
+	// Get room data with timeout to prevent hanging
+	roomData := map[string]interface{}{}
+	if roomID != "" {
+		app.Log("chat", "GET request for room: %s", roomID)
+		type roomResult struct {
+			room *Room
 		}
+		resultChan := make(chan roomResult, 1)
 
-		// Now acquire mutex only for reading chat config
-		mutex.RLock()
-		topicsData := topics
-		summariesData := summaries
-		mutex.RUnlock()
+		go func() {
+			app.Log("chat", "Starting getOrCreateRoom for: %s", roomID)
+			room := getOrCreateRoom(roomID)
+			app.Log("chat", "getOrCreateRoom completed for: %s, room=%v", roomID, room != nil)
+			resultChan <- roomResult{room: room}
+		}()
 
-		// Return JSON if requested
-		if isJSON {
-			w.Header().Set("Content-Type", "application/json")
-			response := map[string]interface{}{
-				"topics":    topicsData,
-				"summaries": summariesData,
+		select {
+		case result := <-resultChan:
+			if result.room != nil {
+				roomData["id"] = roomID
+				roomData["title"] = result.room.Title
+				roomData["summary"] = result.room.Summary
+				roomData["url"] = result.room.URL
+				roomData["isRoom"] = true
+				app.Log("chat", "Room data loaded for: %s", roomID)
+			} else {
+				app.Log("chat", "Room is nil for: %s", roomID)
 			}
-			if len(roomData) > 0 {
-				response["room"] = roomData
-			}
-			json.NewEncoder(w).Encode(response)
+		case <-time.After(5 * time.Second):
+			app.Log("chat", "TIMEOUT creating room %s - likely blocked on data.GetByID()", roomID)
+			http.Error(w, "Room creation timeout - server may be busy indexing content. Please try again.", http.StatusRequestTimeout)
 			return
 		}
+	}
 
-		// Return HTML
-		topicTabs := app.Head("chat", topicsData)
-		summariesJSON, _ := json.Marshal(summariesData)
-		roomJSON, _ := json.Marshal(roomData)
+	// Now acquire mutex only for reading chat config
+	mutex.RLock()
+	topicsData := topics
+	summariesData := summaries
+	mutex.RUnlock()
 
-		tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
-		tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var roomData = %s;</script></body>`, summariesJSON, roomJSON), 1)
-
-		w.Write([]byte(tmpl))
+	// Return JSON if requested
+	if app.WantsJSON(r) {
+		response := map[string]interface{}{
+			"topics":    topicsData,
+			"summaries": summariesData,
+		}
+		if len(roomData) > 0 {
+			response["room"] = roomData
+		}
+		app.RespondJSON(w, response)
 		return
 	}
 
-	if r.Method == "POST" {
-		// Require authentication to send messages
-		sess, err := auth.GetSession(r)
-		if err != nil {
-			http.Error(w, "Authentication required to chat", http.StatusUnauthorized)
+	// Return HTML
+	topicTabs := app.Head("chat", topicsData)
+	summariesJSON, _ := json.Marshal(summariesData)
+	roomJSON, _ := json.Marshal(roomData)
+
+	tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
+	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var roomData = %s;</script></body>`, summariesJSON, roomJSON), 1)
+
+	w.Write([]byte(tmpl))
+}
+
+// handlePostChat handles POST /chat - send a chat message
+func handlePostChat(w http.ResponseWriter, r *http.Request) {
+	// Require authentication to send messages
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Error(w, "Authentication required to chat", http.StatusUnauthorized)
+		return
+	}
+
+	form := make(map[string]interface{})
+
+	if app.SendsJSON(r) {
+		b, _ := ioutil.ReadAll(r.Body)
+		if len(b) == 0 {
 			return
 		}
 
-		form := make(map[string]interface{})
+		json.Unmarshal(b, &form)
 
-		if ct := r.Header.Get("Content-Type"); ct == "application/json" {
-			b, _ := ioutil.ReadAll(r.Body)
-			if len(b) == 0 {
-				return
-			}
-
-			json.Unmarshal(b, &form)
-
-			if form["prompt"] == nil {
-				return
-			}
-		} else {
-			// save the response
-			r.ParseForm()
-
-			// get the message
-			ctx := r.Form.Get("context")
-			msg := r.Form.Get("prompt")
-
-			if len(msg) == 0 {
-				return
-			}
-
-			// Limit prompt length to prevent abuse
-			if len(msg) > 500 {
-				http.Error(w, "Prompt must not exceed 500 characters", http.StatusBadRequest)
-				return
-			}
-
-			var ictx interface{}
-			json.Unmarshal([]byte(ctx), &ictx)
-			form["context"] = ictx
-			form["prompt"] = msg
+		if form["prompt"] == nil {
+			return
 		}
+	} else {
+		// save the response
+		r.ParseForm()
 
-		var context History
+		// get the message
+		ctx := r.Form.Get("context")
+		msg := r.Form.Get("prompt")
 
-		if vals := form["context"]; vals != nil {
-			cvals := vals.([]interface{})
-			// Keep only the last 3 messages to reduce context size and fit 4096 token limit
-			startIdx := 0
-			if len(cvals) > 3 {
-				startIdx = len(cvals) - 3
-			}
-			for _, val := range cvals[startIdx:] {
-				msg := val.(map[string]interface{})
-				prompt := fmt.Sprintf("%v", msg["prompt"])
-				answer := fmt.Sprintf("%v", msg["answer"])
-				context = append(context, Message{Prompt: prompt, Answer: answer})
-			}
-		}
-
-		q := fmt.Sprintf("%v", form["prompt"])
-
-		// Check if this is a direct message (starts with @username)
-		if strings.HasPrefix(strings.TrimSpace(q), "@") {
-			// Direct message - don't invoke LLM, just echo back
-			form["answer"] = "<p><em>Message sent. Direct messages are visible to everyone in this topic.</em></p>"
-
-			// if JSON request then respond with json
-			if ct := r.Header.Get("Content-Type"); ct == "application/json" {
-				b, _ := json.Marshal(form)
-				w.Header().Set("Content-Type", "application/json")
-				w.Write(b)
-				return
-			}
-
-			// Format a HTML response
-			messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
-			messages += fmt.Sprintf(`<div class="message"><span class="system">system</span><p>%v</p></div>`, form["answer"])
-
-			mutex.RLock()
-			topicTabs := app.Head("chat", topics)
-			mutex.RUnlock()
-
-			output := fmt.Sprintf(Template, topicTabs)
-			renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
-			renderHTML = strings.Replace(renderHTML, `<div id="messages"></div>`, fmt.Sprintf(`<div id="messages">%s</div>`, messages), 1)
-
-			w.Write([]byte(renderHTML))
+		if len(msg) == 0 {
 			return
 		}
 
-		// Check quota before LLM query
-		canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpChatQuery)
-		if !canProceed {
-			// Return quota exceeded response
-			if ct := r.Header.Get("Content-Type"); ct == "application/json" {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(402) // Payment Required
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"error":   "quota_exceeded",
-					"message": "Daily chat limit reached. Please top up credits or upgrade to member.",
-					"cost":    cost,
-				})
-				return
-			}
-			// HTML response
-			content := wallet.QuotaExceededPage(wallet.OpChatQuery, cost)
-			html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
-			w.Write([]byte(html))
+		// Limit prompt length to prevent abuse
+		if len(msg) > 500 {
+			http.Error(w, "Prompt must not exceed 500 characters", http.StatusBadRequest)
 			return
 		}
+
+		var ictx interface{}
+		json.Unmarshal([]byte(ctx), &ictx)
+		form["context"] = ictx
+		form["prompt"] = msg
+	}
+
+	var context History
+
+	if vals := form["context"]; vals != nil {
+		cvals := vals.([]interface{})
+		// Keep only the last 3 messages to reduce context size and fit 4096 token limit
+		startIdx := 0
+		if len(cvals) > 3 {
+			startIdx = len(cvals) - 3
+		}
+		for _, val := range cvals[startIdx:] {
+			msg := val.(map[string]interface{})
+			prompt := fmt.Sprintf("%v", msg["prompt"])
+			answer := fmt.Sprintf("%v", msg["answer"])
+			context = append(context, Message{Prompt: prompt, Answer: answer})
+		}
+	}
+
+	q := fmt.Sprintf("%v", form["prompt"])
+
+	// Check if this is a direct message (starts with @username)
+	if strings.HasPrefix(strings.TrimSpace(q), "@") {
+		// Direct message - don't invoke LLM, just echo back
+		form["answer"] = "<p><em>Message sent. Direct messages are visible to everyone in this topic.</em></p>"
+
+		// if JSON request then respond with json
+		if app.SendsJSON(r) {
+			app.RespondJSON(w, form)
+			return
+		}
+
+		// Format a HTML response
+		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
+		messages += fmt.Sprintf(`<div class="message"><span class="system">system</span><p>%v</p></div>`, form["answer"])
+
+		mutex.RLock()
+		topicTabs := app.Head("chat", topics)
+		mutex.RUnlock()
+
+		output := fmt.Sprintf(Template, topicTabs)
+		renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
+		renderHTML = strings.Replace(renderHTML, `<div id="messages"></div>`, fmt.Sprintf(`<div id="messages">%s</div>`, messages), 1)
+
+		w.Write([]byte(renderHTML))
+		return
+	}
+
+	// Check quota before LLM query
+	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpChatQuery)
+	if !canProceed {
+		// Return quota exceeded response
+		if app.SendsJSON(r) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(402) // Payment Required
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "quota_exceeded",
+				"message": "Daily chat limit reached. Please top up credits or upgrade to member.",
+				"cost":    cost,
+			})
+			return
+		}
+		// HTML response
+		content := wallet.QuotaExceededPage(wallet.OpChatQuery, cost)
+		html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
+		w.Write([]byte(html))
+		return
+	}
 
 		// Get topic for enhanced RAG
 		topic := ""
@@ -1421,10 +1424,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		form["answer"] = string(html)
 
 		// if JSON request then respond with json
-		if ct := r.Header.Get("Content-Type"); ct == "application/json" {
-			b, _ := json.Marshal(form)
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(b)
+		if app.SendsJSON(r) {
+			app.RespondJSON(w, form)
 			return
 		}
 
@@ -1441,7 +1442,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		renderHTML = strings.Replace(renderHTML, `<div id="messages"></div>`, fmt.Sprintf(`<div id="messages">%s</div>`, messages), 1)
 
 		w.Write([]byte(renderHTML))
-	}
 }
 
 // llmAnalyzer implements the admin.LLMAnalyzer interface

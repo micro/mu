@@ -1199,21 +1199,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// GET
+	// GET - return video feed
 
-	var b []byte
 	mutex.RLock()
-	if accept := r.Header.Get("Accept"); accept == "application/json" {
-		data := map[string]interface{}{
-			"channels": videos,
-		}
-
-		b, _ = json.Marshal(data)
-		w.Header().Set("Content-Type", "application/json")
-	} else {
-		b = []byte(videosHtml)
-	}
+	currentVideos := videos
+	currentHtml := videosHtml
 	mutex.RUnlock()
-	w.Write(b)
 
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{
+			"channels": currentVideos,
+		})
+		return
+	}
+
+	w.Write([]byte(currentHtml))
 }

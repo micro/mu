@@ -1928,86 +1928,20 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	ct := r.Header.Get("Content-Type")
-
 	// Handle viewing individual news article
 	if articleID := r.URL.Query().Get("id"); articleID != "" {
 		handleArticleView(w, r, articleID)
 		return
 	}
 
-	// Handle POST with JSON (API endpoint)
-	if r.Method == "POST" && ct == "application/json" {
-		// Require authentication for search
-		sess, err := auth.GetSession(r)
-		if err != nil {
-			http.Error(w, "Authentication required to search", http.StatusUnauthorized)
-			return
-		}
-
-		var reqData map[string]interface{}
-		b, _ := ioutil.ReadAll(r.Body)
-		json.Unmarshal(b, &reqData)
-
-		query := ""
-		if v := reqData["query"]; v != nil {
-			query = fmt.Sprintf("%v", v)
-		}
-
-		if query == "" {
-			http.Error(w, "query required", 400)
-			return
-		}
-
-		// Check quota before search
-		canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpNewsSearch)
-		if !canProceed {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(402) // Payment Required
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "quota_exceeded",
-				"message": "Daily search limit reached. Please top up credits or upgrade to member.",
-				"cost":    cost,
-			})
-			return
-		}
-
-		// Search indexed news articles with type filter
-		results := data.Search(query, 20, data.WithType("news"))
-
-		// Consume quota after successful search
-		wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
-
-		// Format results for JSON response
-		var articles []map[string]interface{}
-		for _, entry := range results {
-			article := map[string]interface{}{
-				"id":          entry.ID,
-				"title":       entry.Title,
-				"description": htmlToText(entry.Content),
-				"url":         entry.Metadata["url"],
-				"category":    entry.Metadata["category"],
-				"image":       entry.Metadata["image"],
-				"posted_at":   entry.Metadata["posted_at"],
-			}
-			articles = append(articles, article)
-		}
-
-		resp := map[string]interface{}{
-			"query":   query,
-			"results": articles,
-			"count":   len(articles),
-		}
-
-		b, _ = json.Marshal(resp)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
+	// Handle POST with JSON (API search)
+	if r.Method == "POST" && app.SendsJSON(r) {
+		handleAPISearch(w, r)
 		return
 	}
 
-	// Handle search query
-	query := r.URL.Query().Get("query")
-	if query != "" {
+	// Handle search query (HTML)
+	if query := r.URL.Query().Get("query"); query != "" {
 		// Require authentication for search
 		if _, err := auth.GetSession(r); err != nil {
 			http.Error(w, "Authentication required to search", http.StatusUnauthorized)
@@ -2023,29 +1957,98 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mutex.RLock()
-	hasContent := len(feed) > 0
-	mutex.RUnlock()
+	// GET news feed
+	handleGetFeed(w, r)
+}
 
-	if accept := r.Header.Get("Accept"); accept == "application/json" {
-		mutex.RLock()
-		resp := map[string]interface{}{
-			"feed": feed,
-		}
-		mutex.RUnlock()
-		b, _ := json.Marshal(resp)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
+// handleAPISearch handles POST /news with JSON body for search
+func handleAPISearch(w http.ResponseWriter, r *http.Request) {
+	sess, err := auth.GetSession(r)
+	if err != nil {
+		http.Error(w, "Authentication required to search", http.StatusUnauthorized)
 		return
 	}
 
-	// Generate HTML on-demand with fresh timestamps
-	body := newsBodyHtml // fallback to cached for initial load
+	var reqData map[string]interface{}
+	b, _ := ioutil.ReadAll(r.Body)
+	json.Unmarshal(b, &reqData)
+
+	query := ""
+	if v := reqData["query"]; v != nil {
+		query = fmt.Sprintf("%v", v)
+	}
+
+	if query == "" {
+		http.Error(w, "query required", 400)
+		return
+	}
+
+	// Check quota before search
+	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpNewsSearch)
+	if !canProceed {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(402) // Payment Required
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":   "quota_exceeded",
+			"message": "Daily search limit reached. Please top up credits or upgrade to member.",
+			"cost":    cost,
+		})
+		return
+	}
+
+	// Search indexed news articles with type filter
+	results := data.Search(query, 20, data.WithType("news"))
+
+	// Consume quota after successful search
+	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
+
+	// Format results for JSON response
+	var articles []map[string]interface{}
+	for _, entry := range results {
+		article := map[string]interface{}{
+			"id":          entry.ID,
+			"title":       entry.Title,
+			"description": htmlToText(entry.Content),
+			"url":         entry.Metadata["url"],
+			"category":    entry.Metadata["category"],
+			"image":       entry.Metadata["image"],
+			"posted_at":   entry.Metadata["posted_at"],
+		}
+		articles = append(articles, article)
+	}
+
+	app.RespondJSON(w, map[string]interface{}{
+		"query":   query,
+		"results": articles,
+		"count":   len(articles),
+	})
+}
+
+// handleGetFeed handles GET /news - returns feed as JSON or HTML
+func handleGetFeed(w http.ResponseWriter, r *http.Request) {
+	mutex.RLock()
+	currentFeed := feed
+	hasContent := len(feed) > 0
+	mutex.RUnlock()
+
+	// JSON response
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{
+			"feed": currentFeed,
+		})
+		return
+	}
+
+	// HTML response
+	body := newsBodyHtml
 	if hasContent {
 		body = generateNewsHtml()
 	}
-	renderedHtml := app.RenderHTMLForRequest("News", "Latest news headlines", body, r)
-	w.Write([]byte(renderedHtml))
+	app.Respond(w, r, app.Response{
+		Title:       "News",
+		Description: "Latest news headlines",
+		HTML:        body,
+	})
 }
 
 // formatSearchResult formats a single search result entry as HTML

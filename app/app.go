@@ -54,6 +54,53 @@ func Log(pkg string, format string, args ...interface{}) {
 	fmt.Printf(prefix+format+"\n", args...)
 }
 
+// Response holds data for responding in either JSON or HTML format
+type Response struct {
+	Data        interface{} // Data to serialize as JSON or pass to HTML renderer
+	HTML        string      // Pre-rendered HTML body (used when Data is nil for HTML)
+	Title       string      // Page title for HTML response
+	Description string      // Meta description for HTML response
+}
+
+// WantsJSON returns true if the request prefers JSON response
+func WantsJSON(r *http.Request) bool {
+	accept := r.Header.Get("Accept")
+	return strings.Contains(accept, "application/json")
+}
+
+// SendsJSON returns true if the request is sending JSON
+func SendsJSON(r *http.Request) bool {
+	return r.Header.Get("Content-Type") == "application/json"
+}
+
+// RespondJSON writes a JSON response
+func RespondJSON(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
+}
+
+// RespondError writes a JSON error response with the given status code
+func RespondError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+// Respond writes either JSON or HTML based on the Accept header
+// If resp.Data is provided, it will be used for JSON responses
+// If resp.HTML is provided, it will be wrapped in the page template for HTML responses
+func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
+	if WantsJSON(r) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp.Data)
+		return
+	}
+
+	// HTML response
+	html := RenderHTMLForRequest(resp.Title, resp.Description, resp.HTML, r)
+	w.Write([]byte(html))
+}
+
 //go:embed html/*
 var htmlFiles embed.FS
 

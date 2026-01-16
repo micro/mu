@@ -211,13 +211,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("balance") == "1" {
 		sess, err := auth.GetSession(r)
 		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]int{"balance": 0})
+			app.RespondJSON(w, map[string]int{"balance": 0})
 			return
 		}
 		balance := GetBalance(sess.Account)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]int{"balance": balance})
+		app.RespondJSON(w, map[string]int{"balance": balance})
 		return
 	}
 

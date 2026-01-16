@@ -678,8 +678,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// GET - return posts as JSON or HTML
+	handleGetBlog(w, r)
+}
+
+// handleGetBlog handles GET /blog - returns posts as JSON or HTML
+func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	// Return JSON if requested
-	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+	if app.WantsJSON(r) {
 		mutex.RLock()
 		// Check if user is a member/admin
 		isMember := false
@@ -702,8 +708,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		mutex.RUnlock()
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(visiblePosts)
+		app.RespondJSON(w, visiblePosts)
 		return
 	}
 
