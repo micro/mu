@@ -368,27 +368,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user is admin or member
-	isAdmin := false
-	isMember := false
-	sess, err := auth.GetSession(r)
-	if err == nil {
-		acc, err := auth.GetAccount(sess.Account)
-		if err == nil {
-			if acc.Admin {
-				isAdmin = true
-				isMember = true
-			}
-			if acc.Member {
-				isMember = true
-			}
-		}
-	}
-
-	// Only allow admin or member access
-	if !isMember {
-		http.Error(w, "Forbidden - Admin or Member access required", http.StatusForbidden)
+	_, acc, err := auth.RequireMember(r)
+	if err != nil {
+		app.Forbidden(w, r, "Admin or Member access required")
 		return
 	}
+
+	isAdmin := acc.Admin
 
 	flaggedItems := GetAll()
 
@@ -574,20 +560,14 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 	contentID := r.FormValue("id")
 
 	if contentID == "" || contentType == "" {
-		http.Error(w, "Content ID and type required", http.StatusBadRequest)
+		app.BadRequest(w, r, "Content ID and type required")
 		return
 	}
 
 	// Check if user is admin
-	sess, err := auth.GetSession(r)
+	_, _, err := auth.RequireAdmin(r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil || !acc.Admin {
-		http.Error(w, "Admin access required", http.StatusForbidden)
+		app.Forbidden(w, r, "Admin access required")
 		return
 	}
 

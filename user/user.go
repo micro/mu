@@ -203,15 +203,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle POST request for status update
 	if r.Method == "POST" {
-		sess, err := auth.GetSession(r)
+		sess, _, err := auth.RequireSession(r)
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			app.Unauthorized(w, r)
 			return
 		}
 
 		// Only allow updating own status
 		if sess.Account != username {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			app.Forbidden(w, r, "")
 			return
 		}
 

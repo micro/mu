@@ -26,7 +26,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	path = strings.TrimPrefix(path, "/")
 
 	// Get session (required)
-	sess, err := auth.GetSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login?redirect=/agent", 302)
 		return

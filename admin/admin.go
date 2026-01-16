@@ -154,22 +154,16 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 // BlocklistHandler shows and manages the mail blocklist
 func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if user is admin
-	sess, err := auth.GetSession(r)
+	_, _, err := auth.RequireAdmin(r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil || !acc.Admin {
-		http.Error(w, "Forbidden - Admin access required", http.StatusForbidden)
+		app.Forbidden(w, r, "Admin access required")
 		return
 	}
 
 	// Handle POST requests for blocklist actions
 	if r.Method == "POST" {
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			app.BadRequest(w, r, "Failed to parse form")
 			return
 		}
 

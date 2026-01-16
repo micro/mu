@@ -296,7 +296,7 @@ async function topup(amount) {
 }
 
 func handleWalletPage(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.Path), 302)
 		return
@@ -308,11 +308,9 @@ func handleWalletPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTopup(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(401)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Authentication required"})
+		app.RespondJSON(w, map[string]string{"error": "Authentication required"})
 		return
 	}
 
@@ -399,7 +397,7 @@ func handleTopup(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSuccess(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.RequestURI()), 302)
 		return
@@ -441,15 +439,9 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 
 // handleSubscribePage shows the subscription checkout page
 func handleSubscribePage(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.Path), 302)
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		http.Error(w, "Account not found", 404)
 		return
 	}
 
@@ -502,26 +494,14 @@ async function subscribe() {
 
 // handleSubscribe creates a Stripe subscription checkout session
 func handleSubscribe(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	sess, acc, err := auth.RequireSession(r)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(401)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Authentication required"})
+		app.RespondJSON(w, map[string]string{"error": "Authentication required"})
 		return
 	}
 
 	if !IsStripeConfigured() || StripeMembershipPrice == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Subscriptions not configured"})
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(404)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Account not found"})
+		app.RespondJSON(w, map[string]string{"error": "Subscriptions not configured"})
 		return
 	}
 
@@ -576,15 +556,9 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 
 // handleManageSubscription redirects to Stripe billing portal
 func handleManageSubscription(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.Path), 302)
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		http.Error(w, "Account not found", 404)
 		return
 	}
 

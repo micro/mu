@@ -839,15 +839,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("query")
 		if len(query) > 0 {
 			// Require authentication for search
-			sess, err := auth.GetSession(r)
+			sess, _, err := auth.RequireSession(r)
 			if err != nil {
-				http.Error(w, "Authentication required to search", http.StatusUnauthorized)
+				app.Unauthorized(w, r)
 				return
 			}
 
 			// Limit query length to prevent abuse
 			if len(query) > 256 {
-				http.Error(w, "Search query must not exceed 256 characters", http.StatusBadRequest)
+				app.BadRequest(w, r, "Search query must not exceed 256 characters")
 				return
 			}
 
@@ -879,9 +879,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// if r.Method == "POST" {
 	if r.Method == "POST" {
 		// Require authentication for search
-		sess, err := auth.GetSession(r)
+		sess, _, err := auth.RequireSession(r)
 		if err != nil {
-			http.Error(w, "Authentication required to search", http.StatusUnauthorized)
+			app.Unauthorized(w, r)
 			return
 		}
 

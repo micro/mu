@@ -1209,21 +1209,15 @@ var title, content, tags string
 		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
 
 		// Must be authenticated
-		sess, err := auth.GetSession(r)
+		_, acc, err := auth.RequireSession(r)
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		acc, err := auth.GetAccount(sess.Account)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			app.Unauthorized(w, r)
 			return
 		}
 
 		// Check if user is the author
 		if post.AuthorID != acc.ID {
-			http.Error(w, "Forbidden - you can only edit your own posts", http.StatusForbidden)
+			app.Forbidden(w, r, "You can only edit your own posts")
 			return
 		}
 
@@ -1291,26 +1285,20 @@ var title, content, tags string
 		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
 
 		// Must be authenticated
-		sess, err := auth.GetSession(r)
+		_, acc, err := auth.RequireSession(r)
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		acc, err := auth.GetAccount(sess.Account)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			app.Unauthorized(w, r)
 			return
 		}
 
 		// Check if user is the author
 		if post.AuthorID != acc.ID {
-			http.Error(w, "Forbidden - you can only delete your own posts", http.StatusForbidden)
+			app.Forbidden(w, r, "You can only delete your own posts")
 			return
 		}
 
 		if err := DeletePost(id); err != nil {
-			http.Error(w, "Failed to delete post", http.StatusInternalServerError)
+			app.ServerError(w, r, "Failed to delete post")
 			return
 		}
 
@@ -1336,21 +1324,15 @@ var title, content, tags string
 	// Check if edit mode is requested
 	if r.URL.Query().Get("edit") == "true" {
 		// Must be authenticated
-		sess, err := auth.GetSession(r)
+		_, acc, err := auth.RequireSession(r)
 		if err != nil {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
-		acc, err := auth.GetAccount(sess.Account)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
 		// Check if user is the author
 		if post.AuthorID != acc.ID {
-			http.Error(w, "Forbidden - you can only edit your own posts", http.StatusForbidden)
+			app.Forbidden(w, r, "You can only edit your own posts")
 			return
 		}
 
