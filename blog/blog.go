@@ -1314,7 +1314,7 @@ var title, content, tags string
 		// Must be authenticated
 		_, acc, err := auth.RequireSession(r)
 		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			app.RedirectToLogin(w, r)
 			return
 		}
 
@@ -1643,14 +1643,14 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		app.MethodNotAllowed(w, r)
 		return
 	}
 
 	// Require authentication
 	sess, acc, err := auth.RequireSession(r)
 	if err != nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		app.RedirectToLogin(w, r)
 		return
 	}
 	_ = sess // used for consistency

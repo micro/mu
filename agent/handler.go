@@ -28,7 +28,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Get session (required)
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
-		http.Redirect(w, r, "/login?redirect=/agent", 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
@@ -385,7 +385,7 @@ function formatMarkdown(text) {
 // handleRun executes an agent task
 func handleRun(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", 405)
+		app.MethodNotAllowed(w, r)
 		return
 	}
 
@@ -393,12 +393,12 @@ func handleRun(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 		Task string `json:"task"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", 400)
+		app.BadRequest(w, r, "Invalid request")
 		return
 	}
 
 	if req.Task == "" {
-		http.Error(w, "Task is required", 400)
+		app.BadRequest(w, r, "Task is required")
 		return
 	}
 

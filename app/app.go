@@ -132,6 +132,20 @@ func ServerError(w http.ResponseWriter, r *http.Request, message string) {
 	Error(w, r, http.StatusInternalServerError, message)
 }
 
+// RedirectToLogin redirects to login page with optional redirect back URL
+func RedirectToLogin(w http.ResponseWriter, r *http.Request) {
+	redirect := r.URL.Path
+	if r.URL.RawQuery != "" {
+		redirect += "?" + r.URL.RawQuery
+	}
+	http.Redirect(w, r, "/login?redirect="+url.QueryEscape(redirect), http.StatusSeeOther)
+}
+
+// MethodNotAllowed writes a 405 error response
+func MethodNotAllowed(w http.ResponseWriter, r *http.Request) {
+	Error(w, r, http.StatusMethodNotAllowed, "Method not allowed")
+}
+
 // Respond writes either JSON or HTML based on the Accept header
 // If resp.Data is provided, it will be used for JSON responses
 // If resp.HTML is provided, it will be wrapped in the page template for HTML responses

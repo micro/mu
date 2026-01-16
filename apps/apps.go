@@ -657,7 +657,7 @@ func renderAppCard(a *App, isOwner bool) string {
 
 func handleNew(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	if sess == nil {
-		http.Redirect(w, r, "/login?redirect=/apps/new", 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
@@ -849,18 +849,18 @@ func renderNewForm(w http.ResponseWriter, errMsg, name, prompt string) {
 
 func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
 	if sess == nil {
-		http.Redirect(w, r, "/login?redirect=/apps/"+id+"/edit", 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
 	a := GetApp(id)
 	if a == nil {
-		http.Error(w, "App not found", 404)
+		app.NotFound(w, r, "App not found")
 		return
 	}
 
 	if a.AuthorID != sess.Account {
-		http.Error(w, "Not authorized", 403)
+		app.Forbidden(w, r, "Not authorized")
 		return
 	}
 
@@ -1064,18 +1064,18 @@ func isBlockedContent(text string) bool {
 
 func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
 	if sess == nil {
-		http.Redirect(w, r, "/login?redirect=/apps/"+id+"/develop", 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
 	a := GetApp(id)
 	if a == nil {
-		http.Error(w, "App not found", 404)
+		app.NotFound(w, r, "App not found")
 		return
 	}
 
 	if a.AuthorID != sess.Account {
-		http.Error(w, "Not authorized", 403)
+		app.Forbidden(w, r, "Not authorized")
 		return
 	}
 
@@ -1610,14 +1610,14 @@ document.getElementById('code-editor').addEventListener('keydown', function(e) {
 func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
 	a := GetApp(id)
 	if a == nil {
-		http.Error(w, "App not found", 404)
+		app.NotFound(w, r, "App not found")
 		return
 	}
 
 	// Check access
 	if !a.Public {
 		if sess == nil || sess.Account != a.AuthorID {
-			http.Error(w, "Not authorized", 403)
+			app.Forbidden(w, r, "Not authorized")
 			return
 		}
 	}
@@ -1861,7 +1861,7 @@ body {
 func handlePreview(w http.ResponseWriter, r *http.Request, id string) {
 	a := GetApp(id)
 	if a == nil {
-		http.Error(w, "App not found", 404)
+		app.NotFound(w, r, "App not found")
 		return
 	}
 
@@ -1887,13 +1887,13 @@ func handlePreview(w http.ResponseWriter, r *http.Request, id string) {
 func handleEmbed(w http.ResponseWriter, r *http.Request, id string) {
 	a := GetApp(id)
 	if a == nil {
-		http.Error(w, "App not found", 404)
+		app.NotFound(w, r, "App not found")
 		return
 	}
 
 	// Only public apps can be embedded
 	if !a.Public {
-		http.Error(w, "App is not public", 403)
+		app.Forbidden(w, r, "App is not public")
 		return
 	}
 
@@ -1940,12 +1940,12 @@ func handleStatus(w http.ResponseWriter, r *http.Request, id string) {
 
 func handleDelete(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
 	if sess == nil {
-		http.Redirect(w, r, "/login", 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
 	if err := DeleteApp(id, sess.Account); err != nil {
-		http.Error(w, err.Error(), 400)
+		app.BadRequest(w, r, err.Error())
 		return
 	}
 
@@ -1955,25 +1955,25 @@ func handleDelete(w http.ResponseWriter, r *http.Request, sess *auth.Session, id
 // handleWidget adds or removes an app from user's home widgets
 func handleWidget(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
 	if sess == nil {
-		http.Redirect(w, r, "/login", 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
 	a := GetApp(id)
 	if a == nil {
-		http.Error(w, "App not found", 404)
+		app.NotFound(w, r, "App not found")
 		return
 	}
 
 	// App must be public or owned by user
 	if !a.Public && a.AuthorID != sess.Account {
-		http.Error(w, "App is not public", 403)
+		app.Forbidden(w, r, "App is not public")
 		return
 	}
 
 	acc, err := auth.GetAccount(sess.Account)
 	if err != nil {
-		http.Error(w, "Account not found", 500)
+		app.ServerError(w, r, "Account not found")
 		return
 	}
 
@@ -1995,7 +1995,7 @@ func handleWidget(w http.ResponseWriter, r *http.Request, sess *auth.Session, id
 	if action == "add" && !hasWidget {
 		// Limit to 5 widgets max
 		if len(newWidgets) >= 5 {
-			http.Error(w, "Maximum 5 widgets allowed", 400)
+			app.BadRequest(w, r, "Maximum 5 widgets allowed")
 			return
 		}
 		newWidgets = append(newWidgets, id)

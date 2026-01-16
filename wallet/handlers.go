@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -246,7 +245,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func handleTopupPage(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
-		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.Path), 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
@@ -298,7 +297,7 @@ async function topup(amount) {
 func handleWalletPage(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
-		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.Path), 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
@@ -399,7 +398,7 @@ func handleTopup(w http.ResponseWriter, r *http.Request) {
 func handleSuccess(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
-		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.RequestURI()), 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
@@ -441,7 +440,7 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 func handleSubscribePage(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.Path), 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
@@ -558,7 +557,7 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 func handleManageSubscription(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.Path), 302)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
