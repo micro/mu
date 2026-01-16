@@ -1,5 +1,168 @@
 # Mu Development Notes
 
+## Architecture Evolution Plan
+
+### Current State (January 2026)
+
+Single-process Go monolith (~23K lines) running all services:
+
+| Package | Lines | Description |
+|---------|-------|-------------|
+| apps | 2052 | AI micro app builder |
+| news | 2251 | RSS aggregator with AI summary |
+| blog | 1693 | Community blog |
+| chat | 1500 | AI chat with multiple models |
+| video | 1217 | YouTube-style video feed |
+| mail | 1208 | Email with SMTP, DKIM, PGP |
+| app | 1089 | Core utilities, HTML rendering |
+| data | 871 | SQLite + vector search |
+| smtp | 851 | Inbound SMTP server |
+| wallet | 768 | Credits and payments |
+| auth | 582 | Sessions, accounts, presence |
+| agent | 470 | AI coding agent |
+
+**Current limitations:**
+- Single point of failure
+- Memory pressure from all services
+- Can't scale individual components
+- Deployment requires full restart
+- Testing requires full app context
+
+### Phase 1: Internal Modularization (Now)
+
+**Goal:** Clean boundaries without infrastructure changes
+
+1. **Service Interfaces** - Define contracts between packages
+   ```go
+   // Each service exposes a minimal interface
+   type MailService interface {
+       Send(msg Message) error
+       GetInbox(userID string) []Thread
+       GetUnread(userID string) int
+   }
+   ```
+
+2. **Event Bus** - Decouple cross-service communication
+   ```go
+   // Instead of direct calls
+   events.Publish("user.signup", user)
+   events.Publish("mail.received", msg)
+   events.Subscribe("user.signup", sendWelcomeEmail)
+   ```
+
+3. **Data Isolation** - Each service owns its data
+   - `mail.json` → only mail package reads/writes
+   - `apps.json` → only apps package reads/writes
+   - Shared data through explicit APIs
+
+4. **Configuration** - Centralized config loading
+   ```go
+   type Config struct {
+       Mail   MailConfig
+       SMTP   SMTPConfig
+       Chat   ChatConfig
+       // ...
+   }
+   ```
+
+### Phase 2: Optional Process Separation
+
+**Goal:** Run heavy services separately when needed
+
+```
+┌─────────────────────────────────────────┐
+│              mu (main)                  │
+│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐       │
+│  │auth │ │blog │ │video│ │home │       │
+│  └─────┘ └─────┘ └─────┘ └─────┘       │
+└─────────────────────────────────────────┘
+         │ gRPC/HTTP │
+         ▼           ▼
+┌─────────────┐  ┌─────────────┐
+│  mu-mail    │  │  mu-chat    │
+│  (SMTP+API) │  │  (AI+WS)    │
+└─────────────┘  └─────────────┘
+```
+
+**Candidates for separation:**
+1. **mail** - SMTP server is long-running, independent
+2. **chat** - AI calls are expensive, can scale separately
+3. **apps** - AI generation is CPU/memory intensive
+4. **data** - Vector indexing could be background worker
+
+**Implementation:**
+```go
+// Build separate binaries
+// cmd/mu/main.go        - main web server
+// cmd/mu-mail/main.go   - mail service
+// cmd/mu-chat/main.go   - chat service
+
+// Services communicate via:
+// 1. HTTP API (simple, works now)
+// 2. gRPC (efficient, typed)
+// 3. Unix socket (same-host, fast)
+```
+
+### Phase 3: Horizontal Scaling (Future)
+
+**Only if needed for traffic/load:**
+
+```
+                    ┌─────────────┐
+                    │   Caddy     │
+                    │  (reverse)  │
+                    └──────┬──────┘
+           ┌───────────────┼───────────────┐
+           ▼               ▼               ▼
+      ┌─────────┐    ┌─────────┐    ┌─────────┐
+      │  mu-1   │    │  mu-2   │    │  mu-3   │
+      └────┬────┘    └────┬────┘    └────┬────┘
+           │              │              │
+           └──────────────┼──────────────┘
+                          ▼
+                   ┌─────────────┐
+                   │   SQLite    │
+                   │  (Litestream)│
+                   └─────────────┘
+```
+
+**Requirements:**
+- Stateless web handlers (sessions in DB/Redis)
+- Shared storage (SQLite with Litestream, or Postgres)
+- Load balancer (Caddy already handles this)
+
+### Recommended Immediate Actions
+
+1. **Keep monolith for now** - It works, it's simple
+2. **Continue refactoring large files** - mail.go done, next: apps.go, news.go
+3. **Add service interfaces** - Prepare for future separation
+4. **Extract SMTP** - Most independent component, good first candidate
+
+### File Structure Evolution
+
+```
+mu/
+├── cmd/
+│   ├── mu/main.go           # Main server
+│   ├── mu-mail/main.go      # Mail service (optional)
+│   └── mu-worker/main.go    # Background jobs (optional)
+├── internal/
+│   ├── auth/                # Authentication
+│   ├── mail/                # Mail logic
+│   │   ├── handler.go       # HTTP handlers
+│   │   ├── smtp.go          # SMTP server
+│   │   ├── service.go       # Business logic
+│   │   └── store.go         # Data persistence
+│   └── ...
+├── pkg/
+│   ├── events/              # Event bus
+│   └── config/              # Configuration
+└── api/
+    └── proto/               # gRPC definitions (if needed)
+```
+
+---
+
 ## Deployment
 
 - Production server: mu.xyz

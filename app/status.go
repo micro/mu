@@ -247,8 +247,8 @@ func renderStatusHTML(status StatusResponse) string {
 	}
 
 	sb.WriteString(`<style>
-.status-page { max-width: 600px; margin: 0 auto; }
-.status-header { text-align: center; margin-bottom: 30px; }
+.status-page { max-width: 600px; }
+.status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 30px; }
 .status-ok { color: #4caf50; }
 .status-error { color: #f44336; }
 .status-warn { color: #ff9800; }
@@ -270,8 +270,8 @@ func renderStatusHTML(status StatusResponse) string {
 
 	// Header
 	sb.WriteString(fmt.Sprintf(`<div class="status-header">
-<div class="%s" style="font-size: 48px;">%s</div>
-<div style="font-size: 24px; margin-top: 10px;">%s</div>
+<span class="%s status-icon">%s</span>
+<span style="font-size: 18px;">%s</span>
 </div>`, statusClass, statusIcon, statusText))
 
 	// System Info
