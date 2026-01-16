@@ -1127,8 +1127,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		thumbnailURL := "https://img.youtube.com/vi/" + id + "/maxresdefault.jpg"
 
 		// Check if user is authenticated
-		sess, err := auth.GetSession(r)
-		isGuest := err != nil
+		sess, _ := auth.TrySession(r)
+		isGuest := sess == nil
 
 		// For guests: show thumbnail with options to login or go to YouTube
 		if isGuest {

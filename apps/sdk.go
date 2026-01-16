@@ -233,7 +233,7 @@ func HandleAPIRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user session
-	sess, _ := auth.GetSession(r)
+	sess, _ := auth.TrySession(r)
 	var userID string
 	if sess != nil {
 		userID = sess.Account

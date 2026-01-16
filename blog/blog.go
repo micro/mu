@@ -688,12 +688,8 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	if app.WantsJSON(r) {
 		mutex.RLock()
 		// Check if user is a member/admin
-		isMember := false
-		if sess, err := auth.GetSession(r); err == nil {
-			if acc, err := auth.GetAccount(sess.Account); err == nil {
-				isMember = acc.Member || acc.Admin
-			}
-		}
+		_, acc := auth.TrySession(r)
+		isMember := acc != nil && (acc.Member || acc.Admin)
 		
 		// Filter out flagged posts and private posts (unless member)
 		var visiblePosts []*Post
@@ -721,7 +717,8 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 
 	// Require authentication for write mode
 	if showWriteForm {
-		if _, err := auth.GetSession(r); err != nil {
+		_, acc := auth.TrySession(r)
+		if acc == nil {
 			app.Unauthorized(w, r)
 			return
 		}
@@ -844,21 +841,19 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Show posts list with conditional write link
 		var actions string
-		if sess, err := auth.GetSession(r); err == nil {
-			// Get account to check member/admin status
-			if acc, err := auth.GetAccount(sess.Account); err == nil && (acc.Member || acc.Admin) {
-				// User is authenticated and is a member or admin, show write and moderate links
-				actions = `<div style="margin-bottom: 15px;">
-					<a href="/blog?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
-					<span style="margin: 0 8px; color: #ccc;">·</span>
-					<a href="/admin/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
-				</div>`
-			} else if err == nil {
-				// User is authenticated but not a member or admin, show only write link
-				actions = `<div style="margin-bottom: 15px;">
-					<a href="/blog?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
-				</div>`
-			}
+		_, acc := auth.TrySession(r)
+		if acc != nil && (acc.Member || acc.Admin) {
+			// User is authenticated and is a member or admin, show write and moderate links
+			actions = `<div style="margin-bottom: 15px;">
+				<a href="/blog?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
+				<span style="margin: 0 8px; color: #ccc;">·</span>
+				<a href="/admin/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
+			</div>`
+		} else if acc != nil {
+			// User is authenticated but not a member or admin, show only write link
+			actions = `<div style="margin-bottom: 15px;">
+				<a href="/blog?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
+			</div>`
 		} else {
 			// Guest user, show login prompt
 			actions = `<div style="margin-bottom: 15px; color: #666; font-size: 14px;">
@@ -1137,20 +1132,18 @@ var title, content, tags string
 		// Get authenticated user
 		author := "Anonymous"
 		authorID := ""
-		sess, err := auth.GetSession(r)
+		sess, acc, err := auth.RequireSession(r)
 		if err == nil {
-			acc, err := auth.GetAccount(sess.Account)
-			if err == nil {
-				author = acc.Name
-				authorID = acc.ID
+			_ = sess // used for consistency
+			author = acc.Name
+			authorID = acc.ID
 
-				// Check if account can post (30 minute minimum)
-				if !auth.CanPost(acc.ID) {
-					accountAge := time.Since(acc.Created).Round(time.Minute)
-					remaining := (30*time.Minute - time.Since(acc.Created)).Round(time.Minute)
-					http.Error(w, fmt.Sprintf("New accounts must wait 30 minutes before posting. Your account is %v old. Please wait %v more.", accountAge, remaining), http.StatusForbidden)
-					return
-				}
+			// Check if account can post (30 minute minimum)
+			if !auth.CanPost(acc.ID) {
+				accountAge := time.Since(acc.Created).Round(time.Minute)
+				remaining := (30*time.Minute - time.Since(acc.Created)).Round(time.Minute)
+				app.Forbidden(w, r, fmt.Sprintf("New accounts must wait 30 minutes before posting. Your account is %v old. Please wait %v more.", accountAge, remaining))
+				return
 			}
 		}
 
@@ -1191,15 +1184,10 @@ var title, content, tags string
 
 	// Check if post is private and user is not a member
 	if post.Private {
-		sess, err := auth.GetSession(r)
-		isMember := false
-		if err == nil {
-			if acc, err := auth.GetAccount(sess.Account); err == nil {
-				isMember = acc.Member || acc.Admin
-			}
-		}
+		_, acc := auth.TrySession(r)
+		isMember := acc != nil && (acc.Member || acc.Admin)
 		if !isMember {
-			http.Error(w, "This post is private and only visible to members", http.StatusForbidden)
+			app.Forbidden(w, r, "This post is private and only visible to members")
 			return
 		}
 	}
@@ -1390,12 +1378,9 @@ var title, content, tags string
 
 	// Check if current user is the author (to show edit and delete buttons)
 	var editButton string
-	sess, err := auth.GetSession(r)
-	if err == nil {
-		acc, err := auth.GetAccount(sess.Account)
-		if err == nil && acc.ID == post.AuthorID {
-			editButton = ` · <a href="/post?id=` + post.ID + `&edit=true" style="color: #666;">Edit</a> · <a href="#" onclick="if(confirm('Delete this post?')){var f=document.createElement('form');f.method='POST';f.action='/post?id=` + post.ID + `';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" style="color: #d9534f;">Delete</a>`
-		}
+	_, acc := auth.TrySession(r)
+	if acc != nil && acc.ID == post.AuthorID {
+		editButton = ` · <a href="/post?id=` + post.ID + `&edit=true" style="color: #666;">Edit</a> · <a href="#" onclick="if(confirm('Delete this post?')){var f=document.createElement('form');f.method='POST';f.action='/post?id=` + post.ID + `';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" style="color: #d9534f;">Delete</a>`
 	}
 
 	tagsHtml := ""
@@ -1456,8 +1441,8 @@ func renderComments(postID string, r *http.Request) string {
 	var commentsHTML strings.Builder
 
 	// Add comment form if authenticated
-	_, err := auth.GetSession(r)
-	isAuthenticated := err == nil
+	_, acc := auth.TrySession(r)
+	isAuthenticated := acc != nil
 
 	if isAuthenticated {
 		commentsHTML.WriteString(fmt.Sprintf(`
@@ -1526,14 +1511,14 @@ func Linkify(text string) string {
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
 	// Require authentication for posting
-	sess, err := auth.GetSession(r)
+	sess, acc, err := auth.RequireSession(r)
 	if err != nil {
-		http.Error(w, "Authentication required to create posts", http.StatusUnauthorized)
+		app.Unauthorized(w, r)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		app.BadRequest(w, r, "Failed to parse form")
 		return
 	}
 
@@ -1543,9 +1528,14 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	private := r.FormValue("visibility") == "private"
 
 	if content == "" {
-		http.Error(w, "Content is required", http.StatusBadRequest)
+		app.BadRequest(w, r, "Content is required")
 		return
 	}
+
+	// Use session and account
+	_ = sess
+	author := acc.Name
+	authorID := acc.ID
 
 	// Content validation: minimum and maximum length
 	if len(content) < 50 {
@@ -1629,15 +1619,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Get the authenticated user (session already validated at function start)
-	author := "Anonymous"
-	authorID := ""
-	acc, err := auth.GetAccount(sess.Account)
-	if err == nil {
-		author = acc.Name
-		authorID = acc.ID
-	}
-
 	// Create the post
 	postID := fmt.Sprintf("%d", time.Now().UnixNano())
 	if err := CreatePost(title, content, author, authorID, tags, private); err != nil {
@@ -1667,11 +1648,12 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Require authentication
-	sess, err := auth.GetSession(r)
+	sess, acc, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
+	_ = sess // used for consistency
 
 	// Extract post ID from URL path (/post/{postID}/comment)
 	path := strings.TrimPrefix(r.URL.Path, "/post/")
@@ -1681,33 +1663,28 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Verify post exists
 	post := GetPost(postID)
 	if post == nil {
-		http.Error(w, "Post not found", http.StatusNotFound)
+		app.NotFound(w, r, "Post not found")
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		app.BadRequest(w, r, "Failed to parse form")
 		return
 	}
 
 	content := strings.TrimSpace(r.FormValue("content"))
 	if content == "" {
-		http.Error(w, "Comment content is required", http.StatusBadRequest)
+		app.BadRequest(w, r, "Comment content is required")
 		return
 	}
 
 	// Get the authenticated user
-	author := "Anonymous"
-	authorID := ""
-	acc, err := auth.GetAccount(sess.Account)
-	if err == nil {
-		author = acc.Name
-		authorID = acc.ID
-	}
+	author := acc.Name
+	authorID := acc.ID
 
 	// Create the comment
 	if err := CreateComment(postID, content, author, authorID); err != nil {
-		http.Error(w, "Failed to save comment", http.StatusInternalServerError)
+		app.ServerError(w, r, "Failed to save comment")
 		return
 	}
 

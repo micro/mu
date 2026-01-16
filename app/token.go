@@ -16,21 +16,15 @@ import (
 // DELETE /token?id={id} - Delete a token
 func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	// Must be authenticated via session (not PAT)
-	sess, err := auth.GetSession(r)
+	sess, acc, err := auth.RequireSession(r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		Unauthorized(w, r)
 		return
 	}
 
 	// PAT tokens can't manage other PAT tokens (must use session)
 	if sess.Type != "account" {
-		http.Error(w, "PAT tokens cannot manage other tokens. Please use session authentication.", http.StatusForbidden)
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		Forbidden(w, r, "PAT tokens cannot manage other tokens. Please use session authentication.")
 		return
 	}
 

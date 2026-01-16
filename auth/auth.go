@@ -282,6 +282,16 @@ func RequireSession(r *http.Request) (*Session, *Account, error) {
 	return sess, acc, nil
 }
 
+// TrySession returns the session and account if authenticated, or nil values if not
+// Use this for optional auth checks where you want to show different content for guests vs users
+func TrySession(r *http.Request) (*Session, *Account) {
+	sess, acc, err := RequireSession(r)
+	if err != nil {
+		return nil, nil
+	}
+	return sess, acc
+}
+
 // RequireAdmin returns the session and account if the user is an admin, or an error
 func RequireAdmin(r *http.Request) (*Session, *Account, error) {
 	sess, acc, err := RequireSession(r)

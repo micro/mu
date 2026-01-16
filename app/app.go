@@ -506,15 +506,9 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 func Account(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
 		return
 	}
 
@@ -633,7 +627,7 @@ fetch('/wallet?balance=1')
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/", 302)
 		return
@@ -660,8 +654,8 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 
 // Session handler
 func Session(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
-	if err != nil {
+	sess, acc := auth.TrySession(r)
+	if sess == nil {
 		// Return guest session instead of error
 		guestSess := map[string]interface{}{
 			"type": "guest",
@@ -672,8 +666,7 @@ func Session(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get account to include admin/member status
-	acc, err := auth.GetAccount(sess.Account)
+	// Build response with account info
 	response := map[string]interface{}{
 		"id":      sess.ID,
 		"type":    sess.Type,
@@ -681,7 +674,7 @@ func Session(w http.ResponseWriter, r *http.Request) {
 		"created": sess.Created,
 	}
 
-	if err == nil {
+	if acc != nil {
 		response["admin"] = acc.Admin
 		response["member"] = acc.Member
 	}
@@ -699,11 +692,10 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	// Check if user is logged in and their status
 	isMember := false
 	isLoggedIn := false
-	if sess, err := auth.GetSession(r); err == nil {
+	_, acc := auth.TrySession(r)
+	if acc != nil {
 		isLoggedIn = true
-		if acc, err := auth.GetAccount(sess.Account); err == nil {
-			isMember = acc.Member || acc.Admin
-		}
+		isMember = acc.Member || acc.Admin
 	}
 
 	var content strings.Builder
@@ -803,8 +795,8 @@ func Membership(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user is logged in
-	sess, err := auth.GetSession(r)
-	if err != nil {
+	sess, acc := auth.TrySession(r)
+	if sess == nil {
 		// Not logged in
 		if fromPaymentProvider {
 			// Set a cookie to track pending membership activation
@@ -1009,15 +1001,8 @@ var SupportedLanguages = map[string]string{
 
 // GetUserLanguage returns the language preference for the current user, defaults to "en"
 func GetUserLanguage(r *http.Request) string {
-	sess, err := auth.GetSession(r)
-	if err != nil {
-		return "en"
-	}
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		return "en"
-	}
-	if acc.Language == "" {
+	_, acc := auth.TrySession(r)
+	if acc == nil || acc.Language == "" {
 		return "en"
 	}
 	return acc.Language

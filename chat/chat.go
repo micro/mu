@@ -685,14 +685,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 	}
 
 	// Get user session
-	sess, err := auth.GetSession(r)
+	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		conn.Close()
-		return
-	}
-
-	acc, err := auth.GetAccount(sess.Account)
-	if acc == nil || err != nil {
 		conn.Close()
 		return
 	}

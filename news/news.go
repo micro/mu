@@ -1760,8 +1760,8 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	title := entry.Title
 
 	// Check if user is authenticated
-	sess, err := auth.GetSession(r)
-	isGuest := err != nil
+	sess, _ := auth.TrySession(r)
+	isGuest := sess == nil
 
 	// For guests: show article preview but hide AI summary
 	if isGuest {
@@ -1943,7 +1943,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Handle search query (HTML)
 	if query := r.URL.Query().Get("query"); query != "" {
 		// Require authentication for search
-		if _, err := auth.GetSession(r); err != nil {
+		_, acc := auth.TrySession(r)
+		if acc == nil {
 			app.Unauthorized(w, r)
 			return
 		}
@@ -1963,7 +1964,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleAPISearch handles POST /news with JSON body for search
 func handleAPISearch(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
 		return
@@ -2119,9 +2120,9 @@ func formatSearchResult(entry *data.IndexEntry) string {
 
 func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	// Check quota before search
-	sess, err := auth.GetSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
-		http.Error(w, "Authentication required to search", http.StatusUnauthorized)
+		app.Unauthorized(w, r)
 		return
 	}
 

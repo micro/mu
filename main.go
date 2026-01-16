@@ -184,15 +184,9 @@ func main() {
 
 	// presence ping endpoint
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		sess, err := auth.GetSession(r)
+		_, acc, err := auth.RequireSession(r)
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		acc, err := auth.GetAccount(sess.Account)
-		if acc == nil || err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			app.Unauthorized(w, r)
 			return
 		}
 

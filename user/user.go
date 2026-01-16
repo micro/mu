@@ -103,7 +103,8 @@ func PresenceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var userID string
-	if sess, err := auth.GetSession(r); err == nil {
+	sess, _ := auth.TrySession(r)
+	if sess != nil {
 		userID = sess.Account
 		auth.UpdatePresence(userID)
 	}
@@ -241,12 +242,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	posts := blog.GetPostsByAuthor(acc.Name)
 	
 	// Check if viewer is a member/admin
-	isMember := false
-	if sess, err := auth.GetSession(r); err == nil {
-		if viewerAcc, err := auth.GetAccount(sess.Account); err == nil {
-			isMember = viewerAcc.Member || viewerAcc.Admin
-		}
-	}
+	_, viewerAcc := auth.TrySession(r)
+	isMember := viewerAcc != nil && (viewerAcc.Member || viewerAcc.Admin)
 	
 	// Filter private posts for non-members
 	var visiblePosts []*blog.Post
@@ -297,7 +294,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	profile := GetProfile(acc.ID)
 
 	// Check if viewing own profile
-	sess, _ := auth.GetSession(r)
+	sess, _ := auth.TrySession(r)
 	isOwnProfile := sess != nil && sess.Account == username
 
 	// Build status section

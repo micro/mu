@@ -207,7 +207,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if user is logged in
 	var userID string
-	if sess, err := auth.GetSession(r); err == nil && sess != nil {
+	sess, _ := auth.TrySession(r)
+	if sess != nil {
 		userID = sess.Account
 		
 		// Show user's widget apps as cards

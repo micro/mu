@@ -328,12 +328,9 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the authenticated user
 	flagger := "Anonymous"
-	sess, err := auth.GetSession(r)
-	if err == nil {
-		acc, err := auth.GetAccount(sess.Account)
-		if err == nil {
-			flagger = acc.Name
-		}
+	_, acc := auth.TrySession(r)
+	if acc != nil {
+		flagger = acc.Name
 	}
 
 	// Add flag

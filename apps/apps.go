@@ -313,7 +313,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	path = strings.TrimPrefix(path, "/")
 
 	// Get session (optional for viewing public apps)
-	sess, _ := auth.GetSession(r)
+	sess, _ := auth.TrySession(r)
 
 	// Reserved single-word app URLs
 	reservedApps := map[string]string{
@@ -1867,9 +1867,10 @@ func handlePreview(w http.ResponseWriter, r *http.Request, id string) {
 
 	// Get user info for SDK
 	var userID, userName string
-	if sess, _ := auth.GetSession(r); sess != nil {
+	sess, acc := auth.TrySession(r)
+	if sess != nil {
 		userID = sess.Account
-		if acc, err := auth.GetAccount(sess.Account); err == nil {
+		if acc != nil {
 			userName = acc.Name
 		}
 	}
@@ -1898,9 +1899,10 @@ func handleEmbed(w http.ResponseWriter, r *http.Request, id string) {
 
 	// Get user info for SDK
 	var userID, userName string
-	if sess, _ := auth.GetSession(r); sess != nil {
+	sess, acc := auth.TrySession(r)
+	if sess != nil {
 		userID = sess.Account
-		if acc, err := auth.GetAccount(sess.Account); err == nil {
+		if acc != nil {
 			userName = acc.Name
 		}
 	}

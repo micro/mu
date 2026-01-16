@@ -209,8 +209,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Check for balance JSON endpoint
 	if r.URL.Query().Get("balance") == "1" {
-		sess, err := auth.GetSession(r)
-		if err != nil {
+		sess, _ := auth.TrySession(r)
+		if sess == nil {
 			app.RespondJSON(w, map[string]int{"balance": 0})
 			return
 		}
@@ -244,7 +244,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTopupPage(w http.ResponseWriter, r *http.Request) {
-	sess, err := auth.GetSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.Path), 302)
 		return
