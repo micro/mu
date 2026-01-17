@@ -1,5 +1,58 @@
 # Mu Development Notes
 
+## Core Principles (IMPORTANT - Read First)
+
+Mu is guided by ethical principles rooted in Islamic values. **Every feature and AI integration must align with these:**
+
+### The Five Principles
+
+1. **Intentionality (Niyyah)** - Technology encourages intentional behavior, not mindless consumption
+   - Before posting: "What is your intention here?"
+   - Before sending: "Is this message kind, true, and necessary?"
+   - No infinite scroll, no notification bombardment
+
+2. **Moderation (Wasatiyyah)** - AI reduces screen time, not extends it
+   - 10 videos → 2 minute summary
+   - 50 articles → key points
+   - Goal is **less consumption**, not more engagement
+
+3. **Truthfulness (Sidq)** - No manipulation, no rage bait, no deception
+   - Chronological feeds, not algorithmic sorting
+   - AI admits when it doesn't know
+   - No hidden agendas
+
+4. **Kindness (Ihsan)** - Facilitate kindness, not cruelty
+   - AI can hint: "Is this kind?" before sending
+   - Features that humanize, not dehumanize
+   - No anonymous pile-ons
+
+5. **Trust (Amanah)** - Protect what is entrusted (data, attention, time)
+   - Self-hostable, no tracking, no ads
+   - Your data stays yours
+
+### AI Guardrails
+
+- **AI suggests, humans decide** - Final actions require human confirmation
+- **AI assists, not replaces** - Drafts need human review
+- **AI accelerates, not addicts** - Goal is less screen time
+- **AI is a tool, not a destination, not a replacement for God**
+
+### AI Enhancement Priorities
+
+| Feature | Status | AI Opportunity |
+|---------|--------|----------------|
+| News | ✅ Done | AI summaries |
+| Chat | ✅ Done | LLM conversations |
+| Apps | ✅ Done | AI code generation |
+| Agent | ✅ Done | Multi-tool automation |
+| **Video** | ⏳ Priority 1 | Summarize, extract key points, timestamps |
+| **Mail** | ⏳ Priority 2 | Draft replies, tone awareness ("Is this kind?") |
+| **Blog** | ⏳ Priority 3 | Intention prompts, clarity assistance |
+
+See `/docs/principles` for full documentation.
+
+---
+
 ## Architecture Evolution Plan
 
 ### Current State (January 2026)
@@ -378,13 +431,31 @@ User Request → LLM decides tool → Execute tool → Observe result → Repeat
 
 ## Vision / Business Context
 
-Mu is an ethical tech platform for developers' digital daily habits:
-- News, video, markets, chat, blog, reminders - without ads/tracking/addiction
-- The goal is **10x efficiency**: 10 minutes on Mu replaces 100 minutes across 6 platforms
-- Micro apps turn it into a **super app platform** where users can build and share tools
-- Agent's job: filter content, generate apps, reduce consumption time - not maximize engagement
-- Target audience: developers (2000+ GitHub followers from go-micro)
-- Islamic values embedded (reminder system, ethical tech principles)
+**Mu is a personal AI platform — without ads.**
+
+While other platforms monetize attention with ads (including ChatGPT now), Mu helps users consume less, not more. Core positioning:
+
+- **10x efficiency**: AI summarizes to reduce screen time, not extend it
+- **No addiction mechanics**: No likes, no follower counts, no infinite scroll, no notifications
+- **Privacy by design**: Self-hostable, no tracking, no ads
+- **Ethical AI**: Tool for humans, not replacement for judgment
+
+### Target Audience
+- Developers (2000+ GitHub followers from go-micro)
+- People seeking ethical tech alternatives
+- Users frustrated with ad-supported AI assistants
+
+### Documentation (Live on Website)
+
+- `/docs` - Documentation index (served by `docs/docs.go`)
+- `/about` - What Mu is and why it exists
+- `/docs/principles` - Full ethical principles guide
+- `/docs/system-design` - Architecture overview
+
+All markdown files in `docs/` folder are embedded and served at runtime.
+
+### Key Differentiator
+"Without ads" is the primary selling point as AI assistants become ad-supported. Mu proves that useful AI doesn't require surveillance capitalism.
 
 ## Recent Fixes
 

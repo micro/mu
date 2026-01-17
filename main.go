@@ -21,6 +21,7 @@ import (
 	"mu/blog"
 	"mu/chat"
 	"mu/data"
+	"mu/docs"
 	"mu/home"
 	"mu/mail"
 	"mu/news"
@@ -103,6 +104,8 @@ func main() {
 		"/apps":            false, // Public viewing, auth for creating
 		"/agent":           true,  // Require auth for agent
 		"/status":          false, // Public - server health status
+		"/docs":            false, // Public - documentation
+		"/about":           false, // Public - about page
 	}
 
 	// Static assets should not require authentication
@@ -183,6 +186,11 @@ func main() {
 	// status page - public health check
 	app.DKIMStatusFunc = mail.DKIMStatus
 	http.HandleFunc("/status", app.StatusHandler)
+
+	// documentation
+	http.HandleFunc("/docs", docs.Handler)
+	http.HandleFunc("/docs/", docs.Handler)
+	http.HandleFunc("/about", docs.AboutHandler)
 
 	// presence WebSocket endpoint
 	http.HandleFunc("/presence", user.PresenceHandler)

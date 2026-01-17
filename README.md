@@ -62,15 +62,17 @@ The goal is to reduce internet consumption by 10x through AI. Here's how AI can 
 | **Chat** | ✅ LLM chat | Already integrated | High - Get answers instantly |
 | **Apps** | ✅ AI builder | Already integrated | High - Build apps from prompts |
 | **Agent** | ✅ AI assistant | Already integrated | High - Automated workflows |
-| **Video** | ⏳ Search only | Summarize videos, extract key points, Q&A on video content | High - Watch 10 videos in 2 min |
-| **Blog** | ⏳ Manual posts | Writing assistance, auto-summaries, translate posts | Medium - Faster creation |
-| **Mail** | ⏳ Manual compose | Draft replies, summarize threads, smart prioritization | Medium - Handle 100 emails in 5 min |
+| **Video** | ⏳ Search only | Summarize videos, extract key points, Q&A on content | High - 10 videos → 2 min summary |
+| **Blog** | ⏳ Manual posts | Intention prompts, clarity assistance, kindness hints | Medium - Thoughtful creation |
+| **Mail** | ⏳ Manual compose | Draft replies, summarize threads, tone awareness | Medium - 100 emails → 5 min |
 | **Wallet** | ✅ Credit system | Infrastructure, AI not applicable | N/A - Payment tracking |
 
 **Priority order for AI integration:**
 1. **Video** - Highest impact; people spend hours watching when a summary would suffice
-2. **Mail** - High value for power users; AI-drafted replies save significant time
-3. **Blog** - Lower priority; writing should remain intentional
+2. **Mail** - High value for power users; AI-drafted replies with tone awareness
+3. **Blog** - Focus on intentionality; AI prompts reflection, not engagement
+
+**Philosophy:** AI is a tool, not a destination. It should reduce screen time, not extend it. See [Principles](/docs/principles) for details.
 
 ## Micro Apps
 
@@ -248,8 +250,12 @@ Go to localhost:8081
 
 ## Documentation
 
-Additional documentation is available in the [docs](docs/) folder:
+**On the web:** [mu.xyz/docs](https://mu.xyz/docs) | [mu.xyz/about](https://mu.xyz/about)
 
+Full documentation is available in the [docs](docs/) folder and at `/docs` on any Mu instance:
+
+- [About](docs/ABOUT.md) - What Mu is and why it exists
+- [Principles](docs/PRINCIPLES.md) - Guiding principles for AI and technology
 - [System Design](docs/SYSTEM_DESIGN.md) - Overall architecture and component design
 - [Design System](docs/DESIGN_SYSTEM.md) - UI/UX patterns and design decisions
 - [Messaging System](docs/MESSAGING_SYSTEM.md) - Complete messaging and mail setup guide
