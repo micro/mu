@@ -34,7 +34,7 @@ export FANAR_API_KEY="your-key"    # Get from api.fanar.qa
 export YOUTUBE_API_KEY="your-key"  # Get from Google Cloud Console
 ```
 
-See [Environment Variables](ENVIRONMENT_VARIABLES.md) for the complete list.
+See [Environment Variables](/docs/environment) for the complete list.
 
 ## Production Deployment
 
@@ -125,7 +125,7 @@ To receive and send messages (using SMTP protocol):
 ./scripts/generate-dkim-keys.sh
 ```
 
-See [Messaging System](MESSAGING_SYSTEM.md) for complete setup.
+See [Messaging](/docs/messaging) for complete setup.
 
 ## Vector Search (Optional)
 
@@ -136,7 +136,7 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull nomic-embed-text
 ```
 
-Mu will automatically use embeddings when Ollama is available. See [Vector Search](VECTOR_SEARCH.md) for details.
+Mu will automatically use embeddings when Ollama is available. See [Vector Search](/docs/vector-search) for details.
 
 ## Data Storage
 

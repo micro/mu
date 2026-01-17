@@ -617,6 +617,6 @@ WantedBy=multi-user.target
 
 ## See Also
 
-- [Environment Variables](ENVIRONMENT_VARIABLES.md) - All environment variables
+- [Environment Variables](/docs/environment) - All environment variables
 - Generate DKIM keys: `./scripts/generate-dkim-keys.sh`
 - Test mail: https://www.mail-tester.com/

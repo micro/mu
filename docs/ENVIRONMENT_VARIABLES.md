@@ -32,7 +32,7 @@ export YOUTUBE_API_KEY="your-youtube-api-key"
 export MODEL_API_URL="http://localhost:11434"   # Default: http://localhost:11434
 ```
 
-**Note:** Vector search requires Ollama with `nomic-embed-text` model. If unavailable, falls back to keyword search. See [Vector Search Setup](VECTOR_SEARCH.md) for installation.
+**Note:** Vector search requires Ollama with `nomic-embed-text` model. If unavailable, falls back to keyword search. See [Vector Search](/docs/vector-search) for installation.
 
 **TODO:** The Ollama endpoint (`http://localhost:11434`) and embedding model (`nomic-embed-text`) are currently hardcoded in `data/data.go`. Consider making these configurable via `MODEL_API_URL` and a new `EMBEDDING_MODEL` environment variable.
 
