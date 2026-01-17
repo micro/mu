@@ -44,7 +44,7 @@ Create `/etc/systemd/system/mu.service`:
 
 ```ini
 [Unit]
-Description=Mu Personal Platform
+Description=Mu Personal AI Platform
 After=network.target
 
 [Service]

@@ -4,7 +4,7 @@ This document covers the design philosophy, architecture, and technical decision
 
 ## Vision
 
-Mu is a personal app platform that attempts to rectify deficiencies with existing social platforms like Twitter, Facebook, and YouTube. 
+Mu is a personal AI platform that attempts to rectify deficiencies with existing social platforms like Twitter, Facebook, and YouTube. 
 The primary issue is exploitation and addiction. American-owned corporations exploit their users with click/rage bait, advertising, 
 and algorithms to drive engagement and profit. Their number one goal isn't user satisfaction—it's making money.
 
