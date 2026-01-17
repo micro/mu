@@ -532,11 +532,11 @@ td {
 
 #footer {
   text-align: center;
-  padding: 40px 20px;
+  padding: 30px 20px;
   color: var(--text-muted);
   font-size: 14px;
   border-top: 1px solid var(--divider);
-  margin-top: 40px;
+  margin-top: 20px;
 }
 
 #footer a {

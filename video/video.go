@@ -821,6 +821,34 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	ct := r.Header.Get("Content-Type")
 
+	// Handle summarize action
+	if r.Method == "GET" && r.URL.Query().Get("action") == "summarize" {
+		videoID := r.URL.Query().Get("id")
+		if videoID == "" {
+			app.RespondJSON(w, map[string]string{"error": "Missing video ID"})
+			return
+		}
+		
+		// Require authentication
+		_, _, err := auth.RequireSession(r)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(401)
+			w.Write([]byte(`{"error": "Login required"}`))
+			return
+		}
+		
+		// Get summary
+		summary, err := SummarizeVideo(videoID, "")
+		if err != nil {
+			app.RespondJSON(w, map[string]string{"error": err.Error()})
+			return
+		}
+		
+		app.RespondJSON(w, map[string]string{"summary": summary.Summary})
+		return
+	}
+
 	// create head
 	var chanNames []string
 	for channel, _ := range channels {
@@ -1182,19 +1210,72 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
-		// get the page
+		// get the page with summarize button
 		tmpl := `<html>
   <head>
     <title>Video | Mu</title>
+    <link rel="stylesheet" href="/mu.css">
+    <style>
+      .video-container { max-width: 900px; margin: 100px auto 0; padding: 0 20px; }
+      .video-actions { margin-top: 20px; text-align: center; }
+      .video-actions button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #333; color: white; border: none; border-radius: 6px; }
+      .video-actions button:hover { background: #555; }
+      .video-actions button:disabled { background: #ccc; cursor: not-allowed; }
+      #summary { margin-top: 20px; padding: 20px; background: #f9f9f9; border-radius: 8px; display: none; }
+      #summary h3 { margin-top: 0; }
+      #summary-content { white-space: pre-wrap; line-height: 1.6; }
+      .loading { color: #666; font-style: italic; }
+      .error { color: #c00; }
+    </style>
   </head>
   <body>
-  %s
+    <div class="video-container">
+      %s
+      <div class="video-actions">
+        <button id="summarize-btn" onclick="summarizeVideo()">✨ Summarize Video</button>
+      </div>
+      <div id="summary">
+        <h3>Summary</h3>
+        <div id="summary-content"></div>
+      </div>
+    </div>
+    <script>
+      const videoId = '%s';
+      
+      async function summarizeVideo() {
+        const btn = document.getElementById('summarize-btn');
+        const summary = document.getElementById('summary');
+        const content = document.getElementById('summary-content');
+        
+        btn.disabled = true;
+        btn.textContent = 'Generating summary...';
+        summary.style.display = 'block';
+        content.innerHTML = '<span class="loading">Fetching transcript and generating summary...</span>';
+        
+        try {
+          const resp = await fetch('/video?action=summarize&id=' + videoId);
+          const data = await resp.json();
+          
+          if (data.error) {
+            content.innerHTML = '<span class="error">' + data.error + '</span>';
+            btn.textContent = '✨ Summarize Video';
+            btn.disabled = false;
+          } else {
+            content.textContent = data.summary;
+            btn.textContent = '✓ Summarized';
+          }
+        } catch (err) {
+          content.innerHTML = '<span class="error">Failed to generate summary: ' + err.message + '</span>';
+          btn.textContent = '✨ Summarize Video';
+          btn.disabled = false;
+        }
+      }
+    </script>
   </body>
 </html>
 `
-		html := fmt.Sprintf(`<div class="video" style="padding-top: 100px">%s</div>`, embedVideoWithAutoplay(id, autoplay))
-		rhtml := fmt.Sprintf(tmpl, html)
-		w.Write([]byte(rhtml))
+		html := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay), id)
+		w.Write([]byte(html))
 
 		return
 	}

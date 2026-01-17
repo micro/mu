@@ -82,18 +82,6 @@ Thoughtful microblogging. No character limits designed for "engagement." Write w
 ### Home
 Your personalized dashboard. Everything important, nothing distracting.
 
-## Principles
+---
 
-We operate by a set of principles rooted in timeless wisdom. See [Principles](/docs/principles) for details.
-
-The core idea: technology should serve human flourishing, not exploit human weakness.
-
-## Get Started
-
-- **Use hosted**: [mu.xyz](https://mu.xyz) — Free to start
-- **Self-host**: See the [documentation](/docs/system-design) for setup
-- **Contribute**: Join us on [Discord](https://discord.gg/jwTYuUVAGh)
-
-## License
-
-Mu is open source under [AGPL-3.0](https://github.com/asim/mu/blob/main/LICENSE). If you run a modified version, share your changes.
+**Get started** at [mu.xyz](https://mu.xyz) or read our [Principles](/docs/principles).

@@ -40,7 +40,6 @@ var catalog = []Document{
 	{Slug: "wallet", Filename: "WALLET_AND_CREDITS.md", Title: "Wallet & Credits", Description: "Credit system for usage", Category: "Features"},
 
 	// Reference
-	{Slug: "api", Filename: "API_COVERAGE.md", Title: "API Reference", Description: "API endpoint documentation", Category: "Reference"},
 	{Slug: "environment", Filename: "ENVIRONMENT_VARIABLES.md", Title: "Configuration", Description: "Environment variables", Category: "Reference"},
 	{Slug: "screenshots", Filename: "SCREENSHOTS.md", Title: "Screenshots", Description: "Application screenshots", Category: "Reference"},
 }
@@ -80,8 +79,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Render markdown to HTML
 	rendered := app.Render(content)
 
-	// Wrap in navigation
-	html := fmt.Sprintf(`<div class="docs">
+	// Wrap in navigation with image sizing
+	html := fmt.Sprintf(`<style>.docs-content img { max-width: 100%%; height: auto; border-radius: 8px; margin: 10px 0; }</style>
+<div class="docs">
 <div class="docs-nav">
 <a href="/docs">← All Docs</a>
 </div>
