@@ -114,7 +114,7 @@ mu.app.name      // App's name
 
 ### Documentation
 
-See [/apps/docs](https://mu.xyz/apps/docs) for full SDK reference.
+See [SDK Documentation](docs/SDK.md) for full API reference.
 
 ## Screenshots
 
