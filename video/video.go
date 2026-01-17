@@ -128,6 +128,14 @@ var commonStyles = `
 	.recent-search-close:hover {
 		color: #000;
 	}
+	.summarize-link {
+		color: #666;
+		text-decoration: none;
+		cursor: pointer;
+	}
+	.summarize-link:hover {
+		color: #333;
+	}
 `
 
 var recentSearchesScript = `
@@ -428,6 +436,7 @@ func regenerateHTML() {
 			channelLink := res.Channel
 			if res.ChannelID != "" {
 				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
+		info += fmt.Sprintf(` · <a href="%s&summarize=1" class="summarize-link">✨ Summarize</a>`, res.URL)
 			}
 			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
 		} else {
@@ -563,6 +572,7 @@ func loadVideos() {
 		if res.Channel != "" {
 			channelLink := res.Channel
 			if res.ChannelID != "" {
+		info += fmt.Sprintf(` · <a href="%s&summarize=1" class="summarize-link">✨ Summarize</a>`, res.URL)
 				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
 			}
 			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
@@ -686,8 +696,8 @@ func getChannel(category, handle string) (string, []*Result, error) {
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a></div></div>`,
-			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category)
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a> · <a href="%s&summarize=1" class="summarize-link">✨ Summarize</a></div></div>`,
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category, url)
 		sb.WriteString(html)
 		res.Html = html
 
@@ -799,8 +809,8 @@ func getResults(query, channel string) (string, []*Result, error) {
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s</div>`,
-			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
+			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s · <a href="%s&summarize=1" class="summarize-link">✨ Summarize</a></div>`,
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc, url)
 		sb.WriteString(html)
 		res.Html = html
 	}
@@ -1233,14 +1243,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
       %s
       <div class="video-actions">
         <button id="summarize-btn" onclick="summarizeVideo()">✨ Summarize Video</button>
-      </div>
-      <div id="summary">
-        <h3>Summary</h3>
-        <div id="summary-content"></div>
-      </div>
-    </div>
-    <script>
-      const videoId = '%s';
+      const autoSummarize = %v;
       
       async function summarizeVideo() {
         const btn = document.getElementById('summarize-btn');
@@ -1270,11 +1273,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
           btn.disabled = false;
         }
       }
+      
+      // Auto-trigger summarize if requested
+      if (autoSummarize) {
+        summarizeVideo();
+      }
     </script>
   </body>
 </html>
 `
-		html := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay), id)
+		autoSummarize := r.Form.Get("summarize") == "1"
+		html := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay), id, autoSummarize)
 		w.Write([]byte(html))
 
 		return
