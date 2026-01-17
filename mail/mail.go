@@ -506,6 +506,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		isAttachment := false
 		attachmentName := ""
 
+		// First, check if body contains raw MIME content with headers
+		if strings.Contains(displayBody, "Content-Type:") || strings.Contains(displayBody, "content-type:") {
+			if extracted := extractMIMEBody(displayBody); extracted != displayBody {
+				displayBody = extracted
+			}
+		}
+
 		trimmed := strings.TrimSpace(displayBody)
 
 		// Check if body contains mixed content: base64 gzip data followed by MIME multipart markers
@@ -702,8 +709,52 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			msgBody := m.Body
 			msgIsAttachment := false
 
+			// First, check if body contains raw MIME content with headers
+			if strings.Contains(msgBody, "Content-Type:") || strings.Contains(msgBody, "content-type:") {
+				if extracted := extractMIMEBody(msgBody); extracted != msgBody {
+					msgBody = extracted
+				}
+			}
+
 			// Check for gzip or ZIP file
 			trimmedBody := strings.TrimSpace(msgBody)
+
+			// Check for mixed content: base64 gzip data followed by MIME multipart markers
+			// This happens with some DMARC reports from Microsoft
+			if strings.Contains(trimmedBody, "[multipart/") || strings.Contains(trimmedBody, "\n--") {
+				var gzipPart string
+				if idx := strings.Index(trimmedBody, "\n\n[multipart/"); idx > 0 {
+					gzipPart = strings.TrimSpace(trimmedBody[:idx])
+				} else if idx := strings.Index(trimmedBody, "\n[multipart/"); idx > 0 {
+					gzipPart = strings.TrimSpace(trimmedBody[:idx])
+				} else if idx := strings.Index(trimmedBody, "[multipart/"); idx > 0 {
+					gzipPart = strings.TrimSpace(trimmedBody[:idx])
+				} else if idx := strings.Index(trimmedBody, "\n--"); idx > 0 {
+					gzipPart = strings.TrimSpace(trimmedBody[:idx])
+				}
+
+				if gzipPart != "" && looksLikeBase64(gzipPart) {
+					if decoded, err := base64.StdEncoding.DecodeString(gzipPart); err == nil {
+						if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
+							if reader, err := gzip.NewReader(bytes.NewReader(decoded)); err == nil {
+								if content, err := io.ReadAll(reader); err == nil {
+									reader.Close()
+									if isValidUTF8Text(content) {
+										if dmarcHTML := renderDMARCReport(string(content)); dmarcHTML != "" {
+											msgBody = dmarcHTML
+											msgIsAttachment = true
+										} else {
+											msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(string(content)))
+										}
+										goto threadSkipBodyProcessing
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
 			if len(trimmedBody) >= 2 && trimmedBody[0] == 0x1f && trimmedBody[1] == 0x8b {
 				// Gzip compressed - decompress and display
 				if reader, err := gzip.NewReader(strings.NewReader(trimmedBody)); err == nil {
@@ -770,6 +821,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+		threadSkipBodyProcessing:
 			// Process email body - renders markdown if detected, otherwise linkifies URLs
 			msgBody = renderEmailBody(msgBody, msgIsAttachment)
 

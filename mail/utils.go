@@ -1,14 +1,166 @@
 package mail
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"html"
 	"io"
+	"mime"
+	"mime/multipart"
 	"mime/quotedprintable"
 	"strings"
 
 	"mu/app"
 )
+
+// extractMIMEBody parses inline MIME content from a message body
+// This handles cases where the body contains raw MIME headers and parts
+func extractMIMEBody(body string) string {
+	// Check if body looks like raw MIME content (has headers followed by blank line)
+	if !strings.Contains(body, "Content-Type:") && !strings.Contains(body, "content-type:") {
+		return body
+	}
+
+	// Check for MIME boundary markers
+	if !strings.Contains(body, "--") {
+		return body
+	}
+
+	// Try to extract boundary from Content-Type header
+	var boundary string
+	lines := strings.Split(body, "\n")
+	var headerEnd int
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			headerEnd = i + 1
+			break
+		}
+		if strings.HasPrefix(strings.ToLower(line), "content-type:") {
+			if strings.Contains(line, "boundary=") {
+				// Extract boundary value
+				parts := strings.Split(line, "boundary=")
+				if len(parts) > 1 {
+					boundary = strings.Trim(parts[1], `"' `)
+					// Handle boundary continuing on next line
+					if boundary == "" && i+1 < len(lines) {
+						nextLine := strings.TrimSpace(lines[i+1])
+						if strings.HasPrefix(nextLine, "boundary=") {
+							boundary = strings.Trim(strings.TrimPrefix(nextLine, "boundary="), `"' `)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if boundary == "" {
+		// No boundary found - return original
+		return body
+	}
+
+	// Extract content after headers
+	if headerEnd > 0 && headerEnd < len(lines) {
+		bodyContent := strings.Join(lines[headerEnd:], "\n")
+		// Parse the multipart content
+		parsed := parseMIMEContent(strings.NewReader(bodyContent), boundary)
+		if parsed != "" {
+			app.Log("mail", "Successfully extracted content from inline MIME (%d bytes)", len(parsed))
+			return parsed
+		}
+	}
+
+	return body
+}
+
+// parseMIMEContent extracts text content from inline MIME parts
+func parseMIMEContent(body *strings.Reader, boundary string) string {
+	mr := multipart.NewReader(body, boundary)
+	var textPlain, textHTML string
+	var attachmentBody []byte
+	var attachmentContentType string
+
+	for {
+		part, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+
+		contentType := part.Header.Get("Content-Type")
+		transferEncoding := part.Header.Get("Content-Transfer-Encoding")
+		contentDisposition := part.Header.Get("Content-Disposition")
+
+		// Handle nested multipart content
+		if strings.Contains(contentType, "multipart/") {
+			mediaType, params, err := mime.ParseMediaType(contentType)
+			if err == nil && strings.HasPrefix(mediaType, "multipart/") {
+				nestedBoundary := params["boundary"]
+				if nestedBoundary != "" {
+					partBody, _ := io.ReadAll(part)
+					nestedContent := parseMIMEContent(strings.NewReader(string(partBody)), nestedBoundary)
+					if nestedContent != "" {
+						if strings.Contains(nestedContent, "<") && strings.Contains(nestedContent, ">") {
+							if textHTML == "" {
+								textHTML = nestedContent
+							}
+						} else if textPlain == "" {
+							textPlain = nestedContent
+						}
+					}
+					continue
+				}
+			}
+		}
+
+		partBody, err := io.ReadAll(part)
+		if err != nil {
+			continue
+		}
+
+		// Decode based on transfer encoding
+		if strings.ToLower(transferEncoding) == "base64" {
+			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(partBody))); err == nil {
+				partBody = decoded
+			}
+		} else if strings.ToLower(transferEncoding) == "quoted-printable" {
+			reader := quotedprintable.NewReader(bytes.NewReader(partBody))
+			if decoded, err := io.ReadAll(reader); err == nil {
+				partBody = decoded
+			}
+		}
+
+		isAttachment := strings.Contains(contentDisposition, "attachment")
+
+		if strings.Contains(contentType, "text/plain") && !isAttachment {
+			textPlain = string(partBody)
+		} else if strings.Contains(contentType, "text/html") && !isAttachment {
+			textHTML = string(partBody)
+		} else if isAttachment || strings.Contains(contentType, "application/") {
+			attachmentBody = partBody
+			attachmentContentType = contentType
+		}
+	}
+
+	// Prefer HTML, then plain text, then attachment
+	if textHTML != "" {
+		return strings.TrimSpace(textHTML)
+	}
+	if textPlain != "" {
+		return strings.TrimSpace(textPlain)
+	}
+	if len(attachmentBody) > 0 {
+		if strings.Contains(attachmentContentType, "gzip") || strings.Contains(attachmentContentType, "zip") {
+			return base64.StdEncoding.EncodeToString(attachmentBody)
+		}
+		return string(attachmentBody)
+	}
+
+	return ""
+}
 
 // looksLikeBase64 checks if a string appears to be base64 encoded
 func looksLikeBase64(s string) bool {
