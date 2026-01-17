@@ -15,9 +15,12 @@ jobs:
           username: mu
           port: 61194
           key: ${{ secrets.DEPLOY_KEY }}
+          script_stop: true
           script: |
+            set -e
             cd ~/src/mu
             git pull origin main
             source ~/.env
             go install
             sudo -n systemctl restart mu
+            echo "Deploy complete"
