@@ -1,6 +1,8 @@
-# API Endpoint Coverage
+# API Reference
 
-This document maps all application features to their corresponding API endpoints.
+This document covers the REST API for programmatic access to Mu.
+
+**Live API docs:** [mu.xyz/api](https://mu.xyz/api) — interactive documentation with examples
 
 ## ✅ Fully Covered Features
 

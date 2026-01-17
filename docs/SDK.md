@@ -2,6 +2,8 @@
 
 The Mu SDK is automatically available in all micro apps as `window.mu`.
 
+> **Note:** For programmatic access outside of micro apps, see the [REST API](/docs/api).
+
 ## Database (mu.db)
 
 Per-user persistent storage. 100KB quota per app.
