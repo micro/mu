@@ -348,7 +348,7 @@ func (s *Session) Data(r io.Reader) error {
 
 	// Extract headers
 	from := msg.Header.Get("From")
-	subject := msg.Header.Get("Subject")
+	subject := decodeMIMEHeader(msg.Header.Get("Subject"))
 	contentType := msg.Header.Get("Content-Type")
 	messageID := msg.Header.Get("Message-ID")
 	inReplyTo := msg.Header.Get("In-Reply-To")

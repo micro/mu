@@ -14,6 +14,22 @@ import (
 	"mu/app"
 )
 
+// decodeMIMEHeader decodes RFC 2047 MIME encoded-word strings in headers
+// e.g., "=?utf-8?B?SGVsbG8gV29ybGQ=?=" -> "Hello World"
+func decodeMIMEHeader(s string) string {
+	if !strings.Contains(s, "=?") {
+		return s
+	}
+
+	decoder := new(mime.WordDecoder)
+	decoded, err := decoder.DecodeHeader(s)
+	if err != nil {
+		// If decoding fails, return original
+		return s
+	}
+	return decoded
+}
+
 // extractMIMEBody parses inline MIME content from a message body
 // This handles cases where the body contains raw MIME headers and parts
 func extractMIMEBody(body string) string {

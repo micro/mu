@@ -52,7 +52,7 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 				<span style="color: #888; font-size: 12px; margin-left: 10px; flex-shrink: 0;">%s</span>
 			</div>
 		</div>
-	`, rootID, rootID, unreadIndicator, fromDisplay, latestMsg.Subject, bodyPreview, relativeTime)
+	`, rootID, rootID, unreadIndicator, fromDisplay, decodeMIMEHeader(latestMsg.Subject), bodyPreview, relativeTime)
 
 	return html
 }
@@ -99,7 +99,7 @@ func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string)
 				<span style="color: #888; font-size: 12px; margin-left: 10px; flex-shrink: 0;">%s</span>
 			</div>
 		</div>
-	`, rootID, rootID, latestMsg.Subject, toDisplay, bodyPreview, relativeTime)
+	`, rootID, rootID, decodeMIMEHeader(latestMsg.Subject), toDisplay, bodyPreview, relativeTime)
 
 	return html
 }
@@ -143,7 +143,7 @@ func renderInboxMessageWithUnread(msg *Message, indent int, viewerID string, has
 		<h3 style="margin: 0 0 5px 0; font-size: 16px;"><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s%s</a></h3>
 		<div style="margin-bottom: 5px; color: #666; font-size: 14px; word-wrap: break-word; overflow-wrap: break-word;">%s</div>
 		<div class="info" style="color: #666; font-size: small;">%s from %s</div>
-	</div>`, msg.ID, unreadIndicator, msg.Subject, bodyPreview, app.TimeAgo(msg.CreatedAt), fromDisplay)
+	</div>`, msg.ID, unreadIndicator, decodeMIMEHeader(msg.Subject), bodyPreview, app.TimeAgo(msg.CreatedAt), fromDisplay)
 }
 
 // renderSentMessage renders a single sent message
@@ -180,7 +180,7 @@ func renderSentMessage(msg *Message) string {
 		<h3 style="margin: 0 0 5px 0; font-size: 16px;"><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
 		<div style="margin-bottom: 5px; color: #666; font-size: 14px; word-wrap: break-word; overflow-wrap: break-word;">%s</div>
 		<div class="info" style="color: #666; font-size: small;">%s to %s</div>
-	</div>`, msg.ID, msg.Subject, bodyPreview, app.TimeAgo(msg.CreatedAt), toDisplay)
+	</div>`, msg.ID, decodeMIMEHeader(msg.Subject), bodyPreview, app.TimeAgo(msg.CreatedAt), toDisplay)
 }
 
 // renderSentMessageInThread renders a sent message as part of a thread (same styling as renderSentMessage)

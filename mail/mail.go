@@ -661,10 +661,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Process email body - renders markdown if detected, otherwise linkifies URLs
 		displayBody = renderEmailBody(displayBody, isAttachment)
 
-		// Prepare reply subject
-		replySubject := msg.Subject
-		if !strings.HasPrefix(strings.ToLower(msg.Subject), "re:") {
-			replySubject = "Re: " + msg.Subject
+		// Prepare reply subject (decode MIME encoded subject first)
+		decodedSubject := decodeMIMEHeader(msg.Subject)
+		replySubject := decodedSubject
+		if !strings.HasPrefix(strings.ToLower(decodedSubject), "re:") {
+			replySubject = "Re: " + decodedSubject
 		}
 
 		// Build thread view - use pre-built inbox structure for efficiency
@@ -899,7 +900,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>
 	</div>
 `, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton)
-		w.Write([]byte(app.RenderHTML(msg.Subject, "", messageView)))
+		w.Write([]byte(app.RenderHTML(decodedSubject, "", messageView)))
 		return
 	}
 
