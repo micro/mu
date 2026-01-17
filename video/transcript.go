@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 
@@ -135,20 +134,45 @@ func GetTranscript(videoID string) (*TranscriptResult, error) {
 
 // extractCaptionTracks parses caption track info from YouTube page HTML
 func extractCaptionTracks(pageContent string) ([]captionTrack, error) {
-	// Look for captionTracks in the page JSON
-	re := regexp.MustCompile(`"captionTracks":\s*(\[[^\]]+\])`)
-	matches := re.FindStringSubmatch(pageContent)
-	if len(matches) < 2 {
-		// Try alternate pattern
-		re2 := regexp.MustCompile(`"captions":\s*\{[^}]*"playerCaptionsTracklistRenderer":\s*\{[^}]*"captionTracks":\s*(\[[^\]]+\])`)
-		matches = re2.FindStringSubmatch(pageContent)
-		if len(matches) < 2 {
-			return nil, fmt.Errorf("no caption tracks found in page")
-		}
+	// Find the start of captionTracks array
+	startMarker := `"captionTracks":`
+	startIdx := strings.Index(pageContent, startMarker)
+	if startIdx == -1 {
+		return nil, fmt.Errorf("no caption tracks found in page")
 	}
 	
+	// Find the opening bracket
+	startIdx += len(startMarker)
+	for startIdx < len(pageContent) && pageContent[startIdx] != '[' {
+		startIdx++
+	}
+	if startIdx >= len(pageContent) {
+		return nil, fmt.Errorf("no caption tracks array found")
+	}
+	
+	// Find matching closing bracket (handle nested objects)
+	depth := 0
+	endIdx := startIdx
+	for endIdx < len(pageContent) {
+		switch pageContent[endIdx] {
+		case '[':
+			depth++
+		case ']':
+			depth--
+			if depth == 0 {
+				endIdx++
+				goto found
+			}
+		}
+		endIdx++
+	}
+	return nil, fmt.Errorf("malformed caption tracks JSON")
+	
+found:
+	jsonStr := pageContent[startIdx:endIdx]
+	
 	// Unescape unicode
-	jsonStr := strings.ReplaceAll(matches[1], `\u0026`, "&")
+	jsonStr = strings.ReplaceAll(jsonStr, `\u0026`, "&")
 	jsonStr = strings.ReplaceAll(jsonStr, `\"`, `"`)
 	
 	var tracks []captionTrack
