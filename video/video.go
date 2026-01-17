@@ -1182,24 +1182,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
-		// Simple video player page
+		// Fullscreen video player page
 		tmpl := `<!DOCTYPE html>
 <html>
   <head>
     <title>Video | Mu</title>
     <link rel="stylesheet" href="/mu.css">
-    <style>
-      .video-container { max-width: 900px; margin: 20px auto 0; padding: 0 20px; }
-      .video-wrapper { position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; }
-      .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; }
-      .back-link { display: block; margin-top: 20px; text-align: center; }
-    </style>
   </head>
   <body>
-    <div class="video-container">
-      <div class="video-wrapper">%s</div>
-      <a href="/video" class="back-link">← Back to videos</a>
-    </div>
+    <div class="video" style="padding-top: 100px">%s</div>
   </body>
 </html>
 `
