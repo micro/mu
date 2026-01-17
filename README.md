@@ -1,23 +1,35 @@
 # mu
 
-The Micro Network
+A personal AI platform — without ads
 
 ## Overview
 
-A personal app platform that provides services without ads
+Mu is your private AI-powered home on the internet. While other platforms monetize your attention with ads (yes, even ChatGPT now), Mu helps you consume less, not more.
+
+**The problem**: The internet is designed to waste your time. Feeds are infinite, videos autoplay, and AI assistants are becoming ad-supported.
+
+**The solution**: AI that works for you, not advertisers. Summarize instead of scroll. Ask instead of search. Create instead of consume.
 
 ### Features
 
-- **PWA** - Progressive web app for desktop and mobile
-- **API** - Authenticated API for programmatic access
-- **Home** - One place to catchup with everything
-- **Agent** - AI assistant that does things for you
-- **Apps** - Build and share micro apps with AI
-- **Blog** - Microblogging and community sharing
-- **Chat** - AI assistant with contextual discussions
-- **Mail** - Private messaging and email inbox 
-- **News** - Curated RSS feeds and market data
-- **Video** - YouTube search and Ad-free viewing
+- **Chat** - AI assistant with context-aware conversations
+- **Agent** - AI that executes tasks across your data
+- **Apps** - Build micro apps from natural language
+- **News** - AI-curated feeds with summaries
+- **Video** - Ad-free viewing with AI summaries
+- **Mail** - Private email with AI assistance  
+- **Blog** - Thoughtful microblogging
+- **Home** - Your personalized dashboard
+
+### AI Everywhere
+
+| Before | After with Mu |
+|--------|---------------|
+| Read 50 news articles | AI summary in 2 minutes |
+| Watch 10 YouTube videos | Key points extracted instantly |
+| Write email from scratch | AI drafts, you refine |
+| Build a simple app | Describe it, AI creates it |
+| Search through content | Ask questions, get answers |
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
@@ -39,6 +51,26 @@ Starting with:
 - [x] Wallet - Credits for usage
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
+
+### AI Opportunities
+
+The goal is to reduce internet consumption by 10x through AI. Here's how AI can enhance each feature:
+
+| Feature | Current State | AI Opportunity | Impact |
+|---------|--------------|----------------|--------|
+| **News** | ✅ AI summaries | Already integrated | High - Read 50 articles in 2 min |
+| **Chat** | ✅ LLM chat | Already integrated | High - Get answers instantly |
+| **Apps** | ✅ AI builder | Already integrated | High - Build apps from prompts |
+| **Agent** | ✅ AI assistant | Already integrated | High - Automated workflows |
+| **Video** | ⏳ Search only | Summarize videos, extract key points, Q&A on video content | High - Watch 10 videos in 2 min |
+| **Blog** | ⏳ Manual posts | Writing assistance, auto-summaries, translate posts | Medium - Faster creation |
+| **Mail** | ⏳ Manual compose | Draft replies, summarize threads, smart prioritization | Medium - Handle 100 emails in 5 min |
+| **Wallet** | ✅ Credit system | Infrastructure, AI not applicable | N/A - Payment tracking |
+
+**Priority order for AI integration:**
+1. **Video** - Highest impact; people spend hours watching when a summary would suffice
+2. **Mail** - High value for power users; AI-drafted replies save significant time
+3. **Blog** - Lower priority; writing should remain intentional
 
 ## Micro Apps
 
@@ -218,11 +250,15 @@ Go to localhost:8081
 
 Additional documentation is available in the [docs](docs/) folder:
 
-- [Design Documentation](docs/DESIGN.md) - Architecture and design decisions
+- [System Design](docs/SYSTEM_DESIGN.md) - Overall architecture and component design
+- [Design System](docs/DESIGN_SYSTEM.md) - UI/UX patterns and design decisions
 - [Messaging System](docs/MESSAGING_SYSTEM.md) - Complete messaging and mail setup guide
 - [Environment Variables](docs/ENVIRONMENT_VARIABLES.md) - All configuration options
 - [Contextual Discussions](docs/CONTEXTUAL_DISCUSSIONS.md) - Chat context and discussion features
 - [Vector Search](docs/VECTOR_SEARCH.md) - Setting up vector embeddings for semantic search
+- [Wallet and Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
+- [Data Publishing](docs/DATA_PUBLISHING_ARCHITECTURE.md) - Data sync architecture
+- [API Coverage](docs/API_COVERAGE.md) - API endpoint documentation
 - [Screenshots](docs/SCREENSHOTS.md) - Application screenshots
 
 ## Development 

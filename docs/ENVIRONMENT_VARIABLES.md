@@ -7,7 +7,7 @@
 ```bash
 # Fanar API for chat functionality
 export FANAR_API_KEY="your-fanar-api-key"
-export FANAR_API_URL="https://api.fanar.ai"  # Default: https://api.fanar.ai
+export FANAR_API_URL="https://api.fanar.qa"  # Default: https://api.fanar.qa
 ```
 
 ### Ollama (Fallback)
