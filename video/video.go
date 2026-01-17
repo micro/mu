@@ -1221,12 +1221,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		autoplay := r.Form.Get("autoplay") == "1"
 
 		// get the page with summarize button
-		tmpl := `<html>
+		tmpl := `<!DOCTYPE html>
+<html>
   <head>
     <title>Video | Mu</title>
     <link rel="stylesheet" href="/mu.css">
     <style>
-      .video-container { max-width: 900px; margin: 100px auto 0; padding: 0 20px; }
+      .video-container { max-width: 900px; margin: 20px auto 0; padding: 0 20px; }
+      .video-wrapper { position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; }
+      .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; }
       .video-actions { margin-top: 20px; text-align: center; }
       .video-actions button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #333; color: white; border: none; border-radius: 6px; }
       .video-actions button:hover { background: #555; }
@@ -1240,10 +1243,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
   </head>
   <body>
     <div class="video-container">
-      %s
+      <div class="video-wrapper">%s</div>
       <div class="video-actions">
         <button id="summarize-btn" onclick="summarizeVideo()">✨ Summarize Video</button>
-      const autoSummarize = %v;
+      </div>
+      <div id="summary">
+        <h3>Summary</h3>
+        <div id="summary-content"></div>
+      </div>
+    </div>
+    <script>
+      const videoId = '%s';
+      const autoSummarize = %t;
       
       async function summarizeVideo() {
         const btn = document.getElementById('summarize-btn');
