@@ -525,7 +525,19 @@ func (s *Session) Data(r io.Reader) error {
 
 // parseMultipart extracts text content from a multipart MIME message
 // If there's only one attachment and no text body, returns the attachment content
+// Recursively handles nested multipart content (e.g., multipart/related containing multipart/alternative)
 func parseMultipart(body io.Reader, boundary string) string {
+	return parseMultipartRecursive(body, boundary, 0)
+}
+
+// parseMultipartRecursive handles nested multipart with depth tracking to prevent infinite loops
+func parseMultipartRecursive(body io.Reader, boundary string, depth int) string {
+	// Prevent infinite recursion
+	if depth > 5 {
+		app.Log("mail", "Maximum multipart nesting depth reached")
+		return ""
+	}
+
 	mr := multipart.NewReader(body, boundary)
 	var textPlain, textHTML string
 	var attachmentBody []byte
@@ -544,24 +556,52 @@ func parseMultipart(body io.Reader, boundary string) string {
 		contentType := part.Header.Get("Content-Type")
 		transferEncoding := part.Header.Get("Content-Transfer-Encoding")
 		contentDisposition := part.Header.Get("Content-Disposition")
+
+		// Log what we're seeing
+		app.Log("mail", "MIME part (depth %d): Content-Type=%s, Transfer-Encoding=%s, Disposition=%s",
+			depth, contentType, transferEncoding, contentDisposition)
+
+		// Handle nested multipart content (multipart/alternative, multipart/related, etc.)
+		if strings.Contains(contentType, "multipart/") {
+			mediaType, params, err := mime.ParseMediaType(contentType)
+			if err == nil && strings.HasPrefix(mediaType, "multipart/") {
+				nestedBoundary := params["boundary"]
+				if nestedBoundary != "" {
+					app.Log("mail", "Recursively parsing nested %s (boundary: %s)", mediaType, nestedBoundary)
+					nestedContent := parseMultipartRecursive(part, nestedBoundary, depth+1)
+					if nestedContent != "" {
+						// If we got HTML from nested content, treat it as HTML
+						if strings.Contains(nestedContent, "<") && strings.Contains(nestedContent, ">") {
+							if textHTML == "" {
+								textHTML = nestedContent
+							}
+						} else if textPlain == "" {
+							textPlain = nestedContent
+						}
+					}
+					continue
+				}
+			}
+		}
+
 		partBody, err := io.ReadAll(part)
 		if err != nil {
 			continue
 		}
 
-		// Log what we're seeing
-		app.Log("mail", "MIME part: Content-Type=%s, Transfer-Encoding=%s, Disposition=%s, Size=%d", 
-			contentType, transferEncoding, contentDisposition, len(partBody))
+		app.Log("mail", "MIME part body size: %d bytes", len(partBody))
 
 		// Decode based on transfer encoding
 		if strings.ToLower(transferEncoding) == "base64" {
 			if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(partBody))); err == nil {
 				partBody = decoded
+				app.Log("mail", "Decoded base64 part (%d bytes)", len(partBody))
 			}
 		} else if strings.ToLower(transferEncoding) == "quoted-printable" {
 			reader := quotedprintable.NewReader(bytes.NewReader(partBody))
 			if decoded, err := io.ReadAll(reader); err == nil {
 				partBody = decoded
+				app.Log("mail", "Decoded quoted-printable part (%d bytes)", len(partBody))
 			}
 		}
 
@@ -596,7 +636,7 @@ func parseMultipart(body io.Reader, boundary string) string {
 
 	// Build result - prefer HTML/plain text but append any extra parts
 	var result string
-	
+
 	// Prefer HTML for rich content (images, formatting), fallback to plain text
 	if textHTML != "" {
 		result = strings.TrimSpace(textHTML)

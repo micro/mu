@@ -508,14 +508,59 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		trimmed := strings.TrimSpace(displayBody)
 
+		// Check if body contains mixed content: base64 gzip data followed by MIME multipart markers
+		// This happens with some DMARC reports from Microsoft that have inline gzip followed by HTML explanation
+		if strings.Contains(trimmed, "[multipart/") || strings.Contains(trimmed, "\n--") {
+			// Split at the first boundary marker or multipart notation
+			var gzipPart string
+			if idx := strings.Index(trimmed, "\n[multipart/"); idx > 0 {
+				gzipPart = strings.TrimSpace(trimmed[:idx])
+			} else if idx := strings.Index(trimmed, "\n--"); idx > 0 {
+				gzipPart = strings.TrimSpace(trimmed[:idx])
+			}
+
+			if gzipPart != "" && looksLikeBase64(gzipPart) {
+				// Try to decode the gzip part
+				if decoded, err := base64.StdEncoding.DecodeString(gzipPart); err == nil {
+					if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
+						if reader, err := gzip.NewReader(bytes.NewReader(decoded)); err == nil {
+							if content, err := io.ReadAll(reader); err == nil {
+								reader.Close()
+								if isValidUTF8Text(content) {
+									// Try to render as DMARC report
+									if dmarcHTML := renderDMARCReport(string(content)); dmarcHTML != "" {
+										displayBody = dmarcHTML
+										isAttachment = true // Skip linkifyURLs for pre-rendered HTML
+										app.Log("mail", "Rendered DMARC report from mixed content gzip (%d bytes)", len(content))
+									} else {
+										displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, html.EscapeString(string(content)))
+										app.Log("mail", "Displayed raw XML from mixed content gzip (%d bytes)", len(content))
+									}
+									// Skip further processing since we handled this specially
+									goto skipBodyProcessing
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
 		// Check if body is gzip compressed (DMARC reports are often .xml.gz)
 		if len(trimmed) >= 2 && trimmed[0] == 0x1f && trimmed[1] == 0x8b {
 			if reader, err := gzip.NewReader(strings.NewReader(trimmed)); err == nil {
 				if content, err := io.ReadAll(reader); err == nil {
 					reader.Close()
 					if isValidUTF8Text(content) {
-						displayBody = string(content)
-						app.Log("mail", "Decompressed gzip body for display (%d bytes)", len(content))
+						// Try to render as DMARC report
+						if dmarcHTML := renderDMARCReport(string(content)); dmarcHTML != "" {
+							displayBody = dmarcHTML
+							isAttachment = true // Skip linkifyURLs for pre-rendered HTML
+							app.Log("mail", "Rendered DMARC report from raw gzip (%d bytes)", len(content))
+						} else {
+							displayBody = string(content)
+							app.Log("mail", "Decompressed gzip body for display (%d bytes)", len(content))
+						}
 					} else {
 						app.Log("mail", "Gzip content is not valid text")
 					}
@@ -559,8 +604,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						if content, err := io.ReadAll(reader); err == nil {
 							reader.Close()
 							if isValidUTF8Text(content) {
-								displayBody = string(content)
-								app.Log("mail", "Decompressed base64-encoded gzip body for display (%d bytes)", len(content))
+								// Try to render as DMARC report
+								if dmarcHTML := renderDMARCReport(string(content)); dmarcHTML != "" {
+									displayBody = dmarcHTML
+									isAttachment = true // Skip linkifyURLs for pre-rendered HTML
+									app.Log("mail", "Rendered DMARC report from base64-gzip (%d bytes)", len(content))
+								} else {
+									displayBody = string(content)
+									app.Log("mail", "Decompressed base64-encoded gzip body for display (%d bytes)", len(content))
+								}
 							}
 						}
 					}
@@ -593,6 +645,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+	skipBodyProcessing:
 		// Process email body - renders markdown if detected, otherwise linkifies URLs
 		displayBody = renderEmailBody(displayBody, isAttachment)
 
