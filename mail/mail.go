@@ -513,7 +513,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(trimmed, "[multipart/") || strings.Contains(trimmed, "\n--") {
 			// Split at the first boundary marker or multipart notation
 			var gzipPart string
-			if idx := strings.Index(trimmed, "\n[multipart/"); idx > 0 {
+			// Check for [multipart/ with various whitespace prefixes
+			if idx := strings.Index(trimmed, "\n\n[multipart/"); idx > 0 {
+				gzipPart = strings.TrimSpace(trimmed[:idx])
+			} else if idx := strings.Index(trimmed, "\n[multipart/"); idx > 0 {
+				gzipPart = strings.TrimSpace(trimmed[:idx])
+			} else if idx := strings.Index(trimmed, "[multipart/"); idx > 0 {
 				gzipPart = strings.TrimSpace(trimmed[:idx])
 			} else if idx := strings.Index(trimmed, "\n--"); idx > 0 {
 				gzipPart = strings.TrimSpace(trimmed[:idx])
