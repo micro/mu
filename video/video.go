@@ -128,14 +128,6 @@ var commonStyles = `
 	.recent-search-close:hover {
 		color: #000;
 	}
-	.summarize-link {
-		color: #666;
-		text-decoration: none;
-		cursor: pointer;
-	}
-	.summarize-link:hover {
-		color: #333;
-	}
 `
 
 var recentSearchesScript = `
@@ -436,7 +428,6 @@ func regenerateHTML() {
 			channelLink := res.Channel
 			if res.ChannelID != "" {
 				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
-		info += fmt.Sprintf(` · <a href="%s&summarize=1" class="summarize-link">✨ Summarize</a>`, res.URL)
 			}
 			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
 		} else {
@@ -572,7 +563,6 @@ func loadVideos() {
 		if res.Channel != "" {
 			channelLink := res.Channel
 			if res.ChannelID != "" {
-		info += fmt.Sprintf(` · <a href="%s&summarize=1" class="summarize-link">✨ Summarize</a>`, res.URL)
 				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
 			}
 			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
@@ -696,8 +686,8 @@ func getChannel(category, handle string) (string, []*Result, error) {
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a> · <a href="%s&summarize=1" class="summarize-link">✨ Summarize</a></div></div>`,
-			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category, url)
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a></div></div>`,
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category)
 		sb.WriteString(html)
 		res.Html = html
 
@@ -809,8 +799,8 @@ func getResults(query, channel string) (string, []*Result, error) {
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s · <a href="%s&summarize=1" class="summarize-link">✨ Summarize</a></div>`,
-			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc, url)
+			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s</div>`,
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
 		sb.WriteString(html)
 		res.Html = html
 	}
@@ -830,34 +820,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	ct := r.Header.Get("Content-Type")
-
-	// Handle summarize action
-	if r.Method == "GET" && r.URL.Query().Get("action") == "summarize" {
-		videoID := r.URL.Query().Get("id")
-		if videoID == "" {
-			app.RespondJSON(w, map[string]string{"error": "Missing video ID"})
-			return
-		}
-		
-		// Require authentication
-		_, _, err := auth.RequireSession(r)
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(401)
-			w.Write([]byte(`{"error": "Login required"}`))
-			return
-		}
-		
-		// Get summary
-		summary, err := SummarizeVideo(videoID, "")
-		if err != nil {
-			app.RespondJSON(w, map[string]string{"error": err.Error()})
-			return
-		}
-		
-		app.RespondJSON(w, map[string]string{"summary": summary.Summary})
-		return
-	}
 
 	// create head
 	var chanNames []string
@@ -1220,7 +1182,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
-		// get the page with summarize button
+		// Simple video player page
 		tmpl := `<!DOCTYPE html>
 <html>
   <head>
@@ -1230,71 +1192,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
       .video-container { max-width: 900px; margin: 20px auto 0; padding: 0 20px; }
       .video-wrapper { position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; }
       .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; }
-      .video-actions { margin-top: 20px; text-align: center; }
-      .video-actions button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #333; color: white; border: none; border-radius: 6px; }
-      .video-actions button:hover { background: #555; }
-      .video-actions button:disabled { background: #ccc; cursor: not-allowed; }
-      #summary { margin-top: 20px; padding: 20px; background: #f9f9f9; border-radius: 8px; display: none; }
-      #summary h3 { margin-top: 0; }
-      #summary-content { white-space: pre-wrap; line-height: 1.6; }
-      .loading { color: #666; font-style: italic; }
-      .error { color: #c00; }
+      .back-link { display: block; margin-top: 20px; text-align: center; }
     </style>
   </head>
   <body>
     <div class="video-container">
       <div class="video-wrapper">%s</div>
-      <div class="video-actions">
-        <button id="summarize-btn" onclick="summarizeVideo()">✨ Summarize Video</button>
-      </div>
-      <div id="summary">
-        <h3>Summary</h3>
-        <div id="summary-content"></div>
-      </div>
+      <a href="/video" class="back-link">← Back to videos</a>
     </div>
-    <script>
-      const videoId = '%s';
-      const autoSummarize = %t;
-      
-      async function summarizeVideo() {
-        const btn = document.getElementById('summarize-btn');
-        const summary = document.getElementById('summary');
-        const content = document.getElementById('summary-content');
-        
-        btn.disabled = true;
-        btn.textContent = 'Generating summary...';
-        summary.style.display = 'block';
-        content.innerHTML = '<span class="loading">Fetching transcript and generating summary...</span>';
-        
-        try {
-          const resp = await fetch('/video?action=summarize&id=' + videoId);
-          const data = await resp.json();
-          
-          if (data.error) {
-            content.innerHTML = '<span class="error">' + data.error + '</span>';
-            btn.textContent = '✨ Summarize Video';
-            btn.disabled = false;
-          } else {
-            content.textContent = data.summary;
-            btn.textContent = '✓ Summarized';
-          }
-        } catch (err) {
-          content.innerHTML = '<span class="error">Failed to generate summary: ' + err.message + '</span>';
-          btn.textContent = '✨ Summarize Video';
-          btn.disabled = false;
-        }
-      }
-      
-      // Auto-trigger summarize if requested
-      if (autoSummarize) {
-        summarizeVideo();
-      }
-    </script>
   </body>
 </html>
 `
-		autoSummarize := r.Form.Get("summarize") == "1"
-		html := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay), id, autoSummarize)
+		html := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay))
 		w.Write([]byte(html))
 
 		return
