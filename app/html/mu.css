@@ -1944,14 +1944,21 @@ a.highlight {
     padding: 12px;
   }
   #container {
-    height: calc(100vh - 140px);
+    height: auto;
+    min-height: calc(100vh - 50px);
     overflow-y: auto;
-    display: block;
+    display: flex;
+    flex-direction: column;
   }
   #content {
+    flex: 1;
     height: auto;
     display: block;
-    padding: 15px 15px 80px 15px;
+    padding: 15px 15px 20px 15px;
+  }
+  #footer {
+    padding: 20px 15px;
+    margin-bottom: 70px; /* Space for fixed bottom nav */
   }
   #main {
     padding: 15px;
