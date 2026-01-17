@@ -72,7 +72,7 @@ The goal is to reduce internet consumption by 10x through AI. Here's how AI can 
 2. **Mail** - High value for power users; AI-drafted replies with tone awareness
 3. **Blog** - Focus on intentionality; AI prompts reflection, not engagement
 
-**Philosophy:** AI is a tool, not a destination. It should reduce screen time, not extend it. See [Principles](/docs/principles) for details.
+**Philosophy:** AI is a tool, not a destination. It should reduce screen time, not extend it. See [Principles](docs/PRINCIPLES.md) for details.
 
 ## Micro Apps
 
@@ -256,6 +256,7 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 
 - [About](docs/ABOUT.md) - What Mu is and why it exists
 - [Principles](docs/PRINCIPLES.md) - Guiding principles for AI and technology
+- [Installation](docs/INSTALLATION.md) - Self-hosting and deployment guide
 - [System Design](docs/SYSTEM_DESIGN.md) - Overall architecture and component design
 - [Design System](docs/DESIGN_SYSTEM.md) - UI/UX patterns and design decisions
 - [Messaging System](docs/MESSAGING_SYSTEM.md) - Complete messaging and mail setup guide
@@ -264,6 +265,7 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 - [Vector Search](docs/VECTOR_SEARCH.md) - Setting up vector embeddings for semantic search
 - [Wallet and Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
 - [Data Publishing](docs/DATA_PUBLISHING_ARCHITECTURE.md) - Data sync architecture
+- [SDK](docs/SDK.md) - Micro apps SDK documentation
 - [API Coverage](docs/API_COVERAGE.md) - API endpoint documentation
 - [Screenshots](docs/SCREENSHOTS.md) - Application screenshots
 

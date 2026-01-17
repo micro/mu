@@ -329,8 +329,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Create new app form
 		handleNew(w, r, sess)
 	case path == "docs":
-		// SDK documentation
-		handleSDKDocs(w, r)
+		// SDK documentation - redirect to /docs/sdk
+		http.Redirect(w, r, "/docs/sdk", http.StatusMovedPermanently)
 	case reservedApps[strings.ToLower(path)] != "":
 		// Reserved app name -> redirect to the featured app
 		http.Redirect(w, r, "/apps/"+reservedApps[strings.ToLower(path)], 302)

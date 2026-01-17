@@ -27,6 +27,7 @@ var catalog = []Document{
 	// Getting Started
 	{Slug: "about", Filename: "ABOUT.md", Title: "About Mu", Description: "What Mu is and why it exists", Category: "Getting Started"},
 	{Slug: "principles", Filename: "PRINCIPLES.md", Title: "Principles", Description: "Guiding principles for AI and technology", Category: "Getting Started"},
+	{Slug: "installation", Filename: "INSTALLATION.md", Title: "Installation", Description: "Self-hosting and deployment guide", Category: "Getting Started"},
 
 	// Architecture
 	{Slug: "system-design", Filename: "SYSTEM_DESIGN.md", Title: "System Design", Description: "Architecture and technical decisions", Category: "Architecture"},
@@ -41,6 +42,7 @@ var catalog = []Document{
 
 	// Reference
 	{Slug: "environment", Filename: "ENVIRONMENT_VARIABLES.md", Title: "Configuration", Description: "Environment variables", Category: "Reference"},
+	{Slug: "sdk", Filename: "SDK.md", Title: "Micro Apps SDK", Description: "API for building micro apps", Category: "Reference"},
 	{Slug: "screenshots", Filename: "SCREENSHOTS.md", Title: "Screenshots", Description: "Application screenshots", Category: "Reference"},
 }
 
