@@ -1,5 +1,3 @@
-# About Mu
-
 **A personal AI platform — without ads**
 
 ## What is Mu?

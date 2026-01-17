@@ -227,9 +227,9 @@ var Template = `
         <h1 id="page-title">%s</h1>
         %s
       </div>
-      <div id="footer">
-        <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>
-      </div>
+    </div>
+    <div id="footer">
+      <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>
     </div>
   <script>
       if (navigator.serviceWorker) {

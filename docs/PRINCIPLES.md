@@ -1,5 +1,3 @@
-# Principles
-
 **Guiding principles for AI and technology at Mu**
 
 ## Foundation
