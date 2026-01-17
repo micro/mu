@@ -23,8 +23,8 @@ import (
 var f embed.FS
 
 type Prompt struct {
-	System   string   `json:"system"`   // System prompt override
-	Topic    string   `json:"topic"`    // User-selected topic/context
+	System   string   `json:"system"` // System prompt override
+	Topic    string   `json:"topic"`  // User-selected topic/context
 	Rag      []string `json:"rag"`
 	Context  History  `json:"context"`
 	Question string   `json:"question"`
@@ -106,10 +106,10 @@ type RoomMessage struct {
 
 // Client represents a connected websocket client
 type Client struct {
-	Conn          *websocket.Conn
-	UserID        string
-	Room          *Room
-	InMicroConvo  bool      // true if user started a conversation with @micro
+	Conn           *websocket.Conn
+	UserID         string
+	Room           *Room
+	InMicroConvo   bool      // true if user started a conversation with @micro
 	LastMicroReply time.Time // when micro last replied to this user
 }
 
@@ -819,7 +819,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						var recentTopics []string // Track topics from recent messages for context
 						room.mutex.RLock()
 						app.Log("chat", "Building history from %d room messages", len(room.Messages))
-						
+
 						var currentPrompt string
 						for _, m := range room.Messages {
 							if m.IsLLM {
@@ -1314,128 +1314,128 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-		// Get topic for enhanced RAG
-		topic := ""
-		if t := form["topic"]; t != nil {
-			topic = fmt.Sprintf("%v", t)
-		}
+	// Get topic for enhanced RAG
+	topic := ""
+	if t := form["topic"]; t != nil {
+		topic = fmt.Sprintf("%v", t)
+	}
 
-		// Check if this is a follow-up query with pronouns
-		var ragContext []string
-		qLower := strings.ToLower(q)
-		pronouns := []string{" him", " her", " them", " they", " it ", " this", " that", " he ", " she "}
-		isFollowUp := false
-		for _, p := range pronouns {
-			if strings.Contains(qLower, p) {
-				isFollowUp = true
-				break
-			}
+	// Check if this is a follow-up query with pronouns
+	var ragContext []string
+	qLower := strings.ToLower(q)
+	pronouns := []string{" him", " her", " them", " they", " it ", " this", " that", " he ", " she "}
+	isFollowUp := false
+	for _, p := range pronouns {
+		if strings.Contains(qLower, p) {
+			isFollowUp = true
+			break
 		}
-		
-		// For follow-up queries, extract entity from conversation and search for that
-		searchQuery := q
-		if isFollowUp && len(context) > 0 {
-			// Extract named entities from the most recent exchange
-			var entities []string
-			lastMsg := context[len(context)-1]
-			// Check both prompt and answer for entities
-			for _, text := range []string{lastMsg.Prompt, lastMsg.Answer} {
-				words := strings.Fields(text)
-				for _, word := range words {
-					cleanWord := strings.Trim(word, ".,!?;:'\"()<>")
-					if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
-						lower := strings.ToLower(cleanWord)
-						if lower != "the" && lower != "this" && lower != "that" && lower != "and" && lower != "who" && lower != "what" {
-							entities = append(entities, cleanWord)
-							if len(entities) >= 3 {
-								break
-							}
+	}
+
+	// For follow-up queries, extract entity from conversation and search for that
+	searchQuery := q
+	if isFollowUp && len(context) > 0 {
+		// Extract named entities from the most recent exchange
+		var entities []string
+		lastMsg := context[len(context)-1]
+		// Check both prompt and answer for entities
+		for _, text := range []string{lastMsg.Prompt, lastMsg.Answer} {
+			words := strings.Fields(text)
+			for _, word := range words {
+				cleanWord := strings.Trim(word, ".,!?;:'\"()<>")
+				if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
+					lower := strings.ToLower(cleanWord)
+					if lower != "the" && lower != "this" && lower != "that" && lower != "and" && lower != "who" && lower != "what" {
+						entities = append(entities, cleanWord)
+						if len(entities) >= 3 {
+							break
 						}
 					}
 				}
-				if len(entities) >= 3 {
-					break
-				}
 			}
-			if len(entities) > 0 {
-				searchQuery = strings.Join(entities, " ") + " news"
-				app.Log("chat", "[POST] Follow-up query: resolved to search '%s'", searchQuery)
+			if len(entities) >= 3 {
+				break
 			}
 		}
-
-		// Search the index for relevant context (RAG)
-		ragEntries := data.Search(searchQuery, 5)
-		for _, entry := range ragEntries {
-			// Format each entry as context (600 chars to fit within 4096 token limit)
-			contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-			if len(contextStr) > 600 {
-				contextStr = contextStr[:600] + "..."
-			}
-			if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-				contextStr += fmt.Sprintf(" (Source: %s)", url)
-			}
-			ragContext = append(ragContext, contextStr)
+		if len(entities) > 0 {
+			searchQuery = strings.Join(entities, " ") + " news"
+			app.Log("chat", "[POST] Follow-up query: resolved to search '%s'", searchQuery)
 		}
+	}
 
-		// Debug: Log what we found
-		if len(ragEntries) > 0 {
-			app.Log("chat", "[RAG] Query: %s, Search: %s", q, searchQuery)
-			app.Log("chat", "[RAG] Found %d entries:", len(ragEntries))
-			for i, entry := range ragEntries {
-				app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
-			}
+	// Search the index for relevant context (RAG)
+	ragEntries := data.Search(searchQuery, 5)
+	for _, entry := range ragEntries {
+		// Format each entry as context (600 chars to fit within 4096 token limit)
+		contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+		if len(contextStr) > 600 {
+			contextStr = contextStr[:600] + "..."
 		}
-
-		// Debug: Log conversation context being passed
-		app.Log("chat", "[POST] Conversation history has %d messages", len(context))
-		for i, msg := range context {
-			app.Log("chat", "[POST] History[%d] Q: %.50s... A: %.50s...", i, msg.Prompt, msg.Answer)
+		if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
+			contextStr += fmt.Sprintf(" (Source: %s)", url)
 		}
+		ragContext = append(ragContext, contextStr)
+	}
 
-		prompt := &Prompt{
-			Topic:    topic,
-			Rag:      ragContext,
-			Context:  context,
-			Question: q,
+	// Debug: Log what we found
+	if len(ragEntries) > 0 {
+		app.Log("chat", "[RAG] Query: %s, Search: %s", q, searchQuery)
+		app.Log("chat", "[RAG] Found %d entries:", len(ragEntries))
+		for i, entry := range ragEntries {
+			app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
 		}
+	}
 
-		// query the llm
-		resp, err := askLLM(prompt)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
+	// Debug: Log conversation context being passed
+	app.Log("chat", "[POST] Conversation history has %d messages", len(context))
+	for i, msg := range context {
+		app.Log("chat", "[POST] History[%d] Q: %.50s... A: %.50s...", i, msg.Prompt, msg.Answer)
+	}
 
-		if len(resp) == 0 {
-			return
-		}
+	prompt := &Prompt{
+		Topic:    topic,
+		Rag:      ragContext,
+		Context:  context,
+		Question: q,
+	}
 
-		// Consume quota after successful LLM response
-		wallet.ConsumeQuota(sess.Account, wallet.OpChatQuery)
+	// query the llm
+	resp, err := askLLM(prompt)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 
-		// save the response
-		html := app.Render([]byte(resp))
-		form["answer"] = string(html)
+	if len(resp) == 0 {
+		return
+	}
 
-		// if JSON request then respond with json
-		if app.SendsJSON(r) {
-			app.RespondJSON(w, form)
-			return
-		}
+	// Consume quota after successful LLM response
+	wallet.ConsumeQuota(sess.Account, wallet.OpChatQuery)
 
-		// Format a HTML response
-		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
-		messages += fmt.Sprintf(`<div class="message"><span class="micro">micro</span><p>%v</p></div>`, form["answer"])
+	// save the response
+	html := app.Render([]byte(resp))
+	form["answer"] = string(html)
 
-		mutex.RLock()
-		topicTabs := app.Head("chat", topics)
-		mutex.RUnlock()
+	// if JSON request then respond with json
+	if app.SendsJSON(r) {
+		app.RespondJSON(w, form)
+		return
+	}
 
-		output := fmt.Sprintf(Template, topicTabs)
-		renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
-		renderHTML = strings.Replace(renderHTML, `<div id="messages"></div>`, fmt.Sprintf(`<div id="messages">%s</div>`, messages), 1)
+	// Format a HTML response
+	messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
+	messages += fmt.Sprintf(`<div class="message"><span class="micro">micro</span><p>%v</p></div>`, form["answer"])
 
-		w.Write([]byte(renderHTML))
+	mutex.RLock()
+	topicTabs := app.Head("chat", topics)
+	mutex.RUnlock()
+
+	output := fmt.Sprintf(Template, topicTabs)
+	renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
+	renderHTML = strings.Replace(renderHTML, `<div id="messages"></div>`, fmt.Sprintf(`<div id="messages">%s</div>`, messages), 1)
+
+	w.Write([]byte(renderHTML))
 }
 
 // llmAnalyzer implements the admin.LLMAnalyzer interface

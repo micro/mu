@@ -19,10 +19,10 @@ import (
 )
 
 var (
-	StripeSecretKey        = os.Getenv("STRIPE_SECRET_KEY")
-	StripePublishableKey   = os.Getenv("STRIPE_PUBLISHABLE_KEY")
-	StripeWebhookSecret    = os.Getenv("STRIPE_WEBHOOK_SECRET")
-	StripeMembershipPrice  = os.Getenv("STRIPE_MEMBERSHIP_PRICE") // Monthly subscription price ID
+	StripeSecretKey       = os.Getenv("STRIPE_SECRET_KEY")
+	StripePublishableKey  = os.Getenv("STRIPE_PUBLISHABLE_KEY")
+	StripeWebhookSecret   = os.Getenv("STRIPE_WEBHOOK_SECRET")
+	StripeMembershipPrice = os.Getenv("STRIPE_MEMBERSHIP_PRICE") // Monthly subscription price ID
 )
 
 // Price IDs from environment (set up in Stripe Dashboard)
@@ -404,7 +404,7 @@ func handleSuccess(w http.ResponseWriter, r *http.Request) {
 
 	// Check if this was a subscription or credit purchase
 	sessionType := r.URL.Query().Get("type")
-	
+
 	var content string
 	if sessionType == "subscription" {
 		content = `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #f0fff4; border-color: #22c55e;">
@@ -719,7 +719,7 @@ func handleSubscriptionCreated(userID string, session *stripe.CheckoutSession) {
 	// Get the subscription details
 	customerID := ""
 	subscriptionID := ""
-	
+
 	if session.Customer != nil {
 		customerID = session.Customer.ID
 	}

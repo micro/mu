@@ -15,9 +15,9 @@ type StepCallback func(step *Step, final bool)
 
 // Tool represents a capability the agent can use
 type Tool struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Parameters  map[string]ToolParam   `json:"parameters"`
+	Name        string                                                   `json:"name"`
+	Description string                                                   `json:"description"`
+	Parameters  map[string]ToolParam                                     `json:"parameters"`
 	Execute     func(params map[string]interface{}) (*ToolResult, error) `json:"-"`
 }
 
@@ -34,9 +34,9 @@ type ToolResult struct {
 	Data    interface{} `json:"data,omitempty"`
 	Error   string      `json:"error,omitempty"`
 	// For UI rendering
-	HTML    string      `json:"html,omitempty"`
-	Action  string      `json:"action,omitempty"` // "play", "navigate", "display", etc.
-	URL     string      `json:"url,omitempty"`
+	HTML   string `json:"html,omitempty"`
+	Action string `json:"action,omitempty"` // "play", "navigate", "display", etc.
+	URL    string `json:"url,omitempty"`
 }
 
 // Agent orchestrates tasks across mu services
@@ -56,13 +56,13 @@ type Step struct {
 
 // Result is the final output from the agent
 type Result struct {
-	Success  bool     `json:"success"`
-	Answer   string   `json:"answer"`
-	Steps    []*Step  `json:"steps"`
-	HTML     string   `json:"html,omitempty"`
-	Action   string   `json:"action,omitempty"`
-	URL      string   `json:"url,omitempty"`
-	Duration string   `json:"duration"`
+	Success  bool    `json:"success"`
+	Answer   string  `json:"answer"`
+	Steps    []*Step `json:"steps"`
+	HTML     string  `json:"html,omitempty"`
+	Action   string  `json:"action,omitempty"`
+	URL      string  `json:"url,omitempty"`
+	Duration string  `json:"duration"`
 }
 
 // New creates a new agent for a user
@@ -72,10 +72,10 @@ func New(userID string) *Agent {
 		userID:   userID,
 		maxSteps: 5,
 	}
-	
+
 	// Register all tools
 	a.registerTools()
-	
+
 	return a
 }
 
@@ -90,7 +90,7 @@ func (a *Agent) registerTools() {
 		},
 		Execute: a.videoSearch,
 	}
-	
+
 	a.tools["video_play"] = &Tool{
 		Name:        "video_play",
 		Description: "Play a specific video by its ID. Returns a URL to play the video.",
@@ -99,7 +99,7 @@ func (a *Agent) registerTools() {
 		},
 		Execute: a.videoPlay,
 	}
-	
+
 	// News tools
 	a.tools["news_search"] = &Tool{
 		Name:        "news_search",
@@ -109,7 +109,7 @@ func (a *Agent) registerTools() {
 		},
 		Execute: a.newsSearch,
 	}
-	
+
 	a.tools["news_read"] = &Tool{
 		Name:        "news_read",
 		Description: "Get the full content of a news article by its URL or ID.",
@@ -118,7 +118,7 @@ func (a *Agent) registerTools() {
 		},
 		Execute: a.newsRead,
 	}
-	
+
 	// Apps tools
 	a.tools["app_create"] = &Tool{
 		Name:        "app_create",
@@ -129,7 +129,7 @@ func (a *Agent) registerTools() {
 		},
 		Execute: a.appCreate,
 	}
-	
+
 	a.tools["app_modify"] = &Tool{
 		Name:        "app_modify",
 		Description: "Modify an existing app with new instructions.",
@@ -139,7 +139,7 @@ func (a *Agent) registerTools() {
 		},
 		Execute: a.appModify,
 	}
-	
+
 	a.tools["app_list"] = &Tool{
 		Name:        "app_list",
 		Description: "List user's apps or search public apps.",
@@ -148,7 +148,7 @@ func (a *Agent) registerTools() {
 		},
 		Execute: a.appList,
 	}
-	
+
 	// Market tools
 	a.tools["market_price"] = &Tool{
 		Name:        "market_price",
@@ -158,7 +158,7 @@ func (a *Agent) registerTools() {
 		},
 		Execute: a.marketPrice,
 	}
-	
+
 	// Final answer tool
 	a.tools["final_answer"] = &Tool{
 		Name:        "final_answer",
@@ -173,14 +173,14 @@ func (a *Agent) registerTools() {
 // Run executes the agent on a task
 func (a *Agent) Run(task string) *Result {
 	start := time.Now()
-	
+
 	result := &Result{
 		Steps: []*Step{},
 	}
-	
+
 	// Build tool descriptions for the prompt
 	toolsJSON := a.buildToolsPrompt()
-	
+
 	// Create the system prompt for the agent
 	systemPrompt := fmt.Sprintf(`You are an AI agent for the Mu platform. You help users accomplish tasks by using the available tools.
 
@@ -208,7 +208,7 @@ Current user: %s`, toolsJSON, a.userID)
 	// Conversation context for multi-step reasoning
 	var context chat.History
 	currentPrompt := task
-	
+
 	for i := 0; i < a.maxSteps; i++ {
 		// Ask LLM for next step
 		llmPrompt := &chat.Prompt{
@@ -217,14 +217,14 @@ Current user: %s`, toolsJSON, a.userID)
 			Context:  context,
 			Priority: chat.PriorityHigh,
 		}
-		
+
 		response, err := chat.AskLLM(llmPrompt)
 		if err != nil {
 			result.Success = false
 			result.Answer = fmt.Sprintf("Error: %v", err)
 			break
 		}
-		
+
 		// Parse the agent's response
 		step, err := a.parseStep(response)
 		if err != nil {
@@ -234,9 +234,9 @@ Current user: %s`, toolsJSON, a.userID)
 			result.Success = true
 			break
 		}
-		
+
 		result.Steps = append(result.Steps, step)
-		
+
 		// Execute the tool
 		if tool, ok := a.tools[step.Tool]; ok {
 			params, _ := step.Parameters.(map[string]interface{})
@@ -246,14 +246,14 @@ Current user: %s`, toolsJSON, a.userID)
 			} else {
 				step.Result = toolResult
 			}
-			
+
 			// Propagate action/URL from tool results (before checking final_answer)
 			if step.Result != nil && step.Result.Action != "" {
 				result.Action = step.Result.Action
 				result.URL = step.Result.URL
 				result.HTML = step.Result.HTML
 			}
-			
+
 			// Check if this is the final answer
 			if step.Tool == "final_answer" {
 				result.Success = true
@@ -262,7 +262,7 @@ Current user: %s`, toolsJSON, a.userID)
 				}
 				break
 			}
-			
+
 			// Add to context for next iteration
 			resultJSON, _ := json.Marshal(step.Result)
 			context = append(context, chat.Message{
@@ -270,14 +270,14 @@ Current user: %s`, toolsJSON, a.userID)
 				Answer: response,
 			})
 			currentPrompt = fmt.Sprintf("Tool result: %s\n\nWhat's next?", string(resultJSON))
-			
+
 		} else {
 			step.Result = &ToolResult{Success: false, Error: fmt.Sprintf("Unknown tool: %s", step.Tool)}
 			result.Answer = fmt.Sprintf("Unknown tool: %s", step.Tool)
 			break
 		}
 	}
-	
+
 	result.Duration = time.Since(start).String()
 	return result
 }
@@ -285,13 +285,13 @@ Current user: %s`, toolsJSON, a.userID)
 // RunStreaming executes the agent and calls the callback after each step
 func (a *Agent) RunStreaming(task string, onStep StepCallback) *Result {
 	start := time.Now()
-	
+
 	result := &Result{
 		Steps: []*Step{},
 	}
-	
+
 	toolsJSON := a.buildToolsPrompt()
-	
+
 	systemPrompt := fmt.Sprintf(`You are an AI agent for the Mu platform. You help users accomplish tasks by using the available tools.
 
 Available tools:
@@ -317,7 +317,7 @@ Current user: %s`, toolsJSON, a.userID)
 
 	var context chat.History
 	currentPrompt := task
-	
+
 	for i := 0; i < a.maxSteps; i++ {
 		llmPrompt := &chat.Prompt{
 			System:   systemPrompt,
@@ -325,14 +325,14 @@ Current user: %s`, toolsJSON, a.userID)
 			Context:  context,
 			Priority: chat.PriorityHigh,
 		}
-		
+
 		response, err := chat.AskLLM(llmPrompt)
 		if err != nil {
 			result.Success = false
 			result.Answer = fmt.Sprintf("Error: %v", err)
 			break
 		}
-		
+
 		step, err := a.parseStep(response)
 		if err != nil {
 			app.Log("agent", "Failed to parse step: %v, response: %s", err, response)
@@ -340,9 +340,9 @@ Current user: %s`, toolsJSON, a.userID)
 			result.Success = true
 			break
 		}
-		
+
 		result.Steps = append(result.Steps, step)
-		
+
 		if tool, ok := a.tools[step.Tool]; ok {
 			params, _ := step.Parameters.(map[string]interface{})
 			toolResult, err := tool.Execute(params)
@@ -351,19 +351,19 @@ Current user: %s`, toolsJSON, a.userID)
 			} else {
 				step.Result = toolResult
 			}
-			
+
 			if step.Result != nil && step.Result.Action != "" {
 				result.Action = step.Result.Action
 				result.URL = step.Result.URL
 				result.HTML = step.Result.HTML
 			}
-			
+
 			// Stream the step to client
 			isFinal := step.Tool == "final_answer"
 			if onStep != nil {
 				onStep(step, isFinal)
 			}
-			
+
 			if isFinal {
 				result.Success = true
 				if answer, ok := params["answer"].(string); ok {
@@ -371,14 +371,14 @@ Current user: %s`, toolsJSON, a.userID)
 				}
 				break
 			}
-			
+
 			resultJSON, _ := json.Marshal(step.Result)
 			context = append(context, chat.Message{
 				Prompt: currentPrompt,
 				Answer: response,
 			})
 			currentPrompt = fmt.Sprintf("Tool result: %s\n\nWhat's next?", string(resultJSON))
-			
+
 		} else {
 			step.Result = &ToolResult{Success: false, Error: fmt.Sprintf("Unknown tool: %s", step.Tool)}
 			result.Answer = fmt.Sprintf("Unknown tool: %s", step.Tool)
@@ -388,7 +388,7 @@ Current user: %s`, toolsJSON, a.userID)
 			break
 		}
 	}
-	
+
 	result.Duration = time.Since(start).String()
 	return result
 }
@@ -416,19 +416,19 @@ func (a *Agent) parseStep(response string) (*Step, error) {
 	response = strings.TrimPrefix(response, "```")
 	response = strings.TrimSuffix(response, "```")
 	response = strings.TrimSpace(response)
-	
+
 	// Try to find JSON in the response
 	start := strings.Index(response, "{")
 	end := strings.LastIndex(response, "}")
 	if start >= 0 && end > start {
 		response = response[start : end+1]
 	}
-	
+
 	var step Step
 	if err := json.Unmarshal([]byte(response), &step); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %v", err)
 	}
-	
+
 	return &step, nil
 }
 

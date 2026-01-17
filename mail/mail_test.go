@@ -66,7 +66,7 @@ func TestConvertPlainTextToHTMLPreservesApostrophesAndQuotes(t *testing.T) {
 	// Specific test to verify apostrophes and quotes are NOT escaped
 	input := "It's important that we don't escape apostrophes or \"quotes\"."
 	result := convertPlainTextToHTML(input)
-	
+
 	// Should be equal since we don't escape ' or "
 	if result != input {
 		t.Errorf("Apostrophes and quotes should not be escaped.\nGot:      %q\nExpected: %q", result, input)

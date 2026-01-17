@@ -205,12 +205,12 @@ func GenerateSDK(appID, appName, userID, userName string) string {
 func InjectSDK(html, appID, appName, userID, userName string) string {
 	sdk := GenerateSDK(appID, appName, userID, userName)
 	injection := ThemeCSS + sdk
-	
+
 	// Try to inject before </head>
 	if idx := strings.Index(strings.ToLower(html), "</head>"); idx > 0 {
 		return html[:idx] + injection + html[idx:]
 	}
-	
+
 	// Try to inject after <body>
 	if idx := strings.Index(strings.ToLower(html), "<body"); idx > 0 {
 		// Find the closing >
@@ -220,7 +220,7 @@ func InjectSDK(html, appID, appName, userID, userName string) string {
 			return html[:insertPoint] + injection + html[insertPoint:]
 		}
 	}
-	
+
 	// Fallback: prepend to content
 	return injection + html
 }
@@ -358,7 +358,7 @@ func ProxyFetch(url, method string) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
-	
+
 	// Set a reasonable user agent
 	req.Header.Set("User-Agent", "Mu/1.0 (mu.xyz proxy)")
 

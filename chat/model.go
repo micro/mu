@@ -19,7 +19,7 @@ import (
 // LLM request priorities
 const (
 	PriorityHigh   = 0 // User-facing chat
-	PriorityMedium = 1 // Headlines/topic summaries  
+	PriorityMedium = 1 // Headlines/topic summaries
 	PriorityLow    = 2 // Background article summaries
 )
 
@@ -32,7 +32,7 @@ var (
 	fanarRateMu      sync.Mutex
 	fanarLastMinute  []time.Time
 	fanarMaxPerMin   = 35 // Mu's share of 50/min limit (Malten gets ~15)
-	fanarHighPending int // Count of high-priority requests waiting
+	fanarHighPending int  // Count of high-priority requests waiting
 )
 
 type Model struct{}
@@ -229,7 +229,7 @@ func checkFanarRateLimit(priority int) bool {
 func GetFanarRateStatus() (used, max int) {
 	fanarRateMu.Lock()
 	defer fanarRateMu.Unlock()
-	
+
 	now := time.Now()
 	cutoff := now.Add(-time.Minute)
 	count := 0
@@ -316,6 +316,7 @@ func generateWithFanar(apiURL, apiKey string, messages []map[string]string, prio
 	}
 	return content, nil
 }
+
 // generateWithAnthropic generates a response using Anthropic Claude API
 func generateWithAnthropic(apiKey, modelName, systemPrompt string, messages []map[string]string) (string, error) {
 	apiURL := "https://api.anthropic.com/v1/messages"

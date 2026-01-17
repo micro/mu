@@ -43,7 +43,7 @@ var topics []string
 type Post struct {
 	ID        string     `json:"id"`
 	Title     string     `json:"title"`
-	Content   string     `json:"content"`  // Raw markdown content
+	Content   string     `json:"content"` // Raw markdown content
 	Author    string     `json:"author"`
 	AuthorID  string     `json:"author_id"`
 	Tags      string     `json:"tags"` // Comma-separated tags
@@ -416,7 +416,7 @@ func updateCacheUnlocked() {
 				tagsHtml = privateBadge
 			}
 		}
-		
+
 		if tagsHtml != "" {
 			tagsHtml = `<div style="margin-top: 8px;">` + tagsHtml + `</div>`
 		}
@@ -505,7 +505,7 @@ func updateCacheUnlocked() {
 				tagsHtml = privateBadge
 			}
 		}
-		
+
 		if tagsHtml != "" {
 			tagsHtml = `<div style="margin-top: 8px;">` + tagsHtml + `</div>`
 		}
@@ -690,7 +690,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		// Check if user is a member/admin
 		_, acc := auth.TrySession(r)
 		isMember := acc != nil && (acc.Member || acc.Admin)
-		
+
 		// Filter out flagged posts and private posts (unless member)
 		var visiblePosts []*Post
 		for _, post := range posts {
@@ -1086,33 +1086,33 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" && id == "" {
 		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
 
-var title, content, tags string
-	var private bool
+		var title, content, tags string
+		var private bool
 
-	if isJSON {
-		var req struct {
-			Title   string `json:"title"`
-			Content string `json:"content"`
-			Tags    string `json:"tags"`
-			Private bool   `json:"private"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
-		title = strings.TrimSpace(req.Title)
-		content = strings.TrimSpace(req.Content)
-		tags = parseTags(req.Tags)
-		private = req.Private
-	} else {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
-			return
-		}
-		title = strings.TrimSpace(r.FormValue("title"))
-		content = strings.TrimSpace(r.FormValue("content"))
-		tags = parseTags(r.FormValue("tags"))
-		private = r.FormValue("visibility") == "private"
+		if isJSON {
+			var req struct {
+				Title   string `json:"title"`
+				Content string `json:"content"`
+				Tags    string `json:"tags"`
+				Private bool   `json:"private"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "Invalid JSON", http.StatusBadRequest)
+				return
+			}
+			title = strings.TrimSpace(req.Title)
+			content = strings.TrimSpace(req.Content)
+			tags = parseTags(req.Tags)
+			private = req.Private
+		} else {
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Failed to parse form", http.StatusBadRequest)
+				return
+			}
+			title = strings.TrimSpace(r.FormValue("title"))
+			content = strings.TrimSpace(r.FormValue("content"))
+			tags = parseTags(r.FormValue("tags"))
+			private = r.FormValue("visibility") == "private"
 		}
 
 		// Validate content
@@ -1389,18 +1389,18 @@ var title, content, tags string
 			tagsHtml += fmt.Sprintf(`<span class="category">%s</span> `, strings.TrimSpace(tag))
 		}
 	}
-	
+
 	// Add private badge if post is private
 	if post.Private {
 		tagsHtml += `<span class="category" style="background-color: #d9534f; color: white;">Private</span>`
 	}
-	
+
 	// Format tags for display (on separate line if present)
 	tagsDisplay := ""
 	if tagsHtml != "" {
 		tagsDisplay = fmt.Sprintf(`<div class="post-tags">%s</div>`, tagsHtml)
 	}
-	
+
 	content := fmt.Sprintf(`<div id="blog">
 		%s
 		<div class="info" style="color: #666; font-size: small;">

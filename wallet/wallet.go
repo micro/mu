@@ -16,31 +16,31 @@ import (
 
 // Credit costs per operation (in credits/pennies)
 var (
-	CostNewsSearch   = getEnvInt("CREDIT_COST_NEWS", 1)
-	CostNewsSummary  = getEnvInt("CREDIT_COST_NEWS_SUMMARY", 1)
-	CostVideoSearch  = getEnvInt("CREDIT_COST_VIDEO", 2)
-	CostVideoWatch   = getEnvInt("CREDIT_COST_VIDEO_WATCH", 2)
-	CostChatQuery    = getEnvInt("CREDIT_COST_CHAT", 3)
-	CostChatRoom     = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
-	CostAppCreate    = getEnvInt("CREDIT_COST_APP_CREATE", 5)
-	CostAppModify    = getEnvInt("CREDIT_COST_APP_MODIFY", 3)
-	CostAgentRun     = getEnvInt("CREDIT_COST_AGENT", 5)
+	CostNewsSearch    = getEnvInt("CREDIT_COST_NEWS", 1)
+	CostNewsSummary   = getEnvInt("CREDIT_COST_NEWS_SUMMARY", 1)
+	CostVideoSearch   = getEnvInt("CREDIT_COST_VIDEO", 2)
+	CostVideoWatch    = getEnvInt("CREDIT_COST_VIDEO_WATCH", 2)
+	CostChatQuery     = getEnvInt("CREDIT_COST_CHAT", 3)
+	CostChatRoom      = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
+	CostAppCreate     = getEnvInt("CREDIT_COST_APP_CREATE", 5)
+	CostAppModify     = getEnvInt("CREDIT_COST_APP_MODIFY", 3)
+	CostAgentRun      = getEnvInt("CREDIT_COST_AGENT", 5)
 	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
 // Operation types
 const (
-	OpNewsSearch   = "news_search"
-	OpNewsSummary  = "news_summary"
-	OpVideoSearch  = "video_search"
-	OpVideoWatch   = "video_watch"
-	OpChatQuery    = "chat_query"
-	OpChatRoom     = "chat_room"
-	OpAppCreate    = "app_create"
-	OpAppModify    = "app_modify"
-	OpAgentRun     = "agent_run"
-	OpTopup        = "topup"
-	OpRefund       = "refund"
+	OpNewsSearch  = "news_search"
+	OpNewsSummary = "news_summary"
+	OpVideoSearch = "video_search"
+	OpVideoWatch  = "video_watch"
+	OpChatQuery   = "chat_query"
+	OpChatRoom    = "chat_room"
+	OpAppCreate   = "app_create"
+	OpAppModify   = "app_modify"
+	OpAgentRun    = "agent_run"
+	OpTopup       = "topup"
+	OpRefund      = "refund"
 )
 
 // Transaction types
@@ -60,8 +60,8 @@ var dailyUsage = map[string]*DailyUsage{}
 // Wallet represents a user's credit balance
 type Wallet struct {
 	UserID    string    `json:"user_id"`
-	Balance   int       `json:"balance"`    // Credits (1 credit = 1 penny = £0.01)
-	Currency  string    `json:"currency"`   // Always "GBP" for now
+	Balance   int       `json:"balance"`  // Credits (1 credit = 1 penny = £0.01)
+	Currency  string    `json:"currency"` // Always "GBP" for now
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -86,10 +86,10 @@ type DailyUsage struct {
 
 // TopupTier represents a credit purchase option
 type TopupTier struct {
-	Amount     int    `json:"amount"`      // Price in pence (e.g., 500 = £5)
-	Credits    int    `json:"credits"`     // Credits received
-	BonusPct   int    `json:"bonus_pct"`   // Bonus percentage
-	PriceID    string `json:"price_id"`    // Stripe price ID
+	Amount   int    `json:"amount"`    // Price in pence (e.g., 500 = £5)
+	Credits  int    `json:"credits"`   // Credits received
+	BonusPct int    `json:"bonus_pct"` // Bonus percentage
+	PriceID  string `json:"price_id"`  // Stripe price ID
 }
 
 // Available topup tiers

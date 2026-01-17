@@ -240,11 +240,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Get all posts by this user
 	var userPosts string
 	posts := blog.GetPostsByAuthor(acc.Name)
-	
+
 	// Check if viewer is a member/admin
 	_, viewerAcc := auth.TrySession(r)
 	isMember := viewerAcc != nil && (viewerAcc.Member || viewerAcc.Admin)
-	
+
 	// Filter private posts for non-members
 	var visiblePosts []*blog.Post
 	for _, post := range posts {
@@ -252,7 +252,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			visiblePosts = append(visiblePosts, post)
 		}
 	}
-	
+
 	postCount := len(visiblePosts)
 
 	for _, post := range visiblePosts {

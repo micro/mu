@@ -48,9 +48,9 @@ type Session struct {
 // Token represents a Personal Access Token (PAT) for API automation
 type Token struct {
 	ID          string    `json:"id"`
-	Name        string    `json:"name"`        // User-friendly name for the token
-	Token       string    `json:"token"`       // The actual token value (hashed in storage)
-	Account     string    `json:"account"`     // Account ID this token belongs to
+	Name        string    `json:"name"`    // User-friendly name for the token
+	Token       string    `json:"token"`   // The actual token value (hashed in storage)
+	Account     string    `json:"account"` // Account ID this token belongs to
 	Created     time.Time `json:"created"`
 	LastUsed    time.Time `json:"last_used"`
 	ExpiresAt   time.Time `json:"expires_at"`  // Optional expiration

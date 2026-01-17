@@ -20,7 +20,7 @@ import (
 // CodeVersion stores a previous version of app code
 type CodeVersion struct {
 	Code      string    `json:"code"`
-	Label     string    `json:"label"`      // What change was made
+	Label     string    `json:"label"` // What change was made
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -51,7 +51,7 @@ var (
 func Load() {
 	loadApps()
 	app.Log("apps", "Loaded %d apps", len(apps))
-	
+
 	// Resume any stuck generations from previous run
 	resumeStuckGenerations()
 }
@@ -101,14 +101,14 @@ func resumeStuckGenerations() {
 		}
 
 		app.Log("apps", "Resuming generation for app %s (%s), retry %d", a.ID, a.Name, a.Retries+1)
-		
+
 		// Resume generation in background
 		go func(app_ *App) {
 			code, err := generateAppCode(app_.Description)
-			
+
 			mutex.Lock()
 			defer mutex.Unlock()
-			
+
 			app_.Retries++
 			if err != nil {
 				if app_.Retries >= maxGenerationRetries {
@@ -237,10 +237,10 @@ func CreateAppAsync(name, prompt, author, authorID string) (*App, error) {
 	// Generate code in background
 	go func() {
 		code, err := generateAppCode(prompt)
-		
+
 		mutex.Lock()
 		defer mutex.Unlock()
-		
+
 		if err != nil {
 			a.Status = "error"
 			a.Error = err.Error()
@@ -374,7 +374,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	r.ParseForm()
 	searchQuery := strings.TrimSpace(r.FormValue("q"))
-	
+
 	var userApps []*App
 	var userID string
 	if sess != nil {
@@ -406,7 +406,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 			featuredApps = append(featuredApps, a)
 		}
 	}
-	
+
 	if len(featuredApps) > 0 && searchQuery == "" {
 		content.WriteString(`<div class="featured-section">`)
 		content.WriteString(`<h3>Featured Apps</h3>`)
@@ -457,7 +457,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 			otherPublic = append(otherPublic, a)
 		}
 	}
-	
+
 	filteredPublic := filterApps(otherPublic, searchQuery)
 	if len(filteredPublic) > 0 {
 		content.WriteString(`<h3 style="margin-top: 30px;">Community Apps</h3>`)
@@ -799,7 +799,7 @@ func handleEdit(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 			generated, err := generateAppCode(promptText)
 			if err != nil {
 				a.Name = name
-			a.Summary = summary
+				a.Summary = summary
 				a.Description = promptText
 				a.Code = code
 				a.Public = public
@@ -1000,7 +1000,7 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 				renderDevelopForm(w, a, "Please describe what you want to change")
 				return
 			}
-			
+
 			// Content moderation
 			if isBlockedContent(instruction) {
 				renderDevelopForm(w, a, "This request contains content that goes against our values")
@@ -1034,10 +1034,10 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 			// Async modification
 			go func() {
 				modified, err := modifyAppCode(previousCode, instruction)
-				
+
 				mutex.Lock()
 				defer mutex.Unlock()
-				
+
 				if err != nil {
 					a.Status = "error"
 					a.Error = err.Error()
@@ -1089,7 +1089,7 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 				renderDevelopForm(w, a, "Invalid version")
 				return
 			}
-			
+
 			// Save current code to history before reverting
 			mutex.Lock()
 			a.CodeHistory = append(a.CodeHistory, CodeVersion{
@@ -1106,7 +1106,7 @@ func handleDevelop(w http.ResponseWriter, r *http.Request, sess *auth.Session, i
 			a.UpdatedAt = time.Now()
 			saveApps()
 			mutex.Unlock()
-			
+
 			renderDevelopForm(w, a, "✓ Reverted to previous version")
 			return
 		}
@@ -1711,8 +1711,8 @@ func handleStatus(w http.ResponseWriter, r *http.Request, id string) {
 		status = "ready"
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": status,
-		"error":  a.Error,
+		"status":  status,
+		"error":   a.Error,
 		"hasCode": a.Code != "",
 	})
 }
@@ -1757,7 +1757,7 @@ func handleWidget(w http.ResponseWriter, r *http.Request, sess *auth.Session, id
 	}
 
 	action := r.URL.Query().Get("action")
-	
+
 	// Check if already in widgets
 	hasWidget := false
 	var newWidgets []string

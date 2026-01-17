@@ -210,7 +210,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.TrySession(r)
 	if sess != nil {
 		userID = sess.Account
-		
+
 		// Show user's widget apps as cards
 		widgetIDs := apps.GetUserWidgets(userID)
 		for _, widgetID := range widgetIDs {
@@ -221,7 +221,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				rightHTML = append(rightHTML, app.Card("widget-"+a.ID, a.Name, widgetHTML+app.Link("Open", "/apps/"+a.ID)))
 			}
 		}
-		
+
 		// Show user's own apps preview
 		appsPreview := apps.GetUserAppsPreview(userID, 5)
 		if appsPreview != "" {

@@ -7,7 +7,7 @@ import (
 
 func TestSendExternalEmailHTMLWrapping(t *testing.T) {
 	// Test that HTML fragments are properly wrapped in HTML document structure
-	
+
 	tests := []struct {
 		name        string
 		bodyHTML    string
@@ -45,7 +45,7 @@ func TestSendExternalEmailHTMLWrapping(t *testing.T) {
 			// Simulate the wrapping logic from SendExternalEmail
 			result := tt.bodyHTML
 			htmlLower := strings.ToLower(result)
-			
+
 			if !strings.Contains(htmlLower, "<html") && !strings.Contains(htmlLower, "<!doctype") {
 				// Would be wrapped
 				if !tt.shouldWrap {

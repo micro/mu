@@ -453,7 +453,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, sess *auth.Session)
 
 	// Create agent and run with streaming callback
 	agent := New(sess.Account)
-	
+
 	result := agent.RunStreaming(req.Task, func(step *Step, final bool) {
 		// Send each step as it completes
 		conn.WriteJSON(map[string]interface{}{

@@ -402,10 +402,10 @@ func TestRegressionEmptyDescriptionUsesMetadata(t *testing.T) {
 
 	// Simulate HN article with empty description after parsing
 	rssDescription := `<![CDATA[<a href="https://news.ycombinator.com/item?id=12345">Comments</a>]]>`
-	
+
 	// Apply content parsers (simulating what happens in parseFeedItem)
 	cleanedDescription := applyContentParsers(rssDescription, "Dev")
-	
+
 	// Should be empty after stripping HN comments
 	if cleanedDescription != "" {
 		t.Errorf("Expected empty description after parsing, got: %q", cleanedDescription)
@@ -483,7 +483,7 @@ func TestRegressionPostsChronologicalOrder(t *testing.T) {
 // TestRegressionSummarySeparation tests that AI-generated summaries stay clearly separated
 // from article descriptions and are properly labeled
 func TestRegressionSummarySeparation(t *testing.T) {
-	// This test verifies the fix for: "AI summaries should stay in Summary section, 
+	// This test verifies the fix for: "AI summaries should stay in Summary section,
 	// clearly labeled, not used as descriptions"
 
 	testCases := []struct {
@@ -536,7 +536,7 @@ func TestRegressionSummarySeparation(t *testing.T) {
 			// CRITICAL: Description should NEVER be populated from summary or entry.Content
 			// This was the bug - when description was empty, it fell back to entry.Content
 			// which could contain the AI summary
-			
+
 			// Verify description remains empty if it started empty
 			if tc.expectedDescEmpty && description != "" {
 				t.Errorf("Description should be empty, got: %q", description)
@@ -571,19 +571,19 @@ func TestRegressionSummarySeparation(t *testing.T) {
 // TestFormatSummaryLabel verifies the summary section uses "AI Summary" label
 func TestFormatSummaryLabel(t *testing.T) {
 	summary := "This is a test summary."
-	
+
 	formatted := formatSummary(summary)
-	
+
 	// The formatted summary should be wrapped in paragraph tags
 	if !strings.Contains(formatted, "<p") {
 		t.Error("Formatted summary should contain paragraph tags")
 	}
-	
+
 	// Verify the content is preserved
 	if !strings.Contains(formatted, "This is a test summary.") {
 		t.Error("Formatted summary should contain the original content")
 	}
-	
+
 	// Note: The "AI Summary" label is added in the HTML template, not in formatSummary
 	// This test just ensures formatSummary doesn't add misleading labels
 	if strings.Contains(formatted, "Summary:") || strings.Contains(formatted, "<h") {

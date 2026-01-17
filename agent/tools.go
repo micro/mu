@@ -45,20 +45,20 @@ func (a *Agent) videoSearch(params map[string]interface{}) (*ToolResult, error) 
 	if !ok || query == "" {
 		return &ToolResult{Success: false, Error: "query is required"}, nil
 	}
-	
+
 	app.Log("agent", "Video search: %s", query)
-	
+
 	// Use YouTube API directly
 	apiKey := os.Getenv("YOUTUBE_API_KEY")
 	if apiKey == "" {
 		return &ToolResult{Success: false, Error: "YouTube API not configured"}, nil
 	}
-	
+
 	client, err := youtube.NewService(context.Background(), option.WithAPIKey(apiKey))
 	if err != nil {
 		return &ToolResult{Success: false, Error: fmt.Sprintf("YouTube client error: %v", err)}, nil
 	}
-	
+
 	resp, err := client.Search.List([]string{"id", "snippet"}).
 		Q(query).
 		SafeSearch("strict").
@@ -68,18 +68,18 @@ func (a *Agent) videoSearch(params map[string]interface{}) (*ToolResult, error) 
 	if err != nil {
 		return &ToolResult{Success: false, Error: fmt.Sprintf("Search failed: %v", err)}, nil
 	}
-	
+
 	var results []VideoResult
 	for _, item := range resp.Items {
 		if item.Id.VideoId == "" {
 			continue
 		}
-		
+
 		thumbnail := ""
 		if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
 			thumbnail = item.Snippet.Thumbnails.Medium.Url
 		}
-		
+
 		results = append(results, VideoResult{
 			ID:        item.Id.VideoId,
 			Title:     item.Snippet.Title,
@@ -88,14 +88,14 @@ func (a *Agent) videoSearch(params map[string]interface{}) (*ToolResult, error) 
 			URL:       fmt.Sprintf("/video?id=%s", item.Id.VideoId),
 		})
 	}
-	
+
 	if len(results) == 0 {
 		return &ToolResult{
 			Success: true,
 			Data:    "No videos found",
 		}, nil
 	}
-	
+
 	// Build HTML preview
 	var htmlBuilder strings.Builder
 	htmlBuilder.WriteString(`<div class="agent-results video-results">`)
@@ -117,7 +117,7 @@ func (a *Agent) videoSearch(params map[string]interface{}) (*ToolResult, error) 
 		}
 	}
 	htmlBuilder.WriteString(`</div>`)
-	
+
 	return &ToolResult{
 		Success: true,
 		Data:    results,
@@ -131,11 +131,11 @@ func (a *Agent) videoPlay(params map[string]interface{}) (*ToolResult, error) {
 	if !ok || videoID == "" {
 		return &ToolResult{Success: false, Error: "video_id is required"}, nil
 	}
-	
+
 	app.Log("agent", "Video play: %s", videoID)
-	
+
 	url := fmt.Sprintf("/video?id=%s&autoplay=1", videoID)
-	
+
 	return &ToolResult{
 		Success: true,
 		Data:    map[string]string{"url": url, "video_id": videoID},
@@ -150,23 +150,23 @@ func (a *Agent) newsSearch(params map[string]interface{}) (*ToolResult, error) {
 	if !ok || query == "" {
 		return &ToolResult{Success: false, Error: "query is required"}, nil
 	}
-	
+
 	app.Log("agent", "News search: %s", query)
-	
+
 	// Use the data package's search
 	results := data.Search(query, 5, data.WithType("news"))
-	
+
 	if len(results) == 0 {
 		return &ToolResult{
 			Success: true,
 			Data:    "No news articles found",
 		}, nil
 	}
-	
+
 	var newsResults []NewsResult
 	var htmlBuilder strings.Builder
 	htmlBuilder.WriteString(`<div class="agent-results news-results">`)
-	
+
 	for i, entry := range results {
 		// Get URL from metadata if available
 		url := ""
@@ -178,7 +178,7 @@ func (a *Agent) newsSearch(params map[string]interface{}) (*ToolResult, error) {
 		if url == "" {
 			url = entry.ID
 		}
-		
+
 		nr := NewsResult{
 			Title:       entry.Title,
 			Description: truncate(entry.Content, 150),
@@ -186,7 +186,7 @@ func (a *Agent) newsSearch(params map[string]interface{}) (*ToolResult, error) {
 			Category:    entry.Type,
 		}
 		newsResults = append(newsResults, nr)
-		
+
 		if i == 0 {
 			htmlBuilder.WriteString(fmt.Sprintf(`
 				<div class="news-result primary">
@@ -201,7 +201,7 @@ func (a *Agent) newsSearch(params map[string]interface{}) (*ToolResult, error) {
 		}
 	}
 	htmlBuilder.WriteString(`</div>`)
-	
+
 	return &ToolResult{
 		Success: true,
 		Data:    newsResults,
@@ -215,21 +215,21 @@ func (a *Agent) newsRead(params map[string]interface{}) (*ToolResult, error) {
 	if !ok || url == "" {
 		return &ToolResult{Success: false, Error: "url is required"}, nil
 	}
-	
+
 	app.Log("agent", "News read: %s", url)
-	
+
 	// Search for the article by URL
 	results := data.Search(url, 1, data.WithType("news"))
-	
+
 	if len(results) == 0 {
 		return &ToolResult{
 			Success: false,
 			Error:   "Article not found",
 		}, nil
 	}
-	
+
 	article := results[0]
-	
+
 	// Get URL from metadata if available, otherwise use the input URL
 	articleURL := url
 	if article.Metadata != nil {
@@ -240,7 +240,7 @@ func (a *Agent) newsRead(params map[string]interface{}) (*ToolResult, error) {
 	if articleURL == "" {
 		articleURL = article.ID
 	}
-	
+
 	return &ToolResult{
 		Success: true,
 		Data: map[string]string{
@@ -260,21 +260,21 @@ func (a *Agent) newsRead(params map[string]interface{}) (*ToolResult, error) {
 func (a *Agent) appCreate(params map[string]interface{}) (*ToolResult, error) {
 	name, _ := params["name"].(string)
 	description, _ := params["description"].(string)
-	
+
 	if name == "" || description == "" {
 		return &ToolResult{Success: false, Error: "name and description are required"}, nil
 	}
-	
+
 	app.Log("agent", "App create: %s", name)
-	
+
 	// Create the app asynchronously
 	newApp, err := apps.CreateAppAsync(name, description, a.userID, a.userID)
 	if err != nil {
 		return &ToolResult{Success: false, Error: err.Error()}, nil
 	}
-	
+
 	url := fmt.Sprintf("/apps/%s/develop", newApp.ID)
-	
+
 	return &ToolResult{
 		Success: true,
 		Data: AppResult{
@@ -293,28 +293,28 @@ func (a *Agent) appCreate(params map[string]interface{}) (*ToolResult, error) {
 func (a *Agent) appModify(params map[string]interface{}) (*ToolResult, error) {
 	appID, _ := params["app_id"].(string)
 	instruction, _ := params["instruction"].(string)
-	
+
 	if appID == "" || instruction == "" {
 		return &ToolResult{Success: false, Error: "app_id and instruction are required"}, nil
 	}
-	
+
 	app.Log("agent", "App modify: %s - %s", appID, instruction)
-	
+
 	// Get the app
 	existingApp := apps.GetApp(appID)
 	if existingApp == nil {
 		return &ToolResult{Success: false, Error: "App not found"}, nil
 	}
-	
+
 	// Check ownership
 	if existingApp.AuthorID != a.userID {
 		return &ToolResult{Success: false, Error: "Not authorized to modify this app"}, nil
 	}
-	
+
 	// The modification is handled by the develop page
 	// For now, return the URL to modify
 	url := fmt.Sprintf("/apps/%s/develop", appID)
-	
+
 	return &ToolResult{
 		Success: true,
 		Data: map[string]string{
@@ -331,19 +331,19 @@ func (a *Agent) appModify(params map[string]interface{}) (*ToolResult, error) {
 // appList lists user's apps or searches public apps
 func (a *Agent) appList(params map[string]interface{}) (*ToolResult, error) {
 	query, _ := params["query"].(string)
-	
+
 	app.Log("agent", "App list: %s", query)
-	
+
 	var userApps []*apps.App
 	if a.userID != "" {
 		userApps = apps.GetUserApps(a.userID)
 	}
-	
+
 	publicApps := apps.GetPublicApps()
-	
+
 	// Filter by query if provided
 	var results []AppResult
-	
+
 	if query != "" {
 		query = strings.ToLower(query)
 		// Search in user apps
@@ -378,14 +378,14 @@ func (a *Agent) appList(params map[string]interface{}) (*ToolResult, error) {
 			})
 		}
 	}
-	
+
 	if len(results) == 0 {
 		return &ToolResult{
 			Success: true,
 			Data:    "No apps found",
 		}, nil
 	}
-	
+
 	// Build HTML
 	var htmlBuilder strings.Builder
 	htmlBuilder.WriteString(`<div class="agent-results app-results"><ul>`)
@@ -393,7 +393,7 @@ func (a *Agent) appList(params map[string]interface{}) (*ToolResult, error) {
 		htmlBuilder.WriteString(fmt.Sprintf(`<li><a href="%s">%s</a></li>`, r.URL, r.Name))
 	}
 	htmlBuilder.WriteString(`</ul></div>`)
-	
+
 	return &ToolResult{
 		Success: true,
 		Data:    results,
@@ -407,14 +407,14 @@ func (a *Agent) marketPrice(params map[string]interface{}) (*ToolResult, error) 
 	if symbol == "" {
 		return &ToolResult{Success: false, Error: "symbol is required"}, nil
 	}
-	
+
 	app.Log("agent", "Market price: %s", symbol)
-	
+
 	// Get cached prices from news package
 	prices := news.GetAllPrices()
-	
+
 	symbol = strings.ToUpper(symbol)
-	
+
 	// Try to find the price
 	price, found := prices[symbol]
 	if !found {
@@ -428,14 +428,14 @@ func (a *Agent) marketPrice(params map[string]interface{}) (*ToolResult, error) 
 			}
 		}
 	}
-	
+
 	if !found {
 		return &ToolResult{
 			Success: true,
 			Data:    fmt.Sprintf("Price not found for %s. Available: %v", symbol, getAvailableSymbols(prices)),
 		}, nil
 	}
-	
+
 	return &ToolResult{
 		Success: true,
 		Data: map[string]interface{}{

@@ -408,7 +408,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte(fmt.Sprintf("From: %s\nTo: %s\nSubject: %s\nDate: %s\n\n%s", 
+		w.Write([]byte(fmt.Sprintf("From: %s\nTo: %s\nSubject: %s\nDate: %s\n\n%s",
 			msg.FromID, msg.ToID, msg.Subject, msg.CreatedAt.Format(time.RFC1123), msg.Body)))
 		return
 	}

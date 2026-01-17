@@ -140,7 +140,7 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 	msg.WriteString("Content-Type: text/html; charset=utf-8\r\n")
 	msg.WriteString("Content-Transfer-Encoding: 7bit\r\n")
 	msg.WriteString("\r\n")
-	
+
 	// Wrap HTML content in proper HTML structure for better email client compatibility
 	// Check if HTML already has proper structure
 	htmlLower := strings.ToLower(bodyHTML)
@@ -157,7 +157,7 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 </body>
 </html>`, bodyHTML)
 	}
-	
+
 	bodyHTML = strings.ReplaceAll(bodyHTML, "\r\n", "\n")
 	bodyHTML = strings.ReplaceAll(bodyHTML, "\n", "\r\n")
 	msg.WriteString(bodyHTML)
