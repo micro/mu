@@ -132,32 +132,33 @@ func GetTranscript(videoID string) (*TranscriptResult, error) {
 	}, nil
 }
 
+// playerResponse represents the YouTube player config JSON
+type playerResponse struct {
+	Captions struct {
+		PlayerCaptionsTracklistRenderer struct {
+			CaptionTracks []captionTrack `json:"captionTracks"`
+		} `json:"playerCaptionsTracklistRenderer"`
+	} `json:"captions"`
+}
+
 // extractCaptionTracks parses caption track info from YouTube page HTML
 func extractCaptionTracks(pageContent string) ([]captionTrack, error) {
-	// Find the start of captionTracks array
-	startMarker := `"captionTracks":`
-	startIdx := strings.Index(pageContent, startMarker)
+	// Find ytInitialPlayerResponse JSON
+	marker := "ytInitialPlayerResponse = "
+	startIdx := strings.Index(pageContent, marker)
 	if startIdx == -1 {
-		return nil, fmt.Errorf("no caption tracks found in page")
+		return nil, fmt.Errorf("no player response found in page")
 	}
+	startIdx += len(marker)
 	
-	// Find the opening bracket
-	startIdx += len(startMarker)
-	for startIdx < len(pageContent) && pageContent[startIdx] != '[' {
-		startIdx++
-	}
-	if startIdx >= len(pageContent) {
-		return nil, fmt.Errorf("no caption tracks array found")
-	}
-	
-	// Find matching closing bracket (handle nested objects)
+	// Find the end of the JSON object by matching braces
 	depth := 0
 	endIdx := startIdx
 	for endIdx < len(pageContent) {
 		switch pageContent[endIdx] {
-		case '[':
+		case '{':
 			depth++
-		case ']':
+		case '}':
 			depth--
 			if depth == 0 {
 				endIdx++
@@ -166,18 +167,19 @@ func extractCaptionTracks(pageContent string) ([]captionTrack, error) {
 		}
 		endIdx++
 	}
-	return nil, fmt.Errorf("malformed caption tracks JSON")
+	return nil, fmt.Errorf("malformed player response JSON")
 	
 found:
 	jsonStr := pageContent[startIdx:endIdx]
 	
-	// Unescape unicode
-	jsonStr = strings.ReplaceAll(jsonStr, `\u0026`, "&")
-	jsonStr = strings.ReplaceAll(jsonStr, `\"`, `"`)
+	var player playerResponse
+	if err := json.Unmarshal([]byte(jsonStr), &player); err != nil {
+		return nil, fmt.Errorf("failed to parse player response: %w", err)
+	}
 	
-	var tracks []captionTrack
-	if err := json.Unmarshal([]byte(jsonStr), &tracks); err != nil {
-		return nil, fmt.Errorf("failed to parse caption tracks: %w", err)
+	tracks := player.Captions.PlayerCaptionsTracklistRenderer.CaptionTracks
+	if len(tracks) == 0 {
+		return nil, fmt.Errorf("no caption tracks in player response")
 	}
 	
 	return tracks, nil
