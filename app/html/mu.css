@@ -530,6 +530,24 @@ td {
   font-size: 1.5em;
 }
 
+#footer {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+  border-top: 1px solid var(--divider);
+  margin-top: 40px;
+}
+
+#footer a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+#footer a:hover {
+  text-decoration: underline;
+}
+
 /* Scroll offset for anchor links to account for fixed header */
 .anchor {
   scroll-margin-top: 60px;
