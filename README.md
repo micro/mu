@@ -254,19 +254,20 @@ Go to localhost:8081
 
 Full documentation is available in the [docs](docs/) folder and at `/docs` on any Mu instance:
 
+**Getting Started**
 - [About](docs/ABOUT.md) - What Mu is and why it exists
 - [Principles](docs/PRINCIPLES.md) - Guiding principles for AI and technology
 - [Installation](docs/INSTALLATION.md) - Self-hosting and deployment guide
-- [System Design](docs/SYSTEM_DESIGN.md) - Overall architecture and component design
-- [Design System](docs/DESIGN_SYSTEM.md) - UI/UX patterns and design decisions
-- [Messaging System](docs/MESSAGING_SYSTEM.md) - Complete messaging and mail setup guide
-- [Environment Variables](docs/ENVIRONMENT_VARIABLES.md) - All configuration options
-- [Contextual Discussions](docs/CONTEXTUAL_DISCUSSIONS.md) - Chat context and discussion features
-- [Vector Search](docs/VECTOR_SEARCH.md) - Setting up vector embeddings for semantic search
-- [Wallet and Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
-- [Data Publishing](docs/DATA_PUBLISHING_ARCHITECTURE.md) - Data sync architecture
-- [SDK](docs/SDK.md) - Micro apps SDK documentation
-- [API Coverage](docs/API_COVERAGE.md) - API endpoint documentation
+
+**Features**
+- [Messaging](docs/MESSAGING_SYSTEM.md) - Email and messaging setup
+- [Wallet & Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
+- [Micro Apps SDK](docs/SDK.md) - Build apps with the Mu SDK
+
+**Reference**
+- [Configuration](docs/ENVIRONMENT_VARIABLES.md) - All environment variables
+- [Vector Search](docs/VECTOR_SEARCH.md) - Semantic search setup
+- [API Reference](docs/API_COVERAGE.md) - REST API endpoints
 - [Screenshots](docs/SCREENSHOTS.md) - Application screenshots
 
 ## Development 

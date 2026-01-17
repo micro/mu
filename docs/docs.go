@@ -29,21 +29,19 @@ var catalog = []Document{
 	{Slug: "principles", Filename: "PRINCIPLES.md", Title: "Principles", Description: "Guiding principles for AI and technology", Category: "Getting Started"},
 	{Slug: "installation", Filename: "INSTALLATION.md", Title: "Installation", Description: "Self-hosting and deployment guide", Category: "Getting Started"},
 
-	// Architecture
-	{Slug: "system-design", Filename: "SYSTEM_DESIGN.md", Title: "System Design", Description: "Architecture and technical decisions", Category: "Architecture"},
-	{Slug: "design-system", Filename: "DESIGN_SYSTEM.md", Title: "Design System", Description: "UI/UX patterns and components", Category: "Architecture"},
-	{Slug: "data-publishing", Filename: "DATA_PUBLISHING_ARCHITECTURE.md", Title: "Data Publishing", Description: "Data sync and event architecture", Category: "Architecture"},
-
 	// Features
 	{Slug: "messaging", Filename: "MESSAGING_SYSTEM.md", Title: "Messaging", Description: "Email and messaging setup", Category: "Features"},
-	{Slug: "discussions", Filename: "CONTEXTUAL_DISCUSSIONS.md", Title: "Discussions", Description: "Chat context and conversations", Category: "Features"},
-	{Slug: "vector-search", Filename: "VECTOR_SEARCH.md", Title: "Vector Search", Description: "Semantic search with embeddings", Category: "Features"},
 	{Slug: "wallet", Filename: "WALLET_AND_CREDITS.md", Title: "Wallet & Credits", Description: "Credit system for usage", Category: "Features"},
+	{Slug: "sdk", Filename: "SDK.md", Title: "Micro Apps", Description: "Build apps with the Mu SDK", Category: "Features"},
 
 	// Reference
 	{Slug: "environment", Filename: "ENVIRONMENT_VARIABLES.md", Title: "Configuration", Description: "Environment variables", Category: "Reference"},
-	{Slug: "sdk", Filename: "SDK.md", Title: "Micro Apps SDK", Description: "API for building micro apps", Category: "Reference"},
+	{Slug: "vector-search", Filename: "VECTOR_SEARCH.md", Title: "Vector Search", Description: "Semantic search setup", Category: "Reference"},
 	{Slug: "screenshots", Filename: "SCREENSHOTS.md", Title: "Screenshots", Description: "Application screenshots", Category: "Reference"},
+
+	// Developer (accessible but not prominent)
+	{Slug: "system-design", Filename: "SYSTEM_DESIGN.md", Title: "System Design", Description: "Architecture overview", Category: "Developer"},
+	{Slug: "api", Filename: "API_COVERAGE.md", Title: "API Reference", Description: "REST API endpoints", Category: "Developer"},
 }
 
 // Handler serves the /docs endpoint
