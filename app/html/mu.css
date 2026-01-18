@@ -2018,9 +2018,8 @@ a.highlight {
   #blog > div:first-child {
     text-align: center;
   }
-  body:has(#messages) #messages {
-    flex: 1 1 auto;
-    min-height: 0;
+  #messages {
+    max-height: calc(100dvh - 250px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
