@@ -104,6 +104,7 @@ export CREDIT_COST_NEWS="1"        # News search (1p)
 export CREDIT_COST_VIDEO="2"       # Video search (2p) - YouTube API cost
 export CREDIT_COST_VIDEO_WATCH="0" # Video watch (free) - no value added over YouTube
 export CREDIT_COST_CHAT="3"        # Chat AI query (3p) - LLM cost
+export CREDIT_COST_EMAIL="3"       # External email (3p) - SMTP delivery cost
 ```
 
 **Notes:**
@@ -167,6 +168,7 @@ export MAIL_SELECTOR="default"
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
 | `CREDIT_COST_VIDEO_WATCH` | `0` | Credits per video watch (free by default) |
 | `CREDIT_COST_CHAT` | `3` | Credits per chat query |
+| `CREDIT_COST_EMAIL` | `3` | Credits per external email |
 
 ## .env File (Optional)
 
