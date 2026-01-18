@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v85';
+var VERSION = 'v86';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -633,6 +633,10 @@ function setSession() {
         .catch(() => {});
       // Initialize voice assistant for authenticated users
       tryInitVoiceAssistant();
+      // Initialize card customization for home page
+      if (window.location.pathname === '/home') {
+        initCardCustomization();
+      }
     } else {
       isAuthenticated = false;
       if (accountHeader) accountHeader.style.display = 'none';
@@ -1555,8 +1559,8 @@ if (window.location.pathname === '/home' || window.location.pathname === '/') {
     // Small delay to let session check complete first
     setTimeout(connectPresence, 500);
     
-    // Initialize card customization
-    initCardCustomization();
+    // Apply hidden cards immediately (from localStorage)
+    applyHiddenCards();
   });
 }
 
@@ -1564,20 +1568,21 @@ if (window.location.pathname === '/home' || window.location.pathname === '/') {
 // CARD CUSTOMIZATION
 // ============================================
 
-function initCardCustomization() {
+function applyHiddenCards() {
   // Apply hidden cards from localStorage
   const hidden = JSON.parse(localStorage.getItem('mu_hidden_cards') || '[]');
   hidden.forEach(id => {
     const card = document.getElementById(id);
     if (card) card.style.display = 'none';
   });
-  
-  // Add customize link after page title if logged in
-  if (!isAuthenticated) return;
-  
+}
+
+function initCardCustomization() {
+  // Add customize link after page title
   const pageTitle = document.getElementById('page-title');
-  if (pageTitle && pageTitle.textContent === 'Home') {
+  if (pageTitle && pageTitle.textContent === 'Home' && !document.getElementById('customize-link')) {
     const link = document.createElement('a');
+    link.id = 'customize-link';
     link.href = '#';
     link.textContent = 'Customize';
     link.style.cssText = 'font-size: 14px; font-weight: normal; margin-left: 15px; color: var(--text-muted);';
