@@ -2001,8 +2001,8 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Search indexed news articles with type filter
-	results := data.Search(query, 20, data.WithType("news"))
+	// Search indexed news articles with type filter (keyword-only for speed)
+	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
 
 	// Consume quota after successful search
 	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
@@ -2139,7 +2139,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	results := data.Search(query, 20, data.WithType("news"))
+	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
 
 	// Consume quota after successful search
 	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)

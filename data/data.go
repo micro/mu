@@ -38,7 +38,8 @@ type Event struct {
 
 // SearchOptions configures search behavior
 type SearchOptions struct {
-	Type string
+	Type        string
+	KeywordOnly bool // Skip vector search, use keyword matching only
 }
 
 // SearchOption is a functional option for configuring search
@@ -48,6 +49,13 @@ type SearchOption func(*SearchOptions)
 func WithType(entryType string) SearchOption {
 	return func(opts *SearchOptions) {
 		opts.Type = entryType
+	}
+}
+
+// WithKeywordOnly skips vector search
+func WithKeywordOnly() SearchOption {
+	return func(opts *SearchOptions) {
+		opts.KeywordOnly = true
 	}
 }
 
