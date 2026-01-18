@@ -195,10 +195,12 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 	// Call relay function directly (no SMTP needed!)
 	if err := RelayToExternal(from, to, message); err != nil {
 		app.Log("mail", "✗ Failed to relay email: %v", err)
+		LogEmail("outbound", from, to, subject, messageID, "failed", err.Error(), len(message))
 		return "", fmt.Errorf("failed to relay email: %v", err)
 	}
 
 	app.Log("mail", "✓ Email relayed successfully")
+	LogEmail("outbound", from, to, subject, messageID, "sent", "", len(message))
 	return messageID, nil
 }
 
