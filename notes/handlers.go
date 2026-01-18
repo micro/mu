@@ -196,21 +196,18 @@ func renderNewForm(w http.ResponseWriter, errMsg, title, content, tags string) {
 		errHTML = `<div class="error">` + html.EscapeString(errMsg) + `</div>`
 	}
 
-	formHTML := notesCSS + `
-<div class="note-form">
-` + errHTML + `
-<form method="POST">
-  <input type="text" name="title" placeholder="Title (optional)" value="` + html.EscapeString(title) + `" autofocus>
-  <textarea name="content" placeholder="Take a note..." rows="8" required>` + html.EscapeString(content) + `</textarea>
+	formHTML := notesCSS + errHTML + `
+<form method="POST" class="note-editor">
+  <input type="text" name="title" placeholder="Title" value="` + html.EscapeString(title) + `">
+  <textarea name="content" placeholder="Take a note..." required autofocus>` + html.EscapeString(content) + `</textarea>
   <input type="text" name="tags" placeholder="Tags (comma-separated)" value="` + html.EscapeString(tags) + `">
-  <div class="form-actions">
+  <div class="note-actions">
     <button type="submit">Save</button>
     <a href="/notes">Cancel</a>
   </div>
-</form>
-</div>`
+</form>`
 
-	w.Write([]byte(app.RenderHTML("New Note", "Create a new note", formHTML)))
+	w.Write([]byte(app.RenderHTML("New Note", "", formHTML)))
 }
 
 func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id string) {
@@ -281,26 +278,26 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
 		colorOptions += `<option value="` + c + `"` + selected + `>` + label + `</option>`
 	}
 
-	formHTML := notesCSS + `
-<div class="note-form">
-` + errHTML + `
-<form method="POST">
-  <input type="text" name="title" placeholder="Title (optional)" value="` + html.EscapeString(n.Title) + `">
-  <textarea name="content" placeholder="Take a note..." rows="12" required>` + html.EscapeString(n.Content) + `</textarea>
-  <input type="text" name="tags" placeholder="Tags (comma-separated)" value="` + html.EscapeString(tagsStr) + `">
-  <div class="note-options">
-    <label><input type="checkbox" name="pinned"` + pinnedChecked + `> Pin note</label>
-    <label>Color: <select name="color">` + colorOptions + `</select></label>
-  </div>
-  <div class="form-actions">
+	formHTML := notesCSS + errHTML + `
+<form method="POST" class="note-editor">
+  <input type="text" name="title" placeholder="Title" value="` + html.EscapeString(n.Title) + `">
+  <textarea name="content" placeholder="Take a note..." required>` + html.EscapeString(n.Content) + `</textarea>
+  <details class="note-options-toggle">
+    <summary>Options</summary>
+    <div class="note-options">
+      <label><input type="checkbox" name="pinned"` + pinnedChecked + `> Pinned</label>
+      <label>Color: <select name="color">` + colorOptions + `</select></label>
+      <input type="text" name="tags" placeholder="Tags (comma-separated)" value="` + html.EscapeString(tagsStr) + `">
+    </div>
+  </details>
+  <div class="note-actions">
     <button type="submit">Save</button>
     <a href="/notes">Back</a>
-    <a href="/notes/` + n.ID + `/archive" class="archive-btn">` + archiveLabel(n.Archived) + `</a>
-    <a href="/notes/` + n.ID + `/delete" class="delete-btn" onclick="return confirm('Delete this note?')">Delete</a>
+    <a href="/notes/` + n.ID + `/archive">` + archiveLabel(n.Archived) + `</a>
+    <a href="/notes/` + n.ID + `/delete" class="delete-link" onclick="return confirm('Delete this note?')">Delete</a>
   </div>
 </form>
-<div class="note-meta-full">Created ` + app.TimeAgo(n.CreatedAt) + ` · Updated ` + app.TimeAgo(n.UpdatedAt) + `</div>
-</div>`
+<div class="note-meta-info">` + app.TimeAgo(n.UpdatedAt) + `</div>`
 
 	title := "Note"
 	if n.Title != "" {
@@ -358,7 +355,6 @@ func handlePin(w http.ResponseWriter, r *http.Request, sess *auth.Session, id st
 
 const notesCSS = `
 <style>
-.notes-container { }
 .notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
 .new-note-btn { padding: 10px 20px; background: var(--accent-color, #0d7377); color: white !important; text-decoration: none; border-radius: 6px; }
 .notes-search input { padding: 10px 15px; border: 1px solid #ddd; border-radius: 6px; min-width: 200px; }
@@ -386,18 +382,23 @@ const notesCSS = `
 .note-card.color-purple { background: #e1bee7; border-color: #ce93d8; }
 .note-card.color-gray { background: #f5f5f5; border-color: #e0e0e0; }
 .empty { color: #888; text-align: center; padding: 40px; }
-.note-form { max-width: 600px; margin: 0 auto; }
-.note-form input[type="text"], .note-form textarea, .note-form select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 12px; font-family: inherit; font-size: 15px; box-sizing: border-box; }
-.note-form textarea { min-height: 200px; resize: vertical; }
-.note-form .note-options { display: flex; gap: 20px; margin-bottom: 15px; align-items: center; }
-.note-form .note-options label { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #666; }
-.note-form .note-options select { width: auto; margin-bottom: 0; padding: 6px 10px; }
-.form-actions { display: flex; gap: 15px; align-items: center; }
-.form-actions button { padding: 10px 24px; background: #333; color: white; border: none; border-radius: 6px; cursor: pointer; }
-.form-actions a { color: #666; text-decoration: none; }
-.form-actions .delete-btn { color: #c00; }
-.form-actions .archive-btn { color: #666; }
-.note-meta-full { margin-top: 20px; font-size: 13px; color: #999; }
+.note-editor { max-width: 600px; }
+.note-editor input[type="text"] { width: 100%; padding: 8px 0; border: none; border-bottom: 1px solid #eee; font-size: 18px; font-weight: 500; margin-bottom: 8px; outline: none; }
+.note-editor input[type="text"]:focus { border-bottom-color: var(--accent-color, #0d7377); }
+.note-editor input[type="text"]::placeholder { color: #aaa; font-weight: normal; }
+.note-editor textarea { width: 100%; min-height: 200px; padding: 8px 0; border: none; font-size: 15px; font-family: inherit; line-height: 1.6; resize: none; outline: none; }
+.note-editor textarea::placeholder { color: #aaa; }
+.note-options-toggle { margin: 16px 0; }
+.note-options-toggle summary { font-size: 13px; color: #666; cursor: pointer; }
+.note-options { padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.note-options label { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #555; }
+.note-options select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; }
+.note-options input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+.note-actions { display: flex; gap: 15px; align-items: center; padding-top: 16px; border-top: 1px solid #eee; margin-top: 16px; }
+.note-actions button { padding: 10px 24px; background: var(--accent-color, #0d7377); color: white; border: none; border-radius: 6px; cursor: pointer; }
+.note-actions a { color: #666; text-decoration: none; font-size: 14px; }
+.note-actions .delete-link { color: #c00; }
+.note-meta-info { margin-top: 16px; font-size: 13px; color: #999; }
 .error { color: #c00; padding: 10px; background: #fee; border-radius: 6px; margin-bottom: 15px; }
 </style>
 `
