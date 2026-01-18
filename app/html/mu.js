@@ -1588,16 +1588,16 @@ const availableCards = [
 ];
 
 function initCardCustomization() {
-  // Add customize link below page title
-  const pageTitle = document.getElementById('page-title');
-  if (pageTitle && pageTitle.textContent === 'Home' && !document.getElementById('customize-link')) {
+  // Add customize link below agent hero, above cards
+  const agentHero = document.getElementById('agent-hero');
+  if (agentHero && !document.getElementById('customize-link')) {
     const link = document.createElement('a');
     link.id = 'customize-link';
     link.href = '#';
     link.textContent = 'Customize';
-    link.style.cssText = 'font-size: 13px; font-weight: normal; color: var(--text-muted); display: block; text-align: right; margin-top: -20px; margin-bottom: 15px;';
+    link.style.cssText = 'font-size: 12px; color: var(--text-muted); display: block; margin-top: 12px;';
     link.onclick = (e) => { e.preventDefault(); showCardModal(); };
-    pageTitle.insertAdjacentElement('afterend', link);
+    agentHero.insertAdjacentElement('afterend', link);
   }
 }
 
