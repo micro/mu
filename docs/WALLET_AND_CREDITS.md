@@ -43,7 +43,7 @@ This should be enough if you're using Mu as a utility. If you need more, pay-as-
 | App Create | 5 credits (5p) | AI app generation |
 | App Modify | 3 credits (3p) | AI app modification |
 | Agent Run | 5 credits (5p) | Agent task execution |
-| External Email | 4 credits (4p) | Like a stamp |
+| External Email | 4 credits (4p) | SMTP delivery cost |
 
 **Note:** Internal messages (user-to-user within Mu) are free. Only external email (to addresses outside Mu) costs credits.
 
