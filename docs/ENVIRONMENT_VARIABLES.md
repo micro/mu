@@ -79,7 +79,9 @@ export SUPPORT_URL="https://discord.gg/your-invite"
 
 ## Stripe Configuration (Credits/Wallet)
 
-Enable credit top-ups via Stripe. Users get 10 free AI queries per day, then can pay-as-you-go.
+Enable credit top-ups via Stripe. When configured, users get 10 free AI queries per day, then can pay-as-you-go.
+
+**When Stripe is NOT configured:** All quotas are disabled. Users have unlimited free access. This is the default for self-hosted instances.
 
 ```bash
 # Stripe API keys (from Stripe Dashboard)

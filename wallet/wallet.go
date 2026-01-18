@@ -29,6 +29,12 @@ var (
 	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
+// PaymentsEnabled returns true if Stripe is configured
+// When false, quotas are disabled (unlimited free usage)
+func PaymentsEnabled() bool {
+	return os.Getenv("STRIPE_SECRET_KEY") != ""
+}
+
 // Operation types
 const (
 	OpNewsSearch    = "news_search"
@@ -366,6 +372,11 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 
 	// Admins have unlimited access
 	if acc.Admin {
+		return true, false, 0, nil
+	}
+
+	// If Stripe not configured, no quotas (self-hosted/free instance)
+	if !PaymentsEnabled() {
 		return true, false, 0, nil
 	}
 
