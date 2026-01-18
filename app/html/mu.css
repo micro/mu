@@ -1994,7 +1994,7 @@ a.highlight {
     box-sizing: border-box;
   }
   body:has(#messages) #content {
-    height: calc(100dvh - 100px);
+    height: calc(100dvh - 150px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
