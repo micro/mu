@@ -294,7 +294,9 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 	}
 
 	// Fetch more results for ranking
-	fetchLimit := 200
+	// Fetch enough results to ensure we get word-boundary matches
+	// even if they're older (lower indexed_at)
+	fetchLimit := 1000
 	args = append(args, fetchLimit)
 
 	queryStr := fmt.Sprintf(`
