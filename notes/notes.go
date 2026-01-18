@@ -35,6 +35,25 @@ var (
 func Load() {
 	loadNotes()
 	app.Log("notes", "Loaded %d notes", len(notes))
+
+	// Index existing notes for RAG search
+	go reindexAllNotes()
+
+	// Subscribe to tag generation responses
+	tagSub := data.Subscribe(data.EventTagGenerated)
+	go func() {
+		for event := range tagSub.Chan {
+			noteID, okID := event.Data["note_id"].(string)
+			userID, okUser := event.Data["user_id"].(string)
+			tag, okTag := event.Data["tag"].(string)
+			eventType, okType := event.Data["type"].(string)
+
+			if okID && okUser && okTag && okType && eventType == "note" {
+				app.Log("notes", "Received generated tag for note %s: %s", noteID, tag)
+				addTagToNote(noteID, userID, tag)
+			}
+		}
+	}()
 }
 
 func loadNotes() {
@@ -83,6 +102,14 @@ func CreateNote(userID, title, content string, tags []string) (*Note, error) {
 	notes = append(notes, note)
 	if err := saveNotes(); err != nil {
 		return nil, err
+	}
+
+	// Index for search (async)
+	go indexNote(note)
+
+	// Auto-tag if no tags provided
+	if len(tags) == 0 && content != "" {
+		go autoTagNote(note.ID, userID, title, content)
 	}
 
 	return note, nil
@@ -206,35 +233,59 @@ func ListNotes(userID string, archived bool, tag string, limit int) []*Note {
 
 // SearchNotes searches notes by content/title
 func SearchNotes(userID, query string, limit int) []*Note {
-	mutex.RLock()
-	defer mutex.RUnlock()
+	if limit <= 0 {
+		limit = 20
+	}
 
-	query = strings.ToLower(query)
+	// Try RAG search first for semantic matching
+	ragResults := data.Search(query, limit*2, data.WithType("note"))
+	
 	var result []*Note
+	seen := make(map[string]bool)
 
-	for _, n := range notes {
-		if n.UserID != userID {
+	// Filter RAG results to only this user's notes
+	for _, entry := range ragResults {
+		if entry.Metadata == nil {
 			continue
 		}
-		// Search in title and content
-		if strings.Contains(strings.ToLower(n.Title), query) ||
-			strings.Contains(strings.ToLower(n.Content), query) {
-			result = append(result, n)
+		entryUserID, _ := entry.Metadata["user_id"].(string)
+		noteID, _ := entry.Metadata["note_id"].(string)
+		
+		if entryUserID != userID || noteID == "" {
+			continue
+		}
+		
+		if seen[noteID] {
+			continue
+		}
+		seen[noteID] = true
+		
+		if note := GetNote(noteID, userID); note != nil {
+			result = append(result, note)
+		}
+		
+		if len(result) >= limit {
+			break
 		}
 	}
 
-	// Sort by relevance (title match first) then by date
-	sort.Slice(result, func(i, j int) bool {
-		iTitle := strings.Contains(strings.ToLower(result[i].Title), query)
-		jTitle := strings.Contains(strings.ToLower(result[j].Title), query)
-		if iTitle != jTitle {
-			return iTitle
+	// Fallback to substring search if RAG found nothing
+	if len(result) == 0 {
+		mutex.RLock()
+		queryLower := strings.ToLower(query)
+		for _, n := range notes {
+			if n.UserID != userID {
+				continue
+			}
+			if strings.Contains(strings.ToLower(n.Title), queryLower) ||
+				strings.Contains(strings.ToLower(n.Content), queryLower) {
+				result = append(result, n)
+				if len(result) >= limit {
+					break
+				}
+			}
 		}
-		return result[i].UpdatedAt.After(result[j].UpdatedAt)
-	})
-
-	if limit > 0 && len(result) > limit {
-		result = result[:limit]
+		mutex.RUnlock()
 	}
 
 	return result
@@ -292,4 +343,86 @@ func parseTags(input string) []string {
 	}
 	parts := strings.Split(input, ",")
 	return normalizeTags(parts)
+}
+
+// autoTagNote requests AI categorization for a note
+func autoTagNote(noteID, userID, title, content string) {
+	app.Log("notes", "Requesting tag generation for note: %s", noteID)
+
+	text := content
+	if title != "" {
+		text = title + "\n\n" + content
+	}
+
+	data.Publish(data.Event{
+		Type: data.EventGenerateTag,
+		Data: map[string]interface{}{
+			"note_id": noteID,
+			"user_id": userID,
+			"title":   title,
+			"content": text,
+			"type":    "note",
+		},
+	})
+}
+
+// addTagToNote adds a generated tag to an existing note
+func addTagToNote(noteID, userID, tag string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for _, n := range notes {
+		if n.ID == noteID && n.UserID == userID {
+			// Don't overwrite if user already added tags
+			if len(n.Tags) == 0 {
+				n.Tags = []string{tag}
+				n.UpdatedAt = time.Now()
+				saveNotes()
+				app.Log("notes", "Auto-tagged note %s with: %s", noteID, tag)
+			}
+			return
+		}
+	}
+}
+
+// indexNote indexes a note for RAG search
+func indexNote(n *Note) {
+	// Create unique ID per user+note
+	indexID := fmt.Sprintf("note_%s_%s", n.UserID, n.ID)
+	
+	title := n.Title
+	if title == "" {
+		// Use first line of content as title
+		lines := strings.SplitN(n.Content, "\n", 2)
+		if len(lines[0]) > 50 {
+			title = lines[0][:50] + "..."
+		} else {
+			title = lines[0]
+		}
+	}
+
+	data.Index(
+		indexID,
+		"note",
+		title,
+		n.Content,
+		map[string]interface{}{
+			"user_id": n.UserID,
+			"note_id": n.ID,
+			"tags":    strings.Join(n.Tags, ","),
+		},
+	)
+}
+
+// reindexAllNotes indexes all notes (called on startup)
+func reindexAllNotes() {
+	mutex.RLock()
+	notesCopy := make([]*Note, len(notes))
+	copy(notesCopy, notes)
+	mutex.RUnlock()
+
+	for _, n := range notesCopy {
+		indexNote(n)
+	}
+	app.Log("notes", "Indexed %d notes", len(notesCopy))
 }

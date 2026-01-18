@@ -987,15 +987,22 @@ func Load() {
 	tagRequestSub := data.Subscribe(data.EventGenerateTag)
 	go func() {
 		for event := range tagRequestSub.Chan {
-			postID, okID := event.Data["post_id"].(string)
-			title, okTitle := event.Data["title"].(string)
+			title, _ := event.Data["title"].(string)
 			content, okContent := event.Data["content"].(string)
 			eventType, okType := event.Data["type"].(string)
 
-			if okID && okTitle && okContent && okType && eventType == "post" {
+			if !okContent || !okType {
+				continue
+			}
+
+			// Handle blog post tagging (predefined categories)
+			if eventType == "post" {
+				postID, ok := event.Data["post_id"].(string)
+				if !ok {
+					continue
+				}
 				app.Log("chat", "Received tag generation request for post %s", postID)
 
-				// Get valid topics from prompts map
 				var topics []string
 				for topic := range prompts {
 					topics = append(topics, topic)
@@ -1005,11 +1012,10 @@ func Load() {
 					continue
 				}
 
-				// Generate tag using LLM with predefined categories (low priority)
 				prompt := &Prompt{
 					System:   fmt.Sprintf("You are a content categorization assistant. Your task is to categorize posts into ONE of these categories ONLY: %s. If the post does not clearly fit into any of these categories, respond with 'None'. Respond with ONLY the category name or 'None', nothing else.", strings.Join(topics, ", ")),
 					Question: fmt.Sprintf("Categorize this post:\n\nTitle: %s\n\nContent: %s\n\nWhich single category best fits this post?", title, content),
-					Priority: PriorityLow, // Low priority for background tag generation
+					Priority: PriorityLow,
 				}
 
 				tag, err := askLLM(prompt)
@@ -1018,31 +1024,24 @@ func Load() {
 					continue
 				}
 
-				// Trim and validate the tag
 				tag = strings.TrimSpace(tag)
-
-				// Skip if LLM couldn't categorize
 				if tag == "None" || tag == "none" || tag == "" {
-					app.Log("chat", "Post %s could not be categorized, skipping tag", postID)
 					continue
 				}
 
-				// Validate against prompts map keys
 				validTag := false
 				for topic := range prompts {
 					if strings.EqualFold(tag, topic) {
-						tag = topic // Use the proper casing from map key
+						tag = topic
 						validTag = true
 						break
 					}
 				}
 
 				if !validTag {
-					app.Log("chat", "Invalid tag returned for post %s: '%s', skipping tag", postID, tag)
 					continue
 				}
 
-				// Publish the generated tag
 				data.Publish(data.Event{
 					Type: data.EventTagGenerated,
 					Data: map[string]interface{}{
@@ -1051,8 +1050,52 @@ func Load() {
 						"type":    eventType,
 					},
 				})
-
 				app.Log("chat", "Published generated tag for post %s: %s", postID, tag)
+			}
+
+			// Handle note tagging (free-form single tag)
+			if eventType == "note" {
+				noteID, ok := event.Data["note_id"].(string)
+				if !ok {
+					continue
+				}
+				userID, ok := event.Data["user_id"].(string)
+				if !ok {
+					continue
+				}
+				app.Log("chat", "Received tag generation request for note %s", noteID)
+
+				prompt := &Prompt{
+					System:   "You are a note organization assistant. Given a note, suggest ONE short tag (1-2 words, lowercase) that best categorizes it. Examples: 'work', 'ideas', 'shopping', 'todo', 'recipe', 'travel', 'health', 'finance'. Respond with ONLY the tag, nothing else. If the note is too short or unclear, respond with 'personal'.",
+					Question: content,
+					Priority: PriorityLow,
+				}
+
+				tag, err := askLLM(prompt)
+				if err != nil {
+					app.Log("chat", "Error generating tag for note %s: %v", noteID, err)
+					continue
+				}
+
+				tag = strings.TrimSpace(strings.ToLower(tag))
+				if tag == "" {
+					tag = "personal"
+				}
+				// Limit to reasonable length
+				if len(tag) > 20 {
+					tag = tag[:20]
+				}
+
+				data.Publish(data.Event{
+					Type: data.EventTagGenerated,
+					Data: map[string]interface{}{
+						"note_id": noteID,
+						"user_id": userID,
+						"tag":     tag,
+						"type":    eventType,
+					},
+				})
+				app.Log("chat", "Published generated tag for note %s: %s", noteID, tag)
 			}
 		}
 	}()

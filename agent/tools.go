@@ -10,9 +10,12 @@ import (
 	"google.golang.org/api/youtube/v3"
 	"mu/app"
 	"mu/apps"
+	"mu/auth"
 	"mu/data"
+	"mu/mail"
 	"mu/news"
 	"mu/notes"
+	"mu/wallet"
 )
 
 // VideoResult for agent responses
@@ -588,5 +591,99 @@ func (a *Agent) listNotes(params map[string]interface{}) (*ToolResult, error) {
 		Success: true,
 		Data:    noteResults,
 		HTML:    htmlBuilder.String(),
+	}, nil
+}
+
+// Email tools
+
+func (a *Agent) sendEmail(params map[string]interface{}) (*ToolResult, error) {
+	to, _ := params["to"].(string)
+	subject, _ := params["subject"].(string)
+	body, _ := params["body"].(string)
+
+	if to == "" || subject == "" || body == "" {
+		return &ToolResult{Success: false, Error: "to, subject, and body are required"}, nil
+	}
+
+	app.Log("agent", "Send email to: %s, subject: %s", to, subject)
+
+	// Get sender info
+	acc, err := auth.GetAccount(a.userID)
+	if err != nil {
+		return &ToolResult{Success: false, Error: "could not get account info"}, nil
+	}
+
+	// Check if external email (contains @)
+	isExternal := strings.Contains(to, "@") && !strings.HasSuffix(to, "@mu.xyz")
+
+	if isExternal {
+		// Check quota for external email
+		canProceed, _, cost, _ := wallet.CheckQuota(a.userID, wallet.OpExternalEmail)
+		if !canProceed {
+			return &ToolResult{
+				Success: false,
+				Error:   fmt.Sprintf("External email requires %d credits. Top up at /wallet", cost),
+			}, nil
+		}
+
+		// Send external email
+		err := mail.SendMessage(acc.Name, a.userID, to, "", subject, body, "", "")
+		if err != nil {
+			return &ToolResult{Success: false, Error: fmt.Sprintf("Failed to send: %v", err)}, nil
+		}
+
+		wallet.ConsumeQuota(a.userID, wallet.OpExternalEmail)
+
+		return &ToolResult{
+			Success: true,
+			Data:    map[string]string{"to": to, "subject": subject},
+			HTML:    fmt.Sprintf(`<p>✓ Email sent to %s</p>`, to),
+		}, nil
+	}
+
+	// Internal message - find recipient
+	recipient, err := auth.GetAccountByName(to)
+	if err != nil {
+		return &ToolResult{Success: false, Error: fmt.Sprintf("User '%s' not found", to)}, nil
+	}
+
+	err = mail.SendMessage(acc.Name, a.userID, recipient.Name, recipient.ID, subject, body, "", "")
+	if err != nil {
+		return &ToolResult{Success: false, Error: fmt.Sprintf("Failed to send: %v", err)}, nil
+	}
+
+	return &ToolResult{
+		Success: true,
+		Data:    map[string]string{"to": to, "subject": subject},
+		HTML:    fmt.Sprintf(`<p>✓ Message sent to %s</p>`, to),
+	}, nil
+}
+
+func (a *Agent) checkInbox(params map[string]interface{}) (*ToolResult, error) {
+	app.Log("agent", "Check inbox for user: %s", a.userID)
+
+	unreadCount := mail.GetUnreadCount(a.userID)
+	preview := mail.GetRecentThreadsPreview(a.userID, 5)
+
+	var htmlBuilder strings.Builder
+	htmlBuilder.WriteString(`<div class="agent-results inbox-results">`)
+	htmlBuilder.WriteString(fmt.Sprintf(`<p><strong>%d unread messages</strong></p>`, unreadCount))
+	
+	if preview != "" {
+		htmlBuilder.WriteString(preview)
+	} else {
+		htmlBuilder.WriteString(`<p>No recent messages</p>`)
+	}
+	
+	htmlBuilder.WriteString(`<p><a href="/mail">Open inbox</a></p>`)
+	htmlBuilder.WriteString(`</div>`)
+
+	return &ToolResult{
+		Success: true,
+		Data: map[string]interface{}{
+			"unread":  unreadCount,
+			"preview": preview,
+		},
+		HTML: htmlBuilder.String(),
 	}, nil
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -135,6 +136,20 @@ func GetAllAccounts() []*Account {
 		list = append(list, acc)
 	}
 	return list
+}
+
+// GetAccountByName finds an account by username (case-insensitive)
+func GetAccountByName(name string) (*Account, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	nameLower := strings.ToLower(name)
+	for _, acc := range accounts {
+		if strings.ToLower(acc.Name) == nameLower || strings.ToLower(acc.ID) == nameLower {
+			return acc, nil
+		}
+	}
+	return nil, errors.New("account not found")
 }
 
 func DeleteAccount(id string) error {

@@ -189,6 +189,25 @@ func (a *Agent) registerTools() {
 		Execute: a.listNotes,
 	}
 
+	// Email tools
+	a.tools["send_email"] = &Tool{
+		Name:        "send_email",
+		Description: "Send an email or message to another user. For internal users, use their username. For external email, use their email address.",
+		Parameters: map[string]ToolParam{
+			"to":      {Type: "string", Description: "Recipient username or email address", Required: true},
+			"subject": {Type: "string", Description: "Email subject", Required: true},
+			"body":    {Type: "string", Description: "Email body content", Required: true},
+		},
+		Execute: a.sendEmail,
+	}
+
+	a.tools["check_inbox"] = &Tool{
+		Name:        "check_inbox",
+		Description: "Check the user's inbox for unread messages and recent mail.",
+		Parameters:  map[string]ToolParam{},
+		Execute:     a.checkInbox,
+	}
+
 	// Final answer tool
 	a.tools["final_answer"] = &Tool{
 		Name:        "final_answer",
