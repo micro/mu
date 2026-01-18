@@ -5,9 +5,20 @@ A personal AI platform - utility tools, not a destination. Like Google Search ci
 
 ## Philosophy
 - **Utility, not destination** - tools that solve problems and get out of the way
-- **Pay for what you use** - no engagement tricks, no unlimited tiers
+- **Anti-addiction** - reduce screen time, opposite of engagement-driven platforms
+- **AI as compression** - summarization not generation, helps you leave faster
+- **Pay for what you use** - no ads, no subscriptions, no engagement tricks
 - **Self-host option** - run your own instance for free forever
-- **One way of doing things** - no redundant entry points
+
+## Value Proposition
+Big Tech platforms maximize your time on them. Mu minimizes it. Get in, get what you need, get out.
+
+1. **AI as Compression, Not Generation** - Summarize, don't generate endless content
+2. **Unified Agent** - One interface to everything (voice or text)
+3. **App Generation** - Describe it, have it. No app store, no downloads
+4. **Consolidation** - Notes, email, news, video, chat, apps in one place
+5. **Pay-as-you-go, No Ads** - You're the customer, not the product
+6. **Self-hostable** - Single binary, your data stays yours
 
 ## Core Building Blocks
 
@@ -18,21 +29,12 @@ A personal AI platform - utility tools, not a destination. Like Google Search ci
 | **app/** | Shared utilities | `Log()`, `RenderHTML()`, `WantsJSON()`, `RespondJSON()`, error handlers |
 | **data/** | Storage & search | `SaveFile()`, `LoadFile()`, `Index()`, `Search()`, `Publish()`, `Subscribe()` |
 
-All feature packages build on these four.
-
-## AI Package (`ai/`)
-Single source of truth for LLM integration:
-- `ai/ai.go` - Types (`Prompt`, `History`, `Message`), constants, `Ask()`
-- `ai/providers.go` - Anthropic, Fanar, Ollama with rate limiting
-
-Provider priority: Anthropic > Fanar > Ollama (based on env vars)
-
 ## Feature Packages
 
 | Package | Purpose | AI Integration |
 |---------|---------|----------------|
 | **agent/** | AI assistant via @micro button | Multi-step tool execution |
-| **apps/** | Micro app builder | Generate/modify from prompts |
+| **apps/** | Micro app builder + built-ins | Generate/modify from prompts |
 | **blog/** | Microblogging | Auto-tag posts |
 | **chat/** | Contextual chat rooms | RAG-powered Q&A |
 | **mail/** | Email/messaging | Agent tools (send, check inbox) |
@@ -41,23 +43,26 @@ Provider priority: Anthropic > Fanar > Ollama (based on env vars)
 | **video/** | YouTube integration | Search only |
 | **wallet/** | Credits system | N/A |
 
+## Built-in Apps (apps/)
+- `apps/markets.go` - Crypto/futures price ticker, self-contained with own data fetcher
+- `apps/reminder.go` - Daily Islamic reminder, self-contained with own data fetcher
+
+Both moved from news package to apps package for better organization.
+
+## Home Page Card Customization
+- Client-side card visibility toggle
+- "Customize" link on home page for logged-in users
+- Modal with checkboxes to show/hide: Apps, News, Reminder, Markets, Blog, Video
+- Preferences saved to localStorage (`mu_hidden_cards`)
+- Cards hidden on page load via `applyHiddenCards()`
+
 ## Agent Tools (`agent/tools.go`)
 - `video_search`, `video_play` - YouTube
 - `news_search`, `news_read` - News articles  
 - `app_create`, `app_modify`, `app_list` - Micro apps
-- `market_price` - Crypto/stock prices
+- `market_price` - Crypto/stock prices (uses `apps.GetAllPrices()`)
 - `save_note`, `search_notes`, `list_notes` - Notes
 - `send_email`, `check_inbox` - Mail
-
-## Notes App (`/notes`)
-Google Keep replacement:
-- Quick capture with optional title
-- Tags (auto-generated via AI if not provided)
-- Pin, archive, color coding
-- Smart search using RAG
-- Grid view
-
-Storage: `$HOME/.mu/data/notes.json`
 
 ## Pricing (Pay-as-you-go)
 
@@ -93,7 +98,16 @@ STRIPE_WEBHOOK_SECRET
 - SSH: `ssh -p 61194 mu@mu.xyz`
 
 ## UI Principles
-- Floating `@` button = universal AI entry point
 - Minimal chrome, left-aligned forms
 - No redundant navigation paths
 - Consistent content width across pages
+- Service worker version bumps to clear cache (currently v95)
+
+## Recent Changes
+- Moved markets/reminder from news to apps package
+- Added home card customization (client-side localStorage)
+- Removed agent modal FAB (to be repositioned later)
+- Fixed chat page layout on mobile (100svh, proper offsets)
+
+## Next Up
+- App templates (API fetcher, data tracker patterns)
