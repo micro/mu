@@ -405,20 +405,13 @@ func handleSuccess(w http.ResponseWriter, r *http.Request) {
 	// Check if this was a subscription or credit purchase
 	sessionType := r.URL.Query().Get("type")
 
-	var content string
-	if sessionType == "subscription" {
-		content = `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #f0fff4; border-color: #22c55e;">
-	<h2 style="color: #22c55e;">✓ Welcome, Member!</h2>
-	<p>Your membership is now active. Enjoy unlimited searches!</p>
-	<p style="margin-top: 20px;"><a href="/wallet">View Wallet →</a></p>
-</div>`
-	} else {
-		content = `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #f0fff4; border-color: #22c55e;">
+	// Note: subscription flow removed, but keeping sessionType check for legacy webhook handling
+	_ = sessionType
+	content := `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #f0fff4; border-color: #22c55e;">
 	<h2 style="color: #22c55e;">✓ Payment Successful</h2>
 	<p>Your credits have been added to your wallet.</p>
 	<p style="margin-top: 20px;"><a href="/wallet">View Wallet →</a></p>
 </div>`
-	}
 
 	html := app.RenderHTMLForRequest("Payment Successful", "Your payment was successful", content, r)
 	w.Write([]byte(html))
