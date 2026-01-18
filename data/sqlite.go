@@ -370,6 +370,7 @@ func scoreMatch(entry *IndexEntry, words []string) float64 {
 		// Exact word boundary match in title (highest value)
 		if matchesWordBoundary(titleLower, word) {
 			score += 10.0
+			fmt.Printf("[SCORE] Title word-boundary match '%s' in '%s' -> +10\n", word, entry.Title[:min(50, len(entry.Title))])
 		} else if strings.Contains(titleLower, word) {
 			// Substring match in title
 			score += 3.0
@@ -385,6 +386,13 @@ func scoreMatch(entry *IndexEntry, words []string) float64 {
 	}
 
 	return score
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // matchesWordBoundary checks if word appears as a whole word (not substring)
