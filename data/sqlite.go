@@ -157,8 +157,77 @@ func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry,
 		opt(options)
 	}
 
-	// Use LIKE search (works everywhere)
+	// Try vector search first if embeddings are available
+	queryEmbedding, err := getEmbedding(query)
+	if err == nil && len(queryEmbedding) > 0 {
+		// Get vector search results
+		vectorResults, err := VectorSearchSQLite(queryEmbedding, limit*2, opts...)
+		if err == nil && len(vectorResults) > 0 {
+			// Also do keyword search to catch exact matches vector might miss
+			keywordResults, _ := searchSQLiteFallback(query, limit*2, options)
+			
+			// Merge results, preferring keyword matches for exact terms
+			return mergeSearchResults(vectorResults, keywordResults, query, limit)
+		}
+	}
+
+	// Fall back to keyword search
 	return searchSQLiteFallback(query, limit, options)
+}
+
+// mergeSearchResults combines vector and keyword results with proper ranking
+func mergeSearchResults(vectorResults, keywordResults []*IndexEntry, query string, limit int) ([]*IndexEntry, error) {
+	words := strings.Fields(strings.ToLower(query))
+	
+	type scoredEntry struct {
+		entry    *IndexEntry
+		score    float64
+		fromVector bool
+	}
+	
+	seen := make(map[string]*scoredEntry)
+	
+	// Add vector results with base score
+	for i, entry := range vectorResults {
+		// Vector results are already sorted by similarity, use position as score
+		score := float64(len(vectorResults) - i)
+		seen[entry.ID] = &scoredEntry{entry: entry, score: score, fromVector: true}
+	}
+	
+	// Add/boost keyword results
+	for _, entry := range keywordResults {
+		keywordScore := scoreMatch(entry, words)
+		if existing, found := seen[entry.ID]; found {
+			// Boost if keyword match is strong
+			existing.score += keywordScore
+		} else {
+			seen[entry.ID] = &scoredEntry{entry: entry, score: keywordScore, fromVector: false}
+		}
+	}
+	
+	// Convert to slice and sort
+	var scored []scoredEntry
+	for _, s := range seen {
+		scored = append(scored, *s)
+	}
+	
+	sort.Slice(scored, func(i, j int) bool {
+		if scored[i].score != scored[j].score {
+			return scored[i].score > scored[j].score
+		}
+		return getPostedAt(scored[i].entry).After(getPostedAt(scored[j].entry))
+	})
+	
+	if limit > 0 && len(scored) > limit {
+		scored = scored[:limit]
+	}
+	
+	results := make([]*IndexEntry, len(scored))
+	for i, s := range scored {
+		results[i] = s.entry
+	}
+	
+	return results, nil
 }
 
 // searchSQLiteFallback uses LIKE when FTS fails
