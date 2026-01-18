@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v83';
+var VERSION = 'v84';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1109,11 +1109,7 @@ document.addEventListener('DOMContentLoaded', function() {
       topicInput.value = currentRoomData.title;
     }
     
-    // Show back link for room
-    const backLink = document.getElementById('chat-back-link');
-    if (backLink) {
-      backLink.style.display = 'block';
-    }
+
     
     // Connect WebSocket first (this will clear messages and load sessionStorage)
     connectRoomWebSocket(currentRoomData.id);
