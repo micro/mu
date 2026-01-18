@@ -293,17 +293,12 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		args = append(args, options.Type)
 	}
 
-	// Fetch more results for ranking
-	// Fetch enough results to ensure we get word-boundary matches
-	// even if they're older (lower indexed_at)
-	fetchLimit := 1000
-	args = append(args, fetchLimit)
-
+	// No LIMIT in SQL - let Go scoring pick the best matches
+	// Word-boundary matches score higher, so they'll surface even if older
 	queryStr := fmt.Sprintf(`
 		SELECT id, type, title, content, metadata, indexed_at
 		FROM index_entries
 		WHERE %s
-		LIMIT ?
 	`, whereClause)
 
 	rows, queryErr := db.Query(queryStr, args...)
