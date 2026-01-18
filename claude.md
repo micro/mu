@@ -7,6 +7,51 @@ A personal AI platform - utility tools, not a destination. Like Google Search ci
 - **Utility, not destination** - tools that solve problems and get out of the way
 - **Pay for what you use** - no engagement tricks, no unlimited tiers
 - **Self-host option** - run your own instance for free forever
+- **One way of doing things** - no redundant entry points
+
+## Architecture
+
+### AI Package (`ai/`)
+Reusable LLM integration extracted from chat:
+- `ai/ai.go` - Types (Prompt, History, Message), constants (PriorityHigh/Medium/Low), Ask()
+- `ai/providers.go` - Anthropic, Fanar, Ollama support with rate limiting
+
+Provider priority: Anthropic > Fanar > Ollama (based on env vars)
+
+### Features with AI Integration
+
+| Feature | AI Integration |
+|---------|---------------|
+| Chat | RAG-powered Q&A with context |
+| Agent | Multi-step tool execution via @micro floating button |
+| Apps | Generate/modify HTML/CSS/JS from prompts |
+| Notes | Auto-tagging, smart search (RAG) |
+| News | Auto-summarize articles |
+| Blog | Auto-tag posts |
+| Mail | Agent tools (send_email, check_inbox) |
+
+### Agent Tools
+Located in `agent/tools.go`:
+- `video_search`, `video_play` - YouTube
+- `news_search`, `news_read` - News articles
+- `app_create`, `app_modify`, `app_list` - Micro apps
+- `market_price` - Crypto/stock prices
+- `save_note`, `search_notes`, `list_notes` - Notes
+- `send_email`, `check_inbox` - Mail
+
+## Notes App (`/notes`)
+Full-featured notes to replace Google Keep:
+- Quick capture with optional title
+- Tags (auto-generated if not provided)
+- Pin, archive, color coding
+- Smart search using RAG
+- Grid view like Keep
+
+Key files:
+- `notes/notes.go` - Data model, CRUD, search, auto-tagging
+- `notes/handlers.go` - HTTP handlers, UI
+
+Storage: `$HOME/.mu/data/notes.json`
 
 ## Pricing Model (Pay-as-you-go)
 
@@ -25,57 +70,40 @@ A personal AI platform - utility tools, not a destination. Like Google Search ci
 
 - **Free tier**: 10 AI queries/day
 - **Admins**: Full access (no quotas)
-- **No membership tier** - removed intentionally to avoid engagement incentives
 
-## Recent Changes (This Session)
+## Key Packages
 
-### Removed Member Tier
-- Deleted `Member` field from Account struct
-- Removed `/membership` page and route
-- Removed Stripe subscription handlers
-- Simplified to just Admin/Regular users
-- External email now pay-per-use (was member-only)
-- Private posts now admin-only (was member-only)
-- Moderation now admin-only
+### Core
+- `ai/` - LLM integration (Anthropic, Fanar, Ollama)
+- `app/` - Shared utilities, HTML rendering, static files
+- `auth/` - Accounts, sessions, tokens
+- `data/` - Storage, indexing, pub/sub events
 
-### Email System
-- External email costs 4 credits (like a stamp)
-- Internal messages (user-to-user within Mu) are free
-- Added `/admin/email` page with:
-  - Pre-computed stats (total, inbound, outbound, internal)
-  - Top external domains
-  - Recent 50 messages
-- Stats computed on startup, updated incrementally per message
+### Features
+- `agent/` - AI agent with tools
+- `apps/` - Micro app builder
+- `blog/` - Microblogging
+- `chat/` - Topic-based chat rooms
+- `mail/` - Email/messaging
+- `news/` - RSS aggregation
+- `notes/` - Personal notes
+- `video/` - YouTube integration
+- `wallet/` - Credits system
 
-### Wallet/Pricing Updates
-- Removed `StripeCustomerID` and `StripeSubscriptionID` from Account
-- Removed `STRIPE_MEMBERSHIP_PRICE` env var
-- Updated `/plans` page - 2 columns (Free + Pay-as-you-go) + self-host card
-- Updated `/wallet` page - shows all costs including email
-- Fixed account page format string bug
-
-## Key Files
-
-### Pricing
-- `wallet/wallet.go` - Credit costs, quota checking
-- `wallet/handlers.go` - Wallet UI, Stripe checkout
-- `app/app.go` - `/plans` page, account page
-- `docs/WALLET_AND_CREDITS.md` - Pricing docs
-- `docs/ENVIRONMENT_VARIABLES.md` - Config docs
-
-### Email
-- `mail/mail.go` - Message storage, stats, SendMessage()
-- `mail/smtp.go` - Inbound SMTP handling
-- `mail/client.go` - Outbound SMTP relay
-- `admin/email_log.go` - `/admin/email` page
-
-### Auth
-- `auth/auth.go` - Account struct (ID, Name, Secret, Created, Admin, Language, Widgets)
-
-## Environment Variables (Relevant)
+## Environment Variables
 
 ```bash
-# Stripe (for credit top-ups only)
+# LLM Provider (priority order)
+ANTHROPIC_API_KEY    # Use Claude
+ANTHROPIC_MODEL      # Default: claude-haiku-4-20250514
+
+FANAR_API_KEY        # Use Fanar
+FANAR_API_URL        # Default: https://api.fanar.qa
+
+MODEL_NAME           # Ollama model (default: llama3.2)
+MODEL_API_URL        # Ollama URL (default: http://localhost:11434)
+
+# Stripe (for credit top-ups)
 STRIPE_SECRET_KEY
 STRIPE_PUBLISHABLE_KEY
 STRIPE_WEBHOOK_SECRET
@@ -84,7 +112,6 @@ STRIPE_WEBHOOK_SECRET
 FREE_DAILY_SEARCHES=10
 CREDIT_COST_NEWS=1
 CREDIT_COST_VIDEO=2
-CREDIT_COST_VIDEO_WATCH=0
 CREDIT_COST_CHAT=3
 CREDIT_COST_EMAIL=4
 CREDIT_COST_APP_CREATE=5
@@ -96,89 +123,12 @@ CREDIT_COST_AGENT=5
 - `git@github.com:asim/mu.git`
 - Deploy key configured for this VM
 
-## Notes
-- Messages stored newest-first (prepended)
-- Email stats use separate mutex (`emailStatsMux`) from messages mutex
-- YouTube video summarization parked - extension approach too complex, would need paid API (Supadata)
-
-## Recent Session: Search & Status Improvements
-
-### Self-Hosted Mode
-- When `STRIPE_SECRET_KEY` not set, quotas disabled (unlimited free)
-- `wallet.PaymentsEnabled()` checks this
-- Docs updated to clarify internal messaging (free) vs external email (SMTP)
-
-### Status Page (`/status`)
-- Added: Online users, Index entries, Vector search status, Payment/quota mode
-- Quick health check: `/status?quick=1` returns JSON `{healthy, online}`
-- Services shown: DKIM, SMTP, LLM Provider, YouTube API, Payments, Search
-
-### News Search Overhaul
-
-**Problem:** Searching "AGI" returned "fragile", "imaging" etc. instead of actual AGI articles.
-
-**Solution:** Two-phase keyword search with word-boundary scoring:
-
-1. **Phase 1:** Fetch ALL title matches (small set, catches old but relevant articles)
-2. **Phase 2:** Fetch 200 recent content matches
-3. **Score:** Word boundary in title (+10), substring in title (+3), word boundary in content (+2), substring in content (+0.5)
-4. **Sort:** Highest score first, then by article date
-
-**Performance:**
-- Disabled vector search for news (`data.WithKeywordOnly()`)
-- Vector search still used for chat/RAG where semantic matters
-- Result: ~400ms (was ~800ms)
-
-### Key Search Files
-- `data/sqlite.go` - `searchSQLiteFallback()`, `scoreMatch()`, `matchesWordBoundary()`
-- `data/data.go` - `SearchOptions.KeywordOnly`, `WithKeywordOnly()` option
-- `news/news.go` - Uses `data.WithKeywordOnly()` for news search
-
-### Search Architecture
-```
-User searches "agi"
-    |
-    v
-SearchSQLite()
-    |
-    +-- KeywordOnly? --> searchSQLiteFallback()
-    |                         |
-    |                         +-- Phase 1: ALL title matches (no limit)
-    |                         +-- Phase 2: 200 recent content matches
-    |                         +-- Score with word-boundary detection
-    |                         +-- Return top N by score, then date
-    |
-    +-- Vector enabled --> getEmbedding() + VectorSearchSQLite()
-                              + mergeSearchResults()
-```
-
-### Test Account
+## Testing
 - `shelleytest` - admin account for testing on mu.xyz
 - SSH: `ssh -p 61194 mu@mu.xyz`
 
-## Recent Session: Notes App & Agent Enhancement
-
-### Notes App (`/notes`)
-Full-featured notes app to replace Google Keep:
-- **Data model**: Title, content, tags, pinned, archived, color
-- **Features**: Quick capture, search, tag filtering, pin/archive, color coding
-- **UI**: Grid view like Keep, edit form, tag filter bar
-- **Agent tools**: `save_note`, `search_notes`, `list_notes`
-
-### Key Files
-- `notes/notes.go` - Data model, CRUD operations, search
-- `notes/handlers.go` - HTTP handlers, UI rendering, CSS
-
-### Home Page Enhancement
-- Added prominent "What would you like to do?" input
-- Routes to `/agent?q=...` for processing
-- Example quick actions shown below input
-
-### Agent Improvements
-- Added to main nav (was hidden)
-- New tools: `save_note`, `search_notes`, `list_notes`
-- Accepts `?q=` param for auto-execution from home
-
-### Navigation Updated
-- Added Notes icon and link
-- Added Agent icon and link
+## UI Principles
+- Floating `@` button is the universal AI entry point (all pages)
+- Notes editor: minimal chrome, left-aligned, Keep-like
+- No redundant navigation (one way to reach each feature)
+- Content width consistent across pages
