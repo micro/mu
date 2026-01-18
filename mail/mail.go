@@ -76,6 +76,9 @@ func Load() {
 
 		// Build inbox structures organized by thread
 		rebuildInboxes()
+		
+		// Compute email stats
+		recomputeStats()
 	}
 
 	// Load blocklist
@@ -1132,6 +1135,9 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 	err := save()
 	mutex.Unlock()
 
+	// Update stats (outside lock)
+	updateStats(msg)
+
 	return err
 }
 
@@ -1333,16 +1339,119 @@ func DeleteThread(msgID, userID string) error {
 }
 
 // GetAllMessages returns all messages (for admin use)
-func GetAllMessages() []*Message {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	
-	result := make([]*Message, len(messages))
-	copy(result, messages)
-	return result
-}
-
 // IsExternalAddress checks if an address is external (contains @)
 func IsExternalAddress(addr string) bool {
 	return strings.Contains(addr, "@") && !strings.HasSuffix(addr, "@"+GetConfiguredDomain())
+}
+
+// EmailStats holds pre-computed email statistics
+type EmailStats struct {
+	Total    int            `json:"total"`
+	Inbound  int            `json:"inbound"`
+	Outbound int            `json:"outbound"`
+	Internal int            `json:"internal"`
+	Domains  map[string]int `json:"domains"`
+}
+
+var (
+	emailStats     EmailStats
+	emailStatsMux  sync.RWMutex
+)
+
+func init() {
+	// Will be computed on first Load()
+	emailStats.Domains = make(map[string]int)
+}
+
+// updateStats updates stats when a message is added
+func updateStats(msg *Message) {
+	emailStatsMux.Lock()
+	defer emailStatsMux.Unlock()
+	
+	emailStats.Total++
+	
+	fromExternal := IsExternalAddress(msg.FromID)
+	toExternal := IsExternalAddress(msg.ToID)
+	
+	if fromExternal {
+		emailStats.Inbound++
+		if parts := strings.Split(msg.FromID, "@"); len(parts) == 2 {
+			emailStats.Domains[parts[1]]++
+		}
+	} else if toExternal {
+		emailStats.Outbound++
+		if parts := strings.Split(msg.ToID, "@"); len(parts) == 2 {
+			emailStats.Domains[parts[1]]++
+		}
+	} else {
+		emailStats.Internal++
+	}
+}
+
+// recomputeStats rebuilds stats from all messages (called on load)
+func recomputeStats() {
+	emailStatsMux.Lock()
+	defer emailStatsMux.Unlock()
+	
+	emailStats = EmailStats{
+		Domains: make(map[string]int),
+	}
+	
+	for _, msg := range messages {
+		emailStats.Total++
+		
+		fromExternal := IsExternalAddress(msg.FromID)
+		toExternal := IsExternalAddress(msg.ToID)
+		
+		if fromExternal {
+			emailStats.Inbound++
+			if parts := strings.Split(msg.FromID, "@"); len(parts) == 2 {
+				emailStats.Domains[parts[1]]++
+			}
+		} else if toExternal {
+			emailStats.Outbound++
+			if parts := strings.Split(msg.ToID, "@"); len(parts) == 2 {
+				emailStats.Domains[parts[1]]++
+			}
+		} else {
+			emailStats.Internal++
+		}
+	}
+}
+
+// GetEmailStats returns current email statistics
+func GetEmailStats() EmailStats {
+	emailStatsMux.RLock()
+	defer emailStatsMux.RUnlock()
+	
+	// Copy to avoid race
+	stats := EmailStats{
+		Total:    emailStats.Total,
+		Inbound:  emailStats.Inbound,
+		Outbound: emailStats.Outbound,
+		Internal: emailStats.Internal,
+		Domains:  make(map[string]int),
+	}
+	for k, v := range emailStats.Domains {
+		stats.Domains[k] = v
+	}
+	return stats
+}
+
+// GetRecentMessages returns the N most recent messages
+func GetRecentMessages(limit int) []*Message {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	
+	// Messages are stored oldest first, so we need to get from the end
+	start := len(messages) - limit
+	if start < 0 {
+		start = 0
+	}
+	
+	result := make([]*Message, 0, limit)
+	for i := len(messages) - 1; i >= start; i-- {
+		result = append(result, messages[i])
+	}
+	return result
 }

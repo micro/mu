@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	"mu/app"
 	"mu/auth"
@@ -21,60 +20,8 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	messages := mail.GetAllMessages()
-	
-	// Sort by date descending
-	sort.Slice(messages, func(i, j int) bool {
-		return messages[i].CreatedAt.After(messages[j].CreatedAt)
-	})
-
-	// Calculate stats
-	now := time.Now()
-	cutoff24h := now.Add(-24 * time.Hour)
-	cutoff7d := now.Add(-7 * 24 * time.Hour)
-	
-	stats := struct {
-		Total      int
-		Last24h    int
-		Last7d     int
-		Inbound    int
-		Outbound   int
-		Internal   int
-		Domains    map[string]int
-	}{
-		Domains: make(map[string]int),
-	}
-	
-	stats.Total = len(messages)
-	
-	for _, msg := range messages {
-		if msg.CreatedAt.After(cutoff24h) {
-			stats.Last24h++
-		}
-		if msg.CreatedAt.After(cutoff7d) {
-			stats.Last7d++
-		}
-		
-		// Determine direction
-		fromExternal := mail.IsExternalAddress(msg.FromID)
-		toExternal := mail.IsExternalAddress(msg.ToID)
-		
-		if fromExternal {
-			stats.Inbound++
-			// Extract domain
-			if parts := strings.Split(msg.FromID, "@"); len(parts) == 2 {
-				stats.Domains[parts[1]]++
-			}
-		} else if toExternal {
-			stats.Outbound++
-			// Extract domain
-			if parts := strings.Split(msg.ToID, "@"); len(parts) == 2 {
-				stats.Domains[parts[1]]++
-			}
-		} else {
-			stats.Internal++
-		}
-	}
+	stats := mail.GetEmailStats()
+	messages := mail.GetRecentMessages(50)
 
 	// Sort domains by count
 	type domainCount struct {
@@ -96,8 +43,6 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<h3>Email Statistics</h3>`)
 	content.WriteString(`<table style="width: 100%; font-size: 14px;">`)
 	content.WriteString(fmt.Sprintf(`<tr><td>Total messages</td><td style="text-align: right;">%d</td></tr>`, stats.Total))
-	content.WriteString(fmt.Sprintf(`<tr><td>Last 24 hours</td><td style="text-align: right;">%d</td></tr>`, stats.Last24h))
-	content.WriteString(fmt.Sprintf(`<tr><td>Last 7 days</td><td style="text-align: right;">%d</td></tr>`, stats.Last7d))
 	content.WriteString(fmt.Sprintf(`<tr><td>Inbound (external → local)</td><td style="text-align: right;">%d</td></tr>`, stats.Inbound))
 	content.WriteString(fmt.Sprintf(`<tr><td>Outbound (local → external)</td><td style="text-align: right;">%d</td></tr>`, stats.Outbound))
 	content.WriteString(fmt.Sprintf(`<tr><td>Internal (local → local)</td><td style="text-align: right;">%d</td></tr>`, stats.Internal))
@@ -142,12 +87,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 		content.WriteString(`<table class="email-log">`)
 		content.WriteString(`<tr><th>Time</th><th>Dir</th><th>From</th><th>To</th><th>Subject</th></tr>`)
 
-		limit := 50
-		if len(messages) < limit {
-			limit = len(messages)
-		}
-
-		for _, msg := range messages[:limit] {
+		for _, msg := range messages {
 			fromExternal := mail.IsExternalAddress(msg.FromID)
 			toExternal := mail.IsExternalAddress(msg.ToID)
 			
