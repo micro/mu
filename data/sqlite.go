@@ -178,8 +178,8 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 	var conditions []string
 	var args []interface{}
 	for _, word := range words {
-		if len(word) < 3 {
-			continue // Skip very short words
+		if len(word) < 2 {
+			continue // Skip single characters
 		}
 		likeWord := "%" + word + "%"
 		conditions = append(conditions, "(title LIKE ? OR content LIKE ?)")
