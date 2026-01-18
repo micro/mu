@@ -567,6 +567,54 @@ td {
 /* ========================================
    HOME PAGE
    ======================================== */
+
+/* Agent hero on home page */
+#agent-hero {
+  margin-bottom: 30px;
+  padding: 20px 0;
+}
+
+#agent-form {
+  display: flex;
+  gap: 10px;
+  max-width: 600px;
+}
+
+#agent-form input {
+  flex: 1;
+  padding: 14px 18px;
+  font-size: 16px;
+  border: 2px solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+#agent-form input:focus {
+  outline: none;
+  border-color: var(--accent-color, #0d7377);
+}
+
+#agent-form input::placeholder {
+  color: var(--text-muted, #888);
+}
+
+#agent-form button {
+  padding: 14px 28px;
+  background: var(--accent-color, #0d7377);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius, 6px);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+#agent-form button:hover {
+  opacity: 0.9;
+}
+
 #home {
   margin-bottom: 25px;
   display: flex;

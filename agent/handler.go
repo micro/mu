@@ -375,6 +375,14 @@ function formatMarkdown(text) {
 		.replace(/\*(.*?)\*/g, '<em>$1</em>')
 		.replace(/\n/g, '<br>');
 }
+
+// Auto-run if task param is present
+const urlParams = new URLSearchParams(window.location.search);
+const taskParam = urlParams.get('task');
+if (taskParam) {
+	input.value = taskParam;
+	runAgent();
+}
 </script>
 `
 
