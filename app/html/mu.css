@@ -570,49 +570,47 @@ td {
 
 /* Agent hero on home page */
 #agent-hero {
-  margin-bottom: 30px;
-  padding: 20px 0;
+  margin-bottom: 20px;
 }
 
 #agent-form {
   display: flex;
-  gap: 10px;
-  max-width: 600px;
+  gap: 8px;
+  max-width: 500px;
 }
 
 #agent-form input {
   flex: 1;
-  padding: 14px 18px;
-  font-size: 16px;
-  border: 2px solid var(--card-border, #e8e8e8);
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--card-border, #e0e0e0);
   border-radius: var(--border-radius, 6px);
   font-family: inherit;
-  transition: border-color 0.2s;
+  background: var(--card-background, #fff);
 }
 
 #agent-form input:focus {
   outline: none;
-  border-color: var(--accent-color, #0d7377);
+  border-color: var(--text-muted, #999);
 }
 
 #agent-form input::placeholder {
-  color: var(--text-muted, #888);
+  color: var(--text-muted, #aaa);
 }
 
 #agent-form button {
-  padding: 14px 28px;
-  background: var(--accent-color, #0d7377);
-  color: white;
-  border: none;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--text-secondary, #555);
+  border: 1px solid var(--card-border, #e0e0e0);
   border-radius: var(--border-radius, 6px);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
   cursor: pointer;
-  transition: opacity 0.2s;
 }
 
 #agent-form button:hover {
-  opacity: 0.9;
+  background: var(--hover-background, #fafafa);
+  border-color: var(--text-muted, #999);
 }
 
 #home {
