@@ -115,7 +115,7 @@ Internet → SMTP Server (port 2525/25)
 
 **Access Control:**
 - Internal messaging is free for all users
-- External email costs 3 credits per message (SMTP delivery cost)
+- External email costs 4 credits per message (like a stamp)
 - Set user roles via the admin interface
 
 **How Message Delivery Works:**

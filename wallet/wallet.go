@@ -25,7 +25,7 @@ var (
 	CostAppCreate     = getEnvInt("CREDIT_COST_APP_CREATE", 5)
 	CostAppModify     = getEnvInt("CREDIT_COST_APP_MODIFY", 3)
 	CostAgentRun      = getEnvInt("CREDIT_COST_AGENT", 5)
-	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 3) // External email (SMTP delivery cost)
+	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (like a stamp)
 	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
