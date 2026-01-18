@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"mu/ai"
 	"mu/app"
-	"mu/chat"
 )
 
 // StepCallback is called when a step completes (for streaming)
@@ -255,19 +255,19 @@ Rules:
 Current user: %s`, toolsJSON, a.userID)
 
 	// Conversation context for multi-step reasoning
-	var context chat.History
+	var context ai.History
 	currentPrompt := task
 
 	for i := 0; i < a.maxSteps; i++ {
 		// Ask LLM for next step
-		llmPrompt := &chat.Prompt{
+		llmPrompt := &ai.Prompt{
 			System:   systemPrompt,
 			Question: currentPrompt,
 			Context:  context,
-			Priority: chat.PriorityHigh,
+			Priority: ai.PriorityHigh,
 		}
 
-		response, err := chat.AskLLM(llmPrompt)
+		response, err := ai.Ask(llmPrompt)
 		if err != nil {
 			result.Success = false
 			result.Answer = fmt.Sprintf("Error: %v", err)
@@ -314,7 +314,7 @@ Current user: %s`, toolsJSON, a.userID)
 
 			// Add to context for next iteration
 			resultJSON, _ := json.Marshal(step.Result)
-			context = append(context, chat.Message{
+			context = append(context, ai.Message{
 				Prompt: currentPrompt,
 				Answer: response,
 			})
@@ -364,18 +364,18 @@ Rules:
 
 Current user: %s`, toolsJSON, a.userID)
 
-	var context chat.History
+	var context ai.History
 	currentPrompt := task
 
 	for i := 0; i < a.maxSteps; i++ {
-		llmPrompt := &chat.Prompt{
+		llmPrompt := &ai.Prompt{
 			System:   systemPrompt,
 			Question: currentPrompt,
 			Context:  context,
-			Priority: chat.PriorityHigh,
+			Priority: ai.PriorityHigh,
 		}
 
-		response, err := chat.AskLLM(llmPrompt)
+		response, err := ai.Ask(llmPrompt)
 		if err != nil {
 			result.Success = false
 			result.Answer = fmt.Sprintf("Error: %v", err)
@@ -422,7 +422,7 @@ Current user: %s`, toolsJSON, a.userID)
 			}
 
 			resultJSON, _ := json.Marshal(step.Result)
-			context = append(context, chat.Message{
+			context = append(context, ai.Message{
 				Prompt: currentPrompt,
 				Answer: response,
 			})

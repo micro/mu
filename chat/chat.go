@@ -13,6 +13,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"mu/admin"
+	"mu/ai"
 	"mu/app"
 	"mu/auth"
 	"mu/data"
@@ -22,22 +23,17 @@ import (
 //go:embed *.json
 var f embed.FS
 
-type Prompt struct {
-	System   string   `json:"system"` // System prompt override
-	Topic    string   `json:"topic"`  // User-selected topic/context
-	Rag      []string `json:"rag"`
-	Context  History  `json:"context"`
-	Question string   `json:"question"`
-	Priority int      `json:"priority"` // 0=high (chat), 1=medium, 2=low (background)
-}
+// Re-export ai types for backwards compatibility
+type Prompt = ai.Prompt
+type History = ai.History
+type Message = ai.Message
 
-type History []Message
-
-// message history
-type Message struct {
-	Prompt string
-	Answer string
-}
+// Re-export priority constants
+const (
+	PriorityHigh   = ai.PriorityHigh
+	PriorityMedium = ai.PriorityMedium
+	PriorityLow    = ai.PriorityLow
+)
 
 var Template = `
 <div id="topic-selector">
@@ -57,6 +53,16 @@ var Template = `
 var mutex sync.RWMutex
 
 var prompts = map[string]string{}
+
+// askLLM wraps ai.Ask for internal use
+func askLLM(prompt *Prompt) (string, error) {
+	return ai.Ask(prompt)
+}
+
+// AskLLM is the exported version for use by other packages
+func AskLLM(prompt *Prompt) (string, error) {
+	return ai.Ask(prompt)
+}
 
 var summaries = map[string]string{}
 

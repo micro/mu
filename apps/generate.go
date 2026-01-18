@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"mu/chat"
+	"mu/ai"
 )
 
 // generateAppCode uses AI to generate HTML/CSS/JS from a prompt
@@ -54,13 +54,13 @@ Use mu.cache for API responses to avoid fetching on every page load. Use mu.db f
 
 Generate the complete HTML file now:`
 
-	llmPrompt := &chat.Prompt{
+	llmPrompt := &ai.Prompt{
 		System:   systemPrompt,
 		Question: prompt,
-		Priority: chat.PriorityHigh,
+		Priority: ai.PriorityHigh,
 	}
 
-	response, err := chat.AskLLM(llmPrompt)
+	response, err := ai.Ask(llmPrompt)
 	if err != nil {
 		return "", err
 	}
@@ -82,13 +82,13 @@ func generateAppSummary(prompt string) (string, error) {
 Output ONLY the description text, nothing else. No quotes, no prefix, no explanation.
 Example: "Track daily tasks with categories and due dates"`
 
-	llmPrompt := &chat.Prompt{
+	llmPrompt := &ai.Prompt{
 		System:   systemPrompt,
 		Question: prompt,
-		Priority: chat.PriorityLow,
+		Priority: ai.PriorityLow,
 	}
 
-	response, err := chat.AskLLM(llmPrompt)
+	response, err := ai.Ask(llmPrompt)
 	if err != nil {
 		return "", err
 	}
@@ -142,13 +142,13 @@ Current code:
 
 Apply this modification and output the complete updated HTML file:`
 
-	llmPrompt := &chat.Prompt{
+	llmPrompt := &ai.Prompt{
 		System:   systemPrompt,
 		Question: instruction,
-		Priority: chat.PriorityHigh,
+		Priority: ai.PriorityHigh,
 	}
 
-	response, err := chat.AskLLM(llmPrompt)
+	response, err := ai.Ask(llmPrompt)
 	if err != nil {
 		return "", err
 	}
