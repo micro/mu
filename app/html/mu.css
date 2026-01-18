@@ -815,8 +815,14 @@ td {
 body:has(#messages) #content {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 50px);
+  height: calc(100vh - 70px);
   padding-bottom: 20px;
+  overflow: hidden;
+}
+
+body:has(#messages) #footer,
+body:has(#messages) #chat-back-link {
+  display: none;
 }
 
 #topic-selector {
