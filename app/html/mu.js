@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v94';
+var VERSION = 'v95';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1608,7 +1608,7 @@ function showCardModal() {
   let checkboxes = '';
   availableCards.forEach(card => {
     const checked = !hidden.includes(card.id) ? 'checked' : '';
-    checkboxes += `<label style="display: block; margin: 12px 0; cursor: pointer;"><input type="checkbox" ${checked} data-card-id="${card.id}" style="margin-right: 8px;"> ${card.title}</label>`;
+    checkboxes += `<label style="display: block; margin: 12px 0; cursor: pointer;"><input type="checkbox" ${checked} data-card-id="${card.id}" style="width: auto; margin-right: 8px;"> ${card.title}</label>`;
   });
   
   // Create modal
