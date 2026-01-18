@@ -1608,7 +1608,7 @@ function initCardCustomization() {
     // Desktop: float right above right column
     const rightCol = document.querySelector('.home-right');
     if (rightCol) {
-      link.style.cssText = 'font-size: 12px; color: var(--text-muted); float: right;';
+      link.style.cssText = 'font-size: 12px; color: var(--text-muted); display: block; text-align: right;';
       rightCol.insertAdjacentElement('afterbegin', link);
     }
   }
