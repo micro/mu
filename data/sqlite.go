@@ -167,11 +167,20 @@ func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry,
 			keywordResults, _ := searchSQLiteFallback(query, limit*2, options)
 			
 			// Merge results, preferring keyword matches for exact terms
-			return mergeSearchResults(vectorResults, keywordResults, query, limit)
+			merged, mergeErr := mergeSearchResults(vectorResults, keywordResults, query, limit)
+			if mergeErr == nil {
+				fmt.Printf("[SEARCH] Query '%s': %d vector + %d keyword = %d merged results\n", 
+					query, len(vectorResults), len(keywordResults), len(merged))
+				if len(merged) > 0 {
+					fmt.Printf("[SEARCH] Top result: %s (score from merge)\n", merged[0].Title)
+				}
+				return merged, nil
+			}
 		}
 	}
 
 	// Fall back to keyword search
+	fmt.Printf("[SEARCH] Query '%s': using keyword fallback\n", query)
 	return searchSQLiteFallback(query, limit, options)
 }
 
@@ -226,7 +235,12 @@ func mergeSearchResults(vectorResults, keywordResults []*IndexEntry, query strin
 			return iStrong
 		}
 		
-		// Within same tier, sort by date (newest first)
+		// Same strength - higher keyword score wins
+		if scored[i].keywordScore != scored[j].keywordScore {
+			return scored[i].keywordScore > scored[j].keywordScore
+		}
+		
+		// Same score - newer first
 		return getPostedAt(scored[i].entry).After(getPostedAt(scored[j].entry))
 	})
 	
