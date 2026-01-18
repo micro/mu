@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v88';
+var VERSION = 'v89';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1579,7 +1579,7 @@ function applyHiddenCards() {
 
 // Available cards that can be shown/hidden
 const availableCards = [
-  { id: 'my-apps', title: 'My Apps' },
+  { id: 'my-apps', title: 'Apps' },
   { id: 'news', title: 'News' },
   { id: 'reminder', title: 'Reminder' },
   { id: 'markets', title: 'Markets' },
