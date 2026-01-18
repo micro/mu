@@ -87,8 +87,8 @@ func Load() {
 		"blog":     blog.Preview,
 		"chat":     ChatCard,
 		"news":     news.Headlines,
-		"markets":  news.Markets,
-		"reminder": news.Reminder,
+		"markets":  apps.MarketsHTML,
+		"reminder": apps.ReminderHTML,
 		"video":    video.Latest,
 	}
 

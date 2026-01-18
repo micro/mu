@@ -13,7 +13,6 @@ import (
 	"mu/auth"
 	"mu/data"
 	"mu/mail"
-	"mu/news"
 	"mu/notes"
 	"mu/wallet"
 )
@@ -414,8 +413,8 @@ func (a *Agent) marketPrice(params map[string]interface{}) (*ToolResult, error) 
 
 	app.Log("agent", "Market price: %s", symbol)
 
-	// Get cached prices from news package
-	prices := news.GetAllPrices()
+	// Get cached prices from apps/markets
+	prices := apps.GetAllPrices()
 
 	symbol = strings.ToUpper(symbol)
 

@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"runtime/debug"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,7 +21,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/mmcdole/gofeed"
 	"github.com/mrz1836/go-sanitize"
-	"github.com/piquette/finance-go/future"
 	nethtml "golang.org/x/net/html"
 	"mu/app"
 	"mu/auth"
@@ -51,14 +49,6 @@ var newsBodyHtml string
 // cached headlines
 var headlinesHtml string
 
-// markets
-var marketsHtml string
-
-// cached prices
-var cachedPrices map[string]float64
-
-// reminder
-var reminderHtml string
 
 // the cached feed
 var feed []*Post
@@ -219,80 +209,6 @@ func getCategoryBadge(post *Post) string {
 	return fmt.Sprintf(`<a href="/news#%s" class="category">%s</a>`, post.Category, post.Category)
 }
 
-func getPrices() map[string]float64 {
-	app.Log("news", "Getting prices")
-	rsp, err := http.Get("https://api.coinbase.com/v2/exchange-rates?currency=USD")
-	if err != nil {
-		app.Log("news", "Error getting prices: %v", err)
-		return nil
-	}
-	defer rsp.Body.Close()
-	b, _ := ioutil.ReadAll(rsp.Body)
-	var res map[string]interface{}
-	json.Unmarshal(b, &res)
-	if res == nil {
-		return nil
-	}
-
-	rates := res["data"].(map[string]interface{})["rates"].(map[string]interface{})
-
-	prices := map[string]float64{}
-
-	for k, t := range rates {
-		val, err := strconv.ParseFloat(t.(string), 64)
-		if err != nil {
-			continue
-		}
-		prices[k] = 1 / val
-	}
-
-	// let's get other prices
-	app.Log("news", "Getting futures prices...")
-	for key, ftr := range futures {
-		// Use closure to safely handle potential panics from individual futures
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					app.Log("news", "Recovered from panic getting future %s (%s): %v", key, ftr, r)
-				}
-			}()
-
-			f, err := future.Get(ftr)
-			if err != nil {
-				app.Log("news", "Failed to get future %s (%s): %v", key, ftr, err)
-				return
-			}
-			if f == nil {
-				app.Log("news", "Future returned nil for %s (%s)", key, ftr)
-				return
-			}
-			// Access the price, which may panic if Quote struct is malformed
-			price := f.Quote.RegularMarketPrice
-			if price > 0 {
-				prices[key] = price
-			}
-		}()
-	}
-
-	app.Log("news", "Finished getting all prices")
-	return prices
-}
-
-var tickers = []string{"GBP", "UNI", "ETH", "BTC", "PAXG"}
-
-var futures = map[string]string{
-	"OIL":      "CL=F",
-	"GOLD":     "GC=F",
-	"COFFEE":   "KC=F",
-	"OATS":     "ZO=F",
-	"WHEAT":    "KE=F",
-	"SILVER":   "SI=F",
-	"COPPER":   "HG=F",
-	"CORN":     "ZC=F",
-	"SOYBEANS": "ZS=F",
-}
-
-var futuresKeys = []string{"OIL", "OATS", "COFFEE", "WHEAT", "GOLD"}
 
 // ContentParser functions clean up feed descriptions
 type ContentParser struct {
@@ -985,82 +901,6 @@ func FetchHNComments(storyID string) (string, error) {
 	return "", nil
 }
 
-func getReminder() {
-	fmt.Println("Getting Reminder at", time.Now().String())
-	uri := "https://reminder.dev/api/latest"
-
-	resp, err := http.Get(uri)
-	if err != nil {
-		app.Log("news", "Error getting reminder: %v", err)
-		time.Sleep(time.Minute)
-
-		go getReminder()
-		return
-	}
-	defer resp.Body.Close()
-
-	b, _ := ioutil.ReadAll(resp.Body)
-
-	var val map[string]interface{}
-
-	err = json.Unmarshal(b, &val)
-	if err != nil {
-		app.Log("news", "Error getting reminder: %v", err)
-		time.Sleep(time.Minute)
-
-		go getReminder()
-		return
-	}
-
-	link := fmt.Sprintf("https://reminder.dev%s", val["links"].(map[string]interface{})["verse"].(string))
-
-	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, val["verse"])
-	html += app.Link("More", link)
-
-	mutex.Lock()
-	data.SaveFile("reminder.html", html)
-	reminderHtml = html
-	mutex.Unlock()
-
-	// Index the daily card content for search/RAG
-	// Extract all rich fields from the API response
-	verse := val["verse"].(string)
-	name := ""
-	if v, ok := val["name"]; ok {
-		name = v.(string)
-	}
-	hadith := ""
-	if h, ok := val["hadith"]; ok {
-		hadith = h.(string)
-	}
-	message := ""
-	if m, ok := val["message"]; ok {
-		message = m.(string)
-	}
-	updated := ""
-	if u, ok := val["updated"]; ok {
-		updated = u.(string)
-	}
-
-	// Combine all content for comprehensive indexing
-	content := fmt.Sprintf("Name of Allah: %s\n\nVerse: %s\n\nHadith: %s\n\n%s", name, verse, hadith, message)
-
-	data.Index(
-		"reminder_card_daily",
-		"reminder",
-		"Daily Islamic Reminder",
-		content,
-		map[string]interface{}{
-			"url":     link,
-			"updated": updated,
-			"source":  "card",
-		},
-	)
-
-	time.Sleep(time.Hour)
-
-	go getReminder()
-}
 
 // parseFeedItem processes a single RSS feed item and returns a Post
 func parseFeedItem(item *gofeed.Item, categoryName string) (*Post, error) {
@@ -1342,49 +1182,6 @@ func processFeedCategory(name, feedURL string, p *gofeed.Parser, stats map[strin
 	return content, posts, &stat
 }
 
-// generateMarketsHTML creates the markets HTML from price data
-func generateMarketsHTML(prices map[string]float64) string {
-	var sb strings.Builder
-	sb.WriteString(`<div class="market-grid">`)
-
-	// Combine all tickers and sort by name length (shortest first)
-	allTickers := append([]string{}, tickers...)
-	allTickers = append(allTickers, futuresKeys...)
-	sort.Slice(allTickers, func(i, j int) bool {
-		if len(allTickers[i]) != len(allTickers[j]) {
-			return len(allTickers[i]) < len(allTickers[j])
-		}
-		return allTickers[i] < allTickers[j] // alphabetic for same length
-	})
-
-	for _, ticker := range allTickers {
-		price := prices[ticker]
-		fmt.Fprintf(&sb, `<div class="market-item"><span class="market-symbol">%s</span><span class="market-price">$%.2f</span></div>`, ticker, price)
-	}
-
-	sb.WriteString(`</div>`)
-
-	return sb.String()
-}
-
-// indexMarketPrices indexes all market prices for search/RAG
-func indexMarketPrices(prices map[string]float64) {
-	app.Log("news", "Indexing %d market prices", len(prices))
-	timestamp := time.Now().Format(time.RFC3339)
-	for ticker, price := range prices {
-		data.Index(
-			"market_"+ticker,
-			"market",
-			ticker,
-			fmt.Sprintf("$%.2f", price),
-			map[string]interface{}{
-				"ticker":  ticker,
-				"price":   price,
-				"updated": timestamp,
-			},
-		)
-	}
-}
 
 // generateHeadlinesHTML creates the headlines HTML section
 func generateHeadlinesHTML(headlines []*Post) string {
@@ -1474,19 +1271,6 @@ func parseFeed() {
 		}
 	}
 
-	// Get crypto prices and generate markets HTML
-	newPrices := getPrices()
-	app.Log("news", "Finished getting prices")
-
-	if newPrices != nil {
-		mutex.Lock()
-		cachedPrices = newPrices
-		mutex.Unlock()
-
-		marketsHtml = generateMarketsHTML(newPrices)
-		indexMarketPrices(newPrices)
-	}
-
 	// Generate headlines HTML - filter to one per category (the latest from each)
 	// First, build a map of category -> latest post
 	categoryLatest := make(map[string]*Post)
@@ -1520,8 +1304,6 @@ func parseFeed() {
 	headlinesHtml = headlineHtml
 	saveHtml(head, allContent)
 	data.SaveFile("headlines.html", headlinesHtml)
-	data.SaveFile("markets.html", marketsHtml)
-	data.SaveJSON("prices.json", cachedPrices)
 	data.SaveJSON("feed.json", feed)
 	mutex.Unlock()
 
@@ -1605,21 +1387,6 @@ func Load() {
 	b, _ := data.LoadFile("headlines.html")
 	headlinesHtml = string(b)
 
-	// load markets
-	b, _ = data.LoadFile("markets.html")
-	marketsHtml = string(b)
-
-	// load cached prices
-	b, _ = data.LoadFile("prices.json")
-	if len(b) > 0 {
-		var prices map[string]float64
-		if err := json.Unmarshal(b, &prices); err == nil {
-			mutex.Lock()
-			cachedPrices = prices
-			mutex.Unlock()
-		}
-	}
-
 	// load cached feed
 	b, _ = data.LoadFile("feed.json")
 	if len(b) > 0 {
@@ -1630,10 +1397,6 @@ func Load() {
 			mutex.Unlock()
 		}
 	}
-
-	b, _ = data.LoadFile("reminder.html")
-
-	reminderHtml = string(b)
 
 	// load news body and html
 	b, _ = data.LoadFile("news.html")
@@ -1650,8 +1413,6 @@ func Load() {
 	loadFeed()
 
 	go parseFeed()
-
-	go getReminder()
 }
 
 func Headlines() string {
@@ -1660,20 +1421,6 @@ func Headlines() string {
 	defer mutex.RUnlock()
 
 	return headlinesHtml
-}
-
-func Markets() string {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	return marketsHtml
-}
-
-func Reminder() string {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	return reminderHtml
 }
 
 func formatSummary(text string) string {
@@ -2164,30 +1911,6 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	w.Write([]byte(html))
 }
 
-// GetAllPrices returns all cached prices
-func GetAllPrices() map[string]float64 {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	// Return a copy to avoid concurrent map access
-	prices := make(map[string]float64)
-	if cachedPrices != nil {
-		for k, v := range cachedPrices {
-			prices[k] = v
-		}
-	}
-	return prices
-}
-
-// GetHomepageTickers returns the list of tickers displayed on homepage
-func GetHomepageTickers() []string {
-	return append([]string{}, tickers...)
-}
-
-// GetHomepageFutures returns the list of futures displayed on homepage
-func GetHomepageFutures() []string {
-	return append([]string{}, futuresKeys...)
-}
 
 // RefreshHNMetadata forces a refresh of HN article metadata with fresh comments
 // Returns the updated metadata with new comments, or nil if not an HN article

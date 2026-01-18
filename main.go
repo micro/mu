@@ -81,6 +81,10 @@ func main() {
 	// load micro apps
 	apps.Load()
 
+	// load built-in apps (markets, reminder)
+	apps.LoadMarkets()
+	apps.LoadReminder()
+
 	// Enable indexing after all content is loaded
 	// This allows the priority queue to process new items first
 	data.StartIndexing()
