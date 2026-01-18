@@ -59,12 +59,9 @@ export MAIL_SELECTOR="default"       # Default: default
 
 ## Payment Configuration (Optional)
 
-Enable paid memberships and donations to support your instance. All variables are optional - leave empty for a free instance.
+Enable donations to support your instance. All variables are optional - leave empty for a free instance.
 
 ```bash
-# Membership payment URL (e.g., subscription/recurring payment link)
-export MEMBERSHIP_URL="https://gocardless.com/your-membership-link"
-
 # One-time donation URL
 export DONATION_URL="https://gocardless.com/your-donation-link"
 
@@ -74,23 +71,18 @@ export SUPPORT_URL="https://discord.gg/your-invite"
 
 **Notes:**
 - Use any payment provider (GoCardless, Stripe, PayPal, etc.)
-- Payment callbacks are verified by extracting the domain from your URLs
-- When empty, payment/donation features are hidden
-- Links appear on `/membership` and `/donate` pages
-- For automated membership via Stripe, see Stripe Configuration below
+- When empty, donation features are hidden
+- Links appear on `/donate` page
 
-## Stripe Configuration (Credits/Wallet/Membership)
+## Stripe Configuration (Credits/Wallet)
 
-Enable credit top-ups and automated memberships via Stripe. Users get 10 free searches per day, then need credits or a membership.
+Enable credit top-ups via Stripe. Users get 10 free AI queries per day, then can pay-as-you-go.
 
 ```bash
 # Stripe API keys (from Stripe Dashboard)
 export STRIPE_SECRET_KEY="sk_live_xxx"
 export STRIPE_PUBLISHABLE_KEY="pk_live_xxx"
 export STRIPE_WEBHOOK_SECRET="whsec_xxx"
-
-# Membership subscription (recurring monthly)
-export STRIPE_MEMBERSHIP_PRICE="price_xxx"  # Monthly subscription price ID
 
 # Optional: Pre-configured Stripe Price IDs for credit top-ups
 # If not set, dynamic pricing is used
@@ -103,39 +95,29 @@ export STRIPE_PRICE_5000="price_xxx"  # £50 → 5,750 credits
 ### Quota Configuration
 
 ```bash
-# Daily free searches for non-members (default: 10)
+# Daily free AI queries (default: 10)
 export FREE_DAILY_SEARCHES="10"
 
-# Credit costs per operation (default: 1, 2, 3)
-export CREDIT_COST_NEWS="1"    # News search
-export CREDIT_COST_VIDEO="2"   # Video search (YouTube API cost)
-export CREDIT_COST_CHAT="3"    # Chat AI query (LLM cost)
+# Credit costs per operation (default values shown)
+export CREDIT_COST_NEWS="1"        # News search (1p)
+export CREDIT_COST_VIDEO="2"       # Video search (2p) - YouTube API cost
+export CREDIT_COST_VIDEO_WATCH="0" # Video watch (free) - no value added over YouTube
+export CREDIT_COST_CHAT="3"        # Chat AI query (3p) - LLM cost
 ```
 
 **Notes:**
 - 1 credit = £0.01 (1 penny)
-- Members and admins get unlimited access (no quotas)
+- Admins get unlimited access (no quotas)
 - Credits never expire
 - Top-up tiers: £5 (500), £10 (1,050 +5%), £25 (2,750 +10%), £50 (5,750 +15%)
-- Memberships are managed automatically via Stripe webhooks
 
 ### Stripe Webhook Setup
 
 1. In Stripe Dashboard, go to Developers → Webhooks
 2. Add endpoint: `https://yourdomain.com/wallet/webhook`
 3. Select events:
-   - `checkout.session.completed` (for credits and new subscriptions)
-   - `customer.subscription.created` (membership activated)
-   - `customer.subscription.updated` (membership changes)
-   - `customer.subscription.deleted` (membership cancelled)
+   - `checkout.session.completed` (for credit top-ups)
 4. Copy the signing secret to `STRIPE_WEBHOOK_SECRET`
-
-### Creating a Membership Product
-
-1. In Stripe Dashboard, go to Products → Add Product
-2. Create a recurring subscription product (e.g., "Mu Membership")
-3. Set pricing (e.g., £5/month)
-4. Copy the Price ID (starts with `price_`) to `STRIPE_MEMBERSHIP_PRICE`
 
 ## Example Usage
 
@@ -174,16 +156,15 @@ export MAIL_SELECTOR="default"
 | `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |
 | `MAIL_DOMAIN` | `localhost` | Your domain for message addresses |
 | `MAIL_SELECTOR` | `default` | DKIM selector for DNS lookup |
-| `MEMBERSHIP_URL` | - | External payment link for membership (alternative to Stripe) |
 | `DONATION_URL` | - | Payment link for one-time donations (optional) |
 | `SUPPORT_URL` | - | Community/support link like Discord (optional) |
 | `STRIPE_SECRET_KEY` | - | Stripe secret key for payments |
 | `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key |
 | `STRIPE_WEBHOOK_SECRET` | - | Stripe webhook signing secret |
-| `STRIPE_MEMBERSHIP_PRICE` | - | Stripe price ID for monthly membership subscription |
-| `FREE_DAILY_SEARCHES` | `10` | Daily free searches for non-members |
+| `FREE_DAILY_SEARCHES` | `10` | Daily free AI queries |
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
+| `CREDIT_COST_VIDEO_WATCH` | `0` | Credits per video watch (free by default) |
 | `CREDIT_COST_CHAT` | `3` | Credits per chat query |
 
 ## .env File (Optional)
@@ -205,8 +186,7 @@ MAIL_PORT=2525
 MAIL_DOMAIN=yourdomain.com
 MAIL_SELECTOR=default
 
-# Payment (optional - leave empty for free instance)
-MEMBERSHIP_URL=https://gocardless.com/your-membership-link
+# Donations (optional - leave empty for free instance)
 DONATION_URL=https://gocardless.com/your-donation-link
 SUPPORT_URL=https://discord.gg/your-invite
 
@@ -246,8 +226,7 @@ Environment="MAIL_PORT=25"
 Environment="MAIL_DOMAIN=yourdomain.com"
 Environment="MAIL_SELECTOR=default"
 
-# Payment (optional)
-Environment="MEMBERSHIP_URL=https://gocardless.com/your-membership-link"
+# Donations (optional)
 Environment="DONATION_URL=https://gocardless.com/your-donation-link"
 Environment="SUPPORT_URL=https://discord.gg/your-invite"
 
@@ -288,7 +267,6 @@ docker run -d \
   -e MAIL_PORT=25 \
   -e MAIL_DOMAIN=yourdomain.com \
   -e MAIL_SELECTOR=default \
-  -e MEMBERSHIP_URL=https://gocardless.com/your-membership-link \
   -e DONATION_URL=https://gocardless.com/your-donation-link \
   -e SUPPORT_URL=https://discord.gg/your-invite \
   -e STRIPE_SECRET_KEY=sk_live_xxx \
@@ -327,8 +305,6 @@ docker run -d \
 | Vector Search | Ollama with `nomic-embed-text` model (`MODEL_API_URL`) |
 | Video | `YOUTUBE_API_KEY` |
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
-| External Payments | `MEMBERSHIP_URL`, `DONATION_URL` (optional: `SUPPORT_URL`) |
+| Donations | `DONATION_URL` (optional: `SUPPORT_URL`) |
 | Credit Top-ups | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
-| Stripe Membership | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_MEMBERSHIP_PRICE` |
-| Access Control | User must be admin or member |
 
