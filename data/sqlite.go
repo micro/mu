@@ -197,6 +197,13 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 	}
 	args = append(args, limit)
 
+	// Fetch more results than needed so we can sort by posted_at in Go
+	fetchLimit := limit * 3
+	if fetchLimit < 100 {
+		fetchLimit = 100
+	}
+	args = append(args[:len(args)-1], fetchLimit) // Replace limit arg
+
 	queryStr := fmt.Sprintf(`
 		SELECT id, type, title, content, metadata, indexed_at
 		FROM index_entries
@@ -230,7 +237,35 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		results = append(results, &entry)
 	}
 
+	// Sort by posted_at (from metadata) for news, falling back to indexed_at
+	sort.Slice(results, func(i, j int) bool {
+		ti := getPostedAt(results[i])
+		tj := getPostedAt(results[j])
+		return ti.After(tj)
+	})
+
+	// Apply the actual limit after sorting
+	if limit > 0 && len(results) > limit {
+		results = results[:limit]
+	}
+
 	return results, nil
+}
+
+// getPostedAt extracts posted_at from metadata, falling back to IndexedAt
+func getPostedAt(entry *IndexEntry) time.Time {
+	if entry.Metadata == nil {
+		return entry.IndexedAt
+	}
+	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
+		return v
+	}
+	if v, ok := entry.Metadata["posted_at"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			return t
+		}
+	}
+	return entry.IndexedAt
 }
 
 // GetByTypeSQLite returns entries of a specific type
