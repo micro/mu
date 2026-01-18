@@ -1755,6 +1755,10 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	}
 	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
 		postedAt = v
+	} else if v, ok := entry.Metadata["posted_at"].(string); ok {
+		if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+			postedAt = parsed
+		}
 	}
 
 	title := entry.Title
