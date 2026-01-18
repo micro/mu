@@ -99,4 +99,59 @@ CREDIT_COST_AGENT=5
 ## Notes
 - Messages stored newest-first (prepended)
 - Email stats use separate mutex (`emailStatsMux`) from messages mutex
-- YouTube video summarization blocked by YouTube - discussed alternatives (bookmarklet, Whisper, podcasts)
+- YouTube video summarization parked - extension approach too complex, would need paid API (Supadata)
+
+## Recent Session: Search & Status Improvements
+
+### Self-Hosted Mode
+- When `STRIPE_SECRET_KEY` not set, quotas disabled (unlimited free)
+- `wallet.PaymentsEnabled()` checks this
+- Docs updated to clarify internal messaging (free) vs external email (SMTP)
+
+### Status Page (`/status`)
+- Added: Online users, Index entries, Vector search status, Payment/quota mode
+- Quick health check: `/status?quick=1` returns JSON `{healthy, online}`
+- Services shown: DKIM, SMTP, LLM Provider, YouTube API, Payments, Search
+
+### News Search Overhaul
+
+**Problem:** Searching "AGI" returned "fragile", "imaging" etc. instead of actual AGI articles.
+
+**Solution:** Two-phase keyword search with word-boundary scoring:
+
+1. **Phase 1:** Fetch ALL title matches (small set, catches old but relevant articles)
+2. **Phase 2:** Fetch 200 recent content matches
+3. **Score:** Word boundary in title (+10), substring in title (+3), word boundary in content (+2), substring in content (+0.5)
+4. **Sort:** Highest score first, then by article date
+
+**Performance:**
+- Disabled vector search for news (`data.WithKeywordOnly()`)
+- Vector search still used for chat/RAG where semantic matters
+- Result: ~400ms (was ~800ms)
+
+### Key Search Files
+- `data/sqlite.go` - `searchSQLiteFallback()`, `scoreMatch()`, `matchesWordBoundary()`
+- `data/data.go` - `SearchOptions.KeywordOnly`, `WithKeywordOnly()` option
+- `news/news.go` - Uses `data.WithKeywordOnly()` for news search
+
+### Search Architecture
+```
+User searches "agi"
+    |
+    v
+SearchSQLite()
+    |
+    +-- KeywordOnly? --> searchSQLiteFallback()
+    |                         |
+    |                         +-- Phase 1: ALL title matches (no limit)
+    |                         +-- Phase 2: 200 recent content matches
+    |                         +-- Score with word-boundary detection
+    |                         +-- Return top N by score, then date
+    |
+    +-- Vector enabled --> getEmbedding() + VectorSearchSQLite()
+                              + mergeSearchResults()
+```
+
+### Test Account
+- `shelleytest` - admin account for testing on mu.xyz
+- SSH: `ssh -p 61194 mu@mu.xyz`
