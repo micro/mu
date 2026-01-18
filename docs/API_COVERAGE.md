@@ -32,6 +32,15 @@ This document covers the REST API for programmatic access to Mu.
 - ✅ **Get Latest Videos** - `GET /video` (returns JSON with Accept: application/json)
 - ✅ **Search Videos** - `POST /video`
 
+### Notes
+- ✅ **List Notes** - `GET /notes` (returns JSON with Accept: application/json)
+- ✅ **Get Note** - `GET /notes/{id}` (returns JSON with Accept: application/json)
+- ✅ **Create Note** - `POST /notes/new`
+- ✅ **Update Note** - `POST /notes/{id}`
+- ✅ **Delete Note** - `GET /notes/{id}/delete`
+- ✅ **Archive Note** - `GET /notes/{id}/archive`
+- ✅ **Pin Note** - `GET /notes/{id}/pin`
+
 ### User Profiles
 - ✅ **Get User Profile** - `GET /@{username}`
 - ✅ **Update Status** - `POST /@{username}` (status field)

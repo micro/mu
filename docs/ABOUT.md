@@ -67,6 +67,9 @@ AI that executes tasks across your data. Automated workflows without the complex
 ### Apps
 Build micro apps from natural language. Describe what you want, AI creates it.
 
+### Notes
+Quick capture for your thoughts. Tags, pins, archive, search — a simple replacement for Google Keep. The agent can save and search notes for you.
+
 ### News
 AI-curated RSS feeds with summaries. Stay informed without the time sink.
 

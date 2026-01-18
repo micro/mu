@@ -15,6 +15,7 @@ Mu is your private AI-powered home on the internet. While other platforms moneti
 - **Chat** - AI assistant with context-aware conversations
 - **Agent** - AI that executes tasks across your data
 - **Apps** - Build micro apps from natural language
+- **Notes** - Quick capture with tags, pins, and search
 - **News** - AI-curated feeds with summaries
 - **Video** - Ad-free viewing with AI summaries
 - **Mail** - Private email with AI assistance  
@@ -46,6 +47,7 @@ Starting with:
 - [x] Blog - Micro blogging
 - [x] Chat - LLM chat UI
 - [x] News - RSS news feed
+- [x] Notes - Personal notes
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
 - [x] Wallet - Credits for usage
