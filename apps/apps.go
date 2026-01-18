@@ -52,6 +52,10 @@ func Load() {
 	loadApps()
 	app.Log("apps", "Loaded %d apps", len(apps))
 
+	// Load built-in apps (markets, reminder)
+	LoadMarkets()
+	LoadReminder()
+
 	// Resume any stuck generations from previous run
 	resumeStuckGenerations()
 }

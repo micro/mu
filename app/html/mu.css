@@ -570,7 +570,7 @@ td {
 
 /* Agent hero on home page */
 #agent-hero {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 #agent-form {

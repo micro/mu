@@ -72,14 +72,10 @@ func main() {
 	// load the mail (also configures SMTP and DKIM)
 	mail.Load()
 
-	// load micro apps
+	// load micro apps (includes built-in apps: markets, reminder)
 	apps.Load()
 
-	// load built-in apps (markets, reminder) - must be before home.Load()
-	apps.LoadMarkets()
-	apps.LoadReminder()
-
-	// load the home cards (after built-in apps so cards have data)
+	// load the home cards (after apps so cards have data)
 	home.Load()
 
 	// load user presence tracking
