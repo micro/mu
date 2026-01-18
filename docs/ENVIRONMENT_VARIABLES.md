@@ -38,13 +38,15 @@ export MODEL_API_URL="http://localhost:11434"   # Default: http://localhost:1143
 
 ## Messaging Configuration
 
-Messaging system uses SMTP protocol for delivery.
+Mu has two messaging systems:
+- **Internal messages** - Free, instant delivery between Mu users
+- **External email** - SMTP-based, costs credits, for sending to outside email addresses
 
 ```bash
-# SMTP server port for receiving messages
+# SMTP server port for receiving external email
 export MAIL_PORT="2525"              # Default: 2525 (use 25 for production)
 
-# Domain for message addresses
+# Domain for email addresses
 export MAIL_DOMAIN="yourdomain.com"  # Default: localhost
 
 # DKIM signing selector (requires keys in ~/.mu/keys/dkim.key)
@@ -52,10 +54,10 @@ export MAIL_SELECTOR="default"       # Default: default
 ```
 
 **Notes:**
-- SMTP server always runs automatically
+- Internal messaging works without any configuration
+- SMTP configuration only needed for external email (sending/receiving outside Mu)
 - Mu delivers external messages directly to recipient servers via SMTP (no relay needed)
 - DKIM signing enables automatically if keys exist at `~/.mu/keys/dkim.key`
-- Internal messaging is free for all registered users
 - External email costs credits (SMTP delivery cost)
 
 ## Payment Configuration (Optional)
