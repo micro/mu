@@ -540,7 +540,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <h3>Wallet</h3>
 <p id="wallet-balance" style="font-size: 24px; font-weight: bold; margin: 10px 0;">...</p>
 <p>%s</p>
-%s
 </div>
 
 <div class="card">
@@ -562,6 +561,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <div class="card">
 <h3>Settings</h3>
 <p><a href="/token">API Tokens →</a></p>
+%s
 <p><a href="/logout" style="color: #c00;">Logout</a></p>
 </div>
 
