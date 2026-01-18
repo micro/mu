@@ -395,23 +395,6 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			SameSite: http.SameSiteLaxMode,
 		})
 
-		// Check for pending membership activation
-		if pendingCookie, err := r.Cookie("pending_membership"); err == nil && pendingCookie.Value == "true" {
-			// Get account and activate membership
-			if acc, err := auth.GetAccount(sess.Account); err == nil {
-				acc.Member = true
-				auth.UpdateAccount(acc)
-			}
-			// Clear the pending cookie
-			http.SetCookie(w, &http.Cookie{
-				Name:     "pending_membership",
-				Value:    "",
-				Path:     "/",
-				MaxAge:   -1,
-				HttpOnly: true,
-			})
-		}
-
 		// Check for redirect parameter, default to home
 		redirectTo := r.URL.Query().Get("redirect")
 		if redirectTo == "" {
@@ -499,23 +482,6 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			SameSite: http.SameSiteLaxMode,
 		})
 
-		// Check for pending membership activation
-		if pendingCookie, err := r.Cookie("pending_membership"); err == nil && pendingCookie.Value == "true" {
-			// Get account and activate membership
-			if acc, err := auth.GetAccount(sess.Account); err == nil {
-				acc.Member = true
-				auth.UpdateAccount(acc)
-			}
-			// Clear the pending cookie
-			http.SetCookie(w, &http.Cookie{
-				Name:     "pending_membership",
-				Value:    "",
-				Path:     "/",
-				MaxAge:   -1,
-				HttpOnly: true,
-			})
-		}
-
 		// return to home
 		http.Redirect(w, r, "/home", 302)
 		return
@@ -541,30 +507,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build membership info
-	membershipURL := os.Getenv("MEMBERSHIP_URL")
-	stripeMembershipConfigured := os.Getenv("STRIPE_MEMBERSHIP_PRICE") != "" && os.Getenv("STRIPE_SECRET_KEY") != ""
-
 	// Status line
 	var statusLine string
 	if acc.Admin {
-		statusLine = "<strong>Admin</strong> · Unlimited access"
-	} else if acc.Member {
-		statusLine = "<strong>Member</strong> · Unlimited access"
+		statusLine = "<strong>Admin</strong> · Full access"
 	} else {
-		statusLine = "10 free searches/day · <a href=\"/wallet\">Top up</a> or <a href=\"/plans\">become a member</a>"
-	}
-
-	// Membership link
-	var membershipLink string
-	if acc.Member && stripeMembershipConfigured {
-		membershipLink = `<a href="/wallet/manage">Manage subscription →</a>`
-	} else if acc.Member {
-		membershipLink = `<a href="/membership">View membership →</a>`
-	} else if !acc.Admin && stripeMembershipConfigured {
-		membershipLink = `<a href="/wallet/subscribe">Become a member →</a>`
-	} else if !acc.Admin && membershipURL != "" {
-		membershipLink = `<a href="/membership">Become a member →</a>`
+		statusLine = "10 free queries/day · <a href=\"/wallet\">Top up</a> · <a href=\"/plans\">Pricing</a>"
 	}
 
 	// Build language options
@@ -614,7 +562,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <div class="card">
 <h3>Settings</h3>
 <p><a href="/token">API Tokens →</a></p>
-%s
 <p><a href="/logout" style="color: #c00;">Logout</a></p>
 </div>
 
@@ -630,7 +577,6 @@ fetch('/wallet?balance=1')
   });
 </script>`,
 		statusLine,
-		membershipLink,
 		acc.ID,
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
@@ -693,7 +639,6 @@ func Session(w http.ResponseWriter, r *http.Request) {
 
 	if acc != nil {
 		response["admin"] = acc.Admin
-		response["member"] = acc.Member
 	}
 
 	b, _ := json.Marshal(response)
@@ -781,158 +726,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 }
 
 // Membership handler
-func Membership(w http.ResponseWriter, r *http.Request) {
-	membershipURL := os.Getenv("MEMBERSHIP_URL")
-
-	// Check if membership is enabled
-	if membershipURL == "" {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
-	// Check if coming from payment provider by parsing domain from membership URL
-	referer := r.Header.Get("Referer")
-	fromPaymentProvider := false
-	if referer != "" && membershipURL != "" {
-		u, err := url.Parse(membershipURL)
-		if err == nil && u.Host != "" {
-			fromPaymentProvider = strings.Contains(referer, u.Host)
-		}
-	}
-
-	// Check if user is logged in
-	sess, acc := auth.TrySession(r)
-	if sess == nil {
-		// Not logged in
-		if fromPaymentProvider {
-			// Set a cookie to track pending membership activation
-			http.SetCookie(w, &http.Cookie{
-				Name:     "pending_membership",
-				Value:    "true",
-				Path:     "/",
-				MaxAge:   3600, // 1 hour
-				HttpOnly: true,
-				SameSite: http.SameSiteLaxMode,
-			})
-			content := `<h1>Thank you for becoming a member!</h1>
-				<p>Your support helps keep Mu independent and sustainable.</p>
-				<p>Please login or signup to activate your membership.</p>
-				<p>
-					<a href="/login" style="margin-right: 15px;">Login</a>
-					<a href="/signup">Signup</a>
-				</p>`
-			html := RenderHTML("Membership", "Thank you!", content)
-			w.Write([]byte(html))
-			return
-		}
-		// Show membership page to non-logged-in users
-		paymentSection := ""
-		if membershipURL != "" {
-			paymentSection = fmt.Sprintf(`<h3>Become a Member</h3>
-		<p><a href="%s" target="_blank">Join Link →</a></p>`, membershipURL)
-		}
-
-		supportSection := ""
-		supportURL := os.Getenv("SUPPORT_URL")
-		if supportURL != "" {
-			supportSection = fmt.Sprintf(`<h3>Support or Feedback</h3>
-		<p>Having issues or want to provide feedback</p>
-		<p><a href="%s" target="_blank">Contact us →</a></p>`, supportURL)
-		}
-
-		donationSection := ""
-		donationURL := os.Getenv("DONATION_URL")
-		if donationURL != "" {
-			donationSection = `<h3>Donate</h3>
-		<p>Make a one-time donation <a href="/donate">Make a donation</a> to support Mu.</p>`
-		}
-
-		content := fmt.Sprintf(`<h2>Benefits</h2>
-		<ul>
-			<li>External email - send and receive real email</li>
-			<li>Unlimited searches - news, video, and chat AI</li>
-			<li>Vote on new features and platform direction</li>
-			<li>Help keep Mu ad-free and sustainable</li>
-			<li>Be part of our Discord community</li>
-		</ul>
-
-		%s
-
-		%s
-
-		%s`, paymentSection, supportSection, donationSection)
-		html := RenderHTML("Membership", "Support Mu", content)
-		w.Write([]byte(html))
-		return
-	}
-
-	// User is logged in
-	acc, err := auth.GetAccount(sess.Account)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
-		return
-	}
-
-	// If coming from payment provider, activate membership
-	if fromPaymentProvider && !acc.Member {
-		acc.Member = true
-		auth.UpdateAccount(acc)
-	}
-
-	// Show membership page
-	membershipStatus := ""
-	if acc.Member {
-		membershipStatus = `<p><strong>You are a member!</strong> Thank you for supporting Mu.</p>`
-	}
-
-	paymentSection := ""
-	if !acc.Member && membershipURL != "" {
-		paymentSection = fmt.Sprintf(`<h3>Become a Member</h3>
-				<p><a href="%s" target="_blank">Join Link →</a></p>`, membershipURL)
-	}
-
-	supportSection := ""
-	supportURL := os.Getenv("SUPPORT_URL")
-	if supportURL != "" {
-		supportSection = fmt.Sprintf(`<h3>Support or Feedback</h3>
-		<p>Having issues or want to provide feedback</p>
-		<p><a href="%s" target="_blank">Contact us →</a></p>`, supportURL)
-	}
-
-	donationSection := ""
-	donationURL := os.Getenv("DONATION_URL")
-	if donationURL != "" {
-		donationSection = `<h3>Donate</h3>
-		<p>Make a one-time donation <a href="/donate">Make a donation</a> to support Mu.</p>`
-	}
-
-	content := fmt.Sprintf(`%s
-		<h2>Benefits</h2>
-		<ul>
-			<li>External email - send and receive real email</li>
-			<li>Unlimited searches - news, video, and chat AI</li>
-			<li>Vote on new features and platform direction</li>
-			<li>Help keep Mu ad-free and sustainable</li>
-			<li>Be part of our Discord community</li>
-		</ul>
-
-		%s
-
-		%s
-
-		%s
-		
-		<p style="margin-top: 30px; color: #666;"><a href="/plans">View all plans →</a></p>`,
-		membershipStatus,
-		paymentSection,
-		supportSection,
-		donationSection,
-	)
-
-	html := RenderHTML("Membership", "Support Mu", content)
-	w.Write([]byte(html))
-}
-
 // Donate handler
 func Donate(w http.ResponseWriter, r *http.Request) {
 	donationURL := os.Getenv("DONATION_URL")
@@ -959,13 +752,6 @@ func Donate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Show donation page
-	membershipLink := ""
-	membershipURL := os.Getenv("MEMBERSHIP_URL")
-	if membershipURL != "" {
-		membershipLink = `<hr>
-		<p>Looking for recurring support? <a href="/membership">Become a member</a> instead.</p>`
-	}
-
 	content := fmt.Sprintf(`<h2>Support Mu</h2>
 		<p>Help us build a better internet, free from ads and algorithms.</p>
 		<p>Your one-time donation supports the ongoing development and operation of Mu.</p>
@@ -976,8 +762,7 @@ func Donate(w http.ResponseWriter, r *http.Request) {
 			<li>Help maintain server infrastructure</li>
 			<li>Enable us to focus on users, not profits</li>
 		</ul>
-		<p><a href="%s">Make a Donation →</a></p>
-		%s`, donationURL, membershipLink)
+		<p><a href="%s">Make a Donation →</a></p>`, donationURL)
 
 	html := RenderHTML("Donate", "Support Mu", content)
 	w.Write([]byte(html))

@@ -241,14 +241,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var userPosts string
 	posts := blog.GetPostsByAuthor(acc.Name)
 
-	// Check if viewer is a member/admin
+	// Check if viewer is admin
 	_, viewerAcc := auth.TrySession(r)
-	isMember := viewerAcc != nil && (viewerAcc.Member || viewerAcc.Admin)
+	isAdmin := viewerAcc != nil && viewerAcc.Admin
 
-	// Filter private posts for non-members
+	// Filter private posts for non-admins
 	var visiblePosts []*blog.Post
 	for _, post := range posts {
-		if !post.Private || isMember {
+		if !post.Private || isAdmin {
 			visiblePosts = append(visiblePosts, post)
 		}
 	}

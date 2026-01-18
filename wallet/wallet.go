@@ -25,22 +25,24 @@ var (
 	CostAppCreate     = getEnvInt("CREDIT_COST_APP_CREATE", 5)
 	CostAppModify     = getEnvInt("CREDIT_COST_APP_MODIFY", 3)
 	CostAgentRun      = getEnvInt("CREDIT_COST_AGENT", 5)
+	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 3) // External email (SMTP delivery cost)
 	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
 // Operation types
 const (
-	OpNewsSearch  = "news_search"
-	OpNewsSummary = "news_summary"
-	OpVideoSearch = "video_search"
-	OpVideoWatch  = "video_watch"
-	OpChatQuery   = "chat_query"
-	OpChatRoom    = "chat_room"
-	OpAppCreate   = "app_create"
-	OpAppModify   = "app_modify"
-	OpAgentRun    = "agent_run"
-	OpTopup       = "topup"
-	OpRefund      = "refund"
+	OpNewsSearch    = "news_search"
+	OpNewsSummary   = "news_summary"
+	OpVideoSearch   = "video_search"
+	OpVideoWatch    = "video_watch"
+	OpChatQuery     = "chat_query"
+	OpChatRoom      = "chat_room"
+	OpAppCreate     = "app_create"
+	OpAppModify     = "app_modify"
+	OpAgentRun      = "agent_run"
+	OpExternalEmail = "external_email"
+	OpTopup         = "topup"
+	OpRefund        = "refund"
 )
 
 // Transaction types
@@ -346,6 +348,8 @@ func GetOperationCost(operation string) int {
 		return CostAppModify
 	case OpAgentRun:
 		return CostAgentRun
+	case OpExternalEmail:
+		return CostExternalEmail
 	default:
 		return 1
 	}
@@ -354,14 +358,14 @@ func GetOperationCost(operation string) int {
 // CheckQuota checks if a user can perform an operation
 // Returns: canProceed, useFreeSearch, creditCost, error
 func CheckQuota(userID string, operation string) (bool, bool, int, error) {
-	// Get account to check member/admin status
+	// Get account to check admin status
 	acc, err := auth.GetAccount(userID)
 	if err != nil {
 		return false, false, 0, errors.New("account not found")
 	}
 
-	// Members and admins have unlimited access
-	if acc.Member || acc.Admin {
+	// Admins have unlimited access
+	if acc.Admin {
 		return true, false, 0, nil
 	}
 
@@ -384,14 +388,14 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 
 // ConsumeQuota consumes quota for an operation (call after successful operation)
 func ConsumeQuota(userID string, operation string) error {
-	// Get account to check member/admin status
+	// Get account to check admin status
 	acc, err := auth.GetAccount(userID)
 	if err != nil {
 		return errors.New("account not found")
 	}
 
-	// Members and admins don't consume quota
-	if acc.Member || acc.Admin {
+	// Admins don't consume quota
+	if acc.Admin {
 		return nil
 	}
 

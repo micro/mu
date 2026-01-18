@@ -364,14 +364,14 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user is admin or member
-	_, acc, err := auth.RequireMember(r)
+	// Check if user is admin
+	_, acc, err := auth.RequireAdmin(r)
 	if err != nil {
-		app.Forbidden(w, r, "Admin or Member access required")
+		app.Forbidden(w, r, "Admin access required")
 		return
 	}
 
-	isAdmin := acc.Admin
+	_ = acc // acc.Admin is always true here
 
 	flaggedItems := GetAll()
 
@@ -416,9 +416,8 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 			status = "Hidden"
 		}
 
-		// Build action buttons HTML (only for admins)
+		// Build action buttons HTML (admin only - we're already admin here)
 		actionButtons := ""
-		if isAdmin {
 			actionButtons = fmt.Sprintf(`
 				<form method="POST" action="/admin/moderate">
 					<input type="hidden" name="action" value="approve">
@@ -434,7 +433,6 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 				</form>`,
 				item.ContentType, item.ContentID,
 				item.ContentType, item.ContentID)
-		}
 
 		html := fmt.Sprintf(`<div class="flagged-item">
 			<div>

@@ -212,14 +212,8 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 		}
 	}
 
-	// Check if user has mail access (admin or member)
-	if !acc.Admin && !acc.Member {
-		app.Log("mail", "Rejected mail for user without mail access: %s", username)
-		return &smtpd.SMTPError{
-			Code:    550,
-			Message: "Mail access restricted to members only",
-		}
-	}
+	// All registered users can receive mail
+	_ = acc
 
 	s.to = append(s.to, to)
 	app.Log("mail", "Accepting mail for local user: %s", username)

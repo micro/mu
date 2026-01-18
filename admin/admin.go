@@ -44,9 +44,6 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		case "toggle_admin":
 			targetUser.Admin = !targetUser.Admin
 			auth.UpdateAccount(targetUser)
-		case "toggle_member":
-			targetUser.Member = !targetUser.Member
-			auth.UpdateAccount(targetUser)
 		case "delete":
 			if err := auth.DeleteAccount(userID); err != nil {
 				http.Error(w, "Failed to delete user", http.StatusInternalServerError)
@@ -87,7 +84,6 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 				<th>Name</th>
 				<th class="created-col">Created</th>
 				<th class="center">Admin</th>
-				<th class="center">Member</th>
 				<th class="center">Actions</th>
 			</tr>
 		</thead>
@@ -117,18 +113,6 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 						<input type="hidden" name="user_id" value="` + user.ID + `">
 						<input type="checkbox" ` + func() string {
 			if user.Admin {
-				return "checked"
-			}
-			return ""
-		}() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
-					</form>
-				</td>
-				<td class="center">
-					<form method="POST" style="display: inline;">
-						<input type="hidden" name="action" value="toggle_member">
-						<input type="hidden" name="user_id" value="` + user.ID + `">
-						<input type="checkbox" ` + func() string {
-			if user.Member {
 				return "checked"
 			}
 			return ""

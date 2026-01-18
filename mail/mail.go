@@ -18,6 +18,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
+	"mu/wallet"
 )
 
 var mutex sync.RWMutex
@@ -250,7 +251,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// All users can access mail for internal DMs
-	// External email is restricted to members only (checked at send time)
+	// External email costs credits (checked at send time)
 
 	// Handle POST - send message or delete
 	if r.Method == "POST" {
@@ -330,10 +331,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Check if recipient is external (has @domain)
 		if IsExternalEmail(to) {
-			// External email requires membership
-			if !acc.Admin && !acc.Member {
-				http.Error(w, "External email is a member-only feature. Upgrade to send emails outside Mu.", http.StatusForbidden)
-				return
+			// External email costs credits (unless admin)
+			if !acc.Admin {
+				canProceed, useFree, cost, err := wallet.CheckQuota(acc.ID, wallet.OpExternalEmail)
+				if err != nil || !canProceed {
+					http.Error(w, fmt.Sprintf("External email requires %d credits. Top up at /wallet", cost), http.StatusPaymentRequired)
+					return
+				}
+				// Consume quota after successful send (deferred below)
+				_ = useFree
+				_ = cost
 			}
 
 			// External email - send via SMTP with multipart/alternative (plain text + HTML)
@@ -349,6 +356,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				http.Error(w, "Failed to send email: "+err.Error(), http.StatusInternalServerError)
 				return
+			}
+
+			// Consume quota for external email (after successful send)
+			if !acc.Admin {
+				if err := wallet.ConsumeQuota(acc.ID, wallet.OpExternalEmail); err != nil {
+					app.Log("mail", "Warning: Failed to consume quota for external email: %v", err)
+				}
 			}
 
 			// Store plain text in sent messages - render to HTML only at display time

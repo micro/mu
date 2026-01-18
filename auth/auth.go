@@ -25,16 +25,14 @@ var presenceMutex sync.RWMutex
 var userPresence = map[string]time.Time{} // username -> last seen time
 
 type Account struct {
-	ID                   string    `json:"id"`
-	Name                 string    `json:"name"`
-	Secret               string    `json:"secret"`
-	Created              time.Time `json:"created"`
-	Admin                bool      `json:"admin"`
-	Member               bool      `json:"member"`
-	Language             string    `json:"language"`
-	Widgets              []string  `json:"widgets,omitempty"` // App IDs to show as home widgets
-	StripeCustomerID     string    `json:"stripe_customer_id,omitempty"`
-	StripeSubscriptionID string    `json:"stripe_subscription_id,omitempty"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	Secret           string    `json:"secret"`
+	Created          time.Time `json:"created"`
+	Admin            bool      `json:"admin"`
+	Language         string    `json:"language"`
+	Widgets          []string  `json:"widgets,omitempty"` // App IDs to show as home widgets
+	StripeCustomerID string    `json:"stripe_customer_id,omitempty"`
 }
 
 type Session struct {
@@ -306,20 +304,6 @@ func RequireAdmin(r *http.Request) (*Session, *Account, error) {
 	return sess, acc, nil
 }
 
-// RequireMember returns the session and account if the user is a member or admin, or an error
-func RequireMember(r *http.Request) (*Session, *Account, error) {
-	sess, acc, err := RequireSession(r)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if !acc.Member && !acc.Admin {
-		return nil, nil, errors.New("member access required")
-	}
-
-	return sess, acc, nil
-}
-
 func ParseToken(tk string) (*Session, error) {
 	dec, err := base64.StdEncoding.DecodeString(tk)
 	if err != nil {
@@ -417,8 +401,8 @@ func CanPost(accountID string) bool {
 		return false
 	}
 
-	// Admins and members can always post
-	if acc.Admin || acc.Member {
+	// Admins can always post
+	if acc.Admin {
 		return true
 	}
 
@@ -436,8 +420,8 @@ func IsNewAccount(accountID string) bool {
 		return false
 	}
 
-	// Admins and members are never considered "new"
-	if acc.Admin || acc.Member {
+	// Admins are never considered "new"
+	if acc.Admin {
 		return false
 	}
 

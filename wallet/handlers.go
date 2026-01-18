@@ -13,16 +13,14 @@ import (
 	"mu/auth"
 
 	"github.com/stripe/stripe-go/v76"
-	portalsession "github.com/stripe/stripe-go/v76/billingportal/session"
 	checkoutsession "github.com/stripe/stripe-go/v76/checkout/session"
 	"github.com/stripe/stripe-go/v76/webhook"
 )
 
 var (
-	StripeSecretKey       = os.Getenv("STRIPE_SECRET_KEY")
-	StripePublishableKey  = os.Getenv("STRIPE_PUBLISHABLE_KEY")
-	StripeWebhookSecret   = os.Getenv("STRIPE_WEBHOOK_SECRET")
-	StripeMembershipPrice = os.Getenv("STRIPE_MEMBERSHIP_PRICE") // Monthly subscription price ID
+	StripeSecretKey      = os.Getenv("STRIPE_SECRET_KEY")
+	StripePublishableKey = os.Getenv("STRIPE_PUBLISHABLE_KEY")
+	StripeWebhookSecret  = os.Getenv("STRIPE_WEBHOOK_SECRET")
 )
 
 // Price IDs from environment (set up in Stripe Dashboard)
@@ -46,32 +44,19 @@ func WalletPage(userID string) string {
 	freeRemaining := GetFreeSearchesRemaining(userID)
 	transactions := GetTransactions(userID, 20)
 
-	// Check if user is member/admin
-	var acc *auth.Account
-	isMember := false
+	// Check if user is admin
 	isAdmin := false
-	hasSubscription := false
-	if a, err := auth.GetAccount(userID); err == nil {
-		acc = a
-		isMember = acc.Member
+	if acc, err := auth.GetAccount(userID); err == nil {
 		isAdmin = acc.Admin
-		hasSubscription = acc.StripeSubscriptionID != ""
 	}
 
 	var sb strings.Builder
 
-	if isMember || isAdmin {
-		// Member/Admin status
+	if isAdmin {
+		// Admin status
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Status</h3>`)
-		if isAdmin {
-			sb.WriteString(`<p>Admin · Unlimited access</p>`)
-		} else {
-			sb.WriteString(`<p>Member · Unlimited access</p>`)
-		}
-		if hasSubscription && IsStripeConfigured() {
-			sb.WriteString(`<p><a href="/wallet/manage">Manage subscription →</a></p>`)
-		}
+		sb.WriteString(`<p>Admin · Full access</p>`)
 		sb.WriteString(`</div>`)
 	} else {
 		// Balance
@@ -85,7 +70,7 @@ func WalletPage(userID string) string {
 
 		// Daily quota
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Free Searches</h3>`)
+		sb.WriteString(`<h3>Free Queries</h3>`)
 		usedPct := float64(usage.Searches) / float64(FreeDailySearches) * 100
 		if usedPct > 100 {
 			usedPct = 100
@@ -108,12 +93,13 @@ func WalletPage(userID string) string {
 	sb.WriteString(`<h3>Costs</h3>`)
 	sb.WriteString(`<table style="width: 100%; font-size: 14px;">`)
 	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td style="text-align: right;">%dp</td></tr>`, CostNewsSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>News article</td><td style="text-align: right;">%dp</td></tr>`, CostNewsSummary))
+	sb.WriteString(fmt.Sprintf(`<tr><td>News summary</td><td style="text-align: right;">%dp</td></tr>`, CostNewsSummary))
 	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td style="text-align: right;">%dp</td></tr>`, CostVideoSearch))
 	if CostVideoWatch > 0 {
 		sb.WriteString(fmt.Sprintf(`<tr><td>Video watch</td><td style="text-align: right;">%dp</td></tr>`, CostVideoWatch))
 	}
 	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td style="text-align: right;">%dp</td></tr>`, CostChatQuery))
+	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td style="text-align: right;">%dp</td></tr>`, CostExternalEmail))
 	sb.WriteString(`</table>`)
 	sb.WriteString(`</div>`)
 
@@ -145,28 +131,6 @@ func WalletPage(userID string) string {
 		sb.WriteString(`</div>`)
 	}
 
-	// Add JavaScript for topup
-	sb.WriteString(`
-<script>
-async function topupCredits(amount) {
-	try {
-		const resp = await fetch('/wallet/topup', {
-			method: 'POST',
-			headers: {'Content-Type': 'application/json'},
-			body: JSON.stringify({amount: amount})
-		});
-		const data = await resp.json();
-		if (data.url) {
-			window.location.href = data.url;
-		} else if (data.error) {
-			alert('Error: ' + data.error);
-		}
-	} catch (err) {
-		alert('Failed to start checkout: ' + err.message);
-	}
-}
-</script>`)
-
 	return sb.String()
 }
 
@@ -176,12 +140,12 @@ func QuotaExceededPage(operation string, cost int) string {
 
 	sb.WriteString(`<div class="card" style="max-width: 500px; margin: 50px auto; text-align: center;">`)
 	sb.WriteString(`<h2>Daily Limit Reached</h2>`)
-	sb.WriteString(`<p>You've used your 10 free searches for today.</p>`)
+	sb.WriteString(`<p>You've used your free queries for today.</p>`)
 	sb.WriteString(`<h3 style="margin-top: 20px;">Options</h3>`)
 	sb.WriteString(`<ul style="text-align: left; margin: 15px 0;">`)
-	sb.WriteString(`<li style="margin: 10px 0;">Wait until midnight UTC for more free searches</li>`)
-	sb.WriteString(fmt.Sprintf(`<li style="margin: 10px 0;"><a href="/wallet">Use credits</a> (%d credit%s for this search)</li>`, cost, pluralize(cost)))
-	sb.WriteString(`<li style="margin: 10px 0;"><a href="/plans">View all plans</a></li>`)
+	sb.WriteString(`<li style="margin: 10px 0;">Wait until midnight UTC for more free queries</li>`)
+	sb.WriteString(fmt.Sprintf(`<li style="margin: 10px 0;"><a href="/wallet">Use credits</a> (%d credit%s for this)</li>`, cost, pluralize(cost)))
+	sb.WriteString(`<li style="margin: 10px 0;"><a href="/plans">View pricing</a></li>`)
 	sb.WriteString(`</ul>`)
 	sb.WriteString(`</div>`)
 
@@ -225,12 +189,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleTopupPage(w, r)
 	case path == "/wallet/topup" && r.Method == "POST":
 		handleTopup(w, r)
-	case path == "/wallet/subscribe" && r.Method == "GET":
-		handleSubscribePage(w, r)
-	case path == "/wallet/subscribe" && r.Method == "POST":
-		handleSubscribe(w, r)
-	case path == "/wallet/manage":
-		handleManageSubscription(w, r)
 	case path == "/wallet/success":
 		handleSuccess(w, r)
 	case path == "/wallet/cancel":
@@ -402,11 +360,6 @@ func handleSuccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if this was a subscription or credit purchase
-	sessionType := r.URL.Query().Get("type")
-
-	// Note: subscription flow removed, but keeping sessionType check for legacy webhook handling
-	_ = sessionType
 	content := `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #f0fff4; border-color: #22c55e;">
 	<h2 style="color: #22c55e;">✓ Payment Successful</h2>
 	<p>Your credits have been added to your wallet.</p>
@@ -415,7 +368,7 @@ func handleSuccess(w http.ResponseWriter, r *http.Request) {
 
 	html := app.RenderHTMLForRequest("Payment Successful", "Your payment was successful", content, r)
 	w.Write([]byte(html))
-	_ = sess // Used for potential future user-specific success messages
+	_ = sess
 }
 
 func handleCancel(w http.ResponseWriter, r *http.Request) {
@@ -427,159 +380,6 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 
 	html := app.RenderHTMLForRequest("Payment Cancelled", "Your payment was cancelled", content, r)
 	w.Write([]byte(html))
-}
-
-// handleSubscribePage shows the subscription checkout page
-func handleSubscribePage(w http.ResponseWriter, r *http.Request) {
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
-	}
-
-	// Already a member
-	if acc.Member {
-		http.Redirect(w, r, "/wallet", 302)
-		return
-	}
-
-	// Check if Stripe subscriptions are configured
-	if !IsStripeConfigured() || StripeMembershipPrice == "" {
-		content := `<div class="card">
-<p>Memberships are not available at this time.</p>
-<p><a href="/membership">View membership info →</a></p>
-</div>`
-		html := app.RenderHTMLForRequest("Subscribe", "Become a member", content, r)
-		w.Write([]byte(html))
-		return
-	}
-
-	content := `<div class="card">
-<p><strong>Become a Member</strong></p>
-<p>Unlimited searches, chat, and mail access.</p>
-<p style="margin-top: 15px;"><a href="#" onclick="subscribe(); return false;">Subscribe now →</a></p>
-<p style="font-size: 12px; color: #666;">Cancel anytime · Managed by Stripe</p>
-</div>
-
-<script>
-async function subscribe() {
-	try {
-		const resp = await fetch('/wallet/subscribe', {
-			method: 'POST',
-			headers: {'Content-Type': 'application/json'}
-		});
-		const data = await resp.json();
-		if (data.url) {
-			window.location.href = data.url;
-		} else if (data.error) {
-			alert('Error: ' + data.error);
-		}
-	} catch (err) {
-		alert('Failed: ' + err.message);
-	}
-}
-</script>`
-
-	html := app.RenderHTMLForRequest("Subscribe", "Become a member", content, r)
-	w.Write([]byte(html))
-}
-
-// handleSubscribe creates a Stripe subscription checkout session
-func handleSubscribe(w http.ResponseWriter, r *http.Request) {
-	sess, acc, err := auth.RequireSession(r)
-	if err != nil {
-		app.RespondJSON(w, map[string]string{"error": "Authentication required"})
-		return
-	}
-
-	if !IsStripeConfigured() || StripeMembershipPrice == "" {
-		app.RespondJSON(w, map[string]string{"error": "Subscriptions not configured"})
-		return
-	}
-
-	// Already a member
-	if acc.Member {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Already a member"})
-		return
-	}
-
-	// Build domain for redirect URLs
-	scheme := "https"
-	if r.TLS == nil && !strings.Contains(r.Host, "localhost") {
-		scheme = "http"
-	}
-	domain := fmt.Sprintf("%s://%s", scheme, r.Host)
-
-	// Create checkout session for subscription
-	params := &stripe.CheckoutSessionParams{
-		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
-		LineItems: []*stripe.CheckoutSessionLineItemParams{{
-			Price:    stripe.String(StripeMembershipPrice),
-			Quantity: stripe.Int64(1),
-		}},
-		SuccessURL:        stripe.String(domain + "/wallet/success?type=subscription&session_id={CHECKOUT_SESSION_ID}"),
-		CancelURL:         stripe.String(domain + "/wallet/cancel"),
-		ClientReferenceID: stripe.String(sess.Account),
-	}
-
-	// If user has existing Stripe customer, use it
-	// Otherwise, let Stripe collect email during checkout
-	if acc.StripeCustomerID != "" {
-		params.Customer = stripe.String(acc.StripeCustomerID)
-	}
-
-	params.AddMetadata("user_id", sess.Account)
-	params.AddMetadata("type", "subscription")
-
-	checkoutSession, err := checkoutsession.New(params)
-	if err != nil {
-		app.Log("wallet", "Stripe subscription checkout error: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create checkout session"})
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"url": checkoutSession.URL})
-}
-
-// handleManageSubscription redirects to Stripe billing portal
-func handleManageSubscription(w http.ResponseWriter, r *http.Request) {
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
-	}
-
-	if acc.StripeCustomerID == "" {
-		http.Redirect(w, r, "/wallet", 302)
-		return
-	}
-
-	// Build domain for redirect URLs
-	scheme := "https"
-	if r.TLS == nil && !strings.Contains(r.Host, "localhost") {
-		scheme = "http"
-	}
-	domain := fmt.Sprintf("%s://%s", scheme, r.Host)
-
-	// Create billing portal session
-	params := &stripe.BillingPortalSessionParams{
-		Customer:  stripe.String(acc.StripeCustomerID),
-		ReturnURL: stripe.String(domain + "/wallet"),
-	}
-
-	portalSession, err := portalsession.New(params)
-	if err != nil {
-		app.Log("wallet", "Failed to create billing portal session: %v", err)
-		http.Error(w, "Failed to access billing portal", 500)
-		return
-	}
-
-	http.Redirect(w, r, portalSession.URL, 302)
 }
 
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
@@ -618,141 +418,34 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		userID := checkoutSession.ClientReferenceID
-		sessionType := checkoutSession.Metadata["type"]
+		creditsStr := checkoutSession.Metadata["credits"]
+		credits, _ := strconv.Atoi(creditsStr)
 
-		if sessionType == "subscription" {
-			// Handle subscription checkout completion
-			handleSubscriptionCreated(userID, &checkoutSession)
-		} else {
-			// Handle credit top-up
-			creditsStr := checkoutSession.Metadata["credits"]
-			credits, _ := strconv.Atoi(creditsStr)
-
-			if userID == "" || credits == 0 {
-				app.Log("wallet", "Invalid webhook data: userID=%s credits=%d", userID, credits)
-				http.Error(w, "Invalid metadata", 400)
-				return
-			}
-
-			// Add credits to wallet
-			err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
-				"stripe_session_id": checkoutSession.ID,
-				"payment_intent":    checkoutSession.PaymentIntent,
-				"amount_total":      checkoutSession.AmountTotal,
-			})
-			if err != nil {
-				app.Log("wallet", "Failed to add credits: %v", err)
-				http.Error(w, "Failed to add credits", 500)
-				return
-			}
-
-			app.Log("wallet", "Added %d credits to user %s (session: %s)", credits, userID, checkoutSession.ID)
-		}
-
-	case "customer.subscription.created", "customer.subscription.updated":
-		var sub stripe.Subscription
-		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
-			app.Log("wallet", "Failed to parse subscription: %v", err)
-			http.Error(w, "Invalid subscription data", 400)
+		if userID == "" || credits == 0 {
+			app.Log("wallet", "Invalid webhook data: userID=%s credits=%d", userID, credits)
+			http.Error(w, "Invalid metadata", 400)
 			return
 		}
 
-		// Find user by customer ID
-		userID := findUserByCustomerID(sub.Customer.ID)
-		if userID == "" {
-			app.Log("wallet", "No user found for customer %s", sub.Customer.ID)
-			// Not an error - might be a subscription we don't track
-			w.WriteHeader(200)
+		// Add credits to wallet
+		err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
+			"stripe_session_id": checkoutSession.ID,
+			"payment_intent":    checkoutSession.PaymentIntent,
+			"amount_total":      checkoutSession.AmountTotal,
+		})
+		if err != nil {
+			app.Log("wallet", "Failed to add credits: %v", err)
+			http.Error(w, "Failed to add credits", 500)
 			return
 		}
 
-		// Update member status based on subscription status
-		if sub.Status == stripe.SubscriptionStatusActive || sub.Status == stripe.SubscriptionStatusTrialing {
-			setMemberStatus(userID, true, sub.Customer.ID, sub.ID)
-			app.Log("wallet", "Activated membership for user %s (subscription: %s)", userID, sub.ID)
-		}
-
-	case "customer.subscription.deleted":
-		var sub stripe.Subscription
-		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
-			app.Log("wallet", "Failed to parse subscription: %v", err)
-			http.Error(w, "Invalid subscription data", 400)
-			return
-		}
-
-		// Find user by customer ID
-		userID := findUserByCustomerID(sub.Customer.ID)
-		if userID == "" {
-			app.Log("wallet", "No user found for customer %s", sub.Customer.ID)
-			w.WriteHeader(200)
-			return
-		}
-
-		// Revoke member status
-		setMemberStatus(userID, false, sub.Customer.ID, "")
-		app.Log("wallet", "Revoked membership for user %s (subscription cancelled)", userID)
-
-	case "invoice.payment_failed":
-		app.Log("wallet", "Invoice payment failed: %s", string(event.Data.Raw))
+		app.Log("wallet", "Added %d credits to user %s (session: %s)", credits, userID, checkoutSession.ID)
 
 	case "payment_intent.payment_failed":
 		app.Log("wallet", "Payment failed: %s", string(event.Data.Raw))
 	}
 
 	w.WriteHeader(200)
-}
-
-// handleSubscriptionCreated processes a successful subscription checkout
-func handleSubscriptionCreated(userID string, session *stripe.CheckoutSession) {
-	if userID == "" {
-		app.Log("wallet", "No user ID in subscription checkout")
-		return
-	}
-
-	// Get the subscription details
-	customerID := ""
-	subscriptionID := ""
-
-	if session.Customer != nil {
-		customerID = session.Customer.ID
-	}
-	if session.Subscription != nil {
-		subscriptionID = session.Subscription.ID
-	}
-
-	// Update user account
-	setMemberStatus(userID, true, customerID, subscriptionID)
-	app.Log("wallet", "Subscription created for user %s (customer: %s, subscription: %s)", userID, customerID, subscriptionID)
-}
-
-// findUserByCustomerID finds a user account by their Stripe customer ID
-func findUserByCustomerID(customerID string) string {
-	accounts := auth.GetAllAccounts()
-	for _, acc := range accounts {
-		if acc.StripeCustomerID == customerID {
-			return acc.ID
-		}
-	}
-	return ""
-}
-
-// setMemberStatus updates a user's member status and Stripe IDs
-func setMemberStatus(userID string, isMember bool, customerID, subscriptionID string) {
-	acc, err := auth.GetAccount(userID)
-	if err != nil {
-		app.Log("wallet", "Failed to get account %s: %v", userID, err)
-		return
-	}
-
-	acc.Member = isMember
-	if customerID != "" {
-		acc.StripeCustomerID = customerID
-	}
-	acc.StripeSubscriptionID = subscriptionID
-
-	if err := auth.UpdateAccount(acc); err != nil {
-		app.Log("wallet", "Failed to update account %s: %v", userID, err)
-	}
 }
 
 // IsStripeConfigured returns true if Stripe is properly configured

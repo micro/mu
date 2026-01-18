@@ -1302,7 +1302,7 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(402) // Payment Required
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "quota_exceeded",
-				"message": "Daily chat limit reached. Please top up credits or upgrade to member.",
+				"message": "Daily chat limit reached. Please top up credits at /wallet",
 				"cost":    cost,
 			})
 			return

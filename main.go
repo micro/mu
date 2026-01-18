@@ -97,7 +97,6 @@ func main() {
 		"/admin":           true,
 		"/admin/moderate":  true,
 		"/admin/blocklist": true,
-		"/membership":      false,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          true,  // Require auth for wallet
@@ -142,9 +141,6 @@ func main() {
 
 	// mail blocklist management
 	http.HandleFunc("/admin/blocklist", admin.BlocklistHandler)
-
-	// membership page (public - handles GoCardless redirects)
-	http.HandleFunc("/membership", app.Membership)
 
 	// plans page (public - overview of options)
 	http.HandleFunc("/plans", app.Plans)

@@ -687,16 +687,16 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	// Return JSON if requested
 	if app.WantsJSON(r) {
 		mutex.RLock()
-		// Check if user is a member/admin
+		// Check if user is admin
 		_, acc := auth.TrySession(r)
-		isMember := acc != nil && (acc.Member || acc.Admin)
+		isAdmin := acc != nil && acc.Admin
 
-		// Filter out flagged posts and private posts (unless member)
+		// Filter out flagged posts and private posts (unless admin)
 		var visiblePosts []*Post
 		for _, post := range posts {
 			if !admin.IsHidden("post", post.ID) {
-				// Skip private posts for non-members
-				if post.Private && !isMember {
+				// Skip private posts for non-admins
+				if post.Private && !isAdmin {
 					continue
 				}
 				visiblePosts = append(visiblePosts, post)
@@ -736,7 +736,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 					<div style="display: flex; justify-content: space-between; align-items: center;">
 						<select id="post-visibility" name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
 							<option value="public" selected>Public</option>
-							<option value="private">Private (Members)</option>
+							<option value="private">Private (Admin only)</option>
 						</select>
 						<div style="display: flex; gap: 10px;">
 							<a href="/blog" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
@@ -842,15 +842,15 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		// Show posts list with conditional write link
 		var actions string
 		_, acc := auth.TrySession(r)
-		if acc != nil && (acc.Member || acc.Admin) {
-			// User is authenticated and is a member or admin, show write and moderate links
+		if acc != nil && acc.Admin {
+			// Admin: show write and moderate links
 			actions = `<div style="margin-bottom: 15px;">
 				<a href="/blog?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
 				<span style="margin: 0 8px; color: #ccc;">·</span>
 				<a href="/admin/moderate" style="color: #666; text-decoration: none; font-size: 14px;">Moderate</a>
 			</div>`
 		} else if acc != nil {
-			// User is authenticated but not a member or admin, show only write link
+			// Regular user: show only write link
 			actions = `<div style="margin-bottom: 15px;">
 				<a href="/blog?write=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Post</a>
 			</div>`
@@ -1182,12 +1182,12 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if post is private and user is not a member
+	// Check if post is private and user is not admin
 	if post.Private {
 		_, acc := auth.TrySession(r)
-		isMember := acc != nil && (acc.Member || acc.Admin)
-		if !isMember {
-			app.Forbidden(w, r, "This post is private and only visible to members")
+		isAdmin := acc != nil && acc.Admin
+		if !isAdmin {
+			app.Forbidden(w, r, "This post is private and only visible to admins")
 			return
 		}
 	}
@@ -1346,7 +1346,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 				<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<select name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
 					<option value="public" %s>Public</option>
-					<option value="private" %s>Private (Members)</option>
+					<option value="private" %s>Private (Admin only)</option>
 				</select>
 				<div style="font-size: 12px; color: #666; margin-top: -5px;">
 					Supports markdown: **bold**, *italic**, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
