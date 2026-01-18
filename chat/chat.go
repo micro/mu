@@ -23,18 +23,6 @@ import (
 //go:embed *.json
 var f embed.FS
 
-// Re-export ai types for backwards compatibility
-type Prompt = ai.Prompt
-type History = ai.History
-type Message = ai.Message
-
-// Re-export priority constants
-const (
-	PriorityHigh   = ai.PriorityHigh
-	PriorityMedium = ai.PriorityMedium
-	PriorityLow    = ai.PriorityLow
-)
-
 var Template = `
 <div id="topic-selector">
   <div class="topic-tabs">%s</div>
@@ -54,13 +42,8 @@ var mutex sync.RWMutex
 
 var prompts = map[string]string{}
 
-// askLLM wraps ai.Ask for internal use
-func askLLM(prompt *Prompt) (string, error) {
-	return ai.Ask(prompt)
-}
-
-// AskLLM is the exported version for use by other packages
-func AskLLM(prompt *Prompt) (string, error) {
+// askLLM is internal helper for ai.Ask
+func askLLM(prompt *ai.Prompt) (string, error) {
 	return ai.Ask(prompt)
 }
 
@@ -646,18 +629,18 @@ func (room *Room) sendAIGreeting() {
 	summary := summaries[topicName]
 	mutex.RUnlock()
 
-	var prompt *Prompt
+	var prompt *ai.Prompt
 	if summary != "" {
-		prompt = &Prompt{
+		prompt = &ai.Prompt{
 			System:   "You are a friendly chat participant in a " + topicName + " discussion room. Start a brief, engaging conversation based on the current summary. Ask a thought-provoking question or share an interesting observation. Keep it to 1-2 sentences. Be conversational, not formal.",
 			Question: "Current " + topicName + " summary: " + summary + "\n\nStart a conversation:",
-			Priority: PriorityLow,
+			Priority: ai.PriorityLow,
 		}
 	} else {
-		prompt = &Prompt{
+		prompt = &ai.Prompt{
 			System:   "You are a friendly chat participant in a " + topicName + " discussion room. Start a brief, engaging conversation about " + topicName + ". Ask a thought-provoking question or share an interesting observation. Keep it to 1-2 sentences. Be conversational, not formal.",
 			Question: "Start a conversation about " + topicName + ":",
-			Priority: PriorityLow,
+			Priority: ai.PriorityLow,
 		}
 	}
 
@@ -821,7 +804,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 						// Build conversation history from recent room messages FIRST
 						// So we can extract entities for follow-up queries
-						var history History
+						var history ai.History
 						var recentTopics []string // Track topics from recent messages for context
 						room.mutex.RLock()
 						app.Log("chat", "Building history from %d room messages", len(room.Messages))
@@ -831,7 +814,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							if m.IsLLM {
 								// This is an AI response - pair it with the previous user prompt
 								if currentPrompt != "" {
-									history = append(history, Message{
+									history = append(history, ai.Message{
 										Prompt: currentPrompt,
 										Answer: m.Content,
 									})
@@ -898,7 +881,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						}
 						app.Log("chat", "RAG: found %d results for '%s'", len(ragEntries), searchContent)
 
-						prompt := &Prompt{
+						prompt := &ai.Prompt{
 							Rag:      ragContext,
 							Context:  history,
 							Question: content,
@@ -962,10 +945,10 @@ func Load() {
 				app.Log("chat", "Received summary generation request for %s (%s)", uri, eventType)
 
 				// Generate summary using LLM (low priority - background task)
-				prompt := &Prompt{
+				prompt := &ai.Prompt{
 					System:   "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear, factual sentences that capture the key points.",
 					Question: fmt.Sprintf("Summarize this article:\n\n%s", content),
-					Priority: PriorityLow, // Low priority for background article summaries
+					Priority: ai.PriorityLow, // Low priority for background article summaries
 				}
 
 				summary, err := askLLM(prompt)
@@ -1018,10 +1001,10 @@ func Load() {
 					continue
 				}
 
-				prompt := &Prompt{
+				prompt := &ai.Prompt{
 					System:   fmt.Sprintf("You are a content categorization assistant. Your task is to categorize posts into ONE of these categories ONLY: %s. If the post does not clearly fit into any of these categories, respond with 'None'. Respond with ONLY the category name or 'None', nothing else.", strings.Join(topics, ", ")),
 					Question: fmt.Sprintf("Categorize this post:\n\nTitle: %s\n\nContent: %s\n\nWhich single category best fits this post?", title, content),
-					Priority: PriorityLow,
+					Priority: ai.PriorityLow,
 				}
 
 				tag, err := askLLM(prompt)
@@ -1071,10 +1054,10 @@ func Load() {
 				}
 				app.Log("chat", "Received tag generation request for note %s", noteID)
 
-				prompt := &Prompt{
+				prompt := &ai.Prompt{
 					System:   "You are a note organization assistant. Given a note, suggest ONE short tag (1-2 words, lowercase) that best categorizes it. Examples: 'work', 'ideas', 'shopping', 'todo', 'recipe', 'travel', 'health', 'finance'. Respond with ONLY the tag, nothing else. If the note is too short or unclear, respond with 'personal'.",
 					Question: content,
-					Priority: PriorityLow,
+					Priority: ai.PriorityLow,
 				}
 
 				tag, err := askLLM(prompt)
@@ -1127,10 +1110,10 @@ func generateSummaries() {
 			ragContext = append(ragContext, contentStr)
 		}
 
-		resp, err := askLLM(&Prompt{
+		resp, err := askLLM(&ai.Prompt{
 			Rag:      ragContext,
 			Question: prompt,
-			Priority: PriorityMedium, // Medium priority for topic summaries
+			Priority: ai.PriorityMedium, // Medium priority for topic summaries
 		})
 
 		if err != nil {
@@ -1296,7 +1279,7 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 		form["prompt"] = msg
 	}
 
-	var context History
+	var context ai.History
 
 	if vals := form["context"]; vals != nil {
 		cvals := vals.([]interface{})
@@ -1309,7 +1292,7 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 			msg := val.(map[string]interface{})
 			prompt := fmt.Sprintf("%v", msg["prompt"])
 			answer := fmt.Sprintf("%v", msg["answer"])
-			context = append(context, Message{Prompt: prompt, Answer: answer})
+			context = append(context, ai.Message{Prompt: prompt, Answer: answer})
 		}
 	}
 
@@ -1441,7 +1424,7 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 		app.Log("chat", "[POST] History[%d] Q: %.50s... A: %.50s...", i, msg.Prompt, msg.Answer)
 	}
 
-	prompt := &Prompt{
+	prompt := &ai.Prompt{
 		Topic:    topic,
 		Rag:      ragContext,
 		Context:  context,
@@ -1492,7 +1475,7 @@ type llmAnalyzer struct{}
 
 func (a *llmAnalyzer) Analyze(promptText, question string) (string, error) {
 	// Create a simple prompt for analysis
-	prompt := &Prompt{
+	prompt := &ai.Prompt{
 		System:   promptText,
 		Question: question,
 		Context:  nil,
