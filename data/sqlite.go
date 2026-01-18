@@ -268,72 +268,99 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		return nil, nil
 	}
 
-	// Build WHERE clause - at least one word must match
-	var conditions []string
-	var args []interface{}
+	seen := make(map[string]bool)
+	var allEntries []*IndexEntry
+
+	// Phase 1: ALL title matches (small set, contains word-boundary hits)
+	var titleConds []string
+	var titleArgs []interface{}
 	for _, word := range words {
 		if len(word) < 2 {
 			continue
 		}
-		// Use word boundary matching: space or start/end of string
-		// SQLite LIKE doesn't support \b, so we check multiple patterns
-		likeWord := "%" + word + "%"
-		conditions = append(conditions, "(LOWER(title) LIKE ? OR LOWER(content) LIKE ?)")
-		args = append(args, likeWord, likeWord)
+		titleConds = append(titleConds, "LOWER(title) LIKE ?")
+		titleArgs = append(titleArgs, "%"+word+"%")
+	}
+	if len(titleConds) > 0 {
+		where := strings.Join(titleConds, " OR ")
+		if options.Type != "" {
+			where = "(" + where + ") AND type = ?"
+			titleArgs = append(titleArgs, options.Type)
+		}
+		rows, err := db.Query(fmt.Sprintf(`
+			SELECT id, type, title, content, metadata, indexed_at
+			FROM index_entries WHERE %s`, where), titleArgs...)
+		if err == nil {
+			for rows.Next() {
+				var e IndexEntry
+				var meta sql.NullString
+				var idx time.Time
+				if rows.Scan(&e.ID, &e.Type, &e.Title, &e.Content, &meta, &idx) == nil {
+					e.IndexedAt = idx
+					if meta.Valid {
+						json.Unmarshal([]byte(meta.String), &e.Metadata)
+					}
+					if !seen[e.ID] {
+						seen[e.ID] = true
+						allEntries = append(allEntries, &e)
+					}
+				}
+			}
+			rows.Close()
+		}
 	}
 
-	if len(conditions) == 0 {
-		return nil, nil
+	// Phase 2: Recent content matches (limit 200)
+	var contentConds []string
+	var contentArgs []interface{}
+	for _, word := range words {
+		if len(word) < 2 {
+			continue
+		}
+		contentConds = append(contentConds, "LOWER(content) LIKE ?")
+		contentArgs = append(contentArgs, "%"+word+"%")
+	}
+	if len(contentConds) > 0 {
+		where := strings.Join(contentConds, " OR ")
+		if options.Type != "" {
+			where = "(" + where + ") AND type = ?"
+			contentArgs = append(contentArgs, options.Type)
+		}
+		contentArgs = append(contentArgs, 200)
+		rows, err := db.Query(fmt.Sprintf(`
+			SELECT id, type, title, content, metadata, indexed_at
+			FROM index_entries WHERE %s
+			ORDER BY indexed_at DESC LIMIT ?`, where), contentArgs...)
+		if err == nil {
+			for rows.Next() {
+				var e IndexEntry
+				var meta sql.NullString
+				var idx time.Time
+				if rows.Scan(&e.ID, &e.Type, &e.Title, &e.Content, &meta, &idx) == nil {
+					e.IndexedAt = idx
+					if meta.Valid {
+						json.Unmarshal([]byte(meta.String), &e.Metadata)
+					}
+					if !seen[e.ID] {
+						seen[e.ID] = true
+						allEntries = append(allEntries, &e)
+					}
+				}
+			}
+			rows.Close()
+		}
 	}
 
-	// Use OR so any word matching returns results, then rank in Go
-	whereClause := strings.Join(conditions, " OR ")
-	if options.Type != "" {
-		whereClause = "(" + whereClause + ") AND type = ?"
-		args = append(args, options.Type)
-	}
-
-	// Fetch recent matches first - news relevance is time-sensitive
-	// Score within this subset; word-boundary matches will surface
-	queryStr := fmt.Sprintf(`
-		SELECT id, type, title, content, metadata, indexed_at
-		FROM index_entries
-		WHERE %s
-		ORDER BY indexed_at DESC
-		LIMIT 500
-	`, whereClause)
-
-	rows, queryErr := db.Query(queryStr, args...)
-	if queryErr != nil {
-		return nil, queryErr
-	}
-	defer rows.Close()
-
+	// Score all collected entries
 	type scoredEntry struct {
 		entry *IndexEntry
 		score float64
 	}
 	var scored []scoredEntry
-
-	for rows.Next() {
-		var entry IndexEntry
-		var metadataJSON sql.NullString
-		var indexedAt time.Time
-
-		err := rows.Scan(&entry.ID, &entry.Type, &entry.Title, &entry.Content, &metadataJSON, &indexedAt)
-		if err != nil {
-			continue
-		}
-
-		entry.IndexedAt = indexedAt
-		if metadataJSON.Valid && metadataJSON.String != "" {
-			json.Unmarshal([]byte(metadataJSON.String), &entry.Metadata)
-		}
-
-		// Score the result
-		score := scoreMatch(&entry, words)
+	for _, entry := range allEntries {
+		score := scoreMatch(entry, words)
 		if score > 0 {
-			scored = append(scored, scoredEntry{&entry, score})
+			scored = append(scored, scoredEntry{entry, score})
 		}
 	}
 
