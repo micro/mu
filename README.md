@@ -19,7 +19,7 @@ Mu is a collection of micro apps for everyday use. While other platforms monetiz
 - **News** - RSS feeds with summaries
 - **Video** - Watch YouTube without ads
 - **Notes** - Quick capture with tags, pins, and search
-- **Mail** - Private messaging
+- **Mail** - Private messaging & email
 - **Agent** - AI assistant that can use all the above
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).

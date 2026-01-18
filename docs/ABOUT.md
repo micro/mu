@@ -39,7 +39,7 @@ Each feature does one thing well:
 - **News** — RSS feeds, chronological
 - **Video** — YouTube without ads or shorts
 - **Notes** — Quick capture with tags and search
-- **Mail** — Private messaging
+- **Mail** — Private messaging & email
 - **Agent** — AI assistant when you need it
 
 ### No Addiction Mechanics
