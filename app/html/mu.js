@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v90';
+var VERSION = 'v91';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1595,7 +1595,7 @@ function initCardCustomization() {
     link.id = 'customize-link';
     link.href = '#';
     link.textContent = 'Customize';
-    link.style.cssText = 'font-size: 13px; font-weight: normal; color: var(--text-muted); display: block; margin-top: 5px;';
+    link.style.cssText = 'font-size: 13px; font-weight: normal; color: var(--text-muted); display: block; margin-top: 5px; margin-bottom: 15px;';
     link.onclick = (e) => { e.preventDefault(); showCardModal(); };
     pageTitle.insertAdjacentElement('afterend', link);
   }
