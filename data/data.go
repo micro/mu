@@ -869,3 +869,37 @@ func cosineSimilarity(a, b []float64) float64 {
 
 	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
+
+// Stats holds index statistics
+type Stats struct {
+	TotalEntries      int  `json:"total_entries"`
+	EmbeddingCount    int  `json:"embedding_count"`
+	EmbeddingsEnabled bool `json:"embeddings_enabled"`
+}
+
+// GetStats returns current index statistics
+func GetStats() Stats {
+	if UseSQLite {
+		entries, embCount, _ := GetIndexStats()
+		return Stats{
+			TotalEntries:      entries,
+			EmbeddingCount:    embCount,
+			EmbeddingsEnabled: embCount > 0,
+		}
+	}
+
+	indexMutex.RLock()
+	entryCount := len(index)
+	embCount := len(embeddings)
+	indexMutex.RUnlock()
+
+	embeddingMutex.Lock()
+	enabled := embeddingEnabled
+	embeddingMutex.Unlock()
+
+	return Stats{
+		TotalEntries:      entryCount,
+		EmbeddingCount:    embCount,
+		EmbeddingsEnabled: enabled,
+	}
+}

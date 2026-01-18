@@ -228,7 +228,7 @@ var Template = `
         %s
       </div>
       <div id="footer">
-        <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>
+        <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/plans">Plans</a> · <a href="/status"><span id="status-indicator"></span>Status</a>
       </div>
     </div>
   <script>
@@ -238,6 +238,25 @@ var Template = `
           {scope: '/'}
         );
       }
+      // Status indicator
+      (function() {
+        var indicator = document.getElementById('status-indicator');
+        if (!indicator) return;
+        function checkStatus() {
+          fetch('/status?quick=1')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              indicator.className = data.healthy ? 'status-ok' : 'status-error';
+              indicator.title = data.healthy ? 'All systems operational' : 'Issues detected';
+            })
+            .catch(function() {
+              indicator.className = 'status-error';
+              indicator.title = 'Unable to reach server';
+            });
+        }
+        checkStatus();
+        setInterval(checkStatus, 60000); // Check every minute
+      })();
   </script>
   </body>
 </html>

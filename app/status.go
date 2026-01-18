@@ -9,6 +9,9 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"mu/auth"
+	"mu/data"
 )
 
 var startTime = time.Now()
@@ -22,12 +25,21 @@ type StatusCheck struct {
 
 // StatusResponse represents the full status response
 type StatusResponse struct {
-	Healthy   bool          `json:"healthy"`
-	Uptime    string        `json:"uptime"`
-	GoVersion string        `json:"go_version"`
-	Memory    MemoryStatus  `json:"memory"`
-	Services  []StatusCheck `json:"services"`
-	Config    []StatusCheck `json:"config"`
+	Healthy     bool          `json:"healthy"`
+	Uptime      string        `json:"uptime"`
+	GoVersion   string        `json:"go_version"`
+	Memory      MemoryStatus  `json:"memory"`
+	Services    []StatusCheck `json:"services"`
+	Config      []StatusCheck `json:"config"`
+	OnlineUsers int           `json:"online_users"`
+	IndexStats  IndexStatus   `json:"index"`
+}
+
+// IndexStatus represents search index status
+type IndexStatus struct {
+	Entries    int  `json:"entries"`
+	Embeddings int  `json:"embeddings"`
+	VectorSearch bool `json:"vector_search"`
 }
 
 // MemoryStatus represents memory usage
@@ -43,6 +55,17 @@ var DKIMStatusFunc func() (enabled bool, domain, selector string)
 
 // StatusHandler handles the /status endpoint
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
+	// Quick health check endpoint
+	if r.URL.Query().Get("quick") == "1" {
+		w.Header().Set("Content-Type", "application/json")
+		status := buildStatus()
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"healthy": status.Healthy,
+			"online":  status.OnlineUsers,
+		})
+		return
+	}
+
 	// Build status response
 	status := buildStatus()
 
@@ -113,6 +136,18 @@ func buildStatus() StatusResponse {
 		Details: quotaMode,
 	})
 
+	// Check Vector Search
+	indexStats := data.GetStats()
+	vectorMode := "Keyword (fallback)"
+	if indexStats.EmbeddingsEnabled {
+		vectorMode = fmt.Sprintf("Vector (%d embeddings)", indexStats.EmbeddingCount)
+	}
+	services = append(services, StatusCheck{
+		Name:    "Search",
+		Status:  indexStats.EmbeddingsEnabled,
+		Details: vectorMode,
+	})
+
 	// Configuration checks
 	mailDomain := os.Getenv("MAIL_DOMAIN")
 	config = append(config, StatusCheck{
@@ -164,8 +199,14 @@ func buildStatus() StatusResponse {
 			NumGC:      m.NumGC,
 			Goroutines: runtime.NumGoroutine(),
 		},
-		Services: services,
-		Config:   config,
+		Services:    services,
+		Config:      config,
+		OnlineUsers: auth.GetOnlineCount(),
+		IndexStats: IndexStatus{
+			Entries:      indexStats.TotalEntries,
+			Embeddings:   indexStats.EmbeddingCount,
+			VectorSearch: indexStats.EmbeddingsEnabled,
+		},
 	}
 }
 
@@ -299,12 +340,12 @@ func renderStatusHTML(status StatusResponse) string {
 <div class="system-info-value">` + fmt.Sprintf("%dMB / %dMB", status.Memory.Alloc, status.Memory.Sys) + `</div>
 </div>
 <div class="system-info-item">
-<div class="system-info-label">Goroutines</div>
-<div class="system-info-value">` + fmt.Sprintf("%d", status.Memory.Goroutines) + `</div>
+<div class="system-info-label">Online Users</div>
+<div class="system-info-value">` + fmt.Sprintf("%d", status.OnlineUsers) + `</div>
 </div>
 <div class="system-info-item">
-<div class="system-info-label">Go Version</div>
-<div class="system-info-value">` + strings.TrimPrefix(status.GoVersion, "go") + `</div>
+<div class="system-info-label">Index Entries</div>
+<div class="system-info-value">` + fmt.Sprintf("%d", status.IndexStats.Entries) + `</div>
 </div>
 </div>
 </div>`)
