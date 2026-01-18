@@ -1,8 +1,8 @@
-**A personal AI platform — without ads**
+**The Micro Network — apps without ads, algorithms, or tracking.**
 
 ## What is Mu?
 
-Mu is your private AI-powered home on the internet. While other platforms monetize your attention with ads (yes, even ChatGPT now), Mu helps you consume less, not more.
+Mu is a collection of micro apps for everyday use. While other platforms monetize your attention with infinite feeds and targeted ads, Mu gives you simple tools that respect your time.
 
 Think of Mu as the opposite of what the internet has become:
 
@@ -10,34 +10,37 @@ Think of Mu as the opposite of what the internet has become:
 |-------------------|-----|
 | Infinite scroll | Finite, curated content |
 | Algorithmic feeds | Chronological, you choose |
-| Ad-supported AI | AI that works for you |
-| Engagement metrics | Intentional creation |
-| Screen time maximization | Screen time reduction |
+| Ad-supported everything | No ads |
+| Engagement metrics | Intentional use |
+| Screen time maximization | Get in, get out |
 
 ## Why Mu Exists
 
-The internet was supposed to connect us and make life better. Instead, American-owned corporations have optimized for addiction and extraction:
+The internet was supposed to connect us and make life better. Instead, platforms have optimized for addiction and extraction:
 
 - **Rage bait** to keep you scrolling
 - **Notifications** to pull you back
 - **Likes and followers** to gamify your worth
 - **Ads** disguised as content
-- **AI assistants** that will soon serve advertisers
+- **Algorithms** that decide what you see
 
 We built Mu to answer a simple question: **What would technology look like if it respected you?**
 
 ## Our Approach
 
-### AI as a Tool, Not a Destination
+### Simple Tools That Work
 
-AI in Mu exists to reduce your screen time, not increase it:
+Each feature does one thing well:
 
-- **Summarize** instead of scroll — Read 50 articles in 2 minutes
-- **Extract** instead of watch — Get key points from videos without watching
-- **Draft** instead of compose — AI helps, you refine
-- **Ask** instead of search — Get answers, not infinite results
-
-The goal is 10x reduction in consumption. If you spent an hour on news before, it should take 6 minutes now.
+- **Home** — Your dashboard, everything in one place
+- **Apps** — Build and share micro apps
+- **Blog** — Microblogging without the engagement tricks
+- **Chat** — Group discussions
+- **News** — RSS feeds, chronological
+- **Video** — YouTube without ads or shorts
+- **Notes** — Quick capture with tags and search
+- **Mail** — Private messaging
+- **Agent** — AI assistant when you need it
 
 ### No Addiction Mechanics
 
@@ -46,7 +49,7 @@ We deliberately exclude features that drive addiction:
 - **No likes** — Your worth isn't a number
 - **No follower counts** — Quality over popularity
 - **No infinite scroll** — There's always an end
-- **No notifications** — You come when you want
+- **No push notifications** — You come when you want
 - **No algorithmic ranking** — Chronological, transparent
 
 ### Privacy by Design
@@ -54,36 +57,19 @@ We deliberately exclude features that drive addiction:
 - **Your server, your data** — Self-host if you want
 - **No tracking** — We don't profile you
 - **No ads** — We don't sell your attention
-- **End-to-end messaging** — Private by default
+- **Private messaging** — Between you and them
 
-## The Features
+## AI Features
 
-### Chat
-AI assistant with context-aware conversations. Ask questions, get answers without wading through search results.
+Some features are enhanced with AI:
 
-### Agent
-AI that executes tasks across your data. Automated workflows without the complexity.
+- **News** — Summarize articles
+- **Chat** — Knowledge assistant for discussions
+- **Apps** — Generate apps from prompts
+- **Agent** — AI assistant with tool access
+- **Notes** — Auto-tagging and smart search
 
-### Apps
-Build micro apps from natural language. Describe what you want, AI creates it.
-
-### Notes
-Quick capture for your thoughts. Tags, pins, archive, search — a simple replacement for Google Keep. The agent can save and search notes for you.
-
-### News
-AI-curated RSS feeds with summaries. Stay informed without the time sink.
-
-### Video
-Search YouTube without ads. Coming soon: AI summaries of video content.
-
-### Mail
-Private messaging and email. Coming soon: AI-assisted drafting and prioritization.
-
-### Blog
-Thoughtful microblogging. No character limits designed for "engagement." Write with intention.
-
-### Home
-Your personalized dashboard. Everything important, nothing distracting.
+AI is a tool, not the product. It helps when useful, stays out of the way otherwise.
 
 ---
 

@@ -1,10 +1,10 @@
-**Guiding principles for AI and technology at Mu**
+**Guiding principles for technology at Mu**
 
 ## Foundation
 
 Technology is a tool, not a destination. It should serve human flourishing, not exploit human weakness. These principles are rooted in timeless wisdom — particularly Islamic ethics (Shariah) — but speak to universal human values.
 
-The core idea: **AI is a tool, not a replacement for God.**
+The core idea: **Technology should serve you, not exploit you.**
 
 ## The Five Principles
 
@@ -82,57 +82,12 @@ What is entrusted to you must be protected. Your data, your attention, your time
 
 ## AI as a Tool
 
-AI in Mu follows a simple rule: **reduce, don't replace**.
+Where AI is used, it follows a simple rule: **assist, don't replace**.
 
-| AI Should | AI Should Not |
-|-----------|---------------|
-| Summarize content to save time | Replace human judgment |
-| Draft messages for you to refine | Send messages without review |
-| Extract key points from videos | Decide what you should believe |
-| Help you write clearly | Write without your input |
-| Answer questions from your data | Replace deep study and reflection |
-
-### AI Guardrails
-
-1. **AI suggests, humans decide** — Final actions require human confirmation
-2. **AI assists, not replaces** — For communication, drafts need human review
-3. **AI accelerates, not addicts** — The goal is less screen time
-4. **AI is honest** — When uncertain, it says so
-5. **AI serves you** — Not advertisers, not engagement metrics
-
-## Practical Applications
-
-### For Video
-
-Instead of watching 10 videos (5 hours), AI provides:
-- Key points summary (2 minutes)
-- Timestamps for important sections
-- Questions you can ask about the content
-- Decision: watch the whole thing, or move on with the summary
-
-### For Mail
-
-Instead of writing 50 emails from scratch:
-- AI drafts based on context
-- You refine and personalize
-- AI hints if tone seems harsh
-- Decision: send as-is, edit, or rewrite
-
-### For Blog
-
-Instead of reactive posting:
-- AI prompts: *What's your intention with this post?*
-- AI helps clarify your thinking
-- No instant gratification of likes
-- Focus on substance over performance
-
-### For News
-
-Instead of doomscrolling 100 articles:
-- AI summarizes the day's important news
-- Key points, not clickbait headlines
-- You choose to go deeper or not
-- Decision: informed in 5 minutes
+- AI suggests, humans decide
+- AI helps when useful, stays out of the way otherwise
+- AI is honest — when uncertain, it says so
+- AI serves you, not advertisers
 
 ## The Opposite of Addiction
 

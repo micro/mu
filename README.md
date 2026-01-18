@@ -1,36 +1,26 @@
 # mu
 
-A personal AI platform — without ads
+The Micro Network — apps without ads, algorithms, or tracking.
 
 ## Overview
 
-Mu is your private AI-powered home on the internet. While other platforms monetize your attention with ads (yes, even ChatGPT now), Mu helps you consume less, not more.
+Mu is a collection of micro apps for everyday use. While other platforms monetize your attention with ads and infinite feeds, Mu gives you simple tools that respect your time.
 
-**The problem**: The internet is designed to waste your time. Feeds are infinite, videos autoplay, and AI assistants are becoming ad-supported.
+**The problem**: The internet is designed to waste your time. Feeds are infinite, videos autoplay, and everything tracks you.
 
-**The solution**: AI that works for you, not advertisers. Summarize instead of scroll. Ask instead of search. Create instead of consume.
+**The solution**: Small, focused apps that do one thing well. No ads. No algorithms. No tracking.
 
 ### Features
 
-- **Chat** - AI assistant with context-aware conversations
-- **Agent** - AI that executes tasks across your data
-- **Apps** - Build micro apps from natural language
-- **Notes** - Quick capture with tags, pins, and search
-- **News** - AI-curated feeds with summaries
-- **Video** - Ad-free viewing with AI summaries
-- **Mail** - Private email with AI assistance  
-- **Blog** - Thoughtful microblogging
 - **Home** - Your personalized dashboard
-
-### AI Everywhere
-
-| Before | After with Mu |
-|--------|---------------|
-| Read 50 news articles | AI summary in 2 minutes |
-| Watch 10 YouTube videos | Key points extracted instantly |
-| Write email from scratch | AI drafts, you refine |
-| Build a simple app | Describe it, AI creates it |
-| Search through content | Ask questions, get answers |
+- **Apps** - Build and share micro apps
+- **Blog** - Thoughtful microblogging
+- **Chat** - Group discussions with AI assistance
+- **News** - RSS feeds with summaries
+- **Video** - Watch YouTube without ads
+- **Notes** - Quick capture with tags, pins, and search
+- **Mail** - Private messaging
+- **Agent** - AI assistant that can use all the above
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
@@ -54,36 +44,23 @@ Starting with:
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
-### AI Opportunities
+### AI Features
 
-The goal is to reduce internet consumption by 10x through AI. Here's how AI can enhance each feature:
+Some features are enhanced with AI:
 
-| Feature | Current State | AI Opportunity | Impact |
-|---------|--------------|----------------|--------|
-| **News** | ✅ AI summaries | Already integrated | High - Read 50 articles in 2 min |
-| **Chat** | ✅ LLM chat | Already integrated | High - Get answers instantly |
-| **Apps** | ✅ AI builder | Already integrated | High - Build apps from prompts |
-| **Agent** | ✅ AI assistant | Already integrated | High - Automated workflows |
-| **Video** | ⏳ Search only | Summarize videos, extract key points, Q&A on content | High - 10 videos → 2 min summary |
-| **Blog** | ⏳ Manual posts | Intention prompts, clarity assistance, kindness hints | Medium - Thoughtful creation |
-| **Mail** | ⏳ Manual compose | Draft replies, summarize threads, tone awareness | Medium - 100 emails → 5 min |
-| **Wallet** | ✅ Credit system | Infrastructure, AI not applicable | N/A - Payment tracking |
-
-**Priority order for AI integration:**
-1. **Video** - Highest impact; people spend hours watching when a summary would suffice
-2. **Mail** - High value for power users; AI-drafted replies with tone awareness
-3. **Blog** - Focus on intentionality; AI prompts reflection, not engagement
-
-**Philosophy:** AI is a tool, not a destination. It should reduce screen time, not extend it. See [Principles](docs/PRINCIPLES.md) for details.
+- **News** - Summarize articles
+- **Chat** - Knowledge assistant for group discussions
+- **Apps** - Generate apps from prompts
+- **Agent** - AI assistant with tool access
+- **Notes** - Auto-tagging and smart search
 
 ## Micro Apps
 
-Mu includes an AI-powered micro app builder. Users can create single-page web apps from natural language prompts.
+Mu includes a micro app builder. Create single-page web apps with persistent storage.
 
 ### Features
 
-- **Generate Apps** - Describe what you want, AI builds it
-- **Iterate** - Refine with follow-up instructions
+- **Build Apps** - Create apps manually or with AI assistance
 - **Persist Data** - Apps can store user data via the Mu SDK
 - **Share** - Make apps public for others to use
 

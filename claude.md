@@ -1,7 +1,7 @@
 # Mu Development Checkpoint
 
 ## What is Mu?
-A personal AI platform - utility tools, not a destination. Like Google Search circa 2000: arrive with intent, get answer, leave.
+The Micro Network - apps without ads, algorithms, or tracking. Utility tools, not a destination. Like Google Search circa 2000: arrive with intent, get what you need, leave.
 
 ## Philosophy
 - **Utility, not destination** - tools that solve problems and get out of the way
@@ -11,14 +11,13 @@ A personal AI platform - utility tools, not a destination. Like Google Search ci
 - **Self-host option** - run your own instance for free forever
 
 ## Value Proposition
-Big Tech platforms maximize your time on them. Mu minimizes it. Get in, get what you need, get out.
+No ads, no algorithms, no tracking. Simple apps that respect your time.
 
-1. **AI as Compression, Not Generation** - Summarize, don't generate endless content
-2. **Unified Agent** - One interface to everything (voice or text)
-3. **App Generation** - Describe it, have it. No app store, no downloads
-4. **Consolidation** - Notes, email, news, video, chat, apps in one place
-5. **Pay-as-you-go, No Ads** - You're the customer, not the product
-6. **Self-hostable** - Single binary, your data stays yours
+1. **Micro Apps** - Small, focused tools that do one thing well
+2. **Consolidation** - Notes, email, news, video, chat, apps in one place
+3. **AI When Useful** - Summarization, app generation, agent assistance
+4. **Pay-as-you-go, No Ads** - You're the customer, not the product
+5. **Self-hostable** - Single binary, your data stays yours
 
 ## Core Building Blocks
 
