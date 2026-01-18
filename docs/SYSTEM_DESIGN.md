@@ -104,7 +104,7 @@ User-to-user messaging system:
 - **SMTP Server** - Receives incoming messages from internet
 - **DKIM Signing** - Authenticates outbound messages
 - **Threading** - Conversation view with replies
-- **Access Control** - Restricted to admins and members
+- **Access Control** - Internal messages free, external email costs credits
 
 ### App (`app/`)
 
@@ -180,7 +180,7 @@ Part of building societal fabric is monetary transaction. Future plans include:
 
 ### Economic Model
 
-Users can self-host or use the hosted version at mu.xyz. Optional membership supports development while keeping the platform free for all.
+Users can self-host or use the hosted version at mu.xyz. Pay-as-you-go credits support development while keeping the platform free for casual use.
 
 ## Agents
 

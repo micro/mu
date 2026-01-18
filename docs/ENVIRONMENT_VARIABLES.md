@@ -55,7 +55,8 @@ export MAIL_SELECTOR="default"       # Default: default
 - SMTP server always runs automatically
 - Mu delivers external messages directly to recipient servers via SMTP (no relay needed)
 - DKIM signing enables automatically if keys exist at `~/.mu/keys/dkim.key`
-- Messaging access is restricted to admins and members only
+- Internal messaging is free for all registered users
+- External email costs credits (SMTP delivery cost)
 
 ## Payment Configuration (Optional)
 
@@ -294,8 +295,7 @@ docker run -d \
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Get API keys from Developers → API Keys
 3. Set up webhook endpoint at Developers → Webhooks
-4. Create a subscription product for memberships
-5. Required for credit top-ups and automated memberships
+4. Required for credit top-ups (pay-as-you-go)
 
 ## Feature Requirements
 

@@ -102,7 +102,7 @@ All API endpoints support three authentication methods:
 | `/post?id={id}` | DELETE | Yes | Delete post (author only) |
 | `/post/{id}/comment` | POST | Yes | Add comment to post |
 
-*Private posts require member/admin authentication
+*Private posts require admin authentication
 
 ### Chat
 | Endpoint | Method | Auth Required | Description |
@@ -130,7 +130,7 @@ All API endpoints support three authentication methods:
 | `/@{username}` | GET | No* | Get user profile and posts |
 | `/@{username}` | POST | Yes (self) | Update status message |
 
-*Private content requires member/admin authentication
+*Private content requires admin authentication
 
 ### Search
 | Endpoint | Method | Auth Required | Description |

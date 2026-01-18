@@ -114,7 +114,8 @@ Internet → SMTP Server (port 2525/25)
 **SMTP server always runs** - no enable flag needed. Just configure DNS to route mail.
 
 **Access Control:**
-- Mail functionality is restricted to admins and members only
+- Internal messaging is free for all users
+- External email costs 3 credits per message (SMTP delivery cost)
 - Set user roles via the admin interface
 
 **How Message Delivery Works:**
