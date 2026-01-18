@@ -2,11 +2,15 @@
 
 ## Philosophy
 
-Credits are a straightforward way to pay for what you use. No dark patterns, no pressure to upgrade.
+Mu is a tool, not a destination. Like Google Search in 2000 — you arrive with intent, get what you need, and leave.
 
-- **Free tier**: 10 searches/day - enough to try things out
+Credits are a straightforward way to pay for what you use. No dark patterns, no pressure to upgrade, no "unlimited" tiers that incentivize us to maximize your engagement.
+
+- **Free tier**: 10 AI queries/day - enough for casual utility use
 - **Pay-as-you-go**: Top up your wallet, use credits when you need more
-- **Membership**: For those who want to support Mu (£11/month) - unlimited everything
+- **Self-host**: Run your own instance for free, forever
+
+We charge because LLMs and APIs cost money. Here's our actual cost breakdown — we're not extracting margin, just covering infrastructure.
 
 ## How It Works
 
@@ -19,10 +23,12 @@ Credits are a straightforward way to pay for what you use. No dark patterns, no 
 
 ### Daily Free Quota
 
-Every registered user gets **10 free searches per day**:
+Every registered user gets **10 free AI queries per day**:
 - Resets at midnight UTC
 - Covers news search, video search, and chat AI queries
 - No credit card required
+
+This should be enough if you're using Mu as a utility. If you need more, pay-as-you-go.
 
 ### Credit Costs
 
@@ -31,7 +37,7 @@ Every registered user gets **10 free searches per day**:
 | News Search | 1 credit (1p) | Indexed search |
 | News Summary | 1 credit (1p) | AI-generated summary |
 | Video Search | 2 credits (2p) | YouTube API cost |
-| Video Watch | 2 credits (2p) | Ad-free viewing |
+| Video Watch | Free | No value added over YouTube |
 | Chat AI Query | 3 credits (3p) | LLM inference cost |
 | Chat Room | 1 credit (1p) | Room creation |
 | App Create | 5 credits (5p) | AI app generation |
@@ -43,9 +49,16 @@ Every registered user gets **10 free searches per day**:
 | User Type | Daily Free | Credits | Notes |
 |-----------|------------|---------|-------|
 | Guest | 0 | N/A | Must register |
-| Registered | 10 searches | Pay-as-you-go | When free quota exceeded |
-| Member | Unlimited | Not needed | £11/month |
+| Registered | 10 queries | Pay-as-you-go | When free quota exceeded |
 | Admin | Unlimited | Not needed | Site administrators |
+
+## Why No "Unlimited" Tier?
+
+Unlimited tiers create misaligned incentives. If you pay a flat fee for unlimited usage, we're incentivized to make you use Mu *more* to feel you're getting value. That's the seed of engagement optimization.
+
+Pay-as-you-go keeps us honest: we want to build efficient tools that solve your problem quickly, not sticky products that maximize your screen time.
+
+If you want truly unlimited and free — self-host. The code is open source.
 
 ## Top-up Options
 
@@ -94,7 +107,7 @@ type Transaction struct {
 type DailyUsage struct {
     UserID   string `json:"user_id"`
     Date     string `json:"date"`     // "2006-01-02"
-    Searches int    `json:"searches"` // Free searches used today
+    Searches int    `json:"searches"` // Free queries used today
 }
 ```
 
@@ -109,18 +122,10 @@ type DailyUsage struct {
 | GET | `/wallet/success` | Stripe success redirect |
 | GET | `/wallet/cancel` | Stripe cancel redirect |
 | POST | `/wallet/webhook` | Stripe payment confirmation |
-| GET | `/plans` | View available plans |
 
 ---
 
 ## Pages
-
-### /plans
-
-Overview of all options:
-- Free tier (10 searches/day)
-- Pay-as-you-go (credit costs)
-- Membership (£11/month, unlimited)
 
 ### /wallet
 
@@ -128,11 +133,6 @@ Overview of all options:
 - Daily quota progress
 - Top-up buttons
 - Transaction history
-
-### /membership
-
-- Benefits of membership
-- Join link (existing functionality)
 
 ---
 
@@ -155,7 +155,7 @@ FREE_DAILY_SEARCHES="10"
 CREDIT_COST_NEWS="1"
 CREDIT_COST_NEWS_SUMMARY="1"
 CREDIT_COST_VIDEO="2"
-CREDIT_COST_VIDEO_WATCH="2"
+CREDIT_COST_VIDEO_WATCH="0"
 CREDIT_COST_CHAT="3"
 ```
 
@@ -166,7 +166,7 @@ CREDIT_COST_CHAT="3"
 ### Quota Check Flow
 
 1. User initiates search/chat
-2. Check if member/admin → allow (no charge)
+2. Check if admin → allow (no charge)
 3. Check daily free quota → allow if available, decrement
 4. Check wallet balance → allow if sufficient, deduct credits
 5. Otherwise → show "quota exceeded" with options

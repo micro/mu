@@ -19,7 +19,7 @@ var (
 	CostNewsSearch    = getEnvInt("CREDIT_COST_NEWS", 1)
 	CostNewsSummary   = getEnvInt("CREDIT_COST_NEWS_SUMMARY", 1)
 	CostVideoSearch   = getEnvInt("CREDIT_COST_VIDEO", 2)
-	CostVideoWatch    = getEnvInt("CREDIT_COST_VIDEO_WATCH", 2)
+	CostVideoWatch    = getEnvInt("CREDIT_COST_VIDEO_WATCH", 0) // Free - no value added over YouTube
 	CostChatQuery     = getEnvInt("CREDIT_COST_CHAT", 3)
 	CostChatRoom      = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
 	CostAppCreate     = getEnvInt("CREDIT_COST_APP_CREATE", 5)

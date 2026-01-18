@@ -96,13 +96,11 @@ func WalletPage(userID string) string {
 		sb.WriteString(fmt.Sprintf(`<p style="font-size: 14px; color: #666;">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, FreeDailySearches))
 		sb.WriteString(`</div>`)
 
-		// Subscription
-		if IsStripeConfigured() && StripeMembershipPrice != "" {
-			sb.WriteString(`<div class="card">`)
-			sb.WriteString(`<h3>Subscription</h3>`)
-			sb.WriteString(`<p>Unlimited access · <a href="/wallet/subscribe">Subscribe →</a></p>`)
-			sb.WriteString(`</div>`)
-		}
+		// Self-hosting note
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(`<h3>Self-Host</h3>`)
+		sb.WriteString(`<p style="font-size: 14px; color: #666;">Want unlimited and free? <a href="https://github.com/asim/mu">Self-host your own instance</a>.</p>`)
+		sb.WriteString(`</div>`)
 	}
 
 	// Credit costs
@@ -112,7 +110,9 @@ func WalletPage(userID string) string {
 	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td style="text-align: right;">%dp</td></tr>`, CostNewsSearch))
 	sb.WriteString(fmt.Sprintf(`<tr><td>News article</td><td style="text-align: right;">%dp</td></tr>`, CostNewsSummary))
 	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td style="text-align: right;">%dp</td></tr>`, CostVideoSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Video watch</td><td style="text-align: right;">%dp</td></tr>`, CostVideoWatch))
+	if CostVideoWatch > 0 {
+		sb.WriteString(fmt.Sprintf(`<tr><td>Video watch</td><td style="text-align: right;">%dp</td></tr>`, CostVideoWatch))
+	}
 	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td style="text-align: right;">%dp</td></tr>`, CostChatQuery))
 	sb.WriteString(`</table>`)
 	sb.WriteString(`</div>`)
