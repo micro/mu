@@ -101,6 +101,18 @@ func buildStatus() StatusResponse {
 		Status: youtubeConfigured,
 	})
 
+	// Check Stripe/Payments
+	stripeConfigured := os.Getenv("STRIPE_SECRET_KEY") != ""
+	quotaMode := "Unlimited (self-hosted)"
+	if stripeConfigured {
+		quotaMode = "Pay-as-you-go"
+	}
+	services = append(services, StatusCheck{
+		Name:    "Payments",
+		Status:  stripeConfigured,
+		Details: quotaMode,
+	})
+
 	// Configuration checks
 	mailDomain := os.Getenv("MAIL_DOMAIN")
 	config = append(config, StatusCheck{
