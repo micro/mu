@@ -196,23 +196,7 @@ var Template = `
         <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><b>Login</b></a>
       </div>
     </div>
-    <!-- Micro FAB -->
-    <button id="micro-fab" onclick="openMicroDialog()" aria-label="Ask @micro">@</button>
-    <!-- Micro Dialog -->
-    <div id="micro-dialog" style="display: none;">
-      <div id="micro-overlay" onclick="closeMicroDialog()"></div>
-      <div id="micro-modal">
-        <div id="micro-header">
-          <span>@micro</span>
-          <button onclick="closeMicroDialog()" id="micro-close">&times;</button>
-        </div>
-        <div id="micro-messages"></div>
-        <form id="micro-form" onsubmit="sendMicroMessage(); return false;">
-          <input type="text" id="micro-input" placeholder="Ask a question..." autocomplete="off">
-          <button type="submit">Send</button>
-        </form>
-      </div>
-    </div>
+
     <div id="container">
       <div id="nav-container">
         <div id="nav">
