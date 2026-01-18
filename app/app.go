@@ -219,7 +219,6 @@ var Template = `
 					<a href="/home"><img src="/home.png" style="margin-bottom: 1px"><span class="label">Home</span></a>
 					<a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
 					<a href="/notes"><img src="/notes.png"><span class="label">Notes</span></a>
-					<a href="/agent"><img src="/agent.png"><span class="label">Agent</span></a>
 					<a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
 					<a href="/news"><img src="/news.png"><span class="label">News</span></a>
 					<a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
