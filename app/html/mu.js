@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v87';
+var VERSION = 'v88';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1588,18 +1588,16 @@ const availableCards = [
 ];
 
 function initCardCustomization() {
-  // Add customize link to the right of page title
+  // Add customize link below page title
   const pageTitle = document.getElementById('page-title');
   if (pageTitle && pageTitle.textContent === 'Home' && !document.getElementById('customize-link')) {
-    // Wrap title in flex container
-    pageTitle.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
     const link = document.createElement('a');
     link.id = 'customize-link';
     link.href = '#';
     link.textContent = 'Customize';
-    link.style.cssText = 'font-size: 14px; font-weight: normal; color: var(--text-muted);';
+    link.style.cssText = 'font-size: 13px; font-weight: normal; color: var(--text-muted); display: block; margin-top: 5px;';
     link.onclick = (e) => { e.preventDefault(); showCardModal(); };
-    pageTitle.appendChild(link);
+    pageTitle.insertAdjacentElement('afterend', link);
   }
 }
 
@@ -1610,9 +1608,9 @@ function showCardModal() {
   let checkboxes = '';
   availableCards.forEach(card => {
     const checked = !hidden.includes(card.id) ? 'checked' : '';
-    checkboxes += `<label style="display: block; margin: 10px 0; cursor: pointer;">
-      <input type="checkbox" ${checked} data-card-id="${card.id}" style="margin-right: 10px;">
-      ${card.title}
+    checkboxes += `<label style="display: flex; align-items: center; margin: 10px 0; cursor: pointer;">
+      <input type="checkbox" ${checked} data-card-id="${card.id}" style="margin-right: 10px; flex-shrink: 0;">
+      <span>${card.title}</span>
     </label>`;
   });
   
