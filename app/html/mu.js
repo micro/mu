@@ -1601,7 +1601,7 @@ function initCardCustomization() {
     // Mobile: after agent hero
     const agentHero = document.getElementById('agent-hero');
     if (agentHero) {
-      link.style.cssText = 'font-size: 12px; color: var(--text-muted); display: block;';
+      link.style.cssText = 'font-size: 12px; color: var(--text-muted); float: right;';
       agentHero.insertAdjacentElement('afterend', link);
     }
   } else {
