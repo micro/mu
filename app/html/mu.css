@@ -570,7 +570,6 @@ td {
 
 /* Agent hero on home page */
 #agent-hero {
-  padding-bottom: 20px;
   border-bottom: 1px solid var(--card-border, #e0e0e0);
 }
 
