@@ -735,6 +735,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p>Resets at midnight UTC</p>`)
 	if !isLoggedIn {
 		content.WriteString(`<p style="margin-top: 15px;"><a href="/signup">Sign up →</a></p>`)
+	} else if isAdmin {
+		content.WriteString(`<p style="margin-top: 15px; color: #666;">You have full access</p>`)
 	} else {
 		content.WriteString(`<p style="margin-top: 15px; color: #666;">Your current plan</p>`)
 	}
@@ -753,7 +755,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	} else if !isLoggedIn {
 		content.WriteString(`<p style="margin-top: 15px;"><a href="/signup">Sign up first →</a></p>`)
 	} else {
-		content.WriteString(`<p style="margin-top: 15px; color: #666;">Admin access</p>`)
+		content.WriteString(`<p style="margin-top: 15px; color: #666;">You have full access</p>`)
 	}
 	content.WriteString(`</div>`)
 
