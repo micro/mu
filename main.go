@@ -72,18 +72,18 @@ func main() {
 	// load the mail (also configures SMTP and DKIM)
 	mail.Load()
 
-	// load the home cards
+	// load micro apps
+	apps.Load()
+
+	// load built-in apps (markets, reminder) - must be before home.Load()
+	apps.LoadMarkets()
+	apps.LoadReminder()
+
+	// load the home cards (after built-in apps so cards have data)
 	home.Load()
 
 	// load user presence tracking
 	user.Load()
-
-	// load micro apps
-	apps.Load()
-
-	// load built-in apps (markets, reminder)
-	apps.LoadMarkets()
-	apps.LoadReminder()
 
 	// Enable indexing after all content is loaded
 	// This allows the priority queue to process new items first
