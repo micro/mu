@@ -25,14 +25,13 @@ var presenceMutex sync.RWMutex
 var userPresence = map[string]time.Time{} // username -> last seen time
 
 type Account struct {
-	ID               string    `json:"id"`
-	Name             string    `json:"name"`
-	Secret           string    `json:"secret"`
-	Created          time.Time `json:"created"`
-	Admin            bool      `json:"admin"`
-	Language         string    `json:"language"`
-	Widgets          []string  `json:"widgets,omitempty"` // App IDs to show as home widgets
-	StripeCustomerID string    `json:"stripe_customer_id,omitempty"`
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Secret   string    `json:"secret"`
+	Created  time.Time `json:"created"`
+	Admin    bool      `json:"admin"`
+	Language string    `json:"language"`
+	Widgets  []string  `json:"widgets,omitempty"` // App IDs to show as home widgets
 }
 
 type Session struct {
