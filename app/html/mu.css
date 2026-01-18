@@ -887,8 +887,7 @@ body:has(#messages) #chat-back-link {
 }
 
 #messages {
-  flex-grow: 1;
-  min-height: 0;
+  max-height: calc(100vh - 200px);
   border: 1px solid #ddd;
   border-radius: 5px;
   padding: 15px;
