@@ -1331,3 +1331,18 @@ func DeleteThread(msgID, userID string) error {
 	app.Log("mail", "Deleted %d messages from thread for user %s", deleted, userID)
 	return save()
 }
+
+// GetAllMessages returns all messages (for admin use)
+func GetAllMessages() []*Message {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	
+	result := make([]*Message, len(messages))
+	copy(result, messages)
+	return result
+}
+
+// IsExternalAddress checks if an address is external (contains @)
+func IsExternalAddress(addr string) bool {
+	return strings.Contains(addr, "@") && !strings.HasSuffix(addr, "@"+GetConfiguredDomain())
+}

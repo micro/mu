@@ -509,10 +509,8 @@ func (s *Session) Data(r io.Reader) error {
 			messageID,
 		); err != nil {
 			app.Log("mail", "Error saving message: %v", err)
-			LogEmail("inbound", fromAddr.Address, toAddr.Address, subject, messageID, "failed", err.Error(), buf.Len())
 			continue
 		}
-		LogEmail("inbound", fromAddr.Address, toAddr.Address, subject, messageID, "received", "", buf.Len())
 	}
 
 	app.Log("mail", "Email processed successfully")

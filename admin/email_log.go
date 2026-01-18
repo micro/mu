@@ -3,7 +3,9 @@ package admin
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
+	"time"
 
 	"mu/app"
 	"mu/auth"
@@ -19,8 +21,73 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logs := mail.GetEmailLogs(100)
-	stats := mail.GetEmailLogStats()
+	messages := mail.GetAllMessages()
+	
+	// Sort by date descending
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].CreatedAt.After(messages[j].CreatedAt)
+	})
+
+	// Calculate stats
+	now := time.Now()
+	cutoff24h := now.Add(-24 * time.Hour)
+	cutoff7d := now.Add(-7 * 24 * time.Hour)
+	
+	stats := struct {
+		Total      int
+		Last24h    int
+		Last7d     int
+		Inbound    int
+		Outbound   int
+		Internal   int
+		Domains    map[string]int
+	}{
+		Domains: make(map[string]int),
+	}
+	
+	stats.Total = len(messages)
+	
+	for _, msg := range messages {
+		if msg.CreatedAt.After(cutoff24h) {
+			stats.Last24h++
+		}
+		if msg.CreatedAt.After(cutoff7d) {
+			stats.Last7d++
+		}
+		
+		// Determine direction
+		fromExternal := mail.IsExternalAddress(msg.FromID)
+		toExternal := mail.IsExternalAddress(msg.ToID)
+		
+		if fromExternal {
+			stats.Inbound++
+			// Extract domain
+			if parts := strings.Split(msg.FromID, "@"); len(parts) == 2 {
+				stats.Domains[parts[1]]++
+			}
+		} else if toExternal {
+			stats.Outbound++
+			// Extract domain
+			if parts := strings.Split(msg.ToID, "@"); len(parts) == 2 {
+				stats.Domains[parts[1]]++
+			}
+		} else {
+			stats.Internal++
+		}
+	}
+
+	// Sort domains by count
+	type domainCount struct {
+		Domain string
+		Count  int
+	}
+	var sortedDomains []domainCount
+	for d, c := range stats.Domains {
+		sortedDomains = append(sortedDomains, domainCount{d, c})
+	}
+	sort.Slice(sortedDomains, func(i, j int) bool {
+		return sortedDomains[i].Count > sortedDomains[j].Count
+	})
 
 	var content strings.Builder
 
@@ -28,20 +95,36 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">`)
 	content.WriteString(`<h3>Email Statistics</h3>`)
 	content.WriteString(`<table style="width: 100%; font-size: 14px;">`)
-	content.WriteString(fmt.Sprintf(`<tr><td>Last 24 hours</td><td style="text-align: right;">%d total (%d outbound)</td></tr>`, stats["last_24h"], stats["last_24h_out"]))
-	content.WriteString(fmt.Sprintf(`<tr><td>Total logged</td><td style="text-align: right;">%d</td></tr>`, stats["total"]))
-	content.WriteString(fmt.Sprintf(`<tr><td>Inbound</td><td style="text-align: right;">%d</td></tr>`, stats["inbound"]))
-	content.WriteString(fmt.Sprintf(`<tr><td>Outbound</td><td style="text-align: right;">%d</td></tr>`, stats["outbound"]))
-	content.WriteString(fmt.Sprintf(`<tr><td>Failed</td><td style="text-align: right;">%d</td></tr>`, stats["failed"]))
+	content.WriteString(fmt.Sprintf(`<tr><td>Total messages</td><td style="text-align: right;">%d</td></tr>`, stats.Total))
+	content.WriteString(fmt.Sprintf(`<tr><td>Last 24 hours</td><td style="text-align: right;">%d</td></tr>`, stats.Last24h))
+	content.WriteString(fmt.Sprintf(`<tr><td>Last 7 days</td><td style="text-align: right;">%d</td></tr>`, stats.Last7d))
+	content.WriteString(fmt.Sprintf(`<tr><td>Inbound (external → local)</td><td style="text-align: right;">%d</td></tr>`, stats.Inbound))
+	content.WriteString(fmt.Sprintf(`<tr><td>Outbound (local → external)</td><td style="text-align: right;">%d</td></tr>`, stats.Outbound))
+	content.WriteString(fmt.Sprintf(`<tr><td>Internal (local → local)</td><td style="text-align: right;">%d</td></tr>`, stats.Internal))
 	content.WriteString(`</table>`)
 	content.WriteString(`</div>`)
 
-	// Log entries
+	// Top domains
+	if len(sortedDomains) > 0 {
+		content.WriteString(`<div class="card">`)
+		content.WriteString(`<h3>External Domains</h3>`)
+		content.WriteString(`<table style="width: 100%; font-size: 14px;">`)
+		for i, dc := range sortedDomains {
+			if i >= 10 {
+				break
+			}
+			content.WriteString(fmt.Sprintf(`<tr><td>%s</td><td style="text-align: right;">%d</td></tr>`, dc.Domain, dc.Count))
+		}
+		content.WriteString(`</table>`)
+		content.WriteString(`</div>`)
+	}
+
+	// Recent messages
 	content.WriteString(`<div class="card">`)
-	content.WriteString(`<h3>Recent Emails</h3>`)
+	content.WriteString(`<h3>Recent Messages</h3>`)
 	
-	if len(logs) == 0 {
-		content.WriteString(`<p style="color: #666;">No emails logged yet.</p>`)
+	if len(messages) == 0 {
+		content.WriteString(`<p style="color: #666;">No messages yet.</p>`)
 	} else {
 		content.WriteString(`<style>
 			.email-log { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -49,8 +132,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 			.email-log td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: top; }
 			.email-log .dir-in { color: #22c55e; }
 			.email-log .dir-out { color: #3b82f6; }
-			.email-log .status-failed { color: #ef4444; }
-			.email-log .status-sent, .email-log .status-received { color: #22c55e; }
+			.email-log .dir-int { color: #666; }
 			.email-log .subject { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 			.email-log .addr { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; }
 			@media (max-width: 768px) {
@@ -58,20 +140,34 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		</style>`)
 		content.WriteString(`<table class="email-log">`)
-		content.WriteString(`<tr><th>Time</th><th>Dir</th><th>From</th><th>To</th><th>Subject</th><th>Status</th></tr>`)
+		content.WriteString(`<tr><th>Time</th><th>Dir</th><th>From</th><th>To</th><th>Subject</th></tr>`)
 
-		for _, log := range logs {
-			dirClass := "dir-out"
-			dirLabel := "→"
-			if log.Direction == "inbound" {
+		limit := 50
+		if len(messages) < limit {
+			limit = len(messages)
+		}
+
+		for _, msg := range messages[:limit] {
+			fromExternal := mail.IsExternalAddress(msg.FromID)
+			toExternal := mail.IsExternalAddress(msg.ToID)
+			
+			dirClass := "dir-int"
+			dirLabel := "↔"
+			if fromExternal {
 				dirClass = "dir-in"
 				dirLabel = "←"
+			} else if toExternal {
+				dirClass = "dir-out"
+				dirLabel = "→"
 			}
 
-			statusClass := "status-" + log.Status
-			statusLabel := log.Status
-			if log.Error != "" {
-				statusLabel = fmt.Sprintf(`<span title="%s">%s</span>`, log.Error, log.Status)
+			fromDisplay := msg.From
+			if fromDisplay == "" {
+				fromDisplay = msg.FromID
+			}
+			toDisplay := msg.To
+			if toDisplay == "" {
+				toDisplay = msg.ToID
 			}
 
 			content.WriteString(fmt.Sprintf(`<tr>
@@ -80,14 +176,12 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 				<td class="addr" title="%s">%s</td>
 				<td class="addr" title="%s">%s</td>
 				<td class="subject" title="%s">%s</td>
-				<td class="%s">%s</td>
 			</tr>`,
-				log.Timestamp.Format("Jan 2 15:04:05"),
+				msg.CreatedAt.Format("Jan 2 15:04"),
 				dirClass, dirLabel,
-				log.From, truncateAddr(log.From),
-				log.To, truncateAddr(log.To),
-				log.Subject, truncateSubject(log.Subject),
-				statusClass, statusLabel,
+				fromDisplay, truncate(fromDisplay, 25),
+				toDisplay, truncate(toDisplay, 25),
+				msg.Subject, truncate(msg.Subject, 40),
 			))
 		}
 
@@ -97,20 +191,13 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 
 	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 
-	html := app.RenderHTMLForRequest("Email Log", "Email activity log", content.String(), r)
+	html := app.RenderHTMLForRequest("Email", "Email activity", content.String(), r)
 	w.Write([]byte(html))
 }
 
-func truncateAddr(s string) string {
-	if len(s) > 25 {
-		return s[:22] + "..."
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
 	}
-	return s
-}
-
-func truncateSubject(s string) string {
-	if len(s) > 40 {
-		return s[:37] + "..."
-	}
-	return s
+	return s[:max-3] + "..."
 }
