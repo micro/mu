@@ -97,7 +97,7 @@ func main() {
 		"/admin":           true,
 		"/admin/moderate":  true,
 		"/admin/blocklist": true,
-		"/admin/email-log": true,
+		"/admin/email": true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          true,  // Require auth for wallet
@@ -144,7 +144,7 @@ func main() {
 	http.HandleFunc("/admin/blocklist", admin.BlocklistHandler)
 
 	// email log
-	http.HandleFunc("/admin/email-log", admin.EmailLogHandler)
+	http.HandleFunc("/admin/email", admin.EmailLogHandler)
 
 	// plans page (public - overview of options)
 	http.HandleFunc("/plans", app.Plans)
