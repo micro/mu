@@ -1443,15 +1443,12 @@ func GetRecentMessages(limit int) []*Message {
 	mutex.RLock()
 	defer mutex.RUnlock()
 	
-	// Messages are stored oldest first, so we need to get from the end
-	start := len(messages) - limit
-	if start < 0 {
-		start = 0
+	// Messages are stored newest first (prepended)
+	if limit > len(messages) {
+		limit = len(messages)
 	}
 	
-	result := make([]*Message, 0, limit)
-	for i := len(messages) - 1; i >= start; i-- {
-		result = append(result, messages[i])
-	}
+	result := make([]*Message, limit)
+	copy(result, messages[:limit])
 	return result
 }
