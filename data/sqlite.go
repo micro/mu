@@ -180,41 +180,53 @@ func mergeSearchResults(vectorResults, keywordResults []*IndexEntry, query strin
 	words := strings.Fields(strings.ToLower(query))
 	
 	type scoredEntry struct {
-		entry    *IndexEntry
-		score    float64
-		fromVector bool
+		entry       *IndexEntry
+		keywordScore float64
+		vectorRank   int  // Lower is better, -1 if not in vector results
 	}
 	
 	seen := make(map[string]*scoredEntry)
 	
-	// Add vector results with base score
+	// Add vector results
 	for i, entry := range vectorResults {
-		// Vector results are already sorted by similarity, use position as score
-		score := float64(len(vectorResults) - i)
-		seen[entry.ID] = &scoredEntry{entry: entry, score: score, fromVector: true}
-	}
-	
-	// Add/boost keyword results
-	for _, entry := range keywordResults {
-		keywordScore := scoreMatch(entry, words)
-		if existing, found := seen[entry.ID]; found {
-			// Boost if keyword match is strong
-			existing.score += keywordScore
-		} else {
-			seen[entry.ID] = &scoredEntry{entry: entry, score: keywordScore, fromVector: false}
+		seen[entry.ID] = &scoredEntry{
+			entry:       entry,
+			vectorRank:  i,
+			keywordScore: 0,
 		}
 	}
 	
-	// Convert to slice and sort
+	// Add/update with keyword scores
+	for _, entry := range keywordResults {
+		keywordScore := scoreMatch(entry, words)
+		if existing, found := seen[entry.ID]; found {
+			existing.keywordScore = keywordScore
+		} else {
+			seen[entry.ID] = &scoredEntry{
+				entry:        entry,
+				keywordScore: keywordScore,
+				vectorRank:   -1,
+			}
+		}
+	}
+	
+	// Convert to slice
 	var scored []scoredEntry
 	for _, s := range seen {
 		scored = append(scored, *s)
 	}
 	
+	// Sort: high keyword score first, then by date
+	// Title matches (score >= 10) always come first
 	sort.Slice(scored, func(i, j int) bool {
-		if scored[i].score != scored[j].score {
-			return scored[i].score > scored[j].score
+		// Strong keyword matches (title) first
+		iStrong := scored[i].keywordScore >= 10
+		jStrong := scored[j].keywordScore >= 10
+		if iStrong != jStrong {
+			return iStrong
 		}
+		
+		// Within same tier, sort by date (newest first)
 		return getPostedAt(scored[i].entry).After(getPostedAt(scored[j].entry))
 	})
 	
@@ -398,14 +410,35 @@ func getPostedAt(entry *IndexEntry) time.Time {
 	if entry.Metadata == nil {
 		return entry.IndexedAt
 	}
-	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
+	
+	postedAt := entry.Metadata["posted_at"]
+	if postedAt == nil {
+		return entry.IndexedAt
+	}
+	
+	switch v := postedAt.(type) {
+	case time.Time:
 		return v
-	}
-	if v, ok := entry.Metadata["posted_at"].(string); ok {
-		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			return t
+	case string:
+		// Try multiple formats
+		formats := []string{
+			time.RFC3339,
+			time.RFC3339Nano,
+			"2006-01-02T15:04:05Z",
+			"2006-01-02T15:04:05",
+			"2006-01-02 15:04:05",
+			"2006-01-02",
 		}
+		for _, format := range formats {
+			if t, err := time.Parse(format, v); err == nil {
+				return t
+			}
+		}
+	case float64:
+		// Unix timestamp
+		return time.Unix(int64(v), 0)
 	}
+	
 	return entry.IndexedAt
 }
 
