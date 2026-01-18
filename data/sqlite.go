@@ -168,21 +168,22 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		return nil, err
 	}
 
-	// Split query into words and build WHERE clause that matches all words
-	words := strings.Fields(query)
+	words := strings.Fields(strings.ToLower(query))
 	if len(words) == 0 {
 		return nil, nil
 	}
 
-	// Build WHERE conditions: each word must appear in title OR content
+	// Build WHERE clause - at least one word must match
 	var conditions []string
 	var args []interface{}
 	for _, word := range words {
 		if len(word) < 2 {
-			continue // Skip single characters
+			continue
 		}
+		// Use word boundary matching: space or start/end of string
+		// SQLite LIKE doesn't support \b, so we check multiple patterns
 		likeWord := "%" + word + "%"
-		conditions = append(conditions, "(title LIKE ? OR content LIKE ?)")
+		conditions = append(conditions, "(LOWER(title) LIKE ? OR LOWER(content) LIKE ?)")
 		args = append(args, likeWord, likeWord)
 	}
 
@@ -190,25 +191,21 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		return nil, nil
 	}
 
-	whereClause := strings.Join(conditions, " AND ")
+	// Use OR so any word matching returns results, then rank in Go
+	whereClause := strings.Join(conditions, " OR ")
 	if options.Type != "" {
 		whereClause = "(" + whereClause + ") AND type = ?"
 		args = append(args, options.Type)
 	}
-	args = append(args, limit)
 
-	// Fetch more results than needed so we can sort by posted_at in Go
-	fetchLimit := limit * 3
-	if fetchLimit < 100 {
-		fetchLimit = 100
-	}
-	args = append(args[:len(args)-1], fetchLimit) // Replace limit arg
+	// Fetch more results for ranking
+	fetchLimit := 200
+	args = append(args, fetchLimit)
 
 	queryStr := fmt.Sprintf(`
 		SELECT id, type, title, content, metadata, indexed_at
 		FROM index_entries
 		WHERE %s
-		ORDER BY indexed_at DESC
 		LIMIT ?
 	`, whereClause)
 
@@ -218,7 +215,12 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 	}
 	defer rows.Close()
 
-	var results []*IndexEntry
+	type scoredEntry struct {
+		entry *IndexEntry
+		score float64
+	}
+	var scored []scoredEntry
+
 	for rows.Next() {
 		var entry IndexEntry
 		var metadataJSON sql.NullString
@@ -234,22 +236,92 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 			json.Unmarshal([]byte(metadataJSON.String), &entry.Metadata)
 		}
 
-		results = append(results, &entry)
+		// Score the result
+		score := scoreMatch(&entry, words)
+		if score > 0 {
+			scored = append(scored, scoredEntry{&entry, score})
+		}
 	}
 
-	// Sort by posted_at (from metadata) for news, falling back to indexed_at
-	sort.Slice(results, func(i, j int) bool {
-		ti := getPostedAt(results[i])
-		tj := getPostedAt(results[j])
-		return ti.After(tj)
+	// Sort by score (relevance) first, then by date for ties
+	sort.Slice(scored, func(i, j int) bool {
+		if scored[i].score != scored[j].score {
+			return scored[i].score > scored[j].score
+		}
+		// Same score - newer first
+		return getPostedAt(scored[i].entry).After(getPostedAt(scored[j].entry))
 	})
 
-	// Apply the actual limit after sorting
-	if limit > 0 && len(results) > limit {
-		results = results[:limit]
+	// Apply limit
+	if limit > 0 && len(scored) > limit {
+		scored = scored[:limit]
+	}
+
+	results := make([]*IndexEntry, len(scored))
+	for i, s := range scored {
+		results[i] = s.entry
 	}
 
 	return results, nil
+}
+
+// scoreMatch calculates relevance score for an entry
+func scoreMatch(entry *IndexEntry, words []string) float64 {
+	score := 0.0
+	titleLower := strings.ToLower(entry.Title)
+	contentLower := strings.ToLower(entry.Content)
+
+	for _, word := range words {
+		// Exact word boundary match in title (highest value)
+		if matchesWordBoundary(titleLower, word) {
+			score += 10.0
+		} else if strings.Contains(titleLower, word) {
+			// Substring match in title
+			score += 3.0
+		}
+
+		// Word boundary match in content
+		if matchesWordBoundary(contentLower, word) {
+			score += 2.0
+		} else if strings.Contains(contentLower, word) {
+			// Substring match in content
+			score += 0.5
+		}
+	}
+
+	return score
+}
+
+// matchesWordBoundary checks if word appears as a whole word (not substring)
+func matchesWordBoundary(text, word string) bool {
+	idx := 0
+	for {
+		pos := strings.Index(text[idx:], word)
+		if pos == -1 {
+			return false
+		}
+		pos += idx
+
+		// Check character before
+		validStart := pos == 0 || !isWordChar(text[pos-1])
+		// Check character after
+		endPos := pos + len(word)
+		validEnd := endPos >= len(text) || !isWordChar(text[endPos])
+
+		if validStart && validEnd {
+			return true
+		}
+
+		idx = pos + 1
+		if idx >= len(text) {
+			return false
+		}
+	}
+}
+
+// isWordChar returns true for letters and numbers
+func isWordChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 }
 
 // getPostedAt extracts posted_at from metadata, falling back to IndexedAt
