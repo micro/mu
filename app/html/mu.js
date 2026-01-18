@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v86';
+var VERSION = 'v87';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1577,34 +1577,42 @@ function applyHiddenCards() {
   });
 }
 
+// Available cards that can be shown/hidden
+const availableCards = [
+  { id: 'my-apps', title: 'My Apps' },
+  { id: 'news', title: 'News' },
+  { id: 'reminder', title: 'Reminder' },
+  { id: 'markets', title: 'Markets' },
+  { id: 'blog', title: 'Blog' },
+  { id: 'video', title: 'Video' }
+];
+
 function initCardCustomization() {
-  // Add customize link after page title
+  // Add customize link to the right of page title
   const pageTitle = document.getElementById('page-title');
   if (pageTitle && pageTitle.textContent === 'Home' && !document.getElementById('customize-link')) {
+    // Wrap title in flex container
+    pageTitle.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
     const link = document.createElement('a');
     link.id = 'customize-link';
     link.href = '#';
     link.textContent = 'Customize';
-    link.style.cssText = 'font-size: 14px; font-weight: normal; margin-left: 15px; color: var(--text-muted);';
+    link.style.cssText = 'font-size: 14px; font-weight: normal; color: var(--text-muted);';
     link.onclick = (e) => { e.preventDefault(); showCardModal(); };
     pageTitle.appendChild(link);
   }
 }
 
 function showCardModal() {
-  // Get all cards on the page
-  const cards = document.querySelectorAll('.card[id]');
   const hidden = JSON.parse(localStorage.getItem('mu_hidden_cards') || '[]');
   
-  // Build checkbox list
+  // Build checkbox list from available cards
   let checkboxes = '';
-  cards.forEach(card => {
-    const id = card.id;
-    const title = card.querySelector('h4')?.textContent || id;
-    const checked = !hidden.includes(id) ? 'checked' : '';
+  availableCards.forEach(card => {
+    const checked = !hidden.includes(card.id) ? 'checked' : '';
     checkboxes += `<label style="display: block; margin: 10px 0; cursor: pointer;">
-      <input type="checkbox" ${checked} data-card-id="${id}" style="margin-right: 10px;">
-      ${title}
+      <input type="checkbox" ${checked} data-card-id="${card.id}" style="margin-right: 10px;">
+      ${card.title}
     </label>`;
   });
   
