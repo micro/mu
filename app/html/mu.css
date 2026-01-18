@@ -1998,17 +1998,6 @@ a.highlight {
     height: 100dvh;
     box-sizing: border-box;
   }
-  body:has(#messages) #content {
-    height: calc(100dvh - 150px);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    padding: 10px 15px 130px 15px;
-    box-sizing: border-box;
-  }
-  body:has(#messages) #topics {
-    flex-shrink: 0;
-  }
   #topic-selector .head, #topics .head {
     font-size: 12px;
     padding: 5px 0;
@@ -2018,7 +2007,7 @@ a.highlight {
     text-align: center;
   }
   #messages {
-    max-height: calc(100dvh - 250px);
+    max-height: calc(100dvh - 280px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
