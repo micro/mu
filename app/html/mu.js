@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v84';
+var VERSION = 'v85';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1554,7 +1554,96 @@ if (window.location.pathname === '/home' || window.location.pathname === '/') {
   document.addEventListener('DOMContentLoaded', function() {
     // Small delay to let session check complete first
     setTimeout(connectPresence, 500);
+    
+    // Initialize card customization
+    initCardCustomization();
   });
+}
+
+// ============================================
+// CARD CUSTOMIZATION
+// ============================================
+
+function initCardCustomization() {
+  // Apply hidden cards from localStorage
+  const hidden = JSON.parse(localStorage.getItem('mu_hidden_cards') || '[]');
+  hidden.forEach(id => {
+    const card = document.getElementById(id);
+    if (card) card.style.display = 'none';
+  });
+  
+  // Add customize link after page title if logged in
+  if (!isAuthenticated) return;
+  
+  const pageTitle = document.getElementById('page-title');
+  if (pageTitle && pageTitle.textContent === 'Home') {
+    const link = document.createElement('a');
+    link.href = '#';
+    link.textContent = 'Customize';
+    link.style.cssText = 'font-size: 14px; font-weight: normal; margin-left: 15px; color: var(--text-muted);';
+    link.onclick = (e) => { e.preventDefault(); showCardModal(); };
+    pageTitle.appendChild(link);
+  }
+}
+
+function showCardModal() {
+  // Get all cards on the page
+  const cards = document.querySelectorAll('.card[id]');
+  const hidden = JSON.parse(localStorage.getItem('mu_hidden_cards') || '[]');
+  
+  // Build checkbox list
+  let checkboxes = '';
+  cards.forEach(card => {
+    const id = card.id;
+    const title = card.querySelector('h4')?.textContent || id;
+    const checked = !hidden.includes(id) ? 'checked' : '';
+    checkboxes += `<label style="display: block; margin: 10px 0; cursor: pointer;">
+      <input type="checkbox" ${checked} data-card-id="${id}" style="margin-right: 10px;">
+      ${title}
+    </label>`;
+  });
+  
+  // Create modal
+  const modal = document.createElement('div');
+  modal.id = 'card-customize-modal';
+  modal.innerHTML = `
+    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+      <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-top: 0;">Customize Home Cards</h3>
+        <p style="color: var(--text-muted); font-size: 14px;">Choose which cards to show:</p>
+        <div id="card-checkboxes">${checkboxes}</div>
+        <div style="margin-top: 20px; display: flex; gap: 10px;">
+          <button onclick="saveCardPrefs()" style="flex: 1;">Save</button>
+          <button onclick="closeCardModal()" style="flex: 1; background: #666;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function closeCardModal() {
+  const modal = document.getElementById('card-customize-modal');
+  if (modal) modal.remove();
+}
+
+function saveCardPrefs() {
+  const checkboxes = document.querySelectorAll('#card-checkboxes input[type="checkbox"]');
+  const hidden = [];
+  
+  checkboxes.forEach(cb => {
+    const cardId = cb.dataset.cardId;
+    const card = document.getElementById(cardId);
+    if (!cb.checked) {
+      hidden.push(cardId);
+      if (card) card.style.display = 'none';
+    } else {
+      if (card) card.style.display = '';
+    }
+  });
+  
+  localStorage.setItem('mu_hidden_cards', JSON.stringify(hidden));
+  closeCardModal();
 }
 
 } // End of window context check
