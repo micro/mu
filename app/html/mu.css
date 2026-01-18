@@ -2007,7 +2007,7 @@ a.highlight {
     text-align: center;
   }
   #messages {
-    max-height: calc(100dvh - 320px);
+    max-height: calc(100svh - 280px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
