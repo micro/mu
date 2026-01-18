@@ -100,6 +100,9 @@ func WalletPage(userID string) string {
 	}
 	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td style="text-align: right;">%dp</td></tr>`, CostChatQuery))
 	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td style="text-align: right;">%dp</td></tr>`, CostExternalEmail))
+	sb.WriteString(fmt.Sprintf(`<tr><td>App create</td><td style="text-align: right;">%dp</td></tr>`, CostAppCreate))
+	sb.WriteString(fmt.Sprintf(`<tr><td>App modify</td><td style="text-align: right;">%dp</td></tr>`, CostAppModify))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Agent run</td><td style="text-align: right;">%dp</td></tr>`, CostAgentRun))
 	sb.WriteString(`</table>`)
 	sb.WriteString(`</div>`)
 
