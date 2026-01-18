@@ -703,24 +703,24 @@ func Session(w http.ResponseWriter, r *http.Request) {
 
 // Plans handler - shows available options
 func Plans(w http.ResponseWriter, r *http.Request) {
-	membershipURL := os.Getenv("MEMBERSHIP_URL")
-	stripeMembershipConfigured := os.Getenv("STRIPE_MEMBERSHIP_PRICE") != "" && os.Getenv("STRIPE_SECRET_KEY") != ""
-
 	// Check if user is logged in and their status
-	isMember := false
+	isAdmin := false
 	isLoggedIn := false
 	_, acc := auth.TrySession(r)
 	if acc != nil {
 		isLoggedIn = true
-		isMember = acc.Member || acc.Admin
+		isAdmin = acc.Admin
 	}
 
 	var content strings.Builder
 
-	// 3-column pricing grid with responsive class
+	// Philosophy note
+	content.WriteString(`<p style="margin-bottom: 20px; color: #666;">Mu is a tool, not a destination. Pay for what you use, nothing more.</p>`)
+
+	// 2-column pricing grid with responsive class
 	content.WriteString(`<style>
-.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; }
-@media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr; } }
+.pricing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 40px; }
+@media (max-width: 700px) { .pricing-grid { grid-template-columns: 1fr; } }
 .pricing-grid .card { margin-bottom: 0; }
 </style>`)
 	content.WriteString(`<div class="pricing-grid">`)
@@ -729,14 +729,14 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Free</h3>
 <p style="font-size: 24px; font-weight: bold; margin: 10px 0;">£0</p>
-<p>10 searches/day</p>
+<p>10 AI queries/day</p>
 <p>News, video, and chat</p>
 <p>Direct message other users</p>
-<p>Resets at midnight</p>`)
+<p>Resets at midnight UTC</p>`)
 	if !isLoggedIn {
 		content.WriteString(`<p style="margin-top: 15px;"><a href="/signup">Sign up →</a></p>`)
 	} else {
-		content.WriteString(`<p style="margin-top: 15px; color: #666;">Your baseline</p>`)
+		content.WriteString(`<p style="margin-top: 15px; color: #666;">Your current plan</p>`)
 	}
 	content.WriteString(`</div>`)
 
@@ -746,48 +746,35 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p style="font-size: 24px; font-weight: bold; margin: 10px 0;">From £5</p>
 <p>Top up your wallet</p>
 <p>1 credit = 1p</p>
-<p>News 1 · Video 2 · Chat 3 · Apps 5</p>
+<p>News 1p · Video 2p · Chat 3p · Apps 5p</p>
 <p>Credits never expire</p>`)
-	if isLoggedIn && !isMember {
+	if isLoggedIn && !isAdmin {
 		content.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/topup">Top up →</a></p>`)
 	} else if !isLoggedIn {
 		content.WriteString(`<p style="margin-top: 15px;"><a href="/signup">Sign up first →</a></p>`)
 	} else {
-		content.WriteString(`<p style="margin-top: 15px; color: #666;">Not needed</p>`)
-	}
-	content.WriteString(`</div>`)
-
-	// Membership
-	content.WriteString(`<div class="card">
-<h3>Member</h3>
-<p style="font-size: 24px; font-weight: bold; margin: 10px 0;">£11<span style="font-size: 14px; font-weight: normal;">/month</span></p>
-<p><strong>Unlimited access</strong></p>
-<p>All features, no limits</p>
-<p>External email</p>`)
-	if isMember {
-		content.WriteString(`<p style="margin-top: 15px;">✓ You're a member</p>`)
-	} else if stripeMembershipConfigured {
-		if isLoggedIn {
-			content.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/subscribe">Subscribe →</a></p>`)
-		} else {
-			content.WriteString(`<p style="margin-top: 15px;"><a href="/login?redirect=%2Fwallet%2Fsubscribe">Subscribe →</a></p>`)
-		}
-	} else if membershipURL != "" {
-		content.WriteString(fmt.Sprintf(`<p style="margin-top: 15px;"><a href="%s" target="_blank">Subscribe →</a></p>`, membershipURL))
-	} else {
-		content.WriteString(`<p style="margin-top: 15px; color: #666;">Coming soon</p>`)
+		content.WriteString(`<p style="margin-top: 15px; color: #666;">Admin access</p>`)
 	}
 	content.WriteString(`</div>`)
 
 	content.WriteString(`</div>`) // end grid
 
+	// Self-host option
+	content.WriteString(`<div class="card">
+<h3>Self-Host</h3>
+<p>Want unlimited and free forever? Run your own instance.</p>
+<p>Mu is open source (AGPL-3.0). Your server, your data, no limits.</p>
+<p style="margin-top: 10px;"><a href="https://github.com/asim/mu" target="_blank">View on GitHub →</a></p>
+</div>`)
+
 	// FAQ
 	content.WriteString(`<h3>Questions</h3>
-<p><strong>Why charge for searches?</strong><br>Running AI and API calls costs money. The free tier covers casual use.</p>
+<p><strong>Why charge for AI queries?</strong><br>LLMs and APIs cost money to run. The free tier covers casual utility use.</p>
 <p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
-<p><strong>Can I cancel membership?</strong><br>Yes, anytime. Managed through Stripe.</p>`)
+<p><strong>Why no unlimited subscription?</strong><br>Unlimited tiers incentivize us to maximize your engagement. Pay-as-you-go keeps incentives aligned: we want efficient tools, not sticky products.</p>
+<p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>`)
 
-	html := RenderHTMLForRequest("Plans", "Choose how you use Mu", content.String(), r)
+	html := RenderHTMLForRequest("Plans", "Simple, honest pricing", content.String(), r)
 	w.Write([]byte(html))
 }
 
