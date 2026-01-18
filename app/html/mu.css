@@ -576,7 +576,6 @@ td {
 #agent-form {
   display: flex;
   gap: 8px;
-  max-width: 500px;
 }
 
 #agent-form input {

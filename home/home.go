@@ -23,14 +23,16 @@ import (
 //go:embed cards.json
 var f embed.FS
 
-var Template = `<div id="agent-hero">
-  <form id="agent-form" action="/agent" method="GET">
-    <input type="text" name="task" id="agent-input" placeholder="What do you need?" autocomplete="off">
-    <button type="submit">Go</button>
-  </form>
-</div>
-<div id="home">
-  <div class="home-left">%s</div>
+var Template = `<div id="home">
+  <div class="home-left">
+    <div id="agent-hero">
+      <form id="agent-form" action="/agent" method="GET">
+        <input type="text" name="task" id="agent-input" placeholder="What do you need?" autocomplete="off">
+        <button type="submit">Go</button>
+      </form>
+    </div>
+    %s
+  </div>
   <div class="home-right">%s</div>
 </div>`
 
