@@ -1588,16 +1588,29 @@ const availableCards = [
 ];
 
 function initCardCustomization() {
-  // Add customize link below agent hero, above cards
-  const agentHero = document.getElementById('agent-hero');
-  if (agentHero && !document.getElementById('customize-link')) {
-    const link = document.createElement('a');
-    link.id = 'customize-link';
-    link.href = '#';
-    link.textContent = 'Customize';
-    link.style.cssText = 'font-size: 12px; color: var(--text-muted); display: block; margin-top: 12px;';
-    link.onclick = (e) => { e.preventDefault(); showCardModal(); };
-    agentHero.insertAdjacentElement('afterend', link);
+  if (document.getElementById('customize-link')) return;
+  
+  const link = document.createElement('a');
+  link.id = 'customize-link';
+  link.href = '#';
+  link.textContent = 'Customize';
+  link.onclick = (e) => { e.preventDefault(); showCardModal(); };
+  
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    // Mobile: after agent hero
+    const agentHero = document.getElementById('agent-hero');
+    if (agentHero) {
+      link.style.cssText = 'font-size: 12px; color: var(--text-muted); display: block;';
+      agentHero.insertAdjacentElement('afterend', link);
+    }
+  } else {
+    // Desktop: float right above right column
+    const rightCol = document.querySelector('.home-right');
+    if (rightCol) {
+      link.style.cssText = 'font-size: 12px; color: var(--text-muted); float: right;';
+      rightCol.insertAdjacentElement('afterbegin', link);
+    }
   }
 }
 
