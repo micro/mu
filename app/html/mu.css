@@ -1994,11 +1994,11 @@ a.highlight {
     box-sizing: border-box;
   }
   body:has(#messages) #content {
-    height: calc(100vh - 100px);
+    height: calc(100vh - 110px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding: 10px 15px 80px 15px;
+    padding: 10px 15px 10px 15px;
     box-sizing: border-box;
   }
   body:has(#messages) #topics {
@@ -2017,6 +2017,10 @@ a.highlight {
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+  body:has(#messages) #footer,
+  body:has(#messages) #chat-back-link {
+    display: none;
   }
   #chat-form {
     flex: 0 0 auto;
