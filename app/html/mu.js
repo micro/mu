@@ -151,7 +151,10 @@ function closeMicroDialog() {
   const dialog = document.getElementById('micro-dialog');
   if (dialog) {
     dialog.style.display = 'none';
-    document.body.style.overflow = '';
+    // Don't reset overflow on chat page - it should stay hidden
+    if (!document.getElementById('messages')) {
+      document.body.style.overflow = '';
+    }
   }
 }
 
