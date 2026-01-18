@@ -80,12 +80,17 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 			.email-log .dir-int { color: #666; }
 			.email-log .subject { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 			.email-log .addr { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; }
-			@media (max-width: 768px) {
-				.email-log .subject, .email-log .addr { max-width: 100px; }
+			.email-log .hide-mobile { }
+			@media (max-width: 600px) {
+				.email-log { font-size: 12px; }
+				.email-log th, .email-log td { padding: 6px 4px; }
+				.email-log .hide-mobile { display: none; }
+				.email-log .subject { max-width: 120px; }
+				.email-log .addr { max-width: 80px; font-size: 11px; }
 			}
 		</style>`)
 		content.WriteString(`<table class="email-log">`)
-		content.WriteString(`<tr><th>Time</th><th>Dir</th><th>From</th><th>To</th><th>Subject</th></tr>`)
+		content.WriteString(`<tr><th>Time</th><th>Dir</th><th>From</th><th class="hide-mobile">To</th><th>Subject</th></tr>`)
 
 		for _, msg := range messages {
 			fromExternal := mail.IsExternalAddress(msg.FromID)
@@ -114,7 +119,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 				<td>%s</td>
 				<td class="%s">%s</td>
 				<td class="addr" title="%s">%s</td>
-				<td class="addr" title="%s">%s</td>
+				<td class="addr hide-mobile" title="%s">%s</td>
 				<td class="subject" title="%s">%s</td>
 			</tr>`,
 				msg.CreatedAt.Format("Jan 2 15:04"),
