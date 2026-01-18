@@ -391,7 +391,8 @@ const notesCSS = `
 .note-options-toggle { margin: 16px 0; }
 .note-options-toggle summary { font-size: 13px; color: #666; cursor: pointer; }
 .note-options { padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
-.note-options label { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #555; }
+.note-options label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #555; }
+.note-options input[type="checkbox"] { width: auto; margin: 0; }
 .note-options select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; }
 .note-options input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
 .note-actions { display: flex; gap: 15px; align-items: center; padding-top: 16px; border-top: 1px solid #eee; margin-top: 16px; }
