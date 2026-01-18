@@ -533,6 +533,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	adminLinks := ""
 	if acc.Admin {
 		adminLinks = `<p><a href="/admin">User Management →</a></p>
+		<p><a href="/admin/email">Email Log →</a></p>
 		<p><a href="/admin/moderate">Moderation Queue →</a></p>`
 	}
 
