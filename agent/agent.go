@@ -159,6 +159,36 @@ func (a *Agent) registerTools() {
 		Execute: a.marketPrice,
 	}
 
+	// Notes tools
+	a.tools["save_note"] = &Tool{
+		Name:        "save_note",
+		Description: "Save a note for the user. Use for quick capture of ideas, reminders, or any text the user wants to save.",
+		Parameters: map[string]ToolParam{
+			"content": {Type: "string", Description: "The note content to save", Required: true},
+			"title":   {Type: "string", Description: "Optional title for the note", Required: false},
+			"tags":    {Type: "string", Description: "Optional comma-separated tags", Required: false},
+		},
+		Execute: a.saveNote,
+	}
+
+	a.tools["search_notes"] = &Tool{
+		Name:        "search_notes",
+		Description: "Search the user's notes by keyword.",
+		Parameters: map[string]ToolParam{
+			"query": {Type: "string", Description: "Search query", Required: true},
+		},
+		Execute: a.searchNotes,
+	}
+
+	a.tools["list_notes"] = &Tool{
+		Name:        "list_notes",
+		Description: "List the user's recent notes.",
+		Parameters: map[string]ToolParam{
+			"tag": {Type: "string", Description: "Optional tag to filter by", Required: false},
+		},
+		Execute: a.listNotes,
+	}
+
 	// Final answer tool
 	a.tools["final_answer"] = &Tool{
 		Name:        "final_answer",

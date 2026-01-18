@@ -12,6 +12,7 @@ import (
 	"mu/apps"
 	"mu/data"
 	"mu/news"
+	"mu/notes"
 )
 
 // VideoResult for agent responses
@@ -461,4 +462,131 @@ func getAvailableSymbols(prices map[string]float64) []string {
 		symbols = append(symbols, k)
 	}
 	return symbols
+}
+
+// Notes tools
+
+func (a *Agent) saveNote(params map[string]interface{}) (*ToolResult, error) {
+	content, _ := params["content"].(string)
+	if content == "" {
+		return &ToolResult{Success: false, Error: "content is required"}, nil
+	}
+
+	title, _ := params["title"].(string)
+	tagsStr, _ := params["tags"].(string)
+
+	app.Log("agent", "Save note: %s", truncate(content, 50))
+
+	var tags []string
+	if tagsStr != "" {
+		for _, t := range strings.Split(tagsStr, ",") {
+			t = strings.TrimSpace(t)
+			if t != "" {
+				tags = append(tags, t)
+			}
+		}
+	}
+
+	note, err := notes.CreateNote(a.userID, title, content, tags)
+	if err != nil {
+		return &ToolResult{Success: false, Error: err.Error()}, nil
+	}
+
+	return &ToolResult{
+		Success: true,
+		Data: map[string]interface{}{
+			"id":      note.ID,
+			"title":   note.Title,
+			"content": truncate(note.Content, 100),
+		},
+		HTML: fmt.Sprintf(`<p>✓ Note saved. <a href="/notes/%s">View note</a></p>`, note.ID),
+	}, nil
+}
+
+func (a *Agent) searchNotes(params map[string]interface{}) (*ToolResult, error) {
+	query, _ := params["query"].(string)
+	if query == "" {
+		return &ToolResult{Success: false, Error: "query is required"}, nil
+	}
+
+	app.Log("agent", "Search notes: %s", query)
+
+	results := notes.SearchNotes(a.userID, query, 5)
+	if len(results) == 0 {
+		return &ToolResult{
+			Success: true,
+			Data:    "No notes found matching your search",
+		}, nil
+	}
+
+	var noteResults []map[string]interface{}
+	var htmlBuilder strings.Builder
+	htmlBuilder.WriteString(`<div class="agent-results notes-results">`)
+
+	for _, n := range results {
+		noteResults = append(noteResults, map[string]interface{}{
+			"id":      n.ID,
+			"title":   n.Title,
+			"content": truncate(n.Content, 100),
+		})
+
+		title := n.Title
+		if title == "" {
+			title = truncate(n.Content, 50)
+		}
+		htmlBuilder.WriteString(fmt.Sprintf(`<div class="note-result"><a href="/notes/%s">%s</a></div>`, n.ID, title))
+	}
+	htmlBuilder.WriteString(`</div>`)
+
+	return &ToolResult{
+		Success: true,
+		Data:    noteResults,
+		HTML:    htmlBuilder.String(),
+	}, nil
+}
+
+func (a *Agent) listNotes(params map[string]interface{}) (*ToolResult, error) {
+	tag, _ := params["tag"].(string)
+
+	app.Log("agent", "List notes, tag: %s", tag)
+
+	results := notes.ListNotes(a.userID, false, tag, 5)
+	if len(results) == 0 {
+		return &ToolResult{
+			Success: true,
+			Data:    "No notes found",
+			HTML:    `<p>No notes yet. <a href="/notes/new">Create one</a></p>`,
+		}, nil
+	}
+
+	var noteResults []map[string]interface{}
+	var htmlBuilder strings.Builder
+	htmlBuilder.WriteString(`<div class="agent-results notes-results">`)
+
+	for _, n := range results {
+		noteResults = append(noteResults, map[string]interface{}{
+			"id":      n.ID,
+			"title":   n.Title,
+			"content": truncate(n.Content, 100),
+			"pinned":  n.Pinned,
+		})
+
+		title := n.Title
+		if title == "" {
+			title = truncate(n.Content, 50)
+		}
+		pin := ""
+		if n.Pinned {
+			pin = "📌 "
+		}
+		htmlBuilder.WriteString(fmt.Sprintf(`<div class="note-result">%s<a href="/notes/%s">%s</a></div>`, pin, n.ID, title))
+	}
+	htmlBuilder.WriteString(`<p><a href="/notes">View all notes</a></p>`)
+	htmlBuilder.WriteString(`</div>`)
+
+	return &ToolResult{
+		Success: true,
+		Data:    noteResults,
+		HTML:    htmlBuilder.String(),
+	}, nil
 }

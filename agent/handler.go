@@ -46,6 +46,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleAgentUI serves the agent interface
 func handleAgentUI(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
+	// Check for initial query from home page
+	initialQuery := r.URL.Query().Get("q")
+	initialQueryJS := ""
+	if initialQuery != "" {
+		// Escape for JS string
+		initialQuery = strings.ReplaceAll(initialQuery, "\\", "\\\\")
+		initialQuery = strings.ReplaceAll(initialQuery, "'", "\\'")
+		initialQueryJS = fmt.Sprintf("<script>window.addEventListener('load', function() { document.getElementById('task-input').value = '%s'; runAgent(); });</script>", initialQuery)
+	}
+
 	content := `
 <style>
 .agent-container {
@@ -378,7 +388,7 @@ function formatMarkdown(text) {
 </script>
 `
 
-	html := app.RenderHTML("Agent", "Mu Agent", content)
+	html := app.RenderHTML("Agent", "Mu Agent", content+initialQueryJS)
 	w.Write([]byte(html))
 }
 

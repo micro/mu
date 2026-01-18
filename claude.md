@@ -155,3 +155,30 @@ SearchSQLite()
 ### Test Account
 - `shelleytest` - admin account for testing on mu.xyz
 - SSH: `ssh -p 61194 mu@mu.xyz`
+
+## Recent Session: Notes App & Agent Enhancement
+
+### Notes App (`/notes`)
+Full-featured notes app to replace Google Keep:
+- **Data model**: Title, content, tags, pinned, archived, color
+- **Features**: Quick capture, search, tag filtering, pin/archive, color coding
+- **UI**: Grid view like Keep, edit form, tag filter bar
+- **Agent tools**: `save_note`, `search_notes`, `list_notes`
+
+### Key Files
+- `notes/notes.go` - Data model, CRUD operations, search
+- `notes/handlers.go` - HTTP handlers, UI rendering, CSS
+
+### Home Page Enhancement
+- Added prominent "What would you like to do?" input
+- Routes to `/agent?q=...` for processing
+- Example quick actions shown below input
+
+### Agent Improvements
+- Added to main nav (was hidden)
+- New tools: `save_note`, `search_notes`, `list_notes`
+- Accepts `?q=` param for auto-execution from home
+
+### Navigation Updated
+- Added Notes icon and link
+- Added Agent icon and link

@@ -24,9 +24,31 @@ import (
 var f embed.FS
 
 var Template = `<div id="home">
-  <div class="home-left">%s</div>
-  <div class="home-right">%s</div>
-</div>`
+  <div class="home-ask">
+    <form action="/agent" method="GET" id="home-ask-form">
+      <input type="text" name="q" placeholder="What would you like to do?" autocomplete="off">
+      <button type="submit">Go</button>
+    </form>
+    <div class="ask-examples">
+      <span>Try:</span>
+      <a href="#" onclick="setAsk('Save a note about...')">Save a note</a>
+      <a href="#" onclick="setAsk('Find news about AI')">News</a>
+      <a href="#" onclick="setAsk('Play some music')">Videos</a>
+      <a href="#" onclick="setAsk('Bitcoin price')">Prices</a>
+    </div>
+  </div>
+  <div class="home-columns">
+    <div class="home-left">%s</div>
+    <div class="home-right">%s</div>
+  </div>
+</div>
+<script>
+function setAsk(text) {
+  document.querySelector('#home-ask-form input').value = text;
+  document.querySelector('#home-ask-form input').focus();
+  return false;
+}
+</script>`
 
 func ChatCard() string {
 	return `<div id="home-chat">
