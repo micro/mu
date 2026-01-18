@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v82';
+var VERSION = 'v83';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -1078,25 +1078,7 @@ function renderMarkdown(text) {
 }
 
 function updateUserList(users) {
-  const topicSelector = document.getElementById('topic-selector') || document.getElementById('topics');
-  if (!topicSelector) return;
-  
-  let userListDiv = topicSelector.querySelector('.user-list');
-  if (!userListDiv) {
-    userListDiv = document.createElement('div');
-    userListDiv.className = 'user-list';
-    userListDiv.style.cssText = 'padding: 5px 0; color: #666; font-size: small;';
-    topicSelector.appendChild(userListDiv);
-  }
-  
-  if (users && users.length > 0) {
-    userListDiv.innerHTML = '<strong>Who\'s here:</strong> ' + users.map(u => {
-      if (u === 'micro') return '@micro';
-      return '<a href="/@' + u + '" style="color: inherit;">@' + u + '</a>';
-    }).join(', ');
-  } else {
-    userListDiv.innerHTML = '';
-  }
+  // Disabled - was causing layout shifts on mobile
 }
 
 function sendRoomMessage(form) {
