@@ -1,11 +1,12 @@
-// Package cards provides layout helpers for consistent UI.
-// Use these wrappers + mu.css classes. Keep render logic in each package.
-package cards
+package app
 
 import (
 	"html"
 	"strings"
 )
+
+// UI layout helpers for consistent rendering.
+// Use these wrappers + mu.css classes.
 
 // SearchHeader renders the standard search bar with optional new button
 func SearchHeader(action, placeholder, query, newURL, newLabel string) string {
@@ -53,13 +54,13 @@ func Empty(message string) string {
 	return `<p class="empty">` + html.EscapeString(message) + `</p>`
 }
 
-// Card wraps content in a card container
-func Card(content string) string {
+// CardDiv wraps content in a card container
+func CardDiv(content string) string {
 	return `<div class="card">` + content + `</div>`
 }
 
-// CardWithClass wraps content in a card with additional classes
-func CardWithClass(class, content string) string {
+// CardDivClass wraps content in a card with additional classes
+func CardDivClass(class, content string) string {
 	return `<div class="card ` + class + `">` + content + `</div>`
 }
 

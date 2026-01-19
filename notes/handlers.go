@@ -7,7 +7,7 @@ import (
 
 	"mu/app"
 	"mu/auth"
-	"mu/cards"
+	
 )
 
 // Handler handles /notes routes
@@ -68,7 +68,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session, acc 
 	content.WriteString(`<div class="notes-container">`)
 
 	// Header with search and new button
-	content.WriteString(cards.SearchHeader("/notes", "Search notes...", searchQuery, "/notes/new", "+ New"))
+	content.WriteString(app.SearchHeader("/notes", "Search notes...", searchQuery, "/notes/new", "+ New"))
 
 	// Tags filter
 	if len(allTags) > 0 {
@@ -134,7 +134,7 @@ func renderNoteCard(n *Note) string {
 
 	// Title
 	if n.Title != "" {
-		b.WriteString(cards.Title(n.Title, "/notes/"+n.ID))
+		b.WriteString(app.Title(n.Title, "/notes/"+n.ID))
 	}
 
 	// Content preview
@@ -145,7 +145,7 @@ func renderNoteCard(n *Note) string {
 	b.WriteString(`<a href="/notes/` + n.ID + `" class="card-content">` + html.EscapeString(content) + `</a>`)
 
 	// Tags
-	b.WriteString(cards.Tags(n.Tags, ""))
+	b.WriteString(app.Tags(n.Tags, ""))
 
 	// Footer with time
 	b.WriteString(`<div class="card-meta">` + app.TimeAgo(n.UpdatedAt) + `</div>`)

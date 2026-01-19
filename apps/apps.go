@@ -13,7 +13,7 @@ import (
 
 	"mu/app"
 	"mu/auth"
-	"mu/cards"
+	
 	"mu/data"
 	"mu/wallet"
 )
@@ -396,7 +396,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	if sess != nil {
 		newURL = "/apps/new"
 	}
-	content.WriteString(cards.SearchHeader("/apps", "Search apps...", searchQuery, newURL, "+ New"))
+	content.WriteString(app.SearchHeader("/apps", "Search apps...", searchQuery, newURL, "+ New"))
 
 	// Featured apps section (always show at top)
 	featuredIDs := []string{"1768488729487639148", "1768342273851959552", "1768342520623825814"} // todo, timer, expenses
@@ -555,7 +555,7 @@ func renderFeaturedCard(a *App) string {
 func renderAppCard(a *App, isOwner bool) string {
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
-	b.WriteString(cards.Title(a.Name, "/apps/"+a.ID))
+	b.WriteString(app.Title(a.Name, "/apps/"+a.ID))
 	// Use Summary if available, otherwise fall back to first line of Description
 	desc := a.Summary
 	if desc == "" && a.Description != "" {
@@ -568,13 +568,13 @@ func renderAppCard(a *App, isOwner bool) string {
 		if len(desc) > 100 {
 			desc = desc[:100] + "..."
 		}
-		b.WriteString(cards.Desc(desc))
+		b.WriteString(app.Desc(desc))
 	}
 	visibility := "Private"
 	if a.Public {
 		visibility = "Public"
 	}
-	b.WriteString(cards.Meta("by " + html.EscapeString(a.Author) + " · " + visibility))
+	b.WriteString(app.Meta("by " + html.EscapeString(a.Author) + " · " + visibility))
 	if isOwner {
 		b.WriteString(`<div class="actions">`)
 		b.WriteString(fmt.Sprintf(`<a href="/apps/%s/develop">Edit</a>`, a.ID))

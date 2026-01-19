@@ -116,36 +116,34 @@ STRIPE_WEBHOOK_SECRET
 - Standardized button padding, color tokens, search bar styling
 - Agent is task executor only - redirects general questions to Chat
 
-## Cards Package (cards/)
+## UI Helpers (app/ui.go)
 
-Layout helpers and element builders for consistent UI. Fast string builders, no templates.
+Layout helpers and element builders for consistent UI. Fast string builders.
 
 ### Layout Helpers
 ```go
-import "mu/cards"
-
 // Search header with optional new button
-cards.SearchHeader("/notes", "Search notes...", query, "/notes/new", "+ New")
+app.SearchHeader("/notes", "Search notes...", query, "/notes/new", "+ New")
 
 // Container layouts
-cards.Grid(content)   // .card-grid - responsive grid
-cards.List(content)   // .card-list - vertical stack  
-cards.Row(content)    // .card-row - horizontal flex
+app.Grid(content)   // .card-grid - responsive grid
+app.List(content)   // .card-list - vertical stack  
+app.Row(content)    // .card-row - horizontal flex
 
 // Card wrapper
-cards.Card(content)              // <div class="card">...</div>
-cards.CardWithClass("card-note", content)
+app.CardDiv(content)              // <div class="card">...</div>
+app.CardDivClass("card-note", content)
 
 // Empty state
-cards.Empty("No items yet")
+app.Empty("No items yet")
 ```
 
 ### Element Builders
 ```go
-cards.Title("My Note", "/notes/123")  // .card-title link
-cards.Desc("Description text")        // .card-desc paragraph
-cards.Meta("by author · 2h ago")      // .card-meta
-cards.Tags([]string{"tag1", "tag2"}, "/notes?tag=")  // .card-tags
+app.Title("My Note", "/notes/123")  // .card-title link
+app.Desc("Description text")        // .card-desc paragraph
+app.Meta("by author · 2h ago")      // .card-meta
+app.Tags([]string{"tag1", "tag2"}, "/notes?tag=")  // .card-tags
 ```
 
 ### Card CSS Classes (mu.css)
@@ -158,21 +156,21 @@ Colors:   .card-yellow, .card-green, .card-blue, .card-pink, .card-purple, .card
 ```
 
 ### Usage Pattern
-Keep render logic in each package, use cards helpers for common elements:
+Keep render logic in each package, use app helpers for common elements:
 ```go
 func renderNoteCard(n *Note) string {
     var b strings.Builder
     b.WriteString(`<div class="card card-note">`)
-    b.WriteString(cards.Title(n.Title, "/notes/"+n.ID))
-    b.WriteString(cards.Desc(n.Content))
-    b.WriteString(cards.Tags(n.Tags, ""))
-    b.WriteString(cards.Meta(app.TimeAgo(n.UpdatedAt)))
+    b.WriteString(app.Title(n.Title, "/notes/"+n.ID))
+    b.WriteString(app.Desc(n.Content))
+    b.WriteString(app.Tags(n.Tags, ""))
+    b.WriteString(app.Meta(app.TimeAgo(n.UpdatedAt)))
     b.WriteString(`</div>`)
     return b.String()
 }
 ```
 
-**IMPORTANT: Use .card classes and cards helpers. Do NOT create new page-specific CSS for cards.**
+**IMPORTANT: Use .card classes and app helpers. Do NOT create new page-specific CSS for cards.**
 
 ## CSS Utility Classes (mu.css)
 ```
