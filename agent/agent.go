@@ -227,32 +227,7 @@ func (a *Agent) Run(task string) *Result {
 		Steps: []*Step{},
 	}
 
-	// Build tool descriptions for the prompt
-	toolsJSON := a.buildToolsPrompt()
-
-	// Create the system prompt for the agent
-	systemPrompt := fmt.Sprintf(`You are an AI agent for the Mu platform. You help users accomplish tasks by using the available tools.
-
-Available tools:
-%s
-
-You must respond with valid JSON in this exact format:
-{
-  "thought": "Your reasoning about what to do next",
-  "tool": "tool_name",
-  "parameters": { "param1": "value1" }
-}
-
-Rules:
-1. Think step by step about what you need to do
-2. Use one tool at a time
-3. After each tool result, decide if you need more steps or can provide final_answer
-4. Use video_search to find videos, then video_play to play a specific result
-5. Use news_search to find articles, then news_read to get full content
-6. Always end with final_answer when done
-7. Be concise and efficient - minimize steps
-
-Current user: %s`, toolsJSON, a.userID)
+	systemPrompt := a.buildSystemPrompt()
 
 	// Conversation context for multi-step reasoning
 	var context ai.History
@@ -339,30 +314,7 @@ func (a *Agent) RunStreaming(task string, onStep StepCallback) *Result {
 		Steps: []*Step{},
 	}
 
-	toolsJSON := a.buildToolsPrompt()
-
-	systemPrompt := fmt.Sprintf(`You are an AI agent for the Mu platform. You help users accomplish tasks by using the available tools.
-
-Available tools:
-%s
-
-You must respond with valid JSON in this exact format:
-{
-  "thought": "Your reasoning about what to do next",
-  "tool": "tool_name",
-  "parameters": { "param1": "value1" }
-}
-
-Rules:
-1. Think step by step about what you need to do
-2. Use one tool at a time
-3. After each tool result, decide if you need more steps or can provide final_answer
-4. Use video_search to find videos, then video_play to play a specific result
-5. Use news_search to find articles, then news_read to get full content
-6. Always end with final_answer when done
-7. Be concise and efficient - minimize steps
-
-Current user: %s`, toolsJSON, a.userID)
+	systemPrompt := a.buildSystemPrompt()
 
 	var context ai.History
 	currentPrompt := task
@@ -455,6 +407,32 @@ func (a *Agent) buildToolsPrompt() string {
 	}
 	b, _ := json.MarshalIndent(tools, "", "  ")
 	return string(b)
+}
+
+func (a *Agent) buildSystemPrompt() string {
+	toolsJSON := a.buildToolsPrompt()
+	return fmt.Sprintf(`You are a task execution agent for the Mu platform. You execute specific tasks using the available tools.
+
+Available tools:
+%s
+
+You must respond with valid JSON in this exact format:
+{
+  "thought": "Your reasoning about what to do next",
+  "tool": "tool_name",
+  "parameters": { "param1": "value1" }
+}
+
+Rules:
+1. You execute TASKS - playing videos, searching news, creating apps, sending emails, checking prices, saving notes, etc.
+2. If the user asks a general question, philosophical question, or wants conversation, use final_answer to say: "I help with tasks like playing videos, searching news, or creating apps. For questions and conversation, try Chat."
+3. Do NOT search for answers to general questions - just politely redirect to Chat.
+4. Use one tool at a time
+5. After each tool result, decide if you need more steps or can provide final_answer
+6. Always end with final_answer when done
+7. Be concise - minimize steps
+
+Current user: %s`, toolsJSON, a.userID)
 }
 
 // parseStep parses the LLM's JSON response into a Step
