@@ -308,8 +308,8 @@ type PageOpts struct {
 #### Phase 3: Cleanup
 - [x] Move notes editor CSS to mu.css
 - [x] Move apps form/card CSS to mu.css
-- [ ] Move video commonStyles to mu.css
-- [ ] Move remaining inline CSS (admin, agent, etc)
+- [x] Move video commonStyles to mu.css
+- [ ] Move remaining inline CSS (admin, agent, docs, etc) - 13 left
 - [ ] Update claude.md with final patterns
 
 ### Current Status
