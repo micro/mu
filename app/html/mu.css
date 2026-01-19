@@ -3176,8 +3176,3 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .view-toggle a:hover {
   text-decoration: underline;
 }
-
-.mail-tabs {
-  border-bottom: 1px solid var(--card-border, #e0e0e0);
-  margin-bottom: 20px;
-}
