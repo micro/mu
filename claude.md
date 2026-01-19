@@ -210,3 +210,110 @@ All inputs get consistent height (36px) via mu.css. Don't override.
 ## Next Up
 - Migrate existing pages to use card system
 - Remove duplicate per-page CSS
+
+## Architecture Refactor Plan
+
+### Goal
+Consolidate routing, content negotiation, and rendering into app/api packages. Each feature package focuses on core logic only.
+
+### Package Structure (Target)
+
+| Package | Files | Purpose |
+|---------|-------|---------|
+| **app/** | app.go, ui.go, router.go | Base template, UI helpers, content-type routing |
+| **api/** | api.go, handlers.go | API registration, JSON endpoints, documentation |
+| **notes/** | notes.go | Note CRUD, search, tagging logic |
+| **apps/** | apps.go, db.go, generate.go | App CRUD, code generation |
+| **blog/** | blog.go | Post CRUD, comments |
+| **news/** | news.go | Feed fetching, caching, search |
+| **mail/** | mail.go, smtp.go, client.go | Mail logic, SMTP server |
+| **video/** | video.go | YouTube search, playback |
+| **chat/** | chat.go | Chat logic, RAG |
+| **home/** | home.go | Dashboard card config |
+| **agent/** | agent.go, tools.go | Agent execution |
+| **auth/** | auth.go | Session, tokens |
+| **data/** | data.go, sqlite.go | Storage, indexing |
+| **wallet/** | wallet.go | Credits, quotas |
+| **admin/** | admin.go | Admin handlers |
+
+### File Naming Convention
+- `{package}.go` - Core logic (types, CRUD, business logic)
+- `handlers.go` - HTTP handlers (only if complex, otherwise in main file)
+- `db.go` - Database/persistence (if separate from logic)
+
+### Content-Type Router (app/router.go) - NEW
+```go
+// Route registers a handler that responds based on Accept header
+func Route(path string, opts RouteOpts)
+
+type RouteOpts struct {
+    // JSON handler - called when Accept: application/json
+    JSON func(w http.ResponseWriter, r *http.Request)
+    // HTML handler - called for browser requests
+    HTML func(w http.ResponseWriter, r *http.Request)
+    // Auth requirement
+    Auth bool
+}
+```
+
+### API Registration (api/api.go) - ENHANCE
+```go
+// Register adds endpoint to docs and optionally handles routing
+func Register(ep Endpoint)
+
+type Endpoint struct {
+    Path        string
+    Method      string
+    Handler     http.HandlerFunc  // NEW: actual handler
+    Auth        bool              // NEW: requires auth
+    // ... existing doc fields
+}
+```
+
+### Standard Page Layout (app/ui.go) - ENHANCE
+```go
+// Page renders standard page structure
+func Page(opts PageOpts) string
+
+type PageOpts struct {
+    Action  string // Primary action URL (shows button if set)
+    Label   string // Action button label
+    Search  string // Search endpoint (shows search bar if set)
+    Query   string // Current search query
+    Filters string // Filter HTML (tags, toggles)
+    Content string // Main content
+    Empty   string // Empty state message
+}
+```
+
+### Refactor Checklist
+
+#### Phase 1: Core Infrastructure
+- [ ] Create app/router.go with Route() function
+- [ ] Update api/api.go with handler registration
+- [ ] Add app.Page() for standard page layout
+- [ ] Update app.SearchBar() to match video/news style
+- [ ] Consolidate CSS - remove all inline <style> blocks
+
+#### Phase 2: Package Migration (one at a time)
+- [ ] **notes/** - Split handlers.go, use app.Route(), app.Page()
+- [ ] **apps/** - Extract rendering, use app.Route(), app.Page()
+- [ ] **blog/** - Extract rendering, use app.Route(), app.Page()
+- [ ] **news/** - Extract rendering, use app.Route(), app.Page()
+- [ ] **video/** - Extract rendering, use app.Route(), app.Page()
+- [ ] **mail/** - Extract rendering, use app.Route(), app.Page()
+- [ ] **chat/** - Extract rendering, use app.Route(), app.Page()
+- [ ] **wallet/** - Extract rendering, use app.Route(), app.Page()
+
+#### Phase 3: Cleanup
+- [ ] Remove duplicate CSS from all packages
+- [ ] Consolidate card styles in mu.css
+- [ ] Update claude.md with final patterns
+- [ ] Audit mu.css - target <500 lines
+- [ ] Audit mu.js - target <200 lines
+
+### Current Status
+- [x] app/ui.go created with SearchBar, ActionLink, Grid, Title, etc.
+- [x] notes/ and apps/ partially migrated to use app helpers
+- [ ] No content-type router yet - each handler checks WantsJSON manually
+- [ ] No standard page layout yet - each handler builds its own structure
