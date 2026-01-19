@@ -152,6 +152,28 @@ button:hover {
   border-color: var(--btn-success-hover);
 }
 
+/* Search bar - unified across all pages */
+.search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.search-bar input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid var(--card-border, #e0e0e0);
+  border-radius: var(--border-radius, 6px);
+  min-width: 0;
+}
+.search-bar input:focus {
+  outline: none;
+  border-color: var(--text-muted, #999);
+}
+.search-bar button {
+  flex-shrink: 0;
+}
+
 input {
   width: 100%;
   padding: 10px;
@@ -619,12 +641,11 @@ td {
 
 #agent-form input {
   flex: 1;
-  padding: 10px 12px;
+  padding: 8px 12px;
   font-size: 14px;
   border: 1px solid var(--card-border, #e0e0e0);
   border-radius: var(--border-radius, 6px);
-  font-family: inherit;
-  background: var(--card-background, #fff);
+  min-width: 0;
 }
 
 #agent-form input:focus {
@@ -632,18 +653,11 @@ td {
   border-color: var(--text-muted, #999);
 }
 
-#agent-form input::placeholder {
-  color: var(--text-muted, #aaa);
-}
-
 #agent-form button {
-  padding: 10px 16px;
+  flex-shrink: 0;
   background: transparent;
   color: var(--text-secondary, #555);
   border: 1px solid var(--card-border, #e0e0e0);
-  border-radius: var(--border-radius, 6px);
-  font-size: 14px;
-  cursor: pointer;
 }
 
 #agent-form button:hover {
@@ -1352,21 +1366,25 @@ body:has(#messages) #chat-back-link {
 }
 
 .flagged-item .btn-approve {
-  background: #28a745;
+  background: var(--btn-success);
+  border-color: var(--btn-success);
   color: white;
 }
 
 .flagged-item .btn-approve:hover {
-  background: #218838;
+  background: var(--btn-success-hover);
+  border-color: var(--btn-success-hover);
 }
 
 .flagged-item .btn-delete {
-  background: #dc3545;
+  background: var(--btn-danger);
+  border-color: var(--btn-danger);
   color: white;
 }
 
 .flagged-item .btn-delete:hover {
-  background: #c82333;
+  background: var(--btn-danger-hover);
+  border-color: var(--btn-danger-hover);
 }
 
 /* ========================================
@@ -1607,23 +1625,17 @@ body:has(#messages) #chat-back-link {
 }
 
 #video-search {
-  width: 100%;
-  margin: 0 0 20px 0;
   display: flex;
-  gap: 10px;
-  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
 }
 
 #video-search input {
-  width: 90%;
-  flex: 0 1 auto;
+  flex: 1;
   min-width: 0;
 }
 
 #video-search button {
-  padding: 10px 20px;
-  margin: 0;
-  width: auto;
   flex-shrink: 0;
 }
 
@@ -1631,23 +1643,17 @@ body:has(#messages) #chat-back-link {
    NEWS
    ======================================== */
 #news-search {
-  width: 100%;
-  margin: 0 0 20px 0;
   display: flex;
-  gap: 10px;
-  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
 }
 
 #news-search input {
-  width: 90%;
-  flex: 0 1 auto;
+  flex: 1;
   min-width: 0;
 }
 
 #news-search button {
-  padding: 10px 20px;
-  margin: 0;
-  width: auto;
   flex-shrink: 0;
 }
 

@@ -485,11 +485,10 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 <style>
 .apps-header {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
-	margin-bottom: 25px;
+	margin-bottom: 20px;
 	flex-wrap: wrap;
-	gap: 15px;
+	gap: 8px;
 }
 .new-app-btn {
 	padding: 8px 12px;
@@ -506,16 +505,21 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 }
 .apps-search {
 	display: flex;
-	gap: 10px;
+	gap: 8px;
+	flex: 1;
+	min-width: 150px;
 }
 .apps-search input {
-	padding: 10px 15px;
-	border: 1px solid var(--card-border, #e8e8e8);
+	flex: 1;
+	padding: 8px 12px;
+	border: 1px solid var(--card-border, #e0e0e0);
 	border-radius: var(--border-radius, 6px);
 	font-size: 14px;
-	min-width: 200px;
+	min-width: 0;
 }
-.apps-search button { }
+.apps-search button {
+	flex-shrink: 0;
+}
 .featured-section {
 	margin-bottom: 30px;
 	padding-bottom: 20px;
