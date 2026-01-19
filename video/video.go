@@ -1139,7 +1139,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					<p style="color: #666; margin: 20px 0;">Login to watch ad-free, or view on YouTube.</p>
 					<p style="margin: 20px 0;">
 						<a href="/login?redirect=/video?id=%s" style="display: inline-block; padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 4px; margin-right: 10px;">Login to watch</a>
-						<a href="%s" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 10px 20px; border: 1px solid #000; text-decoration: none; border-radius: 4px;">Watch on YouTube →</a>
+						<a href="%s" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 8px 12px; border: 1px solid var(--btn-primary, #000); text-decoration: none; border-radius: var(--border-radius, 6px); color: var(--text-primary, #333);">Watch on YouTube →</a>
 					</p>
 					<p style="margin-top: 20px;"><a href="/video">← Back to videos</a></p>
 				</div>
@@ -1165,7 +1165,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					<p style="color: #666; margin: 20px 0;">Your balance: %d credits</p>
 					<p style="margin: 20px 0;">
 						<a href="/wallet/topup" style="display: inline-block; padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 4px; margin-right: 10px;">Top up credits</a>
-						<a href="%s" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 10px 20px; border: 1px solid #000; text-decoration: none; border-radius: 4px;">Watch on YouTube →</a>
+						<a href="%s" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 8px 12px; border: 1px solid var(--btn-primary, #000); text-decoration: none; border-radius: var(--border-radius, 6px); color: var(--text-primary, #333);">Watch on YouTube →</a>
 					</p>
 					<p style="margin-top: 20px;"><a href="/video">← Back to videos</a></p>
 				</div>

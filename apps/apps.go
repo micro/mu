@@ -875,19 +875,14 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
 	align-items: center;
 	gap: 8px;
 }
-.button { 
-	padding: 10px 20px; 
-	background: #333; 
-	color: white; 
-	border: none; 
-	border-radius: 4px; 
-	cursor: pointer;
-	font-size: 14px;
-}
-.button:hover { background: #555; }
 .button-secondary {
-	background: #666;
+	background: var(--text-muted, #666);
+	border-color: var(--text-muted, #666);
 	margin-left: 10px;
+}
+.button-secondary:hover {
+	background: var(--text-secondary, #555);
+	border-color: var(--text-secondary, #555);
 }
 .preview-frame {
 	width: 100%%;
@@ -927,7 +922,7 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
     <label for="public" style="font-weight: normal;">Make this app public</label>
   </div>
   <div>
-    <button type="submit" name="action" value="save" class="button">Save Changes</button>
+    <button type="submit" name="action" value="save">Save Changes</button>
     <button type="button" class="button button-secondary" onclick="previewApp()">Preview</button>
     <button type="submit" name="action" value="generate" class="button button-secondary">Regenerate</button>
     <a href="/apps/%s" style="margin-left: 10px;">Cancel</a>

@@ -397,7 +397,7 @@ const notesCSS = `
 .note-options select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; }
 .note-options input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
 .note-actions { display: flex; gap: 15px; align-items: center; padding-top: 16px; border-top: 1px solid #eee; margin-top: 16px; }
-.note-actions button { padding: 10px 24px; background: var(--accent-color, #0d7377); color: white; border: none; border-radius: 6px; cursor: pointer; }
+.note-actions button { }
 .note-actions a { color: #666; text-decoration: none; font-size: 14px; }
 .note-actions .delete-link { color: #c00; }
 .note-meta-info { margin-top: 16px; font-size: 13px; color: #999; }

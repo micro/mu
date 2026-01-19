@@ -907,7 +907,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<input type="hidden" id="reply-body-html" name="body_html" value="">
 			<div id="reply-body" contenteditable="true" style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; outline: none; background: white;" placeholder="Write your reply..."></div>
 			<div style="display: flex; gap: 10px; align-items: center;">
-				<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
+				<button type="submit" style="">Send</button>
 				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545; font-size: 14px;">Delete Thread</a>
 				%s
 			</div>
@@ -941,7 +941,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				<input type="text" name="subject" placeholder="Subject" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
 				<textarea name="body" rows="10" placeholder="Write your message..." required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 200px;"></textarea>
 			<div style="display: flex; gap: 10px; align-items: center;">
-				<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
+				<button type="submit" style="">Send</button>
 				<a href="%s" style="color: #666; font-size: 14px;">Cancel</a>
 			</div>
 		</form>
