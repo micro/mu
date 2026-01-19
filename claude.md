@@ -103,10 +103,19 @@ STRIPE_WEBHOOK_SECRET
 - Service worker version bumps to clear cache (currently v95)
 
 ## Recent Changes
-- Moved markets/reminder from news to apps package
-- Added home card customization (client-side localStorage)
-- Removed agent modal FAB (to be repositioned later)
-- Fixed chat page layout on mobile (100svh, proper offsets)
+- Rebranded to "The Micro Network" - apps-first positioning
+- Agent hero input on home page (subtle, in left column)
+- Customize link moved next to page title
+- Restructured /admin as dashboard with links to /admin/users, /admin/moderate, /admin/blocklist, /admin/email
+- Standardized button padding to 8px 12px globally
+- Added button color tokens: --btn-primary, --btn-danger, --btn-success
+- Unified search bar styling across all pages (8px 12px padding, 8px gap, flex layout)
+- Agent is task executor only - redirects general questions to Chat
 
 ## Next Up
+- **Extract inline styles to mu.css** - Too much `style="..."` in Go files. Need to:
+  1. Audit all `style=` in Go files
+  2. Create CSS classes for each pattern
+  3. Replace inline styles with class names
+  4. Single source of truth in mu.css
 - App templates (API fetcher, data tracker patterns)
