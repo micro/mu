@@ -493,14 +493,14 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 }
 .new-app-btn {
 	padding: 10px 15px;
-	background: #000;
+	background: var(--btn-primary, #000);
 	color: white !important;
 	text-decoration: none;
 	border-radius: var(--border-radius, 6px);
 	display: inline-block;
 }
 .new-app-btn:hover {
-	background: #333;
+	background: var(--btn-primary-hover, #333);
 	color: white !important;
 }
 .apps-search {

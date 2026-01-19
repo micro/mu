@@ -356,8 +356,8 @@ func handlePin(w http.ResponseWriter, r *http.Request, sess *auth.Session, id st
 const notesCSS = `
 <style>
 .notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
-.new-note-btn { padding: 10px 15px; background: #000; color: white !important; text-decoration: none; border-radius: var(--border-radius, 6px); display: inline-block; }
-.new-note-btn:hover { background: #333; }
+.new-note-btn { padding: 10px 15px; background: var(--btn-primary, #000); color: white !important; text-decoration: none; border-radius: var(--border-radius, 6px); display: inline-block; }
+.new-note-btn:hover { background: var(--btn-primary-hover, #333); }
 .notes-search input { padding: 10px 15px; border: 1px solid #ddd; border-radius: 6px; min-width: 200px; }
 .tags-filter { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; }
 .tags-filter .tag { padding: 4px 12px; background: #f0f0f0; border-radius: 20px; text-decoration: none; color: #333; font-size: 13px; }

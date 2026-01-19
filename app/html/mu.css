@@ -27,6 +27,14 @@
   --accent-blue: #007bff;
   --accent-blue-hover: #0056b3;
   
+  /* Button colors */
+  --btn-primary: #000;
+  --btn-primary-hover: #333;
+  --btn-danger: #dc3545;
+  --btn-danger-hover: #c82333;
+  --btn-success: #28a745;
+  --btn-success-hover: #218838;
+  
   /* Spacing - consistent scale */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -98,9 +106,9 @@ a[rel*="noopener"]:visited {
 
 /* Buttons for forms only - minimalist theme */
 button {
-  background: #000;
+  background: var(--btn-primary);
   color: #fff;
-  border: 1px solid #000;
+  border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
   padding: 10px 15px;
   cursor: pointer;
@@ -109,39 +117,39 @@ button {
 }
 
 button:hover {
-  background: #333;
-  border-color: #333;
+  background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
 }
 
 /* Button variants */
 .btn-link {
   background: transparent;
-  color: var(--text-color, #333);
+  color: var(--text-primary);
   border: none;
   padding: 10px 15px;
   text-decoration: none;
   display: inline-block;
 }
 .btn-link:hover {
-  background: var(--hover-background, #f5f5f5);
+  background: var(--hover-background);
 }
 
 .btn-danger {
-  background: #dc3545;
-  border-color: #dc3545;
+  background: var(--btn-danger);
+  border-color: var(--btn-danger);
 }
 .btn-danger:hover {
-  background: #c82333;
-  border-color: #c82333;
+  background: var(--btn-danger-hover);
+  border-color: var(--btn-danger-hover);
 }
 
 .btn-success {
-  background: #28a745;
-  border-color: #28a745;
+  background: var(--btn-success);
+  border-color: var(--btn-success);
 }
 .btn-success:hover {
-  background: #218838;
-  border-color: #218838;
+  background: var(--btn-success-hover);
+  border-color: var(--btn-success-hover);
 }
 
 input {
