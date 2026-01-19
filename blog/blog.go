@@ -409,7 +409,7 @@ func updateCacheUnlocked() {
 
 		// Add private badge if post is private
 		if post.Private {
-			privateBadge := `<span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+			privateBadge := `<span class="category badge-private">Private</span>`
 			if tagsHtml != "" {
 				tagsHtml = tagsHtml + " " + privateBadge
 			} else {
@@ -418,7 +418,7 @@ func updateCacheUnlocked() {
 		}
 
 		if tagsHtml != "" {
-			tagsHtml = `<div style="margin-top: 8px;">` + tagsHtml + `</div>`
+			tagsHtml = `<div class="mt-2">` + tagsHtml + `</div>`
 		}
 
 		// Add Reply/Replies count
@@ -498,7 +498,7 @@ func updateCacheUnlocked() {
 
 		// Add private badge if post is private
 		if post.Private {
-			privateBadge := `<span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+			privateBadge := `<span class="category badge-private">Private</span>`
 			if tagsHtml != "" {
 				tagsHtml = tagsHtml + " " + privateBadge
 			} else {
@@ -507,7 +507,7 @@ func updateCacheUnlocked() {
 		}
 
 		if tagsHtml != "" {
-			tagsHtml = `<div style="margin-top: 8px;">` + tagsHtml + `</div>`
+			tagsHtml = `<div class="mt-2">` + tagsHtml + `</div>`
 		}
 
 		// Add Reply/Replies count
@@ -643,16 +643,16 @@ func renderPostPreview(post *Post) string {
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
-		authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+		authorLink = fmt.Sprintf(`<a href="/@%s" class="text-muted">%s</a>`, post.AuthorID, post.Author)
 	}
 
 	item := fmt.Sprintf(`<div class="post-item">
-		<h3><a href="/post?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
-		<div style="margin-bottom: 10px;">%s</div>
-		<div class="info" style="color: #666; font-size: small;">
+		<h3><a href="/post?id=%s">%s</a></h3>
+		<div class="mb-3">%s</div>
+		<div class="info">
 			Posted by %s
-			<span style="margin-left: 10px;">·</span>
-			<a href="/post?id=%s" style="color: #0066cc; margin-left: 10px;">Reply</a>
+			<span class="ml-3">·</span>
+			<a href="/post?id=%s" class="ml-3">Reply</a>
 		</div>
 	</div>`, post.ID, title, content, authorLink, post.ID)
 
@@ -662,10 +662,10 @@ func renderPostPreview(post *Post) string {
 // PostingForm returns the HTML for the posting form
 func PostingForm(action string) string {
 	return fmt.Sprintf(`<div id="post-form-container">
-		<form id="post-form" method="POST" action="%s">
+		<form id="post-form" class="blog-form" method="POST" action="%s">
 			<input type="text" name="title" placeholder="Title (optional)">
-			<textarea name="content" rows="4" placeholder="Share a thought. Be mindful of Allah" required style="font-family: 'Nunito Sans', serif;"></textarea>
-			<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" style="font-size: 0.9em;">
+			<textarea name="content" rows="4" placeholder="Share a thought. Be mindful of Allah" required></textarea>
+			<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" class="text-sm">
 			<button type="submit">Post</button>
 		</form>
 	</div>`, action)
@@ -728,22 +728,22 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	if showWriteForm {
 		// Show only the posting form
 		content = `<div id="blog">
-			<div style="margin-bottom: 30px;">
-				<form id="blog-form" method="POST" action="/blog" style="display: flex; flex-direction: column; gap: 10px;">
-					<input type="text" id="post-title" name="title" placeholder="Title (optional)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 150px;"></textarea>
-					<input type="text" id="post-tags" name="tags" placeholder="Tags (optional, comma-separated)" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-					<div style="display: flex; justify-content: space-between; align-items: center;">
-						<select id="post-visibility" name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
+			<div class="mb-6">
+				<form id="blog-form" class="blog-form" method="POST" action="/blog">
+					<input type="text" id="post-title" name="title" placeholder="Title (optional)">
+					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required></textarea>
+					<input type="text" id="post-tags" name="tags" placeholder="Tags (optional, comma-separated)">
+					<div class="blog-form-row">
+						<select id="post-visibility" name="visibility">
 							<option value="public" selected>Public</option>
 							<option value="private">Private (Admin only)</option>
 						</select>
-						<div style="display: flex; gap: 10px;">
-							<a href="/blog" style="padding: 8px 12px; background: var(--hover-background, #eee); color: var(--text-primary, #333); text-decoration: none; border-radius: var(--border-radius, 6px); display: inline-block;">Cancel</a>
-							<button type="submit" style="padding: 8px 12px;">Post</button>
+						<div class="blog-form-actions">
+							<a href="/blog" class="btn btn-secondary">Cancel</a>
+							<button type="submit">Post</button>
 						</div>
 					</div>
-					<div style="font-size: 12px; color: #666;">
+					<div class="blog-form-hint">
 						<span id="char-count">Min 50 chars</span>
 					</div>
 				</form>
@@ -844,19 +844,19 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		_, acc := auth.TrySession(r)
 		if acc != nil && acc.Admin {
 			// Admin: show write and moderate links
-			actions = `<div style="margin-bottom: 15px;">
-				<a href="/blog?write=true" style="padding: 8px 12px; background: var(--btn-primary, #000); color: white; text-decoration: none; border-radius: var(--border-radius, 6px); display: inline-block; font-size: 14px;">+ Write a Post</a>
-				<a href="/admin/moderate" style="color: var(--text-muted, #666); text-decoration: none; font-size: 14px; margin-left: 15px;">Moderate</a>
+			actions = `<div class="mb-4">
+				<a href="/blog?write=true" class="btn btn-primary text-sm">+ Write a Post</a>
+				<a href="/admin/moderate" class="text-muted text-sm ml-4">Moderate</a>
 			</div>`
 		} else if acc != nil {
 			// Regular user: show only write link
-			actions = `<div style="margin-bottom: 15px;">
-				<a href="/blog?write=true" style="padding: 8px 12px; background: var(--btn-primary, #000); color: white; text-decoration: none; border-radius: var(--border-radius, 6px); display: inline-block; font-size: 14px;">+ Write a Post</a>
+			actions = `<div class="mb-4">
+				<a href="/blog?write=true" class="btn btn-primary text-sm">+ Write a Post</a>
 			</div>`
 		} else {
 			// Guest user, show login prompt
-			actions = `<div style="margin-bottom: 15px; color: #666; font-size: 14px;">
-				<a href="/login?redirect=/blog" style="color: #666; text-decoration: none;">Login</a> to write a post
+			actions = `<div class="mb-4 text-muted text-sm">
+				<a href="/login?redirect=/blog" class="text-muted">Login</a> to write a post
 			</div>`
 		}
 		content = fmt.Sprintf(`<div id="blog">
@@ -1338,21 +1338,21 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		content := fmt.Sprintf(`<div id="blog">
-			<form method="POST" action="/post?id=%s" style="display: flex; flex-direction: column; gap: 10px;">
+			<form method="POST" action="/post?id=%s" class="blog-form">
 				<input type="hidden" name="_method" value="PATCH">
-				<input type="text" name="title" placeholder="Title (optional)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-				<textarea name="content" rows="15" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: 'Nunito Sans', serif;">%s</textarea>
-				<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" value="%s" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-				<select name="visibility" style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; background-color: white; cursor: pointer;">
+				<input type="text" name="title" placeholder="Title (optional)" value="%s">
+				<textarea name="content" rows="15" required>%s</textarea>
+				<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" value="%s">
+				<select name="visibility">
 					<option value="public" %s>Public</option>
 					<option value="private" %s>Private (Admin only)</option>
 				</select>
-				<div style="font-size: 12px; color: #666; margin-top: -5px;">
+				<div class="blog-form-hint">
 					Supports markdown: **bold**, *italic**, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
 				</div>
-				<div style="display: flex; gap: 10px;">
-					<button type="submit" style="padding: 8px 12px;">Save Changes</button>
-					<a href="/post?id=%s" style="padding: 8px 12px; background: var(--hover-background, #eee); color: var(--text-primary, #333); text-decoration: none; border-radius: var(--border-radius, 6px); display: inline-block;">Cancel</a>
+				<div class="blog-form-actions">
+					<button type="submit">Save Changes</button>
+					<a href="/post?id=%s" class="btn btn-secondary">Cancel</a>
 				</div>
 			</form>
 		</div>`, post.ID, post.Title, post.Content, post.Tags, publicSelected, privateSelected, post.ID)
@@ -1372,14 +1372,14 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
-		authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #666;">%s</a>`, post.AuthorID, post.Author)
+		authorLink = fmt.Sprintf(`<a href="/@%s" class="text-muted">%s</a>`, post.AuthorID, post.Author)
 	}
 
 	// Check if current user is the author (to show edit and delete buttons)
 	var editButton string
 	_, acc := auth.TrySession(r)
 	if acc != nil && acc.ID == post.AuthorID {
-		editButton = ` · <a href="/post?id=` + post.ID + `&edit=true" style="color: #666;">Edit</a> · <a href="#" onclick="if(confirm('Delete this post?')){var f=document.createElement('form');f.method='POST';f.action='/post?id=` + post.ID + `';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" style="color: #d9534f;">Delete</a>`
+		editButton = ` · <a href="/post?id=` + post.ID + `&edit=true" class="text-muted">Edit</a> · <a href="#" onclick="if(confirm('Delete this post?')){var f=document.createElement('form');f.method='POST';f.action='/post?id=` + post.ID + `';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">Delete</a>`
 	}
 
 	tagsHtml := ""
@@ -1391,7 +1391,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Add private badge if post is private
 	if post.Private {
-		tagsHtml += `<span class="category" style="background-color: #d9534f; color: white;">Private</span>`
+		tagsHtml += `<span class="category badge-private">Private</span>`
 	}
 
 	// Format tags for display (on separate line if present)
@@ -1402,16 +1402,16 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	content := fmt.Sprintf(`<div id="blog">
 		%s
-		<div class="info" style="color: #666; font-size: small;">
-			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" style="color: #666;">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" style="color: #666;">Share</a>
+		<div class="info">
+			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" class="text-muted">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" class="text-muted">Share</a>
 		</div>
-		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
-		<div style="margin-bottom: 20px;">%s</div>
-		<hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
-		<h3 style="margin-top: 30px;">Comments</h3>
+		<hr class="my-5 border-t">
+		<div class="mb-5">%s</div>
+		<hr class="my-5 border-t">
+		<h3 class="mt-6">Comments</h3>
 		%s
-		<div style="margin-top: 30px;">
-			<a href="/blog" style="color: #666; text-decoration: none;">← Back to posts</a>
+		<div class="mt-6">
+			<a href="/blog" class="text-muted">← Back to posts</a>
 		</div>
 	</div>`, tagsDisplay, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
@@ -1445,33 +1445,33 @@ func renderComments(postID string, r *http.Request) string {
 
 	if isAuthenticated {
 		commentsHTML.WriteString(fmt.Sprintf(`
-			<form method="POST" action="/post/%s/comment" style="margin: 20px 0; display: flex; flex-direction: column; gap: 10px;">
-				<textarea name="content" rows="3" placeholder="Add a comment..." required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
+			<form method="POST" action="/post/%s/comment" class="blog-form my-5">
+				<textarea name="content" rows="3" placeholder="Add a comment..." required></textarea>
 				<div>
-					<button type="submit" style="padding: 8px 12px;">Add Comment</button>
+					<button type="submit">Add Comment</button>
 				</div>
 			</form>
 		`, postID))
 	} else {
-		commentsHTML.WriteString(`<p style="color: #666; margin: 20px 0;"><a href="/login" style="color: #0066cc;">Login</a> to add a comment</p>`)
+		commentsHTML.WriteString(`<p class="text-muted my-5"><a href="/login">Login</a> to add a comment</p>`)
 	}
 
 	if len(postComments) == 0 {
-		commentsHTML.WriteString(`<p style="color: #999; font-style: italic; margin: 20px 0;">No comments yet. Be the first to comment!</p>`)
+		commentsHTML.WriteString(`<p class="text-muted italic my-5">No comments yet. Be the first to comment!</p>`)
 		return commentsHTML.String()
 	}
 
-	commentsHTML.WriteString(`<div style="margin-top: 20px;">`)
+	commentsHTML.WriteString(`<div class="mt-5">`)
 	for _, comment := range postComments {
 		authorLink := comment.Author
 		if comment.AuthorID != "" {
-			authorLink = fmt.Sprintf(`<a href="/@%s" style="color: #0066cc;">%s</a>`, comment.AuthorID, comment.Author)
+			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, comment.AuthorID, comment.Author)
 		}
 
 		commentsHTML.WriteString(fmt.Sprintf(`
-			<div style="padding: 15px; background: #f9f9f9; border-radius: 5px; margin-bottom: 10px;">
-				<div style="color: #666; font-size: 12px; margin-bottom: 5px;">%s · %s</div>
-				<div style="white-space: pre-wrap;">%s</div>
+			<div class="p-4 bg-light rounded mb-3">
+				<div class="text-muted text-xs mb-1">%s · %s</div>
+				<div class="whitespace-pre-wrap">%s</div>
 			</div>
 		`, app.TimeAgo(comment.CreatedAt), authorLink, comment.Content))
 	}
@@ -1500,7 +1500,7 @@ func Linkify(text string) string {
 		matches := idPattern.FindStringSubmatch(match)
 		if len(matches) > 1 {
 			videoID := matches[1]
-			return fmt.Sprintf(`<div style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 15px 0;"><iframe src="/video?id=%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;" allowfullscreen loading="lazy"></iframe></div>`, videoID)
+			return fmt.Sprintf(`<div class="iframe-container"><iframe src="/video?id=%s" allowfullscreen loading="lazy"></iframe></div>`, videoID)
 		}
 		return match
 	})

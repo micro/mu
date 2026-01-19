@@ -396,7 +396,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					if len(text) > 300 {
 						text = text[:300] + "..."
 					}
-					contentHTML = fmt.Sprintf(`<p style="white-space: pre-wrap;">%s</p>`, text)
+					contentHTML = fmt.Sprintf(`<p class="whitespace-pre-wrap">%s</p>`, text)
 					author = post.Author
 					createdAt = app.TimeAgo(post.CreatedAt)
 				}
@@ -491,13 +491,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					<span class="content-type-badge">post</span>
 					<h3>%s</h3>
 				</div>
-				<p style="white-space: pre-wrap;">%s</p>
+				<p class="whitespace-pre-wrap">%s</p>
 				<div class="info">
 					%s by %s · New Account (< 24h) · Hidden from homepage
 				</div>
 				<div class="actions">
 					<a href="/post?id=%s" target="_blank">view</a> · 
-					<a href="/flag?type=post&id=%s" style="color: #d00;">flag</a>
+					<a href="/flag?type=post&id=%s" class="text-error">flag</a>
 				</div>
 			</div>`,
 					title,
@@ -511,8 +511,8 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			newAccountPostsHTML = fmt.Sprintf(`
-				<h2 style="margin-top: 2em;">New Account Blog Posts (< 24 hours old)</h2>
-				<p style="color: #666; margin-bottom: 1em;">These blog posts are hidden from the public homepage but can still be flagged if inappropriate.</p>
+				<h2 class="mt-6">New Account Blog Posts (< 24 hours old)</h2>
+				<p class="text-muted mb-4">These blog posts are hidden from the public homepage but can still be flagged if inappropriate.</p>
 				<div id="new-account-blog">
 					%s
 				</div>`, strings.Join(newPostsList, "\n"))

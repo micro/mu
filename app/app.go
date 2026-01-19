@@ -262,7 +262,7 @@ var LoginTemplate = `<html lang="en">
 	  <br>
 	  <button>Login</button>
 	</form>
-	<p style="text-align: center; margin-top: 20px;"><a href="/signup">Sign up</a> if you don't have an account</p>
+	<p class="text-center mt-5"><a href="/signup">Sign up</a> if you don't have an account</p>
       </div>
     </div>
   </body>
@@ -296,7 +296,7 @@ var SignupTemplate = `<html lang="en">
 	  <br>
 	  <button>Signup</button>
 	</form>
-	<p style="text-align: center; margin-top: 20px;"><a href="/login">Login</a> if you have an account</p>
+	<p class="text-center mt-5"><a href="/login">Login</a> if you have an account</p>
       </div>
     </div>
   </body>
@@ -349,17 +349,17 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(id) == 0 {
-			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p style="color: red;">Username is required</p>`)))
+			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p class="text-error">Username is required</p>`)))
 			return
 		}
 		if len(secret) == 0 {
-			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p style="color: red;">Password is required</p>`)))
+			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p class="text-error">Password is required</p>`)))
 			return
 		}
 
 		sess, err := auth.Login(id, secret)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p style="color: red;">Invalid username or password</p>`)))
+			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p class="text-error">Invalid username or password</p>`)))
 			return
 		}
 
@@ -409,22 +409,22 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		usernameRegex := regexp.MustCompile(usernamePattern)
 
 		if len(id) == 0 {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Username is required</p>`)))
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Username is required</p>`)))
 			return
 		}
 
 		if !usernameRegex.MatchString(id) {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`)))
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`)))
 			return
 		}
 
 		if len(secret) == 0 {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Password is required</p>`)))
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Password is required</p>`)))
 			return
 		}
 
 		if len(secret) < 6 {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Password must be at least 6 characters</p>`)))
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Password must be at least 6 characters</p>`)))
 			return
 		}
 
@@ -439,14 +439,14 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			Name:    name,
 			Created: time.Now(),
 		}); err != nil {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, fmt.Sprintf(`<p style="color: red;">%s</p>`, err.Error()))))
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
 			return
 		}
 
 		// login
 		sess, err := auth.Login(id, secret)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p style="color: red;">Account created but login failed. Please try logging in.</p>`)))
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Account created but login failed. Please try logging in.</p>`)))
 			return
 		}
 
@@ -522,7 +522,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	content := fmt.Sprintf(`<div class="card">
 <h3>Wallet</h3>
-<p id="wallet-balance" style="font-size: 24px; font-weight: bold; margin: 10px 0;">...</p>
+<p id="wallet-balance" class="text-xl font-bold my-3">...</p>
 <p>%s</p>
 </div>
 
@@ -536,8 +536,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 <div class="card">
 <h3>Language</h3>
-<form action="/account" method="POST" style="display: flex; align-items: center; gap: 10px;">
-	<select name="language" style="padding: 6px; font-size: 14px;">%s</select>
+<form action="/account" method="POST" class="d-flex items-center gap-3">
+	<select name="language" class="form-select text-sm">%s</select>
 	<button type="submit">Save</button>
 </form>
 </div>
@@ -546,7 +546,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <h3>Settings</h3>
 <p><a href="/token">API Tokens →</a></p>
 %s
-<p><a href="/logout" style="color: #c00;">Logout</a></p>
+<p><a href="/logout" class="text-error">Logout</a></p>
 </div>
 
 <script>
@@ -644,7 +644,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
 	// Philosophy note
-	content.WriteString(`<p style="margin-bottom: 20px; color: #666;">Mu is a tool, not a destination. Pay for what you use, nothing more.</p>`)
+	content.WriteString(`<p class="mb-5 text-muted">Mu is a tool, not a destination. Pay for what you use, nothing more.</p>`)
 
 	// 2-column pricing grid with responsive class
 	content.WriteString(`<style>
@@ -657,34 +657,34 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	// Free tier
 	content.WriteString(`<div class="card">
 <h3>Free</h3>
-<p style="font-size: 24px; font-weight: bold; margin: 10px 0;">£0</p>
+<p class="text-xl font-bold my-3">£0</p>
 <p>10 AI queries/day</p>
 <p>News, video, and chat</p>
 <p>Direct message other users</p>
 <p>Resets at midnight UTC</p>`)
 	if !isLoggedIn {
-		content.WriteString(`<p style="margin-top: 15px;"><a href="/signup">Sign up →</a></p>`)
+		content.WriteString(`<p class="mt-4"><a href="/signup">Sign up →</a></p>`)
 	} else if isAdmin {
-		content.WriteString(`<p style="margin-top: 15px; color: #666;">You have full access</p>`)
+		content.WriteString(`<p class="mt-4 text-muted">You have full access</p>`)
 	} else {
-		content.WriteString(`<p style="margin-top: 15px; color: #666;">Your current plan</p>`)
+		content.WriteString(`<p class="mt-4 text-muted">Your current plan</p>`)
 	}
 	content.WriteString(`</div>`)
 
 	// Pay as you go
 	content.WriteString(`<div class="card">
 <h3>Pay as you go</h3>
-<p style="font-size: 24px; font-weight: bold; margin: 10px 0;">From £5</p>
+<p class="text-xl font-bold my-3">From £5</p>
 <p>Top up your wallet</p>
 <p>1 credit = 1p</p>
 <p>News 1p · Video 2p · Chat 3p · Email 4p · Apps 5p</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
-		content.WriteString(`<p style="margin-top: 15px;"><a href="/wallet/topup">Top up →</a></p>`)
+		content.WriteString(`<p class="mt-4"><a href="/wallet/topup">Top up →</a></p>`)
 	} else if !isLoggedIn {
-		content.WriteString(`<p style="margin-top: 15px;"><a href="/signup">Sign up first →</a></p>`)
+		content.WriteString(`<p class="mt-4"><a href="/signup">Sign up first →</a></p>`)
 	} else {
-		content.WriteString(`<p style="margin-top: 15px; color: #666;">You have full access</p>`)
+		content.WriteString(`<p class="mt-4 text-muted">You have full access</p>`)
 	}
 	content.WriteString(`</div>`)
 
@@ -695,7 +695,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <h3>Self-Host</h3>
 <p>Want unlimited and free forever? Run your own instance.</p>
 <p>Mu is open source (AGPL-3.0). Your server, your data, no limits.</p>
-<p style="margin-top: 10px;"><a href="https://github.com/asim/mu" target="_blank">View on GitHub →</a></p>
+<p class="mt-3"><a href="https://github.com/asim/mu" target="_blank">View on GitHub →</a></p>
 </div>`)
 
 	// FAQ

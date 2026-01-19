@@ -11,7 +11,7 @@ import (
 func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, hasUnread bool) string {
 	unreadIndicator := ""
 	if hasUnread {
-		unreadIndicator = `<span style="color: #007bff; font-weight: bold;">● </span>`
+		unreadIndicator = `<span class="unread-dot">● </span>`
 	}
 
 	// Format sender name/email
@@ -43,13 +43,13 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 	html := fmt.Sprintf(`
 		<div class="thread-preview" onclick="window.location.href='/mail?id=%s'">
 			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" title="Delete conversation">×</a>
-			<div style="margin-bottom: 4px;">
-				<strong style="font-size: 16px;">%s%s</strong>
+			<div class="mail-thread-item">
+				<strong class="mail-thread-subject">%s%s</strong>
 			</div>
-			<div style="color: #666; font-size: 14px; margin-bottom: 4px;">%s</div>
-			<div style="display: flex; justify-content: space-between; align-items: center;">
-				<div style="color: #999; font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">%s</div>
-				<span style="color: #888; font-size: 12px; margin-left: 10px; flex-shrink: 0;">%s</span>
+			<div class="mail-thread-meta">%s</div>
+			<div class="mail-thread-row">
+				<div class="mail-thread-preview">%s</div>
+				<span class="mail-thread-time">%s</span>
 			</div>
 		</div>
 	`, rootID, rootID, unreadIndicator, fromDisplay, decodeMIMEHeader(latestMsg.Subject), bodyPreview, relativeTime)
@@ -90,13 +90,13 @@ func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string)
 	html := fmt.Sprintf(`
 		<div class="thread-preview" onclick="window.location.href='/mail?id=%s'">
 			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" title="Delete conversation">×</a>
-			<div style="margin-bottom: 4px;">
-				<strong style="font-size: 16px;">%s</strong>
+			<div class="mail-thread-item">
+				<strong class="mail-thread-subject">%s</strong>
 			</div>
-			<div style="color: #666; font-size: 14px; margin-bottom: 4px;">to %s</div>
-			<div style="display: flex; justify-content: space-between; align-items: center;">
-				<div style="color: #999; font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">%s</div>
-				<span style="color: #888; font-size: 12px; margin-left: 10px; flex-shrink: 0;">%s</span>
+			<div class="mail-thread-meta">to %s</div>
+			<div class="mail-thread-row">
+				<div class="mail-thread-preview">%s</div>
+				<span class="mail-thread-time">%s</span>
 			</div>
 		</div>
 	`, rootID, rootID, decodeMIMEHeader(latestMsg.Subject), toDisplay, bodyPreview, relativeTime)
@@ -108,7 +108,7 @@ func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string)
 func renderInboxMessageWithUnread(msg *Message, indent int, viewerID string, hasUnread bool) string {
 	unreadIndicator := ""
 	if hasUnread {
-		unreadIndicator = `<span style="color: #007bff; font-weight: bold;">● </span>`
+		unreadIndicator = `<span class="unread-dot">● </span>`
 	}
 
 	// Format sender name/email
@@ -139,10 +139,10 @@ func renderInboxMessageWithUnread(msg *Message, indent int, viewerID string, has
 		}
 	}
 
-	return fmt.Sprintf(`<div class="message-item" style="padding: 15px 0; border-bottom: 1px solid #eee;">
-		<h3 style="margin: 0 0 5px 0; font-size: 16px;"><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s%s</a></h3>
-		<div style="margin-bottom: 5px; color: #666; font-size: 14px; word-wrap: break-word; overflow-wrap: break-word;">%s</div>
-		<div class="info" style="color: #666; font-size: small;">%s from %s</div>
+	return fmt.Sprintf(`<div class="mail-message-item message-item">
+		<h3><a href="/mail?id=%s">%s%s</a></h3>
+		<div class="mail-message-body">%s</div>
+		<div class="info">%s from %s</div>
 	</div>`, msg.ID, unreadIndicator, decodeMIMEHeader(msg.Subject), bodyPreview, app.TimeAgo(msg.CreatedAt), fromDisplay)
 }
 
@@ -176,10 +176,10 @@ func renderSentMessage(msg *Message) string {
 		}
 	}
 
-	return fmt.Sprintf(`<div class="message-item" style="padding: 15px 0; border-bottom: 1px solid #eee;">
-		<h3 style="margin: 0 0 5px 0; font-size: 16px;"><a href="/mail?id=%s" style="text-decoration: none; color: inherit;">%s</a></h3>
-		<div style="margin-bottom: 5px; color: #666; font-size: 14px; word-wrap: break-word; overflow-wrap: break-word;">%s</div>
-		<div class="info" style="color: #666; font-size: small;">%s to %s</div>
+	return fmt.Sprintf(`<div class="mail-message-item message-item">
+		<h3><a href="/mail?id=%s">%s</a></h3>
+		<div class="mail-message-body">%s</div>
+		<div class="info">%s to %s</div>
 	</div>`, msg.ID, decodeMIMEHeader(msg.Subject), bodyPreview, app.TimeAgo(msg.CreatedAt), toDisplay)
 }
 

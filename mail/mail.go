@@ -562,7 +562,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 										isAttachment = true // Skip linkifyURLs for pre-rendered HTML
 										app.Log("mail", "Rendered DMARC report from mixed content gzip (%d bytes)", len(content))
 									} else {
-										displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, html.EscapeString(string(content)))
+										displayBody = fmt.Sprintf(`<pre class="code-block">%s</pre>`, html.EscapeString(string(content)))
 										app.Log("mail", "Displayed raw XML from mixed content gzip (%d bytes)", len(content))
 									}
 									// Skip further processing since we handled this specially
@@ -607,7 +607,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					displayBody = dmarcHTML
 					app.Log("mail", "Rendered DMARC report from raw ZIP (%d bytes)", len(trimmed))
 				} else {
-					displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, html.EscapeString(extracted))
+					displayBody = fmt.Sprintf(`<pre class="code-block">%s</pre>`, html.EscapeString(extracted))
 					app.Log("mail", "Extracted and displayed raw ZIP contents (%d bytes)", len(trimmed))
 				}
 			} else {
@@ -654,7 +654,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							isAttachment = true // Skip linkifyURLs for pre-rendered HTML
 							app.Log("mail", "SET displayBody to DMARC HTML (%d bytes)", len(dmarcHTML))
 						} else {
-							displayBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5;">%s</pre>`, html.EscapeString(extracted))
+							displayBody = fmt.Sprintf(`<pre class="code-block">%s</pre>`, html.EscapeString(extracted))
 							app.Log("mail", "SET displayBody to raw XML in pre tags (%d bytes)", len(extracted))
 						}
 					} else {
@@ -762,7 +762,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 											msgBody = dmarcHTML
 											msgIsAttachment = true
 										} else {
-											msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(string(content)))
+											msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(string(content)))
 										}
 										goto threadSkipBodyProcessing
 									}
@@ -779,7 +779,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					if content, err := io.ReadAll(reader); err == nil {
 						reader.Close()
 						if isValidUTF8Text(content) {
-							msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, string(content))
+							msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, string(content))
 						}
 					}
 				}
@@ -791,7 +791,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						msgBody = dmarcHTML
 						msgIsAttachment = true // Skip linkifyURLs for pre-rendered HTML
 					} else {
-						msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(extracted))
+						msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(extracted))
 					}
 				} else {
 					// Extraction failed - show download link
@@ -810,7 +810,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							if content, err := io.ReadAll(reader); err == nil {
 								reader.Close()
 								if isValidUTF8Text(content) {
-									msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(string(content)))
+									msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(string(content)))
 								}
 							}
 						}
@@ -822,7 +822,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 								msgBody = dmarcHTML
 								msgIsAttachment = true // Skip linkifyURLs for pre-rendered HTML
 							} else {
-								msgBody = fmt.Sprintf(`<pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; line-height: 1.4;">%s</pre>`, html.EscapeString(extracted))
+								msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(extracted))
 							}
 						} else {
 							// Extraction failed - show download link
@@ -865,8 +865,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				<a href="#" onclick="if(confirm('Delete this message?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='_method';input1.value='DELETE';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='id';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='return_to';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" class="thread-message-delete">×</a>
 			</div>
 			<div class="thread-message-body">%s</div>
-			<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 12px;">
-				<a href="/mail?action=view_raw&id=%s" style="color: #666;" target="_blank">View Raw</a>
+			<div class="mt-3 border-t pt-3 text-xs">
+				<a href="/mail?action=view_raw&id=%s" class="text-muted" target="_blank">View Raw</a>
 			</div>
 		</div>`, authorDisplay, app.TimeAgo(m.CreatedAt), m.ID, msgID, msgBody, m.ID))
 		}
@@ -886,8 +886,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		blockButton := ""
 		if acc.Admin && IsExternalEmail(otherParty) {
 			blockButton = fmt.Sprintf(`
-			<span style="margin: 0 8px;">·</span>
-			<a href="#" onclick="if(confirm('Block %s from sending mail?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='block_sender';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='sender_email';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='msg_id';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" style="color: #666;">Block Sender</a>
+			<span class="mx-2">·</span>
+			<a href="#" onclick="if(confirm('Block %s from sending mail?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='block_sender';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='sender_email';input2.value='%s';form.appendChild(input2);var input3=document.createElement('input');input3.type='hidden';input3.name='msg_id';input3.value='%s';form.appendChild(input3);document.body.appendChild(form);form.submit();}return false;" class="text-muted">Block Sender</a>
 		`, otherParty, otherParty, msg.ID)
 		}
 
@@ -896,24 +896,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		replyToID := latestMsg.ID
 
 		messageView := fmt.Sprintf(`
-	<div style="color: #666; font-size: small; margin-bottom: 20px;">Thread with: %s</div>
+	<div class="text-muted text-sm mb-5">Thread with: %s</div>
 	%s
-	<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-		<form method="POST" action="/mail?id=%s" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}document.getElementById('reply-body-plain').value=replyText;var replyHTML=replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');document.getElementById('reply-body-html').value=replyHTML;return true;">
+	<div class="mt-6 border-t pt-5">
+		<form method="POST" action="/mail?id=%s" class="d-flex flex-column gap-4" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}document.getElementById('reply-body-plain').value=replyText;var replyHTML=replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');document.getElementById('reply-body-html').value=replyHTML;return true;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
 			<input type="hidden" id="reply-body-plain" name="body_plain" value="">
 			<input type="hidden" id="reply-body-html" name="body_html" value="">
-			<div id="reply-body" contenteditable="true" style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Nunito Sans', serif; font-size: inherit; min-height: 100px; outline: none; background: white;" placeholder="Write your reply..."></div>
-			<div style="display: flex; gap: 10px; align-items: center;">
-				<button type="submit" style="">Send</button>
-				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" style="color: #dc3545; font-size: 14px;">Delete Thread</a>
+			<div id="reply-body" contenteditable="true" class="mail-reply-box" placeholder="Write your reply..."></div>
+			<div class="d-flex gap-3 items-center">
+				<button type="submit">Send</button>
+				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" class="text-error text-sm">Delete Thread</a>
 				%s
 			</div>
 		</form>
-		<div style="margin-top: 20px;">
-			<a href="/mail" style="color: #666; text-decoration: none;">← Back to mail</a>
+		<div class="mt-5">
+			<a href="/mail" class="text-muted">← Back to mail</a>
 		</div>
 	</div>
 `, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton)
@@ -935,18 +935,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		composeForm := fmt.Sprintf(`
-			<form method="POST" action="/mail" style="display: flex; flex-direction: column; gap: 10px;">
+			<form method="POST" action="/mail" class="mail-form">
 				<input type="hidden" name="reply_to" value="%s">
-				<input type="text" name="to" placeholder="To: username or email" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-				<input type="text" name="subject" placeholder="Subject" value="%s" required style="padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-				<textarea name="body" rows="10" placeholder="Write your message..." required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 200px;"></textarea>
-			<div style="display: flex; gap: 10px; align-items: center;">
-				<button type="submit" style="">Send</button>
-				<a href="%s" style="color: #666; font-size: 14px;">Cancel</a>
+				<input type="text" name="to" placeholder="To: username or email" value="%s" required>
+				<input type="text" name="subject" placeholder="Subject" value="%s" required>
+				<textarea name="body" rows="10" placeholder="Write your message..." required></textarea>
+			<div class="d-flex gap-3 items-center">
+				<button type="submit">Send</button>
+				<a href="%s" class="text-muted text-sm">Cancel</a>
 			</div>
 		</form>
-		<div style="margin-top: 20px;">
-			<a href="%s" style="color: #666; text-decoration: none;">← Back</a>
+		<div class="mt-5">
+			<a href="%s" class="text-muted">← Back</a>
 		</div>
 		`, replyTo, to, subject, backLink, backLink)
 
@@ -1059,9 +1059,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	content := ""
 	if len(items) == 0 {
 		if view == "sent" {
-			content = `<p style="color: #666; padding: 20px;">No sent messages yet.</p>`
+			content = `<p class="text-muted p-5">No sent messages yet.</p>`
 		} else {
-			content = `<p style="color: #666; padding: 20px;">No messages yet.</p>`
+			content = `<p class="text-muted p-5">No messages yet.</p>`
 		}
 	} else {
 		content = strings.Join(items, "")
@@ -1083,10 +1083,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	html := fmt.Sprintf(`
-		<div style="margin-bottom: 20px;">
-			<a href="/mail?compose=true" style="color: #666; text-decoration: none; font-size: 14px;">Write a Message</a>
+		<div class="mb-5">
+			<a href="/mail?compose=true" class="text-muted text-sm">Write a Message</a>
 		</div>
-		<div style="border-bottom: 1px solid #eee; margin-bottom: 20px;">
+		<div class="border-b mb-5">
 			<a href="/mail" style="%s">Inbox%s</a>
 			<a href="/mail?view=sent" style="%s">Sent</a>
 		</div>
@@ -1159,7 +1159,7 @@ func GetRecentThreadsPreview(userID string, limit int) string {
 
 	inbox := inboxes[userID]
 	if inbox == nil || len(inbox.Threads) == 0 {
-		return `<p style="color: #888;">No messages</p>`
+		return `<p class="text-muted">No messages</p>`
 	}
 
 	// Get threads and sort by latest
@@ -1175,7 +1175,7 @@ func GetRecentThreadsPreview(userID string, limit int) string {
 	}
 
 	if len(threads) == 0 {
-		return `<p style="color: #888;">No messages</p>`
+		return `<p class="text-muted">No messages</p>`
 	}
 
 	sort.Slice(threads, func(i, j int) bool {
@@ -1191,7 +1191,7 @@ func GetRecentThreadsPreview(userID string, limit int) string {
 		msg := thread.Latest
 		unreadDot := ""
 		if thread.HasUnread {
-			unreadDot = `<span style="color: #0d7377; margin-right: 5px;">●</span>`
+			unreadDot = `<span class="unread-dot mr-1">●</span>`
 		}
 		// Strip HTML and truncate body for preview
 		body := stripHTMLTags(msg.Body)
@@ -1202,9 +1202,9 @@ func GetRecentThreadsPreview(userID string, limit int) string {
 		if body == "" {
 			body = "(no preview)"
 		}
-		b.WriteString(fmt.Sprintf(`<div style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+		b.WriteString(fmt.Sprintf(`<div class="py-2 border-b">
 			%s<strong>%s</strong>
-			<span style="color: #888; font-size: 13px; margin-left: 8px;">%s</span>
+			<span class="text-muted text-sm ml-2">%s</span>
 		</div>`, unreadDot, html.EscapeString(msg.From), html.EscapeString(body)))
 	}
 

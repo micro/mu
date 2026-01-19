@@ -235,7 +235,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if appsPreview != "" {
 			leftHTML = append(leftHTML, app.Card("apps", "Apps", appsPreview+app.Link("More", "/apps")))
 		} else {
-			leftHTML = append(leftHTML, app.Card("apps", "Apps", `<p style="color: #666;">Create micro apps with AI</p>`+app.Link("Create", "/apps")))
+			leftHTML = append(leftHTML, app.Card("apps", "Apps", `<p class="text-muted">Create micro apps with AI</p>`+app.Link("Create", "/apps")))
 		}
 	}
 

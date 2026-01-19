@@ -75,34 +75,34 @@ func WalletPage(userID string) string {
 		if usedPct > 100 {
 			usedPct = 100
 		}
-		sb.WriteString(`<div style="background: #eee; height: 6px; border-radius: 3px; margin: 10px 0;">`)
-		sb.WriteString(fmt.Sprintf(`<div style="background: #000; height: 100%%; width: %.0f%%; border-radius: 3px;"></div>`, usedPct))
+		sb.WriteString(`<div class="progress">`)
+		sb.WriteString(fmt.Sprintf(`<div class="progress-bar" style="width: %.0f%%;"></div>`, usedPct))
 		sb.WriteString(`</div>`)
-		sb.WriteString(fmt.Sprintf(`<p style="font-size: 14px; color: #666;">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, FreeDailySearches))
+		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, FreeDailySearches))
 		sb.WriteString(`</div>`)
 
 		// Self-hosting note
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Self-Host</h3>`)
-		sb.WriteString(`<p style="font-size: 14px; color: #666;">Want unlimited and free? <a href="https://github.com/asim/mu">Self-host your own instance</a>.</p>`)
+		sb.WriteString(`<p class="text-sm text-muted">Want unlimited and free? <a href="https://github.com/asim/mu">Self-host your own instance</a>.</p>`)
 		sb.WriteString(`</div>`)
 	}
 
 	// Credit costs
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Costs</h3>`)
-	sb.WriteString(`<table style="width: 100%; font-size: 14px;">`)
-	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td style="text-align: right;">%dp</td></tr>`, CostNewsSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>News summary</td><td style="text-align: right;">%dp</td></tr>`, CostNewsSummary))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td style="text-align: right;">%dp</td></tr>`, CostVideoSearch))
+	sb.WriteString(`<table class="stats-table">`)
+	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td>%dp</td></tr>`, CostNewsSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>News summary</td><td>%dp</td></tr>`, CostNewsSummary))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td>%dp</td></tr>`, CostVideoSearch))
 	if CostVideoWatch > 0 {
-		sb.WriteString(fmt.Sprintf(`<tr><td>Video watch</td><td style="text-align: right;">%dp</td></tr>`, CostVideoWatch))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Video watch</td><td>%dp</td></tr>`, CostVideoWatch))
 	}
-	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td style="text-align: right;">%dp</td></tr>`, CostChatQuery))
-	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td style="text-align: right;">%dp</td></tr>`, CostExternalEmail))
-	sb.WriteString(fmt.Sprintf(`<tr><td>App create</td><td style="text-align: right;">%dp</td></tr>`, CostAppCreate))
-	sb.WriteString(fmt.Sprintf(`<tr><td>App modify</td><td style="text-align: right;">%dp</td></tr>`, CostAppModify))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Agent run</td><td style="text-align: right;">%dp</td></tr>`, CostAgentRun))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td>%dp</td></tr>`, CostChatQuery))
+	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td>%dp</td></tr>`, CostExternalEmail))
+	sb.WriteString(fmt.Sprintf(`<tr><td>App create</td><td>%dp</td></tr>`, CostAppCreate))
+	sb.WriteString(fmt.Sprintf(`<tr><td>App modify</td><td>%dp</td></tr>`, CostAppModify))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Agent run</td><td>%dp</td></tr>`, CostAgentRun))
 	sb.WriteString(`</table>`)
 	sb.WriteString(`</div>`)
 
@@ -110,8 +110,8 @@ func WalletPage(userID string) string {
 	if len(transactions) > 0 {
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>History</h3>`)
-		sb.WriteString(`<table style="width: 100%; border-collapse: collapse; font-size: 14px;">`)
-		sb.WriteString(`<tr style="border-bottom: 1px solid #eee;"><th style="text-align: left; padding: 10px 0;">Date</th><th style="text-align: left; padding: 10px 0;">Type</th><th style="text-align: right; padding: 10px 0;">Amount</th><th style="text-align: right; padding: 10px 0;">Balance</th></tr>`)
+		sb.WriteString(`<table class="data-table">`)
+		sb.WriteString(`<tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>`)
 
 		for _, tx := range transactions {
 			typeLabel := tx.Operation
@@ -122,11 +122,11 @@ func WalletPage(userID string) string {
 			if tx.Amount > 0 {
 				amountPrefix = "+"
 			}
-			sb.WriteString(fmt.Sprintf(`<tr style="border-bottom: 1px solid #eee;">
-				<td style="padding: 10px 0;">%s</td>
-				<td style="padding: 10px 0;">%s</td>
-				<td style="text-align: right; padding: 10px 0;">%s%d</td>
-				<td style="text-align: right; padding: 10px 0;">%d</td>
+			sb.WriteString(fmt.Sprintf(`<tr>
+				<td>%s</td>
+				<td>%s</td>
+				<td>%s%d</td>
+				<td>%d</td>
 			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountPrefix, abs(tx.Amount), tx.Balance))
 		}
 
@@ -141,14 +141,14 @@ func WalletPage(userID string) string {
 func QuotaExceededPage(operation string, cost int) string {
 	var sb strings.Builder
 
-	sb.WriteString(`<div class="card" style="max-width: 500px; margin: 50px auto; text-align: center;">`)
+	sb.WriteString(`<div class="card center-card-md">`)
 	sb.WriteString(`<h2>Daily Limit Reached</h2>`)
 	sb.WriteString(`<p>You've used your free queries for today.</p>`)
-	sb.WriteString(`<h3 style="margin-top: 20px;">Options</h3>`)
-	sb.WriteString(`<ul style="text-align: left; margin: 15px 0;">`)
-	sb.WriteString(`<li style="margin: 10px 0;">Wait until midnight UTC for more free queries</li>`)
-	sb.WriteString(fmt.Sprintf(`<li style="margin: 10px 0;"><a href="/wallet">Use credits</a> (%d credit%s for this)</li>`, cost, pluralize(cost)))
-	sb.WriteString(`<li style="margin: 10px 0;"><a href="/plans">View pricing</a></li>`)
+	sb.WriteString(`<h3 class="mt-5">Options</h3>`)
+	sb.WriteString(`<ul class="options-list">`)
+	sb.WriteString(`<li>Wait until midnight UTC for more free queries</li>`)
+	sb.WriteString(fmt.Sprintf(`<li><a href="/wallet">Use credits</a> (%d credit%s for this)</li>`, cost, pluralize(cost)))
+	sb.WriteString(`<li><a href="/plans">View pricing</a></li>`)
 	sb.WriteString(`</ul>`)
 	sb.WriteString(`</div>`)
 
@@ -218,7 +218,7 @@ func handleTopupPage(w http.ResponseWriter, r *http.Request) {
 	var sb strings.Builder
 
 	sb.WriteString(`<h3>Top Up</h3>`)
-	sb.WriteString(`<p style="font-size: 14px; color: #666;">1 credit = 1p</p>`)
+	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p</p>`)
 
 	for _, tier := range TopupTiers {
 		bonus := ""
@@ -363,10 +363,10 @@ func handleSuccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #f0fff4; border-color: #22c55e;">
-	<h2 style="color: #22c55e;">✓ Payment Successful</h2>
+	content := `<div class="card center-card bg-success-light">
+	<h2 class="text-success">✓ Payment Successful</h2>
 	<p>Your credits have been added to your wallet.</p>
-	<p style="margin-top: 20px;"><a href="/wallet">View Wallet →</a></p>
+	<p class="mt-5"><a href="/wallet">View Wallet →</a></p>
 </div>`
 
 	html := app.RenderHTMLForRequest("Payment Successful", "Your payment was successful", content, r)
@@ -375,10 +375,10 @@ func handleSuccess(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCancel(w http.ResponseWriter, r *http.Request) {
-	content := `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; background: #fffbeb; border-color: #f59e0b;">
-	<h2 style="color: #d97706;">Payment Cancelled</h2>
+	content := `<div class="card center-card bg-warning-light">
+	<h2 class="text-warning">Payment Cancelled</h2>
 	<p>Your payment was cancelled. No charges were made.</p>
-	<p style="margin-top: 20px;"><a href="/wallet">Back to Wallet →</a></p>
+	<p class="mt-5"><a href="/wallet">Back to Wallet →</a></p>
 </div>`
 
 	html := app.RenderHTMLForRequest("Payment Cancelled", "Your payment was cancelled", content, r)

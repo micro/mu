@@ -464,7 +464,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 
 	filteredPublic := filterApps(otherPublic, searchQuery)
 	if len(filteredPublic) > 0 {
-		content.WriteString(`<h3 style="margin-top: 30px;">Community Apps</h3>`)
+		content.WriteString(`<h3 class="mt-6">Community Apps</h3>`)
 		content.WriteString(`<div class="apps-grid">`)
 		for _, a := range filteredPublic {
 			content.WriteString(renderAppCard(a, false))
@@ -705,7 +705,7 @@ func handleNew(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 func renderNewForm(w http.ResponseWriter, errMsg, name, prompt string) {
 	errHTML := ""
 	if errMsg != "" {
-		errHTML = fmt.Sprintf(`<div style="color: red; margin-bottom: 15px;">%s</div>`, html.EscapeString(errMsg))
+		errHTML = fmt.Sprintf(`<div class="text-error mb-4">%s</div>`, html.EscapeString(errMsg))
 	}
 
 	formHTML := fmt.Sprintf(`
@@ -731,7 +731,7 @@ func renderNewForm(w http.ResponseWriter, errMsg, name, prompt string) {
 }
 </style>
 %s
-<form method="POST" style="max-width: 600px;">
+<form method="POST" class="max-w-lg">
   <div class="form-group">
     <label>Name</label>
     <input type="text" name="name" value="%s" placeholder="Pomodoro Timer" required autofocus>
@@ -843,7 +843,7 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
 
 	errHTML := ""
 	if errMsg != "" {
-		errHTML = fmt.Sprintf(`<div style="color: red; margin-bottom: 15px;">%s</div>`, html.EscapeString(errMsg))
+		errHTML = fmt.Sprintf(`<div class="text-error mb-4">%s</div>`, html.EscapeString(errMsg))
 	}
 
 	formHTML := fmt.Sprintf(`
@@ -916,13 +916,13 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
   </div>
   <div class="form-group checkbox-group">
     <input type="checkbox" name="public" id="public" %s>
-    <label for="public" style="font-weight: normal;">Make this app public</label>
+    <label for="public" class="font-normal">Make this app public</label>
   </div>
   <div>
     <button type="submit" name="action" value="save">Save Changes</button>
     <button type="button" class="button-secondary" onclick="previewApp()">Preview</button>
     <button type="submit" name="action" value="generate" class="button-secondary">Regenerate</button>
-    <a href="/apps/%s" style="margin-left: 10px;">Cancel</a>
+    <a href="/apps/%s" class="ml-3">Cancel</a>
   </div>
 </form>
 <iframe id="preview" class="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
@@ -1124,13 +1124,13 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 
 	messageHTML := ""
 	if hasError {
-		messageHTML = fmt.Sprintf(`<div style="color: #c00; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;">Generation failed: %s</div>`, html.EscapeString(a.Error))
+		messageHTML = fmt.Sprintf(`<div class="alert alert-error">Generation failed: %s</div>`, html.EscapeString(a.Error))
 	} else if message != "" {
-		color := "#c00"
+		alertClass := "alert-error"
 		if strings.HasPrefix(message, "✓") {
-			color = "#080"
+			alertClass = "alert-success"
 		}
-		messageHTML = fmt.Sprintf(`<div style="color: %s; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;">%s</div>`, color, html.EscapeString(message))
+		messageHTML = fmt.Sprintf(`<div class="alert %s">%s</div>`, alertClass, html.EscapeString(message))
 	}
 
 	// Parse history from description
@@ -1336,14 +1336,14 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
     %s
     <input type="text" name="instruction" class="instruction-input" placeholder="Describe what you want to change..." %s autofocus>
     <button type="submit" name="action" value="modify" %s>Apply Change</button>
-    <a href="/apps/%s" style="margin-left: 15px;">Cancel</a>
+    <a href="/apps/%s" class="ml-4">Cancel</a>
     
     %s
     %s
     
     <div class="meta-section">
       <label>Name: <input type="text" name="name" value="%s" %s></label>
-      <label>Summary: <input type="text" name="summary" value="%s" placeholder="Short description" maxlength="100" %s style="width: 250px;"></label>
+      <label>Summary: <input type="text" name="summary" value="%s" placeholder="Short description" maxlength="100" %s class="w-auto" style="width: 250px;"></label>
       <div class="checkbox-group">
         <input type="checkbox" name="public" id="public" %s %s>
         <label for="public">Public</label>
@@ -1355,9 +1355,9 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
       <textarea class="code-editor" name="code" id="code-editor" %s>%s</textarea>
     </details>
     
-    <div style="margin-top: 15px;">
+    <div class="mt-4">
       <button type="submit" name="action" value="save" %s>Save</button>
-      <span style="margin-left: 10px; font-size: 13px; color: #666;">Save all changes</span>
+      <span class="ml-3 text-sm text-muted">Save all changes</span>
     </div>
   </form>
 </div>
@@ -1403,7 +1403,7 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 	// Build edit/delete links inline with info (like blog posts)
 	var editLinks string
 	if isOwner {
-		editLinks = fmt.Sprintf(` · <a href="/apps/%s/develop" style="color: #666;">Edit</a> · <a href="/apps/%s/delete" style="color: #d9534f;" onclick="return confirm('Delete this app?')">Delete</a>`, a.ID, a.ID)
+		editLinks = fmt.Sprintf(` · <a href="/apps/%s/develop" class="text-muted">Edit</a> · <a href="/apps/%s/delete" class="text-error" onclick="return confirm('Delete this app?')">Delete</a>`, a.ID, a.ID)
 	}
 
 	// Widget button for logged-in users (only for public apps or own apps)
@@ -1472,7 +1472,7 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 %s
 <p>%s</p>
 <iframe class="app-frame" sandbox="allow-scripts allow-same-origin allow-forms" src="/apps/%s/preview"></iframe>
-<p style="margin-top: 20px;"><a href="/apps">← Back to Apps</a></p>
+<p class="mt-5"><a href="/apps">← Back to Apps</a></p>
 `, app.TimeAgo(a.UpdatedAt), html.EscapeString(a.Author), visibility, editLinks, widgetButton, html.EscapeString(description), a.ID)
 
 	w.Write([]byte(app.RenderHTML(a.Name, a.Name, viewHTML)))

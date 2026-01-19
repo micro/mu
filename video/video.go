@@ -1133,15 +1133,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// For guests: show thumbnail with options to login or go to YouTube
 		if isGuest {
 			guestHtml := fmt.Sprintf(`
-				<div class="card" style="text-align: center; padding: 40px; max-width: 640px; margin: 40px auto;">
-					<img src="%s" style="width: 100%%; border-radius: 8px; margin-bottom: 20px;" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+				<div class="card text-center p-10" style="max-width: 640px; margin: 40px auto;">
+					<img src="%s" class="w-full rounded mb-5" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
 					<h2>Watch Video</h2>
-					<p style="color: #666; margin: 20px 0;">Login to watch ad-free, or view on YouTube.</p>
-					<p style="margin: 20px 0;">
-						<a href="/login?redirect=/video?id=%s" style="display: inline-block; padding: 8px 12px; background: var(--btn-primary, #000); color: #fff; text-decoration: none; border-radius: var(--border-radius, 6px); margin-right: 10px;">Login to watch</a>
-						<a href="%s" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 8px 12px; border: 1px solid var(--btn-primary, #000); text-decoration: none; border-radius: var(--border-radius, 6px); color: var(--text-primary, #333);">Watch on YouTube →</a>
+					<p class="text-muted my-5">Login to watch ad-free, or view on YouTube.</p>
+					<p class="my-5">
+						<a href="/login?redirect=/video?id=%s" class="btn btn-primary mr-3">Login to watch</a>
+						<a href="%s" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Watch on YouTube →</a>
 					</p>
-					<p style="margin-top: 20px;"><a href="/video">← Back to videos</a></p>
+					<p class="mt-5"><a href="/video">← Back to videos</a></p>
 				</div>
 			`, thumbnailURL, id, id, youtubeURL)
 			pageHTML := fmt.Sprintf(app.Template, "en", "Video", "Video", "", "", "", guestHtml)
@@ -1158,16 +1158,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				credits = "credits"
 			}
 			paywallHtml := fmt.Sprintf(`
-				<div class="card" style="text-align: center; padding: 40px; max-width: 640px; margin: 40px auto;">
-					<img src="%s" style="width: 100%%; border-radius: 8px; margin-bottom: 20px;" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+				<div class="card text-center p-10" style="max-width: 640px; margin: 40px auto;">
+					<img src="%s" class="w-full rounded mb-5" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
 					<h2>Watch Video</h2>
 					<p>Watching ad-free videos costs %d %s.</p>
-					<p style="color: #666; margin: 20px 0;">Your balance: %d credits</p>
-					<p style="margin: 20px 0;">
-						<a href="/wallet/topup" style="display: inline-block; padding: 8px 12px; background: var(--btn-primary, #000); color: #fff; text-decoration: none; border-radius: var(--border-radius, 6px); margin-right: 10px;">Top up credits</a>
-						<a href="%s" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 8px 12px; border: 1px solid var(--btn-primary, #000); text-decoration: none; border-radius: var(--border-radius, 6px); color: var(--text-primary, #333);">Watch on YouTube →</a>
+					<p class="text-muted my-5">Your balance: %d credits</p>
+					<p class="my-5">
+						<a href="/wallet/topup" class="btn btn-primary mr-3">Top up credits</a>
+						<a href="%s" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Watch on YouTube →</a>
 					</p>
-					<p style="margin-top: 20px;"><a href="/video">← Back to videos</a></p>
+					<p class="mt-5"><a href="/video">← Back to videos</a></p>
 				</div>
 			`, thumbnailURL, id, cost, credits, wallet.GetBalance(sess.Account), youtubeURL)
 			pageHTML := fmt.Sprintf(app.Template, "en", "Credits Required", "Credits Required", "", "", "", paywallHtml)

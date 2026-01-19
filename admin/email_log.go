@@ -41,11 +41,11 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	// Stats summary
 	content.WriteString(`<div class="card">`)
 	content.WriteString(`<h3>Email Statistics</h3>`)
-	content.WriteString(`<table style="width: 100%; font-size: 14px;">`)
-	content.WriteString(fmt.Sprintf(`<tr><td>Total messages</td><td style="text-align: right;">%d</td></tr>`, stats.Total))
-	content.WriteString(fmt.Sprintf(`<tr><td>Inbound (external → local)</td><td style="text-align: right;">%d</td></tr>`, stats.Inbound))
-	content.WriteString(fmt.Sprintf(`<tr><td>Outbound (local → external)</td><td style="text-align: right;">%d</td></tr>`, stats.Outbound))
-	content.WriteString(fmt.Sprintf(`<tr><td>Internal (local → local)</td><td style="text-align: right;">%d</td></tr>`, stats.Internal))
+	content.WriteString(`<table class="stats-table">`)
+	content.WriteString(fmt.Sprintf(`<tr><td>Total messages</td><td>%d</td></tr>`, stats.Total))
+	content.WriteString(fmt.Sprintf(`<tr><td>Inbound (external → local)</td><td>%d</td></tr>`, stats.Inbound))
+	content.WriteString(fmt.Sprintf(`<tr><td>Outbound (local → external)</td><td>%d</td></tr>`, stats.Outbound))
+	content.WriteString(fmt.Sprintf(`<tr><td>Internal (local → local)</td><td>%d</td></tr>`, stats.Internal))
 	content.WriteString(`</table>`)
 	content.WriteString(`</div>`)
 
@@ -53,12 +53,12 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	if len(sortedDomains) > 0 {
 		content.WriteString(`<div class="card">`)
 		content.WriteString(`<h3>External Domains</h3>`)
-		content.WriteString(`<table style="width: 100%; font-size: 14px;">`)
+		content.WriteString(`<table class="stats-table">`)
 		for i, dc := range sortedDomains {
 			if i >= 10 {
 				break
 			}
-			content.WriteString(fmt.Sprintf(`<tr><td>%s</td><td style="text-align: right;">%d</td></tr>`, dc.Domain, dc.Count))
+			content.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%d</td></tr>`, dc.Domain, dc.Count))
 		}
 		content.WriteString(`</table>`)
 		content.WriteString(`</div>`)
@@ -69,7 +69,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<h3>Recent Messages</h3>`)
 	
 	if len(messages) == 0 {
-		content.WriteString(`<p style="color: #666;">No messages yet.</p>`)
+		content.WriteString(`<p class="text-muted">No messages yet.</p>`)
 	} else {
 		content.WriteString(`<style>
 			.email-log { width: 100%; border-collapse: collapse; font-size: 13px; }

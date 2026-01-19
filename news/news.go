@@ -189,7 +189,7 @@ func getDomain(v string) string {
 
 var Results = `
 <div id="topics">%s</div>
-<h1 style="margin-top: 0">Results</h1>
+<h1 class="mt-0">Results</h1>
 <div id="results">
 %s
 </div>`
@@ -1533,9 +1533,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 		// Show login prompt instead of AI summary
 		summarySection := `
-			<div class="article-summary" style="background: #f9f9f9; border: 1px dashed #ddd;">
+			<div class="article-summary bg-light" style="border: 1px dashed #ddd;">
 				<h3>AI Summary</h3>
-				<p style="color: #666;"><a href="/login?redirect=/news?id=` + articleID + `">Login</a> to read the AI-generated summary.</p>
+				<p class="text-muted"><a href="/login?redirect=/news?id=` + articleID + `">Login</a> to read the AI-generated summary.</p>
 			</div>`
 
 		articleHtml := fmt.Sprintf(`
@@ -1570,12 +1570,12 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			credits = "credits"
 		}
 		paywallHtml := fmt.Sprintf(`
-			<div class="card" style="text-align: center; padding: 40px;">
+			<div class="card text-center p-10">
 				<h2>Article Summary</h2>
 				<p>Reading AI-generated summaries costs %d %s.</p>
-				<p style="color: #666; margin: 20px 0;">Your balance: %d credits</p>
+				<p class="text-muted my-5">Your balance: %d credits</p>
 				<p><a href="/wallet/topup">Top up credits →</a></p>
-				<p style="margin-top: 20px;"><a href="/news">← Back to news</a></p>
+				<p class="mt-5"><a href="/news">← Back to news</a></p>
 			</div>
 		`, cost, credits, wallet.GetBalance(sess.Account))
 		pageHTML := fmt.Sprintf(app.Template, "en", "Credits Required", "Credits Required", "", "", "", paywallHtml)
@@ -1662,9 +1662,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			%s
 			<div class="article-actions">
 				<a href="%s" target="_blank" rel="noopener noreferrer">Read Original →</a>
-				<span style="margin: 0 8px;">·</span>
+				<span class="mx-2">·</span>
 				<a href="/chat?id=news_%s">Discuss with AI →</a>
-				<span style="margin: 0 8px;">·</span>
+				<span class="mx-2">·</span>
 				<a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;">Share →</a>
 			</div>
 			<div class="article-back">
@@ -1895,7 +1895,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	searchResults = append(searchResults, []byte(`<form id="news-search" action="/news" method="GET">
   <input name="query" value="`+query+`" placeholder="Search news">
   <button>Search</button>
-  <a href="/news" style="margin-left: 10px; color: #666; text-decoration: none;">Clear</a>
+  <a href="/news" class="ml-3 text-muted">Clear</a>
 </form>`)...)
 
 	if len(results) == 0 {

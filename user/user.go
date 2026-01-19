@@ -279,9 +279,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Linkify URLs and embed YouTube videos
 		linkedContent := blog.Linkify(content)
 
-		userPosts += fmt.Sprintf(`<div class="post-item" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
+		userPosts += fmt.Sprintf(`<div class="post-item">
 <h3><a href="/post?id=%s">%s</a></h3>
-<div style="margin-bottom: 10px;">%s</div>
+<div class="mb-3">%s</div>
 <div class="info">%s · <a href="/post?id=%s">Read more</a></div>
 </div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
 	}
@@ -300,30 +300,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Build status section
 	statusSection := ""
 	if profile.Status != "" {
-		statusSection = fmt.Sprintf(`<p class="info" style="font-style: italic; margin: 10px 0 0 0;">"%s"</p>`, profile.Status)
+		statusSection = fmt.Sprintf(`<p class="info italic mt-3">"%s"</p>`, profile.Status)
 	}
 
 	// Build status edit form (only for own profile)
 	statusEditForm := ""
 	if isOwnProfile {
 		statusEditForm = fmt.Sprintf(`
-<form method="POST" style="margin-top: 15px;">
-<input type="text" name="status" placeholder="Set your status..." value="%s" maxlength="100" style="width: 100%%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 5px; box-sizing: border-box;">
-<button type="submit" style="margin-top: 8px;">Update Status</button>
+<form method="POST" class="mt-4">
+<input type="text" name="status" placeholder="Set your status..." value="%s" maxlength="100" class="form-input w-full">
+<button type="submit" class="mt-2">Update Status</button>
 </form>`, profile.Status)
 	}
 
 	// Build message link (only show if not own profile)
 	messageLink := ""
 	if !isOwnProfile {
-		messageLink = fmt.Sprintf(`<p style="margin: 15px 0 0 0;"><a href="/mail?compose=true&to=%s">Send a message</a></p>`, acc.ID)
+		messageLink = fmt.Sprintf(`<p class="mt-4"><a href="/mail?compose=true&to=%s">Send a message</a></p>`, acc.ID)
 	}
 
 	// Build apps section
 	userApps := apps.GetUserApps(acc.ID)
 	var appsSection string
 	if len(userApps) > 0 {
-		appsSection = fmt.Sprintf(`<h3 style="margin-bottom: 20px;">Apps (%d)</h3><div style="margin-bottom: 30px;">`, len(userApps))
+		appsSection = fmt.Sprintf(`<h3 class="mb-5">Apps (%d)</h3><div class="mb-6">`, len(userApps))
 		for _, a := range userApps {
 			if !a.Public && !isOwnProfile {
 				continue // Skip private apps for non-owners
@@ -334,10 +334,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build the profile page content
-	content := fmt.Sprintf(`<div style="max-width: 750px;">
-<div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333;">
-<p class="info" style="margin: 0;">@%s</p>
-<p class="info" style="margin: 10px 0 0 0;">Joined %s</p>
+	content := fmt.Sprintf(`<div class="max-w-xl">
+<div class="mb-6" style="padding-bottom: 20px; border-bottom: 2px solid #333;">
+<p class="info m-0">@%s</p>
+<p class="info mt-3">Joined %s</p>
 %s
 %s
 %s
@@ -345,7 +345,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 %s
 
-<h3 style="margin-bottom: 20px;">Posts (%d)</h3>
+<h3 class="mb-5">Posts (%d)</h3>
 %s
 </div>`, acc.ID, acc.Created.Format("January 2006"), statusSection, statusEditForm, messageLink, appsSection, postCount, userPosts)
 

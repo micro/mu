@@ -125,7 +125,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		// Don't allow deleting yourself
 		deleteButton := ""
 		if user.ID != acc.ID {
-			deleteButton = `<form method="POST" style="display: inline;" onsubmit="return confirm('Delete user ` + user.ID + `?');">
+			deleteButton = `<form method="POST" class="d-inline" onsubmit="return confirm('Delete user ` + user.ID + `?');">
 				<input type="hidden" name="action" value="delete">
 				<input type="hidden" name="user_id" value="` + user.ID + `">
 				<button type="submit" class="btn-danger">Delete</button>
@@ -134,11 +134,11 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 
 		content += `
 			<tr>
-				<td><strong><a href="/@` + user.ID + `" style="color: inherit; text-decoration: none;">` + user.ID + `</a></strong></td>
+				<td><strong><a href="/@` + user.ID + `">` + user.ID + `</a></strong></td>
 				<td>` + user.Name + `</td>
 				<td class="created-col">` + createdStr + `</td>
 				<td class="center">
-					<form method="POST" style="display: inline;">
+					<form method="POST" class="d-inline">
 						<input type="hidden" name="action" value="toggle_admin">
 						<input type="hidden" name="user_id" value="` + user.ID + `">
 						<input type="checkbox" ` + func() string {
@@ -146,7 +146,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 				return "checked"
 			}
 			return ""
-		}() + ` onchange="this.form.submit()" style="cursor: pointer; width: 18px; height: 18px;">
+		}() + ` onchange="this.form.submit()" class="cursor-pointer" style="width: 18px; height: 18px;">
 					</form>
 				</td>
 				<td class="center">
@@ -247,7 +247,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 				<input type="text" name="email" placeholder="email@example.com or *@domain.com" required>
 				<button type="submit">Block Email</button>
 			</form>
-			<p style="font-size: 0.9em; color: #666; margin-top: 5px;">Use *@domain.com to block entire domain</p>
+			<p class="text-sm text-muted mt-1">Use *@domain.com to block entire domain</p>
 		</div>`
 
 	if len(bl.Emails) > 0 {
@@ -255,7 +255,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			<thead>
 				<tr>
 					<th>Email</th>
-					<th style="width: 100px; text-align: center;">Action</th>
+					<th class="text-center" style="width: 100px;">Action</th>
 				</tr>
 			</thead>
 			<tbody>`
@@ -264,8 +264,8 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			content += `
 				<tr>
 					<td><code>` + email + `</code></td>
-					<td style="text-align: center;">
-						<form method="POST" style="display: inline;">
+					<td class="text-center">
+						<form method="POST" class="d-inline">
 							<input type="hidden" name="action" value="unblock_email">
 							<input type="hidden" name="email" value="` + email + `">
 							<button type="submit" class="btn-success">Unblock</button>
@@ -296,7 +296,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			<thead>
 				<tr>
 					<th>IP Address</th>
-					<th style="width: 100px; text-align: center;">Action</th>
+					<th class="text-center" style="width: 100px;">Action</th>
 				</tr>
 			</thead>
 			<tbody>`
@@ -305,8 +305,8 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			content += `
 				<tr>
 					<td><code>` + ip + `</code></td>
-					<td style="text-align: center;">
-						<form method="POST" style="display: inline;">
+					<td class="text-center">
+						<form method="POST" class="d-inline">
 							<input type="hidden" name="action" value="unblock_ip">
 							<input type="hidden" name="ip" value="` + ip + `">
 							<button type="submit" class="btn-success">Unblock</button>
@@ -321,7 +321,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content += `</div>
-	<div style="margin-top: 30px;">
+	<div class="mt-6">
 		<p><a href="/admin">← Back to Admin</a></p>
 	</div>`
 
