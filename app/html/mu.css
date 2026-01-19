@@ -110,7 +110,7 @@ button {
   color: #fff;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 10px 15px;
+  padding: 8px 12px;
   cursor: pointer;
   font-size: 14px;
   transition: all var(--transition-fast);
@@ -126,7 +126,7 @@ button:hover {
   background: transparent;
   color: var(--text-primary);
   border: none;
-  padding: 10px 15px;
+  padding: 8px 12px;
   text-decoration: none;
   display: inline-block;
 }

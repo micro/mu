@@ -13,6 +13,35 @@ import (
 // AdminHandler shows the admin page with user management
 func AdminHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if user is admin
+	_, _, err := auth.RequireAdmin(r)
+	if err != nil {
+		app.Forbidden(w, r, "Admin access required")
+		return
+	}
+
+	users := auth.GetAllAccounts()
+
+	content := `<h2>Admin Dashboard</h2>
+	<style>
+		.admin-links { display: flex; flex-direction: column; gap: 12px; max-width: 400px; }
+		.admin-links a { padding: 12px 16px; background: var(--card-background, #fff); border: 1px solid var(--card-border, #e8e8e8); border-radius: var(--border-radius, 6px); text-decoration: none; color: var(--text-primary, #333); display: flex; justify-content: space-between; align-items: center; }
+		.admin-links a:hover { background: var(--hover-background, #fafafa); }
+		.admin-links .count { color: var(--text-muted, #888); font-size: 14px; }
+	</style>
+	<div class="admin-links">
+		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
+		<a href="/admin/moderate">Moderation Queue</a>
+		<a href="/admin/blocklist">Mail Blocklist</a>
+		<a href="/admin/email">Email Log</a>
+	</div>`
+
+	html := app.RenderHTMLForRequest("Admin", "Admin Dashboard", content, r)
+	w.Write([]byte(html))
+}
+
+// UsersHandler shows and manages users
+func UsersHandler(w http.ResponseWriter, r *http.Request) {
+	// Check if user is admin
 	_, acc, err := auth.RequireAdmin(r)
 	if err != nil {
 		app.Forbidden(w, r, "Admin access required")
@@ -51,7 +80,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		http.Redirect(w, r, "/admin", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
 		return
 	}
 
@@ -63,8 +92,9 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		return users[i].Created.After(users[j].Created)
 	})
 
-	content := `<h2>User Management</h2>
-	<p>Total Users: ` + fmt.Sprintf("%d", len(users)) + `</p>
+	content := `<p><a href="/admin">← Admin</a></p>
+	<h2>Users</h2>
+	<p>Total: ` + fmt.Sprintf("%d", len(users)) + `</p>
 	<style>
 		.admin-table { width: 100%; border-collapse: collapse; }
 		.admin-table th { text-align: left; padding: 10px; border-bottom: 2px solid #ddd; }
@@ -98,7 +128,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 			deleteButton = `<form method="POST" style="display: inline;" onsubmit="return confirm('Delete user ` + user.ID + `?');">
 				<input type="hidden" name="action" value="delete">
 				<input type="hidden" name="user_id" value="` + user.ID + `">
-				<button type="submit" class="delete-btn" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Delete</button>
+				<button type="submit" class="btn-danger">Delete</button>
 			</form>`
 		}
 
@@ -127,11 +157,9 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 
 	content += `
 		</tbody>
-	</table>
-	<br>
-	<p><a href="/admin/email">Email Log</a> | <a href="/admin/blocklist">Mail Blocklist</a> | <a href="/admin/moderate">Moderation Queue</a></p>`
+	</table>`
 
-	html := app.RenderHTMLForRequest("Admin", "User Management", content, r)
+	html := app.RenderHTMLForRequest("Admin", "Users", content, r)
 	w.Write([]byte(html))
 }
 

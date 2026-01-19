@@ -492,12 +492,13 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	gap: 15px;
 }
 .new-app-btn {
-	padding: 10px 15px;
+	padding: 8px 12px;
 	background: var(--btn-primary, #000);
 	color: white !important;
 	text-decoration: none;
 	border-radius: var(--border-radius, 6px);
 	display: inline-block;
+	font-size: 14px;
 }
 .new-app-btn:hover {
 	background: var(--btn-primary-hover, #333);

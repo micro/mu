@@ -99,9 +99,10 @@ func main() {
 		"/api":             true,
 		"/flag":            true,
 		"/admin":           true,
+		"/admin/users":     true,
 		"/admin/moderate":  true,
 		"/admin/blocklist": true,
-		"/admin/email": true,
+		"/admin/email":     true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          true,  // Require auth for wallet
@@ -142,8 +143,11 @@ func main() {
 	// flag content
 	http.HandleFunc("/flag", admin.FlagHandler)
 
-	// admin user management
+	// admin dashboard
 	http.HandleFunc("/admin", admin.AdminHandler)
+
+	// admin user management
+	http.HandleFunc("/admin/users", admin.UsersHandler)
 
 	// moderation queue
 	http.HandleFunc("/admin/moderate", admin.ModerateHandler)

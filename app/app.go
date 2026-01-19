@@ -514,12 +514,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		languageOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, code, selected, name)
 	}
 
-	// Admin links
+	// Admin link
 	adminLinks := ""
 	if acc.Admin {
-		adminLinks = `<p><a href="/admin">User Management →</a></p>
-		<p><a href="/admin/email">Email Log →</a></p>
-		<p><a href="/admin/moderate">Moderation Queue →</a></p>`
+		adminLinks = `<p><a href="/admin">Admin Dashboard →</a></p>`
 	}
 
 	content := fmt.Sprintf(`<div class="card">
