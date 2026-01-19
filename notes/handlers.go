@@ -59,63 +59,68 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session, acc 
 		return
 	}
 
-	// Get all tags for filter
-	allTags := GetAllTags(sess.Account)
-
-	// Build HTML
-	var content strings.Builder
-	content.WriteString(notesCSS)
-	content.WriteString(`<div class="notes-container">`)
-
-	// Action + Search
-	content.WriteString(app.ActionLink("/notes/new", "+ New Note"))
-	content.WriteString(app.SearchBar("/notes", "Search notes...", searchQuery))
-
+	// Build filters HTML
+	var filters strings.Builder
+	
 	// Tags filter
+	allTags := GetAllTags(sess.Account)
 	if len(allTags) > 0 {
-		content.WriteString(`<div class="tags-filter">`)
 		for _, tag := range allTags {
 			active := ""
 			if tag == tagFilter {
 				active = " active"
 			}
-			content.WriteString(`<a href="/notes?tag=` + tag + `" class="tag` + active + `">` + html.EscapeString(tag) + `</a>`)
+			filters.WriteString(`<a href="/notes?tag=` + tag + `" class="tag` + active + `">` + html.EscapeString(tag) + `</a>`)
 		}
 		if tagFilter != "" {
-			content.WriteString(`<a href="/notes" class="tag clear">Clear</a>`)
+			filters.WriteString(`<a href="/notes" class="tag clear">Clear</a>`)
 		}
-		content.WriteString(`</div>`)
 	}
-
+	
 	// Archive toggle
-	content.WriteString(`<div class="view-toggle">`)
+	filters.WriteString(`<span class="view-toggle">`)
 	if showArchived {
-		content.WriteString(`<a href="/notes">Notes</a> · <strong>Archive</strong>`)
+		filters.WriteString(`<a href="/notes">Notes</a> · <strong>Archive</strong>`)
 	} else {
-		content.WriteString(`<strong>Notes</strong> · <a href="/notes?archived=true">Archive</a>`)
+		filters.WriteString(`<strong>Notes</strong> · <a href="/notes?archived=true">Archive</a>`)
 	}
-	content.WriteString(`</div>`)
+	filters.WriteString(`</span>`)
 
-	// Notes grid
+	// Build content
+	var content strings.Builder
+	for _, n := range notesList {
+		content.WriteString(renderNoteCard(n))
+	}
+
+	// Empty message
+	emptyMsg := ""
 	if len(notesList) == 0 {
 		if searchQuery != "" {
-			content.WriteString(`<p class="empty">No notes found for "` + html.EscapeString(searchQuery) + `"</p>`)
+			emptyMsg = `No notes found for "` + searchQuery + `"`
 		} else if showArchived {
-			content.WriteString(`<p class="empty">No archived notes</p>`)
+			emptyMsg = "No archived notes"
 		} else {
-			content.WriteString(`<p class="empty">No notes yet. Create your first note!</p>`)
+			emptyMsg = "No notes yet. Create your first note!"
 		}
-	} else {
-		content.WriteString(`<div class="card-grid">`)
-		for _, n := range notesList {
-			content.WriteString(renderNoteCard(n))
-		}
-		content.WriteString(`</div>`)
 	}
 
-	content.WriteString(`</div>`)
+	// Use app.Page for consistent layout
+	gridContent := ""
+	if content.Len() > 0 {
+		gridContent = app.Grid(content.String())
+	}
 
-	w.Write([]byte(app.RenderHTML("Notes", "Your notes", content.String())))
+	pageHTML := notesCSS + app.Page(app.PageOpts{
+		Action:  "/notes/new",
+		Label:   "+ New Note",
+		Search:  "/notes",
+		Query:   searchQuery,
+		Filters: filters.String(),
+		Content: gridContent,
+		Empty:   emptyMsg,
+	})
+
+	w.Write([]byte(app.RenderHTML("Notes", "Your notes", pageHTML)))
 }
 
 func renderNoteCard(n *Note) string {
@@ -346,11 +351,7 @@ func handlePin(w http.ResponseWriter, r *http.Request, sess *auth.Session, id st
 
 const notesCSS = `
 <style>
-.tags-filter { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; }
-.tags-filter .tag { padding: 4px 12px; background: #f0f0f0; border-radius: 20px; text-decoration: none; color: #333; font-size: 13px; }
-.tags-filter .tag.active { background: var(--accent-color, #0d7377); color: white; }
-.tags-filter .tag.clear { background: #ddd; }
-.view-toggle { margin-bottom: 20px; font-size: 14px; color: #666; }
+.view-toggle { font-size: 14px; color: #666; margin-left: auto; }
 .view-toggle a { color: #666; text-decoration: none; }
 .view-toggle a:hover { text-decoration: underline; }
 .note-editor { max-width: 600px; }

@@ -289,14 +289,14 @@ type PageOpts struct {
 ### Refactor Checklist
 
 #### Phase 1: Core Infrastructure
-- [ ] Create app/router.go with Route() function
+- [x] Create app/router.go with Route() function
 - [ ] Update api/api.go with handler registration
-- [ ] Add app.Page() for standard page layout
-- [ ] Update app.SearchBar() to match video/news style
+- [x] Add app.Page() for standard page layout
+- [x] Update app.SearchBar() to match video/news style (has Search button)
 - [ ] Consolidate CSS - remove all inline <style> blocks
 
 #### Phase 2: Package Migration (one at a time)
-- [ ] **notes/** - Split handlers.go, use app.Route(), app.Page()
+- [x] **notes/** - Uses app.Page(), app.Grid(), app.SearchBar(), app.ActionLink()
 - [ ] **apps/** - Extract rendering, use app.Route(), app.Page()
 - [ ] **blog/** - Extract rendering, use app.Route(), app.Page()
 - [ ] **news/** - Extract rendering, use app.Route(), app.Page()
@@ -313,7 +313,8 @@ type PageOpts struct {
 - [ ] Audit mu.js - target <200 lines
 
 ### Current Status
-- [x] app/ui.go created with SearchBar, ActionLink, Grid, Title, etc.
-- [x] notes/ and apps/ partially migrated to use app helpers
-- [ ] No content-type router yet - each handler checks WantsJSON manually
-- [ ] No standard page layout yet - each handler builds its own structure
+- [x] app/ui.go created with SearchBar, ActionLink, Grid, Title, Page, etc.
+- [x] app/router.go created with Route() for content-type dispatch
+- [x] notes/ fully migrated to use app.Page()
+- [ ] apps/ partially migrated, needs app.Page()
+- [ ] Other packages still use manual WantsJSON checks and custom layouts

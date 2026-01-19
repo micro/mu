@@ -3132,3 +3132,38 @@ a.btn-secondary:hover, .btn-secondary:hover {
   gap: 12px;
   flex-wrap: wrap;
 }
+
+/* ========================================
+   PAGE LAYOUT
+   Standard page structure components
+   ======================================== */
+
+.page-action {
+  margin-bottom: 16px;
+}
+
+.page-filters {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.page-filters .tag {
+  padding: 4px 12px;
+  background: var(--tag-background, #f0f0f0);
+  border-radius: 20px;
+  text-decoration: none;
+  color: var(--text-secondary, #333);
+  font-size: 13px;
+}
+
+.page-filters .tag.active {
+  background: var(--accent-color, #0d7377);
+  color: white;
+}
+
+.page-filters .tag.clear {
+  background: var(--hover-background, #ddd);
+}

@@ -98,3 +98,52 @@ func Meta(content string) string {
 func Desc(text string) string {
 	return `<p class="card-desc">` + html.EscapeString(text) + `</p>`
 }
+
+// PageOpts defines the standard page layout options
+type PageOpts struct {
+	Action  string // Primary action URL (shows button if set)
+	Label   string // Action button label (default: "+ New")
+	Search  string // Search endpoint (shows search bar if set)
+	Query   string // Current search query
+	Filters string // Filter HTML (tags, toggles) - rendered as-is
+	Content string // Main content (grid, list, cards)
+	Empty   string // Empty state message (shown if Content is empty)
+}
+
+// Page renders a standard page layout
+// Structure: [Action Button] [Search Bar] [Filters] [Content or Empty]
+func Page(opts PageOpts) string {
+	var b strings.Builder
+
+	// Action button (top, standalone)
+	if opts.Action != "" {
+		label := opts.Label
+		if label == "" {
+			label = "+ New"
+		}
+		b.WriteString(`<div class="page-action">`)
+		b.WriteString(ActionLink(opts.Action, label))
+		b.WriteString(`</div>`)
+	}
+
+	// Search bar
+	if opts.Search != "" {
+		b.WriteString(SearchBar(opts.Search, "Search...", opts.Query))
+	}
+
+	// Filters (tags, toggles, etc.)
+	if opts.Filters != "" {
+		b.WriteString(`<div class="page-filters">`)
+		b.WriteString(opts.Filters)
+		b.WriteString(`</div>`)
+	}
+
+	// Content or empty state
+	if opts.Content != "" {
+		b.WriteString(opts.Content)
+	} else if opts.Empty != "" {
+		b.WriteString(Empty(opts.Empty))
+	}
+
+	return b.String()
+}
