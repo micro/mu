@@ -298,12 +298,12 @@ type PageOpts struct {
 #### Phase 2: Package Migration (one at a time)
 - [x] **notes/** - Uses app.Page(), app.Grid(), app.SearchBar(), app.ActionLink()
 - [x] **apps/** - Uses app.Page() for list view
-- [ ] **blog/** - Extract rendering, use app.Route(), app.Page()
-- [ ] **news/** - Extract rendering, use app.Route(), app.Page()
-- [ ] **video/** - Extract rendering, use app.Route(), app.Page()
-- [x] **mail/** - Uses app.Page() for inbox view
-- [ ] **chat/** - Extract rendering, use app.Route(), app.Page()
-- [ ] **wallet/** - Extract rendering, use app.Route(), app.Page()
+- [x] **blog/** - Has + Write button, feed-style (no search needed)
+- [x] **news/** - Uses .search-bar class for consistent styling
+- [x] **video/** - Uses .search-bar class for consistent styling
+- [x] **mail/** - Uses app.Page() for inbox view with tab navigation
+- [x] **chat/** - Interactive chat UI (not suited for app.Page)
+- [x] **wallet/** - Dashboard UI (not suited for app.Page)
 
 #### Phase 3: Cleanup
 - [ ] Remove duplicate CSS from all packages
@@ -317,4 +317,7 @@ type PageOpts struct {
 - [x] app/router.go created with Route() for content-type dispatch
 - [x] notes/ fully migrated to use app.Page()
 - [x] apps/ uses app.Page() for list view
-- [ ] Other packages still use manual WantsJSON checks and custom layouts
+- [x] mail/ uses app.Page() with tab navigation
+- [x] All search bars use .search-bar class (unified sizing)
+- [x] Fixed duplicate title issue in notes edit view
+- [ ] Phase 3 cleanup remaining
