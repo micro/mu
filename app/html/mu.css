@@ -113,6 +113,37 @@ button:hover {
   border-color: #333;
 }
 
+/* Button variants */
+.btn-link {
+  background: transparent;
+  color: var(--text-color, #333);
+  border: none;
+  padding: 10px 15px;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-link:hover {
+  background: var(--hover-background, #f5f5f5);
+}
+
+.btn-danger {
+  background: #dc3545;
+  border-color: #dc3545;
+}
+.btn-danger:hover {
+  background: #c82333;
+  border-color: #c82333;
+}
+
+.btn-success {
+  background: #28a745;
+  border-color: #28a745;
+}
+.btn-success:hover {
+  background: #218838;
+  border-color: #218838;
+}
+
 input {
   width: 100%;
   padding: 10px;

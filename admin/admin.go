@@ -208,8 +208,8 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 		.blocklist-table td { padding: 10px; border-bottom: 1px solid #eee; }
 		.block-form { margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px; }
 		.block-form input[type="text"] { padding: 8px; width: 300px; max-width: 100%; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
-		.block-form button { padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px; font-size: 14px; }
-		.unblock-btn { background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px; }
+		.block-form button { margin-left: 10px; }
+		.unblock-btn { }
 	</style>
 
 	<div class="blocklist-section">
@@ -241,7 +241,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 						<form method="POST" style="display: inline;">
 							<input type="hidden" name="action" value="unblock_email">
 							<input type="hidden" name="email" value="` + email + `">
-							<button type="submit" class="unblock-btn">Unblock</button>
+							<button type="submit" class="btn-success">Unblock</button>
 						</form>
 					</td>
 				</tr>`
@@ -282,7 +282,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 						<form method="POST" style="display: inline;">
 							<input type="hidden" name="action" value="unblock_ip">
 							<input type="hidden" name="ip" value="` + ip + `">
-							<button type="submit" class="unblock-btn">Unblock</button>
+							<button type="submit" class="btn-success">Unblock</button>
 						</form>
 					</td>
 				</tr>`
