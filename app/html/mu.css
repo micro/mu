@@ -212,10 +212,6 @@ input {
   box-sizing: border-box;
 }
 
-#query {
-  width: calc(100% - 100px);
-}
-
 select {
   padding: 5px;
   border-radius: 5px;

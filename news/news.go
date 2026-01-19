@@ -299,9 +299,9 @@ func saveHtml(head, content []byte) {
 	if len(content) == 0 {
 		return
 	}
-	searchForm := `<form id="news-search" action="/news" method="GET">
-  <input id="news-query" name="query" placeholder="Search news">
-  <button id="news-search-btn">Search</button>
+	searchForm := `<form id="news-search" class="search-bar" action="/news" method="GET">
+  <input id="news-query" name="query" type="text" placeholder="Search...">
+  <button type="submit">Search</button>
 </form>`
 	body := fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, string(head), string(content))
 	newsBodyHtml = body
@@ -404,9 +404,9 @@ func generateNewsHtml() string {
 		content = append(content, []byte(`</div>`)...)
 	}
 
-	searchForm := `<form id="news-search" action="/news" method="GET">
-  <input id="news-query" name="query" placeholder="Search news">
-  <button id="news-search-btn">Search</button>
+	searchForm := `<form id="news-search" class="search-bar" action="/news" method="GET">
+  <input id="news-query" name="query" type="text" placeholder="Search...">
+  <button type="submit">Search</button>
 </form>`
 
 	// Get cached headlines
@@ -1892,9 +1892,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
 
 	var searchResults []byte
-	searchResults = append(searchResults, []byte(`<form id="news-search" action="/news" method="GET">
-  <input name="query" value="`+query+`" placeholder="Search news">
-  <button>Search</button>
+	searchResults = append(searchResults, []byte(`<form id="news-search" class="search-bar" action="/news" method="GET">
+  <input name="query" type="text" value="`+query+`" placeholder="Search...">
+  <button type="submit">Search</button>
   <a href="/news" class="ml-3 text-muted">Clear</a>
 </form>`)...)
 

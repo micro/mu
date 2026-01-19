@@ -272,9 +272,9 @@ var recentSearchesScript = `
 var Results = `
 <style>` + commonStyles + `
 </style>
-<form id="video-search" action="/video" method="GET">
-  <input name="query" id="query" value="%s">
-  <button id="video-search-btn">Search</button>
+<form id="video-search" class="search-bar" action="/video" method="GET">
+  <input name="query" id="query" type="text" value="%s">
+  <button type="submit">Search</button>
 </form>
 <div id="topics">%s</div>
 <div id="recent-searches-container"></div>
@@ -287,9 +287,9 @@ var Results = `
 var PlaylistView = `
 <style>` + commonStyles + `
 </style>
-<form id="video-search" action="/video" method="GET">
-  <input name="query" id="query" placeholder="Search">
-  <button id="video-search-btn">Search</button>
+<form id="video-search" class="search-bar" action="/video" method="GET">
+  <input name="query" id="query" type="text" placeholder="Search...">
+  <button type="submit">Search</button>
 </form>
 <div id="topics">%s</div>
 <div id="recent-searches-container"></div>
@@ -302,9 +302,9 @@ var PlaylistView = `
 var ChannelView = `
 <style>` + commonStyles + `
 </style>
-<form id="video-search" action="/video" method="GET">
-  <input name="query" id="query" placeholder="Search">
-  <button id="video-search-btn">Search</button>
+<form id="video-search" class="search-bar" action="/video" method="GET">
+  <input name="query" id="query" type="text" placeholder="Search...">
+  <button type="submit">Search</button>
 </form>
 <div id="topics">%s</div>
 <div id="recent-searches-container"></div>
@@ -319,9 +319,9 @@ var Template = `
 <style>` + commonStyles + `
 </style>
 <!-- <form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;"> -->
-<form id="video-search" action="/video" method="GET">
-  <input name="query" id="query" placeholder=Search autocomplete=off>
-  <button id="video-search-btn">Search</button>
+<form id="video-search" class="search-bar" action="/video" method="GET">
+  <input name="query" id="query" type="text" placeholder="Search..." autocomplete="off">
+  <button type="submit">Search</button>
 </form>
 <div id="topics">%s</div>
 <div id="recent-searches-container"></div>
