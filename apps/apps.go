@@ -469,63 +469,13 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 		content.WriteString(`<p>No apps yet. <a href="/login">Login</a> to create one.</p>`)
 	}
 
-	// Add CSS for grid
-	style := `
-<style>
-.featured-section {
-	margin-bottom: 30px;
-	padding-bottom: 20px;
-	border-bottom: 1px solid var(--divider, #f0f0f0);
-}
-.featured-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-	gap: 15px;
-	margin-top: 15px;
-}
-.featured-card {
-	border: 2px solid var(--accent-color, #0d7377);
-	border-radius: var(--border-radius, 6px);
-	padding: 20px;
-	text-align: center;
-	background: var(--card-background, #fff);
-	transition: transform 0.15s ease;
-}
-.featured-card:hover {
-	transform: translateY(-2px);
-}
-.featured-card h4 {
-	margin: 0 0 8px 0;
-}
-.featured-card h4 a {
-	text-decoration: none;
-	color: var(--accent-color, #0d7377);
-}
-.featured-card p {
-	margin: 0;
-	font-size: 13px;
-	color: var(--text-secondary, #555);
-}
-/* app-card actions */
-.card .actions {
-	margin-top: 10px;
-}
-.card .actions a {
-	margin-right: 15px;
-	font-size: 13px;
-}
-.card .actions a.delete {
-	color: #c00;
-}
-</style>`
-
 	// Determine action link (only for logged-in users)
 	actionURL := ""
 	if sess != nil {
 		actionURL = "/apps/new"
 	}
 
-	pageHTML := style + app.Page(app.PageOpts{
+	pageHTML := app.Page(app.PageOpts{
 		Action:  actionURL,
 		Label:   "+ New App",
 		Search:  "/apps",
@@ -642,29 +592,7 @@ func renderNewForm(w http.ResponseWriter, errMsg, name, prompt string) {
 		errHTML = fmt.Sprintf(`<div class="text-error mb-4">%s</div>`, html.EscapeString(errMsg))
 	}
 
-	formHTML := fmt.Sprintf(`
-<style>
-.form-group { margin-bottom: 15px; }
-.form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-.form-group input[type="text"], .form-group textarea {
-	width: 100%%;;
-	padding: 12px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	box-sizing: border-box;
-	font-family: inherit;
-	font-size: 16px;
-}
-.form-group textarea {
-	min-height: 120px;
-}
-.hint {
-	font-size: 13px;
-	color: #666;
-	margin-top: 5px;
-}
-</style>
-%s
+	formHTML := fmt.Sprintf(`%s
 <form method="POST" class="max-w-lg">
   <div class="form-group">
     <label>Name</label>
@@ -780,55 +708,7 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
 		errHTML = fmt.Sprintf(`<div class="text-error mb-4">%s</div>`, html.EscapeString(errMsg))
 	}
 
-	formHTML := fmt.Sprintf(`
-<style>
-.form-group { margin-bottom: 15px; }
-.form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-.form-group input[type="text"], .form-group textarea {
-	width: 100%%;
-	padding: 8px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	box-sizing: border-box;
-	font-family: inherit;
-}
-.form-group textarea#prompt {
-	min-height: 80px;
-	font-family: inherit;
-}
-.form-group textarea#code-editor {
-	font-family: monospace;
-	font-size: 13px;
-	min-height: 300px;
-}
-.checkbox-group {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-}
-.button-secondary {
-	background: var(--text-muted, #666);
-	border-color: var(--text-muted, #666);
-	margin-left: 10px;
-}
-.button-secondary:hover {
-	background: var(--text-secondary, #555);
-	border-color: var(--text-secondary, #555);
-}
-.preview-frame {
-	width: 100%%;
-	height: 400px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	margin-top: 20px;
-}
-.hint {
-	font-size: 13px;
-	color: #666;
-	margin-top: 5px;
-}
-</style>
-%s
+	formHTML := fmt.Sprintf(`%s
 <form method="POST" id="app-form">
   <div class="form-group">
     <label>Name</label>
@@ -846,7 +726,7 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
   </div>
   <div class="form-group">
     <label>Code (HTML/CSS/JS)</label>
-    <textarea name="code" id="code-editor">%s</textarea>
+    <textarea name="code" id="code-editor" class="code-editor">%s</textarea>
   </div>
   <div class="form-group checkbox-group">
     <input type="checkbox" name="public" id="public" %s>
