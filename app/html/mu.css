@@ -3176,3 +3176,24 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .view-toggle a:hover {
   text-decoration: underline;
 }
+
+.mail-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--card-border, #e0e0e0);
+  margin-bottom: 20px;
+}
+.mail-tab {
+  padding: 10px 20px;
+  text-decoration: none;
+  color: var(--text-muted, #666);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.mail-tab:hover {
+  color: var(--text-primary, #333);
+}
+.mail-tab.active {
+  color: var(--text-primary, #333);
+  border-bottom-color: var(--text-primary, #333);
+}

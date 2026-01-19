@@ -1074,28 +1074,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		title = fmt.Sprintf("Mail (%d new)", unreadCount)
 	}
 
-	// Build tab filters
-	var filters strings.Builder
-	filters.WriteString(`<span class="view-toggle">`)
+	// Build tab navigation
+	inboxClass := "mail-tab active"
+	sentClass := "mail-tab"
 	if view == "sent" {
-		filters.WriteString(`<a href="/mail">Inbox`)
-		if unreadCount > 0 {
-			filters.WriteString(fmt.Sprintf(" (%d)", unreadCount))
-		}
-		filters.WriteString(`</a> · <strong>Sent</strong>`)
-	} else {
-		filters.WriteString(`<strong>Inbox`)
-		if unreadCount > 0 {
-			filters.WriteString(fmt.Sprintf(" (%d)", unreadCount))
-		}
-		filters.WriteString(`</strong> · <a href="/mail?view=sent">Sent</a>`)
+		inboxClass = "mail-tab"
+		sentClass = "mail-tab active"
 	}
-	filters.WriteString(`</span>`)
+	inboxLabel := "Inbox"
+	if unreadCount > 0 {
+		inboxLabel = fmt.Sprintf("Inbox (%d)", unreadCount)
+	}
+	tabs := fmt.Sprintf(`<div class="mail-tabs"><a href="/mail" class="%s">%s</a><a href="/mail?view=sent" class="%s">Sent</a></div>`,
+		inboxClass, inboxLabel, sentClass)
 
 	pageHTML := app.Page(app.PageOpts{
 		Action:  "/mail?compose=true",
 		Label:   "+ Compose",
-		Filters: filters.String(),
+		Filters: tabs,
 		Content: `<div id="mailbox">` + content + `</div>`,
 	})
 
