@@ -391,12 +391,11 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 
 	var content strings.Builder
 
-	// Search bar and create button
-	newURL := ""
+	// Action + Search
 	if sess != nil {
-		newURL = "/apps/new"
+		content.WriteString(app.ActionLink("/apps/new", "+ New App"))
 	}
-	content.WriteString(app.SearchHeader("/apps", "Search apps...", searchQuery, newURL, "+ New"))
+	content.WriteString(app.SearchBar("/apps", "Search apps...", searchQuery))
 
 	// Featured apps section (always show at top)
 	featuredIDs := []string{"1768488729487639148", "1768342273851959552", "1768342520623825814"} // todo, timer, expenses

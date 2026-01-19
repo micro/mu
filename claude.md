@@ -122,8 +122,11 @@ Layout helpers and element builders for consistent UI. Fast string builders.
 
 ### Layout Helpers
 ```go
-// Search header with optional new button
-app.SearchHeader("/notes", "Search notes...", query, "/notes/new", "+ New")
+// Search bar with search button
+app.SearchBar("/notes", "Search notes...", query)
+
+// Primary action link
+app.ActionLink("/notes/new", "+ New Note")
 
 // Container layouts
 app.Grid(content)   // .card-grid - responsive grid

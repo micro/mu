@@ -8,30 +8,22 @@ import (
 // UI layout helpers for consistent rendering.
 // Use these wrappers + mu.css classes.
 
-// SearchHeader renders the standard search bar with optional new button
-func SearchHeader(action, placeholder, query, newURL, newLabel string) string {
+// SearchBar renders a search input with search button
+func SearchBar(action, placeholder, query string) string {
 	var b strings.Builder
-	b.WriteString(`<div class="search-bar">`)
-	b.WriteString(`<form action="`)
+	b.WriteString(`<form class="search-bar" action="`)
 	b.WriteString(action)
 	b.WriteString(`" method="GET"><input type="text" name="q" placeholder="`)
 	b.WriteString(placeholder)
 	b.WriteString(`" value="`)
 	b.WriteString(html.EscapeString(query))
-	b.WriteString(`"></form>`)
-	if newURL != "" {
-		b.WriteString(`<a href="`)
-		b.WriteString(newURL)
-		b.WriteString(`" class="btn">`)
-		if newLabel != "" {
-			b.WriteString(newLabel)
-		} else {
-			b.WriteString(`+ New`)
-		}
-		b.WriteString(`</a>`)
-	}
-	b.WriteString(`</div>`)
+	b.WriteString(`"><button type="submit">Search</button></form>`)
 	return b.String()
+}
+
+// ActionLink renders a primary action link (e.g., "+ New Note")
+func ActionLink(href, label string) string {
+	return `<a href="` + href + `" class="btn">` + html.EscapeString(label) + `</a>`
 }
 
 // Grid wraps content in a card-grid container

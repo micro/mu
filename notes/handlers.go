@@ -67,8 +67,9 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session, acc 
 	content.WriteString(notesCSS)
 	content.WriteString(`<div class="notes-container">`)
 
-	// Header with search and new button
-	content.WriteString(app.SearchHeader("/notes", "Search notes...", searchQuery, "/notes/new", "+ New"))
+	// Action + Search
+	content.WriteString(app.ActionLink("/notes/new", "+ New Note"))
+	content.WriteString(app.SearchBar("/notes", "Search notes...", searchQuery))
 
 	// Tags filter
 	if len(allTags) > 0 {
