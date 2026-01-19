@@ -116,6 +116,65 @@ STRIPE_WEBHOOK_SECRET
 - Standardized button padding, color tokens, search bar styling
 - Agent is task executor only - redirects general questions to Chat
 
+## Card System (cards/)
+
+Reusable UI components for all data types. ONE place to define how each type renders.
+
+### Card Types
+| Type | Template | Data Fields |
+|------|----------|-------------|
+| news | cards/templates/news.html | ID, Title, Description, URL, Category, Summary, Time |
+| video | cards/templates/video.html | ID, Title, Thumbnail, Channel, Duration, Views |
+| note | cards/templates/note.html | ID, Title, Content, Tags[], Color, Pinned, Time |
+| mail | cards/templates/mail.html | ID, From, Subject, Preview, Time, Unread |
+| blog | cards/templates/blog.html | ID, Title, Author, Preview, Tags[], Time |
+| app | cards/templates/app.html | ID, Name, Summary, Author |
+| chat | cards/templates/chat.html | User, Text, Time, IsUser |
+| market | cards/templates/market.html | Symbol, Price, Change, Up |
+
+### Server-side Usage (Go)
+```go
+import "mu/cards"
+
+// Render single card
+html := cards.RenderHTML(cards.TypeNews, cards.NewsData{
+    Title: "Breaking News",
+    Category: "tech",
+})
+
+// Render in grid layout
+html := cards.Grid(cards.RenderHTML(...))
+
+// Render list
+html := cards.ListLayout(cards.RenderHTML(...))
+```
+
+### Client-side Usage (JS)
+```js
+// Fetch template
+const resp = await fetch('/card/news');
+const template = await resp.text();
+
+// Or render server-side with data
+const resp = await fetch('/card/news/render', {
+  method: 'POST',
+  body: JSON.stringify({title: "...", category: "..."})
+});
+const html = await resp.text();
+```
+
+### Card CSS Classes (mu.css)
+```
+Base:     .card
+Elements: .card-title, .card-desc, .card-meta, .card-time, .card-author
+          .card-category, .card-tags, .card-summary, .card-content, .card-preview
+Layouts:  .card-grid, .card-list, .card-row
+Colors:   .card-yellow, .card-green, .card-blue, .card-pink, .card-purple, .card-gray
+States:   .card-unread, .card-user, .card-up, .card-down
+```
+
+**IMPORTANT: Use cards for rendering data. Do NOT create new bespoke HTML for data types.**
+
 ## CSS Utility Classes (mu.css)
 ```
 Display:    d-none, d-block, d-inline, d-flex, d-inline-block
@@ -127,5 +186,27 @@ Width:      w-full, max-w-sm/md/lg/xl
 Background: bg-light, bg-success-light, bg-warning-light
 ```
 
+## UI Components (mu.css)
+
+**Use these. Do NOT create page-specific CSS duplicating these patterns.**
+
+### Page Header with Search
+```html
+<div class="search-bar">
+  <input type="text" name="q" placeholder="Search...">
+  <a href="/thing/new" class="btn">+ New</a>
+</div>
+```
+
+### Buttons
+- `a.btn` or `button` - primary action (dark background)
+- `.btn-secondary` - secondary
+- `.btn-danger` - destructive (red)
+- `.btn-success` - positive (green)
+
+### Form Inputs
+All inputs get consistent height (36px) via mu.css. Don't override.
+
 ## Next Up
-- App templates (API fetcher, data tracker patterns)
+- Migrate existing pages to use card system
+- Remove duplicate per-page CSS

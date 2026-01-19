@@ -1,0 +1,11 @@
+<div class="card card-video">
+  <a href="/video?id={{.ID}}" class="card-thumb">
+    {{if .Thumbnail}}<img src="{{.Thumbnail}}" alt="{{.Title}}" loading="lazy">{{end}}
+    {{if .Duration}}<span class="card-duration">{{.Duration}}</span>{{end}}
+  </a>
+  <div class="card-body">
+    <a href="/video?id={{.ID}}" class="card-title">{{.Title}}</a>
+    {{if .Channel}}<div class="card-meta">{{.Channel}}</div>{{end}}
+    {{if .Views}}<div class="card-meta">{{.Views}} views</div>{{end}}
+  </div>
+</div>

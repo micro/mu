@@ -19,6 +19,7 @@ import (
 	"mu/apps"
 	"mu/auth"
 	"mu/blog"
+	"mu/cards"
 	"mu/chat"
 	"mu/data"
 	"mu/docs"
@@ -172,6 +173,9 @@ func main() {
 	http.HandleFunc("/apps", apps.Handler)
 	http.HandleFunc("/apps/", apps.Handler)
 	http.HandleFunc("/apps/api", apps.HandleAPIRequest)
+
+	// serve card components
+	http.HandleFunc("/card/", cards.Handler)
 
 	// serve agent
 	http.HandleFunc("/agent", agent.Handler)

@@ -1,0 +1,10 @@
+<div class="card card-mail{{if .Unread}} card-unread{{end}}">
+  <a href="/mail/{{.ID}}" class="card-link">
+    <div class="card-header">
+      <span class="card-from">{{.From}}</span>
+      <time class="card-time">{{.Time}}</time>
+    </div>
+    <div class="card-subject">{{.Subject}}</div>
+    {{if .Preview}}<div class="card-preview">{{.Preview}}</div>{{end}}
+  </a>
+</div>

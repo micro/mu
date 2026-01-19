@@ -1,0 +1,11 @@
+<div class="card card-note{{if .Color}} card-{{.Color}}{{end}}">
+  {{if .Pinned}}<span class="card-pin">📌</span>{{end}}
+  {{if .Title}}<h4 class="card-title"><a href="/notes/{{.ID}}">{{.Title}}</a></h4>{{end}}
+  {{if .Content}}<div class="card-content">{{.Content}}</div>{{end}}
+  {{if .Tags}}
+  <div class="card-tags">
+    {{range .Tags}}<span class="tag">{{.}}</span>{{end}}
+  </div>
+  {{end}}
+  {{if .Time}}<time class="card-time">{{.Time}}</time>{{end}}
+</div>

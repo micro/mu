@@ -2927,3 +2927,208 @@ a.btn-secondary:hover, .btn-secondary:hover {
   color: #007bff;
   font-weight: bold;
 }
+
+/* ========================================
+   CARD SYSTEM
+   Reusable card components for all data types
+   ======================================== */
+
+/* Base card */
+.card {
+  background: var(--card-background, #fff);
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: box-shadow 0.15s;
+}
+.card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Card elements */
+.card-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary, #1a1a1a);
+  text-decoration: none;
+  display: block;
+  margin-bottom: 6px;
+}
+.card-title:hover {
+  color: var(--accent-color, #0d7377);
+}
+.card-desc, .card-preview {
+  font-size: 14px;
+  color: var(--text-secondary, #555);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.card-meta {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+}
+.card-time {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+}
+.card-author {
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+}
+.card-category a {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-color, #0d7377);
+  text-decoration: none;
+  font-weight: 600;
+}
+.card-tags {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.card-tags .tag {
+  padding: 2px 8px;
+  background: var(--tag-background, #f0f0f0);
+  border-radius: 10px;
+  font-size: 11px;
+  color: var(--text-secondary, #666);
+}
+.card-summary {
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+  line-height: 1.5;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--divider, #f0f0f0);
+}
+.card-content {
+  font-size: 14px;
+  color: var(--text-secondary, #555);
+  line-height: 1.5;
+}
+.card-pin {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 14px;
+}
+.card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+/* Video card specifics */
+.card-video {
+  padding: 0;
+  overflow: hidden;
+}
+.card-video .card-thumb {
+  display: block;
+  position: relative;
+}
+.card-video .card-thumb img {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  display: block;
+}
+.card-video .card-duration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.card-video .card-body {
+  padding: 12px;
+}
+
+/* Note card colors */
+.card-note { position: relative; }
+.card-yellow { background: #fff9c4; border-color: #fff176; }
+.card-green { background: #c8e6c9; border-color: #a5d6a7; }
+.card-blue { background: #bbdefb; border-color: #90caf9; }
+.card-pink { background: #f8bbd9; border-color: #f48fb1; }
+.card-purple { background: #e1bee7; border-color: #ce93d8; }
+.card-gray { background: #f5f5f5; border-color: #e0e0e0; }
+
+/* Mail card */
+.card-mail .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.card-mail .card-from {
+  font-weight: 600;
+}
+.card-mail .card-subject {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.card-mail.card-unread {
+  border-left: 3px solid var(--accent-color, #0d7377);
+}
+
+/* Market card */
+.card-market {
+  display: inline-block;
+  padding: 10px 14px;
+  min-width: 100px;
+}
+.card-market .card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.card-market .card-symbol {
+  font-weight: 600;
+}
+.card-market .card-price {
+  font-family: monospace;
+}
+.card-market .card-change {
+  font-size: 13px;
+  margin-top: 4px;
+}
+.card-market .card-up { color: var(--success-color, #28a745); }
+.card-market .card-down { color: var(--error-color, #dc3545); }
+
+/* Chat card */
+.card-chat {
+  padding: 12px;
+}
+.card-chat .card-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.card-chat.card-user {
+  background: var(--accent-light, #e8f5f5);
+}
+
+/* Card grid layouts */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.card-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}

@@ -1,0 +1,9 @@
+<div class="card card-market">
+  <div class="card-header">
+    <span class="card-symbol">{{.Symbol}}</span>
+    <span class="card-price">{{.Price}}</span>
+  </div>
+  {{if .Change}}
+  <div class="card-change{{if .Up}} card-up{{else}} card-down{{end}}">{{.Change}}</div>
+  {{end}}
+</div>
