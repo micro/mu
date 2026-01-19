@@ -336,7 +336,7 @@ function showResult(result) {
 		
 		if (result.action === 'navigate' && result.url) {
 			if (result.url.includes('/video?id=')) {
-				html += '<p style="margin-top:15px"><a href="' + result.url + '" class="action-link" style="display:inline-block;padding:12px 24px;background:var(--accent-color,#0d7377);color:white;text-decoration:none;border-radius:6px;">▶ Play Video</a></p>';
+				html += '<p style="margin-top:15px"><a href="' + result.url + '" class="action-link" style="display:inline-block;padding:8px 12px;background:var(--btn-primary,#000);color:white;text-decoration:none;border-radius:6px;">▶ Play Video</a></p>';
 				setTimeout(() => { window.location.href = result.url; }, 1500);
 			} else {
 				html += '<p><a href="' + result.url + '" class="action-link">→ Go there now</a></p>';

@@ -739,8 +739,8 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 							<option value="private">Private (Admin only)</option>
 						</select>
 						<div style="display: flex; gap: 10px;">
-							<a href="/blog" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
-							<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Post</button>
+							<a href="/blog" style="padding: 8px 12px; background: var(--hover-background, #eee); color: var(--text-primary, #333); text-decoration: none; border-radius: var(--border-radius, 6px); display: inline-block;">Cancel</a>
+							<button type="submit" style="padding: 8px 12px;">Post</button>
 						</div>
 					</div>
 					<div style="font-size: 12px; color: #666;">
@@ -1351,8 +1351,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 					Supports markdown: **bold**, *italic**, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
 				</div>
 				<div style="display: flex; gap: 10px;">
-					<button type="submit" style="padding: 10px 20px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Save Changes</button>
-					<a href="/post?id=%s" style="padding: 10px 20px; font-size: 14px; background-color: #ccc; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">Cancel</a>
+					<button type="submit" style="padding: 8px 12px;">Save Changes</button>
+					<a href="/post?id=%s" style="padding: 8px 12px; background: var(--hover-background, #eee); color: var(--text-primary, #333); text-decoration: none; border-radius: var(--border-radius, 6px); display: inline-block;">Cancel</a>
 				</div>
 			</form>
 		</div>`, post.ID, post.Title, post.Content, post.Tags, publicSelected, privateSelected, post.ID)
@@ -1448,7 +1448,7 @@ func renderComments(postID string, r *http.Request) string {
 			<form method="POST" action="/post/%s/comment" style="margin: 20px 0; display: flex; flex-direction: column; gap: 10px;">
 				<textarea name="content" rows="3" placeholder="Add a comment..." required style="padding: 10px; font-family: 'Nunito Sans', serif; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; resize: vertical;"></textarea>
 				<div>
-					<button type="submit" style="padding: 8px 16px; font-size: 14px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Add Comment</button>
+					<button type="submit" style="padding: 8px 12px;">Add Comment</button>
 				</div>
 			</form>
 		`, postID))

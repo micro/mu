@@ -515,14 +515,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	font-size: 14px;
 	min-width: 200px;
 }
-.apps-search button {
-	padding: 10px 20px;
-	background: #333;
-	color: white;
-	border: none;
-	border-radius: var(--border-radius, 6px);
-	cursor: pointer;
-}
+.apps-search button { }
 .featured-section {
 	margin-bottom: 30px;
 	padding-bottom: 20px;
@@ -923,8 +916,8 @@ func renderEditForm(w http.ResponseWriter, a *App, errMsg string) {
   </div>
   <div>
     <button type="submit" name="action" value="save">Save Changes</button>
-    <button type="button" class="button button-secondary" onclick="previewApp()">Preview</button>
-    <button type="submit" name="action" value="generate" class="button button-secondary">Regenerate</button>
+    <button type="button" class="button-secondary" onclick="previewApp()">Preview</button>
+    <button type="submit" name="action" value="generate" class="button-secondary">Regenerate</button>
     <a href="/apps/%s" style="margin-left: 10px;">Cancel</a>
   </div>
 </form>
@@ -1451,7 +1444,7 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 	font-size: small;
 }
 .widget-btn.add {
-	background: var(--accent-color, #0d7377);
+	background: var(--btn-primary, #000);
 	color: white;
 }
 .widget-btn.remove {
