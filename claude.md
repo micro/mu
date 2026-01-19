@@ -103,19 +103,29 @@ STRIPE_WEBHOOK_SECRET
 - Service worker version bumps to clear cache (currently v95)
 
 ## Recent Changes
+- **Extracted inline styles to mu.css** - Reduced from 309 to 62 inline styles
+  - Added 50+ utility classes (display, flex, text, spacing, etc.)
+  - Component classes: .progress, .stats-table, .data-table, .blog-form, .mail-form
+  - Button variants: .btn, .btn-primary, .btn-outline, .btn-secondary
+  - Alert classes: .alert-error, .alert-success, .alert-info
+  - Remaining inline styles are dynamic values, JS toggles, iframe positioning
 - Rebranded to "The Micro Network" - apps-first positioning
 - Agent hero input on home page (subtle, in left column)
 - Customize link moved next to page title
-- Restructured /admin as dashboard with links to /admin/users, /admin/moderate, /admin/blocklist, /admin/email
-- Standardized button padding to 8px 12px globally
-- Added button color tokens: --btn-primary, --btn-danger, --btn-success
-- Unified search bar styling across all pages (8px 12px padding, 8px gap, flex layout)
+- Restructured /admin as dashboard with links
+- Standardized button padding, color tokens, search bar styling
 - Agent is task executor only - redirects general questions to Chat
 
+## CSS Utility Classes (mu.css)
+```
+Display:    d-none, d-block, d-inline, d-flex, d-inline-block
+Flex:       flex-column, items-center, justify-between, gap-1/2/3/4/5
+Text:       text-center, text-left, text-right, text-error, text-success, text-muted
+Font:       text-xs, text-sm, text-lg, text-xl, font-bold, font-normal, italic
+Spacing:    m-0, mt-*, mb-*, ml-*, mr-*, mx-*, my-*, p-*, py-*, px-*
+Width:      w-full, max-w-sm/md/lg/xl
+Background: bg-light, bg-success-light, bg-warning-light
+```
+
 ## Next Up
-- **Extract inline styles to mu.css** - Too much `style="..."` in Go files. Need to:
-  1. Audit all `style=` in Go files
-  2. Create CSS classes for each pattern
-  3. Replace inline styles with class names
-  4. Single source of truth in mu.css
 - App templates (API fetcher, data tracker patterns)
