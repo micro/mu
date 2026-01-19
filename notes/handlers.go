@@ -295,11 +295,8 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
 </form>
 <div class="note-meta-info">` + app.TimeAgo(n.UpdatedAt) + `</div>`
 
-	title := "Note"
-	if n.Title != "" {
-		title = n.Title
-	}
-	w.Write([]byte(app.RenderHTML(title, "", formHTML)))
+	// Use generic title - the editable input field shows the note title
+	w.Write([]byte(app.RenderHTML("Note", "", formHTML)))
 }
 
 func archiveLabel(archived bool) string {
