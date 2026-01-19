@@ -105,7 +105,7 @@ a[rel*="noopener"]:visited {
 }
 
 /* Buttons - slim, consistent padding */
-button, .btn {
+button {
   display: inline-block;
   background: var(--btn-primary);
   color: #fff;
@@ -119,10 +119,31 @@ button, .btn {
   transition: all var(--transition-fast);
 }
 
-button:hover, .btn:hover {
+button:hover {
   background: var(--btn-primary-hover);
   border-color: var(--btn-primary-hover);
-  color: #fff;
+}
+
+/* .btn class for links styled as buttons */
+a.btn {
+  display: inline-block;
+  background: var(--btn-primary);
+  color: #fff !important;
+  border: 1px solid var(--btn-primary);
+  border-radius: var(--border-radius);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+a.btn:hover {
+  background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
+  color: #fff !important;
   text-decoration: none;
 }
 
@@ -2187,7 +2208,7 @@ a.highlight {
   }
   
   /* Buttons on mobile - keep slim but ensure touch target */
-  button, .btn {
+  button, a.btn {
     min-height: 36px;
     padding: 6px 12px;
   }
@@ -2639,37 +2660,38 @@ a.highlight {
 }
 
 /* Button styles */
-/* Button variants - inherit base button styles */
-.btn-primary {
+/* Button variants */
+a.btn-primary, .btn-primary {
   background: var(--btn-primary, #000);
-  color: #fff;
+  color: #fff !important;
   border-color: var(--btn-primary, #000);
 }
 
-.btn-primary:hover {
+a.btn-primary:hover, .btn-primary:hover {
   background: var(--btn-primary-hover, #333);
   border-color: var(--btn-primary-hover, #333);
-  color: #fff;
+  color: #fff !important;
 }
 
-.btn-outline {
+a.btn-outline, .btn-outline {
   background: transparent;
   border: 1px solid var(--btn-primary, #000);
-  color: var(--text-primary, #333);
+  color: var(--text-primary, #333) !important;
 }
 
-.btn-outline:hover {
+a.btn-outline:hover, .btn-outline:hover {
   background: var(--hover-background, #fafafa);
-  color: var(--text-primary, #333);
+  color: var(--text-primary, #333) !important;
+  text-decoration: none;
 }
 
-.btn-secondary {
+a.btn-secondary, .btn-secondary {
   background: var(--hover-background, #eee);
-  color: var(--text-primary, #333);
+  color: var(--text-primary, #333) !important;
   border-color: var(--hover-background, #eee);
 }
 
-.btn-secondary:hover {
+a.btn-secondary:hover, .btn-secondary:hover {
   background: #ddd;
   text-decoration: none;
 }
