@@ -306,11 +306,11 @@ type PageOpts struct {
 - [x] **wallet/** - Dashboard UI (not suited for app.Page)
 
 #### Phase 3: Cleanup
-- [ ] Remove duplicate CSS from all packages
-- [ ] Consolidate card styles in mu.css
+- [x] Move notes editor CSS to mu.css
+- [x] Move apps form/card CSS to mu.css
+- [ ] Move video commonStyles to mu.css
+- [ ] Move remaining inline CSS (admin, agent, etc)
 - [ ] Update claude.md with final patterns
-- [ ] Audit mu.css - target <500 lines
-- [ ] Audit mu.js - target <200 lines
 
 ### Current Status
 - [x] app/ui.go created with SearchBar, ActionLink, Grid, Title, Page, etc.
