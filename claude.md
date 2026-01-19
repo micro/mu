@@ -297,7 +297,7 @@ type PageOpts struct {
 
 #### Phase 2: Package Migration (one at a time)
 - [x] **notes/** - Uses app.Page(), app.Grid(), app.SearchBar(), app.ActionLink()
-- [ ] **apps/** - Extract rendering, use app.Route(), app.Page()
+- [x] **apps/** - Uses app.Page() for list view
 - [ ] **blog/** - Extract rendering, use app.Route(), app.Page()
 - [ ] **news/** - Extract rendering, use app.Route(), app.Page()
 - [ ] **video/** - Extract rendering, use app.Route(), app.Page()
@@ -316,5 +316,5 @@ type PageOpts struct {
 - [x] app/ui.go created with SearchBar, ActionLink, Grid, Title, Page, etc.
 - [x] app/router.go created with Route() for content-type dispatch
 - [x] notes/ fully migrated to use app.Page()
-- [ ] apps/ partially migrated, needs app.Page()
+- [x] apps/ uses app.Page() for list view
 - [ ] Other packages still use manual WantsJSON checks and custom layouts
