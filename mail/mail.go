@@ -1074,31 +1074,32 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		title = fmt.Sprintf("Mail (%d new)", unreadCount)
 	}
 
-	// Tab navigation
-	inboxStyle := "padding: 10px 20px; text-decoration: none; color: #333; border-bottom: 2px solid #333;"
-	sentStyle := "padding: 10px 20px; text-decoration: none; color: #666; border-bottom: 2px solid transparent;"
+	// Build tab filters
+	var filters strings.Builder
+	filters.WriteString(`<span class="view-toggle">`)
 	if view == "sent" {
-		inboxStyle = "padding: 10px 20px; text-decoration: none; color: #666; border-bottom: 2px solid transparent;"
-		sentStyle = "padding: 10px 20px; text-decoration: none; color: #333; border-bottom: 2px solid #333;"
-	}
-
-	html := fmt.Sprintf(`
-		<div class="mb-5">
-			<a href="/mail?compose=true" class="text-muted text-sm">Write a Message</a>
-		</div>
-		<div class="border-b mb-5">
-			<a href="/mail" style="%s">Inbox%s</a>
-			<a href="/mail?view=sent" style="%s">Sent</a>
-		</div>
-		<div id="mailbox">%s</div>
-	`, inboxStyle, func() string {
+		filters.WriteString(`<a href="/mail">Inbox`)
 		if unreadCount > 0 {
-			return fmt.Sprintf(" (%d)", unreadCount)
+			filters.WriteString(fmt.Sprintf(" (%d)", unreadCount))
 		}
-		return ""
-	}(), sentStyle, content)
+		filters.WriteString(`</a> · <strong>Sent</strong>`)
+	} else {
+		filters.WriteString(`<strong>Inbox`)
+		if unreadCount > 0 {
+			filters.WriteString(fmt.Sprintf(" (%d)", unreadCount))
+		}
+		filters.WriteString(`</strong> · <a href="/mail?view=sent">Sent</a>`)
+	}
+	filters.WriteString(`</span>`)
 
-	w.Write([]byte(app.RenderHTML(title, "Your messages", html)))
+	pageHTML := app.Page(app.PageOpts{
+		Action:  "/mail?compose=true",
+		Label:   "+ Compose",
+		Filters: filters.String(),
+		Content: `<div id="mailbox">` + content + `</div>`,
+	})
+
+	w.Write([]byte(app.RenderHTML(title, "Your messages", pageHTML)))
 }
 
 // renderThreadPreview renders a thread preview showing the latest message but linking to root

@@ -351,9 +351,6 @@ func handlePin(w http.ResponseWriter, r *http.Request, sess *auth.Session, id st
 
 const notesCSS = `
 <style>
-.view-toggle { font-size: 14px; color: #666; margin-left: auto; }
-.view-toggle a { color: #666; text-decoration: none; }
-.view-toggle a:hover { text-decoration: underline; }
 .note-editor { max-width: 600px; }
 .note-editor input[type="text"] { width: 100%; padding: 8px 0; border: none; border-bottom: 1px solid #eee; font-size: 18px; font-weight: 500; margin-bottom: 8px; outline: none; }
 .note-editor input[type="text"]:focus { border-bottom-color: var(--accent-color, #0d7377); }

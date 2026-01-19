@@ -3163,3 +3163,16 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .page-filters .tag.clear {
   background: var(--hover-background, #ddd);
 }
+
+.view-toggle {
+  font-size: 14px;
+  color: var(--text-muted, #666);
+  margin-left: auto;
+}
+.view-toggle a {
+  color: var(--text-muted, #666);
+  text-decoration: none;
+}
+.view-toggle a:hover {
+  text-decoration: underline;
+}
