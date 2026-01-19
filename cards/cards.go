@@ -1,147 +1,36 @@
-// Package cards provides reusable UI card components.
-// Cards are self-contained HTML/CSS/JS templates that render data.
-// They can be used server-side (RenderHTML) or client-side (fetch + fill).
+// Package cards provides layout helpers for consistent UI.
+// Use these wrappers + mu.css classes. Keep render logic in each package.
 package cards
 
 import (
-	"embed"
-	"encoding/json"
-	"html/template"
-	"net/http"
+	"html"
 	"strings"
-	"sync"
 )
 
-//go:embed templates/*.html
-var templateFS embed.FS
-
-var (
-	templates     map[string]*template.Template
-	templatesOnce sync.Once
-)
-
-// Card types
-const (
-	TypeNews    = "news"
-	TypeVideo   = "video"
-	TypeNote    = "note"
-	TypeMail    = "mail"
-	TypeBlog    = "blog"
-	TypeChat    = "chat"
-	TypeApp     = "app"
-	TypeMarket  = "market"
-)
-
-// loadTemplates loads all card templates from embedded files
-func loadTemplates() {
-	templates = make(map[string]*template.Template)
-	
-	entries, err := templateFS.ReadDir("templates")
-	if err != nil {
-		return
-	}
-	
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".html") {
-			continue
+// SearchHeader renders the standard search bar with optional new button
+func SearchHeader(action, placeholder, query, newURL, newLabel string) string {
+	var b strings.Builder
+	b.WriteString(`<div class="search-bar">`)
+	b.WriteString(`<form action="`)
+	b.WriteString(action)
+	b.WriteString(`" method="GET"><input type="text" name="q" placeholder="`)
+	b.WriteString(placeholder)
+	b.WriteString(`" value="`)
+	b.WriteString(html.EscapeString(query))
+	b.WriteString(`"></form>`)
+	if newURL != "" {
+		b.WriteString(`<a href="`)
+		b.WriteString(newURL)
+		b.WriteString(`" class="btn">`)
+		if newLabel != "" {
+			b.WriteString(newLabel)
+		} else {
+			b.WriteString(`+ New`)
 		}
-		
-		name := strings.TrimSuffix(entry.Name(), ".html")
-		content, err := templateFS.ReadFile("templates/" + entry.Name())
-		if err != nil {
-			continue
-		}
-		
-		tmpl, err := template.New(name).Parse(string(content))
-		if err != nil {
-			continue
-		}
-		
-		templates[name] = tmpl
+		b.WriteString(`</a>`)
 	}
-}
-
-// RenderHTML renders a card with the given data, returning HTML string
-func RenderHTML(cardType string, data any) string {
-	templatesOnce.Do(loadTemplates)
-	
-	tmpl, ok := templates[cardType]
-	if !ok {
-		return "<!-- unknown card type: " + cardType + " -->"
-	}
-	
-	var buf strings.Builder
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return "<!-- render error: " + err.Error() + " -->"
-	}
-	
-	return buf.String()
-}
-
-// RenderList renders multiple items of the same type
-func RenderList(cardType string, items []any) string {
-	var buf strings.Builder
-	for _, item := range items {
-		buf.WriteString(RenderHTML(cardType, item))
-	}
-	return buf.String()
-}
-
-// Handler serves card templates and renders cards via API
-// Routes:
-//   GET /card/{type}         - returns the HTML template
-//   POST /card/{type}/render - renders template with JSON body data
-func Handler(w http.ResponseWriter, r *http.Request) {
-	templatesOnce.Do(loadTemplates)
-	
-	path := strings.TrimPrefix(r.URL.Path, "/card/")
-	parts := strings.Split(path, "/")
-	
-	if len(parts) == 0 || parts[0] == "" {
-		http.Error(w, "card type required", http.StatusBadRequest)
-		return
-	}
-	
-	cardType := parts[0]
-	
-	// GET /card/{type} - return template source
-	if r.Method == "GET" && len(parts) == 1 {
-		content, err := templateFS.ReadFile("templates/" + cardType + ".html")
-		if err != nil {
-			http.Error(w, "card not found", http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(content)
-		return
-	}
-	
-	// POST /card/{type}/render - render with data
-	if r.Method == "POST" && len(parts) == 2 && parts[1] == "render" {
-		var data map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-		
-		html := RenderHTML(cardType, data)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(html))
-		return
-	}
-	
-	http.Error(w, "not found", http.StatusNotFound)
-}
-
-// List returns available card types
-func List() []string {
-	templatesOnce.Do(loadTemplates)
-	
-	var types []string
-	for name := range templates {
-		types = append(types, name)
-	}
-	return types
+	b.WriteString(`</div>`)
+	return b.String()
 }
 
 // Grid wraps content in a card-grid container
@@ -149,8 +38,8 @@ func Grid(content string) string {
 	return `<div class="card-grid">` + content + `</div>`
 }
 
-// ListLayout wraps content in a card-list container
-func ListLayout(content string) string {
+// List wraps content in a card-list container
+func List(content string) string {
 	return `<div class="card-list">` + content + `</div>`
 }
 
@@ -159,80 +48,60 @@ func Row(content string) string {
 	return `<div class="card-row">` + content + `</div>`
 }
 
-// Common data structures for cards
-
-// NewsData for news card
-type NewsData struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	URL         string `json:"url"`
-	Category    string `json:"category"`
-	Summary     string `json:"summary"`
-	Time        string `json:"time"`
+// Empty renders an empty state message
+func Empty(message string) string {
+	return `<p class="empty">` + html.EscapeString(message) + `</p>`
 }
 
-// VideoData for video card
-type VideoData struct {
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	Thumbnail string `json:"thumbnail"`
-	Channel   string `json:"channel"`
-	Duration  string `json:"duration"`
-	Views     string `json:"views"`
+// Card wraps content in a card container
+func Card(content string) string {
+	return `<div class="card">` + content + `</div>`
 }
 
-// NoteData for note card
-type NoteData struct {
-	ID      string   `json:"id"`
-	Title   string   `json:"title"`
-	Content string   `json:"content"`
-	Tags    []string `json:"tags"`
-	Color   string   `json:"color"`
-	Pinned  bool     `json:"pinned"`
-	Time    string   `json:"time"`
+// CardWithClass wraps content in a card with additional classes
+func CardWithClass(class, content string) string {
+	return `<div class="card ` + class + `">` + content + `</div>`
 }
 
-// MailData for mail card
-type MailData struct {
-	ID      string `json:"id"`
-	From    string `json:"from"`
-	Subject string `json:"subject"`
-	Preview string `json:"preview"`
-	Time    string `json:"time"`
-	Unread  bool   `json:"unread"`
+// Tags renders a list of tags
+func Tags(tags []string, baseURL string) string {
+	if len(tags) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="card-tags">`)
+	for _, tag := range tags {
+		if baseURL != "" {
+			b.WriteString(`<a href="`)
+			b.WriteString(baseURL)
+			b.WriteString(html.EscapeString(tag))
+			b.WriteString(`" class="tag">`)
+			b.WriteString(html.EscapeString(tag))
+			b.WriteString(`</a>`)
+		} else {
+			b.WriteString(`<span class="tag">`)
+			b.WriteString(html.EscapeString(tag))
+			b.WriteString(`</span>`)
+		}
+	}
+	b.WriteString(`</div>`)
+	return b.String()
 }
 
-// BlogData for blog card
-type BlogData struct {
-	ID      string   `json:"id"`
-	Title   string   `json:"title"`
-	Author  string   `json:"author"`
-	Preview string   `json:"preview"`
-	Tags    []string `json:"tags"`
-	Time    string   `json:"time"`
+// Title renders a card title with link
+func Title(text, href string) string {
+	if href != "" {
+		return `<a href="` + href + `" class="card-title">` + html.EscapeString(text) + `</a>`
+	}
+	return `<span class="card-title">` + html.EscapeString(text) + `</span>`
 }
 
-// AppData for app card
-type AppData struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Summary string `json:"summary"`
-	Author  string `json:"author"`
+// Meta renders metadata text
+func Meta(content string) string {
+	return `<div class="card-meta">` + content + `</div>`
 }
 
-// ChatData for chat card
-type ChatData struct {
-	User   string `json:"user"`
-	Text   string `json:"text"`
-	Time   string `json:"time"`
-	IsUser bool   `json:"is_user"`
-}
-
-// MarketData for market card
-type MarketData struct {
-	Symbol string `json:"symbol"`
-	Price  string `json:"price"`
-	Change string `json:"change"`
-	Up     bool   `json:"up"`
+// Desc renders description text
+func Desc(text string) string {
+	return `<p class="card-desc">` + html.EscapeString(text) + `</p>`
 }

@@ -1,7 +1,0 @@
-<div class="card card-news">
-  {{if .Category}}<div class="card-category"><a href="/news#{{.Category}}">{{.Category}}</a></div>{{end}}
-  <a href="{{if .ID}}/news?id={{.ID}}{{else}}{{.URL}}{{end}}" class="card-title">{{.Title}}</a>
-  {{if .Description}}<p class="card-desc">{{.Description}}</p>{{end}}
-  {{if .Summary}}<div class="card-summary">{{.Summary}}</div>{{end}}
-  {{if .Time}}<time class="card-time">{{.Time}}</time>{{end}}
-</div>

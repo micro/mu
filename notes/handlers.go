@@ -7,6 +7,7 @@ import (
 
 	"mu/app"
 	"mu/auth"
+	"mu/cards"
 )
 
 // Handler handles /notes routes
@@ -67,12 +68,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session, acc 
 	content.WriteString(`<div class="notes-container">`)
 
 	// Header with search and new button
-	content.WriteString(`<div class="notes-header">`)
-	content.WriteString(`<form class="notes-search" action="/notes" method="GET">`)
-	content.WriteString(`<input type="text" name="q" placeholder="Search notes..." value="` + html.EscapeString(searchQuery) + `">`)
-	content.WriteString(`</form>`)
-	content.WriteString(`<a href="/notes/new" class="btn">+ New</a>`)
-	content.WriteString(`</div>`)
+	content.WriteString(cards.SearchHeader("/notes", "Search notes...", searchQuery, "/notes/new", "+ New"))
 
 	// Tags filter
 	if len(allTags) > 0 {
@@ -109,7 +105,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session, acc 
 			content.WriteString(`<p class="empty">No notes yet. Create your first note!</p>`)
 		}
 	} else {
-		content.WriteString(`<div class="notes-grid">`)
+		content.WriteString(`<div class="card-grid">`)
 		for _, n := range notesList {
 			content.WriteString(renderNoteCard(n))
 		}
@@ -126,19 +122,19 @@ func renderNoteCard(n *Note) string {
 
 	colorClass := ""
 	if n.Color != "" {
-		colorClass = " color-" + n.Color
+		colorClass = " card-" + n.Color
 	}
 
-	b.WriteString(`<div class="note-card` + colorClass + `">`)
+	b.WriteString(`<div class="card card-note` + colorClass + `">`)
 
 	// Pin indicator
 	if n.Pinned {
-		b.WriteString(`<span class="pin-icon" title="Pinned">📌</span>`)
+		b.WriteString(`<span class="card-pin" title="Pinned">📌</span>`)
 	}
 
 	// Title
 	if n.Title != "" {
-		b.WriteString(`<h4><a href="/notes/` + n.ID + `">` + html.EscapeString(n.Title) + `</a></h4>`)
+		b.WriteString(cards.Title(n.Title, "/notes/"+n.ID))
 	}
 
 	// Content preview
@@ -146,19 +142,13 @@ func renderNoteCard(n *Note) string {
 	if len(content) > 200 {
 		content = content[:200] + "..."
 	}
-	b.WriteString(`<a href="/notes/` + n.ID + `" class="note-content">` + html.EscapeString(content) + `</a>`)
+	b.WriteString(`<a href="/notes/` + n.ID + `" class="card-content">` + html.EscapeString(content) + `</a>`)
 
 	// Tags
-	if len(n.Tags) > 0 {
-		b.WriteString(`<div class="note-tags">`)
-		for _, tag := range n.Tags {
-			b.WriteString(`<span class="tag">` + html.EscapeString(tag) + `</span>`)
-		}
-		b.WriteString(`</div>`)
-	}
+	b.WriteString(cards.Tags(n.Tags, ""))
 
 	// Footer with time
-	b.WriteString(`<div class="note-meta">` + app.TimeAgo(n.UpdatedAt) + `</div>`)
+	b.WriteString(`<div class="card-meta">` + app.TimeAgo(n.UpdatedAt) + `</div>`)
 
 	b.WriteString(`</div>`)
 	return b.String()
@@ -355,9 +345,6 @@ func handlePin(w http.ResponseWriter, r *http.Request, sess *auth.Session, id st
 
 const notesCSS = `
 <style>
-.notes-header { display: flex; align-items: center; margin-bottom: 20px; gap: 8px; }
-.notes-search { flex: 1; min-width: 0; }
-.notes-search input { width: 100%; padding: 6px 12px; border: 1px solid var(--card-border, #e0e0e0); border-radius: var(--border-radius, 6px); font-size: 14px; line-height: 1.4; box-sizing: border-box; height: 36px; }
 .tags-filter { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; }
 .tags-filter .tag { padding: 4px 12px; background: #f0f0f0; border-radius: 20px; text-decoration: none; color: #333; font-size: 13px; }
 .tags-filter .tag.active { background: var(--accent-color, #0d7377); color: white; }
@@ -365,23 +352,6 @@ const notesCSS = `
 .view-toggle { margin-bottom: 20px; font-size: 14px; color: #666; }
 .view-toggle a { color: #666; text-decoration: none; }
 .view-toggle a:hover { text-decoration: underline; }
-.notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-.note-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 16px; position: relative; transition: box-shadow 0.15s; }
-.note-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-.note-card h4 { margin: 0 0 8px 0; }
-.note-card h4 a { text-decoration: none; color: #1a1a1a; }
-.note-card .note-content { display: block; color: #555; font-size: 14px; line-height: 1.5; white-space: pre-wrap; text-decoration: none; margin-bottom: 10px; }
-.note-card .note-tags { margin-top: 10px; }
-.note-card .note-tags .tag { display: inline-block; padding: 2px 8px; background: #f0f0f0; border-radius: 10px; font-size: 11px; color: #666; margin-right: 4px; }
-.note-card .note-meta { font-size: 12px; color: #999; margin-top: 10px; }
-.note-card .pin-icon { position: absolute; top: 10px; right: 10px; font-size: 14px; }
-.note-card.color-yellow { background: #fff9c4; border-color: #fff176; }
-.note-card.color-green { background: #c8e6c9; border-color: #a5d6a7; }
-.note-card.color-blue { background: #bbdefb; border-color: #90caf9; }
-.note-card.color-pink { background: #f8bbd9; border-color: #f48fb1; }
-.note-card.color-purple { background: #e1bee7; border-color: #ce93d8; }
-.note-card.color-gray { background: #f5f5f5; border-color: #e0e0e0; }
-.empty { color: #888; text-align: center; padding: 40px; }
 .note-editor { max-width: 600px; }
 .note-editor input[type="text"] { width: 100%; padding: 8px 0; border: none; border-bottom: 1px solid #eee; font-size: 18px; font-weight: 500; margin-bottom: 8px; outline: none; }
 .note-editor input[type="text"]:focus { border-bottom-color: var(--accent-color, #0d7377); }

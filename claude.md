@@ -116,64 +116,63 @@ STRIPE_WEBHOOK_SECRET
 - Standardized button padding, color tokens, search bar styling
 - Agent is task executor only - redirects general questions to Chat
 
-## Card System (cards/)
+## Cards Package (cards/)
 
-Reusable UI components for all data types. ONE place to define how each type renders.
+Layout helpers and element builders for consistent UI. Fast string builders, no templates.
 
-### Card Types
-| Type | Template | Data Fields |
-|------|----------|-------------|
-| news | cards/templates/news.html | ID, Title, Description, URL, Category, Summary, Time |
-| video | cards/templates/video.html | ID, Title, Thumbnail, Channel, Duration, Views |
-| note | cards/templates/note.html | ID, Title, Content, Tags[], Color, Pinned, Time |
-| mail | cards/templates/mail.html | ID, From, Subject, Preview, Time, Unread |
-| blog | cards/templates/blog.html | ID, Title, Author, Preview, Tags[], Time |
-| app | cards/templates/app.html | ID, Name, Summary, Author |
-| chat | cards/templates/chat.html | User, Text, Time, IsUser |
-| market | cards/templates/market.html | Symbol, Price, Change, Up |
-
-### Server-side Usage (Go)
+### Layout Helpers
 ```go
 import "mu/cards"
 
-// Render single card
-html := cards.RenderHTML(cards.TypeNews, cards.NewsData{
-    Title: "Breaking News",
-    Category: "tech",
-})
+// Search header with optional new button
+cards.SearchHeader("/notes", "Search notes...", query, "/notes/new", "+ New")
 
-// Render in grid layout
-html := cards.Grid(cards.RenderHTML(...))
+// Container layouts
+cards.Grid(content)   // .card-grid - responsive grid
+cards.List(content)   // .card-list - vertical stack  
+cards.Row(content)    // .card-row - horizontal flex
 
-// Render list
-html := cards.ListLayout(cards.RenderHTML(...))
+// Card wrapper
+cards.Card(content)              // <div class="card">...</div>
+cards.CardWithClass("card-note", content)
+
+// Empty state
+cards.Empty("No items yet")
 ```
 
-### Client-side Usage (JS)
-```js
-// Fetch template
-const resp = await fetch('/card/news');
-const template = await resp.text();
-
-// Or render server-side with data
-const resp = await fetch('/card/news/render', {
-  method: 'POST',
-  body: JSON.stringify({title: "...", category: "..."})
-});
-const html = await resp.text();
+### Element Builders
+```go
+cards.Title("My Note", "/notes/123")  // .card-title link
+cards.Desc("Description text")        // .card-desc paragraph
+cards.Meta("by author · 2h ago")      // .card-meta
+cards.Tags([]string{"tag1", "tag2"}, "/notes?tag=")  // .card-tags
 ```
 
 ### Card CSS Classes (mu.css)
 ```
-Base:     .card
-Elements: .card-title, .card-desc, .card-meta, .card-time, .card-author
-          .card-category, .card-tags, .card-summary, .card-content, .card-preview
+Base:     .card (padding, border, hover shadow)
+Elements: .card-title, .card-desc, .card-meta, .card-content, .card-preview
+          .card-tags .tag, .card-pin, .card-category
 Layouts:  .card-grid, .card-list, .card-row
 Colors:   .card-yellow, .card-green, .card-blue, .card-pink, .card-purple, .card-gray
-States:   .card-unread, .card-user, .card-up, .card-down
 ```
 
-**IMPORTANT: Use cards for rendering data. Do NOT create new bespoke HTML for data types.**
+### Usage Pattern
+Keep render logic in each package, use cards helpers for common elements:
+```go
+func renderNoteCard(n *Note) string {
+    var b strings.Builder
+    b.WriteString(`<div class="card card-note">`)
+    b.WriteString(cards.Title(n.Title, "/notes/"+n.ID))
+    b.WriteString(cards.Desc(n.Content))
+    b.WriteString(cards.Tags(n.Tags, ""))
+    b.WriteString(cards.Meta(app.TimeAgo(n.UpdatedAt)))
+    b.WriteString(`</div>`)
+    return b.String()
+}
+```
+
+**IMPORTANT: Use .card classes and cards helpers. Do NOT create new page-specific CSS for cards.**
 
 ## CSS Utility Classes (mu.css)
 ```

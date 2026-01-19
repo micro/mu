@@ -13,6 +13,7 @@ import (
 
 	"mu/app"
 	"mu/auth"
+	"mu/cards"
 	"mu/data"
 	"mu/wallet"
 )
@@ -391,15 +392,11 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	var content strings.Builder
 
 	// Search bar and create button
-	content.WriteString(`<div class="apps-header">`)
-	content.WriteString(`
-		<form class="apps-search" action="/apps" method="GET">
-			<input type="text" name="q" placeholder="Search apps..." value="` + html.EscapeString(searchQuery) + `">
-		</form>`)
+	newURL := ""
 	if sess != nil {
-		content.WriteString(`<a href="/apps/new" class="btn">+ New</a>`)
+		newURL = "/apps/new"
 	}
-	content.WriteString(`</div>`)
+	content.WriteString(cards.SearchHeader("/apps", "Search apps...", searchQuery, newURL, "+ New"))
 
 	// Featured apps section (always show at top)
 	featuredIDs := []string{"1768488729487639148", "1768342273851959552", "1768342520623825814"} // todo, timer, expenses
@@ -440,7 +437,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	filteredUserApps := filterApps(userApps, searchQuery)
 	if len(filteredUserApps) > 0 {
 		content.WriteString(`<h3>My Apps</h3>`)
-		content.WriteString(`<div class="apps-grid">`)
+		content.WriteString(`<div class="card-grid">`)
 		for _, a := range filteredUserApps {
 			content.WriteString(renderAppCard(a, true))
 		}
@@ -464,7 +461,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	filteredPublic := filterApps(otherPublic, searchQuery)
 	if len(filteredPublic) > 0 {
 		content.WriteString(`<h3 class="mt-6">Community Apps</h3>`)
-		content.WriteString(`<div class="apps-grid">`)
+		content.WriteString(`<div class="card-grid">`)
 		for _, a := range filteredPublic {
 			content.WriteString(renderAppCard(a, false))
 		}
@@ -482,26 +479,6 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	// Add CSS for grid
 	style := `
 <style>
-.apps-header {
-	display: flex;
-	align-items: center;
-	margin-bottom: 20px;
-	gap: 8px;
-}
-.apps-search {
-	flex: 1;
-	min-width: 0;
-}
-.apps-search input {
-	width: 100%;
-	padding: 6px 12px;
-	border: 1px solid var(--card-border, #e0e0e0);
-	border-radius: var(--border-radius, 6px);
-	font-size: 14px;
-	line-height: 1.4;
-	box-sizing: border-box;
-	height: 36px;
-}
 .featured-section {
 	margin-bottom: 30px;
 	padding-bottom: 20px;
@@ -536,43 +513,15 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	font-size: 13px;
 	color: var(--text-secondary, #555);
 }
-.apps-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-	gap: 15px;
-}
-.app-card {
-	border: 1px solid var(--card-border, #e8e8e8);
-	border-radius: var(--border-radius, 6px);
-	padding: var(--item-padding, 16px);
-	background: var(--card-background, #fff);
-}
-.app-card:hover {
-	border-color: #999;
-}
-.app-card h4 {
-	margin: 0 0 8px 0;
-}
-.app-card h4 a {
-	text-decoration: none;
-}
-.app-card p {
-	margin: 0 0 10px 0;
-	color: var(--text-secondary, #555);
-	font-size: 14px;
-}
-.app-card .meta {
-	font-size: 12px;
-	color: var(--text-muted, #888);
-}
-.app-card .actions {
+/* app-card actions */
+.card .actions {
 	margin-top: 10px;
 }
-.app-card .actions a {
+.card .actions a {
 	margin-right: 15px;
 	font-size: 13px;
 }
-.app-card .actions a.delete {
+.card .actions a.delete {
 	color: #c00;
 }
 </style>`
@@ -605,8 +554,8 @@ func renderFeaturedCard(a *App) string {
 
 func renderAppCard(a *App, isOwner bool) string {
 	var b strings.Builder
-	b.WriteString(`<div class="app-card">`)
-	b.WriteString(fmt.Sprintf(`<h4><a href="/apps/%s">%s</a></h4>`, a.ID, html.EscapeString(a.Name)))
+	b.WriteString(`<div class="card">`)
+	b.WriteString(cards.Title(a.Name, "/apps/"+a.ID))
 	// Use Summary if available, otherwise fall back to first line of Description
 	desc := a.Summary
 	if desc == "" && a.Description != "" {
@@ -619,15 +568,13 @@ func renderAppCard(a *App, isOwner bool) string {
 		if len(desc) > 100 {
 			desc = desc[:100] + "..."
 		}
-		b.WriteString(fmt.Sprintf(`<p>%s</p>`, html.EscapeString(desc)))
+		b.WriteString(cards.Desc(desc))
 	}
-	b.WriteString(fmt.Sprintf(`<div class="meta">by %s`, html.EscapeString(a.Author)))
+	visibility := "Private"
 	if a.Public {
-		b.WriteString(` · Public`)
-	} else {
-		b.WriteString(` · Private`)
+		visibility = "Public"
 	}
-	b.WriteString(`</div>`)
+	b.WriteString(cards.Meta("by " + html.EscapeString(a.Author) + " · " + visibility))
 	if isOwner {
 		b.WriteString(`<div class="actions">`)
 		b.WriteString(fmt.Sprintf(`<a href="/apps/%s/develop">Edit</a>`, a.ID))
