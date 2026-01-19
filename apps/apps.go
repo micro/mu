@@ -391,12 +391,6 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 
 	var content strings.Builder
 
-	// Action + Search
-	if sess != nil {
-		content.WriteString(app.ActionLink("/apps/new", "+ New App"))
-	}
-	content.WriteString(app.SearchBar("/apps", "Search apps...", searchQuery))
-
 	// Featured apps section (always show at top)
 	featuredIDs := []string{"1768488729487639148", "1768342273851959552", "1768342520623825814"} // todo, timer, expenses
 	var featuredApps []*App
@@ -525,8 +519,20 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 }
 </style>`
 
-	html := style + content.String()
-	w.Write([]byte(app.RenderHTML("Apps", "Micro Apps", html)))
+	// Determine action link (only for logged-in users)
+	actionURL := ""
+	if sess != nil {
+		actionURL = "/apps/new"
+	}
+
+	pageHTML := style + app.Page(app.PageOpts{
+		Action:  actionURL,
+		Label:   "+ New App",
+		Search:  "/apps",
+		Query:   searchQuery,
+		Content: content.String(),
+	})
+	w.Write([]byte(app.RenderHTML("Apps", "Micro Apps", pageHTML)))
 }
 
 func renderFeaturedCard(a *App) string {

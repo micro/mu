@@ -111,11 +111,16 @@ type PageOpts struct {
 }
 
 // Page renders a standard page layout
-// Structure: [Action Button] [Search Bar] [Filters] [Content or Empty]
+// Structure: [Search Bar] [Action Button] [Filters] [Content or Empty]
 func Page(opts PageOpts) string {
 	var b strings.Builder
 
-	// Action button (top, standalone)
+	// Search bar (at top)
+	if opts.Search != "" {
+		b.WriteString(SearchBar(opts.Search, "Search...", opts.Query))
+	}
+
+	// Action button (below search)
 	if opts.Action != "" {
 		label := opts.Label
 		if label == "" {
@@ -124,11 +129,6 @@ func Page(opts PageOpts) string {
 		b.WriteString(`<div class="page-action">`)
 		b.WriteString(ActionLink(opts.Action, label))
 		b.WriteString(`</div>`)
-	}
-
-	// Search bar
-	if opts.Search != "" {
-		b.WriteString(SearchBar(opts.Search, "Search...", opts.Query))
 	}
 
 	// Filters (tags, toggles, etc.)
