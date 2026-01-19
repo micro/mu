@@ -104,21 +104,26 @@ a[rel*="noopener"]:visited {
   color: var(--text-primary);
 }
 
-/* Buttons for forms only - minimalist theme */
-button {
+/* Buttons - slim, consistent padding */
+button, .btn {
+  display: inline-block;
   background: var(--btn-primary);
   color: #fff;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 8px 12px;
+  padding: 6px 12px;
   cursor: pointer;
   font-size: 14px;
+  line-height: 1.4;
+  text-decoration: none;
   transition: all var(--transition-fast);
 }
 
-button:hover {
+button:hover, .btn:hover {
   background: var(--btn-primary-hover);
   border-color: var(--btn-primary-hover);
+  color: #fff;
+  text-decoration: none;
 }
 
 /* Button variants */
@@ -2181,16 +2186,10 @@ a.highlight {
     line-height: 1.4em;
   }
   
-  /* Ensure proper touch targets for buttons on mobile */
-  button {
-    min-height: 44px;
-    padding: 12px 16px;
-  }
-  
-  /* Form buttons with consistent mobile sizing */
-  form button[type="submit"] {
-    min-height: 44px;
-    padding: 12px 20px;
+  /* Buttons on mobile - keep slim but ensure touch target */
+  button, .btn {
+    min-height: 36px;
+    padding: 6px 12px;
   }
   
   /* Prevent iOS zoom on input focus */
@@ -2640,25 +2639,17 @@ a.highlight {
 }
 
 /* Button styles */
-.btn {
-  display: inline-block;
-  padding: 8px 12px;
-  text-decoration: none;
-  border-radius: var(--border-radius, 6px);
-  font-size: 14px;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
+/* Button variants - inherit base button styles */
 .btn-primary {
   background: var(--btn-primary, #000);
   color: #fff;
+  border-color: var(--btn-primary, #000);
 }
 
 .btn-primary:hover {
   background: var(--btn-primary-hover, #333);
+  border-color: var(--btn-primary-hover, #333);
   color: #fff;
-  text-decoration: none;
 }
 
 .btn-outline {
@@ -2669,12 +2660,13 @@ a.highlight {
 
 .btn-outline:hover {
   background: var(--hover-background, #fafafa);
-  text-decoration: none;
+  color: var(--text-primary, #333);
 }
 
 .btn-secondary {
   background: var(--hover-background, #eee);
   color: var(--text-primary, #333);
+  border-color: var(--hover-background, #eee);
 }
 
 .btn-secondary:hover {

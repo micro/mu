@@ -845,13 +845,13 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		if acc != nil && acc.Admin {
 			// Admin: show write and moderate links
 			actions = `<div class="mb-4">
-				<a href="/blog?write=true" class="btn btn-primary text-sm">+ Write a Post</a>
+				<a href="/blog?write=true" class="btn">+ Write</a>
 				<a href="/admin/moderate" class="text-muted text-sm ml-4">Moderate</a>
 			</div>`
 		} else if acc != nil {
 			// Regular user: show only write link
 			actions = `<div class="mb-4">
-				<a href="/blog?write=true" class="btn btn-primary text-sm">+ Write a Post</a>
+				<a href="/blog?write=true" class="btn">+ Write</a>
 			</div>`
 		} else {
 			// Guest user, show login prompt

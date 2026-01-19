@@ -392,15 +392,14 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 
 	// Search bar and create button
 	content.WriteString(`<div class="apps-header">`)
-	if sess != nil {
-		content.WriteString(`<a href="/apps/new" class="new-app-btn">+ New App</a>`)
-	}
 	content.WriteString(`
 		<form class="apps-search" action="/apps" method="GET">
 			<input type="text" name="q" placeholder="Search apps..." value="` + html.EscapeString(searchQuery) + `">
-			<button type="submit">Search</button>
-		</form>
-	</div>`)
+		</form>`)
+	if sess != nil {
+		content.WriteString(`<a href="/apps/new" class="btn">+ New</a>`)
+	}
+	content.WriteString(`</div>`)
 
 	// Featured apps section (always show at top)
 	featuredIDs := []string{"1768488729487639148", "1768342273851959552", "1768342520623825814"} // todo, timer, expenses
@@ -487,38 +486,18 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	display: flex;
 	align-items: center;
 	margin-bottom: 20px;
-	flex-wrap: wrap;
 	gap: 8px;
-}
-.new-app-btn {
-	padding: 8px 12px;
-	background: var(--btn-primary, #000);
-	color: white !important;
-	text-decoration: none;
-	border-radius: var(--border-radius, 6px);
-	display: inline-block;
-	font-size: 14px;
-}
-.new-app-btn:hover {
-	background: var(--btn-primary-hover, #333);
-	color: white !important;
 }
 .apps-search {
-	display: flex;
-	gap: 8px;
 	flex: 1;
-	min-width: 150px;
+	min-width: 0;
 }
 .apps-search input {
-	flex: 1;
-	padding: 8px 12px;
+	width: 100%;
+	padding: 6px 12px;
 	border: 1px solid var(--card-border, #e0e0e0);
 	border-radius: var(--border-radius, 6px);
 	font-size: 14px;
-	min-width: 0;
-}
-.apps-search button {
-	flex-shrink: 0;
 }
 .featured-section {
 	margin-bottom: 30px;

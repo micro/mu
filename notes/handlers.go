@@ -68,10 +68,10 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session, acc 
 
 	// Header with search and new button
 	content.WriteString(`<div class="notes-header">`)
-	content.WriteString(`<a href="/notes/new" class="new-note-btn">+ New Note</a>`)
 	content.WriteString(`<form class="notes-search" action="/notes" method="GET">`)
 	content.WriteString(`<input type="text" name="q" placeholder="Search notes..." value="` + html.EscapeString(searchQuery) + `">`)
 	content.WriteString(`</form>`)
+	content.WriteString(`<a href="/notes/new" class="btn">+ New</a>`)
 	content.WriteString(`</div>`)
 
 	// Tags filter
@@ -355,11 +355,9 @@ func handlePin(w http.ResponseWriter, r *http.Request, sess *auth.Session, id st
 
 const notesCSS = `
 <style>
-.notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 8px; flex-wrap: wrap; }
-.new-note-btn { padding: 8px 12px; background: var(--btn-primary, #000); color: white !important; text-decoration: none; border-radius: var(--border-radius, 6px); display: inline-block; font-size: 14px; flex-shrink: 0; }
-.new-note-btn:hover { background: var(--btn-primary-hover, #333); }
-.notes-search { flex: 1; min-width: 150px; }
-.notes-search input { width: 100%; padding: 8px 12px; border: 1px solid var(--card-border, #e0e0e0); border-radius: var(--border-radius, 6px); font-size: 14px; }
+.notes-header { display: flex; align-items: center; margin-bottom: 20px; gap: 8px; }
+.notes-search { flex: 1; min-width: 0; }
+.notes-search input { width: 100%; padding: 6px 12px; border: 1px solid var(--card-border, #e0e0e0); border-radius: var(--border-radius, 6px); font-size: 14px; }
 .tags-filter { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; }
 .tags-filter .tag { padding: 4px 12px; background: #f0f0f0; border-radius: 20px; text-decoration: none; color: #333; font-size: 13px; }
 .tags-filter .tag.active { background: var(--accent-color, #0d7377); color: white; }
