@@ -1590,28 +1590,22 @@ const availableCards = [
 function initCardCustomization() {
   if (document.getElementById('customize-link')) return;
   
+  const pageTitle = document.getElementById('page-title');
+  if (!pageTitle || pageTitle.textContent !== 'Home') return;
+  
   const link = document.createElement('a');
   link.id = 'customize-link';
   link.href = '#';
   link.textContent = 'Customize';
+  link.style.cssText = 'font-size: 12px; color: var(--text-muted); position: absolute; right: 0; top: 50%; transform: translateY(-50%);';
   link.onclick = (e) => { e.preventDefault(); showCardModal(); };
   
-  const isMobile = window.innerWidth <= 768;
-  if (isMobile) {
-    // Mobile: after agent hero
-    const agentHero = document.getElementById('agent-hero');
-    if (agentHero) {
-      link.style.cssText = 'font-size: 12px; color: var(--text-muted); display: block; text-align: right;';
-      agentHero.insertAdjacentElement('afterend', link);
-    }
-  } else {
-    // Desktop: float right above right column
-    const rightCol = document.querySelector('.home-right');
-    if (rightCol) {
-      link.style.cssText = 'font-size: 12px; color: var(--text-muted); display: block; text-align: right;';
-      rightCol.insertAdjacentElement('afterbegin', link);
-    }
-  }
+  // Wrap title in relative container for absolute positioning
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position: relative;';
+  pageTitle.parentNode.insertBefore(wrapper, pageTitle);
+  wrapper.appendChild(pageTitle);
+  wrapper.appendChild(link);
 }
 
 function showCardModal() {
