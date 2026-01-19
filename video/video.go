@@ -74,61 +74,7 @@ func init() {
 	}
 }
 
-var commonStyles = `
-  .thumbnail {
-    margin-bottom: 20px;
-  }
-  img {
-    border-radius: 10px;
-  }
-  h3 {
-    margin-bottom: 5px;
-  }
-  .recent-searches {
-    margin-bottom: 20px;
-  }
-  .recent-searches h3 {
-    margin-bottom: 10px;
-    white-space: normal;
-  }
-  .recent-search-item {
-    display: inline-block;
-    margin: 5px 10px 5px 0;
-    padding: 5px 10px;
-    background-color: #f0f0f0;
-    border-radius: 5px;
-    text-decoration: none;
-    color: #333;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .recent-search-item:hover {
-    background-color: #e0e0e0;
-  }
-  .recent-search-item.active {
-    background-color: #333;
-    color: white;
-  }
-  .recent-search-item.active .recent-search-close {
-    color: #ccc;
-  }
-  .recent-search-item.active .recent-search-close:hover {
-    color: white;
-  }
-	.recent-search-label {
-		margin-right: 8px;
-	}
-	.recent-search-close {
-		display: inline-block;
-		padding: 0 6px;
-		color: #666;
-		cursor: pointer;
-		font-weight: bold;
-	}
-	.recent-search-close:hover {
-		color: #000;
-	}
-`
+// Video styles are in mu.css
 
 var recentSearchesScript = `
 <script>
@@ -269,10 +215,7 @@ var recentSearchesScript = `
 </script>
 `
 
-var Results = `
-<style>` + commonStyles + `
-</style>
-<form id="video-search" class="search-bar" action="/video" method="GET">
+var Results = `<form id="video-search" class="search-bar" action="/video" method="GET">
   <input name="query" id="query" type="text" value="%s">
   <button type="submit">Search</button>
 </form>
@@ -284,10 +227,7 @@ var Results = `
 </div>
 ` + recentSearchesScript
 
-var PlaylistView = `
-<style>` + commonStyles + `
-</style>
-<form id="video-search" class="search-bar" action="/video" method="GET">
+var PlaylistView = `<form id="video-search" class="search-bar" action="/video" method="GET">
   <input name="query" id="query" type="text" placeholder="Search...">
   <button type="submit">Search</button>
 </form>
@@ -299,10 +239,7 @@ var PlaylistView = `
 </div>
 ` + recentSearchesScript
 
-var ChannelView = `
-<style>` + commonStyles + `
-</style>
-<form id="video-search" class="search-bar" action="/video" method="GET">
+var ChannelView = `<form id="video-search" class="search-bar" action="/video" method="GET">
   <input name="query" id="query" type="text" placeholder="Search...">
   <button type="submit">Search</button>
 </form>
@@ -315,11 +252,7 @@ var ChannelView = `
 </div>
 ` + recentSearchesScript
 
-var Template = `
-<style>` + commonStyles + `
-</style>
-<!-- <form action="/video" method="POST" onsubmit="event.preventDefault(); getVideos(this); return false;"> -->
-<form id="video-search" class="search-bar" action="/video" method="GET">
+var Template = `<form id="video-search" class="search-bar" action="/video" method="GET">
   <input name="query" id="query" type="text" placeholder="Search..." autocomplete="off">
   <button type="submit">Search</button>
 </form>
