@@ -301,7 +301,7 @@ type PageOpts struct {
 - [ ] **blog/** - Extract rendering, use app.Route(), app.Page()
 - [ ] **news/** - Extract rendering, use app.Route(), app.Page()
 - [ ] **video/** - Extract rendering, use app.Route(), app.Page()
-- [ ] **mail/** - Extract rendering, use app.Route(), app.Page()
+- [x] **mail/** - Uses app.Page() for inbox view
 - [ ] **chat/** - Extract rendering, use app.Route(), app.Page()
 - [ ] **wallet/** - Extract rendering, use app.Route(), app.Page()
 
