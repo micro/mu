@@ -110,7 +110,7 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session, acc 
 		gridContent = app.Grid(content.String())
 	}
 
-	pageHTML := notesCSS + app.Page(app.PageOpts{
+	pageHTML := app.Page(app.PageOpts{
 		Action:  "/notes/new",
 		Label:   "+ New Note",
 		Search:  "/notes",
@@ -192,7 +192,7 @@ func renderNewForm(w http.ResponseWriter, errMsg, title, content, tags string) {
 		errHTML = `<div class="error">` + html.EscapeString(errMsg) + `</div>`
 	}
 
-	formHTML := notesCSS + errHTML + `
+	formHTML := errHTML + `
 <form method="POST" class="note-editor">
   <input type="text" name="title" placeholder="Title" value="` + html.EscapeString(title) + `">
   <textarea name="content" placeholder="Take a note..." required autofocus>` + html.EscapeString(content) + `</textarea>
@@ -274,7 +274,7 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
 		colorOptions += `<option value="` + c + `"` + selected + `>` + label + `</option>`
 	}
 
-	formHTML := notesCSS + errHTML + `
+	formHTML := errHTML + `
 <form method="POST" class="note-editor">
   <input type="text" name="title" placeholder="Title" value="` + html.EscapeString(n.Title) + `">
   <textarea name="content" placeholder="Take a note..." required>` + html.EscapeString(n.Content) + `</textarea>
@@ -346,26 +346,4 @@ func handlePin(w http.ResponseWriter, r *http.Request, sess *auth.Session, id st
 	http.Redirect(w, r, "/notes", 302)
 }
 
-const notesCSS = `
-<style>
-.note-editor { max-width: 600px; }
-.note-editor input[type="text"] { width: 100%; padding: 8px 0; border: none; border-bottom: 1px solid #eee; font-size: 18px; font-weight: 500; margin-bottom: 8px; outline: none; }
-.note-editor input[type="text"]:focus { border-bottom-color: var(--accent-color, #0d7377); }
-.note-editor input[type="text"]::placeholder { color: #aaa; font-weight: normal; }
-.note-editor textarea { width: 100%; min-height: 200px; padding: 8px 0; border: none; font-size: 15px; font-family: inherit; line-height: 1.6; resize: none; outline: none; }
-.note-editor textarea::placeholder { color: #aaa; }
-.note-options-toggle { margin: 16px 0; }
-.note-options-toggle summary { font-size: 13px; color: #666; cursor: pointer; }
-.note-options { padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
-.note-options label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #555; }
-.note-options input[type="checkbox"] { width: auto; margin: 0; }
-.note-options select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; }
-.note-options input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-.note-actions { display: flex; gap: 15px; align-items: center; padding-top: 16px; border-top: 1px solid #eee; margin-top: 16px; }
-.note-actions button { }
-.note-actions a { color: #666; text-decoration: none; font-size: 14px; }
-.note-actions .delete-link { color: #c00; }
-.note-meta-info { margin-top: 16px; font-size: 13px; color: #999; }
-.error { color: #c00; padding: 10px; background: #fee; border-radius: 6px; margin-bottom: 15px; }
-</style>
-`
+// Note editor styles are in mu.css
