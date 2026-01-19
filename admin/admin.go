@@ -235,9 +235,8 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 		.blocklist-table th { text-align: left; padding: 10px; border-bottom: 2px solid #ddd; }
 		.blocklist-table td { padding: 10px; border-bottom: 1px solid #eee; }
 		.block-form { margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px; }
-		.block-form input[type="text"] { padding: 8px; width: 300px; max-width: 100%; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
-		.block-form button { margin-left: 10px; }
-		.unblock-btn { }
+		.block-form form { display: flex; gap: 8px; flex-wrap: wrap; }
+		.block-form input[type="text"] { padding: 8px; width: 300px; max-width: 100%; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; flex: 1; min-width: 200px; }
 	</style>
 
 	<div class="blocklist-section">
