@@ -357,7 +357,7 @@ const notesCSS = `
 <style>
 .notes-header { display: flex; align-items: center; margin-bottom: 20px; gap: 8px; }
 .notes-search { flex: 1; min-width: 0; }
-.notes-search input { width: 100%; padding: 6px 12px; border: 1px solid var(--card-border, #e0e0e0); border-radius: var(--border-radius, 6px); font-size: 14px; }
+.notes-search input { width: 100%; padding: 6px 12px; border: 1px solid var(--card-border, #e0e0e0); border-radius: var(--border-radius, 6px); font-size: 14px; line-height: 1.4; box-sizing: border-box; height: 36px; }
 .tags-filter { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; }
 .tags-filter .tag { padding: 4px 12px; background: #f0f0f0; border-radius: 20px; text-decoration: none; color: #333; font-size: 13px; }
 .tags-filter .tag.active { background: var(--accent-color, #0d7377); color: white; }

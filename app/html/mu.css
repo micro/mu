@@ -126,7 +126,9 @@ button:hover {
 
 /* .btn class for links styled as buttons */
 a.btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--btn-primary);
   color: #fff !important;
   border: 1px solid var(--btn-primary);
@@ -138,6 +140,8 @@ a.btn {
   line-height: 1.4;
   text-decoration: none;
   transition: all var(--transition-fast);
+  height: 36px;
+  box-sizing: border-box;
 }
 
 a.btn:hover {

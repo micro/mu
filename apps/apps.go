@@ -498,6 +498,9 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	border: 1px solid var(--card-border, #e0e0e0);
 	border-radius: var(--border-radius, 6px);
 	font-size: 14px;
+	line-height: 1.4;
+	box-sizing: border-box;
+	height: 36px;
 }
 .featured-section {
 	margin-bottom: 30px;
