@@ -275,7 +275,7 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
 	}
 
 	formHTML := errHTML + `
-<form method="POST" class="note-editor">
+<form method="POST" class="note-editor" data-note-id="` + n.ID + `">
   <input type="text" name="title" placeholder="Title" value="` + html.EscapeString(n.Title) + `">
   <textarea name="content" placeholder="Take a note..." required>` + html.EscapeString(n.Content) + `</textarea>
   <details class="note-options-toggle">
@@ -287,13 +287,92 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     </div>
   </details>
   <div class="note-actions">
-    <button type="submit">Save</button>
+    <span id="autosave-status"></span>
     <a href="/notes">Back</a>
     <a href="/notes/` + n.ID + `/archive">` + archiveLabel(n.Archived) + `</a>
     <a href="/notes/` + n.ID + `/delete" class="delete-link" onclick="return confirm('Delete this note?')">Delete</a>
   </div>
 </form>
-<div class="note-meta-info">` + app.TimeAgo(n.UpdatedAt) + `</div>`
+<div class="note-meta-info">` + app.TimeAgo(n.UpdatedAt) + `</div>
+<script>
+(function() {
+  const form = document.querySelector('.note-editor[data-note-id]');
+  if (!form) return;
+  
+  const noteId = form.dataset.noteId;
+  const status = document.getElementById('autosave-status');
+  let saveTimeout = null;
+  let lastSaved = {};
+  
+  function getFormData() {
+    return {
+      title: form.querySelector('[name=title]').value,
+      content: form.querySelector('[name=content]').value,
+      tags: form.querySelector('[name=tags]').value,
+      pinned: form.querySelector('[name=pinned]').checked,
+      color: form.querySelector('[name=color]').value
+    };
+  }
+  
+  function hasChanges() {
+    const current = getFormData();
+    return JSON.stringify(current) !== JSON.stringify(lastSaved);
+  }
+  
+  function autoSave() {
+    if (!hasChanges()) return;
+    
+    const data = getFormData();
+    status.textContent = 'Saving...';
+    status.className = 'autosave-saving';
+    
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('content', data.content);
+    formData.append('tags', data.tags);
+    if (data.pinned) formData.append('pinned', 'on');
+    formData.append('color', data.color);
+    
+    fetch('/notes/' + noteId, {
+      method: 'POST',
+      body: formData
+    }).then(r => {
+      if (r.ok || r.redirected) {
+        lastSaved = data;
+        status.textContent = 'Saved';
+        status.className = 'autosave-saved';
+        setTimeout(() => { status.textContent = ''; }, 2000);
+      } else {
+        status.textContent = 'Save failed';
+        status.className = 'autosave-error';
+      }
+    }).catch(() => {
+      status.textContent = 'Save failed';
+      status.className = 'autosave-error';
+    });
+  }
+  
+  function scheduleAutoSave() {
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(autoSave, 1500);
+  }
+  
+  // Track initial state
+  lastSaved = getFormData();
+  
+  // Listen for changes
+  form.querySelectorAll('input, textarea, select').forEach(el => {
+    el.addEventListener('input', scheduleAutoSave);
+    el.addEventListener('change', scheduleAutoSave);
+  });
+  
+  // Prevent form submission (auto-save handles it)
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    autoSave();
+  });
+})();
+</script>`
 
 	// Use generic title - the editable input field shows the note title
 	w.Write([]byte(app.RenderHTML("Note", "", formHTML)))

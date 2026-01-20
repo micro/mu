@@ -3361,6 +3361,19 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .note-actions .delete-link {
   color: #c00;
 }
+#autosave-status {
+  font-size: 13px;
+  margin-right: auto;
+}
+.autosave-saving {
+  color: #666;
+}
+.autosave-saved {
+  color: #4caf50;
+}
+.autosave-error {
+  color: #c00;
+}
 .note-meta-info {
   margin-top: 16px;
   font-size: 13px;
