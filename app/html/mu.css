@@ -3462,3 +3462,26 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .recent-search-close:hover {
   color: #000;
 }
+
+/* Wallet deposit page */
+.deposit-address {
+  font-family: monospace;
+  font-size: 14px;
+  word-break: break-all;
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 6px;
+  display: block;
+  margin: 10px 0;
+}
+
+#send-section input[type="number"] {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.btn-success {
+  background: #22c55e;
+  color: white;
+}
