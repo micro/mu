@@ -78,7 +78,7 @@ export SUPPORT_URL="https://discord.gg/your-invite"
 
 ## Crypto Wallet Configuration (Credits/Payments)
 
-Enable credit purchases via crypto deposits. When configured, users get 10 free AI queries per day, then can pay-as-you-go by depositing crypto.
+Enable payments via crypto deposits. When configured, users get 10 free AI queries per day, then can pay-as-you-go by depositing crypto.
 
 **When wallet is NOT configured:** All quotas are disabled. Users have unlimited free access. This is the default for self-hosted instances.
 
@@ -188,7 +188,7 @@ MAIL_SELECTOR=default
 DONATION_URL=https://gocardless.com/your-donation-link
 SUPPORT_URL=https://discord.gg/your-invite
 
-# Crypto wallet (optional - for credit purchases)
+# Crypto wallet (optional - for payments)
 # If not set, seed is auto-generated in ~/.mu/keys/wallet.seed
 # WALLET_SEED=your 24 word mnemonic phrase
 ```
@@ -293,5 +293,5 @@ docker run -d \
 | Video | `YOUTUBE_API_KEY` |
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
 | Donations | `DONATION_URL` (optional: `SUPPORT_URL`) |
-| Credit Purchases | `WALLET_SEED` or auto-generated in `~/.mu/keys/wallet.seed` |
+| Payments | `WALLET_SEED` or auto-generated in `~/.mu/keys/wallet.seed` |
 
