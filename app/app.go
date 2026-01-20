@@ -187,25 +187,29 @@ var Template = `
   </head>
   <body%s>
     <div id="head">
+      <button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu">☰</button>
       <div id="brand">
         <a href="/">Mu</a>
       </div>
-      <div id="account" style="-webkit-tap-highlight-color: transparent;">
-        <a id="mail-header" href="/mail" style="display: none; -webkit-tap-highlight-color: transparent; position: relative;"><img src="/mail.png" width="24" height="24" style="vertical-align: middle;"><span id="mail-badge" style="display: none; position: absolute; top: 0px; right: -8px; background: #e53935; color: white; font-size: 9px; min-width: 14px; height: 14px; line-height: 14px; text-align: center; padding: 0 3px; border-radius: 7px; font-weight: bold;"></span><span class="label">Inbox</span></a>
-        <a id="account-header" href="/account" style="display: none; -webkit-tap-highlight-color: transparent;"><img src="/account.png" width="24" height="24" style="vertical-align: middle;"><span class="label">Account</span></a>
-        <a id="login-header" href="/login" style="display: none; -webkit-tap-highlight-color: transparent;"><b>Login</b></a>
-      </div>
     </div>
 
+    <div id="nav-overlay" onclick="toggleMenu()"></div>
     <div id="container">
       <div id="nav-container">
         <div id="nav">
-					<a href="/home"><img src="/home.png" style="margin-bottom: 1px"><span class="label">Home</span></a>
-					<a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
-					<a href="/notes"><img src="/notes.png"><span class="label">Notes</span></a>
-					<a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
-					<a href="/news"><img src="/news.png"><span class="label">News</span></a>
-					<a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
+          <a href="/home"><img src="/home.png"><span class="label">Home</span></a>
+          <a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
+          <a href="/notes"><img src="/notes.png"><span class="label">Notes</span></a>
+          <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
+          <a href="/news"><img src="/news.png"><span class="label">News</span></a>
+          <a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
+          <a href="/apps"><img src="/apps.png"><span class="label">Apps</span></a>
+          <div class="nav-divider"></div>
+          <a id="nav-mail" href="/mail"><img src="/mail.png"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
+          <a id="nav-wallet" href="/wallet"><img src="/wallet.png"><span class="label">Wallet</span></a>
+          <a id="nav-account" href="/account"><img src="/account.png"><span class="label">Account</span></a>
+          <a id="nav-logout" href="/logout"><img src="/logout.png"><span class="label">Logout</span></a>
+          <a id="nav-login" href="/login" style="display: none;"><img src="/account.png"><span class="label">Login</span></a>
         </div>
       </div>
       <div id="content">
@@ -222,6 +226,10 @@ var Template = `
           '/mu.js',
           {scope: '/'}
         );
+      }
+      
+      function toggleMenu() {
+        document.body.classList.toggle('menu-open');
       }
   </script>
   </body>

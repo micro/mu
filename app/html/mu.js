@@ -609,25 +609,30 @@ function setSession() {
   })
   .then(sess => {
     console.log('Success:', sess);
-    var accountHeader = document.getElementById("account-header");
-    var loginHeader = document.getElementById("login-header");
-    var mailHeader = document.getElementById("mail-header");
-    var mailBadge = document.getElementById("mail-badge");
+    // Nav elements (sidebar)
+    var navMail = document.getElementById("nav-mail");
+    var navWallet = document.getElementById("nav-wallet");
+    var navAccount = document.getElementById("nav-account");
+    var navLogout = document.getElementById("nav-logout");
+    var navLogin = document.getElementById("nav-login");
+    var navMailBadge = document.getElementById("nav-mail-badge");
     var microFab = document.getElementById("micro-fab");
     
     if (sess.type == "account") {
       isAuthenticated = true;
-      if (accountHeader) accountHeader.style.display = 'inline-block';
-      if (mailHeader) mailHeader.style.display = 'inline-block';
+      // Show authenticated nav items
+      if (navMail) navMail.style.display = 'flex';
+      if (navWallet) navWallet.style.display = 'flex';
+      if (navAccount) navAccount.style.display = 'flex';
+      if (navLogout) navLogout.style.display = 'flex';
+      if (navLogin) navLogin.style.display = 'none';
       if (microFab) microFab.style.display = 'flex';
-      if (loginHeader) loginHeader.style.display = 'none';
       // Fetch unread mail count for badge
       fetch('/mail?unread=count')
         .then(res => res.json())
         .then(data => {
-          if (data.count > 0 && mailBadge) {
-            mailBadge.textContent = data.count > 9 ? '9+' : data.count;
-            mailBadge.style.display = 'inline';
+          if (data.count > 0 && navMailBadge) {
+            navMailBadge.textContent = data.count > 9 ? '9+' : data.count;
           }
         })
         .catch(() => {});
@@ -639,16 +644,18 @@ function setSession() {
       }
     } else {
       isAuthenticated = false;
-      if (accountHeader) accountHeader.style.display = 'none';
-      if (mailHeader) mailHeader.style.display = 'none';
+      // Hide authenticated nav items, show login
+      if (navMail) navMail.style.display = 'none';
+      if (navWallet) navWallet.style.display = 'none';
+      if (navAccount) navAccount.style.display = 'none';
+      if (navLogout) navLogout.style.display = 'none';
       if (microFab) microFab.style.display = 'none';
-      if (loginHeader) {
-        loginHeader.style.display = 'inline-block';
+      if (navLogin) {
+        navLogin.style.display = 'flex';
         // Update login link to include redirect parameter
         if (window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/') {
           const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
-          loginHeader.href = '/login?redirect=' + redirectUrl;
-          console.log('Updated login header to:', loginHeader.href);
+          navLogin.href = '/login?redirect=' + redirectUrl;
         }
       }
     }
@@ -658,20 +665,23 @@ function setSession() {
   .catch(error => {
     console.error('Error:', error);
     isAuthenticated = false;
-    var accountHeader = document.getElementById("account-header");
-    var mailHeader = document.getElementById("mail-header");
-    var loginHeader = document.getElementById("login-header");
+    var navMail = document.getElementById("nav-mail");
+    var navWallet = document.getElementById("nav-wallet");
+    var navAccount = document.getElementById("nav-account");
+    var navLogout = document.getElementById("nav-logout");
+    var navLogin = document.getElementById("nav-login");
     var microFab = document.getElementById("micro-fab");
-    if (accountHeader) accountHeader.style.display = 'none';
-    if (mailHeader) mailHeader.style.display = 'none';
+    if (navMail) navMail.style.display = 'none';
+    if (navWallet) navWallet.style.display = 'none';
+    if (navAccount) navAccount.style.display = 'none';
+    if (navLogout) navLogout.style.display = 'none';
     if (microFab) microFab.style.display = 'none';
-    if (loginHeader) {
-      loginHeader.style.display = 'block';
-      // Update login link to include redirect parameter for unauthenticated users
+    if (navLogin) {
+      navLogin.style.display = 'flex';
+      // Update login link to include redirect parameter
       if (window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/') {
         const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
-        loginHeader.href = '/login?redirect=' + redirectUrl;
-        console.log('Updated login header to:', loginHeader.href);
+        navLogin.href = '/login?redirect=' + redirectUrl;
       }
     }
     
