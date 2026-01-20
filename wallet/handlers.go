@@ -180,6 +180,18 @@ func handleWalletPage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
+// Supported chains for deposits
+var depositChains = []struct {
+	ID      string
+	Name    string
+	ChainID int
+}{
+	{"ethereum", "Ethereum", 1},
+	{"base", "Base", 8453},
+	{"arbitrum", "Arbitrum", 42161},
+	{"optimism", "Optimism", 10},
+}
+
 func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
@@ -196,6 +208,23 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get selected chain (default to ethereum)
+	selectedChain := r.URL.Query().Get("chain")
+	if selectedChain == "" {
+		selectedChain = "ethereum"
+	}
+
+	// Find chain info
+	chainID := 1 // default ethereum
+	chainName := "Ethereum"
+	for _, c := range depositChains {
+		if c.ID == selectedChain {
+			chainID = c.ChainID
+			chainName = c.Name
+			break
+		}
+	}
+
 	// Get user's deposit address
 	depositAddr, err := GetUserDepositAddress(sess.Account)
 	if err != nil {
@@ -208,15 +237,29 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	// Generate QR code with ethereum: URI for mobile wallets
-	ethURI := "ethereum:" + depositAddr + "@8453" // @8453 = Base chainId
+	// Chain selector
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Network</h3>`)
+	sb.WriteString(`<select id="chain-select" onchange="window.location.href='/wallet/deposit?chain='+this.value" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">`)
+	for _, c := range depositChains {
+		selected := ""
+		if c.ID == selectedChain {
+			selected = " selected"
+		}
+		sb.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, c.ID, selected, c.Name))
+	}
+	sb.WriteString(`</select>`)
+	sb.WriteString(`</div>`)
+
+	// Generate QR code with ethereum: URI
+	ethURI := fmt.Sprintf("ethereum:%s@%d", depositAddr, chainID)
 	qrPNG, _ := qrcode.Encode(ethURI, qrcode.Medium, 200)
 	qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
 
 	// Deposit address with QR
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Deposit Address</h3>`)
-	sb.WriteString(`<p class="text-muted text-sm">Base Network</p>`)
+	sb.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%s</p>`, chainName))
 	sb.WriteString(fmt.Sprintf(`<img src="data:image/png;base64,%s" alt="QR Code" class="qr-code">`, qrBase64))
 	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
 	sb.WriteString(`<p class="text-sm mt-3">`)
@@ -233,7 +276,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<li><strong>USDC</strong></li>`)
 	sb.WriteString(`<li><strong>ERC-20</strong> tokens</li>`)
 	sb.WriteString(`</ul>`)
-	sb.WriteString(`<p class="text-sm text-muted">Base network · 1 credit = 1p</p>`)
+	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p</p>`)
 	sb.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest("Deposit", "Add credits", sb.String(), r)

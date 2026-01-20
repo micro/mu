@@ -30,11 +30,18 @@ var (
 	seedLoaded  bool
 
 	// Deposit detection
-	baseRPCURL         = getEnvOrDefault("BASE_RPC_URL", "https://mainnet.base.org")
 	depositPollSecs    = getEnvInt("DEPOSIT_POLL_INTERVAL", 30)
 	lastProcessedBlock = make(map[string]uint64)
 	depositMutex       sync.Mutex
 )
+
+// Supported chains for deposit detection
+var chainRPCs = map[string]string{
+	"ethereum": "https://eth.llamarpc.com",
+	"base":     "https://mainnet.base.org",
+	"arbitrum": "https://arb1.arbitrum.io/rpc",
+	"optimism": "https://mainnet.optimism.io",
+}
 
 func getEnvOrDefault(key, defaultVal string) string {
 	if v := os.Getenv(key); v != "" {
@@ -301,12 +308,6 @@ var (
 
 // checkForDeposits checks all user addresses for new deposits
 func checkForDeposits() {
-	currentBlock, err := getBlockNumber()
-	if err != nil {
-		app.Log("wallet", "Failed to get block number: %v", err)
-		return
-	}
-
 	// Get all users with wallets
 	mutex.RLock()
 	userIDs := make([]string, 0, len(wallets))
@@ -315,35 +316,47 @@ func checkForDeposits() {
 	}
 	mutex.RUnlock()
 
-	for _, userID := range userIDs {
-		addr, err := GetUserDepositAddress(userID)
+	// Check each chain
+	for chain := range chainRPCs {
+		currentBlock, err := getBlockNumber(chain)
 		if err != nil {
+			app.Log("wallet", "Failed to get block number for %s: %v", chain, err)
 			continue
 		}
 
-		// Check native ETH deposits
-		checkETHDeposit(userID, addr)
+		for _, userID := range userIDs {
+			addr, err := GetUserDepositAddress(userID)
+			if err != nil {
+				continue
+			}
 
-		// Check ERC-20 deposits
-		checkERC20Deposits(userID, addr, currentBlock)
+			// Check native ETH deposits
+			checkETHDeposit(chain, userID, addr)
+
+			// Check ERC-20 deposits
+			checkERC20Deposits(chain, userID, addr, currentBlock)
+		}
 	}
 }
 
 // checkETHDeposit detects native ETH deposits by comparing balance
-func checkETHDeposit(userID, addr string) {
-	newBalance, err := getETHBalance(addr)
+func checkETHDeposit(chain, userID, addr string) {
+	newBalance, err := getETHBalance(chain, addr)
 	if err != nil || newBalance == nil {
 		return
 	}
 
+	// Key includes chain to track balances per chain
+	balanceKey := chain + ":" + addr
+
 	ethBalanceMutex.RLock()
-	oldBalance, exists := ethBalances[addr]
+	oldBalance, exists := ethBalances[balanceKey]
 	ethBalanceMutex.RUnlock()
 
 	if !exists {
-		// First time seeing this address, just record balance
+		// First time seeing this address on this chain, just record balance
 		ethBalanceMutex.Lock()
-		ethBalances[addr] = newBalance
+		ethBalances[balanceKey] = newBalance
 		ethBalanceMutex.Unlock()
 		return
 	}
@@ -358,7 +371,7 @@ func checkETHDeposit(userID, addr string) {
 
 		if credits >= 1 {
 			// Generate a unique ID for this deposit
-			depositID := fmt.Sprintf("eth_%s_%d", addr, time.Now().UnixNano())
+			depositID := fmt.Sprintf("%s_eth_%s_%d", chain, addr, time.Now().UnixNano())
 
 			// Check not already processed
 			key := "deposit_" + depositID
@@ -368,6 +381,7 @@ func checkETHDeposit(userID, addr string) {
 
 			// Add credits
 			err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
+				"chain":      chain,
 				"type":       "ETH",
 				"amount":     deposit.String(),
 				"amount_usd": usdValue,
@@ -380,26 +394,27 @@ func checkETHDeposit(userID, addr string) {
 			// Mark as processed
 			data.SaveJSON(key, map[string]interface{}{
 				"user_id":    userID,
+				"chain":      chain,
 				"amount":     deposit.String(),
 				"amount_usd": usdValue,
 				"credits":    credits,
 				"created_at": time.Now(),
 			})
 
-			app.Log("wallet", "Credited %d credits to %s for ETH deposit: %s ($%.2f)",
-				credits, userID, deposit.String(), usdValue)
+			app.Log("wallet", "Credited %d credits to %s for ETH deposit on %s: %s ($%.2f)",
+				credits, userID, chain, deposit.String(), usdValue)
 		}
 	}
 
 	// Update stored balance
 	ethBalanceMutex.Lock()
-	ethBalances[addr] = newBalance
+	ethBalances[balanceKey] = newBalance
 	ethBalanceMutex.Unlock()
 }
 
 // getETHBalance gets ETH balance for an address
-func getETHBalance(addr string) (*big.Int, error) {
-	resp, err := rpcCall("eth_getBalance", []interface{}{addr, "latest"})
+func getETHBalance(chain, addr string) (*big.Int, error) {
+	resp, err := rpcCall(chain, "eth_getBalance", []interface{}{addr, "latest"})
 	if err != nil {
 		return nil, err
 	}
@@ -417,9 +432,9 @@ func getETHBalance(addr string) (*big.Int, error) {
 	return balance, nil
 }
 
-// getBlockNumber gets the current block number from Base RPC
-func getBlockNumber() (uint64, error) {
-	resp, err := rpcCall("eth_blockNumber", []interface{}{})
+// getBlockNumber gets the current block number for a chain
+func getBlockNumber(chain string) (uint64, error) {
+	resp, err := rpcCall(chain, "eth_blockNumber", []interface{}{})
 	if err != nil {
 		return 0, err
 	}
@@ -438,15 +453,18 @@ func getBlockNumber() (uint64, error) {
 }
 
 // checkERC20Deposits checks for ERC-20 token deposits
-func checkERC20Deposits(userID, addr string, currentBlock uint64) {
+func checkERC20Deposits(chain, userID, addr string, currentBlock uint64) {
+	// Key includes chain
+	blockKey := chain + ":" + addr
+
 	depositMutex.Lock()
-	lastBlock := lastProcessedBlock[addr]
+	lastBlock := lastProcessedBlock[blockKey]
 	depositMutex.Unlock()
 
 	if lastBlock == 0 {
 		// First time - start from current block
 		depositMutex.Lock()
-		lastProcessedBlock[addr] = currentBlock
+		lastProcessedBlock[blockKey] = currentBlock
 		depositMutex.Unlock()
 		return
 	}
@@ -460,27 +478,27 @@ func checkERC20Deposits(userID, addr string, currentBlock uint64) {
 	transferTopic := "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 	toTopic := "0x000000000000000000000000" + strings.ToLower(addr[2:]) // Pad address to 32 bytes
 
-	logs, err := getLogs(lastBlock+1, currentBlock, transferTopic, "", toTopic)
+	logs, err := getLogs(chain, lastBlock+1, currentBlock, transferTopic, "", toTopic)
 	if err != nil {
-		app.Log("wallet", "Failed to get ERC20 logs for %s: %v", addr, err)
+		app.Log("wallet", "Failed to get ERC20 logs on %s for %s: %v", chain, addr, err)
 		return
 	}
 
 	for _, log := range logs {
-		dep := parseERC20Transfer(log)
+		dep := parseERC20Transfer(chain, log)
 		if dep != nil {
 			dep.UserID = userID
-			processDeposit(userID, dep)
+			processDeposit(chain, userID, dep)
 		}
 	}
 
 	depositMutex.Lock()
-	lastProcessedBlock[addr] = currentBlock
+	lastProcessedBlock[blockKey] = currentBlock
 	depositMutex.Unlock()
 }
 
 // getLogs gets logs matching the filter
-func getLogs(fromBlock, toBlock uint64, topics ...string) ([]map[string]interface{}, error) {
+func getLogs(chain string, fromBlock, toBlock uint64, topics ...string) ([]map[string]interface{}, error) {
 	topicsArray := make([]interface{}, len(topics))
 	for i, t := range topics {
 		if t == "" {
@@ -496,7 +514,7 @@ func getLogs(fromBlock, toBlock uint64, topics ...string) ([]map[string]interfac
 		"topics":    topicsArray,
 	}
 
-	resp, err := rpcCall("eth_getLogs", []interface{}{params})
+	resp, err := rpcCall(chain, "eth_getLogs", []interface{}{params})
 	if err != nil {
 		return nil, err
 	}
@@ -510,7 +528,7 @@ func getLogs(fromBlock, toBlock uint64, topics ...string) ([]map[string]interfac
 }
 
 // parseERC20Transfer parses a Transfer event log
-func parseERC20Transfer(log map[string]interface{}) *CryptoDeposit {
+func parseERC20Transfer(chain string, log map[string]interface{}) *CryptoDeposit {
 	topics, ok := log["topics"].([]interface{})
 	if !ok || len(topics) < 3 {
 		return nil
@@ -553,13 +571,13 @@ func parseERC20Transfer(log map[string]interface{}) *CryptoDeposit {
 }
 
 // processDeposit processes a detected deposit and credits the user
-func processDeposit(userID string, dep *CryptoDeposit) {
+func processDeposit(chain, userID string, dep *CryptoDeposit) {
 	if dep == nil || dep.TxHash == "" {
 		return
 	}
 
-	// Check if already processed
-	key := "deposit_" + dep.TxHash
+	// Check if already processed (include chain in key)
+	key := "deposit_" + chain + "_" + dep.TxHash
 	if _, err := data.LoadFile(key); err == nil {
 		return // Already processed
 	}
@@ -594,8 +612,8 @@ func processDeposit(userID string, dep *CryptoDeposit) {
 	// Mark as processed
 	data.SaveJSON(key, dep)
 
-	app.Log("wallet", "Credited %d credits to %s for deposit: %s %s ($%.2f)",
-		credits, userID, dep.Amount.String(), dep.TokenSymbol, usdValue)
+	app.Log("wallet", "Credited %d credits to %s for deposit on %s: %s %s ($%.2f)",
+		credits, userID, chain, dep.Amount.String(), dep.TokenSymbol, usdValue)
 }
 
 // getTokenUSDValue gets the USD value of a token amount
@@ -686,7 +704,13 @@ func getTokenPrice(symbol string) float64 {
 }
 
 // rpcCall makes a JSON-RPC call to the Base node
-func rpcCall(method string, params []interface{}) (json.RawMessage, error) {
+// rpcCall makes a JSON-RPC call to the specified chain
+func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error) {
+	rpcURL, ok := chainRPCs[chain]
+	if !ok {
+		rpcURL = chainRPCs["ethereum"] // fallback
+	}
+
 	reqBody := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  method,
@@ -695,7 +719,7 @@ func rpcCall(method string, params []interface{}) (json.RawMessage, error) {
 	}
 
 	body, _ := json.Marshal(reqBody)
-	resp, err := http.Post(baseRPCURL, "application/json", bytes.NewReader(body))
+	resp, err := http.Post(rpcURL, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
