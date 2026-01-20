@@ -3004,6 +3004,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-size: 14px;
   color: var(--text-secondary, #555);
   line-height: 1.5;
+  white-space: pre-wrap;
 }
 .card-pin {
   position: absolute;
