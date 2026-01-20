@@ -206,6 +206,16 @@ func InjectSDK(html, appID, appName, userID, userName string) string {
 	sdk := GenerateSDK(appID, appName, userID, userName)
 	injection := ThemeCSS + sdk
 
+	// Replace mustache-style templates that LLMs sometimes generate
+	html = strings.ReplaceAll(html, "{{ mu.user.name }}", userName)
+	html = strings.ReplaceAll(html, "{{mu.user.name}}", userName)
+	html = strings.ReplaceAll(html, "{{ mu.user.id }}", userID)
+	html = strings.ReplaceAll(html, "{{mu.user.id}}", userID)
+	html = strings.ReplaceAll(html, "{{ mu.app.name }}", appName)
+	html = strings.ReplaceAll(html, "{{mu.app.name}}", appName)
+	html = strings.ReplaceAll(html, "{{ mu.app.id }}", appID)
+	html = strings.ReplaceAll(html, "{{mu.app.id}}", appID)
+
 	// Try to inject before </head>
 	if idx := strings.Index(strings.ToLower(html), "</head>"); idx > 0 {
 		return html[:idx] + injection + html[idx:]
