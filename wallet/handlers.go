@@ -208,198 +208,34 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	// WalletConnect / Direct wallet payment section
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Pay with Wallet</h3>`)
-	sb.WriteString(`<p class="text-muted text-sm">Connect your wallet to send ETH or tokens directly.</p>`)
-	sb.WriteString(`<div class="mt-3">`)
-	sb.WriteString(`<button id="connect-wallet-btn" class="btn">Connect Wallet</button>`)
-	sb.WriteString(`<span id="wallet-status" class="ml-3 text-sm"></span>`)
-	sb.WriteString(`</div>`)
-	sb.WriteString(`<div id="send-section" style="display:none;" class="mt-4">`)
-	sb.WriteString(`<p class="text-sm">Connected: <span id="connected-address"></span></p>`)
-	sb.WriteString(`<div class="mt-3">`)
-	sb.WriteString(`<label class="text-sm">Amount (ETH)</label>`)
-	sb.WriteString(`<input type="number" id="send-amount" value="0.01" step="0.001" min="0.001" style="width: 120px;" class="ml-2">`)
-	sb.WriteString(`<button id="send-btn" class="btn ml-3">Send</button>`)
-	sb.WriteString(`</div>`)
-	sb.WriteString(`<p class="text-sm text-muted mt-2">~$<span id="usd-estimate">25</span> → ~<span id="credits-estimate">2500</span> credits</p>`)
-	sb.WriteString(`</div>`)
-	sb.WriteString(`</div>`)
+	// Generate QR code with ethereum: URI for mobile wallets
+	ethURI := "ethereum:" + depositAddr + "@8453" // @8453 = Base chainId
+	qrPNG, _ := qrcode.Encode(ethURI, qrcode.Medium, 200)
+	qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
 
-	// Manual deposit address section with QR code
+	// Deposit address with QR
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Or Send Manually</h3>`)
-	sb.WriteString(`<p class="text-muted text-sm">Base Network (Ethereum L2)</p>`)
-	
-	// Generate QR code
-	qrPNG, err := qrcode.Encode(depositAddr, qrcode.Medium, 200)
-	if err == nil {
-		qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
-		sb.WriteString(fmt.Sprintf(`<img src="data:image/png;base64,%s" alt="QR Code" class="qr-code">`, qrBase64))
-	}
-	
+	sb.WriteString(`<h3>Deposit Address</h3>`)
+	sb.WriteString(`<p class="text-muted text-sm">Base Network</p>`)
+	sb.WriteString(fmt.Sprintf(`<img src="data:image/png;base64,%s" alt="QR Code" class="qr-code">`, qrBase64))
 	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
-	sb.WriteString(`<p class="text-sm mt-3"><button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Address', 2000)" class="btn-secondary">Copy Address</button></p>`)
+	sb.WriteString(`<p class="text-sm mt-3">`)
+	sb.WriteString(`<button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 2000)" class="btn-secondary">Copy</button>`)
+	sb.WriteString(fmt.Sprintf(` <a href="%s" class="btn ml-2">Open Wallet</a>`, ethURI))
+	sb.WriteString(`</p>`)
 	sb.WriteString(`</div>`)
 
+	// Supported tokens
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Supported Tokens</h3>`)
+	sb.WriteString(`<h3>Supported</h3>`)
 	sb.WriteString(`<ul>`)
-	sb.WriteString(`<li><strong>ETH</strong> - Ethereum</li>`)
-	sb.WriteString(`<li><strong>USDC</strong> - USD Coin</li>`)
-	sb.WriteString(`<li><strong>DAI</strong> - Dai Stablecoin</li>`)
-	sb.WriteString(`<li>Any ERC-20 token on Base</li>`)
+	sb.WriteString(`<li><strong>ETH</strong></li>`)
+	sb.WriteString(`<li><strong>USDC</strong></li>`)
+	sb.WriteString(`<li><strong>ERC-20</strong> tokens</li>`)
 	sb.WriteString(`</ul>`)
+	sb.WriteString(`<p class="text-sm text-muted">Base network · 1 credit = 1p</p>`)
 	sb.WriteString(`</div>`)
 
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>How it works</h3>`)
-	sb.WriteString(`<ol>`)
-	sb.WriteString(`<li>Send any supported token to the address above</li>`)
-	sb.WriteString(`<li>Wait for confirmation (~1 minute)</li>`)
-	sb.WriteString(`<li>Credits are added automatically based on current rates</li>`)
-	sb.WriteString(`</ol>`)
-	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · Minimum deposit: $1 equivalent</p>`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Important</h3>`)
-	sb.WriteString(`<ul class="text-sm text-muted">`)
-	sb.WriteString(`<li>Only send on <strong>Base network</strong></li>`)
-	sb.WriteString(`<li>Sending on wrong network will result in lost funds</li>`)
-	sb.WriteString(`<li>Deposits typically confirm within 1-2 minutes</li>`)
-	sb.WriteString(`</ul>`)
-	sb.WriteString(`</div>`)
-
-	// Add wallet connection script
-	sb.WriteString(fmt.Sprintf(`
-<script>
-const DEPOSIT_ADDRESS = '%s';
-const BASE_CHAIN_ID = '0x2105'; // 8453 in hex
-
-let connectedAddress = null;
-
-// Check for injected wallet (MetaMask, etc)
-async function connectWallet() {
-	const btn = document.getElementById('connect-wallet-btn');
-	const status = document.getElementById('wallet-status');
-	
-	if (!window.ethereum) {
-		status.textContent = 'No wallet found. Install MetaMask.';
-		status.className = 'ml-3 text-sm text-error';
-		return;
-	}
-	
-	try {
-		btn.textContent = 'Connecting...';
-		btn.disabled = true;
-		
-		// Request accounts
-		const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-		connectedAddress = accounts[0];
-		
-		// Switch to Base network
-		try {
-			await window.ethereum.request({
-				method: 'wallet_switchEthereumChain',
-				params: [{ chainId: BASE_CHAIN_ID }]
-			});
-		} catch (switchError) {
-			// Chain not added, add it
-			if (switchError.code === 4902) {
-				await window.ethereum.request({
-					method: 'wallet_addEthereumChain',
-					params: [{
-						chainId: BASE_CHAIN_ID,
-						chainName: 'Base',
-						nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-						rpcUrls: ['https://mainnet.base.org'],
-						blockExplorerUrls: ['https://basescan.org']
-					}]
-				});
-			}
-		}
-		
-		// Update UI
-		btn.textContent = 'Connected';
-		btn.className = 'btn-secondary';
-		document.getElementById('send-section').style.display = 'block';
-		document.getElementById('connected-address').textContent = 
-			connectedAddress.slice(0,6) + '...' + connectedAddress.slice(-4);
-		
-		updateEstimate();
-		
-	} catch (err) {
-		status.textContent = err.message;
-		status.className = 'ml-3 text-sm text-error';
-		btn.textContent = 'Connect Wallet';
-		btn.disabled = false;
-	}
-}
-
-async function sendPayment() {
-	const btn = document.getElementById('send-btn');
-	const amount = document.getElementById('send-amount').value;
-	
-	if (!connectedAddress || !amount) return;
-	
-	try {
-		btn.textContent = 'Confirm in wallet...';
-		btn.disabled = true;
-		
-		// Convert ETH to wei (hex)
-		const weiValue = '0x' + (BigInt(Math.floor(parseFloat(amount) * 1e18))).toString(16);
-		
-		const txHash = await window.ethereum.request({
-			method: 'eth_sendTransaction',
-			params: [{
-				from: connectedAddress,
-				to: DEPOSIT_ADDRESS,
-				value: weiValue
-			}]
-		});
-		
-		btn.textContent = 'Sent!';
-		btn.className = 'btn-success';
-		
-		// Show success message
-		const status = document.getElementById('wallet-status');
-		status.innerHTML = 'Transaction sent! <a href="https://basescan.org/tx/' + txHash + '" target="_blank">View</a>';
-		status.className = 'ml-3 text-sm text-success';
-		
-	} catch (err) {
-		btn.textContent = 'Send';
-		btn.disabled = false;
-		if (err.code !== 4001) { // User didn't reject
-			alert('Error: ' + err.message);
-		}
-	}
-}
-
-function updateEstimate() {
-	const amount = parseFloat(document.getElementById('send-amount').value) || 0;
-	// Rough ETH price estimate (will be replaced by actual detection)
-	const ethPrice = 2500;
-	const usd = amount * ethPrice;
-	const credits = Math.floor(usd * 100);
-	
-	document.getElementById('usd-estimate').textContent = usd.toFixed(0);
-	document.getElementById('credits-estimate').textContent = credits;
-}
-
-// Event listeners
-document.getElementById('connect-wallet-btn').addEventListener('click', connectWallet);
-document.getElementById('send-btn').addEventListener('click', sendPayment);
-document.getElementById('send-amount').addEventListener('input', updateEstimate);
-
-// Check if already connected
-if (window.ethereum && window.ethereum.selectedAddress) {
-	connectWallet();
-}
-</script>
-`, depositAddr))
-
-	html := app.RenderHTMLForRequest("Deposit", "Add credits via crypto", sb.String(), r)
+	html := app.RenderHTMLForRequest("Deposit", "Add credits", sb.String(), r)
 	w.Write([]byte(html))
 }
