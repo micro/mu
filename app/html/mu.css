@@ -1028,7 +1028,7 @@ body:has(#messages) #chat-back-link {
 }
 
 #messages {
-  max-height: calc(100dvh - 240px);
+  max-height: calc(100dvh - 220px); /* Reduced from 240px - no bottom bar on mobile now */
   border: 1px solid #ddd;
   border-radius: 5px;
   padding: 15px;
@@ -2084,7 +2084,7 @@ a.highlight {
     overflow-y: auto;
     min-height: 0;
     padding-bottom: 0;
-    max-height: calc(100svh - 200px);
+    max-height: calc(100svh - 150px); /* Reduced from 200px - no bottom bar now */
     -webkit-overflow-scrolling: touch;
   }
   #messages ~ #chat-form {
