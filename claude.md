@@ -392,11 +392,12 @@ The wallet is a credits-based system:
 - [x] Lightweight deps: `go-bip39`, `go-bip32`, stdlib crypto
 
 #### Phase 2: Deposit Detection
-- [ ] Poll Base RPC for incoming transactions
-- [ ] Detect ETH transfers to user addresses
-- [ ] Detect ERC-20 Transfer events to user addresses
-- [ ] Map address → user, credit their account
-- [ ] Fetch token price (CoinGecko API) to convert to credits
+- [x] Poll Base RPC for incoming transactions (every 30s by default)
+- [x] Detect ERC-20 Transfer events to user addresses
+- [x] Map address → user, credit their account
+- [x] Fetch token price (CoinGecko API, 5min cache) to convert to credits
+- [x] Mark processed deposits to avoid duplicates
+- [ ] ETH transfers (requires trace API - skipped for now, ERC-20 works)
 
 #### Phase 3: Sweep & Consolidation
 - [ ] Periodically sweep from user addresses to main treasury

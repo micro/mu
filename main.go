@@ -336,6 +336,9 @@ func main() {
 	runtime.ReadMemStats(&m)
 	app.Log("main", "Startup complete. Memory: Alloc=%dMB Sys=%dMB NumGC=%d", m.Alloc/1024/1024, m.Sys/1024/1024, m.NumGC)
 
+	// Start deposit watcher for crypto payments
+	wallet.StartDepositWatcher()
+
 	// Start memory monitoring goroutine
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
