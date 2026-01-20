@@ -3466,13 +3466,19 @@ a.btn-secondary:hover, .btn-secondary:hover {
 /* Wallet deposit page */
 .deposit-address {
   font-family: monospace;
-  font-size: 14px;
+  font-size: 13px;
   word-break: break-all;
   background: #f5f5f5;
   padding: 12px;
   border-radius: 6px;
   display: block;
   margin: 10px 0;
+}
+
+.qr-code {
+  display: block;
+  margin: 15px 0;
+  border-radius: 8px;
 }
 
 #send-section input[type="number"] {

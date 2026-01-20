@@ -1,9 +1,12 @@
 package wallet
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/skip2/go-qrcode"
 
 	"mu/app"
 	"mu/auth"
@@ -224,10 +227,18 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</div>`)
 
-	// Manual deposit address section
+	// Manual deposit address section with QR code
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Or Send Manually</h3>`)
 	sb.WriteString(`<p class="text-muted text-sm">Base Network (Ethereum L2)</p>`)
+	
+	// Generate QR code
+	qrPNG, err := qrcode.Encode(depositAddr, qrcode.Medium, 200)
+	if err == nil {
+		qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
+		sb.WriteString(fmt.Sprintf(`<img src="data:image/png;base64,%s" alt="QR Code" class="qr-code">`, qrBase64))
+	}
+	
 	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
 	sb.WriteString(`<p class="text-sm mt-3"><button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Address', 2000)" class="btn-secondary">Copy Address</button></p>`)
 	sb.WriteString(`</div>`)

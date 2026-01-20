@@ -285,6 +285,12 @@ func StartDepositWatcher() {
 	}()
 }
 
+// Track ETH balances for deposit detection
+var (
+	ethBalances     = make(map[string]*big.Int)
+	ethBalanceMutex sync.RWMutex
+)
+
 // checkForDeposits checks all user addresses for new deposits
 func checkForDeposits() {
 	currentBlock, err := getBlockNumber()
@@ -307,8 +313,100 @@ func checkForDeposits() {
 			continue
 		}
 
+		// Check native ETH deposits
+		checkETHDeposit(userID, addr)
+
+		// Check ERC-20 deposits
 		checkERC20Deposits(userID, addr, currentBlock)
 	}
+}
+
+// checkETHDeposit detects native ETH deposits by comparing balance
+func checkETHDeposit(userID, addr string) {
+	newBalance, err := getETHBalance(addr)
+	if err != nil || newBalance == nil {
+		return
+	}
+
+	ethBalanceMutex.RLock()
+	oldBalance, exists := ethBalances[addr]
+	ethBalanceMutex.RUnlock()
+
+	if !exists {
+		// First time seeing this address, just record balance
+		ethBalanceMutex.Lock()
+		ethBalances[addr] = newBalance
+		ethBalanceMutex.Unlock()
+		return
+	}
+
+	// Check if balance increased
+	if newBalance.Cmp(oldBalance) > 0 {
+		deposit := new(big.Int).Sub(newBalance, oldBalance)
+
+		// Get USD value
+		usdValue := getTokenUSDValue("ETH", deposit)
+		credits := int(usdValue * 100)
+
+		if credits >= 1 {
+			// Generate a unique ID for this deposit
+			depositID := fmt.Sprintf("eth_%s_%d", addr, time.Now().UnixNano())
+
+			// Check not already processed
+			key := "deposit_" + depositID
+			if _, err := data.LoadFile(key); err == nil {
+				return
+			}
+
+			// Add credits
+			err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
+				"type":       "ETH",
+				"amount":     deposit.String(),
+				"amount_usd": usdValue,
+			})
+			if err != nil {
+				app.Log("wallet", "Failed to add ETH credits: %v", err)
+				return
+			}
+
+			// Mark as processed
+			data.SaveJSON(key, map[string]interface{}{
+				"user_id":    userID,
+				"amount":     deposit.String(),
+				"amount_usd": usdValue,
+				"credits":    credits,
+				"created_at": time.Now(),
+			})
+
+			app.Log("wallet", "Credited %d credits to %s for ETH deposit: %s ($%.2f)",
+				credits, userID, deposit.String(), usdValue)
+		}
+	}
+
+	// Update stored balance
+	ethBalanceMutex.Lock()
+	ethBalances[addr] = newBalance
+	ethBalanceMutex.Unlock()
+}
+
+// getETHBalance gets ETH balance for an address
+func getETHBalance(addr string) (*big.Int, error) {
+	resp, err := rpcCall("eth_getBalance", []interface{}{addr, "latest"})
+	if err != nil {
+		return nil, err
+	}
+
+	var result string
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	if len(result) < 3 {
+		return big.NewInt(0), nil
+	}
+
+	balance, _ := new(big.Int).SetString(result[2:], 16)
+	return balance, nil
 }
 
 // getBlockNumber gets the current block number from Base RPC
