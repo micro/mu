@@ -40,7 +40,7 @@ Starting with:
 - [x] Notes - Personal notes
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
-- [x] Wallet - Credits for usage
+- [x] Wallet - Crypto payments (ETH, USDC, ERC-20)
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
@@ -264,6 +264,25 @@ This will prevent commits if tests fail, helping catch regressions early. See [s
 ### Contributing
 
 Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this.
+
+## Payments
+
+Mu uses crypto for payments. No credit cards, no payment processors, no KYC.
+
+**Supported chains:**
+- Ethereum
+- Base
+- Arbitrum
+- Optimism
+
+**Supported tokens:**
+- ETH
+- USDC
+- Any ERC-20 token
+
+Each user gets a unique deposit address. Send crypto, get credits. 1 credit = 1p.
+
+See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
 
 ## Sponsorship 
 

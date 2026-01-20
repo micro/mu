@@ -18,7 +18,7 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 
 - **1 credit = £0.01 GBP** (1 penny)
 - Credits stored as integers to avoid floating-point issues
-- Top up via crypto deposit (Base network, any ERC-20 token)
+- Top up via crypto deposit (Ethereum, Base, Arbitrum, Optimism)
 - Credits never expire
 
 ### Daily Free Quota
@@ -70,22 +70,31 @@ If you want truly unlimited and free — self-host. The code is open source.
 ### How It Works
 
 1. Go to `/wallet/deposit`
-2. You'll see your unique deposit address (on Base network)
-3. Send any supported token (ETH, USDC, DAI, or any ERC-20)
-4. Deposits are detected automatically
-5. Credits added based on current exchange rate
+2. Select your network (Ethereum, Base, Arbitrum, or Optimism)
+3. You'll see your unique deposit address and QR code
+4. Send ETH, USDC, or any ERC-20 token
+5. Deposits are detected automatically (~30 seconds)
+6. Credits added based on current exchange rate
+
+### Supported Networks
+
+- **Ethereum** - Mainnet
+- **Base** - Coinbase L2
+- **Arbitrum** - Arbitrum One
+- **Optimism** - OP Mainnet
+
+Same address works on all networks.
 
 ### Supported Tokens
 
-- **ETH** - Ethereum
+- **ETH** - Native token
 - **USDC** - USD Coin
-- **DAI** - Dai Stablecoin  
-- Any ERC-20 token on Base network
+- **ERC-20** - Any token on supported networks
 
 ### Important
 
-- Only send on **Base network** (Ethereum L2)
-- Sending on wrong network will result in lost funds
+- Select the correct network before sending
+- Your address is the same on all networks
 - Minimum deposit: ~$1 equivalent
 - Deposits typically confirm within 1-2 minutes
 

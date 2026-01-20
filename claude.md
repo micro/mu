@@ -384,27 +384,30 @@ The wallet is a credits-based system:
 
 ### Implementation Phases
 
-#### Phase 1: HD Wallet Setup
+#### Phase 1: HD Wallet Setup ✅
 - [x] Generate master seed on first run (or use WALLET_SEED env var)
 - [x] Store seed in `~/.mu/keys/wallet.seed`
 - [x] Derive user addresses using BIP32 (m/44'/60'/0'/0/{userIndex})
 - [x] Show deposit address on /wallet page
 - [x] Lightweight deps: `go-bip39`, `go-bip32`, stdlib crypto
 
-#### Phase 2: Deposit Detection
-- [x] Poll Base RPC for incoming transactions (every 30s by default)
+#### Phase 2: Deposit Detection ✅
+- [x] Poll RPCs for incoming transactions (every 30s by default)
+- [x] Multi-chain support: Ethereum, Base, Arbitrum, Optimism
 - [x] Detect ERC-20 Transfer events to user addresses
+- [x] Detect native ETH deposits via balance polling
 - [x] Map address → user, credit their account
 - [x] Fetch token price (CoinGecko API, 5min cache) to convert to credits
 - [x] Mark processed deposits to avoid duplicates
-- [ ] ETH transfers (requires trace API - skipped for now, ERC-20 works)
+- [x] Chain selector dropdown on deposit page
+- [x] QR code with chain ID for mobile wallets
 
-#### Phase 3: Sweep & Consolidation
+#### Phase 3: Sweep & Consolidation (TODO)
 - [ ] Periodically sweep from user addresses to main treasury
 - [ ] Reduces number of addresses to monitor
 - [ ] Gas paid from treasury ETH balance
 
-#### Phase 4: Withdrawals (Optional)
+#### Phase 4: Withdrawals (TODO)
 - [ ] User requests withdrawal to external address
 - [ ] Send from treasury (requires gas)
 - [ ] Withdrawal fee to cover costs
