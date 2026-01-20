@@ -198,16 +198,16 @@ var Template = `
       <div id="nav-container">
         <div id="nav">
           <a href="/home"><img src="/home.png"><span class="label">Home</span></a>
-          <a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
-          <a href="/notes"><img src="/notes.png"><span class="label">Notes</span></a>
-          <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
-          <a href="/news"><img src="/news.png"><span class="label">News</span></a>
-          <a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
-          <a href="/apps"><img src="/apps.png"><span class="label">Apps</span></a>
-          <div class="nav-divider"></div>
-          <a id="nav-mail" href="/mail"><img src="/mail.png"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
-          <a id="nav-wallet" href="/wallet"><img src="/wallet.png"><span class="label">Wallet</span></a>
           <a id="nav-account" href="/account"><img src="/account.png"><span class="label">Account</span></a>
+          <a href="/apps"><img src="/apps.png"><span class="label">Apps</span></a>
+          <a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
+          <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
+          <a id="nav-mail" href="/mail"><img src="/mail.png"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
+          <a href="/news"><img src="/news.png"><span class="label">News</span></a>
+          <a href="/notes"><img src="/notes.png"><span class="label">Notes</span></a>
+          <a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
+          <a id="nav-wallet" href="/wallet"><img src="/wallet.png"><span class="label">Wallet</span></a>
+          <div class="nav-divider"></div>
           <a id="nav-logout" href="/logout"><img src="/logout.png"><span class="label">Logout</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png"><span class="label">Login</span></a>
         </div>
