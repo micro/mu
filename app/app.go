@@ -187,7 +187,7 @@ var Template = `
   </head>
   <body%s>
     <div id="head">
-      <button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu">☰</button>
+      <button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
       <div id="brand">
         <a href="/">Mu</a>
       </div>

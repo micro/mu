@@ -487,10 +487,21 @@ td {
   left: 15px;
   background: none;
   border: none;
-  font-size: 24px;
   cursor: pointer;
-  padding: 5px 10px;
-  color: var(--text-primary);
+  padding: 8px;
+  width: 28px;
+  height: 24px;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+}
+
+#menu-toggle span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--text-primary);
+  border-radius: 1px;
 }
 
 #menu-toggle:hover {
@@ -1940,7 +1951,7 @@ a.highlight {
   
   /* Show hamburger menu button */
   #menu-toggle {
-    display: block;
+    display: flex;
   }
   
   #head {
