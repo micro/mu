@@ -2090,7 +2090,6 @@ a.highlight {
   #messages ~ #chat-form {
     margin-bottom: 0;
     flex-shrink: 0;
-    padding-bottom: 0;
   }
   body:has(#messages) {
     overflow: hidden;
