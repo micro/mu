@@ -102,9 +102,20 @@ func InitCryptoWallet() error {
 
 	seedLoaded = true
 
-	// Log treasury address (index 0)
-	addr, _ := DeriveAddress(0)
-	app.Log("wallet", "Treasury address (index 0): %s", addr)
+	// Log treasury address (index 0) - do in goroutine to not block startup
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				app.Log("wallet", "Error deriving treasury address: %v", r)
+			}
+		}()
+		addr, err := DeriveAddress(0)
+		if err != nil {
+			app.Log("wallet", "Failed to derive treasury address: %v", err)
+		} else {
+			app.Log("wallet", "Treasury address (index 0): %s", addr)
+		}
+	}()
 
 	return nil
 }
