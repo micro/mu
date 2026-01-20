@@ -499,7 +499,7 @@ td {
 #menu-toggle span {
   display: block;
   height: 2px;
-  width: 100%;
+  width: 20px;
   background: var(--text-primary);
   border-radius: 1px;
 }
