@@ -259,22 +259,53 @@ function showAllTopicSummaries() {
   messages.innerHTML = '';
   const topics = Object.keys(summaries).sort();
   
+  // Build all summaries content
+  let allSummariesHtml = '';
   topics.forEach(t => {
     if (summaries[t]) {
-      const summaryMsg = document.createElement('div');
-      summaryMsg.className = 'message';
-      const topicBadge = `<span class="category">${t}</span>`;
-      const summaryId = `summary-${t.replace(/\s+/g, '-')}`;
-      const toggleBtn = `<a href="#" class="summary-toggle" onclick="toggleSummary('${summaryId}'); return false;">Show summary</a>`;
-      const summaryContent = `<p id="${summaryId}" class="summary-content" style="display: none;">${summaries[t]}</p>`;
-      const joinLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" class="link" style="display: inline; margin-top: 8px;">Join discussion →</a>`;
-      summaryMsg.innerHTML = `${topicBadge} ${toggleBtn}${summaryContent}${joinLink}`;
-      messages.appendChild(summaryMsg);
+      allSummariesHtml += `<div class="summary-item"><span class="category">${t}</span><p>${summaries[t]}</p></div>`;
+    }
+  });
+  
+  // Create a single collapsible summary card
+  const summaryCard = document.createElement('div');
+  summaryCard.className = 'message summary-card';
+  summaryCard.innerHTML = `
+    <div class="summary-header" onclick="toggleAllSummaries()">
+      <strong>Today's Topics</strong>
+      <span id="summary-toggle-icon">▶</span>
+    </div>
+    <div id="all-summaries" class="all-summaries" style="display: none;">
+      ${allSummariesHtml}
+    </div>
+  `;
+  messages.appendChild(summaryCard);
+  
+  // Add topic links below
+  topics.forEach(t => {
+    if (summaries[t]) {
+      const topicLink = document.createElement('div');
+      topicLink.className = 'message topic-link';
+      topicLink.innerHTML = `<span class="category">${t}</span> <a href="/chat?id=chat_${encodeURIComponent(t)}" class="link">Join discussion →</a>`;
+      messages.appendChild(topicLink);
     }
   });
 }
 
-// Toggle summary visibility
+// Toggle all summaries visibility
+function toggleAllSummaries() {
+  const summaries = document.getElementById('all-summaries');
+  const icon = document.getElementById('summary-toggle-icon');
+  if (summaries.style.display === 'none') {
+    summaries.style.display = 'block';
+    icon.textContent = '▼';
+  } else {
+    summaries.style.display = 'none';
+    icon.textContent = '▶';
+  }
+}
+
+// Toggle summary visibility (legacy, for individual topic pages)
 function toggleSummary(summaryId) {
   const summary = document.getElementById(summaryId);
   const toggle = summary.previousElementSibling;

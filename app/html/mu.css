@@ -1134,6 +1134,68 @@ body:has(#messages) #chat-back-link {
   line-height: 1.4;
 }
 
+/* Summary card for main /chat page */
+.summary-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.summary-header:hover {
+  background: #f0f0f0;
+  border-radius: 8px;
+}
+
+#summary-toggle-icon {
+  color: #666;
+  font-size: 12px;
+}
+
+.all-summaries {
+  padding: 0 16px 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.summary-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-item .category {
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.summary-item p {
+  margin: 0;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.topic-link {
+  padding: 8px 0;
+}
+
+.topic-link .category {
+  margin-right: 8px;
+}
+
 #topics {
   margin-bottom: 10px;
   padding-bottom: 5px;

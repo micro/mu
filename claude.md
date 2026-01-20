@@ -92,7 +92,7 @@ BASE_RPC_URL  # Default: https://mainnet.base.org
 
 ## Git
 - Remote: `git@github.com:asim/mu.git`
-- Test: `shelleytest` admin on mu.xyz
+- Test: `micro` admin on mu.xyz
 - SSH: `ssh -p 61194 mu@mu.xyz`
 
 ## UI Principles
