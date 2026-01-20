@@ -2096,11 +2096,11 @@ a.highlight {
     overflow: hidden;
     position: fixed;
     width: 100%;
-    height: 100dvh;
+    height: 100svh; /* Use svh to prevent jump on keyboard open */
   }
   body:has(#messages) #container {
     overflow: hidden;
-    height: 100dvh;
+    height: 100svh;
     box-sizing: border-box;
   }
   body:has(#messages) #footer,
