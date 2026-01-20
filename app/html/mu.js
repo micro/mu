@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v100';
+var VERSION = 'v101';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -264,11 +264,27 @@ function showAllTopicSummaries() {
       const summaryMsg = document.createElement('div');
       summaryMsg.className = 'message';
       const topicBadge = `<span class="category">${t}</span>`;
+      const summaryId = `summary-${t.replace(/\s+/g, '-')}`;
+      const toggleBtn = `<a href="#" class="summary-toggle" onclick="toggleSummary('${summaryId}'); return false;">Show summary</a>`;
+      const summaryContent = `<p id="${summaryId}" class="summary-content" style="display: none;">${summaries[t]}</p>`;
       const joinLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" class="link" style="display: inline; margin-top: 8px;">Join discussion →</a>`;
-      summaryMsg.innerHTML = `${topicBadge}<p>${summaries[t]}</p>${joinLink}`;
+      summaryMsg.innerHTML = `${topicBadge} ${toggleBtn}${summaryContent}${joinLink}`;
       messages.appendChild(summaryMsg);
     }
   });
+}
+
+// Toggle summary visibility
+function toggleSummary(summaryId) {
+  const summary = document.getElementById(summaryId);
+  const toggle = summary.previousElementSibling;
+  if (summary.style.display === 'none') {
+    summary.style.display = 'block';
+    toggle.textContent = 'Hide summary';
+  } else {
+    summary.style.display = 'none';
+    toggle.textContent = 'Show summary';
+  }
 }
 
 // Show topic context without connecting to WebSocket
@@ -296,11 +312,13 @@ function showTopicContext(t) {
     messages.innerHTML = '';
     const contextMsg = document.createElement('div');
     contextMsg.className = 'context-message';
-    let summary = '';
+    let summaryHtml = '';
     if (typeof summaries !== 'undefined' && summaries[t]) {
-      summary = '<br><span style="color: #666;">' + summaries[t] + '</span>';
+      const summaryId = `ctx-summary-${t.replace(/\s+/g, '-')}`;
+      summaryHtml = `<br><a href="#" class="summary-toggle" onclick="toggleSummary('${summaryId}'); return false;">Show summary</a>` +
+        `<span id="${summaryId}" class="summary-content" style="display: none; color: #666;"><br>${summaries[t]}</span>`;
     }
-    contextMsg.innerHTML = '<strong>' + t + ' Discussion</strong>' + summary;
+    contextMsg.innerHTML = '<strong>' + t + ' Discussion</strong>' + summaryHtml;
     messages.appendChild(contextMsg);
   }
   
@@ -1138,17 +1156,16 @@ document.addEventListener('DOMContentLoaded', function() {
           const contextMsg = document.createElement('div');
           contextMsg.className = 'context-message';
           
-          // Extract first sentence from summary (up to first period or 200 chars)
-          let shortSummary = currentRoomData.summary;
-          const firstPeriod = shortSummary.indexOf('. ');
-          if (firstPeriod !== -1) {
-            shortSummary = shortSummary.substring(0, firstPeriod + 1);
-          } else if (shortSummary.length > 200) {
-            shortSummary = shortSummary.substring(0, 200) + '...';
+          // Build summary toggle if we have summary content
+          let summaryHtml = '';
+          if (currentRoomData.summary) {
+            const summaryId = 'room-summary';
+            summaryHtml = `<br><a href="#" class="summary-toggle" onclick="toggleSummary('${summaryId}'); return false;">Show summary</a>` +
+              `<span id="${summaryId}" class="summary-content" style="display: none; color: #666;"><br>${currentRoomData.summary}</span>`;
           }
           
-          contextMsg.innerHTML = 'Discussion: <strong>' + currentRoomData.title + '</strong><br>' + 
-            '<span style="color: #666;">' + shortSummary + '</span>' +
+          contextMsg.innerHTML = 'Discussion: <strong>' + currentRoomData.title + '</strong>' + 
+            summaryHtml +
             (currentRoomData.url ? '<br><a href="' + currentRoomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
           // Insert at the top
           messages.insertBefore(contextMsg, messages.firstChild);

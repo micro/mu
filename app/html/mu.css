@@ -1117,6 +1117,23 @@ body:has(#messages) #chat-back-link {
   border-bottom: 1px solid #e0e0e0;
 }
 
+.summary-toggle {
+  color: #0066cc;
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.summary-toggle:hover {
+  text-decoration: underline;
+}
+
+.summary-content {
+  margin-top: 8px;
+  font-style: normal;
+  line-height: 1.4;
+}
+
 #topics {
   margin-bottom: 10px;
   padding-bottom: 5px;
@@ -3100,15 +3117,25 @@ a.btn-secondary:hover, .btn-secondary:hover {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
 }
+.card-grid .card {
+  margin-bottom: 0;
+  max-width: none;
+}
 .card-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+.card-list .card {
+  margin-bottom: 0;
+}
 .card-row {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+.card-row .card {
+  margin-bottom: 0;
 }
 
 /* ========================================

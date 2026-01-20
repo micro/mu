@@ -321,3 +321,149 @@ type PageOpts struct {
 - [x] All search bars use .search-bar class (unified sizing)
 - [x] Fixed duplicate title issue in notes edit view
 - [ ] Phase 3 cleanup remaining
+
+
+## Crypto Wallet Plan
+
+### Current State
+The wallet is a credits-based system:
+- Users have a balance in "credits" (1 credit = 1 penny)
+- Top-up via Stripe (fiat only)
+- Credits can only be spent on Mu services
+- No withdrawals, no transfers, no real crypto
+
+### Goal
+Convert to a real crypto wallet that users can:
+1. Use to pay for Mu services
+2. Send/receive funds
+3. Withdraw to external wallets
+4. Top up via fiat OR crypto
+
+### Recommended Approach: Solana (USDC)
+
+**Why Solana?**
+- Fast transactions (~400ms finality)
+- Very low fees (~$0.00025 per tx)
+- USDC is stable (no volatility for users)
+- Good Go SDK (`github.com/gagliardetto/solana-go`)
+- Easy key generation from seed phrases
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│                 User Wallet                 │
+├─────────────────────────────────────────────┤
+│ - Solana Address (derived from user seed)   │
+│ - USDC Balance (on-chain)                   │
+│ - SOL Balance (for tx fees)                 │
+└─────────────────────────────────────────────┘
+                      │
+        ┌─────────────┴─────────────┐
+        ▼                           ▼
+   ┌─────────┐               ┌─────────────┐
+   │ Top Up  │               │   Spend     │
+   ├─────────┤               ├─────────────┤
+   │ - Stripe│               │ - Mu services│
+   │ - Crypto│               │ - Send to   │
+   │   deposit               │   others    │
+   └─────────┘               └─────────────┘
+```
+
+### Implementation Phases
+
+#### Phase 1: Wallet Generation
+- [ ] Generate Solana keypair per user (from deterministic seed)
+- [ ] Store encrypted private key in DB
+- [ ] Display wallet address on /wallet page
+- [ ] Show USDC balance (read from chain)
+- [ ] Show SOL balance (for fees)
+
+#### Phase 2: Deposits
+- [ ] Show deposit address (user's Solana address)
+- [ ] Detect incoming USDC transfers (poll or websocket)
+- [ ] Credit balance when deposit confirmed
+- [ ] Keep Stripe as fiat on-ramp option
+- [ ] Stripe purchases USDC and deposits to user wallet
+
+#### Phase 3: Internal Transfers
+- [ ] Send USDC to other Mu users (by username)
+- [ ] Internal transfers = DB update (no on-chain tx needed)
+- [ ] Off-chain ledger for Mu-to-Mu transfers (gas-free)
+
+#### Phase 4: Withdrawals
+- [ ] Withdraw USDC to external Solana address
+- [ ] Require SOL for gas (or deduct from balance)
+- [ ] Withdrawal confirmation flow
+- [ ] Rate limits and security checks
+
+#### Phase 5: Service Payments
+- [ ] Mu services deduct from USDC balance
+- [ ] Convert existing credit system to USDC cents
+- [ ] Price services in USD (stable)
+
+### Data Model Changes
+
+```go
+type Wallet struct {
+    UserID      string    `json:"user_id"`
+    // Solana
+    Address     string    `json:"address"`      // Solana public key
+    EncryptedKey string   `json:"encrypted_key"` // Encrypted private key
+    // Balances (cached, source of truth is on-chain)
+    USDCBalance uint64    `json:"usdc_balance"` // In USDC smallest unit (6 decimals)
+    SOLBalance  uint64    `json:"sol_balance"`  // In lamports
+    // Internal ledger (for off-chain Mu-to-Mu transfers)
+    InternalBalance int64 `json:"internal_balance"` // Off-chain USDC balance
+    UpdatedAt   time.Time `json:"updated_at"`
+}
+```
+
+### Security Considerations
+- Private keys encrypted with user-specific key (derived from password?)
+- Or: custodial model where Mu holds keys (simpler but less "crypto native")
+- Withdrawal limits (daily/weekly)
+- 2FA for withdrawals
+- Rate limiting on all wallet operations
+
+### Dependencies
+```go
+import (
+    "github.com/gagliardetto/solana-go"
+    "github.com/gagliardetto/solana-go/rpc"
+    "github.com/gagliardetto/solana-go/programs/token"
+)
+```
+
+### Config
+```bash
+# Solana RPC
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+# Or devnet for testing:
+# SOLANA_RPC_URL=https://api.devnet.solana.com
+
+# USDC Token Mint (mainnet)
+USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+
+# Master encryption key for wallet keys
+WALLET_ENCRYPTION_KEY=...
+```
+
+### Open Questions
+1. **Custodial vs Non-custodial?**
+   - Custodial: Mu holds keys, simpler UX, more liability
+   - Non-custodial: User controls keys, complex UX, less liability
+   - Hybrid: Mu holds keys but user can export seed phrase
+
+2. **Gas fees?**
+   - Mu covers SOL fees? (simpler UX)
+   - User must hold SOL? (more crypto-native)
+   - Deduct fee equivalent from USDC balance?
+
+3. **Minimum withdrawal?**
+   - Need to cover tx costs
+   - Suggest: $1 minimum withdrawal
+
+4. **Fiat off-ramp?**
+   - Phase 1: Crypto only (withdraw to external wallet)
+   - Future: Partner with on/off-ramp provider
