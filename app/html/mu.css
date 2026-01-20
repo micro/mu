@@ -1188,12 +1188,16 @@ body:has(#messages) #chat-back-link {
   line-height: 1.5;
 }
 
-.topic-link {
-  padding: 8px 0;
+.summary-item .link {
+  display: block;
+  margin-top: 8px;
 }
 
-.topic-link .category {
-  margin-right: 8px;
+.topic-summary {
+  margin: 8px 0 0;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 #topics {

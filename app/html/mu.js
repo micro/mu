@@ -259,11 +259,12 @@ function showAllTopicSummaries() {
   messages.innerHTML = '';
   const topics = Object.keys(summaries).sort();
   
-  // Build all summaries content
+  // Build all summaries content with join links inside each
   let allSummariesHtml = '';
   topics.forEach(t => {
     if (summaries[t]) {
-      allSummariesHtml += `<div class="summary-item"><span class="category">${t}</span><p>${summaries[t]}</p></div>`;
+      const joinLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" class="link">Join discussion →</a>`;
+      allSummariesHtml += `<div class="summary-item"><span class="category">${t}</span><p>${summaries[t]}</p>${joinLink}</div>`;
     }
   });
   
@@ -280,16 +281,6 @@ function showAllTopicSummaries() {
     </div>
   `;
   messages.appendChild(summaryCard);
-  
-  // Add topic links below
-  topics.forEach(t => {
-    if (summaries[t]) {
-      const topicLink = document.createElement('div');
-      topicLink.className = 'message topic-link';
-      topicLink.innerHTML = `<span class="category">${t}</span> <a href="/chat?id=chat_${encodeURIComponent(t)}" class="link">Join discussion →</a>`;
-      messages.appendChild(topicLink);
-    }
-  });
 }
 
 // Toggle all summaries visibility
@@ -337,7 +328,7 @@ function showTopicContext(t) {
     }
   });
   
-  // Show context message
+  // Show context message with summary displayed directly
   const messages = document.getElementById('messages');
   if (messages) {
     messages.innerHTML = '';
@@ -345,11 +336,9 @@ function showTopicContext(t) {
     contextMsg.className = 'context-message';
     let summaryHtml = '';
     if (typeof summaries !== 'undefined' && summaries[t]) {
-      const summaryId = `ctx-summary-${t.replace(/\s+/g, '-')}`;
-      summaryHtml = `<br><a href="#" class="summary-toggle" onclick="toggleSummary('${summaryId}'); return false;">Show summary</a>` +
-        `<span id="${summaryId}" class="summary-content" style="display: none; color: #666;"><br>${summaries[t]}</span>`;
+      summaryHtml = `<p class="topic-summary">${summaries[t]}</p>`;
     }
-    contextMsg.innerHTML = '<strong>' + t + ' Discussion</strong>' + summaryHtml;
+    contextMsg.innerHTML = '<strong>' + t + '</strong>' + summaryHtml;
     messages.appendChild(contextMsg);
   }
   
