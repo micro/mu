@@ -199,6 +199,7 @@ var Template = `
         <div id="nav">
           <a href="/home"><img src="/home.png"><span class="label">Home</span></a>
           <a id="nav-account" href="/account"><img src="/account.png"><span class="label">Account</span></a>
+          <a href="/agent"><img src="/agent.png"><span class="label">Agent</span></a>
           <a href="/apps"><img src="/apps.png"><span class="label">Apps</span></a>
           <a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
