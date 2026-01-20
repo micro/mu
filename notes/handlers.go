@@ -301,8 +301,10 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
   
   const noteId = form.dataset.noteId;
   const status = document.getElementById('autosave-status');
+  const storageKey = 'note_original_' + noteId;
   let saveTimeout = null;
   let lastSaved = {};
+  let original = null;
   
   function getFormData() {
     return {
@@ -314,9 +316,47 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     };
   }
   
+  function setFormData(data) {
+    form.querySelector('[name=title]').value = data.title || '';
+    form.querySelector('[name=content]').value = data.content || '';
+    form.querySelector('[name=tags]').value = data.tags || '';
+    form.querySelector('[name=pinned]').checked = data.pinned || false;
+    form.querySelector('[name=color]').value = data.color || '';
+  }
+  
   function hasChanges() {
     const current = getFormData();
     return JSON.stringify(current) !== JSON.stringify(lastSaved);
+  }
+  
+  function showRevert() {
+    if (document.getElementById('revert-link')) return;
+    const link = document.createElement('a');
+    link.id = 'revert-link';
+    link.href = '#';
+    link.textContent = 'Undo';
+    link.className = 'revert-link';
+    link.onclick = function(e) {
+      e.preventDefault();
+      revertToOriginal();
+    };
+    status.parentNode.insertBefore(link, status.nextSibling);
+  }
+  
+  function hideRevert() {
+    const link = document.getElementById('revert-link');
+    if (link) link.remove();
+  }
+  
+  function revertToOriginal() {
+    if (!original) return;
+    setFormData(original);
+    lastSaved = getFormData();
+    autoSave();
+    hideRevert();
+    status.textContent = 'Reverted';
+    status.className = 'autosave-saved';
+    setTimeout(() => { status.textContent = ''; }, 2000);
   }
   
   function autoSave() {
@@ -341,6 +381,7 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
         lastSaved = data;
         status.textContent = 'Saved';
         status.className = 'autosave-saved';
+        showRevert();
         setTimeout(() => { status.textContent = ''; }, 2000);
       } else {
         status.textContent = 'Save failed';
@@ -357,8 +398,20 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     saveTimeout = setTimeout(autoSave, 1500);
   }
   
-  // Track initial state
+  // Store original state on first load
+  const stored = localStorage.getItem(storageKey);
+  if (stored) {
+    original = JSON.parse(stored);
+  } else {
+    original = getFormData();
+    localStorage.setItem(storageKey, JSON.stringify(original));
+  }
   lastSaved = getFormData();
+  
+  // Clear stored original when navigating away
+  window.addEventListener('beforeunload', () => {
+    localStorage.removeItem(storageKey);
+  });
   
   // Listen for changes
   form.querySelectorAll('input, textarea, select').forEach(el => {
