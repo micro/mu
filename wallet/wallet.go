@@ -29,10 +29,11 @@ var (
 	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
-// PaymentsEnabled returns true if Stripe is configured
+// PaymentsEnabled returns true if payments are configured
 // When false, quotas are disabled (unlimited free usage)
 func PaymentsEnabled() bool {
-	return os.Getenv("STRIPE_SECRET_KEY") != ""
+	// Payments enabled if crypto wallet is available
+	return CryptoWalletEnabled()
 }
 
 // Operation types
@@ -94,10 +95,9 @@ type DailyUsage struct {
 
 // TopupTier represents a credit purchase option
 type TopupTier struct {
-	Amount   int    `json:"amount"`    // Price in pence (e.g., 500 = £5)
-	Credits  int    `json:"credits"`   // Credits received
-	BonusPct int    `json:"bonus_pct"` // Bonus percentage
-	PriceID  string `json:"price_id"`  // Stripe price ID
+	Amount   int `json:"amount"`    // Price in pence (e.g., 500 = £5)
+	Credits  int `json:"credits"`   // Credits received
+	BonusPct int `json:"bonus_pct"` // Bonus percentage
 }
 
 // Available topup tiers
@@ -375,7 +375,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 		return true, false, 0, nil
 	}
 
-	// If Stripe not configured, no quotas (self-hosted/free instance)
+	// If payments not configured, no quotas (self-hosted/free instance)
 	if !PaymentsEnabled() {
 		return true, false, 0, nil
 	}

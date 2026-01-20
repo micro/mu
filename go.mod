@@ -5,6 +5,7 @@ go 1.24.1
 require (
 	github.com/ProtonMail/go-crypto v1.3.0
 	github.com/PuerkitoBio/goquery v1.8.0
+	github.com/btcsuite/btcd/btcec/v2 v2.3.6
 	github.com/emersion/go-msgauth v0.7.0
 	github.com/emersion/go-smtp v0.24.0
 	github.com/gomarkdown/markdown v0.0.0-20250311123330-531bef5e742b
@@ -13,7 +14,8 @@ require (
 	github.com/mmcdole/gofeed v1.3.0
 	github.com/mrz1836/go-sanitize v1.5.3
 	github.com/piquette/finance-go v1.1.0
-	github.com/stripe/stripe-go/v76 v76.25.0
+	github.com/tyler-smith/go-bip32 v1.0.0
+	github.com/tyler-smith/go-bip39 v1.1.0
 	golang.org/x/crypto v0.40.0
 	golang.org/x/net v0.42.0
 	golang.org/x/sync v0.19.0
@@ -27,8 +29,11 @@ require (
 	cloud.google.com/go/auth v0.16.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
+	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
+	github.com/FactomProject/btcutilecc v0.0.0-20130527213604-d3a63a5752ec // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/cloudflare/circl v1.6.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

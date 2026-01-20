@@ -124,15 +124,15 @@ func buildStatus() StatusResponse {
 		Status: youtubeConfigured,
 	})
 
-	// Check Stripe/Payments
-	stripeConfigured := os.Getenv("STRIPE_SECRET_KEY") != ""
+	// Check Crypto Wallet/Payments
+	walletSeedExists := os.Getenv("WALLET_SEED") != "" || fileExists(getWalletSeedPath())
 	quotaMode := "Unlimited (self-hosted)"
-	if stripeConfigured {
-		quotaMode = "Pay-as-you-go"
+	if walletSeedExists {
+		quotaMode = "Pay-as-you-go (crypto)"
 	}
 	services = append(services, StatusCheck{
 		Name:    "Payments",
-		Status:  stripeConfigured,
+		Status:  walletSeedExists,
 		Details: quotaMode,
 	})
 
@@ -284,6 +284,19 @@ func formatUptime(d time.Duration) string {
 		return fmt.Sprintf("%dh %dm", hours, minutes)
 	}
 	return fmt.Sprintf("%dm", minutes)
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func getWalletSeedPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "wallet.seed"
+	}
+	return homeDir + "/.mu/keys/wallet.seed"
 }
 
 func renderStatusHTML(status StatusResponse) string {

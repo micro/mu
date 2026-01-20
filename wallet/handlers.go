@@ -1,41 +1,13 @@
 package wallet
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
 
 	"mu/app"
 	"mu/auth"
-
-	"github.com/stripe/stripe-go/v76"
-	checkoutsession "github.com/stripe/stripe-go/v76/checkout/session"
-	"github.com/stripe/stripe-go/v76/webhook"
 )
-
-var (
-	StripeSecretKey      = os.Getenv("STRIPE_SECRET_KEY")
-	StripePublishableKey = os.Getenv("STRIPE_PUBLISHABLE_KEY")
-	StripeWebhookSecret  = os.Getenv("STRIPE_WEBHOOK_SECRET")
-)
-
-// Price IDs from environment (set up in Stripe Dashboard)
-var stripePrices = map[int]string{
-	500:  os.Getenv("STRIPE_PRICE_500"),
-	1000: os.Getenv("STRIPE_PRICE_1000"),
-	2500: os.Getenv("STRIPE_PRICE_2500"),
-	5000: os.Getenv("STRIPE_PRICE_5000"),
-}
-
-func init() {
-	if StripeSecretKey != "" {
-		stripe.Key = StripeSecretKey
-	}
-}
 
 // WalletPage renders the wallet page HTML
 func WalletPage(userID string) string {
@@ -63,9 +35,7 @@ func WalletPage(userID string) string {
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Balance</h3>`)
 		sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
-		if IsStripeConfigured() {
-			sb.WriteString(`<p><a href="/wallet/topup">Top up →</a></p>`)
-		}
+		sb.WriteString(`<p><a href="/wallet/deposit">Add Credits →</a></p>`)
 		sb.WriteString(`</div>`)
 
 		// Daily quota
@@ -116,7 +86,7 @@ func WalletPage(userID string) string {
 		for _, tx := range transactions {
 			typeLabel := tx.Operation
 			if tx.Type == TxTopup {
-				typeLabel = "Top Up"
+				typeLabel = "Deposit"
 			}
 			amountPrefix := "-"
 			if tx.Amount > 0 {
@@ -148,7 +118,7 @@ func QuotaExceededPage(operation string, cost int) string {
 	sb.WriteString(`<ul class="options-list">`)
 	sb.WriteString(`<li>Wait until midnight UTC for more free queries</li>`)
 	sb.WriteString(fmt.Sprintf(`<li><a href="/wallet">Use credits</a> (%d credit%s for this)</li>`, cost, pluralize(cost)))
-	sb.WriteString(`<li><a href="/plans">View pricing</a></li>`)
+	sb.WriteString(`<li><a href="/wallet/deposit">Add credits</a></li>`)
 	sb.WriteString(`</ul>`)
 	sb.WriteString(`</div>`)
 
@@ -188,71 +158,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/wallet" && r.Method == "GET":
 		handleWalletPage(w, r)
-	case path == "/wallet/topup" && r.Method == "GET":
-		handleTopupPage(w, r)
-	case path == "/wallet/topup" && r.Method == "POST":
-		handleTopup(w, r)
-	case path == "/wallet/success":
-		handleSuccess(w, r)
-	case path == "/wallet/cancel":
-		handleCancel(w, r)
-	case path == "/wallet/webhook" && r.Method == "POST":
-		handleWebhook(w, r)
+	case path == "/wallet/deposit" && r.Method == "GET":
+		handleDepositPage(w, r)
 	default:
 		http.NotFound(w, r)
 	}
-}
-
-func handleTopupPage(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
-	}
-
-	if !IsStripeConfigured() {
-		http.Redirect(w, r, "/wallet", 302)
-		return
-	}
-
-	var sb strings.Builder
-
-	sb.WriteString(`<h3>Top Up</h3>`)
-	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p</p>`)
-
-	for _, tier := range TopupTiers {
-		bonus := ""
-		if tier.BonusPct > 0 {
-			bonus = fmt.Sprintf(" (+%d%%)", tier.BonusPct)
-		}
-		sb.WriteString(fmt.Sprintf(`<p><a href="#" onclick="topup(%d); return false;">£%d → %d credits%s</a></p>`,
-			tier.Amount, tier.Amount/100, tier.Credits, bonus))
-	}
-
-	sb.WriteString(`
-<script>
-async function topup(amount) {
-	try {
-		const resp = await fetch('/wallet/topup', {
-			method: 'POST',
-			headers: {'Content-Type': 'application/json'},
-			body: JSON.stringify({amount: amount})
-		});
-		const data = await resp.json();
-		if (data.url) {
-			window.location.href = data.url;
-		} else if (data.error) {
-			alert('Error: ' + data.error);
-		}
-	} catch (err) {
-		alert('Failed: ' + err.message);
-	}
-}
-</script>`)
-
-	html := app.RenderHTMLForRequest("Top Up", "Add credits", sb.String(), r)
-	_ = sess
-	w.Write([]byte(html))
 }
 
 func handleWalletPage(w http.ResponseWriter, r *http.Request) {
@@ -267,191 +177,75 @@ func handleWalletPage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-func handleTopup(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.RespondJSON(w, map[string]string{"error": "Authentication required"})
-		return
-	}
-
-	if StripeSecretKey == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Payment system not configured"})
-		return
-	}
-
-	var req struct {
-		Amount int `json:"amount"`
-	}
-	json.NewDecoder(r.Body).Decode(&req)
-
-	tier := GetTopupTier(req.Amount)
-	if tier == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid amount"})
-		return
-	}
-
-	// Get price ID from environment or use dynamic pricing
-	priceID := stripePrices[req.Amount]
-
-	// Build domain for redirect URLs
-	scheme := "https"
-	if r.TLS == nil && !strings.Contains(r.Host, "localhost") {
-		scheme = "http"
-	}
-	domain := fmt.Sprintf("%s://%s", scheme, r.Host)
-
-	var params *stripe.CheckoutSessionParams
-
-	if priceID != "" {
-		// Use pre-configured Stripe Price
-		params = &stripe.CheckoutSessionParams{
-			Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
-			LineItems: []*stripe.CheckoutSessionLineItemParams{{
-				Price:    stripe.String(priceID),
-				Quantity: stripe.Int64(1),
-			}},
-			SuccessURL:        stripe.String(domain + "/wallet/success?session_id={CHECKOUT_SESSION_ID}"),
-			CancelURL:         stripe.String(domain + "/wallet/cancel"),
-			ClientReferenceID: stripe.String(sess.Account),
-		}
-	} else {
-		// Use dynamic pricing (create price on the fly)
-		params = &stripe.CheckoutSessionParams{
-			Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
-			LineItems: []*stripe.CheckoutSessionLineItemParams{{
-				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
-					Currency: stripe.String("gbp"),
-					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
-						Name:        stripe.String(fmt.Sprintf("%d Credits", tier.Credits)),
-						Description: stripe.String(fmt.Sprintf("Top up your Mu wallet with %d credits", tier.Credits)),
-					},
-					UnitAmount: stripe.Int64(int64(tier.Amount)),
-				},
-				Quantity: stripe.Int64(1),
-			}},
-			SuccessURL:        stripe.String(domain + "/wallet/success?session_id={CHECKOUT_SESSION_ID}"),
-			CancelURL:         stripe.String(domain + "/wallet/cancel"),
-			ClientReferenceID: stripe.String(sess.Account),
-		}
-	}
-
-	params.AddMetadata("user_id", sess.Account)
-	params.AddMetadata("credits", strconv.Itoa(tier.Credits))
-	params.AddMetadata("amount", strconv.Itoa(tier.Amount))
-
-	checkoutSession, err := checkoutsession.New(params)
-	if err != nil {
-		app.Log("wallet", "Stripe checkout error: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create checkout session"})
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"url": checkoutSession.URL})
-}
-
-func handleSuccess(w http.ResponseWriter, r *http.Request) {
+func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		app.RedirectToLogin(w, r)
 		return
 	}
 
-	content := `<div class="card center-card bg-success-light">
-	<h2 class="text-success">✓ Payment Successful</h2>
-	<p>Your credits have been added to your wallet.</p>
-	<p class="mt-5"><a href="/wallet">View Wallet →</a></p>
-</div>`
-
-	html := app.RenderHTMLForRequest("Payment Successful", "Your payment was successful", content, r)
-	w.Write([]byte(html))
-	_ = sess
-}
-
-func handleCancel(w http.ResponseWriter, r *http.Request) {
-	content := `<div class="card center-card bg-warning-light">
-	<h2 class="text-warning">Payment Cancelled</h2>
-	<p>Your payment was cancelled. No charges were made.</p>
-	<p class="mt-5"><a href="/wallet">Back to Wallet →</a></p>
-</div>`
-
-	html := app.RenderHTMLForRequest("Payment Cancelled", "Your payment was cancelled", content, r)
-	w.Write([]byte(html))
-}
-
-func handleWebhook(w http.ResponseWriter, r *http.Request) {
-	payload, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read body", 400)
+	// Initialize crypto wallet if needed
+	if err := InitCryptoWallet(); err != nil {
+		app.Log("wallet", "Failed to init crypto wallet: %v", err)
+		content := `<div class="card"><p class="text-error">Crypto wallet not available. Please try again later.</p></div>`
+		html := app.RenderHTMLForRequest("Deposit", "Add credits", content, r)
+		w.Write([]byte(html))
 		return
 	}
 
-	var event stripe.Event
-
-	if StripeWebhookSecret != "" {
-		// Verify webhook signature
-		sig := r.Header.Get("Stripe-Signature")
-		event, err = webhook.ConstructEvent(payload, sig, StripeWebhookSecret)
-		if err != nil {
-			app.Log("wallet", "Webhook signature verification failed: %v", err)
-			http.Error(w, "Invalid signature", 400)
-			return
-		}
-	} else {
-		// Development mode - parse without verification
-		if err := json.Unmarshal(payload, &event); err != nil {
-			http.Error(w, "Invalid payload", 400)
-			return
-		}
+	// Get user's deposit address
+	depositAddr, err := GetUserDepositAddress(sess.Account)
+	if err != nil {
+		app.Log("wallet", "Failed to get deposit address: %v", err)
+		content := `<div class="card"><p class="text-error">Failed to generate deposit address.</p></div>`
+		html := app.RenderHTMLForRequest("Deposit", "Add credits", content, r)
+		w.Write([]byte(html))
+		return
 	}
 
-	switch event.Type {
-	case "checkout.session.completed":
-		var checkoutSession stripe.CheckoutSession
-		if err := json.Unmarshal(event.Data.Raw, &checkoutSession); err != nil {
-			app.Log("wallet", "Failed to parse checkout session: %v", err)
-			http.Error(w, "Invalid session data", 400)
-			return
-		}
+	var sb strings.Builder
 
-		userID := checkoutSession.ClientReferenceID
-		creditsStr := checkoutSession.Metadata["credits"]
-		credits, _ := strconv.Atoi(creditsStr)
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Add Credits</h3>`)
+	sb.WriteString(`<p>Send crypto to your deposit address. Any ERC-20 token on Base network is accepted.</p>`)
+	sb.WriteString(`</div>`)
 
-		if userID == "" || credits == 0 {
-			app.Log("wallet", "Invalid webhook data: userID=%s credits=%d", userID, credits)
-			http.Error(w, "Invalid metadata", 400)
-			return
-		}
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Your Deposit Address</h3>`)
+	sb.WriteString(`<p class="text-muted text-sm">Base Network (Ethereum L2)</p>`)
+	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
+	sb.WriteString(`<p class="text-sm mt-3"><button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Address', 2000)" class="btn-secondary">Copy Address</button></p>`)
+	sb.WriteString(`</div>`)
 
-		// Add credits to wallet
-		err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
-			"stripe_session_id": checkoutSession.ID,
-			"payment_intent":    checkoutSession.PaymentIntent,
-			"amount_total":      checkoutSession.AmountTotal,
-		})
-		if err != nil {
-			app.Log("wallet", "Failed to add credits: %v", err)
-			http.Error(w, "Failed to add credits", 500)
-			return
-		}
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Supported Tokens</h3>`)
+	sb.WriteString(`<ul>`)
+	sb.WriteString(`<li><strong>ETH</strong> - Ethereum</li>`)
+	sb.WriteString(`<li><strong>USDC</strong> - USD Coin</li>`)
+	sb.WriteString(`<li><strong>DAI</strong> - Dai Stablecoin</li>`)
+	sb.WriteString(`<li>Any ERC-20 token on Base</li>`)
+	sb.WriteString(`</ul>`)
+	sb.WriteString(`</div>`)
 
-		app.Log("wallet", "Added %d credits to user %s (session: %s)", credits, userID, checkoutSession.ID)
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>How it works</h3>`)
+	sb.WriteString(`<ol>`)
+	sb.WriteString(`<li>Send any supported token to the address above</li>`)
+	sb.WriteString(`<li>Wait for confirmation (~1 minute)</li>`)
+	sb.WriteString(`<li>Credits are added automatically based on current rates</li>`)
+	sb.WriteString(`</ol>`)
+	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · Minimum deposit: $1 equivalent</p>`)
+	sb.WriteString(`</div>`)
 
-	case "payment_intent.payment_failed":
-		app.Log("wallet", "Payment failed: %s", string(event.Data.Raw))
-	}
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Important</h3>`)
+	sb.WriteString(`<ul class="text-sm text-muted">`)
+	sb.WriteString(`<li>Only send on <strong>Base network</strong></li>`)
+	sb.WriteString(`<li>Sending on wrong network will result in lost funds</li>`)
+	sb.WriteString(`<li>Deposits typically confirm within 1-2 minutes</li>`)
+	sb.WriteString(`</ul>`)
+	sb.WriteString(`</div>`)
 
-	w.WriteHeader(200)
-}
-
-// IsStripeConfigured returns true if Stripe is properly configured
-func IsStripeConfigured() bool {
-	return StripeSecretKey != ""
+	html := app.RenderHTMLForRequest("Deposit", "Add credits via crypto", sb.String(), r)
+	w.Write([]byte(html))
 }

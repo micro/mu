@@ -7,7 +7,7 @@ Mu is a tool, not a destination. Like Google Search in 2000 — you arrive with 
 Credits are a straightforward way to pay for what you use. No dark patterns, no pressure to upgrade, no "unlimited" tiers that incentivize us to maximize your engagement.
 
 - **Free tier**: 10 AI queries/day - enough for casual utility use
-- **Pay-as-you-go**: Top up your wallet, use credits when you need more
+- **Pay-as-you-go**: Deposit crypto, use credits when you need more
 - **Self-host**: Run your own instance for free, forever
 
 We charge because LLMs and APIs cost money. Here's our actual cost breakdown — we're not extracting margin, just covering infrastructure.
@@ -18,7 +18,7 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 
 - **1 credit = £0.01 GBP** (1 penny)
 - Credits stored as integers to avoid floating-point issues
-- Top up via card payment (Stripe)
+- Top up via crypto deposit (Base network, any ERC-20 token)
 - Credits never expire
 
 ### Daily Free Quota
@@ -26,7 +26,7 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 Every registered user gets **10 free AI queries per day**:
 - Resets at midnight UTC
 - Covers news search, video search, and chat AI queries
-- No credit card required
+- No payment required
 
 This should be enough if you're using Mu as a utility. If you need more, pay-as-you-go.
 
@@ -63,16 +63,38 @@ Pay-as-you-go keeps us honest: we want to build efficient tools that solve your 
 
 If you want truly unlimited and free — self-host. The code is open source.
 
-## Top-up Options
+---
 
-| Amount | Credits | Bonus |
-|--------|---------|-------|
-| £5 | 500 | - |
-| £10 | 1,050 | +5% |
-| £25 | 2,750 | +10% |
-| £50 | 5,750 | +15% |
+## Crypto Deposits
 
-Larger top-ups get bonus credits to offset payment processing fees.
+### How It Works
+
+1. Go to `/wallet/deposit`
+2. You'll see your unique deposit address (on Base network)
+3. Send any supported token (ETH, USDC, DAI, or any ERC-20)
+4. Deposits are detected automatically
+5. Credits added based on current exchange rate
+
+### Supported Tokens
+
+- **ETH** - Ethereum
+- **USDC** - USD Coin
+- **DAI** - Dai Stablecoin  
+- Any ERC-20 token on Base network
+
+### Important
+
+- Only send on **Base network** (Ethereum L2)
+- Sending on wrong network will result in lost funds
+- Minimum deposit: ~$1 equivalent
+- Deposits typically confirm within 1-2 minutes
+
+### Why Crypto?
+
+- No credit cards, no KYC forms, no payment processor gatekeeping
+- Works globally without bank restrictions
+- You control your funds until you deposit
+- Aligns with Mu philosophy: decentralized, no middlemen
 
 ---
 
@@ -114,6 +136,17 @@ type DailyUsage struct {
 }
 ```
 
+### Crypto Wallet
+
+```go
+type CryptoWallet struct {
+    UserID       string    `json:"user_id"`
+    AddressIndex uint32    `json:"address_index"` // BIP32 derivation index
+    Address      string    `json:"address"`       // Derived ETH address
+    CreatedAt    time.Time `json:"created_at"`
+}
+```
+
 ---
 
 ## API Endpoints
@@ -121,37 +154,19 @@ type DailyUsage struct {
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/wallet` | View balance and transaction history |
-| POST | `/wallet/topup` | Start Stripe checkout |
-| GET | `/wallet/success` | Stripe success redirect |
-| GET | `/wallet/cancel` | Stripe cancel redirect |
-| POST | `/wallet/webhook` | Stripe payment confirmation |
-
----
-
-## Pages
-
-### /wallet
-
-- Current balance
-- Daily quota progress
-- Top-up buttons
-- Transaction history
+| GET | `/wallet/deposit` | Show deposit address and instructions |
 
 ---
 
 ## Environment Variables
 
 ```bash
-# Stripe
-STRIPE_SECRET_KEY="sk_live_xxx"
-STRIPE_PUBLISHABLE_KEY="pk_live_xxx"  
-STRIPE_WEBHOOK_SECRET="whsec_xxx"
+# Crypto Wallet (optional)
+# If not set, seed is auto-generated and saved to ~/.mu/keys/wallet.seed
+WALLET_SEED="24 word mnemonic phrase"
 
-# Optional: Pre-configured Stripe Price IDs
-STRIPE_PRICE_500="price_xxx"   # £5
-STRIPE_PRICE_1000="price_xxx"  # £10
-STRIPE_PRICE_2500="price_xxx"  # £25
-STRIPE_PRICE_5000="price_xxx"  # £50
+# Base RPC endpoint (optional)
+BASE_RPC_URL="https://mainnet.base.org"
 
 # Quota (optional - these are defaults)
 FREE_DAILY_SEARCHES="10"
@@ -166,6 +181,15 @@ CREDIT_COST_CHAT="3"
 
 ## Implementation
 
+### HD Wallet
+
+Mu uses an HD (Hierarchical Deterministic) wallet to derive unique deposit addresses per user:
+
+- Master seed stored in `~/.mu/keys/wallet.seed` (or `WALLET_SEED` env var)
+- BIP44 derivation path: `m/44'/60'/0'/0/{index}`
+- Index 0 = treasury address
+- Each user gets a deterministic index based on their user ID
+
 ### Quota Check Flow
 
 1. User initiates search/chat
@@ -174,20 +198,20 @@ CREDIT_COST_CHAT="3"
 4. Check wallet balance → allow if sufficient, deduct credits
 5. Otherwise → show "quota exceeded" with options
 
-### Stripe Webhook
+### Deposit Detection (Coming Soon)
 
-1. Receive `checkout.session.completed` event
-2. Verify webhook signature
-3. Extract user ID and credit amount from metadata
-4. Add credits to wallet
-5. Record transaction
+1. Poll Base RPC for incoming transactions to user addresses
+2. Detect ETH transfers and ERC-20 Transfer events
+3. Fetch current token price from price oracle
+4. Calculate credits and add to wallet
+5. Record transaction with tx hash
 
 ---
 
 ## Security
 
-- Stripe webhook signatures always verified in production
-- Idempotent credit additions (check for duplicate session IDs)
-- Mutex on wallet balance updates
+- Wallet seed file has 0600 permissions (owner read/write only)
+- Never log seed or private keys
 - Full transaction audit trail
 - Never allow negative balance
+- Deposit addresses derived deterministically (no key storage per user)

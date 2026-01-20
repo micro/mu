@@ -73,28 +73,22 @@ export SUPPORT_URL="https://discord.gg/your-invite"
 ```
 
 **Notes:**
-- Use any payment provider (GoCardless, Stripe, PayPal, etc.)
 - When empty, donation features are hidden
 - Links appear on `/donate` page
 
-## Stripe Configuration (Credits/Wallet)
+## Crypto Wallet Configuration (Credits/Payments)
 
-Enable credit top-ups via Stripe. When configured, users get 10 free AI queries per day, then can pay-as-you-go.
+Enable credit purchases via crypto deposits. When configured, users get 10 free AI queries per day, then can pay-as-you-go by depositing crypto.
 
-**When Stripe is NOT configured:** All quotas are disabled. Users have unlimited free access. This is the default for self-hosted instances.
+**When wallet is NOT configured:** All quotas are disabled. Users have unlimited free access. This is the default for self-hosted instances.
 
 ```bash
-# Stripe API keys (from Stripe Dashboard)
-export STRIPE_SECRET_KEY="sk_live_xxx"
-export STRIPE_PUBLISHABLE_KEY="pk_live_xxx"
-export STRIPE_WEBHOOK_SECRET="whsec_xxx"
+# Wallet seed (optional - auto-generated if not set)
+# If not provided, a new seed is generated and saved to ~/.mu/keys/wallet.seed
+export WALLET_SEED="24 word mnemonic phrase here"
 
-# Optional: Pre-configured Stripe Price IDs for credit top-ups
-# If not set, dynamic pricing is used
-export STRIPE_PRICE_500="price_xxx"   # £5 → 500 credits
-export STRIPE_PRICE_1000="price_xxx"  # £10 → 1,050 credits
-export STRIPE_PRICE_2500="price_xxx"  # £25 → 2,750 credits
-export STRIPE_PRICE_5000="price_xxx"  # £50 → 5,750 credits
+# Base RPC endpoint (optional - uses public endpoint by default)
+export BASE_RPC_URL="https://mainnet.base.org"
 ```
 
 ### Quota Configuration
@@ -115,15 +109,13 @@ export CREDIT_COST_EMAIL="4"       # External email (4p) - SMTP delivery cost
 - 1 credit = £0.01 (1 penny)
 - Admins get unlimited access (no quotas)
 - Credits never expire
-- Top-up tiers: £5 (500), £10 (1,050 +5%), £25 (2,750 +10%), £50 (5,750 +15%)
+- Users deposit any ERC-20 token on Base network
 
-### Stripe Webhook Setup
+### Wallet Seed Location
 
-1. In Stripe Dashboard, go to Developers → Webhooks
-2. Add endpoint: `https://yourdomain.com/wallet/webhook`
-3. Select events:
-   - `checkout.session.completed` (for credit top-ups)
-4. Copy the signing secret to `STRIPE_WEBHOOK_SECRET`
+The wallet seed is stored in `~/.mu/keys/wallet.seed`. If not provided via environment variable, it will be auto-generated on first run.
+
+**IMPORTANT:** Back up this file! It controls all deposit addresses.
 
 ## Example Usage
 
@@ -164,9 +156,8 @@ export MAIL_SELECTOR="default"
 | `MAIL_SELECTOR` | `default` | DKIM selector for DNS lookup |
 | `DONATION_URL` | - | Payment link for one-time donations (optional) |
 | `SUPPORT_URL` | - | Community/support link like Discord (optional) |
-| `STRIPE_SECRET_KEY` | - | Stripe secret key for payments |
-| `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key |
-| `STRIPE_WEBHOOK_SECRET` | - | Stripe webhook signing secret |
+| `WALLET_SEED` | - | BIP39 mnemonic for HD wallet (auto-generated if not set) |
+| `BASE_RPC_URL` | `https://mainnet.base.org` | Base network RPC endpoint |
 | `FREE_DAILY_SEARCHES` | `10` | Daily free AI queries |
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
@@ -197,10 +188,9 @@ MAIL_SELECTOR=default
 DONATION_URL=https://gocardless.com/your-donation-link
 SUPPORT_URL=https://discord.gg/your-invite
 
-# Stripe (optional - for credit top-ups)
-STRIPE_SECRET_KEY=sk_live_xxx
-STRIPE_PUBLISHABLE_KEY=pk_live_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
+# Crypto wallet (optional - for credit purchases)
+# If not set, seed is auto-generated in ~/.mu/keys/wallet.seed
+# WALLET_SEED=your 24 word mnemonic phrase
 ```
 
 Load and run:
@@ -237,10 +227,8 @@ Environment="MAIL_SELECTOR=default"
 Environment="DONATION_URL=https://gocardless.com/your-donation-link"
 Environment="SUPPORT_URL=https://discord.gg/your-invite"
 
-# Stripe (optional)
-Environment="STRIPE_SECRET_KEY=sk_live_xxx"
-Environment="STRIPE_PUBLISHABLE_KEY=pk_live_xxx"
-Environment="STRIPE_WEBHOOK_SECRET=whsec_xxx"
+# Crypto wallet (optional - auto-generated if not set)
+# Environment="WALLET_SEED=your 24 word mnemonic phrase"
 
 ExecStart=/opt/mu/mu --serve --address :8080
 Restart=always
@@ -276,9 +264,8 @@ docker run -d \
   -e MAIL_SELECTOR=default \
   -e DONATION_URL=https://gocardless.com/your-donation-link \
   -e SUPPORT_URL=https://discord.gg/your-invite \
-  -e STRIPE_SECRET_KEY=sk_live_xxx \
-  -e STRIPE_PUBLISHABLE_KEY=pk_live_xxx \
-  -e STRIPE_WEBHOOK_SECRET=whsec_xxx \
+  # Wallet seed auto-generated in ~/.mu/keys/wallet.seed if not set
+  # -e WALLET_SEED="your 24 word mnemonic" \
   -v ~/.mu:/root/.mu \
   mu:latest
 ```
@@ -297,12 +284,6 @@ docker run -d \
 4. Create credentials (API Key)
 5. Required for video search/playback
 
-### Stripe
-1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
-2. Get API keys from Developers → API Keys
-3. Set up webhook endpoint at Developers → Webhooks
-4. Required for credit top-ups (pay-as-you-go)
-
 ## Feature Requirements
 
 | Feature | Required Environment Variables |
@@ -312,5 +293,5 @@ docker run -d \
 | Video | `YOUTUBE_API_KEY` |
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
 | Donations | `DONATION_URL` (optional: `SUPPORT_URL`) |
-| Credit Top-ups | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| Credit Purchases | `WALLET_SEED` or auto-generated in `~/.mu/keys/wallet.seed` |
 

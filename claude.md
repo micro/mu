@@ -85,10 +85,9 @@ ANTHROPIC_API_KEY / ANTHROPIC_MODEL
 FANAR_API_KEY / FANAR_API_URL  
 MODEL_NAME / MODEL_API_URL  # Ollama
 
-# Stripe
-STRIPE_SECRET_KEY
-STRIPE_PUBLISHABLE_KEY
-STRIPE_WEBHOOK_SECRET
+# Crypto Wallet (optional)
+WALLET_SEED  # BIP39 mnemonic, or auto-generated in ~/.mu/keys/wallet.seed
+BASE_RPC_URL  # Default: https://mainnet.base.org
 ```
 
 ## Git
@@ -328,17 +327,15 @@ type PageOpts struct {
 ### Current State
 The wallet is a credits-based system:
 - Users have a balance in "credits" (1 credit = 1 penny)
-- Top-up via Stripe (fiat only)
-- Credits can only be spent on Mu services
-- No withdrawals, no transfers, no real crypto
+- Top-up via crypto deposits (Base network, any ERC-20)
+- Credits spent on Mu services
+- HD wallet derives unique deposit address per user
 
-### Goal
-Replace Stripe with crypto deposits. Users deposit any ERC-20 token (or ETH) to buy credits.
-
-**Why not Stripe?**
-- W8-BEN forms, KYC overhead
-- US-centric payment rails
-- Against Mu philosophy of avoiding gatekeepers
+### Why Crypto Instead of Stripe?
+- No W8-BEN forms, no KYC overhead on Mu's side
+- Decentralized payment rails, not US-centric
+- Aligns with Mu philosophy of avoiding gatekeepers
+- Users keep control of their funds until they deposit
 
 ### Approach: Base Network (Ethereum L2) + Any Token
 
