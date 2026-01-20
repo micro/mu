@@ -2111,6 +2111,7 @@ a.highlight {
     flex: 0 0 auto;
     background: white;
     padding-top: 10px;
+    padding-bottom: 15px; /* Safe area for PWA/mobile */
     margin: 0;
   }
   
