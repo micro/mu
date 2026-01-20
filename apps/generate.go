@@ -21,6 +21,8 @@ Rules:
 7. The app must be fully functional and self-contained
 8. Do not use any external dependencies or CDNs
 9. Start with <!DOCTYPE html> and end with </html>
+10. NEVER use placeholder comments like "// ..." or "/* ... */" - write ALL the actual code
+11. Output the COMPLETE application - no shortcuts, no omissions
 
 Mu SDK (automatically available as window.mu):
 - mu.db.get(key) - retrieve stored value from server (async, syncs across devices)
