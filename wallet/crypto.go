@@ -271,13 +271,10 @@ func StartDepositWatcher() {
 	}
 
 	go func() {
-		ticker := time.NewTicker(time.Duration(depositPollSecs) * time.Second)
-		defer ticker.Stop()
-
 		app.Log("wallet", "Deposit watcher started (polling every %ds)", depositPollSecs)
 
-		// Initial check
-		checkForDeposits()
+		ticker := time.NewTicker(time.Duration(depositPollSecs) * time.Second)
+		defer ticker.Stop()
 
 		for range ticker.C {
 			checkForDeposits()
