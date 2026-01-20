@@ -333,137 +333,157 @@ The wallet is a credits-based system:
 - No withdrawals, no transfers, no real crypto
 
 ### Goal
-Convert to a real crypto wallet that users can:
-1. Use to pay for Mu services
-2. Send/receive funds
-3. Withdraw to external wallets
-4. Top up via fiat OR crypto
+Replace Stripe with crypto deposits. Users deposit any ERC-20 token (or ETH) to buy credits.
 
-### Recommended Approach: Solana (USDC)
+**Why not Stripe?**
+- W8-BEN forms, KYC overhead
+- US-centric payment rails
+- Against Mu philosophy of avoiding gatekeepers
 
-**Why Solana?**
-- Fast transactions (~400ms finality)
-- Very low fees (~$0.00025 per tx)
-- USDC is stable (no volatility for users)
-- Good Go SDK (`github.com/gagliardetto/solana-go`)
-- Easy key generation from seed phrases
+### Approach: Base Network (Ethereum L2) + Any Token
+
+**Why Base?**
+- Ethereum L2 = low fees (~$0.01-0.10 per tx)
+- EVM compatible = huge ecosystem
+- Any ERC-20 works (ETH, DAI, USDC, whatever)
+- No single stablecoin dependency
+- Coinbase-backed but decentralized
+
+**Why not Solana?**
+- Smaller ecosystem
+- Network stability concerns historically
 
 ### Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
-│                 User Wallet                 │
+│           Mu Treasury (HD Wallet)           │
 ├─────────────────────────────────────────────┤
-│ - Solana Address (derived from user seed)   │
-│ - USDC Balance (on-chain)                   │
-│ - SOL Balance (for tx fees)                 │
+│ Master seed (in ~/.mu/keys/wallet.seed)     │
+│ Derives unique address per user             │
 └─────────────────────────────────────────────┘
                       │
-        ┌─────────────┴─────────────┐
-        ▼                           ▼
-   ┌─────────┐               ┌─────────────┐
-   │ Top Up  │               │   Spend     │
-   ├─────────┤               ├─────────────┤
-   │ - Stripe│               │ - Mu services│
-   │ - Crypto│               │ - Send to   │
-   │   deposit               │   others    │
-   └─────────┘               └─────────────┘
+         ┌────────────┼────────────┐
+         ▼            ▼            ▼
+    ┌─────────┐ ┌─────────┐ ┌─────────┐
+    │ User 1  │ │ User 2  │ │ User N  │
+    │ 0x123...│ │ 0x456...│ │ 0x789...│
+    └─────────┘ └─────────┘ └─────────┘
+         │            │            │
+         └────────────┼────────────┘
+                      ▼
+              Any ERC-20 deposit
+              ETH, DAI, USDC, etc.
 ```
+
+### User Flow
+
+1. User goes to /wallet, clicks "Add Credits"
+2. Shown their unique deposit address: `0xABC123...`
+3. Shown: "Send any token on Base network"
+4. User sends ETH/DAI/whatever from their wallet
+5. Mu detects deposit, checks price, credits account
+6. Credits used for Mu services (1 credit = 1p)
 
 ### Implementation Phases
 
-#### Phase 1: Wallet Generation
-- [ ] Generate Solana keypair per user (from deterministic seed)
-- [ ] Store encrypted private key in DB
-- [ ] Display wallet address on /wallet page
-- [ ] Show USDC balance (read from chain)
-- [ ] Show SOL balance (for fees)
+#### Phase 1: HD Wallet Setup
+- [x] Generate master seed on first run (or use WALLET_SEED env var)
+- [x] Store seed in `~/.mu/keys/wallet.seed`
+- [x] Derive user addresses using BIP32 (m/44'/60'/0'/0/{userIndex})
+- [x] Show deposit address on /wallet page
+- [x] Lightweight deps: `go-bip39`, `go-bip32`, stdlib crypto
 
-#### Phase 2: Deposits
-- [ ] Show deposit address (user's Solana address)
-- [ ] Detect incoming USDC transfers (poll or websocket)
-- [ ] Credit balance when deposit confirmed
-- [ ] Keep Stripe as fiat on-ramp option
-- [ ] Stripe purchases USDC and deposits to user wallet
+#### Phase 2: Deposit Detection
+- [ ] Poll Base RPC for incoming transactions
+- [ ] Detect ETH transfers to user addresses
+- [ ] Detect ERC-20 Transfer events to user addresses
+- [ ] Map address → user, credit their account
+- [ ] Fetch token price (CoinGecko API) to convert to credits
 
-#### Phase 3: Internal Transfers
-- [ ] Send USDC to other Mu users (by username)
-- [ ] Internal transfers = DB update (no on-chain tx needed)
-- [ ] Off-chain ledger for Mu-to-Mu transfers (gas-free)
+#### Phase 3: Sweep & Consolidation
+- [ ] Periodically sweep from user addresses to main treasury
+- [ ] Reduces number of addresses to monitor
+- [ ] Gas paid from treasury ETH balance
 
-#### Phase 4: Withdrawals
-- [ ] Withdraw USDC to external Solana address
-- [ ] Require SOL for gas (or deduct from balance)
-- [ ] Withdrawal confirmation flow
-- [ ] Rate limits and security checks
+#### Phase 4: Withdrawals (Optional)
+- [ ] User requests withdrawal to external address
+- [ ] Send from treasury (requires gas)
+- [ ] Withdrawal fee to cover costs
+- [ ] Rate limits, security checks
 
-#### Phase 5: Service Payments
-- [ ] Mu services deduct from USDC balance
-- [ ] Convert existing credit system to USDC cents
-- [ ] Price services in USD (stable)
-
-### Data Model Changes
+### Data Model
 
 ```go
-type Wallet struct {
+type CryptoWallet struct {
+    UserID       string    `json:"user_id"`
+    AddressIndex uint32    `json:"address_index"` // BIP32 derivation index
+    Address      string    `json:"address"`       // Derived ETH address
+    CreatedAt    time.Time `json:"created_at"`
+}
+
+type CryptoDeposit struct {
+    ID          string    `json:"id"`
     UserID      string    `json:"user_id"`
-    // Solana
-    Address     string    `json:"address"`      // Solana public key
-    EncryptedKey string   `json:"encrypted_key"` // Encrypted private key
-    // Balances (cached, source of truth is on-chain)
-    USDCBalance uint64    `json:"usdc_balance"` // In USDC smallest unit (6 decimals)
-    SOLBalance  uint64    `json:"sol_balance"`  // In lamports
-    // Internal ledger (for off-chain Mu-to-Mu transfers)
-    InternalBalance int64 `json:"internal_balance"` // Off-chain USDC balance
-    UpdatedAt   time.Time `json:"updated_at"`
+    TxHash      string    `json:"tx_hash"`
+    Token       string    `json:"token"`       // "ETH" or contract address
+    Amount      string    `json:"amount"`      // Raw amount (big int string)
+    AmountUSD   float64   `json:"amount_usd"`  // USD value at time of deposit
+    Credits     int       `json:"credits"`     // Credits awarded
+    BlockNumber uint64    `json:"block_number"`
+    CreatedAt   time.Time `json:"created_at"`
 }
 ```
 
-### Security Considerations
-- Private keys encrypted with user-specific key (derived from password?)
-- Or: custodial model where Mu holds keys (simpler but less "crypto native")
-- Withdrawal limits (daily/weekly)
-- 2FA for withdrawals
-- Rate limiting on all wallet operations
+### Key Storage
 
-### Dependencies
+```
+~/.mu/keys/
+├── dkim.key          # Existing DKIM key
+├── dkim.pub          # Existing DKIM public
+└── wallet.seed       # NEW: BIP39 mnemonic (24 words)
+```
+
+- If `WALLET_SEED` env var set → use that
+- Else if `~/.mu/keys/wallet.seed` exists → load it
+- Else → generate new mnemonic, save to file, log warning to backup
+
+### Dependencies (lightweight)
+
 ```go
 import (
-    "github.com/gagliardetto/solana-go"
-    "github.com/gagliardetto/solana-go/rpc"
-    "github.com/gagliardetto/solana-go/programs/token"
+    "github.com/tyler-smith/go-bip39"  // Mnemonic generation
+    "github.com/tyler-smith/go-bip32"  // HD key derivation
+    "golang.org/x/crypto/sha3"         // Keccak256 for ETH addresses
+    "crypto/ecdsa"                     // Stdlib
 )
 ```
 
+NOT using `go-ethereum` - too heavy. Just the minimal crypto libs.
+
 ### Config
+
 ```bash
-# Solana RPC
-SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-# Or devnet for testing:
-# SOLANA_RPC_URL=https://api.devnet.solana.com
+# Optional: provide seed via env var (otherwise auto-generated)
+WALLET_SEED="word1 word2 word3 ... word24"
 
-# USDC Token Mint (mainnet)
-USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+# Base RPC endpoint
+BASE_RPC_URL=https://mainnet.base.org
 
-# Master encryption key for wallet keys
-WALLET_ENCRYPTION_KEY=...
+# How often to poll for deposits (seconds)
+DEPOSIT_POLL_INTERVAL=30
 ```
 
-### Open Questions
-1. **Custodial vs Non-custodial?**
-   - Custodial: Mu holds keys, simpler UX, more liability
-   - Non-custodial: User controls keys, complex UX, less liability
-   - Hybrid: Mu holds keys but user can export seed phrase
+### Pricing
 
-2. **Gas fees?**
-   - Mu covers SOL fees? (simpler UX)
-   - User must hold SOL? (more crypto-native)
-   - Deduct fee equivalent from USDC balance?
+Keep existing credit system:
+- 1 credit = 1 penny (£0.01)
+- Fetch ETH/GBP price at deposit time
+- User sends 0.01 ETH (~£25) → gets 2500 credits
 
-3. **Minimum withdrawal?**
-   - Need to cover tx costs
-   - Suggest: $1 minimum withdrawal
+### Security
 
-4. **Fiat off-ramp?**
-   - Phase 1: Crypto only (withdraw to external wallet)
-   - Future: Partner with on/off-ramp provider
+- Seed file permissions: 600 (owner read/write only)
+- Never log seed or private keys
+- Rate limit deposit checks per user
+- Confirm deposits only after N block confirmations
