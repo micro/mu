@@ -273,23 +273,67 @@ func (a *Agent) parseStep(response string) (*Step, error) {
 	response = strings.TrimSuffix(response, "```")
 	response = strings.TrimSpace(response)
 
-	// Try to find JSON in the response
-	start := strings.Index(response, "{")
-	end := strings.LastIndex(response, "}")
-	if start >= 0 && end > start {
-		response = response[start : end+1]
+	// Extract the FIRST complete JSON object (LLMs sometimes output multiple)
+	jsonStr := extractFirstJSON(response)
+	if jsonStr == "" {
+		return nil, fmt.Errorf("no JSON object found in response")
 	}
 
 	// Fix invalid JSON: escape literal newlines inside string values
 	// LLMs sometimes output newlines in JSON strings which is invalid
-	response = fixJSONNewlines(response)
+	jsonStr = fixJSONNewlines(jsonStr)
 
 	var step Step
-	if err := json.Unmarshal([]byte(response), &step); err != nil {
+	if err := json.Unmarshal([]byte(jsonStr), &step); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %v", err)
 	}
 
 	return &step, nil
+}
+
+// extractFirstJSON extracts the first complete JSON object from a string
+// by counting braces to find the matching closing brace
+func extractFirstJSON(s string) string {
+	start := strings.Index(s, "{")
+	if start < 0 {
+		return ""
+	}
+
+	depth := 0
+	inString := false
+	escaped := false
+
+	for i := start; i < len(s); i++ {
+		c := s[i]
+
+		if escaped {
+			escaped = false
+			continue
+		}
+
+		if c == '\\' && inString {
+			escaped = true
+			continue
+		}
+
+		if c == '"' {
+			inString = !inString
+			continue
+		}
+
+		if !inString {
+			if c == '{' {
+				depth++
+			} else if c == '}' {
+				depth--
+				if depth == 0 {
+					return s[start : i+1]
+				}
+			}
+		}
+	}
+
+	return "" // No complete JSON object found
 }
 
 // fixJSONNewlines escapes literal newlines inside JSON string values
