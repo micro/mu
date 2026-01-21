@@ -704,7 +704,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <h3>Self-Host</h3>
 <p>Want unlimited and free forever? Run your own instance.</p>
 <p>Mu is open source (AGPL-3.0). Your server, your data, no limits.</p>
-<p class="mt-3"><a href="https://github.com/asim/mu" target="_blank">View on GitHub →</a></p>
+<p class="mt-3"><a href="https://github.com/micro/mu" target="_blank">View on GitHub →</a></p>
 </div>`)
 
 	// FAQ

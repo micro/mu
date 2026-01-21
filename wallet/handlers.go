@@ -57,7 +57,7 @@ func WalletPage(userID string) string {
 		// Self-hosting note
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Self-Host</h3>`)
-		sb.WriteString(`<p class="text-sm text-muted">Want unlimited and free? <a href="https://github.com/asim/mu">Self-host your own instance</a>.</p>`)
+		sb.WriteString(`<p class="text-sm text-muted">Want unlimited and free? <a href="https://github.com/micro/mu">Self-host your own instance</a>.</p>`)
 		sb.WriteString(`</div>`)
 	}
 

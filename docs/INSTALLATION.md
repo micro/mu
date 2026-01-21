@@ -12,7 +12,7 @@ Self-hosting Mu gives you complete control over your data and platform.
 
 ```bash
 # Clone the repository
-git clone https://github.com/asim/mu.git
+git clone https://github.com/micro/mu.git
 cd mu
 
 # Build and run

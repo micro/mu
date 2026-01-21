@@ -156,7 +156,7 @@ BASE_RPC_URL  # Default: https://mainnet.base.org
 ```
 
 ## Git
-- Remote: `git@github.com:asim/mu.git`
+- Remote: `git@github.com:micro/mu.git`
 - Test: `micro` admin on mu.xyz
 - SSH: `ssh -p 61194 mu@mu.xyz`
 
