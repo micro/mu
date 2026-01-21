@@ -134,7 +134,7 @@ function runAgent() {
 }
 
 function updateProgress() {
-	let html = '<div class="progress">';
+	let html = '<div class="agent-progress">';
 	for (const step of steps) {
 		const icon = step.result ? (step.result.success ? '✓' : '✗') : '...';
 		const status = step.result ? '' : ' running';

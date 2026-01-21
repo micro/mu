@@ -3828,7 +3828,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   color: var(--text-muted, #888);
   margin-top: 10px;
 }
-.progress {
+.agent-progress {
   display: flex;
   flex-direction: column;
   gap: 12px;
