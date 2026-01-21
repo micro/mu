@@ -170,7 +170,7 @@ BASE_RPC_URL  # Default: https://mainnet.base.org
 
 ## Git
 - Remote: `git@github.com:micro/mu.git`
-- Test: `micro` admin on mu.xyz
+- Test credentials: `ssh -p 61194 mu@mu.xyz 'cat ~/.mu/test-creds'`
 - SSH: `ssh -p 61194 mu@mu.xyz`
 
 ## UI Principles
