@@ -111,9 +111,6 @@ var TopupTiers = []TopupTier{
 }
 
 func init() {
-	// Register tools
-	RegisterWalletTools()
-
 	// Load wallets from disk
 	b, _ := data.LoadFile("wallets.json")
 	json.Unmarshal(b, &wallets)
@@ -125,6 +122,11 @@ func init() {
 	// Load daily usage from disk
 	b, _ = data.LoadFile("daily_usage.json")
 	json.Unmarshal(b, &dailyUsage)
+}
+
+// Load registers wallet tools (called from main)
+func Load() {
+	RegisterWalletTools()
 }
 
 // getEnvInt gets an environment variable as int with default

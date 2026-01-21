@@ -75,6 +75,7 @@ func main() {
 
 	// load micro apps (includes built-in apps: markets, reminder)
 	apps.Load()
+	wallet.Load()
 
 	// load the home cards (after apps so cards have data)
 	home.Load()
