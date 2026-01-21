@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -13,8 +14,8 @@ import (
 
 	"mu/app"
 	"mu/auth"
-	
 	"mu/data"
+	"mu/tools"
 	"mu/wallet"
 )
 
@@ -50,6 +51,9 @@ var (
 
 // Load initializes the apps package
 func Load() {
+	// Register tools
+	RegisterAppsTools()
+
 	loadApps()
 	app.Log("apps", "Loaded %d apps", len(apps))
 
@@ -1639,4 +1643,97 @@ func GetUserAppsPreview(userID string, limit int) string {
 	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// RegisterAppsTools registers apps tools with the tools registry
+func RegisterAppsTools() {
+	tools.Register(tools.Tool{
+		Name:        "apps.create",
+		Description: "Create a new micro app from a description",
+		Category:    "apps",
+		Path:        "/api/apps",
+		Method:      "POST",
+		Input: map[string]tools.Param{
+			"name":        {Type: "string", Description: "App name", Required: true},
+			"description": {Type: "string", Description: "What the app should do", Required: true},
+		},
+		Output: map[string]tools.Param{
+			"id":   {Type: "string", Description: "App ID"},
+			"name": {Type: "string", Description: "App name"},
+			"url":  {Type: "string", Description: "URL to view the app"},
+		},
+		Handler: handleAppsCreate,
+	})
+
+	tools.Register(tools.Tool{
+		Name:        "apps.list",
+		Description: "List user's apps",
+		Category:    "apps",
+		Path:        "/api/apps",
+		Method:      "GET",
+		Input: map[string]tools.Param{
+			"query": {Type: "string", Description: "Search filter", Required: false},
+		},
+		Output: map[string]tools.Param{
+			"apps": {Type: "array", Description: "List of apps"},
+		},
+		Handler: handleAppsList,
+	})
+}
+
+func handleAppsCreate(ctx context.Context, params map[string]any) (any, error) {
+	userID := tools.UserFromContext(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	name, _ := params["name"].(string)
+	description, _ := params["description"].(string)
+
+	if name == "" || description == "" {
+		return nil, fmt.Errorf("name and description are required")
+	}
+
+	newApp, err := CreateAppAsync(name, description, userID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("/apps/%s/develop", newApp.ID)
+
+	return map[string]any{
+		"id":      newApp.ID,
+		"name":    newApp.Name,
+		"url":     url,
+		"_action": "navigate",
+		"_url":    url,
+	}, nil
+}
+
+func handleAppsList(ctx context.Context, params map[string]any) (any, error) {
+	userID := tools.UserFromContext(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	query, _ := params["query"].(string)
+	userApps := GetUserApps(userID)
+
+	var results []map[string]any
+	for _, a := range userApps {
+		if query != "" {
+			q := strings.ToLower(query)
+			if !strings.Contains(strings.ToLower(a.Name), q) &&
+				!strings.Contains(strings.ToLower(a.Description), q) {
+				continue
+			}
+		}
+		results = append(results, map[string]any{
+			"id":   a.ID,
+			"name": a.Name,
+			"url":  fmt.Sprintf("/apps/%s", a.ID),
+		})
+	}
+
+	return map[string]any{"apps": results}, nil
 }
