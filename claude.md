@@ -26,6 +26,12 @@ No ads, no algorithms, no tracking. Simple apps that respect your time.
 - Notes auto-save with undo (localStorage stores original, revert on demand)
 - Agent added to sidebar
 - App generation: stronger prompts against placeholders, mustache template replacement for {{ mu.user.name }} etc.
+- GitHub repo moved from asim/mu to micro/mu
+- micro.mu landing page updated: "Simple tools for the internet" → links to mu.xyz, GitHub, Go Micro
+- App generation now uses Anthropic Claude Haiku for speed (~3-4s vs 9-12s with Fanar)
+- Template-based app generation with external /sdk.css and /sdk.js
+- Status page shows disk usage, all LLM providers with roles
+- Provider selection: ai.Prompt.Provider field to force specific LLM (Anthropic for apps, Fanar for chat)
 
 ## Platform Vision
 
@@ -145,15 +151,22 @@ Free tier: 10 AI queries/day
 ## Environment Variables
 
 ```bash
-# LLM Providers (checked in order)
-ANTHROPIC_API_KEY / ANTHROPIC_MODEL
-FANAR_API_KEY / FANAR_API_URL  
-MODEL_NAME / MODEL_API_URL  # Ollama
+# LLM Providers
+FANAR_API_KEY / FANAR_API_URL    # Default for chat, summaries
+ANTHROPIC_API_KEY / ANTHROPIC_MODEL  # Used for app generation (faster)
+MODEL_NAME / MODEL_API_URL       # Ollama fallback
 
 # Crypto Wallet (optional)
 WALLET_SEED  # BIP39 mnemonic, or auto-generated in ~/.mu/keys/wallet.seed
 BASE_RPC_URL  # Default: https://mainnet.base.org
 ```
+
+## LLM Provider Setup
+- **Default order**: Fanar → Anthropic → Ollama (conserves Anthropic credits)
+- **App generation**: Forces Anthropic via `ai.ProviderAnthropic` for speed
+- **Speed comparison**: Fanar ~40 tok/s, Anthropic Haiku ~100 tok/s
+- **Cost**: Anthropic ~$0.001/app, Fanar free
+- Status page shows all configured providers and their roles
 
 ## Git
 - Remote: `git@github.com:micro/mu.git`
