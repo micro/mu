@@ -566,3 +566,32 @@ Keep existing credit system:
 - Never log seed or private keys
 - Rate limit deposit checks per user
 - Confirm deposits only after N block confirmations
+
+## Tools Registry (January 2025)
+
+### Status
+19 tools registered across 9 categories. Agent dynamically discovers and invokes tools.
+
+### Registered Tools
+| Category | Tools |
+|----------|-------|
+| apps | apps.create, apps.list |
+| blog | blog.latest |
+| mail | mail.inbox, mail.send |
+| markets | markets.get_price, markets.list |
+| news | news.headlines, news.read, news.search |
+| notes | notes.create, notes.get, notes.list, notes.search |
+| reminder | reminder.today |
+| video | video.latest, video.play, video.search |
+| wallet | wallet.balance |
+
+### Architecture
+- `tools/tools.go` - Registry with Register, List, Get, Call
+- `tools/handler.go` - /tools endpoint (HTML + JSON)
+- Each package calls `tools.Register()` in its `Load()` function
+- Agent uses `tools.List()` for discovery, `tools.Call()` for invocation
+- Agent uses Anthropic provider for speed
+
+### TODO
+- `chat.ask` - Chat has complex room/websocket logic, needs refactoring to expose as simple tool
+- User-generated app tools via `mu.register()` in SDK
