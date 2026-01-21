@@ -1,0 +1,18 @@
+/* Base app template styles */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--mu-font-family, system-ui, sans-serif); padding: 20px; max-width: 500px; margin: 0 auto; color: var(--mu-text-primary, #222); }
+h1 { font-size: 1.5em; margin-bottom: 16px; }
+.card { background: var(--mu-card-background, #fff); border: 1px solid var(--mu-card-border, #e0e0e0); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.form { display: flex; gap: 8px; margin-bottom: 16px; }
+.form input, .form select { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+.form button, button.primary { padding: 10px 16px; background: var(--mu-accent-color, #222); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.item { display: flex; justify-content: space-between; align-items: center; }
+.item button { background: none; border: none; color: #999; cursor: pointer; font-size: 18px; }
+.empty { color: var(--mu-text-muted, #888); text-align: center; padding: 20px; }
+.meta { font-size: 0.85em; color: var(--mu-text-muted, #888); }
+.count { font-size: 3em; text-align: center; margin: 20px 0; font-weight: bold; }
+.stats { display: flex; gap: 16px; justify-content: center; margin-bottom: 16px; }
+.stat { text-align: center; }
+.stat-value { font-size: 1.5em; font-weight: bold; }
+.stat-label { font-size: 0.85em; color: var(--mu-text-muted, #888); }
