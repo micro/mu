@@ -7,13 +7,18 @@ import (
 	"sync"
 )
 
-// Tool represents a capability the agent can invoke
+// Tool represents a capability that can be invoked by agent, API, or HTTP
 type Tool struct {
-	Name        string                                                     `json:"name"`
-	Description string                                                     `json:"description"`
-	Category    string                                                     `json:"category"`
-	Input       map[string]Param                                           `json:"input,omitempty"`
+	Name        string                                                        `json:"name"`
+	Description string                                                        `json:"description"`
+	Category    string                                                        `json:"category"`
+	Input       map[string]Param                                              `json:"input,omitempty"`
+	Output      map[string]Param                                              `json:"output,omitempty"`
 	Handler     func(ctx context.Context, params map[string]any) (any, error) `json:"-"`
+
+	// HTTP routing (optional - for API/web access)
+	Path   string `json:"path,omitempty"`   // e.g., "/markets/price"
+	Method string `json:"method,omitempty"` // GET, POST, etc.
 }
 
 // Param describes an input parameter

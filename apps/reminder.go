@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 
 	"mu/app"
 	"mu/data"
+	"mu/tools"
 )
 
 var (
@@ -19,6 +21,9 @@ var (
 
 // LoadReminder initializes the reminder data
 func LoadReminder() {
+	// Register tools
+	RegisterReminderTools()
+
 	// Load cached HTML
 	b, err := data.LoadFile("reminder.html")
 	if err == nil {
@@ -107,4 +112,38 @@ func ReminderHTML() string {
 	reminderMutex.RLock()
 	defer reminderMutex.RUnlock()
 	return reminderHTML
+}
+
+// RegisterReminderTools registers reminder tools with the tools registry
+func RegisterReminderTools() {
+	tools.Register(tools.Tool{
+		Name:        "reminder.today",
+		Description: "Get today's daily Islamic reminder (Quranic verse and hadith)",
+		Category:    "reminder",
+		Path:        "/api/reminder",
+		Method:      "GET",
+		Output: map[string]tools.Param{
+			"verse":   {Type: "string", Description: "Quranic verse"},
+			"hadith":  {Type: "string", Description: "Related hadith"},
+			"name":    {Type: "string", Description: "Name of Allah"},
+			"message": {Type: "string", Description: "Daily message"},
+		},
+		Handler: handleGetReminder,
+	})
+}
+
+func handleGetReminder(ctx context.Context, params map[string]any) (any, error) {
+	// Return cached reminder data
+	reminderMutex.RLock()
+	html := reminderHTML
+	reminderMutex.RUnlock()
+
+	if html == "" {
+		return nil, fmt.Errorf("reminder not available")
+	}
+
+	// For now return the HTML, could parse and return structured data
+	return map[string]any{
+		"html": html,
+	}, nil
 }
