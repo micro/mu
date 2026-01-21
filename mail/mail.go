@@ -3,6 +3,7 @@ package mail
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
+	"mu/tools"
 	"mu/wallet"
 )
 
@@ -61,6 +63,9 @@ type Message struct {
 // Load messages from disk
 // Load messages from disk and configure SMTP/DKIM
 func Load() {
+	// Register tools
+	RegisterMailTools()
+
 	b, err := data.LoadFile("mail.json")
 	if err != nil {
 		messages = []*Message{}
@@ -1448,4 +1453,105 @@ func GetRecentMessages(limit int) []*Message {
 	result := make([]*Message, limit)
 	copy(result, messages[:limit])
 	return result
+}
+
+// RegisterMailTools registers mail tools with the tools registry
+func RegisterMailTools() {
+	tools.Register(tools.Tool{
+		Name:        "mail.send",
+		Description: "Send an email or internal message to another user",
+		Category:    "mail",
+		Path:        "/api/mail",
+		Method:      "POST",
+		Input: map[string]tools.Param{
+			"to":      {Type: "string", Description: "Recipient username or email", Required: true},
+			"subject": {Type: "string", Description: "Subject line", Required: true},
+			"body":    {Type: "string", Description: "Message body", Required: true},
+		},
+		Output: map[string]tools.Param{
+			"success": {Type: "bool", Description: "Whether send succeeded"},
+		},
+		Handler: handleMailSend,
+	})
+
+	tools.Register(tools.Tool{
+		Name:        "mail.inbox",
+		Description: "Check inbox for unread messages",
+		Category:    "mail",
+		Path:        "/api/mail/inbox",
+		Method:      "GET",
+		Output: map[string]tools.Param{
+			"unread":  {Type: "number", Description: "Number of unread messages"},
+			"threads": {Type: "array", Description: "Recent message threads"},
+		},
+		Handler: handleMailInbox,
+	})
+}
+
+func handleMailSend(ctx context.Context, params map[string]any) (any, error) {
+	userID := tools.UserFromContext(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	to, _ := params["to"].(string)
+	subject, _ := params["subject"].(string)
+	body, _ := params["body"].(string)
+
+	if to == "" || subject == "" || body == "" {
+		return nil, fmt.Errorf("to, subject, and body are required")
+	}
+
+	// Get sender info
+	acc, err := auth.GetAccount(userID)
+	if err != nil {
+		return nil, fmt.Errorf("could not get account info")
+	}
+
+	// Check if external email
+	isExternal := strings.Contains(to, "@") && !strings.HasSuffix(to, "@mu.xyz")
+
+	if isExternal {
+		// Check quota for external email
+		canProceed, _, cost, _ := wallet.CheckQuota(userID, wallet.OpExternalEmail)
+		if !canProceed {
+			return nil, fmt.Errorf("external email requires %d credits", cost)
+		}
+
+		err := SendMessage(acc.Name, userID, to, "", subject, body, "", "")
+		if err != nil {
+			return nil, err
+		}
+
+		wallet.ConsumeQuota(userID, wallet.OpExternalEmail)
+		return map[string]any{"success": true, "to": to}, nil
+	}
+
+	// Internal message
+	recipient, err := auth.GetAccountByName(to)
+	if err != nil {
+		return nil, fmt.Errorf("user '%s' not found", to)
+	}
+
+	err = SendMessage(acc.Name, userID, recipient.Name, recipient.ID, subject, body, "", "")
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{"success": true, "to": to}, nil
+}
+
+func handleMailInbox(ctx context.Context, params map[string]any) (any, error) {
+	userID := tools.UserFromContext(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	unreadCount := GetUnreadCount(userID)
+	preview := GetRecentThreadsPreview(userID, 5)
+
+	return map[string]any{
+		"unread":  unreadCount,
+		"preview": preview,
+	}, nil
 }
