@@ -19,6 +19,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
+	"mu/tools"
 	"mu/wallet"
 )
 
@@ -275,6 +276,9 @@ func loadChannels() {
 
 // Load videos
 func Load() {
+	// Register tools
+	RegisterVideoTools()
+
 	// load channels
 	loadChannels()
 
@@ -1154,4 +1158,134 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write([]byte(currentHtml))
+}
+
+// RegisterVideoTools registers video tools with the tools registry
+func RegisterVideoTools() {
+	tools.Register(tools.Tool{
+		Name:        "video.latest",
+		Description: "Get latest videos from subscribed YouTube channels",
+		Category:    "video",
+		Path:        "/api/video/latest",
+		Method:      "GET",
+		Output: map[string]tools.Param{
+			"videos": {Type: "array", Description: "List of recent videos with title, channel, thumbnail, url"},
+		},
+		Handler: handleVideoLatest,
+	})
+
+	tools.Register(tools.Tool{
+		Name:        "video.search",
+		Description: "Search YouTube for videos by keyword",
+		Category:    "video",
+		Path:        "/api/video/search",
+		Method:      "GET",
+		Input: map[string]tools.Param{
+			"query": {Type: "string", Description: "Search query", Required: true},
+		},
+		Output: map[string]tools.Param{
+			"results": {Type: "array", Description: "Search results with id, title, channel, thumbnail"},
+		},
+		Handler: handleVideoSearch,
+	})
+
+	tools.Register(tools.Tool{
+		Name:        "video.play",
+		Description: "Get URL to play a specific YouTube video",
+		Category:    "video",
+		Path:        "/api/video/play",
+		Method:      "GET",
+		Input: map[string]tools.Param{
+			"video_id": {Type: "string", Description: "YouTube video ID", Required: true},
+		},
+		Output: map[string]tools.Param{
+			"url":      {Type: "string", Description: "URL to play the video"},
+			"video_id": {Type: "string", Description: "Video ID"},
+		},
+		Handler: handleVideoPlay,
+	})
+}
+
+func handleVideoLatest(ctx context.Context, params map[string]any) (any, error) {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var results []map[string]string
+	for category, ch := range videos {
+		for _, v := range ch.Videos {
+			results = append(results, map[string]string{
+				"id":        v.ID,
+				"title":     v.Title,
+				"channel":   v.Channel,
+				"category":  category,
+				"thumbnail": v.Thumbnail,
+				"url":       fmt.Sprintf("/video?id=%s", v.ID),
+			})
+		}
+	}
+
+	return map[string]any{"videos": results}, nil
+}
+
+func handleVideoSearch(ctx context.Context, params map[string]any) (any, error) {
+	query, _ := params["query"].(string)
+	if query == "" {
+		return nil, fmt.Errorf("query is required")
+	}
+
+	apiKey := os.Getenv("YOUTUBE_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("YouTube API not configured")
+	}
+
+	ytClient, err := youtube.NewService(context.Background(), option.WithAPIKey(apiKey))
+	if err != nil {
+		return nil, fmt.Errorf("YouTube client error: %v", err)
+	}
+
+	resp, err := ytClient.Search.List([]string{"id", "snippet"}).
+		Q(query).
+		SafeSearch("strict").
+		MaxResults(5).
+		Type("video").
+		Do()
+	if err != nil {
+		return nil, fmt.Errorf("search failed: %v", err)
+	}
+
+	var results []map[string]string
+	for _, item := range resp.Items {
+		if item.Id.VideoId == "" {
+			continue
+		}
+		thumbnail := ""
+		if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
+			thumbnail = item.Snippet.Thumbnails.Medium.Url
+		}
+		results = append(results, map[string]string{
+			"id":        item.Id.VideoId,
+			"title":     item.Snippet.Title,
+			"channel":   item.Snippet.ChannelTitle,
+			"thumbnail": thumbnail,
+			"url":       fmt.Sprintf("/video?id=%s", item.Id.VideoId),
+		})
+	}
+
+	return map[string]any{"results": results}, nil
+}
+
+func handleVideoPlay(ctx context.Context, params map[string]any) (any, error) {
+	videoID, _ := params["video_id"].(string)
+	if videoID == "" {
+		return nil, fmt.Errorf("video_id is required")
+	}
+
+	url := fmt.Sprintf("/video?id=%s&autoplay=1", videoID)
+
+	return map[string]any{
+		"url":      url,
+		"video_id": videoID,
+		"_action":  "navigate",
+		"_url":     url,
+	}, nil
 }
