@@ -23,6 +23,14 @@ type Message struct {
 // History is a list of conversation messages
 type History []Message
 
+// Provider constants
+const (
+	ProviderDefault   = ""          // Use configured default
+	ProviderAnthropic = "anthropic" // Force Anthropic Claude
+	ProviderFanar     = "fanar"     // Force Fanar
+	ProviderOllama    = "ollama"    // Force Ollama
+)
+
 // Prompt represents a request to the LLM
 type Prompt struct {
 	System   string   // System prompt override
@@ -31,6 +39,7 @@ type Prompt struct {
 	Context  History  // Conversation history
 	Question string   // User's question
 	Priority int      // Request priority (0=high, 1=medium, 2=low)
+	Provider string   // Force specific provider (empty = default)
 }
 
 // Default system prompt template

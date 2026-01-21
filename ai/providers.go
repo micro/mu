@@ -55,21 +55,57 @@ func generate(prompt *Prompt) (string, error) {
 
 	messages = append(messages, map[string]string{"role": "user", "content": prompt.Question})
 
-	// Provider priority: Anthropic > Fanar > Ollama
-	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-		model := os.Getenv("ANTHROPIC_MODEL")
-		if model == "" {
-			model = "claude-haiku-4-20250514"
+	// Check for forced provider
+	if prompt.Provider == ProviderAnthropic {
+		if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+			model := os.Getenv("ANTHROPIC_MODEL")
+			if model == "" {
+				model = "claude-haiku-4-20250514"
+			}
+			return generateAnthropic(key, model, systemPromptText, messages)
 		}
-		return generateAnthropic(key, model, systemPromptText, messages)
+		return "", fmt.Errorf("anthropic provider requested but ANTHROPIC_API_KEY not set")
 	}
 
+	if prompt.Provider == ProviderFanar {
+		if key := os.Getenv("FANAR_API_KEY"); key != "" {
+			url := os.Getenv("FANAR_API_URL")
+			if url == "" {
+				url = "https://api.fanar.qa"
+			}
+			return generateFanar(url, key, messages, prompt.Priority)
+		}
+		return "", fmt.Errorf("fanar provider requested but FANAR_API_KEY not set")
+	}
+
+	if prompt.Provider == ProviderOllama {
+		model := os.Getenv("MODEL_NAME")
+		if model == "" {
+			model = "llama3.2"
+		}
+		url := os.Getenv("MODEL_API_URL")
+		if url == "" {
+			url = "http://localhost:11434"
+		}
+		return generateOllama(url, model, messages)
+	}
+
+	// Default provider priority: Fanar > Anthropic > Ollama
+	// (Fanar first to conserve Anthropic credits)
 	if key := os.Getenv("FANAR_API_KEY"); key != "" {
 		url := os.Getenv("FANAR_API_URL")
 		if url == "" {
 			url = "https://api.fanar.qa"
 		}
 		return generateFanar(url, key, messages, prompt.Priority)
+	}
+
+	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+		model := os.Getenv("ANTHROPIC_MODEL")
+		if model == "" {
+			model = "claude-haiku-4-20250514"
+		}
+		return generateAnthropic(key, model, systemPromptText, messages)
 	}
 
 	// Default to Ollama

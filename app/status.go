@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"mu/auth"
@@ -29,10 +30,18 @@ type StatusResponse struct {
 	Uptime      string        `json:"uptime"`
 	GoVersion   string        `json:"go_version"`
 	Memory      MemoryStatus  `json:"memory"`
+	Disk        DiskStatus    `json:"disk"`
 	Services    []StatusCheck `json:"services"`
 	Config      []StatusCheck `json:"config"`
 	OnlineUsers int           `json:"online_users"`
 	IndexStats  IndexStatus   `json:"index"`
+}
+
+// DiskStatus represents disk usage
+type DiskStatus struct {
+	UsedGB    float64 `json:"used_gb"`
+	TotalGB   float64 `json:"total_gb"`
+	Percent   float64 `json:"percent"`
 }
 
 // IndexStatus represents search index status
@@ -189,6 +198,9 @@ func buildStatus() StatusResponse {
 		}
 	}
 
+	// Get disk usage
+	diskUsed, diskTotal, diskPercent := getDiskUsage()
+
 	return StatusResponse{
 		Healthy:   healthy,
 		Uptime:    formatUptime(time.Since(startTime)),
@@ -198,6 +210,11 @@ func buildStatus() StatusResponse {
 			Sys:        m.Sys / 1024 / 1024,
 			NumGC:      m.NumGC,
 			Goroutines: runtime.NumGoroutine(),
+		},
+		Disk: DiskStatus{
+			UsedGB:  float64(diskUsed) / 1024 / 1024 / 1024,
+			TotalGB: float64(diskTotal) / 1024 / 1024 / 1024,
+			Percent: diskPercent,
 		},
 		Services:    services,
 		Config:      config,
@@ -218,24 +235,47 @@ func formatDKIMDetails(enabled bool, domain, selector string) string {
 }
 
 func checkLLMConfig() (provider string, configured bool) {
+	var providers []string
+	
+	if os.Getenv("FANAR_API_KEY") != "" {
+		providers = append(providers, "Fanar (default)")
+	}
 	if os.Getenv("ANTHROPIC_API_KEY") != "" {
 		model := os.Getenv("ANTHROPIC_MODEL")
 		if model == "" {
-			model = "claude-3-5-sonnet-20241022"
+			model = "claude-haiku-4"
 		}
-		return fmt.Sprintf("Anthropic (%s)", model), true
+		providers = append(providers, fmt.Sprintf("Anthropic/%s (apps)", model))
 	}
-	if os.Getenv("FANAR_API_KEY") != "" {
-		return "Fanar", true
-	}
-	if os.Getenv("OLLAMA_API_URL") != "" {
-		model := os.Getenv("OLLAMA_MODEL")
+	if os.Getenv("MODEL_API_URL") != "" || os.Getenv("OLLAMA_API_URL") != "" {
+		model := os.Getenv("MODEL_NAME")
 		if model == "" {
-			model = "default"
+			model = "llama3.2"
 		}
-		return fmt.Sprintf("Ollama (%s)", model), true
+		providers = append(providers, fmt.Sprintf("Ollama/%s", model))
 	}
-	return "Not configured", false
+	
+	if len(providers) == 0 {
+		return "Not configured", false
+	}
+	return strings.Join(providers, ", "), true
+}
+
+// getDiskUsage returns disk usage for the data directory
+func getDiskUsage() (used, total uint64, percent float64) {
+	dir := os.ExpandEnv("$HOME/.mu/data")
+	
+	// Try to get disk stats using syscall
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(dir, &stat); err != nil {
+		return 0, 0, 0
+	}
+	
+	total = stat.Blocks * uint64(stat.Bsize)
+	free := stat.Bfree * uint64(stat.Bsize)
+	used = total - free
+	percent = float64(used) / float64(total) * 100
+	return
 }
 
 func maskDomain(domain string) string {
@@ -340,6 +380,14 @@ func renderStatusHTML(status StatusResponse) string {
 <span style="font-size: 18px;">%s</span>
 </div>`, statusClass, statusIcon, statusText))
 
+	// Disk warning
+	diskWarning := ""
+	if status.Disk.Percent > 90 {
+		diskWarning = ` style="color: #f44336;"`
+	} else if status.Disk.Percent > 75 {
+		diskWarning = ` style="color: #ff9800;"`
+	}
+
 	// System Info
 	sb.WriteString(`<div class="status-section">
 <h3>System</h3>
@@ -351,6 +399,10 @@ func renderStatusHTML(status StatusResponse) string {
 <div class="system-info-item">
 <div class="system-info-label">Memory</div>
 <div class="system-info-value">` + fmt.Sprintf("%dMB / %dMB", status.Memory.Alloc, status.Memory.Sys) + `</div>
+</div>
+<div class="system-info-item">
+<div class="system-info-label">Disk</div>
+<div class="system-info-value"` + diskWarning + `>` + fmt.Sprintf("%.1fGB / %.1fGB (%.0f%%)", status.Disk.UsedGB, status.Disk.TotalGB, status.Disk.Percent) + `</div>
 </div>
 <div class="system-info-item">
 <div class="system-info-label">Online Users</div>

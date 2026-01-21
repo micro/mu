@@ -57,6 +57,7 @@ Now generate the filled template:`
 		System:   systemPrompt,
 		Question: prompt,
 		Priority: ai.PriorityHigh,
+		Provider: ai.ProviderAnthropic, // Use Anthropic for faster code generation
 	}
 
 	response, err := ai.Ask(llmPrompt)
@@ -145,6 +146,7 @@ Apply this modification and output the complete updated HTML file:`
 		System:   systemPrompt,
 		Question: instruction,
 		Priority: ai.PriorityHigh,
+		Provider: ai.ProviderAnthropic, // Use Anthropic for faster code generation
 	}
 
 	response, err := ai.Ask(llmPrompt)
