@@ -218,6 +218,7 @@ Rules:
 5. After each tool result, decide if you need more steps or can provide final_answer
 6. Always end with final_answer when done
 7. Be concise - minimize steps
+8. IMPORTANT: When providing final_answer, include the ACTUAL DATA from tool results (headlines, prices, search results, etc.) - don't just say you found them, SHOW them
 
 Current user: %s`, toolsJSON, a.userID)
 }
