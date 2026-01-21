@@ -33,7 +33,7 @@ type Agent struct {
 
 // Step represents one step in the agent's execution
 type Step struct {
-	Thought    string      `json:"thought"`
+	Reasoning  string      `json:"reasoning"`
 	Tool       string      `json:"tool"`
 	Parameters interface{} `json:"parameters"`
 	Result     *ToolResult `json:"result,omitempty"`
@@ -205,7 +205,7 @@ Available tools:
 
 You must respond with valid JSON in this exact format:
 {
-  "thought": "Your reasoning about what to do next",
+  "reasoning": "Why this step is needed",
   "tool": "tool_name",
   "parameters": { "param1": "value1" }
 }

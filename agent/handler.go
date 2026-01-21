@@ -141,8 +141,8 @@ function updateProgress() {
 		html += '<div class="step-progress' + status + '">';
 		html += '<span class="icon">' + icon + '</span> ';
 		html += '<span class="tool">' + step.tool + '</span>';
-		if (step.thought) {
-			html += '<div class="thought">' + step.thought + '</div>';
+		if (step.reasoning) {
+			html += '<div class="reasoning">' + step.reasoning + '</div>';
 		}
 		// Show HTML results inline (like video thumbnails)
 		if (step.result && step.result.html) {
@@ -181,7 +181,7 @@ function showResult(result) {
 		html += '<details class="steps"><summary>Steps (' + steps.length + ')</summary>';
 		for (const step of steps) {
 			html += '<div class="step">';
-			if (step.thought) html += '<div class="thought">' + step.thought + '</div>';
+			if (step.reasoning) html += '<div class="reasoning">' + step.reasoning + '</div>';
 			html += '<span class="tool">' + step.tool + '</span>';
 			if (step.result && step.result.error) {
 				html += ' <span style="color:red">Error: ' + step.result.error + '</span>';

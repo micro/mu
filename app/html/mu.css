@@ -3813,7 +3813,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   background: var(--hover-background, #fafafa);
   border-radius: 4px;
 }
-.agent-output .step .thought {
+.agent-output .step .reasoning {
   font-style: italic;
   color: var(--text-muted, #888);
 }
@@ -3849,7 +3849,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-family: monospace;
   font-weight: bold;
 }
-.step-progress .thought {
+.step-progress .reasoning {
   font-size: 13px;
   color: var(--text-muted, #888);
   margin-top: 4px;
