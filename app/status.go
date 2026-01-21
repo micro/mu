@@ -352,25 +352,7 @@ func renderStatusHTML(status StatusResponse) string {
 		statusText = "Issues Detected"
 	}
 
-	sb.WriteString(`<style>
-.status-page { max-width: 600px; }
-.status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 30px; }
-.status-ok { color: #4caf50; }
-.status-error { color: #f44336; }
-.status-warn { color: #ff9800; }
-.status-section { margin-bottom: 30px; }
-.status-section h3 { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-.status-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
-.status-item:last-child { border-bottom: none; }
-.status-name { font-weight: 500; }
-.status-value { display: flex; align-items: center; gap: 8px; }
-.status-icon { font-size: 16px; }
-.status-details { color: #666; font-size: 13px; }
-.system-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-.system-info-item { background: #f9f9f9; padding: 15px; border-radius: 8px; }
-.system-info-label { font-size: 12px; color: #666; text-transform: uppercase; }
-.system-info-value { font-size: 18px; font-weight: 600; margin-top: 5px; }
-</style>`)
+
 
 	sb.WriteString(`<div class="status-page">`)
 

@@ -656,11 +656,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<p class="mb-5 text-muted">Mu is a tool, not a destination. Pay for what you use, nothing more.</p>`)
 
 	// 2-column pricing grid with responsive class
-	content.WriteString(`<style>
-.pricing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 40px; }
-@media (max-width: 700px) { .pricing-grid { grid-template-columns: 1fr; } }
-.pricing-grid .card { margin-bottom: 0; }
-</style>`)
 	content.WriteString(`<div class="pricing-grid">`)
 
 	// Free tier

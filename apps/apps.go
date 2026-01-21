@@ -1016,135 +1016,6 @@ func renderDevelopForm(w http.ResponseWriter, a *App, message string) {
 	}
 
 	formHTML := fmt.Sprintf(`
-<style>
-.develop-container {
-	display: flex;
-	flex-direction: column;
-	gap: 20px;
-}
-.preview-section {
-	border: 1px solid #ddd;
-	border-radius: 8px;
-	overflow: hidden;
-	background: #fff;
-}
-.preview-frame {
-	width: 100%%;;
-	height: 400px;
-	border: none;
-	display: block;
-}
-.instruction-section {
-	background: #f9f9f9;
-	padding: 20px;
-	border-radius: 8px;
-}
-.instruction-input {
-	width: 100%%;;
-	padding: 12px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	font-size: 15px;
-	font-family: inherit;
-	margin-bottom: 10px;
-	box-sizing: border-box;
-}
-.instruction-input:disabled {
-	background: #eee;
-}
-.history {
-	margin-top: 15px;
-	font-size: 13px;
-	color: #666;
-}
-.history ul {
-	margin: 5px 0 0 20px;
-	padding: 0;
-}
-.history li {
-	margin: 3px 0;
-}
-.version-history {
-	margin-top: 15px;
-	font-size: 13px;
-	color: #666;
-	padding-top: 15px;
-	border-top: 1px solid #eee;
-}
-.version-history ul {
-	margin: 5px 0 0 0;
-	padding: 0;
-	list-style: none;
-}
-.version-history li {
-	margin: 5px 0;
-	display: flex;
-	align-items: center;
-	gap: 10px;
-}
-.version-label {
-	flex: 1;
-}
-.version-time {
-	color: #999;
-	font-size: 12px;
-}
-.revert-btn {
-	padding: 2px 8px;
-	font-size: 12px;
-	background: #f5f5f5;
-	border: 1px solid #ddd;
-	border-radius: 3px;
-	cursor: pointer;
-}
-.revert-btn:hover {
-	background: #eee;
-}
-.meta-section {
-	display: flex;
-	gap: 15px;
-	align-items: center;
-	margin-top: 15px;
-	padding-top: 15px;
-	border-top: 1px solid #ddd;
-	flex-wrap: wrap;
-}
-.meta-section input[type="text"] {
-	padding: 8px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	font-size: 14px;
-	width: auto;
-}
-.checkbox-group {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-}
-.checkbox-group input[type="checkbox"] {
-	width: auto;
-}
-.code-toggle {
-	margin-top: 15px;
-}
-.code-toggle summary {
-	cursor: pointer;
-	color: #666;
-	font-size: 13px;
-}
-.code-editor {
-	width: 100%%;;
-	min-height: 300px;
-	font-family: monospace;
-	font-size: 12px;
-	padding: 10px;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	margin-top: 10px;
-	box-sizing: border-box;
-}
-</style>
-
 <div class="develop-container">
   <div class="preview-section">
     <iframe id="preview" class="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms" src="%s"></iframe>
@@ -1250,42 +1121,6 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 
 	// Get user info for SDK injection
 	viewHTML := fmt.Sprintf(`
-<style>
-.app-frame {
-	width: 100%%;
-	height: 500px;
-	border: 1px solid var(--card-border, #e8e8e8);
-	border-radius: var(--border-radius, 6px);
-	background: white;
-}
-.widget-btn {
-	display: inline-block;
-	padding: 6px 12px;
-	border-radius: 4px;
-	text-decoration: none;
-	font-size: small;
-}
-.widget-btn.add {
-	background: var(--btn-primary, #000);
-	color: white;
-}
-.widget-btn.remove {
-	background: #eee;
-	color: #333;
-}
-.app-info {
-	color: #666;
-	font-size: small;
-	margin-bottom: 15px;
-}
-.app-info a {
-	color: #666;
-	text-decoration: none;
-}
-.app-info a:hover {
-	text-decoration: underline;
-}
-</style>
 <div class="app-info">%s · by %s · %s%s</div>
 %s
 <p>%s</p>
@@ -1679,6 +1514,25 @@ func RegisterAppsTools() {
 		},
 		Handler: handleAppsList,
 	})
+
+	tools.Register(tools.Tool{
+		Name:        "apps.edit",
+		Description: "Modify an existing app with new instructions",
+		Category:    "apps",
+		Path:        "/api/apps/:id",
+		Method:      "PATCH",
+		Input: map[string]tools.Param{
+			"id":          {Type: "string", Description: "App ID to modify", Required: true},
+			"instruction": {Type: "string", Description: "What changes to make", Required: true},
+		},
+		Output: map[string]tools.Param{
+			"id":     {Type: "string", Description: "App ID"},
+			"name":   {Type: "string", Description: "App name"},
+			"url":    {Type: "string", Description: "URL to view the app"},
+			"status": {Type: "string", Description: "App status (generating, ready, error)"},
+		},
+		Handler: handleAppsEdit,
+	})
 }
 
 func handleAppsCreate(ctx context.Context, params map[string]any) (any, error) {
@@ -1736,4 +1590,101 @@ func handleAppsList(ctx context.Context, params map[string]any) (any, error) {
 	}
 
 	return map[string]any{"apps": results}, nil
+}
+
+func handleAppsEdit(ctx context.Context, params map[string]any) (any, error) {
+	userID := tools.UserFromContext(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	id, _ := params["id"].(string)
+	instruction, _ := params["instruction"].(string)
+
+	if id == "" || instruction == "" {
+		return nil, fmt.Errorf("id and instruction are required")
+	}
+
+	// Get the app
+	a := GetApp(id)
+	if a == nil {
+		return nil, fmt.Errorf("app not found: %s", id)
+	}
+
+	// Check ownership
+	if a.AuthorID != userID {
+		return nil, fmt.Errorf("not authorized to edit this app")
+	}
+
+	// Content moderation
+	if isBlockedContent(instruction) {
+		return nil, fmt.Errorf("this request contains content that goes against our values")
+	}
+
+	// Check quota
+	canProceed, _, cost, _ := wallet.CheckQuota(userID, wallet.OpAppModify)
+	if !canProceed {
+		return nil, fmt.Errorf("insufficient credits. Modifying an app costs %d credits", cost)
+	}
+
+	// Consume quota
+	wallet.ConsumeQuota(userID, wallet.OpAppModify)
+
+	// Save current code to history
+	previousCode := a.Code
+	previousLabel := "Before: " + instruction
+	if len(previousLabel) > 60 {
+		previousLabel = previousLabel[:57] + "..."
+	}
+
+	// Set status to generating
+	mutex.Lock()
+	a.Status = "generating"
+	a.Error = ""
+	saveApps()
+	mutex.Unlock()
+
+	// Async modification
+	go func() {
+		modified, err := modifyAppCode(previousCode, instruction)
+
+		mutex.Lock()
+		defer mutex.Unlock()
+
+		if err != nil {
+			a.Status = "error"
+			a.Error = err.Error()
+		} else {
+			// Save to history
+			a.CodeHistory = append(a.CodeHistory, CodeVersion{
+				Code:      previousCode,
+				Label:     previousLabel,
+				CreatedAt: time.Now(),
+			})
+			if len(a.CodeHistory) > 10 {
+				a.CodeHistory = a.CodeHistory[len(a.CodeHistory)-10:]
+			}
+			a.Code = modified
+			a.Status = "ready"
+			if a.Description != "" {
+				a.Description = a.Description + "\n• " + instruction
+			} else {
+				a.Description = "• " + instruction
+			}
+		}
+		a.UpdatedAt = time.Now()
+		saveApps()
+	}()
+
+	url := fmt.Sprintf("/apps/%s/develop", id)
+
+	return map[string]any{
+		"id":      a.ID,
+		"name":    a.Name,
+		"url":     url,
+		"status":  "generating",
+		"message": "App modification started. Check the develop page for progress.",
+		"_action": "navigate",
+		"_url":    url,
+	}, nil
 }

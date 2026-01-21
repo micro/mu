@@ -382,12 +382,18 @@ type PageOpts struct {
 - [x] **chat/** - Interactive chat UI (not suited for app.Page)
 - [x] **wallet/** - Dashboard UI (not suited for app.Page)
 
-#### Phase 3: Cleanup
+#### Phase 3: Cleanup ✅
 - [x] Move notes editor CSS to mu.css
 - [x] Move apps form/card CSS to mu.css
 - [x] Move video commonStyles to mu.css
-- [ ] Move remaining inline CSS (admin, agent, docs, etc) - 13 left
-- [ ] Update claude.md with final patterns
+- [x] Move admin styles to mu.css (admin-links, admin-table, email-log, blocklist)
+- [x] Move agent styles to mu.css (agent-input, agent-output, progress, spinner)
+- [x] Move status page styles to mu.css
+- [x] Move apps develop/view styles to mu.css
+- [x] Move docs styles to mu.css
+- [x] Move video player embed styles to mu.css
+- [x] Move pricing grid styles to mu.css
+- [x] Update claude.md with final patterns
 
 ### Current Status
 - [x] app/ui.go created with SearchBar, ActionLink, Grid, Title, Page, etc.
@@ -397,7 +403,7 @@ type PageOpts struct {
 - [x] mail/ uses app.Page() with tab navigation
 - [x] All search bars use .search-bar class (unified sizing)
 - [x] Fixed duplicate title issue in notes edit view
-- [ ] Phase 3 cleanup remaining
+- [x] Phase 3 cleanup complete - only 1 inline style remains (loading spinner, intentionally standalone)
 
 
 ## Crypto Wallet Plan
@@ -570,12 +576,12 @@ Keep existing credit system:
 ## Tools Registry (January 2025)
 
 ### Status
-19 tools registered across 9 categories. Agent dynamically discovers and invokes tools.
+20 tools registered across 9 categories. Agent dynamically discovers and invokes tools.
 
 ### Registered Tools
 | Category | Tools |
 |----------|-------|
-| apps | apps.create, apps.list |
+| apps | apps.create, apps.edit, apps.list |
 | blog | blog.latest |
 | mail | mail.inbox, mail.send |
 | markets | markets.get_price, markets.list |

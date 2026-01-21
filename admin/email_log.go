@@ -71,24 +71,6 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	if len(messages) == 0 {
 		content.WriteString(`<p class="text-muted">No messages yet.</p>`)
 	} else {
-		content.WriteString(`<style>
-			.email-log { width: 100%; border-collapse: collapse; font-size: 13px; }
-			.email-log th { text-align: left; padding: 8px; border-bottom: 2px solid #ddd; }
-			.email-log td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: top; }
-			.email-log .dir-in { color: #22c55e; }
-			.email-log .dir-out { color: #3b82f6; }
-			.email-log .dir-int { color: #666; }
-			.email-log .subject { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-			.email-log .addr { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; }
-			.email-log .hide-mobile { }
-			@media (max-width: 600px) {
-				.email-log { font-size: 12px; }
-				.email-log th, .email-log td { padding: 6px 4px; }
-				.email-log .hide-mobile { display: none; }
-				.email-log .subject { max-width: 120px; }
-				.email-log .addr { max-width: 80px; font-size: 11px; }
-			}
-		</style>`)
 		content.WriteString(`<table class="email-log">`)
 		content.WriteString(`<tr><th>Time</th><th>Dir</th><th>From</th><th class="hide-mobile">To</th><th>Subject</th></tr>`)
 

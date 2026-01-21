@@ -22,12 +22,6 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 	users := auth.GetAllAccounts()
 
 	content := `<h2>Admin Dashboard</h2>
-	<style>
-		.admin-links { display: flex; flex-direction: column; gap: 12px; max-width: 400px; }
-		.admin-links a { padding: 12px 16px; background: var(--card-background, #fff); border: 1px solid var(--card-border, #e8e8e8); border-radius: var(--border-radius, 6px); text-decoration: none; color: var(--text-primary, #333); display: flex; justify-content: space-between; align-items: center; }
-		.admin-links a:hover { background: var(--hover-background, #fafafa); }
-		.admin-links .count { color: var(--text-muted, #888); font-size: 14px; }
-	</style>
 	<div class="admin-links">
 		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 		<a href="/admin/moderate">Moderation Queue</a>
@@ -95,18 +89,6 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	content := `<p><a href="/admin">← Admin</a></p>
 	<h2>Users</h2>
 	<p>Total: ` + fmt.Sprintf("%d", len(users)) + `</p>
-	<style>
-		.admin-table { width: 100%; border-collapse: collapse; }
-		.admin-table th { text-align: left; padding: 10px; border-bottom: 2px solid #ddd; }
-		.admin-table td { padding: 10px; border-bottom: 1px solid #eee; }
-		.admin-table .center { text-align: center; }
-		@media only screen and (max-width: 600px) {
-			.admin-table { font-size: 0.85em; }
-			.admin-table th, .admin-table td { padding: 5px 3px; }
-			.admin-table .created-col { display: none; }
-			.admin-table .delete-btn { padding: 3px 6px !important; font-size: 0.8em !important; }
-		}
-	</style>
 	<table class="admin-table">
 		<thead>
 			<tr>
@@ -228,16 +210,6 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 	bl := getBlocklist()
 
 	content := `<h2>Mail Blocklist</h2>
-	
-	<style>
-		.blocklist-section { margin: 20px 0; }
-		.blocklist-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-		.blocklist-table th { text-align: left; padding: 10px; border-bottom: 2px solid #ddd; }
-		.blocklist-table td { padding: 10px; border-bottom: 1px solid #eee; }
-		.block-form { margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px; }
-		.block-form form { display: flex; gap: 8px; flex-wrap: wrap; }
-		.block-form input[type="text"] { padding: 8px; width: 300px; max-width: 100%; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; flex: 1; min-width: 200px; }
-	</style>
 
 	<div class="blocklist-section">
 		<h3>Blocked Emails (` + fmt.Sprintf("%d", len(bl.Emails)) + `)</h3>

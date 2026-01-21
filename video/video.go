@@ -1126,14 +1126,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Video | Mu</title>
     <link rel="stylesheet" href="/mu.css">
-    <style>
-      body { margin: 0; padding: 0; background: #000; }
-      .video { position: relative; width: 100%%; height: 100vh; }
-      .video iframe { position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: none; }
-    </style>
   </head>
-  <body>
-    <div class="video">%s</div>
+  <body class="video-player-body">
+    <div class="video-embed">%s</div>
   </body>
 </html>
 `

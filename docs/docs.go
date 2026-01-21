@@ -79,9 +79,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Render markdown to HTML
 	rendered := app.Render(content)
 
-	// Wrap in navigation with image sizing
-	html := fmt.Sprintf(`<style>.docs-content img { max-width: 100%%; height: auto; border-radius: 8px; margin: 10px 0; }</style>
-<div class="docs">
+	// Wrap in navigation
+	html := fmt.Sprintf(`<div class="docs">
 <div class="docs-nav">
 <a href="/docs">← All Docs</a>
 </div>
@@ -117,15 +116,7 @@ func AboutHandler(w http.ResponseWriter, r *http.Request) {
 func renderIndex(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
-	content.WriteString(`<style>
-.docs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-.docs-card { padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
-.docs-card h4 { margin: 0 0 8px 0; }
-.docs-card p { margin: 0; color: #666; font-size: 14px; }
-.docs-category { margin-top: 30px; }
-.docs-category:first-child { margin-top: 0; }
-.docs-category h3 { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-</style>`)
+
 
 	content.WriteString(`<p>Documentation for using and self-hosting Mu.</p>`)
 
