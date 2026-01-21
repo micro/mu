@@ -60,7 +60,7 @@ func generate(prompt *Prompt) (string, error) {
 		if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
 			model := os.Getenv("ANTHROPIC_MODEL")
 			if model == "" {
-				model = "claude-haiku-4-20250514"
+				model = "claude-3-haiku-20240307"
 			}
 			return generateAnthropic(key, model, systemPromptText, messages)
 		}
@@ -103,7 +103,7 @@ func generate(prompt *Prompt) (string, error) {
 	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
 		model := os.Getenv("ANTHROPIC_MODEL")
 		if model == "" {
-			model = "claude-haiku-4-20250514"
+			model = "claude-3-haiku-20240307"
 		}
 		return generateAnthropic(key, model, systemPromptText, messages)
 	}
