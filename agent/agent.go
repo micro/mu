@@ -203,7 +203,7 @@ func (a *Agent) buildSystemPrompt() string {
 Available tools:
 %s
 
-You must respond with valid JSON in this exact format:
+You must respond with EXACTLY ONE JSON object per response:
 {
   "reasoning": "Why this step is needed",
   "tool": "tool_name",
@@ -211,10 +211,10 @@ You must respond with valid JSON in this exact format:
 }
 
 Rules:
-1. You execute TASKS - playing videos, searching news, creating apps, sending emails, checking prices, saving notes, etc.
-2. If the user asks a general question, philosophical question, or wants conversation, use final_answer to say: "I help with tasks like playing videos, searching news, or creating apps. For questions and conversation, try Chat."
-3. Do NOT search for answers to general questions - just politely redirect to Chat.
-4. Use one tool at a time
+1. ONE TOOL PER RESPONSE - never output multiple JSON objects
+2. You execute TASKS - playing videos, searching news, creating apps, sending emails, checking prices, saving notes, etc.
+3. If the user asks a general question, philosophical question, or wants conversation, use final_answer to say: "I help with tasks like playing videos, searching news, or creating apps. For questions and conversation, try Chat."
+4. Do NOT search for answers to general questions - just politely redirect to Chat.
 5. After each tool result, decide if you need more steps or can provide final_answer
 6. Always end with final_answer when done
 7. Be concise - minimize steps
