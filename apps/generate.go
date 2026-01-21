@@ -15,13 +15,13 @@ const appTemplate = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{TITLE}}</title>
-  <link rel="stylesheet" href="/app-template.css">
+  <link rel="stylesheet" href="/sdk.css">
   <style>{{EXTRA_CSS}}</style>
 </head>
 <body>
   <h1>{{TITLE}}</h1>
 {{BODY_HTML}}
-  <script src="/app-template.js"></script>
+  <script src="/sdk.js"></script>
   <script>
     const DATA_KEY = '{{DATA_KEY}}';
 {{APP_JS}}
@@ -44,8 +44,8 @@ Rules:
 7. NEVER use placeholder comments - write ALL actual code
 8. Start output with <!DOCTYPE html>
 
-CSS classes available (from app-template.css): .card, .form, .form input, .form button, .list, .item, .empty, .meta, .count, .stats, .stat, .stat-value, .stat-label
-JS helpers available (from app-template.js): timeAgo(timestamp), today(), formatDate(ts), formatTime(ts)
+CSS classes available (from sdk.css): .card, .form, .form input, .form button, .list, .item, .empty, .meta, .count, .stats, .stat, .stat-value, .stat-label
+JS helpers available (from sdk.js): timeAgo(timestamp), today(), formatDate(ts), formatTime(ts)
 Mu SDK: mu.db.get(key), mu.db.set(key, value), mu.fetch(url), mu.user.name, mu.user.id
 
 TEMPLATE:
