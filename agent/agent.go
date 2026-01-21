@@ -280,10 +280,62 @@ func (a *Agent) parseStep(response string) (*Step, error) {
 		response = response[start : end+1]
 	}
 
+	// Fix invalid JSON: escape literal newlines inside string values
+	// LLMs sometimes output newlines in JSON strings which is invalid
+	response = fixJSONNewlines(response)
+
 	var step Step
 	if err := json.Unmarshal([]byte(response), &step); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %v", err)
 	}
 
 	return &step, nil
+}
+
+// fixJSONNewlines escapes literal newlines inside JSON string values
+func fixJSONNewlines(s string) string {
+	var result strings.Builder
+	inString := false
+	escaped := false
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+
+		if escaped {
+			result.WriteByte(c)
+			escaped = false
+			continue
+		}
+
+		if c == '\\' && inString {
+			result.WriteByte(c)
+			escaped = true
+			continue
+		}
+
+		if c == '"' {
+			inString = !inString
+			result.WriteByte(c)
+			continue
+		}
+
+		if inString && c == '\n' {
+			result.WriteString("\\n")
+			continue
+		}
+
+		if inString && c == '\r' {
+			result.WriteString("\\r")
+			continue
+		}
+
+		if inString && c == '\t' {
+			result.WriteString("\\t")
+			continue
+		}
+
+		result.WriteByte(c)
+	}
+
+	return result.String()
 }
