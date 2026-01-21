@@ -285,8 +285,10 @@ Background: bg-light, bg-success-light, bg-warning-light
 All inputs get consistent height (36px) via mu.css. Don't override.
 
 ## Next Up
-- Migrate existing pages to use card system
-- Remove duplicate per-page CSS
+- Update api/api.go with handler registration (API autodiscovery)
+- Mu Market - app marketplace with payments
+- Wallet Phase 3: Sweep & consolidation
+- Wallet Phase 4: Withdrawals
 
 ## Architecture Refactor Plan
 
@@ -370,7 +372,7 @@ type PageOpts struct {
 - [ ] Update api/api.go with handler registration
 - [x] Add app.Page() for standard page layout
 - [x] Update app.SearchBar() to match video/news style (has Search button)
-- [ ] Consolidate CSS - remove all inline <style> blocks
+- [x] Consolidate CSS - remove all inline <style> blocks
 
 #### Phase 2: Package Migration (one at a time)
 - [x] **notes/** - Uses app.Page(), app.Grid(), app.SearchBar(), app.ActionLink()
