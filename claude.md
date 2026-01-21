@@ -19,6 +19,71 @@ No ads, no algorithms, no tracking. Simple apps that respect your time.
 4. **Pay-as-you-go, No Ads** - You're the customer, not the product
 5. **Self-hostable** - Single binary, your data stays yours
 
+## Recent Session Changes
+- Sidebar sorted alphabetically (Home at top, Login/Logout at bottom)
+- Notes preserve newlines in card previews (white-space: pre-wrap)
+- Chat summaries redesigned: single collapsible "Today's Topics" card, summaries shown directly on topic pages
+- Notes auto-save with undo (localStorage stores original, revert on demand)
+- Agent added to sidebar
+- App generation: stronger prompts against placeholders, mustache template replacement for {{ mu.user.name }} etc.
+
+## Platform Vision
+
+### Agent as Primary Interface
+The agent should be the front door to Mu. Users express intent, agent orchestrates:
+- "Track my spending" → agent creates expense tracker app
+- "Email me weekly summary" → agent wires app + mail + scheduling
+- "Show crypto prices" → agent surfaces markets app
+
+Current tools exist (news_search, send_email, app_create). Missing: making agent the primary UI, persistent memory, scheduled tasks.
+
+### App Platform Primitives
+Apps need a real platform, not just isolated iframes:
+
+**Current:**
+- `mu.db` - persistent storage ✓
+- `mu.fetch` - proxied HTTP ✓
+- `mu.user` - identity (exists but limited)
+- `mu.cache` - local caching ✓
+
+**Needed:**
+- `mu.schedule` - run something later (cron-like)
+- `mu.notify` - push to user (email, toast)
+- `mu.events` - pub/sub between apps
+
+Agent tools are high-level (feature-aware). App primitives are low-level (composable). Clean separation.
+
+### Mu Market (TODO)
+With crypto wallet (payments) + app builder (apps), establish a marketplace:
+
+**Concept:**
+- Creators build and publish apps
+- Apps can be free, paid, or freemium
+- Payments via existing wallet/credits system
+- Revenue split: creator gets %, Mu takes platform fee
+
+**Features:**
+- Browse/search marketplace
+- App ratings and reviews
+- Install counts, trending
+- Creator profiles and earnings
+- One-click install to user's app list
+
+**Pricing Models:**
+- Free - no cost
+- One-time purchase - pay once, own forever
+- Usage-based - pay per use (credits)
+- Subscription - recurring (future)
+
+**Implementation:**
+- `App.Price` field (0 = free, >0 = credits)
+- `App.CreatorID` - who built it
+- `/market` route - browse/search
+- Purchase flow: check balance → deduct credits → grant access
+- Creator dashboard: earnings, installs, analytics
+
+This creates an ecosystem: users get utility, creators get paid, Mu takes a cut. Aligns incentives without ads.
+
 ## Core Building Blocks
 
 | Package | Purpose | Key Exports |
