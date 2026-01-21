@@ -27,6 +27,7 @@ import (
 	"mu/news"
 	"mu/notes"
 	"mu/user"
+	"mu/tools"
 	"mu/video"
 	"mu/wallet"
 )
@@ -176,6 +177,9 @@ func main() {
 	// serve agent
 	http.HandleFunc("/agent", agent.Handler)
 	http.HandleFunc("/agent/", agent.Handler)
+
+	http.HandleFunc("/tools", tools.Handler)
+	http.HandleFunc("/tools/", tools.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
