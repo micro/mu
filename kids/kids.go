@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"mu/app"
+	"mu/auth"
 	"mu/data"
 
 	"google.golang.org/api/option"
@@ -30,6 +31,7 @@ type Playlist struct {
 // SavedPlaylist is a user-created playlist
 type SavedPlaylist struct {
 	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
 	Name      string    `json:"name"`
 	Icon      string    `json:"icon"`
 	Videos    []Video   `json:"videos"`
@@ -204,6 +206,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
+	// Get current user to show their saved playlists
+	sess, _ := auth.GetSession(r)
+	userID := ""
+	if sess != nil {
+		userID = sess.Account
+	}
+
 	var content strings.Builder
 
 	// Search bar
@@ -230,9 +239,12 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 			pl.Name, pl.Icon, pl.Name, count))
 	}
 
-	// Saved playlists
+	// User's saved playlists only (if logged in)
 	mu.RLock()
 	for _, sp := range savedPlaylists {
+		if sp.UserID != userID {
+			continue // Skip playlists owned by other users
+		}
 		icon := sp.Icon
 		if icon == "" {
 			icon = "🎵"
@@ -795,51 +807,80 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 }
 
 func handlePlaylists(w http.ResponseWriter, r *http.Request) {
+	// Get current user
+	sess, _ := auth.GetSession(r)
+	userID := ""
+	if sess != nil {
+		userID = sess.Account
+	}
+
 	var content strings.Builder
 	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
-	content.WriteString(`<h2>Create Playlist</h2>`)
-	content.WriteString(`<form method="post" action="/kids/api/playlist" class="max-w-sm">
-		<input type="hidden" name="action" value="create">
-		<div class="mb-3">
-			<label>Name</label>
-			<input type="text" name="name" required placeholder="e.g. Journey Songs">
-		</div>
-		<div class="mb-3">
-			<label>Icon (emoji)</label>
-			<input type="text" name="icon" placeholder="🎸" maxlength="4">
-		</div>
-		<button type="submit" class="btn">Create</button>
-	</form>`)
 	
-	// List existing playlists
-	mu.RLock()
-	if len(savedPlaylists) > 0 {
-		content.WriteString(`<h2 class="mt-5">Your Playlists</h2>`)
+	if userID == "" {
+		content.WriteString(`<p><a href="/login">Login</a> to create and manage playlists.</p>`)
+	} else {
+		content.WriteString(`<h2>Create Playlist</h2>`)
+		content.WriteString(`<form method="post" action="/kids/api/playlist" class="max-w-sm">
+			<input type="hidden" name="action" value="create">
+			<div class="mb-3">
+				<label>Name</label>
+				<input type="text" name="name" required placeholder="e.g. Journey Songs">
+			</div>
+			<div class="mb-3">
+				<label>Icon (emoji)</label>
+				<input type="text" name="icon" placeholder="🎸" maxlength="4">
+			</div>
+			<button type="submit" class="btn">Create</button>
+		</form>`)
+		
+		// List user's playlists only
+		mu.RLock()
+		hasPlaylists := false
 		for _, sp := range savedPlaylists {
-			icon := sp.Icon
-			if icon == "" {
-				icon = "🎵"
+			if sp.UserID == userID {
+				if !hasPlaylists {
+					content.WriteString(`<h2 class="mt-5">Your Playlists</h2>`)
+					hasPlaylists = true
+				}
+				icon := sp.Icon
+				if icon == "" {
+					icon = "🎵"
+				}
+				content.WriteString(fmt.Sprintf(`<div class="d-flex items-center gap-2 mb-2">
+					<span class="text-xl">%s</span>
+					<a href="/kids/saved/%s">%s</a>
+					<span class="text-muted">(%d songs)</span>
+					<form method="post" action="/kids/api/playlist" class="m-0">
+						<input type="hidden" name="action" value="delete">
+						<input type="hidden" name="id" value="%s">
+						<button type="submit" class="btn-danger text-sm">Delete</button>
+					</form>
+				</div>`, icon, sp.ID, html.EscapeString(sp.Name), len(sp.Videos), sp.ID))
 			}
-			content.WriteString(fmt.Sprintf(`<div class="d-flex items-center gap-2 mb-2">
-				<span class="text-xl">%s</span>
-				<a href="/kids/saved/%s">%s</a>
-				<span class="text-muted">(%d songs)</span>
-				<form method="post" action="/kids/api/playlist" class="m-0">
-					<input type="hidden" name="action" value="delete">
-					<input type="hidden" name="id" value="%s">
-					<button type="submit" class="btn-danger text-sm">Delete</button>
-				</form>
-			</div>`, icon, sp.ID, html.EscapeString(sp.Name), len(sp.Videos), sp.ID))
 		}
+		mu.RUnlock()
 	}
-	mu.RUnlock()
 	
 	html := app.RenderHTMLForRequest("Playlists", "Manage playlists", content.String(), r)
 	w.Write([]byte(html))
 }
 
 func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
+	// Get current user (optional for GET, required for POST)
+	sess, _ := auth.GetSession(r)
+	userID := ""
+	if sess != nil {
+		userID = sess.Account
+	}
+
 	if r.Method == "POST" {
+		// Require auth for creating/modifying playlists
+		if userID == "" {
+			http.Error(w, "Login required", http.StatusUnauthorized)
+			return
+		}
+
 		// Support both multipart (JS FormData) and urlencoded form data
 		if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
 			r.ParseMultipartForm(10 << 20) // 10MB max
@@ -859,6 +900,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			id := fmt.Sprintf("%d", time.Now().UnixNano())
 			sp := &SavedPlaylist{
 				ID:        id,
+				UserID:    userID,
 				Name:      name,
 				Icon:      icon,
 				Videos:    []Video{},
@@ -874,7 +916,10 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 		case "delete":
 			id := r.FormValue("id")
 			mu.Lock()
-			delete(savedPlaylists, id)
+			// Only allow deletion if user owns the playlist
+			if sp, ok := savedPlaylists[id]; ok && sp.UserID == userID {
+				delete(savedPlaylists, id)
+			}
 			mu.Unlock()
 			saveSavedPlaylists()
 			http.Redirect(w, r, "/kids/playlists", http.StatusSeeOther)
@@ -887,7 +932,8 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			thumbnail := r.FormValue("thumbnail")
 			
 			mu.Lock()
-			if sp, ok := savedPlaylists[id]; ok {
+			// Only allow adding to playlists the user owns
+			if sp, ok := savedPlaylists[id]; ok && sp.UserID == userID {
 				// Check for duplicate
 				found := false
 				for _, v := range sp.Videos {
@@ -920,14 +966,17 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// GET - return list of playlists as JSON (for add-to-playlist modal)
+	// Only return playlists owned by the current user
 	mu.RLock()
 	var list []map[string]interface{}
 	for _, sp := range savedPlaylists {
-		list = append(list, map[string]interface{}{
-			"id":   sp.ID,
-			"name": sp.Name,
-			"icon": sp.Icon,
-		})
+		if sp.UserID == userID {
+			list = append(list, map[string]interface{}{
+				"id":   sp.ID,
+				"name": sp.Name,
+				"icon": sp.Icon,
+			})
+		}
 	}
 	mu.RUnlock()
 	
