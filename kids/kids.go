@@ -8,11 +8,13 @@ import (
 	"html"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"mu/app"
+	"mu/data"
 
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
@@ -25,6 +27,15 @@ type Playlist struct {
 	ID   string `json:"id"` // YouTube playlist ID
 }
 
+// SavedPlaylist is a user-created playlist
+type SavedPlaylist struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Icon      string    `json:"icon"`
+	Videos    []Video   `json:"videos"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // Video represents a video from a playlist
 type Video struct {
 	ID        string `json:"id"`
@@ -34,11 +45,12 @@ type Video struct {
 }
 
 var (
-	mu        sync.RWMutex
-	playlists []Playlist
-	videos    map[string][]Video // playlist name -> videos
-	client    *youtube.Service
-	apiKey    string
+	mu             sync.RWMutex
+	playlists      []Playlist
+	videos         map[string][]Video // playlist name -> videos
+	savedPlaylists map[string]*SavedPlaylist
+	client         *youtube.Service
+	apiKey         string
 )
 
 // Default playlists - curated, not algorithmic
@@ -51,6 +63,7 @@ var defaultPlaylists = []Playlist{
 func init() {
 	apiKey = os.Getenv("YOUTUBE_API_KEY")
 	videos = make(map[string][]Video)
+	savedPlaylists = make(map[string]*SavedPlaylist)
 }
 
 // Load initializes the kids package
@@ -72,6 +85,9 @@ func Load() {
 		app.Log("kids", "Using default playlists: %v", err)
 		playlists = defaultPlaylists
 	}
+
+	// Load saved playlists
+	loadSavedPlaylists()
 
 	// Initial load
 	go refreshVideos()
@@ -167,12 +183,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "" || path == "/":
 		handleHome(w, r)
+	case path == "search":
+		handleSearch(w, r)
 	case strings.HasPrefix(path, "play/"):
 		id := strings.TrimPrefix(path, "play/")
 		handlePlay(w, r, id)
 	case strings.HasPrefix(path, "list/"):
 		name := strings.TrimPrefix(path, "list/")
 		handleList(w, r, name)
+	case strings.HasPrefix(path, "saved/"):
+		rest := strings.TrimPrefix(path, "saved/")
+		handleSaved(w, r, rest)
+	case path == "playlists":
+		handlePlaylists(w, r)
+	case path == "api/playlist":
+		handlePlaylistAPI(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -181,9 +206,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func handleHome(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
+	// Search bar
+	content.WriteString(`<div class="search-bar" style="margin-bottom: 20px;">
+		<form action="/kids/search" method="get" style="display: flex; gap: 10px; width: 100%;">
+			<input type="text" name="q" placeholder="Search songs..." style="flex: 1;">
+			<button type="submit" class="btn">Search</button>
+		</form>
+	</div>`)
+
 	content.WriteString(`<div class="kids-home">`)
 	content.WriteString(`<div class="kids-categories">`)
 
+	// Built-in playlists
 	for _, pl := range playlists {
 		mu.RLock()
 		count := len(videos[pl.Name])
@@ -197,6 +231,30 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 			</a>`,
 			pl.Name, pl.Icon, pl.Name, count))
 	}
+
+	// Saved playlists
+	mu.RLock()
+	for _, sp := range savedPlaylists {
+		icon := sp.Icon
+		if icon == "" {
+			icon = "🎵"
+		}
+		content.WriteString(fmt.Sprintf(`
+			<a href="/kids/saved/%s" class="kids-category-btn">
+				<span class="kids-icon">%s</span>
+				<span class="kids-label">%s</span>
+				<span class="kids-count">%d</span>
+			</a>`,
+			sp.ID, icon, html.EscapeString(sp.Name), len(sp.Videos)))
+	}
+	mu.RUnlock()
+
+	// Add playlist button
+	content.WriteString(`
+		<a href="/kids/playlists" class="kids-category-btn" style="border-style: dashed;">
+			<span class="kids-icon">➕</span>
+			<span class="kids-label">New</span>
+		</a>`)
 
 	content.WriteString(`</div></div>`)
 
@@ -223,14 +281,22 @@ func handleList(w http.ResponseWriter, r *http.Request, name string) {
 
 	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
 	content.WriteString(fmt.Sprintf(`<div class="kids-header"><span class="kids-icon-lg">%s</span></div>`, playlist.Icon))
-	content.WriteString(`<div class="kids-videos">`)
 
+	// Play All button
 	mu.RLock()
-	for _, v := range videos[name] {
-		content.WriteString(renderVideoCard(v))
-	}
+	vids := videos[name]
 	mu.RUnlock()
 
+	if len(vids) > 0 {
+		content.WriteString(fmt.Sprintf(`<div style="text-align: center; margin-bottom: 20px;">
+			<a href="/kids/play/%s?playlist=%s&idx=0" class="btn" style="font-size: 1.2em; padding: 15px 40px;">▶ Play All</a>
+		</div>`, vids[0].ID, name))
+	}
+
+	content.WriteString(`<div class="kids-videos">`)
+	for i, v := range vids {
+		content.WriteString(renderVideoCardWithIndex(v, name, i))
+	}
 	content.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest(playlist.Name, fmt.Sprintf("%s for kids", playlist.Name), content.String(), r)
@@ -238,103 +304,106 @@ func handleList(w http.ResponseWriter, r *http.Request, name string) {
 }
 
 func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
-	// Find video in our playlists
-	mu.RLock()
+	// Get playlist context for prev/next navigation
+	playlistName := r.URL.Query().Get("playlist")
+	idxStr := r.URL.Query().Get("idx")
+	idx, _ := strconv.Atoi(idxStr)
+	savedID := r.URL.Query().Get("saved") // for saved playlists
+
+	// Get the playlist videos
+	var playlistVideos []Video
 	var video *Video
-	for _, vids := range videos {
-		for i := range vids {
-			if vids[i].ID == id {
-				video = &vids[i]
+	var backURL string
+
+	if savedID != "" {
+		// Saved playlist
+		mu.RLock()
+		if sp, ok := savedPlaylists[savedID]; ok {
+			playlistVideos = sp.Videos
+			backURL = "/kids/saved/" + savedID
+		}
+		mu.RUnlock()
+	} else if playlistName != "" {
+		// Built-in playlist
+		mu.RLock()
+		playlistVideos = videos[playlistName]
+		mu.RUnlock()
+		backURL = "/kids/list/" + playlistName
+	}
+
+	// Find video in playlist or search all
+	if len(playlistVideos) > 0 && idx >= 0 && idx < len(playlistVideos) {
+		video = &playlistVideos[idx]
+	} else {
+		// Fallback: search all playlists
+		mu.RLock()
+		for name, vids := range videos {
+			for i := range vids {
+				if vids[i].ID == id {
+					video = &vids[i]
+					playlistVideos = vids
+					idx = i
+					playlistName = name
+					backURL = "/kids/list/" + name
+					break
+				}
+			}
+			if video != nil {
 				break
 			}
 		}
-		if video != nil {
-			break
+		// Also check saved playlists
+		if video == nil {
+			for sid, sp := range savedPlaylists {
+				for i := range sp.Videos {
+					if sp.Videos[i].ID == id {
+						video = &sp.Videos[i]
+						playlistVideos = sp.Videos
+						idx = i
+						savedID = sid
+						backURL = "/kids/saved/" + sid
+						break
+					}
+				}
+				if video != nil {
+					break
+				}
+			}
 		}
+		mu.RUnlock()
 	}
-	mu.RUnlock()
 
 	if video == nil {
 		http.Error(w, "Video not available", http.StatusForbidden)
 		return
 	}
 
-	// Simple player - audio focus with thumbnail
-	html := fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>%s | Kids</title>
-	<link rel="stylesheet" href="/mu.css">
-	<style>
-		.kids-player { max-width: 600px; margin: 0 auto; padding: 20px; text-align: center; }
-		.kids-player h2 { font-size: 1.3em; margin: 20px 0; }
-		.kids-thumb { width: 100%%; max-width: 400px; border-radius: 16px; margin: 0 auto; }
-		.kids-audio { display: none; }
-		.kids-controls { margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
-		.kids-btn { padding: 15px 30px; font-size: 1.2em; border-radius: 30px; border: none; cursor: pointer; text-decoration: none; display: inline-block; }
-		.kids-btn-play { background: var(--accent-color, #0d7377); color: white; font-size: 1.5em; }
-		.kids-btn-back { background: #eee; color: #333; }
-		.kids-btn-video { background: #333; color: white; }
-	</style>
-</head>
-<body>
-	<div class="kids-player">
-		<img src="%s" class="kids-thumb" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-		<h2>%s</h2>
-		<div class="kids-controls">
-			<a href="/kids/list/%s" class="kids-btn kids-btn-back">← Back</a>
-			<button onclick="togglePlay()" id="playBtn" class="kids-btn kids-btn-play">▶</button>
-			<button onclick="showVideo()" class="kids-btn kids-btn-video">📺 Video</button>
-		</div>
-		<div id="videoContainer" style="display:none; margin-top: 20px;">
-			<iframe id="player" width="100%%" height="300" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="border-radius: 12px;"></iframe>
-		</div>
-	</div>
-	<script>
-		let playing = false;
-		const videoId = '%s';
-		
-		function togglePlay() {
-			const btn = document.getElementById('playBtn');
-			const container = document.getElementById('videoContainer');
-			const player = document.getElementById('player');
-			
-			if (!playing) {
-				// Start audio-only (video hidden)
-				player.src = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0';
-				container.style.display = 'none';
-				btn.textContent = '⏸';
-				playing = true;
+	if backURL == "" {
+		backURL = "/kids"
+	}
+
+	// Calculate prev/next
+	var prevURL, nextURL string
+	if len(playlistVideos) > 0 {
+		if idx > 0 {
+			prev := playlistVideos[idx-1]
+			if savedID != "" {
+				prevURL = fmt.Sprintf("/kids/play/%s?saved=%s&idx=%d", prev.ID, savedID, idx-1)
 			} else {
-				player.src = '';
-				btn.textContent = '▶';
-				playing = false;
+				prevURL = fmt.Sprintf("/kids/play/%s?playlist=%s&idx=%d", prev.ID, playlistName, idx-1)
 			}
 		}
-		
-		function showVideo() {
-			const container = document.getElementById('videoContainer');
-			const player = document.getElementById('player');
-			const btn = document.getElementById('playBtn');
-			
-			container.style.display = 'block';
-			player.src = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0';
-			btn.textContent = '⏸';
-			playing = true;
+		if idx < len(playlistVideos)-1 {
+			next := playlistVideos[idx+1]
+			if savedID != "" {
+				nextURL = fmt.Sprintf("/kids/play/%s?saved=%s&idx=%d", next.ID, savedID, idx+1)
+			} else {
+				nextURL = fmt.Sprintf("/kids/play/%s?playlist=%s&idx=%d", next.ID, playlistName, idx+1)
+			}
 		}
-	</script>
-</body>
-</html>`,
-		html.EscapeString(video.Title),
-		video.Thumbnail,
-		id,
-		html.EscapeString(video.Title),
-		video.Playlist,
-		id,
-	)
+	}
 
-	w.Write([]byte(html))
+	renderPlayer(w, video, id, backURL, prevURL, nextURL)
 }
 
 func renderVideoCard(v Video) string {
@@ -351,9 +420,496 @@ func renderVideoCard(v Video) string {
 	)
 }
 
+func renderVideoCardWithIndex(v Video, playlist string, idx int) string {
+	return fmt.Sprintf(`
+		<a href="/kids/play/%s?playlist=%s&idx=%d" class="kids-video-card">
+			<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+			<div class="kids-video-title">%s</div>
+		</a>`,
+		v.ID, playlist, idx,
+		v.Thumbnail,
+		html.EscapeString(v.Title),
+		v.ID,
+		html.EscapeString(truncate(v.Title, 50)),
+	)
+}
+
+func renderVideoCardForSaved(v Video, savedID string, idx int) string {
+	return fmt.Sprintf(`
+		<a href="/kids/play/%s?saved=%s&idx=%d" class="kids-video-card">
+			<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+			<div class="kids-video-title">%s</div>
+		</a>`,
+		v.ID, savedID, idx,
+		v.Thumbnail,
+		html.EscapeString(v.Title),
+		v.ID,
+		html.EscapeString(truncate(v.Title, 50)),
+	)
+}
+
 func truncate(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
 	return s[:max-3] + "..."
+}
+
+
+func renderPlayer(w http.ResponseWriter, video *Video, id, backURL, prevURL, nextURL string) {
+	// Build prev/next button HTML
+	prevBtn := `<span class="kids-btn kids-btn-nav disabled">⏮</span>`
+	if prevURL != "" {
+		prevBtn = fmt.Sprintf(`<a href="%s" class="kids-btn kids-btn-nav" id="prevBtn">⏮</a>`, prevURL)
+	}
+	nextBtn := `<span class="kids-btn kids-btn-nav disabled">⏭</span>`
+	if nextURL != "" {
+		nextBtn = fmt.Sprintf(`<a href="%s" class="kids-btn kids-btn-nav" id="nextBtn">⏭</a>`, nextURL)
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>%s | Kids</title>
+	<link rel="stylesheet" href="/mu.css">
+	<style>
+		.kids-player { max-width: 600px; margin: 0 auto; padding: 20px; text-align: center; }
+		.kids-player h2 { font-size: 1.3em; margin: 20px 0; }
+		.kids-thumb { width: 100%%; max-width: 400px; border-radius: 16px; margin: 0 auto; cursor: pointer; }
+		.kids-controls { margin-top: 30px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center; }
+		.kids-btn { padding: 15px 25px; font-size: 1.2em; border-radius: 30px; border: none; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+		.kids-btn-play { background: var(--accent-color, #0d7377); color: white; font-size: 1.8em; min-width: 80px; }
+		.kids-btn-nav { background: #444; color: white; font-size: 1.4em; padding: 12px 20px; }
+		.kids-btn-nav.disabled { background: #ccc; color: #888; cursor: not-allowed; }
+		.kids-btn-back { background: #eee; color: #333; }
+		.kids-secondary { margin-top: 15px; display: flex; gap: 10px; justify-content: center; }
+		.kids-btn-sm { padding: 10px 20px; font-size: 1em; }
+		#videoContainer { display: none; margin-top: 20px; }
+		#videoContainer iframe { border-radius: 12px; }
+	</style>
+</head>
+<body>
+	<div class="kids-player">
+		<img src="%s" class="kids-thumb" onclick="togglePlay()" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+		<h2>%s</h2>
+		<div class="kids-controls">
+			%s
+			<button onclick="togglePlay()" id="playBtn" class="kids-btn kids-btn-play">▶</button>
+			%s
+		</div>
+		<div class="kids-secondary">
+			<a href="%s" class="kids-btn kids-btn-back kids-btn-sm">← Back</a>
+			<button onclick="showVideo()" class="kids-btn kids-btn-sm" style="background:#333;color:white;">📺 Video</button>
+		</div>
+		<div id="videoContainer">
+			<iframe id="player" width="100%%" height="300" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+		</div>
+	</div>
+	<script>
+		let playing = false;
+		const videoId = '%s';
+		const nextURL = '%s';
+		let player;
+		
+		// Load YouTube IFrame API
+		const tag = document.createElement('script');
+		tag.src = 'https://www.youtube.com/iframe_api';
+		document.head.appendChild(tag);
+		
+		function onYouTubeIframeAPIReady() {
+			player = new YT.Player('player', {
+				videoId: videoId,
+				playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
+				events: {
+					'onStateChange': onPlayerStateChange
+				}
+			});
+		}
+		
+		function onPlayerStateChange(event) {
+			// YT.PlayerState.ENDED = 0
+			if (event.data === 0 && nextURL) {
+				// Auto-play next
+				window.location.href = nextURL;
+			}
+		}
+		
+		function togglePlay() {
+			const btn = document.getElementById('playBtn');
+			if (!playing) {
+				if (player && player.playVideo) {
+					player.playVideo();
+				}
+				btn.textContent = '⏸';
+				playing = true;
+			} else {
+				if (player && player.pauseVideo) {
+					player.pauseVideo();
+				}
+				btn.textContent = '▶';
+				playing = false;
+			}
+		}
+		
+		function showVideo() {
+			const container = document.getElementById('videoContainer');
+			container.style.display = 'block';
+			if (player && player.playVideo) {
+				player.playVideo();
+			}
+			document.getElementById('playBtn').textContent = '⏸';
+			playing = true;
+		}
+	</script>
+</body>
+</html>`,
+		html.EscapeString(video.Title),
+		video.Thumbnail,
+		id,
+		html.EscapeString(video.Title),
+		prevBtn,
+		nextBtn,
+		backURL,
+		id,
+		nextURL,
+	)
+	w.Write([]byte(html))
+}
+
+func handleSearch(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	
+	var content strings.Builder
+	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
+	content.WriteString(`<div class="search-bar" style="margin-bottom: 20px;">
+		<form action="/kids/search" method="get" style="display: flex; gap: 10px; width: 100%;">
+			<input type="text" name="q" placeholder="Search songs..." value="` + html.EscapeString(query) + `" style="flex: 1;">
+			<button type="submit" class="btn">Search</button>
+		</form>
+	</div>`)
+	
+	if query != "" && client != nil {
+		results, err := searchYouTube(query)
+		if err != nil {
+			content.WriteString(fmt.Sprintf(`<p class="text-error">Search error: %v</p>`, err))
+		} else if len(results) == 0 {
+			content.WriteString(`<p class="text-muted">No results found</p>`)
+		} else {
+			content.WriteString(`<div class="kids-videos">`)
+			for _, v := range results {
+				content.WriteString(renderSearchResult(v))
+			}
+			content.WriteString(`</div>`)
+		}
+	} else if query != "" {
+		content.WriteString(`<p class="text-muted">Search not available</p>`)
+	}
+	
+	// Add modal and script for add-to-playlist
+	content.WriteString(`
+	<div id="addModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+		<div style="background:white;padding:20px;border-radius:12px;max-width:300px;width:90%;">
+			<h3 style="margin-top:0;">Add to Playlist</h3>
+			<div id="playlistList"></div>
+			<button onclick="closeModal()" class="btn" style="margin-top:15px;width:100%;">Cancel</button>
+		</div>
+	</div>
+	<script>
+		let pendingVideo = null;
+		
+		function addToPlaylist(videoId, title, thumbnail) {
+			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
+			fetch('/kids/api/playlist')
+				.then(r => r.json())
+				.then(playlists => {
+					const list = document.getElementById('playlistList');
+					if (!playlists || playlists.length === 0) {
+						list.innerHTML = '<p>No playlists yet. <a href="/kids/playlists">Create one</a></p>';
+					} else {
+						list.innerHTML = playlists.map(p => 
+							'<button onclick="doAdd(\'' + p.id + '\')" style="display:block;width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;background:white;cursor:pointer;text-align:left;font-size:1em;">' +
+							(p.icon || '🎵') + ' ' + p.name + '</button>'
+						).join('');
+					}
+					document.getElementById('addModal').style.display = 'flex';
+				});
+		}
+		
+		function doAdd(playlistId) {
+			const form = new FormData();
+			form.append('action', 'add');
+			form.append('playlist_id', playlistId);
+			form.append('video_id', pendingVideo.id);
+			form.append('title', pendingVideo.title);
+			form.append('thumbnail', pendingVideo.thumbnail);
+			
+			fetch('/kids/api/playlist', {
+				method: 'POST',
+				body: form,
+				headers: {'Accept': 'application/json'}
+			}).then(r => r.json()).then(() => {
+				closeModal();
+				alert('Added!');
+			});
+		}
+		
+		function closeModal() {
+			document.getElementById('addModal').style.display = 'none';
+			pendingVideo = null;
+		}
+	</script>
+	`)
+	
+	html := app.RenderHTMLForRequest("Search", "Search for kids music", content.String(), r)
+	w.Write([]byte(html))
+}
+
+func searchYouTube(query string) ([]Video, error) {
+	resp, err := client.Search.List([]string{"snippet"}).
+		Q(query + " kids").
+		Type("video").
+		SafeSearch("strict").
+		MaxResults(20).
+		Do()
+	if err != nil {
+		return nil, err
+	}
+	
+	var results []Video
+	for _, item := range resp.Items {
+		thumbnail := ""
+		if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.High != nil {
+			thumbnail = item.Snippet.Thumbnails.High.Url
+		}
+		results = append(results, Video{
+			ID:        item.Id.VideoId,
+			Title:     item.Snippet.Title,
+			Thumbnail: thumbnail,
+			Playlist:  "search",
+		})
+	}
+	return results, nil
+}
+
+func renderSearchResult(v Video) string {
+	titleEscaped := html.EscapeString(strings.ReplaceAll(v.Title, "'", "\\'"))
+	return fmt.Sprintf(`
+		<div class="kids-video-card" style="position: relative;">
+			<a href="/kids/play/%s">
+				<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+				<div class="kids-video-title">%s</div>
+			</a>
+			<button onclick="addToPlaylist('%s', '%s', '%s')" style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.7);color:white;border:none;border-radius:50%%;width:30px;height:30px;cursor:pointer;font-size:1.2em;">+</button>
+		</div>`,
+		v.ID,
+		v.Thumbnail,
+		html.EscapeString(v.Title),
+		v.ID,
+		html.EscapeString(truncate(v.Title, 50)),
+		v.ID,
+		titleEscaped,
+		v.Thumbnail,
+	)
+}
+
+func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
+	mu.RLock()
+	sp, ok := savedPlaylists[rest]
+	mu.RUnlock()
+	
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	
+	var content strings.Builder
+	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
+	
+	icon := sp.Icon
+	if icon == "" {
+		icon = "🎵"
+	}
+	content.WriteString(fmt.Sprintf(`<div class="kids-header"><span class="kids-icon-lg">%s</span></div>`, icon))
+	
+	if len(sp.Videos) > 0 {
+		content.WriteString(fmt.Sprintf(`<div style="text-align: center; margin-bottom: 20px;">
+			<a href="/kids/play/%s?saved=%s&idx=0" class="btn" style="font-size: 1.2em; padding: 15px 40px;">▶ Play All</a>
+		</div>`, sp.Videos[0].ID, sp.ID))
+	}
+	
+	content.WriteString(`<div class="kids-videos">`)
+	for i, v := range sp.Videos {
+		content.WriteString(renderVideoCardForSaved(v, sp.ID, i))
+	}
+	content.WriteString(`</div>`)
+	
+	html := app.RenderHTMLForRequest(sp.Name, sp.Name+" playlist", content.String(), r)
+	w.Write([]byte(html))
+}
+
+func handlePlaylists(w http.ResponseWriter, r *http.Request) {
+	var content strings.Builder
+	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
+	content.WriteString(`<h2>Create Playlist</h2>`)
+	content.WriteString(`<form method="post" action="/kids/api/playlist" style="max-width: 400px;">
+		<input type="hidden" name="action" value="create">
+		<div style="margin-bottom: 15px;">
+			<label>Name</label>
+			<input type="text" name="name" required placeholder="e.g. Journey Songs">
+		</div>
+		<div style="margin-bottom: 15px;">
+			<label>Icon (emoji)</label>
+			<input type="text" name="icon" placeholder="🎸" maxlength="4">
+		</div>
+		<button type="submit" class="btn">Create</button>
+	</form>`)
+	
+	// List existing playlists
+	mu.RLock()
+	if len(savedPlaylists) > 0 {
+		content.WriteString(`<h2 style="margin-top: 30px;">Your Playlists</h2>`)
+		for _, sp := range savedPlaylists {
+			icon := sp.Icon
+			if icon == "" {
+				icon = "🎵"
+			}
+			content.WriteString(fmt.Sprintf(`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+				<span style="font-size:1.5em;">%s</span>
+				<a href="/kids/saved/%s">%s</a>
+				<span class="text-muted">(%d songs)</span>
+				<form method="post" action="/kids/api/playlist" style="margin:0;">
+					<input type="hidden" name="action" value="delete">
+					<input type="hidden" name="id" value="%s">
+					<button type="submit" class="btn-danger" style="padding:5px 10px;font-size:0.9em;">Delete</button>
+				</form>
+			</div>`, icon, sp.ID, html.EscapeString(sp.Name), len(sp.Videos), sp.ID))
+		}
+	}
+	mu.RUnlock()
+	
+	html := app.RenderHTMLForRequest("Playlists", "Manage playlists", content.String(), r)
+	w.Write([]byte(html))
+}
+
+func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		action := r.FormValue("action")
+		
+		switch action {
+		case "create":
+			name := r.FormValue("name")
+			icon := r.FormValue("icon")
+			if name == "" {
+				http.Error(w, "Name required", http.StatusBadRequest)
+				return
+			}
+			id := fmt.Sprintf("%d", time.Now().UnixNano())
+			sp := &SavedPlaylist{
+				ID:        id,
+				Name:      name,
+				Icon:      icon,
+				Videos:    []Video{},
+				CreatedAt: time.Now(),
+			}
+			mu.Lock()
+			savedPlaylists[id] = sp
+			mu.Unlock()
+			saveSavedPlaylists()
+			http.Redirect(w, r, "/kids/saved/"+id, http.StatusSeeOther)
+			return
+			
+		case "delete":
+			id := r.FormValue("id")
+			mu.Lock()
+			delete(savedPlaylists, id)
+			mu.Unlock()
+			saveSavedPlaylists()
+			http.Redirect(w, r, "/kids/playlists", http.StatusSeeOther)
+			return
+			
+		case "add":
+			id := r.FormValue("playlist_id")
+			videoID := r.FormValue("video_id")
+			title := r.FormValue("title")
+			thumbnail := r.FormValue("thumbnail")
+			
+			mu.Lock()
+			if sp, ok := savedPlaylists[id]; ok {
+				// Check for duplicate
+				found := false
+				for _, v := range sp.Videos {
+					if v.ID == videoID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					sp.Videos = append(sp.Videos, Video{
+						ID:        videoID,
+						Title:     title,
+						Thumbnail: thumbnail,
+						Playlist:  sp.Name,
+					})
+				}
+			}
+			mu.Unlock()
+			saveSavedPlaylists()
+			
+			// Return JSON for AJAX
+			if r.Header.Get("Accept") == "application/json" {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"ok":true}`))
+				return
+			}
+			http.Redirect(w, r, "/kids/saved/"+id, http.StatusSeeOther)
+			return
+		}
+	}
+	
+	// GET - return list of playlists as JSON (for add-to-playlist modal)
+	mu.RLock()
+	var list []map[string]interface{}
+	for _, sp := range savedPlaylists {
+		list = append(list, map[string]interface{}{
+			"id":   sp.ID,
+			"name": sp.Name,
+			"icon": sp.Icon,
+		})
+	}
+	mu.RUnlock()
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(list)
+}
+
+func loadSavedPlaylists() {
+	data, err := data.LoadFile("kids/playlists.json")
+	if err != nil {
+		return
+	}
+	var list []*SavedPlaylist
+	if err := json.Unmarshal(data, &list); err != nil {
+		app.Log("kids", "Error loading saved playlists: %v", err)
+		return
+	}
+	mu.Lock()
+	for _, sp := range list {
+		savedPlaylists[sp.ID] = sp
+	}
+	mu.Unlock()
+	app.Log("kids", "Loaded %d saved playlists", len(list))
+}
+
+func saveSavedPlaylists() {
+	mu.RLock()
+	var list []*SavedPlaylist
+	for _, sp := range savedPlaylists {
+		list = append(list, sp)
+	}
+	mu.RUnlock()
+	
+	b, _ := json.Marshal(list)
+	data.SaveFile("kids/playlists.json", string(b))
 }
