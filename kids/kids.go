@@ -198,7 +198,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleSaved(w, r, rest)
 	case path == "playlists":
 		handlePlaylists(w, r)
-	case path == "api/playlist":
+	case path == "playlist":
 		handlePlaylistAPI(w, r)
 	default:
 		http.NotFound(w, r)
@@ -618,7 +618,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		function addToPlaylist(videoId, title, thumbnail) {
 			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
 			document.getElementById('newPlaylistName').value = '';
-			fetch('/kids/api/playlist', {credentials: 'include'})
+			fetch('/kids/playlist', {credentials: 'include'})
 				.then(r => {
 					console.log('Playlist API response status:', r.status);
 					return r.json();
@@ -666,7 +666,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			createForm.append('name', name);
 			createForm.append('icon', '🎵');
 			
-			fetch('/kids/api/playlist', {
+			fetch('/kids/playlist', {
 				method: 'POST',
 				body: createForm,
 				headers: {'Accept': 'application/json'}, credentials: 'include'
@@ -690,7 +690,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			form.append('title', pendingVideo.title);
 			form.append('thumbnail', pendingVideo.thumbnail);
 			
-			fetch('/kids/api/playlist', {
+			fetch('/kids/playlist', {
 				method: 'POST',
 				body: form,
 				headers: {'Accept': 'application/json'}, credentials: 'include'
@@ -857,7 +857,7 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 			form.append('title', title);
 			form.append('thumbnail', thumbnail);
 			
-			fetch('/kids/api/playlist', {
+			fetch('/kids/playlist', {
 				method: 'POST',
 				body: form,
 				headers: {'Accept': 'application/json'}, credentials: 'include'
@@ -886,7 +886,7 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 		content.WriteString(`<p><a href="/login">Login</a> to create and manage playlists.</p>`)
 	} else {
 		content.WriteString(`<h2>Create Playlist</h2>`)
-		content.WriteString(`<form method="post" action="/kids/api/playlist" class="max-w-sm">
+		content.WriteString(`<form method="post" action="/kids/playlist" class="max-w-sm">
 			<input type="hidden" name="action" value="create">
 			<div class="mb-3">
 				<label>Name</label>
@@ -916,7 +916,7 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 					<span class="text-xl">%s</span>
 					<a href="/kids/saved/%s">%s</a>
 					<span class="text-muted">(%d songs)</span>
-					<form method="post" action="/kids/api/playlist" class="m-0">
+					<form method="post" action="/kids/playlist" class="m-0">
 						<input type="hidden" name="action" value="delete">
 						<input type="hidden" name="id" value="%s">
 						<button type="submit" class="btn-danger text-sm">Delete</button>
