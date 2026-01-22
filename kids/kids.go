@@ -933,11 +933,12 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 
 func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 	// Get current user (optional for GET, required for POST)
-	sess, _ := auth.GetSession(r)
+	sess, err := auth.GetSession(r)
 	userID := ""
 	if sess != nil {
 		userID = sess.Account
 	}
+	app.Log("kids", "PlaylistAPI %s: userID=%q, err=%v, savedPlaylists=%d", r.Method, userID, err, len(savedPlaylists))
 
 	if r.Method == "POST" {
 		// Require auth for creating/modifying playlists
