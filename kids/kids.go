@@ -566,6 +566,10 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 func handleSearch(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	
+	// Check if user is logged in
+	sess, _ := auth.GetSession(r)
+	isLoggedIn := sess != nil
+	
 	var content strings.Builder
 	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
 	content.WriteString(`<form class="search-bar" action="/kids/search" method="get">
@@ -582,7 +586,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		} else {
 			content.WriteString(`<div class="kids-videos">`)
 			for _, v := range results {
-				content.WriteString(renderSearchResult(v))
+				content.WriteString(renderSearchResult(v, isLoggedIn))
 			}
 			content.WriteString(`</div>`)
 		}
@@ -730,24 +734,27 @@ func searchYouTube(query string) ([]Video, error) {
 	return results, nil
 }
 
-func renderSearchResult(v Video) string {
+func renderSearchResult(v Video, showAddButton bool) string {
 	titleEscaped := html.EscapeString(strings.ReplaceAll(v.Title, "'", "\\'"))
+	addBtn := ""
+	if showAddButton {
+		addBtn = fmt.Sprintf(`<button onclick="addToPlaylist('%s', '%s', '%s')" class="kids-add-btn">+</button>`,
+			v.ID, titleEscaped, v.Thumbnail)
+	}
 	return fmt.Sprintf(`
 		<div class="kids-video-card">
 			<a href="/kids/play/%s">
 				<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
 				<div class="kids-video-title">%s</div>
 			</a>
-			<button onclick="addToPlaylist('%s', '%s', '%s')" class="kids-add-btn">+</button>
+			%s
 		</div>`,
 		v.ID,
 		v.Thumbnail,
 		html.EscapeString(v.Title),
 		v.ID,
 		html.EscapeString(truncate(v.Title, 50)),
-		v.ID,
-		titleEscaped,
-		v.Thumbnail,
+		addBtn,
 	)
 }
 
