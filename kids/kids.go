@@ -483,7 +483,7 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 	
 	// Video button
 	content.WriteString(`<div class="text-center mt-3">
-		<button onclick="showVideo()">📺 Show Video</button>
+		<button onclick="toggleVideo()" id="videoBtn">📺 Show Video</button>
 	</div>`)
 	
 	// Hidden video container
@@ -494,6 +494,7 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 	// JavaScript for YouTube player
 	content.WriteString(fmt.Sprintf(`<script>
 		let playing = false;
+		let videoVisible = false;
 		const videoId = '%s';
 		const nextURL = '%s';
 		let player;
@@ -529,11 +530,25 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 			}
 		}
 		
-		function showVideo() {
-			document.getElementById('videoContainer').style.display = 'block';
-			if (player && player.playVideo) player.playVideo();
-			document.getElementById('playBtn').textContent = '⏸';
-			playing = true;
+		function toggleVideo() {
+			const thumb = document.getElementById('thumbnail');
+			const container = document.getElementById('videoContainer');
+			const btn = document.getElementById('videoBtn');
+			
+			if (!videoVisible) {
+				thumb.style.display = 'none';
+				container.style.display = 'block';
+				btn.textContent = '🖼 Hide Video';
+				if (player && player.playVideo) player.playVideo();
+				document.getElementById('playBtn').textContent = '⏸';
+				playing = true;
+				videoVisible = true;
+			} else {
+				thumb.style.display = 'block';
+				container.style.display = 'none';
+				btn.textContent = '📺 Show Video';
+				videoVisible = false;
+			}
 		}
 	</script>`, id, nextURL))
 	
