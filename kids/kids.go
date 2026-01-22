@@ -614,7 +614,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		function addToPlaylist(videoId, title, thumbnail) {
 			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
 			document.getElementById('newPlaylistName').value = '';
-			fetch('/kids/api/playlist')
+			fetch('/kids/api/playlist', {credentials: 'same-origin'})
 				.then(r => r.json())
 				.then(playlists => {
 					const list = document.getElementById('playlistList');
@@ -851,7 +851,8 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 			fetch('/kids/api/playlist', {
 				method: 'POST',
 				body: form,
-				headers: {'Accept': 'application/json'}
+				headers: {'Accept': 'application/json'},
+				credentials: 'same-origin'
 			}).then(r => r.json()).then(() => {
 				location.reload();
 			});
@@ -924,12 +925,11 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 
 func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 	// Get current user (optional for GET, required for POST)
-	sess, err := auth.GetSession(r)
+	sess, _ := auth.GetSession(r)
 	userID := ""
 	if sess != nil {
 		userID = sess.Account
 	}
-	app.Log("kids", "PlaylistAPI: method=%s userID=%s err=%v", r.Method, userID, err)
 
 	if r.Method == "POST" {
 		// Require auth for creating/modifying playlists
