@@ -881,8 +881,11 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			title := r.FormValue("title")
 			thumbnail := r.FormValue("thumbnail")
 			
+			app.Log("kids", "Adding video %s to playlist %s", videoID, id)
+			
 			mu.Lock()
 			if sp, ok := savedPlaylists[id]; ok {
+				app.Log("kids", "Found playlist %s with %d videos", sp.Name, len(sp.Videos))
 				// Check for duplicate
 				found := false
 				for _, v := range sp.Videos {
