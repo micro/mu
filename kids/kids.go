@@ -599,6 +599,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	<div id="addModal" class="modal" hidden>
 		<div class="modal-content" style="max-width:320px;">
 			<h3>Add to Playlist</h3>
+			<div id="debugInfo" class="text-xs text-muted mb-2"></div>
 			<div id="playlistList"></div>
 			<div id="createForm" hidden>
 				<div class="mb-2">
@@ -626,7 +627,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 					return r.json();
 				})
 				.then(playlists => {
-					console.log('Playlists found:', playlists ? playlists.length : 0, playlists);
+					const count = playlists ? playlists.length : 0;
+					document.getElementById('debugInfo').textContent = 'Found ' + count + ' playlists';
 					const list = document.getElementById('playlistList');
 					const createForm = document.getElementById('createForm');
 					const newBtn = document.getElementById('newBtn');
