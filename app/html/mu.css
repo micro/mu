@@ -4422,46 +4422,23 @@ a.btn-secondary:hover, .btn-secondary:hover {
   align-items: center;
 }
 
-.kids-btn {
-  padding: 15px 25px;
-  font-size: 1.2em;
-  border-radius: 30px;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
+/* Kids player uses standard buttons, just needs layout */
+.kids-controls {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
   justify-content: center;
+  align-items: center;
 }
 
-.kids-btn-play {
-  background: var(--accent-color, #0d7377);
-  color: white;
-  font-size: 1.8em;
-  min-width: 80px;
+.kids-controls button,
+.kids-controls a.btn {
+  font-size: 1.2em;
 }
 
-.kids-btn-nav {
-  background: var(--text-secondary, #444);
-  color: white;
-  font-size: 1.4em;
-  padding: 12px 20px;
-}
-
-.kids-btn-nav.disabled {
-  background: var(--divider, #ccc);
-  color: var(--text-muted, #888);
+.kids-controls .disabled {
+  opacity: 0.4;
   cursor: not-allowed;
-}
-
-.kids-btn-secondary {
-  background: var(--hover-background, #eee);
-  color: var(--text-primary, #333);
-}
-
-.kids-btn-sm {
-  padding: 10px 20px;
-  font-size: 1em;
 }
 
 .kids-secondary {
@@ -4477,5 +4454,5 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 
 .kids-video-wrapper iframe {
-  border-radius: var(--border-radius, 12px);
+  border-radius: var(--border-radius, 6px);
 }

@@ -455,14 +455,14 @@ func truncate(s string, max int) string {
 
 
 func renderPlayer(w http.ResponseWriter, video *Video, id, backURL, prevURL, nextURL string) {
-	// Build prev/next button HTML
-	prevBtn := `<span class="kids-btn kids-btn-nav disabled">⏮</span>`
+	// Build prev/next button HTML using standard button styling
+	prevBtn := `<span class="btn btn-secondary disabled">⏮</span>`
 	if prevURL != "" {
-		prevBtn = fmt.Sprintf(`<a href="%s" class="kids-btn kids-btn-nav" id="prevBtn">⏮</a>`, prevURL)
+		prevBtn = fmt.Sprintf(`<a href="%s" class="btn btn-secondary" id="prevBtn">⏮</a>`, prevURL)
 	}
-	nextBtn := `<span class="kids-btn kids-btn-nav disabled">⏭</span>`
+	nextBtn := `<span class="btn btn-secondary disabled">⏭</span>`
 	if nextURL != "" {
-		nextBtn = fmt.Sprintf(`<a href="%s" class="kids-btn kids-btn-nav" id="nextBtn">⏭</a>`, nextURL)
+		nextBtn = fmt.Sprintf(`<a href="%s" class="btn btn-secondary" id="nextBtn">⏭</a>`, nextURL)
 	}
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
@@ -478,12 +478,12 @@ func renderPlayer(w http.ResponseWriter, video *Video, id, backURL, prevURL, nex
 		<h2>%s</h2>
 		<div class="kids-controls">
 			%s
-			<button onclick="togglePlay()" id="playBtn" class="kids-btn kids-btn-play">▶</button>
+			<button onclick="togglePlay()" id="playBtn">▶</button>
 			%s
 		</div>
 		<div class="kids-secondary">
-			<a href="%s" class="kids-btn kids-btn-secondary kids-btn-sm">← Back</a>
-			<button onclick="showVideo()" class="kids-btn kids-btn-nav kids-btn-sm">📺 Video</button>
+			<a href="%s" class="btn btn-secondary">← Back</a>
+			<button onclick="showVideo()">📺 Video</button>
 		</div>
 		<div id="videoContainer" class="kids-video-wrapper">
 			<iframe id="player" width="100%%" height="300" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
