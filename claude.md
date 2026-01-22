@@ -168,10 +168,13 @@ BASE_RPC_URL  # Default: https://mainnet.base.org
 - **Cost**: Anthropic ~$0.001/app, Fanar free
 - Status page shows all configured providers and their roles
 
-## Git
+## Git & Deployment
 - Remote: `git@github.com:micro/mu.git`
+- **Production**: https://mu.xyz (the live site)
+- **SSH Access**: `ssh -p 61194 mu@mu.xyz`
 - Test credentials: `ssh -p 61194 mu@mu.xyz 'cat ~/.mu/test-creds'`
-- SSH: `ssh -p 61194 mu@mu.xyz`
+- Deploy: Push to main, then SSH in and rebuild/restart the service
+- Data directory: `~/.mu/` on the server
 
 ## UI Principles
 - Minimal chrome, left-aligned forms
