@@ -460,9 +460,10 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 	// Back link at top like other pages
 	content.WriteString(fmt.Sprintf(`<p><a href="%s">← Back</a></p>`, backURL))
 	
-	// Thumbnail
-	content.WriteString(fmt.Sprintf(`<div class="text-center mb-3">
-		<img src="%s" class="kids-thumb" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+	// Video container with thumbnail overlay
+	content.WriteString(fmt.Sprintf(`<div class="kids-video-container">
+		<div id="player"></div>
+		<img src="%s" class="kids-thumb-overlay" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
 	</div>`, video.Thumbnail, id))
 	
 	// Controls
@@ -486,11 +487,6 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 		<button onclick="toggleVideo()" id="videoBtn">📺 Show Video</button>
 	</div>`)
 	
-	// Hidden video container
-	content.WriteString(fmt.Sprintf(`<div id="videoContainer" class="kids-video-wrapper">
-		<iframe id="player" width="100%%" height="300" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-	</div>`))
-	
 	// JavaScript for YouTube player
 	content.WriteString(fmt.Sprintf(`<script>
 		let playing = false;
@@ -505,6 +501,8 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 		
 		function onYouTubeIframeAPIReady() {
 			player = new YT.Player('player', {
+				width: '100%%',
+				height: '300',
 				videoId: videoId,
 				playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
 				events: { 'onStateChange': onPlayerStateChange }
@@ -532,20 +530,17 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 		
 		function toggleVideo() {
 			const thumb = document.getElementById('thumbnail');
-			const container = document.getElementById('videoContainer');
 			const btn = document.getElementById('videoBtn');
 			
 			if (!videoVisible) {
-				thumb.style.display = 'none';
-				container.style.display = 'block';
+				thumb.classList.add('hidden');
 				btn.textContent = '🖼 Hide Video';
 				if (player && player.playVideo) player.playVideo();
 				document.getElementById('playBtn').textContent = '⏸';
 				playing = true;
 				videoVisible = true;
 			} else {
-				thumb.style.display = 'block';
-				container.style.display = 'none';
+				thumb.classList.remove('hidden');
 				btn.textContent = '📺 Show Video';
 				videoVisible = false;
 			}
