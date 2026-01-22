@@ -661,7 +661,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			fetch('/kids/api/playlist', {
 				method: 'POST',
 				body: createForm,
-				headers: {'Accept': 'application/json'}
+				headers: {'Accept': 'application/json'},
+				credentials: 'same-origin'
 			}).then(r => r.json()).then(result => {
 				if (result && result.error) {
 					alert(result.error);
@@ -685,7 +686,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			fetch('/kids/api/playlist', {
 				method: 'POST',
 				body: form,
-				headers: {'Accept': 'application/json'}
+				headers: {'Accept': 'application/json'},
+				credentials: 'same-origin'
 			}).then(r => r.json()).then(() => {
 				closeModal();
 				alert('Added!');
@@ -922,11 +924,12 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 
 func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 	// Get current user (optional for GET, required for POST)
-	sess, _ := auth.GetSession(r)
+	sess, err := auth.GetSession(r)
 	userID := ""
 	if sess != nil {
 		userID = sess.Account
 	}
+	app.Log("kids", "PlaylistAPI: method=%s userID=%s err=%v", r.Method, userID, err)
 
 	if r.Method == "POST" {
 		// Require auth for creating/modifying playlists
