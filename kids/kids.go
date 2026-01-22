@@ -613,20 +613,28 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		
 		function addToPlaylist(videoId, title, thumbnail) {
 			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
-			document.getElementById('createForm').hidden = true;
-			document.getElementById('newBtn').style.display = '';
 			document.getElementById('newPlaylistName').value = '';
 			fetch('/kids/api/playlist')
 				.then(r => r.json())
 				.then(playlists => {
 					const list = document.getElementById('playlistList');
+					const createForm = document.getElementById('createForm');
+					const newBtn = document.getElementById('newBtn');
+					
 					if (!playlists || playlists.length === 0) {
-						list.innerHTML = '<p class="text-muted mb-2">No playlists yet</p>';
+						// No playlists - show create form directly
+						list.innerHTML = '';
+						createForm.hidden = false;
+						newBtn.style.display = 'none';
+						setTimeout(() => document.getElementById('newPlaylistName').focus(), 100);
 					} else {
+						// Has playlists - show list with + New option
 						list.innerHTML = playlists.map(p => 
 							'<button onclick="doAdd(\'' + p.id + '\')" class="btn btn-outline w-full mb-2 text-left">' +
 							(p.icon || '🎵') + ' ' + p.name + '</button>'
 						).join('');
+						createForm.hidden = true;
+						newBtn.style.display = '';
 					}
 					document.getElementById('addModal').hidden = false;
 				});
