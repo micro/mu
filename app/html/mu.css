@@ -4507,6 +4507,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   border: 1px solid var(--card-border, #e8e8e8);
   border-radius: 20px;
   background: var(--card-background, #fff);
+  color: var(--text-primary, #333);
   cursor: pointer;
   font-size: 0.9em;
   transition: all 0.2s;
