@@ -614,7 +614,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		function addToPlaylist(videoId, title, thumbnail) {
 			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
 			document.getElementById('createForm').hidden = true;
-			document.getElementById('newBtn').hidden = false;
+			document.getElementById('newBtn').style.display = '';
 			document.getElementById('newPlaylistName').value = '';
 			fetch('/kids/api/playlist')
 				.then(r => r.json())
@@ -634,7 +634,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		
 		function showCreateForm() {
 			document.getElementById('createForm').hidden = false;
-			document.getElementById('newBtn').hidden = true;
+			document.getElementById('newBtn').style.display = 'none';
 			document.getElementById('newPlaylistName').focus();
 		}
 		
