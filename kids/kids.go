@@ -840,7 +840,12 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 
 func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		r.ParseForm()
+		// Support both multipart (JS FormData) and urlencoded form data
+		if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+			r.ParseMultipartForm(10 << 20) // 10MB max
+		} else {
+			r.ParseForm()
+		}
 		action := r.FormValue("action")
 		
 		switch action {
