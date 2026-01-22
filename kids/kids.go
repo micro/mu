@@ -618,13 +618,15 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		function addToPlaylist(videoId, title, thumbnail) {
 			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
 			document.getElementById('newPlaylistName').value = '';
-			fetch('/kids/playlist', {credentials: 'include'})
+			const endpoint = '/kids/playlist';
+			console.log('Fetching:', endpoint, 'cookies:', document.cookie);
+			fetch(endpoint, {credentials: 'include'})
 				.then(r => {
-					console.log('Playlist API response status:', r.status);
+					console.log('Response status:', r.status);
 					return r.json();
 				})
 				.then(playlists => {
-					console.log('Playlists received:', playlists);
+					console.log('Playlists found:', playlists ? playlists.length : 0, playlists);
 					const list = document.getElementById('playlistList');
 					const createForm = document.getElementById('createForm');
 					const newBtn = document.getElementById('newBtn');
