@@ -663,13 +663,15 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 				body: createForm,
 				headers: {'Accept': 'application/json'}
 			}).then(r => r.json()).then(result => {
-				if (result && result.id) {
+				if (result && result.error) {
+					alert(result.error);
+				} else if (result && result.id) {
 					// Now add the video to the new playlist
 					doAdd(result.id);
 				} else {
 					alert('Failed to create playlist');
 				}
-			}).catch(() => alert('Failed to create playlist'));
+			}).catch(() => alert('Please login to create playlists'));
 		}
 		
 		function doAdd(playlistId) {
@@ -929,6 +931,12 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		// Require auth for creating/modifying playlists
 		if userID == "" {
+			if r.Header.Get("Accept") == "application/json" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "Please login to create playlists"})
+				return
+			}
 			http.Error(w, "Login required", http.StatusUnauthorized)
 			return
 		}
