@@ -412,21 +412,23 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     localStorage.setItem(storageKey, JSON.stringify(original));
   }
   
+  // lastSaved tracks what's on the server
+  lastSaved = getFormData();
+  
   // Restore draft if exists (user swiped away before save completed)
   const draft = localStorage.getItem(draftKey);
   if (draft) {
     const draftData = JSON.parse(draft);
     // Only restore if different from server state
-    if (JSON.stringify(draftData) !== JSON.stringify(getFormData())) {
+    if (JSON.stringify(draftData) !== JSON.stringify(lastSaved)) {
       setFormData(draftData);
-      status.textContent = 'Draft restored';
-      status.className = 'autosave-saved';
+      status.textContent = 'Draft restored - saving...';
+      status.className = 'autosave-saving';
       showRevert();
-      // Trigger save to sync with server
-      scheduleAutoSave();
+      // Save immediately to sync with server
+      autoSave();
     }
   }
-  lastSaved = getFormData();
   
   // Clear stored data when navigating away normally
   window.addEventListener('beforeunload', () => {
