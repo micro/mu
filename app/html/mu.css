@@ -4358,22 +4358,28 @@ a.btn-secondary:hover, .btn-secondary:hover {
   }
 }
 
+/* Hide menu toggle on desktop */
+#nav-menu-toggle {
+  display: none !important;
+}
+
 /* Mobile: Icon-only sidebar (Slack-style) */
 @media only screen and (max-width: 900px) {
   /* Narrow icon sidebar - always visible */
   #nav-container {
     position: fixed;
     left: 0;
-    top: 44px;
+    top: 0;
     width: 56px;
-    height: calc(100vh - 44px);
+    height: 100vh;
     padding: 10px 6px;
     background: white;
     border-right: 1px solid #e0e0e0;
-    z-index: 200;
+    z-index: 250;
     transition: width 0.2s ease;
     overflow-y: auto;
     overflow-x: hidden;
+    box-sizing: border-box;
   }
   
   /* Expanded sidebar */
@@ -4385,6 +4391,26 @@ a.btn-secondary:hover, .btn-secondary:hover {
   #nav {
     flex-direction: column;
     gap: 2px;
+  }
+  
+  /* Menu toggle link */
+  #nav-menu-toggle {
+    display: flex !important;
+    padding: 10px;
+    margin-bottom: 5px;
+    justify-content: center;
+  }
+  
+  #nav-menu-toggle .menu-icon {
+    font-size: 20px;
+  }
+  
+  body.menu-open #nav-menu-toggle {
+    justify-content: flex-start;
+  }
+  
+  body.menu-open #nav-menu-toggle .menu-icon {
+    margin-right: 12px;
   }
   
   #nav a {
@@ -4429,34 +4455,28 @@ a.btn-secondary:hover, .btn-secondary:hover {
     margin: 8px 0;
   }
   
-  /* Content area accounts for icon sidebar */
+  /* Content area accounts for icon sidebar + gap */
   #content {
-    padding-left: 56px;
+    padding-left: 66px; /* 56px sidebar + 10px gap */
     padding-bottom: 20px;
   }
   
   body.menu-open #content {
-    padding-left: 200px;
+    padding-left: 210px;
   }
   
-  /* Show hamburger in header */
+  /* Hide default hamburger */
   #menu-toggle {
-    display: flex;
-    position: absolute;
-    left: 10px;
+    display: none !important;
+  }
+  
+  /* Hide header on mobile */
+  #head {
+    display: none;
   }
   
   /* Overlay when expanded */
   body.menu-open #nav-overlay {
     display: block;
-  }
-  
-  #head {
-    padding: 6px 15px;
-    border-bottom: 1px solid #ddd;
-    justify-content: center;
-    position: fixed;
-    height: 44px;
-    box-sizing: border-box;
   }
 }

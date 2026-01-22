@@ -197,6 +197,7 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav">
+          <a href="#" id="nav-menu-toggle" onclick="toggleMenu(); return false;"><span class="menu-icon">☰</span><span class="label">Menu</span></a>
           <a href="/home"><img src="/home.png"><span class="label">Home</span></a>
           <a href="/agent"><img src="/agent.png"><span class="label">Agent</span></a>
           <a href="/apps"><img src="/apps.png"><span class="label">Apps</span></a>
