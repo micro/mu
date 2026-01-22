@@ -302,6 +302,7 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
   const noteId = form.dataset.noteId;
   const status = document.getElementById('autosave-status');
   const storageKey = 'note_original_' + noteId;
+  const draftKey = 'note_draft_' + noteId;
   let saveTimeout = null;
   let lastSaved = {};
   let original = null;
@@ -379,6 +380,7 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     }).then(r => {
       if (r.ok || r.redirected) {
         lastSaved = data;
+        localStorage.removeItem(draftKey); // Clear draft after successful save
         status.textContent = 'Saved';
         status.className = 'autosave-saved';
         showRevert();
@@ -394,6 +396,9 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
   }
   
   function scheduleAutoSave() {
+    // Save draft to localStorage immediately (survives swipe-away)
+    localStorage.setItem(draftKey, JSON.stringify(getFormData()));
+    // Debounce server save
     if (saveTimeout) clearTimeout(saveTimeout);
     saveTimeout = setTimeout(autoSave, 1500);
   }
@@ -406,11 +411,27 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     original = getFormData();
     localStorage.setItem(storageKey, JSON.stringify(original));
   }
+  
+  // Restore draft if exists (user swiped away before save completed)
+  const draft = localStorage.getItem(draftKey);
+  if (draft) {
+    const draftData = JSON.parse(draft);
+    // Only restore if different from server state
+    if (JSON.stringify(draftData) !== JSON.stringify(getFormData())) {
+      setFormData(draftData);
+      status.textContent = 'Draft restored';
+      status.className = 'autosave-saved';
+      showRevert();
+      // Trigger save to sync with server
+      scheduleAutoSave();
+    }
+  }
   lastSaved = getFormData();
   
-  // Clear stored original when navigating away
+  // Clear stored data when navigating away normally
   window.addEventListener('beforeunload', () => {
     localStorage.removeItem(storageKey);
+    // Don't clear draft - only clear after successful save
   });
   
   // Listen for changes
