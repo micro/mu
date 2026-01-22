@@ -614,7 +614,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		function addToPlaylist(videoId, title, thumbnail) {
 			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
 			document.getElementById('newPlaylistName').value = '';
-			fetch('/kids/api/playlist', {credentials: 'same-origin'})
+			fetch('/kids/api/playlist')
 				.then(r => r.json())
 				.then(playlists => {
 					const list = document.getElementById('playlistList');
@@ -661,8 +661,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			fetch('/kids/api/playlist', {
 				method: 'POST',
 				body: createForm,
-				headers: {'Accept': 'application/json'},
-				credentials: 'same-origin'
+				headers: {'Accept': 'application/json'}
 			}).then(r => r.json()).then(result => {
 				if (result && result.error) {
 					alert(result.error);
@@ -686,8 +685,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			fetch('/kids/api/playlist', {
 				method: 'POST',
 				body: form,
-				headers: {'Accept': 'application/json'},
-				credentials: 'same-origin'
+				headers: {'Accept': 'application/json'}
 			}).then(r => r.json()).then(() => {
 				closeModal();
 				alert('Added!');
@@ -851,8 +849,7 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 			fetch('/kids/api/playlist', {
 				method: 'POST',
 				body: form,
-				headers: {'Accept': 'application/json'},
-				credentials: 'same-origin'
+				headers: {'Accept': 'application/json'}
 			}).then(r => r.json()).then(() => {
 				location.reload();
 			});
