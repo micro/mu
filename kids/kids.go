@@ -596,7 +596,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	
 	// Add modal and script for add-to-playlist
 	content.WriteString(`
-	<div id="addModal" class="modal" hidden>
+	<div id="addModal" class="modal" style="display:none">
 		<div class="modal-content" style="max-width:320px;">
 			<h3>Add to Playlist</h3>
 			<div id="debugInfo" class="text-xs text-muted mb-2"></div>
@@ -648,7 +648,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 						createForm.hidden = true;
 						newBtn.style.display = '';
 					}
-					document.getElementById('addModal').hidden = false;
+					document.getElementById('addModal').style.display = 'flex';
 				});
 		}
 		
@@ -705,7 +705,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		function closeModal() {
-			document.getElementById('addModal').hidden = true;
+			document.getElementById('addModal').style.display = 'none';
 			pendingVideo = null;
 		}
 	</script>
