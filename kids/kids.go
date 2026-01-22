@@ -207,12 +207,10 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
 	// Search bar
-	content.WriteString(`<div class="search-bar" style="margin-bottom: 20px;">
-		<form action="/kids/search" method="get" style="display: flex; gap: 10px; width: 100%;">
-			<input type="text" name="q" placeholder="Search songs..." style="flex: 1;">
-			<button type="submit" class="btn">Search</button>
-		</form>
-	</div>`)
+	content.WriteString(`<form class="search-bar" action="/kids/search" method="get">
+		<input type="text" name="q" placeholder="Search...">
+		<button type="submit">Search</button>
+	</form>`)
 
 	content.WriteString(`<div class="kids-home">`)
 	content.WriteString(`<div class="kids-categories">`)
@@ -582,12 +580,10 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	
 	var content strings.Builder
 	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
-	content.WriteString(`<div class="search-bar" style="margin-bottom: 20px;">
-		<form action="/kids/search" method="get" style="display: flex; gap: 10px; width: 100%;">
-			<input type="text" name="q" placeholder="Search songs..." value="` + html.EscapeString(query) + `" style="flex: 1;">
-			<button type="submit" class="btn">Search</button>
-		</form>
-	</div>`)
+	content.WriteString(`<form class="search-bar" action="/kids/search" method="get">
+		<input type="text" name="q" placeholder="Search..." value="` + html.EscapeString(query) + `">
+		<button type="submit">Search</button>
+	</form>`)
 	
 	if query != "" && client != nil {
 		results, err := searchYouTube(query)
