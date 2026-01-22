@@ -25,6 +25,7 @@ import (
 	"mu/home"
 	"mu/mail"
 	"mu/news"
+	"mu/kids"
 	"mu/notes"
 	"mu/user"
 	"mu/tools"
@@ -63,6 +64,9 @@ func main() {
 
 	// load the videos
 	video.Load()
+
+	// load kids mode
+	kids.Load()
 
 	// load the blog
 	blog.Load()
@@ -122,6 +126,10 @@ func main() {
 	}
 	// serve video
 	http.HandleFunc("/video", video.Handler)
+
+	// serve kids
+	http.HandleFunc("/kids", kids.Handler)
+	http.HandleFunc("/kids/", kids.Handler)
 
 	// serve news
 	http.HandleFunc("/news", news.Handler)
