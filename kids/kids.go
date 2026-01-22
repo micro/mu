@@ -465,9 +465,6 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 		<img src="%s" class="kids-thumb" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
 	</div>`, video.Thumbnail, id))
 	
-	// Title
-	content.WriteString(fmt.Sprintf(`<h2 class="text-center">%s</h2>`, html.EscapeString(video.Title)))
-	
 	// Controls
 	prevBtn := `<span class="btn btn-secondary disabled">⏮</span>`
 	if prevURL != "" {
