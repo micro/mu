@@ -249,7 +249,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 
 	// Add playlist button
 	content.WriteString(`
-		<a href="/kids/playlists" class="kids-category-btn" style="border-style: dashed;">
+		<a href="/kids/playlists" class="kids-category-btn kids-category-btn-dashed">
 			<span class="kids-icon">➕</span>
 			<span class="kids-label">New</span>
 		</a>`)
@@ -286,8 +286,8 @@ func handleList(w http.ResponseWriter, r *http.Request, name string) {
 	mu.RUnlock()
 
 	if len(vids) > 0 {
-		content.WriteString(fmt.Sprintf(`<div style="text-align: center; margin-bottom: 20px;">
-			<a href="/kids/play/%s?playlist=%s&idx=0" class="btn" style="font-size: 1.2em; padding: 15px 40px;">▶ Play All</a>
+		content.WriteString(fmt.Sprintf(`<div class="kids-play-all">
+			<a href="/kids/play/%s?playlist=%s&idx=0" class="btn">▶ Play All</a>
 		</div>`, vids[0].ID, name))
 	}
 
@@ -471,21 +471,6 @@ func renderPlayer(w http.ResponseWriter, video *Video, id, backURL, prevURL, nex
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>%s | Kids</title>
 	<link rel="stylesheet" href="/mu.css">
-	<style>
-		.kids-player { max-width: 600px; margin: 0 auto; padding: 20px; text-align: center; }
-		.kids-player h2 { font-size: 1.3em; margin: 20px 0; }
-		.kids-thumb { width: 100%%; max-width: 400px; border-radius: 16px; margin: 0 auto; cursor: pointer; }
-		.kids-controls { margin-top: 30px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center; }
-		.kids-btn { padding: 15px 25px; font-size: 1.2em; border-radius: 30px; border: none; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
-		.kids-btn-play { background: var(--accent-color, #0d7377); color: white; font-size: 1.8em; min-width: 80px; }
-		.kids-btn-nav { background: #444; color: white; font-size: 1.4em; padding: 12px 20px; }
-		.kids-btn-nav.disabled { background: #ccc; color: #888; cursor: not-allowed; }
-		.kids-btn-back { background: #eee; color: #333; }
-		.kids-secondary { margin-top: 15px; display: flex; gap: 10px; justify-content: center; }
-		.kids-btn-sm { padding: 10px 20px; font-size: 1em; }
-		#videoContainer { display: none; margin-top: 20px; }
-		#videoContainer iframe { border-radius: 12px; }
-	</style>
 </head>
 <body>
 	<div class="kids-player">
@@ -497,10 +482,10 @@ func renderPlayer(w http.ResponseWriter, video *Video, id, backURL, prevURL, nex
 			%s
 		</div>
 		<div class="kids-secondary">
-			<a href="%s" class="kids-btn kids-btn-back kids-btn-sm">← Back</a>
-			<button onclick="showVideo()" class="kids-btn kids-btn-sm" style="background:#333;color:white;">📺 Video</button>
+			<a href="%s" class="kids-btn kids-btn-secondary kids-btn-sm">← Back</a>
+			<button onclick="showVideo()" class="kids-btn kids-btn-nav kids-btn-sm">📺 Video</button>
 		</div>
-		<div id="videoContainer">
+		<div id="videoContainer" class="kids-video-wrapper">
 			<iframe id="player" width="100%%" height="300" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 		</div>
 	</div>
@@ -604,11 +589,11 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	
 	// Add modal and script for add-to-playlist
 	content.WriteString(`
-	<div id="addModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
-		<div style="background:white;padding:20px;border-radius:12px;max-width:300px;width:90%;">
-			<h3 style="margin-top:0;">Add to Playlist</h3>
+	<div id="addModal" class="modal" hidden>
+		<div class="modal-content" style="max-width:300px;">
+			<h3>Add to Playlist</h3>
 			<div id="playlistList"></div>
-			<button onclick="closeModal()" class="btn" style="margin-top:15px;width:100%;">Cancel</button>
+			<button onclick="closeModal()" class="btn w-full mt-3">Cancel</button>
 		</div>
 	</div>
 	<script>
@@ -624,11 +609,11 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 						list.innerHTML = '<p>No playlists yet. <a href="/kids/playlists">Create one</a></p>';
 					} else {
 						list.innerHTML = playlists.map(p => 
-							'<button onclick="doAdd(\'' + p.id + '\')" style="display:block;width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;background:white;cursor:pointer;text-align:left;font-size:1em;">' +
+							'<button onclick="doAdd(\'' + p.id + '\')" class="btn btn-outline w-full mb-2 text-left">' +
 							(p.icon || '🎵') + ' ' + p.name + '</button>'
 						).join('');
 					}
-					document.getElementById('addModal').style.display = 'flex';
+					document.getElementById('addModal').hidden = false;
 				});
 		}
 		
@@ -651,7 +636,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		function closeModal() {
-			document.getElementById('addModal').style.display = 'none';
+			document.getElementById('addModal').hidden = true;
 			pendingVideo = null;
 		}
 	</script>
@@ -691,12 +676,12 @@ func searchYouTube(query string) ([]Video, error) {
 func renderSearchResult(v Video) string {
 	titleEscaped := html.EscapeString(strings.ReplaceAll(v.Title, "'", "\\'"))
 	return fmt.Sprintf(`
-		<div class="kids-video-card" style="position: relative;">
+		<div class="kids-video-card">
 			<a href="/kids/play/%s">
 				<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
 				<div class="kids-video-title">%s</div>
 			</a>
-			<button onclick="addToPlaylist('%s', '%s', '%s')" style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.7);color:white;border:none;border-radius:50%%;width:30px;height:30px;cursor:pointer;font-size:1.2em;">+</button>
+			<button onclick="addToPlaylist('%s', '%s', '%s')" class="kids-add-btn">+</button>
 		</div>`,
 		v.ID,
 		v.Thumbnail,
@@ -729,8 +714,8 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 	content.WriteString(fmt.Sprintf(`<div class="kids-header"><span class="kids-icon-lg">%s</span></div>`, icon))
 	
 	if len(sp.Videos) > 0 {
-		content.WriteString(fmt.Sprintf(`<div style="text-align: center; margin-bottom: 20px;">
-			<a href="/kids/play/%s?saved=%s&idx=0" class="btn" style="font-size: 1.2em; padding: 15px 40px;">▶ Play All</a>
+		content.WriteString(fmt.Sprintf(`<div class="kids-play-all">
+			<a href="/kids/play/%s?saved=%s&idx=0" class="btn">▶ Play All</a>
 		</div>`, sp.Videos[0].ID, sp.ID))
 	}
 	
@@ -748,13 +733,13 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
 	content.WriteString(`<h2>Create Playlist</h2>`)
-	content.WriteString(`<form method="post" action="/kids/api/playlist" style="max-width: 400px;">
+	content.WriteString(`<form method="post" action="/kids/api/playlist" class="max-w-sm">
 		<input type="hidden" name="action" value="create">
-		<div style="margin-bottom: 15px;">
+		<div class="mb-3">
 			<label>Name</label>
 			<input type="text" name="name" required placeholder="e.g. Journey Songs">
 		</div>
-		<div style="margin-bottom: 15px;">
+		<div class="mb-3">
 			<label>Icon (emoji)</label>
 			<input type="text" name="icon" placeholder="🎸" maxlength="4">
 		</div>
@@ -764,20 +749,20 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 	// List existing playlists
 	mu.RLock()
 	if len(savedPlaylists) > 0 {
-		content.WriteString(`<h2 style="margin-top: 30px;">Your Playlists</h2>`)
+		content.WriteString(`<h2 class="mt-5">Your Playlists</h2>`)
 		for _, sp := range savedPlaylists {
 			icon := sp.Icon
 			if icon == "" {
 				icon = "🎵"
 			}
-			content.WriteString(fmt.Sprintf(`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-				<span style="font-size:1.5em;">%s</span>
+			content.WriteString(fmt.Sprintf(`<div class="d-flex items-center gap-2 mb-2">
+				<span class="text-xl">%s</span>
 				<a href="/kids/saved/%s">%s</a>
 				<span class="text-muted">(%d songs)</span>
-				<form method="post" action="/kids/api/playlist" style="margin:0;">
+				<form method="post" action="/kids/api/playlist" class="m-0">
 					<input type="hidden" name="action" value="delete">
 					<input type="hidden" name="id" value="%s">
-					<button type="submit" class="btn-danger" style="padding:5px 10px;font-size:0.9em;">Delete</button>
+					<button type="submit" class="btn-danger text-sm">Delete</button>
 				</form>
 			</div>`, icon, sp.ID, html.EscapeString(sp.Name), len(sp.Videos), sp.ID))
 		}
