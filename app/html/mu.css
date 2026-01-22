@@ -4357,3 +4357,89 @@ a.btn-secondary:hover, .btn-secondary:hover {
     gap: 12px;
   }
 }
+
+/* Mobile bottom navigation bar - always visible on small screens */
+#mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  z-index: 300;
+  padding: 0 10px;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+#mobile-nav .nav-icons {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+#mobile-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: #666;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+#mobile-nav a:hover,
+#mobile-nav a.active {
+  color: var(--accent-color, #0d7377);
+  background: var(--hover-background, #f5f5f5);
+}
+
+#mobile-nav img {
+  height: 24px;
+  width: 24px;
+  opacity: 0.7;
+}
+
+#mobile-nav a:hover img,
+#mobile-nav a.active img {
+  opacity: 1;
+}
+
+#mobile-nav .label {
+  font-size: 10px;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+#mobile-nav .more-btn {
+  font-size: 20px;
+  font-weight: bold;
+  color: #888;
+}
+
+@media only screen and (max-width: 900px) {
+  #mobile-nav {
+    display: block;
+  }
+  
+  /* Add padding to content to account for bottom nav */
+  #content {
+    padding-bottom: 80px;
+  }
+  
+  /* Hide the hamburger menu since we have bottom nav */
+  #menu-toggle {
+    display: none !important;
+  }
+  
+  /* Keep sidebar for "more" access but hide by default */
+  #nav-container {
+    left: -280px;
+  }
+}

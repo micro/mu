@@ -222,6 +222,15 @@ var Template = `
         <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>
       </div>
     </div>
+    <nav id="mobile-nav">
+      <div class="nav-icons">
+        <a href="/home"><img src="/home.png"><span class="label">Home</span></a>
+        <a href="/notes"><img src="/notes.png"><span class="label">Notes</span></a>
+        <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
+        <a href="/news"><img src="/news.png"><span class="label">News</span></a>
+        <a href="#" onclick="toggleMenu(); return false;" class="more-btn"><span style="font-size:24px;">☰</span><span class="label">More</span></a>
+      </div>
+    </nav>
   <script>
       if (navigator.serviceWorker) {
         navigator.serviceWorker.register (
