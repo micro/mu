@@ -619,8 +619,12 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
 			document.getElementById('newPlaylistName').value = '';
 			fetch('/kids/api/playlist')
-				.then(r => r.json())
+				.then(r => {
+					console.log('Playlist API response status:', r.status);
+					return r.json();
+				})
 				.then(playlists => {
+					console.log('Playlists received:', playlists);
 					const list = document.getElementById('playlistList');
 					const createForm = document.getElementById('createForm');
 					const newBtn = document.getElementById('newBtn');
