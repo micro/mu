@@ -593,10 +593,19 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	// Add modal and script for add-to-playlist
 	content.WriteString(`
 	<div id="addModal" class="modal" hidden>
-		<div class="modal-content" style="max-width:300px;">
+		<div class="modal-content" style="max-width:320px;">
 			<h3>Add to Playlist</h3>
 			<div id="playlistList"></div>
-			<button onclick="closeModal()" class="btn w-full mt-3">Cancel</button>
+			<div id="createForm" hidden>
+				<div class="mb-2">
+					<input type="text" id="newPlaylistName" placeholder="Playlist name" class="w-full">
+				</div>
+				<button onclick="createAndAdd()" class="btn w-full">Create & Add</button>
+			</div>
+			<div class="mt-3 d-flex gap-2">
+				<button onclick="showCreateForm()" id="newBtn" class="btn btn-outline flex-1">+ New</button>
+				<button onclick="closeModal()" class="btn flex-1">Cancel</button>
+			</div>
 		</div>
 	</div>
 	<script>
@@ -604,12 +613,15 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		
 		function addToPlaylist(videoId, title, thumbnail) {
 			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
+			document.getElementById('createForm').hidden = true;
+			document.getElementById('newBtn').hidden = false;
+			document.getElementById('newPlaylistName').value = '';
 			fetch('/kids/api/playlist')
 				.then(r => r.json())
 				.then(playlists => {
 					const list = document.getElementById('playlistList');
 					if (!playlists || playlists.length === 0) {
-						list.innerHTML = '<p>No playlists yet. <a href="/kids/playlists">Create one</a></p>';
+						list.innerHTML = '<p class="text-muted mb-2">No playlists yet</p>';
 					} else {
 						list.innerHTML = playlists.map(p => 
 							'<button onclick="doAdd(\'' + p.id + '\')" class="btn btn-outline w-full mb-2 text-left">' +
@@ -618,6 +630,38 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 					}
 					document.getElementById('addModal').hidden = false;
 				});
+		}
+		
+		function showCreateForm() {
+			document.getElementById('createForm').hidden = false;
+			document.getElementById('newBtn').hidden = true;
+			document.getElementById('newPlaylistName').focus();
+		}
+		
+		function createAndAdd() {
+			const name = document.getElementById('newPlaylistName').value.trim();
+			if (!name) {
+				alert('Please enter a playlist name');
+				return;
+			}
+			// Create playlist first
+			const createForm = new FormData();
+			createForm.append('action', 'create');
+			createForm.append('name', name);
+			createForm.append('icon', '🎵');
+			
+			fetch('/kids/api/playlist', {
+				method: 'POST',
+				body: createForm,
+				headers: {'Accept': 'application/json'}
+			}).then(r => r.json()).then(result => {
+				if (result && result.id) {
+					// Now add the video to the new playlist
+					doAdd(result.id);
+				} else {
+					alert('Failed to create playlist');
+				}
+			}).catch(() => alert('Failed to create playlist'));
 		}
 		
 		function doAdd(playlistId) {
@@ -910,6 +954,17 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			savedPlaylists[id] = sp
 			mu.Unlock()
 			saveSavedPlaylists()
+			
+			// Return JSON for AJAX
+			if r.Header.Get("Accept") == "application/json" {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"ok":   true,
+					"id":   id,
+					"name": name,
+				})
+				return
+			}
 			http.Redirect(w, r, "/kids/saved/"+id, http.StatusSeeOther)
 			return
 			
