@@ -401,7 +401,7 @@ func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
 		}
 	}
 
-	renderPlayer(w, video, id, backURL, prevURL, nextURL)
+	renderPlayer(w, r, video, id, backURL, prevURL, nextURL)
 }
 
 func renderVideoCard(v Video) string {
@@ -454,8 +454,21 @@ func truncate(s string, max int) string {
 }
 
 
-func renderPlayer(w http.ResponseWriter, video *Video, id, backURL, prevURL, nextURL string) {
-	// Build prev/next button HTML using standard button styling
+func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, backURL, prevURL, nextURL string) {
+	var content strings.Builder
+	
+	// Back link at top like other pages
+	content.WriteString(fmt.Sprintf(`<p><a href="%s">← Back</a></p>`, backURL))
+	
+	// Thumbnail
+	content.WriteString(fmt.Sprintf(`<div class="text-center mb-3">
+		<img src="%s" class="kids-thumb" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+	</div>`, video.Thumbnail, id))
+	
+	// Title
+	content.WriteString(fmt.Sprintf(`<h2 class="text-center">%s</h2>`, html.EscapeString(video.Title)))
+	
+	// Controls
 	prevBtn := `<span class="btn btn-secondary disabled">⏮</span>`
 	if prevURL != "" {
 		prevBtn = fmt.Sprintf(`<a href="%s" class="btn btn-secondary" id="prevBtn">⏮</a>`, prevURL)
@@ -464,38 +477,30 @@ func renderPlayer(w http.ResponseWriter, video *Video, id, backURL, prevURL, nex
 	if nextURL != "" {
 		nextBtn = fmt.Sprintf(`<a href="%s" class="btn btn-secondary" id="nextBtn">⏭</a>`, nextURL)
 	}
-
-	html := fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>%s | Kids</title>
-	<link rel="stylesheet" href="/mu.css">
-</head>
-<body>
-	<div class="kids-player">
-		<img src="%s" class="kids-thumb" onclick="togglePlay()" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-		<h2>%s</h2>
-		<div class="kids-controls">
-			%s
-			<button onclick="togglePlay()" id="playBtn">▶</button>
-			%s
-		</div>
-		<div class="kids-secondary">
-			<a href="%s" class="btn btn-secondary">← Back</a>
-			<button onclick="showVideo()">📺 Video</button>
-		</div>
-		<div id="videoContainer" class="kids-video-wrapper">
-			<iframe id="player" width="100%%" height="300" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-		</div>
-	</div>
-	<script>
+	
+	content.WriteString(fmt.Sprintf(`<div class="kids-controls">
+		%s
+		<button onclick="togglePlay()" id="playBtn">▶</button>
+		%s
+	</div>`, prevBtn, nextBtn))
+	
+	// Video button
+	content.WriteString(`<div class="text-center mt-3">
+		<button onclick="showVideo()">📺 Show Video</button>
+	</div>`)
+	
+	// Hidden video container
+	content.WriteString(fmt.Sprintf(`<div id="videoContainer" class="kids-video-wrapper">
+		<iframe id="player" width="100%%" height="300" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+	</div>`))
+	
+	// JavaScript for YouTube player
+	content.WriteString(fmt.Sprintf(`<script>
 		let playing = false;
 		const videoId = '%s';
 		const nextURL = '%s';
 		let player;
 		
-		// Load YouTube IFrame API
 		const tag = document.createElement('script');
 		tag.src = 'https://www.youtube.com/iframe_api';
 		document.head.appendChild(tag);
@@ -504,16 +509,12 @@ func renderPlayer(w http.ResponseWriter, video *Video, id, backURL, prevURL, nex
 			player = new YT.Player('player', {
 				videoId: videoId,
 				playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
-				events: {
-					'onStateChange': onPlayerStateChange
-				}
+				events: { 'onStateChange': onPlayerStateChange }
 			});
 		}
 		
 		function onPlayerStateChange(event) {
-			// YT.PlayerState.ENDED = 0
 			if (event.data === 0 && nextURL) {
-				// Auto-play next
 				window.location.href = nextURL;
 			}
 		}
@@ -521,42 +522,25 @@ func renderPlayer(w http.ResponseWriter, video *Video, id, backURL, prevURL, nex
 		function togglePlay() {
 			const btn = document.getElementById('playBtn');
 			if (!playing) {
-				if (player && player.playVideo) {
-					player.playVideo();
-				}
+				if (player && player.playVideo) player.playVideo();
 				btn.textContent = '⏸';
 				playing = true;
 			} else {
-				if (player && player.pauseVideo) {
-					player.pauseVideo();
-				}
+				if (player && player.pauseVideo) player.pauseVideo();
 				btn.textContent = '▶';
 				playing = false;
 			}
 		}
 		
 		function showVideo() {
-			const container = document.getElementById('videoContainer');
-			container.style.display = 'block';
-			if (player && player.playVideo) {
-				player.playVideo();
-			}
+			document.getElementById('videoContainer').style.display = 'block';
+			if (player && player.playVideo) player.playVideo();
 			document.getElementById('playBtn').textContent = '⏸';
 			playing = true;
 		}
-	</script>
-</body>
-</html>`,
-		html.EscapeString(video.Title),
-		video.Thumbnail,
-		id,
-		html.EscapeString(video.Title),
-		prevBtn,
-		nextBtn,
-		backURL,
-		id,
-		nextURL,
-	)
+	</script>`, id, nextURL))
+	
+	html := app.RenderHTMLForRequest(video.Title, "Playing: "+video.Title, content.String(), r)
 	w.Write([]byte(html))
 }
 
