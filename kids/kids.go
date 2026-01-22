@@ -710,11 +710,85 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 		</div>`, sp.Videos[0].ID, sp.ID))
 	}
 	
-	content.WriteString(`<div class="kids-videos">`)
-	for i, v := range sp.Videos {
-		content.WriteString(renderVideoCardForSaved(v, sp.ID, i))
+	// Current playlist videos
+	if len(sp.Videos) > 0 {
+		content.WriteString(`<h3>Videos</h3>`)
+		content.WriteString(`<div class="kids-videos">`)
+		for i, v := range sp.Videos {
+			content.WriteString(renderVideoCardForSaved(v, sp.ID, i))
+		}
+		content.WriteString(`</div>`)
+	}
+	
+	// Add from existing playlists section
+	content.WriteString(`<h3 class="mt-4">Add Videos</h3>`)
+	content.WriteString(`<p class="text-muted mb-3">Select a playlist to add videos from:</p>`)
+	
+	// Playlist selector tabs
+	content.WriteString(`<div class="kids-playlist-tabs">`)
+	for _, pl := range playlists {
+		content.WriteString(fmt.Sprintf(`<button class="kids-tab" onclick="showPlaylist('%s')">%s %s</button>`,
+			pl.Name, pl.Icon, pl.Name))
 	}
 	content.WriteString(`</div>`)
+	
+	// Videos from each playlist (hidden by default)
+	mu.RLock()
+	for _, pl := range playlists {
+		content.WriteString(fmt.Sprintf(`<div class="kids-add-videos" id="add-%s" style="display:none;">`, pl.Name))
+		if vids, ok := videos[pl.Name]; ok {
+			for _, v := range vids {
+				titleEscaped := html.EscapeString(strings.ReplaceAll(v.Title, "'", "\\'"))
+				content.WriteString(fmt.Sprintf(`
+					<div class="kids-video-card kids-video-mini">
+						<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+						<div class="kids-video-title">%s</div>
+						<button onclick="addVideo('%s', '%s', '%s')" class="kids-add-btn">+</button>
+					</div>`,
+					v.Thumbnail, html.EscapeString(v.Title), v.ID,
+					html.EscapeString(truncate(v.Title, 40)),
+					v.ID, titleEscaped, v.Thumbnail))
+			}
+		}
+		content.WriteString(`</div>`)
+	}
+	mu.RUnlock()
+	
+	// JavaScript for adding videos
+	content.WriteString(fmt.Sprintf(`<script>
+		let activeTab = null;
+		
+		function showPlaylist(name) {
+			// Hide all
+			document.querySelectorAll('.kids-add-videos').forEach(el => el.style.display = 'none');
+			document.querySelectorAll('.kids-tab').forEach(el => el.classList.remove('active'));
+			
+			// Show selected
+			const panel = document.getElementById('add-' + name);
+			if (panel) {
+				panel.style.display = 'grid';
+			}
+			event.target.classList.add('active');
+			activeTab = name;
+		}
+		
+		function addVideo(videoId, title, thumbnail) {
+			const form = new FormData();
+			form.append('action', 'add');
+			form.append('playlist_id', '%s');
+			form.append('video_id', videoId);
+			form.append('title', title);
+			form.append('thumbnail', thumbnail);
+			
+			fetch('/kids/api/playlist', {
+				method: 'POST',
+				body: form,
+				headers: {'Accept': 'application/json'}
+			}).then(r => r.json()).then(() => {
+				location.reload();
+			});
+		}
+	</script>`, sp.ID))
 	
 	html := app.RenderHTMLForRequest(sp.Name, sp.Name+" playlist", content.String(), r)
 	w.Write([]byte(html))

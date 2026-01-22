@@ -4493,3 +4493,51 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .kids-thumb-overlay.hidden {
   z-index: 0;
 }
+
+/* Playlist tabs for adding videos */
+.kids-playlist-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.kids-tab {
+  padding: 8px 16px;
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: 20px;
+  background: var(--card-background, #fff);
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s;
+}
+
+.kids-tab:hover {
+  border-color: var(--text-primary, #333);
+}
+
+.kids-tab.active {
+  background: var(--text-primary, #333);
+  color: white;
+  border-color: var(--text-primary, #333);
+}
+
+.kids-add-videos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.kids-video-mini {
+  font-size: 0.85em;
+}
+
+.kids-video-mini img {
+  aspect-ratio: 16/9;
+  object-fit: cover;
+}
+
+.kids-video-mini .kids-video-title {
+  padding: 8px;
+  font-size: 0.85em;
+}
