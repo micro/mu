@@ -4288,6 +4288,12 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-weight: 600;
 }
 
+.kids-count {
+  font-size: 0.85em;
+  color: var(--text-muted, #888);
+  margin-top: 4px;
+}
+
 .kids-header {
   text-align: center;
   margin-bottom: 20px;
