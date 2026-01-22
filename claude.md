@@ -290,6 +290,39 @@ All inputs get consistent height (36px) via mu.css. Don't override.
 - Wallet Phase 3: Sweep & consolidation
 - Wallet Phase 4: Withdrawals
 
+## Security TODO
+
+### Notes Encryption
+**Status: NOT ENCRYPTED** - Notes are stored as plain JSON in `~/.mu/data/notes.json`
+
+**Problem:** Users might want to store sensitive data (passwords, private info). Currently anyone with server access can read all notes.
+
+**Options:**
+1. **Client-side encryption** - Encrypt in browser before sending, decrypt on load. Server never sees plaintext. User holds key.
+2. **Server-side encryption** - Encrypt at rest with per-user keys derived from password. Simpler but requires trust in server.
+3. **Hybrid** - Default unencrypted, optional "secure notes" feature with client-side encryption.
+
+**Considerations:**
+- Search becomes harder with encryption (can't search encrypted text)
+- Key management (what if user forgets password?)
+- Import/export functionality
+
+## UI/UX TODO
+
+### Menu Organization
+**Problem:** Sidebar has 11+ items (Home, Agent, Apps, Blog, Chat, Kids, Mail, News, Notes, Video, Wallet). Too cluttered.
+
+**Ideas:**
+1. **Categorize** - Group into sections (Content: News/Blog/Video, Tools: Notes/Mail/Chat, etc.)
+2. **Customizable** - Let users pin favorites, hide rarely-used items
+3. **Smart ordering** - Show most-used items first
+4. **Collapse** - Expandable categories
+
+### Mobile Navigation (DONE)
+- Added bottom nav bar with Home, Notes, Chat, News, More
+- One-touch access to key features
+- "More" opens full sidebar for other items
+
 ## Architecture Refactor Plan
 
 ### Goal
