@@ -13,7 +13,9 @@ import (
 	"mu/auth"
 )
 
-var walletConnectProjectID = os.Getenv("WALLETCONNECT_PROJECT_ID")
+func getWalletConnectProjectID() string {
+	return os.Getenv("WALLETCONNECT_PROJECT_ID")
+}
 
 // WalletPage renders the wallet page HTML
 func WalletPage(userID string) string {
@@ -361,7 +363,8 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(`</div>`)
 
 	// WalletConnect script
-	if walletConnectProjectID != "" {
+	wcProjectID := getWalletConnectProjectID()
+	if wcProjectID != "" {
 		sb.WriteString(fmt.Sprintf(`<script>
 (function() {
   const projectId = '%s';
@@ -398,7 +401,7 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
   };
   document.head.appendChild(script);
 })();
-</script>`, walletConnectProjectID, depositAddr, chainID))
+</script>`, wcProjectID, depositAddr, chainID))
 	}
 
 	return sb.String()
