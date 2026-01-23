@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/skip2/go-qrcode"
@@ -11,6 +12,8 @@ import (
 	"mu/app"
 	"mu/auth"
 )
+
+var walletConnectProjectID = os.Getenv("WALLETCONNECT_PROJECT_ID")
 
 // WalletPage renders the wallet page HTML
 func WalletPage(userID string) string {
@@ -341,11 +344,14 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Deposit Address</h3>`)
 	sb.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%s</p>`, chainName))
+	sb.WriteString(fmt.Sprintf(`<div data-deposit-address="%s" data-chain-id="%d">`, depositAddr, chainID))
 	sb.WriteString(fmt.Sprintf(`<img src="data:image/png;base64,%s" alt="QR Code" class="qr-code">`, qrBase64))
 	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
 	sb.WriteString(`<p class="text-sm mt-3">`)
-	sb.WriteString(`<button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 2000)" class="btn-secondary">Copy Address</button>`)
+	sb.WriteString(`<button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Address', 2000)" class="btn-secondary">Copy Address</button>`)
+	sb.WriteString(` <button id="walletconnect-btn" class="btn" style="display:none;">Open Wallet</button>`)
 	sb.WriteString(`</p>`)
+	sb.WriteString(`</div>`)
 	sb.WriteString(`<p class="text-xs text-muted mt-2">Scan QR or copy address to send from your wallet app</p>`)
 	sb.WriteString(`</div>`)
 
@@ -353,6 +359,47 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · Converted at market rate</p>`)
 	sb.WriteString(`</div>`)
+
+	// WalletConnect script
+	if walletConnectProjectID != "" {
+		sb.WriteString(fmt.Sprintf(`<script>
+(function() {
+  const projectId = '%s';
+  const depositAddress = '%s';
+  const chainId = %d;
+
+  // Load Web3Modal from CDN
+  const script = document.createElement('script');
+  script.src = 'https://unpkg.com/@web3modal/cdn@5.1.11/dist/index.umd.js';
+  script.onload = function() {
+    try {
+      const modal = window.Web3Modal.createWeb3Modal({
+        projectId: projectId,
+        chains: [chainId],
+        metadata: {
+          name: 'Mu',
+          description: 'Top up your Mu wallet',
+          url: 'https://mu.xyz',
+          icons: ['https://mu.xyz/icon-192.png']
+        }
+      });
+
+      const btn = document.getElementById('walletconnect-btn');
+      if (btn) {
+        btn.onclick = function(e) {
+          e.preventDefault();
+          modal.open();
+        };
+        btn.style.display = 'inline-block';
+      }
+    } catch (err) {
+      console.error('WalletConnect init error:', err);
+    }
+  };
+  document.head.appendChild(script);
+})();
+</script>`, walletConnectProjectID, depositAddr, chainID))
+	}
 
 	return sb.String()
 }
