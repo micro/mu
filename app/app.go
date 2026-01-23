@@ -507,14 +507,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Status line
-	var statusLine string
-	if acc.Admin {
-		statusLine = "<strong>Admin</strong> · Full access"
-	} else {
-		statusLine = "10 free queries/day · <a href=\"/wallet\">Top up</a> · <a href=\"/plans\">Pricing</a>"
-	}
-
 	// Build language options
 	currentLang := acc.Language
 	if currentLang == "" {
@@ -536,12 +528,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := fmt.Sprintf(`<div class="card">
-<h3>Wallet</h3>
-<p id="wallet-balance" class="text-xl font-bold my-3">...</p>
-<p>%s</p>
-</div>
-
-<div class="card">
 <h3>Profile</h3>
 <p><strong>Username:</strong> %s</p>
 <p><strong>Name:</strong> %s</p>
@@ -562,20 +548,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <p><a href="/token">API Tokens →</a></p>
 %s
 <p><a href="/logout" class="text-error">Logout</a></p>
-</div>
-
-<script>
-// Fetch wallet balance
-fetch('/wallet?balance=1')
-  .then(r => r.json())
-  .then(data => {
-    document.getElementById('wallet-balance').textContent = (data.balance || 0) + ' credits';
-  })
-  .catch(() => {
-    document.getElementById('wallet-balance').textContent = '0 credits';
-  });
-</script>`,
-		statusLine,
+</div>`,
 		acc.ID,
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
