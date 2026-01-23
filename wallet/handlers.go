@@ -351,7 +351,7 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
 	sb.WriteString(`<p class="text-sm mt-3">`)
 	sb.WriteString(`<button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Address', 2000)" class="btn-secondary">Copy Address</button>`)
-	sb.WriteString(` <button id="walletconnect-btn" class="btn" style="display:none;">Open Wallet</button>`)
+	sb.WriteString(` <button id="walletconnect-btn" class="btn">Connect Wallet</button>`)
 	sb.WriteString(`</p>`)
 	sb.WriteString(`</div>`)
 	sb.WriteString(`<p class="text-xs text-muted mt-2">Scan QR or copy address to send from your wallet app</p>`)
