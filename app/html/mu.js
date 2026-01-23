@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v118';
+var VERSION = 'v119';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -666,7 +666,7 @@ function setSession() {
       if (navLogout) navLogout.style.display = 'flex';
       if (navLogin) navLogin.style.display = 'none';
       if (navUsername && sess.account) {
-        navUsername.textContent = '@' + sess.account;
+        navUsername.textContent = 'Signed in as @' + sess.account;
         navUsername.style.display = 'block';
       }
       if (microFab) microFab.style.display = 'flex';
@@ -911,6 +911,7 @@ self.addEventListener('DOMContentLoaded', function() {
   
   // set nav active state
   var nav = document.getElementById("nav");
+  var navContainer = document.getElementById("nav-container");
   for (const el of nav.children) {
     // Skip non-link elements (spacer, bottom container)
     if (el.tagName !== 'A') continue;
@@ -920,6 +921,17 @@ self.addEventListener('DOMContentLoaded', function() {
       el.classList.remove("active");
     }
   }
+  
+  // Show scroll indicator if nav has overflow
+  function checkNavScroll() {
+    if (nav.scrollHeight > nav.clientHeight && nav.scrollTop < nav.scrollHeight - nav.clientHeight - 10) {
+      navContainer.classList.add('has-scroll');
+    } else {
+      navContainer.classList.remove('has-scroll');
+    }
+  }
+  checkNavScroll();
+  nav.addEventListener('scroll', checkNavScroll);
 
   // load chat
   if (window.location.pathname == CHAT_PATH) {

@@ -552,6 +552,28 @@ td {
   gap: 5px;
   flex: 1;
   overflow-y: auto;
+  position: relative;
+}
+
+/* Scroll indicator when nav has more items */
+#nav-container::after {
+  content: '⌄ more';
+  position: absolute;
+  bottom: 130px;
+  left: 25px;
+  right: 25px;
+  text-align: center;
+  font-size: 0.75em;
+  color: #999;
+  background: linear-gradient(transparent, white 50%);
+  padding: 15px 0 5px 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+#nav-container.has-scroll::after {
+  opacity: 1;
 }
 
 #nav a {
