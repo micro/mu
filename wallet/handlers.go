@@ -320,8 +320,7 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 
 	// Chain selector
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Network</h3>`)
-	sb.WriteString(`<p class="text-sm text-muted mb-2">Ethereum, Base, Arbitrum, Optimism</p>`)
+	sb.WriteString(`<h3>Pick a network</h3>`)
 	sb.WriteString(`<select id="chain-select" onchange="window.location.href='/wallet/deposit?method=crypto&chain='+this.value" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">`)
 	for _, c := range depositChains {
 		selected := ""
