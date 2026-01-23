@@ -163,6 +163,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleWalletPage(w, r)
 	case path == "/wallet/deposit" && r.Method == "GET":
 		handleDepositPage(w, r)
+	case path == "/wallet/stripe/checkout" && r.Method == "POST":
+		handleStripeCheckout(w, r)
+	case path == "/wallet/stripe/success" && r.Method == "GET":
+		handleStripeSuccess(w, r)
+	case path == "/wallet/stripe/webhook" && r.Method == "POST":
+		HandleStripeWebhook(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -199,13 +205,90 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get selected method (stripe or crypto)
+	method := r.URL.Query().Get("method")
+	if method == "" {
+		method = "stripe" // Default to stripe
+	}
+
+	var sb strings.Builder
+
+	// Method tabs
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
+	if StripeEnabled() {
+		stripeActive := ""
+		if method == "stripe" {
+			stripeActive = " btn-primary"
+		} else {
+			stripeActive = " btn-secondary"
+		}
+		sb.WriteString(fmt.Sprintf(`<a href="/wallet/deposit?method=stripe" class="btn%s">Card</a>`, stripeActive))
+	}
+	if CryptoWalletEnabled() {
+		cryptoActive := ""
+		if method == "crypto" {
+			cryptoActive = " btn-primary"
+		} else {
+			cryptoActive = " btn-secondary"
+		}
+		sb.WriteString(fmt.Sprintf(`<a href="/wallet/deposit?method=crypto" class="btn%s">Crypto</a>`, cryptoActive))
+	}
+	sb.WriteString(`</div>`)
+	sb.WriteString(`</div>`)
+
+	if method == "stripe" && StripeEnabled() {
+		sb.WriteString(renderStripeDeposit())
+	} else if method == "crypto" && CryptoWalletEnabled() {
+		sb.WriteString(renderCryptoDeposit(sess.Account, r))
+	} else if StripeEnabled() {
+		sb.WriteString(renderStripeDeposit())
+	} else if CryptoWalletEnabled() {
+		sb.WriteString(renderCryptoDeposit(sess.Account, r))
+	} else {
+		sb.WriteString(`<div class="card"><p class="text-error">No payment methods available.</p></div>`)
+	}
+
+	html := app.RenderHTMLForRequest("Add Credits", "Top up your wallet", sb.String(), r)
+	w.Write([]byte(html))
+}
+
+func renderStripeDeposit() string {
+	var sb strings.Builder
+
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Select Amount</h3>`)
+	sb.WriteString(`<form method="POST" action="/wallet/stripe/checkout">`)
+	sb.WriteString(`<div class="d-flex flex-column gap-2">`)
+
+	for _, tier := range StripeTopupTiers {
+		bonusText := ""
+		if tier.BonusPct > 0 {
+			bonusText = fmt.Sprintf(" <span class=\"text-success\">+%d%% bonus</span>", tier.BonusPct)
+		}
+		sb.WriteString(fmt.Sprintf(`<label class="topup-option">`+
+			`<input type="radio" name="amount" value="%d"> `+
+			`<strong>%s</strong> → %d credits%s`+
+			`</label>`, tier.Amount, tier.Label, tier.Credits, bonusText))
+	}
+
+	sb.WriteString(`</div>`)
+	sb.WriteString(`<button type="submit" class="btn mt-4">Continue to Payment</button>`)
+	sb.WriteString(`</form>`)
+	sb.WriteString(`</div>`)
+
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<p class="text-sm text-muted">Secure payment via Stripe. 1 credit = 1p.</p>`)
+	sb.WriteString(`</div>`)
+
+	return sb.String()
+}
+
+func renderCryptoDeposit(userID string, r *http.Request) string {
 	// Initialize crypto wallet if needed
 	if err := InitCryptoWallet(); err != nil {
 		app.Log("wallet", "Failed to init crypto wallet: %v", err)
-		content := `<div class="card"><p class="text-error">Crypto wallet not available. Please try again later.</p></div>`
-		html := app.RenderHTMLForRequest("Deposit", "Add credits", content, r)
-		w.Write([]byte(html))
-		return
+		return `<div class="card"><p class="text-error">Crypto wallet not available. Please try again later.</p></div>`
 	}
 
 	// Get selected chain (default to ethereum)
@@ -226,13 +309,10 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user's deposit address
-	depositAddr, err := GetUserDepositAddress(sess.Account)
+	depositAddr, err := GetUserDepositAddress(userID)
 	if err != nil {
 		app.Log("wallet", "Failed to get deposit address: %v", err)
-		content := `<div class="card"><p class="text-error">Failed to generate deposit address.</p></div>`
-		html := app.RenderHTMLForRequest("Deposit", "Add credits", content, r)
-		w.Write([]byte(html))
-		return
+		return `<div class="card"><p class="text-error">Failed to generate deposit address.</p></div>`
 	}
 
 	var sb strings.Builder
@@ -240,7 +320,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	// Chain selector
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Network</h3>`)
-	sb.WriteString(`<select id="chain-select" onchange="window.location.href='/wallet/deposit?chain='+this.value" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">`)
+	sb.WriteString(`<select id="chain-select" onchange="window.location.href='/wallet/deposit?method=crypto&chain='+this.value" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">`)
 	for _, c := range depositChains {
 		selected := ""
 		if c.ID == selectedChain {
@@ -279,6 +359,58 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p</p>`)
 	sb.WriteString(`</div>`)
 
-	html := app.RenderHTMLForRequest("Deposit", "Add credits", sb.String(), r)
+	return sb.String()
+}
+
+func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	amountStr := r.FormValue("amount")
+	var amount int
+	fmt.Sscanf(amountStr, "%d", &amount)
+
+	if amount == 0 {
+		http.Error(w, "please select an amount", http.StatusBadRequest)
+		return
+	}
+
+	// Build success/cancel URLs
+	scheme := "https"
+	if r.TLS == nil && !strings.Contains(r.Host, "mu.xyz") {
+		scheme = "http"
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
+	successURL := baseURL + "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}"
+	cancelURL := baseURL + "/wallet/deposit?method=stripe"
+
+	// Create checkout session
+	checkoutURL, err := CreateCheckoutSession(sess.Account, amount, successURL, cancelURL)
+	if err != nil {
+		app.Log("stripe", "checkout error: %v", err)
+		http.Error(w, "failed to create checkout session", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect to Stripe
+	http.Redirect(w, r, checkoutURL, http.StatusSeeOther)
+}
+
+func handleStripeSuccess(w http.ResponseWriter, r *http.Request) {
+	// Just show success message - actual crediting happens via webhook
+	content := `<div class="card">
+		<h2>Payment Successful</h2>
+		<p>Your credits will be added to your account shortly.</p>
+		<p><a href="/wallet" class="btn">View Wallet</a></p>
+	</div>`
+	html := app.RenderHTMLForRequest("Payment Complete", "Credits added", content, r)
 	w.Write([]byte(html))
 }

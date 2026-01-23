@@ -4628,3 +4628,27 @@ a.btn-secondary:hover, .btn-secondary:hover {
   padding: 8px;
   font-size: 0.85em;
 }
+
+/* Topup options */
+.topup-option {
+  display: block;
+  padding: 12px 16px;
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.topup-option:hover {
+  border-color: var(--text-primary, #333);
+  background: var(--card-background, #fafafa);
+}
+
+.topup-option input[type="radio"] {
+  margin-right: 8px;
+}
+
+.topup-option:has(input:checked) {
+  border-color: var(--text-primary, #333);
+  background: var(--card-background, #f5f5f5);
+}
