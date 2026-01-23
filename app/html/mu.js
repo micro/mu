@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v124';
+var VERSION = 'v125';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -943,8 +943,13 @@ self.addEventListener('DOMContentLoaded', function() {
     // Add click handlers for chat topics - always switch rooms
     document.querySelectorAll(CHAT_TOPIC_SELECTOR).forEach(link => {
       link.addEventListener('click', function(e) {
-        e.preventDefault();
         const topicName = this.textContent;
+        // "All" link should navigate to /chat (main chat), not create a room
+        if (topicName === 'All') {
+          // Let the default navigation happen
+          return;
+        }
+        e.preventDefault();
         switchTopic(topicName);
       });
     });
