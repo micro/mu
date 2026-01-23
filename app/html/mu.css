@@ -654,10 +654,10 @@ td {
 }
 
 #nav-username {
-  font-weight: 500;
-  color: #666;
+  font-weight: 400;
+  color: #999;
   padding: 4px 14px;
-  font-size: 0.85em;
+  font-size: 0.75em;
 }
 
 #nav-mail-badge {
