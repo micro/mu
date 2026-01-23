@@ -364,8 +364,9 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 
 	// WalletConnect script
 	wcProjectID := getWalletConnectProjectID()
-	app.Log("wallet", "WalletConnect project ID: %q", wcProjectID)
-	if wcProjectID != "" {
+	if wcProjectID == "" {
+		sb.WriteString(`<p class="text-xs text-error">WalletConnect not configured</p>`)
+	} else {
 		sb.WriteString(fmt.Sprintf(`<script>
 (function() {
   const projectId = '%s';
