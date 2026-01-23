@@ -549,6 +549,7 @@ td {
   flex-direction: column;
   gap: 5px;
   height: 100%;
+  padding-bottom: 140px; /* Space for absolute nav-bottom */
 }
 
 #nav a {
