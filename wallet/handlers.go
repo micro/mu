@@ -215,7 +215,8 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 
 	// Method tabs
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
+	sb.WriteString(`<h3>Top up with card or crypto</h3>`)
+	sb.WriteString(`<div class="d-flex gap-2">`)
 	if StripeEnabled() {
 		stripeActive := ""
 		if method == "stripe" {
@@ -320,6 +321,7 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	// Chain selector
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Network</h3>`)
+	sb.WriteString(`<p class="text-sm text-muted mb-2">Ethereum, Base, Arbitrum, Optimism</p>`)
 	sb.WriteString(`<select id="chain-select" onchange="window.location.href='/wallet/deposit?method=crypto&chain='+this.value" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">`)
 	for _, c := range depositChains {
 		selected := ""
