@@ -215,7 +215,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 
 	// Method tabs
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Top up with card or crypto</h3>`)
+	sb.WriteString(`<h3>Choose card or crypto</h3>`)
 	sb.WriteString(`<div class="d-flex gap-2">`)
 	if StripeEnabled() {
 		stripeActive := ""
@@ -350,15 +350,9 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(`</p>`)
 	sb.WriteString(`</div>`)
 
-	// Supported tokens
+	// Conversion note
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Supported</h3>`)
-	sb.WriteString(`<ul>`)
-	sb.WriteString(`<li><strong>ETH</strong></li>`)
-	sb.WriteString(`<li><strong>USDC</strong></li>`)
-	sb.WriteString(`<li><strong>ERC-20</strong> tokens</li>`)
-	sb.WriteString(`</ul>`)
-	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p</p>`)
+	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · Converted at market rate</p>`)
 	sb.WriteString(`</div>`)
 
 	return sb.String()
