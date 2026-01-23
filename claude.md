@@ -1,5 +1,7 @@
 # Mu Development Checkpoint
 
+> See [PURPOSE.md](PURPOSE.md) for design philosophy, spiritual grounding, and the "environment principle."
+
 ## What is Mu?
 The Micro Network - apps without ads, algorithms, or tracking. Utility tools, not a destination. Like Google Search circa 2000: arrive with intent, get what you need, leave.
 
