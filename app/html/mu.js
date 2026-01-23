@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v112';
+var VERSION = 'v113';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -666,7 +666,7 @@ function setSession() {
       if (navLogout) navLogout.style.display = 'flex';
       if (navLogin) navLogin.style.display = 'none';
       if (navUsername && sess.account) {
-        navUsername.textContent = sess.account;
+        navUsername.textContent = 'Signed in as: @' + sess.account;
         navUsername.style.display = 'block';
       }
       if (microFab) microFab.style.display = 'flex';
