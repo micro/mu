@@ -215,7 +215,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 
 	// Method tabs
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Choose card or crypto</h3>`)
+	sb.WriteString(`<h3>Topup using card or crypto</h3>`)
 	sb.WriteString(`<div class="d-flex gap-2">`)
 	if StripeEnabled() {
 		stripeActive := ""
