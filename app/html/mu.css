@@ -2138,11 +2138,19 @@ a.highlight {
     top: 0;
     width: 260px;
     height: 100vh;
+    height: 100svh;
     padding: 70px 20px 20px 20px;
     background: white;
     border-right: 1px solid #e0e0e0;
     z-index: 200;
     transition: left 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  #nav {
+    flex: 1;
     overflow-y: auto;
   }
   
