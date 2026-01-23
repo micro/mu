@@ -351,7 +351,6 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
 	sb.WriteString(`<p class="text-sm mt-3">`)
 	sb.WriteString(`<button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Address', 2000)" class="btn-secondary">Copy Address</button>`)
-	sb.WriteString(` <button id="walletconnect-btn" class="btn">Connect Wallet</button>`)
 	sb.WriteString(`</p>`)
 	sb.WriteString(`</div>`)
 	sb.WriteString(`<p class="text-xs text-muted mt-2">Scan QR or copy address to send from your wallet app</p>`)
@@ -361,43 +360,6 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · Converted at market rate</p>`)
 	sb.WriteString(`</div>`)
-
-	// WalletConnect script - use Reown AppKit (formerly Web3Modal)
-	wcProjectID := getWalletConnectProjectID()
-	if wcProjectID == "" {
-		sb.WriteString(`<p class="text-xs text-error">WalletConnect not configured</p>`)
-	} else {
-		sb.WriteString(fmt.Sprintf(`<script type="module">
-import { createAppKit } from 'https://unpkg.com/@reown/appkit-cdn@1.6.8/dist/appkit.js';
-import { mainnet, base, arbitrum, optimism } from 'https://unpkg.com/@reown/appkit-cdn@1.6.8/dist/networks.js';
-
-const networks = { 1: mainnet, 8453: base, 42161: arbitrum, 10: optimism };
-const chainId = %d;
-
-try {
-  const modal = createAppKit({
-    projectId: '%s',
-    networks: [networks[chainId] || mainnet],
-    metadata: {
-      name: 'Mu',
-      description: 'Top up your Mu wallet',
-      url: 'https://mu.xyz',
-      icons: ['https://mu.xyz/icon-192.png']
-    }
-  });
-
-  const btn = document.getElementById('walletconnect-btn');
-  if (btn) {
-    btn.onclick = (e) => {
-      e.preventDefault();
-      modal.open();
-    };
-  }
-} catch (err) {
-  console.error('WalletConnect error:', err);
-}
-</script>`, chainID, wcProjectID))
-	}
 
 	return sb.String()
 }
