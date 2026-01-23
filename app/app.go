@@ -324,8 +324,8 @@ func Head(appName string, refs []string) string {
 
 	var head string
 
-	// Add main link first with back arrow
-	head += fmt.Sprintf(`<a href="/%s" class="head">← All</a>`, appName)
+	// Add main link first with home symbol
+	head += fmt.Sprintf(`<a href="/%s" class="head">⌂</a>`, appName)
 
 	// create head for topics - plain text format with hash
 	for _, ref := range refs {
