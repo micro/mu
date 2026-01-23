@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v109';
+var VERSION = 'v110';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -904,14 +904,16 @@ self.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // set nav
+  // set nav active state
   var nav = document.getElementById("nav");
   for (const el of nav.children) {
+    // Skip non-link elements (spacer, bottom container)
+    if (el.tagName !== 'A') continue;
     if (el.getAttribute("href") == window.location.pathname) {
-      el.setAttribute("class", "active");
-      continue;
+      el.classList.add("active");
+    } else {
+      el.classList.remove("active");
     }
-    el.removeAttribute("class");
   }
 
   // load chat
