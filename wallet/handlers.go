@@ -362,48 +362,41 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · Converted at market rate</p>`)
 	sb.WriteString(`</div>`)
 
-	// WalletConnect script
+	// WalletConnect script - use Reown AppKit (formerly Web3Modal)
 	wcProjectID := getWalletConnectProjectID()
 	if wcProjectID == "" {
 		sb.WriteString(`<p class="text-xs text-error">WalletConnect not configured</p>`)
 	} else {
-		sb.WriteString(fmt.Sprintf(`<script>
-(function() {
-  const projectId = '%s';
-  const depositAddress = '%s';
-  const chainId = %d;
+		sb.WriteString(fmt.Sprintf(`<script type="module">
+import { createAppKit } from 'https://unpkg.com/@reown/appkit-cdn@1.6.8/dist/appkit.js';
+import { mainnet, base, arbitrum, optimism } from 'https://unpkg.com/@reown/appkit-cdn@1.6.8/dist/networks.js';
 
-  // Load Web3Modal from CDN
-  const script = document.createElement('script');
-  script.src = 'https://unpkg.com/@web3modal/cdn@5.1.11/dist/index.umd.js';
-  script.onload = function() {
-    try {
-      const modal = window.Web3Modal.createWeb3Modal({
-        projectId: projectId,
-        chains: [chainId],
-        metadata: {
-          name: 'Mu',
-          description: 'Top up your Mu wallet',
-          url: 'https://mu.xyz',
-          icons: ['https://mu.xyz/icon-192.png']
-        }
-      });
+const networks = { 1: mainnet, 8453: base, 42161: arbitrum, 10: optimism };
+const chainId = %d;
 
-      const btn = document.getElementById('walletconnect-btn');
-      if (btn) {
-        btn.onclick = function(e) {
-          e.preventDefault();
-          modal.open();
-        };
-        btn.style.display = 'inline-block';
-      }
-    } catch (err) {
-      console.error('WalletConnect init error:', err);
+try {
+  const modal = createAppKit({
+    projectId: '%s',
+    networks: [networks[chainId] || mainnet],
+    metadata: {
+      name: 'Mu',
+      description: 'Top up your Mu wallet',
+      url: 'https://mu.xyz',
+      icons: ['https://mu.xyz/icon-192.png']
     }
-  };
-  document.head.appendChild(script);
-})();
-</script>`, wcProjectID, depositAddr, chainID))
+  });
+
+  const btn = document.getElementById('walletconnect-btn');
+  if (btn) {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      modal.open();
+    };
+  }
+} catch (err) {
+  console.error('WalletConnect error:', err);
+}
+</script>`, chainID, wcProjectID))
 	}
 
 	return sb.String()
