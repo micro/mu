@@ -1,0 +1,118 @@
+package agent
+
+import (
+	"strings"
+
+	"mu/ai"
+)
+
+// IntentType represents the classified intent of a user request
+type IntentType string
+
+const (
+	IntentTask     IntentType = "task"     // Execute a task with tools
+	IntentIslamic  IntentType = "islamic"  // Islamic/religious question
+	IntentArabic   IntentType = "arabic"   // Arabic/cultural question
+	IntentCoding   IntentType = "coding"   // Build/create apps
+	IntentNews     IntentType = "news"     // Search news
+	IntentGeneral  IntentType = "general"  // General question (redirect to chat)
+	IntentUnknown  IntentType = "unknown"  // Needs LLM to classify
+)
+
+// Intent holds the classified intent and suggested provider
+type Intent struct {
+	Type     IntentType
+	Provider string // ai.ProviderAnthropic, ai.ProviderFanar, etc.
+	Tool     string // Suggested tool if known
+}
+
+// ClassifyIntent uses rules-based matching first, then LLM fallback
+func ClassifyIntent(input string) *Intent {
+	lower := strings.ToLower(input)
+	
+	// Layer 1: Rules-based classification (fast)
+	
+	// Coding/app building - route to Anthropic
+	if containsAny(lower, []string{"build", "create", "make", "develop", "code", "app", "application", "website", "program"}) &&
+		containsAny(lower, []string{"app", "application", "website", "tool", "program", "script", "page"}) {
+		return &Intent{Type: IntentCoding, Provider: ai.ProviderAnthropic}
+	}
+	
+	// Islamic/religious - route to Reminder + Fanar
+	if containsAny(lower, []string{
+		"quran", "qur'an", "ayah", "ayat", "surah", "sura",
+		"hadith", "hadīth", "sunnah", "sunna",
+		"islam", "islamic", "muslim", "muslims",
+		"allah", "prophet", "muhammad", "pbuh",
+		"sharia", "shariah", "shari'a",
+		"halal", "haram", "permissible", "forbidden",
+		"prayer", "salah", "salat", "fasting", "sawm", "ramadan",
+		"zakat", "zakah", "hajj", "pilgrimage",
+		"wudu", "ablution", "ghusl",
+		"imam", "mosque", "masjid",
+		"dua", "du'a", "supplication",
+		"jannah", "paradise", "hellfire", "jahannam",
+		"angels", "jinn", "shaytan", "satan",
+	}) {
+		return &Intent{Type: IntentIslamic, Provider: ai.ProviderFanar, Tool: "reminder.today"}
+	}
+	
+	// Arabic/cultural - route to Fanar
+	if containsAny(lower, []string{
+		"arabic", "arab", "عربي", "العربية",
+		"middle east", "gulf", "qatar", "saudi", "uae", "egypt",
+		"eid", "عيد", "ramadan", "رمضان",
+	}) {
+		return &Intent{Type: IntentArabic, Provider: ai.ProviderFanar}
+	}
+	
+	// News search
+	if containsAny(lower, []string{"news", "headlines", "article", "articles", "latest", "today's"}) &&
+		containsAny(lower, []string{"search", "find", "show", "get", "what's", "whats"}) {
+		return &Intent{Type: IntentNews, Provider: ai.ProviderAnthropic, Tool: "news.search"}
+	}
+	
+	// Video
+	if containsAny(lower, []string{"video", "videos", "watch", "play", "youtube"}) {
+		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "video.search"}
+	}
+	
+	// Email
+	if containsAny(lower, []string{"email", "mail", "send", "inbox", "message"}) {
+		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "mail.send"}
+	}
+	
+	// Notes
+	if containsAny(lower, []string{"note", "notes", "save", "remember", "write down"}) {
+		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "notes.create"}
+	}
+	
+	// Markets/prices
+	if containsAny(lower, []string{"price", "prices", "bitcoin", "btc", "eth", "crypto", "stock", "market", "gold"}) {
+		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "markets.get_price"}
+	}
+	
+	// Wallet/balance
+	if containsAny(lower, []string{"balance", "credits", "wallet", "how much", "funds"}) {
+		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "wallet.balance"}
+	}
+	
+	// General questions - redirect to chat
+	if containsAny(lower, []string{"what is", "what are", "who is", "who are", "why", "how does", "explain", "tell me about"}) &&
+		!containsAny(lower, []string{"app", "video", "news", "email", "note", "price"}) {
+		return &Intent{Type: IntentGeneral, Provider: ""}
+	}
+	
+	// Unknown - will need LLM to classify
+	return &Intent{Type: IntentUnknown, Provider: ai.ProviderAnthropic}
+}
+
+// containsAny checks if s contains any of the substrings
+func containsAny(s string, substrs []string) bool {
+	for _, sub := range substrs {
+		if strings.Contains(s, sub) {
+			return true
+		}
+	}
+	return false
+}

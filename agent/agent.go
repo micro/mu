@@ -71,10 +71,33 @@ func (a *Agent) RunStreaming(task string, onStep StepCallback) *Result {
 		Steps: []*Step{},
 	}
 
+	// Classify intent to determine routing
+	intent := ClassifyIntent(task)
+	app.Log("agent", "Classified intent: %s, provider: %s, tool: %s", intent.Type, intent.Provider, intent.Tool)
+
+	// Handle general questions - redirect to chat
+	if intent.Type == IntentGeneral {
+		result.Success = true
+		result.Answer = "I help with tasks like searching news, playing videos, creating apps, or finding Islamic references. For general questions and conversation, try Chat where you can discuss with others."
+		result.Duration = time.Since(start).String()
+		return result
+	}
+
 	systemPrompt := a.buildSystemPrompt()
+
+	// Select provider based on intent
+	provider := ai.ProviderAnthropic // default
+	if intent.Provider != "" {
+		provider = intent.Provider
+	}
 
 	var history ai.History
 	currentPrompt := task
+
+	// If we have a suggested tool, hint it in the prompt
+	if intent.Tool != "" {
+		currentPrompt = fmt.Sprintf("%s\n\n[Hint: Consider using the %s tool]", task, intent.Tool)
+	}
 
 	for i := 0; i < a.maxSteps; i++ {
 		llmPrompt := &ai.Prompt{
@@ -82,7 +105,7 @@ func (a *Agent) RunStreaming(task string, onStep StepCallback) *Result {
 			Question: currentPrompt,
 			Context:  history,
 			Priority: ai.PriorityHigh,
-			Provider: ai.ProviderAnthropic, // Use Anthropic for speed
+			Provider: provider,
 		}
 
 		response, err := ai.Ask(llmPrompt)
@@ -195,10 +218,24 @@ func (a *Agent) executeTool(step *Step) *ToolResult {
 	return result
 }
 
+// Base system prompt with Islamic principles
+const baseSystemPrompt = `You are an assistant for Mu, a platform built for the Muslim community.
+
+Core Principles:
+- We operate according to Islamic values and Sharia principles
+- We are stewards of the tools and knowledge Allah has provided
+- We speak with knowledge and cite sources - we do not fabricate or hallucinate
+- We serve the Muslim community first, while being welcoming to all
+- We are honest about limitations - "I don't know" is better than false information
+
+You help users accomplish tasks and find information from trusted sources.
+`
+
 // buildSystemPrompt creates the system prompt with available tools
 func (a *Agent) buildSystemPrompt() string {
 	toolsJSON := a.buildToolsJSON()
-	return fmt.Sprintf(`You are a task execution agent for the Mu platform. You execute specific tasks using the available tools.
+	return fmt.Sprintf(`%s
+You are a task execution agent. You execute specific tasks using the available tools.
 
 Available tools:
 %s
@@ -213,14 +250,15 @@ You must respond with EXACTLY ONE JSON object per response:
 Rules:
 1. ONE TOOL PER RESPONSE - never output multiple JSON objects
 2. You execute TASKS - playing videos, searching news, creating apps, sending emails, checking prices, saving notes, etc.
-3. If the user asks a general question, philosophical question, or wants conversation, use final_answer to say: "I help with tasks like playing videos, searching news, or creating apps. For questions and conversation, try Chat."
-4. Do NOT search for answers to general questions - just politely redirect to Chat.
-5. After each tool result, decide if you need more steps or can provide final_answer
-6. Always end with final_answer when done
-7. Be concise - minimize steps
-8. IMPORTANT: When providing final_answer, include the ACTUAL DATA from tool results (headlines, prices, search results, etc.) - don't just say you found them, SHOW them
+3. For Islamic/religious questions, use the reminder tool to find relevant Quran verses or hadith
+4. For news, use news_search to find articles - always cite the source
+5. For general questions without a clear tool, use final_answer to say: "I can help with tasks like playing videos, searching news, or creating apps. For general conversation, try Chat."
+6. After each tool result, decide if you need more steps or can provide final_answer
+7. Always end with final_answer when done
+8. Be concise - minimize steps
+9. IMPORTANT: When providing final_answer, include the ACTUAL DATA from tool results (headlines, prices, verses, etc.) - don't just say you found them, SHOW them with sources
 
-Current user: %s`, toolsJSON, a.userID)
+Current user: %s`, baseSystemPrompt, toolsJSON, a.userID)
 }
 
 // buildToolsJSON creates the tools description for the LLM
