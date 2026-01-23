@@ -548,6 +548,7 @@ td {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  height: 100%;
 }
 
 #nav a {
@@ -585,6 +586,19 @@ td {
   height: 1px;
   background: var(--divider, #f0f0f0);
   margin: 10px 0;
+}
+
+.nav-spacer {
+  flex: 1;
+}
+
+.nav-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-top: 1px solid var(--divider, #f0f0f0);
+  padding-top: 10px;
+  margin-top: 10px;
 }
 
 #nav-mail-badge {
@@ -2098,6 +2112,12 @@ a.highlight {
   
   .nav-divider {
     margin: 15px 0;
+  }
+  
+  .nav-bottom {
+    border-top: 1px solid var(--divider, #f0f0f0);
+    padding-top: 15px;
+    margin-top: 15px;
   }
   
   #container {
