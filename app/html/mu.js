@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v123';
+var VERSION = 'v124';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons

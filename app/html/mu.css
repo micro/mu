@@ -1073,9 +1073,10 @@ body:has(#messages) #chat-back-link {
   cursor: pointer;
 }
 
-#topic-selector .head:first-child {
-  font-size: 18px;
-  padding: 5px 10px 5px 0;
+#topic-selector .head.home-link {
+  font-size: 16px;
+  padding: 4px 12px 4px 0;
+  text-decoration: none !important;
 }
 
 #topic-selector .head:hover {
