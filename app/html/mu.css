@@ -1054,7 +1054,8 @@ body:has(#messages) #chat-back-link {
 }
 
 #messages {
-  max-height: calc(100dvh - 240px);
+  height: calc(100dvh - 240px);
+  min-height: 300px;
   border: 1px solid #ddd;
   border-radius: 5px;
   padding: 15px;

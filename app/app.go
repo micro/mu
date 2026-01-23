@@ -319,14 +319,17 @@ func Link(name, ref string) string {
 	return fmt.Sprintf(`<a href="%s" class="link">%s →</a>`, ref, name)
 }
 
-func Head(app string, refs []string) string {
+func Head(appName string, refs []string) string {
 	sort.Strings(refs)
 
 	var head string
 
+	// Add main link first (e.g., "Chat" for /chat)
+	head += fmt.Sprintf(`<a href="/%s" class="head">%s</a>`, appName, strings.Title(appName))
+
 	// create head for topics - plain text format with hash
 	for _, ref := range refs {
-		head += fmt.Sprintf(`<a href="/%s#%s" class="head">%s</a>`, app, ref, ref)
+		head += fmt.Sprintf(`<a href="/%s#%s" class="head">%s</a>`, appName, ref, ref)
 	}
 
 	return head
