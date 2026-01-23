@@ -344,10 +344,9 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(fmt.Sprintf(`<img src="data:image/png;base64,%s" alt="QR Code" class="qr-code">`, qrBase64))
 	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
 	sb.WriteString(`<p class="text-sm mt-3">`)
-	sb.WriteString(`<button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 2000)" class="btn-secondary">Copy</button>`)
-	sb.WriteString(fmt.Sprintf(` <a href="%s" class="btn ml-2">Open in Wallet</a>`, ethURI))
+	sb.WriteString(`<button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 2000)" class="btn-secondary">Copy Address</button>`)
 	sb.WriteString(`</p>`)
-	sb.WriteString(`<p class="text-xs text-muted mt-2">Scan QR or copy address to send from any wallet</p>`)
+	sb.WriteString(`<p class="text-xs text-muted mt-2">Scan QR or copy address to send from your wallet app</p>`)
 	sb.WriteString(`</div>`)
 
 	// Conversion note
