@@ -21,19 +21,35 @@ No ads, no algorithms, no tracking. Simple apps that respect your time.
 4. **Pay-as-you-go, No Ads** - You're the customer, not the product
 5. **Self-hostable** - Single binary, your data stays yours
 
-## Recent Session Changes
-- Sidebar sorted alphabetically (Home at top, Login/Logout at bottom)
-- Notes preserve newlines in card previews (white-space: pre-wrap)
-- Chat summaries redesigned: single collapsible "Today's Topics" card, summaries shown directly on topic pages
-- Notes auto-save with undo (localStorage stores original, revert on demand)
-- Agent added to sidebar
-- App generation: stronger prompts against placeholders, mustache template replacement for {{ mu.user.name }} etc.
-- GitHub repo moved from asim/mu to micro/mu
-- micro.mu landing page updated: "Simple tools for the internet" → links to mu.xyz, GitHub, Go Micro
-- App generation now uses Anthropic Claude Haiku for speed (~3-4s vs 9-12s with Fanar)
-- Template-based app generation with external /sdk.css and /sdk.js
-- Status page shows disk usage, all LLM providers with roles
-- Provider selection: ai.Prompt.Provider field to force specific LLM (Anthropic for apps, Fanar for chat)
+## Recent Session Changes (January 2025)
+
+### Sidebar Improvements
+- Account/Login/Logout pinned to bottom with border separator
+- "Signed in as @username" shown (smaller, greyed)
+- Scroll indicator ("⌄ more") when nav items overflow
+- Nav items scrollable, bottom section stays fixed
+- Removed redundant Wallet section from Account page
+
+### Agent Intent Routing
+- Base system prompt with Islamic principles
+- Rules-based intent classifier (fast, no LLM call)
+- Routes to appropriate provider based on intent:
+  - Islamic/religious → Fanar + Reminder tool
+  - Arabic/cultural → Fanar  
+  - Coding/apps → Anthropic
+  - General questions → Redirect to Chat (don't hallucinate)
+- Hints suggested tools to LLM based on classified intent
+
+### Chat Improvements  
+- "All" link in topics navigates to /chat correctly (not chat_All room)
+- Chat = public discussion, Agent = private assistant
+- Topic tabs use "All" text (simpler than icons)
+
+### Other
+- Kids video titles: HTML entities unescaped (fixes &#39; showing literally)
+- Chat message box uses fixed height for consistency
+- Discord link added to micro.mu landing page
+- PURPOSE.md added with design philosophy and spiritual grounding
 
 ## Platform Vision
 
@@ -641,3 +657,45 @@ Keep existing credit system:
 ### TODO
 - `chat.ask` - Chat has complex room/websocket logic, needs refactoring to expose as simple tool
 - User-generated app tools via `mu.register()` in SDK
+
+## Agent Routing System (agent/router.go)
+
+### Intent Classification (Rules-based, Fast)
+The agent classifies intent before making any LLM calls:
+
+| Pattern | Intent | Provider | Tool Hint |
+|---------|--------|----------|----------|
+| build/create + app | Coding | Anthropic | - |
+| quran/hadith/islam/halal | Islamic | Fanar | reminder.today |
+| arabic/arab/middle east | Arabic | Fanar | - |
+| news + search | News | Anthropic | news.search |
+| video/watch/play | Task | Anthropic | video.search |
+| email/mail/send | Task | Anthropic | mail.send |
+| note/save | Task | Anthropic | notes.create |
+| price/bitcoin/crypto | Task | Anthropic | markets.get_price |
+| what is/explain | General | - | → Redirect to Chat |
+
+### Base System Prompt
+```
+You are an assistant for Mu, a platform built for the Muslim community.
+
+Core Principles:
+- We operate according to Islamic values and Sharia principles
+- We are stewards of the tools and knowledge Allah has provided
+- We speak with knowledge and cite sources - we do not fabricate
+- We serve the Muslim community first, while being welcoming to all
+- We are honest about limitations - "I don't know" is better than false information
+```
+
+### Key Insight
+- **Chat** = public discussion (shared rooms, community)
+- **Agent** = private assistant (routes to right tool/model, doesn't share conversations)
+- LLMs do token prediction, not magic - answers must be grounded in sources
+- General questions redirect to Chat rather than hallucinating answers
+
+## UI State
+- Service worker version: v125
+- Sidebar: scrollable nav + fixed bottom (account/logout)
+- Topic nav: "All" link goes to base page
+- Chat: public rooms by topic
+- Agent: private, task-focused with intent routing
