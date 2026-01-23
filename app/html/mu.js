@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v110';
+var VERSION = 'v111';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -654,6 +654,7 @@ function setSession() {
     var navLogout = document.getElementById("nav-logout");
     var navLogin = document.getElementById("nav-login");
     var navMailBadge = document.getElementById("nav-mail-badge");
+    var navUsername = document.getElementById("nav-username");
     var microFab = document.getElementById("micro-fab");
     
     if (sess.type == "account") {
@@ -664,6 +665,10 @@ function setSession() {
       if (navAccount) navAccount.style.display = 'flex';
       if (navLogout) navLogout.style.display = 'flex';
       if (navLogin) navLogin.style.display = 'none';
+      if (navUsername && sess.id) {
+        navUsername.textContent = sess.id;
+        navUsername.style.display = 'block';
+      }
       if (microFab) microFab.style.display = 'flex';
       // Fetch unread mail count for badge
       fetch('/mail?unread=count')

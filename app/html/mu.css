@@ -604,6 +604,13 @@ td {
   padding-top: 15px;
 }
 
+#nav-username {
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 5px 14px;
+  font-size: 0.95em;
+}
+
 #nav-mail-badge {
   background: #e53935;
   color: white;

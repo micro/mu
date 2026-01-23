@@ -210,6 +210,7 @@ var Template = `
           <a id="nav-wallet" href="/wallet"><img src="/wallet.png"><span class="label">Wallet</span></a>
           <div class="nav-spacer"></div>
           <div class="nav-bottom">
+            <div id="nav-username" style="display: none;"></div>
             <a id="nav-account" href="/account"><img src="/account.png"><span class="label">Account</span></a>
             <a id="nav-logout" href="/logout"><img src="/logout.png"><span class="label">Logout</span></a>
             <a id="nav-login" href="/login" style="display: none;"><img src="/account.png"><span class="label">Login</span></a>
