@@ -1073,6 +1073,11 @@ body:has(#messages) #chat-back-link {
   cursor: pointer;
 }
 
+#topic-selector .head:first-child {
+  font-size: 18px;
+  padding: 5px 10px 5px 0;
+}
+
 #topic-selector .head:hover {
   color: #000;
   text-decoration: underline;
