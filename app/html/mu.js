@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v119';
+var VERSION = 'v120';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -924,14 +924,18 @@ self.addEventListener('DOMContentLoaded', function() {
   
   // Show scroll indicator if nav has overflow
   function checkNavScroll() {
-    if (nav.scrollHeight > nav.clientHeight && nav.scrollTop < nav.scrollHeight - nav.clientHeight - 10) {
+    if (nav && navContainer && nav.scrollHeight > nav.clientHeight && nav.scrollTop < nav.scrollHeight - nav.clientHeight - 10) {
       navContainer.classList.add('has-scroll');
-    } else {
+    } else if (navContainer) {
       navContainer.classList.remove('has-scroll');
     }
   }
-  checkNavScroll();
-  nav.addEventListener('scroll', checkNavScroll);
+  // Check after layout settles
+  requestAnimationFrame(() => {
+    requestAnimationFrame(checkNavScroll);
+  });
+  if (nav) nav.addEventListener('scroll', checkNavScroll);
+  window.addEventListener('resize', checkNavScroll);
 
   // load chat
   if (window.location.pathname == CHAT_PATH) {
