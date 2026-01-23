@@ -162,7 +162,7 @@ func fetchPlaylist(playlistID, playlistName string) ([]Video, error) {
 
 			vids = append(vids, Video{
 				ID:        item.Snippet.ResourceId.VideoId,
-				Title:     item.Snippet.Title,
+				Title:     html.UnescapeString(item.Snippet.Title),
 				Thumbnail: thumbnail,
 				Playlist:  playlistName,
 			})
@@ -734,7 +734,7 @@ func searchYouTube(query string) ([]Video, error) {
 		}
 		results = append(results, Video{
 			ID:        item.Id.VideoId,
-			Title:     item.Snippet.Title,
+			Title:     html.UnescapeString(item.Snippet.Title),
 			Thumbnail: thumbnail,
 			Playlist:  "search",
 		})
