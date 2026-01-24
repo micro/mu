@@ -999,6 +999,16 @@ td {
   box-shadow: var(--shadow-sm);
 }
 
+a.card-clickable {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+a.card-clickable:hover {
+  border-color: var(--accent-color, #0d7377);
+}
+
 /* Reduce card min-width on smaller screens */
 @media only screen and (max-width: 900px) {
   .card {

@@ -131,7 +131,8 @@ func renderNoteCard(n *Note) string {
 		colorClass = " card-" + n.Color
 	}
 
-	b.WriteString(`<div class="card card-note` + colorClass + `">`)
+	// Whole card is clickable
+	b.WriteString(`<a href="/notes/` + n.ID + `" class="card card-note card-clickable` + colorClass + `">`)
 
 	// Pin indicator
 	if n.Pinned {
@@ -140,7 +141,7 @@ func renderNoteCard(n *Note) string {
 
 	// Title
 	if n.Title != "" {
-		b.WriteString(app.Title(n.Title, "/notes/"+n.ID))
+		b.WriteString(`<div class="card-title">` + html.EscapeString(n.Title) + `</div>`)
 	}
 
 	// Content preview
@@ -148,15 +149,21 @@ func renderNoteCard(n *Note) string {
 	if len(content) > 200 {
 		content = content[:200] + "..."
 	}
-	b.WriteString(`<a href="/notes/` + n.ID + `" class="card-content">` + html.EscapeString(content) + `</a>`)
+	b.WriteString(`<div class="card-content">` + html.EscapeString(content) + `</div>`)
 
 	// Tags
-	b.WriteString(app.Tags(n.Tags, ""))
+	if len(n.Tags) > 0 {
+		b.WriteString(`<div class="card-tags">`)
+		for _, tag := range n.Tags {
+			b.WriteString(`<span class="tag">` + html.EscapeString(tag) + `</span>`)
+		}
+		b.WriteString(`</div>`)
+	}
 
 	// Footer with time
 	b.WriteString(`<div class="card-meta">` + app.TimeAgo(n.UpdatedAt) + `</div>`)
 
-	b.WriteString(`</div>`)
+	b.WriteString(`</a>`)
 	return b.String()
 }
 
@@ -400,11 +407,16 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
   }
   
   function saveDraft() {
-    const draft = {
-      ts: Date.now(),
-      data: getFormData()
-    };
-    localStorage.setItem(draftKey, JSON.stringify(draft));
+    try {
+      const draft = {
+        ts: Date.now(),
+        data: getFormData()
+      };
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+    } catch(e) {
+      status.textContent = 'Storage full!';
+      status.className = 'autosave-error';
+    }
   }
   
   function scheduleAutoSave() {
