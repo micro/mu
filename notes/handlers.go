@@ -371,7 +371,7 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     fetch('/notes/' + noteId, {
       method: 'POST',
       body: formData,
-      redirect: 'follow'
+      credentials: 'same-origin'
     }).then(r => {
       syncing = false;
       console.log('Sync response:', r.status, r.ok, r.redirected);

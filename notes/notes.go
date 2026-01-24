@@ -152,9 +152,11 @@ func UpdateNote(id, userID, title, content string, tags []string, pinned, archiv
 			n.Archived = archived
 			n.Color = color
 			n.UpdatedAt = time.Now()
+			app.Log("notes", "Saving note %s for user %s", id, userID)
 			return saveNotes()
 		}
 	}
+	app.Log("notes", "Note %s not found for user %s", id, userID)
 	return fmt.Errorf("note not found")
 }
 
