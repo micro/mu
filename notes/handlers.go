@@ -370,20 +370,22 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     
     fetch('/notes/' + noteId, {
       method: 'POST',
-      body: formData
+      body: formData,
+      redirect: 'follow'
     }).then(r => {
       syncing = false;
+      console.log('Sync response:', r.status, r.ok, r.redirected);
       if (r.ok || r.redirected) {
         lastSyncedJson = draftStr;
-        // Don't clear localStorage - keep it as source of truth
-        // It will be cleared/updated on next page load if server is newer
       } else {
-        status.textContent = 'Sync failed - retrying';
+        console.log('Sync failed:', r.status);
+        status.textContent = 'Sync failed';
         status.className = 'autosave-error';
       }
-    }).catch(() => {
+    }).catch(e => {
       syncing = false;
-      status.textContent = 'Offline - saved locally';
+      console.log('Sync error:', e);
+      status.textContent = 'Offline';
       status.className = 'autosave-error';
     });
   }
@@ -407,6 +409,8 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
   
   // Store original for revert
   original = getFormData();
+  // Initialize lastSyncedJson to current server state
+  lastSyncedJson = JSON.stringify({ ts: serverTs, data: original });
   
   // Check for draft newer than server
   const draftStr = localStorage.getItem(draftKey);
