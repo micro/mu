@@ -312,9 +312,8 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
   const serverTs = parseInt(form.dataset.serverTs) || 0;
   const status = document.getElementById('autosave-status');
   const draftKey = 'note_draft_' + noteId;
-  let saveTimeout = null;
-  let lastSaved = {};
-  let lastSavedTs = serverTs;
+  let lastSyncedJson = '';
+  let syncing = false;
   let original = null;
   
   function getFormData() {
@@ -335,47 +334,32 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     form.querySelector('[name=color]').value = data.color || '';
   }
   
-  function hasChanges() {
-    const current = getFormData();
-    return JSON.stringify(current) !== JSON.stringify(lastSaved);
+  function saveDraft() {
+    try {
+      const draft = { ts: Date.now(), data: getFormData() };
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+    } catch(e) {
+      status.textContent = 'Storage full!';
+      status.className = 'autosave-error';
+    }
   }
   
-  function showRevert() {
-    if (document.getElementById('revert-link')) return;
-    const link = document.createElement('a');
-    link.id = 'revert-link';
-    link.href = '#';
-    link.textContent = 'Undo';
-    link.className = 'revert-link';
-    link.onclick = function(e) {
-      e.preventDefault();
-      revertToOriginal();
-    };
-    status.parentNode.insertBefore(link, status.nextSibling);
-  }
-  
-  function hideRevert() {
-    const link = document.getElementById('revert-link');
-    if (link) link.remove();
-  }
-  
-  function revertToOriginal() {
-    if (!original) return;
-    setFormData(original);
-    lastSaved = getFormData();
-    autoSave();
-    hideRevert();
-    status.textContent = 'Reverted';
-    status.className = 'autosave-saved';
-    setTimeout(() => { status.textContent = ''; }, 2000);
-  }
-  
-  function autoSave() {
-    if (!hasChanges()) return;
+  function syncToServer() {
+    if (syncing) return;
     
-    const data = getFormData();
-    status.textContent = 'Saving...';
-    status.className = 'autosave-saving';
+    const draftStr = localStorage.getItem(draftKey);
+    if (!draftStr) return;
+    if (draftStr === lastSyncedJson) return; // No changes
+    
+    let draft;
+    try {
+      draft = JSON.parse(draftStr);
+    } catch(e) {
+      return;
+    }
+    
+    syncing = true;
+    const data = draft.data;
     
     const formData = new FormData();
     formData.append('title', data.title);
@@ -388,46 +372,43 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
       method: 'POST',
       body: formData
     }).then(r => {
+      syncing = false;
       if (r.ok || r.redirected) {
-        lastSaved = data;
-        lastSavedTs = Date.now();
-        localStorage.removeItem(draftKey);
-        status.textContent = 'Saved';
-        status.className = 'autosave-saved';
-        showRevert();
-        setTimeout(() => { status.textContent = ''; }, 2000);
+        lastSyncedJson = draftStr;
+        // Only clear draft if it hasn't changed during sync
+        if (localStorage.getItem(draftKey) === draftStr) {
+          localStorage.removeItem(draftKey);
+        }
       } else {
-        status.textContent = 'Save failed';
+        status.textContent = 'Sync failed - retrying';
         status.className = 'autosave-error';
       }
     }).catch(() => {
-      status.textContent = 'Save failed';
+      syncing = false;
+      status.textContent = 'Offline - saved locally';
       status.className = 'autosave-error';
     });
   }
   
-  function saveDraft() {
-    try {
-      const draft = {
-        ts: Date.now(),
-        data: getFormData()
-      };
-      localStorage.setItem(draftKey, JSON.stringify(draft));
-    } catch(e) {
-      status.textContent = 'Storage full!';
-      status.className = 'autosave-error';
-    }
+  function showRevert() {
+    if (document.getElementById('revert-link')) return;
+    const link = document.createElement('a');
+    link.id = 'revert-link';
+    link.href = '#';
+    link.textContent = 'Undo';
+    link.className = 'revert-link';
+    link.onclick = function(e) {
+      e.preventDefault();
+      if (original) {
+        setFormData(original);
+        saveDraft();
+      }
+    };
+    status.parentNode.insertBefore(link, status.nextSibling);
   }
   
-  function scheduleAutoSave() {
-    saveDraft();
-    if (saveTimeout) clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(autoSave, 1500);
-  }
-  
-  // Original state for revert
+  // Store original for revert
   original = getFormData();
-  lastSaved = getFormData();
   
   // Check for draft newer than server
   const draftStr = localStorage.getItem(draftKey);
@@ -435,15 +416,9 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     try {
       const draft = JSON.parse(draftStr);
       if (draft.ts && draft.ts > serverTs && draft.data) {
-        // Draft is newer than server - restore it
         setFormData(draft.data);
-        status.textContent = 'Draft restored';
-        status.className = 'autosave-saving';
         showRevert();
-        // Save to server
-        setTimeout(autoSave, 500);
       } else {
-        // Server is newer or same - discard draft
         localStorage.removeItem(draftKey);
       }
     } catch(e) {
@@ -451,16 +426,20 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     }
   }
   
-  // Listen for changes
+  // Save to localStorage on every change
   form.querySelectorAll('input, textarea, select').forEach(el => {
-    el.addEventListener('input', scheduleAutoSave);
-    el.addEventListener('change', scheduleAutoSave);
+    el.addEventListener('input', saveDraft);
+    el.addEventListener('change', saveDraft);
   });
   
-  // Prevent form submission (auto-save handles it)
+  // Sync to server every 500ms if there are changes
+  setInterval(syncToServer, 500);
+  
+  // Prevent form submission
   form.addEventListener('submit', e => {
     e.preventDefault();
-    autoSave();
+    saveDraft();
+    syncToServer();
   });
 })();
 </script>`
