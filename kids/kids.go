@@ -392,28 +392,31 @@ func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
 		backURL = "/kids"
 	}
 
-	// Calculate prev/next
+	// Calculate prev/next (include auto=1 to continue playing)
 	var prevURL, nextURL string
 	if len(playlistVideos) > 0 {
 		if idx > 0 {
 			prev := playlistVideos[idx-1]
 			if savedID != "" {
-				prevURL = fmt.Sprintf("/kids/play/%s?saved=%s&idx=%d", prev.ID, savedID, idx-1)
+				prevURL = fmt.Sprintf("/kids/play/%s?saved=%s&idx=%d&auto=1", prev.ID, savedID, idx-1)
 			} else {
-				prevURL = fmt.Sprintf("/kids/play/%s?playlist=%s&idx=%d", prev.ID, playlistName, idx-1)
+				prevURL = fmt.Sprintf("/kids/play/%s?playlist=%s&idx=%d&auto=1", prev.ID, playlistName, idx-1)
 			}
 		}
 		if idx < len(playlistVideos)-1 {
 			next := playlistVideos[idx+1]
 			if savedID != "" {
-				nextURL = fmt.Sprintf("/kids/play/%s?saved=%s&idx=%d", next.ID, savedID, idx+1)
+				nextURL = fmt.Sprintf("/kids/play/%s?saved=%s&idx=%d&auto=1", next.ID, savedID, idx+1)
 			} else {
-				nextURL = fmt.Sprintf("/kids/play/%s?playlist=%s&idx=%d", next.ID, playlistName, idx+1)
+				nextURL = fmt.Sprintf("/kids/play/%s?playlist=%s&idx=%d&auto=1", next.ID, playlistName, idx+1)
 			}
 		}
 	}
 
-	renderPlayer(w, r, video, id, backURL, prevURL, nextURL)
+	// Check if autoplay requested (from prev/next navigation)
+	autoplay := r.URL.Query().Get("auto") == "1"
+
+	renderPlayer(w, r, video, id, backURL, prevURL, nextURL, autoplay)
 }
 
 func renderVideoCard(v Video) string {
@@ -484,19 +487,27 @@ func truncate(s string, max int) string {
 }
 
 
-func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, backURL, prevURL, nextURL string) {
+func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, backURL, prevURL, nextURL string, autoplay bool) {
 	var content strings.Builder
 	
 	// Back link at top like other pages
 	content.WriteString(fmt.Sprintf(`<p><a href="%s">← Back</a></p>`, backURL))
 	
-	// Video container with thumbnail overlay
+	// Video container with thumbnail overlay (hidden if autoplay)
+	thumbClass := "kids-thumb-overlay"
+	if autoplay {
+		thumbClass += " hidden"
+	}
 	content.WriteString(fmt.Sprintf(`<div class="kids-video-container">
 		<div id="player"></div>
-		<img src="%s" class="kids-thumb-overlay" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-	</div>`, video.Thumbnail, id))
+		<img src="%s" class="%s" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+	</div>`, video.Thumbnail, thumbClass, id))
 	
-	// Controls
+	// Controls - show pause button if autoplay
+	playBtnIcon := "▶"
+	if autoplay {
+		playBtnIcon = "⏸"
+	}
 	prevBtn := `<span class="btn btn-secondary disabled">⏮</span>`
 	if prevURL != "" {
 		prevBtn = fmt.Sprintf(`<a href="%s" class="btn btn-secondary" id="prevBtn">⏮</a>`, prevURL)
@@ -508,18 +519,24 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 	
 	content.WriteString(fmt.Sprintf(`<div class="kids-controls">
 		%s
-		<button onclick="togglePlay()" id="playBtn">▶</button>
+		<button onclick="togglePlay()" id="playBtn">%s</button>
 		%s
-	</div>`, prevBtn, nextBtn))
+	</div>`, prevBtn, playBtnIcon, nextBtn))
 	
 	// Video button
 	content.WriteString(`<div class="text-center mt-3">
 		<button onclick="toggleVideo()" id="videoBtn">📺 Show Video</button>
 	</div>`)
 	
+	// Determine autoplay value for YouTube player
+	autoplayVal := 0
+	if autoplay {
+		autoplayVal = 1
+	}
+	
 	// JavaScript for YouTube player
 	content.WriteString(fmt.Sprintf(`<script>
-		let playing = false;
+		let playing = %t;
 		let videoVisible = false;
 		const videoId = '%s';
 		const nextURL = '%s';
@@ -534,7 +551,7 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 				width: '100%%',
 				height: '300',
 				videoId: videoId,
-				playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
+				playerVars: { autoplay: %d, rel: 0, modestbranding: 1 },
 				events: { 'onStateChange': onPlayerStateChange }
 			});
 		}
@@ -575,7 +592,7 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 				videoVisible = false;
 			}
 		}
-	</script>`, id, nextURL))
+	</script>`, autoplay, id, nextURL, autoplayVal))
 	
 	html := app.RenderHTMLForRequest(video.Title, "Playing: "+video.Title, content.String(), r)
 	w.Write([]byte(html))
