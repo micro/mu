@@ -4506,6 +4506,25 @@ a.btn-secondary:hover, .btn-secondary:hover {
   background: rgba(0,0,0,0.9);
 }
 
+.kids-remove-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(200,0,0,0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.kids-remove-btn:hover {
+  background: rgba(200,0,0,0.9);
+}
+
 @media (max-width: 600px) {
   .kids-categories {
     grid-template-columns: repeat(3, 1fr);

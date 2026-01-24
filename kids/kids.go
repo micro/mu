@@ -458,6 +458,24 @@ func renderVideoCardForSaved(v Video, savedID string, idx int) string {
 	)
 }
 
+func renderVideoCardForSavedWithRemove(v Video, savedID string, idx int) string {
+	return fmt.Sprintf(`
+		<div class="kids-video-card">
+			<a href="/kids/play/%s?saved=%s&idx=%d">
+				<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+				<div class="kids-video-title">%s</div>
+			</a>
+			<button onclick="removeVideo('%s')" class="kids-remove-btn">×</button>
+		</div>`,
+		v.ID, savedID, idx,
+		v.Thumbnail,
+		html.EscapeString(v.Title),
+		v.ID,
+		html.EscapeString(truncate(v.Title, 50)),
+		v.ID,
+	)
+}
+
 func truncate(s string, max int) string {
 	if len(s) <= max {
 		return s
@@ -767,14 +785,31 @@ func renderSearchResult(v Video, showAddButton bool) string {
 }
 
 func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
+	// Check for search query parameter
+	searchQuery := r.URL.Query().Get("q")
+	
+	// Parse playlist ID from rest (may have query params stripped by router)
+	playlistID := rest
+	if idx := strings.Index(rest, "?"); idx != -1 {
+		playlistID = rest[:idx]
+	}
+	
 	mu.RLock()
-	sp, ok := savedPlaylists[rest]
+	sp, ok := savedPlaylists[playlistID]
 	mu.RUnlock()
 	
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
+	
+	// Check if user owns this playlist (for edit capabilities)
+	sess, _ := auth.GetSession(r)
+	userID := ""
+	if sess != nil {
+		userID = sess.Account
+	}
+	isOwner := userID == sp.UserID
 	
 	var content strings.Builder
 	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
@@ -791,34 +826,44 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 		</div>`, sp.Videos[0].ID, sp.ID))
 	}
 	
-	// Current playlist videos
+	// Current playlist videos with remove button
 	if len(sp.Videos) > 0 {
 		content.WriteString(`<h3>Videos</h3>`)
 		content.WriteString(`<div class="kids-videos">`)
 		for i, v := range sp.Videos {
-			content.WriteString(renderVideoCardForSaved(v, sp.ID, i))
+			if isOwner {
+				content.WriteString(renderVideoCardForSavedWithRemove(v, sp.ID, i))
+			} else {
+				content.WriteString(renderVideoCardForSaved(v, sp.ID, i))
+			}
 		}
 		content.WriteString(`</div>`)
 	}
 	
-	// Add from existing playlists section
-	content.WriteString(`<h3 class="mt-4">Add Videos</h3>`)
-	content.WriteString(`<p class="text-muted mb-3">Select a playlist to add videos from:</p>`)
-	
-	// Playlist selector tabs
-	content.WriteString(`<div class="kids-playlist-tabs">`)
-	for _, pl := range playlists {
-		content.WriteString(fmt.Sprintf(`<button class="kids-tab" onclick="showPlaylist('%s')">%s %s</button>`,
-			pl.Name, pl.Icon, pl.Name))
+	// Only show editing features if user owns the playlist
+	if !isOwner {
+		html := app.RenderHTMLForRequest(sp.Name, sp.Name+" playlist", content.String(), r)
+		w.Write([]byte(html))
+		return
 	}
-	content.WriteString(`</div>`)
 	
-	// Videos from each playlist (hidden by default)
-	mu.RLock()
-	for _, pl := range playlists {
-		content.WriteString(fmt.Sprintf(`<div class="kids-add-videos" id="add-%s" style="display:none;">`, pl.Name))
-		if vids, ok := videos[pl.Name]; ok {
-			for _, v := range vids {
+	// Add from search section
+	content.WriteString(`<h3 class="mt-4">Add Videos</h3>`)
+	content.WriteString(fmt.Sprintf(`<form class="search-bar mb-3" action="/kids/saved/%s" method="get">
+		<input type="text" name="q" placeholder="Search YouTube..." value="%s">
+		<button type="submit">Search</button>
+	</form>`, sp.ID, html.EscapeString(searchQuery)))
+	
+	// Show search results if query provided
+	if searchQuery != "" && client != nil {
+		results, err := searchYouTube(searchQuery)
+		if err != nil {
+			content.WriteString(fmt.Sprintf(`<p class="text-error">Search error: %v</p>`, err))
+		} else if len(results) == 0 {
+			content.WriteString(`<p class="text-muted">No results found</p>`)
+		} else {
+			content.WriteString(`<div class="kids-videos">`)
+			for _, v := range results {
 				titleEscaped := html.EscapeString(strings.ReplaceAll(v.Title, "'", "\\'"))
 				content.WriteString(fmt.Sprintf(`
 					<div class="kids-video-card kids-video-mini">
@@ -830,12 +875,44 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 					html.EscapeString(truncate(v.Title, 40)),
 					v.ID, titleEscaped, v.Thumbnail))
 			}
+			content.WriteString(`</div>`)
+		}
+	} else {
+		// Show existing playlists to add from
+		content.WriteString(`<p class="text-muted mb-3">Or select a playlist to add from:</p>`)
+		
+		// Playlist selector tabs
+		content.WriteString(`<div class="kids-playlist-tabs">`)
+		for _, pl := range playlists {
+			content.WriteString(fmt.Sprintf(`<button class="kids-tab" onclick="showPlaylist('%s')">%s %s</button>`,
+				pl.Name, pl.Icon, pl.Name))
 		}
 		content.WriteString(`</div>`)
+		
+		// Videos from each playlist (hidden by default)
+		mu.RLock()
+		for _, pl := range playlists {
+			content.WriteString(fmt.Sprintf(`<div class="kids-add-videos" id="add-%s" style="display:none;">`, pl.Name))
+			if vids, ok := videos[pl.Name]; ok {
+				for _, v := range vids {
+					titleEscaped := html.EscapeString(strings.ReplaceAll(v.Title, "'", "\\'"))
+					content.WriteString(fmt.Sprintf(`
+						<div class="kids-video-card kids-video-mini">
+							<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+							<div class="kids-video-title">%s</div>
+							<button onclick="addVideo('%s', '%s', '%s')" class="kids-add-btn">+</button>
+						</div>`,
+						v.Thumbnail, html.EscapeString(v.Title), v.ID,
+						html.EscapeString(truncate(v.Title, 40)),
+						v.ID, titleEscaped, v.Thumbnail))
+				}
+			}
+			content.WriteString(`</div>`)
+		}
+		mu.RUnlock()
 	}
-	mu.RUnlock()
 	
-	// JavaScript for adding videos
+	// JavaScript for adding/removing videos
 	content.WriteString(fmt.Sprintf(`<script>
 		let activeTab = null;
 		
@@ -869,7 +946,24 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 				location.reload();
 			});
 		}
-	</script>`, sp.ID))
+		
+		function removeVideo(videoId) {
+			if (!confirm('Remove this video from playlist?')) return;
+			
+			const form = new FormData();
+			form.append('action', 'remove');
+			form.append('playlist_id', '%s');
+			form.append('video_id', videoId);
+			
+			fetch('/kids/playlist', {
+				method: 'POST',
+				body: form,
+				headers: {'Accept': 'application/json'}, credentials: 'include'
+			}).then(r => r.json()).then(() => {
+				location.reload();
+			});
+		}
+	</script>`, sp.ID, sp.ID))
 	
 	html := app.RenderHTMLForRequest(sp.Name, sp.Name+" playlist", content.String(), r)
 	w.Write([]byte(html))
@@ -1036,6 +1130,32 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 						Thumbnail: thumbnail,
 						Playlist:  sp.Name,
 					})
+				}
+			}
+			mu.Unlock()
+			saveSavedPlaylists()
+			
+			// Return JSON for AJAX
+			if r.Header.Get("Accept") == "application/json" {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"success":true}`))
+				return
+			}
+			http.Redirect(w, r, "/kids/saved/"+id, http.StatusSeeOther)
+			return
+			
+		case "remove":
+			id := r.FormValue("playlist_id")
+			videoID := r.FormValue("video_id")
+			
+			mu.Lock()
+			// Only allow removing from playlists the user owns
+			if sp, ok := savedPlaylists[id]; ok && sp.UserID == userID {
+				for i, v := range sp.Videos {
+					if v.ID == videoID {
+						sp.Videos = append(sp.Videos[:i], sp.Videos[i+1:]...)
+						break
+					}
 				}
 			}
 			mu.Unlock()
