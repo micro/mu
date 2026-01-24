@@ -2345,20 +2345,19 @@ a.highlight {
     margin-bottom: 8px;
   }
   
-  /* Compact apps preview on mobile - single row with overflow */
+  /* Compact apps preview on mobile - show only 4 items */
   .home-left .apps-preview {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 8px;
-    padding-bottom: 2px;
+    gap: 6px;
     margin-bottom: 8px;
   }
   
   .home-left .apps-preview .app-preview-item {
-    flex-shrink: 0;
     padding: 5px 10px;
     font-size: 12px;
+  }
+  
+  .home-left .apps-preview .app-preview-item:nth-child(n+5) {
+    display: none;
   }
   
   .home-left .card-link {
