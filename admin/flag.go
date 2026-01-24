@@ -320,14 +320,13 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 
 	var contentType, contentID string
 
-	// Support both JSON and form data
-	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+	if app.SendsJSON(r) {
 		var req struct {
 			Type string `json:"type"`
 			ID   string `json:"id"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		if err := app.DecodeJSON(r, &req); err != nil {
+			app.RespondError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
 		contentType = req.Type

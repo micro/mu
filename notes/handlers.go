@@ -1,7 +1,6 @@
 package notes
 
 import (
-	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
@@ -249,8 +248,7 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 		var title, content, tagsStr, color string
 		var pinned bool
 
-		// Check if JSON request
-		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		if app.SendsJSON(r) {
 			var req struct {
 				Title   string `json:"title"`
 				Content string `json:"content"`
@@ -258,9 +256,8 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 				Pinned  bool   `json:"pinned"`
 				Color   string `json:"color"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				app.Log("notes", "JSON decode error: %v", err)
-				http.Error(w, "invalid json", http.StatusBadRequest)
+			if err := app.DecodeJSON(r, &req); err != nil {
+				app.RespondError(w, http.StatusBadRequest, "invalid json")
 				return
 			}
 			title = strings.TrimSpace(req.Title)
@@ -277,33 +274,19 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 			color = r.FormValue("color")
 		}
 
-		app.Log("notes", "POST received: title=%q content_len=%d", title, len(content))
-
 		if content == "" {
-			app.Log("notes", "Content empty, rejecting")
-			if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
-				http.Error(w, "content required", http.StatusBadRequest)
-			} else {
-				renderViewForm(w, note, "Content is required")
-			}
+			app.Error(w, r, http.StatusBadRequest, "content required")
 			return
 		}
 
 		tags := parseTags(tagsStr)
-		err := UpdateNote(id, sess.Account, title, content, tags, pinned, note.Archived, color)
-		if err != nil {
-			if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			} else {
-				renderViewForm(w, note, err.Error())
-			}
+		if err := UpdateNote(id, sess.Account, title, content, tags, pinned, note.Archived, color); err != nil {
+			app.Error(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		// JSON request gets JSON response
-		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"ok":true}`))
+		if app.SendsJSON(r) {
+			app.RespondJSON(w, map[string]bool{"ok": true})
 			return
 		}
 

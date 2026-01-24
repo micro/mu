@@ -231,7 +231,7 @@ func handleRun(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	var req struct {
 		Task string `json:"task"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := app.DecodeJSON(r, &req); err != nil {
 		app.BadRequest(w, r, "Invalid request")
 		return
 	}

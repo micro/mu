@@ -208,20 +208,18 @@ func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID stri
 }
 
 func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string) {
-	isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
-
 	var name string
 	var permissions []string
 	var expiresIn int // days
 
-	if isJSON {
+	if SendsJSON(r) {
 		var req struct {
 			Name        string   `json:"name"`
 			Permissions []string `json:"permissions"`
 			ExpiresIn   int      `json:"expires_in"` // days, 0 = never
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		if err := DecodeJSON(r, &req); err != nil {
+			RespondError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
 		name = strings.TrimSpace(req.Name)

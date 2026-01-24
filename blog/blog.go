@@ -1088,20 +1088,18 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle POST to create new post (no id required)
 	if r.Method == "POST" && id == "" {
-		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
-
 		var title, content, tags string
 		var private bool
 
-		if isJSON {
+		if app.SendsJSON(r) {
 			var req struct {
 				Title   string `json:"title"`
 				Content string `json:"content"`
 				Tags    string `json:"tags"`
 				Private bool   `json:"private"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			if err := app.DecodeJSON(r, &req); err != nil {
+				app.RespondError(w, http.StatusBadRequest, "invalid json")
 				return
 			}
 			title = strings.TrimSpace(req.Title)
@@ -1161,9 +1159,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		// Run async LLM-based content moderation
 		go admin.CheckContent("post", postID, title, content)
 
-		if isJSON {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+		if app.SendsJSON(r) {
+			app.RespondJSON(w, map[string]interface{}{
 				"success": true,
 				"id":      postID,
 			})
@@ -1198,8 +1195,6 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle PATCH - update the post
 	if r.Method == "PATCH" || (r.Method == "POST" && r.FormValue("_method") == "PATCH") {
-		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
-
 		// Must be authenticated
 		_, acc, err := auth.RequireSession(r)
 		if err != nil {
@@ -1216,15 +1211,15 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		var title, content, tags string
 		var private bool
 
-		if isJSON {
+		if app.SendsJSON(r) {
 			var req struct {
 				Title      string `json:"title"`
 				Content    string `json:"content"`
 				Tags       string `json:"tags"`
 				Visibility string `json:"visibility"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			if err := app.DecodeJSON(r, &req); err != nil {
+				app.RespondError(w, http.StatusBadRequest, "invalid json")
 				return
 			}
 			title = strings.TrimSpace(req.Title)
@@ -1259,9 +1254,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if isJSON {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+		if app.SendsJSON(r) {
+			app.RespondJSON(w, map[string]interface{}{
 				"success": true,
 				"id":      id,
 			})
@@ -1274,7 +1268,6 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle DELETE - remove the post
 	if r.Method == "DELETE" || (r.Method == "POST" && r.FormValue("_method") == "DELETE") {
-		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
 
 		// Must be authenticated
 		_, acc, err := auth.RequireSession(r)
@@ -1294,11 +1287,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if isJSON {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"success": true,
-			})
+		if app.SendsJSON(r) {
+			app.RespondJSON(w, map[string]interface{}{"success": true})
 			return
 		}
 
@@ -1307,9 +1297,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GET - return JSON if requested
-	if r.Method == "GET" && strings.Contains(r.Header.Get("Accept"), "application/json") {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(post)
+	if r.Method == "GET" && app.WantsJSON(r) {
+		app.RespondJSON(w, post)
 		return
 	}
 

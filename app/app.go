@@ -70,7 +70,16 @@ func WantsJSON(r *http.Request) bool {
 
 // SendsJSON returns true if the request is sending JSON
 func SendsJSON(r *http.Request) bool {
-	return r.Header.Get("Content-Type") == "application/json"
+	return strings.Contains(r.Header.Get("Content-Type"), "application/json")
+}
+
+// DecodeJSON decodes JSON from request body into the given struct
+// Returns error if not JSON content type or decode fails
+func DecodeJSON(r *http.Request, v interface{}) error {
+	if !SendsJSON(r) {
+		return fmt.Errorf("expected application/json content type")
+	}
+	return json.NewDecoder(r.Body).Decode(v)
 }
 
 // RespondJSON writes a JSON response
