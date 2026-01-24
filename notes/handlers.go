@@ -410,25 +410,18 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
   
   // Check for draft newer than server
   const draftStr = localStorage.getItem(draftKey);
-  console.log('Note load - serverTs:', serverTs, 'draft:', draftStr);
   if (draftStr) {
     try {
       const draft = JSON.parse(draftStr);
-      console.log('Draft ts:', draft.ts, 'server ts:', serverTs, 'draft newer:', draft.ts > serverTs);
       if (draft.ts && draft.ts > serverTs && draft.data) {
-        console.log('Restoring draft');
         setFormData(draft.data);
         showRevert();
       } else {
-        console.log('Server is newer, discarding draft');
         localStorage.removeItem(draftKey);
       }
     } catch(e) {
-      console.log('Draft parse error:', e);
       localStorage.removeItem(draftKey);
     }
-  } else {
-    console.log('No draft in localStorage');
   }
   
   // Save to localStorage on every change
