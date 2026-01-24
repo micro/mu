@@ -24,6 +24,13 @@ var (
 	fanarRateMu     sync.Mutex
 	fanarLastMinute []time.Time
 	fanarMaxPerMin  = 35
+
+	// Anthropic cache stats
+	cacheStatsMu          sync.Mutex
+	cacheHits             int
+	cacheMisses           int
+	cacheReadTokens       int
+	cacheCreationTokens   int
 )
 
 // generate sends a prompt to the configured LLM provider
@@ -220,10 +227,13 @@ func generateFanar(apiURL, apiKey string, messages []map[string]string, priority
 func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string]string) (string, error) {
 	app.Log("ai", "[LLM] Using Anthropic Claude with model %s", model)
 
-	var anthropicMessages []map[string]string
+	var anthropicMessages []map[string]interface{}
 	for _, msg := range messages {
 		if msg["role"] != "system" {
-			anthropicMessages = append(anthropicMessages, msg)
+			anthropicMessages = append(anthropicMessages, map[string]interface{}{
+				"role":    msg["role"],
+				"content": msg["content"],
+			})
 		}
 	}
 
@@ -232,8 +242,19 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 		"max_tokens": 4096,
 		"messages":   anthropicMessages,
 	}
+
+	// Use array format for system prompt with cache_control for prompt caching
+	// This caches the system prompt for 5+ minutes, saving ~90% on repeated calls
 	if systemPrompt != "" {
-		req["system"] = systemPrompt
+		req["system"] = []map[string]interface{}{
+			{
+				"type": "text",
+				"text": systemPrompt,
+				"cache_control": map[string]string{
+					"type": "ephemeral",
+				},
+			},
+		}
 	}
 
 	body, _ := json.Marshal(req)
@@ -241,6 +262,7 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("x-api-key", apiKey)
 	httpReq.Header.Set("anthropic-version", "2023-06-01")
+	httpReq.Header.Set("anthropic-beta", "prompt-caching-2024-07-31")
 
 	client := &http.Client{Timeout: llmTimeout}
 	resp, err := client.Do(httpReq)
@@ -256,6 +278,12 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"content"`
+		Usage struct {
+			InputTokens              int `json:"input_tokens"`
+			OutputTokens             int `json:"output_tokens"`
+			CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+			CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+		} `json:"usage"`
 		Error struct {
 			Message string `json:"message"`
 		} `json:"error"`
@@ -265,6 +293,21 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 	if result.Error.Message != "" {
 		return "", fmt.Errorf("anthropic error: %s", result.Error.Message)
 	}
+
+	// Track and log cache status
+	cacheStatsMu.Lock()
+	if result.Usage.CacheReadInputTokens > 0 {
+		cacheHits++
+		cacheReadTokens += result.Usage.CacheReadInputTokens
+		app.Log("ai", "[LLM] Cache HIT: %d tokens from cache, %d new input tokens",
+			result.Usage.CacheReadInputTokens, result.Usage.InputTokens)
+	} else if result.Usage.CacheCreationInputTokens > 0 {
+		cacheMisses++
+		cacheCreationTokens += result.Usage.CacheCreationInputTokens
+		app.Log("ai", "[LLM] Cache WRITE: %d tokens cached for future requests",
+			result.Usage.CacheCreationInputTokens)
+	}
+	cacheStatsMu.Unlock()
 
 	var content string
 	for _, c := range result.Content {
@@ -324,9 +367,21 @@ func GetFanarRateStatus() (used, max int) {
 	return count, fanarMaxPerMin
 }
 
+// GetCacheStats returns Anthropic prompt cache statistics
+func GetCacheStats() (hits, misses, readTokens, creationTokens int) {
+	cacheStatsMu.Lock()
+	defer cacheStatsMu.Unlock()
+	return cacheHits, cacheMisses, cacheReadTokens, cacheCreationTokens
+}
+
 func truncateLog(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+func init() {
+	// Inject cache stats function into app package to avoid import cycle
+	app.CacheStatsFunc = GetCacheStats
 }

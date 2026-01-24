@@ -17,6 +17,9 @@ import (
 
 var startTime = time.Now()
 
+// CacheStatsFunc is injected by ai package to avoid import cycle
+var CacheStatsFunc func() (hits, misses, readTokens, creationTokens int)
+
 // StatusCheck represents a single status check result
 type StatusCheck struct {
 	Name    string `json:"name"`
@@ -125,6 +128,24 @@ func buildStatus() StatusResponse {
 		Status:  llmConfigured,
 		Details: llmProvider,
 	})
+
+	// Add cache stats if Anthropic is configured (stats injected via CacheStatsFunc)
+	if os.Getenv("ANTHROPIC_API_KEY") != "" && CacheStatsFunc != nil {
+		hits, misses, readTokens, _ := CacheStatsFunc()
+		total := hits + misses
+		var cacheDetails string
+		if total > 0 {
+			hitRate := float64(hits) / float64(total) * 100
+			cacheDetails = fmt.Sprintf("%.0f%% hit rate (%d/%d), %dk tokens saved", hitRate, hits, total, readTokens/1000)
+		} else {
+			cacheDetails = "No requests yet"
+		}
+		services = append(services, StatusCheck{
+			Name:    "Prompt Cache",
+			Status:  true,
+			Details: cacheDetails,
+		})
+	}
 
 	// Check YouTube API
 	youtubeConfigured := os.Getenv("YOUTUBE_API_KEY") != ""
