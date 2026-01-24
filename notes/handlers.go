@@ -121,6 +121,29 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session, acc 
 		Empty:   emptyMsg,
 	})
 
+	// Add script to update cards from localStorage drafts
+	pageHTML += `<script>
+(function() {
+  document.querySelectorAll('.card-note[data-note-id]').forEach(card => {
+    const noteId = card.dataset.noteId;
+    const draftStr = localStorage.getItem('note_draft_' + noteId);
+    if (!draftStr) return;
+    try {
+      const draft = JSON.parse(draftStr);
+      if (!draft.data) return;
+      const titleEl = card.querySelector('.card-title');
+      const contentEl = card.querySelector('.card-content');
+      if (titleEl && draft.data.title) titleEl.textContent = draft.data.title;
+      if (contentEl && draft.data.content) {
+        let preview = draft.data.content;
+        if (preview.length > 200) preview = preview.substring(0, 200) + '...';
+        contentEl.textContent = preview;
+      }
+    } catch(e) {}
+  });
+})();
+</script>`
+
 	w.Write([]byte(app.RenderHTML("Notes", "Your notes", pageHTML)))
 }
 
@@ -133,7 +156,7 @@ func renderNoteCard(n *Note) string {
 	}
 
 	// Whole card is clickable
-	b.WriteString(`<a href="/notes/` + n.ID + `" class="card card-note card-clickable` + colorClass + `">`)
+	b.WriteString(`<a href="/notes/` + n.ID + `" class="card card-note card-clickable` + colorClass + `" data-note-id="` + n.ID + `">`)
 
 	// Pin indicator
 	if n.Pinned {
