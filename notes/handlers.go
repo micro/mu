@@ -296,10 +296,10 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     </div>
   </details>
   <div class="note-actions">
-    <span id="autosave-status"></span>
     <a href="/notes">Back</a>
     <a href="/notes/` + n.ID + `/archive">` + archiveLabel(n.Archived) + `</a>
     <a href="/notes/` + n.ID + `/delete" class="delete-link" onclick="return confirm('Delete this note?')">Delete</a>
+    <span id="autosave-status"></span>
   </div>
 </form>
 <div class="note-meta-info">` + app.TimeAgo(n.UpdatedAt) + `</div>

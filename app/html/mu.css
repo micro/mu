@@ -3503,6 +3503,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 #autosave-status {
   font-size: 13px;
+  margin-left: auto;
 }
 .autosave-saving {
   color: #666;
@@ -3513,11 +3514,11 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .autosave-error {
   color: #c00;
 }
+
 .revert-link {
   font-size: 13px;
   color: #0066cc;
   text-decoration: none;
-  margin-right: auto;
   margin-left: 8px;
 }
 .revert-link:hover {
