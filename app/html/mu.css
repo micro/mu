@@ -4704,3 +4704,61 @@ a.btn-secondary:hover, .btn-secondary:hover {
   border-color: var(--text-primary, #333);
   background: var(--card-background, #f5f5f5);
 }
+
+/* Toast notifications */
+.mu-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 40px 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: toastIn 0.3s ease;
+  max-width: 90%;
+}
+
+.mu-toast-info {
+  background: #333;
+  color: white;
+}
+
+.mu-toast-success {
+  background: #28a745;
+  color: white;
+}
+
+.mu-toast-error {
+  background: #dc3545;
+  color: white;
+}
+
+.mu-toast-close {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 18px;
+  opacity: 0.7;
+}
+
+.mu-toast-close:hover {
+  opacity: 1;
+}
+
+.mu-toast-hide {
+  animation: toastOut 0.3s ease forwards;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+}

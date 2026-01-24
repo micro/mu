@@ -363,7 +363,7 @@ function switchTopic(t) {
     chatForm.onsubmit = function(e) {
       e.preventDefault();
       if (!isAuthenticated) {
-        alert('Please login to chat');
+        showToast('Please login to chat', 'error');
         return false;
       }
       sendRoomMessage(this);
@@ -402,7 +402,7 @@ function loadMessages() {
 function askLLM(el) {
   // Check authentication first
   if (!isAuthenticated) {
-    alert('Please login to chat');
+    showToast('Please login to chat', 'error');
     return false;
   }
 
@@ -558,61 +558,34 @@ function loadChat() {
 // VIDEO FUNCTIONALITY
 // ============================================
 
-function getVideos(el) {
-  // Check authentication first
+async function getVideos(el) {
   if (!isAuthenticated) {
-    alert('Please login to search');
+    showToast('Please login to search', 'error');
     return false;
   }
 
   const formData = new FormData(el);
   const data = {};
-
-  // Iterate over formData and populate the data object
   for (let [key, value] of formData.entries()) {
     data[key] = value;
   }
 
-  console.log("sending", data);
-
-  fetch("/video", {
-    method: "POST",
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  }).then(response => {
-    if (response.status === 401) {
-      throw new Error('Authentication required');
-    }
-    return response.json();
-  })
-  .then(result => {
-    console.log('Success:', result);
-    var d = document.getElementById('results');
-
-    if (d == null) {
-      d = document.createElement("div");
-      d.setAttribute("id", "results");
-
-      var content = document.getElementById('content');
-      content.innerHTML += "<h1>Results</h1>";
+  const result = await apiCall('/video', { body: data });
+  
+  if (result.ok && result.data.html) {
+    let d = document.getElementById('results');
+    if (!d) {
+      d = document.createElement('div');
+      d.id = 'results';
+      const content = document.getElementById('content');
+      content.innerHTML += '<h1>Results</h1>';
       content.appendChild(d);
     } else {
       d.innerHTML = '';
     }
-
-    d.innerHTML += result.html;
-    document.getElementById('query').value = data["query"];
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    if (error.message === 'Authentication required') {
-      alert('Please login to search videos');
-    } else {
-      alert('Error: Failed to search videos');
-    }
-  });
+    d.innerHTML = result.data.html;
+    document.getElementById('query').value = data.query;
+  }
 
   return false;
 }
@@ -966,7 +939,7 @@ self.addEventListener('DOMContentLoaded', function() {
     newsSearchForm.addEventListener('submit', function(e) {
       if (!isAuthenticated) {
         e.preventDefault();
-        alert('Please login to search news');
+        showToast('Please login to search', 'error');
         return false;
       }
     });
@@ -978,7 +951,7 @@ self.addEventListener('DOMContentLoaded', function() {
     videoSearchForm.addEventListener('submit', function(e) {
       if (!isAuthenticated) {
         e.preventDefault();
-        alert('Please login to search videos');
+        showToast('Please login to search', 'error');
         return false;
       }
     });
@@ -989,31 +962,19 @@ self.addEventListener('DOMContentLoaded', function() {
 });
 
 // Flag a post
-function flagPost(postId) {
+async function flagPost(postId) {
   if (!confirm('Flag this post as inappropriate? It will be hidden after 3 flags.')) {
     return;
   }
   
-  fetch('/flag', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({type: 'post', id: postId})
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      alert('Post flagged. Flag count: ' + data.count);
-      if (data.count >= 3) {
-        location.reload();
-      }
-    } else {
-      alert(data.message || 'Failed to flag post');
+  const result = await apiCall('/flag', { body: { type: 'post', id: postId } });
+  
+  if (result.ok && result.data.success) {
+    showToast('Post flagged. Flag count: ' + result.data.count, 'success');
+    if (result.data.count >= 3) {
+      setTimeout(() => location.reload(), 1000);
     }
-  })
-  .catch(error => {
-    console.error('Error flagging post:', error);
-    alert('Failed to flag post');
-  });
+  }
 }
 
 
@@ -1273,13 +1234,13 @@ document.addEventListener('DOMContentLoaded', function() {
   form.addEventListener('submit', function(e) {
     if (textarea.value.length < 50) {
       e.preventDefault();
-      alert('Post must be at least 50 characters long');
+      showToast('Post must be at least 50 characters', 'error');
       textarea.focus();
       return false;
     }
     if (textarea.value.length > 10000) {
       e.preventDefault();
-      alert('Post must not exceed 10,000 characters');
+      showToast('Post must not exceed 10,000 characters', 'error');
       textarea.focus();
       return false;
     }
@@ -1733,6 +1694,74 @@ function saveCardPrefs() {
   
   localStorage.setItem('mu_hidden_cards', JSON.stringify(hidden));
   closeCardModal();
+}
+
+// ============================================
+// TOAST NOTIFICATIONS
+// ============================================
+
+function showToast(message, type = 'info', duration = 4000) {
+  // Remove existing toast
+  const existing = document.getElementById('mu-toast');
+  if (existing) existing.remove();
+  
+  const toast = document.createElement('div');
+  toast.id = 'mu-toast';
+  toast.className = 'mu-toast mu-toast-' + type;
+  toast.textContent = message;
+  
+  // Add close button
+  const close = document.createElement('span');
+  close.textContent = '×';
+  close.className = 'mu-toast-close';
+  close.onclick = () => toast.remove();
+  toast.appendChild(close);
+  
+  document.body.appendChild(toast);
+  
+  // Auto dismiss
+  if (duration > 0) {
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.classList.add('mu-toast-hide');
+        setTimeout(() => toast.remove(), 300);
+      }
+    }, duration);
+  }
+}
+
+// ============================================
+// API HELPER
+// ============================================
+
+async function apiCall(url, options = {}) {
+  const defaults = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin'
+  };
+  
+  const config = { ...defaults, ...options };
+  if (options.body && typeof options.body === 'object') {
+    config.body = JSON.stringify(options.body);
+  }
+  
+  try {
+    const response = await fetch(url, config);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      const errorMsg = data.error || data.message || 'Request failed';
+      showToast(errorMsg, 'error');
+      return { ok: false, error: errorMsg, status: response.status };
+    }
+    
+    return { ok: true, data, status: response.status };
+  } catch (err) {
+    const errorMsg = 'Network error - please try again';
+    showToast(errorMsg, 'error');
+    return { ok: false, error: errorMsg, status: 0 };
+  }
 }
 
 } // End of window context check
