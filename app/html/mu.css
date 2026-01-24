@@ -2330,14 +2330,48 @@ a.highlight {
     height: auto;
   }
   .home-left {
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     width: 100%;
   }
+  
+  /* Compact apps card on mobile */
+  .home-left .card {
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  
+  .home-left .card h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  
+  /* Compact apps preview on mobile - single row with overflow */
+  .home-left .apps-preview {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding-bottom: 2px;
+    margin-bottom: 8px;
+  }
+  
+  .home-left .apps-preview .app-preview-item {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  
+  .home-left .card-link {
+    font-size: 12px;
+  }
+  
   .home-right {
     width: 100%;
     display: flex;
     flex-direction: column;
   }
+  
+  /* Reorder cards: real-time info first */
   #home-chat { order: 1; }
   #reminder { order: 2; }
   #markets { order: 3; }
