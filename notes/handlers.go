@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
@@ -222,25 +223,64 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 
 	// Handle edit form submission
 	if r.Method == "POST" {
-		r.ParseForm()
-		title := strings.TrimSpace(r.FormValue("title"))
-		content := strings.TrimSpace(r.FormValue("content"))
-		tagsStr := r.FormValue("tags")
-		pinned := r.FormValue("pinned") == "on"
-		color := r.FormValue("color")
+		var title, content, tagsStr, color string
+		var pinned bool
 
-		app.Log("notes", "POST received: title=%q content=%q (len=%d)", title, content[:min(50, len(content))], len(content))
+		// Check if JSON request
+		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+			var req struct {
+				Title   string `json:"title"`
+				Content string `json:"content"`
+				Tags    string `json:"tags"`
+				Pinned  bool   `json:"pinned"`
+				Color   string `json:"color"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				app.Log("notes", "JSON decode error: %v", err)
+				http.Error(w, "invalid json", http.StatusBadRequest)
+				return
+			}
+			title = strings.TrimSpace(req.Title)
+			content = strings.TrimSpace(req.Content)
+			tagsStr = req.Tags
+			pinned = req.Pinned
+			color = req.Color
+		} else {
+			r.ParseForm()
+			title = strings.TrimSpace(r.FormValue("title"))
+			content = strings.TrimSpace(r.FormValue("content"))
+			tagsStr = r.FormValue("tags")
+			pinned = r.FormValue("pinned") == "on"
+			color = r.FormValue("color")
+		}
+
+		app.Log("notes", "POST received: title=%q content_len=%d", title, len(content))
 
 		if content == "" {
 			app.Log("notes", "Content empty, rejecting")
-			renderViewForm(w, note, "Content is required")
+			if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+				http.Error(w, "content required", http.StatusBadRequest)
+			} else {
+				renderViewForm(w, note, "Content is required")
+			}
 			return
 		}
 
 		tags := parseTags(tagsStr)
 		err := UpdateNote(id, sess.Account, title, content, tags, pinned, note.Archived, color)
 		if err != nil {
-			renderViewForm(w, note, err.Error())
+			if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			} else {
+				renderViewForm(w, note, err.Error())
+			}
+			return
+		}
+
+		// JSON request gets JSON response
+		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"ok":true}`))
 			return
 		}
 
@@ -364,16 +404,10 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     syncing = true;
     const data = draft.data;
     
-    const formData = new FormData();
-    formData.append('title', data.title);
-    formData.append('content', data.content);
-    formData.append('tags', data.tags);
-    if (data.pinned) formData.append('pinned', 'on');
-    formData.append('color', data.color);
-    
     fetch('/notes/' + noteId, {
       method: 'POST',
-      body: formData,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
       credentials: 'same-origin'
     }).then(r => {
       syncing = false;
