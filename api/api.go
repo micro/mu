@@ -532,6 +532,328 @@ func init() {
 			},
 		},
 	})
+
+	// Notes endpoints
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "List Notes",
+		Path:        "/notes",
+		Method:      "GET",
+		Description: "Get all notes for authenticated user",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "notes",
+						Value:       "array",
+						Description: "Array of note objects with id, title, content, tags, created_at, updated_at",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Get Note",
+		Path:        "/notes/{id}",
+		Method:      "GET",
+		Description: "Get a single note by ID",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "id",
+						Value:       "string",
+						Description: "Note ID",
+					},
+					{
+						Name:        "title",
+						Value:       "string",
+						Description: "Note title",
+					},
+					{
+						Name:        "content",
+						Value:       "string",
+						Description: "Note content",
+					},
+					{
+						Name:        "tags",
+						Value:       "array",
+						Description: "Note tags",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Create Note",
+		Path:        "/notes/new",
+		Method:      "POST",
+		Description: "Create a new note",
+		Params: []*Param{
+			{
+				Name:        "title",
+				Value:       "string",
+				Description: "Note title (optional)",
+			},
+			{
+				Name:        "content",
+				Value:       "string",
+				Description: "Note content (required)",
+			},
+			{
+				Name:        "tags",
+				Value:       "string",
+				Description: "Comma-separated tags",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "ok",
+						Value:       "boolean",
+						Description: "Whether the note was created",
+					},
+					{
+						Name:        "id",
+						Value:       "string",
+						Description: "The created note ID",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Update Note",
+		Path:        "/notes/{id}",
+		Method:      "POST",
+		Description: "Update an existing note",
+		Params: []*Param{
+			{
+				Name:        "title",
+				Value:       "string",
+				Description: "Note title",
+			},
+			{
+				Name:        "content",
+				Value:       "string",
+				Description: "Note content (required)",
+			},
+			{
+				Name:        "tags",
+				Value:       "string",
+				Description: "Comma-separated tags",
+			},
+			{
+				Name:        "pinned",
+				Value:       "boolean",
+				Description: "Pin the note",
+			},
+			{
+				Name:        "color",
+				Value:       "string",
+				Description: "Note color (yellow, green, blue, pink, purple, gray)",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+					Name:        "ok",
+					Value:       "boolean",
+					Description: "Whether the note was updated",
+				},
+			},
+		},
+	},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Delete Note",
+		Path:        "/notes/{id}/delete",
+		Method:      "GET",
+		Description: "Delete a note (redirects to /notes)",
+		Response: []*Value{
+			{
+				Type: "Redirect",
+				Params: []*Param{
+					{
+						Name:        "location",
+						Value:       "string",
+						Description: "Redirects to /notes",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Archive Note",
+		Path:        "/notes/{id}/archive",
+		Method:      "GET",
+		Description: "Toggle note archive status",
+		Response: []*Value{
+			{
+				Type: "Redirect",
+				Params: []*Param{
+					{
+						Name:        "location",
+						Value:       "string",
+						Description: "Redirects back to note or /notes",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Pin Note",
+		Path:        "/notes/{id}/pin",
+		Method:      "GET",
+		Description: "Toggle note pinned status",
+		Response: []*Value{
+			{
+				Type: "Redirect",
+				Params: []*Param{
+					{
+						Name:        "location",
+						Value:       "string",
+						Description: "Redirects back to note or /notes",
+					},
+				},
+			},
+		},
+	})
+
+	// Agent endpoint
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Agent Run",
+		Path:        "/agent/run",
+		Method:      "POST",
+		Description: "Run an AI agent task",
+		Params: []*Param{
+			{
+				Name:        "task",
+				Value:       "string",
+				Description: "Task description for the agent",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "success",
+						Value:       "boolean",
+						Description: "Whether the task completed",
+					},
+					{
+						Name:        "answer",
+						Value:       "string",
+						Description: "Agent response",
+					},
+					{
+						Name:        "action",
+						Value:       "string",
+						Description: "Action type (e.g., 'navigate')",
+					},
+					{
+						Name:        "url",
+						Value:       "string",
+						Description: "URL for navigation actions",
+					},
+				},
+			},
+		},
+	})
+
+	// Flag endpoint
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Flag Content",
+		Path:        "/flag",
+		Method:      "POST",
+		Description: "Flag inappropriate content",
+		Params: []*Param{
+			{
+				Name:        "type",
+				Value:       "string",
+				Description: "Content type (post, comment)",
+			},
+			{
+				Name:        "id",
+				Value:       "string",
+				Description: "Content ID",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "success",
+						Value:       "boolean",
+						Description: "Whether the flag was recorded",
+					},
+					{
+						Name:        "count",
+						Value:       "number",
+						Description: "Total flag count",
+					},
+				},
+			},
+		},
+	})
+
+	// Session endpoint
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Session Status",
+		Path:        "/session",
+		Method:      "GET",
+		Description: "Check authentication status (returns guest session if not authenticated)",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "type",
+						Value:       "string",
+						Description: "Session type (account, token, anonymous)",
+					},
+					{
+					Name:        "account",
+					Value:       "string",
+					Description: "Account username if authenticated",
+				},
+			},
+		},
+	},
+	})
+
+	// Wallet endpoint
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Wallet Balance",
+		Path:        "/wallet?balance=1",
+		Method:      "GET",
+		Description: "Get wallet credit balance",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "balance",
+						Value:       "number",
+						Description: "Current credit balance (1 credit = 1p)",
+					},
+				},
+			},
+		},
+	})
 }
 
 // Register an endpoint
