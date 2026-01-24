@@ -991,9 +991,9 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Accept") == "application/json" {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
-					"ok":   true,
-					"id":   id,
-					"name": name,
+					"success": true,
+					"id":      id,
+					"name":    name,
 				})
 				return
 			}
@@ -1044,7 +1044,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			// Return JSON for AJAX
 			if r.Header.Get("Accept") == "application/json" {
 				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(`{"ok":true}`))
+				w.Write([]byte(`{"success":true}`))
 				return
 			}
 			http.Redirect(w, r, "/kids/saved/"+id, http.StatusSeeOther)

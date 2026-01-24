@@ -120,9 +120,34 @@ func handleList(w http.ResponseWriter, r *http.Request, sess *auth.Session, acc 
 		Empty:   emptyMsg,
 	})
 
-	// Add script to update cards from localStorage drafts
+	// Add script to handle page show (including bfcache) and update cards
 	pageHTML += `<script>
 (function() {
+  // Check if we need to refresh due to note updates
+  function checkForUpdates() {
+    const lastUpdate = sessionStorage.getItem('notes_updated');
+    const pageLoad = window.notesPageLoad || 0;
+    if (lastUpdate && parseInt(lastUpdate) > pageLoad) {
+      // Notes were updated, reload to get fresh data
+      sessionStorage.removeItem('notes_updated');
+      location.reload();
+      return true;
+    }
+    return false;
+  }
+  
+  // Record when this page was loaded
+  window.notesPageLoad = Date.now();
+  
+  // Check on pageshow (fires on bfcache restore too)
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted) {
+      // Page was restored from bfcache
+      checkForUpdates();
+    }
+  });
+  
+  // Update cards from any remaining localStorage drafts
   document.querySelectorAll('.card-note[data-note-id]').forEach(card => {
     const noteId = card.dataset.noteId;
     const draftStr = localStorage.getItem('note_draft_' + noteId);
@@ -286,7 +311,17 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 		}
 
 		if app.SendsJSON(r) {
-			app.RespondJSON(w, map[string]bool{"ok": true})
+			// Get the updated note to return its timestamp
+			updatedNote := GetNote(id, sess.Account)
+			var updatedAt string
+			if updatedNote != nil {
+				updatedAt = updatedNote.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
+			}
+			app.RespondJSON(w, map[string]interface{}{
+				"success":    true,
+				"id":         id,
+				"updated_at": updatedAt,
+			})
 			return
 		}
 
@@ -419,6 +454,10 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
       syncing = false;
       if (r.ok) {
         lastSyncedJson = draftStr;
+        // Clear draft since server has latest
+        localStorage.removeItem(draftKey);
+        // Mark that notes list needs refresh
+        sessionStorage.setItem('notes_updated', Date.now().toString());
       } else {
         status.textContent = 'Sync failed';
         status.className = 'autosave-error';

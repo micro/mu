@@ -614,7 +614,7 @@ func init() {
 				Type: "JSON",
 				Params: []*Param{
 					{
-						Name:        "ok",
+						Name:        "success",
 						Value:       "boolean",
 						Description: "Whether the note was created",
 					},
@@ -665,9 +665,14 @@ func init() {
 				Type: "JSON",
 				Params: []*Param{
 					{
-					Name:        "ok",
-					Value:       "boolean",
-					Description: "Whether the note was updated",
+					Name:        "success",
+						Value:       "boolean",
+						Description: "Whether the note was updated",
+					},
+					{
+						Name:        "id",
+						Value:       "string",
+						Description: "The updated note ID",
 				},
 			},
 		},
