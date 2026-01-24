@@ -191,7 +191,8 @@ BASE_RPC_URL  # Default: https://mainnet.base.org
 - **Production**: https://mu.xyz (the live site)
 - **SSH Access**: `ssh -p 61194 mu@mu.xyz`
 - Test credentials: `ssh -p 61194 mu@mu.xyz 'cat ~/.mu/test-creds'`
-- Deploy: Push to main, then SSH in and rebuild/restart the service
+- **Deploy**: Push to main → GitHub Action auto-deploys (pulls, builds, restarts service)
+- Manual deploy: `ssh -p 61194 mu@mu.xyz 'cd ~/src/mu && git pull && go install && sudo systemctl restart mu'`
 - Data directory: `~/.mu/` on the server
 
 ## UI Principles
