@@ -229,7 +229,10 @@ func handleView(w http.ResponseWriter, r *http.Request, sess *auth.Session, id s
 		pinned := r.FormValue("pinned") == "on"
 		color := r.FormValue("color")
 
+		app.Log("notes", "POST received: title=%q content=%q (len=%d)", title, content[:min(50, len(content))], len(content))
+
 		if content == "" {
+			app.Log("notes", "Content empty, rejecting")
 			renderViewForm(w, note, "Content is required")
 			return
 		}
