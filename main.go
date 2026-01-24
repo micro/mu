@@ -245,6 +245,19 @@ func main() {
 	server := &http.Server{
 		Addr: *AddressFlag,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Request logging (Apache-style)
+			start := time.Now()
+			defer func() {
+				// Skip logging for static assets and frequent endpoints
+				if !strings.HasSuffix(r.URL.Path, ".css") &&
+					!strings.HasSuffix(r.URL.Path, ".js") &&
+					!strings.HasSuffix(r.URL.Path, ".png") &&
+					!strings.HasSuffix(r.URL.Path, ".ico") &&
+					!strings.HasPrefix(r.URL.Path, "/chat/ws") {
+					app.Log("http", "%s %s %s %v", r.Method, r.URL.Path, r.RemoteAddr, time.Since(start))
+				}
+			}()
+
 			if *EnvFlag == "dev" {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
