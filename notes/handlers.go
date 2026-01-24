@@ -1,13 +1,13 @@
 package notes
 
 import (
+	"fmt"
 	"html"
 	"net/http"
 	"strings"
 
 	"mu/app"
 	"mu/auth"
-	
 )
 
 // Handler handles /notes routes
@@ -274,8 +274,10 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
 		colorOptions += `<option value="` + c + `"` + selected + `>` + label + `</option>`
 	}
 
+	serverTimestamp := fmt.Sprintf("%d", n.UpdatedAt.UnixMilli())
+
 	formHTML := errHTML + `
-<form method="POST" class="note-editor" data-note-id="` + n.ID + `">
+<form method="POST" class="note-editor" data-note-id="` + n.ID + `" data-server-ts="` + serverTimestamp + `">
   <input type="text" name="title" placeholder="Title" value="` + html.EscapeString(n.Title) + `">
   <textarea name="content" placeholder="Take a note..." required>` + html.EscapeString(n.Content) + `</textarea>
   <details class="note-options-toggle">
@@ -300,11 +302,12 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
   if (!form) return;
   
   const noteId = form.dataset.noteId;
+  const serverTs = parseInt(form.dataset.serverTs) || 0;
   const status = document.getElementById('autosave-status');
-  const storageKey = 'note_original_' + noteId;
   const draftKey = 'note_draft_' + noteId;
   let saveTimeout = null;
   let lastSaved = {};
+  let lastSavedTs = serverTs;
   let original = null;
   
   function getFormData() {
@@ -380,7 +383,8 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     }).then(r => {
       if (r.ok || r.redirected) {
         lastSaved = data;
-        localStorage.removeItem(draftKey); // Clear draft after successful save
+        lastSavedTs = Date.now();
+        localStorage.removeItem(draftKey);
         status.textContent = 'Saved';
         status.className = 'autosave-saved';
         showRevert();
@@ -395,35 +399,45 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
     });
   }
   
+  function saveDraft() {
+    const draft = {
+      ts: Date.now(),
+      data: getFormData()
+    };
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+  }
+  
   function scheduleAutoSave() {
-    // Save draft to localStorage immediately (survives swipe-away)
-    localStorage.setItem(draftKey, JSON.stringify(getFormData()));
-    // Debounce server save
+    saveDraft();
     if (saveTimeout) clearTimeout(saveTimeout);
     saveTimeout = setTimeout(autoSave, 1500);
   }
   
-  // Store original state on first load
-  const stored = localStorage.getItem(storageKey);
-  if (stored) {
-    original = JSON.parse(stored);
-  } else {
-    original = getFormData();
-    localStorage.setItem(storageKey, JSON.stringify(original));
-  }
-  
-  // lastSaved tracks what's on the server
+  // Original state for revert
+  original = getFormData();
   lastSaved = getFormData();
   
-  // Clear any stale drafts - server is source of truth on page load
-  localStorage.removeItem(draftKey);
-  localStorage.removeItem(storageKey);
-  
-  // Clear stored data when navigating away normally
-  window.addEventListener('beforeunload', () => {
-    localStorage.removeItem(storageKey);
-    // Don't clear draft - only clear after successful save
-  });
+  // Check for draft newer than server
+  const draftStr = localStorage.getItem(draftKey);
+  if (draftStr) {
+    try {
+      const draft = JSON.parse(draftStr);
+      if (draft.ts && draft.ts > serverTs && draft.data) {
+        // Draft is newer than server - restore it
+        setFormData(draft.data);
+        status.textContent = 'Draft restored';
+        status.className = 'autosave-saving';
+        showRevert();
+        // Save to server
+        setTimeout(autoSave, 500);
+      } else {
+        // Server is newer or same - discard draft
+        localStorage.removeItem(draftKey);
+      }
+    } catch(e) {
+      localStorage.removeItem(draftKey);
+    }
+  }
   
   // Listen for changes
   form.querySelectorAll('input, textarea, select').forEach(el => {
