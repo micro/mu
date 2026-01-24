@@ -996,8 +996,8 @@ function flagPost(postId) {
   
   fetch('/flag', {
     method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: 'type=post&id=' + encodeURIComponent(postId)
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({type: 'post', id: postId})
   })
   .then(response => response.json())
   .then(data => {

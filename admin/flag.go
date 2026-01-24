@@ -318,8 +318,24 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contentType := r.FormValue("type")
-	contentID := r.FormValue("id")
+	var contentType, contentID string
+
+	// Support both JSON and form data
+	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		var req struct {
+			Type string `json:"type"`
+			ID   string `json:"id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		contentType = req.Type
+		contentID = req.ID
+	} else {
+		contentType = r.FormValue("type")
+		contentID = r.FormValue("id")
+	}
 
 	if contentID == "" || contentType == "" {
 		http.Error(w, "Content ID and type required", http.StatusBadRequest)
