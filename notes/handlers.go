@@ -434,17 +434,14 @@ func renderViewForm(w http.ResponseWriter, n *Note, errMsg string) {
       credentials: 'same-origin'
     }).then(r => {
       syncing = false;
-      console.log('Sync response:', r.status, r.ok, r.redirected);
-      if (r.ok || r.redirected) {
+      if (r.ok) {
         lastSyncedJson = draftStr;
       } else {
-        console.log('Sync failed:', r.status);
         status.textContent = 'Sync failed';
         status.className = 'autosave-error';
       }
-    }).catch(e => {
+    }).catch(() => {
       syncing = false;
-      console.log('Sync error:', e);
       status.textContent = 'Offline';
       status.className = 'autosave-error';
     });
