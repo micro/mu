@@ -58,12 +58,12 @@ var (
 
 // Default podcasts - curated for kids
 var defaultPodcasts = []Podcast{
-	// Learn
-	{Name: "Science", Icon: "🔬", Category: "learn", FeedURL: "https://feeds.simplecast.com/hl6Dj3hR"},           // Brains On
-	{Name: "Nature", Icon: "🌿", Category: "learn", FeedURL: "https://feeds.simplecast.com/ePf5jMqS"},            // Wow in the World
+	// Learn - Science & Nature
+	{Name: "Science", Icon: "🔬", Category: "learn", FeedURL: "https://feeds.publicradio.org/public_feeds/brains-on/rss/rss"}, // Brains On
+	{Name: "Nature", Icon: "🌍", Category: "learn", FeedURL: "https://rss.art19.com/wow-in-the-world"},                       // Wow in the World
 	
 	// Stories
-	{Name: "Folktales", Icon: "📚", Category: "stories", FeedURL: "https://feeds.simplecast.com/2zFK5GNG"},       // Circle Round
+	{Name: "Stories", Icon: "📚", Category: "stories", FeedURL: "https://rss.art19.com/stories-podcast"}, // Stories Podcast
 }
 
 func initPodcasts() {
