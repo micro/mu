@@ -4436,6 +4436,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .kids-label {
   font-size: 1.1em;
   font-weight: 600;
+  text-align: center;
 }
 
 .kids-count {
