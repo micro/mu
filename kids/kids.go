@@ -84,6 +84,9 @@ func Load() {
 		playlists = defaultPlaylists
 	}
 
+	// Load cached videos from disk (instant startup)
+	loadVideosCache()
+
 	// Load saved playlists
 	loadSavedPlaylists()
 
@@ -141,6 +144,37 @@ func refreshVideos() {
 
 		app.Log("kids", "Loaded %d videos for %s", len(vids), pl.Name)
 	}
+
+	// Persist to disk
+	saveVideosCache()
+}
+
+func saveVideosCache() {
+	mu.RLock()
+	defer mu.RUnlock()
+	b, err := json.Marshal(videos)
+	if err != nil {
+		app.Log("kids", "Failed to marshal videos cache: %v", err)
+		return
+	}
+	data.SaveFile("kids/videos.json", string(b))
+	app.Log("kids", "Saved videos cache to disk")
+}
+
+func loadVideosCache() {
+	b, err := data.LoadFile("kids/videos.json")
+	if err != nil {
+		return // No cache yet
+	}
+	var cached map[string][]Video
+	if err := json.Unmarshal(b, &cached); err != nil {
+		app.Log("kids", "Failed to unmarshal videos cache: %v", err)
+		return
+	}
+	mu.Lock()
+	videos = cached
+	mu.Unlock()
+	app.Log("kids", "Loaded videos cache from disk (%d playlists)", len(cached))
 }
 
 func fetchPlaylist(playlistID, playlistName string) ([]Video, error) {

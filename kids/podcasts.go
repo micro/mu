@@ -1,6 +1,7 @@
 package kids
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"mu/app"
+	"mu/data"
 
 	"github.com/mmcdole/gofeed"
 )
@@ -71,10 +73,13 @@ func initPodcasts() {
 	episodes = make(map[string][]Episode)
 	podcasts = defaultPodcasts
 	
+	// Load cached episodes from disk (instant startup)
+	loadEpisodesCache()
+	
 	// Build categories
 	buildCategories()
 	
-	// Initial fetch
+	// Initial fetch (refresh in background)
 	go refreshPodcasts()
 	
 	// Refresh every 6 hours
@@ -269,6 +274,37 @@ func refreshPodcasts() {
 	
 	// Rebuild categories with updated counts
 	buildCategories()
+
+	// Persist to disk
+	saveEpisodesCache()
+}
+
+func saveEpisodesCache() {
+	podcastMu.RLock()
+	defer podcastMu.RUnlock()
+	b, err := json.Marshal(episodes)
+	if err != nil {
+		app.Log("kids", "Failed to marshal episodes cache: %v", err)
+		return
+	}
+	data.SaveFile("kids/episodes.json", string(b))
+	app.Log("kids", "Saved episodes cache to disk")
+}
+
+func loadEpisodesCache() {
+	b, err := data.LoadFile("kids/episodes.json")
+	if err != nil {
+		return // No cache yet
+	}
+	var cached map[string][]Episode
+	if err := json.Unmarshal(b, &cached); err != nil {
+		app.Log("kids", "Failed to unmarshal episodes cache: %v", err)
+		return
+	}
+	podcastMu.Lock()
+	episodes = cached
+	podcastMu.Unlock()
+	app.Log("kids", "Loaded episodes cache from disk (%d podcasts)", len(cached))
 }
 
 func stripHTML(s string) string {
