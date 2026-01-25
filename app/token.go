@@ -287,7 +287,11 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 }
 
 func handleDeleteToken(w http.ResponseWriter, r *http.Request, accountID string) {
-	tokenID := r.URL.Query().Get("id")
+	// Support both /token/{id} path style and /token?id={id} query style
+	tokenID := strings.TrimPrefix(r.URL.Path, "/token/")
+	if tokenID == "" || tokenID == r.URL.Path {
+		tokenID = r.URL.Query().Get("id")
+	}
 	if tokenID == "" {
 		http.Error(w, "Token ID required", http.StatusBadRequest)
 		return

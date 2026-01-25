@@ -132,7 +132,7 @@ var Endpoints = []*Endpoint{{
 	},
 }, {
 	Name:        "Get Post",
-	Path:        "/post?id={id}",
+	Path:        "/post/{id}",
 	Method:      "GET",
 	Description: "Get a single blog post by ID",
 	Response: []*Value{
@@ -174,7 +174,7 @@ var Endpoints = []*Endpoint{{
 	},
 }, {
 	Name:        "Update Post",
-	Path:        "/post?id={id}",
+	Path:        "/post/{id}",
 	Method:      "PATCH",
 	Description: "Update an existing blog post (author only)",
 	Params: []*Param{
@@ -395,7 +395,7 @@ func init() {
 
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "Delete Token",
-		Path:        "/token?id={id}",
+		Path:        "/token/{id}",
 		Method:      "DELETE",
 		Description: "Delete a Personal Access Token",
 		Response: []*Value{
@@ -419,7 +419,7 @@ func init() {
 
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "Delete Post",
-		Path:        "/post?id={id}",
+		Path:        "/post/{id}",
 		Method:      "DELETE",
 		Description: "Delete a blog post (author only)",
 		Response: []*Value{

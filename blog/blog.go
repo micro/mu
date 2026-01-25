@@ -1084,7 +1084,11 @@ func GetPostsByAuthor(authorName string) []*Post {
 // PostHandler serves individual blog posts (public, no auth required) and handles PATCH for editing
 // Supports both HTML and JSON requests
 func PostHandler(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
+	// Support both /post/{id} path style and /post?id={id} query style
+	id := strings.TrimPrefix(r.URL.Path, "/post/")
+	if id == "" || id == r.URL.Path {
+		id = r.URL.Query().Get("id")
+	}
 
 	// Handle POST to create new post (no id required)
 	if r.Method == "POST" && id == "" {
