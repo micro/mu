@@ -493,15 +493,11 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 	// Back link at top like other pages
 	content.WriteString(fmt.Sprintf(`<p><a href="%s">← Back</a></p>`, backURL))
 	
-	// Video container with thumbnail overlay (hidden if autoplay)
-	thumbClass := "kids-thumb-overlay"
-	if autoplay {
-		thumbClass += " hidden"
-	}
+	// Video container with thumbnail overlay (always visible - audio-only mode)
 	content.WriteString(fmt.Sprintf(`<div class="kids-video-container">
 		<div id="player"></div>
-		<img src="%s" class="%s" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-	</div>`, video.Thumbnail, thumbClass, id))
+		<img src="%s" class="kids-thumb-overlay" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+	</div>`, video.Thumbnail, id))
 	
 	// Controls - show pause button if autoplay
 	playBtnIcon := "▶"
