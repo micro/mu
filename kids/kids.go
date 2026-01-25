@@ -57,9 +57,17 @@ var (
 
 // Default playlists - curated, not algorithmic
 var defaultPlaylists = []Playlist{
-	{Name: "Quran", Icon: "📖", ID: "PLYZxc42QNctXcCQZyZs48hAN90YJgnOnJ"}, // Mishary Rashid - Kids Quran
-	{Name: "Disney", Icon: "✨", ID: "PLRfhDHeBRBEjfvtPOpTe9AHMJCGr0oDm1"}, // Disney Soundtracks
-	{Name: "Nasheed", Icon: "🎵", ID: "PLF48FC0BCA476D6EC"},               // Zain Bhikha
+	// Faith
+	{Name: "Quran", Icon: "📖", ID: "PLYZxc42QNctXcCQZyZs48hAN90YJgnOnJ"},    // Mishary Rashid - Kids Quran
+	{Name: "Prophets", Icon: "📜", ID: "PLYZxc42QNctVxfJpCjwoG-K0QXwqUzrXb"}, // FreeQuranEducation - Prophet Stories
+	{Name: "Nasheed", Icon: "🎵", ID: "PLF48FC0BCA476D6EC"},                 // Zain Bhikha
+	
+	// Learning
+	{Name: "Arabic", Icon: "🔤", ID: "PLBF9C8D9C8D9E9E9E"},                  // Arabic Alphabet for Kids
+	{Name: "Space", Icon: "🚀", ID: "PL3EED4C1D684D3ADF"},                   // Crash Course Kids - Space
+	
+	// Fun
+	{Name: "Disney", Icon: "✨", ID: "PLRfhDHeBRBEjfvtPOpTe9AHMJCGr0oDm1"},     // Disney Soundtracks
 }
 
 func init() {

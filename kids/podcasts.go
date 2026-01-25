@@ -88,24 +88,52 @@ func initPodcasts() {
 	}()
 }
 
+// playlistCategory maps playlist names to their category
+var playlistCategory = map[string]string{
+	"Quran":    "faith",
+	"Prophets": "faith",
+	"Nasheed":  "faith",
+	"Arabic":   "learn",
+	"Space":    "learn",
+	"Disney":   "music",
+}
+
 func buildCategories() {
-	// Music category (existing playlists)
-	musicItems := []CategoryItem{}
+	// Faith category (Islamic content)
+	faithItems := []CategoryItem{}
 	for _, pl := range playlists {
-		mu.RLock()
-		count := len(videos[pl.Name])
-		mu.RUnlock()
-		musicItems = append(musicItems, CategoryItem{
-			Name:  pl.Name,
-			Icon:  pl.Icon,
-			Type:  "playlist",
-			ID:    pl.Name,
-			Count: count,
-		})
+		if playlistCategory[pl.Name] == "faith" {
+			mu.RLock()
+			count := len(videos[pl.Name])
+			mu.RUnlock()
+			faithItems = append(faithItems, CategoryItem{
+				Name:  pl.Name,
+				Icon:  pl.Icon,
+				Type:  "playlist",
+				ID:    pl.Name,
+				Count: count,
+			})
+		}
 	}
 	
-	// Learn category (podcasts)
+	// Learn category (educational playlists + podcasts)
 	learnItems := []CategoryItem{}
+	// Add learning playlists first
+	for _, pl := range playlists {
+		if playlistCategory[pl.Name] == "learn" {
+			mu.RLock()
+			count := len(videos[pl.Name])
+			mu.RUnlock()
+			learnItems = append(learnItems, CategoryItem{
+				Name:  pl.Name,
+				Icon:  pl.Icon,
+				Type:  "playlist",
+				ID:    pl.Name,
+				Count: count,
+			})
+		}
+	}
+	// Add learning podcasts
 	for _, p := range podcasts {
 		if p.Category == "learn" {
 			podcastMu.RLock()
@@ -138,10 +166,28 @@ func buildCategories() {
 		}
 	}
 	
+	// Music category (fun playlists)
+	musicItems := []CategoryItem{}
+	for _, pl := range playlists {
+		if playlistCategory[pl.Name] == "music" {
+			mu.RLock()
+			count := len(videos[pl.Name])
+			mu.RUnlock()
+			musicItems = append(musicItems, CategoryItem{
+				Name:  pl.Name,
+				Icon:  pl.Icon,
+				Type:  "playlist",
+				ID:    pl.Name,
+				Count: count,
+			})
+		}
+	}
+	
 	categories = []Category{
+		{Name: "Faith", Icon: "☪️", Items: faithItems},
+		{Name: "Learn", Icon: "📚", Items: learnItems},
+		{Name: "Stories", Icon: "📖", Items: storiesItems},
 		{Name: "Music", Icon: "🎵", Items: musicItems},
-		{Name: "Learn", Icon: "🔬", Items: learnItems},
-		{Name: "Stories", Icon: "📚", Items: storiesItems},
 	}
 }
 
