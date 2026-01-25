@@ -175,6 +175,9 @@ func loadVideosCache() {
 	videos = cached
 	mu.Unlock()
 	app.Log("kids", "Loaded videos cache from disk (%d playlists)", len(cached))
+	
+	// Rebuild categories with loaded counts
+	RebuildCategories()
 }
 
 func fetchPlaylist(playlistID, playlistName string) ([]Video, error) {

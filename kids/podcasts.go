@@ -307,6 +307,11 @@ func loadEpisodesCache() {
 	app.Log("kids", "Loaded episodes cache from disk (%d podcasts)", len(cached))
 }
 
+// RebuildCategories rebuilds category counts (called after videos cache loads)
+func RebuildCategories() {
+	buildCategories()
+}
+
 func stripHTML(s string) string {
 	// Simple HTML stripping
 	var result strings.Builder
