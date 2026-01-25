@@ -64,6 +64,9 @@ var defaultPodcasts = []Podcast{
 	
 	// Stories
 	{Name: "Stories", Icon: "📚", Category: "stories", FeedURL: "https://rss.art19.com/stories-podcast"}, // Stories Podcast
+	
+	// English Learning (BBC)
+	{Name: "English", Icon: "🇬🇧", Category: "learn", FeedURL: "https://podcasts.files.bbci.co.uk/p02pc9tn.rss"}, // 6 Minute English
 }
 
 func initPodcasts() {
