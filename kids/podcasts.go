@@ -90,12 +90,20 @@ func initPodcasts() {
 
 // playlistCategory maps playlist names to their category
 var playlistCategory = map[string]string{
-	"Quran":    "faith",
-	"Prophets": "faith",
-	"Nasheed":  "faith",
-	"Arabic":   "learn",
-	"Space":    "learn",
-	"Disney":   "music",
+	// Faith
+	"Quran":      "faith",
+	"Prophets":   "faith",
+	"Nasheed":    "faith",
+	"Omar & Hana": "faith",
+	
+	// Learning
+	"Arabic":     "learn",
+	"Space":      "learn",
+	
+	// Music/Fun (default for unlisted)
+	"Disney":     "music",
+	"Bluey":      "music",
+	"Bad Guys 2": "music",
 }
 
 func buildCategories() {
@@ -167,9 +175,11 @@ func buildCategories() {
 	}
 	
 	// Music category (fun playlists)
+	// Music category - includes anything not in faith or learn (default)
 	musicItems := []CategoryItem{}
 	for _, pl := range playlists {
-		if playlistCategory[pl.Name] == "music" {
+		cat := playlistCategory[pl.Name]
+		if cat == "music" || cat == "" { // default uncategorized to music
 			mu.RLock()
 			count := len(videos[pl.Name])
 			mu.RUnlock()
