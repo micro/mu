@@ -70,8 +70,21 @@ func init() {
 
 // Load initializes the kids package
 func Load() {
+	// Load custom playlists or use defaults
+	if err := loadPlaylists(); err != nil {
+		app.Log("kids", "Using default playlists: %v", err)
+		playlists = defaultPlaylists
+	}
+
+	// Load saved playlists
+	loadSavedPlaylists()
+
+	// Initialize podcasts
+	initPodcasts()
+
 	if apiKey == "" {
 		app.Log("kids", "No YouTube API key, kids features limited")
+		app.Log("kids", "Kids mode loaded with %d playlists, %d podcasts", len(playlists), len(podcasts))
 		return
 	}
 
@@ -81,15 +94,6 @@ func Load() {
 		app.Log("kids", "Failed to initialize YouTube client: %v", err)
 		return
 	}
-
-	// Load custom playlists or use defaults
-	if err := loadPlaylists(); err != nil {
-		app.Log("kids", "Using default playlists: %v", err)
-		playlists = defaultPlaylists
-	}
-
-	// Load saved playlists
-	loadSavedPlaylists()
 
 	// Initial load
 	go refreshVideos()
@@ -102,7 +106,7 @@ func Load() {
 		}
 	}()
 
-	app.Log("kids", "Kids mode loaded with %d playlists", len(playlists))
+	app.Log("kids", "Kids mode loaded with %d playlists, %d podcasts", len(playlists), len(podcasts))
 }
 
 func loadPlaylists() error {
@@ -196,6 +200,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(path, "saved/"):
 		rest := strings.TrimPrefix(path, "saved/")
 		handleSaved(w, r, rest)
+	case strings.HasPrefix(path, "podcast/"):
+		name := strings.TrimPrefix(path, "podcast/")
+		handlePodcast(w, r, name)
+	case strings.HasPrefix(path, "episode/"):
+		name := strings.TrimPrefix(path, "episode/")
+		handleEpisode(w, r, name)
 	case path == "playlists":
 		handlePlaylists(w, r)
 	case path == "playlist":
@@ -222,51 +232,62 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 	</form>`)
 
 	content.WriteString(`<div class="kids-home">`)
-	content.WriteString(`<div class="kids-categories">`)
 
-	// Built-in playlists
-	for _, pl := range playlists {
-		mu.RLock()
-		count := len(videos[pl.Name])
-		mu.RUnlock()
-
-		content.WriteString(fmt.Sprintf(`
-			<a href="/kids/list/%s" class="kids-category-btn">
-				<span class="kids-icon">%s</span>
-				<span class="kids-label">%s</span>
-				<span class="kids-count">%d</span>
-			</a>`,
-			pl.Name, pl.Icon, pl.Name, count))
+	// Render each category section
+	for _, cat := range categories {
+		content.WriteString(fmt.Sprintf(`<h3 class="kids-section-title">%s %s</h3>`, cat.Icon, cat.Name))
+		content.WriteString(`<div class="kids-categories">`)
+		
+		for _, item := range cat.Items {
+			var href string
+			if item.Type == "playlist" {
+				href = "/kids/list/" + item.ID
+			} else {
+				href = "/kids/podcast/" + item.ID
+			}
+			content.WriteString(fmt.Sprintf(`
+				<a href="%s" class="kids-category-btn">
+					<span class="kids-icon">%s</span>
+					<span class="kids-label">%s</span>
+					<span class="kids-count">%d</span>
+				</a>`,
+				href, item.Icon, item.Name, item.Count))
+		}
+		
+		// Add "My Playlists" and "New" button in Music section
+		if cat.Name == "Music" {
+			// User's saved playlists
+			mu.RLock()
+			for _, sp := range savedPlaylists {
+				if sp.UserID != userID {
+					continue
+				}
+				icon := sp.Icon
+				if icon == "" {
+					icon = "🎵"
+				}
+				content.WriteString(fmt.Sprintf(`
+					<a href="/kids/saved/%s" class="kids-category-btn">
+						<span class="kids-icon">%s</span>
+						<span class="kids-label">%s</span>
+						<span class="kids-count">%d</span>
+					</a>`,
+					sp.ID, icon, html.EscapeString(sp.Name), len(sp.Videos)))
+			}
+			mu.RUnlock()
+			
+			// New playlist button
+			content.WriteString(`
+				<a href="/kids/playlists" class="kids-category-btn kids-category-btn-dashed">
+					<span class="kids-icon">➕</span>
+					<span class="kids-label">New</span>
+				</a>`)
+		}
+		
+		content.WriteString(`</div>`)
 	}
 
-	// User's saved playlists only (if logged in)
-	mu.RLock()
-	for _, sp := range savedPlaylists {
-		if sp.UserID != userID {
-			continue // Skip playlists owned by other users
-		}
-		icon := sp.Icon
-		if icon == "" {
-			icon = "🎵"
-		}
-		content.WriteString(fmt.Sprintf(`
-			<a href="/kids/saved/%s" class="kids-category-btn">
-				<span class="kids-icon">%s</span>
-				<span class="kids-label">%s</span>
-				<span class="kids-count">%d</span>
-			</a>`,
-			sp.ID, icon, html.EscapeString(sp.Name), len(sp.Videos)))
-	}
-	mu.RUnlock()
-
-	// Add playlist button
-	content.WriteString(`
-		<a href="/kids/playlists" class="kids-category-btn kids-category-btn-dashed">
-			<span class="kids-icon">➕</span>
-			<span class="kids-label">New</span>
-		</a>`)
-
-	content.WriteString(`</div></div>`)
+	content.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest("Kids", "Safe audio and videos for children", content.String(), r)
 	w.Write([]byte(html))

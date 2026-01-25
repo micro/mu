@@ -4446,10 +4446,85 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin-bottom: 20px;
 }
 
-.kids-videos {
+.kids-section-title {
+  margin: 1.5rem 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+}
+
+.kids-section-title:first-child {
+  margin-top: 0;
+}
+
+.kids-videos,
+.kids-episodes {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 20px;
+}
+
+.kids-episode-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--card-background, #fff);
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text-primary, #333);
+  transition: box-shadow 0.2s;
+}
+
+.kids-episode-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.kids-episode-card img {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.kids-episode-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.kids-episode-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kids-episode-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #666);
+}
+
+.kids-episode-player {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.kids-episode-image {
+  width: 200px;
+  height: 200px;
+  border-radius: 16px;
+  object-fit: cover;
+  margin-bottom: 1rem;
+}
+
+.kids-episode-desc {
+  padding: 1rem;
+  background: var(--card-background, #f9f9f9);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--text-secondary, #666);
 }
 
 .kids-video-card {
