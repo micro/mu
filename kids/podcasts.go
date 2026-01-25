@@ -64,12 +64,7 @@ var defaultPodcasts = []Podcast{
 	
 	// Stories
 	{Name: "Stories", Icon: "📚", Category: "stories", FeedURL: "https://rss.art19.com/stories-podcast"},                               // Stories Podcast
-	{Name: "Circle Round", Icon: "🌍", Category: "stories", FeedURL: "https://rss.wbur.org/circleround/podcast"},                     // WBUR - folktales from around the world
-	{Name: "Bedtime", Icon: "🌙", Category: "stories", FeedURL: "https://feed.podbean.com/bedtimefm/feed.xml"},                          // Sleep Tight Stories
-	{Name: "Sparkle", Icon: "✨", Category: "stories", FeedURL: "https://feed.podbean.com/sparklestories/feed.xml"},                     // Sparkle Stories - gentle tales
-	
-	// English Learning (BBC)
-	{Name: "English", Icon: "🇬🇧", Category: "learn", FeedURL: "https://podcasts.files.bbci.co.uk/p02pc9tn.rss"}, // 6 Minute English
+	{Name: "Circle Round", Icon: "🌍", Category: "stories", FeedURL: "https://rss.wbur.org/circleround/podcast"}, // WBUR - folktales from around the world
 }
 
 func initPodcasts() {

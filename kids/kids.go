@@ -63,7 +63,7 @@ var defaultPlaylists = []Playlist{
 	{Name: "Nasheed", Icon: "🎵", ID: "PLF48FC0BCA476D6EC"},                 // Zain Bhikha
 	
 	// Learning
-	{Name: "Arabic", Icon: "🔤", ID: "PLBF9C8D9C8D9E9E9E"},                  // Arabic Alphabet for Kids
+	{Name: "Arabic", Icon: "🔤", ID: "PLEaGEZnOHpUPBcDnCCXkmgsgRDICnhYwT"}, // Learn Arabic for Kids
 	{Name: "Space", Icon: "🚀", ID: "PL3EED4C1D684D3ADF"},                   // Crash Course Kids - Space
 	
 	// Fun
