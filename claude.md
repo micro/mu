@@ -694,6 +694,66 @@ Core Principles:
 - LLMs do token prediction, not magic - answers must be grounded in sources
 - General questions redirect to Chat rather than hallucinating answers
 
+## mu/flow - Automation Language (January 2026)
+
+### What is it?
+A human-readable automation syntax. Users describe what they want, agent generates a flow, flow runs without LLM.
+
+### Syntax
+```
+every day at 7am:
+    get reminder
+    then search news for "tech"
+    then summarize
+    then email to me
+```
+
+### Supported Patterns
+
+**Triggers:**
+- `every day at 7am` - daily schedule
+- `every hour` - hourly
+- `every monday at 9am` - weekly
+- `every morning` / `every evening` - natural times
+- (no trigger = manual)
+
+**Steps:**
+- `get reminder` → reminder.today
+- `search news for "query"` → news.search
+- `get headlines` → news.headlines  
+- `email to me` / `email to "addr"` → mail.send
+- `get btc price` / `get price of "ETH"` → markets.get_price
+- `save note "content"` → notes.create
+- `get balance` → wallet.balance
+- `summarize` → (pass-through for now)
+
+**Chaining:** Steps connected with `then`
+
+### Architecture
+- `flow/flow.go` - Data model, storage in ~/.mu/data/flows/
+- `flow/parser.go` - Natural language → tool calls
+- `flow/executor.go` - Runs flows by calling tools registry
+- `flow/tools.go` - flow.create, flow.list, flow.run, flow.delete
+- `flow/handler.go` - /flows UI
+
+### Agent Integration
+Intent routing recognizes:
+- "every day", "every morning", "automate", "schedule" → flow.create
+- "my flows", "list flows" → flow.list
+
+### Why Flows?
+1. **Inspectable** - user sees exactly what agent understood
+2. **Editable** - tweak without re-explaining to LLM
+3. **Cheap** - scheduled runs don't burn LLM tokens
+4. **Shareable** - export/import recipes
+
+### TODO
+- Scheduler (cron-like background runner)
+- Event triggers ("when btc crosses 100k")
+- Variables ("save X as myvar")
+- Conditionals ("if price > 100 then...")
+- App generation within flows
+
 ## UI State
 - Service worker version: v125
 - Sidebar: scrollable nav + fixed bottom (account/logout)

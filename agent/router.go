@@ -37,6 +37,14 @@ func ClassifyIntent(input string) *Intent {
 		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "tools.list"}
 	}
 	
+	// Flows/automations
+	if containsAny(lower, []string{"every day", "every morning", "every hour", "automate", "automation", "schedule", "recurring", "flow", "remind me every"}) {
+		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "flow.create"}
+	}
+	if containsAny(lower, []string{"my flows", "list flows", "show flows", "automations"}) {
+		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "flow.list"}
+	}
+	
 	// Coding/app building - route to Anthropic
 	if containsAny(lower, []string{"build", "create", "make", "develop", "code", "app", "application", "website", "program"}) &&
 		containsAny(lower, []string{"app", "application", "website", "tool", "program", "script", "page"}) {
