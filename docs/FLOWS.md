@@ -219,26 +219,49 @@ Flows call tools from the registry. Built-in tools include:
 
 ### Future: App-Generated Tools
 
-User-created apps can register tools:
+User-created apps can register tools via the SDK:
 
 ```javascript
-// In app code
-mu.register({
-  name: "weather.forecast",
-  description: "Get weather forecast",
+// In app code - register a callable action
+mu.action({
+  name: "get_weather",
+  description: "Get weather forecast for a city",
   params: { city: "string" },
   handler: async (params) => {
-    return await mu.fetch(`/api/weather/${params.city}`);
+    const response = await mu.fetch(`https://api.weather.com/${params.city}`);
+    return await response.json();
   }
 });
 ```
 
-This would allow flows like:
+This creates a tool `apps.{appId}.get_weather` that flows can use:
+
 ```
 every morning:
-    get weather for "London"
+    run weather-app get_weather for "London"
     then email to me
 ```
+
+### The Ambiguity Problem
+
+With RPC services, mapping was clear:
+- Service: `weather.WeatherService`
+- Method: `GetForecast(city)`
+- → Tool: `weather.get_forecast`
+
+With LLM-generated apps, we have:
+- App: "Weather Dashboard"
+- What it does: Shows weather
+- Callable interface: ???
+
+**Solution approaches:**
+
+1. **Explicit registration** - Apps declare actions via `mu.action()`
+2. **Convention-based** - Apps with `getData()` function become tools
+3. **Agent introspection** - Agent analyzes app code to infer capabilities
+4. **Hybrid** - Agent generates apps WITH action declarations
+
+Current approach: Option 1 (explicit). Apps must opt-in to be callable.
 
 ### App Generation in Flows (Planned)
 

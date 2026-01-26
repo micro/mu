@@ -130,6 +130,35 @@ async function addTodo(text) {
 }
 ```
 
+## Actions (mu.action)
+
+Register callable actions that flows can invoke:
+
+```javascript
+// Register an action that flows can call
+mu.action({
+  name: 'get_data',
+  description: 'Get processed data from this app',
+  params: { filter: 'string' },
+  handler: async (params) => {
+    const data = await mu.db.get('data') || [];
+    if (params.filter) {
+      return data.filter(d => d.name.includes(params.filter));
+    }
+    return data;
+  }
+});
+```
+
+This allows flows to call your app:
+
+```
+run my-app get_data with filter "important"
+then email to me
+```
+
+> **Note:** Action execution in flows is currently planned. Apps must be run interactively for now.
+
 ## Featured Apps
 
 - [Todo](/apps/todo) - Task management

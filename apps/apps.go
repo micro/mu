@@ -42,6 +42,14 @@ type App struct {
 	Retries     int           `json:"retries"`      // Number of generation retries
 	CreatedAt   time.Time     `json:"created_at"`
 	UpdatedAt   time.Time     `json:"updated_at"`
+	Actions     []AppAction   `json:"actions,omitempty"` // Registered callable actions
+}
+
+// AppAction represents a callable function exposed by an app
+type AppAction struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Params      map[string]interface{} `json:"params"`
 }
 
 var (
@@ -155,6 +163,49 @@ func GetApp(id string) *App {
 		}
 	}
 	return nil
+}
+
+// RegisterAppAction adds a callable action to an app
+func RegisterAppAction(appID, name, description string, params map[string]interface{}) error {
+	app := GetApp(appID)
+	if app == nil {
+		return fmt.Errorf("app not found")
+	}
+
+	// Check if action already exists, update if so
+	for i, a := range app.Actions {
+		if a.Name == name {
+			app.Actions[i] = AppAction{
+				Name:        name,
+				Description: description,
+				Params:      params,
+			}
+			return saveApps()
+		}
+	}
+
+	// Add new action
+	app.Actions = append(app.Actions, AppAction{
+		Name:        name,
+		Description: description,
+		Params:      params,
+	})
+
+	return saveApps()
+}
+
+// GetAppsWithActions returns all apps that have registered actions
+func GetAppsWithActions() []*App {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var result []*App
+	for _, a := range apps {
+		if len(a.Actions) > 0 {
+			result = append(result, a)
+		}
+	}
+	return result
 }
 
 // GetUserApps returns all apps by a user
@@ -1533,6 +1584,88 @@ func RegisterAppsTools() {
 		},
 		Handler: handleAppsEdit,
 	})
+
+	// apps.run_action - Run a registered app action
+	tools.Register(tools.Tool{
+		Name:        "apps.run_action",
+		Description: "Run a registered action from an app (for flows)",
+		Category:    "apps",
+		Input: map[string]tools.Param{
+			"app_id": {Type: "string", Description: "App ID", Required: true},
+			"action": {Type: "string", Description: "Action name", Required: true},
+			"params": {Type: "object", Description: "Action parameters", Required: false},
+		},
+		Output: map[string]tools.Param{
+			"result": {Type: "any", Description: "Action result"},
+		},
+		Handler: handleAppsRunAction,
+	})
+
+	// apps.list_actions - List apps with registered actions
+	tools.Register(tools.Tool{
+		Name:        "apps.list_actions",
+		Description: "List apps that have registered callable actions",
+		Category:    "apps",
+		Input:       map[string]tools.Param{},
+		Output: map[string]tools.Param{
+			"apps": {Type: "array", Description: "List of apps with actions"},
+		},
+		Handler: handleAppsListActions,
+	})
+}
+
+func handleAppsRunAction(ctx context.Context, params map[string]any) (any, error) {
+	// Note: This is a placeholder. Actual implementation would need to:
+	// 1. Load the app in a headless browser or iframe
+	// 2. Send a message to call the action
+	// 3. Wait for the result
+	// For now, we return a message that this feature is planned
+	appID, _ := params["app_id"].(string)
+	action, _ := params["action"].(string)
+
+	app := GetApp(appID)
+	if app == nil {
+		return nil, fmt.Errorf("app not found")
+	}
+
+	// Check if action exists
+	var found bool
+	for _, a := range app.Actions {
+		if a.Name == action {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, fmt.Errorf("action '%s' not registered for app '%s'", action, app.Name)
+	}
+
+	return map[string]any{
+		"status":  "pending",
+		"message": "App action execution is planned. Currently apps must be run interactively.",
+		"app":     app.Name,
+		"action":  action,
+	}, nil
+}
+
+func handleAppsListActions(ctx context.Context, params map[string]any) (any, error) {
+	apps := GetAppsWithActions()
+	result := make([]map[string]any, len(apps))
+	for i, app := range apps {
+		actions := make([]map[string]string, len(app.Actions))
+		for j, a := range app.Actions {
+			actions[j] = map[string]string{
+				"name":        a.Name,
+				"description": a.Description,
+			}
+		}
+		result[i] = map[string]any{
+			"id":      app.ID,
+			"name":    app.Name,
+			"actions": actions,
+		}
+	}
+	return map[string]any{"apps": result}, nil
 }
 
 func handleAppsCreate(ctx context.Context, params map[string]any) (any, error) {

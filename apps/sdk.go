@@ -190,6 +190,51 @@ const SDK = `
     }
   };
   
+  // Actions API (register callable functions for flows)
+  const _actions = {};
+  
+  window.mu.action = function(spec) {
+    if (!spec.name) throw new Error('Action requires name');
+    if (!spec.handler) throw new Error('Action requires handler');
+    
+    _actions[spec.name] = {
+      name: spec.name,
+      description: spec.description || '',
+      params: spec.params || {},
+      handler: spec.handler
+    };
+    
+    // Register with server
+    call('action.register', {
+      name: spec.name,
+      description: spec.description || '',
+      params: spec.params || {}
+    }).catch(err => console.warn('Failed to register action:', err));
+    
+    console.log('Registered action:', spec.name);
+    return true;
+  };
+  
+  // Handle incoming action calls from parent
+  window.addEventListener('message', async (event) => {
+    if (event.data && event.data.type === 'mu_action_call') {
+      const { id, action, params } = event.data;
+      const actionSpec = _actions[action];
+      
+      if (!actionSpec) {
+        window.parent.postMessage({ type: 'mu_action_result', id, error: 'Unknown action: ' + action }, '*');
+        return;
+      }
+      
+      try {
+        const result = await actionSpec.handler(params);
+        window.parent.postMessage({ type: 'mu_action_result', id, result }, '*');
+      } catch (err) {
+        window.parent.postMessage({ type: 'mu_action_result', id, error: err.message }, '*');
+      }
+    }
+  });
+  
   // Log SDK ready
   console.log('Mu SDK ready', { app: mu.app, user: mu.user });
 })();
@@ -334,6 +379,19 @@ func HandleAPIRequest(w http.ResponseWriter, r *http.Request) {
 			err = fmt.Errorf("url required")
 		} else {
 			result, err = ProxyFetch(url, method)
+		}
+
+	case "action.register":
+		name, _ := req.Params["name"].(string)
+		desc, _ := req.Params["description"].(string)
+		params, _ := req.Params["params"].(map[string]interface{})
+		if name == "" {
+			err = fmt.Errorf("action name required")
+		} else {
+			err = RegisterAppAction(req.AppID, name, desc, params)
+			if err == nil {
+				result = true
+			}
 		}
 
 	default:
