@@ -31,6 +31,7 @@ import (
 	"mu/tools"
 	"mu/video"
 	"mu/wallet"
+	"mu/flow"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -80,6 +81,9 @@ func main() {
 	// load micro apps (includes built-in apps: markets, reminder)
 	apps.Load()
 	wallet.Load()
+
+	// load flows
+	flow.Load()
 
 	// load the home cards (after apps so cards have data)
 	home.Load()
@@ -189,6 +193,9 @@ func main() {
 
 	http.HandleFunc("/tools", tools.Handler)
 	http.HandleFunc("/tools/", tools.Handler)
+
+	http.HandleFunc("/flows", flow.Handler)
+	http.HandleFunc("/flows/", flow.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
