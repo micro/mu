@@ -11,6 +11,15 @@ var (
 	// Schedule patterns: "every day at 7am", "every hour", "every monday at 9am"
 	schedulePattern = regexp.MustCompile(`^every\s+(.+?)(?:\s+at\s+(\d{1,2}(?:am|pm)?))?\s*:?\s*$`)
 
+	// Variable patterns: "save as myvar", "store as myvar"
+	saveAsPattern = regexp.MustCompile(`^(?:save|store)\s+as\s+(\w+)$`)
+	
+	// Use variable: patterns containing $varname
+	varPattern = regexp.MustCompile(`\$(\w+)`)
+
+	// Conditional: "if X > Y then..."
+	conditionalPattern = regexp.MustCompile(`^if\s+(.+?)\s+(>|<|>=|<=|==|!=)\s+(.+?)\s+then\s*:?$`)
+
 	// Tool patterns - maps natural language to tool calls
 	toolPatterns = []struct {
 		pattern *regexp.Regexp
@@ -119,11 +128,29 @@ func Parse(source string) (*ParsedFlow, error) {
 func parseStep(line string) (*Step, error) {
 	lower := strings.ToLower(line)
 
+	// Check for "save as varname" modifier at end
+	var saveAs string
+	if idx := strings.Index(lower, " save as "); idx > 0 {
+		saveAs = strings.TrimSpace(lower[idx+9:])
+		lower = strings.TrimSpace(lower[:idx])
+		line = strings.TrimSpace(line[:idx])
+	}
+
+	// Check for "save as varname" as standalone (saves previous result)
+	if matches := saveAsPattern.FindStringSubmatch(lower); matches != nil {
+		return &Step{
+			Tool:   "var.save",
+			Args:   map[string]string{"name": matches[1]},
+			SaveAs: matches[1],
+		}, nil
+	}
+
 	for _, tp := range toolPatterns {
 		if matches := tp.pattern.FindStringSubmatch(lower); matches != nil {
 			return &Step{
-				Tool: tp.tool,
-				Args: tp.args(matches),
+				Tool:   tp.tool,
+				Args:   tp.args(matches),
+				SaveAs: saveAs,
 			}, nil
 		}
 	}

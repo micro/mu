@@ -49,6 +49,9 @@ func Execute(f *Flow, userID string) *ExecutionResult {
 	// Track data flowing between steps
 	var lastData interface{}
 
+	// Variables store
+	vars := make(map[string]interface{})
+
 	// Execute each step
 	for _, step := range parsed.Steps {
 		stepResult := &StepResult{
@@ -65,6 +68,20 @@ func Execute(f *Flow, userID string) *ExecutionResult {
 				app.Log("flow", "Summarize step (pass-through for now)")
 			} else {
 				stepResult.Error = "nothing to summarize"
+			}
+			result.Steps = append(result.Steps, stepResult)
+			continue
+		}
+
+		// Special handling for "var.save" - store last result in variable
+		if step.Tool == "var.save" {
+			if lastData != nil && step.SaveAs != "" {
+				vars[step.SaveAs] = lastData
+				stepResult.Success = true
+				stepResult.Data = lastData
+				app.Log("flow", "Saved to variable: %s", step.SaveAs)
+			} else {
+				stepResult.Error = "nothing to save"
 			}
 			result.Steps = append(result.Steps, stepResult)
 			continue
@@ -94,13 +111,20 @@ func Execute(f *Flow, userID string) *ExecutionResult {
 			result.Steps = append(result.Steps, stepResult)
 			result.Error = fmt.Sprintf("step '%s' failed: %v", step.Tool, err)
 			result.Duration = time.Since(start).String()
-			updateFlowRun(f, result.Error)
+			updateFlowRun(f, result.Error, result.Duration)
 			return result
 		}
 
 		stepResult.Success = true
 		stepResult.Data = data
 		lastData = data
+
+		// Save to variable if specified
+		if step.SaveAs != "" {
+			vars[step.SaveAs] = data
+			app.Log("flow", "Saved result to variable: %s", step.SaveAs)
+		}
+
 		result.Steps = append(result.Steps, stepResult)
 
 		app.Log("flow", "Executed step %s successfully", step.Tool)
@@ -110,14 +134,28 @@ func Execute(f *Flow, userID string) *ExecutionResult {
 	result.FinalData = lastData
 	result.Duration = time.Since(start).String()
 
-	updateFlowRun(f, "")
+	updateFlowRun(f, "", result.Duration)
 	return result
 }
 
-func updateFlowRun(f *Flow, errMsg string) {
-	f.LastRun = time.Now()
+func updateFlowRun(f *Flow, errMsg string, duration string) {
+	now := time.Now()
+	f.LastRun = now
 	f.LastError = errMsg
 	f.RunCount++
+
+	// Add to history (keep last 10 runs)
+	log := RunLog{
+		Time:     now,
+		Success:  errMsg == "",
+		Duration: duration,
+		Error:    errMsg,
+	}
+	f.History = append(f.History, log)
+	if len(f.History) > 10 {
+		f.History = f.History[len(f.History)-10:]
+	}
+
 	f.Save()
 }
 

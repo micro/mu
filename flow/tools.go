@@ -8,6 +8,18 @@ import (
 )
 
 func registerTools() {
+	// flow.templates - List available templates
+	tools.Register(tools.Tool{
+		Name:        "flow.templates",
+		Description: "List available flow templates for common automations",
+		Category:    "flow",
+		Input:       map[string]tools.Param{},
+		Output: map[string]tools.Param{
+			"templates": {Type: "array", Description: "List of templates"},
+		},
+		Handler: handleFlowTemplates,
+	})
+
 	// flow.create - Create a new flow from source
 	tools.Register(tools.Tool{
 		Name:        "flow.create",
@@ -65,6 +77,20 @@ func registerTools() {
 		},
 		Handler: handleFlowDelete,
 	})
+}
+
+func handleFlowTemplates(ctx context.Context, params map[string]any) (any, error) {
+	templates := GetTemplates()
+	result := make([]map[string]string, len(templates))
+	for i, t := range templates {
+		result[i] = map[string]string{
+			"name":        t.Name,
+			"description": t.Description,
+			"category":    t.Category,
+			"source":      t.Source,
+		}
+	}
+	return map[string]any{"templates": result}, nil
 }
 
 func handleFlowCreate(ctx context.Context, params map[string]any) (any, error) {

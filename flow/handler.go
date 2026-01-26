@@ -155,6 +155,25 @@ func renderFlowList(w http.ResponseWriter, userID string, errorMsg string) {
 
 	b.WriteString(`<p class="text-muted mb-4">Automations that run on schedule or on demand.</p>`)
 
+	// Templates section
+	templates := GetTemplates()
+	if len(templates) > 0 {
+		b.WriteString(`<details class="mb-4"><summary class="btn btn-secondary">📝 Templates</summary>`)
+		b.WriteString(`<div class="mt-2 card-list">`)
+		for _, t := range templates {
+			b.WriteString(`<div class="card">`)
+			b.WriteString(`<div class="card-title">` + t.Name + `</div>`)
+			b.WriteString(`<div class="card-desc">` + t.Description + `</div>`)
+			b.WriteString(`<form method="POST" class="mt-2">`)
+			b.WriteString(`<input type="hidden" name="action" value="create">`)
+			b.WriteString(`<input type="hidden" name="name" value="` + t.Name + `">`)
+			b.WriteString(`<input type="hidden" name="source" value="` + escapeHTML(t.Source) + `">`)
+			b.WriteString(`<button type="submit" class="btn btn-sm">Use Template</button>`)
+			b.WriteString(`</form></div>`)
+		}
+		b.WriteString(`</div></details>`)
+	}
+
 	// Create form
 	b.WriteString(`
 <details class="mb-4">
@@ -294,6 +313,22 @@ func renderFlowDetail(w http.ResponseWriter, r *http.Request, f *Flow) {
 		b.WriteString(`<p class="text-error">Last error: ` + f.LastError + `</p>`)
 	}
 
+	// History
+	if len(f.History) > 0 {
+		b.WriteString(`<h3>Recent Runs</h3>`)
+		b.WriteString(`<table class="data-table"><thead><tr><th>Time</th><th>Status</th><th>Duration</th></tr></thead><tbody>`)
+		// Show most recent first
+		for i := len(f.History) - 1; i >= 0; i-- {
+			h := f.History[i]
+			status := `<span style="color: green;">✓</span>`
+			if !h.Success {
+				status = `<span style="color: red;">✗</span>`
+			}
+			b.WriteString(`<tr><td>` + app.TimeAgo(h.Time) + `</td><td>` + status + `</td><td>` + h.Duration + `</td></tr>`)
+		}
+		b.WriteString(`</tbody></table>`)
+	}
+
 	// Actions
 	b.WriteString(`<div class="mt-4 d-flex gap-2">`)
 	b.WriteString(`<form method="POST" action="/flows"><input type="hidden" name="action" value="run"><input type="hidden" name="id" value="` + f.ID + `"><button type="submit" class="btn">▶ Run Now</button></form>`)
@@ -321,4 +356,13 @@ func itoa(n int) string {
 		n /= 10
 	}
 	return string(digits)
+}
+
+func escapeHTML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&#39;")
+	return s
 }

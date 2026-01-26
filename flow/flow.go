@@ -24,12 +24,22 @@ type Flow struct {
 	LastRun   time.Time `json:"last_run,omitempty"`
 	LastError string    `json:"last_error,omitempty"`
 	RunCount  int       `json:"run_count"`
+	History   []RunLog  `json:"history,omitempty"` // Last N runs
+}
+
+// RunLog records a single execution
+type RunLog struct {
+	Time     time.Time `json:"time"`
+	Success  bool      `json:"success"`
+	Duration string    `json:"duration"`
+	Error    string    `json:"error,omitempty"`
 }
 
 // Step represents one step in a flow
 type Step struct {
-	Tool string            `json:"tool"`
-	Args map[string]string `json:"args"`
+	Tool   string            `json:"tool"`
+	Args   map[string]string `json:"args"`
+	SaveAs string            `json:"save_as,omitempty"` // Variable name to store result
 }
 
 // ParsedFlow is the structured representation of a flow
@@ -77,6 +87,9 @@ func Load() {
 
 	// Register tools
 	registerTools()
+
+	// Start background scheduler
+	StartScheduler()
 }
 
 // Save persists a flow to disk
