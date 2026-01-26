@@ -85,6 +85,23 @@ then email to me
 
 The news search results flow into summarize, which flows into the email body.
 
+### Variables
+
+Save step results to variables for later use:
+
+```
+get btc price save as btc
+get eth price save as eth
+email to me
+```
+
+Or save the previous result:
+
+```
+get btc price
+save as btc
+```
+
 ### Comments
 
 Lines starting with `#` are ignored:
@@ -244,14 +261,15 @@ The agent generates the app code, the app runs to produce output, and the result
 - [x] Web UI for viewing/managing flows
 - [x] Agent integration (flow.create tool)
 
-### Phase 2: Scheduling
-- [ ] Background scheduler (cron-like)
-- [ ] Execution history and logs
+### Phase 2: Scheduling ✅
+- [x] Background scheduler (cron-like)
+- [x] Execution history and logs (last 10 runs)
+- [x] Pre-built templates (Morning Briefing, etc.)
 - [ ] Retry on failure
 - [ ] Notification on completion/failure
 
-### Phase 3: Advanced Syntax
-- [ ] Variables: `save X as myvar`
+### Phase 3: Advanced Syntax (In Progress)
+- [x] Variables: `save as myvar` modifier
 - [ ] Conditionals: `if price > 100 then...`
 - [ ] Event triggers: `when btc crosses 100000`
 - [ ] Loops: `for each article in headlines`
