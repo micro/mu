@@ -41,6 +41,7 @@ Starting with:
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
 - [x] Wallet - Crypto payments (ETH, USDC, ERC-20)
+- [x] Flows - Automation language
 - [ ] Utilities - QR code scanner, etc
 - [ ] Services - Marketplace of services
 
@@ -53,6 +54,37 @@ Some features are enhanced with AI:
 - **Apps** - Generate apps from prompts
 - **Agent** - AI assistant with tool access
 - **Notes** - Auto-tagging and smart search
+- **Flows** - Generate automations from natural language
+
+## Flows
+
+Mu Flow is a human-readable automation language. The agent interprets your request and generates a flow that runs without AI:
+
+```
+every day at 7am:
+    get reminder
+    then search news for "tech"
+    then email to me
+```
+
+### Why Flows?
+
+- **Inspectable** - See exactly what will happen
+- **Editable** - Tweak without re-explaining to AI
+- **Cheap** - Scheduled runs don't burn LLM tokens
+- **Shareable** - Export and share recipes
+
+### Syntax
+
+| Flow Syntax | Tool |
+|-------------|------|
+| `get reminder` | reminder.today |
+| `search news for "query"` | news.search |
+| `email to me` | mail.send |
+| `get btc price` | markets.get_price |
+| `save note "text"` | notes.create |
+
+See [docs/flows](/docs/flows) for full documentation.
 
 ## Micro Apps
 

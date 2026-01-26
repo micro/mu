@@ -33,6 +33,7 @@ var catalog = []Document{
 	{Slug: "messaging", Filename: "MESSAGING_SYSTEM.md", Title: "Messaging", Description: "Email and messaging setup", Category: "Features"},
 	{Slug: "wallet", Filename: "WALLET_AND_CREDITS.md", Title: "Wallet & Credits", Description: "Credit system for usage", Category: "Features"},
 	{Slug: "sdk", Filename: "SDK.md", Title: "Micro Apps", Description: "Build apps with the Mu SDK", Category: "Features"},
+	{Slug: "flows", Filename: "FLOWS.md", Title: "Flows", Description: "Automation language for Mu", Category: "Features"},
 
 	// Reference
 	{Slug: "environment", Filename: "ENVIRONMENT_VARIABLES.md", Title: "Configuration", Description: "Environment variables", Category: "Reference"},
