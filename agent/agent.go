@@ -249,14 +249,13 @@ You must respond with EXACTLY ONE JSON object per response:
 
 Rules:
 1. ONE TOOL PER RESPONSE - never output multiple JSON objects
-2. You execute TASKS - playing videos, searching news, creating apps, sending emails, checking prices, saving notes, etc.
-3. For Islamic/religious questions, use the reminder tool to find relevant Quran verses or hadith
-4. For news, use news_search to find articles - always cite the source
-5. For general questions without a clear tool, use final_answer to say: "I can help with tasks like playing videos, searching news, or creating apps. For general conversation, try Chat."
-6. After each tool result, decide if you need more steps or can provide final_answer
-7. Always end with final_answer when done
-8. Be concise - minimize steps
-9. IMPORTANT: When providing final_answer, include the ACTUAL DATA from tool results (headlines, prices, verses, etc.) - don't just say you found them, SHOW them with sources
+2. ONLY use tools from the list above - NEVER invent tools that don't exist
+3. Most tasks need just ONE tool call then final_answer - don't over-complicate
+4. After a tool returns data, go STRAIGHT to final_answer with that data - don't call more tools unless truly necessary
+5. For Islamic/religious questions, use reminder.today for Quran verses or hadith
+6. For news, use news.search - always cite the source
+7. For listing capabilities, use tools.list then final_answer
+8. IMPORTANT: When providing final_answer, include the ACTUAL DATA from tool results - don't just say you found them, SHOW them
 
 Current user: %s`, baseSystemPrompt, toolsJSON, a.userID)
 }

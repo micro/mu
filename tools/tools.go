@@ -127,6 +127,37 @@ func Categories() []string {
 	return result
 }
 
+func init() {
+	// Register the tools.list meta-tool
+	Register(Tool{
+		Name:        "tools.list",
+		Description: "List all available tools and their descriptions",
+		Category:    "system",
+		Input:       map[string]Param{},
+		Output: map[string]Param{
+			"tools": {Type: "array", Description: "List of available tools"},
+		},
+		Handler: func(ctx context.Context, params map[string]any) (any, error) {
+			tools := List()
+			var result []map[string]string
+			for _, t := range tools {
+				if t.Name == "tools.list" {
+					continue // skip self
+				}
+				result = append(result, map[string]string{
+					"name":        t.Name,
+					"description": t.Description,
+					"category":    t.Category,
+				})
+			}
+			return map[string]any{
+				"tools": result,
+				"count": len(result),
+			}, nil
+		},
+	})
+}
+
 // Context key for user ID
 type contextKey string
 

@@ -32,6 +32,11 @@ func ClassifyIntent(input string) *Intent {
 	
 	// Layer 1: Rules-based classification (fast)
 	
+	// Meta: list tools/capabilities
+	if containsAny(lower, []string{"list tools", "what tools", "available tools", "show tools", "what can you do", "capabilities", "help me"}) {
+		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "tools.list"}
+	}
+	
 	// Coding/app building - route to Anthropic
 	if containsAny(lower, []string{"build", "create", "make", "develop", "code", "app", "application", "website", "program"}) &&
 		containsAny(lower, []string{"app", "application", "website", "tool", "program", "script", "page"}) {
