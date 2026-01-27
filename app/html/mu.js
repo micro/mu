@@ -134,43 +134,6 @@ if (document.readyState === 'loading') {
 // MICRO DIALOG
 // ============================================
 
-function openMicroDialog() {
-  const dialog = document.getElementById('micro-dialog');
-  if (dialog) {
-    dialog.style.display = 'flex';
-    const input = document.getElementById('micro-input');
-    if (input) {
-      setTimeout(() => input.focus(), 100);
-    }
-    // Prevent body scroll on mobile
-    document.body.style.overflow = 'hidden';
-  }
-}
-
-function closeMicroDialog() {
-  const dialog = document.getElementById('micro-dialog');
-  if (dialog) {
-    dialog.style.display = 'none';
-    // Don't reset overflow on chat page - it should stay hidden
-    if (!document.getElementById('messages')) {
-      document.body.style.overflow = '';
-    }
-  }
-}
-
-function sendMicroMessage() {
-  const input = document.getElementById('micro-input');
-  const messages = document.getElementById('micro-messages');
-  
-  if (!input || !messages || !input.value.trim()) return;
-  
-  const query = input.value.trim();
-  input.value = '';
-  
-  // Redirect to chat with the query
-  window.location.href = '/chat?prompt=' + encodeURIComponent(query);
-}
-
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
@@ -581,7 +544,6 @@ function setSession() {
     var navLogin = document.getElementById("nav-login");
     var navMailBadge = document.getElementById("nav-mail-badge");
     var navUsername = document.getElementById("nav-username");
-    var microFab = document.getElementById("micro-fab");
     
     if (sess.type == "account") {
       isAuthenticated = true;
@@ -595,7 +557,6 @@ function setSession() {
         navUsername.textContent = 'Signed in as @' + sess.account;
         navUsername.style.display = 'block';
       }
-      if (microFab) microFab.style.display = 'flex';
       // Fetch unread mail count for badge
       fetch('/mail?unread=count')
         .then(res => res.json())
@@ -616,7 +577,6 @@ function setSession() {
       if (navWallet) navWallet.style.display = 'none';
       if (navAccount) navAccount.style.display = 'none';
       if (navLogout) navLogout.style.display = 'none';
-      if (microFab) microFab.style.display = 'none';
       if (navLogin) {
         navLogin.style.display = 'flex';
         // Update login link to include redirect parameter
@@ -637,12 +597,10 @@ function setSession() {
     var navAccount = document.getElementById("nav-account");
     var navLogout = document.getElementById("nav-logout");
     var navLogin = document.getElementById("nav-login");
-    var microFab = document.getElementById("micro-fab");
     if (navMail) navMail.style.display = 'none';
     if (navWallet) navWallet.style.display = 'none';
     if (navAccount) navAccount.style.display = 'none';
     if (navLogout) navLogout.style.display = 'none';
-    if (microFab) microFab.style.display = 'none';
     if (navLogin) {
       navLogin.style.display = 'flex';
       // Update login link to include redirect parameter
