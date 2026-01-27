@@ -1,4 +1,4 @@
-package kids
+package audio
 
 import (
 	"encoding/json"
@@ -58,7 +58,7 @@ var (
 	categories  []Category
 )
 
-// Default podcasts - curated for kids
+// Default podcasts - curated for children
 var defaultPodcasts = []Podcast{
 	// Learn - Science & Nature
 	{Name: "Science", Icon: "🔬", Category: "learn", FeedURL: "https://feeds.publicradio.org/public_feeds/brains-on/rss/rss"}, // Brains On
@@ -205,13 +205,13 @@ func buildCategories() {
 }
 
 func refreshPodcasts() {
-	app.Log("kids", "Refreshing podcasts...")
+	app.Log("audio", "Refreshing podcasts...")
 	parser := gofeed.NewParser()
 	
 	for _, p := range podcasts {
 		feed, err := parser.ParseURL(p.FeedURL)
 		if err != nil {
-			app.Log("kids", "Error fetching %s: %v", p.Name, err)
+			app.Log("audio", "Error fetching %s: %v", p.Name, err)
 			continue
 		}
 		
@@ -269,7 +269,7 @@ func refreshPodcasts() {
 		episodes[p.Name] = eps
 		podcastMu.Unlock()
 		
-		app.Log("kids", "Loaded %d episodes for %s", len(eps), p.Name)
+		app.Log("audio", "Loaded %d episodes for %s", len(eps), p.Name)
 	}
 	
 	// Rebuild categories with updated counts
@@ -284,27 +284,27 @@ func saveEpisodesCache() {
 	defer podcastMu.RUnlock()
 	b, err := json.Marshal(episodes)
 	if err != nil {
-		app.Log("kids", "Failed to marshal episodes cache: %v", err)
+		app.Log("audio", "Failed to marshal episodes cache: %v", err)
 		return
 	}
-	data.SaveFile("kids/episodes.json", string(b))
-	app.Log("kids", "Saved episodes cache to disk")
+	data.SaveFile("audio/episodes.json", string(b))
+	app.Log("audio", "Saved episodes cache to disk")
 }
 
 func loadEpisodesCache() {
-	b, err := data.LoadFile("kids/episodes.json")
+	b, err := data.LoadFile("audio/episodes.json")
 	if err != nil {
 		return // No cache yet
 	}
 	var cached map[string][]Episode
 	if err := json.Unmarshal(b, &cached); err != nil {
-		app.Log("kids", "Failed to unmarshal episodes cache: %v", err)
+		app.Log("audio", "Failed to unmarshal episodes cache: %v", err)
 		return
 	}
 	podcastMu.Lock()
 	episodes = cached
 	podcastMu.Unlock()
-	app.Log("kids", "Loaded episodes cache from disk (%d podcasts)", len(cached))
+	app.Log("audio", "Loaded episodes cache from disk (%d podcasts)", len(cached))
 }
 
 // RebuildCategories rebuilds category counts (called after videos cache loads)
@@ -352,8 +352,8 @@ func handlePodcast(w http.ResponseWriter, r *http.Request, name string) {
 	}
 	
 	var content strings.Builder
-	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
-	content.WriteString(fmt.Sprintf(`<div class="kids-header"><span class="kids-icon-lg">%s</span></div>`, podcast.Icon))
+	content.WriteString(`<p><a href="/audio">← Back</a></p>`)
+	content.WriteString(fmt.Sprintf(`<div class="audio-header"><span class="audio-icon-lg">%s</span></div>`, podcast.Icon))
 	
 	podcastMu.RLock()
 	eps := episodes[name]
@@ -363,11 +363,11 @@ func handlePodcast(w http.ResponseWriter, r *http.Request, name string) {
 		content.WriteString(`<p class="text-muted">No episodes available</p>`)
 	} else {
 		// Play All button
-		content.WriteString(fmt.Sprintf(`<div class="kids-play-all">
-			<a href="/kids/episode/%s?idx=0" class="btn">▶ Play All</a>
+		content.WriteString(fmt.Sprintf(`<div class="audio-play-all">
+			<a href="/audio/episode/%s?idx=0" class="btn">▶ Play All</a>
 		</div>`, name))
 		
-		content.WriteString(`<div class="kids-episodes">`)
+		content.WriteString(`<div class="audio-episodes">`)
 		for i, ep := range eps {
 			content.WriteString(renderEpisodeCard(ep, name, i))
 		}
@@ -393,11 +393,11 @@ func renderEpisodeCard(ep Episode, podcastName string, idx int) string {
 	}
 	
 	return fmt.Sprintf(`
-		<a href="/kids/episode/%s?idx=%d" class="kids-episode-card">
+		<a href="/audio/episode/%s?idx=%d" class="audio-episode-card">
 			<img src="%s" alt="%s">
-			<div class="kids-episode-info">
-				<div class="kids-episode-title">%s</div>
-				<div class="kids-episode-meta">%s</div>
+			<div class="audio-episode-info">
+				<div class="audio-episode-title">%s</div>
+				<div class="audio-episode-meta">%s</div>
 			</div>
 		</a>`,
 		podcastName, idx,
@@ -440,13 +440,13 @@ func handleEpisode(w http.ResponseWriter, r *http.Request, podcastName string) {
 	// Calculate prev/next
 	var prevURL, nextURL string
 	if idx > 0 {
-		prevURL = fmt.Sprintf("/kids/episode/%s?idx=%d&auto=1", podcastName, idx-1)
+		prevURL = fmt.Sprintf("/audio/episode/%s?idx=%d&auto=1", podcastName, idx-1)
 	}
 	if idx < len(eps)-1 {
-		nextURL = fmt.Sprintf("/kids/episode/%s?idx=%d&auto=1", podcastName, idx+1)
+		nextURL = fmt.Sprintf("/audio/episode/%s?idx=%d&auto=1", podcastName, idx+1)
 	}
 	
-	backURL := "/kids/podcast/" + podcastName
+	backURL := "/audio/podcast/" + podcastName
 	
 	renderEpisodePlayer(w, r, &ep, icon, backURL, prevURL, nextURL, autoplay)
 }
@@ -461,8 +461,8 @@ func renderEpisodePlayer(w http.ResponseWriter, r *http.Request, ep *Episode, ic
 	if image == "" {
 		image = "/placeholder.png"
 	}
-	content.WriteString(fmt.Sprintf(`<div class="kids-episode-player">
-		<img src="%s" alt="%s" class="kids-episode-image">
+	content.WriteString(fmt.Sprintf(`<div class="audio-episode-player">
+		<img src="%s" alt="%s" class="audio-episode-image">
 		<h3>%s</h3>
 		<p class="text-muted">%s</p>
 	</div>`, image, html.EscapeString(ep.Title), html.EscapeString(ep.Title), ep.Published))
@@ -489,7 +489,7 @@ func renderEpisodePlayer(w http.ResponseWriter, r *http.Request, ep *Episode, ic
 		nextBtn = fmt.Sprintf(`<a href="%s" class="btn btn-secondary">⏭</a>`, nextURL)
 	}
 	
-	content.WriteString(fmt.Sprintf(`<div class="kids-controls">
+	content.WriteString(fmt.Sprintf(`<div class="audio-controls">
 		%s
 		<button onclick="togglePlay()" id="playBtn">%s</button>
 		%s
@@ -497,7 +497,7 @@ func renderEpisodePlayer(w http.ResponseWriter, r *http.Request, ep *Episode, ic
 	
 	// Description
 	if ep.Description != "" {
-		content.WriteString(fmt.Sprintf(`<div class="kids-episode-desc mt-3">
+		content.WriteString(fmt.Sprintf(`<div class="audio-episode-desc mt-3">
 			<p>%s</p>
 		</div>`, html.EscapeString(ep.Description)))
 	}

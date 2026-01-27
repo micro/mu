@@ -210,7 +210,7 @@ var Template = `
 
           <a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
-          <a href="/kids"><img src="/kids.png"><span class="label">Kids</span></a>
+          <a href="/audio"><img src="/audio.png"><span class="label">Audio</span></a>
           <a id="nav-mail" href="/mail"><img src="/mail.png"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
           <a href="/news"><img src="/news.png"><span class="label">News</span></a>
           <a href="/notes"><img src="/notes.png"><span class="label">Notes</span></a>

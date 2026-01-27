@@ -39,7 +39,7 @@ Each feature does one thing well:
 - **Video** — YouTube without ads or shorts
 - **Notes** — Quick capture with tags and search
 - **Mail** — Private messaging & email
-- **Kids** — Safe video content for children
+- **Audio** — Podcasts and audio content
 
 ### No Addiction Mechanics
 

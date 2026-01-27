@@ -1,5 +1,5 @@
-// Package kids provides a safe, audio-focused experience for children
-package kids
+// Package audio provides podcasts and audio content
+package audio
 
 import (
 	"context"
@@ -58,12 +58,12 @@ var (
 // Default playlists - curated, not algorithmic
 var defaultPlaylists = []Playlist{
 	// Faith
-	{Name: "Quran", Icon: "📖", ID: "PLYZxc42QNctXcCQZyZs48hAN90YJgnOnJ"},    // Mishary Rashid - Kids Quran
+	{Name: "Quran", Icon: "📖", ID: "PLYZxc42QNctXcCQZyZs48hAN90YJgnOnJ"},    // Mishary Rashid - Quran for Children
 	{Name: "Prophets", Icon: "📜", ID: "PLYZxc42QNctVxfJpCjwoG-K0QXwqUzrXb"}, // FreeQuranEducation - Prophet Stories
 	{Name: "Nasheed", Icon: "🎵", ID: "PLF48FC0BCA476D6EC"},                 // Zain Bhikha
 	
 	// Learning
-	{Name: "Arabic", Icon: "🔤", ID: "PLEaGEZnOHpUPBcDnCCXkmgsgRDICnhYwT"}, // Learn Arabic for Kids
+	{Name: "Arabic", Icon: "🔤", ID: "PLEaGEZnOHpUPBcDnCCXkmgsgRDICnhYwT"}, // Learn Arabic for Children
 	{Name: "Space", Icon: "🚀", ID: "PL3EED4C1D684D3ADF"},                   // Crash Course Kids - Space
 	
 	// Fun
@@ -76,11 +76,11 @@ func init() {
 	savedPlaylists = make(map[string]*SavedPlaylist)
 }
 
-// Load initializes the kids package
+// Load initializes the package
 func Load() {
 	// Load custom playlists or use defaults
 	if err := loadPlaylists(); err != nil {
-		app.Log("kids", "Using default playlists: %v", err)
+		app.Log("audio", "Using default playlists: %v", err)
 		playlists = defaultPlaylists
 	}
 
@@ -94,15 +94,15 @@ func Load() {
 	initPodcasts()
 
 	if apiKey == "" {
-		app.Log("kids", "No YouTube API key, kids features limited")
-		app.Log("kids", "Kids mode loaded with %d playlists, %d podcasts", len(playlists), len(podcasts))
+		app.Log("audio", "No YouTube API key, audio features limited")
+		app.Log("audio", "Audio mode loaded with %d playlists, %d podcasts", len(playlists), len(podcasts))
 		return
 	}
 
 	var err error
 	client, err = youtube.NewService(context.TODO(), option.WithAPIKey(apiKey))
 	if err != nil {
-		app.Log("kids", "Failed to initialize YouTube client: %v", err)
+		app.Log("audio", "Failed to initialize YouTube client: %v", err)
 		return
 	}
 
@@ -117,11 +117,11 @@ func Load() {
 		}
 	}()
 
-	app.Log("kids", "Kids mode loaded with %d playlists, %d podcasts", len(playlists), len(podcasts))
+	app.Log("audio", "Audio mode loaded with %d playlists, %d podcasts", len(playlists), len(podcasts))
 }
 
 func loadPlaylists() error {
-	data, err := os.ReadFile("kids/playlists.json")
+	data, err := os.ReadFile("audio/playlists.json")
 	if err != nil {
 		return err
 	}
@@ -129,12 +129,12 @@ func loadPlaylists() error {
 }
 
 func refreshVideos() {
-	app.Log("kids", "Refreshing kids playlists...")
+	app.Log("audio", "Refreshing playlists...")
 
 	for _, pl := range playlists {
 		vids, err := fetchPlaylist(pl.ID, pl.Name)
 		if err != nil {
-			app.Log("kids", "Error fetching %s: %v", pl.Name, err)
+			app.Log("audio", "Error fetching %s: %v", pl.Name, err)
 			continue
 		}
 
@@ -142,7 +142,7 @@ func refreshVideos() {
 		videos[pl.Name] = vids
 		mu.Unlock()
 
-		app.Log("kids", "Loaded %d videos for %s", len(vids), pl.Name)
+		app.Log("audio", "Loaded %d videos for %s", len(vids), pl.Name)
 	}
 
 	// Persist to disk
@@ -154,27 +154,27 @@ func saveVideosCache() {
 	defer mu.RUnlock()
 	b, err := json.Marshal(videos)
 	if err != nil {
-		app.Log("kids", "Failed to marshal videos cache: %v", err)
+		app.Log("audio", "Failed to marshal videos cache: %v", err)
 		return
 	}
-	data.SaveFile("kids/videos.json", string(b))
-	app.Log("kids", "Saved videos cache to disk")
+	data.SaveFile("audio/videos.json", string(b))
+	app.Log("audio", "Saved videos cache to disk")
 }
 
 func loadVideosCache() {
-	b, err := data.LoadFile("kids/videos.json")
+	b, err := data.LoadFile("audio/videos.json")
 	if err != nil {
 		return // No cache yet
 	}
 	var cached map[string][]Video
 	if err := json.Unmarshal(b, &cached); err != nil {
-		app.Log("kids", "Failed to unmarshal videos cache: %v", err)
+		app.Log("audio", "Failed to unmarshal videos cache: %v", err)
 		return
 	}
 	mu.Lock()
 	videos = cached
 	mu.Unlock()
-	app.Log("kids", "Loaded videos cache from disk (%d playlists)", len(cached))
+	app.Log("audio", "Loaded videos cache from disk (%d playlists)", len(cached))
 	
 	// Rebuild categories with loaded counts
 	RebuildCategories()
@@ -226,9 +226,9 @@ func fetchPlaylist(playlistID, playlistName string) ([]Video, error) {
 	return vids, nil
 }
 
-// Handler serves /kids routes
+// Handler serves /audio routes
 func Handler(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/kids")
+	path := strings.TrimPrefix(r.URL.Path, "/audio")
 	path = strings.TrimPrefix(path, "/")
 
 	switch {
@@ -271,30 +271,30 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
 	// Search bar
-	content.WriteString(`<form class="search-bar" action="/kids/search" method="get">
+	content.WriteString(`<form class="search-bar" action="/audio/search" method="get">
 		<input type="text" name="q" placeholder="Search...">
 		<button type="submit">Search</button>
 	</form>`)
 
-	content.WriteString(`<div class="kids-home">`)
+	content.WriteString(`<div class="audio-home">`)
 
 	// Render each category section
 	for _, cat := range categories {
-		content.WriteString(fmt.Sprintf(`<h3 class="kids-section-title">%s %s</h3>`, cat.Icon, cat.Name))
-		content.WriteString(`<div class="kids-categories">`)
+		content.WriteString(fmt.Sprintf(`<h3 class="audio-section-title">%s %s</h3>`, cat.Icon, cat.Name))
+		content.WriteString(`<div class="audio-categories">`)
 		
 		for _, item := range cat.Items {
 			var href string
 			if item.Type == "playlist" {
-				href = "/kids/list/" + item.ID
+				href = "/audio/list/" + item.ID
 			} else {
-				href = "/kids/podcast/" + item.ID
+				href = "/audio/podcast/" + item.ID
 			}
 			content.WriteString(fmt.Sprintf(`
-				<a href="%s" class="kids-category-btn">
-					<span class="kids-icon">%s</span>
-					<span class="kids-label">%s</span>
-					<span class="kids-count">%d</span>
+				<a href="%s" class="audio-category-btn">
+					<span class="audio-icon">%s</span>
+					<span class="audio-label">%s</span>
+					<span class="audio-count">%d</span>
 				</a>`,
 				href, item.Icon, item.Name, item.Count))
 		}
@@ -312,10 +312,10 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 					icon = "🎵"
 				}
 				content.WriteString(fmt.Sprintf(`
-					<a href="/kids/saved/%s" class="kids-category-btn">
-						<span class="kids-icon">%s</span>
-						<span class="kids-label">%s</span>
-						<span class="kids-count">%d</span>
+					<a href="/audio/saved/%s" class="audio-category-btn">
+						<span class="audio-icon">%s</span>
+						<span class="audio-label">%s</span>
+						<span class="audio-count">%d</span>
 					</a>`,
 					sp.ID, icon, html.EscapeString(sp.Name), len(sp.Videos)))
 			}
@@ -323,9 +323,9 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 			
 			// New playlist button
 			content.WriteString(`
-				<a href="/kids/playlists" class="kids-category-btn kids-category-btn-dashed">
-					<span class="kids-icon">➕</span>
-					<span class="kids-label">New</span>
+				<a href="/audio/playlists" class="audio-category-btn audio-category-btn-dashed">
+					<span class="audio-icon">➕</span>
+					<span class="audio-label">New</span>
 				</a>`)
 		}
 		
@@ -334,7 +334,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 
 	content.WriteString(`</div>`)
 
-	html := app.RenderHTMLForRequest("Kids", "Safe audio and videos for children", content.String(), r)
+	html := app.RenderHTMLForRequest("Audio", "Podcasts and audio content", content.String(), r)
 	w.Write([]byte(html))
 }
 
@@ -355,8 +355,8 @@ func handleList(w http.ResponseWriter, r *http.Request, name string) {
 
 	var content strings.Builder
 
-	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
-	content.WriteString(fmt.Sprintf(`<div class="kids-header"><span class="kids-icon-lg">%s</span></div>`, playlist.Icon))
+	content.WriteString(`<p><a href="/audio">← Back</a></p>`)
+	content.WriteString(fmt.Sprintf(`<div class="audio-header"><span class="audio-icon-lg">%s</span></div>`, playlist.Icon))
 
 	// Play All button
 	mu.RLock()
@@ -364,18 +364,18 @@ func handleList(w http.ResponseWriter, r *http.Request, name string) {
 	mu.RUnlock()
 
 	if len(vids) > 0 {
-		content.WriteString(fmt.Sprintf(`<div class="kids-play-all">
-			<a href="/kids/play/%s?playlist=%s&idx=0" class="btn">▶ Play All</a>
+		content.WriteString(fmt.Sprintf(`<div class="audio-play-all">
+			<a href="/audio/play/%s?playlist=%s&idx=0" class="btn">▶ Play All</a>
 		</div>`, vids[0].ID, name))
 	}
 
-	content.WriteString(`<div class="kids-videos">`)
+	content.WriteString(`<div class="audio-videos">`)
 	for i, v := range vids {
 		content.WriteString(renderVideoCardWithIndex(v, name, i))
 	}
 	content.WriteString(`</div>`)
 
-	html := app.RenderHTMLForRequest(playlist.Name, fmt.Sprintf("%s for kids", playlist.Name), content.String(), r)
+	html := app.RenderHTMLForRequest(playlist.Name, fmt.Sprintf("%s ", playlist.Name), content.String(), r)
 	w.Write([]byte(html))
 }
 
@@ -396,7 +396,7 @@ func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
 		mu.RLock()
 		if sp, ok := savedPlaylists[savedID]; ok {
 			playlistVideos = sp.Videos
-			backURL = "/kids/saved/" + savedID
+			backURL = "/audio/saved/" + savedID
 		}
 		mu.RUnlock()
 	} else if playlistName != "" {
@@ -404,7 +404,7 @@ func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
 		mu.RLock()
 		playlistVideos = videos[playlistName]
 		mu.RUnlock()
-		backURL = "/kids/list/" + playlistName
+		backURL = "/audio/list/" + playlistName
 	}
 
 	// Find video in playlist or search all
@@ -420,7 +420,7 @@ func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
 					playlistVideos = vids
 					idx = i
 					playlistName = name
-					backURL = "/kids/list/" + name
+					backURL = "/audio/list/" + name
 					break
 				}
 			}
@@ -437,7 +437,7 @@ func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
 						playlistVideos = sp.Videos
 						idx = i
 						savedID = sid
-						backURL = "/kids/saved/" + sid
+						backURL = "/audio/saved/" + sid
 						break
 					}
 				}
@@ -455,7 +455,7 @@ func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
 	}
 
 	if backURL == "" {
-		backURL = "/kids"
+		backURL = "/audio"
 	}
 
 	// Calculate prev/next (include auto=1 to continue playing)
@@ -464,17 +464,17 @@ func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
 		if idx > 0 {
 			prev := playlistVideos[idx-1]
 			if savedID != "" {
-				prevURL = fmt.Sprintf("/kids/play/%s?saved=%s&idx=%d&auto=1", prev.ID, savedID, idx-1)
+				prevURL = fmt.Sprintf("/audio/play/%s?saved=%s&idx=%d&auto=1", prev.ID, savedID, idx-1)
 			} else {
-				prevURL = fmt.Sprintf("/kids/play/%s?playlist=%s&idx=%d&auto=1", prev.ID, playlistName, idx-1)
+				prevURL = fmt.Sprintf("/audio/play/%s?playlist=%s&idx=%d&auto=1", prev.ID, playlistName, idx-1)
 			}
 		}
 		if idx < len(playlistVideos)-1 {
 			next := playlistVideos[idx+1]
 			if savedID != "" {
-				nextURL = fmt.Sprintf("/kids/play/%s?saved=%s&idx=%d&auto=1", next.ID, savedID, idx+1)
+				nextURL = fmt.Sprintf("/audio/play/%s?saved=%s&idx=%d&auto=1", next.ID, savedID, idx+1)
 			} else {
-				nextURL = fmt.Sprintf("/kids/play/%s?playlist=%s&idx=%d&auto=1", next.ID, playlistName, idx+1)
+				nextURL = fmt.Sprintf("/audio/play/%s?playlist=%s&idx=%d&auto=1", next.ID, playlistName, idx+1)
 			}
 		}
 	}
@@ -487,9 +487,9 @@ func handlePlay(w http.ResponseWriter, r *http.Request, id string) {
 
 func renderVideoCard(v Video) string {
 	return fmt.Sprintf(`
-		<a href="/kids/play/%s" class="kids-video-card">
+		<a href="/audio/play/%s" class="audio-video-card">
 			<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-			<div class="kids-video-title">%s</div>
+			<div class="audio-video-title">%s</div>
 		</a>`,
 		v.ID,
 		v.Thumbnail,
@@ -501,9 +501,9 @@ func renderVideoCard(v Video) string {
 
 func renderVideoCardWithIndex(v Video, playlist string, idx int) string {
 	return fmt.Sprintf(`
-		<a href="/kids/play/%s?playlist=%s&idx=%d" class="kids-video-card">
+		<a href="/audio/play/%s?playlist=%s&idx=%d" class="audio-video-card">
 			<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-			<div class="kids-video-title">%s</div>
+			<div class="audio-video-title">%s</div>
 		</a>`,
 		v.ID, playlist, idx,
 		v.Thumbnail,
@@ -515,9 +515,9 @@ func renderVideoCardWithIndex(v Video, playlist string, idx int) string {
 
 func renderVideoCardForSaved(v Video, savedID string, idx int) string {
 	return fmt.Sprintf(`
-		<a href="/kids/play/%s?saved=%s&idx=%d" class="kids-video-card">
+		<a href="/audio/play/%s?saved=%s&idx=%d" class="audio-video-card">
 			<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-			<div class="kids-video-title">%s</div>
+			<div class="audio-video-title">%s</div>
 		</a>`,
 		v.ID, savedID, idx,
 		v.Thumbnail,
@@ -529,12 +529,12 @@ func renderVideoCardForSaved(v Video, savedID string, idx int) string {
 
 func renderVideoCardForSavedWithRemove(v Video, savedID string, idx int) string {
 	return fmt.Sprintf(`
-		<div class="kids-video-card">
-			<a href="/kids/play/%s?saved=%s&idx=%d">
+		<div class="audio-video-card">
+			<a href="/audio/play/%s?saved=%s&idx=%d">
 				<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-				<div class="kids-video-title">%s</div>
+				<div class="audio-video-title">%s</div>
 			</a>
-			<button onclick="removeVideo('%s')" class="kids-remove-btn">×</button>
+			<button onclick="removeVideo('%s')" class="audio-remove-btn">×</button>
 		</div>`,
 		v.ID, savedID, idx,
 		v.Thumbnail,
@@ -560,9 +560,9 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 	content.WriteString(fmt.Sprintf(`<p><a href="%s">← Back</a></p>`, backURL))
 	
 	// Video container with thumbnail overlay (always visible - audio-only mode)
-	content.WriteString(fmt.Sprintf(`<div class="kids-video-container">
+	content.WriteString(fmt.Sprintf(`<div class="audio-video-container">
 		<div id="player"></div>
-		<img src="%s" class="kids-thumb-overlay" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
+		<img src="%s" class="audio-thumb-overlay" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
 	</div>`, video.Thumbnail, id))
 	
 	// Controls - show pause button if autoplay
@@ -579,7 +579,7 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 		nextBtn = fmt.Sprintf(`<a href="%s" class="btn btn-secondary" id="nextBtn">⏭</a>`, nextURL)
 	}
 	
-	content.WriteString(fmt.Sprintf(`<div class="kids-controls">
+	content.WriteString(fmt.Sprintf(`<div class="audio-controls">
 		%s
 		<button onclick="togglePlay()" id="playBtn">%s</button>
 		%s
@@ -668,8 +668,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	isLoggedIn := sess != nil
 	
 	var content strings.Builder
-	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
-	content.WriteString(`<form class="search-bar" action="/kids/search" method="get">
+	content.WriteString(`<p><a href="/audio">← Back</a></p>`)
+	content.WriteString(`<form class="search-bar" action="/audio/search" method="get">
 		<input type="text" name="q" placeholder="Search..." value="` + html.EscapeString(query) + `">
 		<button type="submit">Search</button>
 	</form>`)
@@ -681,7 +681,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		} else if len(results) == 0 {
 			content.WriteString(`<p class="text-muted">No results found</p>`)
 		} else {
-			content.WriteString(`<div class="kids-videos">`)
+			content.WriteString(`<div class="audio-videos">`)
 			for _, v := range results {
 				content.WriteString(renderSearchResult(v, isLoggedIn))
 			}
@@ -716,7 +716,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		function addToPlaylist(videoId, title, thumbnail) {
 			pendingVideo = {id: videoId, title: title, thumbnail: thumbnail};
 			document.getElementById('newPlaylistName').value = '';
-			const endpoint = '/kids/playlist';
+			const endpoint = '/audio/playlist';
 			console.log('Fetching:', endpoint, 'cookies:', document.cookie);
 			fetch(endpoint, {credentials: 'include'})
 				.then(r => {
@@ -767,7 +767,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			createForm.append('name', name);
 			createForm.append('icon', '🎵');
 			
-			fetch('/kids/playlist', {
+			fetch('/audio/playlist', {
 				method: 'POST',
 				body: createForm,
 				headers: {'Accept': 'application/json'}, credentials: 'include'
@@ -791,7 +791,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			form.append('title', pendingVideo.title);
 			form.append('thumbnail', pendingVideo.thumbnail);
 			
-			fetch('/kids/playlist', {
+			fetch('/audio/playlist', {
 				method: 'POST',
 				body: form,
 				headers: {'Accept': 'application/json'}, credentials: 'include'
@@ -808,13 +808,13 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	</script>
 	`)
 	
-	html := app.RenderHTMLForRequest("Search", "Search for kids music", content.String(), r)
+	html := app.RenderHTMLForRequest("Search", "Search  music", content.String(), r)
 	w.Write([]byte(html))
 }
 
 func searchYouTube(query string) ([]Video, error) {
 	resp, err := client.Search.List([]string{"snippet"}).
-		Q(query + " kids").
+		Q(query + "").
 		Type("video").
 		SafeSearch("strict").
 		MaxResults(20).
@@ -843,14 +843,14 @@ func renderSearchResult(v Video, showAddButton bool) string {
 	titleEscaped := html.EscapeString(strings.ReplaceAll(v.Title, "'", "\\'"))
 	addBtn := ""
 	if showAddButton {
-		addBtn = fmt.Sprintf(`<button onclick="addToPlaylist('%s', '%s', '%s')" class="kids-add-btn">+</button>`,
+		addBtn = fmt.Sprintf(`<button onclick="addToPlaylist('%s', '%s', '%s')" class="audio-add-btn">+</button>`,
 			v.ID, titleEscaped, v.Thumbnail)
 	}
 	return fmt.Sprintf(`
-		<div class="kids-video-card">
-			<a href="/kids/play/%s">
+		<div class="audio-video-card">
+			<a href="/audio/play/%s">
 				<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-				<div class="kids-video-title">%s</div>
+				<div class="audio-video-title">%s</div>
 			</a>
 			%s
 		</div>`,
@@ -891,24 +891,24 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 	isOwner := userID == sp.UserID
 	
 	var content strings.Builder
-	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
+	content.WriteString(`<p><a href="/audio">← Back</a></p>`)
 	
 	icon := sp.Icon
 	if icon == "" {
 		icon = "🎵"
 	}
-	content.WriteString(fmt.Sprintf(`<div class="kids-header"><span class="kids-icon-lg">%s</span></div>`, icon))
+	content.WriteString(fmt.Sprintf(`<div class="audio-header"><span class="audio-icon-lg">%s</span></div>`, icon))
 	
 	if len(sp.Videos) > 0 {
-		content.WriteString(fmt.Sprintf(`<div class="kids-play-all">
-			<a href="/kids/play/%s?saved=%s&idx=0" class="btn">▶ Play All</a>
+		content.WriteString(fmt.Sprintf(`<div class="audio-play-all">
+			<a href="/audio/play/%s?saved=%s&idx=0" class="btn">▶ Play All</a>
 		</div>`, sp.Videos[0].ID, sp.ID))
 	}
 	
 	// Current playlist videos with remove button
 	if len(sp.Videos) > 0 {
 		content.WriteString(`<h3>Videos</h3>`)
-		content.WriteString(`<div class="kids-videos">`)
+		content.WriteString(`<div class="audio-videos">`)
 		for i, v := range sp.Videos {
 			if isOwner {
 				content.WriteString(renderVideoCardForSavedWithRemove(v, sp.ID, i))
@@ -928,7 +928,7 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 	
 	// Add from search section
 	content.WriteString(`<h3 class="mt-4">Add Videos</h3>`)
-	content.WriteString(fmt.Sprintf(`<form class="search-bar mb-3" action="/kids/saved/%s" method="get">
+	content.WriteString(fmt.Sprintf(`<form class="search-bar mb-3" action="/audio/saved/%s" method="get">
 		<input type="text" name="q" placeholder="Search YouTube..." value="%s">
 		<button type="submit">Search</button>
 	</form>`, sp.ID, html.EscapeString(searchQuery)))
@@ -941,14 +941,14 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 		} else if len(results) == 0 {
 			content.WriteString(`<p class="text-muted">No results found</p>`)
 		} else {
-			content.WriteString(`<div class="kids-videos">`)
+			content.WriteString(`<div class="audio-videos">`)
 			for _, v := range results {
 				titleEscaped := html.EscapeString(strings.ReplaceAll(v.Title, "'", "\\'"))
 				content.WriteString(fmt.Sprintf(`
-					<div class="kids-video-card kids-video-mini">
+					<div class="audio-video-card audio-video-mini">
 						<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-						<div class="kids-video-title">%s</div>
-						<button onclick="addVideo('%s', '%s', '%s')" class="kids-add-btn">+</button>
+						<div class="audio-video-title">%s</div>
+						<button onclick="addVideo('%s', '%s', '%s')" class="audio-add-btn">+</button>
 					</div>`,
 					v.Thumbnail, html.EscapeString(v.Title), v.ID,
 					html.EscapeString(truncate(v.Title, 40)),
@@ -961,9 +961,9 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 		content.WriteString(`<p class="text-muted mb-3">Or select a playlist to add from:</p>`)
 		
 		// Playlist selector tabs
-		content.WriteString(`<div class="kids-playlist-tabs">`)
+		content.WriteString(`<div class="audio-playlist-tabs">`)
 		for _, pl := range playlists {
-			content.WriteString(fmt.Sprintf(`<button class="kids-tab" onclick="showPlaylist('%s')">%s %s</button>`,
+			content.WriteString(fmt.Sprintf(`<button class="audio-tab" onclick="showPlaylist('%s')">%s %s</button>`,
 				pl.Name, pl.Icon, pl.Name))
 		}
 		content.WriteString(`</div>`)
@@ -971,15 +971,15 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 		// Videos from each playlist (hidden by default)
 		mu.RLock()
 		for _, pl := range playlists {
-			content.WriteString(fmt.Sprintf(`<div class="kids-add-videos" id="add-%s" style="display:none;">`, pl.Name))
+			content.WriteString(fmt.Sprintf(`<div class="audio-add-videos" id="add-%s" style="display:none;">`, pl.Name))
 			if vids, ok := videos[pl.Name]; ok {
 				for _, v := range vids {
 					titleEscaped := html.EscapeString(strings.ReplaceAll(v.Title, "'", "\\'"))
 					content.WriteString(fmt.Sprintf(`
-						<div class="kids-video-card kids-video-mini">
+						<div class="audio-video-card audio-video-mini">
 							<img src="%s" alt="%s" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-							<div class="kids-video-title">%s</div>
-							<button onclick="addVideo('%s', '%s', '%s')" class="kids-add-btn">+</button>
+							<div class="audio-video-title">%s</div>
+							<button onclick="addVideo('%s', '%s', '%s')" class="audio-add-btn">+</button>
 						</div>`,
 						v.Thumbnail, html.EscapeString(v.Title), v.ID,
 						html.EscapeString(truncate(v.Title, 40)),
@@ -997,8 +997,8 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 		
 		function showPlaylist(name) {
 			// Hide all
-			document.querySelectorAll('.kids-add-videos').forEach(el => el.style.display = 'none');
-			document.querySelectorAll('.kids-tab').forEach(el => el.classList.remove('active'));
+			document.querySelectorAll('.audio-add-videos').forEach(el => el.style.display = 'none');
+			document.querySelectorAll('.audio-tab').forEach(el => el.classList.remove('active'));
 			
 			// Show selected
 			const panel = document.getElementById('add-' + name);
@@ -1017,7 +1017,7 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 			form.append('title', title);
 			form.append('thumbnail', thumbnail);
 			
-			fetch('/kids/playlist', {
+			fetch('/audio/playlist', {
 				method: 'POST',
 				body: form,
 				headers: {'Accept': 'application/json'}, credentials: 'include'
@@ -1034,7 +1034,7 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 			form.append('playlist_id', '%s');
 			form.append('video_id', videoId);
 			
-			fetch('/kids/playlist', {
+			fetch('/audio/playlist', {
 				method: 'POST',
 				body: form,
 				headers: {'Accept': 'application/json'}, credentials: 'include'
@@ -1057,13 +1057,13 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var content strings.Builder
-	content.WriteString(`<p><a href="/kids">← Back</a></p>`)
+	content.WriteString(`<p><a href="/audio">← Back</a></p>`)
 	
 	if userID == "" {
 		content.WriteString(`<p><a href="/login">Login</a> to create and manage playlists.</p>`)
 	} else {
 		content.WriteString(`<h2>Create Playlist</h2>`)
-		content.WriteString(`<form method="post" action="/kids/playlist" class="max-w-sm">
+		content.WriteString(`<form method="post" action="/audio/playlist" class="max-w-sm">
 			<input type="hidden" name="action" value="create">
 			<div class="mb-3">
 				<label>Name</label>
@@ -1091,9 +1091,9 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 				}
 				content.WriteString(fmt.Sprintf(`<div class="d-flex items-center gap-2 mb-2">
 					<span class="text-xl">%s</span>
-					<a href="/kids/saved/%s">%s</a>
+					<a href="/audio/saved/%s">%s</a>
 					<span class="text-muted">(%d songs)</span>
-					<form method="post" action="/kids/playlist" class="m-0">
+					<form method="post" action="/audio/playlist" class="m-0">
 						<input type="hidden" name="action" value="delete">
 						<input type="hidden" name="id" value="%s">
 						<button type="submit" class="btn-danger text-sm">Delete</button>
@@ -1115,7 +1115,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 	if sess != nil {
 		userID = sess.Account
 	}
-	app.Log("kids", "PlaylistAPI %s: userID=%q, err=%v, savedPlaylists=%d", r.Method, userID, err, len(savedPlaylists))
+	app.Log("audio", "PlaylistAPI %s: userID=%q, err=%v, savedPlaylists=%d", r.Method, userID, err, len(savedPlaylists))
 
 	if r.Method == "POST" {
 		// Require auth for creating/modifying playlists
@@ -1170,7 +1170,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 				})
 				return
 			}
-			http.Redirect(w, r, "/kids/saved/"+id, http.StatusSeeOther)
+			http.Redirect(w, r, "/audio/saved/"+id, http.StatusSeeOther)
 			return
 			
 		case "delete":
@@ -1182,7 +1182,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			}
 			mu.Unlock()
 			saveSavedPlaylists()
-			http.Redirect(w, r, "/kids/playlists", http.StatusSeeOther)
+			http.Redirect(w, r, "/audio/playlists", http.StatusSeeOther)
 			return
 			
 		case "add":
@@ -1220,7 +1220,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte(`{"success":true}`))
 				return
 			}
-			http.Redirect(w, r, "/kids/saved/"+id, http.StatusSeeOther)
+			http.Redirect(w, r, "/audio/saved/"+id, http.StatusSeeOther)
 			return
 			
 		case "remove":
@@ -1246,7 +1246,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte(`{"success":true}`))
 				return
 			}
-			http.Redirect(w, r, "/kids/saved/"+id, http.StatusSeeOther)
+			http.Redirect(w, r, "/audio/saved/"+id, http.StatusSeeOther)
 			return
 		}
 	}
@@ -1271,13 +1271,13 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func loadSavedPlaylists() {
-	data, err := data.LoadFile("kids/playlists.json")
+	data, err := data.LoadFile("audio/playlists.json")
 	if err != nil {
 		return
 	}
 	var list []*SavedPlaylist
 	if err := json.Unmarshal(data, &list); err != nil {
-		app.Log("kids", "Error loading saved playlists: %v", err)
+		app.Log("audio", "Error loading saved playlists: %v", err)
 		return
 	}
 	mu.Lock()
@@ -1285,7 +1285,7 @@ func loadSavedPlaylists() {
 		savedPlaylists[sp.ID] = sp
 	}
 	mu.Unlock()
-	app.Log("kids", "Loaded %d saved playlists", len(list))
+	app.Log("audio", "Loaded %d saved playlists", len(list))
 }
 
 func saveSavedPlaylists() {
@@ -1297,5 +1297,5 @@ func saveSavedPlaylists() {
 	mu.RUnlock()
 	
 	b, _ := json.Marshal(list)
-	data.SaveFile("kids/playlists.json", string(b))
+	data.SaveFile("audio/playlists.json", string(b))
 }

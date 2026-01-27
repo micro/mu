@@ -19,7 +19,7 @@ Mu is a collection of tools for everyday use. While other platforms monetize you
 - **Video** - Watch YouTube without ads
 - **Notes** - Quick capture with tags, pins, and search
 - **Mail** - Private messaging & email
-- **Kids** - Safe video content for children
+- **Audio** - Podcasts and audio content
 - **Wallet** - Credits and crypto payments
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).

@@ -3925,18 +3925,18 @@ a.btn-secondary:hover, .btn-secondary:hover {
    Kids Mode
    ============================================= */
 
-.kids-home {
+.audio-home {
   max-width: 900px;
 }
 
-.kids-categories {
+.audio-categories {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 15px;
   margin-bottom: 30px;
 }
 
-.kids-category-btn {
+.audio-category-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3950,21 +3950,21 @@ a.btn-secondary:hover, .btn-secondary:hover {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.kids-category-btn:hover {
+.audio-category-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-.kids-category-btn-dashed {
+.audio-category-btn-dashed {
   border-style: dashed;
 }
 
-.kids-play-all {
+.audio-play-all {
   text-align: center;
   margin-bottom: 20px;
 }
 
-.kids-icon {
+.audio-icon {
   font-size: 2.5em;
   margin-bottom: 8px;
   display: block;
@@ -3972,49 +3972,49 @@ a.btn-secondary:hover, .btn-secondary:hover {
   width: 100%;
 }
 
-.kids-icon-lg {
+.audio-icon-lg {
   font-size: 4em;
   display: block;
   text-align: center;
   margin-bottom: 20px;
 }
 
-.kids-label {
+.audio-label {
   font-size: 1.1em;
   font-weight: 600;
   text-align: center;
 }
 
-.kids-count {
+.audio-count {
   font-size: 0.85em;
   color: var(--text-muted, #888);
   margin-top: 4px;
 }
 
-.kids-header {
+.audio-header {
   text-align: center;
   margin-bottom: 20px;
 }
 
-.kids-section-title {
+.audio-section-title {
   margin: 1.5rem 0 0.75rem 0;
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--text-secondary, #666);
 }
 
-.kids-section-title:first-child {
+.audio-section-title:first-child {
   margin-top: 0;
 }
 
-.kids-videos,
-.kids-episodes {
+.audio-videos,
+.audio-episodes {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 20px;
 }
 
-.kids-episode-card {
+.audio-episode-card {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -4027,23 +4027,23 @@ a.btn-secondary:hover, .btn-secondary:hover {
   transition: box-shadow 0.2s;
 }
 
-.kids-episode-card:hover {
+.audio-episode-card:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.kids-episode-card img {
+.audio-episode-card img {
   width: 60px;
   height: 60px;
   border-radius: 8px;
   object-fit: cover;
 }
 
-.kids-episode-info {
+.audio-episode-info {
   flex: 1;
   min-width: 0;
 }
 
-.kids-episode-title {
+.audio-episode-title {
   font-weight: 500;
   margin-bottom: 4px;
   overflow: hidden;
@@ -4051,17 +4051,17 @@ a.btn-secondary:hover, .btn-secondary:hover {
   white-space: nowrap;
 }
 
-.kids-episode-meta {
+.audio-episode-meta {
   font-size: 0.85rem;
   color: var(--text-secondary, #666);
 }
 
-.kids-episode-player {
+.audio-episode-player {
   text-align: center;
   margin-bottom: 1rem;
 }
 
-.kids-episode-image {
+.audio-episode-image {
   width: 200px;
   height: 200px;
   border-radius: 16px;
@@ -4069,7 +4069,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin-bottom: 1rem;
 }
 
-.kids-episode-desc {
+.audio-episode-desc {
   padding: 1rem;
   background: var(--card-background, #f9f9f9);
   border-radius: 8px;
@@ -4077,7 +4077,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   color: var(--text-secondary, #666);
 }
 
-.kids-video-card {
+.audio-video-card {
   display: block;
   text-decoration: none;
   color: var(--text-primary, #333);
@@ -4088,29 +4088,29 @@ a.btn-secondary:hover, .btn-secondary:hover {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.kids-video-card:hover {
+.audio-video-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-.kids-video-card img {
+.audio-video-card img {
   width: 100%;
   aspect-ratio: 16/9;
   object-fit: cover;
 }
 
-.kids-video-title {
+.audio-video-title {
   padding: 12px;
   font-size: 0.95em;
   font-weight: 500;
   line-height: 1.3;
 }
 
-.kids-video-card {
+.audio-video-card {
   position: relative;
 }
 
-.kids-add-btn {
+.audio-add-btn {
   position: absolute;
   top: 5px;
   right: 5px;
@@ -4127,11 +4127,11 @@ a.btn-secondary:hover, .btn-secondary:hover {
   justify-content: center;
 }
 
-.kids-add-btn:hover {
+.audio-add-btn:hover {
   background: rgba(0,0,0,0.9);
 }
 
-.kids-remove-btn {
+.audio-remove-btn {
   position: absolute;
   top: 5px;
   right: 5px;
@@ -4146,48 +4146,48 @@ a.btn-secondary:hover, .btn-secondary:hover {
   line-height: 1;
 }
 
-.kids-remove-btn:hover {
+.audio-remove-btn:hover {
   background: rgba(200,0,0,0.9);
 }
 
 @media (max-width: 600px) {
-  .kids-categories {
+  .audio-categories {
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
   }
   
-  .kids-category-btn {
+  .audio-category-btn {
     padding: 15px 10px;
   }
   
-  .kids-icon {
+  .audio-icon {
     font-size: 2em;
   }
   
-  .kids-label {
+  .audio-label {
     font-size: 0.9em;
   }
   
-  .kids-videos {
+  .audio-videos {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
 }
 
 /* Kids Player (standalone page) */
-.kids-player {
+.audio-player {
   max-width: 600px;
   margin: 0 auto;
   padding: 20px;
   text-align: center;
 }
 
-.kids-player h2 {
+.audio-player h2 {
   font-size: 1.3em;
   margin: 20px 0;
 }
 
-.kids-thumb {
+.audio-thumb {
   width: 100%;
   max-width: 400px;
   border-radius: var(--border-radius-lg, 16px);
@@ -4195,7 +4195,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   cursor: pointer;
 }
 
-.kids-controls {
+.audio-controls {
   margin-top: 30px;
   display: flex;
   gap: 10px;
@@ -4205,7 +4205,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 
 /* Kids player uses standard buttons, just needs layout */
-.kids-controls {
+.audio-controls {
   margin-top: 20px;
   display: flex;
   gap: 10px;
@@ -4213,34 +4213,34 @@ a.btn-secondary:hover, .btn-secondary:hover {
   align-items: center;
 }
 
-.kids-controls button,
-.kids-controls a.btn {
+.audio-controls button,
+.audio-controls a.btn {
   font-size: 1.2em;
 }
 
-.kids-controls .disabled {
+.audio-controls .disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.kids-secondary {
+.audio-secondary {
   margin-top: 15px;
   display: flex;
   gap: 10px;
   justify-content: center;
 }
 
-.kids-video-wrapper {
+.audio-video-wrapper {
   display: none;
   margin-top: 20px;
 }
 
-.kids-video-wrapper iframe {
+.audio-video-wrapper iframe {
   border-radius: var(--border-radius, 6px);
 }
 
 /* Kids video player container - uses z-index for show/hide */
-.kids-video-container {
+.audio-video-container {
   position: relative;
   width: 100%;
   max-width: 600px;
@@ -4251,8 +4251,8 @@ a.btn-secondary:hover, .btn-secondary:hover {
   overflow: hidden;
 }
 
-.kids-video-container #player,
-.kids-video-container iframe {
+.audio-video-container #player,
+.audio-video-container iframe {
   position: absolute;
   top: 0;
   left: 0;
@@ -4261,7 +4261,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   z-index: 1;
 }
 
-.kids-thumb-overlay {
+.audio-thumb-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -4272,19 +4272,19 @@ a.btn-secondary:hover, .btn-secondary:hover {
   transition: z-index 0s;
 }
 
-.kids-thumb-overlay.hidden {
+.audio-thumb-overlay.hidden {
   z-index: 0;
 }
 
 /* Playlist tabs for adding videos */
-.kids-playlist-tabs {
+.audio-playlist-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }
 
-.kids-tab {
+.audio-tab {
   padding: 8px 16px;
   border: 1px solid var(--card-border, #e8e8e8);
   border-radius: 20px;
@@ -4295,32 +4295,32 @@ a.btn-secondary:hover, .btn-secondary:hover {
   transition: all 0.2s;
 }
 
-.kids-tab:hover {
+.audio-tab:hover {
   border-color: var(--text-primary, #333);
 }
 
-.kids-tab.active {
+.audio-tab.active {
   background: var(--text-primary, #333);
   color: white;
   border-color: var(--text-primary, #333);
 }
 
-.kids-add-videos {
+.audio-add-videos {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
 }
 
-.kids-video-mini {
+.audio-video-mini {
   font-size: 0.85em;
 }
 
-.kids-video-mini img {
+.audio-video-mini img {
   aspect-ratio: 16/9;
   object-fit: cover;
 }
 
-.kids-video-mini .kids-video-title {
+.audio-video-mini .audio-video-title {
   padding: 8px;
   font-size: 0.85em;
 }

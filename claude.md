@@ -42,7 +42,7 @@ No ads, no algorithms, no tracking. Simple tools that respect your time.
 | **video/** | YouTube search/play |
 | **chat/** | Public chat rooms |
 | **blog/** | Microblogging |
-| **kids/** | Safe video for children |
+| **audio/** | Podcasts and audio content |
 | **wallet/** | Credits + crypto deposits |
 | **widgets/** | Markets + Reminder cards |
 
