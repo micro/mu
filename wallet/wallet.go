@@ -1,7 +1,7 @@
 package wallet
 
 import (
-	"context"
+
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +11,7 @@ import (
 
 	"mu/auth"
 	"mu/data"
-	"mu/tools"
+
 
 	"github.com/google/uuid"
 )
@@ -126,7 +126,7 @@ func init() {
 
 // Load registers wallet tools (called from main)
 func Load() {
-	RegisterWalletTools()
+	// Wallet loaded
 }
 
 // getEnvInt gets an environment variable as int with default
@@ -444,31 +444,3 @@ func GetTopupTier(amount int) *TopupTier {
 	return nil
 }
 
-// RegisterWalletTools registers wallet tools with the tools registry
-func RegisterWalletTools() {
-	tools.Register(tools.Tool{
-		Name:        "wallet.balance",
-		Description: "Get current wallet balance in credits",
-		Category:    "wallet",
-		Path:        "/api/wallet/balance",
-		Method:      "GET",
-		Output: map[string]tools.Param{
-			"balance":   {Type: "number", Description: "Balance in credits"},
-			"formatted": {Type: "string", Description: "Balance formatted as currency"},
-		},
-		Handler: handleWalletBalance,
-	})
-}
-
-func handleWalletBalance(ctx context.Context, params map[string]any) (any, error) {
-	userID := tools.UserFromContext(ctx)
-	if userID == "" {
-		return nil, fmt.Errorf("user not authenticated")
-	}
-
-	balance := GetBalance(userID)
-	return map[string]any{
-		"balance":   balance,
-		"formatted": FormatCredits(balance),
-	}, nil
-}

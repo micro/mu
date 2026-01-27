@@ -1,7 +1,6 @@
-package apps
+package widgets
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,7 +13,6 @@ import (
 
 	"mu/app"
 	"mu/data"
-	"mu/tools"
 
 	"github.com/piquette/finance-go/future"
 )
@@ -43,9 +41,6 @@ var futuresKeys = []string{"OIL", "OATS", "COFFEE", "WHEAT", "GOLD"}
 
 // LoadMarkets initializes the markets data
 func LoadMarkets() {
-	// Register tools
-	RegisterMarketTools()
-
 	// Load cached prices
 	b, err := data.LoadFile("prices.json")
 	if err == nil {
@@ -202,78 +197,4 @@ func GetAllPrices() map[string]float64 {
 		result[k] = v
 	}
 	return result
-}
-
-// GetTickers returns the crypto tickers
-func GetTickers() []string {
-	return append([]string{}, tickers...)
-}
-
-// GetFuturesKeys returns the futures keys
-func GetFuturesKeys() []string {
-	return append([]string{}, futuresKeys...)
-}
-
-// RegisterTools registers market tools with the tools registry
-func RegisterMarketTools() {
-	tools.Register(tools.Tool{
-		Name:        "markets.get_price",
-		Description: "Get current price for a crypto or commodity ticker (BTC, ETH, GOLD, OIL, etc.)",
-		Category:    "markets",
-		Path:        "/api/markets/price",
-		Method:      "GET",
-		Input: map[string]tools.Param{
-			"symbol": {Type: "string", Description: "Ticker symbol (BTC, ETH, GOLD, OIL, WHEAT, etc.)", Required: true},
-		},
-		Output: map[string]tools.Param{
-			"symbol": {Type: "string", Description: "The ticker symbol"},
-			"price":  {Type: "number", Description: "Current price in USD"},
-		},
-		Handler: handleGetPrice,
-	})
-
-	tools.Register(tools.Tool{
-		Name:        "markets.list",
-		Description: "List all available market tickers with their current prices",
-		Category:    "markets",
-		Path:        "/api/markets/list",
-		Method:      "GET",
-		Output: map[string]tools.Param{
-			"prices": {Type: "object", Description: "Map of ticker symbols to prices"},
-			"count":  {Type: "number", Description: "Number of tickers"},
-		},
-		Handler: handleListPrices,
-	})
-}
-
-func handleGetPrice(ctx context.Context, params map[string]any) (any, error) {
-	symbol, _ := params["symbol"].(string)
-	if symbol == "" {
-		return nil, fmt.Errorf("symbol is required")
-	}
-
-	prices := GetAllPrices()
-	symbol = strings.ToUpper(symbol)
-
-	// Try exact match first
-	if price, ok := prices[symbol]; ok {
-		return map[string]any{"symbol": symbol, "price": price}, nil
-	}
-
-	// Try partial match
-	for k, v := range prices {
-		if strings.Contains(strings.ToUpper(k), symbol) {
-			return map[string]any{"symbol": k, "price": v}, nil
-		}
-	}
-
-	return nil, fmt.Errorf("price not found for %s", symbol)
-}
-
-func handleListPrices(ctx context.Context, params map[string]any) (any, error) {
-	prices := GetAllPrices()
-	return map[string]any{
-		"prices": prices,
-		"count":  len(prices),
-	}, nil
 }

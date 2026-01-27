@@ -1,7 +1,7 @@
 package blog
 
 import (
-	"context"
+
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -16,7 +16,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
-	"mu/tools"
+
 )
 
 //go:embed topics.json
@@ -132,7 +132,7 @@ func parseTags(input string) string {
 // Load initializes the blog package and sets up event subscriptions
 func Load() {
 	// Register tools
-	RegisterBlogTools()
+	
 
 	// Load topics from embedded JSON
 	if err := json.Unmarshal(topicsJSON, &topics); err != nil {
@@ -1689,47 +1689,3 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/post?id="+postID, http.StatusSeeOther)
 }
 
-// RegisterBlogTools registers blog tools with the tools registry
-func RegisterBlogTools() {
-	tools.Register(tools.Tool{
-		Name:        "blog.latest",
-		Description: "Get latest blog posts",
-		Category:    "blog",
-		Path:        "/api/blog",
-		Method:      "GET",
-		Output: map[string]tools.Param{
-			"posts": {Type: "array", Description: "List of recent posts"},
-		},
-		Handler: handleBlogLatest,
-	})
-}
-
-func handleBlogLatest(ctx context.Context, params map[string]any) (any, error) {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	// Sort posts by created date
-	sortedPosts := make([]*Post, len(posts))
-	copy(sortedPosts, posts)
-	sort.Slice(sortedPosts, func(i, j int) bool {
-		return sortedPosts[i].CreatedAt.After(sortedPosts[j].CreatedAt)
-	})
-
-	// Limit to 10
-	if len(sortedPosts) > 10 {
-		sortedPosts = sortedPosts[:10]
-	}
-
-	var results []map[string]any
-	for _, p := range sortedPosts {
-		results = append(results, map[string]any{
-			"id":      p.ID,
-			"title":   p.Title,
-			"author":  p.Author,
-			"url":     "/post?id=" + p.ID,
-			"created": p.CreatedAt.Format(time.RFC3339),
-		})
-	}
-
-	return map[string]any{"posts": results}, nil
-}

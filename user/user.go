@@ -10,7 +10,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"mu/app"
-	"mu/apps"
+
 	"mu/auth"
 	"mu/blog"
 	"mu/data"
@@ -319,19 +319,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		messageLink = fmt.Sprintf(`<p class="mt-4"><a href="/mail?compose=true&to=%s">Send a message</a></p>`, acc.ID)
 	}
 
-	// Build apps section
-	userApps := apps.GetUserApps(acc.ID)
-	var appsSection string
-	if len(userApps) > 0 {
-		appsSection = fmt.Sprintf(`<h3 class="mb-5">Apps (%d)</h3><div class="mb-6">`, len(userApps))
-		for _, a := range userApps {
-			if !a.Public && !isOwnProfile {
-				continue // Skip private apps for non-owners
-			}
-			appsSection += fmt.Sprintf(`<p><a href="/apps/%s">%s</a></p>`, a.ID, a.Name)
-		}
-		appsSection += `</div>`
-	}
+	// Apps section removed
+	appsSection := ""
 
 	// Build the profile page content
 	content := fmt.Sprintf(`<div class="max-w-xl">

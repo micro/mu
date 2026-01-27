@@ -13,25 +13,22 @@ import (
 	"time"
 
 	"mu/admin"
-	"mu/agent"
 	"mu/api"
 	"mu/app"
-	"mu/apps"
 	"mu/auth"
 	"mu/blog"
 	"mu/chat"
 	"mu/data"
 	"mu/docs"
 	"mu/home"
+	"mu/kids"
 	"mu/mail"
 	"mu/news"
-	"mu/kids"
 	"mu/notes"
 	"mu/user"
-	"mu/tools"
 	"mu/video"
 	"mu/wallet"
-	"mu/flow"
+	"mu/widgets"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -78,12 +75,9 @@ func main() {
 	// load the mail (also configures SMTP and DKIM)
 	mail.Load()
 
-	// load micro apps (includes built-in apps: markets, reminder)
-	apps.Load()
+	// load widgets (markets, reminder)
+	widgets.Load()
 	wallet.Load()
-
-	// load flows
-	flow.Load()
 
 	// load the home cards (after apps so cards have data)
 	home.Load()
@@ -116,8 +110,7 @@ func main() {
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          true,  // Require auth for wallet
-		"/apps":            false, // Public viewing, auth for creating
-		"/agent":           true,  // Require auth for agent
+
 		"/status":          false, // Public - server health status
 		"/docs":            false, // Public - documentation
 		"/about":           false, // Public - about page
@@ -182,20 +175,7 @@ func main() {
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
 
-	// serve micro apps
-	http.HandleFunc("/apps", apps.Handler)
-	http.HandleFunc("/apps/", apps.Handler)
-	http.HandleFunc("/apps/api", apps.HandleAPIRequest)
 
-	// serve agent
-	http.HandleFunc("/agent", agent.Handler)
-	http.HandleFunc("/agent/", agent.Handler)
-
-	http.HandleFunc("/tools", tools.Handler)
-	http.HandleFunc("/tools/", tools.Handler)
-
-	http.HandleFunc("/flows", flow.Handler)
-	http.HandleFunc("/flows/", flow.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

@@ -1,7 +1,7 @@
 package news
 
 import (
-	"context"
+
 	"crypto/md5"
 	"embed"
 	"encoding/json"
@@ -26,7 +26,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
-	"mu/tools"
+
 	"mu/wallet"
 )
 
@@ -1316,7 +1316,7 @@ func parseFeed() {
 
 func Load() {
 	// Register tools
-	RegisterNewsTools()
+	
 
 	// Subscribe to refresh events
 	sub := data.Subscribe(data.EventRefreshHNComments)
@@ -1982,138 +1982,3 @@ func RefreshHNMetadata(uri string) (*Metadata, error) {
 	return md, nil
 }
 
-// RegisterNewsTools registers news tools with the tools registry
-func RegisterNewsTools() {
-	tools.Register(tools.Tool{
-		Name:        "news.headlines",
-		Description: "Get latest news headlines across all categories",
-		Category:    "news",
-		Path:        "/api/news/headlines",
-		Method:      "GET",
-		Output: map[string]tools.Param{
-			"headlines": {Type: "array", Description: "List of headline objects with title, url, category"},
-		},
-		Handler: handleNewsHeadlines,
-	})
-
-	tools.Register(tools.Tool{
-		Name:        "news.search",
-		Description: "Search news articles by keyword or topic",
-		Category:    "news",
-		Path:        "/api/news/search",
-		Method:      "GET",
-		Input: map[string]tools.Param{
-			"query": {Type: "string", Description: "Search query", Required: true},
-		},
-		Output: map[string]tools.Param{
-			"results": {Type: "array", Description: "Search results with title, description, url"},
-		},
-		Handler: handleNewsSearch,
-	})
-
-	tools.Register(tools.Tool{
-		Name:        "news.read",
-		Description: "Get full content of a news article by URL",
-		Category:    "news",
-		Path:        "/api/news/read",
-		Method:      "GET",
-		Input: map[string]tools.Param{
-			"url": {Type: "string", Description: "Article URL", Required: true},
-		},
-		Output: map[string]tools.Param{
-			"title":   {Type: "string", Description: "Article title"},
-			"content": {Type: "string", Description: "Article content"},
-			"url":     {Type: "string", Description: "Article URL"},
-		},
-		Handler: handleNewsRead,
-	})
-}
-
-func handleNewsHeadlines(ctx context.Context, params map[string]any) (any, error) {
-	mutex.RLock()
-	posts := make([]*Post, 0)
-	for _, p := range feed {
-		posts = append(posts, p)
-	}
-	mutex.RUnlock()
-
-	// Sort by PostedAt time and limit
-	sort.Slice(posts, func(i, j int) bool {
-		return posts[i].PostedAt.After(posts[j].PostedAt)
-	})
-
-	limit := 10
-	if len(posts) > limit {
-		posts = posts[:limit]
-	}
-
-	var headlines []map[string]string
-	for _, p := range posts {
-		headlines = append(headlines, map[string]string{
-			"title":    p.Title,
-			"url":      p.URL,
-			"category": p.Category,
-		})
-	}
-
-	return map[string]any{"headlines": headlines}, nil
-}
-
-func handleNewsSearch(ctx context.Context, params map[string]any) (any, error) {
-	query, _ := params["query"].(string)
-	if query == "" {
-		return nil, fmt.Errorf("query is required")
-	}
-
-	results := data.Search(query, 5, data.WithType("news"))
-
-	var articles []map[string]string
-	for _, entry := range results {
-		url := entry.ID
-		if entry.Metadata != nil {
-			if u, ok := entry.Metadata["url"].(string); ok {
-				url = u
-			}
-		}
-		articles = append(articles, map[string]string{
-			"title":       entry.Title,
-			"description": truncateText(entry.Content, 150),
-			"url":         url,
-		})
-	}
-
-	return map[string]any{"results": articles}, nil
-}
-
-func handleNewsRead(ctx context.Context, params map[string]any) (any, error) {
-	url, _ := params["url"].(string)
-	if url == "" {
-		return nil, fmt.Errorf("url is required")
-	}
-
-	results := data.Search(url, 1, data.WithType("news"))
-	if len(results) == 0 {
-		return nil, fmt.Errorf("article not found")
-	}
-
-	article := results[0]
-	articleURL := url
-	if article.Metadata != nil {
-		if u, ok := article.Metadata["url"].(string); ok {
-			articleURL = u
-		}
-	}
-
-	return map[string]any{
-		"title":   article.Title,
-		"content": article.Content,
-		"url":     articleURL,
-	}, nil
-}
-
-func truncateText(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
-}

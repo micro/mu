@@ -1,7 +1,6 @@
 package notes
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -11,7 +10,6 @@ import (
 
 	"mu/app"
 	"mu/data"
-	"mu/tools"
 )
 
 // Note represents a user's note
@@ -35,9 +33,6 @@ var (
 
 // Load initializes the notes package
 func Load() {
-	// Register tools
-	RegisterNotesTools()
-
 	loadNotes()
 	app.Log("notes", "Loaded %d notes", len(notes))
 
@@ -434,190 +429,3 @@ func reindexAllNotes() {
 	app.Log("notes", "Indexed %d notes", len(notesCopy))
 }
 
-// RegisterNotesTools registers notes tools with the tools registry
-func RegisterNotesTools() {
-	tools.Register(tools.Tool{
-		Name:        "notes.create",
-		Description: "Create a new note for the user",
-		Category:    "notes",
-		Path:        "/api/notes",
-		Method:      "POST",
-		Input: map[string]tools.Param{
-			"content": {Type: "string", Description: "Note content", Required: true},
-			"title":   {Type: "string", Description: "Note title", Required: false},
-			"tags":    {Type: "string", Description: "Comma-separated tags", Required: false},
-		},
-		Output: map[string]tools.Param{
-			"id":    {Type: "string", Description: "Note ID"},
-			"title": {Type: "string", Description: "Note title"},
-		},
-		Handler: handleNotesCreate,
-	})
-
-	tools.Register(tools.Tool{
-		Name:        "notes.list",
-		Description: "List user's notes",
-		Category:    "notes",
-		Path:        "/api/notes",
-		Method:      "GET",
-		Input: map[string]tools.Param{
-			"tag":   {Type: "string", Description: "Filter by tag", Required: false},
-			"limit": {Type: "number", Description: "Max results (default 10)", Required: false},
-		},
-		Output: map[string]tools.Param{
-			"notes": {Type: "array", Description: "List of notes"},
-		},
-		Handler: handleNotesList,
-	})
-
-	tools.Register(tools.Tool{
-		Name:        "notes.search",
-		Description: "Search notes by keyword",
-		Category:    "notes",
-		Path:        "/api/notes/search",
-		Method:      "GET",
-		Input: map[string]tools.Param{
-			"query": {Type: "string", Description: "Search query", Required: true},
-		},
-		Output: map[string]tools.Param{
-			"results": {Type: "array", Description: "Matching notes"},
-		},
-		Handler: handleNotesSearch,
-	})
-
-	tools.Register(tools.Tool{
-		Name:        "notes.get",
-		Description: "Get a specific note by ID",
-		Category:    "notes",
-		Path:        "/api/notes/:id",
-		Method:      "GET",
-		Input: map[string]tools.Param{
-			"id": {Type: "string", Description: "Note ID", Required: true},
-		},
-		Output: map[string]tools.Param{
-			"id":      {Type: "string", Description: "Note ID"},
-			"title":   {Type: "string", Description: "Note title"},
-			"content": {Type: "string", Description: "Note content"},
-			"tags":    {Type: "array", Description: "Note tags"},
-		},
-		Handler: handleNotesGet,
-	})
-}
-
-func handleNotesCreate(ctx context.Context, params map[string]any) (any, error) {
-	userID := tools.UserFromContext(ctx)
-	if userID == "" {
-		return nil, fmt.Errorf("user not authenticated")
-	}
-
-	content, _ := params["content"].(string)
-	if content == "" {
-		return nil, fmt.Errorf("content is required")
-	}
-
-	title, _ := params["title"].(string)
-	tagsStr, _ := params["tags"].(string)
-
-	var tags []string
-	if tagsStr != "" {
-		for _, t := range strings.Split(tagsStr, ",") {
-			t = strings.TrimSpace(t)
-			if t != "" {
-				tags = append(tags, t)
-			}
-		}
-	}
-
-	note, err := CreateNote(userID, title, content, tags)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]any{
-		"id":    note.ID,
-		"title": note.Title,
-	}, nil
-}
-
-func handleNotesList(ctx context.Context, params map[string]any) (any, error) {
-	userID := tools.UserFromContext(ctx)
-	if userID == "" {
-		return nil, fmt.Errorf("user not authenticated")
-	}
-
-	tag, _ := params["tag"].(string)
-	limit := 10
-	if l, ok := params["limit"].(float64); ok {
-		limit = int(l)
-	}
-
-	notesList := ListNotes(userID, false, tag, limit)
-
-	var results []map[string]any
-	for _, n := range notesList {
-		results = append(results, map[string]any{
-			"id":      n.ID,
-			"title":   n.Title,
-			"content": truncateNoteContent(n.Content, 100),
-			"pinned":  n.Pinned,
-		})
-	}
-
-	return map[string]any{"notes": results}, nil
-}
-
-func handleNotesSearch(ctx context.Context, params map[string]any) (any, error) {
-	userID := tools.UserFromContext(ctx)
-	if userID == "" {
-		return nil, fmt.Errorf("user not authenticated")
-	}
-
-	query, _ := params["query"].(string)
-	if query == "" {
-		return nil, fmt.Errorf("query is required")
-	}
-
-	notesList := SearchNotes(userID, query, 5)
-
-	var results []map[string]any
-	for _, n := range notesList {
-		results = append(results, map[string]any{
-			"id":      n.ID,
-			"title":   n.Title,
-			"content": truncateNoteContent(n.Content, 100),
-		})
-	}
-
-	return map[string]any{"results": results}, nil
-}
-
-func handleNotesGet(ctx context.Context, params map[string]any) (any, error) {
-	userID := tools.UserFromContext(ctx)
-	if userID == "" {
-		return nil, fmt.Errorf("user not authenticated")
-	}
-
-	id, _ := params["id"].(string)
-	if id == "" {
-		return nil, fmt.Errorf("id is required")
-	}
-
-	note := GetNote(id, userID)
-	if note == nil {
-		return nil, fmt.Errorf("note not found")
-	}
-
-	return map[string]any{
-		"id":      note.ID,
-		"title":   note.Title,
-		"content": note.Content,
-		"tags":    note.Tags,
-	}, nil
-}
-
-func truncateNoteContent(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
-}

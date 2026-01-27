@@ -12,27 +12,19 @@ import (
 	"time"
 
 	"mu/app"
-	"mu/apps"
 	"mu/auth"
 	"mu/blog"
 	"mu/data"
 	"mu/news"
 	"mu/video"
+	"mu/widgets"
 )
 
 //go:embed cards.json
 var f embed.FS
 
 var Template = `<div id="home">
-  <div class="home-left">
-    <div id="agent-hero">
-      <form id="agent-form" action="/agent" method="GET">
-        <input type="text" name="task" id="agent-input" placeholder="What do you want to do?" autocomplete="off">
-        <button type="submit">Go</button>
-      </form>
-    </div>
-    %s
-  </div>
+  <div class="home-left">%s</div>
   <div class="home-right">%s</div>
 </div>`
 
@@ -95,8 +87,8 @@ func Load() {
 		"blog":     blog.Preview,
 		"chat":     ChatCard,
 		"news":     news.Headlines,
-		"markets":  apps.MarketsHTML,
-		"reminder": apps.ReminderHTML,
+		"markets":  widgets.MarketsHTML,
+		"reminder": widgets.ReminderHTML,
 		"video":    video.Latest,
 	}
 
@@ -213,31 +205,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var leftHTML []string
 	var rightHTML []string
 
-	// Check if user is logged in
-	var userID string
+	// Check if user is logged in (for future use)
 	sess, _ := auth.TrySession(r)
-	if sess != nil {
-		userID = sess.Account
-
-		// Show user's widget apps as cards
-		widgetIDs := apps.GetUserWidgets(userID)
-		for _, widgetID := range widgetIDs {
-			if a := apps.GetApp(widgetID); a != nil {
-				// Render as embedded iframe widget
-				widgetHTML := fmt.Sprintf(`<iframe src="/apps/%s/embed" style="width: 100%%; height: 200px; border: none; border-radius: 4px;"></iframe>`,
-					a.ID)
-				rightHTML = append(rightHTML, app.Card("widget-"+a.ID, a.Name, widgetHTML+app.Link("Open", "/apps/"+a.ID)))
-			}
-		}
-
-		// Show user's own apps preview
-		appsPreview := apps.GetUserAppsPreview(userID, 5)
-		if appsPreview != "" {
-			leftHTML = append(leftHTML, app.Card("apps", "Apps", appsPreview+app.Link("More", "/apps")))
-		} else {
-			leftHTML = append(leftHTML, app.Card("apps", "Apps", `<p class="text-muted">Create micro apps with AI</p>`+app.Link("Create", "/apps")))
-		}
-	}
+	_ = sess
 
 	for _, card := range Cards {
 		content := card.CachedHTML
