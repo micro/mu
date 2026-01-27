@@ -1237,7 +1237,6 @@ function initVoiceAssistant() {
   const voiceIcon = document.getElementById('voice-icon');
   
   if (!voiceIndicator || !voiceIcon) {
-    console.log('Voice assistant: Voice header element not found');
     return;
   }
   
