@@ -255,7 +255,8 @@ Rules:
 5. For Islamic/religious questions, use reminder.today for Quran verses or hadith
 6. For news, use news.search - always cite the source
 7. For listing capabilities, use tools.list then final_answer
-8. IMPORTANT: When providing final_answer, include the ACTUAL DATA from tool results - don't just say you found them, SHOW them
+8. For creating apps, use apps.create with a clear name and description - the user will be redirected to the app builder
+9. IMPORTANT: When providing final_answer, include the ACTUAL DATA from tool results - don't just say you found them, SHOW them
 
 Current user: %s`, baseSystemPrompt, toolsJSON, a.userID)
 }

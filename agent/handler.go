@@ -55,12 +55,16 @@ func handleAgentUI(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	
 	<div class="agent-output" id="output">
 		<div class="examples">
-			<strong>Try saying:</strong>
+			<strong>Build something:</strong>
 			<ul>
-				<li onclick="setTask(this)"><code>Play bingo songs</code></li>
+				<li onclick="setTask(this)"><code>Create a habit tracker app</code></li>
+				<li onclick="setTask(this)"><code>Build an app to track my expenses</code></li>
+				<li onclick="setTask(this)"><code>Make a simple calculator</code></li>
+			</ul>
+			<strong style="margin-top: 12px; display: block;">Or ask me to:</strong>
+			<ul>
 				<li onclick="setTask(this)"><code>Find news about AI</code></li>
 				<li onclick="setTask(this)"><code>What's the price of Bitcoin?</code></li>
-				<li onclick="setTask(this)"><code>Create an app that tracks my water intake</code></li>
 				<li onclick="setTask(this)"><code>Show my apps</code></li>
 			</ul>
 		</div>
@@ -168,6 +172,10 @@ function showResult(result) {
 		if (result.action === 'navigate' && result.url) {
 			if (result.url.includes('/video?id=')) {
 				html += '<p style="margin-top:15px"><a href="' + result.url + '" class="action-link" style="display:inline-block;padding:8px 12px;background:var(--btn-primary,#000);color:white;text-decoration:none;border-radius:6px;">▶ Play Video</a></p>';
+				setTimeout(() => { window.location.href = result.url; }, 1500);
+			} else if (result.url.includes('/apps/') && result.url.includes('/develop')) {
+				// App created - auto-redirect to develop page
+				html += '<p style="margin-top:15px"><a href="' + result.url + '" class="action-link" style="display:inline-block;padding:8px 12px;background:var(--btn-primary,#000);color:white;text-decoration:none;border-radius:6px;">🚀 Open App Builder</a></p>';
 				setTimeout(() => { window.location.href = result.url; }, 1500);
 			} else {
 				html += '<p><a href="' + result.url + '" class="action-link">→ Go there now</a></p>';

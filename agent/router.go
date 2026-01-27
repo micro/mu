@@ -45,10 +45,10 @@ func ClassifyIntent(input string) *Intent {
 		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "flow.list"}
 	}
 	
-	// Coding/app building - route to Anthropic
+	// Coding/app building - route to Anthropic with apps.create hint
 	if containsAny(lower, []string{"build", "create", "make", "develop", "code", "app", "application", "website", "program"}) &&
 		containsAny(lower, []string{"app", "application", "website", "tool", "program", "script", "page"}) {
-		return &Intent{Type: IntentCoding, Provider: ai.ProviderAnthropic}
+		return &Intent{Type: IntentCoding, Provider: ai.ProviderAnthropic, Tool: "apps.create"}
 	}
 	
 	// Islamic/religious - route to Reminder + Fanar
