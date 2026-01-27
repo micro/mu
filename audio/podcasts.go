@@ -94,10 +94,10 @@ func initPodcasts() {
 // playlistCategory maps playlist names to their category
 var playlistCategory = map[string]string{
 	// Faith
-	"Quran":      "faith",
-	"Prophets":   "faith",
-	"Nasheed":    "faith",
-	"Omar & Hana": "faith",
+	"Quran":      "islam",
+	"Prophets":   "islam",
+	"Nasheed":    "islam",
+	"Omar & Hana": "islam",
 	
 	// Learning
 	"Arabic":     "learn",
@@ -110,14 +110,14 @@ var playlistCategory = map[string]string{
 }
 
 func buildCategories() {
-	// Faith category (Islamic content)
-	faithItems := []CategoryItem{}
+	// Islam category (Islamic content)
+	islamItems := []CategoryItem{}
 	for _, pl := range playlists {
-		if playlistCategory[pl.Name] == "faith" {
+		if playlistCategory[pl.Name] == "islam" {
 			mu.RLock()
 			count := len(videos[pl.Name])
 			mu.RUnlock()
-			faithItems = append(faithItems, CategoryItem{
+			islamItems = append(islamItems, CategoryItem{
 				Name:  pl.Name,
 				Icon:  pl.Icon,
 				Type:  "playlist",
@@ -197,7 +197,7 @@ func buildCategories() {
 	}
 	
 	categories = []Category{
-		{Name: "Faith", Icon: "☪️", Items: faithItems},
+		{Name: "Islam", Icon: "☪️", Items: islamItems},
 		{Name: "Learn", Icon: "📚", Items: learnItems},
 		{Name: "Stories", Icon: "📖", Items: storiesItems},
 		{Name: "Music", Icon: "🎵", Items: musicItems},
