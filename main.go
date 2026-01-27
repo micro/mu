@@ -261,6 +261,14 @@ func main() {
 				r.URL.Path = r.URL.Path[:v-1]
 			}
 
+			// Fast path for static assets - skip all middleware
+			for _, ext := range staticPaths {
+				if strings.HasSuffix(r.URL.Path, ext) {
+					http.DefaultServeMux.ServeHTTP(w, r)
+					return
+				}
+			}
+
 			var token string
 
 			// set via session cookie
