@@ -166,7 +166,6 @@ Anthropics "constitution" defines their values. We use their tool for technical 
 | **mail/** | Email/messaging | Yes - communication |
 | **wallet/** | Credits + crypto | Yes - sustainability |
 | **news/** | RSS aggregation | Yes - curated content |
-| **notes/** | Personal notes | Yes - private utility |
 | **chat/** | Contextual Q&A | Yes - RAG-powered |
 | **video/** | YouTube integration | Maybe - big tech dependency |
 | **blog/** | Microblogging | Maybe - community feature |

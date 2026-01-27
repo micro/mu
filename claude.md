@@ -16,7 +16,6 @@ The Micro Network - simple, useful tools without ads, algorithms, or tracking. L
 No ads, no algorithms, no tracking. Simple tools that respect your time.
 
 ## Core Features
-- **Notes** - Quick capture with tags, pins and search
 - **Mail** - Message other users, receive external email
 - **News** - RSS aggregation with AI summaries
 - **Video** - YouTube without ads/algorithms/shorts
@@ -36,7 +35,6 @@ No ads, no algorithms, no tracking. Simple tools that respect your time.
 
 | Package | Purpose |
 |---------|---------|
-| **notes/** | Personal notes with tags, search |
 | **mail/** | Email (SMTP server + client) |
 | **news/** | RSS aggregation + summaries |
 | **video/** | YouTube search/play |
@@ -94,8 +92,6 @@ BASE_RPC_URL  # Default: https://mainnet.base.org
 
 ### Layout Helpers
 ```go
-app.SearchBar("/notes", "Search notes...", query)
-app.ActionLink("/notes/new", "+ New Note")
 app.Grid(content)   // .card-grid - responsive grid
 app.List(content)   // .card-list - vertical stack  
 app.CardDiv(content)
@@ -104,10 +100,8 @@ app.Empty("No items yet")
 
 ### Element Builders
 ```go
-app.Title("My Note", "/notes/123")
 app.Desc("Description text")
 app.Meta("by author · 2h ago")
-app.Tags([]string{"tag1", "tag2"}, "/notes?tag=")
 ```
 
 ## Crypto Wallet

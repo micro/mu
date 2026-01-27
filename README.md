@@ -17,7 +17,6 @@ Mu is a collection of tools for everyday use. While other platforms monetize you
 - **Chat** - Group discussions
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
-- **Notes** - Quick capture with tags, pins, and search
 - **Mail** - Private messaging & email
 - **Audio** - Podcasts and audio content
 - **Wallet** - Credits and crypto payments
@@ -32,7 +31,6 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] Blog - Micro blogging
 - [x] Chat - Discussion rooms
 - [x] News - RSS news feed
-- [x] Notes - Personal notes
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
 - [x] Wallet - Crypto payments (ETH, USDC, ERC-20)
@@ -44,7 +42,6 @@ Some features are enhanced with AI:
 
 - **News** - Summarize articles
 - **Chat** - Knowledge assistant for discussions
-- **Notes** - Auto-tagging and smart search
 
 ## Screenshots
 

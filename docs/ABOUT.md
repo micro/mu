@@ -37,7 +37,6 @@ Each feature does one thing well:
 - **Chat** — Group discussions
 - **News** — RSS feeds, chronological
 - **Video** — YouTube without ads or shorts
-- **Notes** — Quick capture with tags and search
 - **Mail** — Private messaging & email
 - **Audio** — Podcasts and audio content
 
@@ -64,7 +63,6 @@ Some features are enhanced with AI:
 
 - **News** — Summarize articles
 - **Chat** — Knowledge assistant for discussions
-- **Notes** — Auto-tagging and smart search
 
 AI is a tool, not the product. It helps when useful, stays out of the way otherwise.
 

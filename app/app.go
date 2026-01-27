@@ -212,7 +212,6 @@ var Template = `
           <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
           <a id="nav-mail" href="/mail"><img src="/mail.png"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
           <a href="/news"><img src="/news.png"><span class="label">News</span></a>
-          <a href="/notes"><img src="/notes.png"><span class="label">Notes</span></a>
           <a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
           <a id="nav-wallet" href="/wallet"><img src="/wallet.png"><span class="label">Wallet</span></a>
         </div>

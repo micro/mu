@@ -24,7 +24,6 @@ import (
 	"mu/audio"
 	"mu/mail"
 	"mu/news"
-	"mu/notes"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -69,8 +68,6 @@ func main() {
 	// load the blog
 	blog.Load()
 
-	// load notes
-	notes.Load()
 
 	// load the mail (also configures SMTP and DKIM)
 	mail.Load()
@@ -143,9 +140,6 @@ func main() {
 	// handle comments on posts /post/{id}/comment
 	http.HandleFunc("/post/", blog.CommentHandler)
 
-	// serve notes
-	http.HandleFunc("/notes", notes.Handler)
-	http.HandleFunc("/notes/", notes.Handler)
 
 	// flag content
 	http.HandleFunc("/flag", admin.FlagHandler)
