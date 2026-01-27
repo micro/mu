@@ -9,7 +9,7 @@ import (
 
 // Priority levels for LLM requests
 const (
-	PriorityHigh   = 0 // User-facing chat, agent
+	PriorityHigh   = 0 // User-facing chat
 	PriorityMedium = 1 // Headlines, topic summaries
 	PriorityLow    = 2 // Background article summaries, auto-tagging
 )

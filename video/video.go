@@ -276,7 +276,7 @@ func loadChannels() {
 
 // Load videos
 func Load() {
-	// Register tools
+	// Loaded
 	
 
 	// load channels

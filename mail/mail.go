@@ -63,7 +63,7 @@ type Message struct {
 // Load messages from disk
 // Load messages from disk and configure SMTP/DKIM
 func Load() {
-	// Register tools
+	// Loaded
 	
 
 	b, err := data.LoadFile("mail.json")

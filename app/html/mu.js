@@ -167,55 +167,8 @@ function sendMicroMessage() {
   const query = input.value.trim();
   input.value = '';
   
-  // Add user message
-  const userMsg = document.createElement('div');
-  userMsg.className = 'micro-msg user';
-  userMsg.innerHTML = '<span>' + escapeHtml(query) + '</span>';
-  messages.appendChild(userMsg);
-  
-  // Add loading message
-  const assistantMsg = document.createElement('div');
-  assistantMsg.className = 'micro-msg assistant';
-  assistantMsg.innerHTML = '<span class="loading">Working...</span>';
-  messages.appendChild(assistantMsg);
-  
-  messages.scrollTop = messages.scrollHeight;
-  
-  // Send to agent
-  fetch('/agent/run', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task: query })
-  })
-  .then(r => {
-    if (r.status === 401) {
-      throw new Error('login');
-    }
-    return r.json();
-  })
-  .then(result => {
-    if (result.success && result.answer) {
-      assistantMsg.innerHTML = '<span>' + formatMicroResponse(result.answer) + '</span>';
-      
-      // Handle navigation
-      if (result.action === 'navigate' && result.url) {
-        setTimeout(() => {
-          window.location.href = result.url;
-        }, 1000);
-      }
-    } else {
-      assistantMsg.innerHTML = '<span>' + (result.answer || 'Sorry, I couldn\'t help with that.') + '</span>';
-    }
-    messages.scrollTop = messages.scrollHeight;
-  })
-  .catch(err => {
-    if (err.message === 'login') {
-      assistantMsg.innerHTML = '<span>Please <a href="/login">login</a> to use @micro</span>';
-    } else {
-      assistantMsg.innerHTML = '<span>Something went wrong. Try again.</span>';
-    }
-    messages.scrollTop = messages.scrollHeight;
-  });
+  // Redirect to chat with the query
+  window.location.href = '/chat?prompt=' + encodeURIComponent(query);
 }
 
 function escapeHtml(text) {
@@ -1288,7 +1241,7 @@ function initVoiceAssistant() {
     return;
   }
   
-  // Clicking the mic icon activates voice, clicking @micro text goes to /agent
+  // Clicking the mic icon activates voice
   voiceIcon.style.cursor = 'pointer';
   voiceIcon.onclick = (e) => {
     e.preventDefault();
@@ -1452,66 +1405,10 @@ function resetVoiceState() {
 }
 
 function executeVoiceCommand(command) {
-  console.log('Executing voice command:', command);
+  console.log('Voice command:', command);
   
-  const voiceIcon = document.getElementById('voice-icon');
-  if (voiceIcon) {
-    voiceIcon.textContent = '...';
-    voiceIcon.style.background = '';
-    voiceIcon.style.color = '';
-  }
-  if (voiceIndicator) {
-    voiceIndicator.title = 'Processing: ' + command;
-  }
-
-  // Send to agent
-  fetch('/agent/run', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task: command })
-  })
-  .then(r => r.json())
-  .then(result => {
-    console.log('Agent result:', result);
-    const voiceIcon = document.getElementById('voice-icon');
-    
-    if (result.success) {
-      // Handle navigation actions (like video play)
-      if (result.action === 'navigate' && result.url) {
-        if (voiceIcon) voiceIcon.textContent = '✓';
-        if (voiceIndicator) voiceIndicator.title = result.answer || 'Done!';
-        // Navigate to the URL (video will autoplay)
-        setTimeout(() => {
-          window.location.href = result.url;
-        }, 500);
-        return;
-      }
-      
-      // Show success feedback
-      if (voiceIcon) voiceIcon.textContent = '✓';
-      if (voiceIndicator) voiceIndicator.title = result.answer || 'Done!';
-      
-      // Speak the response if available
-      if (result.answer && 'speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(result.answer.substring(0, 200));
-        utterance.rate = 1.1;
-        speechSynthesis.speak(utterance);
-      }
-    } else {
-      if (voiceIcon) voiceIcon.textContent = '!';
-      if (voiceIndicator) voiceIndicator.title = result.answer || 'Something went wrong';
-    }
-    
-    // Reset after a moment
-    setTimeout(resetVoiceState, 3000);
-  })
-  .catch(err => {
-    console.error('Voice command error:', err);
-    const voiceIcon = document.getElementById('voice-icon');
-    if (voiceIcon) voiceIcon.textContent = '!';
-    if (voiceIndicator) voiceIndicator.title = 'Error processing command';
-    setTimeout(resetVoiceState, 3000);
-  });
+  // Redirect to chat with the voice command
+  window.location.href = '/chat?prompt=' + encodeURIComponent(command);
 
   // Reset state for next command
   voiceWakeDetected = false;
@@ -1614,7 +1511,6 @@ function applyHiddenCards() {
 
 // Available cards that can be shown/hidden
 const availableCards = [
-  { id: 'apps', title: 'Apps' },
   { id: 'news', title: 'News' },
   { id: 'reminder', title: 'Reminder' },
   { id: 'markets', title: 'Markets' },

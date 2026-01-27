@@ -266,7 +266,7 @@ func checkLLMConfig() (provider string, configured bool) {
 		if model == "" {
 			model = "claude-haiku-4"
 		}
-		providers = append(providers, fmt.Sprintf("Anthropic/%s (apps)", model))
+		providers = append(providers, fmt.Sprintf("Anthropic/%s", model))
 	}
 	if os.Getenv("MODEL_API_URL") != "" || os.Getenv("OLLAMA_API_URL") != "" {
 		model := os.Getenv("MODEL_NAME")

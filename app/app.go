@@ -668,7 +668,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p class="text-xl font-bold my-3">From £5</p>
 <p>Top up your wallet</p>
 <p>1 credit = 1p</p>
-<p>News 1p · Video 2p · Chat 3p · Email 4p · Apps 5p</p>
+<p>News 1p · Video 2p · Chat 3p · Email 4p</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
 		content.WriteString(`<p class="mt-4"><a href="/wallet/topup">Top up →</a></p>`)

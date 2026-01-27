@@ -79,7 +79,7 @@ func main() {
 	widgets.Load()
 	wallet.Load()
 
-	// load the home cards (after apps so cards have data)
+	// load the home cards
 	home.Load()
 
 	// load user presence tracking

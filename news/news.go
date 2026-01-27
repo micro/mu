@@ -1315,7 +1315,7 @@ func parseFeed() {
 }
 
 func Load() {
-	// Register tools
+	// Loaded
 	
 
 	// Subscribe to refresh events

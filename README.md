@@ -1,131 +1,50 @@
 # mu
 
-The Micro Network — apps without ads, algorithms, or tracking.
+The Micro Network — simple tools without ads, algorithms, or tracking.
 
 ## Overview
 
-Mu is a collection of micro apps for everyday use. While other platforms monetize your attention with ads and infinite feeds, Mu gives you simple tools that respect your time.
+Mu is a collection of tools for everyday use. While other platforms monetize your attention with ads and infinite feeds, Mu gives you simple utilities that respect your time.
 
 **The problem**: The internet is designed to waste your time. Feeds are infinite, videos autoplay, and everything tracks you.
 
-**The solution**: Small, focused apps that do one thing well. No ads. No algorithms. No tracking.
+**The solution**: Small, focused tools that do one thing well. No ads. No algorithms. No tracking.
 
 ### Features
 
 - **Home** - Your personalized dashboard
-- **Apps** - Build and share micro apps
 - **Blog** - Thoughtful microblogging
-- **Chat** - Group discussions with AI assistance
-- **News** - RSS feeds with summaries
+- **Chat** - Group discussions
+- **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
 - **Notes** - Quick capture with tags, pins, and search
 - **Mail** - Private messaging & email
-- **Agent** - AI assistant that can use all the above
+- **Kids** - Safe video content for children
+- **Wallet** - Credits and crypto payments
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
-
 ## Roadmap
-
-Starting with:
 
 - [x] API - Basic API
 - [x] App - Basic PWA
 - [x] Home - Overview
-- [x] Agent - AI assistant
-- [x] Apps - Micro app builder
 - [x] Blog - Micro blogging
-- [x] Chat - LLM chat UI
+- [x] Chat - Discussion rooms
 - [x] News - RSS news feed
 - [x] Notes - Personal notes
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
 - [x] Wallet - Crypto payments (ETH, USDC, ERC-20)
-- [x] Flows - Automation language
 - [ ] Utilities - QR code scanner, etc
-- [ ] Services - Marketplace of services
 
 ### AI Features
 
 Some features are enhanced with AI:
 
 - **News** - Summarize articles
-- **Chat** - Knowledge assistant for group discussions
-- **Apps** - Generate apps from prompts
-- **Agent** - AI assistant with tool access
+- **Chat** - Knowledge assistant for discussions
 - **Notes** - Auto-tagging and smart search
-- **Flows** - Generate automations from natural language
-
-## Flows
-
-Mu Flow is a human-readable automation language. The agent interprets your request and generates a flow that runs without AI:
-
-```
-every day at 7am:
-    get reminder
-    then search news for "tech"
-    then email to me
-```
-
-### Why Flows?
-
-- **Inspectable** - See exactly what will happen
-- **Editable** - Tweak without re-explaining to AI
-- **Cheap** - Scheduled runs don't burn LLM tokens
-- **Shareable** - Export and share recipes
-
-### Syntax
-
-| Flow Syntax | Tool |
-|-------------|------|
-| `get reminder` | reminder.today |
-| `search news for "query"` | news.search |
-| `email to me` | mail.send |
-| `get btc price` | markets.get_price |
-| `save note "text"` | notes.create |
-
-See [docs/flows](/docs/flows) for full documentation.
-
-## Micro Apps
-
-Mu includes a micro app builder. Create single-page web apps with persistent storage.
-
-### Features
-
-- **Build Apps** - Create apps manually or with AI assistance
-- **Persist Data** - Apps can store user data via the Mu SDK
-- **Share** - Make apps public for others to use
-
-### SDK
-
-Apps have access to the Mu SDK (`window.mu`):
-
-```javascript
-// Persistent storage (per-user, per-app)
-await mu.db.get('key');
-await mu.db.set('key', value);
-await mu.db.delete('key');
-await mu.db.list();
-
-// User context
-mu.user.id       // User ID or null
-mu.user.name     // Display name or null
-mu.user.loggedIn // Boolean
-
-// App context
-mu.app.id        // App's unique ID
-mu.app.name      // App's name
-```
-
-### Featured Apps
-
-- [/apps/todo](https://mu.xyz/apps/todo) - Task management
-- [/apps/timer](https://mu.xyz/apps/timer) - Focus/pomodoro timer
-- [/apps/expenses](https://mu.xyz/apps/expenses) - Expense tracking
-
-### Documentation
-
-See [SDK Documentation](docs/SDK.md) for full API reference.
 
 ## Screenshots
 
@@ -137,7 +56,7 @@ See [SDK Documentation](docs/SDK.md) for full API reference.
 
 ## Concepts
 
-Basic concepts. The app contains **cards** displayed on the home screen. These are a sort of summary or overview. Each card links to a **micro app** or an external website. For example the latest Video "more" links to the /video page with videos by channel and search, whereas the markets card redirects to an external app. 
+The app contains **cards** displayed on the home screen. These are a summary or overview. Each card links to a feature page or external website. For example the Video card links to the /video page with videos by channel and search.
 
 ## Hosting
 
@@ -273,7 +192,6 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 **Features**
 - [Messaging](docs/MESSAGING_SYSTEM.md) - Email and messaging setup
 - [Wallet & Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
-- [Micro Apps SDK](docs/SDK.md) - Build apps with the Mu SDK
 
 **Reference**
 - [Configuration](docs/ENVIRONMENT_VARIABLES.md) - All environment variables

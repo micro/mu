@@ -174,15 +174,10 @@ All user-configurable data lives in JSON files:
 
 Part of building societal fabric is monetary transaction. Future plans include:
 - **Wallet** - Credits for usage, payments
-- **Services Marketplace** - Backend services accessible via chat or app
-- **Agent System** - AI agents that fulfill work by calling services
+- **Services Marketplace** - Backend services accessible via chat
 - **MUCP Protocol** - Micro Communication Protocol for distributed Mu instances (not ActivityPub)
 
 ### Economic Model
 
 Users can self-host or use the hosted version at mu.xyz. Pay-as-you-go credits support development while keeping the platform free for casual use.
-
-## Agents
-
-More on this soon.
 

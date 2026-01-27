@@ -115,7 +115,7 @@ func CreateNote(userID, title, content string, tags []string) (*Note, error) {
 	return note, nil
 }
 
-// QuickNote creates a note with just content (for agent use)
+// QuickNote creates a note with just content
 func QuickNote(userID, content string) (*Note, error) {
 	return CreateNote(userID, "", content, nil)
 }

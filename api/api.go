@@ -736,48 +736,6 @@ func init() {
 		},
 	})
 
-	// Agent endpoint
-	Endpoints = append(Endpoints, &Endpoint{
-		Name:        "Agent Run",
-		Path:        "/agent/run",
-		Method:      "POST",
-		Description: "Run an AI agent task",
-		Params: []*Param{
-			{
-				Name:        "task",
-				Value:       "string",
-				Description: "Task description for the agent",
-			},
-		},
-		Response: []*Value{
-			{
-				Type: "JSON",
-				Params: []*Param{
-					{
-						Name:        "success",
-						Value:       "boolean",
-						Description: "Whether the task completed",
-					},
-					{
-						Name:        "answer",
-						Value:       "string",
-						Description: "Agent response",
-					},
-					{
-						Name:        "action",
-						Value:       "string",
-						Description: "Action type (e.g., 'navigate')",
-					},
-					{
-						Name:        "url",
-						Value:       "string",
-						Description: "URL for navigation actions",
-					},
-				},
-			},
-		},
-	})
-
 	// Flag endpoint
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "Flag Content",

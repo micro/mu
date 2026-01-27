@@ -24,9 +24,6 @@ var (
 	CostVideoWatch    = getEnvInt("CREDIT_COST_VIDEO_WATCH", 0) // Free - no value added over YouTube
 	CostChatQuery     = getEnvInt("CREDIT_COST_CHAT", 3)
 	CostChatRoom      = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
-	CostAppCreate     = getEnvInt("CREDIT_COST_APP_CREATE", 5)
-	CostAppModify     = getEnvInt("CREDIT_COST_APP_MODIFY", 3)
-	CostAgentRun      = getEnvInt("CREDIT_COST_AGENT", 5)
 	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
 	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
@@ -46,9 +43,6 @@ const (
 	OpVideoWatch    = "video_watch"
 	OpChatQuery     = "chat_query"
 	OpChatRoom      = "chat_room"
-	OpAppCreate     = "app_create"
-	OpAppModify     = "app_modify"
-	OpAgentRun      = "agent_run"
 	OpExternalEmail = "external_email"
 	OpTopup         = "topup"
 	OpRefund        = "refund"
@@ -124,7 +118,7 @@ func init() {
 	json.Unmarshal(b, &dailyUsage)
 }
 
-// Load registers wallet tools (called from main)
+// Load initializes wallet
 func Load() {
 	// Wallet loaded
 }
@@ -355,12 +349,6 @@ func GetOperationCost(operation string) int {
 		return CostChatQuery
 	case OpChatRoom:
 		return CostChatRoom
-	case OpAppCreate:
-		return CostAppCreate
-	case OpAppModify:
-		return CostAppModify
-	case OpAgentRun:
-		return CostAgentRun
 	case OpExternalEmail:
 		return CostExternalEmail
 	default:

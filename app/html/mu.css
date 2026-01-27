@@ -757,41 +757,6 @@ td {
    HOME PAGE
    ======================================== */
 
-/* Agent hero on home page */
-#agent-hero {
-  border-bottom: 1px solid var(--card-border, #e0e0e0);
-}
-
-#agent-form {
-  display: flex;
-  gap: 8px;
-}
-
-#agent-form input {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 14px;
-  border: 1px solid var(--card-border, #e0e0e0);
-  border-radius: var(--border-radius, 6px);
-  min-width: 0;
-}
-
-#agent-form input:focus {
-  outline: none;
-  border-color: var(--text-muted, #999);
-}
-
-#agent-form button {
-  flex-shrink: 0;
-  background: transparent;
-  color: var(--text-secondary, #555);
-  border: 1px solid var(--card-border, #e0e0e0);
-}
-
-#agent-form button:hover {
-  background: var(--hover-background, #fafafa);
-  border-color: var(--text-muted, #999);
-}
 
 #home {
   margin-bottom: 25px;
@@ -882,37 +847,6 @@ td {
   border: none;
   padding: 0;
   background: transparent;
-}
-
-/* Apps preview on home page */
-.apps-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.apps-preview .app-preview-item {
-  display: inline-block;
-  padding: 8px 14px;
-  background: var(--hover-background, #fafafa);
-  border: 1px solid var(--card-border, #e8e8e8);
-  border-radius: var(--border-radius, 6px);
-  font-size: 14px;
-  font-weight: 500;
-  transition: border-color var(--transition-fast);
-}
-
-.apps-preview .app-preview-item:hover {
-  border-color: var(--accent-color, #0d7377);
-  text-decoration: none;
-}
-
-.apps-preview .app-preview-more {
-  display: inline-block;
-  padding: 8px 14px;
-  font-size: 13px;
-  color: var(--text-muted, #888);
 }
 
 /* Switch to single column when there's not enough space for two columns + sidebar */
@@ -2353,21 +2287,6 @@ a.highlight {
   .home-left .card h3 {
     font-size: 14px;
     margin-bottom: 8px;
-  }
-  
-  /* Compact apps preview on mobile - show only 4 items */
-  .home-left .apps-preview {
-    gap: 6px;
-    margin-bottom: 8px;
-  }
-  
-  .home-left .apps-preview .app-preview-item {
-    padding: 5px 10px;
-    font-size: 12px;
-  }
-  
-  .home-left .apps-preview .app-preview-item:nth-child(n+5) {
-    display: none;
   }
   
   .home-left .card-link {
