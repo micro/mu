@@ -37,18 +37,28 @@ func ClassifyIntent(input string) *Intent {
 		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "tools.list"}
 	}
 	
-	// Flows/automations
-	// Flows/automations - scheduling, reminders, recurring tasks
-	if containsAny(lower, []string{"every day", "every morning", "every hour", "every evening", "automate", "automation", "schedule", "recurring", "flow", "remind me", "reminder at", "notify me", "alert me", "daily", "weekly"}) {
+	// Action-driven: system does something in background (flows)
+	// Keywords: remind, alert, notify, send me, every day/morning, schedule
+	if containsAny(lower, []string{"remind me", "alert me", "notify me", "send me", "email me", "tell me when", "let me know when"}) {
 		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "flow.create"}
 	}
-	if containsAny(lower, []string{"my flows", "list flows", "show flows", "automations"}) {
+	if containsAny(lower, []string{"every day", "every morning", "every hour", "every evening", "every week", "daily", "weekly", "hourly", "schedule", "recurring", "automate", "automation"}) {
+		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "flow.create"}
+	}
+	if containsAny(lower, []string{"my flows", "list flows", "show flows", "automations", "my reminders", "scheduled"}) {
 		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "flow.list"}
 	}
 	
-	// Coding/app building - route to Anthropic with apps.create hint
-	if containsAny(lower, []string{"build", "create", "make", "develop", "code", "app", "application", "website", "program"}) &&
-		containsAny(lower, []string{"app", "application", "website", "tool", "program", "script", "page"}) {
+	// Intent-driven: user actively does something (apps)
+	// Keywords: track, log, record, calculate, manage, organize
+	if containsAny(lower, []string{"track", "log", "record", "calculate", "manage", "organize", "list my", "keep track"}) &&
+		!containsAny(lower, []string{"remind", "alert", "notify", "send me"}) {
+		return &Intent{Type: IntentCoding, Provider: ai.ProviderAnthropic, Tool: "apps.create"}
+	}
+	
+	// Explicit app building
+	if containsAny(lower, []string{"build", "create", "make", "develop", "code"}) &&
+		containsAny(lower, []string{"app", "application", "website", "tool", "program", "page"}) {
 		return &Intent{Type: IntentCoding, Provider: ai.ProviderAnthropic, Tool: "apps.create"}
 	}
 	
