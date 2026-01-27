@@ -837,5 +837,18 @@ func Serve() http.Handler {
 		log.Fatal(err)
 	}
 
-	return http.FileServer(http.FS(htmlContent))
+	fileServer := http.FileServer(http.FS(htmlContent))
+	
+	// Wrap with cache headers for static assets
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set cache headers for static assets
+		if strings.HasSuffix(r.URL.Path, ".css") ||
+			strings.HasSuffix(r.URL.Path, ".js") ||
+			strings.HasSuffix(r.URL.Path, ".png") ||
+			strings.HasSuffix(r.URL.Path, ".ico") ||
+			strings.HasSuffix(r.URL.Path, ".webmanifest") {
+			w.Header().Set("Cache-Control", "public, max-age=86400") // 1 day
+		}
+		fileServer.ServeHTTP(w, r)
+	})
 }
