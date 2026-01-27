@@ -164,6 +164,7 @@ func renderFlowList(w http.ResponseWriter, userID string, errorMsg string) {
 			b.WriteString(`<div class="card">`)
 			b.WriteString(`<div class="card-title">` + t.Name + `</div>`)
 			b.WriteString(`<div class="card-desc">` + t.Description + `</div>`)
+			b.WriteString(`<pre class="mt-2" style="background: #f5f5f5; padding: 0.5rem; border-radius: 4px; font-size: 0.85em; overflow-x: auto;">` + escapeHTML(t.Source) + `</pre>`)
 			b.WriteString(`<form method="POST" class="mt-2">`)
 			b.WriteString(`<input type="hidden" name="action" value="create">`)
 			b.WriteString(`<input type="hidden" name="name" value="` + t.Name + `">`)
