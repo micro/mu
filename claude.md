@@ -666,7 +666,7 @@ The agent classifies intent before making any LLM calls:
 
 | Pattern | Intent | Provider | Tool Hint |
 |---------|--------|----------|----------|
-| build/create + app | Coding | Anthropic | - |
+| build/create + app | Coding | Anthropic | apps.create |
 | quran/hadith/islam/halal | Islamic | Fanar | reminder.today |
 | arabic/arab/middle east | Arabic | Fanar | - |
 | news + search | News | Anthropic | news.search |
