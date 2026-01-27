@@ -38,7 +38,8 @@ func ClassifyIntent(input string) *Intent {
 	}
 	
 	// Flows/automations
-	if containsAny(lower, []string{"every day", "every morning", "every hour", "automate", "automation", "schedule", "recurring", "flow", "remind me every"}) {
+	// Flows/automations - scheduling, reminders, recurring tasks
+	if containsAny(lower, []string{"every day", "every morning", "every hour", "every evening", "automate", "automation", "schedule", "recurring", "flow", "remind me", "reminder at", "notify me", "alert me", "daily", "weekly"}) {
 		return &Intent{Type: IntentTask, Provider: ai.ProviderAnthropic, Tool: "flow.create"}
 	}
 	if containsAny(lower, []string{"my flows", "list flows", "show flows", "automations"}) {

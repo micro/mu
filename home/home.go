@@ -27,7 +27,7 @@ var Template = `<div id="home">
   <div class="home-left">
     <div id="agent-hero">
       <form id="agent-form" action="/agent" method="GET">
-        <input type="text" name="task" id="agent-input" placeholder="Build me an app that..." autocomplete="off">
+        <input type="text" name="task" id="agent-input" placeholder="What do you want to do?" autocomplete="off">
         <button type="submit">Go</button>
       </form>
     </div>

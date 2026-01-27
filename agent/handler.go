@@ -55,17 +55,12 @@ func handleAgentUI(w http.ResponseWriter, r *http.Request, sess *auth.Session) {
 	
 	<div class="agent-output" id="output">
 		<div class="examples">
-			<strong>Build something:</strong>
+			<strong>Try:</strong>
 			<ul>
-				<li onclick="setTask(this)"><code>Create a habit tracker app</code></li>
-				<li onclick="setTask(this)"><code>Build an app to track my expenses</code></li>
-				<li onclick="setTask(this)"><code>Make a simple calculator</code></li>
-			</ul>
-			<strong style="margin-top: 12px; display: block;">Or ask me to:</strong>
-			<ul>
+				<li onclick="setTask(this)"><code>I want to track my daily water intake</code></li>
+				<li onclick="setTask(this)"><code>Help me log my expenses</code></li>
 				<li onclick="setTask(this)"><code>Find news about AI</code></li>
 				<li onclick="setTask(this)"><code>What's the price of Bitcoin?</code></li>
-				<li onclick="setTask(this)"><code>Show my apps</code></li>
 			</ul>
 		</div>
 	</div>
