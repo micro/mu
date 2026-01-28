@@ -369,11 +369,15 @@ func handleList(w http.ResponseWriter, r *http.Request, name string) {
 		</div>`, vids[0].ID, name))
 	}
 
-	content.WriteString(`<div class="audio-videos">`)
-	for i, v := range vids {
-		content.WriteString(renderVideoCardWithIndex(v, name, i))
+	if len(vids) == 0 {
+		content.WriteString(`<p class="text-muted">No videos available. YouTube API key required.</p>`)
+	} else {
+		content.WriteString(`<div class="audio-videos">`)
+		for i, v := range vids {
+			content.WriteString(renderVideoCardWithIndex(v, name, i))
+		}
+		content.WriteString(`</div>`)
 	}
-	content.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest(playlist.Name, fmt.Sprintf("%s ", playlist.Name), content.String(), r)
 	w.Write([]byte(html))
@@ -613,7 +617,14 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 				width: '100%%',
 				height: '300',
 				videoId: videoId,
-				playerVars: { autoplay: %d, rel: 0, modestbranding: 1 },
+				host: 'https://www.youtube-nocookie.com',
+				playerVars: { 
+					autoplay: %d, 
+					rel: 0, 
+					modestbranding: 1,
+					origin: window.location.origin,
+					enablejsapi: 1
+				},
 				events: { 'onStateChange': onPlayerStateChange }
 			});
 		}
