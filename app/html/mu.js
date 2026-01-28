@@ -2,18 +2,22 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v125';
+var VERSION = 'v126';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
 var STATIC_CACHE = [
   '/mu.png',
   '/home.png',
+  '/audio.png',
   '/chat.png',
+  '/mail.png',
   '/post.png',
   '/news.png',
   '/video.png',
+  '/wallet.png',
   '/account.png',
+  '/logout.png',
   '/icon-192.png',
   '/icon-512.png'
 ];

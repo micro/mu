@@ -113,7 +113,7 @@ HD wallet for deposits:
 - Credits: 1 credit = 1 penny
 
 ## UI State
-- Service worker version: v125
+- Service worker version: v126
 - Sidebar: scrollable nav + fixed bottom (account/logout)
 - Chat: public rooms by topic
 
