@@ -27,7 +27,6 @@ import (
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
-	"mu/tunnel"
 	"mu/widgets"
 )
 
@@ -112,7 +111,6 @@ func main() {
 		"/status":          false, // Public - server health status
 		"/docs":            false, // Public - documentation
 		"/about":           false, // Public - about page
-		"/tunnel":          true,  // Auth required - web proxy
 	}
 
 	// Static assets should not require authentication
@@ -170,9 +168,6 @@ func main() {
 	// wallet - credits and payments
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
-
-	// web tunnel - browse through this server
-	http.HandleFunc("/tunnel", tunnel.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
@@ -348,15 +343,6 @@ func main() {
 
 	// Start SMTP server if enabled (disabled by default)
 	mail.StartSMTPServerIfEnabled()
-
-	// Start WireGuard VPN server if endpoint is configured
-	if os.Getenv("VPN_ENDPOINT") != "" {
-		if err := tunnel.StartWireGuard(); err != nil {
-			app.Log("main", "Failed to start WireGuard: %v", err)
-		} else {
-			defer tunnel.StopWireGuard()
-		}
-	}
 
 	// Log initial memory usage
 	var m runtime.MemStats
