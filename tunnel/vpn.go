@@ -117,6 +117,11 @@ func getClientConfig(userID string) (*ClientConfig, error) {
 	
 	os.WriteFile(clientFile, []byte(cfg.PrivateKey+"\n"+cfg.PublicKey+"\n"+cfg.Address+"\n"), 0600)
 	
+	// Register peer with WireGuard if running
+	if WireGuardRunning() {
+		AddPeer(cfg.PublicKey, cfg.Address)
+	}
+	
 	return cfg, nil
 }
 
@@ -147,6 +152,15 @@ func VPNSection(r *http.Request) string {
 	<h2>VPN (Full Network Tunnel)</h2>
 	<p class="desc">Route ALL device traffic through this server using WireGuard.</p>
 	<p style="margin-top:16px;"><a href="/login" style="color:#007bff;">Login</a> to get your personal VPN configuration.</p>
+</div>`
+	}
+
+	// Check if WireGuard server is running
+	if !WireGuardRunning() {
+		return `
+<div class="vpn-section">
+	<h2>VPN (Full Network Tunnel)</h2>
+	<p class="desc">VPN server not configured. Set VPN_ENDPOINT environment variable to enable.</p>
 </div>`
 	}
 	

@@ -349,6 +349,15 @@ func main() {
 	// Start SMTP server if enabled (disabled by default)
 	mail.StartSMTPServerIfEnabled()
 
+	// Start WireGuard VPN server if endpoint is configured
+	if os.Getenv("VPN_ENDPOINT") != "" {
+		if err := tunnel.StartWireGuard(); err != nil {
+			app.Log("main", "Failed to start WireGuard: %v", err)
+		} else {
+			defer tunnel.StopWireGuard()
+		}
+	}
+
 	// Log initial memory usage
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
