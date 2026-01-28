@@ -27,6 +27,7 @@ import (
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
+	"mu/tunnel"
 	"mu/widgets"
 )
 
@@ -111,6 +112,7 @@ func main() {
 		"/status":          false, // Public - server health status
 		"/docs":            false, // Public - documentation
 		"/about":           false, // Public - about page
+		"/tunnel":          true,  // Auth required - web proxy
 	}
 
 	// Static assets should not require authentication
@@ -169,7 +171,8 @@ func main() {
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
 
-
+	// web tunnel - browse through this server
+	http.HandleFunc("/tunnel", tunnel.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
