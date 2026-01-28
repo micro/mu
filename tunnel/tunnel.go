@@ -122,20 +122,23 @@ func showForm(w http.ResponseWriter, r *http.Request, errMsg string) {
 		errorDiv = fmt.Sprintf(`<div class="error">%s</div>`, errMsg)
 	}
 
-	content := fmt.Sprintf(`
+	webTunnel := fmt.Sprintf(`
 		<div class="tunnel-form">
 			<h2>Web Tunnel</h2>
-			<p class="desc">Browse through this server. Traffic exits from the UK.</p>
+			<p class="desc">Browse websites through this server. Good for basic pages, but JavaScript-heavy sites may not work.</p>
 			%s
 			<form method="get" action="/tunnel">
 				<input type="text" name="url" placeholder="Enter URL (e.g., example.com)" autocomplete="off" autofocus>
 				<button type="submit">Go</button>
 			</form>
 		</div>
+		<hr style="margin:32px 0;border:none;border-top:1px solid #333;">
 	`, errorDiv)
 
+	vpnSection := VPNSection(r)
+
 	pageHTML := app.Page(app.PageOpts{
-		Content: content,
+		Content: webTunnel + vpnSection,
 	})
 	w.Write([]byte(app.RenderHTML("Tunnel", "Browse through the UK", pageHTML)))
 }
