@@ -34,7 +34,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
 - [x] Wallet - Crypto payments
-- [ ] Utilities - QR code scanner, etc
+- [ ] Services - Marketplace, etc
 
 ### AI Features
 
@@ -42,7 +42,7 @@ Some features are enhanced with AI:
 
 - **Blog** - Auto-tag topics
 - **News** - Summarize articles
-- **Chat** - Knowledge assistant for discussions
+- **Chat** - Knowledge assistant
 
 ## Screenshots
 
