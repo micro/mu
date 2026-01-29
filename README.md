@@ -14,7 +14,7 @@ Mu is a collection of tools for everyday use. While other platforms monetize you
 
 - **Home** - Your personalized dashboard
 - **Blog** - Thoughtful microblogging
-- **Chat** - Discuss with AI assistant
+- **Chat** - Discuss topics with AI
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
 - **Mail** - Private messaging & email
