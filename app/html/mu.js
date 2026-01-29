@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v134';
+var VERSION = 'v135';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -193,15 +193,15 @@ function showTopicSummariesOverlay() {
     }
   });
   
-  // Create collapsible overlay at top of messages
+  // Create collapsible overlay at top of messages (collapsed by default)
   const overlay = document.createElement('div');
   overlay.className = 'topics-overlay';
   overlay.innerHTML = `
     <div class="topics-header" onclick="toggleTopicsOverlay()">
       <span>Today's Topics</span>
-      <span id="topics-toggle-icon">▼</span>
+      <span id="topics-toggle-icon">▶</span>
     </div>
-    <div id="topics-content" class="topics-content">
+    <div id="topics-content" class="topics-content" style="display: none;">
       ${summariesHtml}
     </div>
   `;
