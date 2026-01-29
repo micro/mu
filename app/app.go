@@ -21,6 +21,9 @@ import (
 	"github.com/gomarkdown/markdown/parser"
 )
 
+// Version for cache busting static assets
+const Version = "v135"
+
 // ANSI color codes
 const (
 	colorReset  = "\033[0m"
@@ -191,8 +194,8 @@ var Template = `
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="/mu.css">
-    <script src="/mu.js"></script>
+    <link rel="stylesheet" href="/mu.css?` + Version + `">
+    <script src="/mu.js?` + Version + `"></script>
   </head>
   <body%s>
     <div id="head">
@@ -262,7 +265,7 @@ var LoginTemplate = `<html lang="en">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/mu.css">
+    <link rel="stylesheet" href="/mu.css?` + Version + `">
   </head>
   <body>
     <div id="head">
@@ -295,7 +298,7 @@ var SignupTemplate = `<html lang="en">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/mu.css">
+    <link rel="stylesheet" href="/mu.css?` + Version + `">
   </head>
   <body>
     <div id="head">
