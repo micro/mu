@@ -33,7 +33,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] News - RSS news feed
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
-- [x] Wallet - Crypto payments (ETH, USDC, ERC-20)
+- [x] Wallet - Crypto payments
 - [ ] Utilities - QR code scanner, etc
 
 ### AI Features
