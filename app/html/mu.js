@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v128';
+var VERSION = 'v129';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -446,9 +446,8 @@ function loadChat() {
       }
     }, 500);
   } else if (!roomId && !autoPrompt) {
-    // No room specified - show topic summaries but keep input form for general questions
-    showAllTopicSummaries();
-    // Load any previous general conversation
+    // No room specified - this is the general chat
+    // Load any previous conversation from localStorage
     loadContext();
     loadMessages();
   }
