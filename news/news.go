@@ -1080,11 +1080,21 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	}
 	summary := getSummary(post)
 
-	// Add Read Summary link on the right side of source
+	// Add Read Summary link and Save link
 	summaryLink := ""
 	if post.ID != "" {
 		summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, post.ID)
 	}
+	
+	// Add Save link
+	escTitle := strings.ReplaceAll(post.Title, "'", "\\'")
+	escDesc := strings.ReplaceAll(post.Description, "'", "\\'")
+	if len(escDesc) > 150 {
+		escDesc = escDesc[:150] + "..."
+	}
+	escURL := strings.ReplaceAll(post.URL, "'", "\\'")
+	saveLink := fmt.Sprintf(` · <a href="#" data-save-id="news-%s" onclick="saveItem('news','%s','%s','%s','%s','%s'); return false;">Save</a>`,
+		post.ID, post.ID, escTitle, escDesc, escURL, getDomain(post.URL))
 
 	if len(post.Image) > 0 {
 		return fmt.Sprintf(`
@@ -1097,8 +1107,8 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
-	  <div class="summary">%s%s</div>
-</div>`, itemGUID, categoryBadge, post.URL, post.Image, post.Title, post.Description, summary, summaryLink)
+	  <div class="summary">%s%s%s</div>
+</div>`, itemGUID, categoryBadge, post.URL, post.Image, post.Title, post.Description, summary, summaryLink, saveLink)
 	}
 
 	return fmt.Sprintf(`
@@ -1111,8 +1121,8 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
-	  <div class="summary">%s%s</div>
-</div>`, itemGUID, categoryBadge, post.URL, post.Title, post.Description, summary, summaryLink)
+	  <div class="summary">%s%s%s</div>
+</div>`, itemGUID, categoryBadge, post.URL, post.Title, post.Description, summary, summaryLink, saveLink)
 }
 
 // processFeedCategory fetches and processes all items from a single feed category

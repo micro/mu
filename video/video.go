@@ -621,10 +621,21 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			Thumbnail:   thumbnailURL,
 		}
 
+		// Escape for JS
+		escTitle := strings.ReplaceAll(item.Snippet.Title, "'", "\\'")
+		escDesc := item.Snippet.Description
+		if len(escDesc) > 150 {
+			escDesc = escDesc[:150]
+		}
+		escDesc = strings.ReplaceAll(escDesc, "'", "\\'")
+		escDesc = strings.ReplaceAll(escDesc, "\n", " ")
+		saveLink := fmt.Sprintf(` · <a href="#" data-save-id="video-%s" onclick="saveItem('video','%s','%s','%s','','%s'); return false;">Save</a>`,
+			id, id, escTitle, escDesc, item.Snippet.ChannelTitle)
+
 		// All links are now internal
 		html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a></div></div>`,
-			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category)
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a>%s</div></div>`,
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category, saveLink)
 		sb.WriteString(html)
 		res.Html = html
 

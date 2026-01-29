@@ -927,6 +927,30 @@ async function flagPost(postId) {
   }
 }
 
+// Save/bookmark functionality
+async function saveItem(type, id, title, content, url, source) {
+  const result = await apiCall('/api/saved', { 
+    body: { type, id, title, content, url, source } 
+  });
+  if (result.ok) {
+    showToast('Saved', 'success');
+    // Update link text
+    const link = document.querySelector(`[data-save-id="${type}-${id}"]`);
+    if (link) {
+      link.textContent = 'Saved ✓';
+      link.onclick = null;
+    }
+  }
+}
+
+async function unsaveItem(type, id) {
+  const result = await fetch(`/api/saved?type=${type}&id=${id}`, { method: 'DELETE' });
+  if (result.ok) {
+    showToast('Removed', 'success');
+    location.reload();
+  }
+}
+
 
 
 
