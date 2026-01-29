@@ -898,6 +898,14 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							}
 							ragContext = append(ragContext, contextStr)
 						}
+						
+						// Supplement with web search if RAG is thin
+						if len(ragEntries) < 2 && ai.ShouldWebSearch(content) {
+							app.Log("chat", "[WebSearch] RAG thin, searching web for: %s", searchContent)
+							if webResults, err := ai.WebSearch(searchContent); err == nil && len(webResults) > 0 {
+								ragContext = append(ragContext, ai.FormatSearchResults(webResults)...)
+							}
+						}
 						app.Log("chat", "RAG: found %d results for '%s'", len(ragEntries), searchContent)
 
 						prompt := &ai.Prompt{
@@ -1456,6 +1464,15 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 			contextStr += fmt.Sprintf(" (Source: %s)", url)
 		}
 		ragContext = append(ragContext, contextStr)
+	}
+
+	// If RAG results are thin and query suggests need for current info, do web search
+	if len(ragEntries) < 2 && ai.ShouldWebSearch(q) {
+		app.Log("chat", "[WebSearch] RAG thin (%d results), searching web for: %s", len(ragEntries), searchQuery)
+		if webResults, err := ai.WebSearch(searchQuery); err == nil && len(webResults) > 0 {
+			ragContext = append(ragContext, ai.FormatSearchResults(webResults)...)
+			app.Log("chat", "[WebSearch] Added %d web results", len(webResults))
+		}
 	}
 
 	// Debug: Log what we found
