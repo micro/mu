@@ -435,22 +435,12 @@ func updateCacheUnlocked() {
 			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
 		}
 
-		// Escape content for JS
-		escContent := strings.ReplaceAll(content, "`", "")
-		escContent = strings.ReplaceAll(escContent, "\n", " ")
-		if len(escContent) > 200 {
-			escContent = escContent[:200] + "..."
-		}
-		escTitle := strings.ReplaceAll(title, "'", "\\'")
-		saveLink := fmt.Sprintf(` · <a href="#" data-save-id="blog-%s" onclick="saveItem('blog','%s','%s','%s','',''); return false;">Save</a>`,
-			post.ID, post.ID, escTitle, escContent)
-
 		item := fmt.Sprintf(`<div class="post-item">
 		%s
 		<h3><a href="/post?id=%s">%s</a></h3>
-		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s%s</div>
+		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 		<div>%s</div>
-	</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, saveLink, content)
+	</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
 		preview = append(preview, item)
 	}
 
@@ -534,22 +524,12 @@ func updateCacheUnlocked() {
 			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
 		}
 
-		// Escape content for JS
-		escContent := strings.ReplaceAll(content, "`", "")
-		escContent = strings.ReplaceAll(escContent, "\n", " ")
-		if len(escContent) > 200 {
-			escContent = escContent[:200] + "..."
-		}
-		escTitle := strings.ReplaceAll(title, "'", "\\'")
-		saveLink := fmt.Sprintf(` · <a href="#" data-save-id="blog-%s" onclick="saveItem('blog','%s','%s','%s','',''); return false;">Save</a>`,
-			post.ID, post.ID, escTitle, escContent)
-
 		item := fmt.Sprintf(`<div class="post-item">
 			%s
 			<h3><a href="/post?id=%s">%s</a></h3>
-			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s%s</div>
+			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 			<div>%s</div>
-		</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, saveLink, content)
+		</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
 		fullList = append(fullList, item)
 	}
 

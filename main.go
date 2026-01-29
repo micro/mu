@@ -24,7 +24,6 @@ import (
 	"mu/audio"
 	"mu/mail"
 	"mu/news"
-	"mu/saved"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -175,10 +174,6 @@ func main() {
 
 	// serve mail inbox
 	http.HandleFunc("/mail", mail.Handler)
-
-	// serve saved/bookmarks
-	http.HandleFunc("/saved", saved.Handler)
-	http.HandleFunc("/api/saved", saved.APIHandler)
 
 	http.HandleFunc("/markets", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "https://coinmarketcap.com/", 302)

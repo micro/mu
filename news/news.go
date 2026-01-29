@@ -366,13 +366,6 @@ func generateNewsHtml() string {
 				summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, post.ID)
 			}
 
-			// Add Save link
-			escTitle := strings.ReplaceAll(post.Title, "'", "\\'")
-			escDesc := strings.ReplaceAll(cleanDescription, "'", "\\'")
-			escURL := strings.ReplaceAll(post.URL, "'", "\\'")
-			saveLink := fmt.Sprintf(` · <a href="#" data-save-id="news-%s" onclick="saveItem('news','%s','%s','%s','%s','%s'); return false;">Save</a>`,
-				post.ID, post.ID, escTitle, escDesc, escURL, getDomain(post.URL))
-
 			var val string
 			if len(post.Image) > 0 {
 				categoryBadge := ""
@@ -387,8 +380,8 @@ func generateNewsHtml() string {
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s%s%s</div>
-				`, post.ID, categoryBadge, post.Image, link, post.Title, cleanDescription, summary, summaryLink, saveLink)
+	  <div class="summary">%s%s</div>
+				`, post.ID, categoryBadge, post.Image, link, post.Title, cleanDescription, summary, summaryLink)
 			} else {
 				categoryBadge := ""
 				if post.Category != "" {
@@ -402,8 +395,8 @@ func generateNewsHtml() string {
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s%s%s</div>
-				`, post.ID, categoryBadge, link, post.Title, cleanDescription, summary, summaryLink, saveLink)
+	  <div class="summary">%s%s</div>
+				`, post.ID, categoryBadge, link, post.Title, cleanDescription, summary, summaryLink)
 			}
 
 			val += `</div>`
@@ -1087,21 +1080,11 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	}
 	summary := getSummary(post)
 
-	// Add Read Summary link and Save link
+	// Add Read Summary link on the right side of source
 	summaryLink := ""
 	if post.ID != "" {
 		summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, post.ID)
 	}
-	
-	// Add Save link
-	escTitle := strings.ReplaceAll(post.Title, "'", "\\'")
-	escDesc := strings.ReplaceAll(post.Description, "'", "\\'")
-	if len(escDesc) > 150 {
-		escDesc = escDesc[:150] + "..."
-	}
-	escURL := strings.ReplaceAll(post.URL, "'", "\\'")
-	saveLink := fmt.Sprintf(` · <a href="#" data-save-id="news-%s" onclick="saveItem('news','%s','%s','%s','%s','%s'); return false;">Save</a>`,
-		post.ID, post.ID, escTitle, escDesc, escURL, getDomain(post.URL))
 
 	if len(post.Image) > 0 {
 		return fmt.Sprintf(`
@@ -1114,8 +1097,8 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
-	  <div class="summary">%s%s%s</div>
-</div>`, itemGUID, categoryBadge, post.URL, post.Image, post.Title, post.Description, summary, summaryLink, saveLink)
+	  <div class="summary">%s%s</div>
+</div>`, itemGUID, categoryBadge, post.URL, post.Image, post.Title, post.Description, summary, summaryLink)
 	}
 
 	return fmt.Sprintf(`
@@ -1128,8 +1111,8 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
-	  <div class="summary">%s%s%s</div>
-</div>`, itemGUID, categoryBadge, post.URL, post.Title, post.Description, summary, summaryLink, saveLink)
+	  <div class="summary">%s%s</div>
+</div>`, itemGUID, categoryBadge, post.URL, post.Title, post.Description, summary, summaryLink)
 }
 
 // processFeedCategory fetches and processes all items from a single feed category
