@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v129';
+var VERSION = 'v130';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -308,14 +308,17 @@ function setContext() {
 }
 
 function loadMessages() {
-  console.log("loading messages");
+  console.log("loading messages, context length:", context.length);
 
   var d = document.getElementById("messages");
-
+  if (!d) return;
+  
+  // Clear and rebuild from context
+  d.innerHTML = '';
+  
   context.forEach(function(data) {
-    console.log(data);
     d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
-    d.innerHTML += `<div class="message"><span class="llm">AI</span>${data["answer"]}</div>`;
+    d.innerHTML += `<div class="message"><span class="micro">micro</span>${data["answer"]}</div>`;
   });
 
   d.scrollTop = d.scrollHeight;
