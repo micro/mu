@@ -187,8 +187,9 @@ function showTopicSummariesOverlay() {
   topics.forEach(t => {
     if (summaries[t]) {
       summariesHtml += `<div class="summary-item">
-        <a href="/chat?id=chat_${encodeURIComponent(t)}" class="topic-link"><strong>${t}</strong></a>
+        <strong class="topic-name">${t}</strong>
         <p>${summaries[t]}</p>
+        <a href="/chat?id=chat_${encodeURIComponent(t)}" class="join-link">Join discussion →</a>
       </div>`;
     }
   });

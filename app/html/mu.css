@@ -991,14 +991,9 @@ body:has(#messages) #chat-back-link {
   border-bottom: none;
 }
 
-.topics-content .topic-link {
-  color: #1a73e8;
-  text-decoration: none;
+.topics-content .topic-name {
+  color: #333;
   font-size: 13px;
-}
-
-.topics-content .topic-link:hover {
-  text-decoration: underline;
 }
 
 .topics-content .summary-item p {
@@ -1006,6 +1001,18 @@ body:has(#messages) #chat-back-link {
   color: #555;
   font-size: 13px;
   line-height: 1.4;
+}
+
+.topics-content .join-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: #666;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.topics-content .join-link:hover {
+  color: #333;
 }
 
 .summary-card {
