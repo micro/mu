@@ -719,23 +719,27 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				room.Broadcast <- userMsg
 
 				// Check if micro should respond:
-				// 1. User mentioned @micro - start conversation
-				// 2. User is in active micro conversation (within 2 min of last micro reply)
-				// 3. User is alone in the room (micro keeps them company)
+				// For item-specific rooms (news_, video_, post_), ALWAYS respond - these are AI discussions
+				// For topic chat rooms (chat_), respond when mentioned or alone (public room behavior)
 				contentLower := strings.ToLower(content)
 				mentionedMicro := strings.Contains(contentLower, "@micro")
 				inActiveConvo := client.InMicroConvo && time.Since(client.LastMicroReply) < 2*time.Minute
+
+				// Item-specific rooms always get AI responses (this is "discuss with AI")
+				isItemRoom := strings.HasPrefix(room.ID, "news_") ||
+					strings.HasPrefix(room.ID, "video_") ||
+					strings.HasPrefix(room.ID, "post_")
 
 				// Check if user is alone in a topic chat room
 				room.mutex.RLock()
 				isAlone := strings.HasPrefix(room.ID, "chat_") && len(room.Clients) == 1
 				room.mutex.RUnlock()
 
-				if mentionedMicro || isAlone {
+				if mentionedMicro || isAlone || isItemRoom {
 					client.InMicroConvo = true
 				}
 
-				if mentionedMicro || inActiveConvo || isAlone {
+				if mentionedMicro || inActiveConvo || isAlone || isItemRoom {
 					go func() {
 						// Pattern matching for predictable queries - skip LLM for direct lookups
 						if response := handlePatternMatch(content, room); response != "" {

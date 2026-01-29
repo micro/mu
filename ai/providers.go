@@ -97,22 +97,22 @@ func generate(prompt *Prompt) (string, error) {
 		return generateOllama(url, model, messages)
 	}
 
-	// Default provider priority: Fanar > Anthropic > Ollama
-	// (Fanar first to conserve Anthropic credits)
-	if key := os.Getenv("FANAR_API_KEY"); key != "" {
-		url := os.Getenv("FANAR_API_URL")
-		if url == "" {
-			url = "https://api.fanar.qa"
-		}
-		return generateFanar(url, key, messages, prompt.Priority)
-	}
-
+	// Default provider priority: Anthropic > Fanar > Ollama
+	// (Anthropic first for quality, Fanar as fallback for Arabic/cultural content)
 	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
 		model := os.Getenv("ANTHROPIC_MODEL")
 		if model == "" {
 			model = "claude-3-haiku-20240307"
 		}
 		return generateAnthropic(key, model, systemPromptText, messages)
+	}
+
+	if key := os.Getenv("FANAR_API_KEY"); key != "" {
+		url := os.Getenv("FANAR_API_URL")
+		if url == "" {
+			url = "https://api.fanar.qa"
+		}
+		return generateFanar(url, key, messages, prompt.Priority)
 	}
 
 	// Default to Ollama

@@ -1077,12 +1077,12 @@ document.addEventListener('DOMContentLoaded', function() {
           const contextMsg = document.createElement('div');
           contextMsg.className = 'context-message';
           
-          // Build summary toggle if we have summary content
+          // Show summary expanded by default for item discussions
           let summaryHtml = '';
           if (currentRoomData.summary) {
             const summaryId = 'room-summary';
-            summaryHtml = `<br><a href="#" class="summary-toggle" onclick="toggleSummary('${summaryId}'); return false;">Show summary</a>` +
-              `<span id="${summaryId}" class="summary-content" style="display: none; color: #666;"><br>${currentRoomData.summary}</span>`;
+            summaryHtml = `<br><a href="#" class="summary-toggle" onclick="toggleSummary('${summaryId}'); return false;">Hide summary</a>` +
+              `<span id="${summaryId}" class="summary-content" style="display: block; color: #666;"><br>${currentRoomData.summary}</span>`;
           }
           
           contextMsg.innerHTML = 'Discussion: <strong>' + currentRoomData.title + '</strong>' + 
