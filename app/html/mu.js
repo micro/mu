@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v126';
+var VERSION = 'v127';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -293,7 +293,8 @@ function switchTopic(t) {
 }
 
 function loadContext() {
-  const ctx = sessionStorage.getItem('context');
+  // Use localStorage for persistence across sessions
+  const ctx = localStorage.getItem('mu_chat_context');
   if (ctx == null || ctx == undefined || ctx == "") {
     context = [];
     return;
@@ -302,7 +303,8 @@ function loadContext() {
 }
 
 function setContext() {
-  sessionStorage.setItem('context', JSON.stringify(context));
+  // Use localStorage for persistence across sessions
+  localStorage.setItem('mu_chat_context', JSON.stringify(context));
 }
 
 function loadMessages() {
@@ -446,6 +448,11 @@ function loadChat() {
   } else if (!roomId && !autoPrompt) {
     // No room specified - show all topic summaries with join links
     showAllTopicSummaries();
+    // Hide the input form on landing page - users should pick a topic first
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+      chatForm.style.display = 'none';
+    }
   }
   
   // Auto-submit prompt if provided (legacy support)
@@ -900,24 +907,24 @@ async function flagPost(postId) {
 let roomWs;
 let currentRoomId = null;
 
-function getSessionStorageKey(roomId) {
-  return 'chat_room_' + roomId;
+function getRoomStorageKey(roomId) {
+  return 'mu_chat_room_' + roomId;
 }
 
-function saveMessageToSession(roomId, msg) {
-  const key = getSessionStorageKey(roomId);
-  const messages = JSON.parse(sessionStorage.getItem(key) || '[]');
+function saveMessageToStorage(roomId, msg) {
+  const key = getRoomStorageKey(roomId);
+  const messages = JSON.parse(localStorage.getItem(key) || '[]');
   messages.push(msg);
-  // Keep last 50 messages in session
-  if (messages.length > 50) {
+  // Keep last 100 messages per room
+  if (messages.length > 100) {
     messages.shift();
   }
-  sessionStorage.setItem(key, JSON.stringify(messages));
+  localStorage.setItem(key, JSON.stringify(messages));
 }
 
-function loadMessagesFromSession(roomId) {
-  const key = getSessionStorageKey(roomId);
-  return JSON.parse(sessionStorage.getItem(key) || '[]');
+function loadMessagesFromStorage(roomId) {
+  const key = getRoomStorageKey(roomId);
+  return JSON.parse(localStorage.getItem(key) || '[]');
 }
 
 function connectRoomWebSocket(roomId) {
@@ -959,7 +966,7 @@ function connectRoomWebSocket(roomId) {
     if (msg.type === 'user_list') {
       updateUserList(msg.users);
     } else {
-      saveMessageToSession(roomId, msg);
+      saveMessageToStorage(roomId, msg);
       displayRoomMessage(msg, true);
     }
   };
