@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v127';
+var VERSION = 'v128';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -446,13 +446,11 @@ function loadChat() {
       }
     }, 500);
   } else if (!roomId && !autoPrompt) {
-    // No room specified - show all topic summaries with join links
+    // No room specified - show topic summaries but keep input form for general questions
     showAllTopicSummaries();
-    // Hide the input form on landing page - users should pick a topic first
-    const chatForm = document.getElementById('chat-form');
-    if (chatForm) {
-      chatForm.style.display = 'none';
-    }
+    // Load any previous general conversation
+    loadContext();
+    loadMessages();
   }
   
   // Auto-submit prompt if provided (legacy support)
