@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	marketsMutex  sync.RWMutex
-	marketsHTML   string
-	cachedPrices  map[string]float64
+	marketsMutex sync.RWMutex
+	marketsHTML  string
+	cachedPrices map[string]float64
 )
 
 var tickers = []string{"GBP", "UNI", "ETH", "BTC", "PAXG"}
@@ -85,14 +85,14 @@ func refreshMarkets() {
 
 func fetchPrices() map[string]float64 {
 	app.Log("markets", "Fetching prices")
-	
+
 	rsp, err := http.Get("https://api.coinbase.com/v2/exchange-rates?currency=USD")
 	if err != nil {
 		app.Log("markets", "Error getting crypto prices: %v", err)
 		return nil
 	}
 	defer rsp.Body.Close()
-	
+
 	b, _ := ioutil.ReadAll(rsp.Body)
 	var res map[string]interface{}
 	json.Unmarshal(b, &res)
@@ -191,7 +191,7 @@ func MarketsHTML() string {
 func GetAllPrices() map[string]float64 {
 	marketsMutex.RLock()
 	defer marketsMutex.RUnlock()
-	
+
 	result := make(map[string]float64)
 	for k, v := range cachedPrices {
 		result[k] = v

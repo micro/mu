@@ -1,7 +1,6 @@
 package blog
 
 import (
-
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
-
 )
 
 //go:embed topics.json
@@ -132,7 +130,6 @@ func parseTags(input string) string {
 // Load initializes the blog package and sets up event subscriptions
 func Load() {
 	// Register tools
-	
 
 	// Load topics from embedded JSON
 	if err := json.Unmarshal(topicsJSON, &topics); err != nil {
@@ -1688,4 +1685,3 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Redirect back to the post
 	http.Redirect(w, r, "/post?id="+postID, http.StatusSeeOther)
 }
-

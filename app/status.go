@@ -42,15 +42,15 @@ type StatusResponse struct {
 
 // DiskStatus represents disk usage
 type DiskStatus struct {
-	UsedGB    float64 `json:"used_gb"`
-	TotalGB   float64 `json:"total_gb"`
-	Percent   float64 `json:"percent"`
+	UsedGB  float64 `json:"used_gb"`
+	TotalGB float64 `json:"total_gb"`
+	Percent float64 `json:"percent"`
 }
 
 // IndexStatus represents search index status
 type IndexStatus struct {
-	Entries    int  `json:"entries"`
-	Embeddings int  `json:"embeddings"`
+	Entries      int  `json:"entries"`
+	Embeddings   int  `json:"embeddings"`
 	VectorSearch bool `json:"vector_search"`
 }
 
@@ -257,7 +257,7 @@ func formatDKIMDetails(enabled bool, domain, selector string) string {
 
 func checkLLMConfig() (provider string, configured bool) {
 	var providers []string
-	
+
 	if os.Getenv("FANAR_API_KEY") != "" {
 		providers = append(providers, "Fanar (default)")
 	}
@@ -275,7 +275,7 @@ func checkLLMConfig() (provider string, configured bool) {
 		}
 		providers = append(providers, fmt.Sprintf("Ollama/%s", model))
 	}
-	
+
 	if len(providers) == 0 {
 		return "Not configured", false
 	}
@@ -285,13 +285,13 @@ func checkLLMConfig() (provider string, configured bool) {
 // getDiskUsage returns disk usage for the data directory
 func getDiskUsage() (used, total uint64, percent float64) {
 	dir := os.ExpandEnv("$HOME/.mu/data")
-	
+
 	// Try to get disk stats using syscall
 	var stat syscall.Statfs_t
 	if err := syscall.Statfs(dir, &stat); err != nil {
 		return 0, 0, 0
 	}
-	
+
 	total = stat.Blocks * uint64(stat.Bsize)
 	free := stat.Bfree * uint64(stat.Bsize)
 	used = total - free
@@ -372,8 +372,6 @@ func renderStatusHTML(status StatusResponse) string {
 		statusClass = "status-error"
 		statusText = "Issues Detected"
 	}
-
-
 
 	sb.WriteString(`<div class="status-page">`)
 

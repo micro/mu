@@ -110,7 +110,7 @@ func FormatSearchResults(results []SearchResult) []string {
 // based on keywords suggesting current events or specific data needs
 func ShouldWebSearch(query string) bool {
 	query = strings.ToLower(query)
-	
+
 	// Keywords suggesting need for current/external info
 	keywords := []string{
 		"current", "today", "latest", "recent", "now",
@@ -121,12 +121,12 @@ func ShouldWebSearch(query string) bool {
 		"compare", "versus", "vs",
 		"best", "top", "recommend",
 	}
-	
+
 	for _, kw := range keywords {
 		if strings.Contains(query, kw) {
 			return true
 		}
 	}
-	
+
 	return false
 }

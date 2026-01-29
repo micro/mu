@@ -115,8 +115,6 @@ func AboutHandler(w http.ResponseWriter, r *http.Request) {
 func renderIndex(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
-
-
 	content.WriteString(`<p>Documentation for using and self-hosting Mu.</p>`)
 
 	// Group by category

@@ -26,11 +26,11 @@ var (
 	fanarMaxPerMin  = 35
 
 	// Anthropic cache stats
-	cacheStatsMu          sync.Mutex
-	cacheHits             int
-	cacheMisses           int
-	cacheReadTokens       int
-	cacheCreationTokens   int
+	cacheStatsMu        sync.Mutex
+	cacheHits           int
+	cacheMisses         int
+	cacheReadTokens     int
+	cacheCreationTokens int
 )
 
 // generate sends a prompt to the configured LLM provider

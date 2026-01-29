@@ -40,7 +40,7 @@ func refreshReminder() {
 
 func fetchReminder() {
 	app.Log("reminder", "Fetching reminder")
-	
+
 	resp, err := http.Get("https://reminder.dev/api/latest")
 	if err != nil {
 		app.Log("reminder", "Error fetching: %v", err)

@@ -586,13 +586,13 @@ func init() {
 						Description: "Session type (account, token, anonymous)",
 					},
 					{
-					Name:        "account",
-					Value:       "string",
-					Description: "Account username if authenticated",
+						Name:        "account",
+						Value:       "string",
+						Description: "Account username if authenticated",
+					},
 				},
 			},
 		},
-	},
 	})
 
 	// Wallet endpoint

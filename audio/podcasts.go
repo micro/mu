@@ -44,44 +44,44 @@ type Category struct {
 
 // CategoryItem is either a playlist or podcast
 type CategoryItem struct {
-	Name     string
-	Icon     string
-	Type     string // "playlist" or "podcast"
-	ID       string // playlist ID or podcast name
-	Count    int
+	Name  string
+	Icon  string
+	Type  string // "playlist" or "podcast"
+	ID    string // playlist ID or podcast name
+	Count int
 }
 
 var (
-	podcastMu   sync.RWMutex
-	podcasts    []Podcast
-	episodes    map[string][]Episode // podcast name -> episodes
-	categories  []Category
+	podcastMu  sync.RWMutex
+	podcasts   []Podcast
+	episodes   map[string][]Episode // podcast name -> episodes
+	categories []Category
 )
 
 // Default podcasts - curated for children
 var defaultPodcasts = []Podcast{
 	// Learn - Science & Nature
 	{Name: "Science", Icon: "🔬", Category: "learn", FeedURL: "https://feeds.publicradio.org/public_feeds/brains-on/rss/rss"}, // Brains On
-	{Name: "Nature", Icon: "🌍", Category: "learn", FeedURL: "https://rss.art19.com/wow-in-the-world"},                       // Wow in the World
-	
+	{Name: "Nature", Icon: "🌍", Category: "learn", FeedURL: "https://rss.art19.com/wow-in-the-world"},                        // Wow in the World
+
 	// Stories
-	{Name: "Stories", Icon: "📚", Category: "stories", FeedURL: "https://rss.art19.com/stories-podcast"},                               // Stories Podcast
+	{Name: "Stories", Icon: "📚", Category: "stories", FeedURL: "https://rss.art19.com/stories-podcast"},         // Stories Podcast
 	{Name: "Circle Round", Icon: "🌍", Category: "stories", FeedURL: "https://rss.wbur.org/circleround/podcast"}, // WBUR - folktales from around the world
 }
 
 func initPodcasts() {
 	episodes = make(map[string][]Episode)
 	podcasts = defaultPodcasts
-	
+
 	// Load cached episodes from disk (instant startup)
 	loadEpisodesCache()
-	
+
 	// Build categories
 	buildCategories()
-	
+
 	// Initial fetch (refresh in background)
 	go refreshPodcasts()
-	
+
 	// Refresh every 6 hours
 	go func() {
 		for {
@@ -94,15 +94,15 @@ func initPodcasts() {
 // playlistCategory maps playlist names to their category
 var playlistCategory = map[string]string{
 	// Faith
-	"Quran":      "islam",
-	"Prophets":   "islam",
-	"Nasheed":    "islam",
+	"Quran":       "islam",
+	"Prophets":    "islam",
+	"Nasheed":     "islam",
 	"Omar & Hana": "islam",
-	
+
 	// Learning
-	"Arabic":     "learn",
-	"Space":      "learn",
-	
+	"Arabic": "learn",
+	"Space":  "learn",
+
 	// Music/Fun (default for unlisted)
 	"Disney":     "music",
 	"Bluey":      "music",
@@ -126,7 +126,7 @@ func buildCategories() {
 			})
 		}
 	}
-	
+
 	// Learn category (educational playlists + podcasts)
 	learnItems := []CategoryItem{}
 	// Add learning playlists first
@@ -159,7 +159,7 @@ func buildCategories() {
 			})
 		}
 	}
-	
+
 	// Stories category (podcasts)
 	storiesItems := []CategoryItem{}
 	for _, p := range podcasts {
@@ -176,7 +176,7 @@ func buildCategories() {
 			})
 		}
 	}
-	
+
 	// Music category (fun playlists)
 	// Music category - includes anything not in faith or learn (default)
 	musicItems := []CategoryItem{}
@@ -195,7 +195,7 @@ func buildCategories() {
 			})
 		}
 	}
-	
+
 	categories = []Category{
 		{Name: "Islam", Icon: "☪️", Items: islamItems},
 		{Name: "Learn", Icon: "📚", Items: learnItems},
@@ -207,20 +207,20 @@ func buildCategories() {
 func refreshPodcasts() {
 	app.Log("audio", "Refreshing podcasts...")
 	parser := gofeed.NewParser()
-	
+
 	for _, p := range podcasts {
 		feed, err := parser.ParseURL(p.FeedURL)
 		if err != nil {
 			app.Log("audio", "Error fetching %s: %v", p.Name, err)
 			continue
 		}
-		
+
 		var eps []Episode
 		for i, item := range feed.Items {
 			if i >= 50 { // Limit to 50 episodes
 				break
 			}
-			
+
 			// Find audio enclosure
 			audioURL := ""
 			for _, enc := range item.Enclosures {
@@ -232,7 +232,7 @@ func refreshPodcasts() {
 			if audioURL == "" {
 				continue
 			}
-			
+
 			// Get image
 			image := ""
 			if item.Image != nil {
@@ -240,19 +240,19 @@ func refreshPodcasts() {
 			} else if feed.Image != nil {
 				image = feed.Image.URL
 			}
-			
+
 			// Get duration
 			duration := ""
 			if item.ITunesExt != nil && item.ITunesExt.Duration != "" {
 				duration = item.ITunesExt.Duration
 			}
-			
+
 			// Published date
 			published := ""
 			if item.PublishedParsed != nil {
 				published = item.PublishedParsed.Format("Jan 2, 2006")
 			}
-			
+
 			eps = append(eps, Episode{
 				ID:          fmt.Sprintf("%s-%d", p.Name, i),
 				Title:       item.Title,
@@ -264,14 +264,14 @@ func refreshPodcasts() {
 				Podcast:     p.Name,
 			})
 		}
-		
+
 		podcastMu.Lock()
 		episodes[p.Name] = eps
 		podcastMu.Unlock()
-		
+
 		app.Log("audio", "Loaded %d episodes for %s", len(eps), p.Name)
 	}
-	
+
 	// Rebuild categories with updated counts
 	buildCategories()
 
@@ -345,20 +345,20 @@ func handlePodcast(w http.ResponseWriter, r *http.Request, name string) {
 			break
 		}
 	}
-	
+
 	if podcast == nil {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	var content strings.Builder
 	content.WriteString(`<p><a href="/audio">← Back</a></p>`)
 	content.WriteString(fmt.Sprintf(`<div class="audio-header"><span class="audio-icon-lg">%s</span></div>`, podcast.Icon))
-	
+
 	podcastMu.RLock()
 	eps := episodes[name]
 	podcastMu.RUnlock()
-	
+
 	if len(eps) == 0 {
 		content.WriteString(`<p class="text-muted">No episodes available</p>`)
 	} else {
@@ -366,14 +366,14 @@ func handlePodcast(w http.ResponseWriter, r *http.Request, name string) {
 		content.WriteString(fmt.Sprintf(`<div class="audio-play-all">
 			<a href="/audio/episode/%s?idx=0" class="btn">▶ Play All</a>
 		</div>`, name))
-		
+
 		content.WriteString(`<div class="audio-episodes">`)
 		for i, ep := range eps {
 			content.WriteString(renderEpisodeCard(ep, name, i))
 		}
 		content.WriteString(`</div>`)
 	}
-	
+
 	html := app.RenderHTMLForRequest(podcast.Name, podcast.Name+" podcast", content.String(), r)
 	w.Write([]byte(html))
 }
@@ -383,7 +383,7 @@ func renderEpisodeCard(ep Episode, podcastName string, idx int) string {
 	if image == "" {
 		image = "/placeholder.png"
 	}
-	
+
 	meta := ep.Published
 	if ep.Duration != "" {
 		if meta != "" {
@@ -391,7 +391,7 @@ func renderEpisodeCard(ep Episode, podcastName string, idx int) string {
 		}
 		meta += ep.Duration
 	}
-	
+
 	return fmt.Sprintf(`
 		<a href="/audio/episode/%s?idx=%d" class="audio-episode-card">
 			<img src="%s" alt="%s">
@@ -416,18 +416,18 @@ func handleEpisode(w http.ResponseWriter, r *http.Request, podcastName string) {
 		fmt.Sscanf(idxStr, "%d", &idx)
 	}
 	autoplay := r.URL.Query().Get("auto") == "1"
-	
+
 	podcastMu.RLock()
 	eps := episodes[podcastName]
 	podcastMu.RUnlock()
-	
+
 	if idx < 0 || idx >= len(eps) {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	ep := eps[idx]
-	
+
 	// Find podcast for icon
 	icon := "🎧"
 	for _, p := range podcasts {
@@ -436,7 +436,7 @@ func handleEpisode(w http.ResponseWriter, r *http.Request, podcastName string) {
 			break
 		}
 	}
-	
+
 	// Calculate prev/next
 	var prevURL, nextURL string
 	if idx > 0 {
@@ -445,17 +445,17 @@ func handleEpisode(w http.ResponseWriter, r *http.Request, podcastName string) {
 	if idx < len(eps)-1 {
 		nextURL = fmt.Sprintf("/audio/episode/%s?idx=%d&auto=1", podcastName, idx+1)
 	}
-	
+
 	backURL := "/audio/podcast/" + podcastName
-	
+
 	renderEpisodePlayer(w, r, &ep, icon, backURL, prevURL, nextURL, autoplay)
 }
 
 func renderEpisodePlayer(w http.ResponseWriter, r *http.Request, ep *Episode, icon, backURL, prevURL, nextURL string, autoplay bool) {
 	var content strings.Builder
-	
+
 	content.WriteString(fmt.Sprintf(`<p><a href="%s">← Back</a></p>`, backURL))
-	
+
 	// Episode image
 	image := ep.Image
 	if image == "" {
@@ -466,7 +466,7 @@ func renderEpisodePlayer(w http.ResponseWriter, r *http.Request, ep *Episode, ic
 		<h3>%s</h3>
 		<p class="text-muted">%s</p>
 	</div>`, image, html.EscapeString(ep.Title), html.EscapeString(ep.Title), ep.Published))
-	
+
 	// Audio player
 	autoplayAttr := ""
 	if autoplay {
@@ -474,7 +474,7 @@ func renderEpisodePlayer(w http.ResponseWriter, r *http.Request, ep *Episode, ic
 	}
 	content.WriteString(fmt.Sprintf(`<audio id="audioPlayer" src="%s" %s style="width:100%%; margin: 1rem 0;"></audio>`,
 		ep.AudioURL, autoplayAttr))
-	
+
 	// Controls
 	playBtnIcon := "▶"
 	if autoplay {
@@ -488,20 +488,20 @@ func renderEpisodePlayer(w http.ResponseWriter, r *http.Request, ep *Episode, ic
 	if nextURL != "" {
 		nextBtn = fmt.Sprintf(`<a href="%s" class="btn btn-secondary">⏭</a>`, nextURL)
 	}
-	
+
 	content.WriteString(fmt.Sprintf(`<div class="audio-controls">
 		%s
 		<button onclick="togglePlay()" id="playBtn">%s</button>
 		%s
 	</div>`, prevBtn, playBtnIcon, nextBtn))
-	
+
 	// Description
 	if ep.Description != "" {
 		content.WriteString(fmt.Sprintf(`<div class="audio-episode-desc mt-3">
 			<p>%s</p>
 		</div>`, html.EscapeString(ep.Description)))
 	}
-	
+
 	// JavaScript
 	content.WriteString(fmt.Sprintf(`<script>
 		let playing = %t;
@@ -530,7 +530,7 @@ func renderEpisodePlayer(w http.ResponseWriter, r *http.Request, ep *Episode, ic
 			}
 		}
 	</script>`, autoplay, nextURL))
-	
+
 	html := app.RenderHTMLForRequest(ep.Title, "Playing: "+ep.Title, content.String(), r)
 	w.Write([]byte(html))
 }

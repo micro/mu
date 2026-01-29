@@ -277,7 +277,6 @@ func loadChannels() {
 // Load videos
 func Load() {
 	// Loaded
-	
 
 	// load channels
 	loadChannels()
@@ -1154,4 +1153,3 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	w.Write([]byte(currentHtml))
 }
-

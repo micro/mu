@@ -60,14 +60,14 @@ var defaultPlaylists = []Playlist{
 	// Faith
 	{Name: "Quran", Icon: "📖", ID: "PLYZxc42QNctXcCQZyZs48hAN90YJgnOnJ"},    // Mishary Rashid - Quran for Children
 	{Name: "Prophets", Icon: "📜", ID: "PLYZxc42QNctVxfJpCjwoG-K0QXwqUzrXb"}, // FreeQuranEducation - Prophet Stories
-	{Name: "Nasheed", Icon: "🎵", ID: "PLF48FC0BCA476D6EC"},                 // Zain Bhikha
-	
+	{Name: "Nasheed", Icon: "🎵", ID: "PLF48FC0BCA476D6EC"},                  // Zain Bhikha
+
 	// Learning
 	{Name: "Arabic", Icon: "🔤", ID: "PLEaGEZnOHpUPBcDnCCXkmgsgRDICnhYwT"}, // Learn Arabic for Children
-	{Name: "Space", Icon: "🚀", ID: "PL3EED4C1D684D3ADF"},                   // Crash Course Kids - Space
-	
+	{Name: "Space", Icon: "🚀", ID: "PL3EED4C1D684D3ADF"},                  // Crash Course Kids - Space
+
 	// Fun
-	{Name: "Disney", Icon: "✨", ID: "PLRfhDHeBRBEjfvtPOpTe9AHMJCGr0oDm1"},     // Disney Soundtracks
+	{Name: "Disney", Icon: "✨", ID: "PLRfhDHeBRBEjfvtPOpTe9AHMJCGr0oDm1"}, // Disney Soundtracks
 }
 
 func init() {
@@ -175,7 +175,7 @@ func loadVideosCache() {
 	videos = cached
 	mu.Unlock()
 	app.Log("audio", "Loaded videos cache from disk (%d playlists)", len(cached))
-	
+
 	// Rebuild categories with loaded counts
 	RebuildCategories()
 }
@@ -282,7 +282,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 	for _, cat := range categories {
 		content.WriteString(fmt.Sprintf(`<h3 class="audio-section-title">%s %s</h3>`, cat.Icon, cat.Name))
 		content.WriteString(`<div class="audio-categories">`)
-		
+
 		for _, item := range cat.Items {
 			var href string
 			if item.Type == "playlist" {
@@ -298,7 +298,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 				</a>`,
 				href, item.Icon, item.Name, item.Count))
 		}
-		
+
 		// Add "My Playlists" and "New" button in Music section
 		if cat.Name == "Music" {
 			// User's saved playlists
@@ -320,7 +320,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 					sp.ID, icon, html.EscapeString(sp.Name), len(sp.Videos)))
 			}
 			mu.RUnlock()
-			
+
 			// New playlist button
 			content.WriteString(`
 				<a href="/audio/playlists" class="audio-category-btn audio-category-btn-dashed">
@@ -328,7 +328,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 					<span class="audio-label">New</span>
 				</a>`)
 		}
-		
+
 		content.WriteString(`</div>`)
 	}
 
@@ -556,19 +556,18 @@ func truncate(s string, max int) string {
 	return s[:max-3] + "..."
 }
 
-
 func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, backURL, prevURL, nextURL string, autoplay bool) {
 	var content strings.Builder
-	
+
 	// Back link at top like other pages
 	content.WriteString(fmt.Sprintf(`<p><a href="%s">← Back</a></p>`, backURL))
-	
+
 	// Video container with thumbnail overlay (always visible - audio-only mode)
 	content.WriteString(fmt.Sprintf(`<div class="audio-video-container">
 		<div id="player"></div>
 		<img src="%s" class="audio-thumb-overlay" id="thumbnail" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
 	</div>`, video.Thumbnail, id))
-	
+
 	// Controls - show pause button if autoplay
 	playBtnIcon := "▶"
 	if autoplay {
@@ -582,24 +581,24 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 	if nextURL != "" {
 		nextBtn = fmt.Sprintf(`<a href="%s" class="btn btn-secondary" id="nextBtn">⏭</a>`, nextURL)
 	}
-	
+
 	content.WriteString(fmt.Sprintf(`<div class="audio-controls">
 		%s
 		<button onclick="togglePlay()" id="playBtn">%s</button>
 		%s
 	</div>`, prevBtn, playBtnIcon, nextBtn))
-	
+
 	// Video button
 	content.WriteString(`<div class="text-center mt-3">
 		<button onclick="toggleVideo()" id="videoBtn">📺 Show Video</button>
 	</div>`)
-	
+
 	// Determine autoplay value for YouTube player
 	autoplayVal := 0
 	if autoplay {
 		autoplayVal = 1
 	}
-	
+
 	// JavaScript for YouTube player
 	content.WriteString(fmt.Sprintf(`<script>
 		let playing = %t;
@@ -666,25 +665,25 @@ func renderPlayer(w http.ResponseWriter, r *http.Request, video *Video, id, back
 			}
 		}
 	</script>`, autoplay, id, nextURL, autoplayVal))
-	
+
 	html := app.RenderHTMLForRequest(video.Title, "Playing: "+video.Title, content.String(), r)
 	w.Write([]byte(html))
 }
 
 func handleSearch(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
-	
+
 	// Check if user is logged in
 	sess, _ := auth.GetSession(r)
 	isLoggedIn := sess != nil
-	
+
 	var content strings.Builder
 	content.WriteString(`<p><a href="/audio">← Back</a></p>`)
 	content.WriteString(`<form class="search-bar" action="/audio/search" method="get">
 		<input type="text" name="q" placeholder="Search..." value="` + html.EscapeString(query) + `">
 		<button type="submit">Search</button>
 	</form>`)
-	
+
 	if query != "" && client != nil {
 		results, err := searchYouTube(query)
 		if err != nil {
@@ -701,7 +700,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	} else if query != "" {
 		content.WriteString(`<p class="text-muted">Search not available</p>`)
 	}
-	
+
 	// Add modal and script for add-to-playlist
 	content.WriteString(`
 	<div id="addModal" class="modal" style="display:none">
@@ -818,7 +817,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	</script>
 	`)
-	
+
 	html := app.RenderHTMLForRequest("Search", "Search  music", content.String(), r)
 	w.Write([]byte(html))
 }
@@ -833,7 +832,7 @@ func searchYouTube(query string) ([]Video, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var results []Video
 	for _, item := range resp.Items {
 		thumbnail := ""
@@ -877,22 +876,22 @@ func renderSearchResult(v Video, showAddButton bool) string {
 func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 	// Check for search query parameter
 	searchQuery := r.URL.Query().Get("q")
-	
+
 	// Parse playlist ID from rest (may have query params stripped by router)
 	playlistID := rest
 	if idx := strings.Index(rest, "?"); idx != -1 {
 		playlistID = rest[:idx]
 	}
-	
+
 	mu.RLock()
 	sp, ok := savedPlaylists[playlistID]
 	mu.RUnlock()
-	
+
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	// Check if user owns this playlist (for edit capabilities)
 	sess, _ := auth.GetSession(r)
 	userID := ""
@@ -900,22 +899,22 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 		userID = sess.Account
 	}
 	isOwner := userID == sp.UserID
-	
+
 	var content strings.Builder
 	content.WriteString(`<p><a href="/audio">← Back</a></p>`)
-	
+
 	icon := sp.Icon
 	if icon == "" {
 		icon = "🎵"
 	}
 	content.WriteString(fmt.Sprintf(`<div class="audio-header"><span class="audio-icon-lg">%s</span></div>`, icon))
-	
+
 	if len(sp.Videos) > 0 {
 		content.WriteString(fmt.Sprintf(`<div class="audio-play-all">
 			<a href="/audio/play/%s?saved=%s&idx=0" class="btn">▶ Play All</a>
 		</div>`, sp.Videos[0].ID, sp.ID))
 	}
-	
+
 	// Current playlist videos with remove button
 	if len(sp.Videos) > 0 {
 		content.WriteString(`<h3>Videos</h3>`)
@@ -929,21 +928,21 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 		}
 		content.WriteString(`</div>`)
 	}
-	
+
 	// Only show editing features if user owns the playlist
 	if !isOwner {
 		html := app.RenderHTMLForRequest(sp.Name, sp.Name+" playlist", content.String(), r)
 		w.Write([]byte(html))
 		return
 	}
-	
+
 	// Add from search section
 	content.WriteString(`<h3 class="mt-4">Add Videos</h3>`)
 	content.WriteString(fmt.Sprintf(`<form class="search-bar mb-3" action="/audio/saved/%s" method="get">
 		<input type="text" name="q" placeholder="Search YouTube..." value="%s">
 		<button type="submit">Search</button>
 	</form>`, sp.ID, html.EscapeString(searchQuery)))
-	
+
 	// Show search results if query provided
 	if searchQuery != "" && client != nil {
 		results, err := searchYouTube(searchQuery)
@@ -970,7 +969,7 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 	} else {
 		// Show existing playlists to add from
 		content.WriteString(`<p class="text-muted mb-3">Or select a playlist to add from:</p>`)
-		
+
 		// Playlist selector tabs
 		content.WriteString(`<div class="audio-playlist-tabs">`)
 		for _, pl := range playlists {
@@ -978,7 +977,7 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 				pl.Name, pl.Icon, pl.Name))
 		}
 		content.WriteString(`</div>`)
-		
+
 		// Videos from each playlist (hidden by default)
 		mu.RLock()
 		for _, pl := range playlists {
@@ -1001,7 +1000,7 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 		}
 		mu.RUnlock()
 	}
-	
+
 	// JavaScript for adding/removing videos
 	content.WriteString(fmt.Sprintf(`<script>
 		let activeTab = null;
@@ -1054,7 +1053,7 @@ func handleSaved(w http.ResponseWriter, r *http.Request, rest string) {
 			});
 		}
 	</script>`, sp.ID, sp.ID))
-	
+
 	html := app.RenderHTMLForRequest(sp.Name, sp.Name+" playlist", content.String(), r)
 	w.Write([]byte(html))
 }
@@ -1069,7 +1068,7 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 
 	var content strings.Builder
 	content.WriteString(`<p><a href="/audio">← Back</a></p>`)
-	
+
 	if userID == "" {
 		content.WriteString(`<p><a href="/login">Login</a> to create and manage playlists.</p>`)
 	} else {
@@ -1086,7 +1085,7 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 			</div>
 			<button type="submit" class="btn">Create</button>
 		</form>`)
-		
+
 		// List user's playlists only
 		mu.RLock()
 		hasPlaylists := false
@@ -1114,7 +1113,7 @@ func handlePlaylists(w http.ResponseWriter, r *http.Request) {
 		}
 		mu.RUnlock()
 	}
-	
+
 	html := app.RenderHTMLForRequest("Playlists", "Manage playlists", content.String(), r)
 	w.Write([]byte(html))
 }
@@ -1148,7 +1147,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			r.ParseForm()
 		}
 		action := r.FormValue("action")
-		
+
 		switch action {
 		case "create":
 			name := r.FormValue("name")
@@ -1170,7 +1169,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			savedPlaylists[id] = sp
 			mu.Unlock()
 			saveSavedPlaylists()
-			
+
 			// Return JSON for AJAX
 			if r.Header.Get("Accept") == "application/json" {
 				w.Header().Set("Content-Type", "application/json")
@@ -1183,7 +1182,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			}
 			http.Redirect(w, r, "/audio/saved/"+id, http.StatusSeeOther)
 			return
-			
+
 		case "delete":
 			id := r.FormValue("id")
 			mu.Lock()
@@ -1195,13 +1194,13 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			saveSavedPlaylists()
 			http.Redirect(w, r, "/audio/playlists", http.StatusSeeOther)
 			return
-			
+
 		case "add":
 			id := r.FormValue("playlist_id")
 			videoID := r.FormValue("video_id")
 			title := r.FormValue("title")
 			thumbnail := r.FormValue("thumbnail")
-			
+
 			mu.Lock()
 			// Only allow adding to playlists the user owns
 			if sp, ok := savedPlaylists[id]; ok && sp.UserID == userID {
@@ -1224,7 +1223,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			}
 			mu.Unlock()
 			saveSavedPlaylists()
-			
+
 			// Return JSON for AJAX
 			if r.Header.Get("Accept") == "application/json" {
 				w.Header().Set("Content-Type", "application/json")
@@ -1233,11 +1232,11 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			}
 			http.Redirect(w, r, "/audio/saved/"+id, http.StatusSeeOther)
 			return
-			
+
 		case "remove":
 			id := r.FormValue("playlist_id")
 			videoID := r.FormValue("video_id")
-			
+
 			mu.Lock()
 			// Only allow removing from playlists the user owns
 			if sp, ok := savedPlaylists[id]; ok && sp.UserID == userID {
@@ -1250,7 +1249,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			}
 			mu.Unlock()
 			saveSavedPlaylists()
-			
+
 			// Return JSON for AJAX
 			if r.Header.Get("Accept") == "application/json" {
 				w.Header().Set("Content-Type", "application/json")
@@ -1261,7 +1260,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	
+
 	// GET - return list of playlists as JSON (for add-to-playlist modal)
 	// Only return playlists owned by the current user
 	mu.RLock()
@@ -1276,7 +1275,7 @@ func handlePlaylistAPI(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	mu.RUnlock()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }
@@ -1306,7 +1305,7 @@ func saveSavedPlaylists() {
 		list = append(list, sp)
 	}
 	mu.RUnlock()
-	
+
 	b, _ := json.Marshal(list)
 	data.SaveFile("audio/playlists.json", string(b))
 }

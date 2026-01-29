@@ -67,7 +67,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	// Recent messages
 	content.WriteString(`<div class="card">`)
 	content.WriteString(`<h3>Recent Messages</h3>`)
-	
+
 	if len(messages) == 0 {
 		content.WriteString(`<p class="text-muted">No messages yet.</p>`)
 	} else {
@@ -77,7 +77,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 		for _, msg := range messages {
 			fromExternal := mail.IsExternalAddress(msg.FromID)
 			toExternal := mail.IsExternalAddress(msg.ToID)
-			
+
 			dirClass := "dir-int"
 			dirLabel := "↔"
 			if fromExternal {

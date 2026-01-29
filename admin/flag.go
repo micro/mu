@@ -433,7 +433,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Build action buttons HTML (admin only - we're already admin here)
 		actionButtons := ""
-			actionButtons = fmt.Sprintf(`
+		actionButtons = fmt.Sprintf(`
 				<form method="POST" action="/admin/moderate">
 					<input type="hidden" name="action" value="approve">
 					<input type="hidden" name="type" value="%s">
@@ -446,8 +446,8 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					<input type="hidden" name="id" value="%s">
 					<button type="submit" class="btn-delete">Delete</button>
 				</form>`,
-				item.ContentType, item.ContentID,
-				item.ContentType, item.ContentID)
+			item.ContentType, item.ContentID,
+			item.ContentType, item.ContentID)
 
 		html := fmt.Sprintf(`<div class="flagged-item">
 			<div>

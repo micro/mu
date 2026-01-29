@@ -131,7 +131,7 @@ func loadRoomMessages(roomID string) []RoomMessage {
 		app.Log("chat", "Error unmarshaling room messages: %v", err)
 		return nil
 	}
-	
+
 	// Prune messages older than 24 hours
 	cutoff := time.Now().Add(-24 * time.Hour)
 	var recent []RoomMessage
@@ -140,11 +140,11 @@ func loadRoomMessages(roomID string) []RoomMessage {
 			recent = append(recent, msg)
 		}
 	}
-	
+
 	if len(recent) < len(messages) {
 		app.Log("chat", "Pruned %d old messages for room %s", len(messages)-len(recent), roomID)
 	}
-	
+
 	app.Log("chat", "Loaded %d messages for room %s", len(recent), roomID)
 	return recent
 }
@@ -898,7 +898,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							}
 							ragContext = append(ragContext, contextStr)
 						}
-						
+
 						// Supplement with web search if RAG is thin
 						if len(ragEntries) < 2 && ai.ShouldWebSearch(content) {
 							app.Log("chat", "[WebSearch] RAG thin, searching web for: %s", searchContent)
@@ -1213,13 +1213,13 @@ func handleClearChat(w http.ResponseWriter, r *http.Request, roomID string) {
 			room.mutex.Unlock()
 		}
 		roomsMutex.Unlock()
-		
+
 		// Delete persisted messages
 		filename := "room_" + strings.ReplaceAll(roomID, "/", "_") + ".json"
 		data.DeleteFile(filename)
 		app.Log("chat", "Admin cleared messages for room %s", roomID)
 	}
-	
+
 	w.WriteHeader(http.StatusOK)
 }
 

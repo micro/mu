@@ -1,7 +1,6 @@
 package wallet
 
 import (
-
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 
 	"mu/auth"
 	"mu/data"
-
 
 	"github.com/google/uuid"
 )
@@ -431,4 +429,3 @@ func GetTopupTier(amount int) *TopupTier {
 	}
 	return nil
 }
-

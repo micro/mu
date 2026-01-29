@@ -15,13 +15,13 @@ import (
 	"mu/admin"
 	"mu/api"
 	"mu/app"
+	"mu/audio"
 	"mu/auth"
 	"mu/blog"
 	"mu/chat"
 	"mu/data"
 	"mu/docs"
 	"mu/home"
-	"mu/audio"
 	"mu/mail"
 	"mu/news"
 	"mu/user"
@@ -68,7 +68,6 @@ func main() {
 	// load the blog
 	blog.Load()
 
-
 	// load the mail (also configures SMTP and DKIM)
 	mail.Load()
 
@@ -106,11 +105,11 @@ func main() {
 		"/admin/email":     true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
-		"/wallet":          true,  // Require auth for wallet
+		"/wallet":          true, // Require auth for wallet
 
-		"/status":          false, // Public - server health status
-		"/docs":            false, // Public - documentation
-		"/about":           false, // Public - about page
+		"/status": false, // Public - server health status
+		"/docs":   false, // Public - documentation
+		"/about":  false, // Public - about page
 	}
 
 	// Static assets should not require authentication
@@ -139,7 +138,6 @@ func main() {
 
 	// handle comments on posts /post/{id}/comment
 	http.HandleFunc("/post/", blog.CommentHandler)
-
 
 	// flag content
 	http.HandleFunc("/flag", admin.FlagHandler)

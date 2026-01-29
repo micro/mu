@@ -166,11 +166,11 @@ func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry,
 			if err == nil && len(vectorResults) > 0 {
 				// Also do keyword search to catch exact matches vector might miss
 				keywordResults, _ := searchSQLiteFallback(query, limit*2, options)
-				
+
 				// Merge results, preferring keyword matches for exact terms
 				merged, mergeErr := mergeSearchResults(vectorResults, keywordResults, query, limit)
 				if mergeErr == nil {
-					fmt.Printf("[SEARCH] Query '%s': %d vector + %d keyword = %d merged results\n", 
+					fmt.Printf("[SEARCH] Query '%s': %d vector + %d keyword = %d merged results\n",
 						query, len(vectorResults), len(keywordResults), len(merged))
 					if len(merged) > 0 {
 						fmt.Printf("[SEARCH] Top result: %s (score from merge)\n", merged[0].Title)
@@ -189,24 +189,24 @@ func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry,
 // mergeSearchResults combines vector and keyword results with proper ranking
 func mergeSearchResults(vectorResults, keywordResults []*IndexEntry, query string, limit int) ([]*IndexEntry, error) {
 	words := strings.Fields(strings.ToLower(query))
-	
+
 	type scoredEntry struct {
-		entry       *IndexEntry
+		entry        *IndexEntry
 		keywordScore float64
-		vectorRank   int  // Lower is better, -1 if not in vector results
+		vectorRank   int // Lower is better, -1 if not in vector results
 	}
-	
+
 	seen := make(map[string]*scoredEntry)
-	
+
 	// Add vector results
 	for i, entry := range vectorResults {
 		seen[entry.ID] = &scoredEntry{
-			entry:       entry,
-			vectorRank:  i,
+			entry:        entry,
+			vectorRank:   i,
 			keywordScore: 0,
 		}
 	}
-	
+
 	// Add/update with keyword scores
 	for _, entry := range keywordResults {
 		keywordScore := scoreMatch(entry, words)
@@ -220,13 +220,13 @@ func mergeSearchResults(vectorResults, keywordResults []*IndexEntry, query strin
 			}
 		}
 	}
-	
+
 	// Convert to slice
 	var scored []scoredEntry
 	for _, s := range seen {
 		scored = append(scored, *s)
 	}
-	
+
 	// Sort: high keyword score first, then by date
 	// Title matches (score >= 10) always come first
 	sort.Slice(scored, func(i, j int) bool {
@@ -236,25 +236,25 @@ func mergeSearchResults(vectorResults, keywordResults []*IndexEntry, query strin
 		if iStrong != jStrong {
 			return iStrong
 		}
-		
+
 		// Same strength - higher keyword score wins
 		if scored[i].keywordScore != scored[j].keywordScore {
 			return scored[i].keywordScore > scored[j].keywordScore
 		}
-		
+
 		// Same score - newer first
 		return getPostedAt(scored[i].entry).After(getPostedAt(scored[j].entry))
 	})
-	
+
 	if limit > 0 && len(scored) > limit {
 		scored = scored[:limit]
 	}
-	
+
 	results := make([]*IndexEntry, len(scored))
 	for i, s := range scored {
 		results[i] = s.entry
 	}
-	
+
 	return results, nil
 }
 
@@ -460,12 +460,12 @@ func getPostedAt(entry *IndexEntry) time.Time {
 	if entry.Metadata == nil {
 		return entry.IndexedAt
 	}
-	
+
 	postedAt := entry.Metadata["posted_at"]
 	if postedAt == nil {
 		return entry.IndexedAt
 	}
-	
+
 	switch v := postedAt.(type) {
 	case time.Time:
 		return v
@@ -488,7 +488,7 @@ func getPostedAt(entry *IndexEntry) time.Time {
 		// Unix timestamp
 		return time.Unix(int64(v), 0)
 	}
-	
+
 	return entry.IndexedAt
 }
 

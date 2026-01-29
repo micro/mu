@@ -1,7 +1,6 @@
 package news
 
 import (
-
 	"crypto/md5"
 	"embed"
 	"encoding/json"
@@ -50,7 +49,6 @@ var newsBodyHtml string
 
 // cached headlines
 var headlinesHtml string
-
 
 // the cached feed
 var feed []*Post
@@ -210,7 +208,6 @@ func getCategoryBadge(post *Post) string {
 	}
 	return fmt.Sprintf(`<a href="/news#%s" class="category">%s</a>`, post.Category, post.Category)
 }
-
 
 // ContentParser functions clean up feed descriptions
 type ContentParser struct {
@@ -903,7 +900,6 @@ func FetchHNComments(storyID string) (string, error) {
 	return "", nil
 }
 
-
 // parseFeedItem processes a single RSS feed item and returns a Post
 func parseFeedItem(item *gofeed.Item, categoryName string) (*Post, error) {
 	// Apply content parsers to clean up description
@@ -1184,7 +1180,6 @@ func processFeedCategory(name, feedURL string, p *gofeed.Parser, stats map[strin
 	return content, posts, &stat
 }
 
-
 // generateHeadlinesHTML creates the headlines HTML section
 func generateHeadlinesHTML(headlines []*Post) string {
 	var sb strings.Builder
@@ -1316,7 +1311,6 @@ func parseFeed() {
 
 func Load() {
 	// Loaded
-	
 
 	// Subscribe to refresh events
 	sub := data.Subscribe(data.EventRefreshHNComments)
@@ -1916,7 +1910,6 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	w.Write([]byte(html))
 }
 
-
 // RefreshHNMetadata forces a refresh of HN article metadata with fresh comments
 // Returns the updated metadata with new comments, or nil if not an HN article
 func RefreshHNMetadata(uri string) (*Metadata, error) {
@@ -1981,4 +1974,3 @@ func RefreshHNMetadata(uri string) (*Metadata, error) {
 	app.Log("news", "Refreshed HN metadata for %s with %d chars of comments", uri, len(comments))
 	return md, nil
 }
-

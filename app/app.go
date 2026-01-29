@@ -839,7 +839,7 @@ func Serve() http.Handler {
 	}
 
 	fileServer := http.FileServer(http.FS(htmlContent))
-	
+
 	// Wrap with cache headers for static assets
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Set cache headers for static assets

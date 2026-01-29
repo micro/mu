@@ -64,7 +64,6 @@ type Message struct {
 // Load messages from disk and configure SMTP/DKIM
 func Load() {
 	// Loaded
-	
 
 	b, err := data.LoadFile("mail.json")
 	if err != nil {
@@ -81,7 +80,7 @@ func Load() {
 
 		// Build inbox structures organized by thread
 		rebuildInboxes()
-		
+
 		// Compute email stats
 		recomputeStats()
 	}
@@ -1356,8 +1355,8 @@ type EmailStats struct {
 }
 
 var (
-	emailStats     EmailStats
-	emailStatsMux  sync.RWMutex
+	emailStats    EmailStats
+	emailStatsMux sync.RWMutex
 )
 
 func init() {
@@ -1369,12 +1368,12 @@ func init() {
 func updateStats(msg *Message) {
 	emailStatsMux.Lock()
 	defer emailStatsMux.Unlock()
-	
+
 	emailStats.Total++
-	
+
 	fromExternal := IsExternalAddress(msg.FromID)
 	toExternal := IsExternalAddress(msg.ToID)
-	
+
 	if fromExternal {
 		emailStats.Inbound++
 		if parts := strings.Split(msg.FromID, "@"); len(parts) == 2 {
@@ -1394,17 +1393,17 @@ func updateStats(msg *Message) {
 func recomputeStats() {
 	emailStatsMux.Lock()
 	defer emailStatsMux.Unlock()
-	
+
 	emailStats = EmailStats{
 		Domains: make(map[string]int),
 	}
-	
+
 	for _, msg := range messages {
 		emailStats.Total++
-		
+
 		fromExternal := IsExternalAddress(msg.FromID)
 		toExternal := IsExternalAddress(msg.ToID)
-		
+
 		if fromExternal {
 			emailStats.Inbound++
 			if parts := strings.Split(msg.FromID, "@"); len(parts) == 2 {
@@ -1425,7 +1424,7 @@ func recomputeStats() {
 func GetEmailStats() EmailStats {
 	emailStatsMux.RLock()
 	defer emailStatsMux.RUnlock()
-	
+
 	// Copy to avoid race
 	stats := EmailStats{
 		Total:    emailStats.Total,
@@ -1444,14 +1443,13 @@ func GetEmailStats() EmailStats {
 func GetRecentMessages(limit int) []*Message {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	
+
 	// Messages are stored newest first (prepended)
 	if limit > len(messages) {
 		limit = len(messages)
 	}
-	
+
 	result := make([]*Message, limit)
 	copy(result, messages[:limit])
 	return result
 }
-
