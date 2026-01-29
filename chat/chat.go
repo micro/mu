@@ -34,8 +34,8 @@ var Template = `
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autocomplete=off>
 <button>Send</button>
 </form>
-<div id="chat-back-link" style="margin-top: 20px; text-align: center; display: none;">
-  <a href="#" onclick="window.history.back(); return false;" style="color: #666; text-decoration: none;">← Back</a>
+<div id="chat-actions" style="margin-top: 15px; text-align: right; padding-right: 10px;">
+  <a href="#" onclick="clearChatHistory(); return false;" style="color: #999; text-decoration: none; font-size: 13px;">Clear history</a>
 </div>`
 
 var mutex sync.RWMutex

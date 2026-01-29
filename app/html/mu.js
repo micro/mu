@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v130';
+var VERSION = 'v131';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -305,6 +305,15 @@ function loadContext() {
 function setContext() {
   // Use localStorage for persistence across sessions
   localStorage.setItem('mu_chat_context', JSON.stringify(context));
+}
+
+function clearChatHistory() {
+  if (confirm('Clear chat history?')) {
+    context = [];
+    localStorage.removeItem('mu_chat_context');
+    const messages = document.getElementById('messages');
+    if (messages) messages.innerHTML = '';
+  }
 }
 
 function loadMessages() {
