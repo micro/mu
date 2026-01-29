@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v132';
+var VERSION = 'v133';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -172,35 +172,53 @@ var context = [];
 var topic = '';
 
 // Show all topic summaries with join links (landing page)
-function showAllTopicSummaries() {
+function showTopicSummariesOverlay() {
   const messages = document.getElementById('messages');
   if (!messages || typeof summaries === 'undefined') return;
   
-  messages.innerHTML = '';
-  const topics = Object.keys(summaries).sort();
+  // Don't add if already exists
+  if (messages.querySelector('.topics-overlay')) return;
   
-  // Build all summaries content with join links inside each
-  let allSummariesHtml = '';
+  const topics = Object.keys(summaries).sort();
+  if (topics.length === 0) return;
+  
+  // Build summaries content
+  let summariesHtml = '';
   topics.forEach(t => {
     if (summaries[t]) {
-      const joinLink = `<a href="/chat?id=chat_${encodeURIComponent(t)}" class="link">Join discussion →</a>`;
-      allSummariesHtml += `<div class="summary-item"><span class="category">${t}</span><p>${summaries[t]}</p>${joinLink}</div>`;
+      summariesHtml += `<div class="summary-item">
+        <a href="/chat?id=chat_${encodeURIComponent(t)}" class="topic-link"><strong>${t}</strong></a>
+        <p>${summaries[t]}</p>
+      </div>`;
     }
   });
   
-  // Create a single collapsible summary card
-  const summaryCard = document.createElement('div');
-  summaryCard.className = 'message summary-card';
-  summaryCard.innerHTML = `
-    <div class="summary-header" onclick="toggleAllSummaries()">
-      <strong>Today's Topics</strong>
-      <span id="summary-toggle-icon">▶</span>
+  // Create collapsible overlay at top of messages
+  const overlay = document.createElement('div');
+  overlay.className = 'topics-overlay';
+  overlay.innerHTML = `
+    <div class="topics-header" onclick="toggleTopicsOverlay()">
+      <span>Today's Topics</span>
+      <span id="topics-toggle-icon">▼</span>
     </div>
-    <div id="all-summaries" class="all-summaries" style="display: none;">
-      ${allSummariesHtml}
+    <div id="topics-content" class="topics-content">
+      ${summariesHtml}
     </div>
   `;
-  messages.appendChild(summaryCard);
+  messages.insertBefore(overlay, messages.firstChild);
+}
+
+function toggleTopicsOverlay() {
+  const content = document.getElementById('topics-content');
+  const icon = document.getElementById('topics-toggle-icon');
+  if (!content) return;
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    icon.textContent = '▼';
+  } else {
+    content.style.display = 'none';
+    icon.textContent = '▶';
+  }
 }
 
 // Toggle all summaries visibility
@@ -474,6 +492,8 @@ function loadChat() {
     // Load any previous conversation from localStorage
     loadContext();
     loadMessages();
+    // Show topic summaries overlay
+    showTopicSummariesOverlay();
   }
   
   // Auto-submit prompt if provided (legacy support)
