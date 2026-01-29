@@ -442,7 +442,7 @@ func updateCacheUnlocked() {
 			escContent = escContent[:200] + "..."
 		}
 		escTitle := strings.ReplaceAll(title, "'", "\\'")
-		saveLink := fmt.Sprintf(` · <a href="#" data-save-id="blog-%s" onclick="saveItem('blog','%s','%s','%s','','')">Save</a>`,
+		saveLink := fmt.Sprintf(` · <a href="#" data-save-id="blog-%s" onclick="saveItem('blog','%s','%s','%s','',''); return false;">Save</a>`,
 			post.ID, post.ID, escTitle, escContent)
 
 		item := fmt.Sprintf(`<div class="post-item">
@@ -541,7 +541,7 @@ func updateCacheUnlocked() {
 			escContent = escContent[:200] + "..."
 		}
 		escTitle := strings.ReplaceAll(title, "'", "\\'")
-		saveLink := fmt.Sprintf(` · <a href="#" data-save-id="blog-%s" onclick="saveItem('blog','%s','%s','%s','','')">Save</a>`,
+		saveLink := fmt.Sprintf(` · <a href="#" data-save-id="blog-%s" onclick="saveItem('blog','%s','%s','%s','',''); return false;">Save</a>`,
 			post.ID, post.ID, escTitle, escContent)
 
 		item := fmt.Sprintf(`<div class="post-item">

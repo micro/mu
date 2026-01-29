@@ -217,7 +217,7 @@ var Template = `
           <a href="/news"><img src="/news.png"><span class="label">News</span></a>
           <a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
           <a id="nav-wallet" href="/wallet"><img src="/wallet.png"><span class="label">Wallet</span></a>
-          <a href="/saved" style="padding-left: 18px;"><span style="font-size: 18px;">🔖</span><span class="label">Saved</span></a>
+          <a href="/saved"><img src="/post.png" style="opacity: 0.7;"><span class="label">Saved</span></a>
         </div>
         <div class="nav-bottom">
           <div id="nav-username" style="display: none;"></div>

@@ -366,6 +366,13 @@ func generateNewsHtml() string {
 				summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, post.ID)
 			}
 
+			// Add Save link
+			escTitle := strings.ReplaceAll(post.Title, "'", "\\'")
+			escDesc := strings.ReplaceAll(cleanDescription, "'", "\\'")
+			escURL := strings.ReplaceAll(post.URL, "'", "\\'")
+			saveLink := fmt.Sprintf(` · <a href="#" data-save-id="news-%s" onclick="saveItem('news','%s','%s','%s','%s','%s'); return false;">Save</a>`,
+				post.ID, post.ID, escTitle, escDesc, escURL, getDomain(post.URL))
+
 			var val string
 			if len(post.Image) > 0 {
 				categoryBadge := ""
@@ -380,8 +387,8 @@ func generateNewsHtml() string {
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s%s</div>
-				`, post.ID, categoryBadge, post.Image, link, post.Title, cleanDescription, summary, summaryLink)
+	  <div class="summary">%s%s%s</div>
+				`, post.ID, categoryBadge, post.Image, link, post.Title, cleanDescription, summary, summaryLink, saveLink)
 			} else {
 				categoryBadge := ""
 				if post.Category != "" {
@@ -395,8 +402,8 @@ func generateNewsHtml() string {
 	      <a href="%s"><span class="title">%s</span></a>
 	      <span class="description">%s</span>
 	    </div>
-	  <div class="summary">%s%s</div>
-				`, post.ID, categoryBadge, link, post.Title, cleanDescription, summary, summaryLink)
+	  <div class="summary">%s%s%s</div>
+				`, post.ID, categoryBadge, link, post.Title, cleanDescription, summary, summaryLink, saveLink)
 			}
 
 			val += `</div>`
