@@ -21,8 +21,8 @@ import (
 	"github.com/gomarkdown/markdown/parser"
 )
 
-// Version for cache busting static assets
-const Version = "v135"
+// Version for cache busting static assets (generated at startup)
+var Version = fmt.Sprintf("%d", time.Now().Unix())
 
 // ANSI color codes
 const (
