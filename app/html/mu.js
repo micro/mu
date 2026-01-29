@@ -177,60 +177,48 @@ function showTopicSummariesOverlay() {
   if (!messages || typeof summaries === 'undefined') return;
   
   // Don't add if already exists
-  if (messages.querySelector('.topics-overlay')) return;
+  if (messages.querySelector('.summary-card')) return;
   
   const topics = Object.keys(summaries).sort();
   if (topics.length === 0) return;
   
-  // Build summaries content
+  // Build summaries content using existing CSS classes
   let summariesHtml = '';
   topics.forEach(t => {
     if (summaries[t]) {
       summariesHtml += `<div class="summary-item">
-        <strong class="topic-name">${t}</strong>
+        <span class="category">${t}</span>
         <p>${summaries[t]}</p>
-        <a href="/chat?id=chat_${encodeURIComponent(t)}" class="join-link">Join discussion →</a>
+        <a href="/chat?id=chat_${encodeURIComponent(t)}" class="link">Join discussion →</a>
       </div>`;
     }
   });
   
-  // Create collapsible overlay at top of messages (collapsed by default)
-  const overlay = document.createElement('div');
-  overlay.className = 'topics-overlay';
-  overlay.innerHTML = `
-    <div class="topics-header" onclick="toggleTopicsOverlay()">
-      <span>Today's Topics</span>
-      <span id="topics-toggle-icon">▶</span>
+  // Create collapsible card using existing CSS classes (collapsed by default)
+  const card = document.createElement('div');
+  card.className = 'message summary-card';
+  card.innerHTML = `
+    <div class="summary-header" onclick="toggleAllSummaries()">
+      <strong>Today's Topics</strong>
+      <span id="summary-toggle-icon">▶</span>
     </div>
-    <div id="topics-content" class="topics-content" style="display: none;">
+    <div id="all-summaries" class="all-summaries" style="display: none;">
       ${summariesHtml}
     </div>
   `;
-  messages.insertBefore(overlay, messages.firstChild);
+  messages.insertBefore(card, messages.firstChild);
 }
 
-function toggleTopicsOverlay() {
-  const content = document.getElementById('topics-content');
-  const icon = document.getElementById('topics-toggle-icon');
+// Toggle all summaries visibility
+function toggleAllSummaries() {
+  const content = document.getElementById('all-summaries');
+  const icon = document.getElementById('summary-toggle-icon');
   if (!content) return;
   if (content.style.display === 'none') {
     content.style.display = 'block';
     icon.textContent = '▼';
   } else {
     content.style.display = 'none';
-    icon.textContent = '▶';
-  }
-}
-
-// Toggle all summaries visibility
-function toggleAllSummaries() {
-  const summaries = document.getElementById('all-summaries');
-  const icon = document.getElementById('summary-toggle-icon');
-  if (summaries.style.display === 'none') {
-    summaries.style.display = 'block';
-    icon.textContent = '▼';
-  } else {
-    summaries.style.display = 'none';
     icon.textContent = '▶';
   }
 }

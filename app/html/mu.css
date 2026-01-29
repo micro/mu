@@ -952,69 +952,6 @@ body:has(#messages) #chat-back-link {
 }
 
 /* Summary card for main /chat page */
-.topics-overlay {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-
-.topics-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  cursor: pointer;
-  user-select: none;
-  font-size: 13px;
-  color: #666;
-}
-
-.topics-header:hover {
-  background: #f0f0f0;
-  border-radius: 8px;
-}
-
-.topics-content {
-  padding: 0 14px 14px;
-  border-top: 1px solid #e0e0e0;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.topics-content .summary-item {
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.topics-content .summary-item:last-child {
-  border-bottom: none;
-}
-
-.topics-content .topic-name {
-  color: #333;
-  font-size: 13px;
-}
-
-.topics-content .summary-item p {
-  margin: 6px 0 0;
-  color: #555;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.topics-content .join-link {
-  display: inline-block;
-  margin-top: 8px;
-  color: #666;
-  text-decoration: none;
-  font-size: 12px;
-}
-
-.topics-content .join-link:hover {
-  color: #333;
-}
-
 .summary-card {
   background: #f8f9fa;
   border: 1px solid #e0e0e0;
