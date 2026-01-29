@@ -19,7 +19,7 @@ No ads, no algorithms, no tracking. Simple tools that respect your time.
 - **Mail** - Message other users, receive external email
 - **News** - RSS aggregation with AI summaries
 - **Video** - YouTube without ads/algorithms/shorts
-- **Chat** - Public discussion rooms
+- **Chat** - Discuss topics with AI
 - **Blog** - Microblogging
 
 ## Core Building Blocks
@@ -115,7 +115,7 @@ HD wallet for deposits:
 ## UI State
 - Service worker version: v126
 - Sidebar: scrollable nav + fixed bottom (account/logout)
-- Chat: public rooms by topic
+- Chat: discuss topics with AI assistant
 
 ## Removed Features (January 2026)
 Simplified by removing:

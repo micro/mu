@@ -34,7 +34,7 @@ Each feature does one thing well:
 
 - **Home** — Your dashboard, everything in one place
 - **Blog** — Microblogging without the engagement tricks
-- **Chat** — Group discussions
+- **Chat** — Discuss topics with AI
 - **News** — RSS feeds, chronological
 - **Video** — YouTube without ads or shorts
 - **Mail** — Private messaging & email
@@ -61,6 +61,7 @@ We deliberately exclude features that drive addiction:
 
 Some features are enhanced with AI:
 
+- **Blog** — Auto-tag topics
 - **News** — Summarize articles
 - **Chat** — Knowledge assistant for discussions
 
