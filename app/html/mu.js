@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v131';
+var VERSION = 'v132';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -308,11 +308,23 @@ function setContext() {
 }
 
 function clearChatHistory() {
-  if (confirm('Clear chat history?')) {
-    context = [];
-    localStorage.removeItem('mu_chat_context');
-    const messages = document.getElementById('messages');
-    if (messages) messages.innerHTML = '';
+  if (!confirm('Clear chat history?')) return;
+  
+  // Clear local context (general chat)
+  context = [];
+  localStorage.removeItem('mu_chat_context');
+  
+  // Clear local room storage if in a room
+  if (currentRoomId) {
+    localStorage.removeItem(getRoomStorageKey(currentRoomId));
+  }
+  
+  // Clear display but keep context message
+  const messages = document.getElementById('messages');
+  if (messages) {
+    const ctx = messages.querySelector('.context-message');
+    messages.innerHTML = '';
+    if (ctx) messages.appendChild(ctx);
   }
 }
 

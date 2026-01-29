@@ -119,6 +119,7 @@ func saveRoomMessages(roomID string, messages []RoomMessage) {
 }
 
 // loadRoomMessages loads persisted room messages from disk
+// Messages older than 24 hours are pruned
 func loadRoomMessages(roomID string) []RoomMessage {
 	filename := "room_" + strings.ReplaceAll(roomID, "/", "_") + ".json"
 	b, err := data.LoadFile(filename)
@@ -130,8 +131,22 @@ func loadRoomMessages(roomID string) []RoomMessage {
 		app.Log("chat", "Error unmarshaling room messages: %v", err)
 		return nil
 	}
-	app.Log("chat", "Loaded %d messages for room %s", len(messages), roomID)
-	return messages
+	
+	// Prune messages older than 24 hours
+	cutoff := time.Now().Add(-24 * time.Hour)
+	var recent []RoomMessage
+	for _, msg := range messages {
+		if msg.Timestamp.After(cutoff) {
+			recent = append(recent, msg)
+		}
+	}
+	
+	if len(recent) < len(messages) {
+		app.Log("chat", "Pruned %d old messages for room %s", len(messages)-len(recent), roomID)
+	}
+	
+	app.Log("chat", "Loaded %d messages for room %s", len(recent), roomID)
+	return recent
 }
 
 // handlePatternMatch handles predictable queries with direct lookups, skipping LLM
@@ -1167,7 +1182,37 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleGetChat(w, r, roomID)
 	case "POST":
 		handlePostChat(w, r)
+	case "DELETE":
+		handleClearChat(w, r, roomID)
 	}
+}
+
+// handleClearChat handles DELETE /chat - clear chat history (admin only)
+func handleClearChat(w http.ResponseWriter, r *http.Request, roomID string) {
+	// Require admin
+	_, _, err := auth.RequireAdmin(r)
+	if err != nil {
+		http.Error(w, "Admin access required", http.StatusForbidden)
+		return
+	}
+
+	if roomID != "" {
+		// Clear room messages
+		roomsMutex.Lock()
+		if room, exists := rooms[roomID]; exists {
+			room.mutex.Lock()
+			room.Messages = nil
+			room.mutex.Unlock()
+		}
+		roomsMutex.Unlock()
+		
+		// Delete persisted messages
+		filename := "room_" + strings.ReplaceAll(roomID, "/", "_") + ".json"
+		data.DeleteFile(filename)
+		app.Log("chat", "Admin cleared messages for room %s", roomID)
+	}
+	
+	w.WriteHeader(http.StatusOK)
 }
 
 // handleGetChat handles GET /chat - returns chat info as JSON or HTML

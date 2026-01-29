@@ -147,6 +147,13 @@ func LoadFile(key string) ([]byte, error) {
 	return os.ReadFile(file)
 }
 
+func DeleteFile(key string) error {
+	dir := os.ExpandEnv("$HOME/.mu")
+	path := filepath.Join(dir, "data")
+	file := filepath.Join(path, key)
+	return os.Remove(file)
+}
+
 func SaveJSON(key string, val interface{}) error {
 	b, err := json.Marshal(val)
 	if err != nil {
