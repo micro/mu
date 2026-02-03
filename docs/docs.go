@@ -44,6 +44,7 @@ var catalog = []Document{
 
 	// Planning & Architecture
 	{Slug: "agent-services", Filename: "AGENT_SERVICES_ARCHITECTURE.md", Title: "Agent & Services", Description: "Agent and services architecture plan", Category: "Planning"},
+	{Slug: "agent-services-quickstart", Filename: "AGENT_SERVICES_QUICKSTART.md", Title: "Agent Quick Reference", Description: "Quick reference for agent & services plan", Category: "Planning"},
 }
 
 // Handler serves the /docs endpoint
