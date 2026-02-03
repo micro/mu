@@ -41,6 +41,9 @@ var catalog = []Document{
 	// Developer (accessible but not prominent)
 	{Slug: "system-design", Filename: "SYSTEM_DESIGN.md", Title: "System Design", Description: "Architecture overview", Category: "Developer"},
 	{Slug: "api", Filename: "API_COVERAGE.md", Title: "API Reference", Description: "REST API endpoints", Category: "Developer"},
+
+	// Planning & Architecture
+	{Slug: "agent-services", Filename: "AGENT_SERVICES_ARCHITECTURE.md", Title: "Agent & Services", Description: "Agent and services architecture plan", Category: "Planning"},
 }
 
 // Handler serves the /docs endpoint
