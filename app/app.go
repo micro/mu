@@ -641,7 +641,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
 	// Philosophy note
-	content.WriteString(`<p class="mb-5 text-muted">Mu is a tool, not a destination. Pay for what you use, nothing more.</p>`)
+	content.WriteString(`<p class="mb-5 text-muted">Pay for what you use, nothing more.</p>`)
 
 	// 2-column pricing grid with responsive class
 	content.WriteString(`<div class="pricing-grid">`)
