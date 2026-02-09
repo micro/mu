@@ -243,11 +243,11 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	cmd := exec.Command(shell)
 	cmd.Env = append(os.Environ(), "TERM=dumb")
 
-	// Set working directory to user home or /tmp
+	// Set working directory to user home or a temp directory
 	if home, err := os.UserHomeDir(); err == nil {
 		cmd.Dir = home
 	} else {
-		cmd.Dir = "/tmp"
+		cmd.Dir = os.TempDir()
 	}
 
 	stdin, err := cmd.StdinPipe()
@@ -274,7 +274,6 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var wg sync.WaitGroup
-	done := make(chan struct{})
 
 	// Read stdout and send to WebSocket
 	wg.Add(1)
@@ -282,20 +281,15 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 		defer wg.Done()
 		buf := make([]byte, 4096)
 		for {
-			select {
-			case <-done:
+			n, err := stdout.Read(buf)
+			if n > 0 {
+				sendOutput(conn, string(buf[:n]))
+			}
+			if err != nil {
+				if err != io.EOF {
+					app.Log("terminal", "stdout read error: %v", err)
+				}
 				return
-			default:
-				n, err := stdout.Read(buf)
-				if n > 0 {
-					sendOutput(conn, string(buf[:n]))
-				}
-				if err != nil {
-					if err != io.EOF {
-						app.Log("terminal", "stdout read error: %v", err)
-					}
-					return
-				}
 			}
 		}
 	}()
@@ -306,20 +300,15 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 		defer wg.Done()
 		buf := make([]byte, 4096)
 		for {
-			select {
-			case <-done:
+			n, err := stderr.Read(buf)
+			if n > 0 {
+				sendError(conn, string(buf[:n]))
+			}
+			if err != nil {
+				if err != io.EOF {
+					app.Log("terminal", "stderr read error: %v", err)
+				}
 				return
-			default:
-				n, err := stderr.Read(buf)
-				if n > 0 {
-					sendError(conn, string(buf[:n]))
-				}
-				if err != nil {
-					if err != io.EOF {
-						app.Log("terminal", "stderr read error: %v", err)
-					}
-					return
-				}
 			}
 		}
 	}()
@@ -344,7 +333,6 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cleanup
-	close(done)
 	stdin.Close()
 
 	// Kill the process if still running
@@ -382,13 +370,17 @@ func getShell() string {
 // sendOutput sends output to the WebSocket client
 func sendOutput(conn *websocket.Conn, data string) {
 	msg := wsMessage{Type: "output", Data: data}
-	conn.WriteJSON(msg)
+	if err := conn.WriteJSON(msg); err != nil {
+		app.Log("terminal", "WebSocket write error: %v", err)
+	}
 }
 
 // sendError sends an error message to the WebSocket client
 func sendError(conn *websocket.Conn, data string) {
 	msg := wsMessage{Type: "error", Data: data}
-	conn.WriteJSON(msg)
+	if err := conn.WriteJSON(msg); err != nil {
+		app.Log("terminal", "WebSocket write error: %v", err)
+	}
 }
 
 // RenderPage generates the terminal page HTML (exported for testing)
