@@ -38,7 +38,6 @@ Each feature does one thing well:
 - **News** — RSS feeds, chronological
 - **Video** — YouTube without ads or shorts
 - **Mail** — Private messaging & email
-- **Audio** — Podcasts and audio content
 
 ### No Addiction Mechanics
 

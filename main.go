@@ -15,7 +15,6 @@ import (
 	"mu/admin"
 	"mu/api"
 	"mu/app"
-	"mu/audio"
 	"mu/auth"
 	"mu/blog"
 	"mu/chat"
@@ -61,9 +60,6 @@ func main() {
 
 	// load the videos
 	video.Load()
-
-	// load audio
-	audio.Load()
 
 	// load the blog
 	blog.Load()
@@ -119,10 +115,6 @@ func main() {
 	}
 	// serve video
 	http.HandleFunc("/video", video.Handler)
-
-	// serve audio
-	http.HandleFunc("/audio", audio.Handler)
-	http.HandleFunc("/audio/", audio.Handler)
 
 	// serve news
 	http.HandleFunc("/news", news.Handler)

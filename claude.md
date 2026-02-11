@@ -40,7 +40,6 @@ No ads, no algorithms, no tracking. Simple tools that respect your time.
 | **video/** | YouTube search/play |
 | **chat/** | Public chat rooms |
 | **blog/** | Microblogging |
-| **audio/** | Podcasts and audio content |
 | **wallet/** | Credits + crypto deposits |
 | **widgets/** | Markets + Reminder cards |
 

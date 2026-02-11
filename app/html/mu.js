@@ -9,7 +9,6 @@ var CACHE_NAME = APP_PREFIX + VERSION;
 var STATIC_CACHE = [
   '/mu.png',
   '/home.png',
-  '/audio.png',
   '/chat.png',
   '/mail.png',
   '/post.png',

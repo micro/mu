@@ -210,7 +210,6 @@ var Template = `
       <div id="nav-container">
         <div id="nav">
           <a href="/home"><img src="/home.png"><span class="label">Home</span></a>
-          <a href="/audio"><img src="/audio.png"><span class="label">Audio</span></a>
           <a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
           <a id="nav-mail" href="/mail"><img src="/mail.png"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>

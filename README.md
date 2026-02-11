@@ -18,7 +18,6 @@ Mu is a collection of tools for everyday use. While other platforms monetize you
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
 - **Mail** - Private messaging & email
-- **Audio** - Podcasts and audio content
 - **Wallet** - Credits and crypto payments
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).

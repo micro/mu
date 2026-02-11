@@ -169,7 +169,6 @@ Anthropics "constitution" defines their values. We use their tool for technical 
 | **chat/** | Contextual Q&A | Yes - RAG-powered |
 | **video/** | YouTube integration | Maybe - big tech dependency |
 | **blog/** | Microblogging | Maybe - community feature |
-| **kids/** | Safe audio for children | Yes - specific value |
 | **tools/** | Tool registry | Yes - agent infrastructure |
 
 ---
