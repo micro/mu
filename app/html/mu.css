@@ -4002,3 +4002,137 @@ a.btn-secondary:hover, .btn-secondary:hover {
   from { opacity: 1; transform: translateX(-50%) translateY(0); }
   to { opacity: 0; transform: translateX(-50%) translateY(-20px); }
 }
+
+/* ========================================
+   MARKETS PAGE
+   ======================================== */
+.markets-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.markets-page h1 {
+  margin-bottom: 10px;
+  font-size: 2em;
+}
+
+.markets-page .description {
+  margin-bottom: 30px;
+  color: var(--text-muted);
+  font-size: 1em;
+}
+
+.markets-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0;
+}
+
+.markets-tab {
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s ease;
+}
+
+.markets-tab:hover {
+  color: var(--text-primary);
+  background: var(--hover-background);
+}
+
+.markets-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.markets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.market-card {
+  border: var(--border-width) solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  background: var(--card-background);
+  transition: all 0.2s ease;
+}
+
+.market-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.market-card-header {
+  margin-bottom: 15px;
+}
+
+.market-card .market-symbol {
+  font-size: 1.2em;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+}
+
+.market-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.market-card .market-price {
+  font-size: 1.5em;
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.markets-footer {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.markets-source {
+  margin-bottom: 5px;
+}
+
+.markets-note {
+  margin-top: 5px;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .markets-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+  }
+  
+  .market-card {
+    padding: 15px;
+  }
+  
+  .markets-tabs {
+    flex-wrap: wrap;
+  }
+  
+  .markets-tab {
+    padding: 10px 16px;
+    font-size: 0.9em;
+  }
+}
