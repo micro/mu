@@ -4081,7 +4081,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 
 .market-card .market-symbol {
-  font-size: 1.2em;
+  font-size: 0.9em;
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   letter-spacing: 0.05em;
@@ -4094,7 +4094,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 
 .market-card .market-price {
-  font-size: 1.5em;
+  font-size: 1.1em;
   font-weight: var(--font-weight-semibold);
   color: var(--accent);
   font-variant-numeric: tabular-nums;

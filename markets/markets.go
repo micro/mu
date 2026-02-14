@@ -109,7 +109,6 @@ func generateMarketsPage(prices map[string]float64, activeCategory string) strin
 	
 	// Page header
 	sb.WriteString(`<div class="markets-page">`)
-	sb.WriteString(`<h1>Markets</h1>`)
 	sb.WriteString(`<p class="description">Live market data for cryptocurrencies, futures, and commodities</p>`)
 	
 	// Category tabs
