@@ -5,13 +5,10 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"sync"
 
 	"mu/app"
 	"mu/widgets"
 )
-
-var mutex sync.RWMutex
 
 // Categories for market data
 const (
@@ -178,14 +175,12 @@ func generateMarketCard(symbol string, price float64) string {
 
 // formatPrice formats a price value for display
 func formatPrice(price float64) string {
-	if price == 0 {
+	if price <= 0 {
 		return "N/A"
 	}
 	
 	// Format based on price magnitude
-	if price >= 1000 {
-		return fmt.Sprintf("$%.2f", price)
-	} else if price >= 1 {
+	if price >= 1 {
 		return fmt.Sprintf("$%.2f", price)
 	} else if price >= 0.01 {
 		return fmt.Sprintf("$%.4f", price)
