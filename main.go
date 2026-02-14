@@ -22,6 +22,7 @@ import (
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
+	"mu/markets"
 	"mu/news"
 	"mu/user"
 	"mu/video"
@@ -87,6 +88,7 @@ func main() {
 		"/chat":            false, // Public viewing, auth for chatting
 		"/home":            false, // Public viewing
 		"/blog":            false, // Public viewing, auth for posting
+		"/markets":         false, // Public viewing
 		"/mail":            true,  // Require auth for inbox
 		"/logout":          true,
 		"/account":         true,
@@ -165,9 +167,8 @@ func main() {
 	// serve mail inbox
 	http.HandleFunc("/mail", mail.Handler)
 
-	http.HandleFunc("/markets", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "https://coinmarketcap.com/", 302)
-	})
+	// serve markets page
+	http.HandleFunc("/markets", markets.Handler)
 
 	// auth
 	http.HandleFunc("/login", app.Login)
