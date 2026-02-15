@@ -1,10 +1,10 @@
 # mu
 
-The Micro Network — simple tools without ads, algorithms, or tracking.
+The Micro Network — apps without ads, algorithms, or tracking.
 
 ## Overview
 
-Mu is a collection of tools for everyday use. While other platforms monetize your attention with ads and infinite feeds, Mu gives you simple utilities that respect your time.
+Mu is a collection of apps for everyday use. While other platforms monetize your attention with ads and infinite feeds, Mu gives you simple utilities that respect your time.
 
 **The problem**: The internet is designed to waste your time. Feeds are infinite, videos autoplay, and everything tracks you.
 
