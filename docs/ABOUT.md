@@ -24,11 +24,11 @@ The internet was supposed to connect us and make life better. Instead, platforms
 - **Ads** disguised as content
 - **Algorithms** that decide what you see
 
-We built Mu to answer a simple question: **What would technology look like if it respected you?**
+Mu was built to fix this problem.
 
 ## Our Approach
 
-### Simply Apps That Work
+### Apps That Do One Thing
 
 Each feature does one thing well:
 
