@@ -1540,7 +1540,6 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		articleHtml := fmt.Sprintf(`
 			<div id="news-article">
 				%s
-				<h1>%s</h1>
 				<div class="article-meta">
 					<span><span data-timestamp="%d">%s</span> · Source: <i>%s</i>%s</span>
 				</div>
@@ -1553,7 +1552,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 					<a href="/news">← Back to news</a>
 				</div>
 			</div>
-		`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL)
+		`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL)
 
 		pageHTML := app.RenderHTML(title, title, articleHtml)
 		w.Write([]byte(pageHTML))
@@ -1653,7 +1652,6 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	articleHtml := fmt.Sprintf(`
 		<div id="news-article">
 			%s
-			<h1>%s</h1>
 			<div class="article-meta">
 				<span><span data-timestamp="%d">%s</span> · Source: <i>%s</i>%s</span>
 			</div>
@@ -1670,7 +1668,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="/news">← Back to news</a>
 			</div>
 		</div>
-	`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL, articleID)
+	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL, articleID)
 
 	// Use title for browser tab, but empty page title since article already has its own H1
 	pageHTML := app.RenderHTML(title, title, articleHtml)
