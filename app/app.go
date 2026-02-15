@@ -212,17 +212,17 @@ var Template = `
           <a href="/home"><img src="/home.png"><span class="label">Home</span></a>
           <a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
-          <a id="nav-mail" href="/mail"><img src="/mail.png"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
+          <a id="nav-mail" href="/mail" style="display: none;"><img src="/mail.png"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
           <a href="/news"><img src="/news.png"><span class="label">News</span></a>
-          <a href="/video"%s><img src="/video.png"><span class="label">Video</span></a>
+          <a href="/video"><img src="/video.png"><span class="label">Video</span></a>
           <a href="/markets"><img src="/markets.png"><span class="label">Markets</span></a>
-          <a id="nav-wallet" href="/wallet"><img src="/wallet.png"><span class="label">Wallet</span></a>
+          <a id="nav-wallet" href="/wallet" style="display: none;"><img src="/wallet.png"><span class="label">Wallet</span></a>
         </div>
         <div class="nav-bottom">
           <div id="nav-username" style="display: none;"></div>
-          <a id="nav-account" href="/account"><img src="/account.png"><span class="label">Account</span></a>
-          <a id="nav-logout" href="/logout"><img src="/logout.png"><span class="label">Logout</span></a>
-          <a id="nav-login" href="/login" style="display: none;"><img src="/account.png"><span class="label">Login</span></a>
+          <a id="nav-account" href="/account" style="display: none;"><img src="/account.png"><span class="label">Account</span></a>
+          <a id="nav-logout" href="/logout" style="display: none;"><img src="/logout.png"><span class="label">Logout</span></a>
+          <a id="nav-login" href="/login"><img src="/account.png"><span class="label">Login</span></a>
         </div>
       </div>
       <div id="content">
@@ -791,27 +791,7 @@ func RenderHTMLWithLang(title, desc, html, lang string) string {
 	if lang == "" {
 		lang = "en"
 	}
-	return fmt.Sprintf(Template, lang, title, desc, "", "", title, html)
-}
-
-func RenderHTMLWithLogout(title, desc, html string, showLogout bool) string {
-	logoutStyle := ""
-	if !showLogout {
-		logoutStyle = ` style="display: none;"`
-	}
-	return fmt.Sprintf(Template, "en", title, desc, "", logoutStyle, title, html)
-}
-
-// RenderHTMLWithLogoutAndLang renders the given html in a template with logout control and language
-func RenderHTMLWithLogoutAndLang(title, desc, html string, showLogout bool, lang string) string {
-	if lang == "" {
-		lang = "en"
-	}
-	logoutStyle := ""
-	if !showLogout {
-		logoutStyle = ` style="display: none;"`
-	}
-	return fmt.Sprintf(Template, lang, title, desc, "", logoutStyle, title, html)
+	return fmt.Sprintf(Template, lang, title, desc, "", title, html)
 }
 
 // RenderString renders a markdown string as html
@@ -821,7 +801,7 @@ func RenderString(v string) string {
 
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
-	return fmt.Sprintf(Template, "en", title, desc, "", "", title, RenderString(text))
+	return fmt.Sprintf(Template, "en", title, desc, "", title, RenderString(text))
 }
 
 func ServeHTML(html string) http.Handler {

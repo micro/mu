@@ -1410,14 +1410,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		</div>
 	</div>`, tagsDisplay, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
-	// Check if user is authenticated to show logout link
-	var token string
-	if c, err := r.Cookie("session"); err == nil && c != nil {
-		token = c.Value
-	}
-	showLogout := auth.ValidateToken(token) == nil
-
-	html := app.RenderHTMLWithLogout(title, post.Content[:min(len(post.Content), 150)], content, showLogout)
+	html := app.RenderHTMLForRequest(title, post.Content[:min(len(post.Content), 150)], content, r)
 	w.Write([]byte(html))
 }
 
