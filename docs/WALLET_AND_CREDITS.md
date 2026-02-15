@@ -69,7 +69,7 @@ If you want truly unlimited and free — self-host. The code is open source.
 
 ### How It Works
 
-1. Go to `/wallet/deposit`
+1. Go to `/wallet/topup`
 2. Select your network (Ethereum, Base, Arbitrum, or Optimism)
 3. You'll see your unique deposit address and QR code
 4. Send ETH, USDC, or any ERC-20 token
@@ -163,7 +163,7 @@ type CryptoWallet struct {
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/wallet` | View balance and transaction history |
-| GET | `/wallet/deposit` | Show deposit address and instructions |
+| GET | `/wallet/topup` | Show deposit address and instructions |
 
 ---
 

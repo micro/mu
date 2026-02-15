@@ -43,7 +43,7 @@ func WalletPage(userID string) string {
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Balance</h3>`)
 		sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
-		sb.WriteString(`<p><a href="/wallet/deposit">Add Credits →</a></p>`)
+		sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a></p>`)
 		sb.WriteString(`</div>`)
 
 		// Daily quota
@@ -123,7 +123,7 @@ func QuotaExceededPage(operation string, cost int) string {
 	sb.WriteString(`<ul class="options-list">`)
 	sb.WriteString(`<li>Wait until midnight UTC for more free queries</li>`)
 	sb.WriteString(fmt.Sprintf(`<li><a href="/wallet">Use credits</a> (%d credit%s for this)</li>`, cost, pluralize(cost)))
-	sb.WriteString(`<li><a href="/wallet/deposit">Add credits</a></li>`)
+	sb.WriteString(`<li><a href="/wallet/topup">Add credits</a></li>`)
 	sb.WriteString(`</ul>`)
 	sb.WriteString(`</div>`)
 
@@ -163,7 +163,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/wallet" && r.Method == "GET":
 		handleWalletPage(w, r)
-	case path == "/wallet/deposit" && r.Method == "GET":
+	case path == "/wallet/topup" && r.Method == "GET":
 		handleDepositPage(w, r)
 	case path == "/wallet/stripe/checkout" && r.Method == "POST":
 		handleStripeCheckout(w, r)
@@ -226,7 +226,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 		} else {
 			stripeActive = " btn-secondary"
 		}
-		sb.WriteString(fmt.Sprintf(`<a href="/wallet/deposit?method=stripe" class="btn%s">Card</a>`, stripeActive))
+		sb.WriteString(fmt.Sprintf(`<a href="/wallet/topup?method=stripe" class="btn%s">Card</a>`, stripeActive))
 	}
 	if CryptoWalletEnabled() {
 		cryptoActive := ""
@@ -235,7 +235,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 		} else {
 			cryptoActive = " btn-secondary"
 		}
-		sb.WriteString(fmt.Sprintf(`<a href="/wallet/deposit?method=crypto" class="btn%s">Crypto</a>`, cryptoActive))
+		sb.WriteString(fmt.Sprintf(`<a href="/wallet/topup?method=crypto" class="btn%s">Crypto</a>`, cryptoActive))
 	}
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</div>`)
@@ -323,7 +323,7 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	// Chain selector
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Pick a network</h3>`)
-	sb.WriteString(`<select id="chain-select" onchange="window.location.href='/wallet/deposit?method=crypto&chain='+this.value" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">`)
+	sb.WriteString(`<select id="chain-select" onchange="window.location.href='/wallet/topup?method=crypto&chain='+this.value" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">`)
 	for _, c := range depositChains {
 		selected := ""
 		if c.ID == selectedChain {
@@ -389,7 +389,7 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	}
 	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
 	successURL := baseURL + "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}"
-	cancelURL := baseURL + "/wallet/deposit?method=stripe"
+	cancelURL := baseURL + "/wallet/topup?method=stripe"
 
 	// Create checkout session
 	checkoutURL, err := CreateCheckoutSession(sess.Account, amount, successURL, cancelURL)
