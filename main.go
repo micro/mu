@@ -24,6 +24,7 @@ import (
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
+	"mu/terminal"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -108,6 +109,8 @@ func main() {
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
 		"/about":  false, // Public - about page
+
+		"/terminal": true, // Require auth for terminal
 	}
 
 	// Static assets should not require authentication
@@ -190,6 +193,10 @@ func main() {
 	// presence WebSocket endpoint
 	http.HandleFunc("/presence", user.PresenceHandler)
 
+	// terminal - web based shell (admin only)
+	http.HandleFunc("/terminal", terminal.Handler)
+	http.HandleFunc("/terminal/ws", terminal.WSHandler)
+
 	// presence ping endpoint
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		_, acc, err := auth.RequireSession(r)
@@ -223,7 +230,8 @@ func main() {
 					!strings.HasSuffix(r.URL.Path, ".js") &&
 					!strings.HasSuffix(r.URL.Path, ".png") &&
 					!strings.HasSuffix(r.URL.Path, ".ico") &&
-					!strings.HasPrefix(r.URL.Path, "/chat/ws") {
+					!strings.HasPrefix(r.URL.Path, "/chat/ws") &&
+					!strings.HasPrefix(r.URL.Path, "/terminal/ws") {
 					app.Log("http", "%s %s %s %v", r.Method, r.URL.Path, r.RemoteAddr, time.Since(start))
 				}
 			}()
