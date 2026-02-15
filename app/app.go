@@ -183,13 +183,13 @@ var Template = `
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
     <meta name="description" content="%s">
     <meta name="referrer" content="no-referrer"/>
-    <link rel="preload" href="/home.png" as="image">
-    <link rel="preload" href="/mail.png" as="image">
-    <link rel="preload" href="/chat.png" as="image">
-    <link rel="preload" href="/post.png" as="image">
-    <link rel="preload" href="/news.png" as="image">
-    <link rel="preload" href="/video.png" as="image">
-    <link rel="preload" href="/account.png" as="image">
+    <link rel="preload" href="/home.png?` + Version + `" as="image">
+    <link rel="preload" href="/mail.png?` + Version + `" as="image">
+    <link rel="preload" href="/chat.png?` + Version + `" as="image">
+    <link rel="preload" href="/post.png?` + Version + `" as="image">
+    <link rel="preload" href="/news.png?` + Version + `" as="image">
+    <link rel="preload" href="/video.png?` + Version + `" as="image">
+    <link rel="preload" href="/account.png?` + Version + `" as="image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
@@ -209,20 +209,20 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav">
-          <a href="/home"><img src="/home.png"><span class="label">Home</span></a>
-          <a href="/blog"><img src="/post.png"><span class="label">Blog</span></a>
-          <a href="/chat"><img src="/chat.png"><span class="label">Chat</span></a>
-          <a id="nav-mail" href="/mail" style="display: none;"><img src="/mail.png"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
-          <a href="/news"><img src="/news.png"><span class="label">News</span></a>
-          <a href="/video"><img src="/video.png"><span class="label">Video</span></a>
-          <a href="/markets"><img src="/markets.png"><span class="label">Markets</span></a>
-          <a id="nav-wallet" href="/wallet" style="display: none;"><img src="/wallet.png"><span class="label">Wallet</span></a>
+          <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
+          <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
+          <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>
+          <a id="nav-mail" href="/mail" style="display: none;"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
+          <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
+          <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
+          <a href="/markets"><img src="/markets.png?` + Version + `"><span class="label">Markets</span></a>
+          <a id="nav-wallet" href="/wallet" style="display: none;"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
         </div>
         <div class="nav-bottom">
           <div id="nav-username" style="display: none;"></div>
-          <a id="nav-account" href="/account" style="display: none;"><img src="/account.png"><span class="label">Account</span></a>
-          <a id="nav-logout" href="/logout" style="display: none;"><img src="/logout.png"><span class="label">Logout</span></a>
-          <a id="nav-login" href="/login"><img src="/account.png"><span class="label">Login</span></a>
+          <a id="nav-account" href="/account" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
+          <a id="nav-logout" href="/logout" style="display: none;"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
+          <a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>
         </div>
       </div>
       <div id="content">

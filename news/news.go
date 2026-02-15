@@ -1555,7 +1555,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			</div>
 		`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL)
 
-		pageHTML := fmt.Sprintf(app.Template, "en", title, title, "", "", "", articleHtml)
+		pageHTML := app.RenderHTML(title, title, articleHtml)
 		w.Write([]byte(pageHTML))
 		return
 	}
@@ -1577,7 +1577,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<p class="mt-5"><a href="/news">← Back to news</a></p>
 			</div>
 		`, cost, credits, wallet.GetBalance(sess.Account))
-		pageHTML := fmt.Sprintf(app.Template, "en", "Credits Required", "Credits Required", "", "", "", paywallHtml)
+		pageHTML := app.RenderHTML("Credits Required", "Credits Required", paywallHtml)
 		w.WriteHeader(http.StatusPaymentRequired)
 		w.Write([]byte(pageHTML))
 		return
@@ -1673,7 +1673,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	`, imageSection, title, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL, articleID)
 
 	// Use title for browser tab, but empty page title since article already has its own H1
-	pageHTML := fmt.Sprintf(app.Template, "en", title, title, "", "", "", articleHtml)
+	pageHTML := app.RenderHTML(title, title, articleHtml)
 	w.Write([]byte(pageHTML))
 }
 

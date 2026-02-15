@@ -1080,7 +1080,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					<p class="mt-5"><a href="/video">← Back to videos</a></p>
 				</div>
 			`, thumbnailURL, id, id, youtubeURL)
-			pageHTML := fmt.Sprintf(app.Template, "en", "Video", "Video", "", "", "", guestHtml)
+			pageHTML := app.RenderHTML("Video", "Video", guestHtml)
 			w.Write([]byte(pageHTML))
 			return
 		}
@@ -1106,7 +1106,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					<p class="mt-5"><a href="/video">← Back to videos</a></p>
 				</div>
 			`, thumbnailURL, id, cost, credits, wallet.GetBalance(sess.Account), youtubeURL)
-			pageHTML := fmt.Sprintf(app.Template, "en", "Credits Required", "Credits Required", "", "", "", paywallHtml)
+			pageHTML := app.RenderHTML("Credits Required", "Credits Required", paywallHtml)
 			w.WriteHeader(http.StatusPaymentRequired)
 			w.Write([]byte(pageHTML))
 			return
