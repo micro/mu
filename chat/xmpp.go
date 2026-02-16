@@ -416,8 +416,8 @@ func (s *XMPPServer) handlePresence(session *XMPPSession, start xml.StartElement
 
 	// Update user presence in auth system
 	if session.username != "" {
-		if acc, err := auth.GetAccount(session.username); err == nil {
-			auth.UpdatePresence(acc.ID)
+		if account, err := auth.GetAccountByName(session.username); err == nil {
+			auth.UpdatePresence(account.ID)
 		}
 	}
 

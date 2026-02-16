@@ -79,7 +79,7 @@ export XMPP_PORT="5222"               # Default: 5222 (standard XMPP port)
 - XMPP is disabled by default - set `XMPP_ENABLED=true` to enable
 - Users can connect with any XMPP client (Conversations, Gajim, etc.)
 - Provides federated chat like email federation via SMTP
-- See [XMPP Chat documentation](docs/XMPP_CHAT.md) for setup guide
+- See [XMPP Chat documentation](XMPP_CHAT.md) for setup guide
 - Requires DNS SRV records for federation
 
 ## Payment Configuration (Optional)

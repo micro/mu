@@ -127,13 +127,20 @@ func buildStatus() StatusResponse {
 	// Check XMPP server
 	if XMPPStatusFunc != nil {
 		xmppStatus := XMPPStatusFunc()
-		enabled := xmppStatus["enabled"].(bool)
+		enabled, ok := xmppStatus["enabled"].(bool)
+		if !ok {
+			enabled = false
+		}
 		details := "Not enabled"
 		if enabled {
-			domain := xmppStatus["domain"].(string)
-			port := xmppStatus["port"].(string)
-			sessions := xmppStatus["sessions"].(int)
-			details = fmt.Sprintf("%s:%s (%d sessions)", domain, port, sessions)
+			domain, domainOk := xmppStatus["domain"].(string)
+			port, portOk := xmppStatus["port"].(string)
+			sessions, sessionsOk := xmppStatus["sessions"].(int)
+			if domainOk && portOk && sessionsOk {
+				details = fmt.Sprintf("%s:%s (%d sessions)", domain, port, sessions)
+			} else {
+				details = "Configuration error"
+			}
 		}
 		services = append(services, StatusCheck{
 			Name:    "XMPP Server",
