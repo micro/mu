@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -14,6 +15,8 @@ import (
 
 	"mu/app"
 	"mu/auth"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // XMPP server implementation for chat federation
@@ -263,23 +266,64 @@ func (s *XMPPServer) handleStanzas(session *XMPPSession) {
 
 // handleAuth processes SASL authentication
 func (s *XMPPServer) handleAuth(session *XMPPSession) {
-	var auth SASLAuth
-	if err := session.decoder.DecodeElement(&auth, nil); err != nil {
+	var authStanza SASLAuth
+	if err := session.decoder.DecodeElement(&authStanza, nil); err != nil {
 		app.Log("xmpp", "Failed to decode auth: %v", err)
-		session.encoder.Encode(&SASLFailure{Reason: "malformed-request"})
+		if err := session.encoder.Encode(&SASLFailure{Reason: "malformed-request"}); err != nil {
+			app.Log("xmpp", "Failed to send auth failure: %v", err)
+		}
 		return
 	}
 
 	// For PLAIN mechanism, decode credentials
-	if auth.Mechanism == "PLAIN" {
+	if authStanza.Mechanism == "PLAIN" {
 		// PLAIN format: \0username\0password (base64 encoded)
-		// For simplicity, we'll accept any authenticated mu user
-		// In production, you'd decode and verify the credentials
+		// Decode the base64 auth value
+		decoded, err := base64.StdEncoding.DecodeString(authStanza.Value)
+		if err != nil {
+			app.Log("xmpp", "Failed to decode auth credentials: %v", err)
+			if err := session.encoder.Encode(&SASLFailure{Reason: "malformed-request"}); err != nil {
+				app.Log("xmpp", "Failed to send auth failure: %v", err)
+			}
+			return
+		}
 
-		// For now, just mark as authorized
-		// Real implementation should verify against auth.ValidateToken
+		// Parse PLAIN SASL format: [authzid]\0username\0password
+		parts := strings.Split(string(decoded), "\x00")
+		if len(parts) < 3 {
+			app.Log("xmpp", "Invalid PLAIN SASL format")
+			if err := session.encoder.Encode(&SASLFailure{Reason: "invalid-authzid"}); err != nil {
+				app.Log("xmpp", "Failed to send auth failure: %v", err)
+			}
+			return
+		}
+
+		username := parts[1]
+		password := parts[2]
+
+		// Verify credentials against auth system
+		acc, err := auth.GetAccountByName(username)
+		if err != nil {
+			app.Log("xmpp", "Authentication failed for user %s: user not found", username)
+			if err := session.encoder.Encode(&SASLFailure{Reason: "not-authorized"}); err != nil {
+				app.Log("xmpp", "Failed to send auth failure: %v", err)
+			}
+			return
+		}
+
+		// Verify password using bcrypt
+		if err := bcrypt.CompareHashAndPassword([]byte(acc.Secret), []byte(password)); err != nil {
+			app.Log("xmpp", "Authentication failed for user %s: invalid password", username)
+			if err := session.encoder.Encode(&SASLFailure{Reason: "not-authorized"}); err != nil {
+				app.Log("xmpp", "Failed to send auth failure: %v", err)
+			}
+			return
+		}
+
+		// Authentication successful
 		session.authorized = true
-		session.username = "user" // Would extract from decoded auth
+		session.username = username
+		app.Log("xmpp", "User %s authenticated successfully", username)
 
 		// Send success
 		if err := session.encoder.Encode(&SASLSuccess{}); err != nil {
@@ -289,7 +333,9 @@ func (s *XMPPServer) handleAuth(session *XMPPSession) {
 
 		// Client will restart stream after successful auth
 	} else {
-		session.encoder.Encode(&SASLFailure{Reason: "invalid-mechanism"})
+		if err := session.encoder.Encode(&SASLFailure{Reason: "invalid-mechanism"}); err != nil {
+			app.Log("xmpp", "Failed to send auth failure: %v", err)
+		}
 	}
 }
 
@@ -427,7 +473,9 @@ func (s *XMPPServer) broadcastPresence(pres *Presence) {
 	for jid, session := range s.sessions {
 		if jid != pres.From {
 			session.mutex.Lock()
-			session.encoder.Encode(pres)
+			if err := session.encoder.Encode(pres); err != nil {
+				app.Log("xmpp", "Failed to broadcast presence to %s: %v", jid, err)
+			}
 			session.mutex.Unlock()
 		}
 	}
