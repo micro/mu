@@ -4112,3 +4112,122 @@ a.btn-secondary:hover, .btn-secondary:hover {
     gap: 12px;
   }
 }
+
+/* ========================================
+   REMINDER PAGE
+   ======================================== */
+.reminder-page {
+  max-width: 750px;
+}
+
+.reminder-page h1 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.8em;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.reminder-date {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  margin-bottom: 20px;
+}
+
+.reminder-section {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.reminder-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.reminder-section h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.2em;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.reminder-content {
+  font-size: 0.95em;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  padding: 15px;
+  background: var(--hover-background);
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--accent-color);
+}
+
+.verse-content {
+  font-style: italic;
+  border-left-color: var(--accent-color);
+}
+
+.name-content {
+  font-weight: var(--font-weight-medium);
+  border-left-color: #0d7377;
+}
+
+.hadith-content {
+  border-left-color: #555;
+}
+
+.message-content {
+  background: transparent;
+  border-left: none;
+  padding: 0;
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.reminder-link {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.reminder-link a {
+  color: var(--accent-color);
+  font-size: 0.85em;
+  text-decoration: none;
+}
+
+.reminder-link a:hover {
+  text-decoration: underline;
+}
+
+.reminder-discussion {
+  font-size: 0.9em;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.reminder-discussion a {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+}
+
+.reminder-discussion a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .reminder-page h1 {
+    font-size: 1.5em;
+  }
+  
+  .reminder-section h2 {
+    font-size: 1.1em;
+  }
+  
+  .reminder-content {
+    padding: 12px;
+    font-size: 0.9em;
+  }
+}

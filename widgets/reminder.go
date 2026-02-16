@@ -56,7 +56,10 @@ func fetchReminder() {
 		return
 	}
 
-	link := fmt.Sprintf("https://reminder.dev%s", val["links"].(map[string]interface{})["verse"].(string))
+	// Save full JSON data for the reminder page
+	data.SaveFile("reminder.json", string(b))
+
+	link := "/reminder"
 
 	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, val["verse"])
 	html += app.Link("More", link)
@@ -87,15 +90,17 @@ func fetchReminder() {
 
 	content := fmt.Sprintf("Name of Allah: %s\n\nVerse: %s\n\nHadith: %s\n\n%s", name, verse, hadith, message)
 
+	// Index with ID "daily" (not "reminder_daily") because the chat room type extraction
+	// will split "reminder_daily" into type="reminder" and id="daily", then look up just "daily"
 	data.Index(
-		"reminder_card_daily",
+		"daily",
 		"reminder",
 		"Daily Islamic Reminder",
 		content,
 		map[string]interface{}{
-			"url":     link,
+			"url":     "/reminder",
 			"updated": updated,
-			"source":  "card",
+			"source":  "daily",
 		},
 	)
 

@@ -24,6 +24,7 @@ import (
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
+	"mu/reminder"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -89,6 +90,7 @@ func main() {
 		"/home":            false, // Public viewing
 		"/blog":            false, // Public viewing, auth for posting
 		"/markets":         false, // Public viewing
+		"/reminder":        false, // Public viewing
 		"/mail":            true,  // Require auth for inbox
 		"/logout":          true,
 		"/account":         true,
@@ -169,6 +171,9 @@ func main() {
 
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
+
+	// serve reminder page
+	http.HandleFunc("/reminder", reminder.Handler)
 
 	// auth
 	http.HandleFunc("/login", app.Login)
