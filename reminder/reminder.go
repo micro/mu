@@ -166,7 +166,7 @@ func generateReminderPage(data *ReminderData) string {
 	sb.WriteString(`<h2>Discuss</h2>`)
 	sb.WriteString(`<p class="reminder-discussion">`)
 	sb.WriteString(`Have questions or reflections about this reminder? `)
-	sb.WriteString(app.Link("Discuss with AI", "/chat?room=reminder_daily"))
+	sb.WriteString(app.Link("Discuss with AI", "/chat?id=reminder_daily"))
 	sb.WriteString(`</p>`)
 	sb.WriteString(`</div>`)
 
