@@ -72,6 +72,9 @@ func main() {
 	// load widgets (markets, reminder)
 	widgets.Load()
 	wallet.Load()
+	
+	// Initialize reminder context generation
+	reminder.Init()
 
 	// load the home cards
 	home.Load()

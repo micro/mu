@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"mu/app"
 	"mu/data"
@@ -12,12 +13,15 @@ import (
 
 // ReminderData represents the cached reminder data
 type ReminderData struct {
-	Verse   string                 `json:"verse"`
-	Name    string                 `json:"name"`
-	Hadith  string                 `json:"hadith"`
-	Message string                 `json:"message"`
-	Updated string                 `json:"updated"`
-	Links   map[string]interface{} `json:"links"`
+	Verse                 string                 `json:"verse"`
+	Name                  string                 `json:"name"`
+	Hadith                string                 `json:"hadith"`
+	Message               string                 `json:"message"`
+	Updated               string                 `json:"updated"`
+	Links                 map[string]interface{} `json:"links"`
+	Context               string                 `json:"context"`                // AI-generated context
+	ContextRequestedAt    int64                  `json:"context_requested_at"`   // Last time we requested context generation
+	ContextAttempts       int                    `json:"context_attempts"`       // Number of times we've requested context
 }
 
 // Handler handles /reminder requests
@@ -152,7 +156,15 @@ func generateReminderPage(data *ReminderData) string {
 	}
 
 	// Additional context/message if available
-	if data.Message != "" {
+	if data.Context != "" {
+		sb.WriteString(`<div class="reminder-section">`)
+		sb.WriteString(`<h2>Context</h2>`)
+		sb.WriteString(`<div class="reminder-content message-content">`)
+		sb.WriteString(data.Context)
+		sb.WriteString(`</div>`)
+		sb.WriteString(`</div>`)
+	} else if data.Message != "" {
+		// Fallback to message if context is not available
 		sb.WriteString(`<div class="reminder-section">`)
 		sb.WriteString(`<h2>Context</h2>`)
 		sb.WriteString(`<div class="reminder-content message-content">`)
@@ -173,4 +185,89 @@ func generateReminderPage(data *ReminderData) string {
 	sb.WriteString(`</div>`)
 
 	return sb.String()
+}
+
+// Init initializes the reminder package
+func Init() {
+	// Subscribe to context generation events
+	contextSub := data.Subscribe(data.EventSummaryGenerated)
+	go func() {
+		for event := range contextSub.Chan {
+			eventType, okType := event.Data["type"].(string)
+			
+			if okType && eventType == "reminder" {
+				summary, okSummary := event.Data["summary"].(string)
+				
+				if okSummary {
+					app.Log("reminder", "Received generated context")
+					
+					// Load current reminder data
+					reminderData := getReminderData()
+					if reminderData != nil {
+						// Update with context
+						reminderData.Context = summary
+						
+						// Save updated reminder data
+						b, err := json.Marshal(reminderData)
+						if err == nil {
+							data.SaveFile("reminder.json", string(b))
+							app.Log("reminder", "Updated reminder with generated context")
+						} else {
+							app.Log("reminder", "Error marshaling reminder data: %v", err)
+						}
+					}
+				}
+			}
+		}
+	}()
+}
+
+// RequestReminderContext requests AI-generated context for reminder data
+func RequestReminderContext(reminderData *ReminderData) {
+	// Skip if we already have context
+	if reminderData.Context != "" {
+		return
+	}
+
+	// Prepare content for context generation
+	var contentParts []string
+	
+	if reminderData.Name != "" {
+		contentParts = append(contentParts, fmt.Sprintf("Name of Allah: %s", reminderData.Name))
+	}
+	if reminderData.Verse != "" {
+		contentParts = append(contentParts, fmt.Sprintf("Quranic Verse: %s", reminderData.Verse))
+	}
+	if reminderData.Hadith != "" {
+		contentParts = append(contentParts, fmt.Sprintf("Hadith: %s", reminderData.Hadith))
+	}
+	
+	contentToSummarize := strings.Join(contentParts, "\n\n")
+
+	// Skip if there's not enough content
+	if len(contentToSummarize) < 50 {
+		return
+	}
+
+	// Update request tracking
+	reminderData.ContextRequestedAt = time.Now().UnixNano()
+	reminderData.ContextAttempts++
+	
+	// Save updated tracking
+	b, err := json.Marshal(reminderData)
+	if err == nil {
+		data.SaveFile("reminder.json", string(b))
+	}
+
+	app.Log("reminder", "Requesting context generation (attempt %d)", reminderData.ContextAttempts)
+
+	// Publish context generation request with specific prompt
+	data.Publish(data.Event{
+		Type: data.EventGenerateSummary,
+		Data: map[string]interface{}{
+			"uri":     "reminder",
+			"content": contentToSummarize,
+			"type":    "reminder",
+		},
+	})
 }

@@ -1018,10 +1018,22 @@ func Load() {
 				app.Log("chat", "Received summary generation request for %s (%s)", uri, eventType)
 
 				// Generate summary using LLM (low priority - background task)
+				var systemPrompt, question string
+				
+				if eventType == "reminder" {
+					// Special prompt for reminder context - focus on factual context
+					systemPrompt = "You are a knowledgeable Islamic scholar assistant. Provide factual context and explanation about the Islamic content shown. Do not embellish or add interpretations beyond what is presented. Focus on explaining what the content means and its significance in Islam. Write 2-3 clear, factual sentences. Do not use introductory phrases."
+					question = fmt.Sprintf("Provide factual context for this Islamic reminder:\n\n%s", content)
+				} else {
+					// Default prompt for news and other content
+					systemPrompt = "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear, factual sentences that capture the key points."
+					question = fmt.Sprintf("Summarize this article:\n\n%s", content)
+				}
+
 				prompt := &ai.Prompt{
-					System:   "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear, factual sentences that capture the key points.",
-					Question: fmt.Sprintf("Summarize this article:\n\n%s", content),
-					Priority: ai.PriorityLow, // Low priority for background article summaries
+					System:   systemPrompt,
+					Question: question,
+					Priority: ai.PriorityLow, // Low priority for background summaries
 				}
 
 				summary, err := askLLM(prompt)

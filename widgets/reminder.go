@@ -10,6 +10,7 @@ import (
 
 	"mu/app"
 	"mu/data"
+	"mu/reminder"
 )
 
 var (
@@ -58,6 +59,13 @@ func fetchReminder() {
 
 	// Save full JSON data for the reminder page
 	data.SaveFile("reminder.json", string(b))
+	
+	// Load the reminder data to check if we need to generate context
+	var reminderData reminder.ReminderData
+	if err := json.Unmarshal(b, &reminderData); err == nil {
+		// Request context generation if needed
+		reminder.RequestReminderContext(&reminderData)
+	}
 
 	link := "/reminder"
 
