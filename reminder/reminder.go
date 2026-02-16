@@ -91,7 +91,6 @@ func generateReminderPage(data *ReminderData) string {
 	sb.WriteString(`<div class="reminder-page">`)
 
 	// Page header
-	sb.WriteString(`<h1>Daily Islamic Reminder</h1>`)
 	sb.WriteString(`<p class="reminder-date">`)
 	if data.Updated != "" {
 		sb.WriteString(fmt.Sprintf("Updated: %s", data.Updated))
