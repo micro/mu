@@ -409,6 +409,53 @@ func getOrCreateRoom(id string) *Room {
 			}
 		}
 		app.Log("chat", "Created chat room for topic: %s (lastAI: %v)", itemID, room.LastAIMsg)
+	case "reminder":
+		// For reminder, lookup by exact ID
+		app.Log("chat", "Attempting to get reminder item %s from index", itemID)
+
+		// Try with a timeout to avoid blocking during heavy indexing
+		entryChan := make(chan *data.IndexEntry, 1)
+		go func() {
+			entryChan <- data.GetByID("reminder_" + itemID)
+		}()
+
+		var entry *data.IndexEntry
+		select {
+		case entry = <-entryChan:
+			app.Log("chat", "Looking up reminder item %s, found: %v", itemID, entry != nil)
+		case <-time.After(2 * time.Second):
+			app.Log("chat", "Timeout getting reminder %s from index, will create room with minimal context", itemID)
+			// Create room with minimal context
+			room.Title = "Daily Reminder Discussion"
+			room.Summary = "Loading reminder content..."
+			break
+		}
+
+		if entry != nil {
+			room.Title = "Daily Reminder Discussion"
+			room.Summary = entry.Content
+			if len(room.Summary) > 2000 {
+				room.Summary = room.Summary[:2000] + "..."
+			}
+			room.URL = "/reminder"
+			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
+		} else if room.Title == "" {
+			app.Log("chat", "Reminder item %s not found in index", itemID)
+			room.Title = "Daily Reminder Discussion"
+			room.URL = "/reminder"
+		}
+		
+		// Load persisted messages
+		if saved := loadRoomMessages(id); saved != nil {
+			room.Messages = saved
+			// Find last AI message time to prevent duplicate greetings
+			for i := len(saved) - 1; i >= 0; i-- {
+				if saved[i].IsLLM {
+					room.LastAIMsg = saved[i].Timestamp
+					break
+				}
+			}
+		}
 	}
 
 	// Now acquire write lock only for the map update
