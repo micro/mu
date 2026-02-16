@@ -90,8 +90,10 @@ func fetchReminder() {
 
 	content := fmt.Sprintf("Name of Allah: %s\n\nVerse: %s\n\nHadith: %s\n\n%s", name, verse, hadith, message)
 
+	// Index with ID "daily" (not "reminder_daily") because the chat room type extraction
+	// will split "reminder_daily" into type="reminder" and id="daily", then look up just "daily"
 	data.Index(
-		"reminder_daily",
+		"daily",
 		"reminder",
 		"Daily Islamic Reminder",
 		content,

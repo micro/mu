@@ -416,7 +416,7 @@ func getOrCreateRoom(id string) *Room {
 		// Try with a timeout to avoid blocking during heavy indexing
 		entryChan := make(chan *data.IndexEntry, 1)
 		go func() {
-			entryChan <- data.GetByID("reminder_" + itemID)
+			entryChan <- data.GetByID(itemID)
 		}()
 
 		var entry *data.IndexEntry
@@ -428,7 +428,6 @@ func getOrCreateRoom(id string) *Room {
 			// Create room with minimal context
 			room.Title = "Daily Reminder Discussion"
 			room.Summary = "Loading reminder content..."
-			break
 		}
 
 		if entry != nil {
