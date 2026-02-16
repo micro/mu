@@ -185,6 +185,7 @@ func main() {
 
 	// status page - public health check
 	app.DKIMStatusFunc = mail.DKIMStatus
+	app.XMPPStatusFunc = chat.GetXMPPStatus
 	http.HandleFunc("/status", app.StatusHandler)
 
 	// documentation
@@ -339,6 +340,9 @@ func main() {
 
 	// Start SMTP server if enabled (disabled by default)
 	mail.StartSMTPServerIfEnabled()
+
+	// Start XMPP server if enabled (disabled by default)
+	chat.StartXMPPServerIfEnabled()
 
 	// Log initial memory usage
 	var m runtime.MemStats

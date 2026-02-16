@@ -14,10 +14,10 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 
 - **Home** - Your personalized dashboard
 - **Blog** - Thoughtful microblogging
-- **Chat** - Discuss topics with AI
+- **Chat** - Discuss topics with AI (Web) or federated XMPP chat
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
-- **Mail** - Private messaging & email
+- **Mail** - Private messaging & email with SMTP
 - **Wallet** - Credits and crypto payments
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
@@ -31,7 +31,9 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] Chat - Discussion rooms
 - [x] News - RSS news feed
 - [x] Video - YouTube search
-- [x] Mail - Private messaging 
+- [x] Mail - Private messaging
+- [x] SMTP - Email server for federation
+- [x] XMPP - Chat server for federation
 - [x] Wallet - Crypto payments
 - [ ] Services - Marketplace, etc
 
@@ -188,6 +190,7 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 
 **Features**
 - [Messaging](docs/MESSAGING_SYSTEM.md) - Email and messaging setup
+- [XMPP Chat](docs/XMPP_CHAT.md) - Federated chat with XMPP
 - [Wallet & Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
 
 **Reference**
