@@ -1375,6 +1375,13 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	roomJSON, _ := json.Marshal(roomData)
 
 	tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
+	
+	// Add a link to messages mode
+	messagesLink := `<div style="margin: 15px 0; padding: 10px; background: #f0f8ff; border-left: 3px solid #007bff; border-radius: 4px;">
+		<p style="margin: 0;"><strong>💬 New:</strong> <a href="/chat?mode=messages" style="color: #007bff; text-decoration: underline;">Direct Messaging</a> - Send messages to other users or chat with @micro (AI assistant)</p>
+	</div>`
+	
+	tmpl = strings.Replace(tmpl, `<div id="topic-selector">`, messagesLink+`<div id="topic-selector">`, 1)
 	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var roomData = %s;</script></body>`, summariesJSON, roomJSON), 1)
 
 	w.Write([]byte(tmpl))
