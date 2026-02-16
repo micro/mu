@@ -789,7 +789,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				// Item-specific rooms always get AI responses (this is "discuss with AI")
 				isItemRoom := strings.HasPrefix(room.ID, "news_") ||
 					strings.HasPrefix(room.ID, "video_") ||
-					strings.HasPrefix(room.ID, "post_")
+					strings.HasPrefix(room.ID, "post_") ||
+					strings.HasPrefix(room.ID, "reminder_")
 
 				// Check if user is alone in a topic chat room
 				room.mutex.RLock()
@@ -842,6 +843,22 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 						// Build context from room details
 						var ragContext []string
+
+						// For reminder rooms, refresh context from source (changes hourly)
+						if strings.HasPrefix(room.ID, "reminder_") {
+							parts := strings.SplitN(room.ID, "_", 2)
+							if len(parts) == 2 {
+								if entry := data.GetByID(parts[1]); entry != nil {
+									room.mutex.Lock()
+									room.Summary = entry.Content
+									if len(room.Summary) > 2000 {
+										room.Summary = room.Summary[:2000] + "..."
+									}
+									room.mutex.Unlock()
+									app.Log("chat", "Refreshed reminder context for room %s (len=%d)", room.ID, len(room.Summary))
+								}
+							}
+						}
 
 						// Add room context first (most important)
 						if room.Title != "" || room.Summary != "" {
