@@ -443,7 +443,7 @@ func getOrCreateRoom(id string) *Room {
 			room.Title = "Daily Reminder Discussion"
 			room.URL = "/reminder"
 		}
-		
+
 		// Load persisted messages
 		if saved := loadRoomMessages(id); saved != nil {
 			room.Messages = saved

@@ -50,8 +50,8 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	reminderData := getReminderData()
 	if reminderData == nil {
 		app.Respond(w, r, app.Response{
-			Title:       "Daily Reminder",
-			Description: "Islamic daily reminder",
+			Title:       "Reminder",
+			Description: "Islamic reminder",
 			HTML:        `<div class="reminder-page"><p>Reminder not available at this time.</p></div>`,
 		})
 		return
@@ -60,8 +60,8 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	body := generateReminderPage(reminderData)
 
 	app.Respond(w, r, app.Response{
-		Title:       "Daily Reminder",
-		Description: "Daily Islamic reminder with verse, hadith, and name of Allah",
+		Title:       "Reminder",
+		Description: "Islamic reminder with verse, hadith, and name of Allah",
 		HTML:        body,
 	})
 }
@@ -104,11 +104,11 @@ func generateReminderPage(data *ReminderData) string {
 		sb.WriteString(`<div class="reminder-content name-content">`)
 		sb.WriteString(data.Name)
 		sb.WriteString(`</div>`)
-		
+
 		// Add link to explore more names if available
 		if data.Links != nil {
 			if nameLink, ok := data.Links["name"].(string); ok && nameLink != "" {
-				sb.WriteString(fmt.Sprintf(`<p class="reminder-link">%s</p>`, 
+				sb.WriteString(fmt.Sprintf(`<p class="reminder-link">%s</p>`,
 					app.Link("Explore more names", "https://reminder.dev"+nameLink)))
 			}
 		}
@@ -122,11 +122,11 @@ func generateReminderPage(data *ReminderData) string {
 		sb.WriteString(`<div class="reminder-content verse-content">`)
 		sb.WriteString(data.Verse)
 		sb.WriteString(`</div>`)
-		
+
 		// Add link to full verse context if available
 		if data.Links != nil {
 			if verseLink, ok := data.Links["verse"].(string); ok && verseLink != "" {
-				sb.WriteString(fmt.Sprintf(`<p class="reminder-link">%s</p>`, 
+				sb.WriteString(fmt.Sprintf(`<p class="reminder-link">%s</p>`,
 					app.Link("Read full verse context", "https://reminder.dev"+verseLink)))
 			}
 		}
@@ -140,11 +140,11 @@ func generateReminderPage(data *ReminderData) string {
 		sb.WriteString(`<div class="reminder-content hadith-content">`)
 		sb.WriteString(data.Hadith)
 		sb.WriteString(`</div>`)
-		
+
 		// Add link to hadith source if available
 		if data.Links != nil {
 			if hadithLink, ok := data.Links["hadith"].(string); ok && hadithLink != "" {
-				sb.WriteString(fmt.Sprintf(`<p class="reminder-link">%s</p>`, 
+				sb.WriteString(fmt.Sprintf(`<p class="reminder-link">%s</p>`,
 					app.Link("Read more hadiths", "https://reminder.dev"+hadithLink)))
 			}
 		}
@@ -154,7 +154,7 @@ func generateReminderPage(data *ReminderData) string {
 	// Additional context/message if available
 	if data.Message != "" {
 		sb.WriteString(`<div class="reminder-section">`)
-		sb.WriteString(`<h2>Context</h2>`)
+		sb.WriteString(`<h2>Message</h2>`)
 		sb.WriteString(`<div class="reminder-content message-content">`)
 		sb.WriteString(data.Message)
 		sb.WriteString(`</div>`)

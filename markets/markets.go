@@ -57,10 +57,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // handleJSON returns market data as JSON
 func handleJSON(w http.ResponseWriter, r *http.Request, category string) {
 	prices := widgets.GetAllPrices()
-	
+
 	var data []MarketData
 	assets := getAssetsForCategory(category)
-	
+
 	for _, symbol := range assets {
 		if price, ok := prices[symbol]; ok {
 			data = append(data, MarketData{
@@ -80,10 +80,10 @@ func handleJSON(w http.ResponseWriter, r *http.Request, category string) {
 // handleHTML returns market data as HTML page
 func handleHTML(w http.ResponseWriter, r *http.Request, category string) {
 	prices := widgets.GetAllPrices()
-	
+
 	// Generate HTML for the selected category
 	body := generateMarketsPage(prices, category)
-	
+
 	app.Respond(w, r, app.Response{
 		Title:       "Markets",
 		Description: "Live cryptocurrency, futures, and commodity market prices",
@@ -106,44 +106,44 @@ func getAssetsForCategory(category string) []string {
 // generateMarketsPage generates the full markets page HTML
 func generateMarketsPage(prices map[string]float64, activeCategory string) string {
 	var sb strings.Builder
-	
+
 	// Page header
 	sb.WriteString(`<div class="markets-page">`)
 	sb.WriteString(`<p class="description">Live market data for cryptocurrencies, futures, and commodities</p>`)
-	
+
 	// Category tabs
 	sb.WriteString(`<div class="markets-tabs">`)
 	sb.WriteString(generateTab("Crypto", CategoryCrypto, activeCategory))
 	sb.WriteString(generateTab("Futures", CategoryFutures, activeCategory))
 	sb.WriteString(generateTab("Commodities", CategoryCommodities, activeCategory))
 	sb.WriteString(`</div>`)
-	
+
 	// Market data grid
 	sb.WriteString(`<div class="markets-grid">`)
 	assets := getAssetsForCategory(activeCategory)
-	
+
 	// Sort assets alphabetically
 	sort.Strings(assets)
-	
+
 	for _, symbol := range assets {
 		price, ok := prices[symbol]
 		if !ok {
 			price = 0
 		}
-		
+
 		sb.WriteString(generateMarketCard(symbol, price))
 	}
-	
+
 	sb.WriteString(`</div>`)
-	
+
 	// Data source information
 	sb.WriteString(`<div class="markets-footer">`)
 	sb.WriteString(`<p class="markets-source">Data sources: Coinbase, Yahoo Finance</p>`)
 	sb.WriteString(`<p class="markets-note">Prices update hourly. For real-time trading, visit official exchanges.</p>`)
 	sb.WriteString(`</div>`)
-	
+
 	sb.WriteString(`</div>`)
-	
+
 	return sb.String()
 }
 
@@ -153,14 +153,14 @@ func generateTab(label, category, activeCategory string) string {
 	if category == activeCategory {
 		activeClass = " active"
 	}
-	return fmt.Sprintf(`<a href="/markets?category=%s" class="markets-tab%s">%s</a>`, 
+	return fmt.Sprintf(`<a href="/markets?category=%s" class="markets-tab%s">%s</a>`,
 		category, activeClass, label)
 }
 
 // generateMarketCard generates HTML for a single market item
 func generateMarketCard(symbol string, price float64) string {
 	priceStr := formatPrice(price)
-	
+
 	return fmt.Sprintf(`
 		<div class="market-card">
 			<div class="market-card-header">
@@ -177,7 +177,7 @@ func formatPrice(price float64) string {
 	if price <= 0 {
 		return "N/A"
 	}
-	
+
 	// Format based on price magnitude
 	if price >= 1 {
 		return fmt.Sprintf("$%.2f", price)
