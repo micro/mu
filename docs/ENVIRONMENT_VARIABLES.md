@@ -60,6 +60,28 @@ export MAIL_SELECTOR="default"       # Default: default
 - DKIM signing enables automatically if keys exist at `~/.mu/keys/dkim.key`
 - External email costs credits (SMTP delivery cost)
 
+## XMPP Chat Configuration
+
+Mu includes an XMPP server for federated chat, similar to how SMTP enables federated email.
+
+```bash
+# Enable XMPP server (disabled by default)
+export XMPP_ENABLED="true"            # Default: false
+
+# Domain for XMPP addresses (JIDs)
+export XMPP_DOMAIN="chat.yourdomain.com"  # Default: localhost
+
+# XMPP client-to-server port
+export XMPP_PORT="5222"               # Default: 5222 (standard XMPP port)
+```
+
+**Notes:**
+- XMPP is disabled by default - set `XMPP_ENABLED=true` to enable
+- Users can connect with any XMPP client (Conversations, Gajim, etc.)
+- Provides federated chat like email federation via SMTP
+- See [XMPP Chat documentation](XMPP_CHAT.md) for setup guide
+- Requires DNS SRV records for federation
+
 ## Payment Configuration (Optional)
 
 Enable donations to support your instance. All variables are optional - leave empty for a free instance.
@@ -154,6 +176,9 @@ export MAIL_SELECTOR="default"
 | `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |
 | `MAIL_DOMAIN` | `localhost` | Your domain for message addresses |
 | `MAIL_SELECTOR` | `default` | DKIM selector for DNS lookup |
+| `XMPP_ENABLED` | `false` | Enable XMPP chat server |
+| `XMPP_DOMAIN` | `localhost` | Domain for XMPP chat addresses (JIDs) |
+| `XMPP_PORT` | `5222` | Port for XMPP client-to-server connections |
 | `DONATION_URL` | - | Payment link for one-time donations (optional) |
 | `SUPPORT_URL` | - | Community/support link like Discord (optional) |
 | `WALLET_SEED` | - | BIP39 mnemonic for HD wallet (auto-generated if not set) |
@@ -292,6 +317,7 @@ docker run -d \
 | Vector Search | Ollama with `nomic-embed-text` model (`MODEL_API_URL`) |
 | Video | `YOUTUBE_API_KEY` |
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
+| XMPP Chat | `XMPP_ENABLED=true`, `XMPP_DOMAIN` (optional: `XMPP_PORT`) |
 | Donations | `DONATION_URL` (optional: `SUPPORT_URL`) |
 | Payments | `WALLET_SEED` or auto-generated in `~/.mu/keys/wallet.seed` |
 

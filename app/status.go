@@ -65,6 +65,9 @@ type MemoryStatus struct {
 // DKIMStatusFunc is set by main to avoid import cycle
 var DKIMStatusFunc func() (enabled bool, domain, selector string)
 
+// XMPPStatusFunc is set by main to avoid import cycle
+var XMPPStatusFunc func() map[string]interface{}
+
 // StatusHandler handles the /status endpoint
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	// Quick health check endpoint
@@ -120,6 +123,31 @@ func buildStatus() StatusResponse {
 		Status:  smtpPort != "",
 		Details: fmt.Sprintf("Port %s", smtpPort),
 	})
+
+	// Check XMPP server
+	if XMPPStatusFunc != nil {
+		xmppStatus := XMPPStatusFunc()
+		enabled, ok := xmppStatus["enabled"].(bool)
+		if !ok {
+			enabled = false
+		}
+		details := "Not enabled"
+		if enabled {
+			domain, domainOk := xmppStatus["domain"].(string)
+			port, portOk := xmppStatus["port"].(string)
+			sessions, sessionsOk := xmppStatus["sessions"].(int)
+			if domainOk && portOk && sessionsOk {
+				details = fmt.Sprintf("%s:%s (%d sessions)", domain, port, sessions)
+			} else {
+				details = "Configuration error"
+			}
+		}
+		services = append(services, StatusCheck{
+			Name:    "XMPP Server",
+			Status:  enabled,
+			Details: details,
+		})
+	}
 
 	// Check LLM provider
 	llmProvider, llmConfigured := checkLLMConfig()
