@@ -4179,11 +4179,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 
 .message-content {
-  background: transparent;
-  border-left: none;
-  padding: 0;
-  font-size: 0.9em;
-  line-height: 1.6;
+  border-left-color: #333;
 }
 
 .reminder-link {
