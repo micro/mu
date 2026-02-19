@@ -154,6 +154,13 @@ All API endpoints support three authentication methods:
 |----------|--------|---------------|-------------|
 | `/search?q={query}` | GET | No | Vector search across all content |
 
+### MCP (Model Context Protocol)
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/api/mcp` | POST | No* | MCP server for AI tool integration |
+
+*Authentication is forwarded per-tool. See [MCP Server docs](MCP.md) for details.
+
 ### Authentication
 | Endpoint | Method | Auth Required | Description |
 |----------|--------|---------------|-------------|
@@ -223,6 +230,7 @@ This documentation is automatically generated from the endpoint definitions in `
 - ✅ Vector search
 - ✅ PAT token management
 - ✅ Authentication
+- ✅ MCP server (AI tool integration)
 
 **Intentionally web-only:**
 - Mail system (can be added if needed)
