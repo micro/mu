@@ -277,18 +277,8 @@ var tools = []Tool{
 	},
 }
 
-// MCPHandler handles MCP protocol requests at /api/mcp
-func MCPHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(jsonrpcResponse{
-			JSONRPC: "2.0",
-			Error:   &rpcError{Code: -32600, Message: "Only POST method is supported"},
-		})
-		return
-	}
-
+// mcpPostHandler handles MCP JSON-RPC POST requests
+func mcpPostHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w, nil, -32700, "Failed to read request body")

@@ -9,8 +9,27 @@ import (
 	"testing"
 )
 
+func TestMCPHandler_GETReturnsPage(t *testing.T) {
+	req := httptest.NewRequest("GET", "/mcp", nil)
+	w := httptest.NewRecorder()
+
+	MCPHandler(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "MCP") {
+		t.Error("Expected MCP page content in GET response")
+	}
+	if !strings.Contains(body, "tools/list") {
+		t.Error("Expected tools/list example in MCP page")
+	}
+}
+
 func TestMCPHandler_MethodNotAllowed(t *testing.T) {
-	req := httptest.NewRequest("GET", "/api/mcp", nil)
+	req := httptest.NewRequest("DELETE", "/mcp", nil)
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
