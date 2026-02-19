@@ -795,6 +795,12 @@ func Markdown() string {
 	data += "---\n\n"
 	data += "## MCP\n\n"
 	data += "AI agents and tools can connect to Mu via the [Model Context Protocol](/mcp) (MCP) server at `/mcp`.\n\n"
+	data += "### Authentication\n\n"
+	data += "Include a token in the `Authorization` header:\n\n"
+	data += "```\nAuthorization: Bearer YOUR_TOKEN\n```\n\n"
+	data += "Two ways to obtain a token:\n\n"
+	data += "1. **Personal Access Token (PAT)** — create one at `/token` after logging in.\n"
+	data += "2. **Signup / Login tools** — the agent can call the `signup` or `login` MCP tool to obtain a session token programmatically.\n\n"
 	data += "---\n\n"
 	data += "## Endpoints\n\n"
 
