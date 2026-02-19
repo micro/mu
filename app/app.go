@@ -283,7 +283,79 @@ var LoginTemplate = `<html lang="en">
 	  <br>
 	  <button>Login</button>
 	</form>
+	<div id="passkey-login" style="display:none; text-align:center; margin-top:20px;">
+	  <p class="text-muted">or</p>
+	  <button onclick="loginWithPasskey()">Login with Passkey</button>
+	</div>
 	<p class="text-center mt-5"><a href="/signup">Sign up</a> if you don't have an account</p>
+	<script>
+	if (window.PublicKeyCredential) {
+	  PublicKeyCredential.isConditionalMediationAvailable && PublicKeyCredential.isConditionalMediationAvailable().then(function(){});
+	  document.getElementById('passkey-login').style.display = 'block';
+	}
+
+	function base64urlToBuffer(b64) {
+	  var pad = b64.length %% 4;
+	  if (pad) b64 += '='.repeat(4 - pad);
+	  var str = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+	  var buf = new Uint8Array(str.length);
+	  for (var i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i);
+	  return buf.buffer;
+	}
+
+	function bufferToBase64url(buf) {
+	  var bytes = new Uint8Array(buf);
+	  var str = '';
+	  for (var i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+	  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+	}
+
+	async function loginWithPasskey() {
+	  try {
+	    var beginRes = await fetch('/passkey/login/begin', {method: 'POST'});
+	    if (!beginRes.ok) { alert('Passkey login not available'); return; }
+	    var options = await beginRes.json();
+
+	    options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
+	    if (options.publicKey.allowCredentials) {
+	      options.publicKey.allowCredentials = options.publicKey.allowCredentials.map(function(c) {
+	        return Object.assign({}, c, {id: base64urlToBuffer(c.id)});
+	      });
+	    }
+
+	    var assertion = await navigator.credentials.get(options);
+
+	    var body = {
+	      id: assertion.id,
+	      rawId: bufferToBase64url(assertion.rawId),
+	      type: assertion.type,
+	      response: {
+	        authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+	        clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
+	        signature: bufferToBase64url(assertion.response.signature),
+	        userHandle: bufferToBase64url(assertion.response.userHandle)
+	      }
+	    };
+	    if (assertion.authenticatorAttachment) {
+	      body.authenticatorAttachment = assertion.authenticatorAttachment;
+	    }
+
+	    var finishRes = await fetch('/passkey/login/finish', {
+	      method: 'POST',
+	      headers: {'Content-Type': 'application/json'},
+	      body: JSON.stringify(body)
+	    });
+	    var result = await finishRes.json();
+	    if (result.success) {
+	      window.location.href = result.redirect || '/home';
+	    } else {
+	      alert('Login failed');
+	    }
+	  } catch (e) {
+	    if (e.name !== 'NotAllowedError') alert('Error: ' + e.message);
+	  }
+	}
+	</script>
       </div>
     </div>
   </body>
@@ -552,6 +624,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 </form>
 </div>
 
+%s
+
 <div class="card">
 <h3>Settings</h3>
 <p><a href="/token">API Tokens →</a></p>
@@ -563,6 +637,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.Created.Format("January 2, 2006"),
 		acc.ID,
 		languageOptions,
+		PasskeyListHTML(acc.ID),
 		adminLinks,
 	)
 
