@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -295,5 +296,255 @@ func TestToolInputSchemaRequired(t *testing.T) {
 				t.Error("Chat tool should require 'prompt' param")
 			}
 		}
+	}
+}
+
+func TestMCPHandler_QuotaCheckBlocks(t *testing.T) {
+	// Set up QuotaCheck to reject
+	origQuotaCheck := QuotaCheck
+	QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
+		return false, 3, nil
+	}
+	defer func() { QuotaCheck = origQuotaCheck }()
+
+	body := `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"chat","arguments":{"prompt":"hello"}}}`
+	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	MCPHandler(w, req)
+
+	var resp jsonrpcResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Error == nil {
+		t.Fatal("Expected error when quota check fails")
+	}
+	if resp.Error.Code != -32000 {
+		t.Errorf("Expected quota error code -32000, got %d", resp.Error.Code)
+	}
+	if !strings.Contains(resp.Error.Message, "credits") {
+		t.Errorf("Expected credits-related error message, got: %s", resp.Error.Message)
+	}
+}
+
+func TestMCPHandler_QuotaCheckAllows(t *testing.T) {
+	// Set up QuotaCheck to allow
+	origQuotaCheck := QuotaCheck
+	QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
+		return true, 3, nil
+	}
+	defer func() { QuotaCheck = origQuotaCheck }()
+
+	// Register a test handler
+	http.HandleFunc("/test-quota-pass", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok":true}`))
+	})
+	origTools := make([]Tool, len(tools))
+	copy(origTools, tools)
+	tools = append(tools, Tool{
+		Name:     "test_quota_pass",
+		Method:   "GET",
+		Path:     "/test-quota-pass",
+		WalletOp: "chat_query",
+	})
+	defer func() { tools = origTools }()
+
+	body := `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"test_quota_pass","arguments":{}}}`
+	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	MCPHandler(w, req)
+
+	var resp jsonrpcResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Error != nil {
+		t.Fatalf("Unexpected error: %s", resp.Error.Message)
+	}
+}
+
+func TestMCPHandler_FreeToolsSkipQuotaCheck(t *testing.T) {
+	// Set up QuotaCheck that should NOT be called for free tools
+	origQuotaCheck := QuotaCheck
+	quotaCalled := false
+	QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
+		quotaCalled = true
+		return false, 0, nil // Would block if called
+	}
+	defer func() { QuotaCheck = origQuotaCheck }()
+
+	// Register a free test handler
+	http.HandleFunc("/test-free-tool", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"free":true}`))
+	})
+	origTools := make([]Tool, len(tools))
+	copy(origTools, tools)
+	tools = append(tools, Tool{
+		Name:   "test_free",
+		Method: "GET",
+		Path:   "/test-free-tool",
+		// No WalletOp = free
+	})
+	defer func() { tools = origTools }()
+
+	body := `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"test_free","arguments":{}}}`
+	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	MCPHandler(w, req)
+
+	if quotaCalled {
+		t.Error("QuotaCheck should not be called for free tools (no WalletOp)")
+	}
+
+	var resp jsonrpcResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Error != nil {
+		t.Fatalf("Unexpected error: %s", resp.Error.Message)
+	}
+}
+
+func TestMCPHandler_CustomHandler(t *testing.T) {
+	// Register a tool with a custom handler
+	origTools := make([]Tool, len(tools))
+	copy(origTools, tools)
+	RegisterTool(Tool{
+		Name:        "test_custom",
+		Description: "Custom handler test",
+		Params: []ToolParam{
+			{Name: "msg", Type: "string", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			msg, _ := args["msg"].(string)
+			return `{"echo":"` + msg + `"}`, nil
+		},
+	})
+	defer func() { tools = origTools }()
+
+	body := `{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"test_custom","arguments":{"msg":"hello"}}}`
+	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	MCPHandler(w, req)
+
+	var resp jsonrpcResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Error != nil {
+		t.Fatalf("Unexpected error: %s", resp.Error.Message)
+	}
+
+	result, ok := resp.Result.(map[string]any)
+	if !ok {
+		t.Fatal("Expected result to be an object")
+	}
+	content, ok := result["content"].([]any)
+	if !ok || len(content) == 0 {
+		t.Fatal("Expected content array")
+	}
+	first, ok := content[0].(map[string]any)
+	if !ok {
+		t.Fatal("Expected content item to be an object")
+	}
+	text, _ := first["text"].(string)
+	if !strings.Contains(text, "hello") {
+		t.Errorf("Expected echoed message, got: %s", text)
+	}
+}
+
+func TestMCPHandler_CustomHandlerError(t *testing.T) {
+	origTools := make([]Tool, len(tools))
+	copy(origTools, tools)
+	RegisterTool(Tool{
+		Name:        "test_custom_err",
+		Description: "Custom handler error test",
+		Handle: func(args map[string]any) (string, error) {
+			return `{"error":"something went wrong"}`, fmt.Errorf("something went wrong")
+		},
+	})
+	defer func() { tools = origTools }()
+
+	body := `{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"test_custom_err","arguments":{}}}`
+	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	MCPHandler(w, req)
+
+	var resp jsonrpcResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	// Custom handler errors return as tool result with isError=true, not JSON-RPC error
+	if resp.Error != nil {
+		t.Fatalf("Expected tool result, not JSON-RPC error")
+	}
+	result, ok := resp.Result.(map[string]any)
+	if !ok {
+		t.Fatal("Expected result object")
+	}
+	isError, _ := result["isError"].(bool)
+	if !isError {
+		t.Error("Expected isError=true for custom handler error")
+	}
+}
+
+func TestMCPHandler_MeteredToolsHaveWalletOp(t *testing.T) {
+	// Verify that metered tools have WalletOp set
+	expected := map[string]string{
+		"chat":         "chat_query",
+		"news_search":  "news_search",
+		"video_search": "video_search",
+		"mail_send":    "external_email",
+	}
+	for _, tool := range tools {
+		if expectedOp, ok := expected[tool.Name]; ok {
+			if tool.WalletOp != expectedOp {
+				t.Errorf("Tool %q: expected WalletOp %q, got %q", tool.Name, expectedOp, tool.WalletOp)
+			}
+		}
+	}
+
+	// Verify free tools don't have WalletOp
+	freeTtools := []string{"news", "blog_list", "blog_read", "video", "search"}
+	for _, tool := range tools {
+		for _, free := range freeTtools {
+			if tool.Name == free && tool.WalletOp != "" {
+				t.Errorf("Free tool %q should not have WalletOp, got %q", tool.Name, tool.WalletOp)
+			}
+		}
+	}
+}
+
+func TestRegisterTool(t *testing.T) {
+	origLen := len(tools)
+	origTools := make([]Tool, len(tools))
+	copy(origTools, tools)
+
+	RegisterTool(Tool{
+		Name:        "test_register",
+		Description: "Test tool registration",
+	})
+	defer func() { tools = origTools }()
+
+	if len(tools) != origLen+1 {
+		t.Errorf("Expected %d tools after registration, got %d", origLen+1, len(tools))
+	}
+
+	found := false
+	for _, tool := range tools {
+		if tool.Name == "test_register" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Registered tool not found in tools list")
 	}
 }

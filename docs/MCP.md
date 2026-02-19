@@ -25,28 +25,66 @@ Add Mu as an MCP server in your client configuration:
 }
 ```
 
-Replace `YOUR_TOKEN` with a Personal Access Token created at `/token`.
+Replace `YOUR_TOKEN` with a session token from the `login` tool or a Personal Access Token created at `/token`.
 
 For self-hosted instances, replace `mu.xyz` with your domain.
 
 ## Available Tools
 
-| Tool | Description |
-|------|-------------|
-| `chat` | Chat with AI assistant |
-| `news` | Read the latest news feed |
-| `news_search` | Search for news articles |
-| `blog_list` | Get all blog posts |
-| `blog_read` | Read a specific blog post |
-| `blog_create` | Create a new blog post |
-| `blog_update` | Update a blog post |
-| `blog_delete` | Delete a blog post |
-| `video` | Get the latest videos |
-| `video_search` | Search for videos |
-| `mail_read` | Read mail inbox |
-| `mail_send` | Send a mail message |
-| `search` | Search across all content |
-| `wallet_balance` | Get wallet credit balance |
+| Tool | Description | Credit Cost |
+|------|-------------|-------------|
+| `login` | Log in and get session token | Free |
+| `signup` | Create account and get session token | Free |
+| `chat` | Chat with AI assistant | 3 credits |
+| `news` | Read the latest news feed | Free |
+| `news_search` | Search for news articles | 1 credit |
+| `blog_list` | Get all blog posts | Free |
+| `blog_read` | Read a specific blog post | Free |
+| `blog_create` | Create a new blog post | Free |
+| `blog_update` | Update a blog post | Free |
+| `blog_delete` | Delete a blog post | Free |
+| `video` | Get the latest videos | Free |
+| `video_search` | Search for videos | 2 credits |
+| `mail_read` | Read mail inbox | Free |
+| `mail_send` | Send a mail message | 4 credits |
+| `search` | Search across all content | Free |
+| `wallet_balance` | Get wallet credit balance | Free |
+
+### Credits
+
+MCP tools use the same wallet credit system as the REST API:
+- **1 credit = 1 penny (£0.01)**
+- **10 free queries per day** (covers chat, news search, video search)
+- Metered tools will return an error if you have insufficient credits
+- Admin accounts have unlimited access
+
+## Authentication
+
+AI agents can authenticate using the `login` or `signup` tools:
+
+### Sign Up
+
+```bash
+curl -X POST https://mu.xyz/api/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"signup","arguments":{"id":"myagent","secret":"password123","name":"My Agent"}}}'
+```
+
+### Log In
+
+```bash
+curl -X POST https://mu.xyz/api/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"login","arguments":{"id":"myagent","secret":"password123"}}}'
+```
+
+Both return a session token. Use it in subsequent requests:
+
+```
+Authorization: Bearer SESSION_TOKEN
+```
+
+Tools that require authentication (like `mail_read`, `blog_create`) will return errors if no valid token is provided. Public tools (like `news`, `blog_list`) work without authentication.
 
 ## Protocol
 
@@ -76,16 +114,6 @@ curl -X POST https://mu.xyz/api/mcp \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"news","arguments":{}}}'
 ```
-
-## Authentication
-
-The MCP endpoint itself is public — any client can connect and discover tools. Authentication is required for tool calls that access protected services. Include your PAT token via the `Authorization` header:
-
-```
-Authorization: Bearer YOUR_TOKEN
-```
-
-Tools that require authentication (like `mail_read`, `blog_create`) will return errors if no valid token is provided. Public tools (like `news`, `blog_list`) work without authentication.
 
 ## Self-Hosting
 

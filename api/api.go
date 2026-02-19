@@ -614,6 +614,63 @@ func init() {
 			},
 		},
 	})
+
+	// MCP endpoint
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "MCP Server",
+		Path:        "/api/mcp",
+		Method:      "POST",
+		Description: "Model Context Protocol server for AI tool integration. Supports initialize, tools/list, tools/call, and ping methods. Tools include chat, news, blog, video, mail, search, wallet, login, and signup. Metered tools (chat: 3 credits, news_search: 1 credit, video_search: 2 credits, mail_send: 4 credits) use the same wallet credit system as the REST API. 10 free queries per day.",
+		Params: []*Param{
+			{
+				Name:        "jsonrpc",
+				Value:       "string",
+				Description: "JSON-RPC version (must be '2.0')",
+			},
+			{
+				Name:        "id",
+				Value:       "number",
+				Description: "Request ID",
+			},
+			{
+				Name:        "method",
+				Value:       "string",
+				Description: "MCP method: initialize, tools/list, tools/call, ping",
+			},
+			{
+				Name:        "params",
+				Value:       "object",
+				Description: "Method parameters (e.g. {name, arguments} for tools/call)",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "jsonrpc",
+						Value:       "string",
+						Description: "JSON-RPC version '2.0'",
+					},
+					{
+						Name:        "id",
+						Value:       "number",
+						Description: "Request ID echoed back",
+					},
+					{
+						Name:        "result",
+						Value:       "object",
+						Description: "Method result (tools list, tool output, server info)",
+					},
+					{
+						Name:        "error",
+						Value:       "object",
+						Description: "Error object with code and message (if failed)",
+					},
+				},
+			},
+		},
+	})
 }
 
 // Register an endpoint

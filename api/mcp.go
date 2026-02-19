@@ -105,7 +105,8 @@ type Tool struct {
 	Method      string
 	Path        string
 	Params      []ToolParam
-	WalletOp    string // Wallet operation for credit gating (empty = free)
+	WalletOp    string                              // Wallet operation for credit gating (empty = free)
+	Handle      func(map[string]any) (string, error) // Optional direct handler (bypasses HTTP dispatch)
 }
 
 // QuotaCheck is called before executing a metered tool.
@@ -120,6 +121,12 @@ type ToolParam struct {
 	Type        string
 	Description string
 	Required    bool
+}
+
+// RegisterTool adds a tool to the MCP server.
+// Used by main.go to register tools with custom handlers (e.g. auth tools).
+func RegisterTool(t Tool) {
+	tools = append(tools, t)
 }
 
 // tools is the list of MCP tools derived from API endpoints
@@ -367,6 +374,19 @@ func handleToolsCall(w http.ResponseWriter, originalReq *http.Request, req jsonr
 			writeError(w, req.ID, -32000, msg)
 			return
 		}
+	}
+
+	// Use custom handler if provided (e.g. auth tools)
+	if tool.Handle != nil {
+		text, err := tool.Handle(params.Arguments)
+		result := mcpToolResult{
+			Content: []mcpContent{{Type: "text", Text: text}},
+		}
+		if err != nil {
+			result.IsError = true
+		}
+		writeResult(w, req.ID, result)
+		return
 	}
 
 	// Build the internal HTTP request
