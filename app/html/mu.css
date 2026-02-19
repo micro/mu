@@ -3887,121 +3887,19 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin: 0;
   padding: 0;
   background: #000;
-  overflow: hidden;
 }
-.video-player-page {
+.video-embed {
   position: relative;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
 }
-.video-player-page iframe {
+.video-embed iframe {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   border: none;
-  z-index: 1;
-}
-.video-player-page.audio-only iframe {
-  clip-path: inset(100%);
-  pointer-events: none;
-}
-.audio-overlay {
-  display: none;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  z-index: 10;
-}
-.video-player-page.audio-only .audio-overlay {
-  display: flex;
-}
-.audio-visualiser {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 80px;
-}
-.audio-visualiser span {
-  display: inline-block;
-  width: 8px;
-  background: #fff;
-  border-radius: 4px;
-  animation: audiovis 1s ease-in-out infinite alternate;
-}
-.audio-visualiser span:nth-child(1){ height:20px; animation-delay:0s; }
-.audio-visualiser span:nth-child(2){ height:35px; animation-delay:.2s; }
-.audio-visualiser span:nth-child(3){ height:50px; animation-delay:.4s; }
-.audio-visualiser span:nth-child(4){ height:35px; animation-delay:.6s; }
-.audio-visualiser span:nth-child(5){ height:20px; animation-delay:.8s; }
-@keyframes audiovis {
-  from { transform: scaleY(1); }
-  to   { transform: scaleY(3); }
-}
-.audio-controls {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-}
-.audio-controls button {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.4);
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-  font-size: 22px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.audio-controls button:active {
-  background: rgba(255,255,255,0.25);
-}
-.audio-time {
-  font-size: 16px;
-  color: rgba(255,255,255,0.7);
-  font-variant-numeric: tabular-nums;
-}
-.audio-toggle {
-  position: absolute;
-  bottom: 24px;
-  right: 24px;
-  z-index: 50;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.3);
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  font-size: 24px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.audio-toggle:active {
-  background: rgba(255,255,255,0.3);
 }
 
 /* =============================================

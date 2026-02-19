@@ -527,12 +527,12 @@ func embedVideo(id string) string {
 }
 
 func embedVideoWithAutoplay(id string, autoplay bool) string {
-	u := "https://www.youtube.com/embed/" + id + "?enablejsapi=1&playsinline=1"
+	u := "https://www.youtube.com/embed/" + id
 	if autoplay {
-		u += "&autoplay=1"
+		u += "?autoplay=1"
 	}
 	style := `style="position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none;"`
-	return `<iframe id="ytplayer" width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" playsinline allowfullscreen></iframe>`
+	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
 }
 
 func getChannel(category, handle string) (string, []*Result, error) {
@@ -1118,130 +1118,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
-		// Check if audio-only mode is requested
-		audioOnly := r.Form.Get("audio") == "1"
-
 		// Fullscreen video player page
 		tmpl := `<!DOCTYPE html>
-<html style="margin:0;padding:0;overflow:hidden;height:100%%">
+<html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Video | Mu</title>
     <link rel="stylesheet" href="/mu.css">
   </head>
   <body class="video-player-body">
-    <div id="vp" class="video-player-page%s">
-      %s
-      <div class="audio-overlay">
-        <div class="audio-visualiser">
-          <span></span><span></span><span></span><span></span><span></span>
-        </div>
-        <div class="audio-controls">
-          <button id="audioPlayPause" onclick="togglePlay()" title="Play/Pause">⏸</button>
-          <span class="audio-time" id="audioTime">0:00 / 0:00</span>
-        </div>
-      </div>
-      <button class="audio-toggle" onclick="toggleAudio()" title="Toggle audio-only mode">♫</button>
-    </div>
-    <script>
-    var player;
-    var timeInterval;
-    var apiReady = false;
-
-    function loadYTAPI() {
-      var iframe = document.getElementById('ytplayer');
-      if (iframe) {
-        var src = iframe.src;
-        if (src.indexOf('origin=') === -1) {
-          iframe.src = src + '&origin=' + encodeURIComponent(window.location.origin);
-        }
-      }
-      var tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(tag);
-    }
-
-    function onYouTubeIframeAPIReady() {
-      apiReady = true;
-      initPlayer();
-    }
-
-    function initPlayer() {
-      if (player) return;
-      var iframe = document.getElementById('ytplayer');
-      if (!iframe || !apiReady) return;
-      player = new YT.Player('ytplayer', {
-        events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onStateChange
-        }
-      });
-    }
-
-    function onPlayerReady() {
-      if (document.getElementById('vp').classList.contains('audio-only')) {
-        startTimeUpdates();
-      }
-    }
-
-    function onStateChange(e) {
-      var btn = document.getElementById('audioPlayPause');
-      if (btn) btn.textContent = (e.data === 1) ? '⏸' : '▶';
-    }
-
-    function fmtTime(s) {
-      s = Math.floor(s || 0);
-      var m = Math.floor(s / 60);
-      var sec = s %% 60;
-      return m + ':' + (sec < 10 ? '0' : '') + sec;
-    }
-
-    function startTimeUpdates() {
-      if (timeInterval) clearInterval(timeInterval);
-      timeInterval = setInterval(function() {
-        if (!player || !player.getCurrentTime) return;
-        var cur = player.getCurrentTime();
-        var dur = player.getDuration();
-        document.getElementById('audioTime').textContent = fmtTime(cur) + ' / ' + fmtTime(dur);
-        var state = player.getPlayerState();
-        document.getElementById('audioPlayPause').textContent = (state === 1) ? '⏸' : '▶';
-      }, 500);
-    }
-
-    function stopTimeUpdates() {
-      if (timeInterval) { clearInterval(timeInterval); timeInterval = null; }
-    }
-
-    function togglePlay() {
-      if (!player || !player.getPlayerState) return;
-      var state = player.getPlayerState();
-      if (state === 1) { player.pauseVideo(); } else { player.playVideo(); }
-    }
-
-    function toggleAudio() {
-      var e = document.getElementById('vp');
-      var b = e.querySelector('.audio-toggle');
-      var on = e.classList.toggle('audio-only');
-      b.textContent = on ? '▶' : '♫';
-      b.title = on ? 'Show video' : 'Audio only';
-      if (on) {
-        if (!player) initPlayer();
-        startTimeUpdates();
-      } else {
-        stopTimeUpdates();
-      }
-    }
-
-    loadYTAPI();
-    </script>
+    <div class="video-embed">%s</div>
   </body>
 </html>
 `
-		audioClass := ""
-		if audioOnly {
-			audioClass = " audio-only"
-		}
-		html := fmt.Sprintf(tmpl, audioClass, embedVideoWithAutoplay(id, autoplay))
+		html := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay))
 		w.Write([]byte(html))
 
 		return
