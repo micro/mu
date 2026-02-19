@@ -365,10 +365,10 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 
 // TopupMethod represents a payment method for wallet topup
 type TopupMethod struct {
-	Type    string          `json:"type"`              // "card" or "crypto"
-	Tiers   []StripeTopupTier `json:"tiers,omitempty"` // For card/Stripe
-	Address string          `json:"address,omitempty"` // For crypto: deposit address
-	Chains  []string        `json:"chains,omitempty"`  // For crypto: supported chains
+	Type    string            `json:"type"`              // "card" or "crypto"
+	Tiers   []StripeTopupTier `json:"tiers,omitempty"`   // For card/Stripe
+	Address string            `json:"address,omitempty"` // For crypto: deposit address
+	Chains  []string          `json:"chains,omitempty"`  // For crypto: supported chains
 }
 
 func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
