@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -322,30 +321,27 @@ func PasskeyListHTML(accountID string) string {
 		if !pk.LastUsed.IsZero() {
 			lastUsed = TimeAgo(pk.LastUsed)
 		}
-		credIDDisplay := base64.RawURLEncoding.EncodeToString(pk.Credential.ID)
-		if len(credIDDisplay) > 16 {
-			credIDDisplay = credIDDisplay[:16] + "..."
-		}
 		rows += fmt.Sprintf(`<tr>
 <td>%s</td>
-<td><code>%s</code></td>
 <td>%s</td>
 <td>%s</td>
 <td><form method="POST" action="/passkey/delete" onsubmit="return confirm('Remove this passkey?')"><input type="hidden" name="id" value="%s"><button type="submit">Remove</button></form></td>
-</tr>`, pk.Name, credIDDisplay, created, lastUsed, pk.ID)
+</tr>`, pk.Name, created, lastUsed, pk.ID)
 	}
 
 	if rows == "" {
-		rows = `<tr><td colspan="5" style="padding: 20px; text-align: center; color: #666;">No passkeys registered. Add one below.</td></tr>`
+		rows = `<tr><td colspan="4" style="padding: 20px; text-align: center; color: #666;">No passkeys registered. Add one below.</td></tr>`
 	}
 
 	return fmt.Sprintf(`<div class="card">
 <h3>Passkeys</h3>
 <p>Sign in without a password using your device's biometrics or security key.</p>
+<div style="overflow-x: auto;">
 <table>
-<thead><tr><th>Name</th><th>Key</th><th>Created</th><th>Last Used</th><th></th></tr></thead>
+<thead><tr><th>Name</th><th>Created</th><th>Last Used</th><th></th></tr></thead>
 <tbody>%s</tbody>
 </table>
+</div>
 <button onclick="registerPasskey()" style="margin-top: 15px;">Add Passkey</button>
 <script>
 async function registerPasskey() {
