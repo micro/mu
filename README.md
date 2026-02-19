@@ -25,6 +25,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 ## Roadmap
 
 - [x] API - Basic API
+- [x] MCP - AI tool integration
 - [x] App - Basic PWA
 - [x] Home - Overview
 - [x] Blog - Micro blogging
@@ -195,6 +196,7 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 - [Configuration](docs/ENVIRONMENT_VARIABLES.md) - All environment variables
 - [Vector Search](docs/VECTOR_SEARCH.md) - Semantic search setup
 - [API Reference](docs/API_COVERAGE.md) - REST API endpoints
+- [MCP Server](docs/MCP.md) - AI tool integration via MCP
 - [Screenshots](docs/SCREENSHOTS.md) - Application screenshots
 
 ## Development 

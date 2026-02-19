@@ -225,6 +225,9 @@ func main() {
 	// serve the api doc
 	http.Handle("/api", app.ServeHTML(apiHTML))
 
+	// serve the MCP server
+	http.HandleFunc("/api/mcp", api.MCPHandler)
+
 	// serve the app
 	http.Handle("/", app.Serve())
 
@@ -308,7 +311,10 @@ func main() {
 				var isAuthed bool
 
 				// Special case: /post should be public, not confused with /blog
+				// Special case: /api/mcp should be public (auth forwarded per-tool)
 				if strings.HasPrefix(r.URL.Path, "/post") && !strings.HasPrefix(r.URL.Path, "/blog") {
+					isAuthed = false
+				} else if r.URL.Path == "/api/mcp" {
 					isAuthed = false
 				} else {
 					// Check if path requires authentication
