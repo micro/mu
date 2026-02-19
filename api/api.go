@@ -615,6 +615,95 @@ func init() {
 		},
 	})
 
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Wallet Topup",
+		Path:        "/wallet/topup",
+		Method:      "GET",
+		Description: "Get available wallet topup payment methods. Returns card (Stripe) tiers and/or crypto deposit address with supported chains. Requires authentication.",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "methods",
+						Value:       "array",
+						Description: "Array of payment method objects. Each has a type (card or crypto). Card methods include tiers with amount, credits, label, bonus_pct. Crypto methods include address and chains.",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Markets",
+		Path:        "/markets",
+		Method:      "GET",
+		Description: "Get live market prices for cryptocurrencies, futures, and commodities",
+		Params: []*Param{
+			{
+				Name:        "category",
+				Value:       "string",
+				Description: "Category: crypto, futures, or commodities (default: crypto)",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "category",
+						Value:       "string",
+						Description: "The requested category",
+					},
+					{
+						Name:        "data",
+						Value:       "array",
+						Description: "Array of market items with symbol, price, type",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Reminder",
+		Path:        "/reminder",
+		Method:      "GET",
+		Description: "Get the daily Islamic reminder with Quranic verse, hadith, and name of Allah",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "verse",
+						Value:       "string",
+						Description: "Quranic verse",
+					},
+					{
+						Name:        "name",
+						Value:       "string",
+						Description: "Name of Allah",
+					},
+					{
+						Name:        "hadith",
+						Value:       "string",
+						Description: "Hadith text",
+					},
+					{
+						Name:        "message",
+						Value:       "string",
+						Description: "Additional message",
+					},
+					{
+						Name:        "updated",
+						Value:       "string",
+						Description: "Last updated timestamp",
+					},
+				},
+			},
+		},
+	})
+
 	// MCP endpoint
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "MCP Server",

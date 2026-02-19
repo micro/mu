@@ -254,6 +254,27 @@ var tools = []Tool{
 			{Name: "balance", Type: "string", Description: "Set to 1 to get balance", Required: false},
 		},
 	},
+	{
+		Name:        "wallet_topup",
+		Description: "Get available wallet topup payment methods with crypto deposit address and card payment tiers",
+		Method:      "GET",
+		Path:        "/wallet/topup",
+	},
+	{
+		Name:        "markets",
+		Description: "Get live market prices for cryptocurrencies, futures, and commodities",
+		Method:      "GET",
+		Path:        "/markets",
+		Params: []ToolParam{
+			{Name: "category", Type: "string", Description: "Category of markets: crypto, futures, or commodities (default: crypto)", Required: false},
+		},
+	},
+	{
+		Name:        "reminder",
+		Description: "Get the daily Islamic reminder with verse, hadith, and name of Allah",
+		Method:      "GET",
+		Path:        "/reminder",
+	},
 }
 
 // MCPHandler handles MCP protocol requests at /api/mcp
