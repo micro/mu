@@ -95,6 +95,7 @@ func main() {
 		"/logout":          true,
 		"/account":         true,
 		"/token":           true,  // PAT token management
+		"/passkey":         false, // Passkey login/register (auth checked in handler)
 		"/session":         false, // Public - used to check auth status
 		"/api":             true,
 		"/flag":            true,
@@ -189,6 +190,7 @@ func main() {
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/session", app.Session)
 	http.HandleFunc("/token", app.TokenHandler)
+	http.HandleFunc("/passkey/", app.PasskeyHandler)
 
 	// status page - public health check
 	app.DKIMStatusFunc = mail.DKIMStatus
