@@ -3901,18 +3901,38 @@ a.btn-secondary:hover, .btn-secondary:hover {
   height: 100%;
   border: none;
 }
-.video-embed.audio-only {
+.video-embed.audio-only iframe {
+  width: 1px;
   height: 1px;
-  overflow: hidden;
   opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.audio-overlay {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  z-index: 10;
+}
+.video-embed.audio-only .audio-overlay {
+  display: flex;
 }
 .audio-visualiser {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 100vh;
-  background: #000;
+  height: 80px;
 }
 .audio-visualiser span {
   display: inline-block;
@@ -3926,12 +3946,38 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .audio-visualiser span:nth-child(3){ height:50px; animation-delay:.4s; }
 .audio-visualiser span:nth-child(4){ height:35px; animation-delay:.6s; }
 .audio-visualiser span:nth-child(5){ height:20px; animation-delay:.8s; }
-.video-embed.audio-only ~ .audio-visualiser {
-  display: flex;
-}
 @keyframes vis {
   from { transform: scaleY(1); }
   to   { transform: scaleY(3); }
+}
+.audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.audio-controls button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.audio-controls button:active {
+  background: rgba(255,255,255,0.25);
+}
+.audio-time {
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+  font-variant-numeric: tabular-nums;
 }
 .audio-toggle {
   position: fixed;
@@ -3947,8 +3993,10 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-size: 20px;
   cursor: pointer;
   backdrop-filter: blur(4px);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
-.audio-toggle:hover {
+.audio-toggle:active {
   background: rgba(255,255,255,0.3);
 }
 

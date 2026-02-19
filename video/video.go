@@ -527,9 +527,9 @@ func embedVideo(id string) string {
 }
 
 func embedVideoWithAutoplay(id string, autoplay bool) string {
-	u := "https://www.youtube.com/embed/" + id
+	u := "https://www.youtube.com/embed/" + id + "?enablejsapi=1"
 	if autoplay {
-		u += "?autoplay=1"
+		u += "&autoplay=1"
 	}
 	style := `style="position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none;"`
 	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
@@ -1125,25 +1125,80 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		tmpl := `<!DOCTYPE html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Video | Mu</title>
     <link rel="stylesheet" href="/mu.css">
   </head>
   <body class="video-player-body">
-    <div class="video-embed%s">%s</div>
-    <div class="audio-visualiser">
-      <span></span><span></span><span></span><span></span><span></span>
+    <div class="video-embed%s">
+      %s
+      <div class="audio-overlay">
+        <div class="audio-visualiser">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="audio-controls">
+          <button id="audioPlayPause" onclick="togglePlay()" title="Play/Pause">⏸</button>
+          <span class="audio-time" id="audioTime">0:00 / 0:00</span>
+        </div>
+      </div>
     </div>
     <button class="audio-toggle" onclick="toggleAudio()" title="Toggle audio-only mode">♫</button>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script>
-    function toggleAudio(){
-      var e=document.querySelector('.video-embed');
-      var v=document.querySelector('.audio-visualiser');
-      var b=document.querySelector('.audio-toggle');
-      var on=e.classList.toggle('audio-only');
-      v.style.display=on?'flex':'none';
-      b.textContent=on?'▶':'♫';
-      b.title=on?'Show video':'Audio only';
+    var player;
+    var timeInterval;
+
+    function onYouTubeIframeAPIReady() {
+      var iframe = document.querySelector('.video-embed iframe');
+      if (iframe) {
+        player = new YT.Player(iframe, {
+          events: { 'onReady': onPlayerReady }
+        });
+      }
+    }
+
+    function onPlayerReady() {
+      if (document.querySelector('.video-embed').classList.contains('audio-only')) {
+        startTimeUpdates();
+      }
+    }
+
+    function fmtTime(s) {
+      s = Math.floor(s);
+      var m = Math.floor(s / 60);
+      var sec = s %% 60;
+      return m + ':' + (sec < 10 ? '0' : '') + sec;
+    }
+
+    function startTimeUpdates() {
+      if (timeInterval) clearInterval(timeInterval);
+      timeInterval = setInterval(function() {
+        if (!player || !player.getCurrentTime) return;
+        var cur = player.getCurrentTime();
+        var dur = player.getDuration();
+        document.getElementById('audioTime').textContent = fmtTime(cur) + ' / ' + fmtTime(dur);
+        var state = player.getPlayerState();
+        document.getElementById('audioPlayPause').textContent = (state === 1) ? '⏸' : '▶';
+      }, 500);
+    }
+
+    function stopTimeUpdates() {
+      if (timeInterval) { clearInterval(timeInterval); timeInterval = null; }
+    }
+
+    function togglePlay() {
+      if (!player) return;
+      var state = player.getPlayerState();
+      if (state === 1) { player.pauseVideo(); } else { player.playVideo(); }
+    }
+
+    function toggleAudio() {
+      var e = document.querySelector('.video-embed');
+      var b = document.querySelector('.audio-toggle');
+      var on = e.classList.toggle('audio-only');
+      b.textContent = on ? '▶' : '♫';
+      b.title = on ? 'Show video' : 'Audio only';
+      if (on) { startTimeUpdates(); } else { stopTimeUpdates(); }
     }
     </script>
   </body>
