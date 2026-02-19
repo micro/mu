@@ -13,7 +13,7 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 ### Features
 
 - **Home** - Your personalized dashboard
-- **Blog** - Thoughtful microblogging
+- **Blog** - Thoughtful microblogging with [ActivityPub](docs/ACTIVITYPUB.md) federation
 - **Chat** - Discuss topics with AI
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
@@ -187,6 +187,7 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 - [Installation](docs/INSTALLATION.md) - Self-hosting and deployment guide
 
 **Features**
+- [ActivityPub](docs/ACTIVITYPUB.md) - Federation with Mastodon, Threads, etc.
 - [Messaging](docs/MESSAGING_SYSTEM.md) - Email and messaging setup
 - [Wallet & Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
 

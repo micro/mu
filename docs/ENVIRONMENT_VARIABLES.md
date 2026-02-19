@@ -36,6 +36,15 @@ export MODEL_API_URL="http://localhost:11434"   # Default: http://localhost:1143
 
 **TODO:** The Ollama endpoint (`http://localhost:11434`) and embedding model (`nomic-embed-text`) are currently hardcoded in `data/data.go`. Consider making these configurable via `MODEL_API_URL` and a new `EMBEDDING_MODEL` environment variable.
 
+## ActivityPub Configuration
+
+```bash
+# Domain for ActivityPub federation (user discovery, actor URLs)
+export MU_DOMAIN="yourdomain.com"  # Falls back to MAIL_DOMAIN, then "localhost"
+```
+
+**Note:** This must match your public domain so remote servers can resolve your users. See [ActivityPub](/docs/activitypub) for details.
+
 ## Messaging Configuration
 
 Mu has two messaging systems:
@@ -146,6 +155,7 @@ export MAIL_SELECTOR="default"
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `MU_DOMAIN` | `localhost` | Domain for ActivityPub federation (falls back to `MAIL_DOMAIN`) |
 | `FANAR_API_KEY` | - | Fanar API key for chat (required for chat) |
 | `FANAR_API_URL` | `https://api.fanar.ai` | Fanar API endpoint |
 | `MODEL_NAME` | `llama3.2` | Ollama model name (if Fanar not configured) |
@@ -288,6 +298,7 @@ docker run -d \
 
 | Feature | Required Environment Variables |
 |---------|-------------------------------|
+| ActivityPub | `MU_DOMAIN` (optional, falls back to `MAIL_DOMAIN`) |
 | Chat | `FANAR_API_KEY` or Ollama (`MODEL_NAME`, `MODEL_API_URL`) |
 | Vector Search | Ollama with `nomic-embed-text` model (`MODEL_API_URL`) |
 | Video | `YOUTUBE_API_KEY` |

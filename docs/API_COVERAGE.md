@@ -33,6 +33,13 @@ This document covers the REST API for programmatic access to Mu.
 - ✅ **Search Videos** - `POST /video`
 
 
+### ActivityPub Federation
+- ✅ **WebFinger** - `GET /.well-known/webfinger?resource=acct:user@domain`
+- ✅ **Actor Profile** - `GET /@{username}` (with `Accept: application/activity+json`)
+- ✅ **Outbox** - `GET /@{username}/outbox`
+- ✅ **Post Object** - `GET /post?id={id}` (with `Accept: application/activity+json`)
+- ✅ **Inbox** - `POST /@{username}/inbox` (stub)
+
 ### User Profiles
 - ✅ **Get User Profile** - `GET /@{username}`
 - ✅ **Update Status** - `POST /@{username}` (status field)
@@ -125,6 +132,15 @@ All API endpoints support three authentication methods:
 | `/video` | GET | No | Get latest videos (JSON with Accept header) |
 | `/video` | POST | Yes | Search videos |
 
+### ActivityPub
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/.well-known/webfinger` | GET | No | User discovery (acct:user@domain) |
+| `/@{username}` | GET | No | Actor profile (Accept: application/activity+json) |
+| `/@{username}/outbox` | GET | No | User's public posts as OrderedCollection |
+| `/@{username}/inbox` | POST | No | Incoming activity stub |
+| `/post?id={id}` | GET | No | Post as ActivityPub Note (Accept: application/activity+json) |
+
 ### User
 | Endpoint | Method | Auth Required | Description |
 |----------|--------|---------------|-------------|
@@ -198,6 +214,7 @@ This documentation is automatically generated from the endpoint definitions in `
 
 **All major features have API access:**
 - ✅ Blog posts (full CRUD)
+- ✅ ActivityPub federation (read-only)
 - ✅ Comments
 - ✅ Chat/AI
 - ✅ News (read + search)

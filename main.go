@@ -130,7 +130,14 @@ func main() {
 	http.HandleFunc("/blog", blog.Handler)
 
 	// serve individual blog post (public, no auth)
-	http.HandleFunc("/post", blog.PostHandler)
+	// Serves ActivityPub JSON-LD when requested via Accept header
+	http.HandleFunc("/post", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && blog.WantsActivityPub(r) {
+			blog.PostObjectHandler(w, r)
+			return
+		}
+		blog.PostHandler(w, r)
+	})
 
 	// handle comments on posts /post/{id}/comment
 	http.HandleFunc("/post/", blog.CommentHandler)
@@ -191,6 +198,9 @@ func main() {
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/docs/", docs.Handler)
 	http.HandleFunc("/about", docs.AboutHandler)
+
+	// ActivityPub: WebFinger discovery
+	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
 
 	// presence WebSocket endpoint
 	http.HandleFunc("/presence", user.PresenceHandler)
@@ -324,9 +334,30 @@ func main() {
 			}
 
 			// Check if this is a user profile request (/@username)
-			if strings.HasPrefix(r.URL.Path, "/@") && !strings.Contains(r.URL.Path[2:], "/") {
-				user.Handler(w, r)
-				return
+			if strings.HasPrefix(r.URL.Path, "/@") {
+				rest := r.URL.Path[2:]
+
+				// Handle ActivityPub sub-endpoints: /@username/outbox, /@username/inbox
+				if strings.HasSuffix(rest, "/outbox") {
+					blog.OutboxHandler(w, r)
+					return
+				}
+				if strings.HasSuffix(rest, "/inbox") {
+					blog.InboxHandler(w, r)
+					return
+				}
+
+				// Serve ActivityPub actor JSON if requested
+				if !strings.Contains(rest, "/") && blog.WantsActivityPub(r) {
+					blog.ActorHandler(w, r)
+					return
+				}
+
+				// Otherwise serve the HTML profile page
+				if !strings.Contains(rest, "/") {
+					user.Handler(w, r)
+					return
+				}
 			}
 
 			http.DefaultServeMux.ServeHTTP(w, r)
