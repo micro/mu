@@ -189,12 +189,18 @@ func passkeyLoginBegin(w http.ResponseWriter, r *http.Request) {
 
 	storeSession(session.Challenge, session)
 
+	var secure bool
+	if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
+		secure = true
+	}
+
 	// Set the challenge in a cookie so we can retrieve the session on finish
 	http.SetCookie(w, &http.Cookie{
 		Name:     "passkey_challenge",
 		Value:    session.Challenge,
 		Path:     "/",
 		MaxAge:   300, // 5 minutes
+		Secure:   secure,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})
@@ -224,11 +230,16 @@ func passkeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clear the challenge cookie
+	var secure bool
+	if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
+		secure = true
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     "passkey_challenge",
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
+		Secure:   secure,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})
@@ -254,11 +265,6 @@ func passkeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, "failed to create session")
 		return
-	}
-
-	var secure bool
-	if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
-		secure = true
 	}
 
 	http.SetCookie(w, &http.Cookie{
