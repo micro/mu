@@ -3889,22 +3889,10 @@ a.btn-secondary:hover, .btn-secondary:hover {
   background: #000;
   overflow: hidden;
 }
-.video-player-wrap {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
 .video-embed {
   position: relative;
   width: 100%;
-  flex: 1 1 0;
-  min-height: 0;
-  overflow: hidden;
+  height: calc(100vh - 48px);
 }
 .video-embed iframe {
   position: absolute;
@@ -3919,12 +3907,12 @@ a.btn-secondary:hover, .btn-secondary:hover {
   pointer-events: none;
 }
 .video-bar {
+  height: 48px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 16px;
+  padding: 0 16px;
   background: #111;
-  flex-shrink: 0;
 }
 .video-bar button {
   background: rgba(255,255,255,0.1);
@@ -3942,9 +3930,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
   background: rgba(255,255,255,0.25);
 }
 .video-bar #playBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 36px;
   height: 36px;
   padding: 0;

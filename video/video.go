@@ -1127,18 +1127,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     <link rel="stylesheet" href="/mu.css">
   </head>
   <body class="video-player-body">
-    <div class="video-player-wrap">
-      <div class="video-embed">
-        %s
-        <div class="audio-vis" id="audioVis">
-          <span></span><span></span><span></span><span></span><span></span>
-        </div>
+    <div class="video-embed">
+      %s
+      <div class="audio-vis" id="audioVis">
+        <span></span><span></span><span></span><span></span><span></span>
       </div>
-      <div class="video-bar">
-        <button id="audioBtn" onclick="toggleAudio()">♫ Audio only</button>
-        <span id="audioTime"></span>
-        <button id="playBtn" onclick="togglePlay()" style="display:none">▶</button>
-      </div>
+    </div>
+    <div class="video-bar">
+      <button id="audioBtn" onclick="toggleAudio()">♫ Audio only</button>
+      <span id="audioTime"></span>
+      <button id="playBtn" onclick="togglePlay()" style="display:none">▶</button>
     </div>
     <script>
     var player, apiReady=false, tInt;
