@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 )
 
@@ -350,12 +351,12 @@ func handleToolsCall(w http.ResponseWriter, originalReq *http.Request, req jsonr
 
 	if tool.Method == "GET" {
 		// Add params as query string
-		var queryParts []string
+		query := url.Values{}
 		for k, v := range params.Arguments {
-			queryParts = append(queryParts, fmt.Sprintf("%s=%v", k, v))
+			query.Set(k, fmt.Sprintf("%v", v))
 		}
-		if len(queryParts) > 0 {
-			path += "?" + strings.Join(queryParts, "&")
+		if len(query) > 0 {
+			path += "?" + query.Encode()
 		}
 	} else {
 		// POST/PATCH/DELETE: send params as JSON body
