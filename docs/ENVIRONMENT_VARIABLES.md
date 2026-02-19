@@ -76,9 +76,6 @@ Enable donations to support your instance. All variables are optional - leave em
 ```bash
 # One-time donation URL
 export DONATION_URL="https://gocardless.com/your-donation-link"
-
-# Community/support URL (e.g., Discord, forum)
-export SUPPORT_URL="https://discord.gg/your-invite"
 ```
 
 **Notes:**
@@ -165,7 +162,6 @@ export MAIL_SELECTOR="default"
 | `MAIL_DOMAIN` | `localhost` | Your domain for message addresses |
 | `MAIL_SELECTOR` | `default` | DKIM selector for DNS lookup |
 | `DONATION_URL` | - | Payment link for one-time donations (optional) |
-| `SUPPORT_URL` | - | Community/support link like Discord (optional) |
 | `WALLET_SEED` | - | BIP39 mnemonic for HD wallet (auto-generated if not set) |
 | `BASE_RPC_URL` | `https://mainnet.base.org` | Base network RPC endpoint |
 | `FREE_DAILY_SEARCHES` | `10` | Daily free AI queries |
@@ -196,7 +192,6 @@ MAIL_SELECTOR=default
 
 # Donations (optional - leave empty for free instance)
 DONATION_URL=https://gocardless.com/your-donation-link
-SUPPORT_URL=https://discord.gg/your-invite
 
 # Crypto wallet (optional - for payments)
 # If not set, seed is auto-generated in ~/.mu/keys/wallet.seed
@@ -235,7 +230,6 @@ Environment="MAIL_SELECTOR=default"
 
 # Donations (optional)
 Environment="DONATION_URL=https://gocardless.com/your-donation-link"
-Environment="SUPPORT_URL=https://discord.gg/your-invite"
 
 # Crypto wallet (optional - auto-generated if not set)
 # Environment="WALLET_SEED=your 24 word mnemonic phrase"
@@ -273,7 +267,6 @@ docker run -d \
   -e MAIL_DOMAIN=yourdomain.com \
   -e MAIL_SELECTOR=default \
   -e DONATION_URL=https://gocardless.com/your-donation-link \
-  -e SUPPORT_URL=https://discord.gg/your-invite \
   # Wallet seed auto-generated in ~/.mu/keys/wallet.seed if not set
   # -e WALLET_SEED="your 24 word mnemonic" \
   -v ~/.mu:/root/.mu \
@@ -303,6 +296,6 @@ docker run -d \
 | Vector Search | Ollama with `nomic-embed-text` model (`MODEL_API_URL`) |
 | Video | `YOUTUBE_API_KEY` |
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
-| Donations | `DONATION_URL` (optional: `SUPPORT_URL`) |
+| Donations | `DONATION_URL` |
 | Payments | `WALLET_SEED` or auto-generated in `~/.mu/keys/wallet.seed` |
 
