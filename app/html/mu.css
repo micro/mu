@@ -3901,6 +3901,56 @@ a.btn-secondary:hover, .btn-secondary:hover {
   height: 100%;
   border: none;
 }
+.video-embed.audio-only {
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+.audio-visualiser {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100vh;
+  background: #000;
+}
+.audio-visualiser span {
+  display: inline-block;
+  width: 8px;
+  background: #fff;
+  border-radius: 4px;
+  animation: vis 1s ease-in-out infinite alternate;
+}
+.audio-visualiser span:nth-child(1){ height:20px; animation-delay:0s; }
+.audio-visualiser span:nth-child(2){ height:35px; animation-delay:.2s; }
+.audio-visualiser span:nth-child(3){ height:50px; animation-delay:.4s; }
+.audio-visualiser span:nth-child(4){ height:35px; animation-delay:.6s; }
+.audio-visualiser span:nth-child(5){ height:20px; animation-delay:.8s; }
+.video-embed.audio-only ~ .audio-visualiser {
+  display: flex;
+}
+@keyframes vis {
+  from { transform: scaleY(1); }
+  to   { transform: scaleY(3); }
+}
+.audio-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.audio-toggle:hover {
+  background: rgba(255,255,255,0.3);
+}
 
 /* =============================================
    Pricing Page

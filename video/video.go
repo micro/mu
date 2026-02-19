@@ -1118,6 +1118,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
+		// Check if audio-only mode is requested
+		audioOnly := r.Form.Get("audio") == "1"
+
 		// Fullscreen video player page
 		tmpl := `<!DOCTYPE html>
 <html>
@@ -1127,11 +1130,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     <link rel="stylesheet" href="/mu.css">
   </head>
   <body class="video-player-body">
-    <div class="video-embed">%s</div>
+    <div class="video-embed%s">%s</div>
+    <div class="audio-visualiser">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <button class="audio-toggle" onclick="toggleAudio()" title="Toggle audio-only mode">♫</button>
+    <script>
+    function toggleAudio(){
+      var e=document.querySelector('.video-embed');
+      var v=document.querySelector('.audio-visualiser');
+      var b=document.querySelector('.audio-toggle');
+      var on=e.classList.toggle('audio-only');
+      v.style.display=on?'flex':'none';
+      b.textContent=on?'▶':'♫';
+      b.title=on?'Show video':'Audio only';
+    }
+    </script>
   </body>
 </html>
 `
-		html := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay))
+		audioClass := ""
+		if audioOnly {
+			audioClass = " audio-only"
+		}
+		html := fmt.Sprintf(tmpl, audioClass, embedVideoWithAutoplay(id, autoplay))
 		w.Write([]byte(html))
 
 		return
