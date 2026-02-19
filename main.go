@@ -203,6 +203,7 @@ func main() {
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
 		"/about":  false, // Public - about page
+		"/mcp":    false, // Public - MCP tools page
 	}
 
 	// Static assets should not require authentication
@@ -317,8 +318,8 @@ func main() {
 	// serve the api doc
 	http.Handle("/api", app.ServeHTML(apiHTML))
 
-	// serve the MCP server
-	http.HandleFunc("/api/mcp", api.MCPHandler)
+	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
+	http.HandleFunc("/mcp", api.MCPHandler)
 
 	// serve the app
 	http.Handle("/", app.Serve())
@@ -403,10 +404,7 @@ func main() {
 				var isAuthed bool
 
 				// Special case: /post should be public, not confused with /blog
-				// Special case: /api/mcp should be public (auth forwarded per-tool)
 				if strings.HasPrefix(r.URL.Path, "/post") && !strings.HasPrefix(r.URL.Path, "/blog") {
-					isAuthed = false
-				} else if r.URL.Path == "/api/mcp" {
 					isAuthed = false
 				} else {
 					// Check if path requires authentication
