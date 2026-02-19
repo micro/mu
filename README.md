@@ -44,6 +44,22 @@ Some features are enhanced with AI:
 - **News** - Summarize articles
 - **Chat** - Knowledge assistant
 
+### MCP — AI Agent Integration
+
+Mu exposes a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server at `/mcp` so AI agents and tools (e.g. Claude Desktop, Cursor, or any MCP-compatible client) can connect directly.
+
+```json
+{
+  "mcpServers": {
+    "mu": {
+      "url": "https://mu.xyz/mcp"
+    }
+  }
+}
+```
+
+See [MCP Server docs](docs/MCP.md) for available tools and usage.
+
 ## Screenshots
 
 ### Home

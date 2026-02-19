@@ -40,6 +40,18 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p>Endpoint: <code>/mcp</code> &mdash; <a href="/api">API Docs</a></p>`)
 	b.WriteString(`</div>`)
 
+	// Authentication section
+	b.WriteString(`<div class="card">`)
+	b.WriteString(`<h3>Authentication</h3>`)
+	b.WriteString(`<p>Pass a token in the <code>Authorization</code> header with each request:</p>`)
+	b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">Authorization: Bearer YOUR_TOKEN</pre>`)
+	b.WriteString(`<p>Two ways to obtain a token:</p>`)
+	b.WriteString(`<ol>`)
+	b.WriteString(`<li><strong>Personal Access Token (PAT)</strong> &mdash; create one at <a href="/token">/token</a> after logging in.</li>`)
+	b.WriteString(`<li><strong>Signup / Login</strong> &mdash; the agent can call the <code>signup</code> or <code>login</code> tool to obtain a session token programmatically.</li>`)
+	b.WriteString(`</ol>`)
+	b.WriteString(`</div>`)
+
 	// Test panel
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>Test</h3>`)
