@@ -527,12 +527,12 @@ func embedVideo(id string) string {
 }
 
 func embedVideoWithAutoplay(id string, autoplay bool) string {
-	u := "https://www.youtube.com/embed/" + id
+	u := "https://www.youtube.com/embed/" + id + "?enablejsapi=1&playsinline=1"
 	if autoplay {
-		u += "?autoplay=1"
+		u += "&autoplay=1"
 	}
 	style := `style="position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none;"`
-	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+	return `<iframe id="ytplayer" width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" playsinline allowfullscreen></iframe>`
 }
 
 func getChannel(category, handle string) (string, []*Result, error) {
@@ -1128,6 +1128,57 @@ func Handler(w http.ResponseWriter, r *http.Request) {
   </head>
   <body class="video-player-body">
     <div class="video-embed">%s</div>
+    <div class="video-bar">
+      <button id="audioBtn" onclick="toggleAudio()">♫ Audio only</button>
+      <span id="audioTime"></span>
+      <button id="playBtn" onclick="togglePlay()" style="display:none">▶</button>
+    </div>
+    <div class="audio-vis" id="audioVis">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <script>
+    var player, apiReady=false, tInt;
+    (function(){
+      var s=document.createElement('script');
+      s.src='https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    })();
+    function onYouTubeIframeAPIReady(){
+      apiReady=true;
+      player=new YT.Player('ytplayer',{events:{'onReady':onReady,'onStateChange':onState}});
+    }
+    function onReady(){}
+    function onState(e){
+      var b=document.getElementById('playBtn');
+      if(b&&b.style.display!=='none') b.textContent=(e.data===1)?'⏸':'▶';
+    }
+    function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60);var r=s%%60;return m+':'+(r<10?'0':'')+r;}
+    function toggleAudio(){
+      var em=document.querySelector('.video-embed');
+      var vis=document.getElementById('audioVis');
+      var btn=document.getElementById('audioBtn');
+      var pb=document.getElementById('playBtn');
+      var t=document.getElementById('audioTime');
+      var on=em.classList.toggle('audio-only');
+      vis.style.display=on?'flex':'none';
+      btn.textContent=on?'▶ Show video':'♫ Audio only';
+      pb.style.display=on?'inline-flex':'none';
+      if(on){
+        tInt=setInterval(function(){
+          if(!player||!player.getCurrentTime)return;
+          t.textContent=fmt(player.getCurrentTime())+' / '+fmt(player.getDuration());
+          var s=player.getPlayerState();
+          pb.textContent=(s===1)?'⏸':'▶';
+        },500);
+      } else {
+        clearInterval(tInt);t.textContent='';
+      }
+    }
+    function togglePlay(){
+      if(!player||!player.getPlayerState)return;
+      player.getPlayerState()===1?player.pauseVideo():player.playVideo();
+    }
+    </script>
   </body>
 </html>
 `

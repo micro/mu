@@ -3887,11 +3887,17 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin: 0;
   padding: 0;
   background: #000;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 .video-embed {
   position: relative;
   width: 100%;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
 }
 .video-embed iframe {
   position: absolute;
@@ -3900,6 +3906,78 @@ a.btn-secondary:hover, .btn-secondary:hover {
   width: 100%;
   height: 100%;
   border: none;
+}
+.video-embed.audio-only iframe {
+  clip-path: inset(100%);
+  pointer-events: none;
+}
+.video-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #111;
+  flex-shrink: 0;
+}
+.video-bar button {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.video-bar button:active {
+  background: rgba(255,255,255,0.25);
+}
+.video-bar #playBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 16px;
+}
+.video-bar span {
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.audio-vis {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 48px;
+  background: #000;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  z-index: 10;
+}
+.audio-vis span {
+  display: inline-block;
+  width: 8px;
+  background: #fff;
+  border-radius: 4px;
+  animation: audiovis 1s ease-in-out infinite alternate;
+}
+.audio-vis span:nth-child(1){ height:20px; animation-delay:0s; }
+.audio-vis span:nth-child(2){ height:35px; animation-delay:.2s; }
+.audio-vis span:nth-child(3){ height:50px; animation-delay:.4s; }
+.audio-vis span:nth-child(4){ height:35px; animation-delay:.6s; }
+.audio-vis span:nth-child(5){ height:20px; animation-delay:.8s; }
+@keyframes audiovis {
+  from { transform: scaleY(1); }
+  to   { transform: scaleY(3); }
 }
 
 /* =============================================
