@@ -105,7 +105,14 @@ type Tool struct {
 	Method      string
 	Path        string
 	Params      []ToolParam
+	WalletOp    string // Wallet operation for credit gating (empty = free)
 }
+
+// QuotaCheck is called before executing a metered tool.
+// It receives the HTTP request (for auth) and the wallet operation string.
+// Returns (canProceed, creditCost, error).
+// Set by main.go to wire in auth + wallet packages without import cycles.
+var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 
 // ToolParam defines a parameter for an MCP tool
 type ToolParam struct {
@@ -122,6 +129,7 @@ var tools = []Tool{
 		Description: "Chat with AI assistant",
 		Method:      "POST",
 		Path:        "/chat",
+		WalletOp:    "chat_query",
 		Params: []ToolParam{
 			{Name: "prompt", Type: "string", Description: "The message to send to the AI", Required: true},
 		},
@@ -137,6 +145,7 @@ var tools = []Tool{
 		Description: "Search for news articles",
 		Method:      "POST",
 		Path:        "/news",
+		WalletOp:    "news_search",
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "News search query", Required: true},
 		},
@@ -197,6 +206,7 @@ var tools = []Tool{
 		Description: "Search for videos",
 		Method:      "POST",
 		Path:        "/video",
+		WalletOp:    "video_search",
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Video search query", Required: true},
 		},
@@ -212,6 +222,7 @@ var tools = []Tool{
 		Description: "Send a mail message",
 		Method:      "POST",
 		Path:        "/mail",
+		WalletOp:    "external_email",
 		Params: []ToolParam{
 			{Name: "to", Type: "string", Description: "Recipient username or email", Required: true},
 			{Name: "subject", Type: "string", Description: "Message subject", Required: true},
@@ -343,6 +354,19 @@ func handleToolsCall(w http.ResponseWriter, originalReq *http.Request, req jsonr
 	if tool == nil {
 		writeError(w, req.ID, -32602, fmt.Sprintf("Unknown tool: %s", params.Name))
 		return
+	}
+
+	// Check wallet quota for metered tools
+	if tool.WalletOp != "" && QuotaCheck != nil {
+		canProceed, cost, err := QuotaCheck(originalReq, tool.WalletOp)
+		if !canProceed {
+			msg := fmt.Sprintf("Insufficient credits: %s requires %d credits", tool.Name, cost)
+			if err != nil {
+				msg = err.Error()
+			}
+			writeError(w, req.ID, -32000, msg)
+			return
+		}
 	}
 
 	// Build the internal HTTP request
