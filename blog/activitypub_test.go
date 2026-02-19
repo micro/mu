@@ -1,4 +1,4 @@
-package activitypub
+package blog
 
 import (
 	"encoding/json"
@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"mu/auth"
-	"mu/blog"
 )
 
-func TestDomain(t *testing.T) {
+func TestAPDomain(t *testing.T) {
 	// Save and restore env
 	origMU := os.Getenv("MU_DOMAIN")
 	origMail := os.Getenv("MAIL_DOMAIN")
@@ -24,35 +23,35 @@ func TestDomain(t *testing.T) {
 	// Test MU_DOMAIN takes priority
 	os.Setenv("MU_DOMAIN", "example.com")
 	os.Setenv("MAIL_DOMAIN", "mail.example.com")
-	if got := Domain(); got != "example.com" {
-		t.Errorf("Domain() = %q, want %q", got, "example.com")
+	if got := APDomain(); got != "example.com" {
+		t.Errorf("APDomain() = %q, want %q", got, "example.com")
 	}
 
 	// Test MAIL_DOMAIN fallback
 	os.Setenv("MU_DOMAIN", "")
-	if got := Domain(); got != "mail.example.com" {
-		t.Errorf("Domain() = %q, want %q", got, "mail.example.com")
+	if got := APDomain(); got != "mail.example.com" {
+		t.Errorf("APDomain() = %q, want %q", got, "mail.example.com")
 	}
 
 	// Test localhost default
 	os.Setenv("MAIL_DOMAIN", "")
-	if got := Domain(); got != "localhost" {
-		t.Errorf("Domain() = %q, want %q", got, "localhost")
+	if got := APDomain(); got != "localhost" {
+		t.Errorf("APDomain() = %q, want %q", got, "localhost")
 	}
 }
 
-func TestBaseURL(t *testing.T) {
+func TestAPBaseURL(t *testing.T) {
 	origMU := os.Getenv("MU_DOMAIN")
 	defer os.Setenv("MU_DOMAIN", origMU)
 
 	os.Setenv("MU_DOMAIN", "mu.xyz")
-	if got := baseURL(); got != "https://mu.xyz" {
-		t.Errorf("baseURL() = %q, want %q", got, "https://mu.xyz")
+	if got := apBaseURL(); got != "https://mu.xyz" {
+		t.Errorf("apBaseURL() = %q, want %q", got, "https://mu.xyz")
 	}
 
 	os.Setenv("MU_DOMAIN", "localhost")
-	if got := baseURL(); got != "http://localhost:8080" {
-		t.Errorf("baseURL() = %q, want %q", got, "http://localhost:8080")
+	if got := apBaseURL(); got != "http://localhost:8080" {
+		t.Errorf("apBaseURL() = %q, want %q", got, "http://localhost:8080")
 	}
 }
 
@@ -151,7 +150,7 @@ func TestInboxHandler_POST(t *testing.T) {
 }
 
 func TestPostToObject(t *testing.T) {
-	post := &blog.Post{
+	post := &Post{
 		ID:        "123",
 		Title:     "Test Post",
 		Content:   "Hello world",
@@ -207,7 +206,7 @@ func TestPostToObject(t *testing.T) {
 }
 
 func TestPostToObject_NoTitle(t *testing.T) {
-	post := &blog.Post{
+	post := &Post{
 		ID:        "456",
 		Content:   "No title post",
 		Author:    "Bob",

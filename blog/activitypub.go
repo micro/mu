@@ -1,4 +1,4 @@
-package activitypub
+package blog
 
 import (
 	"encoding/json"
@@ -10,12 +10,11 @@ import (
 
 	"mu/app"
 	"mu/auth"
-	"mu/blog"
 )
 
-// Domain returns the configured domain for ActivityPub URLs.
+// APDomain returns the configured domain for ActivityPub URLs.
 // Uses MU_DOMAIN env var, falls back to MAIL_DOMAIN, then "localhost".
-func Domain() string {
+func APDomain() string {
 	if d := os.Getenv("MU_DOMAIN"); d != "" {
 		return d
 	}
@@ -25,9 +24,9 @@ func Domain() string {
 	return "localhost"
 }
 
-// baseURL returns the base URL for the instance (e.g. "https://mu.xyz").
-func baseURL() string {
-	d := Domain()
+// apBaseURL returns the base URL for the instance (e.g. "https://mu.xyz").
+func apBaseURL() string {
+	d := APDomain()
 	if d == "localhost" {
 		return "http://localhost:8080"
 	}
@@ -65,7 +64,7 @@ func WebFingerHandler(w http.ResponseWriter, r *http.Request) {
 	username := parts[0]
 	domain := parts[1]
 
-	if domain != Domain() {
+	if domain != APDomain() {
 		http.Error(w, "unknown domain", http.StatusNotFound)
 		return
 	}
@@ -77,7 +76,7 @@ func WebFingerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	base := baseURL()
+	base := apBaseURL()
 
 	response := map[string]interface{}{
 		"subject": resource,
@@ -111,7 +110,7 @@ func ActorHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	base := baseURL()
+	base := apBaseURL()
 	actorID := fmt.Sprintf("%s/@%s", base, acc.ID)
 
 	actor := map[string]interface{}{
@@ -119,15 +118,15 @@ func ActorHandler(w http.ResponseWriter, r *http.Request) {
 			"https://www.w3.org/ns/activitystreams",
 			"https://w3id.org/security/v1",
 		},
-		"id":                actorID,
-		"type":              "Person",
-		"preferredUsername":  acc.ID,
-		"name":              acc.Name,
-		"url":               actorID,
-		"inbox":             fmt.Sprintf("%s/@%s/inbox", base, acc.ID),
-		"outbox":            fmt.Sprintf("%s/@%s/outbox", base, acc.ID),
-		"summary":           fmt.Sprintf("@%s on Mu", acc.ID),
-		"published":         acc.Created.Format(time.RFC3339),
+		"id":               actorID,
+		"type":             "Person",
+		"preferredUsername": acc.ID,
+		"name":             acc.Name,
+		"url":              actorID,
+		"inbox":            fmt.Sprintf("%s/@%s/inbox", base, acc.ID),
+		"outbox":           fmt.Sprintf("%s/@%s/outbox", base, acc.ID),
+		"summary":          fmt.Sprintf("@%s on Mu", acc.ID),
+		"published":        acc.Created.Format(time.RFC3339),
 	}
 
 	w.Header().Set("Content-Type", "application/activity+json")
@@ -151,11 +150,11 @@ func OutboxHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	base := baseURL()
-	userPosts := blog.GetPostsByAuthor(acc.Name)
+	base := apBaseURL()
+	userPosts := GetPostsByAuthor(acc.Name)
 
 	// Filter out private posts
-	var publicPosts []*blog.Post
+	var publicPosts []*Post
 	for _, post := range userPosts {
 		if !post.Private {
 			publicPosts = append(publicPosts, post)
@@ -188,7 +187,7 @@ func PostObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post := blog.GetPost(id)
+	post := GetPost(id)
 	if post == nil {
 		http.Error(w, "post not found", http.StatusNotFound)
 		return
@@ -199,7 +198,7 @@ func PostObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	base := baseURL()
+	base := apBaseURL()
 
 	// Look up author account
 	acc, err := auth.GetAccount(post.AuthorID)
@@ -233,7 +232,7 @@ func InboxHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // postToObject converts a blog post to an ActivityPub Note object.
-func postToObject(base string, acc *auth.Account, post *blog.Post) map[string]interface{} {
+func postToObject(base string, acc *auth.Account, post *Post) map[string]interface{} {
 	content := post.Content
 
 	// Render markdown to HTML for the content field

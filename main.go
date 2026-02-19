@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"mu/activitypub"
 	"mu/admin"
 	"mu/api"
 	"mu/app"
@@ -133,8 +132,8 @@ func main() {
 	// serve individual blog post (public, no auth)
 	// Serves ActivityPub JSON-LD when requested via Accept header
 	http.HandleFunc("/post", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" && activitypub.WantsActivityPub(r) {
-			activitypub.PostObjectHandler(w, r)
+		if r.Method == "GET" && blog.WantsActivityPub(r) {
+			blog.PostObjectHandler(w, r)
 			return
 		}
 		blog.PostHandler(w, r)
@@ -201,7 +200,7 @@ func main() {
 	http.HandleFunc("/about", docs.AboutHandler)
 
 	// ActivityPub: WebFinger discovery
-	http.HandleFunc("/.well-known/webfinger", activitypub.WebFingerHandler)
+	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
 
 	// presence WebSocket endpoint
 	http.HandleFunc("/presence", user.PresenceHandler)
@@ -340,17 +339,17 @@ func main() {
 
 				// Handle ActivityPub sub-endpoints: /@username/outbox, /@username/inbox
 				if strings.HasSuffix(rest, "/outbox") {
-					activitypub.OutboxHandler(w, r)
+					blog.OutboxHandler(w, r)
 					return
 				}
 				if strings.HasSuffix(rest, "/inbox") {
-					activitypub.InboxHandler(w, r)
+					blog.InboxHandler(w, r)
 					return
 				}
 
 				// Serve ActivityPub actor JSON if requested
-				if !strings.Contains(rest, "/") && activitypub.WantsActivityPub(r) {
-					activitypub.ActorHandler(w, r)
+				if !strings.Contains(rest, "/") && blog.WantsActivityPub(r) {
+					blog.ActorHandler(w, r)
 					return
 				}
 
