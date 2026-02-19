@@ -230,7 +230,7 @@ var Template = `
         %s
       </div>
       <div id="footer">
-        <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>
+        <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/mcp">MCP</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>
       </div>
     </div>
   <script>

@@ -793,6 +793,9 @@ func Markdown() string {
 	data += "3. Create a new token with desired permissions\n"
 	data += "4. **Save the token immediately** - it's only shown once!\n\n"
 	data += "---\n\n"
+	data += "## MCP\n\n"
+	data += "AI agents and tools can connect to Mu via the [Model Context Protocol](/mcp) (MCP) server at `/mcp`.\n\n"
+	data += "---\n\n"
 	data += "## Endpoints\n\n"
 
 	for _, endpoint := range Endpoints {
