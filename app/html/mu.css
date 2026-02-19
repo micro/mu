@@ -3887,9 +3887,16 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin: 0;
   padding: 0;
   background: #000;
+  overflow: hidden;
+}
+.video-player-wrap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
 }
 .video-embed {
@@ -3956,7 +3963,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   top: 0;
   left: 0;
   right: 0;
-  bottom: 48px;
+  bottom: 0;
   background: #000;
   align-items: center;
   justify-content: center;

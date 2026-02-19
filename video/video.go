@@ -1125,17 +1125,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Video | Mu</title>
     <link rel="stylesheet" href="/mu.css">
-    <style>html{height:100%%;overflow:hidden;margin:0;padding:0}</style>
   </head>
   <body class="video-player-body">
-    <div class="video-embed">%s</div>
-    <div class="video-bar">
-      <button id="audioBtn" onclick="toggleAudio()">♫ Audio only</button>
-      <span id="audioTime"></span>
-      <button id="playBtn" onclick="togglePlay()" style="display:none">▶</button>
-    </div>
-    <div class="audio-vis" id="audioVis">
-      <span></span><span></span><span></span><span></span><span></span>
+    <div class="video-player-wrap">
+      <div class="video-embed">
+        %s
+        <div class="audio-vis" id="audioVis">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="video-bar">
+        <button id="audioBtn" onclick="toggleAudio()">♫ Audio only</button>
+        <span id="audioTime"></span>
+        <button id="playBtn" onclick="togglePlay()" style="display:none">▶</button>
+      </div>
     </div>
     <script>
     var player, apiReady=false, tInt;
