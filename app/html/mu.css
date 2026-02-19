@@ -3930,11 +3930,15 @@ a.btn-secondary:hover, .btn-secondary:hover {
   background: rgba(255,255,255,0.25);
 }
 .video-bar #playBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 36px;
   height: 36px;
   padding: 0;
   border-radius: 50%;
   font-size: 16px;
+  line-height: 1;
 }
 .video-bar span {
   color: rgba(255,255,255,0.6);
