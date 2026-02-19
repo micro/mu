@@ -163,6 +163,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/wallet" && r.Method == "GET":
 		handleWalletPage(w, r)
+	case path == "/wallet/topup" && r.Method == "GET" && app.WantsJSON(r):
+		handleTopupJSON(w, r)
 	case path == "/wallet/topup" && r.Method == "GET":
 		handleDepositPage(w, r)
 	case path == "/wallet/stripe/checkout" && r.Method == "POST":
@@ -359,6 +361,52 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 	sb.WriteString(`</div>`)
 
 	return sb.String()
+}
+
+// TopupMethod represents a payment method for wallet topup
+type TopupMethod struct {
+	Type    string            `json:"type"`              // "card" or "crypto"
+	Tiers   []StripeTopupTier `json:"tiers,omitempty"`   // For card/Stripe
+	Address string            `json:"address,omitempty"` // For crypto: deposit address
+	Chains  []string          `json:"chains,omitempty"`  // For crypto: supported chains
+}
+
+func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.RespondJSON(w, map[string]string{"error": "authentication required"})
+		return
+	}
+
+	var methods []TopupMethod
+
+	if StripeEnabled() {
+		methods = append(methods, TopupMethod{
+			Type:  "card",
+			Tiers: StripeTopupTiers,
+		})
+	}
+
+	if CryptoWalletEnabled() {
+		addr, err := GetUserDepositAddress(sess.Account)
+		if err != nil {
+			app.Log("wallet", "Failed to get deposit address for API: %v", err)
+		} else {
+			chains := make([]string, 0, len(depositChains))
+			for _, c := range depositChains {
+				chains = append(chains, c.ID)
+			}
+			methods = append(methods, TopupMethod{
+				Type:    "crypto",
+				Address: addr,
+				Chains:  chains,
+			})
+		}
+	}
+
+	app.RespondJSON(w, map[string]interface{}{
+		"methods": methods,
+	})
 }
 
 func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {

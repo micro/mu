@@ -22,10 +22,10 @@ type jsonrpcRequest struct {
 }
 
 type jsonrpcResponse struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      any         `json:"id"`
-	Result  any         `json:"result,omitempty"`
-	Error   *rpcError   `json:"error,omitempty"`
+	JSONRPC string    `json:"jsonrpc"`
+	ID      any       `json:"id"`
+	Result  any       `json:"result,omitempty"`
+	Error   *rpcError `json:"error,omitempty"`
 }
 
 type rpcError struct {
@@ -73,9 +73,9 @@ type mcpTool struct {
 }
 
 type mcpInputSchema struct {
-	Type       string                `json:"type"`
+	Type       string                 `json:"type"`
 	Properties map[string]mcpProperty `json:"properties,omitempty"`
-	Required   []string              `json:"required,omitempty"`
+	Required   []string               `json:"required,omitempty"`
 }
 
 type mcpProperty struct {
@@ -105,7 +105,7 @@ type Tool struct {
 	Method      string
 	Path        string
 	Params      []ToolParam
-	WalletOp    string                              // Wallet operation for credit gating (empty = free)
+	WalletOp    string                               // Wallet operation for credit gating (empty = free)
 	Handle      func(map[string]any) (string, error) // Optional direct handler (bypasses HTTP dispatch)
 }
 
@@ -253,6 +253,27 @@ var tools = []Tool{
 		Params: []ToolParam{
 			{Name: "balance", Type: "string", Description: "Set to 1 to get balance", Required: false},
 		},
+	},
+	{
+		Name:        "wallet_topup",
+		Description: "Get available wallet topup payment methods with crypto deposit address and card payment tiers",
+		Method:      "GET",
+		Path:        "/wallet/topup",
+	},
+	{
+		Name:        "markets",
+		Description: "Get live market prices for cryptocurrencies, futures, and commodities",
+		Method:      "GET",
+		Path:        "/markets",
+		Params: []ToolParam{
+			{Name: "category", Type: "string", Description: "Category of markets: crypto, futures, or commodities (default: crypto)", Required: false},
+		},
+	},
+	{
+		Name:        "reminder",
+		Description: "Get the daily Islamic reminder with verse, hadith, and name of Allah",
+		Method:      "GET",
+		Path:        "/reminder",
 	},
 }
 
