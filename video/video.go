@@ -527,12 +527,12 @@ func embedVideo(id string) string {
 }
 
 func embedVideoWithAutoplay(id string, autoplay bool) string {
-	u := "https://www.youtube.com/embed/" + id + "?enablejsapi=1"
+	u := "https://www.youtube.com/embed/" + id + "?enablejsapi=1&playsinline=1"
 	if autoplay {
 		u += "&autoplay=1"
 	}
 	style := `style="position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none;"`
-	return `<iframe width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+	return `<iframe id="ytplayer" width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" playsinline allowfullscreen></iframe>`
 }
 
 func getChannel(category, handle string) (string, []*Result, error) {
@@ -1143,18 +1143,32 @@ func Handler(w http.ResponseWriter, r *http.Request) {
       </div>
     </div>
     <button class="audio-toggle" onclick="toggleAudio()" title="Toggle audio-only mode">♫</button>
-    <script src="https://www.youtube.com/iframe_api"></script>
     <script>
     var player;
     var timeInterval;
+    var apiReady = false;
+
+    function loadYTAPI() {
+      var tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+    }
 
     function onYouTubeIframeAPIReady() {
-      var iframe = document.querySelector('.video-embed iframe');
-      if (iframe) {
-        player = new YT.Player(iframe, {
-          events: { 'onReady': onPlayerReady }
-        });
-      }
+      apiReady = true;
+      initPlayer();
+    }
+
+    function initPlayer() {
+      if (player) return;
+      var iframe = document.getElementById('ytplayer');
+      if (!iframe || !apiReady) return;
+      player = new YT.Player('ytplayer', {
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onStateChange
+        }
+      });
     }
 
     function onPlayerReady() {
@@ -1163,8 +1177,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
       }
     }
 
+    function onStateChange(e) {
+      var btn = document.getElementById('audioPlayPause');
+      if (btn) btn.textContent = (e.data === 1) ? '⏸' : '▶';
+    }
+
     function fmtTime(s) {
-      s = Math.floor(s);
+      s = Math.floor(s || 0);
       var m = Math.floor(s / 60);
       var sec = s %% 60;
       return m + ':' + (sec < 10 ? '0' : '') + sec;
@@ -1187,7 +1206,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     }
 
     function togglePlay() {
-      if (!player) return;
+      if (!player || !player.getPlayerState) return;
       var state = player.getPlayerState();
       if (state === 1) { player.pauseVideo(); } else { player.playVideo(); }
     }
@@ -1198,8 +1217,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
       var on = e.classList.toggle('audio-only');
       b.textContent = on ? '▶' : '♫';
       b.title = on ? 'Show video' : 'Audio only';
-      if (on) { startTimeUpdates(); } else { stopTimeUpdates(); }
+      if (on) {
+        if (!player) initPlayer();
+        startTimeUpdates();
+      } else {
+        stopTimeUpdates();
+      }
     }
+
+    loadYTAPI();
     </script>
   </body>
 </html>
