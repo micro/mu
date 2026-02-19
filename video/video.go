@@ -1128,6 +1128,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Video | Mu</title>
     <link rel="stylesheet" href="/mu.css">
+    <style>html{overflow:hidden;width:100%%;height:100%%;margin:0;padding:0;}</style>
   </head>
   <body class="video-player-body">
     <div class="video-embed%s">
@@ -1149,6 +1150,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     var apiReady = false;
 
     function loadYTAPI() {
+      // Set origin for YouTube IFrame API postMessage (required for Android PWA)
+      var iframe = document.getElementById('ytplayer');
+      if (iframe) {
+        var src = iframe.src;
+        if (src.indexOf('origin=') === -1) {
+          iframe.src = src + '&origin=' + encodeURIComponent(window.location.origin);
+        }
+      }
       var tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
       document.head.appendChild(tag);
