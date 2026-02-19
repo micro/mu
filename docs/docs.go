@@ -30,6 +30,7 @@ var catalog = []Document{
 	{Slug: "installation", Filename: "INSTALLATION.md", Title: "Installation", Description: "Self-hosting and deployment guide", Category: "Getting Started"},
 
 	// Features
+	{Slug: "activitypub", Filename: "ACTIVITYPUB.md", Title: "ActivityPub", Description: "Federation with Mastodon, Threads, etc.", Category: "Features"},
 	{Slug: "messaging", Filename: "MESSAGING_SYSTEM.md", Title: "Messaging", Description: "Email and messaging setup", Category: "Features"},
 	{Slug: "wallet", Filename: "WALLET_AND_CREDITS.md", Title: "Wallet & Credits", Description: "Credit system for usage", Category: "Features"},
 
