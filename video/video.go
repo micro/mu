@@ -1123,15 +1123,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Fullscreen video player page
 		tmpl := `<!DOCTYPE html>
-<html>
+<html style="margin:0;padding:0;overflow:hidden;height:100%%">
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Video | Mu</title>
     <link rel="stylesheet" href="/mu.css">
-    <style>html{overflow:hidden;width:100%%;height:100%%;margin:0;padding:0;}</style>
   </head>
   <body class="video-player-body">
-    <div class="video-embed%s">
+    <div id="vp" class="video-player-page%s">
       %s
       <div class="audio-overlay">
         <div class="audio-visualiser">
@@ -1142,15 +1141,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
           <span class="audio-time" id="audioTime">0:00 / 0:00</span>
         </div>
       </div>
+      <button class="audio-toggle" onclick="toggleAudio()" title="Toggle audio-only mode">♫</button>
     </div>
-    <button class="audio-toggle" onclick="toggleAudio()" title="Toggle audio-only mode">♫</button>
     <script>
     var player;
     var timeInterval;
     var apiReady = false;
 
     function loadYTAPI() {
-      // Set origin for YouTube IFrame API postMessage (required for Android PWA)
       var iframe = document.getElementById('ytplayer');
       if (iframe) {
         var src = iframe.src;
@@ -1181,7 +1179,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     }
 
     function onPlayerReady() {
-      if (document.querySelector('.video-embed').classList.contains('audio-only')) {
+      if (document.getElementById('vp').classList.contains('audio-only')) {
         startTimeUpdates();
       }
     }
@@ -1221,8 +1219,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     }
 
     function toggleAudio() {
-      var e = document.querySelector('.video-embed');
-      var b = document.querySelector('.audio-toggle');
+      var e = document.getElementById('vp');
+      var b = e.querySelector('.audio-toggle');
       var on = e.classList.toggle('audio-only');
       b.textContent = on ? '▶' : '♫';
       b.title = on ? 'Show video' : 'Audio only';
