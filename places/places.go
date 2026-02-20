@@ -71,7 +71,10 @@ var httpClient = &http.Client{Timeout: 15 * time.Second}
 
 // Load initialises the places package
 func Load() {
-	app.Log("places", "Places loaded")
+	initCities()
+	loaded := loadCityCaches()
+	app.Log("places", "Places loaded: %d/%d cities in quadtree", loaded, len(cities))
+	go fetchMissingCities()
 }
 
 // searchNominatim searches for places using the Nominatim API
@@ -246,6 +249,17 @@ out body;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, la
 	mutex.Unlock()
 
 	return places, nil
+}
+
+// findNearbyPlaces finds POIs near a location.
+// It first queries the in-memory quadtree; if insufficient results are found
+// there it falls back to the live Overpass API.
+func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
+	local := queryLocal(lat, lon, radiusM)
+	if len(local) >= minLocalResults {
+		return local, nil
+	}
+	return nearbyOverpass(lat, lon, radiusM)
 }
 
 // geocode resolves an address/postcode to lat/lon using Nominatim
@@ -477,7 +491,7 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Find nearby places
-	results, err := nearbyOverpass(lat, lon, radius)
+	results, err := findNearbyPlaces(lat, lon, radius)
 	if err != nil {
 		app.Log("places", "Nearby error: %v", err)
 		app.ServerError(w, r, "Nearby search failed. Please try again.")
@@ -527,6 +541,12 @@ func renderPlacesPage(r *http.Request) string {
 		authNote = `<p class="text-muted">Search (5p) and nearby (2p) require an account. <a href="/login">Login</a> or <a href="/signup">sign up</a> to search.</p>`
 	}
 
+	// Build cities section HTML
+	cityCardsHTML := renderCitiesSection()
+
+	// Build city markers JSON for the map
+	cityMarkersJS := renderCityMarkersJS()
+
 	return fmt.Sprintf(`<div class="places-page">
 %s
 <div class="places-forms">
@@ -560,13 +580,33 @@ func renderPlacesPage(r *http.Request) string {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WPeE=" crossorigin=""></script>
 <script>
 (function() {
-  var map = L.map('places-map').setView([51.505, -0.09], 12);
+  var map = L.map('places-map').setView([20, 0], 2);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   }).addTo(map);
   window._placesMap = map;
+
+  // City markers
+  var cities = %s;
+  cities.forEach(function(c) {
+    L.marker([c.lat, c.lon]).addTo(map).bindPopup(
+      '<b>' + c.name + '</b><br>' +
+      '<a href="#" onclick="goToCity(' + JSON.stringify(c.name) + ',' + c.lat + ',' + c.lon + ');return false;">Search nearby &rarr;</a>'
+    );
+  });
 })();
+
+function goToCity(name, lat, lon) {
+  document.getElementById('nearby-lat').value = lat;
+  document.getElementById('nearby-lon').value = lon;
+  document.getElementById('nearby-address').value = '';
+  document.getElementById('nearby-address').placeholder = name;
+  if (window._placesMap) {
+    window._placesMap.setView([lat, lon], 13);
+  }
+  document.getElementById('nearby-form').scrollIntoView({behavior:'smooth'});
+}
 
 function usePlacesLocation() {
   if (!navigator.geolocation) {
@@ -581,7 +621,7 @@ function usePlacesLocation() {
     document.getElementById('nearby-address').value = '';
     document.getElementById('nearby-address').placeholder = lat.toFixed(4) + ', ' + lon.toFixed(4);
     if (window._placesMap) {
-      window._placesMap.setView([lat, lon], 15);
+      window._placesMap.setView([lat, lon], 13);
       L.marker([lat, lon]).addTo(window._placesMap).bindPopup('Your location').openPopup();
     }
   }, function(err) {
@@ -589,7 +629,46 @@ function usePlacesLocation() {
   });
 }
 </script>
-</div>`, authNote)
+%s
+</div>`, authNote, cityMarkersJS, cityCardsHTML)
+}
+
+// renderCitiesSection renders a grid of city cards
+func renderCitiesSection() string {
+	cs := Cities()
+	if len(cs) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString(`<h3>Browse by City</h3><div class="city-grid">`)
+	for _, c := range cs {
+		sb.WriteString(fmt.Sprintf(
+			`<a href="#" onclick="goToCity(%s,%f,%f);return false;" class="city-link">%s <span class="text-muted" style="font-size:0.8em;">%s</span></a>`,
+			jsonStr(c.Name), c.Lat, c.Lon,
+			escapeHTML(c.Name), escapeHTML(c.Country),
+		))
+	}
+	sb.WriteString(`</div>`)
+	return sb.String()
+}
+
+// renderCityMarkersJS returns a JSON array literal of city definitions for use in map JS
+func renderCityMarkersJS() string {
+	cs := Cities()
+	if len(cs) == 0 {
+		return "[]"
+	}
+	type cityJS struct {
+		Name string  `json:"name"`
+		Lat  float64 `json:"lat"`
+		Lon  float64 `json:"lon"`
+	}
+	arr := make([]cityJS, len(cs))
+	for i, c := range cs {
+		arr[i] = cityJS{Name: c.Name, Lat: c.Lat, Lon: c.Lon}
+	}
+	b, _ := json.Marshal(arr)
+	return string(b)
 }
 
 // renderSearchResults renders search results with map
