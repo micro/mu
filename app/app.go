@@ -728,6 +728,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p>10 AI queries/day</p>
 <p>News, video, and chat</p>
 <p>Direct message other users</p>
+<p>MCP access for AI agents</p>
 <p>Resets at midnight UTC</p>`)
 	if !isLoggedIn {
 		content.WriteString(`<p class="mt-4"><a href="/signup">Sign up →</a></p>`)
@@ -745,6 +746,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p>Top up your wallet</p>
 <p>1 credit = 1p</p>
 <p>News 1p · Video 2p · Chat 3p · Email 4p</p>
+<p>Same rates for agents via MCP</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
 		content.WriteString(`<p class="mt-4"><a href="/wallet/topup">Top up →</a></p>`)
@@ -756,6 +758,21 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`</div>`)
 
 	content.WriteString(`</div>`) // end grid
+
+	// Agents / MCP section
+	content.WriteString(`<div class="card">
+<h3>For Agents</h3>
+<p>Mu exposes all tools via the <a href="/mcp">Model Context Protocol (MCP)</a> at <code>/mcp</code>. AI agents connect with a Bearer token and call tools like <code>chat</code>, <code>news_search</code>, <code>video_search</code>, and more.</p>
+<table class="stats-table" style="margin-top:12px">
+<tr><th style="text-align:left;padding:4px 8px">Tool</th><th style="text-align:left;padding:4px 8px">Free tier</th><th style="text-align:left;padding:4px 8px">Credit cost</th></tr>
+<tr><td style="padding:4px 8px">chat</td><td style="padding:4px 8px">10/day</td><td style="padding:4px 8px">3p</td></tr>
+<tr><td style="padding:4px 8px">news_search</td><td style="padding:4px 8px">10/day</td><td style="padding:4px 8px">1p</td></tr>
+<tr><td style="padding:4px 8px">video_search</td><td style="padding:4px 8px">10/day</td><td style="padding:4px 8px">2p</td></tr>
+<tr><td style="padding:4px 8px">mail_send</td><td style="padding:4px 8px">10/day</td><td style="padding:4px 8px">4p</td></tr>
+<tr><td style="padding:4px 8px">news, blog, video, search, markets, reminder</td><td style="padding:4px 8px">Unlimited</td><td style="padding:4px 8px">Free</td></tr>
+</table>
+<p class="mt-3"><a href="/mcp">View MCP tools →</a></p>
+</div>`)
 
 	// Self-host option
 	content.WriteString(`<div class="card">
@@ -770,7 +787,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p><strong>Why charge for AI queries?</strong><br>LLMs and APIs cost money to run. The free tier covers casual utility use.</p>
 <p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
 <p><strong>Why no unlimited subscription?</strong><br>Unlimited tiers incentivize us to maximize your engagement. Pay-as-you-go keeps incentives aligned: we want efficient tools, not sticky products.</p>
-<p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>`)
+<p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>
+<p><strong>Can AI agents use Mu?</strong><br>Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. Agents authenticate with a Bearer token and get the same free tier (10 AI queries/day) and credit rates as human users.</p>`)
 
 	html := RenderHTMLForRequest("Plans", "Simple, honest pricing", content.String(), r)
 	w.Write([]byte(html))
