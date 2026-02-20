@@ -725,7 +725,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Free</h3>
 <p class="text-xl font-bold my-3">£0</p>
-<p>10 credits quota per day</p>
+<p>10 credits per day</p>
 <p>News, video, and chat</p>
 <p>Direct message other users</p>
 <p>MCP access for AI agents</p>
@@ -762,15 +762,11 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	// Agents / MCP section
 	content.WriteString(`<div class="card">
 <h3>For Agents</h3>
-<p>Mu exposes all tools via the <a href="/mcp">Model Context Protocol (MCP)</a> at <code>/mcp</code>. AI agents connect with a Bearer token and call tools like <code>chat</code>, <code>news_search</code>, <code>video_search</code>, and more.</p>
-<table class="stats-table" style="margin-top:12px">
-<tr><th style="text-align:left;padding:4px 8px">Tool</th><th style="text-align:left;padding:4px 8px">Free tier</th><th style="text-align:left;padding:4px 8px">Credit cost</th></tr>
-<tr><td style="padding:4px 8px">chat</td><td style="padding:4px 8px">10/day</td><td style="padding:4px 8px">3p</td></tr>
-<tr><td style="padding:4px 8px">news_search</td><td style="padding:4px 8px">10/day</td><td style="padding:4px 8px">1p</td></tr>
-<tr><td style="padding:4px 8px">video_search</td><td style="padding:4px 8px">10/day</td><td style="padding:4px 8px">2p</td></tr>
-<tr><td style="padding:4px 8px">mail_send</td><td style="padding:4px 8px">10/day</td><td style="padding:4px 8px">4p</td></tr>
-<tr><td style="padding:4px 8px">news, blog, video, search, markets, reminder</td><td style="padding:4px 8px">Unlimited</td><td style="padding:4px 8px">Free</td></tr>
-</table>
+<p>AI agents can connect to Mu via the Model Context Protocol (MCP).</p>
+<p>Authenticate with a Bearer token</p>
+<p>10 credits per day on the free tier</p>
+<p>Same pay-as-you-go rates as human users</p>
+<p>Access to chat, news, video, mail and more</p>
 <p class="mt-3"><a href="/mcp">View MCP tools →</a></p>
 </div>`)
 
@@ -788,7 +784,23 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
 <p><strong>Why no unlimited subscription?</strong><br>Unlimited tiers incentivize us to maximize your engagement. Pay-as-you-go keeps incentives aligned: we want efficient tools, not sticky products.</p>
 <p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>
-<p><strong>Can AI agents use Mu?</strong><br>Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. Agents authenticate with a Bearer token and get the same free tier (10 credits/day) and credit rates as human users.</p>`)
+<p><strong>Can AI agents use Mu?</strong><br>Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. See the <a href="/mcp">MCP page</a> for setup and available tools.</p>`)
+
+	// Credits explanation
+	content.WriteString(`<div class="card">
+<h3>About Credits</h3>
+<p>Credits are the currency used for paid features on Mu. 1 credit = 1p (one penny).</p>
+<p class="mt-3"><strong>What's free</strong></p>
+<p>Reading news, blog posts, and video</p>
+<p>Messaging other Mu users</p>
+<p>Markets data</p>
+<p>10 credits per day (resets at midnight UTC)</p>
+<p class="mt-3"><strong>Credit costs</strong></p>
+<p>News search &amp; summary — 1 credit (1p)</p>
+<p>Video search — 2 credits (2p)</p>
+<p>Chat — 3 credits (3p)</p>
+<p>External email — 4 credits (4p)</p>
+</div>`)
 
 	html := RenderHTMLForRequest("Plans", "Simple, honest pricing", content.String(), r)
 	w.Write([]byte(html))
