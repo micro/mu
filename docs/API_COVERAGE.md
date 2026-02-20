@@ -157,7 +157,7 @@ All API endpoints support three authentication methods:
 ### MCP (Model Context Protocol)
 | Endpoint | Method | Auth Required | Description |
 |----------|--------|---------------|-------------|
-| `/api/mcp` | POST | No* | MCP server for AI tool integration |
+| `/mcp` | POST | No* | MCP server for AI tool integration |
 
 *Authentication is forwarded per-tool. See [MCP Server docs](MCP.md) for details.
 
