@@ -23,6 +23,8 @@ var (
 	CostChatQuery     = getEnvInt("CREDIT_COST_CHAT", 3)
 	CostChatRoom      = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
 	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
+	CostPlacesSearch  = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
+	CostPlacesNearby  = getEnvInt("CREDIT_COST_PLACES_NEARBY", 2)
 	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
@@ -42,6 +44,8 @@ const (
 	OpChatQuery     = "chat_query"
 	OpChatRoom      = "chat_room"
 	OpExternalEmail = "external_email"
+	OpPlacesSearch  = "places_search"
+	OpPlacesNearby  = "places_nearby"
 	OpTopup         = "topup"
 	OpRefund        = "refund"
 )
@@ -349,6 +353,10 @@ func GetOperationCost(operation string) int {
 		return CostChatRoom
 	case OpExternalEmail:
 		return CostExternalEmail
+	case OpPlacesSearch:
+		return CostPlacesSearch
+	case OpPlacesNearby:
+		return CostPlacesNearby
 	default:
 		return 1
 	}
