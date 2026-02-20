@@ -26,6 +26,7 @@ import (
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
+	"mu/places"
 	"mu/reminder"
 	"mu/user"
 	"mu/video"
@@ -70,6 +71,9 @@ func main() {
 
 	// load the mail (also configures SMTP and DKIM)
 	mail.Load()
+
+	// load places
+	places.Load()
 
 	// load widgets (markets, reminder)
 	widgets.Load()
@@ -183,6 +187,7 @@ func main() {
 		"/blog":            false, // Public viewing, auth for posting
 		"/markets":         false, // Public viewing
 		"/reminder":        false, // Public viewing
+		"/places":          false, // Public map, auth for search
 		"/mail":            true,  // Require auth for inbox
 		"/logout":          true,
 		"/account":         true,
@@ -275,6 +280,10 @@ func main() {
 
 	// serve reminder page
 	http.HandleFunc("/reminder", reminder.Handler)
+
+	// serve places page
+	http.HandleFunc("/places", places.Handler)
+	http.HandleFunc("/places/", places.Handler)
 
 	// auth
 	http.HandleFunc("/login", app.Login)

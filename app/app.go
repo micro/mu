@@ -216,6 +216,7 @@ var Template = `
           <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
           <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
           <a href="/markets"><img src="/markets.png?` + Version + `"><span class="label">Markets</span></a>
+          <a href="/places"><img src="/places.png?` + Version + `"><span class="label">Places</span></a>
           <a id="nav-wallet" href="/wallet" style="display: none;"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
         </div>
         <div class="nav-bottom">
@@ -745,7 +746,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p class="text-xl font-bold my-3">From £5</p>
 <p>Top up your wallet</p>
 <p>1 credit = 1p</p>
-<p>News 1p · Video 2p · Chat 3p · Email 4p</p>
+<p>News 1p · Video 2p · Chat 3p · Email 4p · Places 5p</p>
+<p>Nearby places 2p</p>
 <p>Same rates for agents via MCP</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
@@ -794,12 +796,15 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p>Reading news, blog posts, and video</p>
 <p>Messaging other Mu users</p>
 <p>Markets data</p>
+<p>Viewing the places map</p>
 <p>10 credits per day (resets at midnight UTC)</p>
 <p class="mt-3"><strong>Credit costs</strong></p>
 <p>News search &amp; summary — 1 credit (1p)</p>
 <p>Video search — 2 credits (2p)</p>
 <p>Chat — 3 credits (3p)</p>
 <p>External email — 4 credits (4p)</p>
+<p>Places search — 5 credits (5p)</p>
+<p>Nearby places — 2 credits (2p)</p>
 </div>`)
 
 	html := RenderHTMLForRequest("Plans", "Simple, honest pricing", content.String(), r)

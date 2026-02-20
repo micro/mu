@@ -5,6 +5,7 @@ go 1.24.1
 require (
 	github.com/ProtonMail/go-crypto v1.3.0
 	github.com/PuerkitoBio/goquery v1.8.0
+	github.com/asim/quadtree v0.3.0
 	github.com/btcsuite/btcd/btcec/v2 v2.3.6
 	github.com/emersion/go-msgauth v0.7.0
 	github.com/emersion/go-smtp v0.24.0

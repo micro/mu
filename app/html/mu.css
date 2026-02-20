@@ -4301,3 +4301,101 @@ a.btn-secondary:hover, .btn-secondary:hover {
     font-size: 0.9em;
   }
 }
+
+/* Places page */
+.places-page {
+  max-width: 100%;
+}
+
+.places-forms {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .places-forms {
+    grid-template-columns: 1fr;
+  }
+}
+
+.places-forms .card {
+  margin: 0;
+}
+
+.places-forms input,
+.places-forms select {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.places-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.place-card {
+  margin: 0;
+}
+
+.place-card h4 {
+  margin: 0 0 6px 0;
+  font-size: 1em;
+}
+
+.place-category {
+  display: inline-block;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.75em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  text-transform: capitalize;
+}
+
+.place-address {
+  font-size: 0.85em;
+  margin: 4px 0 0;
+}
+
+.cost-badge {
+  display: inline-block;
+  background: var(--text-secondary);
+  color: #fff;
+  font-size: 0.7em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Places city grid */
+.city-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+
+.city-link {
+  display: inline-block;
+  padding: 6px 12px;
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 20px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.9em;
+  border: 1px solid var(--border-color, #ddd);
+  transition: background 0.15s;
+}
+
+.city-link:hover {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
