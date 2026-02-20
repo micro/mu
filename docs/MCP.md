@@ -6,7 +6,7 @@ Mu includes an [MCP](https://modelcontextprotocol.io) (Model Context Protocol) s
 
 The MCP server exposes Mu services (blog, chat, news, video, mail, search) as tools that any MCP-compatible client can use. It implements the [MCP specification](https://spec.modelcontextprotocol.io) using the Streamable HTTP transport at a single endpoint.
 
-**Endpoint:** `POST /api/mcp`
+**Endpoint:** `POST /mcp`
 
 ## Configuration
 
@@ -16,7 +16,7 @@ Add Mu as an MCP server in your client configuration:
 {
   "mcpServers": {
     "mu": {
-      "url": "https://mu.xyz/api/mcp",
+      "url": "https://mu.xyz/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_TOKEN"
       }
@@ -49,6 +49,9 @@ For self-hosted instances, replace `mu.xyz` with your domain.
 | `mail_send` | Send a mail message | 4 credits |
 | `search` | Search across all content | Free |
 | `wallet_balance` | Get wallet credit balance | Free |
+| `wallet_topup` | Get wallet topup payment methods | Free |
+| `markets` | Get live market prices | Free |
+| `reminder` | Get the daily Islamic reminder | Free |
 
 ### Credits
 
@@ -65,7 +68,7 @@ AI agents can authenticate using the `login` or `signup` tools:
 ### Sign Up
 
 ```bash
-curl -X POST https://mu.xyz/api/mcp \
+curl -X POST https://mu.xyz/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"signup","arguments":{"id":"myagent","secret":"password123","name":"My Agent"}}}'
 ```
@@ -73,7 +76,7 @@ curl -X POST https://mu.xyz/api/mcp \
 ### Log In
 
 ```bash
-curl -X POST https://mu.xyz/api/mcp \
+curl -X POST https://mu.xyz/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"login","arguments":{"id":"myagent","secret":"password123"}}}'
 ```
@@ -93,7 +96,7 @@ The MCP server uses the Streamable HTTP transport. Clients send JSON-RPC 2.0 req
 ### Initialize
 
 ```bash
-curl -X POST https://mu.xyz/api/mcp \
+curl -X POST https://mu.xyz/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"example","version":"1.0"},"capabilities":{}}}'
 ```
@@ -101,7 +104,7 @@ curl -X POST https://mu.xyz/api/mcp \
 ### List Tools
 
 ```bash
-curl -X POST https://mu.xyz/api/mcp \
+curl -X POST https://mu.xyz/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 ```
@@ -109,7 +112,7 @@ curl -X POST https://mu.xyz/api/mcp \
 ### Call a Tool
 
 ```bash
-curl -X POST https://mu.xyz/api/mcp \
+curl -X POST https://mu.xyz/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"news","arguments":{}}}'
@@ -117,4 +120,4 @@ curl -X POST https://mu.xyz/api/mcp \
 
 ## Self-Hosting
 
-When running your own Mu instance, the MCP server is available automatically at `/api/mcp` with no additional configuration required.
+When running your own Mu instance, the MCP server is available automatically at `/mcp` with no additional configuration required.

@@ -48,7 +48,7 @@ func TestMCPHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestMCPHandler_InvalidJSON(t *testing.T) {
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader("not json"))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader("not json"))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -67,7 +67,7 @@ func TestMCPHandler_InvalidJSON(t *testing.T) {
 
 func TestMCPHandler_Initialize(t *testing.T) {
 	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test","version":"1.0"},"capabilities":{}}}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -102,7 +102,7 @@ func TestMCPHandler_Initialize(t *testing.T) {
 
 func TestMCPHandler_ToolsList(t *testing.T) {
 	body := `{"jsonrpc":"2.0","id":2,"method":"tools/list"}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -160,7 +160,7 @@ func TestMCPHandler_ToolsList(t *testing.T) {
 
 func TestMCPHandler_ToolsCallUnknown(t *testing.T) {
 	body := `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"unknown_tool","arguments":{}}}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -179,7 +179,7 @@ func TestMCPHandler_ToolsCallUnknown(t *testing.T) {
 
 func TestMCPHandler_Ping(t *testing.T) {
 	body := `{"jsonrpc":"2.0","id":4,"method":"ping"}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -198,7 +198,7 @@ func TestMCPHandler_Ping(t *testing.T) {
 
 func TestMCPHandler_MethodNotFound(t *testing.T) {
 	body := `{"jsonrpc":"2.0","id":5,"method":"unknown/method"}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -217,7 +217,7 @@ func TestMCPHandler_MethodNotFound(t *testing.T) {
 
 func TestMCPHandler_ToolsCallInvalidParams(t *testing.T) {
 	body := `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":"invalid"}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -255,7 +255,7 @@ func TestMCPHandler_ToolsCallForwardsAuth(t *testing.T) {
 	defer func() { tools = tools[:len(tools)-1] }()
 
 	body := `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"test_auth","arguments":{}}}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer test-token-123")
 	req.Header.Set(TokenHeader, "micro-token-456")
 	w := httptest.NewRecorder()
@@ -272,7 +272,7 @@ func TestMCPHandler_ToolsCallForwardsAuth(t *testing.T) {
 
 func TestMCPHandler_NotificationsInitialized(t *testing.T) {
 	body := `{"jsonrpc":"2.0","method":"notifications/initialized"}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -327,7 +327,7 @@ func TestMCPHandler_QuotaCheckBlocks(t *testing.T) {
 	defer func() { QuotaCheck = origQuotaCheck }()
 
 	body := `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"chat","arguments":{"prompt":"hello"}}}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -371,7 +371,7 @@ func TestMCPHandler_QuotaCheckAllows(t *testing.T) {
 	defer func() { tools = origTools }()
 
 	body := `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"test_quota_pass","arguments":{}}}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -411,7 +411,7 @@ func TestMCPHandler_FreeToolsSkipQuotaCheck(t *testing.T) {
 	defer func() { tools = origTools }()
 
 	body := `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"test_free","arguments":{}}}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -447,7 +447,7 @@ func TestMCPHandler_CustomHandler(t *testing.T) {
 	defer func() { tools = origTools }()
 
 	body := `{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"test_custom","arguments":{"msg":"hello"}}}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -491,7 +491,7 @@ func TestMCPHandler_CustomHandlerError(t *testing.T) {
 	defer func() { tools = origTools }()
 
 	body := `{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"test_custom_err","arguments":{}}}`
-	req := httptest.NewRequest("POST", "/api/mcp", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
