@@ -13,7 +13,7 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 ### Features
 
 - **Home** - Your personalized dashboard
-- **Blog** - Thoughtful microblogging with [ActivityPub](docs/ACTIVITYPUB.md) federation
+- **Blog** - Microblogging with [ActivityPub](docs/ACTIVITYPUB.md) federation
 - **Chat** - Discuss topics with AI
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
