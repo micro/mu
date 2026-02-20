@@ -725,7 +725,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Free</h3>
 <p class="text-xl font-bold my-3">£0</p>
-<p>10 AI queries/day</p>
+<p>10 credits quota per day</p>
 <p>News, video, and chat</p>
 <p>Direct message other users</p>
 <p>MCP access for AI agents</p>
@@ -784,11 +784,11 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	// FAQ
 	content.WriteString(`<h3>Questions</h3>
-<p><strong>Why charge for AI queries?</strong><br>LLMs and APIs cost money to run. The free tier covers casual utility use.</p>
+<p><strong>Why charge for services?</strong><br>News, video search, chat, and email all rely on APIs and infrastructure that cost money to run. The free quota covers casual daily use.</p>
 <p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
 <p><strong>Why no unlimited subscription?</strong><br>Unlimited tiers incentivize us to maximize your engagement. Pay-as-you-go keeps incentives aligned: we want efficient tools, not sticky products.</p>
 <p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>
-<p><strong>Can AI agents use Mu?</strong><br>Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. Agents authenticate with a Bearer token and get the same free tier (10 AI queries/day) and credit rates as human users.</p>`)
+<p><strong>Can AI agents use Mu?</strong><br>Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. Agents authenticate with a Bearer token and get the same free tier (10 credits/day) and credit rates as human users.</p>`)
 
 	html := RenderHTMLForRequest("Plans", "Simple, honest pricing", content.String(), r)
 	w.Write([]byte(html))
