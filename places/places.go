@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,10 +25,12 @@ type Place struct {
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
 	Category    string  `json:"category"`
+	Type        string  `json:"type"`
 	Address     string  `json:"address"`
 	Lat         float64 `json:"lat"`
 	Lon         float64 `json:"lon"`
 	DisplayName string  `json:"display_name"`
+	Distance    float64 `json:"distance,omitempty"` // metres, set when sorting by proximity
 }
 
 // cache for search results (query -> places)
@@ -138,6 +142,7 @@ func searchNominatim(query string) ([]*Place, error) {
 			ID:          fmt.Sprintf("%d", r.PlaceID),
 			Name:        name,
 			Category:    r.Class,
+			Type:        r.Type,
 			Address:     addr,
 			Lat:         lat,
 			Lon:         lon,
@@ -271,6 +276,17 @@ func geocode(address string) (float64, float64, error) {
 	return results[0].Lat, results[0].Lon, nil
 }
 
+// haversine returns the great-circle distance in metres between two lat/lon points.
+func haversine(lat1, lon1, lat2, lon2 float64) float64 {
+	const R = 6371000 // Earth radius in metres
+	φ1 := lat1 * math.Pi / 180
+	φ2 := lat2 * math.Pi / 180
+	Δφ := (lat2 - lat1) * math.Pi / 180
+	Δλ := (lon2 - lon1) * math.Pi / 180
+	a := math.Sin(Δφ/2)*math.Sin(Δφ/2) + math.Cos(φ1)*math.Cos(φ2)*math.Sin(Δλ/2)*math.Sin(Δλ/2)
+	return R * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+}
+
 // buildAddress constructs a short address string from a nominatim result
 func buildAddress(r nominatimResult) string {
 	parts := []string{}
@@ -383,12 +399,44 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Optional location for proximity sorting
+	var nearLat, nearLon float64
+	hasNearLoc := false
+	nearAddr := strings.TrimSpace(r.Form.Get("near"))
+	nearLatStr := r.Form.Get("near_lat")
+	nearLonStr := r.Form.Get("near_lon")
+	if nearLatStr != "" && nearLonStr != "" {
+		parsedLat, latErr := strconv.ParseFloat(nearLatStr, 64)
+		parsedLon, lonErr := strconv.ParseFloat(nearLonStr, 64)
+		if latErr == nil && lonErr == nil {
+			nearLat, nearLon, hasNearLoc = parsedLat, parsedLon, true
+		} else {
+			app.Log("places", "Invalid near_lat/near_lon: %v %v", latErr, lonErr)
+		}
+	} else if nearAddr != "" {
+		if glat, glon, gerr := geocode(nearAddr); gerr == nil {
+			nearLat, nearLon, hasNearLoc = glat, glon, true
+		} else {
+			app.Log("places", "Geocode of near=%q failed: %v", nearAddr, gerr)
+		}
+	}
+
 	// Perform search
 	results, err := searchNominatim(query)
 	if err != nil {
 		app.Log("places", "Search error: %v", err)
 		app.ServerError(w, r, "Search failed. Please try again.")
 		return
+	}
+
+	// Sort by distance when a reference location is available
+	if hasNearLoc {
+		for i := range results {
+			results[i].Distance = haversine(nearLat, nearLon, results[i].Lat, results[i].Lon)
+		}
+		sort.Slice(results, func(i, j int) bool {
+			return results[i].Distance < results[j].Distance
+		})
 	}
 
 	// Consume quota after successful operation
@@ -407,7 +455,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Render results page
-	html := renderSearchResults(query, results)
+	html := renderSearchResults(query, results, nearLat, nearLon)
 	app.Respond(w, r, app.Response{
 		Title:       "Places - " + query,
 		Description: fmt.Sprintf("Search results for %s", query),
@@ -554,6 +602,10 @@ func renderPlacesPage(r *http.Request) string {
     <h3>Search Places</h3>
     <form action="/places/search" method="POST" class="places-search-form">
       <input type="text" name="q" placeholder="Search for a place, address or postcode" required>
+      <input type="text" name="near" id="search-near" placeholder="Near (optional location)">
+      <input type="hidden" name="near_lat" id="search-near-lat">
+      <input type="hidden" name="near_lon" id="search-near-lon">
+      <button type="button" onclick="useSearchLocation()" class="btn-secondary">Use My Location</button>
       <button type="submit">Search <span class="cost-badge">5p</span></button>
     </form>
   </div>
@@ -628,6 +680,26 @@ function usePlacesLocation() {
     alert('Could not get your location: ' + err.message);
   });
 }
+
+function useSearchLocation() {
+  if (!navigator.geolocation) {
+    alert('Geolocation is not supported by your browser');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var lat = pos.coords.latitude;
+    var lon = pos.coords.longitude;
+    document.getElementById('search-near-lat').value = lat;
+    document.getElementById('search-near-lon').value = lon;
+    document.getElementById('search-near').value = '';
+    document.getElementById('search-near').placeholder = lat.toFixed(4) + ', ' + lon.toFixed(4);
+    if (window._placesMap) {
+      window._placesMap.setView([lat, lon], 13);
+    }
+  }, function(err) {
+    alert('Could not get your location: ' + err.message);
+  });
+}
 </script>
 %s
 </div>`, authNote, cityMarkersJS, cityCardsHTML)
@@ -672,7 +744,7 @@ func renderCityMarkersJS() string {
 }
 
 // renderSearchResults renders search results with map
-func renderSearchResults(query string, places []*Place) string {
+func renderSearchResults(query string, places []*Place, nearLat, nearLon float64) string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf(`<div class="places-page">
@@ -684,7 +756,7 @@ func renderSearchResults(query string, places []*Place) string {
 	} else {
 		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d result(s) found</p>`, len(places)))
 		sb.WriteString(`<div id="places-map" style="height:400px;width:100%;margin:16px 0;border-radius:8px;"></div>`)
-		sb.WriteString(renderMapScript(places, 0, 0, 0))
+		sb.WriteString(renderMapScript(places, nearLat, nearLon, 0))
 	}
 
 	sb.WriteString(`<div class="places-results">`)
@@ -726,17 +798,54 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 func renderPlaceCard(p *Place) string {
 	cat := ""
 	if p.Category != "" {
-		cat = fmt.Sprintf(` <span class="place-category">%s</span>`, escapeHTML(p.Category))
+		label := strings.ReplaceAll(p.Category, "_", " ")
+		if p.Type != "" && p.Type != p.Category {
+			label += " · " + strings.ReplaceAll(p.Type, "_", " ")
+		}
+		cat = fmt.Sprintf(` <span class="place-category">%s</span>`, escapeHTML(label))
 	}
-	addr := ""
-	if p.Address != "" {
-		addr = fmt.Sprintf(`<p class="place-address text-muted">%s</p>`, escapeHTML(p.Address))
+	addr := p.Address
+	if addr == "" && p.DisplayName != "" {
+		addr = p.DisplayName
 	}
+	addrHTML := ""
+	if addr != "" {
+		addrHTML = fmt.Sprintf(`<p class="place-address text-muted">%s</p>`, escapeHTML(addr))
+	}
+	distHTML := ""
+	if p.Distance > 0 {
+		if p.Distance >= 1000 {
+			distHTML = fmt.Sprintf(`<p class="text-muted" style="font-size:0.85em;">%.1f km away</p>`, p.Distance/1000)
+		} else {
+			distHTML = fmt.Sprintf(`<p class="text-muted" style="font-size:0.85em;">%.0f m away</p>`, p.Distance)
+		}
+	}
+	mapsURL := fmt.Sprintf("https://www.openstreetmap.org/?mlat=%.6f&mlon=%.6f#map=16/%.6f/%.6f", p.Lat, p.Lon, p.Lat, p.Lon)
 	return fmt.Sprintf(`<div class="card place-card">
   <h4>%s%s</h4>
-  %s
-  <p class="text-muted" style="font-size:0.85em;">%.4f, %.4f</p>
-</div>`, escapeHTML(p.Name), cat, addr, p.Lat, p.Lon)
+  %s%s
+  <p class="text-muted" style="font-size:0.85em;"><a href="%s" target="_blank" rel="noopener">View on map</a> &middot; %.4f, %.4f</p>
+</div>`, escapeHTML(p.Name), cat, addrHTML, distHTML, mapsURL, p.Lat, p.Lon)
+}
+
+// placePopupHTML builds an HTML string for a Leaflet map popup for p.
+func placePopupHTML(p *Place) string {
+	cat := strings.ReplaceAll(p.Category, "_", " ")
+	if p.Type != "" && p.Type != p.Category {
+		cat += " · " + strings.ReplaceAll(p.Type, "_", " ")
+	}
+	popup := "<b>" + escapeHTML(p.Name) + "</b>"
+	if cat != "" {
+		popup += "<br><em>" + escapeHTML(cat) + "</em>"
+	}
+	addr := p.Address
+	if addr == "" {
+		addr = p.DisplayName
+	}
+	if addr != "" {
+		popup += "<br>" + escapeHTML(addr)
+	}
+	return popup
 }
 
 // renderMapScript generates Leaflet map JavaScript
@@ -746,7 +855,6 @@ func renderMapScript(places []*Place, centerLat, centerLon float64, radius int) 
 		return ""
 	}
 
-	var markers strings.Builder
 	mapLat := centerLat
 	mapLon := centerLon
 	zoom := 14
@@ -754,13 +862,6 @@ func renderMapScript(places []*Place, centerLat, centerLon float64, radius int) 
 	if centerLat == 0 && len(places) > 0 {
 		mapLat = places[0].Lat
 		mapLon = places[0].Lon
-	}
-
-	for _, p := range places {
-		markers.WriteString(fmt.Sprintf(
-			`L.marker([%f,%f]).addTo(map).bindPopup(%s);`,
-			p.Lat, p.Lon, jsonStr(p.Name),
-		))
 	}
 
 	circleJS := ""
@@ -772,6 +873,29 @@ func renderMapScript(places []*Place, centerLat, centerLon float64, radius int) 
 		zoom = 15
 	}
 
+	// When showing multiple markers without a fixed center, collect into an
+	// array so we can call fitBounds afterwards.
+	var markersJS strings.Builder
+	fitBoundsJS := ""
+	if radius == 0 && len(places) > 1 {
+		markersJS.WriteString("var markers = [];\n  ")
+		for _, p := range places {
+			markersJS.WriteString(fmt.Sprintf(
+				`markers.push(L.marker([%f,%f]).addTo(map).bindPopup(%s));`,
+				p.Lat, p.Lon, jsonStr(placePopupHTML(p)),
+			))
+		}
+		fitBoundsJS = `var bounds = L.latLngBounds(markers.map(function(m){return m.getLatLng();}));
+  map.fitBounds(bounds, {padding:[40,40]});`
+	} else {
+		for _, p := range places {
+			markersJS.WriteString(fmt.Sprintf(
+				`L.marker([%f,%f]).addTo(map).bindPopup(%s);`,
+				p.Lat, p.Lon, jsonStr(placePopupHTML(p)),
+			))
+		}
+	}
+
 	return fmt.Sprintf(`<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WPeE=" crossorigin=""></script>
 <script>
@@ -780,8 +904,9 @@ func renderMapScript(places []*Place, centerLat, centerLon float64, radius int) 
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
   %s
   %s
+  %s
 })();
-</script>`, mapLat, mapLon, zoom, circleJS, markers.String())
+</script>`, mapLat, mapLon, zoom, circleJS, markersJS.String(), fitBoundsJS)
 }
 
 // jsonStr returns a JSON-encoded string for use in JavaScript
