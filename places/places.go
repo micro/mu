@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,15 +23,19 @@ var mutex sync.RWMutex
 
 // Place represents a geographic place
 type Place struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Category    string  `json:"category"`
-	Type        string  `json:"type"`
-	Address     string  `json:"address"`
-	Lat         float64 `json:"lat"`
-	Lon         float64 `json:"lon"`
-	DisplayName string  `json:"display_name"`
-	Distance    float64 `json:"distance,omitempty"` // metres, set when sorting by proximity
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Category     string  `json:"category"`
+	Type         string  `json:"type"`
+	Address      string  `json:"address"`
+	Lat          float64 `json:"lat"`
+	Lon          float64 `json:"lon"`
+	DisplayName  string  `json:"display_name"`
+	Distance     float64 `json:"distance,omitempty"` // metres, set when sorting by proximity
+	Phone        string  `json:"phone,omitempty"`
+	Website      string  `json:"website,omitempty"`
+	OpeningHours string  `json:"opening_hours,omitempty"`
+	Cuisine      string  `json:"cuisine,omitempty"`
 }
 
 // cache for search results (query -> places)
@@ -56,6 +61,7 @@ type nominatimResult struct {
 		Postcode    string `json:"postcode"`
 		HouseNumber string `json:"house_number"`
 	} `json:"address"`
+	ExtraTags map[string]string `json:"extratags"`
 }
 
 // overpassElement represents a POI from the Overpass API
@@ -94,7 +100,7 @@ func searchNominatim(query string) ([]*Place, error) {
 	mutex.RUnlock()
 
 	apiURL := fmt.Sprintf(
-		"https://nominatim.openstreetmap.org/search?q=%s&format=json&limit=20&addressdetails=1",
+		"https://nominatim.openstreetmap.org/search?q=%s&format=json&limit=20&addressdetails=1&extratags=1",
 		url.QueryEscape(query),
 	)
 
@@ -138,7 +144,7 @@ func searchNominatim(query string) ([]*Place, error) {
 		addr := buildAddress(r)
 		name := extractDisplayName(r)
 
-		places = append(places, &Place{
+		p := &Place{
 			ID:          fmt.Sprintf("%d", r.PlaceID),
 			Name:        name,
 			Category:    r.Class,
@@ -147,7 +153,20 @@ func searchNominatim(query string) ([]*Place, error) {
 			Lat:         lat,
 			Lon:         lon,
 			DisplayName: r.DisplayName,
-		})
+		}
+		if r.ExtraTags != nil {
+			p.Phone = r.ExtraTags["phone"]
+			if p.Phone == "" {
+				p.Phone = r.ExtraTags["contact:phone"]
+			}
+			p.Website = r.ExtraTags["website"]
+			if p.Website == "" {
+				p.Website = r.ExtraTags["contact:website"]
+			}
+			p.OpeningHours = r.ExtraTags["opening_hours"]
+			p.Cuisine = r.ExtraTags["cuisine"]
+		}
+		places = append(places, p)
 	}
 
 	// Store in cache
@@ -211,8 +230,28 @@ out body;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, la
 		return nil, err
 	}
 
-	places := make([]*Place, 0, len(ovResp.Elements))
-	for _, el := range ovResp.Elements {
+	places := parseOverpassElements(ovResp.Elements, lat, lon, true)
+
+	// Store in cache
+	mutex.Lock()
+	searchCache[cacheKey] = places
+	searchCacheTime[cacheKey] = time.Now()
+	mutex.Unlock()
+
+	return places, nil
+}
+
+// parseOverpassElements converts raw Overpass elements into Places, deduplicates,
+// extracts rich tags and sorts by distance from refLat/refLon when hasRef is true.
+func parseOverpassElements(elements []overpassElement, refLat, refLon float64, hasRef bool) []*Place {
+	places := make([]*Place, 0, len(elements))
+	seen := map[int64]bool{}
+	for _, el := range elements {
+		if seen[el.ID] {
+			continue
+		}
+		seen[el.ID] = true
+
 		name := el.Tags["name"]
 		if name == "" {
 			continue // Skip unnamed POIs
@@ -233,21 +272,120 @@ out body;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, la
 		if n := el.Tags["addr:housenumber"]; n != "" {
 			addr = n + " " + addr
 		}
+		if c := el.Tags["addr:city"]; c != "" {
+			if addr != "" {
+				addr += ", " + c
+			} else {
+				addr = c
+			}
+		}
 		if p := el.Tags["addr:postcode"]; p != "" {
 			addr += " " + p
 		}
 
-		places = append(places, &Place{
-			ID:       fmt.Sprintf("%d", el.ID),
-			Name:     name,
-			Category: category,
-			Address:  strings.TrimSpace(addr),
-			Lat:      el.Lat,
-			Lon:      el.Lon,
+		phone := el.Tags["phone"]
+		if phone == "" {
+			phone = el.Tags["contact:phone"]
+		}
+		website := el.Tags["website"]
+		if website == "" {
+			website = el.Tags["contact:website"]
+		}
+
+		// Normalize OSM semicolon-separated cuisine values
+		cuisine := strings.ReplaceAll(el.Tags["cuisine"], ";", ", ")
+
+		p := &Place{
+			ID:           fmt.Sprintf("%d", el.ID),
+			Name:         name,
+			Category:     category,
+			Address:      strings.TrimSpace(addr),
+			Lat:          el.Lat,
+			Lon:          el.Lon,
+			Phone:        phone,
+			Website:      website,
+			OpeningHours: el.Tags["opening_hours"],
+			Cuisine:      cuisine,
+		}
+		if hasRef {
+			p.Distance = haversine(refLat, refLon, el.Lat, el.Lon)
+		}
+		places = append(places, p)
+	}
+	if hasRef {
+		sort.Slice(places, func(i, j int) bool {
+			return places[i].Distance < places[j].Distance
 		})
 	}
+	return places
+}
 
-	// Store in cache
+// searchNearbyKeyword searches for POIs near a location whose name or category
+// matches the given keyword using the Overpass API.
+func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
+	if radiusM <= 0 {
+		radiusM = 1000
+	}
+	cacheKey := fmt.Sprintf("kw:%s:%.4f:%.4f:%d", query, lat, lon, radiusM)
+
+	mutex.RLock()
+	if places, ok := searchCache[cacheKey]; ok {
+		if time.Since(searchCacheTime[cacheKey]) < cacheTTL {
+			mutex.RUnlock()
+			return places, nil
+		}
+	}
+	mutex.RUnlock()
+
+	// Escape query for safe use in Overpass regex
+	safeQ := regexp.QuoteMeta(query)
+
+	ovQuery := fmt.Sprintf(`[out:json][timeout:25];
+(
+  node["name"~"%s",i](around:%d,%f,%f);
+  node["amenity"~"%s",i](around:%d,%f,%f);
+  node["shop"~"%s",i](around:%d,%f,%f);
+  node["tourism"~"%s",i](around:%d,%f,%f);
+  node["leisure"~"%s",i](around:%d,%f,%f);
+);
+out body;`,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
+	)
+
+	apiURL := "https://overpass-api.de/api/interpreter"
+	req, err := http.NewRequest("POST", apiURL, strings.NewReader("data="+url.QueryEscape(ovQuery)))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", "Mu/1.0 (https://mu.xyz)")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("overpass request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("overpass returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var ovResp overpassResponse
+	if err := json.Unmarshal(body, &ovResp); err != nil {
+		return nil, err
+	}
+
+	places := parseOverpassElements(ovResp.Elements, lat, lon, true)
+
 	mutex.Lock()
 	searchCache[cacheKey] = places
 	searchCacheTime[cacheKey] = time.Now()
@@ -351,11 +489,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Default: show the places page with map
+	// Default: show the places page
 	body := renderPlacesPage(r)
 	app.Respond(w, r, app.Response{
 		Title:       "Places",
-		Description: "Search and discover places on a map",
+		Description: "Search and discover places near you",
 		HTML:        body,
 	})
 }
@@ -399,7 +537,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Optional location for proximity sorting
+	// Optional location for proximity-based search
 	var nearLat, nearLon float64
 	hasNearLoc := false
 	nearAddr := strings.TrimSpace(r.Form.Get("near"))
@@ -421,22 +559,26 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Perform search
-	results, err := searchNominatim(query)
+	// Parse radius (used when doing a nearby keyword search)
+	radiusM := 1000
+	if rs := r.Form.Get("radius"); rs != "" {
+		if v, perr := strconv.Atoi(rs); perr == nil && v >= 100 && v <= 5000 {
+			radiusM = v
+		}
+	}
+
+	// Perform search: use Overpass keyword search when a location is provided,
+	// otherwise fall back to a global Nominatim search.
+	var results []*Place
+	if hasNearLoc {
+		results, err = searchNearbyKeyword(query, nearLat, nearLon, radiusM)
+	} else {
+		results, err = searchNominatim(query)
+	}
 	if err != nil {
 		app.Log("places", "Search error: %v", err)
 		app.ServerError(w, r, "Search failed. Please try again.")
 		return
-	}
-
-	// Sort by distance when a reference location is available
-	if hasNearLoc {
-		for i := range results {
-			results[i].Distance = haversine(nearLat, nearLon, results[i].Lat, results[i].Lon)
-		}
-		sort.Slice(results, func(i, j int) bool {
-			return results[i].Distance < results[j].Distance
-		})
 	}
 
 	// Consume quota after successful operation
@@ -455,7 +597,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Render results page
-	html := renderSearchResults(query, results, nearLat, nearLon)
+	html := renderSearchResults(query, results, hasNearLoc)
 	app.Respond(w, r, app.Response{
 		Title:       "Places - " + query,
 		Description: fmt.Sprintf("Search results for %s", query),
@@ -579,130 +721,59 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// renderPlacesPage renders the main places page HTML with map
+// renderPlacesPage renders the main places page HTML
 func renderPlacesPage(r *http.Request) string {
 	_, acc := auth.TrySession(r)
 	isLoggedIn := acc != nil
 
 	authNote := ""
 	if !isLoggedIn {
-		authNote = `<p class="text-muted">Search (5p) and nearby (2p) require an account. <a href="/login">Login</a> or <a href="/signup">sign up</a> to search.</p>`
+		authNote = `<p class="text-muted">Search requires an account (5p). <a href="/login">Login</a> or <a href="/signup">sign up</a> to search.</p>`
 	}
 
-	// Build cities section HTML
 	cityCardsHTML := renderCitiesSection()
-
-	// Build city markers JSON for the map
-	cityMarkersJS := renderCityMarkersJS()
 
 	return fmt.Sprintf(`<div class="places-page">
 %s
-<div class="places-forms">
-  <div class="card">
-    <h3>Search Places</h3>
-    <form action="/places/search" method="POST" class="places-search-form">
-      <input type="text" name="q" placeholder="Search for a place, address or postcode" required>
-      <input type="text" name="near" id="search-near" placeholder="Near (optional location)">
-      <input type="hidden" name="near_lat" id="search-near-lat">
-      <input type="hidden" name="near_lon" id="search-near-lon">
-      <button type="button" onclick="useSearchLocation()" class="btn-secondary">Use My Location</button>
-      <button type="submit">Search <span class="cost-badge">5p</span></button>
-    </form>
-  </div>
-  <div class="card">
-    <h3>Nearby</h3>
-    <form action="/places/nearby" method="POST" class="places-nearby-form" id="nearby-form">
-      <input type="text" name="address" id="nearby-address" placeholder="Address or postcode">
-      <input type="hidden" name="lat" id="nearby-lat">
-      <input type="hidden" name="lon" id="nearby-lon">
-      <select name="radius">
-        <option value="250">250m</option>
-        <option value="500" selected>500m</option>
-        <option value="1000">1km</option>
-        <option value="2000">2km</option>
-        <option value="5000">5km</option>
-      </select>
-      <button type="submit">Search Nearby <span class="cost-badge">2p</span></button>
-      <button type="button" onclick="usePlacesLocation()" class="btn-secondary">Use My Location</button>
-    </form>
-  </div>
+<div class="card">
+  <h3>Find Places</h3>
+  <p class="text-muted">Search by name or category (e.g. cafes, pharmacy). Add a location to search nearby.</p>
+  <form id="places-form" action="/places/search" method="POST">
+    <input type="text" name="q" placeholder="What are you looking for?" required>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="text" name="near" id="places-near" placeholder="Location (leave blank for global search)" style="flex:1;min-width:180px;">
+      <input type="hidden" name="near_lat" id="places-near-lat">
+      <input type="hidden" name="near_lon" id="places-near-lon">
+      <button type="button" onclick="usePlacesLocation()" class="btn-secondary">&#128205; Near Me</button>
+    </div>
+    <select name="radius">
+      <option value="500">500m radius</option>
+      <option value="1000" selected>1km radius</option>
+      <option value="2000">2km radius</option>
+      <option value="5000">5km radius</option>
+    </select>
+    <button type="submit">Search <span class="cost-badge">5p</span></button>
+  </form>
 </div>
-<div id="places-map" style="height:400px;width:100%%;margin:16px 0;border-radius:8px;"></div>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WPeE=" crossorigin=""></script>
+%s
 <script>
-(function() {
-  var map = L.map('places-map').setView([20, 0], 2);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-  }).addTo(map);
-  window._placesMap = map;
-
-  // City markers
-  var cities = %s;
-  cities.forEach(function(c) {
-    L.marker([c.lat, c.lon]).addTo(map).bindPopup(
-      '<b>' + c.name + '</b><br>' +
-      '<a href="#" onclick="goToCity(' + JSON.stringify(c.name) + ',' + c.lat + ',' + c.lon + ');return false;">Search nearby &rarr;</a>'
-    );
-  });
-})();
-
-function goToCity(name, lat, lon) {
-  document.getElementById('nearby-lat').value = lat;
-  document.getElementById('nearby-lon').value = lon;
-  document.getElementById('nearby-address').value = '';
-  document.getElementById('nearby-address').placeholder = name;
-  if (window._placesMap) {
-    window._placesMap.setView([lat, lon], 13);
-  }
-  document.getElementById('nearby-form').scrollIntoView({behavior:'smooth'});
-}
-
 function usePlacesLocation() {
-  if (!navigator.geolocation) {
-    alert('Geolocation is not supported by your browser');
-    return;
-  }
+  if (!navigator.geolocation) { alert('Geolocation is not supported by your browser'); return; }
   navigator.geolocation.getCurrentPosition(function(pos) {
-    var lat = pos.coords.latitude;
-    var lon = pos.coords.longitude;
-    document.getElementById('nearby-lat').value = lat;
-    document.getElementById('nearby-lon').value = lon;
-    document.getElementById('nearby-address').value = '';
-    document.getElementById('nearby-address').placeholder = lat.toFixed(4) + ', ' + lon.toFixed(4);
-    if (window._placesMap) {
-      window._placesMap.setView([lat, lon], 13);
-      L.marker([lat, lon]).addTo(window._placesMap).bindPopup('Your location').openPopup();
-    }
-  }, function(err) {
-    alert('Could not get your location: ' + err.message);
-  });
+    var lat = pos.coords.latitude, lon = pos.coords.longitude;
+    document.getElementById('places-near-lat').value = lat;
+    document.getElementById('places-near-lon').value = lon;
+    document.getElementById('places-near').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
+  }, function(err) { alert('Could not get your location: ' + err.message); });
 }
-
-function useSearchLocation() {
-  if (!navigator.geolocation) {
-    alert('Geolocation is not supported by your browser');
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(function(pos) {
-    var lat = pos.coords.latitude;
-    var lon = pos.coords.longitude;
-    document.getElementById('search-near-lat').value = lat;
-    document.getElementById('search-near-lon').value = lon;
-    document.getElementById('search-near').value = '';
-    document.getElementById('search-near').placeholder = lat.toFixed(4) + ', ' + lon.toFixed(4);
-    if (window._placesMap) {
-      window._placesMap.setView([lat, lon], 13);
-    }
-  }, function(err) {
-    alert('Could not get your location: ' + err.message);
-  });
+function setPlacesCity(name, lat, lon) {
+  document.getElementById('places-near').value = name;
+  document.getElementById('places-near-lat').value = lat;
+  document.getElementById('places-near-lon').value = lon;
+  document.getElementById('places-form').scrollIntoView({behavior:'smooth'});
 }
 </script>
-%s
-</div>`, authNote, cityMarkersJS, cityCardsHTML)
+</div>`, authNote, cityCardsHTML)
 }
 
 // renderCitiesSection renders a grid of city cards
@@ -715,7 +786,7 @@ func renderCitiesSection() string {
 	sb.WriteString(`<h3>Browse by City</h3><div class="city-grid">`)
 	for _, c := range cs {
 		sb.WriteString(fmt.Sprintf(
-			`<a href="#" onclick="goToCity(%s,%f,%f);return false;" class="city-link">%s <span class="text-muted" style="font-size:0.8em;">%s</span></a>`,
+			`<a href="#" onclick="setPlacesCity(%s,%f,%f);return false;" class="city-link">%s <span class="text-muted" style="font-size:0.8em;">%s</span></a>`,
 			jsonStr(c.Name), c.Lat, c.Lon,
 			escapeHTML(c.Name), escapeHTML(c.Country),
 		))
@@ -724,27 +795,8 @@ func renderCitiesSection() string {
 	return sb.String()
 }
 
-// renderCityMarkersJS returns a JSON array literal of city definitions for use in map JS
-func renderCityMarkersJS() string {
-	cs := Cities()
-	if len(cs) == 0 {
-		return "[]"
-	}
-	type cityJS struct {
-		Name string  `json:"name"`
-		Lat  float64 `json:"lat"`
-		Lon  float64 `json:"lon"`
-	}
-	arr := make([]cityJS, len(cs))
-	for i, c := range cs {
-		arr[i] = cityJS{Name: c.Name, Lat: c.Lat, Lon: c.Lon}
-	}
-	b, _ := json.Marshal(arr)
-	return string(b)
-}
-
-// renderSearchResults renders search results with map
-func renderSearchResults(query string, places []*Place, nearLat, nearLon float64) string {
+// renderSearchResults renders search results as a list
+func renderSearchResults(query string, places []*Place, nearLocation bool) string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf(`<div class="places-page">
@@ -752,11 +804,13 @@ func renderSearchResults(query string, places []*Place, nearLat, nearLon float64
 <h2>Results for &#34;%s&#34;</h2>`, escapeHTML(query)))
 
 	if len(places) == 0 {
-		sb.WriteString(`<p class="text-muted">No places found. Try a different search.</p>`)
+		if nearLocation {
+			sb.WriteString(`<p class="text-muted">No places found nearby. Try a larger radius or a different search term.</p>`)
+		} else {
+			sb.WriteString(`<p class="text-muted">No places found. Try a different search term or add a location.</p>`)
+		}
 	} else {
 		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d result(s) found</p>`, len(places)))
-		sb.WriteString(`<div id="places-map" style="height:400px;width:100%;margin:16px 0;border-radius:8px;"></div>`)
-		sb.WriteString(renderMapScript(places, nearLat, nearLon, 0))
 	}
 
 	sb.WriteString(`<div class="places-results">`)
@@ -768,7 +822,7 @@ func renderSearchResults(query string, places []*Place, nearLat, nearLon float64
 	return sb.String()
 }
 
-// renderNearbyResults renders nearby search results with map
+// renderNearbyResults renders nearby search results as a list
 func renderNearbyResults(label string, lat, lon float64, radius int, places []*Place) string {
 	var sb strings.Builder
 
@@ -781,8 +835,6 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 		sb.WriteString(`<p class="text-muted">No places found nearby. Try increasing the radius.</p>`)
 	} else {
 		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d place(s) found</p>`, len(places)))
-		sb.WriteString(`<div id="places-map" style="height:400px;width:100%;margin:16px 0;border-radius:8px;"></div>`)
-		sb.WriteString(renderMapScript(places, lat, lon, radius))
 	}
 
 	sb.WriteString(`<div class="places-results">`)
@@ -794,7 +846,7 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 	return sb.String()
 }
 
-// renderPlaceCard renders a single place card
+// renderPlaceCard renders a single place card with rich details and map links
 func renderPlaceCard(p *Place) string {
 	cat := ""
 	if p.Category != "" {
@@ -804,6 +856,7 @@ func renderPlaceCard(p *Place) string {
 		}
 		cat = fmt.Sprintf(` <span class="place-category">%s</span>`, escapeHTML(label))
 	}
+
 	addr := p.Address
 	if addr == "" && p.DisplayName != "" {
 		addr = p.DisplayName
@@ -812,101 +865,38 @@ func renderPlaceCard(p *Place) string {
 	if addr != "" {
 		addrHTML = fmt.Sprintf(`<p class="place-address text-muted">%s</p>`, escapeHTML(addr))
 	}
+
 	distHTML := ""
 	if p.Distance > 0 {
 		if p.Distance >= 1000 {
-			distHTML = fmt.Sprintf(`<p class="text-muted" style="font-size:0.85em;">%.1f km away</p>`, p.Distance/1000)
+			distHTML = fmt.Sprintf(`<span class="text-muted"> &middot; %.1f km away</span>`, p.Distance/1000)
 		} else {
-			distHTML = fmt.Sprintf(`<p class="text-muted" style="font-size:0.85em;">%.0f m away</p>`, p.Distance)
+			distHTML = fmt.Sprintf(`<span class="text-muted"> &middot; %.0f m away</span>`, p.Distance)
 		}
 	}
-	mapsURL := fmt.Sprintf("https://www.openstreetmap.org/?mlat=%.6f&mlon=%.6f#map=16/%.6f/%.6f", p.Lat, p.Lon, p.Lat, p.Lon)
+
+	extraHTML := ""
+	if p.Cuisine != "" {
+		extraHTML += fmt.Sprintf(`<p class="place-info text-muted">Cuisine: %s</p>`, escapeHTML(p.Cuisine))
+	}
+	if p.OpeningHours != "" {
+		extraHTML += fmt.Sprintf(`<p class="place-info text-muted">Hours: %s</p>`, escapeHTML(p.OpeningHours))
+	}
+	if p.Phone != "" {
+		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="tel:%s">%s</a></p>`, escapeHTML(p.Phone), escapeHTML(p.Phone))
+	}
+	if p.Website != "" {
+		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website &#8599;</a></p>`, escapeHTML(p.Website))
+	}
+
+	gmapsViewURL := fmt.Sprintf("https://maps.google.com/?q=%.6f,%.6f", p.Lat, p.Lon)
+	gmapsDirURL := fmt.Sprintf("https://www.google.com/maps/dir/?api=1&destination=%.6f%%2C%.6f", p.Lat, p.Lon)
+
 	return fmt.Sprintf(`<div class="card place-card">
-  <h4>%s%s</h4>
+  <h4>%s%s%s</h4>
   %s%s
-  <p class="text-muted" style="font-size:0.85em;"><a href="%s" target="_blank" rel="noopener">View on map</a> &middot; %.4f, %.4f</p>
-</div>`, escapeHTML(p.Name), cat, addrHTML, distHTML, mapsURL, p.Lat, p.Lon)
-}
-
-// placePopupHTML builds an HTML string for a Leaflet map popup for p.
-func placePopupHTML(p *Place) string {
-	cat := strings.ReplaceAll(p.Category, "_", " ")
-	if p.Type != "" && p.Type != p.Category {
-		cat += " · " + strings.ReplaceAll(p.Type, "_", " ")
-	}
-	popup := "<b>" + escapeHTML(p.Name) + "</b>"
-	if cat != "" {
-		popup += "<br><em>" + escapeHTML(cat) + "</em>"
-	}
-	addr := p.Address
-	if addr == "" {
-		addr = p.DisplayName
-	}
-	if addr != "" {
-		popup += "<br>" + escapeHTML(addr)
-	}
-	return popup
-}
-
-// renderMapScript generates Leaflet map JavaScript
-// If lat/lon/radius > 0, a circle is drawn at the center point
-func renderMapScript(places []*Place, centerLat, centerLon float64, radius int) string {
-	if len(places) == 0 && centerLat == 0 {
-		return ""
-	}
-
-	mapLat := centerLat
-	mapLon := centerLon
-	zoom := 14
-
-	if centerLat == 0 && len(places) > 0 {
-		mapLat = places[0].Lat
-		mapLon = places[0].Lon
-	}
-
-	circleJS := ""
-	if radius > 0 {
-		circleJS = fmt.Sprintf(
-			`L.circle([%f,%f],{radius:%d,color:'#3388ff',fillOpacity:0.1}).addTo(map);`,
-			centerLat, centerLon, radius,
-		)
-		zoom = 15
-	}
-
-	// When showing multiple markers without a fixed center, collect into an
-	// array so we can call fitBounds afterwards.
-	var markersJS strings.Builder
-	fitBoundsJS := ""
-	if radius == 0 && len(places) > 1 {
-		markersJS.WriteString("var markers = [];\n  ")
-		for _, p := range places {
-			markersJS.WriteString(fmt.Sprintf(
-				`markers.push(L.marker([%f,%f]).addTo(map).bindPopup(%s));`,
-				p.Lat, p.Lon, jsonStr(placePopupHTML(p)),
-			))
-		}
-		fitBoundsJS = `var bounds = L.latLngBounds(markers.map(function(m){return m.getLatLng();}));
-  map.fitBounds(bounds, {padding:[40,40]});`
-	} else {
-		for _, p := range places {
-			markersJS.WriteString(fmt.Sprintf(
-				`L.marker([%f,%f]).addTo(map).bindPopup(%s);`,
-				p.Lat, p.Lon, jsonStr(placePopupHTML(p)),
-			))
-		}
-	}
-
-	return fmt.Sprintf(`<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WPeE=" crossorigin=""></script>
-<script>
-(function() {
-  var map = L.map('places-map').setView([%f,%f],%d);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
-  %s
-  %s
-  %s
-})();
-</script>`, mapLat, mapLon, zoom, circleJS, markersJS.String(), fitBoundsJS)
+  <p class="place-links"><a href="%s" target="_blank" rel="noopener">View on Google Maps</a> &middot; <a href="%s" target="_blank" rel="noopener">Get Directions</a></p>
+</div>`, escapeHTML(p.Name), cat, distHTML, addrHTML, extraHTML, gmapsViewURL, gmapsDirURL)
 }
 
 // jsonStr returns a JSON-encoded string for use in JavaScript
