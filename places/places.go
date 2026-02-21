@@ -842,7 +842,7 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
       <input type="text" name="near" id="places-near" placeholder="Location (optional)" value="%s" oninput="updateNearbyLink()">
       <input type="hidden" name="near_lat" id="places-near-lat" value="%s">
       <input type="hidden" name="near_lon" id="places-near-lon" value="%s">
-      <button type="button" onclick="usePlacesLocation()" class="btn-secondary">&#128205; Near Me</button>
+      <a href="#" onclick="usePlacesLocation();return false;" class="btn-link">&#128205; Use my location</a>
     </div>
     <div class="places-options-row">
       <select name="radius" id="places-radius" onchange="updateNearbyLink()">%s</select>
@@ -995,24 +995,36 @@ func renderLeafletMap(centerLat, centerLon float64, places []*Place) string {
 		markers = append(markers, fmt.Sprintf(`{"lat":%f,"lon":%f,"name":%s}`, p.Lat, p.Lon, jsonStr(p.Name)))
 	}
 	markersJSON := "[" + strings.Join(markers, ",") + "]"
-	return fmt.Sprintf(`<div id="places-map" style="height:280px;margin:1rem 0;border-radius:8px;overflow:hidden;"></div>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-20nQCchB9co0qIjJZRGuk1eAR8R9xrJwGtYtx2HJ8xk=" crossorigin=""></script>
+	return fmt.Sprintf(`<div style="height:280px;margin:1rem 0;border-radius:8px;overflow:hidden;"><div id="places-map" style="height:100%%;width:100%%;"></div></div>
 <script>
 (function(){
-  var map=L.map('places-map').setView([%f,%f],14);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:19
-  }).addTo(map);
-  var ps=%s;
-  var bounds=[];
-  ps.forEach(function(p){
-    L.marker([p.lat,p.lon]).addTo(map).bindPopup(p.name);
-    bounds.push([p.lat,p.lon]);
-  });
-  if(bounds.length>1){map.fitBounds(bounds,{padding:[30,30],maxZoom:16});}
+  function initPlacesMap(){
+    var map=L.map('places-map').setView([%f,%f],14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:19
+    }).addTo(map);
+    var ps=%s;
+    var bounds=[];
+    ps.forEach(function(p){
+      L.marker([p.lat,p.lon]).addTo(map).bindPopup(p.name);
+      bounds.push([p.lat,p.lon]);
+    });
+    if(bounds.length>1){map.fitBounds(bounds,{padding:[30,30],maxZoom:16});}
+  }
+  if(window.L){
+    initPlacesMap();
+  } else {
+    var lnk=document.createElement('link');
+    lnk.rel='stylesheet';
+    lnk.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    lnk.crossOrigin='anonymous';
+    document.head.appendChild(lnk);
+    var s=document.createElement('script');
+    s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    s.crossOrigin='anonymous';
+    s.onload=initPlacesMap;
+    document.head.appendChild(s);
+  }
 })();
 </script>`, centerLat, centerLon, markersJSON)
 }
@@ -1131,10 +1143,10 @@ func renderPlaceCard(p *Place) string {
 	gmapsDirURL := "https://www.google.com/maps/dir/?api=1&destination=" + url.QueryEscape(gmapsQuery)
 
 	return fmt.Sprintf(`<div class="card place-card">
-  <h4>%s%s%s</h4>
+  <h4><a href="%s" target="_blank" rel="noopener">%s</a>%s%s</h4>
   %s%s
-  <p class="place-links"><a href="%s" target="_blank" rel="noopener">View on Map</a> &middot; <a href="%s" target="_blank" rel="noopener">Get Directions</a></p>
-</div>`, escapeHTML(p.Name), cat, distHTML, addrHTML, extraHTML, gmapsViewURL, gmapsDirURL)
+  <p class="place-links"><a href="%s" target="_blank" rel="noopener">Get Directions</a></p>
+</div>`, gmapsViewURL, escapeHTML(p.Name), cat, distHTML, addrHTML, extraHTML, gmapsDirURL)
 }
 
 // sortPlaces sorts places in-place according to sortBy ("name" or "distance").
