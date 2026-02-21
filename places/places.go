@@ -64,12 +64,20 @@ type nominatimResult struct {
 	ExtraTags map[string]string `json:"extratags"`
 }
 
+// overpassCenter holds the computed centre of a way element
+type overpassCenter struct {
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
+}
+
 // overpassElement represents a POI from the Overpass API
 type overpassElement struct {
-	ID   int64             `json:"id"`
-	Lat  float64           `json:"lat"`
-	Lon  float64           `json:"lon"`
-	Tags map[string]string `json:"tags"`
+	ID     int64             `json:"id"`
+	Type   string            `json:"type"`
+	Lat    float64           `json:"lat"`
+	Lon    float64           `json:"lon"`
+	Center *overpassCenter   `json:"center,omitempty"`
+	Tags   map[string]string `json:"tags"`
 }
 
 type overpassResponse struct {
@@ -192,15 +200,20 @@ func nearbyOverpass(lat, lon float64, radiusM int) ([]*Place, error) {
 	}
 	mutex.RUnlock()
 
-	// Overpass query for common POI types within radius
+	// Overpass query for common POI types within radius (nodes and ways)
 	query := fmt.Sprintf(`[out:json][timeout:25];
 (
   node["amenity"](around:%d,%f,%f);
+  way["amenity"](around:%d,%f,%f);
   node["shop"](around:%d,%f,%f);
+  way["shop"](around:%d,%f,%f);
   node["tourism"](around:%d,%f,%f);
+  way["tourism"](around:%d,%f,%f);
   node["leisure"](around:%d,%f,%f);
+  way["leisure"](around:%d,%f,%f);
 );
-out body;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon)
+out center;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon,
+		radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon)
 
 	apiURL := "https://overpass-api.de/api/interpreter"
 	req, err := http.NewRequest("POST", apiURL, strings.NewReader("data="+url.QueryEscape(query)))
@@ -252,6 +265,15 @@ func parseOverpassElements(elements []overpassElement, refLat, refLon float64, h
 		}
 		seen[el.ID] = true
 
+		// Resolve coordinates: nodes have lat/lon directly; ways expose a center
+		elLat, elLon := el.Lat, el.Lon
+		if el.Center != nil && elLat == 0 && elLon == 0 {
+			elLat, elLon = el.Center.Lat, el.Center.Lon
+		}
+		if elLat == 0 && elLon == 0 {
+			continue // skip elements without usable coordinates
+		}
+
 		name := el.Tags["name"]
 		if name == "" {
 			continue // Skip unnamed POIs
@@ -292,23 +314,24 @@ func parseOverpassElements(elements []overpassElement, refLat, refLon float64, h
 			website = el.Tags["contact:website"]
 		}
 
-		// Normalize OSM semicolon-separated cuisine values
+		// Normalize OSM semicolon-separated cuisine values and replace underscores with spaces
 		cuisine := strings.ReplaceAll(el.Tags["cuisine"], ";", ", ")
+		cuisine = strings.ReplaceAll(cuisine, "_", " ")
 
 		p := &Place{
 			ID:           fmt.Sprintf("%d", el.ID),
 			Name:         name,
 			Category:     category,
 			Address:      strings.TrimSpace(addr),
-			Lat:          el.Lat,
-			Lon:          el.Lon,
+			Lat:          elLat,
+			Lon:          elLon,
 			Phone:        phone,
 			Website:      website,
 			OpeningHours: el.Tags["opening_hours"],
 			Cuisine:      cuisine,
 		}
 		if hasRef {
-			p.Distance = haversine(refLat, refLon, el.Lat, el.Lon)
+			p.Distance = haversine(refLat, refLon, elLat, elLon)
 		}
 		places = append(places, p)
 	}
@@ -343,12 +366,22 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 	ovQuery := fmt.Sprintf(`[out:json][timeout:25];
 (
   node["name"~"%s",i](around:%d,%f,%f);
+  way["name"~"%s",i](around:%d,%f,%f);
   node["amenity"~"%s",i](around:%d,%f,%f);
+  way["amenity"~"%s",i](around:%d,%f,%f);
   node["shop"~"%s",i](around:%d,%f,%f);
+  way["shop"~"%s",i](around:%d,%f,%f);
   node["tourism"~"%s",i](around:%d,%f,%f);
+  way["tourism"~"%s",i](around:%d,%f,%f);
   node["leisure"~"%s",i](around:%d,%f,%f);
+  way["leisure"~"%s",i](around:%d,%f,%f);
 );
-out body;`,
+out center;`,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
 		safeQ, radiusM, lat, lon,
 		safeQ, radiusM, lat, lon,
 		safeQ, radiusM, lat, lon,
@@ -787,7 +820,7 @@ func renderCitiesSection() string {
 	for _, c := range cs {
 		sb.WriteString(fmt.Sprintf(
 			`<a href="#" onclick="setPlacesCity(%s,%f,%f);return false;" class="city-link">%s <span class="text-muted" style="font-size:0.8em;">%s</span></a>`,
-			jsonStr(c.Name), c.Lat, c.Lon,
+			escapeHTML(jsonStr(c.Name)), c.Lat, c.Lon,
 			escapeHTML(c.Name), escapeHTML(c.Country),
 		))
 	}
