@@ -84,8 +84,10 @@ type overpassResponse struct {
 	Elements []overpassElement `json:"elements"`
 }
 
-// httpClient is the shared HTTP client with timeout
-var httpClient = &http.Client{Timeout: 15 * time.Second}
+// httpClient is the shared HTTP client with timeout.
+// The timeout is set to 35s to allow Overpass queries (which use [timeout:25])
+// to complete before the client gives up.
+var httpClient = &http.Client{Timeout: 35 * time.Second}
 
 // Load initialises the places package
 func Load() {
@@ -595,7 +597,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	// Parse radius (used when doing a nearby keyword search)
 	radiusM := 1000
 	if rs := r.Form.Get("radius"); rs != "" {
-		if v, perr := strconv.Atoi(rs); perr == nil && v >= 100 && v <= 5000 {
+		if v, perr := strconv.Atoi(rs); perr == nil && v >= 100 && v <= 50000 {
 			radiusM = v
 		}
 	}
@@ -614,6 +616,10 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Apply sort order
+	sortBy := r.Form.Get("sort")
+	sortPlaces(results, sortBy)
+
 	// Consume quota after successful operation
 	if useFree {
 		wallet.UseFreeSearch(acc.ID)
@@ -630,7 +636,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Render results page
-	html := renderSearchResults(query, results, hasNearLoc)
+	html := renderSearchResults(query, results, hasNearLoc, sortBy)
 	app.Respond(w, r, app.Response{
 		Title:       "Places - " + query,
 		Description: fmt.Sprintf("Search results for %s", query),
@@ -708,8 +714,8 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 		if radius < 100 {
 			radius = 100
 		}
-		if radius > 5000 {
-			radius = 5000
+		if radius > 50000 {
+			radius = 50000
 		}
 	}
 
@@ -720,6 +726,10 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 		app.ServerError(w, r, "Nearby search failed. Please try again.")
 		return
 	}
+
+	// Apply sort order
+	sortBy := r.Form.Get("sort")
+	sortPlaces(results, sortBy)
 
 	// Consume quota after successful operation
 	if useFree {
@@ -779,12 +789,21 @@ func renderPlacesPage(r *http.Request) string {
       <input type="hidden" name="near_lon" id="places-near-lon">
       <button type="button" onclick="usePlacesLocation()" class="btn-secondary">&#128205; Near Me</button>
     </div>
-    <select name="radius">
-      <option value="500">500m radius</option>
-      <option value="1000" selected>1km radius</option>
-      <option value="2000">2km radius</option>
-      <option value="5000">5km radius</option>
-    </select>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <select name="radius">
+        <option value="500">500m radius</option>
+        <option value="1000" selected>1km radius</option>
+        <option value="2000">2km radius</option>
+        <option value="5000">5km radius</option>
+        <option value="10000">10km radius</option>
+        <option value="25000">25km radius</option>
+        <option value="50000">50km radius</option>
+      </select>
+      <select name="sort">
+        <option value="distance">Sort by distance</option>
+        <option value="name">Sort by name</option>
+      </select>
+    </div>
     <button type="submit">Search <span class="cost-badge">5p</span></button>
   </form>
 </div>
@@ -829,7 +848,7 @@ func renderCitiesSection() string {
 }
 
 // renderSearchResults renders search results as a list
-func renderSearchResults(query string, places []*Place, nearLocation bool) string {
+func renderSearchResults(query string, places []*Place, nearLocation bool, sortBy string) string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf(`<div class="places-page">
@@ -843,7 +862,11 @@ func renderSearchResults(query string, places []*Place, nearLocation bool) strin
 			sb.WriteString(`<p class="text-muted">No places found. Try a different search term or add a location.</p>`)
 		}
 	} else {
-		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d result(s) found</p>`, len(places)))
+		sortLabel := sortBy
+		if sortLabel == "" || sortLabel == "distance" {
+			sortLabel = "distance"
+		}
+		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d result(s) found &middot; sorted by %s</p>`, len(places), sortLabel))
 	}
 
 	sb.WriteString(`<div class="places-results">`)
@@ -922,14 +945,24 @@ func renderPlaceCard(p *Place) string {
 		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website &#8599;</a></p>`, escapeHTML(p.Website))
 	}
 
-	gmapsViewURL := fmt.Sprintf("https://maps.google.com/?q=%.6f,%.6f", p.Lat, p.Lon)
-	gmapsDirURL := fmt.Sprintf("https://www.google.com/maps/dir/?api=1&destination=%.6f%%2C%.6f", p.Lat, p.Lon)
+	gmapsViewURL := fmt.Sprintf("https://maps.google.com/?q=%s+%.6f,%.6f", url.QueryEscape(p.Name), p.Lat, p.Lon)
+	gmapsDirURL := fmt.Sprintf("https://www.google.com/maps/dir/?api=1&destination=%s&destination_latlng=%.6f%%2C%.6f", url.QueryEscape(p.Name), p.Lat, p.Lon)
 
 	return fmt.Sprintf(`<div class="card place-card">
   <h4>%s%s%s</h4>
   %s%s
-  <p class="place-links"><a href="%s" target="_blank" rel="noopener">View on Google Maps</a> &middot; <a href="%s" target="_blank" rel="noopener">Get Directions</a></p>
+  <p class="place-links"><a href="%s" target="_blank" rel="noopener">View on Map</a> &middot; <a href="%s" target="_blank" rel="noopener">Get Directions</a></p>
 </div>`, escapeHTML(p.Name), cat, distHTML, addrHTML, extraHTML, gmapsViewURL, gmapsDirURL)
+}
+
+// sortPlaces sorts places in-place according to sortBy ("name" or "distance").
+// Distance sort is a no-op since places are already sorted by distance from the API.
+func sortPlaces(places []*Place, sortBy string) {
+	if sortBy == "name" {
+		sort.Slice(places, func(i, j int) bool {
+			return strings.ToLower(places[i].Name) < strings.ToLower(places[j].Name)
+		})
+	}
 }
 
 // jsonStr returns a JSON-encoded string for use in JavaScript
