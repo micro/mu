@@ -661,7 +661,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Render results page
-	html := renderSearchResults(query, results, hasNearLoc, sortBy)
+	html := renderSearchResults(query, results, hasNearLoc, nearAddr, nearLat, nearLon, sortBy)
 	app.Respond(w, r, app.Response{
 		Title:       "Places - " + query,
 		Description: fmt.Sprintf("Search results for %s", query),
@@ -797,42 +797,51 @@ func renderPlacesPage(r *http.Request) string {
 
 	authNote := ""
 	if !isLoggedIn {
-		authNote = `<p class="text-muted">Search requires an account (5p). <a href="/login">Login</a> or <a href="/signup">sign up</a> to search.</p>`
+		authNote = `<p class="text-muted">Search requires an account. <a href="/login">Login</a> or <a href="/signup">sign up</a> to search places.</p>`
 	}
 
 	cityCardsHTML := renderCitiesSection()
 
 	return fmt.Sprintf(`<div class="places-page">
 %s
-<div class="card">
-  <h3>Find Places</h3>
-  <p class="text-muted">Search by name or category (e.g. cafes, pharmacy). Add a location to search nearby.</p>
+<div class="card places-search-card">
+  <p class="text-muted">Search by name or category (e.g. cafes, pharmacy). Add a location to find places near you.</p>
   <form id="places-form" action="/places/search" method="POST">
-    <input type="text" name="q" placeholder="What are you looking for?" required>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <input type="text" name="near" id="places-near" placeholder="Location (leave blank for global search)" style="flex:1;min-width:180px;">
+    <input type="text" name="q" id="places-q" placeholder="What are you looking for?" required>
+    <div class="places-location-row">
+      <input type="text" name="near" id="places-near" placeholder="Location (optional)">
       <input type="hidden" name="near_lat" id="places-near-lat">
       <input type="hidden" name="near_lon" id="places-near-lon">
       <button type="button" onclick="usePlacesLocation()" class="btn-secondary">&#128205; Near Me</button>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <select name="radius">
-        <option value="500">500m radius</option>
-        <option value="1000" selected>1km radius</option>
-        <option value="2000">2km radius</option>
-        <option value="5000">5km radius</option>
-        <option value="10000">10km radius</option>
-        <option value="25000">25km radius</option>
-        <option value="50000">50km radius</option>
+    <div class="places-options-row">
+      <select name="radius" id="places-radius">
+        <option value="500">Nearby (~500m)</option>
+        <option value="1000" selected>Walking distance (~1km)</option>
+        <option value="2000">Local area (~2km)</option>
+        <option value="5000">City area (~5km)</option>
+        <option value="10000">Wider city (~10km)</option>
+        <option value="25000">Regional (~25km)</option>
+        <option value="50000">Province (~50km)</option>
       </select>
-      <select name="sort">
+      <select name="sort" id="places-sort">
         <option value="distance">Sort by distance</option>
         <option value="name">Sort by name</option>
       </select>
     </div>
-    <button type="submit">Search <span class="cost-badge">5p</span></button>
+    <div class="places-actions-row">
+      <button type="submit">Search <span class="cost-badge">5p</span></button>
+      <button type="button" onclick="submitPlacesNearby()">Nearby <span class="cost-badge">2p</span></button>
+    </div>
   </form>
 </div>
+<form id="nearby-form" action="/places/nearby" method="POST" style="display:none;">
+  <input type="hidden" name="address" id="nearby-address">
+  <input type="hidden" name="lat" id="nearby-lat">
+  <input type="hidden" name="lon" id="nearby-lon">
+  <input type="hidden" name="radius" id="nearby-radius">
+  <input type="hidden" name="sort" id="nearby-sort">
+</form>
 %s
 <script>
 function usePlacesLocation() {
@@ -849,6 +858,21 @@ function setPlacesCity(name, lat, lon) {
   document.getElementById('places-near-lat').value = lat;
   document.getElementById('places-near-lon').value = lon;
   document.getElementById('places-form').scrollIntoView({behavior:'smooth'});
+}
+function submitPlacesNearby() {
+  var addr = document.getElementById('places-near').value;
+  var lat = document.getElementById('places-near-lat').value;
+  var lon = document.getElementById('places-near-lon').value;
+  if (!addr.trim() && !lat.trim() && !lon.trim()) {
+    alert('Please enter a location or tap "Near Me" first.');
+    return;
+  }
+  document.getElementById('nearby-address').value = addr;
+  document.getElementById('nearby-lat').value = lat;
+  document.getElementById('nearby-lon').value = lon;
+  document.getElementById('nearby-radius').value = document.getElementById('places-radius').value;
+  document.getElementById('nearby-sort').value = document.getElementById('places-sort').value;
+  document.getElementById('nearby-form').submit();
 }
 </script>
 </div>`, authNote, cityCardsHTML)
@@ -874,12 +898,21 @@ func renderCitiesSection() string {
 }
 
 // renderSearchResults renders search results as a list
-func renderSearchResults(query string, places []*Place, nearLocation bool, sortBy string) string {
+func renderSearchResults(query string, places []*Place, nearLocation bool, nearAddr string, nearLat, nearLon float64, sortBy string) string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf(`<div class="places-page">
 <p><a href="/places">&larr; Back to Places</a></p>
 <h2>Results for &#34;%s&#34;</h2>`, escapeHTML(query)))
+
+	if nearLocation {
+		locLabel := nearAddr
+		if locLabel == "" {
+			locLabel = fmt.Sprintf("%.6f, %.6f", nearLat, nearLon)
+		}
+		coords := fmt.Sprintf("%.6f, %.6f", nearLat, nearLon)
+		sb.WriteString(fmt.Sprintf(`<p class="text-muted">Near <strong>%s</strong> &middot; <span style="font-size:0.85em;">%s</span></p>`, escapeHTML(locLabel), escapeHTML(coords)))
+	}
 
 	if len(places) == 0 {
 		if nearLocation {
@@ -908,10 +941,17 @@ func renderSearchResults(query string, places []*Place, nearLocation bool, sortB
 func renderNearbyResults(label string, lat, lon float64, radius int, places []*Place) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf(`<div class="places-page">
+	coords := fmt.Sprintf("%.6f, %.6f", lat, lon)
+	radiusLabel := radiusName(radius)
+
+	sb.WriteString(`<div class="places-page">
 <p><a href="/places">&larr; Back to Places</a></p>
-<h2>Nearby &#34;%s&#34;</h2>
-<p class="text-muted">Within %dm radius</p>`, escapeHTML(label), radius))
+<h2>Nearby</h2>`)
+	sb.WriteString(fmt.Sprintf(`<p class="text-muted"><strong>%s</strong>`, escapeHTML(label)))
+	if label != coords {
+		sb.WriteString(fmt.Sprintf(` &middot; <span style="font-size:0.85em;">%s</span>`, escapeHTML(coords)))
+	}
+	sb.WriteString(fmt.Sprintf(` &middot; %s</p>`, escapeHTML(radiusLabel)))
 
 	if len(places) == 0 {
 		sb.WriteString(`<p class="text-muted">No places found nearby. Try increasing the radius.</p>`)
@@ -988,6 +1028,26 @@ func sortPlaces(places []*Place, sortBy string) {
 		sort.Slice(places, func(i, j int) bool {
 			return strings.ToLower(places[i].Name) < strings.ToLower(places[j].Name)
 		})
+	}
+}
+
+// radiusName returns a human-friendly name for a radius in metres.
+func radiusName(radiusM int) string {
+	switch {
+	case radiusM <= 500:
+		return "Nearby (~500m)"
+	case radiusM <= 1000:
+		return "Walking distance (~1km)"
+	case radiusM <= 2000:
+		return "Local area (~2km)"
+	case radiusM <= 5000:
+		return "City area (~5km)"
+	case radiusM <= 10000:
+		return "Wider city (~10km)"
+	case radiusM <= 25000:
+		return "Regional (~25km)"
+	default:
+		return "Province (~50km)"
 	}
 }
 

@@ -4307,6 +4307,55 @@ a.btn-secondary:hover, .btn-secondary:hover {
   max-width: 100%;
 }
 
+.places-search-card {
+  margin-bottom: 16px;
+}
+
+.places-search-card input[type="text"],
+.places-search-card select {
+  width: 100%;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+
+.places-location-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.places-location-row input[type="text"] {
+  flex: 1;
+  min-width: 180px;
+  margin-bottom: 0;
+}
+
+.places-options-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.places-options-row select {
+  flex: 1;
+  min-width: 140px;
+  margin-bottom: 0;
+}
+
+.places-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.places-actions-row button {
+  flex: 1;
+}
+
 .places-forms {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -4317,6 +4366,20 @@ a.btn-secondary:hover, .btn-secondary:hover {
 @media (max-width: 768px) {
   .places-forms {
     grid-template-columns: 1fr;
+  }
+  .places-location-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .places-location-row input[type="text"] {
+    min-width: unset;
+    margin-bottom: 8px;
+  }
+  .places-options-row {
+    flex-direction: column;
+  }
+  .places-options-row select {
+    min-width: unset;
   }
 }
 
