@@ -249,7 +249,24 @@ out center;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, 
 	return places, nil
 }
 
-// queryLocal queries the in-memory quadtree for places within radiusM metres.
+// queryLocalByKeyword queries the in-memory quadtree for places within radiusM
+// metres whose name, category, or cuisine contains the query string (case-insensitive).
+func queryLocalByKeyword(query string, lat, lon float64, radiusM int) []*Place {
+	places := queryLocal(lat, lon, radiusM)
+	if len(places) == 0 {
+		return nil
+	}
+	q := strings.ToLower(query)
+	var filtered []*Place
+	for _, p := range places {
+		if strings.Contains(strings.ToLower(p.Name), q) ||
+			strings.Contains(strings.ToLower(p.Category), q) ||
+			strings.Contains(strings.ToLower(p.Cuisine), q) {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
+}
 // Returns nil if the quadtree is not yet initialised.
 func queryLocal(lat, lon float64, radiusM int) []*Place {
 	mutex.RLock()

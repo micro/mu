@@ -346,17 +346,23 @@ func parseOverpassElements(elements []overpassElement, refLat, refLon float64, h
 	return places
 }
 
-// searchNearbyKeyword searches for POIs near a location whose name or category
-// matches the given keyword.  It first queries the local SQLite FTS index and
-// only falls back to the live Overpass API on a cache miss.  Overpass results
-// are persisted to the local index for future queries.
+// searchNearbyKeyword searches for POIs near a location whose name, category,
+// or cuisine matches the given keyword.  It first queries the local SQLite FTS
+// index (which includes the cuisine field), then falls back to the in-memory
+// quadtree, and only hits the live Overpass API as a last resort.
+// Overpass results are persisted to the local index for future queries.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
 		radiusM = 1000
 	}
 
-	// 1. Try SQLite FTS index (fast, persisted)
-	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
+	// 1. Try SQLite FTS index (fast, persisted) — any results are sufficient
+	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
+		return local, nil
+	}
+
+	// 2. Try in-memory quadtree with keyword filter (covers cuisine too)
+	if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
 		return local, nil
 	}
 
@@ -386,8 +392,12 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
   way["tourism"~"%s",i](around:%d,%f,%f);
   node["leisure"~"%s",i](around:%d,%f,%f);
   way["leisure"~"%s",i](around:%d,%f,%f);
+  node["cuisine"~"%s",i](around:%d,%f,%f);
+  way["cuisine"~"%s",i](around:%d,%f,%f);
 );
 out center;`,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
 		safeQ, radiusM, lat, lon,
 		safeQ, radiusM, lat, lon,
 		safeQ, radiusM, lat, lon,
