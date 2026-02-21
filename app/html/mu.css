@@ -4462,3 +4462,8 @@ a.btn-secondary:hover, .btn-secondary:hover {
   color: #fff;
   border-color: var(--accent-color);
 }
+
+.places-form-desc {
+  margin-top: 0;
+  font-size: 0.85em;
+}
