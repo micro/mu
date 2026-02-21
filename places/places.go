@@ -95,6 +95,7 @@ func Load() {
 	loaded := loadCityCaches()
 	app.Log("places", "Places loaded: %d/%d cities in quadtree", loaded, len(cities))
 	go fetchMissingCities()
+	startHourlyRefresh()
 }
 
 // searchNominatim searches for places using the Nominatim API
@@ -346,11 +347,19 @@ func parseOverpassElements(elements []overpassElement, refLat, refLon float64, h
 }
 
 // searchNearbyKeyword searches for POIs near a location whose name or category
-// matches the given keyword using the Overpass API.
+// matches the given keyword.  It first queries the local SQLite FTS index and
+// only falls back to the live Overpass API on a cache miss.  Overpass results
+// are persisted to the local index for future queries.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
 		radiusM = 1000
 	}
+
+	// 1. Try SQLite FTS index (fast, persisted)
+	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
+		return local, nil
+	}
+
 	cacheKey := fmt.Sprintf("kw:%s:%.4f:%.4f:%d", query, lat, lon, radiusM)
 
 	mutex.RLock()
@@ -426,18 +435,32 @@ out center;`,
 	searchCacheTime[cacheKey] = time.Now()
 	mutex.Unlock()
 
+	// Persist results to local index for future fast lookups
+	go indexPlaces(places)
+
 	return places, nil
 }
 
 // findNearbyPlaces finds POIs near a location.
-// It first queries the in-memory quadtree; if insufficient results are found
-// there it falls back to the live Overpass API.
+// It first queries the SQLite places index; if insufficient results are found
+// it falls back to the in-memory quadtree, then the live Overpass API.
+// Results from Overpass are persisted to the local index for future queries.
 func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
+	// 1. Try SQLite FTS index (fast, persisted)
+	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
+		return local, nil
+	}
+	// 2. Try in-memory quadtree
 	local := queryLocal(lat, lon, radiusM)
 	if len(local) >= minLocalResults {
 		return local, nil
 	}
-	return nearbyOverpass(lat, lon, radiusM)
+	// 3. Fall back to Overpass; persist results for future queries
+	places, err := nearbyOverpass(lat, lon, radiusM)
+	if err == nil && len(places) > 0 {
+		go indexPlaces(places)
+	}
+	return places, err
 }
 
 // geocode resolves an address/postcode to lat/lon using Nominatim
@@ -604,8 +627,10 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	// Perform search: use Overpass keyword search when a location is provided,
 	// otherwise fall back to a global Nominatim search.
+	// Also prime the local cache in the background so subsequent queries are faster.
 	var results []*Place
 	if hasNearLoc {
+		go PrimeCityCache(nearLat, nearLon)
 		results, err = searchNearbyKeyword(query, nearLat, nearLon, radiusM)
 	} else {
 		results, err = searchNominatim(query)
@@ -719,7 +744,8 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Find nearby places
+	// Prime the local cache in the background and find nearby places
+	go PrimeCityCache(lat, lon)
 	results, err := findNearbyPlaces(lat, lon, radius)
 	if err != nil {
 		app.Log("places", "Nearby error: %v", err)
