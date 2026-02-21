@@ -346,17 +346,23 @@ func parseOverpassElements(elements []overpassElement, refLat, refLon float64, h
 	return places
 }
 
-// searchNearbyKeyword searches for POIs near a location whose name or category
-// matches the given keyword.  It first queries the local SQLite FTS index and
-// only falls back to the live Overpass API on a cache miss.  Overpass results
-// are persisted to the local index for future queries.
+// searchNearbyKeyword searches for POIs near a location whose name, category,
+// or cuisine matches the given keyword.  It first queries the local SQLite FTS
+// index (which includes the cuisine field), then falls back to the in-memory
+// quadtree, and only hits the live Overpass API as a last resort.
+// Overpass results are persisted to the local index for future queries.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
 		radiusM = 1000
 	}
 
-	// 1. Try SQLite FTS index (fast, persisted)
-	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
+	// 1. Try SQLite FTS index (fast, persisted) — any results are sufficient
+	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
+		return local, nil
+	}
+
+	// 2. Try in-memory quadtree with keyword filter (covers cuisine too)
+	if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
 		return local, nil
 	}
 
@@ -370,6 +376,18 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 		}
 	}
 	mutex.RUnlock()
+
+	// 3. Try Foursquare (faster than Overpass when key is configured)
+	if fsqPlaces, err := foursquareSearch(query, lat, lon, radiusM); err != nil {
+		app.Log("places", "foursquare search error: %v", err)
+	} else if len(fsqPlaces) > 0 {
+		mutex.Lock()
+		searchCache[cacheKey] = fsqPlaces
+		searchCacheTime[cacheKey] = time.Now()
+		mutex.Unlock()
+		go indexPlaces(fsqPlaces)
+		return fsqPlaces, nil
+	}
 
 	// Escape query for safe use in Overpass regex
 	safeQ := regexp.QuoteMeta(query)
@@ -386,8 +404,12 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
   way["tourism"~"%s",i](around:%d,%f,%f);
   node["leisure"~"%s",i](around:%d,%f,%f);
   way["leisure"~"%s",i](around:%d,%f,%f);
+  node["cuisine"~"%s",i](around:%d,%f,%f);
+  way["cuisine"~"%s",i](around:%d,%f,%f);
 );
 out center;`,
+		safeQ, radiusM, lat, lon,
+		safeQ, radiusM, lat, lon,
 		safeQ, radiusM, lat, lon,
 		safeQ, radiusM, lat, lon,
 		safeQ, radiusM, lat, lon,
@@ -443,8 +465,8 @@ out center;`,
 
 // findNearbyPlaces finds POIs near a location.
 // It first queries the SQLite places index; if insufficient results are found
-// it falls back to the in-memory quadtree, then the live Overpass API.
-// Results from Overpass are persisted to the local index for future queries.
+// it falls back to the in-memory quadtree, then Foursquare (if configured),
+// then the live Overpass API. Results from live APIs are persisted for future queries.
 func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	// 1. Try SQLite FTS index (fast, persisted)
 	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
@@ -455,7 +477,14 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	if len(local) >= minLocalResults {
 		return local, nil
 	}
-	// 3. Fall back to Overpass; persist results for future queries
+	// 3. Try Foursquare (faster than Overpass when key is configured)
+	if fsqPlaces, err := foursquareNearby(lat, lon, radiusM); err != nil {
+		app.Log("places", "foursquare nearby error: %v", err)
+	} else if len(fsqPlaces) > 0 {
+		go indexPlaces(fsqPlaces)
+		return fsqPlaces, nil
+	}
+	// 4. Fall back to Overpass; persist results for future queries
 	places, err := nearbyOverpass(lat, lon, radiusM)
 	if err == nil && len(places) > 0 {
 		go indexPlaces(places)
@@ -1011,8 +1040,8 @@ func renderPlaceCard(p *Place) string {
 		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website &#8599;</a></p>`, escapeHTML(p.Website))
 	}
 
-	gmapsViewURL := fmt.Sprintf("https://maps.google.com/?q=%s+%.6f,%.6f", url.QueryEscape(p.Name), p.Lat, p.Lon)
-	gmapsDirURL := fmt.Sprintf("https://www.google.com/maps/dir/?api=1&destination=%s&destination_latlng=%.6f%%2C%.6f", url.QueryEscape(p.Name), p.Lat, p.Lon)
+	gmapsViewURL := fmt.Sprintf("https://maps.google.com/?q=%.6f,%.6f", p.Lat, p.Lon)
+	gmapsDirURL := fmt.Sprintf("https://www.google.com/maps/dir/?api=1&destination=%.6f%%2C%.6f", p.Lat, p.Lon)
 
 	return fmt.Sprintf(`<div class="card place-card">
   <h4>%s%s%s</h4>

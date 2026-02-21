@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -206,14 +207,39 @@ out center;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, 
 		} else if n != "" {
 			addr = n
 		}
+		if c := el.Tags["addr:city"]; c != "" {
+			if addr != "" {
+				addr += ", " + c
+			} else {
+				addr = c
+			}
+		}
+		if p := el.Tags["addr:postcode"]; p != "" {
+			addr += " " + p
+		}
+
+		phone := el.Tags["phone"]
+		if phone == "" {
+			phone = el.Tags["contact:phone"]
+		}
+		website := el.Tags["website"]
+		if website == "" {
+			website = el.Tags["contact:website"]
+		}
+		cuisine := strings.ReplaceAll(el.Tags["cuisine"], ";", ", ")
+		cuisine = strings.ReplaceAll(cuisine, "_", " ")
 
 		places = append(places, &Place{
-			ID:       fmt.Sprintf("%d", el.ID),
-			Name:     name,
-			Category: category,
-			Address:  strings.TrimSpace(addr),
-			Lat:      elLat,
-			Lon:      elLon,
+			ID:           fmt.Sprintf("%d", el.ID),
+			Name:         name,
+			Category:     category,
+			Address:      strings.TrimSpace(addr),
+			Lat:          elLat,
+			Lon:          elLon,
+			Phone:        phone,
+			Website:      website,
+			OpeningHours: el.Tags["opening_hours"],
+			Cuisine:      cuisine,
 		})
 
 		if len(places) >= maxPlacesPerCity {
@@ -223,7 +249,24 @@ out center;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, 
 	return places, nil
 }
 
-// queryLocal queries the in-memory quadtree for places within radiusM metres.
+// queryLocalByKeyword queries the in-memory quadtree for places within radiusM
+// metres whose name, category, or cuisine contains the query string (case-insensitive).
+func queryLocalByKeyword(query string, lat, lon float64, radiusM int) []*Place {
+	places := queryLocal(lat, lon, radiusM)
+	if len(places) == 0 {
+		return nil
+	}
+	q := strings.ToLower(query)
+	var filtered []*Place
+	for _, p := range places {
+		if strings.Contains(strings.ToLower(p.Name), q) ||
+			strings.Contains(strings.ToLower(p.Category), q) ||
+			strings.Contains(strings.ToLower(p.Cuisine), q) {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
+}
 // Returns nil if the quadtree is not yet initialised.
 func queryLocal(lat, lon float64, radiusM int) []*Place {
 	mutex.RLock()
@@ -242,8 +285,17 @@ func queryLocal(lat, lon float64, radiusM int) []*Place {
 	results := make([]*Place, 0, len(points))
 	for _, pt := range points {
 		if p, ok := pt.Data().(*Place); ok {
-			results = append(results, p)
+			dist := haversine(lat, lon, p.Lat, p.Lon)
+			if dist > float64(radiusM) {
+				continue // bounding box is approximate; filter to actual radius
+			}
+			pCopy := *p
+			pCopy.Distance = dist
+			results = append(results, &pCopy)
 		}
 	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Distance < results[j].Distance
+	})
 	return results
 }

@@ -154,6 +154,13 @@ func buildStatus() StatusResponse {
 		Status: youtubeConfigured,
 	})
 
+	// Check Foursquare Places API
+	foursquareConfigured := os.Getenv("FOURSQUARE_API_KEY") != ""
+	services = append(services, StatusCheck{
+		Name:   "Foursquare Places",
+		Status: foursquareConfigured,
+	})
+
 	// Check Crypto Wallet/Payments
 	walletSeedExists := os.Getenv("WALLET_SEED") != "" || fileExists(getWalletSeedPath())
 	quotaMode := "Unlimited (self-hosted)"

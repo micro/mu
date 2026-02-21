@@ -109,11 +109,46 @@ func initPlacesDB() error {
 				name,
 				category,
 				address,
+				cuisine,
 				tokenize='unicode61 remove_diacritics 1'
 			);
 		`)
 		if err != nil {
 			initErr = fmt.Errorf("places db schema: %w", err)
+			return
+		}
+
+		// Migrate: add cuisine to places_fts if an older schema is in place
+		var cuisineCount int
+		if err := placesDB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('places_fts') WHERE name='cuisine'`).Scan(&cuisineCount); err != nil {
+			initErr = fmt.Errorf("places db migration check: %w", err)
+			return
+		}
+		if cuisineCount == 0 {
+			tx, txErr := placesDB.Begin()
+			if txErr != nil {
+				initErr = fmt.Errorf("places db migration tx: %w", txErr)
+				return
+			}
+			_, txErr = tx.Exec(`DROP TABLE IF EXISTS places_fts`)
+			if txErr == nil {
+				_, txErr = tx.Exec(`CREATE VIRTUAL TABLE places_fts USING fts5(
+					id UNINDEXED, name, category, address, cuisine,
+					tokenize='unicode61 remove_diacritics 1'
+				)`)
+			}
+			if txErr == nil {
+				_, txErr = tx.Exec(`INSERT INTO places_fts (id, name, category, address, cuisine)
+					SELECT id, name, category, address, COALESCE(cuisine, '') FROM places`)
+			}
+			if txErr != nil {
+				tx.Rollback()
+				initErr = fmt.Errorf("places db migration: %w", txErr)
+				return
+			}
+			if txErr = tx.Commit(); txErr != nil {
+				initErr = fmt.Errorf("places db migration commit: %w", txErr)
+			}
 		}
 	})
 	return initErr
@@ -172,7 +207,7 @@ func indexPlaces(places []*Place) {
 	}
 	defer ftsDelStmt.Close()
 
-	ftsInsStmt, err := tx.Prepare(`INSERT INTO places_fts (id, name, category, address) VALUES (?, ?, ?, ?)`)
+	ftsInsStmt, err := tx.Prepare(`INSERT INTO places_fts (id, name, category, address, cuisine) VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
 		tx.Rollback()
 		app.Log("places", "indexPlaces: prepare fts ins: %v", err)
@@ -189,7 +224,7 @@ func indexPlaces(places []*Place) {
 			continue
 		}
 		ftsDelStmt.Exec(p.ID)
-		if _, err := ftsInsStmt.Exec(p.ID, p.Name, p.Category, p.Address); err != nil {
+		if _, err := ftsInsStmt.Exec(p.ID, p.Name, p.Category, p.Address, p.Cuisine); err != nil {
 			app.Log("places", "indexPlaces: fts insert %s: %v", p.ID, err)
 		}
 	}
