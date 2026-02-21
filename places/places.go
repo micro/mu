@@ -825,7 +825,7 @@ func renderNearbyFormHTML(address, lat, lon, radius string) string {
     <input type="hidden" name="lon" id="nearby-lon" value="%s">
     <div class="places-location-row">
       <input type="text" name="address" id="nearby-address" placeholder="Address or postcode" value="%s">
-      <a href="#" onclick="useNearbyLocation();return false;" class="btn-link">&#128205; Use my location</a>
+      <a href="#" onclick="useNearbyLocation(this);return false;" class="btn-link">&#128205; Use my location</a>
     </div>
     <div class="places-options-row">
       <select name="radius" id="nearby-radius">%s</select>
@@ -890,7 +890,7 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
       <input type="text" name="near" id="places-near" placeholder="Location (optional)" value="%s" oninput="updateNearbyLink()">
       <input type="hidden" name="near_lat" id="places-near-lat" value="%s">
       <input type="hidden" name="near_lon" id="places-near-lon" value="%s">
-      <a href="#" onclick="usePlacesLocation();return false;" class="btn-link">&#128205; Use my location</a>
+      <a href="#" onclick="usePlacesLocation(this);return false;" class="btn-link">&#128205; Use my location</a>
     </div>
     <div class="places-options-row">
       <select name="radius" id="places-radius" onchange="updateNearbyLink()">%s</select>
@@ -1093,23 +1093,34 @@ func renderSaveSearchForm(searchType, q, near, nearLat, nearLon, radius, sortBy 
 // renderPlacesPageJS returns the shared JavaScript used on all places pages
 func renderPlacesPageJS() string {
 	return `<script>
-function usePlacesLocation() {
-  if (!navigator.geolocation) { alert('Geolocation is not supported by your browser'); return; }
+function usePlacesLocation(btn) {
+  if (!navigator.geolocation) { showToast('Geolocation is not supported by your browser', 'error'); return; }
+  if (btn) { btn.textContent = '⏳ Getting location...'; btn.style.pointerEvents = 'none'; }
   navigator.geolocation.getCurrentPosition(function(pos) {
     var lat = pos.coords.latitude, lon = pos.coords.longitude;
     document.getElementById('places-near-lat').value = lat;
     document.getElementById('places-near-lon').value = lon;
     document.getElementById('places-near').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
-  }, function(err) { alert('Could not get your location: ' + err.message); });
+    if (btn) { btn.innerHTML = '&#128205; Use my location'; btn.style.pointerEvents = ''; }
+  }, function(err) {
+    if (btn) { btn.innerHTML = '&#128205; Use my location'; btn.style.pointerEvents = ''; }
+    showToast('Could not get your location: ' + err.message, 'error');
+  }, {timeout: 10000, maximumAge: 60000});
 }
-function useNearbyLocation() {
-  if (!navigator.geolocation) { alert('Geolocation is not supported by your browser'); return; }
+function useNearbyLocation(btn) {
+  if (!navigator.geolocation) { showToast('Geolocation is not supported by your browser', 'error'); return; }
+  if (btn) { btn.textContent = '⏳ Getting location...'; btn.style.pointerEvents = 'none'; }
   navigator.geolocation.getCurrentPosition(function(pos) {
     var lat = pos.coords.latitude, lon = pos.coords.longitude;
     document.getElementById('nearby-lat').value = lat;
     document.getElementById('nearby-lon').value = lon;
     document.getElementById('nearby-address').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
-  }, function(err) { alert('Could not get your location: ' + err.message); });
+    var form = document.getElementById('nearby-form');
+    if (form) { form.submit(); }
+  }, function(err) {
+    if (btn) { btn.innerHTML = '&#128205; Use my location'; btn.style.pointerEvents = ''; }
+    showToast('Could not get your location: ' + err.message, 'error');
+  }, {timeout: 10000, maximumAge: 60000});
 }
 function runSavedSearch(type, q, near, nearLat, nearLon, radius, sortBy) {
   if (type === 'nearby') {
