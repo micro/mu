@@ -778,15 +778,63 @@ func renderPlacesPage(r *http.Request) string {
 
 	return fmt.Sprintf(`<div class="places-page">
 %s
-<div class="card places-search-card">
-  <p class="text-muted">Search for places by name or category (e.g. cafes, pharmacy).</p>
+<div class="places-forms">
+<div class="card">
+  <h4>Search</h4>
+  <p class="text-muted places-form-desc">Find by name or category (e.g. cafe, pharmacy).</p>
   %s
-  <p class="places-nearby-link"><a id="nearby-link" href="/places/nearby">&#128205; List nearby places <span class="cost-badge">2p</span></a></p>
+</div>
+<div class="card">
+  <h4>&#128205; Nearby</h4>
+  <p class="text-muted places-form-desc">List places near a location.</p>
+  %s
+</div>
 </div>
 %s
 %s
 %s
-</div>`, authNote, renderSearchFormHTML("", "", "", "", "", ""), savedHTML, cityCardsHTML, renderPlacesPageJS())
+</div>`, authNote, renderSearchFormHTML("", "", "", "", "", ""), renderNearbyFormHTML("", "", "", ""), savedHTML, cityCardsHTML, renderPlacesPageJS())
+}
+
+// renderNearbyFormHTML returns a form for listing places near a location.
+// It is used on the main places page and on the nearby results page.
+func renderNearbyFormHTML(address, lat, lon, radius string) string {
+	if radius == "" {
+		radius = "1000"
+	}
+	radiusOptions := ""
+	for _, opt := range []struct {
+		val, label string
+	}{
+		{"500", "Nearby (~500m)"},
+		{"1000", "Walking distance (~1km)"},
+		{"2000", "Local area (~2km)"},
+		{"5000", "City area (~5km)"},
+		{"10000", "Wider city (~10km)"},
+		{"25000", "Regional (~25km)"},
+		{"50000", "Province (~50km)"},
+	} {
+		sel := ""
+		if opt.val == radius {
+			sel = " selected"
+		}
+		radiusOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, opt.val, sel, opt.label)
+	}
+	return fmt.Sprintf(`<form id="nearby-form" action="/places/nearby" method="POST">
+    <input type="hidden" name="lat" id="nearby-lat" value="%s">
+    <input type="hidden" name="lon" id="nearby-lon" value="%s">
+    <div class="places-location-row">
+      <input type="text" name="address" id="nearby-address" placeholder="Address or postcode" value="%s">
+      <a href="#" onclick="useNearbyLocation();return false;" class="btn-link">&#128205; Use my location</a>
+    </div>
+    <div class="places-options-row">
+      <select name="radius" id="nearby-radius">%s</select>
+    </div>
+    <div class="places-actions-row">
+      <button type="submit">Find Nearby <span class="cost-badge">2p</span></button>
+    </div>
+  </form>`,
+		escapeHTML(lat), escapeHTML(lon), escapeHTML(address), radiusOptions)
 }
 
 // renderCitiesSection renders a grid of city cards as direct nearby links
@@ -905,7 +953,6 @@ func renderSearchResults(query string, places []*Place, nearLocation bool, nearA
 	sb.WriteString(`<div class="places-page">`)
 	sb.WriteString(`<p><a href="/places">&larr; Back to Places</a></p>`)
 	sb.WriteString(renderSearchFormHTML(query, nearAddr, nearLatStr, nearLonStr, radiusStr, sortBy))
-	sb.WriteString(`<p class="places-nearby-link"><a id="nearby-link" href="/places/nearby">&#128205; List nearby places <span class="cost-badge">2p</span></a></p>`)
 	sb.WriteString(renderPlacesPageJS())
 
 	sb.WriteString(fmt.Sprintf(`<h2>Results for &#34;%s&#34;</h2>`, escapeHTML(query)))
@@ -960,9 +1007,7 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 
 	sb.WriteString(`<div class="places-page">`)
 	sb.WriteString(`<p><a href="/places">&larr; Back to Places</a></p>`)
-	sb.WriteString(renderSearchFormHTML("", label, latStr, lonStr, radiusStr, ""))
-	sb.WriteString(fmt.Sprintf(`<p class="places-nearby-link"><a id="nearby-link" href="/places/nearby?address=%s&lat=%s&lon=%s&radius=%s">&#128205; Refresh nearby places <span class="cost-badge">2p</span></a></p>`,
-		url.QueryEscape(label), latStr, lonStr, radiusStr))
+	sb.WriteString(renderNearbyFormHTML(label, latStr, lonStr, radiusStr))
 	sb.WriteString(renderPlacesPageJS())
 
 	sb.WriteString(`<h2>Nearby</h2>`)
@@ -1055,23 +1100,16 @@ function usePlacesLocation() {
     document.getElementById('places-near-lat').value = lat;
     document.getElementById('places-near-lon').value = lon;
     document.getElementById('places-near').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
-    updateNearbyLink();
   }, function(err) { alert('Could not get your location: ' + err.message); });
 }
-function updateNearbyLink() {
-  var lat = document.getElementById('places-near-lat').value;
-  var lon = document.getElementById('places-near-lon').value;
-  var addr = document.getElementById('places-near').value;
-  var radius = document.getElementById('places-radius') ? document.getElementById('places-radius').value : '1000';
-  var link = document.getElementById('nearby-link');
-  if (!link) return;
-  if (lat && lon) {
-    link.href = '/places/nearby?lat=' + lat + '&lon=' + lon + '&address=' + encodeURIComponent(addr) + '&radius=' + radius;
-  } else if (addr.trim()) {
-    link.href = '/places/nearby?address=' + encodeURIComponent(addr) + '&radius=' + radius;
-  } else {
-    link.href = '/places/nearby';
-  }
+function useNearbyLocation() {
+  if (!navigator.geolocation) { alert('Geolocation is not supported by your browser'); return; }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var lat = pos.coords.latitude, lon = pos.coords.longitude;
+    document.getElementById('nearby-lat').value = lat;
+    document.getElementById('nearby-lon').value = lon;
+    document.getElementById('nearby-address').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
+  }, function(err) { alert('Could not get your location: ' + err.message); });
 }
 function runSavedSearch(type, q, near, nearLat, nearLon, radius, sortBy) {
   if (type === 'nearby') {

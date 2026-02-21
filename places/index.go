@@ -82,8 +82,8 @@ func initPlacesDB() error {
 			initErr = fmt.Errorf("places db open: %w", err)
 			return
 		}
-		placesDB.SetMaxOpenConns(1)
-		placesDB.SetMaxIdleConns(1)
+		placesDB.SetMaxOpenConns(4)
+		placesDB.SetMaxIdleConns(4)
 
 		_, err = placesDB.Exec(`
 			CREATE TABLE IF NOT EXISTS places (
