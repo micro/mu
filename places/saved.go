@@ -1,7 +1,6 @@
 package places
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +10,8 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
+
+	"github.com/google/uuid"
 )
 
 // SavedSearch represents a saved places search
@@ -121,7 +122,7 @@ func handleSaveSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := SavedSearch{
-		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		ID:        uuid.New().String(),
 		Label:     label,
 		Type:      searchType,
 		Query:     query,

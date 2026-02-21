@@ -996,8 +996,10 @@ func renderLeafletMap(centerLat, centerLon float64, places []*Place) string {
 	}
 	markersJSON := "[" + strings.Join(markers, ",") + "]"
 	return fmt.Sprintf(`<div id="places-map" style="height:280px;margin:1rem 0;border-radius:8px;overflow:hidden;"></div>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk1eAR8R9xrJwGtYtx2HJ8xk=" crossorigin=""></script>
 <script>
 (function(){
   var map=L.map('places-map').setView([%f,%f],14);
