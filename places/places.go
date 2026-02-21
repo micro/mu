@@ -1011,8 +1011,8 @@ func renderPlaceCard(p *Place) string {
 		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website &#8599;</a></p>`, escapeHTML(p.Website))
 	}
 
-	gmapsViewURL := fmt.Sprintf("https://maps.google.com/?q=%s+%.6f,%.6f", url.QueryEscape(p.Name), p.Lat, p.Lon)
-	gmapsDirURL := fmt.Sprintf("https://www.google.com/maps/dir/?api=1&destination=%s&destination_latlng=%.6f%%2C%.6f", url.QueryEscape(p.Name), p.Lat, p.Lon)
+	gmapsViewURL := fmt.Sprintf("https://maps.google.com/?q=%.6f,%.6f", p.Lat, p.Lon)
+	gmapsDirURL := fmt.Sprintf("https://www.google.com/maps/dir/?api=1&destination=%.6f%%2C%.6f", p.Lat, p.Lon)
 
 	return fmt.Sprintf(`<div class="card place-card">
   <h4>%s%s%s</h4>
