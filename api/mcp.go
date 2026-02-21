@@ -261,6 +261,33 @@ var tools = []Tool{
 		Path:        "/wallet/topup",
 	},
 	{
+		Name:        "places_search",
+		Description: "Search for places by name or category, optionally near a location",
+		Method:      "POST",
+		Path:        "/places/search",
+		WalletOp:    "places_search",
+		Params: []ToolParam{
+			{Name: "q", Type: "string", Description: "Search query (e.g. cafe, pharmacy, Boots)", Required: true},
+			{Name: "near", Type: "string", Description: "Location name or address to search near", Required: false},
+			{Name: "near_lat", Type: "number", Description: "Latitude of the search location", Required: false},
+			{Name: "near_lon", Type: "number", Description: "Longitude of the search location", Required: false},
+			{Name: "radius", Type: "number", Description: "Search radius in metres, 100–5000 (default 1000)", Required: false},
+		},
+	},
+	{
+		Name:        "places_nearby",
+		Description: "Find all places of interest near a given location",
+		Method:      "POST",
+		Path:        "/places/nearby",
+		WalletOp:    "places_nearby",
+		Params: []ToolParam{
+			{Name: "address", Type: "string", Description: "Address or postcode to search near", Required: false},
+			{Name: "lat", Type: "number", Description: "Latitude of the search location", Required: false},
+			{Name: "lon", Type: "number", Description: "Longitude of the search location", Required: false},
+			{Name: "radius", Type: "number", Description: "Search radius in metres, 100–5000 (default 500)", Required: false},
+		},
+	},
+	{
 		Name:        "markets",
 		Description: "Get live market prices for cryptocurrencies, futures, and commodities",
 		Method:      "GET",

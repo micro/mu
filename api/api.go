@@ -704,6 +704,55 @@ func init() {
 		},
 	})
 
+	// Places endpoints
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Places Search",
+		Path:        "/places/search",
+		Method:      "POST",
+		Description: "Search for places by name or category, optionally near a location",
+		Params: []*Param{
+			{Name: "q", Value: "string", Description: "Search query (e.g. cafe, pharmacy, Boots)"},
+			{Name: "near", Value: "string", Description: "Location name or address to search near (optional)"},
+			{Name: "near_lat", Value: "number", Description: "Latitude of the search location (optional)"},
+			{Name: "near_lon", Value: "number", Description: "Longitude of the search location (optional)"},
+			{Name: "radius", Value: "number", Description: "Search radius in metres, 100–5000 (default 1000)"},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{Name: "results", Value: "array", Description: "Array of place objects with id, name, category, address, lat, lon, phone, website, opening_hours, cuisine, distance"},
+					{Name: "count", Value: "number", Description: "Number of results returned"},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Places Nearby",
+		Path:        "/places/nearby",
+		Method:      "POST",
+		Description: "Find all places of interest near a given location",
+		Params: []*Param{
+			{Name: "address", Value: "string", Description: "Address or postcode to search near (optional if lat/lon provided)"},
+			{Name: "lat", Value: "number", Description: "Latitude of the search location"},
+			{Name: "lon", Value: "number", Description: "Longitude of the search location"},
+			{Name: "radius", Value: "number", Description: "Search radius in metres, 100–5000 (default 500)"},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{Name: "results", Value: "array", Description: "Array of place objects sorted by distance"},
+					{Name: "count", Value: "number", Description: "Number of results returned"},
+					{Name: "lat", Value: "number", Description: "Resolved latitude"},
+					{Name: "lon", Value: "number", Description: "Resolved longitude"},
+					{Name: "radius", Value: "number", Description: "Search radius used"},
+				},
+			},
+		},
+	})
+
 	// MCP endpoint
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "MCP Server",

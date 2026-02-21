@@ -132,10 +132,16 @@ func fetchCityFromOverpass(lat, lon float64, radiusM int) ([]*Place, error) {
 	query := fmt.Sprintf(`[out:json][timeout:55];
 (
   node["amenity"~"restaurant|cafe|bar|pub|hospital|school|university|museum|theatre|cinema|library|bank|pharmacy|hotel|place_of_worship|police|fire_station|post_office"]["name"](around:%d,%f,%f);
+  way["amenity"~"restaurant|cafe|bar|pub|hospital|school|university|museum|theatre|cinema|library|bank|pharmacy|hotel|place_of_worship|police|fire_station|post_office"]["name"](around:%d,%f,%f);
   node["tourism"~"attraction|museum|hotel|viewpoint|theme_park|zoo|aquarium|gallery"]["name"](around:%d,%f,%f);
+  way["tourism"~"attraction|museum|hotel|viewpoint|theme_park|zoo|aquarium|gallery"]["name"](around:%d,%f,%f);
+  node["shop"]["name"](around:%d,%f,%f);
+  way["shop"]["name"](around:%d,%f,%f);
   node["historic"]["name"](around:%d,%f,%f);
+  way["historic"]["name"](around:%d,%f,%f);
 );
-out body;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon)
+out center;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon,
+		radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon)
 
 	req, err := http.NewRequest("POST", "https://overpass-api.de/api/interpreter",
 		strings.NewReader("data="+url.QueryEscape(query)))
@@ -172,9 +178,21 @@ out body;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon)
 			continue
 		}
 
+		// Resolve coordinates: nodes have lat/lon directly; ways expose a center
+		elLat, elLon := el.Lat, el.Lon
+		if el.Center != nil && elLat == 0 && elLon == 0 {
+			elLat, elLon = el.Center.Lat, el.Center.Lon
+		}
+		if elLat == 0 && elLon == 0 {
+			continue
+		}
+
 		category := el.Tags["amenity"]
 		if category == "" {
 			category = el.Tags["tourism"]
+		}
+		if category == "" {
+			category = el.Tags["shop"]
 		}
 		if category == "" {
 			category = el.Tags["historic"]
@@ -192,8 +210,8 @@ out body;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon)
 			Name:     name,
 			Category: category,
 			Address:  strings.TrimSpace(addr),
-			Lat:      el.Lat,
-			Lon:      el.Lon,
+			Lat:      elLat,
+			Lon:      elLon,
 		})
 
 		if len(places) >= maxPlacesPerCity {
