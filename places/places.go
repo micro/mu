@@ -377,6 +377,18 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 	}
 	mutex.RUnlock()
 
+	// 3. Try Foursquare (faster than Overpass when key is configured)
+	if fsqPlaces, err := foursquareSearch(query, lat, lon, radiusM); err != nil {
+		app.Log("places", "foursquare search error: %v", err)
+	} else if len(fsqPlaces) > 0 {
+		mutex.Lock()
+		searchCache[cacheKey] = fsqPlaces
+		searchCacheTime[cacheKey] = time.Now()
+		mutex.Unlock()
+		go indexPlaces(fsqPlaces)
+		return fsqPlaces, nil
+	}
+
 	// Escape query for safe use in Overpass regex
 	safeQ := regexp.QuoteMeta(query)
 
@@ -453,8 +465,8 @@ out center;`,
 
 // findNearbyPlaces finds POIs near a location.
 // It first queries the SQLite places index; if insufficient results are found
-// it falls back to the in-memory quadtree, then the live Overpass API.
-// Results from Overpass are persisted to the local index for future queries.
+// it falls back to the in-memory quadtree, then Foursquare (if configured),
+// then the live Overpass API. Results from live APIs are persisted for future queries.
 func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	// 1. Try SQLite FTS index (fast, persisted)
 	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
@@ -465,7 +477,14 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	if len(local) >= minLocalResults {
 		return local, nil
 	}
-	// 3. Fall back to Overpass; persist results for future queries
+	// 3. Try Foursquare (faster than Overpass when key is configured)
+	if fsqPlaces, err := foursquareNearby(lat, lon, radiusM); err != nil {
+		app.Log("places", "foursquare nearby error: %v", err)
+	} else if len(fsqPlaces) > 0 {
+		go indexPlaces(fsqPlaces)
+		return fsqPlaces, nil
+	}
+	// 4. Fall back to Overpass; persist results for future queries
 	places, err := nearbyOverpass(lat, lon, radiusM)
 	if err == nil && len(places) > 0 {
 		go indexPlaces(places)
