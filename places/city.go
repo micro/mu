@@ -81,6 +81,7 @@ func loadCityCaches() int {
 			qtree.Insert(quadtree.NewPoint(p.Lat, p.Lon, p))
 		}
 		mutex.Unlock()
+		go indexPlaces(places)
 		loaded++
 	}
 	return loaded
@@ -116,6 +117,7 @@ func fetchMissingCities() {
 			qtree.Insert(quadtree.NewPoint(p.Lat, p.Lon, p))
 		}
 		mutex.Unlock()
+		go indexPlaces(places)
 
 		app.Log("places", "Cached %d places for %s", len(places), city.Name)
 		time.Sleep(3 * time.Second) // respect Overpass rate limits
