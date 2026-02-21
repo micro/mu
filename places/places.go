@@ -7,7 +7,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -94,6 +93,7 @@ func Load() {
 	initCities()
 	loaded := loadCityCaches()
 	app.Log("places", "Places loaded: %d/%d cities in quadtree", loaded, len(cities))
+	loadSavedSearches()
 	go fetchMissingCities()
 	startHourlyRefresh()
 }
@@ -349,8 +349,8 @@ func parseOverpassElements(elements []overpassElement, refLat, refLon float64, h
 // searchNearbyKeyword searches for POIs near a location whose name, category,
 // or cuisine matches the given keyword.  It first queries the local SQLite FTS
 // index (which includes the cuisine field), then falls back to the in-memory
-// quadtree, and only hits the live Overpass API as a last resort.
-// Overpass results are persisted to the local index for future queries.
+// quadtree, then Foursquare. Overpass is never called directly to avoid
+// blocking the request; background priming via PrimeCityCache handles it.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
 		radiusM = 1000
@@ -377,7 +377,7 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 	}
 	mutex.RUnlock()
 
-	// 3. Try Foursquare (faster than Overpass when key is configured)
+	// 3. Try Foursquare (when key is configured)
 	if fsqPlaces, err := foursquareSearch(query, lat, lon, radiusM); err != nil {
 		app.Log("places", "foursquare search error: %v", err)
 	} else if len(fsqPlaces) > 0 {
@@ -389,84 +389,13 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 		return fsqPlaces, nil
 	}
 
-	// Escape query for safe use in Overpass regex
-	safeQ := regexp.QuoteMeta(query)
-
-	ovQuery := fmt.Sprintf(`[out:json][timeout:25];
-(
-  node["name"~"%s",i](around:%d,%f,%f);
-  way["name"~"%s",i](around:%d,%f,%f);
-  node["amenity"~"%s",i](around:%d,%f,%f);
-  way["amenity"~"%s",i](around:%d,%f,%f);
-  node["shop"~"%s",i](around:%d,%f,%f);
-  way["shop"~"%s",i](around:%d,%f,%f);
-  node["tourism"~"%s",i](around:%d,%f,%f);
-  way["tourism"~"%s",i](around:%d,%f,%f);
-  node["leisure"~"%s",i](around:%d,%f,%f);
-  way["leisure"~"%s",i](around:%d,%f,%f);
-  node["cuisine"~"%s",i](around:%d,%f,%f);
-  way["cuisine"~"%s",i](around:%d,%f,%f);
-);
-out center;`,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-		safeQ, radiusM, lat, lon,
-	)
-
-	apiURL := "https://overpass-api.de/api/interpreter"
-	req, err := http.NewRequest("POST", apiURL, strings.NewReader("data="+url.QueryEscape(ovQuery)))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "Mu/1.0 (https://mu.xyz)")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("overpass request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("overpass returned status %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var ovResp overpassResponse
-	if err := json.Unmarshal(body, &ovResp); err != nil {
-		return nil, err
-	}
-
-	places := parseOverpassElements(ovResp.Elements, lat, lon, true)
-
-	mutex.Lock()
-	searchCache[cacheKey] = places
-	searchCacheTime[cacheKey] = time.Now()
-	mutex.Unlock()
-
-	// Persist results to local index for future fast lookups
-	go indexPlaces(places)
-
-	return places, nil
+	return nil, nil
 }
 
 // findNearbyPlaces finds POIs near a location.
-// It first queries the SQLite places index; if insufficient results are found
-// it falls back to the in-memory quadtree, then Foursquare (if configured),
-// then the live Overpass API. Results from live APIs are persisted for future queries.
+// It queries the SQLite places index, then the in-memory quadtree, then
+// Foursquare (if configured). Overpass is never called directly to avoid
+// blocking the request; background priming via PrimeCityCache handles it.
 func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	// 1. Try SQLite FTS index (fast, persisted)
 	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
@@ -477,19 +406,15 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	if len(local) >= minLocalResults {
 		return local, nil
 	}
-	// 3. Try Foursquare (faster than Overpass when key is configured)
+	// 3. Try Foursquare (when key is configured)
 	if fsqPlaces, err := foursquareNearby(lat, lon, radiusM); err != nil {
 		app.Log("places", "foursquare nearby error: %v", err)
 	} else if len(fsqPlaces) > 0 {
 		go indexPlaces(fsqPlaces)
 		return fsqPlaces, nil
 	}
-	// 4. Fall back to Overpass; persist results for future queries
-	places, err := nearbyOverpass(lat, lon, radiusM)
-	if err == nil && len(places) > 0 {
-		go indexPlaces(places)
-	}
-	return places, err
+	// Return whatever local results exist (may be fewer than minLocalResults)
+	return local, nil
 }
 
 // geocode resolves an address/postcode to lat/lon using Nominatim
@@ -550,13 +475,19 @@ func extractDisplayName(r nominatimResult) string {
 
 // Handler handles /places requests
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// Handle sub-routes: /places/search and /places/nearby
+	// Handle sub-routes
 	switch r.URL.Path {
 	case "/places/search":
 		handleSearch(w, r)
 		return
 	case "/places/nearby":
 		handleNearby(w, r)
+		return
+	case "/places/save":
+		handleSaveSearch(w, r)
+		return
+	case "/places/save/delete":
+		handleDeleteSavedSearch(w, r)
 		return
 	}
 
@@ -690,7 +621,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Render results page
-	html := renderSearchResults(query, results, hasNearLoc, nearAddr, nearLat, nearLon, sortBy)
+	html := renderSearchResults(query, results, hasNearLoc, nearAddr, nearLat, nearLon, sortBy, radiusM)
 	app.Respond(w, r, app.Response{
 		Title:       "Places - " + query,
 		Description: fmt.Sprintf("Search results for %s", query),
@@ -698,9 +629,18 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleNearby handles nearby place requests (POST /places/nearby)
+// handleNearby handles nearby place requests (GET and POST /places/nearby)
 func handleNearby(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method == http.MethodGet {
+		r.ParseForm()
+		hasLocation := r.Form.Get("address") != "" || r.Form.Get("lat") != "" || r.Form.Get("lon") != ""
+		if !hasLocation {
+			// No location: redirect to main places page
+			http.Redirect(w, r, "/places", http.StatusSeeOther)
+			return
+		}
+		// Has location params in URL: fall through to perform the search
+	} else if r.Method != http.MethodPost {
 		app.MethodNotAllowed(w, r)
 		return
 	}
@@ -829,85 +769,27 @@ func renderPlacesPage(r *http.Request) string {
 		authNote = `<p class="text-muted">Search requires an account. <a href="/login">Login</a> or <a href="/signup">sign up</a> to search places.</p>`
 	}
 
+	savedHTML := ""
+	if isLoggedIn {
+		savedHTML = renderSavedSearchesSection(acc.ID)
+	}
+
 	cityCardsHTML := renderCitiesSection()
 
 	return fmt.Sprintf(`<div class="places-page">
 %s
 <div class="card places-search-card">
-  <p class="text-muted">Search by name or category (e.g. cafes, pharmacy). Add a location to find places near you.</p>
-  <form id="places-form" action="/places/search" method="POST">
-    <input type="text" name="q" id="places-q" placeholder="What are you looking for?" required>
-    <div class="places-location-row">
-      <input type="text" name="near" id="places-near" placeholder="Location (optional)">
-      <input type="hidden" name="near_lat" id="places-near-lat">
-      <input type="hidden" name="near_lon" id="places-near-lon">
-      <button type="button" onclick="usePlacesLocation()" class="btn-secondary">&#128205; Near Me</button>
-    </div>
-    <div class="places-options-row">
-      <select name="radius" id="places-radius">
-        <option value="500">Nearby (~500m)</option>
-        <option value="1000" selected>Walking distance (~1km)</option>
-        <option value="2000">Local area (~2km)</option>
-        <option value="5000">City area (~5km)</option>
-        <option value="10000">Wider city (~10km)</option>
-        <option value="25000">Regional (~25km)</option>
-        <option value="50000">Province (~50km)</option>
-      </select>
-      <select name="sort" id="places-sort">
-        <option value="distance">Sort by distance</option>
-        <option value="name">Sort by name</option>
-      </select>
-    </div>
-    <div class="places-actions-row">
-      <button type="submit">Search <span class="cost-badge">5p</span></button>
-      <button type="button" onclick="submitPlacesNearby()">Nearby <span class="cost-badge">2p</span></button>
-    </div>
-  </form>
+  <p class="text-muted">Search for places by name or category (e.g. cafes, pharmacy).</p>
+  %s
+  <p class="places-nearby-link"><a id="nearby-link" href="/places/nearby">&#128205; List nearby places <span class="cost-badge">2p</span></a></p>
 </div>
-<form id="nearby-form" action="/places/nearby" method="POST" style="display:none;">
-  <input type="hidden" name="address" id="nearby-address">
-  <input type="hidden" name="lat" id="nearby-lat">
-  <input type="hidden" name="lon" id="nearby-lon">
-  <input type="hidden" name="radius" id="nearby-radius">
-  <input type="hidden" name="sort" id="nearby-sort">
-</form>
 %s
-<script>
-function usePlacesLocation() {
-  if (!navigator.geolocation) { alert('Geolocation is not supported by your browser'); return; }
-  navigator.geolocation.getCurrentPosition(function(pos) {
-    var lat = pos.coords.latitude, lon = pos.coords.longitude;
-    document.getElementById('places-near-lat').value = lat;
-    document.getElementById('places-near-lon').value = lon;
-    document.getElementById('places-near').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
-  }, function(err) { alert('Could not get your location: ' + err.message); });
-}
-function setPlacesCity(name, lat, lon) {
-  document.getElementById('places-near').value = name;
-  document.getElementById('places-near-lat').value = lat;
-  document.getElementById('places-near-lon').value = lon;
-  document.getElementById('places-form').scrollIntoView({behavior:'smooth'});
-}
-function submitPlacesNearby() {
-  var addr = document.getElementById('places-near').value;
-  var lat = document.getElementById('places-near-lat').value;
-  var lon = document.getElementById('places-near-lon').value;
-  if (!addr.trim() && !lat.trim() && !lon.trim()) {
-    alert('Please enter a location or tap "Near Me" first.');
-    return;
-  }
-  document.getElementById('nearby-address').value = addr;
-  document.getElementById('nearby-lat').value = lat;
-  document.getElementById('nearby-lon').value = lon;
-  document.getElementById('nearby-radius').value = document.getElementById('places-radius').value;
-  document.getElementById('nearby-sort').value = document.getElementById('places-sort').value;
-  document.getElementById('nearby-form').submit();
-}
-</script>
-</div>`, authNote, cityCardsHTML)
+%s
+%s
+</div>`, authNote, renderSearchFormHTML("", "", "", "", "", ""), savedHTML, cityCardsHTML, renderPlacesPageJS())
 }
 
-// renderCitiesSection renders a grid of city cards
+// renderCitiesSection renders a grid of city cards as direct nearby links
 func renderCitiesSection() string {
 	cs := Cities()
 	if len(cs) == 0 {
@@ -917,8 +799,8 @@ func renderCitiesSection() string {
 	sb.WriteString(`<h3>Browse by City</h3><div class="city-grid">`)
 	for _, c := range cs {
 		sb.WriteString(fmt.Sprintf(
-			`<a href="#" onclick="setPlacesCity(%s,%f,%f);return false;" class="city-link">%s <span class="text-muted" style="font-size:0.8em;">%s</span></a>`,
-			escapeHTML(jsonStr(c.Name)), c.Lat, c.Lon,
+			`<a href="/places/nearby?address=%s&lat=%f&lon=%f&radius=1000" class="city-link">%s <span class="text-muted" style="font-size:0.8em;">%s</span></a>`,
+			url.QueryEscape(c.Name), c.Lat, c.Lon,
 			escapeHTML(c.Name), escapeHTML(c.Country),
 		))
 	}
@@ -926,26 +808,119 @@ func renderCitiesSection() string {
 	return sb.String()
 }
 
+// renderSearchFormHTML returns the shared search form HTML, pre-filled with the given values.
+// Used on the main page and on results pages.
+func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) string {
+	if radius == "" {
+		radius = "1000"
+	}
+	radiusOptions := ""
+	for _, opt := range []struct {
+		val, label string
+	}{
+		{"500", "Nearby (~500m)"},
+		{"1000", "Walking distance (~1km)"},
+		{"2000", "Local area (~2km)"},
+		{"5000", "City area (~5km)"},
+		{"10000", "Wider city (~10km)"},
+		{"25000", "Regional (~25km)"},
+		{"50000", "Province (~50km)"},
+	} {
+		sel := ""
+		if opt.val == radius {
+			sel = " selected"
+		}
+		radiusOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, opt.val, sel, opt.label)
+	}
+	sortDistSel, sortNameSel := " selected", ""
+	if sortBy == "name" {
+		sortDistSel, sortNameSel = "", " selected"
+	}
+	return fmt.Sprintf(`<form id="places-form" action="/places/search" method="POST">
+    <input type="text" name="q" id="places-q" placeholder="What are you looking for?" value="%s">
+    <div class="places-location-row">
+      <input type="text" name="near" id="places-near" placeholder="Location (optional)" value="%s" oninput="updateNearbyLink()">
+      <input type="hidden" name="near_lat" id="places-near-lat" value="%s">
+      <input type="hidden" name="near_lon" id="places-near-lon" value="%s">
+      <button type="button" onclick="usePlacesLocation()" class="btn-secondary">&#128205; Near Me</button>
+    </div>
+    <div class="places-options-row">
+      <select name="radius" id="places-radius" onchange="updateNearbyLink()">%s</select>
+      <select name="sort" id="places-sort">
+        <option value="distance"%s>Sort by distance</option>
+        <option value="name"%s>Sort by name</option>
+      </select>
+    </div>
+    <div class="places-actions-row">
+      <button type="submit">Search <span class="cost-badge">5p</span></button>
+    </div>
+  </form>`,
+		escapeHTML(q), escapeHTML(near), escapeHTML(nearLat), escapeHTML(nearLon),
+		radiusOptions, sortDistSel, sortNameSel)
+}
+
+// renderSavedSearchesSection returns HTML for the saved searches list
+func renderSavedSearchesSection(userID string) string {
+	searches := getUserSavedSearches(userID)
+	if len(searches) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString(`<div class="card places-saved-card"><h4>Saved searches</h4><ul class="saved-search-list">`)
+	for _, s := range searches {
+		latStr := fmt.Sprintf("%f", s.Lat)
+		lonStr := fmt.Sprintf("%f", s.Lon)
+		if s.Lat == 0 {
+			latStr = ""
+		}
+		if s.Lon == 0 {
+			lonStr = ""
+		}
+		sb.WriteString(fmt.Sprintf(
+			`<li><a href="#" onclick="runSavedSearch(%s,%s,%s,%s,%s,%s,%s);return false;">%s</a> `+
+				`<form style="display:inline" action="/places/save/delete" method="POST">`+
+				`<input type="hidden" name="id" value="%s">`+
+				`<button type="submit" class="btn-link text-muted" title="Remove">&#x2715;</button></form></li>`,
+			jsonStr(s.Type), jsonStr(s.Query), jsonStr(s.Location),
+			jsonStr(latStr), jsonStr(lonStr),
+			jsonStr(fmt.Sprintf("%d", s.Radius)), jsonStr(s.SortBy),
+			escapeHTML(s.Label), escapeHTML(s.ID),
+		))
+	}
+	sb.WriteString(`</ul></div>`)
+	return sb.String()
+}
+
 // renderSearchResults renders search results as a list
-func renderSearchResults(query string, places []*Place, nearLocation bool, nearAddr string, nearLat, nearLon float64, sortBy string) string {
+func renderSearchResults(query string, places []*Place, nearLocation bool, nearAddr string, nearLat, nearLon float64, sortBy string, radiusM int) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf(`<div class="places-page">
-<p><a href="/places">&larr; Back to Places</a></p>
-<h2>Results for &#34;%s&#34;</h2>`, escapeHTML(query)))
+	nearLatStr, nearLonStr := "", ""
+	if nearLocation {
+		nearLatStr = fmt.Sprintf("%f", nearLat)
+		nearLonStr = fmt.Sprintf("%f", nearLon)
+	}
+	radiusStr := fmt.Sprintf("%d", radiusM)
+
+	sb.WriteString(`<div class="places-page">`)
+	sb.WriteString(`<p><a href="/places">&larr; Back to Places</a></p>`)
+	sb.WriteString(renderSearchFormHTML(query, nearAddr, nearLatStr, nearLonStr, radiusStr, sortBy))
+	sb.WriteString(`<p class="places-nearby-link"><a id="nearby-link" href="/places/nearby">&#128205; List nearby places <span class="cost-badge">2p</span></a></p>`)
+	sb.WriteString(renderPlacesPageJS())
+
+	sb.WriteString(fmt.Sprintf(`<h2>Results for &#34;%s&#34;</h2>`, escapeHTML(query)))
 
 	if nearLocation {
 		locLabel := nearAddr
 		if locLabel == "" {
 			locLabel = fmt.Sprintf("%.6f, %.6f", nearLat, nearLon)
 		}
-		coords := fmt.Sprintf("%.6f, %.6f", nearLat, nearLon)
-		sb.WriteString(fmt.Sprintf(`<p class="text-muted">Near <strong>%s</strong> &middot; <span style="font-size:0.85em;">%s</span></p>`, escapeHTML(locLabel), escapeHTML(coords)))
+		sb.WriteString(fmt.Sprintf(`<p class="text-muted">Near <strong>%s</strong></p>`, escapeHTML(locLabel)))
 	}
 
 	if len(places) == 0 {
 		if nearLocation {
-			sb.WriteString(`<p class="text-muted">No places found nearby. Try a larger radius or a different search term.</p>`)
+			sb.WriteString(`<p class="text-muted">No places found nearby. Try a larger radius or different search term.</p>`)
 		} else {
 			sb.WriteString(`<p class="text-muted">No places found. Try a different search term or add a location.</p>`)
 		}
@@ -954,7 +929,15 @@ func renderSearchResults(query string, places []*Place, nearLocation bool, nearA
 		if sortLabel == "" || sortLabel == "distance" {
 			sortLabel = "distance"
 		}
-		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d result(s) found &middot; sorted by %s</p>`, len(places), sortLabel))
+		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d result(s) &middot; sorted by %s</p>`, len(places), sortLabel))
+		sb.WriteString(renderSaveSearchForm("search", query, nearAddr, nearLatStr, nearLonStr, radiusStr, sortBy))
+		mapCenterLat, mapCenterLon := nearLat, nearLon
+		if !nearLocation && len(places) > 0 {
+			mapCenterLat, mapCenterLon = places[0].Lat, places[0].Lon
+		}
+		if mapCenterLat != 0 || mapCenterLon != 0 {
+			sb.WriteString(renderLeafletMap(mapCenterLat, mapCenterLon, places))
+		}
 	}
 
 	sb.WriteString(`<div class="places-results">`)
@@ -970,22 +953,27 @@ func renderSearchResults(query string, places []*Place, nearLocation bool, nearA
 func renderNearbyResults(label string, lat, lon float64, radius int, places []*Place) string {
 	var sb strings.Builder
 
-	coords := fmt.Sprintf("%.6f, %.6f", lat, lon)
 	radiusLabel := radiusName(radius)
+	radiusStr := fmt.Sprintf("%d", radius)
+	latStr := fmt.Sprintf("%f", lat)
+	lonStr := fmt.Sprintf("%f", lon)
 
-	sb.WriteString(`<div class="places-page">
-<p><a href="/places">&larr; Back to Places</a></p>
-<h2>Nearby</h2>`)
-	sb.WriteString(fmt.Sprintf(`<p class="text-muted"><strong>%s</strong>`, escapeHTML(label)))
-	if label != coords {
-		sb.WriteString(fmt.Sprintf(` &middot; <span style="font-size:0.85em;">%s</span>`, escapeHTML(coords)))
-	}
-	sb.WriteString(fmt.Sprintf(` &middot; %s</p>`, escapeHTML(radiusLabel)))
+	sb.WriteString(`<div class="places-page">`)
+	sb.WriteString(`<p><a href="/places">&larr; Back to Places</a></p>`)
+	sb.WriteString(renderSearchFormHTML("", label, latStr, lonStr, radiusStr, ""))
+	sb.WriteString(fmt.Sprintf(`<p class="places-nearby-link"><a id="nearby-link" href="/places/nearby?address=%s&lat=%s&lon=%s&radius=%s">&#128205; Refresh nearby places <span class="cost-badge">2p</span></a></p>`,
+		url.QueryEscape(label), latStr, lonStr, radiusStr))
+	sb.WriteString(renderPlacesPageJS())
+
+	sb.WriteString(`<h2>Nearby</h2>`)
+	sb.WriteString(fmt.Sprintf(`<p class="text-muted"><strong>%s</strong> &middot; %s</p>`, escapeHTML(label), escapeHTML(radiusLabel)))
 
 	if len(places) == 0 {
-		sb.WriteString(`<p class="text-muted">No places found nearby. Try increasing the radius.</p>`)
+		sb.WriteString(`<p class="text-muted">No places found. Try increasing the radius.</p>`)
 	} else {
 		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d place(s) found</p>`, len(places)))
+		sb.WriteString(renderSaveSearchForm("nearby", "", label, latStr, lonStr, radiusStr, ""))
+		sb.WriteString(renderLeafletMap(lat, lon, places))
 	}
 
 	sb.WriteString(`<div class="places-results">`)
@@ -995,6 +983,101 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 	sb.WriteString(`</div></div>`)
 
 	return sb.String()
+}
+
+// renderLeafletMap returns an embedded Leaflet.js map showing the center and place markers
+func renderLeafletMap(centerLat, centerLon float64, places []*Place) string {
+	var markers []string
+	for _, p := range places {
+		if p.Lat == 0 && p.Lon == 0 {
+			continue
+		}
+		markers = append(markers, fmt.Sprintf(`{"lat":%f,"lon":%f,"name":%s}`, p.Lat, p.Lon, jsonStr(p.Name)))
+	}
+	markersJSON := "[" + strings.Join(markers, ",") + "]"
+	return fmt.Sprintf(`<div id="places-map" style="height:280px;margin:1rem 0;border-radius:8px;overflow:hidden;"></div>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk1eAR8R9xrJwGtYtx2HJ8xk=" crossorigin=""></script>
+<script>
+(function(){
+  var map=L.map('places-map').setView([%f,%f],14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:19
+  }).addTo(map);
+  var ps=%s;
+  var bounds=[];
+  ps.forEach(function(p){
+    L.marker([p.lat,p.lon]).addTo(map).bindPopup(p.name);
+    bounds.push([p.lat,p.lon]);
+  });
+  if(bounds.length>1){map.fitBounds(bounds,{padding:[30,30],maxZoom:16});}
+})();
+</script>`, centerLat, centerLon, markersJSON)
+}
+
+// renderSaveSearchForm returns a small "Save this search" form
+func renderSaveSearchForm(searchType, q, near, nearLat, nearLon, radius, sortBy string) string {
+	return fmt.Sprintf(`<form action="/places/save" method="POST" style="display:inline-block;margin-bottom:0.5rem;">
+  <input type="hidden" name="type" value="%s">
+  <input type="hidden" name="q" value="%s">
+  <input type="hidden" name="near" value="%s">
+  <input type="hidden" name="near_lat" value="%s">
+  <input type="hidden" name="near_lon" value="%s">
+  <input type="hidden" name="radius" value="%s">
+  <input type="hidden" name="sort" value="%s">
+  <button type="submit" class="btn-link">&#9733; Save this search</button>
+</form>`,
+		escapeHTML(searchType), escapeHTML(q), escapeHTML(near),
+		escapeHTML(nearLat), escapeHTML(nearLon), escapeHTML(radius), escapeHTML(sortBy))
+}
+
+// renderPlacesPageJS returns the shared JavaScript used on all places pages
+func renderPlacesPageJS() string {
+	return `<script>
+function usePlacesLocation() {
+  if (!navigator.geolocation) { alert('Geolocation is not supported by your browser'); return; }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var lat = pos.coords.latitude, lon = pos.coords.longitude;
+    document.getElementById('places-near-lat').value = lat;
+    document.getElementById('places-near-lon').value = lon;
+    document.getElementById('places-near').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
+    updateNearbyLink();
+  }, function(err) { alert('Could not get your location: ' + err.message); });
+}
+function updateNearbyLink() {
+  var lat = document.getElementById('places-near-lat').value;
+  var lon = document.getElementById('places-near-lon').value;
+  var addr = document.getElementById('places-near').value;
+  var radius = document.getElementById('places-radius') ? document.getElementById('places-radius').value : '1000';
+  var link = document.getElementById('nearby-link');
+  if (!link) return;
+  if (lat && lon) {
+    link.href = '/places/nearby?lat=' + lat + '&lon=' + lon + '&address=' + encodeURIComponent(addr) + '&radius=' + radius;
+  } else if (addr.trim()) {
+    link.href = '/places/nearby?address=' + encodeURIComponent(addr) + '&radius=' + radius;
+  } else {
+    link.href = '/places/nearby';
+  }
+}
+function runSavedSearch(type, q, near, nearLat, nearLon, radius, sortBy) {
+  if (type === 'nearby') {
+    var u = '/places/nearby?radius=' + radius;
+    if (nearLat && nearLon) { u += '&lat=' + nearLat + '&lon=' + nearLon; }
+    if (near) { u += '&address=' + encodeURIComponent(near); }
+    window.location = u;
+  } else {
+    document.getElementById('places-q').value = q;
+    document.getElementById('places-near').value = near;
+    document.getElementById('places-near-lat').value = nearLat;
+    document.getElementById('places-near-lon').value = nearLon;
+    if (document.getElementById('places-radius')) document.getElementById('places-radius').value = radius;
+    if (document.getElementById('places-sort')) document.getElementById('places-sort').value = sortBy;
+    document.getElementById('places-form').submit();
+  }
+}
+</script>`
 }
 
 // renderPlaceCard renders a single place card with rich details and map links
@@ -1040,8 +1123,12 @@ func renderPlaceCard(p *Place) string {
 		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website &#8599;</a></p>`, escapeHTML(p.Website))
 	}
 
-	gmapsViewURL := fmt.Sprintf("https://maps.google.com/?q=%.6f,%.6f", p.Lat, p.Lon)
-	gmapsDirURL := fmt.Sprintf("https://www.google.com/maps/dir/?api=1&destination=%.6f%%2C%.6f", p.Lat, p.Lon)
+	gmapsQuery := p.Name
+	if p.Address != "" {
+		gmapsQuery += ", " + p.Address
+	}
+	gmapsViewURL := "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(gmapsQuery)
+	gmapsDirURL := "https://www.google.com/maps/dir/?api=1&destination=" + url.QueryEscape(gmapsQuery)
 
 	return fmt.Sprintf(`<div class="card place-card">
   <h4>%s%s%s</h4>
