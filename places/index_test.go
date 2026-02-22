@@ -136,3 +136,102 @@ func TestIndexPlacesUpdatesExisting(t *testing.T) {
 		t.Error("expected updated place to be findable by new name")
 	}
 }
+
+// TestSchemaVersionWipesOldData verifies that an existing places database that
+// has no schema_version record (i.e. pre-versioning Overpass/Foursquare data)
+// is wiped on init so that stale rows cannot block fresh Google Places results.
+func TestSchemaVersionWipesOldData(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.Setenv("HOME", tmpDir)
+
+	// ---- Phase 1: simulate an old (unversioned) database ----
+	// Open the DB directly and populate it without a schema_version table.
+	placesDBOne = sync.Once{}
+	placesDB = nil
+
+	// Boot the DB once to create tables.
+	if err := initPlacesDB(); err != nil {
+		t.Fatalf("initPlacesDB: %v", err)
+	}
+
+	// Remove the schema_version table and record to simulate old data.
+	if _, err := placesDB.Exec(`DELETE FROM schema_version`); err != nil {
+		t.Fatalf("delete schema_version: %v", err)
+	}
+	if _, err := placesDB.Exec(`DROP TABLE IF EXISTS schema_version`); err != nil {
+		t.Fatalf("drop schema_version: %v", err)
+	}
+
+	// Insert a "legacy" place that should be wiped.
+	if _, err := placesDB.Exec(
+		`INSERT INTO places (id, name, category, lat, lon, geohash) VALUES ('legacy_1', 'Old Overpass Place', 'cafe', 1.0, 1.0, 'abcdef')`,
+	); err != nil {
+		t.Fatalf("insert legacy place: %v", err)
+	}
+
+	// Close the current connection so a fresh init can open it.
+	placesDB.Close()
+	placesDB = nil
+	placesDBOne = sync.Once{}
+
+	// ---- Phase 2: re-init should detect missing version and wipe ----
+	if err := initPlacesDB(); err != nil {
+		t.Fatalf("initPlacesDB after wipe: %v", err)
+	}
+
+	// The legacy place must be gone.
+	var count int
+	if err := placesDB.QueryRow(`SELECT COUNT(*) FROM places WHERE id = 'legacy_1'`).Scan(&count); err != nil {
+		t.Fatalf("count legacy place: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected legacy place to be wiped, but found %d row(s)", count)
+	}
+
+	// The schema_version table must exist and contain schemaVersion.
+	var ver string
+	if err := placesDB.QueryRow(`SELECT version FROM schema_version LIMIT 1`).Scan(&ver); err != nil {
+		t.Fatalf("read schema_version: %v", err)
+	}
+	if ver != schemaVersion {
+		t.Errorf("expected schema version %q, got %q", schemaVersion, ver)
+	}
+}
+
+// TestSchemaVersionPreservesData verifies that a database that already has the
+// correct schema version is NOT wiped on re-init.
+func TestSchemaVersionPreservesData(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.Setenv("HOME", tmpDir)
+	placesDBOne = sync.Once{}
+	placesDB = nil
+
+	if err := initPlacesDB(); err != nil {
+		t.Fatalf("initPlacesDB: %v", err)
+	}
+
+	// Insert a place that should survive a re-init.
+	if _, err := placesDB.Exec(
+		`INSERT INTO places (id, name, category, lat, lon, geohash) VALUES ('gpl:keep_me', 'Good Place', 'cafe', 1.0, 1.0, 'abcdef')`,
+	); err != nil {
+		t.Fatalf("insert place: %v", err)
+	}
+
+	// Re-init without resetting the DB handle — simulates a new connection on
+	// a DB that already has the correct version.
+	placesDB.Close()
+	placesDB = nil
+	placesDBOne = sync.Once{}
+
+	if err := initPlacesDB(); err != nil {
+		t.Fatalf("initPlacesDB second time: %v", err)
+	}
+
+	var count int
+	if err := placesDB.QueryRow(`SELECT COUNT(*) FROM places WHERE id = 'gpl:keep_me'`).Scan(&count); err != nil {
+		t.Fatalf("count place: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected place to be preserved, got count=%d", count)
+	}
+}
