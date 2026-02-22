@@ -195,10 +195,11 @@ func searchNominatim(query string) ([]*Place, error) {
 
 // searchNearbyKeyword searches for POIs near a location whose name, category,
 // or cuisine matches the given keyword.
-// When GOOGLE_API_KEY is configured, Google Places is tried first (after the
-// in-memory result cache) for the most up-to-date data; local SQLite/quadtree
-// caches and Overpass are used as fallbacks.
-// When no Google key is present the local caches are tried first, then Overpass.
+// Local caches (SQLite FTS, in-memory quadtree) are always checked first.
+// When the local index is stale (older than staleAge) or empty, live sources
+// are queried instead: Google Places (when GOOGLE_API_KEY is set), then the
+// Overpass name-search API.  A background cache refresh is also triggered so
+// that the next search is served from fresh local data.
 // Empty results are cached with a shorter TTL to avoid hammering external APIs
 // while still letting newly-added places surface quickly.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
@@ -208,7 +209,7 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 
 	cacheKey := fmt.Sprintf("kw:%s:%.4f:%.4f:%d", query, lat, lon, radiusM)
 
-	// 1. Check in-memory cache (always first — avoids redundant external API calls)
+	// 1. Check in-memory result cache (avoids redundant external API calls)
 	mutex.RLock()
 	if places, ok := searchCache[cacheKey]; ok {
 		ttl := cacheTTL
@@ -222,9 +223,26 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 	}
 	mutex.RUnlock()
 
-	// When Google API key is present, try Google first for the freshest results.
+	// Determine whether the local SQLite index for this area is stale.
+	areaStale := isAreaStale(lat, lon, radiusM)
+	if areaStale {
+		// Trigger a background refresh so subsequent searches get fresh data.
+		go PrimeCityCache(lat, lon)
+	}
+
+	// 2. Try local SQLite FTS index (fast, persisted) — only if data is fresh
+	if !areaStale {
+		if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
+			return local, nil
+		}
+		// 3. Try in-memory quadtree with keyword filter (covers cuisine too)
+		if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
+			return local, nil
+		}
+	}
+
+	// 4. Try Google Places (when key is configured)
 	if googleAPIKey() != "" {
-		// 2a. Try Google Places
 		if gPlaces, err := googleSearch(query, lat, lon, radiusM); err != nil {
 			app.Log("places", "google places search error: %v", err)
 		} else if len(gPlaces) > 0 {
@@ -235,16 +253,6 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 			go indexPlaces(gPlaces)
 			return gPlaces, nil
 		}
-	}
-
-	// 2b/3. Try SQLite FTS index (fast, persisted)
-	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
-		return local, nil
-	}
-
-	// 2c/4. Try in-memory quadtree with keyword filter (covers cuisine too)
-	if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
-		return local, nil
 	}
 
 	// 5. Try Overpass live name search (free; finds places not yet in local cache,
@@ -260,6 +268,17 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 		return ovPlaces, nil
 	}
 
+	// If the area was stale and live sources returned nothing, fall back to
+	// whatever stale local data we have rather than showing nothing.
+	if areaStale {
+		if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
+			return local, nil
+		}
+		if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
+			return local, nil
+		}
+	}
+
 	// Cache the empty result so repeated searches don't re-hit external APIs.
 	// noResultsCacheTTL (15 min) is used on the next check so new places surface.
 	mutex.Lock()
@@ -271,11 +290,31 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 }
 
 // findNearbyPlaces finds POIs near a location.
-// When GOOGLE_API_KEY is configured, Google Places is tried first for the
-// most up-to-date results; local SQLite/quadtree caches are used as fallbacks.
-// When no Google key is present the local caches are tried first.
+// Local caches (SQLite FTS, in-memory quadtree) are always checked first.
+// When the local index is stale (older than staleAge) or has too few results,
+// live sources are queried: Google Places (when GOOGLE_API_KEY is set).
+// A background cache refresh is triggered when stale so the next search is fast.
 func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
-	// When Google API key is present, try Google first.
+	// Determine whether the local SQLite index for this area is stale.
+	areaStale := isAreaStale(lat, lon, radiusM)
+	if areaStale {
+		// Trigger a background refresh so subsequent searches get fresh data.
+		go PrimeCityCache(lat, lon)
+	}
+
+	// 1. Try local SQLite FTS index (fast, persisted) — only if data is fresh
+	if !areaStale {
+		if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
+			return local, nil
+		}
+		// 2. Try in-memory quadtree
+		if local := queryLocal(lat, lon, radiusM); len(local) >= minLocalResults {
+			return local, nil
+		}
+	}
+
+	// 3. Try Google Places (when key is configured) — used when local is stale
+	//    or has insufficient coverage.
 	if googleAPIKey() != "" {
 		if gPlaces, err := googleNearby(lat, lon, radiusM); err != nil {
 			app.Log("places", "google places nearby error: %v", err)
@@ -285,15 +324,11 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 		}
 	}
 
-	// Try SQLite FTS index (fast, persisted)
-	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
+	// 4. Fall back to local results (may be stale or fewer than minLocalResults)
+	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) > 0 {
 		return local, nil
 	}
-	// Try in-memory quadtree; return whatever we have — Google was already tried
-	// above so there is no further external source to gate on minLocalResults.
-	local := queryLocal(lat, lon, radiusM)
-	// Return whatever local results exist (may be fewer than minLocalResults)
-	return local, nil
+	return queryLocal(lat, lon, radiusM), nil
 }
 
 // geocode resolves an address/postcode to lat/lon using Nominatim
