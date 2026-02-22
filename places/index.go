@@ -360,13 +360,46 @@ func countPlacesNearby(lat, lon float64, radiusM int) int {
 	return count
 }
 
+// staleAge is the maximum age of indexed place data before it is considered
+// stale and should be refreshed from an upstream source.
+const staleAge = 7 * 24 * time.Hour
+
+// isAreaStale returns true when the oldest indexed place within radiusM metres
+// of (lat, lon) was last indexed more than staleAge ago.
+func isAreaStale(lat, lon float64, radiusM int) bool {
+	db, err := getPlacesDB()
+	if err != nil {
+		return false
+	}
+	latDelta := float64(radiusM) / 111000.0
+	lonDelta := float64(radiusM) / (111000.0 * math.Cos(lat*math.Pi/180))
+	var oldest sql.NullString
+	if err := db.QueryRow(
+		`SELECT MIN(indexed_at) FROM places WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?`,
+		lat-latDelta, lat+latDelta, lon-lonDelta, lon+lonDelta,
+	).Scan(&oldest); err != nil || !oldest.Valid || oldest.String == "" {
+		return false
+	}
+	// SQLite stores DATETIME as "YYYY-MM-DD HH:MM:SS"
+	t, err := time.Parse("2006-01-02 15:04:05", oldest.String)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, oldest.String)
+		if err != nil {
+			return false
+		}
+	}
+	return time.Since(t) > staleAge
+}
+
 // PrimeCityCache triggers a background Overpass fetch for the given coordinates
-// if the local SQLite index does not already have sufficient coverage.
+// if the local SQLite index does not already have sufficient coverage, or if
+// the existing data is stale (older than staleAge).
 func PrimeCityCache(lat, lon float64) {
 	go func() {
 		const primeRadius = 5000
-		if countPlacesNearby(lat, lon, primeRadius) >= minLocalResults*5 {
-			return // already well covered
+		count := countPlacesNearby(lat, lon, primeRadius)
+		if count >= minLocalResults*5 && !isAreaStale(lat, lon, primeRadius) {
+			return // already well covered with fresh data
 		}
 		app.Log("places", "Priming cache for %.4f,%.4f", lat, lon)
 		places, err := fetchCityFromOverpass(lat, lon, primeRadius)
