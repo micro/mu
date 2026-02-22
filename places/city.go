@@ -35,8 +35,8 @@ var qtree *quadtree.QuadTree
 const (
 	maxPlacesPerCity = 2000
 	cityFetchTimeout = 60 * time.Second
-	// minLocalResults is the minimum number of quadtree results required before
-	// we skip the Overpass fallback in findNearbyPlaces.
+	// minLocalResults is the minimum number of local results (from the quadtree
+	// or SQLite FTS index) required before falling back to Google Places or Overpass.
 	minLocalResults = 5
 )
 
@@ -89,7 +89,8 @@ func loadCityCaches() int {
 }
 
 // fetchMissingCities is a background goroutine that fetches Overpass data for
-// any city that has no cached data on disk.
+// any city that has no cached data on disk. Used only when no Google API key
+// is configured.
 func fetchMissingCities() {
 	for _, city := range cities {
 		// Skip if we already have cached data
@@ -249,29 +250,9 @@ out center;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, 
 	return places, nil
 }
 
-// queryLocalByKeyword queries the in-memory quadtree for places within radiusM
-// metres whose name, category, or cuisine contains the query string (case-insensitive).
-func queryLocalByKeyword(query string, lat, lon float64, radiusM int) []*Place {
-	places := queryLocal(lat, lon, radiusM)
-	if len(places) == 0 {
-		return nil
-	}
-	q := strings.ToLower(query)
-	var filtered []*Place
-	for _, p := range places {
-		if strings.Contains(strings.ToLower(p.Name), q) ||
-			strings.Contains(strings.ToLower(p.Category), q) ||
-			strings.Contains(strings.ToLower(p.Cuisine), q) {
-			filtered = append(filtered, p)
-		}
-	}
-	return filtered
-}
-
 // searchOverpassByName queries the Overpass API for places whose name
 // case-insensitively contains query, within radiusM metres of (lat, lon).
-// It is used as a live fallback when local caches and Google Places have no
-// results, so that newly-added OSM places can still be found.
+// Used as a fallback when no Google API key is configured.
 // The radius is capped at 5 km to keep queries fast.
 func searchOverpassByName(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM > 5000 {
@@ -391,6 +372,25 @@ out center;`, safe, radiusM, lat, lon, safe, radiusM, lat, lon)
 		})
 	}
 	return places, nil
+}
+
+// queryLocalByKeyword queries the in-memory quadtree for places within radiusM
+// metres whose name, category, or cuisine contains the query string (case-insensitive).
+func queryLocalByKeyword(query string, lat, lon float64, radiusM int) []*Place {
+	places := queryLocal(lat, lon, radiusM)
+	if len(places) == 0 {
+		return nil
+	}
+	q := strings.ToLower(query)
+	var filtered []*Place
+	for _, p := range places {
+		if strings.Contains(strings.ToLower(p.Name), q) ||
+			strings.Contains(strings.ToLower(p.Category), q) ||
+			strings.Contains(strings.ToLower(p.Cuisine), q) {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
 }
 
 // Returns nil if the quadtree is not yet initialised.

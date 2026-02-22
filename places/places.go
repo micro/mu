@@ -88,8 +88,7 @@ type overpassResponse struct {
 }
 
 // httpClient is the shared HTTP client with timeout.
-// The timeout is set to 35s to allow Overpass queries (which use [timeout:25])
-// to complete before the client gives up.
+// 35s accommodates Overpass queries which use a 25s server-side timeout.
 var httpClient = &http.Client{Timeout: 35 * time.Second}
 
 // Load initialises the places package
@@ -98,8 +97,10 @@ func Load() {
 	loaded := loadCityCaches()
 	app.Log("places", "Places loaded: %d/%d cities in quadtree", loaded, len(cities))
 	loadSavedSearches()
-	go fetchMissingCities()
-	startHourlyRefresh()
+	if googleAPIKey() == "" {
+		go fetchMissingCities()
+		startHourlyRefresh()
+	}
 }
 
 // searchNominatim searches for places using the Nominatim API
@@ -195,13 +196,8 @@ func searchNominatim(query string) ([]*Place, error) {
 
 // searchNearbyKeyword searches for POIs near a location whose name, category,
 // or cuisine matches the given keyword.
-// Local caches (SQLite FTS, in-memory quadtree) are always checked first.
-// When the local index is stale (older than staleAge) or empty, live sources
-// are queried instead: Google Places (when GOOGLE_API_KEY is set), then the
-// Overpass name-search API.  A background cache refresh is also triggered so
-// that the next search is served from fresh local data.
-// Empty results are cached with a shorter TTL to avoid hammering external APIs
-// while still letting newly-added places surface quickly.
+// Lookup order: in-memory result cache → quadtree → SQLite FTS → Google Places.
+// Google results are indexed into SQLite for subsequent requests.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
 		radiusM = 1000
@@ -223,25 +219,17 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 	}
 	mutex.RUnlock()
 
-	// Determine whether the local SQLite index for this area is stale.
-	areaStale := isAreaStale(lat, lon, radiusM)
-	if areaStale {
-		// Trigger a background refresh so subsequent searches get fresh data.
-		go PrimeCityCache(lat, lon)
+	// 2. Try in-memory quadtree with keyword filter
+	if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
+		return local, nil
 	}
 
-	// 2. Try local SQLite FTS index (fast, persisted) — only if data is fresh
-	if !areaStale {
-		if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
-			return local, nil
-		}
-		// 3. Try in-memory quadtree with keyword filter (covers cuisine too)
-		if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
-			return local, nil
-		}
+	// 3. Try local SQLite FTS index
+	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
+		return local, nil
 	}
 
-	// 4. Try Google Places (when key is configured)
+	// 4. Google Places
 	if googleAPIKey() != "" {
 		if gPlaces, err := googleSearch(query, lat, lon, radiusM); err != nil {
 			app.Log("places", "google places search error: %v", err)
@@ -255,27 +243,17 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 		}
 	}
 
-	// 5. Try Overpass live name search (free; finds places not yet in local cache,
-	//    e.g. newly opened businesses that have been added to OpenStreetMap).
-	if ovPlaces, err := searchOverpassByName(query, lat, lon, radiusM); err != nil {
-		app.Log("places", "overpass name search error: %v", err)
-	} else if len(ovPlaces) > 0 {
-		mutex.Lock()
-		searchCache[cacheKey] = ovPlaces
-		searchCacheTime[cacheKey] = time.Now()
-		mutex.Unlock()
-		go indexPlaces(ovPlaces)
-		return ovPlaces, nil
-	}
-
-	// If the area was stale and live sources returned nothing, fall back to
-	// whatever stale local data we have rather than showing nothing.
-	if areaStale {
-		if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
-			return local, nil
-		}
-		if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
-			return local, nil
+	// 5. Overpass fallback (only when no Google key is configured)
+	if googleAPIKey() == "" {
+		if ovPlaces, err := searchOverpassByName(query, lat, lon, radiusM); err != nil {
+			app.Log("places", "overpass name search error: %v", err)
+		} else if len(ovPlaces) > 0 {
+			mutex.Lock()
+			searchCache[cacheKey] = ovPlaces
+			searchCacheTime[cacheKey] = time.Now()
+			mutex.Unlock()
+			go indexPlaces(ovPlaces)
+			return ovPlaces, nil
 		}
 	}
 
@@ -290,31 +268,20 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 }
 
 // findNearbyPlaces finds POIs near a location.
-// Local caches (SQLite FTS, in-memory quadtree) are always checked first.
-// When the local index is stale (older than staleAge) or has too few results,
-// live sources are queried: Google Places (when GOOGLE_API_KEY is set).
-// A background cache refresh is triggered when stale so the next search is fast.
+// Lookup order: SQLite FTS → quadtree → Google Places.
+// Google results are indexed into SQLite for subsequent requests.
 func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
-	// Determine whether the local SQLite index for this area is stale.
-	areaStale := isAreaStale(lat, lon, radiusM)
-	if areaStale {
-		// Trigger a background refresh so subsequent searches get fresh data.
-		go PrimeCityCache(lat, lon)
+	// 1. Try local SQLite FTS index (fast, persisted)
+	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
+		return local, nil
 	}
 
-	// 1. Try local SQLite FTS index (fast, persisted) — only if data is fresh
-	if !areaStale {
-		if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
-			return local, nil
-		}
-		// 2. Try in-memory quadtree
-		if local := queryLocal(lat, lon, radiusM); len(local) >= minLocalResults {
-			return local, nil
-		}
+	// 2. Try in-memory quadtree
+	if local := queryLocal(lat, lon, radiusM); len(local) >= minLocalResults {
+		return local, nil
 	}
 
-	// 3. Try Google Places (when key is configured) — used when local is stale
-	//    or has insufficient coverage.
+	// 3. Google Places (when key is configured)
 	if googleAPIKey() != "" {
 		if gPlaces, err := googleNearby(lat, lon, radiusM); err != nil {
 			app.Log("places", "google places nearby error: %v", err)
@@ -324,7 +291,17 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 		}
 	}
 
-	// 4. Fall back to local results (may be stale or fewer than minLocalResults)
+	// 4. Overpass fallback (only when no Google key is configured)
+	if googleAPIKey() == "" {
+		if ovPlaces, err := fetchCityFromOverpass(lat, lon, radiusM); err != nil {
+			app.Log("places", "overpass nearby error: %v", err)
+		} else if len(ovPlaces) > 0 {
+			go indexPlaces(ovPlaces)
+			return ovPlaces, nil
+		}
+	}
+
+	// 5. Fall back to any local results
 	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) > 0 {
 		return local, nil
 	}
@@ -499,12 +476,10 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Perform search: use Overpass keyword search when a location is provided,
+	// Perform search: use keyword search near the given location when provided,
 	// otherwise fall back to a global Nominatim search.
-	// Also prime the local cache in the background so subsequent queries are faster.
 	var results []*Place
 	if hasNearLoc {
-		go PrimeCityCache(nearLat, nearLon)
 		results, err = searchNearbyKeyword(query, nearLat, nearLon, radiusM)
 	} else {
 		results, err = searchNominatim(query)
@@ -627,8 +602,6 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Prime the local cache in the background and find nearby places
-	go PrimeCityCache(lat, lon)
 	results, err := findNearbyPlaces(lat, lon, radius)
 	if err != nil {
 		app.Log("places", "Nearby error: %v", err)
