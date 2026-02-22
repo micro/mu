@@ -1201,12 +1201,21 @@ func renderPlaceCard(p *Place) string {
 		}
 	}
 
+	gmapsQuery := p.Name
+	if p.Address != "" {
+		gmapsQuery += ", " + p.Address
+	}
+	gmapsViewURL := "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(gmapsQuery)
+	gmapsDirURL := "https://www.google.com/maps/dir/?api=1&destination=" + url.QueryEscape(gmapsQuery)
+
 	extraHTML := ""
 	if p.Cuisine != "" {
 		extraHTML += fmt.Sprintf(`<p class="place-info text-muted">Cuisine: %s</p>`, escapeHTML(p.Cuisine))
 	}
 	if p.OpeningHours != "" {
 		extraHTML += fmt.Sprintf(`<p class="place-info text-muted">Hours: %s</p>`, escapeHTML(p.OpeningHours))
+	} else {
+		extraHTML += fmt.Sprintf(`<p class="place-info text-muted">Hours: <a href="%s" target="_blank" rel="noopener noreferrer">check on Google Maps &#8599;</a></p>`, gmapsViewURL)
 	}
 	if p.Phone != "" {
 		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="tel:%s">%s</a></p>`, escapeHTML(p.Phone), escapeHTML(p.Phone))
@@ -1214,13 +1223,6 @@ func renderPlaceCard(p *Place) string {
 	if p.Website != "" {
 		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website &#8599;</a></p>`, escapeHTML(p.Website))
 	}
-
-	gmapsQuery := p.Name
-	if p.Address != "" {
-		gmapsQuery += ", " + p.Address
-	}
-	gmapsViewURL := "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(gmapsQuery)
-	gmapsDirURL := "https://www.google.com/maps/dir/?api=1&destination=" + url.QueryEscape(gmapsQuery)
 
 	return fmt.Sprintf(`<div class="card place-card">
   <h4><a href="%s" target="_blank" rel="noopener">%s</a>%s%s</h4>
