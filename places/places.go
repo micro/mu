@@ -67,9 +67,29 @@ type nominatimResult struct {
 	ExtraTags map[string]string `json:"extratags"`
 }
 
+// overpassCenter holds the computed centre of a way element
+type overpassCenter struct {
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
+}
+
+// overpassElement represents a POI from the Overpass API
+type overpassElement struct {
+	ID     int64             `json:"id"`
+	Type   string            `json:"type"`
+	Lat    float64           `json:"lat"`
+	Lon    float64           `json:"lon"`
+	Center *overpassCenter   `json:"center,omitempty"`
+	Tags   map[string]string `json:"tags"`
+}
+
+type overpassResponse struct {
+	Elements []overpassElement `json:"elements"`
+}
+
 // httpClient is the shared HTTP client with timeout.
-// 10s is sufficient for Google Places API responses.
-var httpClient = &http.Client{Timeout: 10 * time.Second}
+// 35s accommodates Overpass queries which use a 25s server-side timeout.
+var httpClient = &http.Client{Timeout: 35 * time.Second}
 
 // Load initialises the places package
 func Load() {
@@ -77,6 +97,10 @@ func Load() {
 	loaded := loadCityCaches()
 	app.Log("places", "Places loaded: %d/%d cities in quadtree", loaded, len(cities))
 	loadSavedSearches()
+	if googleAPIKey() == "" {
+		go fetchMissingCities()
+		startHourlyRefresh()
+	}
 }
 
 // searchNominatim searches for places using the Nominatim API
@@ -219,6 +243,20 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 		}
 	}
 
+	// 5. Overpass fallback (only when no Google key is configured)
+	if googleAPIKey() == "" {
+		if ovPlaces, err := searchOverpassByName(query, lat, lon, radiusM); err != nil {
+			app.Log("places", "overpass name search error: %v", err)
+		} else if len(ovPlaces) > 0 {
+			mutex.Lock()
+			searchCache[cacheKey] = ovPlaces
+			searchCacheTime[cacheKey] = time.Now()
+			mutex.Unlock()
+			go indexPlaces(ovPlaces)
+			return ovPlaces, nil
+		}
+	}
+
 	// Cache the empty result so repeated searches don't re-hit external APIs.
 	// noResultsCacheTTL (15 min) is used on the next check so new places surface.
 	mutex.Lock()
@@ -253,7 +291,17 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 		}
 	}
 
-	// 4. Fall back to any local results
+	// 4. Overpass fallback (only when no Google key is configured)
+	if googleAPIKey() == "" {
+		if ovPlaces, err := fetchCityFromOverpass(lat, lon, radiusM); err != nil {
+			app.Log("places", "overpass nearby error: %v", err)
+		} else if len(ovPlaces) > 0 {
+			go indexPlaces(ovPlaces)
+			return ovPlaces, nil
+		}
+	}
+
+	// 5. Fall back to any local results
 	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) > 0 {
 		return local, nil
 	}

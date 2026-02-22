@@ -11,9 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/asim/quadtree"
 	_ "modernc.org/sqlite"
 
 	"mu/app"
+	"mu/data"
 )
 
 // schemaVersion is the current places database schema version.
@@ -348,5 +350,40 @@ func searchPlacesFTS(query string, refLat, refLon float64, radiusM int, hasRef b
 		})
 	}
 	return result, nil
+}
+
+// startHourlyRefresh launches a background goroutine that cycles through the
+// known cities once per hour, refreshing each city's place index from Overpass.
+// Used only when no Google API key is configured.
+func startHourlyRefresh() {
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		cityIdx := 0
+		for range ticker.C {
+			if len(cities) == 0 {
+				continue
+			}
+			city := cities[cityIdx%len(cities)]
+			cityIdx++
+			app.Log("places", "Hourly refresh: fetching places for %s", city.Name)
+			radiusM := int(city.RadiusKm * 1000)
+			places, err := fetchCityFromOverpass(city.Lat, city.Lon, radiusM)
+			if err != nil {
+				app.Log("places", "Hourly refresh failed for %s: %v", city.Name, err)
+				continue
+			}
+			if err := data.SaveJSON(cacheFileKey(city.Name), places); err != nil {
+				app.Log("places", "Hourly refresh: save failed for %s: %v", city.Name, err)
+			}
+			mutex.Lock()
+			for _, p := range places {
+				qtree.Insert(quadtree.NewPoint(p.Lat, p.Lon, p))
+			}
+			mutex.Unlock()
+			go indexPlaces(places)
+			app.Log("places", "Hourly refresh: indexed %d places for %s", len(places), city.Name)
+		}
+	}()
 }
 
