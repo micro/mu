@@ -27,6 +27,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/moderate">Moderation Queue</a>
 		<a href="/admin/blocklist">Mail Blocklist</a>
 		<a href="/admin/email">Email Log</a>
+		<a href="/admin/api">API Log</a>
 	</div>`
 
 	html := app.RenderHTMLForRequest("Admin", "Admin Dashboard", content, r)
