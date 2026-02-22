@@ -761,6 +761,48 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	content.WriteString(`</div>`) // end grid
 
+	// Pricing table
+	content.WriteString(`<h3>Pricing Table</h3>
+<p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>10 credits per day</strong>, resets at midnight UTC.</p>
+<table class="data-table">
+<thead>
+<tr><th>Tool / Endpoint</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td>News feed</td><td>Browse the latest news</td><td>Free</td><td>—</td></tr>
+<tr><td>News search</td><td>AI-powered news article search</td><td>1</td><td>1p</td></tr>
+<tr><td>News summary</td><td>AI summary of a news article</td><td>1</td><td>1p</td></tr>
+<tr><td>Video feed</td><td>Browse latest videos</td><td>Free</td><td>—</td></tr>
+<tr><td>Video watch</td><td>Watch a video</td><td>Free</td><td>—</td></tr>
+<tr><td>Video search</td><td>Search for videos</td><td>2</td><td>2p</td></tr>
+<tr><td>Chat</td><td>Chat with AI assistant</td><td>3</td><td>3p</td></tr>
+<tr><td>Blog read</td><td>Read blog posts</td><td>Free</td><td>—</td></tr>
+<tr><td>Blog write</td><td>Create or update a blog post</td><td>Free</td><td>—</td></tr>
+<tr><td>Mail (internal)</td><td>Message other Mu users</td><td>Free</td><td>—</td></tr>
+<tr><td>Mail (external)</td><td>Send email outside Mu (SMTP)</td><td>4</td><td>4p</td></tr>
+<tr><td>Places search</td><td>Search for places by name or category</td><td>5</td><td>5p</td></tr>
+<tr><td>Places nearby</td><td>Find places of interest near a location</td><td>2</td><td>2p</td></tr>
+<tr><td>Markets</td><td>Live crypto, futures &amp; commodity prices</td><td>Free</td><td>—</td></tr>
+<tr><td>Search</td><td>Full-text search across all indexed content</td><td>Free</td><td>—</td></tr>
+<tr><td>Wallet</td><td>Check balance and top up</td><td>Free</td><td>—</td></tr>
+</tbody>
+</table>`)
+
+	// Coming soon
+	content.WriteString(`<h3>Coming Soon</h3>
+<table class="data-table">
+<thead>
+<tr><th>Tool / Endpoint</th><th>Description</th><th>Estimated Cost</th></tr>
+</thead>
+<tbody>
+<tr><td>Weather</td><td>Location-based weather forecasts</td><td>1p</td></tr>
+<tr><td>Translate</td><td>AI-powered language translation</td><td>1p</td></tr>
+<tr><td>Image search</td><td>Search for images</td><td>2p</td></tr>
+<tr><td>Calendar</td><td>Events and reminders</td><td>Free</td></tr>
+<tr><td>Directions</td><td>Route planning between locations</td><td>2p</td></tr>
+</tbody>
+</table>`)
+
 	// Agents / MCP section
 	content.WriteString(`<div class="card">
 <h3>For Agents</h3>
@@ -787,25 +829,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p><strong>Why no unlimited subscription?</strong><br>Unlimited tiers incentivize us to maximize your engagement. Pay-as-you-go keeps incentives aligned: we want efficient tools, not sticky products.</p>
 <p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>
 <p><strong>Can AI agents use Mu?</strong><br>Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. See the <a href="/mcp">MCP page</a> for setup and available tools.</p>`)
-
-	// Credits explanation
-	content.WriteString(`<div class="card">
-<h3>About Credits</h3>
-<p>Credits are the currency used for paid features on Mu. 1 credit = 1p (one penny).</p>
-<p class="mt-3"><strong>What's free</strong></p>
-<p>Reading news, blog posts, and video</p>
-<p>Messaging other Mu users</p>
-<p>Markets data</p>
-<p>Viewing the places map</p>
-<p>10 credits per day (resets at midnight UTC)</p>
-<p class="mt-3"><strong>Credit costs</strong></p>
-<p>News search &amp; summary — 1 credit (1p)</p>
-<p>Video search — 2 credits (2p)</p>
-<p>Chat — 3 credits (3p)</p>
-<p>External email — 4 credits (4p)</p>
-<p>Places search — 5 credits (5p)</p>
-<p>Nearby places — 2 credits (2p)</p>
-</div>`)
 
 	html := RenderHTMLForRequest("Plans", "Simple, honest pricing", content.String(), r)
 	w.Write([]byte(html))
