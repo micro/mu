@@ -37,16 +37,6 @@ type Place struct {
 	Cuisine      string  `json:"cuisine,omitempty"`
 }
 
-// cache for search results (query -> places)
-var searchCache = map[string][]*Place{}
-var searchCacheTime = map[string]time.Time{}
-
-const cacheTTL = 1 * time.Hour
-
-// noResultsCacheTTL is the TTL used when a live lookup returned no results.
-// Shorter than cacheTTL so that newly-added places are discovered sooner.
-const noResultsCacheTTL = 15 * time.Minute
-
 // nominatimResult represents a result from the Nominatim API
 type nominatimResult struct {
 	PlaceID     int64  `json:"place_id"`
@@ -94,27 +84,17 @@ var httpClient = &http.Client{Timeout: 35 * time.Second}
 // Load initialises the places package
 func Load() {
 	initCities()
-	loaded := loadCityCaches()
-	app.Log("places", "Places loaded: %d/%d cities in quadtree", loaded, len(cities))
-	loadSavedSearches()
 	if googleAPIKey() == "" {
+		loaded := loadCityCaches()
+		app.Log("places", "Places loaded: %d/%d cities in quadtree", loaded, len(cities))
 		go fetchMissingCities()
 		startHourlyRefresh()
 	}
+	loadSavedSearches()
 }
 
 // searchNominatim searches for places using the Nominatim API
 func searchNominatim(query string) ([]*Place, error) {
-	// Check cache
-	mutex.RLock()
-	if places, ok := searchCache[query]; ok {
-		if time.Since(searchCacheTime[query]) < cacheTTL {
-			mutex.RUnlock()
-			return places, nil
-		}
-	}
-	mutex.RUnlock()
-
 	apiURL := fmt.Sprintf(
 		"https://nominatim.openstreetmap.org/search?q=%s&format=json&limit=20&addressdetails=1&extratags=1",
 		url.QueryEscape(query),
@@ -185,123 +165,68 @@ func searchNominatim(query string) ([]*Place, error) {
 		places = append(places, p)
 	}
 
-	// Store in cache
-	mutex.Lock()
-	searchCache[query] = places
-	searchCacheTime[query] = time.Now()
-	mutex.Unlock()
-
 	return places, nil
 }
 
 // searchNearbyKeyword searches for POIs near a location whose name, category,
 // or cuisine matches the given keyword.
-// Lookup order: in-memory result cache → quadtree → SQLite FTS → Google Places.
-// Google results are indexed into SQLite for subsequent requests.
+// When a Google API key is configured, queries Google Places directly and
+// indexes the results into SQLite. Otherwise falls back to Overpass.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
 		radiusM = 1000
 	}
 
-	cacheKey := fmt.Sprintf("kw:%s:%.4f:%.4f:%d", query, lat, lon, radiusM)
-
-	// 1. Check in-memory result cache (avoids redundant external API calls)
-	mutex.RLock()
-	if places, ok := searchCache[cacheKey]; ok {
-		ttl := cacheTTL
-		if len(places) == 0 {
-			ttl = noResultsCacheTTL // shorter TTL so new places surface sooner
-		}
-		if time.Since(searchCacheTime[cacheKey]) < ttl {
-			mutex.RUnlock()
-			return places, nil
-		}
-	}
-	mutex.RUnlock()
-
-	// 2. Try in-memory quadtree with keyword filter
-	if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
-		return local, nil
-	}
-
-	// 3. Try local SQLite FTS index
-	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
-		return local, nil
-	}
-
-	// 4. Google Places
+	// Google Places (primary when key is configured)
 	if googleAPIKey() != "" {
-		if gPlaces, err := googleSearch(query, lat, lon, radiusM); err != nil {
+		gPlaces, err := googleSearch(query, lat, lon, radiusM)
+		if err != nil {
 			app.Log("places", "google places search error: %v", err)
-		} else if len(gPlaces) > 0 {
-			mutex.Lock()
-			searchCache[cacheKey] = gPlaces
-			searchCacheTime[cacheKey] = time.Now()
-			mutex.Unlock()
-			go indexPlaces(gPlaces)
-			return gPlaces, nil
+			return nil, err
 		}
+		go indexPlaces(gPlaces)
+		return gPlaces, nil
 	}
 
-	// 5. Overpass fallback (only when no Google key is configured)
-	if googleAPIKey() == "" {
-		if ovPlaces, err := searchOverpassByName(query, lat, lon, radiusM); err != nil {
-			app.Log("places", "overpass name search error: %v", err)
-		} else if len(ovPlaces) > 0 {
-			mutex.Lock()
-			searchCache[cacheKey] = ovPlaces
-			searchCacheTime[cacheKey] = time.Now()
-			mutex.Unlock()
-			go indexPlaces(ovPlaces)
-			return ovPlaces, nil
-		}
+	// Overpass fallback (only when no Google key is configured)
+	if ovPlaces, err := searchOverpassByName(query, lat, lon, radiusM); err != nil {
+		app.Log("places", "overpass name search error: %v", err)
+	} else if len(ovPlaces) > 0 {
+		go indexPlaces(ovPlaces)
+		return ovPlaces, nil
 	}
-
-	// Cache the empty result so repeated searches don't re-hit external APIs.
-	// noResultsCacheTTL (15 min) is used on the next check so new places surface.
-	mutex.Lock()
-	searchCache[cacheKey] = []*Place{}
-	searchCacheTime[cacheKey] = time.Now()
-	mutex.Unlock()
 
 	return nil, nil
 }
 
 // findNearbyPlaces finds POIs near a location.
-// Lookup order: SQLite FTS → quadtree → Google Places.
-// Google results are indexed into SQLite for subsequent requests.
+// When a Google API key is configured, queries Google Places directly and
+// indexes the results into SQLite. Otherwise falls back to SQLite/quadtree/Overpass.
 func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
-	// 1. Try local SQLite FTS index (fast, persisted)
+	// Google Places (primary when key is configured)
+	if googleAPIKey() != "" {
+		gPlaces, err := googleNearby(lat, lon, radiusM)
+		if err != nil {
+			app.Log("places", "google places nearby error: %v", err)
+			return nil, err
+		}
+		go indexPlaces(gPlaces)
+		return gPlaces, nil
+	}
+
+	// No Google key: try local SQLite FTS index, then quadtree, then Overpass
 	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
 		return local, nil
 	}
-
-	// 2. Try in-memory quadtree
 	if local := queryLocal(lat, lon, radiusM); len(local) >= minLocalResults {
 		return local, nil
 	}
-
-	// 3. Google Places (when key is configured)
-	if googleAPIKey() != "" {
-		if gPlaces, err := googleNearby(lat, lon, radiusM); err != nil {
-			app.Log("places", "google places nearby error: %v", err)
-		} else if len(gPlaces) > 0 {
-			go indexPlaces(gPlaces)
-			return gPlaces, nil
-		}
+	if ovPlaces, err := fetchCityFromOverpass(lat, lon, radiusM); err != nil {
+		app.Log("places", "overpass nearby error: %v", err)
+	} else if len(ovPlaces) > 0 {
+		go indexPlaces(ovPlaces)
+		return ovPlaces, nil
 	}
-
-	// 4. Overpass fallback (only when no Google key is configured)
-	if googleAPIKey() == "" {
-		if ovPlaces, err := fetchCityFromOverpass(lat, lon, radiusM); err != nil {
-			app.Log("places", "overpass nearby error: %v", err)
-		} else if len(ovPlaces) > 0 {
-			go indexPlaces(ovPlaces)
-			return ovPlaces, nil
-		}
-	}
-
-	// 5. Fall back to any local results
 	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) > 0 {
 		return local, nil
 	}
