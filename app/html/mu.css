@@ -2559,11 +2559,12 @@ a.highlight {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  margin-bottom: 32px;
 }
 
 .data-table th,
 .data-table td {
-  padding: 10px 0;
+  padding: 10px 12px;
   border-bottom: 1px solid #eee;
 }
 
@@ -2574,6 +2575,10 @@ a.highlight {
 .data-table td:last-child,
 .data-table th:last-child {
   text-align: right;
+}
+
+.data-table tbody tr:nth-child(odd) {
+  background: var(--hover-background);
 }
 
 /* Button styles */

@@ -762,7 +762,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`</div>`) // end grid
 
 	// Pricing table
-	content.WriteString(`<h3>Pricing Table</h3>
+	content.WriteString(`<h3>Pricing</h3>
 <p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>10 credits per day</strong>, resets at midnight UTC.</p>
 <table class="data-table">
 <thead>
@@ -804,23 +804,19 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 </table>`)
 
 	// Agents / MCP section
-	content.WriteString(`<div class="card">
-<h3>For Agents</h3>
+	content.WriteString(`<h3>For Agents</h3>
 <p>AI agents can connect to Mu via the Model Context Protocol (MCP).</p>
 <p>Authenticate with a Bearer token</p>
 <p>10 credits per day on the free tier</p>
 <p>Same pay-as-you-go rates as human users</p>
 <p>Access to chat, news, video, mail and more</p>
-<p class="mt-3"><a href="/mcp">View MCP tools →</a></p>
-</div>`)
+<p><a href="/mcp">View MCP tools →</a></p>`)
 
 	// Self-host option
-	content.WriteString(`<div class="card">
-<h3>Self-Host</h3>
+	content.WriteString(`<h3>Self-Host</h3>
 <p>Want unlimited and free forever? Run your own instance.</p>
 <p>Mu is open source (AGPL-3.0). Your server, your data, no limits.</p>
-<p class="mt-3"><a href="https://github.com/micro/mu" target="_blank">View on GitHub →</a></p>
-</div>`)
+<p><a href="https://github.com/micro/mu" target="_blank">View on GitHub →</a></p>`)
 
 	// FAQ
 	content.WriteString(`<h3>Questions</h3>
