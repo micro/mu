@@ -201,6 +201,7 @@ func main() {
 		"/admin/moderate":  true,
 		"/admin/blocklist": true,
 		"/admin/email":     true,
+		"/admin/api":       true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          true, // Require auth for wallet
@@ -258,6 +259,9 @@ func main() {
 
 	// email log
 	http.HandleFunc("/admin/email", admin.EmailLogHandler)
+
+	// external API call log
+	http.HandleFunc("/admin/api", admin.APILogHandler)
 
 	// plans page (public - overview of options)
 	http.HandleFunc("/plans", app.Plans)

@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
+
+	"mu/app"
 )
 
 const googlePlacesBaseURL = "https://places.googleapis.com/v1/places"
@@ -107,20 +110,27 @@ func googleDo(apiURL, key string, payload interface{}) ([]*Place, error) {
 	req.Header.Set("X-Goog-Api-Key", key)
 	req.Header.Set("X-Goog-FieldMask", googleFieldMask)
 
+	start := time.Now()
 	resp, err := httpClient.Do(req)
 	if err != nil {
+		app.RecordAPICall("google_places", "POST", apiURL, 0, time.Since(start), err)
 		return nil, fmt.Errorf("google places request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), err)
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("google places returned status %d: %s", resp.StatusCode, string(respBody))
+		callErr := fmt.Errorf("google places returned status %d: %s", resp.StatusCode, string(respBody))
+		app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), callErr)
+		return nil, callErr
 	}
+
+	app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), nil)
 
 	var gResp googlePlacesResponse
 	if err := json.Unmarshal(respBody, &gResp); err != nil {

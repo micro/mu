@@ -182,13 +182,14 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 		gPlaces, err := googleSearch(query, lat, lon, radiusM)
 		if err != nil {
 			app.Log("places", "google places search error: %v", err)
-			return nil, err
+			// Fall through to Overpass on error
+		} else {
+			go indexPlaces(gPlaces)
+			return gPlaces, nil
 		}
-		go indexPlaces(gPlaces)
-		return gPlaces, nil
 	}
 
-	// Overpass fallback (only when no Google key is configured)
+	// Overpass fallback
 	if ovPlaces, err := searchOverpassByName(query, lat, lon, radiusM); err != nil {
 		app.Log("places", "overpass name search error: %v", err)
 	} else if len(ovPlaces) > 0 {
@@ -208,10 +209,11 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 		gPlaces, err := googleNearby(lat, lon, radiusM)
 		if err != nil {
 			app.Log("places", "google places nearby error: %v", err)
-			return nil, err
+			// Fall through to local/Overpass on error
+		} else {
+			go indexPlaces(gPlaces)
+			return gPlaces, nil
 		}
-		go indexPlaces(gPlaces)
-		return gPlaces, nil
 	}
 
 	// No Google key: try local SQLite FTS index, then quadtree, then Overpass
