@@ -268,15 +268,15 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 		return ovPlaces, nil
 	}
 
-	// If the area was stale and live sources returned nothing, fall back to
-	// whatever stale local data we have rather than showing nothing.
-	if areaStale {
-		if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
-			return local, nil
-		}
-		if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
-			return local, nil
-		}
+	// Fall back to any available local results when live sources returned nothing.
+	// This also covers the case where a wider-radius search triggers a live query
+	// but local data was indexed (e.g. from a prior narrower-radius search) while
+	// the live call was in-flight.
+	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
+		return local, nil
+	}
+	if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
+		return local, nil
 	}
 
 	// Cache the empty result so repeated searches don't re-hit external APIs.

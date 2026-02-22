@@ -235,3 +235,40 @@ func TestSchemaVersionPreservesData(t *testing.T) {
 		t.Errorf("expected place to be preserved, got count=%d", count)
 	}
 }
+
+// TestWiderRadiusIncludesNarrowerResults verifies that a search with a larger
+// radius returns at least as many results as the same search with a smaller
+// radius.  This is the core regression test for the bug where a 2 km search
+// returned zero results after a 1 km search returned two.
+func TestWiderRadiusIncludesNarrowerResults(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.Setenv("HOME", tmpDir)
+	placesDBOne = sync.Once{}
+	placesDB = nil
+
+	// Two cafes well within 1 km of the reference point.
+	places := []*Place{
+		{ID: "c1", Name: "Cafes du Nord", Category: "cafe", Lat: 37.7750, Lon: -122.4195},
+		{ID: "c2", Name: "Blue Cafes", Category: "cafe", Lat: 37.7752, Lon: -122.4197},
+	}
+	indexPlaces(places)
+
+	refLat, refLon := 37.7749, -122.4194
+
+	narrow, err := searchPlacesFTS("cafe", refLat, refLon, 1000, true)
+	if err != nil {
+		t.Fatalf("1 km search error: %v", err)
+	}
+
+	wide, err := searchPlacesFTS("cafe", refLat, refLon, 2000, true)
+	if err != nil {
+		t.Fatalf("2 km search error: %v", err)
+	}
+
+	if len(wide) < len(narrow) {
+		t.Errorf("2 km search returned %d results, fewer than 1 km search (%d)", len(wide), len(narrow))
+	}
+	if len(narrow) == 0 {
+		t.Error("1 km search returned 0 results, expected at least 2")
+	}
+}
