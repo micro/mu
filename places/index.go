@@ -18,6 +18,12 @@ import (
 	"mu/data"
 )
 
+// schemaVersion is the current places database schema version.
+// Bumping this constant causes all place data to be wiped on the next startup,
+// discarding rows produced by incompatible previous data sources (e.g. Overpass,
+// Foursquare) so that fresh data from the current source can be indexed cleanly.
+const schemaVersion = "v1"
+
 var (
 	placesDB    *sql.DB
 	placesDBMu  sync.Mutex
@@ -85,7 +91,32 @@ func initPlacesDB() error {
 		placesDB.SetMaxOpenConns(4)
 		placesDB.SetMaxIdleConns(4)
 
+		// Check the stored schema version.  If it is absent (unversioned data
+		// from a previous Overpass/Foursquare-backed schema) or does not match
+		// schemaVersion, wipe all place data so stale rows no longer block
+		// queries to Google Places.
+		var storedVer string
+		_ = placesDB.QueryRow(`SELECT version FROM schema_version LIMIT 1`).Scan(&storedVer)
+		if storedVer != schemaVersion {
+			app.Log("places", "places db version mismatch (have %q, want %q) – wiping data", storedVer, schemaVersion)
+			if _, err = placesDB.Exec(`DROP TABLE IF EXISTS places_fts`); err != nil {
+				initErr = fmt.Errorf("places db wipe fts: %w", err)
+				return
+			}
+			if _, err = placesDB.Exec(`DROP TABLE IF EXISTS places`); err != nil {
+				initErr = fmt.Errorf("places db wipe places: %w", err)
+				return
+			}
+			if _, err = placesDB.Exec(`DROP TABLE IF EXISTS schema_version`); err != nil {
+				initErr = fmt.Errorf("places db wipe version: %w", err)
+				return
+			}
+		}
+
 		_, err = placesDB.Exec(`
+			CREATE TABLE IF NOT EXISTS schema_version (
+				version TEXT NOT NULL
+			);
 			CREATE TABLE IF NOT EXISTS places (
 				id           TEXT PRIMARY KEY,
 				name         TEXT NOT NULL,
@@ -118,36 +149,11 @@ func initPlacesDB() error {
 			return
 		}
 
-		// Migrate: add cuisine to places_fts if an older schema is in place
-		var cuisineCount int
-		if err := placesDB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('places_fts') WHERE name='cuisine'`).Scan(&cuisineCount); err != nil {
-			initErr = fmt.Errorf("places db migration check: %w", err)
-			return
-		}
-		if cuisineCount == 0 {
-			tx, txErr := placesDB.Begin()
-			if txErr != nil {
-				initErr = fmt.Errorf("places db migration tx: %w", txErr)
+		// Persist the version record when the DB is freshly created or wiped.
+		if storedVer != schemaVersion {
+			if _, err = placesDB.Exec(`INSERT INTO schema_version (version) VALUES (?)`, schemaVersion); err != nil {
+				initErr = fmt.Errorf("places db version insert: %w", err)
 				return
-			}
-			_, txErr = tx.Exec(`DROP TABLE IF EXISTS places_fts`)
-			if txErr == nil {
-				_, txErr = tx.Exec(`CREATE VIRTUAL TABLE places_fts USING fts5(
-					id UNINDEXED, name, category, address, cuisine,
-					tokenize='unicode61 remove_diacritics 1'
-				)`)
-			}
-			if txErr == nil {
-				_, txErr = tx.Exec(`INSERT INTO places_fts (id, name, category, address, cuisine)
-					SELECT id, name, category, address, COALESCE(cuisine, '') FROM places`)
-			}
-			if txErr != nil {
-				tx.Rollback()
-				initErr = fmt.Errorf("places db migration: %w", txErr)
-				return
-			}
-			if txErr = tx.Commit(); txErr != nil {
-				initErr = fmt.Errorf("places db migration commit: %w", txErr)
 			}
 		}
 	})
