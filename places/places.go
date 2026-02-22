@@ -43,6 +43,10 @@ var searchCacheTime = map[string]time.Time{}
 
 const cacheTTL = 1 * time.Hour
 
+// noResultsCacheTTL is the TTL used when a live lookup returned no results.
+// Shorter than cacheTTL so that newly-added places are discovered sooner.
+const noResultsCacheTTL = 15 * time.Minute
+
 // nominatimResult represents a result from the Nominatim API
 type nominatimResult struct {
 	PlaceID     int64  `json:"place_id"`
@@ -190,72 +194,141 @@ func searchNominatim(query string) ([]*Place, error) {
 }
 
 // searchNearbyKeyword searches for POIs near a location whose name, category,
-// or cuisine matches the given keyword.  It queries the local SQLite FTS index,
-// then the in-memory quadtree, then Google Places so that un-indexed areas
-// always return results.
+// or cuisine matches the given keyword.
+// Local caches (SQLite FTS, in-memory quadtree) are always checked first.
+// When the local index is stale (older than staleAge) or empty, live sources
+// are queried instead: Google Places (when GOOGLE_API_KEY is set), then the
+// Overpass name-search API.  A background cache refresh is also triggered so
+// that the next search is served from fresh local data.
+// Empty results are cached with a shorter TTL to avoid hammering external APIs
+// while still letting newly-added places surface quickly.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
 		radiusM = 1000
 	}
 
-	// 1. Try SQLite FTS index (fast, persisted) — any results are sufficient
-	if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
-		return local, nil
-	}
-
-	// 2. Try in-memory quadtree with keyword filter (covers cuisine too)
-	if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
-		return local, nil
-	}
-
 	cacheKey := fmt.Sprintf("kw:%s:%.4f:%.4f:%d", query, lat, lon, radiusM)
 
+	// 1. Check in-memory result cache (avoids redundant external API calls)
 	mutex.RLock()
 	if places, ok := searchCache[cacheKey]; ok {
-		if time.Since(searchCacheTime[cacheKey]) < cacheTTL {
+		ttl := cacheTTL
+		if len(places) == 0 {
+			ttl = noResultsCacheTTL // shorter TTL so new places surface sooner
+		}
+		if time.Since(searchCacheTime[cacheKey]) < ttl {
 			mutex.RUnlock()
 			return places, nil
 		}
 	}
 	mutex.RUnlock()
 
-	// 3. Try Google Places (when key is configured)
-	if gPlaces, err := googleSearch(query, lat, lon, radiusM); err != nil {
-		app.Log("places", "google places search error: %v", err)
-	} else if len(gPlaces) > 0 {
+	// Determine whether the local SQLite index for this area is stale.
+	areaStale := isAreaStale(lat, lon, radiusM)
+	if areaStale {
+		// Trigger a background refresh so subsequent searches get fresh data.
+		go PrimeCityCache(lat, lon)
+	}
+
+	// 2. Try local SQLite FTS index (fast, persisted) — only if data is fresh
+	if !areaStale {
+		if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
+			return local, nil
+		}
+		// 3. Try in-memory quadtree with keyword filter (covers cuisine too)
+		if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
+			return local, nil
+		}
+	}
+
+	// 4. Try Google Places (when key is configured)
+	if googleAPIKey() != "" {
+		if gPlaces, err := googleSearch(query, lat, lon, radiusM); err != nil {
+			app.Log("places", "google places search error: %v", err)
+		} else if len(gPlaces) > 0 {
+			mutex.Lock()
+			searchCache[cacheKey] = gPlaces
+			searchCacheTime[cacheKey] = time.Now()
+			mutex.Unlock()
+			go indexPlaces(gPlaces)
+			return gPlaces, nil
+		}
+	}
+
+	// 5. Try Overpass live name search (free; finds places not yet in local cache,
+	//    e.g. newly opened businesses that have been added to OpenStreetMap).
+	if ovPlaces, err := searchOverpassByName(query, lat, lon, radiusM); err != nil {
+		app.Log("places", "overpass name search error: %v", err)
+	} else if len(ovPlaces) > 0 {
 		mutex.Lock()
-		searchCache[cacheKey] = gPlaces
+		searchCache[cacheKey] = ovPlaces
 		searchCacheTime[cacheKey] = time.Now()
 		mutex.Unlock()
-		go indexPlaces(gPlaces)
-		return gPlaces, nil
+		go indexPlaces(ovPlaces)
+		return ovPlaces, nil
 	}
+
+	// If the area was stale and live sources returned nothing, fall back to
+	// whatever stale local data we have rather than showing nothing.
+	if areaStale {
+		if local, err := searchPlacesFTS(query, lat, lon, radiusM, true); err == nil && len(local) > 0 {
+			return local, nil
+		}
+		if local := queryLocalByKeyword(query, lat, lon, radiusM); len(local) > 0 {
+			return local, nil
+		}
+	}
+
+	// Cache the empty result so repeated searches don't re-hit external APIs.
+	// noResultsCacheTTL (15 min) is used on the next check so new places surface.
+	mutex.Lock()
+	searchCache[cacheKey] = []*Place{}
+	searchCacheTime[cacheKey] = time.Now()
+	mutex.Unlock()
 
 	return nil, nil
 }
 
 // findNearbyPlaces finds POIs near a location.
-// It queries the SQLite places index, then the in-memory quadtree, then
-// Google Places so that un-indexed areas always return results.
+// Local caches (SQLite FTS, in-memory quadtree) are always checked first.
+// When the local index is stale (older than staleAge) or has too few results,
+// live sources are queried: Google Places (when GOOGLE_API_KEY is set).
+// A background cache refresh is triggered when stale so the next search is fast.
 func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
-	// 1. Try SQLite FTS index (fast, persisted)
-	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
+	// Determine whether the local SQLite index for this area is stale.
+	areaStale := isAreaStale(lat, lon, radiusM)
+	if areaStale {
+		// Trigger a background refresh so subsequent searches get fresh data.
+		go PrimeCityCache(lat, lon)
+	}
+
+	// 1. Try local SQLite FTS index (fast, persisted) — only if data is fresh
+	if !areaStale {
+		if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
+			return local, nil
+		}
+		// 2. Try in-memory quadtree
+		if local := queryLocal(lat, lon, radiusM); len(local) >= minLocalResults {
+			return local, nil
+		}
+	}
+
+	// 3. Try Google Places (when key is configured) — used when local is stale
+	//    or has insufficient coverage.
+	if googleAPIKey() != "" {
+		if gPlaces, err := googleNearby(lat, lon, radiusM); err != nil {
+			app.Log("places", "google places nearby error: %v", err)
+		} else if len(gPlaces) > 0 {
+			go indexPlaces(gPlaces)
+			return gPlaces, nil
+		}
+	}
+
+	// 4. Fall back to local results (may be stale or fewer than minLocalResults)
+	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) > 0 {
 		return local, nil
 	}
-	// 2. Try in-memory quadtree
-	local := queryLocal(lat, lon, radiusM)
-	if len(local) >= minLocalResults {
-		return local, nil
-	}
-	// 3. Try Google Places (when key is configured)
-	if gPlaces, err := googleNearby(lat, lon, radiusM); err != nil {
-		app.Log("places", "google places nearby error: %v", err)
-	} else if len(gPlaces) > 0 {
-		go indexPlaces(gPlaces)
-		return gPlaces, nil
-	}
-	// Return whatever local results exist (may be fewer than minLocalResults)
-	return local, nil
+	return queryLocal(lat, lon, radiusM), nil
 }
 
 // geocode resolves an address/postcode to lat/lon using Nominatim
@@ -751,7 +824,7 @@ func renderCitiesSection() string {
 	for _, c := range cs {
 		sb.WriteString(fmt.Sprintf(
 			`<a href="#" onclick="selectCity(%f,%f,%s,%s);return false;" class="city-link">%s <span class="text-muted" style="font-size:0.8em;">%s</span></a>`,
-			c.Lat, c.Lon, jsonStr(c.Name), jsonStr(c.Country),
+			c.Lat, c.Lon, escapeHTML(jsonStr(c.Name)), escapeHTML(jsonStr(c.Country)),
 			escapeHTML(c.Name), escapeHTML(c.Country),
 		))
 	}
@@ -832,9 +905,9 @@ func renderSavedSearchesSection(userID string) string {
 				`<form style="display:inline" action="/places/save/delete" method="POST">`+
 				`<input type="hidden" name="id" value="%s">`+
 				`<button type="submit" class="btn-link text-muted" title="Remove">&#x2715;</button></form></li>`,
-			jsonStr(s.Type), jsonStr(s.Query), jsonStr(s.Location),
-			jsonStr(latStr), jsonStr(lonStr),
-			jsonStr(fmt.Sprintf("%d", s.Radius)), jsonStr(s.SortBy),
+			escapeHTML(jsonStr(s.Type)), escapeHTML(jsonStr(s.Query)), escapeHTML(jsonStr(s.Location)),
+			escapeHTML(jsonStr(latStr)), escapeHTML(jsonStr(lonStr)),
+			escapeHTML(jsonStr(fmt.Sprintf("%d", s.Radius))), escapeHTML(jsonStr(s.SortBy)),
 			escapeHTML(s.Label), escapeHTML(s.ID),
 		))
 	}
@@ -922,6 +995,7 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d place(s) found</p>`, len(places)))
 		sb.WriteString(renderSaveSearchForm("nearby", "", label, latStr, lonStr, radiusStr, ""))
 		sb.WriteString(renderLeafletMap(lat, lon, places))
+		sb.WriteString(renderTypeFilter(places))
 	}
 
 	sb.WriteString(`<div class="places-results">`)
@@ -1041,6 +1115,15 @@ function runSavedSearch(type, q, near, nearLat, nearLon, radius, sortBy) {
     document.getElementById('places-form').submit();
   }
 }
+function filterByType(btn) {
+  var cat = btn.dataset.filter || '';
+  document.querySelectorAll('.place-card').forEach(function(c) {
+    c.style.display = (!cat || c.dataset.category === cat) ? '' : 'none';
+  });
+  document.querySelectorAll('.type-filter-btn').forEach(function(b) {
+    b.classList.toggle('active', b === btn);
+  });
+}
 </script>`
 }
 
@@ -1096,11 +1179,42 @@ func renderPlaceCard(p *Place) string {
 		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website &#8599;</a></p>`, escapeHTML(p.Website))
 	}
 
-	return fmt.Sprintf(`<div class="card place-card">
+	return fmt.Sprintf(`<div class="card place-card" data-category="%s">
   <h4><a href="%s" target="_blank" rel="noopener">%s</a>%s%s</h4>
   %s%s
   <p class="place-links"><a href="%s" target="_blank" rel="noopener">Get Directions</a></p>
-</div>`, gmapsViewURL, escapeHTML(p.Name), cat, distHTML, addrHTML, extraHTML, gmapsDirURL)
+</div>`, escapeHTML(p.Category), gmapsViewURL, escapeHTML(p.Name), cat, distHTML, addrHTML, extraHTML, gmapsDirURL)
+}
+
+// renderTypeFilter renders category filter buttons for a set of places.
+// Returns an empty string if there are fewer than 2 distinct categories.
+func renderTypeFilter(places []*Place) string {
+	seen := map[string]struct{}{}
+	var cats []string
+	for _, p := range places {
+		if p.Category != "" {
+			if _, ok := seen[p.Category]; !ok {
+				seen[p.Category] = struct{}{}
+				cats = append(cats, p.Category)
+			}
+		}
+	}
+	if len(cats) < 2 {
+		return ""
+	}
+	sort.Strings(cats)
+	var sb strings.Builder
+	sb.WriteString(`<div class="places-type-filter">`)
+	sb.WriteString(`<button class="type-filter-btn active" data-filter="" onclick="filterByType(this)">All</button>`)
+	for _, cat := range cats {
+		label := strings.ReplaceAll(cat, "_", " ")
+		sb.WriteString(fmt.Sprintf(
+			`<button class="type-filter-btn" data-filter="%s" onclick="filterByType(this)">%s</button>`,
+			escapeHTML(cat), escapeHTML(label),
+		))
+	}
+	sb.WriteString(`</div>`)
+	return sb.String()
 }
 
 // sortPlaces sorts places in-place according to sortBy ("name" or "distance").

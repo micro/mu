@@ -267,6 +267,132 @@ func queryLocalByKeyword(query string, lat, lon float64, radiusM int) []*Place {
 	}
 	return filtered
 }
+
+// searchOverpassByName queries the Overpass API for places whose name
+// case-insensitively contains query, within radiusM metres of (lat, lon).
+// It is used as a live fallback when local caches and Google Places have no
+// results, so that newly-added OSM places can still be found.
+// The radius is capped at 5 km to keep queries fast.
+func searchOverpassByName(query string, lat, lon float64, radiusM int) ([]*Place, error) {
+	if radiusM > 5000 {
+		radiusM = 5000
+	}
+	// Strip ERE metacharacters to prevent regex injection in the Overpass QL pattern.
+	safe := strings.Map(func(r rune) rune {
+		switch r {
+		case '\\', '.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '(', ')', '|', '"':
+			return -1
+		}
+		return r
+	}, query)
+	safe = strings.TrimSpace(safe)
+	if safe == "" {
+		return nil, nil
+	}
+
+	q := fmt.Sprintf(`[out:json][timeout:25];(
+  node["name"~"%s",i](around:%d,%f,%f);
+  way["name"~"%s",i](around:%d,%f,%f);
+);
+out center;`, safe, radiusM, lat, lon, safe, radiusM, lat, lon)
+
+	req, err := http.NewRequest("POST", "https://overpass-api.de/api/interpreter",
+		strings.NewReader("data="+url.QueryEscape(q)))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", "Mu/1.0 (https://mu.xyz)")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("overpass name search failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("overpass returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var ovResp overpassResponse
+	if err := json.Unmarshal(body, &ovResp); err != nil {
+		return nil, err
+	}
+
+	var places []*Place
+	for _, el := range ovResp.Elements {
+		name := el.Tags["name"]
+		if name == "" {
+			continue
+		}
+		elLat, elLon := el.Lat, el.Lon
+		if el.Center != nil && elLat == 0 && elLon == 0 {
+			elLat, elLon = el.Center.Lat, el.Center.Lon
+		}
+		if elLat == 0 && elLon == 0 {
+			continue
+		}
+
+		category := el.Tags["amenity"]
+		if category == "" {
+			category = el.Tags["tourism"]
+		}
+		if category == "" {
+			category = el.Tags["shop"]
+		}
+		if category == "" {
+			category = el.Tags["historic"]
+		}
+		if category == "" {
+			category = el.Tags["leisure"]
+		}
+
+		addr := el.Tags["addr:street"]
+		if n := el.Tags["addr:housenumber"]; n != "" && addr != "" {
+			addr = n + " " + addr
+		} else if n != "" {
+			addr = n
+		}
+		if c := el.Tags["addr:city"]; c != "" {
+			if addr != "" {
+				addr += ", " + c
+			} else {
+				addr = c
+			}
+		}
+
+		phone := el.Tags["phone"]
+		if phone == "" {
+			phone = el.Tags["contact:phone"]
+		}
+		website := el.Tags["website"]
+		if website == "" {
+			website = el.Tags["contact:website"]
+		}
+		cuisine := strings.ReplaceAll(el.Tags["cuisine"], ";", ", ")
+		cuisine = strings.ReplaceAll(cuisine, "_", " ")
+
+		places = append(places, &Place{
+			ID:           fmt.Sprintf("%d", el.ID),
+			Name:         name,
+			Category:     category,
+			Address:      strings.TrimSpace(addr),
+			Lat:          elLat,
+			Lon:          elLon,
+			Phone:        phone,
+			Website:      website,
+			OpeningHours: el.Tags["opening_hours"],
+			Cuisine:      cuisine,
+		})
+	}
+	return places, nil
+}
+
 // Returns nil if the quadtree is not yet initialised.
 func queryLocal(lat, lon float64, radiusM int) []*Place {
 	mutex.RLock()

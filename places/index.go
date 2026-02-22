@@ -362,7 +362,7 @@ func countPlacesNearby(lat, lon float64, radiusM int) int {
 
 // staleAge is the maximum age of indexed place data before it is considered
 // stale and should be refreshed from an upstream source.
-const staleAge = 7 * 24 * time.Hour
+const staleAge = 24 * time.Hour
 
 // isAreaStale returns true when the oldest indexed place within radiusM metres
 // of (lat, lon) was last indexed more than staleAge ago.
