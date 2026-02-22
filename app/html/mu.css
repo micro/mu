@@ -4163,6 +4163,71 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-variant-numeric: tabular-nums;
 }
 
+/* Markets table */
+.markets-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  font-size: 0.9em;
+}
+
+.markets-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 0.75em;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: var(--border-width) solid var(--border-color);
+}
+
+.markets-table td {
+  padding: 10px 12px;
+  border-bottom: var(--border-width) solid var(--border-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.markets-table tr:last-child td {
+  border-bottom: none;
+}
+
+.markets-symbol {
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.05em;
+}
+
+.markets-price {
+  font-weight: var(--font-weight-semibold);
+}
+
+.markets-change {
+  font-weight: var(--font-weight-semibold);
+}
+
+.markets-change-up {
+  color: var(--success-color, #28a745);
+}
+
+.markets-change-down {
+  color: var(--error-color, #dc3545);
+}
+
+.markets-change-neutral {
+  color: var(--text-muted);
+}
+
+.markets-chart-link {
+  font-size: 0.8em;
+  color: var(--accent-color) !important;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.markets-chart-link:hover {
+  text-decoration: underline;
+}
+
 .markets-footer {
   margin-top: 20px;
   padding-top: 12px;
@@ -4184,6 +4249,13 @@ a.btn-secondary:hover, .btn-secondary:hover {
   .markets-grid {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: 12px;
+  }
+  .markets-table {
+    font-size: 0.8em;
+  }
+  .markets-table th,
+  .markets-table td {
+    padding: 8px 6px;
   }
 }
 
