@@ -154,11 +154,11 @@ func buildStatus() StatusResponse {
 		Status: youtubeConfigured,
 	})
 
-	// Check Foursquare Places API
-	foursquareConfigured := os.Getenv("FOURSQUARE_API_KEY") != ""
+	// Check Google Places API
+	googleConfigured := os.Getenv("GOOGLE_API_KEY") != ""
 	services = append(services, StatusCheck{
-		Name:   "Foursquare Places",
-		Status: foursquareConfigured,
+		Name:   "Google Places API",
+		Status: googleConfigured,
 	})
 
 	// Check Crypto Wallet/Payments

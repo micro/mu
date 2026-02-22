@@ -411,7 +411,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		app.Log("places", "Search error: %v", err)
-		app.ServerError(w, r, "Search failed. Please try again.")
+		app.ServerError(w, r, fmt.Sprintf("Search failed: %v", err))
 		return
 	}
 
@@ -530,7 +530,7 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	results, err := findNearbyPlaces(lat, lon, radius)
 	if err != nil {
 		app.Log("places", "Nearby error: %v", err)
-		app.ServerError(w, r, "Nearby search failed. Please try again.")
+		app.ServerError(w, r, fmt.Sprintf("Nearby search failed: %v", err))
 		return
 	}
 
