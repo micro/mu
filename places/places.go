@@ -347,10 +347,9 @@ func parseOverpassElements(elements []overpassElement, refLat, refLon float64, h
 }
 
 // searchNearbyKeyword searches for POIs near a location whose name, category,
-// or cuisine matches the given keyword.  It first queries the local SQLite FTS
-// index (which includes the cuisine field), then falls back to the in-memory
-// quadtree, then Foursquare. Overpass is never called directly to avoid
-// blocking the request; background priming via PrimeCityCache handles it.
+// or cuisine matches the given keyword.  It queries the local SQLite FTS index,
+// then the in-memory quadtree, then Foursquare, and finally falls back to a
+// live Overpass query so that un-indexed areas always return results.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
 		radiusM = 1000
@@ -389,13 +388,38 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 		return fsqPlaces, nil
 	}
 
+	// 4. Fallback: live Overpass query for this area.
+	// Index ALL results so subsequent searches for any keyword are fast,
+	// then return only the ones matching the requested keyword.
+	if ovPlaces, err := nearbyOverpass(lat, lon, radiusM); err != nil {
+		app.Log("places", "overpass fallback error: %v", err)
+	} else if len(ovPlaces) > 0 {
+		go indexPlaces(ovPlaces)
+		q := strings.ToLower(query)
+		var filtered []*Place
+		for _, p := range ovPlaces {
+			if strings.Contains(strings.ToLower(p.Name), q) ||
+				strings.Contains(strings.ToLower(p.Category), q) ||
+				strings.Contains(strings.ToLower(p.Cuisine), q) {
+				filtered = append(filtered, p)
+			}
+		}
+		if len(filtered) > 0 {
+			mutex.Lock()
+			searchCache[cacheKey] = filtered
+			searchCacheTime[cacheKey] = time.Now()
+			mutex.Unlock()
+			return filtered, nil
+		}
+	}
+
 	return nil, nil
 }
 
 // findNearbyPlaces finds POIs near a location.
 // It queries the SQLite places index, then the in-memory quadtree, then
-// Foursquare (if configured). Overpass is never called directly to avoid
-// blocking the request; background priming via PrimeCityCache handles it.
+// Foursquare, and finally falls back to a live Overpass query so that
+// un-indexed areas always return results.
 func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	// 1. Try SQLite FTS index (fast, persisted)
 	if local, err := searchPlacesFTS("", lat, lon, radiusM, true); err == nil && len(local) >= minLocalResults {
@@ -412,6 +436,13 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	} else if len(fsqPlaces) > 0 {
 		go indexPlaces(fsqPlaces)
 		return fsqPlaces, nil
+	}
+	// 4. Fallback: live Overpass query for un-indexed areas.
+	if ovPlaces, err := nearbyOverpass(lat, lon, radiusM); err != nil {
+		app.Log("places", "overpass fallback error: %v", err)
+	} else if len(ovPlaces) > 0 {
+		go indexPlaces(ovPlaces)
+		return ovPlaces, nil
 	}
 	// Return whatever local results exist (may be fewer than minLocalResults)
 	return local, nil
@@ -1040,7 +1071,7 @@ func renderLeafletMap(centerLat, centerLon float64, places []*Place) string {
 		markers = append(markers, fmt.Sprintf(`{"lat":%f,"lon":%f,"name":%s}`, p.Lat, p.Lon, jsonStr(p.Name)))
 	}
 	markersJSON := "[" + strings.Join(markers, ",") + "]"
-	return fmt.Sprintf(`<div style="height:280px;margin:1rem 0;border-radius:8px;overflow:hidden;"><div id="places-map" style="height:100%%;width:100%%;"></div></div>
+	return fmt.Sprintf(`<div style="height:280px;margin:1rem 0;border-radius:8px;overflow:hidden;position:relative;z-index:0;"><div id="places-map" style="height:100%%;width:100%%;"></div></div>
 <script>
 (function(){
   function initPlacesMap(){
