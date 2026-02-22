@@ -43,6 +43,10 @@ var searchCacheTime = map[string]time.Time{}
 
 const cacheTTL = 1 * time.Hour
 
+// noResultsCacheTTL is the TTL used when a live lookup returned no results.
+// Shorter than cacheTTL so that newly-added places are discovered sooner.
+const noResultsCacheTTL = 15 * time.Minute
+
 // nominatimResult represents a result from the Nominatim API
 type nominatimResult struct {
 	PlaceID     int64  `json:"place_id"`
@@ -191,8 +195,10 @@ func searchNominatim(query string) ([]*Place, error) {
 
 // searchNearbyKeyword searches for POIs near a location whose name, category,
 // or cuisine matches the given keyword.  It queries the local SQLite FTS index,
-// then the in-memory quadtree, then Google Places so that un-indexed areas
-// always return results.
+// then the in-memory quadtree, then Google Places, then the Overpass name-search
+// API, so that un-indexed and newly-added places can always be found.
+// Empty results are cached with a shorter TTL to avoid hammering external APIs
+// while still letting newly-added places surface quickly.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
 		radiusM = 1000
@@ -212,7 +218,11 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 
 	mutex.RLock()
 	if places, ok := searchCache[cacheKey]; ok {
-		if time.Since(searchCacheTime[cacheKey]) < cacheTTL {
+		ttl := cacheTTL
+		if len(places) == 0 {
+			ttl = noResultsCacheTTL // shorter TTL so new places surface sooner
+		}
+		if time.Since(searchCacheTime[cacheKey]) < ttl {
 			mutex.RUnlock()
 			return places, nil
 		}
@@ -230,6 +240,26 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 		go indexPlaces(gPlaces)
 		return gPlaces, nil
 	}
+
+	// 4. Try Overpass live name search (free; finds places not yet in local cache,
+	//    e.g. newly opened businesses that have been added to OpenStreetMap).
+	if ovPlaces, err := searchOverpassByName(query, lat, lon, radiusM); err != nil {
+		app.Log("places", "overpass name search error: %v", err)
+	} else if len(ovPlaces) > 0 {
+		mutex.Lock()
+		searchCache[cacheKey] = ovPlaces
+		searchCacheTime[cacheKey] = time.Now()
+		mutex.Unlock()
+		go indexPlaces(ovPlaces)
+		return ovPlaces, nil
+	}
+
+	// Cache the empty result so repeated searches don't re-hit external APIs.
+	// noResultsCacheTTL (15 min) is used on the next check so new places surface.
+	mutex.Lock()
+	searchCache[cacheKey] = []*Place{}
+	searchCacheTime[cacheKey] = time.Now()
+	mutex.Unlock()
 
 	return nil, nil
 }
