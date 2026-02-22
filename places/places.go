@@ -751,7 +751,7 @@ func renderCitiesSection() string {
 	for _, c := range cs {
 		sb.WriteString(fmt.Sprintf(
 			`<a href="#" onclick="selectCity(%f,%f,%s,%s);return false;" class="city-link">%s <span class="text-muted" style="font-size:0.8em;">%s</span></a>`,
-			c.Lat, c.Lon, jsonStr(c.Name), jsonStr(c.Country),
+			c.Lat, c.Lon, escapeHTML(jsonStr(c.Name)), escapeHTML(jsonStr(c.Country)),
 			escapeHTML(c.Name), escapeHTML(c.Country),
 		))
 	}
@@ -832,9 +832,9 @@ func renderSavedSearchesSection(userID string) string {
 				`<form style="display:inline" action="/places/save/delete" method="POST">`+
 				`<input type="hidden" name="id" value="%s">`+
 				`<button type="submit" class="btn-link text-muted" title="Remove">&#x2715;</button></form></li>`,
-			jsonStr(s.Type), jsonStr(s.Query), jsonStr(s.Location),
-			jsonStr(latStr), jsonStr(lonStr),
-			jsonStr(fmt.Sprintf("%d", s.Radius)), jsonStr(s.SortBy),
+			escapeHTML(jsonStr(s.Type)), escapeHTML(jsonStr(s.Query)), escapeHTML(jsonStr(s.Location)),
+			escapeHTML(jsonStr(latStr)), escapeHTML(jsonStr(lonStr)),
+			escapeHTML(jsonStr(fmt.Sprintf("%d", s.Radius))), escapeHTML(jsonStr(s.SortBy)),
 			escapeHTML(s.Label), escapeHTML(s.ID),
 		))
 	}
@@ -922,6 +922,7 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d place(s) found</p>`, len(places)))
 		sb.WriteString(renderSaveSearchForm("nearby", "", label, latStr, lonStr, radiusStr, ""))
 		sb.WriteString(renderLeafletMap(lat, lon, places))
+		sb.WriteString(renderTypeFilter(places))
 	}
 
 	sb.WriteString(`<div class="places-results">`)
@@ -1041,6 +1042,15 @@ function runSavedSearch(type, q, near, nearLat, nearLon, radius, sortBy) {
     document.getElementById('places-form').submit();
   }
 }
+function filterByType(btn) {
+  var cat = btn.dataset.filter || '';
+  document.querySelectorAll('.place-card').forEach(function(c) {
+    c.style.display = (!cat || c.dataset.category === cat) ? '' : 'none';
+  });
+  document.querySelectorAll('.type-filter-btn').forEach(function(b) {
+    b.classList.toggle('active', b === btn);
+  });
+}
 </script>`
 }
 
@@ -1096,11 +1106,42 @@ func renderPlaceCard(p *Place) string {
 		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website &#8599;</a></p>`, escapeHTML(p.Website))
 	}
 
-	return fmt.Sprintf(`<div class="card place-card">
+	return fmt.Sprintf(`<div class="card place-card" data-category="%s">
   <h4><a href="%s" target="_blank" rel="noopener">%s</a>%s%s</h4>
   %s%s
   <p class="place-links"><a href="%s" target="_blank" rel="noopener">Get Directions</a></p>
-</div>`, gmapsViewURL, escapeHTML(p.Name), cat, distHTML, addrHTML, extraHTML, gmapsDirURL)
+</div>`, escapeHTML(p.Category), gmapsViewURL, escapeHTML(p.Name), cat, distHTML, addrHTML, extraHTML, gmapsDirURL)
+}
+
+// renderTypeFilter renders category filter buttons for a set of places.
+// Returns an empty string if there are fewer than 2 distinct categories.
+func renderTypeFilter(places []*Place) string {
+	seen := map[string]struct{}{}
+	var cats []string
+	for _, p := range places {
+		if p.Category != "" {
+			if _, ok := seen[p.Category]; !ok {
+				seen[p.Category] = struct{}{}
+				cats = append(cats, p.Category)
+			}
+		}
+	}
+	if len(cats) < 2 {
+		return ""
+	}
+	sort.Strings(cats)
+	var sb strings.Builder
+	sb.WriteString(`<div class="places-type-filter">`)
+	sb.WriteString(`<button class="type-filter-btn active" data-filter="" onclick="filterByType(this)">All</button>`)
+	for _, cat := range cats {
+		label := strings.ReplaceAll(cat, "_", " ")
+		sb.WriteString(fmt.Sprintf(
+			`<button class="type-filter-btn" data-filter="%s" onclick="filterByType(this)">%s</button>`,
+			escapeHTML(cat), escapeHTML(label),
+		))
+	}
+	sb.WriteString(`</div>`)
+	return sb.String()
 }
 
 // sortPlaces sorts places in-place according to sortBy ("name" or "distance").
