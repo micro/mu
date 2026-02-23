@@ -29,9 +29,19 @@ Mu uses environment variables for configuration. Create a `.env` file or export 
 ```bash
 # Required for chat/AI features
 export FANAR_API_KEY="your-key"    # Get from api.fanar.qa
+# Or use Anthropic:
+# export ANTHROPIC_API_KEY="your-key"
 
 # Required for video features
 export YOUTUBE_API_KEY="your-key"  # Get from Google Cloud Console
+
+# Optional for Places (falls back to OpenStreetMap without it)
+export GOOGLE_API_KEY="your-key"   # Enable Places API (New) in Google Cloud Console
+
+# Optional for card payments
+# export STRIPE_SECRET_KEY="sk_live_..."
+# export STRIPE_PUBLISHABLE_KEY="pk_live_..."
+# export STRIPE_WEBHOOK_SECRET="whsec_..."
 ```
 
 See [Environment Variables](/docs/environment) for the complete list.

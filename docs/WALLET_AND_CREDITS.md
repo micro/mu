@@ -40,9 +40,8 @@ This should be enough if you're using Mu as a utility. If you need more, pay-as-
 | Video Watch | Free | No value added over YouTube |
 | Chat AI Query | 3 credits (3p) | LLM inference cost |
 | Chat Room | 1 credit (1p) | Room creation |
-| App Create | 5 credits (5p) | AI app generation |
-| App Modify | 3 credits (3p) | AI app modification |
-| Agent Run | 5 credits (5p) | Agent task execution |
+| Places Search | 5 credits (5p) | Google Places API cost |
+| Places Nearby | 2 credits (2p) | Google Places API cost |
 | External Email | 4 credits (4p) | SMTP delivery cost |
 
 **Note:** Internal messages (user-to-user within Mu) are free. Only external email (to addresses outside Mu) costs credits.
@@ -62,6 +61,19 @@ Unlimited tiers create misaligned incentives. If you pay a flat fee for unlimite
 Pay-as-you-go keeps us honest: we want to build efficient tools that solve your problem quickly, not sticky products that maximize your screen time.
 
 If you want truly unlimited and free — self-host. The code is open source.
+
+---
+
+## Card Deposits (Stripe)
+
+When Stripe is configured (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`), users can also top up with a credit or debit card:
+
+1. Go to `/wallet/topup` and select **Card**
+2. Choose a topup tier (£5, £10, £25, or £50)
+3. Complete payment via the Stripe Checkout page
+4. Credits are added automatically via the Stripe webhook (`/wallet/stripe/webhook`)
+
+Configure a webhook in the Stripe Dashboard pointing to `https://your-domain.com/wallet/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` to the signing secret. The webhook listens for `checkout.session.completed` events.
 
 ---
 
@@ -164,6 +176,9 @@ type CryptoWallet struct {
 |--------|------|-------------|
 | GET | `/wallet` | View balance and transaction history |
 | GET | `/wallet/topup` | Show deposit address and instructions |
+| POST | `/wallet/stripe/checkout` | Create a Stripe checkout session |
+| GET | `/wallet/stripe/success` | Success page after Stripe payment |
+| POST | `/wallet/stripe/webhook` | Stripe webhook for payment confirmation |
 
 ---
 
@@ -177,6 +192,14 @@ WALLET_SEED="24 word mnemonic phrase"
 # Base RPC endpoint (optional)
 BASE_RPC_URL="https://mainnet.base.org"
 
+# Deposit polling interval in seconds (optional, default: 30)
+DEPOSIT_POLL_INTERVAL="30"
+
+# Stripe card payments (optional)
+STRIPE_SECRET_KEY="sk_live_..."
+STRIPE_PUBLISHABLE_KEY="pk_live_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."  # For verifying Stripe webhook events
+
 # Quota (optional - these are defaults)
 FREE_DAILY_SEARCHES="10"
 CREDIT_COST_NEWS="1"
@@ -184,6 +207,9 @@ CREDIT_COST_NEWS_SUMMARY="1"
 CREDIT_COST_VIDEO="2"
 CREDIT_COST_VIDEO_WATCH="0"
 CREDIT_COST_CHAT="3"
+CREDIT_COST_EMAIL="4"
+CREDIT_COST_PLACES_SEARCH="5"
+CREDIT_COST_PLACES_NEARBY="2"
 ```
 
 ---
@@ -207,13 +233,20 @@ Mu uses an HD (Hierarchical Deterministic) wallet to derive unique deposit addre
 4. Check wallet balance → allow if sufficient, deduct credits
 5. Otherwise → show "quota exceeded" with options
 
-### Deposit Detection (Coming Soon)
+### Deposit Detection
 
-1. Poll Base RPC for incoming transactions to user addresses
-2. Detect ETH transfers and ERC-20 Transfer events
-3. Fetch current token price from price oracle
-4. Calculate credits and add to wallet
-5. Record transaction with tx hash
+Deposits are detected automatically by polling blockchain nodes:
+
+1. A background watcher polls each supported chain every 30 seconds (configurable via `DEPOSIT_POLL_INTERVAL`)
+2. For **ETH**: detects balance increases on user deposit addresses
+3. For **ERC-20 tokens**: scans `Transfer` event logs for incoming token transfers
+4. Fetches the current token price from CoinGecko (cached 5 minutes)
+5. Calculates credits (1 credit = $0.01 USD) and adds them to the user's wallet
+6. Records each deposit by transaction hash to prevent double-crediting
+
+The watcher starts automatically on server launch when a wallet seed is configured.
+
+**Environment variable:** `DEPOSIT_POLL_INTERVAL` (default: `30` seconds)
 
 ---
 

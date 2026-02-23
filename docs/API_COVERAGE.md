@@ -32,6 +32,13 @@ This document covers the REST API for programmatic access to Mu.
 - ✅ **Get Latest Videos** - `GET /video` (returns JSON with Accept: application/json)
 - ✅ **Search Videos** - `POST /video`
 
+### Places
+- ✅ **Places Page** - `GET /places` (returns JSON with Accept: application/json)
+- ✅ **Search Places** - `POST /places/search`
+- ✅ **Find Nearby Places** - `GET /places/nearby` or `POST /places/nearby`
+- ✅ **Save Search** - `POST /places/save` (requires auth)
+- ✅ **Delete Saved Search** - `POST /places/save/delete` (requires auth)
+
 
 ### ActivityPub Federation
 - ✅ **WebFinger** - `GET /.well-known/webfinger?resource=acct:user@domain`
@@ -132,6 +139,15 @@ All API endpoints support three authentication methods:
 | `/video` | GET | No | Get latest videos (JSON with Accept header) |
 | `/video` | POST | Yes | Search videos |
 
+### Places
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/places` | GET | No | Places page / geocode search (JSON with Accept header) |
+| `/places/search` | POST | Yes | Search places by name or category |
+| `/places/nearby` | GET/POST | Yes | Find places near a location |
+| `/places/save` | POST | Yes | Save a search for quick access |
+| `/places/save/delete` | POST | Yes | Delete a saved search |
+
 ### ActivityPub
 | Endpoint | Method | Auth Required | Description |
 |----------|--------|---------------|-------------|
@@ -226,6 +242,7 @@ This documentation is automatically generated from the endpoint definitions in `
 - ✅ Chat/AI
 - ✅ News (read + search)
 - ✅ Videos (read + search)
+- ✅ Places (search + nearby)
 - ✅ User profiles
 - ✅ Vector search
 - ✅ PAT token management
