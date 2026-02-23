@@ -190,6 +190,7 @@ var Template = `
     <link rel="preload" href="/news.png?` + Version + `" as="image">
     <link rel="preload" href="/video.png?` + Version + `" as="image">
     <link rel="preload" href="/account.png?` + Version + `" as="image">
+    <link rel="preload" href="/weather.png?` + Version + `" as="image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
@@ -217,6 +218,7 @@ var Template = `
           <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
           <a href="/markets"><img src="/markets.png?` + Version + `"><span class="label">Markets</span></a>
           <a href="/places"><img src="/places.png?` + Version + `"><span class="label">Places</span></a>
+          <a href="/weather"><img src="/weather.png?` + Version + `"><span class="label">Weather</span></a>
           <a id="nav-wallet" href="/wallet" style="display: none;"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
         </div>
         <div class="nav-bottom">
@@ -782,6 +784,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><td>Mail (external)</td><td>Send email outside Mu (SMTP)</td><td>4</td><td>4p</td></tr>
 <tr><td>Places search</td><td>Search for places by name or category</td><td>5</td><td>5p</td></tr>
 <tr><td>Places nearby</td><td>Find places of interest near a location</td><td>2</td><td>2p</td></tr>
+<tr><td>Weather forecast</td><td>Local weather with hourly &amp; 10-day forecast</td><td>1</td><td>1p</td></tr>
+<tr><td>Weather pollen</td><td>Local pollen forecast (add-on)</td><td>1</td><td>1p</td></tr>
 <tr><td>Markets</td><td>Live crypto, futures &amp; commodity prices</td><td>Free</td><td>—</td></tr>
 <tr><td>Search</td><td>Full-text search across all indexed content</td><td>Free</td><td>—</td></tr>
 <tr><td>Wallet</td><td>Check balance and top up</td><td>Free</td><td>—</td></tr>
@@ -795,7 +799,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><th>Tool / Endpoint</th><th>Description</th><th>Estimated Cost</th></tr>
 </thead>
 <tbody>
-<tr><td>Weather</td><td>Location-based weather forecasts</td><td>1p</td></tr>
 <tr><td>Translate</td><td>AI-powered language translation</td><td>1p</td></tr>
 <tr><td>Image search</td><td>Search for images</td><td>2p</td></tr>
 <tr><td>Calendar</td><td>Events and reminders</td><td>Free</td></tr>
