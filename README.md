@@ -36,7 +36,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] Mail - Private messaging 
 - [x] Places - Location search
 - [x] Wallet - Crypto payments
-- [ ] Services - Marketplace, etc
+- [ ] Agent & Services - Agent with tools registry, service marketplace (see [Architecture Plan](docs/AGENT_SERVICES_ARCHITECTURE.md))
 
 ### AI Features
 
