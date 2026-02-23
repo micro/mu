@@ -18,6 +18,7 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
 - **Mail** - Private messaging & email
+- **Places** - Discover places and points of interest near you
 - **Wallet** - Credits and crypto payments
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
@@ -33,6 +34,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] News - RSS news feed
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
+- [x] Places - Location search
 - [x] Wallet - Crypto payments
 - [ ] Services - Marketplace, etc
 
@@ -109,6 +111,16 @@ Set the home cards in home/cards.json
 #### News Feed
 
 Set the RSS news feeds in news/feeds.json
+
+#### Places
+
+Set the saved search categories in `places/locations.json`.
+
+When `GOOGLE_API_KEY` is set, Places uses the [Google Places API (New)](https://developers.google.com/maps/documentation/places/web-service/overview) for richer results. Without it, Places falls back to free OpenStreetMap data.
+
+```
+export GOOGLE_API_KEY=xxx
+```
 
 #### Video Channels
 
@@ -207,7 +219,6 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 - [ActivityPub](docs/ACTIVITYPUB.md) - Federation with Mastodon, Threads, etc.
 - [Messaging](docs/MESSAGING_SYSTEM.md) - Email and messaging setup
 - [Wallet & Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
-
 **Reference**
 - [Configuration](docs/ENVIRONMENT_VARIABLES.md) - All environment variables
 - [Vector Search](docs/VECTOR_SEARCH.md) - Semantic search setup

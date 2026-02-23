@@ -45,6 +45,8 @@ For self-hosted instances, replace `mu.xyz` with your domain.
 | `blog_delete` | Delete a blog post | Free |
 | `video` | Get the latest videos | Free |
 | `video_search` | Search for videos | 2 credits |
+| `places_search` | Search for places by name or category | 5 credits |
+| `places_nearby` | Find places of interest near a location | 2 credits |
 | `mail_read` | Read mail inbox | Free |
 | `mail_send` | Send a mail message | 4 credits |
 | `search` | Search across all content | Free |
