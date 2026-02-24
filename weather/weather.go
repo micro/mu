@@ -100,7 +100,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	body := renderWeatherPage(r)
 	app.Respond(w, r, app.Response{
 		Title:       "Weather",
-		Description: "Local weather forecast with hourly and 10-day outlook",
+		Description: "Local weather forecast with hourly and daily outlook",
 		HTML:        body,
 	})
 }
@@ -294,7 +294,7 @@ func renderWeatherPage(r *http.Request) string {
     // Daily forecast table
     var daily = '';
     if (f && f.DailyItems && f.DailyItems.length > 0) {
-      daily += '<h3>10-Day Forecast</h3>';
+      daily += '<h3>' + f.DailyItems.length + '-Day Forecast</h3>';
       daily += '<div class="table-scroll"><table class="data-table weather-table">';
       daily += '<thead><tr><th>Date</th><th>Conditions</th><th>High</th><th>Low</th><th>Rain</th></tr></thead>';
       daily += '<tbody>';

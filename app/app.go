@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"io/fs"
 	"log"
 	"net/http"
@@ -423,6 +424,16 @@ func Head(appName string, refs []string) string {
 
 func Card(id, title, content string) string {
 	return fmt.Sprintf(CardTemplate, id, id, title, content)
+}
+
+// CardWithIcon renders a card with an icon image to the left of the title.
+// If icon is empty, it falls back to Card without an icon.
+func CardWithIcon(id, title, icon, content string) string {
+	if icon == "" {
+		return Card(id, title, content)
+	}
+	titleHTML := `<img src="` + htmlpkg.EscapeString(icon) + `" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">` + htmlpkg.EscapeString(title)
+	return fmt.Sprintf(CardTemplate, id, id, titleHTML, content)
 }
 
 // Login handler
