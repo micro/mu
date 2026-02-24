@@ -136,8 +136,8 @@ func renderWeatherPage(r *http.Request) string {
   </div>
 
   <div class="weather-options">
-    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
-      <input type="checkbox" id="toggle-pollen" onchange="weatherTogglePollen()">
+    <label style="gap:6px;cursor:pointer;">
+      <input type="checkbox" id="toggle-pollen" onchange="weatherTogglePollen()" style="display: inline; width: auto;">
       <span>Include pollen forecast (+` + fmt.Sprintf("%dp", wallet.CostWeatherPollen) + `)</span>
     </label>
   </div>
