@@ -432,7 +432,7 @@ func CardWithIcon(id, title, icon, content string) string {
 	if icon == "" {
 		return Card(id, title, content)
 	}
-	titleHTML := `<img src="` + htmlpkg.EscapeString(icon) + `" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">` + htmlpkg.EscapeString(title)
+	titleHTML := `<img src="` + htmlpkg.EscapeString(icon) + `" style="width:24px;height:24px;vertical-align:bottom;margin-right:6px;">` + htmlpkg.EscapeString(title)
 	return fmt.Sprintf(CardTemplate, id, id, titleHTML, content)
 }
 
