@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	googleWeatherBaseURL = "https://weather.googleapis.com/v1/forecast:lookup"
-	googlePollenBaseURL  = "https://pollen.googleapis.com/v1/forecast:lookup"
+	googleWeatherDailyURL  = "https://weather.googleapis.com/v1/forecast/days:lookup"
+	googleWeatherHourlyURL = "https://weather.googleapis.com/v1/forecast/hours:lookup"
+	googlePollenBaseURL    = "https://pollen.googleapis.com/v1/forecast:lookup"
 )
 
 // googleAPIKey returns the Google API key from the environment.
@@ -162,7 +163,7 @@ func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
 
 	// Fetch daily forecast (10 days)
 	dailyURL := fmt.Sprintf("%s?key=%s&location.latitude=%f&location.longitude=%f&days=10&unitsSystem=METRIC",
-		googleWeatherBaseURL, key, lat, lon)
+		googleWeatherDailyURL, key, lat, lon)
 
 	dailyResp, err := googleWeatherGet(dailyURL, "google_weather_daily")
 	if err != nil {
@@ -175,8 +176,8 @@ func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
 	}
 
 	// Fetch hourly forecast (24 hours)
-	hourlyURL := fmt.Sprintf("https://weather.googleapis.com/v1/forecast:lookup?key=%s&location.latitude=%f&location.longitude=%f&hours=24&unitsSystem=METRIC",
-		key, lat, lon)
+	hourlyURL := fmt.Sprintf("%s?key=%s&location.latitude=%f&location.longitude=%f&hours=24&unitsSystem=METRIC",
+		googleWeatherHourlyURL, key, lat, lon)
 
 	hourlyResp, err := googleWeatherGet(hourlyURL, "google_weather_hourly")
 	if err != nil {
