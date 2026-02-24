@@ -4580,6 +4580,9 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-size: 0.85em;
 }
 
+.type-filter-btn {
+  margin: 5px;
+}
 /* ========================================
    WEATHER PAGE
    ======================================== */
