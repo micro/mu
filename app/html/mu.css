@@ -23,7 +23,7 @@
   --text-primary: #1a1a1a;
   --text-secondary: #555;
   --text-muted: #888;
-  --accent-color: #0d7377;
+  --accent-color: #000;
   --accent-blue: #007bff;
   --accent-blue-hover: #0056b3;
   
@@ -394,41 +394,7 @@ td {
   height: 24px;
   width: 24px;
   margin-right: 16px;
-}
-
-/* Colored nav icons */
-#nav a[href="/home"] img {
-  filter: brightness(0) saturate(100%) invert(34%) sepia(72%) saturate(700%) hue-rotate(165deg) brightness(96%) contrast(97%);
-}
-#nav a[href="/blog"] img {
-  filter: brightness(0) saturate(100%) invert(27%) sepia(79%) saturate(700%) hue-rotate(245deg) brightness(101%) contrast(92%);
-}
-#nav a[href="/chat"] img {
-  filter: brightness(0) saturate(100%) invert(34%) sepia(52%) saturate(700%) hue-rotate(95deg) brightness(97%) contrast(92%);
-}
-#nav a[href="/mail"] img {
-  filter: brightness(0) saturate(100%) invert(28%) sepia(87%) saturate(700%) hue-rotate(218deg) brightness(99%) contrast(94%);
-}
-#nav a[href="/news"] img {
-  filter: brightness(0) saturate(100%) invert(62%) sepia(78%) saturate(700%) hue-rotate(4deg) brightness(105%) contrast(102%);
-}
-#nav a[href="/video"] img {
-  filter: brightness(0) saturate(100%) invert(20%) sepia(93%) saturate(4000%) hue-rotate(352deg) brightness(103%) contrast(108%);
-}
-#nav a[href="/markets"] img {
-  filter: brightness(0) saturate(100%) invert(55%) sepia(97%) saturate(1000%) hue-rotate(14deg) brightness(104%) contrast(102%);
-}
-#nav a[href="/places"] img {
-  filter: brightness(0) saturate(100%) invert(18%) sepia(92%) saturate(6932%) hue-rotate(359deg) brightness(104%) contrast(111%);
-}
-#nav a[href="/weather"] img {
-  filter: brightness(0) saturate(100%) invert(37%) sepia(73%) saturate(900%) hue-rotate(193deg) brightness(100%) contrast(96%);
-}
-#nav a[href="/reminder"] img {
-  filter: brightness(0) saturate(100%) invert(30%) sepia(70%) saturate(600%) hue-rotate(140deg) brightness(98%) contrast(102%);
-}
-#nav a[href="/wallet"] img {
-  filter: brightness(0) saturate(100%) invert(30%) sepia(94%) saturate(1100%) hue-rotate(199deg) brightness(97%) contrast(96%);
+  filter: brightness(0);
 }
 
 #nav .label {
@@ -768,7 +734,7 @@ a.card-clickable {
 }
 
 a.card-clickable:hover {
-  border-color: var(--accent-color, #0d7377);
+  border-color: var(--accent-color, #000);
 }
 
 /* Reduce card min-width on smaller screens */
@@ -872,8 +838,8 @@ body:has(#messages) #chat-back-link {
   color: #333;
   line-height: 1.5;
   padding: 12px 15px;
-  background: #f0f7ff;
-  border-left: 4px solid #4a90e2;
+  background: var(--hover-background);
+  border-left: 4px solid #ccc;
   border-radius: 3px;
   margin-bottom: 15px;
 }
@@ -970,7 +936,7 @@ body:has(#messages) #chat-back-link {
 }
 
 .summary-toggle {
-  color: #0066cc;
+  color: var(--text-secondary);
   font-size: 12px;
   text-decoration: none;
   cursor: pointer;
@@ -1550,7 +1516,7 @@ body:has(#messages) #chat-back-link {
 }
 
 #news-article .article-actions a {
-  color: #0066cc;
+  color: var(--text-secondary);
 }
 
 #news-article .article-back {
@@ -1783,7 +1749,7 @@ body:has(#messages) #chat-back-link {
 }
 
 .link:hover {
-  color: var(--accent-color, #0d7377);
+  color: var(--accent-color, #000);
   text-decoration: none;
 }
 
@@ -1792,7 +1758,7 @@ body:has(#messages) #chat-back-link {
 a.category,
 a.highlight {
   display: inline-block;
-  color: #0d7377 !important;
+  color: var(--text-secondary) !important;
   font-size: 10px !important;
   font-weight: bold !important;
   text-transform: uppercase;
@@ -2877,7 +2843,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 
 /* Unread indicator */
 .unread-dot {
-  color: #007bff;
+  color: var(--text-primary);
   font-weight: bold;
 }
 
@@ -2909,7 +2875,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin-bottom: 6px;
 }
 .card-title:hover {
-  color: var(--accent-color, #0d7377);
+  color: var(--accent-color, #000);
 }
 .card-desc, .card-preview {
   font-size: 14px;
@@ -2933,7 +2899,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--accent-color, #0d7377);
+  color: var(--accent-color, #000);
   text-decoration: none;
   font-weight: 600;
 }
@@ -3029,7 +2995,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin-bottom: 4px;
 }
 .card-mail.card-unread {
-  border-left: 3px solid var(--accent-color, #0d7377);
+  border-left: 3px solid var(--accent-color, #000);
 }
 
 /* Market card */
@@ -3067,7 +3033,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin-bottom: 6px;
 }
 .card-chat.card-user {
-  background: var(--accent-light, #e8f5f5);
+  background: var(--hover-background);
 }
 
 /* Card grid layouts */
@@ -3124,7 +3090,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 
 .page-filters .tag.active {
-  background: var(--accent-color, #0d7377);
+  background: var(--accent-color, #000);
   color: white;
 }
 
@@ -3181,7 +3147,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   outline: none;
 }
 .note-editor input[type="text"]:focus {
-  border-bottom-color: var(--accent-color, #0d7377);
+  border-bottom-color: var(--accent-color, #000);
 }
 .note-editor input[type="text"]::placeholder {
   color: #aaa;
@@ -3269,7 +3235,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 
 .revert-link {
   font-size: 13px;
-  color: #0066cc;
+  color: var(--text-secondary);
   text-decoration: none;
   margin-left: 8px;
 }
@@ -3336,7 +3302,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin-top: 15px;
 }
 .featured-card {
-  border: 2px solid var(--accent-color, #0d7377);
+  border: 2px solid var(--accent-color, #000);
   border-radius: var(--border-radius, 6px);
   padding: 20px;
   text-align: center;
@@ -3351,7 +3317,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 .featured-card h4 a {
   text-decoration: none;
-  color: var(--accent-color, #0d7377);
+  color: var(--accent-color, #000);
 }
 .featured-card p {
   margin: 0;
@@ -4176,7 +4142,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 
 .market-card:hover {
-  border-color: var(--accent-color, #0d7377);
+  border-color: var(--accent-color, #000);
 }
 
 .market-card-header {
@@ -4357,7 +4323,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 
 .name-content {
   font-weight: var(--font-weight-medium);
-  border-left-color: #0d7377;
+  border-left-color: var(--accent-color);
 }
 
 .hadith-content {
