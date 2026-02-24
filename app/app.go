@@ -762,7 +762,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p>Top up your wallet</p>
 <p>1 credit = 1p</p>
 <p>News 1p · Video 2p · Chat 3p · Email 4p · Places 5p</p>
-<p>Nearby places 2p</p>
 <p>Same rates for agents via MCP</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
