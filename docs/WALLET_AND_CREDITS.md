@@ -43,6 +43,8 @@ This should be enough if you're using Mu as a utility. If you need more, pay-as-
 | Places Search | 5 credits (5p) | Google Places API cost |
 | Places Nearby | 2 credits (2p) | Google Places API cost |
 | External Email | 4 credits (4p) | SMTP delivery cost |
+| Weather Forecast | 1 credit (1p) | Weather API cost |
+| Weather Pollen | 1 credit (1p) | Pollen data add-on |
 
 **Note:** Internal messages (user-to-user within Mu) are free. Only external email (to addresses outside Mu) costs credits.
 
@@ -210,6 +212,8 @@ CREDIT_COST_CHAT="3"
 CREDIT_COST_EMAIL="4"
 CREDIT_COST_PLACES_SEARCH="5"
 CREDIT_COST_PLACES_NEARBY="2"
+CREDIT_COST_WEATHER="1"
+CREDIT_COST_WEATHER_POLLEN="1"
 ```
 
 ---

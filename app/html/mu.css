@@ -397,11 +397,35 @@ td {
 }
 
 /* Colored nav icons */
-#nav a[href="/places"] img {
-  filter: brightness(0) saturate(100%) invert(18%) sepia(92%) saturate(6932%) hue-rotate(359deg) brightness(104%) contrast(111%);
+#nav a[href="/home"] img {
+  filter: brightness(0) saturate(100%) invert(34%) sepia(72%) saturate(700%) hue-rotate(165deg) brightness(96%) contrast(97%);
+}
+#nav a[href="/blog"] img {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(79%) saturate(700%) hue-rotate(245deg) brightness(101%) contrast(92%);
+}
+#nav a[href="/chat"] img {
+  filter: brightness(0) saturate(100%) invert(34%) sepia(52%) saturate(700%) hue-rotate(95deg) brightness(97%) contrast(92%);
+}
+#nav a[href="/mail"] img {
+  filter: brightness(0) saturate(100%) invert(28%) sepia(87%) saturate(700%) hue-rotate(218deg) brightness(99%) contrast(94%);
+}
+#nav a[href="/news"] img {
+  filter: brightness(0) saturate(100%) invert(62%) sepia(78%) saturate(700%) hue-rotate(4deg) brightness(105%) contrast(102%);
+}
+#nav a[href="/video"] img {
+  filter: brightness(0) saturate(100%) invert(20%) sepia(93%) saturate(4000%) hue-rotate(352deg) brightness(103%) contrast(108%);
 }
 #nav a[href="/markets"] img {
   filter: brightness(0) saturate(100%) invert(55%) sepia(97%) saturate(1000%) hue-rotate(14deg) brightness(104%) contrast(102%);
+}
+#nav a[href="/places"] img {
+  filter: brightness(0) saturate(100%) invert(18%) sepia(92%) saturate(6932%) hue-rotate(359deg) brightness(104%) contrast(111%);
+}
+#nav a[href="/weather"] img {
+  filter: brightness(0) saturate(100%) invert(37%) sepia(73%) saturate(900%) hue-rotate(193deg) brightness(100%) contrast(96%);
+}
+#nav a[href="/reminder"] img {
+  filter: brightness(0) saturate(100%) invert(30%) sepia(70%) saturate(600%) hue-rotate(140deg) brightness(98%) contrast(102%);
 }
 #nav a[href="/wallet"] img {
   filter: brightness(0) saturate(100%) invert(30%) sepia(94%) saturate(1100%) hue-rotate(199deg) brightness(97%) contrast(96%);
