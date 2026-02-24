@@ -10,7 +10,7 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 
 **The solution**: Small, focused tools that do one thing well. No ads. No algorithms. No tracking.
 
-### Features
+### Featured Apps
 
 - **Home** - Your personalized dashboard
 - **Blog** - Microblogging with [ActivityPub](docs/ACTIVITYPUB.md) federation
@@ -263,7 +263,7 @@ See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
 
 ## Sponsorship 
 
-You can sponsor the project using [GitHub Sponsors](https://github.com/sponsors/asim) or via [Patreon](https://patreon.com/muxyz) to support ongoing development and hosting costs. Sponsors get early access to new features and can vote on the project roadmap. All features remain free (with daily limits) or pay-as-you-go.
+You can sponsor the project using [GitHub Sponsors](https://github.com/sponsors/asim) to support development and hosting costs. Sponsors get early access to new features and can vote on the project roadmap. All features remain free (with daily limits) or pay-as-you-go.
 
 ## License
 
