@@ -4585,9 +4585,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
    ======================================== */
 
 .weather-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }

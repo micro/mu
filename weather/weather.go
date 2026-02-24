@@ -128,9 +128,7 @@ func renderWeatherPage(r *http.Request) string {
       <input id="input-location" type="text" placeholder="Search city or postcode" class="weather-search-input">
       <button type="submit" class="btn">Search</button>
     </form>
-    <br>
     <span class="weather-or">Or</span>
-    <br>
     <button id="btn-locate" onclick="weatherLocate()" class="btn">Use My Location</button>
   </div>
 
