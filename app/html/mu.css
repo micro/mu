@@ -396,6 +396,17 @@ td {
   margin-right: 16px;
 }
 
+/* Colored nav icons */
+#nav a[href="/places"] img {
+  filter: brightness(0) saturate(100%) invert(18%) sepia(92%) saturate(6932%) hue-rotate(359deg) brightness(104%) contrast(111%);
+}
+#nav a[href="/markets"] img {
+  filter: brightness(0) saturate(100%) invert(55%) sepia(97%) saturate(1000%) hue-rotate(14deg) brightness(104%) contrast(102%);
+}
+#nav a[href="/wallet"] img {
+  filter: brightness(0) saturate(100%) invert(30%) sepia(94%) saturate(1100%) hue-rotate(199deg) brightness(97%) contrast(96%);
+}
+
 #nav .label {
   font-size: 1.1em;
 }

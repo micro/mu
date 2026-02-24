@@ -406,6 +406,35 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	return false, false, cost, errors.New("insufficient credits")
 }
 
+// RecordUsage records a zero-cost usage transaction (for admins and free-tier tracking)
+func RecordUsage(userID string, operation string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	w, exists := wallets[userID]
+	if !exists {
+		w = &Wallet{
+			UserID:    userID,
+			Balance:   0,
+			Currency:  "GBP",
+			UpdatedAt: time.Now(),
+		}
+		wallets[userID] = w
+	}
+
+	tx := &Transaction{
+		ID:        uuid.New().String(),
+		UserID:    userID,
+		Type:      TxSpend,
+		Amount:    0,
+		Balance:   w.Balance,
+		Operation: operation,
+		CreatedAt: time.Now(),
+	}
+	transactions[userID] = append(transactions[userID], tx)
+	data.SaveJSON("transactions.json", transactions)
+}
+
 // ConsumeQuota consumes quota for an operation (call after successful operation)
 func ConsumeQuota(userID string, operation string) error {
 	// Get account to check admin status
@@ -414,8 +443,9 @@ func ConsumeQuota(userID string, operation string) error {
 		return errors.New("account not found")
 	}
 
-	// Admins don't consume quota
+	// Admins get free access but usage is tracked
 	if acc.Admin {
+		RecordUsage(userID, operation)
 		return nil
 	}
 
