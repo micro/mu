@@ -64,13 +64,17 @@ type DailyItem struct {
 
 // PollenForecast holds pollen data for a location.
 type PollenForecast struct {
-	Date        time.Time
-	GrassIndex  int
-	GrassLabel  string
-	TreeIndex   int
-	TreeLabel   string
-	WeedIndex   int
-	WeedLabel   string
+	Date             time.Time
+	GrassIndex       int
+	GrassCategory    string
+	GrassDescription string
+	TreeIndex        int
+	TreeCategory     string
+	TreeDescription  string
+	WeedIndex        int
+	WeedCategory     string
+	WeedDescription  string
+	HealthRecs       []string
 }
 
 // --- Google Weather API response structs ---
@@ -148,9 +152,12 @@ type googlePollenTypeInfo struct {
 	DisplayName string `json:"displayName"`
 	InSeason    bool   `json:"inSeason"`
 	IndexInfo   *struct {
-		Value       int    `json:"value"`
-		DisplayName string `json:"displayName"`
+		Value            int    `json:"value"`
+		DisplayName      string `json:"displayName"`
+		Category         string `json:"category"`
+		IndexDescription string `json:"indexDescription"`
 	} `json:"indexInfo"`
+	HealthRecommendations []string `json:"healthRecommendations"`
 }
 
 // FetchWeather retrieves weather forecast from the Google Weather API.
@@ -286,21 +293,31 @@ func FetchPollen(lat, lon float64) ([]PollenForecast, error) {
 		}
 		for _, pt := range day.PollenTypeInfo {
 			idx := 0
-			label := "N/A"
+			category := "N/A"
+			description := ""
 			if pt.IndexInfo != nil {
 				idx = pt.IndexInfo.Value
-				label = pt.IndexInfo.DisplayName
+				if pt.IndexInfo.Category != "" {
+					category = pt.IndexInfo.Category
+				} else if pt.IndexInfo.DisplayName != "" {
+					category = pt.IndexInfo.DisplayName
+				}
+				description = pt.IndexInfo.IndexDescription
 			}
 			switch pt.Code {
 			case "GRASS":
 				pf.GrassIndex = idx
-				pf.GrassLabel = label
+				pf.GrassCategory = category
+				pf.GrassDescription = description
+				pf.HealthRecs = append(pf.HealthRecs, pt.HealthRecommendations...)
 			case "TREE":
 				pf.TreeIndex = idx
-				pf.TreeLabel = label
+				pf.TreeCategory = category
+				pf.TreeDescription = description
 			case "WEED":
 				pf.WeedIndex = idx
-				pf.WeedLabel = label
+				pf.WeedCategory = category
+				pf.WeedDescription = description
 			}
 		}
 		result = append(result, pf)
