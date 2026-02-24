@@ -184,11 +184,18 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 			app.Log("places", "google places search error: %v", err)
 			// Fall through to Overpass on error
 		} else {
+			filtered := make([]*Place, 0, len(gPlaces))
 			for _, p := range gPlaces {
 				p.Distance = haversine(lat, lon, p.Lat, p.Lon)
+				if p.Distance <= float64(radiusM) {
+					filtered = append(filtered, p)
+				}
 			}
-			go indexPlaces(gPlaces)
-			return gPlaces, nil
+			sort.Slice(filtered, func(i, j int) bool {
+				return filtered[i].Distance < filtered[j].Distance
+			})
+			go indexPlaces(filtered)
+			return filtered, nil
 		}
 	}
 
@@ -214,11 +221,18 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 			app.Log("places", "google places nearby error: %v", err)
 			// Fall through to local/Overpass on error
 		} else {
+			filtered := make([]*Place, 0, len(gPlaces))
 			for _, p := range gPlaces {
 				p.Distance = haversine(lat, lon, p.Lat, p.Lon)
+				if p.Distance <= float64(radiusM) {
+					filtered = append(filtered, p)
+				}
 			}
-			go indexPlaces(gPlaces)
-			return gPlaces, nil
+			sort.Slice(filtered, func(i, j int) bool {
+				return filtered[i].Distance < filtered[j].Distance
+			})
+			go indexPlaces(filtered)
+			return filtered, nil
 		}
 	}
 
@@ -1129,6 +1143,20 @@ func sortPlaces(places []*Place, sortBy string) {
 	if sortBy == "name" {
 		sort.Slice(places, func(i, j int) bool {
 			return strings.ToLower(places[i].Name) < strings.ToLower(places[j].Name)
+		})
+	} else {
+		// Default: sort by distance (closest first); places without distance keep their order
+		sort.SliceStable(places, func(i, j int) bool {
+			if places[i].Distance == 0 && places[j].Distance == 0 {
+				return false
+			}
+			if places[i].Distance == 0 {
+				return false
+			}
+			if places[j].Distance == 0 {
+				return true
+			}
+			return places[i].Distance < places[j].Distance
 		})
 	}
 }
