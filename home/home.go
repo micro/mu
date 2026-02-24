@@ -225,7 +225,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if card.Link != "" {
 			content += app.Link("More", card.Link)
 		}
-		html := app.CardWithIcon(card.ID, card.Title, card.Icon, content)
+		html := app.Card(card.ID, card.Title, content)
 		if card.Column == "left" {
 			leftHTML = append(leftHTML, html)
 		} else {
