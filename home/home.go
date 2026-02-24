@@ -40,6 +40,7 @@ func ChatCard() string {
 type Card struct {
 	ID          string
 	Title       string
+	Icon        string    // Optional icon image path (e.g. "/news.png")
 	Column      string // "left" or "right"
 	Position    int
 	Link        string
@@ -62,6 +63,7 @@ type CardConfig struct {
 		Type     string `json:"type"`
 		Position int    `json:"position"`
 		Link     string `json:"link"`
+		Icon     string `json:"icon"`
 	} `json:"left"`
 	Right []struct {
 		ID       string `json:"id"`
@@ -69,6 +71,7 @@ type CardConfig struct {
 		Type     string `json:"type"`
 		Position int    `json:"position"`
 		Link     string `json:"link"`
+		Icon     string `json:"icon"`
 	} `json:"right"`
 }
 
@@ -100,6 +103,7 @@ func Load() {
 			Cards = append(Cards, Card{
 				ID:       c.ID,
 				Title:    c.Title,
+				Icon:     c.Icon,
 				Column:   "left",
 				Position: c.Position,
 				Link:     c.Link,
@@ -113,6 +117,7 @@ func Load() {
 			Cards = append(Cards, Card{
 				ID:       c.ID,
 				Title:    c.Title,
+				Icon:     c.Icon,
 				Column:   "right",
 				Position: c.Position,
 				Link:     c.Link,
@@ -219,7 +224,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if card.Link != "" {
 			content += app.Link("More", card.Link)
 		}
-		html := app.Card(card.ID, card.Title, content)
+		html := app.CardWithIcon(card.ID, card.Title, card.Icon, content)
 		if card.Column == "left" {
 			leftHTML = append(leftHTML, html)
 		} else {
