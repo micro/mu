@@ -23,9 +23,11 @@ var (
 	CostChatQuery     = getEnvInt("CREDIT_COST_CHAT", 3)
 	CostChatRoom      = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
 	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
-	CostPlacesSearch  = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
-	CostPlacesNearby  = getEnvInt("CREDIT_COST_PLACES_NEARBY", 2)
-	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
+	CostPlacesSearch   = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
+	CostPlacesNearby   = getEnvInt("CREDIT_COST_PLACES_NEARBY", 2)
+	CostWeatherForecast = getEnvInt("CREDIT_COST_WEATHER", 1)
+	CostWeatherPollen  = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
+	FreeDailySearches  = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
 // PaymentsEnabled returns true if payments are configured
@@ -46,6 +48,8 @@ const (
 	OpExternalEmail = "external_email"
 	OpPlacesSearch  = "places_search"
 	OpPlacesNearby  = "places_nearby"
+	OpWeatherForecast = "weather_forecast"
+	OpWeatherPollen = "weather_pollen"
 	OpTopup         = "topup"
 	OpRefund        = "refund"
 )
@@ -357,6 +361,10 @@ func GetOperationCost(operation string) int {
 		return CostPlacesSearch
 	case OpPlacesNearby:
 		return CostPlacesNearby
+	case OpWeatherForecast:
+		return CostWeatherForecast
+	case OpWeatherPollen:
+		return CostWeatherPollen
 	default:
 		return 1
 	}

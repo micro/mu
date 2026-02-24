@@ -4544,3 +4544,85 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin-top: 0;
   font-size: 0.85em;
 }
+
+/* ========================================
+   WEATHER PAGE
+   ======================================== */
+
+.weather-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.weather-options {
+  margin-bottom: 20px;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+.weather-current {
+  display: inline-block;
+  margin-bottom: 20px;
+  min-width: 180px;
+}
+
+.weather-temp {
+  font-size: 3em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.weather-desc {
+  font-size: 1.1em;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.weather-hourly-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+}
+
+.weather-hour-card {
+  flex: 0 0 auto;
+  min-width: 70px;
+  text-align: center;
+  background: var(--hover-background);
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: 8px 6px;
+}
+
+.weather-hour-time {
+  font-size: 0.75em;
+  color: var(--text-muted);
+}
+
+.weather-hour-temp {
+  font-size: 1.1em;
+  font-weight: 700;
+  margin: 4px 0;
+}
+
+.weather-hour-desc {
+  font-size: 0.7em;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.weather-hour-rain {
+  font-size: 0.7em;
+  color: #2980b9;
+  margin-top: 2px;
+}
+
+.weather-table {
+  width: 100%;
+  margin-bottom: 20px;
+}

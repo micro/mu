@@ -31,6 +31,7 @@ import (
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
+	"mu/weather"
 	"mu/widgets"
 )
 
@@ -74,6 +75,9 @@ func main() {
 
 	// load places
 	places.Load()
+
+	// load weather
+	weather.Load()
 
 	// load widgets (markets, reminder)
 	widgets.Load()
@@ -188,6 +192,7 @@ func main() {
 		"/markets":         false, // Public viewing
 		"/reminder":        false, // Public viewing
 		"/places":          false, // Public map, auth for search
+		"/weather":         false, // Public page, auth for forecast lookup
 		"/mail":            true,  // Require auth for inbox
 		"/logout":          true,
 		"/account":         true,
@@ -288,6 +293,9 @@ func main() {
 	// serve places page
 	http.HandleFunc("/places", places.Handler)
 	http.HandleFunc("/places/", places.Handler)
+
+	// serve weather page
+	http.HandleFunc("/weather", weather.Handler)
 
 	// auth
 	http.HandleFunc("/login", app.Login)
