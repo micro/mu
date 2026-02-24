@@ -135,8 +135,8 @@ func renderWeatherPage(r *http.Request) string {
     </form>
   </div>
 
-  <div class="weather-options" style="margin-top:12px;">
-    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+  <div class="weather-options">
+    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
       <input type="checkbox" id="toggle-pollen" onchange="weatherTogglePollen()">
       <span>Include pollen forecast (+` + fmt.Sprintf("%dp", wallet.CostWeatherPollen) + `)</span>
     </label>
@@ -145,6 +145,7 @@ func renderWeatherPage(r *http.Request) string {
   <div id="weather-loading" style="display:none;" class="card-meta">Loading weather…</div>
   <div id="weather-error" style="display:none;" class="text-error"></div>
   <div id="weather-result" style="display:none;">
+    <div id="weather-location"></div>
     <div id="weather-current"></div>
     <div id="weather-hourly"></div>
     <div id="weather-daily"></div>
@@ -167,7 +168,17 @@ func renderWeatherPage(r *http.Request) string {
     }
     showLoading(true);
     navigator.geolocation.getCurrentPosition(function(pos) {
-      fetchWeather(pos.coords.latitude, pos.coords.longitude);
+      var lat = pos.coords.latitude;
+      var lon = pos.coords.longitude;
+      // Reverse geocode to get location name
+      fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lon + '&format=json', {
+        headers: {'Accept': 'application/json', 'User-Agent': 'MuWeatherApp/1.0'}
+      }).then(function(r){ return r.json(); }).then(function(data) {
+        var name = data && data.display_name ? data.display_name.split(',').slice(0,2).join(', ') : (lat.toFixed(3) + ', ' + lon.toFixed(3));
+        fetchWeather(lat, lon, name);
+      }).catch(function() {
+        fetchWeather(lat, lon, lat.toFixed(3) + ', ' + lon.toFixed(3));
+      });
     }, function(err) {
       showLoading(false);
       showError('Location access denied. Please search by city name instead.');
@@ -188,14 +199,15 @@ func renderWeatherPage(r *http.Request) string {
         showError('Location not found. Please try a different search.');
         return;
       }
-      fetchWeather(parseFloat(data[0].lat), parseFloat(data[0].lon));
+      var name = data[0].display_name ? data[0].display_name.split(',').slice(0,2).join(', ') : q;
+      fetchWeather(parseFloat(data[0].lat), parseFloat(data[0].lon), name);
     }).catch(function() {
       showLoading(false);
       showError('Failed to find location.');
     });
   }
 
-  function fetchWeather(lat, lon) {
+  function fetchWeather(lat, lon, locationName) {
     showLoading(true);
     showError('');
     var url = '/weather?lat=' + lat + '&lon=' + lon + (pollenEnabled ? '&pollen=1' : '');
@@ -206,7 +218,7 @@ func renderWeatherPage(r *http.Request) string {
       })
       .then(function(data) {
         showLoading(false);
-        renderWeather(data);
+        renderWeather(data, locationName);
       })
       .catch(function(err) {
         showLoading(false);
@@ -218,16 +230,38 @@ func renderWeatherPage(r *http.Request) string {
       });
   }
 
-  function renderWeather(data) {
+  function weatherIcon(code) {
+    if (!code) return '';
+    var icons = {
+      'CLEAR': '☀️', 'MOSTLY_CLEAR': '🌤️', 'PARTLY_CLOUDY': '⛅',
+      'MOSTLY_CLOUDY': '🌥️', 'CLOUDY': '☁️', 'OVERCAST': '☁️',
+      'FOG': '🌫️', 'FOGGY': '🌫️', 'HAZE': '🌫️',
+      'LIGHT_RAIN': '🌦️', 'DRIZZLE': '🌦️', 'RAIN': '🌧️',
+      'MODERATE_RAIN': '🌧️', 'HEAVY_RAIN': '🌧️', 'SHOWERS': '🌧️',
+      'LIGHT_SNOW': '🌨️', 'SNOW': '❄️', 'MODERATE_SNOW': '❄️', 'HEAVY_SNOW': '❄️', 'BLIZZARD': '❄️',
+      'SLEET': '🌨️', 'HAIL': '🌨️', 'FREEZING_RAIN': '🌨️',
+      'THUNDER': '⛈️', 'THUNDERSTORM': '⛈️', 'LIGHTNING': '⛈️',
+      'WINDY': '💨', 'TORNADO': '🌪️', 'HURRICANE': '🌀',
+    };
+    return icons[code.toUpperCase()] || '';
+  }
+
+  function renderWeather(data, locationName) {
     var f = data.forecast;
     document.getElementById('weather-result').style.display = '';
+
+    // Location header
+    if (locationName) {
+      document.getElementById('weather-location').innerHTML = '<h2 style="margin-bottom:12px;">' + escHtml(locationName) + '</h2>';
+    }
 
     // Current conditions
     var cur = '';
     if (f && f.Current) {
       var c = f.Current;
+      var icon = weatherIcon(c.IconCode);
       cur += '<div class="card weather-current">';
-      cur += '<div class="weather-temp">' + Math.round(c.TempC) + '°C</div>';
+      cur += '<div class="weather-temp">' + (icon ? icon + ' ' : '') + Math.round(c.TempC) + '°C</div>';
       cur += '<div class="weather-desc">' + (c.Description || '') + '</div>';
       if (c.Humidity) cur += '<div class="card-meta">Humidity: ' + c.Humidity + '%</div>';
       if (c.WindKph) cur += '<div class="card-meta">Wind: ' + c.WindKph.toFixed(1) + ' km/h</div>';
@@ -244,8 +278,10 @@ func renderWeatherPage(r *http.Request) string {
       items.forEach(function(h) {
         var t = new Date(h.Time);
         var timeStr = t.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        var icon = weatherIcon(h.IconCode);
         hourly += '<div class="weather-hour-card">';
         hourly += '<div class="weather-hour-time">' + timeStr + '</div>';
+        if (icon) hourly += '<div style="font-size:1.4em;line-height:1.2;">' + icon + '</div>';
         hourly += '<div class="weather-hour-temp">' + Math.round(h.TempC) + '°C</div>';
         hourly += '<div class="weather-hour-desc">' + (h.Description || '') + '</div>';
         if (h.PrecipMM > 0) hourly += '<div class="weather-hour-rain">🌧 ' + h.PrecipMM.toFixed(1) + 'mm</div>';
@@ -290,21 +326,41 @@ func renderWeatherPage(r *http.Request) string {
         var dateStr = dt.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'});
         pollen += '<tr>';
         pollen += '<td>' + dateStr + '</td>';
-        pollen += '<td>' + pollenBadge(p.GrassIndex, p.GrassLabel) + '</td>';
-        pollen += '<td>' + pollenBadge(p.TreeIndex, p.TreeLabel) + '</td>';
-        pollen += '<td>' + pollenBadge(p.WeedIndex, p.WeedLabel) + '</td>';
+        pollen += '<td>' + pollenBadge(p.GrassIndex, p.GrassCategory, p.GrassDescription) + '</td>';
+        pollen += '<td>' + pollenBadge(p.TreeIndex, p.TreeCategory, p.TreeDescription) + '</td>';
+        pollen += '<td>' + pollenBadge(p.WeedIndex, p.WeedCategory, p.WeedDescription) + '</td>';
         pollen += '</tr>';
+        // Health recommendations row
+        if (p.HealthRecs && p.HealthRecs.length > 0) {
+          pollen += '<tr><td colspan="4" style="font-size:0.8em;color:var(--text-secondary);padding-top:0;">';
+          pollen += '💡 ' + p.HealthRecs.slice(0, 2).map(escHtml).join(' · '); // show top 2 recommendations
+          pollen += '</td></tr>';
+        }
       });
       pollen += '</tbody></table></div>';
     }
     document.getElementById('weather-pollen').innerHTML = pollen;
   }
 
-  function pollenBadge(index, label) {
-    if (!label || label === 'N/A') return '—';
-    var colors = ['', '#aed6f1','#82e0aa','#f9e79f','#f0b27a','#ec7063'];
-    var color = colors[Math.min(index, colors.length-1)] || '#ddd';
-    return '<span style="background:' + color + ';padding:2px 6px;border-radius:4px;font-size:0.85em;">' + label + '</span>';
+  function pollenBadge(index, category, description) {
+    if (!category || category === 'N/A') return '—';
+    var colors = {
+      'None': '#e8e8e8', 'Very Low': '#aed6f1', 'Low': '#82e0aa',
+      'Moderate': '#f9e79f', 'High': '#f0b27a', 'Very High': '#ec7063', 'Extreme': '#c0392b'
+    };
+    var fallback = '#aed6f1';
+    if (index >= 5) fallback = '#ec7063';
+    else if (index >= 4) fallback = '#f0b27a';
+    else if (index >= 3) fallback = '#f9e79f';
+    else if (index >= 2) fallback = '#82e0aa';
+    var color = colors[category] || fallback;
+    var title = description ? ' title="' + escHtml(description) + '"' : '';
+    return '<span' + title + ' style="background:' + color + ';padding:2px 6px;border-radius:4px;font-size:0.85em;cursor:default;">' + escHtml(category) + '</span>';
+  }
+
+  function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   function showLoading(on) {
