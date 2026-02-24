@@ -184,6 +184,9 @@ func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place,
 			app.Log("places", "google places search error: %v", err)
 			// Fall through to Overpass on error
 		} else {
+			for _, p := range gPlaces {
+				p.Distance = haversine(lat, lon, p.Lat, p.Lon)
+			}
 			go indexPlaces(gPlaces)
 			return gPlaces, nil
 		}
@@ -211,6 +214,9 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 			app.Log("places", "google places nearby error: %v", err)
 			// Fall through to local/Overpass on error
 		} else {
+			for _, p := range gPlaces {
+				p.Distance = haversine(lat, lon, p.Lat, p.Lon)
+			}
 			go indexPlaces(gPlaces)
 			return gPlaces, nil
 		}
