@@ -704,6 +704,28 @@ func init() {
 		},
 	})
 
+	// Weather endpoints
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Weather Forecast",
+		Path:        "/weather",
+		Method:      "GET",
+		Description: "Get the weather forecast for a location by latitude and longitude. Costs 1 credit.",
+		Params: []*Param{
+			{Name: "lat", Value: "number", Description: "Latitude of the location"},
+			{Name: "lon", Value: "number", Description: "Longitude of the location"},
+			{Name: "pollen", Value: "string", Description: "Set to 1 to include pollen forecast (+1 credit)"},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{Name: "forecast", Value: "object", Description: "Weather forecast with current conditions, hourly and daily items"},
+					{Name: "pollen", Value: "array", Description: "Pollen forecast by date (if requested)"},
+				},
+			},
+		},
+	})
+
 	// Places endpoints
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "Places Search",
@@ -758,7 +780,7 @@ func init() {
 		Name:        "MCP Server",
 		Path:        "/mcp",
 		Method:      "POST",
-		Description: "Model Context Protocol server for AI tool integration. Supports initialize, tools/list, tools/call, and ping methods. Tools include chat, news, blog, video, mail, search, wallet, login, and signup. Metered tools (chat: 3 credits, news_search: 1 credit, video_search: 2 credits, mail_send: 4 credits) use the same wallet credit system as the REST API. 10 free queries per day.",
+		Description: "Model Context Protocol server for AI tool integration. Supports initialize, tools/list, tools/call, and ping methods. Tools include chat, news, blog, video, mail, search, wallet, weather, places, markets, reminder, login, and signup. Metered tools (chat: 3 credits, news_search: 1 credit, video_search: 2 credits, mail_send: 4 credits, weather_forecast: 1 credit + optional 1 credit for pollen data) use the same wallet credit system as the REST API. 10 free queries per day.",
 		Params: []*Param{
 			{
 				Name:        "jsonrpc",
