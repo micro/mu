@@ -119,20 +119,19 @@ func renderWeatherPage(r *http.Request) string {
 
 	// Cost info
 	sb.WriteString(`<p class="card-desc">Get the local weather forecast for your area. `)
-	sb.WriteString(fmt.Sprintf(`Costs %dp per lookup`, wallet.CostWeatherForecast))
-	sb.WriteString(`; enable pollen data for `)
-	sb.WriteString(fmt.Sprintf(`+%dp more.</p>`, wallet.CostWeatherPollen))
 
 	// Weather page with location search
 	sb.WriteString(`
 <div id="weather-app">
   <div class="weather-controls">
-    <button id="btn-locate" onclick="weatherLocate()" class="btn">Use My Location</button>
-    <span class="weather-or">or</span>
     <form id="form-search" onsubmit="weatherSearch(event)" class="weather-search-form">
       <input id="input-location" type="text" placeholder="Search city or postcode" class="weather-search-input">
       <button type="submit" class="btn">Search</button>
     </form>
+    <br>
+    <span class="weather-or">Or</span>
+    <br>
+    <button id="btn-locate" onclick="weatherLocate()" class="btn">Use My Location</button>
   </div>
 
   <div class="weather-options">
