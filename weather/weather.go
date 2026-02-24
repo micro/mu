@@ -128,9 +128,9 @@ func renderWeatherPage(r *http.Request) string {
 <div id="weather-app">
   <div class="weather-controls">
     <button id="btn-locate" onclick="weatherLocate()" class="btn">Use My Location</button>
-    <span style="margin: 0 8px; color: var(--text-muted);">or</span>
-    <form id="form-search" onsubmit="weatherSearch(event)" style="display:inline-flex;gap:8px;align-items:center;">
-      <input id="input-location" type="text" placeholder="Search city or postcode" style="min-width:200px;">
+    <span class="weather-or">or</span>
+    <form id="form-search" onsubmit="weatherSearch(event)" class="weather-search-form">
+      <input id="input-location" type="text" placeholder="Search city or postcode" class="weather-search-input">
       <button type="submit" class="btn">Search</button>
     </form>
   </div>
@@ -259,7 +259,7 @@ func renderWeatherPage(r *http.Request) string {
     var daily = '';
     if (f && f.DailyItems && f.DailyItems.length > 0) {
       daily += '<h3>10-Day Forecast</h3>';
-      daily += '<table class="data-table weather-table">';
+      daily += '<div class="table-scroll"><table class="data-table weather-table">';
       daily += '<thead><tr><th>Date</th><th>Conditions</th><th>High</th><th>Low</th><th>Rain</th></tr></thead>';
       daily += '<tbody>';
       f.DailyItems.forEach(function(d) {
@@ -274,7 +274,7 @@ func renderWeatherPage(r *http.Request) string {
         daily += '<td>' + rain + '</td>';
         daily += '</tr>';
       });
-      daily += '</tbody></table>';
+      daily += '</tbody></table></div>';
     }
     document.getElementById('weather-daily').innerHTML = daily;
 
@@ -282,7 +282,7 @@ func renderWeatherPage(r *http.Request) string {
     var pollen = '';
     if (data.pollen && data.pollen.length > 0) {
       pollen += '<h3>Pollen Forecast</h3>';
-      pollen += '<table class="data-table weather-table">';
+      pollen += '<div class="table-scroll"><table class="data-table weather-table">';
       pollen += '<thead><tr><th>Date</th><th>Grass</th><th>Tree</th><th>Weed</th></tr></thead>';
       pollen += '<tbody>';
       data.pollen.forEach(function(p) {
@@ -295,7 +295,7 @@ func renderWeatherPage(r *http.Request) string {
         pollen += '<td>' + pollenBadge(p.WeedIndex, p.WeedLabel) + '</td>';
         pollen += '</tr>';
       });
-      pollen += '</tbody></table>';
+      pollen += '</tbody></table></div>';
     }
     document.getElementById('weather-pollen').innerHTML = pollen;
   }

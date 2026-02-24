@@ -4626,3 +4626,42 @@ a.btn-secondary:hover, .btn-secondary:hover {
   width: 100%;
   margin-bottom: 20px;
 }
+
+.weather-search-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.weather-search-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.weather-or {
+  color: var(--text-muted);
+}
+
+.table-scroll {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.table-scroll .weather-table {
+  margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+  .weather-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .weather-or {
+    display: none;
+  }
+
+  .weather-search-form {
+    width: 100%;
+  }
+}
