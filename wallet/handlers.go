@@ -32,20 +32,21 @@ func WalletPage(userID string) string {
 
 	var sb strings.Builder
 
+	// Balance
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Balance</h3>`)
 	if isAdmin {
-		// Admin status
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Status</h3>`)
-		sb.WriteString(`<p>Admin · Full access</p>`)
-		sb.WriteString(`</div>`)
+		sb.WriteString(`<p class="text-sm text-muted">Admin · Unlimited access</p>`)
+		if wallet.Balance > 0 {
+			sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
+		}
 	} else {
-		// Balance
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Balance</h3>`)
 		sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
-		sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a></p>`)
-		sb.WriteString(`</div>`)
+	}
+	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a></p>`)
+	sb.WriteString(`</div>`)
 
+	if !isAdmin {
 		// Daily quota
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Free Queries</h3>`)
@@ -95,16 +96,20 @@ func WalletPage(userID string) string {
 			if tx.Type == TxTopup {
 				typeLabel = "Deposit"
 			}
-			amountPrefix := "-"
-			if tx.Amount > 0 {
-				amountPrefix = "+"
+			var amountStr string
+			if tx.Amount == 0 {
+				amountStr = "free"
+			} else if tx.Amount > 0 {
+				amountStr = fmt.Sprintf("+%d", tx.Amount)
+			} else {
+				amountStr = fmt.Sprintf("-%d", abs(tx.Amount))
 			}
 			sb.WriteString(fmt.Sprintf(`<tr>
 				<td>%s</td>
 				<td>%s</td>
-				<td>%s%d</td>
+				<td>%s</td>
 				<td>%d</td>
-			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountPrefix, abs(tx.Amount), tx.Balance))
+			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountStr, tx.Balance))
 		}
 
 		sb.WriteString(`</table>`)
