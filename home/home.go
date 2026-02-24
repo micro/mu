@@ -15,9 +15,10 @@ import (
 	"mu/auth"
 	"mu/blog"
 	"mu/data"
+	"mu/markets"
 	"mu/news"
+	"mu/reminder"
 	"mu/video"
-	"mu/widgets"
 )
 
 //go:embed cards.json
@@ -90,8 +91,8 @@ func Load() {
 		"blog":     blog.Preview,
 		"chat":     ChatCard,
 		"news":     news.Headlines,
-		"markets":  widgets.MarketsHTML,
-		"reminder": widgets.ReminderHTML,
+		"markets":  markets.MarketsHTML,
+		"reminder": reminder.ReminderHTML,
 		"video":    video.Latest,
 	}
 

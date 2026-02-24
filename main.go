@@ -32,7 +32,6 @@ import (
 	"mu/video"
 	"mu/wallet"
 	"mu/weather"
-	"mu/widgets"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -79,8 +78,9 @@ func main() {
 	// load weather
 	weather.Load()
 
-	// load widgets (markets, reminder)
-	widgets.Load()
+	// load markets and reminder
+	markets.Load()
+	reminder.Load()
 	wallet.Load()
 
 	// load the home cards
