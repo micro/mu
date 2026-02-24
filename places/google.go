@@ -82,7 +82,7 @@ func googleSearch(query string, lat, lon float64, radiusM int) ([]*Place, error)
 	body := map[string]interface{}{
 		"textQuery":      query,
 		"maxResultCount": googleMaxResults,
-		"locationBias": map[string]interface{}{
+		"locationRestriction": map[string]interface{}{
 			"circle": map[string]interface{}{
 				"center": map[string]interface{}{
 					"latitude":  lat,

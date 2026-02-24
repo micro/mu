@@ -22,7 +22,7 @@ import (
 // Bumping this constant causes all place data to be wiped on the next startup,
 // discarding rows produced by incompatible previous data sources (e.g. Overpass,
 // Foursquare) so that fresh data from the current source can be indexed cleanly.
-const schemaVersion = "v2"
+const schemaVersion = "v3"
 
 var (
 	placesDB    *sql.DB
