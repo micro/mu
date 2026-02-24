@@ -82,7 +82,7 @@ func googleSearch(query string, lat, lon float64, radiusM int) ([]*Place, error)
 	body := map[string]interface{}{
 		"textQuery":      query,
 		"maxResultCount": googleMaxResults,
-		"locationRestriction": map[string]interface{}{
+		"locationBias": map[string]interface{}{
 			"circle": map[string]interface{}{
 				"center": map[string]interface{}{
 					"latitude":  lat,
@@ -101,6 +101,7 @@ func googleDo(apiURL, key string, payload interface{}) ([]*Place, error) {
 	if err != nil {
 		return nil, err
 	}
+	reqBody := string(bodyBytes)
 
 	req, err := http.NewRequest("POST", apiURL, bytes.NewReader(bodyBytes))
 	if err != nil {
@@ -113,24 +114,24 @@ func googleDo(apiURL, key string, payload interface{}) ([]*Place, error) {
 	start := time.Now()
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		app.RecordAPICall("google_places", "POST", apiURL, 0, time.Since(start), err)
+		app.RecordAPICall("google_places", "POST", apiURL, 0, time.Since(start), err, reqBody, "")
 		return nil, fmt.Errorf("google places request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), err)
+		app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), err, reqBody, "")
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		callErr := fmt.Errorf("google places returned status %d: %s", resp.StatusCode, string(respBody))
-		app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), callErr)
+		app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), callErr, reqBody, string(respBody))
 		return nil, callErr
 	}
 
-	app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), nil)
+	app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), nil, reqBody, string(respBody))
 
 	var gResp googlePlacesResponse
 	if err := json.Unmarshal(respBody, &gResp); err != nil {

@@ -331,24 +331,24 @@ func googleWeatherGet(apiURL, service string) ([]byte, error) {
 	start := time.Now()
 	resp, err := httpClient.Get(apiURL)
 	if err != nil {
-		app.RecordAPICall(service, "GET", apiURL, 0, time.Since(start), err)
+		app.RecordAPICall(service, "GET", apiURL, 0, time.Since(start), err, "", "")
 		return nil, fmt.Errorf("%s request failed: %w", service, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		app.RecordAPICall(service, "GET", apiURL, resp.StatusCode, time.Since(start), err)
+		app.RecordAPICall(service, "GET", apiURL, resp.StatusCode, time.Since(start), err, "", "")
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		callErr := fmt.Errorf("%s returned status %d: %s", service, resp.StatusCode, string(body))
-		app.RecordAPICall(service, "GET", apiURL, resp.StatusCode, time.Since(start), callErr)
+		app.RecordAPICall(service, "GET", apiURL, resp.StatusCode, time.Since(start), callErr, "", string(body))
 		return nil, callErr
 	}
 
-	app.RecordAPICall(service, "GET", apiURL, resp.StatusCode, time.Since(start), nil)
+	app.RecordAPICall(service, "GET", apiURL, resp.StatusCode, time.Since(start), nil, "", string(body))
 	return body, nil
 }
 
