@@ -687,18 +687,18 @@ var placesIndexMarker = null;
     // Default: world overview centred on 20°N 0°E, zoom 2
     lat = lat || 20; lon = lon || 0; zoom = zoom || 2;
     placesIndexMap = L.map('places-index-map').setView([lat, lon], zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:19
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',maxZoom:19
     }).addTo(placesIndexMap);
     if (zoom > 2) {
-      placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup('Your location');
+      placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup('Your location').openPopup();
     }
   }
   function tryGeolocation() {
     if (!navigator.geolocation) { initIndexMap(); return; }
     navigator.geolocation.getCurrentPosition(function(pos) {
       var lat = pos.coords.latitude, lon = pos.coords.longitude;
-      initIndexMap(lat, lon, 13);
+      initIndexMap(lat, lon, 15);
       document.getElementById('nearby-lat').value = lat;
       document.getElementById('nearby-lon').value = lon;
       document.getElementById('nearby-address').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
@@ -941,9 +941,9 @@ func renderLeafletMap(centerLat, centerLon float64, places []*Place) string {
 <script>
 (function(){
   function initPlacesMap(){
-    var map=L.map('places-map').setView([%f,%f],14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:19
+    var map=L.map('places-map').setView([%f,%f],15);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',maxZoom:19
     }).addTo(map);
     var ps=%s;
     var bounds=[];
