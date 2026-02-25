@@ -752,6 +752,24 @@ func Latest() string {
 	return latestHtml
 }
 
+// GetLatestVideos returns up to n most recently published videos across all channels.
+func GetLatestVideos(n int) []*Result {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var all []*Result
+	for _, ch := range videos {
+		all = append(all, ch.Videos...)
+	}
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].Published.After(all[j].Published)
+	})
+	if n > 0 && len(all) > n {
+		all = all[:n]
+	}
+	return all
+}
+
 func Handler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
