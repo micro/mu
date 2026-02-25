@@ -27,10 +27,10 @@ var httpClient = &http.Client{Timeout: 15 * time.Second}
 
 // WeatherForecast holds the parsed forecast data returned by the Google Weather API.
 type WeatherForecast struct {
-	Location     string
-	Current      *CurrentConditions
-	HourlyItems  []HourlyItem
-	DailyItems   []DailyItem
+	Location    string
+	Current     *CurrentConditions
+	HourlyItems []HourlyItem
+	DailyItems  []DailyItem
 }
 
 // CurrentConditions holds current weather values.
@@ -54,12 +54,12 @@ type HourlyItem struct {
 
 // DailyItem holds one day of forecast data.
 type DailyItem struct {
-	Date       time.Time
-	MaxTempC   float64
-	MinTempC   float64
+	Date        time.Time
+	MaxTempC    float64
+	MinTempC    float64
 	Description string
-	RainMM     float64
-	WillRain   bool
+	RainMM      float64
+	WillRain    bool
 }
 
 // PollenForecast holds pollen data for a location.
@@ -87,17 +87,17 @@ type googleForecastDay struct {
 	Interval struct {
 		StartTime string `json:"startTime"`
 	} `json:"interval"`
-	DaytimeForecast    *googlePeriodForecast `json:"daytimeForecast"`
-	NighttimeForecast  *googlePeriodForecast `json:"nighttimeForecast"`
-	MaxTemperature     *googleTemp           `json:"maxTemperature"`
-	MinTemperature     *googleTemp           `json:"minTemperature"`
-	SunriseTime        string                `json:"sunriseTime"`
-	SunsetTime         string                `json:"sunsetTime"`
+	DaytimeForecast   *googlePeriodForecast `json:"daytimeForecast"`
+	NighttimeForecast *googlePeriodForecast `json:"nighttimeForecast"`
+	MaxTemperature    *googleTemp           `json:"maxTemperature"`
+	MinTemperature    *googleTemp           `json:"minTemperature"`
+	SunriseTime       string                `json:"sunriseTime"`
+	SunsetTime        string                `json:"sunsetTime"`
 }
 
 type googlePeriodForecast struct {
-	WeatherCondition   *googleWeatherCondition   `json:"weatherCondition"`
-	Precipitation      *googlePrecipitation      `json:"precipitation"`
+	WeatherCondition *googleWeatherCondition `json:"weatherCondition"`
+	Precipitation    *googlePrecipitation    `json:"precipitation"`
 }
 
 type googleWeatherCondition struct {

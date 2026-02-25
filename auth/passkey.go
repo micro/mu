@@ -14,12 +14,12 @@ var passkeys = map[string]*Passkey{} // passkeyID -> Passkey
 
 // Passkey stores a WebAuthn credential for an account
 type Passkey struct {
-	ID         string             `json:"id"`
-	Name       string             `json:"name"`
-	Account    string             `json:"account"`
+	ID         string              `json:"id"`
+	Name       string              `json:"name"`
+	Account    string              `json:"account"`
 	Credential webauthn.Credential `json:"credential"`
-	Created    time.Time          `json:"created"`
-	LastUsed   time.Time          `json:"last_used"`
+	Created    time.Time           `json:"created"`
+	LastUsed   time.Time           `json:"last_used"`
 }
 
 // WebAuthnUser implements the webauthn.User interface

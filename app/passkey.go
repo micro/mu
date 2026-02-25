@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	webAuthn        *webauthn.WebAuthn
-	webAuthnOnce    sync.Once
-	sessionStore    = map[string]*webauthn.SessionData{} // challenge -> session
-	sessionStoreMu  sync.Mutex
+	webAuthn       *webauthn.WebAuthn
+	webAuthnOnce   sync.Once
+	sessionStore   = map[string]*webauthn.SessionData{} // challenge -> session
+	sessionStoreMu sync.Mutex
 )
 
 func getWebAuthn(r *http.Request) *webauthn.WebAuthn {

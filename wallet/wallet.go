@@ -16,18 +16,18 @@ import (
 
 // Credit costs per operation (in credits/pennies)
 var (
-	CostNewsSearch    = getEnvInt("CREDIT_COST_NEWS", 1)
-	CostNewsSummary   = getEnvInt("CREDIT_COST_NEWS_SUMMARY", 1)
-	CostVideoSearch   = getEnvInt("CREDIT_COST_VIDEO", 2)
-	CostVideoWatch    = getEnvInt("CREDIT_COST_VIDEO_WATCH", 0) // Free - no value added over YouTube
-	CostChatQuery     = getEnvInt("CREDIT_COST_CHAT", 3)
-	CostChatRoom      = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
-	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
-	CostPlacesSearch   = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
-	CostPlacesNearby   = getEnvInt("CREDIT_COST_PLACES_NEARBY", 2)
+	CostNewsSearch      = getEnvInt("CREDIT_COST_NEWS", 1)
+	CostNewsSummary     = getEnvInt("CREDIT_COST_NEWS_SUMMARY", 1)
+	CostVideoSearch     = getEnvInt("CREDIT_COST_VIDEO", 2)
+	CostVideoWatch      = getEnvInt("CREDIT_COST_VIDEO_WATCH", 0) // Free - no value added over YouTube
+	CostChatQuery       = getEnvInt("CREDIT_COST_CHAT", 3)
+	CostChatRoom        = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
+	CostExternalEmail   = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
+	CostPlacesSearch    = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
+	CostPlacesNearby    = getEnvInt("CREDIT_COST_PLACES_NEARBY", 2)
 	CostWeatherForecast = getEnvInt("CREDIT_COST_WEATHER", 1)
-	CostWeatherPollen  = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
-	FreeDailySearches  = getEnvInt("FREE_DAILY_SEARCHES", 10)
+	CostWeatherPollen   = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
+	FreeDailySearches   = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
 // PaymentsEnabled returns true if payments are configured
@@ -39,19 +39,19 @@ func PaymentsEnabled() bool {
 
 // Operation types
 const (
-	OpNewsSearch    = "news_search"
-	OpNewsSummary   = "news_summary"
-	OpVideoSearch   = "video_search"
-	OpVideoWatch    = "video_watch"
-	OpChatQuery     = "chat_query"
-	OpChatRoom      = "chat_room"
-	OpExternalEmail = "external_email"
-	OpPlacesSearch  = "places_search"
-	OpPlacesNearby  = "places_nearby"
+	OpNewsSearch      = "news_search"
+	OpNewsSummary     = "news_summary"
+	OpVideoSearch     = "video_search"
+	OpVideoWatch      = "video_watch"
+	OpChatQuery       = "chat_query"
+	OpChatRoom        = "chat_room"
+	OpExternalEmail   = "external_email"
+	OpPlacesSearch    = "places_search"
+	OpPlacesNearby    = "places_nearby"
 	OpWeatherForecast = "weather_forecast"
-	OpWeatherPollen = "weather_pollen"
-	OpTopup         = "topup"
-	OpRefund        = "refund"
+	OpWeatherPollen   = "weather_pollen"
+	OpTopup           = "topup"
+	OpRefund          = "refund"
 )
 
 // Transaction types

@@ -386,4 +386,3 @@ func startHourlyRefresh() {
 		}
 	}()
 }
-

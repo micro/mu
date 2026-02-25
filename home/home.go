@@ -42,6 +42,7 @@ var landingTemplate = `<html lang="en">
         padding:6px 18px; border:1px solid #ccc; border-radius:20px;
         background:#fff; cursor:pointer; font-size:14px; font-family:inherit;
         transition:background 0.15s,border-color 0.15s;
+	color: black;
       }
       .preview-tab:hover { background:#f5f5f5; }
       .preview-tab img { filter:brightness(0); }
@@ -496,7 +497,7 @@ func ChatCard() string {
 type Card struct {
 	ID          string
 	Title       string
-	Icon        string    // Optional icon image path (e.g. "/news.png")
+	Icon        string // Optional icon image path (e.g. "/news.png")
 	Column      string // "left" or "right"
 	Position    int
 	Link        string

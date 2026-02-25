@@ -118,15 +118,15 @@ func ActorHandler(w http.ResponseWriter, r *http.Request) {
 			"https://www.w3.org/ns/activitystreams",
 			"https://w3id.org/security/v1",
 		},
-		"id":               actorID,
-		"type":             "Person",
+		"id":                actorID,
+		"type":              "Person",
 		"preferredUsername": acc.ID,
-		"name":             acc.Name,
-		"url":              actorID,
-		"inbox":            fmt.Sprintf("%s/@%s/inbox", base, acc.ID),
-		"outbox":           fmt.Sprintf("%s/@%s/outbox", base, acc.ID),
-		"summary":          fmt.Sprintf("@%s on Mu", acc.ID),
-		"published":        acc.Created.Format(time.RFC3339),
+		"name":              acc.Name,
+		"url":               actorID,
+		"inbox":             fmt.Sprintf("%s/@%s/inbox", base, acc.ID),
+		"outbox":            fmt.Sprintf("%s/@%s/outbox", base, acc.ID),
+		"summary":           fmt.Sprintf("@%s on Mu", acc.ID),
+		"published":         acc.Created.Format(time.RFC3339),
 	}
 
 	w.Header().Set("Content-Type", "application/activity+json")
