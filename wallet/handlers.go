@@ -304,11 +304,11 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 
 	if method == "stripe" && StripeEnabled() {
-		sb.WriteString(renderStripeDeposit())
+		sb.WriteString(renderStripeDeposit(r.URL.Query().Get("error")))
 	} else if method == "crypto" && CryptoWalletEnabled() {
 		sb.WriteString(renderCryptoDeposit(sess.Account, r))
 	} else if StripeEnabled() {
-		sb.WriteString(renderStripeDeposit())
+		sb.WriteString(renderStripeDeposit(r.URL.Query().Get("error")))
 	} else if CryptoWalletEnabled() {
 		sb.WriteString(renderCryptoDeposit(sess.Account, r))
 	} else {
@@ -319,11 +319,14 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-func renderStripeDeposit() string {
+func renderStripeDeposit(errMsg string) string {
 	var sb strings.Builder
 
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Select Amount</h3>`)
+	if errMsg != "" {
+		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
+	}
 	sb.WriteString(`<form method="POST" action="/wallet/stripe/checkout">`)
 	sb.WriteString(`<div class="d-flex flex-column gap-2">`)
 
@@ -478,7 +481,7 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "invalid form", http.StatusBadRequest)
+		http.Redirect(w, r, "/wallet/topup?method=stripe&error=Invalid+form+submission", http.StatusSeeOther)
 		return
 	}
 
@@ -487,7 +490,7 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	fmt.Sscanf(amountStr, "%d", &amount)
 
 	if amount == 0 {
-		http.Error(w, "please select an amount", http.StatusBadRequest)
+		http.Redirect(w, r, "/wallet/topup?method=stripe&error=Please+select+an+amount", http.StatusSeeOther)
 		return
 	}
 
@@ -504,7 +507,10 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	checkoutURL, err := CreateCheckoutSession(sess.Account, amount, successURL, cancelURL)
 	if err != nil {
 		app.Log("stripe", "checkout error: %v", err)
-		http.Error(w, "failed to create checkout session", http.StatusInternalServerError)
+		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/wallet/topup?method=stripe" class="btn">Back</a></p></div>`
+		html := app.RenderHTMLForRequest("Payment Error", "Checkout failed", content, r)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(html))
 		return
 	}
 

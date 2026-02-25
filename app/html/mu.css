@@ -4017,7 +4017,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 
 .topup-option input[type="radio"] {
-  margin-right: 8px;
+  display: none;
 }
 
 .topup-option:has(input:checked) {
