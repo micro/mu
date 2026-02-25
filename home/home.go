@@ -410,7 +410,7 @@ POST /video HTTP/1.1
           }
 	  h+='<div style="background:#f9f9f9;border-radius:6px;padding:8px 10px;text-align:center;">'+
              '<div style="font-size:11px;font-weight:700;color:#555;letter-spacing:.5px;">'+esc(item.symbol)+'</div>'+
-             '<div style="font-size:15px;font-weight:800;">'+formatPrice(item.price)+chg+'</div>'+
+             '<div style="font-size:15px;font-weight:800;">'+formatPrice(item.price)+' '+chg+'</div>'+
              '</div>';
         });
         h+='</div>';
