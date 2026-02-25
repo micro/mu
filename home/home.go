@@ -165,28 +165,28 @@ var landingTemplate = `<html lang="en">
         </a>
         <a href="/places" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/places.png" alt="Places" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <img src="/places.png" alt="Places" style="width: 32px; height: 32px; margin-bottom: 8px;">
             <b>Places</b>
             <div class="small">Search and discover places on an ad-free map</div>
           </div>
         </a>
         <a href="/weather" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/weather.png" alt="Weather" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <img src="/weather.png" alt="Weather" style="width: 32px; height: 32px; margin-bottom: 8px;">
             <b>Weather</b>
             <div class="small">Local weather forecasts without ads or tracking</div>
           </div>
         </a>
         <a href="/markets" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/markets.png" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <img src="/markets.png" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px;">
             <b>Markets</b>
             <div class="small">Live crypto, futures and commodity prices</div>
           </div>
         </a>
         <a href="/reminder" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/reminder.png" alt="Reminder" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <img src="/reminder.png" alt="Reminder" style="width: 32px; height: 32px; margin-bottom: 8px;">
             <b>Reminder</b>
             <div class="small">Daily Islamic verse, hadith, and name of Allah</div>
           </div>
@@ -374,7 +374,9 @@ POST /video HTTP/1.1
     fetch('/news', {headers:{'Accept':'application/json'}})
       .then(function(r){return r.json();})
       .then(function(d){
-        var posts=(d.feed||[]).slice(0,5);
+        var seen={};var posts=[];var all=d.feed||[];
+        for(var i=0;i<all.length&&posts.length<5;i++){var cat=all[i].category||'_';if(!seen[cat]){seen[cat]=true;posts.push(all[i]);}}
+
         var el=document.getElementById('preview-news-content');
         if(!el) return;
         if(!posts.length){el.innerHTML='<p style="color:#888;font-size:13px;">No headlines yet.</p>';return;}
@@ -399,14 +401,14 @@ POST /video HTTP/1.1
         var el=document.getElementById('preview-markets-content');
         if(!el) return;
         if(!items.length){el.innerHTML='<p style="color:#888;font-size:13px;">Prices loading…</p>';return;}
-	var h='<div style="max-width: 400px;gap:8px;margin-bottom:4px;">';
+	var h='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px;">';
         items.forEach(function(item){
           var chg='';
           if(item.change_24h){
             var sign=item.change_24h>=0?'+':'',color=item.change_24h>=0?'#28a745':'#dc3545';
             chg='<span style="font-size:11px;color:'+color+';">'+sign+item.change_24h.toFixed(1)+'%%</span>';
           }
-	  h+='<div style="background:#f9f9f9;border-radius:6px;padding:8px 10px;text-align:center;display:inline-block;">'+
+	  h+='<div style="background:#f9f9f9;border-radius:6px;padding:8px 10px;text-align:center;">'+
              '<div style="font-size:11px;font-weight:700;color:#555;letter-spacing:.5px;">'+esc(item.symbol)+'</div>'+
              '<div style="font-size:15px;font-weight:800;">'+formatPrice(item.price)+chg+'</div>'+
              '</div>';
@@ -424,7 +426,9 @@ POST /video HTTP/1.1
         var all=[];
         Object.keys(channels).forEach(function(ch){(channels[ch].videos||[]).forEach(function(v){all.push(v);});});
         all.sort(function(a,b){return new Date(b.published)-new Date(a.published);});
-        all=all.slice(0,4);
+        var seenCh={};var filtered=[];
+        for(var i=0;i<all.length&&filtered.length<4;i++){var ch=all[i].channel||'_';if(!seenCh[ch]){seenCh[ch]=true;filtered.push(all[i]);}}
+        all=filtered;
         var el=document.getElementById('preview-video-content');
         if(!el) return;
         if(!all.length){el.innerHTML='<p style="color:#888;font-size:13px;">No videos yet.</p>';return;}
