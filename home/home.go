@@ -44,6 +44,7 @@ var landingTemplate = `<html lang="en">
         transition:background 0.15s,border-color 0.15s;
       }
       .preview-tab:hover { background:#f5f5f5; }
+      .preview-tab img { filter:brightness(0); }
       .preview-tab.active { background:#000; color:#fff; border-color:#000; }
       .preview-tab.active img { filter:brightness(0) invert(1); }
       .preview-panel { display:none; }
@@ -79,13 +80,13 @@ var landingTemplate = `<html lang="en">
 
       <div class="preview-tabs">
         <button class="preview-tab active" onclick="showPreview('news',this)">
-          <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">News
+          <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">News
         </button>
         <button class="preview-tab" onclick="showPreview('markets',this)">
-          <img src="/markets.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">Markets
+          <img src="/markets.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Markets
         </button>
         <button class="preview-tab" onclick="showPreview('video',this)">
-          <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">Video
+          <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Video
         </button>
       </div>
 
@@ -199,13 +200,13 @@ var landingTemplate = `<html lang="en">
 
       <div class="preview-tabs">
         <button class="preview-tab active" onclick="showExample('news',this)">
-          <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">News
+          <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">News
         </button>
         <button class="preview-tab" onclick="showExample('markets',this)">
-          <img src="/markets.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">Markets
+          <img src="/markets.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Markets
         </button>
         <button class="preview-tab" onclick="showExample('video',this)">
-          <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">Video
+          <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Video
         </button>
       </div>
 
@@ -452,6 +453,14 @@ POST /video HTTP/1.1
       deferredPrompt.userChoice.then(function(){ deferredPrompt=null; installBtn.style.display='none'; });
     });
   </script>
+  <footer style="text-align:center;padding:40px 20px;color:#888;font-size:14px;border-top:1px solid #eee;margin-top:60px;">
+    <a href="/about" style="color:#888;text-decoration:none;margin:0 12px;">About</a>
+    <a href="/docs" style="color:#888;text-decoration:none;margin:0 12px;">Docs</a>
+    <a href="/api" style="color:#888;text-decoration:none;margin:0 12px;">API</a>
+    <a href="/mcp" style="color:#888;text-decoration:none;margin:0 12px;">MCP</a>
+    <a href="/plans" style="color:#888;text-decoration:none;margin:0 12px;">Plans</a>
+    <a href="/login" style="color:#888;text-decoration:none;margin:0 12px;">Login</a>
+  </footer>
   </body>
 </html>`
 
