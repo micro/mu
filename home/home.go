@@ -22,7 +22,7 @@ import (
 )
 
 // landingTemplate is the full HTML template for the public landing page.
-// It mirrors the structure of app/html/index.html but includes dynamic content sections.
+// %s slots: 1=cssVersion 2=newsCardHTML 3=marketsCardHTML 4=videoCardHTML
 var landingTemplate = `<html lang="en">
   <head>
     <title>Mu - The Micro Network</title>
@@ -36,6 +36,20 @@ var landingTemplate = `<html lang="en">
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/mu.css?%s">
+    <style>
+      .preview-tabs { display:flex; gap:8px; justify-content:center; margin-bottom:20px; flex-wrap:wrap; }
+      .preview-tab {
+        padding:6px 18px; border:1px solid #ccc; border-radius:20px;
+        background:#fff; cursor:pointer; font-size:14px; font-family:inherit;
+        transition:background 0.15s,border-color 0.15s;
+      }
+      .preview-tab:hover { background:#f5f5f5; }
+      .preview-tab.active { background:#000; color:#fff; border-color:#000; }
+      .preview-panel { display:none; }
+      .preview-panel.active { display:block; }
+      .example-panel { display:none; }
+      .example-panel.active { display:flex; gap:20px; flex-wrap:wrap; }
+    </style>
   </head>
   <body>
     <div style="float: right; padding: 20px;">
@@ -55,34 +69,44 @@ var landingTemplate = `<html lang="en">
 
       <div style="height: 40px;"></div>
 
-      <!-- Live preview: cards showing real content -->
+      <!-- Live preview with tabs -->
       <h3>What&#39;s Available</h3>
-      <p style="color:#555;max-width:600px;margin:0 auto 24px;">A glimpse of what&#39;s live right now — sign up to get full access.</p>
-      <div style="max-width:900px;margin:0 auto;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;text-align:left;">
-        %s
-        %s
+      <p style="color:#555;max-width:600px;margin:0 auto 20px;">A glimpse of what&#39;s live right now — click to explore.</p>
+
+      <div class="preview-tabs">
+        <button class="preview-tab active" onclick="showPreview('news',this)">
+          <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0) invert(var(--tab-invert,0))">News
+        </button>
+        <button class="preview-tab" onclick="showPreview('markets',this)">
+          <img src="/markets.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">Markets
+        </button>
+        <button class="preview-tab" onclick="showPreview('video',this)">
+          <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">Video
+        </button>
       </div>
 
-      <div style="height: 40px;"></div>
-
-      <!-- API & MCP section -->
-      <h3>API &amp; MCP</h3>
-      <p style="color:#555;max-width:600px;margin:0 auto 24px;">Every feature is available via REST API and <a href="/mcp">Model Context Protocol</a> for AI clients.</p>
-      <div style="max-width:900px;margin:0 auto;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;text-align:left;">
-        <div class="card" style="flex:1;min-width:280px;">
-          <h4>REST API</h4>
-          <p class="card-desc">Access news, video, chat and more programmatically. Pass <code>Accept: application/json</code> to any endpoint.</p>
-          <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /news?q=technology HTTP/1.1
-Accept: application/json</pre>
-          <a href="/api" class="link">API Docs &#x2192;</a>
+      <!-- Card panels -->
+      <div style="max-width:900px;margin:0 auto;text-align:left;">
+        <div id="preview-news" class="preview-panel active">
+          <div class="card">
+            <h4 style="margin-top:0;"><img src="/news.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">News</h4>
+            %s
+            <a href="/news" class="link">More news &#x2192;</a>
+          </div>
         </div>
-        <div class="card" style="flex:1;min-width:280px;">
-          <h4>MCP (Model Context Protocol)</h4>
-          <p class="card-desc">Connect AI agents (e.g. Claude) to Mu via MCP. Use the <code>signup</code> or <code>login</code> tool to obtain a token.</p>
-          <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"jsonrpc":"2.0","id":1,"method":"tools/call",
- "params":{"name":"search_news",
-           "arguments":{"query":"technology"}}}</pre>
-          <a href="/mcp" class="link">MCP Server &#x2192;</a>
+        <div id="preview-markets" class="preview-panel">
+          <div class="card">
+            <h4 style="margin-top:0;"><img src="/markets.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Markets</h4>
+            %s
+            <a href="/markets" class="link">More &#x2192;</a>
+          </div>
+        </div>
+        <div id="preview-video" class="preview-panel">
+          <div class="card">
+            <h4 style="margin-top:0;"><img src="/video.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Video</h4>
+            %s
+            <a href="/video" class="link">More videos &#x2192;</a>
+          </div>
         </div>
       </div>
 
@@ -165,6 +189,97 @@ Accept: application/json</pre>
 
       <div style="height: 60px;"></div>
 
+      <!-- API & MCP section (below Featured Apps) -->
+      <h3>API &amp; MCP</h3>
+      <p style="color:#555;max-width:600px;margin:0 auto 20px;">Every feature is available via REST API and <a href="/mcp">Model Context Protocol</a> for AI clients and agents.</p>
+
+      <div class="preview-tabs">
+        <button class="preview-tab active" onclick="showExample('news',this)">News</button>
+        <button class="preview-tab" onclick="showExample('markets',this)">Markets</button>
+        <button class="preview-tab" onclick="showExample('video',this)">Video</button>
+      </div>
+
+      <div style="max-width:900px;margin:0 auto;text-align:left;">
+        <!-- News examples -->
+        <div id="example-news" class="example-panel active">
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>REST API</h4>
+            <p class="card-desc">Fetch the latest news feed or search for articles.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /news HTTP/1.1
+Accept: application/json
+
+POST /news HTTP/1.1
+{"query":"technology"}</pre>
+            <a href="/api" class="link">API Docs &#x2192;</a>
+          </div>
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>MCP</h4>
+            <p class="card-desc">AI agents can read the news feed or search articles.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
+  "name":"news_search",
+  "arguments":{"query":"technology"}}}</pre>
+            <a href="/mcp" class="link">MCP Server &#x2192;</a>
+          </div>
+        </div>
+        <!-- Markets examples -->
+        <div id="example-markets" class="example-panel">
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>REST API</h4>
+            <p class="card-desc">Get live crypto, futures, and commodity prices.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /markets HTTP/1.1
+Accept: application/json
+
+GET /markets?category=crypto HTTP/1.1
+Accept: application/json</pre>
+            <a href="/api" class="link">API Docs &#x2192;</a>
+          </div>
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>MCP</h4>
+            <p class="card-desc">Agents can query live market data and check prices.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
+  "name":"markets",
+  "arguments":{"category":"crypto"}}}</pre>
+            <a href="/mcp" class="link">MCP Server &#x2192;</a>
+          </div>
+        </div>
+        <!-- Video examples -->
+        <div id="example-video" class="example-panel">
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>REST API</h4>
+            <p class="card-desc">Browse the latest videos or search across channels.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /video HTTP/1.1
+Accept: application/json
+
+POST /video HTTP/1.1
+{"query":"bitcoin"}</pre>
+            <a href="/api" class="link">API Docs &#x2192;</a>
+          </div>
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>MCP</h4>
+            <p class="card-desc">Agents can search and retrieve videos across all channels.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
+  "name":"video_search",
+  "arguments":{"query":"bitcoin"}}}</pre>
+            <a href="/mcp" class="link">MCP Server &#x2192;</a>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 24px;"></div>
+
+      <!-- Wallet / agent credits highlight -->
+      <div style="max-width:900px;margin:0 auto;text-align:left;">
+        <div class="card" style="border-left:4px solid #000;">
+          <h4 style="margin-top:0;">&#x1F4B3; Agent Wallet</h4>
+          <p class="card-desc">AI agents have full access to the built-in wallet via MCP. Check your credit balance, top up via crypto or card, and pay per-query automatically — no manual intervention required.</p>
+          <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{"name":"wallet_balance","arguments":{}}}
+{"method":"tools/call","params":{"name":"wallet_topup","arguments":{}}}</pre>
+          <a href="/wallet" class="link">Wallet &amp; Credits &#x2192;</a>
+        </div>
+      </div>
+
+      <div style="height: 60px;"></div>
+
       <hr />
 
       <div style="text-align: center; margin: 20px 0;">
@@ -201,67 +316,74 @@ Accept: application/json</pre>
       <div style="height: 20px;"></div>
 
       <p><strong>Can AI agents use Mu?</strong><br>
-      Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. See the <a href="/mcp">MCP page</a> for setup and available tools.</p>
+      Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. Agents can read news, search videos, send mail, query markets, and manage their own wallet credits. See the <a href="/mcp">MCP page</a> for setup.</p>
 
       <div style="height: 60px;"></div>
     </div>
   <script>
-      let deferredPrompt;
+    function showPreview(name, btn) {
+      document.querySelectorAll('.preview-panel').forEach(function(el) { el.classList.remove('active'); });
+      var panel = document.getElementById('preview-' + name);
+      if (panel) panel.classList.add('active');
+      var tabs = btn.closest('.preview-tabs');
+      if (tabs) tabs.querySelectorAll('.preview-tab').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    }
 
-      if (navigator.serviceWorker) {
-        navigator.serviceWorker.register(
-          '/mu.js',
-          {scope: '/'}
-        )
-      }
+    function showExample(name, btn) {
+      document.querySelectorAll('.example-panel').forEach(function(el) { el.classList.remove('active'); });
+      var panel = document.getElementById('example-' + name);
+      if (panel) panel.classList.add('active');
+      var tabs = btn.closest('.preview-tabs');
+      if (tabs) tabs.querySelectorAll('.preview-tab').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    }
 
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        const installButton = document.getElementById('install-pwa');
-        if (installButton) {
-          installButton.style.display = 'inline-block';
-        }
-      });
+    let deferredPrompt;
 
-      document.getElementById('install-pwa')?.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.register('/mu.js', {scope: '/'});
+    }
 
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installButton = document.getElementById('install-pwa');
+      if (installButton) installButton.style.display = 'inline-block';
+    });
 
-        deferredPrompt = null;
-        document.getElementById('install-pwa').style.display = 'none';
-      });
+    document.getElementById('install-pwa')?.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      document.getElementById('install-pwa').style.display = 'none';
+    });
   </script>
   </body>
 </html>`
 
 // LandingHandler serves the public-facing landing page with live content previews.
 func LandingHandler(w http.ResponseWriter, r *http.Request) {
-	// Refresh cards so news/markets content is up to date
+	// Refresh cards so content is up to date
 	RefreshCards()
 
 	newsContent := news.Headlines()
 	marketsContent := markets.MarketsHTML()
+	videoContent := video.Latest()
 
-	var newsCard, marketsCard string
-	if strings.TrimSpace(newsContent) != "" {
-		newsCard = fmt.Sprintf(`<div class="card" style="flex:1;min-width:280px;max-width:430px;">
-      <h4><img src="/news.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">News</h4>
-      %s
-      <a href="/news" class="link">More news &#x2192;</a>
-    </div>`, newsContent)
+	// Fallback text when live content is not yet available
+	if strings.TrimSpace(newsContent) == "" {
+		newsContent = `<p class="card-desc">Latest headlines from around the world.</p>`
 	}
-	if strings.TrimSpace(marketsContent) != "" {
-		marketsCard = fmt.Sprintf(`<div class="card" style="flex:1;min-width:280px;max-width:430px;">
-      <h4><img src="/markets.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Markets</h4>
-      %s
-      <a href="/markets" class="link">More &#x2192;</a>
-    </div>`, marketsContent)
+	if strings.TrimSpace(marketsContent) == "" {
+		marketsContent = `<p class="card-desc">Live crypto, futures and commodity prices.</p>`
+	}
+	if strings.TrimSpace(videoContent) == "" {
+		videoContent = `<p class="card-desc">Latest videos from top channels — no ads, no shorts.</p>`
 	}
 
-	html := fmt.Sprintf(landingTemplate, app.Version, newsCard, marketsCard)
+	html := fmt.Sprintf(landingTemplate, app.Version, newsContent, marketsContent, videoContent)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
 }
