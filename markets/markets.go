@@ -40,7 +40,7 @@ var cryptoGeckoIDs = map[string]string{
 	"ADA":   "cardano",
 	"DOT":   "polkadot",
 	"LINK":  "chainlink",
-	"MATIC": "matic-network",
+	"POL": "polygon",
 	"AVAX":  "avalanche-2",
 }
 
