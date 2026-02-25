@@ -326,7 +326,7 @@ var chartLinks = map[string]string{
 	"ADA":   "https://www.coingecko.com/en/coins/cardano",
 	"DOT":   "https://www.coingecko.com/en/coins/polkadot",
 	"LINK":  "https://www.coingecko.com/en/coins/chainlink",
-	"MATIC": "https://www.coingecko.com/en/coins/polygon",
+	"POL":   "https://www.coingecko.com/en/coins/polygon",
 	"AVAX":  "https://www.coingecko.com/en/coins/avalanche",
 	// Futures/Commodities → Yahoo Finance charts
 	"OIL":      "https://finance.yahoo.com/chart/CL%3DF",
