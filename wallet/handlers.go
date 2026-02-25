@@ -186,15 +186,69 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleWalletPage(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
+	sess, _ := auth.TrySession(r)
+
+	var content string
+	if sess != nil {
+		content = WalletPage(sess.Account)
+	} else {
+		content = PublicWalletPage()
 	}
 
-	content := WalletPage(sess.Account)
-	html := app.RenderHTMLForRequest("Wallet", "Manage your credits", content, r)
+	html := app.RenderHTMLForRequest("Wallet", "Credits and pricing", content, r)
 	w.Write([]byte(html))
+}
+
+// PublicWalletPage renders the wallet page for unauthenticated users
+func PublicWalletPage() string {
+	var sb strings.Builder
+
+	// Intro
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Credits &amp; Pricing</h3>`)
+	sb.WriteString(`<p>Mu is free with ` + fmt.Sprintf("%d", FreeDailySearches) + ` queries/day. Need more? Top up and pay as you go — no subscription required.</p>`)
+	sb.WriteString(`<p><a href="/login" class="btn">Login to view your balance</a>&nbsp;<a href="/signup" class="btn btn-secondary">Sign up free</a></p>`)
+	sb.WriteString(`</div>`)
+
+	// Credit costs
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Costs</h3>`)
+	sb.WriteString(`<table class="stats-table">`)
+	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td>%dp</td></tr>`, CostNewsSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>News summary</td><td>%dp</td></tr>`, CostNewsSummary))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td>%dp</td></tr>`, CostVideoSearch))
+	if CostVideoWatch > 0 {
+		sb.WriteString(fmt.Sprintf(`<tr><td>Video watch</td><td>%dp</td></tr>`, CostVideoWatch))
+	}
+	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td>%dp</td></tr>`, CostChatQuery))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Places search</td><td>%dp</td></tr>`, CostPlacesSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Places nearby</td><td>%dp</td></tr>`, CostPlacesNearby))
+	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td>%dp</td></tr>`, CostExternalEmail))
+	sb.WriteString(`</table>`)
+	sb.WriteString(`</div>`)
+
+	// Topup options
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Top Up</h3>`)
+	sb.WriteString(`<p>Add credits to your account via card or crypto:</p>`)
+	sb.WriteString(`<ul>`)
+	if StripeEnabled() {
+		sb.WriteString(`<li><strong>Card</strong> — secure payment via Stripe</li>`)
+	}
+	if CryptoWalletEnabled() {
+		sb.WriteString(`<li><strong>Crypto</strong> — send ETH or tokens to your deposit address (Ethereum, Base, Arbitrum, Optimism)</li>`)
+	}
+	sb.WriteString(`</ul>`)
+	sb.WriteString(`<p><a href="/login">Login</a> or <a href="/signup">sign up</a> to top up.</p>`)
+	sb.WriteString(`</div>`)
+
+	// Self-hosting note
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Self-Host</h3>`)
+	sb.WriteString(`<p class="text-sm text-muted">Want unlimited and free? <a href="https://github.com/micro/mu">Self-host your own instance</a>.</p>`)
+	sb.WriteString(`</div>`)
+
+	return sb.String()
 }
 
 // Supported chains for deposits

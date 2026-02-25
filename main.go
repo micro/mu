@@ -209,7 +209,7 @@ func main() {
 		"/admin/api":       true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
-		"/wallet":          true, // Require auth for wallet
+		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
