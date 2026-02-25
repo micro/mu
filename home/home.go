@@ -22,7 +22,7 @@ import (
 )
 
 // landingTemplate is the full HTML template for the public landing page.
-// %s slots: 1=cssVersion 2=newsCardHTML 3=marketsCardHTML 4=videoCardHTML
+// %s slot: cssVersion only — preview content is fetched client-side from the public API.
 var landingTemplate = `<html lang="en">
   <head>
     <title>Mu - The Micro Network</title>
@@ -49,6 +49,9 @@ var landingTemplate = `<html lang="en">
       .preview-panel.active { display:block; }
       .example-panel { display:none; }
       .example-panel.active { display:flex; gap:20px; flex-wrap:wrap; }
+      .skeleton { background:linear-gradient(90deg,#f0f0f0 25%%,#e0e0e0 50%%,#f0f0f0 75%%);
+        background-size:200%% 100%%; animation:shimmer 1.4s infinite; border-radius:4px; }
+      @keyframes shimmer { 0%%{background-position:200%% 0} 100%%{background-position:-200%% 0} }
     </style>
   </head>
   <body>
@@ -75,7 +78,7 @@ var landingTemplate = `<html lang="en">
 
       <div class="preview-tabs">
         <button class="preview-tab active" onclick="showPreview('news',this)">
-          <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0) invert(var(--tab-invert,0))">News
+          <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">News
         </button>
         <button class="preview-tab" onclick="showPreview('markets',this)">
           <img src="/markets.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">Markets
@@ -85,27 +88,27 @@ var landingTemplate = `<html lang="en">
         </button>
       </div>
 
-      <!-- Card panels -->
+      <!-- Card panels — content loaded client-side from public JSON API -->
       <div style="max-width:900px;margin:0 auto;text-align:left;">
         <div id="preview-news" class="preview-panel active">
           <div class="card">
             <h4 style="margin-top:0;"><img src="/news.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">News</h4>
-            %s
-            <a href="/news" class="link">More news &#x2192;</a>
+            <div id="preview-news-content"><div class="skeleton" style="height:14px;margin:8px 0;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:80%%;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:90%%;"></div></div>
+            <a href="/news" class="link" style="margin-top:8px;display:inline-block;">More news &#x2192;</a>
           </div>
         </div>
         <div id="preview-markets" class="preview-panel">
           <div class="card">
             <h4 style="margin-top:0;"><img src="/markets.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Markets</h4>
-            %s
-            <a href="/markets" class="link">More &#x2192;</a>
+            <div id="preview-markets-content"><div class="skeleton" style="height:60px;margin:8px 0;"></div></div>
+            <a href="/markets" class="link" style="margin-top:8px;display:inline-block;">More &#x2192;</a>
           </div>
         </div>
         <div id="preview-video" class="preview-panel">
           <div class="card">
             <h4 style="margin-top:0;"><img src="/video.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Video</h4>
-            %s
-            <a href="/video" class="link">More videos &#x2192;</a>
+            <div id="preview-video-content"><div class="skeleton" style="height:80px;margin:8px 0;"></div></div>
+            <a href="/video" class="link" style="margin-top:8px;display:inline-block;">More videos &#x2192;</a>
           </div>
         </div>
       </div>
@@ -321,69 +324,134 @@ POST /video HTTP/1.1
       <div style="height: 60px;"></div>
     </div>
   <script>
+    // ── Tab switching ──────────────────────────────────────────────────────────
     function showPreview(name, btn) {
-      document.querySelectorAll('.preview-panel').forEach(function(el) { el.classList.remove('active'); });
-      var panel = document.getElementById('preview-' + name);
-      if (panel) panel.classList.add('active');
-      var tabs = btn.closest('.preview-tabs');
-      if (tabs) tabs.querySelectorAll('.preview-tab').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.preview-panel').forEach(function(el){el.classList.remove('active');});
+      var p=document.getElementById('preview-'+name); if(p) p.classList.add('active');
+      btn.closest('.preview-tabs').querySelectorAll('.preview-tab').forEach(function(b){b.classList.remove('active');});
       btn.classList.add('active');
     }
-
     function showExample(name, btn) {
-      document.querySelectorAll('.example-panel').forEach(function(el) { el.classList.remove('active'); });
-      var panel = document.getElementById('example-' + name);
-      if (panel) panel.classList.add('active');
-      var tabs = btn.closest('.preview-tabs');
-      if (tabs) tabs.querySelectorAll('.preview-tab').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.example-panel').forEach(function(el){el.classList.remove('active');});
+      var p=document.getElementById('example-'+name); if(p) p.classList.add('active');
+      btn.closest('.preview-tabs').querySelectorAll('.preview-tab').forEach(function(b){b.classList.remove('active');});
       btn.classList.add('active');
     }
 
-    let deferredPrompt;
+    // ── Live preview fetching ─────────────────────────────────────────────────
+    function esc(s){ return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&#34;'):''; }
 
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.register('/mu.js', {scope: '/'});
+    function timeAgo(iso) {
+      if (!iso) return '';
+      var d=new Date(iso), secs=Math.floor((Date.now()-d)/1000);
+      if(secs<60) return 'just now';
+      if(secs<3600) return Math.floor(secs/60)+'m ago';
+      if(secs<86400) return Math.floor(secs/3600)+'h ago';
+      return Math.floor(secs/86400)+'d ago';
     }
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const installButton = document.getElementById('install-pwa');
-      if (installButton) installButton.style.display = 'inline-block';
-    });
+    function formatPrice(price) {
+      if (!price) return '–';
+      if (price >= 1000) return '$' + Math.round(price).toLocaleString();
+      if (price >= 1)    return '$' + price.toFixed(2);
+      return '$' + price.toFixed(4);
+    }
 
-    document.getElementById('install-pwa')?.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
+    // News
+    fetch('/news', {headers:{'Accept':'application/json'}})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var posts=(d.feed||[]).slice(0,5);
+        var el=document.getElementById('preview-news-content');
+        if(!el) return;
+        if(!posts.length){el.innerHTML='<p style="color:#888;font-size:13px;">No headlines yet.</p>';return;}
+        var h='';
+        posts.forEach(function(p){
+          var link=p.id?'/news?id='+esc(p.id):esc(p.url||'#');
+          var cat=p.category?'<a href="/news#'+esc(p.category)+'" class="category" style="font-size:11px;margin-right:6px;">'+esc(p.category)+'</a>':'';
+          var age=p.posted_at?'<span style="font-size:11px;color:#888;">'+timeAgo(p.posted_at)+'</span>':'';
+          h+='<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;">'+cat+age+
+             '<a href="'+link+'" style="font-size:13px;font-weight:600;display:block;line-height:1.4;margin-top:2px;color:#111;">'+esc(p.title)+'</a>'+
+             '</div>';
+        });
+        el.innerHTML=h;
+      })
+      .catch(function(){});
+
+    // Markets
+    fetch('/markets', {headers:{'Accept':'application/json'}})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var items=(d.data||[]).filter(function(i){return i.price>0;});
+        var el=document.getElementById('preview-markets-content');
+        if(!el) return;
+        if(!items.length){el.innerHTML='<p style="color:#888;font-size:13px;">Prices loading…</p>';return;}
+        var h='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:4px;">';
+        items.forEach(function(item){
+          var chg='';
+          if(item.change_24h){
+            var sign=item.change_24h>=0?'+':'',color=item.change_24h>=0?'#28a745':'#dc3545';
+            chg='<span style="font-size:11px;color:'+color+';">'+sign+item.change_24h.toFixed(1)+'%%</span>';
+          }
+          h+='<div style="background:#f9f9f9;border-radius:6px;padding:8px 10px;text-align:center;">'+
+             '<div style="font-size:11px;font-weight:700;color:#555;letter-spacing:.5px;">'+esc(item.symbol)+'</div>'+
+             '<div style="font-size:15px;font-weight:800;">'+formatPrice(item.price)+chg+'</div>'+
+             '</div>';
+        });
+        h+='</div>';
+        el.innerHTML=h;
+      })
+      .catch(function(){});
+
+    // Video
+    fetch('/video', {headers:{'Accept':'application/json'}})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var channels=d.channels||{};
+        var all=[];
+        Object.keys(channels).forEach(function(ch){(channels[ch].videos||[]).forEach(function(v){all.push(v);});});
+        all.sort(function(a,b){return new Date(b.published)-new Date(a.published);});
+        all=all.slice(0,4);
+        var el=document.getElementById('preview-video-content');
+        if(!el) return;
+        if(!all.length){el.innerHTML='<p style="color:#888;font-size:13px;">No videos yet.</p>';return;}
+        var h='';
+        all.forEach(function(v){
+          var thumb=v.thumbnail?'<img src="'+esc(v.thumbnail)+'" style="width:80px;height:45px;object-fit:cover;border-radius:3px;flex-shrink:0;" loading="lazy">':'';
+          var meta=(v.channel||'')+(v.published?' · '+timeAgo(v.published):'');
+          h+='<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;align-items:flex-start;">'+
+             thumb+
+             '<div style="min-width:0;">'+
+             '<a href="'+esc(v.url||'#')+'" style="font-size:13px;font-weight:600;display:block;line-height:1.3;color:#111;">'+esc(v.title)+'</a>'+
+             '<div style="font-size:11px;color:#888;margin-top:2px;">'+esc(meta)+'</div>'+
+             '</div></div>';
+        });
+        el.innerHTML=h;
+      })
+      .catch(function(){});
+
+    // ── PWA install ───────────────────────────────────────────────────────────
+    var deferredPrompt;
+    if (navigator.serviceWorker) navigator.serviceWorker.register('/mu.js',{scope:'/'});
+    window.addEventListener('beforeinstallprompt',function(e){
+      e.preventDefault(); deferredPrompt=e;
+      var btn=document.getElementById('install-pwa');
+      if(btn) btn.style.display='inline-block';
+    });
+    var installBtn=document.getElementById('install-pwa');
+    if(installBtn) installBtn.addEventListener('click',function(){
+      if(!deferredPrompt) return;
       deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      document.getElementById('install-pwa').style.display = 'none';
+      deferredPrompt.userChoice.then(function(){ deferredPrompt=null; installBtn.style.display='none'; });
     });
   </script>
   </body>
 </html>`
 
 // LandingHandler serves the public-facing landing page with live content previews.
+// Preview content is fetched client-side from the public JSON API endpoints.
 func LandingHandler(w http.ResponseWriter, r *http.Request) {
-	// Refresh cards so content is up to date
-	RefreshCards()
-
-	newsContent := news.Headlines()
-	marketsContent := markets.MarketsHTML()
-	videoContent := video.Latest()
-
-	// Fallback text when live content is not yet available
-	if strings.TrimSpace(newsContent) == "" {
-		newsContent = `<p class="card-desc">Latest headlines from around the world.</p>`
-	}
-	if strings.TrimSpace(marketsContent) == "" {
-		marketsContent = `<p class="card-desc">Live crypto, futures and commodity prices.</p>`
-	}
-	if strings.TrimSpace(videoContent) == "" {
-		videoContent = `<p class="card-desc">Latest videos from top channels — no ads, no shorts.</p>`
-	}
-
-	html := fmt.Sprintf(landingTemplate, app.Version, newsContent, marketsContent, videoContent)
+	html := fmt.Sprintf(landingTemplate, app.Version)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
 }

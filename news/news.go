@@ -1422,6 +1422,15 @@ func Headlines() string {
 	return headlinesHtml
 }
 
+// GetFeed returns the current in-memory news feed (most recent first).
+func GetFeed() []*Post {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	result := make([]*Post, len(feed))
+	copy(result, feed)
+	return result
+}
+
 func formatSummary(text string) string {
 	// Split by double newlines for paragraphs
 	paragraphs := strings.Split(text, "\n\n")
