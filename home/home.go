@@ -374,7 +374,9 @@ POST /video HTTP/1.1
     fetch('/news', {headers:{'Accept':'application/json'}})
       .then(function(r){return r.json();})
       .then(function(d){
-        var posts=(d.feed||[]).slice(0,5);
+        var seen={};var posts=[];var all=d.feed||[];
+        for(var i=0;i<all.length&&posts.length<5;i++){var cat=all[i].category||'_';if(!seen[cat]){seen[cat]=true;posts.push(all[i]);}}
+
         var el=document.getElementById('preview-news-content');
         if(!el) return;
         if(!posts.length){el.innerHTML='<p style="color:#888;font-size:13px;">No headlines yet.</p>';return;}
@@ -424,7 +426,9 @@ POST /video HTTP/1.1
         var all=[];
         Object.keys(channels).forEach(function(ch){(channels[ch].videos||[]).forEach(function(v){all.push(v);});});
         all.sort(function(a,b){return new Date(b.published)-new Date(a.published);});
-        all=all.slice(0,4);
+        var seenCh={};var filtered=[];
+        for(var i=0;i<all.length&&filtered.length<4;i++){var ch=all[i].channel||'_';if(!seenCh[ch]){seenCh[ch]=true;filtered.push(all[i]);}}
+        all=filtered;
         var el=document.getElementById('preview-video-content');
         if(!el) return;
         if(!all.length){el.innerHTML='<p style="color:#888;font-size:13px;">No videos yet.</p>';return;}
