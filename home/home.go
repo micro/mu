@@ -283,8 +283,12 @@ POST /video HTTP/1.1
         <div class="card" style="border-left:4px solid #000;">
           <h4 style="margin-top:0;">&#x1F4B3; Agent Wallet</h4>
           <p class="card-desc">AI agents have full access to the built-in wallet via MCP. Check your credit balance, top up via crypto or card, and pay per-query automatically — no manual intervention required.</p>
-          <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{"name":"wallet_balance","arguments":{}}}
-{"method":"tools/call","params":{"name":"wallet_topup","arguments":{}}}</pre>
+          <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
+  "name":"wallet_balance",
+  "arguments":{}}}
+{"method":"tools/call","params":{
+  "name":"wallet_topup",
+  "arguments":{}}}</pre>
           <a href="/wallet" class="link">Wallet &amp; Credits &#x2192;</a>
         </div>
       </div>
