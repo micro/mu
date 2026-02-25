@@ -165,28 +165,28 @@ var landingTemplate = `<html lang="en">
         </a>
         <a href="/places" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/places.png" alt="Places" style="width: 32px; height: 32px; margin-bottom: 8px;">
+            <img src="/places.png" alt="Places" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Places</b>
             <div class="small">Search and discover places on an ad-free map</div>
           </div>
         </a>
         <a href="/weather" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/weather.png" alt="Weather" style="width: 32px; height: 32px; margin-bottom: 8px;">
+            <img src="/weather.png" alt="Weather" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Weather</b>
             <div class="small">Local weather forecasts without ads or tracking</div>
           </div>
         </a>
         <a href="/markets" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/markets.png" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px;">
+            <img src="/markets.png" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Markets</b>
             <div class="small">Live crypto, futures and commodity prices</div>
           </div>
         </a>
         <a href="/reminder" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/reminder.png" alt="Reminder" style="width: 32px; height: 32px; margin-bottom: 8px;">
+            <img src="/reminder.png" alt="Reminder" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Reminder</b>
             <div class="small">Daily Islamic verse, hadith, and name of Allah</div>
           </div>
