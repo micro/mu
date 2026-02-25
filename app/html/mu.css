@@ -1663,28 +1663,18 @@ body:has(#messages) #chat-back-link {
 /* Professional market ticker grid */
 .market-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
 
 .market-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 6px 8px;
-}
-
-.market-item:nth-child(4n+1),
-.market-item:nth-child(4n+2) {
+  padding: 8px 6px;
   background: var(--hover-background);
-}
-
-.market-item:nth-child(odd) {
-  padding-right: 12px;
-}
-
-.market-item:nth-child(even) {
-  padding-left: 12px;
+  border-radius: var(--border-radius);
+  text-align: center;
 }
 
 .market-symbol {

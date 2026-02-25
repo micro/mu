@@ -399,14 +399,14 @@ POST /video HTTP/1.1
         var el=document.getElementById('preview-markets-content');
         if(!el) return;
         if(!items.length){el.innerHTML='<p style="color:#888;font-size:13px;">Prices loading…</p>';return;}
-	var h='<div style="max-width: 400px;gap:8px;margin-bottom:4px;">';
+	var h='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px;">';
         items.forEach(function(item){
           var chg='';
           if(item.change_24h){
             var sign=item.change_24h>=0?'+':'',color=item.change_24h>=0?'#28a745':'#dc3545';
             chg='<span style="font-size:11px;color:'+color+';">'+sign+item.change_24h.toFixed(1)+'%%</span>';
           }
-	  h+='<div style="background:#f9f9f9;border-radius:6px;padding:8px 10px;text-align:center;display:inline-block;">'+
+	  h+='<div style="background:#f9f9f9;border-radius:6px;padding:8px 10px;text-align:center;">'+
              '<div style="font-size:11px;font-weight:700;color:#555;letter-spacing:.5px;">'+esc(item.symbol)+'</div>'+
              '<div style="font-size:15px;font-weight:800;">'+formatPrice(item.price)+chg+'</div>'+
              '</div>';
