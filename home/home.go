@@ -45,6 +45,7 @@ var landingTemplate = `<html lang="en">
       }
       .preview-tab:hover { background:#f5f5f5; }
       .preview-tab.active { background:#000; color:#fff; border-color:#000; }
+      .preview-tab.active img { filter:brightness(0) invert(1); }
       .preview-panel { display:none; }
       .preview-panel.active { display:block; }
       .example-panel { display:none; }
@@ -197,9 +198,15 @@ var landingTemplate = `<html lang="en">
       <p style="color:#555;max-width:600px;margin:0 auto 20px;">Every feature is available via REST API and <a href="/mcp">Model Context Protocol</a> for AI clients and agents.</p>
 
       <div class="preview-tabs">
-        <button class="preview-tab active" onclick="showExample('news',this)">News</button>
-        <button class="preview-tab" onclick="showExample('markets',this)">Markets</button>
-        <button class="preview-tab" onclick="showExample('video',this)">Video</button>
+        <button class="preview-tab active" onclick="showExample('news',this)">
+          <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">News
+        </button>
+        <button class="preview-tab" onclick="showExample('markets',this)">
+          <img src="/markets.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">Markets
+        </button>
+        <button class="preview-tab" onclick="showExample('video',this)">
+          <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;filter:brightness(0)">Video
+        </button>
       </div>
 
       <div style="max-width:900px;margin:0 auto;text-align:left;">

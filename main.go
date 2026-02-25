@@ -199,7 +199,7 @@ func main() {
 		"/token":           true,  // PAT token management
 		"/passkey":         false, // Passkey login/register (auth checked in handler)
 		"/session":         false, // Public - used to check auth status
-		"/api":             true,
+		"/api":             false, // Public - API documentation
 		"/flag":            true,
 		"/admin":           true,
 		"/admin/users":     true,
