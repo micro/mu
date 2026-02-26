@@ -921,7 +921,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>
 	</div>
 `, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton)
-		w.Write([]byte(app.RenderHTML(decodedSubject, "", messageView)))
+		w.Write([]byte(app.RenderHTMLForRequest(decodedSubject, "", messageView, r)))
 		return
 	}
 
@@ -954,7 +954,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>
 		`, replyTo, to, subject, backLink, backLink)
 
-		w.Write([]byte(app.RenderHTML(pageTitle, "", composeForm)))
+		w.Write([]byte(app.RenderHTMLForRequest(pageTitle, "", composeForm, r)))
 		return
 	}
 
@@ -1099,7 +1099,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Content: `<div id="mailbox">` + content + `</div>`,
 	})
 
-	w.Write([]byte(app.RenderHTML(title, "Your messages", pageHTML)))
+	w.Write([]byte(app.RenderHTMLForRequest(title, "Your messages", pageHTML, r)))
 }
 
 // renderThreadPreview renders a thread preview showing the latest message but linking to root

@@ -224,11 +224,7 @@ var Template = `
           <a href="/reminder"><img src="/reminder.png?` + Version + `"><span class="label">Reminder</span></a>
           <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
         </div>
-        <div class="nav-bottom">
-          <div id="nav-username"></div>
-          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
-          <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
-        </div>
+        <div class="nav-bottom">%s</div>
       </div>
       <div id="content">
         <h1 id="page-title">%s</h1>
@@ -261,6 +257,12 @@ var CardTemplate = `
   %s
 </div>
 `
+
+var navBottomLogin = `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
+
+var navBottomAccount = `<div id="nav-username"></div>` +
+	`<a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>` +
+	`<a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>`
 
 var LoginTemplate = `<html lang="en">
   <head>
@@ -656,7 +658,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		adminLinks,
 	)
 
-	html := RenderHTML("Account", "Account", content)
+	html := RenderHTMLForRequest("Account", "Account", content, r)
 	w.Write([]byte(html))
 }
 
@@ -920,21 +922,26 @@ func GetUserLanguage(r *http.Request) string {
 
 // RenderHTML renders the given html in a template with default language (English)
 func RenderHTML(title, desc, html string) string {
-	return RenderHTMLWithLang(title, desc, html, "en")
+	return RenderHTMLWithLang(title, desc, html, "en", navBottomLogin)
 }
 
 // RenderHTMLForRequest renders the given html in a template using the user's language preference
+// and server-side session check to render the correct nav-bottom (login or account/logout).
 func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	lang := GetUserLanguage(r)
-	return RenderHTMLWithLang(title, desc, html, lang)
+	_, acc := auth.TrySession(r)
+	if acc != nil {
+		return RenderHTMLWithLang(title, desc, html, lang, navBottomAccount)
+	}
+	return RenderHTMLWithLang(title, desc, html, lang, navBottomLogin)
 }
 
 // RenderHTMLWithLang renders the given html in a template with specified language
-func RenderHTMLWithLang(title, desc, html, lang string) string {
+func RenderHTMLWithLang(title, desc, html, lang, navBottom string) string {
 	if lang == "" {
 		lang = "en"
 	}
-	return fmt.Sprintf(Template, lang, title, desc, "", title, html)
+	return fmt.Sprintf(Template, lang, title, desc, "", navBottom, title, html)
 }
 
 // RenderString renders a markdown string as html
@@ -944,7 +951,7 @@ func RenderString(v string) string {
 
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
-	return fmt.Sprintf(Template, "en", title, desc, "", title, RenderString(text))
+	return fmt.Sprintf(Template, "en", title, desc, "", navBottomLogin, title, RenderString(text))
 }
 
 func ServeHTML(html string) http.Handler {
