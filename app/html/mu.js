@@ -575,27 +575,13 @@ function setSession() {
     });
   })
   .then(sess => {
-    console.log('Success:', sess);
-    // Nav elements (sidebar)
-    var navMail = document.getElementById("nav-mail");
-    var navWallet = document.getElementById("nav-wallet");
-    var navAccount = document.getElementById("nav-account");
-    var navLogout = document.getElementById("nav-logout");
-    var navLogin = document.getElementById("nav-login");
     var navMailBadge = document.getElementById("nav-mail-badge");
     var navUsername = document.getElementById("nav-username");
-    
+
     if (sess.type == "account") {
       isAuthenticated = true;
-      // Show authenticated nav items
-      if (navMail) navMail.style.display = 'flex';
-      if (navWallet) navWallet.style.display = 'flex';
-      if (navAccount) navAccount.style.display = 'flex';
-      if (navLogout) navLogout.style.display = 'flex';
-      if (navLogin) navLogin.style.display = 'none';
       if (navUsername && sess.account) {
         navUsername.textContent = 'Signed in as @' + sess.account;
-        navUsername.style.display = 'block';
       }
       // Fetch unread mail count for badge
       fetch('/mail?unread=count')
@@ -612,19 +598,7 @@ function setSession() {
       }
     } else {
       isAuthenticated = false;
-      // Hide authenticated nav items, show login
-      if (navMail) navMail.style.display = 'none';
-      if (navWallet) navWallet.style.display = 'none';
-      if (navAccount) navAccount.style.display = 'none';
-      if (navLogout) navLogout.style.display = 'none';
-      if (navLogin) {
-        navLogin.style.display = 'flex';
-        // Update login link to include redirect parameter
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/') {
-          const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
-          navLogin.href = '/login?redirect=' + redirectUrl;
-        }
-      }
+      if (navUsername) navUsername.textContent = '';
     }
     updateChatFormState();
     updateSearchFormsState();
@@ -632,24 +606,6 @@ function setSession() {
   .catch(error => {
     console.error('Error:', error);
     isAuthenticated = false;
-    var navMail = document.getElementById("nav-mail");
-    var navWallet = document.getElementById("nav-wallet");
-    var navAccount = document.getElementById("nav-account");
-    var navLogout = document.getElementById("nav-logout");
-    var navLogin = document.getElementById("nav-login");
-    if (navMail) navMail.style.display = 'none';
-    if (navWallet) navWallet.style.display = 'none';
-    if (navAccount) navAccount.style.display = 'none';
-    if (navLogout) navLogout.style.display = 'none';
-    if (navLogin) {
-      navLogin.style.display = 'flex';
-      // Update login link to include redirect parameter
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/') {
-        const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
-        navLogin.href = '/login?redirect=' + redirectUrl;
-      }
-    }
-    
     updateChatFormState();
     updateSearchFormsState();
   });
