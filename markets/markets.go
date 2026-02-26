@@ -44,7 +44,7 @@ var cryptoGeckoIDs = map[string]string{
 	"AVAX":  "avalanche-2",
 }
 
-var tickers = []string{"GBP", "UNI", "ETH", "BTC", "PAXG"}
+var tickers = []string{"UNI", "ETH", "BTC", "PAXG"}
 
 var futuresSymbols = map[string]string{
 	"OIL":      "CL=F",
