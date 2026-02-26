@@ -309,7 +309,7 @@ const (
 )
 
 // Crypto assets to display
-var cryptoAssets = []string{"BTC", "ETH", "UNI", "PAXG", "SOL", "ADA", "DOT", "LINK", "MATIC", "AVAX"}
+var cryptoAssets = []string{"BTC", "ETH", "UNI", "PAXG", "SOL", "ADA", "DOT", "LINK", "POL", "AVAX"}
 
 // Futures/Commodities to display
 var futuresAssets = []string{"OIL", "GOLD", "SILVER", "COPPER"}
