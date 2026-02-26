@@ -15,6 +15,7 @@ import (
 	"mu/data"
 
 	"github.com/piquette/finance-go/future"
+	"github.com/piquette/finance-go/quote"
 )
 
 // PriceData holds price and 24h change for an asset
@@ -188,6 +189,35 @@ func fetchPrices() (map[string]float64, map[string]PriceData) {
 		}()
 	}
 
+	// Get forex 24h changes from Yahoo Finance
+	app.Log("markets", "Fetching currency prices")
+	for currency, yahooSymbol := range forexSymbols {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					app.Log("markets", "Panic getting forex %s: %v", currency, r)
+				}
+			}()
+
+			q, err := quote.Get(yahooSymbol)
+			if err != nil {
+				app.Log("markets", "Failed to get forex %s: %v", currency, err)
+				return
+			}
+			if q == nil {
+				return
+			}
+			price := q.RegularMarketPrice
+			if price > 0 {
+				prices[currency] = price
+				priceData[currency] = PriceData{
+					Price:     price,
+					Change24h: q.RegularMarketChangePercent,
+				}
+			}
+		}()
+	}
+
 	app.Log("markets", "Finished fetching prices")
 	return prices, priceData
 }
@@ -306,6 +336,7 @@ const (
 	CategoryCrypto      = "crypto"
 	CategoryFutures     = "futures"
 	CategoryCommodities = "commodities"
+	CategoryCurrencies  = "currencies"
 )
 
 // Crypto assets to display
@@ -314,6 +345,21 @@ var cryptoAssets = []string{"BTC", "ETH", "UNI", "PAXG", "SOL", "ADA", "DOT", "L
 // Futures/Commodities to display
 var futuresAssets = []string{"OIL", "GOLD", "SILVER", "COPPER"}
 var commoditiesAssets = []string{"COFFEE", "WHEAT", "CORN", "SOYBEANS", "OATS"}
+
+// Currency assets to display (priced in USD)
+var currencyAssets = []string{"EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR"}
+
+// forexSymbols maps currency codes to Yahoo Finance forex ticker symbols
+var forexSymbols = map[string]string{
+	"EUR": "EURUSD=X",
+	"GBP": "GBPUSD=X",
+	"JPY": "JPYUSD=X",
+	"CAD": "CADUSD=X",
+	"AUD": "AUDUSD=X",
+	"CHF": "CHFUSD=X",
+	"CNY": "CNYUSD=X",
+	"INR": "INRUSD=X",
+}
 
 // chartLinks maps asset symbols to their chart URLs
 var chartLinks = map[string]string{
@@ -338,6 +384,15 @@ var chartLinks = map[string]string{
 	"CORN":     "https://finance.yahoo.com/chart/ZC%3DF",
 	"SOYBEANS": "https://finance.yahoo.com/chart/ZS%3DF",
 	"OATS":     "https://finance.yahoo.com/chart/ZO%3DF",
+	// Currencies → Yahoo Finance forex charts
+	"EUR": "https://finance.yahoo.com/chart/EURUSD%3DX",
+	"GBP": "https://finance.yahoo.com/chart/GBPUSD%3DX",
+	"JPY": "https://finance.yahoo.com/chart/JPYUSD%3DX",
+	"CAD": "https://finance.yahoo.com/chart/CADUSD%3DX",
+	"AUD": "https://finance.yahoo.com/chart/AUDUSD%3DX",
+	"CHF": "https://finance.yahoo.com/chart/CHFUSD%3DX",
+	"CNY": "https://finance.yahoo.com/chart/CNYUSD%3DX",
+	"INR": "https://finance.yahoo.com/chart/INRUSD%3DX",
 }
 
 // MarketData represents market data for display
@@ -357,7 +412,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate category
-	if category != CategoryCrypto && category != CategoryFutures && category != CategoryCommodities {
+	if category != CategoryCrypto && category != CategoryFutures && category != CategoryCommodities && category != CategoryCurrencies {
 		category = CategoryCrypto
 	}
 
@@ -406,7 +461,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request, category string) {
 
 	app.Respond(w, r, app.Response{
 		Title:       "Markets",
-		Description: "Live cryptocurrency, futures, and commodity market prices",
+		Description: "Live cryptocurrency, futures, commodity, and currency market prices",
 		HTML:        body,
 	})
 }
@@ -418,6 +473,8 @@ func getAssetsForCategory(category string) []string {
 		return futuresAssets
 	case CategoryCommodities:
 		return commoditiesAssets
+	case CategoryCurrencies:
+		return currencyAssets
 	default:
 		return cryptoAssets
 	}
@@ -429,13 +486,14 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory string) 
 
 	// Page header
 	sb.WriteString(`<div class="markets-page">`)
-	sb.WriteString(`<p class="description">Live market data for cryptocurrencies, futures, and commodities</p>`)
+	sb.WriteString(`<p class="description">Live market data for cryptocurrencies, futures, commodities, and currencies</p>`)
 
 	// Category tabs
 	sb.WriteString(`<div class="markets-tabs">`)
 	sb.WriteString(generateTab("Crypto", CategoryCrypto, activeCategory))
 	sb.WriteString(generateTab("Futures", CategoryFutures, activeCategory))
 	sb.WriteString(generateTab("Commodities", CategoryCommodities, activeCategory))
+	sb.WriteString(generateTab("Currencies", CategoryCurrencies, activeCategory))
 	sb.WriteString(`</div>`)
 
 	// Market data table
