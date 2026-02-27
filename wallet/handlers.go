@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"os"
+	"net/url"
 	"strings"
 
 	"github.com/skip2/go-qrcode"
@@ -12,10 +12,6 @@ import (
 	"mu/app"
 	"mu/auth"
 )
-
-func getWalletConnectProjectID() string {
-	return os.Getenv("WALLETCONNECT_PROJECT_ID")
-}
 
 // WalletPage renders the wallet page HTML
 func WalletPage(userID string) string {
@@ -180,6 +176,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleStripeSuccess(w, r)
 	case path == "/wallet/stripe/webhook" && r.Method == "POST":
 		HandleStripeWebhook(w, r)
+	case path == "/wallet/crypto/verify" && r.Method == "POST":
+		handleCryptoVerify(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -236,7 +234,7 @@ func PublicWalletPage() string {
 		sb.WriteString(`<li><strong>Card</strong> — secure payment via Stripe</li>`)
 	}
 	if CryptoWalletEnabled() {
-		sb.WriteString(`<li><strong>Crypto</strong> — send ETH or tokens to your deposit address (Ethereum, Base, Arbitrum, Optimism)</li>`)
+		sb.WriteString(`<li><strong>Crypto</strong> — send ETH to your deposit address on Ethereum mainnet</li>`)
 	}
 	sb.WriteString(`</ul>`)
 	sb.WriteString(`<p><a href="/login">Login</a> or <a href="/signup">sign up</a> to top up.</p>`)
@@ -258,9 +256,6 @@ var depositChains = []struct {
 	ChainID int
 }{
 	{"ethereum", "Ethereum", 1},
-	{"base", "Base", 8453},
-	{"arbitrum", "Arbitrum", 42161},
-	{"optimism", "Optimism", 10},
 }
 
 func handleDepositPage(w http.ResponseWriter, r *http.Request) {
@@ -360,23 +355,6 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 		return `<div class="card"><p class="text-error">Crypto wallet not available. Please try again later.</p></div>`
 	}
 
-	// Get selected chain (default to ethereum)
-	selectedChain := r.URL.Query().Get("chain")
-	if selectedChain == "" {
-		selectedChain = "ethereum"
-	}
-
-	// Find chain info
-	chainID := 1 // default ethereum
-	chainName := "Ethereum"
-	for _, c := range depositChains {
-		if c.ID == selectedChain {
-			chainID = c.ChainID
-			chainName = c.Name
-			break
-		}
-	}
-
 	// Get user's deposit address
 	depositAddr, err := GetUserDepositAddress(userID)
 	if err != nil {
@@ -386,45 +364,122 @@ func renderCryptoDeposit(userID string, r *http.Request) string {
 
 	var sb strings.Builder
 
-	// Chain selector
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Pick a network</h3>`)
-	sb.WriteString(`<select id="chain-select" onchange="window.location.href='/wallet/topup?method=crypto&chain='+this.value" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">`)
-	for _, c := range depositChains {
-		selected := ""
-		if c.ID == selectedChain {
-			selected = " selected"
-		}
-		sb.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, c.ID, selected, c.Name))
+	// Show any error from a previous verification attempt
+	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
+		sb.WriteString(fmt.Sprintf(`<div class="card"><p class="text-error">%s</p></div>`, errMsg))
 	}
-	sb.WriteString(`</select>`)
-	sb.WriteString(`</div>`)
 
-	// Generate QR code with ethereum: URI
-	ethURI := fmt.Sprintf("ethereum:%s@%d", depositAddr, chainID)
+	// QR code for mobile / WalletConnect wallets (EIP-681 URI, Ethereum mainnet)
+	ethURI := fmt.Sprintf("ethereum:%s@1", depositAddr)
 	qrPNG, _ := qrcode.Encode(ethURI, qrcode.Medium, 200)
 	qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
 
-	// Deposit address with QR
+	// Deposit address card
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Deposit Address</h3>`)
-	sb.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%s</p>`, chainName))
-	sb.WriteString(fmt.Sprintf(`<div data-deposit-address="%s" data-chain-id="%d">`, depositAddr, chainID))
+	sb.WriteString(`<h3>Your Ethereum Deposit Address</h3>`)
 	sb.WriteString(fmt.Sprintf(`<img src="data:image/png;base64,%s" alt="QR Code" class="qr-code">`, qrBase64))
 	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
 	sb.WriteString(`<p class="text-sm mt-3">`)
 	sb.WriteString(`<button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Address', 2000)" class="btn-secondary">Copy Address</button>`)
 	sb.WriteString(`</p>`)
-	sb.WriteString(`</div>`)
-	sb.WriteString(`<p class="text-xs text-muted mt-2">Scan QR or copy address to send from your wallet app</p>`)
+	sb.WriteString(`<p class="text-xs text-muted mt-2">Scan with any WalletConnect-compatible wallet, or copy address to send from your wallet app</p>`)
 	sb.WriteString(`</div>`)
 
-	// Conversion note
+	// Connect & Pay card — uses window.ethereum (MetaMask / injected provider)
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · Converted at market rate</p>`)
+	sb.WriteString(`<h3>Connect Wallet &amp; Pay</h3>`)
+	sb.WriteString(`<p class="text-sm text-muted">Send ETH on Ethereum mainnet. You will receive 1 credit per $0.01 at the market rate.</p>`)
+	sb.WriteString(`<button id="connect-pay-btn" class="btn mt-2" onclick="connectAndPay()">Connect Wallet &amp; Pay</button>`)
 	sb.WriteString(`</div>`)
+
+	// Confirm payment form — paste tx hash after sending
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Confirm Your Payment</h3>`)
+	sb.WriteString(`<p class="text-sm text-muted">After sending ETH, enter the transaction hash to confirm and receive credits instantly:</p>`)
+	sb.WriteString(`<form id="verify-form" method="POST" action="/wallet/crypto/verify">`)
+	sb.WriteString(`<input type="hidden" name="chain" value="ethereum">`)
+	sb.WriteString(`<div class="mt-2">`)
+	sb.WriteString(`<input type="text" id="tx-hash-input" name="tx_hash" placeholder="0x..." style="width:100%; font-family:monospace; padding:8px; box-sizing:border-box;" required>`)
+	sb.WriteString(`</div>`)
+	sb.WriteString(`<button type="submit" class="btn mt-3">Verify &amp; Add Credits</button>`)
+	sb.WriteString(`</form>`)
+	sb.WriteString(`</div>`)
+
+	// Rate info
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<p class="text-sm text-muted">1 credit = $0.01 &middot; Converted at market rate &middot; Ethereum mainnet only</p>`)
+	sb.WriteString(`</div>`)
+
+	// Inline JS: MetaMask / injected wallet support
+	sb.WriteString(`<script>
+async function connectAndPay() {
+  if (!window.ethereum) {
+    alert('No browser wallet detected.\nPlease install MetaMask or scan the QR code with a WalletConnect-compatible wallet.');
+    return;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const ethAmount = window.prompt('Enter ETH amount to send\n(e.g. 0.003 ≈ $10 at ~$3,000/ETH):');
+    if (!ethAmount || isNaN(parseFloat(ethAmount))) return;
+    // Convert to wei using integer arithmetic to avoid float precision loss
+    const weiHex = '0x' + (BigInt(Math.round(parseFloat(ethAmount) * 1e6)) * 1000000000000n).toString(16);
+    const txHash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{ from: accounts[0], to: '` + depositAddr + `', value: weiHex }]
+    });
+    document.getElementById('tx-hash-input').value = txHash;
+    document.getElementById('verify-form').submit();
+  } catch (e) {
+    alert('Error: ' + (e.message || e));
+  }
+}
+</script>`)
 
 	return sb.String()
+}
+
+func handleCryptoVerify(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/wallet/topup?method=crypto&error=Invalid+request", http.StatusSeeOther)
+		return
+	}
+
+	txHash := strings.TrimSpace(r.FormValue("tx_hash"))
+	chain := strings.TrimSpace(r.FormValue("chain"))
+	if chain == "" {
+		chain = "ethereum"
+	}
+
+	if txHash == "" {
+		http.Redirect(w, r, "/wallet/topup?method=crypto&error=Please+enter+a+transaction+hash", http.StatusSeeOther)
+		return
+	}
+	if !strings.HasPrefix(txHash, "0x") || len(txHash) != 66 {
+		http.Redirect(w, r, "/wallet/topup?method=crypto&error=Invalid+transaction+hash+format+(must+be+66+hex+characters+starting+with+0x)", http.StatusSeeOther)
+		return
+	}
+
+	credits, err := VerifyAndCreditDeposit(chain, txHash, sess.Account)
+	if err != nil {
+		app.Log("wallet", "Deposit verification failed for %s tx %s: %v", sess.Account, txHash, err)
+		errMsg := url.QueryEscape("Verification failed: " + err.Error())
+		http.Redirect(w, r, "/wallet/topup?method=crypto&error="+errMsg, http.StatusSeeOther)
+		return
+	}
+
+	content := fmt.Sprintf(`<div class="card">
+		<h2>Payment Confirmed</h2>
+		<p>%d credits have been added to your wallet.</p>
+		<p><a href="/wallet" class="btn">View Wallet</a></p>
+	</div>`, credits)
+	html := app.RenderHTMLForRequest("Payment Confirmed", "Credits added", content, r)
+	w.Write([]byte(html))
 }
 
 // TopupMethod represents a payment method for wallet topup

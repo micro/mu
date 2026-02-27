@@ -38,9 +38,6 @@ var (
 // Supported chains for deposit detection
 var chainRPCs = map[string]string{
 	"ethereum": "https://eth.llamarpc.com",
-	"base":     "https://mainnet.base.org",
-	"arbitrum": "https://arb1.arbitrum.io/rpc",
-	"optimism": "https://mainnet.optimism.io",
 }
 
 func getEnvOrDefault(key, defaultVal string) string {
@@ -271,7 +268,7 @@ type CryptoDeposit struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-// Known tokens on Base
+// Known ERC-20 tokens (Ethereum mainnet)
 var knownTokens = map[string]struct {
 	Symbol   string
 	Decimals int
@@ -616,7 +613,110 @@ func processDeposit(chain, userID string, dep *CryptoDeposit) {
 		credits, userID, chain, dep.Amount.String(), dep.TokenSymbol, usdValue)
 }
 
-// getTokenUSDValue gets the USD value of a token amount
+// VerifyAndCreditDeposit verifies an on-chain ETH transaction submitted by the user
+// and credits their account. Returns the number of credits added.
+func VerifyAndCreditDeposit(chain, txHash, userID string) (int, error) {
+	if _, ok := chainRPCs[chain]; !ok {
+		return 0, fmt.Errorf("unsupported chain: %s", chain)
+	}
+
+	// Normalize hash
+	txHash = strings.ToLower(strings.TrimSpace(txHash))
+
+	// Prevent double-crediting before we do any RPC calls
+	key := "deposit_" + chain + "_" + txHash
+	if _, err := data.LoadFile(key); err == nil {
+		return 0, fmt.Errorf("transaction already processed")
+	}
+
+	// Fetch the transaction to get value and recipient
+	txResult, err := rpcCall(chain, "eth_getTransactionByHash", []interface{}{txHash})
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch transaction: %w", err)
+	}
+	if txResult == nil || string(txResult) == "null" {
+		return 0, fmt.Errorf("transaction not found")
+	}
+
+	var tx struct {
+		To    string `json:"to"`
+		Value string `json:"value"`
+	}
+	if err := json.Unmarshal(txResult, &tx); err != nil {
+		return 0, fmt.Errorf("failed to parse transaction: %w", err)
+	}
+
+	// Fetch the receipt to confirm the transaction succeeded
+	receiptResult, err := rpcCall(chain, "eth_getTransactionReceipt", []interface{}{txHash})
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch receipt: %w", err)
+	}
+	if receiptResult == nil || string(receiptResult) == "null" {
+		return 0, fmt.Errorf("transaction not yet confirmed — please wait and try again")
+	}
+
+	var receipt struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(receiptResult, &receipt); err != nil {
+		return 0, fmt.Errorf("failed to parse receipt: %w", err)
+	}
+	if receipt.Status != "0x1" {
+		return 0, fmt.Errorf("transaction did not succeed")
+	}
+
+	// Verify recipient is this user's deposit address
+	depositAddr, err := GetUserDepositAddress(userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve deposit address: %w", err)
+	}
+	if !strings.EqualFold(tx.To, depositAddr) {
+		return 0, fmt.Errorf("transaction recipient does not match your deposit address")
+	}
+
+	// Parse ETH value (hex wei)
+	if len(tx.Value) < 3 {
+		return 0, fmt.Errorf("transaction carries no ETH value")
+	}
+	value, ok := new(big.Int).SetString(tx.Value[2:], 16)
+	if !ok || value.Sign() == 0 {
+		return 0, fmt.Errorf("transaction carries no ETH value")
+	}
+
+	usdValue := getTokenUSDValue("ETH", value)
+	credits := int(usdValue * 100)
+	if credits < 1 {
+		return 0, fmt.Errorf("deposit value too small (minimum $0.01)")
+	}
+
+	// Add credits
+	if err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
+		"tx_hash":    txHash,
+		"chain":      chain,
+		"token":      "ETH",
+		"amount":     value.String(),
+		"amount_usd": usdValue,
+	}); err != nil {
+		return 0, fmt.Errorf("failed to add credits: %w", err)
+	}
+
+	// Mark as processed
+	data.SaveJSON(key, map[string]interface{}{
+		"user_id":    userID,
+		"chain":      chain,
+		"tx_hash":    txHash,
+		"amount":     value.String(),
+		"amount_usd": usdValue,
+		"credits":    credits,
+		"created_at": time.Now(),
+	})
+
+	app.Log("wallet", "Verified and credited %d credits to %s for tx %s on %s ($%.2f)",
+		credits, userID, txHash, chain, usdValue)
+
+	return credits, nil
+}
+
 func getTokenUSDValue(symbol string, amount *big.Int) float64 {
 	if amount == nil {
 		return 0
@@ -703,8 +803,7 @@ func getTokenPrice(symbol string) float64 {
 	return price
 }
 
-// rpcCall makes a JSON-RPC call to the Base node
-// rpcCall makes a JSON-RPC call to the specified chain
+// rpcCall makes a JSON-RPC call to the specified chain, retrying on transient errors
 func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error) {
 	rpcURL, ok := chainRPCs[chain]
 	if !ok {
@@ -719,31 +818,57 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 	}
 
 	body, _ := json.Marshal(reqBody)
-	resp, err := http.Post(rpcURL, "application/json", bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	const maxRetries = 3
+	const retryDelay = 2 * time.Second
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			time.Sleep(retryDelay)
+		}
+
+		resp, err := http.Post(rpcURL, "application/json", bytes.NewReader(body))
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		respBody, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		var rpcResp struct {
+			Result json.RawMessage `json:"result"`
+			Error  *struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+
+		if err := json.Unmarshal(respBody, &rpcResp); err != nil {
+			// Non-JSON response is always a transient server-side issue; retry.
+			lastErr = err
+			continue
+		}
+
+		if rpcResp.Error != nil {
+			rpcErr := fmt.Errorf("rpc error: %s", rpcResp.Error.Message)
+			// Only retry on errors that indicate transient backend unavailability.
+			if strings.Contains(rpcResp.Error.Message, "healthy") ||
+				strings.Contains(rpcResp.Error.Message, "backend") ||
+				strings.Contains(rpcResp.Error.Message, "unavailable") ||
+				strings.Contains(rpcResp.Error.Message, "timeout") {
+				lastErr = rpcErr
+				continue
+			}
+			return nil, rpcErr
+		}
+
+		return rpcResp.Result, nil
 	}
 
-	var rpcResp struct {
-		Result json.RawMessage `json:"result"`
-		Error  *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-
-	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
-		return nil, err
-	}
-
-	if rpcResp.Error != nil {
-		return nil, fmt.Errorf("rpc error: %s", rpcResp.Error.Message)
-	}
-
-	return rpcResp.Result, nil
+	return nil, lastErr
 }
