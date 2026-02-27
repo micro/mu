@@ -175,14 +175,26 @@ func buildStatus() StatusResponse {
 
 	// Check Vector Search
 	indexStats := data.GetStats()
-	vectorMode := "Keyword (fallback)"
-	if indexStats.EmbeddingsEnabled {
-		vectorMode = fmt.Sprintf("Vector (%d embeddings)", indexStats.EmbeddingCount)
+	var searchStatus bool
+	var searchDetails string
+	switch {
+	case indexStats.UsingSQLite:
+		searchStatus = true
+		searchDetails = fmt.Sprintf("Full Text Search (%d entries)", indexStats.TotalEntries)
+	case indexStats.EmbeddingsEnabled:
+		searchStatus = true
+		searchDetails = fmt.Sprintf("Vector (%d embeddings)", indexStats.EmbeddingCount)
+	case !indexStats.OllamaAvailable:
+		searchStatus = false
+		searchDetails = fmt.Sprintf("Keyword (%d entries, Ollama unavailable)", indexStats.TotalEntries)
+	default:
+		searchStatus = false
+		searchDetails = fmt.Sprintf("Keyword (%d entries)", indexStats.TotalEntries)
 	}
 	services = append(services, StatusCheck{
 		Name:    "Search",
-		Status:  indexStats.EmbeddingsEnabled,
-		Details: vectorMode,
+		Status:  searchStatus,
+		Details: searchDetails,
 	})
 
 	// Configuration checks
