@@ -175,9 +175,14 @@ func buildStatus() StatusResponse {
 
 	// Check Vector Search
 	indexStats := data.GetStats()
-	vectorMode := fmt.Sprintf("Keyword (%d entries)", indexStats.TotalEntries)
-	if indexStats.EmbeddingsEnabled {
+	var vectorMode string
+	switch {
+	case indexStats.EmbeddingsEnabled:
 		vectorMode = fmt.Sprintf("Vector (%d entries)", indexStats.TotalEntries)
+	case !indexStats.OllamaAvailable:
+		vectorMode = fmt.Sprintf("Keyword (%d entries, Ollama unavailable)", indexStats.TotalEntries)
+	default:
+		vectorMode = fmt.Sprintf("Keyword (%d entries)", indexStats.TotalEntries)
 	}
 	services = append(services, StatusCheck{
 		Name:    "Search",

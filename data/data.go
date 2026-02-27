@@ -891,16 +891,31 @@ type Stats struct {
 	TotalEntries      int  `json:"total_entries"`
 	EmbeddingCount    int  `json:"embedding_count"`
 	EmbeddingsEnabled bool `json:"embeddings_enabled"`
+	OllamaAvailable   bool `json:"ollama_available"`
+}
+
+// checkOllamaAvailable does a quick reachability check against the local Ollama instance.
+func checkOllamaAvailable() bool {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get("http://localhost:11434/")
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode >= 200 && resp.StatusCode < 300
 }
 
 // GetStats returns current index statistics
 func GetStats() Stats {
+	ollamaOK := checkOllamaAvailable()
+
 	if UseSQLite {
 		entries, embCount, _ := GetIndexStats()
 		return Stats{
 			TotalEntries:      entries,
 			EmbeddingCount:    embCount,
-			EmbeddingsEnabled: embCount > 0,
+			EmbeddingsEnabled: embCount > 0 && ollamaOK,
+			OllamaAvailable:   ollamaOK,
 		}
 	}
 
@@ -916,6 +931,7 @@ func GetStats() Stats {
 	return Stats{
 		TotalEntries:      entryCount,
 		EmbeddingCount:    embCount,
-		EmbeddingsEnabled: enabled,
+		EmbeddingsEnabled: enabled && ollamaOK,
+		OllamaAvailable:   ollamaOK,
 	}
 }
