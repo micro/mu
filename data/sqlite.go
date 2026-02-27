@@ -146,7 +146,8 @@ func GetByIDSQLite(id string) (*IndexEntry, error) {
 	return &entry, nil
 }
 
-// SearchSQLite performs text search using LIKE (FTS5 not always available)
+// SearchSQLite performs full-text search using keyword matching.
+// SQLite indexing never generates embeddings, so vector search is not attempted.
 func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry, error) {
 	if _, err := getDB(); err != nil {
 		return nil, err
@@ -157,32 +158,6 @@ func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry,
 		opt(options)
 	}
 
-	// Try vector search first if embeddings are available (unless keyword-only requested)
-	if !options.KeywordOnly {
-		queryEmbedding, err := getEmbedding(query)
-		if err == nil && len(queryEmbedding) > 0 {
-			// Get vector search results
-			vectorResults, err := VectorSearchSQLite(queryEmbedding, limit*2, opts...)
-			if err == nil && len(vectorResults) > 0 {
-				// Also do keyword search to catch exact matches vector might miss
-				keywordResults, _ := searchSQLiteFallback(query, limit*2, options)
-
-				// Merge results, preferring keyword matches for exact terms
-				merged, mergeErr := mergeSearchResults(vectorResults, keywordResults, query, limit)
-				if mergeErr == nil {
-					fmt.Printf("[SEARCH] Query '%s': %d vector + %d keyword = %d merged results\n",
-						query, len(vectorResults), len(keywordResults), len(merged))
-					if len(merged) > 0 {
-						fmt.Printf("[SEARCH] Top result: %s (score from merge)\n", merged[0].Title)
-					}
-					return merged, nil
-				}
-			}
-		}
-	}
-
-	// Fall back to keyword search
-	fmt.Printf("[SEARCH] Query '%s': using keyword search\n", query)
 	return searchSQLiteFallback(query, limit, options)
 }
 
