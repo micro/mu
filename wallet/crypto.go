@@ -703,8 +703,7 @@ func getTokenPrice(symbol string) float64 {
 	return price
 }
 
-// rpcCall makes a JSON-RPC call to the Base node
-// rpcCall makes a JSON-RPC call to the specified chain
+// rpcCall makes a JSON-RPC call to the specified chain, retrying on transient errors
 func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error) {
 	rpcURL, ok := chainRPCs[chain]
 	if !ok {
@@ -719,31 +718,57 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 	}
 
 	body, _ := json.Marshal(reqBody)
-	resp, err := http.Post(rpcURL, "application/json", bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	const maxRetries = 3
+	const retryDelay = 2 * time.Second
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			time.Sleep(retryDelay)
+		}
+
+		resp, err := http.Post(rpcURL, "application/json", bytes.NewReader(body))
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		respBody, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		var rpcResp struct {
+			Result json.RawMessage `json:"result"`
+			Error  *struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+
+		if err := json.Unmarshal(respBody, &rpcResp); err != nil {
+			// Non-JSON response is always a transient server-side issue; retry.
+			lastErr = err
+			continue
+		}
+
+		if rpcResp.Error != nil {
+			rpcErr := fmt.Errorf("rpc error: %s", rpcResp.Error.Message)
+			// Only retry on errors that indicate transient backend unavailability.
+			if strings.Contains(rpcResp.Error.Message, "healthy") ||
+				strings.Contains(rpcResp.Error.Message, "backend") ||
+				strings.Contains(rpcResp.Error.Message, "unavailable") ||
+				strings.Contains(rpcResp.Error.Message, "timeout") {
+				lastErr = rpcErr
+				continue
+			}
+			return nil, rpcErr
+		}
+
+		return rpcResp.Result, nil
 	}
 
-	var rpcResp struct {
-		Result json.RawMessage `json:"result"`
-		Error  *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-
-	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
-		return nil, err
-	}
-
-	if rpcResp.Error != nil {
-		return nil, fmt.Errorf("rpc error: %s", rpcResp.Error.Message)
-	}
-
-	return rpcResp.Result, nil
+	return nil, lastErr
 }
