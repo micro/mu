@@ -1,9 +1,11 @@
 package wallet
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -99,3 +101,86 @@ func TestRPCCallRetries(t *testing.T) {
 		})
 	}
 }
+
+// newRPCDispatchServer creates a test HTTP server that dispatches JSON-RPC
+// responses based on the method name.
+func newRPCDispatchServer(methodResponses map[string]string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Method string `json:"method"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			fmt.Fprint(w, `{"jsonrpc":"2.0","id":1,"result":null}`)
+			return
+		}
+		if resp, ok := methodResponses[req.Method]; ok {
+			fmt.Fprint(w, resp)
+			return
+		}
+		fmt.Fprint(w, `{"jsonrpc":"2.0","id":1,"result":null}`)
+	}))
+}
+
+// TestVerifyAndCreditDeposit covers the early-exit error paths of
+// VerifyAndCreditDeposit that do not require a live wallet seed.
+func TestVerifyAndCreditDeposit(t *testing.T) {
+	const validHash = "0x" + "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+
+	t.Run("unsupported chain", func(t *testing.T) {
+		_, err := VerifyAndCreditDeposit("polygon", validHash, "user1")
+		if err == nil || !strings.Contains(err.Error(), "unsupported chain") {
+			t.Errorf("expected unsupported chain error, got: %v", err)
+		}
+	})
+
+	t.Run("transaction not found", func(t *testing.T) {
+		srv := newRPCDispatchServer(map[string]string{
+			"eth_getTransactionByHash": `{"jsonrpc":"2.0","id":1,"result":null}`,
+		})
+		defer srv.Close()
+
+		original := chainRPCs["ethereum"]
+		chainRPCs["ethereum"] = srv.URL
+		defer func() { chainRPCs["ethereum"] = original }()
+
+		_, err := VerifyAndCreditDeposit("ethereum", validHash, "user1")
+		if err == nil || !strings.Contains(err.Error(), "not found") {
+			t.Errorf("expected transaction not found error, got: %v", err)
+		}
+	})
+
+	t.Run("transaction not yet confirmed", func(t *testing.T) {
+		srv := newRPCDispatchServer(map[string]string{
+			"eth_getTransactionByHash":   `{"jsonrpc":"2.0","id":1,"result":{"to":"0xdeadbeef","value":"0xDE0B6B3A7640000"}}`,
+			"eth_getTransactionReceipt": `{"jsonrpc":"2.0","id":1,"result":null}`,
+		})
+		defer srv.Close()
+
+		original := chainRPCs["ethereum"]
+		chainRPCs["ethereum"] = srv.URL
+		defer func() { chainRPCs["ethereum"] = original }()
+
+		_, err := VerifyAndCreditDeposit("ethereum", validHash, "user1")
+		if err == nil || !strings.Contains(err.Error(), "not yet confirmed") {
+			t.Errorf("expected not yet confirmed error, got: %v", err)
+		}
+	})
+
+	t.Run("transaction failed on chain", func(t *testing.T) {
+		srv := newRPCDispatchServer(map[string]string{
+			"eth_getTransactionByHash":   `{"jsonrpc":"2.0","id":1,"result":{"to":"0xdeadbeef","value":"0xDE0B6B3A7640000"}}`,
+			"eth_getTransactionReceipt": `{"jsonrpc":"2.0","id":1,"result":{"status":"0x0"}}`,
+		})
+		defer srv.Close()
+
+		original := chainRPCs["ethereum"]
+		chainRPCs["ethereum"] = srv.URL
+		defer func() { chainRPCs["ethereum"] = original }()
+
+		_, err := VerifyAndCreditDeposit("ethereum", validHash, "user1")
+		if err == nil || !strings.Contains(err.Error(), "did not succeed") {
+			t.Errorf("expected transaction failed error, got: %v", err)
+		}
+	})
+}
+
