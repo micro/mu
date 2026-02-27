@@ -175,9 +175,9 @@ func buildStatus() StatusResponse {
 
 	// Check Vector Search
 	indexStats := data.GetStats()
-	vectorMode := "Keyword (fallback)"
+	vectorMode := fmt.Sprintf("Keyword (%d entries)", indexStats.TotalEntries)
 	if indexStats.EmbeddingsEnabled {
-		vectorMode = fmt.Sprintf("Vector (%d embeddings)", indexStats.EmbeddingCount)
+		vectorMode = fmt.Sprintf("Vector (%d entries)", indexStats.TotalEntries)
 	}
 	services = append(services, StatusCheck{
 		Name:    "Search",
