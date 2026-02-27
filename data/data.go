@@ -892,6 +892,7 @@ type Stats struct {
 	EmbeddingCount    int  `json:"embedding_count"`
 	EmbeddingsEnabled bool `json:"embeddings_enabled"`
 	OllamaAvailable   bool `json:"ollama_available"`
+	UsingSQLite       bool `json:"using_sqlite"`
 }
 
 // checkOllamaAvailable does a quick reachability check against the local Ollama instance.
@@ -907,17 +908,16 @@ func checkOllamaAvailable() bool {
 
 // GetStats returns current index statistics
 func GetStats() Stats {
-	ollamaOK := checkOllamaAvailable()
-
+	// SQLite mode uses full-text search only; embeddings are never generated.
 	if UseSQLite {
-		entries, embCount, _ := GetIndexStats()
+		entries, _, _ := GetIndexStats()
 		return Stats{
-			TotalEntries:      entries,
-			EmbeddingCount:    embCount,
-			EmbeddingsEnabled: embCount > 0 && ollamaOK,
-			OllamaAvailable:   ollamaOK,
+			TotalEntries: entries,
+			UsingSQLite:  true,
 		}
 	}
+
+	ollamaOK := checkOllamaAvailable()
 
 	indexMutex.RLock()
 	entryCount := len(index)
