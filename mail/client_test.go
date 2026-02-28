@@ -1,9 +1,73 @@
 package mail
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"strings"
 	"testing"
 )
+
+func TestLoadDKIMConfigFromEnv(t *testing.T) {
+	// Generate a test RSA key
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("failed to generate test RSA key: %v", err)
+	}
+
+	// Encode to PEM
+	keyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
+	pemBlock := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: keyBytes}
+	pemData := string(pem.EncodeToMemory(pemBlock))
+
+	// Reset global state after test
+	defer func() { dkimConfig = nil }()
+
+	// Set the environment variable
+	t.Setenv("DKIM_PRIVATE_KEY", pemData)
+
+	if err := LoadDKIMConfig("example.com", "mail"); err != nil {
+		t.Fatalf("LoadDKIMConfig returned error: %v", err)
+	}
+
+	enabled, domain, selector := DKIMStatus()
+	if !enabled {
+		t.Error("expected DKIM to be enabled after loading key from env var")
+	}
+	if domain != "example.com" {
+		t.Errorf("expected domain %q, got %q", "example.com", domain)
+	}
+	if selector != "mail" {
+		t.Errorf("expected selector %q, got %q", "mail", selector)
+	}
+}
+
+func TestLoadDKIMConfigEnvTakesPrecedence(t *testing.T) {
+	// Verify that DKIM_PRIVATE_KEY env var is used even when no key file exists
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("failed to generate test RSA key: %v", err)
+	}
+
+	keyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
+	pemBlock := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: keyBytes}
+	pemData := string(pem.EncodeToMemory(pemBlock))
+
+	defer func() { dkimConfig = nil }()
+
+	// Ensure env var is set; the key file at ~/.mu/keys/dkim.key may not exist on CI
+	t.Setenv("DKIM_PRIVATE_KEY", pemData)
+
+	if err := LoadDKIMConfig("test.example.org", "selector1"); err != nil {
+		t.Fatalf("LoadDKIMConfig should succeed when DKIM_PRIVATE_KEY is set: %v", err)
+	}
+
+	enabled, _, _ := DKIMStatus()
+	if !enabled {
+		t.Error("expected DKIM to be enabled")
+	}
+}
 
 func TestSendExternalEmailHTMLWrapping(t *testing.T) {
 	// Test that HTML fragments are properly wrapped in HTML document structure

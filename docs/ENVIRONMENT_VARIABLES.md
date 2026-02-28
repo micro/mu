@@ -83,15 +83,19 @@ export MAIL_PORT="2525"              # Default: 2525 (use 25 for production)
 # Domain for email addresses
 export MAIL_DOMAIN="yourdomain.com"  # Default: localhost
 
-# DKIM signing selector (requires keys in ~/.mu/keys/dkim.key)
+# DKIM signing selector
 export MAIL_SELECTOR="default"       # Default: default
+
+# DKIM private key (PEM format). Takes precedence over ~/.mu/keys/dkim.key
+export DKIM_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
 ```
 
 **Notes:**
 - Internal messaging works without any configuration
 - SMTP configuration only needed for external email (sending/receiving outside Mu)
 - Mu delivers external messages directly to recipient servers via SMTP (no relay needed)
-- DKIM signing enables automatically if keys exist at `~/.mu/keys/dkim.key`
+- DKIM signing enables automatically when `DKIM_PRIVATE_KEY` is set, or if a key file exists at `~/.mu/keys/dkim.key`
+- `DKIM_PRIVATE_KEY` takes precedence over the key file (useful in Docker/cloud deployments)
 - External email costs credits (SMTP delivery cost)
 
 ## Stripe Configuration (Optional)
@@ -214,6 +218,7 @@ export MAIL_SELECTOR="default"
 | `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |
 | `MAIL_DOMAIN` | `localhost` | Your domain for message addresses |
 | `MAIL_SELECTOR` | `default` | DKIM selector for DNS lookup |
+| `DKIM_PRIVATE_KEY` | - | DKIM private key in PEM format (takes precedence over `~/.mu/keys/dkim.key`) |
 | `DONATION_URL` | - | Payment link for one-time donations (optional) |
 | `STRIPE_SECRET_KEY` | - | Stripe secret key for card payments |
 | `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key for card payments |
@@ -296,6 +301,7 @@ Environment="YOUTUBE_API_KEY=your-youtube-api-key"
 Environment="MAIL_PORT=25"
 Environment="MAIL_DOMAIN=yourdomain.com"
 Environment="MAIL_SELECTOR=default"
+Environment="DKIM_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\n..."
 
 # Donations (optional)
 Environment="DONATION_URL=https://gocardless.com/your-donation-link"
