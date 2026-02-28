@@ -268,7 +268,7 @@ func loadChannels() {
 	// unpack into feeds
 	mutex.Lock()
 	if err := json.Unmarshal(data, &channels); err != nil {
-		app.Log("video", "Error parsing channels.json", err)
+		app.Log("video", "Error parsing channels.json: %v", err)
 	}
 	app.Log("video", "Loaded %d channels from channels.json", len(channels))
 	mutex.Unlock()
