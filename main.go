@@ -28,6 +28,7 @@ import (
 	"mu/news"
 	"mu/places"
 	"mu/reminder"
+	"mu/search"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -211,6 +212,8 @@ func main() {
 		"/donate":          false,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
+		"/search": false, // Public - web search
+
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
 		"/about":  false, // Public - about page
@@ -277,6 +280,9 @@ func main() {
 	// wallet - credits and payments
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
+
+	// serve search page (local + Brave web search)
+	http.HandleFunc("/search", search.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
