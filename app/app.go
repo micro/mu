@@ -48,6 +48,7 @@ var pkgColors = map[string]string{
 }
 
 // Log prints a formatted log message with a colored package prefix
+// and stores it in the in-memory system log ring buffer.
 func Log(pkg string, format string, args ...interface{}) {
 	color := pkgColors[pkg]
 	if color == "" {
@@ -56,6 +57,7 @@ func Log(pkg string, format string, args ...interface{}) {
 	timestamp := time.Now().Format("15:04:05")
 	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
 	fmt.Printf(prefix+format+"\n", args...)
+	appendSysLog(pkg, format, args...)
 }
 
 // Response holds data for responding in either JSON or HTML format

@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"mu/app"
@@ -52,21 +51,28 @@ func searchBrave(query string, limit int) ([]BraveResult, error) {
 	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("X-Subscription-Token", apiKey)
 
+	start := time.Now()
 	resp, err := httpClient.Do(req)
+	duration := time.Since(start)
 	if err != nil {
+		app.RecordAPICall("brave", "GET", reqURL, 0, duration, err, "", "")
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("brave search API error: %s: %s", resp.Status, string(body))
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		app.RecordAPICall("brave", "GET", reqURL, resp.StatusCode, duration, readErr, "", "")
+		return nil, readErr
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode != http.StatusOK {
+		callErr := fmt.Errorf("brave search API error: %s: %s", resp.Status, string(body))
+		app.RecordAPICall("brave", "GET", reqURL, resp.StatusCode, duration, callErr, "", string(body))
+		return nil, callErr
 	}
+
+	app.RecordAPICall("brave", "GET", reqURL, resp.StatusCode, duration, nil, "", "")
 
 	var braveResp BraveResponse
 	if err := json.Unmarshal(body, &braveResp); err != nil {
@@ -76,15 +82,13 @@ func searchBrave(query string, limit int) ([]BraveResult, error) {
 	return braveResp.Web.Results, nil
 }
 
-// Handler serves the /search page.
-// It runs a local data search and a Brave web search in parallel,
-// then renders both sets of results in separate sections.
+// Handler serves the /search page (local data index only, free, no auth required).
 func Handler(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	// Render search bar
 	searchBar := `<form class="search-bar" action="/search" method="GET">` +
-		`<input type="text" name="q" placeholder="Search the web..." value="` +
+		`<input type="text" name="q" placeholder="Search..." value="` +
 		html.EscapeString(query) + `" autofocus>` +
 		`<button type="submit">Search</button>` +
 		`</form>`
@@ -92,6 +96,57 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if query == "" {
 		content := searchBar + `<p class="empty">Enter a query above to search.</p>`
 		w.Write([]byte(app.RenderHTMLForRequest("Search", "Search", content, r)))
+		return
+	}
+
+	// Limit query length to prevent abuse
+	if len(query) > 256 {
+		app.BadRequest(w, r, "Search query must not exceed 256 characters")
+		return
+	}
+
+	localResults := data.Search(query, 10)
+
+	var b strings.Builder
+	b.WriteString(searchBar)
+
+	if len(localResults) == 0 {
+		b.WriteString(`<p class="empty">No results found.</p>`)
+	} else {
+		for _, entry := range localResults {
+			link := entryLink(entry)
+			b.WriteString(`<div class="card" style="margin-bottom:12px;">`)
+			b.WriteString(`<div><a href="` + html.EscapeString(link) + `" class="card-title">` +
+				html.EscapeString(entry.Title) + `</a>`)
+			b.WriteString(` <span class="category" style="font-size:11px;margin-left:6px;">` +
+				html.EscapeString(entry.Type) + `</span></div>`)
+			if entry.Content != "" {
+				snippet := truncate(entry.Content, 160)
+				b.WriteString(`<p class="card-desc" style="margin:4px 0 0;">` +
+					html.EscapeString(snippet) + `</p>`)
+			}
+			b.WriteString(`</div>`)
+		}
+	}
+
+	pageHTML := app.RenderHTMLForRequest("Search: "+query, "Search results for "+query, b.String(), r)
+	w.Write([]byte(pageHTML))
+}
+
+// WebHandler serves the /web page (Brave web search, paid, auth required).
+func WebHandler(w http.ResponseWriter, r *http.Request) {
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	// Render search bar
+	searchBar := `<form class="search-bar" action="/web" method="GET">` +
+		`<input type="text" name="q" placeholder="Search the web..." value="` +
+		html.EscapeString(query) + `" autofocus>` +
+		`<button type="submit">Search</button>` +
+		`</form>`
+
+	if query == "" {
+		content := searchBar + `<p class="empty">Enter a query above to search the web.</p>`
+		w.Write([]byte(app.RenderHTMLForRequest("Web Search", "Web Search", content, r)))
 		return
 	}
 
@@ -112,61 +167,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpWebSearch)
 	if !canProceed {
 		content := searchBar + wallet.QuotaExceededPage(wallet.OpWebSearch, cost)
-		w.Write([]byte(app.RenderHTMLForRequest("Search", "Search", content, r)))
+		w.Write([]byte(app.RenderHTMLForRequest("Web Search", "Web Search", content, r)))
 		return
 	}
 
-	// Run local and Brave searches in parallel
-	var (
-		localResults []*data.IndexEntry
-		braveResults []BraveResult
-		braveErr     error
-		wg           sync.WaitGroup
-	)
+	braveResults, braveErr := searchBrave(query, 10)
 
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		localResults = data.Search(query, 10)
-	}()
-
-	go func() {
-		defer wg.Done()
-		braveResults, braveErr = searchBrave(query, 10)
-	}()
-
-	wg.Wait()
-
-	// Consume quota after successful search
-	wallet.ConsumeQuota(sess.Account, wallet.OpWebSearch)
+	// Only consume quota on success to avoid charging for failed API calls
+	if braveErr == nil {
+		wallet.ConsumeQuota(sess.Account, wallet.OpWebSearch)
+	}
 
 	var b strings.Builder
 	b.WriteString(searchBar)
 
-	// Local results section
-	b.WriteString(`<h3>Local Results</h3>`)
-	if len(localResults) == 0 {
-		b.WriteString(`<p class="empty">No local results found.</p>`)
-	} else {
-		for _, entry := range localResults {
-			link := entryLink(entry)
-			b.WriteString(`<div class="card" style="margin-bottom:12px;">`)
-			b.WriteString(`<div><a href="` + html.EscapeString(link) + `" class="card-title">` +
-				html.EscapeString(entry.Title) + `</a>`)
-			b.WriteString(` <span class="category" style="font-size:11px;margin-left:6px;">` +
-				html.EscapeString(entry.Type) + `</span></div>`)
-			if entry.Content != "" {
-				snippet := truncate(entry.Content, 160)
-				b.WriteString(`<p class="card-desc" style="margin:4px 0 0;">` +
-					html.EscapeString(snippet) + `</p>`)
-			}
-			b.WriteString(`</div>`)
-		}
-	}
-
-	// Web results section
-	b.WriteString(`<h3 style="margin-top:24px;">On the Web</h3>`)
 	if braveErr != nil {
 		app.Log("search", "Brave search error: %v", braveErr)
 		b.WriteString(`<p class="empty">Web search unavailable.</p>`)
@@ -188,7 +202,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	pageHTML := app.RenderHTMLForRequest("Search: "+query, "Search results for "+query, b.String(), r)
+	pageHTML := app.RenderHTMLForRequest("Web: "+query, "Web results for "+query, b.String(), r)
 	w.Write([]byte(pageHTML))
 }
 

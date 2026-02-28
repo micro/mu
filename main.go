@@ -208,11 +208,14 @@ func main() {
 		"/admin/blocklist": true,
 		"/admin/email":     true,
 		"/admin/api":       true,
+		"/admin/log":       true,
+		"/admin/env":       true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
-		"/search": false, // Public - web search
+		"/search": false, // Public - local data index search
+		"/web":    false, // Public page, auth checked in handler (paid Brave web search)
 
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
@@ -271,6 +274,12 @@ func main() {
 	// external API call log
 	http.HandleFunc("/admin/api", admin.APILogHandler)
 
+	// system log
+	http.HandleFunc("/admin/log", admin.SysLogHandler)
+
+	// environment variables status
+	http.HandleFunc("/admin/env", admin.EnvHandler)
+
 	// plans page (public - overview of options)
 	http.HandleFunc("/plans", app.Plans)
 
@@ -283,6 +292,9 @@ func main() {
 
 	// serve search page (local + Brave web search)
 	http.HandleFunc("/search", search.Handler)
+
+	// serve web search page (Brave-powered, paid)
+	http.HandleFunc("/web", search.WebHandler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
