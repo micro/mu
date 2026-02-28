@@ -22,6 +22,7 @@ type BraveResult struct {
 	Title       string `json:"title"`
 	URL         string `json:"url"`
 	Description string `json:"description"`
+	Age         string `json:"age"`
 }
 
 // BraveResponse is the top-level Brave Search API response
@@ -48,7 +49,6 @@ func searchBrave(query string, limit int) ([]BraveResult, error) {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("X-Subscription-Token", apiKey)
 
 	start := time.Now()
@@ -119,7 +119,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<div><a href="` + html.EscapeString(link) + `" class="card-title">` +
 				html.EscapeString(entry.Title) + `</a>`)
 			b.WriteString(` <span class="category" style="font-size:11px;margin-left:6px;">` +
-				html.EscapeString(entry.Type) + `</span></div>`)
+				html.EscapeString(entry.Type) + `</span>`)
+			if !entry.IndexedAt.IsZero() {
+				b.WriteString(` <span style="font-size:11px;color:#888;margin-left:4px;">` +
+					html.EscapeString(app.TimeAgo(entry.IndexedAt)) + `</span>`)
+			}
+			b.WriteString(`</div>`)
 			if entry.Content != "" {
 				snippet := truncate(entry.Content, 160)
 				b.WriteString(`<p class="card-desc" style="margin:4px 0 0;">` +
@@ -196,8 +201,11 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 				b.WriteString(`<p class="card-desc" style="margin:4px 0 0;">` +
 					html.EscapeString(result.Description) + `</p>`)
 			}
-			b.WriteString(`<div style="font-size:11px;color:#888;margin-top:2px;">` +
-				html.EscapeString(result.URL) + `</div>`)
+			meta := html.EscapeString(result.URL)
+			if result.Age != "" {
+				meta += ` · ` + html.EscapeString(result.Age)
+			}
+			b.WriteString(`<div style="font-size:11px;color:#888;margin-top:2px;">` + meta + `</div>`)
 			b.WriteString(`</div>`)
 		}
 	}
