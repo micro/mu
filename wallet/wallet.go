@@ -27,6 +27,7 @@ var (
 	CostPlacesNearby    = getEnvInt("CREDIT_COST_PLACES_NEARBY", 2)
 	CostWeatherForecast = getEnvInt("CREDIT_COST_WEATHER", 1)
 	CostWeatherPollen   = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
+	CostWebSearch       = getEnvInt("CREDIT_COST_SEARCH", 5)
 	FreeDailySearches   = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
@@ -50,6 +51,7 @@ const (
 	OpPlacesNearby    = "places_nearby"
 	OpWeatherForecast = "weather_forecast"
 	OpWeatherPollen   = "weather_pollen"
+	OpWebSearch       = "web_search"
 	OpTopup           = "topup"
 	OpRefund          = "refund"
 )
@@ -365,6 +367,8 @@ func GetOperationCost(operation string) int {
 		return CostWeatherForecast
 	case OpWeatherPollen:
 		return CostWeatherPollen
+	case OpWebSearch:
+		return CostWebSearch
 	default:
 		return 1
 	}

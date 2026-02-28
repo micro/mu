@@ -211,6 +211,11 @@ var Template = `
     <div id="nav-overlay" onclick="toggleMenu()"></div>
     <div id="container">
       <div id="nav-container">
+        <div id="nav-search">
+          <form action="/search" method="GET">
+            <input type="text" name="q" placeholder="Search..." aria-label="Search">
+          </form>
+        </div>
         <div id="nav">
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
@@ -799,7 +804,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><td>Weather forecast</td><td>Local weather with hourly &amp; 10-day forecast</td><td>1</td><td>1p</td></tr>
 <tr><td>Weather pollen</td><td>Local pollen forecast (add-on)</td><td>1</td><td>1p</td></tr>
 <tr><td>Markets</td><td>Live crypto, futures &amp; commodity prices</td><td>Free</td><td>—</td></tr>
-<tr><td>Search</td><td>Full-text search across all indexed content</td><td>Free</td><td>—</td></tr>
+<tr><td>Search</td><td>Web search powered by Brave</td><td>5</td><td>5p</td></tr>
 <tr><td>Wallet</td><td>Check balance and top up</td><td>Free</td><td>—</td></tr>
 </tbody>
 </table>`)

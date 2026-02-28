@@ -339,6 +339,30 @@ td {
   flex-direction: column;
 }
 
+#nav-search {
+  margin-bottom: 12px;
+}
+
+#nav-search form {
+  display: flex;
+}
+
+#nav-search input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  background: #f7f7f7;
+}
+
+#nav-search input:focus {
+  border-color: #aaa;
+  background: #fff;
+}
+
 #nav {
   display: flex;
   flex-direction: column;
