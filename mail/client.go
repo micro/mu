@@ -26,26 +26,33 @@ type DKIMConfig struct {
 // Global DKIM config - optional, auto-loaded if keys exist
 var dkimConfig *DKIMConfig
 
-// LoadDKIMConfig loads DKIM configuration from files in ~/.mu/keys/
-// Keys should be named dkim.key (private) and dkim.pub (public, optional)
+// LoadDKIMConfig loads DKIM configuration from the DKIM_PRIVATE_KEY environment
+// variable or from a file at ~/.mu/keys/dkim.key (env var takes precedence).
 // Domain defaults to "localhost" if not specified
 func LoadDKIMConfig(domain, selector string) error {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("cannot determine home directory: %v", err)
-	}
+	var keyData []byte
 
-	keyPath := filepath.Join(homeDir, ".mu", "keys", "dkim.key")
+	// Prefer the environment variable over the key file
+	if envKey := os.Getenv("DKIM_PRIVATE_KEY"); envKey != "" {
+		keyData = []byte(envKey)
+	} else {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("cannot determine home directory: %v", err)
+		}
 
-	// Check if private key exists
-	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-		return fmt.Errorf("DKIM private key not found at %s", keyPath)
-	}
+		keyPath := filepath.Join(homeDir, ".mu", "keys", "dkim.key")
 
-	// Read private key file
-	keyData, err := os.ReadFile(keyPath)
-	if err != nil {
-		return fmt.Errorf("failed to read DKIM key: %v", err)
+		// Check if private key exists
+		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+			return fmt.Errorf("DKIM private key not found at %s", keyPath)
+		}
+
+		// Read private key file
+		keyData, err = os.ReadFile(keyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read DKIM key: %v", err)
+		}
 	}
 
 	// Parse PEM block
