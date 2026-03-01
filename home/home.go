@@ -61,8 +61,6 @@ var landingTemplate = `<html lang="en">
     <div style="float: right; padding: 20px;">
       <a href="/about"><b>About</b></a>&nbsp;
       <a href="/docs"><b>Docs</b></a>&nbsp;
-      <a href="/api"><b>API</b></a>&nbsp;
-      <a href="/mcp"><b>MCP</b></a>&nbsp;
       <a href="/plans"><b>Plans</b></a>&nbsp;
       <a href="/login"><b>Login</b></a>
     </div>
