@@ -26,13 +26,12 @@ var f embed.FS
 var Template = `
 <div id="topic-selector">
   <div class="topic-tabs">%s</div>
-  <a id="chat-clear" href="#" onclick="clearChatHistory(); return false;">Clear history</a>
 </div>
 <div id="messages"></div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
 <input id="topic" name="topic" type="hidden">
-<input id="prompt" name="prompt" type="text" placeholder="Ask a question" autocomplete=off>
+<input id="prompt" name="prompt" type="text" placeholder="Ask a question or type /clear" autocomplete=off>
 <button>Send</button>
 </form>`
 

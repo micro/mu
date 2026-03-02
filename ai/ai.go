@@ -5,6 +5,7 @@ package ai
 import (
 	"strings"
 	"text/template"
+	"time"
 )
 
 // Priority levels for LLM requests
@@ -42,13 +43,20 @@ type Prompt struct {
 	Provider string   // Force specific provider (empty = default)
 }
 
+// systemPromptData is the data passed to the system prompt template
+type systemPromptData struct {
+	*Prompt
+	Now string
+}
+
 // Default system prompt template
 var systemPrompt = template.Must(template.New("system_prompt").Parse(`
 You are a knowledgeable assistant helping with research and discussion. You have broad expertise across finance, technology, geopolitics, economics, and current events.{{if .Topic}} The conversation is focused on "{{.Topic}}".{{end}}
+Today's date is {{.Now}}.
 
 {{- if .Rag }}
 
-Recent context (from news, articles, or data):
+Current context (live market data, recent news, or articles fetched now):
 {{- range $index, $context := .Rag }}
 [{{ $index }}] {{ . }}
 {{- end }}
@@ -58,7 +66,7 @@ Recent context (from news, articles, or data):
 How to respond:
 - Use the context above as a starting point, but draw on your broader knowledge to provide depth
 - Connect topics across domains (e.g., how monetary policy affects crypto, how geopolitics affects markets)
-- For prices or real-time data: use what's provided in context, or note when data might be outdated
+- For prices: the data provided in context is current and live — quote it directly as the current price
 - Be direct and substantive - the user wants insight, not hedging
 - When you don't know something current, say so and explain what you do know
 
@@ -71,7 +79,11 @@ func BuildSystemPrompt(p *Prompt) (string, error) {
 		return p.System, nil
 	}
 	sb := &strings.Builder{}
-	if err := systemPrompt.Execute(sb, p); err != nil {
+	data := &systemPromptData{
+		Prompt: p,
+		Now:    time.Now().UTC().Format("Monday, 2 January 2006"),
+	}
+	if err := systemPrompt.Execute(sb, data); err != nil {
 		return "", err
 	}
 	return sb.String(), nil

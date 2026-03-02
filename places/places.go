@@ -20,6 +20,28 @@ import (
 
 var mutex sync.RWMutex
 
+// parseRequestParams returns a function that retrieves a named parameter from
+// either the URL-encoded form data or a JSON request body, preferring form values.
+// It is used by handlers that accept both HTML form submissions and JSON API calls.
+func parseRequestParams(r *http.Request) func(string) string {
+	r.ParseForm() //nolint:errcheck
+	var jsonBody map[string]interface{}
+	if app.SendsJSON(r) {
+		json.NewDecoder(r.Body).Decode(&jsonBody) //nolint:errcheck
+	}
+	return func(key string) string {
+		if v := r.Form.Get(key); v != "" {
+			return v
+		}
+		if jsonBody != nil {
+			if v, ok := jsonBody[key]; ok {
+				return fmt.Sprintf("%v", v)
+			}
+		}
+		return ""
+	}
+}
+
 // Place represents a geographic place
 type Place struct {
 	ID           string  `json:"id"`
@@ -386,8 +408,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
-	query := strings.TrimSpace(r.Form.Get("q"))
+	formValue := parseRequestParams(r)
+
+	query := strings.TrimSpace(formValue("q"))
 	if query == "" {
 		app.BadRequest(w, r, "Search query required")
 		return
@@ -396,9 +419,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	// Optional location for proximity-based search
 	var nearLat, nearLon float64
 	hasNearLoc := false
-	nearAddr := strings.TrimSpace(r.Form.Get("near"))
-	nearLatStr := r.Form.Get("near_lat")
-	nearLonStr := r.Form.Get("near_lon")
+	nearAddr := strings.TrimSpace(formValue("near"))
+	nearLatStr := formValue("near_lat")
+	nearLonStr := formValue("near_lon")
 	if nearLatStr != "" && nearLonStr != "" {
 		parsedLat, latErr := strconv.ParseFloat(nearLatStr, 64)
 		parsedLon, lonErr := strconv.ParseFloat(nearLonStr, 64)
@@ -417,7 +440,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	// Parse radius (used when doing a nearby keyword search)
 	radiusM := 1000
-	if rs := r.Form.Get("radius"); rs != "" {
+	if rs := formValue("radius"); rs != "" {
 		if v, perr := strconv.Atoi(rs); perr == nil && v >= 100 && v <= 50000 {
 			radiusM = v
 		}
@@ -438,7 +461,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Apply sort order
-	sortBy := r.Form.Get("sort")
+	sortBy := formValue("sort")
 	sortPlaces(results, sortBy)
 
 	// Consume quota after successful operation
@@ -506,12 +529,12 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	formValue := parseRequestParams(r)
 
 	var lat, lon float64
-	address := strings.TrimSpace(r.Form.Get("address"))
-	latStr := r.Form.Get("lat")
-	lonStr := r.Form.Get("lon")
+	address := strings.TrimSpace(formValue("address"))
+	latStr := formValue("lat")
+	lonStr := formValue("lon")
 
 	if latStr != "" && lonStr != "" {
 		var parseErr error
@@ -537,7 +560,7 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	}
 
 	radius := 500 // default 500m
-	if radiusStr := r.Form.Get("radius"); radiusStr != "" {
+	if radiusStr := formValue("radius"); radiusStr != "" {
 		if v, parseErr := strconv.Atoi(radiusStr); parseErr == nil {
 			radius = v
 		}
@@ -557,7 +580,7 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Apply sort order
-	sortBy := r.Form.Get("sort")
+	sortBy := formValue("sort")
 	sortPlaces(results, sortBy)
 
 	// Consume quota after successful operation
