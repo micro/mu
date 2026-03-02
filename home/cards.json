@@ -6,6 +6,13 @@
       "type": "news",
       "position": 0,
       "link": "/news"
+    },
+    {
+      "id": "online",
+      "title": "Online Users",
+      "type": "online",
+      "position": 1,
+      "link": "/chat"
     }
   ],
   "right": [

@@ -37,6 +37,41 @@ func ChatCard() string {
 	</div>`
 }
 
+// OnlineUsersCard shows currently online users
+func OnlineUsersCard() string {
+	onlineUsers := auth.GetOnlineUsers()
+	count := len(onlineUsers)
+	
+	if count == 0 {
+		return `<div style="text-align: center; padding: 20px; color: #999;">
+			<p>No users currently online</p>
+		</div>`
+	}
+	
+	// Build HTML for user list
+	var usersHTML strings.Builder
+	usersHTML.WriteString(`<div class="online-users-list">`)
+	
+	for _, username := range onlineUsers {
+		usersHTML.WriteString(fmt.Sprintf(`
+		<div class="online-user" style="display: flex; align-items: center; padding: 8px; margin: 4px 0; background: #f9f9f9; border-radius: 4px;">
+			<span class="online-dot" style="width: 8px; height: 8px; background: #28a745; border-radius: 50%%; margin-right: 10px;"></span>
+			<a href="/chat" style="flex: 1; text-decoration: none; color: #333; font-weight: 500;">%s</a>
+		</div>`, username))
+	}
+	
+	usersHTML.WriteString(`</div>`)
+	
+	// Add summary at top
+	summary := fmt.Sprintf(`
+	<div style="text-align: center; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid #eee;">
+		<span class="online-dot" style="display: inline-block; width: 10px; height: 10px; background: #28a745; border-radius: 50%%; margin-right: 8px; vertical-align: middle;"></span>
+		<span style="font-size: 16px; font-weight: 600; color: #333;">%d Online</span>
+	</div>`, count)
+	
+	return summary + usersHTML.String()
+}
+
 type Card struct {
 	ID          string
 	Title       string
@@ -90,6 +125,7 @@ func Load() {
 		"markets":  widgets.MarketsHTML,
 		"reminder": widgets.ReminderHTML,
 		"video":    video.Latest,
+		"online":   OnlineUsersCard,
 	}
 
 	// Build Cards array from config
