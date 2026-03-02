@@ -189,6 +189,13 @@ var landingTemplate = `<html lang="en">
             <div class="small">Daily Islamic verse, hadith, and name of Allah</div>
           </div>
         </a>
+        <a href="/agent" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/agent.png" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Agent</b>
+            <div class="small">Conversational AI agent with access to all Mu tools</div>
+          </div>
+        </a>
       </div>
 
       <div style="height: 60px;"></div>
