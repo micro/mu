@@ -123,3 +123,42 @@ func TestRenderPlacesCard_Empty(t *testing.T) {
 		t.Errorf("expected empty string for empty results, got %q", got)
 	}
 }
+
+func TestFormatMarketsResult_WithResults(t *testing.T) {
+	result := `{"category":"crypto","data":[{"symbol":"BTC","price":97000.12,"change_24h":1.23,"type":"crypto"},{"symbol":"ETH","price":3456.78,"change_24h":-0.45,"type":"crypto"}]}`
+	got := formatMarketsResult(result)
+	if !strings.Contains(got, "BTC") {
+		t.Errorf("expected 'BTC' in output, got %q", got)
+	}
+	if !strings.Contains(got, "97000.12") {
+		t.Errorf("expected BTC price in output, got %q", got)
+	}
+	if !strings.Contains(got, "ETH") {
+		t.Errorf("expected 'ETH' in output, got %q", got)
+	}
+	if !strings.Contains(got, "+1.23%") {
+		t.Errorf("expected positive change in output, got %q", got)
+	}
+	if !strings.Contains(got, "-0.45%") {
+		t.Errorf("expected negative change in output, got %q", got)
+	}
+	if !strings.Contains(got, "crypto") {
+		t.Errorf("expected category in output, got %q", got)
+	}
+}
+
+func TestFormatMarketsResult_EmptyData(t *testing.T) {
+	result := `{"category":"crypto","data":[]}`
+	got := formatMarketsResult(result)
+	if got != "No market data available." {
+		t.Errorf("expected 'No market data available.', got %q", got)
+	}
+}
+
+func TestFormatMarketsResult_InvalidJSON(t *testing.T) {
+	result := `not json`
+	got := formatMarketsResult(result)
+	if got != result {
+		t.Errorf("expected original result as fallback, got %q", got)
+	}
+}

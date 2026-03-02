@@ -340,6 +340,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		ragText := res.Result
 		if res.Name == "places_search" || res.Name == "places_nearby" {
 			ragText = formatPlacesResult(res.Result, res.Args)
+		} else if res.Name == "markets" {
+			ragText = formatMarketsResult(res.Result)
 		}
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
 	}
@@ -746,6 +748,40 @@ type placeItem struct {
 	Address  string  `json:"address"`
 	Lat      float64 `json:"lat"`
 	Lon      float64 `json:"lon"`
+}
+
+// formatMarketsResult converts a raw JSON markets result into a human-readable
+// text summary suitable for inclusion in the AI synthesis RAG context.
+func formatMarketsResult(result string) string {
+	var data struct {
+		Category string `json:"category"`
+		Data     []struct {
+			Symbol    string  `json:"symbol"`
+			Price     float64 `json:"price"`
+			Change24h float64 `json:"change_24h"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	if len(data.Data) == 0 {
+		return "No market data available."
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Live %s market prices:\n", data.Category))
+	for _, item := range data.Data {
+		line := fmt.Sprintf("- %s: $%.2f", item.Symbol, item.Price)
+		if item.Change24h != 0 {
+			sign := "+"
+			if item.Change24h < 0 {
+				sign = ""
+			}
+			line += fmt.Sprintf(" (24h change: %s%.2f%%)", sign, item.Change24h)
+		}
+		sb.WriteString(line + "\n")
+	}
+	return sb.String()
 }
 
 // htmlEsc escapes a string for safe HTML attribute/text inclusion.
