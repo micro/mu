@@ -195,10 +195,6 @@ export MAIL_SELECTOR="default"
 | `STRIPE_SECRET_KEY` | - | Stripe secret key for card payments |
 | `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key for card payments |
 | `STRIPE_WEBHOOK_SECRET` | - | Stripe webhook secret for verifying events |
-| `WALLET_SEED` | - | BIP39 mnemonic for HD wallet (auto-generated if not set) |
-| `BASE_RPC_URL` | `https://mainnet.base.org` | Base network RPC endpoint |
-| `DEPOSIT_POLL_INTERVAL` | `30` | Crypto deposit polling interval in seconds |
-| `WALLETCONNECT_PROJECT_ID` | - | WalletConnect Project ID (optional) |
 | `FREE_DAILY_SEARCHES` | `10` | Daily free AI queries |
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
@@ -238,10 +234,6 @@ MAIL_SELECTOR=default
 
 # Donations (optional - leave empty for free instance)
 DONATION_URL=https://gocardless.com/your-donation-link
-
-# Crypto wallet (optional - for payments)
-# If not set, seed is auto-generated in ~/.mu/keys/wallet.seed
-# WALLET_SEED=your 24 word mnemonic phrase
 ```
 
 Load and run:
@@ -278,9 +270,6 @@ Environment="DKIM_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\n..."
 # Donations (optional)
 Environment="DONATION_URL=https://gocardless.com/your-donation-link"
 
-# Crypto wallet (optional - auto-generated if not set)
-# Environment="WALLET_SEED=your 24 word mnemonic phrase"
-
 ExecStart=/opt/mu/mu --serve --address :8080
 Restart=always
 
@@ -314,8 +303,6 @@ docker run -d \
   -e MAIL_DOMAIN=yourdomain.com \
   -e MAIL_SELECTOR=default \
   -e DONATION_URL=https://gocardless.com/your-donation-link \
-  # Wallet seed auto-generated in ~/.mu/keys/wallet.seed if not set
-  # -e WALLET_SEED="your 24 word mnemonic" \
   -v ~/.mu:/root/.mu \
   mu:latest
 ```
@@ -358,5 +345,4 @@ docker run -d \
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
 | Donations | `DONATION_URL` |
 | Card Payments | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` |
-| Crypto Payments | `WALLET_SEED` or auto-generated in `~/.mu/keys/wallet.seed` |
 

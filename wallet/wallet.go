@@ -96,21 +96,6 @@ type DailyUsage struct {
 	Searches int    `json:"searches"` // Free searches used today
 }
 
-// TopupTier represents a credit purchase option
-type TopupTier struct {
-	Amount   int `json:"amount"`    // Price in pence (e.g., 500 = £5)
-	Credits  int `json:"credits"`   // Credits received
-	BonusPct int `json:"bonus_pct"` // Bonus percentage
-}
-
-// Available topup tiers
-var TopupTiers = []TopupTier{
-	{Amount: 500, Credits: 500, BonusPct: 0},
-	{Amount: 1000, Credits: 1050, BonusPct: 5},
-	{Amount: 2500, Credits: 2750, BonusPct: 10},
-	{Amount: 5000, Credits: 5750, BonusPct: 15},
-}
-
 func init() {
 	// Load wallets from disk
 	b, _ := data.LoadFile("wallets.json")
@@ -467,14 +452,4 @@ func FormatCredits(credits int) string {
 	pounds := credits / 100
 	pence := credits % 100
 	return fmt.Sprintf("£%d.%02d", pounds, pence)
-}
-
-// GetTopupTier returns the topup tier for a given amount
-func GetTopupTier(amount int) *TopupTier {
-	for i := range TopupTiers {
-		if TopupTiers[i].Amount == amount {
-			return &TopupTiers[i]
-		}
-	}
-	return nil
 }

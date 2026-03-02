@@ -68,12 +68,14 @@ If you want truly unlimited and free — self-host. The code is open source.
 
 ## Card Deposits (Stripe)
 
-When Stripe is configured (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`), users can also top up with a credit or debit card:
+When Stripe is configured (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`), users can top up with a credit or debit card:
 
-1. Go to `/wallet/topup` and select **Card**
-2. Choose a topup tier (£5, £10, £25, or £50)
+1. Go to `/wallet/topup`
+2. Enter any amount in whole pounds (e.g. £10), or use a quick-select preset (£5, £10, £25, £50)
 3. Complete payment via the Stripe Checkout page
 4. Credits are added automatically via the Stripe webhook (`/wallet/stripe/webhook`)
+
+**Rate:** 1 credit = 1p — flat, no bonuses or tiers.
 
 Configure a webhook in the Stripe Dashboard pointing to `https://your-domain.com/wallet/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` to the signing secret. The webhook listens for `checkout.session.completed` events.
 

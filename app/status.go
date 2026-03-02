@@ -161,15 +161,15 @@ func buildStatus() StatusResponse {
 		Status: googleConfigured,
 	})
 
-	// Check Crypto Wallet/Payments
-	walletSeedExists := os.Getenv("WALLET_SEED") != "" || fileExists(getWalletSeedPath())
+	// Check Payments (Stripe)
+	stripeConfigured := os.Getenv("STRIPE_SECRET_KEY") != "" && os.Getenv("STRIPE_PUBLISHABLE_KEY") != ""
 	quotaMode := "Unlimited (self-hosted)"
-	if walletSeedExists {
-		quotaMode = "Pay-as-you-go (crypto)"
+	if stripeConfigured {
+		quotaMode = "Pay-as-you-go (card)"
 	}
 	services = append(services, StatusCheck{
 		Name:    "Payments",
-		Status:  walletSeedExists,
+		Status:  stripeConfigured,
 		Details: quotaMode,
 	})
 
@@ -369,14 +369,6 @@ func formatUptime(d time.Duration) string {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
-}
-
-func getWalletSeedPath() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "wallet.seed"
-	}
-	return homeDir + "/.mu/keys/wallet.seed"
 }
 
 func renderStatusHTML(status StatusResponse) string {
