@@ -220,6 +220,7 @@ var Template = `
         </div>
         <div id="nav">
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
+          <a href="/agent"><img src="/robot.svg?` + Version + `"><span class="label">Agent</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>
           <a id="nav-mail" href="/mail" style="display: none;"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
@@ -797,6 +798,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><td>Video watch</td><td>Watch a video</td><td>Free</td><td>—</td></tr>
 <tr><td>Video search</td><td>Search for videos</td><td>2</td><td>2p</td></tr>
 <tr><td>Chat</td><td>Chat with AI assistant</td><td>3</td><td>3p</td></tr>
+<tr><td>Agent (standard)</td><td>AI agent query — standard model</td><td>5</td><td>5p</td></tr>
+<tr><td>Agent (premium)</td><td>AI agent query — premium model</td><td>15</td><td>15p</td></tr>
 <tr><td>Blog read</td><td>Read blog posts</td><td>Free</td><td>—</td></tr>
 <tr><td>Blog write</td><td>Create or update a blog post</td><td>Free</td><td>—</td></tr>
 <tr><td>Mail (internal)</td><td>Message other Mu users</td><td>Free</td><td>—</td></tr>

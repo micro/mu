@@ -495,6 +495,68 @@ func handleToolsCall(w http.ResponseWriter, originalReq *http.Request, req jsonr
 	writeResult(w, req.ID, result)
 }
 
+// ExecuteTool calls a registered MCP tool with the given name and arguments,
+// forwarding authentication from r. It does NOT check wallet quota — the caller
+// is responsible for quota management.
+// Returns the tool output text, whether the response is an error, and any Go error.
+func ExecuteTool(r *http.Request, name string, args map[string]any) (string, bool, error) {
+	var tool *Tool
+	for i := range tools {
+		if tools[i].Name == name {
+			tool = &tools[i]
+			break
+		}
+	}
+	if tool == nil {
+		return "", true, fmt.Errorf("unknown tool: %s", name)
+	}
+
+	if tool.Handle != nil {
+		text, err := tool.Handle(args)
+		return text, err != nil, err
+	}
+
+	path := tool.Path
+	var bodyReader io.Reader
+
+	if tool.Method == "GET" {
+		query := url.Values{}
+		for k, v := range args {
+			query.Set(k, fmt.Sprintf("%v", v))
+		}
+		if len(query) > 0 {
+			path += "?" + query.Encode()
+		}
+	} else {
+		bodyJSON, _ := json.Marshal(args)
+		bodyReader = strings.NewReader(string(bodyJSON))
+	}
+
+	internalReq, err := http.NewRequest(tool.Method, path, bodyReader)
+	if err != nil {
+		return "", true, fmt.Errorf("failed to create request: %v", err)
+	}
+
+	internalReq.Header.Set("Accept", "application/json")
+	internalReq.Header.Set("Content-Type", "application/json")
+
+	if c, err := r.Cookie("session"); err == nil {
+		internalReq.AddCookie(c)
+	}
+	if auth := r.Header.Get("Authorization"); auth != "" {
+		internalReq.Header.Set("Authorization", auth)
+	}
+	if token := r.Header.Get(TokenHeader); token != "" {
+		internalReq.Header.Set(TokenHeader, token)
+	}
+
+	recorder := httptest.NewRecorder()
+	http.DefaultServeMux.ServeHTTP(recorder, internalReq)
+
+	isError := recorder.Code >= 400
+	return recorder.Body.String(), isError, nil
+}
+
 func writeResult(w http.ResponseWriter, id any, result any) {
 	json.NewEncoder(w).Encode(jsonrpcResponse{
 		JSONRPC: "2.0",

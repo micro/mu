@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"mu/admin"
+	"mu/agent"
 	"mu/api"
 	"mu/app"
 	"mu/auth"
@@ -87,6 +88,9 @@ func main() {
 	// load the home cards
 	home.Load()
 
+	// load agent
+	agent.Load()
+
 	// load user presence tracking
 	user.Load()
 
@@ -96,6 +100,16 @@ func main() {
 
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
+		sess, err := auth.GetSession(r)
+		if err != nil {
+			return false, 0, fmt.Errorf("authentication required")
+		}
+		canProceed, _, cost, err := wallet.CheckQuota(sess.Account, op)
+		return canProceed, cost, err
+	}
+
+	// Wire agent quota checking (same wallet credit system)
+	agent.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		sess, err := auth.GetSession(r)
 		if err != nil {
 			return false, 0, fmt.Errorf("authentication required")
@@ -221,6 +235,7 @@ func main() {
 		"/docs":   false, // Public - documentation
 		"/about":  false, // Public - about page
 		"/mcp":    false, // Public - MCP tools page
+		"/agent":  false, // Public page, auth checked in handler
 	}
 
 	// Static assets should not require authentication
@@ -298,6 +313,9 @@ func main() {
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
+
+	// serve the agent
+	http.HandleFunc("/agent", agent.Handler)
 
 	// serve mail inbox
 	http.HandleFunc("/mail", mail.Handler)
