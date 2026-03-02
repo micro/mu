@@ -12,13 +12,14 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 
 ### Features
 
-- **Home** - Your personalized dashboard
+- **Home** - Your personalized dashboard with online users indicator
 - **Blog** - Thoughtful microblogging
 - **Chat** - Discuss topics with AI (Web) or federated XMPP chat
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
 - **Mail** - Private messaging & email with SMTP
 - **Wallet** - Credits and crypto payments
+- **Online Users** - See who's currently active and available to chat
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
