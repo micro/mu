@@ -309,6 +309,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 		text, isErr, execErr := api.ExecuteTool(r, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
+			app.Log("agent", "Tool %s failed: err=%v isErr=%v response=%.200s", tc.Tool, execErr, isErr, text)
 			sse(w, map[string]any{
 				"type":    "tool_done",
 				"name":    tc.Tool,
@@ -338,7 +339,10 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	synthPrompt := &ai.Prompt{
-		System: "You are a helpful assistant. Using the tool results provided (if any), answer the user's question clearly and concisely. " +
+		System: "You are a helpful assistant. Answer the user's question using ONLY the tool results provided below.\n\n" +
+			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
+			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data — " +
+			"it will be outdated. If no tool result contains the requested real-time data, say it is unavailable.\n\n" +
 			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data.",
 		Rag:      ragParts,
 		Question: req.Prompt,

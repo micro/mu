@@ -377,6 +377,13 @@ function askLLM(el) {
     return false;
   }
 
+  // Handle /clear command
+  if (p.value.trim() === '/clear') {
+    p.value = '';
+    clearChatHistory();
+    return false;
+  }
+
   // reset prompt
   p.value = '';
 
