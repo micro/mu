@@ -818,6 +818,7 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 	}
 
 	body, _ := json.Marshal(reqBody)
+	reqBodyStr := string(body)
 
 	const maxRetries = 3
 	const retryDelay = 2 * time.Second
@@ -828,8 +829,10 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 			time.Sleep(retryDelay)
 		}
 
+		start := time.Now()
 		resp, err := http.Post(rpcURL, "application/json", bytes.NewReader(body))
 		if err != nil {
+			app.RecordAPICall("ethereum_rpc", method, rpcURL, 0, time.Since(start), err, reqBodyStr, "")
 			lastErr = err
 			continue
 		}
@@ -837,6 +840,7 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 		respBody, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
+			app.RecordAPICall("ethereum_rpc", method, rpcURL, resp.StatusCode, time.Since(start), err, reqBodyStr, "")
 			lastErr = err
 			continue
 		}
@@ -850,12 +854,14 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 
 		if err := json.Unmarshal(respBody, &rpcResp); err != nil {
 			// Non-JSON response is always a transient server-side issue; retry.
+			app.RecordAPICall("ethereum_rpc", method, rpcURL, resp.StatusCode, time.Since(start), err, reqBodyStr, string(respBody))
 			lastErr = err
 			continue
 		}
 
 		if rpcResp.Error != nil {
 			rpcErr := fmt.Errorf("rpc error: %s", rpcResp.Error.Message)
+			app.RecordAPICall("ethereum_rpc", method, rpcURL, resp.StatusCode, time.Since(start), rpcErr, reqBodyStr, string(respBody))
 			// Only retry on errors that indicate transient backend unavailability.
 			if strings.Contains(rpcResp.Error.Message, "healthy") ||
 				strings.Contains(rpcResp.Error.Message, "backend") ||
@@ -867,6 +873,7 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 			return nil, rpcErr
 		}
 
+		app.RecordAPICall("ethereum_rpc", method, rpcURL, resp.StatusCode, time.Since(start), nil, reqBodyStr, string(respBody))
 		return rpcResp.Result, nil
 	}
 
