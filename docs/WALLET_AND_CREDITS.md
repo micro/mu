@@ -7,7 +7,7 @@ Mu is a tool, not a destination. Like Google Search in 2000 — you arrive with 
 Credits are a straightforward way to pay for what you use. No dark patterns, no pressure to upgrade, no "unlimited" tiers that incentivize us to maximize your engagement.
 
 - **Free tier**: 10 AI queries/day - enough for casual utility use
-- **Pay-as-you-go**: Deposit crypto, use credits when you need more
+- **Pay-as-you-go**: Top up with a card, use credits when you need more
 - **Self-host**: Run your own instance for free, forever
 
 We charge because LLMs and APIs cost money. Here's our actual cost breakdown — we're not extracting margin, just covering infrastructure.
@@ -18,7 +18,7 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 
 - **1 credit = £0.01 GBP** (1 penny)
 - Credits stored as integers to avoid floating-point issues
-- Top up via crypto deposit (Ethereum, Base, Arbitrum, Optimism)
+- Top up via card payment (Stripe)
 - Credits never expire
 
 ### Daily Free Quota
@@ -79,48 +79,6 @@ Configure a webhook in the Stripe Dashboard pointing to `https://your-domain.com
 
 ---
 
-## Crypto Deposits
-
-### How It Works
-
-1. Go to `/wallet/topup`
-2. Select your network (Ethereum, Base, Arbitrum, or Optimism)
-3. You'll see your unique deposit address and QR code
-4. Send ETH, USDC, or any ERC-20 token
-5. Deposits are detected automatically (~30 seconds)
-6. Credits added based on current exchange rate
-
-### Supported Networks
-
-- **Ethereum** - Mainnet
-- **Base** - Coinbase L2
-- **Arbitrum** - Arbitrum One
-- **Optimism** - OP Mainnet
-
-Same address works on all networks.
-
-### Supported Tokens
-
-- **ETH** - Native token
-- **USDC** - USD Coin
-- **ERC-20** - Any token on supported networks
-
-### Important
-
-- Select the correct network before sending
-- Your address is the same on all networks
-- Minimum deposit: ~$1 equivalent
-- Deposits typically confirm within 1-2 minutes
-
-### Why Crypto?
-
-- No credit cards, no KYC forms, no payment processor gatekeeping
-- Works globally without bank restrictions
-- You control your funds until you deposit
-- Aligns with Mu philosophy: decentralized, no middlemen
-
----
-
 ## Data Model
 
 ### Wallet
@@ -159,17 +117,6 @@ type DailyUsage struct {
 }
 ```
 
-### Crypto Wallet
-
-```go
-type CryptoWallet struct {
-    UserID       string    `json:"user_id"`
-    AddressIndex uint32    `json:"address_index"` // BIP32 derivation index
-    Address      string    `json:"address"`       // Derived ETH address
-    CreatedAt    time.Time `json:"created_at"`
-}
-```
-
 ---
 
 ## API Endpoints
@@ -187,16 +134,6 @@ type CryptoWallet struct {
 ## Environment Variables
 
 ```bash
-# Crypto Wallet (optional)
-# If not set, seed is auto-generated and saved to ~/.mu/keys/wallet.seed
-WALLET_SEED="24 word mnemonic phrase"
-
-# Base RPC endpoint (optional)
-BASE_RPC_URL="https://mainnet.base.org"
-
-# Deposit polling interval in seconds (optional, default: 30)
-DEPOSIT_POLL_INTERVAL="30"
-
 # Stripe card payments (optional)
 STRIPE_SECRET_KEY="sk_live_..."
 STRIPE_PUBLISHABLE_KEY="pk_live_..."
@@ -220,15 +157,6 @@ CREDIT_COST_WEATHER_POLLEN="1"
 
 ## Implementation
 
-### HD Wallet
-
-Mu uses an HD (Hierarchical Deterministic) wallet to derive unique deposit addresses per user:
-
-- Master seed stored in `~/.mu/keys/wallet.seed` (or `WALLET_SEED` env var)
-- BIP44 derivation path: `m/44'/60'/0'/0/{index}`
-- Index 0 = treasury address
-- Each user gets a deterministic index based on their user ID
-
 ### Quota Check Flow
 
 1. User initiates search/chat
@@ -237,27 +165,9 @@ Mu uses an HD (Hierarchical Deterministic) wallet to derive unique deposit addre
 4. Check wallet balance → allow if sufficient, deduct credits
 5. Otherwise → show "quota exceeded" with options
 
-### Deposit Detection
-
-Deposits are detected automatically by polling blockchain nodes:
-
-1. A background watcher polls each supported chain every 30 seconds (configurable via `DEPOSIT_POLL_INTERVAL`)
-2. For **ETH**: detects balance increases on user deposit addresses
-3. For **ERC-20 tokens**: scans `Transfer` event logs for incoming token transfers
-4. Fetches the current token price from CoinGecko (cached 5 minutes)
-5. Calculates credits (1 credit = $0.01 USD) and adds them to the user's wallet
-6. Records each deposit by transaction hash to prevent double-crediting
-
-The watcher starts automatically on server launch when a wallet seed is configured.
-
-**Environment variable:** `DEPOSIT_POLL_INTERVAL` (default: `30` seconds)
-
 ---
 
 ## Security
 
-- Wallet seed file has 0600 permissions (owner read/write only)
-- Never log seed or private keys
 - Full transaction audit trail
 - Never allow negative balance
-- Deposit addresses derived deterministically (no key storage per user)

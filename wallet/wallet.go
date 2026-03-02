@@ -34,8 +34,7 @@ var (
 // PaymentsEnabled returns true if payments are configured
 // When false, quotas are disabled (unlimited free usage)
 func PaymentsEnabled() bool {
-	// Payments enabled if crypto wallet is available
-	return CryptoWalletEnabled()
+	return StripeEnabled()
 }
 
 // Operation types

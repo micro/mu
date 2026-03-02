@@ -1,14 +1,10 @@
 package wallet
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
-
-	"github.com/skip2/go-qrcode"
 
 	"mu/app"
 	"mu/auth"
@@ -177,8 +173,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleStripeSuccess(w, r)
 	case path == "/wallet/stripe/webhook" && r.Method == "POST":
 		HandleStripeWebhook(w, r)
-	case path == "/wallet/crypto/verify" && r.Method == "POST":
-		handleCryptoVerify(w, r)
 	default:
 		http.NotFound(w, r)
 	}

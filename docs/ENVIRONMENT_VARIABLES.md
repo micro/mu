@@ -127,32 +127,7 @@ export DONATION_URL="https://gocardless.com/your-donation-link"
 - When empty, donation features are hidden
 - Links appear on `/donate` page
 
-## Crypto Wallet Configuration (Credits/Payments)
-
-Enable payments via crypto deposits. When configured, users get 10 free AI queries per day, then can pay-as-you-go by depositing crypto.
-
-**When wallet is NOT configured:** All quotas are disabled. Users have unlimited free access. This is the default for self-hosted instances.
-
-```bash
-# Wallet seed (optional - auto-generated if not set)
-# If not provided, a new seed is generated and saved to ~/.mu/keys/wallet.seed
-export WALLET_SEED="24 word mnemonic phrase here"
-
-# Ethereum RPC endpoint (optional - uses public endpoint by default)
-# Set this to a private or paid endpoint to avoid public rate limits (HTTP 429)
-export ETH_RPC_URL="https://eth.llamarpc.com"
-
-# Base RPC endpoint (optional - uses public endpoint by default)
-export BASE_RPC_URL="https://mainnet.base.org"
-
-# Deposit polling interval in seconds (optional - default: 30)
-export DEPOSIT_POLL_INTERVAL="30"
-
-# WalletConnect Project ID (optional - for WalletConnect integration)
-export WALLETCONNECT_PROJECT_ID="your-project-id"
-```
-
-### Quota Configuration
+## Quota Configuration
 
 ```bash
 # Daily free AI queries (default: 10)
@@ -172,13 +147,6 @@ export CREDIT_COST_PLACES_NEARBY="2"  # Nearby places lookup (2p) - Google Place
 - 1 credit = £0.01 (1 penny)
 - Admins get unlimited access (no quotas)
 - Credits never expire
-- Users deposit any ERC-20 token on Base network
-
-### Wallet Seed Location
-
-The wallet seed is stored in `~/.mu/keys/wallet.seed`. If not provided via environment variable, it will be auto-generated on first run.
-
-**IMPORTANT:** Back up this file! It controls all deposit addresses.
 
 ## Example Usage
 
