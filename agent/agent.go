@@ -217,7 +217,9 @@ const agentToolsDesc = `Available tools (use exact name):
 - places_nearby: Find places near a location (args: {"address":"location","radius":number})
 - reminder: Get Islamic daily reminder (no args)
 - search: Search all Mu content (args: {"q":"search term"})
-- blog_list: Get recent blog posts (no args)`
+- blog_list: Get recent blog posts (no args)
+- wallet_balance: Check your wallet credit balance (no args)
+- wallet_topup: Get available topup options to add credits to your wallet (no args)`
 
 // handleQuery processes an agent query request with SSE streaming.
 func handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -271,7 +273,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	planPrompt := &ai.Prompt{
 		System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
 			agentToolsDesc +
-			"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 3 tool calls. If no tools are needed output [].",
+			"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. When the question asks for cross-source insights or correlations (e.g. news + markets, news + video), call multiple relevant tools. If no tools are needed output [].",
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
 		Provider: model.Provider,
@@ -345,6 +347,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
 			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data — " +
 			"it will be outdated. If no tool result contains the requested real-time data, say it is unavailable.\n\n" +
+			"When results come from multiple sources (news, video, markets, weather, etc.), identify and highlight " +
+			"connections and correlations between them — for example, how a market move relates to a news story, " +
+			"or how videos cover the same topic appearing in the news.\n\n" +
 			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data.",
 		Rag:      ragParts,
 		Question: req.Prompt,
@@ -409,6 +414,10 @@ func toolLabel(tool string) string {
 		return "🔍 Searching Mu"
 	case "blog_list":
 		return "📝 Reading blog posts"
+	case "wallet_balance":
+		return "💳 Checking wallet balance"
+	case "wallet_topup":
+		return "💳 Getting topup options"
 	default:
 		return "⚙ Calling " + tool
 	}
@@ -705,6 +714,10 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatMarketsResult(result)
 	case "places_search", "places_nearby":
 		return formatPlacesResult(result, args)
+	case "wallet_balance":
+		return formatWalletBalanceResult(result)
+	case "wallet_topup":
+		return formatWalletTopupResult(result)
 	}
 	return result
 }
@@ -1128,6 +1141,50 @@ func formatMarketsResult(result string) string {
 			line += fmt.Sprintf(" (24h change: %s%.2f%%)", sign, item.Change24h)
 		}
 		sb.WriteString(line + "\n")
+	}
+	return sb.String()
+}
+
+// formatWalletBalanceResult converts a raw JSON wallet balance result into
+// human-readable text for the AI synthesis RAG context.
+func formatWalletBalanceResult(result string) string {
+	var data struct {
+		Balance int `json:"balance"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	pounds := data.Balance / 100
+	pence := data.Balance % 100
+	return fmt.Sprintf("Wallet balance: %d credits (£%d.%02d). Top up at /wallet/topup.\n", data.Balance, pounds, pence)
+}
+
+// formatWalletTopupResult converts a raw JSON wallet topup methods result into
+// human-readable text for the AI synthesis RAG context.
+func formatWalletTopupResult(result string) string {
+	var data struct {
+		Methods []struct {
+			Type  string `json:"type"`
+			Tiers []struct {
+				Amount  int    `json:"amount"`
+				Credits int    `json:"credits"`
+				Label   string `json:"label"`
+			} `json:"tiers"`
+		} `json:"methods"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	if len(data.Methods) == 0 {
+		return "No topup methods available. Visit /wallet/topup to add credits."
+	}
+	var sb strings.Builder
+	sb.WriteString("Wallet topup options (visit /wallet/topup to add credits):\n")
+	for _, m := range data.Methods {
+		sb.WriteString(fmt.Sprintf("%s payment:\n", m.Type))
+		for _, t := range m.Tiers {
+			sb.WriteString(fmt.Sprintf("- %s: %d credits\n", t.Label, t.Credits))
+		}
 	}
 	return sb.String()
 }
