@@ -262,6 +262,60 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle POST - send message or delete
 	if r.Method == "POST" {
+		// JSON body for API/MCP callers (mail_send tool)
+		if app.SendsJSON(r) {
+			var req struct {
+				To      string `json:"to"`
+				Subject string `json:"subject"`
+				Body    string `json:"body"`
+				ReplyTo string `json:"reply_to"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				app.RespondError(w, http.StatusBadRequest, "invalid JSON body")
+				return
+			}
+			to := strings.TrimSpace(req.To)
+			subject := strings.TrimSpace(req.Subject)
+			body := strings.TrimSpace(req.Body)
+			replyTo := strings.TrimSpace(req.ReplyTo)
+			if to == "" || subject == "" || body == "" {
+				app.RespondError(w, http.StatusBadRequest, "to, subject and body are required")
+				return
+			}
+			if IsExternalEmail(to) {
+				if !acc.Admin {
+					canProceed, _, cost, err := wallet.CheckQuota(acc.ID, wallet.OpExternalEmail)
+					if err != nil || !canProceed {
+						app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("external email requires %d credits", cost))
+						return
+					}
+				}
+				fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
+				htmlBody := convertPlainTextToHTML(body)
+				messageID, err := SendExternalEmail(acc.Name, fromEmail, to, subject, body, htmlBody, replyTo)
+				if err != nil {
+					app.RespondError(w, http.StatusInternalServerError, "failed to send email: "+err.Error())
+					return
+				}
+				if !acc.Admin {
+					wallet.ConsumeQuota(acc.ID, wallet.OpExternalEmail) //nolint:errcheck
+				}
+				SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo, messageID) //nolint:errcheck
+			} else {
+				toAcc, err := auth.GetAccount(to)
+				if err != nil {
+					app.RespondError(w, http.StatusNotFound, "recipient not found")
+					return
+				}
+				if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, replyTo, ""); err != nil {
+					app.RespondError(w, http.StatusInternalServerError, "failed to send message")
+					return
+				}
+			}
+			app.RespondJSON(w, map[string]bool{"success": true})
+			return
+		}
+
 		if err := r.ParseForm(); err != nil {
 			app.BadRequest(w, r, "Failed to parse form")
 			return
@@ -999,6 +1053,23 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if userInbox == nil {
 		userInbox = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
+	}
+
+	// JSON response for API/MCP callers (mail_read tool)
+	if app.WantsJSON(r) {
+		threads := make([]*Thread, 0, len(userInbox.Threads))
+		for _, t := range userInbox.Threads {
+			threads = append(threads, t)
+		}
+		sort.Slice(threads, func(i, j int) bool {
+			return threads[i].Latest.CreatedAt.After(threads[j].Latest.CreatedAt)
+		})
+		msgs := make([]*Message, 0, len(threads))
+		for _, t := range threads {
+			msgs = append(msgs, t.Latest)
+		}
+		app.RespondJSON(w, map[string]interface{}{"messages": msgs, "unread": userInbox.UnreadCount})
+		return
 	}
 
 	// Render threads from pre-organized inbox

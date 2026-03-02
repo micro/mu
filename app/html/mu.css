@@ -331,7 +331,7 @@ td {
   top: 50px;
   width: 220px;
   height: calc(100vh - 50px);
-  padding: 25px;
+  padding: 12px 25px 25px;
   background: white;
   border-right: 1px solid #e0e0e0;
   z-index: 200;
@@ -1905,7 +1905,7 @@ a.highlight {
     width: 260px;
     height: 100vh;
     height: 100svh;
-    padding: 70px 20px 20px 20px;
+    padding: 52px 20px 20px 20px;
     background: white;
     border-right: 1px solid #e0e0e0;
     z-index: 200;

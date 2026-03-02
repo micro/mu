@@ -229,7 +229,7 @@ var Template = `
           <a href="/markets"><img src="/markets.png?` + Version + `"><span class="label">Markets</span></a>
           <a href="/places"><img src="/places.png?` + Version + `"><span class="label">Places</span></a>
           <a href="/weather"><img src="/weather.png?` + Version + `"><span class="label">Weather</span></a>
-          <a href="/web"><span style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">&#x1F50D;</span><span class="label">Web Search</span></a>
+          <a href="/web"><img src="/search.svg?` + Version + `"><span class="label">Search</span></a>
           <a href="/reminder"><img src="/reminder.png?` + Version + `"><span class="label">Reminder</span></a>
           <a id="nav-wallet" href="/wallet" style="display: none;"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
         </div>

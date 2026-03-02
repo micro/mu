@@ -191,14 +191,15 @@ var landingTemplate = `<html lang="en">
         </a>
         <a href="/agent" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/agent.png" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <img src="/robot.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Agent</b>
             <div class="small">Conversational AI agent with access to all Mu tools</div>
           </div>
         </a>
         <a href="/web" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <b>Web Search</b>
+            <img src="/search.svg" alt="Search" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Search</b>
             <div class="small">Search the web without ads or tracking</div>
           </div>
         </a>
