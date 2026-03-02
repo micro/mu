@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"mu/ai"
 	"mu/api"
@@ -297,9 +298,10 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	// --- Step 2: execute tool calls ---
 	type toolResult struct {
-		Name   string
-		Result string
-		Args   map[string]any
+		Name      string
+		Result    string
+		Args      map[string]any
+		Formatted string // pre-formatted RAG text, also used for reference rendering
 	}
 	var results []toolResult
 
@@ -337,13 +339,17 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	sse(w, map[string]any{"type": "thinking", "message": "Composing answer…"})
 
 	var ragParts []string
-	for _, res := range results {
+	for i, res := range results {
 		ragText := formatToolResult(res.Name, res.Result, res.Args)
+		results[i].Formatted = ragText
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
 	}
 
+	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
 	synthPrompt := &ai.Prompt{
-		System: "You are a helpful assistant. Answer the user's question using ONLY the tool results provided below.\n\n" +
+		System: "You are a helpful assistant. Today's date is " + today + ". " +
+			"The tool results below come from live data feeds — treat them as current information and use the article publication dates when reasoning about recency.\n\n" +
+			"Answer the user's question using ONLY the tool results provided below.\n\n" +
 			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
 			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data — " +
 			"it will be outdated. If no tool result contains the requested real-time data, say it is unavailable.\n\n" +
@@ -373,6 +379,15 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		if card := renderResultCard(res.Name, res.Result, res.Args); card != "" {
 			html += card
 		}
+	}
+
+	// Append expandable tool call references
+	if len(results) > 0 {
+		html += `<div class="card" style="font-size:13px;"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`
+		for _, res := range results {
+			html += renderToolCallRef(res.Name, res.Args, res.Formatted)
+		}
+		html += `</div>`
 	}
 
 	sse(w, map[string]any{"type": "response", "html": html})
@@ -421,6 +436,29 @@ func toolLabel(tool string) string {
 	default:
 		return "⚙ Calling " + tool
 	}
+}
+
+// renderToolCallRef renders a collapsible <details> element showing the tool
+// name with arguments and the formatted result text, for use as a reference
+// alongside the agent's synthesised answer.
+func renderToolCallRef(name string, args map[string]any, formattedResult string) string {
+	label := toolLabel(name)
+	if args != nil {
+		if q, ok := args["query"].(string); ok && q != "" {
+			label += ` — "` + htmlEsc(q) + `"`
+		} else if q, ok := args["q"].(string); ok && q != "" {
+			label += ` — "` + htmlEsc(q) + `"`
+		} else if cat, ok := args["category"].(string); ok && cat != "" {
+			label += ` — ` + htmlEsc(cat)
+		}
+	}
+	return `<details style="margin-bottom:4px;">` +
+		`<summary style="cursor:pointer;color:#555;font-size:13px;list-style:none;padding:4px 0;">` +
+		label + `</summary>` +
+		`<pre style="margin:6px 0 0;font-size:12px;color:#444;white-space:pre-wrap;background:#f9f9f9;` +
+		`border-radius:4px;padding:8px;max-height:200px;overflow-y:auto;font-family:inherit;">` +
+		htmlEsc(formattedResult) + `</pre>` +
+		`</details>`
 }
 
 // renderResultCard parses a tool's JSON result and returns an HTML card, or "" if
@@ -731,12 +769,15 @@ func formatNewsResult(result string) string {
 			Description string `json:"description"`
 			Category    string `json:"category"`
 			URL         string `json:"url"`
+			Published   string `json:"published"`
+			PostedAt    string `json:"posted_at"`
 		} `json:"feed"`
 		Results []struct {
 			Title       string `json:"title"`
 			Description string `json:"description"`
 			Category    string `json:"category"`
 			URL         string `json:"url"`
+			PostedAt    string `json:"posted_at"`
 		} `json:"results"`
 		Query string `json:"query"`
 	}
@@ -748,14 +789,16 @@ func formatNewsResult(result string) string {
 		Description string
 		Category    string
 		URL         string
+		PostedAt    string
+		Published   string
 	}
 	var items []item
 	for _, a := range data.Results {
-		items = append(items, item{a.Title, a.Description, a.Category, a.URL})
+		items = append(items, item{a.Title, a.Description, a.Category, a.URL, a.PostedAt, ""})
 	}
 	if len(items) == 0 {
 		for _, a := range data.Feed {
-			items = append(items, item{a.Title, a.Description, a.Category, a.URL})
+			items = append(items, item{a.Title, a.Description, a.Category, a.URL, a.PostedAt, a.Published})
 		}
 	}
 	if len(items) == 0 {
@@ -774,6 +817,13 @@ func formatNewsResult(result string) string {
 		line := fmt.Sprintf("%d. %s", i+1, a.Title)
 		if a.Category != "" {
 			line += fmt.Sprintf(" [%s]", a.Category)
+		}
+		if a.PostedAt != "" {
+			if t, err := time.Parse(time.RFC3339, a.PostedAt); err == nil {
+				line += fmt.Sprintf(" (%s)", t.Format("2 Jan 2006 15:04 UTC"))
+			}
+		} else if a.Published != "" {
+			line += fmt.Sprintf(" (%s)", a.Published)
 		}
 		if a.Description != "" {
 			line += " — " + a.Description
