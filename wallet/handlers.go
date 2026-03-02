@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/skip2/go-qrcode"
@@ -549,12 +550,23 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build success/cancel URLs
-	scheme := "https"
-	if r.TLS == nil && !strings.Contains(r.Host, "mu.xyz") {
-		scheme = "http"
+	// Build success/cancel URLs, preferring explicit config then proxy headers.
+	// NOTE: X-Forwarded-Host should only be trusted when running behind a
+	// reverse proxy that strips/sets this header (not passed through from clients).
+	var baseURL string
+	if domain := os.Getenv("MU_DOMAIN"); domain != "" {
+		domain = strings.TrimPrefix(strings.TrimPrefix(domain, "https://"), "http://")
+		baseURL = "https://" + domain
+	} else if fwdHost := r.Header.Get("X-Forwarded-Host"); fwdHost != "" {
+		fwdHost = strings.TrimPrefix(strings.TrimPrefix(fwdHost, "https://"), "http://")
+		baseURL = "https://" + fwdHost
+	} else {
+		scheme := "https"
+		if r.TLS == nil && !strings.Contains(r.Host, "mu.xyz") {
+			scheme = "http"
+		}
+		baseURL = fmt.Sprintf("%s://%s", scheme, r.Host)
 	}
-	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
 	successURL := baseURL + "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}"
 	cancelURL := baseURL + "/wallet/topup?method=stripe"
 
