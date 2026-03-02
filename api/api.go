@@ -775,6 +775,48 @@ func init() {
 		},
 	})
 
+	// Web search endpoint
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Web Search",
+		Path:        "/web",
+		Method:      "GET",
+		Description: "Search the web using Brave Search. Requires authentication. Costs credits per query.",
+		Params: []*Param{
+			{Name: "q", Value: "string", Description: "Search query"},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{Name: "results", Value: "array", Description: "Array of web result objects with title, url, description, age"},
+					{Name: "query", Value: "string", Description: "The search query"},
+				},
+			},
+		},
+	})
+
+	// Agent endpoint
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Agent Query",
+		Path:        "/agent",
+		Method:      "POST",
+		Description: "Query the AI agent. The agent plans and executes tool calls (news, weather, places, markets, etc.) then synthesizes a response. Requires authentication. Costs credits per query. Returns a Server-Sent Events stream.",
+		Params: []*Param{
+			{Name: "prompt", Value: "string", Description: "The question or request for the agent"},
+			{Name: "model", Value: "string", Description: "Model tier: standard (default) or premium"},
+		},
+		Response: []*Value{
+			{
+				Type: "text/event-stream",
+				Params: []*Param{
+					{Name: "type", Value: "string", Description: "Event type: thinking, tool_start, tool_done, response, error, done"},
+					{Name: "message", Value: "string", Description: "Human-readable status message"},
+					{Name: "html", Value: "string", Description: "Rendered HTML answer (on response event)"},
+				},
+			},
+		},
+	})
+
 	// MCP endpoint
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "MCP Server",

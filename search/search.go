@@ -183,6 +183,16 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 		wallet.ConsumeQuota(sess.Account, wallet.OpWebSearch)
 	}
 
+	// JSON response for API/MCP callers
+	if app.WantsJSON(r) {
+		if braveErr != nil {
+			app.RespondError(w, http.StatusServiceUnavailable, "web search unavailable")
+			return
+		}
+		app.RespondJSON(w, map[string]interface{}{"results": braveResults, "query": query})
+		return
+	}
+
 	var b strings.Builder
 	b.WriteString(searchBar)
 
