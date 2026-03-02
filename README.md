@@ -10,65 +10,33 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 
 **The solution**: Small, focused tools that do one thing well. No ads. No algorithms. No tracking.
 
-### Features
+### Featured Apps
 
-- **Home** - Your personalized dashboard with online users indicator
-- **Blog** - Thoughtful microblogging
-- **Chat** - Discuss topics with AI (Web) or fully compliant XMPP chat server with federation
+- **Home** - Your personalized dashboard
+- **Blog** - Microblogging with [ActivityPub](docs/ACTIVITYPUB.md) federation
+- **Chat** - Discuss topics with AI
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
-- **Mail** - Private messaging & email with SMTP (DKIM, SPF, DMARC)
-- **Wallet** - Credits and crypto payments
-- **Online Users** - See who's currently active and available to chat
-
-### Federation & Standards
-
-Like a proper email server with SMTP, DKIM, SPF, and DMARC support, Mu provides:
-- **XMPP Server**: Full RFC 6120-6122 compliance
-- **S2S Federation**: Chat with users on other XMPP servers
-- **TLS/STARTTLS**: Encrypted connections
-- **Multi-User Chat**: Group chat rooms (MUC)
-- **Offline Messages**: Store and forward when offline
-- **Standard Clients**: Connect with Conversations, Gajim, Beagle IM, etc.
+- **Mail** - Private messaging & email
+- **Places** - Discover places and points of interest near you
+- **Wallet** - Credits and card payments
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
 ## Roadmap
 
 - [x] API - Basic API
+- [x] MCP - AI tool integration
 - [x] App - Basic PWA
 - [x] Home - Overview
 - [x] Blog - Micro blogging
-- [x] Chat - Discussion rooms & AI assistant
+- [x] Chat - Discussion rooms
 - [x] News - RSS news feed
 - [x] Video - YouTube search
-- [x] Mail - Private messaging
-- [x] SMTP - Email server for federation (DKIM, SPF, DMARC)
-- [x] XMPP - Fully compliant chat server with S2S federation, TLS, MUC
-- [x] Wallet - Crypto payments (Stripe integration)
-- [x] Online Users - Presence tracking
+- [x] Mail - Private messaging 
+- [x] Places - Location search
+- [x] Wallet - Card payments
 - [ ] Services - Marketplace, etc
-
-### Federation Status
-
-**Email (SMTP):**
-- ✅ Send and receive email
-- ✅ DKIM signing
-- ✅ SPF verification
-- ✅ DMARC policies
-- ✅ Direct user-to-user messaging
-- ✅ External domain communication
-
-**Chat (XMPP):**
-- ✅ Client-to-Server (C2S) - port 5222
-- ✅ Server-to-Server (S2S) - port 5269
-- ✅ TLS/STARTTLS encryption
-- ✅ SASL authentication
-- ✅ Direct user-to-user messaging
-- ✅ Cross-server federation
-- ✅ Multi-User Chat (MUC) rooms
-- ✅ Offline message storage
-- ✅ Works with standard XMPP clients
 
 ### AI Features
 
@@ -77,6 +45,22 @@ Some features are enhanced with AI:
 - **Blog** - Auto-tag topics
 - **News** - Summarize articles
 - **Chat** - Knowledge assistant
+
+### MCP — AI Agent Integration
+
+Mu exposes a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server at `/mcp` so AI agents and tools (e.g. Claude Desktop, Cursor, or any MCP-compatible client) can connect directly.
+
+```json
+{
+  "mcpServers": {
+    "mu": {
+      "url": "https://mu.xyz/mcp"
+    }
+  }
+}
+```
+
+See [MCP Server docs](docs/MCP.md) for available tools and usage.
 
 ## Screenshots
 
@@ -127,6 +111,16 @@ Set the home cards in home/cards.json
 #### News Feed
 
 Set the RSS news feeds in news/feeds.json
+
+#### Places
+
+Set the saved search categories in `places/locations.json`.
+
+When `GOOGLE_API_KEY` is set, Places uses the [Google Places API (New)](https://developers.google.com/maps/documentation/places/web-service/overview) for richer results. Without it, Places falls back to free OpenStreetMap data.
+
+```
+export GOOGLE_API_KEY=xxx
+```
 
 #### Video Channels
 
@@ -222,14 +216,14 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 - [Installation](docs/INSTALLATION.md) - Self-hosting and deployment guide
 
 **Features**
+- [ActivityPub](docs/ACTIVITYPUB.md) - Federation with Mastodon, Threads, etc.
 - [Messaging](docs/MESSAGING_SYSTEM.md) - Email and messaging setup
-- [XMPP Chat](docs/XMPP_CHAT.md) - Federated chat with XMPP
 - [Wallet & Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
-
 **Reference**
 - [Configuration](docs/ENVIRONMENT_VARIABLES.md) - All environment variables
 - [Vector Search](docs/VECTOR_SEARCH.md) - Semantic search setup
 - [API Reference](docs/API_COVERAGE.md) - REST API endpoints
+- [MCP Server](docs/MCP.md) - AI tool integration via MCP
 - [Screenshots](docs/SCREENSHOTS.md) - Application screenshots
 
 ## Development 
@@ -250,26 +244,13 @@ Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this.
 
 ## Payments
 
-Mu uses crypto for payments. No credit cards, no payment processors, no KYC.
-
-**Supported chains:**
-- Ethereum
-- Base
-- Arbitrum
-- Optimism
-
-**Supported tokens:**
-- ETH
-- USDC
-- Any ERC-20 token
-
-Each user gets a unique deposit address. Send crypto, get credits. 1 credit = 1p.
+Mu uses Stripe for card payments. Top up with a credit or debit card and pay-as-you-go with credits. 1 credit = 1p.
 
 See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
 
 ## Sponsorship 
 
-You can sponsor the project using [GitHub Sponsors](https://github.com/sponsors/asim) or via [Patreon](https://patreon.com/muxyz) to support ongoing development and hosting costs. Sponsors get early access to new features and can vote on the project roadmap. All features remain free (with daily limits) or pay-as-you-go.
+You can sponsor the project using [GitHub Sponsors](https://github.com/sponsors/asim) to support development and hosting costs. Sponsors get early access to new features and can vote on the project roadmap. All features remain free (with daily limits) or pay-as-you-go.
 
 ## License
 

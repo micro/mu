@@ -206,6 +206,33 @@ func Login(id, secret string) (*Session, error) {
 	return sess, nil
 }
 
+// CreateSession creates a new session for the given account ID without password validation.
+// Used for passkey authentication where identity is verified via WebAuthn.
+func CreateSession(id string) (*Session, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	_, ok := accounts[id]
+	if !ok {
+		return nil, errors.New("account does not exist")
+	}
+
+	guid := uuid.New().String()
+
+	sess := &Session{
+		ID:      guid,
+		Type:    "account",
+		Token:   base64.StdEncoding.EncodeToString([]byte(guid)),
+		Account: id,
+		Created: time.Now(),
+	}
+
+	sessions[guid] = sess
+	data.SaveJSON("sessions.json", sessions)
+
+	return sess, nil
+}
+
 func Logout(tk string) error {
 	sess, err := ParseToken(tk)
 	if err != nil {

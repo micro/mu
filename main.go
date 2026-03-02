@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
@@ -24,11 +26,13 @@ import (
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
+	"mu/places"
 	"mu/reminder"
+	"mu/search"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
-	"mu/widgets"
+	"mu/weather"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -69,8 +73,15 @@ func main() {
 	// load the mail (also configures SMTP and DKIM)
 	mail.Load()
 
-	// load widgets (markets, reminder)
-	widgets.Load()
+	// load places
+	places.Load()
+
+	// load weather
+	weather.Load()
+
+	// load markets and reminder
+	markets.Load()
+	reminder.Load()
 	wallet.Load()
 
 	// load the home cards
@@ -83,6 +94,96 @@ func main() {
 	// This allows the priority queue to process new items first
 	data.StartIndexing()
 
+	// Wire MCP quota checking using wallet credit system
+	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
+		sess, err := auth.GetSession(r)
+		if err != nil {
+			return false, 0, fmt.Errorf("authentication required")
+		}
+		canProceed, _, cost, err := wallet.CheckQuota(sess.Account, op)
+		return canProceed, cost, err
+	}
+
+	// Register MCP auth tools
+	usernameRegex := regexp.MustCompile(`^[a-z][a-z0-9_]{3,23}$`)
+
+	api.RegisterTool(api.Tool{
+		Name:        "signup",
+		Description: "Create a new account and return a session token",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "Username (4-24 chars, lowercase, starts with letter)", Required: true},
+			{Name: "secret", Type: "string", Description: "Password (minimum 6 characters)", Required: true},
+			{Name: "name", Type: "string", Description: "Display name (optional, defaults to username)", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			id, _ := args["id"].(string)
+			secret, _ := args["secret"].(string)
+			name, _ := args["name"].(string)
+
+			if id == "" {
+				return `{"error":"username is required"}`, fmt.Errorf("username is required")
+			}
+			if !usernameRegex.MatchString(id) {
+				return `{"error":"invalid username format"}`, fmt.Errorf("invalid username format")
+			}
+			if len(secret) < 6 {
+				return `{"error":"password must be at least 6 characters"}`, fmt.Errorf("password too short")
+			}
+			if name == "" {
+				name = id
+			}
+
+			if err := auth.Create(&auth.Account{
+				ID:      id,
+				Secret:  secret,
+				Name:    name,
+				Created: time.Now(),
+			}); err != nil {
+				resp, _ := json.Marshal(map[string]string{"error": err.Error()})
+				return string(resp), err
+			}
+
+			sess, err := auth.Login(id, secret)
+			if err != nil {
+				return `{"error":"account created but login failed"}`, err
+			}
+
+			resp, _ := json.Marshal(map[string]string{
+				"token":   sess.Token,
+				"account": sess.Account,
+			})
+			return string(resp), nil
+		},
+	})
+
+	api.RegisterTool(api.Tool{
+		Name:        "login",
+		Description: "Log in and return a session token for use in Authorization header",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "Username", Required: true},
+			{Name: "secret", Type: "string", Description: "Password", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			id, _ := args["id"].(string)
+			secret, _ := args["secret"].(string)
+
+			if id == "" || secret == "" {
+				return `{"error":"username and password are required"}`, fmt.Errorf("missing credentials")
+			}
+
+			sess, err := auth.Login(id, secret)
+			if err != nil {
+				return `{"error":"invalid username or password"}`, err
+			}
+
+			resp, _ := json.Marshal(map[string]string{
+				"token":   sess.Token,
+				"account": sess.Account,
+			})
+			return string(resp), nil
+		},
+	})
+
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features
 		"/news":            false, // Public viewing, auth for search
@@ -91,25 +192,35 @@ func main() {
 		"/blog":            false, // Public viewing, auth for posting
 		"/markets":         false, // Public viewing
 		"/reminder":        false, // Public viewing
+		"/places":          false, // Public map, auth for search
+		"/weather":         false, // Public page, auth for forecast lookup
 		"/mail":            true,  // Require auth for inbox
 		"/logout":          true,
 		"/account":         true,
 		"/token":           true,  // PAT token management
+		"/passkey":         false, // Passkey login/register (auth checked in handler)
 		"/session":         false, // Public - used to check auth status
-		"/api":             true,
+		"/api":             false, // Public - API documentation
 		"/flag":            true,
 		"/admin":           true,
 		"/admin/users":     true,
 		"/admin/moderate":  true,
 		"/admin/blocklist": true,
 		"/admin/email":     true,
+		"/admin/api":       true,
+		"/admin/log":       true,
+		"/admin/env":       true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
-		"/wallet":          true, // Require auth for wallet
+		"/wallet":          false, // Public - shows wallet info; auth checked in handler
+
+		"/search": false, // Public - local data index search
+		"/web":    false, // Public page, auth checked in handler (paid Brave web search)
 
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
 		"/about":  false, // Public - about page
+		"/mcp":    false, // Public - MCP tools page
 	}
 
 	// Static assets should not require authentication
@@ -130,7 +241,14 @@ func main() {
 	http.HandleFunc("/blog", blog.Handler)
 
 	// serve individual blog post (public, no auth)
-	http.HandleFunc("/post", blog.PostHandler)
+	// Serves ActivityPub JSON-LD when requested via Accept header
+	http.HandleFunc("/post", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && blog.WantsActivityPub(r) {
+			blog.PostObjectHandler(w, r)
+			return
+		}
+		blog.PostHandler(w, r)
+	})
 
 	// handle comments on posts /post/{id}/comment
 	http.HandleFunc("/post/", blog.CommentHandler)
@@ -153,6 +271,15 @@ func main() {
 	// email log
 	http.HandleFunc("/admin/email", admin.EmailLogHandler)
 
+	// external API call log
+	http.HandleFunc("/admin/api", admin.APILogHandler)
+
+	// system log
+	http.HandleFunc("/admin/log", admin.SysLogHandler)
+
+	// environment variables status
+	http.HandleFunc("/admin/env", admin.EnvHandler)
+
 	// plans page (public - overview of options)
 	http.HandleFunc("/plans", app.Plans)
 
@@ -162,6 +289,12 @@ func main() {
 	// wallet - credits and payments
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
+
+	// serve search page (local + Brave web search)
+	http.HandleFunc("/search", search.Handler)
+
+	// serve web search page (Brave-powered, paid)
+	http.HandleFunc("/web", search.WebHandler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
@@ -175,6 +308,13 @@ func main() {
 	// serve reminder page
 	http.HandleFunc("/reminder", reminder.Handler)
 
+	// serve places page
+	http.HandleFunc("/places", places.Handler)
+	http.HandleFunc("/places/", places.Handler)
+
+	// serve weather page
+	http.HandleFunc("/weather", weather.Handler)
+
 	// auth
 	http.HandleFunc("/login", app.Login)
 	http.HandleFunc("/logout", app.Logout)
@@ -182,16 +322,19 @@ func main() {
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/session", app.Session)
 	http.HandleFunc("/token", app.TokenHandler)
+	http.HandleFunc("/passkey/", app.PasskeyHandler)
 
 	// status page - public health check
 	app.DKIMStatusFunc = mail.DKIMStatus
-	app.XMPPStatusFunc = chat.GetXMPPStatus
 	http.HandleFunc("/status", app.StatusHandler)
 
 	// documentation
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/docs/", docs.Handler)
 	http.HandleFunc("/about", docs.AboutHandler)
+
+	// ActivityPub: WebFinger discovery
+	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
 
 	// presence WebSocket endpoint
 	http.HandleFunc("/presence", user.PresenceHandler)
@@ -213,6 +356,9 @@ func main() {
 
 	// serve the api doc
 	http.Handle("/api", app.ServeHTML(apiHTML))
+
+	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
+	http.HandleFunc("/mcp", api.MCPHandler)
 
 	// serve the app
 	http.Handle("/", app.Serve())
@@ -321,13 +467,37 @@ func main() {
 						http.Redirect(w, r, "/home", 302)
 						return
 					}
+					// Serve dynamic landing page for unauthenticated users
+					home.LandingHandler(w, r)
+					return
 				}
 			}
 
 			// Check if this is a user profile request (/@username)
-			if strings.HasPrefix(r.URL.Path, "/@") && !strings.Contains(r.URL.Path[2:], "/") {
-				user.Handler(w, r)
-				return
+			if strings.HasPrefix(r.URL.Path, "/@") {
+				rest := r.URL.Path[2:]
+
+				// Handle ActivityPub sub-endpoints: /@username/outbox, /@username/inbox
+				if strings.HasSuffix(rest, "/outbox") {
+					blog.OutboxHandler(w, r)
+					return
+				}
+				if strings.HasSuffix(rest, "/inbox") {
+					blog.InboxHandler(w, r)
+					return
+				}
+
+				// Serve ActivityPub actor JSON if requested
+				if !strings.Contains(rest, "/") && blog.WantsActivityPub(r) {
+					blog.ActorHandler(w, r)
+					return
+				}
+
+				// Otherwise serve the HTML profile page
+				if !strings.Contains(rest, "/") {
+					user.Handler(w, r)
+					return
+				}
 			}
 
 			http.DefaultServeMux.ServeHTTP(w, r)
@@ -341,16 +511,10 @@ func main() {
 	// Start SMTP server if enabled (disabled by default)
 	mail.StartSMTPServerIfEnabled()
 
-	// Start XMPP server if enabled (disabled by default)
-	chat.StartXMPPServerIfEnabled()
-
 	// Log initial memory usage
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	app.Log("main", "Startup complete. Memory: Alloc=%dMB Sys=%dMB NumGC=%d", m.Alloc/1024/1024, m.Sys/1024/1024, m.NumGC)
-
-	// Start deposit watcher for crypto payments
-	wallet.StartDepositWatcher()
 
 	// Start memory monitoring goroutine
 	go func() {

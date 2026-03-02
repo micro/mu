@@ -16,34 +16,43 @@ import (
 
 // Credit costs per operation (in credits/pennies)
 var (
-	CostNewsSearch    = getEnvInt("CREDIT_COST_NEWS", 1)
-	CostNewsSummary   = getEnvInt("CREDIT_COST_NEWS_SUMMARY", 1)
-	CostVideoSearch   = getEnvInt("CREDIT_COST_VIDEO", 2)
-	CostVideoWatch    = getEnvInt("CREDIT_COST_VIDEO_WATCH", 0) // Free - no value added over YouTube
-	CostChatQuery     = getEnvInt("CREDIT_COST_CHAT", 3)
-	CostChatRoom      = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
-	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
-	FreeDailySearches = getEnvInt("FREE_DAILY_SEARCHES", 10)
+	CostNewsSearch      = getEnvInt("CREDIT_COST_NEWS", 1)
+	CostNewsSummary     = getEnvInt("CREDIT_COST_NEWS_SUMMARY", 1)
+	CostVideoSearch     = getEnvInt("CREDIT_COST_VIDEO", 2)
+	CostVideoWatch      = getEnvInt("CREDIT_COST_VIDEO_WATCH", 0) // Free - no value added over YouTube
+	CostChatQuery       = getEnvInt("CREDIT_COST_CHAT", 3)
+	CostChatRoom        = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
+	CostExternalEmail   = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
+	CostPlacesSearch    = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
+	CostPlacesNearby    = getEnvInt("CREDIT_COST_PLACES_NEARBY", 2)
+	CostWeatherForecast = getEnvInt("CREDIT_COST_WEATHER", 1)
+	CostWeatherPollen   = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
+	CostWebSearch       = getEnvInt("CREDIT_COST_SEARCH", 5)
+	FreeDailySearches   = getEnvInt("FREE_DAILY_SEARCHES", 10)
 )
 
 // PaymentsEnabled returns true if payments are configured
 // When false, quotas are disabled (unlimited free usage)
 func PaymentsEnabled() bool {
-	// Payments enabled if crypto wallet is available
-	return CryptoWalletEnabled()
+	return StripeEnabled()
 }
 
 // Operation types
 const (
-	OpNewsSearch    = "news_search"
-	OpNewsSummary   = "news_summary"
-	OpVideoSearch   = "video_search"
-	OpVideoWatch    = "video_watch"
-	OpChatQuery     = "chat_query"
-	OpChatRoom      = "chat_room"
-	OpExternalEmail = "external_email"
-	OpTopup         = "topup"
-	OpRefund        = "refund"
+	OpNewsSearch      = "news_search"
+	OpNewsSummary     = "news_summary"
+	OpVideoSearch     = "video_search"
+	OpVideoWatch      = "video_watch"
+	OpChatQuery       = "chat_query"
+	OpChatRoom        = "chat_room"
+	OpExternalEmail   = "external_email"
+	OpPlacesSearch    = "places_search"
+	OpPlacesNearby    = "places_nearby"
+	OpWeatherForecast = "weather_forecast"
+	OpWeatherPollen   = "weather_pollen"
+	OpWebSearch       = "web_search"
+	OpTopup           = "topup"
+	OpRefund          = "refund"
 )
 
 // Transaction types
@@ -85,21 +94,6 @@ type DailyUsage struct {
 	UserID   string `json:"user_id"`
 	Date     string `json:"date"`     // "2006-01-02" format
 	Searches int    `json:"searches"` // Free searches used today
-}
-
-// TopupTier represents a credit purchase option
-type TopupTier struct {
-	Amount   int `json:"amount"`    // Price in pence (e.g., 500 = £5)
-	Credits  int `json:"credits"`   // Credits received
-	BonusPct int `json:"bonus_pct"` // Bonus percentage
-}
-
-// Available topup tiers
-var TopupTiers = []TopupTier{
-	{Amount: 500, Credits: 500, BonusPct: 0},
-	{Amount: 1000, Credits: 1050, BonusPct: 5},
-	{Amount: 2500, Credits: 2750, BonusPct: 10},
-	{Amount: 5000, Credits: 5750, BonusPct: 15},
 }
 
 func init() {
@@ -349,6 +343,16 @@ func GetOperationCost(operation string) int {
 		return CostChatRoom
 	case OpExternalEmail:
 		return CostExternalEmail
+	case OpPlacesSearch:
+		return CostPlacesSearch
+	case OpPlacesNearby:
+		return CostPlacesNearby
+	case OpWeatherForecast:
+		return CostWeatherForecast
+	case OpWeatherPollen:
+		return CostWeatherPollen
+	case OpWebSearch:
+		return CostWebSearch
 	default:
 		return 1
 	}
@@ -390,6 +394,35 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	return false, false, cost, errors.New("insufficient credits")
 }
 
+// RecordUsage records a zero-cost usage transaction (for admins and free-tier tracking)
+func RecordUsage(userID string, operation string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	w, exists := wallets[userID]
+	if !exists {
+		w = &Wallet{
+			UserID:    userID,
+			Balance:   0,
+			Currency:  "GBP",
+			UpdatedAt: time.Now(),
+		}
+		wallets[userID] = w
+	}
+
+	tx := &Transaction{
+		ID:        uuid.New().String(),
+		UserID:    userID,
+		Type:      TxSpend,
+		Amount:    0,
+		Balance:   w.Balance,
+		Operation: operation,
+		CreatedAt: time.Now(),
+	}
+	transactions[userID] = append(transactions[userID], tx)
+	data.SaveJSON("transactions.json", transactions)
+}
+
 // ConsumeQuota consumes quota for an operation (call after successful operation)
 func ConsumeQuota(userID string, operation string) error {
 	// Get account to check admin status
@@ -398,8 +431,9 @@ func ConsumeQuota(userID string, operation string) error {
 		return errors.New("account not found")
 	}
 
-	// Admins don't consume quota
+	// Admins get free access but usage is tracked
 	if acc.Admin {
+		RecordUsage(userID, operation)
 		return nil
 	}
 
@@ -418,14 +452,4 @@ func FormatCredits(credits int) string {
 	pounds := credits / 100
 	pence := credits % 100
 	return fmt.Sprintf("£%d.%02d", pounds, pence)
-}
-
-// GetTopupTier returns the topup tier for a given amount
-func GetTopupTier(amount int) *TopupTier {
-	for i := range TopupTiers {
-		if TopupTiers[i].Amount == amount {
-			return &TopupTiers[i]
-		}
-	}
-	return nil
 }

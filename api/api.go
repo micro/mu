@@ -614,6 +614,223 @@ func init() {
 			},
 		},
 	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Wallet Topup",
+		Path:        "/wallet/topup",
+		Method:      "GET",
+		Description: "Get available wallet topup payment methods. Returns card (Stripe) preset tiers with amount, credits, and label. Requires authentication.",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "methods",
+						Value:       "array",
+						Description: "Array of payment method objects. Each has a type (card) and tiers with amount, credits, and label.",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Markets",
+		Path:        "/markets",
+		Method:      "GET",
+		Description: "Get live market prices for cryptocurrencies, futures, and commodities",
+		Params: []*Param{
+			{
+				Name:        "category",
+				Value:       "string",
+				Description: "Category: crypto, futures, or commodities (default: crypto)",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "category",
+						Value:       "string",
+						Description: "The requested category",
+					},
+					{
+						Name:        "data",
+						Value:       "array",
+						Description: "Array of market items with symbol, price, type",
+					},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Reminder",
+		Path:        "/reminder",
+		Method:      "GET",
+		Description: "Get the daily Islamic reminder with Quranic verse, hadith, and name of Allah",
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "verse",
+						Value:       "string",
+						Description: "Quranic verse",
+					},
+					{
+						Name:        "name",
+						Value:       "string",
+						Description: "Name of Allah",
+					},
+					{
+						Name:        "hadith",
+						Value:       "string",
+						Description: "Hadith text",
+					},
+					{
+						Name:        "message",
+						Value:       "string",
+						Description: "Additional message",
+					},
+					{
+						Name:        "updated",
+						Value:       "string",
+						Description: "Last updated timestamp",
+					},
+				},
+			},
+		},
+	})
+
+	// Weather endpoints
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Weather Forecast",
+		Path:        "/weather",
+		Method:      "GET",
+		Description: "Get the weather forecast for a location by latitude and longitude. Costs 1 credit.",
+		Params: []*Param{
+			{Name: "lat", Value: "number", Description: "Latitude of the location"},
+			{Name: "lon", Value: "number", Description: "Longitude of the location"},
+			{Name: "pollen", Value: "string", Description: "Set to 1 to include pollen forecast (+1 credit)"},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{Name: "forecast", Value: "object", Description: "Weather forecast with current conditions, hourly and daily items"},
+					{Name: "pollen", Value: "array", Description: "Pollen forecast by date (if requested)"},
+				},
+			},
+		},
+	})
+
+	// Places endpoints
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Places Search",
+		Path:        "/places/search",
+		Method:      "POST",
+		Description: "Search for places by name or category, optionally near a location",
+		Params: []*Param{
+			{Name: "q", Value: "string", Description: "Search query (e.g. cafe, pharmacy, Boots)"},
+			{Name: "near", Value: "string", Description: "Location name or address to search near (optional)"},
+			{Name: "near_lat", Value: "number", Description: "Latitude of the search location (optional)"},
+			{Name: "near_lon", Value: "number", Description: "Longitude of the search location (optional)"},
+			{Name: "radius", Value: "number", Description: "Search radius in metres, 100–5000 (default 1000)"},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{Name: "results", Value: "array", Description: "Array of place objects with id, name, category, address, lat, lon, phone, website, opening_hours, cuisine, distance"},
+					{Name: "count", Value: "number", Description: "Number of results returned"},
+				},
+			},
+		},
+	})
+
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "Places Nearby",
+		Path:        "/places/nearby",
+		Method:      "POST",
+		Description: "Find all places of interest near a given location",
+		Params: []*Param{
+			{Name: "address", Value: "string", Description: "Address or postcode to search near (optional if lat/lon provided)"},
+			{Name: "lat", Value: "number", Description: "Latitude of the search location"},
+			{Name: "lon", Value: "number", Description: "Longitude of the search location"},
+			{Name: "radius", Value: "number", Description: "Search radius in metres, 100–5000 (default 500)"},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{Name: "results", Value: "array", Description: "Array of place objects sorted by distance"},
+					{Name: "count", Value: "number", Description: "Number of results returned"},
+					{Name: "lat", Value: "number", Description: "Resolved latitude"},
+					{Name: "lon", Value: "number", Description: "Resolved longitude"},
+					{Name: "radius", Value: "number", Description: "Search radius used"},
+				},
+			},
+		},
+	})
+
+	// MCP endpoint
+	Endpoints = append(Endpoints, &Endpoint{
+		Name:        "MCP Server",
+		Path:        "/mcp",
+		Method:      "POST",
+		Description: "Model Context Protocol server for AI tool integration. Supports initialize, tools/list, tools/call, and ping methods. Tools include chat, news, blog, video, mail, search, wallet, weather, places, markets, reminder, login, and signup. Metered tools (chat: 3 credits, news_search: 1 credit, video_search: 2 credits, mail_send: 4 credits, weather_forecast: 1 credit + optional 1 credit for pollen data) use the same wallet credit system as the REST API. 10 free queries per day.",
+		Params: []*Param{
+			{
+				Name:        "jsonrpc",
+				Value:       "string",
+				Description: "JSON-RPC version (must be '2.0')",
+			},
+			{
+				Name:        "id",
+				Value:       "number",
+				Description: "Request ID",
+			},
+			{
+				Name:        "method",
+				Value:       "string",
+				Description: "MCP method: initialize, tools/list, tools/call, ping",
+			},
+			{
+				Name:        "params",
+				Value:       "object",
+				Description: "Method parameters (e.g. {name, arguments} for tools/call)",
+			},
+		},
+		Response: []*Value{
+			{
+				Type: "JSON",
+				Params: []*Param{
+					{
+						Name:        "jsonrpc",
+						Value:       "string",
+						Description: "JSON-RPC version '2.0'",
+					},
+					{
+						Name:        "id",
+						Value:       "number",
+						Description: "Request ID echoed back",
+					},
+					{
+						Name:        "result",
+						Value:       "object",
+						Description: "Method result (tools list, tool output, server info)",
+					},
+					{
+						Name:        "error",
+						Value:       "object",
+						Description: "Error object with code and message (if failed)",
+					},
+				},
+			},
+		},
+	})
 }
 
 // Register an endpoint
@@ -646,6 +863,15 @@ func Markdown() string {
 	data += "2. Navigate to `/token` endpoint\n"
 	data += "3. Create a new token with desired permissions\n"
 	data += "4. **Save the token immediately** - it's only shown once!\n\n"
+	data += "---\n\n"
+	data += "## MCP\n\n"
+	data += "AI agents and tools can connect to Mu via the [Model Context Protocol](/mcp) (MCP) server at `/mcp`.\n\n"
+	data += "### Authentication\n\n"
+	data += "Include a token in the `Authorization` header:\n\n"
+	data += "```\nAuthorization: Bearer YOUR_TOKEN\n```\n\n"
+	data += "Two ways to obtain a token:\n\n"
+	data += "1. **Personal Access Token (PAT)** — create one at `/token` after logging in.\n"
+	data += "2. **Signup / Login tools** — the agent can call the `signup` or `login` MCP tool to obtain a session token programmatically.\n\n"
 	data += "---\n\n"
 	data += "## Endpoints\n\n"
 

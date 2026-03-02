@@ -1,21 +1,14 @@
 package wallet
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/skip2/go-qrcode"
-
 	"mu/app"
 	"mu/auth"
 )
-
-func getWalletConnectProjectID() string {
-	return os.Getenv("WALLETCONNECT_PROJECT_ID")
-}
 
 // WalletPage renders the wallet page HTML
 func WalletPage(userID string) string {
@@ -32,20 +25,21 @@ func WalletPage(userID string) string {
 
 	var sb strings.Builder
 
+	// Balance
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Balance</h3>`)
 	if isAdmin {
-		// Admin status
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Status</h3>`)
-		sb.WriteString(`<p>Admin · Full access</p>`)
-		sb.WriteString(`</div>`)
+		sb.WriteString(`<p class="text-sm text-muted">Admin · Unlimited access</p>`)
+		if wallet.Balance > 0 {
+			sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
+		}
 	} else {
-		// Balance
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Balance</h3>`)
 		sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
-		sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a></p>`)
-		sb.WriteString(`</div>`)
+	}
+	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a></p>`)
+	sb.WriteString(`</div>`)
 
+	if !isAdmin {
 		// Daily quota
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Free Queries</h3>`)
@@ -77,6 +71,8 @@ func WalletPage(userID string) string {
 		sb.WriteString(fmt.Sprintf(`<tr><td>Video watch</td><td>%dp</td></tr>`, CostVideoWatch))
 	}
 	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td>%dp</td></tr>`, CostChatQuery))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Places search</td><td>%dp</td></tr>`, CostPlacesSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Places nearby</td><td>%dp</td></tr>`, CostPlacesNearby))
 	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td>%dp</td></tr>`, CostExternalEmail))
 	sb.WriteString(`</table>`)
 	sb.WriteString(`</div>`)
@@ -93,16 +89,20 @@ func WalletPage(userID string) string {
 			if tx.Type == TxTopup {
 				typeLabel = "Deposit"
 			}
-			amountPrefix := "-"
-			if tx.Amount > 0 {
-				amountPrefix = "+"
+			var amountStr string
+			if tx.Amount == 0 {
+				amountStr = "free"
+			} else if tx.Amount > 0 {
+				amountStr = fmt.Sprintf("+%d", tx.Amount)
+			} else {
+				amountStr = fmt.Sprintf("-%d", abs(tx.Amount))
 			}
 			sb.WriteString(fmt.Sprintf(`<tr>
 				<td>%s</td>
 				<td>%s</td>
-				<td>%s%d</td>
+				<td>%s</td>
 				<td>%d</td>
-			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountPrefix, abs(tx.Amount), tx.Balance))
+			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountStr, tx.Balance))
 		}
 
 		sb.WriteString(`</table>`)
@@ -163,6 +163,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/wallet" && r.Method == "GET":
 		handleWalletPage(w, r)
+	case path == "/wallet/topup" && r.Method == "GET" && app.WantsJSON(r):
+		handleTopupJSON(w, r)
 	case path == "/wallet/topup" && r.Method == "GET":
 		handleDepositPage(w, r)
 	case path == "/wallet/stripe/checkout" && r.Method == "POST":
@@ -177,27 +179,66 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleWalletPage(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
+	sess, _ := auth.TrySession(r)
+
+	var content string
+	if sess != nil {
+		content = WalletPage(sess.Account)
+	} else {
+		content = PublicWalletPage()
 	}
 
-	content := WalletPage(sess.Account)
-	html := app.RenderHTMLForRequest("Wallet", "Manage your credits", content, r)
+	html := app.RenderHTMLForRequest("Wallet", "Credits and pricing", content, r)
 	w.Write([]byte(html))
 }
 
-// Supported chains for deposits
-var depositChains = []struct {
-	ID      string
-	Name    string
-	ChainID int
-}{
-	{"ethereum", "Ethereum", 1},
-	{"base", "Base", 8453},
-	{"arbitrum", "Arbitrum", 42161},
-	{"optimism", "Optimism", 10},
+// PublicWalletPage renders the wallet page for unauthenticated users
+func PublicWalletPage() string {
+	var sb strings.Builder
+
+	// Intro
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Credits &amp; Pricing</h3>`)
+	sb.WriteString(`<p>Mu is free with ` + fmt.Sprintf("%d", FreeDailySearches) + ` queries/day. Need more? Top up and pay as you go — no subscription required.</p>`)
+	sb.WriteString(`<p><a href="/login" class="btn">Login to view your balance</a>&nbsp;<a href="/signup" class="btn btn-secondary">Sign up free</a></p>`)
+	sb.WriteString(`</div>`)
+
+	// Credit costs
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Costs</h3>`)
+	sb.WriteString(`<table class="stats-table">`)
+	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td>%dp</td></tr>`, CostNewsSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>News summary</td><td>%dp</td></tr>`, CostNewsSummary))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td>%dp</td></tr>`, CostVideoSearch))
+	if CostVideoWatch > 0 {
+		sb.WriteString(fmt.Sprintf(`<tr><td>Video watch</td><td>%dp</td></tr>`, CostVideoWatch))
+	}
+	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td>%dp</td></tr>`, CostChatQuery))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Places search</td><td>%dp</td></tr>`, CostPlacesSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Places nearby</td><td>%dp</td></tr>`, CostPlacesNearby))
+	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td>%dp</td></tr>`, CostExternalEmail))
+	sb.WriteString(`</table>`)
+	sb.WriteString(`</div>`)
+
+	// Topup options
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Top Up</h3>`)
+	sb.WriteString(`<p>Add credits to your account via card:</p>`)
+	sb.WriteString(`<ul>`)
+	if StripeEnabled() {
+		sb.WriteString(`<li><strong>Card</strong> — secure payment via Stripe</li>`)
+	}
+	sb.WriteString(`</ul>`)
+	sb.WriteString(`<p><a href="/login">Login</a> or <a href="/signup">sign up</a> to top up.</p>`)
+	sb.WriteString(`</div>`)
+
+	// Self-hosting note
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Self-Host</h3>`)
+	sb.WriteString(`<p class="text-sm text-muted">Want unlimited and free? <a href="https://github.com/micro/mu">Self-host your own instance</a>.</p>`)
+	sb.WriteString(`</div>`)
+
+	return sb.String()
 }
 
 func handleDepositPage(w http.ResponseWriter, r *http.Request) {
@@ -207,47 +248,10 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get selected method (stripe or crypto)
-	method := r.URL.Query().Get("method")
-	if method == "" {
-		method = "stripe" // Default to stripe
-	}
-
 	var sb strings.Builder
 
-	// Method tabs
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Topup using card or crypto</h3>`)
-	sb.WriteString(`<div class="d-flex gap-2">`)
 	if StripeEnabled() {
-		stripeActive := ""
-		if method == "stripe" {
-			stripeActive = " btn-primary"
-		} else {
-			stripeActive = " btn-secondary"
-		}
-		sb.WriteString(fmt.Sprintf(`<a href="/wallet/topup?method=stripe" class="btn%s">Card</a>`, stripeActive))
-	}
-	if CryptoWalletEnabled() {
-		cryptoActive := ""
-		if method == "crypto" {
-			cryptoActive = " btn-primary"
-		} else {
-			cryptoActive = " btn-secondary"
-		}
-		sb.WriteString(fmt.Sprintf(`<a href="/wallet/topup?method=crypto" class="btn%s">Crypto</a>`, cryptoActive))
-	}
-	sb.WriteString(`</div>`)
-	sb.WriteString(`</div>`)
-
-	if method == "stripe" && StripeEnabled() {
-		sb.WriteString(renderStripeDeposit())
-	} else if method == "crypto" && CryptoWalletEnabled() {
-		sb.WriteString(renderCryptoDeposit(sess.Account, r))
-	} else if StripeEnabled() {
-		sb.WriteString(renderStripeDeposit())
-	} else if CryptoWalletEnabled() {
-		sb.WriteString(renderCryptoDeposit(sess.Account, r))
+		sb.WriteString(renderStripeDeposit(sess.Account, r.URL.Query().Get("error")))
 	} else {
 		sb.WriteString(`<div class="card"><p class="text-error">No payment methods available.</p></div>`)
 	}
@@ -256,26 +260,31 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-func renderStripeDeposit() string {
+func renderStripeDeposit(userID, errMsg string) string {
 	var sb strings.Builder
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Select Amount</h3>`)
-	sb.WriteString(`<form method="POST" action="/wallet/stripe/checkout">`)
-	sb.WriteString(`<div class="d-flex flex-column gap-2">`)
-
-	for _, tier := range StripeTopupTiers {
-		bonusText := ""
-		if tier.BonusPct > 0 {
-			bonusText = fmt.Sprintf(" <span class=\"text-success\">+%d%% bonus</span>", tier.BonusPct)
-		}
-		sb.WriteString(fmt.Sprintf(`<label class="topup-option">`+
-			`<input type="radio" name="amount" value="%d"> `+
-			`<strong>%s</strong> → %d credits%s`+
-			`</label>`, tier.Amount, tier.Label, tier.Credits, bonusText))
+	sb.WriteString(`<h3>Add Credits</h3>`)
+	if errMsg != "" {
+		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
+	sb.WriteString(`<form method="POST" action="/wallet/stripe/checkout">`)
 
+	// Preset quick-select buttons
+	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
+	for _, tier := range StripeTopupTiers {
+		sb.WriteString(fmt.Sprintf(
+			`<button type="button" class="btn btn-secondary" onclick="document.getElementById('topup-amount').value='%d'">%s</button>`,
+			tier.Amount/100, tier.Label))
+	}
 	sb.WriteString(`</div>`)
+
+	// Custom amount input (in whole pounds)
+	sb.WriteString(`<div>`)
+	sb.WriteString(`<label for="topup-amount" class="text-sm">Amount (£)</label>`)
+	sb.WriteString(fmt.Sprintf(`<input type="number" id="topup-amount" name="amount" min="1" max="%d" placeholder="e.g. 10" required class="form-input w-full mt-1">`, maxTopupPounds))
+	sb.WriteString(`</div>`)
+
 	sb.WriteString(`<button type="submit" class="btn mt-4">Continue to Payment</button>`)
 	sb.WriteString(`</form>`)
 	sb.WriteString(`</div>`)
@@ -287,78 +296,32 @@ func renderStripeDeposit() string {
 	return sb.String()
 }
 
-func renderCryptoDeposit(userID string, r *http.Request) string {
-	// Initialize crypto wallet if needed
-	if err := InitCryptoWallet(); err != nil {
-		app.Log("wallet", "Failed to init crypto wallet: %v", err)
-		return `<div class="card"><p class="text-error">Crypto wallet not available. Please try again later.</p></div>`
-	}
+// maxTopupPounds is the maximum allowed top-up amount in whole pounds
+const maxTopupPounds = 500
+type TopupMethod struct {
+	Type  string            `json:"type"`            // "card"
+	Tiers []StripeTopupTier `json:"tiers,omitempty"` // For card/Stripe
+}
 
-	// Get selected chain (default to ethereum)
-	selectedChain := r.URL.Query().Get("chain")
-	if selectedChain == "" {
-		selectedChain = "ethereum"
-	}
-
-	// Find chain info
-	chainID := 1 // default ethereum
-	chainName := "Ethereum"
-	for _, c := range depositChains {
-		if c.ID == selectedChain {
-			chainID = c.ChainID
-			chainName = c.Name
-			break
-		}
-	}
-
-	// Get user's deposit address
-	depositAddr, err := GetUserDepositAddress(userID)
+func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
+	_, _, err := auth.RequireSession(r)
 	if err != nil {
-		app.Log("wallet", "Failed to get deposit address: %v", err)
-		return `<div class="card"><p class="text-error">Failed to generate deposit address.</p></div>`
+		app.RespondJSON(w, map[string]string{"error": "authentication required"})
+		return
 	}
 
-	var sb strings.Builder
+	var methods []TopupMethod
 
-	// Chain selector
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Pick a network</h3>`)
-	sb.WriteString(`<select id="chain-select" onchange="window.location.href='/wallet/topup?method=crypto&chain='+this.value" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">`)
-	for _, c := range depositChains {
-		selected := ""
-		if c.ID == selectedChain {
-			selected = " selected"
-		}
-		sb.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, c.ID, selected, c.Name))
+	if StripeEnabled() {
+		methods = append(methods, TopupMethod{
+			Type:  "card",
+			Tiers: StripeTopupTiers,
+		})
 	}
-	sb.WriteString(`</select>`)
-	sb.WriteString(`</div>`)
 
-	// Generate QR code with ethereum: URI
-	ethURI := fmt.Sprintf("ethereum:%s@%d", depositAddr, chainID)
-	qrPNG, _ := qrcode.Encode(ethURI, qrcode.Medium, 200)
-	qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
-
-	// Deposit address with QR
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Deposit Address</h3>`)
-	sb.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%s</p>`, chainName))
-	sb.WriteString(fmt.Sprintf(`<div data-deposit-address="%s" data-chain-id="%d">`, depositAddr, chainID))
-	sb.WriteString(fmt.Sprintf(`<img src="data:image/png;base64,%s" alt="QR Code" class="qr-code">`, qrBase64))
-	sb.WriteString(fmt.Sprintf(`<code class="deposit-address">%s</code>`, depositAddr))
-	sb.WriteString(`<p class="text-sm mt-3">`)
-	sb.WriteString(`<button onclick="navigator.clipboard.writeText('` + depositAddr + `'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Address', 2000)" class="btn-secondary">Copy Address</button>`)
-	sb.WriteString(`</p>`)
-	sb.WriteString(`</div>`)
-	sb.WriteString(`<p class="text-xs text-muted mt-2">Scan QR or copy address to send from your wallet app</p>`)
-	sb.WriteString(`</div>`)
-
-	// Conversion note
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · Converted at market rate</p>`)
-	sb.WriteString(`</div>`)
-
-	return sb.String()
+	app.RespondJSON(w, map[string]interface{}{
+		"methods": methods,
+	})
 }
 
 func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
@@ -369,33 +332,54 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "invalid form", http.StatusBadRequest)
+		http.Redirect(w, r, "/wallet/topup?error=Invalid+form+submission", http.StatusSeeOther)
 		return
 	}
 
+	// Amount is submitted in whole pounds; convert to pence for Stripe
 	amountStr := r.FormValue("amount")
-	var amount int
-	fmt.Sscanf(amountStr, "%d", &amount)
+	var pounds int
+	fmt.Sscanf(amountStr, "%d", &pounds)
 
-	if amount == 0 {
-		http.Error(w, "please select an amount", http.StatusBadRequest)
+	if pounds < 1 {
+		http.Redirect(w, r, "/wallet/topup?error=Please+enter+an+amount", http.StatusSeeOther)
+		return
+	}
+	if pounds > maxTopupPounds {
+		http.Redirect(w, r, fmt.Sprintf("/wallet/topup?error=Maximum+top-up+is+%%C2%%A3%d", maxTopupPounds), http.StatusSeeOther)
 		return
 	}
 
-	// Build success/cancel URLs
-	scheme := "https"
-	if r.TLS == nil && !strings.Contains(r.Host, "mu.xyz") {
-		scheme = "http"
+	amount := pounds * 100 // convert to pence
+
+	// Build success/cancel URLs, preferring explicit config then proxy headers.
+	// NOTE: X-Forwarded-Host should only be trusted when running behind a
+	// reverse proxy that strips/sets this header (not passed through from clients).
+	var baseURL string
+	if domain := os.Getenv("MU_DOMAIN"); domain != "" {
+		domain = strings.TrimPrefix(strings.TrimPrefix(domain, "https://"), "http://")
+		baseURL = "https://" + domain
+	} else if fwdHost := r.Header.Get("X-Forwarded-Host"); fwdHost != "" {
+		fwdHost = strings.TrimPrefix(strings.TrimPrefix(fwdHost, "https://"), "http://")
+		baseURL = "https://" + fwdHost
+	} else {
+		scheme := "https"
+		if r.TLS == nil && !strings.Contains(r.Host, "mu.xyz") {
+			scheme = "http"
+		}
+		baseURL = fmt.Sprintf("%s://%s", scheme, r.Host)
 	}
-	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
 	successURL := baseURL + "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}"
-	cancelURL := baseURL + "/wallet/topup?method=stripe"
+	cancelURL := baseURL + "/wallet/topup"
 
 	// Create checkout session
 	checkoutURL, err := CreateCheckoutSession(sess.Account, amount, successURL, cancelURL)
 	if err != nil {
 		app.Log("stripe", "checkout error: %v", err)
-		http.Error(w, "failed to create checkout session", http.StatusInternalServerError)
+		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/wallet/topup" class="btn">Back</a></p></div>`
+		html := app.RenderHTMLForRequest("Payment Error", "Checkout failed", content, r)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(html))
 		return
 	}
 

@@ -1,6 +1,6 @@
 module mu
 
-go 1.24.1
+go 1.25.0
 
 require (
 	github.com/ProtonMail/go-crypto v1.3.0
@@ -17,8 +17,8 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/tyler-smith/go-bip32 v1.0.0
 	github.com/tyler-smith/go-bip39 v1.1.0
-	golang.org/x/crypto v0.40.0
-	golang.org/x/net v0.42.0
+	golang.org/x/crypto v0.48.0
+	golang.org/x/net v0.49.0
 	golang.org/x/sync v0.19.0
 	google.golang.org/api v0.243.0
 	modernc.org/sqlite v1.42.2
@@ -33,13 +33,20 @@ require (
 	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
 	github.com/FactomProject/btcutilecc v0.0.0-20130527213604-d3a63a5752ec // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
+	github.com/asim/quadtree v0.3.0 // indirect
 	github.com/cloudflare/circl v1.6.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
+	github.com/go-webauthn/webauthn v0.16.0 // indirect
+	github.com/go-webauthn/x v0.2.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
+	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
@@ -51,6 +58,7 @@ require (
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel v1.36.0 // indirect
@@ -58,8 +66,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250715232539-7130f93afb79 // indirect
 	google.golang.org/grpc v1.73.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect

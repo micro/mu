@@ -65,9 +65,6 @@ type MemoryStatus struct {
 // DKIMStatusFunc is set by main to avoid import cycle
 var DKIMStatusFunc func() (enabled bool, domain, selector string)
 
-// XMPPStatusFunc is set by main to avoid import cycle
-var XMPPStatusFunc func() map[string]interface{}
-
 // StatusHandler handles the /status endpoint
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	// Quick health check endpoint
@@ -124,31 +121,6 @@ func buildStatus() StatusResponse {
 		Details: fmt.Sprintf("Port %s", smtpPort),
 	})
 
-	// Check XMPP server
-	if XMPPStatusFunc != nil {
-		xmppStatus := XMPPStatusFunc()
-		enabled, ok := xmppStatus["enabled"].(bool)
-		if !ok {
-			enabled = false
-		}
-		details := "Not enabled"
-		if enabled {
-			domain, domainOk := xmppStatus["domain"].(string)
-			port, portOk := xmppStatus["port"].(string)
-			sessions, sessionsOk := xmppStatus["sessions"].(int)
-			if domainOk && portOk && sessionsOk {
-				details = fmt.Sprintf("%s:%s (%d sessions)", domain, port, sessions)
-			} else {
-				details = "Configuration error"
-			}
-		}
-		services = append(services, StatusCheck{
-			Name:    "XMPP Server",
-			Status:  enabled,
-			Details: details,
-		})
-	}
-
 	// Check LLM provider
 	llmProvider, llmConfigured := checkLLMConfig()
 	services = append(services, StatusCheck{
@@ -182,28 +154,47 @@ func buildStatus() StatusResponse {
 		Status: youtubeConfigured,
 	})
 
-	// Check Crypto Wallet/Payments
-	walletSeedExists := os.Getenv("WALLET_SEED") != "" || fileExists(getWalletSeedPath())
+	// Check Google Places API
+	googleConfigured := os.Getenv("GOOGLE_API_KEY") != ""
+	services = append(services, StatusCheck{
+		Name:   "Google Places API",
+		Status: googleConfigured,
+	})
+
+	// Check Payments (Stripe)
+	stripeConfigured := os.Getenv("STRIPE_SECRET_KEY") != "" && os.Getenv("STRIPE_PUBLISHABLE_KEY") != ""
 	quotaMode := "Unlimited (self-hosted)"
-	if walletSeedExists {
-		quotaMode = "Pay-as-you-go (crypto)"
+	if stripeConfigured {
+		quotaMode = "Pay-as-you-go (card)"
 	}
 	services = append(services, StatusCheck{
 		Name:    "Payments",
-		Status:  walletSeedExists,
+		Status:  stripeConfigured,
 		Details: quotaMode,
 	})
 
 	// Check Vector Search
 	indexStats := data.GetStats()
-	vectorMode := "Keyword (fallback)"
-	if indexStats.EmbeddingsEnabled {
-		vectorMode = fmt.Sprintf("Vector (%d embeddings)", indexStats.EmbeddingCount)
+	var searchStatus bool
+	var searchDetails string
+	switch {
+	case indexStats.UsingSQLite:
+		searchStatus = true
+		searchDetails = fmt.Sprintf("Full Text Search (%d entries)", indexStats.TotalEntries)
+	case indexStats.EmbeddingsEnabled:
+		searchStatus = true
+		searchDetails = fmt.Sprintf("Vector (%d embeddings)", indexStats.EmbeddingCount)
+	case !indexStats.OllamaAvailable:
+		searchStatus = false
+		searchDetails = fmt.Sprintf("Keyword (%d entries, Ollama unavailable)", indexStats.TotalEntries)
+	default:
+		searchStatus = false
+		searchDetails = fmt.Sprintf("Keyword (%d entries)", indexStats.TotalEntries)
 	}
 	services = append(services, StatusCheck{
 		Name:    "Search",
-		Status:  indexStats.EmbeddingsEnabled,
-		Details: vectorMode,
+		Status:  searchStatus,
+		Details: searchDetails,
 	})
 
 	// Configuration checks
@@ -378,14 +369,6 @@ func formatUptime(d time.Duration) string {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
-}
-
-func getWalletSeedPath() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "wallet.seed"
-	}
-	return homeDir + "/.mu/keys/wallet.seed"
 }
 
 func renderStatusHTML(status StatusResponse) string {

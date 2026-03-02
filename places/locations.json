@@ -1,0 +1,22 @@
+[
+  {"name": "London",       "country": "GB", "lat":  51.5074,  "lon":   -0.1278,  "radius_km": 25},
+  {"name": "New York",     "country": "US", "lat":  40.7128,  "lon":  -74.0060,  "radius_km": 25},
+  {"name": "Paris",        "country": "FR", "lat":  48.8566,  "lon":    2.3522,  "radius_km": 25},
+  {"name": "Tokyo",        "country": "JP", "lat":  35.6762,  "lon":  139.6503,  "radius_km": 25},
+  {"name": "Dubai",        "country": "AE", "lat":  25.2048,  "lon":   55.2708,  "radius_km": 25},
+  {"name": "Singapore",    "country": "SG", "lat":   1.3521,  "lon":  103.8198,  "radius_km": 25},
+  {"name": "Sydney",       "country": "AU", "lat": -33.8688,  "lon":  151.2093,  "radius_km": 25},
+  {"name": "Toronto",      "country": "CA", "lat":  43.6532,  "lon":  -79.3832,  "radius_km": 25},
+  {"name": "Berlin",       "country": "DE", "lat":  52.5200,  "lon":   13.4050,  "radius_km": 25},
+  {"name": "Sao Paulo",    "country": "BR", "lat": -23.5505,  "lon":  -46.6333,  "radius_km": 25},
+  {"name": "Mumbai",       "country": "IN", "lat":  19.0760,  "lon":   72.8777,  "radius_km": 25},
+  {"name": "Shanghai",     "country": "CN", "lat":  31.2304,  "lon":  121.4737,  "radius_km": 25},
+  {"name": "Cairo",        "country": "EG", "lat":  30.0444,  "lon":   31.2357,  "radius_km": 25},
+  {"name": "Lagos",        "country": "NG", "lat":   6.5244,  "lon":    3.3792,  "radius_km": 25},
+  {"name": "Istanbul",     "country": "TR", "lat":  41.0082,  "lon":   28.9784,  "radius_km": 25},
+  {"name": "Moscow",       "country": "RU", "lat":  55.7558,  "lon":   37.6173,  "radius_km": 25},
+  {"name": "Los Angeles",  "country": "US", "lat":  34.0522,  "lon": -118.2437,  "radius_km": 25},
+  {"name": "Bangkok",      "country": "TH", "lat":  13.7563,  "lon":  100.5018,  "radius_km": 25},
+  {"name": "Riyadh",       "country": "SA", "lat":  24.7136,  "lon":   46.6753,  "radius_km": 25},
+  {"name": "Nairobi",      "country": "KE", "lat":  -1.2921,  "lon":   36.8219,  "radius_km": 25}
+]

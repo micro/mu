@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"io/fs"
 	"log"
 	"net/http"
@@ -47,6 +48,7 @@ var pkgColors = map[string]string{
 }
 
 // Log prints a formatted log message with a colored package prefix
+// and stores it in the in-memory system log ring buffer.
 func Log(pkg string, format string, args ...interface{}) {
 	color := pkgColors[pkg]
 	if color == "" {
@@ -55,6 +57,7 @@ func Log(pkg string, format string, args ...interface{}) {
 	timestamp := time.Now().Format("15:04:05")
 	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
 	fmt.Printf(prefix+format+"\n", args...)
+	appendSysLog(pkg, format, args...)
 }
 
 // Response holds data for responding in either JSON or HTML format
@@ -190,6 +193,8 @@ var Template = `
     <link rel="preload" href="/news.png?` + Version + `" as="image">
     <link rel="preload" href="/video.png?` + Version + `" as="image">
     <link rel="preload" href="/account.png?` + Version + `" as="image">
+    <link rel="preload" href="/weather.png?` + Version + `" as="image">
+    <link rel="preload" href="/reminder.png?` + Version + `" as="image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
@@ -208,6 +213,11 @@ var Template = `
     <div id="nav-overlay" onclick="toggleMenu()"></div>
     <div id="container">
       <div id="nav-container">
+        <div id="nav-search">
+          <form action="/search" method="GET">
+            <input type="text" name="q" placeholder="Search..." aria-label="Search">
+          </form>
+        </div>
         <div id="nav">
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
@@ -216,6 +226,9 @@ var Template = `
           <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
           <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
           <a href="/markets"><img src="/markets.png?` + Version + `"><span class="label">Markets</span></a>
+          <a href="/places"><img src="/places.png?` + Version + `"><span class="label">Places</span></a>
+          <a href="/weather"><img src="/weather.png?` + Version + `"><span class="label">Weather</span></a>
+          <a href="/reminder"><img src="/reminder.png?` + Version + `"><span class="label">Reminder</span></a>
           <a id="nav-wallet" href="/wallet" style="display: none;"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
         </div>
         <div class="nav-bottom">
@@ -230,7 +243,7 @@ var Template = `
         %s
       </div>
       <div id="footer">
-        <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>
+        <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/mcp">MCP</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>
       </div>
     </div>
   <script>
@@ -283,7 +296,79 @@ var LoginTemplate = `<html lang="en">
 	  <br>
 	  <button>Login</button>
 	</form>
+	<div id="passkey-login" style="display:none; text-align:center; margin-top:20px;">
+	  <p class="text-muted">or</p>
+	  <button onclick="loginWithPasskey()">Login with Passkey</button>
+	</div>
 	<p class="text-center mt-5"><a href="/signup">Sign up</a> if you don't have an account</p>
+	<script>
+	if (window.PublicKeyCredential) {
+	  PublicKeyCredential.isConditionalMediationAvailable && PublicKeyCredential.isConditionalMediationAvailable().then(function(){});
+	  document.getElementById('passkey-login').style.display = 'block';
+	}
+
+	function base64urlToBuffer(b64) {
+	  var pad = b64.length %% 4;
+	  if (pad) b64 += '='.repeat(4 - pad);
+	  var str = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+	  var buf = new Uint8Array(str.length);
+	  for (var i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i);
+	  return buf.buffer;
+	}
+
+	function bufferToBase64url(buf) {
+	  var bytes = new Uint8Array(buf);
+	  var str = '';
+	  for (var i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+	  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+	}
+
+	async function loginWithPasskey() {
+	  try {
+	    var beginRes = await fetch('/passkey/login/begin', {method: 'POST'});
+	    if (!beginRes.ok) { alert('Passkey login not available'); return; }
+	    var options = await beginRes.json();
+
+	    options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
+	    if (options.publicKey.allowCredentials) {
+	      options.publicKey.allowCredentials = options.publicKey.allowCredentials.map(function(c) {
+	        return Object.assign({}, c, {id: base64urlToBuffer(c.id)});
+	      });
+	    }
+
+	    var assertion = await navigator.credentials.get(options);
+
+	    var body = {
+	      id: assertion.id,
+	      rawId: bufferToBase64url(assertion.rawId),
+	      type: assertion.type,
+	      response: {
+	        authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+	        clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
+	        signature: bufferToBase64url(assertion.response.signature),
+	        userHandle: bufferToBase64url(assertion.response.userHandle)
+	      }
+	    };
+	    if (assertion.authenticatorAttachment) {
+	      body.authenticatorAttachment = assertion.authenticatorAttachment;
+	    }
+
+	    var finishRes = await fetch('/passkey/login/finish', {
+	      method: 'POST',
+	      headers: {'Content-Type': 'application/json'},
+	      body: JSON.stringify(body)
+	    });
+	    var result = await finishRes.json();
+	    if (result.success) {
+	      window.location.href = result.redirect || '/home';
+	    } else {
+	      alert('Login failed');
+	    }
+	  } catch (e) {
+	    if (e.name !== 'NotAllowedError') alert('Error: ' + e.message);
+	  }
+	}
+	</script>
       </div>
     </div>
   </body>
@@ -346,6 +431,16 @@ func Head(appName string, refs []string) string {
 
 func Card(id, title, content string) string {
 	return fmt.Sprintf(CardTemplate, id, id, title, content)
+}
+
+// CardWithIcon renders a card with an icon image to the left of the title.
+// If icon is empty, it falls back to Card without an icon.
+func CardWithIcon(id, title, icon, content string) string {
+	if icon == "" {
+		return Card(id, title, content)
+	}
+	titleHTML := `<img src="` + htmlpkg.EscapeString(icon) + `" style="width:24px;height:24px;vertical-align:bottom;margin-right:6px;">` + htmlpkg.EscapeString(title)
+	return fmt.Sprintf(CardTemplate, id, id, titleHTML, content)
 }
 
 // Login handler
@@ -552,6 +647,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 </form>
 </div>
 
+%s
+
 <div class="card">
 <h3>Settings</h3>
 <p><a href="/token">API Tokens →</a></p>
@@ -563,6 +660,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.Created.Format("January 2, 2006"),
 		acc.ID,
 		languageOptions,
+		PasskeyListHTML(acc.ID),
 		adminLinks,
 	)
 
@@ -650,9 +748,10 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Free</h3>
 <p class="text-xl font-bold my-3">£0</p>
-<p>10 AI queries/day</p>
+<p>10 credits per day</p>
 <p>News, video, and chat</p>
 <p>Direct message other users</p>
+<p>MCP access for AI agents</p>
 <p>Resets at midnight UTC</p>`)
 	if !isLoggedIn {
 		content.WriteString(`<p class="mt-4"><a href="/signup">Sign up →</a></p>`)
@@ -669,7 +768,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p class="text-xl font-bold my-3">From £5</p>
 <p>Top up your wallet</p>
 <p>1 credit = 1p</p>
-<p>News 1p · Video 2p · Chat 3p · Email 4p</p>
+<p>News 1p · Video 2p · Chat 3p · Email 4p · Places 5p</p>
+<p>Same rates for agents via MCP</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
 		content.WriteString(`<p class="mt-4"><a href="/wallet/topup">Top up →</a></p>`)
@@ -682,20 +782,71 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	content.WriteString(`</div>`) // end grid
 
+	// Pricing table
+	content.WriteString(`<h3>Pricing</h3>
+<p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>10 credits per day</strong>, resets at midnight UTC.</p>
+<table class="data-table">
+<thead>
+<tr><th>Tool / Endpoint</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td>News feed</td><td>Browse the latest news</td><td>Free</td><td>—</td></tr>
+<tr><td>News search</td><td>AI-powered news article search</td><td>1</td><td>1p</td></tr>
+<tr><td>News summary</td><td>AI summary of a news article</td><td>1</td><td>1p</td></tr>
+<tr><td>Video feed</td><td>Browse latest videos</td><td>Free</td><td>—</td></tr>
+<tr><td>Video watch</td><td>Watch a video</td><td>Free</td><td>—</td></tr>
+<tr><td>Video search</td><td>Search for videos</td><td>2</td><td>2p</td></tr>
+<tr><td>Chat</td><td>Chat with AI assistant</td><td>3</td><td>3p</td></tr>
+<tr><td>Blog read</td><td>Read blog posts</td><td>Free</td><td>—</td></tr>
+<tr><td>Blog write</td><td>Create or update a blog post</td><td>Free</td><td>—</td></tr>
+<tr><td>Mail (internal)</td><td>Message other Mu users</td><td>Free</td><td>—</td></tr>
+<tr><td>Mail (external)</td><td>Send email outside Mu (SMTP)</td><td>4</td><td>4p</td></tr>
+<tr><td>Places search</td><td>Search for places by name or category</td><td>5</td><td>5p</td></tr>
+<tr><td>Places nearby</td><td>Find places of interest near a location</td><td>2</td><td>2p</td></tr>
+<tr><td>Weather forecast</td><td>Local weather with hourly &amp; 10-day forecast</td><td>1</td><td>1p</td></tr>
+<tr><td>Weather pollen</td><td>Local pollen forecast (add-on)</td><td>1</td><td>1p</td></tr>
+<tr><td>Markets</td><td>Live crypto, futures &amp; commodity prices</td><td>Free</td><td>—</td></tr>
+<tr><td>Search</td><td>Web search powered by Brave</td><td>5</td><td>5p</td></tr>
+<tr><td>Wallet</td><td>Check balance and top up</td><td>Free</td><td>—</td></tr>
+</tbody>
+</table>`)
+
+	// Coming soon
+	content.WriteString(`<h3>Coming Soon</h3>
+<table class="data-table">
+<thead>
+<tr><th>Tool / Endpoint</th><th>Description</th><th>Estimated Cost</th></tr>
+</thead>
+<tbody>
+<tr><td>Translate</td><td>AI-powered language translation</td><td>1p</td></tr>
+<tr><td>Image search</td><td>Search for images</td><td>2p</td></tr>
+<tr><td>Calendar</td><td>Events and reminders</td><td>Free</td></tr>
+<tr><td>Directions</td><td>Route planning between locations</td><td>2p</td></tr>
+</tbody>
+</table>`)
+
+	// Agents / MCP section
+	content.WriteString(`<h3>For Agents</h3>
+<p>AI agents can connect to Mu via the Model Context Protocol (MCP).</p>
+<p>Authenticate with a Bearer token</p>
+<p>10 credits per day on the free tier</p>
+<p>Same pay-as-you-go rates as human users</p>
+<p>Access to chat, news, video, mail and more</p>
+<p><a href="/mcp">View MCP tools →</a></p>`)
+
 	// Self-host option
-	content.WriteString(`<div class="card">
-<h3>Self-Host</h3>
+	content.WriteString(`<h3>Self-Host</h3>
 <p>Want unlimited and free forever? Run your own instance.</p>
 <p>Mu is open source (AGPL-3.0). Your server, your data, no limits.</p>
-<p class="mt-3"><a href="https://github.com/micro/mu" target="_blank">View on GitHub →</a></p>
-</div>`)
+<p><a href="https://github.com/micro/mu" target="_blank">View on GitHub →</a></p>`)
 
 	// FAQ
 	content.WriteString(`<h3>Questions</h3>
-<p><strong>Why charge for AI queries?</strong><br>LLMs and APIs cost money to run. The free tier covers casual utility use.</p>
+<p><strong>Why charge for services?</strong><br>News, video search, chat, and email all rely on APIs and infrastructure that cost money to run. The free quota covers casual daily use.</p>
 <p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
 <p><strong>Why no unlimited subscription?</strong><br>Unlimited tiers incentivize us to maximize your engagement. Pay-as-you-go keeps incentives aligned: we want efficient tools, not sticky products.</p>
-<p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>`)
+<p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>
+<p><strong>Can AI agents use Mu?</strong><br>Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. See the <a href="/mcp">MCP page</a> for setup and available tools.</p>`)
 
 	html := RenderHTMLForRequest("Plans", "Simple, honest pricing", content.String(), r)
 	w.Write([]byte(html))
