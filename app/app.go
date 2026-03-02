@@ -229,6 +229,7 @@ var Template = `
           <a href="/markets"><img src="/markets.png?` + Version + `"><span class="label">Markets</span></a>
           <a href="/places"><img src="/places.png?` + Version + `"><span class="label">Places</span></a>
           <a href="/weather"><img src="/weather.png?` + Version + `"><span class="label">Weather</span></a>
+          <a href="/web"><span style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">&#x1F50D;</span><span class="label">Web Search</span></a>
           <a href="/reminder"><img src="/reminder.png?` + Version + `"><span class="label">Reminder</span></a>
           <a id="nav-wallet" href="/wallet" style="display: none;"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
         </div>
@@ -769,8 +770,10 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p class="text-xl font-bold my-3">From £5</p>
 <p>Top up your wallet</p>
 <p>1 credit = 1p</p>
-<p>News 1p · Video 2p · Chat 3p · Email 4p · Places 5p</p>
-<p>Same rates for agents via MCP</p>
+<p>News search: 1p per request</p>
+<p>Video search: 2p per request</p>
+<p>Chat / Agent: 3–15p per request</p>
+<p>Web search: 5p per request</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
 		content.WriteString(`<p class="mt-4"><a href="/wallet/topup">Top up →</a></p>`)
@@ -809,7 +812,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><td>Weather forecast</td><td>Local weather with hourly &amp; 10-day forecast</td><td>1</td><td>1p</td></tr>
 <tr><td>Weather pollen</td><td>Local pollen forecast (add-on)</td><td>1</td><td>1p</td></tr>
 <tr><td>Markets</td><td>Live crypto, futures &amp; commodity prices</td><td>Free</td><td>—</td></tr>
-<tr><td>Search</td><td>Web search powered by Brave</td><td>5</td><td>5p</td></tr>
+<tr><td>Web search</td><td>Web search powered by Brave</td><td>5</td><td>5p</td></tr>
 <tr><td>Wallet</td><td>Check balance and top up</td><td>Free</td><td>—</td></tr>
 </tbody>
 </table>`)

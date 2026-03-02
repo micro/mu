@@ -196,6 +196,12 @@ var landingTemplate = `<html lang="en">
             <div class="small">Conversational AI agent with access to all Mu tools</div>
           </div>
         </a>
+        <a href="/web" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <b>Web Search</b>
+            <div class="small">Search the web without ads or tracking</div>
+          </div>
+        </a>
       </div>
 
       <div style="height: 60px;"></div>
