@@ -37,7 +37,17 @@ var (
 
 // Supported chains for deposit detection
 var chainRPCs = map[string]string{
-	"ethereum": "https://eth.llamarpc.com",
+	"ethereum": getEnvOrDefault("ETH_RPC_URL", "https://eth.llamarpc.com"),
+}
+
+// Fallback RPC endpoints tried in order when the primary is rate-limited or unavailable
+var chainFallbackRPCs = map[string][]string{
+	"ethereum": {
+		"https://cloudflare-eth.com",
+		"https://rpc.ankr.com/eth",
+		"https://ethereum.publicnode.com",
+		"https://1rpc.io/eth",
+	},
 }
 
 func getEnvOrDefault(key, defaultVal string) string {
@@ -804,10 +814,17 @@ func getTokenPrice(symbol string) float64 {
 }
 
 // rpcCall makes a JSON-RPC call to the specified chain, retrying on transient errors
+// and rotating through fallback endpoints when rate-limited (HTTP 429).
 func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error) {
 	rpcURL, ok := chainRPCs[chain]
 	if !ok {
 		rpcURL = chainRPCs["ethereum"] // fallback
+	}
+
+	// Build URL rotation list: primary first, then fallbacks.
+	urls := []string{rpcURL}
+	if fallbacks, ok := chainFallbackRPCs[chain]; ok {
+		urls = append(urls, fallbacks...)
 	}
 
 	reqBody := map[string]interface{}{
@@ -824,23 +841,40 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 	const retryDelay = 2 * time.Second
 
 	var lastErr error
+	urlIdx := 0
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {
 			time.Sleep(retryDelay)
 		}
 
+		// Cap at the last URL so we never cycle back to a rate-limited endpoint.
+		idx := urlIdx
+		if idx >= len(urls) {
+			idx = len(urls) - 1
+		}
+		currentURL := urls[idx]
 		start := time.Now()
-		resp, err := http.Post(rpcURL, "application/json", bytes.NewReader(body))
+		resp, err := http.Post(currentURL, "application/json", bytes.NewReader(body))
 		if err != nil {
-			app.RecordAPICall("ethereum_rpc", method, rpcURL, 0, time.Since(start), err, reqBodyStr, "")
+			app.RecordAPICall("ethereum_rpc", method, currentURL, 0, time.Since(start), err, reqBodyStr, "")
 			lastErr = err
+			continue
+		}
+
+		// On rate limiting, rotate to the next available endpoint.
+		if resp.StatusCode == http.StatusTooManyRequests {
+			resp.Body.Close()
+			rateLimitErr := fmt.Errorf("rate limited")
+			app.RecordAPICall("ethereum_rpc", method, currentURL, resp.StatusCode, time.Since(start), rateLimitErr, reqBodyStr, "")
+			lastErr = rateLimitErr
+			urlIdx++
 			continue
 		}
 
 		respBody, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			app.RecordAPICall("ethereum_rpc", method, rpcURL, resp.StatusCode, time.Since(start), err, reqBodyStr, "")
+			app.RecordAPICall("ethereum_rpc", method, currentURL, resp.StatusCode, time.Since(start), err, reqBodyStr, "")
 			lastErr = err
 			continue
 		}
@@ -854,14 +888,14 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 
 		if err := json.Unmarshal(respBody, &rpcResp); err != nil {
 			// Non-JSON response is always a transient server-side issue; retry.
-			app.RecordAPICall("ethereum_rpc", method, rpcURL, resp.StatusCode, time.Since(start), err, reqBodyStr, string(respBody))
+			app.RecordAPICall("ethereum_rpc", method, currentURL, resp.StatusCode, time.Since(start), err, reqBodyStr, string(respBody))
 			lastErr = err
 			continue
 		}
 
 		if rpcResp.Error != nil {
 			rpcErr := fmt.Errorf("rpc error: %s", rpcResp.Error.Message)
-			app.RecordAPICall("ethereum_rpc", method, rpcURL, resp.StatusCode, time.Since(start), rpcErr, reqBodyStr, string(respBody))
+			app.RecordAPICall("ethereum_rpc", method, currentURL, resp.StatusCode, time.Since(start), rpcErr, reqBodyStr, string(respBody))
 			// Only retry on errors that indicate transient backend unavailability.
 			if strings.Contains(rpcResp.Error.Message, "healthy") ||
 				strings.Contains(rpcResp.Error.Message, "backend") ||
@@ -873,7 +907,7 @@ func rpcCall(chain, method string, params []interface{}) (json.RawMessage, error
 			return nil, rpcErr
 		}
 
-		app.RecordAPICall("ethereum_rpc", method, rpcURL, resp.StatusCode, time.Since(start), nil, reqBodyStr, string(respBody))
+		app.RecordAPICall("ethereum_rpc", method, currentURL, resp.StatusCode, time.Since(start), nil, reqBodyStr, string(respBody))
 		return rpcResp.Result, nil
 	}
 

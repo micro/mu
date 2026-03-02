@@ -138,6 +138,10 @@ Enable payments via crypto deposits. When configured, users get 10 free AI queri
 # If not provided, a new seed is generated and saved to ~/.mu/keys/wallet.seed
 export WALLET_SEED="24 word mnemonic phrase here"
 
+# Ethereum RPC endpoint (optional - uses public endpoint by default)
+# Set this to a private or paid endpoint to avoid public rate limits (HTTP 429)
+export ETH_RPC_URL="https://eth.llamarpc.com"
+
 # Base RPC endpoint (optional - uses public endpoint by default)
 export BASE_RPC_URL="https://mainnet.base.org"
 
