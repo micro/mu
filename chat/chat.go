@@ -1390,16 +1390,13 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	}
 
 	// Return HTML
-	topicTabs := app.Head("chat", topicsData)
+	// Add a DMs tab inside the topic selector so it doesn't displace the chat layout
+	topicTabs := app.Head("chat", topicsData) + `<a href="/chat?mode=messages" class="head">DMs</a>`
 	summariesJSON, _ := json.Marshal(summariesData)
 	roomJSON, _ := json.Marshal(roomData)
 
 	tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
 
-	// Add a small link to messages mode (not a large banner)
-	messagesLink := `<div style="text-align:right;padding:2px 0 6px;"><a href="/chat?mode=messages" style="color:#007bff;font-size:13px;">💬 Messages</a></div>`
-
-	tmpl = strings.Replace(tmpl, `<div id="topic-selector">`, messagesLink+`<div id="topic-selector">`, 1)
 	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var roomData = %s;</script></body>`, summariesJSON, roomJSON), 1)
 
 	w.Write([]byte(tmpl))
@@ -1734,11 +1731,9 @@ func loadChatMessages() {
 	rebuildChatInboxes()
 }
 
-// saveChatMessages saves chat messages to disk
+// saveChatMessages saves chat messages to disk.
+// Callers must hold chatMessagesMutex (read or write) before calling.
 func saveChatMessages() error {
-	chatMessagesMutex.RLock()
-	defer chatMessagesMutex.RUnlock()
-
 	b, err := json.Marshal(chatMessages)
 	if err != nil {
 		return err

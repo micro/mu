@@ -136,22 +136,22 @@ func handleMessagesMode(w http.ResponseWriter, r *http.Request) {
 
 	if msgID != "" {
 		// Show thread
-		renderChatThread(w, r, msgID, acc)
+		renderDMThread(w, r, msgID, acc)
 		return
 	}
 
 	if compose != "" {
 		// Show compose form
-		renderChatCompose(w, r, acc)
+		renderDMCompose(w, r, acc)
 		return
 	}
 
 	// Show inbox
-	renderChatInbox(w, r, acc)
+	renderDMInbox(w, r, acc)
 }
 
-// renderChatInbox renders the chat inbox with conversations
-func renderChatInbox(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
+// renderDMInbox renders the DM inbox with conversations
+func renderDMInbox(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	inbox := GetChatInbox(acc.ID)
 
 	// Get all threads and sort by latest message time
@@ -183,87 +183,82 @@ func renderChatInbox(w http.ResponseWriter, r *http.Request, acc *auth.Account) 
 			otherUser = root.From
 		}
 
-		// Build preview
-		unreadMarker := ""
+		unreadDot := ""
 		if thread.HasUnread {
-			unreadMarker = `<span class="unread-marker" style="color: #007bff; margin-left: 5px;">●</span>`
+			unreadDot = `<span class="unread-dot">● </span>`
 		}
 
 		preview := latest.Body
-		if len(preview) > 100 {
-			preview = preview[:100] + "..."
+		if len(preview) > 80 {
+			preview = preview[:80] + "..."
 		}
 		preview = html.EscapeString(preview)
 
 		timeAgo := app.TimeAgo(latest.CreatedAt)
 
 		item := fmt.Sprintf(`
-			<div class="thread-preview" onclick="window.location.href='/chat?mode=messages&id=%s'" style="padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; background: #fff;">
+			<div class="thread-preview card" onclick="window.location.href='/chat?mode=messages&id=%s'">
 				<div class="mail-thread-item">
 					<strong class="mail-thread-subject">%s%s</strong>
 				</div>
-				<div class="mail-thread-row" style="display: flex; justify-content: space-between; margin-top: 5px;">
-					<div class="mail-thread-preview" style="flex: 1; color: #666;">%s</div>
-					<span class="mail-thread-time" style="color: #999; margin-left: 10px;">%s</span>
+				<div class="mail-thread-row">
+					<div class="mail-thread-preview">%s</div>
+					<span class="mail-thread-time">%s</span>
 				</div>
 			</div>
-		`, root.ID, html.EscapeString(otherUser), unreadMarker, preview, timeAgo)
+		`, root.ID, unreadDot, html.EscapeString(otherUser), preview, timeAgo)
 		items = append(items, item)
 	}
 
-	content := `
-		<div style="margin-bottom: 20px;">
-			<a href="/chat?mode=messages&compose=true" class="button" style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">New Chat</a>
-			<a href="/chat" class="button" style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; display: inline-block; margin-left: 10px;">AI Chat</a>
-		</div>
-	`
-
+	var content string
 	if len(items) == 0 {
-		content += `<div style="background: #f9f9f9; padding: 40px; text-align: center; border-radius: 4px; color: #666;">
-			<p>No conversations yet.</p>
-			<p><a href="/chat?mode=messages&compose=true" style="color: #007bff;">Start a new chat</a> or try chatting with <a href="/chat?mode=messages&compose=true&to=micro" style="color: #007bff;">@micro</a> (AI assistant)</p>
-		</div>`
+		content = app.Page(app.PageOpts{
+			Action:  "/chat?mode=messages&compose=true",
+			Label:   "+ New DM",
+			Content: `<p class="empty">No conversations yet. <a href="/chat?mode=messages&compose=true">Start a new DM</a> or try messaging <a href="/chat?mode=messages&compose=true&to=micro">@micro</a> (AI assistant)</p>`,
+		})
 	} else {
-		content += `<div style="background: #fff; border: 1px solid #ddd; border-radius: 4px;">` + strings.Join(items, "\n") + `</div>`
+		content = app.Page(app.PageOpts{
+			Action:  "/chat?mode=messages&compose=true",
+			Label:   "+ New DM",
+			Content: `<div class="card-list">` + strings.Join(items, "\n") + `</div>`,
+		})
 	}
 
-	htmlContent := app.RenderHTMLForRequest("Chat Messages", "Direct messages", content, r)
+	htmlContent := app.RenderHTMLForRequest("DMs", "Direct messages", content, r)
 	w.Write([]byte(htmlContent))
 }
 
-// renderChatCompose renders the new message compose form
-func renderChatCompose(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
+// renderDMCompose renders the new DM compose form
+func renderDMCompose(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	to := r.URL.Query().Get("to")
 
 	content := fmt.Sprintf(`
-		<div style="margin-bottom: 20px;">
-			<a href="/chat?mode=messages" class="button" style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">← Back to Inbox</a>
+		<div class="page-action">
+			<a href="/chat?mode=messages" class="btn">← Back</a>
 		</div>
-		<div style="max-width: 600px; background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 4px;">
-			<h2 style="margin-top: 0;">New Chat</h2>
+		<div class="thread-message">
 			<form method="POST" action="/chat?mode=messages">
-				<div style="margin-bottom: 15px;">
-					<label for="to" style="display: block; margin-bottom: 5px; font-weight: bold;">To:</label>
-					<input type="text" id="to" name="to" value="%s" placeholder="Username (or 'micro' for AI)" required 
-						style="width: 100%%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-					<small style="color: #666; display: block; margin-top: 5px;">Tip: Type 'micro' to chat with the AI assistant</small>
+				<div style="margin-bottom:12px;">
+					<label for="to" style="display:block;margin-bottom:4px;font-weight:600;">To</label>
+					<input type="text" id="to" name="to" value="%s" placeholder="Username (or 'micro' for AI)" required>
+					<small class="card-meta">Tip: type 'micro' to chat with the AI assistant</small>
 				</div>
-				<div style="margin-bottom: 15px;">
-					<label for="body" style="display: block; margin-bottom: 5px; font-weight: bold;">Message:</label>
-					<textarea id="body" name="body" rows="10" required 
-						style="width: 100%%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; font-family: inherit;"></textarea>
+				<div style="margin-bottom:12px;">
+					<label for="body" style="display:block;margin-bottom:4px;font-weight:600;">Message</label>
+					<textarea id="body" name="body" rows="6" required style="width:100%%;padding:10px;border:1px solid #e0e0e0;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit;resize:vertical;"></textarea>
 				</div>
-				<button type="submit" style="padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">Send Message</button>
+				<button type="submit">Send</button>
 			</form>
 		</div>
 	`, html.EscapeString(to))
 
-	htmlContent := app.RenderHTMLForRequest("New Chat", "Compose message", content, r)
+	htmlContent := app.RenderHTMLForRequest("New DM", "Compose direct message", content, r)
 	w.Write([]byte(htmlContent))
 }
 
-// renderChatThread renders a conversation thread
-func renderChatThread(w http.ResponseWriter, r *http.Request, threadID string, acc *auth.Account) {
+// renderDMThread renders a DM conversation thread
+func renderDMThread(w http.ResponseWriter, r *http.Request, threadID string, acc *auth.Account) {
 	chatMessagesMutex.RLock()
 
 	// Get all messages in thread
@@ -303,12 +298,12 @@ func renderChatThread(w http.ResponseWriter, r *http.Request, threadID string, a
 		}
 	}
 
-	// Render messages
+	// Render messages using the same card style as the rest of the app
 	var messageHTML []string
 	for _, msg := range threadMessages {
 		isSent := msg.FromID == acc.ID
 
-		sender := msg.From
+		sender := html.EscapeString(msg.From)
 		if isSent {
 			sender = "You"
 		}
@@ -318,43 +313,45 @@ func renderChatThread(w http.ResponseWriter, r *http.Request, threadID string, a
 
 		timeStr := msg.CreatedAt.Format("Jan 2, 3:04 PM")
 
-		borderColor := "#28a745"
+		alignStyle := ""
 		if isSent {
-			borderColor = "#007bff"
+			alignStyle = " style=\"margin-left:auto;\""
 		}
 
 		msgHTML := fmt.Sprintf(`
-			<div class="chat-message" style="margin-bottom: 15px; padding: 12px; border-left: 3px solid %s; background: #f9f9f9; border-radius: 4px;">
-				<div style="font-weight: bold; margin-bottom: 5px; color: %s;">%s</div>
-				<div style="margin-bottom: 5px; line-height: 1.5;">%s</div>
-				<div style="font-size: 12px; color: #999;">%s</div>
+			<div class="thread-message"%s>
+				<div class="thread-message-header">
+					<div class="thread-message-header-text">
+						<span class="thread-message-author">%s</span>
+					</div>
+					<span class="thread-message-time">%s</span>
+				</div>
+				<div class="thread-message-body">%s</div>
 			</div>
-		`, borderColor, borderColor, sender, body, timeStr)
+		`, alignStyle, sender, timeStr, body)
 		messageHTML = append(messageHTML, msgHTML)
 	}
 
+	lastMsgID := threadMessages[len(threadMessages)-1].ID
+
 	content := fmt.Sprintf(`
-		<div style="margin-bottom: 20px;">
-			<a href="/chat?mode=messages" class="button" style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">← Back to Inbox</a>
-			<h2 style="display: inline-block; margin-left: 20px;">Chat with %s</h2>
+		<div class="page-action">
+			<a href="/chat?mode=messages" class="btn">← DMs</a>
 		</div>
-		<div style="max-width: 800px; margin-bottom: 20px; background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 4px;">
-			%s
-		</div>
-		<div style="max-width: 800px; background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 4px;">
+		<div style="margin-bottom:16px;">%s</div>
+		<div class="thread-message">
 			<form method="POST" action="/chat?mode=messages&id=%s">
 				<input type="hidden" name="to" value="%s">
 				<input type="hidden" name="reply_to" value="%s">
-				<div style="margin-bottom: 15px;">
-					<label for="body" style="display: block; margin-bottom: 5px; font-weight: bold;">Reply:</label>
-					<textarea id="body" name="body" rows="4" required 
-						style="width: 100%%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; font-family: inherit;"></textarea>
+				<div style="margin-bottom:10px;">
+					<textarea id="body" name="body" rows="3" required placeholder="Reply to %s..." style="width:100%%;padding:10px;border:1px solid #e0e0e0;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit;resize:vertical;"></textarea>
 				</div>
-				<button type="submit" style="padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">Send Reply</button>
+				<button type="submit">Send</button>
 			</form>
 		</div>
-	`, html.EscapeString(otherUser), strings.Join(messageHTML, "\n"), threadID, otherUser, threadMessages[len(threadMessages)-1].ID)
+	`, strings.Join(messageHTML, "\n"), threadID, html.EscapeString(otherUser), lastMsgID, html.EscapeString(otherUser))
 
-	htmlContent := app.RenderHTMLForRequest("Chat Thread", "Conversation with "+otherUser, content, r)
+	htmlContent := app.RenderHTMLForRequest("DM: "+otherUser, "Conversation with "+otherUser, content, r)
 	w.Write([]byte(htmlContent))
 }
+
