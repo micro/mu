@@ -104,6 +104,38 @@ func TestRPCCallRetries(t *testing.T) {
 	}
 }
 
+// TestRPCCallRateLimitFallback verifies that rpcCall rotates to a fallback endpoint on HTTP 429.
+func TestRPCCallRateLimitFallback(t *testing.T) {
+	// Primary server always returns 429 Too Many Requests.
+	primarySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer primarySrv.Close()
+
+	// Fallback server returns a successful response.
+	fallbackSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"jsonrpc":"2.0","id":1,"result":"0x1"}`)
+	}))
+	defer fallbackSrv.Close()
+
+	originalPrimary := chainRPCs["ethereum"]
+	originalFallbacks := chainFallbackRPCs["ethereum"]
+	chainRPCs["ethereum"] = primarySrv.URL
+	chainFallbackRPCs["ethereum"] = []string{fallbackSrv.URL}
+	defer func() {
+		chainRPCs["ethereum"] = originalPrimary
+		chainFallbackRPCs["ethereum"] = originalFallbacks
+	}()
+
+	result, err := rpcCall("ethereum", "eth_blockNumber", []interface{}{})
+	if err != nil {
+		t.Fatalf("expected success after fallback, got error: %v", err)
+	}
+	if string(result) != `"0x1"` {
+		t.Errorf("rpcCall() result = %s, want \"0x1\"", string(result))
+	}
+}
+
 // newRPCDispatchServer creates a test HTTP server that dispatches JSON-RPC
 // responses based on the method name.
 func newRPCDispatchServer(methodResponses map[string]string) *httptest.Server {
