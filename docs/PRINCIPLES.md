@@ -1,14 +1,14 @@
-**Guiding principles for technology at Mu**
+**Guiding principles for Mu**
 
 ## Foundation
 
-Technology is a tool, not a destination. It should serve human flourishing, not exploit human weakness. These principles are rooted in timeless wisdom — particularly Islamic ethics (Shariah) — but speak to universal human values.
+Technology is a tool, not a destination.
 
 The core idea: **Technology should serve you, not exploit you.**
 
 ## The Five Principles
 
-### 1. Intentionality (Niyyah)
+### 1. Intentionality
 
 Every action begins with intention. Technology should encourage intentional behavior, not mindless consumption.
 
@@ -22,7 +22,7 @@ Every action begins with intention. Technology should encourage intentional beha
 - No infinite scroll — there's always an end
 - No notification bombardment — you come when you want
 
-### 2. Moderation (Wasatiyyah)
+### 2. Moderation
 
 Islam teaches the middle path — avoiding extremes. Technology use should be balanced, not obsessive.
 
@@ -37,7 +37,7 @@ Islam teaches the middle path — avoiding extremes. Technology use should be ba
 - Clear boundaries on content
 - Time-saving is the metric, not engagement
 
-### 3. Truthfulness (Sidq)
+### 3. Truthfulness
 
 Truth is sacred. Technology should not deceive, manipulate, or obscure reality.
 
@@ -52,7 +52,7 @@ Truth is sacred. Technology should not deceive, manipulate, or obscure reality.
 - No hidden agendas in content ranking
 - Transparency in how features work
 
-### 4. Kindness (Ihsan)
+### 4. Kindness
 
 Excellence in character means being kind in all interactions. Technology should facilitate kindness, not cruelty.
 
@@ -66,7 +66,7 @@ Excellence in character means being kind in all interactions. Technology should 
 - No anonymous pile-ons
 - Features that humanize, not dehumanize
 
-### 5. Trust (Amanah)
+### 5. Trust
 
 What is entrusted to you must be protected. Your data, your attention, your time — these are trusts.
 

@@ -7,7 +7,7 @@ Mu is a tool, not a destination. Like Google Search in 2000 — you arrive with 
 Credits are a straightforward way to pay for what you use. No dark patterns, no pressure to upgrade, no "unlimited" tiers that incentivize us to maximize your engagement.
 
 - **Free tier**: 10 AI queries/day - enough for casual utility use
-- **Pay-as-you-go**: Deposit crypto, use credits when you need more
+- **Pay-as-you-go**: Top up with a card, use credits when you need more
 - **Self-host**: Run your own instance for free, forever
 
 We charge because LLMs and APIs cost money. Here's our actual cost breakdown — we're not extracting margin, just covering infrastructure.
@@ -18,7 +18,7 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 
 - **1 credit = £0.01 GBP** (1 penny)
 - Credits stored as integers to avoid floating-point issues
-- Top up via crypto deposit (Ethereum, Base, Arbitrum, Optimism)
+- Top up via card payment (Stripe)
 - Credits never expire
 
 ### Daily Free Quota
@@ -40,10 +40,11 @@ This should be enough if you're using Mu as a utility. If you need more, pay-as-
 | Video Watch | Free | No value added over YouTube |
 | Chat AI Query | 3 credits (3p) | LLM inference cost |
 | Chat Room | 1 credit (1p) | Room creation |
-| App Create | 5 credits (5p) | AI app generation |
-| App Modify | 3 credits (3p) | AI app modification |
-| Agent Run | 5 credits (5p) | Agent task execution |
+| Places Search | 5 credits (5p) | Google Places API cost |
+| Places Nearby | 2 credits (2p) | Google Places API cost |
 | External Email | 4 credits (4p) | SMTP delivery cost |
+| Weather Forecast | 1 credit (1p) | Weather API cost |
+| Weather Pollen | 1 credit (1p) | Pollen data add-on |
 
 **Note:** Internal messages (user-to-user within Mu) are free. Only external email (to addresses outside Mu) costs credits.
 
@@ -65,45 +66,18 @@ If you want truly unlimited and free — self-host. The code is open source.
 
 ---
 
-## Crypto Deposits
+## Card Deposits (Stripe)
 
-### How It Works
+When Stripe is configured (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`), users can top up with a credit or debit card:
 
 1. Go to `/wallet/topup`
-2. Select your network (Ethereum, Base, Arbitrum, or Optimism)
-3. You'll see your unique deposit address and QR code
-4. Send ETH, USDC, or any ERC-20 token
-5. Deposits are detected automatically (~30 seconds)
-6. Credits added based on current exchange rate
+2. Enter any amount in whole pounds (e.g. £10), or use a quick-select preset (£5, £10, £25, £50)
+3. Complete payment via the Stripe Checkout page
+4. Credits are added automatically via the Stripe webhook (`/wallet/stripe/webhook`)
 
-### Supported Networks
+**Rate:** 1 credit = 1p — flat, no bonuses or tiers.
 
-- **Ethereum** - Mainnet
-- **Base** - Coinbase L2
-- **Arbitrum** - Arbitrum One
-- **Optimism** - OP Mainnet
-
-Same address works on all networks.
-
-### Supported Tokens
-
-- **ETH** - Native token
-- **USDC** - USD Coin
-- **ERC-20** - Any token on supported networks
-
-### Important
-
-- Select the correct network before sending
-- Your address is the same on all networks
-- Minimum deposit: ~$1 equivalent
-- Deposits typically confirm within 1-2 minutes
-
-### Why Crypto?
-
-- No credit cards, no KYC forms, no payment processor gatekeeping
-- Works globally without bank restrictions
-- You control your funds until you deposit
-- Aligns with Mu philosophy: decentralized, no middlemen
+Configure a webhook in the Stripe Dashboard pointing to `https://your-domain.com/wallet/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` to the signing secret. The webhook listens for `checkout.session.completed` events.
 
 ---
 
@@ -145,17 +119,6 @@ type DailyUsage struct {
 }
 ```
 
-### Crypto Wallet
-
-```go
-type CryptoWallet struct {
-    UserID       string    `json:"user_id"`
-    AddressIndex uint32    `json:"address_index"` // BIP32 derivation index
-    Address      string    `json:"address"`       // Derived ETH address
-    CreatedAt    time.Time `json:"created_at"`
-}
-```
-
 ---
 
 ## API Endpoints
@@ -164,18 +127,19 @@ type CryptoWallet struct {
 |--------|------|-------------|
 | GET | `/wallet` | View balance and transaction history |
 | GET | `/wallet/topup` | Show deposit address and instructions |
+| POST | `/wallet/stripe/checkout` | Create a Stripe checkout session |
+| GET | `/wallet/stripe/success` | Success page after Stripe payment |
+| POST | `/wallet/stripe/webhook` | Stripe webhook for payment confirmation |
 
 ---
 
 ## Environment Variables
 
 ```bash
-# Crypto Wallet (optional)
-# If not set, seed is auto-generated and saved to ~/.mu/keys/wallet.seed
-WALLET_SEED="24 word mnemonic phrase"
-
-# Base RPC endpoint (optional)
-BASE_RPC_URL="https://mainnet.base.org"
+# Stripe card payments (optional)
+STRIPE_SECRET_KEY="sk_live_..."
+STRIPE_PUBLISHABLE_KEY="pk_live_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."  # For verifying Stripe webhook events
 
 # Quota (optional - these are defaults)
 FREE_DAILY_SEARCHES="10"
@@ -184,20 +148,16 @@ CREDIT_COST_NEWS_SUMMARY="1"
 CREDIT_COST_VIDEO="2"
 CREDIT_COST_VIDEO_WATCH="0"
 CREDIT_COST_CHAT="3"
+CREDIT_COST_EMAIL="4"
+CREDIT_COST_PLACES_SEARCH="5"
+CREDIT_COST_PLACES_NEARBY="2"
+CREDIT_COST_WEATHER="1"
+CREDIT_COST_WEATHER_POLLEN="1"
 ```
 
 ---
 
 ## Implementation
-
-### HD Wallet
-
-Mu uses an HD (Hierarchical Deterministic) wallet to derive unique deposit addresses per user:
-
-- Master seed stored in `~/.mu/keys/wallet.seed` (or `WALLET_SEED` env var)
-- BIP44 derivation path: `m/44'/60'/0'/0/{index}`
-- Index 0 = treasury address
-- Each user gets a deterministic index based on their user ID
 
 ### Quota Check Flow
 
@@ -207,20 +167,9 @@ Mu uses an HD (Hierarchical Deterministic) wallet to derive unique deposit addre
 4. Check wallet balance → allow if sufficient, deduct credits
 5. Otherwise → show "quota exceeded" with options
 
-### Deposit Detection (Coming Soon)
-
-1. Poll Base RPC for incoming transactions to user addresses
-2. Detect ETH transfers and ERC-20 Transfer events
-3. Fetch current token price from price oracle
-4. Calculate credits and add to wallet
-5. Record transaction with tx hash
-
 ---
 
 ## Security
 
-- Wallet seed file has 0600 permissions (owner read/write only)
-- Never log seed or private keys
 - Full transaction audit trail
 - Never allow negative balance
-- Deposit addresses derived deterministically (no key storage per user)

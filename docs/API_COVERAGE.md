@@ -32,6 +32,20 @@ This document covers the REST API for programmatic access to Mu.
 - ✅ **Get Latest Videos** - `GET /video` (returns JSON with Accept: application/json)
 - ✅ **Search Videos** - `POST /video`
 
+### Places
+- ✅ **Places Page** - `GET /places` (returns JSON with Accept: application/json)
+- ✅ **Search Places** - `POST /places/search`
+- ✅ **Find Nearby Places** - `GET /places/nearby` or `POST /places/nearby`
+- ✅ **Save Search** - `POST /places/save` (requires auth)
+- ✅ **Delete Saved Search** - `POST /places/save/delete` (requires auth)
+
+
+### ActivityPub Federation
+- ✅ **WebFinger** - `GET /.well-known/webfinger?resource=acct:user@domain`
+- ✅ **Actor Profile** - `GET /@{username}` (with `Accept: application/activity+json`)
+- ✅ **Outbox** - `GET /@{username}/outbox`
+- ✅ **Post Object** - `GET /post?id={id}` (with `Accept: application/activity+json`)
+- ✅ **Inbox** - `POST /@{username}/inbox` (stub)
 
 ### User Profiles
 - ✅ **Get User Profile** - `GET /@{username}`
@@ -125,6 +139,24 @@ All API endpoints support three authentication methods:
 | `/video` | GET | No | Get latest videos (JSON with Accept header) |
 | `/video` | POST | Yes | Search videos |
 
+### Places
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/places` | GET | No | Places page / geocode search (JSON with Accept header) |
+| `/places/search` | POST | Yes | Search places by name or category |
+| `/places/nearby` | GET/POST | Yes | Find places near a location |
+| `/places/save` | POST | Yes | Save a search for quick access |
+| `/places/save/delete` | POST | Yes | Delete a saved search |
+
+### ActivityPub
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/.well-known/webfinger` | GET | No | User discovery (acct:user@domain) |
+| `/@{username}` | GET | No | Actor profile (Accept: application/activity+json) |
+| `/@{username}/outbox` | GET | No | User's public posts as OrderedCollection |
+| `/@{username}/inbox` | POST | No | Incoming activity stub |
+| `/post?id={id}` | GET | No | Post as ActivityPub Note (Accept: application/activity+json) |
+
 ### User
 | Endpoint | Method | Auth Required | Description |
 |----------|--------|---------------|-------------|
@@ -137,6 +169,13 @@ All API endpoints support three authentication methods:
 | Endpoint | Method | Auth Required | Description |
 |----------|--------|---------------|-------------|
 | `/search?q={query}` | GET | No | Vector search across all content |
+
+### MCP (Model Context Protocol)
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/mcp` | POST | No* | MCP server for AI tool integration |
+
+*Authentication is forwarded per-tool. See [MCP Server docs](MCP.md) for details.
 
 ### Authentication
 | Endpoint | Method | Auth Required | Description |
@@ -198,14 +237,17 @@ This documentation is automatically generated from the endpoint definitions in `
 
 **All major features have API access:**
 - ✅ Blog posts (full CRUD)
+- ✅ ActivityPub federation (read-only)
 - ✅ Comments
 - ✅ Chat/AI
 - ✅ News (read + search)
 - ✅ Videos (read + search)
+- ✅ Places (search + nearby)
 - ✅ User profiles
 - ✅ Vector search
 - ✅ PAT token management
 - ✅ Authentication
+- ✅ MCP server (AI tool integration)
 
 **Intentionally web-only:**
 - Mail system (can be added if needed)
