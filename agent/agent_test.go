@@ -424,6 +424,67 @@ func TestFormatWalletTopupResult_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestFormatNewsResult_WithTimestamps(t *testing.T) {
+	result := `{"feed":[{"title":"Iran crisis","description":"Conflict escalates","category":"world","url":"/news?id=1","posted_at":"2026-03-02T10:00:00Z","published":"Sun, 02 Mar 2026 10:00:00 +0000"},{"title":"Peace talks","description":"Negotiations begin","category":"world","url":"/news?id=2","posted_at":"2026-03-01T08:00:00Z"}]}`
+	got := formatNewsResult(result)
+	if !strings.Contains(got, "Iran crisis") {
+		t.Errorf("expected title, got %q", got)
+	}
+	if !strings.Contains(got, "2 Mar 2026") {
+		t.Errorf("expected formatted date, got %q", got)
+	}
+	if !strings.Contains(got, "1 Mar 2026") {
+		t.Errorf("expected second article date, got %q", got)
+	}
+}
+
+func TestFormatNewsResult_SearchWithTimestamp(t *testing.T) {
+	result := `{"query":"iran","results":[{"title":"Iran news","description":"Latest","category":"world","url":"/news?id=1","posted_at":"2026-03-02T12:00:00Z"}],"count":1}`
+	got := formatNewsResult(result)
+	if !strings.Contains(got, "iran") {
+		t.Errorf("expected query, got %q", got)
+	}
+	if !strings.Contains(got, "2 Mar 2026") {
+		t.Errorf("expected formatted date, got %q", got)
+	}
+}
+
+func TestRenderToolCallRef_NewsSearch(t *testing.T) {
+	args := map[string]any{"query": "Iran"}
+	formatted := "News results for \"Iran\":\n1. Iran crisis [world] (2 Mar 2026 10:00) — Conflict escalates\n"
+	got := renderToolCallRef("news_search", args, formatted)
+	if !strings.Contains(got, "<details") {
+		t.Errorf("expected <details> element, got %q", got)
+	}
+	if !strings.Contains(got, "<summary") {
+		t.Errorf("expected <summary> element, got %q", got)
+	}
+	if !strings.Contains(got, "Iran") {
+		t.Errorf("expected query in summary, got %q", got)
+	}
+	if !strings.Contains(got, "Iran crisis") {
+		t.Errorf("expected formatted result content, got %q", got)
+	}
+}
+
+func TestRenderToolCallRef_NoArgs(t *testing.T) {
+	got := renderToolCallRef("news", nil, "Latest news:\n1. Test headline\n")
+	if !strings.Contains(got, "<details") {
+		t.Errorf("expected <details> element, got %q", got)
+	}
+	if !strings.Contains(got, "Test headline") {
+		t.Errorf("expected content, got %q", got)
+	}
+}
+
+func TestRenderToolCallRef_Category(t *testing.T) {
+	args := map[string]any{"category": "crypto"}
+	got := renderToolCallRef("markets", args, "Live crypto market prices:\n- BTC: $97000\n")
+	if !strings.Contains(got, "crypto") {
+		t.Errorf("expected category in label, got %q", got)
+	}
+}
+
 func TestFormatToolResult_WalletDispatch(t *testing.T) {
 	balanceResult := `{"balance":500}`
 	got := formatToolResult("wallet_balance", balanceResult, nil)
