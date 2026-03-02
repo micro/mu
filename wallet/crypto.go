@@ -28,11 +28,6 @@ var (
 	masterKey   *bip32.Key
 	cryptoMutex sync.RWMutex
 	seedLoaded  bool
-
-	// Deposit detection
-	depositPollSecs    = getEnvInt("DEPOSIT_POLL_INTERVAL", 30)
-	lastProcessedBlock = make(map[string]uint64)
-	depositMutex       sync.Mutex
 )
 
 // Supported chains for deposit detection
