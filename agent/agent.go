@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/ai"
@@ -297,6 +298,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	type toolResult struct {
 		Name   string
 		Result string
+		Args   map[string]any
 	}
 	var results []toolResult
 
@@ -322,7 +324,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		if len(text) > 4000 {
 			text = text[:4000] + "…"
 		}
-		results = append(results, toolResult{Name: tc.Tool, Result: text})
+		results = append(results, toolResult{Name: tc.Tool, Result: text, Args: tc.Args})
 		sse(w, map[string]any{
 			"type":    "tool_done",
 			"name":    tc.Tool,
@@ -335,7 +337,11 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	var ragParts []string
 	for _, res := range results {
-		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, res.Result))
+		ragText := res.Result
+		if res.Name == "places_search" || res.Name == "places_nearby" {
+			ragText = formatPlacesResult(res.Result, res.Args)
+		}
+		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
 	}
 
 	synthPrompt := &ai.Prompt{
@@ -363,7 +369,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	// Append typed cards for structured tool results
 	for _, res := range results {
-		if card := renderResultCard(res.Name, res.Result); card != "" {
+		if card := renderResultCard(res.Name, res.Result, res.Args); card != "" {
 			html += card
 		}
 	}
@@ -414,7 +420,7 @@ func toolLabel(tool string) string {
 
 // renderResultCard parses a tool's JSON result and returns an HTML card, or "" if
 // the result type is not handled (the AI summary card is always shown).
-func renderResultCard(toolName, result string) string {
+func renderResultCard(toolName, result string, args map[string]any) string {
 	switch toolName {
 	case "news", "news_search":
 		return renderNewsCard(result)
@@ -425,7 +431,7 @@ func renderResultCard(toolName, result string) string {
 	case "weather_forecast":
 		return renderWeatherCard(result)
 	case "places_search", "places_nearby":
-		return renderPlacesCard(result)
+		return renderPlacesCard(result, args)
 	}
 	return ""
 }
@@ -604,7 +610,7 @@ func renderWeatherCard(result string) string {
 	return b.String()
 }
 
-func renderPlacesCard(result string) string {
+func renderPlacesCard(result string, args map[string]any) string {
 	var data struct {
 		Results []placeItem `json:"results"`
 	}
@@ -618,6 +624,10 @@ func renderPlacesCard(result string) string {
 	if len(items) > 5 {
 		items = items[:5]
 	}
+
+	// Build a deterministic Google Maps search URL from the tool args so the
+	// link opens the exact same query without any additional server-side cost.
+	mapURL := placesMapURL(args, data.Results)
 
 	var b strings.Builder
 	b.WriteString(`<div class="card"><h4>📍 Places</h4>`)
@@ -636,14 +646,106 @@ func renderPlacesCard(result string) string {
 		}
 		b.WriteString(`</div>`)
 	}
-	b.WriteString(`<a href="/places" class="link" style="display:inline-block;margin-top:8px;">Open map →</a></div>`)
+	b.WriteString(`<a href="` + htmlEsc(mapURL) + `" target="_blank" rel="noopener noreferrer" class="link" style="display:inline-block;margin-top:8px;">Open in Google Maps ↗</a></div>`)
 	return b.String()
 }
 
+// placesMapURL builds a deterministic Google Maps search URL for the places
+// results.  It prefers using the query/near tool args when available, falling
+// back to a coordinate-based search centred on the first place result.
+func placesMapURL(args map[string]any, items []placeItem) string {
+	q := ""
+	near := ""
+	if args != nil {
+		if v, ok := args["q"]; ok {
+			q = fmt.Sprintf("%v", v)
+		}
+		if v, ok := args["near"]; ok {
+			near = fmt.Sprintf("%v", v)
+		}
+		if near == "" {
+			if v, ok := args["address"]; ok {
+				near = fmt.Sprintf("%v", v)
+			}
+		}
+	}
+
+	if q != "" && near != "" {
+		return "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(q+" "+near)
+	}
+	if q != "" {
+		return "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(q)
+	}
+
+	// Fall back: centre on the first result with known coordinates.
+	for _, p := range items {
+		if p.Lat != 0 || p.Lon != 0 {
+			return fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%.6f,%.6f", p.Lat, p.Lon)
+		}
+	}
+
+	return "/places"
+}
+
+// formatPlacesResult converts a raw JSON places result into a human-readable
+// text summary suitable for inclusion in the AI synthesis RAG context.
+func formatPlacesResult(result string, args map[string]any) string {
+	var data struct {
+		Results []placeItem `json:"results"`
+		Count   int         `json:"count"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	if len(data.Results) == 0 {
+		return "No places found."
+	}
+
+	q := ""
+	near := ""
+	if args != nil {
+		if v, ok := args["q"]; ok {
+			q = fmt.Sprintf("%v", v)
+		}
+		if v, ok := args["near"]; ok {
+			near = fmt.Sprintf("%v", v)
+		}
+		if near == "" {
+			if v, ok := args["address"]; ok {
+				near = fmt.Sprintf("%v", v)
+			}
+		}
+	}
+
+	var sb strings.Builder
+	header := fmt.Sprintf("Found %d place(s)", len(data.Results))
+	if q != "" && near != "" {
+		header += fmt.Sprintf(" matching %q near %s", q, near)
+	} else if q != "" {
+		header += fmt.Sprintf(" matching %q", q)
+	} else if near != "" {
+		header += fmt.Sprintf(" near %s", near)
+	}
+	sb.WriteString(header + ":\n")
+	for i, p := range data.Results {
+		line := fmt.Sprintf("%d. %s", i+1, p.Name)
+		if p.Category != "" {
+			line += " (" + p.Category + ")"
+		}
+		if p.Address != "" {
+			line += " — " + p.Address
+		}
+		sb.WriteString(line + "\n")
+	}
+	return sb.String()
+}
+
 type placeItem struct {
-	Name     string `json:"name"`
-	Category string `json:"category"`
-	Address  string `json:"address"`
+	Name     string  `json:"name"`
+	Category string  `json:"category"`
+	Address  string  `json:"address"`
+	Lat      float64 `json:"lat"`
+	Lon      float64 `json:"lon"`
 }
 
 // htmlEsc escapes a string for safe HTML attribute/text inclusion.
