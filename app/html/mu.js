@@ -1085,7 +1085,7 @@ function updateUserList(users) {
     if (u === 'micro') {
       return '<span style="color:#007bff;">@micro</span>';
     }
-    return '<a href="/chat?mode=messages&compose=true&to=' + encodeURIComponent(u) + '" title="Send DM" style="color:#555;text-decoration:none;">@' + u + '</a>';
+    return '<a href="/@' + encodeURIComponent(u) + '" title="View profile" style="color:#555;text-decoration:none;">@' + u + '</a>';
   });
   container.innerHTML = '<span style="color:#999;">In room: </span>' + parts.join(' &nbsp;');
 }
@@ -1266,8 +1266,7 @@ function updatePresenceDisplay(users, count) {
   if (!presenceContent) return;
   
   function makeUserLink(u) {
-    return '<a href="/@' + u + '" title="View profile" style="color: inherit;">@' + u + '</a>' +
-           '&thinsp;<a href="/chat?mode=messages&compose=true&to=' + encodeURIComponent(u) + '" title="Send DM" style="color:#007bff;font-size:11px;text-decoration:none;">✉</a>';
+    return '<a href="/@' + u + '" title="View profile" style="color: inherit;">@' + u + '</a>';
   }
 
   if (count === 0) {

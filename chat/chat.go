@@ -26,6 +26,7 @@ var f embed.FS
 var Template = `
 <div id="topic-selector">
   <div class="topic-tabs">%s</div>
+  <a id="chat-clear" href="#" onclick="clearChatHistory(); return false;">Clear history</a>
 </div>
 <div id="messages"></div>
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
@@ -33,10 +34,7 @@ var Template = `
 <input id="topic" name="topic" type="hidden">
 <input id="prompt" name="prompt" type="text" placeholder="Ask a question" autocomplete=off>
 <button>Send</button>
-</form>
-<div id="chat-actions" style="margin-top: 15px; text-align: right; padding-right: 10px;">
-  <a href="#" onclick="clearChatHistory(); return false;" style="color: #999; text-decoration: none; font-size: 13px;">Clear history</a>
-</div>`
+</form>`
 
 var mutex sync.RWMutex
 
@@ -104,39 +102,6 @@ type Client struct {
 
 var rooms = make(map[string]*Room)
 var roomsMutex sync.RWMutex
-
-// ChatMessage represents a direct message between users
-type ChatMessage struct {
-	ID        string    `json:"id"`
-	From      string    `json:"from"`    // Sender username
-	FromID    string    `json:"from_id"` // Sender account ID
-	To        string    `json:"to"`      // Recipient username
-	ToID      string    `json:"to_id"`   // Recipient account ID
-	Body      string    `json:"body"`
-	Read      bool      `json:"read"`
-	ReplyTo   string    `json:"reply_to"`  // ID of message this is replying to
-	ThreadID  string    `json:"thread_id"` // Root message ID for O(1) thread grouping
-	CreatedAt time.Time `json:"created_at"`
-}
-
-// ChatThread represents a conversation thread
-type ChatThread struct {
-	Root      *ChatMessage
-	Messages  []*ChatMessage
-	Latest    *ChatMessage
-	HasUnread bool
-}
-
-// ChatInbox organizes messages by thread for a user
-type ChatInbox struct {
-	Threads     map[string]*ChatThread // threadID -> Thread
-	UnreadCount int                    // Cached unread message count
-}
-
-// stored direct messages
-var chatMessages []*ChatMessage
-var chatInboxes map[string]*ChatInbox
-var chatMessagesMutex sync.RWMutex
 
 // saveRoomMessages persists room messages to disk
 func saveRoomMessages(roomID string, messages []RoomMessage) {
@@ -1059,9 +1024,6 @@ func Load() {
 		}
 	}
 
-	// Load chat messages
-	loadChatMessages()
-
 	// Subscribe to summary generation requests
 	summaryRequestSub := data.Subscribe(data.EventGenerateSummary)
 	go func() {
@@ -1273,14 +1235,6 @@ func generateSummaries() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// Check mode parameter - "messages" for direct messaging, default is AI chat
-	mode := r.URL.Query().Get("mode")
-
-	if mode == "messages" {
-		handleMessagesMode(w, r)
-		return
-	}
-
 	// Check if this is a room-based chat (e.g., /chat?id=post_123)
 	roomID := r.URL.Query().Get("id")
 
@@ -1390,8 +1344,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	}
 
 	// Return HTML
-	// Add a DMs tab inside the topic selector so it doesn't displace the chat layout
-	topicTabs := app.Head("chat", topicsData) + `<a href="/chat?mode=messages" class="head">DMs</a>`
+	topicTabs := app.Head("chat", topicsData)
 	summariesJSON, _ := json.Marshal(summariesData)
 	roomJSON, _ := json.Marshal(roomData)
 
@@ -1466,33 +1419,6 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := fmt.Sprintf("%v", form["prompt"])
-
-	// Check if this is a direct message (starts with @username)
-	if strings.HasPrefix(strings.TrimSpace(q), "@") {
-		// Direct message - don't invoke LLM, just echo back
-		form["answer"] = "<p><em>Message sent. Direct messages are visible to everyone in this topic.</em></p>"
-
-		// if JSON request then respond with json
-		if app.SendsJSON(r) {
-			app.RespondJSON(w, form)
-			return
-		}
-
-		// Format a HTML response
-		messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
-		messages += fmt.Sprintf(`<div class="message"><span class="system">system</span><p>%v</p></div>`, form["answer"])
-
-		mutex.RLock()
-		topicTabs := app.Head("chat", topics)
-		mutex.RUnlock()
-
-		output := fmt.Sprintf(Template, topicTabs)
-		renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
-		renderHTML = strings.Replace(renderHTML, `<div id="messages"></div>`, fmt.Sprintf(`<div id="messages">%s</div>`, messages), 1)
-
-		w.Write([]byte(renderHTML))
-		return
-	}
 
 	// Check quota before LLM query
 	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpChatQuery)
@@ -1707,255 +1633,4 @@ func cleanupIdleRooms() {
 			app.Log("chat", "Cleaned up %d idle rooms (remaining: %d)", len(toDelete), len(rooms))
 		}
 	}
-}
-
-// Chat Messaging Functions (Direct Messages)
-
-// loadChatMessages loads chat messages from disk
-func loadChatMessages() {
-	b, err := data.LoadFile("chat_messages.json")
-	if err != nil {
-		chatMessages = []*ChatMessage{}
-		chatInboxes = make(map[string]*ChatInbox)
-		return
-	}
-
-	if err := json.Unmarshal(b, &chatMessages); err != nil {
-		chatMessages = []*ChatMessage{}
-		chatInboxes = make(map[string]*ChatInbox)
-		return
-	}
-
-	app.Log("chat", "Loaded %d chat messages", len(chatMessages))
-	fixChatThreading()
-	rebuildChatInboxes()
-}
-
-// saveChatMessages saves chat messages to disk.
-// Callers must hold chatMessagesMutex (read or write) before calling.
-func saveChatMessages() error {
-	b, err := json.Marshal(chatMessages)
-	if err != nil {
-		return err
-	}
-
-	return data.SaveFile("chat_messages.json", string(b))
-}
-
-// fixChatThreading repairs broken threading relationships
-func fixChatThreading() {
-	fixed := 0
-
-	for _, msg := range chatMessages {
-		if msg.ReplyTo == "" {
-			continue
-		}
-
-		if getChatMessageUnlocked(msg.ReplyTo) == nil {
-			app.Log("chat", "Message %s has missing parent %s - marking as root", msg.ID, msg.ReplyTo)
-			msg.ReplyTo = ""
-			fixed++
-		}
-	}
-
-	for _, msg := range chatMessages {
-		threadID := computeChatThreadID(msg)
-		if msg.ThreadID != threadID {
-			msg.ThreadID = threadID
-			fixed++
-		}
-	}
-
-	if fixed > 0 {
-		app.Log("chat", "Fixed threading for %d messages", fixed)
-		saveChatMessages()
-	}
-}
-
-// computeChatThreadID walks up the chain to find the root message ID
-func computeChatThreadID(msg *ChatMessage) string {
-	if msg.ReplyTo == "" {
-		return msg.ID
-	}
-
-	visited := make(map[string]bool)
-	current := msg
-	for current.ReplyTo != "" && !visited[current.ID] {
-		visited[current.ID] = true
-		parent := getChatMessageUnlocked(current.ReplyTo)
-		if parent == nil {
-			return current.ID
-		}
-		current = parent
-	}
-
-	return current.ID
-}
-
-// getChatMessageUnlocked returns message by ID (caller must hold lock)
-func getChatMessageUnlocked(id string) *ChatMessage {
-	for _, m := range chatMessages {
-		if m.ID == id {
-			return m
-		}
-	}
-	return nil
-}
-
-// rebuildChatInboxes builds inbox structures from messages
-func rebuildChatInboxes() {
-	chatInboxes = make(map[string]*ChatInbox)
-
-	for _, msg := range chatMessages {
-		// Add to sender's inbox (sent messages)
-		if _, exists := chatInboxes[msg.FromID]; !exists {
-			chatInboxes[msg.FromID] = &ChatInbox{
-				Threads:     make(map[string]*ChatThread),
-				UnreadCount: 0,
-			}
-		}
-
-		// Add to recipient's inbox (received messages)
-		if _, exists := chatInboxes[msg.ToID]; !exists {
-			chatInboxes[msg.ToID] = &ChatInbox{
-				Threads:     make(map[string]*ChatThread),
-				UnreadCount: 0,
-			}
-		}
-
-		addChatMessageToInbox(chatInboxes[msg.FromID], msg, msg.FromID)
-		addChatMessageToInbox(chatInboxes[msg.ToID], msg, msg.ToID)
-	}
-}
-
-// addChatMessageToInbox adds a message to an inbox
-func addChatMessageToInbox(inbox *ChatInbox, msg *ChatMessage, userID string) {
-	threadID := msg.ThreadID
-	if threadID == "" {
-		threadID = computeChatThreadID(msg)
-		if threadID == "" {
-			threadID = msg.ID
-		}
-	}
-
-	isUnread := !msg.Read && msg.ToID == userID
-	thread := inbox.Threads[threadID]
-	if thread == nil {
-		rootMsg := getChatMessageUnlocked(threadID)
-		if rootMsg == nil {
-			rootMsg = msg
-		}
-		thread = &ChatThread{
-			Root:      rootMsg,
-			Messages:  []*ChatMessage{msg},
-			Latest:    msg,
-			HasUnread: isUnread,
-		}
-		inbox.Threads[threadID] = thread
-		if isUnread {
-			inbox.UnreadCount++
-		}
-	} else {
-		thread.Messages = append(thread.Messages, msg)
-		if msg.CreatedAt.After(thread.Latest.CreatedAt) {
-			thread.Latest = msg
-		}
-		if isUnread {
-			thread.HasUnread = true
-			inbox.UnreadCount++
-		}
-	}
-}
-
-// SendChatMessage creates and stores a new chat message.
-// Returns the thread ID of the new message and any error.
-func SendChatMessage(fromName, fromID, toName, toID, body, replyTo string) (string, error) {
-	chatMessagesMutex.Lock()
-	defer chatMessagesMutex.Unlock()
-
-	msg := &ChatMessage{
-		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
-		From:      fromName,
-		FromID:    fromID,
-		To:        toName,
-		ToID:      toID,
-		Body:      body,
-		Read:      false,
-		ReplyTo:   replyTo,
-		CreatedAt: time.Now(),
-	}
-
-	// Compute thread ID
-	if replyTo != "" {
-		parent := getChatMessageUnlocked(replyTo)
-		if parent != nil {
-			msg.ThreadID = computeChatThreadID(parent)
-		} else {
-			msg.ThreadID = msg.ID
-		}
-	} else {
-		msg.ThreadID = msg.ID
-	}
-
-	chatMessages = append(chatMessages, msg)
-
-	// Update inboxes
-	if chatInboxes[fromID] == nil {
-		chatInboxes[fromID] = &ChatInbox{
-			Threads:     make(map[string]*ChatThread),
-			UnreadCount: 0,
-		}
-	}
-	if chatInboxes[toID] == nil {
-		chatInboxes[toID] = &ChatInbox{
-			Threads:     make(map[string]*ChatThread),
-			UnreadCount: 0,
-		}
-	}
-
-	addChatMessageToInbox(chatInboxes[fromID], msg, fromID)
-	addChatMessageToInbox(chatInboxes[toID], msg, toID)
-
-	app.Log("chat", "Sent message from %s to %s", fromName, toName)
-
-	return msg.ThreadID, saveChatMessages()
-}
-
-// GetChatInbox returns the inbox for a user
-func GetChatInbox(userID string) *ChatInbox {
-	chatMessagesMutex.RLock()
-	defer chatMessagesMutex.RUnlock()
-
-	inbox := chatInboxes[userID]
-	if inbox == nil {
-		return &ChatInbox{
-			Threads:     make(map[string]*ChatThread),
-			UnreadCount: 0,
-		}
-	}
-	return inbox
-}
-
-// MarkChatMessageAsRead marks a message as read
-func MarkChatMessageAsRead(msgID, userID string) error {
-	chatMessagesMutex.Lock()
-	defer chatMessagesMutex.Unlock()
-
-	for _, msg := range chatMessages {
-		if msg.ID == msgID && msg.ToID == userID && !msg.Read {
-			msg.Read = true
-
-			// Update inbox unread count
-			if inbox := chatInboxes[userID]; inbox != nil {
-				inbox.UnreadCount--
-				if inbox.UnreadCount < 0 {
-					inbox.UnreadCount = 0
-				}
-			}
-
-			return saveChatMessages()
-		}
-	}
-
-	return nil
 }

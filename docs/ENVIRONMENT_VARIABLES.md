@@ -72,9 +72,7 @@ export MU_DOMAIN="yourdomain.com"  # Falls back to MAIL_DOMAIN, then "localhost"
 
 ## Messaging Configuration
 
-Mu has two messaging systems:
-- **Internal messages** - Free, instant delivery between Mu users
-- **External email** - SMTP-based, costs credits, for sending to outside email addresses
+Mu supports sending and receiving external email via SMTP.
 
 ```bash
 # SMTP server port for receiving external email
@@ -91,7 +89,6 @@ export DKIM_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
 ```
 
 **Notes:**
-- Internal messaging works without any configuration
 - SMTP configuration only needed for external email (sending/receiving outside Mu)
 - Mu delivers external messages directly to recipient servers via SMTP (no relay needed)
 - DKIM signing enables automatically when `DKIM_PRIVATE_KEY` is set, or if a key file exists at `~/.mu/keys/dkim.key`

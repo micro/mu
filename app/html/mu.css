@@ -818,6 +818,20 @@ body:has(#messages) #chat-back-link {
   margin-bottom: 10px;
   padding-bottom: 8px;
   border-bottom: 1px solid #e0e0e0;
+  position: relative;
+}
+
+#chat-clear {
+  position: absolute;
+  top: 5px;
+  right: 0;
+  color: #999;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+#chat-clear:hover {
+  color: #555;
 }
 
 .topic-tabs {

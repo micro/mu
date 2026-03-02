@@ -1,19 +1,10 @@
 # Messaging System Guide
 
-Mu includes a built-in messaging system. **Direct messages between users work out of the box** — no configuration needed.
-
-This guide covers additional setup for receiving external email.
+This guide covers setup for sending and receiving external email.
 
 ## Quick Start
 
-### Direct Messages (Default)
-```bash
-# Works immediately, no configuration needed
-./mu
-```
-Users can send messages to each other by username. Messages are stored locally.
-
-### External Email Support
+### Basic Setup
 ```bash
 # Set SMTP port (optional, defaults to 2525)
 export MAIL_PORT="2525"
