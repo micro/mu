@@ -337,10 +337,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	var ragParts []string
 	for _, res := range results {
-		ragText := res.Result
-		if res.Name == "places_search" || res.Name == "places_nearby" {
-			ragText = formatPlacesResult(res.Result, res.Args)
-		}
+		ragText := formatToolResult(res.Name, res.Result, res.Args)
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
 	}
 
@@ -687,6 +684,360 @@ func placesMapURL(args map[string]any, items []placeItem) string {
 	return "/places"
 }
 
+// formatToolResult converts a raw tool result into a human-readable text
+// summary suitable for inclusion in the AI synthesis RAG context.
+func formatToolResult(toolName, result string, args map[string]any) string {
+	switch toolName {
+	case "news", "news_search":
+		return formatNewsResult(result)
+	case "video_search":
+		return formatVideoResult(result)
+	case "weather_forecast":
+		return formatWeatherResult(result)
+	case "reminder":
+		return formatReminderResult(result)
+	case "search":
+		return formatSearchResult(result)
+	case "blog_list":
+		return formatBlogResult(result)
+	case "web_search":
+		return formatWebSearchResult(result)
+	case "markets":
+		return formatMarketsResult(result)
+	case "places_search", "places_nearby":
+		return formatPlacesResult(result, args)
+	}
+	return result
+}
+
+// formatNewsResult converts a raw JSON news feed or search result into
+// human-readable text for the AI synthesis RAG context.
+func formatNewsResult(result string) string {
+	var data struct {
+		Feed    []struct {
+			Title       string `json:"title"`
+			Description string `json:"description"`
+			Category    string `json:"category"`
+			URL         string `json:"url"`
+		} `json:"feed"`
+		Results []struct {
+			Title       string `json:"title"`
+			Description string `json:"description"`
+			Category    string `json:"category"`
+			URL         string `json:"url"`
+		} `json:"results"`
+		Query string `json:"query"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	type item struct {
+		Title       string
+		Description string
+		Category    string
+		URL         string
+	}
+	var items []item
+	for _, a := range data.Results {
+		items = append(items, item{a.Title, a.Description, a.Category, a.URL})
+	}
+	if len(items) == 0 {
+		for _, a := range data.Feed {
+			items = append(items, item{a.Title, a.Description, a.Category, a.URL})
+		}
+	}
+	if len(items) == 0 {
+		return "No news available."
+	}
+	if len(items) > 10 {
+		items = items[:10]
+	}
+	var sb strings.Builder
+	if data.Query != "" {
+		sb.WriteString(fmt.Sprintf("News results for %q:\n", data.Query))
+	} else {
+		sb.WriteString("Latest news:\n")
+	}
+	for i, a := range items {
+		line := fmt.Sprintf("%d. %s", i+1, a.Title)
+		if a.Category != "" {
+			line += fmt.Sprintf(" [%s]", a.Category)
+		}
+		if a.Description != "" {
+			line += " — " + a.Description
+		}
+		sb.WriteString(line + "\n")
+	}
+	return sb.String()
+}
+
+// formatVideoResult converts a raw JSON video search result into
+// human-readable text for the AI synthesis RAG context.
+func formatVideoResult(result string) string {
+	var data struct {
+		Results []struct {
+			Title   string `json:"title"`
+			Channel string `json:"channel"`
+			URL     string `json:"url"`
+		} `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	if len(data.Results) == 0 {
+		return "No videos found."
+	}
+	items := data.Results
+	if len(items) > 10 {
+		items = items[:10]
+	}
+	var sb strings.Builder
+	sb.WriteString("Video results:\n")
+	for i, v := range items {
+		line := fmt.Sprintf("%d. %s", i+1, v.Title)
+		if v.Channel != "" {
+			line += fmt.Sprintf(" (channel: %s)", v.Channel)
+		}
+		sb.WriteString(line + "\n")
+	}
+	return sb.String()
+}
+
+// formatWeatherResult converts a raw JSON weather forecast result into
+// human-readable text for the AI synthesis RAG context.
+func formatWeatherResult(result string) string {
+	var data struct {
+		Forecast struct {
+			Location string `json:"Location"`
+			Current  struct {
+				TempC       float64 `json:"TempC"`
+				FeelsLikeC  float64 `json:"FeelsLikeC"`
+				Description string  `json:"Description"`
+				Humidity    int     `json:"Humidity"`
+				WindKph     float64 `json:"WindKph"`
+			} `json:"Current"`
+			DailyItems []struct {
+				Date        string  `json:"Date"`
+				MaxTempC    float64 `json:"MaxTempC"`
+				MinTempC    float64 `json:"MinTempC"`
+				Description string  `json:"Description"`
+				WillRain    bool    `json:"WillRain"`
+				RainMM      float64 `json:"RainMM"`
+			} `json:"DailyItems"`
+		} `json:"forecast"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	cur := data.Forecast.Current
+	if cur.Description == "" && cur.TempC == 0 {
+		return "Weather data unavailable."
+	}
+	var sb strings.Builder
+	if data.Forecast.Location != "" {
+		sb.WriteString(fmt.Sprintf("Weather for %s:\n", data.Forecast.Location))
+	} else {
+		sb.WriteString("Current weather:\n")
+	}
+	sb.WriteString(fmt.Sprintf("- Temperature: %.0f°C (feels like %.0f°C)\n", cur.TempC, cur.FeelsLikeC))
+	if cur.Description != "" {
+		sb.WriteString(fmt.Sprintf("- Conditions: %s\n", cur.Description))
+	}
+	if cur.Humidity > 0 {
+		sb.WriteString(fmt.Sprintf("- Humidity: %d%%\n", cur.Humidity))
+	}
+	if cur.WindKph > 0 {
+		sb.WriteString(fmt.Sprintf("- Wind: %.0f km/h\n", cur.WindKph))
+	}
+	if len(data.Forecast.DailyItems) > 0 {
+		sb.WriteString("Forecast:\n")
+		days := data.Forecast.DailyItems
+		if len(days) > 5 {
+			days = days[:5]
+		}
+		for _, d := range days {
+			line := fmt.Sprintf("- %.0f°C / %.0f°C, %s", d.MaxTempC, d.MinTempC, d.Description)
+			if d.WillRain {
+				line += fmt.Sprintf(" (rain: %.1fmm)", d.RainMM)
+			}
+			sb.WriteString(line + "\n")
+		}
+	}
+	return sb.String()
+}
+
+// formatReminderResult converts a raw JSON reminder result into
+// human-readable text for the AI synthesis RAG context.
+func formatReminderResult(result string) string {
+	var data struct {
+		Verse   string `json:"verse"`
+		Name    string `json:"name"`
+		Hadith  string `json:"hadith"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	if data.Verse == "" && data.Hadith == "" && data.Message == "" {
+		return "Reminder data unavailable."
+	}
+	var sb strings.Builder
+	sb.WriteString("Daily Islamic reminder:\n")
+	if data.Name != "" {
+		sb.WriteString(fmt.Sprintf("Name of Allah: %s\n", data.Name))
+	}
+	if data.Verse != "" {
+		sb.WriteString(fmt.Sprintf("Verse: %s\n", data.Verse))
+	}
+	if data.Hadith != "" {
+		sb.WriteString(fmt.Sprintf("Hadith: %s\n", data.Hadith))
+	}
+	if data.Message != "" {
+		sb.WriteString(fmt.Sprintf("Message: %s\n", data.Message))
+	}
+	return sb.String()
+}
+
+// formatSearchResult converts a raw search result (which may be an HTML page)
+// into human-readable text for the AI synthesis RAG context.
+func formatSearchResult(result string) string {
+	// Try to parse as JSON first (structured response)
+	var data struct {
+		Results []struct {
+			Title   string `json:"title"`
+			Content string `json:"content"`
+			Type    string `json:"type"`
+		} `json:"results"`
+		Query string `json:"query"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err == nil && len(data.Results) > 0 {
+		var sb strings.Builder
+		if data.Query != "" {
+			sb.WriteString(fmt.Sprintf("Search results for %q:\n", data.Query))
+		} else {
+			sb.WriteString("Search results:\n")
+		}
+		for i, r := range data.Results {
+			line := fmt.Sprintf("%d. %s", i+1, r.Title)
+			if r.Type != "" {
+				line += fmt.Sprintf(" [%s]", r.Type)
+			}
+			if r.Content != "" {
+				snippet := r.Content
+				if len(snippet) > 120 {
+					snippet = snippet[:120] + "…"
+				}
+				line += " — " + snippet
+			}
+			sb.WriteString(line + "\n")
+		}
+		return sb.String()
+	}
+	// Fall back: strip HTML tags to extract plain text
+	return stripHTMLTags(result)
+}
+
+// formatBlogResult converts a raw JSON blog list result into
+// human-readable text for the AI synthesis RAG context.
+func formatBlogResult(result string) string {
+	var posts []struct {
+		Title     string `json:"title"`
+		Author    string `json:"author"`
+		Tags      string `json:"tags"`
+		CreatedAt string `json:"created_at"`
+		Content   string `json:"content"`
+	}
+	if err := json.Unmarshal([]byte(result), &posts); err != nil {
+		return result
+	}
+	if len(posts) == 0 {
+		return "No blog posts available."
+	}
+	if len(posts) > 10 {
+		posts = posts[:10]
+	}
+	var sb strings.Builder
+	sb.WriteString("Recent blog posts:\n")
+	for i, p := range posts {
+		line := fmt.Sprintf("%d. %s", i+1, p.Title)
+		if p.Author != "" {
+			line += fmt.Sprintf(" by %s", p.Author)
+		}
+		if p.Tags != "" {
+			line += fmt.Sprintf(" [%s]", p.Tags)
+		}
+		if p.Content != "" {
+			snippet := p.Content
+			if len(snippet) > 120 {
+				snippet = snippet[:120] + "…"
+			}
+			line += " — " + snippet
+		}
+		sb.WriteString(line + "\n")
+	}
+	return sb.String()
+}
+
+// formatWebSearchResult converts a raw JSON web search result into
+// human-readable text for the AI synthesis RAG context.
+func formatWebSearchResult(result string) string {
+	var data struct {
+		Results []struct {
+			Title   string `json:"title"`
+			URL     string `json:"url"`
+			Snippet string `json:"snippet"`
+		} `json:"results"`
+		Query string `json:"query"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	if len(data.Results) == 0 {
+		return "No web results found."
+	}
+	items := data.Results
+	if len(items) > 10 {
+		items = items[:10]
+	}
+	var sb strings.Builder
+	if data.Query != "" {
+		sb.WriteString(fmt.Sprintf("Web search results for %q:\n", data.Query))
+	} else {
+		sb.WriteString("Web search results:\n")
+	}
+	for i, r := range items {
+		line := fmt.Sprintf("%d. %s", i+1, r.Title)
+		if r.Snippet != "" {
+			line += " — " + r.Snippet
+		}
+		sb.WriteString(line + "\n")
+	}
+	return sb.String()
+}
+
+// stripHTMLTags removes HTML tags from s and collapses whitespace.
+func stripHTMLTags(s string) string {
+	var sb strings.Builder
+	inTag := false
+	for i := 0; i < len(s); i++ {
+		switch {
+		case s[i] == '<':
+			inTag = true
+		case s[i] == '>':
+			inTag = false
+			sb.WriteByte(' ')
+		case !inTag:
+			sb.WriteByte(s[i])
+		}
+	}
+	// Collapse runs of whitespace
+	out := strings.Join(strings.Fields(sb.String()), " ")
+	if len(out) > 2000 {
+		out = out[:2000] + "…"
+	}
+	return out
+}
+
 // formatPlacesResult converts a raw JSON places result into a human-readable
 // text summary suitable for inclusion in the AI synthesis RAG context.
 func formatPlacesResult(result string, args map[string]any) string {
@@ -746,6 +1097,40 @@ type placeItem struct {
 	Address  string  `json:"address"`
 	Lat      float64 `json:"lat"`
 	Lon      float64 `json:"lon"`
+}
+
+// formatMarketsResult converts a raw JSON markets result into a human-readable
+// text summary suitable for inclusion in the AI synthesis RAG context.
+func formatMarketsResult(result string) string {
+	var data struct {
+		Category string `json:"category"`
+		Data     []struct {
+			Symbol    string  `json:"symbol"`
+			Price     float64 `json:"price"`
+			Change24h float64 `json:"change_24h"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	if len(data.Data) == 0 {
+		return "No market data available."
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Live %s market prices:\n", data.Category))
+	for _, item := range data.Data {
+		line := fmt.Sprintf("- %s: $%.2f", item.Symbol, item.Price)
+		if item.Change24h != 0 {
+			sign := "+"
+			if item.Change24h < 0 {
+				sign = ""
+			}
+			line += fmt.Sprintf(" (24h change: %s%.2f%%)", sign, item.Change24h)
+		}
+		sb.WriteString(line + "\n")
+	}
+	return sb.String()
 }
 
 // htmlEsc escapes a string for safe HTML attribute/text inclusion.
