@@ -14,12 +14,22 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 
 - **Home** - Your personalized dashboard with online users indicator
 - **Blog** - Thoughtful microblogging
-- **Chat** - Discuss topics with AI (Web) or federated XMPP chat
+- **Chat** - Discuss topics with AI (Web) or fully compliant XMPP chat server with federation
 - **News** - RSS feeds with AI summaries
 - **Video** - Watch YouTube without ads
-- **Mail** - Private messaging & email with SMTP
+- **Mail** - Private messaging & email with SMTP (DKIM, SPF, DMARC)
 - **Wallet** - Credits and crypto payments
 - **Online Users** - See who's currently active and available to chat
+
+### Federation & Standards
+
+Like a proper email server with SMTP, DKIM, SPF, and DMARC support, Mu provides:
+- **XMPP Server**: Full RFC 6120-6122 compliance
+- **S2S Federation**: Chat with users on other XMPP servers
+- **TLS/STARTTLS**: Encrypted connections
+- **Multi-User Chat**: Group chat rooms (MUC)
+- **Offline Messages**: Store and forward when offline
+- **Standard Clients**: Connect with Conversations, Gajim, Beagle IM, etc.
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
@@ -29,14 +39,36 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] App - Basic PWA
 - [x] Home - Overview
 - [x] Blog - Micro blogging
-- [x] Chat - Discussion rooms
+- [x] Chat - Discussion rooms & AI assistant
 - [x] News - RSS news feed
 - [x] Video - YouTube search
 - [x] Mail - Private messaging
-- [x] SMTP - Email server for federation
-- [x] XMPP - Chat server for federation
-- [x] Wallet - Crypto payments
+- [x] SMTP - Email server for federation (DKIM, SPF, DMARC)
+- [x] XMPP - Fully compliant chat server with S2S federation, TLS, MUC
+- [x] Wallet - Crypto payments (Stripe integration)
+- [x] Online Users - Presence tracking
 - [ ] Services - Marketplace, etc
+
+### Federation Status
+
+**Email (SMTP):**
+- ✅ Send and receive email
+- ✅ DKIM signing
+- ✅ SPF verification
+- ✅ DMARC policies
+- ✅ Direct user-to-user messaging
+- ✅ External domain communication
+
+**Chat (XMPP):**
+- ✅ Client-to-Server (C2S) - port 5222
+- ✅ Server-to-Server (S2S) - port 5269
+- ✅ TLS/STARTTLS encryption
+- ✅ SASL authentication
+- ✅ Direct user-to-user messaging
+- ✅ Cross-server federation
+- ✅ Multi-User Chat (MUC) rooms
+- ✅ Offline message storage
+- ✅ Works with standard XMPP clients
 
 ### AI Features
 
