@@ -3,6 +3,7 @@
 package ai
 
 import (
+	"fmt"
 	"strings"
 	"text/template"
 	"time"
@@ -76,7 +77,16 @@ Keep responses concise but informative. Use markdown for structure when helpful.
 // BuildSystemPrompt generates the system prompt from a Prompt struct
 func BuildSystemPrompt(p *Prompt) (string, error) {
 	if p.System != "" {
-		return p.System, nil
+		if len(p.Rag) == 0 {
+			return p.System, nil
+		}
+		var sb strings.Builder
+		sb.WriteString(p.System)
+		sb.WriteString("\n\nCurrent context (live market data, recent news, or articles fetched now):\n")
+		for i, r := range p.Rag {
+			sb.WriteString(fmt.Sprintf("[%d] %s\n", i, r))
+		}
+		return sb.String(), nil
 	}
 	sb := &strings.Builder{}
 	data := &systemPromptData{
