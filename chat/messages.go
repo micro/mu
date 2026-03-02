@@ -7,8 +7,11 @@ import (
 	"sort"
 	"strings"
 
+	"mu/ai"
 	"mu/app"
 	"mu/auth"
+	"mu/data"
+	"mu/wallet"
 )
 
 // handleMessagesMode handles direct messaging UI and logic
@@ -37,8 +40,57 @@ func handleMessagesMode(w http.ResponseWriter, r *http.Request) {
 
 		// Check if recipient is @micro (AI assistant)
 		if to == "micro" || to == "@micro" {
-			// This is handled by the AI chat - redirect
-			http.Redirect(w, r, "/chat", http.StatusSeeOther)
+			// Check wallet quota for AI DM
+			canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpChatQuery)
+			if !canProceed {
+				content := wallet.QuotaExceededPage(wallet.OpChatQuery, cost)
+				htmlContent := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
+				w.Write([]byte(htmlContent))
+				return
+			}
+
+			// Store user's message to micro
+			threadID, err := SendChatMessage(acc.Name, acc.ID, "micro", "micro", body, replyTo)
+			if err != nil {
+				http.Error(w, "Failed to send message", http.StatusInternalServerError)
+				return
+			}
+
+			// Find the message ID for the reply_to reference
+			chatMessagesMutex.RLock()
+			var userMsgID string
+			for i := len(chatMessages) - 1; i >= 0; i-- {
+				m := chatMessages[i]
+				if m.FromID == acc.ID && m.ToID == "micro" && m.ThreadID == threadID {
+					userMsgID = m.ID
+					break
+				}
+			}
+			chatMessagesMutex.RUnlock()
+
+			// Generate AI response synchronously
+			ragEntries := data.Search(body, 5)
+			var ragContext []string
+			for _, entry := range ragEntries {
+				contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
+				if len(contextStr) > 600 {
+					contextStr = contextStr[:600] + "..."
+				}
+				ragContext = append(ragContext, contextStr)
+			}
+
+			aiResp, err := askLLM(&ai.Prompt{
+				Rag:      ragContext,
+				Question: body,
+			})
+
+			if err == nil && aiResp != "" {
+				wallet.ConsumeQuota(acc.ID, wallet.OpChatQuery)
+				SendChatMessage("micro", "micro", acc.Name, acc.ID, aiResp, userMsgID) //nolint:errcheck
+			}
+
+			// Redirect to the DM thread
+			http.Redirect(w, r, "/chat?mode=messages&id="+threadID, http.StatusSeeOther)
 			return
 		}
 
@@ -50,15 +102,16 @@ func handleMessagesMode(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Send message
-		if err := SendChatMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, body, replyTo); err != nil {
+		threadID, err := SendChatMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, body, replyTo)
+		if err != nil {
 			http.Error(w, "Failed to send message", http.StatusInternalServerError)
 			return
 		}
 
-		// Redirect to thread if replying, otherwise to inbox
-		threadID := r.URL.Query().Get("id")
-		if threadID != "" {
-			http.Redirect(w, r, "/chat?mode=messages&id="+threadID, http.StatusSeeOther)
+		// Redirect to thread
+		urlThreadID := r.URL.Query().Get("id")
+		if urlThreadID != "" {
+			http.Redirect(w, r, "/chat?mode=messages&id="+urlThreadID, http.StatusSeeOther)
 		} else if replyTo != "" {
 			chatMessagesMutex.RLock()
 			parentMsg := getChatMessageUnlocked(replyTo)
@@ -66,10 +119,11 @@ func handleMessagesMode(w http.ResponseWriter, r *http.Request) {
 			if parentMsg != nil {
 				http.Redirect(w, r, "/chat?mode=messages&id="+parentMsg.ThreadID, http.StatusSeeOther)
 			} else {
-				http.Redirect(w, r, "/chat?mode=messages", http.StatusSeeOther)
+				http.Redirect(w, r, "/chat?mode=messages&id="+threadID, http.StatusSeeOther)
 			}
 		} else {
-			http.Redirect(w, r, "/chat?mode=messages", http.StatusSeeOther)
+			// New message - redirect to the new thread
+			http.Redirect(w, r, "/chat?mode=messages&id="+threadID, http.StatusSeeOther)
 		}
 		return
 	}
@@ -232,13 +286,10 @@ func renderChatThread(w http.ResponseWriter, r *http.Request, threadID string, a
 	// Determine who we're chatting with
 	firstMsg := threadMessages[0]
 	var otherUser string
-	var otherUserID string
 	if firstMsg.FromID == acc.ID {
 		otherUser = firstMsg.To
-		otherUserID = firstMsg.ToID
 	} else {
 		otherUser = firstMsg.From
-		otherUserID = firstMsg.FromID
 	}
 
 	chatMessagesMutex.RUnlock()
@@ -300,7 +351,7 @@ func renderChatThread(w http.ResponseWriter, r *http.Request, threadID string, a
 				<button type="submit" style="padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">Send Reply</button>
 			</form>
 		</div>
-	`, html.EscapeString(otherUser), strings.Join(messageHTML, "\n"), threadID, otherUserID, threadMessages[len(threadMessages)-1].ID)
+	`, html.EscapeString(otherUser), strings.Join(messageHTML, "\n"), threadID, otherUser, threadMessages[len(threadMessages)-1].ID)
 
 	htmlContent := app.RenderHTMLForRequest("Chat Thread", "Conversation with "+otherUser, content, r)
 	w.Write([]byte(htmlContent))

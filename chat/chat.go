@@ -817,7 +817,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				// For topic chat rooms (chat_), respond when mentioned or alone (public room behavior)
 				contentLower := strings.ToLower(content)
 				mentionedMicro := strings.Contains(contentLower, "@micro")
-				inActiveConvo := client.InMicroConvo && time.Since(client.LastMicroReply) < 2*time.Minute
 
 				// Item-specific rooms always get AI responses (this is "discuss with AI")
 				isItemRoom := strings.HasPrefix(room.ID, "news_") ||
@@ -829,6 +828,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				room.mutex.RLock()
 				isAlone := strings.HasPrefix(room.ID, "chat_") && len(room.Clients) == 1
 				room.mutex.RUnlock()
+
+				// inActiveConvo only applies when the user is alone
+				// When multiple users are present, micro only responds to explicit @micro mentions
+				inActiveConvo := isAlone && client.InMicroConvo && time.Since(client.LastMicroReply) < 2*time.Minute
 
 				if mentionedMicro || isAlone || isItemRoom {
 					client.InMicroConvo = true
@@ -1393,10 +1396,8 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 
 	tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
 
-	// Add a link to messages mode
-	messagesLink := `<div style="margin: 15px 0; padding: 10px; background: #f0f8ff; border-left: 3px solid #007bff; border-radius: 4px;">
-		<p style="margin: 0;"><strong>💬 New:</strong> <a href="/chat?mode=messages" style="color: #007bff; text-decoration: underline;">Direct Messaging</a> - Send messages to other users or chat with @micro (AI assistant)</p>
-	</div>`
+	// Add a small link to messages mode (not a large banner)
+	messagesLink := `<div style="text-align:right;padding:2px 0 6px;"><a href="/chat?mode=messages" style="color:#007bff;font-size:13px;">💬 Messages</a></div>`
 
 	tmpl = strings.Replace(tmpl, `<div id="topic-selector">`, messagesLink+`<div id="topic-selector">`, 1)
 	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var roomData = %s;</script></body>`, summariesJSON, roomJSON), 1)
@@ -1871,8 +1872,9 @@ func addChatMessageToInbox(inbox *ChatInbox, msg *ChatMessage, userID string) {
 	}
 }
 
-// SendChatMessage creates and stores a new chat message
-func SendChatMessage(fromName, fromID, toName, toID, body, replyTo string) error {
+// SendChatMessage creates and stores a new chat message.
+// Returns the thread ID of the new message and any error.
+func SendChatMessage(fromName, fromID, toName, toID, body, replyTo string) (string, error) {
 	chatMessagesMutex.Lock()
 	defer chatMessagesMutex.Unlock()
 
@@ -1921,7 +1923,7 @@ func SendChatMessage(fromName, fromID, toName, toID, body, replyTo string) error
 
 	app.Log("chat", "Sent message from %s to %s", fromName, toName)
 
-	return saveChatMessages()
+	return msg.ThreadID, saveChatMessages()
 }
 
 // GetChatInbox returns the inbox for a user

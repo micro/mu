@@ -16,6 +16,7 @@ import (
 
 	"mu/admin"
 	"mu/agent"
+	"mu/ai"
 	"mu/api"
 	"mu/app"
 	"mu/auth"
@@ -194,6 +195,35 @@ func main() {
 				"token":   sess.Token,
 				"account": sess.Account,
 			})
+			return string(resp), nil
+		},
+	})
+
+	api.RegisterTool(api.Tool{
+		Name:        "web_search",
+		Description: "Search the web for current information and news",
+		Params: []api.ToolParam{
+			{Name: "query", Type: "string", Description: "Search query", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			query, _ := args["query"].(string)
+			if query == "" {
+				return `{"error":"query is required"}`, fmt.Errorf("query is required")
+			}
+			results, err := ai.WebSearch(query)
+			if err != nil {
+				return `{"error":"search failed"}`, err
+			}
+			type searchResult struct {
+				Title   string `json:"title"`
+				URL     string `json:"url"`
+				Snippet string `json:"snippet"`
+			}
+			var items []searchResult
+			for _, r := range results {
+				items = append(items, searchResult{Title: r.Title, URL: r.URL, Snippet: r.Snippet})
+			}
+			resp, _ := json.Marshal(map[string]interface{}{"results": items, "query": query})
 			return string(resp), nil
 		},
 	})

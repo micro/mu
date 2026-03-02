@@ -7,7 +7,7 @@ import (
 
 // TestNewXMPPServer tests server initialization
 func TestNewXMPPServer(t *testing.T) {
-	server := NewXMPPServer("test.example.com", "5222")
+	server := NewXMPPServer("test.example.com", "5222", "5269")
 
 	if server == nil {
 		t.Fatal("Expected server to be created, got nil")
@@ -60,7 +60,7 @@ func TestGetXMPPStatus(t *testing.T) {
 	}
 
 	// Create a server instance
-	xmppServer = NewXMPPServer("test.example.com", "5222")
+	xmppServer = NewXMPPServer("test.example.com", "5222", "5269")
 
 	status = GetXMPPStatus()
 
@@ -72,8 +72,8 @@ func TestGetXMPPStatus(t *testing.T) {
 		t.Errorf("Expected domain 'test.example.com', got '%v'", status["domain"])
 	}
 
-	if status["port"] != "5222" {
-		t.Errorf("Expected port '5222', got '%v'", status["port"])
+	if status["c2s_port"] != "5222" {
+		t.Errorf("Expected port '5222', got '%v'", status["c2s_port"])
 	}
 
 	if status["sessions"] != 0 {
@@ -86,7 +86,7 @@ func TestGetXMPPStatus(t *testing.T) {
 
 // TestXMPPServerStop tests graceful shutdown
 func TestXMPPServerStop(t *testing.T) {
-	server := NewXMPPServer("test.example.com", "5222")
+	server := NewXMPPServer("test.example.com", "5222", "5269")
 
 	// Stop should not error even if listener is nil
 	err := server.Stop()

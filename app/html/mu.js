@@ -1067,7 +1067,27 @@ function renderMarkdown(text) {
 }
 
 function updateUserList(users) {
-  // Disabled - was causing layout shifts on mobile
+  var container = document.getElementById('chat-users');
+  if (!container) {
+    // Create the user list container if it doesn't exist
+    var messagesDiv = document.getElementById('messages');
+    if (!messagesDiv) return;
+    container = document.createElement('div');
+    container.id = 'chat-users';
+    container.style.cssText = 'font-size:13px;color:#666;padding:4px 0 8px;';
+    messagesDiv.parentNode.insertBefore(container, messagesDiv);
+  }
+  if (!users || users.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  var parts = users.map(function(u) {
+    if (u === 'micro') {
+      return '<span style="color:#007bff;">@micro</span>';
+    }
+    return '<a href="/chat?mode=messages&compose=true&to=' + encodeURIComponent(u) + '" title="Send DM" style="color:#555;text-decoration:none;">@' + u + '</a>';
+  });
+  container.innerHTML = '<span style="color:#999;">In room: </span>' + parts.join(' &nbsp;');
 }
 
 function sendRoomMessage(form) {
@@ -1245,17 +1265,21 @@ function updatePresenceDisplay(users, count) {
   const presenceContent = document.getElementById('presence-content');
   if (!presenceContent) return;
   
+  function makeUserLink(u) {
+    return '<a href="/@' + u + '" title="View profile" style="color: inherit;">@' + u + '</a>' +
+           '&thinsp;<a href="/chat?mode=messages&compose=true&to=' + encodeURIComponent(u) + '" title="Send DM" style="color:#007bff;font-size:11px;text-decoration:none;">✉</a>';
+  }
+
   if (count === 0) {
     presenceContent.innerHTML = '<span class="info">No one else is here right now</span>';
   } else if (count === 1) {
-    const userLink = '<a href="/@' + users[0] + '" style="color: inherit;">@' + users[0] + '</a>';
-    presenceContent.innerHTML = userLink + ' is here';
+    presenceContent.innerHTML = makeUserLink(users[0]) + ' is here';
   } else if (count <= 5) {
-    const userLinks = users.map(u => '<a href="/@' + u + '" style="color: inherit;">@' + u + '</a>').join(', ');
+    const userLinks = users.map(makeUserLink).join(', ');
     presenceContent.innerHTML = userLinks + ' are here';
   } else {
     // Show first 3 users and count of others
-    const firstThree = users.slice(0, 3).map(u => '<a href="/@' + u + '" style="color: inherit;">@' + u + '</a>').join(', ');
+    const firstThree = users.slice(0, 3).map(makeUserLink).join(', ');
     presenceContent.innerHTML = firstThree + ' and ' + (count - 3) + ' others are here';
   }
 }
