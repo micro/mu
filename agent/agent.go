@@ -209,6 +209,7 @@ func sse(w http.ResponseWriter, event map[string]any) {
 const agentToolsDesc = `Available tools (use exact name):
 - news: Get latest news feed (no args)
 - news_search: Search news articles (args: {"query":"search term"})
+- web_search: Search the web for current information (args: {"query":"search term"})
 - video_search: Search for videos (args: {"query":"search term"})
 - markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
@@ -384,6 +385,8 @@ func toolLabel(tool string) string {
 		return "📰 Reading latest news"
 	case "news_search":
 		return "🔍 Searching news"
+	case "web_search":
+		return "🌐 Searching the web"
 	case "video_search":
 		return "🎬 Searching videos"
 	case "markets":
