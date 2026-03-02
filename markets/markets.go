@@ -33,16 +33,16 @@ var (
 
 // cryptoGeckoIDs maps ticker symbols to CoinGecko asset IDs
 var cryptoGeckoIDs = map[string]string{
-	"BTC":   "bitcoin",
-	"ETH":   "ethereum",
-	"UNI":   "uniswap",
-	"PAXG":  "pax-gold",
-	"SOL":   "solana",
-	"ADA":   "cardano",
-	"DOT":   "polkadot",
-	"LINK":  "chainlink",
-	"POL":   "polygon-ecosystem-token",
-	"AVAX":  "avalanche-2",
+	"BTC":  "bitcoin",
+	"ETH":  "ethereum",
+	"UNI":  "uniswap",
+	"PAXG": "pax-gold",
+	"SOL":  "solana",
+	"ADA":  "cardano",
+	"DOT":  "polkadot",
+	"LINK": "chainlink",
+	"POL":  "polygon-ecosystem-token",
+	"AVAX": "avalanche-2",
 }
 
 var tickers = []string{"UNI", "ETH", "BTC", "PAXG"}
@@ -364,16 +364,16 @@ var forexSymbols = map[string]string{
 // chartLinks maps asset symbols to their chart URLs
 var chartLinks = map[string]string{
 	// Crypto → CoinGecko charts
-	"BTC":   "https://www.coingecko.com/en/coins/bitcoin",
-	"ETH":   "https://www.coingecko.com/en/coins/ethereum",
-	"UNI":   "https://www.coingecko.com/en/coins/uniswap",
-	"PAXG":  "https://www.coingecko.com/en/coins/pax-gold",
-	"SOL":   "https://www.coingecko.com/en/coins/solana",
-	"ADA":   "https://www.coingecko.com/en/coins/cardano",
-	"DOT":   "https://www.coingecko.com/en/coins/polkadot",
-	"LINK":  "https://www.coingecko.com/en/coins/chainlink",
-	"POL":   "https://www.coingecko.com/en/coins/polygon",
-	"AVAX":  "https://www.coingecko.com/en/coins/avalanche",
+	"BTC":  "https://www.coingecko.com/en/coins/bitcoin",
+	"ETH":  "https://www.coingecko.com/en/coins/ethereum",
+	"UNI":  "https://www.coingecko.com/en/coins/uniswap",
+	"PAXG": "https://www.coingecko.com/en/coins/pax-gold",
+	"SOL":  "https://www.coingecko.com/en/coins/solana",
+	"ADA":  "https://www.coingecko.com/en/coins/cardano",
+	"DOT":  "https://www.coingecko.com/en/coins/polkadot",
+	"LINK": "https://www.coingecko.com/en/coins/chainlink",
+	"POL":  "https://www.coingecko.com/en/coins/polygon",
+	"AVAX": "https://www.coingecko.com/en/coins/avalanche",
 	// Futures/Commodities → Yahoo Finance charts
 	"OIL":      "https://finance.yahoo.com/chart/CL%3DF",
 	"GOLD":     "https://finance.yahoo.com/chart/GC%3DF",

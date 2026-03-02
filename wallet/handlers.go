@@ -300,6 +300,7 @@ func renderStripeDeposit(userID, errMsg string) string {
 
 // maxTopupPounds is the maximum allowed top-up amount in whole pounds
 const maxTopupPounds = 500
+
 type TopupMethod struct {
 	Type  string            `json:"type"`            // "card"
 	Tiers []StripeTopupTier `json:"tiers,omitempty"` // For card/Stripe

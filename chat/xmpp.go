@@ -56,17 +56,17 @@ type XMPPServer struct {
 
 // XMPPSession represents a client connection
 type XMPPSession struct {
-	conn          net.Conn
-	jid           string // Full JID (user@domain/resource)
-	username      string
-	resource      string
-	domain        string
-	authorized    bool
-	encrypted     bool
-	encoder       *xml.Encoder
-	decoder       *xml.Decoder
-	mutex         sync.Mutex
-	offlineQueue  []*Message // Offline message queue
+	conn         net.Conn
+	jid          string // Full JID (user@domain/resource)
+	username     string
+	resource     string
+	domain       string
+	authorized   bool
+	encrypted    bool
+	encoder      *xml.Encoder
+	decoder      *xml.Decoder
+	mutex        sync.Mutex
+	offlineQueue []*Message // Offline message queue
 }
 
 // S2SSession represents a server-to-server connection
@@ -84,22 +84,22 @@ type S2SSession struct {
 
 // MUCRoom represents a multi-user chat room
 type MUCRoom struct {
-	JID          string
-	Name         string
-	Subject      string
-	Occupants    map[string]*MUCOccupant
-	Persistent   bool
-	CreatedAt    time.Time
-	mutex        sync.RWMutex
+	JID        string
+	Name       string
+	Subject    string
+	Occupants  map[string]*MUCOccupant
+	Persistent bool
+	CreatedAt  time.Time
+	mutex      sync.RWMutex
 }
 
 // MUCOccupant represents a user in a MUC room
 type MUCOccupant struct {
-	JID      string
-	Nick     string
-	Role     string // moderator, participant, visitor
+	JID         string
+	Nick        string
+	Role        string // moderator, participant, visitor
 	Affiliation string // owner, admin, member, none
-	session  *XMPPSession
+	session     *XMPPSession
 }
 
 // OfflineMessage represents a stored message for offline delivery
@@ -123,12 +123,12 @@ type StreamStart struct {
 }
 
 type StreamFeatures struct {
-	XMLName    xml.Name `xml:"stream:features"`
-	StartTLS   *struct {
-		XMLName  xml.Name `xml:"urn:ietf:params:xml:ns:xmpp-tls starttls"`
+	XMLName  xml.Name `xml:"stream:features"`
+	StartTLS *struct {
+		XMLName  xml.Name  `xml:"urn:ietf:params:xml:ns:xmpp-tls starttls"`
 		Required *struct{} `xml:"required,omitempty"`
 	} `xml:"starttls,omitempty"`
-	Mechanisms []string `xml:"mechanisms>mechanism,omitempty"`
+	Mechanisms []string  `xml:"mechanisms>mechanism,omitempty"`
 	Bind       *struct{} `xml:"bind,omitempty"`
 	Session    *struct{} `xml:"session,omitempty"`
 }
@@ -200,10 +200,10 @@ type Presence struct {
 // NewXMPPServer creates a new XMPP server instance
 func NewXMPPServer(domain, port, s2sPort string) *XMPPServer {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Load TLS configuration if certificates are available
 	tlsConfig := loadTLSConfig(domain)
-	
+
 	return &XMPPServer{
 		Domain:      domain,
 		Port:        port,
@@ -221,27 +221,27 @@ func NewXMPPServer(domain, port, s2sPort string) *XMPPServer {
 func loadTLSConfig(domain string) *tls.Config {
 	certFile := os.Getenv("XMPP_CERT_FILE")
 	keyFile := os.Getenv("XMPP_KEY_FILE")
-	
+
 	if certFile == "" || keyFile == "" {
 		// Try default paths
 		certFile = fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", domain)
 		keyFile = fmt.Sprintf("/etc/letsencrypt/live/%s/privkey.pem", domain)
 	}
-	
+
 	// Check if certificate files exist
 	if _, err := os.Stat(certFile); os.IsNotExist(err) {
 		app.Log("xmpp", "TLS certificate not found at %s - TLS disabled", certFile)
 		return nil
 	}
-	
+
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		app.Log("xmpp", "Failed to load TLS certificates: %v - TLS disabled", err)
 		return nil
 	}
-	
+
 	app.Log("xmpp", "TLS certificates loaded successfully")
-	
+
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		ServerName:   domain,
@@ -257,10 +257,10 @@ func (s *XMPPServer) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to start XMPP C2S server: %v", err)
 	}
-	
+
 	s.listener = listener
 	app.Log("xmpp", "XMPP C2S server listening on %s (domain: %s)", addr, s.Domain)
-	
+
 	// Start S2S (Server-to-Server) listener if port is configured
 	if s.S2SPort != "" {
 		s2sAddr := ":" + s.S2SPort
@@ -273,19 +273,19 @@ func (s *XMPPServer) Start() error {
 			go s.acceptS2SConnections()
 		}
 	}
-	
+
 	if s.tlsConfig != nil {
 		app.Log("xmpp", "STARTTLS enabled")
 	} else {
 		app.Log("xmpp", "WARNING: TLS not configured - connections will be unencrypted")
 	}
-	
+
 	// Accept C2S connections
 	go s.acceptConnections()
-	
+
 	// Start offline message delivery worker
 	go s.processOfflineMessages()
-	
+
 	return nil
 }
 
@@ -381,22 +381,22 @@ from='%s' id='%s' version='1.0'>`, s.Domain, streamID)
 
 	// Send stream features
 	features := StreamFeatures{}
-	
+
 	// Offer STARTTLS if TLS is configured and not yet encrypted
 	if s.tlsConfig != nil && !session.encrypted {
 		features.StartTLS = &struct {
-			XMLName  xml.Name `xml:"urn:ietf:params:xml:ns:xmpp-tls starttls"`
+			XMLName  xml.Name  `xml:"urn:ietf:params:xml:ns:xmpp-tls starttls"`
 			Required *struct{} `xml:"required,omitempty"`
 		}{
 			Required: &struct{}{}, // Make TLS required
 		}
 	}
-	
+
 	// Offer SASL mechanisms only after TLS or if TLS not available
 	if session.encrypted || s.tlsConfig == nil {
 		features.Mechanisms = []string{"PLAIN"}
 	}
-	
+
 	// Offer resource binding and session after authentication
 	if session.authorized {
 		features.Bind = &struct{}{}
@@ -564,7 +564,7 @@ func (s *XMPPServer) handleIQ(session *XMPPSession, start xml.StartElement) {
 		}
 
 		app.Log("xmpp", "User bound to JID: %s", session.jid)
-		
+
 		// Deliver any offline messages
 		go s.deliverOfflineMessages(session)
 	}
@@ -633,7 +633,7 @@ func (s *XMPPServer) routeMessage(msg *Message) {
 	if domain == s.Domain {
 		// Local delivery
 		username := parts[0]
-		
+
 		// Try to find online session for this user
 		s.mutex.RLock()
 		var targetSession *XMPPSession
@@ -665,18 +665,18 @@ func (s *XMPPServer) routeMessage(msg *Message) {
 	} else {
 		// Remote delivery via S2S (Server-to-Server)
 		app.Log("xmpp", "Routing message to remote domain: %s", domain)
-		
+
 		// Try to get or establish S2S connection
 		s2sSession, err := s.dialS2S(domain)
 		if err != nil {
 			app.Log("xmpp", "Failed to establish S2S connection to %s: %v", domain, err)
 			return
 		}
-		
+
 		// Send message over S2S connection
 		s2sSession.mutex.Lock()
 		defer s2sSession.mutex.Unlock()
-		
+
 		if err := s2sSession.encoder.Encode(msg); err != nil {
 			app.Log("xmpp", "Failed to send S2S message to %s: %v", domain, err)
 		} else {
@@ -716,24 +716,24 @@ func (s *XMPPServer) handleStartTLS(session *XMPPSession) error {
 		}
 		return fmt.Errorf("TLS not configured")
 	}
-	
+
 	// Send TLS proceed
 	if err := session.encoder.Encode(&TLSProceed{}); err != nil {
 		return fmt.Errorf("failed to send TLS proceed: %v", err)
 	}
-	
+
 	// Upgrade connection to TLS
 	tlsConn := tls.Server(session.conn, s.tlsConfig)
 	if err := tlsConn.Handshake(); err != nil {
 		return fmt.Errorf("TLS handshake failed: %v", err)
 	}
-	
+
 	// Update session connection and IO
 	session.conn = tlsConn
 	session.encrypted = true
 	session.encoder = xml.NewEncoder(tlsConn)
 	session.decoder = xml.NewDecoder(tlsConn)
-	
+
 	app.Log("xmpp", "TLS negotiation successful")
 	return nil
 }
@@ -741,17 +741,17 @@ func (s *XMPPServer) handleStartTLS(session *XMPPSession) error {
 // handleS2SConnection processes a server-to-server connection
 func (s *XMPPServer) handleS2SConnection(conn net.Conn, outbound bool) {
 	defer conn.Close()
-	
+
 	s2sSession := &S2SSession{
 		conn:     conn,
 		encoder:  xml.NewEncoder(conn),
 		decoder:  xml.NewDecoder(conn),
 		outbound: outbound,
 	}
-	
+
 	remoteAddr := conn.RemoteAddr().String()
 	app.Log("xmpp", "New S2S connection from %s (outbound: %v)", remoteAddr, outbound)
-	
+
 	// S2S stream negotiation (simplified - full implementation would use dialback)
 	// For now, just log that we received an S2S connection
 	if !outbound {
@@ -761,32 +761,32 @@ func (s *XMPPServer) handleS2SConnection(conn net.Conn, outbound bool) {
 			app.Log("xmpp", "S2S stream start failed: %v", err)
 			return
 		}
-		
+
 		s2sSession.remoteDomain = streamStart.From
-		
+
 		// Send stream response
 		streamID := generateStreamID()
 		response := fmt.Sprintf(`<?xml version='1.0'?>
 <stream:stream xmlns='jabber:server' xmlns:stream='http://etherx.jabber.org/streams' 
-xmlns:db='jabber:server:dialback' from='%s' to='%s' id='%s' version='1.0'>`, 
+xmlns:db='jabber:server:dialback' from='%s' to='%s' id='%s' version='1.0'>`,
 			s.Domain, s2sSession.remoteDomain, streamID)
-		
+
 		if _, err := conn.Write([]byte(response)); err != nil {
 			app.Log("xmpp", "Failed to send S2S stream header: %v", err)
 			return
 		}
-		
+
 		// For now, mark as authenticated (in production, would do dialback)
 		s2sSession.authenticated = true
 		s2sSession.domain = s.Domain
-		
+
 		// Store S2S session
 		s.mutex.Lock()
 		s.s2sSessions[s2sSession.remoteDomain] = s2sSession
 		s.mutex.Unlock()
-		
+
 		app.Log("xmpp", "S2S session established with %s", s2sSession.remoteDomain)
-		
+
 		// Handle S2S stanzas (simplified)
 		s.handleS2SStanzas(s2sSession)
 	}
@@ -802,7 +802,7 @@ func (s *XMPPServer) handleS2SStanzas(session *S2SSession) {
 			}
 			return
 		}
-		
+
 		switch t := token.(type) {
 		case xml.StartElement:
 			switch t.Name.Local {
@@ -829,20 +829,20 @@ func (s *XMPPServer) dialS2S(domain string) (*S2SSession, error) {
 	s.mutex.RLock()
 	existing, ok := s.s2sSessions[domain]
 	s.mutex.RUnlock()
-	
+
 	if ok && existing.authenticated {
 		return existing, nil
 	}
-	
+
 	// Lookup SRV record for xmpp-server
 	// For now, just try port 5269
 	addr := domain + ":5269"
-	
+
 	conn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to %s: %v", domain, err)
 	}
-	
+
 	s2sSession := &S2SSession{
 		conn:         conn,
 		domain:       s.Domain,
@@ -851,31 +851,31 @@ func (s *XMPPServer) dialS2S(domain string) (*S2SSession, error) {
 		decoder:      xml.NewDecoder(conn),
 		outbound:     true,
 	}
-	
+
 	// Send stream header
 	streamHeader := fmt.Sprintf(`<?xml version='1.0'?>
 <stream:stream xmlns='jabber:server' xmlns:stream='http://etherx.jabber.org/streams' 
 from='%s' to='%s' version='1.0'>`, s.Domain, domain)
-	
+
 	if _, err := conn.Write([]byte(streamHeader)); err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("failed to send S2S stream header: %v", err)
 	}
-	
+
 	// For simplified implementation, mark as authenticated
 	// Full implementation would do dialback or SASL EXTERNAL
 	s2sSession.authenticated = true
-	
+
 	// Store session
 	s.mutex.Lock()
 	s.s2sSessions[domain] = s2sSession
 	s.mutex.Unlock()
-	
+
 	// Start handling stanzas in background
 	go s.handleS2SStanzas(s2sSession)
-	
+
 	app.Log("xmpp", "Outbound S2S connection established to %s", domain)
-	
+
 	return s2sSession, nil
 }
 
@@ -887,7 +887,7 @@ func (s *XMPPServer) saveOfflineMessage(msg *Message) {
 		return
 	}
 	username := parts[0]
-	
+
 	offlineMsg := OfflineMessage{
 		ID:        generateStreamID(),
 		From:      msg.From,
@@ -896,16 +896,16 @@ func (s *XMPPServer) saveOfflineMessage(msg *Message) {
 		Timestamp: time.Now(),
 		Type:      msg.Type,
 	}
-	
+
 	// Load existing offline messages
 	var messages []OfflineMessage
 	if b, err := data.LoadFile(fmt.Sprintf("xmpp_offline_%s.json", username)); err == nil {
 		json.Unmarshal(b, &messages)
 	}
-	
+
 	// Append new message
 	messages = append(messages, offlineMsg)
-	
+
 	// Save back
 	if b, err := json.Marshal(messages); err == nil {
 		data.SaveFile(fmt.Sprintf("xmpp_offline_%s.json", username), string(b))
@@ -918,7 +918,7 @@ func (s *XMPPServer) deliverOfflineMessages(session *XMPPSession) {
 	if session.username == "" {
 		return
 	}
-	
+
 	// Load offline messages
 	var messages []OfflineMessage
 	filename := fmt.Sprintf("xmpp_offline_%s.json", session.username)
@@ -927,17 +927,17 @@ func (s *XMPPServer) deliverOfflineMessages(session *XMPPSession) {
 			return
 		}
 	}
-	
+
 	if len(messages) == 0 {
 		return
 	}
-	
+
 	app.Log("xmpp", "Delivering %d offline messages to %s", len(messages), session.jid)
-	
+
 	// Deliver each message
 	session.mutex.Lock()
 	defer session.mutex.Unlock()
-	
+
 	for _, offlineMsg := range messages {
 		msg := &Message{
 			Type: offlineMsg.Type,
@@ -946,12 +946,12 @@ func (s *XMPPServer) deliverOfflineMessages(session *XMPPSession) {
 			ID:   offlineMsg.ID,
 			Body: offlineMsg.Body,
 		}
-		
+
 		if err := session.encoder.Encode(msg); err != nil {
 			app.Log("xmpp", "Failed to deliver offline message: %v", err)
 		}
 	}
-	
+
 	// Clear offline messages after delivery
 	data.SaveFile(filename, "[]")
 }
@@ -960,7 +960,7 @@ func (s *XMPPServer) deliverOfflineMessages(session *XMPPSession) {
 func (s *XMPPServer) processOfflineMessages() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -982,11 +982,11 @@ func (s *XMPPServer) processOfflineMessages() {
 func (s *XMPPServer) createRoom(roomJID, creator string) *MUCRoom {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	if room, exists := s.rooms[roomJID]; exists {
 		return room
 	}
-	
+
 	room := &MUCRoom{
 		JID:        roomJID,
 		Name:       strings.Split(roomJID, "@")[0],
@@ -994,10 +994,10 @@ func (s *XMPPServer) createRoom(roomJID, creator string) *MUCRoom {
 		Persistent: true,
 		CreatedAt:  time.Now(),
 	}
-	
+
 	s.rooms[roomJID] = room
 	app.Log("xmpp", "Created MUC room: %s", roomJID)
-	
+
 	return room
 }
 
@@ -1006,15 +1006,15 @@ func (s *XMPPServer) joinRoom(roomJID, userJID, nick string, session *XMPPSessio
 	s.mutex.RLock()
 	room, exists := s.rooms[roomJID]
 	s.mutex.RUnlock()
-	
+
 	if !exists {
 		// Auto-create room
 		room = s.createRoom(roomJID, userJID)
 	}
-	
+
 	room.mutex.Lock()
 	defer room.mutex.Unlock()
-	
+
 	occupant := &MUCOccupant{
 		JID:         userJID,
 		Nick:        nick,
@@ -1022,18 +1022,18 @@ func (s *XMPPServer) joinRoom(roomJID, userJID, nick string, session *XMPPSessio
 		Affiliation: "member",
 		session:     session,
 	}
-	
+
 	room.Occupants[nick] = occupant
-	
+
 	// Broadcast presence to room
 	s.broadcastToRoom(room, &Presence{
 		From: roomJID + "/" + nick,
 		To:   userJID,
 		Type: "",
 	})
-	
+
 	app.Log("xmpp", "User %s joined room %s as %s", userJID, roomJID, nick)
-	
+
 	return nil
 }
 
@@ -1041,7 +1041,7 @@ func (s *XMPPServer) joinRoom(roomJID, userJID, nick string, session *XMPPSessio
 func (s *XMPPServer) broadcastToRoom(room *MUCRoom, stanza interface{}) {
 	room.mutex.RLock()
 	defer room.mutex.RUnlock()
-	
+
 	for _, occupant := range room.Occupants {
 		if occupant.session != nil {
 			occupant.session.mutex.Lock()
@@ -1078,7 +1078,7 @@ func StartXMPPServer() error {
 	if port == "" {
 		port = "5222" // Standard XMPP client-to-server port
 	}
-	
+
 	s2sPort := os.Getenv("XMPP_S2S_PORT")
 	if s2sPort == "" {
 		s2sPort = "5269" // Standard XMPP server-to-server port

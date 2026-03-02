@@ -114,8 +114,8 @@ type ChatMessage struct {
 	ToID      string    `json:"to_id"`   // Recipient account ID
 	Body      string    `json:"body"`
 	Read      bool      `json:"read"`
-	ReplyTo   string    `json:"reply_to"`   // ID of message this is replying to
-	ThreadID  string    `json:"thread_id"`  // Root message ID for O(1) thread grouping
+	ReplyTo   string    `json:"reply_to"`  // ID of message this is replying to
+	ThreadID  string    `json:"thread_id"` // Root message ID for O(1) thread grouping
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -130,7 +130,7 @@ type ChatThread struct {
 // ChatInbox organizes messages by thread for a user
 type ChatInbox struct {
 	Threads     map[string]*ChatThread // threadID -> Thread
-	UnreadCount int                     // Cached unread message count
+	UnreadCount int                    // Cached unread message count
 }
 
 // stored direct messages
@@ -1272,12 +1272,12 @@ func generateSummaries() {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Check mode parameter - "messages" for direct messaging, default is AI chat
 	mode := r.URL.Query().Get("mode")
-	
+
 	if mode == "messages" {
 		handleMessagesMode(w, r)
 		return
 	}
-	
+
 	// Check if this is a room-based chat (e.g., /chat?id=post_123)
 	roomID := r.URL.Query().Get("id")
 
@@ -1392,12 +1392,12 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	roomJSON, _ := json.Marshal(roomData)
 
 	tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
-	
+
 	// Add a link to messages mode
 	messagesLink := `<div style="margin: 15px 0; padding: 10px; background: #f0f8ff; border-left: 3px solid #007bff; border-radius: 4px;">
 		<p style="margin: 0;"><strong>💬 New:</strong> <a href="/chat?mode=messages" style="color: #007bff; text-decoration: underline;">Direct Messaging</a> - Send messages to other users or chat with @micro (AI assistant)</p>
 	</div>`
-	
+
 	tmpl = strings.Replace(tmpl, `<div id="topic-selector">`, messagesLink+`<div id="topic-selector">`, 1)
 	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var roomData = %s;</script></body>`, summariesJSON, roomJSON), 1)
 
@@ -1715,250 +1715,250 @@ func cleanupIdleRooms() {
 
 // loadChatMessages loads chat messages from disk
 func loadChatMessages() {
-b, err := data.LoadFile("chat_messages.json")
-if err != nil {
-chatMessages = []*ChatMessage{}
-chatInboxes = make(map[string]*ChatInbox)
-return
-}
+	b, err := data.LoadFile("chat_messages.json")
+	if err != nil {
+		chatMessages = []*ChatMessage{}
+		chatInboxes = make(map[string]*ChatInbox)
+		return
+	}
 
-if err := json.Unmarshal(b, &chatMessages); err != nil {
-chatMessages = []*ChatMessage{}
-chatInboxes = make(map[string]*ChatInbox)
-return
-}
+	if err := json.Unmarshal(b, &chatMessages); err != nil {
+		chatMessages = []*ChatMessage{}
+		chatInboxes = make(map[string]*ChatInbox)
+		return
+	}
 
-app.Log("chat", "Loaded %d chat messages", len(chatMessages))
-fixChatThreading()
-rebuildChatInboxes()
+	app.Log("chat", "Loaded %d chat messages", len(chatMessages))
+	fixChatThreading()
+	rebuildChatInboxes()
 }
 
 // saveChatMessages saves chat messages to disk
 func saveChatMessages() error {
-chatMessagesMutex.RLock()
-defer chatMessagesMutex.RUnlock()
+	chatMessagesMutex.RLock()
+	defer chatMessagesMutex.RUnlock()
 
-b, err := json.Marshal(chatMessages)
-if err != nil {
-return err
-}
+	b, err := json.Marshal(chatMessages)
+	if err != nil {
+		return err
+	}
 
-return data.SaveFile("chat_messages.json", string(b))
+	return data.SaveFile("chat_messages.json", string(b))
 }
 
 // fixChatThreading repairs broken threading relationships
 func fixChatThreading() {
-fixed := 0
+	fixed := 0
 
-for _, msg := range chatMessages {
-if msg.ReplyTo == "" {
-continue
-}
+	for _, msg := range chatMessages {
+		if msg.ReplyTo == "" {
+			continue
+		}
 
-if getChatMessageUnlocked(msg.ReplyTo) == nil {
-app.Log("chat", "Message %s has missing parent %s - marking as root", msg.ID, msg.ReplyTo)
-msg.ReplyTo = ""
-fixed++
-}
-}
+		if getChatMessageUnlocked(msg.ReplyTo) == nil {
+			app.Log("chat", "Message %s has missing parent %s - marking as root", msg.ID, msg.ReplyTo)
+			msg.ReplyTo = ""
+			fixed++
+		}
+	}
 
-for _, msg := range chatMessages {
-threadID := computeChatThreadID(msg)
-if msg.ThreadID != threadID {
-msg.ThreadID = threadID
-fixed++
-}
-}
+	for _, msg := range chatMessages {
+		threadID := computeChatThreadID(msg)
+		if msg.ThreadID != threadID {
+			msg.ThreadID = threadID
+			fixed++
+		}
+	}
 
-if fixed > 0 {
-app.Log("chat", "Fixed threading for %d messages", fixed)
-saveChatMessages()
-}
+	if fixed > 0 {
+		app.Log("chat", "Fixed threading for %d messages", fixed)
+		saveChatMessages()
+	}
 }
 
 // computeChatThreadID walks up the chain to find the root message ID
 func computeChatThreadID(msg *ChatMessage) string {
-if msg.ReplyTo == "" {
-return msg.ID
-}
+	if msg.ReplyTo == "" {
+		return msg.ID
+	}
 
-visited := make(map[string]bool)
-current := msg
-for current.ReplyTo != "" && !visited[current.ID] {
-visited[current.ID] = true
-parent := getChatMessageUnlocked(current.ReplyTo)
-if parent == nil {
-return current.ID
-}
-current = parent
-}
+	visited := make(map[string]bool)
+	current := msg
+	for current.ReplyTo != "" && !visited[current.ID] {
+		visited[current.ID] = true
+		parent := getChatMessageUnlocked(current.ReplyTo)
+		if parent == nil {
+			return current.ID
+		}
+		current = parent
+	}
 
-return current.ID
+	return current.ID
 }
 
 // getChatMessageUnlocked returns message by ID (caller must hold lock)
 func getChatMessageUnlocked(id string) *ChatMessage {
-for _, m := range chatMessages {
-if m.ID == id {
-return m
-}
-}
-return nil
+	for _, m := range chatMessages {
+		if m.ID == id {
+			return m
+		}
+	}
+	return nil
 }
 
 // rebuildChatInboxes builds inbox structures from messages
 func rebuildChatInboxes() {
-chatInboxes = make(map[string]*ChatInbox)
+	chatInboxes = make(map[string]*ChatInbox)
 
-for _, msg := range chatMessages {
-// Add to sender's inbox (sent messages)
-if _, exists := chatInboxes[msg.FromID]; !exists {
-chatInboxes[msg.FromID] = &ChatInbox{
-Threads:     make(map[string]*ChatThread),
-UnreadCount: 0,
-}
-}
+	for _, msg := range chatMessages {
+		// Add to sender's inbox (sent messages)
+		if _, exists := chatInboxes[msg.FromID]; !exists {
+			chatInboxes[msg.FromID] = &ChatInbox{
+				Threads:     make(map[string]*ChatThread),
+				UnreadCount: 0,
+			}
+		}
 
-// Add to recipient's inbox (received messages)
-if _, exists := chatInboxes[msg.ToID]; !exists {
-chatInboxes[msg.ToID] = &ChatInbox{
-Threads:     make(map[string]*ChatThread),
-UnreadCount: 0,
-}
-}
+		// Add to recipient's inbox (received messages)
+		if _, exists := chatInboxes[msg.ToID]; !exists {
+			chatInboxes[msg.ToID] = &ChatInbox{
+				Threads:     make(map[string]*ChatThread),
+				UnreadCount: 0,
+			}
+		}
 
-addChatMessageToInbox(chatInboxes[msg.FromID], msg, msg.FromID)
-addChatMessageToInbox(chatInboxes[msg.ToID], msg, msg.ToID)
-}
+		addChatMessageToInbox(chatInboxes[msg.FromID], msg, msg.FromID)
+		addChatMessageToInbox(chatInboxes[msg.ToID], msg, msg.ToID)
+	}
 }
 
 // addChatMessageToInbox adds a message to an inbox
 func addChatMessageToInbox(inbox *ChatInbox, msg *ChatMessage, userID string) {
-threadID := msg.ThreadID
-if threadID == "" {
-threadID = computeChatThreadID(msg)
-if threadID == "" {
-threadID = msg.ID
-}
-}
+	threadID := msg.ThreadID
+	if threadID == "" {
+		threadID = computeChatThreadID(msg)
+		if threadID == "" {
+			threadID = msg.ID
+		}
+	}
 
-isUnread := !msg.Read && msg.ToID == userID
-thread := inbox.Threads[threadID]
-if thread == nil {
-rootMsg := getChatMessageUnlocked(threadID)
-if rootMsg == nil {
-rootMsg = msg
-}
-thread = &ChatThread{
-Root:      rootMsg,
-Messages:  []*ChatMessage{msg},
-Latest:    msg,
-HasUnread: isUnread,
-}
-inbox.Threads[threadID] = thread
-if isUnread {
-inbox.UnreadCount++
-}
-} else {
-thread.Messages = append(thread.Messages, msg)
-if msg.CreatedAt.After(thread.Latest.CreatedAt) {
-thread.Latest = msg
-}
-if isUnread {
-thread.HasUnread = true
-inbox.UnreadCount++
-}
-}
+	isUnread := !msg.Read && msg.ToID == userID
+	thread := inbox.Threads[threadID]
+	if thread == nil {
+		rootMsg := getChatMessageUnlocked(threadID)
+		if rootMsg == nil {
+			rootMsg = msg
+		}
+		thread = &ChatThread{
+			Root:      rootMsg,
+			Messages:  []*ChatMessage{msg},
+			Latest:    msg,
+			HasUnread: isUnread,
+		}
+		inbox.Threads[threadID] = thread
+		if isUnread {
+			inbox.UnreadCount++
+		}
+	} else {
+		thread.Messages = append(thread.Messages, msg)
+		if msg.CreatedAt.After(thread.Latest.CreatedAt) {
+			thread.Latest = msg
+		}
+		if isUnread {
+			thread.HasUnread = true
+			inbox.UnreadCount++
+		}
+	}
 }
 
 // SendChatMessage creates and stores a new chat message
 func SendChatMessage(fromName, fromID, toName, toID, body, replyTo string) error {
-chatMessagesMutex.Lock()
-defer chatMessagesMutex.Unlock()
+	chatMessagesMutex.Lock()
+	defer chatMessagesMutex.Unlock()
 
-msg := &ChatMessage{
-ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
-From:      fromName,
-FromID:    fromID,
-To:        toName,
-ToID:      toID,
-Body:      body,
-Read:      false,
-ReplyTo:   replyTo,
-CreatedAt: time.Now(),
-}
+	msg := &ChatMessage{
+		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		From:      fromName,
+		FromID:    fromID,
+		To:        toName,
+		ToID:      toID,
+		Body:      body,
+		Read:      false,
+		ReplyTo:   replyTo,
+		CreatedAt: time.Now(),
+	}
 
-// Compute thread ID
-if replyTo != "" {
-parent := getChatMessageUnlocked(replyTo)
-if parent != nil {
-msg.ThreadID = computeChatThreadID(parent)
-} else {
-msg.ThreadID = msg.ID
-}
-} else {
-msg.ThreadID = msg.ID
-}
+	// Compute thread ID
+	if replyTo != "" {
+		parent := getChatMessageUnlocked(replyTo)
+		if parent != nil {
+			msg.ThreadID = computeChatThreadID(parent)
+		} else {
+			msg.ThreadID = msg.ID
+		}
+	} else {
+		msg.ThreadID = msg.ID
+	}
 
-chatMessages = append(chatMessages, msg)
+	chatMessages = append(chatMessages, msg)
 
-// Update inboxes
-if chatInboxes[fromID] == nil {
-chatInboxes[fromID] = &ChatInbox{
-Threads:     make(map[string]*ChatThread),
-UnreadCount: 0,
-}
-}
-if chatInboxes[toID] == nil {
-chatInboxes[toID] = &ChatInbox{
-Threads:     make(map[string]*ChatThread),
-UnreadCount: 0,
-}
-}
+	// Update inboxes
+	if chatInboxes[fromID] == nil {
+		chatInboxes[fromID] = &ChatInbox{
+			Threads:     make(map[string]*ChatThread),
+			UnreadCount: 0,
+		}
+	}
+	if chatInboxes[toID] == nil {
+		chatInboxes[toID] = &ChatInbox{
+			Threads:     make(map[string]*ChatThread),
+			UnreadCount: 0,
+		}
+	}
 
-addChatMessageToInbox(chatInboxes[fromID], msg, fromID)
-addChatMessageToInbox(chatInboxes[toID], msg, toID)
+	addChatMessageToInbox(chatInboxes[fromID], msg, fromID)
+	addChatMessageToInbox(chatInboxes[toID], msg, toID)
 
-app.Log("chat", "Sent message from %s to %s", fromName, toName)
+	app.Log("chat", "Sent message from %s to %s", fromName, toName)
 
-return saveChatMessages()
+	return saveChatMessages()
 }
 
 // GetChatInbox returns the inbox for a user
 func GetChatInbox(userID string) *ChatInbox {
-chatMessagesMutex.RLock()
-defer chatMessagesMutex.RUnlock()
+	chatMessagesMutex.RLock()
+	defer chatMessagesMutex.RUnlock()
 
-inbox := chatInboxes[userID]
-if inbox == nil {
-return &ChatInbox{
-Threads:     make(map[string]*ChatThread),
-UnreadCount: 0,
-}
-}
-return inbox
+	inbox := chatInboxes[userID]
+	if inbox == nil {
+		return &ChatInbox{
+			Threads:     make(map[string]*ChatThread),
+			UnreadCount: 0,
+		}
+	}
+	return inbox
 }
 
 // MarkChatMessageAsRead marks a message as read
 func MarkChatMessageAsRead(msgID, userID string) error {
-chatMessagesMutex.Lock()
-defer chatMessagesMutex.Unlock()
+	chatMessagesMutex.Lock()
+	defer chatMessagesMutex.Unlock()
 
-for _, msg := range chatMessages {
-if msg.ID == msgID && msg.ToID == userID && !msg.Read {
-msg.Read = true
+	for _, msg := range chatMessages {
+		if msg.ID == msgID && msg.ToID == userID && !msg.Read {
+			msg.Read = true
 
-// Update inbox unread count
-if inbox := chatInboxes[userID]; inbox != nil {
-inbox.UnreadCount--
-if inbox.UnreadCount < 0 {
-inbox.UnreadCount = 0
-}
-}
+			// Update inbox unread count
+			if inbox := chatInboxes[userID]; inbox != nil {
+				inbox.UnreadCount--
+				if inbox.UnreadCount < 0 {
+					inbox.UnreadCount = 0
+				}
+			}
 
-return saveChatMessages()
-}
-}
+			return saveChatMessages()
+		}
+	}
 
-return nil
+	return nil
 }
