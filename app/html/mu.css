@@ -2035,6 +2035,12 @@ a.highlight {
     white-space: nowrap;
     padding: 5px 0;
   }
+  #chat-clear {
+    position: static;
+    display: block;
+    text-align: right;
+    margin-top: 4px;
+  }
   
   /* Chat page adjustments */
   #messages {
