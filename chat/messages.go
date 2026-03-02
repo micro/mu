@@ -86,7 +86,9 @@ func handleMessagesMode(w http.ResponseWriter, r *http.Request) {
 
 			if err == nil && aiResp != "" {
 				wallet.ConsumeQuota(acc.ID, wallet.OpChatQuery)
-				SendChatMessage("micro", "micro", acc.Name, acc.ID, aiResp, userMsgID) //nolint:errcheck
+				if _, storeErr := SendChatMessage("micro", "micro", acc.Name, acc.ID, aiResp, userMsgID); storeErr != nil {
+					app.Log("chat", "Failed to store micro DM reply for %s: %v", acc.Name, storeErr)
+				}
 			}
 
 			// Redirect to the DM thread

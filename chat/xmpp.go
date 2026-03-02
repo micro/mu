@@ -23,7 +23,70 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// XMPP server implementation for chat federation
+// tlsCertStore caches a loaded TLS certificate and reloads it automatically
+// when the underlying files change (e.g. after a Let's Encrypt renewal).
+// GetCertificate is used as the tls.Config.GetCertificate callback so every
+// new STARTTLS handshake checks the on-disk mod-time before returning the cert.
+type tlsCertStore struct {
+	certFile string
+	keyFile  string
+	cert     *tls.Certificate
+	certMod  time.Time
+	keyMod   time.Time
+	mu       sync.RWMutex
+}
+
+// GetCertificate satisfies tls.Config.GetCertificate.
+// It returns the cached certificate unless either file has been modified,
+// in which case it reloads from disk. On reload failure it falls back to
+// the previously cached certificate so existing TLS service is not disrupted.
+func (cs *tlsCertStore) GetCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	certInfo, err := os.Stat(cs.certFile)
+	if err != nil {
+		return nil, fmt.Errorf("cert file inaccessible: %v", err)
+	}
+	keyInfo, err := os.Stat(cs.keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("key file inaccessible: %v", err)
+	}
+
+	cs.mu.RLock()
+	upToDate := cs.cert != nil &&
+		!certInfo.ModTime().After(cs.certMod) &&
+		!keyInfo.ModTime().After(cs.keyMod)
+	cached := cs.cert
+	cs.mu.RUnlock()
+
+	if upToDate {
+		return cached, nil
+	}
+
+	// Reload under write lock (double-check to avoid redundant reloads).
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	if cs.cert != nil &&
+		!certInfo.ModTime().After(cs.certMod) &&
+		!keyInfo.ModTime().After(cs.keyMod) {
+		return cs.cert, nil
+	}
+
+	newCert, err := tls.LoadX509KeyPair(cs.certFile, cs.keyFile)
+	if err != nil {
+		app.Log("xmpp", "TLS certificate reload failed: %v - keeping existing cert", err)
+		if cs.cert != nil {
+			return cs.cert, nil // keep serving with the old cert
+		}
+		return nil, err
+	}
+
+	cs.cert = &newCert
+	cs.certMod = certInfo.ModTime()
+	cs.keyMod = keyInfo.ModTime()
+	app.Log("xmpp", "TLS certificate reloaded (cert mtime: %s)", certInfo.ModTime().Format(time.RFC3339))
+	return cs.cert, nil
+}
+
 // Similar to mail/SMTP, this provides decentralized chat capability
 // Implements core XMPP (RFC 6120, 6121, 6122)
 // With full S2S federation, TLS, MUC, and offline messages
@@ -217,13 +280,16 @@ func NewXMPPServer(domain, port, s2sPort string) *XMPPServer {
 	}
 }
 
-// loadTLSConfig loads TLS certificates for XMPP
+// loadTLSConfig builds a *tls.Config whose GetCertificate callback reloads
+// the certificate from disk whenever the file modification time changes.
+// This allows Let's Encrypt (or any external CA) to renew the certificate
+// without restarting the XMPP server.
 func loadTLSConfig(domain string) *tls.Config {
 	certFile := os.Getenv("XMPP_CERT_FILE")
 	keyFile := os.Getenv("XMPP_KEY_FILE")
 
 	if certFile == "" || keyFile == "" {
-		// Try default paths
+		// Try default Let's Encrypt paths
 		certFile = fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", domain)
 		keyFile = fmt.Sprintf("/etc/letsencrypt/live/%s/privkey.pem", domain)
 	}
@@ -234,18 +300,23 @@ func loadTLSConfig(domain string) *tls.Config {
 		return nil
 	}
 
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
+	// Do an initial load to verify the key pair is valid before accepting connections.
+	if _, err := tls.LoadX509KeyPair(certFile, keyFile); err != nil {
 		app.Log("xmpp", "Failed to load TLS certificates: %v - TLS disabled", err)
 		return nil
 	}
 
-	app.Log("xmpp", "TLS certificates loaded successfully")
+	store := &tlsCertStore{
+		certFile: certFile,
+		keyFile:  keyFile,
+	}
+
+	app.Log("xmpp", "TLS certificates loaded (auto-reload on renewal enabled)")
 
 	return &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		ServerName:   domain,
-		MinVersion:   tls.VersionTLS12,
+		GetCertificate: store.GetCertificate,
+		ServerName:     domain,
+		MinVersion:     tls.VersionTLS12,
 	}
 }
 
