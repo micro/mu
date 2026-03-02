@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -209,7 +210,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 				html.EscapeString(result.Title) + `</a></div>`)
 			if result.Description != "" {
 				b.WriteString(`<p class="card-desc" style="margin:4px 0 0;">` +
-					html.EscapeString(result.Description) + `</p>`)
+					html.EscapeString(stripHTML(result.Description)) + `</p>`)
 			}
 			meta := html.EscapeString(result.URL)
 			if result.Age != "" {
@@ -239,6 +240,15 @@ func entryLink(entry *data.IndexEntry) string {
 	default:
 		return "/" + entry.Type
 	}
+}
+
+// htmlTagRe matches any HTML tag.
+var htmlTagRe = regexp.MustCompile(`<[^>]*>`)
+
+// stripHTML removes HTML tags from s and unescapes HTML entities.
+func stripHTML(s string) string {
+	s = htmlTagRe.ReplaceAllString(s, "")
+	return html.UnescapeString(s)
 }
 
 // truncate shortens s to at most max runes, appending "…" if truncated.
