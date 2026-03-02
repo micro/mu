@@ -99,7 +99,6 @@ Microblogging platform:
 ### Messaging (`mail/`)
 
 User-to-user messaging system:
-- **Internal Messages** - Direct user-to-user communication
 - **External Messages** - Delivered via SMTP protocol to external addresses
 - **SMTP Server** - Receives incoming messages from internet
 - **DKIM Signing** - Authenticates outbound messages
