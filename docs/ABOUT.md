@@ -38,6 +38,12 @@ Each feature does one thing well:
 - **News** — RSS feeds, chronological
 - **Video** — YouTube without ads or shorts
 - **Mail** — Private messaging & email
+- **Places** — Search and discover places on an ad-free map
+- **Weather** — Local weather forecasts without ads or tracking
+- **Markets** — Live crypto, futures and commodity prices
+- **Reminder** — Daily Islamic verse, hadith, and name of Allah
+- **Agent** — Conversational AI agent with access to all Mu tools
+- **Wallet** — Credits and card payments
 
 ### No Addiction Mechanics
 
@@ -63,6 +69,7 @@ Some features are enhanced with AI:
 - **Blog** — Auto-tag topics
 - **News** — Summarize articles
 - **Chat** — AI for discussions
+- **Agent** — Conversational AI with access to all Mu tools via MCP
 
 AI is a tool, not the product. It helps when useful, stays out of the way otherwise.
 

@@ -54,6 +54,8 @@ For self-hosted instances, replace `mu.xyz` with your domain.
 | `wallet_topup` | Get wallet topup payment methods | Free |
 | `markets` | Get live market prices | Free |
 | `reminder` | Get the daily Islamic reminder | Free |
+| `weather` | Get the weather forecast for a location | 1 credit |
+| `web_search` | Search the web for current information | 2 credits |
 
 ### Credits
 
