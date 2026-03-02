@@ -31,18 +31,17 @@ func StripeEnabled() bool {
 
 // StripeTopupTier represents a Stripe topup option
 type StripeTopupTier struct {
-	Amount   int    `json:"amount"`    // Price in pence (e.g., 500 = £5)
-	Credits  int    `json:"credits"`   // Credits received
-	Label    string `json:"label"`     // Display label
-	BonusPct int    `json:"bonus_pct"` // Bonus percentage
+	Amount  int    `json:"amount"`  // Price in pence (e.g., 500 = £5)
+	Credits int    `json:"credits"` // Credits received (equals Amount, flat rate)
+	Label   string `json:"label"`   // Display label
 }
 
-// StripeTopupTiers - available topup amounts for Stripe
+// StripeTopupTiers - preset topup amounts for Stripe
 var StripeTopupTiers = []StripeTopupTier{
-	{Amount: 500, Credits: 500, Label: "£5", BonusPct: 0},
-	{Amount: 1000, Credits: 1050, Label: "£10", BonusPct: 5},
-	{Amount: 2500, Credits: 2750, Label: "£25", BonusPct: 10},
-	{Amount: 5000, Credits: 5750, Label: "£50", BonusPct: 15},
+	{Amount: 500, Credits: 500, Label: "£5"},
+	{Amount: 1000, Credits: 1000, Label: "£10"},
+	{Amount: 2500, Credits: 2500, Label: "£25"},
+	{Amount: 5000, Credits: 5000, Label: "£50"},
 }
 
 // CreateCheckoutSession creates a Stripe Checkout Session for topup
@@ -51,17 +50,13 @@ func CreateCheckoutSession(userID string, amount int, successURL, cancelURL stri
 		return "", fmt.Errorf("stripe not configured")
 	}
 
-	// Find tier
-	var tier *StripeTopupTier
-	for i := range StripeTopupTiers {
-		if StripeTopupTiers[i].Amount == amount {
-			tier = &StripeTopupTiers[i]
-			break
-		}
+	if amount < 100 {
+		return "", fmt.Errorf("minimum top-up is £1")
 	}
-	if tier == nil {
-		return "", fmt.Errorf("invalid amount")
-	}
+
+	// Flat rate: 1 pence = 1 credit
+	credits := amount
+	label := fmt.Sprintf("£%d", amount/100)
 
 	// Build request body
 	data := map[string]interface{}{
@@ -74,8 +69,8 @@ func CreateCheckoutSession(userID string, amount int, successURL, cancelURL stri
 					"currency":    "gbp",
 					"unit_amount": amount,
 					"product_data": map[string]interface{}{
-						"name":        fmt.Sprintf("%d Credits", tier.Credits),
-						"description": fmt.Sprintf("Mu credits top-up (%s)", tier.Label),
+						"name":        fmt.Sprintf("%d Credits", credits),
+						"description": fmt.Sprintf("Mu credits top-up (%s)", label),
 					},
 				},
 				"quantity": 1,
@@ -83,7 +78,7 @@ func CreateCheckoutSession(userID string, amount int, successURL, cancelURL stri
 		},
 		"metadata": map[string]string{
 			"user_id": userID,
-			"credits": fmt.Sprintf("%d", tier.Credits),
+			"credits": fmt.Sprintf("%d", credits),
 		},
 	}
 
@@ -120,7 +115,7 @@ func CreateCheckoutSession(userID string, amount int, successURL, cancelURL stri
 		return "", err
 	}
 
-	app.Log("stripe", "created checkout session %s for user %s, %d credits", result.ID, userID, tier.Credits)
+	app.Log("stripe", "created checkout session %s for user %s, %d credits", result.ID, userID, credits)
 	return result.URL, nil
 }
 

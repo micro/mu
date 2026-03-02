@@ -19,7 +19,7 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 - **Video** - Watch YouTube without ads
 - **Mail** - Private messaging & email
 - **Places** - Discover places and points of interest near you
-- **Wallet** - Credits and crypto payments
+- **Wallet** - Credits and card payments
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
@@ -35,7 +35,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] Video - YouTube search
 - [x] Mail - Private messaging 
 - [x] Places - Location search
-- [x] Wallet - Crypto payments
+- [x] Wallet - Card payments
 - [ ] Services - Marketplace, etc
 
 ### AI Features
@@ -244,20 +244,7 @@ Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this.
 
 ## Payments
 
-Mu uses crypto for payments. No credit cards, no payment processors, no KYC.
-
-**Supported chains:**
-- Ethereum
-- Base
-- Arbitrum
-- Optimism
-
-**Supported tokens:**
-- ETH
-- USDC
-- Any ERC-20 token
-
-Each user gets a unique deposit address. Send crypto, get credits. 1 credit = 1p.
+Mu uses Stripe for card payments. Top up with a credit or debit card and pay-as-you-go with credits. 1 credit = 1p.
 
 See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
 

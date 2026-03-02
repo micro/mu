@@ -619,7 +619,7 @@ func init() {
 		Name:        "Wallet Topup",
 		Path:        "/wallet/topup",
 		Method:      "GET",
-		Description: "Get available wallet topup payment methods. Returns card (Stripe) tiers and/or crypto deposit address with supported chains. Requires authentication.",
+		Description: "Get available wallet topup payment methods. Returns card (Stripe) preset tiers with amount, credits, and label. Requires authentication.",
 		Response: []*Value{
 			{
 				Type: "JSON",
@@ -627,7 +627,7 @@ func init() {
 					{
 						Name:        "methods",
 						Value:       "array",
-						Description: "Array of payment method objects. Each has a type (card or crypto). Card methods include tiers with amount, credits, label, bonus_pct. Crypto methods include address and chains.",
+						Description: "Array of payment method objects. Each has a type (card) and tiers with amount, credits, and label.",
 					},
 				},
 			},

@@ -127,32 +127,7 @@ export DONATION_URL="https://gocardless.com/your-donation-link"
 - When empty, donation features are hidden
 - Links appear on `/donate` page
 
-## Crypto Wallet Configuration (Credits/Payments)
-
-Enable payments via crypto deposits. When configured, users get 10 free AI queries per day, then can pay-as-you-go by depositing crypto.
-
-**When wallet is NOT configured:** All quotas are disabled. Users have unlimited free access. This is the default for self-hosted instances.
-
-```bash
-# Wallet seed (optional - auto-generated if not set)
-# If not provided, a new seed is generated and saved to ~/.mu/keys/wallet.seed
-export WALLET_SEED="24 word mnemonic phrase here"
-
-# Ethereum RPC endpoint (optional - uses public endpoint by default)
-# Set this to a private or paid endpoint to avoid public rate limits (HTTP 429)
-export ETH_RPC_URL="https://eth.llamarpc.com"
-
-# Base RPC endpoint (optional - uses public endpoint by default)
-export BASE_RPC_URL="https://mainnet.base.org"
-
-# Deposit polling interval in seconds (optional - default: 30)
-export DEPOSIT_POLL_INTERVAL="30"
-
-# WalletConnect Project ID (optional - for WalletConnect integration)
-export WALLETCONNECT_PROJECT_ID="your-project-id"
-```
-
-### Quota Configuration
+## Quota Configuration
 
 ```bash
 # Daily free AI queries (default: 10)
@@ -172,13 +147,6 @@ export CREDIT_COST_PLACES_NEARBY="2"  # Nearby places lookup (2p) - Google Place
 - 1 credit = £0.01 (1 penny)
 - Admins get unlimited access (no quotas)
 - Credits never expire
-- Users deposit any ERC-20 token on Base network
-
-### Wallet Seed Location
-
-The wallet seed is stored in `~/.mu/keys/wallet.seed`. If not provided via environment variable, it will be auto-generated on first run.
-
-**IMPORTANT:** Back up this file! It controls all deposit addresses.
 
 ## Example Usage
 
@@ -227,10 +195,6 @@ export MAIL_SELECTOR="default"
 | `STRIPE_SECRET_KEY` | - | Stripe secret key for card payments |
 | `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key for card payments |
 | `STRIPE_WEBHOOK_SECRET` | - | Stripe webhook secret for verifying events |
-| `WALLET_SEED` | - | BIP39 mnemonic for HD wallet (auto-generated if not set) |
-| `BASE_RPC_URL` | `https://mainnet.base.org` | Base network RPC endpoint |
-| `DEPOSIT_POLL_INTERVAL` | `30` | Crypto deposit polling interval in seconds |
-| `WALLETCONNECT_PROJECT_ID` | - | WalletConnect Project ID (optional) |
 | `FREE_DAILY_SEARCHES` | `10` | Daily free AI queries |
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
@@ -270,10 +234,6 @@ MAIL_SELECTOR=default
 
 # Donations (optional - leave empty for free instance)
 DONATION_URL=https://gocardless.com/your-donation-link
-
-# Crypto wallet (optional - for payments)
-# If not set, seed is auto-generated in ~/.mu/keys/wallet.seed
-# WALLET_SEED=your 24 word mnemonic phrase
 ```
 
 Load and run:
@@ -310,9 +270,6 @@ Environment="DKIM_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\n..."
 # Donations (optional)
 Environment="DONATION_URL=https://gocardless.com/your-donation-link"
 
-# Crypto wallet (optional - auto-generated if not set)
-# Environment="WALLET_SEED=your 24 word mnemonic phrase"
-
 ExecStart=/opt/mu/mu --serve --address :8080
 Restart=always
 
@@ -346,8 +303,6 @@ docker run -d \
   -e MAIL_DOMAIN=yourdomain.com \
   -e MAIL_SELECTOR=default \
   -e DONATION_URL=https://gocardless.com/your-donation-link \
-  # Wallet seed auto-generated in ~/.mu/keys/wallet.seed if not set
-  # -e WALLET_SEED="your 24 word mnemonic" \
   -v ~/.mu:/root/.mu \
   mu:latest
 ```
@@ -390,5 +345,4 @@ docker run -d \
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
 | Donations | `DONATION_URL` |
 | Card Payments | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` |
-| Crypto Payments | `WALLET_SEED` or auto-generated in `~/.mu/keys/wallet.seed` |
 
