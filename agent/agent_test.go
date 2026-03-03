@@ -3,6 +3,7 @@ package agent
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPlacesMapURL_QueryAndNear(t *testing.T) {
@@ -507,5 +508,139 @@ func TestStripHTMLTags(t *testing.T) {
 	}
 	if !strings.Contains(got, "Title") || !strings.Contains(got, "Some") || !strings.Contains(got, "bold") {
 		t.Errorf("expected text content preserved, got %q", got)
+	}
+}
+
+func TestFormatAge(t *testing.T) {
+	cases := []struct {
+		d    time.Duration
+		want string
+	}{
+		{30 * time.Second, "just now"},
+		{90 * time.Second, "1 minute ago"},
+		{5 * time.Minute, "5 minutes ago"},
+		{time.Hour, "1 hour ago"},
+		{3 * time.Hour, "3 hours ago"},
+		{24 * time.Hour, "1 day ago"},
+		{48 * time.Hour, "2 days ago"},
+	}
+	for _, c := range cases {
+		got := formatAge(c.d)
+		if got != c.want {
+			t.Errorf("formatAge(%v) = %q, want %q", c.d, got, c.want)
+		}
+	}
+}
+
+func TestSaveAndGetFlow(t *testing.T) {
+	// Reset in-memory store to avoid cross-test pollution.
+	flowMu.Lock()
+	flowStore = map[string]*Flow{}
+	flowMu.Unlock()
+
+	f := &Flow{
+		ID:        "test-flow-1",
+		AccountID: "user-123",
+		Prompt:    "What is the weather in London?",
+		Answer:    "It is cloudy.",
+		Steps: []FlowStep{
+			{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5, "lon": -0.1}, Result: `{"forecast":{}}`},
+		},
+	}
+
+	// Directly insert into the store to avoid disk I/O in unit tests.
+	// The persistFlows path relies on the data package which writes to $HOME/.mu;
+	// integration coverage for that is handled by the data package tests.
+	flowMu.Lock()
+	flowStore[f.ID] = f
+	flowMu.Unlock()
+
+	got := getFlow("test-flow-1")
+	if got == nil {
+		t.Fatal("expected flow to be found after save")
+	}
+	if got.Prompt != f.Prompt {
+		t.Errorf("expected prompt %q, got %q", f.Prompt, got.Prompt)
+	}
+	if got.AccountID != f.AccountID {
+		t.Errorf("expected accountID %q, got %q", f.AccountID, got.AccountID)
+	}
+	if len(got.Steps) != 1 {
+		t.Errorf("expected 1 step, got %d", len(got.Steps))
+	}
+	if got.Steps[0].Tool != "weather_forecast" {
+		t.Errorf("expected tool 'weather_forecast', got %q", got.Steps[0].Tool)
+	}
+}
+
+func TestListFlows(t *testing.T) {
+	flowMu.Lock()
+	flowStore = map[string]*Flow{}
+	flowMu.Unlock()
+
+	now := time.Now()
+	flows := []*Flow{
+		{ID: "a", AccountID: "user-1", Prompt: "Q1", CreatedAt: now.Add(-2 * time.Hour)},
+		{ID: "b", AccountID: "user-1", Prompt: "Q2", CreatedAt: now.Add(-1 * time.Hour)},
+		{ID: "c", AccountID: "user-2", Prompt: "Q3", CreatedAt: now},
+	}
+	flowMu.Lock()
+	for _, f := range flows {
+		flowStore[f.ID] = f
+	}
+	flowMu.Unlock()
+
+	got := listFlows("user-1")
+	if len(got) != 2 {
+		t.Fatalf("expected 2 flows for user-1, got %d", len(got))
+	}
+	// Should be newest first: b then a.
+	if got[0].ID != "b" {
+		t.Errorf("expected first flow to be 'b' (newest), got %q", got[0].ID)
+	}
+	if got[1].ID != "a" {
+		t.Errorf("expected second flow to be 'a', got %q", got[1].ID)
+	}
+}
+
+func TestDeleteFlow(t *testing.T) {
+	flowMu.Lock()
+	flowStore = map[string]*Flow{
+		"del-1": {ID: "del-1", AccountID: "owner"},
+		"del-2": {ID: "del-2", AccountID: "other"},
+	}
+	flowMu.Unlock()
+
+	// Should not delete a flow owned by a different account.
+	deleteFlow("owner", "del-2") //nolint:errcheck
+	if getFlow("del-2") == nil {
+		t.Error("deleteFlow should not remove a flow owned by a different account")
+	}
+
+	// Should delete the owner's own flow.
+	deleteFlow("owner", "del-1") //nolint:errcheck
+	if getFlow("del-1") != nil {
+		t.Error("deleteFlow should remove the owner's flow")
+	}
+}
+
+func TestGetFlow_NotFound(t *testing.T) {
+	flowMu.Lock()
+	flowStore = map[string]*Flow{}
+	flowMu.Unlock()
+
+	if got := getFlow("nonexistent"); got != nil {
+		t.Errorf("expected nil for nonexistent flow, got %+v", got)
+	}
+}
+
+func TestNewFlowID_Unique(t *testing.T) {
+	ids := make(map[string]bool)
+	for i := 0; i < 10; i++ {
+		id := newFlowID()
+		if ids[id] {
+			t.Errorf("newFlowID returned duplicate ID: %q", id)
+		}
+		ids[id] = true
 	}
 }
