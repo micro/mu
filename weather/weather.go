@@ -434,7 +434,7 @@ function weatherAdvisorAsk() {
             } else if (ev.type === 'done') {
               btn.disabled = false;
             }
-          } catch(ex) {}
+          } catch(ex) { console.error('agent event parse error', ex); }
         });
         return read();
       });

@@ -394,7 +394,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	planJSON := extractJSONArray(planResult)
 	var toolCalls []toolCall
-	json.Unmarshal([]byte(planJSON), &toolCalls) //nolint:errcheck — fallback to empty slice
+	json.Unmarshal([]byte(planJSON), &toolCalls) //nolint:errcheck - fallback to empty slice
 
 	// If an app agent restricts tools, filter out any calls outside that set.
 	if appAgent != nil && len(appAgent.Tools) > 0 {

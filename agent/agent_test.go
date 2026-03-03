@@ -619,8 +619,8 @@ func TestBuiltInAgentToolRestrictions(t *testing.T) {
 		t.Fatal("blog agent not registered")
 	}
 	hasBlogList := false
-	for _, t := range blog.Tools {
-		if t == "blog_list" {
+	for _, toolName := range blog.Tools {
+		if toolName == "blog_list" {
 			hasBlogList = true
 		}
 	}
@@ -634,8 +634,8 @@ func TestBuiltInAgentToolRestrictions(t *testing.T) {
 		t.Fatal("places agent not registered")
 	}
 	hasPlacesSearch := false
-	for _, t := range places.Tools {
-		if t == "places_search" {
+	for _, toolName := range places.Tools {
+		if toolName == "places_search" {
 			hasPlacesSearch = true
 		}
 	}
@@ -649,8 +649,8 @@ func TestBuiltInAgentToolRestrictions(t *testing.T) {
 		t.Fatal("weather agent not registered")
 	}
 	hasWeatherForecast := false
-	for _, t := range weather.Tools {
-		if t == "weather_forecast" {
+	for _, toolName := range weather.Tools {
+		if toolName == "weather_forecast" {
 			hasWeatherForecast = true
 		}
 	}
