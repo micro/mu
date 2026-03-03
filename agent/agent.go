@@ -16,6 +16,9 @@ import (
 	"mu/auth"
 )
 
+// historyLimit is the maximum number of history items shown on the agent page.
+const historyLimit = 20
+
 // Model represents an available LLM model tier for agent queries.
 type Model struct {
 	ID       string
@@ -50,8 +53,22 @@ var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 // Load initialises the agent package (no-op for now; reserved for future use).
 func Load() {}
 
-// Handler dispatches GET (page) and POST (query) at /agent.
+// Handler dispatches GET (page) and POST (query) at /agent and /agent/*.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	// /agent/flow/<id>  — view or delete a saved flow
+	if strings.HasPrefix(path, "/agent/flow/") {
+		id := strings.TrimPrefix(path, "/agent/flow/")
+		switch r.Method {
+		case "GET":
+			serveFlowPage(w, r, id)
+		case "DELETE":
+			handleDeleteFlow(w, r, id)
+		default:
+			app.MethodNotAllowed(w, r)
+		}
+		return
+	}
 	switch r.Method {
 	case "GET":
 		servePage(w, r)
@@ -62,7 +79,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// servePage renders the static agent chat page.
+// servePage renders the agent chat page, including query history for logged-in users.
 func servePage(w http.ResponseWriter, r *http.Request) {
 	var modelOpts strings.Builder
 	for _, m := range Models {
@@ -71,18 +88,28 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		))
 	}
 
+	// Pre-fill prompt and context when continuing a saved flow.
+	contextID := r.URL.Query().Get("continue")
+	preFillPrompt := ""
+	if contextID != "" {
+		if f := getFlow(contextID); f != nil {
+			preFillPrompt = htmlEsc(f.Prompt)
+		}
+	}
+
 	content := `<div class="card">
 <p class="card-desc">Ask a question and the agent will search news, weather, places, markets, video and more to answer it.</p>
 <form id="agent-form">
 <textarea id="agent-prompt" name="prompt" rows="3"
   placeholder="What would you like to know?"
-  style="width:100%;box-sizing:border-box;padding:8px;font-family:inherit;font-size:15px;resize:vertical;border:1px solid #ddd;border-radius:4px;"></textarea>
+  style="width:100%;box-sizing:border-box;padding:8px;font-family:inherit;font-size:15px;resize:vertical;border:1px solid #ddd;border-radius:4px;">` + preFillPrompt + `</textarea>
 <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
 <select id="agent-model"
   style="padding:6px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">` +
 		modelOpts.String() + `</select>
 <button type="submit" id="agent-submit">Ask Agent</button>
 </div>
+<input type="hidden" id="agent-context" value="` + htmlEsc(contextID) + `">
 </form>
 </div>
 
@@ -94,7 +121,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 </div>
 
 <div id="agent-result"></div>
-
+` + renderHistorySection(r) + `
 <style>
 .agent-step{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px;
   color:#555;border-bottom:1px solid #f5f5f5;}
@@ -117,6 +144,7 @@ form.addEventListener('submit',function(e){
   e.preventDefault();
   var prompt=document.getElementById('agent-prompt').value.trim();
   var model=document.getElementById('agent-model').value;
+  var contextId=document.getElementById('agent-context').value;
   if(!prompt)return;
 
   var btn=document.getElementById('agent-submit');
@@ -127,10 +155,13 @@ form.addEventListener('submit',function(e){
   var result=document.getElementById('agent-result');
   prog.style.display='block';steps.innerHTML='';result.innerHTML='';
 
+  var body={prompt:prompt,model:model};
+  if(contextId){body.context_id=contextId;}
+
   fetch('/agent',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prompt:prompt,model:model})
+    body:JSON.stringify(body)
   })
   .then(function(resp){
     if(!resp.ok&&resp.status===401){
@@ -171,6 +202,8 @@ form.addEventListener('submit',function(e){
             } else if(ev.type==='response'){
               prog.style.display='none';
               result.innerHTML=ev.html;
+              // Update context for potential follow-up
+              if(ev.flow_id){document.getElementById('agent-context').value=ev.flow_id;}
             } else if(ev.type==='error'){
               prog.style.display='none';
               result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
@@ -195,6 +228,142 @@ form.addEventListener('submit',function(e){
 
 	html := app.RenderHTMLForRequest("Agent", "AI agent with access to all Mu tools", content, r)
 	w.Write([]byte(html))
+}
+
+// renderHistorySection returns an HTML block showing the user's recent query history,
+// or an empty string if the user is not authenticated.
+func renderHistorySection(r *http.Request) string {
+	_, acc := auth.TrySession(r)
+	if acc == nil {
+		return ""
+	}
+
+	flows := listFlows(acc.ID)
+	if len(flows) == 0 {
+		return ""
+	}
+	if len(flows) > historyLimit {
+		flows = flows[:historyLimit]
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="card" id="agent-history">`)
+	b.WriteString(`<h4 style="margin:0 0 12px;">Recent queries</h4>`)
+	for _, f := range flows {
+		age := time.Since(f.CreatedAt)
+		ageStr := formatAge(age)
+		b.WriteString(`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;">`)
+		b.WriteString(`<div style="min-width:0;flex:1;">`)
+		b.WriteString(`<a href="/agent/flow/` + f.ID + `" style="font-size:14px;font-weight:600;display:block;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">` + htmlEsc(f.Prompt) + `</a>`)
+		b.WriteString(`<div style="font-size:12px;color:#888;margin-top:2px;">` + ageStr)
+		if len(f.Steps) > 0 {
+			tools := make([]string, 0, len(f.Steps))
+			for _, s := range f.Steps {
+				tools = append(tools, s.Tool)
+			}
+			b.WriteString(` · ` + strings.Join(tools, ", "))
+		}
+		b.WriteString(`</div></div>`)
+		b.WriteString(`<div style="display:flex;gap:8px;flex-shrink:0;margin-left:12px;">`)
+		b.WriteString(`<a href="/agent?continue=` + f.ID + `" class="link" style="font-size:12px;">Continue</a>`)
+		b.WriteString(`<a href="/agent/flow/` + f.ID + `" class="link" style="font-size:12px;">View</a>`)
+		b.WriteString(`</div>`)
+		b.WriteString(`</div>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// formatAge returns a human-friendly string for an elapsed duration.
+func formatAge(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		m := int(d.Minutes())
+		if m == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", m)
+	case d < 24*time.Hour:
+		h := int(d.Hours())
+		if h == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", h)
+	default:
+		days := int(d.Hours() / 24)
+		if days == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	}
+}
+
+// serveFlowPage renders a saved flow for viewing and sharing.
+func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
+	f := getFlow(id)
+	if f == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="card">`)
+	b.WriteString(`<p style="font-size:12px;color:#888;margin:0 0 4px;">Saved query</p>`)
+	b.WriteString(`<h3 style="margin:0 0 12px;">` + htmlEsc(f.Prompt) + `</h3>`)
+	b.WriteString(`<p style="font-size:12px;color:#888;">` + f.CreatedAt.Format("2 January 2006, 15:04 UTC") + `</p>`)
+	b.WriteString(`</div>`)
+
+	// Render the stored answer
+	if f.Answer != "" {
+		rendered := app.RenderString(f.Answer)
+		b.WriteString(`<div class="card" id="agent-response">` + rendered + `</div>`)
+	}
+
+	// Append typed cards from stored steps
+	for _, step := range f.Steps {
+		if card := renderResultCard(step.Tool, step.Result, step.Args); card != "" {
+			b.WriteString(card)
+		}
+	}
+
+	// References
+	if len(f.Steps) > 0 {
+		b.WriteString(`<div class="card" style="font-size:13px;"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`)
+		for _, step := range f.Steps {
+			formatted := formatToolResult(step.Tool, step.Result, step.Args)
+			b.WriteString(renderToolCallRef(step.Tool, step.Args, formatted))
+		}
+		b.WriteString(`</div>`)
+	}
+
+	// Action buttons
+	b.WriteString(`<div class="card" style="display:flex;gap:12px;align-items:center;">`)
+	b.WriteString(`<a href="/agent?continue=` + f.ID + `" class="link">Continue this query →</a>`)
+	b.WriteString(`<span style="color:#888;font-size:13px;">Share this URL to let others view this result</span>`)
+	b.WriteString(`</div>`)
+
+	title := f.Prompt
+	if len(title) > 60 {
+		title = title[:60] + "…"
+	}
+	html := app.RenderHTMLForRequest(title, "Saved agent query: "+htmlEsc(f.Prompt), b.String(), r)
+	w.Write([]byte(html))
+}
+
+// handleDeleteFlow handles DELETE /agent/flow/<id>.
+func handleDeleteFlow(w http.ResponseWriter, r *http.Request, id string) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	if err := deleteFlow(acc.ID, id); err != nil {
+		http.Error(w, `{"error":"failed to delete flow"}`, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // sse writes a single Server-Sent Events data line and flushes.
@@ -225,8 +394,9 @@ const agentToolsDesc = `Available tools (use exact name):
 // handleQuery processes an agent query request with SSE streaming.
 func handleQuery(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Prompt string `json:"prompt"`
-		Model  string `json:"model"`
+		Prompt    string `json:"prompt"`
+		Model     string `json:"model"`
+		ContextID string `json:"context_id"` // optional: prior flow to continue from
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Prompt) == "" {
 		http.Error(w, `{"error":"prompt required"}`, http.StatusBadRequest)
@@ -239,7 +409,6 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
 		return
 	}
-	_ = acc
 
 	// Resolve model
 	model := Models[0] // default: standard
@@ -261,6 +430,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error":"`+msg+`"}`, http.StatusPaymentRequired)
 			return
 		}
+	}
+
+	// Load prior flow context if continuing a conversation.
+	var priorFlow *Flow
+	if req.ContextID != "" {
+		priorFlow = getFlow(req.ContextID)
 	}
 
 	// Start SSE stream
@@ -339,6 +514,15 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	sse(w, map[string]any{"type": "thinking", "message": "Composing answer…"})
 
 	var ragParts []string
+
+	// Include prior flow context when continuing a conversation.
+	if priorFlow != nil {
+		ragParts = append(ragParts, fmt.Sprintf(
+			"### Previous query\nUser asked: %s\n\nPrevious answer:\n%s",
+			priorFlow.Prompt, priorFlow.Answer,
+		))
+	}
+
 	for i, res := range results {
 		ragText := formatToolResult(res.Name, res.Result, res.Args)
 		results[i].Formatted = ragText
@@ -370,6 +554,25 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Auto-save this query as a flow for history and sharing.
+	flow := &Flow{
+		ID:        newFlowID(),
+		AccountID: acc.ID,
+		Prompt:    req.Prompt,
+		Answer:    answer,
+		CreatedAt: time.Now().UTC(),
+	}
+	for _, res := range results {
+		flow.Steps = append(flow.Steps, FlowStep{
+			Tool:   res.Name,
+			Args:   res.Args,
+			Result: res.Result,
+		})
+	}
+	if err := saveFlow(flow); err != nil {
+		app.Log("agent", "Failed to save flow: %v", err)
+	}
+
 	// Render markdown answer wrapped in a card, then append typed result cards
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
@@ -390,7 +593,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		html += `</div>`
 	}
 
-	sse(w, map[string]any{"type": "response", "html": html})
+	// Append a "Save & share" link for the saved flow.
+	html += `<div class="card" style="font-size:13px;display:flex;gap:16px;align-items:center;">` +
+		`<a href="/agent/flow/` + flow.ID + `" class="link">View saved flow ↗</a>` +
+		`<a href="/agent?continue=` + flow.ID + `" class="link">Continue this query →</a>` +
+		`</div>`
+
+	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
 	sse(w, map[string]any{"type": "done"})
 }
 
