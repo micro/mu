@@ -43,11 +43,8 @@ func loadBlocklist() {
 	app.Log("mail", "Loaded blocklist: %d emails, %d IPs", len(blocklist.Emails), len(blocklist.IPs))
 }
 
-// saveBlocklist saves the blocklist to disk
+// saveBlocklist saves the blocklist to disk (caller must hold blocklistMutex)
 func saveBlocklist() error {
-	blocklistMutex.RLock()
-	defer blocklistMutex.RUnlock()
-
 	b, err := json.MarshalIndent(blocklist, "", "  ")
 	if err != nil {
 		return err
