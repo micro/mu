@@ -67,14 +67,15 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	// Recent messages
 	content.WriteString(`<div class="card">`)
 	content.WriteString(`<h3>Recent Messages</h3>`)
+	content.WriteString(`<p class="text-muted text-sm">Click a row to expand details.</p>`)
 
 	if len(messages) == 0 {
 		content.WriteString(`<p class="text-muted">No messages yet.</p>`)
 	} else {
 		content.WriteString(`<table class="email-log">`)
-		content.WriteString(`<tr><th>Time</th><th>Dir</th><th>From</th><th class="hide-mobile">To</th><th>Subject</th></tr>`)
+		content.WriteString(`<tr><th>Time</th><th>Dir</th><th>From</th><th>To</th><th>Subject</th></tr>`)
 
-		for _, msg := range messages {
+		for i, msg := range messages {
 			fromExternal := mail.IsExternalAddress(msg.FromID)
 			toExternal := mail.IsExternalAddress(msg.ToID)
 
@@ -88,27 +89,34 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 				dirLabel = "→"
 			}
 
-			fromDisplay := msg.From
-			if fromDisplay == "" {
-				fromDisplay = msg.FromID
-			}
-			toDisplay := msg.To
-			if toDisplay == "" {
-				toDisplay = msg.ToID
-			}
+			// Build cell text and tooltip for From
+			fromCell, fromTitle := addrDisplay(msg.From, msg.FromID, fromExternal)
+			// Build cell text and tooltip for To
+			toCell, toTitle := addrDisplay(msg.To, msg.ToID, toExternal)
 
-			content.WriteString(fmt.Sprintf(`<tr>
+			rowID := fmt.Sprintf("erow%d", i)
+			content.WriteString(fmt.Sprintf(`<tr class="clickable" data-detail="%s" onclick="var d=document.getElementById(this.dataset.detail);d.style.display=d.style.display===''?'none':'';">
 				<td>%s</td>
 				<td class="%s">%s</td>
 				<td class="addr" title="%s">%s</td>
-				<td class="addr hide-mobile" title="%s">%s</td>
+				<td class="addr" title="%s">%s</td>
 				<td class="subject" title="%s">%s</td>
-			</tr>`,
+			</tr>
+			<tr id="%s" style="display:none"><td colspan="5" class="email-detail">
+				<strong>From:</strong> %s &nbsp;
+				<strong>To:</strong> %s &nbsp;
+				<strong>Subject:</strong> %s<br>
+				<strong>ID:</strong> <code>%s</code>
+			</td></tr>`,
+				rowID,
 				msg.CreatedAt.Format("Jan 2 15:04"),
 				dirClass, dirLabel,
-				fromDisplay, truncate(fromDisplay, 25),
-				toDisplay, truncate(toDisplay, 25),
+				fromTitle, truncate(fromCell, 25),
+				toTitle, truncate(toCell, 25),
 				msg.Subject, truncate(msg.Subject, 40),
+				rowID,
+				fromTitle, toTitle, msg.Subject,
+				msg.ID,
 			))
 		}
 
@@ -127,4 +135,28 @@ func truncate(s string, max int) string {
 		return s
 	}
 	return s[:max-3] + "..."
+}
+
+// addrDisplay returns a short cell label and a full tooltip for a message address.
+// name is the display name (may be empty), id is the account ID or email address,
+// and external indicates whether the address is an external email (contains @).
+// For external addresses the cell shows the email and the tooltip is "Name <email>".
+// For internal users the cell shows "@username" and the tooltip is "Name (@username)".
+func addrDisplay(name, id string, external bool) (cell, title string) {
+	if external {
+		cell = id
+		if name != "" && name != id {
+			title = name + " <" + id + ">"
+		} else {
+			title = id
+		}
+	} else {
+		cell = "@" + id
+		if name != "" && name != id {
+			title = name + " (@" + id + ")"
+		} else {
+			title = "@" + id
+		}
+	}
+	return
 }

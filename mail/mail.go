@@ -992,10 +992,28 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			pageTitle = subject
 		}
 
+		// Build datalist of users for autocomplete (exclude self)
+		users := auth.GetAllAccounts()
+		var dl strings.Builder
+		dl.WriteString(`<datalist id="mail-users">`)
+		for _, u := range users {
+			if u.ID == acc.ID {
+				continue
+			}
+			label := u.ID
+			if u.Name != "" && u.Name != u.ID {
+				label = u.Name + " (@" + u.ID + ")"
+			}
+			dl.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, html.EscapeString(u.ID), html.EscapeString(label)))
+		}
+		dl.WriteString(`</datalist>`)
+		datalist := dl.String()
+
 		composeForm := fmt.Sprintf(`
 			<form method="POST" action="/mail" class="mail-form">
 				<input type="hidden" name="reply_to" value="%s">
-				<input type="text" name="to" placeholder="To: username or email" value="%s" required>
+				<input type="text" name="to" placeholder="To: username or email" value="%s" required autocomplete="off" list="mail-users">
+				%s
 				<input type="text" name="subject" placeholder="Subject" value="%s" required>
 				<textarea name="body" rows="10" placeholder="Write your message..." required></textarea>
 			<div class="d-flex gap-3 items-center">
@@ -1006,7 +1024,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<div class="mt-5">
 			<a href="%s" class="text-muted">← Back</a>
 		</div>
-		`, replyTo, to, subject, backLink, backLink)
+		`, replyTo, to, datalist, subject, backLink, backLink)
 
 		w.Write([]byte(app.RenderHTML(pageTitle, "", composeForm)))
 		return
