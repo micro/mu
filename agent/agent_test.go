@@ -509,3 +509,152 @@ func TestStripHTMLTags(t *testing.T) {
 		t.Errorf("expected text content preserved, got %q", got)
 	}
 }
+
+func TestRegisterAppAgent(t *testing.T) {
+	// Registering a new agent should make it retrievable.
+	RegisterAppAgent(&AppAgent{
+		ID:           "test_app",
+		Name:         "Test App Agent",
+		SystemPrompt: "You are a test agent.",
+		Tools:        []string{"news", "web_search"},
+	})
+	got, ok := appAgents["test_app"]
+	if !ok {
+		t.Fatal("expected test_app agent to be registered")
+	}
+	if got.Name != "Test App Agent" {
+		t.Errorf("expected name 'Test App Agent', got %q", got.Name)
+	}
+	if len(got.Tools) != 2 {
+		t.Errorf("expected 2 tools, got %d", len(got.Tools))
+	}
+	// Clean up
+	delete(appAgents, "test_app")
+}
+
+func TestRegisterAppAgent_NilAndEmpty(t *testing.T) {
+	// Nil agent must not panic or register anything.
+	before := len(appAgents)
+	RegisterAppAgent(nil)
+	if len(appAgents) != before {
+		t.Error("expected no change in registry after registering nil agent")
+	}
+
+	// Agent with empty ID must not be registered.
+	RegisterAppAgent(&AppAgent{ID: "", Name: "No ID"})
+	if len(appAgents) != before {
+		t.Error("expected no change in registry after registering agent with empty ID")
+	}
+}
+
+func TestLoadRegistersBuiltInAgents(t *testing.T) {
+	// Load() should register the blog, places, and weather agents.
+	Load()
+	for _, id := range []string{"blog", "places", "weather"} {
+		if _, ok := appAgents[id]; !ok {
+			t.Errorf("expected built-in agent %q to be registered after Load()", id)
+		}
+	}
+}
+
+func TestBuildRestrictedToolsDesc(t *testing.T) {
+	tools := []string{"news", "blog_list"}
+	got := buildRestrictedToolsDesc(tools)
+	if !strings.Contains(got, "news") {
+		t.Errorf("expected 'news' in restricted tools desc, got %q", got)
+	}
+	if !strings.Contains(got, "blog_list") {
+		t.Errorf("expected 'blog_list' in restricted tools desc, got %q", got)
+	}
+	if strings.Contains(got, "markets") {
+		t.Errorf("expected 'markets' to be excluded from restricted tools desc, got %q", got)
+	}
+}
+
+func TestBuildRestrictedToolsDesc_UnknownTool(t *testing.T) {
+	// Unknown tool names should be silently ignored.
+	got := buildRestrictedToolsDesc([]string{"unknown_tool", "news"})
+	if strings.Contains(got, "unknown_tool") {
+		t.Errorf("expected unknown_tool to be excluded, got %q", got)
+	}
+	if !strings.Contains(got, "news") {
+		t.Errorf("expected 'news' in result, got %q", got)
+	}
+}
+
+func TestBuiltInAgentSystemPrompts(t *testing.T) {
+	Load()
+
+	blog := appAgents["blog"]
+	if blog == nil {
+		t.Fatal("blog agent not registered")
+	}
+	if !strings.Contains(blog.SystemPrompt, "grammar") {
+		t.Errorf("expected blog agent system prompt to mention grammar, got %q", blog.SystemPrompt)
+	}
+
+	places := appAgents["places"]
+	if places == nil {
+		t.Fatal("places agent not registered")
+	}
+	if !strings.Contains(places.SystemPrompt, "recommend") {
+		t.Errorf("expected places agent system prompt to mention recommend, got %q", places.SystemPrompt)
+	}
+
+	weather := appAgents["weather"]
+	if weather == nil {
+		t.Fatal("weather agent not registered")
+	}
+	if !strings.Contains(weather.SystemPrompt, "clothing") {
+		t.Errorf("expected weather agent system prompt to mention clothing, got %q", weather.SystemPrompt)
+	}
+}
+
+func TestBuiltInAgentToolRestrictions(t *testing.T) {
+	Load()
+
+	// Blog agent should only allow blog/search tools.
+	blog := appAgents["blog"]
+	if blog == nil {
+		t.Fatal("blog agent not registered")
+	}
+	hasBlogList := false
+	for _, t := range blog.Tools {
+		if t == "blog_list" {
+			hasBlogList = true
+		}
+	}
+	if !hasBlogList {
+		t.Error("expected blog agent to include blog_list tool")
+	}
+
+	// Places agent should include places_search.
+	places := appAgents["places"]
+	if places == nil {
+		t.Fatal("places agent not registered")
+	}
+	hasPlacesSearch := false
+	for _, t := range places.Tools {
+		if t == "places_search" {
+			hasPlacesSearch = true
+		}
+	}
+	if !hasPlacesSearch {
+		t.Error("expected places agent to include places_search tool")
+	}
+
+	// Weather agent should include weather_forecast.
+	weather := appAgents["weather"]
+	if weather == nil {
+		t.Fatal("weather agent not registered")
+	}
+	hasWeatherForecast := false
+	for _, t := range weather.Tools {
+		if t == "weather_forecast" {
+			hasWeatherForecast = true
+		}
+	}
+	if !hasWeatherForecast {
+		t.Error("expected weather agent to include weather_forecast tool")
+	}
+}

@@ -147,6 +147,17 @@ func renderWeatherPage(r *http.Request) string {
     <div id="weather-hourly"></div>
     <div id="weather-daily"></div>
     <div id="weather-pollen"></div>
+    <div id="weather-advisor" class="card" style="margin-top:12px;display:none;">
+      <h4 style="margin:0 0 8px;font-size:14px;">🌂 Weather Advisor</h4>
+      <p style="font-size:13px;color:#666;margin:0 0 8px;">Ask for outfit suggestions, activity recommendations, or travel tips.</p>
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <textarea id="advisor-prompt" rows="2"
+          placeholder="e.g. What should I wear today? Is it good for a walk?"
+          style="flex:1;padding:6px 8px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;resize:vertical;"></textarea>
+        <button id="advisor-btn" onclick="weatherAdvisorAsk()" style="white-space:nowrap;">Ask</button>
+      </div>
+      <div id="advisor-result" style="margin-top:8px;font-size:13px;"></div>
+    </div>
   </div>
 </div>
 
@@ -337,6 +348,12 @@ func renderWeatherPage(r *http.Request) string {
       pollen += '</tbody></table></div>';
     }
     document.getElementById('weather-pollen').innerHTML = pollen;
+
+    // Show the weather advisor widget now that we have forecast data
+    var advisor = document.getElementById('weather-advisor');
+    if (advisor) advisor.style.display = '';
+    window._weatherLocation = locationName;
+    window._weatherCurrent = f && f.Current ? f.Current : null;
   }
 
   function pollenBadge(index, category, description) {
@@ -376,6 +393,58 @@ func renderWeatherPage(r *http.Request) string {
   window.weatherSearch = weatherSearch;
   window.weatherTogglePollen = weatherTogglePollen;
 })();
+
+function weatherAdvisorAsk() {
+  var question = document.getElementById('advisor-prompt').value.trim();
+  if (!question) return;
+  var loc = window._weatherLocation || '';
+  var cur = window._weatherCurrent;
+  var context = '';
+  if (loc) context += 'Location: ' + loc + '\n';
+  if (cur) {
+    context += 'Current weather: ' + Math.round(cur.TempC) + '°C, ' + (cur.Description || '') + ', humidity ' + (cur.Humidity || 0) + '%, wind ' + (cur.WindKph || 0).toFixed(0) + ' km/h\n';
+  }
+  var fullPrompt = context ? context + '\nQuestion: ' + question : question;
+  var btn = document.getElementById('advisor-btn');
+  var result = document.getElementById('advisor-result');
+  btn.disabled = true;
+  result.innerHTML = '<span style="color:#888;">Working…</span>';
+  fetch('/agent', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({prompt: fullPrompt, app: 'weather'})
+  }).then(function(resp) {
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buf = '';
+    function read() {
+      return reader.read().then(function(chunk) {
+        if (chunk.done) return;
+        buf += decoder.decode(chunk.value, {stream: true});
+        var lines = buf.split('\n');
+        buf = lines.pop();
+        lines.forEach(function(line) {
+          if (!line.startsWith('data: ')) return;
+          try {
+            var ev = JSON.parse(line.slice(6));
+            if (ev.type === 'response') {
+              result.innerHTML = ev.html;
+            } else if (ev.type === 'error') {
+              result.innerHTML = '<span style="color:#dc3545;">' + ev.message + '</span>';
+            } else if (ev.type === 'done') {
+              btn.disabled = false;
+            }
+          } catch(ex) {}
+        });
+        return read();
+      });
+    }
+    return read();
+  }).catch(function(err) {
+    result.innerHTML = '<span style="color:#dc3545;">Error: ' + err.message + '</span>';
+    btn.disabled = false;
+  });
+}
 </script>
 `)
 

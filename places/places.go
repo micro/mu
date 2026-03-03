@@ -635,6 +635,11 @@ func renderPlacesPage(r *http.Request) string {
 
 	mapHTML := renderIndexMap()
 
+	assistantHTML := ""
+	if isLoggedIn {
+		assistantHTML = renderPlacesAssistantHTML()
+	}
+
 	return fmt.Sprintf(`<div class="places-page">
 %s
 <div class="places-forms">
@@ -653,7 +658,68 @@ func renderPlacesPage(r *http.Request) string {
 %s
 %s
 %s
-</div>`, authNote, renderSearchFormHTML("", "", "", "", "", ""), renderNearbyFormHTML("", "", "", ""), savedHTML, mapHTML, cityCardsHTML, renderPlacesPageJS())
+%s
+</div>`, authNote, renderSearchFormHTML("", "", "", "", "", ""), renderNearbyFormHTML("", "", "", ""), assistantHTML, savedHTML, mapHTML, cityCardsHTML, renderPlacesPageJS())
+}
+
+// renderPlacesAssistantHTML returns the HTML for the places discovery assistant widget.
+func renderPlacesAssistantHTML() string {
+	return `<div id="places-assistant" class="card" style="margin:12px 0;">
+<h4 style="margin:0 0 8px;font-size:14px;">🗺️ Places Assistant</h4>
+<p style="font-size:13px;color:#666;margin:0 0 8px;">Describe what you're looking for and the assistant will find the best options.</p>
+<div style="display:flex;gap:8px;align-items:flex-start;">
+  <textarea id="places-assistant-prompt" rows="2"
+    placeholder="e.g. Find a quiet cafe with Wi-Fi near Victoria Station…"
+    style="flex:1;padding:6px 8px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;resize:vertical;"></textarea>
+  <button id="places-assistant-btn" onclick="placesAssistantAsk()" style="white-space:nowrap;">Ask</button>
+</div>
+<div id="places-assistant-result" style="margin-top:8px;font-size:13px;"></div>
+</div>
+<script>
+function placesAssistantAsk() {
+  var question = document.getElementById('places-assistant-prompt').value.trim();
+  if (!question) return;
+  var btn = document.getElementById('places-assistant-btn');
+  var result = document.getElementById('places-assistant-result');
+  btn.disabled = true;
+  result.innerHTML = '<span style="color:#888;">Working…</span>';
+  fetch('/agent', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({prompt: question, app: 'places'})
+  }).then(function(resp) {
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buf = '';
+    function read() {
+      return reader.read().then(function(chunk) {
+        if (chunk.done) return;
+        buf += decoder.decode(chunk.value, {stream: true});
+        var lines = buf.split('\n');
+        buf = lines.pop();
+        lines.forEach(function(line) {
+          if (!line.startsWith('data: ')) return;
+          try {
+            var ev = JSON.parse(line.slice(6));
+            if (ev.type === 'response') {
+              result.innerHTML = ev.html;
+            } else if (ev.type === 'error') {
+              result.innerHTML = '<span style="color:#dc3545;">' + ev.message + '</span>';
+            } else if (ev.type === 'done') {
+              btn.disabled = false;
+            }
+          } catch(ex) {}
+        });
+        return read();
+      });
+    }
+    return read();
+  }).catch(function(err) {
+    result.innerHTML = '<span style="color:#dc3545;">Error: ' + err.message + '</span>';
+    btn.disabled = false;
+  });
+}
+</script>`
 }
 
 // renderNearbyFormHTML returns a form for listing places near a location.
