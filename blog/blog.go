@@ -750,6 +750,19 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 					</div>
 				</form>
 			</div>
+
+			<div id="blog-assistant" class="card" style="margin-top:12px;">
+				<h4 style="margin:0 0 8px;font-size:14px;">✍️ Writing Assistant</h4>
+				<p style="font-size:13px;color:#666;margin:0 0 8px;">Ask for grammar checks, tag suggestions, or writing advice.</p>
+				<div style="display:flex;gap:8px;align-items:flex-start;">
+					<textarea id="assistant-prompt" rows="2"
+						placeholder="e.g. Check my grammar, suggest tags, or improve the intro…"
+						style="flex:1;padding:6px 8px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;resize:vertical;"></textarea>
+					<button id="assistant-btn" onclick="blogAssistantAsk()" style="white-space:nowrap;">Ask</button>
+				</div>
+				<div id="assistant-result" style="margin-top:8px;font-size:13px;"></div>
+			</div>
+
 			<script>
 				const form = document.getElementById('blog-form');
 				const titleInput = document.getElementById('post-title');
@@ -838,6 +851,58 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 				
 				// Initial setup
 				restoreFormValues();
+
+				function blogAssistantAsk() {
+					var question = document.getElementById('assistant-prompt').value.trim();
+					if (!question) return;
+					var title = titleInput.value.trim();
+					var content = textarea.value.trim();
+					var context = '';
+					if (title) context += 'Title: ' + title + '\n';
+					if (content) context += 'Post:\n' + content + '\n\n';
+					var fullPrompt = context ? context + 'Question: ' + question : question;
+
+					var btn = document.getElementById('assistant-btn');
+					var result = document.getElementById('assistant-result');
+					btn.disabled = true;
+					result.innerHTML = '<span style="color:#888;">Working…</span>';
+
+					fetch('/agent', {
+						method: 'POST',
+						headers: {'Content-Type': 'application/json'},
+						body: JSON.stringify({prompt: fullPrompt, app: 'blog'})
+					}).then(function(resp) {
+						var reader = resp.body.getReader();
+						var decoder = new TextDecoder();
+						var buf = '';
+						function read() {
+							return reader.read().then(function(chunk) {
+								if (chunk.done) return;
+								buf += decoder.decode(chunk.value, {stream: true});
+								var lines = buf.split('\n');
+								buf = lines.pop();
+								lines.forEach(function(line) {
+									if (!line.startsWith('data: ')) return;
+									try {
+										var ev = JSON.parse(line.slice(6));
+										if (ev.type === 'response') {
+											result.innerHTML = ev.html;
+										} else if (ev.type === 'error') {
+											result.innerHTML = '<span style="color:#dc3545;">' + ev.message + '</span>';
+										} else if (ev.type === 'done') {
+											btn.disabled = false;
+										}
+									} catch(ex) { console.error('agent event parse error', ex); }
+								});
+								return read();
+							});
+						}
+						return read();
+					}).catch(function(err) {
+						result.innerHTML = '<span style="color:#dc3545;">Error: ' + err.message + '</span>';
+						btn.disabled = false;
+					});
+				}
 			</script>
 		</div>`
 	} else {
