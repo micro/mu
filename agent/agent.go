@@ -1063,8 +1063,38 @@ func formatNewsResult(result string) string {
 	if len(items) == 0 {
 		return "No news available."
 	}
-	if len(items) > 15 {
-		items = items[:15]
+
+	// Interleave items across categories round-robin to ensure diversity.
+	// The raw feed groups items by category, so naively slicing gives only
+	// the first category. Instead, pick up to 2 items per category in
+	// round-robin order.
+	if data.Query == "" {
+		catOrder := []string{}
+		catItems := map[string][]item{}
+		for _, a := range items {
+			cat := a.Category
+			if cat == "" {
+				cat = "_"
+			}
+			if _, ok := catItems[cat]; !ok {
+				catOrder = append(catOrder, cat)
+			}
+			catItems[cat] = append(catItems[cat], a)
+		}
+		var mixed []item
+		maxPerCat := 3
+		for round := 0; round < maxPerCat; round++ {
+			for _, cat := range catOrder {
+				if round < len(catItems[cat]) {
+					mixed = append(mixed, catItems[cat][round])
+				}
+			}
+		}
+		items = mixed
+	}
+
+	if len(items) > 20 {
+		items = items[:20]
 	}
 	var sb strings.Builder
 	if data.Query != "" {
