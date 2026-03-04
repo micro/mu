@@ -296,6 +296,7 @@ func getNewAccountBlogForAdmin() []admin.PostContent {
 				Title:     post.Title,
 				Content:   post.Content,
 				Author:    post.Author,
+				AuthorID:  post.AuthorID,
 				CreatedAt: post.CreatedAt,
 			})
 		}

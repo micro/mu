@@ -33,6 +33,7 @@ type Account struct {
 	Admin    bool      `json:"admin"`
 	Language string    `json:"language"`
 	Widgets  []string  `json:"widgets,omitempty"` // App IDs to show as home widgets
+	Approved bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
 }
 
 type Session struct {
@@ -475,12 +476,26 @@ func IsNewAccount(accountID string) bool {
 		return false
 	}
 
-	// Admins are never considered "new"
-	if acc.Admin {
+	// Admins and approved accounts are never considered "new"
+	if acc.Admin || acc.Approved {
 		return false
 	}
 
 	return time.Since(acc.Created) < 24*time.Hour
+}
+
+// ApproveAccount marks an account as approved, bypassing new account restrictions
+func ApproveAccount(accountID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	acc, exists := accounts[accountID]
+	if !exists {
+		return errors.New("account not found")
+	}
+	acc.Approved = true
+	data.SaveJSON("accounts.json", accounts)
+	return nil
 }
 
 // GetOnlineCount returns the number of online users

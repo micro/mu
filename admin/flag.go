@@ -511,7 +511,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					%s by %s · New Account (< 24h) · Hidden from homepage
 				</div>
 				<div class="actions">
-					<a href="/post?id=%s" target="_blank">view</a> · 
+					<form method="POST" action="/admin/moderate" style="display:inline">
+						<input type="hidden" name="action" value="approve_account">
+						<input type="hidden" name="type" value="post">
+						<input type="hidden" name="id" value="%s">
+						<button type="submit" class="btn-approve">Approve</button>
+					</form>
+					<a href="/post?id=%s" target="_blank">view</a> ·
 					<a href="#" onclick="fetch('/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{alert(d.success?'Flagged ('+d.count+')':d.message||'Failed')}).catch(()=>alert('Error'));return false;" class="text-error">flag</a>
 				</div>
 			</div>`,
@@ -519,6 +525,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					content,
 					app.TimeAgo(post.CreatedAt),
 					post.Author,
+					post.AuthorID,
 					post.ID,
 					post.ID)
 
@@ -590,6 +597,14 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 		Delete(contentType, contentID)
 		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
 
+	case "approve_account":
+		// contentID here is the account ID to approve
+		if err := auth.ApproveAccount(contentID); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
+
 	default:
 		http.Error(w, "Invalid action", http.StatusBadRequest)
 	}
@@ -605,5 +620,6 @@ type PostContent struct {
 	Title     string
 	Content   string
 	Author    string
+	AuthorID  string
 	CreatedAt time.Time
 }
