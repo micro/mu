@@ -714,8 +714,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 <input type="text" id="agent-prompt" name="prompt" placeholder="Ask me anything..."
   style="flex:1;min-width:0;padding:10px 14px;font-family:inherit;font-size:15px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
 <button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
-<button type="button" id="agent-model-toggle" title="Switch model"
-  style="flex-shrink:0;padding:6px 10px;font-size:11px;font-family:inherit;border:1px solid #ddd;border-radius:6px;background:#f9f9f9;cursor:pointer;color:#555;">Std</button>
+<div id="agent-model-toggle" style="flex-shrink:0;display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;font-size:11px;font-family:inherit;cursor:pointer;user-select:none;">
+<span id="model-std" style="padding:6px 10px;background:#000;color:#fff;transition:background 0.15s,color 0.15s;">Std</span>
+<span id="model-pro" style="padding:6px 10px;background:#f9f9f9;color:#888;transition:background 0.15s,color 0.15s;">Pro</span>
+</div>
 <input type="hidden" id="agent-model" value="standard">
 </form>
 </div>`)
@@ -787,11 +789,15 @@ if(!form)return;
 
 // Model toggle: Std ↔ Pro
 var modelInput=document.getElementById('agent-model');
-var modelBtn=document.getElementById('agent-model-toggle');
-if(modelBtn)modelBtn.onclick=function(){
-  if(modelInput.value==='standard'){modelInput.value='premium';modelBtn.textContent='Pro';modelBtn.style.background='#000';modelBtn.style.color='#fff';modelBtn.style.borderColor='#000';}
-  else{modelInput.value='standard';modelBtn.textContent='Std';modelBtn.style.background='#f9f9f9';modelBtn.style.color='#555';modelBtn.style.borderColor='#ddd';}
-};
+var stdBtn=document.getElementById('model-std');
+var proBtn=document.getElementById('model-pro');
+function setModel(m){
+  modelInput.value=m;
+  if(m==='premium'){proBtn.style.background='#000';proBtn.style.color='#fff';stdBtn.style.background='#f9f9f9';stdBtn.style.color='#888';}
+  else{stdBtn.style.background='#000';stdBtn.style.color='#fff';proBtn.style.background='#f9f9f9';proBtn.style.color='#888';}
+}
+if(stdBtn)stdBtn.onclick=function(){setModel('standard');};
+if(proBtn)proBtn.onclick=function(){setModel('premium');};
 
 var feed=document.getElementById('home');
 var starters=document.getElementById('starter-queries');
