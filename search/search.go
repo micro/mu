@@ -119,7 +119,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<div class="card" style="margin-bottom:12px;">`)
 			b.WriteString(`<div><a href="` + html.EscapeString(link) + `" class="card-title">` +
 				html.EscapeString(entry.Title) + `</a>`)
-			b.WriteString(` <span class="category" style="font-size:11px;margin-left:6px;">` +
+			b.WriteString(` <span class="category" style="font-size:11px;">` +
 				html.EscapeString(entry.Type) + `</span>`)
 			if !entry.IndexedAt.IsZero() {
 				b.WriteString(` <span style="font-size:11px;color:#888;margin-left:4px;">` +
