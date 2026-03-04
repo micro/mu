@@ -390,7 +390,7 @@ func sse(w http.ResponseWriter, event map[string]any) {
 const agentToolsDesc = `Available tools (use exact name):
 - news: Get latest news feed (no args)
 - news_search: Search news articles (args: {"query":"search term"})
-- web_search: Search the web for current information (args: {"query":"search term"})
+- web_search: Search the web for current information (args: {"q":"search term"})
 - video_search: Search for videos (args: {"query":"search term"})
 - markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
@@ -656,7 +656,7 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 			return []shortcutToolCall{{Tool: "news", Args: map[string]any{}}}
 		case "search":
 			if arg != "" {
-				return []shortcutToolCall{{Tool: "web_search", Args: map[string]any{"query": arg}}}
+				return []shortcutToolCall{{Tool: "web_search", Args: map[string]any{"q": arg}}}
 			}
 			return nil // need a query
 		case "markets", "market", "prices":
@@ -684,7 +684,7 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"what are the latest crypto and market prices?":  {{Tool: "markets", Args: map[string]any{}}},
 		"find me the latest tech videos":                 {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
 		"what's the weather like in london today?":       {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
-		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"query": "latest AI news"}}},
+		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
 		"show me today's islamic reminder":              {{Tool: "reminder", Args: map[string]any{}}},
 	}
 	if tc, ok := exactMap[pLower]; ok {
