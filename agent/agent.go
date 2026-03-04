@@ -455,33 +455,42 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 
 	// --- Step 1: plan tool calls ---
-	sse(w, map[string]any{"type": "thinking", "message": "Planning your request…"})
-
-	planPrompt := &ai.Prompt{
-		System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
-			agentToolsDesc +
-			"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. When the question asks for cross-source insights or correlations (e.g. news + markets, news + video), call multiple relevant tools. If no tools are needed output [].",
-		Question: req.Prompt,
-		Priority: ai.PriorityHigh,
-		Provider: model.Provider,
-		Model:    model.Model,
-	}
-
-	planResult, err := ai.Ask(planPrompt)
-	if err != nil {
-		sse(w, map[string]any{"type": "error", "message": "Could not plan request: " + err.Error()})
-		sse(w, map[string]any{"type": "done"})
-		return
-	}
-
-	// Parse tool calls (the AI may wrap JSON in markdown fences)
 	type toolCall struct {
 		Tool string         `json:"tool"`
 		Args map[string]any `json:"args"`
 	}
-	planJSON := extractJSONArray(planResult)
 	var toolCalls []toolCall
-	json.Unmarshal([]byte(planJSON), &toolCalls) //nolint:errcheck — fallback to empty slice
+
+	// Shortcut: skip planning LLM for common queries with known tool mappings
+	if tc := shortcutToolCalls(req.Prompt); len(tc) > 0 {
+		for _, s := range tc {
+			toolCalls = append(toolCalls, toolCall{Tool: s.Tool, Args: s.Args})
+		}
+		sse(w, map[string]any{"type": "thinking", "message": "Fetching data…"})
+	} else {
+		sse(w, map[string]any{"type": "thinking", "message": "Planning your request…"})
+
+		planPrompt := &ai.Prompt{
+			System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
+				agentToolsDesc +
+				"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. When the question asks for cross-source insights or correlations (e.g. news + markets, news + video), call multiple relevant tools. If no tools are needed output [].",
+			Question: req.Prompt,
+			Priority: ai.PriorityHigh,
+			Provider: model.Provider,
+			Model:    model.Model,
+		}
+
+		planResult, err := ai.Ask(planPrompt)
+		if err != nil {
+			sse(w, map[string]any{"type": "error", "message": "Could not plan request: " + err.Error()})
+			sse(w, map[string]any{"type": "done"})
+			return
+		}
+
+		// Parse tool calls (the AI may wrap JSON in markdown fences)
+		planJSON := extractJSONArray(planResult)
+		json.Unmarshal([]byte(planJSON), &toolCalls) //nolint:errcheck — fallback to empty slice
+	}
 
 	// --- Step 2: execute tool calls ---
 	type toolResult struct {
@@ -511,8 +520,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Cap context length passed to the synthesiser
-		if len(text) > 4000 {
-			text = text[:4000] + "…"
+		if len(text) > 8000 {
+			text = text[:8000] + "…"
 		}
 		results = append(results, toolResult{Name: tc.Tool, Result: text, Args: tc.Args})
 		sse(w, map[string]any{
@@ -614,6 +623,34 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
 	sse(w, map[string]any{"type": "done"})
+}
+
+// shortcutToolCall defines a pre-planned tool call for common queries.
+type shortcutToolCall struct {
+	Tool string
+	Args map[string]any
+}
+
+// shortcutToolCalls returns pre-planned tool calls for well-known queries,
+// skipping the planning LLM step entirely for faster response times.
+func shortcutToolCalls(prompt string) []shortcutToolCall {
+	p := strings.ToLower(strings.TrimSpace(prompt))
+	shortcuts := map[string][]shortcutToolCall{
+		"give me a summary of today's top news": {{Tool: "news", Args: map[string]any{}}},
+		"what's in the news?":                   {{Tool: "news", Args: map[string]any{}}},
+		"what are the latest crypto and market prices?": {{Tool: "markets", Args: map[string]any{}}},
+		"market prices":              {{Tool: "markets", Args: map[string]any{}}},
+		"find me the latest tech videos": {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
+		"find a video":               {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
+		"what's the weather like in london today?": {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
+		"search the web for the latest ai news": {{Tool: "web_search", Args: map[string]any{"query": "latest AI news"}}},
+		"show me today's islamic reminder": {{Tool: "reminder", Args: map[string]any{}}},
+		"daily reminder":             {{Tool: "reminder", Args: map[string]any{}}},
+	}
+	if tc, ok := shortcuts[p]; ok {
+		return tc
+	}
+	return nil
 }
 
 // extractJSONArray extracts the first JSON array `[…]` from text produced by the AI.
@@ -838,13 +875,13 @@ func renderWeatherCard(result string) string {
 	var data struct {
 		Forecast struct {
 			Current struct {
-				TempC       float64 `json:"temp_c"`
-				FeelsLikeC  float64 `json:"feels_like_c"`
-				Description string  `json:"description"`
-				Humidity    int     `json:"humidity"`
-				WindKph     float64 `json:"wind_kph"`
-			} `json:"current"`
-			Location string `json:"location"`
+				TempC       float64 `json:"TempC"`
+				FeelsLikeC  float64 `json:"FeelsLikeC"`
+				Description string  `json:"Description"`
+				Humidity    int     `json:"Humidity"`
+				WindKph     float64 `json:"WindKph"`
+			} `json:"Current"`
+			Location string `json:"Location"`
 		} `json:"forecast"`
 	}
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
@@ -1026,8 +1063,8 @@ func formatNewsResult(result string) string {
 	if len(items) == 0 {
 		return "No news available."
 	}
-	if len(items) > 10 {
-		items = items[:10]
+	if len(items) > 15 {
+		items = items[:15]
 	}
 	var sb strings.Builder
 	if data.Query != "" {
@@ -1047,8 +1084,15 @@ func formatNewsResult(result string) string {
 		} else if a.Published != "" {
 			line += fmt.Sprintf(" (%s)", a.Published)
 		}
+		if a.URL != "" {
+			line += " " + a.URL
+		}
 		if a.Description != "" {
-			line += " — " + a.Description
+			desc := a.Description
+			if len(desc) > 150 {
+				desc = desc[:150] + "…"
+			}
+			line += " — " + desc
 		}
 		sb.WriteString(line + "\n")
 	}
