@@ -321,6 +321,7 @@ func main() {
 
 	// serve web search page (Brave-powered, paid)
 	http.HandleFunc("/web", search.WebHandler)
+	http.HandleFunc("/web/preview", search.PreviewHandler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
