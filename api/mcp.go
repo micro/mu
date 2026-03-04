@@ -436,8 +436,8 @@ func handleToolsCall(w http.ResponseWriter, originalReq *http.Request, req jsonr
 			result.IsError = true
 		}
 
-		// If login/signup succeeded, set session cookie so subsequent
-		// MCP requests from the same client are authenticated.
+		// If login/signup succeeded, set session cookie so clients
+		// with cookie jar support are authenticated on subsequent requests.
 		if err == nil && (tool.Name == "login" || tool.Name == "signup") {
 			var resp struct {
 				Token string `json:"token"`
