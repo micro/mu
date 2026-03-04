@@ -1132,22 +1132,21 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Get authenticated user
-		author := "Anonymous"
-		authorID := ""
-		sess, acc, err := auth.RequireSession(r)
-		if err == nil {
-			_ = sess // used for consistency
-			author = acc.Name
-			authorID = acc.ID
+		// Require authenticated user
+		_, acc, err := auth.RequireSession(r)
+		if err != nil {
+			app.Unauthorized(w, r)
+			return
+		}
+		author := acc.Name
+		authorID := acc.ID
 
-			// Check if account can post (30 minute minimum)
-			if !auth.CanPost(acc.ID) {
-				accountAge := time.Since(acc.Created).Round(time.Minute)
-				remaining := (30*time.Minute - time.Since(acc.Created)).Round(time.Minute)
-				app.Forbidden(w, r, fmt.Sprintf("New accounts must wait 30 minutes before posting. Your account is %v old. Please wait %v more.", accountAge, remaining))
-				return
-			}
+		// Check if account can post (30 minute minimum)
+		if !auth.CanPost(acc.ID) {
+			accountAge := time.Since(acc.Created).Round(time.Minute)
+			remaining := (30*time.Minute - time.Since(acc.Created)).Round(time.Minute)
+			app.Forbidden(w, r, fmt.Sprintf("New accounts must wait 30 minutes before posting. Your account is %v old. Please wait %v more.", accountAge, remaining))
+			return
 		}
 
 		// Create post

@@ -270,7 +270,7 @@ func GetSession(r *http.Request) (*Session, error) {
 		}
 	}
 
-	// Try Authorization header (PAT or Bearer token)
+	// Try Authorization header (PAT, session token, or Bearer token)
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" {
 		// Support both "Bearer <token>" and just "<token>"
@@ -279,13 +279,27 @@ func GetSession(r *http.Request) (*Session, error) {
 			token = authHeader[7:]
 		}
 
+		// Try as PAT first
 		accountID, err := ValidatePAT(token)
 		if err == nil {
-			// Create a pseudo-session for PAT
 			return &Session{
 				Type:    "token",
 				Account: accountID,
 			}, nil
+		}
+
+		// Try as session token (returned by login/signup MCP tools)
+		sess, err := ParseToken(token)
+		if err == nil {
+			mutex.Lock()
+			_, accountExists := accounts[sess.Account]
+			if !accountExists {
+				delete(sessions, sess.ID)
+			}
+			mutex.Unlock()
+			if accountExists {
+				return sess, nil
+			}
 		}
 	}
 
