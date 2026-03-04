@@ -708,22 +708,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	// Agent prompt — the primary interface
-	b.WriteString(`<div id="agent-form-wrap"><div class="card">
-<form id="agent-form">
-<textarea id="agent-prompt" name="prompt" rows="2"
-  placeholder="Ask me anything..."
-  style="width:100%;box-sizing:border-box;padding:10px;font-family:inherit;font-size:15px;resize:vertical;border:1px solid #ddd;border-radius:4px;"></textarea>
-<div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
-<select id="agent-model"
-  style="padding:6px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">
-<option value="standard">Standard — Fast and efficient</option>
-<option value="premium">Premium — Best quality</option>
-</select>
-<button type="submit" id="agent-submit">Ask</button>
-</div>
+	// Agent prompt — compact one-line input
+	b.WriteString(`<div id="agent-form-wrap">
+<form id="agent-form" style="display:flex;align-items:center;gap:8px;max-width:750px;">
+<input type="text" id="agent-prompt" name="prompt" placeholder="Ask me anything..."
+  style="flex:1;min-width:0;padding:10px 14px;font-family:inherit;font-size:15px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+<button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
+<button type="button" id="agent-model-toggle" title="Switch model"
+  style="flex-shrink:0;padding:6px 10px;font-size:11px;font-family:inherit;border:1px solid #ddd;border-radius:6px;background:#f9f9f9;cursor:pointer;color:#555;">Std</button>
+<input type="hidden" id="agent-model" value="standard">
 </form>
-</div></div>`)
+</div>`)
 
 	// Starter query chips
 	b.WriteString(`<div id="starter-queries" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">`)
@@ -789,6 +784,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 (function(){
 var form=document.getElementById('agent-form');
 if(!form)return;
+
+// Model toggle: Std ↔ Pro
+var modelInput=document.getElementById('agent-model');
+var modelBtn=document.getElementById('agent-model-toggle');
+if(modelBtn)modelBtn.onclick=function(){
+  if(modelInput.value==='standard'){modelInput.value='premium';modelBtn.textContent='Pro';modelBtn.style.background='#000';modelBtn.style.color='#fff';modelBtn.style.borderColor='#000';}
+  else{modelInput.value='standard';modelBtn.textContent='Std';modelBtn.style.background='#f9f9f9';modelBtn.style.color='#555';modelBtn.style.borderColor='#ddd';}
+};
 
 var feed=document.getElementById('home');
 var starters=document.getElementById('starter-queries');
