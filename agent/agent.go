@@ -50,7 +50,7 @@ var Models = []Model{
 	{
 		ID:       "premium",
 		Name:     "Premium",
-		Desc:     "Best quality (Claude Sonnet)",
+		Desc:     "Best quality",
 		WalletOp: "agent_query_premium",
 		Provider: ai.ProviderAnthropic,
 		Model:    defaultPremiumModel,
