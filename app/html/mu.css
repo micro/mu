@@ -339,10 +339,6 @@ td {
   flex-direction: column;
 }
 
-#nav-search {
-  margin-bottom: 12px;
-}
-
 #nav-search form {
   display: flex;
 }
