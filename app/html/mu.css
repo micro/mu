@@ -424,7 +424,7 @@ td {
 .nav-divider {
   height: 1px;
   background: var(--divider, #f0f0f0);
-  margin: 10px 0;
+  margin: 4px 0;
 }
 
 .nav-spacer {
@@ -1908,7 +1908,7 @@ a.highlight {
     width: 260px;
     height: 100vh;
     height: 100svh;
-    padding: 52px 20px 20px 20px;
+    padding: 48px 20px 20px 20px;
     background: white;
     border-right: 1px solid #e0e0e0;
     z-index: 200;
@@ -1939,7 +1939,7 @@ a.highlight {
   }
   
   #nav a {
-    padding: 12px 14px;
+    padding: 10px 14px;
     flex-direction: row;
   }
   
@@ -1954,7 +1954,7 @@ a.highlight {
   }
   
   .nav-divider {
-    margin: 15px 0;
+    margin: 4px 0;
   }
 
   /* Starter query chips - slightly smaller on mobile */
