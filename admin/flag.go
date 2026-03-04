@@ -512,7 +512,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 				</div>
 				<div class="actions">
 					<a href="/post?id=%s" target="_blank">view</a> · 
-					<a href="/flag?type=post&id=%s" class="text-error">flag</a>
+					<a href="#" onclick="fetch('/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{alert(d.success?'Flagged ('+d.count+')':d.message||'Failed')}).catch(()=>alert('Error'));return false;" class="text-error">flag</a>
 				</div>
 			</div>`,
 					title,

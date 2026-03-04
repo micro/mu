@@ -436,23 +436,6 @@ func handleToolsCall(w http.ResponseWriter, originalReq *http.Request, req jsonr
 			result.IsError = true
 		}
 
-		// If login/signup succeeded, set session cookie so subsequent
-		// MCP requests from the same client are authenticated.
-		if err == nil && (tool.Name == "login" || tool.Name == "signup") {
-			var resp struct {
-				Token string `json:"token"`
-			}
-			if json.Unmarshal([]byte(text), &resp) == nil && resp.Token != "" {
-				http.SetCookie(w, &http.Cookie{
-					Name:     "session",
-					Value:    resp.Token,
-					Path:     "/",
-					HttpOnly: true,
-					SameSite: http.SameSiteLaxMode,
-				})
-			}
-		}
-
 		writeResult(w, req.ID, result)
 		return
 	}

@@ -922,14 +922,20 @@ async function flagPost(postId) {
   if (!confirm('Flag this post as inappropriate? It will be hidden after 3 flags.')) {
     return;
   }
-  
+
   const result = await apiCall('/flag', { body: { type: 'post', id: postId } });
-  
-  if (result.ok && result.data.success) {
+
+  if (!result.ok) {
+    return; // apiCall already shows error toast
+  }
+
+  if (result.data.success) {
     showToast('Post flagged. Flag count: ' + result.data.count, 'success');
     if (result.data.count >= 3) {
       setTimeout(() => location.reload(), 1000);
     }
+  } else {
+    showToast(result.data.message || 'Could not flag post', 'error');
   }
 }
 
