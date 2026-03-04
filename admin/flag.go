@@ -440,7 +440,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					<input type="hidden" name="id" value="%s">
 					<button type="submit" class="btn-approve">Approve</button>
 				</form>
-				<form method="POST" action="/admin/moderate">
+				<form method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Permanently delete this content?').then(function(ok){if(ok)event.target.submit()})">
 					<input type="hidden" name="action" value="delete">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
