@@ -743,6 +743,7 @@ body.page-home #content > div:has(> #page-title) {
    ======================================== */
 .card {
   max-width: 750px;
+  box-sizing: border-box;
   display: block;
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
