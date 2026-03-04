@@ -29,6 +29,9 @@ go.work.sum
 # env file
 .env
 
+# MCP config (contains auth references)
+.mcp.json
+
 # Editor/IDE
 # .idea/
 # .vscode/
