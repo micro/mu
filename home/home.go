@@ -138,9 +138,9 @@ var landingTemplate = `<html lang="en">
           </div>
         </div>
         <div id="preview-web" class="preview-panel">
-          <div class="card">
+          <div class="card" style="overflow:hidden;">
             <h4 style="margin-top:0;"><img src="/search.svg" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Web</h4>
-            <div id="preview-web-content"><div class="skeleton" style="height:14px;margin:8px 0;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:80%%;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:90%%;"></div></div>
+            <div id="preview-web-content" style="min-width:0;overflow:hidden;"><div class="skeleton" style="height:14px;margin:8px 0;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:80%%;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:90%%;"></div></div>
             <a href="/web" class="link" style="margin-top:8px;display:inline-block;">Search the web &#x2192;</a>
           </div>
         </div>
@@ -523,8 +523,8 @@ Authorization: Bearer TOKEN</pre>
           var age=r.age?' · '+esc(r.age):'';
           h+='<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;">'+
              '<a href="'+esc(r.url||'#')+'" target="_blank" rel="noopener noreferrer" style="font-size:13px;font-weight:600;display:block;line-height:1.4;color:#111;">'+esc(r.title)+'</a>'+
-             '<div style="font-size:12px;color:#555;margin-top:2px;line-height:1.4;">'+esc(desc)+'</div>'+
-             '<div style="font-size:11px;color:#888;margin-top:2px;">'+esc(r.url||'')+age+'</div>'+
+             '<div style="font-size:12px;color:#555;margin-top:2px;line-height:1.4;word-wrap:break-word;overflow-wrap:break-word;">'+esc(desc)+'</div>'+
+             '<div style="font-size:11px;color:#888;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(r.url||'')+age+'</div>'+
              '</div>';
         });
         el.innerHTML=h;
