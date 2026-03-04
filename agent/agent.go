@@ -109,7 +109,6 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := `<div class="card">
-<p class="card-desc">Ask a question and the agent will search news, weather, places, markets, video and more to answer it.</p>
 <form id="agent-form">
 <textarea id="agent-prompt" name="prompt" rows="3"
   placeholder="What would you like to know?"

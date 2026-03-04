@@ -763,12 +763,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Agent card — input, model select, and link to past queries
-	b.WriteString(`<div class="card"><h4 style="margin-top:0;"><img src="/chat.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Agent</h4>
-<form id="agent-form" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+	b.WriteString(`<div class="card"><h4 style="margin-top:0;">Agent</h4>
+<form id="agent-form" style="display:flex;align-items:center;gap:8px;">
 <input type="text" id="agent-prompt" name="prompt" placeholder="Ask me anything..."
   style="flex:1;min-width:0;padding:10px 14px;font-family:inherit;font-size:15px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
 <select id="agent-model"
-  style="padding:8px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:6px;">` + modelOpts.String() + `</select>
+  style="flex-shrink:0;padding:8px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:6px;">` + modelOpts.String() + `</select>
 <button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
 </form>
 ` + app.Link("See past queries", "/agent") + `
