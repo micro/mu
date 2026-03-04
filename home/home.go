@@ -37,12 +37,13 @@ var landingTemplate = `<html lang="en">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/mu.css?%s">
     <style>
-      .preview-tabs { display:flex; gap:8px; justify-content:center; margin-bottom:20px; flex-wrap:wrap; }
+      .preview-tabs { display:flex; gap:8px; justify-content:center; margin-bottom:20px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 0; }
+      .preview-tabs::-webkit-scrollbar { display:none; }
       .preview-tab {
         padding:6px 18px; border:1px solid #ccc; border-radius:20px;
         background:#fff; cursor:pointer; font-size:14px; font-family:inherit;
         transition:background 0.15s,border-color 0.15s;
-	color: black;
+	color: black; white-space:nowrap; flex-shrink:0;
       }
       .preview-tab:hover { background:#f5f5f5; }
       .preview-tab img { filter:brightness(0); }
@@ -103,6 +104,9 @@ var landingTemplate = `<html lang="en">
         <button class="preview-tab" onclick="showPreview('video',this)">
           <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Video
         </button>
+        <button class="preview-tab" onclick="showPreview('web',this)">
+          <img src="/search.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Web
+        </button>
       </div>
 
       <!-- Card panels — content loaded client-side from public JSON API -->
@@ -126,6 +130,13 @@ var landingTemplate = `<html lang="en">
             <h4 style="margin-top:0;"><img src="/video.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Video</h4>
             <div id="preview-video-content"><div class="skeleton" style="height:80px;margin:8px 0;"></div></div>
             <a href="/video" class="link" style="margin-top:8px;display:inline-block;">More videos &#x2192;</a>
+          </div>
+        </div>
+        <div id="preview-web" class="preview-panel">
+          <div class="card">
+            <h4 style="margin-top:0;"><img src="/search.svg" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Web</h4>
+            <div id="preview-web-content"><div class="skeleton" style="height:14px;margin:8px 0;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:80%%;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:90%%;"></div></div>
+            <a href="/web" class="link" style="margin-top:8px;display:inline-block;">Search the web &#x2192;</a>
           </div>
         </div>
       </div>
@@ -191,18 +202,18 @@ var landingTemplate = `<html lang="en">
             <div class="small">Daily Islamic verse, hadith, and name of Allah</div>
           </div>
         </a>
-        <a href="/web" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/search.svg" alt="Search" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Search</b>
-            <div class="small">Search the web without ads or tracking</div>
-          </div>
-        </a>
         <a href="/video" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Video</b>
             <div class="small">Watch YouTube without ads, algorithms or shorts</div>
+          </div>
+        </a>
+        <a href="/web" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/search.svg" alt="Web" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Web</b>
+            <div class="small">Search the web without ads or tracking</div>
           </div>
         </a>
         <a href="/weather" style="text-decoration: none; color: inherit;">
@@ -229,6 +240,9 @@ var landingTemplate = `<html lang="en">
         </button>
         <button class="preview-tab" onclick="showExample('video',this)">
           <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Video
+        </button>
+        <button class="preview-tab" onclick="showExample('web',this)">
+          <img src="/search.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Web
         </button>
       </div>
 
@@ -293,6 +307,25 @@ POST /video HTTP/1.1
             <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
   "name":"video_search",
   "arguments":{"query":"bitcoin"}}}</pre>
+            <a href="/mcp" class="link">MCP Server &#x2192;</a>
+          </div>
+        </div>
+        <!-- Web examples -->
+        <div id="example-web" class="example-panel">
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>REST API</h4>
+            <p class="card-desc">Search the web powered by Brave — results cached for 5 minutes.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /web?q=latest+AI+news HTTP/1.1
+Accept: application/json
+Authorization: Bearer TOKEN</pre>
+            <a href="/api" class="link">API Docs &#x2192;</a>
+          </div>
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>MCP</h4>
+            <p class="card-desc">Agents can search the web for current information and news.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
+  "name":"web_search",
+  "arguments":{"query":"latest AI news"}}}</pre>
             <a href="/mcp" class="link">MCP Server &#x2192;</a>
           </div>
         </div>
@@ -463,6 +496,31 @@ POST /video HTTP/1.1
              '<a href="'+esc(v.url||'#')+'" style="font-size:13px;font-weight:600;display:block;line-height:1.3;color:#111;">'+esc(v.title)+'</a>'+
              '<div style="font-size:11px;color:#888;margin-top:2px;">'+esc(meta)+'</div>'+
              '</div></div>';
+        });
+        el.innerHTML=h;
+      })
+      .catch(function(){});
+
+    // Web (Brave search preview — cached, public endpoint)
+    fetch('/web/preview', {headers:{'Accept':'application/json'}})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var items=d.results||[];
+        var el=document.getElementById('preview-web-content');
+        if(!el) return;
+        if(!items.length){el.innerHTML='<p style="color:#888;font-size:13px;">No results yet.</p>';return;}
+        var h='';
+        items.forEach(function(r){
+          var desc=r.description||'';
+          if(desc.length>120) desc=desc.substring(0,120)+'…';
+          // Strip HTML tags from description
+          desc=desc.replace(/<[^>]*>/g,'');
+          var age=r.age?' · '+esc(r.age):'';
+          h+='<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;">'+
+             '<a href="'+esc(r.url||'#')+'" target="_blank" rel="noopener noreferrer" style="font-size:13px;font-weight:600;display:block;line-height:1.4;color:#111;">'+esc(r.title)+'</a>'+
+             '<div style="font-size:12px;color:#555;margin-top:2px;line-height:1.4;">'+esc(desc)+'</div>'+
+             '<div style="font-size:11px;color:#888;margin-top:2px;">'+esc(r.url||'')+age+'</div>'+
+             '</div>';
         });
         el.innerHTML=h;
       })
@@ -710,16 +768,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Agent prompt — compact one-line input
 	b.WriteString(`<div id="agent-form-wrap">
-<form id="agent-form" style="display:flex;align-items:center;gap:8px;max-width:750px;">
+<form id="agent-form" style="display:flex;align-items:center;gap:8px;max-width:1000px;">
 <input type="text" id="agent-prompt" name="prompt" placeholder="Ask me anything..."
   style="flex:1;min-width:0;padding:10px 14px;font-family:inherit;font-size:15px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
 <button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
-<div id="agent-model-toggle" style="flex-shrink:0;display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;font-size:11px;font-family:inherit;cursor:pointer;user-select:none;">
+<input type="hidden" id="agent-model" value="standard">
+</form>
+<div style="display:flex;align-items:center;gap:8px;margin-top:8px;max-width:1000px;">
+<div id="agent-model-toggle" style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;font-size:11px;font-family:inherit;cursor:pointer;user-select:none;">
 <span id="model-std" style="padding:6px 10px;background:#000;color:#fff;transition:background 0.15s,color 0.15s;">Std</span>
 <span id="model-pro" style="padding:6px 10px;background:#f9f9f9;color:#888;transition:background 0.15s,color 0.15s;">Pro</span>
 </div>
-<input type="hidden" id="agent-model" value="standard">
-</form>
+<span style="font-size:11px;color:#888;">3 credits</span>
+</div>
 </div>`)
 
 	// Starter query chips
@@ -791,10 +852,11 @@ if(!form)return;
 var modelInput=document.getElementById('agent-model');
 var stdBtn=document.getElementById('model-std');
 var proBtn=document.getElementById('model-pro');
+var costLabel=document.getElementById('agent-model-toggle')&&document.getElementById('agent-model-toggle').parentNode.querySelector('span:last-child');
 function setModel(m){
   modelInput.value=m;
-  if(m==='premium'){proBtn.style.background='#000';proBtn.style.color='#fff';stdBtn.style.background='#f9f9f9';stdBtn.style.color='#888';}
-  else{stdBtn.style.background='#000';stdBtn.style.color='#fff';proBtn.style.background='#f9f9f9';proBtn.style.color='#888';}
+  if(m==='premium'){proBtn.style.background='#000';proBtn.style.color='#fff';stdBtn.style.background='#f9f9f9';stdBtn.style.color='#888';if(costLabel)costLabel.textContent='15 credits';}
+  else{stdBtn.style.background='#000';stdBtn.style.color='#fff';proBtn.style.background='#f9f9f9';proBtn.style.color='#888';if(costLabel)costLabel.textContent='3 credits';}
 }
 if(stdBtn)stdBtn.onclick=function(){setModel('standard');};
 if(proBtn)proBtn.onclick=function(){setModel('premium');};

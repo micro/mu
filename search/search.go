@@ -10,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/app"
@@ -34,6 +35,52 @@ type BraveResponse struct {
 }
 
 var httpClient = &http.Client{Timeout: 10 * time.Second}
+
+// braveCache stores recent Brave search results keyed by query to avoid
+// repeated API calls for the same query within a short window (5 minutes).
+var braveCache struct {
+	sync.RWMutex
+	entries map[string]braveCacheEntry
+}
+
+type braveCacheEntry struct {
+	results []BraveResult
+	fetched time.Time
+}
+
+const braveCacheTTL = 5 * time.Minute
+
+func init() {
+	braveCache.entries = make(map[string]braveCacheEntry)
+}
+
+// SearchBraveCached returns cached results if available, otherwise calls searchBrave.
+func SearchBraveCached(query string, limit int) ([]BraveResult, error) {
+	key := strings.ToLower(strings.TrimSpace(query))
+	braveCache.RLock()
+	if e, ok := braveCache.entries[key]; ok && time.Since(e.fetched) < braveCacheTTL {
+		braveCache.RUnlock()
+		return e.results, nil
+	}
+	braveCache.RUnlock()
+
+	results, err := searchBrave(query, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	braveCache.Lock()
+	braveCache.entries[key] = braveCacheEntry{results: results, fetched: time.Now()}
+	// Evict old entries
+	for k, v := range braveCache.entries {
+		if time.Since(v.fetched) > braveCacheTTL {
+			delete(braveCache.entries, k)
+		}
+	}
+	braveCache.Unlock()
+
+	return results, nil
+}
 
 // searchBrave calls the Brave Search API and returns up to limit results.
 func searchBrave(query string, limit int) ([]BraveResult, error) {
@@ -177,7 +224,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	braveResults, braveErr := searchBrave(query, 10)
+	braveResults, braveErr := SearchBraveCached(query, 10)
 
 	// Only consume quota on success to avoid charging for failed API calls
 	if braveErr == nil {
@@ -223,6 +270,18 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 
 	pageHTML := app.RenderHTMLForRequest("Web: "+query, "Web results for "+query, b.String(), r)
 	w.Write([]byte(pageHTML))
+}
+
+// PreviewHandler returns cached Brave results as JSON for the landing page.
+// It uses a fixed "trending" query so the landing page can show web results
+// without requiring auth. Results are cached for 5 minutes.
+func PreviewHandler(w http.ResponseWriter, r *http.Request) {
+	results, err := SearchBraveCached("latest news today", 5)
+	if err != nil {
+		app.RespondJSON(w, map[string]interface{}{"results": []BraveResult{}})
+		return
+	}
+	app.RespondJSON(w, map[string]interface{}{"results": results})
 }
 
 // entryLink returns the URL for a local search result entry.
