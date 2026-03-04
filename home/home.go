@@ -315,7 +315,7 @@ POST /video HTTP/1.1
           <div class="card" style="flex:1;min-width:260px;">
             <h4>REST API</h4>
             <p class="card-desc">Search the web powered by Brave — results cached for 5 minutes.</p>
-            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /web?q=latest+AI+news HTTP/1.1
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /web?q=what+are+AI+agents HTTP/1.1
 Accept: application/json
 Authorization: Bearer TOKEN</pre>
             <a href="/api" class="link">API Docs &#x2192;</a>
@@ -325,7 +325,7 @@ Authorization: Bearer TOKEN</pre>
             <p class="card-desc">Agents can search the web for current information and news.</p>
             <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
   "name":"web_search",
-  "arguments":{"query":"latest AI news"}}}</pre>
+  "arguments":{"query":"what are AI agents"}}}</pre>
             <a href="/mcp" class="link">MCP Server &#x2192;</a>
           </div>
         </div>

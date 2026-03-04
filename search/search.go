@@ -276,7 +276,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 // It uses a fixed "trending" query so the landing page can show web results
 // without requiring auth. Results are cached for 5 minutes.
 func PreviewHandler(w http.ResponseWriter, r *http.Request) {
-	results, err := SearchBraveCached("latest news today", 5)
+	results, err := SearchBraveCached("what are AI agents", 5)
 	if err != nil {
 		app.RespondJSON(w, map[string]interface{}{"results": []BraveResult{}})
 		return
