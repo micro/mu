@@ -729,7 +729,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div id="starter-queries" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">`)
 	for _, sq := range StarterQueries {
 		b.WriteString(fmt.Sprintf(
-			`<button class="starter-chip" onclick="askAgent('%s')">%s</button>`,
+			`<button class="starter-chip" data-query="%s" onclick="askAgent(this.dataset.query)">%s</button>`,
 			htmlEsc(sq.Query), htmlEsc(sq.Label),
 		))
 	}
