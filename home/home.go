@@ -516,12 +516,12 @@ var StarterQueries = []struct {
 	Label string
 	Query string
 }{
-	{"What's in the news?", "Give me a summary of today's top news"},
-	{"Market prices", "What are the latest crypto and market prices?"},
-	{"Find a video", "Find me the latest tech videos"},
-	{"Weather", "What's the weather like in London today?"},
-	{"Search the web", "Search the web for the latest AI news"},
-	{"Daily reminder", "Show me today's Islamic reminder"},
+	{"Latest news", "!news"},
+	{"Market prices", "!markets"},
+	{"Tech videos", "!video tech"},
+	{"London weather", "!weather"},
+	{"Search AI news", "!search latest AI news"},
+	{"Daily reminder", "!reminder"},
 }
 
 func ChatCard() string {

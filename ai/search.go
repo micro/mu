@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,19 +20,27 @@ type SearchResult struct {
 	Snippet string
 }
 
-// WebSearch performs a web search using DuckDuckGo's instant answer API
-// Falls back to scraping if needed. Returns up to 5 results.
+// WebSearch performs a web search using DuckDuckGo.
+// Tries the instant answer API first, then falls back to DuckDuckGo lite HTML.
+// Returns up to 8 results.
 func WebSearch(query string) ([]SearchResult, error) {
 	app.Log("ai", "[Search] Query: %s", query)
 
-	// Try DuckDuckGo instant answers API first
+	// Try DuckDuckGo instant answers API first (works for factual queries)
 	results, err := duckduckgoSearch(query)
+	if err == nil && len(results) > 0 {
+		app.Log("ai", "[Search] DDG instant: %d results", len(results))
+		return results, nil
+	}
+
+	// Fallback: scrape DuckDuckGo lite HTML (works for general queries)
+	results, err = duckduckgoLiteSearch(query)
 	if err != nil {
-		app.Log("ai", "[Search] DuckDuckGo error: %v", err)
+		app.Log("ai", "[Search] DDG lite error: %v", err)
 		return nil, err
 	}
 
-	app.Log("ai", "[Search] Found %d results", len(results))
+	app.Log("ai", "[Search] DDG lite: %d results", len(results))
 	return results, nil
 }
 
@@ -74,7 +83,6 @@ func duckduckgoSearch(query string) ([]SearchResult, error) {
 	// Add related topics
 	for _, topic := range ddg.RelatedTopics {
 		if topic.Text != "" && topic.FirstURL != "" && len(results) < 5 {
-			// Extract title from URL or text
 			title := topic.Text
 			if len(title) > 100 {
 				title = title[:100] + "..."
@@ -88,6 +96,66 @@ func duckduckgoSearch(query string) ([]SearchResult, error) {
 	}
 
 	return results, nil
+}
+
+// duckduckgoLiteSearch scrapes DuckDuckGo lite (HTML) for actual web results.
+// This works for general queries where the instant answer API returns nothing.
+func duckduckgoLiteSearch(query string) ([]SearchResult, error) {
+	liteURL := "https://lite.duckduckgo.com/lite/"
+
+	form := url.Values{}
+	form.Set("q", query)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("POST", liteURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; mu-search/1.0)")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	html := string(body)
+
+	return parseDDGLiteHTML(html), nil
+}
+
+// reLink matches DDG lite result links.
+var reLink = regexp.MustCompile(`<a[^>]+rel="nofollow"[^>]+href="([^"]+)"[^>]*class="result-link"[^>]*>([^<]+)</a>`)
+
+// reSnippet matches DDG lite result snippets (the <td> class="result-snippet").
+var reSnippet = regexp.MustCompile(`class="result-snippet"[^>]*>([^<]+)<`)
+
+func parseDDGLiteHTML(html string) []SearchResult {
+	links := reLink.FindAllStringSubmatch(html, -1)
+	snippets := reSnippet.FindAllStringSubmatch(html, -1)
+
+	var results []SearchResult
+	for i, m := range links {
+		if len(results) >= 8 {
+			break
+		}
+		u := strings.TrimSpace(m[1])
+		title := strings.TrimSpace(m[2])
+		snippet := ""
+		if i < len(snippets) {
+			snippet = strings.TrimSpace(snippets[i][1])
+		}
+		if u != "" && title != "" {
+			results = append(results, SearchResult{
+				Title:   title,
+				URL:     u,
+				Snippet: snippet,
+			})
+		}
+	}
+	return results
 }
 
 // FormatSearchResults formats search results for inclusion in RAG context
@@ -111,7 +179,6 @@ func FormatSearchResults(results []SearchResult) []string {
 func ShouldWebSearch(query string) bool {
 	query = strings.ToLower(query)
 
-	// Keywords suggesting need for current/external info
 	keywords := []string{
 		"current", "today", "latest", "recent", "now",
 		"price", "worth", "cost", "rate",

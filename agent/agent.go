@@ -631,23 +631,63 @@ type shortcutToolCall struct {
 	Args map[string]any
 }
 
-// shortcutToolCalls returns pre-planned tool calls for well-known queries,
-// skipping the planning LLM step entirely for faster response times.
+// shortcutToolCalls returns pre-planned tool calls for well-known queries.
+// Supports two formats:
+//  1. Command prefixes: "!news", "!search latest AI news", "!weather 51.5,-0.1"
+//  2. Exact natural-language matches for backward compatibility
 func shortcutToolCalls(prompt string) []shortcutToolCall {
-	p := strings.ToLower(strings.TrimSpace(prompt))
-	shortcuts := map[string][]shortcutToolCall{
-		"give me a summary of today's top news": {{Tool: "news", Args: map[string]any{}}},
-		"what's in the news?":                   {{Tool: "news", Args: map[string]any{}}},
-		"what are the latest crypto and market prices?": {{Tool: "markets", Args: map[string]any{}}},
-		"market prices":              {{Tool: "markets", Args: map[string]any{}}},
-		"find me the latest tech videos": {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
-		"find a video":               {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
-		"what's the weather like in london today?": {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
-		"search the web for the latest ai news": {{Tool: "web_search", Args: map[string]any{"query": "latest AI news"}}},
-		"show me today's islamic reminder": {{Tool: "reminder", Args: map[string]any{}}},
-		"daily reminder":             {{Tool: "reminder", Args: map[string]any{}}},
+	p := strings.TrimSpace(prompt)
+	pLower := strings.ToLower(p)
+
+	// --- Command prefix format: !tool [args] ---
+	if strings.HasPrefix(p, "!") {
+		parts := strings.SplitN(p[1:], " ", 2)
+		cmd := strings.ToLower(parts[0])
+		arg := ""
+		if len(parts) > 1 {
+			arg = strings.TrimSpace(parts[1])
+		}
+
+		switch cmd {
+		case "news":
+			if arg != "" {
+				return []shortcutToolCall{{Tool: "news_search", Args: map[string]any{"query": arg}}}
+			}
+			return []shortcutToolCall{{Tool: "news", Args: map[string]any{}}}
+		case "search":
+			if arg != "" {
+				return []shortcutToolCall{{Tool: "web_search", Args: map[string]any{"query": arg}}}
+			}
+			return nil // need a query
+		case "markets", "market", "prices":
+			return []shortcutToolCall{{Tool: "markets", Args: map[string]any{}}}
+		case "video", "videos":
+			q := "latest"
+			if arg != "" {
+				q = arg
+			}
+			return []shortcutToolCall{{Tool: "video_search", Args: map[string]any{"query": q}}}
+		case "weather":
+			// Default to London; arg could be "lat,lon" in future
+			lat, lon := 51.5074, -0.1278
+			return []shortcutToolCall{{Tool: "weather_forecast", Args: map[string]any{"lat": lat, "lon": lon}}}
+		case "reminder":
+			return []shortcutToolCall{{Tool: "reminder", Args: map[string]any{}}}
+		}
+		return nil
 	}
-	if tc, ok := shortcuts[p]; ok {
+
+	// --- Exact natural-language matches (starter pills backward compat) ---
+	exactMap := map[string][]shortcutToolCall{
+		"give me a summary of today's top news":          {{Tool: "news", Args: map[string]any{}}},
+		"what's in the news?":                            {{Tool: "news", Args: map[string]any{}}},
+		"what are the latest crypto and market prices?":  {{Tool: "markets", Args: map[string]any{}}},
+		"find me the latest tech videos":                 {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
+		"what's the weather like in london today?":       {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
+		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"query": "latest AI news"}}},
+		"show me today's islamic reminder":              {{Tool: "reminder", Args: map[string]any{}}},
+	}
+	if tc, ok := exactMap[pLower]; ok {
 		return tc
 	}
 	return nil
