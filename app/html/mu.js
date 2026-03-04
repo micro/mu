@@ -917,9 +917,27 @@ self.addEventListener('DOMContentLoaded', function() {
   setSession();
 });
 
+// Custom confirm dialog (PWA-compatible replacement for window.confirm)
+window.muConfirm = function(message) {
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.className = 'modal';
+    overlay.innerHTML = '<div class="modal-content" style="max-width:400px;text-align:center;">' +
+      '<p style="margin-bottom:20px;">' + message + '</p>' +
+      '<div style="display:flex;gap:10px;">' +
+      '<button id="mu-confirm-no" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:5px;background:#f5f5f5;cursor:pointer;">Cancel</button>' +
+      '<button id="mu-confirm-yes" style="flex:1;padding:10px;border:none;border-radius:5px;background:#dc3545;color:white;cursor:pointer;">Confirm</button>' +
+      '</div></div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('#mu-confirm-yes').onclick = function() { overlay.remove(); resolve(true); };
+    overlay.querySelector('#mu-confirm-no').onclick = function() { overlay.remove(); resolve(false); };
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(false); } });
+  });
+};
+
 // Flag a post (assigned to window for onclick access)
 window.flagPost = async function flagPost(postId) {
-  if (!confirm('Flag this post as inappropriate? It will be hidden after 3 flags.')) {
+  if (!await muConfirm('Flag this post as inappropriate? It will be hidden after 3 flags.')) {
     return;
   }
 
