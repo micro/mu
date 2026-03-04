@@ -142,41 +142,6 @@ var landingTemplate = `<html lang="en">
       <h3>Services</h3>
       <p>The tools powering the agent — also available individually</p>
       <div id="links">
-        <a href="/news" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/news.png" alt="News" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>News</b>
-            <div class="small">Source of truth for news events around the world</div>
-          </div>
-        </a>
-        <a href="/video" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Video</b>
-            <div class="small">Watch YouTube without ads, algorithms or shorts</div>
-          </div>
-        </a>
-        <a href="/markets" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/markets.png" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Markets</b>
-            <div class="small">Live crypto, futures and commodity prices</div>
-          </div>
-        </a>
-        <a href="/weather" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/weather.png" alt="Weather" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Weather</b>
-            <div class="small">Local weather forecasts without ads or tracking</div>
-          </div>
-        </a>
-        <a href="/places" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/places.png" alt="Places" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Places</b>
-            <div class="small">Search and discover places on an ad-free map</div>
-          </div>
-        </a>
         <a href="/blog" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/post.png" alt="Blog" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
@@ -198,6 +163,27 @@ var landingTemplate = `<html lang="en">
             <div class="small">Message other users directly or send an email</div>
           </div>
         </a>
+        <a href="/markets" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/markets.png" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Markets</b>
+            <div class="small">Live crypto, futures and commodity prices</div>
+          </div>
+        </a>
+        <a href="/news" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/news.png" alt="News" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>News</b>
+            <div class="small">Source of truth for news events around the world</div>
+          </div>
+        </a>
+        <a href="/places" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/places.png" alt="Places" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Places</b>
+            <div class="small">Search and discover places on an ad-free map</div>
+          </div>
+        </a>
         <a href="/reminder" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/reminder.png" alt="Reminder" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
@@ -210,6 +196,20 @@ var landingTemplate = `<html lang="en">
             <img src="/search.svg" alt="Search" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Search</b>
             <div class="small">Search the web without ads or tracking</div>
+          </div>
+        </a>
+        <a href="/video" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Video</b>
+            <div class="small">Watch YouTube without ads, algorithms or shorts</div>
+          </div>
+        </a>
+        <a href="/weather" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/weather.png" alt="Weather" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Weather</b>
+            <div class="small">Local weather forecasts without ads or tracking</div>
           </div>
         </a>
       </div>
@@ -516,12 +516,12 @@ var StarterQueries = []struct {
 	Label string
 	Query string
 }{
-	{"What's in the news?", "Give me a summary of today's top news"},
-	{"Market prices", "What are the latest crypto and market prices?"},
-	{"Find a video", "Find me the latest tech videos"},
-	{"Weather", "What's the weather like in London today?"},
-	{"Search the web", "Search the web for the latest AI news"},
-	{"Daily reminder", "Show me today's Islamic reminder"},
+	{"Latest news", "news"},
+	{"Market prices", "markets"},
+	{"Tech videos", "Find me the latest tech videos"},
+	{"London weather", "weather"},
+	{"Search AI news", "Search the web for the latest AI news"},
+	{"Daily reminder", "reminder"},
 }
 
 func ChatCard() string {

@@ -390,7 +390,7 @@ func sse(w http.ResponseWriter, event map[string]any) {
 const agentToolsDesc = `Available tools (use exact name):
 - news: Get latest news feed (no args)
 - news_search: Search news articles (args: {"query":"search term"})
-- web_search: Search the web for current information (args: {"query":"search term"})
+- web_search: Search the web for current information (args: {"q":"search term"})
 - video_search: Search for videos (args: {"query":"search term"})
 - markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
@@ -631,23 +631,29 @@ type shortcutToolCall struct {
 	Args map[string]any
 }
 
-// shortcutToolCalls returns pre-planned tool calls for well-known queries,
-// skipping the planning LLM step entirely for faster response times.
+// shortcutToolCalls returns pre-planned tool calls for exact-match aliases,
+// skipping the LLM planning step for common one-word queries and starter pills.
 func shortcutToolCalls(prompt string) []shortcutToolCall {
-	p := strings.ToLower(strings.TrimSpace(prompt))
-	shortcuts := map[string][]shortcutToolCall{
-		"give me a summary of today's top news": {{Tool: "news", Args: map[string]any{}}},
-		"what's in the news?":                   {{Tool: "news", Args: map[string]any{}}},
+	aliases := map[string][]shortcutToolCall{
+		// Short aliases
+		"news":      {{Tool: "news", Args: map[string]any{}}},
+		"markets":   {{Tool: "markets", Args: map[string]any{}}},
+		"market":    {{Tool: "markets", Args: map[string]any{}}},
+		"prices":    {{Tool: "markets", Args: map[string]any{}}},
+		"video":     {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
+		"videos":    {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
+		"weather":   {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
+		"reminder":  {{Tool: "reminder", Args: map[string]any{}}},
+		// Starter pill phrases
+		"give me a summary of today's top news":         {{Tool: "news", Args: map[string]any{}}},
+		"what's in the news?":                           {{Tool: "news", Args: map[string]any{}}},
 		"what are the latest crypto and market prices?": {{Tool: "markets", Args: map[string]any{}}},
-		"market prices":              {{Tool: "markets", Args: map[string]any{}}},
-		"find me the latest tech videos": {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
-		"find a video":               {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
-		"what's the weather like in london today?": {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
-		"search the web for the latest ai news": {{Tool: "web_search", Args: map[string]any{"query": "latest AI news"}}},
-		"show me today's islamic reminder": {{Tool: "reminder", Args: map[string]any{}}},
-		"daily reminder":             {{Tool: "reminder", Args: map[string]any{}}},
+		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
+		"what's the weather like in london today?":      {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
+		"search the web for the latest ai news":        {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
+		"show me today's islamic reminder":             {{Tool: "reminder", Args: map[string]any{}}},
 	}
-	if tc, ok := shortcuts[p]; ok {
+	if tc, ok := aliases[strings.ToLower(strings.TrimSpace(prompt))]; ok {
 		return tc
 	}
 	return nil
