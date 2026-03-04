@@ -57,9 +57,9 @@ var landingTemplate = `<html lang="en">
         background-size:200%% 100%%; animation:shimmer 1.4s infinite; border-radius:4px; }
       @keyframes shimmer { 0%%{background-position:200%% 0} 100%%{background-position:-200%% 0} }
       @media(max-width:600px){
-        .preview-tabs { gap:6px; }
-        .preview-tab { padding:5px 12px; font-size:12px; }
-        .preview-tab img { width:12px!important; height:12px!important; margin-right:3px!important; }
+        .preview-tabs { gap:6px; flex-wrap:wrap; }
+        .preview-tab { padding:5px 10px; font-size:12px; flex-shrink:1; }
+        .preview-tab img { display:none; }
       }
     </style>
   </head>
