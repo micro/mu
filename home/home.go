@@ -13,7 +13,6 @@ import (
 
 	"mu/agent"
 	"mu/app"
-	"mu/auth"
 	"mu/blog"
 	"mu/data"
 	"mu/markets"
@@ -574,20 +573,6 @@ var Template = `<div id="home">
   <div class="home-right">%s</div>
 </div>`
 
-// StarterQueries are suggested prompts shown on the home page to help users
-// get started with the agent.
-var StarterQueries = []struct {
-	Label string
-	Query string
-}{
-	{"Latest news", "news"},
-	{"Market prices", "markets"},
-	{"Tech videos", "Find me the latest tech videos"},
-	{"London weather", "weather"},
-	{"Search AI news", "Search the web for the latest AI news"},
-	{"Daily reminder", "reminder"},
-}
-
 func ChatCard() string {
 	return `<div id="home-chat">
 		<form id="home-chat-form" action="/chat" method="GET">
@@ -767,56 +752,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Refresh cards if cache expired (2 minute TTL)
 	RefreshCards()
 
-	sess, _ := auth.TrySession(r)
-
 	var b strings.Builder
 
-	// Agent prompt — compact one-line input
-	b.WriteString(`<div id="agent-form-wrap">
-<form id="agent-form" style="display:flex;align-items:center;gap:8px;max-width:1000px;">
+	// Build model <select> options
+	var modelOpts strings.Builder
+	for _, m := range agent.Models {
+		modelOpts.WriteString(fmt.Sprintf(
+			`<option value="%s">%s — %s</option>`, m.ID, m.Name, m.Desc,
+		))
+	}
+
+	// Agent card — input, model select, and link to past queries
+	b.WriteString(`<div class="card"><h4 style="margin-top:0;"><img src="/chat.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Agent</h4>
+<form id="agent-form" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
 <input type="text" id="agent-prompt" name="prompt" placeholder="Ask me anything..."
   style="flex:1;min-width:0;padding:10px 14px;font-family:inherit;font-size:15px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+<select id="agent-model"
+  style="padding:8px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:6px;">` + modelOpts.String() + `</select>
 <button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
-<input type="hidden" id="agent-model" value="standard">
 </form>
-<div style="display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:16px;max-width:1000px;">
-<div id="agent-model-toggle" style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;font-size:11px;font-family:inherit;cursor:pointer;user-select:none;">
-<span id="model-std" style="padding:6px 10px;background:#000;color:#fff;transition:background 0.15s,color 0.15s;">Std</span>
-<span id="model-pro" style="padding:6px 10px;background:#f9f9f9;color:#888;transition:background 0.15s,color 0.15s;">Pro</span>
-</div>
-<span style="font-size:11px;color:#888;">3 credits</span>
-</div>
+` + app.Link("See past queries", "/agent") + `
 </div>`)
-
-	// Agent card — shows saved flows or starter pills
-	b.WriteString(`<div class="card"><h4 style="margin-top:0;"><img src="/chat.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Agent</h4>`)
-	var flows []*agent.Flow
-	if sess != nil {
-		flows = agent.ListFlows(sess.Account)
-		if len(flows) > 5 {
-			flows = flows[:5]
-		}
-	}
-	if len(flows) > 0 {
-		for _, f := range flows {
-			ageStr := agent.FormatAge(time.Since(f.CreatedAt))
-			b.WriteString(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">`)
-			b.WriteString(`<a href="/agent/flow/` + f.ID + `" style="font-size:14px;font-weight:600;display:block;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">` + htmlEsc(f.Prompt) + `</a>`)
-			b.WriteString(`<span style="font-size:12px;color:#888;">` + ageStr + `</span>`)
-			b.WriteString(`</div>`)
-		}
-		b.WriteString(app.Link("All flows", "/agent"))
-	} else {
-		b.WriteString(`<div id="starter-queries" style="display:flex;flex-wrap:wrap;gap:8px;">`)
-		for _, sq := range StarterQueries {
-			b.WriteString(fmt.Sprintf(
-				`<button class="starter-chip" data-query="%s" onclick="askAgent(this.dataset.query)">%s</button>`,
-				htmlEsc(sq.Query), htmlEsc(sq.Label),
-			))
-		}
-		b.WriteString(`</div>`)
-	}
-	b.WriteString(`</div>`)
 
 	// Agent progress and result areas
 	b.WriteString(`<div id="agent-progress" style="display:none;">
@@ -853,12 +809,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			strings.Join(rightHTML, "\n")))
 	}
 
-	// Inline styles for starter chips and agent steps
+	// Inline styles for agent steps
 	b.WriteString(`<style>
-.starter-chip{padding:6px 14px;border:1px solid #ddd;border-radius:20px;
-  background:#fff;cursor:pointer;font-size:13px;font-family:inherit;
-  transition:background 0.15s,border-color 0.15s;color:#333;}
-.starter-chip:hover{background:#f5f5f5;border-color:#bbb;}
 .agent-step{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px;
   color:#555;border-bottom:1px solid #f5f5f5;}
 .agent-step:last-child{border-bottom:none;}
@@ -873,21 +825,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 var form=document.getElementById('agent-form');
 if(!form)return;
 
-// Model toggle: Std ↔ Pro
-var modelInput=document.getElementById('agent-model');
-var stdBtn=document.getElementById('model-std');
-var proBtn=document.getElementById('model-pro');
-var costLabel=document.getElementById('agent-model-toggle')&&document.getElementById('agent-model-toggle').parentNode.querySelector('span:last-child');
-function setModel(m){
-  modelInput.value=m;
-  if(m==='premium'){proBtn.style.background='#000';proBtn.style.color='#fff';stdBtn.style.background='#f9f9f9';stdBtn.style.color='#888';if(costLabel)costLabel.textContent='15 credits';}
-  else{stdBtn.style.background='#000';stdBtn.style.color='#fff';proBtn.style.background='#f9f9f9';proBtn.style.color='#888';if(costLabel)costLabel.textContent='3 credits';}
-}
-if(stdBtn)stdBtn.onclick=function(){setModel('standard');};
-if(proBtn)proBtn.onclick=function(){setModel('premium');};
-
 var feed=document.getElementById('home');
-var starters=document.getElementById('starter-queries');
 var prog=document.getElementById('agent-progress');
 var steps=document.getElementById('agent-steps');
 var result=document.getElementById('agent-result');
@@ -898,7 +836,6 @@ function esc(s){
 
 function showFeed(){
   if(feed)feed.style.display='';
-  if(starters)starters.style.display='';
   prog.style.display='none';
   result.innerHTML='';
   document.getElementById('agent-prompt').value='';
@@ -914,7 +851,6 @@ function submitAgent(prompt){
   btn.disabled=true;btn.textContent='Working…';
 
   // Transition: hide feed, show progress
-  if(starters)starters.style.display='none';
   if(feed)feed.style.display='none';
   prog.style.display='block';steps.innerHTML='';result.innerHTML='';
 
@@ -993,7 +929,6 @@ form.addEventListener('submit',function(e){
   submitAgent(document.getElementById('agent-prompt').value.trim());
 });
 
-window.askAgent=function(q){submitAgent(q);};
 })();
 </script>`)
 
