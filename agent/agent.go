@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -26,7 +27,16 @@ type Model struct {
 	Desc     string
 	WalletOp string
 	Provider string // ai provider constant, empty = default
+	Model    string // ai model override, empty = provider default
 }
+
+// defaultPremiumModel is the Anthropic model used for premium agent queries.
+var defaultPremiumModel = func() string {
+	if v := os.Getenv("ANTHROPIC_PREMIUM_MODEL"); v != "" {
+		return v
+	}
+	return "claude-sonnet-4-5-20250514"
+}()
 
 // Models lists the available model tiers.
 var Models = []Model{
@@ -40,9 +50,10 @@ var Models = []Model{
 	{
 		ID:       "premium",
 		Name:     "Premium",
-		Desc:     "Best quality",
+		Desc:     "Best quality (Claude Sonnet)",
 		WalletOp: "agent_query_premium",
 		Provider: ai.ProviderAnthropic,
+		Model:    defaultPremiumModel,
 	},
 }
 
@@ -453,6 +464,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
 		Provider: model.Provider,
+		Model:    model.Model,
 	}
 
 	planResult, err := ai.Ask(planPrompt)
@@ -545,6 +557,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
 		Provider: model.Provider,
+		Model:    model.Model,
 	}
 
 	answer, err := ai.Ask(synthPrompt)
