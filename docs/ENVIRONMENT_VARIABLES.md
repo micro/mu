@@ -128,7 +128,7 @@ export DONATION_URL="https://gocardless.com/your-donation-link"
 
 ```bash
 # Daily free AI queries (default: 10)
-export FREE_DAILY_SEARCHES="10"
+export FREE_DAILY_QUOTA="10"
 
 # Credit costs per operation (default values shown)
 export CREDIT_COST_NEWS="1"        # News search (1p)
@@ -192,7 +192,7 @@ export MAIL_SELECTOR="default"
 | `STRIPE_SECRET_KEY` | - | Stripe secret key for card payments |
 | `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key for card payments |
 | `STRIPE_WEBHOOK_SECRET` | - | Stripe webhook secret for verifying events |
-| `FREE_DAILY_SEARCHES` | `10` | Daily free AI queries |
+| `FREE_DAILY_QUOTA` | `10` | Daily free AI queries |
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
 | `CREDIT_COST_VIDEO_WATCH` | `0` | Credits per video watch (free by default) |

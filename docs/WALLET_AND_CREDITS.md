@@ -113,9 +113,9 @@ type Transaction struct {
 
 ```go
 type DailyUsage struct {
-    UserID   string `json:"user_id"`
-    Date     string `json:"date"`     // "2006-01-02"
-    Searches int    `json:"searches"` // Free queries used today
+    UserID string `json:"user_id"`
+    Date   string `json:"date"` // "2006-01-02"
+    Used   int    `json:"used"` // Free quota used today
 }
 ```
 
@@ -142,7 +142,7 @@ STRIPE_PUBLISHABLE_KEY="pk_live_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."  # For verifying Stripe webhook events
 
 # Quota (optional - these are defaults)
-FREE_DAILY_SEARCHES="10"
+FREE_DAILY_QUOTA="10"
 CREDIT_COST_NEWS="1"
 CREDIT_COST_NEWS_SUMMARY="1"
 CREDIT_COST_VIDEO="2"

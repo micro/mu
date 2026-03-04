@@ -28,9 +28,9 @@ var (
 	CostWeatherForecast   = getEnvInt("CREDIT_COST_WEATHER", 1)
 	CostWeatherPollen     = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
 	CostWebSearch         = getEnvInt("CREDIT_COST_SEARCH", 5)
-	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 5)
+	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 15)
-	FreeDailySearches     = getEnvInt("FREE_DAILY_SEARCHES", 10)
+	FreeDailyQuota        = getEnvInt("FREE_DAILY_QUOTA", 20)
 )
 
 // PaymentsEnabled returns true if payments are configured
@@ -93,11 +93,11 @@ type Transaction struct {
 	CreatedAt time.Time              `json:"created_at"`
 }
 
-// DailyUsage tracks free searches used per day
+// DailyUsage tracks free quota used per day
 type DailyUsage struct {
-	UserID   string `json:"user_id"`
-	Date     string `json:"date"`     // "2006-01-02" format
-	Searches int    `json:"searches"` // Free searches used today
+	UserID string `json:"user_id"`
+	Date   string `json:"date"` // "2006-01-02" format
+	Used   int    `json:"used"` // Free quota used today
 }
 
 func init() {
@@ -286,24 +286,24 @@ func GetDailyUsage(userID string) *DailyUsage {
 	return usage
 }
 
-// HasFreeSearches checks if user has free searches remaining today
-func HasFreeSearches(userID string) bool {
+// HasFreeQuota checks if user has free quota remaining today
+func HasFreeQuota(userID string) bool {
 	usage := GetDailyUsage(userID)
-	return usage.Searches < FreeDailySearches
+	return usage.Used < FreeDailyQuota
 }
 
-// GetFreeSearchesRemaining returns remaining free searches for today
-func GetFreeSearchesRemaining(userID string) int {
+// GetFreeQuotaRemaining returns remaining free quota for today
+func GetFreeQuotaRemaining(userID string) int {
 	usage := GetDailyUsage(userID)
-	remaining := FreeDailySearches - usage.Searches
+	remaining := FreeDailyQuota - usage.Used
 	if remaining < 0 {
 		return 0
 	}
 	return remaining
 }
 
-// UseFreeSearch consumes one free search
-func UseFreeSearch(userID string) error {
+// UseFreeQuota consumes one free quota unit
+func UseFreeQuota(userID string) error {
 	today := time.Now().UTC().Format("2006-01-02")
 	key := userID + ":" + today
 
@@ -320,11 +320,11 @@ func UseFreeSearch(userID string) error {
 		dailyUsage[key] = usage
 	}
 
-	if usage.Searches >= FreeDailySearches {
-		return errors.New("daily free searches exhausted")
+	if usage.Used >= FreeDailyQuota {
+		return errors.New("daily free quota exhausted")
 	}
 
-	usage.Searches++
+	usage.Used++
 	data.SaveJSON("daily_usage.json", dailyUsage)
 
 	return nil
@@ -367,7 +367,7 @@ func GetOperationCost(operation string) int {
 }
 
 // CheckQuota checks if a user can perform an operation
-// Returns: canProceed, useFreeSearch, creditCost, error
+// Returns: canProceed, useFreeQuota, creditCost, error
 func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// Get account to check admin status
 	acc, err := auth.GetAccount(userID)
@@ -387,8 +387,8 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 
 	cost := GetOperationCost(operation)
 
-	// Check if user has free searches remaining
-	if HasFreeSearches(userID) {
+	// Check if user has free quota remaining
+	if HasFreeQuota(userID) {
 		return true, true, 0, nil
 	}
 
@@ -445,9 +445,9 @@ func ConsumeQuota(userID string, operation string) error {
 		return nil
 	}
 
-	// Try free search first
-	if HasFreeSearches(userID) {
-		return UseFreeSearch(userID)
+	// Try free quota first
+	if HasFreeQuota(userID) {
+		return UseFreeQuota(userID)
 	}
 
 	// Deduct credits

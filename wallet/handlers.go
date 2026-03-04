@@ -14,7 +14,7 @@ import (
 func WalletPage(userID string) string {
 	wallet := GetWallet(userID)
 	usage := GetDailyUsage(userID)
-	freeRemaining := GetFreeSearchesRemaining(userID)
+	freeRemaining := GetFreeQuotaRemaining(userID)
 	transactions := GetTransactions(userID, 20)
 
 	// Check if user is admin
@@ -43,14 +43,14 @@ func WalletPage(userID string) string {
 		// Daily quota
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Free Queries</h3>`)
-		usedPct := float64(usage.Searches) / float64(FreeDailySearches) * 100
+		usedPct := float64(usage.Used) / float64(FreeDailyQuota) * 100
 		if usedPct > 100 {
 			usedPct = 100
 		}
 		sb.WriteString(`<div class="progress">`)
 		sb.WriteString(fmt.Sprintf(`<div class="progress-bar" style="width: %.0f%%;"></div>`, usedPct))
 		sb.WriteString(`</div>`)
-		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, FreeDailySearches))
+		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, FreeDailyQuota))
 		sb.WriteString(`</div>`)
 
 		// Self-hosting note
@@ -202,7 +202,7 @@ func PublicWalletPage() string {
 	// Intro
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Credits &amp; Pricing</h3>`)
-	sb.WriteString(`<p>Mu is free with ` + fmt.Sprintf("%d", FreeDailySearches) + ` queries/day. Need more? Top up and pay as you go — no subscription required.</p>`)
+	sb.WriteString(`<p>Mu is free with ` + fmt.Sprintf("%d", FreeDailyQuota) + ` queries/day. Need more? Top up and pay as you go — no subscription required.</p>`)
 	sb.WriteString(`<p><a href="/login" class="btn">Login to view your balance</a>&nbsp;<a href="/signup" class="btn btn-secondary">Sign up free</a></p>`)
 	sb.WriteString(`</div>`)
 

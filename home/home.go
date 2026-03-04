@@ -68,14 +68,30 @@ var landingTemplate = `<html lang="en">
       <div id="title">Mu</div>
       <div id="desc">The Micro Network</div>
       <p style="font-size: 18px; font-weight: 800; color: #333; margin: 20px 0; text-align: center; max-width: 800px;">
-      Apps without ads, algorithms, or tracking.
+      One conversation. Every tool you need.
+      </p>
+      <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
+      Ask a question and Mu&#39;s agent searches news, markets, weather, video and more to get you answers — no ads, no algorithms, no tracking.
       </p>
 
-      <div style="height: 40px;"></div>
+      <div style="max-width:600px;margin:20px auto 0;">
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="landing-prompt" placeholder="Ask me anything..."
+            style="flex:1;padding:12px 16px;font-size:15px;font-family:inherit;border:1px solid #ddd;border-radius:6px;">
+          <a href="/login?redirect=/home"><button class="btn" style="font-size:1em;padding:10px 20px;height:auto;">Ask</button></a>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;justify-content:center;">
+          <span style="padding:5px 14px;border:1px solid #ddd;border-radius:20px;font-size:13px;color:#555;">What&#39;s in the news?</span>
+          <span style="padding:5px 14px;border:1px solid #ddd;border-radius:20px;font-size:13px;color:#555;">Market prices</span>
+          <span style="padding:5px 14px;border:1px solid #ddd;border-radius:20px;font-size:13px;color:#555;">Find a video</span>
+          <span style="padding:5px 14px;border:1px solid #ddd;border-radius:20px;font-size:13px;color:#555;">Weather forecast</span>
+        </div>
+      </div>
 
-      <!-- Live preview with tabs -->
-      <h3>What&#39;s Available</h3>
-      <p style="color:#555;max-width:600px;margin:0 auto 20px;">A glimpse of what&#39;s live right now — click to explore.</p>
+      <div style="height: 60px;"></div>
+
+      <h3>Live Data</h3>
+      <p style="color:#555;max-width:600px;margin:0 auto 20px;">Real-time information powering the agent — click to explore.</p>
 
       <div class="preview-tabs">
         <button class="preview-tab active" onclick="showPreview('news',this)">
@@ -118,14 +134,49 @@ var landingTemplate = `<html lang="en">
 
       <h3>Our Mission</h3>
       <p style="max-width: 600px">
-      Mu is built with the intention that tools should serve humanity, enabling consumption without addiction, exploitation or manipulation.
+      Mu is built with the intention that tools should serve humanity. Instead of jumping between apps, just ask — the agent searches, summarises, and connects information across every service, enabling you to get things done without addiction, exploitation or manipulation.
       </p>
 
       <div style="height: 60px;"></div>
 
-      <h3>Featured Apps</h3>
-      <p>See what&#39;s included</p>
+      <h3>Services</h3>
+      <p>The tools powering the agent — also available individually</p>
       <div id="links">
+        <a href="/news" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/news.png" alt="News" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>News</b>
+            <div class="small">Source of truth for news events around the world</div>
+          </div>
+        </a>
+        <a href="/video" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Video</b>
+            <div class="small">Watch YouTube without ads, algorithms or shorts</div>
+          </div>
+        </a>
+        <a href="/markets" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/markets.png" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Markets</b>
+            <div class="small">Live crypto, futures and commodity prices</div>
+          </div>
+        </a>
+        <a href="/weather" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/weather.png" alt="Weather" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Weather</b>
+            <div class="small">Local weather forecasts without ads or tracking</div>
+          </div>
+        </a>
+        <a href="/places" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/places.png" alt="Places" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Places</b>
+            <div class="small">Search and discover places on an ad-free map</div>
+          </div>
+        </a>
         <a href="/blog" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/post.png" alt="Blog" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
@@ -147,53 +198,11 @@ var landingTemplate = `<html lang="en">
             <div class="small">Message other users directly or send an email</div>
           </div>
         </a>
-        <a href="/news" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/news.png" alt="News" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>News</b>
-            <div class="small">Source of truth for news events around the world</div>
-          </div>
-        </a>
-        <a href="/video" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Video</b>
-            <div class="small">Watch YouTube without ads, algorithms or shorts</div>
-          </div>
-        </a>
-        <a href="/places" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/places.png" alt="Places" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Places</b>
-            <div class="small">Search and discover places on an ad-free map</div>
-          </div>
-        </a>
-        <a href="/weather" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/weather.png" alt="Weather" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Weather</b>
-            <div class="small">Local weather forecasts without ads or tracking</div>
-          </div>
-        </a>
-        <a href="/markets" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/markets.png" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Markets</b>
-            <div class="small">Live crypto, futures and commodity prices</div>
-          </div>
-        </a>
         <a href="/reminder" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/reminder.png" alt="Reminder" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Reminder</b>
             <div class="small">Daily Islamic verse, hadith, and name of Allah</div>
-          </div>
-        </a>
-        <a href="/agent" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/robot.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Agent</b>
-            <div class="small">Conversational AI agent with access to all Mu tools</div>
           </div>
         </a>
         <a href="/web" style="text-decoration: none; color: inherit;">
@@ -334,12 +343,12 @@ POST /video HTTP/1.1
       <div style="height: 20px;"></div>
 
       <p><strong>What about pricing?</strong><br>
-      Mu is free with 10 credits/day. Need more? Top up and pay as you go from 1p per query. No subscriptions, no tricks. See our <a href="/plans">plans</a> for details.</p>
+      Mu is free with 20 credits/day. Need more? Top up and pay as you go from 1p per query. No subscriptions, no tricks. See our <a href="/plans">plans</a> for details.</p>
 
       <div style="height: 20px;"></div>
 
       <p><strong>How is this different from big tech platforms?</strong><br>
-      No ads, no algorithmic feeds, no data mining. Just simple, useful tools that work for you.</p>
+      No ads, no algorithmic feeds, no data mining. Instead of dozens of separate apps, Mu gives you one conversational agent backed by real-time services — news, markets, weather, video and more.</p>
 
       <div style="height: 20px;"></div>
 
@@ -500,6 +509,20 @@ var Template = `<div id="home">
   <div class="home-left">%s</div>
   <div class="home-right">%s</div>
 </div>`
+
+// StarterQueries are suggested prompts shown on the home page to help users
+// get started with the agent.
+var StarterQueries = []struct {
+	Label string
+	Query string
+}{
+	{"What's in the news?", "Give me a summary of today's top news"},
+	{"Market prices", "What are the latest crypto and market prices?"},
+	{"Find a video", "Find me the latest tech videos"},
+	{"Weather", "What's the weather like in London today?"},
+	{"Search the web", "Search the web for the latest AI news"},
+	{"Daily reminder", "Show me today's Islamic reminder"},
+}
 
 func ChatCard() string {
 	return `<div id="home-chat">
@@ -680,20 +703,56 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Refresh cards if cache expired (2 minute TTL)
 	RefreshCards()
 
-	var leftHTML []string
-	var rightHTML []string
-
-	// Check if user is logged in (for future use)
 	sess, _ := auth.TrySession(r)
 	_ = sess
+
+	var b strings.Builder
+
+	// Agent prompt — the primary interface
+	b.WriteString(`<div class="card">
+<form id="agent-form">
+<textarea id="agent-prompt" name="prompt" rows="2"
+  placeholder="Ask me anything..."
+  style="width:100%;box-sizing:border-box;padding:10px;font-family:inherit;font-size:15px;resize:vertical;border:1px solid #ddd;border-radius:4px;"></textarea>
+<div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+<select id="agent-model"
+  style="padding:6px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">
+<option value="standard">Standard — Fast and efficient</option>
+<option value="premium">Premium — Best quality</option>
+</select>
+<button type="submit" id="agent-submit">Ask</button>
+</div>
+</form>
+</div>`)
+
+	// Starter query chips
+	b.WriteString(`<div id="starter-queries" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">`)
+	for _, sq := range StarterQueries {
+		b.WriteString(fmt.Sprintf(
+			`<button class="starter-chip" onclick="askAgent('%s')">%s</button>`,
+			htmlEsc(sq.Query), htmlEsc(sq.Label),
+		))
+	}
+	b.WriteString(`</div>`)
+
+	// Agent progress and result areas
+	b.WriteString(`<div id="agent-progress" style="display:none;">
+<div class="card">
+<h4 style="margin:0 0 12px;">Working…</h4>
+<div id="agent-steps"></div>
+</div>
+</div>
+<div id="agent-result"></div>`)
+
+	// Feed section — existing home cards below the agent
+	var leftHTML []string
+	var rightHTML []string
 
 	for _, card := range Cards {
 		content := card.CachedHTML
 		if strings.TrimSpace(content) == "" {
 			continue
 		}
-
-		// Add "More" link if card has a link URL
 		if card.Link != "" {
 			content += app.Link("More", card.Link)
 		}
@@ -705,18 +764,141 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// create homepage
-	if len(leftHTML) == 0 && len(rightHTML) == 0 {
-		// No content - show welcome message
-		leftHTML = append(leftHTML, app.Card("no-content", "Welcome", "<p>Welcome to Mu! Your personalized content will appear here.</p>"))
+	if len(leftHTML) > 0 || len(rightHTML) > 0 {
+		b.WriteString(fmt.Sprintf(Template,
+			strings.Join(leftHTML, "\n"),
+			strings.Join(rightHTML, "\n")))
 	}
 
-	homepage := fmt.Sprintf(Template,
-		strings.Join(leftHTML, "\n"),
-		strings.Join(rightHTML, "\n"))
+	// Inline styles for starter chips and agent steps
+	b.WriteString(`<style>
+.starter-chip{padding:6px 14px;border:1px solid #ddd;border-radius:20px;
+  background:#fff;cursor:pointer;font-size:13px;font-family:inherit;
+  transition:background 0.15s,border-color 0.15s;color:#333;}
+.starter-chip:hover{background:#f5f5f5;border-color:#bbb;}
+.agent-step{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px;
+  color:#555;border-bottom:1px solid #f5f5f5;}
+.agent-step:last-child{border-bottom:none;}
+.agent-step.done{color:#28a745;}
+.agent-step.error{color:#dc3545;}
+.step-icon{font-size:16px;flex-shrink:0;}
+</style>`)
 
-	// render html using user's language preference
-	html := app.RenderHTMLForRequest("Home", "The Mu homescreen", homepage, r)
+	// Agent interaction script (same SSE logic as /agent)
+	b.WriteString(`<script>
+(function(){
+var form=document.getElementById('agent-form');
+if(!form)return;
 
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function submitAgent(prompt){
+  var model=document.getElementById('agent-model').value;
+  if(!prompt)return;
+
+  document.getElementById('agent-prompt').value=prompt;
+
+  var btn=document.getElementById('agent-submit');
+  btn.disabled=true;btn.textContent='Working…';
+
+  var starters=document.getElementById('starter-queries');
+  if(starters)starters.style.display='none';
+
+  var prog=document.getElementById('agent-progress');
+  var steps=document.getElementById('agent-steps');
+  var result=document.getElementById('agent-result');
+  prog.style.display='block';steps.innerHTML='';result.innerHTML='';
+
+  fetch('/agent',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({prompt:prompt,model:model})
+  })
+  .then(function(resp){
+    if(!resp.ok&&resp.status===401){
+      prog.style.display='none';
+      result.innerHTML='<div class="card"><p>Please <a href="/login?redirect=/home">login</a> to use the agent.</p></div>';
+      btn.disabled=false;btn.textContent='Ask';
+      if(starters)starters.style.display='flex';
+      return;
+    }
+    var reader=resp.body.getReader();
+    var decoder=new TextDecoder();
+    var buf='';
+    function read(){
+      return reader.read().then(function(chunk){
+        if(chunk.done)return;
+        buf+=decoder.decode(chunk.value,{stream:true});
+        var lines=buf.split('\n');
+        buf=lines.pop();
+        lines.forEach(function(line){
+          if(!line.startsWith('data: '))return;
+          try{
+            var ev=JSON.parse(line.slice(6));
+            if(ev.type==='thinking'){
+              var d=document.createElement('div');
+              d.className='agent-step';
+              d.innerHTML='<span class="step-icon">…</span><span>'+esc(ev.message)+'</span>';
+              steps.appendChild(d);
+            } else if(ev.type==='tool_start'){
+              var d=document.createElement('div');
+              d.id='step-'+ev.name;d.className='agent-step';
+              d.innerHTML='<span class="step-icon">⚙</span><span>'+esc(ev.message)+'</span>';
+              steps.appendChild(d);
+            } else if(ev.type==='tool_done'){
+              var d=document.getElementById('step-'+ev.name);
+              if(d){
+                d.className='agent-step done';
+                d.innerHTML='<span class="step-icon">✓</span><span>'+esc(ev.message)+'</span>';
+              }
+            } else if(ev.type==='response'){
+              prog.style.display='none';
+              result.innerHTML=ev.html;
+            } else if(ev.type==='error'){
+              prog.style.display='none';
+              result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
+            } else if(ev.type==='done'){
+              btn.disabled=false;btn.textContent='Ask';
+            }
+          }catch(ex){}
+        });
+        return read();
+      });
+    }
+    return read();
+  })
+  .catch(function(err){
+    prog.style.display='none';
+    result.innerHTML='<div class="card"><p style="color:#dc3545;">Error: '+esc(err.message)+'</p></div>';
+    btn.disabled=false;btn.textContent='Ask';
+    if(starters)starters.style.display='flex';
+  });
+}
+
+form.addEventListener('submit',function(e){
+  e.preventDefault();
+  submitAgent(document.getElementById('agent-prompt').value.trim());
+});
+
+window.askAgent=function(q){submitAgent(q);};
+})();
+</script>`)
+
+	// Use RenderHTMLWithLang directly to inject a body class that hides the page title,
+	// keeping the agent prompt as the primary visual element.
+	lang := app.GetUserLanguage(r)
+	html := app.RenderHTMLWithLangAndBody("Home", "Your AI-powered homescreen", b.String(), lang, ` class="page-home"`)
 	w.Write([]byte(html))
+}
+
+// htmlEsc escapes HTML special characters.
+func htmlEsc(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, `"`, "&#34;")
+	s = strings.ReplaceAll(s, "'", "&#39;")
+	return s
 }

@@ -219,12 +219,12 @@ var Template = `
           </form>
         </div>
         <div id="nav">
-          <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
-          <a href="/agent"><img src="/robot.svg?` + Version + `"><span class="label">Agent</span></a>
+          <a href="/home"><img src="/robot.svg?` + Version + `"><span class="label">Home</span></a>
+          <div class="nav-divider"></div>
+          <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>
           <a id="nav-mail" href="/mail" style="display: none;"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
-          <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
           <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
           <a href="/markets"><img src="/markets.png?` + Version + `"><span class="label">Markets</span></a>
           <a href="/places"><img src="/places.png?` + Version + `"><span class="label">Places</span></a>
@@ -741,7 +741,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
 	// Philosophy note
-	content.WriteString(`<p class="mb-5 text-muted">Pay for what you use, nothing more.</p>`)
+	content.WriteString(`<p class="mb-5 text-muted">Ask the agent anything — pay only for what you use.</p>`)
 
 	// 2-column pricing grid with responsive class
 	content.WriteString(`<div class="pricing-grid">`)
@@ -750,8 +750,9 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Free</h3>
 <p class="text-xl font-bold my-3">£0</p>
-<p>10 credits per day</p>
-<p>News, video, and chat</p>
+<p>20 credits per day</p>
+<p>6 agent queries per day (standard)</p>
+<p>Browse news, video, and markets</p>
 <p>Direct message other users</p>
 <p>MCP access for AI agents</p>
 <p>Resets at midnight UTC</p>`)
@@ -772,7 +773,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p>1 credit = 1p</p>
 <p>News search: 1p per request</p>
 <p>Video search: 2p per request</p>
-<p>Chat / Agent: 3–15p per request</p>
+<p>Chat / Agent: 3p per request</p>
 <p>Web search: 5p per request</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
@@ -788,10 +789,25 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	// Pricing table
 	content.WriteString(`<h3>Pricing</h3>
-<p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>10 credits per day</strong>, resets at midnight UTC.</p>
+<p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>20 credits per day</strong>, resets at midnight UTC.</p>
+
+<h4>Agent</h4>
+<p class="text-muted mb-4">The agent searches news, weather, markets, video and more to answer your questions — all included in one query cost.</p>
 <table class="data-table">
 <thead>
-<tr><th>Tool / Endpoint</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
+<tr><th>Query type</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td>Standard</td><td>Fast and efficient — uses all tools</td><td>3</td><td>3p</td></tr>
+<tr><td>Premium</td><td>Best quality — deeper analysis</td><td>15</td><td>15p</td></tr>
+</tbody>
+</table>
+
+<h4>Individual services</h4>
+<p class="text-muted mb-4">You can also use services directly — browsing is free, search and AI features cost credits.</p>
+<table class="data-table">
+<thead>
+<tr><th>Service</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
 </thead>
 <tbody>
 <tr><td>News feed</td><td>Browse the latest news</td><td>Free</td><td>—</td></tr>
@@ -801,8 +817,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><td>Video watch</td><td>Watch a video</td><td>Free</td><td>—</td></tr>
 <tr><td>Video search</td><td>Search for videos</td><td>2</td><td>2p</td></tr>
 <tr><td>Chat</td><td>Chat with AI assistant</td><td>3</td><td>3p</td></tr>
-<tr><td>Agent (standard)</td><td>AI agent query — standard model</td><td>5</td><td>5p</td></tr>
-<tr><td>Agent (premium)</td><td>AI agent query — premium model</td><td>15</td><td>15p</td></tr>
 <tr><td>Blog read</td><td>Read blog posts</td><td>Free</td><td>—</td></tr>
 <tr><td>Blog write</td><td>Create or update a blog post</td><td>Free</td><td>—</td></tr>
 <tr><td>Mail (internal)</td><td>Message other Mu users</td><td>Free</td><td>—</td></tr>
@@ -835,7 +849,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<h3>For Agents</h3>
 <p>AI agents can connect to Mu via the Model Context Protocol (MCP).</p>
 <p>Authenticate with a Bearer token</p>
-<p>10 credits per day on the free tier</p>
+<p>20 credits per day on the free tier</p>
 <p>Same pay-as-you-go rates as human users</p>
 <p>Access to chat, news, video, mail and more</p>
 <p><a href="/mcp">View MCP tools →</a></p>`)
@@ -848,7 +862,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	// FAQ
 	content.WriteString(`<h3>Questions</h3>
-<p><strong>Why charge for services?</strong><br>News, video search, chat, and email all rely on APIs and infrastructure that cost money to run. The free quota covers casual daily use.</p>
+<p><strong>Why charge for services?</strong><br>News, video search, chat, and email all rely on APIs and infrastructure that cost money to run. The free 20 credits per day covers casual daily use.</p>
 <p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
 <p><strong>Why no unlimited subscription?</strong><br>Unlimited tiers incentivize us to maximize your engagement. Pay-as-you-go keeps incentives aligned: we want efficient tools, not sticky products.</p>
 <p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>
@@ -949,6 +963,15 @@ func RenderHTMLWithLang(title, desc, html, lang string) string {
 		lang = "en"
 	}
 	return fmt.Sprintf(Template, lang, title, desc, "", title, html)
+}
+
+// RenderHTMLWithLangAndBody renders html with a custom body attribute string
+// (e.g. ` class="page-home"` to enable page-specific CSS).
+func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string) string {
+	if lang == "" {
+		lang = "en"
+	}
+	return fmt.Sprintf(Template, lang, title, desc, bodyAttr, title, html)
 }
 
 // RenderString renders a markdown string as html

@@ -67,7 +67,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 
 	// Consume weather quota
 	if useFree {
-		wallet.UseFreeSearch(acc.ID)
+		wallet.UseFreeQuota(acc.ID)
 	} else if cost > 0 {
 		wallet.DeductCredits(acc.ID, cost, wallet.OpWeatherForecast, nil)
 	}
@@ -84,7 +84,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 			if pollenErr == nil {
 				result["pollen"] = pollen
 				if usePollenFree {
-					wallet.UseFreeSearch(acc.ID)
+					wallet.UseFreeQuota(acc.ID)
 				} else if pollenCost > 0 {
 					wallet.DeductCredits(acc.ID, pollenCost, wallet.OpWeatherPollen, nil)
 				}

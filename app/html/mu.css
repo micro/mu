@@ -571,6 +571,10 @@ td {
    HOME PAGE
    ======================================== */
 
+/* Hide the page title on the agent-first home page */
+body.page-home #page-title {
+  display: none;
+}
 
 #home {
   margin-bottom: 25px;
@@ -1948,6 +1952,12 @@ a.highlight {
   
   .nav-divider {
     margin: 15px 0;
+  }
+
+  /* Starter query chips - slightly smaller on mobile */
+  .starter-chip {
+    font-size: 12px;
+    padding: 5px 12px;
   }
   
   .nav-bottom {

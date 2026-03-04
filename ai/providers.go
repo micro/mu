@@ -65,7 +65,10 @@ func generate(prompt *Prompt) (string, error) {
 	// Check for forced provider
 	if prompt.Provider == ProviderAnthropic {
 		if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-			model := os.Getenv("ANTHROPIC_MODEL")
+			model := prompt.Model
+			if model == "" {
+				model = os.Getenv("ANTHROPIC_MODEL")
+			}
 			if model == "" {
 				model = "claude-3-haiku-20240307"
 			}
