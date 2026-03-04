@@ -56,6 +56,11 @@ var landingTemplate = `<html lang="en">
       .skeleton { background:linear-gradient(90deg,#f0f0f0 25%%,#e0e0e0 50%%,#f0f0f0 75%%);
         background-size:200%% 100%%; animation:shimmer 1.4s infinite; border-radius:4px; }
       @keyframes shimmer { 0%%{background-position:200%% 0} 100%%{background-position:-200%% 0} }
+      @media(max-width:600px){
+        .preview-tabs { gap:6px; }
+        .preview-tab { padding:5px 12px; font-size:12px; }
+        .preview-tab img { width:12px!important; height:12px!important; margin-right:3px!important; }
+      }
     </style>
   </head>
   <body>
@@ -315,7 +320,7 @@ POST /video HTTP/1.1
           <div class="card" style="flex:1;min-width:260px;">
             <h4>REST API</h4>
             <p class="card-desc">Search the web powered by Brave — results cached for 5 minutes.</p>
-            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /web?q=latest+AI+news HTTP/1.1
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /web?q=what+are+AI+agents HTTP/1.1
 Accept: application/json
 Authorization: Bearer TOKEN</pre>
             <a href="/api" class="link">API Docs &#x2192;</a>
@@ -325,7 +330,7 @@ Authorization: Bearer TOKEN</pre>
             <p class="card-desc">Agents can search the web for current information and news.</p>
             <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
   "name":"web_search",
-  "arguments":{"query":"latest AI news"}}}</pre>
+  "arguments":{"query":"what are AI agents"}}}</pre>
             <a href="/mcp" class="link">MCP Server &#x2192;</a>
           </div>
         </div>
@@ -774,7 +779,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 <button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
 <input type="hidden" id="agent-model" value="standard">
 </form>
-<div style="display:flex;align-items:center;gap:8px;margin-top:8px;max-width:1000px;">
+<div style="display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:16px;max-width:1000px;">
 <div id="agent-model-toggle" style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;font-size:11px;font-family:inherit;cursor:pointer;user-select:none;">
 <span id="model-std" style="padding:6px 10px;background:#000;color:#fff;transition:background 0.15s,color 0.15s;">Std</span>
 <span id="model-pro" style="padding:6px 10px;background:#f9f9f9;color:#888;transition:background 0.15s,color 0.15s;">Pro</span>
