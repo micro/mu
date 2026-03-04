@@ -221,6 +221,7 @@ var Template = `
         <div id="nav">
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <div class="nav-divider"></div>
+          <a href="/agent"><img src="/chat.png?` + Version + `"><span class="label">Agent</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>
           <a id="nav-mail" href="/mail" style="display: none;"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>

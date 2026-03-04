@@ -249,7 +249,7 @@ func renderHistorySection(r *http.Request) string {
 		return ""
 	}
 
-	flows := listFlows(acc.ID)
+	flows := ListFlows(acc.ID)
 	if len(flows) == 0 {
 		return ""
 	}
@@ -262,7 +262,7 @@ func renderHistorySection(r *http.Request) string {
 	b.WriteString(`<h4 style="margin:0 0 12px;">Recent queries</h4>`)
 	for _, f := range flows {
 		age := time.Since(f.CreatedAt)
-		ageStr := formatAge(age)
+		ageStr := FormatAge(age)
 		b.WriteString(`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;">`)
 		b.WriteString(`<div style="min-width:0;flex:1;">`)
 		b.WriteString(`<a href="/agent/flow/` + f.ID + `" style="font-size:14px;font-weight:600;display:block;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">` + htmlEsc(f.Prompt) + `</a>`)
@@ -285,8 +285,8 @@ func renderHistorySection(r *http.Request) string {
 	return b.String()
 }
 
-// formatAge returns a human-friendly string for an elapsed duration.
-func formatAge(d time.Duration) string {
+// FormatAge returns a human-friendly string for an elapsed duration.
+func FormatAge(d time.Duration) string {
 	switch {
 	case d < time.Minute:
 		return "just now"

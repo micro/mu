@@ -571,10 +571,8 @@ td {
    HOME PAGE
    ======================================== */
 
-/* Hide the page title (and its customize-link wrapper) on the agent-first home page */
-body.page-home #page-title,
-body.page-home #page-title ~ #customize-link,
-body.page-home #content > div:has(> #page-title) {
+/* Hide the customize-link on the home page but keep the title */
+body.page-home #page-title ~ #customize-link {
   display: none;
 }
 

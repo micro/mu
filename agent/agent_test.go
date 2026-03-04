@@ -525,9 +525,9 @@ func TestFormatAge(t *testing.T) {
 		{48 * time.Hour, "2 days ago"},
 	}
 	for _, c := range cases {
-		got := formatAge(c.d)
+		got := FormatAge(c.d)
 		if got != c.want {
-			t.Errorf("formatAge(%v) = %q, want %q", c.d, got, c.want)
+			t.Errorf("FormatAge(%v) = %q, want %q", c.d, got, c.want)
 		}
 	}
 }
@@ -590,7 +590,7 @@ func TestListFlows(t *testing.T) {
 	}
 	flowMu.Unlock()
 
-	got := listFlows("user-1")
+	got := ListFlows("user-1")
 	if len(got) != 2 {
 		t.Fatalf("expected 2 flows for user-1, got %d", len(got))
 	}
