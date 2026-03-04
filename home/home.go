@@ -343,7 +343,7 @@ POST /video HTTP/1.1
       <div style="height: 20px;"></div>
 
       <p><strong>What about pricing?</strong><br>
-      Mu is free with 10 credits/day. Need more? Top up and pay as you go from 1p per query. No subscriptions, no tricks. See our <a href="/plans">plans</a> for details.</p>
+      Mu is free with 20 credits/day. Need more? Top up and pay as you go from 1p per query. No subscriptions, no tricks. See our <a href="/plans">plans</a> for details.</p>
 
       <div style="height: 20px;"></div>
 

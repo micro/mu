@@ -28,9 +28,9 @@ var (
 	CostWeatherForecast   = getEnvInt("CREDIT_COST_WEATHER", 1)
 	CostWeatherPollen     = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
 	CostWebSearch         = getEnvInt("CREDIT_COST_SEARCH", 5)
-	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 5)
+	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 15)
-	FreeDailySearches     = getEnvInt("FREE_DAILY_SEARCHES", 10)
+	FreeDailySearches     = getEnvInt("FREE_DAILY_SEARCHES", 20)
 )
 
 // PaymentsEnabled returns true if payments are configured

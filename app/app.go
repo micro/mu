@@ -750,8 +750,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Free</h3>
 <p class="text-xl font-bold my-3">£0</p>
-<p>10 credits per day</p>
-<p>2 agent queries per day (standard)</p>
+<p>20 credits per day</p>
+<p>6 agent queries per day (standard)</p>
 <p>Browse news, video, and markets</p>
 <p>Direct message other users</p>
 <p>MCP access for AI agents</p>
@@ -773,7 +773,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p>1 credit = 1p</p>
 <p>News search: 1p per request</p>
 <p>Video search: 2p per request</p>
-<p>Chat / Agent: 3–15p per request</p>
+<p>Chat / Agent: 3p per request</p>
 <p>Web search: 5p per request</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
@@ -789,7 +789,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	// Pricing table
 	content.WriteString(`<h3>Pricing</h3>
-<p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>10 credits per day</strong>, resets at midnight UTC.</p>
+<p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>20 credits per day</strong>, resets at midnight UTC.</p>
 
 <h4>Agent</h4>
 <p class="text-muted mb-4">The agent searches news, weather, markets, video and more to answer your questions — all included in one query cost.</p>
@@ -798,7 +798,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><th>Query type</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
 </thead>
 <tbody>
-<tr><td>Standard</td><td>Fast and efficient — uses all tools</td><td>5</td><td>5p</td></tr>
+<tr><td>Standard</td><td>Fast and efficient — uses all tools</td><td>3</td><td>3p</td></tr>
 <tr><td>Premium</td><td>Best quality — deeper analysis</td><td>15</td><td>15p</td></tr>
 </tbody>
 </table>
@@ -849,7 +849,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<h3>For Agents</h3>
 <p>AI agents can connect to Mu via the Model Context Protocol (MCP).</p>
 <p>Authenticate with a Bearer token</p>
-<p>10 credits per day on the free tier</p>
+<p>20 credits per day on the free tier</p>
 <p>Same pay-as-you-go rates as human users</p>
 <p>Access to chat, news, video, mail and more</p>
 <p><a href="/mcp">View MCP tools →</a></p>`)
@@ -862,7 +862,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	// FAQ
 	content.WriteString(`<h3>Questions</h3>
-<p><strong>Why charge for services?</strong><br>News, video search, chat, and email all rely on APIs and infrastructure that cost money to run. The free quota covers casual daily use.</p>
+<p><strong>Why charge for services?</strong><br>News, video search, chat, and email all rely on APIs and infrastructure that cost money to run. The free 20 credits per day covers casual daily use.</p>
 <p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
 <p><strong>Why no unlimited subscription?</strong><br>Unlimited tiers incentivize us to maximize your engagement. Pay-as-you-go keeps incentives aligned: we want efficient tools, not sticky products.</p>
 <p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>
