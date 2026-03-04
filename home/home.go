@@ -866,12 +866,12 @@ function submitAgent(prompt){
               }
             } else if(ev.type==='response'){
               prog.style.display='none';
-              result.innerHTML='<div style="margin-bottom:12px;"><a href="#" id="agent-back" style="font-size:13px;color:var(--text-muted,#888);">← Back to feed</a></div>'+ev.html;
+              result.innerHTML='<div style="margin-bottom:12px;"><a href="#" id="agent-back" style="font-size:13px;color:var(--text-muted,#888);">← Back to Home</a></div>'+ev.html;
               var back=document.getElementById('agent-back');
               if(back)back.onclick=function(e){e.preventDefault();showFeed();};
             } else if(ev.type==='error'){
               prog.style.display='none';
-              result.innerHTML='<div style="margin-bottom:12px;"><a href="#" id="agent-back" style="font-size:13px;color:var(--text-muted,#888);">← Back to feed</a></div><div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
+              result.innerHTML='<div style="margin-bottom:12px;"><a href="#" id="agent-back" style="font-size:13px;color:var(--text-muted,#888);">← Back to Home</a></div><div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
               var back=document.getElementById('agent-back');
               if(back)back.onclick=function(e){e.preventDefault();showFeed();};
             } else if(ev.type==='done'){
