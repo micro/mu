@@ -772,9 +772,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Inline styles for starter chips and agent steps
 	b.WriteString(`<style>
-body.page-home #agent-form-wrap .card,
-body.page-home #agent-progress .card,
-body.page-home #agent-result .card{max-width:none;}
 .starter-chip{padding:6px 14px;border:1px solid #ddd;border-radius:20px;
   background:#fff;cursor:pointer;font-size:13px;font-family:inherit;
   transition:background 0.15s,border-color 0.15s;color:#333;}
@@ -793,8 +790,22 @@ body.page-home #agent-result .card{max-width:none;}
 var form=document.getElementById('agent-form');
 if(!form)return;
 
+var feed=document.getElementById('home');
+var starters=document.getElementById('starter-queries');
+var prog=document.getElementById('agent-progress');
+var steps=document.getElementById('agent-steps');
+var result=document.getElementById('agent-result');
+
 function esc(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showFeed(){
+  if(feed)feed.style.display='';
+  if(starters)starters.style.display='';
+  prog.style.display='none';
+  result.innerHTML='';
+  document.getElementById('agent-prompt').value='';
 }
 
 function submitAgent(prompt){
@@ -806,12 +817,9 @@ function submitAgent(prompt){
   var btn=document.getElementById('agent-submit');
   btn.disabled=true;btn.textContent='Working…';
 
-  var starters=document.getElementById('starter-queries');
+  // Transition: hide feed, show progress
   if(starters)starters.style.display='none';
-
-  var prog=document.getElementById('agent-progress');
-  var steps=document.getElementById('agent-steps');
-  var result=document.getElementById('agent-result');
+  if(feed)feed.style.display='none';
   prog.style.display='block';steps.innerHTML='';result.innerHTML='';
 
   fetch('/agent',{
@@ -824,7 +832,7 @@ function submitAgent(prompt){
       prog.style.display='none';
       result.innerHTML='<div class="card"><p>Please <a href="/login?redirect=/home">login</a> to use the agent.</p></div>';
       btn.disabled=false;btn.textContent='Ask';
-      if(starters)starters.style.display='flex';
+      showFeed();
       return;
     }
     var reader=resp.body.getReader();
@@ -858,10 +866,14 @@ function submitAgent(prompt){
               }
             } else if(ev.type==='response'){
               prog.style.display='none';
-              result.innerHTML=ev.html;
+              result.innerHTML='<div style="margin-bottom:12px;"><a href="#" id="agent-back" style="font-size:13px;color:var(--text-muted,#888);">← Back to Home</a></div>'+ev.html;
+              var back=document.getElementById('agent-back');
+              if(back)back.onclick=function(e){e.preventDefault();showFeed();};
             } else if(ev.type==='error'){
               prog.style.display='none';
-              result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
+              result.innerHTML='<div style="margin-bottom:12px;"><a href="#" id="agent-back" style="font-size:13px;color:var(--text-muted,#888);">← Back to Home</a></div><div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
+              var back=document.getElementById('agent-back');
+              if(back)back.onclick=function(e){e.preventDefault();showFeed();};
             } else if(ev.type==='done'){
               btn.disabled=false;btn.textContent='Ask';
             }
@@ -876,7 +888,7 @@ function submitAgent(prompt){
     prog.style.display='none';
     result.innerHTML='<div class="card"><p style="color:#dc3545;">Error: '+esc(err.message)+'</p></div>';
     btn.disabled=false;btn.textContent='Ask';
-    if(starters)starters.style.display='flex';
+    showFeed();
   });
 }
 
