@@ -56,6 +56,11 @@ var landingTemplate = `<html lang="en">
       .skeleton { background:linear-gradient(90deg,#f0f0f0 25%%,#e0e0e0 50%%,#f0f0f0 75%%);
         background-size:200%% 100%%; animation:shimmer 1.4s infinite; border-radius:4px; }
       @keyframes shimmer { 0%%{background-position:200%% 0} 100%%{background-position:-200%% 0} }
+      @media(max-width:600px){
+        .preview-tabs { gap:6px; }
+        .preview-tab { padding:5px 12px; font-size:12px; }
+        .preview-tab img { width:12px!important; height:12px!important; margin-right:3px!important; }
+      }
     </style>
   </head>
   <body>
