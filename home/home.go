@@ -710,16 +710,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Agent prompt — compact one-line input
 	b.WriteString(`<div id="agent-form-wrap">
-<form id="agent-form" style="display:flex;align-items:center;gap:8px;max-width:750px;">
+<form id="agent-form" style="display:flex;align-items:center;gap:8px;max-width:1000px;">
 <input type="text" id="agent-prompt" name="prompt" placeholder="Ask me anything..."
   style="flex:1;min-width:0;padding:10px 14px;font-family:inherit;font-size:15px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
 <button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
-<div id="agent-model-toggle" style="flex-shrink:0;display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;font-size:11px;font-family:inherit;cursor:pointer;user-select:none;">
+<input type="hidden" id="agent-model" value="standard">
+</form>
+<div style="display:flex;align-items:center;gap:8px;margin-top:8px;max-width:1000px;">
+<div id="agent-model-toggle" style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;font-size:11px;font-family:inherit;cursor:pointer;user-select:none;">
 <span id="model-std" style="padding:6px 10px;background:#000;color:#fff;transition:background 0.15s,color 0.15s;">Std</span>
 <span id="model-pro" style="padding:6px 10px;background:#f9f9f9;color:#888;transition:background 0.15s,color 0.15s;">Pro</span>
 </div>
-<input type="hidden" id="agent-model" value="standard">
-</form>
+<span style="font-size:11px;color:#888;">3 credits</span>
+</div>
 </div>`)
 
 	// Starter query chips
@@ -791,10 +794,11 @@ if(!form)return;
 var modelInput=document.getElementById('agent-model');
 var stdBtn=document.getElementById('model-std');
 var proBtn=document.getElementById('model-pro');
+var costLabel=document.getElementById('agent-model-toggle')&&document.getElementById('agent-model-toggle').parentNode.querySelector('span:last-child');
 function setModel(m){
   modelInput.value=m;
-  if(m==='premium'){proBtn.style.background='#000';proBtn.style.color='#fff';stdBtn.style.background='#f9f9f9';stdBtn.style.color='#888';}
-  else{stdBtn.style.background='#000';stdBtn.style.color='#fff';proBtn.style.background='#f9f9f9';proBtn.style.color='#888';}
+  if(m==='premium'){proBtn.style.background='#000';proBtn.style.color='#fff';stdBtn.style.background='#f9f9f9';stdBtn.style.color='#888';if(costLabel)costLabel.textContent='15 credits';}
+  else{stdBtn.style.background='#000';stdBtn.style.color='#fff';proBtn.style.background='#f9f9f9';proBtn.style.color='#888';if(costLabel)costLabel.textContent='3 credits';}
 }
 if(stdBtn)stdBtn.onclick=function(){setModel('standard');};
 if(proBtn)proBtn.onclick=function(){setModel('premium');};
