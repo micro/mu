@@ -509,7 +509,7 @@ func CreateToken(accountID, name string, permissions []string, expiresAt time.Ti
 	if err != nil {
 		return nil, "", err
 	}
-	rawToken := base64.URLEncoding.EncodeToString(tokenBytes)
+	rawToken := base64.RawURLEncoding.EncodeToString(tokenBytes)
 
 	// Hash the token for storage
 	hash, err := bcrypt.GenerateFromPassword([]byte(rawToken), 10)
@@ -541,10 +541,21 @@ func ValidatePAT(rawToken string) (string, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	// Check all tokens to find a match
+	// Normalize: strip trailing base64 padding so tokens work with or without '='
+	rawToken = strings.TrimRight(rawToken, "=")
+
+	// Check all tokens to find a match (try without padding, then with)
 	for _, token := range tokens {
-		// Check if token matches (compare hash)
+		// Try raw token (no padding) first, then with padding for older tokens
 		err := bcrypt.CompareHashAndPassword([]byte(token.Token), []byte(rawToken))
+		if err != nil {
+			// Retry with padding in case the hash was generated with padded token
+			padded := rawToken
+			if m := len(padded) % 4; m != 0 {
+				padded += strings.Repeat("=", 4-m)
+			}
+			err = bcrypt.CompareHashAndPassword([]byte(token.Token), []byte(padded))
+		}
 		if err == nil {
 			// Check if expired
 			if !token.ExpiresAt.IsZero() && time.Now().After(token.ExpiresAt) {
