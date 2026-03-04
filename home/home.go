@@ -115,7 +115,7 @@ var landingTemplate = `<html lang="en">
       </div>
 
       <!-- Card panels — content loaded client-side from public JSON API -->
-      <div style="max-width:900px;margin:0 auto;text-align:left;">
+      <div style="max-width:900px;margin:0 auto;text-align:left;width:100%%;box-sizing:border-box;padding:0 12px;overflow:hidden;">
         <div id="preview-news" class="preview-panel active">
           <div class="card">
             <h4 style="margin-top:0;"><img src="/news.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">News</h4>
