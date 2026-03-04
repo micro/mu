@@ -220,7 +220,6 @@ var Template = `
         </div>
         <div id="nav">
           <a href="/home"><img src="/robot.svg?` + Version + `"><span class="label">Home</span></a>
-          <a href="/agent"><img src="/robot.svg?` + Version + `"><span class="label">Agent</span></a>
           <div class="nav-divider"></div>
           <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
@@ -742,7 +741,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
 	// Philosophy note
-	content.WriteString(`<p class="mb-5 text-muted">Pay for what you use, nothing more.</p>`)
+	content.WriteString(`<p class="mb-5 text-muted">Ask the agent anything — pay only for what you use.</p>`)
 
 	// 2-column pricing grid with responsive class
 	content.WriteString(`<div class="pricing-grid">`)
@@ -752,7 +751,8 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <h3>Free</h3>
 <p class="text-xl font-bold my-3">£0</p>
 <p>10 credits per day</p>
-<p>News, video, and chat</p>
+<p>2 agent queries per day (standard)</p>
+<p>Browse news, video, and markets</p>
 <p>Direct message other users</p>
 <p>MCP access for AI agents</p>
 <p>Resets at midnight UTC</p>`)
@@ -790,9 +790,24 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	// Pricing table
 	content.WriteString(`<h3>Pricing</h3>
 <p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>10 credits per day</strong>, resets at midnight UTC.</p>
+
+<h4>Agent</h4>
+<p class="text-muted mb-4">The agent searches news, weather, markets, video and more to answer your questions — all included in one query cost.</p>
 <table class="data-table">
 <thead>
-<tr><th>Tool / Endpoint</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
+<tr><th>Query type</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td>Standard</td><td>Fast and efficient — uses all tools</td><td>5</td><td>5p</td></tr>
+<tr><td>Premium</td><td>Best quality — deeper analysis</td><td>15</td><td>15p</td></tr>
+</tbody>
+</table>
+
+<h4>Individual services</h4>
+<p class="text-muted mb-4">You can also use services directly — browsing is free, search and AI features cost credits.</p>
+<table class="data-table">
+<thead>
+<tr><th>Service</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
 </thead>
 <tbody>
 <tr><td>News feed</td><td>Browse the latest news</td><td>Free</td><td>—</td></tr>
@@ -802,8 +817,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><td>Video watch</td><td>Watch a video</td><td>Free</td><td>—</td></tr>
 <tr><td>Video search</td><td>Search for videos</td><td>2</td><td>2p</td></tr>
 <tr><td>Chat</td><td>Chat with AI assistant</td><td>3</td><td>3p</td></tr>
-<tr><td>Agent (standard)</td><td>AI agent query — standard model</td><td>5</td><td>5p</td></tr>
-<tr><td>Agent (premium)</td><td>AI agent query — premium model</td><td>15</td><td>15p</td></tr>
 <tr><td>Blog read</td><td>Read blog posts</td><td>Free</td><td>—</td></tr>
 <tr><td>Blog write</td><td>Create or update a blog post</td><td>Free</td><td>—</td></tr>
 <tr><td>Mail (internal)</td><td>Message other Mu users</td><td>Free</td><td>—</td></tr>
@@ -950,6 +963,15 @@ func RenderHTMLWithLang(title, desc, html, lang string) string {
 		lang = "en"
 	}
 	return fmt.Sprintf(Template, lang, title, desc, "", title, html)
+}
+
+// RenderHTMLWithLangAndBody renders html with a custom body attribute string
+// (e.g. ` class="page-home"` to enable page-specific CSS).
+func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string) string {
+	if lang == "" {
+		lang = "en"
+	}
+	return fmt.Sprintf(Template, lang, title, desc, bodyAttr, title, html)
 }
 
 // RenderString renders a markdown string as html

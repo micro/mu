@@ -886,7 +886,10 @@ window.askAgent=function(q){submitAgent(q);};
 })();
 </script>`)
 
-	html := app.RenderHTMLForRequest("Home", "Your AI-powered homescreen", b.String(), r)
+	// Use RenderHTMLWithLang directly to inject a body class that hides the page title,
+	// keeping the agent prompt as the primary visual element.
+	lang := app.GetUserLanguage(r)
+	html := app.RenderHTMLWithLangAndBody("Home", "Your AI-powered homescreen", b.String(), lang, ` class="page-home"`)
 	w.Write([]byte(html))
 }
 
