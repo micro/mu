@@ -917,8 +917,8 @@ self.addEventListener('DOMContentLoaded', function() {
   setSession();
 });
 
-// Flag a post
-async function flagPost(postId) {
+// Flag a post (assigned to window for onclick access)
+window.flagPost = async function flagPost(postId) {
   if (!confirm('Flag this post as inappropriate? It will be hidden after 3 flags.')) {
     return;
   }
