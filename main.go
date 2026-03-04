@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
@@ -119,85 +117,7 @@ func main() {
 	}
 
 	// Register MCP auth tools
-	usernameRegex := regexp.MustCompile(`^[a-z][a-z0-9_]{3,23}$`)
-
-	api.RegisterTool(api.Tool{
-		Name:        "signup",
-		Description: "Create a new account and return a session token",
-		Params: []api.ToolParam{
-			{Name: "id", Type: "string", Description: "Username (4-24 chars, lowercase, starts with letter)", Required: true},
-			{Name: "secret", Type: "string", Description: "Password (minimum 6 characters)", Required: true},
-			{Name: "name", Type: "string", Description: "Display name (optional, defaults to username)", Required: false},
-		},
-		Handle: func(args map[string]any) (string, error) {
-			id, _ := args["id"].(string)
-			secret, _ := args["secret"].(string)
-			name, _ := args["name"].(string)
-
-			if id == "" {
-				return `{"error":"username is required"}`, fmt.Errorf("username is required")
-			}
-			if !usernameRegex.MatchString(id) {
-				return `{"error":"invalid username format"}`, fmt.Errorf("invalid username format")
-			}
-			if len(secret) < 6 {
-				return `{"error":"password must be at least 6 characters"}`, fmt.Errorf("password too short")
-			}
-			if name == "" {
-				name = id
-			}
-
-			if err := auth.Create(&auth.Account{
-				ID:      id,
-				Secret:  secret,
-				Name:    name,
-				Created: time.Now(),
-			}); err != nil {
-				resp, _ := json.Marshal(map[string]string{"error": err.Error()})
-				return string(resp), err
-			}
-
-			sess, err := auth.Login(id, secret)
-			if err != nil {
-				return `{"error":"account created but login failed"}`, err
-			}
-
-			resp, _ := json.Marshal(map[string]string{
-				"token":   sess.Token,
-				"account": sess.Account,
-			})
-			return string(resp), nil
-		},
-	})
-
-	api.RegisterTool(api.Tool{
-		Name:        "login",
-		Description: "Log in and return a session token for use in Authorization header",
-		Params: []api.ToolParam{
-			{Name: "id", Type: "string", Description: "Username", Required: true},
-			{Name: "secret", Type: "string", Description: "Password", Required: true},
-		},
-		Handle: func(args map[string]any) (string, error) {
-			id, _ := args["id"].(string)
-			secret, _ := args["secret"].(string)
-
-			if id == "" || secret == "" {
-				return `{"error":"username and password are required"}`, fmt.Errorf("missing credentials")
-			}
-
-			sess, err := auth.Login(id, secret)
-			if err != nil {
-				return `{"error":"invalid username or password"}`, err
-			}
-
-			resp, _ := json.Marshal(map[string]string{
-				"token":   sess.Token,
-				"account": sess.Account,
-			})
-			return string(resp), nil
-		},
-	})
-
+	// web_search tool registered via MCP
 	api.RegisterTool(api.Tool{
 		Name:        "web_search",
 		Description: "Search the web for current information and news",
