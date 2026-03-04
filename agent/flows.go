@@ -56,8 +56,8 @@ func getFlow(id string) *Flow {
 	return flowStore[id]
 }
 
-// listFlows returns all flows belonging to accountID, newest first.
-func listFlows(accountID string) []*Flow {
+// ListFlows returns all flows belonging to accountID, newest first.
+func ListFlows(accountID string) []*Flow {
 	flowMu.RLock()
 	defer flowMu.RUnlock()
 	var out []*Flow

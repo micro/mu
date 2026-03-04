@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/agent"
 	"mu/app"
 	"mu/auth"
 	"mu/blog"
@@ -767,7 +768,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	RefreshCards()
 
 	sess, _ := auth.TrySession(r)
-	_ = sess
 
 	var b strings.Builder
 
@@ -788,13 +788,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 </div>
 </div>`)
 
-	// Starter query chips
-	b.WriteString(`<div id="starter-queries" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">`)
-	for _, sq := range StarterQueries {
-		b.WriteString(fmt.Sprintf(
-			`<button class="starter-chip" data-query="%s" onclick="askAgent(this.dataset.query)">%s</button>`,
-			htmlEsc(sq.Query), htmlEsc(sq.Label),
-		))
+	// Agent card — shows saved flows or starter pills
+	b.WriteString(`<div class="card"><h4 style="margin-top:0;"><img src="/chat.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Agent</h4>`)
+	var flows []*agent.Flow
+	if sess != nil {
+		flows = agent.ListFlows(sess.Account)
+		if len(flows) > 5 {
+			flows = flows[:5]
+		}
+	}
+	if len(flows) > 0 {
+		for _, f := range flows {
+			ageStr := agent.FormatAge(time.Since(f.CreatedAt))
+			b.WriteString(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">`)
+			b.WriteString(`<a href="/agent/flow/` + f.ID + `" style="font-size:14px;font-weight:600;display:block;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">` + htmlEsc(f.Prompt) + `</a>`)
+			b.WriteString(`<span style="font-size:12px;color:#888;">` + ageStr + `</span>`)
+			b.WriteString(`</div>`)
+		}
+		b.WriteString(app.Link("All flows", "/agent"))
+	} else {
+		b.WriteString(`<div id="starter-queries" style="display:flex;flex-wrap:wrap;gap:8px;">`)
+		for _, sq := range StarterQueries {
+			b.WriteString(fmt.Sprintf(
+				`<button class="starter-chip" data-query="%s" onclick="askAgent(this.dataset.query)">%s</button>`,
+				htmlEsc(sq.Query), htmlEsc(sq.Label),
+			))
+		}
+		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
 
