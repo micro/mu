@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "Mu": {
+      "type": "http",
+      "url": "https://mu.xyz/mcp",
+      "headers": {
+        "Authorization": "Bearer RKucSLgHKsB1-7uCnKmoHS8dnuqytKHmXObsx2T7Zpc="
+      }
+    }
+  }
+}
