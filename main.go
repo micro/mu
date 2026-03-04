@@ -410,6 +410,13 @@ func main() {
 				if isAuthed {
 					// deny access if invalid
 					if err := auth.ValidateToken(token); err != nil {
+						// Return JSON 401 for API-style requests
+						if app.SendsJSON(r) || app.WantsJSON(r) {
+							w.Header().Set("Content-Type", "application/json")
+							w.WriteHeader(http.StatusUnauthorized)
+							w.Write([]byte(`{"error":"Authentication required"}`))
+							return
+						}
 						http.Redirect(w, r, "/", 302)
 						return
 					}
