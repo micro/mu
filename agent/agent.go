@@ -354,11 +354,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 	b.WriteString(`<span style="color:#888;font-size:13px;">Share this URL to let others view this result</span>`)
 	b.WriteString(`</div>`)
 
-	title := f.Prompt
-	if len(title) > 60 {
-		title = title[:60] + "…"
-	}
-	html := app.RenderHTMLForRequest(title, "Saved agent query: "+htmlEsc(f.Prompt), b.String(), r)
+	html := app.RenderHTMLForRequest("Agent", "Saved agent query: "+htmlEsc(f.Prompt), b.String(), r)
 	w.Write([]byte(html))
 }
 
