@@ -709,7 +709,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
 	// Agent prompt — the primary interface
-	b.WriteString(`<div class="card">
+	b.WriteString(`<div id="agent-form-wrap"><div class="card">
 <form id="agent-form">
 <textarea id="agent-prompt" name="prompt" rows="2"
   placeholder="Ask me anything..."
@@ -723,7 +723,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 <button type="submit" id="agent-submit">Ask</button>
 </div>
 </form>
-</div>`)
+</div></div>`)
 
 	// Starter query chips
 	b.WriteString(`<div id="starter-queries" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">`)
@@ -772,6 +772,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Inline styles for starter chips and agent steps
 	b.WriteString(`<style>
+body.page-home #agent-form-wrap .card,
+body.page-home #agent-progress .card,
+body.page-home #agent-result .card{max-width:none;}
 .starter-chip{padding:6px 14px;border:1px solid #ddd;border-radius:20px;
   background:#fff;cursor:pointer;font-size:13px;font-family:inherit;
   transition:background 0.15s,border-color 0.15s;color:#333;}
