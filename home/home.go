@@ -779,7 +779,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 <button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
 <input type="hidden" id="agent-model" value="standard">
 </form>
-<div style="display:flex;align-items:center;gap:8px;margin-top:8px;max-width:1000px;">
+<div style="display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:16px;max-width:1000px;">
 <div id="agent-model-toggle" style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;font-size:11px;font-family:inherit;cursor:pointer;user-select:none;">
 <span id="model-std" style="padding:6px 10px;background:#000;color:#fff;transition:background 0.15s,color 0.15s;">Std</span>
 <span id="model-pro" style="padding:6px 10px;background:#f9f9f9;color:#888;transition:background 0.15s,color 0.15s;">Pro</span>
