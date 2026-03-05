@@ -227,6 +227,9 @@ var Template = `
           <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
           <a href="/web"><img src="/search.svg?` + Version + `"><span class="label">Web</span></a>
           <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
+          <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
+          <a href="/places"><img src="/places.png?` + Version + `"><span class="label">Places</span></a>
+          <a href="/weather"><img src="/weather.png?` + Version + `"><span class="label">Weather</span></a>
         </div>
         <div class="nav-bottom">
           <div id="nav-username" style="display: none;"></div>
