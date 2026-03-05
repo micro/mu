@@ -1912,26 +1912,26 @@ a.highlight {
   
   #nav {
     flex-direction: column;
-    gap: 5px;
+    gap: 1px;
   }
-  
+
   #nav a {
-    padding: 10px 14px;
+    padding: 7px 14px;
     flex-direction: row;
   }
-  
+
   #nav img {
-    margin-right: 16px;
-    height: 24px;
-    width: 24px;
+    margin-right: 14px;
+    height: 20px;
+    width: 20px;
   }
-  
+
   #nav .label {
-    font-size: 1em;
+    font-size: 0.95em;
   }
-  
+
   .nav-divider {
-    margin: 4px 0;
+    margin: 2px 0;
   }
 
   /* Starter query chips - slightly smaller on mobile */
@@ -1942,8 +1942,14 @@ a.highlight {
   
   .nav-bottom {
     border-top: 1px solid var(--divider, #f0f0f0);
-    padding-top: 15px;
+    padding-top: 8px;
     margin-top: auto;
+    gap: 0;
+  }
+
+  .nav-bottom a {
+    padding: 5px 14px;
+    font-size: 0.9em;
   }
   
   #container {
