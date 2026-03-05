@@ -595,8 +595,6 @@ function setSession() {
     if (sess.type == "account") {
       isAuthenticated = true;
       // Show authenticated nav items
-      if (navMail) navMail.style.display = 'flex';
-      if (navWallet) navWallet.style.display = 'flex';
       if (navAccount) navAccount.style.display = 'flex';
       if (navLogout) navLogout.style.display = 'flex';
       if (navLogin) navLogin.style.display = 'none';
@@ -619,9 +617,10 @@ function setSession() {
       }
     } else {
       isAuthenticated = false;
+      // Redirect mail/wallet to login when not authenticated
+      if (navMail) navMail.href = '/login?redirect=' + encodeURIComponent('/mail');
+      if (navWallet) navWallet.href = '/login?redirect=' + encodeURIComponent('/wallet');
       // Hide authenticated nav items, show login
-      if (navMail) navMail.style.display = 'none';
-      if (navWallet) navWallet.style.display = 'none';
       if (navAccount) navAccount.style.display = 'none';
       if (navLogout) navLogout.style.display = 'none';
       if (navLogin) {
@@ -644,8 +643,9 @@ function setSession() {
     var navAccount = document.getElementById("nav-account");
     var navLogout = document.getElementById("nav-logout");
     var navLogin = document.getElementById("nav-login");
-    if (navMail) navMail.style.display = 'none';
-    if (navWallet) navWallet.style.display = 'none';
+    // Redirect mail/wallet to login when not authenticated
+    if (navMail) navMail.href = '/login?redirect=' + encodeURIComponent('/mail');
+    if (navWallet) navWallet.href = '/login?redirect=' + encodeURIComponent('/wallet');
     if (navAccount) navAccount.style.display = 'none';
     if (navLogout) navLogout.style.display = 'none';
     if (navLogin) {
