@@ -16,7 +16,7 @@
       "type": "reminder",
       "position": 0,
       "link": "",
-      "icon": "/reminder.png"
+      "icon": "/reminder.svg"
     },
     {
       "id": "markets",
@@ -24,7 +24,7 @@
       "type": "markets",
       "position": 1,
       "link": "/markets",
-      "icon": "/markets.png"
+      "icon": "/markets.svg"
     },
     {
       "id": "blog",
