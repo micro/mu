@@ -136,8 +136,8 @@ var landingTemplate = `<html lang="en">
 
       <h3>Our Mission</h3>
       <p style="max-width: 600px">
-      Mu is built with the intention that tools should serve humanity. Instead of continuously jumping between apps, just click the tab for what you need. Straightforward 
-      information across every service, enabling you to get things done without addiction, exploitation or manipulation.
+      Mu is built with the intention that tools should serve humanity. Instead of continuously jumping between apps, just click the tab for what you need. Quick
+      and painless access to every service, enabling you to get things done without addiction, exploitation or manipulation.
       </p>
 
       <div style="height: 60px;"></div>
