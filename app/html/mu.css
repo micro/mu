@@ -368,8 +368,6 @@ td {
   position: relative;
 }
 
-/* Scroll indicator (unused — replaced by More toggle) */
-
 #nav a {
   color: var(--text-primary);
   font-weight: var(--font-weight-medium);
@@ -400,27 +398,6 @@ td {
 
 #nav .label {
   font-size: 1.1em;
-}
-
-#nav-more-toggle {
-  color: var(--text-secondary, #888);
-  cursor: pointer;
-  justify-content: space-between;
-}
-
-#nav-more-toggle:hover {
-  color: var(--text-primary);
-}
-
-#nav-more-arrow {
-  font-size: 0.8em;
-  margin-left: 6px;
-}
-
-#nav-more {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
 }
 
 .nav-divider {
