@@ -841,9 +841,10 @@ self.addEventListener('DOMContentLoaded', function() {
   // set nav active state
   var nav = document.getElementById("nav");
   var navContainer = document.getElementById("nav-container");
-  for (const el of nav.children) {
-    // Skip non-link elements (spacer, bottom container)
-    if (el.tagName !== 'A') continue;
+  var navLinks = nav.querySelectorAll("a[href]");
+  for (var i = 0; i < navLinks.length; i++) {
+    var el = navLinks[i];
+    if (el.id === 'nav-more-toggle') continue;
     if (el.getAttribute("href") == window.location.pathname) {
       el.classList.add("active");
     } else {
@@ -851,19 +852,6 @@ self.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Show scroll indicator if nav has overflow
-  function checkNavScroll() {
-    if (nav && navContainer && nav.scrollHeight > nav.clientHeight && nav.scrollTop < nav.scrollHeight - nav.clientHeight - 10) {
-      navContainer.classList.add('has-scroll');
-    } else if (navContainer) {
-      navContainer.classList.remove('has-scroll');
-    }
-  }
-  // Check after layout settles and on load
-  if (nav) nav.addEventListener('scroll', checkNavScroll);
-  window.addEventListener('resize', checkNavScroll);
-  window.addEventListener('load', checkNavScroll);
-  setTimeout(checkNavScroll, 100);
 
   // load chat
   if (window.location.pathname == CHAT_PATH) {

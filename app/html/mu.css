@@ -368,26 +368,7 @@ td {
   position: relative;
 }
 
-/* Scroll indicator when nav has more items */
-#nav-container::after {
-  content: '⌄ more';
-  position: absolute;
-  bottom: 130px;
-  left: 25px;
-  right: 25px;
-  text-align: center;
-  font-size: 0.75em;
-  color: #999;
-  background: linear-gradient(transparent, white 50%);
-  padding: 15px 0 5px 0;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-#nav-container.has-scroll::after {
-  opacity: 1;
-}
+/* Scroll indicator (unused — replaced by More toggle) */
 
 #nav a {
   color: var(--text-primary);
@@ -419,6 +400,27 @@ td {
 
 #nav .label {
   font-size: 1.1em;
+}
+
+#nav-more-toggle {
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  justify-content: space-between;
+}
+
+#nav-more-toggle:hover {
+  color: var(--text-primary);
+}
+
+#nav-more-arrow {
+  font-size: 0.8em;
+  margin-left: 6px;
+}
+
+#nav-more {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .nav-divider {
