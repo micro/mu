@@ -20,7 +20,7 @@ The internet was supposed to connect us and make life better. Instead, platforms
 
 - **Rage bait** to keep you scrolling
 - **Notifications** to pull you back
-- **Likes and followers** to gamify your worth
+- **Likes/followers** to gamify your worth
 - **Ads** disguised as content
 - **Algorithms** that decide what you see
 
@@ -56,7 +56,6 @@ We deliberately exclude features that drive addiction:
 - **Your server, your data** — Self-host if you want
 - **No tracking** — We don't profile you
 - **No ads** — We don't sell your attention
-- **Private messaging** — Between you and them
 
 ## AI Features
 
