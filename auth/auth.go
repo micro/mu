@@ -32,7 +32,7 @@ type Account struct {
 	Created  time.Time `json:"created"`
 	Admin    bool      `json:"admin"`
 	Language string    `json:"language"`
-	Widgets  []string  `json:"widgets,omitempty"` // App IDs to show as home widgets
+	Widgets  []string  `json:"widgets,omitempty"`  // App IDs to show as home widgets
 	Approved bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
 }
 

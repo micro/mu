@@ -753,27 +753,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	// Agent card — input + button on one row, always uses fast model
-	b.WriteString(`<div class="card"><h4 style="margin-top:0;">Agent</h4>
-<form id="agent-form">
-<div style="display:flex;gap:8px;">
-<input type="text" id="agent-prompt" name="prompt" placeholder="Ask me anything..."
-  style="flex:1;min-width:0;padding:10px 14px;font-family:inherit;font-size:15px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
-<button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
-</div>
-</form>
-` + app.Link("See past queries", "/agent") + `
-</div>`)
-
-	// Agent progress and result areas
-	b.WriteString(`<div id="agent-progress" style="display:none;">
-<div class="card">
-<h4 style="margin:0 0 12px;">Working…</h4>
-<div id="agent-steps"></div>
-</div>
-</div>
-<div id="agent-result"></div>`)
-
 	// Feed section — existing home cards below the agent
 	var leftHTML []string
 	var rightHTML []string
@@ -800,133 +779,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			strings.Join(rightHTML, "\n")))
 	}
 
-	// Inline styles for agent steps
-	b.WriteString(`<style>
-.agent-step{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px;
-  color:#555;border-bottom:1px solid #f5f5f5;}
-.agent-step:last-child{border-bottom:none;}
-.agent-step.done{color:#28a745;}
-.agent-step.error{color:#dc3545;}
-.step-icon{font-size:16px;flex-shrink:0;}
-</style>`)
-
-	// Agent interaction script (same SSE logic as /agent)
-	b.WriteString(`<script>
-(function(){
-var form=document.getElementById('agent-form');
-if(!form)return;
-
-var feed=document.getElementById('home');
-var prog=document.getElementById('agent-progress');
-var steps=document.getElementById('agent-steps');
-var result=document.getElementById('agent-result');
-
-function esc(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function showFeed(){
-  if(feed)feed.style.display='';
-  prog.style.display='none';
-  result.innerHTML='';
-  document.getElementById('agent-prompt').value='';
-}
-
-function submitAgent(prompt){
-  var el=document.getElementById('agent-model');var model=el?el.value:'standard';
-  if(!prompt)return;
-
-  document.getElementById('agent-prompt').value=prompt;
-
-  var btn=document.getElementById('agent-submit');
-  btn.disabled=true;btn.textContent='Working…';
-
-  // Transition: hide feed, show progress
-  if(feed)feed.style.display='none';
-  prog.style.display='block';steps.innerHTML='';result.innerHTML='';
-
-  fetch('/agent',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prompt:prompt,model:model})
-  })
-  .then(function(resp){
-    if(!resp.ok&&resp.status===401){
-      prog.style.display='none';
-      result.innerHTML='<div class="card"><p>Please <a href="/login?redirect=/home">login</a> to use the agent.</p></div>';
-      btn.disabled=false;btn.textContent='Ask';
-      showFeed();
-      return;
-    }
-    var reader=resp.body.getReader();
-    var decoder=new TextDecoder();
-    var buf='';
-    function read(){
-      return reader.read().then(function(chunk){
-        if(chunk.done)return;
-        buf+=decoder.decode(chunk.value,{stream:true});
-        var lines=buf.split('\n');
-        buf=lines.pop();
-        lines.forEach(function(line){
-          if(!line.startsWith('data: '))return;
-          try{
-            var ev=JSON.parse(line.slice(6));
-            if(ev.type==='thinking'){
-              var d=document.createElement('div');
-              d.className='agent-step';
-              d.innerHTML='<span class="step-icon">…</span><span>'+esc(ev.message)+'</span>';
-              steps.appendChild(d);
-            } else if(ev.type==='tool_start'){
-              var d=document.createElement('div');
-              d.id='step-'+ev.name;d.className='agent-step';
-              d.innerHTML='<span class="step-icon">⚙</span><span>'+esc(ev.message)+'</span>';
-              steps.appendChild(d);
-            } else if(ev.type==='tool_done'){
-              var d=document.getElementById('step-'+ev.name);
-              if(d){
-                d.className='agent-step done';
-                d.innerHTML='<span class="step-icon">✓</span><span>'+esc(ev.message)+'</span>';
-              }
-            } else if(ev.type==='response'){
-              prog.style.display='none';
-              result.innerHTML='<div style="margin-bottom:12px;"><a href="#" id="agent-back" style="font-size:13px;color:var(--text-muted,#888);">← Back to Home</a></div>'+ev.html;
-              var back=document.getElementById('agent-back');
-              if(back)back.onclick=function(e){e.preventDefault();showFeed();};
-            } else if(ev.type==='error'){
-              prog.style.display='none';
-              result.innerHTML='<div style="margin-bottom:12px;"><a href="#" id="agent-back" style="font-size:13px;color:var(--text-muted,#888);">← Back to Home</a></div><div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
-              var back=document.getElementById('agent-back');
-              if(back)back.onclick=function(e){e.preventDefault();showFeed();};
-            } else if(ev.type==='done'){
-              btn.disabled=false;btn.textContent='Ask';
-            }
-          }catch(ex){}
-        });
-        return read();
-      });
-    }
-    return read();
-  })
-  .catch(function(err){
-    prog.style.display='none';
-    result.innerHTML='<div class="card"><p style="color:#dc3545;">Error: '+esc(err.message)+'</p></div>';
-    btn.disabled=false;btn.textContent='Ask';
-    showFeed();
-  });
-}
-
-form.addEventListener('submit',function(e){
-  e.preventDefault();
-  submitAgent(document.getElementById('agent-prompt').value.trim());
-});
-
-})();
-</script>`)
-
 	// Use RenderHTMLWithLang directly to inject a body class that hides the page title,
 	// keeping the agent prompt as the primary visual element.
 	lang := app.GetUserLanguage(r)
-	html := app.RenderHTMLWithLangAndBody("Home", "Your AI-powered homescreen", b.String(), lang, ` class="page-home"`)
+	html := app.RenderHTMLWithLangAndBody("Home", "The home screen", b.String(), lang, ` class="page-home"`)
 	w.Write([]byte(html))
 }
 

@@ -628,22 +628,22 @@ type shortcutToolCall struct {
 func shortcutToolCalls(prompt string) []shortcutToolCall {
 	aliases := map[string][]shortcutToolCall{
 		// Short aliases
-		"news":      {{Tool: "news", Args: map[string]any{}}},
-		"markets":   {{Tool: "markets", Args: map[string]any{}}},
-		"market":    {{Tool: "markets", Args: map[string]any{}}},
-		"prices":    {{Tool: "markets", Args: map[string]any{}}},
-		"video":     {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
-		"videos":    {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
-		"weather":   {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
-		"reminder":  {{Tool: "reminder", Args: map[string]any{}}},
+		"news":     {{Tool: "news", Args: map[string]any{}}},
+		"markets":  {{Tool: "markets", Args: map[string]any{}}},
+		"market":   {{Tool: "markets", Args: map[string]any{}}},
+		"prices":   {{Tool: "markets", Args: map[string]any{}}},
+		"video":    {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
+		"videos":   {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
+		"weather":  {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
+		"reminder": {{Tool: "reminder", Args: map[string]any{}}},
 		// Starter pill phrases
 		"give me a summary of today's top news":         {{Tool: "news", Args: map[string]any{}}},
 		"what's in the news?":                           {{Tool: "news", Args: map[string]any{}}},
 		"what are the latest crypto and market prices?": {{Tool: "markets", Args: map[string]any{}}},
 		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
 		"what's the weather like in london today?":      {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
-		"search the web for the latest ai news":        {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
-		"show me today's islamic reminder":             {{Tool: "reminder", Args: map[string]any{}}},
+		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
+		"show me today's islamic reminder":              {{Tool: "reminder", Args: map[string]any{}}},
 	}
 	if tc, ok := aliases[strings.ToLower(strings.TrimSpace(prompt))]; ok {
 		return tc
@@ -1021,7 +1021,7 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 // human-readable text for the AI synthesis RAG context.
 func formatNewsResult(result string) string {
 	var data struct {
-		Feed    []struct {
+		Feed []struct {
 			Title       string `json:"title"`
 			Description string `json:"description"`
 			Category    string `json:"category"`

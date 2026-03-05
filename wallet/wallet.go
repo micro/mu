@@ -267,9 +267,9 @@ func GetDailyUsage(userID string) *DailyUsage {
 
 	if !exists || usage.Date != today {
 		usage = &DailyUsage{
-			UserID:   userID,
-			Date:     today,
-			Used: 0,
+			UserID: userID,
+			Date:   today,
+			Used:   0,
 		}
 		mutex.Lock()
 		dailyUsage[key] = usage
@@ -313,9 +313,9 @@ func UseFreeQuota(userID string) error {
 	usage, exists := dailyUsage[key]
 	if !exists || usage.Date != today {
 		usage = &DailyUsage{
-			UserID:   userID,
-			Date:     today,
-			Used: 0,
+			UserID: userID,
+			Date:   today,
+			Used:   0,
 		}
 		dailyUsage[key] = usage
 	}
