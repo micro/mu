@@ -135,7 +135,7 @@ func handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}{
 		{"git pull", "git", []string{"pull", "origin", "main"}},
 		{"go build", "go", []string{"build", "-o", "mu"}},
-		{"install binary", "sudo", []string{"-n", "cp", "mu", "/usr/local/bin/mu"}},
+		{"install binary", "cp", []string{"mu", "/home/mu/go/bin/mu"}},
 		{"restart service", "sudo", []string{"-n", "systemctl", "restart", "mu"}},
 	}
 
