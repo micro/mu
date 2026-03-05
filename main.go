@@ -117,6 +117,60 @@ func main() {
 	}
 
 	// Register MCP auth tools
+	api.RegisterTool(api.Tool{
+		Name:        "signup",
+		Description: "Create a new account and return a session token",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "Username (4-24 chars, lowercase, starts with letter)", Required: true},
+			{Name: "secret", Type: "string", Description: "Password (minimum 6 characters)", Required: true},
+			{Name: "name", Type: "string", Description: "Display name (optional, defaults to username)", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			id, _ := args["id"].(string)
+			secret, _ := args["secret"].(string)
+			name, _ := args["name"].(string)
+			if id == "" || secret == "" {
+				return "username and password are required", fmt.Errorf("missing fields")
+			}
+			if len(secret) < 6 {
+				return "password must be at least 6 characters", fmt.Errorf("short password")
+			}
+			if name == "" {
+				name = id
+			}
+			if err := auth.Create(&auth.Account{
+				ID: id, Secret: secret, Name: name, Created: time.Now(),
+			}); err != nil {
+				return err.Error(), err
+			}
+			sess, err := auth.Login(id, secret)
+			if err != nil {
+				return "account created but login failed", err
+			}
+			return fmt.Sprintf(`{"token":"%s"}`, sess.Token), nil
+		},
+	})
+	api.RegisterTool(api.Tool{
+		Name:        "login",
+		Description: "Log in and return a session token for use in Authorization header",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "Username", Required: true},
+			{Name: "secret", Type: "string", Description: "Password", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			id, _ := args["id"].(string)
+			secret, _ := args["secret"].(string)
+			if id == "" || secret == "" {
+				return "username and password are required", fmt.Errorf("missing fields")
+			}
+			sess, err := auth.Login(id, secret)
+			if err != nil {
+				return "invalid username or password", err
+			}
+			return fmt.Sprintf(`{"token":"%s"}`, sess.Token), nil
+		},
+	})
+
 	// web_search tool registered via MCP
 	api.RegisterTool(api.Tool{
 		Name:        "web_search",
