@@ -73,7 +73,7 @@ var landingTemplate = `<html lang="en">
       <div id="title">Mu</div>
       <div id="desc">The Micro Network</div>
       <p style="font-size: 18px; font-weight: 800; color: #333; margin: 20px 0; text-align: center; max-width: 800px;">
-      One app for every tool you need.
+      One app for every service you need.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
       Mu is a place to see the latest news, market data, videos, search the web and more.
