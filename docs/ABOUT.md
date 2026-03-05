@@ -40,11 +40,6 @@ Each feature does one thing well:
 - **Video** — YouTube without ads or shorts
 - **Web** — Web search without ads or tracking
 - **Wallet** — Credits and card payments
-- **Agent** — Conversational AI agent with access to all Mu tools
-- **Markets** — Live crypto, futures and commodity prices
-- **Places** — Search and discover places on an ad-free map
-- **Reminder** — Daily Islamic verse, hadith, and name of Allah
-- **Weather** — Local weather forecasts without ads or tracking
 
 ### No Addiction Mechanics
 
@@ -70,7 +65,7 @@ Some features are enhanced with AI:
 - **Blog** — Auto-tag topics
 - **News** — Summarize articles
 - **Chat** — AI for discussions
-- **Agent** — Conversational AI with access to all Mu tools via MCP
+- **Agent** — Access to Mu via MCP
 
 AI is a tool, not the product. It helps when useful, stays out of the way otherwise.
 
