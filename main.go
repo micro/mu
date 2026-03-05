@@ -209,7 +209,7 @@ func main() {
 		"/admin/api":       true,
 		"/admin/log":       true,
 		"/admin/env":       true,
-		"/admin/deploy":    true,
+		"/admin/update":    true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
@@ -281,8 +281,8 @@ func main() {
 	// environment variables status
 	http.HandleFunc("/admin/env", admin.EnvHandler)
 
-	// deploy
-	http.HandleFunc("/admin/deploy", admin.DeployHandler)
+	// update and restart
+	http.HandleFunc("/admin/update", admin.UpdateHandler)
 
 	// plans page (public - overview of options)
 	http.HandleFunc("/plans", app.Plans)
