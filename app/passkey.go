@@ -33,12 +33,20 @@ func getWebAuthn(r *http.Request) *webauthn.WebAuthn {
 		if origin == "" {
 			origin = "http://localhost:8080"
 		}
+		origins := []string{origin}
+		if extra := os.Getenv("PASSKEY_EXTRA_ORIGINS"); extra != "" {
+			for _, o := range strings.Split(extra, ",") {
+				if o = strings.TrimSpace(o); o != "" {
+					origins = append(origins, o)
+				}
+			}
+		}
 
 		var err error
 		webAuthn, err = webauthn.New(&webauthn.Config{
 			RPDisplayName: "Mu",
 			RPID:          rpID,
-			RPOrigins:     []string{origin},
+			RPOrigins:     origins,
 			AuthenticatorSelection: protocol.AuthenticatorSelection{
 				RequireResidentKey: protocol.ResidentKeyRequired(),
 				ResidentKey:        protocol.ResidentKeyRequirementRequired,
