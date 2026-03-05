@@ -230,6 +230,8 @@ var Template = `
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
           <a href="/places"><img src="/places.png?` + Version + `"><span class="label">Places</span></a>
           <a href="/weather"><img src="/weather.png?` + Version + `"><span class="label">Weather</span></a>
+          <a href="/markets"><img src="/markets.png?` + Version + `"><span class="label">Markets</span></a>
+          <a href="/reminder"><img src="/reminder.png?` + Version + `"><span class="label">Reminder</span></a>
         </div>
         <div class="nav-bottom">
           <div id="nav-username" style="display: none;"></div>
