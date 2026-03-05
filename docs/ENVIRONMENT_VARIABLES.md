@@ -188,6 +188,9 @@ export MAIL_SELECTOR="default"
 | `MAIL_DOMAIN` | `localhost` | Your domain for message addresses |
 | `MAIL_SELECTOR` | `default` | DKIM selector for DNS lookup |
 | `DKIM_PRIVATE_KEY` | - | DKIM private key in PEM format (takes precedence over `~/.mu/keys/dkim.key`) |
+| `PASSKEY_ORIGIN` | `http://localhost:8080` | Primary origin for WebAuthn passkeys |
+| `PASSKEY_RP_ID` | `localhost` | Relying Party ID for WebAuthn passkeys |
+| `PASSKEY_EXTRA_ORIGINS` | - | Additional WebAuthn origins, comma-separated (e.g., for Tor .onion access) |
 | `DONATION_URL` | - | Payment link for one-time donations (optional) |
 | `STRIPE_SECRET_KEY` | - | Stripe secret key for card payments |
 | `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key for card payments |

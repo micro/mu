@@ -44,11 +44,14 @@ var knownEnvVars = []string{
 	// Auth / passkeys
 	"PASSKEY_ORIGIN",
 	"PASSKEY_RP_ID",
+	"PASSKEY_EXTRA_ORIGINS",
 	// Payments
 	"STRIPE_SECRET_KEY",
 	"STRIPE_PUBLISHABLE_KEY",
 	"STRIPE_WEBHOOK_SECRET",
 	"GOCARDLESS_ACCESS_TOKEN",
+	// Tor
+	"TOR_ONION",
 	// Misc
 	"DONATION_URL",
 	"DOMAIN",

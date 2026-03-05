@@ -148,6 +148,64 @@ ollama pull nomic-embed-text
 
 Mu will automatically use embeddings when Ollama is available. See [Vector Search](/docs/vector-search) for details.
 
+## Tor Hidden Service (Optional)
+
+Mu can be accessed as a Tor hidden service (.onion) for anonymous access.
+
+### 1. Install Tor
+
+```bash
+sudo apt install tor
+```
+
+### 2. Configure the hidden service
+
+Add to `/etc/tor/torrc`:
+
+```
+HiddenServiceDir /var/lib/tor/mu/
+HiddenServicePort 80 127.0.0.1:8080
+```
+
+Restart Tor and get your .onion address:
+
+```bash
+sudo systemctl restart tor
+sudo cat /var/lib/tor/mu/hostname
+```
+
+### 3. Configure passkeys for .onion access
+
+If you use passkeys, add the .onion origin so WebAuthn works on both domains:
+
+```bash
+export PASSKEY_EXTRA_ORIGINS="http://your-onion-address.onion"
+```
+
+Note: Passkeys registered on `mu.xyz` won't work on the `.onion` address (WebAuthn spec limitation). Users can register separate passkeys for each origin, or use password login over Tor.
+
+### 4. Nginx for .onion (optional)
+
+If using nginx, add a server block for the .onion address:
+
+```nginx
+server {
+    listen 80;
+    server_name your-onion-address.onion;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+No TLS needed — Tor provides end-to-end encryption for .onion addresses.
+
 ## Data Storage
 
 All data is stored in `~/.mu/`:
