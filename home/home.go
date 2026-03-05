@@ -90,7 +90,7 @@ var landingTemplate = `<html lang="en">
           <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">News
         </button>
         <button class="preview-tab" onclick="showPreview('markets',this)">
-          <img src="/markets.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Markets
+          <img src="/markets.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Markets
         </button>
         <button class="preview-tab" onclick="showPreview('video',this)">
           <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Video
@@ -111,7 +111,7 @@ var landingTemplate = `<html lang="en">
         </div>
         <div id="preview-markets" class="preview-panel">
           <div class="card">
-            <h4 style="margin-top:0;"><img src="/markets.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Markets</h4>
+            <h4 style="margin-top:0;"><img src="/markets.svg" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Markets</h4>
             <div id="preview-markets-content"><div class="skeleton" style="height:60px;margin:8px 0;"></div></div>
             <a href="/markets" class="link" style="margin-top:8px;display:inline-block;">More &#x2192;</a>
           </div>
@@ -200,7 +200,7 @@ var landingTemplate = `<html lang="en">
           <img src="/news.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">News
         </button>
         <button class="preview-tab" onclick="showExample('markets',this)">
-          <img src="/markets.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Markets
+          <img src="/markets.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Markets
         </button>
         <button class="preview-tab" onclick="showExample('video',this)">
           <img src="/video.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Video
