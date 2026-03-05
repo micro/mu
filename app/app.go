@@ -799,7 +799,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 </thead>
 <tbody>
 <tr><td>Standard</td><td>Fast and efficient — uses all tools</td><td>3</td><td>3p</td></tr>
-<tr><td>Premium</td><td>Best quality — deeper analysis</td><td>15</td><td>15p</td></tr>
+<tr><td>Premium</td><td>Best quality — deeper analysis</td><td>9</td><td>9p</td></tr>
 </tbody>
 </table>
 

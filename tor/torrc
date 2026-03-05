@@ -1,0 +1,9 @@
+# Tor hidden service configuration for mu
+# This proxies Tor traffic to the local mu server on port 8080
+
+SocksPort 0
+HiddenServiceDir /var/lib/tor/mu_hidden_service/
+HiddenServicePort 80 127.0.0.1:8080
+
+# Optional: also expose WebSocket port if separate
+# HiddenServicePort 443 127.0.0.1:8080

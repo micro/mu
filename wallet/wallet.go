@@ -29,7 +29,7 @@ var (
 	CostWeatherPollen     = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
 	CostWebSearch         = getEnvInt("CREDIT_COST_SEARCH", 5)
 	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
-	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 15)
+	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
 	FreeDailyQuota        = getEnvInt("FREE_DAILY_QUOTA", 20)
 )
 

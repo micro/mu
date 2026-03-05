@@ -1044,8 +1044,8 @@ function displayRoomMessage(msg, shouldScroll = true) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'message';
   
-  const userSpan = msg.is_llm ? 
-    '<span class="llm">micro</span>' : 
+  const userSpan = msg.is_llm ?
+    '<span class="llm"><a href="/@micro" style="color:inherit;text-decoration:none;">micro</a></span>' :
     '<span class="you"><a href="/@' + msg.username + '">' + msg.username + '</a></span>';
   
   let content;
@@ -1106,10 +1106,7 @@ function updateUserList(users) {
     return;
   }
   var parts = users.map(function(u) {
-    if (u === 'micro') {
-      return '<span style="color:#007bff;">@micro</span>';
-    }
-    return '<a href="/@' + encodeURIComponent(u) + '" title="View profile" style="color:#555;text-decoration:none;">@' + u + '</a>';
+    return '<a href="/@' + encodeURIComponent(u) + '" title="View profile" style="color:#555;text-decoration:none;font-weight:600;">@' + u + '</a>';
   });
   container.innerHTML = '<span style="color:#999;">In room: </span>' + parts.join(' &nbsp;');
 }
