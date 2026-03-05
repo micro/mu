@@ -202,6 +202,15 @@ func generateReminderPage(data *ReminderData) string {
 	}
 	sb.WriteString(`</p>`)
 
+	// Message/summary section first
+	if data.Message != "" {
+		sb.WriteString(`<div class="reminder-section">`)
+		sb.WriteString(`<div class="reminder-content message-content">`)
+		sb.WriteString(data.Message)
+		sb.WriteString(`</div>`)
+		sb.WriteString(`</div>`)
+	}
+
 	// Name of Allah section
 	if data.Name != "" {
 		sb.WriteString(`<div class="reminder-section">`)
@@ -253,16 +262,6 @@ func generateReminderPage(data *ReminderData) string {
 					app.Link("Read more hadiths", "https://reminder.dev"+hadithLink)))
 			}
 		}
-		sb.WriteString(`</div>`)
-	}
-
-	// Additional context/message if available
-	if data.Message != "" {
-		sb.WriteString(`<div class="reminder-section">`)
-		sb.WriteString(`<h2>Message</h2>`)
-		sb.WriteString(`<div class="reminder-content message-content">`)
-		sb.WriteString(data.Message)
-		sb.WriteString(`</div>`)
 		sb.WriteString(`</div>`)
 	}
 
