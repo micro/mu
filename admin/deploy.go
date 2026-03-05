@@ -134,7 +134,8 @@ func handleDeploy(w http.ResponseWriter, r *http.Request) {
 		args []string
 	}{
 		{"git pull", "git", []string{"pull", "origin", "main"}},
-		{"go install", "go", []string{"install"}},
+		{"go build", "go", []string{"build", "-o", "mu"}},
+		{"install binary", "cp", []string{"mu", "/home/mu/go/bin/mu"}},
 		{"restart service", "sudo", []string{"-n", "systemctl", "restart", "mu"}},
 	}
 
@@ -163,7 +164,7 @@ func runStep(dir, name, cmdName string, args []string) deployLogEntry {
 	cmd := exec.Command(cmdName, args...)
 	cmd.Dir = dir
 
-	// Inherit env so go install picks up GOPATH etc
+	// Inherit env so go build picks up GOPATH etc
 	cmd.Env = append(os.Environ(), "HOME="+os.Getenv("HOME"))
 
 	var stdout, stderr bytes.Buffer

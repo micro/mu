@@ -21,6 +21,7 @@ jobs:
             cd ~/src/mu
             git pull origin main
             source ~/.env
-            go install
+            go build -o mu
+            cp mu /home/mu/go/bin/mu
             sudo -n systemctl restart mu
             echo "Deploy complete"
