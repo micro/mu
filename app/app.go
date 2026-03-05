@@ -220,20 +220,20 @@ var Template = `
         </div>
         <div id="nav">
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
-          <a href="/agent"><img src="/chat.png?` + Version + `"><span class="label">Agent</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>
-          <a id="nav-mail" href="/mail" style="display: none;"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
           <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
+          <a id="nav-mail" href="/mail" style="display: none;"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
           <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
-          <a href="/web"><img src="/search.svg?` + Version + `"><span class="label">Web</span></a>
           <a id="nav-wallet" href="/wallet" style="display: none;"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
           <a id="nav-more-toggle" href="#" onclick="toggleNavMore(event)"><span class="label">More</span><span id="nav-more-arrow">&#9662;</span></a>
           <div id="nav-more" style="display:none;">
+            <a href="/agent"><img src="/chat.png?` + Version + `"><span class="label">Agent</span></a>
             <a href="/markets"><img src="/markets.png?` + Version + `"><span class="label">Markets</span></a>
             <a href="/places"><img src="/places.png?` + Version + `"><span class="label">Places</span></a>
             <a href="/reminder"><img src="/reminder.png?` + Version + `"><span class="label">Reminder</span></a>
             <a href="/weather"><img src="/weather.png?` + Version + `"><span class="label">Weather</span></a>
+            <a href="/web"><img src="/search.svg?` + Version + `"><span class="label">Web</span></a>
           </div>
         </div>
         <div class="nav-bottom">
