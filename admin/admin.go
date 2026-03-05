@@ -30,7 +30,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/api">API Log</a>
 		<a href="/admin/log">System Log</a>
 		<a href="/admin/env">Env Vars</a>
-		<a href="/admin/update">Update</a>
+		<a href="/admin/server">Server</a>
 	</div>`
 
 	html := app.RenderHTMLForRequest("Admin", "Admin Dashboard", content, r)

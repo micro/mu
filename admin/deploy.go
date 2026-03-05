@@ -52,9 +52,9 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// GET — render update page
+	// GET — render server page
 	content := `<p><a href="/admin">← Admin</a></p>
-	<h2>Update</h2>
+	<h2>Server</h2>
 	<p><strong>Source:</strong> <code>` + sourceDir() + `</code></p>
 	<div id="deploy-controls">
 		<button id="update-btn" onclick="runAction('update')">Update</button>
@@ -74,7 +74,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		output.style.display = 'block';
 		output.textContent = '';
 
-		fetch('/admin/update', {
+		fetch('/admin/server', {
 			method: 'POST',
 			headers: {'Content-Type': 'application/json'},
 			body: JSON.stringify({action: action})
@@ -110,7 +110,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	</script>`
 
-	html := app.RenderHTMLForRequest("Admin", "Update", content, r)
+	html := app.RenderHTMLForRequest("Admin", "Server", content, r)
 	w.Write([]byte(html))
 }
 
