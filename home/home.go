@@ -73,30 +73,17 @@ var landingTemplate = `<html lang="en">
       <div id="title">Mu</div>
       <div id="desc">The Micro Network</div>
       <p style="font-size: 18px; font-weight: 800; color: #333; margin: 20px 0; text-align: center; max-width: 800px;">
-      One conversation. Every tool you need.
+      One app for every tool you need.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
-      Ask a question and Mu&#39;s agent searches news, markets, weather, video and more to get you answers — no ads, no algorithms, no tracking.
+      Mu is a place to see the latest news, market data, videos, search the web and more. No ads, no algorithms, no tracking.
       </p>
 
-      <div style="max-width:600px;margin:20px auto 0;">
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="landing-prompt" placeholder="Ask me anything..."
-            style="flex:1;padding:12px 16px;font-size:15px;font-family:inherit;border:1px solid #ddd;border-radius:6px;">
-          <a href="/login?redirect=/home"><button class="btn" style="font-size:1em;padding:10px 20px;height:auto;">Ask</button></a>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;justify-content:center;">
-          <span style="padding:5px 14px;border:1px solid #ddd;border-radius:20px;font-size:13px;color:#555;">What&#39;s in the news?</span>
-          <span style="padding:5px 14px;border:1px solid #ddd;border-radius:20px;font-size:13px;color:#555;">Market prices</span>
-          <span style="padding:5px 14px;border:1px solid #ddd;border-radius:20px;font-size:13px;color:#555;">Find a video</span>
-          <span style="padding:5px 14px;border:1px solid #ddd;border-radius:20px;font-size:13px;color:#555;">Weather forecast</span>
-        </div>
-      </div>
 
       <div style="height: 60px;"></div>
 
       <h3>Live Data</h3>
-      <p style="color:#555;max-width:600px;margin:0 auto 20px;">Real-time information powering the agent — click to explore.</p>
+      <p style="color:#555;max-width:600px;margin:0 auto 20px;">Real-time information at your fingertips — click to explore.</p>
 
       <div class="preview-tabs">
         <button class="preview-tab active" onclick="showPreview('news',this)">
@@ -149,13 +136,14 @@ var landingTemplate = `<html lang="en">
 
       <h3>Our Mission</h3>
       <p style="max-width: 600px">
-      Mu is built with the intention that tools should serve humanity. Instead of continuously jumping between apps, just ask — the agent searches, summarises, and connects information across every service, enabling you to get things done without addiction, exploitation or manipulation.
+      Mu is built with the intention that tools should serve humanity. Instead of continuously jumping between apps, just click the tab for what you need. Straightforward 
+      information across every service, enabling you to get things done without addiction, exploitation or manipulation.
       </p>
 
       <div style="height: 60px;"></div>
 
       <h3>Services</h3>
-      <p>The tools powering the agent — also available individually</p>
+      <p>The tools powering Mu</p>
       <div id="links">
         <a href="/blog" style="text-decoration: none; color: inherit;">
           <div class="block">
@@ -178,32 +166,11 @@ var landingTemplate = `<html lang="en">
             <div class="small">Message other users directly or send an email</div>
           </div>
         </a>
-        <a href="/markets" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/markets.png" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Markets</b>
-            <div class="small">Live crypto, futures and commodity prices</div>
-          </div>
-        </a>
         <a href="/news" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/news.png" alt="News" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>News</b>
             <div class="small">Source of truth for news events around the world</div>
-          </div>
-        </a>
-        <a href="/places" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/places.png" alt="Places" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Places</b>
-            <div class="small">Search and discover places on an ad-free map</div>
-          </div>
-        </a>
-        <a href="/reminder" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/reminder.png" alt="Reminder" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Reminder</b>
-            <div class="small">Daily Islamic verse, hadith, and name of Allah</div>
           </div>
         </a>
         <a href="/video" style="text-decoration: none; color: inherit;">
@@ -218,13 +185,6 @@ var landingTemplate = `<html lang="en">
             <img src="/search.svg" alt="Web" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Web</b>
             <div class="small">Search the web without ads or tracking</div>
-          </div>
-        </a>
-        <a href="/weather" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/weather.png" alt="Weather" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Weather</b>
-            <div class="small">Local weather forecasts without ads or tracking</div>
           </div>
         </a>
       </div>
