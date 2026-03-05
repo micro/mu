@@ -163,8 +163,18 @@ func runStep(dir, name, cmdName string, args []string) deployLogEntry {
 	cmd := exec.Command(cmdName, args...)
 	cmd.Dir = dir
 
-	// Inherit env so go build picks up GOPATH etc
-	cmd.Env = append(os.Environ(), "HOME="+os.Getenv("HOME"))
+	// Inherit env and ensure Go/snap paths are available
+	home := os.Getenv("HOME")
+	path := os.Getenv("PATH")
+	goPath := filepath.Join(home, "go", "bin")
+	snapPath := "/snap/bin"
+	if !strings.Contains(path, goPath) {
+		path = goPath + ":" + path
+	}
+	if !strings.Contains(path, snapPath) {
+		path = snapPath + ":" + path
+	}
+	cmd.Env = append(os.Environ(), "HOME="+home, "PATH="+path)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
