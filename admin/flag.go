@@ -16,6 +16,9 @@ import (
 // Import blog to get new account blog posts - will be set by blog package to avoid circular import
 var GetNewAccountBlog func() []PostContent
 
+// RefreshBlogCache is set by blog package to refresh cache after account approval
+var RefreshBlogCache func()
+
 // ============================================
 // DATA STRUCTURES
 // ============================================
@@ -508,17 +511,19 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 				</div>
 				<p class="whitespace-pre-wrap">%s</p>
 				<div class="info">
-					%s by %s · New Account (< 24h) · Hidden from homepage
+					%s by %s · New Account (&lt; 24h) · Hidden from homepage
 				</div>
 				<div class="actions">
-					<form method="POST" action="/admin/moderate" style="display:inline">
+					<form method="POST" action="/admin/moderate">
 						<input type="hidden" name="action" value="approve_account">
 						<input type="hidden" name="type" value="post">
 						<input type="hidden" name="id" value="%s">
 						<button type="submit" class="btn-approve">Approve</button>
 					</form>
-					<a href="/post?id=%s" target="_blank">view</a> ·
-					<a href="#" onclick="fetch('/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{alert(d.success?'Flagged ('+d.count+')':d.message||'Failed')}).catch(()=>alert('Error'));return false;" class="text-error">flag</a>
+					<form method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Flag this post?').then(function(ok){if(ok){fetch('/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{if(d.success){location.reload()}else{alert(d.message||'Failed')}}).catch(()=>alert('Error'))}});return false;">
+						<button type="submit" class="btn-delete">Flag</button>
+					</form>
+					<a href="/post?id=%s" target="_blank">view</a>
 				</div>
 			</div>`,
 					title,
@@ -602,6 +607,9 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 		if err := auth.ApproveAccount(contentID); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
+		}
+		if RefreshBlogCache != nil {
+			RefreshBlogCache()
 		}
 		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
 
