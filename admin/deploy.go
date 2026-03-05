@@ -167,12 +167,12 @@ func runStep(dir, name, cmdName string, args []string) deployLogEntry {
 	home := os.Getenv("HOME")
 	path := os.Getenv("PATH")
 	goPath := filepath.Join(home, "go", "bin")
-	snapPath := "/snap/bin"
+	goRoot := "/usr/local/go/bin"
 	if !strings.Contains(path, goPath) {
 		path = goPath + ":" + path
 	}
-	if !strings.Contains(path, snapPath) {
-		path = snapPath + ":" + path
+	if !strings.Contains(path, goRoot) {
+		path = goRoot + ":" + path
 	}
 	cmd.Env = append(os.Environ(), "HOME="+home, "PATH="+path)
 
