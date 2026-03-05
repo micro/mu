@@ -32,17 +32,18 @@ Mu was built to fix this problem.
 
 Each feature does one thing well:
 
-- **Agent** — Conversational AI agent with access to all Mu tools
+- **Home** — Your dashboard, everything in one place
 - **Blog** — Microblogging without the engagement tricks
 - **Chat** — Discuss topics with AI
-- **Home** — Your dashboard, everything in one place
-- **Mail** — Private messaging & email
-- **Markets** — Live crypto, futures and commodity prices
 - **News** — RSS feeds, chronological
+- **Mail** — Private messaging & email
+- **Video** — YouTube without ads or shorts
+- **Web** — Web search without ads or tracking
+- **Wallet** — Credits and card payments
+- **Agent** — Conversational AI agent with access to all Mu tools
+- **Markets** — Live crypto, futures and commodity prices
 - **Places** — Search and discover places on an ad-free map
 - **Reminder** — Daily Islamic verse, hadith, and name of Allah
-- **Video** — YouTube without ads or shorts
-- **Wallet** — Credits and card payments
 - **Weather** — Local weather forecasts without ads or tracking
 
 ### No Addiction Mechanics

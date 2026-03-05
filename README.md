@@ -16,14 +16,15 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 - **Blog** - Microblogging with [ActivityPub](docs/ACTIVITYPUB.md) federation
 - **Chat** - Discuss topics with AI
 - **News** - RSS feeds with AI summaries
-- **Video** - Watch YouTube without ads
 - **Mail** - Private messaging & email
-- **Places** - Discover places and points of interest near you
-- **Weather** - Local weather forecasts
-- **Markets** - Live crypto, futures and commodity prices
-- **Reminder** - Daily Islamic verse, hadith, and name of Allah
-- **Agent** - Conversational AI agent with access to all Mu tools
+- **Video** - Watch YouTube without ads
+- **Web** - Web search without ads or tracking
 - **Wallet** - Credits and card payments
+- **Agent** - Conversational AI agent with access to all Mu tools
+- **Markets** - Live crypto, futures and commodity prices
+- **Places** - Discover places and points of interest near you
+- **Reminder** - Daily Islamic verse, hadith, and name of Allah
+- **Weather** - Local weather forecasts
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
