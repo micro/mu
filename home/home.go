@@ -83,7 +83,7 @@ var landingTemplate = `<html lang="en">
       <div style="height: 60px;"></div>
 
       <h3>Live Data</h3>
-      <p style="color:#555;max-width:600px;margin:0 auto 20px;">Real-time information at your fingertips — click to explore.</p>
+      <p style="color:#555;max-width:600px;margin:0 auto 20px;">Real-time information at your fingertips</p>
 
       <div class="preview-tabs">
         <button class="preview-tab active" onclick="showPreview('news',this)">
