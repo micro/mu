@@ -220,7 +220,6 @@ var Template = `
         </div>
         <div id="nav">
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
-          <div class="nav-divider"></div>
           <a href="/agent"><img src="/chat.png?` + Version + `"><span class="label">Agent</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>

@@ -255,6 +255,7 @@ func Load() {
 	// Register with admin system
 	admin.RegisterDeleter("post", &postDeleter{})
 	admin.GetNewAccountBlog = getNewAccountBlogForAdmin
+	admin.RefreshBlogCache = RefreshCache
 }
 
 // postDeleter implements admin.ContentDeleter interface
