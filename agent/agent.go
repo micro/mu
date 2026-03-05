@@ -24,7 +24,6 @@ const historyLimit = 20
 type Model struct {
 	ID       string
 	Name     string
-	Desc     string
 	WalletOp string
 	Provider string // ai provider constant, empty = default
 	Model    string // ai model override, empty = provider default
@@ -42,15 +41,13 @@ var defaultPremiumModel = func() string {
 var Models = []Model{
 	{
 		ID:       "standard",
-		Name:     "Standard",
-		Desc:     "Fast and efficient",
+		Name:     "Fast",
 		WalletOp: "agent_query",
 		Provider: ai.ProviderDefault,
 	},
 	{
 		ID:       "premium",
-		Name:     "Premium",
-		Desc:     "Best quality",
+		Name:     "Best",
 		WalletOp: "agent_query_premium",
 		Provider: ai.ProviderAnthropic,
 		Model:    defaultPremiumModel,
@@ -95,7 +92,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	var modelOpts strings.Builder
 	for _, m := range Models {
 		modelOpts.WriteString(fmt.Sprintf(
-			`<option value="%s">%s — %s</option>`, m.ID, m.Name, m.Desc,
+			`<option value="%s">%s</option>`, m.ID, m.Name,
 		))
 	}
 

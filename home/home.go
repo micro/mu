@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"mu/agent"
 	"mu/app"
 	"mu/blog"
 	"mu/data"
@@ -754,15 +753,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	// Build model <select> options
-	var modelOpts strings.Builder
-	for _, m := range agent.Models {
-		modelOpts.WriteString(fmt.Sprintf(
-			`<option value="%s">%s — %s</option>`, m.ID, m.Name, m.Desc,
-		))
-	}
-
-	// Agent card — input + button on one row, select below
+	// Agent card — input + button on one row, always uses fast model
 	b.WriteString(`<div class="card"><h4 style="margin-top:0;">Agent</h4>
 <form id="agent-form">
 <div style="display:flex;gap:8px;">
@@ -770,8 +761,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
   style="flex:1;min-width:0;padding:10px 14px;font-family:inherit;font-size:15px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
 <button type="submit" id="agent-submit" style="flex-shrink:0;">Ask</button>
 </div>
-<select id="agent-model"
-  style="margin-top:8px;padding:8px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:6px;">` + modelOpts.String() + `</select>
 </form>
 ` + app.Link("See past queries", "/agent") + `
 </div>`)
@@ -844,7 +833,7 @@ function showFeed(){
 }
 
 function submitAgent(prompt){
-  var model=document.getElementById('agent-model').value;
+  var el=document.getElementById('agent-model');var model=el?el.value:'standard';
   if(!prompt)return;
 
   document.getElementById('agent-prompt').value=prompt;
