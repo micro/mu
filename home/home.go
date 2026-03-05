@@ -76,7 +76,7 @@ var landingTemplate = `<html lang="en">
       One app for every tool you need.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
-      Mu is a place to see the latest news, market data, videos, search the web and more. No ads, no algorithms, no tracking.
+      Mu is a place to see the latest news, market data, videos, search the web and more.
       </p>
 
 
