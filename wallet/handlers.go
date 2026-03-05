@@ -268,7 +268,6 @@ func renderStripeDeposit(userID, errMsg string) string {
 	var sb strings.Builder
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Add Credits</h3>`)
 	if errMsg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
