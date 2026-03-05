@@ -18,6 +18,8 @@ var STATIC_CACHE = [
   '/agent.svg',
   '/places.png',
   '/weather.png',
+  '/markets.png',
+  '/reminder.png',
   '/account.png',
   '/logout.png',
   '/icon-192.png',
