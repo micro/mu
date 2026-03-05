@@ -376,6 +376,11 @@ func main() {
 	server := &http.Server{
 		Addr: *AddressFlag,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Set Onion-Location header for Tor Browser discovery
+			if onion := os.Getenv("TOR_ONION"); onion != "" {
+				w.Header().Set("Onion-Location", "http://"+onion+r.URL.RequestURI())
+			}
+
 			// Request logging (Apache-style)
 			start := time.Now()
 			defer func() {

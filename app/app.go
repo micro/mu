@@ -179,6 +179,13 @@ func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
 //go:embed html/*
 var htmlFiles embed.FS
 
+func torFooterLink() string {
+	if onion := os.Getenv("TOR_ONION"); onion != "" {
+		return ` · <a href="http://` + onion + `" title="Tor Hidden Service">Tor</a>`
+	}
+	return ""
+}
+
 var Template = `
 <html lang="%s">
   <head>
@@ -245,7 +252,7 @@ var Template = `
         %s
       </div>
       <div id="footer">
-        <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/mcp">MCP</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>
+        <a href="/about">About</a> · <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/mcp">MCP</a> · <a href="/plans">Plans</a> · <a href="/status">Status</a>` + torFooterLink() + `
       </div>
     </div>
   <script>

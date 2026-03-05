@@ -50,6 +50,8 @@ var knownEnvVars = []string{
 	"STRIPE_PUBLISHABLE_KEY",
 	"STRIPE_WEBHOOK_SECRET",
 	"GOCARDLESS_ACCESS_TOKEN",
+	// Tor
+	"TOR_ONION",
 	// Misc
 	"DONATION_URL",
 	"DOMAIN",
