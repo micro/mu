@@ -35,7 +35,7 @@ type Event struct {
 // SearchOptions configures search behavior
 type SearchOptions struct {
 	Type        string
-	KeywordOnly bool // Skip vector search, use keyword matching only
+	KeywordOnly bool // Use keyword matching only
 }
 
 // SearchOption is a functional option for configuring search
@@ -48,7 +48,7 @@ func WithType(entryType string) SearchOption {
 	}
 }
 
-// WithKeywordOnly skips vector search
+// WithKeywordOnly uses keyword matching only
 func WithKeywordOnly() SearchOption {
 	return func(opts *SearchOptions) {
 		opts.KeywordOnly = true
@@ -352,7 +352,7 @@ func GetByID(id string) *IndexEntry {
 	return index[id]
 }
 
-// Search performs semantic vector search with text fallback
+// Search performs full-text search across indexed content
 func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 	if UseSQLite {
 		results, err := SearchSQLite(query, limit, opts...)

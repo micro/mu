@@ -2,32 +2,11 @@
 
 ## AI/Chat Configuration
 
-**Priority order:** Anthropic > Fanar > Ollama
-
-### Anthropic Claude (Optional)
+Mu uses Anthropic Claude for all AI features.
 
 ```bash
-# Anthropic Claude API for chat functionality
 export ANTHROPIC_API_KEY="your-anthropic-api-key"
-export ANTHROPIC_MODEL="claude-haiku-4-5-20250311"  # Default model
-```
-
-### Fanar API (Optional)
-
-```bash
-# Fanar API for chat functionality
-export FANAR_API_KEY="your-fanar-api-key"
-export FANAR_API_URL="https://api.fanar.qa"  # Default: https://api.fanar.qa
-```
-
-**Note:** Fanar has a rate limit of 10 requests per minute, enforced automatically.
-
-### Ollama (Fallback)
-
-```bash
-# Used if neither Anthropic nor Fanar API key is set
-export MODEL_NAME="llama3.2"                    # Default: llama3.2
-export MODEL_API_URL="http://localhost:11434"   # Default: http://localhost:11434
+export ANTHROPIC_MODEL="claude-sonnet-4-20250514"  # Default model
 ```
 
 ## YouTube Configuration
@@ -49,17 +28,6 @@ export GOOGLE_API_KEY="your-google-places-api-key"
 - When `GOOGLE_API_KEY` is set, Places uses the [Google Places API (New)](https://developers.google.com/maps/documentation/places/web-service/overview) for search and nearby queries
 - Without it, Places falls back to free OpenStreetMap/Overpass and Nominatim data
 - Enable the **Places API (New)** in Google Cloud Console; the YouTube Data API key is separate
-
-## Vector Search Configuration
-
-```bash
-# Ollama endpoint for semantic vector search (embeddings)
-export MODEL_API_URL="http://localhost:11434"   # Default: http://localhost:11434
-```
-
-**Note:** Vector search requires Ollama with `nomic-embed-text` model. If unavailable, falls back to keyword search. See [Vector Search](/docs/vector-search) for installation.
-
-**TODO:** The Ollama endpoint (`http://localhost:11434`) and embedding model (`nomic-embed-text`) are currently hardcoded in `data/data.go`. Consider making these configurable via `MODEL_API_URL` and a new `EMBEDDING_MODEL` environment variable.
 
 ## ActivityPub Configuration
 
@@ -175,13 +143,9 @@ export MAIL_SELECTOR="default"
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MU_DOMAIN` | `localhost` | Domain for ActivityPub federation (falls back to `MAIL_DOMAIN`) |
-| `MU_USE_SQLITE` | - | Set to `1` to store search index and embeddings in SQLite instead of RAM |
-| `ANTHROPIC_API_KEY` | - | Anthropic API key for chat (highest priority) |
-| `ANTHROPIC_MODEL` | `claude-haiku-4-5-20250311` | Anthropic model name |
-| `FANAR_API_KEY` | - | Fanar API key for chat |
-| `FANAR_API_URL` | `https://api.fanar.qa` | Fanar API endpoint |
-| `MODEL_NAME` | `llama3.2` | Ollama model name (fallback when no cloud key is set) |
-| `MODEL_API_URL` | `http://localhost:11434` | Ollama API endpoint (also used for vector search embeddings) |
+| `MU_USE_SQLITE` | - | Set to `1` to store search index in SQLite with FTS5 |
+| `ANTHROPIC_API_KEY` | - | Anthropic API key for AI features (required) |
+| `ANTHROPIC_MODEL` | `claude-sonnet-4-20250514` | Anthropic model name |
 | `YOUTUBE_API_KEY` | - | YouTube API key for video functionality |
 | `GOOGLE_API_KEY` | - | Google Places API key for enhanced places search |
 | `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |
@@ -209,12 +173,8 @@ export MAIL_SELECTOR="default"
 Create a `.env` file:
 
 ```bash
-# AI/Chat (priority: Anthropic > Fanar > Ollama)
-# ANTHROPIC_API_KEY=your-anthropic-api-key
-FANAR_API_KEY=your-fanar-api-key
-FANAR_API_URL=https://api.fanar.qa
-MODEL_NAME=llama3.2
-MODEL_API_URL=http://localhost:11434
+# AI/Chat
+ANTHROPIC_API_KEY=your-anthropic-api-key
 
 # YouTube
 YOUTUBE_API_KEY=your-youtube-api-key
@@ -255,8 +215,7 @@ User=mu
 WorkingDirectory=/opt/mu
 
 # AI/Chat
-Environment="FANAR_API_KEY=your-fanar-api-key"
-Environment="FANAR_API_URL=https://api.fanar.ai"
+Environment="ANTHROPIC_API_KEY=your-anthropic-api-key"
 
 # YouTube
 Environment="YOUTUBE_API_KEY=your-youtube-api-key"
@@ -297,7 +256,7 @@ Run with environment variables:
 docker run -d \
   -p 8080:8080 \
   -p 25:25 \
-  -e FANAR_API_KEY=your-fanar-api-key \
+  -e ANTHROPIC_API_KEY=your-anthropic-api-key \
   -e YOUTUBE_API_KEY=your-youtube-api-key \
   -e MAIL_PORT=25 \
   -e MAIL_DOMAIN=yourdomain.com \
@@ -312,12 +271,7 @@ docker run -d \
 ### Anthropic API
 - Sign up at [Anthropic](https://www.anthropic.com)
 - Get your API key from the [Console](https://console.anthropic.com)
-- Highest priority AI provider
-
-### Fanar API
-- Sign up at [Fanar AI](https://fanar.ai)
-- Get your API key from the dashboard
-- Used when Anthropic key is not set
+- Required for all AI features (chat, digest, summaries)
 
 ### YouTube API
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
@@ -338,8 +292,7 @@ docker run -d \
 | Feature | Required Environment Variables |
 |---------|-------------------------------|
 | ActivityPub | `MU_DOMAIN` (optional, falls back to `MAIL_DOMAIN`) |
-| Chat | `ANTHROPIC_API_KEY`, `FANAR_API_KEY`, or Ollama (`MODEL_NAME`, `MODEL_API_URL`) |
-| Vector Search | Ollama with `nomic-embed-text` model (`MODEL_API_URL`) |
+| Chat | `ANTHROPIC_API_KEY` |
 | Video | `YOUTUBE_API_KEY` |
 | Places | `GOOGLE_API_KEY` (optional, falls back to OpenStreetMap) |
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |

@@ -22,7 +22,7 @@ Rooms are ephemeral (in-memory only) and maintain:
 
 ### Content Indexing
 
-All content is indexed with vector embeddings for semantic search:
+All content is indexed for full-text search (FTS5):
 
 1. **News Articles**: 
    - Title + description + full article content + HN comments (when available)
@@ -120,35 +120,6 @@ if strings.Contains(uri, "reddit.com") {
 }
 ```
 
-## Vector Search Optimization
-
-### Parallel Search
-
-Search uses 4 goroutines to process the index in parallel:
-- Splits index into 4 chunks
-- Each worker calculates cosine similarity for its chunk
-- Results collected via channel and merged
-- ~4x faster on multi-core systems
-
-### Embedding Model
-
-- **Provider**: Ollama (local)
-- **Model**: `nomic-embed-text`
-- **Endpoint**: `http://localhost:11434/api/embeddings`
-- **Indexed**: Title + first 500 chars (full content stored but not embedded)
-- **Threshold**: 0.3 cosine similarity minimum
-
-### Search Algorithm
-
-```go
-1. Generate query embedding via Ollama
-2. Compare against all indexed entries (parallel)
-3. Filter by similarity > 0.3
-4. Sort by similarity descending
-5. Return top N results
-6. Fallback to text matching if embedding fails
-```
-
 ## UI/UX Features
 
 ### Chat Interface
@@ -188,43 +159,30 @@ All content types have "Discuss" links:
 ## Performance Characteristics
 
 ### Memory Usage
-- In-memory index with embeddings
-- Each entry: ~1-2 KB (depending on content length)
-- 1000 articles ≈ 1-2 MB RAM
+- SQLite FTS5 index on disk
 - Room history: 20 messages × avg 200 bytes = ~4 KB per room
 
 ### Search Latency
-- Embedding generation: ~50-100ms (via Ollama)
-- Vector search: ~10-50ms (parallel, depends on index size)
-- LLM reranking: ~500-1000ms
-- Final answer: ~1-3 seconds
+- FTS5 search: ~1-5ms
+- LLM response: ~1-3 seconds
 
 ### Scalability
-- Current: Linear search, practical up to ~10K entries
-- Future: Consider HNSW index for >10K entries
+- SQLite FTS5 scales to millions of entries
 - WebSocket: Handles hundreds of concurrent rooms
-- Rate limits: HN API (50ms), Ollama (depends on hardware)
 
 ## Configuration
 
 ### Environment Variables
-- `FANAR_API_KEY` - LLM API key
-- Ollama runs on default port 11434
+- `ANTHROPIC_API_KEY` - Required for AI features
+- `ANTHROPIC_MODEL` - Model selection (default: claude-sonnet-4-20250514)
 
 ### Tunable Parameters
 
 **In `chat/chat.go`**:
 - `room.Summary` max length: 2000 chars
-- Search Stage 1: 10 results per query (20 total)
-- Search Stage 2: Select 3-5 after reranking
-- Search Stage 3: 1000 chars per document
-- RAG entry threshold: 0.3 similarity
-
-**In `data/data.go`**:
-- Parallel workers: 4 goroutines
-- Embedding text limit: 500 chars
-- Similarity threshold: 0.3
-- Index save interval: on every update
+- RAG results: 8 entries per query
+- RAG context: 2000 chars per entry
+- Conversation history: 10 messages
 
 **In `news/news.go`**:
 - HN comments fetched: 10 per article
@@ -245,10 +203,8 @@ All content types have "Discuss" links:
 
 ### Question: Slow search performance
 **Solutions**:
-1. Increase parallel workers (currently 4)
-2. Implement HNSW index for large datasets
-3. Cache embeddings (already done)
-4. Use smaller embedding model
+1. Ensure `MU_USE_SQLITE=1` is set for FTS5 search
+2. Check SQLite index stats on the status page
 
 ### Question: HN comments not appearing
 **Check**:
@@ -260,8 +216,7 @@ All content types have "Discuss" links:
 ## Future Enhancements
 
 1. **Comment Sources**: Reddit, forums, social media
-2. **HNSW Index**: For >10K entries
-3. **Streaming Responses**: Character-by-character LLM output
+2. **Streaming Responses**: Character-by-character LLM output
 4. **Rich Media**: Images, videos in chat
 5. **User Annotations**: Highlights, notes on articles
 6. **Thread Support**: Nested discussions in rooms

@@ -184,7 +184,7 @@ func buildStatus() StatusResponse {
 		})
 	}
 
-	// Check Vector Search
+	// Check Search Index
 	indexStats := data.GetStats()
 	searchStatus := indexStats.TotalEntries > 0
 	searchDetails := fmt.Sprintf("FTS5 (%d entries)", indexStats.TotalEntries)

@@ -159,7 +159,7 @@ func GetByIDSQLite(id string) (*IndexEntry, error) {
 }
 
 // SearchSQLite performs full-text search using keyword matching.
-// SQLite indexing never generates embeddings, so vector search is not attempted.
+// SearchSQLite performs full-text search using FTS5 with LIKE fallback.
 func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry, error) {
 	if _, err := getDB(); err != nil {
 		return nil, err

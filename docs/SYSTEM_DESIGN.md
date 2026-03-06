@@ -40,7 +40,7 @@ mu/
 ├── auth/             # Authentication and user management
 ├── blog/             # Blog posts/microblogging
 ├── chat/             # LLM chat with RAG (Retrieval Augmented Generation)
-├── data/             # Data layer (file storage, indexing, vector search, events)
+├── data/             # Data layer (file storage, indexing, FTS5 search, events)
 ├── home/             # Home page cards
 ├── mail/             # Messaging system (uses SMTP protocol for delivery)
 ├── news/             # RSS feeds, HN comments, market data
@@ -54,12 +54,12 @@ mu/
 
 The data package provides:
 - **File Storage** - JSON files on disk for blog posts, metadata, user data
-- **Vector Search** - Embeddings for semantic search across content
+- **FTS5 Search** - SQLite full-text search across all indexed content
 - **Event System** - Pub/sub for decoupled component communication
-- **Index** - In-memory search index for fast queries
+- **Index** - SQLite-backed search index with FTS5
 
 Key functions:
-- `Search(query, limit, opts...)` - Semantic + text search with options
+- `Search(query, limit, opts...)` - Full-text search with options
 - `Index(entry)` - Add content to search index
 - `Subscribe(eventType, handler)` / `Publish(event)` - Event bus
 
@@ -67,7 +67,7 @@ Key functions:
 
 AI-powered chat with:
 - **RAG (Retrieval Augmented Generation)** - Searches indexed content for relevant context
-- **Multi-LLM Support** - Currently Fanar API, designed for Ollama integration
+- **Anthropic Claude** - Powered by Claude Sonnet for high-quality responses
 - **Contextual Discussions** - Room-based conversations with topic tracking
 - **HN Comment Refresh** - Event-driven updates for active discussions (5-min throttle)
 
@@ -78,7 +78,7 @@ RSS feed aggregation with:
 - **Metadata Extraction** - OpenGraph/Twitter card parsing
 - **HN Integration** - Fetches and indexes Hacker News comments
 - **Market Data** - Crypto prices and futures via Coinbase API
-- **Search** - Full-text and semantic search across articles
+- **Search** - Full-text search across articles
 
 ### Video (`video/`)
 
