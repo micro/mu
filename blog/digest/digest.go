@@ -228,7 +228,7 @@ The total length should be around 300-500 words.`,
 		response += refSection.String()
 	}
 
-	title := fmt.Sprintf("Daily Digest - %s", time.Now().Format("2 January 2006"))
+	title := fmt.Sprintf("%s", time.Now().Format("2 January 2006"))
 
 	err = blog.CreatePost(title, response, "micro", "micro", "digest", false)
 	if err != nil {
@@ -262,7 +262,6 @@ func gatherContext() (string, []ref) {
 	// News - group by category so all topics are represented
 	feed := news.GetFeed()
 	if len(feed) > 0 {
-		sb.WriteString("## Today's News\n\n")
 		byCategory := make(map[string][]*news.Post)
 		for _, item := range feed {
 			byCategory[item.Category] = append(byCategory[item.Category], item)
