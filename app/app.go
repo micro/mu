@@ -748,7 +748,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
 	// Philosophy note
-	content.WriteString(`<p class="mb-5 text-muted">Ask the agent anything — pay only for what you use.</p>`)
+	content.WriteString(`<p class="mb-5 text-muted">Pay only for what you use.</p>`)
 
 	// 2-column pricing grid with responsive class
 	content.WriteString(`<div class="pricing-grid">`)
