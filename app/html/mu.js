@@ -1093,13 +1093,12 @@ function renderMarkdown(text) {
 function updateUserList(users) {
   var container = document.getElementById('chat-users');
   if (!container) {
-    // Create the user list container if it doesn't exist
+    // Create the user list container inside messages div (at the top)
     var messagesDiv = document.getElementById('messages');
     if (!messagesDiv) return;
     container = document.createElement('div');
     container.id = 'chat-users';
-    container.style.cssText = 'font-size:13px;color:#666;padding:4px 0 8px;';
-    messagesDiv.parentNode.insertBefore(container, messagesDiv);
+    messagesDiv.insertBefore(container, messagesDiv.firstChild);
   }
   if (!users || users.length === 0) {
     container.innerHTML = '';

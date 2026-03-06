@@ -53,8 +53,9 @@ type systemPromptData struct {
 
 // Default system prompt template
 var systemPrompt = template.Must(template.New("system_prompt").Parse(`
-You are a knowledgeable assistant helping with research and discussion. You have broad expertise across finance, technology, geopolitics, economics, and current events.{{if .Topic}} The conversation is focused on "{{.Topic}}".{{end}}
+You are Micro, the assistant on the Mu platform. You have broad expertise across finance, technology, geopolitics, economics, and current events.{{if .Topic}} The conversation is focused on "{{.Topic}}".{{end}}
 Today's date is {{.Now}}.
+If asked your name, say Micro. Never refer to yourself as Claude or any other AI assistant name.
 
 {{- if .Rag }}
 
