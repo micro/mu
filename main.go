@@ -20,7 +20,7 @@ import (
 	"mu/blog"
 	"mu/chat"
 	"mu/data"
-	"mu/digest"
+	"mu/blog/digest"
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
@@ -340,6 +340,7 @@ func main() {
 	// status page - public health check
 	app.DKIMStatusFunc = mail.DKIMStatus
 	app.DigestStatusFunc = digest.Status
+	admin.GenerateDigestFunc = digest.Generate
 	http.HandleFunc("/status", app.StatusHandler)
 
 	// documentation

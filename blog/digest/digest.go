@@ -85,6 +85,11 @@ func sameDay(a, b time.Time) bool {
 	return y1 == y2 && m1 == m2 && d1 == d2
 }
 
+// Generate triggers digest generation. Returns immediately if already running.
+func Generate() {
+	go generate()
+}
+
 func generate() {
 	mu.Lock()
 	if running {
@@ -129,6 +134,7 @@ Structure:
 5. **Reminder** - Include the Islamic reminder naturally
 
 Keep it informative but concise. Write in a neutral, clear tone. Do not invent information - only summarise what is provided.
+Do NOT start with a title or top-level heading - the blog post title is set separately. Jump straight into the opening paragraph.
 The total length should be around 300-500 words.`,
 		Question: context,
 		Priority: ai.PriorityLow,
@@ -144,10 +150,9 @@ The total length should be around 300-500 words.`,
 		return
 	}
 
-	today := time.Now().Format("2 January 2006")
-	title := fmt.Sprintf("Daily Digest - %s", today)
+	title := fmt.Sprintf("Daily Digest - %s", time.Now().Format("2 January 2006"))
 
-	err = blog.CreatePost(title, response, "mu", "mu", "digest", false)
+	err = blog.CreatePost(title, response, "micro", "micro", "digest", false)
 	if err != nil {
 		mu.Lock()
 		lastStatus = "error"
@@ -170,32 +175,59 @@ The total length should be around 300-500 words.`,
 func gatherContext() string {
 	var sb strings.Builder
 
-	// News
+	// News - group by category so all topics are represented
 	feed := news.GetFeed()
 	if len(feed) > 0 {
 		sb.WriteString("## Today's News\n\n")
-		count := 10
-		if len(feed) < count {
-			count = len(feed)
+		byCategory := make(map[string][]*news.Post)
+		for _, item := range feed {
+			byCategory[item.Category] = append(byCategory[item.Category], item)
 		}
-		for _, item := range feed[:count] {
-			sb.WriteString(fmt.Sprintf("- **%s** (%s): %s\n", item.Title, item.Category, item.Description))
+		for category, items := range byCategory {
+			sb.WriteString(fmt.Sprintf("### %s\n", category))
+			count := 3
+			if len(items) < count {
+				count = len(items)
+			}
+			for _, item := range items[:count] {
+				sb.WriteString(fmt.Sprintf("- **%s**: %s\n", item.Title, item.Description))
+			}
+			sb.WriteString("\n")
 		}
-		sb.WriteString("\n")
 	}
 
-	// Markets
+	// Markets - group by category
 	priceData := markets.GetAllPriceData()
 	if len(priceData) > 0 {
 		sb.WriteString("## Market Prices\n\n")
-		for symbol, pd := range priceData {
-			change := ""
-			if pd.Change24h != 0 {
-				change = fmt.Sprintf(" (24h: %+.1f%%)", pd.Change24h)
-			}
-			sb.WriteString(fmt.Sprintf("- %s: $%.2f%s\n", symbol, pd.Price, change))
+		categories := []struct {
+			name   string
+			assets []string
+		}{
+			{"Crypto", []string{"BTC", "ETH", "SOL", "PAXG"}},
+			{"Futures", []string{"OIL", "GOLD", "SILVER", "COPPER"}},
+			{"Commodities", []string{"COFFEE", "WHEAT", "CORN"}},
+			{"Currencies", []string{"EUR", "GBP", "JPY", "CNY"}},
 		}
-		sb.WriteString("\n")
+		for _, cat := range categories {
+			var lines []string
+			for _, symbol := range cat.assets {
+				if pd, ok := priceData[symbol]; ok && pd.Price > 0 {
+					change := ""
+					if pd.Change24h != 0 {
+						change = fmt.Sprintf(" (%+.1f%%)", pd.Change24h)
+					}
+					lines = append(lines, fmt.Sprintf("- %s: $%.2f%s", symbol, pd.Price, change))
+				}
+			}
+			if len(lines) > 0 {
+				sb.WriteString(fmt.Sprintf("### %s\n", cat.name))
+				for _, l := range lines {
+					sb.WriteString(l + "\n")
+				}
+				sb.WriteString("\n")
+			}
+		}
 	}
 
 	// Videos
