@@ -2,7 +2,6 @@ package digest
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -53,8 +52,10 @@ func Status() (ok bool, details string) {
 	case "running":
 		return true, "Generating..."
 	case "error":
-		ago := time.Since(lastDigest).Round(time.Minute)
-		return false, fmt.Sprintf("Failed: %s (last success: %s ago)", lastError, ago)
+		if lastDigest.IsZero() {
+			return false, fmt.Sprintf("Failed: %s", lastError)
+		}
+		return false, fmt.Sprintf("Failed: %s (last success: %s ago)", lastError, time.Since(lastDigest).Round(time.Minute))
 	case "ok":
 		ago := time.Since(lastDigest).Round(time.Minute)
 		return true, fmt.Sprintf("Last: %s (%s ago)", lastDigest.Format("2 Jan 15:04"), ago)
@@ -115,11 +116,6 @@ func generate() {
 		return
 	}
 
-	model := os.Getenv("ANTHROPIC_PREMIUM_MODEL")
-	if model == "" {
-		model = "claude-sonnet-4-5-20250514"
-	}
-
 	prompt := &ai.Prompt{
 		System: `You are a writer producing a daily digest blog post.
 You will be given today's data from various sources: news headlines, market prices, videos, and an Islamic reminder.
@@ -136,8 +132,6 @@ Keep it informative but concise. Write in a neutral, clear tone. Do not invent i
 The total length should be around 300-500 words.`,
 		Question: context,
 		Priority: ai.PriorityLow,
-		Provider: ai.ProviderAnthropic,
-		Model:    model,
 	}
 
 	response, err := ai.Ask(prompt)
