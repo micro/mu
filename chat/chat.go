@@ -950,11 +950,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						}
 
 						// Simple RAG: search and build context
-						ragEntries := data.Search(searchContent, 5)
+						ragEntries := data.Search(searchContent, 8)
 						for _, entry := range ragEntries {
 							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-							if len(contextStr) > 600 {
-								contextStr = contextStr[:600] + "..."
+							if len(contextStr) > 2000 {
+								contextStr = contextStr[:2000] + "..."
 							}
 							if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
 								contextStr += fmt.Sprintf(" (Source: %s)", url)
@@ -963,7 +963,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						}
 
 						// Supplement with web search if RAG is thin
-						if len(ragEntries) < 2 && ai.ShouldWebSearch(content) {
+						if len(ragEntries) < 3 && ai.ShouldWebSearch(content) {
 							app.Log("chat", "[WebSearch] RAG thin, searching web for: %s", searchContent)
 							if webResults, err := ai.WebSearch(searchContent); err == nil && len(webResults) > 0 {
 								ragContext = append(ragContext, ai.FormatSearchResults(webResults)...)
@@ -972,6 +972,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						app.Log("chat", "RAG: found %d results for '%s'", len(ragEntries), searchContent)
 
 						prompt := &ai.Prompt{
+							Topic:    room.Title,
 							Rag:      ragContext,
 							Context:  history,
 							Question: content,
@@ -1389,8 +1390,8 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Limit prompt length to prevent abuse
-		if len(msg) > 500 {
-			http.Error(w, "Prompt must not exceed 500 characters", http.StatusBadRequest)
+		if len(msg) > 4000 {
+			http.Error(w, "Prompt must not exceed 4000 characters", http.StatusBadRequest)
 			return
 		}
 
@@ -1404,10 +1405,10 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 
 	if vals := form["context"]; vals != nil {
 		cvals := vals.([]interface{})
-		// Keep only the last 3 messages to reduce context size and fit 4096 token limit
+		// Keep recent conversation history for context
 		startIdx := 0
-		if len(cvals) > 3 {
-			startIdx = len(cvals) - 3
+		if len(cvals) > 10 {
+			startIdx = len(cvals) - 10
 		}
 		for _, val := range cvals[startIdx:] {
 			msg := val.(map[string]interface{})
@@ -1490,12 +1491,11 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Search the index for relevant context (RAG)
-	ragEntries := data.Search(searchQuery, 5)
+	ragEntries := data.Search(searchQuery, 8)
 	for _, entry := range ragEntries {
-		// Format each entry as context (600 chars to fit within 4096 token limit)
 		contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-		if len(contextStr) > 600 {
-			contextStr = contextStr[:600] + "..."
+		if len(contextStr) > 2000 {
+			contextStr = contextStr[:2000] + "..."
 		}
 		if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
 			contextStr += fmt.Sprintf(" (Source: %s)", url)
@@ -1504,7 +1504,7 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If RAG results are thin and query suggests need for current info, do web search
-	if len(ragEntries) < 2 && ai.ShouldWebSearch(q) {
+	if len(ragEntries) < 3 && ai.ShouldWebSearch(q) {
 		app.Log("chat", "[WebSearch] RAG thin (%d results), searching web for: %s", len(ragEntries), searchQuery)
 		if webResults, err := ai.WebSearch(searchQuery); err == nil && len(webResults) > 0 {
 			ragContext = append(ragContext, ai.FormatSearchResults(webResults)...)
