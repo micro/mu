@@ -17,7 +17,7 @@ import (
 )
 
 // GenerateDigestFunc is set by main to trigger digest generation (avoids import cycle)
-var GenerateDigestFunc func()
+var GenerateDigestFunc func() bool
 
 var (
 	deployMu   sync.Mutex
@@ -139,7 +139,14 @@ func handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// Digest is handled separately — it runs in the background
 	if req.Action == "digest" {
 		if GenerateDigestFunc != nil {
-			GenerateDigestFunc()
+			if !GenerateDigestFunc() {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": false,
+					"message": "Digest generation already in progress.",
+				})
+				return
+			}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -187,7 +194,7 @@ func handleDeploy(w http.ResponseWriter, r *http.Request) {
 	default: // "update"
 		steps = []step{
 			{"git pull", "git", []string{"pull", "origin", "main"}},
-			{"go install", "go", []string{"install"}},
+			{"go install", "go", []string{"install", "."}},
 			{"restart service", "sudo", []string{"-n", "systemctl", "restart", "mu"}},
 		}
 	}
