@@ -149,7 +149,7 @@ var landingTemplate = `<html lang="en">
           <div class="block">
             <img src="/post.png" alt="Blog" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Blog</b>
-            <div class="small">Share thoughts and updates with the community</div>
+            <div class="small">Write posts or read daily digests of what's happening</div>
           </div>
         </a>
         <a href="/chat" style="text-decoration: none; color: inherit;">
