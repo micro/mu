@@ -1052,6 +1052,14 @@ body:has(#messages) #chat-back-link {
   box-sizing: border-box;
 }
 
+#chat-users {
+  font-size: 13px;
+  color: #666;
+  padding: 0 0 8px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 8px;
+}
+
 #chat-form {
   width: 100%;
   margin: 15px 0 0 0;
