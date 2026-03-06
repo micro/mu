@@ -65,6 +65,9 @@ type MemoryStatus struct {
 // DKIMStatusFunc is set by main to avoid import cycle
 var DKIMStatusFunc func() (enabled bool, domain, selector string)
 
+// DigestStatusFunc is set by main to report digest status
+var DigestStatusFunc func() (ok bool, details string)
+
 // StatusHandler handles the /status endpoint
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	// Quick health check endpoint
@@ -172,6 +175,16 @@ func buildStatus() StatusResponse {
 		Status:  stripeConfigured,
 		Details: quotaMode,
 	})
+
+	// Check Daily Digest
+	if DigestStatusFunc != nil {
+		ok, details := DigestStatusFunc()
+		services = append(services, StatusCheck{
+			Name:    "Daily Digest",
+			Status:  ok,
+			Details: details,
+		})
+	}
 
 	// Check Vector Search
 	indexStats := data.GetStats()

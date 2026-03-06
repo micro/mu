@@ -18,9 +18,11 @@ import (
 )
 
 var (
-	mu        sync.Mutex
-	running   bool
+	mu         sync.Mutex
+	running    bool
 	lastDigest time.Time
+	lastError  string
+	lastStatus string // "ok", "error", "running", "pending"
 )
 
 // Load starts the daily digest scheduler
@@ -33,7 +35,32 @@ func Load() {
 		}
 	}
 
+	if lastDigest.IsZero() {
+		lastStatus = "pending"
+	} else {
+		lastStatus = "ok"
+	}
+
 	go scheduler()
+}
+
+// Status returns the current digest state for the status page
+func Status() (ok bool, details string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	switch lastStatus {
+	case "running":
+		return true, "Generating..."
+	case "error":
+		ago := time.Since(lastDigest).Round(time.Minute)
+		return false, fmt.Sprintf("Failed: %s (last success: %s ago)", lastError, ago)
+	case "ok":
+		ago := time.Since(lastDigest).Round(time.Minute)
+		return true, fmt.Sprintf("Last: %s (%s ago)", lastDigest.Format("2 Jan 15:04"), ago)
+	default:
+		return false, "Never run"
+	}
 }
 
 func scheduler() {
@@ -72,10 +99,18 @@ func generate() {
 		mu.Unlock()
 	}()
 
+	mu.Lock()
+	lastStatus = "running"
+	mu.Unlock()
+
 	app.Log("digest", "Generating daily digest")
 
 	context := gatherContext()
 	if context == "" {
+		mu.Lock()
+		lastStatus = "error"
+		lastError = "no content available"
+		mu.Unlock()
 		app.Log("digest", "No content available for digest")
 		return
 	}
@@ -107,6 +142,10 @@ The total length should be around 300-500 words.`,
 
 	response, err := ai.Ask(prompt)
 	if err != nil {
+		mu.Lock()
+		lastStatus = "error"
+		lastError = err.Error()
+		mu.Unlock()
 		app.Log("digest", "AI generation failed: %v", err)
 		return
 	}
@@ -116,11 +155,20 @@ The total length should be around 300-500 words.`,
 
 	err = blog.CreatePost(title, response, "mu", "mu", "digest", false)
 	if err != nil {
+		mu.Lock()
+		lastStatus = "error"
+		lastError = err.Error()
+		mu.Unlock()
 		app.Log("digest", "Failed to create blog post: %v", err)
 		return
 	}
 
+	mu.Lock()
 	lastDigest = time.Now()
+	lastStatus = "ok"
+	lastError = ""
+	mu.Unlock()
+
 	data.SaveFile("digest_last.txt", lastDigest.Format(time.RFC3339))
 	app.Log("digest", "Daily digest published: %s", title)
 }
