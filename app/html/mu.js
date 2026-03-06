@@ -918,7 +918,7 @@ window.muConfirm = function(message) {
     overlay.innerHTML = '<div class="modal-content" style="max-width:400px;text-align:center;">' +
       '<p style="margin-bottom:20px;">' + message + '</p>' +
       '<div style="display:flex;gap:10px;">' +
-      '<button id="mu-confirm-no" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:5px;background:#f5f5f5;cursor:pointer;">Cancel</button>' +
+      '<button id="mu-confirm-no" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:5px;background:#f5f5f5;color:black;cursor:pointer;">Cancel</button>' +
       '<button id="mu-confirm-yes" style="flex:1;padding:10px;border:none;border-radius:5px;background:#dc3545;color:white;cursor:pointer;">Confirm</button>' +
       '</div></div>';
     document.body.appendChild(overlay);
