@@ -476,6 +476,7 @@ func updateCacheUnlocked() {
 		content := post.Content
 
 		// Truncate plain text before rendering
+		truncated := false
 		if len(content) > 500 {
 			lastSpace := 500
 			for i := 499; i >= 0 && i < len(content); i-- {
@@ -485,6 +486,7 @@ func updateCacheUnlocked() {
 				}
 			}
 			content = content[:lastSpace] + "..."
+			truncated = true
 		}
 
 		// Add links and YouTube embeds
@@ -523,12 +525,18 @@ func updateCacheUnlocked() {
 			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
 		}
 
+		keepReading := ""
+		if truncated {
+			keepReading = fmt.Sprintf(`<a href="/post?id=%s" class="keep-reading">Keep Reading →</a>`, post.ID)
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 			%s
 			<h3><a href="/post?id=%s">%s</a></h3>
 			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 			<div>%s</div>
-		</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
+			%s
+		</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content, keepReading)
 		fullList = append(fullList, item)
 	}
 
