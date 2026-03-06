@@ -20,7 +20,7 @@ import (
 	"mu/blog"
 	"mu/chat"
 	"mu/data"
-	"mu/digest"
+	"mu/blog/digest"
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
