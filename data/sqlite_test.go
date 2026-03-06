@@ -40,13 +40,6 @@ func TestSQLiteMigration(t *testing.T) {
 	os.MkdirAll(dataDir, 0755)
 	os.WriteFile(filepath.Join(dataDir, "index.json"), []byte(testIndex), 0644)
 
-	// Create test embeddings.json
-	testEmbeddings := `{
-		"test1": [0.1, 0.2, 0.3, 0.4, 0.5],
-		"test2": [0.5, 0.4, 0.3, 0.2, 0.1]
-	}`
-	os.WriteFile(filepath.Join(dataDir, "embeddings.json"), []byte(testEmbeddings), 0644)
-
 	// Run migration
 	err := MigrateFromJSON()
 	if err != nil {
@@ -54,15 +47,12 @@ func TestSQLiteMigration(t *testing.T) {
 	}
 
 	// Verify stats
-	entries, embCount, err := GetIndexStats()
+	entries, _, err := GetIndexStats()
 	if err != nil {
 		t.Fatalf("GetIndexStats failed: %v", err)
 	}
 	if entries != 2 {
 		t.Errorf("Expected 2 entries, got %d", entries)
-	}
-	if embCount != 2 {
-		t.Errorf("Expected 2 embeddings, got %d", embCount)
 	}
 
 	// Test GetByID
@@ -88,26 +78,12 @@ func TestSQLiteMigration(t *testing.T) {
 	if len(newsEntries) != 1 {
 		t.Errorf("Expected 1 news entry, got %d", len(newsEntries))
 	}
-
-	// Test embedding retrieval
-	emb, err := GetEmbeddingSQLite("test1")
-	if err != nil {
-		t.Fatalf("GetEmbeddingSQLite failed: %v", err)
-	}
-	if len(emb) != 5 {
-		t.Errorf("Expected 5 embedding values, got %d", len(emb))
-	}
-	if emb[0] != 0.1 {
-		t.Errorf("Expected emb[0]=0.1, got %f", emb[0])
-	}
 }
 
 func TestSQLiteSearch(t *testing.T) {
-	// Use a temp directory for test
 	tempDir := t.TempDir()
 	os.Setenv("HOME", tempDir)
 
-	// Reset singleton
 	dbOnce = sync.Once{}
 	db = nil
 
@@ -156,11 +132,9 @@ func TestSQLiteSearch(t *testing.T) {
 }
 
 func TestSQLiteIndexUpdate(t *testing.T) {
-	// Use a temp directory for test
 	tempDir := t.TempDir()
 	os.Setenv("HOME", tempDir)
 
-	// Reset singleton
 	dbOnce = sync.Once{}
 	db = nil
 
@@ -184,7 +158,7 @@ func TestSQLiteIndexUpdate(t *testing.T) {
 	if entry.Title != "Updated Title" {
 		t.Errorf("Expected 'Updated Title', got '%s'", entry.Title)
 	}
-	if entry.Metadata["version"] != float64(2) { // JSON numbers become float64
+	if entry.Metadata["version"] != float64(2) {
 		t.Errorf("Expected version 2, got %v", entry.Metadata["version"])
 	}
 
@@ -195,19 +169,36 @@ func TestSQLiteIndexUpdate(t *testing.T) {
 	}
 }
 
-func TestEmbeddingByteConversion(t *testing.T) {
-	original := []float64{0.1, 0.2, 0.3, -0.4, 1.5, -2.6}
+func TestFTS5Search(t *testing.T) {
+	tempDir := t.TempDir()
+	os.Setenv("HOME", tempDir)
 
-	bytes := float64SliceToBytes(original)
-	restored := bytesToFloat64Slice(bytes)
+	dbOnce = sync.Once{}
+	db = nil
 
-	if len(restored) != len(original) {
-		t.Fatalf("Length mismatch: %d vs %d", len(restored), len(original))
+	// Add entries
+	IndexSQLite("fts1", "news", "Bitcoin Hits All-Time High", "Bitcoin reached a new record price amid growing institutional adoption.", nil)
+	IndexSQLite("fts2", "news", "Ethereum Upgrade Complete", "The Ethereum network completed its latest upgrade successfully.", nil)
+	IndexSQLite("fts3", "news", "Sports News Today", "Football league results and highlights from this weekend.", nil)
+
+	// FTS5 should find this via full-text search
+	results, err := SearchSQLite("bitcoin institutional", 10)
+	if err != nil {
+		t.Fatalf("FTS search failed: %v", err)
+	}
+	if len(results) == 0 {
+		t.Error("Expected FTS results for 'bitcoin institutional'")
+	}
+	if len(results) > 0 && results[0].ID != "fts1" {
+		t.Errorf("Expected fts1 as top result, got %s", results[0].ID)
 	}
 
-	for i, v := range original {
-		if restored[i] != v {
-			t.Errorf("Value mismatch at %d: %f vs %f", i, restored[i], v)
-		}
+	// Multi-word search
+	results, err = SearchSQLite("ethereum upgrade", 10)
+	if err != nil {
+		t.Fatalf("FTS search failed: %v", err)
+	}
+	if len(results) == 0 {
+		t.Error("Expected FTS results for 'ethereum upgrade'")
 	}
 }

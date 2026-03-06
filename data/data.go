@@ -1,12 +1,8 @@
 package data
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
-	"math"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -206,16 +202,8 @@ var (
 
 	indexMutex          sync.RWMutex
 	index               = make(map[string]*IndexEntry)
-	embeddings          = make(map[string][]float64) // Stored separately from index
 	savePending         = false
 	saveMutex           sync.Mutex
-	embeddingCache      = make(map[string][]float64) // Cache query embeddings
-	embeddingCacheMu    sync.RWMutex
-	maxEmbeddingCache   = 100   // Maximum cached query embeddings
-	maxIndexEmbeddings  = 10000 // Maximum index entries with embeddings
-	embeddingQueue      = make(chan string, 100)
-	embeddingEnabled    = false
-	embeddingMutex      sync.Mutex
 	indexWorkQueue      = make(chan IndexWork, 500) // Buffer up to 500 pending index operations
 	indexWorkersStarted = false
 )
@@ -227,7 +215,6 @@ type IndexEntry struct {
 	Title     string                 `json:"title"`
 	Content   string                 `json:"content"`
 	Metadata  map[string]interface{} `json:"metadata"`
-	Embedding []float64              `json:"embedding"` // Vector embedding for semantic search
 	IndexedAt time.Time              `json:"indexed_at"`
 }
 
@@ -312,17 +299,6 @@ func processIndexWork(work IndexWork) {
 		IndexedAt: time.Now(),
 	}
 
-	// Preserve existing embedding if content hasn't changed
-	if exists && existing.Title == work.Title && existing.Content == work.Content {
-		indexMutex.RLock()
-		if emb, hasEmb := embeddings[work.ID]; hasEmb && len(emb) > 0 {
-			// Keep the existing embedding
-			indexMutex.RUnlock()
-		} else {
-			indexMutex.RUnlock()
-		}
-	}
-
 	indexMutex.Lock()
 	index[work.ID] = entry
 	indexMutex.Unlock()
@@ -336,40 +312,15 @@ func processIndexWork(work IndexWork) {
 		},
 	})
 
-	// Only queue for embedding if we don't already have one
-	indexMutex.RLock()
-	_, hasEmbedding := embeddings[work.ID]
-	indexMutex.RUnlock()
-
-	if !hasEmbedding {
-		select {
-		case embeddingQueue <- work.ID:
-		default:
-			// Queue full, skip
-		}
-	}
-
 	// Persist to disk (debounced)
 	go saveIndex()
 }
 
-// StartIndexing enables background embedding generation and index workers
+// StartIndexing enables background index workers
 func StartIndexing() {
-	embeddingMutex.Lock()
-	if embeddingEnabled {
-		embeddingMutex.Unlock()
-		return
-	}
-	embeddingEnabled = true
-	embeddingMutex.Unlock()
-
-	fmt.Println("[data] Starting background embedding worker")
-	go embeddingWorker()
-
-	// Start index workers if not already started
 	if !indexWorkersStarted {
 		indexWorkersStarted = true
-		numWorkers := 4 // Use 4 workers to process index queue
+		numWorkers := 4
 		fmt.Printf("[data] Starting %d index workers\n", numWorkers)
 		for i := 0; i < numWorkers; i++ {
 			go indexWorker(i)
@@ -384,56 +335,6 @@ func indexWorker(id int) {
 	}
 }
 
-// embeddingWorker processes the embedding queue with rate limiting
-func embeddingWorker() {
-	for id := range embeddingQueue {
-		// Check if we've hit the embedding limit
-		indexMutex.RLock()
-		embeddingCount := len(embeddings)
-		entry := index[id]
-		_, hasEmbedding := embeddings[id]
-		indexMutex.RUnlock()
-
-		if embeddingCount >= maxIndexEmbeddings {
-			fmt.Printf("[data] Hit embedding limit (%d), skipping new embeddings\n", maxIndexEmbeddings)
-			continue
-		}
-
-		if entry == nil || hasEmbedding {
-			continue
-		}
-
-		// Generate embedding
-		textToEmbed := entry.Title
-		if len(entry.Content) > 0 {
-			maxContent := 500
-			if len(entry.Content) < maxContent {
-				maxContent = len(entry.Content)
-			}
-			textToEmbed = entry.Title + " " + entry.Content[:maxContent]
-		}
-
-		embedding, err := getEmbedding(textToEmbed)
-		if err != nil {
-			fmt.Printf("[data] Failed to generate embedding for %s: %v\n", id, err)
-			time.Sleep(1 * time.Second) // Back off on error
-			continue
-		}
-
-		if len(embedding) > 0 {
-			indexMutex.Lock()
-			if index[id] != nil {
-				embeddings[id] = embedding
-			}
-			indexMutex.Unlock()
-			go saveIndex()
-			go saveEmbeddings()
-		}
-
-		// Rate limit: 1 embedding per 200ms to avoid overwhelming Ollama
-		time.Sleep(200 * time.Millisecond)
-	}
-}
 
 // GetByID retrieves an entry by its exact ID
 func GetByID(id string) *IndexEntry {
@@ -471,144 +372,7 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 		opt(options)
 	}
 
-	// Check if we have any embeddings
-	hasEmbeddings := len(embeddings) > 0
-
-	// Try vector search if embeddings exist
-	if hasEmbeddings {
-		// Check cache first
-		embeddingCacheMu.RLock()
-		queryEmbedding, cached := embeddingCache[query]
-		embeddingCacheMu.RUnlock()
-
-		// Generate embedding if not cached
-		if !cached {
-			var err error
-			queryEmbedding, err = getEmbedding(query)
-			if err == nil && len(queryEmbedding) > 0 {
-				// Cache it with proper limit
-				embeddingCacheMu.Lock()
-				// Remove oldest entry if at limit
-				if len(embeddingCache) >= maxEmbeddingCache {
-					// Just clear a random entry (simple approach)
-					for k := range embeddingCache {
-						delete(embeddingCache, k)
-						break
-					}
-				}
-				embeddingCache[query] = queryEmbedding
-				embeddingCacheMu.Unlock()
-			}
-		}
-
-		if len(queryEmbedding) > 0 {
-			fmt.Printf("[SEARCH] Using vector search for: %s (type: %s)\n", query, options.Type)
-
-			// Simple linear search through entries with embeddings
-			var results []SearchResult
-			for _, entry := range index {
-				emb, hasEmb := embeddings[entry.ID]
-				if !hasEmb || len(emb) == 0 || (options.Type != "" && entry.Type != options.Type) {
-					continue
-				}
-
-				similarity := cosineSimilarity(queryEmbedding, emb)
-				if similarity > 0.3 {
-					results = append(results, SearchResult{
-						Entry: entry,
-						Score: similarity,
-					})
-				}
-			}
-
-			// Sort by similarity descending
-			sort.Slice(results, func(i, j int) bool {
-				return results[i].Score > results[j].Score
-			})
-
-			fmt.Printf("[SEARCH] Vector search found %d results\n", len(results))
-
-			// Always also do text search to catch exact keyword matches
-			// that semantic search might miss
-			queryLower := strings.ToLower(query)
-			textResults := make(map[string]float64) // ID -> score
-
-			for _, entry := range index {
-				// Filter by type if specified
-				if options.Type != "" && entry.Type != options.Type {
-					continue
-				}
-
-				score := 0.0
-				titleLower := strings.ToLower(entry.Title)
-				contentLower := strings.ToLower(entry.Content)
-
-				// Simple contains matching with higher weight for title matches
-				if strings.Contains(titleLower, queryLower) {
-					score = 5.0 // Boosted title match score to rank above low semantic scores
-				} else if strings.Contains(contentLower, queryLower) {
-					score = 2.0 // Boosted content match score
-				}
-
-				if score > 0 {
-					textResults[entry.ID] = score
-				}
-			}
-
-			fmt.Printf("[SEARCH] Text search found %d additional exact matches\n", len(textResults))
-
-			// Merge vector and text results, preferring text matches for exact keywords
-			mergedResults := make(map[string]SearchResult)
-			for _, r := range results {
-				mergedResults[r.Entry.ID] = r
-			}
-
-			// Add or boost text search results
-			for id, textScore := range textResults {
-				if existing, found := mergedResults[id]; found {
-					// Entry found in both - boost the score if text match is better
-					if textScore > existing.Score {
-						existing.Score = textScore
-						mergedResults[id] = existing
-					}
-				} else {
-					// New entry from text search only
-					if entry := index[id]; entry != nil {
-						mergedResults[id] = SearchResult{
-							Entry: entry,
-							Score: textScore,
-						}
-					}
-				}
-			}
-
-			// Convert back to slice and sort
-			var finalResults []SearchResult
-			for _, r := range mergedResults {
-				finalResults = append(finalResults, r)
-			}
-
-			sort.Slice(finalResults, func(i, j int) bool {
-				return finalResults[i].Score > finalResults[j].Score
-			})
-
-			// Return top N results
-			if limit > 0 && len(finalResults) > limit {
-				finalResults = finalResults[:limit]
-			}
-
-			if len(finalResults) > 0 {
-				entries := make([]*IndexEntry, len(finalResults))
-				for i, r := range finalResults {
-					entries[i] = r.Entry
-				}
-				return entries
-			}
-		}
-	}
-
-	// Fallback to pure text search if no embeddings available
-	fmt.Printf("[SEARCH] Using pure text search for: %s (type: %s)\n", query, options.Type)
+	// Text search
 	queryLower := strings.ToLower(query)
 	var results []SearchResult
 
@@ -692,10 +456,8 @@ func GetByType(entryType string, limit int) []*IndexEntry {
 func ClearIndex() {
 	indexMutex.Lock()
 	index = make(map[string]*IndexEntry)
-	embeddings = make(map[string][]float64)
 	indexMutex.Unlock()
 	saveIndex()
-	saveEmbeddings()
 }
 
 // saveIndex persists the index to disk
@@ -721,35 +483,7 @@ func saveIndex() {
 	saveMutex.Unlock()
 }
 
-var (
-	embSavePending = false
-	embSaveMutex   sync.Mutex
-)
-
-// saveEmbeddings persists embeddings to disk separately
-func saveEmbeddings() {
-	// Debounce saves
-	embSaveMutex.Lock()
-	if embSavePending {
-		embSaveMutex.Unlock()
-		return
-	}
-	embSavePending = true
-	embSaveMutex.Unlock()
-
-	// Wait a bit to batch multiple updates
-	time.Sleep(1 * time.Second)
-
-	indexMutex.RLock()
-	SaveJSON("embeddings.json", embeddings)
-	indexMutex.RUnlock()
-
-	embSaveMutex.Lock()
-	embSavePending = false
-	embSaveMutex.Unlock()
-}
-
-// Load loads the index and embeddings from disk
+// Load loads the index from disk
 func Load() {
 	// If SQLite is enabled, migrate from JSON and use SQLite
 	if UseSQLite {
@@ -757,6 +491,7 @@ func Load() {
 		if err := MigrateFromJSON(); err != nil {
 			fmt.Printf("[data] Migration error: %v\n", err)
 		}
+		EnsureFTS()
 		// Get stats
 		entries, embCount, err := GetIndexStats()
 		if err == nil {
@@ -766,149 +501,23 @@ func Load() {
 	}
 
 	// Legacy in-memory loading
-	// Load index (may contain old format with embeddings inline)
 	b, err := LoadFile("index.json")
 	if err == nil {
 		indexMutex.Lock()
-		// First try to load as old format (with embeddings)
-		var oldIndex map[string]*struct {
-			ID        string                 `json:"id"`
-			Type      string                 `json:"type"`
-			Title     string                 `json:"title"`
-			Content   string                 `json:"content"`
-			Metadata  map[string]interface{} `json:"metadata,omitempty"`
-			IndexedAt time.Time              `json:"indexed_at"`
-			Embedding []float64              `json:"embedding,omitempty"`
-		}
-
-		if err := json.Unmarshal(b, &oldIndex); err == nil {
-			// Migrate old format to new format
-			for id, old := range oldIndex {
-				index[id] = &IndexEntry{
-					ID:        old.ID,
-					Type:      old.Type,
-					Title:     old.Title,
-					Content:   old.Content,
-					Metadata:  old.Metadata,
-					IndexedAt: old.IndexedAt,
-				}
-				// Extract embedding if present
-				if len(old.Embedding) > 0 {
-					embeddings[id] = old.Embedding
-				}
-			}
-		}
+		json.Unmarshal(b, &index)
 		indexMutex.Unlock()
 		fmt.Printf("[data] Loaded %d index entries from disk\n", len(index))
 	}
-
-	// Load embeddings (if new format exists, it will override migrated ones)
-	b, err = LoadFile("embeddings.json")
-	if err == nil {
-		indexMutex.Lock()
-		json.Unmarshal(b, &embeddings)
-		indexMutex.Unlock()
-		fmt.Printf("[data] Loaded %d embeddings from disk\n", len(embeddings))
-
-		// Calculate approximate memory usage
-		embeddingMemoryMB := float64(len(embeddings)) * 768 * 8 / 1024 / 1024
-		indexMemoryMB := float64(len(index)) * 2 / 1024 // Rough estimate: ~2KB per entry
-		fmt.Printf("[data] Estimated memory: %.1f MB (embeddings) + %.1f MB (index) = %.1f MB total\n",
-			embeddingMemoryMB, indexMemoryMB, embeddingMemoryMB+indexMemoryMB)
-	}
-}
-
-// ============================================
-// VECTOR EMBEDDINGS VIA OLLAMA
-// ============================================
-
-// getEmbedding generates a vector embedding for text using Ollama
-func getEmbedding(text string) ([]float64, error) {
-	if len(text) == 0 {
-		return nil, fmt.Errorf("empty text")
-	}
-
-	fmt.Printf("[data] Generating embedding for text (length: %d)\n", len(text))
-
-	// Ollama embedding endpoint
-	url := "http://localhost:11434/api/embeddings"
-
-	requestBody := map[string]interface{}{
-		"model":  "nomic-embed-text",
-		"prompt": text,
-	}
-
-	jsonData, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("ollama error: %s", string(body))
-	}
-
-	var result struct {
-		Embedding []float64 `json:"embedding"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	return result.Embedding, nil
-}
-
-// cosineSimilarity calculates cosine similarity between two vectors
-func cosineSimilarity(a, b []float64) float64 {
-	if len(a) != len(b) {
-		return 0.0
-	}
-
-	var dotProduct, normA, normB float64
-
-	for i := range a {
-		dotProduct += a[i] * b[i]
-		normA += a[i] * a[i]
-		normB += b[i] * b[i]
-	}
-
-	if normA == 0 || normB == 0 {
-		return 0.0
-	}
-
-	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
 // Stats holds index statistics
 type Stats struct {
-	TotalEntries      int  `json:"total_entries"`
-	EmbeddingCount    int  `json:"embedding_count"`
-	EmbeddingsEnabled bool `json:"embeddings_enabled"`
-	OllamaAvailable   bool `json:"ollama_available"`
-	UsingSQLite       bool `json:"using_sqlite"`
-}
-
-// checkOllamaAvailable does a quick reachability check against the local Ollama instance.
-func checkOllamaAvailable() bool {
-	client := &http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Get("http://localhost:11434/")
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode >= 200 && resp.StatusCode < 300
+	TotalEntries int  `json:"total_entries"`
+	UsingSQLite  bool `json:"using_sqlite"`
 }
 
 // GetStats returns current index statistics
 func GetStats() Stats {
-	// SQLite mode uses full-text search only; embeddings are never generated.
 	if UseSQLite {
 		entries, _, _ := GetIndexStats()
 		return Stats{
@@ -917,21 +526,11 @@ func GetStats() Stats {
 		}
 	}
 
-	ollamaOK := checkOllamaAvailable()
-
 	indexMutex.RLock()
 	entryCount := len(index)
-	embCount := len(embeddings)
 	indexMutex.RUnlock()
 
-	embeddingMutex.Lock()
-	enabled := embeddingEnabled
-	embeddingMutex.Unlock()
-
 	return Stats{
-		TotalEntries:      entryCount,
-		EmbeddingCount:    embCount,
-		EmbeddingsEnabled: enabled && ollamaOK,
-		OllamaAvailable:   ollamaOK,
+		TotalEntries: entryCount,
 	}
 }

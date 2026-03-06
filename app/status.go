@@ -49,9 +49,7 @@ type DiskStatus struct {
 
 // IndexStatus represents search index status
 type IndexStatus struct {
-	Entries      int  `json:"entries"`
-	Embeddings   int  `json:"embeddings"`
-	VectorSearch bool `json:"vector_search"`
+	Entries int `json:"entries"`
 }
 
 // MemoryStatus represents memory usage
@@ -188,22 +186,8 @@ func buildStatus() StatusResponse {
 
 	// Check Vector Search
 	indexStats := data.GetStats()
-	var searchStatus bool
-	var searchDetails string
-	switch {
-	case indexStats.UsingSQLite:
-		searchStatus = true
-		searchDetails = fmt.Sprintf("Full Text Search (%d entries)", indexStats.TotalEntries)
-	case indexStats.EmbeddingsEnabled:
-		searchStatus = true
-		searchDetails = fmt.Sprintf("Vector (%d embeddings)", indexStats.EmbeddingCount)
-	case !indexStats.OllamaAvailable:
-		searchStatus = false
-		searchDetails = fmt.Sprintf("Keyword (%d entries, Ollama unavailable)", indexStats.TotalEntries)
-	default:
-		searchStatus = false
-		searchDetails = fmt.Sprintf("Keyword (%d entries)", indexStats.TotalEntries)
-	}
+	searchStatus := indexStats.TotalEntries > 0
+	searchDetails := fmt.Sprintf("FTS5 (%d entries)", indexStats.TotalEntries)
 	services = append(services, StatusCheck{
 		Name:    "Search",
 		Status:  searchStatus,
@@ -273,9 +257,7 @@ func buildStatus() StatusResponse {
 		Config:      config,
 		OnlineUsers: auth.GetOnlineCount(),
 		IndexStats: IndexStatus{
-			Entries:      indexStats.TotalEntries,
-			Embeddings:   indexStats.EmbeddingCount,
-			VectorSearch: indexStats.EmbeddingsEnabled,
+			Entries: indexStats.TotalEntries,
 		},
 	}
 }
@@ -288,30 +270,14 @@ func formatDKIMDetails(enabled bool, domain, selector string) string {
 }
 
 func checkLLMConfig() (provider string, configured bool) {
-	var providers []string
-
-	if os.Getenv("FANAR_API_KEY") != "" {
-		providers = append(providers, "Fanar (default)")
-	}
-	if os.Getenv("ANTHROPIC_API_KEY") != "" {
-		model := os.Getenv("ANTHROPIC_MODEL")
-		if model == "" {
-			model = "claude-haiku-4"
-		}
-		providers = append(providers, fmt.Sprintf("Anthropic/%s", model))
-	}
-	if os.Getenv("MODEL_API_URL") != "" || os.Getenv("OLLAMA_API_URL") != "" {
-		model := os.Getenv("MODEL_NAME")
-		if model == "" {
-			model = "llama3.2"
-		}
-		providers = append(providers, fmt.Sprintf("Ollama/%s", model))
-	}
-
-	if len(providers) == 0 {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		return "Not configured", false
 	}
-	return strings.Join(providers, ", "), true
+	model := os.Getenv("ANTHROPIC_MODEL")
+	if model == "" {
+		model = "claude-sonnet-4-20250514"
+	}
+	return fmt.Sprintf("Anthropic/%s", model), true
 }
 
 // getDiskUsage returns disk usage for the data directory
