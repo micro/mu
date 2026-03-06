@@ -139,7 +139,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleJSON returns reminder data as JSON
 func handleJSON(w http.ResponseWriter, r *http.Request) {
-	reminderData := getReminderData()
+	reminderData := GetReminderData()
 	if reminderData == nil {
 		app.RespondJSON(w, map[string]interface{}{
 			"error": "Reminder data not available",
@@ -152,7 +152,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 
 // handleHTML returns reminder page as HTML
 func handleHTML(w http.ResponseWriter, r *http.Request) {
-	reminderData := getReminderData()
+	reminderData := GetReminderData()
 	if reminderData == nil {
 		app.Respond(w, r, app.Response{
 			Title:       "Reminder",
@@ -171,8 +171,8 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// getReminderData loads the cached reminder data
-func getReminderData() *ReminderData {
+// GetReminderData loads the cached reminder data
+func GetReminderData() *ReminderData {
 	// Load from cache
 	b, err := data.LoadFile("reminder.json")
 	if err != nil {

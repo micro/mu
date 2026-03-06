@@ -1,8 +1,8 @@
 package digest
 
 import (
-	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +13,7 @@ import (
 	"mu/data"
 	"mu/markets"
 	"mu/news"
+	"mu/reminder"
 	"mu/video"
 )
 
@@ -79,6 +80,11 @@ func generate() {
 		return
 	}
 
+	model := os.Getenv("ANTHROPIC_PREMIUM_MODEL")
+	if model == "" {
+		model = "claude-sonnet-4-5-20250514"
+	}
+
 	prompt := &ai.Prompt{
 		System: `You are a writer producing a daily digest blog post.
 You will be given today's data from various sources: news headlines, market prices, videos, and an Islamic reminder.
@@ -95,6 +101,8 @@ Keep it informative but concise. Write in a neutral, clear tone. Do not invent i
 The total length should be around 300-500 words.`,
 		Question: context,
 		Priority: ai.PriorityLow,
+		Provider: ai.ProviderAnthropic,
+		Model:    model,
 	}
 
 	response, err := ai.Ask(prompt)
@@ -159,19 +167,16 @@ func gatherContext() string {
 	}
 
 	// Reminder
-	if b, err := data.LoadFile("reminder.json"); err == nil {
-		var rem map[string]interface{}
-		if json.Unmarshal(b, &rem) == nil {
-			sb.WriteString("## Islamic Reminder\n\n")
-			if name, ok := rem["name"].(string); ok && name != "" {
-				sb.WriteString(fmt.Sprintf("**Name of Allah:** %s\n\n", name))
-			}
-			if verse, ok := rem["verse"].(string); ok && verse != "" {
-				sb.WriteString(fmt.Sprintf("**Verse:** %s\n\n", verse))
-			}
-			if hadith, ok := rem["hadith"].(string); ok && hadith != "" {
-				sb.WriteString(fmt.Sprintf("**Hadith:** %s\n\n", hadith))
-			}
+	if rem := reminder.GetReminderData(); rem != nil {
+		sb.WriteString("## Islamic Reminder\n\n")
+		if rem.Name != "" {
+			sb.WriteString(fmt.Sprintf("**Name of Allah:** %s\n\n", rem.Name))
+		}
+		if rem.Verse != "" {
+			sb.WriteString(fmt.Sprintf("**Verse:** %s\n\n", rem.Verse))
+		}
+		if rem.Hadith != "" {
+			sb.WriteString(fmt.Sprintf("**Hadith:** %s\n\n", rem.Hadith))
 		}
 	}
 
