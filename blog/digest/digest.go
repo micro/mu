@@ -111,7 +111,7 @@ func generate() {
 
 	app.Log("digest", "Generating daily digest")
 
-	context := gatherContext()
+	context, refs := gatherContext()
 	if context == "" {
 		mu.Lock()
 		lastStatus = "error"
@@ -133,12 +133,10 @@ Structure:
 4. **Videos** - Mention any notable new content if available
 5. **Reminder** - Include the reminder naturally
 
-Each source item has a reference number like [1], [2], etc. Use these inline when mentioning items so readers can trace back to the source.
-Include a "## References" section at the end with all referenced links in the format: [n]: URL
-
 Keep it informative but concise. Write in a neutral, clear tone. Do not invent information - only summarise what is provided.
 Do NOT start with a title or top-level heading - the blog post title is set separately. Jump straight into the opening paragraph.
-The total length should be around 300-500 words (excluding references).`,
+Do NOT include a references section - references will be appended separately.
+The total length should be around 300-500 words.`,
 		Question: context,
 		Priority: ai.PriorityLow,
 	}
@@ -192,9 +190,9 @@ Structure:
 4. **Videos** - Mention any notable new content if available
 5. **Reminder** - Include the reminder naturally
 
-Use inline reference numbers like [1], [2] when mentioning source items and include a "## References" section at the end.
 Do NOT start with a title or top-level heading. Jump straight into the opening paragraph.
-The total length should be around 300-500 words (excluding references).`,
+Do NOT include a references section - references will be appended separately.
+The total length should be around 300-500 words.`,
 			Question: fmt.Sprintf("## Source Material\n\n%s\n\n## First Draft\n\n%s\n\n## Editorial Feedback\n\n%s", context, draft, feedback),
 			Priority: ai.PriorityLow,
 		}
@@ -206,6 +204,16 @@ The total length should be around 300-500 words (excluding references).`,
 		}
 	} else {
 		response = draft
+	}
+
+	// Append references
+	if len(refs) > 0 {
+		var refSection strings.Builder
+		refSection.WriteString("\n\n## References\n\n")
+		for i, r := range refs {
+			refSection.WriteString(fmt.Sprintf("[%d]: [%s](%s)\n", i+1, r.title, r.url))
+		}
+		response += refSection.String()
 	}
 
 	title := fmt.Sprintf("Daily Digest - %s", time.Now().Format("2 January 2006"))
@@ -235,7 +243,7 @@ type ref struct {
 	url   string
 }
 
-func gatherContext() string {
+func gatherContext() (string, []ref) {
 	var sb strings.Builder
 	var refs []ref
 
@@ -255,7 +263,7 @@ func gatherContext() string {
 			}
 			for _, item := range items[:count] {
 				refs = append(refs, ref{item.Title, item.URL})
-				sb.WriteString(fmt.Sprintf("- [%d] **%s**: %s\n", len(refs), item.Title, item.Description))
+				sb.WriteString(fmt.Sprintf("- **%s**: %s\n", item.Title, item.Description))
 			}
 			sb.WriteString("\n")
 		}
@@ -301,7 +309,7 @@ func gatherContext() string {
 		sb.WriteString("## Latest Videos\n\n")
 		for _, v := range videos {
 			refs = append(refs, ref{v.Title, v.URL})
-			sb.WriteString(fmt.Sprintf("- [%d] **%s** by %s\n", len(refs), v.Title, v.Channel))
+			sb.WriteString(fmt.Sprintf("- **%s** by %s\n", v.Title, v.Channel))
 		}
 		sb.WriteString("\n")
 	}
@@ -320,13 +328,5 @@ func gatherContext() string {
 		}
 	}
 
-	// References
-	if len(refs) > 0 {
-		sb.WriteString("## References\n\n")
-		for i, r := range refs {
-			sb.WriteString(fmt.Sprintf("[%d]: %s\n", i+1, r.url))
-		}
-	}
-
-	return sb.String()
+	return sb.String(), refs
 }
