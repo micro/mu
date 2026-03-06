@@ -144,8 +144,7 @@ The total length should be around 300-500 words.`,
 		return
 	}
 
-	today := time.Now().Format("2 January 2006")
-	title := fmt.Sprintf("Daily Digest - %s", today)
+	title := time.Now().Format("2 January 2006")
 
 	err = blog.CreatePost(title, response, "micro", "micro", "digest", false)
 	if err != nil {
