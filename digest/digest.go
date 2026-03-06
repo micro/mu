@@ -129,6 +129,7 @@ Structure:
 5. **Reminder** - Include the Islamic reminder naturally
 
 Keep it informative but concise. Write in a neutral, clear tone. Do not invent information - only summarise what is provided.
+Do NOT start with a title or top-level heading - the blog post title is set separately. Jump straight into the opening paragraph.
 The total length should be around 300-500 words.`,
 		Question: context,
 		Priority: ai.PriorityLow,
@@ -144,7 +145,7 @@ The total length should be around 300-500 words.`,
 		return
 	}
 
-	title := time.Now().Format("2 January 2006")
+	title := fmt.Sprintf("Daily Digest - %s", time.Now().Format("2 January 2006"))
 
 	err = blog.CreatePost(title, response, "micro", "micro", "digest", false)
 	if err != nil {
