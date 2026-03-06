@@ -16,6 +16,9 @@ import (
 	"mu/auth"
 )
 
+// GenerateDigestFunc is set by main to trigger digest generation (avoids import cycle)
+var GenerateDigestFunc func()
+
 var (
 	deployMu   sync.Mutex
 	deploying  bool
@@ -59,18 +62,22 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	<div id="deploy-controls">
 		<button id="update-btn" onclick="runAction('update')">Update</button>
 		<button id="restart-btn" onclick="runAction('restart')">Restart</button>
+		<button id="digest-btn" onclick="runAction('digest')">Generate Digest</button>
 	</div>
 	<pre id="deploy-output" style="background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:6px;min-height:200px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.6;white-space:pre-wrap;display:none;"></pre>
 	<script>
 	function runAction(action) {
 		var updateBtn = document.getElementById('update-btn');
 		var restartBtn = document.getElementById('restart-btn');
+		var digestBtn = document.getElementById('digest-btn');
 		var output = document.getElementById('deploy-output');
-		var label = action === 'update' ? 'Updating...' : 'Restarting...';
+		var labels = {update: 'Updating...', restart: 'Restarting...', digest: 'Generating...'};
 		updateBtn.disabled = true;
 		restartBtn.disabled = true;
-		if (action === 'update') updateBtn.textContent = label;
-		else restartBtn.textContent = label;
+		digestBtn.disabled = true;
+		if (action === 'update') updateBtn.textContent = labels[action];
+		else if (action === 'restart') restartBtn.textContent = labels[action];
+		else digestBtn.textContent = labels[action];
 		output.style.display = 'block';
 		output.textContent = '';
 
@@ -81,31 +88,40 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}).then(function(res) { return res.json(); })
 		.then(function(data) {
 			var lines = '';
-			data.logs.forEach(function(entry) {
-				var color = entry.success ? '#6a9955' : '#f44747';
-				var icon = entry.success ? '✓' : '✗';
-				lines += '<span style="color:' + color + ';">' + icon + ' ' + entry.step + '</span>\n';
-				if (entry.output) {
-					lines += entry.output + '\n';
-				}
-			});
-			var doneLabel = action === 'update' ? 'Update' : 'Restart';
+			if (data.logs) {
+				data.logs.forEach(function(entry) {
+					var color = entry.success ? '#6a9955' : '#f44747';
+					var icon = entry.success ? '✓' : '✗';
+					lines += '<span style="color:' + color + ';">' + icon + ' ' + entry.step + '</span>\n';
+					if (entry.output) {
+						lines += entry.output + '\n';
+					}
+				});
+			}
+			if (data.message) {
+				lines += '<span style="color:#6a9955;">' + data.message + '</span>\n';
+			}
+			var doneLabel = action === 'digest' ? 'Digest' : (action === 'update' ? 'Update' : 'Restart');
 			if (data.success) {
-				lines += '\n<span style="color:#6a9955;font-weight:bold;">' + doneLabel + ' complete. Restarting...</span>\n';
-			} else {
+				lines += '\n<span style="color:#6a9955;font-weight:bold;">' + doneLabel + ' complete.</span>\n';
+			} else if (!data.message) {
 				lines += '\n<span style="color:#f44747;font-weight:bold;">' + doneLabel + ' failed.</span>\n';
 			}
 			output.innerHTML = lines;
 			updateBtn.disabled = false;
 			restartBtn.disabled = false;
+			digestBtn.disabled = false;
 			updateBtn.textContent = 'Update';
 			restartBtn.textContent = 'Restart';
+			digestBtn.textContent = 'Generate Digest';
 		}).catch(function(err) {
 			output.innerHTML = '<span style="color:#f44747;">Error: ' + err.message + '</span>';
 			updateBtn.disabled = false;
 			restartBtn.disabled = false;
+			digestBtn.disabled = false;
 			updateBtn.textContent = 'Update';
 			restartBtn.textContent = 'Restart';
+			digestBtn.textContent = 'Generate Digest';
 		});
 	}
 	</script>`
@@ -115,6 +131,24 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeploy(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Action string `json:"action"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	// Digest is handled separately — it runs in the background
+	if req.Action == "digest" {
+		if GenerateDigestFunc != nil {
+			GenerateDigestFunc()
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Digest generation started. Check /status for progress.",
+		})
+		return
+	}
+
 	deployMu.Lock()
 	if deploying {
 		deployMu.Unlock()
@@ -133,11 +167,6 @@ func handleDeploy(w http.ResponseWriter, r *http.Request) {
 		deploying = false
 		deployMu.Unlock()
 	}()
-
-	var req struct {
-		Action string `json:"action"`
-	}
-	json.NewDecoder(r.Body).Decode(&req)
 
 	dir := sourceDir()
 	var logs []deployLogEntry

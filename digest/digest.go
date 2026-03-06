@@ -85,6 +85,11 @@ func sameDay(a, b time.Time) bool {
 	return y1 == y2 && m1 == m2 && d1 == d2
 }
 
+// Generate triggers digest generation. Returns immediately if already running.
+func Generate() {
+	go generate()
+}
+
 func generate() {
 	mu.Lock()
 	if running {

@@ -340,6 +340,7 @@ func main() {
 	// status page - public health check
 	app.DKIMStatusFunc = mail.DKIMStatus
 	app.DigestStatusFunc = digest.Status
+	admin.GenerateDigestFunc = digest.Generate
 	http.HandleFunc("/status", app.StatusHandler)
 
 	// documentation
