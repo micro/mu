@@ -20,6 +20,7 @@ import (
 	"mu/blog"
 	"mu/chat"
 	"mu/data"
+	"mu/digest"
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
@@ -88,6 +89,9 @@ func main() {
 
 	// load agent
 	agent.Load()
+
+	// load daily digest scheduler
+	digest.Load()
 
 	// load user presence tracking
 	user.Load()
