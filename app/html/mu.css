@@ -1248,6 +1248,19 @@ body:has(#messages) #chat-back-link {
   text-decoration: underline;
 }
 
+.keep-reading {
+  display: inline-block;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--accent-color);
+  text-decoration: none;
+  margin-top: 4px;
+}
+
+.keep-reading:hover {
+  text-decoration: underline;
+}
+
 .post-tags {
   margin-top: 8px;
   font-size: small;
