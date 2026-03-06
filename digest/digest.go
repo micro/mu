@@ -37,17 +37,17 @@ func Load() {
 }
 
 func scheduler() {
-	// Check every hour if we need to generate a digest
-	for {
-		now := time.Now()
+	// If no digest exists for today, generate immediately
+	if !sameDay(lastDigest, time.Now()) {
+		generate()
+	}
 
-		// Generate at 6am if we haven't today
-		if now.Hour() >= 6 && !sameDay(lastDigest, now) {
+	// Then check every hour
+	for {
+		time.Sleep(time.Hour)
+		if !sameDay(lastDigest, time.Now()) {
 			generate()
 		}
-
-		// Sleep until next check
-		time.Sleep(time.Hour)
 	}
 }
 
