@@ -271,10 +271,11 @@ func renderStripeDeposit(userID, errMsg string) string {
 	if errMsg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
+	sb.WriteString("<span>Topup via card</span>")
 	sb.WriteString(`<form method="POST" action="/wallet/stripe/checkout">`)
 
 	// Preset quick-select buttons
-	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
+	sb.WriteString(`<div class="d-flex gap-2 mb-3 mt-2">`)
 	for _, tier := range StripeTopupTiers {
 		sb.WriteString(fmt.Sprintf(
 			`<button type="button" class="btn btn-secondary" onclick="document.getElementById('topup-amount').value='%d'">%s</button>`,
