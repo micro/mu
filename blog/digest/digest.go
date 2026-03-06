@@ -138,7 +138,7 @@ Structure:
 2. **News** - Summarise the top stories (3-5 bullet points with key takeaways)
 3. **Markets** - Brief overview of notable price movements and trends
 4. **Videos** - Mention any notable new content if available
-5. **Reminder** - Include the reminder naturally
+5. **Reminder** - Include the reminder as its own section with a ## heading, followed by a blank line, then the content
 
 Keep it informative but concise. Write in a neutral, clear tone. Do not invent information - only summarise what is provided.
 Do NOT start with a title or top-level heading - the blog post title is set separately. Jump straight into the opening paragraph.
@@ -196,7 +196,7 @@ Structure:
 2. **News** - Summarise the top stories (3-5 bullet points with key takeaways)
 3. **Markets** - Brief overview of notable price movements and trends
 4. **Videos** - Mention any notable new content if available
-5. **Reminder** - Include the reminder naturally
+5. **Reminder** - Include the reminder as its own section with a ## heading, followed by a blank line, then the content
 
 Do NOT start with a title or top-level heading. Jump straight into the opening paragraph.
 Do NOT include any preamble, meta-commentary, or introductory text like "Here is the revised digest". Output ONLY the digest content.
@@ -215,7 +215,8 @@ The total length should be around 300-500 words.`,
 		response = draft
 	}
 
-	response = strings.TrimSpace(response)
+	response = stripPreamble(response)
+	response = normalizeHeadings(response)
 
 	// Append references
 	if len(refs) > 0 {
@@ -340,4 +341,43 @@ func gatherContext() (string, []ref) {
 	}
 
 	return sb.String(), refs
+}
+
+// normalizeHeadings ensures every markdown heading has a blank line after it.
+func normalizeHeadings(s string) string {
+	lines := strings.Split(s, "\n")
+	var out []string
+	for i, line := range lines {
+		out = append(out, line)
+		if strings.HasPrefix(strings.TrimSpace(line), "#") && i+1 < len(lines) {
+			next := strings.TrimSpace(lines[i+1])
+			if next != "" && !strings.HasPrefix(next, "#") {
+				out = append(out, "")
+			}
+		}
+	}
+	return strings.Join(out, "\n")
+}
+
+// stripPreamble removes AI meta-commentary lines from the start of the response.
+// Lines like "Here is the revised digest:" are not part of the actual content.
+func stripPreamble(s string) string {
+	s = strings.TrimSpace(s)
+	lines := strings.SplitN(s, "\n", -1)
+	for len(lines) > 0 {
+		line := strings.TrimSpace(lines[0])
+		lower := strings.ToLower(line)
+		if line == "" ||
+			strings.HasPrefix(lower, "here is") ||
+			strings.HasPrefix(lower, "here's") ||
+			strings.HasPrefix(lower, "below is") ||
+			strings.HasPrefix(lower, "i've") ||
+			strings.HasPrefix(lower, "i have") ||
+			strings.HasSuffix(lower, ":") && !strings.HasPrefix(line, "**") && !strings.HasPrefix(line, "#") && !strings.HasPrefix(line, "-") {
+			lines = lines[1:]
+			continue
+		}
+		break
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
 }
