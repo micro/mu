@@ -33,7 +33,7 @@ Mu was built to fix this problem.
 Each feature does one thing well:
 
 - **Home** — Your dashboard, everything in one place
-- **Blog** — Microblogging without the engagement tricks
+- **Blog** — Microblogging with daily digests
 - **Chat** — Discuss topics with AI
 - **News** — RSS feeds, chronological
 - **Mail** — Private messaging & email
@@ -61,12 +61,10 @@ We deliberately exclude features that drive addiction:
 
 Some features are enhanced with AI:
 
-- **Blog** — Auto-tag topics
+- **Blog** — Daily digests
 - **News** — Summarize articles
 - **Chat** — AI for discussions
-- **Agent** — Access to Mu via MCP
-
-AI is a tool, not the product. It helps when useful, stays out of the way otherwise.
+- **Agent** — Cross app queries
 
 ---
 

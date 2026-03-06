@@ -28,7 +28,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] API - Basic API
 - [x] App - Basic PWA
 - [x] Home - Overview
-- [x] Blog - Micro blogging
+- [x] Blog - Daily digests
 - [x] Chat - Discussion rooms
 - [x] News - RSS news feed
 - [x] Video - YouTube search
@@ -41,9 +41,10 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 
 Some features are enhanced with AI:
 
-- **Blog** - Auto-tag topics
+- **Blog** - Daily digests
 - **News** - Summarize articles
 - **Chat** - Knowledge assistant
+- **Agent** - Cross app queries
 
 ### MCP — AI Agent Integration
 
