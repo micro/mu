@@ -4334,25 +4334,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
   padding: 15px;
   background: var(--hover-background);
   border-radius: var(--border-radius);
-  border-left: 3px solid var(--accent-color);
-}
-
-.verse-content {
-  font-style: italic;
-  border-left-color: var(--accent-color);
-}
-
-.name-content {
-  font-weight: var(--font-weight-medium);
-  border-left-color: var(--accent-color);
-}
-
-.hadith-content {
-  border-left-color: #555;
-}
-
-.message-content {
-  border-left-color: #333;
 }
 
 .reminder-link {

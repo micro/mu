@@ -205,7 +205,7 @@ func generateReminderPage(data *ReminderData) string {
 	// Message/summary section first
 	if data.Message != "" {
 		sb.WriteString(`<div class="reminder-section">`)
-		sb.WriteString(`<div class="reminder-content message-content">`)
+		sb.WriteString(`<div class="reminder-content card">`)
 		sb.WriteString(data.Message)
 		sb.WriteString(`</div>`)
 		sb.WriteString(`</div>`)
@@ -215,7 +215,7 @@ func generateReminderPage(data *ReminderData) string {
 	if data.Name != "" {
 		sb.WriteString(`<div class="reminder-section">`)
 		sb.WriteString(`<h2>Name of Allah</h2>`)
-		sb.WriteString(`<div class="reminder-content name-content">`)
+		sb.WriteString(`<div class="reminder-content card">`)
 		sb.WriteString(data.Name)
 		sb.WriteString(`</div>`)
 
@@ -233,7 +233,7 @@ func generateReminderPage(data *ReminderData) string {
 	if data.Verse != "" {
 		sb.WriteString(`<div class="reminder-section">`)
 		sb.WriteString(`<h2>Quranic Verse</h2>`)
-		sb.WriteString(`<div class="reminder-content verse-content">`)
+		sb.WriteString(`<div class="reminder-content card">`)
 		sb.WriteString(data.Verse)
 		sb.WriteString(`</div>`)
 
