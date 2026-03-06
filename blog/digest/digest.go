@@ -85,9 +85,16 @@ func sameDay(a, b time.Time) bool {
 	return y1 == y2 && m1 == m2 && d1 == d2
 }
 
-// Generate triggers digest generation. Returns immediately if already running.
-func Generate() {
+// Generate triggers digest generation. Returns false if already running.
+func Generate() bool {
+	mu.Lock()
+	if running {
+		mu.Unlock()
+		return false
+	}
+	mu.Unlock()
 	go generate()
+	return true
 }
 
 func generate() {
@@ -135,6 +142,7 @@ Structure:
 
 Keep it informative but concise. Write in a neutral, clear tone. Do not invent information - only summarise what is provided.
 Do NOT start with a title or top-level heading - the blog post title is set separately. Jump straight into the opening paragraph.
+Do NOT include any preamble, meta-commentary, or introductory text like "Here is the digest". Output ONLY the digest content.
 Do NOT include a references section - references will be appended separately.
 The total length should be around 300-500 words.`,
 		Question: context,
@@ -191,6 +199,7 @@ Structure:
 5. **Reminder** - Include the reminder naturally
 
 Do NOT start with a title or top-level heading. Jump straight into the opening paragraph.
+Do NOT include any preamble, meta-commentary, or introductory text like "Here is the revised digest". Output ONLY the digest content.
 Do NOT include a references section - references will be appended separately.
 The total length should be around 300-500 words.`,
 			Question: fmt.Sprintf("## Source Material\n\n%s\n\n## First Draft\n\n%s\n\n## Editorial Feedback\n\n%s", context, draft, feedback),
@@ -206,12 +215,14 @@ The total length should be around 300-500 words.`,
 		response = draft
 	}
 
+	response = strings.TrimSpace(response)
+
 	// Append references
 	if len(refs) > 0 {
 		var refSection strings.Builder
 		refSection.WriteString("\n\n## References\n\n")
 		for i, r := range refs {
-			refSection.WriteString(fmt.Sprintf("[%d]: [%s](%s)\n", i+1, r.title, r.url))
+			refSection.WriteString(fmt.Sprintf("%d. [%s](%s)\n", i+1, r.title, r.url))
 		}
 		response += refSection.String()
 	}
