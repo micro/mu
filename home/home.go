@@ -76,7 +76,7 @@ var landingTemplate = `<html lang="en">
       One app for everything you need.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
-      Mu is a place to see the latest news, market data, videos, search the web and more.
+      Mu is a place to read the latest news, track market data, watch videos, search the web and more.
       </p>
 
 
@@ -97,6 +97,9 @@ var landingTemplate = `<html lang="en">
         </button>
         <button class="preview-tab" onclick="showPreview('web',this)">
           <img src="/search.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Web
+        </button>
+        <button class="preview-tab" onclick="showPreview('blog',this)">
+          <img src="/post.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Blog
         </button>
       </div>
 
@@ -128,6 +131,13 @@ var landingTemplate = `<html lang="en">
             <h4 style="margin-top:0;"><img src="/search.svg" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Web</h4>
             <div id="preview-web-content" style="min-width:0;overflow:hidden;"><div class="skeleton" style="height:14px;margin:8px 0;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:80%%;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:90%%;"></div></div>
             <a href="/web" class="link" style="margin-top:8px;display:inline-block;">Search the web &#x2192;</a>
+          </div>
+        </div>
+        <div id="preview-blog" class="preview-panel">
+          <div class="card">
+            <h4 style="margin-top:0;"><img src="/post.png" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Blog</h4>
+            <div id="preview-blog-content"><div class="skeleton" style="height:14px;margin:8px 0;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:80%%;"></div><div class="skeleton" style="height:14px;margin:8px 0;width:90%%;"></div></div>
+            <a href="/blog" class="link" style="margin-top:8px;display:inline-block;">More posts &#x2192;</a>
           </div>
         </div>
       </div>
@@ -207,6 +217,9 @@ var landingTemplate = `<html lang="en">
         </button>
         <button class="preview-tab" onclick="showExample('web',this)">
           <img src="/search.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Web
+        </button>
+        <button class="preview-tab" onclick="showExample('blog',this)">
+          <img src="/post.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Blog
         </button>
       </div>
 
@@ -290,6 +303,30 @@ Authorization: Bearer TOKEN</pre>
             <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
   "name":"web_search",
   "arguments":{"q":"what are AI agents"}}}</pre>
+            <a href="/mcp" class="link">MCP Server &#x2192;</a>
+          </div>
+        </div>
+        <!-- Blog examples -->
+        <div id="example-blog" class="example-panel">
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>REST API</h4>
+            <p class="card-desc">List blog posts or read the latest daily digest.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">GET /blog HTTP/1.1
+Accept: application/json
+
+GET /blog/{id} HTTP/1.1
+Accept: application/json</pre>
+            <a href="/api" class="link">API Docs &#x2192;</a>
+          </div>
+          <div class="card" style="flex:1;min-width:260px;">
+            <h4>MCP</h4>
+            <p class="card-desc">Agents can list posts or read the daily digest.</p>
+            <pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;border-radius:4px;">{"method":"tools/call","params":{
+  "name":"blog_list",
+  "arguments":{}}}
+{"method":"tools/call","params":{
+  "name":"blog_read",
+  "arguments":{"id":"POST_ID"}}}</pre>
             <a href="/mcp" class="link">MCP Server &#x2192;</a>
           </div>
         </div>
@@ -487,6 +524,31 @@ Authorization: Bearer TOKEN</pre>
              '</div>';
         });
         el.innerHTML=h;
+      })
+      .catch(function(){});
+
+    // Blog (latest digest)
+    fetch('/blog', {headers:{'Accept':'application/json'}})
+      .then(function(r){return r.json();})
+      .then(function(posts){
+        var el=document.getElementById('preview-blog-content');
+        if(!el) return;
+        if(!posts||!posts.length){el.innerHTML='<p style="color:#888;font-size:13px;">No posts yet.</p>';return;}
+        // Find the latest digest post, fallback to the latest post
+        var digest=null;
+        for(var i=0;i<posts.length;i++){if((posts[i].tags||'').indexOf('digest')!==-1){digest=posts[i];break;}}
+        if(!digest) digest=posts[0];
+        var title=digest.title||'Untitled';
+        var content=digest.content||'';
+        // Strip markdown formatting for preview
+        content=content.replace(/#{1,6}\s/g,'').replace(/\*\*/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/\n/g,' ');
+        if(content.length>280) content=content.substring(0,280)+'…';
+        var age=digest.created_at?'<span style="font-size:11px;color:#888;">'+timeAgo(digest.created_at)+'</span>':'';
+        var tag=(digest.tags||'').indexOf('digest')!==-1?'<span style="font-size:11px;background:#f0f0f0;padding:2px 8px;border-radius:10px;margin-right:6px;">digest</span>':'';
+        el.innerHTML='<div style="padding:8px 0;">'+tag+age+
+          '<a href="/blog/'+esc(digest.id)+'" style="font-size:15px;font-weight:700;display:block;line-height:1.4;margin-top:4px;color:#111;">'+esc(title)+'</a>'+
+          '<p style="font-size:13px;color:#555;line-height:1.5;margin-top:6px;">'+esc(content)+'</p>'+
+          '</div>';
       })
       .catch(function(){});
 
