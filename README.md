@@ -18,7 +18,7 @@ Mu is a collection of apps for everyday use. While other platforms monetize your
 - **News** - RSS feeds with AI summaries
 - **Mail** - Private messaging & email
 - **Video** - Watch YouTube without ads
-- **Web** - Web search without ads or tracking
+- **Web** - Search without ads or tracking
 - **Wallet** - Credits and card payments
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
