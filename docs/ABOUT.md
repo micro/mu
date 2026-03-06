@@ -18,7 +18,7 @@ Think of Mu as the opposite of what the internet has become:
 
 The internet was supposed to connect us and make life better. Instead, platforms have optimized for addiction and extraction:
 
-- **Rage bait** to keep you scrolling
+- **Click bait** to keep you scrolling
 - **Notifications** to pull you back
 - **Likes/followers** to gamify your worth
 - **Ads** disguised as content
