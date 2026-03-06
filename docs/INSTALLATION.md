@@ -28,9 +28,7 @@ Mu uses environment variables for configuration. Create a `.env` file or export 
 
 ```bash
 # Required for chat/AI features
-export FANAR_API_KEY="your-key"    # Get from api.fanar.qa
-# Or use Anthropic:
-# export ANTHROPIC_API_KEY="your-key"
+export ANTHROPIC_API_KEY="your-key"  # Get from console.anthropic.com
 
 # Required for video features
 export YOUTUBE_API_KEY="your-key"  # Get from Google Cloud Console
@@ -136,17 +134,6 @@ To receive and send messages (using SMTP protocol):
 ```
 
 See [Messaging](/docs/messaging) for complete setup.
-
-## Vector Search (Optional)
-
-For semantic search, install Ollama locally:
-
-```bash
-curl -fsSL https://ollama.ai/install.sh | sh
-ollama pull nomic-embed-text
-```
-
-Mu will automatically use embeddings when Ollama is available. See [Vector Search](/docs/vector-search) for details.
 
 ## Tor Hidden Service (Optional)
 

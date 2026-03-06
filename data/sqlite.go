@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -53,11 +52,19 @@ func initDB() error {
 			);
 			CREATE INDEX IF NOT EXISTS idx_type ON index_entries(type);
 			CREATE INDEX IF NOT EXISTS idx_indexed_at ON index_entries(indexed_at);
+		`)
+		if err != nil {
+			initErr = fmt.Errorf("failed to create tables: %w", err)
+			return
+		}
 
-			CREATE TABLE IF NOT EXISTS embeddings (
-				id TEXT PRIMARY KEY,
-				embedding BLOB NOT NULL,
-				FOREIGN KEY (id) REFERENCES index_entries(id) ON DELETE CASCADE
+		// Create FTS5 virtual table for full-text search
+		_, err = db.Exec(`
+			CREATE VIRTUAL TABLE IF NOT EXISTS index_fts USING fts5(
+				title,
+				content,
+				content='index_entries',
+				content_rowid='rowid'
 			);
 		`)
 		if err != nil {
@@ -90,6 +97,9 @@ func IndexSQLite(id, entryType, title, content string, metadata map[string]inter
 		metadataJSON, _ = json.Marshal(metadata)
 	}
 
+	// Delete old FTS entry if exists (content= tables need manual sync)
+	db.Exec(`DELETE FROM index_fts WHERE rowid = (SELECT rowid FROM index_entries WHERE id = ?)`, id)
+
 	_, err = db.Exec(`
 		INSERT INTO index_entries (id, type, title, content, metadata, indexed_at)
 		VALUES (?, ?, ?, ?, ?, ?)
@@ -102,6 +112,8 @@ func IndexSQLite(id, entryType, title, content string, metadata map[string]inter
 	`, id, entryType, title, content, string(metadataJSON), time.Now())
 
 	if err == nil {
+		// Insert into FTS index
+		db.Exec(`INSERT INTO index_fts(rowid, title, content) SELECT rowid, title, content FROM index_entries WHERE id = ?`, id)
 		// Publish event
 		Publish(Event{
 			Type: EventIndexComplete,
@@ -147,7 +159,7 @@ func GetByIDSQLite(id string) (*IndexEntry, error) {
 }
 
 // SearchSQLite performs full-text search using keyword matching.
-// SQLite indexing never generates embeddings, so vector search is not attempted.
+// SearchSQLite performs full-text search using FTS5 with LIKE fallback.
 func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry, error) {
 	if _, err := getDB(); err != nil {
 		return nil, err
@@ -161,79 +173,7 @@ func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry,
 	return searchSQLiteFallback(query, limit, options)
 }
 
-// mergeSearchResults combines vector and keyword results with proper ranking
-func mergeSearchResults(vectorResults, keywordResults []*IndexEntry, query string, limit int) ([]*IndexEntry, error) {
-	words := strings.Fields(strings.ToLower(query))
-
-	type scoredEntry struct {
-		entry        *IndexEntry
-		keywordScore float64
-		vectorRank   int // Lower is better, -1 if not in vector results
-	}
-
-	seen := make(map[string]*scoredEntry)
-
-	// Add vector results
-	for i, entry := range vectorResults {
-		seen[entry.ID] = &scoredEntry{
-			entry:        entry,
-			vectorRank:   i,
-			keywordScore: 0,
-		}
-	}
-
-	// Add/update with keyword scores
-	for _, entry := range keywordResults {
-		keywordScore := scoreMatch(entry, words)
-		if existing, found := seen[entry.ID]; found {
-			existing.keywordScore = keywordScore
-		} else {
-			seen[entry.ID] = &scoredEntry{
-				entry:        entry,
-				keywordScore: keywordScore,
-				vectorRank:   -1,
-			}
-		}
-	}
-
-	// Convert to slice
-	var scored []scoredEntry
-	for _, s := range seen {
-		scored = append(scored, *s)
-	}
-
-	// Sort: high keyword score first, then by date
-	// Title matches (score >= 10) always come first
-	sort.Slice(scored, func(i, j int) bool {
-		// Strong keyword matches (title) first
-		iStrong := scored[i].keywordScore >= 10
-		jStrong := scored[j].keywordScore >= 10
-		if iStrong != jStrong {
-			return iStrong
-		}
-
-		// Same strength - higher keyword score wins
-		if scored[i].keywordScore != scored[j].keywordScore {
-			return scored[i].keywordScore > scored[j].keywordScore
-		}
-
-		// Same score - newer first
-		return getPostedAt(scored[i].entry).After(getPostedAt(scored[j].entry))
-	})
-
-	if limit > 0 && len(scored) > limit {
-		scored = scored[:limit]
-	}
-
-	results := make([]*IndexEntry, len(scored))
-	for i, s := range scored {
-		results[i] = s.entry
-	}
-
-	return results, nil
-}
-
-// searchSQLiteFallback uses LIKE when FTS fails
+// searchSQLiteFallback uses FTS5 with LIKE fallback
 func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*IndexEntry, error) {
 	db, err := getDB()
 	if err != nil {
@@ -248,25 +188,23 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 	seen := make(map[string]bool)
 	var allEntries []*IndexEntry
 
-	// Phase 1: ALL title matches (small set, contains word-boundary hits)
-	var titleConds []string
-	var titleArgs []interface{}
-	for _, word := range words {
-		if len(word) < 2 {
-			continue
-		}
-		titleConds = append(titleConds, "LOWER(title) LIKE ?")
-		titleArgs = append(titleArgs, "%"+word+"%")
-	}
-	if len(titleConds) > 0 {
-		where := strings.Join(titleConds, " OR ")
+	// Phase 1: FTS5 search (fast, ranked by relevance)
+	ftsQuery := buildFTS5Query(words)
+	if ftsQuery != "" {
+		ftsSQL := `
+			SELECT e.id, e.type, e.title, e.content, e.metadata, e.indexed_at
+			FROM index_fts f
+			JOIN index_entries e ON e.rowid = f.rowid
+			WHERE index_fts MATCH ?`
+		var ftsArgs []interface{}
+		ftsArgs = append(ftsArgs, ftsQuery)
 		if options.Type != "" {
-			where = "(" + where + ") AND type = ?"
-			titleArgs = append(titleArgs, options.Type)
+			ftsSQL += ` AND e.type = ?`
+			ftsArgs = append(ftsArgs, options.Type)
 		}
-		rows, err := db.Query(fmt.Sprintf(`
-			SELECT id, type, title, content, metadata, indexed_at
-			FROM index_entries WHERE %s`, where), titleArgs...)
+		ftsSQL += ` ORDER BY rank LIMIT 50`
+
+		rows, err := db.Query(ftsSQL, ftsArgs...)
 		if err == nil {
 			for rows.Next() {
 				var e IndexEntry
@@ -287,48 +225,50 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		}
 	}
 
-	// Phase 2: Recent content matches (limit 200)
-	var contentConds []string
-	var contentArgs []interface{}
-	for _, word := range words {
-		if len(word) < 2 {
-			continue
+	// Phase 2: LIKE fallback for partial matches FTS5 might miss
+	if len(allEntries) < limit {
+		var likeConds []string
+		var likeArgs []interface{}
+		for _, word := range words {
+			if len(word) < 2 {
+				continue
+			}
+			likeConds = append(likeConds, "LOWER(title) LIKE ?")
+			likeArgs = append(likeArgs, "%"+word+"%")
 		}
-		contentConds = append(contentConds, "LOWER(content) LIKE ?")
-		contentArgs = append(contentArgs, "%"+word+"%")
-	}
-	if len(contentConds) > 0 {
-		where := strings.Join(contentConds, " OR ")
-		if options.Type != "" {
-			where = "(" + where + ") AND type = ?"
-			contentArgs = append(contentArgs, options.Type)
-		}
-		contentArgs = append(contentArgs, 200)
-		rows, err := db.Query(fmt.Sprintf(`
-			SELECT id, type, title, content, metadata, indexed_at
-			FROM index_entries WHERE %s
-			ORDER BY indexed_at DESC LIMIT ?`, where), contentArgs...)
-		if err == nil {
-			for rows.Next() {
-				var e IndexEntry
-				var meta sql.NullString
-				var idx time.Time
-				if rows.Scan(&e.ID, &e.Type, &e.Title, &e.Content, &meta, &idx) == nil {
-					e.IndexedAt = idx
-					if meta.Valid {
-						json.Unmarshal([]byte(meta.String), &e.Metadata)
-					}
-					if !seen[e.ID] {
-						seen[e.ID] = true
-						allEntries = append(allEntries, &e)
+		if len(likeConds) > 0 {
+			where := strings.Join(likeConds, " OR ")
+			if options.Type != "" {
+				where = "(" + where + ") AND type = ?"
+				likeArgs = append(likeArgs, options.Type)
+			}
+			likeArgs = append(likeArgs, 50)
+			rows, err := db.Query(fmt.Sprintf(`
+				SELECT id, type, title, content, metadata, indexed_at
+				FROM index_entries WHERE %s
+				ORDER BY indexed_at DESC LIMIT ?`, where), likeArgs...)
+			if err == nil {
+				for rows.Next() {
+					var e IndexEntry
+					var meta sql.NullString
+					var idx time.Time
+					if rows.Scan(&e.ID, &e.Type, &e.Title, &e.Content, &meta, &idx) == nil {
+						e.IndexedAt = idx
+						if meta.Valid {
+							json.Unmarshal([]byte(meta.String), &e.Metadata)
+						}
+						if !seen[e.ID] {
+							seen[e.ID] = true
+							allEntries = append(allEntries, &e)
+						}
 					}
 				}
+				rows.Close()
 			}
-			rows.Close()
 		}
 	}
 
-	// Score all collected entries
+	// Score and sort all collected entries
 	type scoredEntry struct {
 		entry *IndexEntry
 		score float64
@@ -341,16 +281,13 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		}
 	}
 
-	// Sort by score (relevance) first, then by date for ties
 	sort.Slice(scored, func(i, j int) bool {
 		if scored[i].score != scored[j].score {
 			return scored[i].score > scored[j].score
 		}
-		// Same score - newer first
 		return getPostedAt(scored[i].entry).After(getPostedAt(scored[j].entry))
 	})
 
-	// Apply limit
 	if limit > 0 && len(scored) > limit {
 		scored = scored[:limit]
 	}
@@ -361,6 +298,26 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 	}
 
 	return results, nil
+}
+
+// buildFTS5Query converts search words into an FTS5 query string
+func buildFTS5Query(words []string) string {
+	var terms []string
+	for _, w := range words {
+		if len(w) < 2 {
+			continue
+		}
+		// Escape double quotes in terms
+		w = strings.ReplaceAll(w, "\"", "")
+		if w != "" {
+			terms = append(terms, "\""+w+"\"")
+		}
+	}
+	if len(terms) == 0 {
+		return ""
+	}
+	// Use OR so any term matches
+	return strings.Join(terms, " OR ")
 }
 
 // scoreMatch calculates relevance score for an entry
@@ -508,126 +465,7 @@ func GetByTypeSQLite(entryType string, limit int) ([]*IndexEntry, error) {
 	return results, nil
 }
 
-// SaveEmbeddingSQLite stores an embedding in SQLite
-func SaveEmbeddingSQLite(id string, embedding []float64) error {
-	db, err := getDB()
-	if err != nil {
-		return err
-	}
 
-	// Convert float64 slice to bytes (more compact than JSON)
-	embBytes := float64SliceToBytes(embedding)
-
-	_, err = db.Exec(`
-		INSERT INTO embeddings (id, embedding)
-		VALUES (?, ?)
-		ON CONFLICT(id) DO UPDATE SET embedding = excluded.embedding
-	`, id, embBytes)
-
-	return err
-}
-
-// GetEmbeddingSQLite retrieves an embedding from SQLite
-func GetEmbeddingSQLite(id string) ([]float64, error) {
-	db, err := getDB()
-	if err != nil {
-		return nil, err
-	}
-
-	var embBytes []byte
-	err = db.QueryRow(`SELECT embedding FROM embeddings WHERE id = ?`, id).Scan(&embBytes)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return bytesToFloat64Slice(embBytes), nil
-}
-
-// VectorSearchSQLite performs vector similarity search
-func VectorSearchSQLite(queryEmbedding []float64, limit int, opts ...SearchOption) ([]*IndexEntry, error) {
-	db, err := getDB()
-	if err != nil {
-		return nil, err
-	}
-
-	options := &SearchOptions{}
-	for _, opt := range opts {
-		opt(options)
-	}
-
-	// Get all embeddings and compute similarity
-	// (For a proper solution, use sqlite-vec extension)
-	var rows *sql.Rows
-	if options.Type != "" {
-		rows, err = db.Query(`
-			SELECT e.id, e.type, e.title, e.content, e.metadata, e.indexed_at, emb.embedding
-			FROM index_entries e
-			JOIN embeddings emb ON e.id = emb.id
-			WHERE e.type = ?
-		`, options.Type)
-	} else {
-		rows, err = db.Query(`
-			SELECT e.id, e.type, e.title, e.content, e.metadata, e.indexed_at, emb.embedding
-			FROM index_entries e
-			JOIN embeddings emb ON e.id = emb.id
-		`)
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	type scoredEntry struct {
-		entry *IndexEntry
-		score float64
-	}
-	var scored []scoredEntry
-
-	for rows.Next() {
-		var entry IndexEntry
-		var metadataJSON sql.NullString
-		var indexedAt time.Time
-		var embBytes []byte
-
-		err := rows.Scan(&entry.ID, &entry.Type, &entry.Title, &entry.Content, &metadataJSON, &indexedAt, &embBytes)
-		if err != nil {
-			continue
-		}
-
-		entry.IndexedAt = indexedAt
-		if metadataJSON.Valid && metadataJSON.String != "" {
-			json.Unmarshal([]byte(metadataJSON.String), &entry.Metadata)
-		}
-
-		emb := bytesToFloat64Slice(embBytes)
-		if len(emb) > 0 {
-			sim := cosineSimilarity(queryEmbedding, emb)
-			if sim > 0.3 {
-				scored = append(scored, scoredEntry{entry: &entry, score: sim})
-			}
-		}
-	}
-
-	// Sort by similarity
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
-	})
-
-	// Return top N
-	if limit > 0 && len(scored) > limit {
-		scored = scored[:limit]
-	}
-
-	results := make([]*IndexEntry, len(scored))
-	for i, s := range scored {
-		results[i] = s.entry
-	}
-
-	return results, nil
-}
 
 // MigrateFromJSON migrates existing JSON data to SQLite
 func MigrateFromJSON() error {
@@ -637,21 +475,12 @@ func MigrateFromJSON() error {
 	}
 
 	// Check if migration already done
-	var indexCount, embCount int
+	var indexCount int
 	db.QueryRow(`SELECT COUNT(*) FROM index_entries`).Scan(&indexCount)
-	db.QueryRow(`SELECT COUNT(*) FROM embeddings`).Scan(&embCount)
-
-	if indexCount > 0 && embCount > 0 {
-		fmt.Printf("[data] SQLite already has %d entries and %d embeddings, skipping migration\n", indexCount, embCount)
+	if indexCount > 0 {
+		fmt.Printf("[data] SQLite already has %d entries, skipping migration\n", indexCount)
 		return nil
 	}
-
-	if indexCount > 0 {
-		fmt.Printf("[data] SQLite has %d entries but %d embeddings, migrating embeddings only\n", indexCount, embCount)
-		return migrateEmbeddings()
-	}
-
-	fmt.Println("[data] Starting migration from JSON to SQLite...")
 
 	// Load existing index.json
 	b, err := LoadFile("index.json")
@@ -675,7 +504,6 @@ func MigrateFromJSON() error {
 
 	fmt.Printf("[data] Migrating %d index entries...\n", len(oldIndex))
 
-	// Begin transaction for faster inserts
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -711,114 +539,14 @@ func MigrateFromJSON() error {
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit index migration: %w", err)
+		return fmt.Errorf("failed to commit migration: %w", err)
 	}
 
 	fmt.Printf("[data] Migrated %d index entries\n", migrated)
 
-	// Migrate embeddings
-	b, err = LoadFile("embeddings.json")
-	if err != nil {
-		fmt.Println("[data] No embeddings.json to migrate")
-		return nil
-	}
-
-	var oldEmbeddings map[string][]float64
-	if err := json.Unmarshal(b, &oldEmbeddings); err != nil {
-		return fmt.Errorf("failed to parse embeddings.json: %w", err)
-	}
-
-	fmt.Printf("[data] Migrating %d embeddings...\n", len(oldEmbeddings))
-
-	tx, err = db.Begin()
-	if err != nil {
-		return err
-	}
-
-	stmt, err = tx.Prepare(`INSERT OR REPLACE INTO embeddings (id, embedding) VALUES (?, ?)`)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	defer stmt.Close()
-
-	embMigrated := 0
-	for id, emb := range oldEmbeddings {
-		embBytes := float64SliceToBytes(emb)
-		_, err := stmt.Exec(id, embBytes)
-		if err != nil {
-			fmt.Printf("[data] Failed to migrate embedding %s: %v\n", id, err)
-			continue
-		}
-		embMigrated++
-
-		if embMigrated%1000 == 0 {
-			fmt.Printf("[data] Migrated %d embeddings...\n", embMigrated)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit embeddings migration: %w", err)
-	}
-
-	fmt.Printf("[data] Migrated %d embeddings\n", embMigrated)
+	rebuildFTS()
 	fmt.Println("[data] Migration complete!")
 
-	return nil
-}
-
-// migrateEmbeddings migrates only embeddings (when index already exists)
-func migrateEmbeddings() error {
-	db, err := getDB()
-	if err != nil {
-		return err
-	}
-
-	b, err := LoadFile("embeddings.json")
-	if err != nil {
-		fmt.Println("[data] No embeddings.json to migrate")
-		return nil
-	}
-
-	var oldEmbeddings map[string][]float64
-	if err := json.Unmarshal(b, &oldEmbeddings); err != nil {
-		return fmt.Errorf("failed to parse embeddings.json: %w", err)
-	}
-
-	fmt.Printf("[data] Migrating %d embeddings...\n", len(oldEmbeddings))
-
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-
-	stmt, err := tx.Prepare(`INSERT OR REPLACE INTO embeddings (id, embedding) VALUES (?, ?)`)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	defer stmt.Close()
-
-	embMigrated := 0
-	for id, emb := range oldEmbeddings {
-		embBytes := float64SliceToBytes(emb)
-		_, err := stmt.Exec(id, embBytes)
-		if err != nil {
-			fmt.Printf("[data] Failed to migrate embedding %s: %v\n", id, err)
-			continue
-		}
-		embMigrated++
-
-		if embMigrated%1000 == 0 {
-			fmt.Printf("[data] Migrated %d embeddings...\n", embMigrated)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit embeddings migration: %w", err)
-	}
-
-	fmt.Printf("[data] Migrated %d embeddings\n", embMigrated)
 	return nil
 }
 
@@ -834,66 +562,36 @@ func GetIndexStats() (entries int, embeddingCount int, err error) {
 		return 0, 0, err
 	}
 
-	err = db.QueryRow(`SELECT COUNT(*) FROM embeddings`).Scan(&embeddingCount)
+	return entries, 0, nil
+}
+
+// rebuildFTS repopulates the FTS5 index from the index_entries table
+func rebuildFTS() {
+	db, err := getDB()
 	if err != nil {
-		return entries, 0, err
+		return
 	}
-
-	return entries, embeddingCount, nil
+	fmt.Println("[data] Rebuilding FTS index...")
+	db.Exec(`DELETE FROM index_fts`)
+	result, err := db.Exec(`INSERT INTO index_fts(rowid, title, content) SELECT rowid, title, content FROM index_entries`)
+	if err != nil {
+		fmt.Printf("[data] FTS rebuild error: %v\n", err)
+		return
+	}
+	count, _ := result.RowsAffected()
+	fmt.Printf("[data] FTS index rebuilt with %d entries\n", count)
 }
 
-// Helper functions for embedding byte conversion
-func float64SliceToBytes(f []float64) []byte {
-	b := make([]byte, len(f)*8)
-	for i, v := range f {
-		bits := math.Float64bits(v)
-		b[i*8] = byte(bits)
-		b[i*8+1] = byte(bits >> 8)
-		b[i*8+2] = byte(bits >> 16)
-		b[i*8+3] = byte(bits >> 24)
-		b[i*8+4] = byte(bits >> 32)
-		b[i*8+5] = byte(bits >> 40)
-		b[i*8+6] = byte(bits >> 48)
-		b[i*8+7] = byte(bits >> 56)
+// EnsureFTS checks if FTS index needs rebuilding on startup
+func EnsureFTS() {
+	db, err := getDB()
+	if err != nil {
+		return
 	}
-	return b
-}
-
-func bytesToFloat64Slice(b []byte) []float64 {
-	if len(b)%8 != 0 {
-		return nil
+	var ftsCount, entryCount int
+	db.QueryRow(`SELECT COUNT(*) FROM index_fts`).Scan(&ftsCount)
+	db.QueryRow(`SELECT COUNT(*) FROM index_entries`).Scan(&entryCount)
+	if entryCount > 0 && ftsCount == 0 {
+		rebuildFTS()
 	}
-	f := make([]float64, len(b)/8)
-	for i := range f {
-		bits := uint64(b[i*8]) |
-			uint64(b[i*8+1])<<8 |
-			uint64(b[i*8+2])<<16 |
-			uint64(b[i*8+3])<<24 |
-			uint64(b[i*8+4])<<32 |
-			uint64(b[i*8+5])<<40 |
-			uint64(b[i*8+6])<<48 |
-			uint64(b[i*8+7])<<56
-		f[i] = math.Float64frombits(bits)
-	}
-	return f
-}
-
-// cosineSimilarity calculates cosine similarity between two vectors
-func cosineSimilaritySQLite(a, b []float64) float64 {
-	if len(a) != len(b) {
-		return 0.0
-	}
-
-	var dotProduct, normA, normB float64
-	for i := range a {
-		dotProduct += a[i] * b[i]
-		normA += a[i] * a[i]
-		normB += b[i] * b[i]
-	}
-
-	if normA == 0 || normB == 0 {
-		return 0.0
-	}
-
-	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }

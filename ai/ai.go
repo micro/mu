@@ -1,5 +1,4 @@
-// Package ai provides LLM integration for the Mu platform.
-// It supports multiple providers: Anthropic Claude, Fanar, and Ollama.
+// Package ai provides LLM integration for the Mu platform via Anthropic Claude.
 package ai
 
 import (
@@ -29,8 +28,6 @@ type History []Message
 const (
 	ProviderDefault   = ""          // Use configured default
 	ProviderAnthropic = "anthropic" // Force Anthropic Claude
-	ProviderFanar     = "fanar"     // Force Fanar
-	ProviderOllama    = "ollama"    // Force Ollama
 )
 
 // Prompt represents a request to the LLM

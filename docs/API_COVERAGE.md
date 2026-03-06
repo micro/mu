@@ -52,7 +52,7 @@ This document covers the REST API for programmatic access to Mu.
 - ✅ **Update Status** - `POST /@{username}` (status field)
 
 ### Search
-- ✅ **Vector Search** - Available via `/search?q={query}` (existing functionality)
+- ✅ **Full-text Search** - Available via `/search?q={query}` (existing functionality)
 
 ## 📝 Features Available via Web Only (Not JSON API)
 
@@ -168,7 +168,7 @@ All API endpoints support three authentication methods:
 ### Search
 | Endpoint | Method | Auth Required | Description |
 |----------|--------|---------------|-------------|
-| `/search?q={query}` | GET | No | Vector search across all content |
+| `/search?q={query}` | GET | No | Full-text search across all content |
 
 ### MCP (Model Context Protocol)
 | Endpoint | Method | Auth Required | Description |
@@ -244,7 +244,7 @@ This documentation is automatically generated from the endpoint definitions in `
 - ✅ Videos (read + search)
 - ✅ Places (search + nearby)
 - ✅ User profiles
-- ✅ Vector search
+- ✅ Full-text search
 - ✅ PAT token management
 - ✅ Authentication
 - ✅ MCP server (AI tool integration)

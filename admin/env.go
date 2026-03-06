@@ -17,14 +17,9 @@ var knownEnvVars = []string{
 	"MU_DOMAIN",
 	"MU_USE_SQLITE",
 	"DATA_DIR",
-	// LLM providers
+	// LLM
 	"ANTHROPIC_API_KEY",
 	"ANTHROPIC_MODEL",
-	"FANAR_API_KEY",
-	"FANAR_API_URL",
-	"OLLAMA_API_URL",
-	"MODEL_API_URL",
-	"MODEL_NAME",
 	// Search
 	"BRAVE_API_KEY",
 	// External APIs

@@ -140,59 +140,22 @@ export YOUTUBE_API_KEY=xxx
 
 #### Chat Model
 
-**Ollama (Default)**
-
-By default, Mu uses [Ollama](https://ollama.ai/) for LLM queries. Install and run Ollama locally:
-
-```
-# Install Ollama from https://ollama.ai/
-# Pull a model (e.g., llama3.2)
-ollama pull llama3.2
-
-# Ollama runs on http://localhost:11434 by default
-```
-
-Optional environment variables:
-```
-export MODEL_NAME=llama3.2              # Default model
-export MODEL_API_URL=http://localhost:11434  # Ollama API URL
-```
-
-**Fanar (Optional)**
-
-Alternatively, use [Fanar](https://fanar.qa/) by setting the API key:
-
-```
-export FANAR_API_KEY=xxx
-export FANAR_API_URL=https://api.fanar.qa  # Optional, this is the default
-```
-
-When `FANAR_API_KEY` is set, Mu will use Fanar instead of Ollama.
-
-**Note:** Fanar has a rate limit of 10 requests per minute. Mu enforces this limit automatically.
-
-**Anthropic Claude (Optional)**
-
-You can also use Anthropic's Claude API:
+Mu uses Anthropic Claude for all AI features:
 
 ```
 export ANTHROPIC_API_KEY=xxx
-export ANTHROPIC_MODEL=claude-haiku-4.5-20250311  # Optional, this is the default
+export ANTHROPIC_MODEL=claude-sonnet-4-20250514  # Optional, this is the default
 ```
-
-Priority order: Anthropic > Fanar > Ollama
-
-For vector search see this [doc](docs/VECTOR_SEARCH.md)
 
 ### Data Storage
 
-By default, Mu stores search index and embeddings in JSON files loaded into memory. For production use with large datasets, enable SQLite storage to reduce memory usage:
+By default, Mu stores the search index in JSON files loaded into memory. For production use, enable SQLite with FTS5 full-text search:
 
 ```
 export MU_USE_SQLITE=1
 ```
 
-This stores the search index and embeddings in SQLite (`~/.mu/data/index.db`) instead of RAM. Migration from JSON happens automatically on first startup.
+This stores the search index in SQLite (`~/.mu/data/index.db`) with FTS5 for fast full-text search. Migration from JSON happens automatically on first startup.
 
 ### Run
 
@@ -221,7 +184,6 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 - [Wallet & Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
 **Reference**
 - [Configuration](docs/ENVIRONMENT_VARIABLES.md) - All environment variables
-- [Vector Search](docs/VECTOR_SEARCH.md) - Semantic search setup
 - [API Reference](docs/API_COVERAGE.md) - REST API endpoints
 - [MCP Server](docs/MCP.md) - AI tool integration via MCP
 - [Screenshots](docs/SCREENSHOTS.md) - Application screenshots

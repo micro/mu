@@ -20,11 +20,6 @@ var (
 	llmSemaphore = semaphore.NewWeighted(5)
 	llmTimeout   = 60 * time.Second
 
-	// Rate limiter for Fanar API
-	fanarRateMu     sync.Mutex
-	fanarLastMinute []time.Time
-	fanarMaxPerMin  = 35
-
 	// Anthropic cache stats
 	cacheStatsMu        sync.Mutex
 	cacheHits           int
@@ -62,169 +57,20 @@ func generate(prompt *Prompt) (string, error) {
 
 	messages = append(messages, map[string]string{"role": "user", "content": prompt.Question})
 
-	// Check for forced provider
-	if prompt.Provider == ProviderAnthropic {
-		if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-			model := prompt.Model
-			if model == "" {
-				model = os.Getenv("ANTHROPIC_MODEL")
-			}
-			if model == "" {
-				model = "claude-sonnet-4-20250514"
-			}
-			return generateAnthropic(key, model, systemPromptText, messages)
-		}
-		return "", fmt.Errorf("anthropic provider requested but ANTHROPIC_API_KEY not set")
+	key := os.Getenv("ANTHROPIC_API_KEY")
+	if key == "" {
+		return "", fmt.Errorf("ANTHROPIC_API_KEY not set")
 	}
 
-	if prompt.Provider == ProviderFanar {
-		if key := os.Getenv("FANAR_API_KEY"); key != "" {
-			url := os.Getenv("FANAR_API_URL")
-			if url == "" {
-				url = "https://api.fanar.qa"
-			}
-			return generateFanar(url, key, messages, prompt.Priority)
-		}
-		return "", fmt.Errorf("fanar provider requested but FANAR_API_KEY not set")
-	}
-
-	if prompt.Provider == ProviderOllama {
-		model := os.Getenv("MODEL_NAME")
-		if model == "" {
-			model = "llama3.2"
-		}
-		url := os.Getenv("MODEL_API_URL")
-		if url == "" {
-			url = "http://localhost:11434"
-		}
-		return generateOllama(url, model, messages)
-	}
-
-	// Default provider priority: Anthropic > Fanar > Ollama
-	// (Anthropic first for quality, Fanar as fallback for Arabic/cultural content)
-	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-		model := os.Getenv("ANTHROPIC_MODEL")
-		if model == "" {
-			model = "claude-sonnet-4-20250514"
-		}
-		return generateAnthropic(key, model, systemPromptText, messages)
-	}
-
-	if key := os.Getenv("FANAR_API_KEY"); key != "" {
-		url := os.Getenv("FANAR_API_URL")
-		if url == "" {
-			url = "https://api.fanar.qa"
-		}
-		return generateFanar(url, key, messages, prompt.Priority)
-	}
-
-	// Default to Ollama
-	model := os.Getenv("MODEL_NAME")
+	model := prompt.Model
 	if model == "" {
-		model = "llama3.2"
+		model = os.Getenv("ANTHROPIC_MODEL")
 	}
-	url := os.Getenv("MODEL_API_URL")
-	if url == "" {
-		url = "http://localhost:11434"
-	}
-	return generateOllama(url, model, messages)
-}
-
-func generateOllama(apiURL, model string, messages []map[string]string) (string, error) {
-	app.Log("ai", "[LLM] Using Ollama at %s with model %s", apiURL, model)
-
-	req := map[string]interface{}{
-		"model":    model,
-		"messages": messages,
-		"stream":   false,
+	if model == "" {
+		model = "claude-sonnet-4-20250514"
 	}
 
-	body, _ := json.Marshal(req)
-	httpReq, _ := http.NewRequest("POST", apiURL+"/api/chat", bytes.NewReader(body))
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: llmTimeout}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return "", fmt.Errorf("failed to connect to Ollama: %v", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-
-	var result struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-		Error string `json:"error"`
-	}
-	json.Unmarshal(respBody, &result)
-
-	if result.Error != "" {
-		return "", fmt.Errorf("ollama error: %s", result.Error)
-	}
-	return result.Message.Content, nil
-}
-
-func generateFanar(apiURL, apiKey string, messages []map[string]string, priority int) (string, error) {
-	if !checkFanarRateLimit(priority) {
-		maxWait := 3
-		if priority == PriorityHigh {
-			maxWait = 15
-		} else if priority == PriorityMedium {
-			maxWait = 8
-		}
-
-		app.Log("ai", "[LLM] Fanar rate limit reached (priority %d), waiting...", priority)
-		for i := 0; i < maxWait; i++ {
-			time.Sleep(time.Second)
-			if checkFanarRateLimit(priority) {
-				break
-			}
-			if i == maxWait-1 {
-				return "", fmt.Errorf("fanar rate limit exceeded")
-			}
-		}
-	}
-
-	app.Log("ai", "[LLM] Using Fanar at %s", apiURL)
-
-	req := map[string]interface{}{
-		"model":    "Fanar",
-		"messages": messages,
-	}
-	body, _ := json.Marshal(req)
-
-	httpReq, _ := http.NewRequest("POST", apiURL+"/v1/chat/completions", bytes.NewReader(body))
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
-
-	client := &http.Client{Timeout: llmTimeout}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return "", fmt.Errorf("fanar API request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-
-	var result struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-		Error interface{} `json:"error"`
-	}
-	json.Unmarshal(respBody, &result)
-
-	if result.Error != nil {
-		return "", fmt.Errorf("%v", result.Error)
-	}
-	if len(result.Choices) > 0 {
-		return result.Choices[0].Message.Content, nil
-	}
-	return "", nil
+	return generateAnthropic(key, model, systemPromptText, messages)
 }
 
 func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string]string) (string, error) {
@@ -319,55 +165,6 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 		}
 	}
 	return content, nil
-}
-
-func checkFanarRateLimit(priority int) bool {
-	fanarRateMu.Lock()
-	defer fanarRateMu.Unlock()
-
-	now := time.Now()
-	cutoff := now.Add(-time.Minute)
-
-	var recent []time.Time
-	for _, t := range fanarLastMinute {
-		if t.After(cutoff) {
-			recent = append(recent, t)
-		}
-	}
-	fanarLastMinute = recent
-
-	var maxForPriority int
-	switch priority {
-	case PriorityHigh:
-		maxForPriority = fanarMaxPerMin
-	case PriorityMedium:
-		maxForPriority = 25
-	default:
-		maxForPriority = 15
-	}
-
-	if len(fanarLastMinute) >= maxForPriority {
-		return false
-	}
-
-	fanarLastMinute = append(fanarLastMinute, now)
-	return true
-}
-
-// GetFanarRateStatus returns current rate limit status
-func GetFanarRateStatus() (used, max int) {
-	fanarRateMu.Lock()
-	defer fanarRateMu.Unlock()
-
-	now := time.Now()
-	cutoff := now.Add(-time.Minute)
-	count := 0
-	for _, t := range fanarLastMinute {
-		if t.After(cutoff) {
-			count++
-		}
-	}
-	return count, fanarMaxPerMin
 }
 
 // GetCacheStats returns Anthropic prompt cache statistics
