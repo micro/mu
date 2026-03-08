@@ -348,6 +348,19 @@ func (s *Session) Data(r io.Reader) error {
 	inReplyTo := msg.Header.Get("In-Reply-To")
 	references := msg.Header.Get("References")
 
+	// Capture raw headers for View Raw display
+	var rawHeaders strings.Builder
+	// Add a Received header with our server info
+	rawHeaders.WriteString(fmt.Sprintf("Received: from %s (%s)\r\n        by %s with SMTP; %s\r\n",
+		s.remoteIP, s.remoteIP, GetConfiguredDomain(), time.Now().UTC().Format(time.RFC1123Z)))
+	// Preserve all original headers
+	for key, vals := range msg.Header {
+		for _, v := range vals {
+			rawHeaders.WriteString(fmt.Sprintf("%s: %s\r\n", key, v))
+		}
+	}
+	rawHeaderStr := rawHeaders.String()
+
 	// Parse sender email
 	fromAddr, err := mail.ParseAddress(from)
 	if err != nil {
@@ -528,6 +541,8 @@ func (s *Session) Data(r io.Reader) error {
 			spamResult.IsSpam,
 			spamResult.Score,
 			spamResult.Reasons,
+			s.remoteIP,
+			rawHeaderStr,
 		); err != nil {
 			app.Log("mail", "Error saving message: %v", err)
 			continue
