@@ -236,11 +236,6 @@ func CheckSpam(from, subject, body, ip string) SpamResult {
 	return result
 }
 
-// stripHTMLTags removes HTML tags for text length estimation
-func stripHTMLTags(s string) string {
-	re := regexp.MustCompile(`<[^>]*>`)
-	return re.ReplaceAllString(s, "")
-}
 
 // --- Public API for admin management ---
 
