@@ -209,6 +209,7 @@ func main() {
 		"/admin/users":     true,
 		"/admin/moderate":  true,
 		"/admin/blocklist": true,
+		"/admin/spam":      true,
 		"/admin/email":     true,
 		"/admin/api":       true,
 		"/admin/log":       true,
@@ -272,6 +273,9 @@ func main() {
 
 	// mail blocklist management
 	http.HandleFunc("/admin/blocklist", admin.BlocklistHandler)
+
+	// spam filter management
+	http.HandleFunc("/admin/spam", admin.SpamFilterHandler)
 
 	// email log
 	http.HandleFunc("/admin/email", admin.EmailLogHandler)

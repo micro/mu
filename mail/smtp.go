@@ -498,7 +498,25 @@ func (s *Session) Data(r io.Reader) error {
 			app.Log("mail", "⚠ Failed to thread message - will appear as new conversation")
 		}
 
-		if err := SendMessage(
+		// Run spam detection on inbound external mail
+		spamResult := CheckSpam(fromAddr.Address, subject, body, s.remoteIP)
+		if spamResult.IsSpam {
+			app.Log("mail", "Spam detected (score=%d) from %s: %v", spamResult.Score, fromAddr.Address, spamResult.Reasons)
+
+			// Auto-block the sender domain if enabled
+			sf := GetSpamFilter()
+			if sf.AutoBlockDomains {
+				if parts := strings.SplitN(fromAddr.Address, "@", 2); len(parts) == 2 {
+					_ = BlockEmail("*@" + parts[1])
+				}
+			}
+
+			if sf.RejectSpam {
+				// Still save with spam flag so user can review in filtered tab
+			}
+		}
+
+		if err := SendMessageTagged(
 			senderName,
 			fromAddr.Address, // Use email as sender ID
 			toAcc.Name,
@@ -507,6 +525,9 @@ func (s *Session) Data(r io.Reader) error {
 			body,
 			replyToID,
 			messageID,
+			spamResult.IsSpam,
+			spamResult.Score,
+			spamResult.Reasons,
 		); err != nil {
 			app.Log("mail", "Error saving message: %v", err)
 			continue
