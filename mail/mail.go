@@ -56,8 +56,11 @@ type Message struct {
 	Read      bool      `json:"read"`
 	ReplyTo   string    `json:"reply_to"`   // ID of message this is replying to
 	ThreadID  string    `json:"thread_id"`  // Root message ID for O(1) thread grouping
-	MessageID string    `json:"message_id"` // Email Message-ID header for threading
-	CreatedAt time.Time `json:"created_at"`
+	MessageID   string    `json:"message_id"`             // Email Message-ID header for threading
+	Spam        bool      `json:"spam,omitempty"`          // Whether this message was flagged as spam
+	SpamScore   int       `json:"spam_score,omitempty"`    // Spam detection score
+	SpamReasons []string  `json:"spam_reasons,omitempty"`  // Why it was flagged
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // Load messages from disk
@@ -87,6 +90,9 @@ func Load() {
 
 	// Load blocklist
 	loadBlocklist()
+
+	// Load spam filter
+	loadSpamFilter()
 
 	// Try to load DKIM config if keys exist (optional)
 	dkimDomain := os.Getenv("MAIL_DOMAIN")
@@ -172,6 +178,11 @@ func rebuildInboxes() {
 	inboxes = make(map[string]*Inbox)
 
 	for _, msg := range messages {
+		// Skip spam messages from normal inbox
+		if msg.Spam {
+			continue
+		}
+
 		// Add to sender's inbox (sent messages)
 		if msg.FromID != "" {
 			if inboxes[msg.FromID] == nil {
@@ -262,6 +273,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle POST - send message or delete
 	if r.Method == "POST" {
+		// Handle spam filter actions
+		if r.URL.Query().Get("view") == "filtered" {
+			if err := r.ParseForm(); err == nil {
+				action := r.FormValue("action")
+				msgID := r.FormValue("msg_id")
+				switch action {
+				case "not_spam":
+					if err := NotSpamMessage(acc.ID, msgID); err != nil {
+						app.Log("mail", "Error marking not-spam: %v", err)
+					}
+				case "delete_spam":
+					if err := DeleteSpamMessage(acc.ID, msgID); err != nil {
+						app.Log("mail", "Error deleting spam: %v", err)
+					}
+				}
+			}
+			http.Redirect(w, r, "/mail?view=filtered", http.StatusSeeOther)
+			return
+		}
+
 		// JSON body for API/MCP callers (mail_send tool)
 		if app.SendsJSON(r) {
 			var req struct {
@@ -1030,7 +1061,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check which view to show (inbox or sent)
+	// Check which view to show (inbox, sent, or filtered)
 	view := r.URL.Query().Get("view")
 	if view == "" {
 		view = "inbox"
@@ -1122,6 +1153,52 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				items = append(items, renderThreadPreview(thread.Root.ID, thread.Latest, acc.ID, thread.HasUnread))
 			}
 		}
+	} else if view == "filtered" {
+		// Filtered view - show spam messages
+		spamMsgs := GetSpamMessages(acc.ID)
+		for _, msg := range spamMsgs {
+			reasons := ""
+			if len(msg.SpamReasons) > 0 {
+				reasons = strings.Join(msg.SpamReasons, ", ")
+			}
+			preview := html.EscapeString(msg.Subject)
+			if preview == "" {
+				preview = "(no subject)"
+			}
+			fromDisplay := html.EscapeString(msg.From)
+			if fromDisplay == "" {
+				fromDisplay = html.EscapeString(msg.FromID)
+			}
+			items = append(items, fmt.Sprintf(
+				`<div class="mail-item spam-item">
+					<div class="mail-item-header">
+						<span class="mail-from">%s</span>
+						<span class="mail-date">%s</span>
+					</div>
+					<div class="mail-subject">%s</div>
+					<div class="spam-info text-muted text-sm">Score: %d — %s</div>
+					<div class="spam-actions">
+						<form method="POST" action="/mail?view=filtered" class="d-inline">
+							<input type="hidden" name="action" value="not_spam">
+							<input type="hidden" name="msg_id" value="%s">
+							<button type="submit" class="btn-sm">Not Spam</button>
+						</form>
+						<form method="POST" action="/mail?view=filtered" class="d-inline">
+							<input type="hidden" name="action" value="delete_spam">
+							<input type="hidden" name="msg_id" value="%s">
+							<button type="submit" class="btn-sm btn-danger">Delete</button>
+						</form>
+					</div>
+				</div>`,
+				fromDisplay,
+				msg.CreatedAt.Format("Jan 2 15:04"),
+				preview,
+				msg.SpamScore,
+				html.EscapeString(reasons),
+				msg.ID,
+				msg.ID,
+			))
+		}
 	} else {
 		// Sent view - show threads where user has sent at least one message
 		threads := make([]*Thread, 0)
@@ -1153,6 +1230,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if len(items) == 0 {
 		if view == "sent" {
 			content = `<p class="text-muted p-5">No sent messages yet.</p>`
+		} else if view == "filtered" {
+			content = `<p class="text-muted p-5">No filtered messages.</p>`
 		} else {
 			content = `<p class="text-muted p-5">No messages yet.</p>`
 		}
@@ -1163,6 +1242,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	title := "Mail"
 	if view == "sent" {
 		title = "Sent Mail"
+	} else if view == "filtered" {
+		title = "Filtered Mail"
 	} else if unreadCount > 0 {
 		title = fmt.Sprintf("Mail (%d new)", unreadCount)
 	}
@@ -1170,16 +1251,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Build tab navigation
 	inboxClass := "mail-tab active"
 	sentClass := "mail-tab"
+	filteredClass := "mail-tab"
 	if view == "sent" {
 		inboxClass = "mail-tab"
 		sentClass = "mail-tab active"
+	} else if view == "filtered" {
+		inboxClass = "mail-tab"
+		filteredClass = "mail-tab active"
 	}
 	inboxLabel := "Inbox"
 	if unreadCount > 0 {
 		inboxLabel = fmt.Sprintf("Inbox (%d)", unreadCount)
 	}
-	tabs := fmt.Sprintf(`<div class="mail-tabs"><a href="/mail" class="%s">%s</a><a href="/mail?view=sent" class="%s">Sent</a></div>`,
-		inboxClass, inboxLabel, sentClass)
+	spamMsgs := GetSpamMessages(acc.ID)
+	filteredLabel := "Filtered"
+	if len(spamMsgs) > 0 {
+		filteredLabel = fmt.Sprintf("Filtered (%d)", len(spamMsgs))
+	}
+	tabs := fmt.Sprintf(`<div class="mail-tabs"><a href="/mail" class="%s">%s</a><a href="/mail?view=sent" class="%s">Sent</a><a href="/mail?view=filtered" class="%s">%s</a></div>`,
+		inboxClass, inboxLabel, sentClass, filteredClass, filteredLabel)
 
 	pageHTML := app.Page(app.PageOpts{
 		Action:  "/mail?compose=true",
@@ -1231,6 +1321,51 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 	return err
 }
 
+// SendMessageTagged creates a message with optional spam metadata
+func SendMessageTagged(from, fromID, to, toID, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string) error {
+	msg := &Message{
+		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
+		From:        from,
+		FromID:      fromID,
+		To:          to,
+		ToID:        toID,
+		Subject:     subject,
+		Body:        body,
+		Read:        false,
+		ReplyTo:     replyTo,
+		MessageID:   messageID,
+		Spam:        spam,
+		SpamScore:   spamScore,
+		SpamReasons: spamReasons,
+		CreatedAt:   time.Now(),
+	}
+
+	// Compute ThreadID
+	mutex.Lock()
+	if replyTo != "" {
+		parent := GetMessageUnlocked(replyTo)
+		if parent != nil {
+			msg.ThreadID = computeThreadID(parent)
+		} else {
+			msg.ThreadID = msg.ID
+		}
+	} else {
+		msg.ThreadID = msg.ID
+	}
+
+	messages = append([]*Message{msg}, messages...)
+	rebuildInboxes()
+	err := save()
+	mutex.Unlock()
+
+	// Update stats (outside lock) — only for non-spam
+	if !spam {
+		updateStats(msg)
+	}
+
+	return err
+}
+
 // GetUnreadCount returns the number of unread messages for a user
 func GetUnreadCount(userID string) int {
 	mutex.RLock()
@@ -1240,6 +1375,51 @@ func GetUnreadCount(userID string) int {
 		return inbox.UnreadCount
 	}
 	return 0
+}
+
+// GetSpamMessages returns spam-flagged messages for a user
+func GetSpamMessages(userID string) []*Message {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var spam []*Message
+	for _, msg := range messages {
+		if msg.Spam && msg.ToID == userID {
+			spam = append(spam, msg)
+		}
+	}
+	return spam
+}
+
+// DeleteSpamMessage permanently removes a spam message
+func DeleteSpamMessage(userID, msgID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for i, msg := range messages {
+		if msg.ID == msgID && msg.ToID == userID && msg.Spam {
+			messages = append(messages[:i], messages[i+1:]...)
+			return save()
+		}
+	}
+	return fmt.Errorf("spam message not found")
+}
+
+// NotSpamMessage marks a message as not-spam and moves it to the inbox
+func NotSpamMessage(userID, msgID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for _, msg := range messages {
+		if msg.ID == msgID && msg.ToID == userID && msg.Spam {
+			msg.Spam = false
+			msg.SpamScore = 0
+			msg.SpamReasons = nil
+			rebuildInboxes()
+			return save()
+		}
+	}
+	return fmt.Errorf("spam message not found")
 }
 
 // GetRecentThreadsPreview returns HTML preview of recent threads for account page

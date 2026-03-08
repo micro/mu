@@ -26,6 +26,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 		<a href="/admin/moderate">Moderation Queue</a>
 		<a href="/admin/blocklist">Mail Blocklist</a>
+		<a href="/admin/spam">Spam Filter</a>
 		<a href="/admin/email">Email Log</a>
 		<a href="/admin/api">API Log</a>
 		<a href="/admin/log">System Log</a>
@@ -303,6 +304,218 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 
 	html := app.RenderHTMLForRequest("Admin", "Mail Blocklist", content, r)
 	w.Write([]byte(html))
+}
+
+// SpamFilterHandler shows and manages the spam filter settings
+func SpamFilterHandler(w http.ResponseWriter, r *http.Request) {
+	_, _, err := auth.RequireAdmin(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if r.Method == "POST" {
+		if err := r.ParseForm(); err != nil {
+			app.BadRequest(w, r, "Failed to parse form")
+			return
+		}
+
+		action := r.FormValue("action")
+		value := r.FormValue("value")
+
+		switch action {
+		case "toggle":
+			sf := mail.GetSpamFilter()
+			mail.SetSpamFilterEnabled(!sf.Enabled) //nolint:errcheck
+		case "set_threshold":
+			t := 5
+			fmt.Sscanf(value, "%d", &t)
+			mail.SetSpamThreshold(t) //nolint:errcheck
+		case "toggle_reject":
+			sf := mail.GetSpamFilter()
+			mail.SetRejectSpam(!sf.RejectSpam) //nolint:errcheck
+		case "toggle_autoblock":
+			sf := mail.GetSpamFilter()
+			mail.SetAutoBlockDomains(!sf.AutoBlockDomains) //nolint:errcheck
+		case "add_tld":
+			if value != "" {
+				mail.AddBlockedTLD(value) //nolint:errcheck
+			}
+		case "remove_tld":
+			if value != "" {
+				mail.RemoveBlockedTLD(value) //nolint:errcheck
+			}
+		case "add_keyword":
+			if value != "" {
+				mail.AddBlockedKeyword(value) //nolint:errcheck
+			}
+		case "remove_keyword":
+			if value != "" {
+				mail.RemoveBlockedKeyword(value) //nolint:errcheck
+			}
+		case "add_allowed":
+			if value != "" {
+				mail.AddAllowedSender(value) //nolint:errcheck
+			}
+		case "remove_allowed":
+			if value != "" {
+				mail.RemoveAllowedSender(value) //nolint:errcheck
+			}
+		}
+
+		http.Redirect(w, r, "/admin/spam", http.StatusSeeOther)
+		return
+	}
+
+	sf := mail.GetSpamFilter()
+
+	enabledStatus := "Disabled"
+	enabledBtn := "Enable"
+	if sf.Enabled {
+		enabledStatus = "Enabled"
+		enabledBtn = "Disable"
+	}
+
+	rejectStatus := "Drop silently"
+	rejectBtn := "Switch to reject"
+	if sf.RejectSpam {
+		rejectStatus = "Save to filtered folder"
+		rejectBtn = "Switch to silent drop"
+	}
+
+	autoBlockStatus := "Off"
+	autoBlockBtn := "Enable"
+	if sf.AutoBlockDomains {
+		autoBlockStatus = "On"
+		autoBlockBtn = "Disable"
+	}
+
+	content := fmt.Sprintf(`<h2>Spam Filter</h2>
+
+	<div class="spam-settings">
+		<h3>Settings</h3>
+		<table class="blacklist-table">
+			<tr>
+				<td><strong>Filter Status</strong></td>
+				<td>%s</td>
+				<td>
+					<form method="POST" class="d-inline">
+						<input type="hidden" name="action" value="toggle">
+						<button type="submit">%s</button>
+					</form>
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Spam Handling</strong></td>
+				<td>%s</td>
+				<td>
+					<form method="POST" class="d-inline">
+						<input type="hidden" name="action" value="toggle_reject">
+						<button type="submit">%s</button>
+					</form>
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Auto-block spam domains</strong></td>
+				<td>%s</td>
+				<td>
+					<form method="POST" class="d-inline">
+						<input type="hidden" name="action" value="toggle_autoblock">
+						<button type="submit">%s</button>
+					</form>
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Score Threshold</strong></td>
+				<td>%d</td>
+				<td>
+					<form method="POST" class="d-inline">
+						<input type="hidden" name="action" value="set_threshold">
+						<input type="number" name="value" value="%d" min="1" max="100" style="width:60px">
+						<button type="submit">Set</button>
+					</form>
+				</td>
+			</tr>
+		</table>
+	</div>`, enabledStatus, enabledBtn, rejectStatus, rejectBtn,
+		autoBlockStatus, autoBlockBtn, sf.Threshold, sf.Threshold)
+
+	// Blocked TLDs
+	content += `<div class="spam-section mt-4">
+		<h3>Blocked TLDs (` + fmt.Sprintf("%d", len(sf.BlockedTLDs)) + `)</h3>
+		<form method="POST" class="block-form">
+			<input type="hidden" name="action" value="add_tld">
+			<input type="text" name="value" placeholder=".vn, .xyz, .top" required>
+			<button type="submit">Block TLD</button>
+		</form>`
+
+	if len(sf.BlockedTLDs) > 0 {
+		content += `<table class="blacklist-table"><tbody>`
+		for _, tld := range sf.BlockedTLDs {
+			content += fmt.Sprintf(`<tr><td><code>%s</code></td><td class="text-center">
+				<form method="POST" class="d-inline">
+					<input type="hidden" name="action" value="remove_tld">
+					<input type="hidden" name="value" value="%s">
+					<button type="submit" class="btn-success">Remove</button>
+				</form></td></tr>`, tld, tld)
+		}
+		content += `</tbody></table>`
+	}
+	content += `</div>`
+
+	// Blocked keywords
+	content += `<div class="spam-section mt-4">
+		<h3>Blocked Keywords (` + fmt.Sprintf("%d", len(sf.BlockedKeywords)) + `)</h3>
+		<form method="POST" class="block-form">
+			<input type="hidden" name="action" value="add_keyword">
+			<input type="text" name="value" placeholder="keyword or phrase" required>
+			<button type="submit">Block Keyword</button>
+		</form>`
+
+	if len(sf.BlockedKeywords) > 0 {
+		content += `<table class="blacklist-table"><tbody>`
+		for _, kw := range sf.BlockedKeywords {
+			content += fmt.Sprintf(`<tr><td><code>%s</code></td><td class="text-center">
+				<form method="POST" class="d-inline">
+					<input type="hidden" name="action" value="remove_keyword">
+					<input type="hidden" name="value" value="%s">
+					<button type="submit" class="btn-success">Remove</button>
+				</form></td></tr>`, kw, kw)
+		}
+		content += `</tbody></table>`
+	}
+	content += `</div>`
+
+	// Allowed senders
+	content += `<div class="spam-section mt-4">
+		<h3>Allowed Senders (` + fmt.Sprintf("%d", len(sf.AllowedSenders)) + `)</h3>
+		<p class="text-sm text-muted">These senders bypass spam checks. Use @domain.com for entire domains.</p>
+		<form method="POST" class="block-form">
+			<input type="hidden" name="action" value="add_allowed">
+			<input type="text" name="value" placeholder="user@example.com or @domain.com" required>
+			<button type="submit">Allow Sender</button>
+		</form>`
+
+	if len(sf.AllowedSenders) > 0 {
+		content += `<table class="blacklist-table"><tbody>`
+		for _, s := range sf.AllowedSenders {
+			content += fmt.Sprintf(`<tr><td><code>%s</code></td><td class="text-center">
+				<form method="POST" class="d-inline">
+					<input type="hidden" name="action" value="remove_allowed">
+					<input type="hidden" name="value" value="%s">
+					<button type="submit" class="btn-success">Remove</button>
+				</form></td></tr>`, s, s)
+		}
+		content += `</tbody></table>`
+	}
+	content += `</div>`
+
+	content += `<div class="mt-6">
+		<p><a href="/admin">← Back to Admin</a></p>
+	</div>`
+
+	htmlPage := app.RenderHTMLForRequest("Admin", "Spam Filter", content, r)
+	w.Write([]byte(htmlPage))
 }
 
 // Helper functions to access mail package functions
