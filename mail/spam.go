@@ -100,8 +100,9 @@ func saveSpamFilter() error {
 }
 
 // CheckSpam evaluates an inbound message for spam signals.
+// spfPass/dkimPass indicate whether SPF/DKIM verification succeeded.
 // Returns a SpamResult with score and reasons.
-func CheckSpam(from, subject, body, ip string) SpamResult {
+func CheckSpam(from, subject, body, ip string, spfPass, dkimPass bool) SpamResult {
 	spamMutex.RLock()
 	defer spamMutex.RUnlock()
 
@@ -147,6 +148,18 @@ func CheckSpam(from, subject, body, ip string) SpamResult {
 				result.Reasons = append(result.Reasons, fmt.Sprintf("blocked TLD: %s", tld))
 			}
 		}
+	}
+
+	// SPF check
+	if !spfPass {
+		result.Score += 3
+		result.Reasons = append(result.Reasons, "SPF verification failed")
+	}
+
+	// DKIM check
+	if !dkimPass {
+		result.Score += 3
+		result.Reasons = append(result.Reasons, "DKIM verification failed")
 	}
 
 	// Reverse DNS mismatch — no PTR record for sending IP
