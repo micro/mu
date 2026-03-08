@@ -60,6 +60,8 @@ type Message struct {
 	Spam        bool      `json:"spam,omitempty"`          // Whether this message was flagged as spam
 	SpamScore   int       `json:"spam_score,omitempty"`    // Spam detection score
 	SpamReasons []string  `json:"spam_reasons,omitempty"`  // Why it was flagged
+	SenderIP    string    `json:"sender_ip,omitempty"`     // IP address of sending server
+	RawHeaders  string    `json:"raw_headers,omitempty"`   // Original email headers for View Raw
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -514,8 +516,41 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte(fmt.Sprintf("From: %s\nTo: %s\nSubject: %s\nDate: %s\n\n%s",
-			msg.FromID, msg.ToID, msg.Subject, msg.CreatedAt.Format(time.RFC1123), msg.Body)))
+
+		var raw strings.Builder
+
+		// Show original email headers if available (external mail)
+		if msg.RawHeaders != "" {
+			raw.WriteString(msg.RawHeaders)
+			if !strings.HasSuffix(msg.RawHeaders, "\n") {
+				raw.WriteString("\n")
+			}
+		} else {
+			// Reconstruct minimal headers for internal messages
+			raw.WriteString(fmt.Sprintf("From: %s\n", msg.FromID))
+			raw.WriteString(fmt.Sprintf("To: %s\n", msg.ToID))
+			raw.WriteString(fmt.Sprintf("Subject: %s\n", msg.Subject))
+			raw.WriteString(fmt.Sprintf("Date: %s\n", msg.CreatedAt.Format(time.RFC1123)))
+			if msg.MessageID != "" {
+				raw.WriteString(fmt.Sprintf("Message-ID: %s\n", msg.MessageID))
+			}
+		}
+
+		// Always show sender IP if available
+		if msg.SenderIP != "" {
+			raw.WriteString(fmt.Sprintf("X-Sender-IP: %s\n", msg.SenderIP))
+		}
+
+		// Show spam info if flagged
+		if msg.Spam {
+			raw.WriteString(fmt.Sprintf("X-Spam-Score: %d\n", msg.SpamScore))
+			raw.WriteString(fmt.Sprintf("X-Spam-Reasons: %s\n", strings.Join(msg.SpamReasons, "; ")))
+		}
+
+		raw.WriteString("\n")
+		raw.WriteString(msg.Body)
+
+		w.Write([]byte(raw.String()))
 		return
 	}
 
@@ -1321,8 +1356,8 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 	return err
 }
 
-// SendMessageTagged creates a message with optional spam metadata
-func SendMessageTagged(from, fromID, to, toID, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string) error {
+// SendMessageTagged creates a message with optional spam and header metadata
+func SendMessageTagged(from, fromID, to, toID, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string, senderIP, rawHeaders string) error {
 	msg := &Message{
 		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
 		From:        from,
@@ -1337,6 +1372,8 @@ func SendMessageTagged(from, fromID, to, toID, subject, body, replyTo, messageID
 		Spam:        spam,
 		SpamScore:   spamScore,
 		SpamReasons: spamReasons,
+		SenderIP:    senderIP,
+		RawHeaders:  rawHeaders,
 		CreatedAt:   time.Now(),
 	}
 
