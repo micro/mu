@@ -49,6 +49,7 @@ type braveCacheEntry struct {
 }
 
 const braveCacheTTL = 5 * time.Minute
+const bravePreviewCacheTTL = 24 * time.Hour
 
 func init() {
 	braveCache.entries = make(map[string]braveCacheEntry)
@@ -56,9 +57,13 @@ func init() {
 
 // SearchBraveCached returns cached results if available, otherwise calls searchBrave.
 func SearchBraveCached(query string, limit int) ([]BraveResult, error) {
+	return searchBraveCachedWithTTL(query, limit, braveCacheTTL)
+}
+
+func searchBraveCachedWithTTL(query string, limit int, ttl time.Duration) ([]BraveResult, error) {
 	key := strings.ToLower(strings.TrimSpace(query))
 	braveCache.RLock()
-	if e, ok := braveCache.entries[key]; ok && time.Since(e.fetched) < braveCacheTTL {
+	if e, ok := braveCache.entries[key]; ok && time.Since(e.fetched) < ttl {
 		braveCache.RUnlock()
 		return e.results, nil
 	}
@@ -274,9 +279,9 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 
 // PreviewHandler returns cached Brave results as JSON for the landing page.
 // It uses a fixed "trending" query so the landing page can show web results
-// without requiring auth. Results are cached for 5 minutes.
+// without requiring auth. Results are cached for 24 hours.
 func PreviewHandler(w http.ResponseWriter, r *http.Request) {
-	results, err := SearchBraveCached("what are AI agents", 5)
+	results, err := searchBraveCachedWithTTL("what are AI agents", 5, bravePreviewCacheTTL)
 	if err != nil {
 		app.RespondJSON(w, map[string]interface{}{"results": []BraveResult{}})
 		return

@@ -21,6 +21,7 @@ import (
 	"mu/app"
 	"mu/auth"
 
+	"github.com/emersion/go-msgauth/dkim"
 	smtpd "github.com/emersion/go-smtp"
 )
 
@@ -106,6 +107,7 @@ type Session struct {
 	to          []string
 	remoteIP    string
 	isLocalhost bool // True if connecting from localhost (trusted internal client)
+	spfPass     bool // Whether SPF verification passed
 }
 
 // Mail is called when the MAIL FROM command is received
@@ -141,10 +143,9 @@ func (s *Session) Mail(from string, opts *smtpd.MailOptions) error {
 	}
 
 	// Verify SPF record for sender domain
-	if !verifySPF(from, s.remoteIP) {
+	s.spfPass = verifySPF(from, s.remoteIP)
+	if !s.spfPass {
 		app.Log("mail", "SPF verification failed for %s from IP %s", from, s.remoteIP)
-		// Log but don't reject - many legitimate servers have misconfigured SPF
-		// In production you might want to reject or flag these
 	}
 
 	return nil
@@ -333,6 +334,28 @@ func (s *Session) Data(r io.Reader) error {
 		return err
 	}
 
+	// Verify DKIM signature before parsing consumes the reader
+	dkimPass := false
+	if !s.isLocalhost {
+		verifications, err := dkim.Verify(bytes.NewReader(buf.Bytes()))
+		if err == nil && len(verifications) > 0 {
+			for _, v := range verifications {
+				if v.Err == nil {
+					dkimPass = true
+					app.Log("mail", "DKIM verification passed for domain %s", v.Domain)
+					break
+				}
+				app.Log("mail", "DKIM verification failed for domain %s: %v", v.Domain, v.Err)
+			}
+		} else if err != nil {
+			app.Log("mail", "DKIM verification error: %v", err)
+		} else {
+			app.Log("mail", "No DKIM signature found")
+		}
+	} else {
+		dkimPass = true // Trust localhost
+	}
+
 	// Parse the email
 	msg, err := mail.ReadMessage(bytes.NewReader(buf.Bytes()))
 	if err != nil {
@@ -512,7 +535,7 @@ func (s *Session) Data(r io.Reader) error {
 		}
 
 		// Run spam detection on inbound external mail
-		spamResult := CheckSpam(fromAddr.Address, subject, body, s.remoteIP)
+		spamResult := CheckSpam(fromAddr.Address, subject, body, s.remoteIP, s.spfPass, dkimPass)
 		if spamResult.IsSpam {
 			app.Log("mail", "Spam detected (score=%d) from %s: %v", spamResult.Score, fromAddr.Address, spamResult.Reasons)
 
