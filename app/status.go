@@ -66,8 +66,97 @@ var DKIMStatusFunc func() (enabled bool, domain, selector string)
 // DigestStatusFunc is set by main to report digest status
 var DigestStatusFunc func() (ok bool, details string)
 
-// StatusHandler handles the /status endpoint
+// ServiceHealth represents a public-facing service health check
+type ServiceHealth struct {
+	Name    string `json:"name"`
+	Status  bool   `json:"status"`
+	Latency string `json:"latency,omitempty"`
+}
+
+// PublicStatusResponse is the public status page response
+type PublicStatusResponse struct {
+	Healthy  bool            `json:"healthy"`
+	Services []ServiceHealth `json:"services"`
+}
+
+// HealthCheckFunc is set by main to run service health checks (avoids import cycles)
+var HealthCheckFunc func() []ServiceHealth
+
+// StatusHandler handles the public /status endpoint
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
+	status := checkPublicStatus()
+
+	if r.URL.Query().Get("format") == "json" || WantsJSON(r) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(status)
+		return
+	}
+
+	html := renderPublicStatusHTML(status)
+	w.Write([]byte(RenderHTML("Status", "Service status", html)))
+}
+
+func checkPublicStatus() PublicStatusResponse {
+	var services []ServiceHealth
+	if HealthCheckFunc != nil {
+		services = HealthCheckFunc()
+	}
+	healthy := true
+	for _, s := range services {
+		if !s.Status {
+			healthy = false
+			break
+		}
+	}
+	return PublicStatusResponse{
+		Healthy:  healthy,
+		Services: services,
+	}
+}
+
+func renderPublicStatusHTML(status PublicStatusResponse) string {
+	var sb strings.Builder
+
+	statusText := "All systems operational"
+	statusClass := "status-ok"
+	if !status.Healthy {
+		statusText = "Some services are experiencing issues"
+		statusClass = "status-error"
+	}
+
+	sb.WriteString(`<div class="status-page">`)
+
+	// Header
+	sb.WriteString(fmt.Sprintf(`<div class="status-header">
+<span class="status-icon %s" style="font-size:24px;">●</span>
+<span style="font-size:18px;">%s</span>
+</div>`, statusClass, statusText))
+
+	// Services
+	sb.WriteString(`<div class="status-section">`)
+	for _, svc := range status.Services {
+		icon := "●"
+		class := "status-ok"
+		if !svc.Status {
+			class = "status-error"
+		}
+		latency := ""
+		if svc.Latency != "" {
+			latency = fmt.Sprintf(`<span class="status-details">%s</span>`, svc.Latency)
+		}
+		sb.WriteString(fmt.Sprintf(`<div class="status-item">
+<span class="status-name">%s</span>
+<span class="status-value">%s<span class="status-icon %s">%s</span></span>
+</div>`, svc.Name, latency, class, icon))
+	}
+	sb.WriteString(`</div>`)
+
+	sb.WriteString(`</div>`)
+	return sb.String()
+}
+
+// InternalStatusHandler handles the old /status endpoint (now at /admin/server)
+func InternalStatusHandler(w http.ResponseWriter, r *http.Request) {
 	// Quick health check endpoint
 	if r.URL.Query().Get("quick") == "1" {
 		w.Header().Set("Content-Type", "application/json")
@@ -92,6 +181,12 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	// Render HTML
 	html := renderStatusHTML(status)
 	w.Write([]byte(RenderHTML("Status", "Server status and health checks", html)))
+}
+
+// RenderInternalStatusHTML returns the internal status HTML for embedding in the admin server page
+func RenderInternalStatusHTML() string {
+	status := buildStatus()
+	return renderStatusHTML(status)
 }
 
 func buildStatus() StatusResponse {
