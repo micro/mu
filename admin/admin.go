@@ -258,7 +258,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 
 	content += `</div>
 
-	<div class="blacklist-section">
+	<div class="blocklist-section">
 		<h3>Blocked IPs (` + fmt.Sprintf("%d", len(bl.IPs)) + `)</h3>
 		<div class="block-form">
 			<form method="POST">

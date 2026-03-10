@@ -3547,17 +3547,17 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .blocklist-section {
   margin: 20px 0;
 }
-.blocklist-table {
+.blacklist-table {
   width: 100%;
   border-collapse: collapse;
   margin: 10px 0;
 }
-.blocklist-table th {
+.blacklist-table th {
   text-align: left;
   padding: 10px;
   border-bottom: 2px solid #ddd;
 }
-.blocklist-table td {
+.blacklist-table td {
   padding: 10px;
   border-bottom: 1px solid #eee;
 }
@@ -4687,5 +4687,97 @@ a.btn-secondary:hover, .btn-secondary:hover {
 
   .weather-search-form {
     width: 100%;
+  }
+}
+
+/* =============================================
+   Admin Mobile Styles
+   ============================================= */
+
+/* Deploy controls */
+#deploy-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* Spam filter settings table */
+.spam-settings table {
+  width: 100%;
+}
+.spam-settings td {
+  padding: 8px 6px;
+  vertical-align: middle;
+}
+.spam-section {
+  margin-top: 24px;
+}
+
+/* Blacklist tables - action column */
+.blacklist-table td.text-center,
+.blacklist-table th.text-center {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  /* Block forms: stack input and button vertically with margin */
+  .block-form form {
+    flex-direction: column;
+  }
+  .block-form input[type="text"] {
+    width: 100%;
+    min-width: 0;
+  }
+  .block-form button {
+    align-self: flex-start;
+    margin-top: 4px;
+  }
+
+  /* Spam filter settings: stack each row */
+  .spam-settings table,
+  .spam-settings thead,
+  .spam-settings tbody,
+  .spam-settings tr,
+  .spam-settings td {
+    display: block;
+    width: 100%;
+  }
+  .spam-settings tr {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+  }
+  .spam-settings td {
+    padding: 2px 0;
+  }
+  .spam-settings td form {
+    margin-top: 4px;
+  }
+  .spam-settings td input[type="number"] {
+    width: 60px;
+  }
+
+  /* Blacklist / spam tables: allow horizontal scroll */
+  .blacklist-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .blacklist-table th,
+  .blacklist-table td {
+    padding: 8px 6px;
+  }
+
+  /* Deploy controls: full-width buttons */
+  #deploy-controls {
+    flex-direction: column;
+  }
+  #deploy-controls button {
+    width: 100%;
+  }
+
+  /* Status page: system info single column */
+  .system-info {
+    grid-template-columns: 1fr;
   }
 }
