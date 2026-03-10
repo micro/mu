@@ -796,7 +796,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>20 credits per day</strong>, resets at midnight UTC.</p>
 
 <h4>Agent</h4>
-<p class="text-muted mb-4">The agent searches news, weather, markets, video and more to answer your questions — all included in one query cost.</p>
+<p class="text-muted mb-4">The agent searches news, markets, video and more to answer your questions — all included in one query cost.</p>
 <table class="data-table">
 <thead>
 <tr><th>Query type</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
@@ -808,30 +808,18 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 </table>
 
 <h4>Individual services</h4>
-<p class="text-muted mb-4">You can also use services directly — browsing is free, search and AI features cost credits.</p>
+<p class="text-muted mb-4">You can also use services directly — search and AI features cost credits.</p>
 <table class="data-table">
 <thead>
 <tr><th>Service</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
 </thead>
 <tbody>
-<tr><td>News feed</td><td>Browse the latest news</td><td>Free</td><td>—</td></tr>
 <tr><td>News search</td><td>AI-powered news article search</td><td>1</td><td>1p</td></tr>
 <tr><td>News summary</td><td>AI summary of a news article</td><td>1</td><td>1p</td></tr>
-<tr><td>Video feed</td><td>Browse latest videos</td><td>Free</td><td>—</td></tr>
-<tr><td>Video watch</td><td>Watch a video</td><td>Free</td><td>—</td></tr>
 <tr><td>Video search</td><td>Search for videos</td><td>2</td><td>2p</td></tr>
 <tr><td>Chat</td><td>Chat with AI assistant</td><td>3</td><td>3p</td></tr>
-<tr><td>Blog read</td><td>Read blog posts</td><td>Free</td><td>—</td></tr>
-<tr><td>Blog write</td><td>Create or update a blog post</td><td>Free</td><td>—</td></tr>
-<tr><td>Mail (internal)</td><td>Message other Mu users</td><td>Free</td><td>—</td></tr>
 <tr><td>Mail (external)</td><td>Send email outside Mu (SMTP)</td><td>4</td><td>4p</td></tr>
-<tr><td>Places search</td><td>Search for places by name or category</td><td>5</td><td>5p</td></tr>
-<tr><td>Places nearby</td><td>Find places of interest near a location</td><td>2</td><td>2p</td></tr>
-<tr><td>Weather forecast</td><td>Local weather with hourly &amp; 10-day forecast</td><td>1</td><td>1p</td></tr>
-<tr><td>Weather pollen</td><td>Local pollen forecast (add-on)</td><td>1</td><td>1p</td></tr>
-<tr><td>Markets</td><td>Live crypto, futures &amp; commodity prices</td><td>Free</td><td>—</td></tr>
 <tr><td>Web search</td><td>Web search powered by Brave</td><td>5</td><td>5p</td></tr>
-<tr><td>Wallet</td><td>Check balance and top up</td><td>Free</td><td>—</td></tr>
 </tbody>
 </table>`)
 
