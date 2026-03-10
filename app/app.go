@@ -235,10 +235,7 @@ var Template = `
           <a href="/web"><img src="/search.svg?` + Version + `"><span class="label">Web</span></a>
           <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
-          <a href="/places"><img src="/places.svg?` + Version + `"><span class="label">Places</span></a>
-          <a href="/weather"><img src="/weather.png?` + Version + `"><span class="label">Weather</span></a>
-          <a href="/markets"><img src="/markets.svg?` + Version + `"><span class="label">Markets</span></a>
-          <a href="/reminder"><img src="/reminder.svg?` + Version + `"><span class="label">Reminder</span></a>
+
         </div>
         <div class="nav-bottom">
           <div id="nav-username" style="display: none;"></div>
@@ -835,20 +832,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><td>Markets</td><td>Live crypto, futures &amp; commodity prices</td><td>Free</td><td>—</td></tr>
 <tr><td>Web search</td><td>Web search powered by Brave</td><td>5</td><td>5p</td></tr>
 <tr><td>Wallet</td><td>Check balance and top up</td><td>Free</td><td>—</td></tr>
-</tbody>
-</table>`)
-
-	// Coming soon
-	content.WriteString(`<h3>Coming Soon</h3>
-<table class="data-table">
-<thead>
-<tr><th>Tool / Endpoint</th><th>Description</th><th>Estimated Cost</th></tr>
-</thead>
-<tbody>
-<tr><td>Translate</td><td>AI-powered language translation</td><td>1p</td></tr>
-<tr><td>Image search</td><td>Search for images</td><td>2p</td></tr>
-<tr><td>Calendar</td><td>Events and reminders</td><td>Free</td></tr>
-<tr><td>Directions</td><td>Route planning between locations</td><td>2p</td></tr>
 </tbody>
 </table>`)
 
