@@ -341,10 +341,13 @@ func main() {
 	http.HandleFunc("/token", app.TokenHandler)
 	http.HandleFunc("/passkey/", app.PasskeyHandler)
 
-	// status page - public health check
+	// internal status (injected into admin server page)
 	app.DKIMStatusFunc = mail.DKIMStatus
 	app.DigestStatusFunc = digest.Status
 	admin.GenerateDigestFunc = digest.Generate
+
+	// public status page - service health checks
+	app.HealthCheckFunc = runHealthChecks
 	http.HandleFunc("/status", app.StatusHandler)
 
 	// documentation
@@ -581,4 +584,43 @@ func main() {
 	}
 
 	app.Log("main", "Server stopped")
+}
+
+// runHealthChecks performs lightweight health checks on public-facing services
+func runHealthChecks() []app.ServiceHealth {
+	type result struct {
+		index int
+		check app.ServiceHealth
+	}
+
+	checks := []struct {
+		name string
+		fn   func() bool
+	}{
+		{"News", func() bool { return len(news.GetFeed()) > 0 }},
+		{"Blog", func() bool { return blog.GetTopics() != nil }},
+		{"Video", func() bool { return video.GetLatestVideos(1) != nil }},
+		{"Chat", func() bool { return os.Getenv("ANTHROPIC_API_KEY") != "" }},
+		{"Mail", func() bool { return os.Getenv("MAIL_DOMAIN") != "" }},
+		{"Markets", func() bool { return len(markets.GetAllPrices()) > 0 }},
+	}
+
+	results := make([]app.ServiceHealth, len(checks))
+	ch := make(chan result, len(checks))
+
+	for i, c := range checks {
+		go func(idx int, name string, fn func() bool) {
+			start := time.Now()
+			ok := fn()
+			latency := time.Since(start).Round(time.Millisecond).String()
+			ch <- result{idx, app.ServiceHealth{Name: name, Status: ok, Latency: latency}}
+		}(i, c.name, c.fn)
+	}
+
+	for range checks {
+		r := <-ch
+		results[r.index] = r.check
+	}
+
+	return results
 }

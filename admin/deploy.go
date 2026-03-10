@@ -55,9 +55,13 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// GET — render server page
+	// GET — render server page with embedded status
+	statusHTML := app.RenderInternalStatusHTML()
+
 	content := `<p><a href="/admin">← Admin</a></p>
 	<h2>Server</h2>
+	` + statusHTML + `
+	<h3>Deploy</h3>
 	<p><strong>Source:</strong> <code>` + sourceDir() + `</code></p>
 	<div id="deploy-controls">
 		<button id="update-btn" onclick="runAction('update')">Update</button>
@@ -151,7 +155,7 @@ func handleDeploy(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
-			"message": "Digest generation started. Check /status for progress.",
+			"message": "Digest generation started.",
 		})
 		return
 	}
