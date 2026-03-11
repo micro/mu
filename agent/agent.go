@@ -126,6 +126,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
   style="padding:6px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">` +
 		modelOpts.String() + `</select>
 <button type="submit" id="agent-submit">Ask Agent</button>
+<span style="flex:1;"></span>` +
+		ToolsDropdownHTML() + `
 </div>
 <input type="hidden" id="agent-context" value="` + htmlEsc(contextID) + `">
 </form>
@@ -391,6 +393,29 @@ func sse(w http.ResponseWriter, event map[string]any) {
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
+}
+
+// ToolsDropdownHTML returns an inline clickable dropdown listing the agent's available tools.
+func ToolsDropdownHTML() string {
+	return `<details class="agent-tools-dropdown" style="display:inline-block;position:relative;">
+<summary style="cursor:pointer;padding:4px 8px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;list-style:none;user-select:none;">Tools ▾</summary>
+<div style="position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.1);padding:8px 0;z-index:100;min-width:220px;font-size:13px;">
+<div style="padding:4px 12px;color:#555;font-weight:600;border-bottom:1px solid #eee;margin-bottom:4px;">Available Tools</div>
+<div style="padding:3px 12px;">📰 News</div>
+<div style="padding:3px 12px;">🔍 News Search</div>
+<div style="padding:3px 12px;">🌐 Web Search</div>
+<div style="padding:3px 12px;">🎬 Video Search</div>
+<div style="padding:3px 12px;">📈 Markets</div>
+<div style="padding:3px 12px;">🌤 Weather</div>
+<div style="padding:3px 12px;">📍 Places Search</div>
+<div style="padding:3px 12px;">📍 Places Nearby</div>
+<div style="padding:3px 12px;">🕌 Reminder</div>
+<div style="padding:3px 12px;">🔎 Search</div>
+<div style="padding:3px 12px;">📝 Blog</div>
+<div style="padding:3px 12px;">💰 Wallet</div>
+<div style="padding:3px 12px;">💳 Topup</div>
+</div>
+</details>`
 }
 
 // agentToolsDesc is the tool catalogue shown to the AI planner.
