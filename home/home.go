@@ -14,9 +14,9 @@ import (
 	"mu/app"
 	"mu/blog"
 	"mu/data"
-	"mu/markets"
 	"mu/news"
-	"mu/reminder"
+	"mu/news/markets"
+	"mu/news/reminder"
 	"mu/video"
 )
 
