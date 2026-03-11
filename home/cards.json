@@ -1,10 +1,18 @@
 {
   "left": [
     {
+      "id": "agent",
+      "title": "Agent",
+      "type": "agent",
+      "position": 0,
+      "link": "",
+      "icon": "/agent.svg"
+    },
+    {
       "id": "news",
       "title": "News",
       "type": "news",
-      "position": 0,
+      "position": 1,
       "link": "/news",
       "icon": "/news.png"
     }
