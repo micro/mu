@@ -138,7 +138,11 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build the form HTML (reused in both layouts).
-	formHTML := `<div class="card" id="agent-form-card">
+	formCardClass := "card"
+	if contextID != "" {
+		formCardClass = "card sticky-bottom"
+	}
+	formHTML := `<div class="` + formCardClass + `" id="agent-form-card">
 <form id="agent-form">
 <textarea id="agent-prompt" name="prompt" rows="3"
   placeholder="` + func() string {
@@ -186,6 +190,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 .agent-step.done{color:#28a745;}
 .agent-step.error{color:#dc3545;}
 .step-icon{font-size:16px;flex-shrink:0;}
+#agent-form-card.sticky-bottom{position:sticky;bottom:0;z-index:10;
+  background:#fff;border-top:1px solid #eee;margin-bottom:0;}
 </style>
 
 <script>
@@ -277,7 +283,8 @@ form.addEventListener('submit',function(e){
               var hist=document.getElementById('agent-history');
               if(hist)hist.style.display='none';
               if(formCard&&result.parentNode){result.parentNode.appendChild(formCard);}
-              formCard.scrollIntoView({behavior:'smooth',block:'end'});
+              formCard.classList.add('sticky-bottom');
+              result.scrollIntoView({behavior:'smooth',block:'start'});
             } else if(ev.type==='error'){
               prog.style.display='none';
               result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
@@ -734,7 +741,6 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// Append a "Save & share" link for the saved flow.
 	html += `<div class="card" style="font-size:13px;display:flex;gap:16px;align-items:center;">` +
 		`<a href="/agent/flow/` + flow.ID + `" class="link">View saved flow ↗</a>` +
-		`<a href="/agent?continue=` + flow.ID + `" class="link">Ask follow-up →</a>` +
 		`</div>`
 
 	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
