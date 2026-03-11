@@ -89,13 +89,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // servePage renders the agent chat page, including query history for logged-in users.
 func servePage(w http.ResponseWriter, r *http.Request) {
-	var modelOpts strings.Builder
-	for _, m := range Models {
-		modelOpts.WriteString(fmt.Sprintf(
-			`<option value="%s">%s</option>`, m.ID, m.Name,
-		))
-	}
-
 	// Pre-fill prompt and context when continuing a saved flow.
 	contextID := r.URL.Query().Get("continue")
 	preFillPrompt := ""
@@ -103,6 +96,24 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		if f := getFlow(contextID); f != nil {
 			preFillPrompt = htmlEsc(f.Prompt)
 		}
+	}
+
+	// Pre-fill from query params (e.g. home page agent card).
+	if p := r.URL.Query().Get("prompt"); p != "" && preFillPrompt == "" {
+		preFillPrompt = htmlEsc(p)
+	}
+	preSelectModel := r.URL.Query().Get("model") // "standard" or "premium"
+	autoSubmit := preFillPrompt != "" && contextID == ""
+
+	var modelOpts strings.Builder
+	for _, m := range Models {
+		sel := ""
+		if m.ID == preSelectModel {
+			sel = " selected"
+		}
+		modelOpts.WriteString(fmt.Sprintf(
+			`<option value="%s"%s>%s</option>`, m.ID, sel, m.Name,
+		))
 	}
 
 	content := `<div class="card">
@@ -232,6 +243,10 @@ form.addEventListener('submit',function(e){
 });
 })();
 </script>`
+
+	if autoSubmit {
+		content += `<script>document.getElementById('agent-form').dispatchEvent(new Event('submit'));</script>`
+	}
 
 	html := app.RenderHTMLForRequest("Agent", "AI agent with access to all Mu tools", content, r)
 	w.Write([]byte(html))
