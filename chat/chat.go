@@ -41,7 +41,11 @@ var prompts = map[string]string{}
 
 // askLLM is internal helper for ai.Ask
 func askLLM(prompt *ai.Prompt) (string, error) {
-	return ai.Ask(prompt)
+	resp, err := ai.Ask(prompt)
+	if err != nil {
+		return resp, err
+	}
+	return app.StripLatexDollars(resp), nil
 }
 
 var summaries = map[string]string{}

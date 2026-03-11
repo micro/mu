@@ -144,6 +144,7 @@ Keep it informative but concise. Write in a neutral, clear tone. Do not invent i
 Do NOT start with a title or top-level heading - the blog post title is set separately. Jump straight into the opening paragraph.
 Do NOT include any preamble, meta-commentary, or introductory text like "Here is the digest". Output ONLY the digest content.
 Do NOT include a references section - references will be appended separately.
+Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \( or \).
 The total length should be around 300-500 words.`,
 		Question: context,
 		Priority: ai.PriorityLow,
@@ -201,6 +202,7 @@ Structure:
 Do NOT start with a title or top-level heading. Jump straight into the opening paragraph.
 Do NOT include any preamble, meta-commentary, or introductory text like "Here is the revised digest". Output ONLY the digest content.
 Do NOT include a references section - references will be appended separately.
+Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \( or \).
 The total length should be around 300-500 words.`,
 			Question: fmt.Sprintf("## Source Material\n\n%s\n\n## First Draft\n\n%s\n\n## Editorial Feedback\n\n%s", context, draft, feedback),
 			Priority: ai.PriorityLow,
@@ -217,6 +219,7 @@ The total length should be around 300-500 words.`,
 
 	response = stripPreamble(response)
 	response = normalizeHeadings(response)
+	response = app.StripLatexDollars(response)
 
 	// Append references
 	if len(refs) > 0 {
