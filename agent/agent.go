@@ -137,7 +137,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	content := priorHTML + `<div class="card">
+	// Build the form HTML (reused in both layouts).
+	formHTML := `<div class="card" id="agent-form-card">
 <form id="agent-form">
 <textarea id="agent-prompt" name="prompt" rows="3"
   placeholder="` + func() string {
@@ -157,17 +158,27 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 </div>
 <input type="hidden" id="agent-context" value="` + htmlEsc(contextID) + `">
 </form>
-</div>
+</div>`
 
-<div id="agent-progress" style="display:none;">
+	progressHTML := `<div id="agent-progress" style="display:none;">
 <div class="card">
 <h4 style="margin:0 0 12px;">Working…</h4>
 <div id="agent-steps"></div>
 </div>
 </div>
 
-<div id="agent-result"></div>
-` + renderHistorySection(r) + `
+<div id="agent-result"></div>`
+
+	// Layout: conversation mode puts the form at the bottom; landing puts it at the top.
+	isConversation := contextID != ""
+	var content string
+	if isConversation {
+		content = priorHTML + progressHTML + "\n" + formHTML
+	} else {
+		content = formHTML + "\n" + progressHTML + "\n" + renderHistorySection(r)
+	}
+
+	content += `
 <style>
 .agent-step{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px;
   color:#555;border-bottom:1px solid #f5f5f5;}
@@ -261,6 +272,12 @@ form.addEventListener('submit',function(e){
               if(ev.flow_id){document.getElementById('agent-context').value=ev.flow_id;}
               document.getElementById('agent-prompt').value='';
               document.getElementById('agent-prompt').placeholder='Ask a follow-up question...';
+              // Move form to bottom for conversation mode
+              var formCard=document.getElementById('agent-form-card');
+              var hist=document.getElementById('agent-history');
+              if(hist)hist.style.display='none';
+              if(formCard&&result.parentNode){result.parentNode.appendChild(formCard);}
+              formCard.scrollIntoView({behavior:'smooth',block:'end'});
             } else if(ev.type==='error'){
               prog.style.display='none';
               result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
