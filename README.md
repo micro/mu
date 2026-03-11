@@ -4,22 +4,22 @@ The Micro Network — apps without ads, algorithms, or tracking.
 
 ## Overview
 
-Mu is a collection of apps for everyday use. While other platforms monetize your attention with ads and infinite feeds, Mu gives you simple utilities that respect your time.
+Mu is a new social network. While other platforms monetize your attention with ads and infinite feeds, Mu gives you simple utilities that respect your time.
 
 **The problem**: The internet is designed to waste your time. Feeds are infinite, videos autoplay, and everything tracks you.
 
-**The solution**: Small, focused tools that do one thing well. No ads. No algorithms. No tracking.
+**The solution**: Small, focused apps that do one thing well. No ads. No algorithms. No tracking.
 
-### Featured Apps
+### Services
 
-- **Home** - Your personalized dashboard
-- **Blog** - Blogging with daily digests
+- **Home** - At a glance dashboard
+- **Blog** - Blogging with comments
 - **Chat** - Discuss topics with AI
-- **News** - RSS feeds with AI summaries
+- **News** - RSS feeds with summaries
 - **Mail** - Private messaging & email
 - **Video** - Watch YouTube without ads
-- **Web** - Search without ads or tracking
-- **Wallet** - Credits and card payments
+- **Web** - Search without tracking
+- **Wallet** - Pay as you go with credits
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
@@ -200,19 +200,11 @@ Install git hooks to run tests before commits:
 
 This will prevent commits if tests fail, helping catch regressions early. See [scripts/README.md](scripts/README.md) for more details.
 
-### Contributing
-
-Join [Discord](https://discord.gg/jwTYuUVAGh) if you'd like to work on this.
-
 ## Payments
 
 Mu uses Stripe for card payments. Top up with a credit or debit card and pay-as-you-go with credits. 1 credit = 1p.
 
 See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
-
-## Sponsorship 
-
-You can sponsor the project using [GitHub Sponsors](https://github.com/sponsors/asim) to support development and hosting costs. Sponsors get early access to new features and can vote on the project roadmap. All features remain free (with daily limits) or pay-as-you-go.
 
 ## License
 
