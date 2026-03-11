@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/agent"
 	"mu/app"
 	"mu/blog"
 	"mu/data"
@@ -610,11 +611,13 @@ func AgentCard() string {
 				<input type="text" name="prompt" placeholder="Ask the agent anything..." required style="flex:1;padding:8px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;">
 				<button type="submit" style="padding:8px 16px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;cursor:pointer;">Ask</button>
 			</div>
-			<div style="margin-top:6px;">
+			<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
 				<select name="model" style="padding:4px 8px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">
 					<option value="standard">Fast</option>
 					<option value="premium">Best</option>
 				</select>
+				<span style="flex:1;"></span>
+				` + agent.ToolsDropdownHTML() + `
 			</div>
 		</form>
 	</div>`
