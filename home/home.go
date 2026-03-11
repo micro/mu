@@ -603,6 +603,23 @@ func ChatCard() string {
 	</div>`
 }
 
+func AgentCard() string {
+	return `<div id="home-agent">
+		<form id="home-agent-form" action="/agent" method="GET">
+			<div style="display:flex;gap:8px;">
+				<input type="text" name="prompt" placeholder="Ask the agent anything..." required style="flex:1;padding:8px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;">
+				<button type="submit" style="padding:8px 16px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;cursor:pointer;">Ask</button>
+			</div>
+			<div style="margin-top:6px;">
+				<select name="model" style="padding:4px 8px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">
+					<option value="standard">Fast</option>
+					<option value="premium">Best</option>
+				</select>
+			</div>
+		</form>
+	</div>`
+}
+
 type Card struct {
 	ID          string
 	Title       string
@@ -653,6 +670,7 @@ func Load() {
 
 	// Map of card types to their content functions
 	cardFunctions := map[string]func() string{
+		"agent":    AgentCard,
 		"blog":     blog.Preview,
 		"chat":     ChatCard,
 		"news":     news.Headlines,
