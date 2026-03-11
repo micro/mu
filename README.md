@@ -13,11 +13,13 @@ Mu is a new social network. While other platforms monetize your attention with a
 ### Services
 
 - **Home** - At a glance dashboard
+- **Agent** - AI assistant across all services
 - **Blog** - Blogging with comments
 - **Chat** - Discuss topics with AI
 - **News** - RSS feeds with summaries
 - **Mail** - Private messaging & email
 - **Video** - Watch YouTube without ads
+- **Markets** - Live crypto, futures & commodities
 - **Web** - Search without tracking
 - **Wallet** - Pay as you go with credits
 
@@ -28,11 +30,13 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] API - Basic API
 - [x] App - Basic PWA
 - [x] Home - Overview
+- [x] Agent - AI assistant
 - [x] Blog - Daily digests
 - [x] Chat - Discussion rooms
 - [x] News - RSS news feed
 - [x] Video - YouTube search
-- [x] Mail - Private messaging 
+- [x] Mail - Private messaging
+- [x] Markets - Live prices
 - [x] Web - Web search, no Ads
 - [x] Wallet - Card payments
 - [ ] Services - Marketplace, etc

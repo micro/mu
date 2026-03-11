@@ -33,11 +33,13 @@ Mu was built to fix this problem.
 Each feature does one thing well:
 
 - **Home** — Your dashboard, everything in one place
+- **Agent** — AI assistant with access to every service
 - **Blog** — Microblogging with daily digests
 - **Chat** — Discuss topics with AI
 - **News** — RSS feeds, chronological
 - **Mail** — Private messaging & email
 - **Video** — YouTube without ads or shorts
+- **Markets** — Live crypto, futures, and commodities
 - **Web** — Web search without ads or tracking
 - **Wallet** — Credits and card payments
 
