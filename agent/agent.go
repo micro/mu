@@ -93,13 +93,15 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	contextID := r.URL.Query().Get("continue")
 	preFillPrompt := ""
 	if contextID != "" {
-		if f := getFlow(contextID); f != nil {
-			preFillPrompt = htmlEsc(f.Prompt)
+		// Don't pre-fill the prompt — show prior conversation as context instead
+		if f := getFlow(contextID); f == nil {
+			contextID = "" // invalid flow
 		}
+		_ = preFillPrompt // keep zero
 	}
 
 	// Pre-fill from query params (e.g. home page agent card).
-	if p := r.URL.Query().Get("prompt"); p != "" && preFillPrompt == "" {
+	if p := r.URL.Query().Get("prompt"); p != "" {
 		preFillPrompt = htmlEsc(p)
 	}
 	preSelectModel := r.URL.Query().Get("model") // "standard" or "premium"
@@ -116,10 +118,34 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		))
 	}
 
-	content := `<div class="card">
+	// Render prior conversation turns when continuing.
+	var priorHTML string
+	if contextID != "" {
+		history := getConversationHistory(contextID, 5)
+		if len(history) > 0 {
+			var hb strings.Builder
+			hb.WriteString(`<div id="agent-conversation">`)
+			for _, f := range history {
+				hb.WriteString(`<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;">`)
+				hb.WriteString(`<div style="font-size:12px;color:#888;margin-bottom:6px;">You asked:</div>`)
+				hb.WriteString(`<div style="font-size:14px;font-weight:600;margin-bottom:10px;">` + htmlEsc(f.Prompt) + `</div>`)
+				hb.WriteString(`<div style="font-size:14px;">` + app.RenderString(f.Answer) + `</div>`)
+				hb.WriteString(`</div>`)
+			}
+			hb.WriteString(`</div>`)
+			priorHTML = hb.String()
+		}
+	}
+
+	content := priorHTML + `<div class="card">
 <form id="agent-form">
 <textarea id="agent-prompt" name="prompt" rows="3"
-  placeholder="What would you like to know?"
+  placeholder="` + func() string {
+		if contextID != "" {
+			return "Ask a follow-up question..."
+		}
+		return "What would you like to know?"
+	}() + `"
   style="width:100%;box-sizing:border-box;padding:8px;font-family:inherit;font-size:15px;resize:vertical;border:1px solid #ddd;border-radius:4px;">` + preFillPrompt + `</textarea>
 <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
 <select id="agent-model"
@@ -221,9 +247,20 @@ form.addEventListener('submit',function(e){
               }
             } else if(ev.type==='response'){
               prog.style.display='none';
+              // Append user question and response to conversation thread
+              var conv=document.getElementById('agent-conversation');
+              if(!conv){conv=document.createElement('div');conv.id='agent-conversation';result.parentNode.insertBefore(conv,result);}
+              var turn=document.createElement('div');
+              turn.innerHTML='<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;">'
+                +'<div style="font-size:12px;color:#888;margin-bottom:6px;">You asked:</div>'
+                +'<div style="font-size:14px;font-weight:600;margin-bottom:10px;">'+esc(prompt)+'</div>'
+                +'</div>';
+              conv.appendChild(turn);
               result.innerHTML=ev.html;
-              // Update context for potential follow-up
+              // Update context for follow-up and reset prompt
               if(ev.flow_id){document.getElementById('agent-context').value=ev.flow_id;}
+              document.getElementById('agent-prompt').value='';
+              document.getElementById('agent-prompt').placeholder='Ask a follow-up question...';
             } else if(ev.type==='error'){
               prog.style.display='none';
               result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
@@ -333,6 +370,19 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 	}
 
 	var b strings.Builder
+
+	// Show conversation history if this flow has a parent chain
+	if f.ParentID != "" {
+		history := getConversationHistory(f.ParentID, 5)
+		for _, h := range history {
+			b.WriteString(`<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;opacity:0.8;">`)
+			b.WriteString(`<div style="font-size:12px;color:#888;margin-bottom:6px;">Previous question:</div>`)
+			b.WriteString(`<div style="font-size:14px;font-weight:600;margin-bottom:10px;">` + htmlEsc(h.Prompt) + `</div>`)
+			b.WriteString(`<div style="font-size:14px;">` + app.RenderString(h.Answer) + `</div>`)
+			b.WriteString(`</div>`)
+		}
+	}
+
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<p style="font-size:12px;color:#888;margin:0 0 4px;">Saved query</p>`)
 	b.WriteString(`<h3 style="margin:0 0 12px;">` + htmlEsc(f.Prompt) + `</h3>`)
@@ -364,7 +414,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 
 	// Action buttons
 	b.WriteString(`<div class="card" style="display:flex;gap:12px;align-items:center;">`)
-	b.WriteString(`<a href="/agent?continue=` + f.ID + `" class="link">Continue this query →</a>`)
+	b.WriteString(`<a href="/agent?continue=` + f.ID + `" class="link">Ask follow-up →</a>`)
 	b.WriteString(`<span style="color:#888;font-size:13px;">Share this URL to let others view this result</span>`)
 	b.WriteString(`</div>`)
 
@@ -475,10 +525,10 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Load prior flow context if continuing a conversation.
-	var priorFlow *Flow
+	// Load conversation history when continuing a conversation.
+	var conversationHistory []*Flow
 	if req.ContextID != "" {
-		priorFlow = getFlow(req.ContextID)
+		conversationHistory = getConversationHistory(req.ContextID, 5)
 	}
 
 	// Start SSE stream
@@ -502,11 +552,22 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	} else {
 		sse(w, map[string]any{"type": "thinking", "message": "Planning your request…"})
 
+		// Build planning question with conversation context
+		planQuestion := req.Prompt
+		if len(conversationHistory) > 0 {
+			var convCtx strings.Builder
+			convCtx.WriteString("Previous conversation:\n")
+			for _, f := range conversationHistory {
+				convCtx.WriteString(fmt.Sprintf("User: %s\nAssistant: %s\n\n", f.Prompt, truncate(f.Answer, 500)))
+			}
+			convCtx.WriteString("New question: " + req.Prompt)
+			planQuestion = convCtx.String()
+		}
 		planPrompt := &ai.Prompt{
 			System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
 				agentToolsDesc +
-				"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. When the question asks for cross-source insights or correlations (e.g. news + markets, news + video), call multiple relevant tools. If no tools are needed output [].",
-			Question: req.Prompt,
+				"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. When the question asks for cross-source insights or correlations (e.g. news + markets, news + video), call multiple relevant tools. If the question is a follow-up that can be answered from prior conversation context without new tools, output []. If no tools are needed output [].",
+			Question: planQuestion,
 			Priority: ai.PriorityHigh,
 			Provider: model.Provider,
 			Model:    model.Model,
@@ -568,12 +629,15 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	var ragParts []string
 
-	// Include prior flow context when continuing a conversation.
-	if priorFlow != nil {
-		ragParts = append(ragParts, fmt.Sprintf(
-			"### Previous query\nUser asked: %s\n\nPrevious answer:\n%s",
-			priorFlow.Prompt, priorFlow.Answer,
-		))
+	// Include conversation history when continuing a conversation.
+	if len(conversationHistory) > 0 {
+		var convCtx strings.Builder
+		convCtx.WriteString("### Conversation history\n")
+		for i, f := range conversationHistory {
+			convCtx.WriteString(fmt.Sprintf("**Turn %d — User asked:** %s\n\n", i+1, f.Prompt))
+			convCtx.WriteString(f.Answer + "\n\n")
+		}
+		ragParts = append(ragParts, convCtx.String())
 	}
 
 	for i, res := range results {
@@ -593,7 +657,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"When results come from multiple sources (news, video, markets, weather, etc.), identify and highlight " +
 			"connections and correlations between them — for example, how a market move relates to a news story, " +
 			"or how videos cover the same topic appearing in the news.\n\n" +
-			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data.",
+			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data.\n\n" +
+			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\).",
 		Rag:      ragParts,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
@@ -607,6 +672,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		sse(w, map[string]any{"type": "done"})
 		return
 	}
+	answer = app.StripLatexDollars(answer)
 
 	// Auto-save this query as a flow for history and sharing.
 	flow := &Flow{
@@ -614,6 +680,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		AccountID: acc.ID,
 		Prompt:    req.Prompt,
 		Answer:    answer,
+		ParentID:  req.ContextID,
 		CreatedAt: time.Now().UTC(),
 	}
 	for _, res := range results {
@@ -650,7 +717,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// Append a "Save & share" link for the saved flow.
 	html += `<div class="card" style="font-size:13px;display:flex;gap:16px;align-items:center;">` +
 		`<a href="/agent/flow/` + flow.ID + `" class="link">View saved flow ↗</a>` +
-		`<a href="/agent?continue=` + flow.ID + `" class="link">Continue this query →</a>` +
+		`<a href="/agent?continue=` + flow.ID + `" class="link">Ask follow-up →</a>` +
 		`</div>`
 
 	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
@@ -1574,6 +1641,13 @@ func formatWalletTopupResult(result string) string {
 }
 
 // htmlEsc escapes a string for safe HTML attribute/text inclusion.
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "…"
+}
+
 func htmlEsc(s string) string {
 	s = strings.ReplaceAll(s, "&", "&amp;")
 	s = strings.ReplaceAll(s, "<", "&lt;")

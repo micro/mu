@@ -16,7 +16,8 @@ type Flow struct {
 	AccountID string     `json:"account_id"`
 	Prompt    string     `json:"prompt"`
 	Steps     []FlowStep `json:"steps"`
-	Answer    string     `json:"answer"` // markdown answer text
+	Answer    string     `json:"answer"`    // markdown answer text
+	ParentID  string     `json:"parent_id"` // prior flow ID for multi-turn chains
 	CreatedAt time.Time  `json:"created_at"`
 }
 
@@ -87,6 +88,31 @@ func deleteFlow(accountID, id string) error {
 // newFlowID returns a new unique flow ID.
 func newFlowID() string {
 	return uuid.New().String()
+}
+
+// getConversationHistory walks the parent chain from a flow and returns
+// up to maxTurns prior turns in chronological order (oldest first).
+func getConversationHistory(flowID string, maxTurns int) []*Flow {
+	var chain []*Flow
+	seen := map[string]bool{}
+	id := flowID
+	for i := 0; i < maxTurns && id != ""; i++ {
+		if seen[id] {
+			break
+		}
+		seen[id] = true
+		f := getFlow(id)
+		if f == nil {
+			break
+		}
+		chain = append(chain, f)
+		id = f.ParentID
+	}
+	// Reverse to chronological order
+	for i, j := 0, len(chain)-1; i < j; i, j = i+1, j-1 {
+		chain[i], chain[j] = chain[j], chain[i]
+	}
+	return chain
 }
 
 // persistFlows writes the in-memory store to disk. Caller must hold flowMu.
