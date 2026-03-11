@@ -156,6 +156,13 @@ var landingTemplate = `<html lang="en">
       <h3>Services</h3>
       <p>The tools powering Mu</p>
       <div id="links">
+        <a href="/agent" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/agent.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Agent</b>
+            <div class="small">AI assistant with access to every service</div>
+          </div>
+        </a>
         <a href="/blog" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/post.png" alt="Blog" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
@@ -189,6 +196,13 @@ var landingTemplate = `<html lang="en">
             <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Video</b>
             <div class="small">Watch YouTube without ads, algorithms or shorts</div>
+          </div>
+        </a>
+        <a href="/markets" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/markets.svg" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Markets</b>
+            <div class="small">Live crypto, futures and commodity prices</div>
           </div>
         </a>
         <a href="/web" style="text-decoration: none; color: inherit;">
