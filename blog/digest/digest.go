@@ -128,22 +128,7 @@ func createDigest() {
 	}
 
 	prompt := &ai.Prompt{
-		System: `You are a writer producing a short daily digest blog post.
-You will be given today's data from various sources: news headlines, market prices, videos, and a reminder.
-Write a very concise digest. Use markdown formatting.
-
-Structure:
-1. One sentence setting the theme of the day
-2. **News** - 3-5 bullet points, one line each
-3. **Markets** - Key movers in one line each
-4. **Reminder** - Include as a ## heading with content
-
-Rules:
-- Do NOT start with a title or heading — jump straight in
-- Do NOT include preamble like "Here is the digest"
-- Do NOT include a references section
-- Use plain dollar signs (e.g. $69,811), no LaTeX
-- CRITICAL: The entire output must be under 1024 characters. Be extremely concise.`,
+		System: digestSystemPrompt,
 		Question: context,
 		Priority: ai.PriorityLow,
 	}
@@ -156,16 +141,7 @@ Rules:
 	}
 
 	response := cleanResponse(draft)
-
-	// Append references
-	if len(refs) > 0 {
-		var refSection strings.Builder
-		refSection.WriteString("\n\n## References\n\n")
-		for i, r := range refs {
-			refSection.WriteString(fmt.Sprintf("%d. [%s](%s)\n", i+1, r.title, r.url))
-		}
-		response += refSection.String()
-	}
+	response += buildReferences(refs)
 
 	title := time.Now().Format("2 January 2006")
 
@@ -195,22 +171,7 @@ func updateDigest(post *blog.Post) {
 
 	// Step 1: Regenerate the full digest post with current data
 	prompt := &ai.Prompt{
-		System: `You are a writer producing a short daily digest blog post.
-You will be given today's data from various sources: news headlines, market prices, videos, and a reminder.
-Write a very concise digest. Use markdown formatting.
-
-Structure:
-1. One sentence setting the theme of the day
-2. **News** - 3-5 bullet points, one line each
-3. **Markets** - Key movers in one line each
-4. **Reminder** - Include as a ## heading with content
-
-Rules:
-- Do NOT start with a title or heading — jump straight in
-- Do NOT include preamble like "Here is the digest"
-- Do NOT include a references section
-- Use plain dollar signs (e.g. $69,811), no LaTeX
-- CRITICAL: The entire output must be under 1024 characters. Be extremely concise.`,
+		System:   digestSystemPrompt,
 		Question: context,
 		Priority: ai.PriorityLow,
 	}
@@ -223,16 +184,7 @@ Rules:
 	}
 
 	response := cleanResponse(draft)
-
-	// Append references
-	if len(refs) > 0 {
-		var refSection strings.Builder
-		refSection.WriteString("\n\n## References\n\n")
-		for i, r := range refs {
-			refSection.WriteString(fmt.Sprintf("%d. [%s](%s)\n", i+1, r.title, r.url))
-		}
-		response += refSection.String()
-	}
+	response += buildReferences(refs)
 
 	// Update the existing post in place
 	err = blog.UpdatePost(post.ID, post.Title, response, post.Tags, post.Private)
@@ -304,6 +256,38 @@ Rules:
 	}
 
 	app.Log("digest", "Hourly comment added to digest %s", post.ID)
+}
+
+const digestSystemPrompt = `You are a writer producing a short daily digest blog post.
+You will be given today's data from various sources: news headlines, market prices, videos, and a reminder.
+Write a very concise digest. Use markdown formatting.
+
+Structure:
+1. One sentence setting the theme of the day
+2. **News** - 3-5 bullet points, one line each
+3. **Markets** - Key movers in one line each
+4. **Reminder** - Always use exactly "## Reminder" as the heading, then include each item (Name of Allah, Verse, Hadith) on its own line in bold label format
+
+Rules:
+- Do NOT start with a title or heading — jump straight in
+- Do NOT include preamble like "Here is the digest"
+- Do NOT include a references section
+- Do NOT rename the Reminder section — always use "## Reminder"
+- Use plain dollar signs (e.g. $69,811), no LaTeX
+- CRITICAL: The entire output must be under 1024 characters. Be extremely concise.`
+
+// buildReferences wraps source references in a collapsible details block.
+func buildReferences(refs []ref) string {
+	if len(refs) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString("\n\n<details>\n<summary>References</summary>\n\n")
+	for i, r := range refs {
+		sb.WriteString(fmt.Sprintf("%d. [%s](%s)\n", i+1, r.title, r.url))
+	}
+	sb.WriteString("\n</details>")
+	return sb.String()
 }
 
 func cleanResponse(s string) string {
