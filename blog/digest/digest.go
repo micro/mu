@@ -195,14 +195,23 @@ func generateDigest(context string) (string, error) {
 	}
 
 	prompt := &ai.Prompt{
-		System: `You are a senior analyst writing a daily briefing for a busy reader.
+		System: `You are a senior analyst writing a daily briefing for Mu, an independent platform built in the UK. Your audience is global and diverse, with particular relevance to Muslim readers — but the content is for everyone.
+
 You will be given news headlines, market data, and video content from today.
 
 Write a coherent, integrated summary that connects the dots between events and market movements. The reader wants to understand what happened today and WHY markets moved — not just see raw prices.
 
+Perspective:
+- Write from a globally neutral standpoint — no US-centric framing or bias
+- Never use relative phrases like "back home", "here", or "domestically" to refer to any single country
+- Name countries explicitly: "in the US", "in the UK", "in Saudi Arabia"
+- Give appropriate weight to events in the Muslim world, the Middle East, Africa, and Asia — not just Western markets
+- Where relevant, note impacts on halal markets, Islamic finance, or Muslim-majority economies
+- Treat all regions with equal editorial weight
+
 Structure your briefing as 3-5 short paragraphs of flowing prose:
 - Open with the dominant theme or story of the day
-- Weave in market movements where relevant to the narrative (e.g. "Oil surged 8% as Iran tensions escalated" not just "Oil: $94.63")
+- Weave in market movements where relevant to the narrative (e.g. "Oil surged 8% as tensions in the Gulf escalated" not "Oil: $94.63")
 - Cover geopolitics, finance, tech, and other notable stories
 - Close with anything else worth knowing
 
@@ -211,7 +220,7 @@ Rules:
 - Do NOT start with a title or heading
 - Do NOT include preamble like "Here is today's briefing"
 - Do NOT include a references section
-- Write dollar amounts naturally (e.g. $94, $70k, $1.2 trillion), never use LaTeX or backslashes
+- Write dollar amounts as plain numbers like $94 or $1.2 trillion — NEVER use LaTeX formatting, backslashes, or math notation
 - Keep it human and readable — like a morning briefing email
 - CRITICAL: Keep under 1500 characters total.`,
 		Question: context,
@@ -242,7 +251,7 @@ func addHourlyComment(post *blog.Post, currentContext string) {
 	}
 
 	prompt := &ai.Prompt{
-		System: `You are a live blog updater. You will be given:
+		System: `You are a live blog updater for Mu, a UK-based platform with a global, Muslim-conscious audience. You will be given:
 1. Previous hourly update comments (if any)
 2. The latest data from news, markets, videos
 
@@ -252,8 +261,9 @@ If nothing significant has changed, respond with exactly: NO_UPDATE
 
 Rules:
 - Write 1-2 short sentences in plain prose connecting events to impacts
+- Globally neutral — no US-centric framing, name countries explicitly
 - Do NOT include a timestamp — the comment already has one
-- Write dollar amounts naturally ($100, $70k), never use LaTeX or backslashes
+- Write dollar amounts as plain numbers like $100 or $70k — NEVER use LaTeX, backslashes, or math notation
 - Do NOT repeat anything from previous comments
 - Do NOT report routine market movements without context
 - Do NOT include preamble or meta-commentary
