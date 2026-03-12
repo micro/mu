@@ -49,6 +49,7 @@ type Post struct {
 	Tags      string     `json:"tags"` // Comma-separated tags
 	Private   bool       `json:"private"`
 	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at,omitempty"`
 	Comments  []*Comment `json:"-"` // Not persisted, populated on load
 }
 
@@ -618,11 +619,16 @@ func previewUncached() string {
 		}
 
 		// Generate fresh timestamp
+		listTimeInfo := app.TimeAgo(post.CreatedAt)
+		if !post.UpdatedAt.IsZero() {
+			listTimeInfo += " (updated " + app.TimeAgo(post.UpdatedAt) + ")"
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
 		<div class="info">%s · Posted by %s%s%s</div>
-	</div>`, post.ID, title, content, app.TimeAgo(post.CreatedAt), authorLink, tagsHtml, replyLink)
+	</div>`, post.ID, title, content, listTimeInfo, authorLink, tagsHtml, replyLink)
 		preview = append(preview, item)
 	}
 
@@ -1046,6 +1052,7 @@ func UpdatePost(id, title, content, tags string, private bool) error {
 	post.Content = content
 	post.Tags = tags
 	post.Private = private
+	post.UpdatedAt = time.Now()
 	save()
 	updateCacheUnlocked()
 
@@ -1427,6 +1434,11 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		tagsDisplay = fmt.Sprintf(`<div class="post-tags">%s</div>`, tagsHtml)
 	}
 
+	timeInfo := app.TimeAgo(post.CreatedAt)
+	if !post.UpdatedAt.IsZero() {
+		timeInfo += " (updated " + app.TimeAgo(post.UpdatedAt) + ")"
+	}
+
 	content := fmt.Sprintf(`<div id="blog">
 		%s
 		<div class="info">
@@ -1440,7 +1452,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<div class="mt-6">
 			<a href="/blog" class="text-muted">← Back to posts</a>
 		</div>
-	</div>`, tagsDisplay, app.TimeAgo(post.CreatedAt), authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, tagsDisplay, timeInfo, authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
 
 	html := app.RenderHTMLForRequest(title, post.Content[:min(len(post.Content), 150)], content, r)
 	w.Write([]byte(html))
