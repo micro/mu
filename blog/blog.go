@@ -1537,6 +1537,8 @@ func RenderMarkdown(text string) string {
 
 // Linkify converts markdown to HTML and embeds YouTube videos (for full post display)
 func Linkify(text string) string {
+	// Strip any LaTeX dollar signs before rendering
+	text = app.StripLatexDollars(text)
 	// Render markdown to HTML first
 	html := string(app.Render([]byte(text)))
 
