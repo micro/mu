@@ -22,6 +22,7 @@ var (
 	CostVideoWatch        = getEnvInt("CREDIT_COST_VIDEO_WATCH", 0) // Free - no value added over YouTube
 	CostChatQuery         = getEnvInt("CREDIT_COST_CHAT", 3)
 	CostChatRoom          = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
+	CostMailSend          = getEnvInt("CREDIT_COST_MAIL", 1)  // Internal mail send
 	CostExternalEmail     = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
 	CostPlacesSearch      = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
 	CostPlacesNearby      = getEnvInt("CREDIT_COST_PLACES_NEARBY", 2)
@@ -47,6 +48,7 @@ const (
 	OpVideoWatch        = "video_watch"
 	OpChatQuery         = "chat_query"
 	OpChatRoom          = "chat_room"
+	OpMailSend          = "mail_send"
 	OpExternalEmail     = "external_email"
 	OpPlacesSearch      = "places_search"
 	OpPlacesNearby      = "places_nearby"
@@ -345,6 +347,8 @@ func GetOperationCost(operation string) int {
 		return CostChatQuery
 	case OpChatRoom:
 		return CostChatRoom
+	case OpMailSend:
+		return CostMailSend
 	case OpExternalEmail:
 		return CostExternalEmail
 	case OpPlacesSearch:

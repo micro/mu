@@ -234,6 +234,10 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 	// Require authentication to charge for the search
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
+		if app.WantsJSON(r) {
+			app.RespondError(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
 		app.Unauthorized(w, r)
 		return
 	}
@@ -241,6 +245,10 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 	// Check quota (5p per search)
 	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpWebSearch)
 	if !canProceed {
+		if app.WantsJSON(r) {
+			app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("web search requires %d credits", cost))
+			return
+		}
 		content := searchBar + wallet.QuotaExceededPage(wallet.OpWebSearch, cost)
 		w.Write([]byte(app.RenderHTMLForRequest("Web Search", "Web Search", content, r)))
 		return
