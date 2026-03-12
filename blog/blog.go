@@ -658,10 +658,8 @@ func renderPostPreview(post *Post) string {
 		title = "Untitled"
 	}
 
-	// Use pre-rendered HTML and truncate for preview
+	// Truncate plain text before rendering to HTML
 	content := post.Content
-
-	// Truncate plain text before rendering
 	if len(content) > 256 {
 		lastSpace := 256
 		for i := 255; i >= 0 && i < len(content); i-- {
@@ -672,6 +670,8 @@ func renderPostPreview(post *Post) string {
 		}
 		content = content[:lastSpace] + "..."
 	}
+
+	content = Linkify(content)
 
 	authorLink := post.Author
 	if post.AuthorID != "" {
@@ -1537,9 +1537,7 @@ func RenderMarkdown(text string) string {
 
 // Linkify converts markdown to HTML and embeds YouTube videos (for full post display)
 func Linkify(text string) string {
-	// Strip any LaTeX dollar signs before rendering
-	text = app.StripLatexDollars(text)
-	// Render markdown to HTML first
+	// Render markdown to HTML first (Render handles LaTeX stripping)
 	html := string(app.Render([]byte(text)))
 
 	// Find YouTube links in the rendered HTML and replace with embeds
