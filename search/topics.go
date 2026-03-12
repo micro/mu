@@ -56,7 +56,7 @@ var stopWords = map[string]bool{
 	"much": true, "very": true, "like": true, "us": true, "we": true, "our": true,
 	"they": true, "them": true, "their": true, "he": true, "she": true, "his": true,
 	"her": true, "you": true, "your": true, "my": true, "me": true, "i": true,
-	"am": true, "been": true, "being": true, "these": true, "those": true,
+	"am": true, "these": true, "those": true,
 	"each": true, "every": true, "both": true, "few": true, "other": true,
 	"such": true, "only": true, "own": true, "same": true, "too": true,
 	"first": true, "last": true, "while": true, "still": true, "back": true,

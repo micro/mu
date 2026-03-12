@@ -335,6 +335,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 				SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo, messageID) //nolint:errcheck
 			} else {
+				// Internal mail costs credits
+				if !acc.Admin {
+					canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpMailSend)
+					if !canProceed {
+						app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("sending mail requires %d credits", cost))
+						return
+					}
+				}
 				toAcc, err := auth.GetAccount(to)
 				if err != nil {
 					app.RespondError(w, http.StatusNotFound, "recipient not found")
@@ -343,6 +351,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, replyTo, ""); err != nil {
 					app.RespondError(w, http.StatusInternalServerError, "failed to send message")
 					return
+				}
+				if !acc.Admin {
+					wallet.ConsumeQuota(acc.ID, wallet.OpMailSend) //nolint:errcheck
 				}
 			}
 			app.RespondJSON(w, map[string]bool{"success": true})
@@ -465,6 +476,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			// Internal message - store plain text, render at display time
+			if !acc.Admin {
+				canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpMailSend)
+				if !canProceed {
+					http.Error(w, fmt.Sprintf("Sending mail requires %d credits. Top up at /wallet", cost), http.StatusPaymentRequired)
+					return
+				}
+			}
 			toAcc, err := auth.GetAccount(to)
 			if err != nil {
 				http.Error(w, "Recipient not found", http.StatusNotFound)
@@ -475,6 +493,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, bodyPlain, replyTo, ""); err != nil {
 				http.Error(w, "Failed to send message", http.StatusInternalServerError)
 				return
+			}
+			if !acc.Admin {
+				wallet.ConsumeQuota(acc.ID, wallet.OpMailSend) //nolint:errcheck
 			}
 		}
 
