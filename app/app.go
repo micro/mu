@@ -895,6 +895,9 @@ func Donate(w http.ResponseWriter, r *http.Request) {
 
 // Render a markdown document as html
 func Render(md []byte) []byte {
+	// Strip LaTeX dollar sign escapes before parsing markdown
+	md = []byte(StripLatexDollars(string(md)))
+
 	// create markdown parser with extensions
 	extensions := parser.CommonExtensions | parser.AutoHeadingIDs | parser.NoEmptyLineBeforeBlock
 	p := parser.NewWithExtensions(extensions)
