@@ -119,23 +119,20 @@ func generate() {
 func createDigest() {
 	app.Log("digest", "Creating new daily digest")
 
-	newsContext, refs := gatherNewsContext()
-	marketsSection := buildMarketsSection()
-
-	if newsContext == "" && marketsSection == "" {
+	context, refs := gatherContext()
+	if context == "" {
 		setError("no content available")
 		app.Log("digest", "No content available for digest")
 		return
 	}
 
-	response, err := generateNewsSummary(newsContext)
+	response, err := generateDigest(context)
 	if err != nil {
 		setError(err.Error())
 		app.Log("digest", "AI generation failed: %v", err)
 		return
 	}
 
-	response += marketsSection
 	response += buildReferences(refs)
 
 	title := time.Now().Format("2 January 2006")
@@ -157,23 +154,20 @@ func createDigest() {
 func updateDigest(post *blog.Post) {
 	app.Log("digest", "Updating digest %s with full 24-hour coverage", post.ID)
 
-	newsContext, refs := gatherNewsContext()
-	marketsSection := buildMarketsSection()
-
-	if newsContext == "" && marketsSection == "" {
+	context, refs := gatherContext()
+	if context == "" {
 		app.Log("digest", "No content available for update")
 		setSuccess()
 		return
 	}
 
-	response, err := generateNewsSummary(newsContext)
+	response, err := generateDigest(context)
 	if err != nil {
 		setError(err.Error())
 		app.Log("digest", "AI generation failed: %v", err)
 		return
 	}
 
-	response += marketsSection
 	response += buildReferences(refs)
 
 	// Update the existing post in place
@@ -186,36 +180,41 @@ func updateDigest(post *blog.Post) {
 
 	app.Log("digest", "Digest post %s updated with latest data", post.ID)
 
-	// Step 2: Add a comment only if there are significant changes
-	addHourlyComment(post, newsContext)
+	// Add a comment only if there are significant changes
+	addHourlyComment(post, context)
 
 	setSuccess()
 }
 
-// generateNewsSummary asks the AI to summarize news headlines only.
-// Market data is handled separately to avoid LaTeX formatting issues.
-func generateNewsSummary(newsContext string) (string, error) {
-	if newsContext == "" {
+// generateDigest asks the AI to write a coherent briefing from all available data.
+// News, markets, and videos are provided as context. The AI weaves them into
+// a narrative that connects global events to market movements.
+func generateDigest(context string) (string, error) {
+	if context == "" {
 		return "", nil
 	}
 
 	prompt := &ai.Prompt{
-		System: `You are a writer producing a concise daily news summary.
-You will be given news headlines grouped by category.
-Write a brief digest using markdown. Use bullet points with each on its own line.
+		System: `You are a senior analyst writing a daily briefing for a busy reader.
+You will be given news headlines, market data, and video content from today.
 
-Structure:
-1. One sentence setting the theme of the day
-2. 5-8 bullet points covering the key stories, one line each
+Write a coherent, integrated summary that connects the dots between events and market movements. The reader wants to understand what happened today and WHY markets moved — not just see raw prices.
+
+Structure your briefing as 3-5 short paragraphs of flowing prose:
+- Open with the dominant theme or story of the day
+- Weave in market movements where relevant to the narrative (e.g. "Oil surged 8% as Iran tensions escalated" not just "Oil: $94.63")
+- Cover geopolitics, finance, tech, and other notable stories
+- Close with anything else worth knowing
 
 Rules:
+- Write in plain, direct prose — no bullet points, no lists, no headings
 - Do NOT start with a title or heading
-- Do NOT include preamble like "Here is the digest"
-- Do NOT include market prices, references, or reminder sections
-- Do NOT use dollar signs with backslashes - write amounts as plain text like $100 or 100 USD
-- Each bullet point MUST be on its own line starting with "- "
-- CRITICAL: Keep under 800 characters. Be extremely concise.`,
-		Question: newsContext,
+- Do NOT include preamble like "Here is today's briefing"
+- Do NOT include a references section
+- Write dollar amounts naturally (e.g. $94, $70k, $1.2 trillion), never use LaTeX or backslashes
+- Keep it human and readable — like a morning briefing email
+- CRITICAL: Keep under 1500 characters total.`,
+		Question: context,
 		Priority: ai.PriorityLow,
 	}
 
@@ -247,19 +246,18 @@ func addHourlyComment(post *blog.Post, currentContext string) {
 1. Previous hourly update comments (if any)
 2. The latest data from news, markets, videos
 
-Your job: identify ONLY significant developments from the LAST HOUR that are NOT already covered in previous comments. Significant means breaking news or notable new events.
+Your job: identify ONLY significant developments since the last update. Significant means breaking news, major market shifts tied to events, or notable new stories.
 
-If there are no significant new developments, or the changes are minor/incremental, respond with exactly: NO_UPDATE
+If nothing significant has changed, respond with exactly: NO_UPDATE
 
 Rules:
+- Write 1-2 short sentences in plain prose connecting events to impacts
 - Do NOT include a timestamp — the comment already has one
-- 1-3 bullet points max, only truly significant changes
-- Each bullet MUST be on its own line starting with "- "
-- Write dollar amounts as plain text like $100, never use backslashes
+- Write dollar amounts naturally ($100, $70k), never use LaTeX or backslashes
 - Do NOT repeat anything from previous comments
-- Do NOT report minor price fluctuations or routine market movements
+- Do NOT report routine market movements without context
 - Do NOT include preamble or meta-commentary
-- CRITICAL: Keep under 512 characters. Be extremely concise.`,
+- CRITICAL: Keep under 512 characters.`,
 		Question: fmt.Sprintf("## Previous hourly comments\n\n%s\n\n## Latest data\n\n%s", priorUpdates.String(), currentContext),
 		Priority: ai.PriorityLow,
 	}
@@ -285,50 +283,6 @@ Rules:
 	}
 
 	app.Log("digest", "Hourly comment added to digest %s", post.ID)
-}
-
-// buildMarketsSection creates a pre-formatted markdown markets section
-// from live data. No AI involved — avoids LaTeX dollar sign issues entirely.
-func buildMarketsSection() string {
-	priceData := markets.GetAllPriceData()
-	if len(priceData) == 0 {
-		return ""
-	}
-
-	var sb strings.Builder
-	sb.WriteString("\n\n## Markets\n\n")
-
-	categories := []struct {
-		name   string
-		assets []string
-	}{
-		{"Crypto", []string{"BTC", "ETH", "SOL", "PAXG"}},
-		{"Futures", []string{"OIL", "GOLD", "SILVER", "COPPER"}},
-		{"Commodities", []string{"COFFEE", "WHEAT", "CORN"}},
-		{"Currencies", []string{"EUR", "GBP", "JPY", "CNY"}},
-	}
-
-	for _, cat := range categories {
-		var lines []string
-		for _, symbol := range cat.assets {
-			if pd, ok := priceData[symbol]; ok && pd.Price > 0 {
-				change := ""
-				if pd.Change24h != 0 {
-					change = fmt.Sprintf(" (%+.1f%%)", pd.Change24h)
-				}
-				lines = append(lines, fmt.Sprintf("- **%s** $%.2f%s", symbol, pd.Price, change))
-			}
-		}
-		if len(lines) > 0 {
-			sb.WriteString(fmt.Sprintf("**%s**\n\n", cat.name))
-			for _, l := range lines {
-				sb.WriteString(l + "\n")
-			}
-			sb.WriteString("\n")
-		}
-	}
-
-	return sb.String()
 }
 
 // buildReferences wraps source references in a collapsible details block.
@@ -373,15 +327,16 @@ type ref struct {
 	url   string
 }
 
-// gatherNewsContext collects news headlines and video titles for the AI to summarize.
-// Market data is NOT included here — it's built separately in buildMarketsSection.
-func gatherNewsContext() (string, []ref) {
+// gatherContext collects all available data — news, markets, videos — for the AI
+// to synthesise into a coherent briefing.
+func gatherContext() (string, []ref) {
 	var sb strings.Builder
 	var refs []ref
 
 	// News - group by category so all topics are represented
 	feed := news.GetFeed()
 	if len(feed) > 0 {
+		sb.WriteString("## News Headlines\n\n")
 		byCategory := make(map[string][]*news.Post)
 		for _, item := range feed {
 			byCategory[item.Category] = append(byCategory[item.Category], item)
@@ -394,19 +349,46 @@ func gatherNewsContext() (string, []ref) {
 			}
 			for _, item := range items[:count] {
 				refs = append(refs, ref{item.Title, item.URL})
-				sb.WriteString(fmt.Sprintf("- **%s**: %s\n", item.Title, item.Description))
+				sb.WriteString(fmt.Sprintf("- %s: %s\n", item.Title, item.Description))
 			}
 			sb.WriteString("\n")
 		}
 	}
 
+	// Markets - provide as plain text context for the AI to weave into narrative
+	priceData := markets.GetAllPriceData()
+	if len(priceData) > 0 {
+		sb.WriteString("## Market Data\n\n")
+		categories := []struct {
+			name   string
+			assets []string
+		}{
+			{"Crypto", []string{"BTC", "ETH", "SOL", "PAXG"}},
+			{"Futures", []string{"OIL", "GOLD", "SILVER", "COPPER"}},
+			{"Commodities", []string{"COFFEE", "WHEAT", "CORN"}},
+			{"Currencies", []string{"EUR", "GBP", "JPY", "CNY"}},
+		}
+		for _, cat := range categories {
+			for _, symbol := range cat.assets {
+				if pd, ok := priceData[symbol]; ok && pd.Price > 0 {
+					change := ""
+					if pd.Change24h != 0 {
+						change = fmt.Sprintf(" %+.1f%%", pd.Change24h)
+					}
+					sb.WriteString(fmt.Sprintf("- %s: $%.2f%s\n", symbol, pd.Price, change))
+				}
+			}
+		}
+		sb.WriteString("\n")
+	}
+
 	// Videos
 	videos := video.GetLatestVideos(5)
 	if len(videos) > 0 {
-		sb.WriteString("## Latest Videos\n\n")
+		sb.WriteString("## Videos\n\n")
 		for _, v := range videos {
 			refs = append(refs, ref{v.Title, v.URL})
-			sb.WriteString(fmt.Sprintf("- **%s** by %s\n", v.Title, v.Channel))
+			sb.WriteString(fmt.Sprintf("- %s by %s\n", v.Title, v.Channel))
 		}
 		sb.WriteString("\n")
 	}
