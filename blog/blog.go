@@ -1087,6 +1087,29 @@ func GetPostsByAuthor(authorName string) []*Post {
 	return userPosts
 }
 
+// FindTodayDigest returns today's digest post if one exists, or nil.
+// It looks for a post tagged "digest" by author "micro" created today.
+func FindTodayDigest() *Post {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	now := time.Now()
+	y, m, d := now.Date()
+	for _, post := range posts {
+		if post.Author != "micro" {
+			continue
+		}
+		if !strings.Contains(post.Tags, "digest") {
+			continue
+		}
+		py, pm, pd := post.CreatedAt.Date()
+		if py == y && pm == m && pd == d {
+			return post
+		}
+	}
+	return nil
+}
+
 // handlePost processes the POST request to create a new blog post
 // PostHandler serves individual blog posts (public, no auth required) and handles PATCH for editing
 // Supports both HTML and JSON requests
@@ -1459,18 +1482,21 @@ func renderComments(postID string, r *http.Request) string {
 	}
 
 	commentsHTML.WriteString(`<div class="mt-5">`)
-	for _, comment := range postComments {
+	// Display newest comments first
+	for i := len(postComments) - 1; i >= 0; i-- {
+		comment := postComments[i]
 		authorLink := comment.Author
 		if comment.AuthorID != "" {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, comment.AuthorID, comment.Author)
 		}
 
+		renderedContent := app.RenderString(comment.Content)
 		commentsHTML.WriteString(fmt.Sprintf(`
 			<div class="p-4 bg-light rounded mb-3">
 				<div class="text-muted text-xs mb-1">%s · %s</div>
-				<div class="whitespace-pre-wrap">%s</div>
+				<div>%s</div>
 			</div>
-		`, app.TimeAgo(comment.CreatedAt), authorLink, comment.Content))
+		`, app.TimeAgo(comment.CreatedAt), authorLink, renderedContent))
 	}
 	commentsHTML.WriteString(`</div>`)
 
