@@ -141,6 +141,7 @@ func createDigest() {
 	}
 
 	response := cleanResponse(draft)
+	response += buildReminder()
 	response += buildReferences(refs)
 
 	title := time.Now().Format("2 January 2006")
@@ -184,6 +185,7 @@ func updateDigest(post *blog.Post) {
 	}
 
 	response := cleanResponse(draft)
+	response += buildReminder()
 	response += buildReferences(refs)
 
 	// Update the existing post in place
@@ -259,22 +261,29 @@ Rules:
 }
 
 const digestSystemPrompt = `You are a writer producing a short daily digest blog post.
-You will be given today's data from various sources: news headlines, market prices, videos, and a reminder.
+You will be given today's data: news headlines, market prices, and videos.
 Write a very concise digest. Use markdown formatting.
 
 Structure:
 1. One sentence setting the theme of the day
 2. **News** - 3-5 bullet points, one line each
 3. **Markets** - Key movers in one line each
-4. **Reminder** - Always use exactly "## Reminder" as the heading, then include each item (Name of Allah, Verse, Hadith) on its own line in bold label format
 
 Rules:
 - Do NOT start with a title or heading — jump straight in
 - Do NOT include preamble like "Here is the digest"
-- Do NOT include a references section
-- Do NOT rename the Reminder section — always use "## Reminder"
+- Do NOT include a references or reminder section
 - Use plain dollar signs (e.g. $69,811), no LaTeX
 - CRITICAL: The entire output must be under 1024 characters. Be extremely concise.`
+
+// buildReminder appends a Quran verse as the reminder section.
+func buildReminder() string {
+	rem := reminder.GetReminderData()
+	if rem == nil || rem.Verse == "" {
+		return ""
+	}
+	return "\n\n## Reminder\n\n" + rem.Verse
+}
 
 // buildReferences wraps source references in a collapsible details block.
 func buildReferences(refs []ref) string {
@@ -386,20 +395,6 @@ func gatherContext() (string, []ref) {
 			sb.WriteString(fmt.Sprintf("- **%s** by %s\n", v.Title, v.Channel))
 		}
 		sb.WriteString("\n")
-	}
-
-	// Reminder
-	if rem := reminder.GetReminderData(); rem != nil {
-		sb.WriteString("## Reminder\n\n")
-		if rem.Name != "" {
-			sb.WriteString(fmt.Sprintf("**Name of Allah:** %s\n\n", rem.Name))
-		}
-		if rem.Verse != "" {
-			sb.WriteString(fmt.Sprintf("**Verse:** %s\n\n", rem.Verse))
-		}
-		if rem.Hadith != "" {
-			sb.WriteString(fmt.Sprintf("**Hadith:** %s\n\n", rem.Hadith))
-		}
 	}
 
 	return sb.String(), refs
