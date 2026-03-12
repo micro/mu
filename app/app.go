@@ -912,13 +912,26 @@ func Render(md []byte) []byte {
 }
 
 // StripLatexDollars removes LaTeX math delimiters that LLMs insert around
-// dollar amounts. Handles \$, \(, \), \[, \] — all replaced with $.
+// dollar amounts. Handles \$, \(, \), \[, \] and HTML-escaped variants.
 func StripLatexDollars(s string) string {
+	// Handle HTML-escaped backslashes first (&#92; and &#x5c;)
+	s = strings.ReplaceAll(s, `&#92;(`, "$")
+	s = strings.ReplaceAll(s, `&#92;)`, "$")
+	s = strings.ReplaceAll(s, `&#92;[`, "$")
+	s = strings.ReplaceAll(s, `&#92;]`, "$")
+	s = strings.ReplaceAll(s, `&#92;$`, "$")
+	s = strings.ReplaceAll(s, `&#x5c;(`, "$")
+	s = strings.ReplaceAll(s, `&#x5c;)`, "$")
+	// Raw backslash variants
 	s = strings.ReplaceAll(s, `\$`, "$")
 	s = strings.ReplaceAll(s, `\(`, "$")
 	s = strings.ReplaceAll(s, `\)`, "$")
 	s = strings.ReplaceAll(s, `\[`, "$")
 	s = strings.ReplaceAll(s, `\]`, "$")
+	// Clean up any doubled dollar signs from multiple passes
+	for strings.Contains(s, "$$") {
+		s = strings.ReplaceAll(s, "$$", "$")
+	}
 	return s
 }
 
