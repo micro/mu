@@ -65,24 +65,14 @@ func Status() (ok bool, details string) {
 }
 
 func scheduler() {
-	// If no digest exists for today, generate immediately
-	if !sameDay(lastDigest, time.Now()) {
-		generate()
-	}
+	// Run immediately on startup
+	generate()
 
-	// Then check every hour
+	// Then run every hour
 	for {
 		time.Sleep(time.Hour)
-		if !sameDay(lastDigest, time.Now()) {
-			generate()
-		}
+		generate()
 	}
-}
-
-func sameDay(a, b time.Time) bool {
-	y1, m1, d1 := a.Date()
-	y2, m2, d2 := b.Date()
-	return y1 == y2 && m1 == m2 && d1 == d2
 }
 
 // Generate triggers digest generation. Returns false if already running.
@@ -116,110 +106,56 @@ func generate() {
 	lastStatus = "running"
 	mu.Unlock()
 
-	app.Log("digest", "Generating daily digest")
+	// Check if today's digest post already exists
+	existing := blog.FindTodayDigest()
+
+	if existing == nil {
+		createDigest()
+	} else {
+		updateDigest(existing)
+	}
+}
+
+// createDigest generates and publishes a new digest post for today.
+func createDigest() {
+	app.Log("digest", "Creating new daily digest")
 
 	context, refs := gatherContext()
 	if context == "" {
-		mu.Lock()
-		lastStatus = "error"
-		lastError = "no content available"
-		mu.Unlock()
+		setError("no content available")
 		app.Log("digest", "No content available for digest")
 		return
 	}
 
 	prompt := &ai.Prompt{
-		System: `You are a writer producing a daily digest blog post.
+		System: `You are a writer producing a short daily digest blog post.
 You will be given today's data from various sources: news headlines, market prices, videos, and a reminder.
-Write a concise, well-structured digest summarising the key information. Use markdown formatting.
+Write a very concise digest. Use markdown formatting.
 
 Structure:
-1. A brief opening paragraph with the overall theme of the day
-2. **News** - Summarise the top stories (3-5 bullet points with key takeaways)
-3. **Markets** - Brief overview of notable price movements and trends
-4. **Videos** - Mention any notable new content if available
-5. **Reminder** - Include the reminder as its own section with a ## heading, followed by a blank line, then the content
+1. One sentence setting the theme of the day
+2. **News** - 3-5 bullet points, one line each
+3. **Markets** - Key movers in one line each
+4. **Reminder** - Include as a ## heading with content
 
-Keep it informative but concise. Write in a neutral, clear tone. Do not invent information - only summarise what is provided.
-Do NOT start with a title or top-level heading - the blog post title is set separately. Jump straight into the opening paragraph.
-Do NOT include any preamble, meta-commentary, or introductory text like "Here is the digest". Output ONLY the digest content.
-Do NOT include a references section - references will be appended separately.
-Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \( or \).
-The total length should be around 300-500 words.`,
+Rules:
+- Do NOT start with a title or heading — jump straight in
+- Do NOT include preamble like "Here is the digest"
+- Do NOT include a references section
+- Use plain dollar signs (e.g. $69,811), no LaTeX
+- CRITICAL: The entire output must be under 1024 characters. Be extremely concise.`,
 		Question: context,
 		Priority: ai.PriorityLow,
 	}
 
 	draft, err := ai.Ask(prompt)
 	if err != nil {
-		mu.Lock()
-		lastStatus = "error"
-		lastError = err.Error()
-		mu.Unlock()
+		setError(err.Error())
 		app.Log("digest", "AI generation failed: %v", err)
 		return
 	}
 
-	// Editorial review pass - vet the draft against sources
-	reviewPrompt := &ai.Prompt{
-		System: `You are a senior editor reviewing a daily digest before publication.
-You have access to the original source material and the draft written by a journalist.
-
-Review the draft for:
-1. **Accuracy** - Does it faithfully represent the source data? Flag anything invented or misrepresented.
-2. **Coherence** - Does it flow well? Is the opening paragraph a good summary of the day's theme?
-3. **Completeness** - Are important items from the sources missing or underrepresented?
-4. **Tone** - Is it neutral and clear? Flag any editorialising or sensationalism.
-5. **Structure** - Are sections well-balanced? Is anything too long or too short?
-
-Provide specific, actionable feedback as bullet points. Be concise and direct.
-If the draft is good, say so briefly and suggest only minor tweaks if any.`,
-		Question: fmt.Sprintf("## Source Material\n\n%s\n\n## Draft\n\n%s", context, draft),
-		Priority: ai.PriorityLow,
-	}
-
-	feedback, err := ai.Ask(reviewPrompt)
-	if err != nil {
-		app.Log("digest", "Editorial review failed, using draft as-is: %v", err)
-		feedback = ""
-	}
-
-	// Final pass - rewrite incorporating editorial feedback
-	var response string
-	if feedback != "" {
-		finalPrompt := &ai.Prompt{
-			System: `You are a writer producing the final version of a daily digest blog post.
-You have: the original source data, your first draft, and editorial feedback from a senior editor.
-Rewrite the digest incorporating the editor's suggestions. Follow the same structure and guidelines as before.
-
-Structure:
-1. A brief opening paragraph with the overall theme of the day
-2. **News** - Summarise the top stories (3-5 bullet points with key takeaways)
-3. **Markets** - Brief overview of notable price movements and trends
-4. **Videos** - Mention any notable new content if available
-5. **Reminder** - Include the reminder as its own section with a ## heading, followed by a blank line, then the content
-
-Do NOT start with a title or top-level heading. Jump straight into the opening paragraph.
-Do NOT include any preamble, meta-commentary, or introductory text like "Here is the revised digest". Output ONLY the digest content.
-Do NOT include a references section - references will be appended separately.
-Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \( or \).
-The total length should be around 300-500 words.`,
-			Question: fmt.Sprintf("## Source Material\n\n%s\n\n## First Draft\n\n%s\n\n## Editorial Feedback\n\n%s", context, draft, feedback),
-			Priority: ai.PriorityLow,
-		}
-
-		response, err = ai.Ask(finalPrompt)
-		if err != nil {
-			app.Log("digest", "Final rewrite failed, using draft as-is: %v", err)
-			response = draft
-		}
-	} else {
-		response = draft
-	}
-
-	response = stripPreamble(response)
-	response = normalizeHeadings(response)
-	response = app.StripLatexDollars(response)
+	response := cleanResponse(draft)
 
 	// Append references
 	if len(refs) > 0 {
@@ -231,26 +167,108 @@ The total length should be around 300-500 words.`,
 		response += refSection.String()
 	}
 
-	title := fmt.Sprintf("%s", time.Now().Format("2 January 2006"))
+	title := time.Now().Format("2 January 2006")
 
 	err = blog.CreatePost(title, response, "micro", "micro", "digest", false)
 	if err != nil {
-		mu.Lock()
-		lastStatus = "error"
-		lastError = err.Error()
-		mu.Unlock()
+		setError(err.Error())
 		app.Log("digest", "Failed to create blog post: %v", err)
 		return
 	}
 
+	setSuccess()
+	app.Log("digest", "Daily digest published: %s", title)
+}
+
+// updateDigest adds an hourly update as a comment on today's existing digest.
+// It compares current data against the existing post to produce a delta.
+// If nothing meaningful has changed, it skips the update.
+func updateDigest(post *blog.Post) {
+	app.Log("digest", "Checking for hourly update on digest %s", post.ID)
+
+	context, _ := gatherContext()
+	if context == "" {
+		app.Log("digest", "No content available for update")
+		setSuccess()
+		return
+	}
+
+	// Build the existing content: post body + all existing comments
+	var existing strings.Builder
+	existing.WriteString(post.Content)
+	for _, c := range blog.GetComments(post.ID) {
+		existing.WriteString("\n\n")
+		existing.WriteString(c.Content)
+	}
+
+	prompt := &ai.Prompt{
+		System: `You are a live blog updater. You will be given:
+1. The existing digest and any prior updates
+2. The latest data from news, markets, videos
+
+Write a brief update covering ONLY what is new or changed since the existing content.
+If nothing meaningful has changed, respond with exactly: NO_UPDATE
+
+Rules:
+- Start with a bold timestamp like **14:00** (use the current hour)
+- 2-4 bullet points max covering new developments
+- Use plain dollar signs, no LaTeX
+- Do NOT repeat information already in the existing content
+- Do NOT include preamble or meta-commentary
+- CRITICAL: Keep under 512 characters. Be extremely concise.`,
+		Question: fmt.Sprintf("## Existing content\n\n%s\n\n## Latest data\n\n%s", existing.String(), context),
+		Priority: ai.PriorityLow,
+	}
+
+	update, err := ai.Ask(prompt)
+	if err != nil {
+		setError(err.Error())
+		app.Log("digest", "AI update generation failed: %v", err)
+		return
+	}
+
+	update = cleanResponse(update)
+
+	// Check if the AI determined nothing has changed
+	if strings.TrimSpace(update) == "NO_UPDATE" || strings.TrimSpace(update) == "" {
+		app.Log("digest", "No meaningful changes, skipping update")
+		setSuccess()
+		return
+	}
+
+	// Add the update as a comment on the digest post
+	err = blog.CreateComment(post.ID, update, "micro", "micro")
+	if err != nil {
+		setError(err.Error())
+		app.Log("digest", "Failed to add update comment: %v", err)
+		return
+	}
+
+	setSuccess()
+	app.Log("digest", "Hourly update added to digest %s", post.ID)
+}
+
+func cleanResponse(s string) string {
+	s = stripPreamble(s)
+	s = normalizeHeadings(s)
+	s = app.StripLatexDollars(s)
+	return s
+}
+
+func setError(msg string) {
+	mu.Lock()
+	lastStatus = "error"
+	lastError = msg
+	mu.Unlock()
+}
+
+func setSuccess() {
 	mu.Lock()
 	lastDigest = time.Now()
 	lastStatus = "ok"
 	lastError = ""
 	mu.Unlock()
-
 	data.SaveFile("digest_last.txt", lastDigest.Format(time.RFC3339))
-	app.Log("digest", "Daily digest published: %s", title)
 }
 
 type ref struct {
