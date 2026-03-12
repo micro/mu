@@ -203,7 +203,24 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 		`</form>`
 
 	if query == "" {
-		content := searchBar + `<p class="empty">Enter a query above to search the web.</p>`
+		var landing strings.Builder
+		landing.WriteString(searchBar)
+		landing.WriteString(`<div id="recent-searches-container"></div>`)
+
+		// Topics from indexed content
+		topics := GetTopics()
+		if len(topics) > 0 {
+			landing.WriteString(`<div class="recent-searches"><h3>Topics</h3><div class="recent-searches-scroll">`)
+			for _, topic := range topics {
+				landing.WriteString(`<a class="recent-search-item" href="/web?q=` + url.QueryEscape(topic) + `">`)
+				landing.WriteString(`<span class="recent-search-label">` + html.EscapeString(topic) + `</span>`)
+				landing.WriteString(`</a>`)
+			}
+			landing.WriteString(`</div></div>`)
+		}
+
+		landing.WriteString(webRecentSearchesScript)
+		content := landing.String()
 		w.Write([]byte(app.RenderHTMLForRequest("Web Search", "Web Search", content, r)))
 		return
 	}
@@ -273,6 +290,16 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Save this search to recent searches on the client
+	b.WriteString(`<script>
+	(function(){
+		var KEY='mu_recent_web_searches',MAX=10;
+		try{var s=localStorage.getItem(KEY);var a=s?JSON.parse(s):[];var q="` + html.EscapeString(strings.ReplaceAll(query, `"`, `\"`)) + `";
+		a=a.filter(function(x){return x!==q});a.unshift(q);
+		if(a.length>MAX)a=a.slice(0,MAX);localStorage.setItem(KEY,JSON.stringify(a));}catch(e){}
+	})();
+	</script>`)
+
 	pageHTML := app.RenderHTMLForRequest("Web: "+query, "Web results for "+query, b.String(), r)
 	w.Write([]byte(pageHTML))
 }
@@ -314,6 +341,92 @@ func stripHTML(s string) string {
 	s = htmlTagRe.ReplaceAllString(s, "")
 	return html.UnescapeString(s)
 }
+
+// webRecentSearchesScript is the client-side JS for recent web searches (localStorage).
+var webRecentSearchesScript = `
+<script>
+  const MAX_RECENT_SEARCHES = 10;
+  const STORAGE_KEY = 'mu_recent_web_searches';
+
+  function escapeHTML(text) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+               .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function loadRecentSearches() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) { return []; }
+  }
+
+  function saveRecentSearch(query) {
+    if (!query || !query.trim()) return;
+    try {
+      let searches = loadRecentSearches();
+      searches = searches.filter(s => s !== query);
+      searches.unshift(query);
+      if (searches.length > MAX_RECENT_SEARCHES) searches = searches.slice(0, MAX_RECENT_SEARCHES);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
+    } catch (e) {}
+  }
+
+  function removeRecentSearch(query) {
+    try {
+      let searches = loadRecentSearches().filter(s => s !== query);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
+      displayRecentSearches();
+    } catch (e) {}
+  }
+
+  function displayRecentSearches() {
+    const searches = loadRecentSearches();
+    const container = document.getElementById('recent-searches-container');
+    if (!container || searches.length === 0) { if (container) container.innerHTML = ''; return; }
+
+    let h = '<div class="recent-searches"><h3>Recent Searches</h3><div class="recent-searches-scroll">';
+    searches.forEach(function(search) {
+      const escaped = escapeHTML(search);
+      h += '<span class="recent-search-item" data-query="' + escaped + '">'
+         + '<span class="recent-search-label">' + escaped + '</span>'
+         + '<span class="recent-search-close" title="Remove">&times;</span>'
+         + '</span>';
+    });
+    h += '</div></div>';
+    container.innerHTML = h;
+
+    container.querySelectorAll('.recent-search-item').forEach(function(item) {
+      var label = item.querySelector('.recent-search-label');
+      var close = item.querySelector('.recent-search-close');
+      if (label) {
+        label.addEventListener('click', function(e) {
+          e.preventDefault(); e.stopPropagation();
+          var q = item.getAttribute('data-query');
+          saveRecentSearch(q);
+          window.location.href = '/web?q=' + encodeURIComponent(q);
+        });
+      }
+      if (close) {
+        close.addEventListener('click', function(e) {
+          e.preventDefault(); e.stopPropagation();
+          removeRecentSearch(item.getAttribute('data-query'));
+        });
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    displayRecentSearches();
+    var form = document.querySelector('form[action="/web"]');
+    if (form) {
+      form.addEventListener('submit', function() {
+        var q = form.querySelector('input[name="q"]');
+        if (q && q.value.trim()) saveRecentSearch(q.value.trim());
+      });
+    }
+  });
+</script>
+`
 
 // truncate shortens s to at most max runes, appending "…" if truncated.
 func truncate(s string, max int) string {
