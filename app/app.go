@@ -909,9 +909,11 @@ func Render(md []byte) []byte {
 }
 
 // StripLatexDollars removes LaTeX math delimiters that some LLMs use around
-// dollar amounts, e.g. \(69,811\) → $69,811 and \$69,811 → $69,811.
+// dollar amounts, e.g. \(69,811\) → $69,811, \$69,811 → $69,811,
+// and \[69,811\] → $69,811.
 func StripLatexDollars(s string) string {
 	s = strings.ReplaceAll(s, `\$`, "$")
+	// Handle \(...\) inline math delimiters
 	for {
 		idx := strings.Index(s, `\(`)
 		if idx == -1 {
@@ -919,6 +921,21 @@ func StripLatexDollars(s string) string {
 		}
 		rest := s[idx+2:]
 		endIdx := strings.Index(rest, `\)`)
+		if endIdx == -1 {
+			s = s[:idx] + "$" + s[idx+2:]
+			continue
+		}
+		inner := rest[:endIdx]
+		s = s[:idx] + "$" + inner + s[idx+2+endIdx+2:]
+	}
+	// Handle \[...\] display math delimiters
+	for {
+		idx := strings.Index(s, `\[`)
+		if idx == -1 {
+			break
+		}
+		rest := s[idx+2:]
+		endIdx := strings.Index(rest, `\]`)
 		if endIdx == -1 {
 			s = s[:idx] + "$" + s[idx+2:]
 			continue
