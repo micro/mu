@@ -435,12 +435,19 @@ func updateCacheUnlocked() {
 			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
 		}
 
+		previewTime := post.CreatedAt
+		previewTimeLabel := app.TimeAgo(previewTime)
+		if !post.UpdatedAt.IsZero() {
+			previewTime = post.UpdatedAt
+			previewTimeLabel = "Updated " + app.TimeAgo(previewTime)
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 		%s
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 		<div>%s</div>
-	</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content)
+	</div>`, tagsHtml, post.ID, title, previewTime.Unix(), previewTimeLabel, authorLink, replyLink, content)
 		preview = append(preview, item)
 	}
 
@@ -531,13 +538,20 @@ func updateCacheUnlocked() {
 			keepReading = fmt.Sprintf(`<a href="/post?id=%s" class="keep-reading">Keep Reading →</a>`, post.ID)
 		}
 
+		listTime := post.CreatedAt
+		listTimeLabel := app.TimeAgo(listTime)
+		if !post.UpdatedAt.IsZero() {
+			listTime = post.UpdatedAt
+			listTimeLabel = "Updated " + app.TimeAgo(listTime)
+		}
+
 		item := fmt.Sprintf(`<div class="post-item">
 			%s
 			<h3><a href="/post?id=%s">%s</a></h3>
 			<div class="info"><span data-timestamp="%d">%s</span> · Posted by %s%s</div>
 			<div>%s</div>
 			%s
-		</div>`, tagsHtml, post.ID, title, post.CreatedAt.Unix(), app.TimeAgo(post.CreatedAt), authorLink, replyLink, content, keepReading)
+		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, content, keepReading)
 		fullList = append(fullList, item)
 	}
 
@@ -621,7 +635,7 @@ func previewUncached() string {
 		// Generate fresh timestamp
 		listTimeInfo := app.TimeAgo(post.CreatedAt)
 		if !post.UpdatedAt.IsZero() {
-			listTimeInfo += " (updated " + app.TimeAgo(post.UpdatedAt) + ")"
+			listTimeInfo = "Updated " + app.TimeAgo(post.UpdatedAt)
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
@@ -1436,7 +1450,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	timeInfo := app.TimeAgo(post.CreatedAt)
 	if !post.UpdatedAt.IsZero() {
-		timeInfo += " (updated " + app.TimeAgo(post.UpdatedAt) + ")"
+		timeInfo = "Updated " + app.TimeAgo(post.UpdatedAt)
 	}
 
 	content := fmt.Sprintf(`<div id="blog">
