@@ -124,6 +124,19 @@ func (s *Session) Mail(from string, opts *smtpd.MailOptions) error {
 
 	app.Log("mail", "Mail from: %s (IP: %s)", from, s.remoteIP)
 
+	// Reject external senders claiming to be from our domain (anti-spoofing)
+	fromAddr, _ := mail.ParseAddress(from)
+	if fromAddr != nil {
+		fromParts := strings.Split(fromAddr.Address, "@")
+		if len(fromParts) == 2 && strings.EqualFold(fromParts[1], GetConfiguredDomain()) {
+			app.Log("mail", "Rejected domain spoofing: external IP %s claiming to send from %s", s.remoteIP, from)
+			return &smtpd.SMTPError{
+				Code:    550,
+				Message: "Sender address rejected: not authorized to send from this domain",
+			}
+		}
+	}
+
 	// Check blocklist first
 	if IsBlocked(from, s.remoteIP) {
 		app.Log("mail", "Rejected blocked sender: %s (IP: %s)", from, s.remoteIP)
