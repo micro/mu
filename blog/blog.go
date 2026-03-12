@@ -445,7 +445,7 @@ func updateCacheUnlocked() {
 		item := fmt.Sprintf(`<div class="post-item">
 		%s
 		<h3><a href="/post?id=%s">%s</a></h3>
-		<div class="info"><span data-timestamp="%d">%s</span> · By %s%s</div>
+		<div class="info"><span data-timestamp="%d">%s</span> · %s%s</div>
 		<div>%s</div>
 	</div>`, tagsHtml, post.ID, title, previewTime.Unix(), previewTimeLabel, authorLink, replyLink, content)
 		preview = append(preview, item)
@@ -548,7 +548,7 @@ func updateCacheUnlocked() {
 		item := fmt.Sprintf(`<div class="post-item">
 			%s
 			<h3><a href="/post?id=%s">%s</a></h3>
-			<div class="info"><span data-timestamp="%d">%s</span> · By %s%s</div>
+			<div class="info"><span data-timestamp="%d">%s</span> · %s%s</div>
 			<div>%s</div>
 			%s
 		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, content, keepReading)
@@ -641,7 +641,7 @@ func previewUncached() string {
 		item := fmt.Sprintf(`<div class="post-item">
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div>%s</div>
-		<div class="info">%s · By %s%s%s</div>
+		<div class="info">%s · %s%s%s</div>
 	</div>`, post.ID, title, content, listTimeInfo, authorLink, tagsHtml, replyLink)
 		preview = append(preview, item)
 	}
@@ -682,7 +682,7 @@ func renderPostPreview(post *Post) string {
 		<h3><a href="/post?id=%s">%s</a></h3>
 		<div class="mb-3">%s</div>
 		<div class="info">
-			By %s
+			%s
 			<span class="ml-3">·</span>
 			<a href="/post?id=%s" class="ml-3">Reply</a>
 		</div>
@@ -1456,7 +1456,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	content := fmt.Sprintf(`<div id="blog">
 		%s
 		<div class="info">
-			%s · By %s%s · <a href="#" onclick="flagPost('%s'); return false;" class="text-muted">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" class="text-muted">Share</a>
+			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" class="text-muted">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" class="text-muted">Share</a>
 		</div>
 		<hr class="my-5 border-t">
 		<div class="mb-5">%s</div>
