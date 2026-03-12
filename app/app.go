@@ -911,31 +911,28 @@ func Render(md []byte) []byte {
 	return markdown.Render(doc, renderer)
 }
 
-// LaTeX math delimiter patterns compiled once.
-var (
-	// \(content\) or &#92;(content&#92;) — inline math delimiters
-	reLatexInline = regexp.MustCompile(`(?:\\|&#92;|&#x5c;)\((.+?)(?:\\|&#92;|&#x5c;)\)`)
-	// \[content\] or &#92;[content&#92;] — display math delimiters
-	reLatexDisplay = regexp.MustCompile(`(?:\\|&#92;|&#x5c;)\[(.+?)(?:\\|&#92;|&#x5c;)\]`)
-	// $content$ — standard math mode (only when content looks like a number/amount)
-	reLatexDollarMath = regexp.MustCompile(`\$(\d[\d,.]*)\$`)
-)
-
 // StripLatexDollars removes LaTeX math delimiters that LLMs insert around
-// dollar amounts and numbers. Handles \(...\), \[...\], $...$, \$, and
-// their HTML-escaped variants.
+// dollar amounts. Simple string replacements — strip the delimiters entirely.
 func StripLatexDollars(s string) string {
-	// Replace \(content\) with just content (strip math delimiters)
-	s = reLatexInline.ReplaceAllString(s, "$1")
-	// Replace \[content\] with just content
-	s = reLatexDisplay.ReplaceAllString(s, "$1")
-	// Replace $number$ with just number (math-mode numbers)
-	s = reLatexDollarMath.ReplaceAllString(s, "$1")
-	// Handle escaped dollar signs: \$ → $
+	// HTML-escaped backslash variants first (&#92; = \, &#x5c; = \)
+	s = strings.ReplaceAll(s, `&#92;(`, "")
+	s = strings.ReplaceAll(s, `&#92;)`, "")
+	s = strings.ReplaceAll(s, `&#92;[`, "")
+	s = strings.ReplaceAll(s, `&#92;]`, "")
 	s = strings.ReplaceAll(s, `&#92;$`, "$")
+	s = strings.ReplaceAll(s, `&#x5c;(`, "")
+	s = strings.ReplaceAll(s, `&#x5c;)`, "")
+	s = strings.ReplaceAll(s, `&#x5c;[`, "")
+	s = strings.ReplaceAll(s, `&#x5c;]`, "")
 	s = strings.ReplaceAll(s, `&#x5c;$`, "$")
+	// Raw backslash variants: \( \) \[ \] are math delimiters — strip them
+	s = strings.ReplaceAll(s, `\(`, "")
+	s = strings.ReplaceAll(s, `\)`, "")
+	s = strings.ReplaceAll(s, `\[`, "")
+	s = strings.ReplaceAll(s, `\]`, "")
+	// Escaped dollar sign: \$ → $
 	s = strings.ReplaceAll(s, `\$`, "$")
-	// Clean up any doubled dollar signs
+	// Clean up doubled dollar signs from any overlap
 	for strings.Contains(s, "$$") {
 		s = strings.ReplaceAll(s, "$$", "$")
 	}

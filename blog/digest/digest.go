@@ -385,7 +385,7 @@ func gatherContext() (string, []ref) {
 					if pd.Change24h != 0 {
 						change = fmt.Sprintf(" %+.1f%%", pd.Change24h)
 					}
-					sb.WriteString(fmt.Sprintf("- %s: $%.2f%s\n", symbol, pd.Price, change))
+					sb.WriteString(fmt.Sprintf("- %s: %.2f USD%s\n", symbol, pd.Price, change))
 				}
 			}
 		}
