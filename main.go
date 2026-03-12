@@ -100,6 +100,9 @@ func main() {
 	// This allows the priority queue to process new items first
 	data.StartIndexing()
 
+	// Start web search topics (loads cache from disk, generates in background)
+	search.StartTopics()
+
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		sess, err := auth.GetSession(r)
