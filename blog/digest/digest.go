@@ -224,7 +224,7 @@ Your job: identify ONLY significant developments from the LAST HOUR that are NOT
 If there are no significant new developments, or the changes are minor/incremental, respond with exactly: NO_UPDATE
 
 Rules:
-- Start with a bold timestamp like **14:00** (use the current hour)
+- Do NOT include a timestamp — the comment already has one
 - 1-3 bullet points max, only truly significant changes
 - Use plain dollar signs, no LaTeX
 - Do NOT repeat anything from previous comments
