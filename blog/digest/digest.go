@@ -180,72 +180,130 @@ Rules:
 	app.Log("digest", "Daily digest published: %s", title)
 }
 
-// updateDigest adds an hourly update as a comment on today's existing digest.
-// It compares current data against the existing post to produce a delta.
-// If nothing meaningful has changed, it skips the update.
+// updateDigest refreshes the main digest post with full 24-hour coverage,
+// then optionally adds a comment highlighting only significant changes
+// from the last hour (if any).
 func updateDigest(post *blog.Post) {
-	app.Log("digest", "Checking for hourly update on digest %s", post.ID)
+	app.Log("digest", "Updating digest %s with full 24-hour coverage", post.ID)
 
-	context, _ := gatherContext()
+	context, refs := gatherContext()
 	if context == "" {
 		app.Log("digest", "No content available for update")
 		setSuccess()
 		return
 	}
 
-	// Build the existing content: post body + all existing comments
-	var existing strings.Builder
-	existing.WriteString(post.Content)
-	for _, c := range blog.GetComments(post.ID) {
-		existing.WriteString("\n\n")
-		existing.WriteString(c.Content)
+	// Step 1: Regenerate the full digest post with current data
+	prompt := &ai.Prompt{
+		System: `You are a writer producing a short daily digest blog post.
+You will be given today's data from various sources: news headlines, market prices, videos, and a reminder.
+Write a very concise digest. Use markdown formatting.
+
+Structure:
+1. One sentence setting the theme of the day
+2. **News** - 3-5 bullet points, one line each
+3. **Markets** - Key movers in one line each
+4. **Reminder** - Include as a ## heading with content
+
+Rules:
+- Do NOT start with a title or heading — jump straight in
+- Do NOT include preamble like "Here is the digest"
+- Do NOT include a references section
+- Use plain dollar signs (e.g. $69,811), no LaTeX
+- CRITICAL: The entire output must be under 1024 characters. Be extremely concise.`,
+		Question: context,
+		Priority: ai.PriorityLow,
+	}
+
+	draft, err := ai.Ask(prompt)
+	if err != nil {
+		setError(err.Error())
+		app.Log("digest", "AI generation failed: %v", err)
+		return
+	}
+
+	response := cleanResponse(draft)
+
+	// Append references
+	if len(refs) > 0 {
+		var refSection strings.Builder
+		refSection.WriteString("\n\n## References\n\n")
+		for i, r := range refs {
+			refSection.WriteString(fmt.Sprintf("%d. [%s](%s)\n", i+1, r.title, r.url))
+		}
+		response += refSection.String()
+	}
+
+	// Update the existing post in place
+	err = blog.UpdatePost(post.ID, post.Title, response, post.Tags, post.Private)
+	if err != nil {
+		setError(err.Error())
+		app.Log("digest", "Failed to update digest post: %v", err)
+		return
+	}
+
+	app.Log("digest", "Digest post %s updated with latest data", post.ID)
+
+	// Step 2: Add a comment only if there are significant changes
+	// compared to what was already covered in previous comments
+	addHourlyComment(post, context)
+
+	setSuccess()
+}
+
+// addHourlyComment adds a comment highlighting only significant new developments
+// from the last hour. It skips if changes are minimal or already covered.
+func addHourlyComment(post *blog.Post, currentContext string) {
+	// Build context from previous comments to avoid repetition
+	comments := blog.GetComments(post.ID)
+	var priorUpdates strings.Builder
+	for _, c := range comments {
+		priorUpdates.WriteString(c.Content)
+		priorUpdates.WriteString("\n\n")
 	}
 
 	prompt := &ai.Prompt{
 		System: `You are a live blog updater. You will be given:
-1. The existing digest and any prior updates
+1. Previous hourly update comments (if any)
 2. The latest data from news, markets, videos
 
-Write a brief update covering ONLY what is new or changed since the existing content.
-If nothing meaningful has changed, respond with exactly: NO_UPDATE
+Your job: identify ONLY significant developments from the LAST HOUR that are NOT already covered in previous comments. Significant means major price swings (>3%), breaking news, or notable new events.
+
+If there are no significant new developments, or the changes are minor/incremental, respond with exactly: NO_UPDATE
 
 Rules:
 - Start with a bold timestamp like **14:00** (use the current hour)
-- 2-4 bullet points max covering new developments
+- 1-3 bullet points max, only truly significant changes
 - Use plain dollar signs, no LaTeX
-- Do NOT repeat information already in the existing content
+- Do NOT repeat anything from previous comments
+- Do NOT report minor price fluctuations or routine market movements
 - Do NOT include preamble or meta-commentary
 - CRITICAL: Keep under 512 characters. Be extremely concise.`,
-		Question: fmt.Sprintf("## Existing content\n\n%s\n\n## Latest data\n\n%s", existing.String(), context),
+		Question: fmt.Sprintf("## Previous hourly comments\n\n%s\n\n## Latest data\n\n%s", priorUpdates.String(), currentContext),
 		Priority: ai.PriorityLow,
 	}
 
 	update, err := ai.Ask(prompt)
 	if err != nil {
-		setError(err.Error())
-		app.Log("digest", "AI update generation failed: %v", err)
+		app.Log("digest", "AI hourly comment generation failed: %v", err)
 		return
 	}
 
 	update = cleanResponse(update)
 
-	// Check if the AI determined nothing has changed
+	// Check if the AI determined nothing significant has changed
 	if strings.TrimSpace(update) == "NO_UPDATE" || strings.TrimSpace(update) == "" {
-		app.Log("digest", "No meaningful changes, skipping update")
-		setSuccess()
+		app.Log("digest", "No significant changes, skipping hourly comment")
 		return
 	}
 
-	// Add the update as a comment on the digest post
 	err = blog.CreateComment(post.ID, update, "micro", "micro")
 	if err != nil {
-		setError(err.Error())
-		app.Log("digest", "Failed to add update comment: %v", err)
+		app.Log("digest", "Failed to add hourly comment: %v", err)
 		return
 	}
 
-	setSuccess()
-	app.Log("digest", "Hourly update added to digest %s", post.ID)
+	app.Log("digest", "Hourly comment added to digest %s", post.ID)
 }
 
 func cleanResponse(s string) string {
