@@ -1015,6 +1015,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`, otherParty, otherParty, msg.ID)
 		}
 
+		// Back link - go to filtered view if viewing a spam message
+		backToMail := "/mail"
+		if msg.Spam {
+			backToMail = "/mail?view=filtered"
+		}
+
 		// Get the root ID for reply threading - this is the ID of the latest message being replied to
 		latestMsg := thread[len(thread)-1]
 		replyToID := latestMsg.ID
@@ -1037,10 +1043,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			</div>
 		</form>
 		<div class="mt-5">
-			<a href="/mail" class="text-muted">← Back to mail</a>
+			<a href="%s" class="text-muted">← Back to mail</a>
 		</div>
 	</div>
-`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton)
+`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton, backToMail)
 		w.Write([]byte(app.RenderHTML(decodedSubject, "", messageView)))
 		return
 	}
@@ -1189,30 +1195,42 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else if view == "filtered" {
-		// Filtered view - show spam messages
+		// Filtered view - show spam messages using same card format as inbox
 		spamMsgs := GetSpamMessages(acc.ID)
 		for _, msg := range spamMsgs {
 			reasons := ""
 			if len(msg.SpamReasons) > 0 {
 				reasons = strings.Join(msg.SpamReasons, ", ")
 			}
-			preview := html.EscapeString(msg.Subject)
-			if preview == "" {
-				preview = "(no subject)"
+			subject := html.EscapeString(decodeMIMEHeader(msg.Subject))
+			if subject == "" {
+				subject = "(no subject)"
 			}
 			fromDisplay := html.EscapeString(msg.From)
 			if fromDisplay == "" {
 				fromDisplay = html.EscapeString(msg.FromID)
 			}
+
+			// Body preview - same logic as inbox
+			bodyPreview := msg.Body
+			if strings.HasPrefix(bodyPreview, "base64:") || len(bodyPreview) > 500 {
+				bodyPreview = "[Message]"
+			} else {
+				bodyPreview = stripHTMLTags(bodyPreview)
+				if len(bodyPreview) > 100 {
+					bodyPreview = bodyPreview[:100] + "..."
+				}
+				bodyPreview = strings.ReplaceAll(bodyPreview, "\n", " ")
+				if len(bodyPreview) > 80 {
+					bodyPreview = bodyPreview[:80] + "..."
+				}
+			}
+
+			relativeTime := app.TimeAgo(msg.CreatedAt)
+
 			items = append(items, fmt.Sprintf(
-				`<div class="mail-item spam-item">
-					<div class="mail-item-header">
-						<span class="mail-from">%s</span>
-						<span class="mail-date">%s</span>
-					</div>
-					<div class="mail-subject">%s</div>
-					<div class="spam-info text-muted text-sm">Score: %d — %s</div>
-					<div class="spam-actions">
+				`<div class="thread-preview card" onclick="window.location.href='/mail?id=%s'">
+					<div class="spam-actions" onclick="event.stopPropagation()">
 						<form method="POST" action="/mail?view=filtered" class="d-inline">
 							<input type="hidden" name="action" value="not_spam">
 							<input type="hidden" name="msg_id" value="%s">
@@ -1224,14 +1242,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							<button type="submit" class="btn-sm btn-danger">Delete</button>
 						</form>
 					</div>
+					<div class="mail-thread-item">
+						<strong class="mail-thread-subject">%s</strong>
+					</div>
+					<div class="mail-thread-meta">%s</div>
+					<div class="mail-thread-row">
+						<div class="mail-thread-preview">%s</div>
+						<span class="mail-thread-time">%s</span>
+					</div>
+					<div class="spam-info text-muted text-sm">Spam score: %d — %s</div>
 				</div>`,
+				msg.ID,
+				msg.ID,
+				msg.ID,
+				subject,
 				fromDisplay,
-				msg.CreatedAt.Format("Jan 2 15:04"),
-				preview,
+				html.EscapeString(bodyPreview),
+				relativeTime,
 				msg.SpamScore,
 				html.EscapeString(reasons),
-				msg.ID,
-				msg.ID,
 			))
 		}
 	} else {
