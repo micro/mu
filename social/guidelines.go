@@ -1,11 +1,11 @@
 package social
 
 // Guidelines is the community guidelines text shown to users
-const Guidelines = `Stay on topic. Be respectful. Be kind. Remember your purpose.
+const Guidelines = `Stay on topic. Be respectful. Be kind.
 
 Mu is not a place to waste time. Every discussion should be meaningful.
 Unlike other platforms, we welcome religious and political discourse —
-but with adab (good manners) and sincerity.
+but with good manners and sincerity.
 
 **Do**
 - Share knowledge, ask genuine questions, and reflect
