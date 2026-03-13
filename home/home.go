@@ -392,7 +392,7 @@ Accept: application/json</pre>
       <div style="height: 20px;"></div>
 
       <p><strong>What about pricing?</strong><br>
-      Mu is free with 20 credits/day. Need more? Top up and pay as you go from 1p per query. No subscriptions, no tricks. See our <a href="/plans">plans</a> for details.</p>
+      Reading is free — news, blogs, videos, AI summaries, all of it. Searching, posting, and AI features use credits. You get 20 free credits per day, then pay as you go from 1p. See our <a href="/plans">plans</a> for details.</p>
 
       <div style="height: 20px;"></div>
 

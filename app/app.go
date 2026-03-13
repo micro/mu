@@ -745,7 +745,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
 	// Philosophy note
-	content.WriteString(`<p class="mb-5 text-muted">Pay only for what you use.</p>`)
+	content.WriteString(`<p class="mb-5 text-muted">Read for free. Pay only for what you use.</p>`)
 
 	// 2-column pricing grid with responsive class
 	content.WriteString(`<div class="pricing-grid">`)
@@ -754,9 +754,9 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Free</h3>
 <p class="text-xl font-bold my-3">£0</p>
-<p>20 credits per day</p>
-<p>6 agent queries per day (standard)</p>
-<p>Browse news, video, and markets</p>
+<p><strong>Unlimited</strong> — news, blogs, videos, markets</p>
+<p>AI summaries included</p>
+<p>20 free credits per day</p>
 <p>Direct message other users</p>
 <p>MCP access for AI agents</p>
 <p>Resets at midnight UTC</p>`)
@@ -775,10 +775,10 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p class="text-xl font-bold my-3">From £5</p>
 <p>Top up your wallet</p>
 <p>1 credit = 1p</p>
-<p>News search: 1p per request</p>
-<p>Video search: 2p per request</p>
-<p>Chat / Agent: 3p per request</p>
-<p>Web search: 5p per request</p>
+<p>Blog post: 1p</p>
+<p>News / video search: 1-2p</p>
+<p>Chat / Agent: 3-9p</p>
+<p>Web search: 5p</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
 		content.WriteString(`<p class="mt-4"><a href="/wallet/topup">Top up →</a></p>`)
@@ -791,45 +791,52 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	content.WriteString(`</div>`) // end grid
 
-	// Pricing table
-	content.WriteString(`<h3>Pricing</h3>
-<p class="text-muted mb-4">1 credit = 1p (one penny). Free quota: <strong>20 credits per day</strong>, resets at midnight UTC.</p>
-
-<h4>Agent</h4>
-<p class="text-muted mb-4">The agent searches news, markets, video and more to answer your questions — all included in one query cost.</p>
+	// What's included free
+	content.WriteString(`<h3>Included free</h3>
+<p class="text-muted mb-4">Browse everything on Mu without spending a credit.</p>
 <table class="data-table">
 <thead>
-<tr><th>Query type</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
+<tr><th></th><th></th></tr>
 </thead>
 <tbody>
-<tr><td>Standard</td><td>Fast and efficient — uses all tools</td><td>3</td><td>3p</td></tr>
-<tr><td>Premium</td><td>Best quality — deeper analysis</td><td>9</td><td>9p</td></tr>
+<tr><td>News headlines, articles, and AI summaries</td><td>Free</td></tr>
+<tr><td>Blog posts and comments</td><td>Free</td></tr>
+<tr><td>Videos</td><td>Free</td></tr>
+<tr><td>Markets and weather</td><td>Free</td></tr>
+<tr><td>Mail inbox</td><td>Free</td></tr>
 </tbody>
-</table>
+</table>`)
 
-<h4>Individual services</h4>
-<p class="text-muted mb-4">You can also use services directly — search and AI features cost credits.</p>
+	// Credits pricing
+	content.WriteString(`<h3>Credits</h3>
+<p class="text-muted mb-4">Searching, posting, and AI features use credits. 1 credit = 1p. You get <strong>20 free credits per day</strong>, resetting at midnight UTC. Need more? Top up and pay as you go.</p>
+
 <table class="data-table">
 <thead>
-<tr><th>Service</th><th>Description</th><th>Credits</th><th>Cost</th></tr>
+<tr><th>Service</th><th>Description</th><th>Cost</th></tr>
 </thead>
 <tbody>
-<tr><td>News search</td><td>AI-powered news article search</td><td>1</td><td>1p</td></tr>
-<tr><td>News summary</td><td>AI summary of a news article</td><td>1</td><td>1p</td></tr>
-<tr><td>Video search</td><td>Search for videos</td><td>2</td><td>2p</td></tr>
-<tr><td>Chat</td><td>Chat with AI assistant</td><td>3</td><td>3p</td></tr>
-<tr><td>Mail (external)</td><td>Send email outside Mu (SMTP)</td><td>4</td><td>4p</td></tr>
-<tr><td>Web search</td><td>Web search powered by Brave</td><td>5</td><td>5p</td></tr>
+<tr><td>Blog post</td><td>Publish a new post</td><td>1p</td></tr>
+<tr><td>News search</td><td>Search news articles</td><td>1p</td></tr>
+<tr><td>Send mail</td><td>Message another user</td><td>1p</td></tr>
+<tr><td>Weather forecast</td><td>Current conditions and forecast</td><td>1p</td></tr>
+<tr><td>Video search</td><td>Search for videos</td><td>2p</td></tr>
+<tr><td>Places nearby</td><td>Find places near a location</td><td>2p</td></tr>
+<tr><td>Chat</td><td>AI assistant</td><td>3p</td></tr>
+<tr><td>Agent (standard)</td><td>AI agent — uses all tools</td><td>3p</td></tr>
+<tr><td>External email</td><td>Send email outside Mu</td><td>4p</td></tr>
+<tr><td>Places search</td><td>Search for places by name</td><td>5p</td></tr>
+<tr><td>Web search</td><td>Search the web</td><td>5p</td></tr>
+<tr><td>Agent (premium)</td><td>AI agent — deeper analysis</td><td>9p</td></tr>
 </tbody>
 </table>`)
 
 	// Agents / MCP section
 	content.WriteString(`<h3>For Agents</h3>
-<p>AI agents can connect to Mu via the Model Context Protocol (MCP).</p>
+<p>AI agents connect to Mu via the Model Context Protocol (MCP).</p>
 <p>Authenticate with a Bearer token</p>
-<p>20 credits per day on the free tier</p>
-<p>Same pay-as-you-go rates as human users</p>
-<p>Access to chat, news, video, mail and more</p>
+<p>Browse news, blogs, and videos for free</p>
+<p>Same credit rates for search, chat, and mail</p>
 <p><a href="/mcp">View MCP tools →</a></p>`)
 
 	// Self-host option
@@ -840,11 +847,11 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	// FAQ
 	content.WriteString(`<h3>Questions</h3>
-<p><strong>Why charge for services?</strong><br>News, video search, chat, and email all rely on APIs and infrastructure that cost money to run. The free 20 credits per day covers casual daily use.</p>
+<p><strong>Why is reading free?</strong><br>Serving content is cheap. We don't charge for things that don't cost us much to provide.</p>
+<p><strong>What costs credits?</strong><br>Anything that hits an external API or creates content — searching, AI chat, posting, sending email. These have real infrastructure costs, and charging per use also keeps spam out.</p>
 <p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
-<p><strong>Why no unlimited subscription?</strong><br>Unlimited tiers incentivize us to maximize your engagement. Pay-as-you-go keeps incentives aligned: we want efficient tools, not sticky products.</p>
-<p><strong>Is watching videos free?</strong><br>Yes. We only charge when we add value (search, summaries), not for things YouTube already provides.</p>
-<p><strong>Can AI agents use Mu?</strong><br>Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. See the <a href="/mcp">MCP page</a> for setup and available tools.</p>`)
+<p><strong>Why no subscription?</strong><br>Subscriptions incentivize platforms to maximize your screen time. Pay-as-you-go means we want to give you what you need efficiently, not keep you scrolling.</p>
+<p><strong>Can AI agents use Mu?</strong><br>Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. Browsing is free for agents too.</p>`)
 
 	html := RenderHTMLForRequest("Plans", "Simple, honest pricing", content.String(), r)
 	w.Write([]byte(html))
