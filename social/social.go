@@ -251,9 +251,10 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	// New thread form (shown if logged in)
+	// Action bar and optional post form
 	_, acc := auth.TrySession(r)
-	if acc != nil {
+	showForm := r.URL.Query().Get("post") == "true"
+	if acc != nil && showForm {
 		selectedTopic := topic
 		if selectedTopic == "" || selectedTopic == "all" {
 			selectedTopic = "all"
@@ -276,8 +277,15 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 <button type="submit">Post</button>
 </div>
 </form>`, topicOptions))
+	} else if acc != nil {
+		sb.WriteString(`<div class="mb-4">
+<a href="/social?post=true" class="btn">+ New Discussion</a>
+<a href="/social/guidelines" class="text-muted text-sm ml-4">Guidelines</a>
+</div>`)
 	} else {
-		sb.WriteString(`<p class="text-muted"><a href="/login">Login</a> to start a discussion</p>`)
+		sb.WriteString(`<div class="mb-4 text-muted text-sm">
+<a href="/login?redirect=/social" class="text-muted">Login</a> to start a discussion
+</div>`)
 	}
 
 	// Thread list
