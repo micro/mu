@@ -352,21 +352,20 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 	var deleteBtn string
 	_, acc := auth.TrySession(r)
 	if acc != nil && (acc.ID == t.AuthorID || acc.Admin) {
-		deleteBtn = fmt.Sprintf(` · <a href="#" onclick="if(confirm('Delete this thread?')){var f=document.createElement('form');f.method='POST';f.action='/social?id=%s';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">Delete</a>`, t.ID)
+		deleteBtn = app.DeleteButton("/social?id="+t.ID, "Delete", "Delete this thread?")
 	}
 
 	sb.WriteString(fmt.Sprintf(`<div class="card">
 <h2 style="margin-top:0;">%s</h2>
-<div style="font-size:13px;color:#888;margin-bottom:12px;">
-<span class="category">%s</span>
-<a href="/@%s" class="text-muted">%s</a> · %s%s
-</div>
+%s
 <div>%s</div>
-</div>`, titleHTML, html.EscapeString(t.Topic), t.AuthorID, html.EscapeString(t.Author), app.TimeAgo(t.CreatedAt), deleteBtn, contentHTML))
+</div>`, titleHTML,
+		app.ItemMeta(app.Category(t.Topic, ""), app.AuthorLink(t.AuthorID, t.Author), app.Timestamp(t.CreatedAt), deleteBtn),
+		contentHTML))
 
 	// Replies - render as a threaded tree
 	if len(t.Replies) > 0 {
-		sb.WriteString(`<h3 style="margin-top:20px;">Replies</h3>`)
+		sb.WriteString(app.Section("Replies"))
 		// Build a map of parent -> children for threading
 		childMap := map[string][]*Reply{}
 		for _, reply := range t.Replies {
@@ -380,11 +379,13 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 				replyHTML := string(app.Render([]byte(reply.Content)))
 				var replyDelete string
 				if acc != nil && (acc.ID == reply.AuthorID || acc.Admin) {
-					replyDelete = fmt.Sprintf(` · <a href="#" onclick="if(confirm('Delete this reply?')){var f=document.createElement('form');f.method='POST';f.action='/social?id=%s&reply=%s';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">Delete</a>`, t.ID, reply.ID)
+					replyDelete = app.DeleteButton(
+						fmt.Sprintf("/social?id=%s&reply=%s", t.ID, reply.ID),
+						"Delete", "Delete this reply?")
 				}
 				var replyBtn string
 				if acc != nil {
-					replyBtn = fmt.Sprintf(` · <a href="#" class="text-muted" onclick="document.getElementById('rf-%s').style.display='block';this.style.display='none';return false;">Reply</a>`, reply.ID)
+					replyBtn = app.ReplyLink(reply.ID)
 				}
 				indent := ""
 				if depth > 0 {
@@ -394,21 +395,13 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 					}
 					indent = fmt.Sprintf("margin-left:%dpx;", px)
 				}
-				sb.WriteString(fmt.Sprintf(`<div id="r-%s" class="card" style="padding:10px 16px;%s">
-<div style="font-size:12px;color:#888;margin-bottom:6px;">
-<a href="/@%s" class="text-muted">%s</a> · %s%s%s
-</div>
-<div>%s</div>`, reply.ID, indent, reply.AuthorID, html.EscapeString(reply.Author), app.TimeAgo(reply.CreatedAt), replyBtn, replyDelete, replyHTML))
-				// Inline reply form (hidden by default)
+				sb.WriteString(fmt.Sprintf(`<div id="r-%s" class="card" style="padding:10px 16px;%s">`, reply.ID, indent))
+				sb.WriteString(app.ItemMeta(app.AuthorLink(reply.AuthorID, reply.Author), app.Timestamp(reply.CreatedAt), replyBtn, replyDelete))
+				sb.WriteString(fmt.Sprintf(`<div>%s</div>`, replyHTML))
 				if acc != nil {
-					sb.WriteString(fmt.Sprintf(`<form id="rf-%s" method="POST" action="/social?id=%s" style="display:none;margin-top:8px;">
-<input type="hidden" name="parent_id" value="%s">
-<textarea name="content" rows="2" placeholder="Reply..." required style="width:100%%;font-size:13px;"></textarea>
-<button type="submit" style="margin-top:4px;font-size:12px;">Reply</button>
-</form>`, reply.ID, t.ID, reply.ID))
+					sb.WriteString(app.InlineReplyForm(reply.ID, "/social?id="+t.ID, "parent_id", reply.ID))
 				}
 				sb.WriteString(`</div>`)
-				// Render children
 				renderReplies(reply.ID, depth+1)
 			}
 		}
@@ -417,15 +410,12 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 
 	// Reply form for top-level replies
 	if acc != nil {
-		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/social?id=%s" class="blog-form card mt-5">
-<textarea name="content" rows="3" placeholder="Be respectful and stay on topic..." required></textarea>
-<button type="submit">Reply</button>
-</form>`, t.ID))
+		sb.WriteString(app.ReplyForm("/social?id="+t.ID, "Be respectful and stay on topic...", "", ""))
 	} else {
-		sb.WriteString(`<p class="text-muted mt-5"><a href="/login">Login</a> to reply</p>`)
+		sb.WriteString(app.LoginPrompt("reply", "/social?id="+t.ID))
 	}
 
-	sb.WriteString(`<p class="mt-5"><a href="/social">← Back to discussions</a></p>`)
+	sb.WriteString(app.BackLink("Back to discussions", "/social"))
 
 	page := app.RenderHTMLForRequest("Social", t.Title, sb.String(), r)
 	w.Write([]byte(page))
