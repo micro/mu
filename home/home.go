@@ -74,7 +74,7 @@ var landingTemplate = `<html lang="en">
       <div id="title">Mu</div>
       <div id="desc">The Micro Network</div>
       <p style="font-size: 18px; font-weight: 800; color: #333; margin: 20px 0; text-align: center; max-width: 800px;">
-      Social media without the noise.
+      The internet without the noise.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
       Browse the news, track markets, watch videos, search the web and more — all in one place.
