@@ -11,6 +11,7 @@ import (
 	"mu/blog"
 	"mu/data"
 	"mu/news/reminder"
+	"mu/search"
 )
 
 // maxNewsThreads is the number of news stories to seed as discussion threads per day
@@ -206,7 +207,7 @@ func seedTopNews() {
 }
 
 // buildDiscussionContent creates a fact-grounded discussion post for a news story.
-// It searches the web for background context (key players, history, Wikipedia)
+// It searches the web (Brave) for background context (key players, history, Wikipedia)
 // and uses AI to write a truth-seeking blurb that frames the discussion.
 func buildDiscussionContent(title, articleContent, link string) string {
 	// Search the web for background context on this story
@@ -215,30 +216,34 @@ func buildDiscussionContent(title, articleContent, link string) string {
 		query = query[:120]
 	}
 
-	var contextParts []string
+	var allResults []search.BraveResult
 
-	results, err := ai.WebSearch(query)
+	// Primary search: the story itself
+	results, err := search.SearchBraveCached(query, 5)
 	if err == nil && len(results) > 0 {
-		contextParts = ai.FormatSearchResults(results)
-		app.Log("social", "Web search for %q: %d results", title, len(results))
+		allResults = append(allResults, results...)
+		app.Log("social", "Brave search for %q: %d results", title, len(results))
 	}
 
-	// Also search for historical/background context
-	bgQuery := title + " background history context"
-	bgResults, err := ai.WebSearch(bgQuery)
+	// Background search: historical context, key players
+	bgResults, err := search.SearchBraveCached(query+" background history", 5)
 	if err == nil && len(bgResults) > 0 {
-		contextParts = append(contextParts, ai.FormatSearchResults(bgResults)...)
-		app.Log("social", "Background search for %q: %d results", title, len(bgResults))
+		allResults = append(allResults, bgResults...)
+		app.Log("social", "Brave background for %q: %d results", title, len(bgResults))
 	}
+
+	// Format results as context strings for the AI
+	contextParts := formatBraveResults(allResults)
 
 	// If we have web context, use AI to synthesise a discussion blurb
 	if len(contextParts) > 0 || articleContent != "" {
-		blurb, sources := generateDiscussionBlurb(title, articleContent, contextParts)
+		blurb := generateDiscussionBlurb(title, articleContent, contextParts)
 		if blurb != "" {
 			var sb strings.Builder
 			sb.WriteString(blurb)
 
-			// Add source links
+			// Add source links (deduplicated)
+			sources := uniqueSources(allResults, 4)
 			if len(sources) > 0 {
 				sb.WriteString("\n\n**Sources:**\n")
 				for _, src := range sources {
@@ -274,7 +279,7 @@ func buildDiscussionContent(title, articleContent, link string) string {
 
 // generateDiscussionBlurb uses AI to write a truth-seeking context blurb
 // that grounds the discussion in facts rather than opinion.
-func generateDiscussionBlurb(title, articleContent string, webContext []string) (string, []ai.SearchResult) {
+func generateDiscussionBlurb(title, articleContent string, webContext []string) string {
 	var question strings.Builder
 	question.WriteString("## Article\n\n")
 	question.WriteString("**" + title + "**\n\n")
@@ -327,36 +332,43 @@ Rules:
 	response, err := ai.Ask(prompt)
 	if err != nil {
 		app.Log("social", "AI discussion blurb failed: %v", err)
-		return "", nil
+		return ""
 	}
 
-	response = app.StripLatexDollars(response)
+	return strings.TrimSpace(app.StripLatexDollars(response))
+}
 
-	// Collect unique sources from web results for attribution
-	var sources []ai.SearchResult
-	seen := map[string]bool{}
-	for _, ctx := range webContext {
-		// Extract URL from the formatted context string
-		if idx := strings.LastIndex(ctx, "(Source: "); idx >= 0 {
-			url := strings.TrimSuffix(ctx[idx+8:], ")")
-			if !seen[url] {
-				seen[url] = true
-				title := ctx
-				if colonIdx := strings.Index(ctx, ": "); colonIdx > 0 && colonIdx < 80 {
-					title = ctx[:colonIdx]
-				}
-				sources = append(sources, ai.SearchResult{
-					Title: title,
-					URL:   url,
-				})
-			}
+// formatBraveResults converts Brave search results into context strings for AI
+func formatBraveResults(results []search.BraveResult) []string {
+	var parts []string
+	for _, r := range results {
+		text := fmt.Sprintf("%s: %s", r.Title, r.Description)
+		if len(text) > 500 {
+			text = text[:500] + "..."
 		}
-		if len(sources) >= 4 {
+		if r.URL != "" {
+			text += fmt.Sprintf(" (Source: %s)", r.URL)
+		}
+		parts = append(parts, text)
+	}
+	return parts
+}
+
+// uniqueSources deduplicates Brave results by URL and returns up to limit sources
+func uniqueSources(results []search.BraveResult, limit int) []search.BraveResult {
+	var out []search.BraveResult
+	seen := map[string]bool{}
+	for _, r := range results {
+		if r.URL == "" || seen[r.URL] {
+			continue
+		}
+		seen[r.URL] = true
+		out = append(out, r)
+		if len(out) >= limit {
 			break
 		}
 	}
-
-	return strings.TrimSpace(response), sources
+	return out
 }
 
 // addSeededThread adds a thread without requiring auth or quota
