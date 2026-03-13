@@ -75,8 +75,8 @@ func seedReminder() {
 		Link:      "/reminder",
 		Content:   content,
 		Topic:     "Islam",
-		Author:    "Mu",
-		AuthorID:  "mu",
+		Author:    app.SystemUserName,
+		AuthorID:  app.SystemUserID,
 		CreatedAt: time.Now(),
 	}
 
@@ -119,8 +119,8 @@ func seedDigest() {
 		Link:      "/post/" + digest.ID,
 		Content:   content,
 		Topic:     "World",
-		Author:    "Mu",
-		AuthorID:  "mu",
+		Author:    app.SystemUserName,
+		AuthorID:  app.SystemUserID,
 		CreatedAt: time.Now(),
 	}
 
@@ -180,8 +180,8 @@ func seedTopNews() {
 		Link:      link,
 		Content:   content,
 		Topic:     topic,
-		Author:    "Mu",
-		AuthorID:  "mu",
+		Author:    app.SystemUserName,
+		AuthorID:  app.SystemUserID,
 		CreatedAt: time.Now(),
 	}
 
