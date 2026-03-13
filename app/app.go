@@ -774,12 +774,12 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Pay as you go</h3>
 <p class="text-xl font-bold my-3">From £5</p>
-<p>Top up your wallet</p>
+<p><strong>Pay to</strong> — search, post, chat, and use AI</p>
 <p>1 credit = 1p</p>
-<p>Blog post: 1p</p>
-<p>News / video search: 1-2p</p>
+<p>Top up your wallet</p>
+<p>Blog post or discussion: 1p</p>
+<p>Search: 1-5p</p>
 <p>Chat / Agent: 3-9p</p>
-<p>Web search: 5p</p>
 <p>Credits never expire</p>`)
 	if isLoggedIn && !isAdmin {
 		content.WriteString(`<p class="mt-4"><a href="/wallet/topup">Top up →</a></p>`)
@@ -804,13 +804,13 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><td>Blog posts and comments</td><td>Free</td></tr>
 <tr><td>Discussion threads and replies</td><td>Free</td></tr>
 <tr><td>Videos</td><td>Free</td></tr>
-<tr><td>Markets and weather</td><td>Free</td></tr>
+<tr><td>Markets</td><td>Free</td></tr>
 <tr><td>Mail inbox</td><td>Free</td></tr>
 </tbody>
 </table>`)
 
-	// Credits pricing
-	content.WriteString(`<h3>Credits</h3>
+	// Pay for pricing
+	content.WriteString(`<h3>Pay for</h3>
 <p class="text-muted mb-4">Searching, posting, and AI features use credits. 1 credit = 1p. You get <strong>20 free credits per day</strong>, resetting at midnight UTC. Need more? Top up and pay as you go.</p>
 
 <table class="data-table">
@@ -822,13 +822,10 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tr><td>Discussion post</td><td>Start a thread or reply</td><td>1p</td></tr>
 <tr><td>News search</td><td>Search news articles</td><td>1p</td></tr>
 <tr><td>Send mail</td><td>Message another user</td><td>1p</td></tr>
-<tr><td>Weather forecast</td><td>Current conditions and forecast</td><td>1p</td></tr>
 <tr><td>Video search</td><td>Search for videos</td><td>2p</td></tr>
-<tr><td>Places nearby</td><td>Find places near a location</td><td>2p</td></tr>
-<tr><td>Chat</td><td>AI assistant</td><td>3p</td></tr>
+<tr><td>Chat</td><td>AI conversation</td><td>3p</td></tr>
 <tr><td>Agent (standard)</td><td>AI agent — uses all tools</td><td>3p</td></tr>
 <tr><td>External email</td><td>Send email outside Mu</td><td>4p</td></tr>
-<tr><td>Places search</td><td>Search for places by name</td><td>5p</td></tr>
 <tr><td>Web search</td><td>Search the web</td><td>5p</td></tr>
 <tr><td>Agent (premium)</td><td>AI agent — deeper analysis</td><td>9p</td></tr>
 </tbody>
