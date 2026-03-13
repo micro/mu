@@ -31,27 +31,45 @@ var (
 )
 
 // Thread is a discussion topic
+// CommunityNote is a fact-check annotation attached to a thread or reply.
+// Generated automatically by searching the web for claims in the post
+// and using AI to assess accuracy.
+type CommunityNote struct {
+	Content   string    `json:"content"`              // the fact-check text
+	Sources   []Source  `json:"sources,omitempty"`     // reference links
+	Status    string    `json:"status"`                // "accurate", "misleading", "missing_context", "unverifiable"
+	CheckedAt time.Time `json:"checked_at"`
+}
+
+// Source is a reference link for a community note
+type Source struct {
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
 type Thread struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Link      string    `json:"link,omitempty"`  // optional URL
-	Content   string    `json:"content"`         // markdown body
-	Topic     string    `json:"topic"`           // must be a valid topic
-	Author    string    `json:"author"`          // display name
-	AuthorID  string    `json:"author_id"`       // username
-	CreatedAt time.Time `json:"created_at"`
-	Replies   []*Reply  `json:"replies,omitempty"`
+	ID        string         `json:"id"`
+	Title     string         `json:"title"`
+	Link      string         `json:"link,omitempty"`  // optional URL
+	Content   string         `json:"content"`         // markdown body
+	Topic     string         `json:"topic"`           // must be a valid topic
+	Author    string         `json:"author"`          // display name
+	AuthorID  string         `json:"author_id"`       // username
+	CreatedAt time.Time      `json:"created_at"`
+	Replies   []*Reply       `json:"replies,omitempty"`
+	Note      *CommunityNote `json:"note,omitempty"` // fact-check annotation
 }
 
 // Reply is a response to a thread
 type Reply struct {
-	ID        string    `json:"id"`
-	ThreadID  string    `json:"thread_id"`
-	ParentID  string    `json:"parent_id,omitempty"` // for nested replies
-	Content   string    `json:"content"`
-	Author    string    `json:"author"`
-	AuthorID  string    `json:"author_id"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        string         `json:"id"`
+	ThreadID  string         `json:"thread_id"`
+	ParentID  string         `json:"parent_id,omitempty"` // for nested replies
+	Content   string         `json:"content"`
+	Author    string         `json:"author"`
+	AuthorID  string         `json:"author_id"`
+	CreatedAt time.Time      `json:"created_at"`
+	Note      *CommunityNote `json:"note,omitempty"` // fact-check annotation
 }
 
 // ReplyCount returns the number of replies on a thread
@@ -359,9 +377,11 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 <h2 style="margin-top:0;">%s</h2>
 %s
 <div>%s</div>
+%s
 </div>`, titleHTML,
 		app.ItemMeta(app.Category(t.Topic, ""), app.AuthorLink(t.AuthorID, t.Author), app.Timestamp(t.CreatedAt), deleteBtn),
-		contentHTML))
+		contentHTML,
+		renderCommunityNote(t.Note)))
 
 	// Replies - render as a threaded tree
 	if len(t.Replies) > 0 {
@@ -398,6 +418,7 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 				sb.WriteString(fmt.Sprintf(`<div id="r-%s" class="card" style="padding:10px 16px;%s">`, reply.ID, indent))
 				sb.WriteString(app.ItemMeta(app.AuthorLink(reply.AuthorID, reply.Author), app.Timestamp(reply.CreatedAt), replyBtn, replyDelete))
 				sb.WriteString(fmt.Sprintf(`<div>%s</div>`, replyHTML))
+				sb.WriteString(renderCommunityNote(reply.Note))
 				if acc != nil {
 					sb.WriteString(app.InlineReplyForm(reply.ID, "/social?id="+t.ID, "parent_id", reply.ID))
 				}
@@ -531,6 +552,9 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	// Content moderation
 	go admin.CheckContent("thread", thread.ID, thread.Title, thread.Content)
 
+	// Fact-check in background
+	go factCheckThread(thread.ID)
+
 	if app.SendsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{"success": true, "id": thread.ID})
 		return
@@ -635,6 +659,9 @@ func handleReply(w http.ResponseWriter, r *http.Request, threadID string) {
 
 	// Content moderation
 	go admin.CheckContent("thread", reply.ID, "", reply.Content)
+
+	// Fact-check in background
+	go factCheckReply(threadID, reply.ID)
 
 	if app.SendsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{"success": true, "id": reply.ID})
