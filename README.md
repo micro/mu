@@ -4,24 +4,22 @@ The Micro Network — apps without ads, algorithms, or tracking.
 
 ## Overview
 
-Mu is a new social network. While other platforms monetize your attention with ads and infinite feeds, Mu gives you simple utilities that respect your time.
+Mu is a place to browse news, track markets, watch videos, search the web and more — all in one place, without ads, algorithms, or tracking.
 
-**The problem**: The internet is designed to waste your time. Feeds are infinite, videos autoplay, and everything tracks you.
-
-**The solution**: Small, focused apps that do one thing well. No ads. No algorithms. No tracking.
+Browsing is free. Searching, posting, and AI features use credits. You get 20 free credits per day, then pay as you go from 1p.
 
 ### Services
 
-- **Home** - At a glance dashboard
-- **Agent** - AI assistant across all services
-- **Blog** - Blogging with comments
-- **Chat** - Discuss topics with AI
-- **News** - RSS feeds with summaries
-- **Mail** - Private messaging & email
-- **Video** - Watch YouTube without ads
-- **Markets** - Live crypto, futures & commodities
-- **Web** - Search without tracking
-- **Wallet** - Pay as you go with credits
+- **Home** — At a glance dashboard
+- **Agent** — Ask questions and get things done across every service
+- **Blog** — Write posts or read daily digests
+- **Chat** — Talk about any topic with AI-powered conversation
+- **News** — Headlines and articles with AI summaries
+- **Mail** — Message other users or send email
+- **Video** — Browse and search videos
+- **Markets** — Live crypto, futures & commodities
+- **Web** — Search the web without tracking
+- **Wallet** — Pay as you go with credits
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
@@ -43,12 +41,10 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 
 ### AI Features
 
-Some features are enhanced with AI:
-
-- **Blog** - Daily digests
-- **News** - Summarize articles
-- **Chat** - Knowledge assistant
-- **Agent** - Cross app queries
+- **Blog** — Daily digests generated from trending news
+- **News** — AI summaries of articles
+- **Chat** — AI-powered conversation on any topic
+- **Agent** — Searches news, markets, video and more to answer your questions
 
 ### MCP — AI Agent Integration
 
@@ -80,7 +76,7 @@ The app contains **cards** displayed on the home screen. These are a summary or 
 
 ## Hosting
 
-**Mu is free to start**. See [mu.xyz](https://mu.xyz). Create an account and start using it immediately.
+**Mu is free to browse**. See [mu.xyz](https://mu.xyz). Create an account and start using it immediately.
 
 ### Self Hosting
 

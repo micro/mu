@@ -77,7 +77,7 @@ var landingTemplate = `<html lang="en">
       Social media without the noise.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
-      Mu is a place to read the latest news, track market data, watch videos, search the web and more.
+      Browse news, track markets, watch videos, search the web and more — all in one place.
       </p>
 
 
@@ -396,7 +396,7 @@ Accept: application/json</pre>
       <div style="height: 20px;"></div>
 
       <p><strong>How is this different from big tech platforms?</strong><br>
-      No ads, no algorithmic feeds, no data mining. Instead of dozens of separate apps, Mu gives you one conversational agent backed by real-time services — news, markets, weather, video and more.</p>
+      No ads, no algorithmic feeds, no data mining. Mu brings news, markets, video, chat, and more together in one place — browse for free, pay only for what you use.</p>
 
       <div style="height: 20px;"></div>
 
