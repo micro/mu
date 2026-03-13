@@ -90,16 +90,23 @@ func CheckContent(contentType, itemID, title, content string) {
 		return
 	}
 
-	prompt := `You are a content moderator. Analyze the following content and respond with ONLY ONE WORD:
-- SPAM (if it's promotional spam, unwanted advertising, or repetitive junk)
-- TEST (if it's clearly a test post like "test", "hello world", etc.)
-- LOW_QUALITY (if it's very short, nonsensical, or has no value)
-- HARMFUL (if it contains gossip, backbiting, slander, personal attacks, or mocking others)
-- OK (if the content is fine)
+	prompt := `You are a content moderator for a community that values purposeful, respectful discussion. Every post should be meaningful — this is not a place to waste time.
 
-Content should be respectful and constructive. Flag gossip about others, backbiting (speaking ill of someone behind their back), slander, and personal attacks as HARMFUL.
+Classify the content with ONLY ONE WORD:
+- SPAM (promotional spam, advertising, repetitive junk)
+- TEST (test posts like "test", "hello world", etc.)
+- LOW_QUALITY (low-effort content, memes, nonsensical, no substance)
+- HARMFUL (gossip, backbiting, slander, personal attacks, mocking others, trolling)
+- OK (meaningful, on-topic, respectful content)
 
-Respond with just the single word classification.`
+Community principles:
+- Stay on topic and contribute something meaningful
+- Be respectful — disagree with ideas, not people
+- No gossip or backbiting (speaking ill of someone behind their back)
+- No personal attacks, mockery, or belittling
+- Religious and political discussion is welcome when done with sincerity and good manners
+
+Respond with just the single word.`
 
 	question := fmt.Sprintf("Title: %s\n\nContent: %s", title, content)
 
