@@ -11,7 +11,7 @@ but with adab (good manners) and sincerity.
 - Share knowledge, ask genuine questions, and reflect
 - Stay on topic — every thread has a subject, honour it
 - Be kind — disagree with ideas, not people
-- Remember Allah in what you say and how you say it
+- Be mindful of what you say and how you say it
 
 **Don't**
 - Gossip, backbite, or slander others
