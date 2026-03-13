@@ -77,6 +77,7 @@ func WalletPage(userID string) string {
 	sb.WriteString(fmt.Sprintf(`<tr><td>Send mail</td><td>%dp</td></tr>`, CostMailSend))
 	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td>%dp</td></tr>`, CostExternalEmail))
 	sb.WriteString(fmt.Sprintf(`<tr><td>Web search</td><td>%dp</td></tr>`, CostWebSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Web fetch</td><td>%dp</td></tr>`, CostWebFetch))
 	sb.WriteString(`</table>`)
 	sb.WriteString(`</div>`)
 
@@ -221,6 +222,7 @@ func PublicWalletPage() string {
 	sb.WriteString(fmt.Sprintf(`<tr><td>Send mail</td><td>%dp</td></tr>`, CostMailSend))
 	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td>%dp</td></tr>`, CostExternalEmail))
 	sb.WriteString(fmt.Sprintf(`<tr><td>Web search</td><td>%dp</td></tr>`, CostWebSearch))
+	sb.WriteString(fmt.Sprintf(`<tr><td>Web fetch</td><td>%dp</td></tr>`, CostWebFetch))
 	sb.WriteString(`</table>`)
 	sb.WriteString(`</div>`)
 

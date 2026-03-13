@@ -197,6 +197,18 @@ func main() {
 		},
 	})
 
+	// web_fetch tool — fetch a URL and return cleaned readable content
+	api.RegisterTool(api.Tool{
+		Name:        "web_fetch",
+		Description: "Fetch a web page and return its cleaned readable content (strips ads, popups, navigation)",
+		Method:      "GET",
+		Path:        "/fetch",
+		WalletOp:    "web_fetch",
+		Params: []api.ToolParam{
+			{Name: "url", Type: "string", Description: "The URL to fetch", Required: true},
+		},
+	})
+
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features
 		"/news":            false, // Public viewing, auth for search
@@ -232,6 +244,7 @@ func main() {
 
 		"/search": false, // Public - local data index search
 		"/web":    false, // Public page, auth checked in handler (paid Brave web search)
+		"/fetch":  false, // Public page, auth checked in handler (paid web fetch)
 
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
@@ -323,6 +336,9 @@ func main() {
 	// serve web search page (Brave-powered, paid)
 	http.HandleFunc("/web", search.WebHandler)
 	http.HandleFunc("/web/preview", search.PreviewHandler)
+
+	// serve web fetch page (fetch and clean a URL)
+	http.HandleFunc("/fetch", search.FetchHandler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

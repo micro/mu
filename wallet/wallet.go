@@ -30,6 +30,7 @@ var (
 	CostWeatherForecast   = getEnvInt("CREDIT_COST_WEATHER", 1)
 	CostWeatherPollen     = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
 	CostWebSearch         = getEnvInt("CREDIT_COST_SEARCH", 5)
+	CostWebFetch          = getEnvInt("CREDIT_COST_FETCH", 3)
 	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
 	FreeDailyQuota        = getEnvInt("FREE_DAILY_QUOTA", 20)
@@ -55,6 +56,7 @@ const (
 	OpWeatherForecast   = "weather_forecast"
 	OpWeatherPollen     = "weather_pollen"
 	OpWebSearch         = "web_search"
+	OpWebFetch          = "web_fetch"
 	OpAgentQuery        = "agent_query"
 	OpAgentQueryPremium = "agent_query_premium"
 	OpTopup             = "topup"
@@ -359,6 +361,8 @@ func GetOperationCost(operation string) int {
 		return CostWeatherPollen
 	case OpWebSearch:
 		return CostWebSearch
+	case OpWebFetch:
+		return CostWebFetch
 	case OpAgentQuery:
 		return CostAgentQuery
 	case OpAgentQueryPremium:
