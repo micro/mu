@@ -147,7 +147,7 @@ var landingTemplate = `<html lang="en">
 
       <h3>Our Mission</h3>
       <p style="max-width: 600px">
-      Mu is built with the intention that tools should serve humanity, enabling you to browse, search, and communicate without ads, algorithms or tracking.
+      Mu is built with the intention that tools should serve humanity, enabling you to browse, search and chat without ads, algorithms or tracking.
       </p>
 
       <div style="height: 60px;"></div>
