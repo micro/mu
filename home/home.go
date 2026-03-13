@@ -558,7 +558,7 @@ Accept: application/json</pre>
         // Strip markdown formatting for preview
         content=content.replace(/#{1,6}\s/g,'').replace(/\*\*/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/\n/g,' ');
         if(content.length>280) content=content.substring(0,280)+'…';
-        var age=digest.created_at?'<span style="font-size:11px;color:#888;">'+timeAgo(digest.created_at)+'</span>':'';
+        var age=digest.updated_at||digest.created_at?'<span style="font-size:11px;color:#888;">'+timeAgo(digest.updated_at||digest.created_at)+'</span>':'';
         var tag=(digest.tags||'').indexOf('digest')!==-1?'<span style="font-size:11px;background:#f0f0f0;padding:2px 8px;border-radius:10px;margin-right:6px;">digest</span>':'';
         el.innerHTML='<div style="padding:8px 0;">'+tag+age+
           '<a href="/post/'+esc(digest.id)+'" style="font-size:15px;font-weight:700;display:block;line-height:1.4;margin-top:4px;color:#111;">'+esc(title)+'</a>'+
