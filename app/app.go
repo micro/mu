@@ -847,7 +847,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	// FAQ
 	content.WriteString(`<h3>Questions</h3>
-<p><strong>Why is reading free?</strong><br>Serving content is cheap. We don't charge for things that don't cost us much to provide.</p>
+<p><strong>Why is browsing free?</strong><br>Serving content is cheap. We don't charge for things that don't cost us much to provide.</p>
 <p><strong>What costs credits?</strong><br>Anything that hits an external API or creates content — searching, AI chat, posting, sending email. These have real infrastructure costs, and charging per use also keeps spam out.</p>
 <p><strong>Do credits expire?</strong><br>No. Once you top up, your credits are yours until you use them.</p>
 <p><strong>Why no subscription?</strong><br>Subscriptions incentivize platforms to maximize your screen time. Pay-as-you-go means we want to give you what you need efficiently, not keep you scrolling.</p>

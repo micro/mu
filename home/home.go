@@ -77,7 +77,7 @@ var landingTemplate = `<html lang="en">
       Social media without the noise.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
-      Mu is a place to read the latest news, track market data, watch videos, search the web and more.
+      Browse news, track markets, watch videos, search the web and more — all in one place.
       </p>
 
 
@@ -159,7 +159,7 @@ var landingTemplate = `<html lang="en">
           <div class="block">
             <img src="/agent.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Agent</b>
-            <div class="small">AI assistant with access to every service</div>
+            <div class="small">Ask questions and get things done across every service</div>
           </div>
         </a>
         <a href="/blog" style="text-decoration: none; color: inherit;">
@@ -173,7 +173,7 @@ var landingTemplate = `<html lang="en">
           <div class="block">
             <img src="/chat.png" alt="Chat" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Chat</b>
-            <div class="small">Discussions powered by an AI knowledge assistant</div>
+            <div class="small">Talk about any topic with AI-powered conversation</div>
           </div>
         </a>
         <a href="/mail" style="text-decoration: none; color: inherit;">
@@ -391,12 +391,12 @@ Accept: application/json</pre>
       <div style="height: 20px;"></div>
 
       <p><strong>What about pricing?</strong><br>
-      Reading is free — news, blogs, videos, AI summaries, all of it. Searching, posting, and AI features use credits. You get 20 free credits per day, then pay as you go from 1p. See our <a href="/plans">plans</a> for details.</p>
+      Browsing is free — news, blogs, videos, AI summaries, all of it. Searching, posting, and AI features use credits. You get 20 free credits per day, then pay as you go from 1p. See our <a href="/plans">plans</a> for details.</p>
 
       <div style="height: 20px;"></div>
 
       <p><strong>How is this different from big tech platforms?</strong><br>
-      No ads, no algorithmic feeds, no data mining. Instead of dozens of separate apps, Mu gives you one conversational agent backed by real-time services — news, markets, weather, video and more.</p>
+      No ads, no algorithmic feeds, no data mining. Mu brings news, markets, video, chat, and more together in one place — browse for free, pay only for what you use.</p>
 
       <div style="height: 20px;"></div>
 
