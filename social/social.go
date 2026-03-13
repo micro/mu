@@ -123,14 +123,14 @@ func updateCache() {
 			break
 		}
 		replies := t.ReplyCount()
-		replyText := "replies"
-		if replies == 1 {
-			replyText = "reply"
+		replyLink := fmt.Sprintf(`<a href="/social?id=%s" style="color:#888;">Reply</a>`, t.ID)
+		if replies > 0 {
+			replyLink = fmt.Sprintf(`<a href="/social?id=%s" style="color:#888;">Replies (%d)</a>`, t.ID, replies)
 		}
 		sb.WriteString(fmt.Sprintf(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
 <a href="/social?id=%s" style="font-weight:600;color:#111;">%s</a>
-<div style="font-size:12px;color:#888;">%s · %s · %d %s</div>
-</div>`, t.ID, html.EscapeString(t.Title), html.EscapeString(t.Topic), app.TimeAgo(t.CreatedAt), replies, replyText))
+<div style="font-size:12px;color:#888;">%s · %s · %s</div>
+</div>`, t.ID, html.EscapeString(t.Title), html.EscapeString(t.Topic), app.TimeAgo(t.CreatedAt), replyLink))
 		count++
 	}
 	if count == 0 {
@@ -278,12 +278,12 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 </div>
 </form>`, topicOptions))
 	} else if acc != nil {
-		sb.WriteString(`<div class="mb-4">
+		sb.WriteString(`<div class="mt-4 mb-4">
 <a href="/social?post=true" class="btn">+ New Discussion</a>
 <a href="/social/guidelines" class="text-muted text-sm ml-4">Guidelines</a>
 </div>`)
 	} else {
-		sb.WriteString(`<div class="mb-4 text-muted text-sm">
+		sb.WriteString(`<div class="mt-4 mb-4 text-muted text-sm">
 <a href="/login?redirect=/social" class="text-muted">Login</a> to start a discussion
 </div>`)
 	}
@@ -294,24 +294,23 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, t := range visible {
 		replies := t.ReplyCount()
-		replyText := "replies"
-		if replies == 1 {
-			replyText = "reply"
+		replyLink := fmt.Sprintf(` · <a href="/social?id=%s">Reply</a>`, t.ID)
+		if replies > 0 {
+			replyLink = fmt.Sprintf(` · <a href="/social?id=%s">Replies (%d)</a>`, t.ID, replies)
 		}
 
-		titleHTML := fmt.Sprintf(`<a href="/social?id=%s" style="font-weight:600;">%s</a>`, t.ID, html.EscapeString(t.Title))
+		linkHTML := ""
 		if t.Link != "" {
-			titleHTML = fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="font-weight:600;">%s</a> <a href="/social?id=%s" style="font-size:12px;color:#888;">[discuss]</a>`,
-				html.EscapeString(t.Link), html.EscapeString(t.Title), t.ID)
+			linkHTML = fmt.Sprintf(` · <a href="%s" target="_blank" rel="noopener noreferrer">Link</a>`, html.EscapeString(t.Link))
 		}
 
 		sb.WriteString(fmt.Sprintf(`<div class="card" style="padding:12px 16px;">
-<div>%s</div>
+<div><a href="/social?id=%s" style="font-weight:600;">%s</a></div>
 <div style="font-size:12px;color:#888;margin-top:4px;">
 <span class="category">%s</span>
-<a href="/@%s" class="text-muted">%s</a> · %s · <a href="/social?id=%s" class="text-muted">%d %s</a>
+<a href="/@%s" class="text-muted">%s</a> · %s%s%s
 </div>
-</div>`, titleHTML, html.EscapeString(t.Topic), t.AuthorID, html.EscapeString(t.Author), app.TimeAgo(t.CreatedAt), t.ID, replies, replyText))
+</div>`, t.ID, html.EscapeString(t.Title), html.EscapeString(t.Topic), t.AuthorID, html.EscapeString(t.Author), app.TimeAgo(t.CreatedAt), replyLink, linkHTML))
 	}
 
 	page := app.RenderHTMLForRequest("Social", "Discussions", fmt.Sprintf(`<div id="social">%s%s</div>`, head, sb.String()), r)
