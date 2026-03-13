@@ -364,25 +364,58 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 <div>%s</div>
 </div>`, titleHTML, html.EscapeString(t.Topic), t.AuthorID, html.EscapeString(t.Author), app.TimeAgo(t.CreatedAt), deleteBtn, contentHTML))
 
-	// Replies
+	// Replies - render as a threaded tree
 	if len(t.Replies) > 0 {
 		sb.WriteString(`<h3 style="margin-top:20px;">Replies</h3>`)
+		// Build a map of parent -> children for threading
+		childMap := map[string][]*Reply{}
 		for _, reply := range t.Replies {
-			replyHTML := string(app.Render([]byte(reply.Content)))
-			var replyDelete string
-			if acc != nil && (acc.ID == reply.AuthorID || acc.Admin) {
-				replyDelete = fmt.Sprintf(` · <a href="#" onclick="if(confirm('Delete this reply?')){var f=document.createElement('form');f.method='POST';f.action='/social?id=%s&reply=%s';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">Delete</a>`, t.ID, reply.ID)
-			}
-			sb.WriteString(fmt.Sprintf(`<div class="card" style="padding:10px 16px;margin-left:20px;">
-<div style="font-size:12px;color:#888;margin-bottom:6px;">
-<a href="/@%s" class="text-muted">%s</a> · %s%s
-</div>
-<div>%s</div>
-</div>`, reply.AuthorID, html.EscapeString(reply.Author), app.TimeAgo(reply.CreatedAt), replyDelete, replyHTML))
+			childMap[reply.ParentID] = append(childMap[reply.ParentID], reply)
 		}
+		// Render top-level replies (ParentID == "") and their children recursively
+		var renderReplies func(parentID string, depth int)
+		renderReplies = func(parentID string, depth int) {
+			children := childMap[parentID]
+			for _, reply := range children {
+				replyHTML := string(app.Render([]byte(reply.Content)))
+				var replyDelete string
+				if acc != nil && (acc.ID == reply.AuthorID || acc.Admin) {
+					replyDelete = fmt.Sprintf(` · <a href="#" onclick="if(confirm('Delete this reply?')){var f=document.createElement('form');f.method='POST';f.action='/social?id=%s&reply=%s';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">Delete</a>`, t.ID, reply.ID)
+				}
+				var replyBtn string
+				if acc != nil {
+					replyBtn = fmt.Sprintf(` · <a href="#" class="text-muted" onclick="document.getElementById('rf-%s').style.display='block';this.style.display='none';return false;">Reply</a>`, reply.ID)
+				}
+				indent := ""
+				if depth > 0 {
+					px := depth * 16
+					if px > 64 {
+						px = 64 // cap nesting depth visually
+					}
+					indent = fmt.Sprintf("margin-left:%dpx;", px)
+				}
+				sb.WriteString(fmt.Sprintf(`<div id="r-%s" class="card" style="padding:10px 16px;%s">
+<div style="font-size:12px;color:#888;margin-bottom:6px;">
+<a href="/@%s" class="text-muted">%s</a> · %s%s%s
+</div>
+<div>%s</div>`, reply.ID, indent, reply.AuthorID, html.EscapeString(reply.Author), app.TimeAgo(reply.CreatedAt), replyBtn, replyDelete, replyHTML))
+				// Inline reply form (hidden by default)
+				if acc != nil {
+					sb.WriteString(fmt.Sprintf(`<form id="rf-%s" method="POST" action="/social?id=%s" style="display:none;margin-top:8px;">
+<input type="hidden" name="parent_id" value="%s">
+<textarea name="content" rows="2" placeholder="Reply..." required style="width:100%%;font-size:13px;"></textarea>
+<button type="submit" style="margin-top:4px;font-size:12px;">Reply</button>
+</form>`, reply.ID, t.ID, reply.ID))
+				}
+				sb.WriteString(`</div>`)
+				// Render children
+				renderReplies(reply.ID, depth+1)
+			}
+		}
+		renderReplies("", 0)
 	}
 
-	// Reply form
+	// Reply form for top-level replies
 	if acc != nil {
 		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/social?id=%s" class="blog-form card mt-5">
 <textarea name="content" rows="3" placeholder="Be respectful and stay on topic..." required></textarea>
@@ -528,23 +561,26 @@ func handleReply(w http.ResponseWriter, r *http.Request, threadID string) {
 		return
 	}
 
-	var content string
+	var content, parentID string
 
 	if app.SendsJSON(r) {
 		var req struct {
-			Content string `json:"content"`
+			Content  string `json:"content"`
+			ParentID string `json:"parent_id"`
 		}
 		if err := app.DecodeJSON(r, &req); err != nil {
 			app.BadRequest(w, r, "invalid json")
 			return
 		}
 		content = strings.TrimSpace(req.Content)
+		parentID = strings.TrimSpace(req.ParentID)
 	} else {
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
 			return
 		}
 		content = strings.TrimSpace(r.FormValue("content"))
+		parentID = strings.TrimSpace(r.FormValue("parent_id"))
 	}
 
 	if content == "" {
@@ -592,6 +628,7 @@ func handleReply(w http.ResponseWriter, r *http.Request, threadID string) {
 	reply := &Reply{
 		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
 		ThreadID:  threadID,
+		ParentID:  parentID,
 		Content:   content,
 		Author:    acc.Name,
 		AuthorID:  acc.ID,

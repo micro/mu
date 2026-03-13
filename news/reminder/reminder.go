@@ -70,16 +70,7 @@ func fetchReminder() {
 	data.SaveFile("reminder.html", html)
 	reminderMutex.Unlock()
 
-	// Index for search/RAG
-	verse := val["verse"].(string)
-	name := ""
-	if v, ok := val["name"]; ok {
-		name = v.(string)
-	}
-	hadith := ""
-	if h, ok := val["hadith"]; ok {
-		hadith = h.(string)
-	}
+	// Extract message and updated for indexing
 	message := ""
 	if m, ok := val["message"]; ok {
 		message = m.(string)
@@ -89,15 +80,21 @@ func fetchReminder() {
 		updated = u.(string)
 	}
 
-	content := fmt.Sprintf("Name of Allah: %s\n\nVerse: %s\n\nHadith: %s\n\n%s", name, verse, hadith, message)
+	// Index with just the message summary and a link to the full reminder page.
+	// The full content (verse, hadith, name) contains markdown that doesn't render
+	// well in chat threads, and it changes hourly so embedding it causes stale content.
+	summary := message
+	if summary == "" {
+		summary = "Today's Islamic reminder is ready."
+	}
 
 	// Index with ID "daily" (not "reminder_daily") because the chat room type extraction
 	// will split "reminder_daily" into type="reminder" and id="daily", then look up just "daily"
 	data.Index(
 		"daily",
 		"reminder",
-		"Daily Islamic Reminder",
-		content,
+		"Daily Reminder",
+		summary,
 		map[string]interface{}{
 			"url":     "/reminder",
 			"updated": updated,
