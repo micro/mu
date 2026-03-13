@@ -384,7 +384,7 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 
 	// Reply form
 	if acc != nil {
-		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/social?id=%s" class="blog-form mt-5">
+		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/social?id=%s" class="blog-form card mt-5">
 <textarea name="content" rows="3" placeholder="Be respectful and stay on topic..." required></textarea>
 <button type="submit">Reply</button>
 </form>`, t.ID))
