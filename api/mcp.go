@@ -177,6 +177,7 @@ var tools = []Tool{
 		Description: "Create a new blog post",
 		Method:      "POST",
 		Path:        "/post",
+		WalletOp:    "blog_create",
 		Params: []ToolParam{
 			{Name: "title", Type: "string", Description: "Post title", Required: false},
 			{Name: "content", Type: "string", Description: "Post content (minimum 50 characters)", Required: true},

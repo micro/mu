@@ -1568,32 +1568,6 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		return
 	}
 
-	// Check quota for viewing article summary
-	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpNewsSummary)
-	if !canProceed {
-		// Show paywall page
-		credits := "credit"
-		if cost != 1 {
-			credits = "credits"
-		}
-		paywallHtml := fmt.Sprintf(`
-			<div class="card text-center p-10">
-				<h2>Article Summary</h2>
-				<p>Reading AI-generated summaries costs %d %s.</p>
-				<p class="text-muted my-5">Your balance: %d credits</p>
-				<p><a href="/wallet/topup">Top up credits →</a></p>
-				<p class="mt-5"><a href="/news">← Back to news</a></p>
-			</div>
-		`, cost, credits, wallet.GetBalance(sess.Account))
-		pageHTML := app.RenderHTML("Credits Required", "Credits Required", paywallHtml)
-		w.WriteHeader(http.StatusPaymentRequired)
-		w.Write([]byte(pageHTML))
-		return
-	}
-
-	// Consume quota for article summary view
-	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSummary)
-
 	// Debug logging
 	app.Log("news", "Article view: ID=%s, Title='%s', URL='%s'", articleID, title, articleURL)
 
