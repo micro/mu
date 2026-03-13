@@ -430,6 +430,9 @@ func Head(appName string, refs []string) string {
 
 	// create head for topics - plain text format with hash
 	for _, ref := range refs {
+		if strings.EqualFold(ref, "all") {
+			continue
+		}
 		head += fmt.Sprintf(`<a href="/%s#%s" class="head">%s</a>`, appName, ref, ref)
 	}
 
