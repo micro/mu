@@ -256,6 +256,7 @@ func main() {
 
 	// serve social discussions
 	http.HandleFunc("/social", social.Handler)
+	http.HandleFunc("/social/guidelines", social.GuidelinesHandler)
 
 	// serve blog (full list)
 	http.HandleFunc("/blog", blog.Handler)

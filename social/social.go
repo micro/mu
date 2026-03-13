@@ -191,6 +191,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GuidelinesHandler serves the community guidelines page
+func GuidelinesHandler(w http.ResponseWriter, r *http.Request) {
+	content := string(app.Render([]byte(Guidelines)))
+	html := app.RenderHTMLForRequest("Community Guidelines", "Community Guidelines", fmt.Sprintf(`<div class="post-item">%s</div>
+<p class="mt-5"><a href="/social">← Back to discussions</a></p>`, content), r)
+	w.Write([]byte(html))
+}
+
 func handleList(w http.ResponseWriter, r *http.Request) {
 	topic := r.URL.Query().Get("topic")
 
@@ -258,6 +266,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			}
 			topicOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, t, sel, t)
 		}
+		sb.WriteString(GuidelinesHTML)
 		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/social" class="blog-form">
 <input type="text" name="title" placeholder="Title" required>
 <input type="text" name="link" placeholder="Link (optional)">
@@ -369,7 +378,7 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 	// Reply form
 	if acc != nil {
 		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/social?id=%s" class="blog-form mt-5">
-<textarea name="content" rows="3" placeholder="Write a reply..." required></textarea>
+<textarea name="content" rows="3" placeholder="Be respectful and stay on topic..." required></textarea>
 <button type="submit">Reply</button>
 </form>`, t.ID))
 	} else {
