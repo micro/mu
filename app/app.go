@@ -921,8 +921,21 @@ func Render(md []byte) []byte {
 	return markdown.Render(doc, renderer)
 }
 
+// Regex patterns for LaTeX math delimiters around prices.
+// LLMs (especially Claude) are heavily trained on LaTeX and frequently wrap
+// dollar amounts in math delimiters: $100$, $$94.63$$, \(100\), etc.
+var (
+	// $$<price>$$ display math around prices: $$94.63$$ → $94.63
+	displayPriceRe = regexp.MustCompile(`\$\$(\d[\d,]*\.?\d*(?:\s*(?:billion|trillion|million|thousand|k|m|bn|tn|%))?)\$\$`)
+	// $$<text>$$ general display math: strip delimiters
+	displayMathRe = regexp.MustCompile(`\$\$(.+?)\$\$`)
+	// $<price>$ inline math around prices: $100.50$ → $100.50
+	inlinePriceRe = regexp.MustCompile(`(\$\d[\d,]*\.?\d*(?:\s*(?:billion|trillion|million|thousand|k|m|bn|tn|%))?)\$`)
+)
+
 // StripLatexDollars removes LaTeX math delimiters that LLMs insert around
-// dollar amounts. Simple string replacements — strip the delimiters entirely.
+// dollar amounts. Handles backslash variants (\$, \(, \)), dollar-sign math
+// delimiters ($...$, $$...$$), and HTML-escaped variants.
 func StripLatexDollars(s string) string {
 	// HTML-escaped backslash variants first (&#92; = \, &#x5c; = \)
 	s = strings.ReplaceAll(s, `&#92;(`, "")
@@ -942,6 +955,12 @@ func StripLatexDollars(s string) string {
 	s = strings.ReplaceAll(s, `\]`, "")
 	// Escaped dollar sign: \$ → $
 	s = strings.ReplaceAll(s, `\$`, "$")
+	// LaTeX display math around prices: $$94.63$$ → $94.63 (keep one $ as currency)
+	s = displayPriceRe.ReplaceAllString(s, `$$$1`)
+	// General display math: $$content$$ → content
+	s = displayMathRe.ReplaceAllString(s, `$1`)
+	// LaTeX inline math around prices: $100$ → $100 (strip trailing $)
+	s = inlinePriceRe.ReplaceAllString(s, `$1`)
 	// Clean up doubled dollar signs from any overlap
 	for strings.Contains(s, "$$") {
 		s = strings.ReplaceAll(s, "$$", "$")
