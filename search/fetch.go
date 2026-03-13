@@ -206,7 +206,16 @@ func extractTitle(htmlStr string) string {
 // Tags and patterns to remove before extracting text
 var (
 	// Remove script, style, nav, header, footer, aside, noscript elements and their content
-	removeBlockRe = regexp.MustCompile(`(?is)<(script|style|noscript|iframe|svg|nav|header|footer|aside|form)[^>]*>.*?</\1>`)
+	removeScriptRe  = regexp.MustCompile(`(?is)<script[^>]*>.*?</script>`)
+	removeStyleRe   = regexp.MustCompile(`(?is)<style[^>]*>.*?</style>`)
+	removeNoscriptRe = regexp.MustCompile(`(?is)<noscript[^>]*>.*?</noscript>`)
+	removeIframeRe  = regexp.MustCompile(`(?is)<iframe[^>]*>.*?</iframe>`)
+	removeSvgRe     = regexp.MustCompile(`(?is)<svg[^>]*>.*?</svg>`)
+	removeNavRe     = regexp.MustCompile(`(?is)<nav[^>]*>.*?</nav>`)
+	removeHeaderRe  = regexp.MustCompile(`(?is)<header[^>]*>.*?</header>`)
+	removeFooterRe  = regexp.MustCompile(`(?is)<footer[^>]*>.*?</footer>`)
+	removeAsideRe   = regexp.MustCompile(`(?is)<aside[^>]*>.*?</aside>`)
+	removeFormRe    = regexp.MustCompile(`(?is)<form[^>]*>.*?</form>`)
 	// Remove HTML comments
 	commentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 	// Remove all HTML tags
@@ -230,7 +239,13 @@ func extractReadableContent(htmlStr string) string {
 
 	// Remove unwanted blocks
 	content = commentRe.ReplaceAllString(content, "")
-	content = removeBlockRe.ReplaceAllString(content, "")
+	for _, re := range []*regexp.Regexp{
+		removeScriptRe, removeStyleRe, removeNoscriptRe, removeIframeRe,
+		removeSvgRe, removeNavRe, removeHeaderRe, removeFooterRe,
+		removeAsideRe, removeFormRe,
+	} {
+		content = re.ReplaceAllString(content, "")
+	}
 
 	// Convert block elements to newlines for paragraph breaks
 	blockTags := regexp.MustCompile(`(?i)</(p|div|article|section|h[1-6]|li|tr|blockquote|br\s*/?)>`)
