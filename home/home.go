@@ -561,7 +561,7 @@ Accept: application/json</pre>
         var age=digest.created_at?'<span style="font-size:11px;color:#888;">'+timeAgo(digest.created_at)+'</span>':'';
         var tag=(digest.tags||'').indexOf('digest')!==-1?'<span style="font-size:11px;background:#f0f0f0;padding:2px 8px;border-radius:10px;margin-right:6px;">digest</span>':'';
         el.innerHTML='<div style="padding:8px 0;">'+tag+age+
-          '<a href="/blog/'+esc(digest.id)+'" style="font-size:15px;font-weight:700;display:block;line-height:1.4;margin-top:4px;color:#111;">'+esc(title)+'</a>'+
+          '<a href="/post/'+esc(digest.id)+'" style="font-size:15px;font-weight:700;display:block;line-height:1.4;margin-top:4px;color:#111;">'+esc(title)+'</a>'+
           '<p style="font-size:13px;color:#555;line-height:1.5;margin-top:6px;">'+esc(content)+'</p>'+
           '</div>';
       })

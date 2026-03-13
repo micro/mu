@@ -745,7 +745,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
 	// Philosophy note
-	content.WriteString(`<p class="mb-5 text-muted">Read for free. Pay only for what you use.</p>`)
+	content.WriteString(`<p class="mb-5 text-muted">Browse for free. Pay only for what you use.</p>`)
 
 	// 2-column pricing grid with responsive class
 	content.WriteString(`<div class="pricing-grid">`)
@@ -754,7 +754,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`<div class="card">
 <h3>Free</h3>
 <p class="text-xl font-bold my-3">£0</p>
-<p><strong>Unlimited</strong> — news, blogs, videos, markets</p>
+<p><strong>Browse</strong> — news, blogs, videos, markets</p>
 <p>AI summaries included</p>
 <p>20 free credits per day</p>
 <p>Direct message other users</p>
@@ -793,7 +793,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 
 	// What's included free
 	content.WriteString(`<h3>Included free</h3>
-<p class="text-muted mb-4">Browse everything on Mu without spending a credit.</p>
+<p class="text-muted mb-4">Browse everything on Mu without spending a penny.</p>
 <table class="data-table">
 <thead>
 <tr><th></th><th></th></tr>
