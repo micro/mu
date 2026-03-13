@@ -159,7 +159,7 @@ var landingTemplate = `<html lang="en">
           <div class="block">
             <img src="/agent.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Agent</b>
-            <div class="small">AI assistant with access to every service</div>
+            <div class="small">Ask questions and get things done across every service</div>
           </div>
         </a>
         <a href="/blog" style="text-decoration: none; color: inherit;">
@@ -173,7 +173,7 @@ var landingTemplate = `<html lang="en">
           <div class="block">
             <img src="/chat.png" alt="Chat" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Chat</b>
-            <div class="small">Discussions powered by an AI knowledge assistant</div>
+            <div class="small">Talk about any topic with AI-powered conversation</div>
           </div>
         </a>
         <a href="/mail" style="text-decoration: none; color: inherit;">
