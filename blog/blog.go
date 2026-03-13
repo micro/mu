@@ -15,6 +15,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
+	"mu/wallet"
 )
 
 //go:embed topics.json
@@ -1195,6 +1196,25 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		author := acc.Name
 		authorID := acc.ID
 
+		// Check quota for blog creation
+		canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpBlogCreate)
+		if !canProceed {
+			if app.SendsJSON(r) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(402)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":   "quota_exceeded",
+					"message": "Daily limit reached. Please top up credits at /wallet",
+					"cost":    cost,
+				})
+				return
+			}
+			content := wallet.QuotaExceededPage(wallet.OpBlogCreate, cost)
+			html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
+			w.Write([]byte(html))
+			return
+		}
+
 		// Check if account can post (30 minute minimum)
 		if !auth.CanPost(acc.ID) {
 			accountAge := time.Since(acc.Created).Round(time.Minute)
@@ -1209,6 +1229,9 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to save post", http.StatusInternalServerError)
 			return
 		}
+
+		// Consume quota for blog creation
+		wallet.ConsumeQuota(acc.ID, wallet.OpBlogCreate)
 
 		// Run async LLM-based content moderation
 		go admin.CheckContent("post", postID, title, content)

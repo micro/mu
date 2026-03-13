@@ -15,13 +15,13 @@ import (
 )
 
 // Credit costs per operation (in credits/pennies)
+// Read-only operations (news reading, blog reading, video watching, chat viewing) are free.
+// Only actions that create content, trigger searches, or use external APIs are charged.
 var (
 	CostNewsSearch        = getEnvInt("CREDIT_COST_NEWS", 1)
-	CostNewsSummary       = getEnvInt("CREDIT_COST_NEWS_SUMMARY", 1)
 	CostVideoSearch       = getEnvInt("CREDIT_COST_VIDEO", 2)
-	CostVideoWatch        = getEnvInt("CREDIT_COST_VIDEO_WATCH", 0) // Free - no value added over YouTube
 	CostChatQuery         = getEnvInt("CREDIT_COST_CHAT", 3)
-	CostChatRoom          = getEnvInt("CREDIT_COST_CHAT_ROOM", 1)
+	CostBlogCreate        = getEnvInt("CREDIT_COST_BLOG_CREATE", 1)
 	CostMailSend          = getEnvInt("CREDIT_COST_MAIL", 1)  // Internal mail send
 	CostExternalEmail     = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
 	CostPlacesSearch      = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
@@ -42,14 +42,12 @@ func PaymentsEnabled() bool {
 
 // Operation types
 const (
-	OpNewsSearch        = "news_search"
-	OpNewsSummary       = "news_summary"
-	OpVideoSearch       = "video_search"
-	OpVideoWatch        = "video_watch"
-	OpChatQuery         = "chat_query"
-	OpChatRoom          = "chat_room"
-	OpMailSend          = "mail_send"
-	OpExternalEmail     = "external_email"
+	OpNewsSearch    = "news_search"
+	OpVideoSearch   = "video_search"
+	OpChatQuery     = "chat_query"
+	OpBlogCreate    = "blog_create"
+	OpMailSend      = "mail_send"
+	OpExternalEmail = "external_email"
 	OpPlacesSearch      = "places_search"
 	OpPlacesNearby      = "places_nearby"
 	OpWeatherForecast   = "weather_forecast"
@@ -337,16 +335,12 @@ func GetOperationCost(operation string) int {
 	switch operation {
 	case OpNewsSearch:
 		return CostNewsSearch
-	case OpNewsSummary:
-		return CostNewsSummary
 	case OpVideoSearch:
 		return CostVideoSearch
-	case OpVideoWatch:
-		return CostVideoWatch
 	case OpChatQuery:
 		return CostChatQuery
-	case OpChatRoom:
-		return CostChatRoom
+	case OpBlogCreate:
+		return CostBlogCreate
 	case OpMailSend:
 		return CostMailSend
 	case OpExternalEmail:

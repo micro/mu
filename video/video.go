@@ -1103,36 +1103,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Check quota for watching video
-		canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoWatch)
-		if !canProceed {
-			// Show paywall page with YouTube fallback
-			credits := "credit"
-			if cost != 1 {
-				credits = "credits"
-			}
-			paywallHtml := fmt.Sprintf(`
-				<div class="card text-center p-10" style="max-width: 640px; margin: 40px auto;">
-					<img src="%s" class="w-full rounded mb-5" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-					<h2>Watch Video</h2>
-					<p>Watching ad-free videos costs %d %s.</p>
-					<p class="text-muted my-5">Your balance: %d credits</p>
-					<p class="my-5">
-						<a href="/wallet/topup" class="btn btn-primary mr-3">Top up credits</a>
-						<a href="%s" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Watch on YouTube →</a>
-					</p>
-					<p class="mt-5"><a href="/video">← Back to videos</a></p>
-				</div>
-			`, thumbnailURL, id, cost, credits, wallet.GetBalance(sess.Account), youtubeURL)
-			pageHTML := app.RenderHTML("Credits Required", "Credits Required", paywallHtml)
-			w.WriteHeader(http.StatusPaymentRequired)
-			w.Write([]byte(pageHTML))
-			return
-		}
-
-		// Consume quota for video watch
-		wallet.ConsumeQuota(sess.Account, wallet.OpVideoWatch)
-
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
