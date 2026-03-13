@@ -163,7 +163,7 @@ var tools = []Tool{
 		Method:      "GET",
 		Path:        "/social",
 		Params: []ToolParam{
-			{Name: "topic", Type: "string", Description: "Filter by topic (e.g. news, markets, technology, all)", Required: false},
+			{Name: "topic", Type: "string", Description: "Filter by topic (all, Crypto, Dev, Finance, Islam, Politics, Tech, UK, World)", Required: false},
 		},
 	},
 	{
@@ -184,7 +184,7 @@ var tools = []Tool{
 		Params: []ToolParam{
 			{Name: "title", Type: "string", Description: "Thread title", Required: true},
 			{Name: "content", Type: "string", Description: "Thread content (minimum 10 characters)", Required: true},
-			{Name: "topic", Type: "string", Description: "Topic (all, news, markets, technology, science, politics, health, sport, business, entertainment)", Required: false},
+			{Name: "topic", Type: "string", Description: "Topic (all, Crypto, Dev, Finance, Islam, Politics, Tech, UK, World)", Required: false},
 			{Name: "link", Type: "string", Description: "Optional URL to discuss", Required: false},
 		},
 	},
