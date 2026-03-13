@@ -20,8 +20,8 @@ but with good manners and sincerity.
 - Waste your time or anyone else's`
 
 // GuidelinesHTML is the rendered HTML version for display
-const GuidelinesHTML = `<div class="guidelines" style="font-size:13px;color:#666;margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:8px;">
+const GuidelinesHTML = `<div class="guidelines" style="font-size:13px;color:#666;margin:16px 0 16px 0;padding:12px;background:#f9f9f9;border-radius:8px;">
 <p style="margin:0 0 8px 0;font-weight:600;color:#333;">Community Guidelines</p>
-<p style="margin:0 0 6px 0;">Stay on topic. Be respectful. Be kind. Remember your purpose.</p>
+<p style="margin:0 0 6px 0;">Stay on topic. Be respectful. Be kind.</p>
 <p style="margin:0;font-size:12px;"><a href="/social/guidelines" class="text-muted">Read the full guidelines</a></p>
 </div>`
