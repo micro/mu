@@ -50,7 +50,9 @@ func seedReminder() {
 		return
 	}
 
-	// Build the thread content from reminder data
+	// Build the thread content with just the message summary and a link
+	// to the full reminder page. Embedding the full content (verse, hadith, name)
+	// causes markdown formatting issues (backticks become pre blocks, etc.)
 	var sb strings.Builder
 
 	if rd.Message != "" {
@@ -58,24 +60,8 @@ func seedReminder() {
 		sb.WriteString("\n\n")
 	}
 
-	if rd.Name != "" {
-		sb.WriteString("**Name of Allah:** ")
-		sb.WriteString(rd.Name)
-		sb.WriteString("\n\n")
-	}
-
-	if rd.Verse != "" {
-		sb.WriteString("**Quranic Verse:** ")
-		sb.WriteString(rd.Verse)
-		sb.WriteString("\n\n")
-	}
-
-	if rd.Hadith != "" {
-		sb.WriteString("**Hadith:** ")
-		sb.WriteString(rd.Hadith)
-		sb.WriteString("\n\n")
-	}
-
+	sb.WriteString("[Read the full reminder](/reminder)")
+	sb.WriteString("\n\n")
 	sb.WriteString("*Share your reflections and thoughts on today's reminder.*")
 
 	content := sb.String()
