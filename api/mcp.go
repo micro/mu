@@ -158,6 +158,37 @@ var tools = []Tool{
 		},
 	},
 	{
+		Name:        "social_list",
+		Description: "List discussion threads, optionally filtered by topic",
+		Method:      "GET",
+		Path:        "/social",
+		Params: []ToolParam{
+			{Name: "topic", Type: "string", Description: "Filter by topic (e.g. news, markets, technology, all)", Required: false},
+		},
+	},
+	{
+		Name:        "social_read",
+		Description: "Read a discussion thread and its replies",
+		Method:      "GET",
+		Path:        "/social",
+		Params: []ToolParam{
+			{Name: "id", Type: "string", Description: "Thread ID", Required: true},
+		},
+	},
+	{
+		Name:        "social_post",
+		Description: "Start a new discussion thread",
+		Method:      "POST",
+		Path:        "/social",
+		WalletOp:    "social_post",
+		Params: []ToolParam{
+			{Name: "title", Type: "string", Description: "Thread title", Required: true},
+			{Name: "content", Type: "string", Description: "Thread content (minimum 10 characters)", Required: true},
+			{Name: "topic", Type: "string", Description: "Topic (all, news, markets, technology, science, politics, health, sport, business, entertainment)", Required: false},
+			{Name: "link", Type: "string", Description: "Optional URL to discuss", Required: false},
+		},
+	},
+	{
 		Name:        "blog_list",
 		Description: "Get all blog posts",
 		Method:      "GET",

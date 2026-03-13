@@ -35,10 +35,18 @@
       "icon": "/markets.svg"
     },
     {
+      "id": "social",
+      "title": "Social",
+      "type": "social",
+      "position": 2,
+      "link": "/social",
+      "icon": "/chat.png"
+    },
+    {
       "id": "blog",
       "title": "Blog",
       "type": "blog",
-      "position": 2,
+      "position": 3,
       "link": "/blog",
       "icon": "/post.png"
     },
@@ -46,7 +54,7 @@
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 3,
+      "position": 4,
       "link": "/video",
       "icon": "/video.png"
     }

@@ -29,6 +29,7 @@ import (
 	"mu/news/reminder"
 	"mu/places"
 	"mu/search"
+	"mu/social"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -79,10 +80,13 @@ func main() {
 	// load weather
 	weather.Load()
 
-	// load markets and reminder
+	// load markets, reminder, wallet
 	markets.Load()
 	reminder.Load()
 	wallet.Load()
+
+	// load social discussions
+	social.Load()
 
 	// load the home cards
 	home.Load()
@@ -196,6 +200,7 @@ func main() {
 		"/chat":            false, // Public viewing, auth for chatting
 		"/home":            false, // Public viewing
 		"/blog":            false, // Public viewing, auth for posting
+		"/social":          false, // Public viewing, auth for posting
 		"/markets":         false, // Public viewing
 		"/reminder":        false, // Public viewing
 		"/places":          false, // Public map, auth for search
@@ -245,6 +250,9 @@ func main() {
 
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
+
+	// serve social discussions
+	http.HandleFunc("/social", social.Handler)
 
 	// serve blog (full list)
 	http.HandleFunc("/blog", blog.Handler)
