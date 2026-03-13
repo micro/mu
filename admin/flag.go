@@ -91,10 +91,13 @@ func CheckContent(contentType, itemID, title, content string) {
 	}
 
 	prompt := `You are a content moderator. Analyze the following content and respond with ONLY ONE WORD:
-- SPAM (if it's promotional spam or unwanted advertising)
+- SPAM (if it's promotional spam, unwanted advertising, or repetitive junk)
 - TEST (if it's clearly a test post like "test", "hello world", etc.)
 - LOW_QUALITY (if it's very short, nonsensical, or has no value)
+- HARMFUL (if it contains gossip, backbiting, slander, personal attacks, or mocking others)
 - OK (if the content is fine)
+
+Content should be respectful and constructive. Flag gossip about others, backbiting (speaking ill of someone behind their back), slander, and personal attacks as HARMFUL.
 
 Respond with just the single word classification.`
 
@@ -109,7 +112,7 @@ Respond with just the single word classification.`
 	resp = strings.TrimSpace(strings.ToUpper(resp))
 	fmt.Printf("Content moderation: %s %s -> %s\n", contentType, itemID, resp)
 
-	if resp == "SPAM" || resp == "TEST" || resp == "LOW_QUALITY" {
+	if resp == "SPAM" || resp == "TEST" || resp == "LOW_QUALITY" || resp == "HARMFUL" {
 		// Auto-flag by system (use "system" as username)
 		Add(contentType, itemID, "system")
 		fmt.Printf("Auto-flagged %s: %s (reason: %s)\n", contentType, itemID, resp)
@@ -571,6 +574,8 @@ func getViewPath(contentType string) string {
 		return "news"
 	case "video":
 		return "video"
+	case "thread":
+		return "social"
 	default:
 		return ""
 	}

@@ -12,6 +12,7 @@ Browsing is free. Searching, posting, and AI features use credits. You get 20 fr
 
 - **Home** — At a glance dashboard
 - **Agent** — Ask questions and get things done across every service
+- **Social** — Topic-based discussions and conversations
 - **Blog** — Write posts or read daily digests
 - **Chat** — Talk about any topic with AI-powered conversation
 - **News** — Headlines and articles with AI summaries
