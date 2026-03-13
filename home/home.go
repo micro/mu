@@ -77,7 +77,7 @@ var landingTemplate = `<html lang="en">
       Social media without the noise.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
-      Browse news, track markets, watch videos, search the web and more — all in one place.
+      Browse the news, track markets, watch videos, search the web and more — all in one place.
       </p>
 
 

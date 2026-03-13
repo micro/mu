@@ -4,7 +4,7 @@ The Micro Network — apps without ads, algorithms, or tracking.
 
 ## Overview
 
-Mu is a place to browse news, track markets, watch videos, search the web and more — all in one place, without ads, algorithms, or tracking.
+Mu is a place to browse the news, track markets, watch videos, search the web and more — all in one place, without ads, algorithms, or tracking.
 
 Browsing is free. Searching, posting, and AI features use credits. You get 20 free credits per day, then pay as you go from 1p.
 
