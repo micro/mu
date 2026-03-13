@@ -427,13 +427,13 @@ func updateCacheUnlocked() {
 			tagsHtml = `<div class="mt-2">` + tagsHtml + `</div>`
 		}
 
-		// Add Reply/Replies count
+		// Add Comment/Comments count
 		commentCount := countComments(post)
 		replyLink := ""
 		if commentCount == 0 {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Reply</a>`, post.ID)
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comment</a>`, post.ID)
 		} else {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
 		}
 
 		previewTime := post.CreatedAt
@@ -525,13 +525,13 @@ func updateCacheUnlocked() {
 			tagsHtml = `<div class="mt-2">` + tagsHtml + `</div>`
 		}
 
-		// Add Reply/Replies count
+		// Add Comment/Comments count
 		commentCount := countComments(post)
 		replyLink := ""
 		if commentCount == 0 {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Reply</a>`, post.ID)
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comment</a>`, post.ID)
 		} else {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
 		}
 
 		keepReading := ""
@@ -624,13 +624,13 @@ func previewUncached() string {
 			}
 		}
 
-		// Add Reply/Replies count
+		// Add Comment/Comments count
 		commentCount := countComments(post)
 		replyLink := ""
 		if commentCount == 0 {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Reply</a>`, post.ID)
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comment</a>`, post.ID)
 		} else {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Replies (%d)</a>`, post.ID, commentCount)
+			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
 		}
 
 		// Generate fresh timestamp
@@ -685,7 +685,7 @@ func renderPostPreview(post *Post) string {
 		<div class="info">
 			%s
 			<span class="ml-3">·</span>
-			<a href="/post?id=%s" class="ml-3">Reply</a>
+			<a href="/post?id=%s" class="ml-3">Comment</a>
 		</div>
 	</div>`, post.ID, title, content, authorLink, post.ID)
 
