@@ -478,6 +478,7 @@ func ToolsDropdownHTML() string {
 <div style="padding:3px 12px;">📰 News</div>
 <div style="padding:3px 12px;">🔍 News Search</div>
 <div style="padding:3px 12px;">🌐 Web Search</div>
+<div style="padding:3px 12px;">📄 Web Fetch</div>
 <div style="padding:3px 12px;">🎬 Video Search</div>
 <div style="padding:3px 12px;">📈 Markets</div>
 <div style="padding:3px 12px;">🌤 Weather</div>
@@ -497,6 +498,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - news: Get latest news feed (no args)
 - news_search: Search news articles (args: {"query":"search term"})
 - web_search: Search the web for current information (args: {"q":"search term"})
+- web_fetch: Fetch a web page and get its cleaned readable content (args: {"url":"https://example.com/page"})
 - video_search: Search for videos (args: {"query":"search term"})
 - markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
@@ -800,6 +802,8 @@ func toolLabel(tool string) string {
 		return "🔍 Searching news"
 	case "web_search":
 		return "🌐 Searching the web"
+	case "web_fetch":
+		return "📄 Fetching web page"
 	case "video_search":
 		return "🎬 Searching videos"
 	case "markets":
@@ -1135,6 +1139,8 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatBlogResult(result)
 	case "web_search":
 		return formatWebSearchResult(result)
+	case "web_fetch":
+		return formatWebFetchResult(result)
 	case "markets":
 		return formatMarketsResult(result)
 	case "places_search", "places_nearby":
@@ -1498,6 +1504,34 @@ func formatWebSearchResult(result string) string {
 		}
 		sb.WriteString(line + "\n")
 	}
+	return sb.String()
+}
+
+// formatWebFetchResult converts a raw JSON web fetch result into
+// human-readable text for the AI synthesis RAG context.
+func formatWebFetchResult(result string) string {
+	var data struct {
+		URL     string `json:"url"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	var sb strings.Builder
+	if data.Title != "" {
+		sb.WriteString(fmt.Sprintf("Page: %s\n", data.Title))
+	}
+	if data.URL != "" {
+		sb.WriteString(fmt.Sprintf("URL: %s\n", data.URL))
+	}
+	sb.WriteString("\n")
+	content := data.Content
+	// Truncate for AI context — keep it reasonable
+	if len(content) > 8000 {
+		content = content[:8000] + "\n\n[Content truncated for brevity]"
+	}
+	sb.WriteString(content)
 	return sb.String()
 }
 

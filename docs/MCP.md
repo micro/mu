@@ -56,6 +56,7 @@ For self-hosted instances, replace `mu.xyz` with your domain.
 | `reminder` | Get the daily Islamic reminder | Free |
 | `weather` | Get the weather forecast for a location | 1 credit |
 | `web_search` | Search the web for current information | 2 credits |
+| `web_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
 
 ### Credits
 
