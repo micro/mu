@@ -107,6 +107,9 @@ func main() {
 	// Start web search topics (loads cache from disk, generates in background)
 	search.StartTopics()
 
+	// Start social discussion seeding (daily reminder, digest, top news)
+	social.StartSeeding()
+
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		sess, err := auth.GetSession(r)
