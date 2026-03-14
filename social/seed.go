@@ -1,7 +1,6 @@
 package social
 
 import (
-	"crypto/md5"
 	"fmt"
 	"strings"
 	"time"
@@ -11,13 +10,7 @@ import (
 	"mu/blog"
 	"mu/data"
 	"mu/news/reminder"
-	"mu/search"
 )
-
-// maxNewsThreads limits seeded news discussions to avoid noise.
-// Daily digest + reminder are always seeded; at most 1 additional
-// news story gets its own thread if it's from a relevant topic.
-const maxNewsThreads = 1
 
 // StartSeeding begins the background seeding of social discussions
 func StartSeeding() {
@@ -41,7 +34,7 @@ func seedLoop() {
 func seedAll() {
 	seedReminder()
 	seedDigest()
-	seedTopNews()
+	seedTopicThreads()
 }
 
 // seedReminder creates a daily discussion thread from the Islamic reminder
@@ -49,7 +42,6 @@ func seedReminder() {
 	today := todayKey()
 	seedID := "reminder-" + today
 
-	// Check if already seeded today
 	if threadExists(seedID) {
 		return
 	}
@@ -59,16 +51,11 @@ func seedReminder() {
 		return
 	}
 
-	// Build the thread content with just the message summary and a link
-	// to the full reminder page. Embedding the full content (verse, hadith, name)
-	// causes markdown formatting issues (backticks become pre blocks, etc.)
 	var sb strings.Builder
-
 	if rd.Message != "" {
 		sb.WriteString(rd.Message)
 		sb.WriteString("\n\n")
 	}
-
 	sb.WriteString("[Read the full reminder](/reminder)")
 	sb.WriteString("\n\n")
 	sb.WriteString("*Share your reflections and thoughts on today's reminder.*")
@@ -107,10 +94,8 @@ func seedDigest() {
 		return
 	}
 
-	// Create a summary for discussion — first few lines of digest
 	content := digest.Content
 	if len(content) > 500 {
-		// Truncate at a sentence boundary
 		cut := strings.LastIndex(content[:500], ". ")
 		if cut > 200 {
 			content = content[:cut+1]
@@ -119,7 +104,6 @@ func seedDigest() {
 		}
 		content += "\n\n[Read the full digest](/post/" + digest.ID + ")"
 	}
-
 	content += "\n\n*What are your thoughts on today's top stories?*"
 
 	thread := &Thread{
@@ -137,87 +121,56 @@ func seedDigest() {
 	app.Log("social", "Seeded daily digest thread")
 }
 
-// seedTopNews creates discussion threads from the most notable news stories.
-// Each story gets its own thread with web-sourced context — background on
-// the key players, history, and facts — to ground the discussion in truth
-// rather than opinion.
-func seedTopNews() {
+// seedTopicThreads creates one "Daily [Topic]" thread per news category.
+// Each thread summarises the top stories for that topic, giving users
+// a focused place to discuss without flooding the feed with individual articles.
+func seedTopicThreads() {
 	today := todayKey()
-	prefix := "news-" + today
+	dateLabel := time.Now().Format("2 Jan 2006")
 
-	// Count how many news threads we've already seeded today
-	// across all restarts and hourly runs
-	seeded := countSeededToday(prefix)
-	if seeded >= maxNewsThreads {
-		return
-	}
-
-	// Get recent news items
-	entries := data.GetByType("news", 30)
+	entries := data.GetByType("news", 50)
 	if len(entries) == 0 {
 		return
 	}
 
-	seen := map[string]bool{} // deduplicate by title similarity
-
+	// Group entries by category
+	byCategory := map[string][]*data.IndexEntry{}
 	for _, entry := range entries {
-		if seeded >= maxNewsThreads {
-			break
-		}
-
-		// Determine topic from news category
-		topic := "World"
+		cat := "World"
 		if entry.Metadata != nil {
-			if cat, ok := entry.Metadata["category"].(string); ok && isValidTopic(cat) {
-				topic = cat
+			if c, ok := entry.Metadata["category"].(string); ok && c != "" {
+				cat = c
 			}
 		}
+		byCategory[cat] = append(byCategory[cat], entry)
+	}
 
-		// Only seed discussions for relevant topics — skip entertainment,
-		// celebrity news, local crime, sports, gossip, and other noise
-		if !isRelevantForDiscussion(topic) {
-			continue
-		}
-		if isNoise(entry.Title) {
-			continue
-		}
-
-		// Skip if we've seen a very similar title already today
-		titleKey := normTitle(entry.Title)
-		if seen[titleKey] {
+	// Create one daily thread per topic that has stories
+	for _, topic := range topics {
+		if strings.EqualFold(topic, "all") {
 			continue
 		}
 
-		// Check against learned dismiss rules — AI screens for similar
-		// sentiment/category, not just keyword matches
-		if !shouldSeed(entry.Title) {
+		entries := byCategory[topic]
+		if len(entries) == 0 {
 			continue
 		}
 
-		seen[titleKey] = true
-
-		// Create a stable ID from entry ID + date
-		seedID := fmt.Sprintf("news-%s-%s", today, storyKey(entry.ID))
-
+		seedID := fmt.Sprintf("daily-%s-%s", strings.ToLower(topic), today)
 		if threadExists(seedID) {
 			continue
 		}
 
-		// Extract URL
-		link := ""
-		if entry.Metadata != nil {
-			if u, ok := entry.Metadata["url"].(string); ok {
-				link = u
-			}
+		// Build a summary of the top stories for this topic
+		content := buildTopicSummary(topic, entries)
+		if content == "" {
+			continue
 		}
-
-		// Build context-rich discussion content
-		content := buildDiscussionContent(entry.Title, entry.Content, link)
 
 		thread := &Thread{
 			ID:        seedID,
-			Title:     entry.Title,
-			Link:      link,
+			Title:     fmt.Sprintf("Daily %s — %s", topic, dateLabel),
+			Link:      "/news#" + topic,
 			Content:   content,
 			Topic:     topic,
 			Author:    app.SystemUserName,
@@ -226,174 +179,87 @@ func seedTopNews() {
 		}
 
 		addSeededThread(thread)
-		seeded++
-		app.Log("social", "Seeded news thread: %s", entry.Title)
+		app.Log("social", "Seeded daily %s thread (%d stories)", topic, len(entries))
 	}
 }
 
-// buildDiscussionContent creates a fact-grounded discussion post for a news story.
-// It searches the web (Brave) for background context (key players, history, Wikipedia)
-// and uses AI to write a truth-seeking blurb that frames the discussion.
-func buildDiscussionContent(title, articleContent, link string) string {
-	// Search the web for background context on this story
-	query := title
-	if len(query) > 120 {
-		query = query[:120]
+// buildTopicSummary creates a discussion-ready summary of a topic's stories.
+// Lists the headlines and uses AI to generate a short contextual overview
+// connecting the stories and highlighting what matters.
+func buildTopicSummary(topic string, entries []*data.IndexEntry) string {
+	// Cap to top 5 stories per topic
+	if len(entries) > 5 {
+		entries = entries[:5]
 	}
 
-	var allResults []search.BraveResult
-
-	// Primary search: the story itself
-	results, err := search.SearchBraveCached(query, 5)
-	if err == nil && len(results) > 0 {
-		allResults = append(allResults, results...)
-		app.Log("social", "Brave search for %q: %d results", title, len(results))
-	}
-
-	// Background search: historical context, key players
-	bgResults, err := search.SearchBraveCached(query+" background history", 5)
-	if err == nil && len(bgResults) > 0 {
-		allResults = append(allResults, bgResults...)
-		app.Log("social", "Brave background for %q: %d results", title, len(bgResults))
-	}
-
-	// Format results as context strings for the AI
-	contextParts := formatBraveResults(allResults)
-
-	// If we have web context, use AI to synthesise a discussion blurb
-	if len(contextParts) > 0 || articleContent != "" {
-		blurb := generateDiscussionBlurb(title, articleContent, contextParts)
-		if blurb != "" {
-			var sb strings.Builder
-			sb.WriteString(blurb)
-
-			// Add source links (deduplicated)
-			sources := uniqueSources(allResults, 4)
-			if len(sources) > 0 {
-				sb.WriteString("\n\n**Sources:**\n")
-				for _, src := range sources {
-					sb.WriteString(fmt.Sprintf("- [%s](%s)\n", src.Title, src.URL))
-				}
+	// Build headline list for the AI
+	var headlines []string
+	var headlineLinks []string
+	for _, e := range entries {
+		headlines = append(headlines, e.Title)
+		url := ""
+		if e.Metadata != nil {
+			if u, ok := e.Metadata["url"].(string); ok {
+				url = u
 			}
-
-			if link != "" {
-				sb.WriteString(fmt.Sprintf("\n[Read the original article](%s)", link))
-			}
-
-			sb.WriteString("\n\n*What are your thoughts? Share what you know.*")
-			return sb.String()
 		}
-	}
-
-	// Fallback: use article content directly
-	content := articleContent
-	if len(content) > 400 {
-		cut := strings.LastIndex(content[:400], ". ")
-		if cut > 150 {
-			content = content[:cut+1]
+		if url != "" {
+			headlineLinks = append(headlineLinks, fmt.Sprintf("- [%s](%s)", e.Title, url))
 		} else {
-			content = content[:400] + "..."
+			headlineLinks = append(headlineLinks, fmt.Sprintf("- %s", e.Title))
 		}
 	}
-	if link != "" {
-		content += fmt.Sprintf("\n\n[Read more](%s)", link)
+
+	// Use AI to write a brief overview connecting the stories
+	overview := generateTopicOverview(topic, headlines)
+
+	var sb strings.Builder
+	if overview != "" {
+		sb.WriteString(overview)
+		sb.WriteString("\n\n")
 	}
-	content += "\n\n*What are your thoughts? Share what you know.*"
-	return content
+
+	sb.WriteString("**Today's stories:**\n")
+	for _, link := range headlineLinks {
+		sb.WriteString(link + "\n")
+	}
+
+	sb.WriteString(fmt.Sprintf("\n[See all %s news](/news#%s)", topic, topic))
+	sb.WriteString("\n\n*What caught your attention? Share your thoughts.*")
+
+	return sb.String()
 }
 
-// generateDiscussionBlurb uses AI to write a truth-seeking context blurb
-// that grounds the discussion in facts rather than opinion.
-func generateDiscussionBlurb(title, articleContent string, webContext []string) string {
-	var question strings.Builder
-	question.WriteString("## Article\n\n")
-	question.WriteString("**" + title + "**\n\n")
-
-	if articleContent != "" {
-		summary := articleContent
-		if len(summary) > 800 {
-			cut := strings.LastIndex(summary[:800], ". ")
-			if cut > 300 {
-				summary = summary[:cut+1]
-			} else {
-				summary = summary[:800] + "..."
-			}
-		}
-		question.WriteString(summary)
-		question.WriteString("\n\n")
-	}
-
-	if len(webContext) > 0 {
-		question.WriteString("## Web Context\n\n")
-		for _, ctx := range webContext {
-			question.WriteString("- " + ctx + "\n")
-		}
-	}
-
-	prompt := &ai.Prompt{
-		System: `You are a fact-checker and context writer for Mu, an independent truth-seeking platform. Your job is to write a short discussion primer that helps readers understand a news story with clarity and honesty.
-
-You will receive an article headline, its content, and web search results with background information.
-
-Write a 2-3 paragraph blurb that:
-1. Summarises what happened in plain, direct prose
-2. Adds essential context: who are the key players, what is the history, what led to this
-3. Highlights what is being left out or misrepresented in mainstream coverage, if applicable
-4. Notes any impact on the Muslim world, the Middle East, or marginalised communities where relevant
-
-Rules:
-- Be factual and specific — cite countries, names, dates, numbers
-- Do NOT editorialize or tell readers what to think
-- Do NOT use inflammatory language or take sides in geopolitics
-- DO illuminate injustice, double standards, or selective reporting where the facts support it
-- Write from a globally neutral standpoint — no US-centric or Western-centric framing
-- Do NOT start with "This article" or "According to" — just state the facts
-- Write dollar amounts as plain numbers like $100 — never use LaTeX
-- CRITICAL: Keep under 1000 characters total`,
-		Question: question.String(),
-		Priority: ai.PriorityLow,
-	}
-
-	response, err := ai.Ask(prompt)
-	if err != nil {
-		app.Log("social", "AI discussion blurb failed: %v", err)
+// generateTopicOverview asks AI to write a brief contextual overview
+// connecting the day's stories for a given topic.
+func generateTopicOverview(topic string, headlines []string) string {
+	if len(headlines) == 0 {
 		return ""
 	}
 
-	return strings.TrimSpace(app.StripLatexDollars(response))
-}
+	prompt := &ai.Prompt{
+		System: fmt.Sprintf(`You are writing a brief daily overview for the "%s" section of Mu, an independent truth-seeking platform.
 
-// formatBraveResults converts Brave search results into context strings for AI
-func formatBraveResults(results []search.BraveResult) []string {
-	var parts []string
-	for _, r := range results {
-		text := fmt.Sprintf("%s: %s", r.Title, r.Description)
-		if len(text) > 500 {
-			text = text[:500] + "..."
-		}
-		if r.URL != "" {
-			text += fmt.Sprintf(" (Source: %s)", r.URL)
-		}
-		parts = append(parts, text)
-	}
-	return parts
-}
+You will receive today's headlines. Write 1-2 sentences connecting the key themes or highlighting the most significant development. This frames the discussion for the day.
 
-// uniqueSources deduplicates Brave results by URL and returns up to limit sources
-func uniqueSources(results []search.BraveResult, limit int) []search.BraveResult {
-	var out []search.BraveResult
-	seen := map[string]bool{}
-	for _, r := range results {
-		if r.URL == "" || seen[r.URL] {
-			continue
-		}
-		seen[r.URL] = true
-		out = append(out, r)
-		if len(out) >= limit {
-			break
-		}
+Rules:
+- Be direct and factual — no preamble, no "Today in %s..."
+- Name countries, companies, and people explicitly
+- Globally neutral — no US-centric framing
+- Where relevant, note impacts on the Muslim world or marginalised communities
+- Write dollar amounts as plain numbers like $100
+- CRITICAL: Keep under 300 characters`, topic, topic),
+		Question: "Today's headlines:\n\n" + strings.Join(headlines, "\n"),
+		Priority: ai.PriorityLow,
 	}
-	return out
+
+	resp, err := ai.Ask(prompt)
+	if err != nil {
+		app.Log("social", "AI topic overview failed for %s: %v", topic, err)
+		return ""
+	}
+
+	return strings.TrimSpace(app.StripLatexDollars(resp))
 }
 
 // addSeededThread adds a thread without requiring auth or quota
@@ -417,36 +283,4 @@ func threadExists(id string) bool {
 // todayKey returns today's date as a string key
 func todayKey() string {
 	return time.Now().Format("2006-01-02")
-}
-
-// countSeededToday counts how many threads with the given ID prefix
-// already exist. This ensures we don't exceed limits across restarts
-// or hourly seed runs.
-func countSeededToday(prefix string) int {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	count := 0
-	for _, t := range threads {
-		if strings.HasPrefix(t.ID, prefix) {
-			count++
-		}
-	}
-	return count
-}
-
-// storyKey creates a short hash from a story ID for use in thread IDs
-func storyKey(id string) string {
-	h := fmt.Sprintf("%x", md5.Sum([]byte(id)))
-	return h[:8]
-}
-
-// normTitle normalises a title for deduplication — lowercase, strip punctuation
-func normTitle(title string) string {
-	t := strings.ToLower(title)
-	// Take first 5 significant words
-	words := strings.Fields(t)
-	if len(words) > 5 {
-		words = words[:5]
-	}
-	return strings.Join(words, " ")
 }
