@@ -14,8 +14,10 @@ import (
 	"mu/search"
 )
 
-// maxNewsThreads is the number of news stories to seed as discussion threads per day
-const maxNewsThreads = 5
+// maxNewsThreads limits seeded news discussions to avoid noise.
+// Daily digest + reminder are always seeded; at most 1 additional
+// news story gets its own thread if it's from a relevant topic.
+const maxNewsThreads = 1
 
 // StartSeeding begins the background seeding of social discussions
 func StartSeeding() {
@@ -156,11 +158,20 @@ func seedTopNews() {
 			break
 		}
 
-		// Create a stable ID from entry ID + date
-		seedID := fmt.Sprintf("news-%s-%s", today, storyKey(entry.ID))
+		// Determine topic from news category
+		topic := "World"
+		if entry.Metadata != nil {
+			if cat, ok := entry.Metadata["category"].(string); ok && isValidTopic(cat) {
+				topic = cat
+			}
+		}
 
-		if threadExists(seedID) {
-			seeded++ // count existing threads toward the limit
+		// Only seed discussions for relevant topics — skip entertainment,
+		// celebrity news, local crime, sports, gossip, and other noise
+		if !isRelevantForDiscussion(topic) {
+			continue
+		}
+		if isNoise(entry.Title) {
 			continue
 		}
 
@@ -169,20 +180,28 @@ func seedTopNews() {
 		if seen[titleKey] {
 			continue
 		}
+
+		// Check blocklist — skip stories similar to previously dismissed ones
+		if isBlocked(titleKey) {
+			app.Log("social", "Blocked by filter: %s", entry.Title)
+			continue
+		}
+
 		seen[titleKey] = true
 
-		// Extract metadata
+		// Create a stable ID from entry ID + date
+		seedID := fmt.Sprintf("news-%s-%s", today, storyKey(entry.ID))
+
+		if threadExists(seedID) {
+			seeded++ // count existing threads toward the limit
+			continue
+		}
+
+		// Extract URL
 		link := ""
 		if entry.Metadata != nil {
 			if u, ok := entry.Metadata["url"].(string); ok {
 				link = u
-			}
-		}
-
-		topic := "World"
-		if entry.Metadata != nil {
-			if cat, ok := entry.Metadata["category"].(string); ok && isValidTopic(cat) {
-				topic = cat
 			}
 		}
 
