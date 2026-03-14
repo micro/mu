@@ -143,6 +143,14 @@ func seedDigest() {
 // rather than opinion.
 func seedTopNews() {
 	today := todayKey()
+	prefix := "news-" + today
+
+	// Count how many news threads we've already seeded today
+	// across all restarts and hourly runs
+	seeded := countSeededToday(prefix)
+	if seeded >= maxNewsThreads {
+		return
+	}
 
 	// Get recent news items
 	entries := data.GetByType("news", 30)
@@ -150,7 +158,6 @@ func seedTopNews() {
 		return
 	}
 
-	seeded := 0
 	seen := map[string]bool{} // deduplicate by title similarity
 
 	for _, entry := range entries {
@@ -193,7 +200,6 @@ func seedTopNews() {
 		seedID := fmt.Sprintf("news-%s-%s", today, storyKey(entry.ID))
 
 		if threadExists(seedID) {
-			seeded++ // count existing threads toward the limit
 			continue
 		}
 
@@ -411,6 +417,21 @@ func threadExists(id string) bool {
 // todayKey returns today's date as a string key
 func todayKey() string {
 	return time.Now().Format("2006-01-02")
+}
+
+// countSeededToday counts how many threads with the given ID prefix
+// already exist. This ensures we don't exceed limits across restarts
+// or hourly seed runs.
+func countSeededToday(prefix string) int {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	count := 0
+	for _, t := range threads {
+		if strings.HasPrefix(t.ID, prefix) {
+			count++
+		}
+	}
+	return count
 }
 
 // storyKey creates a short hash from a story ID for use in thread IDs
