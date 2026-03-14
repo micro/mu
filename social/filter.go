@@ -2,20 +2,27 @@ package social
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 
+	"mu/ai"
 	"mu/app"
 	"mu/data"
 )
 
-// blocklist stores title fragments that have been dismissed.
-// When a seeded thread is marked as spam/dismissed, its normalised title
-// is added here so similar stories are never seeded again.
+// DismissedRule is a learned filter rule from a dismissed thread.
+// Instead of matching keywords, it captures WHY the thread was irrelevant
+// so the AI can apply the same reasoning to future stories.
+type DismissedRule struct {
+	Title  string `json:"title"`  // original dismissed title
+	Reason string `json:"reason"` // AI-extracted reason it was irrelevant
+}
+
 var (
-	blockMu    sync.RWMutex
-	blocklist  []string
-	blockFile  = "social_blocklist.json"
+	blockMu   sync.RWMutex
+	dismissed []DismissedRule
+	blockFile = "social_blocklist.json"
 )
 
 func loadBlocklist() {
@@ -25,18 +32,18 @@ func loadBlocklist() {
 	}
 	blockMu.Lock()
 	defer blockMu.Unlock()
-	json.Unmarshal(b, &blocklist)
+	json.Unmarshal(b, &dismissed)
 }
 
 func saveBlocklist() {
 	blockMu.RLock()
 	defer blockMu.RUnlock()
-	data.SaveJSON(blockFile, blocklist)
+	data.SaveJSON(blockFile, dismissed)
 }
 
-// DismissThread adds a thread's title to the blocklist so similar stories
-// aren't seeded in the future, then hides it. Called when admin marks
-// a seeded thread as irrelevant.
+// DismissThread learns why a thread is irrelevant and adds the rule
+// to the filter. Uses AI to extract the reason so future stories with
+// the same sentiment/category are blocked, not just keyword matches.
 func DismissThread(threadID string) {
 	mutex.RLock()
 	t := getThread(threadID)
@@ -45,30 +52,98 @@ func DismissThread(threadID string) {
 		return
 	}
 	title := t.Title
+	content := t.Content
 	mutex.RUnlock()
 
-	// Add normalised title words to blocklist
-	key := normTitle(title)
-	if key != "" && !isBlocked(key) {
-		blockMu.Lock()
-		blocklist = append(blocklist, key)
-		blockMu.Unlock()
-		saveBlocklist()
-		app.Log("social", "Dismissed and blocked: %q", key)
-	}
+	// Use AI to understand WHY this was dismissed
+	reason := learnDismissReason(title, content)
+
+	blockMu.Lock()
+	dismissed = append(dismissed, DismissedRule{
+		Title:  title,
+		Reason: reason,
+	})
+	blockMu.Unlock()
+	saveBlocklist()
+
+	app.Log("social", "Dismissed %q — learned: %s", title, reason)
 }
 
-// isBlocked checks if a title matches any entry in the blocklist
-func isBlocked(titleKey string) bool {
-	blockMu.RLock()
-	defer blockMu.RUnlock()
-	for _, blocked := range blocklist {
-		// Match if any blocked phrase appears in the title or vice versa
-		if strings.Contains(titleKey, blocked) || strings.Contains(blocked, titleKey) {
-			return true
-		}
+// learnDismissReason asks AI to extract why a story is irrelevant
+func learnDismissReason(title, content string) string {
+	prompt := &ai.Prompt{
+		System: `You are a content filter for a news discussion platform focused on technology, politics, finance, religion, and global affairs.
+
+A moderator has dismissed a story as irrelevant. Explain in ONE short sentence WHY this story is not suitable for discussion. Focus on the category/type of content, not the specific details.
+
+Examples:
+- "Celebrity entertainment — TV presenter chat show review"
+- "Sports results — football match coverage"
+- "Tabloid gossip — personal life of public figure"
+- "Local crime — individual crime story with no broader significance"
+- "Entertainment industry — movie/album/show review"
+
+Respond with ONLY the one-line reason.`,
+		Question: fmt.Sprintf("Title: %s\n\nContent: %s", title, content),
+		Priority: ai.PriorityLow,
 	}
-	return false
+
+	resp, err := ai.Ask(prompt)
+	if err != nil {
+		// Fallback to a generic reason
+		return "dismissed by moderator"
+	}
+	return strings.TrimSpace(resp)
+}
+
+// shouldSeed checks a candidate story against the learned dismiss rules.
+// Uses AI to determine if the story matches the sentiment/category of
+// previously dismissed content. Returns true if the story should be seeded.
+func shouldSeed(title string) bool {
+	blockMu.RLock()
+	rules := dismissed
+	blockMu.RUnlock()
+
+	if len(rules) == 0 {
+		return true
+	}
+
+	// First do a cheap keyword check against noise list
+	if isNoise(title) {
+		return false
+	}
+
+	// Build the learned rules context for AI screening
+	var ruleLines []string
+	for _, r := range rules {
+		ruleLines = append(ruleLines, fmt.Sprintf("- %q → %s", r.Title, r.Reason))
+	}
+
+	prompt := &ai.Prompt{
+		System: `You are a content filter for a news discussion platform. The platform covers technology, development, politics, religion (Islam), finance, and crypto. It does NOT cover entertainment, sports, celebrity gossip, or tabloid news.
+
+You have learned from previously dismissed stories. Based on the patterns below, decide if a new story should be POSTED or BLOCKED.
+
+Previously dismissed (with reasons):
+` + strings.Join(ruleLines, "\n") + `
+
+Respond with ONLY one word: POST or BLOCK`,
+		Question: fmt.Sprintf("Should this story be posted?\n\nTitle: %s", title),
+		Priority: ai.PriorityLow,
+	}
+
+	resp, err := ai.Ask(prompt)
+	if err != nil {
+		// On error, allow it through — better to over-include than miss important stories
+		return true
+	}
+
+	resp = strings.TrimSpace(strings.ToUpper(resp))
+	if resp == "BLOCK" {
+		app.Log("social", "AI filter blocked: %s", title)
+		return false
+	}
+	return true
 }
 
 // relevantTopics are the only news categories we seed discussions for.

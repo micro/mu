@@ -188,9 +188,9 @@ func seedTopNews() {
 			continue
 		}
 
-		// Check blocklist — skip stories similar to previously dismissed ones
-		if isBlocked(titleKey) {
-			app.Log("social", "Blocked by filter: %s", entry.Title)
+		// Check against learned dismiss rules — AI screens for similar
+		// sentiment/category, not just keyword matches
+		if !shouldSeed(entry.Title) {
 			continue
 		}
 
