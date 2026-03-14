@@ -7,7 +7,6 @@ import (
 	"html"
 	"net/http"
 	"sort"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -422,25 +421,74 @@ func renderThreadCard(t *Thread, acc *auth.Account) string {
 }
 
 // stripMarkdown removes common markdown formatting to produce plain text for previews.
-var mdPattern = regexp.MustCompile(`(?m)^#{1,6}\s+|(\*{1,3}|_{1,3})(.+?)\1|\[([^\]]+)\]\([^)]+\)|!\[[^\]]*\]\([^)]+\)|`+"```[\\s\\S]*?```"+`|`+"`[^`]+`"+`|^[-*>]\s+|^\d+\.\s+`)
-
 func stripMarkdown(s string) string {
-	s = mdPattern.ReplaceAllStringFunc(s, func(match string) string {
-		// For links [text](url), keep the text
-		if strings.HasPrefix(match, "[") && strings.Contains(match, "](") {
-			i := strings.Index(match, "]")
-			if i > 0 {
-				return match[1:i]
-			}
+	// Remove code blocks
+	for {
+		start := strings.Index(s, "```")
+		if start == -1 {
+			break
 		}
-		// For bold/italic *text* or **text**, keep the text
-		for _, prefix := range []string{"***", "**", "*", "___", "__", "_"} {
-			if strings.HasPrefix(match, prefix) && strings.HasSuffix(match, prefix) {
-				return match[len(prefix) : len(match)-len(prefix)]
-			}
+		end := strings.Index(s[start+3:], "```")
+		if end == -1 {
+			s = s[:start]
+			break
 		}
-		return ""
-	})
+		s = s[:start] + s[start+3+end+3:]
+	}
+	// Remove inline code
+	for strings.Contains(s, "`") {
+		start := strings.Index(s, "`")
+		end := strings.Index(s[start+1:], "`")
+		if end == -1 {
+			break
+		}
+		s = s[:start] + s[start+1:start+1+end] + s[start+1+end+1:]
+	}
+	// Remove images ![alt](url)
+	for strings.Contains(s, "![") {
+		start := strings.Index(s, "![")
+		end := strings.Index(s[start:], ")")
+		if end == -1 {
+			break
+		}
+		s = s[:start] + s[start+end+1:]
+	}
+	// Replace links [text](url) with text
+	for strings.Contains(s, "](") {
+		lb := strings.Index(s, "](")
+		// find opening [
+		ob := strings.LastIndex(s[:lb], "[")
+		if ob == -1 {
+			break
+		}
+		// find closing )
+		cb := strings.Index(s[lb:], ")")
+		if cb == -1 {
+			break
+		}
+		text := s[ob+1 : lb]
+		s = s[:ob] + text + s[lb+cb+1:]
+	}
+	// Remove heading markers, list markers, bold/italic markers
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		// Strip heading markers
+		for strings.HasPrefix(line, "#") {
+			line = strings.TrimPrefix(line, "#")
+		}
+		// Strip list markers
+		line = strings.TrimLeft(line, " ")
+		if strings.HasPrefix(line, "- ") || strings.HasPrefix(line, "* ") || strings.HasPrefix(line, "> ") {
+			line = line[2:]
+		}
+		lines[i] = line
+	}
+	s = strings.Join(lines, " ")
+	// Strip bold/italic markers
+	s = strings.ReplaceAll(s, "***", "")
+	s = strings.ReplaceAll(s, "**", "")
+	s = strings.ReplaceAll(s, "__", "")
 	// Collapse whitespace
 	s = strings.Join(strings.Fields(s), " ")
 	return strings.TrimSpace(s)
