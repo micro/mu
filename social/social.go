@@ -90,6 +90,9 @@ func Load() {
 		json.Unmarshal([]byte(b), &threads)
 	}
 
+	// Load blocklist for seeded content filtering
+	loadBlocklist()
+
 	// Sort newest first
 	sortThreads()
 
@@ -264,8 +267,24 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// HTML
-	head := app.Head("social", topics)
+	// HTML — topic selector with query params for actual filtering
+	var headBuf strings.Builder
+	if topic == "" || topic == "all" {
+		headBuf.WriteString(`<a href="/social" class="head active">All</a>`)
+	} else {
+		headBuf.WriteString(`<a href="/social" class="head">All</a>`)
+	}
+	for _, t := range topics {
+		if strings.EqualFold(t, "all") {
+			continue
+		}
+		cls := "head"
+		if t == topic {
+			cls = "head active"
+		}
+		headBuf.WriteString(fmt.Sprintf(`<a href="/social?topic=%s" class="%s">%s</a>`, t, cls, t))
+	}
+	head := headBuf.String()
 
 	var sb strings.Builder
 
@@ -309,30 +328,114 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// Thread list
 	if len(visible) == 0 {
 		sb.WriteString(`<p class="text-muted mt-5">No discussions yet. Be the first to start one.</p>`)
-	}
-	for _, t := range visible {
-		replies := t.ReplyCount()
-		replyLink := fmt.Sprintf(` · <a href="/social?id=%s">Reply</a>`, t.ID)
-		if replies > 0 {
-			replyLink = fmt.Sprintf(` · <a href="/social?id=%s">Replies (%d)</a>`, t.ID, replies)
+	} else if topic != "" && topic != "all" {
+		// Filtered view — show all threads for this topic
+		for _, t := range visible {
+			sb.WriteString(renderThreadCard(t, acc))
+		}
+	} else {
+		// "All" view — show latest first, then grouped by topic
+		latestCount := 5
+		if len(visible) < latestCount {
+			latestCount = len(visible)
 		}
 
-		linkHTML := ""
-		if t.Link != "" {
-			linkHTML = fmt.Sprintf(` · <a href="%s" target="_blank" rel="noopener noreferrer">Link</a>`, html.EscapeString(t.Link))
+		// Latest section
+		for _, t := range visible[:latestCount] {
+			sb.WriteString(renderThreadCard(t, acc))
 		}
 
-		sb.WriteString(fmt.Sprintf(`<div class="card" style="padding:12px 16px;">
-<div><a href="/social?id=%s" style="font-weight:600;">%s</a></div>
-<div style="font-size:12px;color:#888;margin-top:4px;">
-<span class="category">%s</span>
-<a href="/@%s" class="text-muted">%s</a> · %s%s%s
-</div>
-</div>`, t.ID, html.EscapeString(t.Title), html.EscapeString(t.Topic), t.AuthorID, html.EscapeString(t.Author), app.TimeAgo(t.CreatedAt), replyLink, linkHTML))
+		// Group remaining by topic
+		byTopic := map[string][]*Thread{}
+		shownIDs := map[string]bool{}
+		for _, t := range visible[:latestCount] {
+			shownIDs[t.ID] = true
+		}
+		for _, t := range visible {
+			if shownIDs[t.ID] {
+				continue
+			}
+			byTopic[t.Topic] = append(byTopic[t.Topic], t)
+		}
+
+		// Render per-topic sections
+		topicOrder := []string{}
+		for _, t := range topics {
+			if strings.EqualFold(t, "all") {
+				continue
+			}
+			if len(byTopic[t]) > 0 {
+				topicOrder = append(topicOrder, t)
+			}
+		}
+
+		for _, topicName := range topicOrder {
+			threads := byTopic[topicName]
+			sb.WriteString(fmt.Sprintf(`<hr id="%s" class="anchor"><h3 style="margin:16px 0 8px;">%s</h3>`, topicName, topicName))
+			for _, t := range threads {
+				sb.WriteString(renderThreadCard(t, acc))
+			}
+		}
 	}
 
 	page := app.RenderHTMLForRequest("Social", "Discussions", fmt.Sprintf(`<div id="social">%s%s</div>`, head, sb.String()), r)
 	w.Write([]byte(page))
+}
+
+// renderThreadCard renders a single thread as a card in the listing
+func renderThreadCard(t *Thread, acc *auth.Account) string {
+	replies := t.ReplyCount()
+	replyLink := fmt.Sprintf(` · <a href="/social?id=%s">Reply</a>`, t.ID)
+	if replies > 0 {
+		replyLink = fmt.Sprintf(` · <a href="/social?id=%s">Replies (%d)</a>`, t.ID, replies)
+	}
+
+	linkHTML := ""
+	if t.Link != "" {
+		linkHTML = fmt.Sprintf(` · <a href="%s" target="_blank" rel="noopener noreferrer">Link</a>`, html.EscapeString(t.Link))
+	}
+
+	// Dismiss button for admin on system-seeded threads
+	dismissBtn := ""
+	if acc != nil && acc.Admin && t.AuthorID == app.SystemUserID {
+		dismissBtn = fmt.Sprintf(` · <form method="POST" action="/social/dismiss" style="display:inline;"><input type="hidden" name="id" value="%s"><button type="submit" style="background:none;border:none;color:#c00;font-size:12px;cursor:pointer;padding:0;">Dismiss</button></form>`, t.ID)
+	}
+
+	return fmt.Sprintf(`<div class="card" style="padding:12px 16px;">
+<div><a href="/social?id=%s" style="font-weight:600;">%s</a></div>
+<div style="font-size:12px;color:#888;margin-top:4px;">
+<span class="category">%s</span>
+<a href="/@%s" class="text-muted">%s</a> · %s%s%s%s
+</div>
+</div>`, t.ID, html.EscapeString(t.Title), html.EscapeString(t.Topic), t.AuthorID, html.EscapeString(t.Author), app.TimeAgo(t.CreatedAt), replyLink, linkHTML, dismissBtn)
+}
+
+// DismissHandler handles POST /social/dismiss — admin dismisses a seeded thread
+// and trains the filter to avoid similar content in future.
+func DismissHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	_, _, err := auth.RequireAdmin(r)
+	if err != nil {
+		app.Forbidden(w, r, "Admin access required")
+		return
+	}
+
+	threadID := r.FormValue("id")
+	if threadID == "" {
+		app.BadRequest(w, r, "Thread ID required")
+		return
+	}
+
+	// Add to blocklist and flag
+	DismissThread(threadID)
+	admin.AdminFlag("thread", threadID, "system")
+
+	app.Log("social", "Admin dismissed thread %s", threadID)
+	http.Redirect(w, r, "/social", http.StatusSeeOther)
 }
 
 func handleThread(w http.ResponseWriter, r *http.Request, id string) {
