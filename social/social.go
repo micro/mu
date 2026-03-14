@@ -7,6 +7,7 @@ import (
 	"html"
 	"net/http"
 	"sort"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -401,13 +402,48 @@ func renderThreadCard(t *Thread, acc *auth.Account) string {
 		dismissBtn = fmt.Sprintf(` · <form method="POST" action="/social/dismiss" style="display:inline;"><input type="hidden" name="id" value="%s"><button type="submit" style="background:none;border:none;color:#c00;font-size:12px;cursor:pointer;padding:0;">Dismiss</button></form>`, t.ID)
 	}
 
+	// Build content preview — strip markdown formatting for plain text snippet
+	preview := stripMarkdown(t.Content)
+	if len(preview) > 150 {
+		preview = preview[:150] + "..."
+	}
+	previewHTML := ""
+	if preview != "" {
+		previewHTML = fmt.Sprintf(`<div style="font-size:13px;color:#aaa;margin-top:4px;">%s</div>`, html.EscapeString(preview))
+	}
+
 	return fmt.Sprintf(`<div class="card" style="padding:12px 16px;">
-<div><a href="/social?id=%s" style="font-weight:600;">%s</a></div>
+<div><a href="/social?id=%s" style="font-weight:600;">%s</a></div>%s
 <div style="font-size:12px;color:#888;margin-top:4px;">
 <span class="category">%s</span>
 <a href="/@%s" class="text-muted">%s</a> · %s%s%s%s
 </div>
-</div>`, t.ID, html.EscapeString(t.Title), html.EscapeString(t.Topic), t.AuthorID, html.EscapeString(t.Author), app.TimeAgo(t.CreatedAt), replyLink, linkHTML, dismissBtn)
+</div>`, t.ID, html.EscapeString(t.Title), previewHTML, html.EscapeString(t.Topic), t.AuthorID, html.EscapeString(t.Author), app.TimeAgo(t.CreatedAt), replyLink, linkHTML, dismissBtn)
+}
+
+// stripMarkdown removes common markdown formatting to produce plain text for previews.
+var mdPattern = regexp.MustCompile(`(?m)^#{1,6}\s+|(\*{1,3}|_{1,3})(.+?)\1|\[([^\]]+)\]\([^)]+\)|!\[[^\]]*\]\([^)]+\)|`+"```[\\s\\S]*?```"+`|`+"`[^`]+`"+`|^[-*>]\s+|^\d+\.\s+`)
+
+func stripMarkdown(s string) string {
+	s = mdPattern.ReplaceAllStringFunc(s, func(match string) string {
+		// For links [text](url), keep the text
+		if strings.HasPrefix(match, "[") && strings.Contains(match, "](") {
+			i := strings.Index(match, "]")
+			if i > 0 {
+				return match[1:i]
+			}
+		}
+		// For bold/italic *text* or **text**, keep the text
+		for _, prefix := range []string{"***", "**", "*", "___", "__", "_"} {
+			if strings.HasPrefix(match, prefix) && strings.HasSuffix(match, prefix) {
+				return match[len(prefix) : len(match)-len(prefix)]
+			}
+		}
+		return ""
+	})
+	// Collapse whitespace
+	s = strings.Join(strings.Fields(s), " ")
+	return strings.TrimSpace(s)
 }
 
 // DismissHandler handles POST /social/dismiss — admin dismisses a seeded thread
