@@ -9,10 +9,18 @@
       "icon": "/agent.svg"
     },
     {
+      "id": "blog",
+      "title": "Blog",
+      "type": "blog",
+      "position": 1,
+      "link": "/blog",
+      "icon": "/post.png"
+    },
+    {
       "id": "news",
       "title": "News",
       "type": "news",
-      "position": 1,
+      "position": 2,
       "link": "/news",
       "icon": "/news.png"
     }
@@ -43,18 +51,10 @@
       "icon": "/chat.png"
     },
     {
-      "id": "blog",
-      "title": "Blog",
-      "type": "blog",
-      "position": 3,
-      "link": "/blog",
-      "icon": "/post.png"
-    },
-    {
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 4,
+      "position": 3,
       "link": "/video",
       "icon": "/video.png"
     }

@@ -2103,45 +2103,42 @@ a.highlight {
     max-width: 100%;
   }
   
-  /* Home page layout */
+  /* Home page layout — flatten columns on mobile for unified card ordering */
   #home {
     display: flex;
     flex-direction: column;
     height: auto;
   }
-  .home-left {
-    margin-bottom: 10px;
-    width: 100%;
+  .home-left, .home-right {
+    display: contents;
   }
-  
-  /* Compact apps card on mobile */
-  .home-left .card {
+
+  /* Compact cards on mobile */
+  .home-left .card, .home-right .card {
     padding: 12px;
     margin-bottom: 10px;
+    width: 100%;
+    min-width: auto;
   }
-  
+
   .home-left .card h3 {
     font-size: 14px;
     margin-bottom: 8px;
   }
-  
+
   .home-left .card-link {
     font-size: 12px;
   }
-  
-  .home-right {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  /* Reorder cards: real-time info first */
-  #home-chat { order: 1; }
+
+  /* Reorder cards: agent first, then real-time info, then content */
+  #agent { order: 1; }
   #reminder { order: 2; }
-  #markets { order: 3; }
-  #news { order: 4; }
-  #blog { order: 5; }
-  #video { order: 6; }
+  #blog { order: 3; }
+  #markets { order: 4; }
+  #news { order: 5; }
+  #social { order: 6; }
+  #video { order: 7; }
+  #home-chat { order: 8; }
   
   .cover {
     display: block;
