@@ -14,9 +14,14 @@ const opinionTopic = "World"
 
 // StartSeeding begins the background seeding of social discussions.
 // Three system threads per day: the daily reminder, the daily digest,
-// and the daily opinion. Everything else comes from users.
+// and the daily opinion. The opinion agent also engages with replies
+// and reviews discussions to update its editorial memory.
 func StartSeeding() {
+	// Load editorial memory for the opinion agent
+	memory = loadMemory()
+
 	go seedLoop()
+	go opinionEngageLoop()
 }
 
 func seedLoop() {
@@ -36,6 +41,26 @@ func seedAll() {
 	seedReminder()
 	seedDigest()
 	seedOpinion()
+}
+
+// opinionEngageLoop runs the opinion agent's engagement cycle.
+// Every hour it checks for new human replies to engage with,
+// then reviews the discussion to extract learnings for editorial memory.
+func opinionEngageLoop() {
+	// Wait for seeding to complete first
+	time.Sleep(2 * time.Minute)
+
+	for {
+		// Engage with new replies first
+		engageOpinionThread()
+
+		// Then review for stance updates (runs after engage so
+		// the agent's new reply is included as context, but the
+		// review only learns from human replies)
+		reviewOpinionThread()
+
+		time.Sleep(time.Hour)
+	}
 }
 
 // seedReminder creates a daily discussion thread from the Islamic reminder

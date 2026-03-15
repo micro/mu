@@ -32,6 +32,12 @@ func generateOpinion() (string, string, error) {
 		fullContext += "\n\n## Web Research & Cross-References\n\n" + webResearch
 	}
 
+	// Include editorial memory — learned stances from past discussions
+	memContext := getMemoryContext()
+	if memContext != "" {
+		fullContext += "\n\n" + memContext
+	}
+
 	prompt := &ai.Prompt{
 		System: `You are a senior opinion writer for Mu, an independent platform built in the UK. You produce a single daily opinion piece that reflects on the day's events with depth, nuance, and original thinking.
 
