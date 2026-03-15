@@ -9,9 +9,12 @@ import (
 	"mu/news/reminder"
 )
 
+// opinionTopic is the topic used for daily opinion threads.
+const opinionTopic = "World"
+
 // StartSeeding begins the background seeding of social discussions.
-// Only two system threads per day: the daily reminder and the daily digest.
-// Everything else comes from users.
+// Three system threads per day: the daily reminder, the daily digest,
+// and the daily opinion. Everything else comes from users.
 func StartSeeding() {
 	go seedLoop()
 }
@@ -32,6 +35,7 @@ func seedLoop() {
 func seedAll() {
 	seedReminder()
 	seedDigest()
+	seedOpinion()
 }
 
 // seedReminder creates a daily discussion thread from the Islamic reminder
@@ -116,6 +120,38 @@ func seedDigest() {
 
 	addSeededThread(thread)
 	app.Log("social", "Seeded daily digest thread")
+}
+
+// seedOpinion creates a daily opinion thread by analysing all available data,
+// cross-referencing with web research, and generating a grounded opinion piece.
+func seedOpinion() {
+	today := todayKey()
+	seedID := "opinion-" + today
+
+	if threadExists(seedID) {
+		return
+	}
+
+	title, body, err := generateOpinion()
+	if err != nil {
+		app.Log("social", "Opinion generation failed: %v", err)
+		return
+	}
+
+	content := body + "\n\n*What's your take? Share your thoughts below.*"
+
+	thread := &Thread{
+		ID:        seedID,
+		Title:     "Opinion: " + title,
+		Content:   content,
+		Topic:     opinionTopic,
+		Author:    app.SystemUserName,
+		AuthorID:  app.SystemUserID,
+		CreatedAt: time.Now(),
+	}
+
+	addSeededThread(thread)
+	app.Log("social", "Seeded daily opinion thread: %s", title)
 }
 
 // addSeededThread adds a thread without requiring auth or quota
