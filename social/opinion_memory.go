@@ -299,10 +299,17 @@ Rules:
 		return
 	}
 
-	// Add the reply to the thread
+	// Add the reply to the thread, threaded under the first unanswered
+	// human reply so it's visually connected to what it's responding to.
+	parentID := ""
+	if len(unansweredHuman) > 0 {
+		parentID = unansweredHuman[0].ID
+	}
+
 	reply := &Reply{
 		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
 		ThreadID:  seedID,
+		ParentID:  parentID,
 		Content:   response,
 		Author:    app.SystemUserName,
 		AuthorID:  app.SystemUserID,
