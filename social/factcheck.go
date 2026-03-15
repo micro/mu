@@ -189,8 +189,9 @@ Rules:
 
 	response = strings.TrimSpace(app.StripLatexDollars(response))
 
-	// Parse response
-	if response == "NO_NOTE" || response == "" {
+	// Parse response — the AI should return "NO_NOTE" when no fact-check is needed,
+	// but may add extra text after it. Treat any response starting with NO_NOTE as no note.
+	if response == "" || strings.HasPrefix(response, "NO_NOTE") {
 		return nil
 	}
 
