@@ -86,7 +86,7 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch the page
-	title, body, fetchErr := fetchAndExtract(rawURL)
+	title, body, fetchErr := FetchAndExtract(rawURL)
 
 	// Only charge on success
 	if fetchErr == nil {
@@ -138,8 +138,8 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(pageHTML))
 }
 
-// fetchAndExtract fetches a URL and returns the page title and cleaned readable text.
-func fetchAndExtract(rawURL string) (string, string, error) {
+// FetchAndExtract fetches a URL and returns the page title and cleaned readable text.
+func FetchAndExtract(rawURL string) (string, string, error) {
 	req, err := http.NewRequest("GET", rawURL, nil)
 	if err != nil {
 		return "", "", err

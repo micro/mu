@@ -9,6 +9,7 @@ import (
 	"mu/app"
 	"mu/news"
 	"mu/news/markets"
+	"mu/news/reminder"
 	"mu/search"
 	"mu/video"
 )
@@ -35,9 +36,9 @@ func generateOpinion() (string, string, error) {
 		System: `You are a senior opinion writer for Mu, an independent platform built in the UK. You produce a single daily opinion piece that reflects on the day's events with depth, nuance, and original thinking.
 
 Your perspective:
-- You are grounded by Islamic values — honesty, justice, accountability, and a rejection of greed-driven decision making. You don't preach, but your moral compass is clear.
+- You are grounded by Islamic values — honesty, justice, accountability, and a rejection of greed-driven decision making. You don't preach, but your moral compass is clear. Today's Islamic reminder (verse, hadith) is provided as context — let it inform your moral framing where relevant, but don't force it.
 - You have an engineering mindset — you look at systems, incentives, and data rather than taking narratives at face value.
-- You are sceptical of media bias from ALL sources — Western, Eastern, state-run, corporate. You don't take any source as gospel truth. You cross-reference and think critically.
+- You are sceptical of media bias from ALL sources — Western, Eastern, state-run, corporate. You don't take any source as gospel truth. You have been given web research with full article content from independent sources — use this to cross-reference and challenge the mainstream narrative.
 - You are not contrarian for the sake of it, but you recognise that mainstream narratives often serve power structures rather than truth.
 - You care about the Muslim world, the Global South, and underrepresented perspectives — but you write for a global audience.
 
@@ -157,12 +158,29 @@ func gatherOpinionContext() string {
 		sb.WriteString("\n")
 	}
 
+	// Islamic reminder — provides grounding context (today's verse, hadith, name of Allah)
+	rd := reminder.GetReminderData()
+	if rd != nil {
+		sb.WriteString("## Today's Islamic Reminder\n\n")
+		if rd.Message != "" {
+			sb.WriteString(rd.Message + "\n\n")
+		}
+		if rd.Verse != "" {
+			sb.WriteString("Verse: " + rd.Verse + "\n\n")
+		}
+		if rd.Hadith != "" {
+			sb.WriteString("Hadith: " + rd.Hadith + "\n\n")
+		}
+	}
+
 	return sb.String()
 }
 
 // researchTopStories picks the most important stories from the news feed
 // and does web searches to cross-reference them, providing additional context
 // that the opinion writer can use to form a more grounded view.
+// For each story, it searches the web, lists multiple source snippets, and
+// fetches the full content of the top result for deeper analysis.
 func researchTopStories() string {
 	feed := news.GetFeed()
 	if len(feed) == 0 {
@@ -182,12 +200,14 @@ func researchTopStories() string {
 			query = query[:120]
 		}
 
-		results, err := search.SearchBraveCached(query, 3)
+		results, err := search.SearchBraveCached(query, 5)
 		if err != nil || len(results) == 0 {
 			continue
 		}
 
 		sb.WriteString(fmt.Sprintf("### Research: %s\n", item.Title))
+
+		// List all search results as snippets for breadth
 		for _, r := range results {
 			desc := r.Description
 			if len(desc) > 300 {
@@ -195,6 +215,15 @@ func researchTopStories() string {
 			}
 			sb.WriteString(fmt.Sprintf("- [%s] %s (Source: %s)\n", r.Title, desc, r.URL))
 		}
+
+		// Fetch the full content of the top result for depth
+		if len(results) > 0 {
+			fullContent := fetchArticleContent(results[0].URL)
+			if fullContent != "" {
+				sb.WriteString(fmt.Sprintf("\nFull article from %s:\n%s\n", results[0].URL, fullContent))
+			}
+		}
+
 		sb.WriteString("\n")
 
 		// Small delay between searches to be respectful to the API
@@ -202,4 +231,28 @@ func researchTopStories() string {
 	}
 
 	return sb.String()
+}
+
+// fetchArticleContent fetches a URL and extracts readable content,
+// truncated to a reasonable size for use as AI context.
+func fetchArticleContent(rawURL string) string {
+	_, body, err := search.FetchAndExtract(rawURL)
+	if err != nil {
+		app.Log("opinion", "Failed to fetch %s: %v", rawURL, err)
+		return ""
+	}
+
+	// Truncate to ~2000 chars to keep context reasonable
+	if len(body) > 2000 {
+		// Try to cut at a sentence boundary
+		cut := strings.LastIndex(body[:2000], ". ")
+		if cut > 1000 {
+			body = body[:cut+1]
+		} else {
+			body = body[:2000]
+		}
+		body += "\n[truncated]"
+	}
+
+	return body
 }
