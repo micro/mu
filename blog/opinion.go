@@ -1,7 +1,9 @@
 package blog
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -43,6 +45,14 @@ Your measure of success:
 - Did you connect dots that others missed?
 - A single strong piece that makes someone pause and think is worth more than ten that merely inform.`
 
+// opinionCategories returns the list of categories from topics.json.
+// Uses topicsJSON which is embedded in blog.go.
+func opinionCategories() []string {
+	var cats []string
+	json.Unmarshal(topicsJSON, &cats)
+	return cats
+}
+
 // StartOpinion begins the background opinion generation and engagement loops.
 // Called from main.go after all building blocks are loaded.
 func StartOpinion() {
@@ -55,60 +65,109 @@ func opinionLoop() {
 	// Wait for other services to load first
 	time.Sleep(30 * time.Second)
 
-	publishOpinion()
-
 	for {
-		time.Sleep(time.Hour)
-		publishOpinion()
+		publishNextOpinion()
+		time.Sleep(30 * time.Minute) // check every 30m, actual pacing is time-based
 	}
 }
 
 // opinionEngageLoop runs the opinion agent's engagement cycle.
-// Every hour it checks for new human comments on the opinion post,
+// Every hour it checks for new human comments on today's opinion posts,
 // then reviews the discussion to extract learnings for editorial memory.
 func opinionEngageLoop() {
 	time.Sleep(2 * time.Minute)
 
 	for {
-		engageOpinionPost()
-		reviewOpinionPost()
+		for _, post := range FindTodayOpinions() {
+			engageOpinionPost(post)
+			reviewOpinionPost(post)
+		}
 		selfReflect()
 		time.Sleep(time.Hour)
 	}
 }
 
-// publishOpinion generates and publishes today's opinion as a blog post.
-func publishOpinion() {
-	today := opinionTodayKey()
-
-	// Check if today's opinion post already exists
-	if FindTodayOpinion() != nil {
+// publishNextOpinion finds the next category that needs an opinion today
+// and publishes it, respecting the 2-hour spacing between posts.
+func publishNextOpinion() {
+	categories := opinionCategories()
+	if len(categories) == 0 {
 		return
 	}
 
-	title, body, err := generateOpinion()
-	if err != nil {
-		app.Log("opinion", "Opinion generation failed: %v", err)
-		return
+	published := findTodayOpinionCategories()
+
+	// Find last publish time today
+	if last := latestTodayOpinionTime(); !last.IsZero() {
+		elapsed := time.Since(last)
+		interval := opinionInterval(len(categories))
+		if elapsed < interval {
+			return // too soon
+		}
 	}
 
-	err = CreatePost(title, body, app.SystemUserName, app.SystemUserID, opinionTag, false)
-	if err != nil {
-		app.Log("opinion", "Failed to create opinion post: %v", err)
-		return
+	// Find next category to publish (tags are stored lowercase)
+	for _, cat := range categories {
+		if _, done := published[strings.ToLower(cat)]; !done {
+			publishCategoryOpinion(cat)
+			return
+		}
 	}
-
-	recordOpinionTopic(title)
-	app.Log("opinion", "Daily opinion published: %s (key: %s)", title, today)
 }
 
-// FindTodayOpinion returns today's opinion post, or nil if none exists.
+// opinionInterval calculates spacing between posts.
+// Target: spread across ~16 waking hours (06:00–22:00).
+func opinionInterval(numCategories int) time.Duration {
+	if numCategories <= 1 {
+		return 2 * time.Hour
+	}
+	interval := (16 * time.Hour) / time.Duration(numCategories)
+	// Clamp between 1h and 3h
+	if interval < time.Hour {
+		interval = time.Hour
+	}
+	if interval > 3*time.Hour {
+		interval = 3 * time.Hour
+	}
+	return interval
+}
+
+// publishCategoryOpinion generates and publishes an opinion for a specific category.
+func publishCategoryOpinion(category string) {
+	title, body, err := generateOpinion(category)
+	if err != nil {
+		app.Log("opinion", "Opinion generation failed [%s]: %v", category, err)
+		return
+	}
+
+	tags := opinionTag + "," + strings.ToLower(category)
+	err = CreatePost(title, body, app.SystemUserName, app.SystemUserID, tags, false)
+	if err != nil {
+		app.Log("opinion", "Failed to create opinion post [%s]: %v", category, err)
+		return
+	}
+
+	recordOpinionTopic(title, category)
+	app.Log("opinion", "Opinion published [%s]: %s", category, title)
+}
+
+// FindTodayOpinion returns the first opinion post from today (for backwards compat).
 func FindTodayOpinion() *Post {
+	opinions := FindTodayOpinions()
+	if len(opinions) == 0 {
+		return nil
+	}
+	return opinions[0]
+}
+
+// FindTodayOpinions returns all opinion posts from today, newest first.
+func FindTodayOpinions() []*Post {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
 	now := time.Now()
 	y, m, d := now.Date()
+	var result []*Post
 	for _, post := range posts {
 		if post.AuthorID != app.SystemUserID {
 			continue
@@ -118,22 +177,46 @@ func FindTodayOpinion() *Post {
 		}
 		py, pm, pd := post.CreatedAt.Date()
 		if py == y && pm == m && pd == d {
-			return post
+			result = append(result, post)
 		}
 	}
-	return nil
+	return result
 }
 
-// generateOpinion gathers all available data (news, markets, videos),
+// findTodayOpinionCategories returns which categories have been published today.
+func findTodayOpinionCategories() map[string]bool {
+	result := make(map[string]bool)
+	for _, post := range FindTodayOpinions() {
+		for _, tag := range strings.Split(post.Tags, ",") {
+			tag = strings.TrimSpace(tag)
+			if tag != opinionTag && tag != "" {
+				result[tag] = true
+			}
+		}
+	}
+	return result
+}
+
+// latestTodayOpinionTime returns the creation time of the most recent opinion today.
+func latestTodayOpinionTime() time.Time {
+	opinions := FindTodayOpinions()
+	if len(opinions) == 0 {
+		return time.Time{}
+	}
+	// posts are newest-first
+	return opinions[0].CreatedAt
+}
+
+// generateOpinion gathers category-specific data (news, markets, videos),
 // cross-references with web search for deeper context, and uses AI to
 // produce an opinion piece. Returns the title and the body content.
-func generateOpinion() (string, string, error) {
-	context := gatherOpinionContext()
+func generateOpinion(category string) (string, string, error) {
+	context := gatherCategoryContext(category)
 	if context == "" {
-		return "", "", fmt.Errorf("no content available")
+		return "", "", fmt.Errorf("no content available for %s", category)
 	}
 
-	webResearch := researchTopStories()
+	webResearch := researchCategoryStories(category)
 
 	fullContext := context
 	if webResearch != "" {
@@ -146,16 +229,16 @@ func generateOpinion() (string, string, error) {
 	}
 
 	prompt := &ai.Prompt{
-		System: agentPurpose + `
+		System: agentPurpose + fmt.Sprintf(`
 
-Your task: Write today's single daily opinion piece.
+Your task: Write today's opinion piece for the **%s** category.
 
 Today's Islamic reminder (verse, hadith) is provided as context — let it inform your moral framing where relevant, but don't force it. You have been given web research with full article content from independent sources — use this to cross-reference and challenge the mainstream narrative.
 
 What you produce:
-- A sharp, opinionated piece that makes the reader question something they might otherwise accept uncritically
-- Choose a significant theme — but NOT necessarily the most dominant one. Variety matters. If your recent topics (listed in editorial memory) already cover an angle, find a different one even if the dominant story hasn't changed.
-- Connect the dots between events, market movements, and geopolitics
+- A sharp, opinionated piece focused on %s that makes the reader question something they might otherwise accept uncritically
+- Focus on the most compelling angle within this category's news today
+- Connect the dots between events, market movements, and geopolitics where relevant
 - Call out media bias, missing context, or misleading framing where you see it
 - Offer your own grounded assessment — what's really happening and why it matters
 
@@ -173,7 +256,7 @@ Rules:
 - Do NOT include a references section
 - Write dollar amounts as plain numbers like $94 or $1.2 trillion — NEVER use LaTeX formatting
 - Do NOT include preamble like "Here is my opinion"
-- CRITICAL: Keep under 2500 characters total (title + body).`,
+- CRITICAL: Keep under 2500 characters total (title + body).`, category, category),
 		Question: fullContext,
 		Priority: ai.PriorityLow,
 	}
@@ -204,29 +287,61 @@ Rules:
 	return title, body, nil
 }
 
-func gatherOpinionContext() string {
+// gatherCategoryContext builds context focused on a specific category,
+// with supporting market data and Islamic reminder.
+func gatherCategoryContext(category string) string {
 	var sb strings.Builder
 
 	feed := news.GetFeed()
 	if len(feed) > 0 {
-		sb.WriteString("## Today's News\n\n")
+		// Primary: news for this category
+		var categoryItems []*news.Post
+		for _, item := range feed {
+			if strings.EqualFold(item.Category, category) {
+				categoryItems = append(categoryItems, item)
+			}
+		}
+		if len(categoryItems) > 0 {
+			sb.WriteString(fmt.Sprintf("## %s News (Primary Focus)\n\n", category))
+			count := 8
+			if len(categoryItems) < count {
+				count = len(categoryItems)
+			}
+			for _, item := range categoryItems[:count] {
+				sb.WriteString(fmt.Sprintf("- %s: %s\n", item.Title, item.Description))
+			}
+			sb.WriteString("\n")
+		}
+
+		// Brief context from other categories
 		byCategory := make(map[string][]*news.Post)
 		for _, item := range feed {
-			byCategory[item.Category] = append(byCategory[item.Category], item)
-		}
-		for category, items := range byCategory {
-			sb.WriteString(fmt.Sprintf("### %s\n", category))
-			count := 5
-			if len(items) < count {
-				count = len(items)
+			if !strings.EqualFold(item.Category, category) {
+				byCategory[item.Category] = append(byCategory[item.Category], item)
 			}
-			for _, item := range items[:count] {
-				sb.WriteString(fmt.Sprintf("- %s: %s\n", item.Title, item.Description))
+		}
+		if len(byCategory) > 0 {
+			sb.WriteString("## Other Headlines (for context)\n\n")
+			cats := make([]string, 0, len(byCategory))
+			for c := range byCategory {
+				cats = append(cats, c)
+			}
+			sort.Strings(cats)
+			for _, c := range cats {
+				items := byCategory[c]
+				count := 2
+				if len(items) < count {
+					count = len(items)
+				}
+				for _, item := range items[:count] {
+					sb.WriteString(fmt.Sprintf("- [%s] %s\n", c, item.Title))
+				}
 			}
 			sb.WriteString("\n")
 		}
 	}
 
+	// Market data — always useful context
 	priceData := markets.GetAllPriceData()
 	if len(priceData) > 0 {
 		sb.WriteString("## Market Data\n\n")
@@ -279,19 +394,30 @@ func gatherOpinionContext() string {
 	return sb.String()
 }
 
-func researchTopStories() string {
+// researchCategoryStories does web research on the top stories for a category.
+func researchCategoryStories(category string) string {
 	feed := news.GetFeed()
 	if len(feed) == 0 {
 		return ""
 	}
 
+	var categoryItems []*news.Post
+	for _, item := range feed {
+		if strings.EqualFold(item.Category, category) {
+			categoryItems = append(categoryItems, item)
+		}
+	}
+	if len(categoryItems) == 0 {
+		return ""
+	}
+
 	limit := 3
-	if len(feed) < limit {
-		limit = len(feed)
+	if len(categoryItems) < limit {
+		limit = len(categoryItems)
 	}
 
 	var sb strings.Builder
-	for _, item := range feed[:limit] {
+	for _, item := range categoryItems[:limit] {
 		query := item.Title
 		if len(query) > 120 {
 			query = query[:120]
