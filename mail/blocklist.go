@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"mu/app"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/data"
 )
 
 // Blocklist for blocking abusive senders

@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"mu/app"
+	"mu/internal/app"
 )
 
 const (

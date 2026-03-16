@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"mu/auth"
-	"mu/data"
+	"mu/internal/auth"
+	"mu/internal/data"
 )
 
 var startTime = time.Now()

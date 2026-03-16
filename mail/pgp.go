@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"mu/app"
+	"mu/internal/app"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 )

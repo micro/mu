@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"mu/data"
+	"mu/internal/data"
 
 	"github.com/google/uuid"
 )

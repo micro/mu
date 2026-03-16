@@ -16,9 +16,9 @@ import (
 
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
-	"mu/app"
-	"mu/auth"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/data"
 
 	"mu/wallet"
 )

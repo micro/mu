@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/auth"
+	"mu/internal/auth"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"

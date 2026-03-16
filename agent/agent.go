@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"mu/ai"
-	"mu/api"
-	"mu/app"
-	"mu/auth"
+	"mu/internal/ai"
+	"mu/internal/api"
+	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 // historyLimit is the maximum number of history items shown on the agent page.

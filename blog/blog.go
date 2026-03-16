@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"mu/admin"
-	"mu/app"
-	"mu/auth"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/data"
+	"mu/internal/moderation"
 	"mu/wallet"
 )
 
@@ -254,13 +254,11 @@ func Load() {
 		}
 	}()
 
-	// Register with admin system
-	admin.RegisterDeleter("post", &postDeleter{})
-	admin.GetNewAccountBlog = getNewAccountBlogForAdmin
-	admin.RefreshBlogCache = RefreshCache
+	// Register with moderation subsystem
+	moderation.RegisterDeleter("post", &postDeleter{})
 }
 
-// postDeleter implements admin.ContentDeleter interface
+// postDeleter implements moderation.ContentDeleter interface
 type postDeleter struct{}
 
 func (d *postDeleter) Delete(id string) error {
@@ -272,7 +270,7 @@ func (d *postDeleter) Get(id string) interface{} {
 	if post == nil {
 		return nil
 	}
-	return admin.PostContent{
+	return moderation.PostContent{
 		Title:     post.Title,
 		Content:   post.Content,
 		Author:    post.Author,
@@ -280,21 +278,21 @@ func (d *postDeleter) Get(id string) interface{} {
 	}
 }
 
-// getNewAccountBlogForAdmin returns blog posts from new accounts for the moderation page
-func getNewAccountBlogForAdmin() []admin.PostContent {
+// GetNewAccountBlogPosts returns blog posts from new accounts for the moderation page.
+func GetNewAccountBlogPosts() []moderation.PostContent {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	var result []admin.PostContent
+	var result []moderation.PostContent
 	for _, post := range posts {
 		// Skip flagged/hidden posts
-		if admin.IsHidden("post", post.ID) {
+		if moderation.IsHidden("post", post.ID) {
 			continue
 		}
 
 		// Only include posts from new accounts
 		if post.AuthorID != "" && auth.IsNewAccount(post.AuthorID) {
-			result = append(result, admin.PostContent{
+			result = append(result, moderation.PostContent{
 				ID:        post.ID,
 				Title:     post.Title,
 				Content:   post.Content,
@@ -367,7 +365,7 @@ func updateCacheUnlocked() {
 	for i := 0; i < len(posts) && count < 1; i++ {
 		post := posts[i]
 		// Skip flagged posts
-		if admin.IsHidden("post", post.ID) {
+		if moderation.IsHidden("post", post.ID) {
 			continue
 		}
 		// Skip private posts (home page shows only public posts)
@@ -462,7 +460,7 @@ func updateCacheUnlocked() {
 	var fullList []string
 	for _, post := range posts {
 		// Skip flagged posts
-		if admin.IsHidden("post", post.ID) {
+		if moderation.IsHidden("post", post.ID) {
 			continue
 		}
 
@@ -584,7 +582,7 @@ func previewUncached() string {
 	for i := 0; i < len(posts) && count < 1; i++ {
 		post := posts[i]
 		// Skip flagged posts
-		if admin.IsHidden("post", post.ID) {
+		if moderation.IsHidden("post", post.ID) {
 			continue
 		}
 		// Skip posts from new accounts (< 24 hours old)
@@ -727,7 +725,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		// Filter out flagged posts and private posts (unless admin)
 		var visiblePosts []*Post
 		for _, post := range posts {
-			if !admin.IsHidden("post", post.ID) {
+			if !moderation.IsHidden("post", post.ID) {
 				// Skip private posts for non-admins
 				if post.Private && !isAdmin {
 					continue
@@ -1234,7 +1232,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		wallet.ConsumeQuota(acc.ID, wallet.OpBlogCreate)
 
 		// Run async LLM-based content moderation
-		go admin.CheckContent("post", postID, title, content)
+		go moderation.CheckContent("post", postID, title, content)
 
 		if app.SendsJSON(r) {
 			app.RespondJSON(w, map[string]interface{}{
@@ -1698,7 +1696,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Run async LLM-based content moderation (non-blocking)
-	go admin.CheckContent("post", postID, title, content)
+	go moderation.CheckContent("post", postID, title, content)
 
 	// Redirect back to posts page
 	http.Redirect(w, r, "/blog", http.StatusSeeOther)

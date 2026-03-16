@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/app"
+	"mu/internal/app"
 )
 
 const googlePlacesBaseURL = "https://places.googleapis.com/v1/places"

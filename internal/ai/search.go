@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/app"
+	"mu/internal/app"
 )
 
 // SearchResult represents a web search result

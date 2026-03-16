@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/wallet"
 )
 

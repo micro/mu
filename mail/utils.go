@@ -11,7 +11,7 @@ import (
 	"mime/quotedprintable"
 	"strings"
 
-	"mu/app"
+	"mu/internal/app"
 )
 
 // decodeMIMEHeader decodes RFC 2047 MIME encoded-word strings in headers

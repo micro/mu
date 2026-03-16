@@ -14,19 +14,19 @@ import (
 
 	"mu/admin"
 	"mu/agent"
-	"mu/api"
-	"mu/app"
-	"mu/auth"
+	"mu/internal/api"
+	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/blog"
-	"mu/blog/digest"
 	"mu/chat"
-	"mu/data"
+	"mu/internal/data"
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
 	"mu/news"
-	"mu/news/markets"
-	"mu/news/reminder"
+	"mu/news/digest"
+	"mu/markets"
+	"mu/reminder"
 	"mu/places"
 	"mu/search"
 	"mu/social"
@@ -97,8 +97,35 @@ func main() {
 	// load daily digest scheduler
 	digest.Load()
 
+	// load search
+	search.Load()
+
+	// load docs
+	docs.Load()
+
 	// load user presence tracking
 	user.Load()
+
+	// Wire user → blog callback (avoids direct import between building blocks)
+	user.GetUserPosts = func(authorName string) []user.UserPost {
+		posts := blog.GetPostsByAuthor(authorName)
+		result := make([]user.UserPost, len(posts))
+		for i, p := range posts {
+			result[i] = user.UserPost{
+				ID:        p.ID,
+				Title:     p.Title,
+				Content:   p.Content,
+				CreatedAt: p.CreatedAt,
+				Private:   p.Private,
+			}
+		}
+		return result
+	}
+	user.LinkifyContent = blog.Linkify
+
+	// Wire admin → blog callbacks (avoids blog importing admin)
+	admin.GetNewAccountBlog = blog.GetNewAccountBlogPosts
+	admin.RefreshBlogCache = blog.RefreshCache
 
 	// Enable indexing after all content is loaded
 	// This allows the priority queue to process new items first
@@ -107,8 +134,44 @@ func main() {
 	// Start web search topics (loads cache from disk, generates in background)
 	search.StartTopics()
 
-	// Start social discussion seeding (daily reminder, digest, top news)
+	// Wire social seed callbacks (avoids social importing blog/digest directly)
+	social.GetOpinionSeed = func() *social.SeedData {
+		post := blog.FindTodayOpinion()
+		if post == nil {
+			return nil
+		}
+		summary := post.Content
+		if len(summary) > 200 {
+			summary = summary[:200] + "..."
+		}
+		return &social.SeedData{
+			Title:   post.Title,
+			Summary: summary,
+			Link:    "/post?id=" + post.ID,
+		}
+	}
+	social.GetDigestSeed = func() *social.SeedData {
+		d := digest.GetTodayDigest()
+		if d == nil {
+			return nil
+		}
+		summary := d.Content
+		if len(summary) > 200 {
+			summary = summary[:200] + "..."
+		}
+		return &social.SeedData{
+			Title:   d.Title,
+			Summary: summary,
+			Link:    "/news",
+		}
+	}
+
+	// Start social discussion seeding (3 daily threads: reminder, opinion, digest)
+	social.SeedingEnabled = true
 	social.StartSeeding()
+
+	// Start daily opinion generation (publishes as blog post)
+	blog.StartOpinion()
 
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {

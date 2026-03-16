@@ -9,7 +9,7 @@ import (
 	"io"
 	"strings"
 
-	"mu/app"
+	"mu/internal/app"
 )
 
 // extractZipContents extracts all files from a ZIP archive and returns their contents as a string

@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"mu/agent"
-	"mu/app"
+	"mu/internal/app"
 	"mu/blog"
-	"mu/data"
+	"mu/internal/data"
 	"mu/news"
-	"mu/news/markets"
-	"mu/news/reminder"
+	"mu/markets"
+	"mu/reminder"
 	"mu/social"
 	"mu/video"
 )

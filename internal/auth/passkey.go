@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"mu/data"
+	"mu/internal/data"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 )

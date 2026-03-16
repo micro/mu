@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 
 	"github.com/emersion/go-msgauth/dkim"
 	smtpd "github.com/emersion/go-smtp"

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"mu/auth"
+	"mu/internal/auth"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"

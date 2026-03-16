@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"mu/app"
+	"mu/internal/app"
 )
 
 // MCPHandler handles both GET (HTML page) and POST (JSON-RPC) at /mcp

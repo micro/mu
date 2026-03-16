@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/app"
+	"mu/internal/app"
 )
 
 var (

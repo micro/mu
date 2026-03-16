@@ -14,8 +14,8 @@ import (
 	"github.com/asim/quadtree"
 	_ "modernc.org/sqlite"
 
-	"mu/app"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/data"
 )
 
 // schemaVersion is the current places database schema version.

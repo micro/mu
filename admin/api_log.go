@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 // APILogHandler shows the external API call log page.

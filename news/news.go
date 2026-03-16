@@ -22,9 +22,9 @@ import (
 	"github.com/mmcdole/gofeed"
 	"github.com/mrz1836/go-sanitize"
 	nethtml "golang.org/x/net/html"
-	"mu/app"
-	"mu/auth"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/data"
 
 	"mu/wallet"
 )
