@@ -6,6 +6,7 @@ package digest
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -117,6 +118,38 @@ func GetLatestDigest() *DigestEntry {
 		return nil
 	}
 	return digests[0]
+}
+
+// Handler serves the daily digest page at /news/digest.
+func Handler(w http.ResponseWriter, r *http.Request) {
+	if app.WantsJSON(r) {
+		d := GetLatestDigest()
+		if d == nil {
+			app.RespondJSON(w, map[string]any{"digest": nil})
+			return
+		}
+		app.RespondJSON(w, map[string]any{"digest": d})
+		return
+	}
+
+	d := GetLatestDigest()
+	if d == nil {
+		app.Respond(w, r, app.Response{
+			Title:       "Daily Digest",
+			Description: "No digest available yet",
+			HTML:        `<p>No digest available yet. Check back soon.</p>`,
+		})
+		return
+	}
+
+	rendered := string(app.Render([]byte(d.Content)))
+	html := fmt.Sprintf(`<h1>Daily Digest — %s</h1><div class="digest">%s</div>`, d.CreatedAt.Format("2 Jan 2006"), rendered)
+
+	app.Respond(w, r, app.Response{
+		Title:       "Daily Digest — " + d.CreatedAt.Format("2 Jan 2006"),
+		Description: "Daily briefing summarising news, markets, and videos",
+		HTML:        html,
+	})
 }
 
 func scheduler() {

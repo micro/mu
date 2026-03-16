@@ -53,9 +53,9 @@ var headlinesHtml string
 // the cached feed
 var feed []*Post
 
-// GetDigestHTML returns rendered HTML for the daily digest, if available.
+// HasDigest reports whether a daily digest is available.
 // Wired in main.go to avoid circular import (digest imports news).
-var GetDigestHTML func() string
+var HasDigest func() bool
 
 type Feed struct {
 	Name     string
@@ -417,10 +417,10 @@ func generateNewsHtml() string {
 	headlines := headlinesHtml
 	mutex.RUnlock()
 
-	// Get daily digest (rendered above headlines)
-	digestHtml := ""
-	if GetDigestHTML != nil {
-		digestHtml = GetDigestHTML()
+	// Link to daily digest if available
+	digestLink := ""
+	if HasDigest != nil && HasDigest() {
+		digestLink = `<a class="digest-link" href="/news/digest">Read today's digest</a>`
 	}
 
 	// Get topics header
@@ -431,7 +431,7 @@ func generateNewsHtml() string {
 	sort.Strings(sortedFeeds)
 	head := app.Head("news", sortedFeeds)
 
-	return fmt.Sprintf(`%s<div id="topics">%s</div>%s<div>%s</div>`, searchForm, head, digestHtml, headlines+string(content))
+	return fmt.Sprintf(`%s<div id="topics">%s</div>%s<div>%s</div>`, searchForm, head, digestLink, headlines+string(content))
 }
 
 // generateHeadlinesHtml generates fresh HTML for headlines with current timestamps

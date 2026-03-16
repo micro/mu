@@ -135,13 +135,8 @@ func main() {
 	search.StartTopics()
 
 	// Wire news → digest callback (avoids circular import: digest imports news)
-	news.GetDigestHTML = func() string {
-		d := digest.GetLatestDigest()
-		if d == nil {
-			return ""
-		}
-		rendered := string(app.Render([]byte(d.Content)))
-		return fmt.Sprintf(`<div class="digest"><h2>Daily Digest — %s</h2>%s</div>`, d.CreatedAt.Format("2 Jan 2006"), rendered)
+	news.HasDigest = func() bool {
+		return digest.GetLatestDigest() != nil
 	}
 
 	// Wire social seed callbacks (avoids social importing blog/digest directly)
@@ -285,6 +280,7 @@ func main() {
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features
 		"/news":            false, // Public viewing, auth for search
+		"/news/digest":     false, // Public - daily digest
 		"/chat":            false, // Public viewing, auth for chatting
 		"/home":            false, // Public viewing
 		"/blog":            false, // Public viewing, auth for posting
@@ -336,6 +332,7 @@ func main() {
 
 	// serve news
 	http.HandleFunc("/news", news.Handler)
+	http.HandleFunc("/news/digest", digest.Handler)
 
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
