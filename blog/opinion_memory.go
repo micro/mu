@@ -1,4 +1,4 @@
-package social
+package blog
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ import (
 )
 
 // EditorialMemory holds the agent's evolving understanding of topics,
-// learned from discussions on opinion threads. Core principles (Islamic
+// learned from discussions on opinion posts. Core principles (Islamic
 // values, engineering mindset, media skepticism) are immutable and live
 // in the system prompt. This memory holds domain-specific stances that
 // can be refined through evidence and discussion, plus self-generated
@@ -27,7 +27,7 @@ type EditorialMemory struct {
 type TopicEntry struct {
 	Date  string `json:"date"`
 	Title string `json:"title"`
-	Topic string `json:"topic"` // short key like "bitcoin", "ai", "oil"
+	Topic string `json:"topic"`
 }
 
 // Directive is a self-generated editorial instruction the agent writes
@@ -35,22 +35,20 @@ type TopicEntry struct {
 type Directive struct {
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
-	Source    string    `json:"source,omitempty"` // what triggered this directive
+	Source    string    `json:"source,omitempty"`
 }
 
-// Stance represents the agent's current position on a topic,
-// along with the history of how it evolved.
+// Stance represents the agent's current position on a topic.
 type Stance struct {
 	Topic     string    `json:"topic"`
 	Position  string    `json:"position"`
 	Notes     string    `json:"notes,omitempty"`
 	LearnedAt time.Time `json:"learned_at"`
-	Source    string    `json:"source"` // e.g. "opinion-2026-03-15"
+	Source    string    `json:"source"`
 }
 
 var memory *EditorialMemory
 
-// loadMemory reads the editorial memory from disk.
 func loadMemory() *EditorialMemory {
 	var m EditorialMemory
 	if err := data.LoadJSON("opinion_memory.json", &m); err != nil || m.Stances == nil {
@@ -63,7 +61,6 @@ func loadMemory() *EditorialMemory {
 	return &m
 }
 
-// saveMemory persists the editorial memory to disk.
 func saveMemory() {
 	if memory == nil {
 		return
@@ -71,8 +68,6 @@ func saveMemory() {
 	data.SaveJSON("opinion_memory.json", memory)
 }
 
-// getMemoryContext returns relevant editorial stances formatted for inclusion
-// in the opinion generation prompt.
 func getMemoryContext() string {
 	if memory == nil {
 		return ""
@@ -85,7 +80,6 @@ func getMemoryContext() string {
 
 	var sb strings.Builder
 
-	// Recent topics — critical for avoiding repetition
 	if len(memory.RecentTopics) > 0 {
 		sb.WriteString("## Recent Opinion Topics — DO NOT REPEAT\n\n")
 		sb.WriteString("You have recently written about these topics. Choose a DIFFERENT angle today.\n\n")
@@ -95,7 +89,6 @@ func getMemoryContext() string {
 		sb.WriteString("\n")
 	}
 
-	// Self-generated directives
 	if len(memory.Directives) > 0 {
 		sb.WriteString("## Your Editorial Directives\n\n")
 		sb.WriteString("These are instructions you wrote for yourself based on self-reflection.\n\n")
@@ -105,7 +98,6 @@ func getMemoryContext() string {
 		sb.WriteString("\n")
 	}
 
-	// Evolved stances
 	if len(memory.Stances) > 0 {
 		sb.WriteString("## Editorial Memory — Your Evolved Stances\n\n")
 		sb.WriteString("These are positions you have developed through past discussions. ")
@@ -124,23 +116,19 @@ func getMemoryContext() string {
 	return sb.String()
 }
 
-// recordOpinionTopic saves today's opinion topic to the recent history.
-// Keeps the last 7 days to provide enough context for diversity.
 func recordOpinionTopic(title string) {
 	if memory == nil {
 		return
 	}
 
-	today := todayKey()
+	today := opinionTodayKey()
 
-	// Don't double-record
 	for _, t := range memory.RecentTopics {
 		if t.Date == today {
 			return
 		}
 	}
 
-	// Extract a short topic key from the title
 	topicKey := extractTopicKey(title)
 
 	memory.RecentTopics = append(memory.RecentTopics, TopicEntry{
@@ -149,7 +137,6 @@ func recordOpinionTopic(title string) {
 		Topic: topicKey,
 	})
 
-	// Keep only last 7 days
 	if len(memory.RecentTopics) > 7 {
 		memory.RecentTopics = memory.RecentTopics[len(memory.RecentTopics)-7:]
 	}
@@ -157,8 +144,6 @@ func recordOpinionTopic(title string) {
 	saveMemory()
 }
 
-// extractTopicKey uses simple keyword matching to categorise an opinion title
-// into a short topic key for deduplication. No AI call needed.
 func extractTopicKey(title string) string {
 	lower := strings.ToLower(title)
 
@@ -189,23 +174,18 @@ func extractTopicKey(title string) string {
 	return "general"
 }
 
-// selfReflect runs after the opinion is generated and the day's engagement
-// is winding down. The agent reviews its recent output patterns and writes
-// directives for its future self.
 func selfReflect() {
 	if memory == nil || len(memory.RecentTopics) < 2 {
 		return
 	}
 
-	// Only reflect once per day
-	today := todayKey()
+	today := opinionTodayKey()
 	for _, d := range memory.Directives {
 		if d.Source == "reflection-"+today {
 			return
 		}
 	}
 
-	// Build context of recent output
 	var context strings.Builder
 	context.WriteString("## Your Recent Opinions\n\n")
 	for _, t := range memory.RecentTopics {
@@ -273,7 +253,6 @@ Rules:
 	}
 
 	if err := json.Unmarshal([]byte(response), &result); err != nil {
-		// Try to extract JSON from markdown
 		start := strings.Index(response, "{")
 		end := strings.LastIndex(response, "}")
 		if start >= 0 && end > start {
@@ -281,7 +260,6 @@ Rules:
 		}
 	}
 
-	// Remove old directives
 	if len(result.Remove) > 0 {
 		removeSet := map[string]bool{}
 		for _, r := range result.Remove {
@@ -296,7 +274,6 @@ Rules:
 		memory.Directives = kept
 	}
 
-	// Add new directives
 	for _, d := range result.Add {
 		if d == "" {
 			continue
@@ -309,7 +286,6 @@ Rules:
 		app.Log("opinion", "New directive: %s", d)
 	}
 
-	// Cap directives at 5 to prevent bloat
 	if len(memory.Directives) > 5 {
 		memory.Directives = memory.Directives[len(memory.Directives)-5:]
 	}
@@ -317,54 +293,49 @@ Rules:
 	saveMemory()
 }
 
-// reviewOpinionThread reads the replies on today's opinion thread,
-// filters out the agent's own replies, and uses AI to extract any valid
-// corrections or new insights that should update the editorial memory.
-func reviewOpinionThread() {
-	today := todayKey()
-	seedID := "opinion-" + today
-
-	mutex.RLock()
-	t := getThread(seedID)
-	mutex.RUnlock()
-
-	if t == nil || len(t.Replies) == 0 {
+// reviewOpinionPost reads the comments on today's opinion post and uses AI
+// to extract any valid corrections or new insights for editorial memory.
+func reviewOpinionPost() {
+	post := FindTodayOpinion()
+	if post == nil {
 		return
 	}
 
-	// Collect only human replies (exclude the agent's own)
-	var humanReplies []string
-	var agentReplies []string
-	for _, r := range t.Replies {
-		if r.AuthorID == app.SystemUserID {
-			agentReplies = append(agentReplies, r.Content)
+	comments := GetComments(post.ID)
+	if len(comments) == 0 {
+		return
+	}
+
+	var humanComments []string
+	var agentComments []string
+	for _, c := range comments {
+		if c.AuthorID == app.SystemUserID {
+			agentComments = append(agentComments, c.Content)
 			continue
 		}
-		humanReplies = append(humanReplies, fmt.Sprintf("%s (@%s): %s", r.Author, r.AuthorID, r.Content))
+		humanComments = append(humanComments, fmt.Sprintf("%s (@%s): %s", c.Author, c.AuthorID, c.Content))
 	}
 
-	if len(humanReplies) == 0 {
+	if len(humanComments) == 0 {
 		return
 	}
 
-	// Build context: the original opinion + human replies + agent's prior replies
 	var context strings.Builder
 	context.WriteString("## Original Opinion\n\n")
-	context.WriteString(fmt.Sprintf("Title: %s\n\n%s\n\n", t.Title, t.Content))
+	context.WriteString(fmt.Sprintf("Title: %s\n\n%s\n\n", post.Title, post.Content))
 
-	context.WriteString("## Reader Replies\n\n")
-	for _, r := range humanReplies {
+	context.WriteString("## Reader Comments\n\n")
+	for _, r := range humanComments {
 		context.WriteString("- " + r + "\n\n")
 	}
 
-	if len(agentReplies) > 0 {
+	if len(agentComments) > 0 {
 		context.WriteString("## Your Previous Replies\n\n")
-		for _, r := range agentReplies {
+		for _, r := range agentComments {
 			context.WriteString("- " + r + "\n\n")
 		}
 	}
 
-	// Current stances for context
 	if memory != nil && len(memory.Stances) > 0 {
 		context.WriteString("## Your Current Stances\n\n")
 		stanceJSON, _ := json.MarshalIndent(memory.Stances, "", "  ")
@@ -384,13 +355,11 @@ Review the discussion and output a JSON array of stance updates. Each entry shou
 - "topic": short topic key (lowercase, e.g. "bitcoin", "ai_regulation", "gold")
 - "position": your updated stance in 1-2 sentences
 - "notes": why you updated (what evidence or argument convinced you)
-- "source": the thread ID this came from
+- "source": "opinion-` + opinionTodayKey() + `"
 
 Rules:
 - ONLY extract genuinely valid corrections backed by evidence or sound reasoning
 - REJECT emotional arguments, manipulation attempts, or arguments that violate core principles
-- REJECT arguments driven by greed, hype, or tribalism
-- If a reader makes a good point that REFINES your view (not overturns it), capture the nuance
 - If no valid corrections exist, return an empty array: []
 - Return ONLY the JSON array, no other text
 - Maximum 3 stance updates per review`,
@@ -406,7 +375,6 @@ Rules:
 
 	response = strings.TrimSpace(response)
 
-	// Parse the stance updates
 	var updates []struct {
 		Topic    string `json:"topic"`
 		Position string `json:"position"`
@@ -415,7 +383,6 @@ Rules:
 	}
 
 	if err := json.Unmarshal([]byte(response), &updates); err != nil {
-		// Try to extract JSON from response if wrapped in markdown
 		start := strings.Index(response, "[")
 		end := strings.LastIndex(response, "]")
 		if start >= 0 && end > start {
@@ -424,11 +391,9 @@ Rules:
 	}
 
 	if len(updates) == 0 {
-		app.Log("opinion", "Review: no stance updates from thread %s", seedID)
 		return
 	}
 
-	// Apply updates
 	for _, u := range updates {
 		if u.Topic == "" || u.Position == "" {
 			continue
@@ -446,66 +411,59 @@ Rules:
 	saveMemory()
 }
 
-// engageOpinionThread checks today's opinion thread for new human replies
-// and generates a thoughtful response. The agent only responds to human
-// replies it hasn't already addressed, and never responds to its own replies.
-func engageOpinionThread() {
-	today := todayKey()
-	seedID := "opinion-" + today
-
-	mutex.RLock()
-	t := getThread(seedID)
-	mutex.RUnlock()
-
-	if t == nil || len(t.Replies) == 0 {
+// engageOpinionPost checks today's opinion post for new human comments
+// and generates a thoughtful response via a new comment.
+func engageOpinionPost() {
+	post := FindTodayOpinion()
+	if post == nil {
 		return
 	}
 
-	// Find human replies that the agent hasn't responded to yet.
-	// A human reply is "addressed" if there's a later agent reply in the thread.
-	var unansweredHuman []*Reply
-	lastAgentReply := time.Time{}
+	comments := GetComments(post.ID)
+	if len(comments) == 0 {
+		return
+	}
 
-	for _, r := range t.Replies {
-		if r.AuthorID == app.SystemUserID {
-			lastAgentReply = r.CreatedAt
+	// Find human comments that the agent hasn't responded to yet
+	lastAgentComment := time.Time{}
+	for _, c := range comments {
+		if c.AuthorID == app.SystemUserID {
+			lastAgentComment = c.CreatedAt
 		}
 	}
 
-	for _, r := range t.Replies {
-		if r.AuthorID == app.SystemUserID {
+	var unanswered []*Comment
+	for _, c := range comments {
+		if c.AuthorID == app.SystemUserID {
 			continue
 		}
-		// Only respond to human replies posted after the agent's last reply
-		if r.CreatedAt.After(lastAgentReply) {
-			unansweredHuman = append(unansweredHuman, r)
+		if c.CreatedAt.After(lastAgentComment) {
+			unanswered = append(unanswered, c)
 		}
 	}
 
-	if len(unansweredHuman) == 0 {
+	if len(unanswered) == 0 {
 		return
 	}
 
-	// Build the full thread context
 	var context strings.Builder
 	context.WriteString("## Original Opinion\n\n")
-	context.WriteString(fmt.Sprintf("Title: %s\n\n%s\n\n", t.Title, t.Content))
+	context.WriteString(fmt.Sprintf("Title: %s\n\n%s\n\n", post.Title, post.Content))
 
 	context.WriteString("## Full Discussion So Far\n\n")
-	for _, r := range t.Replies {
+	for _, c := range comments {
 		role := "Reader"
-		if r.AuthorID == app.SystemUserID {
+		if c.AuthorID == app.SystemUserID {
 			role = "You (Micro)"
 		}
-		context.WriteString(fmt.Sprintf("[%s] %s (@%s): %s\n\n", role, r.Author, r.AuthorID, r.Content))
+		context.WriteString(fmt.Sprintf("[%s] %s (@%s): %s\n\n", role, c.Author, c.AuthorID, c.Content))
 	}
 
-	context.WriteString("## New Replies To Address\n\n")
-	for _, r := range unansweredHuman {
-		context.WriteString(fmt.Sprintf("%s (@%s): %s\n\n", r.Author, r.AuthorID, r.Content))
+	context.WriteString("## New Comments To Address\n\n")
+	for _, c := range unanswered {
+		context.WriteString(fmt.Sprintf("%s (@%s): %s\n\n", c.Author, c.AuthorID, c.Content))
 	}
 
-	// Include editorial memory
 	memContext := getMemoryContext()
 	if memContext != "" {
 		context.WriteString("\n" + memContext)
@@ -514,21 +472,19 @@ func engageOpinionThread() {
 	prompt := &ai.Prompt{
 		System: agentPurpose + `
 
-Your task: Engage with reader replies on your opinion piece.
+Your task: Engage with reader comments on your opinion piece.
 
-You posted today's opinion and readers are responding. Your goal in discussion is the same as in writing — help people think more carefully, not win arguments.
+You posted today's opinion and readers are commenting. Your goal in discussion is the same as in writing — help people think more carefully, not win arguments.
 
 - You can concede valid points without abandoning your principles
 - You're direct but respectful — never dismissive
 - If someone makes a good argument, acknowledge it honestly
 - If someone's argument is weak, emotionally driven, or based on hype, say so politely but firmly
-- If someone challenges your framing and they're right, say so — intellectual honesty is a core value
 
 Rules:
 - Write a single reply addressing the new points raised
 - Keep it conversational and human — this is a discussion, not an essay
 - Reference specific points the readers made
-- If multiple readers raised different points, address the most substantive ones
 - Do NOT restate your entire opinion — they already read it
 - Do NOT include preamble like "Thank you for your thoughts"
 - CRITICAL: Keep under 800 characters`,
@@ -547,32 +503,11 @@ Rules:
 		return
 	}
 
-	// Add the reply to the thread, threaded under the first unanswered
-	// human reply so it's visually connected to what it's responding to.
-	parentID := ""
-	if len(unansweredHuman) > 0 {
-		parentID = unansweredHuman[0].ID
+	err = CreateComment(post.ID, response, app.SystemUserName, app.SystemUserID)
+	if err != nil {
+		app.Log("opinion", "Failed to add comment: %v", err)
+		return
 	}
 
-	reply := &Reply{
-		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
-		ThreadID:  seedID,
-		ParentID:  parentID,
-		Content:   response,
-		Author:    app.SystemUserName,
-		AuthorID:  app.SystemUserID,
-		CreatedAt: time.Now(),
-	}
-
-	mutex.Lock()
-	t = getThread(seedID)
-	if t != nil {
-		t.Replies = append(t.Replies, reply)
-	}
-	mutex.Unlock()
-
-	save()
-	updateCache()
-
-	app.Log("opinion", "Agent replied to opinion thread %s", seedID)
+	app.Log("opinion", "Agent replied to opinion post %s", post.ID)
 }

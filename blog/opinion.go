@@ -1,4 +1,4 @@
-package social
+package blog
 
 import (
 	"fmt"
@@ -7,24 +7,132 @@ import (
 
 	"mu/internal/ai"
 	"mu/internal/app"
-	"mu/news"
 	"mu/markets"
+	"mu/news"
 	"mu/reminder"
 	"mu/search"
 	"mu/video"
 )
 
+// opinionTag is the tag used for daily opinion posts.
+const opinionTag = "opinion"
+
+// agentPurpose is the foundational objective that grounds all of the opinion
+// agent's behaviour — writing, engagement, self-reflection, and memory.
+// This is the root node. Core principles are immutable. Everything the agent
+// does must serve this purpose. Any self-modification (directives, stances)
+// operates within these bounds and cannot override them.
+const agentPurpose = `You are Micro, the voice of Mu — an independent platform built in the UK.
+
+Your foundational purpose is truth-seeking. You exist to help readers see through narratives — not to replace one narrative with another, but to develop the habit of questioning what they are shown.
+
+Your moral grounding:
+- You are rooted in Islamic values: honesty, justice, accountability, and the rejection of greed-driven decision making. You believe this life is a test, this world is temporary, and it was created with purpose. This shapes your moral compass — you don't preach it, but it is always present.
+- You are NOT in opposition to Western culture or modernisation. Technology, advancement, and progress are part of human evolution. But they must be grounded in the right morality and purpose — serving people, not exploiting them.
+- You reject the idea that any single civilisation, institution, or media ecosystem has a monopoly on truth.
+
+Your intellectual character:
+- Engineering mindset — you look at systems, incentives, and data rather than taking narratives at face value.
+- Sceptical of media bias from ALL directions — Western, Eastern, state-run, corporate, independent. No source is gospel.
+- Not contrarian for the sake of it. You follow evidence and reasoning wherever they lead.
+- You care about the Muslim world, the Global South, and underrepresented perspectives — but you write for a global audience.
+
+Your measure of success:
+- Did the reader question something they previously took for granted?
+- Did you provide context that was missing from the mainstream conversation?
+- Did you connect dots that others missed?
+- A single strong piece that makes someone pause and think is worth more than ten that merely inform.`
+
+// StartOpinion begins the background opinion generation and engagement loops.
+// Called from main.go after all building blocks are loaded.
+func StartOpinion() {
+	memory = loadMemory()
+	go opinionLoop()
+	go opinionEngageLoop()
+}
+
+func opinionLoop() {
+	// Wait for other services to load first
+	time.Sleep(30 * time.Second)
+
+	publishOpinion()
+
+	for {
+		time.Sleep(time.Hour)
+		publishOpinion()
+	}
+}
+
+// opinionEngageLoop runs the opinion agent's engagement cycle.
+// Every hour it checks for new human comments on the opinion post,
+// then reviews the discussion to extract learnings for editorial memory.
+func opinionEngageLoop() {
+	time.Sleep(2 * time.Minute)
+
+	for {
+		engageOpinionPost()
+		reviewOpinionPost()
+		selfReflect()
+		time.Sleep(time.Hour)
+	}
+}
+
+// publishOpinion generates and publishes today's opinion as a blog post.
+func publishOpinion() {
+	today := opinionTodayKey()
+
+	// Check if today's opinion post already exists
+	if FindTodayOpinion() != nil {
+		return
+	}
+
+	title, body, err := generateOpinion()
+	if err != nil {
+		app.Log("opinion", "Opinion generation failed: %v", err)
+		return
+	}
+
+	err = CreatePost(title, body, app.SystemUserName, app.SystemUserID, opinionTag, false)
+	if err != nil {
+		app.Log("opinion", "Failed to create opinion post: %v", err)
+		return
+	}
+
+	recordOpinionTopic(title)
+	app.Log("opinion", "Daily opinion published: %s (key: %s)", title, today)
+}
+
+// FindTodayOpinion returns today's opinion post, or nil if none exists.
+func FindTodayOpinion() *Post {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	now := time.Now()
+	y, m, d := now.Date()
+	for _, post := range posts {
+		if post.AuthorID != app.SystemUserID {
+			continue
+		}
+		if !strings.Contains(post.Tags, opinionTag) {
+			continue
+		}
+		py, pm, pd := post.CreatedAt.Date()
+		if py == y && pm == m && pd == d {
+			return post
+		}
+	}
+	return nil
+}
+
 // generateOpinion gathers all available data (news, markets, videos),
 // cross-references with web search for deeper context, and uses AI to
-// produce an opinion piece reflecting grounded sentiment analysis.
-// Returns the title (without "Opinion: " prefix) and the body content.
+// produce an opinion piece. Returns the title and the body content.
 func generateOpinion() (string, string, error) {
 	context := gatherOpinionContext()
 	if context == "" {
 		return "", "", fmt.Errorf("no content available")
 	}
 
-	// Do web research on the top stories to cross-reference
 	webResearch := researchTopStories()
 
 	fullContext := context
@@ -32,7 +140,6 @@ func generateOpinion() (string, string, error) {
 		fullContext += "\n\n## Web Research & Cross-References\n\n" + webResearch
 	}
 
-	// Include editorial memory — learned stances from past discussions
 	memContext := getMemoryContext()
 	if memContext != "" {
 		fullContext += "\n\n" + memContext
@@ -78,7 +185,6 @@ Rules:
 
 	response = strings.TrimSpace(app.StripLatexDollars(response))
 
-	// Parse: first line is title, rest is body
 	parts := strings.SplitN(response, "\n", 2)
 	if len(parts) < 2 {
 		return "", "", fmt.Errorf("unexpected response format")
@@ -87,7 +193,6 @@ Rules:
 	title := strings.TrimSpace(parts[0])
 	body := strings.TrimSpace(parts[1])
 
-	// Clean up title — remove quotes, "Opinion:" prefix if AI added it
 	title = strings.TrimPrefix(title, "Opinion: ")
 	title = strings.TrimPrefix(title, "Opinion:")
 	title = strings.Trim(title, `"'`)
@@ -99,11 +204,9 @@ Rules:
 	return title, body, nil
 }
 
-// gatherOpinionContext collects news, markets, and video data for opinion generation.
 func gatherOpinionContext() string {
 	var sb strings.Builder
 
-	// News
 	feed := news.GetFeed()
 	if len(feed) > 0 {
 		sb.WriteString("## Today's News\n\n")
@@ -124,7 +227,6 @@ func gatherOpinionContext() string {
 		}
 	}
 
-	// Markets
 	priceData := markets.GetAllPriceData()
 	if len(priceData) > 0 {
 		sb.WriteString("## Market Data\n\n")
@@ -151,7 +253,6 @@ func gatherOpinionContext() string {
 		sb.WriteString("\n")
 	}
 
-	// Videos
 	videos := video.GetLatestVideos(5)
 	if len(videos) > 0 {
 		sb.WriteString("## Videos\n\n")
@@ -161,7 +262,6 @@ func gatherOpinionContext() string {
 		sb.WriteString("\n")
 	}
 
-	// Islamic reminder — provides grounding context (today's verse, hadith, name of Allah)
 	rd := reminder.GetReminderData()
 	if rd != nil {
 		sb.WriteString("## Today's Islamic Reminder\n\n")
@@ -179,18 +279,12 @@ func gatherOpinionContext() string {
 	return sb.String()
 }
 
-// researchTopStories picks the most important stories from the news feed
-// and does web searches to cross-reference them, providing additional context
-// that the opinion writer can use to form a more grounded view.
-// For each story, it searches the web, lists multiple source snippets, and
-// fetches the full content of the top result for deeper analysis.
 func researchTopStories() string {
 	feed := news.GetFeed()
 	if len(feed) == 0 {
 		return ""
 	}
 
-	// Pick up to 3 top stories to research
 	limit := 3
 	if len(feed) < limit {
 		limit = len(feed)
@@ -210,7 +304,6 @@ func researchTopStories() string {
 
 		sb.WriteString(fmt.Sprintf("### Research: %s\n", item.Title))
 
-		// List all search results as snippets for breadth
 		for _, r := range results {
 			desc := r.Description
 			if len(desc) > 300 {
@@ -219,7 +312,6 @@ func researchTopStories() string {
 			sb.WriteString(fmt.Sprintf("- [%s] %s (Source: %s)\n", r.Title, desc, r.URL))
 		}
 
-		// Fetch the full content of the top result for depth
 		if len(results) > 0 {
 			fullContent := fetchArticleContent(results[0].URL)
 			if fullContent != "" {
@@ -228,16 +320,12 @@ func researchTopStories() string {
 		}
 
 		sb.WriteString("\n")
-
-		// Small delay between searches to be respectful to the API
 		time.Sleep(500 * time.Millisecond)
 	}
 
 	return sb.String()
 }
 
-// fetchArticleContent fetches a URL and extracts readable content,
-// truncated to a reasonable size for use as AI context.
 func fetchArticleContent(rawURL string) string {
 	_, body, err := search.FetchAndExtract(rawURL)
 	if err != nil {
@@ -245,9 +333,7 @@ func fetchArticleContent(rawURL string) string {
 		return ""
 	}
 
-	// Truncate to ~2000 chars to keep context reasonable
 	if len(body) > 2000 {
-		// Try to cut at a sentence boundary
 		cut := strings.LastIndex(body[:2000], ". ")
 		if cut > 1000 {
 			body = body[:cut+1]
@@ -258,4 +344,8 @@ func fetchArticleContent(rawURL string) string {
 	}
 
 	return body
+}
+
+func opinionTodayKey() string {
+	return time.Now().Format("2006-01-02")
 }

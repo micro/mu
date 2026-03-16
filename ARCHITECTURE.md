@@ -16,18 +16,18 @@ mu/
 │   └── moderation/         # Content flagging, hiding, auto-moderation
 ├── admin/                  # Content moderation, flagging, admin dashboard
 ├── agent/                  # AI agent (plans + executes via MCP tools)
-├── blog/                   # Posts, comments, ActivityPub federation
-│   └── digest/             # Daily digest generation (composition layer)
+├── blog/                   # Posts, comments, opinions, ActivityPub federation
 ├── chat/                   # Real-time chat rooms with AI
 ├── docs/                   # Documentation pages
 ├── home/                   # Dashboard cards (composition layer)
 ├── mail/                   # Email inbox, SMTP server, DKIM, spam filtering
 ├── markets/                # Crypto/stock market data
 ├── news/                   # RSS feed aggregation
+│   └── digest/             # Daily news digest (composition layer)
 ├── places/                 # Map and location search
 ├── reminder/               # Daily news reminder/briefing
 ├── search/                 # Local index search + Brave web search
-├── social/                 # Discussions, AI opinions, fact-checking
+├── social/                 # Discussions, fact-checking, community threads
 ├── user/                   # User profiles, presence tracking
 ├── video/                  # YouTube channel aggregation
 ├── wallet/                 # Credit system, Stripe payments
@@ -67,7 +67,7 @@ Building blocks are **features**. Each building block:
 |-------------|--------------------------|-------------------------------------|
 | `admin`     | `/admin`, `/flag`        | `app`, `auth`                       |
 | `agent`     | `/agent`                 | `ai`, `api`, `app`, `auth`, `data`  |
-| `blog`      | `/blog`, `/post`         | `app`, `auth`, `data`, `moderation` |
+| `blog`      | `/blog`, `/post`         | `ai`, `app`, `auth`, `data`, `moderation` |
 | `chat`      | `/chat`                  | `ai`, `app`, `auth`, `data`, `moderation` |
 | `docs`      | `/docs`, `/about`        | `app`                               |
 | `mail`      | `/mail`                  | `app`, `auth`, `data`               |
@@ -86,18 +86,25 @@ Most building blocks also import `wallet` for quota checking on metered operatio
 
 ### Composition Layers
 
-Two packages act as **composition layers** that aggregate content from multiple
+Some packages act as **composition layers** that aggregate content from multiple
 building blocks to render combined views:
 
 - **`home/`** — renders dashboard cards by importing `blog`, `news`, `markets`,
   `reminder`, `social`, `video`, `agent`. This is intentional: home is a
   read-only aggregation view.
 
-- **`blog/digest/`** — generates daily digest emails by pulling from `blog`,
-  `news`, `markets`, `video`. This is a scheduled background job, not a handler.
+- **`news/digest/`** — generates a daily news digest by pulling from `news`,
+  `markets`, `video`. This is a scheduled background job that stores its own
+  `digests.json` — it is a news summary, not a blog post.
 
-- **`social/seed.go`** — seeds AI discussions from `news`, `markets`, `reminder`,
-  `search`, `video`. This is a background process that runs daily.
+- **`blog/opinion.go`** — generates a daily opinion piece using `news`, `markets`,
+  `reminder`, `search`, `video` as context. The opinion is published as a blog
+  post. The editorial memory system (`opinion_memory.go`) tracks stances,
+  directives, and topic history so the agent evolves its perspective over time.
+
+- **`social/seed.go`** — seeds community discussion threads from `reminder`.
+  Disabled by default (`SeedingEnabled = false`) — enable in `main.go` when
+  there is an active community.
 
 These cross-building-block imports are documented exceptions. The long-term goal
 is to replace them with the event system (`data.Subscribe`/`data.Publish`).

@@ -18,13 +18,13 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/blog"
-	"mu/blog/digest"
 	"mu/chat"
 	"mu/internal/data"
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
 	"mu/news"
+	"mu/news/digest"
 	"mu/markets"
 	"mu/reminder"
 	"mu/places"
@@ -134,8 +134,12 @@ func main() {
 	// Start web search topics (loads cache from disk, generates in background)
 	search.StartTopics()
 
-	// Start social discussion seeding (daily reminder, digest, top news)
+	// Start social discussion seeding (reminder thread, disabled by default)
+	// social.SeedingEnabled = true // Uncomment when community is active
 	social.StartSeeding()
+
+	// Start daily opinion generation (publishes as blog post)
+	blog.StartOpinion()
 
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
