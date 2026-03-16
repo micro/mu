@@ -59,6 +59,10 @@ func opinionEngageLoop() {
 		// review only learns from human replies)
 		reviewOpinionThread()
 
+		// Self-reflect on editorial patterns — writes directives
+		// for tomorrow's opinion generation
+		selfReflect()
+
 		time.Sleep(time.Hour)
 	}
 }
@@ -176,6 +180,7 @@ func seedOpinion() {
 	}
 
 	addSeededThread(thread)
+	recordOpinionTopic(title)
 	app.Log("social", "Seeded daily opinion thread: %s", title)
 }
 
