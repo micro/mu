@@ -134,6 +134,16 @@ func main() {
 	// Start web search topics (loads cache from disk, generates in background)
 	search.StartTopics()
 
+	// Wire news → digest callback (avoids circular import: digest imports news)
+	news.GetDigestHTML = func() string {
+		d := digest.GetLatestDigest()
+		if d == nil {
+			return ""
+		}
+		rendered := string(app.Render([]byte(d.Content)))
+		return fmt.Sprintf(`<div class="digest"><h2>Daily Digest — %s</h2>%s</div>`, d.CreatedAt.Format("2 Jan 2006"), rendered)
+	}
+
 	// Wire social seed callbacks (avoids social importing blog/digest directly)
 	social.GetOpinionSeed = func() *social.SeedData {
 		post := blog.FindTodayOpinion()

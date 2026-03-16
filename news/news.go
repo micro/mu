@@ -53,6 +53,10 @@ var headlinesHtml string
 // the cached feed
 var feed []*Post
 
+// GetDigestHTML returns rendered HTML for the daily digest, if available.
+// Wired in main.go to avoid circular import (digest imports news).
+var GetDigestHTML func() string
+
 type Feed struct {
 	Name     string
 	URL      string
@@ -413,6 +417,12 @@ func generateNewsHtml() string {
 	headlines := headlinesHtml
 	mutex.RUnlock()
 
+	// Get daily digest (rendered above headlines)
+	digestHtml := ""
+	if GetDigestHTML != nil {
+		digestHtml = GetDigestHTML()
+	}
+
 	// Get topics header
 	var sortedFeeds []string
 	for name := range feeds {
@@ -421,7 +431,7 @@ func generateNewsHtml() string {
 	sort.Strings(sortedFeeds)
 	head := app.Head("news", sortedFeeds)
 
-	return fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, head, headlines+string(content))
+	return fmt.Sprintf(`%s<div id="topics">%s</div>%s<div>%s</div>`, searchForm, head, digestHtml, headlines+string(content))
 }
 
 // generateHeadlinesHtml generates fresh HTML for headlines with current timestamps
