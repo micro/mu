@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 // GenerateDigestFunc is set by main to trigger digest generation (avoids import cycle)

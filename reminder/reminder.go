@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"mu/app"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/data"
 )
 
 var (

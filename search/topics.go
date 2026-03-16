@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"mu/ai"
-	"mu/app"
-	"mu/data"
+	"mu/internal/ai"
+	"mu/internal/app"
+	"mu/internal/data"
 )
 
 // topicCache holds LLM-generated topics from recent content.

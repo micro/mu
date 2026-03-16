@@ -13,11 +13,14 @@ import (
 	"sync"
 	"time"
 
-	"mu/app"
-	"mu/auth"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/data"
 	"mu/wallet"
 )
+
+// Load initializes the search building block.
+func Load() {}
 
 // BraveResult represents a single result from the Brave Search API
 type BraveResult struct {

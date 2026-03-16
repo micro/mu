@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"mu/app"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/data"
 )
 
 // SpamResult holds the outcome of a spam check

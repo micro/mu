@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 // SysLogHandler shows the in-memory system log page.

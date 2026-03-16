@@ -14,19 +14,19 @@ import (
 
 	"mu/admin"
 	"mu/agent"
-	"mu/api"
-	"mu/app"
-	"mu/auth"
+	"mu/internal/api"
+	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/blog"
 	"mu/blog/digest"
 	"mu/chat"
-	"mu/data"
+	"mu/internal/data"
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
 	"mu/news"
-	"mu/news/markets"
-	"mu/news/reminder"
+	"mu/markets"
+	"mu/reminder"
 	"mu/places"
 	"mu/search"
 	"mu/social"
@@ -97,8 +97,35 @@ func main() {
 	// load daily digest scheduler
 	digest.Load()
 
+	// load search
+	search.Load()
+
+	// load docs
+	docs.Load()
+
 	// load user presence tracking
 	user.Load()
+
+	// Wire user → blog callback (avoids direct import between building blocks)
+	user.GetUserPosts = func(authorName string) []user.UserPost {
+		posts := blog.GetPostsByAuthor(authorName)
+		result := make([]user.UserPost, len(posts))
+		for i, p := range posts {
+			result[i] = user.UserPost{
+				ID:        p.ID,
+				Title:     p.Title,
+				Content:   p.Content,
+				CreatedAt: p.CreatedAt,
+				Private:   p.Private,
+			}
+		}
+		return result
+	}
+	user.LinkifyContent = blog.Linkify
+
+	// Wire admin → blog callbacks (avoids blog importing admin)
+	admin.GetNewAccountBlog = blog.GetNewAccountBlogPosts
+	admin.RefreshBlogCache = blog.RefreshCache
 
 	// Enable indexing after all content is loaded
 	// This allows the priority queue to process new items first

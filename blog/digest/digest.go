@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"mu/ai"
-	"mu/app"
+	"mu/internal/ai"
+	"mu/internal/app"
 	"mu/blog"
-	"mu/data"
+	"mu/internal/data"
 	"mu/news"
-	"mu/news/markets"
+	"mu/markets"
 	"mu/video"
 )
 

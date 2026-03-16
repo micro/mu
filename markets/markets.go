@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"mu/app"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/data"
 
 	"github.com/piquette/finance-go/future"
 	"github.com/piquette/finance-go/quote"

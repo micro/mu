@@ -11,8 +11,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/wallet"
 )
 

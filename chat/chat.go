@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"mu/admin"
-	"mu/ai"
-	"mu/app"
-	"mu/auth"
-	"mu/data"
+	"mu/internal/ai"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/data"
+	"mu/internal/moderation"
 	"mu/wallet"
 )
 
@@ -1017,7 +1017,7 @@ func Load() {
 	head = app.Head("chat", topics)
 
 	// Register LLM analyzer for content moderation
-	admin.SetAnalyzer(&llmAnalyzer{})
+	moderation.SetAnalyzer(&llmAnalyzer{})
 
 	// Load existing summaries from disk
 	if b, err := data.LoadFile("chat_summaries.json"); err == nil {
@@ -1577,7 +1577,7 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(renderHTML))
 }
 
-// llmAnalyzer implements the admin.LLMAnalyzer interface
+// llmAnalyzer implements the moderation.LLMAnalyzer interface
 type llmAnalyzer struct{}
 
 func (a *llmAnalyzer) Analyze(promptText, question string) (string, error) {

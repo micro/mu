@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/app"
+	"mu/internal/app"
 
 	"github.com/emersion/go-msgauth/dkim"
 )

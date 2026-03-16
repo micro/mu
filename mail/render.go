@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"mu/app"
+	"mu/internal/app"
 )
 
 // renderThreadPreview renders a thread preview showing the latest message but linking to root

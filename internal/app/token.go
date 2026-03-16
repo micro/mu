@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/auth"
+	"mu/internal/auth"
 )
 
 // TokenHandler manages Personal Access Tokens (PATs)

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"mu/auth"
-	"mu/data"
+	"mu/internal/auth"
+	"mu/internal/data"
 
 	"github.com/google/uuid"
 )

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"golang.org/x/sync/semaphore"
-	"mu/app"
+	"mu/internal/app"
 )
 
 var (

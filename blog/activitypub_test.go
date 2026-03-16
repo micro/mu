@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"mu/auth"
+	"mu/internal/auth"
 )
 
 func TestAPDomain(t *testing.T) {

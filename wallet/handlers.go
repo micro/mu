@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 // WalletPage renders the wallet page HTML

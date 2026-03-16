@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"mu/ai"
-	"mu/app"
-	"mu/data"
+	"mu/internal/ai"
+	"mu/internal/app"
+	"mu/internal/data"
 )
 
 // DismissedRule is a learned filter rule from a dismissed thread.

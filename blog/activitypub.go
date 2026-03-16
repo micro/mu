@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 // APDomain returns the configured domain for ActivityPub URLs.

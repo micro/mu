@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"mu/ai"
-	"mu/app"
+	"mu/internal/ai"
+	"mu/internal/app"
 	"mu/search"
 )
 

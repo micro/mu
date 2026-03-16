@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
-	"mu/app"
+	"mu/internal/app"
 	"mu/blog"
-	"mu/news/reminder"
+	"mu/reminder"
 )
 
 // opinionTopic is the topic used for daily opinion threads.

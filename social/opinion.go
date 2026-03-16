@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"mu/ai"
-	"mu/app"
+	"mu/internal/ai"
+	"mu/internal/app"
 	"mu/news"
-	"mu/news/markets"
-	"mu/news/reminder"
+	"mu/markets"
+	"mu/reminder"
 	"mu/search"
 	"mu/video"
 )

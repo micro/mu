@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"mu/app"
+	"mu/internal/app"
 )
 
 //go:embed *.md
@@ -43,6 +43,9 @@ var catalog = []Document{
 	{Slug: "system-design", Filename: "SYSTEM_DESIGN.md", Title: "System Design", Description: "Architecture overview", Category: "Developer"},
 	{Slug: "api", Filename: "API_COVERAGE.md", Title: "API Reference", Description: "REST API endpoints", Category: "Developer"},
 }
+
+// Load initializes the docs building block.
+func Load() {}
 
 // Handler serves the /docs endpoint
 func Handler(w http.ResponseWriter, r *http.Request) {

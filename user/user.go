@@ -9,12 +9,26 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"mu/app"
-
-	"mu/auth"
-	"mu/blog"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/data"
 )
+
+// UserPost is a simplified post representation for profile rendering.
+// Wired from blog building block via GetUserPosts callback.
+type UserPost struct {
+	ID        string
+	Title     string
+	Content   string
+	CreatedAt time.Time
+	Private   bool
+}
+
+// GetUserPosts returns posts by author name. Wired from main.go.
+var GetUserPosts func(authorName string) []UserPost
+
+// LinkifyContent converts URLs in text to clickable links. Wired from main.go.
+var LinkifyContent func(text string) string
 
 var profileMutex sync.RWMutex
 var profiles = map[string]*Profile{}
@@ -237,53 +251,59 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get all posts by this user
+	// Get all posts by this user via callback (wired in main.go)
 	var userPosts string
-	posts := blog.GetPostsByAuthor(acc.Name)
+	var postCount int
+	if GetUserPosts != nil {
+		posts := GetUserPosts(acc.Name)
 
-	// Check if viewer is admin
-	_, viewerAcc := auth.TrySession(r)
-	isAdmin := viewerAcc != nil && viewerAcc.Admin
+		// Check if viewer is admin
+		_, viewerAcc := auth.TrySession(r)
+		isAdmin := viewerAcc != nil && viewerAcc.Admin
 
-	// Filter private posts for non-admins
-	var visiblePosts []*blog.Post
-	for _, post := range posts {
-		if !post.Private || isAdmin {
-			visiblePosts = append(visiblePosts, post)
-		}
-	}
-
-	postCount := len(visiblePosts)
-
-	for _, post := range visiblePosts {
-		title := post.Title
-		if title == "" {
-			title = "Untitled"
+		// Filter private posts for non-admins
+		var visiblePosts []UserPost
+		for _, post := range posts {
+			if !post.Private || isAdmin {
+				visiblePosts = append(visiblePosts, post)
+			}
 		}
 
-		// Truncate content
-		content := post.Content
-		if len(content) > 300 {
-			lastSpace := 300
-			for i := 299; i >= 0 && i < len(content); i-- {
-				if content[i] == ' ' {
-					lastSpace = i
-					break
+		postCount = len(visiblePosts)
+
+		for _, post := range visiblePosts {
+			title := post.Title
+			if title == "" {
+				title = "Untitled"
+			}
+
+			// Truncate content
+			content := post.Content
+			if len(content) > 300 {
+				lastSpace := 300
+				for i := 299; i >= 0 && i < len(content); i-- {
+					if content[i] == ' ' {
+						lastSpace = i
+						break
+					}
+				}
+				if lastSpace < len(content) {
+					content = content[:lastSpace] + "..."
 				}
 			}
-			if lastSpace < len(content) {
-				content = content[:lastSpace] + "..."
+
+			// Linkify URLs and embed YouTube videos
+			linkedContent := content
+			if LinkifyContent != nil {
+				linkedContent = LinkifyContent(content)
 			}
-		}
 
-		// Linkify URLs and embed YouTube videos
-		linkedContent := blog.Linkify(content)
-
-		userPosts += fmt.Sprintf(`<div class="post-item">
+			userPosts += fmt.Sprintf(`<div class="post-item">
 <h3><a href="/post?id=%s">%s</a></h3>
 <div class="mb-3">%s</div>
 <div class="info">%s · <a href="/post?id=%s">Read more</a></div>
 </div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
+		}
 	}
 
 	if userPosts == "" {

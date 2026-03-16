@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"sort"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/mail"
 )
 

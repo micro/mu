@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"mu/ai"
-	"mu/app"
-	"mu/data"
+	"mu/internal/ai"
+	"mu/internal/app"
+	"mu/internal/data"
 )
 
 // EditorialMemory holds the agent's evolving understanding of topics,

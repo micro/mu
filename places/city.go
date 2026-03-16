@@ -13,8 +13,8 @@ import (
 
 	"github.com/asim/quadtree"
 
-	"mu/app"
-	"mu/data"
+	"mu/internal/app"
+	"mu/internal/data"
 )
 
 //go:embed locations.json

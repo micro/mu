@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 // knownEnvVars lists the environment variables the application may use.

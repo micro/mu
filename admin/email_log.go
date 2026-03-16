@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"mu/app"
-	"mu/auth"
+	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/mail"
 )
 
