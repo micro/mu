@@ -210,7 +210,11 @@ func seedOpinion() {
 	app.Log("social", "Seeded daily opinion thread: %s", title)
 }
 
-// addSeededThread adds a thread without requiring auth or quota
+// AddSeededThread adds a thread without requiring auth or quota. Used by agent and internal functions.
+func AddSeededThread(thread *Thread) {
+	addSeededThread(thread)
+}
+
 func addSeededThread(thread *Thread) {
 	mutex.Lock()
 	threads = append([]*Thread{thread}, threads...)

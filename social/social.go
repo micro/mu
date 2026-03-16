@@ -116,6 +116,11 @@ func sortThreads() {
 	})
 }
 
+// Save persists threads to disk. Used by agent and internal functions.
+func Save() error {
+	return save()
+}
+
 func save() error {
 	mutex.RLock()
 	defer mutex.RUnlock()
@@ -128,6 +133,11 @@ func indexThread(t *Thread) {
 		"author": t.Author,
 		"topic":  t.Topic,
 	})
+}
+
+// UpdateCache refreshes internal caches. Used by agent and internal functions.
+func UpdateCache() {
+	updateCache()
 }
 
 func updateCache() {
@@ -181,13 +191,26 @@ func isValidTopic(topic string) bool {
 	return false
 }
 
-func getThread(id string) *Thread {
+// GetThread returns a thread by ID. Used by agent and internal functions.
+func GetThread(id string) *Thread {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	return getThreadLocked(id)
+}
+
+// getThreadLocked is the internal version that assumes mutex is held.
+func getThreadLocked(id string) *Thread {
 	for _, t := range threads {
 		if t.ID == id {
 			return t
 		}
 	}
 	return nil
+}
+
+// getThread is deprecated - use GetThread instead
+func getThread(id string) *Thread {
+	return GetThread(id)
 }
 
 // Handler serves the social page
