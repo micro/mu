@@ -102,9 +102,10 @@ building blocks to render combined views:
   post. The editorial memory system (`opinion_memory.go`) tracks stances,
   directives, and topic history so the agent evolves its perspective over time.
 
-- **`social/seed.go`** — seeds community discussion threads from `reminder`.
-  Disabled by default (`SeedingEnabled = false`) — enable in `main.go` when
-  there is an active community.
+- **`social/seed.go`** — seeds three daily discussion threads: reminder (from
+  `reminder`), opinion (from blog opinion via callback), and digest (from news
+  digest via callback). Callbacks are wired in `main.go` to avoid cross-block
+  imports.
 
 These cross-building-block imports are documented exceptions. The long-term goal
 is to replace them with the event system (`data.Subscribe`/`data.Publish`).

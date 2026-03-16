@@ -12,8 +12,24 @@ import (
 // Disabled by default — enable via main.go when there's an active community.
 var SeedingEnabled = false
 
+// SeedData holds content from other building blocks for seeding discussion
+// threads. Populated via callbacks wired in main.go to avoid cross-block imports.
+type SeedData struct {
+	Title   string
+	Summary string // short excerpt for the thread body
+	Link    string // link to the full content
+}
+
+// GetOpinionSeed returns today's opinion post data for seeding a discussion thread.
+// Wired in main.go: social.GetOpinionSeed = func() *social.SeedData { ... }
+var GetOpinionSeed func() *SeedData
+
+// GetDigestSeed returns today's news digest data for seeding a discussion thread.
+// Wired in main.go: social.GetDigestSeed = func() *social.SeedData { ... }
+var GetDigestSeed func() *SeedData
+
 // StartSeeding begins the background seeding of social discussions.
-// Currently only seeds a daily reminder thread when enabled.
+// Seeds three daily threads: reminder, opinion, and digest.
 func StartSeeding() {
 	if !SeedingEnabled {
 		app.Log("social", "Seeding disabled — set social.SeedingEnabled = true to enable")
@@ -35,6 +51,8 @@ func seedLoop() {
 
 func seedAll() {
 	seedReminder()
+	seedOpinion()
+	seedDigest()
 }
 
 // seedReminder creates a daily discussion thread from the Islamic reminder.
@@ -78,6 +96,86 @@ func seedReminder() {
 
 	AddSeededThread(thread)
 	app.Log("social", "Seeded daily reminder thread")
+}
+
+// seedOpinion creates a daily discussion thread linked to the blog opinion post.
+func seedOpinion() {
+	if GetOpinionSeed == nil {
+		return
+	}
+
+	today := todayKey()
+	seedID := "opinion-" + today
+
+	if threadExists(seedID) {
+		return
+	}
+
+	sd := GetOpinionSeed()
+	if sd == nil {
+		return
+	}
+
+	var sb strings.Builder
+	sb.WriteString(sd.Summary)
+	sb.WriteString("\n\n")
+	sb.WriteString("[Read the full opinion](" + sd.Link + ")")
+	sb.WriteString("\n\n")
+	sb.WriteString("*What do you think? Share your perspective.*")
+
+	thread := &Thread{
+		ID:        seedID,
+		Title:     "Daily Opinion — " + time.Now().Format("2 Jan 2006"),
+		Link:      sd.Link,
+		Content:   sb.String(),
+		Topic:     "Opinion",
+		Author:    app.SystemUserName,
+		AuthorID:  app.SystemUserID,
+		CreatedAt: time.Now(),
+	}
+
+	AddSeededThread(thread)
+	app.Log("social", "Seeded daily opinion thread")
+}
+
+// seedDigest creates a daily discussion thread linked to the news digest.
+func seedDigest() {
+	if GetDigestSeed == nil {
+		return
+	}
+
+	today := todayKey()
+	seedID := "digest-" + today
+
+	if threadExists(seedID) {
+		return
+	}
+
+	sd := GetDigestSeed()
+	if sd == nil {
+		return
+	}
+
+	var sb strings.Builder
+	sb.WriteString(sd.Summary)
+	sb.WriteString("\n\n")
+	sb.WriteString("[Read the full digest](" + sd.Link + ")")
+	sb.WriteString("\n\n")
+	sb.WriteString("*Discuss what's happening today.*")
+
+	thread := &Thread{
+		ID:        seedID,
+		Title:     "Daily Digest — " + time.Now().Format("2 Jan 2006"),
+		Link:      sd.Link,
+		Content:   sb.String(),
+		Topic:     "News",
+		Author:    app.SystemUserName,
+		AuthorID:  app.SystemUserID,
+		CreatedAt: time.Now(),
+	}
+
+	AddSeededThread(thread)
+	app.Log("social", "Seeded daily digest thread")
 }
 
 // AddSeededThread adds a thread without requiring auth or quota.

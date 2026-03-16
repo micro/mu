@@ -134,8 +134,40 @@ func main() {
 	// Start web search topics (loads cache from disk, generates in background)
 	search.StartTopics()
 
-	// Start social discussion seeding (reminder thread, disabled by default)
-	// social.SeedingEnabled = true // Uncomment when community is active
+	// Wire social seed callbacks (avoids social importing blog/digest directly)
+	social.GetOpinionSeed = func() *social.SeedData {
+		post := blog.FindTodayOpinion()
+		if post == nil {
+			return nil
+		}
+		summary := post.Content
+		if len(summary) > 200 {
+			summary = summary[:200] + "..."
+		}
+		return &social.SeedData{
+			Title:   post.Title,
+			Summary: summary,
+			Link:    "/post?id=" + post.ID,
+		}
+	}
+	social.GetDigestSeed = func() *social.SeedData {
+		d := digest.GetTodayDigest()
+		if d == nil {
+			return nil
+		}
+		summary := d.Content
+		if len(summary) > 200 {
+			summary = summary[:200] + "..."
+		}
+		return &social.SeedData{
+			Title:   d.Title,
+			Summary: summary,
+			Link:    "/news",
+		}
+	}
+
+	// Start social discussion seeding (3 daily threads: reminder, opinion, digest)
+	social.SeedingEnabled = true
 	social.StartSeeding()
 
 	// Start daily opinion generation (publishes as blog post)
