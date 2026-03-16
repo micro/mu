@@ -116,15 +116,16 @@ func getMemoryContext() string {
 	return sb.String()
 }
 
-func recordOpinionTopic(title string) {
+func recordOpinionTopic(title, category string) {
 	if memory == nil {
 		return
 	}
 
 	today := opinionTodayKey()
+	key := today + "-" + strings.ToLower(category)
 
 	for _, t := range memory.RecentTopics {
-		if t.Date == today {
+		if t.Date == key {
 			return
 		}
 	}
@@ -137,8 +138,9 @@ func recordOpinionTopic(title string) {
 		Topic: topicKey,
 	})
 
-	if len(memory.RecentTopics) > 7 {
-		memory.RecentTopics = memory.RecentTopics[len(memory.RecentTopics)-7:]
+	// Keep more history now that we have multiple per day
+	if len(memory.RecentTopics) > 30 {
+		memory.RecentTopics = memory.RecentTopics[len(memory.RecentTopics)-30:]
 	}
 
 	saveMemory()
@@ -293,14 +295,9 @@ Rules:
 	saveMemory()
 }
 
-// reviewOpinionPost reads the comments on today's opinion post and uses AI
+// reviewOpinionPost reads the comments on an opinion post and uses AI
 // to extract any valid corrections or new insights for editorial memory.
-func reviewOpinionPost() {
-	post := FindTodayOpinion()
-	if post == nil {
-		return
-	}
-
+func reviewOpinionPost(post *Post) {
 	comments := GetComments(post.ID)
 	if len(comments) == 0 {
 		return
@@ -411,14 +408,9 @@ Rules:
 	saveMemory()
 }
 
-// engageOpinionPost checks today's opinion post for new human comments
+// engageOpinionPost checks an opinion post for new human comments
 // and generates a thoughtful response via a new comment.
-func engageOpinionPost() {
-	post := FindTodayOpinion()
-	if post == nil {
-		return
-	}
-
+func engageOpinionPost(post *Post) {
 	comments := GetComments(post.ID)
 	if len(comments) == 0 {
 		return
