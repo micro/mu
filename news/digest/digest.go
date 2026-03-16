@@ -143,7 +143,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rendered := string(app.Render([]byte(d.Content)))
-	html := fmt.Sprintf(`<h1>Daily Digest — %s</h1><div class="digest">%s</div>`, d.CreatedAt.Format("2 Jan 2006"), rendered)
+	html := fmt.Sprintf(`<div class="digest">%s</div>`, rendered)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Daily Digest — " + d.CreatedAt.Format("2 Jan 2006"),

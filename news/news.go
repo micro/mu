@@ -420,7 +420,7 @@ func generateNewsHtml() string {
 	// Link to daily digest if available
 	digestLink := ""
 	if HasDigest != nil && HasDigest() {
-		digestLink = `<a class="digest-link" href="/news/digest">Read today's digest</a>`
+		digestLink = `<a class="digest-link" href="/news/digest" style="display:block;margin:1rem 0">Read today's digest</a>`
 	}
 
 	// Get topics header
