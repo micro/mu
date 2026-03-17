@@ -21,6 +21,7 @@ import (
 	"mu/chat"
 	"mu/internal/data"
 	"mu/docs"
+	"mu/factcheck"
 	"mu/home"
 	"mu/mail"
 	"mu/news"
@@ -277,6 +278,18 @@ func main() {
 		},
 	})
 
+	// fact_check tool — verify claims against web sources
+	api.RegisterTool(api.Tool{
+		Name:        "fact_check",
+		Description: "Fact-check a claim or statement by searching the web and assessing accuracy. Returns verdict (accurate, misleading, missing_context, none) with sources.",
+		Method:      "POST",
+		Path:        "/factcheck",
+		WalletOp:    "fact_check",
+		Params: []api.ToolParam{
+			{Name: "claim", Type: "string", Description: "The claim or statement to fact-check (minimum 20 characters)", Required: true},
+		},
+	})
+
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features
 		"/news":            false, // Public viewing, auth for search
@@ -311,9 +324,10 @@ func main() {
 		"/donate":          false,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
-		"/search": false, // Public - local data index search
-		"/web":    false, // Public page, auth checked in handler (paid Brave web search)
-		"/fetch":  false, // Public page, auth checked in handler (paid web fetch)
+		"/search":    false, // Public - local data index search
+		"/web":       false, // Public page, auth checked in handler (paid Brave web search)
+		"/fetch":     false, // Public page, auth checked in handler (paid web fetch)
+		"/factcheck": false, // Public page, auth checked in handler (paid fact-check)
 
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
@@ -410,6 +424,9 @@ func main() {
 
 	// serve web fetch page (fetch and clean a URL)
 	http.HandleFunc("/fetch", search.FetchHandler)
+
+	// serve fact-check page and API
+	http.HandleFunc("/factcheck", factcheck.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
