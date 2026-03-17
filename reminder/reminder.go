@@ -134,9 +134,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	handleHTML(w, r)
 }
 
+// getReminderForRequest returns the appropriate reminder data based on the
+// request's ?date= query parameter. If a date is provided, fetches the fixed
+// daily reminder for that date. Otherwise returns the latest (hourly) reminder.
+func getReminderForRequest(r *http.Request) (rd *ReminderData, date string) {
+	date = r.URL.Query().Get("date")
+	if date != "" {
+		// Validate date format
+		if _, err := time.Parse("2006-01-02", date); err != nil {
+			date = ""
+		}
+	}
+
+	if date != "" {
+		return GetDailyReminderForDate(date), date
+	}
+	return GetReminderData(), ""
+}
+
 // handleJSON returns reminder data as JSON
 func handleJSON(w http.ResponseWriter, r *http.Request) {
-	reminderData := GetReminderData()
+	reminderData, _ := getReminderForRequest(r)
 	if reminderData == nil {
 		app.RespondJSON(w, map[string]interface{}{
 			"error": "Reminder data not available",
@@ -149,7 +167,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 
 // handleHTML returns reminder page as HTML
 func handleHTML(w http.ResponseWriter, r *http.Request) {
-	reminderData := GetReminderData()
+	reminderData, date := getReminderForRequest(r)
 	if reminderData == nil {
 		app.Respond(w, r, app.Response{
 			Title:       "Reminder",
@@ -159,16 +177,23 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	title := "Reminder"
+	if date != "" {
+		if t, err := time.Parse("2006-01-02", date); err == nil {
+			title = "Reminder — " + t.Format("2 Jan 2006")
+		}
+	}
+
 	body := generateReminderPage(reminderData)
 
 	app.Respond(w, r, app.Response{
-		Title:       "Reminder",
+		Title:       title,
 		Description: "Islamic reminder with verse, hadith, and name of Allah",
 		HTML:        body,
 	})
 }
 
-// GetReminderData loads the cached reminder data
+// GetReminderData loads the cached reminder data (from api/latest, rotates hourly)
 func GetReminderData() *ReminderData {
 	// Load from cache
 	b, err := data.LoadFile("reminder.json")
@@ -184,6 +209,59 @@ func GetReminderData() *ReminderData {
 	}
 
 	return &reminderData
+}
+
+// GetDailyReminderData fetches the fixed daily reminder from reminder.dev/api/daily.
+// Unlike GetReminderData (which rotates hourly), this returns the same content
+// all day — suitable for seeding social threads and opinion pieces.
+// Results are cached per date to avoid repeated API calls.
+func GetDailyReminderData() *ReminderData {
+	return GetDailyReminderForDate(time.Now().Format("2006-01-02"))
+}
+
+// GetDailyReminderForDate fetches the daily reminder for a specific date (YYYY-MM-DD).
+// Results are cached per date.
+func GetDailyReminderForDate(date string) *ReminderData {
+	cacheFile := "reminder_daily_" + date + ".json"
+
+	// Check cache
+	b, err := data.LoadFile(cacheFile)
+	if err == nil {
+		var rd ReminderData
+		if json.Unmarshal(b, &rd) == nil {
+			return &rd
+		}
+	}
+
+	// Fetch from reminder.dev/api/daily?date=YYYY-MM-DD
+	url := "https://reminder.dev/api/daily"
+	if date != "" {
+		url += "?date=" + date
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		app.Log("reminder", "Error fetching daily reminder for %s: %v", date, err)
+		// Only fall back to latest for today
+		if date == time.Now().Format("2006-01-02") {
+			return GetReminderData()
+		}
+		return nil
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	var rd ReminderData
+	if err := json.Unmarshal(body, &rd); err != nil {
+		app.Log("reminder", "Error parsing daily reminder for %s: %v", date, err)
+		return nil
+	}
+
+	// Cache
+	data.SaveFile(cacheFile, string(body))
+	app.Log("reminder", "Fetched daily reminder for %s", date)
+	return &rd
 }
 
 // generateReminderPage generates the full reminder page HTML
