@@ -64,17 +64,19 @@ func seedReminder() {
 		return
 	}
 
-	rd := reminder.GetReminderData()
+	rd := reminder.GetDailyReminderData()
 	if rd == nil {
 		return
 	}
+
+	dailyLink := reminder.DailyLink()
 
 	var sb strings.Builder
 	if rd.Message != "" {
 		sb.WriteString(rd.Message)
 		sb.WriteString("\n\n")
 	}
-	sb.WriteString("[Read the full reminder](/reminder)")
+	sb.WriteString("[Read the full reminder](" + dailyLink + ")")
 	sb.WriteString("\n\n")
 	sb.WriteString("*Share your reflections and thoughts on today's reminder.*")
 
@@ -86,7 +88,7 @@ func seedReminder() {
 	thread := &Thread{
 		ID:        seedID,
 		Title:     "Daily Reminder — " + time.Now().Format("2 Jan 2006"),
-		Link:      "/reminder",
+		Link:      dailyLink,
 		Content:   content,
 		Topic:     "Islam",
 		Author:    app.SystemUserName,

@@ -168,7 +168,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetReminderData loads the cached reminder data
+// GetReminderData loads the cached reminder data (from api/latest, rotates hourly)
 func GetReminderData() *ReminderData {
 	// Load from cache
 	b, err := data.LoadFile("reminder.json")
@@ -184,6 +184,59 @@ func GetReminderData() *ReminderData {
 	}
 
 	return &reminderData
+}
+
+// GetDailyReminderData fetches the fixed daily reminder from reminder.dev/api/daily.
+// Unlike GetReminderData (which rotates hourly), this returns the same content
+// all day — suitable for seeding social threads and opinion pieces.
+// Results are cached to avoid repeated API calls.
+func GetDailyReminderData() *ReminderData {
+	today := time.Now().Format("2006-01-02")
+	cacheFile := "reminder_daily.json"
+
+	// Check if we already have today's daily reminder cached
+	b, err := data.LoadFile(cacheFile)
+	if err == nil {
+		var cached struct {
+			Date string        `json:"_date"`
+			Data *ReminderData `json:"data"`
+		}
+		if json.Unmarshal(b, &cached) == nil && cached.Date == today && cached.Data != nil {
+			return cached.Data
+		}
+	}
+
+	// Fetch from reminder.dev/api/daily
+	resp, err := http.Get("https://reminder.dev/api/daily")
+	if err != nil {
+		app.Log("reminder", "Error fetching daily reminder: %v", err)
+		return GetReminderData() // fall back to latest
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	var rd ReminderData
+	if err := json.Unmarshal(body, &rd); err != nil {
+		app.Log("reminder", "Error parsing daily reminder: %v", err)
+		return GetReminderData()
+	}
+
+	// Cache with today's date
+	cached := struct {
+		Date string        `json:"_date"`
+		Data *ReminderData `json:"data"`
+	}{Date: today, Data: &rd}
+	cacheJSON, _ := json.Marshal(cached)
+	data.SaveFile(cacheFile, string(cacheJSON))
+
+	app.Log("reminder", "Fetched daily reminder for %s", today)
+	return &rd
+}
+
+// DailyLink returns the URL for today's daily reminder on reminder.dev.
+func DailyLink() string {
+	return "https://reminder.dev/daily/" + time.Now().Format("2006-01-02")
 }
 
 // generateReminderPage generates the full reminder page HTML
