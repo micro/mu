@@ -167,7 +167,7 @@ func main() {
 		return &social.SeedData{
 			Title:   d.Title,
 			Summary: summary,
-			Link:    "/news",
+			Link:    "/news/digest?date=" + d.ID,
 		}
 	}
 

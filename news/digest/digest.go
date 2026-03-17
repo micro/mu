@@ -120,10 +120,31 @@ func GetLatestDigest() *DigestEntry {
 	return digests[0]
 }
 
+// GetDigestByDate returns the digest for a specific date (YYYY-MM-DD), or nil.
+func GetDigestByDate(date string) *DigestEntry {
+	digestMu.RLock()
+	defer digestMu.RUnlock()
+	for _, entry := range digests {
+		if entry.ID == date {
+			return entry
+		}
+	}
+	return nil
+}
+
 // Handler serves the daily digest page at /news/digest.
+// Supports ?date=YYYY-MM-DD to fetch a specific day's digest.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	date := r.URL.Query().Get("date")
+
+	var d *DigestEntry
+	if date != "" {
+		d = GetDigestByDate(date)
+	} else {
+		d = GetLatestDigest()
+	}
+
 	if app.WantsJSON(r) {
-		d := GetLatestDigest()
 		if d == nil {
 			app.RespondJSON(w, map[string]any{"digest": nil})
 			return
@@ -132,12 +153,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d := GetLatestDigest()
 	if d == nil {
+		msg := "No digest available yet. Check back soon."
+		if date != "" {
+			msg = fmt.Sprintf("No digest found for %s.", date)
+		}
 		app.Respond(w, r, app.Response{
 			Title:       "Daily Digest",
-			Description: "No digest available yet",
-			HTML:        `<p>No digest available yet. Check back soon.</p>`,
+			Description: "No digest available",
+			HTML:        fmt.Sprintf(`<p>%s</p>`, msg),
 		})
 		return
 	}

@@ -89,7 +89,7 @@ func formatTags(tags string) string {
 	if len(badges) == 0 {
 		return ""
 	}
-	return strings.Join(badges, " ")
+	return strings.Join(badges, " · ")
 }
 
 // parseTags parses comma-separated tags, validates, and normalizes them
@@ -1453,9 +1453,14 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 	tagsHtml := ""
 	if post.Tags != "" {
+		var tagSpans []string
 		for _, tag := range strings.Split(post.Tags, ",") {
-			tagsHtml += fmt.Sprintf(`<span class="category">%s</span> `, strings.TrimSpace(tag))
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				tagSpans = append(tagSpans, fmt.Sprintf(`<span class="category">%s</span>`, tag))
+			}
 		}
+		tagsHtml = strings.Join(tagSpans, " · ")
 	}
 
 	// Add private badge if post is private
