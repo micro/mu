@@ -1,13 +1,15 @@
 package social
 
 import (
+	"encoding/json"
 	"fmt"
-	"strings"
+	"net/http"
 	"time"
 
-	"mu/internal/ai"
+	"mu/factcheck"
 	"mu/internal/app"
-	"mu/search"
+	"mu/internal/auth"
+	"mu/wallet"
 )
 
 // factCheckThread runs a background fact-check on a user-posted thread.
@@ -96,160 +98,131 @@ func factCheckReply(threadID, replyID string) {
 	app.Log("social", "Fact-checked reply %s: %s", replyID, note.Status)
 }
 
-// checkClaims searches the web for claims in the content and uses AI
-// to assess accuracy. Returns nil if no verifiable claims are found
-// (opinions, questions, personal reflections don't need fact-checking).
+// checkClaims uses the factcheck package to verify claims and converts
+// the result to a CommunityNote. Returns nil if no actionable claims found.
 func checkClaims(title, content string) *CommunityNote {
 	fullText := content
 	if title != "" {
 		fullText = title + "\n\n" + content
 	}
 
-	// Skip very short posts — unlikely to contain verifiable claims
+	// Skip very short posts
 	if len(fullText) < 50 {
 		return nil
 	}
 
-	// Step 1: Search the web for context on the claims
-	query := fullText
-	if len(query) > 150 {
-		// Use the first substantive portion as search query
-		query = query[:150]
-	}
-
-	var webContext []string
-	var allResults []search.BraveResult
-
-	results, err := search.SearchBraveCached(query, 5)
-	if err == nil && len(results) > 0 {
-		allResults = append(allResults, results...)
-		for _, r := range results {
-			ctx := fmt.Sprintf("%s: %s (Source: %s)", r.Title, r.Description, r.URL)
-			if len(ctx) > 500 {
-				ctx = ctx[:500] + "..."
-			}
-			webContext = append(webContext, ctx)
-		}
-	}
-
-	// Step 2: Ask AI to assess the claims against the web context
-	var question strings.Builder
-	question.WriteString("## User Post\n\n")
-	if title != "" {
-		question.WriteString("**" + title + "**\n\n")
-	}
-	question.WriteString(content)
-	question.WriteString("\n\n")
-
-	if len(webContext) > 0 {
-		question.WriteString("## Web Search Results\n\n")
-		for _, ctx := range webContext {
-			question.WriteString("- " + ctx + "\n")
-		}
-	}
-
-	prompt := &ai.Prompt{
-		System: `You are a fact-checker for Mu, an independent truth-seeking platform. You will receive a user's social media post and web search results.
-
-Your job:
-1. Determine if the post contains verifiable factual claims (names, dates, numbers, events, statistics, quotes)
-2. If it does, assess whether those claims are supported by the web search results and your knowledge
-
-IMPORTANT: Not every post needs a note. Skip these:
-- Personal opinions, reflections, or questions
-- Religious/spiritual discussion without factual claims
-- General commentary without specific assertions
-- Posts that are clearly accurate based on widely known facts
-
-Respond in ONE of these formats:
-
-If no verifiable claims or claims are clearly accurate:
-NO_NOTE
-
-If claims need context or correction, write a concise community note:
-STATUS: [accurate|misleading|missing_context]
-NOTE: [1-2 sentences providing factual context, corrections, or important missing information]
-
-Rules:
-- Be specific — cite facts, dates, and numbers
-- Be neutral — correct the record without taking sides
-- Do NOT lecture or moralise
-- Do NOT fact-check opinions or predictions
-- Write dollar amounts as plain numbers
-- CRITICAL: Keep the note under 300 characters`,
-		Question: question.String(),
-		Priority: ai.PriorityLow,
-	}
-
-	response, err := ai.Ask(prompt)
-	if err != nil {
-		app.Log("social", "Fact-check AI failed: %v", err)
+	result := factcheck.Check(fullText)
+	if result == nil {
 		return nil
 	}
 
-	response = strings.TrimSpace(app.StripLatexDollars(response))
-
-	// Parse response — the AI should return "NO_NOTE" when no fact-check is needed,
-	// but may add extra text after it. Treat any response starting with NO_NOTE as no note.
-	if response == "" || strings.HasPrefix(response, "NO_NOTE") {
+	// Don't create notes for accurate or no-claims content
+	if result.Status == "accurate" || result.Status == "none" {
 		return nil
 	}
 
-	status := "missing_context"
-	noteText := response
-
-	if strings.HasPrefix(response, "STATUS:") {
-		lines := strings.SplitN(response, "\n", 3)
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "STATUS:") {
-				s := strings.TrimSpace(strings.TrimPrefix(line, "STATUS:"))
-				s = strings.ToLower(s)
-				if s == "accurate" || s == "misleading" || s == "missing_context" {
-					status = s
-				}
-			}
-			if strings.HasPrefix(line, "NOTE:") {
-				noteText = strings.TrimSpace(strings.TrimPrefix(line, "NOTE:"))
-			}
-		}
-	}
-
-	// Don't create notes for accurate content — only add notes when
-	// something is misleading or missing context
-	if status == "accurate" {
-		return nil
-	}
-
-	if noteText == "" || noteText == response {
-		// Couldn't parse structured format, use full response as note
-		noteText = response
-		// Strip any STATUS: prefix from the note text
-		if idx := strings.Index(noteText, "NOTE:"); idx >= 0 {
-			noteText = strings.TrimSpace(noteText[idx+5:])
-		}
-	}
-
-	// Collect sources
+	// Convert factcheck.Result to CommunityNote
 	var sources []Source
-	seen := map[string]bool{}
-	for _, r := range allResults {
-		if r.URL == "" || seen[r.URL] {
-			continue
-		}
-		seen[r.URL] = true
-		sources = append(sources, Source{Title: r.Title, URL: r.URL})
-		if len(sources) >= 3 {
-			break
-		}
+	for _, s := range result.Sources {
+		sources = append(sources, Source{Title: s.Title, URL: s.URL})
 	}
 
 	return &CommunityNote{
-		Content:   noteText,
+		Content:   result.Content,
 		Sources:   sources,
-		Status:    status,
-		CheckedAt: time.Now(),
+		Status:    result.Status,
+		CheckedAt: result.CheckedAt,
 	}
+}
+
+// FactCheckHandler handles POST /social?id={id}&factcheck=true
+// Allows users to manually trigger a fact-check on a thread.
+func FactCheckHandler(w http.ResponseWriter, r *http.Request, threadID string) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	mutex.RLock()
+	t := getThread(threadID)
+	if t == nil {
+		mutex.RUnlock()
+		http.NotFound(w, r)
+		return
+	}
+	title := t.Title
+	content := t.Content
+	mutex.RUnlock()
+
+	// Check quota
+	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpFactCheck)
+	if !canProceed {
+		if app.SendsJSON(r) || app.WantsJSON(r) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(402)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "quota_exceeded",
+				"message": "Daily limit reached. Please top up credits at /wallet",
+				"cost":    cost,
+			})
+			return
+		}
+		c := wallet.QuotaExceededPage(wallet.OpFactCheck, cost)
+		page := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", c, r)
+		w.Write([]byte(page))
+		return
+	}
+
+	// Perform fact-check using the factcheck package
+	fullText := title + "\n\n" + content
+	result := factcheck.Check(fullText)
+
+	// Consume quota
+	wallet.ConsumeQuota(acc.ID, wallet.OpFactCheck)
+
+	if result == nil {
+		if app.SendsJSON(r) || app.WantsJSON(r) {
+			app.RespondJSON(w, map[string]interface{}{
+				"status":  "error",
+				"message": "Fact-check failed. Please try again.",
+			})
+			return
+		}
+		http.Redirect(w, r, "/social?id="+threadID, http.StatusSeeOther)
+		return
+	}
+
+	// Store result as community note on the thread (if actionable)
+	if result.Status != "none" {
+		var sources []Source
+		for _, s := range result.Sources {
+			sources = append(sources, Source{Title: s.Title, URL: s.URL})
+		}
+		note := &CommunityNote{
+			Content:   result.Content,
+			Sources:   sources,
+			Status:    result.Status,
+			CheckedAt: result.CheckedAt,
+		}
+
+		mutex.Lock()
+		t = getThread(threadID)
+		if t != nil {
+			t.Note = note
+		}
+		mutex.Unlock()
+
+		save()
+		updateCache()
+		app.Log("social", "Manual fact-check on thread %s by %s: %s", threadID, acc.ID, note.Status)
+	}
+
+	if app.SendsJSON(r) || app.WantsJSON(r) {
+		app.RespondJSON(w, result)
+		return
+	}
+	http.Redirect(w, r, "/social?id="+threadID, http.StatusSeeOther)
 }
 
 // renderCommunityNote renders a community note as HTML.
@@ -259,38 +232,24 @@ func renderCommunityNote(note *CommunityNote) string {
 		return ""
 	}
 
-	icon := "&#9432;" // ℹ info circle
-	label := "Context"
-	borderColor := "#e0a800" // amber
-	bgColor := "#fffdf0"
-
-	switch note.Status {
-	case "misleading":
-		icon = "&#9888;" // ⚠ warning
-		label = "Fact Check"
-		borderColor = "#d94040"
-		bgColor = "#fff5f5"
-	case "missing_context":
-		icon = "&#9432;" // ℹ info
-		label = "Added Context"
+	// Convert to factcheck.Result for rendering
+	var sources []factcheck.Source
+	for _, s := range note.Sources {
+		sources = append(sources, factcheck.Source{Title: s.Title, URL: s.URL})
 	}
 
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<div style="margin-top:8px;padding:10px 14px;border-left:3px solid %s;background:%s;border-radius:4px;font-size:13px;">`, borderColor, bgColor))
-	sb.WriteString(fmt.Sprintf(`<div style="font-weight:600;margin-bottom:4px;color:%s;">%s %s</div>`, borderColor, icon, label))
-	sb.WriteString(fmt.Sprintf(`<div style="color:#333;">%s</div>`, app.RenderString(note.Content)))
-
-	if len(note.Sources) > 0 {
-		sb.WriteString(`<div style="margin-top:6px;font-size:11px;color:#666;">`)
-		for i, src := range note.Sources {
-			if i > 0 {
-				sb.WriteString(" · ")
-			}
-			sb.WriteString(fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener" style="color:#666;">%s</a>`, src.URL, src.Title))
-		}
-		sb.WriteString(`</div>`)
-	}
-
-	sb.WriteString(`</div>`)
-	return sb.String()
+	return factcheck.RenderResult(&factcheck.Result{
+		Content:   note.Content,
+		Sources:   sources,
+		Status:    note.Status,
+		CheckedAt: note.CheckedAt,
+	})
 }
+
+// renderFactCheckButton renders a "Fact Check" button for a thread.
+func renderFactCheckButton(threadID string) string {
+	return fmt.Sprintf(`<form method="POST" action="/social?id=%s&factcheck=true" style="display:inline;margin-left:8px;">
+<button type="submit" style="background:none;border:1px solid #ccc;color:#666;font-size:11px;cursor:pointer;padding:2px 8px;border-radius:3px;" title="Fact-check this thread">Fact Check</button>
+</form>`, threadID)
+}
+

@@ -219,6 +219,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "POST":
+		if id != "" && r.URL.Query().Get("factcheck") == "true" {
+			FactCheckHandler(w, r, id)
+			return
+		}
 		if id != "" {
 			handleReply(w, r, id)
 		} else {
@@ -583,13 +587,19 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 		deleteBtn = app.DeleteButton("/social?id="+t.ID, "Delete", "Delete this thread?")
 	}
 
+	// Fact-check button for logged-in users
+	var factCheckBtn string
+	if acc != nil {
+		factCheckBtn = renderFactCheckButton(t.ID)
+	}
+
 	sb.WriteString(fmt.Sprintf(`<div class="card">
 <h2 style="margin-top:0;">%s</h2>
 %s
 <div>%s</div>
 %s
 </div>`, titleHTML,
-		app.ItemMeta(app.Category(t.Topic, ""), app.AuthorLink(t.AuthorID, t.Author), app.Timestamp(t.CreatedAt), deleteBtn),
+		app.ItemMeta(app.Category(t.Topic, ""), app.AuthorLink(t.AuthorID, t.Author), app.Timestamp(t.CreatedAt), deleteBtn, factCheckBtn),
 		contentHTML,
 		renderCommunityNote(t.Note)))
 
