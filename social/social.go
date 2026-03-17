@@ -208,9 +208,9 @@ func getThreadLocked(id string) *Thread {
 	return nil
 }
 
-// getThread is deprecated - use GetThread instead
+// getThread returns a thread by ID. Caller must hold mutex (read or write).
 func getThread(id string) *Thread {
-	return GetThread(id)
+	return getThreadLocked(id)
 }
 
 // Handler serves the social page
