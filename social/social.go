@@ -26,8 +26,8 @@ var (
 	threads []*Thread
 	topics  []string
 
-	// cached HTML
-	previewHTML string
+	// cached preview thread IDs (rendered live for fresh timestamps)
+	previewThreadIDs []string
 )
 
 // Thread is a discussion topic
@@ -144,14 +144,33 @@ func updateCache() {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	var sb strings.Builder
-	count := 0
+	var ids []string
 	for _, t := range threads {
 		if moderation.IsHidden("thread", t.ID) {
 			continue
 		}
-		if count >= 5 {
+		ids = append(ids, t.ID)
+		if len(ids) >= 5 {
 			break
+		}
+	}
+	previewThreadIDs = ids
+}
+
+// Preview returns HTML for the home card, rendered fresh for live timestamps.
+func Preview() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	if len(previewThreadIDs) == 0 {
+		return `<p style="color:#888;font-size:13px;">No discussions yet.</p>`
+	}
+
+	var sb strings.Builder
+	for _, id := range previewThreadIDs {
+		t := getThread(id)
+		if t == nil {
+			continue
 		}
 		replies := t.ReplyCount()
 		replyLink := fmt.Sprintf(`<a href="/social?id=%s" style="color:#888;">Reply</a>`, t.ID)
@@ -162,19 +181,8 @@ func updateCache() {
 <a href="/social?id=%s" style="font-weight:600;color:#111;">%s</a>
 <div style="font-size:12px;color:#888;">%s · %s · %s</div>
 </div>`, t.ID, html.EscapeString(t.Title), html.EscapeString(t.Topic), app.TimeAgo(t.CreatedAt), replyLink))
-		count++
 	}
-	if count == 0 {
-		sb.WriteString(`<p style="color:#888;font-size:13px;">No discussions yet.</p>`)
-	}
-	previewHTML = sb.String()
-}
-
-// Preview returns HTML for the home card
-func Preview() string {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	return previewHTML
+	return sb.String()
 }
 
 // GetTopics returns available topics
