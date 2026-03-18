@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"mu/factcheck"
+	"mu/internal/check"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/wallet"
@@ -111,7 +111,7 @@ func checkClaims(title, content string) *CommunityNote {
 		return nil
 	}
 
-	result := factcheck.Check(fullText)
+	result := check.Check(fullText)
 	if result == nil {
 		return nil
 	}
@@ -121,7 +121,7 @@ func checkClaims(title, content string) *CommunityNote {
 		return nil
 	}
 
-	// Convert factcheck.Result to CommunityNote
+	// Convert check.Result to CommunityNote
 	var sources []Source
 	for _, s := range result.Sources {
 		sources = append(sources, Source{Title: s.Title, URL: s.URL})
@@ -176,7 +176,7 @@ func FactCheckHandler(w http.ResponseWriter, r *http.Request, threadID string) {
 
 	// Perform fact-check using the factcheck package
 	fullText := title + "\n\n" + content
-	result := factcheck.Check(fullText)
+	result := check.Check(fullText)
 
 	// Consume quota
 	wallet.ConsumeQuota(acc.ID, wallet.OpFactCheck)
@@ -232,13 +232,13 @@ func renderCommunityNote(note *CommunityNote) string {
 		return ""
 	}
 
-	// Convert to factcheck.Result for rendering
-	var sources []factcheck.Source
+	// Convert to check.Result for rendering
+	var sources []check.Source
 	for _, s := range note.Sources {
-		sources = append(sources, factcheck.Source{Title: s.Title, URL: s.URL})
+		sources = append(sources, check.Source{Title: s.Title, URL: s.URL})
 	}
 
-	return factcheck.RenderResult(&factcheck.Result{
+	return check.RenderResult(&check.Result{
 		Content:   note.Content,
 		Sources:   sources,
 		Status:    note.Status,

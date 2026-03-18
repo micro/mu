@@ -21,7 +21,7 @@ import (
 	"mu/chat"
 	"mu/internal/data"
 	"mu/docs"
-	"mu/factcheck"
+	"mu/internal/check"
 	"mu/home"
 	"mu/mail"
 	"mu/news"
@@ -426,7 +426,7 @@ func main() {
 	http.HandleFunc("/fetch", search.FetchHandler)
 
 	// serve fact-check page and API
-	http.HandleFunc("/factcheck", factcheck.Handler)
+	http.HandleFunc("/factcheck", check.Handler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

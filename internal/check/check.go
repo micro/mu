@@ -1,4 +1,4 @@
-package factcheck
+package check
 
 import (
 	"encoding/json"
