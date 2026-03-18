@@ -16,7 +16,8 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
-	"mu/internal/moderation"
+	"mu/internal/event"
+	"mu/internal/flag"
 	"mu/wallet"
 )
 
@@ -471,7 +472,7 @@ func getOrCreateRoom(id string) *Room {
 
 	// Subscribe to index complete events via channel
 	go func() {
-		sub := data.Subscribe(data.EventIndexComplete)
+		sub := event.Subscribe(event.EventIndexComplete)
 		defer sub.Close()
 
 		// Wait for either index event or timeout
@@ -834,8 +835,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 								room.mutex.Unlock()
 
 								app.Log("chat", "Publishing refresh event for: %s", room.URL)
-								data.Publish(data.Event{
-									Type: data.EventRefreshHNComments,
+								event.Publish(event.Event{
+									Type: event.EventRefreshHNComments,
 									Data: map[string]interface{}{
 										"url": room.URL,
 									},
@@ -1017,7 +1018,7 @@ func Load() {
 	head = app.Head("chat", topics)
 
 	// Register LLM analyzer for content moderation
-	moderation.SetAnalyzer(&llmAnalyzer{})
+	flag.SetAnalyzer(&llmAnalyzer{})
 
 	// Load existing summaries from disk
 	if b, err := data.LoadFile("chat_summaries.json"); err == nil {
@@ -1029,12 +1030,12 @@ func Load() {
 	}
 
 	// Subscribe to summary generation requests
-	summaryRequestSub := data.Subscribe(data.EventGenerateSummary)
+	summaryRequestSub := event.Subscribe(event.EventGenerateSummary)
 	go func() {
-		for event := range summaryRequestSub.Chan {
-			uri, okUri := event.Data["uri"].(string)
-			content, okContent := event.Data["content"].(string)
-			eventType, okType := event.Data["type"].(string)
+		for evt := range summaryRequestSub.Chan {
+			uri, okUri := evt.Data["uri"].(string)
+			content, okContent := evt.Data["content"].(string)
+			eventType, okType := evt.Data["type"].(string)
 
 			if okUri && okContent && okType {
 				app.Log("chat", "Received summary generation request for %s (%s)", uri, eventType)
@@ -1053,8 +1054,8 @@ func Load() {
 				}
 
 				// Publish the generated summary
-				data.Publish(data.Event{
-					Type: data.EventSummaryGenerated,
+				event.Publish(event.Event{
+					Type: event.EventSummaryGenerated,
 					Data: map[string]interface{}{
 						"uri":     uri,
 						"summary": summary,
@@ -1068,12 +1069,12 @@ func Load() {
 	}()
 
 	// Subscribe to tag generation requests
-	tagRequestSub := data.Subscribe(data.EventGenerateTag)
+	tagRequestSub := event.Subscribe(event.EventGenerateTag)
 	go func() {
-		for event := range tagRequestSub.Chan {
-			title, _ := event.Data["title"].(string)
-			content, okContent := event.Data["content"].(string)
-			eventType, okType := event.Data["type"].(string)
+		for evt := range tagRequestSub.Chan {
+			title, _ := evt.Data["title"].(string)
+			content, okContent := evt.Data["content"].(string)
+			eventType, okType := evt.Data["type"].(string)
 
 			if !okContent || !okType {
 				continue
@@ -1081,7 +1082,7 @@ func Load() {
 
 			// Handle blog post tagging (predefined categories)
 			if eventType == "post" {
-				postID, ok := event.Data["post_id"].(string)
+				postID, ok := evt.Data["post_id"].(string)
 				if !ok {
 					continue
 				}
@@ -1126,8 +1127,8 @@ func Load() {
 					continue
 				}
 
-				data.Publish(data.Event{
-					Type: data.EventTagGenerated,
+				event.Publish(event.Event{
+					Type: event.EventTagGenerated,
 					Data: map[string]interface{}{
 						"post_id": postID,
 						"tag":     tag,
@@ -1139,11 +1140,11 @@ func Load() {
 
 			// Handle note tagging (free-form single tag)
 			if eventType == "note" {
-				noteID, ok := event.Data["note_id"].(string)
+				noteID, ok := evt.Data["note_id"].(string)
 				if !ok {
 					continue
 				}
-				userID, ok := event.Data["user_id"].(string)
+				userID, ok := evt.Data["user_id"].(string)
 				if !ok {
 					continue
 				}
@@ -1170,8 +1171,8 @@ func Load() {
 					tag = tag[:20]
 				}
 
-				data.Publish(data.Event{
-					Type: data.EventTagGenerated,
+				event.Publish(event.Event{
+					Type: event.EventTagGenerated,
 					Data: map[string]interface{}{
 						"note_id": noteID,
 						"user_id": userID,
@@ -1577,7 +1578,7 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(renderHTML))
 }
 
-// llmAnalyzer implements the moderation.LLMAnalyzer interface
+// llmAnalyzer implements the flag.LLMAnalyzer interface
 type llmAnalyzer struct{}
 
 func (a *llmAnalyzer) Analyze(promptText, question string) (string, error) {

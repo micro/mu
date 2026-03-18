@@ -14,7 +14,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
-	"mu/internal/moderation"
+	"mu/internal/flag"
 	"mu/wallet"
 )
 
@@ -107,7 +107,7 @@ func Load() {
 	}()
 
 	// Register admin deleter
-	moderation.RegisterDeleter("thread", &threadDeleter{})
+	flag.RegisterDeleter("thread", &threadDeleter{})
 }
 
 func sortThreads() {
@@ -146,7 +146,7 @@ func updateCache() {
 
 	var ids []string
 	for _, t := range threads {
-		if moderation.IsHidden("thread", t.ID) {
+		if flag.IsHidden("thread", t.ID) {
 			continue
 		}
 		ids = append(ids, t.ID)
@@ -261,7 +261,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	var visible []*Thread
 	for _, t := range threads {
-		if moderation.IsHidden("thread", t.ID) {
+		if flag.IsHidden("thread", t.ID) {
 			continue
 		}
 		if topic != "" && topic != "all" && t.Topic != topic {
@@ -551,7 +551,7 @@ func DismissHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Add to blocklist and flag
 	DismissThread(threadID)
-	moderation.AdminFlag("thread", threadID, "system")
+	flag.AdminFlag("thread", threadID, "system")
 
 	app.Log("social", "Admin dismissed thread %s", threadID)
 	http.Redirect(w, r, "/social", http.StatusSeeOther)
@@ -567,7 +567,7 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 
-	if moderation.IsHidden("thread", t.ID) {
+	if flag.IsHidden("thread", t.ID) {
 		http.NotFound(w, r)
 		return
 	}
@@ -778,7 +778,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	updateCache()
 
 	// Content moderation
-	go moderation.CheckContent("thread", thread.ID, thread.Title, thread.Content)
+	go flag.CheckContent("thread", thread.ID, thread.Title, thread.Content)
 
 	// Fact-check in background
 	go factCheckThread(thread.ID)
@@ -886,7 +886,7 @@ func handleReply(w http.ResponseWriter, r *http.Request, threadID string) {
 	updateCache()
 
 	// Content moderation
-	go moderation.CheckContent("thread", reply.ID, "", reply.Content)
+	go flag.CheckContent("thread", reply.ID, "", reply.Content)
 
 	// Fact-check in background
 	go factCheckReply(threadID, reply.ID)
@@ -960,7 +960,7 @@ func handleDelete(w http.ResponseWriter, r *http.Request, threadID string) {
 	}
 }
 
-// threadDeleter implements moderation.ContentDeleter for threads
+// threadDeleter implements flag.ContentDeleter for threads
 type threadDeleter struct{}
 
 func (d *threadDeleter) Delete(id string) error {
