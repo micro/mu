@@ -9,28 +9,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"mu/internal/event"
 )
-
-// ============================================
-// EVENT SYSTEM
-// ============================================
-
-// Event types
-const (
-	EventRefreshHNComments  = "refresh_hn_comments"
-	EventIndexComplete      = "index_complete"
-	EventNewArticleMetadata = "new_article_metadata"
-	EventGenerateSummary    = "generate_summary"
-	EventSummaryGenerated   = "summary_generated"
-	EventGenerateTag        = "generate_tag"
-	EventTagGenerated       = "tag_generated"
-)
-
-// Event represents a data event
-type Event struct {
-	Type string
-	Data map[string]interface{}
-}
 
 // SearchOptions configures search behavior
 type SearchOptions struct {
@@ -52,75 +33,6 @@ func WithType(entryType string) SearchOption {
 func WithKeywordOnly() SearchOption {
 	return func(opts *SearchOptions) {
 		opts.KeywordOnly = true
-	}
-}
-
-// EventSubscription represents an active subscription
-type EventSubscription struct {
-	Chan      chan Event
-	eventType string
-	id        string
-}
-
-var (
-	eventMutex       sync.RWMutex
-	eventSubscribers = make(map[string]map[string]chan Event) // eventType -> subscriberID -> channel
-	subscriberIDSeq  int
-)
-
-// Subscribe creates a channel-based subscription for a specific event type
-func Subscribe(eventType string) *EventSubscription {
-	eventMutex.Lock()
-	defer eventMutex.Unlock()
-
-	// Generate unique subscriber ID
-	subscriberIDSeq++
-	id := fmt.Sprintf("sub_%d", subscriberIDSeq)
-
-	// Create buffered channel to prevent blocking
-	ch := make(chan Event, 10)
-
-	// Initialize map if needed
-	if eventSubscribers[eventType] == nil {
-		eventSubscribers[eventType] = make(map[string]chan Event)
-	}
-
-	eventSubscribers[eventType][id] = ch
-
-	return &EventSubscription{
-		Chan:      ch,
-		eventType: eventType,
-		id:        id,
-	}
-}
-
-// Close closes the channel and removes the subscription
-func (s *EventSubscription) Close() {
-	eventMutex.Lock()
-	defer eventMutex.Unlock()
-
-	if subscribers, ok := eventSubscribers[s.eventType]; ok {
-		if ch, ok := subscribers[s.id]; ok {
-			close(ch)
-			delete(subscribers, s.id)
-		}
-	}
-}
-
-// Publish sends an event to all subscribers
-func Publish(event Event) {
-	eventMutex.RLock()
-	subscribers := eventSubscribers[event.Type]
-	eventMutex.RUnlock()
-
-	// Send to channel subscribers (non-blocking)
-	for _, ch := range subscribers {
-		select {
-		case ch <- event:
-			// Sent successfully
-		default:
-			// Channel full, skip (subscriber should have buffer or be reading)
-		}
 	}
 }
 
@@ -304,8 +216,8 @@ func processIndexWork(work IndexWork) {
 	indexMutex.Unlock()
 
 	// Publish event that indexing is complete
-	Publish(Event{
-		Type: EventIndexComplete,
+	event.Publish(event.Event{
+		Type: event.EventIndexComplete,
 		Data: map[string]interface{}{
 			"id":   work.ID,
 			"type": work.Type,

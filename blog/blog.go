@@ -14,6 +14,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/moderation"
 	"mu/wallet"
 )
@@ -140,12 +141,12 @@ func Load() {
 	}
 
 	// Subscribe to tag generation responses
-	tagSub := data.Subscribe(data.EventTagGenerated)
+	tagSub := event.Subscribe(event.EventTagGenerated)
 	go func() {
-		for event := range tagSub.Chan {
-			postID, okID := event.Data["post_id"].(string)
-			tag, okTag := event.Data["tag"].(string)
-			eventType, okType := event.Data["type"].(string)
+		for evt := range tagSub.Chan {
+			postID, okID := evt.Data["post_id"].(string)
+			tag, okTag := evt.Data["tag"].(string)
+			eventType, okType := evt.Data["type"].(string)
 
 			if okID && okTag && okType && eventType == "post" {
 				app.Log("blog", "Received generated tag for post: %s", postID)
@@ -351,7 +352,7 @@ func updateCache() {
 	updateCacheUnlocked()
 
 	// Publish event to refresh home page cache
-	data.Publish(data.Event{
+	event.Publish(event.Event{
 		Type: "blog_updated",
 		Data: map[string]interface{}{},
 	})
@@ -960,8 +961,8 @@ func autoTagPost(postID, title, content string) {
 	app.Log("blog", "Requesting tag generation for post: %s", postID)
 
 	// Publish tag generation request
-	data.Publish(data.Event{
-		Type: data.EventGenerateTag,
+	event.Publish(event.Event{
+		Type: event.EventGenerateTag,
 		Data: map[string]interface{}{
 			"post_id": postID,
 			"title":   title,

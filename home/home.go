@@ -14,7 +14,7 @@ import (
 	"mu/agent"
 	"mu/internal/app"
 	"mu/blog"
-	"mu/internal/data"
+	"mu/internal/event"
 	"mu/news"
 	"mu/markets"
 	"mu/reminder"
@@ -748,7 +748,7 @@ func Load() {
 
 	// Subscribe to blog update events
 	go func() {
-		sub := data.Subscribe("blog_updated")
+		sub := event.Subscribe("blog_updated")
 		for range sub.Chan {
 			ForceRefresh()
 		}

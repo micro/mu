@@ -25,6 +25,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 
 	"mu/wallet"
 )
@@ -840,8 +841,8 @@ func requestArticleSummary(uri string, md *Metadata) {
 	app.Log("news", "Requesting summary generation for %s (attempt %d)", uri, md.SummaryAttempts)
 
 	// Publish summary generation request
-	data.Publish(data.Event{
-		Type: data.EventGenerateSummary,
+	event.Publish(event.Event{
+		Type: event.EventGenerateSummary,
 		Data: map[string]interface{}{
 			"uri":     uri,
 			"content": contentToSummarize,
@@ -1323,10 +1324,10 @@ func Load() {
 	// Loaded
 
 	// Subscribe to refresh events
-	sub := data.Subscribe(data.EventRefreshHNComments)
+	sub := event.Subscribe(event.EventRefreshHNComments)
 	go func() {
-		for event := range sub.Chan {
-			if url, ok := event.Data["url"].(string); ok {
+		for evt := range sub.Chan {
+			if url, ok := evt.Data["url"].(string); ok {
 				app.Log("news", "Received refresh request for: %s", url)
 				RefreshHNMetadata(url)
 			}
@@ -1334,12 +1335,12 @@ func Load() {
 	}()
 
 	// Subscribe to summary generation responses
-	summarySub := data.Subscribe(data.EventSummaryGenerated)
+	summarySub := event.Subscribe(event.EventSummaryGenerated)
 	go func() {
-		for event := range summarySub.Chan {
-			uri, okUri := event.Data["uri"].(string)
-			summary, okSummary := event.Data["summary"].(string)
-			eventType, okType := event.Data["type"].(string)
+		for evt := range summarySub.Chan {
+			uri, okUri := evt.Data["uri"].(string)
+			summary, okSummary := evt.Data["summary"].(string)
+			eventType, okType := evt.Data["type"].(string)
 
 			if okUri && okSummary && okType && eventType == "news" {
 				app.Log("news", "Received generated summary for: %s", uri)
