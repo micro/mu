@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/event"
 	_ "modernc.org/sqlite"
 )
 
@@ -115,8 +116,8 @@ func IndexSQLite(id, entryType, title, content string, metadata map[string]inter
 		// Insert into FTS index
 		db.Exec(`INSERT INTO index_fts(rowid, title, content) SELECT rowid, title, content FROM index_entries WHERE id = ?`, id)
 		// Publish event
-		Publish(Event{
-			Type: EventIndexComplete,
+		event.Publish(event.Event{
+			Type: event.EventIndexComplete,
 			Data: map[string]interface{}{
 				"id":   id,
 				"type": entryType,

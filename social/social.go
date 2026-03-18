@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"mu/admin"
 	"mu/app"
+	"mu/flag"
 	"mu/auth"
 	"mu/data"
 	"mu/wallet"
@@ -86,7 +86,7 @@ func Load() {
 	}()
 
 	// Register admin deleter
-	admin.RegisterDeleter("thread", &threadDeleter{})
+	flag.RegisterDeleter("thread", &threadDeleter{})
 }
 
 func sortThreads() {
@@ -115,7 +115,7 @@ func updateCache() {
 
 	var ids []string
 	for _, t := range threads {
-		if admin.IsHidden("thread", t.ID) {
+		if flag.IsHidden("thread", t.ID) {
 			continue
 		}
 		ids = append(ids, t.ID)
@@ -213,7 +213,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	var visible []*Thread
 	for _, t := range threads {
-		if admin.IsHidden("thread", t.ID) {
+		if flag.IsHidden("thread", t.ID) {
 			continue
 		}
 		if topic != "" && topic != "all" && t.Topic != topic {
@@ -335,7 +335,7 @@ func handleThread(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 
-	if admin.IsHidden("thread", t.ID) {
+	if flag.IsHidden("thread", t.ID) {
 		http.NotFound(w, r)
 		return
 	}
@@ -514,7 +514,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	updateCache()
 
 	// Content moderation
-	go admin.CheckContent("thread", thread.ID, thread.Title, thread.Content)
+	go flag.CheckContent("thread", thread.ID, thread.Title, thread.Content)
 
 	if app.SendsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{"success": true, "id": thread.ID})
@@ -615,7 +615,7 @@ func handleReply(w http.ResponseWriter, r *http.Request, threadID string) {
 	updateCache()
 
 	// Content moderation
-	go admin.CheckContent("thread", reply.ID, "", reply.Content)
+	go flag.CheckContent("thread", reply.ID, "", reply.Content)
 
 	if app.SendsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{"success": true, "id": reply.ID})
@@ -686,7 +686,7 @@ func handleDelete(w http.ResponseWriter, r *http.Request, threadID string) {
 	}
 }
 
-// threadDeleter implements admin.ContentDeleter for threads
+// threadDeleter implements flag.ContentDeleter for threads
 type threadDeleter struct{}
 
 func (d *threadDeleter) Delete(id string) error {

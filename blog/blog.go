@@ -13,8 +13,10 @@ import (
 
 	"mu/admin"
 	"mu/app"
+	"mu/flag"
 	"mu/auth"
 	"mu/data"
+	"mu/event"
 	"mu/wallet"
 )
 
@@ -140,7 +142,7 @@ func Load() {
 	}
 
 	// Subscribe to tag generation responses
-	tagSub := data.Subscribe(data.EventTagGenerated)
+	tagSub := event.Subscribe(event.EventTagGenerated)
 	go func() {
 		for event := range tagSub.Chan {
 			postID, okID := event.Data["post_id"].(string)
@@ -255,12 +257,12 @@ func Load() {
 	}()
 
 	// Register with admin system
-	admin.RegisterDeleter("post", &postDeleter{})
+	flag.RegisterDeleter("post", &postDeleter{})
 	admin.GetNewAccountBlog = getNewAccountBlogForAdmin
 	admin.RefreshBlogCache = RefreshCache
 }
 
-// postDeleter implements admin.ContentDeleter interface
+// postDeleter implements flag.ContentDeleter interface
 type postDeleter struct{}
 
 func (d *postDeleter) Delete(id string) error {
@@ -272,7 +274,7 @@ func (d *postDeleter) Get(id string) interface{} {
 	if post == nil {
 		return nil
 	}
-	return admin.PostContent{
+	return flag.PostContent{
 		Title:     post.Title,
 		Content:   post.Content,
 		Author:    post.Author,
@@ -281,20 +283,20 @@ func (d *postDeleter) Get(id string) interface{} {
 }
 
 // getNewAccountBlogForAdmin returns blog posts from new accounts for the moderation page
-func getNewAccountBlogForAdmin() []admin.PostContent {
+func getNewAccountBlogForAdmin() []flag.PostContent {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	var result []admin.PostContent
+	var result []flag.PostContent
 	for _, post := range posts {
 		// Skip flagged/hidden posts
-		if admin.IsHidden("post", post.ID) {
+		if flag.IsHidden("post", post.ID) {
 			continue
 		}
 
 		// Only include posts from new accounts
 		if post.AuthorID != "" && auth.IsNewAccount(post.AuthorID) {
-			result = append(result, admin.PostContent{
+			result = append(result, flag.PostContent{
 				ID:        post.ID,
 				Title:     post.Title,
 				Content:   post.Content,
@@ -353,7 +355,7 @@ func updateCache() {
 	updateCacheUnlocked()
 
 	// Publish event to refresh home page cache
-	data.Publish(data.Event{
+	event.Publish(event.Event{
 		Type: "blog_updated",
 		Data: map[string]interface{}{},
 	})
@@ -367,7 +369,7 @@ func updateCacheUnlocked() {
 	for i := 0; i < len(posts) && count < 1; i++ {
 		post := posts[i]
 		// Skip flagged posts
-		if admin.IsHidden("post", post.ID) {
+		if flag.IsHidden("post", post.ID) {
 			continue
 		}
 		// Skip private posts (home page shows only public posts)
@@ -462,7 +464,7 @@ func updateCacheUnlocked() {
 	var fullList []string
 	for _, post := range posts {
 		// Skip flagged posts
-		if admin.IsHidden("post", post.ID) {
+		if flag.IsHidden("post", post.ID) {
 			continue
 		}
 
@@ -584,7 +586,7 @@ func previewUncached() string {
 	for i := 0; i < len(posts) && count < 1; i++ {
 		post := posts[i]
 		// Skip flagged posts
-		if admin.IsHidden("post", post.ID) {
+		if flag.IsHidden("post", post.ID) {
 			continue
 		}
 		// Skip posts from new accounts (< 24 hours old)
@@ -727,7 +729,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		// Filter out flagged posts and private posts (unless admin)
 		var visiblePosts []*Post
 		for _, post := range posts {
-			if !admin.IsHidden("post", post.ID) {
+			if !flag.IsHidden("post", post.ID) {
 				// Skip private posts for non-admins
 				if post.Private && !isAdmin {
 					continue
@@ -962,8 +964,8 @@ func autoTagPost(postID, title, content string) {
 	app.Log("blog", "Requesting tag generation for post: %s", postID)
 
 	// Publish tag generation request
-	data.Publish(data.Event{
-		Type: data.EventGenerateTag,
+	event.Publish(event.Event{
+		Type: event.EventGenerateTag,
 		Data: map[string]interface{}{
 			"post_id": postID,
 			"title":   title,
@@ -1234,7 +1236,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		wallet.ConsumeQuota(acc.ID, wallet.OpBlogCreate)
 
 		// Run async LLM-based content moderation
-		go admin.CheckContent("post", postID, title, content)
+		go flag.CheckContent("post", postID, title, content)
 
 		if app.SendsJSON(r) {
 			app.RespondJSON(w, map[string]interface{}{
@@ -1698,7 +1700,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Run async LLM-based content moderation (non-blocking)
-	go admin.CheckContent("post", postID, title, content)
+	go flag.CheckContent("post", postID, title, content)
 
 	// Redirect back to posts page
 	http.Redirect(w, r, "/blog", http.StatusSeeOther)

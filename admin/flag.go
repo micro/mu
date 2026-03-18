@@ -1,323 +1,24 @@
 package admin
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
 
 	"mu/app"
 	"mu/auth"
-	"mu/data"
+	"mu/flag"
 )
 
 // Import blog to get new account blog posts - will be set by blog package to avoid circular import
-var GetNewAccountBlog func() []PostContent
+var GetNewAccountBlog func() []flag.PostContent
 
 // RefreshBlogCache is set by blog package to refresh cache after account approval
 var RefreshBlogCache func()
 
-// ============================================
-// DATA STRUCTURES
-// ============================================
-
-type FlaggedItem struct {
-	ContentType string    `json:"content_type"` // "post", "news", "video"
-	ContentID   string    `json:"content_id"`
-	FlagCount   int       `json:"flag_count"`
-	Flagged     bool      `json:"flagged"`    // Hidden from public view
-	FlaggedBy   []string  `json:"flagged_by"` // Usernames who flagged
-	FlaggedAt   time.Time `json:"flagged_at"` // First flag timestamp
-}
-
-var (
-	mutex sync.RWMutex
-	flags = make(map[string]*FlaggedItem) // key: contentType:contentID
-)
-
-// ContentDeleter interface - each content type implements this
-type ContentDeleter interface {
-	Delete(id string) error
-	Get(id string) interface{}
-	RefreshCache()
-}
-
-var deleters = make(map[string]ContentDeleter)
-
-// LLMAnalyzer interface for content moderation
-type LLMAnalyzer interface {
-	Analyze(prompt, question string) (string, error)
-}
-
-var analyzer LLMAnalyzer
-
-// ============================================
-// INITIALIZATION
-// ============================================
-
+// Load initialises flags from disk.
 func Load() {
-	b, err := data.LoadFile("flags.json")
-	if err != nil {
-		return
-	}
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	json.Unmarshal(b, &flags)
-}
-
-func saveUnlocked() error {
-	// Caller must hold mutex lock
-	return data.SaveJSON("flags.json", flags)
-}
-
-// RegisterDeleter registers a content type handler
-func RegisterDeleter(contentType string, deleter ContentDeleter) {
-	deleters[contentType] = deleter
-}
-
-// SetAnalyzer sets the LLM analyzer for content moderation
-func SetAnalyzer(a LLMAnalyzer) {
-	analyzer = a
-}
-
-// CheckContent analyzes content using LLM and flags if suspicious
-func CheckContent(contentType, itemID, title, content string) {
-	if analyzer == nil {
-		return
-	}
-
-	prompt := `You are a content moderator for a community that values purposeful, respectful discussion. Every post should be meaningful — this is not a place to waste time.
-
-Classify the content with ONLY ONE WORD:
-- SPAM (promotional spam, advertising, repetitive junk)
-- TEST (test posts like "test", "hello world", etc.)
-- LOW_QUALITY (low-effort content, memes, nonsensical, no substance)
-- HARMFUL (gossip, backbiting, slander, personal attacks, mocking others, trolling)
-- OK (meaningful, on-topic, respectful content)
-
-Community principles:
-- Stay on topic and contribute something meaningful
-- Be respectful — disagree with ideas, not people
-- No gossip or backbiting (speaking ill of someone behind their back)
-- No personal attacks, mockery, or belittling
-- Religious and political discussion is welcome when done with sincerity and good manners
-
-Respond with just the single word.`
-
-	question := fmt.Sprintf("Title: %s\n\nContent: %s", title, content)
-
-	resp, err := analyzer.Analyze(prompt, question)
-	if err != nil {
-		fmt.Printf("Moderation analysis error: %v\n", err)
-		return
-	}
-
-	resp = strings.TrimSpace(strings.ToUpper(resp))
-	fmt.Printf("Content moderation: %s %s -> %s\n", contentType, itemID, resp)
-
-	if resp == "SPAM" || resp == "TEST" || resp == "LOW_QUALITY" || resp == "HARMFUL" {
-		// Auto-flag by system (use "system" as username)
-		Add(contentType, itemID, "system")
-		fmt.Printf("Auto-flagged %s: %s (reason: %s)\n", contentType, itemID, resp)
-	}
-}
-
-// ============================================
-// FLAGGING OPERATIONS
-// ============================================
-
-// Add adds a flag to content (returns new flag count, already flagged bool, error)
-func Add(contentType, contentID, username string) (int, bool, error) {
-	key := contentType + ":" + contentID
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	item, exists := flags[key]
-	if !exists {
-		item = &FlaggedItem{
-			ContentType: contentType,
-			ContentID:   contentID,
-			FlagCount:   0,
-			Flagged:     false,
-			FlaggedBy:   []string{},
-			FlaggedAt:   time.Now(),
-		}
-		flags[key] = item
-	}
-
-	// Check if user already flagged
-	for _, flagger := range item.FlaggedBy {
-		if flagger == username {
-			return item.FlagCount, true, nil
-		}
-	}
-
-	// Add flag
-	item.FlaggedBy = append(item.FlaggedBy, username)
-	item.FlagCount++
-
-	// Auto-hide after 3 flags
-	if item.FlagCount >= 3 {
-		item.Flagged = true
-	}
-
-	saveUnlocked()
-	return item.FlagCount, false, nil
-}
-
-// GetCount returns flag count for content
-func GetCount(contentType, contentID string) int {
-	count, _ := GetFlags(contentType, contentID)
-	return count
-}
-
-// GetFlags returns flag info for content (flagCount, isFlagged)
-func GetFlags(contentType, contentID string) (int, bool) {
-	key := contentType + ":" + contentID
-
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	if item, exists := flags[key]; exists {
-		return item.FlagCount, item.Flagged
-	}
-	return 0, false
-}
-
-// GetItem returns full flag details
-func GetItem(contentType, contentID string) *FlaggedItem {
-	key := contentType + ":" + contentID
-
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	if item, exists := flags[key]; exists {
-		return item
-	}
-	return nil
-}
-
-// GetAll returns all flagged items
-func GetAll() []*FlaggedItem {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	var items []*FlaggedItem
-	for _, item := range flags {
-		if item.FlagCount > 0 {
-			items = append(items, item)
-		}
-	}
-	return items
-}
-
-// Approve clears flags for content
-func Approve(contentType, contentID string) error {
-	key := contentType + ":" + contentID
-
-	mutex.Lock()
-	delete(flags, key)
-	err := saveUnlocked()
-	mutex.Unlock()
-
-	if err != nil {
-		return err
-	}
-
-	// Refresh the content cache after unlocking to avoid deadlock
-	// (RefreshCache may call back into admin.IsHidden which needs a lock)
-	if deleter, ok := deleters[contentType]; ok {
-		deleter.RefreshCache()
-	}
-
-	// Force home page refresh
-	go func() {
-		// Dynamically import to avoid circular dependency
-		// This will be handled by the deleter's RefreshCache already
-	}()
-
-	return nil
-}
-
-// IsHidden checks if content is flagged/hidden
-func IsHidden(contentType, contentID string) bool {
-	_, flagged := GetFlags(contentType, contentID)
-	return flagged
-}
-
-// AdminFlag immediately hides content (for admin use)
-func AdminFlag(contentType, contentID, username string) error {
-	key := contentType + ":" + contentID
-
-	mutex.Lock()
-	if item, exists := flags[key]; exists {
-		item.FlagCount = 3
-		item.Flagged = true
-		if !contains(item.FlaggedBy, username) {
-			item.FlaggedBy = append(item.FlaggedBy, username+" (admin)")
-		}
-	} else {
-		flags[key] = &FlaggedItem{
-			ContentType: contentType,
-			ContentID:   contentID,
-			FlagCount:   3,
-			Flagged:     true,
-			FlaggedBy:   []string{username + " (admin)"},
-			FlaggedAt:   time.Now(),
-		}
-	}
-	err := saveUnlocked()
-	mutex.Unlock()
-
-	if err != nil {
-		return err
-	}
-
-	// Refresh cache immediately
-	if deleter, ok := deleters[contentType]; ok {
-		go deleter.RefreshCache()
-	}
-
-	return nil
-}
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
-
-// Delete removes both the flag and the content
-func Delete(contentType, contentID string) error {
-	key := contentType + ":" + contentID
-
-	mutex.Lock()
-	delete(flags, key)
-	err := saveUnlocked()
-	mutex.Unlock()
-
-	if err != nil {
-		return err
-	}
-
-	// Delete the actual content
-	if deleter, ok := deleters[contentType]; ok {
-		if err := deleter.Delete(contentID); err != nil {
-			return err
-		}
-		// Refresh cache immediately after deletion
-		go deleter.RefreshCache()
-	}
-
-	return nil
+	flag.Load()
 }
 
 // ============================================
@@ -362,7 +63,7 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add flag
-	count, alreadyFlagged, err := Add(contentType, contentID, flagger)
+	count, alreadyFlagged, err := flag.Add(contentType, contentID, flagger)
 	if err != nil {
 		http.Error(w, "Failed to flag content", http.StatusInternalServerError)
 		return
@@ -376,7 +77,7 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Refresh cache if content was hidden
 	if count >= 3 {
-		if deleter, ok := deleters[contentType]; ok {
+		if deleter := flag.GetDeleter(contentType); deleter != nil {
 			deleter.RefreshCache()
 		}
 	}
@@ -401,7 +102,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 
 	_ = acc // acc.Admin is always true here
 
-	flaggedItems := GetAll()
+	flaggedItems := flag.GetAll()
 
 	var itemsList []string
 	for _, item := range flaggedItems {
@@ -411,11 +112,11 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		var createdAt string
 
 		// Get content from the appropriate handler
-		if deleter, ok := deleters[item.ContentType]; ok {
+		if deleter := flag.GetDeleter(item.ContentType); deleter != nil {
 			content := deleter.Get(item.ContentID)
 			switch item.ContentType {
 			case "post":
-				if post, ok := content.(PostContent); ok {
+				if post, ok := content.(flag.PostContent); ok {
 					title = post.Title
 					if title == "" {
 						title = "Untitled"
@@ -429,11 +130,9 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					createdAt = app.TimeAgo(post.CreatedAt)
 				}
 			case "news":
-				// TODO: Implement news content display
 				title = "News Article"
 				contentHTML = `<p>[News content]</p>`
 			case "video":
-				// TODO: Implement video content display
 				title = "Video"
 				contentHTML = `<p>[Video content]</p>`
 			}
@@ -444,9 +143,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 			status = "Hidden"
 		}
 
-		// Build action buttons HTML (admin only - we're already admin here)
-		actionButtons := ""
-		actionButtons = fmt.Sprintf(`
+		actionButtons := fmt.Sprintf(`
 				<form method="POST" action="/admin/moderate">
 					<input type="hidden" name="action" value="approve">
 					<input type="hidden" name="type" value="%s">
@@ -559,7 +256,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 	content := fmt.Sprintf(`<div id="moderation">
 		<div class="info-banner">
 			<strong>Community Moderation</strong><br>
-			Review content that has been flagged by users. Content is automatically hidden after 3 flags. 
+			Review content that has been flagged by users. Content is automatically hidden after 3 flags.
 			You can approve (clear flags) or delete the content permanently.
 		</div>
 		<h2>Flagged Content</h2>
@@ -607,11 +304,11 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 
 	switch action {
 	case "approve":
-		Approve(contentType, contentID)
+		flag.Approve(contentType, contentID)
 		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
 
 	case "delete":
-		Delete(contentType, contentID)
+		flag.Delete(contentType, contentID)
 		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
 
 	case "approve_account":
@@ -628,18 +325,4 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Invalid action", http.StatusBadRequest)
 	}
-}
-
-// ============================================
-// CONTENT INTERFACES
-// ============================================
-
-// PostContent represents post data for display
-type PostContent struct {
-	ID        string
-	Title     string
-	Content   string
-	Author    string
-	AuthorID  string
-	CreatedAt time.Time
 }

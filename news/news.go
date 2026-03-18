@@ -25,6 +25,7 @@ import (
 	"mu/app"
 	"mu/auth"
 	"mu/data"
+	"mu/event"
 
 	"mu/wallet"
 )
@@ -830,8 +831,8 @@ func requestArticleSummary(uri string, md *Metadata) {
 	app.Log("news", "Requesting summary generation for %s (attempt %d)", uri, md.SummaryAttempts)
 
 	// Publish summary generation request
-	data.Publish(data.Event{
-		Type: data.EventGenerateSummary,
+	event.Publish(event.Event{
+		Type: event.EventGenerateSummary,
 		Data: map[string]interface{}{
 			"uri":     uri,
 			"content": contentToSummarize,
@@ -1313,7 +1314,7 @@ func Load() {
 	// Loaded
 
 	// Subscribe to refresh events
-	sub := data.Subscribe(data.EventRefreshHNComments)
+	sub := event.Subscribe(event.EventRefreshHNComments)
 	go func() {
 		for event := range sub.Chan {
 			if url, ok := event.Data["url"].(string); ok {
@@ -1324,7 +1325,7 @@ func Load() {
 	}()
 
 	// Subscribe to summary generation responses
-	summarySub := data.Subscribe(data.EventSummaryGenerated)
+	summarySub := event.Subscribe(event.EventSummaryGenerated)
 	go func() {
 		for event := range summarySub.Chan {
 			uri, okUri := event.Data["uri"].(string)
