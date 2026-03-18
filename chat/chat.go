@@ -17,7 +17,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
-	"mu/internal/moderation"
+	"mu/internal/flag"
 	"mu/wallet"
 )
 
@@ -1018,7 +1018,7 @@ func Load() {
 	head = app.Head("chat", topics)
 
 	// Register LLM analyzer for content moderation
-	moderation.SetAnalyzer(&llmAnalyzer{})
+	flag.SetAnalyzer(&llmAnalyzer{})
 
 	// Load existing summaries from disk
 	if b, err := data.LoadFile("chat_summaries.json"); err == nil {
@@ -1578,7 +1578,7 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(renderHTML))
 }
 
-// llmAnalyzer implements the moderation.LLMAnalyzer interface
+// llmAnalyzer implements the flag.LLMAnalyzer interface
 type llmAnalyzer struct{}
 
 func (a *llmAnalyzer) Analyze(promptText, question string) (string, error) {

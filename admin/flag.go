@@ -7,15 +7,15 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/moderation"
+	"mu/internal/flag"
 )
 
 // Re-export types from moderation subsystem for backward compatibility
 // in admin dashboard handlers.
-type PostContent = moderation.PostContent
-type FlaggedItem = moderation.FlaggedItem
-type ContentDeleter = moderation.ContentDeleter
-type LLMAnalyzer = moderation.LLMAnalyzer
+type PostContent = flag.PostContent
+type FlaggedItem = flag.FlaggedItem
+type ContentDeleter = flag.ContentDeleter
+type LLMAnalyzer = flag.LLMAnalyzer
 
 // Import blog to get new account blog posts - will be set by blog package to avoid circular import
 var GetNewAccountBlog func() []PostContent
@@ -26,15 +26,15 @@ var RefreshBlogCache func()
 // Delegated functions — building blocks should import internal/moderation directly.
 // These exist only so admin's own handlers can call them.
 var (
-	RegisterDeleter = moderation.RegisterDeleter
-	SetAnalyzer     = moderation.SetAnalyzer
-	CheckContent    = moderation.CheckContent
-	IsHidden        = moderation.IsHidden
-	AdminFlag       = moderation.AdminFlag
+	RegisterDeleter = flag.RegisterDeleter
+	SetAnalyzer     = flag.SetAnalyzer
+	CheckContent    = flag.CheckContent
+	IsHidden        = flag.IsHidden
+	AdminFlag       = flag.AdminFlag
 )
 
 func Load() {
-	moderation.Load()
+	flag.Load()
 }
 
 // ============================================
@@ -79,7 +79,7 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add flag
-	count, alreadyFlagged, err := moderation.Add(contentType, contentID, flagger)
+	count, alreadyFlagged, err := flag.Add(contentType, contentID, flagger)
 	if err != nil {
 		http.Error(w, "Failed to flag content", http.StatusInternalServerError)
 		return
@@ -93,7 +93,7 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Refresh cache if content was hidden
 	if count >= 3 {
-		if deleter, ok := moderation.GetDeleter(contentType); ok {
+		if deleter, ok := flag.GetDeleter(contentType); ok {
 			deleter.RefreshCache()
 		}
 	}
@@ -118,7 +118,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 
 	_ = acc // acc.Admin is always true here
 
-	flaggedItems := moderation.GetAll()
+	flaggedItems := flag.GetAll()
 
 	var itemsList []string
 	for _, item := range flaggedItems {
@@ -128,7 +128,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		var createdAt string
 
 		// Get content from the appropriate handler
-		if deleter, ok := moderation.GetDeleter(item.ContentType); ok {
+		if deleter, ok := flag.GetDeleter(item.ContentType); ok {
 			content := deleter.Get(item.ContentID)
 			switch item.ContentType {
 			case "post":
@@ -319,11 +319,11 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 
 	switch action {
 	case "approve":
-		moderation.Approve(contentType, contentID)
+		flag.Approve(contentType, contentID)
 		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
 
 	case "delete":
-		moderation.Delete(contentType, contentID)
+		flag.Delete(contentType, contentID)
 		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
 
 	case "approve_account":

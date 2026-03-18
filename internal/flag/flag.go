@@ -1,7 +1,7 @@
-// Package moderation provides content moderation primitives (flagging, hiding,
+// Package flag provides content moderation primitives (flagging, hiding,
 // auto-moderation). It lives in internal/ because it is infrastructure used by
 // multiple building blocks, not a feature itself.
-package moderation
+package flag
 
 import (
 	"encoding/json"
