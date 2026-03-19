@@ -682,7 +682,7 @@ func main() {
 					}
 				} else if r.URL.Path == "/" {
 					if err := auth.ValidateToken(token); err == nil {
-						http.Redirect(w, r, "/home", 302)
+						home.StreamHandler(w, r)
 						return
 					}
 					// Serve dynamic landing page for unauthenticated users

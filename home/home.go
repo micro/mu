@@ -814,64 +814,93 @@ func RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/home", http.StatusSeeOther)
 }
 
+// viewToggle renders the grid/list toggle icons. activeView is "stream" or "grid".
+func viewToggle(activeView string) string {
+	// SVG icons for grid and list views
+	gridIcon := `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg>`
+	listIcon := `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="4" x2="16" y2="4"/><line x1="2" y1="9" x2="16" y2="9"/><line x1="2" y1="14" x2="16" y2="14"/></svg>`
+
+	gridStyle := `display:inline-flex;align-items:center;padding:4px 6px;border-radius:4px;color:#999;`
+	listStyle := gridStyle
+	if activeView == "grid" {
+		gridStyle += `color:#111;background:#f0f0f0;`
+	} else {
+		listStyle += `color:#111;background:#f0f0f0;`
+	}
+
+	gridHref := "/home"
+	listHref := "/"
+	if activeView == "grid" {
+		gridHref = "#"
+	} else {
+		listHref = "#"
+	}
+
+	return `<div style="display:flex;gap:2px;align-items:center;">` +
+		`<a href="` + listHref + `" style="` + listStyle + `text-decoration:none;" title="Stream">` + listIcon + `</a>` +
+		`<a href="` + gridHref + `" style="` + gridStyle + `text-decoration:none;" title="Grid">` + gridIcon + `</a>` +
+		`</div>`
+}
+
+// StreamHandler serves the message stream at / for authenticated users.
+func StreamHandler(w http.ResponseWriter, r *http.Request) {
+	RefreshCards()
+
+	var b strings.Builder
+
+	// Agent prompt + view toggle on same row
+	b.WriteString(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`)
+	b.WriteString(`<div style="flex:1;">` + AgentCard() + `</div>`)
+	b.WriteString(viewToggle("stream"))
+	b.WriteString(`</div>`)
+
+	// Stream
+	items := BuildStream(20)
+	b.WriteString(`<div class="card">`)
+	b.WriteString(RenderStream(items))
+	b.WriteString(`</div>`)
+
+	lang := app.GetUserLanguage(r)
+	html := app.RenderHTMLWithLangAndBody("Mu", "The Micro Network", b.String(), lang, ` class="page-home"`)
+	w.Write([]byte(html))
+}
+
+// Handler serves the card grid at /home.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Refresh cards if cache expired (2 minute TTL)
 	RefreshCards()
 
-	// Check view preference: "cards" for legacy grid, default is "stream"
-	view := r.URL.Query().Get("view")
-
 	var b strings.Builder
 
-	// Agent prompt — always at the top
-	b.WriteString(app.Card("agent", "Agent", AgentCard()))
-
 	// View toggle
-	if view == "cards" {
-		b.WriteString(`<div style="display:flex;gap:12px;margin-bottom:12px;font-size:13px;">`)
-		b.WriteString(`<a href="/home" style="font-weight:600;">Stream</a>`)
-		b.WriteString(`<span style="color:#999;font-weight:600;">Cards</span>`)
-		b.WriteString(`</div>`)
+	b.WriteString(`<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">`)
+	b.WriteString(viewToggle("grid"))
+	b.WriteString(`</div>`)
 
-		// Legacy card grid
-		var leftHTML []string
-		var rightHTML []string
+	// Card grid
+	var leftHTML []string
+	var rightHTML []string
 
-		for _, card := range Cards {
-			if card.ID == "agent" {
-				continue // already shown above
-			}
-			content := card.CachedHTML
-			if strings.TrimSpace(content) == "" {
-				continue
-			}
-			if card.Link != "" {
-				content += app.Link("More", card.Link)
-			}
-			html := app.Card(card.ID, card.Title, content)
-			if card.Column == "left" {
-				leftHTML = append(leftHTML, html)
-			} else {
-				rightHTML = append(rightHTML, html)
-			}
+	for _, card := range Cards {
+		content := card.CachedHTML
+		if strings.TrimSpace(content) == "" {
+			continue
 		}
-
-		if len(leftHTML) > 0 || len(rightHTML) > 0 {
-			b.WriteString(fmt.Sprintf(Template,
-				strings.Join(leftHTML, "\n"),
-				strings.Join(rightHTML, "\n")))
+		if card.Link != "" {
+			content += app.Link("More", card.Link)
 		}
-	} else {
-		// Stream view — unified message stream
-		b.WriteString(`<div style="display:flex;gap:12px;margin-bottom:12px;font-size:13px;">`)
-		b.WriteString(`<span style="color:#999;font-weight:600;">Stream</span>`)
-		b.WriteString(`<a href="/home?view=cards" style="font-weight:600;">Cards</a>`)
-		b.WriteString(`</div>`)
+		html := app.Card(card.ID, card.Title, content)
+		if card.Column == "left" {
+			leftHTML = append(leftHTML, html)
+		} else {
+			rightHTML = append(rightHTML, html)
+		}
+	}
 
-		items := BuildStream(20)
-		b.WriteString(`<div class="card">`)
-		b.WriteString(RenderStream(items))
-		b.WriteString(`</div>`)
+	if len(leftHTML) > 0 || len(rightHTML) > 0 {
+		b.WriteString(fmt.Sprintf(Template,
+			strings.Join(leftHTML, "\n"),
+			strings.Join(rightHTML, "\n")))
 	}
 
 	// Use RenderHTMLWithLang directly to inject a body class that hides the page title,
