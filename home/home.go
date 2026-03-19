@@ -818,32 +818,60 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Refresh cards if cache expired (2 minute TTL)
 	RefreshCards()
 
+	// Check view preference: "cards" for legacy grid, default is "stream"
+	view := r.URL.Query().Get("view")
+
 	var b strings.Builder
 
-	// Feed section — existing home cards below the agent
-	var leftHTML []string
-	var rightHTML []string
+	// Agent prompt — always at the top
+	b.WriteString(app.Card("agent", "Agent", AgentCard()))
 
-	for _, card := range Cards {
-		content := card.CachedHTML
-		if strings.TrimSpace(content) == "" {
-			continue
-		}
-		if card.Link != "" {
-			content += app.Link("More", card.Link)
-		}
-		html := app.Card(card.ID, card.Title, content)
-		if card.Column == "left" {
-			leftHTML = append(leftHTML, html)
-		} else {
-			rightHTML = append(rightHTML, html)
-		}
-	}
+	// View toggle
+	if view == "cards" {
+		b.WriteString(`<div style="display:flex;gap:12px;margin-bottom:12px;font-size:13px;">`)
+		b.WriteString(`<a href="/home" style="font-weight:600;">Stream</a>`)
+		b.WriteString(`<span style="color:#999;font-weight:600;">Cards</span>`)
+		b.WriteString(`</div>`)
 
-	if len(leftHTML) > 0 || len(rightHTML) > 0 {
-		b.WriteString(fmt.Sprintf(Template,
-			strings.Join(leftHTML, "\n"),
-			strings.Join(rightHTML, "\n")))
+		// Legacy card grid
+		var leftHTML []string
+		var rightHTML []string
+
+		for _, card := range Cards {
+			if card.ID == "agent" {
+				continue // already shown above
+			}
+			content := card.CachedHTML
+			if strings.TrimSpace(content) == "" {
+				continue
+			}
+			if card.Link != "" {
+				content += app.Link("More", card.Link)
+			}
+			html := app.Card(card.ID, card.Title, content)
+			if card.Column == "left" {
+				leftHTML = append(leftHTML, html)
+			} else {
+				rightHTML = append(rightHTML, html)
+			}
+		}
+
+		if len(leftHTML) > 0 || len(rightHTML) > 0 {
+			b.WriteString(fmt.Sprintf(Template,
+				strings.Join(leftHTML, "\n"),
+				strings.Join(rightHTML, "\n")))
+		}
+	} else {
+		// Stream view — unified message stream
+		b.WriteString(`<div style="display:flex;gap:12px;margin-bottom:12px;font-size:13px;">`)
+		b.WriteString(`<span style="color:#999;font-weight:600;">Stream</span>`)
+		b.WriteString(`<a href="/home?view=cards" style="font-weight:600;">Cards</a>`)
+		b.WriteString(`</div>`)
+
+		items := BuildStream(20)
+		b.WriteString(`<div class="card">`)
+		b.WriteString(RenderStream(items))
+		b.WriteString(`</div>`)
 	}
 
 	// Use RenderHTMLWithLang directly to inject a body class that hides the page title,

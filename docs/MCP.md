@@ -43,6 +43,9 @@ For self-hosted instances, replace `mu.xyz` with your domain.
 | `blog_create` | Create a new blog post | Free |
 | `blog_update` | Update a blog post | Free |
 | `blog_delete` | Delete a blog post | Free |
+| `social_list` | List discussion threads | Free |
+| `social_read` | Read a discussion thread | Free |
+| `social_post` | Start a new discussion thread | 1 credit |
 | `video` | Get the latest videos | Free |
 | `video_search` | Search for videos | 2 credits |
 | `places_search` | Search for places by name or category | 5 credits |
@@ -57,6 +60,11 @@ For self-hosted instances, replace `mu.xyz` with your domain.
 | `weather` | Get the weather forecast for a location | 1 credit |
 | `web_search` | Search the web for current information | 2 credits |
 | `web_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
+| `fact_check` | Fact-check a claim against web sources | 3 credits |
+| `apps_search` | Search the mini apps directory | Free |
+| `apps_read` | Read details of a specific mini app | Free |
+| `apps_create` | Create a new mini app | Free |
+| `apps_build` | AI-generate a mini app from a description | 3 credits |
 
 ### Credits
 

@@ -489,6 +489,9 @@ func ToolsDropdownHTML() string {
 <div style="padding:3px 12px;">📝 Blog</div>
 <div style="padding:3px 12px;">💰 Wallet</div>
 <div style="padding:3px 12px;">💳 Topup</div>
+<div style="padding:3px 12px;">📱 Apps Search</div>
+<div style="padding:3px 12px;">📱 Apps Read</div>
+<div style="padding:3px 12px;">🔨 Apps Build</div>
 </div>
 </details>`
 }
@@ -508,7 +511,10 @@ const agentToolsDesc = `Available tools (use exact name):
 - search: Search all Mu content (args: {"q":"search term"})
 - blog_list: Get recent blog posts (no args)
 - wallet_balance: Check your wallet credit balance (no args)
-- wallet_topup: Get available topup options to add credits to your wallet (no args)`
+- wallet_topup: Get available topup options to add credits to your wallet (no args)
+- apps_search: Search mini apps directory (args: {"q":"search term","category":"Productivity"})
+- apps_read: Read details of a specific mini app (args: {"slug":"app-slug"})
+- apps_build: AI-generate a mini app from a description (args: {"prompt":"a pomodoro timer with lap counter"})`
 
 // handleQuery processes an agent query request with SSE streaming.
 func handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -768,6 +774,7 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"videos":   {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
 		"weather":  {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
 		"reminder": {{Tool: "reminder", Args: map[string]any{}}},
+		"apps":     {{Tool: "apps_search", Args: map[string]any{}}},
 		// Starter pill phrases
 		"give me a summary of today's top news":         {{Tool: "news", Args: map[string]any{}}},
 		"what's in the news?":                           {{Tool: "news", Args: map[string]any{}}},
@@ -824,6 +831,12 @@ func toolLabel(tool string) string {
 		return "💳 Checking wallet balance"
 	case "wallet_topup":
 		return "💳 Getting topup options"
+	case "apps_search":
+		return "📱 Searching mini apps"
+	case "apps_read":
+		return "📱 Reading mini app"
+	case "apps_build":
+		return "🔨 Building mini app"
 	default:
 		return "⚙ Calling " + tool
 	}
@@ -866,6 +879,8 @@ func renderResultCard(toolName, result string, args map[string]any) string {
 		return renderWeatherCard(result)
 	case "places_search", "places_nearby":
 		return renderPlacesCard(result, args)
+	case "apps_search":
+		return renderAppsCard(result)
 	}
 	return ""
 }
@@ -1149,6 +1164,12 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatWalletBalanceResult(result)
 	case "wallet_topup":
 		return formatWalletTopupResult(result)
+	case "apps_search":
+		return formatAppsSearchResult(result)
+	case "apps_read":
+		return formatAppsReadResult(result)
+	case "apps_build":
+		return formatAppsBuildResult(result)
 	}
 	return result
 }
@@ -1695,6 +1716,102 @@ func formatWalletTopupResult(result string) string {
 		}
 	}
 	return sb.String()
+}
+
+// formatAppsSearchResult converts a raw JSON apps search result into
+// human-readable text for the AI synthesis RAG context.
+func formatAppsSearchResult(result string) string {
+	var apps []struct {
+		Slug        string `json:"slug"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Author      string `json:"author"`
+		Category    string `json:"category"`
+		Installs    int    `json:"installs"`
+	}
+	if err := json.Unmarshal([]byte(result), &apps); err != nil {
+		return result
+	}
+	if len(apps) == 0 {
+		return "No mini apps found."
+	}
+	var sb strings.Builder
+	sb.WriteString("Mini apps:\n")
+	for i, a := range apps {
+		sb.WriteString(fmt.Sprintf("%d. %s (%s) — %s [%s, %d installs] /apps/%s\n",
+			i+1, a.Name, a.Slug, a.Description, a.Category, a.Installs, a.Slug))
+	}
+	return sb.String()
+}
+
+// formatAppsReadResult converts a raw JSON app detail result into
+// human-readable text for the AI synthesis RAG context.
+func formatAppsReadResult(result string) string {
+	var a struct {
+		Slug        string `json:"slug"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Author      string `json:"author"`
+		Category    string `json:"category"`
+		Installs    int    `json:"installs"`
+	}
+	if err := json.Unmarshal([]byte(result), &a); err != nil {
+		return result
+	}
+	if a.Name == "" {
+		return result
+	}
+	return fmt.Sprintf("App: %s\nSlug: %s\nDescription: %s\nAuthor: %s\nCategory: %s\nInstalls: %d\nURL: /apps/%s\nRun: /apps/%s/run\n",
+		a.Name, a.Slug, a.Description, a.Author, a.Category, a.Installs, a.Slug, a.Slug)
+}
+
+// formatAppsBuildResult converts a raw JSON build result into
+// human-readable text for the AI synthesis RAG context.
+func formatAppsBuildResult(result string) string {
+	var data struct {
+		HTML string `json:"html"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return "App HTML generated successfully."
+	}
+	if data.HTML == "" {
+		return result
+	}
+	snippet := data.HTML
+	if len(snippet) > 200 {
+		snippet = snippet[:200] + "…"
+	}
+	return fmt.Sprintf("Generated mini app HTML (%d bytes). Preview:\n%s", len(data.HTML), snippet)
+}
+
+// renderAppsCard renders an HTML card for apps search results.
+func renderAppsCard(result string) string {
+	var apps []struct {
+		Slug        string `json:"slug"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Category    string `json:"category"`
+		Installs    int    `json:"installs"`
+	}
+	if err := json.Unmarshal([]byte(result), &apps); err != nil {
+		return ""
+	}
+	if len(apps) == 0 {
+		return ""
+	}
+	if len(apps) > 5 {
+		apps = apps[:5]
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="card"><h4>📱 Mini Apps</h4>`)
+	for _, a := range apps {
+		b.WriteString(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">`)
+		b.WriteString(`<a href="/apps/` + htmlEsc(a.Slug) + `" style="font-weight:600;">` + htmlEsc(a.Name) + `</a>`)
+		b.WriteString(`<div style="font-size:12px;color:#888;">` + htmlEsc(a.Description) + `</div>`)
+		b.WriteString(`</div>`)
+	}
+	b.WriteString(`<a href="/apps" class="link" style="display:inline-block;margin-top:8px;">Browse all apps →</a></div>`)
+	return b.String()
 }
 
 // htmlEsc escapes a string for safe HTML attribute/text inclusion.

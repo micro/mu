@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -305,6 +306,27 @@ func main() {
 		},
 	})
 	api.RegisterTool(api.Tool{
+		Name:        "apps_read",
+		Description: "Read details of a specific mini app by its slug",
+		Method:      "GET",
+		Path:        "/apps",
+		Params: []api.ToolParam{
+			{Name: "slug", Type: "string", Description: "The app's URL slug (e.g. pomodoro-timer)", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			slug, _ := args["slug"].(string)
+			if slug == "" {
+				return `{"error":"slug is required"}`, fmt.Errorf("missing slug")
+			}
+			a := apps.GetApp(slug)
+			if a == nil {
+				return `{"error":"app not found"}`, fmt.Errorf("not found")
+			}
+			b, _ := json.Marshal(a)
+			return string(b), nil
+		},
+	})
+	api.RegisterTool(api.Tool{
 		Name:        "apps_create",
 		Description: "Create a new mini app — a small, self-contained HTML tool hosted on Mu",
 		Method:      "POST",
@@ -315,6 +337,16 @@ func main() {
 			{Name: "description", Type: "string", Description: "Short description of what the app does", Required: true},
 			{Name: "category", Type: "string", Description: "Category: Productivity, Tools, Finance, Writing, Health, Education, Fun, Developer", Required: true},
 			{Name: "html", Type: "string", Description: "The app's HTML content (can include inline CSS and JavaScript, max 256KB)", Required: true},
+		},
+	})
+	api.RegisterTool(api.Tool{
+		Name:        "apps_build",
+		Description: "AI-generate a mini app from a natural language description. Returns the generated HTML.",
+		Method:      "POST",
+		Path:        "/apps/build/generate",
+		WalletOp:    "chat_query",
+		Params: []api.ToolParam{
+			{Name: "prompt", Type: "string", Description: "Description of the app to build (e.g. 'a pomodoro timer with lap counter')", Required: true},
 		},
 	})
 

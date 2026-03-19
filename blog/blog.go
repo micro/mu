@@ -1094,6 +1094,24 @@ func RefreshCache() {
 	updateCache()
 }
 
+// GetRecentPosts returns the n most recent public posts (newest first).
+func GetRecentPosts(n int) []*Post {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var result []*Post
+	for _, p := range posts {
+		if p.Private {
+			continue
+		}
+		result = append(result, p)
+		if len(result) >= n {
+			break
+		}
+	}
+	return result
+}
+
 // GetPostsByAuthor returns all posts by a specific author (for user profiles)
 func GetPostsByAuthor(authorName string) []*Post {
 	mutex.RLock()

@@ -8,6 +8,48 @@ Mini apps are lightweight, single-purpose web apps hosted on Mu. A currency conv
 
 Think of it as the app store for the small web — no ads, no tracking, no bloat. Just useful tools built by real people.
 
+## Small Web Philosophy
+
+Mini apps are Mu's answer to the growing "small web" movement — a rejection of bloated, ad-driven platforms in favour of simple, human-authored tools that respect users.
+
+### What is the Small Web?
+
+The small web is a loose collection of projects, standards, and communities that share a common belief: the web should serve people, not platforms. Key players include:
+
+- **Kagi Small Web** — A curated index of 30,000+ non-commercial, human-authored websites. No ads, no AI-generated content, no affiliate links. Content is discovered via RSS feeds and served through Kagi's search engine.
+- **IndieWeb** — A community and set of standards (microformats, Webmention, Micropub, IndieAuth) for owning your content on your own domain.
+- **Neocities** — Free static hosting in the spirit of GeoCities. A gateway for handcrafted HTML sites.
+- **Small Technology Foundation** — Building tools for personal, decentralised web presence with end-to-end encryption.
+
+### How Mini Apps Fit
+
+Mini apps embody small web values:
+
+| Small Web Principle | How Mini Apps Deliver |
+|---|---|
+| **Own your tools** | Apps are self-contained HTML — you can copy, fork, and self-host them |
+| **No gatekeepers** | No app store review, no super-app runtime, no platform lock-in |
+| **Human-authored** | AI assists creation, but humans decide what gets built and published |
+| **No tracking** | Apps run in sandboxed iframes with no access to cookies or analytics |
+| **Small by design** | Single HTML documents, max 256KB. No build tools, no frameworks required |
+| **Discoverable** | Listed in the directory, searchable via MCP, suggested by the agent |
+
+### Contrast with W3C MiniApps
+
+The W3C has a separate [MiniApp specification](https://www.w3.org/2021/miniapps/) designed for super-app ecosystems (WeChat, Alipay, etc.). Those mini apps run inside a host app using a dual-thread WebView architecture with proprietary APIs. They require platform gatekeepers.
+
+Mu's mini apps are the opposite: plain HTML hosted on the open web, accessible via any browser, with no host app required. Where W3C MiniApps centralise, Mu's mini apps decentralise. Where W3C MiniApps need approval, Mu's are self-published. The only shared concept is "small, focused apps" — the philosophy is fundamentally different.
+
+### Standards We Use
+
+Mini apps build on established open standards rather than inventing new ones:
+
+- **HTML/CSS/JS** — The app itself. No proprietary markup or APIs.
+- **RSS** — Apps directory is discoverable via standard feeds.
+- **Web App Manifest** — PWA-compatible for offline installation.
+- **postMessage API** — SDK communication between iframe and parent, using the browser's built-in message passing.
+- **MCP (Model Context Protocol)** — Agent discovery and creation of apps via `apps_search`, `apps_read`, `apps_create`, and `apps_build` tools.
+
 ## How It Works
 
 ### What is a Mini App?
@@ -135,12 +177,14 @@ HTML content is size-limited (256KB max) to prevent abuse.
 
 ## MCP Tools
 
-Two tools for agent integration:
+Four tools for agent integration:
 
+- **`apps_search`** — Search the mini apps directory (by name, description, or category)
+- **`apps_read`** — Read a specific mini app's details by slug
 - **`apps_create`** — Create a new mini app (name, description, category, html)
-- **`apps_search`** — Search the mini apps directory
+- **`apps_build`** — AI-generate a mini app from a natural language description
 
-This lets users say "build me a pomodoro timer" and the agent creates a fully functional mini app.
+This lets users say "build me a pomodoro timer" and the agent creates a fully functional mini app. The agent can also search for existing apps, read their details, and suggest relevant tools when users describe a problem.
 
 ## SDK
 
@@ -268,6 +312,14 @@ A mini app could call marketplace services via the agent. A marketplace service 
 - **No bloat**: No app store downloads, no sign-ups, no tracking
 - **Customisable home**: Add the apps you actually use to your dashboard
 - **Trust**: Apps are sandboxed, content is moderated, authors are Mu users
+
+---
+
+## Mu as a Message Stream
+
+Mini apps are part of a larger vision: Mu as a conversational message delivery system. The home screen presents a unified stream of messages — news updates, market changes, blog posts, social threads, app notifications — all interleaved chronologically. The agent is embedded inline, so you can ask about anything in context.
+
+In this model, a mini app update ("your timer finished", "new flashcard due") is just another message in the stream. The agent can reference any message, and you can ask follow-up questions about anything you see. Everything is conversational.
 
 ---
 

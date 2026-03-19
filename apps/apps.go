@@ -99,6 +99,13 @@ func save() {
 	data.SaveJSON("apps.json", list)
 }
 
+// GetApp returns a mini app by slug, or nil if not found.
+func GetApp(slug string) *App {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	return apps[slug]
+}
+
 // Preview returns HTML for the home dashboard card.
 func Preview() string {
 	mutex.RLock()

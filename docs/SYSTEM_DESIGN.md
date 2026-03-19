@@ -276,7 +276,8 @@ Web search without tracking.
 
 Dashboard overview.
 
-- **Cards** - Configurable summary widgets via `home/cards.json`
+- **Stream** - Unified chronological message feed from all sources (news, blog, social, video, markets, apps) with inline agent prompt. Default view for authenticated users.
+- **Cards** - Configurable summary widgets via `home/cards.json` (legacy view, accessible via `?view=cards`)
 - **At-a-glance** - Quick access to all building blocks
 
 ## Agents

@@ -199,6 +199,18 @@ func isValidTopic(topic string) bool {
 	return false
 }
 
+// GetRecentThreads returns the n most recent threads (newest first).
+func GetRecentThreads(n int) []*Thread {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	if n > len(threads) {
+		n = len(threads)
+	}
+	result := make([]*Thread, n)
+	copy(result, threads[:n])
+	return result
+}
+
 // GetThread returns a thread by ID. Used by agent and internal functions.
 func GetThread(id string) *Thread {
 	mutex.RLock()
