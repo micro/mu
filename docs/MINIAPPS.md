@@ -26,20 +26,30 @@ Mini apps are intentionally simple. No server-side code. No build tools. No fram
 
 Users create mini apps through:
 
-1. **The web form** at `/apps/new` — paste or write HTML directly
-2. **The agent** — describe what you want and the AI builds it for you
-3. **The API** — `POST /apps` with JSON
+1. **The app builder** at `/apps/build` — describe what you want in plain English, the AI generates it, you see a live preview alongside the code, edit either, iterate with follow-on prompts, and save when ready
+2. **Templates** — pre-built starters (timer, calculator, tracker, converter, flashcards, notes, AI tool) that match Mu's card styling and can be customised
+3. **The web form** at `/apps/new` — paste or write HTML directly
+4. **The agent** — ask it to build you an app and it creates one via MCP
+5. **The API** — `POST /apps` with JSON
 
-Example:
+### The App Builder
 
-```json
-{
-  "name": "Pomodoro Timer",
-  "description": "A simple 25-minute focus timer with break intervals",
-  "category": "Productivity",
-  "html": "<div id='timer'>25:00</div><button onclick='start()'>Start</button><script>...</script>"
-}
-```
+The builder at `/apps/build` is a split-pane interface inspired by Google Opal and Telegram's mini app platform:
+
+- **Left pane**: Code editor (syntax-highlighted textarea with tab support)
+- **Right pane**: Live preview in a sandboxed iframe
+- **Prompt bar**: Describe what you want, AI generates the complete app
+- **Follow-on prompts**: Modify the existing app with natural language ("add dark mode", "make the timer play a sound")
+- **Templates**: One-click starters that skip boilerplate
+- **Save & Launch**: Name it, give it a slug, pick a category, publish
+
+The AI generates apps that conform to Mu's design system — same fonts, spacing, border-radius, and colour palette as the built-in cards. Templates enforce this consistency by providing the right CSS scaffolding.
+
+Example flow:
+1. Click "Timer" template — code and preview appear instantly
+2. Type "add a lap counter and dark mode toggle" — AI modifies the code
+3. Edit the code directly to tweak colours
+4. Click "Save & Launch" — app is live at `/apps/my-timer`
 
 ### Running a Mini App
 

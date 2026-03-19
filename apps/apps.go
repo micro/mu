@@ -106,7 +106,7 @@ func Preview() string {
 
 	if len(apps) == 0 {
 		return `<p class="card-desc">Build and launch mini apps — small, useful tools that do one thing well.</p>
-<p><a href="/apps/new">Create an app</a></p>`
+<p><a href="/apps/build">Build with AI</a></p>`
 	}
 
 	// Show top 3 most installed public apps
@@ -147,6 +147,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleList(w, r)
 	case path == "/new":
 		handleNew(w, r)
+	case path == "/build":
+		handleBuilder(w, r)
+	case path == "/build/generate":
+		handleGenerate(w, r)
+	case path == "/build/templates":
+		handleTemplateList(w, r)
+	case strings.HasPrefix(path, "/build/templates/"):
+		id := strings.TrimPrefix(path, "/build/templates/")
+		handleTemplateGet(w, r, id)
 	case path == "/sdk.js":
 		handleSDK(w, r)
 	case strings.HasSuffix(path, "/run"):
@@ -255,7 +264,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sb.WriteString(`<p><a href="/apps/new">+ Create a new app</a></p>`)
+	sb.WriteString(`<p><a href="/apps/build">Build with AI</a> · <a href="/apps/new">Create manually</a></p>`)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Apps",
