@@ -57,6 +57,14 @@
       "position": 3,
       "link": "/video",
       "icon": "/video.png"
+    },
+    {
+      "id": "apps",
+      "title": "Apps",
+      "type": "apps",
+      "position": 4,
+      "link": "/apps",
+      "icon": ""
     }
   ]
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mu/agent"
+	"mu/apps"
 	"mu/internal/app"
 	"mu/blog"
 	"mu/internal/event"
@@ -702,6 +703,7 @@ func Load() {
 		"markets":  markets.MarketsHTML,
 		"reminder": reminder.ReminderHTML,
 		"video":    video.Latest,
+		"apps":     apps.Preview,
 	}
 
 	// Build Cards array from config
