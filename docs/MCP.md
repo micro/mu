@@ -61,10 +61,10 @@ For self-hosted instances, replace `mu.xyz` with your domain.
 | `web_search` | Search the web for current information | 2 credits |
 | `web_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
 | `fact_check` | Fact-check a claim against web sources | 3 credits |
-| `apps_search` | Search the mini apps directory | Free |
-| `apps_read` | Read details of a specific mini app | Free |
-| `apps_create` | Create a new mini app | Free |
-| `apps_build` | AI-generate a mini app from a description | 3 credits |
+| `apps_search` | Search the apps directory | Free |
+| `apps_read` | Read details of a specific app | Free |
+| `apps_create` | Create a new app | Free |
+| `apps_build` | AI-generate an app from a description | 3 credits |
 
 ### Credits
 

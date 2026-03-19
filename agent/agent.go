@@ -512,9 +512,9 @@ const agentToolsDesc = `Available tools (use exact name):
 - blog_list: Get recent blog posts (no args)
 - wallet_balance: Check your wallet credit balance (no args)
 - wallet_topup: Get available topup options to add credits to your wallet (no args)
-- apps_search: Search mini apps directory (args: {"q":"search term","category":"Productivity"})
-- apps_read: Read details of a specific mini app (args: {"slug":"app-slug"})
-- apps_build: AI-generate a mini app from a description (args: {"prompt":"a pomodoro timer with lap counter"})`
+- apps_search: Search apps directory (args: {"q":"search term","category":"Productivity"})
+- apps_read: Read details of a specific app (args: {"slug":"app-slug"})
+- apps_build: AI-generate an app from a description (args: {"prompt":"a pomodoro timer with lap counter"})`
 
 // handleQuery processes an agent query request with SSE streaming.
 func handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -832,11 +832,11 @@ func toolLabel(tool string) string {
 	case "wallet_topup":
 		return "💳 Getting topup options"
 	case "apps_search":
-		return "📱 Searching mini apps"
+		return "📱 Searching apps"
 	case "apps_read":
-		return "📱 Reading mini app"
+		return "📱 Reading app"
 	case "apps_build":
-		return "🔨 Building mini app"
+		return "🔨 Building app"
 	default:
 		return "⚙ Calling " + tool
 	}
@@ -1733,10 +1733,10 @@ func formatAppsSearchResult(result string) string {
 		return result
 	}
 	if len(apps) == 0 {
-		return "No mini apps found."
+		return "No apps found."
 	}
 	var sb strings.Builder
-	sb.WriteString("Mini apps:\n")
+	sb.WriteString("Apps:\n")
 	for i, a := range apps {
 		sb.WriteString(fmt.Sprintf("%d. %s (%s) — %s [%s, %d installs] /apps/%s\n",
 			i+1, a.Name, a.Slug, a.Description, a.Category, a.Installs, a.Slug))
@@ -1781,7 +1781,7 @@ func formatAppsBuildResult(result string) string {
 	if len(snippet) > 200 {
 		snippet = snippet[:200] + "…"
 	}
-	return fmt.Sprintf("Generated mini app HTML (%d bytes). Preview:\n%s", len(data.HTML), snippet)
+	return fmt.Sprintf("Generated app HTML (%d bytes). Preview:\n%s", len(data.HTML), snippet)
 }
 
 // renderAppsCard renders an HTML card for apps search results.
@@ -1803,7 +1803,7 @@ func renderAppsCard(result string) string {
 		apps = apps[:5]
 	}
 	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>📱 Mini Apps</h4>`)
+	b.WriteString(`<div class="card"><h4>📱 Apps</h4>`)
 	for _, a := range apps {
 		b.WriteString(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">`)
 		b.WriteString(`<a href="/apps/` + htmlEsc(a.Slug) + `" style="font-weight:600;">` + htmlEsc(a.Name) + `</a>`)

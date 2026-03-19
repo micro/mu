@@ -12,8 +12,8 @@ import (
 	"mu/internal/auth"
 )
 
-// builderSystemPrompt instructs the AI to generate mini app HTML.
-const builderSystemPrompt = `You are a mini app builder for the Mu platform. You generate complete, self-contained HTML mini apps.
+// builderSystemPrompt instructs the AI to generate app HTML.
+const builderSystemPrompt = `You are an app builder for the Mu platform. You generate complete, self-contained HTML apps.
 
 Rules:
 - Output ONLY the complete HTML document. No explanation, no markdown, no code fences.
@@ -53,7 +53,7 @@ func handleBuilder(w http.ResponseWriter, r *http.Request) {
 
 	app.Respond(w, r, app.Response{
 		Title:       "Build",
-		Description: "Build a mini app with AI or code",
+		Description: "Build an app with AI or code",
 		HTML:        sb.String(),
 	})
 }
@@ -89,7 +89,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	var rag []string
 	if req.Code != "" {
 		rag = append(rag, "Current app HTML that the user wants to modify:\n```html\n"+req.Code+"\n```")
-		question = "Modify this existing mini app: " + req.Prompt
+		question = "Modify this existing app: " + req.Prompt
 	}
 
 	prompt := &ai.Prompt{

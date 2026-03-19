@@ -90,7 +90,7 @@ func main() {
 	// load social discussions
 	social.Load()
 
-	// load mini apps
+	// load apps
 	apps.Load()
 
 	// load the home cards
@@ -294,10 +294,10 @@ func main() {
 		},
 	})
 
-	// Register mini apps MCP tools
+	// Register apps MCP tools
 	api.RegisterTool(api.Tool{
 		Name:        "apps_search",
-		Description: "Search the mini apps directory for small, useful tools",
+		Description: "Search the apps directory for small, useful tools",
 		Method:      "GET",
 		Path:        "/apps",
 		Params: []api.ToolParam{
@@ -307,7 +307,7 @@ func main() {
 	})
 	api.RegisterTool(api.Tool{
 		Name:        "apps_read",
-		Description: "Read details of a specific mini app by its slug",
+		Description: "Read details of a specific app by its slug",
 		Method:      "GET",
 		Path:        "/apps",
 		Params: []api.ToolParam{
@@ -328,7 +328,7 @@ func main() {
 	})
 	api.RegisterTool(api.Tool{
 		Name:        "apps_create",
-		Description: "Create a new mini app — a small, self-contained HTML tool hosted on Mu",
+		Description: "Create a new app — a small, self-contained HTML tool hosted on Mu",
 		Method:      "POST",
 		Path:        "/apps/new",
 		Params: []api.ToolParam{
@@ -341,7 +341,7 @@ func main() {
 	})
 	api.RegisterTool(api.Tool{
 		Name:        "apps_build",
-		Description: "AI-generate a mini app from a natural language description. Returns the generated HTML.",
+		Description: "AI-generate an app from a natural language description. Returns the generated HTML.",
 		Method:      "POST",
 		Path:        "/apps/build/generate",
 		WalletOp:    "chat_query",
@@ -384,7 +384,7 @@ func main() {
 		"/donate":          false,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
-		"/apps":      false, // Public - mini apps directory; auth checked in handler for create/edit
+		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/search":    false, // Public - local data index search
 		"/web":       false, // Public page, auth checked in handler (paid Brave web search)
 		"/fetch":     false, // Public page, auth checked in handler (paid web fetch)
@@ -512,7 +512,7 @@ func main() {
 	// serve weather page
 	http.HandleFunc("/weather", weather.Handler)
 
-	// serve mini apps
+	// serve apps
 	http.HandleFunc("/apps", apps.Handler)
 	http.HandleFunc("/apps/", apps.Handler)
 

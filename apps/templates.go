@@ -1,6 +1,6 @@
 package apps
 
-// Template represents a starter template for building mini apps.
+// Template represents a starter template for building apps.
 type Template struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
