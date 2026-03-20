@@ -20,9 +20,16 @@ import (
 const builderSystemPrompt = `You are an app builder for the Mu platform. You generate complete, self-contained HTML apps.
 
 Rules:
-- Output ONLY valid JSON with this exact structure: {"name":"Short App Name","icon":"<single emoji>","html":"<complete HTML document>"}
+- Output ONLY valid JSON with this exact structure: {"name":"Short App Name","icon":"<svg>...</svg>","html":"<complete HTML document>"}
 - The name should be short and descriptive (2-4 words, max 50 chars). E.g. "Pomodoro Timer", "Unit Converter", "Habit Tracker"
-- The icon should be a single emoji that represents the app. E.g. "⏱️" for a timer, "🧮" for a calculator, "📝" for notes
+- The icon must be an SVG icon matching this exact style:
+  - viewBox="0 0 32 32" width="32" height="32"
+  - xmlns="http://www.w3.org/2000/svg"
+  - Stroke-based outlines only: stroke="#555", fill="none"
+  - stroke-width between 1.2 and 2.5, stroke-linecap="round" where appropriate
+  - Simple geometric shapes (circles, rects, lines, paths) — no text, no gradients, no filters
+  - Represent the app's purpose with a clear, minimal symbol
+  - Examples: a clock face for timer, grid of squares for calculator, checkmark for tracker
 - The html must be a complete HTML document: <!DOCTYPE html><html><head>...</head><body>...</body></html>
 - All CSS must be inline in a <style> tag in <head>
 - All JavaScript must be inline in a <script> tag before </body>
@@ -336,8 +343,6 @@ func builderPageHTML(initialCode string) string {
 .save-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .save-bar input { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; color: #333; box-sizing: border-box; }
 .save-bar input.name { flex: 1; min-width: 150px; }
-.save-bar .app-icon { width: 36px; text-align: center; font-size: 20px; padding: 6px; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; }
-.save-bar .app-icon:hover { background: #f5f5f5; }
 .save-bar button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .status-msg { font-size: 13px; color: #999; margin-left: 8px; }
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50vh; color: #999; font-size: 15px; }
@@ -387,7 +392,6 @@ func builderPageHTML(initialCode string) string {
   </div>
 
   <div class="save-bar">
-    <input class="app-icon" type="text" id="appIcon" maxlength="2" placeholder="?" title="App icon (emoji)">
     <input class="name" type="text" id="appName" placeholder="App name">
     <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
     <button onclick="saveApp()">Save & Launch</button>
@@ -399,6 +403,7 @@ func builderPageHTML(initialCode string) string {
 var codeEl = document.getElementById('code');
 var preview = document.getElementById('preview');
 var emptyState = document.getElementById('emptyState');
+var appIcon = '';
 var initialCode = %s;
 if (initialCode) { codeEl.value = initialCode; showPreview(); }
 
@@ -453,16 +458,14 @@ function generate() {
     if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
     codeEl.value = data.html;
     showPreview();
-    // Auto-fill name and icon from AI response
+    // Auto-fill name from AI response
     if (data.name) {
       document.getElementById('appName').value = data.name;
     } else if (!document.getElementById('appName').value) {
       var name = p.length > 50 ? p.substring(0, 50) : p;
       document.getElementById('appName').value = name.charAt(0).toUpperCase() + name.slice(1);
     }
-    if (data.icon) {
-      document.getElementById('appIcon').value = data.icon;
-    }
+    if (data.icon) { appIcon = data.icon; }
   })
   .catch(function(e) { document.getElementById('statusMsg').textContent = 'Error: ' + e.message; })
   .finally(function() { btn.disabled = false; btn.textContent = 'Generate'; });
@@ -480,7 +483,6 @@ function loadTemplate(id) {
 
 function saveApp() {
   var name = document.getElementById('appName').value.trim();
-  var icon = document.getElementById('appIcon').value.trim();
   var tags = (document.getElementById('appTags').value || '').trim();
   var html = codeEl.value.trim();
   if (!name) { document.getElementById('statusMsg').textContent = 'App name is required'; return; }
@@ -491,7 +493,7 @@ function saveApp() {
   fetch('/apps/new', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name, slug: slug, icon: icon, description: name, tags: tags, html: html, public: true })
+    body: JSON.stringify({ name: name, slug: slug, icon: appIcon, description: name, tags: tags, html: html, public: true })
   })
   .then(function(r) {
     if (!r.ok) {

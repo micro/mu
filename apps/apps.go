@@ -119,7 +119,8 @@ func Preview() string {
 		limit = len(public)
 	}
 	for _, a := range public[:limit] {
-		sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">%s</a> — %s</p>`,
+		sb.WriteString(fmt.Sprintf(`<p style="display:flex;align-items:center;gap:8px;"><img src="/apps/%s/icon.svg" width="20" height="20"><a href="/apps/%s">%s</a> — %s</p>`,
+			htmlpkg.EscapeString(a.Slug),
 			htmlpkg.EscapeString(a.Slug),
 			htmlpkg.EscapeString(a.Name),
 			htmlpkg.EscapeString(truncate(a.Description, 60)),
@@ -153,6 +154,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleCodeRun(w, r)
 	case path == "/sdk.js":
 		handleSDK(w, r)
+	case strings.HasSuffix(path, "/icon.svg"):
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/icon.svg")
+		handleIcon(w, r, slug)
 	case strings.HasSuffix(path, "/run"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/run")
 		handleRun(w, r, slug)
@@ -262,17 +266,16 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			if a.Tags != "" {
 				tagsHTML = " · " + htmlpkg.EscapeString(a.Tags)
 			}
-			iconHTML := ""
-			if a.Icon != "" {
-				iconHTML = htmlpkg.EscapeString(a.Icon) + " "
-			}
-			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;">
-<h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s%s</a></h3>
+			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;">
+<img src="/apps/%s/icon.svg" width="32" height="32" style="flex-shrink:0;margin-top:2px;">
+<div>
+<h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
 <p style="margin:0;font-size:13px;color:#999;">by %s%s · %d installs</p>
+</div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
-				iconHTML,
+				htmlpkg.EscapeString(a.Slug),
 				htmlpkg.EscapeString(a.Name),
 				htmlpkg.EscapeString(a.Description),
 				htmlpkg.EscapeString(a.Author),
@@ -309,8 +312,6 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<form method="POST" action="/apps/new" style="max-width:600px;">`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Name</label><br>`)
 	sb.WriteString(`<input type="text" name="name" required maxlength="60" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="Pomodoro Timer"></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>Icon <span style="color:#999;font-size:12px;">(emoji, optional)</span></label><br>`)
-	sb.WriteString(`<input type="text" name="icon" maxlength="2" style="width:60px;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:20px;text-align:center;" placeholder="⏱️"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Description</label><br>`)
 	sb.WriteString(`<input type="text" name="description" maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="A simple 25-minute focus timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Tags <span style="color:#999;font-size:12px;">(comma-separated, optional)</span></label><br>`)
@@ -372,7 +373,6 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		name = strings.TrimSpace(r.FormValue("name"))
 		slug = strings.TrimSpace(r.FormValue("slug"))
-		icon = strings.TrimSpace(r.FormValue("icon"))
 		description = strings.TrimSpace(r.FormValue("description"))
 		tags = strings.TrimSpace(r.FormValue("tags"))
 		html = r.FormValue("html")
@@ -462,7 +462,8 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<p class="card-desc">%s</p>`, htmlpkg.EscapeString(a.Description)))
+	sb.WriteString(fmt.Sprintf(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;"><img src="/apps/%s/icon.svg" width="32" height="32"><div><p class="card-desc" style="margin:0;">%s</p></div></div>`,
+		htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Description)))
 	tagsInfo := ""
 	if a.Tags != "" {
 		tagsInfo = " · " + htmlpkg.EscapeString(a.Tags)
@@ -484,12 +485,8 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 			htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug)))
 	}
 
-	title := a.Name
-	if a.Icon != "" {
-		title = a.Icon + " " + a.Name
-	}
 	app.Respond(w, r, app.Response{
-		Title:       title,
+		Title:       a.Name,
 		Description: a.Description,
 		HTML:        sb.String(),
 	})
@@ -685,6 +682,32 @@ func handleDelete(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 	http.Redirect(w, r, "/apps", http.StatusSeeOther)
+}
+
+// defaultAppIcon is a generic app icon used when no custom icon is set.
+const defaultAppIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect x="4" y="4" width="24" height="24" rx="4" fill="none" stroke="#555" stroke-width="2"/>
+  <circle cx="16" cy="16" r="4" fill="none" stroke="#555" stroke-width="2"/>
+</svg>`
+
+// handleIcon serves the SVG icon for an app.
+func handleIcon(w http.ResponseWriter, r *http.Request, slug string) {
+	mutex.RLock()
+	a, ok := apps[slug]
+	mutex.RUnlock()
+	if !ok {
+		app.Error(w, r, http.StatusNotFound, "App not found")
+		return
+	}
+
+	icon := a.Icon
+	if icon == "" || !strings.HasPrefix(strings.TrimSpace(icon), "<svg") {
+		icon = defaultAppIcon
+	}
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Write([]byte(icon))
 }
 
 // handleSDK serves the SDK JavaScript file.
