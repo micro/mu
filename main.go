@@ -376,11 +376,11 @@ func main() {
 			if code == "" {
 				return `{"error":"code is required"}`, fmt.Errorf("missing code")
 			}
-			id := apps.CreateScratch(code, "agent")
+			id := apps.CreateRun(code, "agent")
 			b, _ := json.Marshal(map[string]string{
 				"id":  id,
-				"url": "/apps/exec?id=" + id,
-				"run": "/apps/exec?id=" + id + "&raw=1",
+				"url": "/apps/run?id=" + id,
+				"run": "/apps/run?id=" + id + "&raw=1",
 			})
 			return string(b), nil
 		},

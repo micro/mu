@@ -159,8 +159,8 @@ Apps ship with 6 built-in seed apps: Timer, Calculator, Unit Converter, Flashcar
 | GET | `/apps/build` | Interactive app builder |
 | POST | `/apps/build/generate` | AI generation endpoint |
 | GET | `/apps/build/templates` | List available templates |
-| POST | `/apps/exec` | Create a scratch code execution |
-| GET | `/apps/exec?id=xxx` | Run scratch code |
+| POST | `/apps/run` | Create a scratch code execution |
+| GET | `/apps/run?id=xxx` | Run scratch code |
 | GET | `/apps/sdk.js` | SDK JavaScript |
 
 ## MCP Tools

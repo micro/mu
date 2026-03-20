@@ -14,8 +14,8 @@ import (
 	"mu/internal/auth"
 )
 
-// Scratch is a temporary code execution sandbox.
-type Scratch struct {
+// CodeRun is a temporary code execution sandbox.
+type CodeRun struct {
 	ID        string    `json:"id"`
 	Code      string    `json:"code"`
 	AuthorID  string    `json:"author_id"`
@@ -23,81 +23,81 @@ type Scratch struct {
 }
 
 var (
-	scratchMu    sync.RWMutex
-	scratches    = map[string]*Scratch{}
-	maxScratches = 1000
+	runMu       sync.RWMutex
+	codeRuns    = map[string]*CodeRun{}
+	maxCodeRuns = 1000
 )
 
 func init() {
-	// Clean up old scratches every 10 minutes
+	// Clean up old code runs every 10 minutes
 	go func() {
 		for {
 			time.Sleep(10 * time.Minute)
-			scratchMu.Lock()
+			runMu.Lock()
 			cutoff := time.Now().Add(-1 * time.Hour)
-			for id, s := range scratches {
-				if s.CreatedAt.Before(cutoff) {
-					delete(scratches, id)
+			for id, r := range codeRuns {
+				if r.CreatedAt.Before(cutoff) {
+					delete(codeRuns, id)
 				}
 			}
-			scratchMu.Unlock()
+			runMu.Unlock()
 		}
 	}()
 }
 
-func scratchID() string {
+func codeRunID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
-// CreateScratch stores code for temporary execution and returns the ID.
-func CreateScratch(code, authorID string) string {
-	id := scratchID()
-	scratchMu.Lock()
+// CreateRun stores code for temporary execution and returns the ID.
+func CreateRun(code, authorID string) string {
+	id := codeRunID()
+	runMu.Lock()
 	// Evict oldest if at capacity
-	if len(scratches) >= maxScratches {
+	if len(codeRuns) >= maxCodeRuns {
 		var oldest string
 		var oldestTime time.Time
-		for k, v := range scratches {
+		for k, v := range codeRuns {
 			if oldest == "" || v.CreatedAt.Before(oldestTime) {
 				oldest = k
 				oldestTime = v.CreatedAt
 			}
 		}
 		if oldest != "" {
-			delete(scratches, oldest)
+			delete(codeRuns, oldest)
 		}
 	}
-	scratches[id] = &Scratch{
+	codeRuns[id] = &CodeRun{
 		ID:        id,
 		Code:      code,
 		AuthorID:  authorID,
 		CreatedAt: time.Now(),
 	}
-	scratchMu.Unlock()
+	runMu.Unlock()
 	return id
 }
 
-// handleExec handles POST /apps/exec (create scratch) and GET /apps/exec?id=xxx (serve it).
-func handleExec(w http.ResponseWriter, r *http.Request) {
+// handleCodeRun handles POST /apps/run (create code run) and GET /apps/run?id=xxx (serve it).
+func handleCodeRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		handleExecCreate(w, r)
+		handleCodeRunCreate(w, r)
 		return
 	}
 
-	// GET — serve the scratch as executable HTML
+	// GET — serve the code run as executable HTML
 	id := r.URL.Query().Get("id")
 	if id == "" {
 		app.Error(w, r, http.StatusBadRequest, "id parameter required")
 		return
 	}
 
-	scratchMu.RLock()
-	s, ok := scratches[id]
-	scratchMu.RUnlock()
+	runMu.RLock()
+	cr, ok := codeRuns[id]
+	runMu.RUnlock()
 	if !ok {
-		app.Error(w, r, http.StatusNotFound, "Scratch not found or expired")
+		app.Error(w, r, http.StatusNotFound, "Run not found or expired")
 		return
 	}
 
@@ -106,25 +106,25 @@ func handleExec(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Content-Security-Policy", "default-src 'unsafe-inline' 'self' data: blob:; script-src 'unsafe-inline'; style-src 'unsafe-inline';")
 		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-		w.Write([]byte(wrapCodeAsHTML(s.Code)))
+		w.Write([]byte(wrapCodeAsHTML(cr.Code)))
 		return
 	}
 
 	// Render in a page with iframe
 	var sb strings.Builder
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h4>Code Execution</h4>`)
-	sb.WriteString(fmt.Sprintf(`<iframe src="/apps/exec?id=%s&raw=1" sandbox="allow-scripts" style="width:100%%;min-height:200px;border:1px solid #eee;border-radius:6px;background:#fff;"></iframe>`, id))
+	sb.WriteString(`<h4>Code Run</h4>`)
+	sb.WriteString(fmt.Sprintf(`<iframe src="/apps/run?id=%s&raw=1" sandbox="allow-scripts" style="width:100%%;min-height:200px;border:1px solid #eee;border-radius:6px;background:#fff;"></iframe>`, id))
 	sb.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{
-		Title:       "Exec",
+		Title:       "Run",
 		Description: "Code execution sandbox",
 		HTML:        sb.String(),
 	})
 }
 
-func handleExecCreate(w http.ResponseWriter, r *http.Request) {
+func handleCodeRunCreate(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
@@ -144,11 +144,11 @@ func handleExecCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := CreateScratch(req.Code, acc.ID)
+	id := CreateRun(req.Code, acc.ID)
 	app.RespondJSON(w, map[string]string{
 		"id":  id,
-		"url": "/apps/exec?id=" + id,
-		"run": "/apps/exec?id=" + id + "&raw=1",
+		"url": "/apps/run?id=" + id,
+		"run": "/apps/run?id=" + id + "&raw=1",
 	})
 }
 
