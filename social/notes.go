@@ -3,6 +3,7 @@ package social
 import (
 	"crypto/md5"
 	"fmt"
+	"strings"
 	"time"
 
 	"mu/internal/app"
@@ -86,16 +87,26 @@ func seedArticleNote(article NewsArticle) {
 
 	topic := mapCategoryToTopic(article.Category)
 
+	// The thread IS the note — the note content becomes the thread body,
+	// with sources appended as references. No separate Note object.
+	var content strings.Builder
+	content.WriteString(note.Content)
+	if len(note.Sources) > 0 {
+		content.WriteString("\n\n**Sources:**\n")
+		for _, src := range note.Sources {
+			content.WriteString(fmt.Sprintf("- [%s](%s)\n", src.Title, src.URL))
+		}
+	}
+
 	thread := &Thread{
 		ID:        seedID,
 		Title:     article.Title,
 		Link:      article.URL,
-		Content:   article.Description,
+		Content:   content.String(),
 		Topic:     topic,
 		Author:    app.SystemUserName,
 		AuthorID:  app.SystemUserID,
 		CreatedAt: time.Now(),
-		Note:      note,
 	}
 
 	AddSeededThread(thread)
@@ -110,10 +121,7 @@ func countTodayNotes() int {
 
 	count := 0
 	for _, t := range threads {
-		if t.AuthorID != app.SystemUserID {
-			continue
-		}
-		if t.Note == nil {
+		if !strings.HasPrefix(t.ID, "note-") {
 			continue
 		}
 		if t.CreatedAt.Format("2006-01-02") != today {
