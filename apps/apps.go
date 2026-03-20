@@ -69,6 +69,11 @@ func Load() {
 	}
 	mutex.Unlock()
 	app.Log("apps", "Loaded %d apps", len(loaded))
+
+	// Seed built-in apps on first run
+	if len(loaded) == 0 {
+		seedApps()
+	}
 }
 
 // save persists all apps to disk.
