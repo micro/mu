@@ -139,7 +139,7 @@ func runFactCheck(claim string) *CommunityNote {
 		}
 	}
 
-	// Search the web for context
+	// Search the web for current reporting
 	query := claim
 	if len(query) > 150 {
 		query = query[:150]
@@ -160,17 +160,47 @@ func runFactCheck(claim string) *CommunityNote {
 		}
 	}
 
-	// Ask AI to assess the claims
+	// Search for deeper background context (Wikipedia, encyclopedias, reports)
+	// This gives the AI historical and factual grounding beyond news coverage.
+	bgQuery := query + " wikipedia"
+	if len(bgQuery) > 160 {
+		bgQuery = bgQuery[:160]
+	}
+	var backgroundContext string
+	bgResults, bgErr := search.SearchBraveCached(bgQuery, 3)
+	if bgErr == nil {
+		for _, r := range bgResults {
+			allResults = append(allResults, r)
+			// Fetch the first Wikipedia or reference article for full content
+			if backgroundContext == "" && isReferenceSource(r.URL) {
+				_, content, fetchErr := search.FetchAndExtract(r.URL)
+				if fetchErr == nil && len(content) > 0 {
+					if len(content) > 3000 {
+						content = content[:3000]
+					}
+					backgroundContext = content
+				}
+			}
+		}
+	}
+
+	// Build the question with all context
 	var question strings.Builder
 	question.WriteString("## Claim to Fact-Check\n\n")
 	question.WriteString(claim)
 	question.WriteString("\n\n")
 
 	if len(webContext) > 0 {
-		question.WriteString("## Web Search Results\n\n")
+		question.WriteString("## Current Reporting\n\n")
 		for _, ctx := range webContext {
 			question.WriteString("- " + ctx + "\n")
 		}
+	}
+
+	if backgroundContext != "" {
+		question.WriteString("\n## Background Context\n\n")
+		question.WriteString(backgroundContext)
+		question.WriteString("\n")
 	}
 
 	prompt := &ai.Prompt{
@@ -556,6 +586,29 @@ func renderCommunityNote(note *CommunityNote) string {
 
 	sb.WriteString(`</div>`)
 	return sb.String()
+}
+
+// isReferenceSource returns true if the URL is a reference/encyclopedia source
+// worth fetching for deeper background context.
+func isReferenceSource(url string) bool {
+	ref := []string{
+		"wikipedia.org",
+		"britannica.com",
+		"who.int",
+		"un.org",
+		"icrc.org",
+		"amnesty.org",
+		"hrw.org",
+		"reliefweb.int",
+		"worldbank.org",
+	}
+	lower := strings.ToLower(url)
+	for _, r := range ref {
+		if strings.Contains(lower, r) {
+			return true
+		}
+	}
+	return false
 }
 
 // renderFactCheckButton renders a "Fact Check" button for a thread.
