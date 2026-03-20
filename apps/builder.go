@@ -20,8 +20,17 @@ import (
 const builderSystemPrompt = `You are an app builder for the Mu platform. You generate complete, self-contained HTML apps.
 
 Rules:
-- Output ONLY the complete HTML document. No explanation, no markdown, no code fences.
-- Use this exact structure: <!DOCTYPE html><html><head>...</head><body>...</body></html>
+- Output ONLY valid JSON with this exact structure: {"name":"Short App Name","icon":"<svg>...</svg>","html":"<complete HTML document>"}
+- The name should be short and descriptive (2-4 words, max 50 chars). E.g. "Pomodoro Timer", "Unit Converter", "Habit Tracker"
+- The icon must be an SVG icon matching this exact style:
+  - viewBox="0 0 32 32" width="32" height="32"
+  - xmlns="http://www.w3.org/2000/svg"
+  - Stroke-based outlines only: stroke="#555", fill="none"
+  - stroke-width between 1.2 and 2.5, stroke-linecap="round" where appropriate
+  - Simple geometric shapes (circles, rects, lines, paths) — no text, no gradients, no filters
+  - Represent the app's purpose with a clear, minimal symbol
+  - Examples: a clock face for timer, grid of squares for calculator, checkmark for tracker
+- The html must be a complete HTML document: <!DOCTYPE html><html><head>...</head><body>...</body></html>
 - All CSS must be inline in a <style> tag in <head>
 - All JavaScript must be inline in a <script> tag before </body>
 - Use the font: font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif
@@ -35,7 +44,7 @@ Rules:
 - Make it responsive and mobile-friendly
 - Use semantic HTML and accessible patterns
 
-When the user asks to modify an existing app, output the complete updated HTML (not a diff).`
+When the user asks to modify an existing app, return the complete updated JSON (not a diff). Keep the same name and icon unless the user asks to change them.`
 
 // handleBuilder serves the app builder page.
 func handleBuilder(w http.ResponseWriter, r *http.Request) {
@@ -110,12 +119,30 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Clean up the response — strip markdown code fences if present
-	result = cleanGeneratedHTML(result)
+	// Parse the JSON response from AI
+	result = cleanGeneratedJSON(result)
 
-	app.RespondJSON(w, map[string]string{
-		"html": result,
-	})
+	var generated struct {
+		Name string `json:"name"`
+		Icon string `json:"icon"`
+		HTML string `json:"html"`
+	}
+	if err := json.Unmarshal([]byte(result), &generated); err != nil {
+		// Fallback: treat entire response as HTML (backward compat)
+		generated.HTML = cleanGeneratedHTML(result)
+	}
+	if generated.HTML == "" {
+		generated.HTML = cleanGeneratedHTML(result)
+	}
+
+	resp := map[string]string{"html": generated.HTML}
+	if generated.Name != "" {
+		resp["name"] = generated.Name
+	}
+	if generated.Icon != "" {
+		resp["icon"] = generated.Icon
+	}
+	app.RespondJSON(w, resp)
 }
 
 // BuildAndSave generates an app from a prompt, saves it, and returns the app.
@@ -130,15 +157,31 @@ func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("AI generation failed: %v", err)
 	}
-	html := cleanGeneratedHTML(result)
-	if html == "" {
+
+	// Parse JSON response from AI
+	result = cleanGeneratedJSON(result)
+	var generated struct {
+		Name string `json:"name"`
+		Icon string `json:"icon"`
+		HTML string `json:"html"`
+	}
+	if err := json.Unmarshal([]byte(result), &generated); err != nil {
+		generated.HTML = cleanGeneratedHTML(result)
+	}
+	if generated.HTML == "" {
+		generated.HTML = cleanGeneratedHTML(result)
+	}
+	if generated.HTML == "" {
 		return nil, fmt.Errorf("AI returned empty HTML")
 	}
 
-	// Derive name and slug from prompt
-	name := prompt
-	if len(name) > 50 {
-		name = name[:50]
+	// Use AI-generated name or derive from prompt
+	name := generated.Name
+	if name == "" {
+		name = prompt
+		if len(name) > 50 {
+			name = name[:50]
+		}
 	}
 	slug := slugify(name)
 	if len(slug) < 3 {
@@ -161,7 +204,8 @@ func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 		Description: prompt,
 		AuthorID:    authorID,
 		Author:      authorName,
-		HTML:        html,
+		Icon:        generated.Icon,
+		HTML:        generated.HTML,
 		Public:      true,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -225,6 +269,22 @@ func handleTemplateGet(w http.ResponseWriter, r *http.Request, id string) {
 	app.RespondJSON(w, t)
 }
 
+// cleanGeneratedJSON strips markdown code fences from AI JSON output.
+func cleanGeneratedJSON(s string) string {
+	s = strings.TrimSpace(s)
+	// Strip ```json ... ``` or ``` ... ```
+	if strings.HasPrefix(s, "```") {
+		lines := strings.SplitN(s, "\n", 2)
+		if len(lines) > 1 {
+			s = lines[1]
+		}
+		if idx := strings.LastIndex(s, "```"); idx >= 0 {
+			s = s[:idx]
+		}
+	}
+	return strings.TrimSpace(s)
+}
+
 // cleanGeneratedHTML strips markdown code fences and whitespace from AI output.
 func cleanGeneratedHTML(s string) string {
 	s = strings.TrimSpace(s)
@@ -266,26 +326,30 @@ func builderPageHTML(initialCode string) string {
 .templates { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
 .templates button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
 .templates button:hover { background: #f5f5f5; color: #111; }
-.split { display: flex; gap: 12px; min-height: 60vh; }
-.split .pane { flex: 1; display: flex; flex-direction: column; }
-.pane-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.pane-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
-.pane-header .actions { display: flex; gap: 6px; }
-.pane-header .actions button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
-.pane-header .actions button:hover { background: #f5f5f5; color: #111; }
-.code-editor { flex: 1; width: 100%%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; line-height: 1.5; resize: none; tab-size: 2; background: #fafafa; }
-.preview-frame { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; }
+.preview-area { display: flex; flex-direction: column; min-height: 60vh; }
+.preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.preview-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
+.preview-frame { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; min-height: 50vh; }
+.code-toggle { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
+.code-toggle:hover { background: #f5f5f5; color: #111; }
+.code-section { display: none; margin-top: 12px; }
+.code-section.visible { display: block; }
+.code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.code-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
+.code-header .actions { display: flex; gap: 6px; }
+.code-header .actions button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
+.code-header .actions button:hover { background: #f5f5f5; color: #111; }
+.code-editor { width: 100%%; min-height: 300px; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; line-height: 1.5; resize: vertical; tab-size: 2; background: #fafafa; }
 .save-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .save-bar input { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; color: #333; box-sizing: border-box; }
 .save-bar input.name { flex: 1; min-width: 150px; }
-.save-bar input.slug { width: 180px; }
 .save-bar button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .status-msg { font-size: 13px; color: #999; margin-left: 8px; }
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50vh; color: #999; font-size: 15px; }
+.empty-state p { margin: 4px 0; }
 @media (max-width: 768px) {
-  .split { flex-direction: column; min-height: auto; }
-  .code-editor, .preview-frame { min-height: 300px; }
   .save-bar { flex-direction: column; align-items: stretch; }
-  .save-bar input.name, .save-bar input.slug { width: 100%%; min-width: auto; }
+  .save-bar input.name { width: 100%%; min-width: auto; }
   .save-bar input { width: 100%%; }
   .prompt-bar { flex-direction: column; }
   .prompt-bar input, .prompt-bar button { width: 100%%; box-sizing: border-box; }
@@ -304,31 +368,31 @@ func builderPageHTML(initialCode string) string {
     <button id="genBtn" onclick="generate()">Generate</button>
   </div>
 
-  <div class="split">
-    <div class="pane">
-      <div class="pane-header">
-        <h3>Code</h3>
-        <div class="actions">
-          <button onclick="copyCode()">Copy</button>
-          <button onclick="updatePreview()">Preview</button>
-        </div>
-      </div>
-      <textarea class="code-editor" id="code" spellcheck="false" placeholder="Your app's HTML will appear here..."></textarea>
+  <div class="preview-area">
+    <div class="preview-header">
+      <h3>Preview</h3>
+      <button class="code-toggle" id="codeToggle" onclick="toggleCode()">Show Code</button>
     </div>
-    <div class="pane">
-      <div class="pane-header">
-        <h3>Preview</h3>
-        <div class="actions">
-          <button onclick="updatePreview()">Refresh</button>
-        </div>
-      </div>
-      <iframe id="preview" class="preview-frame" sandbox="allow-scripts"></iframe>
+    <div id="emptyState" class="empty-state">
+      <p>Your app preview will appear here.</p>
+      <p>Type a prompt above or pick a template.</p>
     </div>
+    <iframe id="preview" class="preview-frame" sandbox="allow-scripts" style="display:none;"></iframe>
+  </div>
+
+  <div class="code-section" id="codeSection">
+    <div class="code-header">
+      <h3>Code</h3>
+      <div class="actions">
+        <button onclick="copyCode()">Copy</button>
+        <button onclick="updatePreview()">Refresh Preview</button>
+      </div>
+    </div>
+    <textarea class="code-editor" id="code" spellcheck="false" placeholder="Your app's HTML will appear here..."></textarea>
   </div>
 
   <div class="save-bar">
-    <input class="name" type="text" id="appName" placeholder="App name" oninput="document.getElementById('appSlug').value=slugify(this.value)">
-    <input class="slug" type="text" id="appSlug" placeholder="ID (auto-filled)" pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]">
+    <input class="name" type="text" id="appName" placeholder="App name">
     <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
     <button onclick="saveApp()">Save & Launch</button>
     <span class="status-msg" id="statusMsg"></span>
@@ -336,13 +400,15 @@ func builderPageHTML(initialCode string) string {
 </div>
 
 <script>
-var code = document.getElementById('code');
+var codeEl = document.getElementById('code');
 var preview = document.getElementById('preview');
+var emptyState = document.getElementById('emptyState');
+var appIcon = '';
 var initialCode = %s;
-if (initialCode) { code.value = initialCode; updatePreview(); }
+if (initialCode) { codeEl.value = initialCode; showPreview(); }
 
 // Tab key inserts spaces in the editor
-code.addEventListener('keydown', function(e) {
+codeEl.addEventListener('keydown', function(e) {
   if (e.key === 'Tab') {
     e.preventDefault();
     var start = this.selectionStart, end = this.selectionEnd;
@@ -351,10 +417,26 @@ code.addEventListener('keydown', function(e) {
   }
 });
 
-function updatePreview() {
-  var html = code.value;
+function showPreview() {
+  var html = codeEl.value;
   if (!html.trim()) return;
+  emptyState.style.display = 'none';
+  preview.style.display = '';
   preview.srcdoc = html;
+}
+
+function updatePreview() { showPreview(); }
+
+function toggleCode() {
+  var section = document.getElementById('codeSection');
+  var btn = document.getElementById('codeToggle');
+  if (section.classList.contains('visible')) {
+    section.classList.remove('visible');
+    btn.textContent = 'Show Code';
+  } else {
+    section.classList.add('visible');
+    btn.textContent = 'Hide Code';
+  }
 }
 
 function generate() {
@@ -369,21 +451,21 @@ function generate() {
   fetch('/apps/build/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: p, code: code.value })
+    body: JSON.stringify({ prompt: p, code: codeEl.value })
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
-    code.value = data.html;
-    updatePreview();
-    // Auto-fill name from prompt if empty
-    if (!document.getElementById('appName').value) {
-      var name = p.length > 50 ? p.substring(0, 50) + '...' : p;
+    codeEl.value = data.html;
+    showPreview();
+    // Auto-fill name from AI response
+    if (data.name) {
+      document.getElementById('appName').value = data.name;
+    } else if (!document.getElementById('appName').value) {
+      var name = p.length > 50 ? p.substring(0, 50) : p;
       document.getElementById('appName').value = name.charAt(0).toUpperCase() + name.slice(1);
     }
-    if (!document.getElementById('appSlug').value) {
-      document.getElementById('appSlug').value = slugify(p);
-    }
+    if (data.icon) { appIcon = data.icon; }
   })
   .catch(function(e) { document.getElementById('statusMsg').textContent = 'Error: ' + e.message; })
   .finally(function() { btn.disabled = false; btn.textContent = 'Generate'; });
@@ -393,27 +475,25 @@ function loadTemplate(id) {
   fetch('/apps/build/templates/' + id)
   .then(function(r) { return r.json(); })
   .then(function(t) {
-    code.value = t.html;
-    updatePreview();
+    codeEl.value = t.html;
+    showPreview();
     if (!document.getElementById('appName').value) document.getElementById('appName').value = t.name;
-    if (!document.getElementById('appSlug').value) document.getElementById('appSlug').value = slugify(t.name);
   });
 }
 
 function saveApp() {
   var name = document.getElementById('appName').value.trim();
-  var slug = document.getElementById('appSlug').value.trim();
   var tags = (document.getElementById('appTags').value || '').trim();
-  var html = code.value.trim();
+  var html = codeEl.value.trim();
   if (!name) { document.getElementById('statusMsg').textContent = 'App name is required'; return; }
-  if (!slug) { slug = slugify(name); document.getElementById('appSlug').value = slug; }
+  var slug = slugify(name);
   if (!html) { document.getElementById('statusMsg').textContent = 'Generate or write some code first'; return; }
 
   document.getElementById('statusMsg').textContent = 'Saving...';
   fetch('/apps/new', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name, slug: slug, description: name, tags: tags, html: html, public: true })
+    body: JSON.stringify({ name: name, slug: slug, icon: appIcon, description: name, tags: tags, html: html, public: true })
   })
   .then(function(r) {
     if (!r.ok) {
@@ -433,7 +513,7 @@ function saveApp() {
 }
 
 function copyCode() {
-  navigator.clipboard.writeText(code.value).then(function() {
+  navigator.clipboard.writeText(codeEl.value).then(function() {
     document.getElementById('statusMsg').textContent = 'Copied!';
     setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 2000);
   });
