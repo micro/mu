@@ -10,18 +10,17 @@ Browsing is free. Searching, posting, and AI features use credits. You get 20 fr
 
 ### Services
 
-- **Home** — At a glance dashboard
-- **Agent** — Ask questions, build tools, and get things done
-- **Apps** — Build and use small, useful tools — or let the agent build one for you
-- **Social** — Topic-based discussions and conversations
-- **Blog** — Write posts or read daily digests
-- **Chat** — Talk about any topic with AI-powered conversation
-- **News** — Headlines and articles with AI summaries
-- **Mail** — Message other users or send email
-- **Video** — Browse and search videos
-- **Markets** — Live crypto, futures & commodities
+- **News** — Headlines and articles from RSS feeds, chronological, with AI summaries
+- **Markets** — Live crypto, futures, and commodity prices
+- **Video** — YouTube without ads, algorithms, or shorts
 - **Web** — Search the web without tracking
-- **Wallet** — Pay as you go with credits
+- **Blog** — Microblogging with daily AI-generated digests
+- **Social** — Topic-based discussions with community notes
+- **Chat** — AI-powered conversation on any topic
+- **Mail** — Private messaging and email
+- **Apps** — Build and use small, useful tools — or ask the agent to build one
+- **Agent** — AI assistant that can search, answer, and build across every service
+- **Wallet** — Pay as you go — 1 credit = 1p
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 

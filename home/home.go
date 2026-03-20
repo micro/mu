@@ -79,7 +79,7 @@ var landingTemplate = `<html lang="en">
       The internet without the noise.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
-      Browse the news, track markets, watch videos, search the web and more — all in one place.
+      News, markets, video, search, and AI tools — all in one place. Build your own or let the agent build one for you.
       </p>
 
 
@@ -157,74 +157,74 @@ var landingTemplate = `<html lang="en">
       <h3>Services</h3>
       <p>The tools powering Mu</p>
       <div id="links">
-        <a href="/agent" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/agent.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Agent</b>
-            <div class="small">Ask questions, build tools, and get things done</div>
-          </div>
-        </a>
-        <a href="/apps" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/apps.svg" alt="Apps" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Apps</b>
-            <div class="small">Build and use small, useful tools — no ads, no tracking</div>
-          </div>
-        </a>
-        <a href="/blog" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/post.png" alt="Blog" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Blog</b>
-            <div class="small">Write posts or read daily digests of what's happening</div>
-          </div>
-        </a>
-        <a href="/social" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/chat.png" alt="Social" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Social</b>
-            <div class="small">Discussions and conversations on topics that matter</div>
-          </div>
-        </a>
-        <a href="/chat" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/chat.png" alt="Chat" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Chat</b>
-            <div class="small">Talk about any topic with AI-powered conversation</div>
-          </div>
-        </a>
-        <a href="/mail" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/mail.png" alt="Mail" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Mail</b>
-            <div class="small">Message other users directly or send an email</div>
-          </div>
-        </a>
         <a href="/news" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/news.png" alt="News" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>News</b>
-            <div class="small">Source of truth for news events around the world</div>
-          </div>
-        </a>
-        <a href="/video" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Video</b>
-            <div class="small">Watch YouTube without ads, algorithms or shorts</div>
+            <div class="small">Headlines and articles with AI summaries</div>
           </div>
         </a>
         <a href="/markets" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/markets.svg" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Markets</b>
-            <div class="small">Live crypto, futures and commodity prices</div>
+            <div class="small">Live crypto, futures, and commodity prices</div>
+          </div>
+        </a>
+        <a href="/video" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Video</b>
+            <div class="small">YouTube without ads, algorithms, or shorts</div>
           </div>
         </a>
         <a href="/web" style="text-decoration: none; color: inherit;">
           <div class="block">
             <img src="/search.svg" alt="Web" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Web</b>
-            <div class="small">Search the web without ads or tracking</div>
+            <div class="small">Search the web without tracking</div>
+          </div>
+        </a>
+        <a href="/blog" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/post.png" alt="Blog" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Blog</b>
+            <div class="small">Microblogging with daily AI-generated digests</div>
+          </div>
+        </a>
+        <a href="/social" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/chat.png" alt="Social" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Social</b>
+            <div class="small">Topic-based discussions with community notes</div>
+          </div>
+        </a>
+        <a href="/chat" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/chat.png" alt="Chat" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Chat</b>
+            <div class="small">AI-powered conversation on any topic</div>
+          </div>
+        </a>
+        <a href="/mail" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/mail.png" alt="Mail" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Mail</b>
+            <div class="small">Private messaging and email</div>
+          </div>
+        </a>
+        <a href="/apps" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/apps.svg" alt="Apps" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Apps</b>
+            <div class="small">Build small, useful tools — or ask the agent</div>
+          </div>
+        </a>
+        <a href="/agent" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/agent.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Agent</b>
+            <div class="small">AI that can search, answer, and build</div>
           </div>
         </a>
       </div>
@@ -416,8 +416,13 @@ Accept: application/json</pre>
 
       <div style="height: 20px;"></div>
 
+      <p><strong>Can I build my own tools?</strong><br>
+      Yes. Describe what you need and the AI builds it — a working app in seconds. Or use the <a href="/apps/build">app builder</a> with templates and a live preview. Apps are just HTML, no frameworks needed.</p>
+
+      <div style="height: 20px;"></div>
+
       <p><strong>Can AI agents use Mu?</strong><br>
-      Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. Agents can read news, search videos, send mail, query markets, and manage their own wallet credits. See the <a href="/mcp">MCP page</a> for setup.</p>
+      Yes. Mu supports the <a href="/mcp">Model Context Protocol (MCP)</a>. Agents can read news, search videos, send mail, query markets, build apps, and manage their own wallet credits. See the <a href="/mcp">MCP page</a> for setup.</p>
 
       <div style="height: 60px;"></div>
     </div>
