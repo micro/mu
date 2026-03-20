@@ -646,9 +646,9 @@ func TestNewFlowID_Unique(t *testing.T) {
 }
 
 func TestFormatAppsRunResult_ValidJSON(t *testing.T) {
-	result := `{"id":"abc123","url":"/apps/exec?id=abc123","run":"/apps/exec?id=abc123&raw=1"}`
+	result := `{"id":"abc123","url":"/apps/run?id=abc123","run":"/apps/run?id=abc123&raw=1"}`
 	got := formatAppsRunResult(result)
-	if !strings.Contains(got, "/apps/exec?id=abc123") {
+	if !strings.Contains(got, "/apps/run?id=abc123") {
 		t.Errorf("expected URL in formatted result, got %q", got)
 	}
 	if !strings.Contains(got, "sandbox") {
@@ -665,7 +665,7 @@ func TestFormatAppsRunResult_InvalidJSON(t *testing.T) {
 }
 
 func TestRenderRunCard_ValidJSON(t *testing.T) {
-	result := `{"id":"abc123","url":"/apps/exec?id=abc123","run":"/apps/exec?id=abc123&raw=1"}`
+	result := `{"id":"abc123","url":"/apps/run?id=abc123","run":"/apps/run?id=abc123&raw=1"}`
 	card := renderRunCard(result)
 	if !strings.Contains(card, "<iframe") {
 		t.Errorf("expected iframe in card, got %q", card)
@@ -693,7 +693,7 @@ func TestRenderRunCard_EmptyRun(t *testing.T) {
 }
 
 func TestFormatToolResult_AppsRunDispatch(t *testing.T) {
-	result := `{"id":"abc","url":"/apps/exec?id=abc","run":"/apps/exec?id=abc&raw=1"}`
+	result := `{"id":"abc","url":"/apps/run?id=abc","run":"/apps/run?id=abc&raw=1"}`
 	got := formatToolResult("apps_run", result, nil)
 	if !strings.Contains(got, "sandbox") {
 		t.Errorf("expected apps_run formatter to be called, got %q", got)
@@ -701,7 +701,7 @@ func TestFormatToolResult_AppsRunDispatch(t *testing.T) {
 }
 
 func TestRenderResultCard_AppsRun(t *testing.T) {
-	result := `{"id":"abc","run":"/apps/exec?id=abc&raw=1"}`
+	result := `{"id":"abc","run":"/apps/run?id=abc&raw=1"}`
 	card := renderResultCard("apps_run", result, nil)
 	if !strings.Contains(card, "<iframe") {
 		t.Errorf("expected iframe in result card, got %q", card)

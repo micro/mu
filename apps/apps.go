@@ -149,8 +149,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(path, "/build/templates/"):
 		id := strings.TrimPrefix(path, "/build/templates/")
 		handleTemplateGet(w, r, id)
-	case path == "/exec":
-		handleExec(w, r)
+	case path == "/run":
+		handleCodeRun(w, r)
 	case path == "/sdk.js":
 		handleSDK(w, r)
 	case strings.HasSuffix(path, "/run"):

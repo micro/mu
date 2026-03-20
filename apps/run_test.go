@@ -5,84 +5,84 @@ import (
 	"testing"
 )
 
-func TestCreateScratch(t *testing.T) {
-	id := CreateScratch("return 2+2", "test-user")
+func TestCreateRun(t *testing.T) {
+	id := CreateRun("return 2+2", "test-user")
 	if id == "" {
-		t.Fatal("expected non-empty scratch ID")
+		t.Fatal("expected non-empty run ID")
 	}
 	if len(id) != 16 { // 8 bytes hex-encoded
 		t.Errorf("expected 16-char hex ID, got %q (len %d)", id, len(id))
 	}
 
 	// Verify it's stored
-	scratchMu.RLock()
-	s, ok := scratches[id]
-	scratchMu.RUnlock()
+	runMu.RLock()
+	cr, ok := codeRuns[id]
+	runMu.RUnlock()
 	if !ok {
-		t.Fatal("scratch not found after creation")
+		t.Fatal("code run not found after creation")
 	}
-	if s.Code != "return 2+2" {
-		t.Errorf("expected code 'return 2+2', got %q", s.Code)
+	if cr.Code != "return 2+2" {
+		t.Errorf("expected code 'return 2+2', got %q", cr.Code)
 	}
-	if s.AuthorID != "test-user" {
-		t.Errorf("expected author 'test-user', got %q", s.AuthorID)
+	if cr.AuthorID != "test-user" {
+		t.Errorf("expected author 'test-user', got %q", cr.AuthorID)
 	}
 }
 
-func TestCreateScratch_UniqueIDs(t *testing.T) {
+func TestCreateRun_UniqueIDs(t *testing.T) {
 	ids := make(map[string]bool)
 	for i := 0; i < 20; i++ {
-		id := CreateScratch("return 1", "test")
+		id := CreateRun("return 1", "test")
 		if ids[id] {
-			t.Errorf("duplicate scratch ID: %q", id)
+			t.Errorf("duplicate run ID: %q", id)
 		}
 		ids[id] = true
 	}
 }
 
-func TestCreateScratch_EvictsOldest(t *testing.T) {
+func TestCreateRun_EvictsOldest(t *testing.T) {
 	// Save and restore original state
-	scratchMu.Lock()
-	origScratches := scratches
-	scratches = map[string]*Scratch{}
-	origMax := maxScratches
-	maxScratches = 3
-	scratchMu.Unlock()
+	runMu.Lock()
+	origRuns := codeRuns
+	codeRuns = map[string]*CodeRun{}
+	origMax := maxCodeRuns
+	maxCodeRuns = 3
+	runMu.Unlock()
 	defer func() {
-		scratchMu.Lock()
-		scratches = origScratches
-		maxScratches = origMax
-		scratchMu.Unlock()
+		runMu.Lock()
+		codeRuns = origRuns
+		maxCodeRuns = origMax
+		runMu.Unlock()
 	}()
 
 	// Fill to capacity
-	id1 := CreateScratch("code1", "user")
-	id2 := CreateScratch("code2", "user")
-	id3 := CreateScratch("code3", "user")
+	id1 := CreateRun("code1", "user")
+	id2 := CreateRun("code2", "user")
+	id3 := CreateRun("code3", "user")
 
 	// All three should exist
-	scratchMu.RLock()
-	if len(scratches) != 3 {
-		t.Fatalf("expected 3 scratches, got %d", len(scratches))
+	runMu.RLock()
+	if len(codeRuns) != 3 {
+		t.Fatalf("expected 3 code runs, got %d", len(codeRuns))
 	}
-	scratchMu.RUnlock()
+	runMu.RUnlock()
 
 	// Adding a fourth should evict the oldest (id1)
-	_ = CreateScratch("code4", "user")
+	_ = CreateRun("code4", "user")
 
-	scratchMu.RLock()
-	_, has1 := scratches[id1]
-	_, has2 := scratches[id2]
-	_, has3 := scratches[id3]
-	count := len(scratches)
-	scratchMu.RUnlock()
+	runMu.RLock()
+	_, has1 := codeRuns[id1]
+	_, has2 := codeRuns[id2]
+	_, has3 := codeRuns[id3]
+	count := len(codeRuns)
+	runMu.RUnlock()
 
 	if count != 3 {
-		t.Errorf("expected 3 scratches after eviction, got %d", count)
+		t.Errorf("expected 3 code runs after eviction, got %d", count)
 	}
 	// id1 was created first, so it should be evicted
 	if has1 {
-		t.Error("expected oldest scratch (id1) to be evicted")
+		t.Error("expected oldest code run (id1) to be evicted")
 	}
 	_ = has2
 	_ = has3
