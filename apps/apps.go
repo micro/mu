@@ -18,7 +18,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// MaxHTMLSize is the maximum size of a mini app's HTML content (256KB).
+// MaxHTMLSize is the maximum size of an app's HTML content (256KB).
 const MaxHTMLSize = 256 * 1024
 
 // MaxStoreValueSize is the maximum size of a single store value (64KB).
@@ -27,7 +27,7 @@ const MaxStoreValueSize = 64 * 1024
 // MaxStoreKeys is the maximum number of keys per app+user.
 const MaxStoreKeys = 100
 
-// Categories for mini apps.
+// Categories for apps.
 var Categories = []string{
 	"Productivity",
 	"Tools",
@@ -40,7 +40,7 @@ var Categories = []string{
 	"Other",
 }
 
-// App represents a mini app.
+// App represents an app.
 type App struct {
 	ID          string    `json:"id"`
 	Slug        string    `json:"slug"`
@@ -80,7 +80,7 @@ func Load() {
 		apps[a.Slug] = a
 	}
 	mutex.Unlock()
-	app.Log("apps", "Loaded %d mini apps", len(loaded))
+	app.Log("apps", "Loaded %d apps", len(loaded))
 }
 
 // save persists all apps to disk.
@@ -105,7 +105,7 @@ func Preview() string {
 	defer mutex.RUnlock()
 
 	if len(apps) == 0 {
-		return `<p class="card-desc">Build and launch mini apps — small, useful tools that do one thing well.</p>
+		return `<p class="card-desc">Build and launch apps — small, useful tools that do one thing well.</p>
 <p><a href="/apps/build">Build with AI</a></p>`
 	}
 
@@ -179,7 +179,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleList shows all public mini apps.
+// handleList shows all public apps.
 func handleList(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	var list []*App
@@ -268,7 +268,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	app.Respond(w, r, app.Response{
 		Title:       "Apps",
-		Description: "Mini apps — small, useful tools that do one thing well",
+		Description: "Apps — small, useful tools that do one thing well",
 		HTML:        sb.String(),
 	})
 }
@@ -287,7 +287,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(`<p class="card-desc">Create a mini app — a small, self-contained HTML tool.</p>`)
+	sb.WriteString(`<p class="card-desc">Create an app — a small, self-contained HTML tool.</p>`)
 	sb.WriteString(`<form method="POST" action="/apps/new" style="max-width:600px;">`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Name</label><br>`)
 	sb.WriteString(`<input type="text" name="name" required maxlength="60" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="Pomodoro Timer"></div>`)
@@ -308,7 +308,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 
 	app.Respond(w, r, app.Response{
 		Title:       "Create App",
-		Description: "Create a new mini app",
+		Description: "Create a new app",
 		HTML:        sb.String(),
 	})
 }
@@ -414,7 +414,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/apps/"+slug, http.StatusSeeOther)
 }
 
-// handleView shows a single mini app page.
+// handleView shows a single app page.
 func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	mutex.RLock()
 	a, ok := apps[slug]
@@ -455,7 +455,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	})
 }
 
-// handleRun renders the mini app in a sandboxed iframe.
+// handleRun renders the app in a sandboxed iframe.
 func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 	mutex.RLock()
 	a, ok := apps[slug]
@@ -649,7 +649,7 @@ func handleSDK(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(sdkJS))
 }
 
-// handleSDKAI proxies AI requests from mini apps.
+// handleSDKAI proxies AI requests from apps.
 func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 	if r.Method != "POST" {
 		app.MethodNotAllowed(w, r)
@@ -678,7 +678,7 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 	})
 }
 
-// handleSDKStore handles key-value storage for mini apps.
+// handleSDKStore handles key-value storage for apps.
 func handleSDKStore(w http.ResponseWriter, r *http.Request, slug string) {
 	if r.Method != "POST" {
 		app.MethodNotAllowed(w, r)
@@ -831,8 +831,8 @@ func truncate(s string, n int) string {
 }
 
 // SDK JavaScript served at /apps/sdk.js
-const sdkJS = `// Mu Mini App SDK
-// Include this in your mini app: <script src="/apps/sdk.js"></script>
+const sdkJS = `// Mu App SDK
+// Include this in your app: <script src="/apps/sdk.js"></script>
 (function() {
   var id = 0;
   var callbacks = {};
