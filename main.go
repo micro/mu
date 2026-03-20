@@ -364,6 +364,27 @@ func main() {
 			return string(b), nil
 		},
 	})
+	api.RegisterTool(api.Tool{
+		Name:        "apps_run",
+		Description: "Run JavaScript code in a sandboxed environment and return the result. Use for calculations, data processing, or any computation the user needs.",
+		WalletOp:    "agent_query",
+		Params: []api.ToolParam{
+			{Name: "code", Type: "string", Description: "JavaScript code to execute. The code runs as a function body — use 'return' to output a value. Has access to mu.ai(), mu.fetch(), mu.store for platform features.", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			code, _ := args["code"].(string)
+			if code == "" {
+				return `{"error":"code is required"}`, fmt.Errorf("missing code")
+			}
+			id := apps.CreateScratch(code, "agent")
+			b, _ := json.Marshal(map[string]string{
+				"id":  id,
+				"url": "/apps/exec?id=" + id,
+				"run": "/apps/exec?id=" + id + "&raw=1",
+			})
+			return string(b), nil
+		},
+	})
 
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features

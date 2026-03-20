@@ -149,6 +149,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(path, "/build/templates/"):
 		id := strings.TrimPrefix(path, "/build/templates/")
 		handleTemplateGet(w, r, id)
+	case path == "/exec":
+		handleExec(w, r)
 	case path == "/sdk.js":
 		handleSDK(w, r)
 	case strings.HasSuffix(path, "/run"):
@@ -494,6 +496,7 @@ _send:function(t,d){var id=++this._id;return new Promise(function(ok,fail){mu._c
 ai:function(p,o){return this._send('ai',{prompt:p,options:o||{}})},
 fetch:function(u){return this._send('fetch',{url:u})},
 user:function(){return this._send('user',{})},
+run:function(result){window.parent.postMessage({type:'mu:run',result:result},'*');},
 store:{
 set:function(k,v){return mu._send('store',{op:'set',key:k,value:v})},
 get:function(k){return mu._send('store',{op:'get',key:k})},
@@ -880,6 +883,11 @@ const sdkJS = `// Mu App SDK
     // Get current user info
     user: function() {
       return send('user', {});
+    },
+
+    // Send a result back to the parent (for agent code execution)
+    run: function(result) {
+      window.parent.postMessage({ type: 'mu:run', result: result }, '*');
     },
 
     // Key-value storage

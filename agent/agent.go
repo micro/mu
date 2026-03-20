@@ -492,6 +492,7 @@ func ToolsDropdownHTML() string {
 <div style="padding:3px 12px;">📱 Apps Search</div>
 <div style="padding:3px 12px;">📱 Apps Read</div>
 <div style="padding:3px 12px;">🔨 Apps Build</div>
+<div style="padding:3px 12px;">⚡ Code Run</div>
 </div>
 </details>`
 }
@@ -514,7 +515,8 @@ const agentToolsDesc = `Available tools (use exact name):
 - wallet_topup: Get available topup options to add credits to your wallet (no args)
 - apps_search: Search apps directory (args: {"q":"search term","tag":"productivity"})
 - apps_read: Read details of a specific app (args: {"slug":"app-slug"})
-- apps_build: AI-generate an app from a description (args: {"prompt":"a pomodoro timer with lap counter"})`
+- apps_build: AI-generate an app from a description (args: {"prompt":"a pomodoro timer with lap counter"})
+- apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"}). Use for calculations, data transforms, or any computation. Code runs as a function body — use 'return' to produce output.`
 
 // handleQuery processes an agent query request with SSE streaming.
 func handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -837,6 +839,8 @@ func toolLabel(tool string) string {
 		return "📱 Reading app"
 	case "apps_build":
 		return "🔨 Building app"
+	case "apps_run":
+		return "⚡ Running code"
 	default:
 		return "⚙ Calling " + tool
 	}
@@ -881,6 +885,8 @@ func renderResultCard(toolName, result string, args map[string]any) string {
 		return renderPlacesCard(result, args)
 	case "apps_search":
 		return renderAppsCard(result)
+	case "apps_run":
+		return renderRunCard(result)
 	}
 	return ""
 }
@@ -1170,6 +1176,8 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatAppsReadResult(result)
 	case "apps_build":
 		return formatAppsBuildResult(result)
+	case "apps_run":
+		return formatAppsRunResult(result)
 	}
 	return result
 }
@@ -1790,6 +1798,34 @@ func formatAppsBuildResult(result string) string {
 		snippet = snippet[:200] + "…"
 	}
 	return fmt.Sprintf("Generated app HTML (%d bytes). Preview:\n%s", len(data.HTML), snippet)
+}
+
+// formatAppsRunResult converts a raw JSON run result into
+// human-readable text for the AI synthesis RAG context.
+func formatAppsRunResult(result string) string {
+	var data struct {
+		ID  string `json:"id"`
+		URL string `json:"url"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	return fmt.Sprintf("Code sandbox created. URL: %s\nThe code will execute in the user's browser and display results.", data.URL)
+}
+
+// renderRunCard renders a live code execution iframe for apps_run results.
+func renderRunCard(result string) string {
+	var data struct {
+		ID  string `json:"id"`
+		Run string `json:"run"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil || data.Run == "" {
+		return ""
+	}
+	return `<div class="card"><h4>⚡ Result</h4>` +
+		`<iframe src="` + htmlEsc(data.Run) + `" sandbox="allow-scripts" ` +
+		`style="width:100%;min-height:120px;border:1px solid #eee;border-radius:6px;background:#fff;"></iframe>` +
+		`</div>`
 }
 
 // renderAppsCard renders an HTML card for apps search results.

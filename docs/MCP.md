@@ -65,6 +65,7 @@ For self-hosted instances, replace `mu.xyz` with your domain.
 | `apps_read` | Read details of a specific app | Free |
 | `apps_create` | Create a new app | Free |
 | `apps_build` | AI-generate an app from a description | 3 credits |
+| `apps_run` | Run JavaScript code in a sandbox | 1 credit |
 
 ### Credits
 
