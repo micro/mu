@@ -76,8 +76,11 @@ func seedArticleNote(article NewsArticle) {
 	// Only post when there's something worth flagging.
 	// Accurate and no-claims articles don't need a community note —
 	// the news feed already shows them. The value is catching what's
-	// wrong or incomplete.
-	if note.Status != "misleading" && note.Status != "missing_context" {
+	// wrong, incomplete, or biased in framing.
+	switch note.Status {
+	case "misleading", "missing_context", "biased":
+		// Worth posting
+	default:
 		return
 	}
 
