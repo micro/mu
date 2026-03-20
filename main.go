@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"mu/admin"
 	"mu/agent"
+	"mu/apps"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -87,6 +89,9 @@ func main() {
 
 	// load social discussions
 	social.Load()
+
+	// load apps
+	apps.Load()
 
 	// load the home cards
 	home.Load()
@@ -289,6 +294,62 @@ func main() {
 		},
 	})
 
+	// Register apps MCP tools
+	api.RegisterTool(api.Tool{
+		Name:        "apps_search",
+		Description: "Search the apps directory for small, useful tools",
+		Method:      "GET",
+		Path:        "/apps",
+		Params: []api.ToolParam{
+			{Name: "q", Type: "string", Description: "Search query (name, description, or category)", Required: false},
+			{Name: "category", Type: "string", Description: "Filter by category (Productivity, Tools, Finance, Writing, Health, Education, Fun, Developer)", Required: false},
+		},
+	})
+	api.RegisterTool(api.Tool{
+		Name:        "apps_read",
+		Description: "Read details of a specific app by its slug",
+		Method:      "GET",
+		Path:        "/apps",
+		Params: []api.ToolParam{
+			{Name: "slug", Type: "string", Description: "The app's URL slug (e.g. pomodoro-timer)", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			slug, _ := args["slug"].(string)
+			if slug == "" {
+				return `{"error":"slug is required"}`, fmt.Errorf("missing slug")
+			}
+			a := apps.GetApp(slug)
+			if a == nil {
+				return `{"error":"app not found"}`, fmt.Errorf("not found")
+			}
+			b, _ := json.Marshal(a)
+			return string(b), nil
+		},
+	})
+	api.RegisterTool(api.Tool{
+		Name:        "apps_create",
+		Description: "Create a new app — a small, self-contained HTML tool hosted on Mu",
+		Method:      "POST",
+		Path:        "/apps/new",
+		Params: []api.ToolParam{
+			{Name: "name", Type: "string", Description: "App name (e.g. Pomodoro Timer)", Required: true},
+			{Name: "slug", Type: "string", Description: "URL-friendly ID (e.g. pomodoro-timer)", Required: true},
+			{Name: "description", Type: "string", Description: "Short description of what the app does", Required: true},
+			{Name: "category", Type: "string", Description: "Category: Productivity, Tools, Finance, Writing, Health, Education, Fun, Developer", Required: true},
+			{Name: "html", Type: "string", Description: "The app's HTML content (can include inline CSS and JavaScript, max 256KB)", Required: true},
+		},
+	})
+	api.RegisterTool(api.Tool{
+		Name:        "apps_build",
+		Description: "AI-generate an app from a natural language description. Returns the generated HTML.",
+		Method:      "POST",
+		Path:        "/apps/build/generate",
+		WalletOp:    "chat_query",
+		Params: []api.ToolParam{
+			{Name: "prompt", Type: "string", Description: "Description of the app to build (e.g. 'a pomodoro timer with lap counter')", Required: true},
+		},
+	})
+
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features
 		"/news":            false, // Public viewing, auth for search
@@ -323,6 +384,7 @@ func main() {
 		"/donate":          false,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
+		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/search":    false, // Public - local data index search
 		"/web":       false, // Public page, auth checked in handler (paid Brave web search)
 		"/fetch":     false, // Public page, auth checked in handler (paid web fetch)
@@ -449,6 +511,10 @@ func main() {
 
 	// serve weather page
 	http.HandleFunc("/weather", weather.Handler)
+
+	// serve apps
+	http.HandleFunc("/apps", apps.Handler)
+	http.HandleFunc("/apps/", apps.Handler)
 
 	// auth
 	http.HandleFunc("/login", app.Login)
