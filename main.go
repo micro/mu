@@ -46,7 +46,7 @@ func main() {
 	flag.Parse()
 
 	if !*ServeFlag {
-		fmt.Errorf("--serve not set")
+		fmt.Println("--serve not set")
 		return
 	}
 
