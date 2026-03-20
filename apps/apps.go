@@ -262,12 +262,17 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			if a.Tags != "" {
 				tagsHTML = " · " + htmlpkg.EscapeString(a.Tags)
 			}
+			iconHTML := ""
+			if a.Icon != "" {
+				iconHTML = htmlpkg.EscapeString(a.Icon) + " "
+			}
 			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;">
-<h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
+<h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
 <p style="margin:0;font-size:13px;color:#999;">by %s%s · %d installs</p>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
+				iconHTML,
 				htmlpkg.EscapeString(a.Name),
 				htmlpkg.EscapeString(a.Description),
 				htmlpkg.EscapeString(a.Author),
@@ -303,11 +308,11 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="card-desc">Create an app — a small, self-contained HTML tool.</p>`)
 	sb.WriteString(`<form method="POST" action="/apps/new" style="max-width:600px;">`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Name</label><br>`)
-	sb.WriteString(`<input type="text" name="name" id="app-name" required maxlength="60" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="Pomodoro Timer" oninput="document.getElementById('app-slug').value=this.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').substring(0,50)"></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>ID <span style="color:#999;font-size:12px;">(auto-filled, editable)</span></label><br>`)
-	sb.WriteString(`<input type="text" name="slug" id="app-slug" required maxlength="50" pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="pomodoro-timer"></div>`)
+	sb.WriteString(`<input type="text" name="name" required maxlength="60" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="Pomodoro Timer"></div>`)
+	sb.WriteString(`<div style="margin-bottom:12px;"><label>Icon <span style="color:#999;font-size:12px;">(emoji, optional)</span></label><br>`)
+	sb.WriteString(`<input type="text" name="icon" maxlength="2" style="width:60px;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:20px;text-align:center;" placeholder="⏱️"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Description</label><br>`)
-	sb.WriteString(`<input type="text" name="description" required maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="A simple 25-minute focus timer"></div>`)
+	sb.WriteString(`<input type="text" name="description" maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="A simple 25-minute focus timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Tags <span style="color:#999;font-size:12px;">(comma-separated, optional)</span></label><br>`)
 	sb.WriteString(`<input type="text" name="tags" maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="productivity, timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>HTML (your app — max 256KB)</label><br>`)
@@ -331,13 +336,14 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var name, slug, description, tags, html string
+	var name, slug, icon, description, tags, html string
 	var public bool
 
 	if app.SendsJSON(r) {
 		var req struct {
 			Name        string `json:"name"`
 			Slug        string `json:"slug"`
+			Icon        string `json:"icon"`
 			Description string `json:"description"`
 			Tags        string `json:"tags"`
 			Category    string `json:"category"` // backward compat
@@ -350,6 +356,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 		name = req.Name
 		slug = req.Slug
+		icon = req.Icon
 		description = req.Description
 		tags = req.Tags
 		if tags == "" {
@@ -365,15 +372,26 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		name = strings.TrimSpace(r.FormValue("name"))
 		slug = strings.TrimSpace(r.FormValue("slug"))
+		icon = strings.TrimSpace(r.FormValue("icon"))
 		description = strings.TrimSpace(r.FormValue("description"))
 		tags = strings.TrimSpace(r.FormValue("tags"))
 		html = r.FormValue("html")
 		public = r.FormValue("public") == "1"
 	}
 
+	// Derive slug from name if not provided
+	if slug == "" && name != "" {
+		slug = slugify(name)
+	}
+
+	// Default description to name if not provided
+	if description == "" {
+		description = name
+	}
+
 	// Validate
-	if name == "" || slug == "" || description == "" || html == "" {
-		app.Error(w, r, http.StatusBadRequest, "Name, slug, description, and HTML are required")
+	if name == "" || slug == "" || html == "" {
+		app.Error(w, r, http.StatusBadRequest, "Name and HTML are required")
 		return
 	}
 	if !slugRe.MatchString(slug) {
@@ -385,14 +403,13 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check slug uniqueness
+	// Ensure unique slug
 	mutex.RLock()
-	_, exists := apps[slug]
-	mutex.RUnlock()
-	if exists {
-		app.Error(w, r, http.StatusConflict, "An app with this slug already exists")
-		return
+	base := slug
+	for i := 2; apps[slug] != nil; i++ {
+		slug = fmt.Sprintf("%s-%d", base, i)
 	}
+	mutex.RUnlock()
 
 	now := time.Now()
 	newApp := &App{
@@ -402,6 +419,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		Description: description,
 		AuthorID:    acc.ID,
 		Author:      acc.Name,
+		Icon:        icon,
 		HTML:        html,
 		Tags:        tags,
 		Public:      public,
@@ -466,8 +484,12 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 			htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug)))
 	}
 
+	title := a.Name
+	if a.Icon != "" {
+		title = a.Icon + " " + a.Name
+	}
 	app.Respond(w, r, app.Response{
-		Title:       a.Name,
+		Title:       title,
 		Description: a.Description,
 		HTML:        sb.String(),
 	})
@@ -587,6 +609,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 
 	var req struct {
 		Name        *string `json:"name"`
+		Icon        *string `json:"icon"`
 		Description *string `json:"description"`
 		Tags        *string `json:"tags"`
 		HTML        *string `json:"html"`
@@ -600,6 +623,9 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 	mutex.Lock()
 	if req.Name != nil && *req.Name != "" {
 		a.Name = *req.Name
+	}
+	if req.Icon != nil {
+		a.Icon = *req.Icon
 	}
 	if req.Description != nil {
 		a.Description = *req.Description
