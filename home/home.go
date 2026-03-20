@@ -161,7 +161,14 @@ var landingTemplate = `<html lang="en">
           <div class="block">
             <img src="/agent.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Agent</b>
-            <div class="small">Ask questions and get things done across every service</div>
+            <div class="small">Ask questions, build tools, and get things done</div>
+          </div>
+        </a>
+        <a href="/apps" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/apps.svg" alt="Apps" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Apps</b>
+            <div class="small">Build and use small, useful tools — no ads, no tracking</div>
           </div>
         </a>
         <a href="/blog" style="text-decoration: none; color: inherit;">

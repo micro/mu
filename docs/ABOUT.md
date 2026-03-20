@@ -28,12 +28,13 @@ Mu was built to fix this problem.
 
 ## Our Approach
 
-### Apps That Do One Thing
+### Tools That Do One Thing
 
 Each feature does one thing well:
 
 - **Home** — Your dashboard, everything in one place
-- **Agent** — AI assistant with access to every service
+- **Agent** — AI assistant that can answer questions, build tools, and get things done
+- **Apps** — Small, useful tools you can build yourself or let the agent create for you
 - **Blog** — Microblogging with daily digests
 - **Chat** — Discuss topics with AI
 - **News** — RSS feeds, chronological
@@ -42,6 +43,10 @@ Each feature does one thing well:
 - **Markets** — Live crypto, futures, and commodities
 - **Web** — Web search without ads or tracking
 - **Wallet** — Credits and card payments
+
+### Build Your Own
+
+Need a tool that doesn't exist? Describe it in plain English and the agent builds it — a working app in seconds. Or use the [app builder](/apps/build) with templates, AI generation, and a live preview. Apps are just HTML — no frameworks, no app store, no tracking. The simplest possible way to put a useful tool on the web.
 
 ### No Addiction Mechanics
 
@@ -63,10 +68,11 @@ We deliberately exclude features that drive addiction:
 
 Some features are enhanced with AI:
 
-- **Blog** — Daily digests
-- **News** — Summarize articles
-- **Chat** — AI for discussions
-- **Agent** — Cross app queries
+- **Blog** — Daily digests generated from trending news
+- **News** — AI summaries of articles
+- **Chat** — AI-powered conversation on any topic
+- **Agent** — Searches across every service to answer your questions
+- **Apps** — Describe what you need and the agent builds a working tool
 
 ---
 
