@@ -301,8 +301,8 @@ func main() {
 		Method:      "GET",
 		Path:        "/apps",
 		Params: []api.ToolParam{
-			{Name: "q", Type: "string", Description: "Search query (name, description, or category)", Required: false},
-			{Name: "category", Type: "string", Description: "Filter by category (Productivity, Tools, Finance, Writing, Health, Education, Fun, Developer)", Required: false},
+			{Name: "q", Type: "string", Description: "Search query (name, description, or tag)", Required: false},
+			{Name: "tag", Type: "string", Description: "Filter by tag", Required: false},
 		},
 	})
 	api.RegisterTool(api.Tool{
@@ -335,7 +335,7 @@ func main() {
 			{Name: "name", Type: "string", Description: "App name (e.g. Pomodoro Timer)", Required: true},
 			{Name: "slug", Type: "string", Description: "URL-friendly ID (e.g. pomodoro-timer)", Required: true},
 			{Name: "description", Type: "string", Description: "Short description of what the app does", Required: true},
-			{Name: "category", Type: "string", Description: "Category: Productivity, Tools, Finance, Writing, Health, Education, Fun, Developer", Required: true},
+			{Name: "tags", Type: "string", Description: "Comma-separated tags (optional)", Required: false},
 			{Name: "html", Type: "string", Description: "The app's HTML content (can include inline CSS and JavaScript, max 256KB)", Required: true},
 		},
 	})

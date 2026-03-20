@@ -183,19 +183,19 @@ func builderPageHTML(initialCode string) string {
 .prompt-bar button { padding: 10px 24px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; white-space: nowrap; }
 .prompt-bar button:disabled { background: #ccc; cursor: not-allowed; }
 .templates { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
-.templates button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-size: 12px; font-family: inherit; }
-.templates button:hover { background: #f5f5f5; }
+.templates button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
+.templates button:hover { background: #f5f5f5; color: #111; }
 .split { display: flex; gap: 12px; min-height: 60vh; }
 .split .pane { flex: 1; display: flex; flex-direction: column; }
 .pane-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .pane-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
 .pane-header .actions { display: flex; gap: 6px; }
-.pane-header .actions button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-size: 12px; font-family: inherit; }
-.pane-header .actions button:hover { background: #f5f5f5; }
+.pane-header .actions button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
+.pane-header .actions button:hover { background: #f5f5f5; color: #111; }
 .code-editor { flex: 1; width: 100%%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; line-height: 1.5; resize: none; tab-size: 2; background: #fafafa; }
 .preview-frame { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; }
 .save-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.save-bar input { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; }
+.save-bar input { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; color: #333; }
 .save-bar input.name { flex: 1; min-width: 150px; }
 .save-bar input.slug { width: 180px; }
 .save-bar select { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; }
@@ -242,9 +242,9 @@ func builderPageHTML(initialCode string) string {
   </div>
 
   <div class="save-bar">
-    <input class="name" type="text" id="appName" placeholder="App name">
-    <input class="slug" type="text" id="appSlug" placeholder="url-slug" pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]">
-    <select id="appCategory">%s</select>
+    <input class="name" type="text" id="appName" placeholder="App name" oninput="document.getElementById('appSlug').value=slugify(this.value)">
+    <input class="slug" type="text" id="appSlug" placeholder="ID (auto-filled)" pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]">
+    <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
     <button onclick="saveApp()">Save & Launch</button>
     <span class="status-msg" id="statusMsg"></span>
   </div>
@@ -318,15 +318,15 @@ function loadTemplate(id) {
 function saveApp() {
   var name = document.getElementById('appName').value.trim();
   var slug = document.getElementById('appSlug').value.trim();
-  var cat = document.getElementById('appCategory').value;
+  var tags = (document.getElementById('appTags').value || '').trim();
   var html = code.value.trim();
-  if (!name || !slug || !html) { document.getElementById('statusMsg').textContent = 'Name, slug, and code are required'; return; }
+  if (!name || !slug || !html) { document.getElementById('statusMsg').textContent = 'Name, ID, and code are required'; return; }
 
   document.getElementById('statusMsg').textContent = 'Saving...';
   fetch('/apps/new', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name, slug: slug, description: name, category: cat, html: html, public: true })
+    body: JSON.stringify({ name: name, slug: slug, description: name, tags: tags, html: html, public: true })
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
@@ -347,14 +347,5 @@ function copyCode() {
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50);
 }
-</script>`, templateButtons.String(), categoryOptions(), string(escapedCode))
-}
-
-// categoryOptions returns <option> tags for the category select.
-func categoryOptions() string {
-	var sb strings.Builder
-	for _, cat := range Categories {
-		sb.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, htmlpkg.EscapeString(cat), htmlpkg.EscapeString(cat)))
-	}
-	return sb.String()
+</script>`, templateButtons.String(), string(escapedCode))
 }
