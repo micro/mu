@@ -53,6 +53,4 @@ func distanceOfTime(minutes float64) string {
 	default:
 		return fmt.Sprintf("%d months", int(minutes/43800))
 	}
-
-	return ""
 }

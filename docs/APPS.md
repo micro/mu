@@ -249,6 +249,19 @@ const user = await mu.user();
 
 Returns basic user info. No sensitive data (no email, no token).
 
+### Run
+
+```javascript
+// Return a structured result (used by the agent for code execution)
+mu.run({ bmi: 23.1, category: "normal" });
+
+// The agent can create apps that compute and return results via mu.run()
+// This is how the agent executes code — it generates JS, runs it in
+// a sandbox, and mu.run() sends the output back.
+```
+
+Sends structured data back to the parent page. This is the bridge between the agent and apps — when the agent generates code to answer a question, it wraps it in an app that calls `mu.run()` with the result.
+
 ### How It Works
 
 The SDK uses `window.parent.postMessage` to send requests to the Mu parent page. The parent page listens for these messages, validates the origin, proxies the request to the backend, and posts the result back.

@@ -10,17 +10,17 @@ Browsing is free. Searching, posting, and AI features use credits. You get 20 fr
 
 ### Services
 
-- **Home** — At a glance dashboard
-- **Agent** — Ask questions and get things done across every service
-- **Social** — Topic-based discussions and conversations
-- **Blog** — Write posts or read daily digests
-- **Chat** — Talk about any topic with AI-powered conversation
-- **News** — Headlines and articles with AI summaries
-- **Mail** — Message other users or send email
-- **Video** — Browse and search videos
-- **Markets** — Live crypto, futures & commodities
+- **News** — Headlines and articles from RSS feeds, chronological, with AI summaries
+- **Markets** — Live crypto, futures, and commodity prices
+- **Video** — YouTube without ads, algorithms, or shorts
 - **Web** — Search the web without tracking
-- **Wallet** — Pay as you go with credits
+- **Blog** — Microblogging with daily AI-generated digests
+- **Social** — Topic-based discussions with community notes
+- **Chat** — AI-powered conversation on any topic
+- **Mail** — Private messaging and email
+- **Apps** — Build and use small, useful tools — or ask the agent to build one
+- **Agent** — AI assistant that can search, answer, and build across every service
+- **Wallet** — Pay as you go — 1 credit = 1p
 
 Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
 
@@ -38,6 +38,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] Markets - Live prices
 - [x] Web - Web search, no Ads
 - [x] Wallet - Card payments
+- [x] Apps - Build and launch small web apps
 - [ ] Services - Marketplace, etc
 
 ### AI Features
@@ -46,6 +47,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - **News** — AI summaries of articles
 - **Chat** — AI-powered conversation on any topic
 - **Agent** — Searches news, markets, video and more to answer your questions
+- **Apps** — Describe what you need, the agent builds it. "Build me a unit converter" → working app in seconds
 
 ### MCP — AI Agent Integration
 
@@ -180,6 +182,7 @@ Full documentation is available in the [docs](docs/) folder and at `/docs` on an
 - [Installation](docs/INSTALLATION.md) - Self-hosting and deployment guide
 
 **Features**
+- [Apps](docs/APPS.md) - Build and launch small web apps
 - [ActivityPub](docs/ACTIVITYPUB.md) - Federation with Mastodon, Threads, etc.
 - [Messaging](docs/MESSAGING_SYSTEM.md) - Email and messaging setup
 - [Wallet & Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage

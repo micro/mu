@@ -12,7 +12,9 @@ Think of Mu as the opposite of what the internet has become:
 | Algorithmic feeds | Chronological, you choose |
 | Ad-supported everything | No ads |
 | Engagement metrics | Intentional use |
-| Screen time maximization | Get in, get out |
+| Screen time maximisation | Get in, get out |
+| Data mining | No tracking |
+| Walled gardens | Self-hostable, open source |
 
 ## Why Mu Exists
 
@@ -28,20 +30,24 @@ Mu was built to fix this problem.
 
 ## Our Approach
 
-### Apps That Do One Thing
+### Services That Do One Thing
 
-Each feature does one thing well:
+Each service does one thing well:
 
-- **Home** — Your dashboard, everything in one place
-- **Agent** — AI assistant with access to every service
-- **Blog** — Microblogging with daily digests
-- **Chat** — Discuss topics with AI
-- **News** — RSS feeds, chronological
-- **Mail** — Private messaging & email
-- **Video** — YouTube without ads or shorts
-- **Markets** — Live crypto, futures, and commodities
-- **Web** — Web search without ads or tracking
-- **Wallet** — Credits and card payments
+- **News** — Headlines and articles from RSS feeds, chronological, with AI summaries
+- **Markets** — Live crypto, futures, and commodity prices
+- **Video** — YouTube without ads, algorithms, or shorts
+- **Web** — Search the web without tracking
+- **Blog** — Microblogging with daily AI-generated digests
+- **Social** — Topic-based discussions with community notes
+- **Chat** — AI-powered conversation on any topic
+- **Mail** — Private messaging and email
+- **Apps** — Build and use small, useful tools — or ask the agent to build one
+- **Agent** — AI assistant that can search, answer, and build across every service
+
+### Build Your Own
+
+Need a tool that doesn't exist? Describe it in plain English and the agent builds it — a working app in seconds. Or use the [app builder](/apps/build) with templates, AI generation, and a live preview. Apps are just HTML — no frameworks, no app store, no tracking. The simplest possible way to put a useful tool on the web.
 
 ### No Addiction Mechanics
 
@@ -63,10 +69,11 @@ We deliberately exclude features that drive addiction:
 
 Some features are enhanced with AI:
 
-- **Blog** — Daily digests
-- **News** — Summarize articles
-- **Chat** — AI for discussions
-- **Agent** — Cross app queries
+- **Blog** — Daily digests generated from trending news
+- **News** — AI summaries of articles
+- **Chat** — AI-powered conversation on any topic
+- **Agent** — Searches across every service to answer your questions
+- **Apps** — Describe what you need and the agent builds a working tool
 
 ---
 

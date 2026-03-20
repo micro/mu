@@ -26,6 +26,7 @@ type Document struct {
 var catalog = []Document{
 	// Getting Started
 	{Slug: "about", Filename: "ABOUT.md", Title: "About Mu", Description: "What Mu is and why it exists", Category: "Getting Started"},
+	{Slug: "press", Filename: "PRESS.md", Title: "Press", Description: "Product overview and press release", Category: "Getting Started"},
 	{Slug: "principles", Filename: "PRINCIPLES.md", Title: "Principles", Description: "Guiding principles for AI and technology", Category: "Getting Started"},
 	{Slug: "installation", Filename: "INSTALLATION.md", Title: "Installation", Description: "Self-hosting and deployment guide", Category: "Getting Started"},
 

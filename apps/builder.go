@@ -6,10 +6,14 @@ import (
 	htmlpkg "html"
 	"net/http"
 	"strings"
+	"time"
 
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/event"
+
+	"github.com/google/uuid"
 )
 
 // builderSystemPrompt instructs the AI to generate app HTML.
@@ -112,6 +116,83 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	app.RespondJSON(w, map[string]string{
 		"html": result,
 	})
+}
+
+// BuildAndSave generates an app from a prompt, saves it, and returns the app.
+// Used by the MCP apps_build tool so the agent can create apps in one step.
+func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
+	aiPrompt := &ai.Prompt{
+		System:   builderSystemPrompt,
+		Question: prompt,
+		Priority: ai.PriorityHigh,
+	}
+	result, err := ai.Ask(aiPrompt)
+	if err != nil {
+		return nil, fmt.Errorf("AI generation failed: %v", err)
+	}
+	html := cleanGeneratedHTML(result)
+	if html == "" {
+		return nil, fmt.Errorf("AI returned empty HTML")
+	}
+
+	// Derive name and slug from prompt
+	name := prompt
+	if len(name) > 50 {
+		name = name[:50]
+	}
+	slug := slugify(name)
+	if len(slug) < 3 {
+		slug = "app-" + slug
+	}
+
+	// Ensure unique slug
+	mutex.RLock()
+	base := slug
+	for i := 2; apps[slug] != nil; i++ {
+		slug = fmt.Sprintf("%s-%d", base, i)
+	}
+	mutex.RUnlock()
+
+	now := time.Now()
+	a := &App{
+		ID:          uuid.New().String(),
+		Slug:        slug,
+		Name:        name,
+		Description: prompt,
+		AuthorID:    authorID,
+		Author:      authorName,
+		HTML:        html,
+		Public:      true,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	mutex.Lock()
+	apps[slug] = a
+	mutex.Unlock()
+	save()
+
+	app.Log("apps", "Agent built app %q for %s", name, authorID)
+	event.Publish(event.Event{Type: "apps_updated"})
+	return a, nil
+}
+
+func slugify(s string) string {
+	s = strings.ToLower(s)
+	// Replace non-alphanumeric with hyphens
+	var b strings.Builder
+	for _, c := range s {
+		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') {
+			b.WriteRune(c)
+		} else if c == ' ' || c == '-' || c == '_' {
+			b.WriteRune('-')
+		}
+	}
+	result := strings.Trim(b.String(), "-")
+	if len(result) > 50 {
+		result = result[:50]
+	}
+	return strings.Trim(result, "-")
 }
 
 // handleTemplateList returns available templates as JSON.
