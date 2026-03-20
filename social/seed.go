@@ -53,6 +53,7 @@ func seedAll() {
 	seedReminder()
 	seedOpinion()
 	seedDigest()
+	seedNewsNotes()
 }
 
 // seedReminder creates a daily discussion thread from the Islamic reminder.

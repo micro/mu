@@ -37,7 +37,7 @@ var (
 type CommunityNote struct {
 	Content   string    `json:"content"`              // the fact-check text
 	Sources   []Source  `json:"sources,omitempty"`     // reference links
-	Status    string    `json:"status"`                // "accurate", "misleading", "missing_context", "unverifiable"
+	Status    string    `json:"status"`                // "accurate", "misleading", "missing_context", "biased", "none"
 	CheckedAt time.Time `json:"checked_at"`
 }
 

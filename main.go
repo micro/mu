@@ -176,7 +176,37 @@ func main() {
 		}
 	}
 
-	// Start social discussion seeding (3 daily threads: reminder, opinion, digest)
+	// Wire social news notes callback — picks one recent article per topic for fact-checking
+	social.GetRecentNews = func() []social.NewsArticle {
+		feed := news.GetFeed()
+		if len(feed) == 0 {
+			return nil
+		}
+
+		// Pick the most recent article per category from the last 2 hours
+		cutoff := time.Now().Add(-2 * time.Hour)
+		seen := map[string]bool{}
+		var articles []social.NewsArticle
+
+		for _, p := range feed {
+			if p.PostedAt.Before(cutoff) {
+				continue
+			}
+			if seen[p.Category] {
+				continue
+			}
+			seen[p.Category] = true
+			articles = append(articles, social.NewsArticle{
+				Title:       p.Title,
+				Description: p.Description,
+				URL:         p.URL,
+				Category:    p.Category,
+			})
+		}
+		return articles
+	}
+
+	// Start social seeding (daily threads + hourly news community notes)
 	social.SeedingEnabled = true
 	social.StartSeeding()
 
