@@ -14,6 +14,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 
 	"github.com/google/uuid"
 )
@@ -96,7 +97,7 @@ func Preview() string {
 <p><a href="/apps/build">Build with AI</a></p>`
 	}
 
-	// Show top 3 most installed public apps
+	// Show 3 most recent public apps
 	var public []*App
 	for _, a := range apps {
 		if a.Public {
@@ -104,7 +105,7 @@ func Preview() string {
 		}
 	}
 	sort.Slice(public, func(i, j int) bool {
-		return public[i].Installs > public[j].Installs
+		return public[i].CreatedAt.After(public[j].CreatedAt)
 	})
 
 	var sb strings.Builder
@@ -409,6 +410,9 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	save()
 
 	app.Log("apps", "Created app %q by %s", name, acc.ID)
+
+	// Notify home dashboard to refresh
+	event.Publish(event.Event{Type: "apps_updated"})
 
 	if app.WantsJSON(r) || app.SendsJSON(r) {
 		app.RespondJSON(w, newApp)

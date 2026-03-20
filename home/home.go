@@ -756,9 +756,15 @@ func Load() {
 	// Do initial refresh
 	RefreshCards()
 
-	// Subscribe to blog update events
+	// Subscribe to blog and apps update events
 	go func() {
 		sub := event.Subscribe("blog_updated")
+		for range sub.Chan {
+			ForceRefresh()
+		}
+	}()
+	go func() {
+		sub := event.Subscribe("apps_updated")
 		for range sub.Chan {
 			ForceRefresh()
 		}
