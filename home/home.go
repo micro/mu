@@ -617,6 +617,14 @@ var Template = `<div id="home">
   <div class="home-right">%s</div>
 </div>`
 
+// newsCardWithDigest wraps the news headlines with a "Read Digest" link at the top.
+func newsCardWithDigest() string {
+	var sb strings.Builder
+	sb.WriteString(`<div style="margin-bottom:8px;"><a href="/news/digest" style="font-size:13px;font-weight:600;">Read today's digest →</a></div>`)
+	sb.WriteString(news.Headlines())
+	return sb.String()
+}
+
 func ChatCard() string {
 	return `<div id="home-chat">
 		<form id="home-chat-form" action="/chat" method="GET">
@@ -699,7 +707,7 @@ func Load() {
 		"blog":     blog.Preview,
 		"chat":     ChatCard,
 		"social":   social.Preview,
-		"news":     news.Headlines,
+		"news":     newsCardWithDigest,
 		"markets":  markets.MarketsHTML,
 		"reminder": reminder.ReminderHTML,
 		"video":    video.Latest,
