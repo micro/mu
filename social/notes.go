@@ -8,6 +8,11 @@ import (
 	"mu/internal/app"
 )
 
+// maxDailyNotes is the maximum number of community notes seeded per day.
+// Keeps the feed focused on the most noteworthy fact-checks rather than
+// becoming a mirror of the news feed.
+const maxDailyNotes = 5
+
 // NewsArticle is a lightweight news item for fact-checking.
 // Populated via callback wired in main.go to avoid importing the news package.
 type NewsArticle struct {
@@ -21,11 +26,17 @@ type NewsArticle struct {
 // Wired in main.go: social.GetRecentNews = func() []social.NewsArticle { ... }
 var GetRecentNews func() []NewsArticle
 
-// seedNewsNotes picks recent news articles and fact-checks them,
-// posting the results as community note threads. This runs hourly
-// and creates one thread per article, with the fact-check note attached.
+// seedNewsNotes picks recent news articles and fact-checks them.
+// Only posts when something is genuinely misleading or missing important
+// context — accurate articles don't need a note. Capped at maxDailyNotes
+// per day to keep the feed focused.
 func seedNewsNotes() {
 	if GetRecentNews == nil {
+		return
+	}
+
+	// Check how many notes we've already posted today
+	if countTodayNotes() >= maxDailyNotes {
 		return
 	}
 
@@ -35,6 +46,9 @@ func seedNewsNotes() {
 	}
 
 	for _, article := range articles {
+		if countTodayNotes() >= maxDailyNotes {
+			break
+		}
 		seedArticleNote(article)
 	}
 }
@@ -59,12 +73,14 @@ func seedArticleNote(article NewsArticle) {
 		return
 	}
 
-	// Skip if no verifiable claims — not worth posting
-	if note.Status == "none" {
+	// Only post when there's something worth flagging.
+	// Accurate and no-claims articles don't need a community note —
+	// the news feed already shows them. The value is catching what's
+	// wrong or incomplete.
+	if note.Status != "misleading" && note.Status != "missing_context" {
 		return
 	}
 
-	// Map news category to a social topic
 	topic := mapCategoryToTopic(article.Category)
 
 	thread := &Thread{
@@ -81,6 +97,28 @@ func seedArticleNote(article NewsArticle) {
 
 	AddSeededThread(thread)
 	app.Log("social", "Seeded community note [%s]: %s — %s", note.Status, article.Title, article.Category)
+}
+
+// countTodayNotes counts how many community note threads were seeded today.
+func countTodayNotes() int {
+	today := todayKey()
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	count := 0
+	for _, t := range threads {
+		if t.AuthorID != app.SystemUserID {
+			continue
+		}
+		if t.Note == nil {
+			continue
+		}
+		if t.CreatedAt.Format("2006-01-02") != today {
+			continue
+		}
+		count++
+	}
+	return count
 }
 
 // mapCategoryToTopic maps a news feed category to a valid social topic.
