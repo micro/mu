@@ -27,19 +27,6 @@ const MaxStoreValueSize = 64 * 1024
 // MaxStoreKeys is the maximum number of keys per app+user.
 const MaxStoreKeys = 100
 
-// Categories for apps.
-var Categories = []string{
-	"Productivity",
-	"Tools",
-	"Finance",
-	"Writing",
-	"Health",
-	"Education",
-	"Fun",
-	"Developer",
-	"Other",
-}
-
 // App represents an app.
 type App struct {
 	ID          string    `json:"id"`
@@ -50,7 +37,7 @@ type App struct {
 	Author      string    `json:"author"`
 	Icon        string    `json:"icon"`
 	HTML        string    `json:"html"`
-	Category    string    `json:"category"`
+	Tags        string    `json:"tags"` // Comma-separated tags
 	Public      bool      `json:"public"`
 	Installs    int       `json:"installs"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -201,7 +188,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			Name        string `json:"name"`
 			Description string `json:"description"`
 			Author      string `json:"author"`
-			Category    string `json:"category"`
+			Tags        string `json:"tags"`
 			Installs    int    `json:"installs"`
 		}
 		summaries := make([]appSummary, len(list))
@@ -211,7 +198,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				Name:        a.Name,
 				Description: a.Description,
 				Author:      a.Author,
-				Category:    a.Category,
+				Tags:        a.Tags,
 				Installs:    a.Installs,
 			}
 		}
@@ -223,22 +210,36 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	var sb strings.Builder
 	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. No ads, no tracking, no bloat.</p>`)
 
-	// Category filter
-	category := r.URL.Query().Get("category")
-	sb.WriteString(`<div style="margin-bottom:16px;">`)
-	sb.WriteString(fmt.Sprintf(`<a href="/apps" style="margin-right:8px;%s">All</a>`, activeStyle(category == "")))
-	for _, cat := range Categories {
-		active := strings.EqualFold(category, cat)
-		sb.WriteString(fmt.Sprintf(`<a href="/apps?category=%s" style="margin-right:8px;%s">%s</a>`,
-			htmlpkg.EscapeString(cat), activeStyle(active), htmlpkg.EscapeString(cat)))
-	}
-	sb.WriteString(`</div>`)
+	// Tag filter
+	tag := r.URL.Query().Get("tag")
 
-	// Filter by category
-	if category != "" {
+	// Collect known tags from public apps for filter pills
+	tagSet := map[string]bool{}
+	for _, a := range list {
+		for _, t := range splitTags(a.Tags) {
+			tagSet[t] = true
+		}
+	}
+	if len(tagSet) > 0 {
+		sb.WriteString(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">`)
+		sb.WriteString(fmt.Sprintf(`<a href="/apps" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">All</a>`, pillStyle(tag == "")))
+		var sortedTags []string
+		for t := range tagSet {
+			sortedTags = append(sortedTags, t)
+		}
+		sort.Strings(sortedTags)
+		for _, t := range sortedTags {
+			sb.WriteString(fmt.Sprintf(`<a href="/apps?tag=%s" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">%s</a>`,
+				htmlpkg.EscapeString(t), pillStyle(strings.EqualFold(tag, t)), htmlpkg.EscapeString(t)))
+		}
+		sb.WriteString(`</div>`)
+	}
+
+	// Filter by tag
+	if tag != "" {
 		var filtered []*App
 		for _, a := range list {
-			if strings.EqualFold(a.Category, category) {
+			if hasTag(a.Tags, tag) {
 				filtered = append(filtered, a)
 			}
 		}
@@ -249,16 +250,20 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`<p>No apps yet. <a href="/apps/new">Create the first one</a>.</p>`)
 	} else {
 		for _, a := range list {
+			tagsHTML := ""
+			if a.Tags != "" {
+				tagsHTML = " · " + htmlpkg.EscapeString(a.Tags)
+			}
 			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;">
 <h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
-<p style="margin:0;font-size:13px;color:#999;">by %s · %s · %d installs</p>
+<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d installs</p>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
 				htmlpkg.EscapeString(a.Name),
 				htmlpkg.EscapeString(a.Description),
 				htmlpkg.EscapeString(a.Author),
-				htmlpkg.EscapeString(a.Category),
+				tagsHTML,
 				a.Installs,
 			))
 		}
@@ -290,16 +295,13 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="card-desc">Create an app — a small, self-contained HTML tool.</p>`)
 	sb.WriteString(`<form method="POST" action="/apps/new" style="max-width:600px;">`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Name</label><br>`)
-	sb.WriteString(`<input type="text" name="name" required maxlength="60" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="Pomodoro Timer"></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>Slug (URL-friendly ID)</label><br>`)
-	sb.WriteString(`<input type="text" name="slug" required maxlength="50" pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="pomodoro-timer"></div>`)
+	sb.WriteString(`<input type="text" name="name" id="app-name" required maxlength="60" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="Pomodoro Timer" oninput="document.getElementById('app-slug').value=this.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').substring(0,50)"></div>`)
+	sb.WriteString(`<div style="margin-bottom:12px;"><label>ID <span style="color:#999;font-size:12px;">(auto-filled, editable)</span></label><br>`)
+	sb.WriteString(`<input type="text" name="slug" id="app-slug" required maxlength="50" pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="pomodoro-timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Description</label><br>`)
-	sb.WriteString(`<input type="text" name="description" required maxlength="200" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="A simple 25-minute focus timer"></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>Category</label><br><select name="category" style="padding:8px;border:1px solid #ccc;border-radius:4px;">`)
-	for _, cat := range Categories {
-		sb.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, htmlpkg.EscapeString(cat), htmlpkg.EscapeString(cat)))
-	}
-	sb.WriteString(`</select></div>`)
+	sb.WriteString(`<input type="text" name="description" required maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="A simple 25-minute focus timer"></div>`)
+	sb.WriteString(`<div style="margin-bottom:12px;"><label>Tags <span style="color:#999;font-size:12px;">(comma-separated, optional)</span></label><br>`)
+	sb.WriteString(`<input type="text" name="tags" maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="productivity, timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>HTML (your app — max 256KB)</label><br>`)
 	sb.WriteString(`<textarea name="html" required style="width:100%;min-height:300px;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:monospace;font-size:13px;" placeholder="<h1>Hello World</h1>"></textarea></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label><input type="checkbox" name="public" value="1" checked> List in public directory</label></div>`)
@@ -321,7 +323,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var name, slug, description, category, html string
+	var name, slug, description, tags, html string
 	var public bool
 
 	if app.SendsJSON(r) {
@@ -329,7 +331,8 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 			Name        string `json:"name"`
 			Slug        string `json:"slug"`
 			Description string `json:"description"`
-			Category    string `json:"category"`
+			Tags        string `json:"tags"`
+			Category    string `json:"category"` // backward compat
 			HTML        string `json:"html"`
 			Public      *bool  `json:"public"`
 		}
@@ -340,7 +343,10 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		name = req.Name
 		slug = req.Slug
 		description = req.Description
-		category = req.Category
+		tags = req.Tags
+		if tags == "" {
+			tags = req.Category // backward compat
+		}
 		html = req.HTML
 		if req.Public != nil {
 			public = *req.Public
@@ -352,7 +358,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		name = strings.TrimSpace(r.FormValue("name"))
 		slug = strings.TrimSpace(r.FormValue("slug"))
 		description = strings.TrimSpace(r.FormValue("description"))
-		category = strings.TrimSpace(r.FormValue("category"))
+		tags = strings.TrimSpace(r.FormValue("tags"))
 		html = r.FormValue("html")
 		public = r.FormValue("public") == "1"
 	}
@@ -363,15 +369,12 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !slugRe.MatchString(slug) {
-		app.Error(w, r, http.StatusBadRequest, "Slug must be 3-50 chars, lowercase letters, numbers, and hyphens")
+		app.Error(w, r, http.StatusBadRequest, "ID must be 3-50 chars, lowercase letters, numbers, and hyphens")
 		return
 	}
 	if len(html) > MaxHTMLSize {
 		app.Error(w, r, http.StatusBadRequest, "HTML content exceeds 256KB limit")
 		return
-	}
-	if !validCategory(category) {
-		category = "Other"
 	}
 
 	// Check slug uniqueness
@@ -392,7 +395,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		AuthorID:    acc.ID,
 		Author:      acc.Name,
 		HTML:        html,
-		Category:    category,
+		Tags:        tags,
 		Public:      public,
 		Installs:    0,
 		CreatedAt:   now,
@@ -431,9 +434,13 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf(`<p class="card-desc">%s</p>`, htmlpkg.EscapeString(a.Description)))
-	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s · %s · %d installs · created %s</p>`,
+	tagsInfo := ""
+	if a.Tags != "" {
+		tagsInfo = " · " + htmlpkg.EscapeString(a.Tags)
+	}
+	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s · %d installs · created %s</p>`,
 		htmlpkg.EscapeString(a.Author),
-		htmlpkg.EscapeString(a.Category),
+		tagsInfo,
 		a.Installs,
 		a.CreatedAt.Format("2 Jan 2006"),
 	))
@@ -569,7 +576,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 	var req struct {
 		Name        *string `json:"name"`
 		Description *string `json:"description"`
-		Category    *string `json:"category"`
+		Tags        *string `json:"tags"`
 		HTML        *string `json:"html"`
 		Public      *bool   `json:"public"`
 	}
@@ -585,8 +592,8 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 	if req.Description != nil {
 		a.Description = *req.Description
 	}
-	if req.Category != nil && validCategory(*req.Category) {
-		a.Category = *req.Category
+	if req.Tags != nil {
+		a.Tags = *req.Tags
 	}
 	if req.HTML != nil {
 		if len(*req.HTML) > MaxHTMLSize {
@@ -784,7 +791,7 @@ func SearchApps(query string) []*App {
 		}
 		if strings.Contains(strings.ToLower(a.Name), query) ||
 			strings.Contains(strings.ToLower(a.Description), query) ||
-			strings.EqualFold(a.Category, query) {
+			hasTag(a.Tags, query) {
 			results = append(results, a)
 		}
 	}
@@ -807,20 +814,33 @@ func loadStore(key string) map[string]interface{} {
 	return store
 }
 
-func validCategory(cat string) bool {
-	for _, c := range Categories {
-		if strings.EqualFold(c, cat) {
+// splitTags splits a comma-separated tags string into trimmed, non-empty tags.
+func splitTags(tags string) []string {
+	var result []string
+	for _, t := range strings.Split(tags, ",") {
+		t = strings.TrimSpace(t)
+		if t != "" {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
+// hasTag returns true if the comma-separated tags string contains the given tag (case-insensitive).
+func hasTag(tags, tag string) bool {
+	for _, t := range splitTags(tags) {
+		if strings.EqualFold(t, tag) {
 			return true
 		}
 	}
 	return false
 }
 
-func activeStyle(active bool) string {
+func pillStyle(active bool) string {
 	if active {
-		return "font-weight:bold;"
+		return "background:#111;color:#fff;"
 	}
-	return ""
+	return "background:#f0f0f0;color:#333;"
 }
 
 func truncate(s string, n int) string {

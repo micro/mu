@@ -512,7 +512,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - blog_list: Get recent blog posts (no args)
 - wallet_balance: Check your wallet credit balance (no args)
 - wallet_topup: Get available topup options to add credits to your wallet (no args)
-- apps_search: Search apps directory (args: {"q":"search term","category":"Productivity"})
+- apps_search: Search apps directory (args: {"q":"search term","tag":"productivity"})
 - apps_read: Read details of a specific app (args: {"slug":"app-slug"})
 - apps_build: AI-generate an app from a description (args: {"prompt":"a pomodoro timer with lap counter"})`
 
@@ -1726,7 +1726,7 @@ func formatAppsSearchResult(result string) string {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 		Author      string `json:"author"`
-		Category    string `json:"category"`
+		Tags        string `json:"tags"`
 		Installs    int    `json:"installs"`
 	}
 	if err := json.Unmarshal([]byte(result), &apps); err != nil {
@@ -1738,8 +1738,12 @@ func formatAppsSearchResult(result string) string {
 	var sb strings.Builder
 	sb.WriteString("Apps:\n")
 	for i, a := range apps {
-		sb.WriteString(fmt.Sprintf("%d. %s (%s) — %s [%s, %d installs] /apps/%s\n",
-			i+1, a.Name, a.Slug, a.Description, a.Category, a.Installs, a.Slug))
+		tagInfo := ""
+		if a.Tags != "" {
+			tagInfo = " [" + a.Tags + "]"
+		}
+		sb.WriteString(fmt.Sprintf("%d. %s (%s) — %s%s %d installs /apps/%s\n",
+			i+1, a.Name, a.Slug, a.Description, tagInfo, a.Installs, a.Slug))
 	}
 	return sb.String()
 }
@@ -1752,7 +1756,7 @@ func formatAppsReadResult(result string) string {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 		Author      string `json:"author"`
-		Category    string `json:"category"`
+		Tags        string `json:"tags"`
 		Installs    int    `json:"installs"`
 	}
 	if err := json.Unmarshal([]byte(result), &a); err != nil {
@@ -1761,8 +1765,12 @@ func formatAppsReadResult(result string) string {
 	if a.Name == "" {
 		return result
 	}
-	return fmt.Sprintf("App: %s\nSlug: %s\nDescription: %s\nAuthor: %s\nCategory: %s\nInstalls: %d\nURL: /apps/%s\nRun: /apps/%s/run\n",
-		a.Name, a.Slug, a.Description, a.Author, a.Category, a.Installs, a.Slug, a.Slug)
+	tagLine := ""
+	if a.Tags != "" {
+		tagLine = fmt.Sprintf("Tags: %s\n", a.Tags)
+	}
+	return fmt.Sprintf("App: %s\nID: %s\nDescription: %s\nAuthor: %s\n%sInstalls: %d\nURL: /apps/%s\nRun: /apps/%s/run\n",
+		a.Name, a.Slug, a.Description, a.Author, tagLine, a.Installs, a.Slug, a.Slug)
 }
 
 // formatAppsBuildResult converts a raw JSON build result into
@@ -1790,7 +1798,7 @@ func renderAppsCard(result string) string {
 		Slug        string `json:"slug"`
 		Name        string `json:"name"`
 		Description string `json:"description"`
-		Category    string `json:"category"`
+		Tags        string `json:"tags"`
 		Installs    int    `json:"installs"`
 	}
 	if err := json.Unmarshal([]byte(result), &apps); err != nil {
