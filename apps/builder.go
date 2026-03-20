@@ -195,15 +195,19 @@ func builderPageHTML(initialCode string) string {
 .code-editor { flex: 1; width: 100%%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; line-height: 1.5; resize: none; tab-size: 2; background: #fafafa; }
 .preview-frame { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; }
 .save-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.save-bar input { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; color: #333; }
+.save-bar input { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; color: #333; box-sizing: border-box; }
 .save-bar input.name { flex: 1; min-width: 150px; }
 .save-bar input.slug { width: 180px; }
-.save-bar select { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; }
-.save-bar button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+.save-bar button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .status-msg { font-size: 13px; color: #999; margin-left: 8px; }
 @media (max-width: 768px) {
   .split { flex-direction: column; min-height: auto; }
   .code-editor, .preview-frame { min-height: 300px; }
+  .save-bar { flex-direction: column; align-items: stretch; }
+  .save-bar input.name, .save-bar input.slug { width: 100%%; min-width: auto; }
+  .save-bar input { width: 100%%; }
+  .prompt-bar { flex-direction: column; }
+  .prompt-bar input, .prompt-bar button { width: 100%%; box-sizing: border-box; }
 }
 </style>
 
@@ -320,7 +324,9 @@ function saveApp() {
   var slug = document.getElementById('appSlug').value.trim();
   var tags = (document.getElementById('appTags').value || '').trim();
   var html = code.value.trim();
-  if (!name || !slug || !html) { document.getElementById('statusMsg').textContent = 'Name, ID, and code are required'; return; }
+  if (!name) { document.getElementById('statusMsg').textContent = 'App name is required'; return; }
+  if (!slug) { slug = slugify(name); document.getElementById('appSlug').value = slug; }
+  if (!html) { document.getElementById('statusMsg').textContent = 'Generate or write some code first'; return; }
 
   document.getElementById('statusMsg').textContent = 'Saving...';
   fetch('/apps/new', {
@@ -328,13 +334,21 @@ function saveApp() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: name, slug: slug, description: name, tags: tags, html: html, public: true })
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r) {
+    if (!r.ok) {
+      return r.text().then(function(t) {
+        try { var j = JSON.parse(t); throw new Error(j.error || 'Save failed'); }
+        catch(e) { if (e.message) throw e; throw new Error('Save failed (status ' + r.status + ')'); }
+      });
+    }
+    return r.json();
+  })
   .then(function(data) {
     if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
     document.getElementById('statusMsg').textContent = 'Saved!';
     window.location.href = '/apps/' + (data.slug || slug);
   })
-  .catch(function(e) { document.getElementById('statusMsg').textContent = 'Error: ' + e.message; });
+  .catch(function(e) { document.getElementById('statusMsg').textContent = e.message || 'Save failed'; });
 }
 
 function copyCode() {
