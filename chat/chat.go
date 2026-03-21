@@ -42,6 +42,9 @@ var prompts = map[string]string{}
 
 // askLLM is internal helper for ai.Ask
 func askLLM(prompt *ai.Prompt) (string, error) {
+	if prompt.Caller == "" {
+		prompt.Caller = "chat"
+	}
 	resp, err := ai.Ask(prompt)
 	if err != nil {
 		return resp, err
@@ -1044,7 +1047,8 @@ func Load() {
 				prompt := &ai.Prompt{
 					System:   "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear, factual sentences that capture the key points.",
 					Question: fmt.Sprintf("Summarize this article:\n\n%s", content),
-					Priority: ai.PriorityLow, // Low priority for background article summaries
+					Priority: ai.PriorityLow,
+					Caller:   "article-summary",
 				}
 
 				summary, err := askLLM(prompt)
@@ -1101,6 +1105,7 @@ func Load() {
 					System:   fmt.Sprintf("You are a content categorization assistant. Your task is to categorize posts into ONE of these categories ONLY: %s. If the post does not clearly fit into any of these categories, respond with 'None'. Respond with ONLY the category name or 'None', nothing else.", strings.Join(topics, ", ")),
 					Question: fmt.Sprintf("Categorize this post:\n\nTitle: %s\n\nContent: %s\n\nWhich single category best fits this post?", title, content),
 					Priority: ai.PriorityLow,
+					Caller:   "auto-tag-post",
 				}
 
 				tag, err := askLLM(prompt)
@@ -1154,6 +1159,7 @@ func Load() {
 					System:   "You are a note organization assistant. Given a note, suggest ONE short tag (1-2 words, lowercase) that best categorizes it. Examples: 'work', 'ideas', 'shopping', 'todo', 'recipe', 'travel', 'health', 'finance'. Respond with ONLY the tag, nothing else. If the note is too short or unclear, respond with 'personal'.",
 					Question: content,
 					Priority: ai.PriorityLow,
+					Caller:   "auto-tag-note",
 				}
 
 				tag, err := askLLM(prompt)
@@ -1209,7 +1215,8 @@ func generateSummaries() {
 		resp, err := askLLM(&ai.Prompt{
 			Rag:      ragContext,
 			Question: prompt,
-			Priority: ai.PriorityMedium, // Medium priority for topic summaries
+			Priority: ai.PriorityMedium,
+			Caller:   "topic-summary",
 		})
 
 		if err != nil {

@@ -240,6 +240,7 @@ Rules:
 - Return ONLY the JSON, no other text`,
 		Question: context.String(),
 		Priority: ai.PriorityLow,
+		Caller:   "opinion-reflect",
 	}
 
 	response, err := ai.Ask(prompt)
@@ -363,6 +364,7 @@ Rules:
 - Maximum 3 stance updates per review`,
 		Question: context.String(),
 		Priority: ai.PriorityLow,
+		Caller:   "opinion-review",
 	}
 
 	response, err := ai.Ask(prompt)
@@ -484,6 +486,7 @@ Rules:
 - CRITICAL: Keep under 800 characters`,
 		Question: context.String(),
 		Priority: ai.PriorityLow,
+		Caller:   "opinion-engage",
 	}
 
 	response, err := ai.Ask(prompt)

@@ -321,6 +321,7 @@ Rules:
 - CRITICAL: Keep under 1500 characters total.`,
 		Question: context,
 		Priority: ai.PriorityLow,
+		Caller:   "daily-digest",
 	}
 
 	draft, err := ai.Ask(prompt)

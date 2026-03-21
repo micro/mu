@@ -242,6 +242,7 @@ Rules:
 - Keep the note under 400 characters`,
 		Question: question.String(),
 		Priority: ai.PriorityLow,
+		Caller:   "factcheck",
 	}
 
 	response, err := ai.Ask(prompt)

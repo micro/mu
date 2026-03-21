@@ -82,7 +82,13 @@ func opinionLoop() {
 // opinionEngageLoop runs the opinion agent's engagement cycle.
 // Every hour it checks for new human comments on today's opinion posts,
 // then reviews the discussion to extract learnings for editorial memory.
+// DISABLED: With no active users, this loop burns AI calls responding to
+// empty comment sections, reviewing nothing, and self-reflecting unnecessarily.
+// Re-enable when there are active users engaging with opinion posts.
 func opinionEngageLoop() {
+	app.Log("opinion", "Engagement loop disabled to reduce API costs")
+	return
+
 	time.Sleep(2 * time.Minute)
 
 	for {
@@ -95,8 +101,12 @@ func opinionEngageLoop() {
 	}
 }
 
+// maxDailyOpinions limits how many opinion posts are generated per day.
+// Reduced from 8 (one per category) to control API costs while no users are active.
+const maxDailyOpinions = 2
+
 // publishNextOpinion finds the next category that needs an opinion today
-// and publishes it, respecting the 2-hour spacing between posts.
+// and publishes it, respecting the spacing between posts.
 func publishNextOpinion() {
 	categories := opinionCategories()
 	if len(categories) == 0 {
@@ -105,10 +115,15 @@ func publishNextOpinion() {
 
 	published := findTodayOpinionCategories()
 
+	// Cost control: limit daily opinion posts
+	if len(published) >= maxDailyOpinions {
+		return
+	}
+
 	// Find last publish time today
 	if last := latestTodayOpinionTime(); !last.IsZero() {
 		elapsed := time.Since(last)
-		interval := opinionInterval(len(categories))
+		interval := opinionInterval(maxDailyOpinions)
 		if elapsed < interval {
 			return // too soon
 		}
@@ -274,6 +289,7 @@ Rules:
 - CRITICAL: Keep under 2500 characters total (title + body).`, category, category),
 		Question: fullContext,
 		Priority: ai.PriorityLow,
+		Caller:   "opinion-generate",
 	}
 
 	response, err := ai.Ask(prompt)

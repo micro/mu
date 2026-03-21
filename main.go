@@ -446,6 +446,7 @@ func main() {
 		"/admin/log":       true,
 		"/admin/env":       true,
 		"/admin/server":    true,
+		"/admin/ai-usage":  true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
@@ -531,6 +532,9 @@ func main() {
 
 	// server update and restart
 	http.HandleFunc("/admin/server", admin.UpdateHandler)
+
+	// AI usage tracking
+	http.HandleFunc("/admin/ai-usage", admin.AIUsageHandler)
 
 	// plans page (public - overview of options)
 	http.HandleFunc("/plans", app.Plans)

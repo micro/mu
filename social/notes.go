@@ -12,7 +12,8 @@ import (
 )
 
 // maxDailyNotes is the maximum number of community notes seeded per day.
-const maxDailyNotes = 5
+// Reduced from 5 to 2 to control API costs while user base is small.
+const maxDailyNotes = 2
 
 // NewsArticle is a lightweight news item for fact-checking.
 type NewsArticle struct {
@@ -131,9 +132,10 @@ func seedArticleNote(article NewsArticle) {
 	}
 
 	prompt := &ai.Prompt{
-		System: noteWriterPrompt,
+		System:   noteWriterPrompt,
 		Question: question.String(),
 		Priority: ai.PriorityLow,
+		Caller:   "community-notes",
 	}
 
 	response, err := ai.Ask(prompt)

@@ -605,6 +605,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			Priority: ai.PriorityHigh,
 			Provider: model.Provider,
 			Model:    model.Model,
+			Caller:   "agent-plan",
 		}
 
 		planResult, err := ai.Ask(planPrompt)
@@ -698,6 +699,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Priority: ai.PriorityHigh,
 		Provider: model.Provider,
 		Model:    model.Model,
+		Caller:   "agent-synth",
 	}
 
 	answer, err := ai.Ask(synthPrompt)
