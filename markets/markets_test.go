@@ -120,8 +120,8 @@ func TestGenerateMarketsCardHTML(t *testing.T) {
 		"GOLD": 2000,
 	}
 	html := generateMarketsCardHTML(prices)
-	if !strings.Contains(html, "market-grid") {
-		t.Error("expected market-grid class")
+	if !strings.Contains(html, "<table") {
+		t.Error("expected table element")
 	}
 	if !strings.Contains(html, "BTC") {
 		t.Error("expected BTC in output")
