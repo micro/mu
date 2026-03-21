@@ -5,6 +5,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"mu/internal/data"
 )
 
 // UsageRecord tracks token usage for a single API call
@@ -39,11 +41,30 @@ type UsageSummary struct {
 	RecentCalls []UsageRecord `json:"recent_calls"`
 }
 
+// persistedUsage is the on-disk format
+type persistedUsage struct {
+	Since   time.Time     `json:"since"`
+	Records []UsageRecord `json:"records"`
+}
+
+const usageFile = "ai_usage.json"
+const maxRecords = 2000
+
 var (
 	usageMu      sync.Mutex
 	usageRecords []UsageRecord
-	usageStarted = time.Now()
+	usageStarted time.Time
 )
+
+func init() {
+	var stored persistedUsage
+	if err := data.LoadJSON(usageFile, &stored); err == nil && len(stored.Records) > 0 {
+		usageRecords = stored.Records
+		usageStarted = stored.Since
+	} else {
+		usageStarted = time.Now()
+	}
+}
 
 // Sonnet pricing (per million tokens) as of 2025
 const (
@@ -78,13 +99,22 @@ func recordUsage(caller, model string, inputTokens, outputTokens, cacheReadToken
 
 	usageRecords = append(usageRecords, record)
 
-	// Keep max 2000 records (rolling window)
-	if len(usageRecords) > 2000 {
-		usageRecords = usageRecords[len(usageRecords)-2000:]
+	// Keep max records (rolling window)
+	if len(usageRecords) > maxRecords {
+		usageRecords = usageRecords[len(usageRecords)-maxRecords:]
 	}
+
+	saveUsage()
 }
 
-// GetUsageSummary returns a summary of all API usage since startup
+func saveUsage() {
+	data.SaveJSON(usageFile, persistedUsage{
+		Since:   usageStarted,
+		Records: usageRecords,
+	})
+}
+
+// GetUsageSummary returns a summary of all API usage
 func GetUsageSummary() UsageSummary {
 	usageMu.Lock()
 	defer usageMu.Unlock()
