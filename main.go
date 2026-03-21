@@ -163,11 +163,6 @@ func main() {
 	// Start web search topics (loads cache from disk, generates in background)
 	search.StartTopics()
 
-	// Wire news → digest callback (avoids circular import: digest imports news)
-	news.HasDigest = func() bool {
-		return digest.GetLatestDigest()
-	}
-
 	// Start daily opinion generation (publishes as blog post)
 	blog.StartOpinion()
 
