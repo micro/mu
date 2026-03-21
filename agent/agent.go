@@ -691,7 +691,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	reminderContext := ""
 	if rd := reminder.GetDailyReminderData(); rd != nil {
 		var rb strings.Builder
-		rb.WriteString("\n\nToday's Islamic reminder (from reminder.dev):\n")
+		rb.WriteString("\n\nToday's Islamic reminder:\n")
 		if rd.Verse != "" {
 			rb.WriteString("Verse: " + rd.Verse + "\n")
 		}

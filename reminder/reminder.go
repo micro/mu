@@ -59,16 +59,8 @@ func fetchReminder() {
 	// Save full JSON data
 	data.SaveFile("reminder.json", string(b))
 
-	// Link directly to the verse on reminder.dev
-	link := "https://reminder.dev"
-	if links, ok := val["links"].(map[string]interface{}); ok {
-		if verseLink, ok := links["verse"].(string); ok && verseLink != "" {
-			link = "https://reminder.dev" + verseLink
-		}
-	}
-
 	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, val["verse"])
-	html += app.Link("Read on reminder.dev", link)
+	html += app.Link("More", "/reminder")
 
 	reminderMutex.Lock()
 	reminderHTML = html
@@ -101,7 +93,7 @@ func fetchReminder() {
 		"Daily Reminder",
 		summary,
 		map[string]interface{}{
-			"url":     "https://reminder.dev",
+			"url":     "/reminder",
 			"updated": updated,
 			"source":  "daily",
 		},
@@ -135,8 +127,28 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Redirect to reminder.dev
-	http.Redirect(w, r, "https://reminder.dev", http.StatusFound)
+	rd, _ := getReminderForRequest(r)
+	if rd == nil {
+		http.Error(w, "Reminder not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var content string
+	if rd.Verse != "" {
+		content += fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, rd.Verse)
+	}
+	if rd.Name != "" {
+		content += fmt.Sprintf(`<div class="item"><strong>Name of Allah</strong><p>%s</p></div>`, rd.Name)
+	}
+	if rd.Hadith != "" {
+		content += fmt.Sprintf(`<div class="item"><strong>Hadith</strong><div class="verse">%s</div></div>`, rd.Hadith)
+	}
+	if rd.Message != "" {
+		content += fmt.Sprintf(`<div class="item"><p>%s</p></div>`, rd.Message)
+	}
+
+	html := app.RenderHTMLForRequest("Daily Reminder", "Today's Islamic reminder with verse, hadith, and name of Allah", content, r)
+	w.Write([]byte(html))
 }
 
 // getReminderForRequest returns the appropriate reminder data based on the
