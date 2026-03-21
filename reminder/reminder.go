@@ -265,78 +265,59 @@ func GetDailyReminderForDate(date string) *ReminderData {
 }
 
 // generateReminderPage generates the full reminder page HTML.
-// Order: message first, then verse, hadith, name — each with title and subtitle.
-func generateReminderPage(data *ReminderData) string {
+// Uses the standard card format: title in header, content, link at bottom.
+func generateReminderPage(rd *ReminderData) string {
 	var sb strings.Builder
 
 	sb.WriteString(`<div class="reminder-page">`)
 
-	// Message first — sets the context
-	if data.Message != "" {
-		sb.WriteString(`<div class="reminder-section">`)
-		sb.WriteString(`<div class="reminder-content card">`)
-		sb.WriteString(data.Message)
-		sb.WriteString(`</div>`)
-		sb.WriteString(`</div>`)
+	// Message card
+	if rd.Message != "" {
+		sb.WriteString(app.Card("reminder-message", "Reminder", rd.Message))
 	}
 
-	// Verse
-	if data.Verse != "" {
-		sb.WriteString(`<div class="reminder-section">`)
-		sb.WriteString(`<h3>Verse</h3>`)
-		sb.WriteString(`<p class="reminder-subtitle">From the Quran</p>`)
-		sb.WriteString(`<div class="reminder-content">`)
-		sb.WriteString(data.Verse)
-		sb.WriteString(`</div>`)
-		if data.Links != nil {
-			if verseLink, ok := data.Links["verse"].(string); ok && verseLink != "" {
-				sb.WriteString(fmt.Sprintf(`<p class="reminder-link">%s</p>`,
-					app.Link("Continue", "https://reminder.dev"+verseLink)))
+	// Verse card
+	if rd.Verse != "" {
+		var content strings.Builder
+		content.WriteString(fmt.Sprintf(`<p class="info">From the Quran</p>`))
+		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Verse))
+		if rd.Links != nil {
+			if verseLink, ok := rd.Links["verse"].(string); ok && verseLink != "" {
+				content.WriteString(app.Link("Continue reading", "https://reminder.dev"+verseLink))
 			}
 		}
-		sb.WriteString(`</div>`)
+		sb.WriteString(app.Card("reminder-verse", "Verse", content.String()))
 	}
 
-	// Hadith
-	if data.Hadith != "" {
-		sb.WriteString(`<div class="reminder-section">`)
-		sb.WriteString(`<h3>Hadith</h3>`)
-		sb.WriteString(`<p class="reminder-subtitle">From Sahih Al Bukhari</p>`)
-		sb.WriteString(`<div class="reminder-content">`)
-		sb.WriteString(data.Hadith)
-		sb.WriteString(`</div>`)
-		if data.Links != nil {
-			if hadithLink, ok := data.Links["hadith"].(string); ok && hadithLink != "" {
-				sb.WriteString(fmt.Sprintf(`<p class="reminder-link">%s</p>`,
-					app.Link("Read more", "https://reminder.dev"+hadithLink)))
+	// Hadith card
+	if rd.Hadith != "" {
+		var content strings.Builder
+		content.WriteString(fmt.Sprintf(`<p class="info">From Sahih Al Bukhari</p>`))
+		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Hadith))
+		if rd.Links != nil {
+			if hadithLink, ok := rd.Links["hadith"].(string); ok && hadithLink != "" {
+				content.WriteString(app.Link("Read more", "https://reminder.dev"+hadithLink))
 			}
 		}
-		sb.WriteString(`</div>`)
+		sb.WriteString(app.Card("reminder-hadith", "Hadith", content.String()))
 	}
 
-	// Name
-	if data.Name != "" {
-		sb.WriteString(`<div class="reminder-section">`)
-		sb.WriteString(`<h3>Name</h3>`)
-		sb.WriteString(`<p class="reminder-subtitle">From the names of Allah</p>`)
-		sb.WriteString(`<div class="reminder-content">`)
-		sb.WriteString(data.Name)
-		sb.WriteString(`</div>`)
-		if data.Links != nil {
-			if nameLink, ok := data.Links["name"].(string); ok && nameLink != "" {
-				sb.WriteString(fmt.Sprintf(`<p class="reminder-link">%s</p>`,
-					app.Link("Read more", "https://reminder.dev"+nameLink)))
+	// Name card
+	if rd.Name != "" {
+		var content strings.Builder
+		content.WriteString(fmt.Sprintf(`<p class="info">From the names of Allah</p>`))
+		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Name))
+		if rd.Links != nil {
+			if nameLink, ok := rd.Links["name"].(string); ok && nameLink != "" {
+				content.WriteString(app.Link("Read more", "https://reminder.dev"+nameLink))
 			}
 		}
-		sb.WriteString(`</div>`)
+		sb.WriteString(app.Card("reminder-name", "Name", content.String()))
 	}
 
-	// Discussion link
-	sb.WriteString(`<div class="reminder-section">`)
-	sb.WriteString(`<p class="reminder-discussion">`)
-	sb.WriteString(app.Link("Discuss this reminder", "/chat?id=reminder_daily"))
-	sb.WriteString(`</p>`)
-	sb.WriteString(`</div>`)
+	// Discuss card
+	sb.WriteString(app.Card("reminder-discuss", "Discuss",
+		app.Link("Discuss this reminder", "/chat?id=reminder_daily")))
 
 	sb.WriteString(`</div>`)
 
