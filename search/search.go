@@ -129,6 +129,7 @@ func searchBrave(query string, limit int) ([]BraveResult, error) {
 	}
 
 	app.RecordAPICall("brave", "GET", reqURL, resp.StatusCode, duration, nil, "", "")
+	app.RecordUsage("brave", "search", 0.5, nil) // ~$0.005/query
 
 	var braveResp BraveResponse
 	if err := json.Unmarshal(body, &braveResp); err != nil {

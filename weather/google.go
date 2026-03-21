@@ -349,6 +349,7 @@ func googleWeatherGet(apiURL, service string) ([]byte, error) {
 	}
 
 	app.RecordAPICall(service, "GET", apiURL, resp.StatusCode, time.Since(start), nil, "", string(body))
+	app.RecordUsage("google", service, 0.5, nil) // ~$0.005/call
 	return body, nil
 }
 
