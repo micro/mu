@@ -156,32 +156,18 @@ var landingTemplate = `<html lang="en">
       <h3>Services</h3>
       <p>The tools powering Mu</p>
       <div id="links">
-        <a href="/news" style="text-decoration: none; color: inherit;">
+        <a href="/agent" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/news.png" alt="News" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>News</b>
-            <div class="small">Headlines and articles with AI summaries</div>
+            <img src="/agent.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Agent</b>
+            <div class="small">AI that can search, answer, and build</div>
           </div>
         </a>
-        <a href="/markets" style="text-decoration: none; color: inherit;">
+        <a href="/apps" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/markets.svg" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Markets</b>
-            <div class="small">Live crypto, futures, and commodity prices</div>
-          </div>
-        </a>
-        <a href="/video" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Video</b>
-            <div class="small">YouTube without ads, algorithms, or shorts</div>
-          </div>
-        </a>
-        <a href="/web" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/search.svg" alt="Web" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Web</b>
-            <div class="small">Search the web without tracking</div>
+            <img src="/apps.svg" alt="Apps" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Apps</b>
+            <div class="small">Build small, useful tools — or ask the agent</div>
           </div>
         </a>
         <a href="/blog" style="text-decoration: none; color: inherit;">
@@ -205,18 +191,32 @@ var landingTemplate = `<html lang="en">
             <div class="small">Private messaging and email</div>
           </div>
         </a>
-        <a href="/apps" style="text-decoration: none; color: inherit;">
+        <a href="/markets" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/apps.svg" alt="Apps" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Apps</b>
-            <div class="small">Build small, useful tools — or ask the agent</div>
+            <img src="/markets.svg" alt="Markets" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Markets</b>
+            <div class="small">Live crypto, futures, and commodity prices</div>
           </div>
         </a>
-        <a href="/agent" style="text-decoration: none; color: inherit;">
+        <a href="/news" style="text-decoration: none; color: inherit;">
           <div class="block">
-            <img src="/agent.svg" alt="Agent" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Agent</b>
-            <div class="small">AI that can search, answer, and build</div>
+            <img src="/news.png" alt="News" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>News</b>
+            <div class="small">Headlines and articles with AI summaries</div>
+          </div>
+        </a>
+        <a href="/video" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/video.png" alt="Video" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Video</b>
+            <div class="small">YouTube without ads, algorithms, or shorts</div>
+          </div>
+        </a>
+        <a href="/web" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/search.svg" alt="Web" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Web</b>
+            <div class="small">Search the web without tracking</div>
           </div>
         </a>
       </div>

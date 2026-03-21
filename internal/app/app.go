@@ -227,6 +227,7 @@ var Template = `
         </div>
         <div id="nav">
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
+          <a href="/apps"><img src="/apps.svg?` + Version + `"><span class="label">Apps</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>
@@ -234,7 +235,6 @@ var Template = `
           <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
           <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
           <a href="/web"><img src="/search.svg?` + Version + `"><span class="label">Web</span></a>
-          <a href="/apps"><img src="/apps.svg?` + Version + `"><span class="label">Apps</span></a>
           <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
 
         </div>
