@@ -75,7 +75,7 @@ var landingTemplate = `<html lang="en">
       <div id="title">Mu</div>
       <div id="desc">The Micro Network</div>
       <p style="font-size: 18px; font-weight: 800; color: #333; margin: 20px 0; text-align: center; max-width: 800px;">
-      The internet without the noise.
+      No ads, no algorithms, no tracking.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
       News, markets, video, search, and AI tools — all in one place. Build your own or let the agent build one for you.
