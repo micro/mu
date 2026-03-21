@@ -4326,17 +4326,23 @@ a.btn-secondary:hover, .btn-secondary:hover {
   padding-bottom: 0;
 }
 
-.reminder-section h5 {
+.reminder-section h3 {
   margin: 0 0 2px 0;
-  font-size: 0.95em;
+  font-size: 1.1em;
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
+}
+
+.reminder-subtitle {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 0.85em;
+  color: var(--text-muted);
 }
 
 .reminder-text {
   font-size: 0.95em;
   line-height: 1.7;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   white-space: pre-wrap;
   margin-bottom: var(--spacing-sm);
 }
