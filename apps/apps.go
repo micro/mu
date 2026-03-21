@@ -156,6 +156,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleCodeRun(w, r)
 	case path == "/sdk.js":
 		handleSDK(w, r)
+	case strings.HasSuffix(path, "/edit"):
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/edit")
+		handleEdit(w, r, slug)
 	case strings.HasSuffix(path, "/icon.svg"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/icon.svg")
 		handleIcon(w, r, slug)
@@ -483,13 +486,43 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	// Edit/delete for author
 	_, acc, err := auth.RequireSession(r)
 	if err == nil && acc.ID == a.AuthorID {
-		sb.WriteString(fmt.Sprintf(`<p style="margin-top:16px;"><a href="/apps/%s/run">Preview</a> · <a href="#" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(()=>location='/apps')}">Delete</a></p>`,
-			htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(fmt.Sprintf(`<p style="margin-top:16px;"><a href="/apps/%s/edit">Edit</a> · <a href="/apps/%s/run">Preview</a> · <a href="#" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(()=>location='/apps')}">Delete</a></p>`,
+			htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug)))
 	}
 
 	app.Respond(w, r, app.Response{
 		Title:       a.Name,
 		Description: a.Description,
+		HTML:        sb.String(),
+	})
+}
+
+// handleEdit shows the builder pre-populated with the app's data for editing.
+func handleEdit(w http.ResponseWriter, r *http.Request, slug string) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	mutex.RLock()
+	a, ok := apps[slug]
+	mutex.RUnlock()
+	if !ok {
+		app.Error(w, r, http.StatusNotFound, "App not found")
+		return
+	}
+	if a.AuthorID != acc.ID {
+		app.Forbidden(w, r, "You can only edit your own apps")
+		return
+	}
+
+	var sb strings.Builder
+	sb.WriteString(editPageHTML(a))
+
+	app.Respond(w, r, app.Response{
+		Title:       "Edit " + a.Name,
+		Description: "Edit " + a.Name,
 		HTML:        sb.String(),
 	})
 }
@@ -822,6 +855,41 @@ func GetApp(slug string) *App {
 	mutex.RLock()
 	defer mutex.RUnlock()
 	return apps[slug]
+}
+
+// UpdateApp updates an existing app's fields. Only non-empty values are applied.
+// Returns the updated app or an error.
+func UpdateApp(slug, name, description, tags, html, icon string) (*App, error) {
+	mutex.Lock()
+	a, ok := apps[slug]
+	if !ok {
+		mutex.Unlock()
+		return nil, fmt.Errorf("app not found")
+	}
+	if name != "" {
+		a.Name = name
+	}
+	if description != "" {
+		a.Description = description
+	}
+	if tags != "" {
+		a.Tags = tags
+	}
+	if icon != "" {
+		a.Icon = icon
+	}
+	if html != "" {
+		if len(html) > MaxHTMLSize {
+			mutex.Unlock()
+			return nil, fmt.Errorf("HTML content exceeds 256KB limit")
+		}
+		a.HTML = html
+	}
+	a.UpdatedAt = time.Now()
+	mutex.Unlock()
+
+	save()
+	return a, nil
 }
 
 // GetPublicApps returns all public apps sorted by installs.
