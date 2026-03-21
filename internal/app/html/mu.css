@@ -2130,13 +2130,13 @@ a.highlight {
     font-size: 12px;
   }
 
-  /* Reorder cards: agent first, then real-time info, then content */
-  #agent { order: 1; }
-  #reminder { order: 2; }
-  #blog { order: 3; }
-  #markets { order: 4; }
-  #news { order: 5; }
-  #apps { order: 6; }
+  /* Reorder cards on mobile */
+  #apps { order: 1; }
+  #agent { order: 2; }
+  #reminder { order: 3; }
+  #blog { order: 4; }
+  #markets { order: 5; }
+  #news { order: 6; }
   #video { order: 7; }
   #home-chat { order: 8; }
   
