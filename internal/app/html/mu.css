@@ -2107,6 +2107,7 @@ a.highlight {
   #home {
     display: flex;
     flex-direction: column;
+    gap: 8px;
     height: auto;
   }
   .home-left, .home-right {
@@ -2116,7 +2117,7 @@ a.highlight {
   /* Compact cards on mobile */
   .home-left .card, .home-right .card {
     padding: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 0;
     width: 100%;
     min-width: auto;
   }
