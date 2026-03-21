@@ -286,7 +286,7 @@ func generateReminderPage(rd *ReminderData) string {
 		content.WriteString(`<div class="reminder-section">`)
 		content.WriteString(`<h3>Verse</h3>`)
 		content.WriteString(`<p class="reminder-subtitle">From the Quran</p>`)
-		content.WriteString(fmt.Sprintf(`<div class="reminder-text card">%s</div>`, rd.Verse))
+		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Verse))
 		if rd.Links != nil {
 			if verseLink, ok := rd.Links["verse"].(string); ok && verseLink != "" {
 				content.WriteString(app.Link("Continue reading", "https://reminder.dev"+verseLink))
@@ -300,7 +300,7 @@ func generateReminderPage(rd *ReminderData) string {
 		content.WriteString(`<div class="reminder-section">`)
 		content.WriteString(`<h3>Hadith</h3>`)
 		content.WriteString(`<p class="reminder-subtitle">From Sahih Al Bukhari</p>`)
-		content.WriteString(fmt.Sprintf(`<div class="reminder-text card">%s</div>`, rd.Hadith))
+		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Hadith))
 		if rd.Links != nil {
 			if hadithLink, ok := rd.Links["hadith"].(string); ok && hadithLink != "" {
 				content.WriteString(app.Link("Read more", "https://reminder.dev"+hadithLink))
@@ -314,7 +314,7 @@ func generateReminderPage(rd *ReminderData) string {
 		content.WriteString(`<div class="reminder-section">`)
 		content.WriteString(`<h3>Name</h3>`)
 		content.WriteString(`<p class="reminder-subtitle">From the names of Allah</p>`)
-		content.WriteString(fmt.Sprintf(`<div class="reminder-text card">%s</div>`, rd.Name))
+		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Name))
 		if rd.Links != nil {
 			if nameLink, ok := rd.Links["name"].(string); ok && nameLink != "" {
 				content.WriteString(app.Link("Read more", "https://reminder.dev"+nameLink))
