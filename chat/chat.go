@@ -441,12 +441,12 @@ func getOrCreateRoom(id string) *Room {
 			if len(room.Summary) > 2000 {
 				room.Summary = room.Summary[:2000] + "..."
 			}
-			room.URL = "/reminder"
+			room.URL = "https://reminder.dev"
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
 		} else if room.Title == "" {
 			app.Log("chat", "Reminder item %s not found in index", itemID)
 			room.Title = "Daily Reminder Discussion"
-			room.URL = "/reminder"
+			room.URL = "https://reminder.dev"
 		}
 
 		// Load persisted messages

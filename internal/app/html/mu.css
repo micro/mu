@@ -4305,49 +4305,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
   }
 }
 
-/* ========================================
-   REMINDER PAGE
-   ======================================== */
-.reminder-page {
-  max-width: 750px;
-}
-
-.reminder-section {
-  padding: var(--spacing-lg) 0;
-  border-top: 1px solid var(--border-color);
-}
-
-.reminder-section:first-child {
-  padding-top: 0;
-  border-top: none;
-}
-
-.reminder-section:last-child {
-  padding-bottom: 0;
-}
-
-.reminder-section h3 {
-  margin: 0 0 2px 0;
-  font-size: 1.1em;
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-}
-
-.reminder-subtitle {
-  margin: 0 0 var(--spacing-sm) 0;
-  font-size: 0.85em;
-  color: var(--text-muted);
-}
-
-.reminder-text {
-  line-height: 1.7;
-  color: var(--text-primary);
-  white-space: pre-wrap;
-  margin-bottom: var(--spacing-sm);
-  padding-left: var(--spacing-md);
-  border-left: 3px solid var(--accent-color);
-}
-
 /* Places page */
 .places-page {
   max-width: 100%;

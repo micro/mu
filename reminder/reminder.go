@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -57,13 +56,19 @@ func fetchReminder() {
 		return
 	}
 
-	// Save full JSON data for the reminder page
+	// Save full JSON data
 	data.SaveFile("reminder.json", string(b))
 
-	link := "/reminder"
+	// Link directly to the verse on reminder.dev
+	link := "https://reminder.dev"
+	if links, ok := val["links"].(map[string]interface{}); ok {
+		if verseLink, ok := links["verse"].(string); ok && verseLink != "" {
+			link = "https://reminder.dev" + verseLink
+		}
+	}
 
 	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, val["verse"])
-	html += app.Link("More", link)
+	html += app.Link("Read on reminder.dev", link)
 
 	reminderMutex.Lock()
 	reminderHTML = html
@@ -80,9 +85,9 @@ func fetchReminder() {
 		updated = u.(string)
 	}
 
-	// Index with just the message summary and a link to the full reminder page.
-	// The full content (verse, hadith, name) contains markdown that doesn't render
-	// well in chat threads, and it changes hourly so embedding it causes stale content.
+	// Index with just the message summary. The full content (verse, hadith, name)
+	// contains markdown that doesn't render well in chat threads, and it changes
+	// hourly so embedding it causes stale content.
 	summary := message
 	if summary == "" {
 		summary = "Today's Islamic reminder is ready."
@@ -96,7 +101,7 @@ func fetchReminder() {
 		"Daily Reminder",
 		summary,
 		map[string]interface{}{
-			"url":     "/reminder",
+			"url":     "https://reminder.dev",
 			"updated": updated,
 			"source":  "daily",
 		},
@@ -130,8 +135,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// HTML response for browser
-	handleHTML(w, r)
+	// Redirect to reminder.dev
+	http.Redirect(w, r, "https://reminder.dev", http.StatusFound)
 }
 
 // getReminderForRequest returns the appropriate reminder data based on the
@@ -163,34 +168,6 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.RespondJSON(w, reminderData)
-}
-
-// handleHTML returns reminder page as HTML
-func handleHTML(w http.ResponseWriter, r *http.Request) {
-	reminderData, date := getReminderForRequest(r)
-	if reminderData == nil {
-		app.Respond(w, r, app.Response{
-			Title:       "Reminder",
-			Description: "Islamic reminder",
-			HTML:        `<div class="reminder-page"><p>Reminder not available at this time.</p></div>`,
-		})
-		return
-	}
-
-	title := "Reminder"
-	if date != "" {
-		if t, err := time.Parse("2006-01-02", date); err == nil {
-			title = "Reminder — " + t.Format("2 Jan 2006")
-		}
-	}
-
-	body := generateReminderPage(reminderData)
-
-	app.Respond(w, r, app.Response{
-		Title:       title,
-		Description: "Islamic reminder with verse, hadith, and name of Allah",
-		HTML:        body,
-	})
 }
 
 // GetReminderData loads the cached reminder data (from api/latest, rotates hourly)
@@ -264,73 +241,3 @@ func GetDailyReminderForDate(date string) *ReminderData {
 	return &rd
 }
 
-// generateReminderPage generates the full reminder page HTML.
-// Message as intro text, then one card with verse, hadith, and name
-// as sections separated by dividers, discuss link at the bottom.
-func generateReminderPage(rd *ReminderData) string {
-	var sb strings.Builder
-
-	sb.WriteString(`<div class="reminder-page">`)
-
-	// Message as the card title — avoids "Reminder" / "Reminder" duplication
-	cardTitle := "Today's Reminder"
-	if rd.Message != "" {
-		cardTitle = rd.Message
-	}
-
-	// Single card with all content as sections
-	var content strings.Builder
-
-	// Verse section
-	if rd.Verse != "" {
-		content.WriteString(`<div class="reminder-section">`)
-		content.WriteString(`<h3>Verse</h3>`)
-		content.WriteString(`<p class="reminder-subtitle">From the Quran</p>`)
-		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Verse))
-		if rd.Links != nil {
-			if verseLink, ok := rd.Links["verse"].(string); ok && verseLink != "" {
-				content.WriteString(app.Link("Continue reading", "https://reminder.dev"+verseLink))
-			}
-		}
-		content.WriteString(`</div>`)
-	}
-
-	// Hadith section
-	if rd.Hadith != "" {
-		content.WriteString(`<div class="reminder-section">`)
-		content.WriteString(`<h3>Hadith</h3>`)
-		content.WriteString(`<p class="reminder-subtitle">From Sahih Al Bukhari</p>`)
-		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Hadith))
-		if rd.Links != nil {
-			if hadithLink, ok := rd.Links["hadith"].(string); ok && hadithLink != "" {
-				content.WriteString(app.Link("Read more", "https://reminder.dev"+hadithLink))
-			}
-		}
-		content.WriteString(`</div>`)
-	}
-
-	// Name section
-	if rd.Name != "" {
-		content.WriteString(`<div class="reminder-section">`)
-		content.WriteString(`<h3>Name</h3>`)
-		content.WriteString(`<p class="reminder-subtitle">From the names of Allah</p>`)
-		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Name))
-		if rd.Links != nil {
-			if nameLink, ok := rd.Links["name"].(string); ok && nameLink != "" {
-				content.WriteString(app.Link("Read more", "https://reminder.dev"+nameLink))
-			}
-		}
-		content.WriteString(`</div>`)
-	}
-
-	// Discuss link
-	content.WriteString(`<div class="reminder-section reminder-section-last">`)
-	content.WriteString(app.Link("Discuss this reminder", "/chat?id=reminder_daily"))
-	content.WriteString(`</div>`)
-
-	sb.WriteString(app.Card("reminder", cardTitle, content.String()))
-
-	sb.WriteString(`</div>`)
-
-	return sb.String()
-}
