@@ -98,8 +98,7 @@ func Preview() string {
 	defer mutex.RUnlock()
 
 	if len(apps) == 0 {
-		return `<p class="card-desc">Build and launch apps — small, useful tools that do one thing well.</p>
-<p><a href="/apps/build">Build with AI</a></p>`
+		return `<p><a href="/apps/build">+ Create your first app</a></p>`
 	}
 
 	// Show 3 most recent public apps
@@ -110,8 +109,7 @@ func Preview() string {
 		}
 	}
 	if len(public) == 0 {
-		return `<p class="card-desc">Build and launch apps — small, useful tools that do one thing well.</p>
-<p><a href="/apps/build">+ Create your first app</a></p>`
+		return `<p><a href="/apps/build">+ Create your first app</a></p>`
 	}
 	sort.Slice(public, func(i, j int) bool {
 		return public[i].CreatedAt.After(public[j].CreatedAt)
