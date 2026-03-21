@@ -255,29 +255,38 @@ func fetchCoinGeckoChanges() map[string]float64 {
 }
 
 func generateMarketsCardHTML(prices map[string]float64) string {
-	allTickers := append([]string{}, tickers...)
-	allTickers = append(allTickers, futuresKeys...)
-	sort.Strings(allTickers)
+	// Left column: crypto, Right column: commodities — each sorted alphabetically
+	left := append([]string{}, tickers...)
+	right := append([]string{}, futuresKeys...)
+	sort.Strings(left)
+	sort.Strings(right)
 
-	// 4 rows x 2 columns table, show first 8 alphabetically
-	show := allTickers
-	if len(show) > 8 {
-		show = show[:8]
+	// 4 rows max per column
+	if len(left) > 4 {
+		left = left[:4]
+	}
+	if len(right) > 4 {
+		right = right[:4]
+	}
+
+	rows := len(left)
+	if len(right) > rows {
+		rows = len(right)
 	}
 
 	var sb strings.Builder
 	sb.WriteString(`<table style="width:100%;border-collapse:collapse;">`)
-	for i := 0; i < len(show); i += 2 {
+	for i := 0; i < rows; i++ {
 		sb.WriteString(`<tr>`)
-		for col := 0; col < 2; col++ {
-			idx := i + col
-			if idx < len(show) {
-				ticker := show[idx]
-				price := prices[ticker]
-				fmt.Fprintf(&sb, `<td style="padding:6px 8px;"><span class="market-symbol">%s</span></td><td style="padding:6px 8px;text-align:right;"><span class="market-price">$%.2f</span></td>`, ticker, price)
-			} else {
-				sb.WriteString(`<td></td><td></td>`)
-			}
+		if i < len(left) {
+			fmt.Fprintf(&sb, `<td style="padding:6px 8px;"><span class="market-symbol">%s</span></td><td style="padding:6px 8px;text-align:right;"><span class="market-price">$%.2f</span></td>`, left[i], prices[left[i]])
+		} else {
+			sb.WriteString(`<td></td><td></td>`)
+		}
+		if i < len(right) {
+			fmt.Fprintf(&sb, `<td style="padding:6px 8px;padding-left:24px;"><span class="market-symbol">%s</span></td><td style="padding:6px 8px;text-align:right;"><span class="market-price">$%.2f</span></td>`, right[i], prices[right[i]])
+		} else {
+			sb.WriteString(`<td></td><td></td>`)
 		}
 		sb.WriteString(`</tr>`)
 	}
