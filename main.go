@@ -311,6 +311,35 @@ func main() {
 		},
 	})
 	api.RegisterTool(api.Tool{
+		Name:        "apps_edit",
+		Description: "Edit an existing app — update its name, description, tags, icon, or HTML code",
+		Params: []api.ToolParam{
+			{Name: "slug", Type: "string", Description: "The app's URL slug (e.g. pomodoro-timer)", Required: true},
+			{Name: "name", Type: "string", Description: "New app name", Required: false},
+			{Name: "description", Type: "string", Description: "New description", Required: false},
+			{Name: "tags", Type: "string", Description: "New comma-separated tags", Required: false},
+			{Name: "html", Type: "string", Description: "New HTML content (max 256KB)", Required: false},
+			{Name: "icon", Type: "string", Description: "New SVG icon", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			slug, _ := args["slug"].(string)
+			if slug == "" {
+				return `{"error":"slug is required"}`, fmt.Errorf("missing slug")
+			}
+			name, _ := args["name"].(string)
+			description, _ := args["description"].(string)
+			tags, _ := args["tags"].(string)
+			html, _ := args["html"].(string)
+			icon, _ := args["icon"].(string)
+			a, err := apps.UpdateApp(slug, name, description, tags, html, icon)
+			if err != nil {
+				return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
+			}
+			b, _ := json.Marshal(a)
+			return string(b), nil
+		},
+	})
+	api.RegisterTool(api.Tool{
 		Name:        "apps_build",
 		Description: "AI-generate an app from a natural language description, save it, and return the app details with URL",
 		WalletOp:    "chat_query",

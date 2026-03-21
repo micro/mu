@@ -526,3 +526,191 @@ function slugify(s) {
 }
 </script>`, templateButtons.String(), string(escapedCode))
 }
+
+// editPageHTML returns the HTML for editing an existing app (reuses builder UI).
+func editPageHTML(a *App) string {
+	escapedCode, _ := json.Marshal(a.HTML)
+	escapedName, _ := json.Marshal(a.Name)
+	escapedDesc, _ := json.Marshal(a.Description)
+	escapedTags, _ := json.Marshal(a.Tags)
+	escapedIcon, _ := json.Marshal(a.Icon)
+	escapedSlug, _ := json.Marshal(a.Slug)
+
+	return fmt.Sprintf(`
+<style>
+.builder { display: flex; flex-direction: column; gap: 12px; }
+.prompt-bar { display: flex; gap: 8px; }
+.prompt-bar input { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; }
+.prompt-bar button { padding: 10px 24px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; white-space: nowrap; }
+.prompt-bar button:disabled { background: #ccc; cursor: not-allowed; }
+.preview-area { display: flex; flex-direction: column; min-height: 60vh; }
+.preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.preview-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
+.preview-frame { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; min-height: 50vh; }
+.code-toggle { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
+.code-toggle:hover { background: #f5f5f5; color: #111; }
+.code-section { display: none; margin-top: 12px; }
+.code-section.visible { display: block; }
+.code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.code-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
+.code-header .actions { display: flex; gap: 6px; }
+.code-header .actions button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
+.code-header .actions button:hover { background: #f5f5f5; color: #111; }
+.code-editor { width: 100%%; min-height: 300px; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; line-height: 1.5; resize: vertical; tab-size: 2; background: #fafafa; }
+.save-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.save-bar input { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; color: #333; box-sizing: border-box; }
+.save-bar input.name { flex: 1; min-width: 150px; }
+.save-bar button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.status-msg { font-size: 13px; color: #999; margin-left: 8px; }
+@media (max-width: 768px) {
+  .save-bar { flex-direction: column; align-items: stretch; }
+  .save-bar input.name { width: 100%%; min-width: auto; }
+  .save-bar input { width: 100%%; }
+  .prompt-bar { flex-direction: column; }
+  .prompt-bar input, .prompt-bar button { width: 100%%; box-sizing: border-box; }
+}
+</style>
+
+<div class="builder">
+  <p class="card-desc">Edit your app — modify with AI or update the code directly.</p>
+
+  <div class="prompt-bar">
+    <input type="text" id="prompt" placeholder="Describe changes... e.g. add a dark mode toggle" onkeydown="if(event.key==='Enter')generate()">
+    <button id="genBtn" onclick="generate()">Modify</button>
+  </div>
+
+  <div class="preview-area">
+    <div class="preview-header">
+      <h3>Preview</h3>
+      <button class="code-toggle" id="codeToggle" onclick="toggleCode()">Show Code</button>
+    </div>
+    <iframe id="preview" class="preview-frame" sandbox="allow-scripts"></iframe>
+  </div>
+
+  <div class="code-section" id="codeSection">
+    <div class="code-header">
+      <h3>Code</h3>
+      <div class="actions">
+        <button onclick="copyCode()">Copy</button>
+        <button onclick="updatePreview()">Refresh Preview</button>
+      </div>
+    </div>
+    <textarea class="code-editor" id="code" spellcheck="false"></textarea>
+  </div>
+
+  <div class="save-bar">
+    <input class="name" type="text" id="appName" placeholder="App name">
+    <input type="text" id="appDesc" placeholder="Description" style="flex:1;min-width:120px;">
+    <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
+    <button onclick="saveApp()">Save</button>
+    <span class="status-msg" id="statusMsg"></span>
+  </div>
+</div>
+
+<script>
+var codeEl = document.getElementById('code');
+var preview = document.getElementById('preview');
+var appIcon = %s;
+var editSlug = %s;
+
+// Pre-populate fields
+codeEl.value = %s;
+document.getElementById('appName').value = %s;
+document.getElementById('appDesc').value = %s;
+document.getElementById('appTags').value = %s;
+showPreview();
+
+codeEl.addEventListener('keydown', function(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    var start = this.selectionStart, end = this.selectionEnd;
+    this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+    this.selectionStart = this.selectionEnd = start + 2;
+  }
+});
+
+function showPreview() {
+  var html = codeEl.value;
+  if (!html.trim()) return;
+  preview.style.display = '';
+  preview.srcdoc = html;
+}
+
+function updatePreview() { showPreview(); }
+
+function toggleCode() {
+  var section = document.getElementById('codeSection');
+  var btn = document.getElementById('codeToggle');
+  if (section.classList.contains('visible')) {
+    section.classList.remove('visible');
+    btn.textContent = 'Show Code';
+  } else {
+    section.classList.add('visible');
+    btn.textContent = 'Hide Code';
+  }
+}
+
+function generate() {
+  var promptEl = document.getElementById('prompt');
+  var p = promptEl.value.trim();
+  if (!p) return;
+  var btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  document.getElementById('statusMsg').textContent = '';
+
+  fetch('/apps/build/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: p, code: codeEl.value })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
+    codeEl.value = data.html;
+    showPreview();
+    if (data.icon) { appIcon = data.icon; }
+  })
+  .catch(function(e) { document.getElementById('statusMsg').textContent = 'Error: ' + e.message; })
+  .finally(function() { btn.disabled = false; btn.textContent = 'Modify'; });
+}
+
+function saveApp() {
+  var name = document.getElementById('appName').value.trim();
+  var desc = document.getElementById('appDesc').value.trim();
+  var tags = (document.getElementById('appTags').value || '').trim();
+  var html = codeEl.value.trim();
+  if (!name) { document.getElementById('statusMsg').textContent = 'App name is required'; return; }
+  if (!html) { document.getElementById('statusMsg').textContent = 'No code to save'; return; }
+
+  document.getElementById('statusMsg').textContent = 'Saving...';
+  fetch('/apps/' + editSlug, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, icon: appIcon, description: desc, tags: tags, html: html })
+  })
+  .then(function(r) {
+    if (!r.ok) {
+      return r.text().then(function(t) {
+        try { var j = JSON.parse(t); throw new Error(j.error || 'Save failed'); }
+        catch(e) { if (e.message) throw e; throw new Error('Save failed (status ' + r.status + ')'); }
+      });
+    }
+    return r.json();
+  })
+  .then(function(data) {
+    if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
+    document.getElementById('statusMsg').textContent = 'Saved!';
+    window.location.href = '/apps/' + editSlug;
+  })
+  .catch(function(e) { document.getElementById('statusMsg').textContent = e.message || 'Save failed'; });
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(codeEl.value).then(function() {
+    document.getElementById('statusMsg').textContent = 'Copied!';
+    setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 2000);
+  });
+}
+</script>`, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags)
+}
