@@ -5,7 +5,6 @@ package digest
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -105,28 +104,6 @@ func GetTodayDigest() *DigestPost {
 // GetLatestDigest returns whether a digest exists (for status checks).
 func GetLatestDigest() bool {
 	return !lastDigest.IsZero()
-}
-
-// Handler redirects to the blog. The digest is now a blog post.
-func Handler(w http.ResponseWriter, r *http.Request) {
-	// If JSON API, return the digest content directly
-	if app.WantsJSON(r) {
-		d := GetTodayDigest()
-		if d == nil {
-			app.RespondJSON(w, map[string]any{"digest": nil})
-			return
-		}
-		app.RespondJSON(w, map[string]any{"digest": d})
-		return
-	}
-
-	// For HTML requests, redirect to blog filtered by digest tag
-	d := GetTodayDigest()
-	if d != nil {
-		http.Redirect(w, r, "/post?id="+d.ID, http.StatusFound)
-		return
-	}
-	http.Redirect(w, r, "/blog?tag=digest", http.StatusFound)
 }
 
 func scheduler() {

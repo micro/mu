@@ -1117,10 +1117,10 @@ func FindTodayDigest() *Post {
 	now := time.Now()
 	y, m, d := now.Date()
 	for _, post := range posts {
-		if post.AuthorID != app.SystemUserID {
+		if !strings.EqualFold(post.AuthorID, app.SystemUserID) {
 			continue
 		}
-		if !strings.Contains(post.Tags, "digest") {
+		if !strings.Contains(strings.ToLower(post.Tags), "digest") {
 			continue
 		}
 		py, pm, pd := post.CreatedAt.Date()

@@ -447,7 +447,6 @@ func main() {
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features
 		"/news":            false, // Public viewing, auth for search
-		"/news/digest":     false, // Public - daily digest
 		"/chat":            false, // Public viewing, auth for chatting
 		"/home":            false, // Public viewing
 		"/blog":            false, // Public viewing, auth for posting
@@ -502,8 +501,6 @@ func main() {
 
 	// serve news
 	http.HandleFunc("/news", news.Handler)
-	http.HandleFunc("/news/digest", digest.Handler)
-
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
 
