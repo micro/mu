@@ -28,6 +28,18 @@ const MaxStoreValueSize = 64 * 1024
 // MaxStoreKeys is the maximum number of keys per app+user.
 const MaxStoreKeys = 100
 
+// Version represents a snapshot of an app at a point in time.
+type Version struct {
+	Number    int       `json:"number"`
+	HTML      string    `json:"html"`
+	Name      string    `json:"name"`
+	SavedAt   time.Time `json:"saved_at"`
+	Summary   string    `json:"summary,omitempty"` // optional change description
+}
+
+// MaxVersions is the maximum number of versions kept per app.
+const MaxVersions = 50
+
 // App represents an app.
 type App struct {
 	ID          string    `json:"id"`
@@ -41,6 +53,8 @@ type App struct {
 	Tags        string    `json:"tags"` // Comma-separated tags
 	Public      bool      `json:"public"`
 	Installs    int       `json:"installs"`
+	ForkedFrom  string    `json:"forked_from,omitempty"` // slug of original app
+	Versions    []Version `json:"versions,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -51,6 +65,26 @@ var (
 
 	slugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$`)
 )
+
+// snapshotVersion saves the current state as a new version. Must be called with mutex held.
+func snapshotVersion(a *App, summary string) {
+	num := 1
+	if len(a.Versions) > 0 {
+		num = a.Versions[len(a.Versions)-1].Number + 1
+	}
+	v := Version{
+		Number:  num,
+		HTML:    a.HTML,
+		Name:    a.Name,
+		SavedAt: time.Now(),
+		Summary: summary,
+	}
+	a.Versions = append(a.Versions, v)
+	// Trim old versions
+	if len(a.Versions) > MaxVersions {
+		a.Versions = a.Versions[len(a.Versions)-MaxVersions:]
+	}
+}
 
 // Load initialises the apps package and loads cached data.
 func Load() {
@@ -159,6 +193,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(path, "/edit"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/edit")
 		handleEdit(w, r, slug)
+	case strings.HasSuffix(path, "/versions"):
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/versions")
+		handleVersions(w, r, slug)
+	case strings.HasSuffix(path, "/fork"):
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/fork")
+		handleFork(w, r, slug)
 	case strings.HasSuffix(path, "/icon.svg"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/icon.svg")
 		handleIcon(w, r, slug)
@@ -434,6 +474,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mutex.Lock()
+	snapshotVersion(newApp, "Initial version")
 	apps[slug] = newApp
 	mutex.Unlock()
 
@@ -473,18 +514,38 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	if a.Tags != "" {
 		tagsInfo = " · " + htmlpkg.EscapeString(a.Tags)
 	}
-	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s · %d installs · created %s</p>`,
+	forkedInfo := ""
+	if a.ForkedFrom != "" {
+		forkedInfo = fmt.Sprintf(` · forked from <a href="/apps/%s">%s</a>`, htmlpkg.EscapeString(a.ForkedFrom), htmlpkg.EscapeString(a.ForkedFrom))
+	}
+	savedInfo := ""
+	if !a.UpdatedAt.Equal(a.CreatedAt) {
+		savedInfo = " · saved " + a.UpdatedAt.Format("2 Jan 2006 15:04")
+	}
+	versionInfo := ""
+	if len(a.Versions) > 1 {
+		versionInfo = fmt.Sprintf(` · <a href="/apps/%s/versions">v%d</a>`, htmlpkg.EscapeString(a.Slug), a.Versions[len(a.Versions)-1].Number)
+	}
+	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s · %d installs · created %s%s%s%s</p>`,
 		htmlpkg.EscapeString(a.Author),
 		tagsInfo,
 		a.Installs,
 		a.CreatedAt.Format("2 Jan 2006"),
+		savedInfo,
+		versionInfo,
+		forkedInfo,
 	))
 
-	// Run button
-	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s/run" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:4px;text-decoration:none;">Launch App</a></p>`, htmlpkg.EscapeString(a.Slug)))
+	// Run button + Fork button
+	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s/run" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:4px;text-decoration:none;">Launch App</a>`, htmlpkg.EscapeString(a.Slug)))
+	_, acc, err := auth.RequireSession(r)
+	if err == nil {
+		sb.WriteString(fmt.Sprintf(` <a href="/apps/%s/fork" style="display:inline-block;padding:8px 24px;background:#fff;color:#333;border:1px solid #ccc;border-radius:4px;text-decoration:none;margin-left:8px;">Fork</a>`,
+			htmlpkg.EscapeString(a.Slug)))
+	}
+	sb.WriteString(`</p>`)
 
 	// Edit/delete for author
-	_, acc, err := auth.RequireSession(r)
 	if err == nil && acc.ID == a.AuthorID {
 		sb.WriteString(fmt.Sprintf(`<p style="margin-top:16px;"><a href="/apps/%s/edit">Edit</a> · <a href="/apps/%s/run">Preview</a> · <a href="#" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(()=>location='/apps')}">Delete</a></p>`,
 			htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug)))
@@ -525,6 +586,179 @@ func handleEdit(w http.ResponseWriter, r *http.Request, slug string) {
 		Description: "Edit " + a.Name,
 		HTML:        sb.String(),
 	})
+}
+
+// handleVersions shows version history for an app.
+func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
+	mutex.RLock()
+	a, ok := apps[slug]
+	mutex.RUnlock()
+	if !ok {
+		app.Error(w, r, http.StatusNotFound, "App not found")
+		return
+	}
+
+	// POST to restore a version (author only)
+	if r.Method == "POST" {
+		_, acc, err := auth.RequireSession(r)
+		if err != nil {
+			app.Unauthorized(w, r)
+			return
+		}
+		if a.AuthorID != acc.ID {
+			app.Forbidden(w, r, "You can only restore your own apps")
+			return
+		}
+		r.ParseForm()
+		numStr := r.FormValue("version")
+		num := 0
+		fmt.Sscanf(numStr, "%d", &num)
+		if num == 0 {
+			app.Error(w, r, http.StatusBadRequest, "Invalid version number")
+			return
+		}
+		mutex.Lock()
+		for _, v := range a.Versions {
+			if v.Number == num {
+				a.HTML = v.HTML
+				a.Name = v.Name
+				a.UpdatedAt = time.Now()
+				snapshotVersion(a, fmt.Sprintf("Restored from v%d", num))
+				break
+			}
+		}
+		mutex.Unlock()
+		save()
+		http.Redirect(w, r, "/apps/"+slug, http.StatusSeeOther)
+		return
+	}
+
+	if app.WantsJSON(r) {
+		// Return versions without HTML to keep response small
+		type versionSummary struct {
+			Number  int       `json:"number"`
+			Name    string    `json:"name"`
+			SavedAt time.Time `json:"saved_at"`
+			Summary string    `json:"summary,omitempty"`
+			Size    int       `json:"size"`
+		}
+		summaries := make([]versionSummary, len(a.Versions))
+		for i, v := range a.Versions {
+			summaries[i] = versionSummary{
+				Number:  v.Number,
+				Name:    v.Name,
+				SavedAt: v.SavedAt,
+				Summary: v.Summary,
+				Size:    len(v.HTML),
+			}
+		}
+		app.RespondJSON(w, summaries)
+		return
+	}
+
+	_, acc, _ := auth.RequireSession(r)
+	isAuthor := acc.ID == a.AuthorID
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">&larr; %s</a></p>`, htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Name)))
+	sb.WriteString(`<h2 style="margin-bottom:16px;">Version History</h2>`)
+
+	if len(a.Versions) == 0 {
+		sb.WriteString(`<p style="color:#999;">No version history yet.</p>`)
+	} else {
+		// Show newest first
+		for i := len(a.Versions) - 1; i >= 0; i-- {
+			v := a.Versions[i]
+			summary := v.Summary
+			if summary == "" {
+				summary = "Saved"
+			}
+			isCurrent := i == len(a.Versions)-1
+			currentBadge := ""
+			if isCurrent {
+				currentBadge = ` <span style="background:#000;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">current</span>`
+			}
+			restoreBtn := ""
+			if isAuthor && !isCurrent {
+				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" style="display:inline;"><input type="hidden" name="version" value="%d"><button type="submit" style="background:none;border:none;color:#0066cc;cursor:pointer;padding:0;font-family:inherit;font-size:13px;" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
+					htmlpkg.EscapeString(a.Slug), v.Number, v.Number)
+			}
+			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:6px;padding:12px;margin-bottom:8px;">
+<div style="display:flex;justify-content:space-between;align-items:center;">
+<div><strong>v%d</strong>%s — %s</div>
+<span style="font-size:13px;color:#999;">%s%s</span>
+</div>
+</div>`,
+				v.Number,
+				currentBadge,
+				htmlpkg.EscapeString(summary),
+				v.SavedAt.Format("2 Jan 2006 15:04"),
+				restoreBtn,
+			))
+		}
+	}
+
+	app.Respond(w, r, app.Response{
+		Title:       "Versions — " + a.Name,
+		Description: "Version history for " + a.Name,
+		HTML:        sb.String(),
+	})
+}
+
+// handleFork creates a copy of an app under the current user's account.
+func handleFork(w http.ResponseWriter, r *http.Request, slug string) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	mutex.RLock()
+	a, ok := apps[slug]
+	mutex.RUnlock()
+	if !ok {
+		app.Error(w, r, http.StatusNotFound, "App not found")
+		return
+	}
+
+	// Generate a unique slug for the fork
+	newSlug := slug
+	mutex.RLock()
+	base := newSlug
+	for i := 2; apps[newSlug] != nil; i++ {
+		newSlug = fmt.Sprintf("%s-%d", base, i)
+	}
+	mutex.RUnlock()
+
+	now := time.Now()
+	forked := &App{
+		ID:          uuid.New().String(),
+		Slug:        newSlug,
+		Name:        a.Name,
+		Description: a.Description,
+		AuthorID:    acc.ID,
+		Author:      acc.Name,
+		Icon:        a.Icon,
+		HTML:        a.HTML,
+		Tags:        a.Tags,
+		Public:      true,
+		ForkedFrom:  slug,
+		Installs:    0,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	mutex.Lock()
+	snapshotVersion(forked, "Forked from "+a.Name)
+	apps[newSlug] = forked
+	mutex.Unlock()
+
+	save()
+
+	app.Log("apps", "Forked app %q -> %q by %s", slug, newSlug, acc.ID)
+	event.Publish(event.Event{Type: "apps_updated"})
+
+	http.Redirect(w, r, "/apps/"+newSlug+"/edit", http.StatusSeeOther)
 }
 
 // handleRun renders the app in a sandboxed iframe.
@@ -654,6 +888,15 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 
 	mutex.Lock()
+	// Snapshot current state before applying changes
+	changed := false
+	if req.HTML != nil && *req.HTML != a.HTML {
+		changed = true
+	}
+	if req.Name != nil && *req.Name != "" && *req.Name != a.Name {
+		changed = true
+	}
+
 	if req.Name != nil && *req.Name != "" {
 		a.Name = *req.Name
 	}
@@ -676,6 +919,9 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 	if req.Public != nil {
 		a.Public = *req.Public
+	}
+	if changed {
+		snapshotVersion(a, "")
 	}
 	a.UpdatedAt = time.Now()
 	mutex.Unlock()
@@ -867,6 +1113,7 @@ func UpdateApp(slug, name, description, tags, html, icon string) (*App, error) {
 		mutex.Unlock()
 		return nil, fmt.Errorf("app not found")
 	}
+	changed := (html != "" && html != a.HTML) || (name != "" && name != a.Name)
 	if name != "" {
 		a.Name = name
 	}
@@ -885,6 +1132,9 @@ func UpdateApp(slug, name, description, tags, html, icon string) (*App, error) {
 			return nil, fmt.Errorf("HTML content exceeds 256KB limit")
 		}
 		a.HTML = html
+	}
+	if changed {
+		snapshotVersion(a, "")
 	}
 	a.UpdatedAt = time.Now()
 	mutex.Unlock()
