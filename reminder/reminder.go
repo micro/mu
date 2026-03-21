@@ -265,59 +265,69 @@ func GetDailyReminderForDate(date string) *ReminderData {
 }
 
 // generateReminderPage generates the full reminder page HTML.
-// Uses the standard card format: title in header, content, link at bottom.
+// Message as intro text, then one card with verse, hadith, and name
+// as sections separated by dividers, discuss link at the bottom.
 func generateReminderPage(rd *ReminderData) string {
 	var sb strings.Builder
 
 	sb.WriteString(`<div class="reminder-page">`)
 
-	// Message card
+	// Message as intro text above the card
 	if rd.Message != "" {
-		sb.WriteString(app.Card("reminder-message", "Reminder", rd.Message))
+		sb.WriteString(fmt.Sprintf(`<p class="reminder-intro">%s</p>`, rd.Message))
 	}
 
-	// Verse card
+	// Single card with all content
+	var content strings.Builder
+
+	// Verse section
 	if rd.Verse != "" {
-		var content strings.Builder
-		content.WriteString(fmt.Sprintf(`<p class="info">From the Quran</p>`))
+		content.WriteString(`<div class="reminder-section">`)
+		content.WriteString(`<h5>Verse</h5>`)
+		content.WriteString(`<p class="info">From the Quran</p>`)
 		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Verse))
 		if rd.Links != nil {
 			if verseLink, ok := rd.Links["verse"].(string); ok && verseLink != "" {
 				content.WriteString(app.Link("Continue reading", "https://reminder.dev"+verseLink))
 			}
 		}
-		sb.WriteString(app.Card("reminder-verse", "Verse", content.String()))
+		content.WriteString(`</div>`)
 	}
 
-	// Hadith card
+	// Hadith section
 	if rd.Hadith != "" {
-		var content strings.Builder
-		content.WriteString(fmt.Sprintf(`<p class="info">From Sahih Al Bukhari</p>`))
+		content.WriteString(`<div class="reminder-section">`)
+		content.WriteString(`<h5>Hadith</h5>`)
+		content.WriteString(`<p class="info">From Sahih Al Bukhari</p>`)
 		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Hadith))
 		if rd.Links != nil {
 			if hadithLink, ok := rd.Links["hadith"].(string); ok && hadithLink != "" {
 				content.WriteString(app.Link("Read more", "https://reminder.dev"+hadithLink))
 			}
 		}
-		sb.WriteString(app.Card("reminder-hadith", "Hadith", content.String()))
+		content.WriteString(`</div>`)
 	}
 
-	// Name card
+	// Name section
 	if rd.Name != "" {
-		var content strings.Builder
-		content.WriteString(fmt.Sprintf(`<p class="info">From the names of Allah</p>`))
+		content.WriteString(`<div class="reminder-section">`)
+		content.WriteString(`<h5>Name</h5>`)
+		content.WriteString(`<p class="info">From the names of Allah</p>`)
 		content.WriteString(fmt.Sprintf(`<div class="reminder-text">%s</div>`, rd.Name))
 		if rd.Links != nil {
 			if nameLink, ok := rd.Links["name"].(string); ok && nameLink != "" {
 				content.WriteString(app.Link("Read more", "https://reminder.dev"+nameLink))
 			}
 		}
-		sb.WriteString(app.Card("reminder-name", "Name", content.String()))
+		content.WriteString(`</div>`)
 	}
 
-	// Discuss card
-	sb.WriteString(app.Card("reminder-discuss", "Discuss",
-		app.Link("Discuss this reminder", "/chat?id=reminder_daily")))
+	// Discuss link
+	content.WriteString(`<div class="reminder-section reminder-section-last">`)
+	content.WriteString(app.Link("Discuss this reminder", "/chat?id=reminder_daily"))
+	content.WriteString(`</div>`)
+
+	sb.WriteString(app.Card("reminder", "Reminder", content.String()))
 
 	sb.WriteString(`</div>`)
 
