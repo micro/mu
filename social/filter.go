@@ -94,6 +94,7 @@ Examples:
 Respond with ONLY the one-line reason.`,
 		Question: fmt.Sprintf("Title: %s\n\nContent: %s", title, content),
 		Priority: ai.PriorityLow,
+		Caller:   "social-filter",
 	}
 
 	resp, err := ai.Ask(prompt)

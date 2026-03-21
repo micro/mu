@@ -40,6 +40,8 @@ type Prompt struct {
 	Priority int      // Request priority (0=high, 1=medium, 2=low)
 	Provider string   // Force specific provider (empty = default)
 	Model    string   // Force specific model (empty = provider default)
+	Caller    string // Identifies who made this call (e.g. "opinion", "digest", "chat")
+	MaxTokens int    // Max output tokens (0 = default 4096)
 }
 
 // systemPromptData is the data passed to the system prompt template

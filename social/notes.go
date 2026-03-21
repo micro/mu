@@ -131,9 +131,11 @@ func seedArticleNote(article NewsArticle) {
 	}
 
 	prompt := &ai.Prompt{
-		System: noteWriterPrompt,
+		System:   noteWriterPrompt,
 		Question: question.String(),
-		Priority: ai.PriorityLow,
+		Priority:  ai.PriorityLow,
+		Caller:    "community-note",
+		MaxTokens: 1500,
 	}
 
 	response, err := ai.Ask(prompt)

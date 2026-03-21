@@ -42,6 +42,9 @@ var prompts = map[string]string{}
 
 // askLLM is internal helper for ai.Ask
 func askLLM(prompt *ai.Prompt) (string, error) {
+	if prompt.Caller == "" {
+		prompt.Caller = "chat"
+	}
 	resp, err := ai.Ask(prompt)
 	if err != nil {
 		return resp, err

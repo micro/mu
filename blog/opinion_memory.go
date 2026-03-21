@@ -239,7 +239,9 @@ Rules:
 - If everything looks fine, return {"add": [], "remove": []}
 - Return ONLY the JSON, no other text`,
 		Question: context.String(),
-		Priority: ai.PriorityLow,
+		Priority:  ai.PriorityLow,
+		Caller:    "opinion-reflect",
+		MaxTokens: 512,
 	}
 
 	response, err := ai.Ask(prompt)
@@ -362,7 +364,9 @@ Rules:
 - Return ONLY the JSON array, no other text
 - Maximum 3 stance updates per review`,
 		Question: context.String(),
-		Priority: ai.PriorityLow,
+		Priority:  ai.PriorityLow,
+		Caller:    "opinion-review",
+		MaxTokens: 512,
 	}
 
 	response, err := ai.Ask(prompt)
@@ -483,7 +487,9 @@ Rules:
 - Do NOT include preamble like "Thank you for your thoughts"
 - CRITICAL: Keep under 800 characters`,
 		Question: context.String(),
-		Priority: ai.PriorityLow,
+		Priority:  ai.PriorityLow,
+		Caller:    "opinion-engage",
+		MaxTokens: 512,
 	}
 
 	response, err := ai.Ask(prompt)

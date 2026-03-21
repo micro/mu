@@ -17,7 +17,7 @@ var topicCache struct {
 	updated time.Time
 }
 
-const topicCacheTTL = 1 * time.Hour
+const topicCacheTTL = 4 * time.Hour
 const maxTopics = 10
 
 // GetTopics returns current topic suggestions. Returns cached results immediately;
@@ -92,7 +92,9 @@ func regenerateTopics() {
 - No generic words, no duplicates, no numbering, no punctuation
 Return exactly 10 topics, one per line. Nothing else.`,
 		Question: "Extract 10 trending search topics from these recent headlines:\n\n" + strings.Join(headlines, "\n"),
-		Priority: ai.PriorityLow,
+		Priority:  ai.PriorityLow,
+		Caller:    "search-topics",
+		MaxTokens: 256,
 	}
 
 	resp, err := ai.Ask(prompt)

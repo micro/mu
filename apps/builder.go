@@ -110,6 +110,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		Rag:      rag,
 		Question: question,
 		Priority: ai.PriorityHigh,
+		Caller:   "app-builder",
 	}
 
 	result, err := ai.Ask(prompt)
@@ -152,6 +153,7 @@ func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 		System:   builderSystemPrompt,
 		Question: prompt,
 		Priority: ai.PriorityHigh,
+		Caller:   "app-builder",
 	}
 	result, err := ai.Ask(aiPrompt)
 	if err != nil {

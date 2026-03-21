@@ -26,7 +26,52 @@ var (
 	cacheMisses         int
 	cacheReadTokens     int
 	cacheCreationTokens int
+
+	// Per-caller token usage tracking
+	usageMu sync.Mutex
+	usage   = map[string]*CallerUsage{}
 )
+
+// CallerUsage tracks token consumption for a specific caller.
+type CallerUsage struct {
+	Calls        int   `json:"calls"`
+	InputTokens  int   `json:"input_tokens"`
+	OutputTokens int   `json:"output_tokens"`
+	CacheRead    int   `json:"cache_read_tokens"`
+	CacheWrite   int   `json:"cache_write_tokens"`
+	LastCall     int64 `json:"last_call_unix"`
+}
+
+func recordUsage(caller string, input, output, cacheRead, cacheWrite int) {
+	if caller == "" {
+		caller = "unknown"
+	}
+	usageMu.Lock()
+	defer usageMu.Unlock()
+	u, ok := usage[caller]
+	if !ok {
+		u = &CallerUsage{}
+		usage[caller] = u
+	}
+	u.Calls++
+	u.InputTokens += input
+	u.OutputTokens += output
+	u.CacheRead += cacheRead
+	u.CacheWrite += cacheWrite
+	u.LastCall = time.Now().Unix()
+}
+
+// GetUsageStats returns per-caller token usage since startup.
+func GetUsageStats() map[string]*CallerUsage {
+	usageMu.Lock()
+	defer usageMu.Unlock()
+	cp := make(map[string]*CallerUsage, len(usage))
+	for k, v := range usage {
+		clone := *v
+		cp[k] = &clone
+	}
+	return cp
+}
 
 // generate sends a prompt to the configured LLM provider
 func generate(prompt *Prompt) (string, error) {
@@ -44,7 +89,11 @@ func generate(prompt *Prompt) (string, error) {
 		return "", err
 	}
 
-	app.Log("ai", "[LLM] Question: %s", truncateLog(prompt.Question, 100))
+	caller := prompt.Caller
+	if caller == "" {
+		caller = "unknown"
+	}
+	app.Log("ai", "[LLM] [%s] Question: %s", caller, truncateLog(prompt.Question, 100))
 
 	messages := []map[string]string{
 		{"role": "system", "content": systemPromptText},
@@ -70,10 +119,15 @@ func generate(prompt *Prompt) (string, error) {
 		model = "claude-sonnet-4-20250514"
 	}
 
-	return generateAnthropic(key, model, systemPromptText, messages)
+	maxTokens := prompt.MaxTokens
+	if maxTokens <= 0 {
+		maxTokens = 4096
+	}
+
+	return generateAnthropic(key, model, systemPromptText, messages, caller, maxTokens)
 }
 
-func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string]string) (string, error) {
+func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string]string, caller string, maxTokens int) (string, error) {
 	app.Log("ai", "[LLM] Using Anthropic Claude with model %s", model)
 
 	var anthropicMessages []map[string]interface{}
@@ -88,7 +142,7 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 
 	req := map[string]interface{}{
 		"model":      model,
-		"max_tokens": 4096,
+		"max_tokens": maxTokens,
 		"messages":   anthropicMessages,
 	}
 
@@ -148,15 +202,22 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 	if result.Usage.CacheReadInputTokens > 0 {
 		cacheHits++
 		cacheReadTokens += result.Usage.CacheReadInputTokens
-		app.Log("ai", "[LLM] Cache HIT: %d tokens from cache, %d new input tokens",
-			result.Usage.CacheReadInputTokens, result.Usage.InputTokens)
+		app.Log("ai", "[LLM] [%s] Cache HIT: %d cached, %d input, %d output tokens",
+			caller, result.Usage.CacheReadInputTokens, result.Usage.InputTokens, result.Usage.OutputTokens)
 	} else if result.Usage.CacheCreationInputTokens > 0 {
 		cacheMisses++
 		cacheCreationTokens += result.Usage.CacheCreationInputTokens
-		app.Log("ai", "[LLM] Cache WRITE: %d tokens cached for future requests",
-			result.Usage.CacheCreationInputTokens)
+		app.Log("ai", "[LLM] [%s] Cache WRITE: %d cached, %d input, %d output tokens",
+			caller, result.Usage.CacheCreationInputTokens, result.Usage.InputTokens, result.Usage.OutputTokens)
+	} else {
+		app.Log("ai", "[LLM] [%s] %d input, %d output tokens",
+			caller, result.Usage.InputTokens, result.Usage.OutputTokens)
 	}
 	cacheStatsMu.Unlock()
+
+	// Track per-caller usage
+	recordUsage(caller, result.Usage.InputTokens, result.Usage.OutputTokens,
+		result.Usage.CacheReadInputTokens, result.Usage.CacheCreationInputTokens)
 
 	var content string
 	for _, c := range result.Content {
@@ -182,6 +243,21 @@ func truncateLog(s string, maxLen int) string {
 }
 
 func init() {
-	// Inject cache stats function into app package to avoid import cycle
+	// Inject stats functions into app package to avoid import cycle
 	app.CacheStatsFunc = GetCacheStats
+	app.UsageStatsFunc = func() map[string]*app.CallerUsage {
+		raw := GetUsageStats()
+		out := make(map[string]*app.CallerUsage, len(raw))
+		for k, v := range raw {
+			out[k] = &app.CallerUsage{
+				Calls:        v.Calls,
+				InputTokens:  v.InputTokens,
+				OutputTokens: v.OutputTokens,
+				CacheRead:    v.CacheRead,
+				CacheWrite:   v.CacheWrite,
+				LastCall:     v.LastCall,
+			}
+		}
+		return out
+	}
 }

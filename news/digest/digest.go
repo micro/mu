@@ -4,6 +4,7 @@
 package digest
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -37,6 +38,9 @@ var (
 
 	digestMu sync.RWMutex
 	digests  []*DigestEntry
+
+	// Track context hash to skip AI calls when nothing changed
+	lastContextHash string
 )
 
 // Load starts the daily digest scheduler and loads existing digests.
@@ -179,7 +183,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func scheduler() {
 	generate()
 	for {
-		time.Sleep(time.Hour)
+		time.Sleep(3 * time.Hour)
 		generate()
 	}
 }
@@ -228,6 +232,7 @@ func createDigest() {
 		return
 	}
 
+	lastContextHash = fmt.Sprintf("%x", md5.Sum([]byte(context)))
 	response += buildReferences(refs)
 
 	entry := &DigestEntry{
@@ -251,14 +256,21 @@ func createDigest() {
 }
 
 func updateDigest(entry *DigestEntry) {
-	app.Log("digest", "Updating digest %s with latest data", entry.ID)
-
 	context, refs := gatherContext()
 	if context == "" {
 		app.Log("digest", "No content available for update")
 		setSuccess()
 		return
 	}
+
+	// Skip AI call if context hasn't changed since last generation
+	hash := fmt.Sprintf("%x", md5.Sum([]byte(context)))
+	if hash == lastContextHash {
+		setSuccess()
+		return
+	}
+
+	app.Log("digest", "Updating digest %s — context changed", entry.ID)
 
 	response, err := generateDigestContent(context)
 	if err != nil {
@@ -267,6 +279,7 @@ func updateDigest(entry *DigestEntry) {
 		return
 	}
 
+	lastContextHash = hash
 	response += buildReferences(refs)
 
 	digestMu.Lock()
@@ -319,8 +332,10 @@ Rules:
 - Write dollar amounts as plain numbers like $94 or $1.2 trillion — NEVER use LaTeX formatting, backslashes, or math notation
 - Keep it human and readable — like a morning briefing email
 - CRITICAL: Keep under 1500 characters total.`,
-		Question: context,
-		Priority: ai.PriorityLow,
+		Question:  context,
+		Priority:  ai.PriorityLow,
+		Caller:    "digest",
+		MaxTokens: 1024,
 	}
 
 	draft, err := ai.Ask(prompt)

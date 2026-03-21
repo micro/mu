@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -19,6 +20,19 @@ var startTime = time.Now()
 
 // CacheStatsFunc is injected by ai package to avoid import cycle
 var CacheStatsFunc func() (hits, misses, readTokens, creationTokens int)
+
+// CallerUsage mirrors ai.CallerUsage to avoid import cycle.
+type CallerUsage struct {
+	Calls        int   `json:"calls"`
+	InputTokens  int   `json:"input_tokens"`
+	OutputTokens int   `json:"output_tokens"`
+	CacheRead    int   `json:"cache_read_tokens"`
+	CacheWrite   int   `json:"cache_write_tokens"`
+	LastCall     int64 `json:"last_call_unix"`
+}
+
+// UsageStatsFunc is injected by ai package to avoid import cycle.
+var UsageStatsFunc func() map[string]*CallerUsage
 
 // StatusCheck represents a single status check result
 type StatusCheck struct {
@@ -542,6 +556,53 @@ func renderStatusHTML(status StatusResponse) string {
 </div>`, cfg.Name, details, class, icon))
 	}
 	sb.WriteString(`</div>`)
+
+	// AI Token Usage breakdown
+	if UsageStatsFunc != nil {
+		stats := UsageStatsFunc()
+		if len(stats) > 0 {
+			// Sort by total tokens descending
+			type row struct {
+				name string
+				u    *CallerUsage
+			}
+			var rows []row
+			for k, v := range stats {
+				rows = append(rows, row{k, v})
+			}
+			sort.Slice(rows, func(i, j int) bool {
+				ti := rows[i].u.InputTokens + rows[i].u.OutputTokens
+				tj := rows[j].u.InputTokens + rows[j].u.OutputTokens
+				return ti > tj
+			})
+
+			var totalInput, totalOutput, totalCalls int
+			for _, r := range rows {
+				totalInput += r.u.InputTokens
+				totalOutput += r.u.OutputTokens
+				totalCalls += r.u.Calls
+			}
+
+			// Sonnet pricing: $3/MTok input, $15/MTok output
+			estimatedCost := float64(totalInput)*3.0/1_000_000 + float64(totalOutput)*15.0/1_000_000
+
+			sb.WriteString(`<div class="status-section">
+<h3>AI Token Usage (since startup)</h3>
+<div style="font-size:12px;color:#666;margin-bottom:8px;">`)
+			sb.WriteString(fmt.Sprintf(`%d calls · %dk input · %dk output · ~$%.2f estimated`,
+				totalCalls, totalInput/1000, totalOutput/1000, estimatedCost))
+			sb.WriteString(`</div>
+<table style="width:100%;font-size:12px;border-collapse:collapse;">
+<tr style="border-bottom:1px solid #ddd;text-align:left;"><th style="padding:4px;">Caller</th><th style="padding:4px;">Calls</th><th style="padding:4px;">Input</th><th style="padding:4px;">Output</th><th style="padding:4px;">~Cost</th></tr>`)
+			for _, r := range rows {
+				cost := float64(r.u.InputTokens)*3.0/1_000_000 + float64(r.u.OutputTokens)*15.0/1_000_000
+				sb.WriteString(fmt.Sprintf(
+					`<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;">%s</td><td style="padding:4px;">%d</td><td style="padding:4px;">%dk</td><td style="padding:4px;">%dk</td><td style="padding:4px;">$%.3f</td></tr>`,
+					r.name, r.u.Calls, r.u.InputTokens/1000, r.u.OutputTokens/1000, cost))
+			}
+			sb.WriteString(`</table></div>`)
+		}
+	}
 
 	sb.WriteString(`</div>`)
 

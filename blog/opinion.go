@@ -91,7 +91,7 @@ func opinionEngageLoop() {
 			reviewOpinionPost(post)
 		}
 		selfReflect()
-		time.Sleep(time.Hour)
+		time.Sleep(2 * time.Hour)
 	}
 }
 
@@ -273,7 +273,9 @@ Rules:
 - Do NOT include preamble like "Here is my opinion"
 - CRITICAL: Keep under 2500 characters total (title + body).`, category, category),
 		Question: fullContext,
-		Priority: ai.PriorityLow,
+		Priority:  ai.PriorityLow,
+		Caller:    "opinion-gen",
+		MaxTokens: 1500,
 	}
 
 	response, err := ai.Ask(prompt)

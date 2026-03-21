@@ -241,7 +241,9 @@ Rules:
 - Write dollar amounts as plain numbers
 - Keep the note under 400 characters`,
 		Question: question.String(),
-		Priority: ai.PriorityLow,
+		Priority:  ai.PriorityLow,
+		Caller:    "factcheck",
+		MaxTokens: 512,
 	}
 
 	response, err := ai.Ask(prompt)
