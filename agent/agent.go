@@ -15,6 +15,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/reminder"
 )
 
 // historyLimit is the maximum number of history items shown on the agent page.
@@ -508,7 +509,10 @@ const agentToolsDesc = `Available tools (use exact name):
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
 - places_search: Search for places (args: {"q":"search name","near":"location"})
 - places_nearby: Find places near a location (args: {"address":"location","radius":number})
-- reminder: Get Islamic daily reminder (no args)
+- reminder: Get today's Islamic reminder with verse, hadith, and name of Allah (no args)
+- quran: Look up a Quran chapter or verse (args: {"chapter":1,"verse":1} — verse is optional)
+- hadith: Look up hadith from Sahih Al Bukhari (args: {"book":1} — optional book number)
+- quran_search: Semantic search across the Quran, Hadith, and names of Allah (args: {"q":"what does the quran say about patience"})
 - search: Search all Mu content (args: {"q":"search term"})
 - blog_list: Get recent blog posts (no args)
 - wallet_balance: Check your wallet credit balance (no args)
@@ -682,6 +686,27 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
+
+	// Inject daily reminder into the agent's context so it shapes responses
+	reminderContext := ""
+	if rd := reminder.GetDailyReminderData(); rd != nil {
+		var rb strings.Builder
+		rb.WriteString("\n\nToday's Islamic reminder (from reminder.dev):\n")
+		if rd.Verse != "" {
+			rb.WriteString("Verse: " + rd.Verse + "\n")
+		}
+		if rd.Hadith != "" {
+			rb.WriteString("Hadith: " + rd.Hadith + "\n")
+		}
+		if rd.Name != "" {
+			rb.WriteString("Name of Allah: " + rd.Name + "\n")
+		}
+		rb.WriteString("This reminder is part of your context. You don't need to mention it in every response, " +
+			"but let it inform your perspective when relevant — just as a person who has read these texts " +
+			"draws on them naturally in conversation.")
+		reminderContext = rb.String()
+	}
+
 	synthPrompt := &ai.Prompt{
 		System: "You are a helpful assistant. Today's date is " + today + ". " +
 			"The tool results below come from live data feeds — treat them as current information and use the article publication dates when reasoning about recency.\n\n" +
@@ -693,7 +718,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"connections and correlations between them — for example, how a market move relates to a news story, " +
 			"or how videos cover the same topic appearing in the news.\n\n" +
 			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data.\n\n" +
-			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\).",
+			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\)." +
+			reminderContext,
 		Rag:      ragParts,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
