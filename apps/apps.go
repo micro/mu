@@ -603,7 +603,8 @@ fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.s
 .then(function(r){return r.json()})
 .then(function(j){
 var iframe=document.querySelector('iframe');
-iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,result:j},'*');
+var res=(j&&j.result!==undefined)?j.result:j;
+iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,result:res},'*');
 })
 .catch(function(err){
 var iframe=document.querySelector('iframe');
