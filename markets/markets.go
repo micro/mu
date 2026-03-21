@@ -266,7 +266,7 @@ func generateMarketsCardHTML(prices map[string]float64) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(`<table style="width:100%;border-collapse:collapse;font-size:14px;">`)
+	sb.WriteString(`<table style="width:100%;border-collapse:collapse;">`)
 	for i := 0; i < len(show); i += 2 {
 		sb.WriteString(`<tr>`)
 		for col := 0; col < 2; col++ {
