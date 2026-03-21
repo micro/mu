@@ -520,17 +520,16 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 	savedInfo := ""
 	if !a.UpdatedAt.Equal(a.CreatedAt) {
-		savedInfo = " · saved " + a.UpdatedAt.Format("2 Jan 2006 15:04")
+		savedInfo = " · updated " + a.UpdatedAt.Format("2 Jan 2006 15:04")
 	}
 	versionInfo := ""
 	if len(a.Versions) > 1 {
 		versionInfo = fmt.Sprintf(` · <a href="/apps/%s/versions">v%d</a>`, htmlpkg.EscapeString(a.Slug), a.Versions[len(a.Versions)-1].Number)
 	}
-	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s · %d installs · created %s%s%s%s</p>`,
+	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s · %d installs%s%s%s</p>`,
 		htmlpkg.EscapeString(a.Author),
 		tagsInfo,
 		a.Installs,
-		a.CreatedAt.Format("2 Jan 2006"),
 		savedInfo,
 		versionInfo,
 		forkedInfo,
