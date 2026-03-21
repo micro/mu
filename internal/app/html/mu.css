@@ -4312,14 +4312,8 @@ a.btn-secondary:hover, .btn-secondary:hover {
   max-width: 750px;
 }
 
-.reminder-intro {
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: var(--spacing-md);
-}
-
 .reminder-section {
-  padding-top: var(--spacing-md);
+  padding: var(--spacing-lg) 0;
   border-top: 1px solid var(--border-color);
 }
 
@@ -4328,15 +4322,15 @@ a.btn-secondary:hover, .btn-secondary:hover {
   border-top: none;
 }
 
+.reminder-section:last-child {
+  padding-bottom: 0;
+}
+
 .reminder-section h5 {
   margin: 0 0 2px 0;
   font-size: 0.95em;
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
-}
-
-.reminder-section-last {
-  padding-bottom: 0;
 }
 
 .reminder-text {

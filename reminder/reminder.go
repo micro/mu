@@ -272,12 +272,13 @@ func generateReminderPage(rd *ReminderData) string {
 
 	sb.WriteString(`<div class="reminder-page">`)
 
-	// Message as intro text above the card
+	// Message as the card title — avoids "Reminder" / "Reminder" duplication
+	cardTitle := "Today's Reminder"
 	if rd.Message != "" {
-		sb.WriteString(fmt.Sprintf(`<p class="reminder-intro">%s</p>`, rd.Message))
+		cardTitle = rd.Message
 	}
 
-	// Single card with all content
+	// Single card with all content as sections
 	var content strings.Builder
 
 	// Verse section
@@ -327,7 +328,7 @@ func generateReminderPage(rd *ReminderData) string {
 	content.WriteString(app.Link("Discuss this reminder", "/chat?id=reminder_daily"))
 	content.WriteString(`</div>`)
 
-	sb.WriteString(app.Card("reminder", "Reminder", content.String()))
+	sb.WriteString(app.Card("reminder", cardTitle, content.String()))
 
 	sb.WriteString(`</div>`)
 
