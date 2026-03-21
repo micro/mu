@@ -438,11 +438,15 @@ Accept: application/json</pre>
 
     function timeAgo(iso) {
       if (!iso) return '';
-      var d=new Date(iso), secs=Math.floor((Date.now()-d)/1000);
+      var d=new Date(iso);
+      if(isNaN(d.getTime())) return '';
+      var secs=Math.floor((Date.now()-d)/1000);
+      if(secs<0) return '';
       if(secs<60) return 'just now';
       if(secs<3600) return Math.floor(secs/60)+'m ago';
       if(secs<86400) return Math.floor(secs/3600)+'h ago';
-      return Math.floor(secs/86400)+'d ago';
+      if(secs<2592000) return Math.floor(secs/86400)+'d ago';
+      return d.toLocaleDateString();
     }
 
     function formatPrice(price) {
