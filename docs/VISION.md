@@ -33,7 +33,7 @@ It runs as a single Go binary. Self-host it on your own server or use the hosted
 
 Every design choice follows from a simple question: does this serve the user or the platform?
 
-**Chronological feeds.** No algorithm decides what you see. News is sorted by time. Discussions are sorted by time. You choose what to read.
+**Chronological feeds.** No algorithm decides what you see. News is sorted by time. Blog posts are sorted by time. You choose what to read.
 
 **Finite content.** There is no infinite scroll. You see what's there and move on. The goal is to inform, not to keep you scrolling.
 
