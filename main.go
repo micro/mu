@@ -151,6 +151,19 @@ func main() {
 		return result
 	}
 	user.LinkifyContent = blog.Linkify
+	user.GetUserApps = func(authorID string) []user.UserApp {
+		appList := apps.GetAppsByAuthor(authorID)
+		result := make([]user.UserApp, len(appList))
+		for i, a := range appList {
+			result[i] = user.UserApp{
+				Slug:        a.Slug,
+				Name:        a.Name,
+				Description: a.Description,
+				Icon:        a.Icon,
+			}
+		}
+		return result
+	}
 
 	// Wire admin → blog callbacks (avoids blog importing admin)
 	admin.GetNewAccountBlog = blog.GetNewAccountBlogPosts
