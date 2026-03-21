@@ -632,7 +632,7 @@ var Template = `<div id="home">
 // newsCardWithDigest wraps the news headlines with a "Read Digest" link at the top.
 func newsCardWithDigest() string {
 	var sb strings.Builder
-	sb.WriteString(`<div style="margin-bottom:8px;"><a href="/news/digest" style="font-size:13px;font-weight:600;">Read today's digest →</a></div>`)
+	sb.WriteString(`<div style="margin-bottom:8px;"><a href="/blog?tag=digest" style="font-size:13px;font-weight:600;">Read today's digest →</a></div>`)
 	sb.WriteString(news.Headlines())
 	return sb.String()
 }

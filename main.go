@@ -99,6 +99,34 @@ func main() {
 	// load agent
 	agent.Load()
 
+	// Wire digest → blog callbacks (digest publishes as blog post)
+	digest.PublishBlogPost = func(title, content, author, authorID, tags string) (string, error) {
+		err := blog.CreatePost(title, content, author, authorID, tags, false)
+		if err != nil {
+			return "", err
+		}
+		// Return the ID of the just-created post
+		post := blog.FindTodayDigest()
+		if post != nil {
+			return post.ID, nil
+		}
+		return "", nil
+	}
+	digest.UpdateBlogPost = func(id, title, content, tags string) error {
+		return blog.UpdatePost(id, title, content, tags, false)
+	}
+	digest.FindTodayBlogDigest = func() *digest.DigestPost {
+		post := blog.FindTodayDigest()
+		if post == nil {
+			return nil
+		}
+		return &digest.DigestPost{
+			ID:      post.ID,
+			Title:   post.Title,
+			Content: post.Content,
+		}
+	}
+
 	// load daily digest scheduler
 	digest.Load()
 
@@ -141,7 +169,7 @@ func main() {
 
 	// Wire news → digest callback (avoids circular import: digest imports news)
 	news.HasDigest = func() bool {
-		return digest.GetLatestDigest() != nil
+		return digest.GetLatestDigest()
 	}
 
 	// Wire social seed callbacks (avoids social importing blog/digest directly)
@@ -161,7 +189,7 @@ func main() {
 		}
 	}
 	social.GetDigestSeed = func() *social.SeedData {
-		d := digest.GetTodayDigest()
+		d := blog.FindTodayDigest()
 		if d == nil {
 			return nil
 		}
@@ -172,7 +200,7 @@ func main() {
 		return &social.SeedData{
 			Title:   d.Title,
 			Summary: summary,
-			Link:    "/news/digest?date=" + d.ID,
+			Link:    "/post?id=" + d.ID,
 		}
 	}
 
