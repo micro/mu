@@ -27,6 +27,17 @@ type UserPost struct {
 // GetUserPosts returns posts by author name. Wired from main.go.
 var GetUserPosts func(authorName string) []UserPost
 
+// UserApp is a simplified app representation for profile rendering.
+type UserApp struct {
+	Slug        string
+	Name        string
+	Description string
+	Icon        string
+}
+
+// GetUserApps returns public apps by author ID. Wired from main.go.
+var GetUserApps func(authorID string) []UserApp
+
 // LinkifyContent converts URLs in text to clickable links. Wired from main.go.
 var LinkifyContent func(text string) string
 
@@ -339,8 +350,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		messageLink = fmt.Sprintf(`<p class="mt-4"><a href="/mail?compose=true&to=%s">Send a message</a></p>`, acc.ID)
 	}
 
-	// Apps section removed
+	// Apps section
 	appsSection := ""
+	if GetUserApps != nil {
+		userApps := GetUserApps(acc.ID)
+		if len(userApps) > 0 {
+			var appsSB strings.Builder
+			appsSB.WriteString(fmt.Sprintf(`<h3 class="mb-5">Apps (%d)</h3>`, len(userApps)))
+			for _, a := range userApps {
+				icon := a.Icon
+				if icon == "" {
+					icon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`
+				}
+				desc := a.Description
+				if len(desc) > 80 {
+					desc = desc[:80] + "..."
+				}
+				appsSB.WriteString(fmt.Sprintf(`<div class="post-item"><h3><a href="/apps/%s/run">%s %s</a></h3><p class="info">%s</p></div>`, a.Slug, icon, a.Name, desc))
+			}
+			appsSection = appsSB.String()
+		}
+	}
 
 	// Build the profile page content
 	content := fmt.Sprintf(`<div class="max-w-xl">

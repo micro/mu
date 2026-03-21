@@ -1159,6 +1159,23 @@ func GetPublicApps() []*App {
 	return list
 }
 
+// GetAppsByAuthor returns all public apps by a given author ID, sorted by name.
+func GetAppsByAuthor(authorID string) []*App {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var list []*App
+	for _, a := range apps {
+		if a.AuthorID == authorID && a.Public {
+			list = append(list, a)
+		}
+	}
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].Name < list[j].Name
+	})
+	return list
+}
+
 // SearchApps searches for apps by query string.
 func SearchApps(query string) []*App {
 	query = strings.ToLower(query)
