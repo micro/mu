@@ -167,7 +167,7 @@ var landingTemplate = `<html lang="en">
           <div class="block">
             <img src="/apps.svg" alt="Apps" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Apps</b>
-            <div class="small">Build small, useful tools — or ask the agent</div>
+            <div class="small">Build small, useful tools — or tell the agent</div>
           </div>
         </a>
         <a href="/blog" style="text-decoration: none; color: inherit;">
@@ -638,8 +638,8 @@ func AgentCard() string {
 	return `<div id="home-agent">
 		<form id="home-agent-form" action="/agent" method="GET">
 			<div style="display:flex;gap:8px;">
-				<input type="text" name="prompt" placeholder="Ask the agent anything..." required style="flex:1;padding:8px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;">
-				<button type="submit" style="padding:8px 16px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;cursor:pointer;">Ask</button>
+				<input type="text" name="prompt" placeholder="Tell the agent what to do..." required style="flex:1;padding:8px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;">
+				<button type="submit" style="padding:8px 16px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;cursor:pointer;">Do</button>
 			</div>
 			<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
 				<select name="model" style="padding:4px 8px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">

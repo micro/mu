@@ -127,7 +127,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			hb.WriteString(`<div id="agent-conversation">`)
 			for _, f := range history {
 				hb.WriteString(`<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;">`)
-				hb.WriteString(`<div style="font-size:12px;color:#888;margin-bottom:6px;">You asked:</div>`)
+				hb.WriteString(`<div style="font-size:12px;color:#888;margin-bottom:6px;">You said:</div>`)
 				hb.WriteString(`<div style="font-size:14px;font-weight:600;margin-bottom:10px;">` + htmlEsc(f.Prompt) + `</div>`)
 				hb.WriteString(`<div style="font-size:14px;">` + app.RenderString(f.Answer) + `</div>`)
 				hb.WriteString(`</div>`)
@@ -147,16 +147,16 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 <textarea id="agent-prompt" name="prompt" rows="3"
   placeholder="` + func() string {
 		if contextID != "" {
-			return "Ask a follow-up question..."
+			return "Tell the agent what to do next..."
 		}
-		return "What would you like to know?"
+		return "Tell the agent what to do..."
 	}() + `"
   style="width:100%;box-sizing:border-box;padding:8px;font-family:inherit;font-size:15px;resize:vertical;border:1px solid #ddd;border-radius:4px;">` + preFillPrompt + `</textarea>
 <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
 <select id="agent-model"
   style="padding:6px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">` +
 		modelOpts.String() + `</select>
-<button type="submit" id="agent-submit">Ask Agent</button>
+<button type="submit" id="agent-submit">Do</button>
 <span style="flex:1;"></span>` +
 		ToolsDropdownHTML() + `
 </div>
@@ -230,7 +230,7 @@ form.addEventListener('submit',function(e){
     if(!resp.ok&&resp.status===401){
       prog.style.display='none';
       result.innerHTML='<div class="card"><p>Please <a href="/login?redirect=/agent">login</a> to use the agent.</p></div>';
-      btn.disabled=false;btn.textContent='Ask Agent';
+      btn.disabled=false;btn.textContent='Do';
       return;
     }
     var reader=resp.body.getReader();
@@ -269,7 +269,7 @@ form.addEventListener('submit',function(e){
               if(!conv){conv=document.createElement('div');conv.id='agent-conversation';result.parentNode.insertBefore(conv,result);}
               var turn=document.createElement('div');
               turn.innerHTML='<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;">'
-                +'<div style="font-size:12px;color:#888;margin-bottom:6px;">You asked:</div>'
+                +'<div style="font-size:12px;color:#888;margin-bottom:6px;">You said:</div>'
                 +'<div style="font-size:14px;font-weight:600;margin-bottom:10px;">'+esc(prompt)+'</div>'
                 +'</div>';
               conv.appendChild(turn);
@@ -277,7 +277,7 @@ form.addEventListener('submit',function(e){
               // Update context for follow-up and reset prompt
               if(ev.flow_id){document.getElementById('agent-context').value=ev.flow_id;}
               document.getElementById('agent-prompt').value='';
-              document.getElementById('agent-prompt').placeholder='Ask a follow-up question...';
+              document.getElementById('agent-prompt').placeholder='Tell the agent what to do next...';
               // Move form to bottom for conversation mode
               var formCard=document.getElementById('agent-form-card');
               var hist=document.getElementById('agent-history');
@@ -289,7 +289,7 @@ form.addEventListener('submit',function(e){
               prog.style.display='none';
               result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
             } else if(ev.type==='done'){
-              btn.disabled=false;btn.textContent='Ask Agent';
+              btn.disabled=false;btn.textContent='Do';
             }
           }catch(ex){console.error('agent event parse error',ex,line);}
         });
@@ -301,7 +301,7 @@ form.addEventListener('submit',function(e){
   .catch(function(err){
     prog.style.display='none';
     result.innerHTML='<div class="card"><p style="color:#dc3545;">Error: '+esc(err.message)+'</p></div>';
-    btn.disabled=false;btn.textContent='Ask Agent';
+    btn.disabled=false;btn.textContent='Do';
   });
 });
 })();
@@ -438,7 +438,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 
 	// Action buttons
 	b.WriteString(`<div class="card" style="display:flex;gap:12px;align-items:center;">`)
-	b.WriteString(`<a href="/agent?continue=` + f.ID + `" class="link">Ask follow-up →</a>`)
+	b.WriteString(`<a href="/agent?continue=` + f.ID + `" class="link">Continue →</a>`)
 	b.WriteString(`<span style="color:#888;font-size:13px;">Share this URL to let others view this result</span>`)
 	b.WriteString(`</div>`)
 
