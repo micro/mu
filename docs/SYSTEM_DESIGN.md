@@ -45,7 +45,7 @@ The system is structured in layers, from fundamental subsystems up through build
 │  Building Blocks                                                │
 │  User-facing features, each built on the subsystems below       │
 │                                                                 │
-│  blog/  news/  social/  chat/  video/  mail/                    │
+│  blog/  news/  chat/  video/  mail/                             │
 │  markets/  wallet/  places/  weather/  search/  home/           │
 └────────────────────────────┬────────────────────────────────────┘
                              │ built on
@@ -60,12 +60,12 @@ The system is structured in layers, from fundamental subsystems up through build
 **Subsystems** are the fundamental internals — app rendering, API layer, AI integration, data storage,
 authentication, and admin tools. They provide the primitives that everything else is built on.
 
-**Building blocks** are the user-facing features — blog, news, social, chat, video, mail, markets, wallet,
+**Building blocks** are the user-facing features — blog, news, chat, video, mail, markets, wallet,
 places, weather, search, and home. Each one is composed from the subsystems: it uses `app/` for rendering,
 `api/` for endpoints, `ai/` for intelligence, and `data/` for storage and events.
 
 **Agents** sit on top and compose building blocks autonomously. An agent can read news, check markets,
-generate analysis with AI, and publish to social — all by orchestrating the existing building blocks.
+generate analysis with AI, and publish to the blog — all by orchestrating the existing building blocks.
 No special infrastructure needed; agents are processes that combine what already exists.
 
 ### Directory Structure
@@ -87,7 +87,6 @@ mu/
 ├── news/                 # RSS feeds, HN comments, AI summaries
 │   ├── markets/          # Crypto prices, futures (Coinbase API)
 │   └── reminder/         # Daily reminders
-├── social/               # Discussions, community notes, fact-checking
 ├── chat/                 # AI chat with RAG, WebSocket streaming
 ├── video/                # YouTube search and playback
 ├── mail/                 # Messaging, SMTP server, DKIM signing
@@ -193,16 +192,6 @@ RSS feed aggregation with AI enhancement.
 - **AI summaries** - Article summarization via chat module
 - **Full-text search** - Search across all indexed articles
 
-### Social (`social/`)
-
-Topic-based discussions with AI-powered fact-checking.
-
-- **Threaded discussions** - Topic-based conversations
-- **Community notes** - AI-assisted fact-checking
-- **Automated seeding** - Daily digest and top news posts
-- **Guidelines filtering** - Content moderation
-- **Opinion tracking** - Memory of prior positions across discussions
-
 ### Chat (`chat/`)
 
 AI-powered conversation with contextual knowledge.
@@ -293,7 +282,7 @@ The agent layer composes building blocks to observe, analyze, and act autonomous
 
 An agent doesn't need special infrastructure — it works by composing existing building blocks.
 For example, an opinion agent would: read from news (data), check markets (data), generate
-analysis (AI), and publish to social (building block). All using the same subsystems and
+analysis (AI), and publish to the blog (building block). All using the same subsystems and
 building blocks that everything else uses.
 
 ## Design Patterns
@@ -335,7 +324,6 @@ All user-configurable data lives in JSON files (embedded at build time):
 - `news/feeds.json` - RSS feed URLs
 - `video/channels.json` - YouTube channel IDs
 - `places/locations.json` - Saved search categories
-- `social/topics.json` - Discussion topics
 
 ## Economic Model
 

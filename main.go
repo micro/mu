@@ -31,7 +31,6 @@ import (
 	"mu/reminder"
 	"mu/places"
 	"mu/search"
-	"mu/social"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -86,9 +85,6 @@ func main() {
 	markets.Load()
 	reminder.Load()
 	wallet.Load()
-
-	// load social discussions
-	social.Load()
 
 	// load apps
 	apps.Load()
@@ -171,72 +167,6 @@ func main() {
 	news.HasDigest = func() bool {
 		return digest.GetLatestDigest()
 	}
-
-	// Wire social seed callbacks (avoids social importing blog/digest directly)
-	social.GetOpinionSeed = func() *social.SeedData {
-		post := blog.FindTodayOpinion()
-		if post == nil {
-			return nil
-		}
-		summary := post.Content
-		if len(summary) > 200 {
-			summary = summary[:200] + "..."
-		}
-		return &social.SeedData{
-			Title:   post.Title,
-			Summary: summary,
-			Link:    "/post?id=" + post.ID,
-		}
-	}
-	social.GetDigestSeed = func() *social.SeedData {
-		d := blog.FindTodayDigest()
-		if d == nil {
-			return nil
-		}
-		summary := d.Content
-		if len(summary) > 200 {
-			summary = summary[:200] + "..."
-		}
-		return &social.SeedData{
-			Title:   d.Title,
-			Summary: summary,
-			Link:    "/post?id=" + d.ID,
-		}
-	}
-
-	// Wire social news notes callback — picks one recent article per topic for fact-checking
-	social.GetRecentNews = func() []social.NewsArticle {
-		feed := news.GetFeed()
-		if len(feed) == 0 {
-			return nil
-		}
-
-		// Pick the most recent article per category from the last 2 hours
-		cutoff := time.Now().Add(-2 * time.Hour)
-		seen := map[string]bool{}
-		var articles []social.NewsArticle
-
-		for _, p := range feed {
-			if p.PostedAt.Before(cutoff) {
-				continue
-			}
-			if seen[p.Category] {
-				continue
-			}
-			seen[p.Category] = true
-			articles = append(articles, social.NewsArticle{
-				Title:       p.Title,
-				Description: p.Description,
-				URL:         p.URL,
-				Category:    p.Category,
-			})
-		}
-		return articles
-	}
-
-	// Start social seeding (daily threads + hourly news community notes)
-	social.SeedingEnabled = true
-	social.StartSeeding()
 
 	// Start daily opinion generation (publishes as blog post)
 	blog.StartOpinion()
@@ -340,18 +270,6 @@ func main() {
 		},
 	})
 
-	// fact_check tool — verify claims against web sources
-	api.RegisterTool(api.Tool{
-		Name:        "fact_check",
-		Description: "Fact-check a claim or statement by searching the web and assessing accuracy. Returns verdict (accurate, misleading, missing_context, none) with sources.",
-		Method:      "POST",
-		Path:        "/factcheck",
-		WalletOp:    "fact_check",
-		Params: []api.ToolParam{
-			{Name: "claim", Type: "string", Description: "The claim or statement to fact-check (minimum 20 characters)", Required: true},
-		},
-	})
-
 	// Register apps MCP tools
 	api.RegisterTool(api.Tool{
 		Name:        "apps_search",
@@ -450,7 +368,6 @@ func main() {
 		"/chat":            false, // Public viewing, auth for chatting
 		"/home":            false, // Public viewing
 		"/blog":            false, // Public viewing, auth for posting
-		"/social":          false, // Public viewing, auth for posting
 		"/markets":         false, // Public viewing
 		"/reminder":        false, // Public viewing
 		"/places":          false, // Public map, auth for search
@@ -473,7 +390,7 @@ func main() {
 		"/admin/log":       true,
 		"/admin/env":       true,
 		"/admin/server":    true,
-		"/admin/ai-usage":  true,
+		"/admin/usage":  true,
 		"/plans":           false, // Public - shows pricing options
 		"/donate":          false,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
@@ -482,7 +399,6 @@ func main() {
 		"/search":    false, // Public - local data index search
 		"/web":       false, // Public page, auth checked in handler (paid Brave web search)
 		"/fetch":     false, // Public page, auth checked in handler (paid web fetch)
-		"/factcheck": false, // Public page, auth checked in handler (paid fact-check)
 
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
@@ -503,11 +419,6 @@ func main() {
 	http.HandleFunc("/news", news.Handler)
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
-
-	// serve social discussions
-	http.HandleFunc("/social", social.Handler)
-	http.HandleFunc("/social/guidelines", social.GuidelinesHandler)
-	http.HandleFunc("/social/dismiss", social.DismissHandler)
 
 	// serve blog (full list)
 	http.HandleFunc("/blog", blog.Handler)
@@ -559,7 +470,7 @@ func main() {
 	http.HandleFunc("/admin/server", admin.UpdateHandler)
 
 	// AI usage tracking
-	http.HandleFunc("/admin/ai-usage", admin.AIUsageHandler)
+	http.HandleFunc("/admin/usage", admin.AIUsageHandler)
 
 	// plans page (public - overview of options)
 	http.HandleFunc("/plans", app.Plans)
@@ -582,7 +493,6 @@ func main() {
 	http.HandleFunc("/fetch", search.FetchHandler)
 
 	// serve fact-check page and API
-	http.HandleFunc("/factcheck", social.FactCheckPageHandler)
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)

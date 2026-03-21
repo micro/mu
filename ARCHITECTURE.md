@@ -27,7 +27,6 @@ mu/
 ├── places/                 # Map and location search
 ├── reminder/               # Daily news reminder/briefing
 ├── search/                 # Local index search + Brave web search
-├── social/                 # Discussions, fact-checking, community threads
 ├── user/                   # User profiles, presence tracking
 ├── video/                  # YouTube channel aggregation
 ├── wallet/                 # Credit system, Stripe payments
@@ -76,7 +75,6 @@ Building blocks are **features**. Each building block:
 | `places`    | `/places`                | `app`, `auth`, `data`               |
 | `reminder`  | `/reminder`              | `app`, `auth`, `data`               |
 | `search`    | `/search`, `/web`        | `ai`, `app`, `auth`, `data`         |
-| `social`    | `/social`                | `ai`, `app`, `data`, `moderation`   |
 | `user`      | `/@{username}`           | `app`, `auth`, `data`               |
 | `video`     | `/video`                 | `app`, `auth`, `data`               |
 | `wallet`    | `/wallet`                | `app`, `auth`, `data`               |
@@ -90,7 +88,7 @@ Some packages act as **composition layers** that aggregate content from multiple
 building blocks to render combined views:
 
 - **`home/`** — renders dashboard cards by importing `blog`, `news`, `markets`,
-  `reminder`, `social`, `video`, `agent`. This is intentional: home is a
+  `reminder`, `video`, `agent`. This is intentional: home is a
   read-only aggregation view.
 
 - **`news/digest/`** — generates a daily news digest by pulling from `news`,
@@ -101,11 +99,6 @@ building blocks to render combined views:
   `reminder`, `search`, `video` as context. The opinion is published as a blog
   post. The editorial memory system (`opinion_memory.go`) tracks stances,
   directives, and topic history so the agent evolves its perspective over time.
-
-- **`social/seed.go`** — seeds three daily discussion threads: reminder (from
-  `reminder`), opinion (from blog opinion via callback), and digest (from news
-  digest via callback). Callbacks are wired in `main.go` to avoid cross-block
-  imports.
 
 These cross-building-block imports are documented exceptions. The long-term goal
 is to replace them with the event system (`data.Subscribe`/`data.Publish`).
@@ -130,7 +123,6 @@ weather.Load()    // (no-op)
 markets.Load()    // Market data
 reminder.Load()   // Daily briefing
 wallet.Load()     // Credit balances
-social.Load()     // Discussions
 home.Load()       // Dashboard cards
 agent.Load()      // (no-op)
 digest.Load()     // Digest scheduler
@@ -152,7 +144,7 @@ are registered in `main.go` via `http.HandleFunc`. Handlers use:
 ### Data Storage
 
 Building blocks persist state via `data.LoadFile()` / `data.SaveFile()` using
-JSON files. Each block owns its own files (e.g., `blog.json`, `social.json`).
+JSON files. Each block owns its own files (e.g., `blog.json`).
 
 Searchable content is indexed via `data.Index(id, type, title, content, meta)`.
 

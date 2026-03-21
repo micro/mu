@@ -212,8 +212,8 @@ func TestPage_DefaultLabel(t *testing.T) {
 }
 
 func TestCategory_WithHref(t *testing.T) {
-	result := Category("tech", "/social?topic=tech")
-	if !strings.Contains(result, `<a href="/social?topic=tech"`) {
+	result := Category("tech", "/blog?tag=tech")
+	if !strings.Contains(result, `<a href="/blog?tag=tech"`) {
 		t.Error("expected link")
 	}
 	if !strings.Contains(result, "tech") {
@@ -316,8 +316,8 @@ func TestSection(t *testing.T) {
 }
 
 func TestLoginPrompt(t *testing.T) {
-	result := LoginPrompt("post", "/social")
-	if !strings.Contains(result, `/login?redirect=/social`) {
+	result := LoginPrompt("post", "/blog")
+	if !strings.Contains(result, `/login?redirect=/blog`) {
 		t.Error("expected login redirect")
 	}
 	if !strings.Contains(result, "post") {

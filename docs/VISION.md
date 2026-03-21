@@ -23,7 +23,6 @@ It runs as a single Go binary. Self-host it on your own server or use the hosted
 | **Video** | YouTube without ads, algorithms, or shorts |
 | **Web** | Search the web without tracking (Brave) |
 | **Blog** | Microblogging with daily AI-generated digests |
-| **Social** | Topic-based discussions with community notes |
 | **Chat** | AI-powered conversation |
 | **Mail** | Private messaging and email |
 | **Apps** | Build and use small web tools — or ask the agent to build one |

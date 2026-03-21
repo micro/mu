@@ -19,7 +19,6 @@ import (
 	"mu/news"
 	"mu/markets"
 	"mu/reminder"
-	"mu/social"
 	"mu/video"
 )
 
@@ -190,13 +189,6 @@ var landingTemplate = `<html lang="en">
             <img src="/post.png" alt="Blog" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>Blog</b>
             <div class="small">Microblogging with daily AI-generated digests</div>
-          </div>
-        </a>
-        <a href="/social" style="text-decoration: none; color: inherit;">
-          <div class="block">
-            <img src="/chat.png" alt="Social" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
-            <b>Social</b>
-            <div class="small">Topic-based discussions with community notes</div>
           </div>
         </a>
         <a href="/chat" style="text-decoration: none; color: inherit;">
@@ -718,7 +710,6 @@ func Load() {
 		"agent":    AgentCard,
 		"blog":     blog.Preview,
 		"chat":     ChatCard,
-		"social":   social.Preview,
 		"news":     newsCardWithDigest,
 		"markets":  markets.MarketsHTML,
 		"reminder": reminder.ReminderHTML,

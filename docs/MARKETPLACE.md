@@ -299,7 +299,7 @@ Make marketplace services available to the agent.
 
 ### Phase 4: Trust & Discovery
 
-Build the social layer around services.
+Build the community layer around services.
 
 - User reviews and ratings
 - Usage statistics
@@ -353,4 +353,4 @@ This is what a services marketplace looks like when you start from first princip
 
 ---
 
-*This document is a proposal for discussion. See the [social thread](/social) or share your thoughts.*
+*This document is a proposal for discussion.*

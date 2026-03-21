@@ -43,18 +43,10 @@
       "icon": "/markets.svg"
     },
     {
-      "id": "social",
-      "title": "Social",
-      "type": "social",
-      "position": 2,
-      "link": "/social",
-      "icon": "/chat.png"
-    },
-    {
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 3,
+      "position": 2,
       "link": "/video",
       "icon": "/video.png"
     },
@@ -62,7 +54,7 @@
       "id": "apps",
       "title": "Apps",
       "type": "apps",
-      "position": 4,
+      "position": 3,
       "link": "/apps",
       "icon": ""
     }

@@ -294,8 +294,6 @@ func getViewPath(contentType string) string {
 		return "news"
 	case "video":
 		return "video"
-	case "thread":
-		return "social"
 	default:
 		return ""
 	}
