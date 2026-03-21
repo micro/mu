@@ -780,7 +780,7 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <p><strong>Pay to</strong> — search, post, chat, and use AI</p>
 <p>1 credit = 1p</p>
 <p>Top up your wallet</p>
-<p>Blog post or discussion: 1p</p>
+<p>Blog post: 1p</p>
 <p>Search: 1-5p</p>
 <p>Chat / Agent: 3-9p</p>
 <p>Credits never expire</p>`)
@@ -805,7 +805,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 <tbody>
 <tr><td>News headlines, articles, and AI summaries</td><td>Free</td></tr>
 <tr><td>Blog posts and comments</td><td>Free</td></tr>
-<tr><td>Discussion threads and replies</td><td>Free</td></tr>
 <tr><td>Videos</td><td>Free</td></tr>
 <tr><td>Markets</td><td>Free</td></tr>
 <tr><td>Mail inbox</td><td>Free</td></tr>
@@ -822,7 +821,6 @@ func Plans(w http.ResponseWriter, r *http.Request) {
 </thead>
 <tbody>
 <tr><td>Blog post</td><td>Publish a new post</td><td>1p</td></tr>
-<tr><td>Discussion post</td><td>Start a thread or reply</td><td>1p</td></tr>
 <tr><td>News search</td><td>Search news articles</td><td>1p</td></tr>
 <tr><td>Send mail</td><td>Message another user</td><td>1p</td></tr>
 <tr><td>Video search</td><td>Search for videos</td><td>2p</td></tr>

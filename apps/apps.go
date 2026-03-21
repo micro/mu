@@ -109,6 +109,10 @@ func Preview() string {
 			public = append(public, a)
 		}
 	}
+	if len(public) == 0 {
+		return `<p class="card-desc">Build and launch apps — small, useful tools that do one thing well.</p>
+<p><a href="/apps/build">+ Create your first app</a></p>`
+	}
 	sort.Slice(public, func(i, j int) bool {
 		return public[i].CreatedAt.After(public[j].CreatedAt)
 	})
@@ -126,7 +130,7 @@ func Preview() string {
 			htmlpkg.EscapeString(truncate(a.Description, 60)),
 		))
 	}
-	sb.WriteString(fmt.Sprintf(`<p class="card-desc">%d apps available</p>`, len(public)))
+	sb.WriteString(fmt.Sprintf(`<p class="card-desc">%d apps available · <a href="/apps/build">Build new</a></p>`, len(public)))
 	return sb.String()
 }
 
