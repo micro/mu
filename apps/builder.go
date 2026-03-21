@@ -214,6 +214,7 @@ func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 	}
 
 	mutex.Lock()
+	snapshotVersion(a, "Initial version")
 	apps[slug] = a
 	mutex.Unlock()
 	save()
@@ -536,6 +537,14 @@ func editPageHTML(a *App) string {
 	escapedIcon, _ := json.Marshal(a.Icon)
 	escapedSlug, _ := json.Marshal(a.Slug)
 
+	savedAt := "Last saved " + a.UpdatedAt.Format("2 Jan 2006 15:04")
+	versionLink := ""
+	if len(a.Versions) > 0 {
+		v := a.Versions[len(a.Versions)-1]
+		versionLink = fmt.Sprintf(`<a href="/apps/%s/versions" style="color:#999;">v%d · %d versions</a>`,
+			htmlpkg.EscapeString(a.Slug), v.Number, len(a.Versions))
+	}
+
 	return fmt.Sprintf(`
 <style>
 .builder { display: flex; flex-direction: column; gap: 12px; }
@@ -579,23 +588,23 @@ func editPageHTML(a *App) string {
     <button id="genBtn" onclick="generate()">Modify</button>
   </div>
 
-  <div class="preview-area">
-    <div class="preview-header">
-      <h3>Preview</h3>
-      <button class="code-toggle" id="codeToggle" onclick="toggleCode()">Show Code</button>
-    </div>
-    <iframe id="preview" class="preview-frame" sandbox="allow-scripts"></iframe>
-  </div>
-
-  <div class="code-section" id="codeSection">
-    <div class="code-header">
-      <h3>Code</h3>
-      <div class="actions">
-        <button onclick="copyCode()">Copy</button>
-        <button onclick="updatePreview()">Refresh Preview</button>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:300px;">
+      <div class="code-header" style="margin-bottom:6px;">
+        <h3>Code</h3>
+        <div class="actions">
+          <button onclick="copyCode()">Copy</button>
+        </div>
       </div>
+      <textarea class="code-editor" id="code" spellcheck="false" style="min-height:50vh;"></textarea>
     </div>
-    <textarea class="code-editor" id="code" spellcheck="false"></textarea>
+    <div style="flex:1;min-width:300px;">
+      <div class="preview-header" style="margin-bottom:6px;">
+        <h3>Preview</h3>
+        <button class="code-toggle" onclick="updatePreview()">Refresh</button>
+      </div>
+      <iframe id="preview" class="preview-frame" sandbox="allow-scripts" style="min-height:50vh;"></iframe>
+    </div>
   </div>
 
   <div class="save-bar">
@@ -604,6 +613,10 @@ func editPageHTML(a *App) string {
     <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
     <button onclick="saveApp()">Save</button>
     <span class="status-msg" id="statusMsg"></span>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#999;">
+    <span id="savedAt">%s</span>
+    <span>%s</span>
   </div>
 </div>
 
@@ -670,6 +683,7 @@ function generate() {
     codeEl.value = data.html;
     showPreview();
     if (data.icon) { appIcon = data.icon; }
+    document.getElementById('statusMsg').textContent = 'Code updated — review changes and click Save when ready.';
   })
   .catch(function(e) { document.getElementById('statusMsg').textContent = 'Error: ' + e.message; })
   .finally(function() { btn.disabled = false; btn.textContent = 'Modify'; });
@@ -700,8 +714,12 @@ function saveApp() {
   })
   .then(function(data) {
     if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
+    var now = new Date();
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var ts = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('savedAt').textContent = 'Last saved ' + ts;
     document.getElementById('statusMsg').textContent = 'Saved!';
-    window.location.href = '/apps/' + editSlug;
+    setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 3000);
   })
   .catch(function(e) { document.getElementById('statusMsg').textContent = e.message || 'Save failed'; });
 }
@@ -712,5 +730,5 @@ function copyCode() {
     setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 2000);
   });
 }
-</script>`, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags)
+</script>`, savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags)
 }
