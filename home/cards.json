@@ -1,12 +1,12 @@
 {
   "left": [
     {
-      "id": "agent",
-      "title": "Agent",
-      "type": "agent",
+      "id": "apps",
+      "title": "Apps",
+      "type": "apps",
       "position": 0,
-      "link": "",
-      "icon": "/agent.svg"
+      "link": "/apps",
+      "icon": ""
     },
     {
       "id": "blog",
@@ -27,10 +27,18 @@
   ],
   "right": [
     {
+      "id": "agent",
+      "title": "Agent",
+      "type": "agent",
+      "position": 0,
+      "link": "",
+      "icon": "/agent.svg"
+    },
+    {
       "id": "reminder",
       "title": "Reminder",
       "type": "reminder",
-      "position": 0,
+      "position": 1,
       "link": "",
       "icon": "/reminder.svg"
     },
@@ -38,7 +46,7 @@
       "id": "markets",
       "title": "Markets",
       "type": "markets",
-      "position": 1,
+      "position": 2,
       "link": "/markets",
       "icon": "/markets.svg"
     },
@@ -46,17 +54,9 @@
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 2,
+      "position": 3,
       "link": "/video",
       "icon": "/video.png"
-    },
-    {
-      "id": "apps",
-      "title": "Apps",
-      "type": "apps",
-      "position": 3,
-      "link": "/apps",
-      "icon": ""
     }
   ]
 }
