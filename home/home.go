@@ -437,7 +437,7 @@ Accept: application/json</pre>
     function esc(s){ return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&#34;'):''; }
 
     function timeAgo(iso) {
-      if (!iso) return '';
+      if (!iso || iso.indexOf('0001-')===0) return '';
       var d=new Date(iso);
       if(isNaN(d.getTime())) return '';
       var secs=Math.floor((Date.now()-d)/1000);
@@ -574,7 +574,8 @@ Accept: application/json</pre>
         // Strip markdown formatting for preview
         content=content.replace(/#{1,6}\s/g,'').replace(/\*\*/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/\n/g,' ');
         if(content.length>280) content=content.substring(0,280)+'…';
-        var age=opinion.updated_at||opinion.created_at?'<span style="font-size:11px;color:#888;">'+timeAgo(opinion.updated_at||opinion.created_at)+'</span>':'';
+        var ts=opinion.updated_at&&opinion.updated_at.indexOf('0001-')!==0?opinion.updated_at:opinion.created_at;
+        var age=ts?'<span style="font-size:11px;color:#888;">'+timeAgo(ts)+'</span>':'';
         var tag=(opinion.tags||'').indexOf('opinion')!==-1?'<span style="font-size:11px;background:#f0f0f0;padding:2px 8px;border-radius:10px;margin-right:6px;">opinion</span>':'';
         el.innerHTML='<div style="padding:8px 0;">'+tag+age+
           '<a href="/post/'+esc(opinion.id)+'" style="font-size:15px;font-weight:700;display:block;line-height:1.4;margin-top:4px;color:#111;">'+esc(title)+'</a>'+
