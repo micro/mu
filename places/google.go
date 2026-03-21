@@ -132,6 +132,7 @@ func googleDo(apiURL, key string, payload interface{}) ([]*Place, error) {
 	}
 
 	app.RecordAPICall("google_places", "POST", apiURL, resp.StatusCode, time.Since(start), nil, reqBody, string(respBody))
+	app.RecordUsage("google", "places", 2.5, nil) // ~$0.025/call
 
 	var gResp googlePlacesResponse
 	if err := json.Unmarshal(respBody, &gResp); err != nil {

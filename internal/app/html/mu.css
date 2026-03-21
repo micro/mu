@@ -4337,10 +4337,10 @@ a.btn-secondary:hover, .btn-secondary:hover {
   padding-bottom: 0;
 }
 
-.reminder-section h2 {
+.reminder-section h3 {
   margin-top: 0;
   margin-bottom: 12px;
-  font-size: 1.2em;
+  font-size: 1.1em;
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
@@ -4391,8 +4391,8 @@ a.btn-secondary:hover, .btn-secondary:hover {
     font-size: 1.5em;
   }
   
-  .reminder-section h2 {
-    font-size: 1.1em;
+  .reminder-section h3 {
+    font-size: 1em;
   }
   
   .reminder-content {
