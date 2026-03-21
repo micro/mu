@@ -70,10 +70,14 @@ func generate(prompt *Prompt) (string, error) {
 		model = "claude-sonnet-4-20250514"
 	}
 
-	return generateAnthropic(key, model, systemPromptText, messages)
+	caller := prompt.Caller
+	if caller == "" {
+		caller = "unknown"
+	}
+	return generateAnthropic(key, model, systemPromptText, messages, caller)
 }
 
-func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string]string) (string, error) {
+func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string]string, caller string) (string, error) {
 	app.Log("ai", "[LLM] Using Anthropic Claude with model %s", model)
 
 	var anthropicMessages []map[string]interface{}
@@ -157,6 +161,15 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 			result.Usage.CacheCreationInputTokens)
 	}
 	cacheStatsMu.Unlock()
+
+	// Record usage for tracking
+	recordUsage(caller, model,
+		result.Usage.InputTokens, result.Usage.OutputTokens,
+		result.Usage.CacheReadInputTokens, result.Usage.CacheCreationInputTokens)
+
+	app.Log("ai", "[LLM] Usage [%s]: input=%d output=%d cache_read=%d cache_write=%d",
+		caller, result.Usage.InputTokens, result.Usage.OutputTokens,
+		result.Usage.CacheReadInputTokens, result.Usage.CacheCreationInputTokens)
 
 	var content string
 	for _, c := range result.Content {

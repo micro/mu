@@ -159,7 +159,7 @@ const (
 )
 
 // --- Shared content components ---
-// Used across social, blog, news, mail, and other packages
+// Used across blog, news, mail, and other packages
 // for consistent rendering of common UI patterns.
 
 // Category renders a topic/tag badge.

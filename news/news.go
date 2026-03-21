@@ -807,8 +807,15 @@ func shouldRequestSummary(md *Metadata) bool {
 	return timeSinceLastRequest >= backoffDuration
 }
 
-// requestArticleSummary publishes a request for LLM summary generation
+// requestArticleSummary publishes a request for LLM summary generation.
+// DISABLED: Article summaries were consuming ~50 AI calls/day with no active users.
+// The RSS feed description is used as the summary fallback instead.
+// To re-enable, remove the early return below.
 func requestArticleSummary(uri string, md *Metadata) {
+	// Cost reduction: skip AI-generated summaries entirely.
+	// Articles already have descriptions from RSS feeds which serve as adequate summaries.
+	return
+
 	// Skip if we already have a summary
 	if md.Summary != "" {
 		return

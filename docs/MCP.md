@@ -57,10 +57,6 @@ For self-hosted instances, replace `mu.xyz` with your domain.
 | `weather` | Get the weather forecast for a location | 1 credit |
 | `web_search` | Search the web for current information | 2 credits |
 | `web_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
-| `fact_check` | Fact-check a claim against web sources | 3 credits |
-| `social_list` | List discussion threads | Free |
-| `social_read` | Read a discussion thread | Free |
-| `social_post` | Start a new discussion thread | 1 credit |
 | `apps_search` | Search the apps directory | Free |
 | `apps_read` | Read details of a specific app | Free |
 | `apps_create` | Create a new app | Free |

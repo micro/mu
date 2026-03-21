@@ -22,7 +22,6 @@ var (
 	CostVideoSearch       = getEnvInt("CREDIT_COST_VIDEO", 2)
 	CostChatQuery         = getEnvInt("CREDIT_COST_CHAT", 3)
 	CostBlogCreate        = getEnvInt("CREDIT_COST_BLOG_CREATE", 1)
-	CostSocialPost        = getEnvInt("CREDIT_COST_SOCIAL", 1)
 	CostMailSend          = getEnvInt("CREDIT_COST_MAIL", 1)  // Internal mail send
 	CostExternalEmail     = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
 	CostPlacesSearch      = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
@@ -31,7 +30,6 @@ var (
 	CostWeatherPollen     = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
 	CostWebSearch         = getEnvInt("CREDIT_COST_SEARCH", 5)
 	CostWebFetch          = getEnvInt("CREDIT_COST_FETCH", 3)
-	CostFactCheck         = getEnvInt("CREDIT_COST_FACTCHECK", 3)
 	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
 	FreeDailyQuota        = getEnvInt("FREE_DAILY_QUOTA", 20)
@@ -49,7 +47,6 @@ const (
 	OpVideoSearch   = "video_search"
 	OpChatQuery     = "chat_query"
 	OpBlogCreate    = "blog_create"
-	OpSocialPost    = "social_post"
 	OpMailSend      = "mail_send"
 	OpExternalEmail = "external_email"
 	OpPlacesSearch      = "places_search"
@@ -58,7 +55,6 @@ const (
 	OpWeatherPollen     = "weather_pollen"
 	OpWebSearch         = "web_search"
 	OpWebFetch          = "web_fetch"
-	OpFactCheck         = "fact_check"
 	OpAgentQuery        = "agent_query"
 	OpAgentQueryPremium = "agent_query_premium"
 	OpTopup             = "topup"
@@ -347,8 +343,6 @@ func GetOperationCost(operation string) int {
 		return CostChatQuery
 	case OpBlogCreate:
 		return CostBlogCreate
-	case OpSocialPost:
-		return CostSocialPost
 	case OpMailSend:
 		return CostMailSend
 	case OpExternalEmail:
@@ -365,8 +359,6 @@ func GetOperationCost(operation string) int {
 		return CostWebSearch
 	case OpWebFetch:
 		return CostWebFetch
-	case OpFactCheck:
-		return CostFactCheck
 	case OpAgentQuery:
 		return CostAgentQuery
 	case OpAgentQueryPremium:

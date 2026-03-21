@@ -39,7 +39,6 @@ Each service does one thing well:
 - **Video** — YouTube without ads, algorithms, or shorts
 - **Web** — Search the web without tracking
 - **Blog** — Microblogging with daily AI-generated digests
-- **Social** — Topic-based discussions with community notes
 - **Chat** — AI-powered conversation on any topic
 - **Mail** — Private messaging and email
 - **Apps** — Build and use small, useful tools — or ask the agent to build one

@@ -33,7 +33,6 @@ func TestGetOperationCost(t *testing.T) {
 		{OpVideoSearch, CostVideoSearch},
 		{OpChatQuery, CostChatQuery},
 		{OpBlogCreate, CostBlogCreate},
-		{OpSocialPost, CostSocialPost},
 		{OpMailSend, CostMailSend},
 		{OpExternalEmail, CostExternalEmail},
 		{OpPlacesSearch, CostPlacesSearch},
@@ -42,7 +41,6 @@ func TestGetOperationCost(t *testing.T) {
 		{OpWeatherPollen, CostWeatherPollen},
 		{OpWebSearch, CostWebSearch},
 		{OpWebFetch, CostWebFetch},
-		{OpFactCheck, CostFactCheck},
 		{OpAgentQuery, CostAgentQuery},
 		{OpAgentQueryPremium, CostAgentQueryPremium},
 		{"unknown_op", 1}, // default
@@ -59,9 +57,9 @@ func TestOperationConstants(t *testing.T) {
 	// Ensure all operation constants are unique
 	ops := []string{
 		OpNewsSearch, OpVideoSearch, OpChatQuery, OpBlogCreate,
-		OpSocialPost, OpMailSend, OpExternalEmail, OpPlacesSearch,
+		OpMailSend, OpExternalEmail, OpPlacesSearch,
 		OpPlacesNearby, OpWeatherForecast, OpWeatherPollen,
-		OpWebSearch, OpWebFetch, OpFactCheck, OpAgentQuery,
+		OpWebSearch, OpWebFetch, OpAgentQuery,
 		OpAgentQueryPremium, OpTopup, OpRefund,
 	}
 	seen := make(map[string]bool)

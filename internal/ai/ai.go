@@ -40,6 +40,7 @@ type Prompt struct {
 	Priority int      // Request priority (0=high, 1=medium, 2=low)
 	Provider string   // Force specific provider (empty = default)
 	Model    string   // Force specific model (empty = provider default)
+	Caller   string   // Identifies the calling feature for usage tracking
 }
 
 // systemPromptData is the data passed to the system prompt template

@@ -1,12 +1,10 @@
 // Package digest generates daily news digests by synthesizing headlines,
-// market data, and video content into a coherent briefing. It lives under
-// news/ because it summarizes the day's news — it is not a blog post.
+// market data, and video content into a coherent briefing. The generated
+// digest is published as a blog post tagged "digest".
 package digest
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -19,14 +17,22 @@ import (
 	"mu/video"
 )
 
-// DigestEntry represents a single daily digest.
-type DigestEntry struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+// DigestPost holds minimal info about a digest blog post.
+// Populated via callbacks wired in main.go to avoid import cycles with blog.
+type DigestPost struct {
+	ID      string
+	Title   string
+	Content string
 }
+
+// PublishBlogPost creates a new blog post. Wired in main.go.
+var PublishBlogPost func(title, content, author, authorID, tags string) (string, error)
+
+// UpdateBlogPost updates an existing blog post. Wired in main.go.
+var UpdateBlogPost func(id, title, content, tags string) error
+
+// FindTodayBlogDigest returns today's digest blog post, if any. Wired in main.go.
+var FindTodayBlogDigest func() *DigestPost
 
 var (
 	mu         sync.Mutex
@@ -34,17 +40,10 @@ var (
 	lastDigest time.Time
 	lastError  string
 	lastStatus string // "ok", "error", "running", "pending"
-
-	digestMu sync.RWMutex
-	digests  []*DigestEntry
 )
 
-// Load starts the daily digest scheduler and loads existing digests.
+// Load starts the daily digest scheduler.
 func Load() {
-	if b, err := data.LoadFile("digests.json"); err == nil {
-		json.Unmarshal(b, &digests)
-	}
-
 	if b, err := data.LoadFile("digest_last.txt"); err == nil {
 		t, err := time.Parse(time.RFC3339, strings.TrimSpace(string(b)))
 		if err == nil {
@@ -94,89 +93,22 @@ func Generate() bool {
 	return true
 }
 
-// GetTodayDigest returns today's digest entry, or nil if none exists.
-func GetTodayDigest() *DigestEntry {
-	digestMu.RLock()
-	defer digestMu.RUnlock()
-
-	now := time.Now()
-	y, m, d := now.Date()
-	for _, entry := range digests {
-		ey, em, ed := entry.CreatedAt.Date()
-		if ey == y && em == m && ed == d {
-			return entry
-		}
-	}
-	return nil
-}
-
-// GetLatestDigest returns the most recent digest entry.
-func GetLatestDigest() *DigestEntry {
-	digestMu.RLock()
-	defer digestMu.RUnlock()
-	if len(digests) == 0 {
+// GetTodayDigest returns today's digest from the blog, or nil.
+func GetTodayDigest() *DigestPost {
+	if FindTodayBlogDigest == nil {
 		return nil
 	}
-	return digests[0]
+	return FindTodayBlogDigest()
 }
 
-// GetDigestByDate returns the digest for a specific date (YYYY-MM-DD), or nil.
-func GetDigestByDate(date string) *DigestEntry {
-	digestMu.RLock()
-	defer digestMu.RUnlock()
-	for _, entry := range digests {
-		if entry.ID == date {
-			return entry
-		}
-	}
-	return nil
-}
-
-// Handler serves the daily digest page at /news/digest.
-// Supports ?date=YYYY-MM-DD to fetch a specific day's digest.
-func Handler(w http.ResponseWriter, r *http.Request) {
-	date := r.URL.Query().Get("date")
-
-	var d *DigestEntry
-	if date != "" {
-		d = GetDigestByDate(date)
-	} else {
-		d = GetLatestDigest()
-	}
-
-	if app.WantsJSON(r) {
-		if d == nil {
-			app.RespondJSON(w, map[string]any{"digest": nil})
-			return
-		}
-		app.RespondJSON(w, map[string]any{"digest": d})
-		return
-	}
-
-	if d == nil {
-		msg := "No digest available yet. Check back soon."
-		if date != "" {
-			msg = fmt.Sprintf("No digest found for %s.", date)
-		}
-		app.Respond(w, r, app.Response{
-			Title:       "Daily Digest",
-			Description: "No digest available",
-			HTML:        fmt.Sprintf(`<p>%s</p>`, msg),
-		})
-		return
-	}
-
-	rendered := string(app.Render([]byte(d.Content)))
-	html := fmt.Sprintf(`<div class="digest">%s</div>`, rendered)
-
-	app.Respond(w, r, app.Response{
-		Title:       "Daily Digest — " + d.CreatedAt.Format("2 Jan 2006"),
-		Description: "Daily briefing summarising news, markets, and videos",
-		HTML:        html,
-	})
+// GetLatestDigest returns whether a digest exists (for status checks).
+func GetLatestDigest() bool {
+	return !lastDigest.IsZero()
 }
 
 func scheduler() {
+	// Wait for blog callbacks to be wired in main.go
+	time.Sleep(5 * time.Second)
 	generate()
 	for {
 		time.Sleep(time.Hour)
@@ -185,6 +117,11 @@ func scheduler() {
 }
 
 func generate() {
+	if PublishBlogPost == nil || UpdateBlogPost == nil {
+		app.Log("digest", "Blog callbacks not wired, skipping")
+		return
+	}
+
 	mu.Lock()
 	if running {
 		mu.Unlock()
@@ -230,28 +167,20 @@ func createDigest() {
 
 	response += buildReferences(refs)
 
-	entry := &DigestEntry{
-		ID:        time.Now().Format("2006-01-02"),
-		Title:     time.Now().Format("2 January 2006"),
-		Content:   response,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+	title := "Daily Digest — " + time.Now().Format("2 Jan 2006")
+	_, err = PublishBlogPost(title, response, app.SystemUserName, app.SystemUserID, "digest")
+	if err != nil {
+		setError(err.Error())
+		app.Log("digest", "Failed to publish digest blog post: %v", err)
+		return
 	}
 
-	digestMu.Lock()
-	digests = append([]*DigestEntry{entry}, digests...)
-	if len(digests) > 30 {
-		digests = digests[:30]
-	}
-	digestMu.Unlock()
-
-	saveDigests()
 	setSuccess()
-	app.Log("digest", "Daily digest published: %s", entry.Title)
+	app.Log("digest", "Daily digest published as blog post: %s", title)
 }
 
-func updateDigest(entry *DigestEntry) {
-	app.Log("digest", "Updating digest %s with latest data", entry.ID)
+func updateDigest(existing *DigestPost) {
+	app.Log("digest", "Updating digest %s with latest data", existing.ID)
 
 	context, refs := gatherContext()
 	if context == "" {
@@ -269,20 +198,15 @@ func updateDigest(entry *DigestEntry) {
 
 	response += buildReferences(refs)
 
-	digestMu.Lock()
-	entry.Content = response
-	entry.UpdatedAt = time.Now()
-	digestMu.Unlock()
+	err = UpdateBlogPost(existing.ID, existing.Title, response, "digest")
+	if err != nil {
+		setError(err.Error())
+		app.Log("digest", "Failed to update digest blog post: %v", err)
+		return
+	}
 
-	saveDigests()
 	setSuccess()
-	app.Log("digest", "Digest %s updated with latest data", entry.ID)
-}
-
-func saveDigests() {
-	digestMu.RLock()
-	defer digestMu.RUnlock()
-	data.SaveJSON("digests.json", digests)
+	app.Log("digest", "Digest %s updated with latest data", existing.ID)
 }
 
 func generateDigestContent(context string) (string, error) {
@@ -321,6 +245,7 @@ Rules:
 - CRITICAL: Keep under 1500 characters total.`,
 		Question: context,
 		Priority: ai.PriorityLow,
+		Caller:   "daily-digest",
 	}
 
 	draft, err := ai.Ask(prompt)

@@ -1109,7 +1109,7 @@ func GetPostsByAuthor(authorName string) []*Post {
 }
 
 // FindTodayDigest returns today's digest post if one exists, or nil.
-// It looks for a post tagged "digest" by author "micro" created today.
+// It looks for a post tagged "digest" by the system user created today.
 func FindTodayDigest() *Post {
 	mutex.RLock()
 	defer mutex.RUnlock()
@@ -1117,10 +1117,10 @@ func FindTodayDigest() *Post {
 	now := time.Now()
 	y, m, d := now.Date()
 	for _, post := range posts {
-		if post.Author != "micro" {
+		if !strings.EqualFold(post.AuthorID, app.SystemUserID) {
 			continue
 		}
-		if !strings.Contains(post.Tags, "digest") {
+		if !strings.Contains(strings.ToLower(post.Tags), "digest") {
 			continue
 		}
 		py, pm, pd := post.CreatedAt.Date()
