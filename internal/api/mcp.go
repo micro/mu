@@ -311,7 +311,7 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "reminder_daily",
+		Name:        "reminder",
 		Description: "Get today's daily Islamic reminder with verse, hadith, and name of Allah",
 		Handle: func(args map[string]any) (string, error) {
 			client := &http.Client{Timeout: 10 * time.Second}

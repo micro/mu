@@ -508,7 +508,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
 - places_search: Search for places (args: {"q":"search name","near":"location"})
 - places_nearby: Find places near a location (args: {"address":"location","radius":number})
-- reminder_daily: Get today's daily Islamic reminder with verse, hadith, and name of Allah (no args)
+- reminder: Get today's daily Islamic reminder with verse, hadith, and name of Allah (no args)
 - quran: Look up a Quran chapter or verse (args: {"chapter":1,"verse":1} — verse is optional)
 - hadith: Look up hadith from Sahih Al Bukhari (args: {"book":1} — optional book number)
 - quran_search: Semantic search across the Quran, Hadith, and names of Allah (args: {"q":"what does the quran say about patience"})
@@ -781,7 +781,7 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"video":    {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
 		"videos":   {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
 		"weather":  {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
-		"reminder": {{Tool: "reminder_daily", Args: map[string]any{}}},
+		"reminder": {{Tool: "reminder", Args: map[string]any{}}},
 		"apps":     {{Tool: "apps_search", Args: map[string]any{}}},
 		// Starter pill phrases
 		"give me a summary of today's top news":         {{Tool: "news", Args: map[string]any{}}},
@@ -790,7 +790,7 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
 		"what's the weather like in london today?":      {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
-		"show me today's islamic reminder":              {{Tool: "reminder_daily", Args: map[string]any{}}},
+		"show me today's islamic reminder":              {{Tool: "reminder", Args: map[string]any{}}},
 	}
 	if tc, ok := aliases[strings.ToLower(strings.TrimSpace(prompt))]; ok {
 		return tc
@@ -829,7 +829,7 @@ func toolLabel(tool string) string {
 		return "📍 Searching places"
 	case "places_nearby":
 		return "📍 Finding nearby places"
-	case "reminder_daily":
+	case "reminder":
 		return "📿 Getting daily reminder"
 	case "search":
 		return "🔍 Searching Mu"
@@ -1158,7 +1158,7 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatVideoResult(result)
 	case "weather_forecast":
 		return formatWeatherResult(result)
-	case "reminder_daily":
+	case "reminder":
 		return formatReminderResult(result)
 	case "search":
 		return formatSearchResult(result)

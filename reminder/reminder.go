@@ -134,17 +134,34 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var content string
-	if rd.Verse != "" {
-		content += fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, rd.Verse)
-	}
-	if rd.Name != "" {
-		content += fmt.Sprintf(`<div class="item"><strong>Name of Allah</strong><p>%s</p></div>`, rd.Name)
-	}
-	if rd.Hadith != "" {
-		content += fmt.Sprintf(`<div class="item"><strong>Hadith</strong><div class="verse">%s</div></div>`, rd.Hadith)
-	}
+
+	// Message first — the daily reflection
 	if rd.Message != "" {
-		content += fmt.Sprintf(`<div class="item"><p>%s</p></div>`, rd.Message)
+		content += fmt.Sprintf(`<div class="reminder-message"><p>%s</p></div>`, rd.Message)
+	}
+
+	// Verse
+	if rd.Verse != "" {
+		content += `<div class="reminder-section">`
+		content += `<h3>Quran</h3>`
+		content += fmt.Sprintf(`<blockquote>%s</blockquote>`, rd.Verse)
+		content += `</div>`
+	}
+
+	// Hadith
+	if rd.Hadith != "" {
+		content += `<div class="reminder-section">`
+		content += `<h3>Hadith</h3>`
+		content += fmt.Sprintf(`<blockquote>%s</blockquote>`, rd.Hadith)
+		content += `</div>`
+	}
+
+	// Name of Allah
+	if rd.Name != "" {
+		content += `<div class="reminder-section">`
+		content += `<h3>Name of Allah</h3>`
+		content += fmt.Sprintf(`<p>%s</p>`, rd.Name)
+		content += `</div>`
 	}
 
 	html := app.RenderHTMLForRequest("Daily Reminder", "Today's Islamic reminder with verse, hadith, and name of Allah", content, r)
