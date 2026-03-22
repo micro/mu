@@ -578,7 +578,7 @@ Accept: application/json</pre>
         var age=ts?'<span style="font-size:11px;color:#888;">'+timeAgo(ts)+'</span>':'';
         var tag=(opinion.tags||'').indexOf('opinion')!==-1?'<span style="font-size:11px;background:#f0f0f0;padding:2px 8px;border-radius:10px;margin-right:6px;">opinion</span>':'';
         el.innerHTML='<div style="padding:8px 0;">'+tag+age+
-          '<a href="/post/'+esc(opinion.id)+'" style="font-size:15px;font-weight:700;display:block;line-height:1.4;margin-top:4px;color:#111;">'+esc(title)+'</a>'+
+          '<a href="/blog/post/'+esc(opinion.id)+'" style="font-size:15px;font-weight:700;display:block;line-height:1.4;margin-top:4px;color:#111;">'+esc(title)+'</a>'+
           '<p style="font-size:13px;color:#555;line-height:1.5;margin-top:6px;">'+esc(content)+'</p>'+
           '</div>';
       })

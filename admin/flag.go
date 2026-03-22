@@ -243,10 +243,10 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 						<input type="hidden" name="id" value="%s">
 						<button type="submit" class="btn-approve">Approve</button>
 					</form>
-					<form method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Flag this post?').then(function(ok){if(ok){fetch('/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{if(d.success){location.reload()}else{alert(d.message||'Failed')}}).catch(()=>alert('Error'))}});return false;">
+					<form method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Flag this post?').then(function(ok){if(ok){fetch('/admin/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{if(d.success){location.reload()}else{alert(d.message||'Failed')}}).catch(()=>alert('Error'))}});return false;">
 						<button type="submit" class="btn-delete">Flag</button>
 					</form>
-					<a href="/post?id=%s" target="_blank">view</a>
+					<a href="/blog/post?id=%s" target="_blank">view</a>
 				</div>
 			</div>`,
 					title,

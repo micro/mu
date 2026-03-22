@@ -184,7 +184,7 @@ func Load() {
 					post.Title,
 					post.Content,
 					map[string]interface{}{
-						"url":    "/post?id=" + post.ID,
+						"url":    "/blog/post?id=" + post.ID,
 						"author": post.Author,
 						"tags":   post.Tags,
 					},
@@ -247,7 +247,7 @@ func Load() {
 				post.Title,
 				post.Content,
 				map[string]interface{}{
-					"url":    "/post?id=" + post.ID,
+					"url":    "/blog/post?id=" + post.ID,
 					"author": post.Author,
 					"tags":   post.Tags,
 				},
@@ -430,9 +430,9 @@ func updateCacheUnlocked() {
 		commentCount := countComments(post)
 		replyLink := ""
 		if commentCount == 0 {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comment</a>`, post.ID)
+			replyLink = fmt.Sprintf(` · <a href="/blog/post?id=%s">Comment</a>`, post.ID)
 		} else {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
+			replyLink = fmt.Sprintf(` · <a href="/blog/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
 		}
 
 		previewTime := post.CreatedAt
@@ -444,7 +444,7 @@ func updateCacheUnlocked() {
 
 		item := fmt.Sprintf(`<div class="post-item">
 		%s
-		<h3><a href="/post?id=%s">%s</a></h3>
+		<h3><a href="/blog/post?id=%s">%s</a></h3>
 		<div class="info"><span data-timestamp="%d">%s</span> · %s%s</div>
 		<div>%s</div>
 	</div>`, tagsHtml, post.ID, title, previewTime.Unix(), previewTimeLabel, authorLink, replyLink, content)
@@ -528,14 +528,14 @@ func updateCacheUnlocked() {
 		commentCount := countComments(post)
 		replyLink := ""
 		if commentCount == 0 {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comment</a>`, post.ID)
+			replyLink = fmt.Sprintf(` · <a href="/blog/post?id=%s">Comment</a>`, post.ID)
 		} else {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
+			replyLink = fmt.Sprintf(` · <a href="/blog/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
 		}
 
 		keepReading := ""
 		if truncated {
-			keepReading = fmt.Sprintf(`<a href="/post?id=%s" class="keep-reading">Keep Reading →</a>`, post.ID)
+			keepReading = fmt.Sprintf(`<a href="/blog/post?id=%s" class="keep-reading">Keep Reading →</a>`, post.ID)
 		}
 
 		listTime := post.CreatedAt
@@ -547,7 +547,7 @@ func updateCacheUnlocked() {
 
 		item := fmt.Sprintf(`<div class="post-item">
 			%s
-			<h3><a href="/post?id=%s">%s</a></h3>
+			<h3><a href="/blog/post?id=%s">%s</a></h3>
 			<div class="info"><span data-timestamp="%d">%s</span> · %s%s</div>
 			<div>%s</div>
 			%s
@@ -627,9 +627,9 @@ func previewUncached() string {
 		commentCount := countComments(post)
 		replyLink := ""
 		if commentCount == 0 {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comment</a>`, post.ID)
+			replyLink = fmt.Sprintf(` · <a href="/blog/post?id=%s">Comment</a>`, post.ID)
 		} else {
-			replyLink = fmt.Sprintf(` · <a href="/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
+			replyLink = fmt.Sprintf(` · <a href="/blog/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
 		}
 
 		// Generate fresh timestamp
@@ -639,7 +639,7 @@ func previewUncached() string {
 		}
 
 		item := fmt.Sprintf(`<div class="post-item">
-		<h3><a href="/post?id=%s">%s</a></h3>
+		<h3><a href="/blog/post?id=%s">%s</a></h3>
 		<div>%s</div>
 		<div class="info">%s · %s%s%s</div>
 	</div>`, post.ID, title, content, listTimeInfo, authorLink, tagsHtml, replyLink)
@@ -679,12 +679,12 @@ func renderPostPreview(post *Post) string {
 	}
 
 	item := fmt.Sprintf(`<div class="post-item">
-		<h3><a href="/post?id=%s">%s</a></h3>
+		<h3><a href="/blog/post?id=%s">%s</a></h3>
 		<div class="mb-3">%s</div>
 		<div class="info">
 			%s
 			<span class="ml-3">·</span>
-			<a href="/post?id=%s" class="ml-3">Comment</a>
+			<a href="/blog/post?id=%s" class="ml-3">Comment</a>
 		</div>
 	</div>`, post.ID, title, content, authorLink, post.ID)
 
@@ -941,7 +941,7 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 			title,
 			content,
 			map[string]interface{}{
-				"url":    "/post?id=" + id,
+				"url":    "/blog/post?id=" + id,
 				"author": author,
 				"tags":   tags,
 			},
@@ -1079,7 +1079,7 @@ func UpdatePost(id, title, content, tags string, private bool) error {
 			title,
 			content,
 			map[string]interface{}{
-				"url":    "/post?id=" + id,
+				"url":    "/blog/post?id=" + id,
 				"author": author,
 				"tags":   tags,
 			},
@@ -1135,8 +1135,8 @@ func FindTodayDigest() *Post {
 // PostHandler serves individual blog posts (public, no auth required) and handles PATCH for editing
 // Supports both HTML and JSON requests
 func PostHandler(w http.ResponseWriter, r *http.Request) {
-	// Support both /post/{id} path style and /post?id={id} query style
-	id := strings.TrimPrefix(r.URL.Path, "/post/")
+	// Support both /blog/post/{id} path style and /blog/post?id={id} query style
+	id := strings.TrimPrefix(r.URL.Path, "/blog/post/")
 	if id == "" || id == r.URL.Path {
 		id = r.URL.Query().Get("id")
 	}
@@ -1338,7 +1338,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Redirect(w, r, "/post?id="+id, http.StatusSeeOther)
+		http.Redirect(w, r, "/blog/post?id="+id, http.StatusSeeOther)
 		return
 	}
 
@@ -1408,7 +1408,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		content := fmt.Sprintf(`<div id="blog">
-			<form method="POST" action="/post?id=%s" class="blog-form">
+			<form method="POST" action="/blog/post?id=%s" class="blog-form">
 				<input type="hidden" name="_method" value="PATCH">
 				<input type="text" name="title" placeholder="Title (optional)" value="%s">
 				<textarea name="content" rows="15" required>%s</textarea>
@@ -1422,7 +1422,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 				</div>
 				<div class="blog-form-actions">
 					<button type="submit">Save Changes</button>
-					<a href="/post?id=%s" class="btn btn-secondary">Cancel</a>
+					<a href="/blog/post?id=%s" class="btn btn-secondary">Cancel</a>
 				</div>
 			</form>
 		</div>`, post.ID, post.Title, post.Content, post.Tags, publicSelected, privateSelected, post.ID)
@@ -1449,7 +1449,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	var editButton string
 	_, acc := auth.TrySession(r)
 	if acc != nil && acc.ID == post.AuthorID {
-		editButton = ` · <a href="/post?id=` + post.ID + `&edit=true" class="text-muted">Edit</a> · <a href="#" onclick="if(confirm('Delete this post?')){var f=document.createElement('form');f.method='POST';f.action='/post?id=` + post.ID + `';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">Delete</a>`
+		editButton = ` · <a href="/blog/post?id=` + post.ID + `&edit=true" class="text-muted">Edit</a> · <a href="#" onclick="if(confirm('Delete this post?')){var f=document.createElement('form');f.method='POST';f.action='/post?id=` + post.ID + `';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">Delete</a>`
 	}
 
 	tagsHtml := ""
@@ -1518,7 +1518,7 @@ func renderComments(postID string, r *http.Request) string {
 
 	if isAuthenticated {
 		commentsHTML.WriteString(fmt.Sprintf(`
-			<form method="POST" action="/post/%s/comment" class="blog-form my-5">
+			<form method="POST" action="/blog/post/%s/comment" class="blog-form my-5">
 				<textarea name="content" rows="3" placeholder="Add a comment..." required></textarea>
 				<div>
 					<button type="submit">Add Comment</button>
@@ -1710,7 +1710,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 // CommentHandler handles comment submissions
 func CommentHandler(w http.ResponseWriter, r *http.Request) {
-	// Only handle /post/{postID}/comment paths
+	// Only handle /blog/post/{postID}/comment paths
 	if !strings.Contains(r.URL.Path, "/comment") {
 		// Not a comment path, pass through to PostHandler
 		PostHandler(w, r)
@@ -1730,8 +1730,8 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = sess // used for consistency
 
-	// Extract post ID from URL path (/post/{postID}/comment)
-	path := strings.TrimPrefix(r.URL.Path, "/post/")
+	// Extract post ID from URL path (/blog/post/{postID}/comment)
+	path := strings.TrimPrefix(r.URL.Path, "/blog/post/")
 	path = strings.TrimSuffix(path, "/comment")
 	postID := path
 
@@ -1764,5 +1764,5 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redirect back to the post
-	http.Redirect(w, r, "/post?id="+postID, http.StatusSeeOther)
+	http.Redirect(w, r, "/blog/post?id="+postID, http.StatusSeeOther)
 }
