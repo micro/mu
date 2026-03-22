@@ -187,6 +187,170 @@ func FetchAndExtract(rawURL string) (string, string, error) {
 	return title, readable, nil
 }
 
+// FetchAndExtractHTML fetches a URL and returns the page title and sanitized readable HTML.
+// Unlike FetchAndExtract which returns plain text, this preserves structural HTML
+// (headings, paragraphs, lists, emphasis, links) for a clean reading experience.
+func FetchAndExtractHTML(rawURL string) (string, string, error) {
+	req, err := http.NewRequest("GET", rawURL, nil)
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Mu/1.0; +https://mu.al)")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
+
+	start := time.Now()
+	resp, err := fetchClient.Do(req)
+	duration := time.Since(start)
+	if err != nil {
+		app.RecordAPICall("fetch", "GET", rawURL, 0, duration, err, "", "")
+		return "", "", fmt.Errorf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		app.RecordAPICall("fetch", "GET", rawURL, resp.StatusCode, duration, fmt.Errorf("HTTP %d", resp.StatusCode), "", "")
+		return "", "", fmt.Errorf("HTTP %d %s", resp.StatusCode, resp.Status)
+	}
+
+	limited := io.LimitReader(resp.Body, 2*1024*1024)
+	bodyBytes, err := io.ReadAll(limited)
+	if err != nil {
+		app.RecordAPICall("fetch", "GET", rawURL, resp.StatusCode, duration, err, "", "")
+		return "", "", fmt.Errorf("failed to read response: %v", err)
+	}
+
+	app.RecordAPICall("fetch", "GET", rawURL, resp.StatusCode, duration, nil, "", "")
+
+	content := string(bodyBytes)
+	if !utf8.ValidString(content) {
+		runes := make([]rune, len(bodyBytes))
+		for i, b := range bodyBytes {
+			runes[i] = rune(b)
+		}
+		content = string(runes)
+	}
+
+	title := extractTitle(content)
+	readable := sanitizeHTML(content)
+
+	return title, readable, nil
+}
+
+// sanitizeHTML extracts the main content and preserves safe structural HTML.
+// It keeps headings, paragraphs, lists, emphasis, links, and blockquotes
+// while removing scripts, ads, nav, and all other dangerous or noisy elements.
+func sanitizeHTML(htmlStr string) string {
+	content := extractMainContent(htmlStr)
+
+	// Remove dangerous/noisy blocks entirely
+	content = commentRe.ReplaceAllString(content, "")
+	for _, re := range []*regexp.Regexp{
+		removeScriptRe, removeStyleRe, removeNoscriptRe, removeIframeRe,
+		removeSvgRe, removeNavRe, removeHeaderRe, removeFooterRe,
+		removeAsideRe, removeFormRe,
+	} {
+		content = re.ReplaceAllString(content, "")
+	}
+
+	// Remove image tags (they usually break without their CSS context)
+	imgRe := regexp.MustCompile(`(?i)<img[^>]*>`)
+	content = imgRe.ReplaceAllString(content, "")
+
+	// Remove button elements
+	buttonRe := regexp.MustCompile(`(?is)<button[^>]*>.*?</button>`)
+	content = buttonRe.ReplaceAllString(content, "")
+
+	// Remove input elements
+	inputRe := regexp.MustCompile(`(?i)<input[^>]*>`)
+	content = inputRe.ReplaceAllString(content, "")
+
+	// Preserve <a> tags but sanitize attributes — keep only href
+	aTagRe := regexp.MustCompile(`(?i)<a\s[^>]*href=["']([^"']*)["'][^>]*>`)
+	content = aTagRe.ReplaceAllString(content, `<a href="$1" target="_blank" rel="noopener noreferrer">`)
+
+	// Strip all attributes from safe block/inline tags (keep the tags themselves)
+	safeBlockTags := regexp.MustCompile(`(?i)<(/?(?:p|h[1-6]|ul|ol|li|blockquote|pre|code|br|hr|strong|b|em|i|sub|sup|table|thead|tbody|tr|td|th|figcaption|figure|dl|dt|dd))\b[^>]*>`)
+	content = safeBlockTags.ReplaceAllString(content, `<$1>`)
+
+	// Remove <div> and <section> tags but keep content (replace with paragraph breaks)
+	divOpenRe := regexp.MustCompile(`(?i)<(?:div|section|article|main)[^>]*>`)
+	content = divOpenRe.ReplaceAllString(content, "\n")
+	divCloseRe := regexp.MustCompile(`(?i)</(?:div|section|article|main)>`)
+	content = divCloseRe.ReplaceAllString(content, "\n")
+
+	// Remove <span> tags but keep content (add space to prevent words merging)
+	spanOpenRe := regexp.MustCompile(`(?i)<span[^>]*>`)
+	content = spanOpenRe.ReplaceAllString(content, "")
+	spanCloseRe := regexp.MustCompile(`(?i)</span>`)
+	content = spanCloseRe.ReplaceAllString(content, " ")
+
+	// Remove any remaining unsafe tags (but keep their text content with spacing)
+	unsafeTagRe := regexp.MustCompile(`(?i)</?(?:label|abbr|time|mark|small|cite|dfn|var|samp|kbd|data|ruby|rt|rp|bdi|bdo|wbr|details|summary|dialog|slot|template|canvas|video|audio|source|track|map|area|object|embed|param|picture)\b[^>]*>`)
+	content = unsafeTagRe.ReplaceAllString(content, " ")
+
+	// Remove any remaining unknown/unsafe tags but preserve content
+	remainingTagRe := regexp.MustCompile(`</?[a-zA-Z][a-zA-Z0-9]*[^>]*>`)
+	// Check if it's a safe tag before removing
+	content = remainingTagRe.ReplaceAllStringFunc(content, func(tag string) string {
+		lower := strings.ToLower(tag)
+		// Keep safe tags
+		for _, safe := range []string{"<p", "</p", "<h1", "<h2", "<h3", "<h4", "<h5", "<h6",
+			"</h1", "</h2", "</h3", "</h4", "</h5", "</h6",
+			"<ul", "</ul", "<ol", "</ol", "<li", "</li",
+			"<blockquote", "</blockquote", "<pre", "</pre", "<code", "</code",
+			"<br", "<hr",
+			"<strong", "</strong", "<b>", "</b", "<em", "</em", "<i>", "</i",
+			"<a ", "</a", "<table", "</table", "<thead", "</thead", "<tbody", "</tbody",
+			"<tr", "</tr", "<td", "</td", "<th", "</th",
+			"<sub", "</sub", "<sup", "</sup",
+			"<figcaption", "</figcaption", "<figure", "</figure",
+			"<dl", "</dl", "<dt", "</dt", "<dd", "</dd"} {
+			if strings.HasPrefix(lower, safe) {
+				return tag
+			}
+		}
+		return " "
+	})
+
+	// Collapse excessive whitespace but preserve structure
+	content = multiSpaceRe.ReplaceAllString(content, " ")
+	// Clean up excessive newlines
+	excessiveNewlines := regexp.MustCompile(`(\s*\n\s*){3,}`)
+	content = excessiveNewlines.ReplaceAllString(content, "\n\n")
+
+	// Filter out junk lines (cookie banners etc)
+	lines := strings.Split(content, "\n")
+	var cleaned []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			cleaned = append(cleaned, "")
+			continue
+		}
+		textOnly := stripTags(trimmed)
+		lower := strings.ToLower(textOnly)
+		skip := false
+		for _, junk := range junkPatterns {
+			if strings.Contains(lower, junk) && len(textOnly) < 200 {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			cleaned = append(cleaned, line)
+		}
+	}
+
+	content = strings.Join(cleaned, "\n")
+	content = strings.TrimSpace(content)
+
+	if len(content) > 50000 {
+		content = content[:50000] + "\n\n<p><em>[Content truncated]</em></p>"
+	}
+
+	return content
+}
+
 // extractTitle pulls the <title> from HTML.
 var titleRe = regexp.MustCompile(`(?i)<title[^>]*>(.*?)</title>`)
 
