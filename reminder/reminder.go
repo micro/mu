@@ -127,9 +127,16 @@ type ReminderData struct {
 	Links   map[string]interface{} `json:"links"`
 }
 
-// Handler redirects /reminder to reminder.dev
+// Handler redirects /reminder to the current verse on reminder.dev
 func Handler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "https://reminder.dev", http.StatusFound)
+	url := "https://reminder.dev"
+	rd := GetReminderData()
+	if rd != nil {
+		if v, ok := rd.Links["verse"].(string); ok && v != "" {
+			url = "https://reminder.dev" + v
+		}
+	}
+	http.Redirect(w, r, url, http.StatusFound)
 }
 
 // GetReminderData loads the cached reminder data (from api/latest, rotates hourly)
