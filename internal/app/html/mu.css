@@ -1857,42 +1857,6 @@ a.highlight {
   overflow-y: scroll;
   max-height: 200px;
 }
-
-/* Reminder page */
-.reminder-message {
-  font-size: 1.1em;
-  line-height: 1.6;
-  margin-bottom: 1.5em;
-  color: #333;
-}
-
-.reminder-section {
-  margin-bottom: 1.5em;
-}
-
-.reminder-section h3 {
-  font-size: 0.85em;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #888;
-  margin: 0 0 0.5em;
-}
-
-.reminder-section blockquote {
-  margin: 0;
-  padding: 0.75em 1em;
-  border-left: 3px solid #ddd;
-  color: #444;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-.reminder-section p {
-  margin: 0;
-  line-height: 1.6;
-  color: #444;
-}
-
 .video {
   position: relative;
   padding-bottom: 56.25%;

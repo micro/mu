@@ -665,45 +665,6 @@ func init() {
 		},
 	})
 
-	Endpoints = append(Endpoints, &Endpoint{
-		Name:        "Reminder",
-		Path:        "/reminder",
-		Method:      "GET",
-		Description: "Get the daily Islamic reminder with Quranic verse, hadith, and name of Allah",
-		Response: []*Value{
-			{
-				Type: "JSON",
-				Params: []*Param{
-					{
-						Name:        "verse",
-						Value:       "string",
-						Description: "Quranic verse",
-					},
-					{
-						Name:        "name",
-						Value:       "string",
-						Description: "Name of Allah",
-					},
-					{
-						Name:        "hadith",
-						Value:       "string",
-						Description: "Hadith text",
-					},
-					{
-						Name:        "message",
-						Value:       "string",
-						Description: "Additional message",
-					},
-					{
-						Name:        "updated",
-						Value:       "string",
-						Description: "Last updated timestamp",
-					},
-				},
-			},
-		},
-	})
-
 	// Weather endpoints
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "Weather Forecast",
