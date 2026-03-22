@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // MCP protocol version
@@ -310,10 +311,91 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "reminder",
-		Description: "Get the daily Islamic reminder with verse, hadith, and name of Allah",
-		Method:      "GET",
-		Path:        "/reminder",
+		Name:        "reminder_daily",
+		Description: "Get today's daily Islamic reminder with verse, hadith, and name of Allah",
+		Handle: func(args map[string]any) (string, error) {
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Get("https://reminder.dev/api/daily")
+			if err != nil {
+				return "", fmt.Errorf("reminder API error: %v", err)
+			}
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return "", fmt.Errorf("reading reminder response: %v", err)
+			}
+			return string(body), nil
+		},
+	},
+	{
+		Name:        "quran",
+		Description: "Look up a Quran chapter or verse. Pass chapter number (1-114) and optionally a verse number.",
+		Params: []ToolParam{
+			{Name: "chapter", Type: "number", Description: "Chapter number (1-114)", Required: true},
+			{Name: "verse", Type: "number", Description: "Verse number (optional, returns full chapter if omitted)", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			chapter := ""
+			if c, ok := args["chapter"].(float64); ok {
+				chapter = fmt.Sprintf("%d", int(c))
+			}
+			if chapter == "" {
+				return "", fmt.Errorf("chapter is required")
+			}
+			url := "https://reminder.dev/api/quran/" + chapter
+			if v, ok := args["verse"].(float64); ok && v > 0 {
+				url += fmt.Sprintf("/%d", int(v))
+			}
+			resp, err := http.Get(url)
+			if err != nil {
+				return "", err
+			}
+			defer resp.Body.Close()
+			b, _ := io.ReadAll(resp.Body)
+			return string(b), nil
+		},
+	},
+	{
+		Name:        "hadith",
+		Description: "Look up hadith from Sahih Al Bukhari. Pass a book number to get hadiths from that book.",
+		Params: []ToolParam{
+			{Name: "book", Type: "number", Description: "Book number", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			url := "https://reminder.dev/api/hadith"
+			if b, ok := args["book"].(float64); ok && b > 0 {
+				url += fmt.Sprintf("/%d", int(b))
+			}
+			resp, err := http.Get(url)
+			if err != nil {
+				return "", err
+			}
+			defer resp.Body.Close()
+			b, _ := io.ReadAll(resp.Body)
+			return string(b), nil
+		},
+	},
+	{
+		Name:        "quran_search",
+		Description: "Search the Quran, Hadith, and names of Allah using semantic search. Ask a question in natural language.",
+		Params: []ToolParam{
+			{Name: "q", Type: "string", Description: "Question or search query", Required: true},
+		},
+		WalletOp: "search",
+		Handle: func(args map[string]any) (string, error) {
+			q, _ := args["q"].(string)
+			if q == "" {
+				return "", fmt.Errorf("query is required")
+			}
+			body := fmt.Sprintf(`{"q":%q}`, q)
+			resp, err := http.Post("https://reminder.dev/api/search", "application/json", strings.NewReader(body))
+			if err != nil {
+				return "", err
+			}
+			defer resp.Body.Close()
+			b, _ := io.ReadAll(resp.Body)
+			return string(b), nil
+		},
 	},
 }
 

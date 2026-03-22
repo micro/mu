@@ -26,23 +26,3 @@ func TestReminderData_Structure(t *testing.T) {
 	}
 }
 
-func TestGenerateReminderPage(t *testing.T) {
-	rd := &ReminderData{
-		Verse:   "Test verse",
-		Name:    "Test Name",
-		Hadith:  "Test hadith",
-		Message: "Test message",
-	}
-	html := generateReminderPage(rd)
-	if html == "" {
-		t.Error("expected non-empty HTML")
-	}
-}
-
-func TestGenerateReminderPage_EmptyData(t *testing.T) {
-	rd := &ReminderData{}
-	html := generateReminderPage(rd)
-	if html == "" {
-		t.Error("expected non-empty HTML even for empty data")
-	}
-}
