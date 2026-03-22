@@ -286,14 +286,15 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		for _, result := range braveResults {
 			b.WriteString(`<div class="card" style="margin-bottom:12px;">`)
-			b.WriteString(`<div><a href="` + html.EscapeString(result.URL) +
-				`" class="card-title" target="_blank" rel="noopener noreferrer">` +
+			readURL := "/read?url=" + url.QueryEscape(result.URL)
+			b.WriteString(`<div><a href="` + html.EscapeString(readURL) +
+				`" class="card-title">` +
 				html.EscapeString(result.Title) + `</a></div>`)
 			if result.Description != "" {
 				b.WriteString(`<p class="card-desc" style="margin:4px 0 0;">` +
 					html.EscapeString(stripHTML(result.Description)) + `</p>`)
 			}
-			meta := html.EscapeString(result.URL)
+			meta := `<a href="` + html.EscapeString(result.URL) + `" target="_blank" rel="noopener noreferrer" style="color:#888;">` + html.EscapeString(result.URL) + `</a>`
 			if result.Age != "" {
 				meta += ` · ` + html.EscapeString(result.Age)
 			}

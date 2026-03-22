@@ -528,6 +528,9 @@ func main() {
 	// serve web fetch page (fetch and clean a URL)
 	http.HandleFunc("/fetch", search.FetchHandler)
 
+	// serve clean reader page for web results
+	http.HandleFunc("/read", search.ReadHandler)
+
 	// serve fact-check page and API
 
 	// serve the home screen
