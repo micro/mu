@@ -27,20 +27,20 @@
   ],
   "right": [
     {
-      "id": "agent",
-      "title": "Agent",
-      "type": "agent",
-      "position": 0,
-      "link": "",
-      "icon": "/agent.svg"
-    },
-    {
       "id": "reminder",
       "title": "Reminder",
       "type": "reminder",
-      "position": 1,
+      "position": 0,
       "link": "",
       "icon": "/reminder.svg"
+    },
+    {
+      "id": "agent",
+      "title": "Agent",
+      "type": "agent",
+      "position": 1,
+      "link": "",
+      "icon": "/agent.svg"
     },
     {
       "id": "markets",
