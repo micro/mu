@@ -1,18 +1,10 @@
 {
   "left": [
     {
-      "id": "apps",
-      "title": "Apps",
-      "type": "apps",
-      "position": 0,
-      "link": "/apps",
-      "icon": ""
-    },
-    {
       "id": "blog",
       "title": "Blog",
       "type": "blog",
-      "position": 1,
+      "position": 0,
       "link": "/blog",
       "icon": "/post.png"
     },
@@ -20,7 +12,7 @@
       "id": "news",
       "title": "News",
       "type": "news",
-      "position": 2,
+      "position": 1,
       "link": "/news",
       "icon": "/news.png"
     }
@@ -35,18 +27,10 @@
       "icon": "/reminder.svg"
     },
     {
-      "id": "agent",
-      "title": "Agent",
-      "type": "agent",
-      "position": 1,
-      "link": "",
-      "icon": "/agent.svg"
-    },
-    {
       "id": "markets",
       "title": "Markets",
       "type": "markets",
-      "position": 2,
+      "position": 1,
       "link": "/markets",
       "icon": "/markets.svg"
     },
@@ -54,7 +38,7 @@
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 3,
+      "position": 2,
       "link": "/video",
       "icon": "/video.png"
     }
