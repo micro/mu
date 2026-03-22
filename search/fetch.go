@@ -187,10 +187,17 @@ func FetchAndExtract(rawURL string) (string, string, error) {
 	return title, readable, nil
 }
 
-// FetchAndExtractHTML fetches a URL and returns the page title and sanitized readable HTML.
-// Unlike FetchAndExtract which returns plain text, this preserves structural HTML
-// (headings, paragraphs, lists, emphasis, links) for a clean reading experience.
-func FetchAndExtractHTML(rawURL string) (string, string, error) {
+// FetchAndExtractHTMLProxied fetches a URL and returns the page title and sanitized
+// readable HTML. All links are routed through /read so the user stays in the clean
+// reading experience. Unlike FetchAndExtract which returns plain text, this preserves
+// structural HTML (headings, paragraphs, lists, emphasis, links).
+func FetchAndExtractHTMLProxied(rawURL string) (string, string, error) {
+	return fetchAndSanitize(rawURL, true)
+}
+
+// fetchAndSanitize is the shared implementation for HTML extraction.
+// If proxy is true, links are routed through /read.
+func fetchAndSanitize(rawURL string, proxy bool) (string, string, error) {
 	req, err := http.NewRequest("GET", rawURL, nil)
 	if err != nil {
 		return "", "", err
@@ -231,7 +238,7 @@ func FetchAndExtractHTML(rawURL string) (string, string, error) {
 	}
 
 	title := extractTitle(content)
-	readable := sanitizeHTML(content, rawURL)
+	readable := sanitizeHTML(content, rawURL, proxy)
 
 	return title, readable, nil
 }
@@ -240,7 +247,8 @@ func FetchAndExtractHTML(rawURL string) (string, string, error) {
 // It keeps headings, paragraphs, lists, emphasis, links, and blockquotes
 // while removing scripts, ads, nav, and all other dangerous or noisy elements.
 // baseURL is the original page URL, used to resolve relative links.
-func sanitizeHTML(htmlStr string, baseURL string) string {
+// If proxy is true, all links are routed through /read for continued clean reading.
+func sanitizeHTML(htmlStr string, baseURL string, proxy bool) string {
 	// Determine the base URL for resolving relative links
 	// Check for <base href="..."> tag first
 	baseResolved := resolveBaseURL(htmlStr, baseURL)
@@ -277,6 +285,10 @@ func sanitizeHTML(htmlStr string, baseURL string) string {
 			return match
 		}
 		href := resolveLink(m[1], baseResolved)
+		// Route through reader for continued clean browsing
+		if proxy && isProxyableLink(href) {
+			return `<a href="/read?url=` + url.QueryEscape(href) + `">`
+		}
 		return `<a href="` + href + `" target="_blank" rel="noopener noreferrer">`
 	})
 
@@ -397,6 +409,20 @@ func resolveLink(href string, base *url.URL) string {
 	}
 	resolved := base.ResolveReference(ref)
 	return resolved.String()
+}
+
+// isProxyableLink returns true if the link should be routed through the reader.
+// Only proxy http/https links to external web pages, not fragments, mailto, etc.
+func isProxyableLink(href string) bool {
+	if href == "" || strings.HasPrefix(href, "#") ||
+		strings.HasPrefix(href, "javascript:") ||
+		strings.HasPrefix(href, "mailto:") ||
+		strings.HasPrefix(href, "tel:") ||
+		strings.HasPrefix(href, "data:") {
+		return false
+	}
+	// Only proxy http/https URLs
+	return strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://")
 }
 
 // extractTitle pulls the <title> from HTML.
