@@ -16,6 +16,10 @@ import (
 	"mu/wallet"
 )
 
+// nitterInstance is the Nitter instance used to fetch Twitter/X content.
+// Nitter renders tweets as static HTML, which our extractor can parse.
+var nitterInstance = "nitter.poast.org"
+
 var fetchClient = &http.Client{
 	Timeout: 15 * time.Second,
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -140,7 +144,10 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 
 // FetchAndExtract fetches a URL and returns the page title and cleaned readable text.
 func FetchAndExtract(rawURL string) (string, string, error) {
-	req, err := http.NewRequest("GET", rawURL, nil)
+	// Rewrite Twitter/X URLs to Nitter for static HTML
+	fetchURL, _ := rewriteTwitterURL(rawURL)
+
+	req, err := http.NewRequest("GET", fetchURL, nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -198,7 +205,10 @@ func FetchAndExtractHTMLProxied(rawURL string) (string, string, error) {
 // fetchAndSanitize is the shared implementation for HTML extraction.
 // If proxy is true, links are routed through /read.
 func fetchAndSanitize(rawURL string, proxy bool) (string, string, error) {
-	req, err := http.NewRequest("GET", rawURL, nil)
+	// Rewrite Twitter/X URLs to Nitter for static HTML
+	fetchURL, _ := rewriteTwitterURL(rawURL)
+
+	req, err := http.NewRequest("GET", fetchURL, nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -423,6 +433,25 @@ func isProxyableLink(href string) bool {
 	}
 	// Only proxy http/https URLs
 	return strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://")
+}
+
+// rewriteTwitterURL rewrites twitter.com and x.com URLs to use a Nitter instance
+// so we get static HTML instead of a JavaScript shell.
+// Returns the rewritten URL and true if it was rewritten, or the original URL and false.
+func rewriteTwitterURL(rawURL string) (string, bool) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL, false
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if host == "twitter.com" || host == "www.twitter.com" ||
+		host == "x.com" || host == "www.x.com" ||
+		host == "mobile.twitter.com" || host == "mobile.x.com" {
+		parsed.Host = nitterInstance
+		parsed.Scheme = "https"
+		return parsed.String(), true
+	}
+	return rawURL, false
 }
 
 // extractTitle pulls the <title> from HTML.
