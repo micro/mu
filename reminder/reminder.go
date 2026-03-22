@@ -60,7 +60,7 @@ func fetchReminder() {
 	data.SaveFile("reminder.json", string(b))
 
 	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, val["verse"])
-	html += app.Link("Read on reminder.dev", "https://reminder.dev")
+	html += app.Link("More", "https://reminder.dev")
 
 	reminderMutex.Lock()
 	reminderHTML = html
