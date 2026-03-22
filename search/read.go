@@ -63,8 +63,8 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch and extract
-	title, body, fetchErr := FetchAndExtract(rawURL)
+	// Fetch and extract — use HTML-preserving extraction for the reader
+	title, body, fetchErr := FetchAndExtractHTML(rawURL)
 
 	if fetchErr == nil {
 		wallet.ConsumeQuota(sess.Account, wallet.OpWebFetch)
@@ -112,16 +112,9 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	// Meta: source domain
 	b.WriteString(fmt.Sprintf(`<div class="article-meta"><span>Source: <i>%s</i></span></div>`, html.EscapeString(domain)))
 
-	// Content as paragraphs
-	b.WriteString(`<div class="article-description">`)
-	paragraphs := strings.Split(body, "\n\n")
-	for _, p := range paragraphs {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		b.WriteString(`<p>` + html.EscapeString(p) + `</p>`)
-	}
+	// Render sanitized HTML content
+	b.WriteString(`<div class="reader-content">`)
+	b.WriteString(body)
 	b.WriteString(`</div>`)
 
 	// Actions
