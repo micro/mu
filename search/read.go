@@ -63,8 +63,8 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch and extract — use HTML-preserving extraction for the reader
-	title, body, fetchErr := FetchAndExtractHTML(rawURL)
+	// Fetch and extract — use HTML-preserving extraction with proxied links
+	title, body, fetchErr := FetchAndExtractHTMLProxied(rawURL)
 
 	if fetchErr == nil {
 		wallet.ConsumeQuota(sess.Account, wallet.OpWebFetch)

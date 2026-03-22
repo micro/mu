@@ -33,6 +33,7 @@ type Version struct {
 	Number    int       `json:"number"`
 	HTML      string    `json:"html"`
 	Name      string    `json:"name"`
+	Icon      string    `json:"icon,omitempty"`
 	SavedAt   time.Time `json:"saved_at"`
 	Summary   string    `json:"summary,omitempty"` // optional change description
 }
@@ -76,6 +77,7 @@ func snapshotVersion(a *App, summary string) {
 		Number:  num,
 		HTML:    a.HTML,
 		Name:    a.Name,
+		Icon:    a.Icon,
 		SavedAt: time.Now(),
 		Summary: summary,
 	}
@@ -621,6 +623,9 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 			if v.Number == num {
 				a.HTML = v.HTML
 				a.Name = v.Name
+				if v.Icon != "" {
+					a.Icon = v.Icon
+				}
 				a.UpdatedAt = time.Now()
 				snapshotVersion(a, fmt.Sprintf("Restored from v%d", num))
 				break
