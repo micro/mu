@@ -231,7 +231,7 @@ func FetchAndExtractHTML(rawURL string) (string, string, error) {
 	}
 
 	title := extractTitle(content)
-	readable := sanitizeHTML(content)
+	readable := sanitizeHTML(content, rawURL)
 
 	return title, readable, nil
 }
@@ -239,7 +239,12 @@ func FetchAndExtractHTML(rawURL string) (string, string, error) {
 // sanitizeHTML extracts the main content and preserves safe structural HTML.
 // It keeps headings, paragraphs, lists, emphasis, links, and blockquotes
 // while removing scripts, ads, nav, and all other dangerous or noisy elements.
-func sanitizeHTML(htmlStr string) string {
+// baseURL is the original page URL, used to resolve relative links.
+func sanitizeHTML(htmlStr string, baseURL string) string {
+	// Determine the base URL for resolving relative links
+	// Check for <base href="..."> tag first
+	baseResolved := resolveBaseURL(htmlStr, baseURL)
+
 	content := extractMainContent(htmlStr)
 
 	// Remove dangerous/noisy blocks entirely
@@ -264,9 +269,16 @@ func sanitizeHTML(htmlStr string) string {
 	inputRe := regexp.MustCompile(`(?i)<input[^>]*>`)
 	content = inputRe.ReplaceAllString(content, "")
 
-	// Preserve <a> tags but sanitize attributes — keep only href
+	// Preserve <a> tags — sanitize attributes and resolve relative URLs
 	aTagRe := regexp.MustCompile(`(?i)<a\s[^>]*href=["']([^"']*)["'][^>]*>`)
-	content = aTagRe.ReplaceAllString(content, `<a href="$1" target="_blank" rel="noopener noreferrer">`)
+	content = aTagRe.ReplaceAllStringFunc(content, func(match string) string {
+		m := aTagRe.FindStringSubmatch(match)
+		if len(m) < 2 {
+			return match
+		}
+		href := resolveLink(m[1], baseResolved)
+		return `<a href="` + href + `" target="_blank" rel="noopener noreferrer">`
+	})
 
 	// Strip all attributes from safe block/inline tags (keep the tags themselves)
 	safeBlockTags := regexp.MustCompile(`(?i)<(/?(?:p|h[1-6]|ul|ol|li|blockquote|pre|code|br|hr|strong|b|em|i|sub|sup|table|thead|tbody|tr|td|th|figcaption|figure|dl|dt|dd))\b[^>]*>`)
@@ -349,6 +361,42 @@ func sanitizeHTML(htmlStr string) string {
 	}
 
 	return content
+}
+
+// resolveBaseURL determines the base URL for resolving relative links.
+// It checks for a <base href="..."> tag in the HTML, falling back to the page URL.
+func resolveBaseURL(htmlStr string, pageURL string) *url.URL {
+	baseRe := regexp.MustCompile(`(?i)<base[^>]+href=["']([^"']*)["']`)
+	if m := baseRe.FindStringSubmatch(htmlStr); len(m) > 1 {
+		if u, err := url.Parse(m[1]); err == nil && u.IsAbs() {
+			return u
+		}
+	}
+	u, err := url.Parse(pageURL)
+	if err != nil {
+		return &url.URL{Scheme: "https", Host: "example.com"}
+	}
+	return u
+}
+
+// resolveLink resolves a potentially relative href against the base URL.
+// Returns the absolute URL string, or the original href if resolution fails.
+func resolveLink(href string, base *url.URL) string {
+	href = strings.TrimSpace(href)
+	// Skip fragment-only, javascript:, mailto:, tel: links
+	if href == "" || strings.HasPrefix(href, "#") ||
+		strings.HasPrefix(href, "javascript:") ||
+		strings.HasPrefix(href, "mailto:") ||
+		strings.HasPrefix(href, "tel:") ||
+		strings.HasPrefix(href, "data:") {
+		return href
+	}
+	ref, err := url.Parse(href)
+	if err != nil {
+		return href
+	}
+	resolved := base.ResolveReference(ref)
+	return resolved.String()
 }
 
 // extractTitle pulls the <title> from HTML.
