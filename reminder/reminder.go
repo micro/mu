@@ -65,7 +65,7 @@ func fetchReminder() {
 	moreURL := "https://reminder.dev"
 	if links, ok := val["links"].(map[string]interface{}); ok {
 		if verse, ok := links["verse"].(string); ok && verse != "" {
-			moreURL = verse
+			moreURL = "https://reminder.dev" + verse
 		}
 	}
 	html += app.Link("More", moreURL)
