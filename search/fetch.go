@@ -35,7 +35,7 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 	rawURL := strings.TrimSpace(r.URL.Query().Get("url"))
 
 	// Render input form
-	inputForm := `<form class="search-bar" action="/fetch" method="GET">` +
+	inputForm := `<form class="search-bar" action="/web/fetch" method="GET">` +
 		`<input type="text" name="url" placeholder="Paste a URL to fetch..." value="` +
 		html.EscapeString(rawURL) + `" autofocus>` +
 		`<button type="submit">Fetch</button>` +
@@ -297,7 +297,7 @@ func sanitizeHTML(htmlStr string, baseURL string, proxy bool) string {
 		href := resolveLink(m[1], baseResolved)
 		// Route through reader for continued clean browsing
 		if proxy && isProxyableLink(href) {
-			return `<a href="/read?url=` + url.QueryEscape(href) + `">`
+			return `<a href="/web/read?url=` + url.QueryEscape(href) + `">`
 		}
 		return `<a href="` + href + `" target="_blank" rel="noopener noreferrer">`
 	})

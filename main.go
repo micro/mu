@@ -271,7 +271,7 @@ func main() {
 		Name:        "web_fetch",
 		Description: "Fetch a web page and return its cleaned readable content (strips ads, popups, navigation)",
 		Method:      "GET",
-		Path:        "/fetch",
+		Path:        "/web/fetch",
 		WalletOp:    "web_fetch",
 		Params: []api.ToolParam{
 			{Name: "url", Type: "string", Description: "The URL to fetch", Required: true},
@@ -434,7 +434,8 @@ func main() {
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/search":    false, // Public - local data index search
 		"/web":       false, // Public page, auth checked in handler (paid Brave web search)
-		"/fetch":     false, // Public page, auth checked in handler (paid web fetch)
+		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
+		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
@@ -526,10 +527,10 @@ func main() {
 	http.HandleFunc("/web/preview", search.PreviewHandler)
 
 	// serve web fetch page (fetch and clean a URL)
-	http.HandleFunc("/fetch", search.FetchHandler)
+	http.HandleFunc("/web/fetch", search.FetchHandler)
 
 	// serve clean reader page for web results
-	http.HandleFunc("/read", search.ReadHandler)
+	http.HandleFunc("/web/read", search.ReadHandler)
 
 	// serve fact-check page and API
 

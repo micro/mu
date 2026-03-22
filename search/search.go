@@ -286,7 +286,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		for _, result := range braveResults {
 			b.WriteString(`<div class="card" style="margin-bottom:12px;">`)
-			readURL := "/read?url=" + url.QueryEscape(result.URL)
+			readURL := "/web/read?url=" + url.QueryEscape(result.URL)
 			b.WriteString(`<div><a href="` + html.EscapeString(readURL) +
 				`" class="card-title">` +
 				html.EscapeString(result.Title) + `</a></div>`)
