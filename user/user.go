@@ -310,9 +310,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			userPosts += fmt.Sprintf(`<div class="post-item">
-<h3><a href="/post?id=%s">%s</a></h3>
+<h3><a href="/blog/post?id=%s">%s</a></h3>
 <div class="mb-3">%s</div>
-<div class="info">%s · <a href="/post?id=%s">Read more</a></div>
+<div class="info">%s · <a href="/blog/post?id=%s">Read more</a></div>
 </div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
 		}
 	}

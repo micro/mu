@@ -131,8 +131,8 @@ func TestTags_WithoutBaseURL(t *testing.T) {
 }
 
 func TestTitle_WithHref(t *testing.T) {
-	result := Title("My Post", "/post/1")
-	if !strings.Contains(result, `href="/post/1"`) {
+	result := Title("My Post", "/blog/post/1")
+	if !strings.Contains(result, `href="/blog/post/1"`) {
 		t.Error("expected link")
 	}
 	if !strings.Contains(result, "My Post") {
@@ -263,7 +263,7 @@ func TestItemMeta_AllEmpty(t *testing.T) {
 }
 
 func TestDeleteButton(t *testing.T) {
-	result := DeleteButton("/post/1", "Remove", "Delete this?")
+	result := DeleteButton("/blog/post/1", "Remove", "Delete this?")
 	if !strings.Contains(result, "Delete this?") {
 		t.Error("expected custom confirm message")
 	}
@@ -273,7 +273,7 @@ func TestDeleteButton(t *testing.T) {
 }
 
 func TestDeleteButton_Defaults(t *testing.T) {
-	result := DeleteButton("/post/1", "", "")
+	result := DeleteButton("/blog/post/1", "", "")
 	if !strings.Contains(result, "Delete") {
 		t.Error("expected default label 'Delete'")
 	}

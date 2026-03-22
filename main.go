@@ -415,7 +415,7 @@ func main() {
 		"/passkey":         false, // Passkey login/register (auth checked in handler)
 		"/session":         false, // Public - used to check auth status
 		"/api":             false, // Public - API documentation
-		"/flag":            true,
+		"/admin/flag":      true,
 		"/admin":           true,
 		"/admin/users":     true,
 		"/admin/moderate":  true,
@@ -462,7 +462,7 @@ func main() {
 
 	// serve individual blog post (public, no auth)
 	// Serves ActivityPub JSON-LD when requested via Accept header
-	http.HandleFunc("/post", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/blog/post", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" && blog.WantsActivityPub(r) {
 			blog.PostObjectHandler(w, r)
 			return
@@ -470,11 +470,11 @@ func main() {
 		blog.PostHandler(w, r)
 	})
 
-	// handle comments on posts /post/{id}/comment
-	http.HandleFunc("/post/", blog.CommentHandler)
+	// handle comments on posts /blog/post/{id}/comment
+	http.HandleFunc("/blog/post/", blog.CommentHandler)
 
 	// flag content
-	http.HandleFunc("/flag", admin.FlagHandler)
+	http.HandleFunc("/admin/flag", admin.FlagHandler)
 
 	// admin dashboard
 	http.HandleFunc("/admin", admin.AdminHandler)
@@ -698,11 +698,8 @@ func main() {
 			if !isStaticAsset {
 				var isAuthed bool
 
-				// Special case: /post should be public, not confused with /blog
-				if strings.HasPrefix(r.URL.Path, "/post") && !strings.HasPrefix(r.URL.Path, "/blog") {
-					isAuthed = false
-				} else {
-					// Check if path requires authentication
+				// Check if path requires authentication
+				{
 					for url, authed := range authenticated {
 						if strings.HasPrefix(r.URL.Path, url) {
 							isAuthed = authed

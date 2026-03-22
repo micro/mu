@@ -240,12 +240,12 @@ func postToObject(base string, acc *auth.Account, post *Post) map[string]interfa
 
 	obj := map[string]interface{}{
 		"@context":     "https://www.w3.org/ns/activitystreams",
-		"id":           fmt.Sprintf("%s/post?id=%s", base, post.ID),
+		"id":           fmt.Sprintf("%s/blog/post?id=%s", base, post.ID),
 		"type":         "Note",
 		"attributedTo": fmt.Sprintf("%s/@%s", base, acc.ID),
 		"content":      rendered,
 		"published":    post.CreatedAt.Format(time.RFC3339),
-		"url":          fmt.Sprintf("%s/post?id=%s", base, post.ID),
+		"url":          fmt.Sprintf("%s/blog/post?id=%s", base, post.ID),
 		"to":           []string{"https://www.w3.org/ns/activitystreams#Public"},
 	}
 

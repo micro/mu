@@ -132,7 +132,7 @@ var Endpoints = []*Endpoint{{
 	},
 }, {
 	Name:        "Get Post",
-	Path:        "/post/{id}",
+	Path:        "/blog/post/{id}",
 	Method:      "GET",
 	Description: "Get a single blog post by ID",
 	Response: []*Value{
@@ -174,7 +174,7 @@ var Endpoints = []*Endpoint{{
 	},
 }, {
 	Name:        "Update Post",
-	Path:        "/post/{id}",
+	Path:        "/blog/post/{id}",
 	Method:      "PATCH",
 	Description: "Update an existing blog post (author only)",
 	Params: []*Param{
@@ -208,7 +208,7 @@ var Endpoints = []*Endpoint{{
 	},
 }, {
 	Name:        "Create Post",
-	Path:        "/post",
+	Path:        "/blog/post",
 	Method:      "POST",
 	Description: "Create a new blog post",
 	Params: []*Param{
@@ -419,7 +419,7 @@ func init() {
 
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "Delete Post",
-		Path:        "/post/{id}",
+		Path:        "/blog/post/{id}",
 		Method:      "DELETE",
 		Description: "Delete a blog post (author only)",
 		Response: []*Value{
@@ -483,7 +483,7 @@ func init() {
 
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "Add Comment",
-		Path:        "/post/{id}/comment",
+		Path:        "/blog/post/{id}/comment",
 		Method:      "POST",
 		Description: "Add a comment to a blog post",
 		Params: []*Param{
@@ -536,7 +536,7 @@ func init() {
 	// Flag endpoint
 	Endpoints = append(Endpoints, &Endpoint{
 		Name:        "Flag Content",
-		Path:        "/flag",
+		Path:        "/admin/flag",
 		Method:      "POST",
 		Description: "Flag inappropriate content",
 		Params: []*Param{

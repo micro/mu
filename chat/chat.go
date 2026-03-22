@@ -295,7 +295,7 @@ func getOrCreateRoom(id string) *Room {
 			// Create room with minimal context
 			room.Title = "Post Discussion"
 			room.Summary = "Loading post content..."
-			room.URL = "/post?id=" + itemID
+			room.URL = "/blog/post?id=" + itemID
 			break
 		}
 
@@ -308,12 +308,12 @@ func getOrCreateRoom(id string) *Room {
 			if len(room.Summary) > 2000 {
 				room.Summary = room.Summary[:2000] + "..."
 			}
-			room.URL = "/post?id=" + itemID
+			room.URL = "/blog/post?id=" + itemID
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
 		} else if room.Title == "" {
 			app.Log("chat", "Post %s not found in index", itemID)
 			room.Title = "Post Discussion"
-			room.URL = "/post?id=" + itemID
+			room.URL = "/blog/post?id=" + itemID
 		}
 	case "news":
 		// For news, lookup by exact ID

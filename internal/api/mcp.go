@@ -168,7 +168,7 @@ var tools = []Tool{
 		Name:        "blog_read",
 		Description: "Read a specific blog post by ID",
 		Method:      "GET",
-		Path:        "/post",
+		Path:        "/blog/post",
 		Params: []ToolParam{
 			{Name: "id", Type: "string", Description: "The blog post ID", Required: true},
 		},
@@ -177,7 +177,7 @@ var tools = []Tool{
 		Name:        "blog_create",
 		Description: "Create a new blog post",
 		Method:      "POST",
-		Path:        "/post",
+		Path:        "/blog/post",
 		WalletOp:    "blog_create",
 		Params: []ToolParam{
 			{Name: "title", Type: "string", Description: "Post title", Required: false},
@@ -188,7 +188,7 @@ var tools = []Tool{
 		Name:        "blog_update",
 		Description: "Update an existing blog post (author only)",
 		Method:      "PATCH",
-		Path:        "/post",
+		Path:        "/blog/post",
 		Params: []ToolParam{
 			{Name: "id", Type: "string", Description: "The blog post ID to update", Required: true},
 			{Name: "title", Type: "string", Description: "New post title", Required: false},
@@ -199,7 +199,7 @@ var tools = []Tool{
 		Name:        "blog_delete",
 		Description: "Delete a blog post (author only)",
 		Method:      "DELETE",
-		Path:        "/post",
+		Path:        "/blog/post",
 		Params: []ToolParam{
 			{Name: "id", Type: "string", Description: "The blog post ID to delete", Required: true},
 		},

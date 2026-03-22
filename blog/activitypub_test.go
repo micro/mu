@@ -170,8 +170,8 @@ func TestPostToObject(t *testing.T) {
 	if obj["type"] != "Note" {
 		t.Errorf("type = %v, want Note", obj["type"])
 	}
-	if obj["id"] != "https://mu.xyz/post?id=123" {
-		t.Errorf("id = %v, want https://mu.xyz/post?id=123", obj["id"])
+	if obj["id"] != "https://mu.xyz/blog/post?id=123" {
+		t.Errorf("id = %v, want https://mu.xyz/blog/post?id=123", obj["id"])
 	}
 	if obj["attributedTo"] != "https://mu.xyz/@alice" {
 		t.Errorf("attributedTo = %v, want https://mu.xyz/@alice", obj["attributedTo"])
