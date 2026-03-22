@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // MCP protocol version
@@ -310,10 +311,21 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "reminder",
-		Description: "Get the daily Islamic reminder with verse, hadith, and name of Allah",
-		Method:      "GET",
-		Path:        "/reminder",
+		Name:        "reminder_daily",
+		Description: "Get today's daily Islamic reminder with verse, hadith, and name of Allah",
+		Handle: func(args map[string]any) (string, error) {
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Get("https://reminder.dev/api/daily")
+			if err != nil {
+				return "", fmt.Errorf("reminder API error: %v", err)
+			}
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return "", fmt.Errorf("reading reminder response: %v", err)
+			}
+			return string(body), nil
+		},
 	},
 	{
 		Name:        "quran",
