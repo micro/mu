@@ -60,7 +60,7 @@ func fetchReminder() {
 	data.SaveFile("reminder.json", string(b))
 
 	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, val["verse"])
-	html += app.Link("More", "/reminder")
+	html += app.Link("Read on reminder.dev", "https://reminder.dev")
 
 	reminderMutex.Lock()
 	reminderHTML = html
@@ -93,7 +93,7 @@ func fetchReminder() {
 		"Daily Reminder",
 		summary,
 		map[string]interface{}{
-			"url":     "/reminder",
+			"url":     "https://reminder.dev",
 			"updated": updated,
 			"source":  "daily",
 		},
@@ -119,84 +119,9 @@ type ReminderData struct {
 	Links   map[string]interface{} `json:"links"`
 }
 
-// Handler handles /reminder requests
+// Handler redirects /reminder to reminder.dev
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// JSON response for API
-	if app.WantsJSON(r) {
-		handleJSON(w, r)
-		return
-	}
-
-	rd, _ := getReminderForRequest(r)
-	if rd == nil {
-		http.Error(w, "Reminder not available", http.StatusServiceUnavailable)
-		return
-	}
-
-	var content string
-
-	// Message first — the daily reflection
-	if rd.Message != "" {
-		content += fmt.Sprintf(`<div class="reminder-message"><p>%s</p></div>`, rd.Message)
-	}
-
-	// Verse
-	if rd.Verse != "" {
-		content += `<div class="reminder-section">`
-		content += `<h3>Quran</h3>`
-		content += fmt.Sprintf(`<blockquote>%s</blockquote>`, rd.Verse)
-		content += `</div>`
-	}
-
-	// Hadith
-	if rd.Hadith != "" {
-		content += `<div class="reminder-section">`
-		content += `<h3>Hadith</h3>`
-		content += fmt.Sprintf(`<blockquote>%s</blockquote>`, rd.Hadith)
-		content += `</div>`
-	}
-
-	// Name of Allah
-	if rd.Name != "" {
-		content += `<div class="reminder-section">`
-		content += `<h3>Name of Allah</h3>`
-		content += fmt.Sprintf(`<p>%s</p>`, rd.Name)
-		content += `</div>`
-	}
-
-	html := app.RenderHTMLForRequest("Daily Reminder", "Today's Islamic reminder with verse, hadith, and name of Allah", content, r)
-	w.Write([]byte(html))
-}
-
-// getReminderForRequest returns the appropriate reminder data based on the
-// request's ?date= query parameter. If a date is provided, fetches the fixed
-// daily reminder for that date. Otherwise returns the latest (hourly) reminder.
-func getReminderForRequest(r *http.Request) (rd *ReminderData, date string) {
-	date = r.URL.Query().Get("date")
-	if date != "" {
-		// Validate date format
-		if _, err := time.Parse("2006-01-02", date); err != nil {
-			date = ""
-		}
-	}
-
-	if date != "" {
-		return GetDailyReminderForDate(date), date
-	}
-	return GetReminderData(), ""
-}
-
-// handleJSON returns reminder data as JSON
-func handleJSON(w http.ResponseWriter, r *http.Request) {
-	reminderData, _ := getReminderForRequest(r)
-	if reminderData == nil {
-		app.RespondJSON(w, map[string]interface{}{
-			"error": "Reminder data not available",
-		})
-		return
-	}
-
-	app.RespondJSON(w, reminderData)
+	http.Redirect(w, r, "https://reminder.dev", http.StatusFound)
 }
 
 // GetReminderData loads the cached reminder data (from api/latest, rotates hourly)

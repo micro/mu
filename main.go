@@ -406,7 +406,6 @@ func main() {
 		"/home":            false, // Public viewing
 		"/blog":            false, // Public viewing, auth for posting
 		"/markets":         false, // Public viewing
-		"/reminder":        false, // Public viewing
 		"/places":          false, // Public map, auth for search
 		"/weather":         false, // Public page, auth for forecast lookup
 		"/mail":            true,  // Require auth for inbox
@@ -544,7 +543,7 @@ func main() {
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
 
-	// serve reminder page
+	// redirect /reminder to reminder.dev
 	http.HandleFunc("/reminder", reminder.Handler)
 
 	// serve places page
