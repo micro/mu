@@ -2230,16 +2230,33 @@ a.highlight {
     font-size: 12px;
   }
 
-  /* Reorder cards on mobile */
-  #apps { order: 1; }
-  #agent { order: 2; }
-  #reminder { order: 3; }
+  /* Reorder cards on mobile: dynamic content first, utilities lower */
+  #reminder { order: 1; }
+  #news { order: 2; }
+  #markets { order: 3; }
   #blog { order: 4; }
-  #markets { order: 5; }
-  #news { order: 6; }
-  #video { order: 7; }
+  #video { order: 5; }
+  #agent { order: 6; }
+  #apps { order: 7; }
   #home-chat { order: 8; }
-  
+
+  /* Compact agent card on mobile — single-line utility bar */
+  #agent #home-agent-form > div:last-child {
+    display: none;
+  }
+  #agent #home-agent-form > div:first-child input {
+    font-size: 13px;
+    padding: 6px;
+  }
+  #agent #home-agent-form > div:first-child button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  /* Compact apps card on mobile */
+  #apps p { font-size: 13px; margin: 4px 0; }
+  #apps p img { width: 16px; height: 16px; }
+
   .cover {
     display: block;
   }
