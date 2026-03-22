@@ -473,6 +473,21 @@ func main() {
 	// handle comments on posts /blog/post/{id}/comment
 	http.HandleFunc("/blog/post/", blog.CommentHandler)
 
+	// Legacy redirects for old URL structure (301 so browsers/crawlers update)
+	legacyRedirect := func(oldPrefix, newPrefix string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			target := newPrefix + r.URL.Path[len(oldPrefix):]
+			if r.URL.RawQuery != "" {
+				target += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, target, http.StatusMovedPermanently)
+		}
+	}
+	http.HandleFunc("/post/", legacyRedirect("/post/", "/blog/post/"))
+	http.HandleFunc("/post", legacyRedirect("/post", "/blog/post"))
+	http.HandleFunc("/fetch", legacyRedirect("/fetch", "/web/fetch"))
+	http.HandleFunc("/read", legacyRedirect("/read", "/web/read"))
+
 	// flag content
 	http.HandleFunc("/admin/flag", admin.FlagHandler)
 
