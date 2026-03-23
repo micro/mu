@@ -2,7 +2,6 @@ package social
 
 import (
 	"crypto/md5"
-	"embed"
 	"encoding/json"
 	"fmt"
 	htmlpkg "html"
@@ -10,317 +9,130 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"runtime/debug"
-	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/mmcdole/gofeed"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
+	"mu/internal/flag"
 	"mu/wallet"
 )
 
-//go:embed accounts.json
-var f embed.FS
-
 var mutex sync.RWMutex
 
-// accounts maps category to list of accounts
-var accounts = map[string][]Account{}
-
-// cached posts (most recent first)
+// posts stored newest first
 var posts []*Post
 
 // cached HTML
 var cardHTML string
 var pageBodyHTML string
 
-// nitterInstance for fetching X/Twitter posts via RSS
+// nitterInstance for fetching X/Twitter posts via Nitter (used by FetchPost/context)
 var nitterInstance = "nitter.poast.org"
 
-// Account represents a social media account to follow
-type Account struct {
-	Handle   string `json:"handle"`
-	Platform string `json:"platform"` // "x", "truthsocial"
+// Post represents a social post by a user
+type Post struct {
+	ID        string    `json:"id"`
+	Author    string    `json:"author"`     // display name
+	AuthorID  string    `json:"author_id"`  // account ID
+	Content   string    `json:"content"`
+	PostedAt  time.Time `json:"posted_at"`
 }
 
-// Post represents a social media post
-type Post struct {
-	ID       string    `json:"id"`
-	Author   string    `json:"author"`
-	Handle   string    `json:"handle"`
-	Platform string    `json:"platform"`
-	Content  string    `json:"content"`
-	URL      string    `json:"url"`
-	PostedAt time.Time `json:"posted_at"`
-	Category string    `json:"category"`
-	Image    string    `json:"image,omitempty"`
-	Source   string    `json:"source"` // "feed" (fetched) or "self" (user-posted)
+// addPost adds a post to the feed (prepend, dedup, cap, save)
+func addPost(p *Post) {
+	mutex.Lock()
+	// Dedup by ID
+	for _, existing := range posts {
+		if existing.ID == p.ID {
+			mutex.Unlock()
+			return
+		}
+	}
+	posts = append([]*Post{p}, posts...)
+	if len(posts) > 500 {
+		posts = posts[:500]
+	}
+	updateCacheLocked()
+	mutex.Unlock()
+
+	indexPosts([]*Post{p})
+	save()
 }
 
 func Load() {
-	// Load embedded accounts config
-	b, err := f.ReadFile("accounts.json")
-	if err != nil {
-		app.Log("social", "Failed to read accounts.json: %v", err)
-		return
-	}
-	if err := json.Unmarshal(b, &accounts); err != nil {
-		app.Log("social", "Failed to parse accounts.json: %v", err)
-		return
-	}
-
-	app.Log("social", "Loaded %d categories", len(accounts))
-
-	// Load cached posts
-	b, err = data.LoadFile("social_posts.json")
+	// Load saved posts
+	b, err := data.LoadFile("social_posts.json")
 	if err == nil {
 		var cached []*Post
 		if json.Unmarshal(b, &cached) == nil {
 			mutex.Lock()
 			posts = cached
-			cardHTML = generateCardHTML(cached)
-			pageBodyHTML = generatePageHTML(cached)
+			updateCacheLocked()
 			mutex.Unlock()
+			indexPosts(cached)
 		}
 	}
 
-	// Load cached HTML
-	b, err = data.LoadFile("social_card.html")
-	if err == nil && len(b) > 0 {
-		mutex.Lock()
-		cardHTML = string(b)
-		mutex.Unlock()
-	}
-
-	// Start background refresh
-	go refreshPosts()
-}
-
-func refreshPosts() {
-	for {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					app.Log("social", "Panic in refreshPosts: %v\n%s", r, debug.Stack())
-				}
-			}()
-
-			newPosts := fetchAllAccounts()
-			if len(newPosts) > 0 {
-				// Merge with existing posts, deduplicate by ID
-				merged := mergePosts(newPosts)
-
-				mutex.Lock()
-				posts = merged
-				cardHTML = generateCardHTML(merged)
-				pageBodyHTML = generatePageHTML(merged)
-				mutex.Unlock()
-
-				indexPosts(merged)
-				data.SaveJSON("social_posts.json", merged)
-				data.SaveFile("social_card.html", cardHTML)
-
-				app.Log("social", "Refreshed %d posts", len(merged))
-			}
-		}()
-
-		time.Sleep(15 * time.Minute)
-	}
-}
-
-func fetchAllAccounts() []*Post {
-	var allPosts []*Post
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	parser := gofeed.NewParser()
-
-	for category, accs := range accounts {
-		for _, acc := range accs {
-			wg.Add(1)
-			go func(cat string, acc Account) {
-				defer wg.Done()
-				defer func() {
-					if r := recover(); r != nil {
-						app.Log("social", "Panic fetching @%s: %v", acc.Handle, r)
-					}
-				}()
-
-				feedURL := feedURLFor(acc)
-				if feedURL == "" {
-					return
-				}
-
-				resp, err := client.Get(feedURL)
-				if err != nil {
-					app.Log("social", "Error fetching @%s: %v", acc.Handle, err)
-					return
-				}
-				defer resp.Body.Close()
-
-				if resp.StatusCode != 200 {
-					app.Log("social", "Error fetching @%s: status %d", acc.Handle, resp.StatusCode)
-					return
-				}
-
-				body, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					return
-				}
-
-				feed, err := parser.ParseString(string(body))
-				if err != nil {
-					app.Log("social", "Error parsing @%s feed: %v", acc.Handle, err)
-					return
-				}
-
-				for _, item := range feed.Items {
-					if item == nil {
-						continue
-					}
-
-					postedAt := time.Now()
-					if item.PublishedParsed != nil {
-						postedAt = *item.PublishedParsed
-					} else if item.UpdatedParsed != nil {
-						postedAt = *item.UpdatedParsed
-					}
-
-					// Only keep posts from last 7 days
-					if time.Since(postedAt) > 7*24*time.Hour {
-						continue
-					}
-
-					content := item.Description
-					if content == "" {
-						content = item.Title
-					}
-					// Strip HTML tags for clean text
-					content = stripHTML(content)
-
-					// Truncate very long posts
-					if len(content) > 1000 {
-						content = content[:1000] + "…"
-					}
-
-					postURL := item.Link
-					if postURL == "" && item.GUID != "" {
-						postURL = item.GUID
-					}
-
-					// Generate stable ID from URL
-					id := fmt.Sprintf("%x", md5.Sum([]byte(postURL)))[:16]
-
-					// Derive display name from handle
-					author := acc.Handle
-
-					p := &Post{
-						ID:       id,
-						Author:   author,
-						Handle:   acc.Handle,
-						Platform: acc.Platform,
-						Content:  content,
-						URL:      postURL,
-						PostedAt: postedAt,
-						Category: cat,
-						Source:   "feed",
-					}
-
-					// Extract first image if present
-					if item.Image != nil && item.Image.URL != "" {
-						p.Image = item.Image.URL
-					}
-
-					mu.Lock()
-					allPosts = append(allPosts, p)
-					mu.Unlock()
-				}
-			}(category, acc)
-		}
-	}
-
-	wg.Wait()
-
-	// Sort by most recent first
-	sort.Slice(allPosts, func(i, j int) bool {
-		return allPosts[i].PostedAt.After(allPosts[j].PostedAt)
-	})
-
-	return allPosts
-}
-
-func feedURLFor(acc Account) string {
-	switch acc.Platform {
-	case "x":
-		return fmt.Sprintf("https://%s/%s/rss", nitterInstance, acc.Handle)
-	case "truthsocial":
-		return fmt.Sprintf("https://truthsocial.com/@%s.rss", acc.Handle)
-	default:
-		return ""
-	}
-}
-
-func mergePosts(newPosts []*Post) []*Post {
-	mutex.RLock()
-	existing := posts
-	mutex.RUnlock()
-
-	seen := map[string]bool{}
-	var merged []*Post
-
-	// New posts take priority
-	for _, p := range newPosts {
-		if !seen[p.ID] {
-			seen[p.ID] = true
-			merged = append(merged, p)
-		}
-	}
-
-	// Keep old posts not in new set (e.g. self-posted)
-	for _, p := range existing {
-		if !seen[p.ID] {
-			seen[p.ID] = true
-			// Only keep old feed posts for 7 days
-			if p.Source == "feed" && time.Since(p.PostedAt) > 7*24*time.Hour {
+	// Subscribe to news summaries — surface breaking stories as social posts
+	go func() {
+		sub := event.Subscribe(event.EventSummaryGenerated)
+		for evt := range sub.Chan {
+			contentType, _ := evt.Data["type"].(string)
+			if contentType != "news" {
 				continue
 			}
-			merged = append(merged, p)
+			summary, _ := evt.Data["summary"].(string)
+			uri, _ := evt.Data["uri"].(string)
+
+			if summary == "" || uri == "" {
+				continue
+			}
+
+			// Take the first sentence or two of the summary as the social post
+			content := firstSentences(summary, 2)
+			if content == "" {
+				continue
+			}
+			if uri != "" {
+				content += " " + uri
+			}
+			if len(content) > 500 {
+				content = content[:497] + "..."
+			}
+
+			id := fmt.Sprintf("%x", md5.Sum([]byte("news:"+uri)))[:16]
+
+			addPost(&Post{
+				ID:       id,
+				Author:   "Breaking",
+				AuthorID: "_system",
+				Content:  content,
+				PostedAt: time.Now(),
+			})
+
+			app.Log("social", "Surfaced breaking: %s", content[:min(80, len(content))])
 		}
-	}
+	}()
 
-	sort.Slice(merged, func(i, j int) bool {
-		return merged[i].PostedAt.After(merged[j].PostedAt)
-	})
-
-	// Cap at 200 posts
-	if len(merged) > 200 {
-		merged = merged[:200]
-	}
-
-	return merged
+	app.Log("social", "Loaded %d posts", len(posts))
 }
 
-func indexPosts(posts []*Post) {
-	for _, p := range posts {
-		data.Index(
-			"social_"+p.ID,
-			"social",
-			p.Author+" (@"+p.Handle+")",
-			p.Content,
-			map[string]interface{}{
-				"url":       p.URL,
-				"handle":    p.Handle,
-				"platform":  p.Platform,
-				"category":  p.Category,
-				"posted_at": p.PostedAt,
-			},
-		)
-	}
+func save() error {
+	mutex.RLock()
+	p := make([]*Post, len(posts))
+	copy(p, posts)
+	mutex.RUnlock()
+	return data.SaveJSON("social_posts.json", p)
+}
+
+// updateCacheLocked regenerates cached HTML. Caller must hold mutex write lock.
+func updateCacheLocked() {
+	cardHTML = generateCardHTML(posts)
+	pageBodyHTML = "" // invalidate, regenerated on next request
 }
 
 // CardHTML returns cached dashboard card HTML
@@ -339,128 +151,23 @@ func GetPosts() []*Post {
 	return result
 }
 
-// GetPostsByHandle returns posts from a specific handle
-func GetPostsByHandle(handle string) []*Post {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	var result []*Post
-	for _, p := range posts {
-		if strings.EqualFold(p.Handle, handle) {
-			result = append(result, p)
-		}
-	}
-	return result
-}
-
-func generateCardHTML(posts []*Post) string {
-	if len(posts) == 0 {
-		return `<p style="color:#888;">No posts yet</p>`
-	}
-
-	// Show latest posts, one per account for variety
-	seen := map[string]bool{}
-	var selected []*Post
-	for _, p := range posts {
-		if seen[p.Handle] {
-			continue
-		}
-		seen[p.Handle] = true
-		selected = append(selected, p)
-		if len(selected) >= 4 {
-			break
-		}
-	}
-
-	var sb strings.Builder
-	for _, p := range selected {
-		content := p.Content
-		if len(content) > 120 {
-			content = content[:120] + "…"
-		}
-		sb.WriteString(fmt.Sprintf(`<div class="headline" style="border:none;border-bottom:1px solid #f0f0f0;border-radius:0;padding:8px 0;">
-  <a href="%s" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">
-    <div style="font-size:13px;"><b>@%s</b> <span style="color:#888;font-size:12px;">· %s · %s</span></div>
-    <div style="font-size:13px;margin-top:2px;color:#333;">%s</div>
-  </a>
-</div>`,
-			htmlpkg.EscapeString(p.URL),
-			htmlpkg.EscapeString(p.Handle),
-			htmlpkg.EscapeString(platformLabel(p.Platform)),
-			app.TimeAgo(p.PostedAt),
-			htmlpkg.EscapeString(content),
-		))
-	}
-
-	return sb.String()
-}
-
-func generatePageHTML(posts []*Post) string {
-	if len(posts) == 0 {
-		return `<p style="color:#888;">No posts yet. Accounts are being fetched.</p>`
-	}
-
-	// Group by category
-	categories := map[string][]*Post{}
-	var catOrder []string
-	for _, p := range posts {
-		if _, exists := categories[p.Category]; !exists {
-			catOrder = append(catOrder, p.Category)
-		}
-		categories[p.Category] = append(categories[p.Category], p)
-	}
-	sort.Strings(catOrder)
-
-	// Build category tabs
-	var sb strings.Builder
-	sb.WriteString(app.Head("social", catOrder))
-
-	// Show all posts with most recent first
-	for _, p := range posts {
-		content := p.Content
-		if len(content) > 500 {
-			content = content[:500] + "…"
-		}
-		sb.WriteString(fmt.Sprintf(`<div class="headline" data-ref="%s">
-  <a href="%s" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;">
-      <div><b>@%s</b> <span style="color:#888;font-size:12px;">%s</span></div>
-      <span style="color:#888;font-size:12px;">%s</span>
-    </div>
-    <div style="margin-top:4px;">%s</div>
-  </a>
-</div>`,
-			htmlpkg.EscapeString(strings.ToLower(p.Category)),
-			htmlpkg.EscapeString(p.URL),
-			htmlpkg.EscapeString(p.Handle),
-			htmlpkg.EscapeString(platformLabel(p.Platform)),
-			app.TimeAgo(p.PostedAt),
-			htmlpkg.EscapeString(content),
-		))
-	}
-
-	return sb.String()
-}
-
-func platformLabel(platform string) string {
-	switch platform {
-	case "x":
-		return "X"
-	case "truthsocial":
-		return "Truth Social"
-	default:
-		return platform
-	}
-}
-
 // Handler serves the /social endpoint
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// Handle POST with JSON (API search)
-	if r.Method == "POST" && app.SendsJSON(r) {
-		handleAPISearch(w, r)
+	switch r.Method {
+	case "POST":
+		if app.SendsJSON(r) {
+			// JSON POST could be search or create
+			handleJSONPost(w, r)
+			return
+		}
+		handleCreatePost(w, r)
+		return
+	case "DELETE":
+		handleDeletePost(w, r)
 		return
 	}
 
-	// Handle search query (HTML)
+	// GET
 	if query := r.URL.Query().Get("query"); query != "" {
 		_, acc := auth.TrySession(r)
 		if acc == nil {
@@ -475,72 +182,204 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle filter by handle
-	if handle := r.URL.Query().Get("handle"); handle != "" {
-		filtered := GetPostsByHandle(handle)
-		if app.WantsJSON(r) {
-			app.RespondJSON(w, map[string]interface{}{
-				"handle": handle,
-				"posts":  filtered,
-			})
-			return
-		}
+	handleGetFeed(w, r)
+}
+
+func handleCreatePost(w http.ResponseWriter, r *http.Request) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
 	}
 
-	// GET social feed
-	handleGetFeed(w, r)
+	if !auth.CanPost(acc.ID) {
+		app.BadRequest(w, r, "Your account is too new to post. Please wait a bit.")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		app.BadRequest(w, r, "Failed to parse form")
+		return
+	}
+
+	content := strings.TrimSpace(r.FormValue("content"))
+	if content == "" {
+		app.BadRequest(w, r, "Content is required")
+		return
+	}
+	if len(content) > 500 {
+		app.BadRequest(w, r, "Posts must be 500 characters or less")
+		return
+	}
+	if len(strings.Fields(content)) < 2 {
+		app.BadRequest(w, r, "Post must contain at least 2 words")
+		return
+	}
+
+	postID := fmt.Sprintf("%d", time.Now().UnixNano())
+
+	p := &Post{
+		ID:       postID,
+		Author:   acc.Name,
+		AuthorID: acc.ID,
+		Content:  content,
+		PostedAt: time.Now(),
+	}
+
+	addPost(p)
+
+	// Async content moderation
+	go flag.CheckContent("social", postID, "", content)
+
+	app.Log("social", "New post by %s (%s)", acc.Name, acc.ID)
+
+	if app.SendsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{"success": true, "id": postID})
+		return
+	}
+	http.Redirect(w, r, "/social", http.StatusSeeOther)
+}
+
+func handleJSONPost(w http.ResponseWriter, r *http.Request) {
+	var reqData map[string]interface{}
+	b, _ := ioutil.ReadAll(r.Body)
+	json.Unmarshal(b, &reqData)
+
+	// If it has a "query" field, it's a search
+	if q, ok := reqData["query"]; ok && q != nil {
+		query := fmt.Sprintf("%v", q)
+		if query == "" {
+			http.Error(w, "query required", 400)
+			return
+		}
+		handleAPISearch(w, r, query)
+		return
+	}
+
+	// Otherwise it's a create post
+	content := ""
+	if v, ok := reqData["content"]; ok && v != nil {
+		content = strings.TrimSpace(fmt.Sprintf("%v", v))
+	}
+	if content == "" {
+		http.Error(w, "content required", 400)
+		return
+	}
+
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	if !auth.CanPost(acc.ID) {
+		http.Error(w, "Account too new to post", http.StatusForbidden)
+		return
+	}
+
+	if len(content) > 500 {
+		http.Error(w, "Posts must be 500 characters or less", 400)
+		return
+	}
+
+	postID := fmt.Sprintf("%d", time.Now().UnixNano())
+	p := &Post{
+		ID:       postID,
+		Author:   acc.Name,
+		AuthorID: acc.ID,
+		Content:  content,
+		PostedAt: time.Now(),
+	}
+
+	addPost(p)
+
+	go flag.CheckContent("social", postID, "", content)
+
+	app.RespondJSON(w, map[string]interface{}{"success": true, "id": postID})
+}
+
+func handleDeletePost(w http.ResponseWriter, r *http.Request) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	postID := r.URL.Query().Get("id")
+	if postID == "" {
+		app.BadRequest(w, r, "Post ID required")
+		return
+	}
+
+	mutex.Lock()
+	found := false
+	for i, p := range posts {
+		if p.ID == postID {
+			// Only author or admin can delete
+			if p.AuthorID != acc.ID && !acc.Admin {
+				mutex.Unlock()
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			posts = append(posts[:i], posts[i+1:]...)
+			found = true
+			break
+		}
+	}
+	if found {
+		updateCacheLocked()
+	}
+	mutex.Unlock()
+
+	if !found {
+		http.Error(w, "Post not found", 404)
+		return
+	}
+
+	save()
+
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{"success": true})
+		return
+	}
+	http.Redirect(w, r, "/social", http.StatusSeeOther)
 }
 
 func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
-	currentPosts := posts
+	currentPosts := make([]*Post, len(posts))
+	copy(currentPosts, posts)
 	mutex.RUnlock()
 
-	// JSON response
+	// Filter out flagged posts
+	var visible []*Post
+	for _, p := range currentPosts {
+		if !flag.IsHidden("social", p.ID) {
+			visible = append(visible, p)
+		}
+	}
+
 	if app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]interface{}{
-			"posts": currentPosts,
-		})
+		app.RespondJSON(w, map[string]interface{}{"posts": visible})
 		return
 	}
 
-	// HTML response
-	mutex.RLock()
-	body := pageBodyHTML
-	mutex.RUnlock()
-
-	if body == "" {
-		body = generatePageHTML(currentPosts)
-	}
+	body := generatePageHTML(visible, r)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Social",
-		Description: "Keep track of what's happening",
+		Description: "Share what's on your mind",
 		HTML:        body,
 	})
 }
 
-func handleAPISearch(w http.ResponseWriter, r *http.Request) {
+func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
 		return
 	}
 
-	var reqData map[string]interface{}
-	b, _ := ioutil.ReadAll(r.Body)
-	json.Unmarshal(b, &reqData)
-
-	query := ""
-	if v := reqData["query"]; v != nil {
-		query = fmt.Sprintf("%v", v)
-	}
-	if query == "" {
-		http.Error(w, "query required", 400)
-		return
-	}
-
-	// Check quota
 	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpSocialSearch)
 	if !canProceed {
 		w.Header().Set("Content-Type", "application/json")
@@ -553,7 +392,6 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 
 	wallet.ConsumeQuota(sess.Account, wallet.OpSocialSearch)
 
-	// Search indexed social posts
 	results := data.Search(query, 50)
 	var socialResults []map[string]interface{}
 	for _, entry := range results {
@@ -579,7 +417,6 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	// Check quota
 	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpSocialSearch)
 	if !canProceed {
 		content := wallet.QuotaExceededPage(wallet.OpSocialSearch, cost)
@@ -602,22 +439,14 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 			continue
 		}
 		count++
-		postURL := ""
-		if entry.Metadata != nil {
-			if u, ok := entry.Metadata["url"].(string); ok {
-				postURL = u
-			}
-		}
 		content := entry.Content
 		if len(content) > 300 {
-			content = content[:300] + "…"
+			content = content[:300] + "..."
 		}
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
-  <a href="%s" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">
-    <div><b>%s</b></div>
-    <div style="margin-top:4px;font-size:13px;">%s</div>
-  </a>
-</div>`, htmlpkg.EscapeString(postURL), htmlpkg.EscapeString(entry.Title), htmlpkg.EscapeString(content)))
+  <div><b>%s</b></div>
+  <div style="margin-top:4px;font-size:13px;">%s</div>
+</div>`, htmlpkg.EscapeString(entry.Title), htmlpkg.EscapeString(content)))
 	}
 
 	if count == 0 {
@@ -630,11 +459,180 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	})
 }
 
+func indexPosts(toIndex []*Post) {
+	for _, p := range toIndex {
+		data.Index(
+			"social_"+p.ID,
+			"social",
+			p.Author,
+			p.Content,
+			map[string]interface{}{
+				"author_id": p.AuthorID,
+				"posted_at": p.PostedAt,
+			},
+		)
+	}
+}
+
+func generateCardHTML(allPosts []*Post) string {
+	if len(allPosts) == 0 {
+		return `<p style="color:#888;">No posts yet. Be the first to share something.</p>`
+	}
+
+	// Show up to 4 latest posts, one per author for variety
+	seen := map[string]bool{}
+	var selected []*Post
+	for _, p := range allPosts {
+		if flag.IsHidden("social", p.ID) {
+			continue
+		}
+		if seen[p.AuthorID] {
+			continue
+		}
+		seen[p.AuthorID] = true
+		selected = append(selected, p)
+		if len(selected) >= 4 {
+			break
+		}
+	}
+
+	var sb strings.Builder
+	for _, p := range selected {
+		content := p.Content
+		if len(content) > 120 {
+			content = content[:120] + "..."
+		}
+		sb.WriteString(fmt.Sprintf(`<div class="headline" style="border:none;border-bottom:1px solid #f0f0f0;border-radius:0;padding:8px 0;">
+  <div style="font-size:13px;"><b>%s</b> <span style="color:#888;font-size:12px;">%s</span></div>
+  <div style="font-size:13px;margin-top:2px;color:#333;">%s</div>
+</div>`,
+			htmlpkg.EscapeString(p.Author),
+			app.TimeAgo(p.PostedAt),
+			htmlpkg.EscapeString(content),
+		))
+	}
+
+	return sb.String()
+}
+
+func generatePageHTML(visible []*Post, r *http.Request) string {
+	var sb strings.Builder
+
+	// Compose box (shown to logged-in users)
+	_, acc := auth.TrySession(r)
+	if acc != nil {
+		sb.WriteString(`<div style="margin-bottom:20px;">
+  <form method="POST" action="/social" id="social-form">
+    <textarea name="content" id="social-content" rows="3" placeholder="What's on your mind?" required
+      style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+      <span id="social-char-count" style="font-size:12px;color:#888;">0/500</span>
+      <button type="submit" style="padding:8px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Post</button>
+    </div>
+  </form>
+  <script>
+    var ta=document.getElementById('social-content'),cc=document.getElementById('social-char-count');
+    ta.addEventListener('input',function(){
+      var n=ta.value.length;
+      cc.textContent=n+'/500';
+      cc.style.color=n>500?'red':'#888';
+    });
+  </script>
+</div>`)
+	} else {
+		sb.WriteString(`<div style="margin-bottom:20px;padding:16px;background:#f9f9f9;border-radius:8px;text-align:center;">
+  <a href="/login" style="color:#000;font-weight:bold;">Log in</a> to share a post
+</div>`)
+	}
+
+	if len(visible) == 0 {
+		sb.WriteString(`<p style="color:#888;">No posts yet. Be the first to share something.</p>`)
+		return sb.String()
+	}
+
+	for _, p := range visible {
+		content := htmlpkg.EscapeString(p.Content)
+		// Linkify URLs in content
+		content = linkifyURLs(content)
+
+		canDelete := acc != nil && (acc.ID == p.AuthorID || acc.Admin)
+		deleteBtn := ""
+		if canDelete {
+			deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this post?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
+		}
+
+		sb.WriteString(fmt.Sprintf(`<div class="headline">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;">
+    <div><b>%s</b></div>
+    <div><span style="color:#888;font-size:12px;">%s</span>%s</div>
+  </div>
+  <div style="margin-top:4px;">%s</div>
+</div>`,
+			htmlpkg.EscapeString(p.Author),
+			app.TimeAgo(p.PostedAt),
+			deleteBtn,
+			content,
+		))
+	}
+
+	return sb.String()
+}
+
+var urlRegex = regexp.MustCompile(`https?://[^\s<>&"]+`)
+
+func linkifyURLs(escaped string) string {
+	return urlRegex.ReplaceAllStringFunc(escaped, func(u string) string {
+		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color:#06c;">%s</a>`, u, u)
+	})
+}
+
+// firstSentences extracts the first n sentences from text
+func firstSentences(text string, n int) string {
+	text = strings.TrimSpace(text)
+	count := 0
+	for i, r := range text {
+		if r == '.' || r == '!' || r == '?' {
+			count++
+			if count >= n {
+				return strings.TrimSpace(text[:i+1])
+			}
+		}
+	}
+	// If fewer sentences than n, return the whole text
+	if len(text) > 280 {
+		return text[:277] + "..."
+	}
+	return text
+}
+
+// SurfaceBreaking creates a system post from external sources (e.g., news headlines)
+func SurfaceBreaking(title, link string) {
+	if title == "" {
+		return
+	}
+	content := title
+	if link != "" {
+		content += " " + link
+	}
+	if len(content) > 500 {
+		content = content[:497] + "..."
+	}
+
+	id := fmt.Sprintf("%x", md5.Sum([]byte("breaking:"+link)))[:16]
+
+	addPost(&Post{
+		ID:       id,
+		Author:   "Breaking",
+		AuthorID: "_system",
+		Content:  content,
+		PostedAt: time.Now(),
+	})
+}
+
 // stripHTML removes HTML tags from a string
 func stripHTML(s string) string {
 	re := regexp.MustCompile(`<[^>]*>`)
 	text := re.ReplaceAllString(s, " ")
-	// Collapse whitespace
 	re2 := regexp.MustCompile(`\s+`)
 	return strings.TrimSpace(re2.ReplaceAllString(text, " "))
 }
@@ -644,11 +642,9 @@ func DetectSocialURLs(content string) []string {
 	re := regexp.MustCompile(`https?://(?:(?:www\.)?(?:twitter\.com|x\.com)|(?:truthsocial\.com))/[^\s"'<>\])+]+`)
 	matches := re.FindAllString(content, -1)
 
-	// Deduplicate
 	seen := map[string]bool{}
 	var unique []string
 	for _, m := range matches {
-		// Clean trailing punctuation
 		m = strings.TrimRight(m, ".,;:!?)")
 		if !seen[m] {
 			seen[m] = true
@@ -658,9 +654,8 @@ func DetectSocialURLs(content string) []string {
 	return unique
 }
 
-// FetchPost fetches a single social post by URL and returns it
+// FetchPost fetches a single social post by URL and returns it (used by context.go for news)
 func FetchPost(rawURL string) (*Post, error) {
-	// Rewrite Twitter/X URLs to Nitter
 	fetchURL := rawURL
 	parsed, err := url.Parse(rawURL)
 	if err == nil {
@@ -690,13 +685,11 @@ func FetchPost(rawURL string) (*Post, error) {
 		return nil, err
 	}
 
-	// Extract post content from HTML
 	text := stripHTML(string(body))
 	if len(text) > 1000 {
-		text = text[:1000] + "…"
+		text = text[:1000] + "..."
 	}
 
-	// Try to extract handle from URL path
 	handle := ""
 	if parsed != nil && len(parsed.Path) > 1 {
 		parts := strings.Split(strings.TrimPrefix(parsed.Path, "/"), "/")
@@ -705,22 +698,13 @@ func FetchPost(rawURL string) (*Post, error) {
 		}
 	}
 
-	// Detect platform
-	platform := "x"
-	if strings.Contains(rawURL, "truthsocial.com") {
-		platform = "truthsocial"
-	}
-
 	id := fmt.Sprintf("%x", md5.Sum([]byte(rawURL)))[:16]
 
 	return &Post{
 		ID:       id,
 		Author:   handle,
-		Handle:   handle,
-		Platform: platform,
+		AuthorID: handle,
 		Content:  text,
-		URL:      rawURL,
 		PostedAt: time.Now(),
-		Source:   "fetch",
 	}, nil
 }

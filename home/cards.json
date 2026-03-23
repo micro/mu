@@ -9,18 +9,10 @@
       "icon": "/post.png"
     },
     {
-      "id": "social",
-      "title": "Social",
-      "type": "social",
-      "position": 1,
-      "link": "/social",
-      "icon": ""
-    },
-    {
       "id": "news",
       "title": "News",
       "type": "news",
-      "position": 2,
+      "position": 1,
       "link": "/news",
       "icon": "/news.png"
     }
@@ -43,10 +35,18 @@
       "icon": "/markets.svg"
     },
     {
+      "id": "social",
+      "title": "Social",
+      "type": "social",
+      "position": 2,
+      "link": "/social",
+      "icon": ""
+    },
+    {
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 2,
+      "position": 3,
       "link": "/video",
       "icon": "/video.png"
     }

@@ -31,7 +31,6 @@ func FetchContext(articleURL, articleContent string) *SocialContext {
 
 	var ctxPosts []ContextPost
 	for _, u := range urls {
-		// Skip if it's the article URL itself
 		if u == articleURL {
 			continue
 		}
@@ -42,12 +41,18 @@ func FetchContext(articleURL, articleContent string) *SocialContext {
 			continue
 		}
 
+		// Derive platform from URL
+		platform := "X"
+		if DetectTruthSocial(u) {
+			platform = "Truth Social"
+		}
+
 		ctxPosts = append(ctxPosts, ContextPost{
 			Author:   post.Author,
-			Handle:   post.Handle,
-			Platform: post.Platform,
+			Handle:   post.Author,
+			Platform: platform,
 			Content:  post.Content,
-			URL:      post.URL,
+			URL:      u,
 		})
 	}
 
@@ -56,6 +61,11 @@ func FetchContext(articleURL, articleContent string) *SocialContext {
 	}
 
 	return &SocialContext{Posts: ctxPosts}
+}
+
+// DetectTruthSocial checks if a URL is from Truth Social
+func DetectTruthSocial(u string) bool {
+	return len(u) > 0 && (len(u) > 20 && u[:20] == "https://truthsocial." || len(u) > 19 && u[:19] == "http://truthsocial.")
 }
 
 // RenderContextHTML renders social context as HTML blockquotes for embedding in news articles
@@ -68,13 +78,13 @@ func RenderContextHTML(ctx *SocialContext) string {
 	for _, p := range ctx.Posts {
 		content := p.Content
 		if len(content) > 300 {
-			content = content[:300] + "…"
+			content = content[:300] + "..."
 		}
 		html += fmt.Sprintf(`<blockquote style="border-left:3px solid #ccc;margin:8px 0;padding:8px 12px;background:#fafafa;border-radius:0 4px 4px 0;">
   <div style="font-size:12px;color:#666;margin-bottom:4px;"><b>@%s</b> · %s</div>
   <div style="font-size:13px;">%s</div>
-  <a href="%s" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:#888;">View original →</a>
-</blockquote>`, htmlpkg.EscapeString(p.Handle), platformLabel(p.Platform), htmlpkg.EscapeString(content), htmlpkg.EscapeString(p.URL))
+  <a href="%s" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:#888;">View original</a>
+</blockquote>`, htmlpkg.EscapeString(p.Handle), p.Platform, htmlpkg.EscapeString(content), htmlpkg.EscapeString(p.URL))
 	}
 	html += `</div>`
 	return html
