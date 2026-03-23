@@ -32,6 +32,7 @@ var (
 	CostWebFetch          = getEnvInt("CREDIT_COST_FETCH", 3)
 	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
+	CostSocialSearch      = getEnvInt("CREDIT_COST_SOCIAL", 1)
 	FreeDailyQuota        = getEnvInt("FREE_DAILY_QUOTA", 20)
 )
 
@@ -57,6 +58,7 @@ const (
 	OpWebFetch          = "web_fetch"
 	OpAgentQuery        = "agent_query"
 	OpAgentQueryPremium = "agent_query_premium"
+	OpSocialSearch      = "social_search"
 	OpTopup             = "topup"
 	OpRefund            = "refund"
 )
@@ -363,6 +365,8 @@ func GetOperationCost(operation string) int {
 		return CostAgentQuery
 	case OpAgentQueryPremium:
 		return CostAgentQueryPremium
+	case OpSocialSearch:
+		return CostSocialSearch
 	default:
 		return 1
 	}

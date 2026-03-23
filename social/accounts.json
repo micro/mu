@@ -1,0 +1,14 @@
+{
+  "Politics": [
+    {"handle": "realDonaldTrump", "platform": "truthsocial"},
+    {"handle": "POTUS", "platform": "x"}
+  ],
+  "Tech": [
+    {"handle": "elonmusk", "platform": "x"},
+    {"handle": "OpenAI", "platform": "x"}
+  ],
+  "Crypto": [
+    {"handle": "VitalikButerin", "platform": "x"},
+    {"handle": "caboricmoney", "platform": "x"}
+  ]
+}

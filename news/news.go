@@ -54,6 +54,10 @@ var headlinesHtml string
 // the cached feed
 var feed []*Post
 
+// FetchSocialContext is an optional callback set by main.go to fetch social post
+// context for news articles that reference social media URLs.
+// Returns HTML to embed in the article view, or empty string.
+var FetchSocialContext func(articleURL, articleContent string) string
 
 type Feed struct {
 	Name     string
@@ -1634,12 +1638,19 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		descriptionSection = fmt.Sprintf(`<div class="article-description"><p>%s</p></div>`, description)
 	}
 
+	// Fetch social context if callback is set
+	socialContextHTML := ""
+	if FetchSocialContext != nil && articleURL != "" {
+		socialContextHTML = FetchSocialContext(articleURL, description+" "+summary)
+	}
+
 	articleHtml := fmt.Sprintf(`
 		<div id="news-article">
 			%s
 			<div class="article-meta">
 				<span><span data-timestamp="%d">%s</span> · Source: <i>%s</i>%s</span>
 			</div>
+			%s
 			%s
 			%s
 			<div class="article-actions">
@@ -1653,7 +1664,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="/news">← Back to news</a>
 			</div>
 		</div>
-	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL, articleID)
+	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, articleURL, articleID)
 
 	// Use title for browser tab, but empty page title since article already has its own H1
 	pageHTML := app.RenderHTML(title, title, articleHtml)

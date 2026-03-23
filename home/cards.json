@@ -9,10 +9,18 @@
       "icon": "/post.png"
     },
     {
+      "id": "social",
+      "title": "Social",
+      "type": "social",
+      "position": 1,
+      "link": "/social",
+      "icon": ""
+    },
+    {
       "id": "news",
       "title": "News",
       "type": "news",
-      "position": 1,
+      "position": 2,
       "link": "/news",
       "icon": "/news.png"
     }
