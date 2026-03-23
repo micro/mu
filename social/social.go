@@ -509,7 +509,7 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	body := pageBodyHTML
 	mutex.RUnlock()
 
-	if len(currentPosts) > 0 {
+	if body == "" {
 		body = generatePageHTML(currentPosts)
 	}
 
