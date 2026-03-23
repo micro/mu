@@ -27,8 +27,22 @@ func Load() {
 		reminderMutex.Unlock()
 	}
 
+	// Load cached contextual reminder if available
+	if cb, err := data.LoadFile("reminder_contextual.json"); err == nil {
+		var cached map[string]interface{}
+		if json.Unmarshal(cb, &cached) == nil {
+			if ts, ok := cached["timestamp"].(float64); ok {
+				// Use contextual cache if less than 4 hours old
+				if time.Since(time.Unix(int64(ts), 0)) < 4*time.Hour {
+					contextualReady = true
+				}
+			}
+		}
+	}
+
 	// Start background refresh
 	go refreshReminder()
+	go startContextualRefresh()
 }
 
 func refreshReminder() {
@@ -71,8 +85,13 @@ func fetchReminder() {
 	html += app.Link("More", moreURL)
 
 	reminderMutex.Lock()
-	reminderHTML = html
-	data.SaveFile("reminder.html", html)
+	// Only update the displayed card if no contextual verse is active.
+	// The contextual system picks a verse relevant to the news cycle,
+	// which is more valuable than the hourly rotation.
+	if !contextualReady {
+		reminderHTML = html
+		data.SaveFile("reminder.html", html)
+	}
 	reminderMutex.Unlock()
 
 	// Extract message and updated for indexing
