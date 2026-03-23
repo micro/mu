@@ -512,6 +512,11 @@ func loadCachedMetadata(uri string) (*Metadata, bool) {
 	return &md, true
 }
 
+// LookupMetadata returns cached OG metadata for a URL if available.
+func LookupMetadata(uri string) (*Metadata, bool) {
+	return loadCachedMetadata(uri)
+}
+
 func saveCachedMetadata(uri string, md *Metadata) {
 	path := getMetadataPath(uri)
 	if err := data.SaveJSON(path, md); err != nil {

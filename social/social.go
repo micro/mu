@@ -18,6 +18,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
+	"mu/news"
 	"mu/wallet"
 )
 
@@ -29,6 +30,9 @@ var posts []*Post
 // cached HTML
 var cardHTML string
 var pageBodyHTML string
+
+// startup throttle: suppress breaking posts for first 30 seconds after load
+var loadedAt time.Time
 
 // nitterInstance for fetching X/Twitter posts via Nitter (used by FetchPost/context)
 var nitterInstance = "nitter.poast.org"
@@ -77,9 +81,12 @@ func Load() {
 		}
 	}
 
-	// Subscribe to news summaries — surface breaking stories as social posts
+	loadedAt = time.Now()
+
+	// Subscribe to news summaries — surface stories as social posts
 	go func() {
 		sub := event.Subscribe(event.EventSummaryGenerated)
+		startupPostCount := 0
 		for evt := range sub.Chan {
 			contentType, _ := evt.Data["type"].(string)
 			if contentType != "news" {
@@ -90,6 +97,15 @@ func Load() {
 
 			if summary == "" || uri == "" {
 				continue
+			}
+
+			// Throttle during startup: skip most posts in first 30s
+			if time.Since(loadedAt) < 30*time.Second {
+				startupPostCount++
+				if startupPostCount > 2 {
+					app.Log("social", "Throttled news during startup: %s", uri)
+					continue
+				}
 			}
 
 			// Take the first sentence or two of the summary as the social post
@@ -108,13 +124,13 @@ func Load() {
 
 			addPost(&Post{
 				ID:       id,
-				Author:   "Breaking",
+				Author:   "News",
 				AuthorID: "_system",
 				Content:  content,
 				PostedAt: time.Now(),
 			})
 
-			app.Log("social", "Surfaced breaking: %s", content[:min(80, len(content))])
+			app.Log("social", "Surfaced news: %s", content[:min(80, len(content))])
 		}
 	}()
 
@@ -480,13 +496,21 @@ func generateCardHTML(allPosts []*Post) string {
 	}
 
 	// Show up to 4 latest posts, one per author for variety
+	// Limit breaking posts to at most 1 on the home card
 	seen := map[string]bool{}
+	breakingCount := 0
 	var selected []*Post
 	for _, p := range allPosts {
 		if flag.IsHidden("social", p.ID) {
 			continue
 		}
-		if seen[p.AuthorID] {
+		if p.AuthorID == "_system" {
+			breakingCount++
+			if breakingCount > 1 {
+				continue
+			}
+		}
+		if seen[p.AuthorID] && p.AuthorID != "_system" {
 			continue
 		}
 		seen[p.AuthorID] = true
@@ -498,17 +522,36 @@ func generateCardHTML(allPosts []*Post) string {
 
 	var sb strings.Builder
 	for _, p := range selected {
-		content := p.Content
-		if len(content) > 120 {
-			content = content[:120] + "..."
+		content := htmlpkg.EscapeString(p.Content)
+
+		// Check for link card
+		firstURL := extractFirstURL(content)
+		linkCard := ""
+		if firstURL != "" {
+			linkCard = renderLinkCard(firstURL)
+			// Remove the URL from displayed text if we have a card
+			if linkCard != "" {
+				escapedURL := htmlpkg.EscapeString(firstURL)
+				content = strings.TrimSpace(strings.Replace(content, escapedURL, "", 1))
+			}
 		}
+
+		if len(content) > 120 && linkCard != "" {
+			content = content[:120] + "..."
+		} else if len(content) > 200 {
+			content = content[:200] + "..."
+		}
+
+		ts := p.PostedAt.Unix()
 		sb.WriteString(fmt.Sprintf(`<div class="headline" style="border:none;border-bottom:1px solid #f0f0f0;border-radius:0;padding:8px 0;">
-  <div style="font-size:13px;"><b>%s</b> <span style="color:#888;font-size:12px;">%s</span></div>
-  <div style="font-size:13px;margin-top:2px;color:#333;">%s</div>
+  <div style="font-size:13px;"><b>%s</b> <span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span></div>
+  <div style="font-size:13px;margin-top:2px;color:#333;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
 </div>`,
 			htmlpkg.EscapeString(p.Author),
+			ts,
 			app.TimeAgo(p.PostedAt),
-			htmlpkg.EscapeString(content),
+			content,
+			linkCard,
 		))
 	}
 
@@ -552,7 +595,20 @@ func generatePageHTML(visible []*Post, r *http.Request) string {
 
 	for _, p := range visible {
 		content := htmlpkg.EscapeString(p.Content)
-		// Linkify URLs in content
+
+		// Extract first URL for card rendering, then linkify remaining
+		firstURL := extractFirstURL(content)
+		linkCard := ""
+		if firstURL != "" {
+			linkCard = renderLinkCard(firstURL)
+			// If we have a rich card, remove the URL from text
+			if linkCard != "" {
+				escapedURL := htmlpkg.EscapeString(firstURL)
+				content = strings.TrimSpace(strings.Replace(content, escapedURL, "", 1))
+			}
+		}
+
+		// Linkify any remaining URLs in content
 		content = linkifyURLs(content)
 
 		canDelete := acc != nil && (acc.ID == p.AuthorID || acc.Admin)
@@ -561,29 +617,113 @@ func generatePageHTML(visible []*Post, r *http.Request) string {
 			deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this post?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
 		}
 
+		ts := p.PostedAt.Unix()
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
   <div style="display:flex;justify-content:space-between;align-items:baseline;">
     <div><b>%s</b></div>
-    <div><span style="color:#888;font-size:12px;">%s</span>%s</div>
+    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
   </div>
-  <div style="margin-top:4px;">%s</div>
+  <div style="margin-top:4px;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
 </div>`,
 			htmlpkg.EscapeString(p.Author),
+			ts,
 			app.TimeAgo(p.PostedAt),
 			deleteBtn,
 			content,
+			linkCard,
 		))
 	}
 
 	return sb.String()
 }
 
-var urlRegex = regexp.MustCompile(`https?://[^\s<>&"]+`)
+var urlRegex = regexp.MustCompile(`https?://[^\s<>"]+`)
+
+// extractURLFromEscaped pulls a URL from HTML-escaped text, unescaping &amp; back to &
+func extractURLFromEscaped(u string) (href, display string) {
+	href = strings.ReplaceAll(u, "&amp;", "&")
+	parsed, err := url.Parse(href)
+	if err != nil {
+		return href, href
+	}
+	domain := parsed.Hostname()
+	// Truncated display: domain + short path
+	path := parsed.Path
+	if len(path) > 30 {
+		path = path[:27] + "..."
+	}
+	display = domain + path
+	if parsed.RawQuery != "" {
+		display = domain + path + "?..."
+	}
+	return href, display
+}
 
 func linkifyURLs(escaped string) string {
 	return urlRegex.ReplaceAllStringFunc(escaped, func(u string) string {
-		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color:#06c;">%s</a>`, u, u)
+		href, display := extractURLFromEscaped(u)
+		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color:#06c;word-break:break-all;">%s</a>`, htmlpkg.EscapeString(href), htmlpkg.EscapeString(display))
 	})
+}
+
+// renderLinkCard renders a Twitter-style embed card for a URL using cached OG metadata
+func renderLinkCard(rawURL string) string {
+	md, ok := news.LookupMetadata(rawURL)
+	if !ok || (md.Title == "" && md.Description == "") {
+		// Fallback: simple domain card
+		parsed, err := url.Parse(rawURL)
+		if err != nil {
+			return ""
+		}
+		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e1e1e1;border-radius:12px;padding:12px;margin-top:8px;text-decoration:none;color:inherit;">
+  <div style="font-size:12px;color:#888;">%s</div>
+</a>`, htmlpkg.EscapeString(rawURL), htmlpkg.EscapeString(parsed.Hostname()))
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e1e1e1;border-radius:12px;overflow:hidden;margin-top:8px;text-decoration:none;color:inherit;">`, htmlpkg.EscapeString(rawURL)))
+
+	if md.Image != "" {
+		sb.WriteString(fmt.Sprintf(`<div style="width:100%%;background:#f5f5f5;"><img src="%s" style="width:100%%;max-height:200px;object-fit:cover;display:block;" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`, htmlpkg.EscapeString(md.Image)))
+	}
+
+	sb.WriteString(`<div style="padding:10px 12px;">`)
+
+	site := md.Site
+	if site == "" {
+		if parsed, err := url.Parse(rawURL); err == nil {
+			site = parsed.Hostname()
+		}
+	}
+	if site != "" {
+		sb.WriteString(fmt.Sprintf(`<div style="font-size:12px;color:#888;margin-bottom:2px;">%s</div>`, htmlpkg.EscapeString(site)))
+	}
+
+	if md.Title != "" {
+		title := md.Title
+		if len(title) > 100 {
+			title = title[:97] + "..."
+		}
+		sb.WriteString(fmt.Sprintf(`<div style="font-size:14px;font-weight:600;line-height:1.3;">%s</div>`, htmlpkg.EscapeString(title)))
+	}
+
+	if md.Description != "" {
+		desc := md.Description
+		if len(desc) > 150 {
+			desc = desc[:147] + "..."
+		}
+		sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;color:#666;margin-top:4px;line-height:1.4;">%s</div>`, htmlpkg.EscapeString(desc)))
+	}
+
+	sb.WriteString(`</div></a>`)
+	return sb.String()
+}
+
+// extractFirstURL returns the first URL found in text (unescaped)
+func extractFirstURL(text string) string {
+	re := regexp.MustCompile(`https?://[^\s<>"]+`)
+	match := re.FindString(text)
+	return strings.ReplaceAll(match, "&amp;", "&")
 }
 
 // firstSentences extracts the first n sentences from text
