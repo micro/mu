@@ -1045,7 +1045,7 @@ func Load() {
 
 				// Generate summary using LLM (low priority - background task)
 				prompt := &ai.Prompt{
-					System:   "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear, factual sentences that capture the key points.",
+					System:   "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear sentences that capture the key points. Report what the article says without editorialising, fact-checking, or adding commentary about whether claims are true or false. Never add disclaimers, caveats, or corrections.",
 					Question: fmt.Sprintf("Summarize this article:\n\n%s", content),
 					Priority: ai.PriorityLow,
 					Caller:   "article-summary",

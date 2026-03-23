@@ -833,17 +833,20 @@ func generateCardHTML(allMessages []*Message) string {
 		}
 
 		ts := p.PostedAt.Unix()
-		sb.WriteString(fmt.Sprintf(`<a href="/social/thread?id=%s" style="display:block;text-decoration:none;color:inherit;border:none;border-bottom:1px solid #f0f0f0;border-radius:0;padding:8px 0;" class="headline">
-  <div style="font-size:13px;"><b>%s</b> <span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
-  <div style="font-size:13px;margin-top:2px;color:#333;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
-</a>`,
+		sb.WriteString(fmt.Sprintf(`<div class="headline">
+  <a href="/social/thread?id=%s">
+    <span class="title">%s</span>
+  </a>
+  <span class="description" style="overflow-wrap:break-word;word-break:break-word;">%s</span>%s
+  <div class="summary"><span data-timestamp="%d">%s</span>%s</div>
+</div>`,
 			p.ID,
 			htmlpkg.EscapeString(p.Author),
+			content,
+			linkCard,
 			ts,
 			app.TimeAgo(p.PostedAt),
 			replyInfo,
-			content,
-			linkCard,
 		))
 	}
 
