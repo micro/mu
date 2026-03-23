@@ -24,72 +24,75 @@ import (
 
 var mutex sync.RWMutex
 
-// posts stored newest first
-var posts []*Post
+// messages stored newest first
+var messages []*Message
 
 // cached HTML
 var cardHTML string
 var pageBodyHTML string
 
-// startup throttle: suppress breaking posts for first 30 seconds after load
+// startup throttle: suppress breaking threads for first 30 seconds after load
 var loadedAt time.Time
 
-// nitterInstance for fetching X/Twitter posts via Nitter (used by FetchPost/context)
+// nitterInstance for fetching X/Twitter posts via Nitter (used by FetchExternalPost/context)
 var nitterInstance = "nitter.poast.org"
 
-// Post represents a social post by a user
-type Post struct {
+// Message represents a message in a thread (or the thread-starting message itself)
+type Message struct {
 	ID        string    `json:"id"`
 	Author    string    `json:"author"`     // display name
 	AuthorID  string    `json:"author_id"`  // account ID
 	Content   string    `json:"content"`
-	ReplyTo   string    `json:"reply_to,omitempty"` // parent post ID (empty = top-level)
+	ReplyTo   string    `json:"reply_to,omitempty"` // parent thread ID (empty = thread starter)
 	PostedAt  time.Time `json:"posted_at"`
 }
 
-// addPost adds a post to the feed (prepend, dedup, cap, save)
-func addPost(p *Post) {
+// addMessage adds a message to the feed (prepend, dedup, cap, save)
+func addMessage(p *Message) {
 	mutex.Lock()
 	// Dedup by ID
-	for _, existing := range posts {
+	for _, existing := range messages {
 		if existing.ID == p.ID {
 			mutex.Unlock()
 			return
 		}
 	}
-	posts = append([]*Post{p}, posts...)
-	if len(posts) > 500 {
-		posts = posts[:500]
+	messages = append([]*Message{p}, messages...)
+	if len(messages) > 500 {
+		messages = messages[:500]
 	}
 	updateCacheLocked()
 	mutex.Unlock()
 
-	indexPosts([]*Post{p})
+	indexMessages([]*Message{p})
 	save()
 
 	event.Publish(event.Event{Type: "social_updated"})
 }
 
 func Load() {
-	// Load saved posts
-	b, err := data.LoadFile("social_posts.json")
+	// Load saved messages (migrate from social_posts.json if needed)
+	b, err := data.LoadFile("social.json")
+	if err != nil {
+		b, err = data.LoadFile("social_posts.json")
+	}
 	if err == nil {
-		var cached []*Post
+		var cached []*Message
 		if json.Unmarshal(b, &cached) == nil {
 			mutex.Lock()
-			posts = cached
+			messages = cached
 			updateCacheLocked()
 			mutex.Unlock()
-			indexPosts(cached)
+			indexMessages(cached)
 		}
 	}
 
 	loadedAt = time.Now()
 
-	// Subscribe to news summaries — surface stories as social posts
+	// Subscribe to news summaries — surface stories as threads
 	go func() {
 		sub := event.Subscribe(event.EventSummaryGenerated)
-		startupPostCount := 0
+		startupCount := 0
 		for evt := range sub.Chan {
 			contentType, _ := evt.Data["type"].(string)
 			if contentType != "news" {
@@ -102,16 +105,16 @@ func Load() {
 				continue
 			}
 
-			// Throttle during startup: skip most posts in first 30s
+			// Throttle during startup: skip most threads in first 30s
 			if time.Since(loadedAt) < 30*time.Second {
-				startupPostCount++
-				if startupPostCount > 2 {
+				startupCount++
+				if startupCount > 2 {
 					app.Log("social", "Throttled news during startup: %s", uri)
 					continue
 				}
 			}
 
-			// Take the first sentence or two of the summary as the social post
+			// Take the first sentence or two of the summary as the thread message
 			content := firstSentences(summary, 2)
 			if content == "" {
 				continue
@@ -134,7 +137,7 @@ func Load() {
 
 			id := fmt.Sprintf("%x", md5.Sum([]byte("news:"+uri)))[:16]
 
-			addPost(&Post{
+			addMessage(&Message{
 				ID:       id,
 				Author:   author,
 				AuthorID: "_system",
@@ -146,20 +149,20 @@ func Load() {
 		}
 	}()
 
-	app.Log("social", "Loaded %d posts", len(posts))
+	app.Log("social", "Loaded %d messages", len(messages))
 }
 
 func save() error {
 	mutex.RLock()
-	p := make([]*Post, len(posts))
-	copy(p, posts)
+	p := make([]*Message, len(messages))
+	copy(p, messages)
 	mutex.RUnlock()
-	return data.SaveJSON("social_posts.json", p)
+	return data.SaveJSON("social.json", p)
 }
 
 // updateCacheLocked regenerates cached HTML. Caller must hold mutex write lock.
 func updateCacheLocked() {
-	cardHTML = generateCardHTML(posts)
+	cardHTML = generateCardHTML(messages)
 	pageBodyHTML = "" // invalidate, regenerated on next request
 }
 
@@ -170,18 +173,18 @@ func CardHTML() string {
 	return cardHTML
 }
 
-// GetPosts returns all cached posts (most recent first)
-func GetPosts() []*Post {
+// GetThreads returns all cached messages (most recent first)
+func GetThreads() []*Message {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	result := make([]*Post, len(posts))
-	copy(result, posts)
+	result := make([]*Message, len(messages))
+	copy(result, messages)
 	return result
 }
 
-// getPost returns a post by ID, caller must hold at least a read lock or call externally
-func getPost(id string) *Post {
-	for _, p := range posts {
+// getMessage returns a message by ID. Caller must hold read lock.
+func getMessage(id string) *Message {
+	for _, p := range messages {
 		if p.ID == id {
 			return p
 		}
@@ -189,23 +192,23 @@ func getPost(id string) *Post {
 	return nil
 }
 
-// replyCount returns the number of replies to a post. Caller must hold read lock.
-func replyCount(postID string) int {
+// replyCount returns the number of messages in a thread. Caller must hold read lock.
+func replyCount(threadID string) int {
 	count := 0
-	for _, p := range posts {
-		if p.ReplyTo == postID {
+	for _, p := range messages {
+		if p.ReplyTo == threadID {
 			count++
 		}
 	}
 	return count
 }
 
-// getReplies returns replies to a post in chronological order (oldest first). Caller must hold read lock.
-func getReplies(postID string) []*Post {
-	var replies []*Post
-	for i := len(posts) - 1; i >= 0; i-- {
-		if posts[i].ReplyTo == postID {
-			replies = append(replies, posts[i])
+// getReplies returns messages in a thread in chronological order (oldest first). Caller must hold read lock.
+func getReplies(threadID string) []*Message {
+	var replies []*Message
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].ReplyTo == threadID {
+			replies = append(replies, messages[i])
 		}
 	}
 	return replies
@@ -217,13 +220,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		if app.SendsJSON(r) {
 			// JSON POST could be search or create
-			handleJSONPost(w, r)
+			handleJSONRequest(w, r)
 			return
 		}
-		handleCreatePost(w, r)
+		handleCreateThread(w, r)
 		return
 	case "DELETE":
-		handleDeletePost(w, r)
+		handleDeleteMessage(w, r)
 		return
 	}
 
@@ -245,7 +248,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	handleGetFeed(w, r)
 }
 
-func handleCreatePost(w http.ResponseWriter, r *http.Request) {
+func handleCreateThread(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
@@ -276,31 +279,31 @@ func handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postID := fmt.Sprintf("%d", time.Now().UnixNano())
+	threadID := fmt.Sprintf("%d", time.Now().UnixNano())
 
-	p := &Post{
-		ID:       postID,
+	p := &Message{
+		ID:       threadID,
 		Author:   acc.Name,
 		AuthorID: acc.ID,
 		Content:  content,
 		PostedAt: time.Now(),
 	}
 
-	addPost(p)
+	addMessage(p)
 
 	// Async content moderation
-	go flag.CheckContent("social", postID, "", content)
+	go flag.CheckContent("social", threadID, "", content)
 
 	app.Log("social", "New thread by %s (%s)", acc.Name, acc.ID)
 
 	if app.SendsJSON(r) {
-		app.RespondJSON(w, map[string]interface{}{"success": true, "id": postID})
+		app.RespondJSON(w, map[string]interface{}{"success": true, "id": threadID})
 		return
 	}
 	http.Redirect(w, r, "/social", http.StatusSeeOther)
 }
 
-func handleJSONPost(w http.ResponseWriter, r *http.Request) {
+func handleJSONRequest(w http.ResponseWriter, r *http.Request) {
 	var reqData map[string]interface{}
 	b, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(b, &reqData)
@@ -316,7 +319,7 @@ func handleJSONPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Otherwise it's a create post
+	// Otherwise it's a create thread
 	content := ""
 	if v, ok := reqData["content"]; ok && v != nil {
 		content = strings.TrimSpace(fmt.Sprintf("%v", v))
@@ -342,46 +345,46 @@ func handleJSONPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postID := fmt.Sprintf("%d", time.Now().UnixNano())
-	p := &Post{
-		ID:       postID,
+	threadID := fmt.Sprintf("%d", time.Now().UnixNano())
+	p := &Message{
+		ID:       threadID,
 		Author:   acc.Name,
 		AuthorID: acc.ID,
 		Content:  content,
 		PostedAt: time.Now(),
 	}
 
-	addPost(p)
+	addMessage(p)
 
-	go flag.CheckContent("social", postID, "", content)
+	go flag.CheckContent("social", threadID, "", content)
 
-	app.RespondJSON(w, map[string]interface{}{"success": true, "id": postID})
+	app.RespondJSON(w, map[string]interface{}{"success": true, "id": threadID})
 }
 
-func handleDeletePost(w http.ResponseWriter, r *http.Request) {
+func handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
 		return
 	}
 
-	postID := r.URL.Query().Get("id")
-	if postID == "" {
+	threadID := r.URL.Query().Get("id")
+	if threadID == "" {
 		app.BadRequest(w, r, "Thread ID required")
 		return
 	}
 
 	mutex.Lock()
 	found := false
-	for i, p := range posts {
-		if p.ID == postID {
+	for i, p := range messages {
+		if p.ID == threadID {
 			// Only author or admin can delete
 			if p.AuthorID != acc.ID && !acc.Admin {
 				mutex.Unlock()
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
-			posts = append(posts[:i], posts[i+1:]...)
+			messages = append(messages[:i], messages[i+1:]...)
 			found = true
 			break
 		}
@@ -407,13 +410,13 @@ func handleDeletePost(w http.ResponseWriter, r *http.Request) {
 
 func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
-	currentPosts := make([]*Post, len(posts))
-	copy(currentPosts, posts)
+	all := make([]*Message, len(messages))
+	copy(all, messages)
 	mutex.RUnlock()
 
-	// Filter out flagged posts and replies (only show top-level posts in feed)
-	var visible []*Post
-	for _, p := range currentPosts {
+	// Filter out flagged messages and replies (only show threads in feed)
+	var visible []*Message
+	for _, p := range all {
 		if p.ReplyTo != "" {
 			continue
 		}
@@ -423,7 +426,7 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]interface{}{"posts": visible})
+		app.RespondJSON(w, map[string]interface{}{"threads": visible})
 		return
 	}
 
@@ -443,14 +446,14 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postID := r.URL.Query().Get("id")
-	if postID == "" {
+	threadID := r.URL.Query().Get("id")
+	if threadID == "" {
 		http.Redirect(w, r, "/social", http.StatusFound)
 		return
 	}
 
 	mutex.RLock()
-	p := getPost(postID)
+	p := getMessage(threadID)
 	if p == nil {
 		mutex.RUnlock()
 		http.Error(w, "Thread not found", 404)
@@ -462,11 +465,11 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/social/thread?id="+p.ReplyTo, http.StatusFound)
 		return
 	}
-	replies := getReplies(postID)
+	replies := getReplies(threadID)
 	mutex.RUnlock()
 
 	if app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]interface{}{"post": p, "replies": replies})
+		app.RespondJSON(w, map[string]interface{}{"thread": p, "messages": replies})
 		return
 	}
 
@@ -514,7 +517,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 
 	// Verify parent exists
 	mutex.RLock()
-	parent := getPost(parentID)
+	parent := getMessage(parentID)
 	mutex.RUnlock()
 	if parent == nil {
 		app.BadRequest(w, r, "Thread not found")
@@ -522,7 +525,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 	}
 
 	replyID := fmt.Sprintf("%d", time.Now().UnixNano())
-	reply := &Post{
+	reply := &Message{
 		ID:       replyID,
 		Author:   acc.Name,
 		AuthorID: acc.ID,
@@ -531,7 +534,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 		PostedAt: time.Now(),
 	}
 
-	addPost(reply)
+	addMessage(reply)
 
 	go flag.CheckContent("social", replyID, "", content)
 
@@ -544,13 +547,13 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/social/thread?id="+parentID, http.StatusSeeOther)
 }
 
-func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
+func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string {
 	var sb strings.Builder
 
 	// Back link
 	sb.WriteString(`<div style="margin-bottom:16px;"><a href="/social" style="color:#888;text-decoration:none;">&larr; Back to threads</a></div>`)
 
-	// Original post (full, no truncation)
+	// Original message (full, no truncation)
 	content := htmlpkg.EscapeString(p.Content)
 	firstURL := extractFirstURL(content)
 	linkCard := ""
@@ -749,7 +752,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	})
 }
 
-func indexPosts(toIndex []*Post) {
+func indexMessages(toIndex []*Message) {
 	for _, p := range toIndex {
 		data.Index(
 			"social_"+p.ID,
@@ -764,17 +767,17 @@ func indexPosts(toIndex []*Post) {
 	}
 }
 
-func generateCardHTML(allPosts []*Post) string {
-	if len(allPosts) == 0 {
+func generateCardHTML(allMessages []*Message) string {
+	if len(allMessages) == 0 {
 		return `<p style="color:#888;">No threads yet. Be the first to start one.</p>`
 	}
 
-	// Show up to 4 latest top-level posts, one per author for variety
-	// Limit breaking posts to at most 1 on the home card
+	// Show up to 4 latest threads, one per author for variety
+	// Limit breaking threads to at most 1 on the home card
 	seen := map[string]bool{}
 	breakingCount := 0
-	var selected []*Post
-	for _, p := range allPosts {
+	var selected []*Message
+	for _, p := range allMessages {
 		if p.ReplyTo != "" {
 			continue // skip replies in home card
 		}
@@ -847,7 +850,7 @@ func generateCardHTML(allPosts []*Post) string {
 	return sb.String()
 }
 
-func generatePageHTML(visible []*Post, r *http.Request) string {
+func generatePageHTML(visible []*Message, r *http.Request) string {
 	var sb strings.Builder
 
 	// Compose box (shown to logged-in users)
@@ -1049,7 +1052,7 @@ func firstSentences(text string, n int) string {
 	return text
 }
 
-// SurfaceBreaking creates a system post from external sources (e.g., news headlines)
+// SurfaceBreaking creates a system thread from external sources (e.g., news headlines)
 func SurfaceBreaking(title, link string) {
 	if title == "" {
 		return
@@ -1064,7 +1067,7 @@ func SurfaceBreaking(title, link string) {
 
 	id := fmt.Sprintf("%x", md5.Sum([]byte("breaking:"+link)))[:16]
 
-	addPost(&Post{
+	addMessage(&Message{
 		ID:       id,
 		Author:   "Breaking",
 		AuthorID: "_system",
@@ -1098,8 +1101,8 @@ func DetectSocialURLs(content string) []string {
 	return unique
 }
 
-// FetchPost fetches a single social post by URL and returns it (used by context.go for news)
-func FetchPost(rawURL string) (*Post, error) {
+// FetchExternalPost fetches a single social media post by URL (used by context.go for news)
+func FetchExternalPost(rawURL string) (*Message, error) {
 	fetchURL := rawURL
 	parsed, err := url.Parse(rawURL)
 	if err == nil {
@@ -1144,7 +1147,7 @@ func FetchPost(rawURL string) (*Post, error) {
 
 	id := fmt.Sprintf("%x", md5.Sum([]byte(rawURL)))[:16]
 
-	return &Post{
+	return &Message{
 		ID:       id,
 		Author:   handle,
 		AuthorID: handle,

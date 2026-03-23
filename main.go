@@ -860,7 +860,7 @@ func runHealthChecks() []app.ServiceHealth {
 		{"Chat", func() bool { return os.Getenv("ANTHROPIC_API_KEY") != "" }},
 		{"Mail", func() bool { return os.Getenv("MAIL_DOMAIN") != "" }},
 		{"Markets", func() bool { return len(markets.GetAllPrices()) > 0 }},
-		{"Social", func() bool { return len(social.GetPosts()) > 0 }},
+		{"Social", func() bool { return len(social.GetThreads()) > 0 }},
 	}
 
 	results := make([]app.ServiceHealth, len(checks))
