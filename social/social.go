@@ -182,7 +182,7 @@ func surfaceBreakingFromNews() {
 				// Surface the first one (use URL as dedup key)
 				if !surfaced[a.url] {
 					surfaced[a.url] = true
-					SurfaceBreaking(a.title, a.url)
+					SurfaceBreaking(a.category, a.title, a.url)
 					app.Log("social", "Breaking: %q matched across %s and %s", a.title, a.category, b.category)
 				}
 			}
@@ -219,8 +219,9 @@ func extractKeywords(title string) map[string]bool {
 	return words
 }
 
-// SurfaceBreaking creates a system thread from external sources (e.g., breaking news)
-func SurfaceBreaking(title, link string) {
+// SurfaceBreaking creates a system thread from external sources (e.g., breaking news).
+// The category is used as the author name (e.g. "Politics", "Finance").
+func SurfaceBreaking(category, title, link string) {
 	if title == "" {
 		return
 	}
@@ -236,7 +237,7 @@ func SurfaceBreaking(title, link string) {
 
 	addMessage(&Message{
 		ID:       id,
-		Author:   "Breaking",
+		Author:   category,
 		AuthorID: "_system",
 		Content:  content,
 		PostedAt: time.Now(),
