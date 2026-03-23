@@ -43,6 +43,7 @@ type Post struct {
 	Author    string    `json:"author"`     // display name
 	AuthorID  string    `json:"author_id"`  // account ID
 	Content   string    `json:"content"`
+	ReplyTo   string    `json:"reply_to,omitempty"` // parent post ID (empty = top-level)
 	PostedAt  time.Time `json:"posted_at"`
 }
 
@@ -176,6 +177,38 @@ func GetPosts() []*Post {
 	result := make([]*Post, len(posts))
 	copy(result, posts)
 	return result
+}
+
+// getPost returns a post by ID, caller must hold at least a read lock or call externally
+func getPost(id string) *Post {
+	for _, p := range posts {
+		if p.ID == id {
+			return p
+		}
+	}
+	return nil
+}
+
+// replyCount returns the number of replies to a post. Caller must hold read lock.
+func replyCount(postID string) int {
+	count := 0
+	for _, p := range posts {
+		if p.ReplyTo == postID {
+			count++
+		}
+	}
+	return count
+}
+
+// getReplies returns replies to a post in chronological order (oldest first). Caller must hold read lock.
+func getReplies(postID string) []*Post {
+	var replies []*Post
+	for i := len(posts) - 1; i >= 0; i-- {
+		if posts[i].ReplyTo == postID {
+			replies = append(replies, posts[i])
+		}
+	}
+	return replies
 }
 
 // Handler serves the /social endpoint
@@ -378,9 +411,12 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	copy(currentPosts, posts)
 	mutex.RUnlock()
 
-	// Filter out flagged posts
+	// Filter out flagged posts and replies (only show top-level posts in feed)
 	var visible []*Post
 	for _, p := range currentPosts {
+		if p.ReplyTo != "" {
+			continue
+		}
 		if !flag.IsHidden("social", p.ID) {
 			visible = append(visible, p)
 		}
@@ -398,6 +434,233 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 		Description: "Share what's on your mind",
 		HTML:        body,
 	})
+}
+
+// ThreadHandler serves the /social/post endpoint — shows a single post and its replies
+func ThreadHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		handleCreateReply(w, r)
+		return
+	}
+
+	postID := r.URL.Query().Get("id")
+	if postID == "" {
+		http.Redirect(w, r, "/social", http.StatusFound)
+		return
+	}
+
+	mutex.RLock()
+	p := getPost(postID)
+	if p == nil {
+		mutex.RUnlock()
+		http.Error(w, "Post not found", 404)
+		return
+	}
+	// If this is a reply, redirect to the parent thread
+	if p.ReplyTo != "" {
+		mutex.RUnlock()
+		http.Redirect(w, r, "/social/post?id="+p.ReplyTo, http.StatusFound)
+		return
+	}
+	replies := getReplies(postID)
+	mutex.RUnlock()
+
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{"post": p, "replies": replies})
+		return
+	}
+
+	body := generateThreadHTML(p, replies, r)
+
+	app.Respond(w, r, app.Response{
+		Title:       p.Author + " on Social",
+		Description: truncate(p.Content, 160),
+		HTML:        body,
+	})
+}
+
+func handleCreateReply(w http.ResponseWriter, r *http.Request) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	if !auth.CanPost(acc.ID) {
+		app.BadRequest(w, r, "Your account is too new to reply. Please wait a bit.")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		app.BadRequest(w, r, "Failed to parse form")
+		return
+	}
+
+	parentID := r.FormValue("reply_to")
+	content := strings.TrimSpace(r.FormValue("content"))
+
+	if parentID == "" {
+		app.BadRequest(w, r, "Missing parent post")
+		return
+	}
+	if content == "" {
+		app.BadRequest(w, r, "Reply cannot be empty")
+		return
+	}
+	if len(content) > 500 {
+		app.BadRequest(w, r, "Replies must be 500 characters or less")
+		return
+	}
+
+	// Verify parent exists
+	mutex.RLock()
+	parent := getPost(parentID)
+	mutex.RUnlock()
+	if parent == nil {
+		app.BadRequest(w, r, "Post not found")
+		return
+	}
+
+	replyID := fmt.Sprintf("%d", time.Now().UnixNano())
+	reply := &Post{
+		ID:       replyID,
+		Author:   acc.Name,
+		AuthorID: acc.ID,
+		Content:  content,
+		ReplyTo:  parentID,
+		PostedAt: time.Now(),
+	}
+
+	addPost(reply)
+
+	go flag.CheckContent("social", replyID, "", content)
+
+	app.Log("social", "Reply by %s to post %s", acc.Name, parentID)
+
+	if app.SendsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{"success": true, "id": replyID})
+		return
+	}
+	http.Redirect(w, r, "/social/post?id="+parentID, http.StatusSeeOther)
+}
+
+func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
+	var sb strings.Builder
+
+	// Back link
+	sb.WriteString(`<div style="margin-bottom:16px;"><a href="/social" style="color:#888;text-decoration:none;">&larr; Back to feed</a></div>`)
+
+	// Original post (full, no truncation)
+	content := htmlpkg.EscapeString(p.Content)
+	firstURL := extractFirstURL(content)
+	linkCard := ""
+	if firstURL != "" {
+		linkCard = renderLinkCard(firstURL)
+		if linkCard != "" {
+			escapedURL := htmlpkg.EscapeString(firstURL)
+			content = strings.TrimSpace(strings.Replace(content, escapedURL, "", 1))
+		}
+	}
+	content = linkifyURLs(content)
+
+	_, acc := auth.TrySession(r)
+
+	canDelete := acc != nil && (acc.ID == p.AuthorID || acc.Admin)
+	deleteBtn := ""
+	if canDelete {
+		deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this post?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.href='/social')}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
+	}
+
+	ts := p.PostedAt.Unix()
+	sb.WriteString(fmt.Sprintf(`<div class="headline" style="border-bottom:2px solid #eee;">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;">
+    <div><b>%s</b></div>
+    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
+  </div>
+  <div style="margin-top:8px;font-size:15px;line-height:1.5;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
+</div>`,
+		htmlpkg.EscapeString(p.Author),
+		ts,
+		app.TimeAgo(p.PostedAt),
+		deleteBtn,
+		content,
+		linkCard,
+	))
+
+	// Reply count
+	replyLabel := "replies"
+	if len(replies) == 1 {
+		replyLabel = "reply"
+	}
+	if len(replies) > 0 {
+		sb.WriteString(fmt.Sprintf(`<div style="padding:12px 0;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0;">%d %s</div>`, len(replies), replyLabel))
+	}
+
+	// Reply form (for logged-in users)
+	if acc != nil {
+		sb.WriteString(fmt.Sprintf(`<div style="margin:16px 0;">
+  <form method="POST" action="/social/post" id="reply-form">
+    <input type="hidden" name="reply_to" value="%s">
+    <textarea name="content" id="reply-content" rows="2" placeholder="Write a reply..." required
+      style="width:100%%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+      <span id="reply-char-count" style="font-size:12px;color:#888;">0/500</span>
+      <button type="submit" style="padding:6px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Reply</button>
+    </div>
+  </form>
+  <script>
+    var ta=document.getElementById('reply-content'),cc=document.getElementById('reply-char-count');
+    ta.addEventListener('input',function(){
+      var n=ta.value.length;
+      cc.textContent=n+'/500';
+      cc.style.color=n>500?'red':'#888';
+    });
+  </script>
+</div>`, p.ID))
+	} else {
+		sb.WriteString(`<div style="margin:16px 0;padding:12px;background:#f9f9f9;border-radius:8px;text-align:center;">
+  <a href="/login" style="color:#000;font-weight:bold;">Log in</a> to reply
+</div>`)
+	}
+
+	// Replies (chronological — oldest first, so conversation reads naturally)
+	for _, reply := range replies {
+		if flag.IsHidden("social", reply.ID) {
+			continue
+		}
+		rc := htmlpkg.EscapeString(reply.Content)
+		rc = linkifyURLs(rc)
+
+		canDeleteReply := acc != nil && (acc.ID == reply.AuthorID || acc.Admin)
+		rDeleteBtn := ""
+		if canDeleteReply {
+			rDeleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this reply?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, reply.ID)
+		}
+
+		rts := reply.PostedAt.Unix()
+		sb.WriteString(fmt.Sprintf(`<div style="padding:12px 0;border-bottom:1px solid #f5f5f5;">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;">
+    <div style="font-size:13px;"><b>%s</b></div>
+    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
+  </div>
+  <div style="margin-top:4px;overflow-wrap:break-word;word-break:break-word;">%s</div>
+</div>`,
+			htmlpkg.EscapeString(reply.Author),
+			rts,
+			app.TimeAgo(reply.PostedAt),
+			rDeleteBtn,
+			rc,
+		))
+	}
+
+	return sb.String()
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-3] + "..."
 }
 
 func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
@@ -506,12 +769,15 @@ func generateCardHTML(allPosts []*Post) string {
 		return `<p style="color:#888;">No posts yet. Be the first to share something.</p>`
 	}
 
-	// Show up to 4 latest posts, one per author for variety
+	// Show up to 4 latest top-level posts, one per author for variety
 	// Limit breaking posts to at most 1 on the home card
 	seen := map[string]bool{}
 	breakingCount := 0
 	var selected []*Post
 	for _, p := range allPosts {
+		if p.ReplyTo != "" {
+			continue // skip replies in home card
+		}
 		if flag.IsHidden("social", p.ID) {
 			continue
 		}
@@ -553,14 +819,26 @@ func generateCardHTML(allPosts []*Post) string {
 			content = content[:200] + "..."
 		}
 
+		rc := replyCount(p.ID)
+		replyInfo := ""
+		if rc > 0 {
+			noun := "replies"
+			if rc == 1 {
+				noun = "reply"
+			}
+			replyInfo = fmt.Sprintf(` · <a href="/social/post?id=%s" style="color:#888;text-decoration:none;">%d %s</a>`, p.ID, rc, noun)
+		}
+
 		ts := p.PostedAt.Unix()
-		sb.WriteString(fmt.Sprintf(`<div class="headline" style="border:none;border-bottom:1px solid #f0f0f0;border-radius:0;padding:8px 0;">
-  <div style="font-size:13px;"><b>%s</b> <span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span></div>
+		sb.WriteString(fmt.Sprintf(`<a href="/social/post?id=%s" style="display:block;text-decoration:none;color:inherit;border:none;border-bottom:1px solid #f0f0f0;border-radius:0;padding:8px 0;" class="headline">
+  <div style="font-size:13px;"><b>%s</b> <span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
   <div style="font-size:13px;margin-top:2px;color:#333;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
-</div>`,
+</a>`,
+			p.ID,
 			htmlpkg.EscapeString(p.Author),
 			ts,
 			app.TimeAgo(p.PostedAt),
+			replyInfo,
 			content,
 			linkCard,
 		))
@@ -628,6 +906,19 @@ func generatePageHTML(visible []*Post, r *http.Request) string {
 			deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this post?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
 		}
 
+		// Reply count
+		mutex.RLock()
+		rc := replyCount(p.ID)
+		mutex.RUnlock()
+		replyLink := fmt.Sprintf(`<a href="/social/post?id=%s" style="color:#888;text-decoration:none;font-size:12px;">reply</a>`, p.ID)
+		if rc > 0 {
+			noun := "replies"
+			if rc == 1 {
+				noun = "reply"
+			}
+			replyLink = fmt.Sprintf(`<a href="/social/post?id=%s" style="color:#888;text-decoration:none;font-size:12px;">%d %s</a>`, p.ID, rc, noun)
+		}
+
 		ts := p.PostedAt.Unix()
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
   <div style="display:flex;justify-content:space-between;align-items:baseline;">
@@ -635,6 +926,7 @@ func generatePageHTML(visible []*Post, r *http.Request) string {
     <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
   </div>
   <div style="margin-top:4px;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
+  <div style="margin-top:6px;">%s</div>
 </div>`,
 			htmlpkg.EscapeString(p.Author),
 			ts,
@@ -642,6 +934,7 @@ func generatePageHTML(visible []*Post, r *http.Request) string {
 			deleteBtn,
 			content,
 			linkCard,
+			replyLink,
 		))
 	}
 
