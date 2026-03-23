@@ -459,7 +459,7 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 	// If this is a reply, redirect to the parent thread
 	if p.ReplyTo != "" {
 		mutex.RUnlock()
-		http.Redirect(w, r, "/social/post?id="+p.ReplyTo, http.StatusFound)
+		http.Redirect(w, r, "/social/thread?id="+p.ReplyTo, http.StatusFound)
 		return
 	}
 	replies := getReplies(postID)
@@ -541,7 +541,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, map[string]interface{}{"success": true, "id": replyID})
 		return
 	}
-	http.Redirect(w, r, "/social/post?id="+parentID, http.StatusSeeOther)
+	http.Redirect(w, r, "/social/thread?id="+parentID, http.StatusSeeOther)
 }
 
 func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
@@ -599,7 +599,7 @@ func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
 	// Reply form (for logged-in users)
 	if acc != nil {
 		sb.WriteString(fmt.Sprintf(`<div style="margin:16px 0;">
-  <form method="POST" action="/social/post" id="reply-form">
+  <form method="POST" action="/social/thread" id="reply-form">
     <input type="hidden" name="reply_to" value="%s">
     <textarea name="content" id="reply-content" rows="2" placeholder="Write a message..." required
       style="width:100%%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
@@ -826,11 +826,11 @@ func generateCardHTML(allPosts []*Post) string {
 			if rc == 1 {
 				noun = "message"
 			}
-			replyInfo = fmt.Sprintf(` · <a href="/social/post?id=%s" style="color:#888;text-decoration:none;">%d %s</a>`, p.ID, rc, noun)
+			replyInfo = fmt.Sprintf(` · <a href="/social/thread?id=%s" style="color:#888;text-decoration:none;">%d %s</a>`, p.ID, rc, noun)
 		}
 
 		ts := p.PostedAt.Unix()
-		sb.WriteString(fmt.Sprintf(`<a href="/social/post?id=%s" style="display:block;text-decoration:none;color:inherit;border:none;border-bottom:1px solid #f0f0f0;border-radius:0;padding:8px 0;" class="headline">
+		sb.WriteString(fmt.Sprintf(`<a href="/social/thread?id=%s" style="display:block;text-decoration:none;color:inherit;border:none;border-bottom:1px solid #f0f0f0;border-radius:0;padding:8px 0;" class="headline">
   <div style="font-size:13px;"><b>%s</b> <span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
   <div style="font-size:13px;margin-top:2px;color:#333;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
 </a>`,
@@ -910,13 +910,13 @@ func generatePageHTML(visible []*Post, r *http.Request) string {
 		mutex.RLock()
 		rc := replyCount(p.ID)
 		mutex.RUnlock()
-		replyLink := fmt.Sprintf(`<a href="/social/post?id=%s" style="color:#888;text-decoration:none;font-size:12px;">open thread</a>`, p.ID)
+		replyLink := fmt.Sprintf(`<a href="/social/thread?id=%s" style="color:#888;text-decoration:none;font-size:12px;">open thread</a>`, p.ID)
 		if rc > 0 {
 			noun := "messages"
 			if rc == 1 {
 				noun = "message"
 			}
-			replyLink = fmt.Sprintf(`<a href="/social/post?id=%s" style="color:#888;text-decoration:none;font-size:12px;">%d %s</a>`, p.ID, rc, noun)
+			replyLink = fmt.Sprintf(`<a href="/social/thread?id=%s" style="color:#888;text-decoration:none;font-size:12px;">%d %s</a>`, p.ID, rc, noun)
 		}
 
 		ts := p.PostedAt.Unix()

@@ -417,7 +417,7 @@ func main() {
 		"/blog":            false, // Public viewing, auth for posting
 		"/markets":         false, // Public viewing
 		"/social":          false, // Public viewing, auth for search
-		"/social/post":     false, // Public thread view, auth for replying
+		"/social/thread":   false, // Public thread view, auth for messaging
 		"/places":          false, // Public map, auth for search
 		"/weather":         false, // Public page, auth for forecast lookup
 		"/mail":            true,  // Require auth for inbox
@@ -576,7 +576,7 @@ func main() {
 
 	// serve social page
 	http.HandleFunc("/social", social.Handler)
-	http.HandleFunc("/social/post", social.ThreadHandler)
+	http.HandleFunc("/social/thread", social.ThreadHandler)
 
 	// redirect /reminder to reminder.dev
 	http.HandleFunc("/reminder", reminder.Handler)
