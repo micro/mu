@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -110,7 +111,111 @@ func Load() {
 
 	loadedAt = time.Now()
 
+	// Detect breaking stories — headlines reported by multiple sources
+	go detectBreakingStories()
+
 	app.Log("social", "Loaded %d messages", len(messages))
+}
+
+// detectBreakingStories checks the news feed for stories covered by multiple
+// categories/sources. If the same story appears across 2+ sources, it's
+// significant enough to surface as a social thread.
+func detectBreakingStories() {
+	// Wait for news to load first
+	time.Sleep(3 * time.Minute)
+
+	for {
+		surfaceBreakingFromNews()
+		time.Sleep(time.Hour)
+	}
+}
+
+func surfaceBreakingFromNews() {
+	feed := news.GetFeed()
+	if len(feed) == 0 {
+		return
+	}
+
+	// Only consider articles from the last 24 hours
+	cutoff := time.Now().Add(-24 * time.Hour)
+
+	// Group articles by normalised title keywords
+	type story struct {
+		title      string
+		url        string
+		categories map[string]bool
+	}
+	stories := map[string]*story{}
+
+	for _, p := range feed {
+		if p.PostedAt.Before(cutoff) {
+			continue
+		}
+		key := normaliseTitle(p.Title)
+		if key == "" {
+			continue
+		}
+		if s, ok := stories[key]; ok {
+			s.categories[p.Category] = true
+		} else {
+			stories[key] = &story{
+				title:      p.Title,
+				url:        p.URL,
+				categories: map[string]bool{p.Category: true},
+			}
+		}
+	}
+
+	// Surface stories covered by 2+ different categories
+	for _, s := range stories {
+		if len(s.categories) < 2 {
+			continue
+		}
+		SurfaceBreaking(s.title, s.url)
+	}
+}
+
+// normaliseTitle extracts key words from a title for fuzzy matching.
+// Strips common words and punctuation so "Trump signs new trade deal"
+// and "Trump Signs New Trade Deal With China" match on the same key.
+func normaliseTitle(title string) string {
+	title = strings.ToLower(title)
+	// Remove punctuation
+	title = regexp.MustCompile(`[^a-z0-9\s]`).ReplaceAllString(title, "")
+
+	stop := map[string]bool{
+		"a": true, "an": true, "the": true, "and": true, "or": true,
+		"but": true, "in": true, "on": true, "at": true, "to": true,
+		"for": true, "of": true, "with": true, "by": true, "from": true,
+		"is": true, "are": true, "was": true, "were": true, "be": true,
+		"has": true, "have": true, "had": true, "do": true, "does": true,
+		"did": true, "will": true, "would": true, "could": true, "should": true,
+		"may": true, "might": true, "can": true, "its": true, "it": true,
+		"that": true, "this": true, "as": true, "not": true, "no": true,
+		"new": true, "says": true, "said": true, "after": true, "over": true,
+		"into": true, "up": true, "out": true, "about": true, "than": true,
+	}
+
+	var words []string
+	for _, w := range strings.Fields(title) {
+		if !stop[w] && len(w) > 2 {
+			words = append(words, w)
+		}
+	}
+
+	// Need at least 2 meaningful words to match
+	if len(words) < 2 {
+		return ""
+	}
+
+	// Use first 4 key words as the fingerprint
+	if len(words) > 4 {
+		words = words[:4]
+	}
+
+	// Sort so word order doesn't matter
+	sort.Strings(words)
+	return strings.Join(words, " ")
 }
 
 // SurfaceBreaking creates a system thread from external sources (e.g., breaking news)
