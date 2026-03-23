@@ -87,18 +87,6 @@ func opinionLoop() {
 // Re-enable when there are active users engaging with opinion posts.
 func opinionEngageLoop() {
 	app.Log("opinion", "Engagement loop disabled to reduce API costs")
-	return
-
-	time.Sleep(2 * time.Minute)
-
-	for {
-		for _, post := range FindTodayOpinions() {
-			engageOpinionPost(post)
-			reviewOpinionPost(post)
-		}
-		selfReflect()
-		time.Sleep(time.Hour)
-	}
 }
 
 // maxDailyOpinions limits how many opinion posts are generated per day.
