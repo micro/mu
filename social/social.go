@@ -65,6 +65,8 @@ func addPost(p *Post) {
 
 	indexPosts([]*Post{p})
 	save()
+
+	event.Publish(event.Event{Type: "social_updated"})
 }
 
 func Load() {
@@ -120,17 +122,26 @@ func Load() {
 				content = content[:497] + "..."
 			}
 
+			// Look up the article's category from the index
+			itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
+			author := "News"
+			if entry := data.GetByID(itemID); entry != nil {
+				if cat, ok := entry.Metadata["category"].(string); ok && cat != "" {
+					author = cat
+				}
+			}
+
 			id := fmt.Sprintf("%x", md5.Sum([]byte("news:"+uri)))[:16]
 
 			addPost(&Post{
 				ID:       id,
-				Author:   "News",
+				Author:   author,
 				AuthorID: "_system",
 				Content:  content,
 				PostedAt: time.Now(),
 			})
 
-			app.Log("social", "Surfaced news: %s", content[:min(80, len(content))])
+			app.Log("social", "Surfaced %s: %s", author, content[:min(80, len(content))])
 		}
 	}()
 
