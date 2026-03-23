@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode"
 
 	"mu/internal/app"
 	"mu/internal/data"
@@ -233,7 +234,14 @@ func pickBestVerse(result *SearchResponse) *verseResult {
 			found := false
 			for _, qv := range quranResults {
 				if qv.chapter == best.chapter && qv.verse == nextVerse {
-					combinedText += " " + qv.text
+					// Join like reminder.dev: inline if ending with comma/dash/semicolon,
+					// paragraph break otherwise
+					last := combinedText[len(combinedText)-1]
+					if last == ',' || last == ';' || string(last) == "—" || unicode.IsLetter(rune(last)) {
+						combinedText += " " + qv.text
+					} else {
+						combinedText += "\n\n" + qv.text
+					}
 					verseEnd = nextVerse
 					found = true
 					break
@@ -269,14 +277,16 @@ func pickBestVerse(result *SearchResponse) *verseResult {
 }
 
 func buildContextualHTML(pick *verseResult) string {
+	// Format: "{Name} ({Chapter}:{Verse})\n\n{Text}"
+	formattedText := pick.text
+	if pick.ref != "" {
+		formattedText = pick.ref + "\n\n" + pick.text
+	}
+
 	var sb strings.Builder
 	sb.WriteString(`<div class="item"><div class="verse">`)
-	sb.WriteString(htmlpkg.EscapeString(pick.text))
-	sb.WriteString(`</div>`)
-	if pick.ref != "" {
-		sb.WriteString(fmt.Sprintf(`<div style="font-size:12px;color:#888;margin-top:4px;">— %s</div>`, htmlpkg.EscapeString(pick.ref)))
-	}
-	sb.WriteString(`</div>`)
+	sb.WriteString(htmlpkg.EscapeString(formattedText))
+	sb.WriteString(`</div></div>`)
 
 	// Build link to the specific verse on reminder.dev
 	moreURL := "https://reminder.dev"
