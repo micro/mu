@@ -782,6 +782,12 @@ func Load() {
 			ForceRefresh()
 		}
 	}()
+	go func() {
+		sub := event.Subscribe("social_updated")
+		for range sub.Chan {
+			ForceRefresh()
+		}
+	}()
 }
 
 // RefreshCards updates card content and timestamps if content changed

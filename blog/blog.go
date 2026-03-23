@@ -207,9 +207,17 @@ func Load() {
 		return
 	}
 
-	// Sort posts by creation time (newest first)
+	// Sort posts by most recent activity (updated or created) newest first
 	sort.Slice(posts, func(i, j int) bool {
-		return posts[i].CreatedAt.After(posts[j].CreatedAt)
+		ti := posts[i].UpdatedAt
+		if ti.IsZero() {
+			ti = posts[i].CreatedAt
+		}
+		tj := posts[j].UpdatedAt
+		if tj.IsZero() {
+			tj = posts[j].CreatedAt
+		}
+		return ti.After(tj)
 	})
 
 	// Build postsMap for O(1) lookups
@@ -360,6 +368,19 @@ func updateCache() {
 
 // updateCacheUnlocked updates the cache without locking (caller must hold lock)
 func updateCacheUnlocked() {
+	// Re-sort posts by most recent activity (updated or created) newest first
+	sort.Slice(posts, func(i, j int) bool {
+		ti := posts[i].UpdatedAt
+		if ti.IsZero() {
+			ti = posts[i].CreatedAt
+		}
+		tj := posts[j].UpdatedAt
+		if tj.IsZero() {
+			tj = posts[j].CreatedAt
+		}
+		return ti.After(tj)
+	})
+
 	// Generate preview for home page (latest 1 post, exclude flagged and new accounts)
 	var preview []string
 	count := 0
