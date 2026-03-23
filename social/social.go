@@ -83,7 +83,7 @@ func Load() {
 
 	loadedAt = time.Now()
 
-	// Subscribe to news summaries — surface breaking stories as social posts
+	// Subscribe to news summaries — surface stories as social posts
 	go func() {
 		sub := event.Subscribe(event.EventSummaryGenerated)
 		startupPostCount := 0
@@ -99,11 +99,11 @@ func Load() {
 				continue
 			}
 
-			// Throttle during startup: skip most breaking posts in first 30s
+			// Throttle during startup: skip most posts in first 30s
 			if time.Since(loadedAt) < 30*time.Second {
 				startupPostCount++
 				if startupPostCount > 2 {
-					app.Log("social", "Throttled breaking during startup: %s", uri)
+					app.Log("social", "Throttled news during startup: %s", uri)
 					continue
 				}
 			}
@@ -124,13 +124,13 @@ func Load() {
 
 			addPost(&Post{
 				ID:       id,
-				Author:   "Breaking",
+				Author:   "News",
 				AuthorID: "_system",
 				Content:  content,
 				PostedAt: time.Now(),
 			})
 
-			app.Log("social", "Surfaced breaking: %s", content[:min(80, len(content))])
+			app.Log("social", "Surfaced news: %s", content[:min(80, len(content))])
 		}
 	}()
 
