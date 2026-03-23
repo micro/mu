@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -74,7 +75,11 @@ func fetchReminder() {
 	// Save full JSON data
 	data.SaveFile("reminder.json", string(b))
 
-	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, val["verse"])
+	verseText := fmt.Sprintf("%v", val["verse"])
+	// Deduplicate header when Arabic and English names match
+	// e.g. "Muhammad - Muhammad - 47:1" → "Muhammad - 47:1"
+	verseText = deduplicateVerseName(verseText)
+	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, verseText)
 
 	// Link to the specific verse on reminder.dev
 	moreURL := "https://reminder.dev"
@@ -231,5 +236,26 @@ func GetDailyReminderForDate(date string) *ReminderData {
 	data.SaveFile(cacheFile, string(body))
 	app.Log("reminder", "Fetched daily reminder for %s", date)
 	return &rd
+}
+
+// deduplicateVerseName fixes the header line when Arabic and English names
+// are identical, e.g. "Muhammad - Muhammad - 47:1" → "Muhammad - 47:1"
+// or "Luqman - Luqman - 31:3" → "Luqman - 31:3"
+func deduplicateVerseName(text string) string {
+	// Header is the first line, before any newline
+	firstNewline := strings.Index(text, "\n")
+	if firstNewline < 0 {
+		firstNewline = len(text)
+	}
+	header := text[:firstNewline]
+	rest := text[firstNewline:]
+
+	// Format is "{Arabic} - {English} - {Chapter}:{Verse}"
+	parts := strings.SplitN(header, " - ", 3)
+	if len(parts) == 3 && strings.EqualFold(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])) {
+		header = parts[0] + " - " + parts[2]
+	}
+
+	return header + rest
 }
 

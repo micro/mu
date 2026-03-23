@@ -277,7 +277,7 @@ func pickBestVerse(result *SearchResponse) *verseResult {
 }
 
 func buildContextualHTML(pick *verseResult) string {
-	// Format like reminder.dev: "{Name} - {English} - {Chapter}:{Verse}\n\n{Text}"
+	// Format: "{Name} ({Chapter}:{Verse})\n\n{Text}"
 	formattedText := pick.text
 	if pick.ref != "" {
 		formattedText = pick.ref + "\n\n" + pick.text
