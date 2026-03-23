@@ -175,40 +175,97 @@ type verseResult struct {
 	ref     string
 	chapter string
 	verse   string
-	source  string
+	source  string // "quran", "names", "bukhari"
+	link    string // path on reminder.dev
 }
 
-// pickBestVerse finds the highest-scoring Quran verse from search results
+// isTerminal checks if text ends with terminal punctuation (complete thought)
+func isTerminal(text string) bool {
+	text = strings.TrimSpace(text)
+	if len(text) == 0 {
+		return true
+	}
+	last := text[len(text)-1]
+	return last == '.' || last == '!' || last == '?' || last == '"'
+}
+
+// pickBestVerse finds the highest-scoring Quran verse from search results.
+// Like reminder.dev, if a verse doesn't end with terminal punctuation,
+// it looks for consecutive verses from the same chapter to complete the thought.
 func pickBestVerse(result *SearchResponse) *verseResult {
+	// Collect all Quran verses indexed by chapter:verse for continuation lookup
+	type qverse struct {
+		text    string
+		chapter string
+		name    string
+		verse   int
+	}
+	var quranResults []qverse
 	for _, r := range result.References {
 		source, _ := r.Metadata["source"].(string)
 		if source != "quran" {
 			continue
 		}
-
-		chapter, _ := r.Metadata["chapter"].(string)
-		name, _ := r.Metadata["name"].(string)
-		verse, _ := r.Metadata["verse"].(string)
-
-		ref := ""
-		if name != "" && chapter != "" && verse != "" {
-			ref = fmt.Sprintf("%s (%s:%s)", name, chapter, verse)
-		} else if chapter != "" && verse != "" {
-			ref = fmt.Sprintf("Quran %s:%s", chapter, verse)
-		}
-
-		return &verseResult{text: r.Text, ref: ref, chapter: chapter, verse: verse, source: "quran"}
+		ch, _ := r.Metadata["chapter"].(string)
+		nm, _ := r.Metadata["name"].(string)
+		vs, _ := r.Metadata["verse"].(string)
+		vn := 0
+		fmt.Sscanf(vs, "%d", &vn)
+		quranResults = append(quranResults, qverse{text: r.Text, chapter: ch, name: nm, verse: vn})
 	}
 
-	// No Quran verse found, try names of Allah
-	for _, r := range result.References {
-		source, _ := r.Metadata["source"].(string)
-		if source == "names" {
-			return &verseResult{text: r.Text, ref: "Names of Allah", source: "names"}
+	if len(quranResults) == 0 {
+		return nil
+	}
+
+	// Start with the best (first) result
+	best := quranResults[0]
+	combinedText := best.text
+	verseStart := best.verse
+	verseEnd := best.verse
+
+	// If the verse doesn't end with terminal punctuation, look for
+	// consecutive verses from the same chapter to complete the thought.
+	// This mirrors getVerse() in reminder.dev which extends up to 10 verses.
+	if !isTerminal(combinedText) {
+		for i := 1; i <= 10; i++ {
+			nextVerse := verseEnd + 1
+			found := false
+			for _, qv := range quranResults {
+				if qv.chapter == best.chapter && qv.verse == nextVerse {
+					combinedText += " " + qv.text
+					verseEnd = nextVerse
+					found = true
+					break
+				}
+			}
+			if !found || isTerminal(combinedText) {
+				break
+			}
 		}
 	}
 
-	return nil
+	// Build the reference string with range if multiple verses
+	verseNum := fmt.Sprintf("%d", verseStart)
+	if verseStart != verseEnd {
+		verseNum = fmt.Sprintf("%d-%d", verseStart, verseEnd)
+	}
+
+	ref := ""
+	if best.name != "" && best.chapter != "" {
+		ref = fmt.Sprintf("%s (%s:%s)", best.name, best.chapter, verseNum)
+	} else if best.chapter != "" {
+		ref = fmt.Sprintf("Quran %s:%s", best.chapter, verseNum)
+	}
+
+	return &verseResult{
+		text:    combinedText,
+		ref:     ref,
+		chapter: best.chapter,
+		verse:   fmt.Sprintf("%d", verseStart),
+		source:  "quran",
+		link:    fmt.Sprintf("/quran/%s#%d", best.chapter, verseStart),
+	}
 }
 
 func buildContextualHTML(pick *verseResult) string {
@@ -223,8 +280,8 @@ func buildContextualHTML(pick *verseResult) string {
 
 	// Build link to the specific verse on reminder.dev
 	moreURL := "https://reminder.dev"
-	if pick.source == "quran" && pick.chapter != "" && pick.verse != "" {
-		moreURL = fmt.Sprintf("https://reminder.dev/quran/%s/%s", pick.chapter, pick.verse)
+	if pick.link != "" {
+		moreURL = "https://reminder.dev" + pick.link
 	}
 	sb.WriteString(app.Link("More", moreURL))
 
