@@ -641,6 +641,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 
 func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string {
 	var sb strings.Builder
+	sb.WriteString(`<div style="max-width:600px;margin:0 auto;">`)
 
 	// Back link
 	sb.WriteString(`<div style="margin-bottom:16px;"><a href="/social" style="color:#888;text-decoration:none;">&larr; Back to threads</a></div>`)
@@ -748,6 +749,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 		))
 	}
 
+	sb.WriteString(`</div>`)
 	return sb.String()
 }
 
@@ -947,6 +949,7 @@ func generateCardHTML(allMessages []*Message) string {
 
 func generatePageHTML(visible []*Message, r *http.Request) string {
 	var sb strings.Builder
+	sb.WriteString(`<div style="max-width:600px;margin:0 auto;">`)
 
 	// Compose box (shown to logged-in users)
 	_, acc := auth.TrySession(r)
@@ -1036,6 +1039,7 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 		))
 	}
 
+	sb.WriteString(`</div>`)
 	return sb.String()
 }
 
