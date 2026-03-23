@@ -333,7 +333,7 @@ func handleJSONPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !auth.CanPost(acc.ID) {
-		http.Error(w, "Account too new to post", http.StatusForbidden)
+		http.Error(w, "Account too new to start threads", http.StatusForbidden)
 		return
 	}
 
@@ -367,7 +367,7 @@ func handleDeletePost(w http.ResponseWriter, r *http.Request) {
 
 	postID := r.URL.Query().Get("id")
 	if postID == "" {
-		app.BadRequest(w, r, "Post ID required")
+		app.BadRequest(w, r, "Thread ID required")
 		return
 	}
 
@@ -436,7 +436,7 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ThreadHandler serves the /social/post endpoint — shows a thread and its messages
+// ThreadHandler serves the /social/thread endpoint — shows a thread and its messages
 func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		handleCreateReply(w, r)
