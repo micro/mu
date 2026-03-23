@@ -87,69 +87,54 @@ func Load() {
 		}
 	}
 
+	// Remove system-generated news summary threads (not breaking news)
+	cleaned := false
+	mutex.Lock()
+	var kept []*Message
+	for _, m := range messages {
+		if m.AuthorID == "_system" && m.Author != "Breaking" {
+			cleaned = true
+			continue
+		}
+		kept = append(kept, m)
+	}
+	if cleaned {
+		messages = kept
+		updateCacheLocked()
+	}
+	mutex.Unlock()
+	if cleaned {
+		save()
+		app.Log("social", "Removed system-generated news summary threads")
+	}
+
 	loadedAt = time.Now()
 
-	// Subscribe to news summaries — surface stories as threads
-	go func() {
-		sub := event.Subscribe(event.EventSummaryGenerated)
-		startupCount := 0
-		for evt := range sub.Chan {
-			contentType, _ := evt.Data["type"].(string)
-			if contentType != "news" {
-				continue
-			}
-			summary, _ := evt.Data["summary"].(string)
-			uri, _ := evt.Data["uri"].(string)
-
-			if summary == "" || uri == "" {
-				continue
-			}
-
-			// Throttle during startup: skip most threads in first 30s
-			if time.Since(loadedAt) < 30*time.Second {
-				startupCount++
-				if startupCount > 2 {
-					app.Log("social", "Throttled news during startup: %s", uri)
-					continue
-				}
-			}
-
-			// Take the first sentence or two of the summary as the thread message
-			content := firstSentences(summary, 2)
-			if content == "" {
-				continue
-			}
-			if uri != "" {
-				content += " " + uri
-			}
-			if len(content) > 500 {
-				content = content[:497] + "..."
-			}
-
-			// Look up the article's category from the index
-			itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
-			author := "News"
-			if entry := data.GetByID(itemID); entry != nil {
-				if cat, ok := entry.Metadata["category"].(string); ok && cat != "" {
-					author = cat
-				}
-			}
-
-			id := fmt.Sprintf("%x", md5.Sum([]byte("news:"+uri)))[:16]
-
-			addMessage(&Message{
-				ID:       id,
-				Author:   author,
-				AuthorID: "_system",
-				Content:  content,
-				PostedAt: time.Now(),
-			})
-
-			app.Log("social", "Surfaced %s: %s", author, content[:min(80, len(content))])
-		}
-	}()
-
 	app.Log("social", "Loaded %d messages", len(messages))
+}
+
+// SurfaceBreaking creates a system thread from external sources (e.g., breaking news)
+func SurfaceBreaking(title, link string) {
+	if title == "" {
+		return
+	}
+	content := title
+	if link != "" {
+		content += " " + link
+	}
+	if len(content) > 500 {
+		content = content[:497] + "..."
+	}
+
+	id := fmt.Sprintf("%x", md5.Sum([]byte("breaking:"+link)))[:16]
+
+	addMessage(&Message{
+		ID:       id,
+		Author:   "Breaking",
+		AuthorID: "_system",
+		Content:  content,
+		PostedAt: time.Now(),
+	})
 }
 
 func save() error {
@@ -833,17 +818,20 @@ func generateCardHTML(allMessages []*Message) string {
 		}
 
 		ts := p.PostedAt.Unix()
-		sb.WriteString(fmt.Sprintf(`<a href="/social/thread?id=%s" style="display:block;text-decoration:none;color:inherit;border:none;border-bottom:1px solid #f0f0f0;border-radius:0;padding:8px 0;" class="headline">
-  <div style="font-size:13px;"><b>%s</b> <span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
-  <div style="font-size:13px;margin-top:2px;color:#333;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
-</a>`,
+		sb.WriteString(fmt.Sprintf(`<div class="headline">
+  <a href="/social/thread?id=%s">
+    <span class="title">%s</span>
+  </a>
+  <span class="description" style="overflow-wrap:break-word;word-break:break-word;">%s</span>%s
+  <div class="summary"><span data-timestamp="%d">%s</span>%s</div>
+</div>`,
 			p.ID,
 			htmlpkg.EscapeString(p.Author),
+			content,
+			linkCard,
 			ts,
 			app.TimeAgo(p.PostedAt),
 			replyInfo,
-			content,
-			linkCard,
 		))
 	}
 
@@ -1052,29 +1040,6 @@ func firstSentences(text string, n int) string {
 	return text
 }
 
-// SurfaceBreaking creates a system thread from external sources (e.g., news headlines)
-func SurfaceBreaking(title, link string) {
-	if title == "" {
-		return
-	}
-	content := title
-	if link != "" {
-		content += " " + link
-	}
-	if len(content) > 500 {
-		content = content[:497] + "..."
-	}
-
-	id := fmt.Sprintf("%x", md5.Sum([]byte("breaking:"+link)))[:16]
-
-	addMessage(&Message{
-		ID:       id,
-		Author:   "Breaking",
-		AuthorID: "_system",
-		Content:  content,
-		PostedAt: time.Now(),
-	})
-}
 
 // stripHTML removes HTML tags from a string
 func stripHTML(s string) string {

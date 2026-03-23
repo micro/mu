@@ -45,7 +45,7 @@ func startContextualRefresh() {
 
 	for {
 		refreshContextualReminder()
-		time.Sleep(2 * time.Hour)
+		time.Sleep(time.Hour)
 	}
 }
 
