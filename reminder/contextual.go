@@ -11,6 +11,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/news"
 )
 
@@ -84,6 +85,8 @@ func refreshContextualReminder() {
 	reminderHTML = html
 	data.SaveFile("reminder.html", html)
 	reminderMutex.Unlock()
+
+	event.Publish(event.Event{Type: "reminder_updated"})
 
 	lastContextHash = query
 

@@ -788,6 +788,12 @@ func Load() {
 			ForceRefresh()
 		}
 	}()
+	go func() {
+		sub := event.Subscribe("reminder_updated")
+		for range sub.Chan {
+			ForceRefresh()
+		}
+	}()
 }
 
 // RefreshCards updates card content and timestamps if content changed
