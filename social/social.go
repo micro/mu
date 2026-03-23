@@ -253,7 +253,7 @@ func handleCreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !auth.CanPost(acc.ID) {
-		app.BadRequest(w, r, "Your account is too new to post. Please wait a bit.")
+		app.BadRequest(w, r, "Your account is too new to start a thread. Please wait a bit.")
 		return
 	}
 
@@ -268,11 +268,11 @@ func handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(content) > 500 {
-		app.BadRequest(w, r, "Posts must be 500 characters or less")
+		app.BadRequest(w, r, "Messages must be 500 characters or less")
 		return
 	}
 	if len(strings.Fields(content)) < 2 {
-		app.BadRequest(w, r, "Post must contain at least 2 words")
+		app.BadRequest(w, r, "Message must contain at least 2 words")
 		return
 	}
 
@@ -291,7 +291,7 @@ func handleCreatePost(w http.ResponseWriter, r *http.Request) {
 	// Async content moderation
 	go flag.CheckContent("social", postID, "", content)
 
-	app.Log("social", "New post by %s (%s)", acc.Name, acc.ID)
+	app.Log("social", "New thread by %s (%s)", acc.Name, acc.ID)
 
 	if app.SendsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{"success": true, "id": postID})
@@ -338,7 +338,7 @@ func handleJSONPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(content) > 500 {
-		http.Error(w, "Posts must be 500 characters or less", 400)
+		http.Error(w, "Messages must be 500 characters or less", 400)
 		return
 	}
 
@@ -392,7 +392,7 @@ func handleDeletePost(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 
 	if !found {
-		http.Error(w, "Post not found", 404)
+		http.Error(w, "Thread not found", 404)
 		return
 	}
 
@@ -431,12 +431,12 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 
 	app.Respond(w, r, app.Response{
 		Title:       "Social",
-		Description: "Share what's on your mind",
+		Description: "Threads and conversations",
 		HTML:        body,
 	})
 }
 
-// ThreadHandler serves the /social/post endpoint — shows a single post and its replies
+// ThreadHandler serves the /social/post endpoint — shows a thread and its messages
 func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		handleCreateReply(w, r)
@@ -453,7 +453,7 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 	p := getPost(postID)
 	if p == nil {
 		mutex.RUnlock()
-		http.Error(w, "Post not found", 404)
+		http.Error(w, "Thread not found", 404)
 		return
 	}
 	// If this is a reply, redirect to the parent thread
@@ -473,7 +473,7 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 	body := generateThreadHTML(p, replies, r)
 
 	app.Respond(w, r, app.Response{
-		Title:       p.Author + " on Social",
+		Title:       "Thread by " + p.Author,
 		Description: truncate(p.Content, 160),
 		HTML:        body,
 	})
@@ -487,7 +487,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !auth.CanPost(acc.ID) {
-		app.BadRequest(w, r, "Your account is too new to reply. Please wait a bit.")
+		app.BadRequest(w, r, "Your account is too new to send messages. Please wait a bit.")
 		return
 	}
 
@@ -500,15 +500,15 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 	content := strings.TrimSpace(r.FormValue("content"))
 
 	if parentID == "" {
-		app.BadRequest(w, r, "Missing parent post")
+		app.BadRequest(w, r, "Missing thread")
 		return
 	}
 	if content == "" {
-		app.BadRequest(w, r, "Reply cannot be empty")
+		app.BadRequest(w, r, "Message cannot be empty")
 		return
 	}
 	if len(content) > 500 {
-		app.BadRequest(w, r, "Replies must be 500 characters or less")
+		app.BadRequest(w, r, "Messages must be 500 characters or less")
 		return
 	}
 
@@ -517,7 +517,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 	parent := getPost(parentID)
 	mutex.RUnlock()
 	if parent == nil {
-		app.BadRequest(w, r, "Post not found")
+		app.BadRequest(w, r, "Thread not found")
 		return
 	}
 
@@ -535,7 +535,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 
 	go flag.CheckContent("social", replyID, "", content)
 
-	app.Log("social", "Reply by %s to post %s", acc.Name, parentID)
+	app.Log("social", "Message by %s in thread %s", acc.Name, parentID)
 
 	if app.SendsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{"success": true, "id": replyID})
@@ -548,7 +548,7 @@ func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
 	var sb strings.Builder
 
 	// Back link
-	sb.WriteString(`<div style="margin-bottom:16px;"><a href="/social" style="color:#888;text-decoration:none;">&larr; Back to feed</a></div>`)
+	sb.WriteString(`<div style="margin-bottom:16px;"><a href="/social" style="color:#888;text-decoration:none;">&larr; Back to threads</a></div>`)
 
 	// Original post (full, no truncation)
 	content := htmlpkg.EscapeString(p.Content)
@@ -568,7 +568,7 @@ func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
 	canDelete := acc != nil && (acc.ID == p.AuthorID || acc.Admin)
 	deleteBtn := ""
 	if canDelete {
-		deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this post?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.href='/social')}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
+		deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this thread?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.href='/social')}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
 	}
 
 	ts := p.PostedAt.Unix()
@@ -587,13 +587,13 @@ func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
 		linkCard,
 	))
 
-	// Reply count
-	replyLabel := "replies"
+	// Message count
+	msgLabel := "messages"
 	if len(replies) == 1 {
-		replyLabel = "reply"
+		msgLabel = "message"
 	}
 	if len(replies) > 0 {
-		sb.WriteString(fmt.Sprintf(`<div style="padding:12px 0;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0;">%d %s</div>`, len(replies), replyLabel))
+		sb.WriteString(fmt.Sprintf(`<div style="padding:12px 0;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0;">%d %s</div>`, len(replies), msgLabel))
 	}
 
 	// Reply form (for logged-in users)
@@ -601,11 +601,11 @@ func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
 		sb.WriteString(fmt.Sprintf(`<div style="margin:16px 0;">
   <form method="POST" action="/social/post" id="reply-form">
     <input type="hidden" name="reply_to" value="%s">
-    <textarea name="content" id="reply-content" rows="2" placeholder="Write a reply..." required
+    <textarea name="content" id="reply-content" rows="2" placeholder="Write a message..." required
       style="width:100%%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
       <span id="reply-char-count" style="font-size:12px;color:#888;">0/500</span>
-      <button type="submit" style="padding:6px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Reply</button>
+      <button type="submit" style="padding:6px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Send</button>
     </div>
   </form>
   <script>
@@ -619,11 +619,11 @@ func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
 </div>`, p.ID))
 	} else {
 		sb.WriteString(`<div style="margin:16px 0;padding:12px;background:#f9f9f9;border-radius:8px;text-align:center;">
-  <a href="/login" style="color:#000;font-weight:bold;">Log in</a> to reply
+  <a href="/login" style="color:#000;font-weight:bold;">Log in</a> to join the conversation
 </div>`)
 	}
 
-	// Replies (chronological — oldest first, so conversation reads naturally)
+	// Messages (chronological — oldest first, so conversation reads naturally)
 	for _, reply := range replies {
 		if flag.IsHidden("social", reply.ID) {
 			continue
@@ -634,7 +634,7 @@ func generateThreadHTML(p *Post, replies []*Post, r *http.Request) string {
 		canDeleteReply := acc != nil && (acc.ID == reply.AuthorID || acc.Admin)
 		rDeleteBtn := ""
 		if canDeleteReply {
-			rDeleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this reply?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, reply.ID)
+			rDeleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this message?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, reply.ID)
 		}
 
 		rts := reply.PostedAt.Unix()
@@ -766,7 +766,7 @@ func indexPosts(toIndex []*Post) {
 
 func generateCardHTML(allPosts []*Post) string {
 	if len(allPosts) == 0 {
-		return `<p style="color:#888;">No posts yet. Be the first to share something.</p>`
+		return `<p style="color:#888;">No threads yet. Be the first to start one.</p>`
 	}
 
 	// Show up to 4 latest top-level posts, one per author for variety
@@ -822,9 +822,9 @@ func generateCardHTML(allPosts []*Post) string {
 		rc := replyCount(p.ID)
 		replyInfo := ""
 		if rc > 0 {
-			noun := "replies"
+			noun := "messages"
 			if rc == 1 {
-				noun = "reply"
+				noun = "message"
 			}
 			replyInfo = fmt.Sprintf(` · <a href="/social/post?id=%s" style="color:#888;text-decoration:none;">%d %s</a>`, p.ID, rc, noun)
 		}
@@ -855,11 +855,11 @@ func generatePageHTML(visible []*Post, r *http.Request) string {
 	if acc != nil {
 		sb.WriteString(`<div style="margin-bottom:20px;">
   <form method="POST" action="/social" id="social-form">
-    <textarea name="content" id="social-content" rows="3" placeholder="What's on your mind?" required
+    <textarea name="content" id="social-content" rows="3" placeholder="Start a thread..." required
       style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
       <span id="social-char-count" style="font-size:12px;color:#888;">0/500</span>
-      <button type="submit" style="padding:8px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Post</button>
+      <button type="submit" style="padding:8px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Start Thread</button>
     </div>
   </form>
   <script>
@@ -873,12 +873,12 @@ func generatePageHTML(visible []*Post, r *http.Request) string {
 </div>`)
 	} else {
 		sb.WriteString(`<div style="margin-bottom:20px;padding:16px;background:#f9f9f9;border-radius:8px;text-align:center;">
-  <a href="/login" style="color:#000;font-weight:bold;">Log in</a> to share a post
+  <a href="/login" style="color:#000;font-weight:bold;">Log in</a> to start a thread
 </div>`)
 	}
 
 	if len(visible) == 0 {
-		sb.WriteString(`<p style="color:#888;">No posts yet. Be the first to share something.</p>`)
+		sb.WriteString(`<p style="color:#888;">No threads yet. Be the first to start one.</p>`)
 		return sb.String()
 	}
 
@@ -903,18 +903,18 @@ func generatePageHTML(visible []*Post, r *http.Request) string {
 		canDelete := acc != nil && (acc.ID == p.AuthorID || acc.Admin)
 		deleteBtn := ""
 		if canDelete {
-			deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this post?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
+			deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this thread?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
 		}
 
-		// Reply count
+		// Message count
 		mutex.RLock()
 		rc := replyCount(p.ID)
 		mutex.RUnlock()
-		replyLink := fmt.Sprintf(`<a href="/social/post?id=%s" style="color:#888;text-decoration:none;font-size:12px;">reply</a>`, p.ID)
+		replyLink := fmt.Sprintf(`<a href="/social/post?id=%s" style="color:#888;text-decoration:none;font-size:12px;">open thread</a>`, p.ID)
 		if rc > 0 {
-			noun := "replies"
+			noun := "messages"
 			if rc == 1 {
-				noun = "reply"
+				noun = "message"
 			}
 			replyLink = fmt.Sprintf(`<a href="/social/post?id=%s" style="color:#888;text-decoration:none;font-size:12px;">%d %s</a>`, p.ID, rc, noun)
 		}
