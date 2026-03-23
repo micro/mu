@@ -35,7 +35,7 @@ func FetchContext(articleURL, articleContent string) *SocialContext {
 			continue
 		}
 
-		post, err := FetchPost(u)
+		post, err := FetchExternalPost(u)
 		if err != nil {
 			app.Log("social", "Failed to fetch context post %s: %v", u, err)
 			continue

@@ -417,6 +417,7 @@ func main() {
 		"/blog":            false, // Public viewing, auth for posting
 		"/markets":         false, // Public viewing
 		"/social":          false, // Public viewing, auth for search
+		"/social/thread":   false, // Public thread view, auth for messaging
 		"/places":          false, // Public map, auth for search
 		"/weather":         false, // Public page, auth for forecast lookup
 		"/mail":            true,  // Require auth for inbox
@@ -575,6 +576,7 @@ func main() {
 
 	// serve social page
 	http.HandleFunc("/social", social.Handler)
+	http.HandleFunc("/social/thread", social.ThreadHandler)
 
 	// redirect /reminder to reminder.dev
 	http.HandleFunc("/reminder", reminder.Handler)
@@ -858,7 +860,7 @@ func runHealthChecks() []app.ServiceHealth {
 		{"Chat", func() bool { return os.Getenv("ANTHROPIC_API_KEY") != "" }},
 		{"Mail", func() bool { return os.Getenv("MAIL_DOMAIN") != "" }},
 		{"Markets", func() bool { return len(markets.GetAllPrices()) > 0 }},
-		{"Social", func() bool { return len(social.GetPosts()) > 0 }},
+		{"Social", func() bool { return len(social.GetThreads()) > 0 }},
 	}
 
 	results := make([]app.ServiceHealth, len(checks))
