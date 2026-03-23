@@ -70,14 +70,14 @@ func refreshContextualReminder() {
 	}
 
 	// Find the best Quran verse from results
-	verse, ref := pickBestVerse(result)
-	if verse == "" {
+	pick := pickBestVerse(result)
+	if pick == nil {
 		app.Log("reminder", "No suitable Quran verse found in search results")
 		return
 	}
 
 	// Build the HTML card
-	html := buildContextualHTML(verse, ref)
+	html := buildContextualHTML(pick)
 
 	reminderMutex.Lock()
 	contextualHTML = html
@@ -92,8 +92,8 @@ func refreshContextualReminder() {
 
 	// Cache the contextual result
 	cacheData := map[string]interface{}{
-		"verse":     verse,
-		"reference": ref,
+		"verse":     pick.text,
+		"reference": pick.ref,
 		"query":     query,
 		"timestamp": time.Now().Unix(),
 	}
@@ -101,7 +101,7 @@ func refreshContextualReminder() {
 		data.SaveFile("reminder_contextual.json", string(b))
 	}
 
-	app.Log("reminder", "Updated contextual reminder: %s", truncate(verse, 80))
+	app.Log("reminder", "Updated contextual reminder: %s", truncate(pick.text, 80))
 }
 
 // buildNewsQuery looks at the current news headlines and builds a thematic
@@ -169,8 +169,17 @@ func searchReminder(query string) (*SearchResponse, error) {
 	return &result, nil
 }
 
+// verseResult holds the picked verse along with its metadata for URL building
+type verseResult struct {
+	text    string
+	ref     string
+	chapter string
+	verse   string
+	source  string
+}
+
 // pickBestVerse finds the highest-scoring Quran verse from search results
-func pickBestVerse(result *SearchResponse) (text string, ref string) {
+func pickBestVerse(result *SearchResponse) *verseResult {
 	for _, r := range result.References {
 		source, _ := r.Metadata["source"].(string)
 		if source != "quran" {
@@ -181,38 +190,42 @@ func pickBestVerse(result *SearchResponse) (text string, ref string) {
 		name, _ := r.Metadata["name"].(string)
 		verse, _ := r.Metadata["verse"].(string)
 
+		ref := ""
 		if name != "" && chapter != "" && verse != "" {
 			ref = fmt.Sprintf("%s (%s:%s)", name, chapter, verse)
 		} else if chapter != "" && verse != "" {
 			ref = fmt.Sprintf("Quran %s:%s", chapter, verse)
 		}
 
-		return r.Text, ref
+		return &verseResult{text: r.Text, ref: ref, chapter: chapter, verse: verse, source: "quran"}
 	}
 
 	// No Quran verse found, try names of Allah
 	for _, r := range result.References {
 		source, _ := r.Metadata["source"].(string)
 		if source == "names" {
-			return r.Text, "Names of Allah"
+			return &verseResult{text: r.Text, ref: "Names of Allah", source: "names"}
 		}
 	}
 
-	return "", ""
+	return nil
 }
 
-func buildContextualHTML(verse, ref string) string {
+func buildContextualHTML(pick *verseResult) string {
 	var sb strings.Builder
 	sb.WriteString(`<div class="item"><div class="verse">`)
-	sb.WriteString(htmlpkg.EscapeString(verse))
+	sb.WriteString(htmlpkg.EscapeString(pick.text))
 	sb.WriteString(`</div>`)
-	if ref != "" {
-		sb.WriteString(fmt.Sprintf(`<div style="font-size:12px;color:#888;margin-top:4px;">— %s</div>`, htmlpkg.EscapeString(ref)))
+	if pick.ref != "" {
+		sb.WriteString(fmt.Sprintf(`<div style="font-size:12px;color:#888;margin-top:4px;">— %s</div>`, htmlpkg.EscapeString(pick.ref)))
 	}
 	sb.WriteString(`</div>`)
 
-	// Build link to the verse on reminder.dev
+	// Build link to the specific verse on reminder.dev
 	moreURL := "https://reminder.dev"
+	if pick.source == "quran" && pick.chapter != "" && pick.verse != "" {
+		moreURL = fmt.Sprintf("https://reminder.dev/quran/%s/%s", pick.chapter, pick.verse)
+	}
 	sb.WriteString(app.Link("More", moreURL))
 
 	return sb.String()
