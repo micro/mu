@@ -11,6 +11,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/news"
 )
 
@@ -69,14 +70,14 @@ func refreshContextualReminder() {
 	}
 
 	// Find the best Quran verse from results
-	verse, ref := pickBestVerse(result)
-	if verse == "" {
+	pick := pickBestVerse(result)
+	if pick == nil {
 		app.Log("reminder", "No suitable Quran verse found in search results")
 		return
 	}
 
 	// Build the HTML card
-	html := buildContextualHTML(verse, ref)
+	html := buildContextualHTML(pick)
 
 	reminderMutex.Lock()
 	contextualHTML = html
@@ -85,12 +86,14 @@ func refreshContextualReminder() {
 	data.SaveFile("reminder.html", html)
 	reminderMutex.Unlock()
 
+	event.Publish(event.Event{Type: "reminder_updated"})
+
 	lastContextHash = query
 
 	// Cache the contextual result
 	cacheData := map[string]interface{}{
-		"verse":     verse,
-		"reference": ref,
+		"verse":     pick.text,
+		"reference": pick.ref,
 		"query":     query,
 		"timestamp": time.Now().Unix(),
 	}
@@ -98,7 +101,7 @@ func refreshContextualReminder() {
 		data.SaveFile("reminder_contextual.json", string(b))
 	}
 
-	app.Log("reminder", "Updated contextual reminder: %s", truncate(verse, 80))
+	app.Log("reminder", "Updated contextual reminder: %s", truncate(pick.text, 80))
 }
 
 // buildNewsQuery looks at the current news headlines and builds a thematic
@@ -166,50 +169,120 @@ func searchReminder(query string) (*SearchResponse, error) {
 	return &result, nil
 }
 
-// pickBestVerse finds the highest-scoring Quran verse from search results
-func pickBestVerse(result *SearchResponse) (text string, ref string) {
+// verseResult holds the picked verse along with its metadata for URL building
+type verseResult struct {
+	text    string
+	ref     string
+	chapter string
+	verse   string
+	source  string // "quran", "names", "bukhari"
+	link    string // path on reminder.dev
+}
+
+// isTerminal checks if text ends with terminal punctuation (complete thought)
+func isTerminal(text string) bool {
+	text = strings.TrimSpace(text)
+	if len(text) == 0 {
+		return true
+	}
+	last := text[len(text)-1]
+	return last == '.' || last == '!' || last == '?' || last == '"'
+}
+
+// pickBestVerse finds the highest-scoring Quran verse from search results.
+// Like reminder.dev, if a verse doesn't end with terminal punctuation,
+// it looks for consecutive verses from the same chapter to complete the thought.
+func pickBestVerse(result *SearchResponse) *verseResult {
+	// Collect all Quran verses indexed by chapter:verse for continuation lookup
+	type qverse struct {
+		text    string
+		chapter string
+		name    string
+		verse   int
+	}
+	var quranResults []qverse
 	for _, r := range result.References {
 		source, _ := r.Metadata["source"].(string)
 		if source != "quran" {
 			continue
 		}
-
-		chapter, _ := r.Metadata["chapter"].(string)
-		name, _ := r.Metadata["name"].(string)
-		verse, _ := r.Metadata["verse"].(string)
-
-		if name != "" && chapter != "" && verse != "" {
-			ref = fmt.Sprintf("%s (%s:%s)", name, chapter, verse)
-		} else if chapter != "" && verse != "" {
-			ref = fmt.Sprintf("Quran %s:%s", chapter, verse)
-		}
-
-		return r.Text, ref
+		ch, _ := r.Metadata["chapter"].(string)
+		nm, _ := r.Metadata["name"].(string)
+		vs, _ := r.Metadata["verse"].(string)
+		vn := 0
+		fmt.Sscanf(vs, "%d", &vn)
+		quranResults = append(quranResults, qverse{text: r.Text, chapter: ch, name: nm, verse: vn})
 	}
 
-	// No Quran verse found, try names of Allah
-	for _, r := range result.References {
-		source, _ := r.Metadata["source"].(string)
-		if source == "names" {
-			return r.Text, "Names of Allah"
+	if len(quranResults) == 0 {
+		return nil
+	}
+
+	// Start with the best (first) result
+	best := quranResults[0]
+	combinedText := best.text
+	verseStart := best.verse
+	verseEnd := best.verse
+
+	// If the verse doesn't end with terminal punctuation, look for
+	// consecutive verses from the same chapter to complete the thought.
+	// This mirrors getVerse() in reminder.dev which extends up to 10 verses.
+	if !isTerminal(combinedText) {
+		for i := 1; i <= 10; i++ {
+			nextVerse := verseEnd + 1
+			found := false
+			for _, qv := range quranResults {
+				if qv.chapter == best.chapter && qv.verse == nextVerse {
+					combinedText += " " + qv.text
+					verseEnd = nextVerse
+					found = true
+					break
+				}
+			}
+			if !found || isTerminal(combinedText) {
+				break
+			}
 		}
 	}
 
-	return "", ""
+	// Build the reference string with range if multiple verses
+	verseNum := fmt.Sprintf("%d", verseStart)
+	if verseStart != verseEnd {
+		verseNum = fmt.Sprintf("%d-%d", verseStart, verseEnd)
+	}
+
+	ref := ""
+	if best.name != "" && best.chapter != "" {
+		ref = fmt.Sprintf("%s (%s:%s)", best.name, best.chapter, verseNum)
+	} else if best.chapter != "" {
+		ref = fmt.Sprintf("Quran %s:%s", best.chapter, verseNum)
+	}
+
+	return &verseResult{
+		text:    combinedText,
+		ref:     ref,
+		chapter: best.chapter,
+		verse:   fmt.Sprintf("%d", verseStart),
+		source:  "quran",
+		link:    fmt.Sprintf("/quran/%s#%d", best.chapter, verseStart),
+	}
 }
 
-func buildContextualHTML(verse, ref string) string {
+func buildContextualHTML(pick *verseResult) string {
 	var sb strings.Builder
 	sb.WriteString(`<div class="item"><div class="verse">`)
-	sb.WriteString(htmlpkg.EscapeString(verse))
+	sb.WriteString(htmlpkg.EscapeString(pick.text))
 	sb.WriteString(`</div>`)
-	if ref != "" {
-		sb.WriteString(fmt.Sprintf(`<div style="font-size:12px;color:#888;margin-top:4px;">— %s</div>`, htmlpkg.EscapeString(ref)))
+	if pick.ref != "" {
+		sb.WriteString(fmt.Sprintf(`<div style="font-size:12px;color:#888;margin-top:4px;">— %s</div>`, htmlpkg.EscapeString(pick.ref)))
 	}
 	sb.WriteString(`</div>`)
 
-	// Build link to the verse on reminder.dev
+	// Build link to the specific verse on reminder.dev
 	moreURL := "https://reminder.dev"
+	if pick.link != "" {
+		moreURL = "https://reminder.dev" + pick.link
+	}
 	sb.WriteString(app.Link("More", moreURL))
 
 	return sb.String()

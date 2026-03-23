@@ -10,6 +10,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/internal/event"
 )
 
 var (
@@ -91,8 +92,11 @@ func fetchReminder() {
 	if !contextualReady {
 		reminderHTML = html
 		data.SaveFile("reminder.html", html)
+		reminderMutex.Unlock()
+		event.Publish(event.Event{Type: "reminder_updated"})
+	} else {
+		reminderMutex.Unlock()
 	}
-	reminderMutex.Unlock()
 
 	// Extract message and updated for indexing
 	message := ""
