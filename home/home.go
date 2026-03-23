@@ -17,6 +17,7 @@ import (
 	"mu/blog"
 	"mu/internal/event"
 	"mu/news"
+	"mu/social"
 	"mu/markets"
 	"mu/reminder"
 	"mu/video"
@@ -78,7 +79,7 @@ var landingTemplate = `<html lang="en">
       Apps without ads, algorithms, or tracking.
       </p>
       <p style="color:#555;max-width:600px;margin:0 auto 10px;text-align:center;">
-      News, markets, video, search, and AI tools — all in one place. Build your own or let the agent build one for you.
+      News, social, markets, video, search, and AI tools — all in one place. Build your own or let the agent build one for you.
       </p>
 
 
@@ -203,6 +204,13 @@ var landingTemplate = `<html lang="en">
             <img src="/news.png" alt="News" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
             <b>News</b>
             <div class="small">Headlines and articles with AI summaries</div>
+          </div>
+        </a>
+        <a href="/social" style="text-decoration: none; color: inherit;">
+          <div class="block">
+            <img src="/social.svg" alt="Social" style="width: 32px; height: 32px; margin-bottom: 8px; filter: brightness(0);">
+            <b>Social</b>
+            <div class="small">Keep track of what's happening</div>
           </div>
         </a>
         <a href="/video" style="text-decoration: none; color: inherit;">
@@ -716,6 +724,7 @@ func Load() {
 		"reminder": reminder.ReminderHTML,
 		"video":    video.Latest,
 		"apps":     apps.Preview,
+		"social":   social.CardHTML,
 	}
 
 	// Build Cards array from config

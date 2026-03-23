@@ -205,6 +205,22 @@ var tools = []Tool{
 		},
 	},
 	{
+		Name:        "social",
+		Description: "Get the latest social media posts from followed accounts",
+		Method:      "GET",
+		Path:        "/social",
+	},
+	{
+		Name:        "social_search",
+		Description: "Search social media posts",
+		Method:      "POST",
+		Path:        "/social",
+		WalletOp:    "social_search",
+		Params: []ToolParam{
+			{Name: "query", Type: "string", Description: "Search query for social posts", Required: true},
+		},
+	},
+	{
 		Name:        "video",
 		Description: "Get the latest videos",
 		Method:      "GET",

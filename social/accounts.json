@@ -1,0 +1,34 @@
+{
+  "Crypto": [
+    {"handle": "VitalikButerin", "platform": "x"},
+    {"handle": "caboricmoney", "platform": "x"}
+  ],
+  "Dev": [
+    {"handle": "github", "platform": "x"},
+    {"handle": "ThePrimeagen", "platform": "x"}
+  ],
+  "Finance": [
+    {"handle": "Bloomberg", "platform": "x"},
+    {"handle": "WSJ", "platform": "x"}
+  ],
+  "Islam": [
+    {"handle": "IslamChannel", "platform": "x"},
+    {"handle": "MuftiMenk", "platform": "x"}
+  ],
+  "Politics": [
+    {"handle": "realDonaldTrump", "platform": "truthsocial"},
+    {"handle": "POTUS", "platform": "x"}
+  ],
+  "Tech": [
+    {"handle": "elonmusk", "platform": "x"},
+    {"handle": "OpenAI", "platform": "x"}
+  ],
+  "UK": [
+    {"handle": "BBCNews", "platform": "x"},
+    {"handle": "SkyNews", "platform": "x"}
+  ],
+  "World": [
+    {"handle": "Reuters", "platform": "x"},
+    {"handle": "AP", "platform": "x"}
+  ]
+}

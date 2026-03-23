@@ -27,6 +27,7 @@ mu/
 ├── places/                 # Map and location search
 ├── reminder/               # Daily news reminder/briefing
 ├── search/                 # Local index search + Brave web search
+├── social/                 # Social media feed aggregation (X, Truth Social)
 ├── user/                   # User profiles, presence tracking
 ├── video/                  # YouTube channel aggregation
 ├── wallet/                 # Credit system, Stripe payments
@@ -75,6 +76,7 @@ Building blocks are **features**. Each building block:
 | `places`    | `/places`                | `app`, `auth`, `data`               |
 | `reminder`  | `/reminder`              | `app`, `auth`, `data`               |
 | `search`    | `/search`, `/web`        | `ai`, `app`, `auth`, `data`         |
+| `social`    | `/social`                | `app`, `auth`, `data`               |
 | `user`      | `/@{username}`           | `app`, `auth`, `data`               |
 | `video`     | `/video`                 | `app`, `auth`, `data`               |
 | `wallet`    | `/wallet`                | `app`, `auth`, `data`               |
@@ -88,7 +90,7 @@ Some packages act as **composition layers** that aggregate content from multiple
 building blocks to render combined views:
 
 - **`home/`** — renders dashboard cards by importing `blog`, `news`, `markets`,
-  `reminder`, `video`, `agent`. This is intentional: home is a
+  `reminder`, `social`, `video`, `agent`. This is intentional: home is a
   read-only aggregation view.
 
 - **`news/digest/`** — generates a daily news digest by pulling from `news`,
@@ -99,6 +101,10 @@ building blocks to render combined views:
   `reminder`, `search`, `video` as context. The opinion is published as a blog
   post. The editorial memory system (`opinion_memory.go`) tracks stances,
   directives, and topic history so the agent evolves its perspective over time.
+
+- **`news` ← `social` (via callback)** — `main.go` wires `news.FetchSocialContext`
+  to `social.FetchContext` so news articles that reference social posts can show
+  the original post inline. No direct import — uses a function callback.
 
 These cross-building-block imports are documented exceptions. The long-term goal
 is to replace them with the event system (`data.Subscribe`/`data.Publish`).
@@ -123,6 +129,8 @@ weather.Load()    // (no-op)
 markets.Load()    // Market data
 reminder.Load()   // Daily briefing
 wallet.Load()     // Credit balances
+apps.Load()       // User apps
+social.Load()     // Social feeds
 home.Load()       // Dashboard cards
 agent.Load()      // (no-op)
 digest.Load()     // Digest scheduler

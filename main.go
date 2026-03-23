@@ -31,6 +31,7 @@ import (
 	"mu/reminder"
 	"mu/places"
 	"mu/search"
+	"mu/social"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -88,6 +89,15 @@ func main() {
 
 	// load apps
 	apps.Load()
+
+	// load social
+	social.Load()
+
+	// Wire social context into news article views
+	news.FetchSocialContext = func(articleURL, articleContent string) string {
+		ctx := social.FetchContext(articleURL, articleContent)
+		return social.RenderContextHTML(ctx)
+	}
 
 	// load the home cards
 	home.Load()
@@ -406,6 +416,7 @@ func main() {
 		"/home":            false, // Public viewing
 		"/blog":            false, // Public viewing, auth for posting
 		"/markets":         false, // Public viewing
+		"/social":          false, // Public viewing, auth for search
 		"/places":          false, // Public map, auth for search
 		"/weather":         false, // Public page, auth for forecast lookup
 		"/mail":            true,  // Require auth for inbox
@@ -561,6 +572,9 @@ func main() {
 
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
+
+	// serve social page
+	http.HandleFunc("/social", social.Handler)
 
 	// redirect /reminder to reminder.dev
 	http.HandleFunc("/reminder", reminder.Handler)
@@ -844,6 +858,7 @@ func runHealthChecks() []app.ServiceHealth {
 		{"Chat", func() bool { return os.Getenv("ANTHROPIC_API_KEY") != "" }},
 		{"Mail", func() bool { return os.Getenv("MAIL_DOMAIN") != "" }},
 		{"Markets", func() bool { return len(markets.GetAllPrices()) > 0 }},
+		{"Social", func() bool { return len(social.GetPosts()) > 0 }},
 	}
 
 	results := make([]app.ServiceHealth, len(checks))

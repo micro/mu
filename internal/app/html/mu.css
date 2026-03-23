@@ -2232,11 +2232,12 @@ a.highlight {
 
   /* Reorder cards on mobile */
   #reminder { order: 1; }
-  #news { order: 2; }
-  #markets { order: 3; }
-  #blog { order: 4; }
-  #video { order: 5; }
-  #home-chat { order: 6; }
+  #social { order: 2; }
+  #news { order: 3; }
+  #markets { order: 4; }
+  #blog { order: 5; }
+  #video { order: 6; }
+  #home-chat { order: 7; }
 
   .cover {
     display: block;
