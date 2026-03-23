@@ -603,8 +603,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		}
 		count++
 		postURL := ""
-		if m, ok := entry.Metadata.(map[string]interface{}); ok {
-			if u, ok := m["url"].(string); ok {
+		if entry.Metadata != nil {
+			if u, ok := entry.Metadata["url"].(string); ok {
 				postURL = u
 			}
 		}
