@@ -87,27 +87,6 @@ func Load() {
 		}
 	}
 
-	// Remove system-generated news summary threads (not breaking news)
-	cleaned := false
-	mutex.Lock()
-	var kept []*Message
-	for _, m := range messages {
-		if m.AuthorID == "_system" && m.Author != "Breaking" {
-			cleaned = true
-			continue
-		}
-		kept = append(kept, m)
-	}
-	if cleaned {
-		messages = kept
-		updateCacheLocked()
-	}
-	mutex.Unlock()
-	if cleaned {
-		save()
-		app.Log("social", "Removed system-generated news summary threads")
-	}
-
 	loadedAt = time.Now()
 
 	// Detect breaking stories — headlines reported by multiple sources
@@ -641,7 +620,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 
 func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string {
 	var sb strings.Builder
-	sb.WriteString(`<div style="max-width:600px;margin:0 auto;">`)
+	sb.WriteString(`<div style="max-width:600px;">`)
 
 	// Back link
 	sb.WriteString(`<div style="margin-bottom:16px;"><a href="/social" style="color:#888;text-decoration:none;">&larr; Back to threads</a></div>`)
@@ -949,7 +928,7 @@ func generateCardHTML(allMessages []*Message) string {
 
 func generatePageHTML(visible []*Message, r *http.Request) string {
 	var sb strings.Builder
-	sb.WriteString(`<div style="max-width:600px;margin:0 auto;">`)
+	sb.WriteString(`<div style="max-width:600px;">`)
 
 	// Compose box (shown to logged-in users)
 	_, acc := auth.TrySession(r)
