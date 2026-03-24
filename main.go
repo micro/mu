@@ -861,7 +861,13 @@ func runHealthChecks() []app.ServiceHealth {
 		go func(idx int, name string, fn func() bool) {
 			start := time.Now()
 			ok := fn()
-			latency := time.Since(start).Round(time.Millisecond).String()
+			d := time.Since(start)
+			var latency string
+			if d < time.Millisecond {
+				latency = "<1ms"
+			} else {
+				latency = d.Round(time.Millisecond).String()
+			}
 			ch <- result{idx, app.ServiceHealth{Name: name, Status: ok, Latency: latency}}
 		}(i, c.name, c.fn)
 	}
