@@ -758,8 +758,8 @@ func main() {
 						http.Redirect(w, r, "/home", 302)
 						return
 					}
-					// Serve dynamic landing page for unauthenticated users
-					home.LandingHandler(w, r)
+					// Redirect unauthenticated users to login
+					http.Redirect(w, r, "/login", 302)
 					return
 				}
 			}
