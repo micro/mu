@@ -647,14 +647,18 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 	}
 
 	ts := p.PostedAt.Unix()
+	threadAuthorHTML := fmt.Sprintf(`<b>%s</b>`, htmlpkg.EscapeString(p.Author))
+	if p.AuthorID == "_system" {
+		threadAuthorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
+	}
 	sb.WriteString(fmt.Sprintf(`<div class="headline" style="border-bottom:2px solid #eee;">
   <div style="display:flex;justify-content:space-between;align-items:baseline;">
-    <div><b>%s</b></div>
+    <div>%s</div>
     <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
   </div>
   <div style="margin-top:8px;font-size:15px;line-height:1.5;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
 </div>`,
-		htmlpkg.EscapeString(p.Author),
+		threadAuthorHTML,
 		ts,
 		app.TimeAgo(p.PostedAt),
 		deleteBtn,
@@ -906,6 +910,10 @@ func generateCardHTML(allMessages []*Message) string {
 		}
 
 		ts := p.PostedAt.Unix()
+		authorHTML := htmlpkg.EscapeString(p.Author)
+		if p.AuthorID == "_system" {
+			authorHTML = fmt.Sprintf(`<span class="category">%s</span>`, authorHTML)
+		}
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
   <a href="/social/thread?id=%s">
     <span class="title">%s</span>
@@ -914,7 +922,7 @@ func generateCardHTML(allMessages []*Message) string {
   <div class="summary"><span data-timestamp="%d">%s</span>%s</div>
 </div>`,
 			p.ID,
-			htmlpkg.EscapeString(p.Author),
+			authorHTML,
 			content,
 			linkCard,
 			ts,
@@ -1000,15 +1008,19 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 		}
 
 		ts := p.PostedAt.Unix()
+		authorHTML := fmt.Sprintf(`<b>%s</b>`, htmlpkg.EscapeString(p.Author))
+		if p.AuthorID == "_system" {
+			authorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
+		}
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
   <div style="display:flex;justify-content:space-between;align-items:baseline;">
-    <div><b>%s</b></div>
+    <div>%s</div>
     <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
   </div>
   <div style="margin-top:4px;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
   <div style="margin-top:6px;">%s</div>
 </div>`,
-			htmlpkg.EscapeString(p.Author),
+			authorHTML,
 			ts,
 			app.TimeAgo(p.PostedAt),
 			deleteBtn,
