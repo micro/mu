@@ -2232,9 +2232,9 @@ a.highlight {
 
   /* Reorder cards on mobile */
   #reminder { order: 1; }
-  #social { order: 2; }
-  #news { order: 3; }
-  #markets { order: 4; }
+  #markets { order: 2; }
+  #social { order: 3; }
+  #news { order: 4; }
   #blog { order: 5; }
   #video { order: 6; }
   #home-chat { order: 7; }
