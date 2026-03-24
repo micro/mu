@@ -64,6 +64,24 @@ Mu exposes a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) ser
 
 See [MCP Server docs](docs/MCP.md) for available tools and usage.
 
+### For AI Agents
+
+Mu is an API for the real world that AI agents can pay for on the fly. 30+ tools — news, search, weather, places, video, email, markets — accessible via MCP with per-request crypto payments through the [x402 protocol](https://x402.org).
+
+**No API keys. No accounts. Just call and pay.**
+
+An autonomous agent can search the web ($0.05), check the weather ($0.01), look up nearby restaurants ($0.05), and send an email ($0.04) — paying for each request with USDC from its own wallet. Zero onboarding friction.
+
+```bash
+# Call any tool — if payment is required, the server returns 402 with pricing
+curl -X POST https://mu.xyz/mcp \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: <payment-payload>" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"..."}}}'
+```
+
+See [MCP Server docs](docs/MCP.md) for the full x402 payment flow and tool list.
+
 ## Screenshots
 
 ### Home

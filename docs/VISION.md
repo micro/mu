@@ -83,6 +83,26 @@ Every feature is available via REST API and MCP. Connect Claude Desktop, Cursor,
 }
 ```
 
+## The Agent Economy
+
+AI agents need access to real-world services — search, weather, places, email, markets. Today, each service requires a separate API key, a separate account, a separate billing relationship. An agent that wants to search the web, check the weather, and send an email needs three different providers, three signups, three payment methods.
+
+Mu collapses this into one endpoint. Every service is available via MCP at `/mcp`. And with the [x402 protocol](https://x402.org), agents pay per-request with USDC stablecoins — no account, no API key, no signup. The agent's wallet is its identity.
+
+This is what API access looks like when you build for machines, not just humans:
+
+| Traditional APIs | Mu + x402 |
+|---|---|
+| Sign up for each service | No account needed |
+| Manage API keys | No API keys |
+| Pre-pay or subscribe | Pay per request |
+| Different billing per provider | One wallet, one protocol |
+| Rate limits tied to API tiers | Pay for what you use |
+
+An autonomous agent can search the web ($0.05), check the weather ($0.01), look up nearby restaurants ($0.05), and send an email ($0.04) — all from a single MCP endpoint, paying on-chain for each call. Zero onboarding. Zero friction.
+
+The [services marketplace](MARKETPLACE.md) extends this further. Third-party developers can register their own MCP services — recipe extraction, flight tracking, translation — and agents discover and pay for them through the same protocol. x402 means providers can also receive payments directly on-chain, no intermediary required.
+
 ## Technology
 
 - **Language:** Go — single binary, no dependencies
@@ -96,6 +116,7 @@ Every feature is available via REST API and MCP. Connect Claude Desktop, Cursor,
 - **Free to browse** — news, blogs, videos, markets, all of it
 - **20 free credits per day** — covers search, chat, and AI features
 - **Pay as you go** — 1 credit = 1p, top up via card
+- **Pay with crypto** — AI agents pay per-request with USDC via [x402](https://x402.org)
 - **Self-host for free** — run your own instance, unlimited
 
 ## Get Started
