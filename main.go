@@ -843,33 +843,26 @@ func runHealthChecks() []app.ServiceHealth {
 
 	checks := []struct {
 		name string
+		path string
 		fn   func() bool
 	}{
-		{"News", func() bool { return len(news.GetFeed()) > 0 }},
-		{"Blog", func() bool { return blog.GetTopics() != nil }},
-		{"Video", func() bool { return video.GetLatestVideos(1) != nil }},
-		{"Chat", func() bool { return os.Getenv("ANTHROPIC_API_KEY") != "" }},
-		{"Mail", func() bool { return os.Getenv("MAIL_DOMAIN") != "" }},
-		{"Markets", func() bool { return len(markets.GetAllPrices()) > 0 }},
-		{"Social", func() bool { return len(social.GetThreads()) > 0 }},
+		{"News", "/news", func() bool { return len(news.GetFeed()) > 0 }},
+		{"Blog", "/blog", func() bool { return blog.GetTopics() != nil }},
+		{"Video", "/video", func() bool { return video.GetLatestVideos(1) != nil }},
+		{"Chat", "/chat", func() bool { return os.Getenv("ANTHROPIC_API_KEY") != "" }},
+		{"Mail", "/mail", func() bool { return os.Getenv("MAIL_DOMAIN") != "" }},
+		{"Markets", "/markets", func() bool { return len(markets.GetAllPrices()) > 0 }},
+		{"Social", "/social", func() bool { return len(social.GetThreads()) > 0 }},
 	}
 
 	results := make([]app.ServiceHealth, len(checks))
 	ch := make(chan result, len(checks))
 
 	for i, c := range checks {
-		go func(idx int, name string, fn func() bool) {
-			start := time.Now()
+		go func(idx int, name, path string, fn func() bool) {
 			ok := fn()
-			d := time.Since(start)
-			var latency string
-			if d < time.Millisecond {
-				latency = "<1ms"
-			} else {
-				latency = d.Round(time.Millisecond).String()
-			}
-			ch <- result{idx, app.ServiceHealth{Name: name, Status: ok, Latency: latency}}
-		}(i, c.name, c.fn)
+			ch <- result{idx, app.ServiceHealth{Name: name, Status: ok, Path: path}}
+		}(i, c.name, c.path, c.fn)
 	}
 
 	for range checks {
