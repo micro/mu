@@ -191,6 +191,14 @@ func main() {
 
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
+		// Check for x402 payment (bypasses auth + credits)
+		if r.Context().Value(wallet.X402ContextKey) != nil {
+			_, err := wallet.VerifyAndSettle(r, op, r.URL.Path)
+			if err != nil {
+				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
+			}
+			return true, 0, nil
+		}
 		sess, err := auth.GetSession(r)
 		if err != nil {
 			return false, 0, fmt.Errorf("authentication required")
@@ -201,12 +209,25 @@ func main() {
 
 	// Wire agent quota checking (same wallet credit system)
 	agent.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
+		// Check for x402 payment (bypasses auth + credits)
+		if r.Context().Value(wallet.X402ContextKey) != nil {
+			_, err := wallet.VerifyAndSettle(r, op, r.URL.Path)
+			if err != nil {
+				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
+			}
+			return true, 0, nil
+		}
 		sess, err := auth.GetSession(r)
 		if err != nil {
 			return false, 0, fmt.Errorf("authentication required")
 		}
 		canProceed, _, cost, err := wallet.CheckQuota(sess.Account, op)
 		return canProceed, cost, err
+	}
+
+	// Wire x402 payment required response for MCP
+	if wallet.X402Enabled() {
+		api.PaymentRequiredResponse = wallet.WritePaymentRequired
 	}
 
 	// Register MCP auth tools
@@ -734,15 +755,19 @@ func main() {
 				if isAuthed {
 					// deny access if invalid
 					if err := auth.ValidateToken(token); err != nil {
-						// Return JSON 401 for API-style requests
-						if app.SendsJSON(r) || app.WantsJSON(r) {
+						// Allow x402 payment as alternative to auth for API requests
+						if wallet.X402Enabled() && wallet.HasPayment(r) && (app.SendsJSON(r) || app.WantsJSON(r)) {
+							r = r.WithContext(context.WithValue(r.Context(), wallet.X402ContextKey, true))
+						} else if app.SendsJSON(r) || app.WantsJSON(r) {
+							// Return JSON 401 for API-style requests
 							w.Header().Set("Content-Type", "application/json")
 							w.WriteHeader(http.StatusUnauthorized)
 							w.Write([]byte(`{"error":"Authentication required"}`))
 							return
+						} else {
+							http.Redirect(w, r, "/", 302)
+							return
 						}
-						http.Redirect(w, r, "/", 302)
-						return
 					}
 				} else if r.URL.Path == "/" {
 					if err := auth.ValidateToken(token); err == nil {

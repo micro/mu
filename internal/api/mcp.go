@@ -116,6 +116,10 @@ type Tool struct {
 // Set by main.go to wire in auth + wallet packages without import cycles.
 var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 
+// PaymentRequiredResponse is called when quota check fails to build x402 payment
+// requirements. Returns nil if x402 is not enabled. Set by main.go.
+var PaymentRequiredResponse func(w http.ResponseWriter, op string, resource string)
+
 // ToolParam defines a parameter for an MCP tool
 type ToolParam struct {
 	Name        string
@@ -516,6 +520,11 @@ func handleToolsCall(w http.ResponseWriter, originalReq *http.Request, req jsonr
 	if tool.WalletOp != "" && QuotaCheck != nil {
 		canProceed, cost, err := QuotaCheck(originalReq, tool.WalletOp)
 		if !canProceed {
+			// If x402 is enabled, return 402 with payment requirements
+			if PaymentRequiredResponse != nil {
+				PaymentRequiredResponse(w, tool.WalletOp, originalReq.URL.Path)
+				return
+			}
 			msg := fmt.Sprintf("Insufficient credits: %s requires %d credits", tool.Name, cost)
 			if err != nil {
 				msg = err.Error()
