@@ -45,6 +45,11 @@ var knownEnvVars = []string{
 	"STRIPE_PUBLISHABLE_KEY",
 	"STRIPE_WEBHOOK_SECRET",
 	"GOCARDLESS_ACCESS_TOKEN",
+	// x402 crypto payments
+	"X402_PAY_TO",
+	"X402_FACILITATOR_URL",
+	"X402_NETWORK",
+	"X402_ASSET",
 	// Tor
 	"TOR_ONION",
 	// Misc
