@@ -96,27 +96,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(page))
 }
 
-// AboutHandler serves the /about page (shortcut to /docs/about)
-func AboutHandler(w http.ResponseWriter, r *http.Request) {
-	// Read the about file
-	content, err := docsFS.ReadFile("ABOUT.md")
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	// Render markdown to HTML
-	rendered := app.Render(content)
-
-	// Wrap with docs styling
-	html := fmt.Sprintf(`<div class="docs">
-<div class="docs-content">%s</div>
-</div>`, string(rendered))
-
-	page := app.RenderHTMLForRequest("About Mu", "What Mu is and why it exists", html, r)
-	w.Write([]byte(page))
-}
-
 // renderIndex shows the documentation index
 func renderIndex(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder

@@ -439,8 +439,6 @@ func main() {
 		"/admin/env":       true,
 		"/admin/server":    true,
 		"/admin/usage":  true,
-		"/plans":           false, // Public - shows pricing options
-		"/donate":          false,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
@@ -451,7 +449,6 @@ func main() {
 
 		"/status": false, // Public - server health status
 		"/docs":   false, // Public - documentation
-		"/about":  false, // Public - about page
 		"/mcp":    false, // Public - MCP tools page
 		"/agent":  false, // Public page, auth checked in handler
 	}
@@ -536,12 +533,6 @@ func main() {
 	// AI usage tracking
 	http.HandleFunc("/admin/usage", admin.AIUsageHandler)
 
-	// plans page (public - overview of options)
-	http.HandleFunc("/plans", app.Plans)
-
-	// donate page (public - handles GoCardless redirects)
-	http.HandleFunc("/donate", app.Donate)
-
 	// wallet - credits and payments
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
@@ -613,7 +604,7 @@ func main() {
 	// documentation
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/docs/", docs.Handler)
-	http.HandleFunc("/about", docs.AboutHandler)
+
 
 	// ActivityPub: WebFinger discovery
 	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
