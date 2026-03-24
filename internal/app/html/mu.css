@@ -223,11 +223,24 @@ textarea:focus, input:focus {
 }
 
 code {
-  width: auto;
+  background: #f9f9f9;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
   background: #f9f9f9;
   padding: 15px;
   border-radius: 5px;
-  display: block;
+  overflow-x: auto;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  font-size: inherit;
   white-space: pre-wrap;
 }
 
