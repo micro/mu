@@ -339,17 +339,52 @@ Help providers build and test services.
 - **Integration**: Services work seamlessly with the agent — no context switching
 - **No lock-in**: Services are standard MCP — you can call them directly if you prefer
 
+## x402 and the Marketplace
+
+The [x402 protocol](https://x402.org) changes the marketplace economics. Instead of all payments flowing through Mu's credit system, providers can receive payments directly on-chain.
+
+### Two Settlement Models
+
+**Proxied (default):** Mu handles billing. User pays credits, Mu takes a cut, provider gets credited.
+
+```
+Agent → Mu (proxy) → Provider
+         ↓
+    Credit deduction
+    Provider payout
+```
+
+**Direct (x402):** Provider runs their own x402-enabled MCP server. Agents pay them directly. Mu acts as a discovery layer, not a payment intermediary.
+
+```
+Agent → Mu (discovery) → finds provider endpoint
+Agent → Provider (direct) → pays via x402
+```
+
+### Why This Matters
+
+Direct settlement via x402 means:
+- **Providers keep 100%** of revenue (no platform cut on direct calls)
+- **Lower latency** — no proxy hop for the actual service call
+- **Permissionless** — anyone can run an x402 MCP server, no approval needed
+- **Composable** — agents can chain calls across multiple providers in a single workflow
+
+Mu's value shifts from payment intermediary to **discovery and trust**: which services are reliable, well-reviewed, and worth paying for. The marketplace becomes a directory with reputation signals, and the agent uses it to find the best tool for the job.
+
+### The Stack
+
+This is what a services marketplace looks like when you start from first principles:
+
+- **Protocol**: MCP (JSON-RPC 2.0) — simple, standardised, AI-native
+- **Payments**: x402 — HTTP-native, per-request, on-chain settlement
+- **Discovery**: Marketplace registry — browsable, searchable, agent-discoverable
+- **Trust**: Reviews + verification — community-driven quality signals
+
 ## Relation to Micro
 
 Mu's architecture draws from the microservices philosophy — small, focused services with clear interfaces. The Go Micro framework pioneered this pattern: services that are easy to build, deploy, and compose.
 
-The marketplace extends this to the platform level. Instead of services running inside one binary, they run anywhere and connect via MCP. The protocol is the contract. The marketplace is the directory. The wallet is the settlement layer.
-
-This is what a services marketplace looks like when you start from first principles:
-- **Protocol**: MCP (JSON-RPC 2.0) — simple, standardised, AI-native
-- **Discovery**: Marketplace registry — browsable, searchable, agent-discoverable
-- **Billing**: Credits — transparent, per-use, no subscriptions
-- **Trust**: Reviews + verification — community-driven quality signals
+The marketplace extends this to the platform level. Instead of services running inside one binary, they run anywhere and connect via MCP. The protocol is the contract. The marketplace is the directory. x402 is the settlement layer.
 
 ---
 
