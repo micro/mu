@@ -36,7 +36,7 @@ Mu runs as a single Go binary on your own server or use the hosted version at [m
 - [x] Mail - Private messaging
 - [x] Markets - Live prices
 - [x] Web - Web search, no Ads
-- [x] Wallet - Card payments
+- [x] Wallet - Card & crypto payments
 - [x] Apps - Build and launch small web apps
 - [ ] Services - Marketplace, etc
 
@@ -205,9 +205,12 @@ This will prevent commits if tests fail, helping catch regressions early. See [s
 
 ## Payments
 
-Mu uses Stripe for card payments. Top up with a credit or debit card and pay-as-you-go with credits. 1 credit = 1p.
+Mu uses Stripe for card payments and the [x402 protocol](https://x402.org) for crypto payments.
 
-See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
+- **Card** — Top up with a credit or debit card via Stripe. Pay-as-you-go with credits. 1 credit = 1p.
+- **Crypto (x402)** — External clients (AI agents, apps) can pay per-request with USDC stablecoins. No account needed.
+
+Set `X402_PAY_TO` to your wallet address to enable crypto payments. See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
 
 ## License
 

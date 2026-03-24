@@ -39,7 +39,7 @@ var (
 // PaymentsEnabled returns true if payments are configured
 // When false, quotas are disabled (unlimited free usage)
 func PaymentsEnabled() bool {
-	return StripeEnabled()
+	return StripeEnabled() || X402Enabled()
 }
 
 // Operation types

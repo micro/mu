@@ -79,6 +79,30 @@ export STRIPE_WEBHOOK_SECRET="whsec_..."  # For verifying Stripe webhook events
 - Configure a Stripe webhook pointing to `/wallet/stripe/webhook` to credit users after payment
 - Supported events: `checkout.session.completed`
 
+## x402 Payments (Optional)
+
+Enable cryptocurrency payments via the [x402 protocol](https://x402.org). External clients (AI agents, apps) can pay per-request with stablecoins instead of needing a Mu account.
+
+```bash
+# Wallet address to receive USDC payments (required to enable x402)
+export X402_PAY_TO="0xYourWalletAddress"
+
+# Facilitator URL for payment verification and settlement
+export X402_FACILITATOR_URL="https://x402.org/facilitator"  # Default
+
+# Blockchain network identifier
+export X402_NETWORK="eip155:8453"  # Default: Base mainnet
+
+# Token contract address
+export X402_ASSET="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"  # Default: USDC on Base
+```
+
+**Notes:**
+- Only `X402_PAY_TO` is required — other values have sensible defaults
+- When enabled, API clients can send `X-PAYMENT` header instead of authenticating
+- Payments settle on-chain via the facilitator — no Stripe needed
+- Credit costs are converted to USD at 1 credit = $0.01
+
 ## Payment Configuration (Optional)
 
 Enable donations to support your instance. All variables are optional - leave empty for a free instance.
@@ -159,6 +183,10 @@ export MAIL_SELECTOR="default"
 | `STRIPE_SECRET_KEY` | - | Stripe secret key for card payments |
 | `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key for card payments |
 | `STRIPE_WEBHOOK_SECRET` | - | Stripe webhook secret for verifying events |
+| `X402_PAY_TO` | - | Wallet address for x402 crypto payments |
+| `X402_FACILITATOR_URL` | `https://x402.org/facilitator` | x402 facilitator endpoint |
+| `X402_NETWORK` | `eip155:8453` | Blockchain network for x402 payments |
+| `X402_ASSET` | USDC on Base | Token contract address for x402 payments |
 | `FREE_DAILY_QUOTA` | `10` | Daily free AI queries |
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
@@ -298,4 +326,5 @@ docker run -d \
 | Messaging | `MAIL_PORT`, `MAIL_DOMAIN` (optional: `MAIL_SELECTOR` for DKIM) |
 | Donations | `DONATION_URL` |
 | Card Payments | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| Crypto Payments | `X402_PAY_TO` (optional: `X402_FACILITATOR_URL`, `X402_NETWORK`, `X402_ASSET`) |
 
