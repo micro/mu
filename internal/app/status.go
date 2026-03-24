@@ -68,9 +68,9 @@ var DigestStatusFunc func() (ok bool, details string)
 
 // ServiceHealth represents a public-facing service health check
 type ServiceHealth struct {
-	Name    string `json:"name"`
-	Status  bool   `json:"status"`
-	Latency string `json:"latency,omitempty"`
+	Name   string `json:"name"`
+	Status bool   `json:"status"`
+	Path   string `json:"path,omitempty"`
 }
 
 // PublicStatusResponse is the public status page response
@@ -140,16 +140,33 @@ func renderPublicStatusHTML(status PublicStatusResponse) string {
 		if !svc.Status {
 			class = "status-error"
 		}
-		latency := ""
-		if svc.Latency != "" {
-			latency = fmt.Sprintf(`<span class="status-details">%s</span>`, svc.Latency)
+		pathAttr := ""
+		if svc.Path != "" {
+			pathAttr = fmt.Sprintf(` data-path="%s"`, svc.Path)
 		}
-		sb.WriteString(fmt.Sprintf(`<div class="status-item">
+		sb.WriteString(fmt.Sprintf(`<div class="status-item"%s>
 <span class="status-name">%s</span>
-<span class="status-value">%s<span class="status-icon %s">%s</span></span>
-</div>`, svc.Name, latency, class, icon))
+<span class="status-value"><span class="status-latency"></span><span class="status-icon %s">%s</span></span>
+</div>`, pathAttr, svc.Name, class, icon))
 	}
 	sb.WriteString(`</div>`)
+
+	// Client-side latency checks
+	sb.WriteString(`<script>
+document.querySelectorAll('.status-item[data-path]').forEach(function(el) {
+  var path = el.getAttribute('data-path');
+  var span = el.querySelector('.status-latency');
+  var start = performance.now();
+  fetch(path, {method:'HEAD',cache:'no-store'}).then(function() {
+    var ms = Math.round(performance.now() - start);
+    span.textContent = ms + 'ms';
+    span.className = 'status-latency status-details';
+  }).catch(function() {
+    span.textContent = 'error';
+    span.className = 'status-latency status-details';
+  });
+});
+</script>`)
 
 	sb.WriteString(`</div>`)
 	return sb.String()

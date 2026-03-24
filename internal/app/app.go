@@ -251,7 +251,7 @@ var Template = `
         %s
       </div>
       <div id="footer">
-        <a href="/docs">Docs</a> · <a href="/api">API</a> · <a href="/mcp">MCP</a> · <a href="/status">Status</a>` + torFooterLink() + `
+        <a href="/api">API</a> · <a href="/docs">Docs</a> · <a href="/mcp">MCP</a> · <a href="/status">Status</a>` + torFooterLink() + `
       </div>
     </div>
   <script>
