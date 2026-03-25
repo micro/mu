@@ -203,6 +203,70 @@ function esc(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// showResponse displays a completed response and enters conversation mode.
+function showResponse(prompt,html,flowId){
+  var prog=document.getElementById('agent-progress');
+  var result=document.getElementById('agent-result');
+  var btn=document.getElementById('agent-submit');
+  prog.style.display='none';
+  var conv=document.getElementById('agent-conversation');
+  if(!conv){conv=document.createElement('div');conv.id='agent-conversation';result.parentNode.insertBefore(conv,result);}
+  var turn=document.createElement('div');
+  turn.innerHTML='<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;">'
+    +'<div style="font-size:12px;color:#888;margin-bottom:6px;">You said:</div>'
+    +'<div style="font-size:14px;font-weight:600;margin-bottom:10px;">'+esc(prompt)+'</div>'
+    +'</div>';
+  conv.appendChild(turn);
+  result.innerHTML=html;
+  if(flowId){document.getElementById('agent-context').value=flowId;}
+  document.getElementById('agent-prompt').value='';
+  document.getElementById('agent-prompt').placeholder='Tell the agent what to do next...';
+  var formCard=document.getElementById('agent-form-card');
+  var hist=document.getElementById('agent-history');
+  if(hist)hist.style.display='none';
+  if(formCard&&result.parentNode){result.parentNode.appendChild(formCard);}
+  formCard.classList.add('sticky-bottom');
+  result.scrollIntoView({behavior:'smooth',block:'start'});
+  btn.disabled=false;btn.textContent='Do';
+}
+
+// pollFlow polls a flow by ID until it completes, then displays the result.
+function pollFlow(flowId,prompt){
+  var prog=document.getElementById('agent-progress');
+  var steps=document.getElementById('agent-steps');
+  var result=document.getElementById('agent-result');
+  var btn=document.getElementById('agent-submit');
+  // Show recovery UI
+  prog.style.display='block';
+  steps.innerHTML='<div class="agent-step"><span class="step-icon">🔄</span><span>Connection lost — waiting for result…</span></div>';
+  var attempts=0;
+  function check(){
+    attempts++;
+    fetch('/agent/flow/'+flowId+'?json=1')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(data.status==='done'&&data.html){
+        showResponse(prompt,data.html,flowId);
+      } else if(data.status==='error'){
+        prog.style.display='none';
+        result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(data.error||'Agent query failed')+'</p></div>';
+        btn.disabled=false;btn.textContent='Do';
+      } else if(attempts<30){
+        setTimeout(check,2000);
+      } else {
+        prog.style.display='none';
+        result.innerHTML='<div class="card"><p style="color:#dc3545;">Query is still processing. <a href="/agent/flow/'+flowId+'">View result when ready →</a></p></div>';
+        btn.disabled=false;btn.textContent='Do';
+      }
+    })
+    .catch(function(){
+      if(attempts<30){setTimeout(check,3000);}
+      else{btn.disabled=false;btn.textContent='Do';}
+    });
+  }
+  setTimeout(check,2000);
+}
+
 form.addEventListener('submit',function(e){
   e.preventDefault();
   var prompt=document.getElementById('agent-prompt').value.trim();
@@ -221,6 +285,9 @@ form.addEventListener('submit',function(e){
   var body={prompt:prompt,model:model};
   if(contextId){body.context_id=contextId;}
 
+  var currentFlowId='';
+  var gotResponse=false;
+
   fetch('/agent',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -238,7 +305,11 @@ form.addEventListener('submit',function(e){
     var buf='';
     function read(){
       return reader.read().then(function(chunk){
-        if(chunk.done)return;
+        if(chunk.done){
+          // Stream ended — if we never got a response, poll for it
+          if(!gotResponse&&currentFlowId){pollFlow(currentFlowId,prompt);}
+          return;
+        }
         buf+=decoder.decode(chunk.value,{stream:true});
         var lines=buf.split('\n');
         buf=lines.pop();
@@ -246,7 +317,9 @@ form.addEventListener('submit',function(e){
           if(!line.startsWith('data: '))return;
           try{
             var ev=JSON.parse(line.slice(6));
-            if(ev.type==='thinking'){
+            if(ev.type==='flow_id'){
+              currentFlowId=ev.flow_id;
+            } else if(ev.type==='thinking'){
               var d=document.createElement('div');
               d.className='agent-step';
               d.innerHTML='<span class="step-icon">🤔</span><span>'+esc(ev.message)+'</span>';
@@ -263,28 +336,8 @@ form.addEventListener('submit',function(e){
                 d.innerHTML='<span class="step-icon">✓</span><span>'+esc(ev.message)+'</span>';
               }
             } else if(ev.type==='response'){
-              prog.style.display='none';
-              // Append user question and response to conversation thread
-              var conv=document.getElementById('agent-conversation');
-              if(!conv){conv=document.createElement('div');conv.id='agent-conversation';result.parentNode.insertBefore(conv,result);}
-              var turn=document.createElement('div');
-              turn.innerHTML='<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;">'
-                +'<div style="font-size:12px;color:#888;margin-bottom:6px;">You said:</div>'
-                +'<div style="font-size:14px;font-weight:600;margin-bottom:10px;">'+esc(prompt)+'</div>'
-                +'</div>';
-              conv.appendChild(turn);
-              result.innerHTML=ev.html;
-              // Update context for follow-up and reset prompt
-              if(ev.flow_id){document.getElementById('agent-context').value=ev.flow_id;}
-              document.getElementById('agent-prompt').value='';
-              document.getElementById('agent-prompt').placeholder='Tell the agent what to do next...';
-              // Move form to bottom for conversation mode
-              var formCard=document.getElementById('agent-form-card');
-              var hist=document.getElementById('agent-history');
-              if(hist)hist.style.display='none';
-              if(formCard&&result.parentNode){result.parentNode.appendChild(formCard);}
-              formCard.classList.add('sticky-bottom');
-              result.scrollIntoView({behavior:'smooth',block:'start'});
+              gotResponse=true;
+              showResponse(prompt,ev.html,ev.flow_id);
             } else if(ev.type==='error'){
               prog.style.display='none';
               result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
@@ -299,9 +352,14 @@ form.addEventListener('submit',function(e){
     return read();
   })
   .catch(function(err){
-    prog.style.display='none';
-    result.innerHTML='<div class="card"><p style="color:#dc3545;">Error: '+esc(err.message)+'</p></div>';
-    btn.disabled=false;btn.textContent='Do';
+    // Connection failed — if we have a flow ID, poll for the result
+    if(currentFlowId&&!gotResponse){
+      pollFlow(currentFlowId,prompt);
+    } else {
+      prog.style.display='none';
+      result.innerHTML='<div class="card"><p style="color:#dc3545;">Error: '+esc(err.message)+'</p></div>';
+      btn.disabled=false;btn.textContent='Do';
+    }
   });
 });
 })();
@@ -390,6 +448,18 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 	f := getFlow(id)
 	if f == nil {
 		http.NotFound(w, r)
+		return
+	}
+
+	// JSON polling endpoint for mobile recovery
+	if app.WantsJSON(r) || r.URL.Query().Get("json") == "1" {
+		app.RespondJSON(w, map[string]any{
+			"id":     f.ID,
+			"status": f.Status,
+			"html":   f.HTML,
+			"error":  f.Error,
+			"prompt": f.Prompt,
+		})
 		return
 	}
 
@@ -569,10 +639,27 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		conversationHistory = getConversationHistory(req.ContextID, 5)
 	}
 
+	// Create flow early so progress is saved server-side even if the
+	// SSE connection drops (e.g. mobile browser suspends the tab).
+	flow := &Flow{
+		ID:        newFlowID(),
+		AccountID: acc.ID,
+		Prompt:    req.Prompt,
+		Status:    "running",
+		ParentID:  req.ContextID,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := saveFlow(flow); err != nil {
+		app.Log("agent", "Failed to create flow: %v", err)
+	}
+
 	// Start SSE stream
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
+
+	// Send flow_id immediately so the client can recover on disconnect.
+	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID})
 
 	// --- Step 1: plan tool calls ---
 	type toolCall struct {
@@ -614,6 +701,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 		planResult, err := ai.Ask(planPrompt)
 		if err != nil {
+			updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
 			sse(w, map[string]any{"type": "error", "message": "Could not plan request: " + err.Error()})
 			sse(w, map[string]any{"type": "done"})
 			return
@@ -656,6 +744,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			text = text[:8000] + "…"
 		}
 		results = append(results, toolResult{Name: tc.Tool, Result: text, Args: tc.Args})
+
+		// Save step to flow incrementally
+		updateFlow(flow.ID, func(f *Flow) {
+			f.Steps = append(f.Steps, FlowStep{Tool: tc.Tool, Args: tc.Args, Result: text})
+		})
+
 		sse(w, map[string]any{
 			"type":    "tool_done",
 			"name":    tc.Tool,
@@ -709,31 +803,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	answer, err := ai.Ask(synthPrompt)
 	if err != nil {
+		updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
 		sse(w, map[string]any{"type": "error", "message": "Could not generate response: " + err.Error()})
 		sse(w, map[string]any{"type": "done"})
 		return
 	}
 	answer = app.StripLatexDollars(answer)
-
-	// Auto-save this query as a flow for history and sharing.
-	flow := &Flow{
-		ID:        newFlowID(),
-		AccountID: acc.ID,
-		Prompt:    req.Prompt,
-		Answer:    answer,
-		ParentID:  req.ContextID,
-		CreatedAt: time.Now().UTC(),
-	}
-	for _, res := range results {
-		flow.Steps = append(flow.Steps, FlowStep{
-			Tool:   res.Name,
-			Args:   res.Args,
-			Result: res.Result,
-		})
-	}
-	if err := saveFlow(flow); err != nil {
-		app.Log("agent", "Failed to save flow: %v", err)
-	}
 
 	// Render markdown answer wrapped in a card, then append typed result cards
 	rendered := app.RenderString(answer)
@@ -759,6 +834,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	html += `<div class="card" style="font-size:13px;display:flex;gap:16px;align-items:center;">` +
 		`<a href="/agent/flow/` + flow.ID + `" class="link">View saved flow ↗</a>` +
 		`</div>`
+
+	// Mark flow complete with answer and rendered HTML
+	updateFlow(flow.ID, func(f *Flow) {
+		f.Answer = answer
+		f.HTML = html
+		f.Status = "done"
+	})
 
 	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
 	sse(w, map[string]any{"type": "done"})
