@@ -661,7 +661,7 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 
 	_, acc, _ := auth.RequireSession(r)
-	isAuthor := acc.ID == a.AuthorID
+	isAuthor := acc != nil && acc.ID == a.AuthorID
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">&larr; %s</a></p>`, htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Name)))
