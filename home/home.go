@@ -272,8 +272,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if p := user.GetProfile(viewerID); p != nil {
 			currentStatus = htmlEsc(p.Status)
 		}
-		b.WriteString(fmt.Sprintf(`<form id="home-status-form" method="POST" action="/@%s"><input type="text" name="status" placeholder="What's your status?" value="%s" maxlength="100" id="home-status-input"></form>`,
-			htmlEsc(viewerID), currentStatus))
+		b.WriteString(fmt.Sprintf(`<form id="home-status-form" method="POST" action="/user/status"><input type="text" name="status" placeholder="What's your status?" value="%s" maxlength="100" id="home-status-input"></form>`,
+			currentStatus))
 	}
 	if statuses := user.RecentStatuses(viewerID, 5); len(statuses) > 0 {
 		b.WriteString(`<div id="home-statuses">`)

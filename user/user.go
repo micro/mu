@@ -260,6 +260,35 @@ func RecentStatuses(viewerID string, max int) []StatusEntry {
 	return entries
 }
 
+// StatusHandler handles POST /user/status to update the current user's status.
+func StatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	status := r.FormValue("status")
+	if len(status) > 100 {
+		status = status[:100]
+	}
+
+	profile := GetProfile(sess.Account)
+	profile.Status = status
+	UpdateProfile(profile)
+
+	// Redirect back to referrer or home
+	ref := r.Header.Get("Referer")
+	if ref == "" {
+		ref = "/"
+	}
+	http.Redirect(w, r, ref, http.StatusSeeOther)
+}
+
 // Handler renders a user profile page at /@username
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Extract username from URL path (remove /@ prefix)
@@ -271,7 +300,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle POST request for status update
+	// Handle POST request for status update (legacy, profile page form)
 	if r.Method == "POST" {
 		sess, _, err := auth.RequireSession(r)
 		if err != nil {
