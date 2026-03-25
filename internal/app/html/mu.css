@@ -590,9 +590,10 @@ body.page-home #page-title ~ #customize-link {
   color: #aaa;
 }
 #home-my-status {
-  font-size: 13px;
-  color: #666;
-  margin: 6px 0 0;
+  font-size: 14px;
+  font-style: italic;
+  color: #888;
+  margin: 0 0 12px;
 }
 .home-status-clear {
   text-decoration: none;
