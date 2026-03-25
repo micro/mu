@@ -189,7 +189,7 @@ Go to localhost:8081
 
 ## Documentation
 
-**On the web:** [mu.xyz/docs](https://mu.xyz/docs) | [mu.xyz/about](https://mu.xyz/about)
+**On the web:** [mu.xyz/docs](https://mu.xyz/docs) 
 
 Full documentation is available in the [docs](docs/) folder and at `/docs` on any Mu instance:
 
