@@ -256,6 +256,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
+	// Date header
+	now := time.Now()
+	b.WriteString(fmt.Sprintf(`<p style="font-size:14px;color:#888;margin:0 0 16px;">%s</p>`,
+		now.Format("Monday, 2 January 2006")))
+
 	// Feed section — existing home cards below the agent
 	var leftHTML []string
 	var rightHTML []string
