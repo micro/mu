@@ -573,6 +573,22 @@ body.page-home #page-title ~ #customize-link {
   margin: 0 0 16px;
 }
 
+#home-status-form {
+  margin-bottom: 12px;
+}
+#home-status-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #333;
+}
+#home-status-input::placeholder {
+  color: #aaa;
+}
 #home-statuses {
   margin-bottom: 16px;
 }

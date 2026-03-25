@@ -262,10 +262,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	b.WriteString(fmt.Sprintf(`<p id="home-date">%s</p>`, now.Format("Monday, 2 January 2006")))
 
-	// Status section — show recent statuses from other users
+	// Status input and recent statuses
 	var viewerID string
 	if sess, _ := auth.TrySession(r); sess != nil {
 		viewerID = sess.Account
+	}
+	if viewerID != "" {
+		currentStatus := ""
+		if p := user.GetProfile(viewerID); p != nil {
+			currentStatus = htmlEsc(p.Status)
+		}
+		b.WriteString(fmt.Sprintf(`<form id="home-status-form" method="POST" action="/@%s"><input type="text" name="status" placeholder="What's your status?" value="%s" maxlength="100" id="home-status-input"></form>`,
+			htmlEsc(viewerID), currentStatus))
 	}
 	if statuses := user.RecentStatuses(viewerID, 5); len(statuses) > 0 {
 		b.WriteString(`<div id="home-statuses">`)
