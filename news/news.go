@@ -597,6 +597,9 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 	}
 
 	check := func(p []string) bool {
+		if len(p) < 2 {
+			return false
+		}
 		if p[0] == "twitter" {
 			return true
 		}

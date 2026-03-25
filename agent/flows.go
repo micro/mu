@@ -49,12 +49,46 @@ func init() {
 	}
 }
 
+// maxFlowsPerUser is the maximum number of flows kept per user.
+// When exceeded, the oldest completed flows are evicted.
+const maxFlowsPerUser = 200
+
 // saveFlow persists a new flow or updates an existing one.
 func saveFlow(f *Flow) error {
 	flowMu.Lock()
 	defer flowMu.Unlock()
 	flowStore[f.ID] = f
+	evictOldFlows(f.AccountID)
 	return persistFlows()
+}
+
+// evictOldFlows removes the oldest completed flows for an account when
+// the per-user limit is exceeded. Caller must hold flowMu.
+func evictOldFlows(accountID string) {
+	var userFlows []*Flow
+	for _, f := range flowStore {
+		if f.AccountID == accountID {
+			userFlows = append(userFlows, f)
+		}
+	}
+	if len(userFlows) <= maxFlowsPerUser {
+		return
+	}
+	// Sort oldest first
+	sort.Slice(userFlows, func(i, j int) bool {
+		return userFlows[i].CreatedAt.Before(userFlows[j].CreatedAt)
+	})
+	// Delete oldest completed flows until within limit
+	toRemove := len(userFlows) - maxFlowsPerUser
+	for _, f := range userFlows {
+		if toRemove <= 0 {
+			break
+		}
+		if f.Status == "done" || f.Status == "error" {
+			delete(flowStore, f.ID)
+			toRemove--
+		}
+	}
 }
 
 // getFlow returns the flow with the given ID, or nil if not found.
