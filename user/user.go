@@ -216,6 +216,79 @@ func UpdateProfile(profile *Profile) error {
 	return nil
 }
 
+// StatusEntry represents a user's status for display on the home page.
+type StatusEntry struct {
+	UserID    string
+	Name      string // display name
+	Status    string
+	UpdatedAt time.Time
+}
+
+// RecentStatuses returns users who have set a status, most recently updated first.
+// Limited to max entries. Excludes the given userID (the viewer).
+func RecentStatuses(viewerID string, max int) []StatusEntry {
+	profileMutex.RLock()
+	defer profileMutex.RUnlock()
+
+	var entries []StatusEntry
+	for _, p := range profiles {
+		if p.Status == "" || p.UserID == viewerID {
+			continue
+		}
+		name := p.UserID
+		if acc, err := auth.GetAccount(p.UserID); err == nil {
+			name = acc.Name
+		}
+		entries = append(entries, StatusEntry{
+			UserID:    p.UserID,
+			Name:      name,
+			Status:    p.Status,
+			UpdatedAt: p.UpdatedAt,
+		})
+	}
+	// Sort newest first
+	for i := 0; i < len(entries); i++ {
+		for j := i + 1; j < len(entries); j++ {
+			if entries[j].UpdatedAt.After(entries[i].UpdatedAt) {
+				entries[i], entries[j] = entries[j], entries[i]
+			}
+		}
+	}
+	if len(entries) > max {
+		entries = entries[:max]
+	}
+	return entries
+}
+
+// StatusHandler handles POST /user/status to update the current user's status.
+func StatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	status := r.FormValue("status")
+	if len(status) > 100 {
+		status = status[:100]
+	}
+
+	profile := GetProfile(sess.Account)
+	profile.Status = status
+	UpdateProfile(profile)
+
+	// Redirect back to referrer or home
+	ref := r.Header.Get("Referer")
+	if ref == "" {
+		ref = "/"
+	}
+	http.Redirect(w, r, ref, http.StatusSeeOther)
+}
+
 // Handler renders a user profile page at /@username
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Extract username from URL path (remove /@ prefix)
@@ -227,7 +300,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle POST request for status update
+	// Handle POST request for status update (legacy, profile page form)
 	if r.Method == "POST" {
 		sess, _, err := auth.RequireSession(r)
 		if err != nil {

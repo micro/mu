@@ -589,6 +589,7 @@ func main() {
 	// serve social page
 	http.HandleFunc("/social", social.Handler)
 	http.HandleFunc("/social/thread", social.ThreadHandler)
+	http.HandleFunc("/user/status", user.StatusHandler)
 
 	// redirect /reminder to reminder.dev
 	http.HandleFunc("/reminder", reminder.Handler)
