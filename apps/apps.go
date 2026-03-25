@@ -818,7 +818,7 @@ window.addEventListener('message',function(e){var d=e.data;if(d&&d.type&&d.type.
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">&larr; %s</a></p>`,
 		htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Name)))
-	sb.WriteString(fmt.Sprintf(`<iframe src="/apps/%s/run?raw=1" sandbox="allow-scripts" style="width:100%%;min-height:70vh;border:1px solid #eee;border-radius:8px;background:#fff;"></iframe>`,
+	sb.WriteString(fmt.Sprintf(`<iframe src="/apps/%s/run?raw=1" sandbox="allow-scripts" allow="geolocation" style="width:100%%;min-height:70vh;border:1px solid #eee;border-radius:8px;background:#fff;"></iframe>`,
 		htmlpkg.EscapeString(a.Slug)))
 
 	// SDK bridge in parent page: listens for postMessage from iframe and proxies to backend
