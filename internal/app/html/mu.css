@@ -2230,6 +2230,9 @@ a.highlight {
   .home-left, .home-right {
     display: contents;
   }
+  #home-date {
+    text-align: center;
+  }
 
   /* Compact cards on mobile */
   .home-left .card, .home-right .card {
