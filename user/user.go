@@ -46,10 +46,20 @@ var profiles = map[string]*Profile{}
 
 // Profile stores additional user information beyond the Account
 type Profile struct {
-	UserID    string    `json:"user_id"`
-	Status    string    `json:"status"`     // User's custom status message
-	UpdatedAt time.Time `json:"updated_at"` // When the profile was last updated
+	UserID    string          `json:"user_id"`
+	Status    string          `json:"status"`     // User's custom status message
+	History   []StatusHistory `json:"history"`     // Past statuses, newest first
+	UpdatedAt time.Time       `json:"updated_at"` // When the profile was last updated
 }
+
+// StatusHistory records a previous status.
+type StatusHistory struct {
+	Status string    `json:"status"`
+	SetAt  time.Time `json:"set_at"`
+}
+
+// maxStatusHistory is the number of past statuses to keep per user.
+const maxStatusHistory = 20
 
 // Presence tracking
 var (
@@ -204,10 +214,19 @@ func GetProfile(userID string) *Profile {
 	return profile
 }
 
-// UpdateProfile saves a user's profile
+// UpdateProfile saves a user's profile. If the status changed and the
+// previous status was non-empty, it's pushed onto the history.
 func UpdateProfile(profile *Profile) error {
 	profileMutex.Lock()
 	defer profileMutex.Unlock()
+
+	// Record previous status in history if it changed
+	if old, ok := profiles[profile.UserID]; ok && old.Status != "" && old.Status != profile.Status {
+		profile.History = append([]StatusHistory{{Status: old.Status, SetAt: old.UpdatedAt}}, profile.History...)
+		if len(profile.History) > maxStatusHistory {
+			profile.History = profile.History[:maxStatusHistory]
+		}
+	}
 
 	profile.UpdatedAt = time.Now()
 	profiles[profile.UserID] = profile
@@ -409,6 +428,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	statusSection := ""
 	if profile.Status != "" {
 		statusSection = fmt.Sprintf(`<p class="info italic mt-3">"%s"</p>`, profile.Status)
+	}
+	if len(profile.History) > 0 {
+		statusSection += `<details style="margin-top:8px;"><summary style="font-size:13px;color:#999;cursor:pointer;">Status history</summary><div style="margin-top:6px;">`
+		for _, h := range profile.History {
+			statusSection += fmt.Sprintf(`<p style="font-size:13px;color:#888;margin:4px 0;font-style:italic;">"%s" <span style="color:#bbb;">— %s</span></p>`,
+				h.Status, app.TimeAgo(h.SetAt))
+		}
+		statusSection += `</div></details>`
 	}
 
 	// Build status edit form (only for own profile)
