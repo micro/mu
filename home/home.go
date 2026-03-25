@@ -262,18 +262,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	b.WriteString(fmt.Sprintf(`<p id="home-date">%s</p>`, now.Format("Monday, 2 January 2006")))
 
-	// Status input and recent statuses
+	// Status section
 	var viewerID string
 	if sess, _ := auth.TrySession(r); sess != nil {
 		viewerID = sess.Account
 	}
+	// Own status in quotes under the date
 	if viewerID != "" {
-		currentStatus := ""
-		if p := user.GetProfile(viewerID); p != nil {
-			currentStatus = htmlEsc(p.Status)
+		if p := user.GetProfile(viewerID); p != nil && p.Status != "" {
+			b.WriteString(fmt.Sprintf(`<p id="home-my-status">"%s" <a href="/user/status" onclick="event.preventDefault();fetch('/user/status',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'status='}).then(()=>location.reload())" class="home-status-clear" title="Clear status">✕</a></p>`, htmlEsc(p.Status)))
 		}
-		b.WriteString(fmt.Sprintf(`<form id="home-status-form" method="POST" action="/user/status"><input type="text" name="status" placeholder="What's your status?" value="%s" maxlength="100" id="home-status-input"></form>`,
-			currentStatus))
+		b.WriteString(`<form id="home-status-form" method="POST" action="/user/status"><input type="text" name="status" placeholder="What's your status?" maxlength="100" id="home-status-input"></form>`)
 	}
 	if statuses := user.RecentStatuses(viewerID, 5); len(statuses) > 0 {
 		b.WriteString(`<div id="home-statuses">`)

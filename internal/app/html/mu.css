@@ -589,6 +589,21 @@ body.page-home #page-title ~ #customize-link {
 #home-status-input::placeholder {
   color: #aaa;
 }
+#home-my-status {
+  font-size: 14px;
+  font-style: italic;
+  color: #888;
+  margin: 0 0 12px;
+}
+.home-status-clear {
+  text-decoration: none;
+  color: #bbb;
+  font-size: 12px;
+  margin-left: 4px;
+}
+.home-status-clear:hover {
+  color: #dc3545;
+}
 #home-statuses {
   margin-bottom: 16px;
 }
