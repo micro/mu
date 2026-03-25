@@ -17,6 +17,9 @@ type Flow struct {
 	Prompt    string     `json:"prompt"`
 	Steps     []FlowStep `json:"steps"`
 	Answer    string     `json:"answer"`    // markdown answer text
+	HTML      string     `json:"html"`      // rendered HTML (set on completion)
+	Status    string     `json:"status"`    // "running", "done", "error"
+	Error     string     `json:"error"`     // error message if status is "error"
 	ParentID  string     `json:"parent_id"` // prior flow ID for multi-turn chains
 	CreatedAt time.Time  `json:"created_at"`
 }
@@ -37,6 +40,10 @@ func init() {
 	var flows []*Flow
 	if err := data.LoadJSON("agent_flows.json", &flows); err == nil {
 		for _, f := range flows {
+			// Backfill status for pre-existing flows
+			if f.Status == "" && f.Answer != "" {
+				f.Status = "done"
+			}
 			flowStore[f.ID] = f
 		}
 	}
@@ -55,6 +62,33 @@ func getFlow(id string) *Flow {
 	flowMu.RLock()
 	defer flowMu.RUnlock()
 	return flowStore[id]
+}
+
+// updateFlow applies a mutation to a flow in-place and persists.
+func updateFlow(id string, fn func(f *Flow)) {
+	flowMu.Lock()
+	defer flowMu.Unlock()
+	f, ok := flowStore[id]
+	if !ok {
+		return
+	}
+	fn(f)
+	persistFlows() //nolint:errcheck
+}
+
+// getLatestRunningFlow returns the most recent "running" flow for an account, or nil.
+func getLatestRunningFlow(accountID string) *Flow {
+	flowMu.RLock()
+	defer flowMu.RUnlock()
+	var latest *Flow
+	for _, f := range flowStore {
+		if f.AccountID == accountID && f.Status == "running" {
+			if latest == nil || f.CreatedAt.After(latest.CreatedAt) {
+				latest = f
+			}
+		}
+	}
+	return latest
 }
 
 // ListFlows returns all flows belonging to accountID, newest first.
