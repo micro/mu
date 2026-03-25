@@ -318,7 +318,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 <div>
 <h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
-<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d installs</p>
+<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d launches</p>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
@@ -528,7 +528,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	if len(a.Versions) > 1 {
 		versionInfo = fmt.Sprintf(` · <a href="/apps/%s/versions">v%d</a>`, htmlpkg.EscapeString(a.Slug), a.Versions[len(a.Versions)-1].Number)
 	}
-	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s · %d installs%s%s%s</p>`,
+	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s · %d launches%s%s%s</p>`,
 		htmlpkg.EscapeString(a.Author),
 		tagsInfo,
 		a.Installs,
@@ -574,7 +574,7 @@ func handleEdit(w http.ResponseWriter, r *http.Request, slug string) {
 		app.Error(w, r, http.StatusNotFound, "App not found")
 		return
 	}
-	if a.AuthorID != acc.ID {
+	if a.AuthorID != acc.ID && !acc.Admin {
 		app.Forbidden(w, r, "You can only edit your own apps")
 		return
 	}
@@ -775,6 +775,17 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
+	// Count launch (non-raw only, skip author's own launches)
+	if r.URL.Query().Get("raw") != "1" {
+		_, acc, _ := auth.RequireSession(r)
+		if acc == nil || acc.ID != a.AuthorID {
+			mutex.Lock()
+			a.Installs++
+			mutex.Unlock()
+			save()
+		}
+	}
+
 	// Serve raw HTML for iframe src (with sandbox origin isolation)
 	if r.URL.Query().Get("raw") == "1" {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -873,7 +884,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 		app.Error(w, r, http.StatusNotFound, "App not found")
 		return
 	}
-	if a.AuthorID != acc.ID {
+	if a.AuthorID != acc.ID && !acc.Admin {
 		app.Forbidden(w, r, "You can only edit your own apps")
 		return
 	}
