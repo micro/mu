@@ -37,7 +37,8 @@ Rules:
 - Style guidelines: clean, minimal design. Use subtle borders (#e0e0e0), 6px border-radius, 16-24px padding, #333 text, #fff background
 - Button style: padding 8-10px 20-24px, border-radius 6px, primary buttons use background #000 color #fff
 - Keep it simple and functional — no external dependencies, no CDN links, no images
-- The app runs in a sandboxed iframe — no access to parent page
+- The app runs in a sandboxed iframe with geolocation enabled — no access to parent page
+- If the app uses geolocation (navigator.geolocation), ALWAYS provide a graceful fallback: show a manual location input or a sensible default when the user denies permission or the API fails. Never let the app be blank or broken if location is unavailable.
 - If the app needs AI features, include <script src="/apps/sdk.js"></script> and use mu.ai(prompt)
 - If the app needs persistent storage, use mu.store.set(key, value) and mu.store.get(key)
 - Maximum 256KB HTML
@@ -380,7 +381,7 @@ func builderPageHTML(initialCode string) string {
       <p>Your app preview will appear here.</p>
       <p>Type a prompt above or pick a template.</p>
     </div>
-    <iframe id="preview" class="preview-frame" sandbox="allow-scripts" style="display:none;"></iframe>
+    <iframe id="preview" class="preview-frame" sandbox="allow-scripts" allow="geolocation" style="display:none;"></iframe>
   </div>
 
   <div class="code-section" id="codeSection">
@@ -603,7 +604,7 @@ func editPageHTML(a *App) string {
         <h3>Preview</h3>
         <button class="code-toggle" onclick="updatePreview()">Refresh</button>
       </div>
-      <iframe id="preview" class="preview-frame" sandbox="allow-scripts" style="min-height:50vh;"></iframe>
+      <iframe id="preview" class="preview-frame" sandbox="allow-scripts" allow="geolocation" style="min-height:50vh;"></iframe>
     </div>
   </div>
 

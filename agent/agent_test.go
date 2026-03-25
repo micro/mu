@@ -670,8 +670,8 @@ func TestRenderRunCard_ValidJSON(t *testing.T) {
 	if !strings.Contains(card, "<iframe") {
 		t.Errorf("expected iframe in card, got %q", card)
 	}
-	if !strings.Contains(card, "sandbox=\"allow-scripts\"") {
-		t.Errorf("expected sandboxed iframe, got %q", card)
+	if !strings.Contains(card, `sandbox="allow-scripts" allow="geolocation"`) {
+		t.Errorf("expected sandboxed iframe with geolocation, got %q", card)
 	}
 	if !strings.Contains(card, "Result") {
 		t.Errorf("expected Result heading, got %q", card)

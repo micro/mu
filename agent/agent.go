@@ -519,6 +519,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_search: Search apps directory (args: {"q":"search term","tag":"productivity"})
 - apps_read: Read details of a specific app (args: {"slug":"app-slug"})
 - apps_build: AI-generate an app from a description (args: {"prompt":"a pomodoro timer with lap counter"})
+- apps_edit: Edit an existing app — update name, description, tags, icon, or HTML (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"}). Use for calculations, data transforms, or any computation. Code runs as a function body — use 'return' to produce output.`
 
 // handleQuery processes an agent query request with SSE streaming.
@@ -845,6 +846,8 @@ func toolLabel(tool string) string {
 		return "📱 Reading app"
 	case "apps_build":
 		return "🔨 Building app"
+	case "apps_edit":
+		return "✏️ Editing app"
 	case "apps_run":
 		return "⚡ Running code"
 	default:
@@ -1182,6 +1185,8 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatAppsReadResult(result)
 	case "apps_build":
 		return formatAppsBuildResult(result)
+	case "apps_edit":
+		return formatAppsBuildResult(result) // same format: returns app details
 	case "apps_run":
 		return formatAppsRunResult(result)
 	}
@@ -1829,7 +1834,7 @@ func renderRunCard(result string) string {
 		return ""
 	}
 	return `<div class="card"><h4>⚡ Result</h4>` +
-		`<iframe src="` + htmlEsc(data.Run) + `" sandbox="allow-scripts" ` +
+		`<iframe src="` + htmlEsc(data.Run) + `" sandbox="allow-scripts" allow="geolocation" ` +
 		`style="width:100%;min-height:120px;border:1px solid #eee;border-radius:6px;background:#fff;"></iframe>` +
 		`</div>`
 }

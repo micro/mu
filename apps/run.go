@@ -114,7 +114,7 @@ func handleCodeRun(w http.ResponseWriter, r *http.Request) {
 	var sb strings.Builder
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h4>Code Run</h4>`)
-	sb.WriteString(fmt.Sprintf(`<iframe src="/apps/run?id=%s&raw=1" sandbox="allow-scripts" style="width:100%%;min-height:200px;border:1px solid #eee;border-radius:6px;background:#fff;"></iframe>`, id))
+	sb.WriteString(fmt.Sprintf(`<iframe src="/apps/run?id=%s&raw=1" sandbox="allow-scripts" allow="geolocation" style="width:100%%;min-height:200px;border:1px solid #eee;border-radius:6px;background:#fff;"></iframe>`, id))
 	sb.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{
