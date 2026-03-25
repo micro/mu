@@ -34,7 +34,7 @@ var defaultPremiumModel = func() string {
 	if v := os.Getenv("ANTHROPIC_PREMIUM_MODEL"); v != "" {
 		return v
 	}
-	return "claude-sonnet-4-5-20250514"
+	return "claude-opus-4-20250514"
 }()
 
 // Models lists the available model tiers.
