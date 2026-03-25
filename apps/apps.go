@@ -546,8 +546,8 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 	sb.WriteString(`</p>`)
 
-	// Edit/delete for author
-	if err == nil && acc.ID == a.AuthorID {
+	// Edit/delete for author or admin
+	if err == nil && (acc.ID == a.AuthorID || acc.Admin) {
 		sb.WriteString(fmt.Sprintf(`<p style="margin-top:16px;"><a href="/apps/%s/edit">Edit</a> · <a href="/apps/%s/run">Preview</a> · <a href="#" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(()=>location='/apps')}">Delete</a></p>`,
 			htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug)))
 	}
@@ -950,7 +950,7 @@ func handleDelete(w http.ResponseWriter, r *http.Request, slug string) {
 		app.Error(w, r, http.StatusNotFound, "App not found")
 		return
 	}
-	if a.AuthorID != acc.ID {
+	if a.AuthorID != acc.ID && !acc.Admin {
 		app.Forbidden(w, r, "You can only delete your own apps")
 		return
 	}
