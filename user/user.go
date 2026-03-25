@@ -216,6 +216,50 @@ func UpdateProfile(profile *Profile) error {
 	return nil
 }
 
+// StatusEntry represents a user's status for display on the home page.
+type StatusEntry struct {
+	UserID    string
+	Name      string // display name
+	Status    string
+	UpdatedAt time.Time
+}
+
+// RecentStatuses returns users who have set a status, most recently updated first.
+// Limited to max entries. Excludes the given userID (the viewer).
+func RecentStatuses(viewerID string, max int) []StatusEntry {
+	profileMutex.RLock()
+	defer profileMutex.RUnlock()
+
+	var entries []StatusEntry
+	for _, p := range profiles {
+		if p.Status == "" || p.UserID == viewerID {
+			continue
+		}
+		name := p.UserID
+		if acc, err := auth.GetAccount(p.UserID); err == nil {
+			name = acc.Name
+		}
+		entries = append(entries, StatusEntry{
+			UserID:    p.UserID,
+			Name:      name,
+			Status:    p.Status,
+			UpdatedAt: p.UpdatedAt,
+		})
+	}
+	// Sort newest first
+	for i := 0; i < len(entries); i++ {
+		for j := i + 1; j < len(entries); j++ {
+			if entries[j].UpdatedAt.After(entries[i].UpdatedAt) {
+				entries[i], entries[j] = entries[j], entries[i]
+			}
+		}
+	}
+	if len(entries) > max {
+		entries = entries[:max]
+	}
+	return entries
+}
+
 // Handler renders a user profile page at /@username
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Extract username from URL path (remove /@ prefix)

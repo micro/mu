@@ -14,12 +14,14 @@ import (
 	"mu/agent"
 	"mu/apps"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/blog"
 	"mu/internal/event"
 	"mu/news"
 	"mu/social"
 	"mu/markets"
 	"mu/reminder"
+	"mu/user"
 	"mu/video"
 )
 
@@ -259,6 +261,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Date header
 	now := time.Now()
 	b.WriteString(fmt.Sprintf(`<p id="home-date">%s</p>`, now.Format("Monday, 2 January 2006")))
+
+	// Status section — show recent statuses from other users
+	var viewerID string
+	if sess, _ := auth.TrySession(r); sess != nil {
+		viewerID = sess.Account
+	}
+	if statuses := user.RecentStatuses(viewerID, 5); len(statuses) > 0 {
+		b.WriteString(`<div id="home-statuses">`)
+		for _, s := range statuses {
+			b.WriteString(fmt.Sprintf(
+				`<div class="home-status"><a href="/@%s" class="home-status-name">%s</a> <span class="home-status-text">%s</span> <a href="/mail?compose=true&to=%s" class="home-status-msg" title="Send message">✉</a></div>`,
+				htmlEsc(s.UserID), htmlEsc(s.Name), htmlEsc(s.Status), htmlEsc(s.UserID)))
+		}
+		b.WriteString(`</div>`)
+	}
 
 	// Feed section — existing home cards below the agent
 	var leftHTML []string
