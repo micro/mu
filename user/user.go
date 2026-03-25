@@ -224,15 +224,19 @@ type StatusEntry struct {
 	UpdatedAt time.Time
 }
 
-// RecentStatuses returns users who have set a status, most recently updated first.
-// Limited to max entries. Excludes the given userID (the viewer).
+// statusMaxAge is how old a status can be before it stops appearing on home.
+const statusMaxAge = 7 * 24 * time.Hour
+
+// RecentStatuses returns users who have set a status within the last 7 days,
+// most recently updated first. Limited to max entries. Excludes the given userID.
 func RecentStatuses(viewerID string, max int) []StatusEntry {
 	profileMutex.RLock()
 	defer profileMutex.RUnlock()
 
+	cutoff := time.Now().Add(-statusMaxAge)
 	var entries []StatusEntry
 	for _, p := range profiles {
-		if p.Status == "" || p.UserID == viewerID {
+		if p.Status == "" || p.UserID == viewerID || p.UpdatedAt.Before(cutoff) {
 			continue
 		}
 		name := p.UserID
