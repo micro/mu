@@ -568,6 +568,11 @@ body.page-home #page-title ~ #customize-link {
   display: none;
 }
 
+#home-date {
+  color: #888;
+  margin: 0 0 16px;
+}
+
 #home {
   margin-bottom: 25px;
   display: flex;
