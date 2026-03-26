@@ -512,7 +512,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 		// Check for redirect parameter, default to home
 		redirectTo := r.URL.Query().Get("redirect")
-		if redirectTo == "" {
+		if redirectTo == "" || redirectTo[0] != '/' || strings.HasPrefix(redirectTo, "//") {
 			redirectTo = "/home"
 		}
 		http.Redirect(w, r, redirectTo, 302)

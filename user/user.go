@@ -306,8 +306,17 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Redirect back to referrer or home
 	ref := r.Header.Get("Referer")
-	if ref == "" {
-		ref = "/"
+	if ref == "" || !strings.HasPrefix(ref, "/") {
+		// Extract path from full URL referer
+		if i := strings.Index(ref, "://"); i >= 0 {
+			if j := strings.Index(ref[i+3:], "/"); j >= 0 {
+				ref = ref[i+3+j:]
+			} else {
+				ref = "/"
+			}
+		} else {
+			ref = "/"
+		}
 	}
 	http.Redirect(w, r, ref, http.StatusSeeOther)
 }
