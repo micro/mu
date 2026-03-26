@@ -627,15 +627,12 @@ body.page-home #page-title ~ #customize-link {
 }
 .home-status-text {
   color: #666;
+  font-style: italic;
 }
-.home-status-msg {
-  text-decoration: none;
-  color: #999;
-  font-size: 13px;
+.home-status-time {
+  color: #bbb;
+  font-size: 12px;
   margin-left: 4px;
-}
-.home-status-msg:hover {
-  color: #333;
 }
 
 #home {

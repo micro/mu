@@ -81,6 +81,56 @@ if (typeof document === 'undefined') {
   // We're in window context, execute page code
 
 // ============================================
+// CSRF PROTECTION
+// ============================================
+
+// Read CSRF token from cookie set by the server.
+function getCsrfToken() {
+  var m = document.cookie.match('(?:^|; )csrf_token=([^;]*)');
+  return m ? m[1] : '';
+}
+
+// Monkey-patch fetch to auto-include CSRF token on state-changing requests.
+(function() {
+  var _fetch = window.fetch;
+  window.fetch = function(url, opts) {
+    opts = opts || {};
+    var method = (opts.method || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+      opts.headers = opts.headers || {};
+      // Support both Headers object and plain object
+      if (opts.headers instanceof Headers) {
+        if (!opts.headers.has('X-CSRF-Token')) {
+          opts.headers.set('X-CSRF-Token', getCsrfToken());
+        }
+      } else {
+        if (!opts.headers['X-CSRF-Token']) {
+          opts.headers['X-CSRF-Token'] = getCsrfToken();
+        }
+      }
+    }
+    return _fetch.call(this, url, opts);
+  };
+})();
+
+// Auto-inject CSRF hidden field into ALL form submissions (including dynamic forms).
+// Uses a capturing submit listener on document so it fires before the form submits.
+document.addEventListener('submit', function(e) {
+  var form = e.target;
+  if (!form || form.tagName !== 'FORM') return;
+  var method = (form.method || 'GET').toUpperCase();
+  if (method !== 'POST') return;
+  if (form.querySelector('input[name="_csrf"]')) return;
+  var token = getCsrfToken();
+  if (!token) return;
+  var input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = '_csrf';
+  input.value = token;
+  form.appendChild(input);
+}, true);
+
+// ============================================
 // TIMESTAMP UPDATES
 // ============================================
 

@@ -771,12 +771,7 @@ func main() {
 						}
 					}
 				} else if r.URL.Path == "/" {
-					if err := auth.ValidateToken(token); err == nil {
-						http.Redirect(w, r, "/home", 302)
-						return
-					}
-					// Redirect unauthenticated users to login
-					http.Redirect(w, r, "/login", 302)
+					http.Redirect(w, r, "/home", 302)
 					return
 				}
 			}
@@ -804,6 +799,28 @@ func main() {
 				// Otherwise serve the HTML profile page
 				if !strings.Contains(rest, "/") {
 					user.Handler(w, r)
+					return
+				}
+			}
+
+			// CSRF protection: set token cookie on every response,
+			// validate on state-changing requests.
+			auth.SetCSRFCookie(w, r)
+			if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
+				// Skip CSRF for API endpoints using Bearer/PAT auth (not cookie-based)
+				isBearerAuth := r.Header.Get("Authorization") != "" || r.Header.Get("X-Micro-Token") != ""
+				// Skip CSRF for MCP endpoint (uses its own auth)
+				isMCP := r.URL.Path == "/mcp"
+				// Skip CSRF for Stripe webhooks
+				isWebhook := r.URL.Path == "/wallet/stripe/webhook"
+				// Skip CSRF for login/signup (no session yet)
+				isAuth := r.URL.Path == "/login" || r.URL.Path == "/signup" ||
+					strings.HasPrefix(r.URL.Path, "/passkey/")
+				// Skip CSRF for SMTP/ActivityPub inbound
+				isInbound := strings.HasSuffix(r.URL.Path, "/inbox")
+
+				if !isBearerAuth && !isMCP && !isWebhook && !isAuth && !isInbound && !auth.ValidCSRF(r) {
+					http.Error(w, `{"error":"invalid CSRF token"}`, http.StatusForbidden)
 					return
 				}
 			}

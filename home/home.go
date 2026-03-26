@@ -278,8 +278,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<div id="home-statuses">`)
 		for _, s := range statuses {
 			b.WriteString(fmt.Sprintf(
-				`<div class="home-status"><a href="/@%s" class="home-status-name">%s</a> <span class="home-status-text">%s</span> <a href="/mail?compose=true&to=%s" class="home-status-msg" title="Send message">✉</a></div>`,
-				htmlEsc(s.UserID), htmlEsc(s.Name), htmlEsc(s.Status), htmlEsc(s.UserID)))
+				`<div class="home-status"><a href="/@%s" class="home-status-name">%s</a> <span class="home-status-text">"%s"</span> <span class="home-status-time">%s</span></div>`,
+				htmlEsc(s.UserID), htmlEsc(s.Name), htmlEsc(s.Status), app.TimeAgo(s.UpdatedAt)))
 		}
 		b.WriteString(`</div>`)
 	}
