@@ -2314,12 +2314,12 @@ a.highlight {
     font-size: 12px;
   }
 
-  /* Reorder cards on mobile */
-  #reminder { order: 1; }
+  /* Alphabetical card order on mobile */
+  #blog { order: 1; }
   #markets { order: 2; }
-  #social { order: 3; }
-  #news { order: 4; }
-  #blog { order: 5; }
+  #news { order: 3; }
+  #reminder { order: 4; }
+  #social { order: 5; }
   #video { order: 6; }
   #home-chat { order: 7; }
 
