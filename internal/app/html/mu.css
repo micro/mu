@@ -644,6 +644,7 @@ body.page-home #page-title ~ #customize-link {
 
 .card-tooltip {
   display: inline-block;
+  position: relative;
   width: 16px;
   height: 16px;
   line-height: 16px;
@@ -654,7 +655,7 @@ body.page-home #page-title ~ #customize-link {
   color: #bbb;
   border: 1px solid #ddd;
   border-radius: 50%;
-  cursor: help;
+  cursor: pointer;
   vertical-align: middle;
   margin-left: 4px;
   float: right;
@@ -662,6 +663,28 @@ body.page-home #page-title ~ #customize-link {
 .card-tooltip:hover {
   color: #666;
   border-color: #aaa;
+}
+.card-tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 6px;
+  background: #333;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 400;
+  padding: 6px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.card-tooltip:hover::after,
+.card-tooltip.show::after {
+  opacity: 1;
 }
 
 #home-chat-form {

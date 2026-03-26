@@ -307,7 +307,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		title := card.Title
 		if tip, ok := tooltips[card.ID]; ok {
-			title += fmt.Sprintf(` <span class="card-tooltip" title="%s">?</span>`, htmlEsc(tip))
+			title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="this.classList.toggle('show')">?</span>`, htmlEsc(tip))
 		}
 		html := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
 		if card.Column == "left" {
