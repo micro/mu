@@ -81,6 +81,53 @@ if (typeof document === 'undefined') {
   // We're in window context, execute page code
 
 // ============================================
+// CSRF PROTECTION
+// ============================================
+
+// Read CSRF token from cookie set by the server.
+function getCsrfToken() {
+  var m = document.cookie.match('(?:^|; )csrf_token=([^;]*)');
+  return m ? m[1] : '';
+}
+
+// Monkey-patch fetch to auto-include CSRF token on state-changing requests.
+(function() {
+  var _fetch = window.fetch;
+  window.fetch = function(url, opts) {
+    opts = opts || {};
+    var method = (opts.method || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+      opts.headers = opts.headers || {};
+      // Support both Headers object and plain object
+      if (opts.headers instanceof Headers) {
+        if (!opts.headers.has('X-CSRF-Token')) {
+          opts.headers.set('X-CSRF-Token', getCsrfToken());
+        }
+      } else {
+        if (!opts.headers['X-CSRF-Token']) {
+          opts.headers['X-CSRF-Token'] = getCsrfToken();
+        }
+      }
+    }
+    return _fetch.call(this, url, opts);
+  };
+})();
+
+// Auto-inject CSRF hidden field into all POST forms.
+document.addEventListener('DOMContentLoaded', function() {
+  var token = getCsrfToken();
+  if (!token) return;
+  document.querySelectorAll('form[method="POST"],form[method="post"]').forEach(function(form) {
+    if (form.querySelector('input[name="_csrf"]')) return;
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = '_csrf';
+    input.value = token;
+    form.appendChild(input);
+  });
+});
+
+// ============================================
 // TIMESTAMP UPDATES
 // ============================================
 
