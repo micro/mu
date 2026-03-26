@@ -236,6 +236,16 @@ func PublicWalletPage() string {
 	sb.WriteString(`<p><a href="/login">Login</a> or <a href="/signup">sign up</a> to top up.</p>`)
 	sb.WriteString(`</div>`)
 
+	// Crypto payments note
+	if X402Enabled() {
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(`<h3>Crypto (x402)</h3>`)
+		sb.WriteString(`<p>AI agents and developers can pay per-request with stablecoins via the <a href="https://x402.org">x402 protocol</a>. No account needed.</p>`)
+		sb.WriteString(`<p>Accepted tokens: <strong>USDC</strong>, <strong>EURC</strong> on Base</p>`)
+		sb.WriteString(`<p>See the <a href="/docs/wallet-and-credits">Wallet docs</a> or <a href="/docs/mcp">MCP docs</a> for details.</p>`)
+		sb.WriteString(`</div>`)
+	}
+
 	// Self-hosting note
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Self-Host</h3>`)
