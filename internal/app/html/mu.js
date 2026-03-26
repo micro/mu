@@ -113,19 +113,22 @@ function getCsrfToken() {
   };
 })();
 
-// Auto-inject CSRF hidden field into all POST forms.
-document.addEventListener('DOMContentLoaded', function() {
+// Auto-inject CSRF hidden field into ALL form submissions (including dynamic forms).
+// Uses a capturing submit listener on document so it fires before the form submits.
+document.addEventListener('submit', function(e) {
+  var form = e.target;
+  if (!form || form.tagName !== 'FORM') return;
+  var method = (form.method || 'GET').toUpperCase();
+  if (method !== 'POST') return;
+  if (form.querySelector('input[name="_csrf"]')) return;
   var token = getCsrfToken();
   if (!token) return;
-  document.querySelectorAll('form[method="POST"],form[method="post"]').forEach(function(form) {
-    if (form.querySelector('input[name="_csrf"]')) return;
-    var input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = '_csrf';
-    input.value = token;
-    form.appendChild(input);
-  });
-});
+  var input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = '_csrf';
+  input.value = token;
+  form.appendChild(input);
+}, true);
 
 // ============================================
 // TIMESTAMP UPDATES
