@@ -288,6 +288,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var leftHTML []string
 	var rightHTML []string
 
+	tooltips := map[string]string{
+		"blog":     "Microblog posts with daily AI-generated digests",
+		"news":     "Headlines from RSS feeds, sorted by time",
+		"markets":  "Live crypto, futures, and commodity prices",
+		"reminder": "Daily Islamic reminder with verse and hadith",
+		"social":   "Public discussion threads",
+		"video":    "Latest videos from curated channels",
+	}
+
 	for _, card := range Cards {
 		content := card.CachedHTML
 		if strings.TrimSpace(content) == "" {
@@ -296,7 +305,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if card.Link != "" {
 			content += app.Link("More", card.Link)
 		}
-		html := app.Card(card.ID, card.Title, content)
+		title := card.Title
+		if tip, ok := tooltips[card.ID]; ok {
+			title += fmt.Sprintf(` <span class="card-tooltip" title="%s">?</span>`, htmlEsc(tip))
+		}
+		html := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
 		if card.Column == "left" {
 			leftHTML = append(leftHTML, html)
 		} else {
