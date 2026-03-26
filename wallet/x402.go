@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -34,8 +35,20 @@ var (
 	x402PayTo          = os.Getenv("X402_PAY_TO")          // Wallet address to receive payments
 	x402FacilitatorURL = os.Getenv("X402_FACILITATOR_URL") // Facilitator endpoint
 	x402Network        = os.Getenv("X402_NETWORK")         // Blockchain network (e.g., "eip155:8453")
-	x402Asset          = os.Getenv("X402_ASSET")           // Token contract address (USDC)
+	x402Assets         []x402Token                         // Accepted tokens
 )
+
+// x402Token represents an accepted payment token.
+type x402Token struct {
+	Symbol  string // e.g. "USDC", "EURC"
+	Address string // ERC-20 contract address
+}
+
+// Known tokens on Base mainnet
+var knownTokens = map[string]string{
+	"USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+	"EURC": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
+}
 
 func init() {
 	if x402FacilitatorURL == "" {
@@ -44,8 +57,28 @@ func init() {
 	if x402Network == "" {
 		x402Network = "eip155:8453" // Base mainnet
 	}
-	if x402Asset == "" {
-		x402Asset = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" // USDC on Base
+
+	// Parse X402_ASSETS (comma-separated symbols, e.g. "USDC,EURC")
+	// Falls back to X402_ASSET (single contract address) for backwards compatibility.
+	if assets := os.Getenv("X402_ASSETS"); assets != "" {
+		for _, sym := range strings.Split(assets, ",") {
+			sym = strings.TrimSpace(strings.ToUpper(sym))
+			if addr, ok := knownTokens[sym]; ok {
+				x402Assets = append(x402Assets, x402Token{Symbol: sym, Address: addr})
+			}
+		}
+	}
+	if len(x402Assets) == 0 {
+		if addr := os.Getenv("X402_ASSET"); addr != "" {
+			// Backwards compatible: single asset from X402_ASSET
+			x402Assets = []x402Token{{Symbol: "USDC", Address: addr}}
+		} else {
+			// Default: accept both USDC and EURC on Base
+			x402Assets = []x402Token{
+				{Symbol: "USDC", Address: knownTokens["USDC"]},
+				{Symbol: "EURC", Address: knownTokens["EURC"]},
+			}
+		}
 	}
 }
 
@@ -88,19 +121,27 @@ func CreditsToDollars(credits int) string {
 	return fmt.Sprintf("$%d.%02d", cents/100, cents%100)
 }
 
-// BuildPaymentRequirements creates the 402 response payload for an operation
+// BuildPaymentRequirements creates the 402 response payload for an operation.
+// Returns one PaymentRequirement per accepted token — the paying agent picks.
 func BuildPaymentRequirements(operation string, resource string) []PaymentRequirement {
 	cost := GetOperationCost(operation)
-	return []PaymentRequirement{{
-		Scheme:            "exact",
-		Network:           x402Network,
-		MaxAmountRequired: CreditsToDollars(cost),
-		Resource:          resource,
-		Description:       fmt.Sprintf("Access to %s", operation),
-		MimeType:          "application/json",
-		PayTo:             x402PayTo,
-		Asset:             x402Asset,
-	}}
+	amount := CreditsToDollars(cost)
+	desc := fmt.Sprintf("Access to %s", operation)
+
+	var reqs []PaymentRequirement
+	for _, token := range x402Assets {
+		reqs = append(reqs, PaymentRequirement{
+			Scheme:            "exact",
+			Network:           x402Network,
+			MaxAmountRequired: amount,
+			Resource:          resource,
+			Description:       desc,
+			MimeType:          "application/json",
+			PayTo:             x402PayTo,
+			Asset:             token.Address,
+		})
+	}
+	return reqs
 }
 
 // WritePaymentRequired sends a 402 response with x402 payment requirements
