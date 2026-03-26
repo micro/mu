@@ -84,21 +84,24 @@ export STRIPE_WEBHOOK_SECRET="whsec_..."  # For verifying Stripe webhook events
 Enable cryptocurrency payments via the [x402 protocol](https://x402.org). External clients (AI agents, apps) can pay per-request with stablecoins instead of needing a Mu account.
 
 ```bash
-# Wallet address to receive USDC payments (required to enable x402)
+# Wallet address to receive payments (required to enable x402)
 export X402_PAY_TO="0xYourWalletAddress"
+
+# Accepted tokens (comma-separated symbols). Default: USDC,EURC
+export X402_ASSETS="USDC,EURC"
 
 # Facilitator URL for payment verification and settlement
 export X402_FACILITATOR_URL="https://x402.org/facilitator"  # Default
 
 # Blockchain network identifier
 export X402_NETWORK="eip155:8453"  # Default: Base mainnet
-
-# Token contract address
-export X402_ASSET="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"  # Default: USDC on Base
 ```
 
 **Notes:**
-- Only `X402_PAY_TO` is required — other values have sensible defaults
+- Only `X402_PAY_TO` is required — everything else has sensible defaults
+- **USDC and EURC on Base** are accepted by default
+- `X402_ASSETS` overrides the default tokens (e.g. `"USDC"` for USDC only)
+- `X402_ASSET` (single contract address) still works for backwards compatibility
 - When enabled, API clients can send `X-PAYMENT` header instead of authenticating
 - Payments settle on-chain via the facilitator — no Stripe needed
 - Credit costs are converted to USD at 1 credit = $0.01
@@ -184,9 +187,9 @@ export MAIL_SELECTOR="default"
 | `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key for card payments |
 | `STRIPE_WEBHOOK_SECRET` | - | Stripe webhook secret for verifying events |
 | `X402_PAY_TO` | - | Wallet address for x402 crypto payments |
+| `X402_ASSETS` | `USDC,EURC` | Accepted tokens (comma-separated symbols) |
 | `X402_FACILITATOR_URL` | `https://x402.org/facilitator` | x402 facilitator endpoint |
 | `X402_NETWORK` | `eip155:8453` | Blockchain network for x402 payments |
-| `X402_ASSET` | USDC on Base | Token contract address for x402 payments |
 | `FREE_DAILY_QUOTA` | `10` | Daily free AI queries |
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |

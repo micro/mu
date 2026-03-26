@@ -8,7 +8,9 @@ The MCP server exposes 30+ tools — news, search, video, weather, places, mail,
 
 ## Pay with Crypto (x402)
 
-AI agents can pay per-request with USDC stablecoins via the [x402 protocol](https://x402.org). No account, no API key, no signup. Just call and pay.
+AI agents can pay per-request with stablecoins via the [x402 protocol](https://x402.org). No account, no API key, no signup. Just call and pay.
+
+**Accepted tokens:** USDC and EURC on Base (configurable via `X402_ASSETS`).
 
 When x402 is enabled on the server (`X402_PAY_TO` is set), any metered tool call without sufficient credits returns `HTTP 402` with payment requirements. The agent pays on-chain, retries, and gets the response.
 
@@ -208,4 +210,4 @@ curl -X POST https://mu.xyz/mcp \
 
 When running your own Mu instance, the MCP server is available automatically at `/mcp` with no additional configuration required.
 
-To enable x402 payments, set `X402_PAY_TO` to your USDC wallet address. See [Configuration](ENVIRONMENT_VARIABLES.md) for details.
+To enable x402 payments, set `X402_PAY_TO` to your wallet address. USDC and EURC on Base are accepted by default. See [Configuration](ENVIRONMENT_VARIABLES.md) for details.
