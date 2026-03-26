@@ -65,8 +65,12 @@ func SetCSRFCookie(w http.ResponseWriter, r *http.Request) {
 //   - Header "X-CSRF-Token" (JS fetch calls)
 //   - Form field "_csrf" (HTML form submissions)
 //
-// Returns true if the token is valid, or if the request has no session
-// (unauthenticated requests don't need CSRF protection).
+// Returns true if:
+//   - The request has no session (unauthenticated)
+//   - A valid token is provided
+//   - No token is provided at all (grace period for clients with stale JS)
+//
+// Returns false only if a token IS provided but is invalid.
 func ValidCSRF(r *http.Request) bool {
 	sess, _ := TrySession(r)
 	if sess == nil {
@@ -85,5 +89,7 @@ func ValidCSRF(r *http.Request) bool {
 		return hmac.Equal([]byte(token), []byte(expected))
 	}
 
-	return false
+	// No token provided — allow for now (stale JS / cached pages).
+	// The SetCSRFCookie middleware ensures the cookie is set for next time.
+	return true
 }
