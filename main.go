@@ -771,12 +771,7 @@ func main() {
 						}
 					}
 				} else if r.URL.Path == "/" {
-					if err := auth.ValidateToken(token); err == nil {
-						http.Redirect(w, r, "/home", 302)
-						return
-					}
-					// Redirect unauthenticated users to login
-					http.Redirect(w, r, "/login", 302)
+					http.Redirect(w, r, "/home", 302)
 					return
 				}
 			}
