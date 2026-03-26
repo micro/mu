@@ -1624,18 +1624,6 @@ func FindMessageByMessageID(messageID string) *Message {
 }
 
 // GetMessage finds a message by its internal ID
-func GetMessage(msgID string) *Message {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	for _, msg := range messages {
-		if msg.ID == msgID {
-			return msg
-		}
-	}
-	return nil
-}
-
 // DeleteMessage removes a message
 func DeleteMessage(msgID, userID string) error {
 	mutex.Lock()
