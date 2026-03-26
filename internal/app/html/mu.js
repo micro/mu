@@ -130,6 +130,13 @@ document.addEventListener('submit', function(e) {
   form.appendChild(input);
 }, true);
 
+// Dismiss open tooltips when tapping elsewhere.
+document.addEventListener('click', function() {
+  document.querySelectorAll('.card-tooltip.show').forEach(function(e) {
+    e.classList.remove('show');
+  });
+});
+
 // ============================================
 // TIMESTAMP UPDATES
 // ============================================
