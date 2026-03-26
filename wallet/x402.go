@@ -69,12 +69,16 @@ func init() {
 		}
 	}
 	if len(x402Assets) == 0 {
-		// Backwards compatible: single asset from X402_ASSET or default USDC
-		addr := os.Getenv("X402_ASSET")
-		if addr == "" {
-			addr = knownTokens["USDC"]
+		if addr := os.Getenv("X402_ASSET"); addr != "" {
+			// Backwards compatible: single asset from X402_ASSET
+			x402Assets = []x402Token{{Symbol: "USDC", Address: addr}}
+		} else {
+			// Default: accept both USDC and EURC on Base
+			x402Assets = []x402Token{
+				{Symbol: "USDC", Address: knownTokens["USDC"]},
+				{Symbol: "EURC", Address: knownTokens["EURC"]},
+			}
 		}
-		x402Assets = []x402Token{{Symbol: "USDC", Address: addr}}
 	}
 }
 
