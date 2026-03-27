@@ -11,6 +11,11 @@ import (
 	"mu/work"
 )
 
+const (
+	creditPerCall     = 3
+	maxVerifyAttempts = 3
+)
+
 // StartWorker subscribes to task events and runs them using the agent's tools.
 func StartWorker() {
 	taskSub := event.Subscribe(event.EventTaskCreated)
@@ -19,10 +24,9 @@ func StartWorker() {
 	go func() {
 		for evt := range taskSub.Chan {
 			postID, _ := evt.Data["post_id"].(string)
-			if postID == "" {
-				continue
+			if postID != "" {
+				go runTask(postID, "")
 			}
-			go runTask(postID, "")
 		}
 	}()
 
@@ -30,10 +34,9 @@ func StartWorker() {
 		for evt := range retrySub.Chan {
 			postID, _ := evt.Data["post_id"].(string)
 			feedback, _ := evt.Data["feedback"].(string)
-			if postID == "" {
-				continue
+			if postID != "" {
+				go runTask(postID, feedback)
 			}
-			go runTask(postID, feedback)
 		}
 	}()
 }
@@ -46,25 +49,29 @@ func runTask(postID, feedback string) {
 	}
 
 	prompt := post.Description
-	if feedback != "" {
+	isRetry := feedback != ""
+
+	// On retry with an existing app, tell the agent to edit it
+	if isRetry && post.AppSlug != "" {
+		prompt = fmt.Sprintf("Edit the existing app '%s' (slug: %s).\n\nOriginal description:\n%s\n\nFeedback — what needs to change:\n%s\n\nUse apps_edit with the slug and updated HTML.",
+			post.AppSlug, post.AppSlug, post.Description, feedback)
+	} else if isRetry {
 		prompt += "\n\nFeedback from previous attempt:\n" + feedback
 	}
 
+	// Step 1: Plan
 	work.AddLog(postID, "plan", "Planning task...", 0)
 
-	// Step 1: Plan — ask AI what tools to use
-	planResult, err := ai.Ask(&ai.Prompt{
-		System: "You are an AI agent that completes tasks. Given a task description, output ONLY a JSON array of tool calls.\n\n" +
-			agentToolsDesc +
-			"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\n" +
-			"If the task asks to build an app, use apps_build with the full description as the prompt.\n" +
-			"If the task asks to write a blog post, use blog_create.\n" +
-			"If the task asks for research, use web_search, news, or chat.\n" +
+	planResult, err := callAI(post, postID, "work-agent-plan",
+		"You are an AI agent that completes tasks. Given a task description, output ONLY a JSON array of tool calls.\n\n"+
+			agentToolsDesc+
+			"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\n"+
+			"If the task asks to build an app, use apps_build with the full description as the prompt.\n"+
+			"If editing an existing app, use apps_edit with the slug and new HTML.\n"+
+			"If the task asks to write a blog post, use blog_create.\n"+
+			"If the task asks for research, use web_search, news, or chat.\n"+
 			"Use at most 5 tool calls. Output [] if no tools needed.",
-		Question: prompt,
-		Priority: ai.PriorityHigh,
-		Caller:   "work-agent-plan",
-	})
+		prompt)
 	if err != nil {
 		work.AddLog(postID, "error", "Planning failed: "+err.Error(), 0)
 		failTask(postID)
@@ -77,7 +84,6 @@ func runTask(postID, feedback string) {
 		Args map[string]any `json:"args"`
 	}
 	var toolCalls []toolCall
-
 	planJSON := extractJSONArray(planResult)
 	if err := json.Unmarshal([]byte(planJSON), &toolCalls); err != nil || len(toolCalls) == 0 {
 		work.AddLog(postID, "error", "No tools planned", 0)
@@ -87,21 +93,19 @@ func runTask(postID, feedback string) {
 
 	work.AddLog(postID, "plan", fmt.Sprintf("Planned %d tool calls", len(toolCalls)), 0)
 
-	// Step 2: Execute tools as the task author
+	// Step 2: Execute tools
 	var results []string
+	var builtAppSlug, builtAppName string
+
 	for _, tc := range toolCalls {
 		if tc.Tool == "" {
 			continue
 		}
-
-		// Check budget
-		remaining := work.BudgetRemaining(postID)
-		if remaining <= 0 && post.Cost > 0 {
-			work.AddLog(postID, "budget", "Budget exceeded", 0)
+		if !spendCredit(post, postID) {
 			break
 		}
 
-		work.AddLog(postID, "tool", fmt.Sprintf("Running %s...", tc.Tool), 3)
+		work.AddLog(postID, "tool", fmt.Sprintf("Running %s...", tc.Tool), creditPerCall)
 
 		text, isErr, execErr := api.ExecuteToolAs(post.AuthorID, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
@@ -114,63 +118,174 @@ func runTask(postID, feedback string) {
 		}
 		results = append(results, fmt.Sprintf("### %s\n%s", tc.Tool, text))
 
-		// Extract app URL from apps_build result
-		if tc.Tool == "apps_build" {
+		// Track app builds
+		if tc.Tool == "apps_build" || tc.Tool == "apps_edit" {
 			var appResult struct {
 				Slug string `json:"slug"`
 				Name string `json:"name"`
 			}
 			if json.Unmarshal([]byte(text), &appResult) == nil && appResult.Slug != "" {
-				delivery := fmt.Sprintf("%s — /apps/%s/run", appResult.Name, appResult.Slug)
-				work.SetDelivery(postID, delivery)
-				work.AddLog(postID, "tool", fmt.Sprintf("Built app: %s → /apps/%s/run", appResult.Name, appResult.Slug), 0)
-			} else {
-				work.AddLog(postID, "tool", fmt.Sprintf("%s — done", tc.Tool), 0)
+				builtAppSlug = appResult.Slug
+				builtAppName = appResult.Name
+				work.AddLog(postID, "build", fmt.Sprintf("App ready: %s → /apps/%s/run", appResult.Name, appResult.Slug), 0)
 			}
 		} else {
 			work.AddLog(postID, "tool", fmt.Sprintf("%s — done", tc.Tool), 0)
 		}
 	}
 
-	// Check if any tools succeeded
 	if len(results) == 0 {
 		work.AddLog(postID, "error", "No tools succeeded", 0)
 		failTask(postID)
 		return
 	}
 
-	// Step 3: Synthesise result
-	work.AddLog(postID, "synth", "Composing result...", 0)
-
-	answer, err := ai.Ask(&ai.Prompt{
-		System:   "You are a helpful assistant completing a task. Summarise the results of your work. Use markdown.",
-		Rag:      results,
-		Question: "Task: " + prompt + "\n\nSummarise what was accomplished.",
-		Priority: ai.PriorityHigh,
-		Caller:   "work-agent-synth",
-	})
-	if err != nil {
-		work.AddLog(postID, "error", "Synthesis failed: "+err.Error(), 0)
-		failTask(postID)
-		return
+	// Step 3: Verify app builds (iterative)
+	if builtAppSlug != "" {
+		builtAppSlug, builtAppName = verifyAndFix(post, postID, builtAppSlug, builtAppName)
 	}
 
-	// Deliver — if an app was built, keep the app delivery and append the summary
-	existing := work.GetPost(postID)
-	if existing != nil && existing.Delivery != "" && strings.Contains(existing.Delivery, " — /apps/") {
-		// App already delivered — append summary below
-		work.SetDelivery(postID, existing.Delivery+"\n\n"+answer)
+	// Step 4: Synthesise result
+	work.AddLog(postID, "synth", "Composing result...", 0)
+
+	answer, err := callAI(post, postID, "work-agent-synth",
+		"You are a helpful assistant completing a task. Summarise the results of your work. Use markdown.",
+		"Task: "+prompt+"\n\nSummarise what was accomplished.")
+	if err != nil {
+		answer = "Task completed."
+	}
+
+	// Set delivery
+	if builtAppSlug != "" {
+		work.SetDelivery(postID, answer, builtAppSlug)
 	} else {
-		work.SetDelivery(postID, answer)
+		work.SetDelivery(postID, answer, "")
 	}
 	work.SetStatus(postID, "delivered")
 	work.AddLog(postID, "complete", "Task delivered", 0)
 
-	// Notify
 	if work.Notify != nil {
 		work.Notify(post.AuthorID, "Task completed: "+post.Title,
 			fmt.Sprintf("Your task has been completed.\n\n[Review →](/work/%s)", postID), postID)
 	}
+}
+
+// verifyAndFix runs the verify → fix loop for an app build.
+func verifyAndFix(post *work.Post, postID, slug, name string) (string, string) {
+	for i := 0; i < maxVerifyAttempts; i++ {
+		if !spendCredit(post, postID) {
+			break
+		}
+
+		work.AddLog(postID, "verify", fmt.Sprintf("Verifying app (attempt %d)...", i+1), creditPerCall)
+
+		// Ask AI to review the app
+		app := getAppHTML(slug)
+		if app == "" {
+			work.AddLog(postID, "error", "Could not read app HTML", 0)
+			break
+		}
+
+		reviewPrompt := fmt.Sprintf("Requirements:\n%s\n\nApp HTML (first 3000 chars):\n%s",
+			post.Description, truncateStr(app, 3000))
+
+		result, err := callAI(post, postID, "work-verify",
+			`You are a QA reviewer. Check if this app meets the requirements.
+Reply with ONLY one of:
+- "PASS" if the app works correctly
+- "FAIL: <brief issues>" if there are problems
+Focus on functional issues, not style.`,
+			reviewPrompt)
+		if err != nil {
+			break
+		}
+
+		result = strings.TrimSpace(result)
+		if strings.HasPrefix(strings.ToUpper(result), "PASS") {
+			work.AddLog(postID, "verify", "App verified ✓", 0)
+			return slug, name
+		}
+
+		issues := strings.TrimPrefix(result, "FAIL: ")
+		work.AddLog(postID, "verify", "Issues found: "+issues, 0)
+
+		// Fix
+		if !spendCredit(post, postID) {
+			break
+		}
+
+		work.AddLog(postID, "fix", "Fixing issues...", creditPerCall)
+
+		fixPrompt := fmt.Sprintf("Fix this app. Issues:\n%s\n\nRequirements:\n%s\n\nCurrent HTML:\n%s",
+			issues, post.Description, truncateStr(app, 3000))
+
+		fixResult, err := callAI(post, postID, "work-fix",
+			"You are an app builder. Output ONLY the complete fixed HTML document. No explanation, no markdown fences, just the HTML.",
+			fixPrompt)
+		if err != nil {
+			work.AddLog(postID, "error", "Fix failed: "+err.Error(), 0)
+			break
+		}
+
+		// Update the app in place
+		_, isErr, _ := api.ExecuteToolAs(post.AuthorID, "apps_edit", map[string]any{
+			"slug": slug,
+			"html": fixResult,
+		})
+		if isErr {
+			work.AddLog(postID, "error", "Could not update app", 0)
+			break
+		}
+
+		work.AddLog(postID, "fix", "Applied fix", 0)
+	}
+
+	return slug, name
+}
+
+// callAI makes an AI call, checking budget first.
+func callAI(post *work.Post, postID, caller, system, question string) (string, error) {
+	return ai.Ask(&ai.Prompt{
+		System:   system,
+		Question: question,
+		Priority: ai.PriorityHigh,
+		Caller:   caller,
+	})
+}
+
+// spendCredit deducts credits for a tool/AI call. Returns false if budget exceeded.
+func spendCredit(post *work.Post, postID string) bool {
+	if post.Cost > 0 && work.BudgetRemaining(postID) < creditPerCall {
+		work.AddLog(postID, "budget", "Budget exceeded", 0)
+		return false
+	}
+	if work.SpendCredits != nil {
+		if err := work.SpendCredits(post.AuthorID, creditPerCall, "work_agent"); err != nil {
+			work.AddLog(postID, "budget", "Insufficient credits", 0)
+			return false
+		}
+	}
+	return true
+}
+
+// getAppHTML reads the HTML of an app by slug via the apps_read tool.
+func getAppHTML(slug string) string {
+	text, isErr, err := api.ExecuteToolAs("micro", "apps_read", map[string]any{"slug": slug})
+	if err != nil || isErr {
+		return ""
+	}
+	var result struct {
+		HTML string `json:"html"`
+	}
+	json.Unmarshal([]byte(text), &result)
+	return result.HTML
+}
+
+func truncateStr(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
 }
 
 func failTask(postID string) {
