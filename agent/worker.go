@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"mu/internal/ai"
 	"mu/internal/api"
@@ -112,7 +113,23 @@ func runTask(postID, feedback string) {
 			text = text[:4000] + "..."
 		}
 		results = append(results, fmt.Sprintf("### %s\n%s", tc.Tool, text))
-		work.AddLog(postID, "tool", fmt.Sprintf("%s — done", tc.Tool), 0)
+
+		// Extract app URL from apps_build result
+		if tc.Tool == "apps_build" {
+			var appResult struct {
+				Slug string `json:"slug"`
+				Name string `json:"name"`
+			}
+			if json.Unmarshal([]byte(text), &appResult) == nil && appResult.Slug != "" {
+				delivery := fmt.Sprintf("%s — /apps/%s/run", appResult.Name, appResult.Slug)
+				work.SetDelivery(postID, delivery)
+				work.AddLog(postID, "tool", fmt.Sprintf("Built app: %s → /apps/%s/run", appResult.Name, appResult.Slug), 0)
+			} else {
+				work.AddLog(postID, "tool", fmt.Sprintf("%s — done", tc.Tool), 0)
+			}
+		} else {
+			work.AddLog(postID, "tool", fmt.Sprintf("%s — done", tc.Tool), 0)
+		}
 	}
 
 	// Step 3: Synthesise result
@@ -131,8 +148,14 @@ func runTask(postID, feedback string) {
 		return
 	}
 
-	// Deliver
-	work.SetDelivery(postID, answer)
+	// Deliver — if an app was built, keep the app delivery and append the summary
+	existing := work.GetPost(postID)
+	if existing != nil && existing.Delivery != "" && strings.Contains(existing.Delivery, " — /apps/") {
+		// App already delivered — append summary below
+		work.SetDelivery(postID, existing.Delivery+"\n\n"+answer)
+	} else {
+		work.SetDelivery(postID, answer)
+	}
 	work.SetStatus(postID, "delivered")
 	work.AddLog(postID, "complete", "Task delivered", 0)
 
