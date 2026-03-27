@@ -2,59 +2,47 @@ package app
 
 import (
 	"fmt"
-	"html"
 	"strings"
 )
 
-// ContentItem represents any user-generated content for listing.
-// Fill in the fields and call RenderItems for consistent rendering with admin controls.
-type ContentItem struct {
-	ID          string
-	Title       string
-	Href        string // link to detail page
-	Description string // short preview text
-	Meta        string // e.g. "Task · 500 credits · 2 Jan 2006"
-	AuthorID    string
-	Author      string
-	DeleteURL   string // POST endpoint for deletion (empty = no delete)
+// AdminAction is a single admin control (edit, delete, flag, etc.)
+type AdminAction struct {
+	Label   string // e.g. "Edit", "Delete", "Flag"
+	URL     string // href for links, or POST action for confirm actions
+	Confirm string // if set, renders as a POST form with confirm dialog
+	Method  string // form method override (e.g. "DELETE") — adds hidden _method field
+	Class   string // CSS class (default: "text-muted", use "text-error" for destructive)
 }
 
-// RenderItems renders a list of content items as cards with consistent layout.
-// Admin and author get a delete link automatically.
-func RenderItems(items []ContentItem, userID string, isAdmin bool) string {
-	if len(items) == 0 {
-		return `<div class="card"><p class="text-muted">Nothing here yet.</p></div>`
+// AdminControls renders inline admin action links (matching blog's "Edit · Delete" style).
+// Only renders if the user is an admin or the content author.
+// Returns a string with leading " · " separators, suitable for appending to a meta line.
+func AdminControls(userID, authorID string, isAdmin bool, actions ...AdminAction) string {
+	if !isAdmin && userID != authorID {
+		return ""
+	}
+	if len(actions) == 0 {
+		return ""
 	}
 
 	var sb strings.Builder
-	for _, item := range items {
-		sb.WriteString(`<div class="card">`)
-
-		// Title
-		if item.Href != "" {
-			sb.WriteString(fmt.Sprintf(`<h4><a href="%s">%s</a></h4>`, item.Href, html.EscapeString(item.Title)))
+	for _, a := range actions {
+		sb.WriteString(` · `)
+		cls := a.Class
+		if cls == "" {
+			cls = "text-muted"
+		}
+		if a.Confirm != "" {
+			// POST with confirm dialog — inline JS form submission
+			methodField := ""
+			if a.Method != "" {
+				methodField = fmt.Sprintf("var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='%s';f.appendChild(i);", a.Method)
+			}
+			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="if(confirm('%s')){var f=document.createElement('form');f.method='POST';f.action='%s';%sdocument.body.appendChild(f);f.submit();}return false;">%s</a>`,
+				cls, a.Confirm, a.URL, methodField, a.Label))
 		} else {
-			sb.WriteString(fmt.Sprintf(`<h4>%s</h4>`, html.EscapeString(item.Title)))
+			sb.WriteString(fmt.Sprintf(`<a href="%s" class="%s">%s</a>`, a.URL, cls, a.Label))
 		}
-
-		// Meta line
-		if item.Meta != "" {
-			sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, item.Meta))
-		}
-
-		// Description
-		if item.Description != "" {
-			sb.WriteString(fmt.Sprintf(`<p class="text-sm">%s</p>`, html.EscapeString(item.Description)))
-		}
-
-		// Delete (admin or author)
-		if item.DeleteURL != "" && (isAdmin || userID == item.AuthorID) {
-			sb.WriteString(fmt.Sprintf(`<form method="POST" action="%s" onsubmit="return confirm('Delete this?')" style="margin-top:8px">`, item.DeleteURL))
-			sb.WriteString(`<button type="submit" class="text-sm text-muted" style="background:none;border:none;padding:0;cursor:pointer;text-decoration:underline">delete</button>`)
-			sb.WriteString(`</form>`)
-		}
-
-		sb.WriteString(`</div>`)
 	}
 	return sb.String()
 }

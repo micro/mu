@@ -1469,12 +1469,18 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		authorLink = fmt.Sprintf(`<a href="/@%s" class="text-muted">%s</a>`, post.AuthorID, post.Author)
 	}
 
-	// Check if current user is the author (to show edit and delete buttons)
-	var editButton string
+	// Admin controls (edit/delete for author or admin)
 	_, acc := auth.TrySession(r)
-	if acc != nil && acc.ID == post.AuthorID {
-		editButton = ` · <a href="/blog/post?id=` + post.ID + `&edit=true" class="text-muted">Edit</a> · <a href="#" onclick="if(confirm('Delete this post?')){var f=document.createElement('form');f.method='POST';f.action='/post?id=` + post.ID + `';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">Delete</a>`
+	var userID string
+	var isAdmin bool
+	if acc != nil {
+		userID = acc.ID
+		isAdmin = acc.Admin
 	}
+	editButton := app.AdminControls(userID, post.AuthorID, isAdmin,
+		app.AdminAction{Label: "Edit", URL: "/blog/post?id=" + post.ID + "&edit=true"},
+		app.AdminAction{Label: "Delete", URL: "/post?id=" + post.ID, Confirm: "Delete this post?", Method: "DELETE", Class: "text-error"},
+	)
 
 	tagsHtml := ""
 	if post.Tags != "" {

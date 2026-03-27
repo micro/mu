@@ -96,9 +96,13 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</div>`)
 
-	// Convert to ContentItems
-	items := make([]app.ContentItem, len(allPosts))
-	for i, post := range allPosts {
+	if len(allPosts) == 0 {
+		sb.WriteString(`<div class="card"><p class="text-muted">No posts yet.</p></div>`)
+	}
+
+	for _, post := range allPosts {
+		sb.WriteString(`<div class="card">`)
+
 		kindLabel := "Show"
 		if post.Kind == KindTask {
 			kindLabel = "Task"
@@ -107,6 +111,8 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		sb.WriteString(fmt.Sprintf(`<h4><a href="/work/%s">%s</a></h4>`, post.ID, post.Title))
+
 		meta := fmt.Sprintf(`%s · <a href="/@%s">%s</a> · %s`, kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006"))
 		if post.Kind == KindTask && post.Cost > 0 {
 			meta += fmt.Sprintf(` · %d credits`, post.Cost)
@@ -114,19 +120,13 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		if len(post.Feedback) > 0 {
 			meta += fmt.Sprintf(` · %d feedback`, len(post.Feedback))
 		}
+		meta += app.AdminControls(userID, post.AuthorID, isAdmin,
+			app.AdminAction{Label: "delete", URL: "/work/" + post.ID + "/delete", Confirm: "Delete this post?", Class: "text-error"},
+		)
+		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, meta))
 
-		items[i] = app.ContentItem{
-			ID:        post.ID,
-			Title:     post.Title,
-			Href:      "/work/" + post.ID,
-			Meta:      meta,
-			AuthorID:  post.AuthorID,
-			Author:    post.Author,
-			DeleteURL: "/work/" + post.ID + "/delete",
-		}
+		sb.WriteString(`</div>`)
 	}
-
-	sb.WriteString(app.RenderItems(items, userID, isAdmin))
 
 	html := app.RenderHTMLForRequest("Work", "Share work, get feedback, post tasks", sb.String(), r)
 	w.Write([]byte(html))
@@ -171,8 +171,12 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		kindLabel = "Task"
 	}
 
-	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s · Posted by <a href="/@%s">%s</a> · %s</p>`,
-		kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006 15:04")))
+	detailMeta := fmt.Sprintf(`%s · Posted by <a href="/@%s">%s</a> · %s`,
+		kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006 15:04"))
+	detailMeta += app.AdminControls(userID, post.AuthorID, isAdmin,
+		app.AdminAction{Label: "delete", URL: "/work/" + post.ID + "/delete", Confirm: "Delete this post permanently?", Class: "text-error"},
+	)
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, detailMeta))
 
 	if post.Kind == KindTask {
 		sb.WriteString(fmt.Sprintf(`<p><strong>Cost:</strong> %d credits (%s)</p>`, post.Cost, wallet.FormatCredits(post.Cost)))
@@ -274,15 +278,6 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			sb.WriteString(`</form>`)
 			sb.WriteString(`</div>`)
 		}
-	}
-
-	// Delete (admin or author)
-	if isAdmin || userID == post.AuthorID {
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/delete" onsubmit="return confirm('Delete this post permanently?')">`, post.ID))
-		sb.WriteString(`<button type="submit" class="btn btn-secondary">Delete</button>`)
-		sb.WriteString(`</form>`)
-		sb.WriteString(`</div>`)
 	}
 
 	// Feedback section
