@@ -628,6 +628,9 @@ func main() {
 	http.HandleFunc("/work", work.Handler)
 	http.HandleFunc("/work/", work.Handler)
 
+	// content controls (flag, save, dismiss, block, share)
+	http.HandleFunc("/controls/", app.ControlsHandler)
+
 	// auth
 	http.HandleFunc("/login", app.Login)
 	http.HandleFunc("/logout", app.Logout)

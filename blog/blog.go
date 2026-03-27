@@ -1477,10 +1477,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		userID = acc.ID
 		isAdmin = acc.Admin
 	}
-	editButton := app.Controls(userID, post.AuthorID, isAdmin,
-		app.Action{Label: "Edit", URL: "/blog/post?id=" + post.ID + "&edit=true"},
-		app.Action{Label: "Delete", URL: "/post?id=" + post.ID, Confirm: "Delete this post?", Method: "DELETE", Class: "text-error"},
-	)
+	editButton := app.ItemControls(userID, isAdmin, "post", post.ID, post.AuthorID, "/blog/post?id="+post.ID+"&edit=true", "/post?id="+post.ID)
 
 	tagsHtml := ""
 	if post.Tags != "" {
@@ -1513,7 +1510,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	content := fmt.Sprintf(`<div id="blog">
 		%s
 		<div class="info">
-			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" class="text-muted">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" class="text-muted">Share</a>
+			%s · %s%s
 		</div>
 		<hr class="my-5 border-t">
 		<div class="mb-5">%s</div>
@@ -1523,7 +1520,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<div class="mt-6">
 			<a href="/blog" class="text-muted">← Back to posts</a>
 		</div>
-	</div>`, tagsDisplay, timeInfo, authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, tagsDisplay, timeInfo, authorLink, editButton, contentHTML, renderComments(post.ID, r))
 
 	html := app.RenderHTMLForRequest(title, post.Content[:min(len(post.Content), 150)], content, r)
 	w.Write([]byte(html))
