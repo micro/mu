@@ -66,14 +66,14 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	// Header
-	sb.WriteString(`<div class="card">`)
+	// Inline post form for logged-in users
 	if sess != nil {
-		sb.WriteString(`<a href="/work/post" class="btn">Post</a>`)
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(renderPostForm("show", ""))
+		sb.WriteString(`</div>`)
 	} else {
-		sb.WriteString(`<p><a href="/login">Login</a> to post or interact.</p>`)
+		sb.WriteString(`<div class="card"><p><a href="/login">Login</a> to post or interact.</p></div>`)
 	}
-	sb.WriteString(`</div>`)
 
 	// Filter tabs
 	sb.WriteString(`<div class="card">`)
@@ -301,22 +301,11 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-func handlePostForm(w http.ResponseWriter, r *http.Request) {
-	_, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
-	}
-
-	errMsg := r.URL.Query().Get("error")
-	kind := r.URL.Query().Get("kind")
-	if kind == "" {
-		kind = "show"
-	}
-
+// renderPostForm returns the HTML for the work post form.
+// kind is the default kind ("show" or "task"), errMsg shows an error if set.
+func renderPostForm(kind, errMsg string) string {
 	var sb strings.Builder
 
-	sb.WriteString(`<div class="card">`)
 	if errMsg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
@@ -348,12 +337,10 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 		descPlaceholder = "Describe the task..."
 	}
 
-	sb.WriteString(`<div>`)
 	sb.WriteString(`<input type="text" id="work-title" name="title" placeholder="` + titlePlaceholder + `" required class="form-input w-full" maxlength="200">`)
-	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div class="mt-3">`)
-	sb.WriteString(`<textarea id="work-desc" name="description" rows="4" placeholder="` + descPlaceholder + `" required class="form-input w-full"></textarea>`)
+	sb.WriteString(`<textarea id="work-desc" name="description" rows="3" placeholder="` + descPlaceholder + `" required class="form-input w-full"></textarea>`)
 	sb.WriteString(`</div>`)
 
 	// Show-only: link field
@@ -398,9 +385,25 @@ function workFormToggle(kind) {
   }
 }
 </script>`)
-	sb.WriteString(`</div>`)
 
-	html := app.RenderHTMLForRequest("Share Work", "Post your work or a task", sb.String(), r)
+	return sb.String()
+}
+
+func handlePostForm(w http.ResponseWriter, r *http.Request) {
+	_, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+
+	kind := r.URL.Query().Get("kind")
+	if kind == "" {
+		kind = "show"
+	}
+	errMsg := r.URL.Query().Get("error")
+
+	content := `<div class="card">` + renderPostForm(kind, errMsg) + `</div>`
+	html := app.RenderHTMLForRequest("Share Work", "Post your work or a task", content, r)
 	w.Write([]byte(html))
 }
 
@@ -456,7 +459,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	// Hold cost in escrow for tasks
 	if kind == KindTask && cost > 0 && sess.Account != "micro" {
 		if err := wallet.HoldEscrow(sess.Account, cost, "pending"); err != nil {
-			respondError(w, r, "/work/post?kind=task", "Insufficient credits for task cost")
+			respondError(w, r, "/work?kind=task", "Insufficient credits for task cost")
 			return
 		}
 	}
@@ -466,7 +469,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		if kind == KindTask && cost > 0 && sess.Account != "micro" {
 			wallet.RefundEscrow(sess.Account, cost, "failed")
 		}
-		respondError(w, r, "/work/post?kind="+kind, err.Error())
+		respondError(w, r, "/work?kind="+kind, err.Error())
 		return
 	}
 
