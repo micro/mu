@@ -175,10 +175,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<div class="card" style="margin-bottom:12px;">`)
 			b.WriteString(`<div><a href="` + html.EscapeString(link) + `" class="card-title">` +
 				html.EscapeString(entry.Title) + `</a>`)
-			b.WriteString(` <span class="category" style="font-size:11px;">` +
+			b.WriteString(` <span class="category" style="font-size:13px;">` +
 				html.EscapeString(entry.Type) + `</span>`)
 			if !entry.IndexedAt.IsZero() {
-				b.WriteString(` <span style="font-size:11px;color:#888;margin-left:4px;">` +
+				b.WriteString(` <span style="font-size:13px;color:#888;margin-left:4px;">` +
 					html.EscapeString(app.TimeAgo(entry.IndexedAt)) + `</span>`)
 			}
 			b.WriteString(`</div>`)
@@ -298,8 +298,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 			if result.Age != "" {
 				meta += ` · ` + html.EscapeString(result.Age)
 			}
-			meta += app.ExternalControls(sess.Account, "web", url.QueryEscape(result.URL))
-			b.WriteString(`<div style="font-size:11px;color:#888;margin-top:2px;">` + meta + `</div>`)
+			b.WriteString(`<div style="font-size:13px;color:#888;margin-top:2px;">` + meta + `</div>`)
 			b.WriteString(`</div>`)
 		}
 	}

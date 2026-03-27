@@ -662,7 +662,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
   %s
   <div style="display:flex;justify-content:space-between;align-items:baseline;padding-right:20px">
     <div>%s</div>
-    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span></div>
+    <div><span data-timestamp="%d" style="color:#888;font-size:13px;">%s</span></div>
   </div>
   <div style="margin-top:8px;font-size:15px;line-height:1.5;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
 </div>`,
@@ -691,7 +691,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
     <textarea name="content" id="reply-content" rows="2" placeholder="Write a message..." required
       style="width:100%%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-      <span id="reply-char-count" style="font-size:12px;color:#888;">0/500</span>
+      <span id="reply-char-count" style="font-size:13px;color:#888;">0/500</span>
       <button type="submit" style="padding:6px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Send</button>
     </div>
   </form>
@@ -724,7 +724,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 		sb.WriteString(fmt.Sprintf(`<div style="padding:12px 0;border-bottom:1px solid #f5f5f5;">
   <div style="display:flex;justify-content:space-between;align-items:baseline;">
     <div style="font-size:13px;"><b>%s</b></div>
-    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
+    <div><span data-timestamp="%d" style="color:#888;font-size:13px;">%s</span>%s</div>
   </div>
   <div style="margin-top:4px;overflow-wrap:break-word;word-break:break-word;">%s</div>
 </div>`,
@@ -950,7 +950,7 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
     <textarea name="content" id="social-content" rows="3" placeholder="Start a thread..." required
       style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-      <span id="social-char-count" style="font-size:12px;color:#888;">0/500</span>
+      <span id="social-char-count" style="font-size:13px;color:#888;">0/500</span>
       <button type="submit" style="padding:8px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Start Thread</button>
     </div>
   </form>
@@ -1011,13 +1011,13 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 		mutex.RLock()
 		rc := replyCount(p.ID)
 		mutex.RUnlock()
-		replyLink := fmt.Sprintf(`<a href="/social/thread?id=%s" style="color:#888;text-decoration:none;font-size:12px;">open thread</a>`, p.ID)
+		replyLink := fmt.Sprintf(`<a href="/social/thread?id=%s" style="color:#888;text-decoration:none;font-size:13px;">open thread</a>`, p.ID)
 		if rc > 0 {
 			noun := "messages"
 			if rc == 1 {
 				noun = "message"
 			}
-			replyLink = fmt.Sprintf(`<a href="/social/thread?id=%s" style="color:#888;text-decoration:none;font-size:12px;">%d %s</a>`, p.ID, rc, noun)
+			replyLink = fmt.Sprintf(`<a href="/social/thread?id=%s" style="color:#888;text-decoration:none;font-size:13px;">%d %s</a>`, p.ID, rc, noun)
 		}
 
 		ts := p.PostedAt.Unix()
@@ -1029,7 +1029,7 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
   %s
   <div style="display:flex;justify-content:space-between;align-items:baseline;padding-right:20px">
     <div>%s</div>
-    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span></div>
+    <div><span data-timestamp="%d" style="color:#888;font-size:13px;">%s</span></div>
   </div>
   <div style="margin-top:4px;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
   <div style="margin-top:6px;">%s</div>
@@ -1087,7 +1087,7 @@ func renderLinkCard(rawURL string) string {
 			return ""
 		}
 		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e1e1e1;border-radius:12px;padding:12px;margin-top:8px;text-decoration:none;color:inherit;">
-  <div style="font-size:12px;color:#888;">%s</div>
+  <div style="font-size:13px;color:#888;">%s</div>
 </a>`, htmlpkg.EscapeString(rawURL), htmlpkg.EscapeString(parsed.Hostname()))
 	}
 
@@ -1107,7 +1107,7 @@ func renderLinkCard(rawURL string) string {
 		}
 	}
 	if site != "" {
-		sb.WriteString(fmt.Sprintf(`<div style="font-size:12px;color:#888;margin-bottom:2px;">%s</div>`, htmlpkg.EscapeString(site)))
+		sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;color:#888;margin-bottom:2px;">%s</div>`, htmlpkg.EscapeString(site)))
 	}
 
 	if md.Title != "" {
