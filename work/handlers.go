@@ -49,7 +49,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	kind := r.URL.Query().Get("kind")
 	status := r.URL.Query().Get("status")
 
-	// Default: show all, or filter by tab
 	allPosts := ListPosts(kind, status, 50)
 
 	if app.WantsJSON(r) {
@@ -57,15 +56,20 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess, _ := auth.TrySession(r)
+	sess, acc := auth.TrySession(r)
+	var userID string
+	var isAdmin bool
+	if sess != nil {
+		userID = sess.Account
+		isAdmin = acc.Admin
+	}
 
 	var sb strings.Builder
 
 	// Header
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<p>Share your work, get feedback, or post tasks with credit bounties.</p>`)
 	if sess != nil {
-		sb.WriteString(`<p><a href="/work/post" class="btn">Post</a></p>`)
+		sb.WriteString(`<a href="/work/post" class="btn">Post</a>`)
 	} else {
 		sb.WriteString(`<p><a href="/login">Login</a> to post or interact.</p>`)
 	}
@@ -92,15 +96,9 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</div>`)
 
-	// Posts
-	if len(allPosts) == 0 {
-		sb.WriteString(`<div class="card"><p class="text-muted">No posts yet.</p></div>`)
-	}
-
-	for _, post := range allPosts {
-		sb.WriteString(`<div class="card">`)
-
-		// Kind label
+	// Convert to ContentItems
+	items := make([]app.ContentItem, len(allPosts))
+	for i, post := range allPosts {
 		kindLabel := "Show"
 		if post.Kind == KindTask {
 			kindLabel = "Task"
@@ -109,23 +107,26 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		sb.WriteString(fmt.Sprintf(`<h4><a href="/work/%s">%s</a></h4>`, post.ID, post.Title))
-
-		// Meta line
 		meta := fmt.Sprintf(`%s · <a href="/@%s">%s</a> · %s`, kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006"))
 		if post.Kind == KindTask && post.Cost > 0 {
 			meta += fmt.Sprintf(` · %d credits`, post.Cost)
 		}
-		if post.Tips > 0 {
-			meta += fmt.Sprintf(` · %d tipped`, post.Tips)
-		}
 		if len(post.Feedback) > 0 {
 			meta += fmt.Sprintf(` · %d feedback`, len(post.Feedback))
 		}
-		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, meta))
 
-		sb.WriteString(`</div>`)
+		items[i] = app.ContentItem{
+			ID:        post.ID,
+			Title:     post.Title,
+			Href:      "/work/" + post.ID,
+			Meta:      meta,
+			AuthorID:  post.AuthorID,
+			Author:    post.Author,
+			DeleteURL: "/work/" + post.ID + "/delete",
+		}
 	}
+
+	sb.WriteString(app.RenderItems(items, userID, isAdmin))
 
 	html := app.RenderHTMLForRequest("Work", "Share work, get feedback, post tasks", sb.String(), r)
 	w.Write([]byte(html))
