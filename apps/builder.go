@@ -627,6 +627,7 @@ func editPageHTML(a *App) string {
     <input class="name" type="text" id="appName" placeholder="App name">
     <input type="text" id="appDesc" placeholder="Description" style="flex:1;min-width:120px;">
     <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
+    <label style="display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap"><input type="checkbox" id="appPublic" style="width:auto;margin:0"> Public</label>
     <button onclick="saveApp()">Save</button>
     <span class="status-msg" id="statusMsg"></span>
   </div>
@@ -647,6 +648,7 @@ codeEl.value = %s;
 document.getElementById('appName').value = %s;
 document.getElementById('appDesc').value = %s;
 document.getElementById('appTags').value = %s;
+document.getElementById('appPublic').checked = %s;
 showPreview();
 
 codeEl.addEventListener('keydown', function(e) {
@@ -717,7 +719,7 @@ function saveApp() {
   fetch('/apps/' + editSlug, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name, icon: appIcon, description: desc, tags: tags, html: html })
+    body: JSON.stringify({ name: name, icon: appIcon, description: desc, tags: tags, html: html, public: document.getElementById('appPublic').checked })
   })
   .then(function(r) {
     if (!r.ok) {
@@ -746,5 +748,5 @@ function copyCode() {
     setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 2000);
   });
 }
-</script>`, savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags)
+</script>`, savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags, fmt.Sprintf("%v", a.Public))
 }
