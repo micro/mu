@@ -226,10 +226,8 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	} else if post.Worker != "" {
 		sb.WriteString(fmt.Sprintf(`<p><strong>Assigned to:</strong> <a href="/@%s">%s</a></p>`, post.Worker, post.Worker))
 	}
-	sb.WriteString(`</div>`)
-
-	// Description
-	sb.WriteString(`<div class="card">`)
+	// Description (in same card)
+	sb.WriteString(`<hr style="margin:12px 0;border:none;border-top:1px solid #f0f0f0">`)
 	for _, para := range strings.Split(post.Description, "\n") {
 		para = strings.TrimSpace(para)
 		if para != "" {
@@ -324,6 +322,11 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`</form>`)
 	}
 	sb.WriteString(`</div>`)
+
+	// Auto-refresh while building
+	if post.Status == StatusClaimed && post.WorkerID == "agent" {
+		sb.WriteString(`<script>setTimeout(function(){location.reload()},5000)</script>`)
+	}
 
 	html := app.RenderHTMLForRequest(post.Title, "Work", sb.String(), r)
 	w.Write([]byte(html))
