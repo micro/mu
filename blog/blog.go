@@ -569,13 +569,14 @@ func updateCacheUnlocked() {
 			listTimeLabel = "Updated " + app.TimeAgo(listTime)
 		}
 
+		controls := app.StaticControls("post", post.ID)
 		item := fmt.Sprintf(`<div class="post-item">
 			%s
 			<h3><a href="/blog/post?id=%s">%s</a></h3>
-			<div class="info"><span data-timestamp="%d">%s</span> · %s%s</div>
+			<div class="info"><span data-timestamp="%d">%s</span> · %s%s%s</div>
 			<div>%s</div>
 			%s
-		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, content, keepReading)
+		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, controls, content, keepReading)
 		fullList = append(fullList, item)
 	}
 

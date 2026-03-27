@@ -621,9 +621,10 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		}
 
 		// All links are now internal
+		controls := app.StaticControls("video", id)
 		html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a></div></div>`,
-			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category)
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a>%s</div></div>`,
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category, controls)
 		sb.WriteString(html)
 		res.Html = html
 

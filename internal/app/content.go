@@ -116,6 +116,16 @@ func ExternalControls(userID, contentType, contentID string) string {
 	return renderActions(actions)
 }
 
+// StaticControls renders save/share links for cached/static content.
+// These don't check the user — the /app/ endpoints handle auth server-side.
+// Use this when you don't have request context (cached HTML).
+func StaticControls(contentType, contentID string) string {
+	return renderActions([]Action{
+		{Label: "Save", URL: fmt.Sprintf("/app/save?type=%s&id=%s", contentType, contentID)},
+		shareAction(),
+	})
+}
+
 func shareAction() Action {
 	return Action{Label: "Share", URL: "#", Class: "text-muted"}
 }

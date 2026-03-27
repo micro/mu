@@ -354,10 +354,21 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(fmt.Sprintf(`<p class="text-success">%s</p>`, successMsg))
 	}
 	sb.WriteString(fmt.Sprintf(`<p>Your balance: <strong>%d credits</strong></p>`, balance))
+	// Build datalist of usernames for autocomplete
+	allAccounts := auth.GetAllAccounts()
+	sb.WriteString(`<datalist id="user-list">`)
+	for _, a := range allAccounts {
+		if a.ID == sess.Account {
+			continue
+		}
+		sb.WriteString(fmt.Sprintf(`<option value="%s">`, a.Name))
+	}
+	sb.WriteString(`</datalist>`)
+
 	sb.WriteString(`<form method="POST" action="/wallet/transfer">`)
 	sb.WriteString(`<div>`)
-	sb.WriteString(`<label for="transfer-to" class="text-sm">Recipient username</label>`)
-	sb.WriteString(`<input type="text" id="transfer-to" name="to" placeholder="username" required class="form-input w-full mt-1">`)
+	sb.WriteString(`<label for="transfer-to" class="text-sm">Recipient</label>`)
+	sb.WriteString(`<input type="text" id="transfer-to" name="to" placeholder="username" required class="form-input w-full mt-1" list="user-list" autocomplete="off">`)
 	sb.WriteString(`</div>`)
 	sb.WriteString(`<div class="mt-3">`)
 	sb.WriteString(`<label for="transfer-amount" class="text-sm">Amount (credits)</label>`)
