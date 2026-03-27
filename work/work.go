@@ -34,7 +34,7 @@ type Post struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Link        string    `json:"link"`        // URL, app slug, or any external link
-	Bounty      int       `json:"bounty"`      // Credits (task: bounty offered; show: tips received)
+	Cost        int       `json:"cost"`        // Credits cost for the task
 	AuthorID    string    `json:"author_id"`
 	Author      string    `json:"author"`      // Display name
 	WorkerID    string    `json:"worker_id"`   // Who claimed a task
@@ -85,7 +85,7 @@ func save() {
 }
 
 // CreatePost creates a new work post (task or show)
-func CreatePost(authorID, author, kind, title, description, link, tags string, bounty int) (*Post, error) {
+func CreatePost(authorID, author, kind, title, description, link, tags string, cost int) (*Post, error) {
 	if title == "" {
 		return nil, errors.New("title is required")
 	}
@@ -96,11 +96,11 @@ func CreatePost(authorID, author, kind, title, description, link, tags string, b
 		return nil, errors.New("kind must be task or show")
 	}
 	if kind == KindTask {
-		if bounty < 1 {
-			return nil, errors.New("bounty must be at least 1 credit")
+		if cost < 1 {
+			return nil, errors.New("cost must be at least 1 credit")
 		}
-		if bounty > 50000 {
-			return nil, errors.New("maximum bounty is 50,000 credits")
+		if cost > 50000 {
+			return nil, errors.New("maximum cost is 50,000 credits")
 		}
 	}
 
@@ -110,7 +110,7 @@ func CreatePost(authorID, author, kind, title, description, link, tags string, b
 		Title:       title,
 		Description: description,
 		Link:        link,
-		Bounty:      bounty,
+		Cost:        cost,
 		AuthorID:    authorID,
 		Author:      author,
 		Status:      StatusOpen,
