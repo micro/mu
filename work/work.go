@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"mu/internal/data"
+	"mu/internal/event"
 
 	"github.com/google/uuid"
 )
