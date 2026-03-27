@@ -391,19 +391,19 @@ func runGeneralTask(post *work.Post, postID, feedback string) {
 // --- helpers ---
 
 func readAppHTML(authorID, slug string) string {
-	a := getAppBySlug(slug)
+	a := getAppBySlug(authorID, slug)
 	if a == nil {
 		return ""
 	}
 	return a.HTML
 }
 
-func getAppBySlug(slug string) *struct {
+func getAppBySlug(authorID, slug string) *struct {
 	HTML string `json:"html"`
 	Name string `json:"name"`
 	Slug string `json:"slug"`
 } {
-	text, isErr, err := api.ExecuteToolAs("micro", "apps_read", map[string]any{"slug": slug})
+	text, isErr, err := api.ExecuteToolAs(authorID, "apps_read", map[string]any{"slug": slug})
 	if err != nil || isErr {
 		return nil
 	}
