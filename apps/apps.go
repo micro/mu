@@ -863,6 +863,19 @@ var url='/apps/'+slug+'/sdk/';
 if(t==='ai'){url+='ai'}
 else if(t==='fetch'){url+='ai'}
 else if(t==='store'){url+='store'}
+else if(t==='api'){
+var method=d.data.method||'GET';
+var path=d.data.path||'/';
+var opts={method:method,headers:{'Content-Type':'application/json','Accept':'application/json'}};
+if(d.data.body)opts.body=JSON.stringify(d.data.body);
+fetch(path,opts).then(function(r){return r.json()}).then(function(j){
+var iframe=document.querySelector('iframe');
+iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,result:j},'*');
+}).catch(function(err){
+var iframe=document.querySelector('iframe');
+iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,error:err.message},'*');
+});return;
+}
 else if(t==='user'){
 fetch('/session').then(function(r){return r.json()}).then(function(j){
 var iframe=document.querySelector('iframe');
@@ -1323,6 +1336,12 @@ const sdkJS = `// Mu App SDK
     // Send a result back to the parent (for agent code execution)
     run: function(result) {
       window.parent.postMessage({ type: 'mu:run', result: result }, '*');
+    },
+
+    // Platform API access
+    api: {
+      get: function(path) { return send('api', { method: 'GET', path: path }); },
+      post: function(path, body) { return send('api', { method: 'POST', path: path, body: body }); }
     },
 
     // Key-value storage

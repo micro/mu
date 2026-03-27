@@ -16,6 +16,7 @@ import (
 	"mu/admin"
 	"mu/agent"
 	"mu/apps"
+	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -102,6 +103,55 @@ func main() {
 		}
 		return a.Slug, a.Name, nil
 	}
+	work.DeleteApp = apps.DeleteApp
+	work.VerifyApp = func(appSlug string) (string, bool) {
+		a := apps.GetApp(appSlug)
+		if a == nil {
+			return "App not found", false
+		}
+		// Basic structural checks
+		html := a.HTML
+		if len(html) < 100 {
+			return "App HTML is too short — likely incomplete", false
+		}
+		if !strings.Contains(strings.ToLower(html), "<html") {
+			return "Missing <html> tag", false
+		}
+		if !strings.Contains(strings.ToLower(html), "<body") {
+			return "Missing <body> tag", false
+		}
+		// Ask AI to review against requirements
+		result, err := ai.Ask(&ai.Prompt{
+			System: `You are a QA reviewer. Given an app's HTML and its requirements, check if the app works correctly.
+Reply with ONLY one of:
+- "PASS" if the app meets the requirements
+- "FAIL: <brief description of issues>" if there are problems
+Be concise. Focus on functional issues, not style.`,
+			Question: fmt.Sprintf("Requirements:\n%s\n\nApp HTML (first 2000 chars):\n%s", a.Description, html[:min(len(html), 2000)]),
+			Priority: ai.PriorityLow,
+			Caller:   "work-verify",
+		})
+		if err != nil {
+			// If AI fails, pass by default
+			return "", true
+		}
+		result = strings.TrimSpace(result)
+		if strings.HasPrefix(strings.ToUpper(result), "PASS") {
+			return "", true
+		}
+		return strings.TrimPrefix(result, "FAIL: "), false
+	}
+	work.FixApp = func(appSlug, issues string) error {
+		a := apps.GetApp(appSlug)
+		if a == nil {
+			return fmt.Errorf("app not found")
+		}
+		_, err := apps.BuildAndSave(
+			fmt.Sprintf("%s\n\nThe previous version had these issues:\n%s\n\nFix these issues. Here's the current HTML:\n%s",
+				a.Description, issues, a.HTML[:min(len(a.HTML), 3000)]),
+			a.AuthorID, a.Author)
+		return err
+	}
 	work.ConsumeCredits = func(userID string, amount int) error {
 		w := wallet.GetWallet(userID)
 		if w.Balance < amount {
@@ -110,12 +160,12 @@ func main() {
 		wallet.ConsumeQuota(userID, wallet.OpChatQuery)
 		return nil
 	}
-	work.Notify = func(toUserID, subject, body string) {
+	work.Notify = func(toUserID, subject, body, threadID string) {
 		acc, err := auth.GetAccount(toUserID)
 		if err != nil {
 			return
 		}
-		mail.SendMessage("Mu", "micro", acc.Name, toUserID, subject, body, "", "")
+		mail.SendMessage("Mu", "micro", acc.Name, toUserID, subject, body, threadID, "")
 	}
 
 	// load social

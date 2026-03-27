@@ -86,8 +86,8 @@ var FixApp func(appSlug, issues string) error
 var ConsumeCredits func(userID string, amount int) error
 
 // Notify is wired by main.go to send notifications (e.g. internal mail).
-// Takes (toUserID, subject, body).
-var Notify func(toUserID, subject, body string)
+// Takes (toUserID, subject, body, threadID) where threadID groups messages.
+var Notify func(toUserID, subject, body, threadID string)
 
 var (
 	mutex sync.RWMutex
@@ -483,9 +483,7 @@ func runAgent(post *Post) {
 
 	if Notify != nil {
 		Notify(authorID, "Agent completed: "+title,
-			fmt.Sprintf(`The agent built %s for your task. Spent %d of %d credits.
-
-<a href="/work/%s">Review delivery →</a>`, name, post.Spent, post.Cost, postID))
+			fmt.Sprintf("The agent built %s for your task. Spent %d of %d credits.\n\n[Review delivery →](/work/%s)", name, post.Spent, post.Cost, postID), postID)
 	}
 }
 
@@ -499,15 +497,25 @@ func failAgent(post *Post, reason string) {
 	save()
 	authorID := post.AuthorID
 	title := post.Title
+	postID := post.ID
 	mutex.Unlock()
 
 	if Notify != nil {
-		Notify(authorID, "Agent failed: "+title, reason)
+		Notify(authorID, "Agent failed: "+title, reason, postID)
 	}
 }
 
+// DeleteApp is wired by main.go to delete an app by slug.
+var DeleteApp func(slug string) error
+
 // RetryWithFeedback resets a delivered task and re-runs the agent with feedback.
 func RetryWithFeedback(post *Post, feedback string) {
+	// Extract old app slug from delivery before clearing
+	oldSlug := ""
+	if parts := strings.SplitN(post.Delivery, " — /apps/", 2); len(parts) == 2 {
+		oldSlug = strings.TrimSuffix(parts[1], "/run")
+	}
+
 	mutex.Lock()
 	post.Status = StatusClaimed
 	post.Delivery = ""
@@ -541,6 +549,11 @@ func RetryWithFeedback(post *Post, feedback string) {
 			return
 		}
 
+		// Clean up old app
+		if oldSlug != "" && oldSlug != slug && DeleteApp != nil {
+			DeleteApp(oldSlug)
+		}
+
 		delivery := fmt.Sprintf("%s — /apps/%s/run", name, slug)
 		mutex.Lock()
 		post.Delivery = delivery
@@ -555,9 +568,7 @@ func RetryWithFeedback(post *Post, feedback string) {
 
 		if Notify != nil {
 			Notify(authorID, "Agent updated: "+title,
-				fmt.Sprintf(`The agent rebuilt %s with your feedback. Spent %d/%d credits.
-
-<a href="/work/%s">Review delivery →</a>`, name, post.Spent, post.Cost, postID))
+				fmt.Sprintf("The agent rebuilt %s with your feedback. Spent %d/%d credits.\n\n[Review delivery →](/work/%s)", name, post.Spent, post.Cost, postID), postID)
 		}
 	}()
 }
