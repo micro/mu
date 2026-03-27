@@ -2,7 +2,9 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"mu/internal/auth"
@@ -115,8 +117,89 @@ func ControlsHandler(w http.ResponseWriter, r *http.Request) {
 		UnblockUser(sess.Account, userParam)
 		respond("unblocked")
 
+	case "saved":
+		renderSavedPage(w, r, sess.Account)
+
+	case "blocked":
+		renderBlockedPage(w, r, sess.Account)
+
 	default:
 		http.NotFound(w, r)
 		return
 	}
+}
+
+func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
+	saved := GetSavedItems(userID)
+
+	var sb strings.Builder
+	sb.WriteString(`<div class="card"><h3>Saved</h3>`)
+
+	if len(saved) == 0 {
+		sb.WriteString(`<p class="text-muted">Nothing saved yet.</p>`)
+	} else {
+		// Sort by save time, newest first
+		type item struct {
+			key  string
+			time string
+			url  string
+		}
+		var items []item
+		for key, t := range saved {
+			parts := strings.SplitN(key, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			ct, cid := parts[0], parts[1]
+			u := contentURL(ct, cid)
+			if u == "" {
+				u = "#"
+			}
+			items = append(items, item{key: key, time: t.Format("2 Jan 15:04"), url: u})
+		}
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].time > items[j].time
+		})
+
+		for _, it := range items {
+			parts := strings.SplitN(it.key, ":", 2)
+			ct, cid := parts[0], parts[1]
+			label := ct + ": " + cid
+			if len(cid) > 30 {
+				label = ct + ": " + cid[:30] + "..."
+			}
+			sb.WriteString(fmt.Sprintf(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0">
+				<a href="%s">%s</a>
+				<span class="text-sm text-muted"> · %s · </span>
+				<a href="/app/unsave?type=%s&id=%s" class="text-sm text-muted">remove</a>
+			</div>`, it.url, label, it.time, ct, cid))
+		}
+	}
+	sb.WriteString(`</div>`)
+
+	html := RenderHTMLForRequest("Saved", "Your saved items", sb.String(), r)
+	w.Write([]byte(html))
+}
+
+func renderBlockedPage(w http.ResponseWriter, r *http.Request, userID string) {
+	blocked := GetBlockedUsers(userID)
+
+	var sb strings.Builder
+	sb.WriteString(`<div class="card"><h3>Blocked Users</h3>`)
+
+	if len(blocked) == 0 {
+		sb.WriteString(`<p class="text-muted">No blocked users.</p>`)
+	} else {
+		for uid, t := range blocked {
+			sb.WriteString(fmt.Sprintf(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0">
+				<a href="/@%s">%s</a>
+				<span class="text-sm text-muted"> · blocked %s · </span>
+				<a href="/app/unblock?user=%s" class="text-sm text-muted">unblock</a>
+			</div>`, uid, uid, t.Format("2 Jan 2006"), uid))
+		}
+	}
+	sb.WriteString(`</div>`)
+
+	html := RenderHTMLForRequest("Blocked", "Blocked users", sb.String(), r)
+	w.Write([]byte(html))
 }
