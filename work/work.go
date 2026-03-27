@@ -11,118 +11,191 @@ import (
 	"github.com/google/uuid"
 )
 
-// Task states
+// Post kinds
 const (
-	StatusOpen       = "open"       // Accepting claims
-	StatusClaimed    = "claimed"    // Someone is working on it
-	StatusDelivered  = "delivered"  // Work submitted, awaiting acceptance
-	StatusCompleted  = "completed"  // Accepted and paid
-	StatusCancelled  = "cancelled"  // Cancelled by poster
+	KindTask     = "task"     // Looking for someone to build something
+	KindShowcase = "showcase" // Sharing work you've done
 )
 
-// Task represents a work bounty
-type Task struct {
+// Task states (only relevant for kind=task)
+const (
+	StatusOpen      = "open"      // Accepting claims
+	StatusClaimed   = "claimed"   // Someone is working on it
+	StatusDelivered = "delivered" // Work submitted, awaiting acceptance
+	StatusCompleted = "completed" // Accepted and paid
+	StatusCancelled = "cancelled" // Cancelled by poster
+)
+
+// Post represents a work post — either a task (request) or showcase (share)
+type Post struct {
 	ID          string    `json:"id"`
+	Kind        string    `json:"kind"`        // "task" or "showcase"
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
-	Bounty      int       `json:"bounty"`      // Credits
-	PosterID    string    `json:"poster_id"`
-	Poster      string    `json:"poster"`       // Display name
-	WorkerID    string    `json:"worker_id"`    // Who claimed it
-	Worker      string    `json:"worker"`       // Worker display name
-	Status      string    `json:"status"`
-	Delivery    string    `json:"delivery"`     // Deliverable (URL, text, app slug)
-	Tags        string    `json:"tags"`         // Comma-separated
+	Link        string    `json:"link"`        // URL, app slug, or any external link
+	Bounty      int       `json:"bounty"`      // Credits (task: bounty offered; showcase: tips received)
+	AuthorID    string    `json:"author_id"`
+	Author      string    `json:"author"`      // Display name
+	WorkerID    string    `json:"worker_id"`   // Who claimed a task
+	Worker      string    `json:"worker"`      // Worker display name
+	Status      string    `json:"status"`      // Task status (open/claimed/delivered/completed/cancelled)
+	Delivery    string    `json:"delivery"`    // Deliverable for tasks
+	Tags        string    `json:"tags"`        // Comma-separated
+	Tips        int       `json:"tips"`        // Total tips received (showcase)
+	Feedback    []Comment `json:"feedback"`    // Comments/feedback
 	CreatedAt   time.Time `json:"created_at"`
 	ClaimedAt   time.Time `json:"claimed_at,omitempty"`
 	DeliveredAt time.Time `json:"delivered_at,omitempty"`
 	CompletedAt time.Time `json:"completed_at,omitempty"`
 }
 
+// Comment is a piece of feedback on a work post
+type Comment struct {
+	ID        string    `json:"id"`
+	AuthorID  string    `json:"author_id"`
+	Author    string    `json:"author"`
+	Text      string    `json:"text"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 var (
 	mutex sync.RWMutex
-	tasks = map[string]*Task{}
+	posts = map[string]*Post{}
 )
 
 func init() {
 	b, _ := data.LoadFile("work.json")
-	json.Unmarshal(b, &tasks)
+	json.Unmarshal(b, &posts)
 }
 
 // Load initializes the work building block
 func Load() {
-	// Seed initial tasks if empty
-	if len(tasks) == 0 {
-		seedTasks()
+	if len(posts) == 0 {
+		seedPosts()
 	}
 }
 
 func save() {
-	data.SaveJSON("work.json", tasks)
+	data.SaveJSON("work.json", posts)
 }
 
-// CreateTask posts a new task with a bounty
-func CreateTask(posterID, poster, title, description, tags string, bounty int) (*Task, error) {
+// CreatePost creates a new work post (task or showcase)
+func CreatePost(authorID, author, kind, title, description, link, tags string, bounty int) (*Post, error) {
 	if title == "" {
 		return nil, errors.New("title is required")
 	}
 	if description == "" {
 		return nil, errors.New("description is required")
 	}
-	if bounty < 1 {
-		return nil, errors.New("bounty must be at least 1 credit")
+	if kind != KindTask && kind != KindShowcase {
+		return nil, errors.New("kind must be task or showcase")
 	}
-	if bounty > 50000 {
-		return nil, errors.New("maximum bounty is 50,000 credits")
+	if kind == KindTask {
+		if bounty < 1 {
+			return nil, errors.New("bounty must be at least 1 credit")
+		}
+		if bounty > 50000 {
+			return nil, errors.New("maximum bounty is 50,000 credits")
+		}
 	}
 
-	task := &Task{
+	post := &Post{
 		ID:          uuid.New().String(),
+		Kind:        kind,
 		Title:       title,
 		Description: description,
+		Link:        link,
 		Bounty:      bounty,
-		PosterID:    posterID,
-		Poster:      poster,
+		AuthorID:    authorID,
+		Author:      author,
 		Status:      StatusOpen,
 		Tags:        tags,
+		Feedback:    []Comment{},
 		CreatedAt:   time.Now(),
 	}
 
+	if kind == KindShowcase {
+		post.Status = "" // showcases don't have task status
+	}
+
 	mutex.Lock()
-	tasks[task.ID] = task
+	posts[post.ID] = post
 	save()
 	mutex.Unlock()
 
-	return task, nil
+	return post, nil
 }
 
-// ClaimTask marks a task as claimed by a worker
-func ClaimTask(taskID, workerID, worker string) error {
+// AddFeedback adds a comment to a work post
+func AddFeedback(postID, authorID, author, text string) error {
+	if text == "" {
+		return errors.New("feedback text is required")
+	}
+
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	task, exists := tasks[taskID]
+	post, exists := posts[postID]
 	if !exists {
-		return errors.New("task not found")
+		return errors.New("post not found")
 	}
-	if task.Status != StatusOpen {
+
+	comment := Comment{
+		ID:        uuid.New().String(),
+		AuthorID:  authorID,
+		Author:    author,
+		Text:      text,
+		CreatedAt: time.Now(),
+	}
+	post.Feedback = append(post.Feedback, comment)
+
+	save()
+	return nil
+}
+
+// TipPost records a tip on a showcase post
+func TipPost(postID string, amount int) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	post, exists := posts[postID]
+	if !exists {
+		return
+	}
+	post.Tips += amount
+	save()
+}
+
+// ClaimTask marks a task as claimed by a worker
+func ClaimTask(postID, workerID, worker string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	post, exists := posts[postID]
+	if !exists {
+		return errors.New("post not found")
+	}
+	if post.Kind != KindTask {
+		return errors.New("only tasks can be claimed")
+	}
+	if post.Status != StatusOpen {
 		return errors.New("task is not open")
 	}
-	if task.PosterID == workerID {
+	if post.AuthorID == workerID {
 		return errors.New("cannot claim your own task")
 	}
 
-	task.WorkerID = workerID
-	task.Worker = worker
-	task.Status = StatusClaimed
-	task.ClaimedAt = time.Now()
+	post.WorkerID = workerID
+	post.Worker = worker
+	post.Status = StatusClaimed
+	post.ClaimedAt = time.Now()
 
 	save()
 	return nil
 }
 
 // DeliverTask submits work for review
-func DeliverTask(taskID, workerID, delivery string) error {
+func DeliverTask(postID, workerID, delivery string) error {
 	if delivery == "" {
 		return errors.New("delivery is required")
 	}
@@ -130,116 +203,118 @@ func DeliverTask(taskID, workerID, delivery string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	task, exists := tasks[taskID]
+	post, exists := posts[postID]
 	if !exists {
-		return errors.New("task not found")
+		return errors.New("post not found")
 	}
-	if task.Status != StatusClaimed {
+	if post.Status != StatusClaimed {
 		return errors.New("task is not claimed")
 	}
-	if task.WorkerID != workerID {
+	if post.WorkerID != workerID {
 		return errors.New("only the assigned worker can deliver")
 	}
 
-	task.Delivery = delivery
-	task.Status = StatusDelivered
-	task.DeliveredAt = time.Now()
+	post.Delivery = delivery
+	post.Status = StatusDelivered
+	post.DeliveredAt = time.Now()
 
 	save()
 	return nil
 }
 
-// AcceptTask accepts delivery and triggers payment
-func AcceptTask(taskID, posterID string) error {
+// AcceptTask accepts delivery
+func AcceptTask(postID, authorID string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	task, exists := tasks[taskID]
+	post, exists := posts[postID]
 	if !exists {
-		return errors.New("task not found")
+		return errors.New("post not found")
 	}
-	if task.Status != StatusDelivered {
+	if post.Status != StatusDelivered {
 		return errors.New("task has not been delivered")
 	}
-	if task.PosterID != posterID {
+	if post.AuthorID != authorID {
 		return errors.New("only the poster can accept delivery")
 	}
 
-	task.Status = StatusCompleted
-	task.CompletedAt = time.Now()
+	post.Status = StatusCompleted
+	post.CompletedAt = time.Now()
 
 	save()
 	return nil
 }
 
-// CancelTask cancels an open or claimed task (poster only)
-func CancelTask(taskID, posterID string) error {
+// CancelTask cancels an open or claimed task
+func CancelTask(postID, authorID string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	task, exists := tasks[taskID]
+	post, exists := posts[postID]
 	if !exists {
-		return errors.New("task not found")
+		return errors.New("post not found")
 	}
-	if task.PosterID != posterID {
+	if post.AuthorID != authorID {
 		return errors.New("only the poster can cancel")
 	}
-	if task.Status == StatusCompleted {
+	if post.Status == StatusCompleted {
 		return errors.New("completed tasks cannot be cancelled")
 	}
 
-	task.Status = StatusCancelled
-
+	post.Status = StatusCancelled
 	save()
 	return nil
 }
 
-// ReleaseTask releases a claimed task back to open (poster only, if worker hasn't delivered)
-func ReleaseTask(taskID, posterID string) error {
+// ReleaseTask releases a claimed task back to open
+func ReleaseTask(postID, authorID string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	task, exists := tasks[taskID]
+	post, exists := posts[postID]
 	if !exists {
-		return errors.New("task not found")
+		return errors.New("post not found")
 	}
-	if task.PosterID != posterID {
+	if post.AuthorID != authorID {
 		return errors.New("only the poster can release")
 	}
-	if task.Status != StatusClaimed {
+	if post.Status != StatusClaimed {
 		return errors.New("task is not claimed")
 	}
 
-	task.WorkerID = ""
-	task.Worker = ""
-	task.Status = StatusOpen
-	task.ClaimedAt = time.Time{}
+	post.WorkerID = ""
+	post.Worker = ""
+	post.Status = StatusOpen
+	post.ClaimedAt = time.Time{}
 
 	save()
 	return nil
 }
 
-// GetTask returns a single task
-func GetTask(id string) *Task {
+// GetPost returns a single post
+func GetPost(id string) *Post {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	return tasks[id]
+	return posts[id]
 }
 
-// ListTasks returns tasks filtered by status, sorted by newest first
-func ListTasks(status string, limit int) []*Task {
+// ListPosts returns posts filtered by kind and/or status, sorted newest first
+func ListPosts(kind, status string, limit int) []*Post {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	var result []*Task
-	for _, t := range tasks {
-		if status != "" && t.Status != status {
+	var result []*Post
+	for _, p := range posts {
+		if kind != "" && p.Kind != kind {
 			continue
 		}
-		result = append(result, t)
+		if status != "" && p.Status != status {
+			continue
+		}
+		result = append(result, p)
 	}
 
-	// Sort by created date, newest first
+	// Sort newest first
 	for i := 0; i < len(result); i++ {
 		for j := i + 1; j < len(result); j++ {
 			if result[j].CreatedAt.After(result[i].CreatedAt) {
@@ -252,33 +327,5 @@ func ListTasks(status string, limit int) []*Task {
 		result = result[:limit]
 	}
 
-	return result
-}
-
-// ListTasksByPoster returns tasks posted by a user
-func ListTasksByPoster(posterID string) []*Task {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	var result []*Task
-	for _, t := range tasks {
-		if t.PosterID == posterID {
-			result = append(result, t)
-		}
-	}
-	return result
-}
-
-// ListTasksByWorker returns tasks claimed/completed by a user
-func ListTasksByWorker(workerID string) []*Task {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	var result []*Task
-	for _, t := range tasks {
-		if t.WorkerID == workerID {
-			result = append(result, t)
-		}
-	}
 	return result
 }
