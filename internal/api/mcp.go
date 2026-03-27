@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"mu/internal/auth"
 )
 
 // MCP protocol version
@@ -693,6 +695,19 @@ func handleToolsCall(w http.ResponseWriter, originalReq *http.Request, req jsonr
 		result.IsError = true
 	}
 	writeResult(w, req.ID, result)
+}
+
+// ExecuteToolAs calls a tool on behalf of a user account (no HTTP request needed).
+// Creates a temporary session for auth. Used by background agents.
+func ExecuteToolAs(accountID, name string, args map[string]any) (string, bool, error) {
+	sess, err := auth.CreateSession(accountID)
+	if err != nil {
+		return "", true, fmt.Errorf("failed to create session: %v", err)
+	}
+
+	req, _ := http.NewRequest("POST", "/", nil)
+	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	return ExecuteTool(req, name, args)
 }
 
 // ExecuteTool calls a registered MCP tool with the given name and arguments,
