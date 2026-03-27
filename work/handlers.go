@@ -135,7 +135,11 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 		meta := fmt.Sprintf(`%s · <a href="/@%s">%s</a> · %s`, kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006"))
 		if post.Kind == KindTask && post.Cost > 0 {
-			meta += fmt.Sprintf(` · %d credits`, post.Cost)
+			if post.Spent > 0 {
+				meta += fmt.Sprintf(` · %d/%d credits`, post.Spent, post.Cost)
+			} else {
+				meta += fmt.Sprintf(` · %d credits`, post.Cost)
+			}
 		}
 		if len(post.Feedback) > 0 {
 			meta += fmt.Sprintf(` · %d feedback`, len(post.Feedback))
@@ -195,7 +199,9 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, detailMeta))
 
 	if post.Kind == KindTask {
-		sb.WriteString(fmt.Sprintf(`<p><strong>Cost:</strong> %d credits (%s)</p>`, post.Cost, wallet.FormatCredits(post.Cost)))
+		if post.Cost > 0 {
+			sb.WriteString(fmt.Sprintf(`<p><strong>Budget:</strong> %d credits · <strong>Spent:</strong> %d credits</p>`, post.Cost, post.Spent))
+		}
 		if post.Status != "" {
 			sb.WriteString(fmt.Sprintf(`<p><strong>Status:</strong> %s</p>`, post.Status))
 		}
@@ -226,6 +232,28 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h4>Delivery</h4>`)
 		sb.WriteString(fmt.Sprintf(`<p>%s</p>`, post.Delivery))
+		sb.WriteString(`</div>`)
+	}
+
+	// Agent log
+	if len(post.Log) > 0 {
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(`<h4>Agent Log</h4>`)
+		for _, entry := range post.Log {
+			color := "#555"
+			switch entry.Step {
+			case "error", "budget":
+				color = "#c00"
+			case "complete":
+				color = "#28a745"
+			}
+			credits := ""
+			if entry.Credits > 0 {
+				credits = fmt.Sprintf(` · %d credits`, entry.Credits)
+			}
+			sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;margin:4px 0"><span style="color:%s;font-weight:600">%s</span> %s%s <span class="text-muted">%s</span></p>`,
+				color, entry.Step, entry.Message, credits, entry.CreatedAt.Format("15:04:05")))
+		}
 		sb.WriteString(`</div>`)
 	}
 
@@ -383,7 +411,7 @@ func renderPostForm(kind, errMsg string) string {
 		costDisplay = "block"
 	}
 	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="cost-field" style="display:%s">`, costDisplay))
-	sb.WriteString(`<input type="number" id="cost" name="cost" min="1" max="50000" placeholder="Cost (credits)" class="form-input w-full">`)
+	sb.WriteString(`<input type="number" id="cost" name="cost" min="1" max="50000" placeholder="Budget (max credits)" class="form-input w-full">`)
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="assign-field" style="display:%s">`, costDisplay))
@@ -481,41 +509,24 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		kind = KindShow
 	}
 
-	// Hold cost in escrow for tasks
+	// Validate budget
 	if kind == KindTask && cost > 0 && sess.Account != "micro" {
-		if err := wallet.HoldEscrow(sess.Account, cost, "pending"); err != nil {
-			respondError(w, r, "/work?kind=task", "Insufficient credits for task cost")
+		wal := wallet.GetWallet(sess.Account)
+		if wal.Balance < cost {
+			respondError(w, r, "/work?kind=task", fmt.Sprintf("Insufficient credits (%d available, %d budget)", wal.Balance, cost))
 			return
 		}
 	}
 
 	post, err := CreatePost(sess.Account, acc.Name, kind, title, description, link, "", cost)
 	if err != nil {
-		if kind == KindTask && cost > 0 && sess.Account != "micro" {
-			wallet.RefundEscrow(sess.Account, cost, "failed")
-		}
 		respondError(w, r, "/work?kind="+kind, err.Error())
 		return
 	}
 
 	// Assign to agent if requested
 	if assign && kind == KindTask {
-		canProceed, _, agentCost, qerr := wallet.CheckQuota(sess.Account, wallet.OpChatQuery)
-		if canProceed {
-			wallet.ConsumeQuota(sess.Account, wallet.OpChatQuery)
-			AssignToAgent(post.ID, sess.Account)
-		} else {
-			msg := fmt.Sprintf("Task posted but agent assignment failed: insufficient credits (%d required)", agentCost)
-			if qerr != nil {
-				msg = "Task posted but agent assignment failed: " + qerr.Error()
-			}
-			if app.SendsJSON(r) || app.WantsJSON(r) {
-				app.RespondJSON(w, map[string]interface{}{"post": post, "warning": msg})
-				return
-			}
-			http.Redirect(w, r, "/work/"+post.ID+"?error="+strings.ReplaceAll(msg, " ", "+"), http.StatusSeeOther)
-			return
-		}
+		AssignToAgent(post.ID, sess.Account)
 	}
 
 	if app.SendsJSON(r) || app.WantsJSON(r) {
@@ -709,15 +720,7 @@ func handleAccept(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Pay out: if agent did the work, refund cost to poster (they only paid compute).
-	// If a human did it, release escrow to the worker.
-	if post.AuthorID != "micro" {
-		if post.WorkerID == "agent" {
-			wallet.RefundEscrow(post.AuthorID, post.Cost, post.ID)
-		} else {
-			wallet.ReleaseEscrow(post.WorkerID, post.Cost, post.ID)
-		}
-	}
+	// Credits already consumed during agent work — nothing to release
 
 	// Notify the worker (if human)
 	if post.WorkerID != "agent" && post.WorkerID != "" {
@@ -766,10 +769,7 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Refund escrow to poster
-	if post.AuthorID != "micro" {
-		wallet.RefundEscrow(post.AuthorID, post.Cost, post.ID)
-	}
+	// Credits already consumed — no refund
 
 	if app.SendsJSON(r) || app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]string{"status": "cancelled"})
@@ -787,18 +787,6 @@ func handleAssign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := extractPostID(r.URL.Path, "/assign")
-
-	// Consume credits for the agent build (same cost as apps_build = chat_query = 3 credits)
-	canProceed, _, cost, qerr := wallet.CheckQuota(sess.Account, wallet.OpChatQuery)
-	if !canProceed {
-		msg := fmt.Sprintf("Insufficient credits (%d required)", cost)
-		if qerr != nil {
-			msg = qerr.Error()
-		}
-		respondPostError(w, r, id, msg)
-		return
-	}
-	wallet.ConsumeQuota(sess.Account, wallet.OpChatQuery)
 
 	if err := AssignToAgent(id, sess.Account); err != nil {
 		respondPostError(w, r, id, err.Error())
@@ -847,13 +835,6 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
 	if !acc.Admin && sess.Account != post.AuthorID {
 		respondPostError(w, r, id, "You can only delete your own posts")
 		return
-	}
-
-	// Refund escrowed cost if task is open/claimed
-	if post.Kind == KindTask && post.Cost > 0 && post.AuthorID != "micro" {
-		if post.Status == StatusOpen || post.Status == StatusClaimed {
-			wallet.RefundEscrow(post.AuthorID, post.Cost, post.ID)
-		}
 	}
 
 	if err := DeletePost(id); err != nil {
