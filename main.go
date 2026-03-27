@@ -103,8 +103,7 @@ func main() {
 		mail.SendMessage("Mu", "micro", acc.Name, toUserID, subject, body, threadID, "")
 	}
 
-	// Start the agent worker (subscribes to task events)
-	agent.StartWorker()
+
 
 	// load social
 	social.Load()
@@ -445,6 +444,9 @@ func main() {
 			return string(b), nil
 		},
 	})
+
+	// Start the agent worker after all tools are registered
+	agent.StartWorker()
 
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features
