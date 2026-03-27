@@ -68,6 +68,7 @@ html, body {
   margin: 0;
   padding: 0;
   font-family: "Nunito Sans", serif;
+  font-size: 14px;
   box-sizing: border-box;
   overflow-x: hidden;
 }
@@ -204,19 +205,17 @@ a.btn:hover {
   flex-shrink: 0;
 }
 
+input, textarea, select, button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
 input {
   width: 100%;
   padding: 10px;
   border-radius: 5px;
   border: 1px solid #e0e0e0;
   box-sizing: border-box;
-  font-family: "Nunito Sans", serif;
-  font-size: 14px;
-}
-
-textarea {
-  font-family: "Nunito Sans", serif;
-  font-size: 14px;
 }
 
 select {
@@ -2750,8 +2749,6 @@ a.highlight {
 /* Form elements */
 .form-input {
   padding: 10px;
-  font-size: 14px;
-  font-family: "Nunito Sans", serif;
   border: 1px solid #ccc;
   border-radius: 5px;
   box-sizing: border-box;
