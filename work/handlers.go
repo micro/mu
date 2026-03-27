@@ -321,12 +321,12 @@ func renderPostForm(kind, errMsg string) string {
 		{"task", "Task"},
 	} {
 		checked := ""
-		cls := "btn btn-secondary"
+		active := ""
 		if k.val == kind {
 			checked = " checked"
-			cls = "btn"
+			active = "background:#000;color:#fff;"
 		}
-		sb.WriteString(fmt.Sprintf(`<label class="%s"><input type="radio" name="kind" value="%s"%s style="display:none" onchange="workFormToggle(this.value)"> %s</label>`, cls, k.val, checked, k.label))
+		sb.WriteString(fmt.Sprintf(`<label style="padding:6px 16px;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid #ddd;%s"><input type="radio" name="kind" value="%s"%s style="display:none" onchange="workFormToggle(this.value)">%s</label>`, active, k.val, checked, k.label))
 	}
 	sb.WriteString(`</div>`)
 
@@ -380,8 +380,8 @@ function workFormToggle(kind) {
   var labels = document.querySelectorAll('input[name="kind"]');
   for (var i = 0; i < labels.length; i++) {
     var lbl = labels[i].parentElement;
-    if (labels[i].value === kind) { lbl.className = 'btn'; }
-    else { lbl.className = 'btn btn-secondary'; }
+    if (labels[i].value === kind) { lbl.style.background='#000';lbl.style.color='#fff'; }
+    else { lbl.style.background='';lbl.style.color=''; }
   }
 }
 </script>`)
