@@ -43,9 +43,17 @@ Rules:
 - For AI features: mu.ai(prompt) — returns a promise with the AI response
 - For persistent storage: mu.store.set(key, value), mu.store.get(key), mu.store.del(key)
 - For platform data — NEVER use fetch() directly, always use mu.api:
-  - mu.api.get(path) — GET request (e.g. mu.api.get('/weather?q=London'))
-  - mu.api.post(path, body) — POST request (e.g. mu.api.post('/places/search', {q:'cafe',near:'London'}))
-  - Available APIs: /weather?q=, /places/search, /places/nearby, /news, /markets, /video, /chat
+  - mu.api.get(path) — GET request, returns a promise with JSON response
+  - mu.api.post(path, body) — POST request, returns a promise with JSON response
+  - Available APIs and their EXACT parameters:
+    - /weather?lat=NUMBER&lon=NUMBER — weather forecast (REQUIRES lat/lon coordinates, NOT city name. Use geocoding first or navigator.geolocation)
+    - /places/search — POST with {q:"cafe", near:"London"} — search for places
+    - /places/nearby — POST with {address:"London", radius:1000} — find nearby places
+    - /news — GET, returns latest news feed
+    - /markets?category=crypto|futures|commodities — GET, returns market prices
+    - /video — GET, returns latest videos
+    - /chat — POST with {prompt:"question"} — ask the AI
+  - For weather apps: use navigator.geolocation to get lat/lon, OR use mu.api.post('/places/search', {q: cityName}) to geocode a city name, then pass the lat/lon to /weather
 - Maximum 256KB HTML
 - Make it responsive and mobile-friendly
 - Use semantic HTML and accessible patterns
