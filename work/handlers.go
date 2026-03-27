@@ -491,8 +491,8 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	successMsg := ""
-	if assign && kind == KindTask {
-		successMsg = "?success=Task+posted+and+assigned+to+agent"
+	if kind == KindTask {
+		successMsg = "?success=Task+started"
 	}
 	http.Redirect(w, r, "/work/"+post.ID+successMsg, http.StatusSeeOther)
 }
