@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
 
 // Action is a content control (edit, delete, flag, etc.)
@@ -153,22 +154,37 @@ func shareAction(contentType, contentID string) Action {
 	return Action{Label: "Share", URL: contentURL(contentType, contentID), Class: "text-muted"}
 }
 
+var menuCounter atomic.Int64
+
 func renderActions(actions []Action) string {
 	if len(actions) == 0 {
 		return ""
 	}
 
+	id := fmt.Sprintf("m%d", menuCounter.Add(1))
+
 	var sb strings.Builder
+	// Three-dot trigger
+	sb.WriteString(fmt.Sprintf(` · <span class="dot-menu" style="position:relative;display:inline-block"><a href="#" class="text-muted" onclick="var m=document.getElementById('%s');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();return false;" style="text-decoration:none;font-size:16px;letter-spacing:-1px">⋯</a>`, id))
+
+	// Dropdown
+	sb.WriteString(fmt.Sprintf(`<div id="%s" style="display:none;position:absolute;right:0;top:20px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:100;min-width:120px;padding:4px 0">`, id))
+
 	for _, a := range actions {
-		sb.WriteString(` · `)
 		cls := a.Class
 		if cls == "" {
 			cls = "text-muted"
 		}
+		style := "display:block;padding:6px 14px;font-size:13px;text-decoration:none;white-space:nowrap"
+		if cls == "text-error" {
+			style += ";color:#c00"
+		} else {
+			style += ";color:#555"
+		}
 
-		// Share — link to the content, with copy-to-clipboard on click
+		// Share
 		if a.Label == "Share" && a.URL != "" && a.URL != "#" {
-			sb.WriteString(fmt.Sprintf(`<a href="%s" class="text-muted" onclick="navigator.clipboard.writeText(location.origin+'%s').then(()=>alert('Link copied!'));return false;">Share</a>`, a.URL, a.URL))
+			sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s" onclick="navigator.clipboard.writeText(location.origin+'%s').then(()=>alert('Link copied!'));return false;">Share</a>`, a.URL, style, a.URL))
 			continue
 		}
 
@@ -177,11 +193,13 @@ func renderActions(actions []Action) string {
 			if a.Method != "" {
 				methodField = fmt.Sprintf("var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='%s';f.appendChild(i);", a.Method)
 			}
-			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="if(confirm('%s')){var f=document.createElement('form');f.method='POST';f.action='%s';%sdocument.body.appendChild(f);f.submit();}return false;">%s</a>`,
-				cls, a.Confirm, a.URL, methodField, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){var f=document.createElement('form');f.method='POST';f.action='%s';%sdocument.body.appendChild(f);f.submit();}return false;">%s</a>`,
+				style, a.Confirm, a.URL, methodField, a.Label))
 		} else {
-			sb.WriteString(fmt.Sprintf(`<a href="%s" class="%s">%s</a>`, a.URL, cls, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s">%s</a>`, a.URL, style, a.Label))
 		}
 	}
+
+	sb.WriteString(`</div></span>`)
 	return sb.String()
 }
