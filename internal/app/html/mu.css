@@ -795,6 +795,7 @@ body.page-home #page-title ~ #customize-link {
   max-width: 750px;
   box-sizing: border-box;
   display: block;
+  position: relative;
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
   padding: var(--item-padding);
@@ -1283,6 +1284,7 @@ body:has(#messages) #chat-back-link {
 }
 
 .post-item {
+  position: relative;
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
   padding: var(--item-padding);
@@ -1467,6 +1469,7 @@ body:has(#messages) #chat-back-link {
 }
 
 .headline {
+  position: relative;
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
   padding: var(--item-padding);
