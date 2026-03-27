@@ -572,7 +572,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	if detailAdmin || detailUserID == a.AuthorID {
 		sb.WriteString(`<p style="margin-top:16px;font-size:13px">`)
 		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit" class="text-muted">Edit</a>`, htmlpkg.EscapeString(a.Slug)))
-		sb.WriteString(fmt.Sprintf(` · <a href="#" class="text-error" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(function(){location.href='/apps'})};return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(fmt.Sprintf(` · <a href="#" class="text-error" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(function(){window.location='/apps'})}return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
 		sb.WriteString(`</p>`)
 	}
 
