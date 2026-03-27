@@ -275,6 +275,16 @@ func sanitizeHTML(htmlStr string, baseURL string, proxy bool) string {
 		content = re.ReplaceAllString(content, "")
 	}
 
+	// Remove noisy elements by class/id (Wikipedia infoboxes, references, TOC, etc.)
+	for _, pattern := range []string{
+		`(?is)<[^>]+class="[^"]*(?:reflist|reference|navbox|sidebar|infobox|mw-editsection|toc|hatnote|noprint|mw-jump-link|catlinks|mw-authority-control|sistersitebox|portal|metadata|ambox|shortdescription|mw-indicators|mbox)[^"]*"[^>]*>.*?</(?:div|table|span|ul|ol|nav|section)>`,
+		`(?is)<table[^>]+class="[^"]*(?:infobox|sidebar|navbox|wikitable\.sortable)[^"]*"[^>]*>.*?</table>`,
+		`(?is)<sup[^>]*class="[^"]*reference[^"]*"[^>]*>.*?</sup>`,
+	} {
+		re := regexp.MustCompile(pattern)
+		content = re.ReplaceAllString(content, "")
+	}
+
 	// Remove image tags (they usually break without their CSS context)
 	imgRe := regexp.MustCompile(`(?i)<img[^>]*>`)
 	content = imgRe.ReplaceAllString(content, "")
