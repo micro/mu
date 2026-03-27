@@ -646,15 +646,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := fmt.Sprintf(`<div class="card">
-<h3>Profile</h3>
-<p><strong>Username:</strong> %s</p>
-<p><strong>Name:</strong> %s</p>
-<p><strong>Joined:</strong> %s</p>
-<p><a href="/@%s">View public profile →</a></p>
+<p><strong>%s</strong> · %s · Joined %s</p>
+<p><a href="/@%s">Public profile →</a></p>
 </div>
 
 <div class="card">
-<h3>Language</h3>
+<p class="text-sm text-muted">Language</p>
 <form action="/account" method="POST" class="d-flex items-center gap-3">
 	<select name="language" class="form-select text-sm">%s</select>
 	<button type="submit">Save</button>
@@ -664,11 +661,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 %s
 
 <div class="card">
-<h3>Settings</h3>
 <p><a href="/app/blocked">Blocked Users →</a></p>
 <p><a href="/token">API Tokens →</a></p>
 %s
-<p><a href="/logout" class="text-error">Logout</a></p>
+<p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
 </div>`,
 		acc.ID,
 		acc.Name,
