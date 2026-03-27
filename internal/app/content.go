@@ -142,6 +142,8 @@ func renderMenu(actions []Action) string {
 			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="var u=location.origin+'%s';if(navigator.share){navigator.share({url:u})}else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){this.textContent='Copied!'}.bind(this))}else{prompt('Copy link:',u)};return false;">Share</a>`, style, a.URL))
 		case a.Label == "Edit":
 			sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s">Edit</a>`, a.URL, style))
+		case a.Label == "Delete" && a.Confirm != "":
+			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST',redirect:'follow'}).then(function(r){window.location=r.url})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
 		case a.Confirm != "":
 			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST'}).then(function(){location.reload()})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
 		default:
