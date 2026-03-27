@@ -439,7 +439,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Hold bounty in escrow for tasks
-	if kind == KindTask && bounty > 0 && sess.Account != "mu" {
+	if kind == KindTask && bounty > 0 && sess.Account != "micro" {
 		if err := wallet.HoldEscrow(sess.Account, bounty, "pending"); err != nil {
 			respondError(w, r, "/work/post?kind=task", "Insufficient credits for bounty")
 			return
@@ -448,7 +448,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	post, err := CreatePost(sess.Account, acc.Name, kind, title, description, link, tags, bounty)
 	if err != nil {
-		if kind == KindTask && bounty > 0 && sess.Account != "mu" {
+		if kind == KindTask && bounty > 0 && sess.Account != "micro" {
 			wallet.RefundEscrow(sess.Account, bounty, "failed")
 		}
 		respondError(w, r, "/work/post?kind="+kind, err.Error())
@@ -632,7 +632,7 @@ func handleAccept(w http.ResponseWriter, r *http.Request) {
 
 	// Pay out: if agent did the work, refund bounty to poster (they only paid compute).
 	// If a human did it, release escrow to the worker.
-	if post.AuthorID != "mu" {
+	if post.AuthorID != "micro" {
 		if post.WorkerID == "agent" {
 			wallet.RefundEscrow(post.AuthorID, post.Bounty, post.ID)
 		} else {
@@ -682,7 +682,7 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Refund escrow to poster
-	if post.AuthorID != "mu" {
+	if post.AuthorID != "micro" {
 		wallet.RefundEscrow(post.AuthorID, post.Bounty, post.ID)
 	}
 
