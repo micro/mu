@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -178,11 +179,20 @@ func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 				}
 			}
 			if title == "" {
-				label := typeLabels[ct]
-				if label == "" {
-					label = ct
+				// For web pages, decode the URL and use it as the title
+				if ct == "web" {
+					if decoded, err := url.QueryUnescape(cid); err == nil {
+						title = decoded
+					} else {
+						title = cid
+					}
+				} else {
+					label := typeLabels[ct]
+					if label == "" {
+						label = ct
+					}
+					title = label
 				}
-				title = label
 			}
 
 			items = append(items, item{ct: ct, cid: cid, url: u, label: title, time: t.Format("2 Jan 15:04")})

@@ -285,8 +285,8 @@ func ReleaseTask(postID, authorID string) error {
 	if !exists {
 		return errors.New("post not found")
 	}
-	if post.AuthorID != authorID {
-		return errors.New("only the poster can release")
+	if post.AuthorID != authorID && post.WorkerID != authorID {
+		return errors.New("only the poster or worker can release")
 	}
 	if post.Status != StatusClaimed {
 		return errors.New("task is not claimed")
