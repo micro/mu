@@ -333,7 +333,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			sb.WriteString(fmt.Sprintf(`<div style="position:relative;border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;">
 <img src="/apps/%s/icon.svg" width="32" height="32" style="flex-shrink:0;margin-top:2px;">
 <div>
-<h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
+<h3 style="margin:0 0 4px 0;"><a href="/apps/%s/run">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
 <p style="margin:0;font-size:13px;color:#999;">by %s%s · %d launches%s</p>
 </div>
