@@ -78,18 +78,9 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	// Inline post form for logged-in users
-	if sess != nil {
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(renderPostForm("show", ""))
-		sb.WriteString(`</div>`)
-	} else {
-		sb.WriteString(`<div class="card"><p><a href="/login">Login</a> to post or interact.</p></div>`)
-	}
-
-	// Filter tabs
+	// Filter tabs + new post link
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<div style="display:flex;gap:6px;flex-wrap:wrap">`)
+	sb.WriteString(`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">`)
 	for _, f := range []struct{ val, label string }{
 		{"", "All"},
 		{"show", "Show"},
@@ -106,11 +97,18 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		}
 		sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s">%s</a>`, href, style, f.label))
 	}
+	if sess != nil {
+		sb.WriteString(`<a href="/work/post" class="btn" style="margin-left:auto">+ New</a>`)
+	}
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</div>`)
 
 	if len(allPosts) == 0 {
-		sb.WriteString(`<div class="card"><p class="text-muted">No posts yet.</p></div>`)
+		if sess != nil {
+			sb.WriteString(`<div class="card"><p class="text-muted">No posts yet. <a href="/work/post">Create one →</a></p></div>`)
+		} else {
+			sb.WriteString(`<div class="card"><p class="text-muted">No posts yet. <a href="/login">Login</a> to create one.</p></div>`)
+		}
 	}
 
 	for _, post := range allPosts {
@@ -289,7 +287,7 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			if entry.Credits > 0 {
 				credits = fmt.Sprintf(` · %dc`, entry.Credits)
 			}
-			sb.WriteString(fmt.Sprintf(`<p style="font-size:12px;margin:2px 0;color:#666"><span style="color:%s;font-weight:600">%s</span> %s%s</p>`,
+			sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;margin:2px 0;color:#666"><span style="color:%s;font-weight:600">%s</span> %s%s</p>`,
 				color, entry.Step, entry.Message, credits))
 		}
 		sb.WriteString(`</div>`)

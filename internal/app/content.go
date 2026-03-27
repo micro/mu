@@ -81,16 +81,10 @@ func ExternalControls(userID, contentType, contentID string) string {
 	return renderMenu(actions)
 }
 
-// StaticControls renders a ⋯ dropdown for cached content (no user context).
+// StaticControls is a no-op — cached content (news, video, blog listings)
+// shouldn't have per-item dropdown menus. They add noise.
 func StaticControls(contentType, contentID string) string {
-	u := contentURL(contentType, contentID)
-	actions := []Action{
-		{Label: "Save", URL: fmt.Sprintf("/app/save?type=%s&id=%s", contentType, contentID)},
-	}
-	if u != "" {
-		actions = append(actions, Action{Label: "Share", URL: u})
-	}
-	return renderMenu(actions)
+	return ""
 }
 
 // contentURL returns the permalink for a content item.

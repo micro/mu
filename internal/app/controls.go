@@ -201,24 +201,18 @@ func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 			return items[i].time > items[j].time
 		})
 
+		sb.WriteString(`<div class="card">`)
 		for _, it := range items {
 			typeLabel := typeLabels[it.ct]
 			if typeLabel == "" {
 				typeLabel = it.ct
 			}
-
-			// Video thumbnail embed
-			extra := ""
-			if it.ct == "video" {
-				extra = fmt.Sprintf(`<div style="margin-top:8px"><iframe src="https://www.youtube.com/embed/%s" width="100%%" height="200" style="border:none;border-radius:6px" allowfullscreen></iframe></div>`, it.cid)
-			}
-
-			sb.WriteString(fmt.Sprintf(`<div class="card">
-				<p><a href="%s"><strong>%s</strong></a></p>
-				<p class="text-sm text-muted">%s · Saved %s</p>%s
-				<p style="margin-top:6px"><a href="#" class="text-sm text-muted" onclick="fetch('/app/unsave?type=%s&id=%s',{method:'POST'}).then(function(){location.reload()});return false;">Remove</a></p>
-			</div>`, it.url, it.label, typeLabel, it.time, extra, it.ct, it.cid))
+			sb.WriteString(fmt.Sprintf(`<div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
+				<a href="%s">%s</a>
+				<span class="text-sm text-muted"> · %s · %s · <a href="#" onclick="fetch('/app/unsave?type=%s&id=%s',{method:'POST'}).then(function(){location.reload()});return false;">remove</a></span>
+			</div>`, it.url, it.label, typeLabel, it.time, it.ct, it.cid))
 		}
+		sb.WriteString(`</div>`)
 	}
 
 	html := RenderHTMLForRequest("Saved", "Your saved items", sb.String(), r)
@@ -233,12 +227,14 @@ func renderBlockedPage(w http.ResponseWriter, r *http.Request, userID string) {
 	if len(blocked) == 0 {
 		sb.WriteString(`<div class="card"><p class="text-muted">No blocked users.</p></div>`)
 	} else {
+		sb.WriteString(`<div class="card">`)
 		for uid, t := range blocked {
-			sb.WriteString(fmt.Sprintf(`<div class="card">
-				<p><a href="/@%s">%s</a></p>
-				<p class="text-sm text-muted">Blocked %s · <a href="#" onclick="fetch('/app/unblock?user=%s',{method:'POST'}).then(function(){location.reload()});return false;">Unblock</a></p>
+			sb.WriteString(fmt.Sprintf(`<div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
+				<a href="/@%s">%s</a>
+				<span class="text-sm text-muted"> · %s · <a href="#" onclick="fetch('/app/unblock?user=%s',{method:'POST'}).then(function(){location.reload()});return false;">unblock</a></span>
 			</div>`, uid, uid, t.Format("2 Jan 2006"), uid))
 		}
+		sb.WriteString(`</div>`)
 	}
 
 	html := RenderHTMLForRequest("Blocked Users", "Blocked users", sb.String(), r)

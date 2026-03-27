@@ -238,7 +238,6 @@ var Template = `
           <a href="/web"><img src="/search.svg?` + Version + `"><span class="label">Web</span></a>
           <a href="/work"><img src="/work.svg?` + Version + `"><span class="label">Work</span></a>
           <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
-          <a href="/app/saved"><img src="/saved.svg?` + Version + `"><span class="label">Saved</span></a>
 
         </div>
         <div class="nav-bottom">
@@ -664,6 +663,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <div class="card">
 <h4>Settings</h4>
 %s
+<p><a href="/app/saved">Saved →</a></p>
 <p><a href="/token">API Tokens →</a></p>
 <p><a href="/app/blocked">Blocked Users →</a></p>
 <p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
