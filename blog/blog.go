@@ -1477,9 +1477,9 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		userID = acc.ID
 		isAdmin = acc.Admin
 	}
-	editButton := app.AdminControls(userID, post.AuthorID, isAdmin,
-		app.AdminAction{Label: "Edit", URL: "/blog/post?id=" + post.ID + "&edit=true"},
-		app.AdminAction{Label: "Delete", URL: "/post?id=" + post.ID, Confirm: "Delete this post?", Method: "DELETE", Class: "text-error"},
+	editButton := app.Controls(userID, post.AuthorID, isAdmin,
+		app.Action{Label: "Edit", URL: "/blog/post?id=" + post.ID + "&edit=true"},
+		app.Action{Label: "Delete", URL: "/post?id=" + post.ID, Confirm: "Delete this post?", Method: "DELETE", Class: "text-error"},
 	)
 
 	tagsHtml := ""

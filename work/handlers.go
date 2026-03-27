@@ -120,8 +120,8 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		if len(post.Feedback) > 0 {
 			meta += fmt.Sprintf(` · %d feedback`, len(post.Feedback))
 		}
-		meta += app.AdminControls(userID, post.AuthorID, isAdmin,
-			app.AdminAction{Label: "delete", URL: "/work/" + post.ID + "/delete", Confirm: "Delete this post?", Class: "text-error"},
+		meta += app.Controls(userID, post.AuthorID, isAdmin,
+			app.Action{Label: "delete", URL: "/work/" + post.ID + "/delete", Confirm: "Delete this post?", Class: "text-error"},
 		)
 		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, meta))
 
@@ -173,8 +173,8 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 
 	detailMeta := fmt.Sprintf(`%s · Posted by <a href="/@%s">%s</a> · %s`,
 		kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006 15:04"))
-	detailMeta += app.AdminControls(userID, post.AuthorID, isAdmin,
-		app.AdminAction{Label: "delete", URL: "/work/" + post.ID + "/delete", Confirm: "Delete this post permanently?", Class: "text-error"},
+	detailMeta += app.Controls(userID, post.AuthorID, isAdmin,
+		app.Action{Label: "delete", URL: "/work/" + post.ID + "/delete", Confirm: "Delete this post permanently?", Class: "text-error"},
 	)
 	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, detailMeta))
 

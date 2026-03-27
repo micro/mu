@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// AdminAction is a single admin control (edit, delete, flag, etc.)
-type AdminAction struct {
+// Action is a content control (edit, delete, flag, etc.)
+type Action struct {
 	Label   string // e.g. "Edit", "Delete", "Flag"
 	URL     string // href for links, or POST action for confirm actions
 	Confirm string // if set, renders as a POST form with confirm dialog
@@ -14,10 +14,10 @@ type AdminAction struct {
 	Class   string // CSS class (default: "text-muted", use "text-error" for destructive)
 }
 
-// AdminControls renders inline admin action links (matching blog's "Edit · Delete" style).
+// Controls renders inline action links (e.g. "Edit · Delete") for content.
 // Only renders if the user is an admin or the content author.
 // Returns a string with leading " · " separators, suitable for appending to a meta line.
-func AdminControls(userID, authorID string, isAdmin bool, actions ...AdminAction) string {
+func Controls(userID, authorID string, isAdmin bool, actions ...Action) string {
 	if !isAdmin && userID != authorID {
 		return ""
 	}
