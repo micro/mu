@@ -267,6 +267,14 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sess, acc := auth.TrySession(r)
+	var userID string
+	var isAdmin bool
+	if sess != nil {
+		userID = sess.Account
+		isAdmin = acc.Admin
+	}
+
 	// HTML
 	var sb strings.Builder
 	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. No ads, no tracking, no bloat.</p>`)
@@ -315,12 +323,13 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			if a.Tags != "" {
 				tagsHTML = " · " + htmlpkg.EscapeString(a.Tags)
 			}
+			controls := app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "/apps/"+a.Slug+"/edit", "/apps/"+a.Slug+"/delete")
 			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;">
 <img src="/apps/%s/icon.svg" width="32" height="32" style="flex-shrink:0;margin-top:2px;">
 <div>
 <h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
-<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d launches</p>
+<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d launches%s</p>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
@@ -330,6 +339,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				htmlpkg.EscapeString(a.Author),
 				tagsHTML,
 				a.Installs,
+				controls,
 			))
 		}
 	}
@@ -541,17 +551,23 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 
 	// Run button + Fork button
 	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s/run" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:4px;text-decoration:none;">Launch App</a>`, htmlpkg.EscapeString(a.Slug)))
-	_, acc, err := auth.RequireSession(r)
-	if err == nil {
+	_, detailAcc, detailErr := auth.RequireSession(r)
+	if detailErr == nil {
 		sb.WriteString(fmt.Sprintf(` <a href="/apps/%s/fork" style="display:inline-block;padding:8px 24px;background:#fff;color:#333;border:1px solid #ccc;border-radius:4px;text-decoration:none;margin-left:8px;">Fork</a>`,
 			htmlpkg.EscapeString(a.Slug)))
 	}
 	sb.WriteString(`</p>`)
 
-	// Edit/delete for author or admin
-	if err == nil && (acc.ID == a.AuthorID || acc.Admin) {
-		sb.WriteString(fmt.Sprintf(`<p style="margin-top:16px;"><a href="/apps/%s/edit">Edit</a> · <a href="/apps/%s/run">Preview</a> · <a href="#" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(()=>location='/apps')}">Delete</a></p>`,
-			htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug)))
+	// Controls (edit, delete, save, flag, etc.)
+	var detailUserID string
+	var detailAdmin bool
+	if detailErr == nil {
+		detailUserID = detailAcc.ID
+		detailAdmin = detailAcc.Admin
+	}
+	controls := app.ItemControls(detailUserID, detailAdmin, "app", a.Slug, a.AuthorID, "/apps/"+a.Slug+"/edit", "/apps/"+a.Slug+"/delete")
+	if controls != "" {
+		sb.WriteString(fmt.Sprintf(`<p style="margin-top:16px;font-size:13px;color:#999;">%s</p>`, controls))
 	}
 
 	app.Respond(w, r, app.Response{
