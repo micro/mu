@@ -11,7 +11,7 @@ import (
 
 // ControlsHandler handles generic content actions: /app/{action}
 func ControlsHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != "POST" && r.Method != "GET" {
 		http.NotFound(w, r)
 		return
 	}
