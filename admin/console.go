@@ -164,8 +164,8 @@ func handleConsoleCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		w := wallet.GetWallet(parts[1])
 		usage := wallet.GetDailyUsage(parts[1])
-		output = fmt.Sprintf("Balance: %d credits\nDaily usage: %d / %d free\nCreated: %s",
-			w.Balance, usage.Used, wallet.FreeDailyQuota, w.CreatedAt.Format("2 Jan 2006"))
+		output = fmt.Sprintf("Balance: %d credits\nDaily usage: %d / %d free",
+			w.Balance, usage.Used, wallet.FreeDailyQuota)
 
 	case "types":
 		types := data.DeleteTypes()
