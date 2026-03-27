@@ -94,6 +94,11 @@ func main() {
 	// load work (task bounties)
 	work.Load()
 
+	// Wire work credit spending
+	work.SpendCredits = func(userID string, amount int, operation string) error {
+		return wallet.DeductCredits(userID, amount, operation, nil)
+	}
+
 	// Wire work notifications
 	work.Notify = func(toUserID, subject, body, threadID string) {
 		acc, err := auth.GetAccount(toUserID)
@@ -398,30 +403,34 @@ func main() {
 			return string(b), nil
 		},
 	})
-	api.RegisterTool(api.Tool{
+	api.RegisterToolWithAuth(api.Tool{
 		Name:        "apps_build",
 		Description: "AI-generate an app from a natural language description, save it, and return the app details with URL",
 		WalletOp:    "chat_query",
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Description of the app to build (e.g. 'a pomodoro timer with lap counter')", Required: true},
 		},
-		Handle: func(args map[string]any) (string, error) {
-			prompt, _ := args["prompt"].(string)
-			if prompt == "" {
-				return `{"error":"prompt is required"}`, fmt.Errorf("missing prompt")
-			}
-			a, err := apps.BuildAndSave(prompt, "agent", "Agent")
-			if err != nil {
-				return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
-			}
-			b, _ := json.Marshal(map[string]string{
-				"name": a.Name,
-				"slug": a.Slug,
-				"url":  "/apps/" + a.Slug,
-				"run":  "/apps/" + a.Slug + "/run",
-			})
-			return string(b), nil
-		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		prompt, _ := args["prompt"].(string)
+		if prompt == "" {
+			return `{"error":"prompt is required"}`, fmt.Errorf("missing prompt")
+		}
+		// Use the authenticated user as the app author
+		authorName := accountID
+		if acc, err := auth.GetAccount(accountID); err == nil {
+			authorName = acc.Name
+		}
+		a, err := apps.BuildAndSave(prompt, accountID, authorName)
+		if err != nil {
+			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
+		}
+		b, _ := json.Marshal(map[string]string{
+			"name": a.Name,
+			"slug": a.Slug,
+			"url":  "/apps/" + a.Slug,
+			"run":  "/apps/" + a.Slug + "/run",
+		})
+		return string(b), nil
 	})
 	api.RegisterTool(api.Tool{
 		Name:        "apps_run",

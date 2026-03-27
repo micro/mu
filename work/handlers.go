@@ -236,21 +236,20 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	sb.WriteString(`</div>`)
 
-	// Delivery (tasks)
+	// App preview (if an app was built)
+	if post.AppSlug != "" {
+		appURL := "/apps/" + post.AppSlug + "/run"
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">%s</a> · <a href="%s">Launch →</a></p>`, post.AppSlug, post.AppSlug, appURL))
+		sb.WriteString(fmt.Sprintf(`<iframe src="%s?raw=1" style="width:100%%;min-height:400px;border:1px solid #eee;border-radius:8px;margin-top:8px" sandbox="allow-scripts"></iframe>`, appURL))
+		sb.WriteString(`</div>`)
+	}
+
+	// Delivery text (markdown)
 	if post.Delivery != "" {
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h4>Delivery</h4>`)
-
-		// Parse delivery format: "AppName — /apps/slug/run"
-		if parts := strings.SplitN(post.Delivery, " — ", 2); len(parts) == 2 && strings.HasPrefix(parts[1], "/apps/") {
-			appURL := parts[1]
-			appName := parts[0]
-			sb.WriteString(fmt.Sprintf(`<p><a href="%s">%s</a></p>`, appURL, appName))
-			sb.WriteString(fmt.Sprintf(`<iframe src="%s?raw=1" style="width:100%%;min-height:400px;border:1px solid #eee;border-radius:8px;margin-top:8px" sandbox="allow-scripts"></iframe>`, appURL))
-		} else {
-			// Render markdown delivery (research results, summaries, etc.)
-			sb.WriteString(app.RenderString(post.Delivery))
-		}
+		sb.WriteString(`<h4>Result</h4>`)
+		sb.WriteString(app.RenderString(post.Delivery))
 		sb.WriteString(`</div>`)
 	}
 

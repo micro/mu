@@ -42,7 +42,8 @@ type Post struct {
 	WorkerID    string    `json:"worker_id"`   // Who claimed a task
 	Worker      string    `json:"worker"`      // Worker display name
 	Status      string    `json:"status"`      // Task status (open/claimed/delivered/completed/cancelled)
-	Delivery    string    `json:"delivery"`    // Deliverable for tasks
+	Delivery    string    `json:"delivery"`    // Deliverable text (markdown)
+	AppSlug     string    `json:"app_slug"`    // App slug if task built an app
 	Tags        string    `json:"tags"`        // Comma-separated
 	Tips        int       `json:"tips"`        // Total tips received (show)
 	Log         []LogEntry `json:"log"`        // Agent work log
@@ -347,15 +348,21 @@ func SetStatus(postID, status string) {
 	}
 }
 
-// SetDelivery sets the delivery text for a task.
-func SetDelivery(postID, delivery string) {
+// SetDelivery sets the delivery text and optional app slug for a task.
+func SetDelivery(postID, delivery, appSlug string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	if post, ok := posts[postID]; ok {
 		post.Delivery = delivery
+		if appSlug != "" {
+			post.AppSlug = appSlug
+		}
 		save()
 	}
 }
+
+// SpendCredits is wired by main.go to deduct credits from the user's wallet.
+var SpendCredits func(userID string, amount int, operation string) error
 
 // BudgetRemaining returns how many credits are left in the budget.
 func BudgetRemaining(postID string) int {
