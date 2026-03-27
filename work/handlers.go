@@ -50,19 +50,34 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	kind := r.URL.Query().Get("kind")
 	status := r.URL.Query().Get("status")
 
-	allPosts := ListPosts(kind, status, 50)
-
-	if app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]interface{}{"posts": allPosts})
-		return
-	}
-
 	sess, acc := auth.TrySession(r)
 	var userID string
 	var isAdmin bool
 	if sess != nil {
 		userID = sess.Account
 		isAdmin = acc.Admin
+	}
+
+	// "mine" is a virtual filter — show posts by the current user
+	actualKind := kind
+	if kind == "mine" {
+		actualKind = ""
+	}
+	allPosts := ListPosts(actualKind, status, 50)
+
+	if kind == "mine" && userID != "" {
+		var mine []*Post
+		for _, p := range allPosts {
+			if p.AuthorID == userID || p.WorkerID == userID {
+				mine = append(mine, p)
+			}
+		}
+		allPosts = mine
+	}
+
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{"posts": allPosts})
+		return
 	}
 
 	var sb strings.Builder
@@ -78,11 +93,12 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	// Filter tabs
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<div style="display:flex;gap:6px">`)
+	sb.WriteString(`<div style="display:flex;gap:6px;flex-wrap:wrap">`)
 	for _, f := range []struct{ val, label string }{
 		{"", "All"},
 		{"show", "Show"},
 		{"task", "Tasks"},
+		{"mine", "Mine"},
 	} {
 		style := "padding:4px 12px;border-radius:12px;font-size:13px;text-decoration:none;color:#555"
 		if f.val == kind {

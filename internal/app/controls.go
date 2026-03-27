@@ -206,10 +206,18 @@ func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 			if typeLabel == "" {
 				typeLabel = it.ct
 			}
+
+			// Video thumbnail embed
+			extra := ""
+			if it.ct == "video" {
+				extra = fmt.Sprintf(`<div style="margin-top:8px"><iframe src="https://www.youtube.com/embed/%s" width="100%%" height="200" style="border:none;border-radius:6px" allowfullscreen></iframe></div>`, it.cid)
+			}
+
 			sb.WriteString(fmt.Sprintf(`<div class="card">
-				<p><a href="%s">%s</a></p>
-				<p class="text-sm text-muted">%s · Saved %s · <a href="#" onclick="fetch('/app/unsave?type=%s&id=%s',{method:'POST'}).then(function(){location.reload()});return false;">Remove</a></p>
-			</div>`, it.url, it.label, typeLabel, it.time, it.ct, it.cid))
+				<p><a href="%s"><strong>%s</strong></a></p>
+				<p class="text-sm text-muted">%s · Saved %s</p>%s
+				<p style="margin-top:6px"><a href="#" class="text-sm text-muted" onclick="fetch('/app/unsave?type=%s&id=%s',{method:'POST'}).then(function(){location.reload()});return false;">Remove</a></p>
+			</div>`, it.url, it.label, typeLabel, it.time, extra, it.ct, it.cid))
 		}
 	}
 
