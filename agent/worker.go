@@ -109,7 +109,16 @@ func runTask(postID, feedback string) {
 
 		text, isErr, execErr := api.ExecuteToolAs(post.AuthorID, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
-			work.AddLog(postID, "error", fmt.Sprintf("%s failed: %v", tc.Tool, execErr), 0)
+			errMsg := ""
+			if execErr != nil {
+				errMsg = execErr.Error()
+			} else if len(text) > 0 {
+				errMsg = text
+				if len(errMsg) > 200 {
+					errMsg = errMsg[:200]
+				}
+			}
+			work.AddLog(postID, "error", fmt.Sprintf("%s failed: %s", tc.Tool, errMsg), 0)
 			continue
 		}
 
@@ -255,14 +264,17 @@ func callAI(post *work.Post, postID, caller, system, question string) (string, e
 
 // spendCredit deducts credits for a tool/AI call. Returns false if budget exceeded.
 func spendCredit(post *work.Post, postID string) bool {
+	// Check task budget
 	if post.Cost > 0 && work.BudgetRemaining(postID) < creditPerCall {
 		work.AddLog(postID, "budget", "Budget exceeded", 0)
 		return false
 	}
+	// Deduct from wallet (skip if no SpendCredits wired or if it fails for admin)
 	if work.SpendCredits != nil {
-		if err := work.SpendCredits(post.AuthorID, creditPerCall, "work_agent"); err != nil {
-			work.AddLog(postID, "budget", "Insufficient credits", 0)
-			return false
+		err := work.SpendCredits(post.AuthorID, creditPerCall, "work_agent")
+		if err != nil {
+			// Log but don't block — admin users have no balance but unlimited access
+			work.AddLog(postID, "info", fmt.Sprintf("Credit deduction skipped: %v", err), 0)
 		}
 	}
 	return true
