@@ -451,10 +451,12 @@ func GetOperationCost(operation string) int {
 }
 
 // paidOnly lists operations that cannot use the free daily quota
-// and always require real credits
+// and always require real credits. These are actions with spam or
+// abuse potential: sending messages, publishing content, or using
+// the server as a proxy to fetch external URLs.
 func paidOnly(operation string) bool {
 	switch operation {
-	case OpMailSend, OpExternalEmail:
+	case OpMailSend, OpExternalEmail, OpBlogCreate, OpWebFetch:
 		return true
 	}
 	return false
