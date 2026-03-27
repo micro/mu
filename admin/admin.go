@@ -33,6 +33,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/usage">Usage</a>
 		<a href="/admin/server">Server</a>
 		<a href="/admin/delete">Delete Content</a>
+		<a href="/app/blocked">Blocked Users</a>
 	</div>`
 
 	html := app.RenderHTMLForRequest("Admin", "Admin Dashboard", content, r)
