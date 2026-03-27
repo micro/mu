@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -567,7 +568,7 @@ func RetryWithFeedback(post *Post, feedback string) {
 
 		if Notify != nil {
 			Notify(authorID, "Agent updated: "+title,
-				fmt.Sprintf("The agent rebuilt %s with your feedback. Spent %d/%d credits.\n\n[Review delivery →](/work/%s)", name, post.Spent, post.Cost, postID), postID)
+				fmt.Sprintf("The agent rebuilt %s with your feedback. Spent %d/%d credits.\n\n[Review delivery →](/work/%s)", appName, post.Spent, post.Cost, postID), postID)
 		}
 	}()
 }
