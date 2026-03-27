@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mu/internal/ai"
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
@@ -45,20 +46,20 @@ Rules:
 - For platform data — NEVER use fetch() directly, always use mu.api:
   - mu.api.get(path) — GET request, returns a promise with JSON response
   - mu.api.post(path, body) — POST request, returns a promise with JSON response
-  - Available APIs and their EXACT parameters:
-    - /weather?lat=NUMBER&lon=NUMBER — weather forecast (REQUIRES lat/lon coordinates, NOT city name. Use geocoding first or navigator.geolocation)
-    - /places/search — POST with {q:"cafe", near:"London"} — search for places
-    - /places/nearby — POST with {address:"London", radius:1000} — find nearby places
-    - /news — GET, returns latest news feed
-    - /markets?category=crypto|futures|commodities — GET, returns market prices
-    - /video — GET, returns latest videos
-    - /chat — POST with {prompt:"question"} — ask the AI
-  - For weather apps: use navigator.geolocation to get lat/lon, OR use mu.api.post('/places/search', {q: cityName}) to geocode a city name, then pass the lat/lon to /weather
+  - CRITICAL: /weather requires lat=NUMBER&lon=NUMBER (NOT city name). Use navigator.geolocation or geocode first.
+  - Weather response shape: {Location:"", Current:{TempC, FeelsLikeC, Description, Humidity, WindKph, IconCode}, HourlyItems:[{Time, TempC, Description}], DailyItems:[{Date, MaxTempC, MinTempC, Description}]}
+  - CRITICAL: Always handle API errors. Check if response has an error field first: if(data.error){showError(data.error);return}
+  - CRITICAL: Always null-check nested properties before access (e.g. data && data.Current && data.Current.TempC)
 - Maximum 256KB HTML
 - Make it responsive and mobile-friendly
 - Use semantic HTML and accessible patterns
 
 When the user asks to modify an existing app, return the complete updated JSON (not a diff). Keep the same name and icon unless the user asks to change them.`
+
+// builderSystemPromptWithDocs returns the builder prompt with auto-generated API docs appended.
+func builderSystemPromptWithDocs() string {
+	return builderSystemPrompt + "\n\n" + api.ToolDocs()
+}
 
 // handleBuilder serves the app builder page.
 func handleBuilder(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +121,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	prompt := &ai.Prompt{
-		System:   builderSystemPrompt,
+		System:   builderSystemPromptWithDocs(),
 		Rag:      rag,
 		Question: question,
 		Priority: ai.PriorityHigh,
@@ -164,7 +165,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 // Used by the MCP apps_build tool so the agent can create apps in one step.
 func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 	aiPrompt := &ai.Prompt{
-		System:   builderSystemPrompt,
+		System:   builderSystemPromptWithDocs(),
 		Question: prompt,
 		Priority: ai.PriorityHigh,
 		Caller:   "app-builder",
@@ -286,9 +287,9 @@ func handleTemplateGet(w http.ResponseWriter, r *http.Request, id string) {
 	app.RespondJSON(w, t)
 }
 
-// BuilderSystemPrompt returns the system prompt used for app generation.
+// BuilderSystemPrompt returns the system prompt with auto-generated API docs.
 func BuilderSystemPrompt() string {
-	return builderSystemPrompt
+	return builderSystemPromptWithDocs()
 }
 
 // CleanGeneratedHTML extracts HTML from AI output, stripping code fences.
