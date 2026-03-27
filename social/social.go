@@ -659,16 +659,17 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 		threadAuthorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
 	}
 	sb.WriteString(fmt.Sprintf(`<div class="headline" style="border-bottom:2px solid #eee;">
+  %s
   <div style="display:flex;justify-content:space-between;align-items:baseline;">
     <div>%s</div>
-    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
+    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span></div>
   </div>
   <div style="margin-top:8px;font-size:15px;line-height:1.5;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
 </div>`,
+		controls,
 		threadAuthorHTML,
 		ts,
 		app.TimeAgo(p.PostedAt),
-		controls,
 		content,
 		linkCard,
 	))
@@ -1018,17 +1019,18 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 			authorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
 		}
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
+  %s
   <div style="display:flex;justify-content:space-between;align-items:baseline;">
     <div>%s</div>
-    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span>%s</div>
+    <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span></div>
   </div>
   <div style="margin-top:4px;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
   <div style="margin-top:6px;">%s</div>
 </div>`,
+			controls,
 			authorHTML,
 			ts,
 			app.TimeAgo(p.PostedAt),
-			controls,
 			content,
 			linkCard,
 			replyLink,
