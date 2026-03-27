@@ -121,8 +121,8 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 		// Meta line
 		meta := fmt.Sprintf(`%s · <a href="/@%s">%s</a> · %s`, kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006"))
-		if post.Kind == KindTask && post.Bounty > 0 {
-			meta += fmt.Sprintf(` · %d credits`, post.Bounty)
+		if post.Kind == KindTask && post.Cost > 0 {
+			meta += fmt.Sprintf(` · %d credits`, post.Cost)
 		}
 		if post.Tips > 0 {
 			meta += fmt.Sprintf(` · %d tipped`, post.Tips)
@@ -180,7 +180,7 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006 15:04")))
 
 	if post.Kind == KindTask {
-		sb.WriteString(fmt.Sprintf(`<p><strong>Bounty:</strong> %d credits (%s)</p>`, post.Bounty, wallet.FormatCredits(post.Bounty)))
+		sb.WriteString(fmt.Sprintf(`<p><strong>Cost:</strong> %d credits (%s)</p>`, post.Cost, wallet.FormatCredits(post.Cost)))
 		if post.Status != "" {
 			sb.WriteString(fmt.Sprintf(`<p><strong>Status:</strong> %s</p>`, post.Status))
 		}
@@ -242,7 +242,7 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/assign">`, post.ID))
 					sb.WriteString(`<button type="submit" class="btn">Assign to Agent</button>`)
 					sb.WriteString(`</form>`)
-					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task? Your bounty will be refunded.')">`, post.ID))
+					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task? Your credits will be refunded.')">`, post.ID))
 					sb.WriteString(`<button type="submit" class="btn btn-secondary">Cancel</button>`)
 					sb.WriteString(`</form>`)
 					sb.WriteString(`</div>`)
@@ -342,13 +342,13 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
 	for _, k := range []struct{ val, label, desc string }{
 		{"show", "Show", "Share something you built"},
-		{"task", "Task", "Post a task with a bounty"},
+		{"task", "Task", "Post a task with a cost"},
 	} {
 		checked := ""
 		if k.val == kind {
 			checked = " checked"
 		}
-		sb.WriteString(fmt.Sprintf(`<label class="btn btn-secondary"><input type="radio" name="kind" value="%s"%s onchange="document.getElementById('bounty-field').style.display=this.value==='task'?'block':'none'"> %s</label>`, k.val, checked, k.label))
+		sb.WriteString(fmt.Sprintf(`<label class="btn btn-secondary"><input type="radio" name="kind" value="%s"%s onchange="document.getElementById('cost-field').style.display=this.value==='task'?'block':'none'"> %s</label>`, k.val, checked, k.label))
 	}
 	sb.WriteString(`</div>`)
 
@@ -367,13 +367,13 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<input type="text" id="link" name="link" placeholder="URL, app slug, or repo" class="form-input w-full mt-1">`)
 	sb.WriteString(`</div>`)
 
-	bountyDisplay := "none"
+	costDisplay := "none"
 	if kind == "task" {
-		bountyDisplay = "block"
+		costDisplay = "block"
 	}
-	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="bounty-field" style="display:%s">`, bountyDisplay))
-	sb.WriteString(`<label for="bounty" class="text-sm">Bounty (credits)</label>`)
-	sb.WriteString(`<input type="number" id="bounty" name="bounty" min="1" max="50000" placeholder="e.g. 500" class="form-input w-full mt-1">`)
+	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="cost-field" style="display:%s">`, costDisplay))
+	sb.WriteString(`<label for="cost" class="text-sm">Cost (credits)</label>`)
+	sb.WriteString(`<input type="number" id="cost" name="cost" min="1" max="50000" placeholder="e.g. 500" class="form-input w-full mt-1">`)
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div class="mt-3">`)
@@ -397,7 +397,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var kind, title, description, link, tags string
-	var bounty int
+	var cost int
 
 	if app.SendsJSON(r) {
 		var body struct {
@@ -405,7 +405,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 			Title       string `json:"title"`
 			Description string `json:"description"`
 			Link        string `json:"link"`
-			Bounty      int    `json:"bounty"`
+			Cost        int    `json:"cost"`
 			Tags        string `json:"tags"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -416,7 +416,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		title = body.Title
 		description = body.Description
 		link = body.Link
-		bounty = body.Bounty
+		cost = body.Cost
 		tags = body.Tags
 	} else {
 		r.ParseForm()
@@ -425,7 +425,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		description = r.FormValue("description")
 		link = r.FormValue("link")
 		tags = r.FormValue("tags")
-		fmt.Sscanf(r.FormValue("bounty"), "%d", &bounty)
+		fmt.Sscanf(r.FormValue("cost"), "%d", &cost)
 	}
 
 	kind = strings.TrimSpace(kind)
@@ -438,18 +438,18 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		kind = KindShow
 	}
 
-	// Hold bounty in escrow for tasks
-	if kind == KindTask && bounty > 0 && sess.Account != "mu" {
-		if err := wallet.HoldEscrow(sess.Account, bounty, "pending"); err != nil {
-			respondError(w, r, "/work/post?kind=task", "Insufficient credits for bounty")
+	// Hold cost in escrow for tasks
+	if kind == KindTask && cost > 0 && sess.Account != "micro" {
+		if err := wallet.HoldEscrow(sess.Account, cost, "pending"); err != nil {
+			respondError(w, r, "/work/post?kind=task", "Insufficient credits for task cost")
 			return
 		}
 	}
 
-	post, err := CreatePost(sess.Account, acc.Name, kind, title, description, link, tags, bounty)
+	post, err := CreatePost(sess.Account, acc.Name, kind, title, description, link, tags, cost)
 	if err != nil {
-		if kind == KindTask && bounty > 0 && sess.Account != "mu" {
-			wallet.RefundEscrow(sess.Account, bounty, "failed")
+		if kind == KindTask && cost > 0 && sess.Account != "micro" {
+			wallet.RefundEscrow(sess.Account, cost, "failed")
 		}
 		respondError(w, r, "/work/post?kind="+kind, err.Error())
 		return
@@ -630,13 +630,13 @@ func handleAccept(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Pay out: if agent did the work, refund bounty to poster (they only paid compute).
+	// Pay out: if agent did the work, refund cost to poster (they only paid compute).
 	// If a human did it, release escrow to the worker.
-	if post.AuthorID != "mu" {
+	if post.AuthorID != "micro" {
 		if post.WorkerID == "agent" {
-			wallet.RefundEscrow(post.AuthorID, post.Bounty, post.ID)
+			wallet.RefundEscrow(post.AuthorID, post.Cost, post.ID)
 		} else {
-			wallet.ReleaseEscrow(post.WorkerID, post.Bounty, post.ID)
+			wallet.ReleaseEscrow(post.WorkerID, post.Cost, post.ID)
 		}
 	}
 
@@ -682,8 +682,8 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Refund escrow to poster
-	if post.AuthorID != "mu" {
-		wallet.RefundEscrow(post.AuthorID, post.Bounty, post.ID)
+	if post.AuthorID != "micro" {
+		wallet.RefundEscrow(post.AuthorID, post.Cost, post.ID)
 	}
 
 	if app.SendsJSON(r) || app.WantsJSON(r) {

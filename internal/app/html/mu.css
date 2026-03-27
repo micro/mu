@@ -2744,9 +2744,14 @@ a.highlight {
 .form-input {
   padding: 10px;
   font-size: 14px;
+  font-family: "Nunito Sans", serif;
   border: 1px solid #ccc;
   border-radius: 5px;
   box-sizing: border-box;
+}
+
+.form-input::placeholder {
+  color: #aaa;
 }
 
 .form-textarea {

@@ -303,7 +303,7 @@ var tools = []Tool{
 	},
 	{
 		Name:        "work_post",
-		Description: "Post work — show something you built or post a task with a credit bounty",
+		Description: "Post work — show something you built or post a task with a credit cost",
 		Method:      "POST",
 		Path:        "/work/post",
 		Params: []ToolParam{
@@ -311,7 +311,7 @@ var tools = []Tool{
 			{Name: "title", Type: "string", Description: "Title", Required: true},
 			{Name: "description", Type: "string", Description: "Description of the work", Required: true},
 			{Name: "link", Type: "string", Description: "URL or app slug (optional)", Required: false},
-			{Name: "bounty", Type: "number", Description: "Bounty in credits (required for tasks)", Required: false},
+			{Name: "cost", Type: "number", Description: "Cost in credits (required for tasks)", Required: false},
 			{Name: "tags", Type: "string", Description: "Comma-separated tags", Required: false},
 		},
 	},
