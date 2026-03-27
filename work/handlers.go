@@ -25,6 +25,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handlePost(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/accept") && r.Method == "POST":
 		handleAccept(w, r)
+	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/retry") && r.Method == "POST":
+		handleRetry(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/cancel") && r.Method == "POST":
 		handleCancel(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/tip") && r.Method == "POST":
@@ -240,7 +242,32 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	if post.Delivery != "" {
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h4>Delivery</h4>`)
-		sb.WriteString(fmt.Sprintf(`<p>%s</p>`, post.Delivery))
+
+		// Parse delivery format: "AppName — /apps/slug/run"
+		if parts := strings.SplitN(post.Delivery, " — ", 2); len(parts) == 2 && strings.HasPrefix(parts[1], "/apps/") {
+			appURL := parts[1]
+			appName := parts[0]
+			sb.WriteString(fmt.Sprintf(`<p><a href="%s">%s</a></p>`, appURL, appName))
+			sb.WriteString(fmt.Sprintf(`<iframe src="%s?raw=1" style="width:100%%;min-height:400px;border:1px solid #eee;border-radius:8px;margin-top:8px" sandbox="allow-scripts"></iframe>`, appURL))
+		} else {
+			sb.WriteString(fmt.Sprintf(`<p>%s</p>`, post.Delivery))
+		}
+		sb.WriteString(`</div>`)
+	}
+
+	// Retry with feedback (for delivered tasks — author can request changes)
+	if post.Status == StatusDelivered && userID == post.AuthorID {
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/retry">`, post.ID))
+		sb.WriteString(`<label class="text-sm">What needs to change?</label>`)
+		sb.WriteString(`<textarea name="feedback" rows="3" placeholder="Describe what to fix or improve..." required class="form-input w-full mt-1"></textarea>`)
+		sb.WriteString(`<div class="d-flex gap-2 mt-3">`)
+		sb.WriteString(`<button type="submit" class="btn">Retry</button>`)
+		sb.WriteString(`</form>`)
+		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/accept">`, post.ID))
+		sb.WriteString(`<button type="submit" class="btn btn-secondary">Accept</button>`)
+		sb.WriteString(`</form>`)
+		sb.WriteString(`</div>`)
 		sb.WriteString(`</div>`)
 	}
 
@@ -266,39 +293,12 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`</div>`)
 	}
 
-	// Actions
-	if sess != nil {
-		actions := false
-
-		if post.Kind == KindTask && userID == post.AuthorID {
-			switch post.Status {
-			case StatusOpen, StatusClaimed:
-				actions = true
-				sb.WriteString(`<div class="card">`)
-				sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task?')">`, post.ID))
-				sb.WriteString(`<button type="submit" class="btn btn-secondary">Cancel</button>`)
-				sb.WriteString(`</form>`)
-				sb.WriteString(`</div>`)
-
-			case StatusDelivered:
-				actions = true
-				sb.WriteString(`<div class="card">`)
-				sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/accept">`, post.ID))
-				sb.WriteString(`<button type="submit" class="btn">Accept</button>`)
-				sb.WriteString(`</form>`)
-				sb.WriteString(`</div>`)
-			}
-		}
-
-		// Tip (anyone can tip any post, not their own)
-		if userID != post.AuthorID {
-			if actions {
-				// Add some spacing
-			}
+	// Cancel (for open/building tasks)
+	if sess != nil && post.Kind == KindTask && userID == post.AuthorID {
+		if post.Status == StatusOpen || post.Status == StatusClaimed {
 			sb.WriteString(`<div class="card">`)
-			sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/tip" class="d-flex gap-2">`, post.ID))
-			sb.WriteString(`<input type="number" name="amount" min="1" max="50000" placeholder="credits" required class="form-input" style="width:120px">`)
-			sb.WriteString(`<button type="submit" class="btn btn-secondary">Tip</button>`)
+			sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task?')">`, post.ID))
+			sb.WriteString(`<button type="submit" class="btn btn-secondary">Cancel</button>`)
 			sb.WriteString(`</form>`)
 			sb.WriteString(`</div>`)
 		}
@@ -628,7 +628,9 @@ func handleAccept(w http.ResponseWriter, r *http.Request) {
 	// Notify the worker (if human)
 	if post.WorkerID != "agent" && post.WorkerID != "" {
 		notifyWork(post.WorkerID, "Task accepted: "+post.Title,
-			fmt.Sprintf("Your delivery was accepted and %d credits have been released. View it at /work/%s", post.Cost, id))
+			fmt.Sprintf(`Your delivery was accepted and %d credits have been released.
+
+<a href="/work/%s">View task →</a>`, post.Cost, id))
 	}
 
 	if app.SendsJSON(r) || app.WantsJSON(r) {
@@ -680,6 +682,46 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/work?success=Task+cancelled", http.StatusSeeOther)
+}
+
+func handleRetry(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		handleAuthError(w, r)
+		return
+	}
+
+	id := extractPostID(r.URL.Path, "/retry")
+	post := GetPost(id)
+	if post == nil {
+		respondPostError(w, r, id, "Post not found")
+		return
+	}
+	if post.AuthorID != sess.Account {
+		respondPostError(w, r, id, "Only the poster can retry")
+		return
+	}
+	if post.Status != StatusDelivered {
+		respondPostError(w, r, id, "Task is not in delivered state")
+		return
+	}
+
+	r.ParseForm()
+	feedback := strings.TrimSpace(r.FormValue("feedback"))
+	if feedback == "" {
+		respondPostError(w, r, id, "Feedback is required for retry")
+		return
+	}
+
+	// Reset to claimed and re-run agent with the feedback
+	RetryWithFeedback(post, feedback)
+
+	if app.SendsJSON(r) || app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]string{"status": "retrying"})
+		return
+	}
+
+	http.Redirect(w, r, "/work/"+id+"?success=Retrying+with+feedback", http.StatusSeeOther)
 }
 
 func extractPostID(path, suffix string) string {
