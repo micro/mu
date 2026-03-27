@@ -23,16 +23,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handlePostForm(w, r)
 	case path == "/work/post" && r.Method == "POST":
 		handlePost(w, r)
-	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/claim") && r.Method == "POST":
-		handleClaim(w, r)
-	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/deliver") && r.Method == "POST":
-		handleDeliver(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/accept") && r.Method == "POST":
 		handleAccept(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/cancel") && r.Method == "POST":
 		handleCancel(w, r)
-	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/assign") && r.Method == "POST":
-		handleAssign(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/tip") && r.Method == "POST":
 		handleTip(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/feedback") && r.Method == "POST":
@@ -261,57 +255,23 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	if sess != nil {
 		actions := false
 
-		if post.Kind == KindTask {
+		if post.Kind == KindTask && userID == post.AuthorID {
 			switch post.Status {
-			case StatusOpen:
+			case StatusOpen, StatusClaimed:
 				actions = true
 				sb.WriteString(`<div class="card">`)
-				if userID != post.AuthorID {
-					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/claim">`, post.ID))
-					sb.WriteString(`<button type="submit" class="btn">Claim This Task</button>`)
-					sb.WriteString(`</form>`)
-				} else {
-					sb.WriteString(`<div class="d-flex gap-2">`)
-					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/assign">`, post.ID))
-					sb.WriteString(`<button type="submit" class="btn">Assign to Agent</button>`)
-					sb.WriteString(`</form>`)
-					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task? Your credits will be refunded.')">`, post.ID))
-					sb.WriteString(`<button type="submit" class="btn btn-secondary">Cancel</button>`)
-					sb.WriteString(`</form>`)
-					sb.WriteString(`</div>`)
-				}
-				sb.WriteString(`</div>`)
-
-			case StatusClaimed:
-				actions = true
-				sb.WriteString(`<div class="card">`)
-				if userID == post.WorkerID {
-					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/deliver">`, post.ID))
-					sb.WriteString(`<label for="delivery" class="text-sm">Deliverable (app slug, URL, or description)</label>`)
-					sb.WriteString(`<input type="text" id="delivery" name="delivery" placeholder="e.g. /apps/my-app or a URL" required class="form-input w-full mt-1">`)
-					sb.WriteString(`<div class="d-flex gap-2 mt-3">`)
-					sb.WriteString(`<button type="submit" class="btn">Submit Delivery</button>`)
-					sb.WriteString(`</form>`)
-					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Release your claim on this task?')">`, post.ID))
-					sb.WriteString(`<button type="submit" class="btn btn-secondary">Release</button>`)
-					sb.WriteString(`</form>`)
-					sb.WriteString(`</div>`)
-				} else if userID == post.AuthorID {
-					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel">`, post.ID))
-					sb.WriteString(`<button type="submit" class="btn btn-secondary">Release Claim</button>`)
-					sb.WriteString(`</form>`)
-				}
+				sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task?')">`, post.ID))
+				sb.WriteString(`<button type="submit" class="btn btn-secondary">Cancel</button>`)
+				sb.WriteString(`</form>`)
 				sb.WriteString(`</div>`)
 
 			case StatusDelivered:
-				if userID == post.AuthorID {
-					actions = true
-					sb.WriteString(`<div class="card">`)
-					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/accept">`, post.ID))
-					sb.WriteString(`<button type="submit" class="btn">Accept &amp; Pay</button>`)
-					sb.WriteString(`</form>`)
-					sb.WriteString(`</div>`)
-				}
+				actions = true
+				sb.WriteString(`<div class="card">`)
+				sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/accept">`, post.ID))
+				sb.WriteString(`<button type="submit" class="btn">Accept</button>`)
+				sb.WriteString(`</form>`)
+				sb.WriteString(`</div>`)
 			}
 		}
 
@@ -405,7 +365,7 @@ func renderPostForm(kind, errMsg string) string {
 	sb.WriteString(`<input type="text" id="link" name="link" placeholder="Link (optional)" class="form-input w-full">`)
 	sb.WriteString(`</div>`)
 
-	// Task-only: cost + assign
+	// Task-only: budget
 	costDisplay := "none"
 	if isTask {
 		costDisplay = "block"
@@ -414,11 +374,11 @@ func renderPostForm(kind, errMsg string) string {
 	sb.WriteString(`<input type="number" id="cost" name="cost" min="1" max="50000" placeholder="Budget (max credits)" class="form-input w-full">`)
 	sb.WriteString(`</div>`)
 
-	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="assign-field" style="display:%s">`, costDisplay))
-	sb.WriteString(`<label class="text-sm"><input type="checkbox" name="assign" value="1" style="width:auto;margin-right:6px">Assign to Agent</label>`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<button type="submit" class="btn mt-3">Post</button>`)
+	btnLabel := "Post"
+	if isTask {
+		btnLabel = "Start"
+	}
+	sb.WriteString(fmt.Sprintf(`<button type="submit" class="btn mt-3" id="work-submit">%s</button>`, btnLabel))
 	sb.WriteString(`</form>`)
 
 	// JS to toggle fields and placeholders
@@ -426,10 +386,10 @@ func renderPostForm(kind, errMsg string) string {
 function workFormToggle(kind) {
   var isTask = kind === 'task';
   document.getElementById('cost-field').style.display = isTask ? 'block' : 'none';
-  document.getElementById('assign-field').style.display = isTask ? 'block' : 'none';
   document.getElementById('link-field').style.display = isTask ? 'none' : 'block';
   document.getElementById('work-title').placeholder = isTask ? 'What needs to be done?' : 'What did you build?';
   document.getElementById('work-desc').placeholder = isTask ? 'Describe the task...' : 'Tell people about it...';
+  document.getElementById('work-submit').textContent = isTask ? 'Start' : 'Post';
   var labels = document.querySelectorAll('input[name="kind"]');
   for (var i = 0; i < labels.length; i++) {
     var lbl = labels[i].parentElement;
@@ -469,7 +429,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	var kind, title, description, link string
 	var cost int
-	var assign bool
 
 	if app.SendsJSON(r) {
 		var body struct {
@@ -478,7 +437,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 			Description string `json:"description"`
 			Link        string `json:"link"`
 			Cost        int    `json:"cost"`
-			Assign      bool   `json:"assign"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			app.RespondJSON(w, map[string]string{"error": "invalid request body"})
@@ -489,7 +447,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		description = body.Description
 		link = body.Link
 		cost = body.Cost
-		assign = body.Assign
 	} else {
 		r.ParseForm()
 		kind = r.FormValue("kind")
@@ -497,7 +454,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		description = r.FormValue("description")
 		link = r.FormValue("link")
 		fmt.Sscanf(r.FormValue("cost"), "%d", &cost)
-		assign = r.FormValue("assign") == "1"
 	}
 
 	kind = strings.TrimSpace(kind)
@@ -524,8 +480,8 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Assign to agent if requested
-	if assign && kind == KindTask {
+	// Auto-assign agent for tasks
+	if kind == KindTask {
 		AssignToAgent(post.ID, sess.Account)
 	}
 
@@ -633,74 +589,6 @@ func handleFeedback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/work/"+id, http.StatusSeeOther)
 }
 
-func handleClaim(w http.ResponseWriter, r *http.Request) {
-	sess, acc, err := auth.RequireSession(r)
-	if err != nil {
-		handleAuthError(w, r)
-		return
-	}
-
-	id := extractPostID(r.URL.Path, "/claim")
-	if err := ClaimTask(id, sess.Account, acc.Name); err != nil {
-		respondPostError(w, r, id, err.Error())
-		return
-	}
-
-	// Notify the poster
-	if post := GetPost(id); post != nil {
-		notifyWork(post.AuthorID, "Task claimed: "+post.Title,
-			fmt.Sprintf("%s claimed your task. View it at /work/%s", acc.Name, id))
-	}
-
-	if app.SendsJSON(r) || app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]string{"status": "claimed"})
-		return
-	}
-
-	http.Redirect(w, r, "/work/"+id+"?success=Task+claimed", http.StatusSeeOther)
-}
-
-func handleDeliver(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		handleAuthError(w, r)
-		return
-	}
-
-	id := extractPostID(r.URL.Path, "/deliver")
-
-	var delivery string
-	if app.SendsJSON(r) {
-		var body struct {
-			Delivery string `json:"delivery"`
-		}
-		json.NewDecoder(r.Body).Decode(&body)
-		delivery = body.Delivery
-	} else {
-		r.ParseForm()
-		delivery = r.FormValue("delivery")
-	}
-	delivery = strings.TrimSpace(delivery)
-
-	if err := DeliverTask(id, sess.Account, delivery); err != nil {
-		respondPostError(w, r, id, err.Error())
-		return
-	}
-
-	// Notify the poster
-	if post := GetPost(id); post != nil {
-		notifyWork(post.AuthorID, "Delivery submitted: "+post.Title,
-			fmt.Sprintf("Work has been delivered for your task. Review it at /work/%s", id))
-	}
-
-	if app.SendsJSON(r) || app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]string{"status": "delivered"})
-		return
-	}
-
-	http.Redirect(w, r, "/work/"+id+"?success=Delivery+submitted", http.StatusSeeOther)
-}
-
 func handleAccept(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
@@ -777,28 +665,6 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/work?success=Task+cancelled", http.StatusSeeOther)
-}
-
-func handleAssign(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		handleAuthError(w, r)
-		return
-	}
-
-	id := extractPostID(r.URL.Path, "/assign")
-
-	if err := AssignToAgent(id, sess.Account); err != nil {
-		respondPostError(w, r, id, err.Error())
-		return
-	}
-
-	if app.SendsJSON(r) || app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]string{"status": "assigned"})
-		return
-	}
-
-	http.Redirect(w, r, "/work/"+id+"?success=Assigned+to+agent.+Building...", http.StatusSeeOther)
 }
 
 func extractPostID(path, suffix string) string {
