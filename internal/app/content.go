@@ -95,6 +95,27 @@ func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID,
 	return renderActions(actions)
 }
 
+// ExternalControls renders save/share controls for external content (videos, news, web results).
+// These have no author, so no edit/delete/flag/block — just save and share.
+func ExternalControls(userID, contentType, contentID string) string {
+	if userID == "" {
+		return renderActions([]Action{shareAction()})
+	}
+
+	var actions []Action
+	if IsSaved(userID, contentType, contentID) {
+		actions = append(actions, Action{
+			Label: "Unsave", URL: fmt.Sprintf("/app/unsave?type=%s&id=%s", contentType, contentID),
+		})
+	} else {
+		actions = append(actions, Action{
+			Label: "Save", URL: fmt.Sprintf("/app/save?type=%s&id=%s", contentType, contentID),
+		})
+	}
+	actions = append(actions, shareAction())
+	return renderActions(actions)
+}
+
 func shareAction() Action {
 	return Action{Label: "Share", URL: "#", Class: "text-muted"}
 }

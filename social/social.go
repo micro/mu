@@ -301,6 +301,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Support _method=DELETE from POST forms
+	if r.Method == "POST" && r.FormValue("_method") == "DELETE" {
+		handleDeleteMessage(w, r)
+		return
+	}
+
 	// GET
 	if query := r.URL.Query().Get("query"); query != "" {
 		_, acc := auth.TrySession(r)
@@ -639,12 +645,13 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 	content = linkifyURLs(content)
 
 	_, acc := auth.TrySession(r)
-
-	canDelete := acc != nil && (acc.ID == p.AuthorID || acc.Admin)
-	deleteBtn := ""
-	if canDelete {
-		deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this thread?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.href='/social')}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
+	var threadUserID string
+	var threadIsAdmin bool
+	if acc != nil {
+		threadUserID = acc.ID
+		threadIsAdmin = acc.Admin
 	}
+	controls := app.ItemControls(threadUserID, threadIsAdmin, "social", p.ID, p.AuthorID, "", "/social?id="+p.ID)
 
 	ts := p.PostedAt.Unix()
 	threadAuthorHTML := fmt.Sprintf(`<b>%s</b>`, htmlpkg.EscapeString(p.Author))
@@ -661,7 +668,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 		threadAuthorHTML,
 		ts,
 		app.TimeAgo(p.PostedAt),
-		deleteBtn,
+		controls,
 		content,
 		linkCard,
 	))
@@ -710,11 +717,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 		rc := htmlpkg.EscapeString(reply.Content)
 		rc = linkifyURLs(rc)
 
-		canDeleteReply := acc != nil && (acc.ID == reply.AuthorID || acc.Admin)
-		rDeleteBtn := ""
-		if canDeleteReply {
-			rDeleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this message?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, reply.ID)
-		}
+		replyControls := app.ItemControls(threadUserID, threadIsAdmin, "social", reply.ID, reply.AuthorID, "", "/social?id="+reply.ID)
 
 		rts := reply.PostedAt.Unix()
 		sb.WriteString(fmt.Sprintf(`<div style="padding:12px 0;border-bottom:1px solid #f5f5f5;">
@@ -727,7 +730,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 			htmlpkg.EscapeString(reply.Author),
 			rts,
 			app.TimeAgo(reply.PostedAt),
-			rDeleteBtn,
+			replyControls,
 			rc,
 		))
 	}
@@ -988,11 +991,13 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 		// Linkify any remaining URLs in content
 		content = linkifyURLs(content)
 
-		canDelete := acc != nil && (acc.ID == p.AuthorID || acc.Admin)
-		deleteBtn := ""
-		if canDelete {
-			deleteBtn = fmt.Sprintf(` <button onclick="if(confirm('Delete this thread?')){fetch('/social?id=%s',{method:'DELETE'}).then(()=>location.reload())}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;padding:0;" title="Delete">x</button>`, p.ID)
+		var userID string
+		var isAdmin bool
+		if acc != nil {
+			userID = acc.ID
+			isAdmin = acc.Admin
 		}
+		controls := app.ItemControls(userID, isAdmin, "social", p.ID, p.AuthorID, "", "/social?id="+p.ID)
 
 		// Message count
 		mutex.RLock()
@@ -1023,7 +1028,7 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 			authorHTML,
 			ts,
 			app.TimeAgo(p.PostedAt),
-			deleteBtn,
+			controls,
 			content,
 			linkCard,
 			replyLink,
