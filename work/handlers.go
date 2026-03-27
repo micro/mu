@@ -348,7 +348,7 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 		if k.val == kind {
 			checked = " checked"
 		}
-		sb.WriteString(fmt.Sprintf(`<label class="btn btn-secondary"><input type="radio" name="kind" value="%s"%s onchange="document.getElementById('cost-field').style.display=this.value==='task'?'block':'none'"> %s</label>`, k.val, checked, k.label))
+		sb.WriteString(fmt.Sprintf(`<label class="btn btn-secondary"><input type="radio" name="kind" value="%s"%s onchange="var t=this.value==='task'?'block':'none';document.getElementById('cost-field').style.display=t;document.getElementById('assign-field').style.display=t"> %s</label>`, k.val, checked, k.label))
 	}
 	sb.WriteString(`</div>`)
 
@@ -376,6 +376,10 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<input type="number" id="cost" name="cost" min="1" max="50000" placeholder="e.g. 500" class="form-input w-full mt-1">`)
 	sb.WriteString(`</div>`)
 
+	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="assign-field" style="display:%s">`, costDisplay))
+	sb.WriteString(`<label class="text-sm"><input type="checkbox" name="assign" value="1" style="width:auto;margin-right:6px">Assign to Agent</label>`)
+	sb.WriteString(`</div>`)
+
 	sb.WriteString(`<div class="mt-3">`)
 	sb.WriteString(`<label for="tags" class="text-sm">Tags (optional)</label>`)
 	sb.WriteString(`<input type="text" id="tags" name="tags" placeholder="e.g. app, go, design" class="form-input w-full mt-1">`)
@@ -398,6 +402,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	var kind, title, description, link, tags string
 	var cost int
+	var assign bool
 
 	if app.SendsJSON(r) {
 		var body struct {
@@ -407,6 +412,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 			Link        string `json:"link"`
 			Cost        int    `json:"cost"`
 			Tags        string `json:"tags"`
+			Assign      bool   `json:"assign"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			app.RespondJSON(w, map[string]string{"error": "invalid request body"})
@@ -418,6 +424,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		link = body.Link
 		cost = body.Cost
 		tags = body.Tags
+		assign = body.Assign
 	} else {
 		r.ParseForm()
 		kind = r.FormValue("kind")
@@ -426,6 +433,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		link = r.FormValue("link")
 		tags = r.FormValue("tags")
 		fmt.Sscanf(r.FormValue("cost"), "%d", &cost)
+		assign = r.FormValue("assign") == "1"
 	}
 
 	kind = strings.TrimSpace(kind)
@@ -455,12 +463,36 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Assign to agent if requested
+	if assign && kind == KindTask {
+		canProceed, _, agentCost, qerr := wallet.CheckQuota(sess.Account, wallet.OpChatQuery)
+		if canProceed {
+			wallet.ConsumeQuota(sess.Account, wallet.OpChatQuery)
+			AssignToAgent(post.ID, sess.Account)
+		} else {
+			msg := fmt.Sprintf("Task posted but agent assignment failed: insufficient credits (%d required)", agentCost)
+			if qerr != nil {
+				msg = "Task posted but agent assignment failed: " + qerr.Error()
+			}
+			if app.SendsJSON(r) || app.WantsJSON(r) {
+				app.RespondJSON(w, map[string]interface{}{"post": post, "warning": msg})
+				return
+			}
+			http.Redirect(w, r, "/work/"+post.ID+"?error="+strings.ReplaceAll(msg, " ", "+"), http.StatusSeeOther)
+			return
+		}
+	}
+
 	if app.SendsJSON(r) || app.WantsJSON(r) {
 		app.RespondJSON(w, post)
 		return
 	}
 
-	http.Redirect(w, r, "/work/"+post.ID, http.StatusSeeOther)
+	successMsg := ""
+	if assign && kind == KindTask {
+		successMsg = "?success=Task+posted+and+assigned+to+agent"
+	}
+	http.Redirect(w, r, "/work/"+post.ID+successMsg, http.StatusSeeOther)
 }
 
 func handleTip(w http.ResponseWriter, r *http.Request) {
