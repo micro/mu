@@ -38,7 +38,7 @@ Rules:
 - Button style: padding 8-10px 20-24px, border-radius 6px, primary buttons use background #000 color #fff
 - Keep it simple and functional — no external dependencies, no CDN links, no images
 - The app runs in a sandboxed iframe — it CANNOT use fetch() or XMLHttpRequest directly. All API calls MUST go through the Mu SDK.
-- IMPORTANT: Always include <script src="/apps/sdk.js"></script> at the top of your app if it needs any external data, AI, or storage.
+- IMPORTANT: Do NOT include <script src="/apps/sdk.js"></script> — the SDK is injected automatically. Just use mu.* functions directly.
 - If the app uses geolocation (navigator.geolocation), ALWAYS provide a graceful fallback: show a manual location input or a sensible default when the user denies permission or the API fails. Never let the app be blank or broken if location is unavailable.
 - For AI features: mu.ai(prompt) — returns a promise with the AI response
 - For persistent storage: mu.store.set(key, value), mu.store.get(key), mu.store.del(key)
