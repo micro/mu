@@ -1508,20 +1508,20 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		timeInfo = "Updated " + app.TimeAgo(post.UpdatedAt)
 	}
 
-	content := fmt.Sprintf(`<div id="blog">
-		%s
-		<div class="info">
-			%s · %s%s
-		</div>
-		<hr class="my-5 border-t">
-		<div class="mb-5">%s</div>
-		<hr class="my-5 border-t">
-		<h3 class="mt-6">Comments</h3>
-		%s
-		<div class="mt-6">
-			<a href="/blog" class="text-muted">← Back to posts</a>
-		</div>
-	</div>`, tagsDisplay, timeInfo, authorLink, editButton, contentHTML, renderComments(post.ID, r))
+	var contentSB strings.Builder
+	contentSB.WriteString(`<div id="blog">`)
+	contentSB.WriteString(tagsDisplay)
+	contentSB.WriteString(`<div class="info">`)
+	contentSB.WriteString(timeInfo + ` · ` + authorLink + editButton)
+	contentSB.WriteString(`</div>`)
+	contentSB.WriteString(`<hr class="my-5 border-t">`)
+	contentSB.WriteString(`<div class="mb-5">` + contentHTML + `</div>`)
+	contentSB.WriteString(`<hr class="my-5 border-t">`)
+	contentSB.WriteString(`<h3 class="mt-6">Comments</h3>`)
+	contentSB.WriteString(renderComments(post.ID, r))
+	contentSB.WriteString(`<div class="mt-6"><a href="/blog" class="text-muted">← Back to posts</a></div>`)
+	contentSB.WriteString(`</div>`)
+	content := contentSB.String()
 
 	html := app.RenderHTMLForRequest(title, post.Content[:min(len(post.Content), 150)], content, r)
 	w.Write([]byte(html))

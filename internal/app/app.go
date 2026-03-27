@@ -265,6 +265,7 @@ var Template = `
       function toggleMenu() {
         document.body.classList.toggle('menu-open');
       }
+      document.addEventListener('click',function(){document.querySelectorAll('.dot-menu>div').forEach(function(m){m.style.display='none'})});
   </script>
   </body>
 </html>

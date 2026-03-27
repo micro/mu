@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
 
 // Action is a content control (edit, delete, flag, etc.)
@@ -36,6 +37,7 @@ func Controls(userID, authorID string, isAdmin bool, actions ...Action) string {
 // editURL and deleteURL are content-specific. Pass empty to omit.
 // contentType and contentID identify the item for generic actions.
 // authorID is the content creator's user ID.
+// itemURL is the permalink to this item (used for share).
 func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID, editURL, deleteURL string) string {
 	if userID == "" && !isAdmin {
 		// Not logged in — just share
@@ -90,7 +92,7 @@ func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID,
 	})
 
 	// Share (client-side)
-	actions = append(actions, shareAction())
+	actions = append(actions, shareAction(contentType, contentID))
 
 	return renderActions(actions)
 }
@@ -99,7 +101,7 @@ func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID,
 // These have no author, so no edit/delete/flag/block — just save and share.
 func ExternalControls(userID, contentType, contentID string) string {
 	if userID == "" {
-		return renderActions([]Action{shareAction()})
+		return renderActions([]Action{shareAction(contentType, contentID)})
 	}
 
 	var actions []Action
@@ -112,7 +114,7 @@ func ExternalControls(userID, contentType, contentID string) string {
 			Label: "Save", URL: fmt.Sprintf("/app/save?type=%s&id=%s", contentType, contentID),
 		})
 	}
-	actions = append(actions, shareAction())
+	actions = append(actions, shareAction(contentType, contentID))
 	return renderActions(actions)
 }
 
@@ -122,30 +124,67 @@ func ExternalControls(userID, contentType, contentID string) string {
 func StaticControls(contentType, contentID string) string {
 	return renderActions([]Action{
 		{Label: "Save", URL: fmt.Sprintf("/app/save?type=%s&id=%s", contentType, contentID)},
-		shareAction(),
+		shareAction(contentType, contentID),
 	})
 }
 
-func shareAction() Action {
-	return Action{Label: "Share", URL: "#", Class: "text-muted"}
+// contentURL returns the permalink for a content item based on type and ID.
+func contentURL(contentType, contentID string) string {
+	switch contentType {
+	case "post":
+		return "/blog/post?id=" + contentID
+	case "work":
+		return "/work/" + contentID
+	case "app":
+		return "/apps/" + contentID
+	case "social":
+		return "/social/thread?id=" + contentID
+	case "video":
+		return "/video?id=" + contentID
+	case "news":
+		return "/news?id=" + contentID
+	case "web":
+		return "/web/read?url=" + contentID
+	default:
+		return ""
+	}
 }
+
+func shareAction(contentType, contentID string) Action {
+	return Action{Label: "Share", URL: contentURL(contentType, contentID), Class: "text-muted"}
+}
+
+var menuCounter atomic.Int64
 
 func renderActions(actions []Action) string {
 	if len(actions) == 0 {
 		return ""
 	}
 
+	id := fmt.Sprintf("m%d", menuCounter.Add(1))
+
 	var sb strings.Builder
+	// Three-dot trigger
+	sb.WriteString(fmt.Sprintf(` · <span class="dot-menu" style="position:relative;display:inline-block"><a href="#" class="text-muted" onclick="var m=document.getElementById('%s');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();return false;" style="text-decoration:none;font-size:16px;letter-spacing:-1px">⋯</a>`, id))
+
+	// Dropdown
+	sb.WriteString(fmt.Sprintf(`<div id="%s" style="display:none;position:absolute;right:0;top:20px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:100;min-width:120px;padding:4px 0">`, id))
+
 	for _, a := range actions {
-		sb.WriteString(` · `)
 		cls := a.Class
 		if cls == "" {
 			cls = "text-muted"
 		}
+		style := "display:block;padding:6px 14px;font-size:13px;text-decoration:none;white-space:nowrap"
+		if cls == "text-error" {
+			style += ";color:#c00"
+		} else {
+			style += ";color:#555"
+		}
 
-		// Share is client-side
-		if a.Label == "Share" {
-			sb.WriteString(`<a href="#" class="text-muted" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied!')); return false;">Share</a>`)
+		// Share
+		if a.Label == "Share" && a.URL != "" && a.URL != "#" {
+			sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s" onclick="navigator.clipboard.writeText(location.origin+'%s').then(()=>alert('Link copied!'));return false;">Share</a>`, a.URL, style, a.URL))
 			continue
 		}
 
@@ -154,11 +193,13 @@ func renderActions(actions []Action) string {
 			if a.Method != "" {
 				methodField = fmt.Sprintf("var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='%s';f.appendChild(i);", a.Method)
 			}
-			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="if(confirm('%s')){var f=document.createElement('form');f.method='POST';f.action='%s';%sdocument.body.appendChild(f);f.submit();}return false;">%s</a>`,
-				cls, a.Confirm, a.URL, methodField, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){var f=document.createElement('form');f.method='POST';f.action='%s';%sdocument.body.appendChild(f);f.submit();}return false;">%s</a>`,
+				style, a.Confirm, a.URL, methodField, a.Label))
 		} else {
-			sb.WriteString(fmt.Sprintf(`<a href="%s" class="%s">%s</a>`, a.URL, cls, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s">%s</a>`, a.URL, style, a.Label))
 		}
 	}
+
+	sb.WriteString(`</div></span>`)
 	return sb.String()
 }
