@@ -132,20 +132,26 @@ func ControlsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var typeLabels = map[string]string{
+	"post":   "Blog post",
+	"work":   "Work",
+	"app":    "App",
+	"social": "Thread",
+	"video":  "Video",
+	"news":   "News",
+	"web":    "Web page",
+}
+
 func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 	saved := GetSavedItems(userID)
 
 	var sb strings.Builder
-	sb.WriteString(`<div class="card"><h3>Saved</h3>`)
 
 	if len(saved) == 0 {
-		sb.WriteString(`<p class="text-muted">Nothing saved yet.</p>`)
+		sb.WriteString(`<div class="card"><p class="text-muted">Nothing saved yet. Use the ☆ icon on any content to save it.</p></div>`)
 	} else {
-		// Sort by save time, newest first
 		type item struct {
-			key  string
-			time string
-			url  string
+			ct, cid, url, label, time string
 		}
 		var items []item
 		for key, t := range saved {
@@ -158,27 +164,23 @@ func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 			if u == "" {
 				u = "#"
 			}
-			items = append(items, item{key: key, time: t.Format("2 Jan 15:04"), url: u})
+			label := typeLabels[ct]
+			if label == "" {
+				label = ct
+			}
+			items = append(items, item{ct: ct, cid: cid, url: u, label: label, time: t.Format("2 Jan 15:04")})
 		}
 		sort.Slice(items, func(i, j int) bool {
 			return items[i].time > items[j].time
 		})
 
 		for _, it := range items {
-			parts := strings.SplitN(it.key, ":", 2)
-			ct, cid := parts[0], parts[1]
-			label := ct + ": " + cid
-			if len(cid) > 30 {
-				label = ct + ": " + cid[:30] + "..."
-			}
-			sb.WriteString(fmt.Sprintf(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0">
-				<a href="%s">%s</a>
-				<span class="text-sm text-muted"> · %s · </span>
-				<a href="/app/unsave?type=%s&id=%s" class="text-sm text-muted">remove</a>
-			</div>`, it.url, label, it.time, ct, cid))
+			sb.WriteString(fmt.Sprintf(`<div class="card" style="padding-right:60px">
+				<p><a href="%s">%s</a></p>
+				<p class="text-sm text-muted">%s · %s</p>
+			</div>`, it.url, it.label, it.cid, it.time))
 		}
 	}
-	sb.WriteString(`</div>`)
 
 	html := RenderHTMLForRequest("Saved", "Your saved items", sb.String(), r)
 	w.Write([]byte(html))
@@ -188,21 +190,18 @@ func renderBlockedPage(w http.ResponseWriter, r *http.Request, userID string) {
 	blocked := GetBlockedUsers(userID)
 
 	var sb strings.Builder
-	sb.WriteString(`<div class="card"><h3>Blocked Users</h3>`)
 
 	if len(blocked) == 0 {
-		sb.WriteString(`<p class="text-muted">No blocked users.</p>`)
+		sb.WriteString(`<div class="card"><p class="text-muted">No blocked users.</p></div>`)
 	} else {
 		for uid, t := range blocked {
-			sb.WriteString(fmt.Sprintf(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0">
-				<a href="/@%s">%s</a>
-				<span class="text-sm text-muted"> · blocked %s · </span>
-				<a href="/app/unblock?user=%s" class="text-sm text-muted">unblock</a>
+			sb.WriteString(fmt.Sprintf(`<div class="card">
+				<p><a href="/@%s">%s</a></p>
+				<p class="text-sm text-muted">Blocked %s · <a href="#" onclick="fetch('/app/unblock?user=%s',{method:'POST'}).then(function(){location.reload()});return false;">Unblock</a></p>
 			</div>`, uid, uid, t.Format("2 Jan 2006"), uid))
 		}
 	}
-	sb.WriteString(`</div>`)
 
-	html := RenderHTMLForRequest("Blocked", "Blocked users", sb.String(), r)
+	html := RenderHTMLForRequest("Blocked Users", "Blocked users", sb.String(), r)
 	w.Write([]byte(html))
 }
