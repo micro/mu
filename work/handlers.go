@@ -36,6 +36,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleTip(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/feedback") && r.Method == "POST":
 		handleFeedback(w, r)
+	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/delete") && r.Method == "POST":
+		handleDelete(w, r)
 	case strings.HasPrefix(path, "/work/") && r.Method == "GET":
 		handleDetail(w, r)
 	default:
@@ -142,10 +144,12 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess, _ := auth.TrySession(r)
+	sess, acc := auth.TrySession(r)
 	var userID string
+	var isAdmin bool
 	if sess != nil {
 		userID = sess.Account
+		isAdmin = acc.Admin
 	}
 
 	var sb strings.Builder
@@ -269,6 +273,15 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			sb.WriteString(`</form>`)
 			sb.WriteString(`</div>`)
 		}
+	}
+
+	// Delete (admin or author)
+	if isAdmin || userID == post.AuthorID {
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/delete" onsubmit="return confirm('Delete this post permanently?')">`, post.ID))
+		sb.WriteString(`<button type="submit" class="btn btn-secondary">Delete</button>`)
+		sb.WriteString(`</form>`)
+		sb.WriteString(`</div>`)
 	}
 
 	// Feedback section
@@ -776,6 +789,46 @@ func handleAuthError(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.RedirectToLogin(w, r)
+}
+
+func handleDelete(w http.ResponseWriter, r *http.Request) {
+	sess, acc, err := auth.RequireSession(r)
+	if err != nil {
+		handleAuthError(w, r)
+		return
+	}
+
+	id := extractPostID(r.URL.Path, "/delete")
+	post := GetPost(id)
+	if post == nil {
+		respondPostError(w, r, id, "Post not found")
+		return
+	}
+
+	// Only admin or the author can delete
+	if !acc.Admin && sess.Account != post.AuthorID {
+		respondPostError(w, r, id, "You can only delete your own posts")
+		return
+	}
+
+	// Refund escrowed cost if task is open/claimed
+	if post.Kind == KindTask && post.Cost > 0 && post.AuthorID != "micro" {
+		if post.Status == StatusOpen || post.Status == StatusClaimed {
+			wallet.RefundEscrow(post.AuthorID, post.Cost, post.ID)
+		}
+	}
+
+	if err := DeletePost(id); err != nil {
+		respondPostError(w, r, id, err.Error())
+		return
+	}
+
+	if app.SendsJSON(r) || app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]string{"status": "deleted"})
+		return
+	}
+
+	http.Redirect(w, r, "/work?success=Post+deleted", http.StatusSeeOther)
 }
 
 func respondError(w http.ResponseWriter, r *http.Request, redirect, msg string) {
