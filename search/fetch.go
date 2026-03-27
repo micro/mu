@@ -247,8 +247,7 @@ func fetchAndSanitize(rawURL string, proxy bool) (string, string, error) {
 		content = string(runes)
 	}
 
-	title := extractTitle(content)
-	readable := sanitizeHTML(content, rawURL, proxy)
+	title, readable := readability(content, rawURL)
 
 	return title, readable, nil
 }
