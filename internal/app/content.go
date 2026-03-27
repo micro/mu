@@ -168,7 +168,7 @@ func renderActions(actions []Action) string {
 	sb.WriteString(fmt.Sprintf(` · <span class="dot-menu" style="position:relative;display:inline-block"><a href="#" class="text-muted" onclick="var m=document.getElementById('%s');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();return false;" style="text-decoration:none;font-size:16px;letter-spacing:-1px">⋯</a>`, id))
 
 	// Dropdown
-	sb.WriteString(fmt.Sprintf(`<div id="%s" style="display:none;position:absolute;right:0;top:20px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:100;min-width:120px;padding:4px 0">`, id))
+	sb.WriteString(fmt.Sprintf(`<div id="%s" style="display:none;position:absolute;left:0;top:20px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:100;min-width:120px;padding:4px 0">`, id))
 
 	for _, a := range actions {
 		cls := a.Class

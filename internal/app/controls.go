@@ -55,9 +55,12 @@ func ControlsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	redirect := r.Referer()
+	redirect := r.URL.Query().Get("redirect")
 	if redirect == "" {
-		redirect = "/"
+		redirect = r.Referer()
+	}
+	if redirect == "" {
+		redirect = "/app/saved"
 	}
 
 	respond := func(status string) {
