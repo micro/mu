@@ -175,10 +175,14 @@ func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 		})
 
 		for _, it := range items {
-			sb.WriteString(fmt.Sprintf(`<div class="card" style="padding-right:60px">
-				<p><a href="%s">%s</a></p>
-				<p class="text-sm text-muted">%s · %s</p>
-			</div>`, it.url, it.label, it.cid, it.time))
+			displayID := it.cid
+			if len(displayID) > 40 {
+				displayID = displayID[:40] + "..."
+			}
+			sb.WriteString(fmt.Sprintf(`<div class="card">
+				<p><a href="%s"><strong>%s</strong> — %s</a></p>
+				<p class="text-sm text-muted">Saved %s · <a href="#" onclick="fetch('/app/unsave?type=%s&id=%s',{method:'POST'}).then(function(){location.reload()});return false;">Remove</a></p>
+			</div>`, it.url, it.label, displayID, it.time, it.ct, it.cid))
 		}
 	}
 

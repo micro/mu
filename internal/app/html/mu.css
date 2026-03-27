@@ -1227,6 +1227,7 @@ body:has(#messages) #chat-back-link {
    BLOG PAGE
    ======================================== */
 #blog {
+  position: relative;
   max-width: 900px;
 }
 
