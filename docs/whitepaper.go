@@ -1,14 +1,21 @@
 package docs
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"mu/internal/app"
+	"mu/internal/data"
 )
 
-// cached PDF bytes (generated once on first request)
+const pdfCacheKey = "whitepaper.pdf"
+
+// cached PDF bytes (loaded from disk or generated once)
 var (
 	pdfOnce  sync.Once
 	pdfBytes []byte
@@ -24,7 +31,30 @@ func getWhitepaperPDF() []byte {
 		if err != nil {
 			return
 		}
+
+		// Hash the markdown to detect changes
+		hash := sha256.Sum256(content)
+		currentHash := hex.EncodeToString(hash[:8]) // short hash
+
+		// Try loading cached PDF from disk
+		cached, err := data.LoadFile(pdfCacheKey)
+		if err == nil && len(cached) > 0 {
+			// Check if the hash marker file matches
+			hashBytes, _ := data.LoadFile(pdfCacheKey + ".hash")
+			if string(hashBytes) == currentHash {
+				pdfBytes = cached
+				return
+			}
+		}
+
+		// Generate fresh PDF
 		pdfBytes = generateWhitepaperPDF(string(content))
+
+		// Cache to disk
+		dir := os.ExpandEnv("$HOME/.mu/data")
+		os.MkdirAll(dir, 0700)
+		os.WriteFile(filepath.Join(dir, pdfCacheKey), pdfBytes, 0644)
+		data.SaveFile(pdfCacheKey+".hash", currentHash)
 	})
 	return pdfBytes
 }
