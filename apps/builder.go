@@ -277,6 +277,16 @@ func handleTemplateGet(w http.ResponseWriter, r *http.Request, id string) {
 	app.RespondJSON(w, t)
 }
 
+// BuilderSystemPrompt returns the system prompt used for app generation.
+func BuilderSystemPrompt() string {
+	return builderSystemPrompt
+}
+
+// CleanGeneratedHTML extracts HTML from AI output, stripping code fences.
+func CleanGeneratedHTML(s string) string {
+	return cleanGeneratedHTML(s)
+}
+
 // cleanGeneratedJSON strips markdown code fences from AI JSON output.
 func cleanGeneratedJSON(s string) string {
 	s = strings.TrimSpace(s)

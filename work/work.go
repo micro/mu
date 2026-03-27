@@ -505,33 +505,38 @@ func failAgent(post *Post, reason string) {
 	}
 }
 
-// DeleteApp is wired by main.go to delete an app by slug.
-var DeleteApp func(slug string) error
+// RebuildApp is wired by main.go to update an existing app based on feedback.
+// Takes (slug, feedback) and returns error.
+var RebuildApp func(slug, feedback string) error
 
-// RetryWithFeedback resets a delivered task and re-runs the agent with feedback.
+// RetryWithFeedback updates the delivered app based on user feedback.
 func RetryWithFeedback(post *Post, feedback string) {
-	// Extract old app slug from delivery before clearing
-	oldSlug := ""
+	// Extract app slug from delivery
+	appSlug := ""
+	appName := ""
 	if parts := strings.SplitN(post.Delivery, " — /apps/", 2); len(parts) == 2 {
-		oldSlug = strings.TrimSuffix(parts[1], "/run")
+		appSlug = strings.TrimSuffix(parts[1], "/run")
+		appName = parts[0]
+	}
+
+	if appSlug == "" {
+		addLog(post, "error", "No app to update", 0)
+		return
 	}
 
 	mutex.Lock()
 	post.Status = StatusClaimed
-	post.Delivery = ""
-	post.DeliveredAt = time.Time{}
 	save()
 	mutex.Unlock()
 
-	addLog(post, "retry", "Retrying with feedback: "+feedback, 0)
+	addLog(post, "retry", "Updating with feedback: "+feedback, 0)
 
 	go func() {
-		if BuildApp == nil {
+		if RebuildApp == nil {
 			failAgent(post, "No builder configured")
 			return
 		}
 
-		prompt := post.Description + "\n\nFeedback from previous attempt:\n" + feedback
 		authorID := post.AuthorID
 
 		if !spendCredits(post, authorID, creditPerStep) {
@@ -540,21 +545,15 @@ func RetryWithFeedback(post *Post, feedback string) {
 			return
 		}
 
-		addLog(post, "build", "Rebuilding with feedback...", creditPerStep)
+		addLog(post, "build", "Updating app with feedback...", creditPerStep)
 
-		slug, name, err := BuildApp(prompt, "agent", "agent")
-		if err != nil {
-			addLog(post, "error", fmt.Sprintf("Build failed: %v", err), 0)
-			failAgent(post, "Build failed: "+err.Error())
+		if err := RebuildApp(appSlug, feedback); err != nil {
+			addLog(post, "error", fmt.Sprintf("Update failed: %v", err), 0)
+			failAgent(post, "Update failed: "+err.Error())
 			return
 		}
 
-		// Clean up old app
-		if oldSlug != "" && oldSlug != slug && DeleteApp != nil {
-			DeleteApp(oldSlug)
-		}
-
-		delivery := fmt.Sprintf("%s — /apps/%s/run", name, slug)
+		delivery := fmt.Sprintf("%s — /apps/%s/run", appName, appSlug)
 		mutex.Lock()
 		post.Delivery = delivery
 		post.Status = StatusDelivered

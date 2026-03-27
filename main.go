@@ -103,7 +103,29 @@ func main() {
 		}
 		return a.Slug, a.Name, nil
 	}
-	work.DeleteApp = apps.DeleteApp
+	work.RebuildApp = func(slug, feedback string) error {
+		a := apps.GetApp(slug)
+		if a == nil {
+			return fmt.Errorf("app not found: %s", slug)
+		}
+		// Ask AI to update the app based on feedback
+		result, err := ai.Ask(&ai.Prompt{
+			System:   apps.BuilderSystemPrompt(),
+			Question: fmt.Sprintf("Update this app based on the feedback below.\n\nOriginal requirements:\n%s\n\nFeedback:\n%s\n\nCurrent app HTML:\n%s", a.Description, feedback, a.HTML),
+			Priority: ai.PriorityHigh,
+			Caller:   "work-rebuild",
+		})
+		if err != nil {
+			return fmt.Errorf("AI update failed: %v", err)
+		}
+		// Parse and update
+		html := apps.CleanGeneratedHTML(result)
+		if html == "" {
+			return fmt.Errorf("AI returned empty HTML")
+		}
+		_, err = apps.UpdateApp(slug, "", "", "", html, "")
+		return err
+	}
 	work.VerifyApp = func(appSlug string) (string, bool) {
 		a := apps.GetApp(appSlug)
 		if a == nil {
@@ -146,10 +168,20 @@ Be concise. Focus on functional issues, not style.`,
 		if a == nil {
 			return fmt.Errorf("app not found")
 		}
-		_, err := apps.BuildAndSave(
-			fmt.Sprintf("%s\n\nThe previous version had these issues:\n%s\n\nFix these issues. Here's the current HTML:\n%s",
-				a.Description, issues, a.HTML[:min(len(a.HTML), 3000)]),
-			a.AuthorID, a.Author)
+		result, err := ai.Ask(&ai.Prompt{
+			System:   apps.BuilderSystemPrompt(),
+			Question: fmt.Sprintf("Fix this app. Issues found:\n%s\n\nOriginal requirements:\n%s\n\nCurrent HTML:\n%s", issues, a.Description, a.HTML),
+			Priority: ai.PriorityHigh,
+			Caller:   "work-fix",
+		})
+		if err != nil {
+			return err
+		}
+		html := apps.CleanGeneratedHTML(result)
+		if html == "" {
+			return fmt.Errorf("AI returned empty HTML")
+		}
+		_, err = apps.UpdateApp(appSlug, "", "", "", html, "")
 		return err
 	}
 	work.ConsumeCredits = func(userID string, amount int) error {
