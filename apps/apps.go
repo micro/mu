@@ -242,7 +242,10 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	mutex.RUnlock()
 
 	sort.Slice(list, func(i, j int) bool {
-		return list[i].Installs > list[j].Installs
+		if list[i].Installs != list[j].Installs {
+			return list[i].Installs > list[j].Installs
+		}
+		return list[i].CreatedAt.After(list[j].CreatedAt)
 	})
 
 	if app.WantsJSON(r) {
@@ -335,7 +338,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 <div>
 <h3 style="margin:0 0 4px 0;"><a href="/apps/%s/run">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
-<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d launches%s</p>
+<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d launches · <a href="/apps/%s/run">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s</p>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
@@ -345,6 +348,8 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				htmlpkg.EscapeString(a.Author),
 				tagsHTML,
 				a.Installs,
+				htmlpkg.EscapeString(a.Slug),
+				htmlpkg.EscapeString(a.Slug),
 				controls,
 			))
 		}
@@ -383,7 +388,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<input type="text" name="tags" maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="productivity, timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>HTML (your app — max 256KB)</label><br>`)
 	sb.WriteString(`<textarea name="html" required style="width:100%;min-height:300px;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:monospace;font-size:13px;" placeholder="<h1>Hello World</h1>"></textarea></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label><input type="checkbox" name="public" value="1" checked> List in public directory</label></div>`)
+	sb.WriteString(`<div style="margin-bottom:12px;"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="public" value="1" checked style="width:auto;margin:0"> Public</label></div>`)
 	sb.WriteString(`<button type="submit" style="padding:8px 24px;background:#000;color:#fff;border:none;border-radius:4px;cursor:pointer;">Create App</button>`)
 	sb.WriteString(`</form>`)
 
@@ -522,6 +527,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
+	// JSON requests get the full app data
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, a)
 		return
@@ -854,8 +860,8 @@ window.addEventListener('message',function(e){var d=e.data;if(d&&d.type&&d.type.
 
 	// Render the run page with iframe
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">&larr; %s</a></p>`,
-		htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Name)))
+	sb.WriteString(fmt.Sprintf(`<p><a href="/apps">&larr; Apps</a> · <a href="/apps/%s/edit">Edit</a></p>`,
+		htmlpkg.EscapeString(a.Slug)))
 	sb.WriteString(fmt.Sprintf(`<iframe src="/apps/%s/run?raw=1" sandbox="allow-scripts" allow="geolocation" style="width:100%%;min-height:70vh;border:1px solid #eee;border-radius:8px;background:#fff;"></iframe>`,
 		htmlpkg.EscapeString(a.Slug)))
 
@@ -1222,7 +1228,10 @@ func GetPublicApps() []*App {
 		}
 	}
 	sort.Slice(list, func(i, j int) bool {
-		return list[i].Installs > list[j].Installs
+		if list[i].Installs != list[j].Installs {
+			return list[i].Installs > list[j].Installs
+		}
+		return list[i].CreatedAt.After(list[j].CreatedAt)
 	})
 	return list
 }
