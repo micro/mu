@@ -13,8 +13,8 @@ import (
 
 // Post kinds
 const (
-	KindTask     = "task"     // Looking for someone to build something
-	KindShowcase = "showcase" // Sharing work you've done
+	KindTask = "task" // Looking for someone to build something
+	KindShow = "show" // Sharing work you've done
 )
 
 // Task states (only relevant for kind=task)
@@ -26,14 +26,14 @@ const (
 	StatusCancelled = "cancelled" // Cancelled by poster
 )
 
-// Post represents a work post — either a task (request) or showcase (share)
+// Post represents a work post — either a task (request) or show (share)
 type Post struct {
 	ID          string    `json:"id"`
-	Kind        string    `json:"kind"`        // "task" or "showcase"
+	Kind        string    `json:"kind"`        // "task" or "show"
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Link        string    `json:"link"`        // URL, app slug, or any external link
-	Bounty      int       `json:"bounty"`      // Credits (task: bounty offered; showcase: tips received)
+	Bounty      int       `json:"bounty"`      // Credits (task: bounty offered; show: tips received)
 	AuthorID    string    `json:"author_id"`
 	Author      string    `json:"author"`      // Display name
 	WorkerID    string    `json:"worker_id"`   // Who claimed a task
@@ -41,7 +41,7 @@ type Post struct {
 	Status      string    `json:"status"`      // Task status (open/claimed/delivered/completed/cancelled)
 	Delivery    string    `json:"delivery"`    // Deliverable for tasks
 	Tags        string    `json:"tags"`        // Comma-separated
-	Tips        int       `json:"tips"`        // Total tips received (showcase)
+	Tips        int       `json:"tips"`        // Total tips received (show)
 	Feedback    []Comment `json:"feedback"`    // Comments/feedback
 	CreatedAt   time.Time `json:"created_at"`
 	ClaimedAt   time.Time `json:"claimed_at,omitempty"`
@@ -79,7 +79,7 @@ func save() {
 	data.SaveJSON("work.json", posts)
 }
 
-// CreatePost creates a new work post (task or showcase)
+// CreatePost creates a new work post (task or show)
 func CreatePost(authorID, author, kind, title, description, link, tags string, bounty int) (*Post, error) {
 	if title == "" {
 		return nil, errors.New("title is required")
@@ -87,8 +87,8 @@ func CreatePost(authorID, author, kind, title, description, link, tags string, b
 	if description == "" {
 		return nil, errors.New("description is required")
 	}
-	if kind != KindTask && kind != KindShowcase {
-		return nil, errors.New("kind must be task or showcase")
+	if kind != KindTask && kind != KindShow {
+		return nil, errors.New("kind must be task or show")
 	}
 	if kind == KindTask {
 		if bounty < 1 {
@@ -114,8 +114,8 @@ func CreatePost(authorID, author, kind, title, description, link, tags string, b
 		CreatedAt:   time.Now(),
 	}
 
-	if kind == KindShowcase {
-		post.Status = "" // showcases don't have task status
+	if kind == KindShow {
+		post.Status = "" // shows don't have task status
 	}
 
 	mutex.Lock()
@@ -153,7 +153,7 @@ func AddFeedback(postID, authorID, author, text string) error {
 	return nil
 }
 
-// TipPost records a tip on a showcase post
+// TipPost records a tip on a show post
 func TipPost(postID string, amount int) {
 	mutex.Lock()
 	defer mutex.Unlock()

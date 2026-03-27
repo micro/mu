@@ -73,7 +73,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<div class="d-flex gap-2">`)
 	for _, f := range []struct{ val, label string }{
 		{"", "All"},
-		{"showcase", "Showcase"},
+		{"show", "Show"},
 		{"task", "Tasks"},
 	} {
 		cls := "btn btn-secondary"
@@ -98,7 +98,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`<div class="card">`)
 
 		// Kind label
-		kindLabel := "Showcase"
+		kindLabel := "Show"
 		if post.Kind == KindTask {
 			kindLabel = "Task"
 			if post.Status != "" {
@@ -171,7 +171,7 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(fmt.Sprintf(`<h3>%s</h3>`, post.Title))
 
-	kindLabel := "Showcase"
+	kindLabel := "Show"
 	if post.Kind == KindTask {
 		kindLabel = "Task"
 	}
@@ -321,7 +321,7 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 	errMsg := r.URL.Query().Get("error")
 	kind := r.URL.Query().Get("kind")
 	if kind == "" {
-		kind = "showcase"
+		kind = "show"
 	}
 
 	var sb strings.Builder
@@ -337,7 +337,7 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 	// Kind selector
 	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
 	for _, k := range []struct{ val, label, desc string }{
-		{"showcase", "Showcase", "Share something you built"},
+		{"show", "Show", "Share something you built"},
 		{"task", "Task", "Post a task with a bounty"},
 	} {
 		checked := ""
@@ -431,7 +431,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	tags = strings.TrimSpace(tags)
 
 	if kind == "" {
-		kind = KindShowcase
+		kind = KindShow
 	}
 
 	// Hold bounty in escrow for tasks

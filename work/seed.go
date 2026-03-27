@@ -76,14 +76,14 @@ func seedPosts() {
 
 		// Showcases — examples of what sharing looks like
 		{
-			kind:        KindShowcase,
+			kind:        KindShow,
 			title:       "Mu — Apps Without Ads",
 			description: "Built a platform that brings together the daily tools people use — news, search, chat, video, email, markets — in one place with zero ads and zero tracking. Single Go binary, self-hostable, open source. AI agents can access everything via MCP with x402 crypto payments.",
 			link:        "https://mu.xyz",
 			tags:        "platform,go,open-source",
 		},
 		{
-			kind:        KindShowcase,
+			kind:        KindShow,
 			title:       "x402 — HTTP Payments Protocol",
 			description: "The x402 protocol adds native payment semantics to HTTP. When a resource requires payment, the server returns 402 with payment requirements. The client pays on-chain and retries. No accounts, no API keys. Designed for AI agents paying for API access.",
 			link:        "https://x402.org",
