@@ -789,64 +789,6 @@ body.page-home #page-title ~ #customize-link {
 }
 
 /* ========================================
-   LANDING PAGE
-   ======================================== */
-/* ========================================
-   LANDING PAGE
-   ======================================== */
-#title {
-  font-size: 2.5em;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-#desc {
-  margin-bottom: 10px;
-}
-
-#explain {
-  margin-bottom: 20px;
-}
-
-#links {
-  max-width: 900px;
-  margin: 0 auto;
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-#links .block {
-  padding: 15px;
-  line-height: 1.4em;
-  min-height: 135px;
-  box-sizing: border-box;
-  position: relative;
-}
-
-#links .block b {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 1.1em;
-  line-height: 1.2em;
-}
-
-#install-pwa {
-  padding: 12px 24px;
-  font-size: 1em;
-  font-weight: bold;
-  background: #333;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-#install-pwa:hover {
-  background: #555;
-}
-
-/* ========================================
    CARDS & BLOCKS
    ======================================== */
 .card {
@@ -2232,14 +2174,6 @@ a.highlight {
     margin-top: 75px;
   }
   
-  #title {
-    font-size: 2.5em;
-  }
-  
-  #install-pwa {
-    margin-top: 15px;
-  }
-  
   /* Blog styles */
   #blog .info {
     text-align: center;
@@ -2376,27 +2310,6 @@ a.highlight {
 
   .cover {
     display: block;
-  }
-  
-  /* Landing page links */
-  #links {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 0;
-  }
-  #links .block {
-    width: auto;
-    max-width: 100%;
-    padding: 15px;
-    margin: 0 0 10px 0;
-    text-align: center;
-  }
-  #links .block b {
-    font-size: 1.15em;
-  }
-  #links .small {
-    font-size: 0.85em;
-    line-height: 1.4em;
   }
   
   /* Buttons on mobile */

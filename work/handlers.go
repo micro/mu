@@ -353,8 +353,8 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div>`)
-	sb.WriteString(`<label for="title" class="text-sm">Title</label>`)
-	sb.WriteString(`<input type="text" id="title" name="title" placeholder="What did you build?" required class="form-input w-full mt-1" maxlength="200">`)
+	sb.WriteString(`<label for="work-title" class="text-sm">Title</label>`)
+	sb.WriteString(`<input type="text" id="work-title" name="title" placeholder="What did you build?" required class="form-input w-full mt-1" maxlength="200">`)
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div class="mt-3">`)
