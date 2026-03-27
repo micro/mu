@@ -138,7 +138,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 		sb.WriteString(fmt.Sprintf(`<h4><a href="/work/%s">%s</a></h4>`, post.ID, post.Title))
 
-		meta := fmt.Sprintf(`%s · <a href="/@%s">%s</a> · %s`, kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006"))
+		meta := fmt.Sprintf(`%s · <a href="/@%s">%s</a> · %s`, kindLabel, post.AuthorID, post.Author, post.CreatedAt.Format("2 Jan 2006"))
 		if post.Kind == KindTask && post.Cost > 0 {
 			if post.Spent > 0 {
 				meta += fmt.Sprintf(` · %d/%d credits`, post.Spent, post.Cost)
@@ -199,7 +199,7 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	detailMeta := fmt.Sprintf(`%s · Posted by <a href="/@%s">%s</a> · %s`,
-		kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006 15:04"))
+		kindLabel, post.AuthorID, post.Author, post.CreatedAt.Format("2 Jan 2006 15:04"))
 	detailMeta += app.ItemControls(userID, isAdmin, "work", post.ID, post.AuthorID, "", "/work/"+post.ID+"/delete")
 	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, detailMeta))
 
@@ -226,10 +226,8 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	} else if post.Worker != "" {
 		sb.WriteString(fmt.Sprintf(`<p><strong>Assigned to:</strong> <a href="/@%s">%s</a></p>`, post.Worker, post.Worker))
 	}
-	sb.WriteString(`</div>`)
-
-	// Description
-	sb.WriteString(`<div class="card">`)
+	// Description (in same card)
+	sb.WriteString(`<hr style="margin:12px 0;border:none;border-top:1px solid #f0f0f0">`)
 	for _, para := range strings.Split(post.Description, "\n") {
 		para = strings.TrimSpace(para)
 		if para != "" {
@@ -324,6 +322,11 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`</form>`)
 	}
 	sb.WriteString(`</div>`)
+
+	// Auto-refresh while building
+	if post.Status == StatusClaimed && post.WorkerID == "agent" {
+		sb.WriteString(`<script>setTimeout(function(){location.reload()},5000)</script>`)
+	}
 
 	html := app.RenderHTMLForRequest(post.Title, "Work", sb.String(), r)
 	w.Write([]byte(html))
@@ -628,9 +631,7 @@ func handleAccept(w http.ResponseWriter, r *http.Request) {
 	// Notify the worker (if human)
 	if post.WorkerID != "agent" && post.WorkerID != "" {
 		notifyWork(post.WorkerID, "Task accepted: "+post.Title,
-			fmt.Sprintf(`Your delivery was accepted and %d credits have been released.
-
-<a href="/work/%s">View task →</a>`, post.Cost, id))
+			fmt.Sprintf("Your delivery was accepted and %d credits have been released.\n\n[View task →](/work/%s)", post.Cost, id), id)
 	}
 
 	if app.SendsJSON(r) || app.WantsJSON(r) {
@@ -786,10 +787,11 @@ func respondPostError(w http.ResponseWriter, r *http.Request, id, msg string) {
 }
 
 // notifyWork sends an internal mail notification for work events.
-func notifyWork(toID, subject, body string) {
+// postID is used for threading — all notifications for the same task are grouped.
+func notifyWork(toID, subject, body, postID string) {
 	acc, err := auth.GetAccount(toID)
 	if err != nil {
 		return
 	}
-	mail.SendMessage("Mu", "micro", acc.Name, toID, subject, body, "", "")
+	mail.SendMessage("Mu", "micro", acc.Name, toID, subject, body, postID, "")
 }

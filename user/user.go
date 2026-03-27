@@ -326,6 +326,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Extract username from URL path (remove /@ prefix)
 	username := strings.TrimPrefix(r.URL.Path, "/@")
 	username = strings.TrimSuffix(username, "/")
+	username = strings.ToLower(username)
 
 	if username == "" {
 		http.Redirect(w, r, "/home", 302)

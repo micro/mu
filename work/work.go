@@ -86,8 +86,8 @@ var FixApp func(appSlug, issues string) error
 var ConsumeCredits func(userID string, amount int) error
 
 // Notify is wired by main.go to send notifications (e.g. internal mail).
-// Takes (toUserID, subject, body).
-var Notify func(toUserID, subject, body string)
+// Takes (toUserID, subject, body, threadID) where threadID groups messages.
+var Notify func(toUserID, subject, body, threadID string)
 
 var (
 	mutex sync.RWMutex
@@ -420,7 +420,7 @@ func runAgent(post *Post) {
 
 	addLog(post, "build", "Building app from description...", creditPerStep)
 
-	slug, name, err := BuildApp(description, "agent", "agent")
+	slug, name, err := BuildApp(description, post.AuthorID, post.Author)
 	if err != nil {
 		addLog(post, "error", fmt.Sprintf("Build failed: %v", err), 0)
 		failAgent(post, "Build failed: "+err.Error())
@@ -483,9 +483,7 @@ func runAgent(post *Post) {
 
 	if Notify != nil {
 		Notify(authorID, "Agent completed: "+title,
-			fmt.Sprintf(`The agent built %s for your task. Spent %d of %d credits.
-
-<a href="/work/%s">Review delivery →</a>`, name, post.Spent, post.Cost, postID))
+			fmt.Sprintf("The agent built %s for your task. Spent %d of %d credits.\n\n[Review delivery →](/work/%s)", name, post.Spent, post.Cost, postID), postID)
 	}
 }
 
@@ -499,31 +497,46 @@ func failAgent(post *Post, reason string) {
 	save()
 	authorID := post.AuthorID
 	title := post.Title
+	postID := post.ID
 	mutex.Unlock()
 
 	if Notify != nil {
-		Notify(authorID, "Agent failed: "+title, reason)
+		Notify(authorID, "Agent failed: "+title, reason, postID)
 	}
 }
 
-// RetryWithFeedback resets a delivered task and re-runs the agent with feedback.
+// RebuildApp is wired by main.go to update an existing app based on feedback.
+// Takes (slug, feedback) and returns error.
+var RebuildApp func(slug, feedback string) error
+
+// RetryWithFeedback updates the delivered app based on user feedback.
 func RetryWithFeedback(post *Post, feedback string) {
+	// Extract app slug from delivery
+	appSlug := ""
+	appName := ""
+	if parts := strings.SplitN(post.Delivery, " — /apps/", 2); len(parts) == 2 {
+		appSlug = strings.TrimSuffix(parts[1], "/run")
+		appName = parts[0]
+	}
+
+	if appSlug == "" {
+		addLog(post, "error", "No app to update", 0)
+		return
+	}
+
 	mutex.Lock()
 	post.Status = StatusClaimed
-	post.Delivery = ""
-	post.DeliveredAt = time.Time{}
 	save()
 	mutex.Unlock()
 
-	addLog(post, "retry", "Retrying with feedback: "+feedback, 0)
+	addLog(post, "retry", "Updating with feedback: "+feedback, 0)
 
 	go func() {
-		if BuildApp == nil {
+		if RebuildApp == nil {
 			failAgent(post, "No builder configured")
 			return
 		}
 
-		prompt := post.Description + "\n\nFeedback from previous attempt:\n" + feedback
 		authorID := post.AuthorID
 
 		if !spendCredits(post, authorID, creditPerStep) {
@@ -532,16 +545,15 @@ func RetryWithFeedback(post *Post, feedback string) {
 			return
 		}
 
-		addLog(post, "build", "Rebuilding with feedback...", creditPerStep)
+		addLog(post, "build", "Updating app with feedback...", creditPerStep)
 
-		slug, name, err := BuildApp(prompt, "agent", "agent")
-		if err != nil {
-			addLog(post, "error", fmt.Sprintf("Build failed: %v", err), 0)
-			failAgent(post, "Build failed: "+err.Error())
+		if err := RebuildApp(appSlug, feedback); err != nil {
+			addLog(post, "error", fmt.Sprintf("Update failed: %v", err), 0)
+			failAgent(post, "Update failed: "+err.Error())
 			return
 		}
 
-		delivery := fmt.Sprintf("%s — /apps/%s/run", name, slug)
+		delivery := fmt.Sprintf("%s — /apps/%s/run", appName, appSlug)
 		mutex.Lock()
 		post.Delivery = delivery
 		post.Status = StatusDelivered
@@ -555,9 +567,7 @@ func RetryWithFeedback(post *Post, feedback string) {
 
 		if Notify != nil {
 			Notify(authorID, "Agent updated: "+title,
-				fmt.Sprintf(`The agent rebuilt %s with your feedback. Spent %d/%d credits.
-
-<a href="/work/%s">Review delivery →</a>`, name, post.Spent, post.Cost, postID))
+				fmt.Sprintf("The agent rebuilt %s with your feedback. Spent %d/%d credits.\n\n[Review delivery →](/work/%s)", name, post.Spent, post.Cost, postID), postID)
 		}
 	}()
 }

@@ -41,6 +41,10 @@ Rules:
 - If the app uses geolocation (navigator.geolocation), ALWAYS provide a graceful fallback: show a manual location input or a sensible default when the user denies permission or the API fails. Never let the app be blank or broken if location is unavailable.
 - If the app needs AI features, include <script src="/apps/sdk.js"></script> and use mu.ai(prompt)
 - If the app needs persistent storage, use mu.store.set(key, value) and mu.store.get(key)
+- If the app needs platform data, include <script src="/apps/sdk.js"></script> and use:
+  - mu.api.get(path) — GET request to Mu API (e.g. mu.api.get('/weather?q=London'))
+  - mu.api.post(path, body) — POST request to Mu API (e.g. mu.api.post('/places/search', {q:'cafe',near:'London'}))
+  - Available APIs: /weather?q=, /places/search, /places/nearby, /news, /markets, /video, /chat
 - Maximum 256KB HTML
 - Make it responsive and mobile-friendly
 - Use semantic HTML and accessible patterns
@@ -271,6 +275,16 @@ func handleTemplateGet(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 	app.RespondJSON(w, t)
+}
+
+// BuilderSystemPrompt returns the system prompt used for app generation.
+func BuilderSystemPrompt() string {
+	return builderSystemPrompt
+}
+
+// CleanGeneratedHTML extracts HTML from AI output, stripping code fences.
+func CleanGeneratedHTML(s string) string {
+	return cleanGeneratedHTML(s)
 }
 
 // cleanGeneratedJSON strips markdown code fences from AI JSON output.

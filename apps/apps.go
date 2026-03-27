@@ -568,9 +568,12 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 		detailUserID = detailAcc.ID
 		detailAdmin = detailAcc.Admin
 	}
-	controls := app.ItemControls(detailUserID, detailAdmin, "app", a.Slug, a.AuthorID, "/apps/"+a.Slug+"/edit", "/apps/"+a.Slug+"/delete")
-	if controls != "" {
-		sb.WriteString(fmt.Sprintf(`<p style="margin-top:16px;font-size:13px;color:#999;">%s</p>`, controls))
+	// Admin/author controls as plain text links
+	if detailAdmin || detailUserID == a.AuthorID {
+		sb.WriteString(`<p style="margin-top:16px;font-size:13px">`)
+		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit" class="text-muted">Edit</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(fmt.Sprintf(` · <a href="#" class="text-error" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(function(){location.href='/apps'})};return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(`</p>`)
 	}
 
 	app.Respond(w, r, app.Response{
@@ -863,6 +866,19 @@ var url='/apps/'+slug+'/sdk/';
 if(t==='ai'){url+='ai'}
 else if(t==='fetch'){url+='ai'}
 else if(t==='store'){url+='store'}
+else if(t==='api'){
+var method=d.data.method||'GET';
+var path=d.data.path||'/';
+var opts={method:method,headers:{'Content-Type':'application/json','Accept':'application/json'}};
+if(d.data.body)opts.body=JSON.stringify(d.data.body);
+fetch(path,opts).then(function(r){return r.json()}).then(function(j){
+var iframe=document.querySelector('iframe');
+iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,result:j},'*');
+}).catch(function(err){
+var iframe=document.querySelector('iframe');
+iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,error:err.message},'*');
+});return;
+}
 else if(t==='user'){
 fetch('/session').then(function(r){return r.json()}).then(function(j){
 var iframe=document.querySelector('iframe');
@@ -1323,6 +1339,12 @@ const sdkJS = `// Mu App SDK
     // Send a result back to the parent (for agent code execution)
     run: function(result) {
       window.parent.postMessage({ type: 'mu:run', result: result }, '*');
+    },
+
+    // Platform API access
+    api: {
+      get: function(path) { return send('api', { method: 'GET', path: path }); },
+      post: function(path, body) { return send('api', { method: 'POST', path: path, body: body }); }
     },
 
     // Key-value storage
