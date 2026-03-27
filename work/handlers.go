@@ -275,7 +275,10 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h4>Agent Log</h4>`)
 		sb.WriteString(`<div id="agent-log">`)
-		for _, entry := range post.Log {
+		for i, entry := range post.Log {
+			if i > 0 {
+				sb.WriteString(`<hr style="border:none;border-top:1px solid #f0f0f0;margin:8px 0">`)
+			}
 			color := "#555"
 			switch entry.Step {
 			case "error", "budget":
@@ -287,8 +290,8 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			if entry.Credits > 0 {
 				credits = fmt.Sprintf(` · %d credits`, entry.Credits)
 			}
-			sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;margin:4px 0"><span style="color:%s;font-weight:600">%s</span> %s%s <span class="text-muted">%s</span></p>`,
-				color, entry.Step, entry.Message, credits, entry.CreatedAt.Format("15:04:05")))
+			sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;padding:4px 0"><div><span style="color:%s;font-weight:600">%s</span> <span class="text-muted">%s</span>%s</div><div style="margin-top:2px">%s</div></div>`,
+				color, entry.Step, entry.CreatedAt.Format("15:04:05"), credits, entry.Message))
 		}
 		sb.WriteString(`</div>`) // close #agent-log
 		sb.WriteString(`</div>`) // close .card
@@ -342,9 +345,15 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
           var e = p.log[i];
           var color = e.step==='error'||e.step==='budget'?'#c00':e.step==='complete'?'#28a745':'#555';
           var credits = e.credits > 0 ? ' · '+e.credits+' credits' : '';
-          var el = document.createElement('p');
-          el.style.cssText = 'font-size:13px;margin:4px 0';
-          el.innerHTML = '<span style="color:'+color+';font-weight:600">'+e.step+'</span> '+e.message+credits;
+          var ts = e.created_at ? new Date(e.created_at).toLocaleTimeString() : '';
+          if (logEl.children.length > 0) {
+            var hr = document.createElement('hr');
+            hr.style.cssText = 'border:none;border-top:1px solid #f0f0f0;margin:8px 0';
+            logEl.appendChild(hr);
+          }
+          var el = document.createElement('div');
+          el.style.cssText = 'font-size:13px;padding:4px 0';
+          el.innerHTML = '<div><span style="color:'+color+';font-weight:600">'+e.step+'</span> <span class="text-muted">'+ts+'</span>'+credits+'</div><div style="margin-top:2px">'+e.message+'</div>';
           logEl.appendChild(el);
         }
         lastCount = p.log.length;
