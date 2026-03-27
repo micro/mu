@@ -420,7 +420,7 @@ func runAgent(post *Post) {
 
 	addLog(post, "build", "Building app from description...", creditPerStep)
 
-	slug, name, err := BuildApp(description, "agent", "agent")
+	slug, name, err := BuildApp(description, post.AuthorID, post.Author)
 	if err != nil {
 		addLog(post, "error", fmt.Sprintf("Build failed: %v", err), 0)
 		failAgent(post, "Build failed: "+err.Error())

@@ -568,9 +568,12 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 		detailUserID = detailAcc.ID
 		detailAdmin = detailAcc.Admin
 	}
-	controls := app.ItemControls(detailUserID, detailAdmin, "app", a.Slug, a.AuthorID, "/apps/"+a.Slug+"/edit", "/apps/"+a.Slug+"/delete")
-	if controls != "" {
-		sb.WriteString(fmt.Sprintf(`<p style="margin-top:16px;font-size:13px;color:#999;">%s</p>`, controls))
+	// Admin/author controls as plain text links
+	if detailAdmin || detailUserID == a.AuthorID {
+		sb.WriteString(`<p style="margin-top:16px;font-size:13px">`)
+		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit" class="text-muted">Edit</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(fmt.Sprintf(` · <a href="#" class="text-error" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(function(){location.href='/apps'})};return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(`</p>`)
 	}
 
 	app.Respond(w, r, app.Response{
