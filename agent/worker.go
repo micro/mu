@@ -132,6 +132,13 @@ func runTask(postID, feedback string) {
 		}
 	}
 
+	// Check if any tools succeeded
+	if len(results) == 0 {
+		work.AddLog(postID, "error", "No tools succeeded", 0)
+		failTask(postID)
+		return
+	}
+
 	// Step 3: Synthesise result
 	work.AddLog(postID, "synth", "Composing result...", 0)
 
