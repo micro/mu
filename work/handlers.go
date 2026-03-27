@@ -715,7 +715,7 @@ func handleRetry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Reset to claimed and re-run agent with the feedback
-	RetryWithFeedback(post, feedback)
+	RetryWithFeedback(id, feedback)
 
 	if app.SendsJSON(r) || app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]string{"status": "retrying"})

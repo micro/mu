@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -70,24 +69,7 @@ type Comment struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// BuildApp is wired by main.go to call the apps builder.
-// Takes (prompt, authorID, authorName) and returns (appSlug, appName, error).
-var BuildApp func(prompt, authorID, authorName string) (string, string, error)
-
-// VerifyApp is wired by main.go to check if an app works.
-// Takes (appSlug) and returns (issues string, ok bool).
-var VerifyApp func(appSlug string) (string, bool)
-
-// FixApp is wired by main.go to fix issues with an app.
-// Takes (appSlug, issues) and returns (error).
-var FixApp func(appSlug, issues string) error
-
-// ConsumeCredits is wired by main.go to charge credits.
-// Takes (userID, amount) and returns (error).
-var ConsumeCredits func(userID string, amount int) error
-
-// Notify is wired by main.go to send notifications (e.g. internal mail).
-// Takes (toUserID, subject, body, threadID) where threadID groups messages.
+// Notify is wired by main.go to send notifications.
 var Notify func(toUserID, subject, body, threadID string)
 
 var (
@@ -331,9 +313,14 @@ func ReleaseTask(postID, authorID string) error {
 	return nil
 }
 
-// addLog appends a log entry to a post and persists it.
-func addLog(post *Post, step, message string, credits int) {
+// AddLog appends a log entry to a post and persists it.
+func AddLog(postID, step, message string, credits int) {
 	mutex.Lock()
+	defer mutex.Unlock()
+	post, ok := posts[postID]
+	if !ok {
+		return
+	}
 	post.Log = append(post.Log, LogEntry{
 		Step:      step,
 		Message:   message,
@@ -342,31 +329,45 @@ func addLog(post *Post, step, message string, credits int) {
 	})
 	post.Spent += credits
 	save()
-	mutex.Unlock()
 }
 
-// spendCredits charges credits against a task's budget.
-// Returns false if the budget would be exceeded.
-func spendCredits(post *Post, authorID string, amount int) bool {
-	if post.Cost > 0 && post.Spent+amount > post.Cost {
-		return false
-	}
-	if ConsumeCredits != nil {
-		if err := ConsumeCredits(authorID, amount); err != nil {
-			return false
+// SetStatus updates a task's status.
+func SetStatus(postID, status string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if post, ok := posts[postID]; ok {
+		post.Status = status
+		if status == StatusDelivered {
+			post.DeliveredAt = time.Now()
+		} else if status == StatusCompleted {
+			post.CompletedAt = time.Now()
 		}
+		save()
 	}
-	return true
 }
 
-const (
-	maxAgentIterations = 5
-	creditPerStep      = 3 // credits per AI call
-)
+// SetDelivery sets the delivery text for a task.
+func SetDelivery(postID, delivery string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if post, ok := posts[postID]; ok {
+		post.Delivery = delivery
+		save()
+	}
+}
+
+// BudgetRemaining returns how many credits are left in the budget.
+func BudgetRemaining(postID string) int {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	if post, ok := posts[postID]; ok {
+		return post.Cost - post.Spent
+	}
+	return 0
+}
 
 // AssignToAgent assigns an open task to the AI agent.
-// It claims the task as "agent", runs the app builder in a goroutine,
-// and posts the delivery when complete. The poster reviews the result.
+// Sets status to building and publishes a task_created event.
 func AssignToAgent(postID, authorID string) error {
 	mutex.Lock()
 	post, exists := posts[postID]
@@ -394,199 +395,58 @@ func AssignToAgent(postID, authorID string) error {
 	save()
 	mutex.Unlock()
 
-	// Run the agent in background
-	go runAgent(post)
+	// Publish event — agent picks it up
+	event.Publish(event.Event{
+		Type: event.EventTaskCreated,
+		Data: map[string]interface{}{
+			"post_id":   postID,
+			"author_id": authorID,
+		},
+	})
 
 	return nil
 }
 
-// runAgent executes the iterative build loop for a task.
-// Build → verify → fix → verify → ... until done or budget exceeded.
-// All progress is logged and persisted so it survives restarts.
-func runAgent(post *Post) {
-	if BuildApp == nil {
-		failAgent(post, "No builder configured")
-		return
-	}
-
-	authorID := post.AuthorID
-	description := post.Description
-
-	// Step 1: Build
-	if !spendCredits(post, authorID, creditPerStep) {
-		addLog(post, "budget", "Budget exceeded before build", 0)
-		failAgent(post, "Budget exceeded")
-		return
-	}
-
-	addLog(post, "build", "Building app from description...", creditPerStep)
-
-	slug, name, err := BuildApp(description, post.AuthorID, post.Author)
-	if err != nil {
-		addLog(post, "error", fmt.Sprintf("Build failed: %v", err), 0)
-		failAgent(post, "Build failed: "+err.Error())
-		return
-	}
-
-	addLog(post, "build", fmt.Sprintf("Built %s (/apps/%s/run)", name, slug), 0)
-
-	// Steps 2-N: Verify and fix loop
-	for i := 0; i < maxAgentIterations; i++ {
-		// Verify
-		if VerifyApp == nil {
-			// No verifier — accept what we have
-			break
-		}
-
-		if !spendCredits(post, authorID, creditPerStep) {
-			addLog(post, "budget", "Budget exceeded during verification", 0)
-			break
-		}
-
-		issues, ok := VerifyApp(slug)
-		addLog(post, "verify", fmt.Sprintf("Verify attempt %d: %s", i+1, issues), creditPerStep)
-
-		if ok {
-			addLog(post, "verify", "App verified successfully", 0)
-			break
-		}
-
-		// Fix
-		if FixApp == nil {
-			break
-		}
-
-		if !spendCredits(post, authorID, creditPerStep) {
-			addLog(post, "budget", "Budget exceeded during fix", 0)
-			break
-		}
-
-		if err := FixApp(slug, issues); err != nil {
-			addLog(post, "error", fmt.Sprintf("Fix failed: %v", err), creditPerStep)
-			break
-		}
-
-		addLog(post, "fix", fmt.Sprintf("Applied fix for: %s", issues), creditPerStep)
-	}
-
-	// Deliver the result
-	delivery := fmt.Sprintf("%s — /apps/%s/run", name, slug)
+// RetryWithFeedback resets a delivered task and publishes a retry event.
+func RetryWithFeedback(postID, feedback string) {
 	mutex.Lock()
-	post.Delivery = delivery
-	post.Status = StatusDelivered
-	post.DeliveredAt = time.Now()
-	save()
-	title := post.Title
-	postID := post.ID
-	mutex.Unlock()
-
-	addLog(post, "complete", fmt.Sprintf("Delivered: %s (spent %d credits)", delivery, post.Spent), 0)
-
-	if Notify != nil {
-		Notify(authorID, "Agent completed: "+title,
-			fmt.Sprintf("The agent built %s for your task. Spent %d of %d credits.\n\n[Review delivery →](/work/%s)", name, post.Spent, post.Cost, postID), postID)
-	}
-}
-
-// failAgent marks a task as failed and releases it back to open.
-func failAgent(post *Post, reason string) {
-	mutex.Lock()
-	post.WorkerID = ""
-	post.Worker = ""
-	post.Status = StatusOpen
-	post.ClaimedAt = time.Time{}
-	save()
-	authorID := post.AuthorID
-	title := post.Title
-	postID := post.ID
-	mutex.Unlock()
-
-	if Notify != nil {
-		Notify(authorID, "Agent failed: "+title, reason, postID)
-	}
-}
-
-// RebuildApp is wired by main.go to update an existing app based on feedback.
-// Takes (slug, feedback) and returns error.
-var RebuildApp func(slug, feedback string) error
-
-// RetryWithFeedback updates the delivered app based on user feedback.
-func RetryWithFeedback(post *Post, feedback string) {
-	// Extract app slug from delivery
-	appSlug := ""
-	appName := ""
-	if parts := strings.SplitN(post.Delivery, " — /apps/", 2); len(parts) == 2 {
-		appSlug = strings.TrimSuffix(parts[1], "/run")
-		appName = parts[0]
-	}
-
-	if appSlug == "" {
-		addLog(post, "error", "No app to update", 0)
+	post, ok := posts[postID]
+	if !ok {
+		mutex.Unlock()
 		return
 	}
-
-	mutex.Lock()
 	post.Status = StatusClaimed
 	save()
 	mutex.Unlock()
 
-	addLog(post, "retry", "Updating with feedback: "+feedback, 0)
+	AddLog(postID, "retry", "Retrying with feedback: "+feedback, 0)
 
-	go func() {
-		if RebuildApp == nil {
-			failAgent(post, "No builder configured")
-			return
-		}
-
-		authorID := post.AuthorID
-
-		if !spendCredits(post, authorID, creditPerStep) {
-			addLog(post, "budget", "Budget exceeded", 0)
-			failAgent(post, "Budget exceeded")
-			return
-		}
-
-		addLog(post, "build", "Updating app with feedback...", creditPerStep)
-
-		if err := RebuildApp(appSlug, feedback); err != nil {
-			addLog(post, "error", fmt.Sprintf("Update failed: %v", err), 0)
-			failAgent(post, "Update failed: "+err.Error())
-			return
-		}
-
-		delivery := fmt.Sprintf("%s — /apps/%s/run", appName, appSlug)
-		mutex.Lock()
-		post.Delivery = delivery
-		post.Status = StatusDelivered
-		post.DeliveredAt = time.Now()
-		save()
-		title := post.Title
-		postID := post.ID
-		mutex.Unlock()
-
-		addLog(post, "complete", fmt.Sprintf("Delivered: %s (spent %d credits)", delivery, post.Spent), 0)
-
-		if Notify != nil {
-			Notify(authorID, "Agent updated: "+title,
-				fmt.Sprintf("The agent rebuilt %s with your feedback. Spent %d/%d credits.\n\n[Review delivery →](/work/%s)", appName, post.Spent, post.Cost, postID), postID)
-		}
-	}()
+	event.Publish(event.Event{
+		Type: event.EventTaskRetry,
+		Data: map[string]interface{}{
+			"post_id":  postID,
+			"feedback": feedback,
+		},
+	})
 }
 
-// ResumeAgentWork restarts any in-progress agent tasks (e.g. after server restart).
+// ResumeAgentWork re-publishes events for any in-progress agent tasks.
 func ResumeAgentWork() {
 	mutex.RLock()
-	var inProgress []*Post
+	var inProgress []string
 	for _, p := range posts {
 		if p.WorkerID == "agent" && p.Status == StatusClaimed {
-			inProgress = append(inProgress, p)
+			inProgress = append(inProgress, p.ID)
 		}
 	}
 	mutex.RUnlock()
 
-	for _, p := range inProgress {
-		fmt.Printf("[work] Resuming agent task: %s\n", p.Title)
-		go runAgent(p)
+	for _, id := range inProgress {
+		fmt.Printf("[work] Resuming agent task: %s\n", id)
+		event.Publish(event.Event{
+			Type: event.EventTaskCreated,
+			Data: map[string]interface{}{"post_id": id},
+		})
 	}
 }
 

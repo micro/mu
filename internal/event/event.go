@@ -16,6 +16,8 @@ const (
 	EventSummaryGenerated   = "summary_generated"
 	EventGenerateTag        = "generate_tag"
 	EventTagGenerated       = "tag_generated"
+	EventTaskCreated        = "task_created"
+	EventTaskRetry          = "task_retry"
 )
 
 // Event represents a data event
