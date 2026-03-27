@@ -833,6 +833,10 @@ ai:function(p,o){return this._send('ai',{prompt:p,options:o||{}})},
 fetch:function(u){return this._send('fetch',{url:u})},
 user:function(){return this._send('user',{})},
 run:function(result){window.parent.postMessage({type:'mu:run',result:result},'*');},
+api:{
+get:function(p){return mu._send('api',{method:'GET',path:p})},
+post:function(p,b){return mu._send('api',{method:'POST',path:p,body:b})}
+},
 store:{
 set:function(k,v){return mu._send('store',{op:'set',key:k,value:v})},
 get:function(k){return mu._send('store',{op:'get',key:k})},
@@ -842,6 +846,9 @@ keys:function(){return mu._send('store',{op:'keys'})}
 window.addEventListener('message',function(e){var d=e.data;if(d&&d.type&&d.type.indexOf('mu:')===0&&d.id&&mu._cb[d.id]){if(d.error){mu._cb[d.id].fail(new Error(d.error))}else{mu._cb[d.id].ok(d.result)}delete mu._cb[d.id];}});
 </script>`
 		html := a.HTML
+		// Strip any <script src="/apps/sdk.js"> tags — the SDK is injected inline below
+		html = strings.ReplaceAll(html, `<script src="/apps/sdk.js"></script>`, "")
+		html = strings.ReplaceAll(html, `<script src='/apps/sdk.js'></script>`, "")
 		if idx := strings.Index(strings.ToLower(html), "<head>"); idx >= 0 {
 			html = html[:idx+6] + sdkBridge + html[idx+6:]
 		} else if idx := strings.Index(strings.ToLower(html), "<html"); idx >= 0 {
