@@ -110,6 +110,8 @@ func Load() {
 	if len(loaded) == 0 {
 		seedApps()
 	}
+
+	data.RegisterDeleter("app", DeleteApp)
 }
 
 // save persists all apps to disk.
@@ -947,6 +949,18 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 }
 
 // handleDelete deletes an app.
+// DeleteApp removes an app by slug (used by admin delete)
+func DeleteApp(slug string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if _, ok := apps[slug]; !ok {
+		return fmt.Errorf("app not found: %s", slug)
+	}
+	delete(apps, slug)
+	save()
+	return nil
+}
+
 func handleDelete(w http.ResponseWriter, r *http.Request, slug string) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {

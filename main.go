@@ -473,6 +473,7 @@ func main() {
 		"/admin/env":       true,
 		"/admin/server":    true,
 		"/admin/usage":  true,
+		"/admin/delete": true,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
@@ -568,6 +569,9 @@ func main() {
 
 	// AI usage tracking
 	http.HandleFunc("/admin/usage", admin.AIUsageHandler)
+
+	// admin delete (any content type)
+	http.HandleFunc("/admin/delete", admin.DeleteHandler)
 
 	// wallet - credits and payments
 	http.HandleFunc("/wallet", wallet.Handler)

@@ -95,6 +95,49 @@ func LoadJSON(key string, val interface{}) error {
 }
 
 // ============================================
+// ADMIN DELETE REGISTRY
+// ============================================
+
+// DeleteFunc deletes an item by ID. Returns error if not found or failed.
+type DeleteFunc func(id string) error
+
+var (
+	deleterMu sync.RWMutex
+	deleters  = map[string]DeleteFunc{}
+)
+
+// RegisterDeleter registers a delete function for a content type.
+// Packages call this during Load() so admin can delete any content by type+ID.
+func RegisterDeleter(contentType string, fn DeleteFunc) {
+	deleterMu.Lock()
+	deleters[contentType] = fn
+	deleterMu.Unlock()
+}
+
+// Delete deletes an item by type and ID using the registered deleter.
+func Delete(contentType, id string) error {
+	deleterMu.RLock()
+	fn, ok := deleters[contentType]
+	deleterMu.RUnlock()
+	if !ok {
+		return fmt.Errorf("no deleter registered for type %q", contentType)
+	}
+	return fn(id)
+}
+
+// DeleteTypes returns all registered content types that support deletion.
+func DeleteTypes() []string {
+	deleterMu.RLock()
+	defer deleterMu.RUnlock()
+	types := make([]string, 0, len(deleters))
+	for t := range deleters {
+		types = append(types, t)
+	}
+	sort.Strings(types)
+	return types
+}
+
+// ============================================
 // SIMPLE INDEXING & SEARCH FOR RAG
 // ============================================
 

@@ -78,6 +78,7 @@ func Load() {
 	if len(posts) == 0 {
 		seedPosts()
 	}
+	data.RegisterDeleter("work", DeletePost)
 }
 
 func save() {
@@ -363,6 +364,18 @@ func AssignToAgent(postID, authorID string) error {
 		mutex.Unlock()
 	}()
 
+	return nil
+}
+
+// DeletePost removes a work post by ID
+func DeletePost(id string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if _, exists := posts[id]; !exists {
+		return errors.New("post not found")
+	}
+	delete(posts, id)
+	save()
 	return nil
 }
 

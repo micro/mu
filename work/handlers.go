@@ -109,16 +109,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 		sb.WriteString(fmt.Sprintf(`<h4><a href="/work/%s">%s</a></h4>`, post.ID, post.Title))
 
-		// Tags
-		if post.Tags != "" {
-			for _, tag := range strings.Split(post.Tags, ",") {
-				tag = strings.TrimSpace(tag)
-				if tag != "" {
-					sb.WriteString(fmt.Sprintf(`<span class="tag">%s</span> `, tag))
-				}
-			}
-		}
-
 		// Meta line
 		meta := fmt.Sprintf(`%s · <a href="/@%s">%s</a> · %s`, kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006"))
 		if post.Kind == KindTask && post.Cost > 0 {
@@ -190,16 +180,6 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	if post.Link != "" {
 		sb.WriteString(fmt.Sprintf(`<p><strong>Link:</strong> <a href="%s">%s</a></p>`, post.Link, post.Link))
-	}
-	if post.Tags != "" {
-		sb.WriteString(`<p>`)
-		for _, tag := range strings.Split(post.Tags, ",") {
-			tag = strings.TrimSpace(tag)
-			if tag != "" {
-				sb.WriteString(fmt.Sprintf(`<span class="tag">%s</span> `, tag))
-			}
-		}
-		sb.WriteString(`</p>`)
 	}
 	if post.Worker != "" {
 		sb.WriteString(fmt.Sprintf(`<p><strong>Claimed by:</strong> <a href="/@%s">%s</a></p>`, post.Worker, post.Worker))
@@ -336,57 +316,83 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
 
+	isTask := kind == "task"
+
 	sb.WriteString(`<form method="POST" action="/work/post">`)
 
 	// Kind selector
 	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
-	for _, k := range []struct{ val, label, desc string }{
-		{"show", "Show", "Share something you built"},
-		{"task", "Task", "Post a task with a cost"},
+	for _, k := range []struct{ val, label string }{
+		{"show", "Show"},
+		{"task", "Task"},
 	} {
 		checked := ""
+		cls := "btn btn-secondary"
 		if k.val == kind {
 			checked = " checked"
+			cls = "btn"
 		}
-		sb.WriteString(fmt.Sprintf(`<label class="btn btn-secondary"><input type="radio" name="kind" value="%s"%s onchange="var t=this.value==='task'?'block':'none';document.getElementById('cost-field').style.display=t;document.getElementById('assign-field').style.display=t"> %s</label>`, k.val, checked, k.label))
+		sb.WriteString(fmt.Sprintf(`<label class="%s"><input type="radio" name="kind" value="%s"%s style="display:none" onchange="workFormToggle(this.value)"> %s</label>`, cls, k.val, checked, k.label))
 	}
 	sb.WriteString(`</div>`)
 
+	titlePlaceholder := "What did you build?"
+	descPlaceholder := "Tell people about it..."
+	if isTask {
+		titlePlaceholder = "What needs to be done?"
+		descPlaceholder = "Describe the task..."
+	}
+
 	sb.WriteString(`<div>`)
-	sb.WriteString(`<label for="work-title" class="text-sm">Title</label>`)
-	sb.WriteString(`<input type="text" id="work-title" name="title" placeholder="What did you build?" required class="form-input w-full mt-1" maxlength="200">`)
+	sb.WriteString(`<input type="text" id="work-title" name="title" placeholder="` + titlePlaceholder + `" required class="form-input w-full" maxlength="200">`)
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div class="mt-3">`)
-	sb.WriteString(`<label for="description" class="text-sm">Description</label>`)
-	sb.WriteString(`<textarea id="description" name="description" rows="6" placeholder="Tell people about it..." required class="form-input w-full mt-1"></textarea>`)
+	sb.WriteString(`<textarea id="work-desc" name="description" rows="4" placeholder="` + descPlaceholder + `" required class="form-input w-full"></textarea>`)
 	sb.WriteString(`</div>`)
 
-	sb.WriteString(`<div class="mt-3">`)
-	sb.WriteString(`<label for="link" class="text-sm">Link (optional)</label>`)
-	sb.WriteString(`<input type="text" id="link" name="link" placeholder="URL, app slug, or repo" class="form-input w-full mt-1">`)
+	// Show-only: link field
+	linkDisplay := "block"
+	if isTask {
+		linkDisplay = "none"
+	}
+	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="link-field" style="display:%s">`, linkDisplay))
+	sb.WriteString(`<input type="text" id="link" name="link" placeholder="Link (optional)" class="form-input w-full">`)
 	sb.WriteString(`</div>`)
 
+	// Task-only: cost + assign
 	costDisplay := "none"
-	if kind == "task" {
+	if isTask {
 		costDisplay = "block"
 	}
 	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="cost-field" style="display:%s">`, costDisplay))
-	sb.WriteString(`<label for="cost" class="text-sm">Cost (credits)</label>`)
-	sb.WriteString(`<input type="number" id="cost" name="cost" min="1" max="50000" placeholder="e.g. 500" class="form-input w-full mt-1">`)
+	sb.WriteString(`<input type="number" id="cost" name="cost" min="1" max="50000" placeholder="Cost (credits)" class="form-input w-full">`)
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="assign-field" style="display:%s">`, costDisplay))
 	sb.WriteString(`<label class="text-sm"><input type="checkbox" name="assign" value="1" style="width:auto;margin-right:6px">Assign to Agent</label>`)
 	sb.WriteString(`</div>`)
 
-	sb.WriteString(`<div class="mt-3">`)
-	sb.WriteString(`<label for="tags" class="text-sm">Tags (optional)</label>`)
-	sb.WriteString(`<input type="text" id="tags" name="tags" placeholder="e.g. app, go, design" class="form-input w-full mt-1">`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<button type="submit" class="btn mt-4">Post</button>`)
+	sb.WriteString(`<button type="submit" class="btn mt-3">Post</button>`)
 	sb.WriteString(`</form>`)
+
+	// JS to toggle fields and placeholders
+	sb.WriteString(`<script>
+function workFormToggle(kind) {
+  var isTask = kind === 'task';
+  document.getElementById('cost-field').style.display = isTask ? 'block' : 'none';
+  document.getElementById('assign-field').style.display = isTask ? 'block' : 'none';
+  document.getElementById('link-field').style.display = isTask ? 'none' : 'block';
+  document.getElementById('work-title').placeholder = isTask ? 'What needs to be done?' : 'What did you build?';
+  document.getElementById('work-desc').placeholder = isTask ? 'Describe the task...' : 'Tell people about it...';
+  var labels = document.querySelectorAll('input[name="kind"]');
+  for (var i = 0; i < labels.length; i++) {
+    var lbl = labels[i].parentElement;
+    if (labels[i].value === kind) { lbl.className = 'btn'; }
+    else { lbl.className = 'btn btn-secondary'; }
+  }
+}
+</script>`)
 	sb.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest("Share Work", "Post your work or a task", sb.String(), r)
@@ -400,7 +406,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var kind, title, description, link, tags string
+	var kind, title, description, link string
 	var cost int
 	var assign bool
 
@@ -411,7 +417,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 			Description string `json:"description"`
 			Link        string `json:"link"`
 			Cost        int    `json:"cost"`
-			Tags        string `json:"tags"`
 			Assign      bool   `json:"assign"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -423,7 +428,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		description = body.Description
 		link = body.Link
 		cost = body.Cost
-		tags = body.Tags
 		assign = body.Assign
 	} else {
 		r.ParseForm()
@@ -431,7 +435,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		title = r.FormValue("title")
 		description = r.FormValue("description")
 		link = r.FormValue("link")
-		tags = r.FormValue("tags")
 		fmt.Sscanf(r.FormValue("cost"), "%d", &cost)
 		assign = r.FormValue("assign") == "1"
 	}
@@ -440,7 +443,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	title = strings.TrimSpace(title)
 	description = strings.TrimSpace(description)
 	link = strings.TrimSpace(link)
-	tags = strings.TrimSpace(tags)
 
 	if kind == "" {
 		kind = KindShow
@@ -454,7 +456,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	post, err := CreatePost(sess.Account, acc.Name, kind, title, description, link, tags, cost)
+	post, err := CreatePost(sess.Account, acc.Name, kind, title, description, link, "", cost)
 	if err != nil {
 		if kind == KindTask && cost > 0 && sess.Account != "micro" {
 			wallet.RefundEscrow(sess.Account, cost, "failed")

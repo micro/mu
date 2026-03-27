@@ -265,6 +265,9 @@ func Load() {
 
 	// Register with moderation subsystem
 	flag.RegisterDeleter("post", &postDeleter{})
+
+	// Register with admin delete
+	data.RegisterDeleter("blog", DeletePost)
 }
 
 // postDeleter implements flag.ContentDeleter interface
