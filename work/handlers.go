@@ -248,7 +248,8 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			sb.WriteString(fmt.Sprintf(`<p><a href="%s">%s</a></p>`, appURL, appName))
 			sb.WriteString(fmt.Sprintf(`<iframe src="%s?raw=1" style="width:100%%;min-height:400px;border:1px solid #eee;border-radius:8px;margin-top:8px" sandbox="allow-scripts"></iframe>`, appURL))
 		} else {
-			sb.WriteString(fmt.Sprintf(`<p>%s</p>`, post.Delivery))
+			// Render markdown delivery (research results, summaries, etc.)
+			sb.WriteString(app.RenderString(post.Delivery))
 		}
 		sb.WriteString(`</div>`)
 	}
@@ -270,9 +271,10 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Agent log
-	if len(post.Log) > 0 {
+	if len(post.Log) > 0 || (post.Status == StatusClaimed && post.WorkerID == "agent") {
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h4>Agent Log</h4>`)
+		sb.WriteString(`<div id="agent-log">`)
 		for _, entry := range post.Log {
 			color := "#555"
 			switch entry.Step {
@@ -288,7 +290,8 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;margin:4px 0"><span style="color:%s;font-weight:600">%s</span> %s%s <span class="text-muted">%s</span></p>`,
 				color, entry.Step, entry.Message, credits, entry.CreatedAt.Format("15:04:05")))
 		}
-		sb.WriteString(`</div>`)
+		sb.WriteString(`</div>`) // close #agent-log
+		sb.WriteString(`</div>`) // close .card
 	}
 
 	// Cancel (for open/building tasks)
@@ -323,9 +326,40 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	sb.WriteString(`</div>`)
 
-	// Auto-refresh while building
+	// Live polling while building
 	if post.Status == StatusClaimed && post.WorkerID == "agent" {
-		sb.WriteString(`<script>setTimeout(function(){location.reload()},5000)</script>`)
+		sb.WriteString(fmt.Sprintf(`<script>
+(function(){
+  var logEl = document.getElementById('agent-log');
+  var statusEl = document.querySelector('[data-status]');
+  var lastCount = %d;
+  function poll() {
+    fetch('/work/%s', {headers:{'Accept':'application/json'}})
+    .then(function(r){return r.json()})
+    .then(function(p){
+      if (p.log && p.log.length > lastCount) {
+        for (var i = lastCount; i < p.log.length; i++) {
+          var e = p.log[i];
+          var color = e.step==='error'||e.step==='budget'?'#c00':e.step==='complete'?'#28a745':'#555';
+          var credits = e.credits > 0 ? ' · '+e.credits+' credits' : '';
+          var el = document.createElement('p');
+          el.style.cssText = 'font-size:13px;margin:4px 0';
+          el.innerHTML = '<span style="color:'+color+';font-weight:600">'+e.step+'</span> '+e.message+credits;
+          logEl.appendChild(el);
+        }
+        lastCount = p.log.length;
+      }
+      if (p.status !== 'claimed') {
+        location.reload();
+      } else {
+        setTimeout(poll, 3000);
+      }
+    })
+    .catch(function(){setTimeout(poll, 5000)});
+  }
+  setTimeout(poll, 3000);
+})();
+</script>`, len(post.Log), post.ID))
 	}
 
 	html := app.RenderHTMLForRequest(post.Title, "Work", sb.String(), r)
