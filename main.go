@@ -102,6 +102,14 @@ func main() {
 		}
 		return a.Slug, a.Name, nil
 	}
+	work.ConsumeCredits = func(userID string, amount int) error {
+		w := wallet.GetWallet(userID)
+		if w.Balance < amount {
+			return fmt.Errorf("insufficient credits (%d available, %d needed)", w.Balance, amount)
+		}
+		wallet.ConsumeQuota(userID, wallet.OpChatQuery)
+		return nil
+	}
 	work.Notify = func(toUserID, subject, body string) {
 		acc, err := auth.GetAccount(toUserID)
 		if err != nil {
