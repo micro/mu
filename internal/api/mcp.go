@@ -293,6 +293,27 @@ var tools = []Tool{
 		Path:        "/wallet/topup",
 	},
 	{
+		Name:        "work_list",
+		Description: "List available work tasks with credit bounties",
+		Method:      "GET",
+		Path:        "/work",
+		Params: []ToolParam{
+			{Name: "status", Type: "string", Description: "Filter by status: open, claimed, delivered, completed (default: open)", Required: false},
+		},
+	},
+	{
+		Name:        "work_post",
+		Description: "Post a new work task with a credit bounty",
+		Method:      "POST",
+		Path:        "/work/post",
+		Params: []ToolParam{
+			{Name: "title", Type: "string", Description: "Task title", Required: true},
+			{Name: "description", Type: "string", Description: "Detailed task description and requirements", Required: true},
+			{Name: "bounty", Type: "number", Description: "Bounty in credits", Required: true},
+			{Name: "tags", Type: "string", Description: "Comma-separated tags", Required: false},
+		},
+	},
+	{
 		Name:        "places_search",
 		Description: "Search for places by name or category, optionally near a location",
 		Method:      "POST",

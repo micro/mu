@@ -62,6 +62,9 @@ const (
 	OpTopup             = "topup"
 	OpRefund            = "refund"
 	OpTransfer          = "transfer"
+	OpEscrowHold        = "escrow_hold"
+	OpEscrowRelease     = "escrow_release"
+	OpEscrowRefund      = "escrow_refund"
 )
 
 // Transaction types
@@ -534,6 +537,121 @@ func ConsumeQuota(userID string, operation string) error {
 	// Deduct credits
 	cost := GetOperationCost(operation)
 	return DeductCredits(userID, cost, operation, nil)
+}
+
+// HoldEscrow deducts credits from a user's wallet into escrow (held for a task)
+func HoldEscrow(userID string, amount int, taskID string) error {
+	if amount <= 0 {
+		return errors.New("amount must be positive")
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	w, exists := wallets[userID]
+	if !exists || w.Balance < amount {
+		return errors.New("insufficient credits")
+	}
+
+	w.Balance -= amount
+	w.UpdatedAt = time.Now()
+
+	tx := &Transaction{
+		ID:        uuid.New().String(),
+		UserID:    userID,
+		Type:      TxSpend,
+		Amount:    -amount,
+		Balance:   w.Balance,
+		Operation: OpEscrowHold,
+		Metadata:  map[string]interface{}{"task_id": taskID},
+		CreatedAt: time.Now(),
+	}
+	transactions[userID] = append(transactions[userID], tx)
+
+	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("transactions.json", transactions)
+
+	return nil
+}
+
+// ReleaseEscrow pays the worker from escrowed credits
+func ReleaseEscrow(workerID string, amount int, taskID string) error {
+	if amount <= 0 {
+		return errors.New("amount must be positive")
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	w, exists := wallets[workerID]
+	if !exists {
+		w = &Wallet{
+			UserID:   workerID,
+			Balance:  0,
+			Currency: "GBP",
+		}
+		wallets[workerID] = w
+	}
+
+	w.Balance += amount
+	w.UpdatedAt = time.Now()
+
+	tx := &Transaction{
+		ID:        uuid.New().String(),
+		UserID:    workerID,
+		Type:      TxTopup,
+		Amount:    amount,
+		Balance:   w.Balance,
+		Operation: OpEscrowRelease,
+		Metadata:  map[string]interface{}{"task_id": taskID},
+		CreatedAt: time.Now(),
+	}
+	transactions[workerID] = append(transactions[workerID], tx)
+
+	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("transactions.json", transactions)
+
+	return nil
+}
+
+// RefundEscrow returns escrowed credits to the poster
+func RefundEscrow(userID string, amount int, taskID string) error {
+	if amount <= 0 {
+		return errors.New("amount must be positive")
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	w, exists := wallets[userID]
+	if !exists {
+		w = &Wallet{
+			UserID:   userID,
+			Balance:  0,
+			Currency: "GBP",
+		}
+		wallets[userID] = w
+	}
+
+	w.Balance += amount
+	w.UpdatedAt = time.Now()
+
+	tx := &Transaction{
+		ID:        uuid.New().String(),
+		UserID:    userID,
+		Type:      TxRefund,
+		Amount:    amount,
+		Balance:   w.Balance,
+		Operation: OpEscrowRefund,
+		Metadata:  map[string]interface{}{"task_id": taskID},
+		CreatedAt: time.Now(),
+	}
+	transactions[userID] = append(transactions[userID], tx)
+
+	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("transactions.json", transactions)
+
+	return nil
 }
 
 // FormatCredits formats credits as currency string
