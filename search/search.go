@@ -298,6 +298,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 			if result.Age != "" {
 				meta += ` · ` + html.EscapeString(result.Age)
 			}
+			meta += app.ExternalControls(sess.Account, "web", url.QueryEscape(result.URL))
 			b.WriteString(`<div style="font-size:11px;color:#888;margin-top:2px;">` + meta + `</div>`)
 			b.WriteString(`</div>`)
 		}

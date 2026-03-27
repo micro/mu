@@ -265,6 +265,9 @@ func Load() {
 
 	// Register with moderation subsystem
 	flag.RegisterDeleter("post", &postDeleter{})
+
+	// Register with admin delete
+	data.RegisterDeleter("blog", DeletePost)
 }
 
 // postDeleter implements flag.ContentDeleter interface
@@ -566,13 +569,14 @@ func updateCacheUnlocked() {
 			listTimeLabel = "Updated " + app.TimeAgo(listTime)
 		}
 
+		controls := app.StaticControls("post", post.ID)
 		item := fmt.Sprintf(`<div class="post-item">
 			%s
 			<h3><a href="/blog/post?id=%s">%s</a></h3>
-			<div class="info"><span data-timestamp="%d">%s</span> · %s%s</div>
+			<div class="info"><span data-timestamp="%d">%s</span> · %s%s%s</div>
 			<div>%s</div>
 			%s
-		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, content, keepReading)
+		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, controls, content, keepReading)
 		fullList = append(fullList, item)
 	}
 
@@ -1466,12 +1470,15 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		authorLink = fmt.Sprintf(`<a href="/@%s" class="text-muted">%s</a>`, post.AuthorID, post.Author)
 	}
 
-	// Check if current user is the author (to show edit and delete buttons)
-	var editButton string
+	// Admin controls (edit/delete for author or admin)
 	_, acc := auth.TrySession(r)
-	if acc != nil && acc.ID == post.AuthorID {
-		editButton = ` · <a href="/blog/post?id=` + post.ID + `&edit=true" class="text-muted">Edit</a> · <a href="#" onclick="if(confirm('Delete this post?')){var f=document.createElement('form');f.method='POST';f.action='/post?id=` + post.ID + `';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">Delete</a>`
+	var userID string
+	var isAdmin bool
+	if acc != nil {
+		userID = acc.ID
+		isAdmin = acc.Admin
 	}
+	editButton := app.ItemControls(userID, isAdmin, "post", post.ID, post.AuthorID, "/blog/post?id="+post.ID+"&edit=true", "/post?id="+post.ID)
 
 	tagsHtml := ""
 	if post.Tags != "" {
@@ -1504,7 +1511,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	content := fmt.Sprintf(`<div id="blog">
 		%s
 		<div class="info">
-			%s · %s%s · <a href="#" onclick="flagPost('%s'); return false;" class="text-muted">Flag</a> · <a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;" class="text-muted">Share</a>
+			%s · %s%s
 		</div>
 		<hr class="my-5 border-t">
 		<div class="mb-5">%s</div>
@@ -1514,7 +1521,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		<div class="mt-6">
 			<a href="/blog" class="text-muted">← Back to posts</a>
 		</div>
-	</div>`, tagsDisplay, timeInfo, authorLink, editButton, post.ID, contentHTML, renderComments(post.ID, r))
+	</div>`, tagsDisplay, timeInfo, authorLink, editButton, contentHTML, renderComments(post.ID, r))
 
 	html := app.RenderHTMLForRequest(title, post.Content[:min(len(post.Content), 150)], content, r)
 	w.Write([]byte(html))

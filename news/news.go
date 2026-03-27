@@ -369,38 +369,27 @@ func generateNewsHtml() string {
 				summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, post.ID)
 			}
 
-			var val string
-			if len(post.Image) > 0 {
-				categoryBadge := ""
-				if post.Category != "" {
-					categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
-				}
-				val = fmt.Sprintf(`
-	<div id="%s" class="news">
-	    %s
-	    <img class="cover" src="%s" referrerpolicy="no-referrer" onerror="this.style.display='none'">
-	    <div class="blurb">
-	      <a href="%s"><span class="title">%s</span></a>
-	      <span class="description">%s</span>
-	    </div>
-	  <div class="summary">%s%s</div>
-				`, post.ID, categoryBadge, post.Image, link, post.Title, cleanDescription, summary, summaryLink)
-			} else {
-				categoryBadge := ""
-				if post.Category != "" {
-					categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
-				}
-				val = fmt.Sprintf(`
-	<div id="%s" class="news">
-	    %s
-	    <img class="cover">
-	    <div class="blurb">
-	      <a href="%s"><span class="title">%s</span></a>
-	      <span class="description">%s</span>
-	    </div>
-	  <div class="summary">%s%s</div>
-				`, post.ID, categoryBadge, link, post.Title, cleanDescription, summary, summaryLink)
+			controls := app.StaticControls("news", post.ID)
+			categoryBadge := ""
+			if post.Category != "" {
+				categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
 			}
+
+			var val string
+			imgTag := `<img class="cover">`
+			if len(post.Image) > 0 {
+				imgTag = fmt.Sprintf(`<img class="cover" src="%s" referrerpolicy="no-referrer" onerror="this.style.display='none'">`, post.Image)
+			}
+			val = fmt.Sprintf(`
+	<div id="%s" class="news">
+	    %s
+	    %s
+	    <div class="blurb">
+	      <a href="%s"><span class="title">%s</span></a>
+	      <span class="description">%s</span>
+	    </div>
+	  <div class="summary">%s%s%s</div>
+				`, post.ID, categoryBadge, imgTag, link, post.Title, cleanDescription, summary, summaryLink, controls)
 
 			val += `</div>`
 			content = append(content, []byte(val)...)

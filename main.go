@@ -473,6 +473,7 @@ func main() {
 		"/admin/env":       true,
 		"/admin/server":    true,
 		"/admin/usage":  true,
+		"/admin/delete": true,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
@@ -569,6 +570,9 @@ func main() {
 	// AI usage tracking
 	http.HandleFunc("/admin/usage", admin.AIUsageHandler)
 
+	// admin delete (any content type)
+	http.HandleFunc("/admin/delete", admin.DeleteHandler)
+
 	// wallet - credits and payments
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
@@ -623,6 +627,9 @@ func main() {
 	// serve work (task bounties)
 	http.HandleFunc("/work", work.Handler)
 	http.HandleFunc("/work/", work.Handler)
+
+	// content controls (flag, save, dismiss, block, share)
+	http.HandleFunc("/app/", app.ControlsHandler)
 
 	// auth
 	http.HandleFunc("/login", app.Login)

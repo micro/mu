@@ -36,6 +36,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleTip(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/feedback") && r.Method == "POST":
 		handleFeedback(w, r)
+	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/delete") && r.Method == "POST":
+		handleDelete(w, r)
 	case strings.HasPrefix(path, "/work/") && r.Method == "GET":
 		handleDetail(w, r)
 	default:
@@ -47,7 +49,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	kind := r.URL.Query().Get("kind")
 	status := r.URL.Query().Get("status")
 
-	// Default: show all, or filter by tab
 	allPosts := ListPosts(kind, status, 50)
 
 	if app.WantsJSON(r) {
@@ -55,19 +56,24 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess, _ := auth.TrySession(r)
+	sess, acc := auth.TrySession(r)
+	var userID string
+	var isAdmin bool
+	if sess != nil {
+		userID = sess.Account
+		isAdmin = acc.Admin
+	}
 
 	var sb strings.Builder
 
-	// Header
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<p>Share your work, get feedback, or post tasks with credit bounties.</p>`)
+	// Inline post form for logged-in users
 	if sess != nil {
-		sb.WriteString(`<p><a href="/work/post" class="btn">Post</a></p>`)
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(renderPostForm("show", ""))
+		sb.WriteString(`</div>`)
 	} else {
-		sb.WriteString(`<p><a href="/login">Login</a> to post or interact.</p>`)
+		sb.WriteString(`<div class="card"><p><a href="/login">Login</a> to post or interact.</p></div>`)
 	}
-	sb.WriteString(`</div>`)
 
 	// Filter tabs
 	sb.WriteString(`<div class="card">`)
@@ -90,7 +96,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</div>`)
 
-	// Posts
 	if len(allPosts) == 0 {
 		sb.WriteString(`<div class="card"><p class="text-muted">No posts yet.</p></div>`)
 	}
@@ -98,7 +103,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	for _, post := range allPosts {
 		sb.WriteString(`<div class="card">`)
 
-		// Kind label
 		kindLabel := "Show"
 		if post.Kind == KindTask {
 			kindLabel = "Task"
@@ -109,27 +113,14 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 		sb.WriteString(fmt.Sprintf(`<h4><a href="/work/%s">%s</a></h4>`, post.ID, post.Title))
 
-		// Tags
-		if post.Tags != "" {
-			for _, tag := range strings.Split(post.Tags, ",") {
-				tag = strings.TrimSpace(tag)
-				if tag != "" {
-					sb.WriteString(fmt.Sprintf(`<span class="tag">%s</span> `, tag))
-				}
-			}
-		}
-
-		// Meta line
 		meta := fmt.Sprintf(`%s · <a href="/@%s">%s</a> · %s`, kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006"))
 		if post.Kind == KindTask && post.Cost > 0 {
 			meta += fmt.Sprintf(` · %d credits`, post.Cost)
 		}
-		if post.Tips > 0 {
-			meta += fmt.Sprintf(` · %d tipped`, post.Tips)
-		}
 		if len(post.Feedback) > 0 {
 			meta += fmt.Sprintf(` · %d feedback`, len(post.Feedback))
 		}
+		meta += app.ItemControls(userID, isAdmin, "work", post.ID, post.AuthorID, "", "/work/"+post.ID+"/delete")
 		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, meta))
 
 		sb.WriteString(`</div>`)
@@ -152,10 +143,12 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess, _ := auth.TrySession(r)
+	sess, acc := auth.TrySession(r)
 	var userID string
+	var isAdmin bool
 	if sess != nil {
 		userID = sess.Account
+		isAdmin = acc.Admin
 	}
 
 	var sb strings.Builder
@@ -176,8 +169,10 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		kindLabel = "Task"
 	}
 
-	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s · Posted by <a href="/@%s">%s</a> · %s</p>`,
-		kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006 15:04")))
+	detailMeta := fmt.Sprintf(`%s · Posted by <a href="/@%s">%s</a> · %s`,
+		kindLabel, post.Author, post.Author, post.CreatedAt.Format("2 Jan 2006 15:04"))
+	detailMeta += app.ItemControls(userID, isAdmin, "work", post.ID, post.AuthorID, "", "/work/"+post.ID+"/delete")
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, detailMeta))
 
 	if post.Kind == KindTask {
 		sb.WriteString(fmt.Sprintf(`<p><strong>Cost:</strong> %d credits (%s)</p>`, post.Cost, wallet.FormatCredits(post.Cost)))
@@ -190,16 +185,6 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	if post.Link != "" {
 		sb.WriteString(fmt.Sprintf(`<p><strong>Link:</strong> <a href="%s">%s</a></p>`, post.Link, post.Link))
-	}
-	if post.Tags != "" {
-		sb.WriteString(`<p>`)
-		for _, tag := range strings.Split(post.Tags, ",") {
-			tag = strings.TrimSpace(tag)
-			if tag != "" {
-				sb.WriteString(fmt.Sprintf(`<span class="tag">%s</span> `, tag))
-			}
-		}
-		sb.WriteString(`</p>`)
 	}
 	if post.Worker != "" {
 		sb.WriteString(fmt.Sprintf(`<p><strong>Claimed by:</strong> <a href="/@%s">%s</a></p>`, post.Worker, post.Worker))
@@ -316,6 +301,94 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
+// renderPostForm returns the HTML for the work post form.
+// kind is the default kind ("show" or "task"), errMsg shows an error if set.
+func renderPostForm(kind, errMsg string) string {
+	var sb strings.Builder
+
+	if errMsg != "" {
+		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
+	}
+
+	isTask := kind == "task"
+
+	sb.WriteString(`<form method="POST" action="/work/post">`)
+
+	// Kind selector
+	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
+	for _, k := range []struct{ val, label string }{
+		{"show", "Show"},
+		{"task", "Task"},
+	} {
+		checked := ""
+		cls := "btn btn-secondary"
+		if k.val == kind {
+			checked = " checked"
+			cls = "btn"
+		}
+		sb.WriteString(fmt.Sprintf(`<label class="%s"><input type="radio" name="kind" value="%s"%s style="display:none" onchange="workFormToggle(this.value)"> %s</label>`, cls, k.val, checked, k.label))
+	}
+	sb.WriteString(`</div>`)
+
+	titlePlaceholder := "What did you build?"
+	descPlaceholder := "Tell people about it..."
+	if isTask {
+		titlePlaceholder = "What needs to be done?"
+		descPlaceholder = "Describe the task..."
+	}
+
+	sb.WriteString(`<input type="text" id="work-title" name="title" placeholder="` + titlePlaceholder + `" required class="form-input w-full" maxlength="200">`)
+
+	sb.WriteString(`<div class="mt-3">`)
+	sb.WriteString(`<textarea id="work-desc" name="description" rows="3" placeholder="` + descPlaceholder + `" required class="form-input w-full"></textarea>`)
+	sb.WriteString(`</div>`)
+
+	// Show-only: link field
+	linkDisplay := "block"
+	if isTask {
+		linkDisplay = "none"
+	}
+	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="link-field" style="display:%s">`, linkDisplay))
+	sb.WriteString(`<input type="text" id="link" name="link" placeholder="Link (optional)" class="form-input w-full">`)
+	sb.WriteString(`</div>`)
+
+	// Task-only: cost + assign
+	costDisplay := "none"
+	if isTask {
+		costDisplay = "block"
+	}
+	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="cost-field" style="display:%s">`, costDisplay))
+	sb.WriteString(`<input type="number" id="cost" name="cost" min="1" max="50000" placeholder="Cost (credits)" class="form-input w-full">`)
+	sb.WriteString(`</div>`)
+
+	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="assign-field" style="display:%s">`, costDisplay))
+	sb.WriteString(`<label class="text-sm"><input type="checkbox" name="assign" value="1" style="width:auto;margin-right:6px">Assign to Agent</label>`)
+	sb.WriteString(`</div>`)
+
+	sb.WriteString(`<button type="submit" class="btn mt-3">Post</button>`)
+	sb.WriteString(`</form>`)
+
+	// JS to toggle fields and placeholders
+	sb.WriteString(`<script>
+function workFormToggle(kind) {
+  var isTask = kind === 'task';
+  document.getElementById('cost-field').style.display = isTask ? 'block' : 'none';
+  document.getElementById('assign-field').style.display = isTask ? 'block' : 'none';
+  document.getElementById('link-field').style.display = isTask ? 'none' : 'block';
+  document.getElementById('work-title').placeholder = isTask ? 'What needs to be done?' : 'What did you build?';
+  document.getElementById('work-desc').placeholder = isTask ? 'Describe the task...' : 'Tell people about it...';
+  var labels = document.querySelectorAll('input[name="kind"]');
+  for (var i = 0; i < labels.length; i++) {
+    var lbl = labels[i].parentElement;
+    if (labels[i].value === kind) { lbl.className = 'btn'; }
+    else { lbl.className = 'btn btn-secondary'; }
+  }
+}
+</script>`)
+
+	return sb.String()
+}
+
 func handlePostForm(w http.ResponseWriter, r *http.Request) {
 	_, _, err := auth.RequireSession(r)
 	if err != nil {
@@ -323,73 +396,14 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	errMsg := r.URL.Query().Get("error")
 	kind := r.URL.Query().Get("kind")
 	if kind == "" {
 		kind = "show"
 	}
+	errMsg := r.URL.Query().Get("error")
 
-	var sb strings.Builder
-
-	sb.WriteString(`<div class="card">`)
-	if errMsg != "" {
-		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
-	}
-
-	sb.WriteString(`<form method="POST" action="/work/post">`)
-
-	// Kind selector
-	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
-	for _, k := range []struct{ val, label, desc string }{
-		{"show", "Show", "Share something you built"},
-		{"task", "Task", "Post a task with a cost"},
-	} {
-		checked := ""
-		if k.val == kind {
-			checked = " checked"
-		}
-		sb.WriteString(fmt.Sprintf(`<label class="btn btn-secondary"><input type="radio" name="kind" value="%s"%s onchange="var t=this.value==='task'?'block':'none';document.getElementById('cost-field').style.display=t;document.getElementById('assign-field').style.display=t"> %s</label>`, k.val, checked, k.label))
-	}
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<div>`)
-	sb.WriteString(`<label for="work-title" class="text-sm">Title</label>`)
-	sb.WriteString(`<input type="text" id="work-title" name="title" placeholder="What did you build?" required class="form-input w-full mt-1" maxlength="200">`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<div class="mt-3">`)
-	sb.WriteString(`<label for="description" class="text-sm">Description</label>`)
-	sb.WriteString(`<textarea id="description" name="description" rows="6" placeholder="Tell people about it..." required class="form-input w-full mt-1"></textarea>`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<div class="mt-3">`)
-	sb.WriteString(`<label for="link" class="text-sm">Link (optional)</label>`)
-	sb.WriteString(`<input type="text" id="link" name="link" placeholder="URL, app slug, or repo" class="form-input w-full mt-1">`)
-	sb.WriteString(`</div>`)
-
-	costDisplay := "none"
-	if kind == "task" {
-		costDisplay = "block"
-	}
-	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="cost-field" style="display:%s">`, costDisplay))
-	sb.WriteString(`<label for="cost" class="text-sm">Cost (credits)</label>`)
-	sb.WriteString(`<input type="number" id="cost" name="cost" min="1" max="50000" placeholder="e.g. 500" class="form-input w-full mt-1">`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(fmt.Sprintf(`<div class="mt-3" id="assign-field" style="display:%s">`, costDisplay))
-	sb.WriteString(`<label class="text-sm"><input type="checkbox" name="assign" value="1" style="width:auto;margin-right:6px">Assign to Agent</label>`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<div class="mt-3">`)
-	sb.WriteString(`<label for="tags" class="text-sm">Tags (optional)</label>`)
-	sb.WriteString(`<input type="text" id="tags" name="tags" placeholder="e.g. app, go, design" class="form-input w-full mt-1">`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<button type="submit" class="btn mt-4">Post</button>`)
-	sb.WriteString(`</form>`)
-	sb.WriteString(`</div>`)
-
-	html := app.RenderHTMLForRequest("Share Work", "Post your work or a task", sb.String(), r)
+	content := `<div class="card">` + renderPostForm(kind, errMsg) + `</div>`
+	html := app.RenderHTMLForRequest("Share Work", "Post your work or a task", content, r)
 	w.Write([]byte(html))
 }
 
@@ -400,7 +414,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var kind, title, description, link, tags string
+	var kind, title, description, link string
 	var cost int
 	var assign bool
 
@@ -411,7 +425,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 			Description string `json:"description"`
 			Link        string `json:"link"`
 			Cost        int    `json:"cost"`
-			Tags        string `json:"tags"`
 			Assign      bool   `json:"assign"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -423,7 +436,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		description = body.Description
 		link = body.Link
 		cost = body.Cost
-		tags = body.Tags
 		assign = body.Assign
 	} else {
 		r.ParseForm()
@@ -431,7 +443,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		title = r.FormValue("title")
 		description = r.FormValue("description")
 		link = r.FormValue("link")
-		tags = r.FormValue("tags")
 		fmt.Sscanf(r.FormValue("cost"), "%d", &cost)
 		assign = r.FormValue("assign") == "1"
 	}
@@ -440,7 +451,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	title = strings.TrimSpace(title)
 	description = strings.TrimSpace(description)
 	link = strings.TrimSpace(link)
-	tags = strings.TrimSpace(tags)
 
 	if kind == "" {
 		kind = KindShow
@@ -449,17 +459,17 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	// Hold cost in escrow for tasks
 	if kind == KindTask && cost > 0 && sess.Account != "micro" {
 		if err := wallet.HoldEscrow(sess.Account, cost, "pending"); err != nil {
-			respondError(w, r, "/work/post?kind=task", "Insufficient credits for task cost")
+			respondError(w, r, "/work?kind=task", "Insufficient credits for task cost")
 			return
 		}
 	}
 
-	post, err := CreatePost(sess.Account, acc.Name, kind, title, description, link, tags, cost)
+	post, err := CreatePost(sess.Account, acc.Name, kind, title, description, link, "", cost)
 	if err != nil {
 		if kind == KindTask && cost > 0 && sess.Account != "micro" {
 			wallet.RefundEscrow(sess.Account, cost, "failed")
 		}
-		respondError(w, r, "/work/post?kind="+kind, err.Error())
+		respondError(w, r, "/work?kind="+kind, err.Error())
 		return
 	}
 
@@ -774,6 +784,46 @@ func handleAuthError(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.RedirectToLogin(w, r)
+}
+
+func handleDelete(w http.ResponseWriter, r *http.Request) {
+	sess, acc, err := auth.RequireSession(r)
+	if err != nil {
+		handleAuthError(w, r)
+		return
+	}
+
+	id := extractPostID(r.URL.Path, "/delete")
+	post := GetPost(id)
+	if post == nil {
+		respondPostError(w, r, id, "Post not found")
+		return
+	}
+
+	// Only admin or the author can delete
+	if !acc.Admin && sess.Account != post.AuthorID {
+		respondPostError(w, r, id, "You can only delete your own posts")
+		return
+	}
+
+	// Refund escrowed cost if task is open/claimed
+	if post.Kind == KindTask && post.Cost > 0 && post.AuthorID != "micro" {
+		if post.Status == StatusOpen || post.Status == StatusClaimed {
+			wallet.RefundEscrow(post.AuthorID, post.Cost, post.ID)
+		}
+	}
+
+	if err := DeletePost(id); err != nil {
+		respondPostError(w, r, id, err.Error())
+		return
+	}
+
+	if app.SendsJSON(r) || app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]string{"status": "deleted"})
+		return
+	}
+
+	http.Redirect(w, r, "/work?success=Post+deleted", http.StatusSeeOther)
 }
 
 func respondError(w http.ResponseWriter, r *http.Request, redirect, msg string) {
