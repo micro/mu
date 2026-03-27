@@ -63,6 +63,10 @@ type Comment struct {
 // Takes (prompt, authorID, authorName) and returns (appSlug, appName, error).
 var BuildApp func(prompt, authorID, authorName string) (string, string, error)
 
+// Notify is wired by main.go to send notifications (e.g. internal mail).
+// Takes (toUserID, subject, body).
+var Notify func(toUserID, subject, body string)
+
 var (
 	mutex sync.RWMutex
 	posts = map[string]*Post{}
@@ -361,7 +365,15 @@ func AssignToAgent(postID, authorID string) error {
 		post.Status = StatusDelivered
 		post.DeliveredAt = time.Now()
 		save()
+		authorID := post.AuthorID
+		title := post.Title
+		postID := post.ID
 		mutex.Unlock()
+
+		if Notify != nil {
+			Notify(authorID, "Agent completed: "+title,
+				fmt.Sprintf("The agent built %s for your task. Review it at /work/%s", name, postID))
+		}
 	}()
 
 	return nil

@@ -8,6 +8,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/mail"
 	"mu/wallet"
 )
 
@@ -613,6 +614,12 @@ func handleClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Notify the poster
+	if post := GetPost(id); post != nil {
+		notifyWork(post.AuthorID, "Task claimed: "+post.Title,
+			fmt.Sprintf("%s claimed your task. View it at /work/%s", acc.Name, id))
+	}
+
 	if app.SendsJSON(r) || app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]string{"status": "claimed"})
 		return
@@ -646,6 +653,12 @@ func handleDeliver(w http.ResponseWriter, r *http.Request) {
 	if err := DeliverTask(id, sess.Account, delivery); err != nil {
 		respondPostError(w, r, id, err.Error())
 		return
+	}
+
+	// Notify the poster
+	if post := GetPost(id); post != nil {
+		notifyWork(post.AuthorID, "Delivery submitted: "+post.Title,
+			fmt.Sprintf("Work has been delivered for your task. Review it at /work/%s", id))
 	}
 
 	if app.SendsJSON(r) || app.WantsJSON(r) {
@@ -683,6 +696,12 @@ func handleAccept(w http.ResponseWriter, r *http.Request) {
 		} else {
 			wallet.ReleaseEscrow(post.WorkerID, post.Cost, post.ID)
 		}
+	}
+
+	// Notify the worker (if human)
+	if post.WorkerID != "agent" && post.WorkerID != "" {
+		notifyWork(post.WorkerID, "Task accepted: "+post.Title,
+			fmt.Sprintf("Your delivery was accepted and %d credits have been released. View it at /work/%s", post.Cost, id))
 	}
 
 	if app.SendsJSON(r) || app.WantsJSON(r) {
@@ -839,4 +858,13 @@ func respondError(w http.ResponseWriter, r *http.Request, redirect, msg string) 
 
 func respondPostError(w http.ResponseWriter, r *http.Request, id, msg string) {
 	respondError(w, r, "/work/"+id, msg)
+}
+
+// notifyWork sends an internal mail notification for work events.
+func notifyWork(toID, subject, body string) {
+	acc, err := auth.GetAccount(toID)
+	if err != nil {
+		return
+	}
+	mail.SendMessage("Mu", "micro", acc.Name, toID, subject, body, "", "")
 }
