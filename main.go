@@ -102,6 +102,13 @@ func main() {
 		}
 		return a.Slug, a.Name, nil
 	}
+	work.Notify = func(toUserID, subject, body string) {
+		acc, err := auth.GetAccount(toUserID)
+		if err != nil {
+			return
+		}
+		mail.SendMessage("Mu", "micro", acc.Name, toUserID, subject, body, "", "")
+	}
 
 	// load social
 	social.Load()

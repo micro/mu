@@ -660,7 +660,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 	}
 	sb.WriteString(fmt.Sprintf(`<div class="headline" style="border-bottom:2px solid #eee;">
   %s
-  <div style="display:flex;justify-content:space-between;align-items:baseline;">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-right:24px">
     <div>%s</div>
     <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span></div>
   </div>
@@ -1027,7 +1027,7 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 		}
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
   %s
-  <div style="display:flex;justify-content:space-between;align-items:baseline;">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-right:24px">
     <div>%s</div>
     <div><span data-timestamp="%d" style="color:#888;font-size:12px;">%s</span></div>
   </div>
