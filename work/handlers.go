@@ -190,75 +190,75 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(fmt.Sprintf(`<div class="card"><p class="text-success">%s</p></div>`, msg))
 	}
 
-	// Post detail
+	// === Single task card ===
 	sb.WriteString(`<div class="card">`)
 
+	// Meta line
 	kindLabel := "Show"
 	if post.Kind == KindTask {
 		kindLabel = "Task"
 	}
-
-	detailMeta := fmt.Sprintf(`%s · Posted by <a href="/@%s">%s</a> · %s`,
+	detailMeta := fmt.Sprintf(`%s · <a href="/@%s">%s</a> · %s`,
 		kindLabel, post.AuthorID, post.Author, post.CreatedAt.Format("2 Jan 2006 15:04"))
 	detailMeta += app.ItemControls(userID, isAdmin, "work", post.ID, post.AuthorID, "", "/work/"+post.ID+"/delete")
 	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s</p>`, detailMeta))
 
-	if post.Kind == KindTask {
-		if post.Cost > 0 {
-			sb.WriteString(fmt.Sprintf(`<p><strong>Budget:</strong> %d credits · <strong>Spent:</strong> %d credits</p>`, post.Cost, post.Spent))
-		}
-		if post.Status != "" {
-			statusLabel := post.Status
-			if post.Status == StatusClaimed {
-				statusLabel = "building"
-			}
-			sb.WriteString(fmt.Sprintf(`<p><strong>Status:</strong> %s</p>`, statusLabel))
-		}
-	}
-	if post.Tips > 0 {
-		sb.WriteString(fmt.Sprintf(`<p><strong>Tips:</strong> %d credits</p>`, post.Tips))
-	}
-	if post.Link != "" {
-		sb.WriteString(fmt.Sprintf(`<p><strong>Link:</strong> <a href="%s">%s</a></p>`, post.Link, post.Link))
-	}
-	if post.Worker == "agent" {
-		sb.WriteString(`<p><strong>Assigned to:</strong> Agent</p>`)
-	} else if post.Worker != "" {
-		sb.WriteString(fmt.Sprintf(`<p><strong>Assigned to:</strong> <a href="/@%s">%s</a></p>`, post.Worker, post.Worker))
-	}
-	// Description (in same card)
-	sb.WriteString(`<hr style="margin:12px 0;border:none;border-top:1px solid #f0f0f0">`)
+	// Description
 	for _, para := range strings.Split(post.Description, "\n") {
 		para = strings.TrimSpace(para)
 		if para != "" {
 			sb.WriteString(fmt.Sprintf(`<p>%s</p>`, para))
 		}
 	}
-	sb.WriteString(`</div>`)
 
-	// App preview (if an app was built)
-	if post.AppSlug != "" {
-		appURL := "/apps/" + post.AppSlug + "/run"
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">%s</a> · <a href="%s">Launch →</a></p>`, post.AppSlug, post.AppSlug, appURL))
-		sb.WriteString(fmt.Sprintf(`<iframe src="%s?raw=1" style="width:100%%;min-height:400px;border:1px solid #eee;border-radius:8px;margin-top:8px" sandbox="allow-scripts"></iframe>`, appURL))
-		sb.WriteString(`</div>`)
+	// Task info
+	if post.Kind == KindTask {
+		statusLabel := post.Status
+		if post.Status == StatusClaimed {
+			statusLabel = "building"
+		}
+		info := fmt.Sprintf(`<strong>Status:</strong> %s`, statusLabel)
+		if post.Cost > 0 {
+			info += fmt.Sprintf(` · <strong>Budget:</strong> %d · <strong>Spent:</strong> %d`, post.Cost, post.Spent)
+		}
+		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted" style="margin-top:12px">%s</p>`, info))
+	}
+	if post.Link != "" {
+		sb.WriteString(fmt.Sprintf(`<p class="text-sm"><a href="%s">%s</a></p>`, post.Link, post.Link))
 	}
 
-	// Delivery text (markdown)
+	// Cancel button (inline, not a separate card)
+	if sess != nil && post.Kind == KindTask && userID == post.AuthorID {
+		if post.Status == StatusOpen || post.Status == StatusClaimed {
+			sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task?')" style="margin-top:12px">`, post.ID))
+			sb.WriteString(`<button type="submit" class="btn btn-secondary">Cancel</button>`)
+			sb.WriteString(`</form>`)
+		}
+	}
+
+	sb.WriteString(`</div>`) // end task card
+
+	// === App preview ===
+	if post.AppSlug != "" {
+		appURL := "/apps/" + post.AppSlug + "/run"
+		sb.WriteString(fmt.Sprintf(`<div class="card">
+			<p><a href="%s">Launch App →</a></p>
+			<iframe src="%s?raw=1" style="width:100%%;min-height:400px;border:1px solid #eee;border-radius:8px;margin-top:8px" sandbox="allow-scripts"></iframe>
+		</div>`, appURL, appURL))
+	}
+
+	// === Result (markdown delivery) ===
 	if post.Delivery != "" {
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h4>Result</h4>`)
 		sb.WriteString(app.RenderString(post.Delivery))
 		sb.WriteString(`</div>`)
 	}
 
-	// Retry with feedback (for delivered tasks — author can request changes)
+	// === Retry / Accept (delivered tasks) ===
 	if post.Status == StatusDelivered && userID == post.AuthorID {
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/retry">`, post.ID))
-		sb.WriteString(`<label class="text-sm">What needs to change?</label>`)
-		sb.WriteString(`<textarea name="feedback" rows="3" placeholder="Describe what to fix or improve..." required class="form-input w-full mt-1"></textarea>`)
+		sb.WriteString(`<textarea name="feedback" rows="2" placeholder="What needs to change?" required class="form-input w-full"></textarea>`)
 		sb.WriteString(`<div class="d-flex gap-2 mt-3">`)
 		sb.WriteString(`<button type="submit" class="btn">Retry</button>`)
 		sb.WriteString(`</form>`)
@@ -269,64 +269,51 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`</div>`)
 	}
 
-	// Agent log
+	// === Agent log (collapsible) ===
 	if len(post.Log) > 0 || (post.Status == StatusClaimed && post.WorkerID == "agent") {
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h4>Agent Log</h4>`)
-		sb.WriteString(`<div id="agent-log">`)
-		for i, entry := range post.Log {
-			if i > 0 {
-				sb.WriteString(`<hr style="border:none;border-top:1px solid #f0f0f0;margin:8px 0">`)
-			}
+		sb.WriteString(`<details>`)
+		sb.WriteString(fmt.Sprintf(`<summary style="cursor:pointer;font-weight:600;font-size:14px">Agent Log (%d)</summary>`, len(post.Log)))
+		sb.WriteString(`<div id="agent-log" style="margin-top:8px">`)
+		for _, entry := range post.Log {
 			color := "#555"
 			switch entry.Step {
 			case "error", "budget":
 				color = "#c00"
 			case "complete":
 				color = "#28a745"
+			case "info":
+				color = "#888"
 			}
 			credits := ""
 			if entry.Credits > 0 {
-				credits = fmt.Sprintf(` · %d credits`, entry.Credits)
+				credits = fmt.Sprintf(` · %dc`, entry.Credits)
 			}
-			sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;padding:4px 0"><div><span style="color:%s;font-weight:600">%s</span> <span class="text-muted">%s</span>%s</div><div style="margin-top:2px">%s</div></div>`,
-				color, entry.Step, entry.CreatedAt.Format("15:04:05"), credits, entry.Message))
+			sb.WriteString(fmt.Sprintf(`<p style="font-size:12px;margin:2px 0;color:#666"><span style="color:%s;font-weight:600">%s</span> %s%s</p>`,
+				color, entry.Step, entry.Message, credits))
 		}
-		sb.WriteString(`</div>`) // close #agent-log
-		sb.WriteString(`</div>`) // close .card
+		sb.WriteString(`</div>`)
+		sb.WriteString(`</details>`)
+		sb.WriteString(`</div>`)
 	}
 
-	// Cancel (for open/building tasks)
-	if sess != nil && post.Kind == KindTask && userID == post.AuthorID {
-		if post.Status == StatusOpen || post.Status == StatusClaimed {
-			sb.WriteString(`<div class="card">`)
-			sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task?')">`, post.ID))
-			sb.WriteString(`<button type="submit" class="btn btn-secondary">Cancel</button>`)
+	// === Feedback ===
+	if len(post.Feedback) > 0 || sess != nil {
+		sb.WriteString(`<div class="card">`)
+		if len(post.Feedback) > 0 {
+			for _, fb := range post.Feedback {
+				sb.WriteString(fmt.Sprintf(`<div style="margin-bottom:8px"><strong><a href="/@%s">%s</a></strong> <span class="text-sm text-muted">%s</span><p>%s</p></div>`,
+					fb.Author, fb.Author, fb.CreatedAt.Format("2 Jan 15:04"), fb.Text))
+			}
+		}
+		if sess != nil {
+			sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/feedback">`, post.ID))
+			sb.WriteString(`<textarea name="text" rows="2" placeholder="Add a comment..." required class="form-input w-full"></textarea>`)
+			sb.WriteString(`<button type="submit" class="btn mt-2">Comment</button>`)
 			sb.WriteString(`</form>`)
-			sb.WriteString(`</div>`)
 		}
+		sb.WriteString(`</div>`)
 	}
-
-	// Feedback section
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(fmt.Sprintf(`<h4>Feedback (%d)</h4>`, len(post.Feedback)))
-
-	if len(post.Feedback) > 0 {
-		for _, fb := range post.Feedback {
-			sb.WriteString(fmt.Sprintf(`<div class="mt-3"><p><strong><a href="/@%s">%s</a></strong> <span class="text-sm text-muted">%s</span></p>`,
-				fb.Author, fb.Author, fb.CreatedAt.Format("2 Jan 15:04")))
-			sb.WriteString(fmt.Sprintf(`<p>%s</p></div>`, fb.Text))
-		}
-	}
-
-	// Feedback form
-	if sess != nil {
-		sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/feedback" class="mt-4">`, post.ID))
-		sb.WriteString(`<textarea name="text" rows="3" placeholder="Share your thoughts..." required class="form-input w-full"></textarea>`)
-		sb.WriteString(`<button type="submit" class="btn mt-2">Send Feedback</button>`)
-		sb.WriteString(`</form>`)
-	}
-	sb.WriteString(`</div>`)
 
 	// Live polling while building
 	if post.Status == StatusClaimed && post.WorkerID == "agent" {
