@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -36,7 +37,7 @@ func WalletPage(userID string) string {
 	} else {
 		sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
 	}
-	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a></p>`)
+	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a> · <a href="/wallet/transfer">Transfer →</a></p>`)
 	sb.WriteString(`</div>`)
 
 	if !isAdmin {
@@ -91,6 +92,20 @@ func WalletPage(userID string) string {
 			typeLabel := tx.Operation
 			if tx.Type == TxTopup {
 				typeLabel = "Deposit"
+			} else if tx.Type == TxTransfer {
+				if tx.Amount > 0 {
+					if from, ok := tx.Metadata["from"].(string); ok {
+						typeLabel = "Transfer from " + from
+					} else {
+						typeLabel = "Transfer in"
+					}
+				} else {
+					if to, ok := tx.Metadata["to"].(string); ok {
+						typeLabel = "Transfer to " + to
+					} else {
+						typeLabel = "Transfer out"
+					}
+				}
 			}
 			var amountStr string
 			if tx.Amount == 0 {
@@ -176,6 +191,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleStripeSuccess(w, r)
 	case path == "/wallet/stripe/webhook" && r.Method == "POST":
 		HandleStripeWebhook(w, r)
+	case path == "/wallet/transfer" && r.Method == "POST":
+		handleTransfer(w, r)
+	case path == "/wallet/transfer" && r.Method == "GET":
+		handleTransferPage(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -308,6 +327,147 @@ func renderStripeDeposit(userID, errMsg string) string {
 	sb.WriteString(`</div>`)
 
 	return sb.String()
+}
+
+// maxTransferCredits is the maximum allowed transfer amount in credits
+const maxTransferCredits = 50000 // £500
+
+func handleTransferPage(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+
+	balance := GetBalance(sess.Account)
+	errMsg := r.URL.Query().Get("error")
+	successMsg := r.URL.Query().Get("success")
+
+	var sb strings.Builder
+
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>Transfer Credits</h3>`)
+	if errMsg != "" {
+		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
+	}
+	if successMsg != "" {
+		sb.WriteString(fmt.Sprintf(`<p class="text-success">%s</p>`, successMsg))
+	}
+	sb.WriteString(fmt.Sprintf(`<p>Your balance: <strong>%d credits</strong></p>`, balance))
+	sb.WriteString(`<form method="POST" action="/wallet/transfer">`)
+	sb.WriteString(`<div>`)
+	sb.WriteString(`<label for="transfer-to" class="text-sm">Recipient username</label>`)
+	sb.WriteString(`<input type="text" id="transfer-to" name="to" placeholder="username" required class="form-input w-full mt-1">`)
+	sb.WriteString(`</div>`)
+	sb.WriteString(`<div class="mt-3">`)
+	sb.WriteString(`<label for="transfer-amount" class="text-sm">Amount (credits)</label>`)
+	sb.WriteString(fmt.Sprintf(`<input type="number" id="transfer-amount" name="amount" min="1" max="%d" placeholder="e.g. 100" required class="form-input w-full mt-1">`, maxTransferCredits))
+	sb.WriteString(`</div>`)
+	sb.WriteString(`<button type="submit" class="btn mt-4">Transfer</button>`)
+	sb.WriteString(`</form>`)
+	sb.WriteString(`</div>`)
+
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p. Transfers are instant and non-reversible.</p>`)
+	sb.WriteString(`</div>`)
+
+	html := app.RenderHTMLForRequest("Transfer Credits", "Send credits to another user", sb.String(), r)
+	w.Write([]byte(html))
+}
+
+func handleTransfer(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		if app.WantsJSON(r) || app.SendsJSON(r) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error":"authentication required"}`))
+			return
+		}
+		app.RedirectToLogin(w, r)
+		return
+	}
+
+	var to string
+	var amount int
+
+	if app.SendsJSON(r) {
+		// JSON body
+		var body struct {
+			To     string `json:"to"`
+			Amount int    `json:"amount"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			app.RespondJSON(w, map[string]string{"error": "invalid request body"})
+			return
+		}
+		to = body.To
+		amount = body.Amount
+	} else {
+		// Form submission
+		if err := r.ParseForm(); err != nil {
+			http.Redirect(w, r, "/wallet/transfer?error=Invalid+form", http.StatusSeeOther)
+			return
+		}
+		to = r.FormValue("to")
+		fmt.Sscanf(r.FormValue("amount"), "%d", &amount)
+	}
+
+	to = strings.TrimSpace(to)
+	to = strings.TrimPrefix(to, "@")
+
+	if to == "" {
+		respondTransferError(w, r, "Recipient username is required")
+		return
+	}
+	if amount < 1 {
+		respondTransferError(w, r, "Amount must be at least 1 credit")
+		return
+	}
+	if amount > maxTransferCredits {
+		respondTransferError(w, r, fmt.Sprintf("Maximum transfer is %d credits", maxTransferCredits))
+		return
+	}
+
+	// Look up recipient by username
+	recipient, err := auth.GetAccountByName(to)
+	if err != nil {
+		respondTransferError(w, r, "User not found")
+		return
+	}
+
+	if recipient.ID == sess.Account {
+		respondTransferError(w, r, "Cannot transfer to yourself")
+		return
+	}
+
+	// Perform the transfer
+	if err := TransferCredits(sess.Account, recipient.ID, amount); err != nil {
+		respondTransferError(w, r, err.Error())
+		return
+	}
+
+	if app.WantsJSON(r) || app.SendsJSON(r) {
+		newBalance := GetBalance(sess.Account)
+		app.RespondJSON(w, map[string]interface{}{
+			"status":  "ok",
+			"to":      recipient.Name,
+			"amount":  amount,
+			"balance": newBalance,
+		})
+		return
+	}
+
+	msg := fmt.Sprintf("Transferred+%d+credits+to+%s", amount, recipient.Name)
+	http.Redirect(w, r, "/wallet/transfer?success="+msg, http.StatusSeeOther)
+}
+
+func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
+	if app.WantsJSON(r) || app.SendsJSON(r) {
+		app.RespondJSON(w, map[string]string{"error": msg})
+		return
+	}
+	http.Redirect(w, r, "/wallet/transfer?error="+strings.ReplaceAll(msg, " ", "+"), http.StatusSeeOther)
 }
 
 // maxTopupPounds is the maximum allowed top-up amount in whole pounds

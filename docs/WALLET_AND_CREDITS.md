@@ -123,6 +123,30 @@ Credit costs are converted to USD at **1 credit = $0.01**. For example, a web se
 
 ---
 
+## Transfers
+
+Users can transfer credits to other users on the network:
+
+1. Go to `/wallet/transfer`
+2. Enter the recipient's username and amount
+3. Credits are transferred instantly
+
+Transfers are also available via the MCP `wallet_transfer` tool and the REST API.
+
+**Limits:**
+- Minimum: 1 credit
+- Maximum: 50,000 credits (£500) per transfer
+- Cannot transfer to yourself
+- Sender must have sufficient balance
+
+**Transaction types:**
+- Transfers appear in both parties' transaction history
+- Sender sees a negative "transfer" transaction with the recipient's ID
+- Receiver sees a positive "transfer" transaction with the sender's ID
+- Transfers are instant and non-reversible
+
+---
+
 ## Data Model
 
 ### Wallet
@@ -169,6 +193,8 @@ type DailyUsage struct {
 |--------|------|-------------|
 | GET | `/wallet` | View balance and transaction history |
 | GET | `/wallet/topup` | Show deposit address and instructions |
+| GET | `/wallet/transfer` | Transfer credits form |
+| POST | `/wallet/transfer` | Transfer credits to another user |
 | POST | `/wallet/stripe/checkout` | Create a Stripe checkout session |
 | GET | `/wallet/stripe/success` | Success page after Stripe payment |
 | POST | `/wallet/stripe/webhook` | Stripe webhook for payment confirmation |

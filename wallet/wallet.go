@@ -61,13 +61,15 @@ const (
 	OpSocialSearch      = "social_search"
 	OpTopup             = "topup"
 	OpRefund            = "refund"
+	OpTransfer          = "transfer"
 )
 
 // Transaction types
 const (
-	TxTopup  = "topup"
-	TxSpend  = "spend"
-	TxRefund = "refund"
+	TxTopup    = "topup"
+	TxSpend    = "spend"
+	TxRefund   = "refund"
+	TxTransfer = "transfer"
 )
 
 var mutex sync.RWMutex
@@ -234,6 +236,79 @@ func DeductCredits(userID string, amount int, operation string, metadata map[str
 		CreatedAt: time.Now(),
 	}
 	transactions[userID] = append(transactions[userID], tx)
+
+	// Persist
+	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("transactions.json", transactions)
+
+	return nil
+}
+
+// TransferCredits transfers credits from one user to another
+func TransferCredits(fromUserID, toUserID string, amount int) error {
+	if amount <= 0 {
+		return errors.New("amount must be positive")
+	}
+	if fromUserID == toUserID {
+		return errors.New("cannot transfer to yourself")
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Check sender has sufficient balance
+	sender, exists := wallets[fromUserID]
+	if !exists || sender.Balance < amount {
+		return errors.New("insufficient credits")
+	}
+
+	// Get or create receiver wallet
+	receiver, exists := wallets[toUserID]
+	if !exists {
+		receiver = &Wallet{
+			UserID:   toUserID,
+			Balance:  0,
+			Currency: "GBP",
+		}
+		wallets[toUserID] = receiver
+	}
+
+	// Deduct from sender
+	sender.Balance -= amount
+	sender.UpdatedAt = time.Now()
+
+	// Credit receiver
+	receiver.Balance += amount
+	receiver.UpdatedAt = time.Now()
+
+	now := time.Now()
+	txID := uuid.New().String()
+
+	// Record sender transaction
+	senderTx := &Transaction{
+		ID:        txID,
+		UserID:    fromUserID,
+		Type:      TxTransfer,
+		Amount:    -amount,
+		Balance:   sender.Balance,
+		Operation: OpTransfer,
+		Metadata:  map[string]interface{}{"to": toUserID},
+		CreatedAt: now,
+	}
+	transactions[fromUserID] = append(transactions[fromUserID], senderTx)
+
+	// Record receiver transaction
+	receiverTx := &Transaction{
+		ID:        uuid.New().String(),
+		UserID:    toUserID,
+		Type:      TxTransfer,
+		Amount:    amount,
+		Balance:   receiver.Balance,
+		Operation: OpTransfer,
+		Metadata:  map[string]interface{}{"from": fromUserID},
+		CreatedAt: now,
+	}
+	transactions[toUserID] = append(transactions[toUserID], receiverTx)
 
 	// Persist
 	data.SaveJSON("wallets.json", wallets)
