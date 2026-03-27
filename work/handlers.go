@@ -30,6 +30,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleAccept(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/cancel") && r.Method == "POST":
 		handleCancel(w, r)
+	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/assign") && r.Method == "POST":
+		handleAssign(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/tip") && r.Method == "POST":
 		handleTip(w, r)
 	case strings.HasPrefix(path, "/work/") && strings.HasSuffix(path, "/feedback") && r.Method == "POST":
@@ -59,7 +61,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	// Header
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Work</h3>`)
 	sb.WriteString(`<p>Share your work, get feedback, or post tasks with credit bounties.</p>`)
 	if sess != nil {
 		sb.WriteString(`<p><a href="/work/post" class="btn">Post</a></p>`)
@@ -169,7 +170,6 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Post detail
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(fmt.Sprintf(`<h3>%s</h3>`, post.Title))
 
 	kindLabel := "Show"
 	if post.Kind == KindTask {
@@ -238,9 +238,14 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 					sb.WriteString(`<button type="submit" class="btn">Claim This Task</button>`)
 					sb.WriteString(`</form>`)
 				} else {
-					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task? Your bounty will be refunded.')">`, post.ID))
-					sb.WriteString(`<button type="submit" class="btn btn-secondary">Cancel Task</button>`)
+					sb.WriteString(`<div class="d-flex gap-2">`)
+					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/assign">`, post.ID))
+					sb.WriteString(`<button type="submit" class="btn">Assign to Agent</button>`)
 					sb.WriteString(`</form>`)
+					sb.WriteString(fmt.Sprintf(`<form method="POST" action="/work/%s/cancel" onsubmit="return confirm('Cancel this task? Your bounty will be refunded.')">`, post.ID))
+					sb.WriteString(`<button type="submit" class="btn btn-secondary">Cancel</button>`)
+					sb.WriteString(`</form>`)
+					sb.WriteString(`</div>`)
 				}
 				sb.WriteString(`</div>`)
 
@@ -327,7 +332,6 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 	var sb strings.Builder
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Share Work</h3>`)
 	if errMsg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
@@ -626,9 +630,14 @@ func handleAccept(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Release escrow to worker
+	// Pay out: if agent did the work, refund bounty to poster (they only paid compute).
+	// If a human did it, release escrow to the worker.
 	if post.AuthorID != "mu" {
-		wallet.ReleaseEscrow(post.WorkerID, post.Bounty, post.ID)
+		if post.WorkerID == "agent" {
+			wallet.RefundEscrow(post.AuthorID, post.Bounty, post.ID)
+		} else {
+			wallet.ReleaseEscrow(post.WorkerID, post.Bounty, post.ID)
+		}
 	}
 
 	if app.SendsJSON(r) || app.WantsJSON(r) {
@@ -683,6 +692,40 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/work?success=Task+cancelled", http.StatusSeeOther)
+}
+
+func handleAssign(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		handleAuthError(w, r)
+		return
+	}
+
+	id := extractPostID(r.URL.Path, "/assign")
+
+	// Consume credits for the agent build (same cost as apps_build = chat_query = 3 credits)
+	canProceed, _, cost, qerr := wallet.CheckQuota(sess.Account, wallet.OpChatQuery)
+	if !canProceed {
+		msg := fmt.Sprintf("Insufficient credits (%d required)", cost)
+		if qerr != nil {
+			msg = qerr.Error()
+		}
+		respondPostError(w, r, id, msg)
+		return
+	}
+	wallet.ConsumeQuota(sess.Account, wallet.OpChatQuery)
+
+	if err := AssignToAgent(id, sess.Account); err != nil {
+		respondPostError(w, r, id, err.Error())
+		return
+	}
+
+	if app.SendsJSON(r) || app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]string{"status": "assigned"})
+		return
+	}
+
+	http.Redirect(w, r, "/work/"+id+"?success=Assigned+to+agent.+Building...", http.StatusSeeOther)
 }
 
 func extractPostID(path, suffix string) string {

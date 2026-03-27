@@ -3,6 +3,7 @@ package work
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -57,6 +58,10 @@ type Comment struct {
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+// BuildApp is wired by main.go to call the apps builder.
+// Takes (prompt, authorID, authorName) and returns (appSlug, appName, error).
+var BuildApp func(prompt, authorID, authorName string) (string, string, error)
 
 var (
 	mutex sync.RWMutex
@@ -288,6 +293,76 @@ func ReleaseTask(postID, authorID string) error {
 	post.ClaimedAt = time.Time{}
 
 	save()
+	return nil
+}
+
+// AssignToAgent assigns an open task to the AI agent.
+// It claims the task as "agent", runs the app builder in a goroutine,
+// and posts the delivery when complete. The poster reviews the result.
+func AssignToAgent(postID, authorID string) error {
+	mutex.Lock()
+	post, exists := posts[postID]
+	if !exists {
+		mutex.Unlock()
+		return errors.New("post not found")
+	}
+	if post.Kind != KindTask {
+		mutex.Unlock()
+		return errors.New("only tasks can be assigned")
+	}
+	if post.Status != StatusOpen {
+		mutex.Unlock()
+		return errors.New("task is not open")
+	}
+	if post.AuthorID != authorID {
+		mutex.Unlock()
+		return errors.New("only the poster can assign to agent")
+	}
+
+	post.WorkerID = "agent"
+	post.Worker = "agent"
+	post.Status = StatusClaimed
+	post.ClaimedAt = time.Now()
+	save()
+	mutex.Unlock()
+
+	// Run the builder in background
+	go func() {
+		if BuildApp == nil {
+			// No builder wired — release back to open
+			mutex.Lock()
+			post.WorkerID = ""
+			post.Worker = ""
+			post.Status = StatusOpen
+			post.ClaimedAt = time.Time{}
+			save()
+			mutex.Unlock()
+			return
+		}
+
+		slug, name, err := BuildApp(post.Description, "agent", "agent")
+		if err != nil {
+			// Failed — release back to open
+			mutex.Lock()
+			post.WorkerID = ""
+			post.Worker = ""
+			post.Status = StatusOpen
+			post.ClaimedAt = time.Time{}
+			save()
+			mutex.Unlock()
+			return
+		}
+
+		// Deliver the result
+		delivery := fmt.Sprintf("%s — /apps/%s/run", name, slug)
+		mutex.Lock()
+		post.Delivery = delivery
+		post.Status = StatusDelivered
+		post.DeliveredAt = time.Now()
+		save()
+		mutex.Unlock()
+	}()
+
 	return nil
 }
 
