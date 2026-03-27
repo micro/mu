@@ -37,13 +37,14 @@ Rules:
 - Style guidelines: clean, minimal design. Use subtle borders (#e0e0e0), 6px border-radius, 16-24px padding, #333 text, #fff background
 - Button style: padding 8-10px 20-24px, border-radius 6px, primary buttons use background #000 color #fff
 - Keep it simple and functional — no external dependencies, no CDN links, no images
-- The app runs in a sandboxed iframe with geolocation enabled — no access to parent page
+- The app runs in a sandboxed iframe — it CANNOT use fetch() or XMLHttpRequest directly. All API calls MUST go through the Mu SDK.
+- IMPORTANT: Always include <script src="/apps/sdk.js"></script> at the top of your app if it needs any external data, AI, or storage.
 - If the app uses geolocation (navigator.geolocation), ALWAYS provide a graceful fallback: show a manual location input or a sensible default when the user denies permission or the API fails. Never let the app be blank or broken if location is unavailable.
-- If the app needs AI features, include <script src="/apps/sdk.js"></script> and use mu.ai(prompt)
-- If the app needs persistent storage, use mu.store.set(key, value) and mu.store.get(key)
-- If the app needs platform data, include <script src="/apps/sdk.js"></script> and use:
-  - mu.api.get(path) — GET request to Mu API (e.g. mu.api.get('/weather?q=London'))
-  - mu.api.post(path, body) — POST request to Mu API (e.g. mu.api.post('/places/search', {q:'cafe',near:'London'}))
+- For AI features: mu.ai(prompt) — returns a promise with the AI response
+- For persistent storage: mu.store.set(key, value), mu.store.get(key), mu.store.del(key)
+- For platform data — NEVER use fetch() directly, always use mu.api:
+  - mu.api.get(path) — GET request (e.g. mu.api.get('/weather?q=London'))
+  - mu.api.post(path, body) — POST request (e.g. mu.api.post('/places/search', {q:'cafe',near:'London'}))
   - Available APIs: /weather?q=, /places/search, /places/nearby, /news, /markets, /video, /chat
 - Maximum 256KB HTML
 - Make it responsive and mobile-friendly
