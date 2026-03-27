@@ -483,7 +483,9 @@ func runAgent(post *Post) {
 
 	if Notify != nil {
 		Notify(authorID, "Agent completed: "+title,
-			fmt.Sprintf("The agent built %s for your task. Spent %d of %d credits. Review it at /work/%s", name, post.Spent, post.Cost, postID))
+			fmt.Sprintf(`The agent built %s for your task. Spent %d of %d credits.
+
+<a href="/work/%s">Review delivery →</a>`, name, post.Spent, post.Cost, postID))
 	}
 }
 
@@ -502,6 +504,62 @@ func failAgent(post *Post, reason string) {
 	if Notify != nil {
 		Notify(authorID, "Agent failed: "+title, reason)
 	}
+}
+
+// RetryWithFeedback resets a delivered task and re-runs the agent with feedback.
+func RetryWithFeedback(post *Post, feedback string) {
+	mutex.Lock()
+	post.Status = StatusClaimed
+	post.Delivery = ""
+	post.DeliveredAt = time.Time{}
+	save()
+	mutex.Unlock()
+
+	addLog(post, "retry", "Retrying with feedback: "+feedback, 0)
+
+	go func() {
+		if BuildApp == nil {
+			failAgent(post, "No builder configured")
+			return
+		}
+
+		prompt := post.Description + "\n\nFeedback from previous attempt:\n" + feedback
+		authorID := post.AuthorID
+
+		if !spendCredits(post, authorID, creditPerStep) {
+			addLog(post, "budget", "Budget exceeded", 0)
+			failAgent(post, "Budget exceeded")
+			return
+		}
+
+		addLog(post, "build", "Rebuilding with feedback...", creditPerStep)
+
+		slug, name, err := BuildApp(prompt, "agent", "agent")
+		if err != nil {
+			addLog(post, "error", fmt.Sprintf("Build failed: %v", err), 0)
+			failAgent(post, "Build failed: "+err.Error())
+			return
+		}
+
+		delivery := fmt.Sprintf("%s — /apps/%s/run", name, slug)
+		mutex.Lock()
+		post.Delivery = delivery
+		post.Status = StatusDelivered
+		post.DeliveredAt = time.Now()
+		save()
+		title := post.Title
+		postID := post.ID
+		mutex.Unlock()
+
+		addLog(post, "complete", fmt.Sprintf("Delivered: %s (spent %d credits)", delivery, post.Spent), 0)
+
+		if Notify != nil {
+			Notify(authorID, "Agent updated: "+title,
+				fmt.Sprintf(`The agent rebuilt %s with your feedback. Spent %d/%d credits.
+
+<a href="/work/%s">Review delivery →</a>`, name, post.Spent, post.Cost, postID))
+		}
+	}()
 }
 
 // ResumeAgentWork restarts any in-progress agent tasks (e.g. after server restart).
