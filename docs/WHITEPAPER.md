@@ -1,472 +1,211 @@
-# Mu: A Network for Apps Without Ads, Algorithms, or Tracking
+# Mu: A Unified Service Network with Native Payments for Humans and Autonomous Agents
 
-**Version 0.1 — March 2026**
+Asim Aslam
 
-**mu.xyz**
+asim@mu.xyz
 
----
+mu.xyz
 
-## Abstract
+**Abstract.** The dominant model for internet services relies on advertising revenue, which creates a structural incentive to maximise user engagement rather than user utility. We propose Mu, a unified network of composable services — including news aggregation, web search, messaging, financial data, weather, location services, and AI — accessible through a single protocol endpoint and funded by direct per-use micropayments rather than advertising. Services are exposed via the Model Context Protocol (MCP), a JSON-RPC 2.0 interface that serves both human users and autonomous AI agents. Payments are handled through two complementary mechanisms: traditional card payments for account-holding users, and the x402 HTTP payment protocol for account-free, per-request settlement using on-chain stablecoins. The system is implemented as a single self-hostable binary. We describe the architecture, the credit-based economic model, the payment protocols, a mechanism for peer-to-peer credit transfer, and a path toward a federated network of nodes sharing a common settlement layer.
 
-Mu is an open network of applications for everyday use — news, search, chat, video, email, markets, weather, and more — delivered without advertising, algorithmic manipulation, or user tracking. It runs as a single Go binary, is fully self-hostable, and provides a unified API via the Model Context Protocol (MCP) for both human users and autonomous AI agents.
+## 1. Introduction
 
-This paper describes the architecture, economic model, payment protocols, and future direction of the Mu network, including the potential for a blockchain-based settlement layer that enables a permissionless marketplace of services.
+The prevailing business model of internet platforms is advertising. Users receive services at no direct monetary cost; in exchange, their attention and behavioural data are sold to advertisers. This model creates a well-documented misalignment: platforms are optimised to maximise time spent rather than tasks accomplished. The consequences include algorithmic content manipulation, behavioural profiling, notification abuse, infinite scroll mechanics, and engagement-driven ranking systems [1].
 
----
+A parallel problem has emerged with the rise of autonomous AI agents. An agent that requires access to multiple real-world services — web search, weather data, email delivery, market prices — must establish separate accounts, API keys, and billing relationships with each provider. No unified protocol exists for an agent to discover, access, and pay for heterogeneous services through a single interface.
 
-## 1. The Problem
+This paper describes Mu, a system that addresses both problems. Mu provides a collection of everyday services through a single endpoint, funded by direct micropayments, and accessible to both human users via a web interface and AI agents via the Model Context Protocol.
 
-The internet's dominant platforms share a common business model: extract user attention, sell it to advertisers, and optimise for engagement above all else.
+## 2. System Design
 
-This creates a set of well-documented harms:
+### 2.1 Architecture
 
-- **Algorithmic feeds** that prioritise engagement over truth or usefulness
-- **Infinite scroll** and notification loops designed to maximise screen time
-- **Surveillance** — behavioural profiling for ad targeting
-- **Click and rage bait** to drive interaction metrics
-- **Walled gardens** that lock users into proprietary ecosystems
-- **Dark patterns** that manipulate users into sharing more data and spending more time
+Mu is implemented as a single Go binary comprising three layers:
 
-The fundamental misalignment is economic: platforms profit when users spend more time, not when they accomplish their goals. Every feature is evaluated by its effect on "engagement" — a euphemism for addiction.
+**Subsystems** provide infrastructure primitives: HTTP rendering, API dispatch, LLM integration, data storage with full-text search, authentication, and administration.
 
-The tools people use every day — news, search, email, chat, markets — are scattered across dozens of platforms, each competing for attention and data. There is no single place that brings them together without the noise.
+**Building blocks** are user-facing services. Each building block is a self-contained Go package that uses the subsystem primitives. Current building blocks include news aggregation (RSS with AI summarisation), video (YouTube integration without advertising), web search (via Brave Search API), microblogging (with ActivityPub federation), AI chat, messaging (with SMTP and DKIM), financial markets (cryptocurrency and commodity prices via Coinbase API), weather forecasts, location search, and an application builder.
 
-### 1.1 The Agent Problem
+**Agents** are autonomous processes that compose building blocks. An agent receives a natural language instruction and executes a sequence of tool calls across multiple building blocks to fulfil it. Agents operate through the same MCP interface available to external clients.
 
-A new class of user is emerging: autonomous AI agents that need access to real-world services. An agent that wants to search the web, check the weather, and send an email currently needs three different providers, three signups, three API keys, and three billing relationships.
+All static assets — HTML, CSS, JavaScript, icons — are embedded at compile time. Persistent data is stored as JSON files on disk, with optional SQLite and FTS5 indexing for full-text search. The system starts from a single command with no external dependencies.
 
-There is no unified interface for agents to discover, access, and pay for services.
+### 2.2 Communication
 
----
+Building blocks communicate through an internal publish-subscribe event bus. This avoids direct coupling between packages: the news system publishes article events that the blog system subscribes to for digest generation; the chat system publishes URL references that trigger metadata refresh in the news system; the agent system issues tool calls that the wallet system intercepts for quota enforcement. No building block imports another directly.
 
-## 2. The Mu Network
+### 2.3 Protocol Interface
 
-Mu is a collection of apps built on a shared infrastructure. Each app does one thing well:
+Every building block is exposed as a tool through the Model Context Protocol at a single HTTP endpoint. MCP defines a JSON-RPC 2.0 interface for tool discovery (`tools/list`) and invocation (`tools/call`). The Mu MCP server currently exposes over thirty tools spanning information retrieval, search, content creation, communication, and account management.
 
-| Service | Function |
-|---------|----------|
-| **News** | RSS feed aggregation with AI summaries |
-| **Video** | YouTube without ads, algorithms, or shorts |
-| **Web** | Privacy-respecting web search (Brave) |
-| **Blog** | Microblogging with ActivityPub federation |
-| **Chat** | AI-powered conversation |
-| **Mail** | Private messaging and external email (SMTP) |
-| **Markets** | Live crypto, futures, and commodity prices |
-| **Weather** | Forecasts and pollen data |
-| **Places** | Location search and discovery |
-| **Apps** | Build and run small web tools with AI |
-| **Agent** | AI assistant that orchestrates all services |
-| **Wallet** | Credit-based payment system |
+An MCP client — whether a human-operated AI assistant or an autonomous agent — connects to the endpoint and receives a complete catalogue of available tools with typed parameter schemas. Tool invocations are dispatched internally to the corresponding building block handler. Authentication is forwarded from the outer HTTP request via session cookies, bearer tokens, or x402 payment headers.
 
-### 2.1 Design Principles
+This design means that every service available through the web interface is equally available to any MCP-compatible client, including Claude Desktop, Cursor, and custom agent implementations.
 
-Every design choice follows from a single question: **does this serve the user or the platform?**
+## 3. Economic Model
 
-- **Chronological feeds** — no algorithm decides what you see
-- **Finite content** — no infinite scroll; content ends
-- **No ads, no tracking** — revenue comes from usage, not attention
-- **Pay for what you use** — no subscriptions that incentivise engagement
-- **Single binary** — no external dependencies, easy to self-host
-- **Open source** — AGPL-3.0, your server, your data
+### 3.1 Credit System
 
-### 2.2 What We Exclude
+Mu uses an integer credit system where one credit equals one penny sterling (GBP 0.01). Credits are stored as signed integers to avoid floating-point representation errors. The credit is the atomic unit of value for all transactions within the system.
 
-Mu deliberately excludes features that drive addiction:
+Credits are acquired through card payment (Section 4.1) or cryptocurrency payment (Section 4.2), and consumed by service usage. Credits do not expire.
 
-- No likes or follower counts
-- No infinite scroll
-- No push notifications
-- No algorithmic ranking
-- No engagement metrics visible to users
-- No gamification of social interaction
+### 3.2 Cost Structure
 
----
+Each operation has a fixed credit cost determined by the underlying infrastructure expense:
 
-## 3. Architecture
+| Operation | Credits | Infrastructure basis |
+|-----------|---------|---------------------|
+| News search | 1 | Indexed query |
+| Video search | 2 | YouTube Data API |
+| AI chat query | 3 | LLM inference |
+| Web search | 5 | Brave Search API |
+| Places search | 5 | Google Places API |
+| External email | 4 | SMTP delivery |
+| Weather forecast | 1 | Weather API |
+| AI agent (standard) | 3 | LLM inference |
+| AI agent (premium) | 9 | Premium model inference |
 
-### 3.1 Layered Design
+Read-only operations — browsing news feeds, reading blog posts, watching videos, viewing market prices — carry no cost.
 
-The system is structured in three layers:
+### 3.3 Free Quota
 
-```
-Agents          — Autonomous processes that compose building blocks
-Building Blocks — User-facing features (news, chat, blog, wallet, etc.)
-Subsystems      — Fundamental infrastructure (app, api, ai, data, auth)
-```
+Each registered user receives a daily allocation of twenty free queries, resetting at midnight UTC. This quota is sufficient for casual utility use. When the free quota is exhausted, subsequent operations consume credits from the user's wallet. This model ensures accessibility while covering infrastructure costs for heavy usage.
 
-**Subsystems** provide primitives: rendering (app), API layer (api), LLM access (ai), storage (data), identity (auth), and administration (admin).
+### 3.4 Incentive Alignment
 
-**Building blocks** are user-facing features. Each uses the subsystems: `app/` for rendering, `api/` for endpoints, `ai/` for intelligence, and `data/` for storage and events.
+The system deliberately avoids subscription tiers. A fixed monthly fee creates pressure on the platform to increase perceived value through engagement maximisation — the same dynamic that produces the harms described in Section 1. Pay-per-use pricing aligns the platform's incentive with the user's: the most valuable outcome is a tool that accomplishes the user's goal as quickly and efficiently as possible.
 
-**Agents** compose building blocks autonomously. An agent can read news, check markets, generate analysis, and publish to the blog — all by orchestrating existing building blocks through MCP tools.
+Users who wish to avoid all payment may self-host the software. When no payment provider is configured, all quota enforcement is disabled.
 
-### 3.2 Single Binary
+## 4. Payment Protocols
 
-Mu compiles to a single Go binary with no external dependencies. All assets (HTML, CSS, JavaScript, icons) are embedded at build time. Storage uses JSON files on disk with optional SQLite and FTS5 for full-text search.
+### 4.1 Card Payments
 
-```
-git clone https://github.com/micro/mu
-cd mu && go install
-mu --serve
-```
+For human users with accounts, Mu integrates Stripe for card-based credit purchases. The flow is standard: the user selects an amount (GBP 1–500), is redirected to a Stripe Checkout session, and upon completion receives credits via a verified webhook callback. The webhook payload is authenticated using HMAC-SHA256 signature verification. Session identifiers are deduplicated to prevent double crediting.
 
-This architectural simplicity provides:
+### 4.2 The x402 Protocol
 
-- **Zero configuration** deployment
-- **No distributed systems complexity**
-- **Sub-second cold start**
-- **Simple backup** — copy the data directory
+For autonomous agents and programmatic clients, Mu implements the x402 protocol [2], which extends HTTP with native payment semantics.
 
-### 3.3 Event-Driven Communication
+When an unauthenticated client requests a metered resource, the server returns HTTP status 402 (Payment Required) with an `X-PAYMENT-REQUIRED` header encoding the payment terms: the amount, the acceptable blockchain networks, the accepted asset contracts, and the recipient wallet address.
 
-Building blocks communicate via an internal event bus, avoiding tight coupling:
+The client constructs an on-chain payment (currently USDC or EURC on Base, an Ethereum Layer 2 network), signs the transaction, and retries the original request with an `X-PAYMENT` header containing the payment proof.
 
-```
-News publishes article → Blog subscribes and generates digest
-Chat references article → News refreshes HN comments
-Agent calls tool → Wallet checks quota
-```
+The server submits the proof to a facilitator service for verification and settlement. Upon confirmation, the server executes the requested operation and returns the result. The entire payment cycle occurs within the HTTP request-response lifecycle.
 
-### 3.4 Progressive Web App
+This mechanism requires no account creation, no API key, and no prior relationship between client and server. The client's wallet address serves as its identity. Credit costs are converted to USD at a rate of one credit per cent (USD 0.01 per credit).
 
-The frontend is a server-rendered PWA. No JavaScript framework, no client-side routing, no build step. HTML is rendered on the server with Go templates. The PWA manifest enables mobile installation without an app store.
+### 4.3 Comparison of Payment Mechanisms
 
----
-
-## 4. Model Context Protocol (MCP)
-
-Every service in Mu is exposed as an MCP tool at a single endpoint: `POST /mcp`.
-
-MCP is a JSON-RPC 2.0 protocol that standardises how AI agents interact with tools. Mu implements the MCP server specification, exposing 30+ tools:
-
-```json
-{
-  "mcpServers": {
-    "mu": {
-      "url": "https://mu.xyz/mcp"
-    }
-  }
-}
-```
-
-### 4.1 Tool Categories
-
-| Category | Tools |
-|----------|-------|
-| Information | news, video, markets, weather, social |
-| Search | news_search, video_search, web_search, social_search, places_search |
-| Communication | mail_send, blog_create, chat |
-| Utility | web_fetch, places_nearby, reminder |
-| Account | wallet_balance, wallet_topup, wallet_transfer |
-
-### 4.2 Why MCP
-
-MCP provides a standard interface that any AI client can use — Claude Desktop, Cursor, custom agents, or other MCP-compatible clients. This means Mu's services are accessible to the entire ecosystem of AI tools without custom integration.
-
-The protocol also enables **composability**: agents can chain multiple tool calls in a single workflow, orchestrating searches, data retrieval, and content creation across all services.
-
----
-
-## 5. Economic Model
-
-### 5.1 Credit System
-
-Mu uses a simple credit-based system:
-
-- **1 credit = £0.01 GBP** (1 penny)
-- Credits are stored as integers to avoid floating-point errors
-- Credits never expire
-- No subscriptions — pay as you go
-
-### 5.2 Free Tier
-
-Every registered user receives **20 free queries per day**, resetting at midnight UTC. This covers casual use of search, chat, and AI features. Browsing (reading news, blogs, videos, markets) is always free.
-
-### 5.3 Pricing
-
-Costs reflect actual infrastructure expenses:
-
-| Operation | Credits | Cost |
-|-----------|---------|------|
-| News search | 1 | £0.01 |
-| Video search | 2 | £0.02 |
-| Chat query | 3 | £0.03 |
-| Web search | 5 | £0.05 |
-| Places search | 5 | £0.05 |
-| External email | 4 | £0.04 |
-| Weather forecast | 1 | £0.01 |
-
-### 5.4 Why No Subscriptions
-
-Unlimited tiers create misaligned incentives. If users pay a flat fee, the platform is incentivised to maximise engagement so users feel they are getting value. Pay-as-you-go keeps incentives aligned: we want to build efficient tools that solve problems quickly, not sticky products that maximise screen time.
-
-### 5.5 Self-Hosting
-
-Users who want unlimited free access can self-host. The code is open source (AGPL-3.0). When payments are not configured, all quotas are disabled.
-
----
-
-## 6. Payment Protocols
-
-Mu supports two payment methods, optimised for different use cases.
-
-### 6.1 Card Payments (Stripe)
-
-Traditional card payments for human users:
-
-1. User selects an amount (£1–£500)
-2. Redirected to Stripe Checkout
-3. Credits added automatically via webhook
-4. Rate: 1 credit = 1p, no bonuses or tiers
-
-### 6.2 Crypto Payments (x402)
-
-The [x402 protocol](https://x402.org) enables account-free, per-request payments with stablecoins. Designed for AI agents and programmatic clients.
-
-**Flow:**
-
-```
-1. Client sends API request without payment
-2. Server returns HTTP 402 with X-PAYMENT-REQUIRED header
-3. Client signs payment on-chain (USDC/EURC on Base)
-4. Client retries with X-PAYMENT header containing proof
-5. Server verifies via facilitator, settles, serves response
-```
-
-**Pricing:** 1 credit = $0.01 USD. A web search (5 credits) costs $0.05 per request.
-
-**Why x402:**
-
-| | Card (Stripe) | Crypto (x402) |
-|---|---|---|
+| Property | Card (Stripe) | Crypto (x402) |
+|----------|---------------|---------------|
 | Account required | Yes | No |
-| Payment model | Pre-pay credits | Pay per request |
-| Settlement | Instant (webhook) | On-chain (~seconds) |
-| Currency | GBP | USDC/EURC |
-| Best for | Human users | AI agents |
+| Payment model | Pre-fund wallet | Per-request |
+| Settlement | Webhook (seconds) | On-chain (seconds) |
+| Denomination | GBP | USD (stablecoin) |
+| Identity | Username | Wallet address |
+| Suitable for | Human users | Autonomous agents |
 
-x402 is HTTP-native — the payment is part of the request/response cycle. No signup, no API keys, no onboarding. The agent's wallet is its identity.
+### 4.4 Credit Transfer
 
-### 6.3 Wallet Transfers
+Users may transfer credits to other users on the same instance. A transfer atomically deducts from the sender's balance and credits the recipient's balance, recording transactions on both sides with cross-referencing metadata. Transfers are subject to a configurable maximum (default: 50,000 credits) and are non-reversible.
 
-Users can transfer credits to other users on the network. This enables:
+The transfer mechanism enables peer-to-peer payments between users, creator tipping, and informal service settlement within the network.
 
-- **Peer-to-peer payments** between Mu users
-- **Tipping** content creators for blog posts
-- **Service payments** where one user pays another for work
-- **Gift credits** to friends or family
+## 5. Services Marketplace
 
-Transfers are instant, recorded in both parties' transaction history, and non-reversible.
+### 5.1 Extension Model
 
----
+The building block architecture is designed for extensibility. A third-party developer can implement an MCP-compatible service — a server that responds to `tools/list` and `tools/call` — and register it in a central marketplace directory.
 
-## 7. Services Marketplace
+When a user invokes a marketplace service, the Mu instance acts as a proxy: it verifies the user's credit balance, forwards the MCP tool call to the provider's endpoint, and upon successful response, deducts credits from the user and credits the provider. The default revenue split is 70% to the provider and 30% to the platform.
 
-### 7.1 Concept
+### 5.2 Direct Settlement
 
-Mu's architecture is extensible. Any developer can build an MCP-compatible service and register it in the Mu marketplace. Users discover and pay for services through the existing credit system.
+Providers may alternatively run x402-enabled MCP servers and receive payment directly from agents on-chain, bypassing the platform entirely. In this model, the marketplace serves as a discovery and reputation layer rather than a payment intermediary. Providers retain the full payment amount.
 
-Examples: recipe extraction, flight tracking, translation, price comparison, legal document summarisation.
+This creates a spectrum of integration: providers who want distribution and billing handled for them use the proxied model; providers who want maximum revenue and direct agent relationships use x402 settlement.
 
-### 7.2 Architecture
+## 6. Federation
 
-```
-Developer runs MCP server → Registers in Mu marketplace
-User requests service → Mu proxies MCP call → Provider responds
-Credits deducted → Provider credited (70/30 split)
-```
+Blog posts are published as ActivityPub objects with WebFinger discovery. Users on federated platforms — Mastodon, Threads, and other ActivityPub implementations — can follow Mu authors, receive posts in their feeds, and interact through the standard ActivityPub inbox/outbox mechanism.
 
-The Mu agent can discover and suggest marketplace services contextually: "I don't have a built-in tool for extracting recipes, but there's a marketplace service that can help (2 credits)."
+Internal messages between Mu users are free. External email is delivered via SMTP with DKIM signing, at a credit cost that reflects delivery infrastructure.
 
-### 7.3 Direct Settlement (x402)
+## 7. Toward a Federated Network
 
-Providers can run their own x402-enabled MCP servers. Agents pay them directly on-chain — no intermediary, no platform cut on direct calls. Mu's value shifts from payment intermediary to **discovery and trust**: which services are reliable and worth paying for.
+### 7.1 Current Limitations
 
----
+In the current architecture, each Mu instance operates independently. User accounts, wallet balances, and transaction histories are local to a single server. A user on one instance cannot transfer credits to a user on another instance. Self-hosted instances are economically isolated.
 
-## 8. Federation
+### 7.2 Shared Settlement Layer
 
-Mu supports ActivityPub for decentralised social networking. Blog posts are published as ActivityPub objects, discoverable via WebFinger. Users on Mastodon, Threads, and other federated platforms can follow Mu authors and interact with their posts.
+A credit token deployed on a Layer 2 blockchain (such as Base, where x402 settlement already operates) would address these limitations.
 
-This means Mu blogs are not walled gardens — content is part of the open social web.
+**Token mechanics.** Credits would be represented as an ERC-20 token with a stable peg (one token = one penny or one cent). Tokens are minted when a user purchases credits via card or stablecoin, and burned when consumed by service usage. The minting and burning operations maintain the peg without requiring a reserve or algorithmic stabilisation — each token in circulation corresponds to a real payment received.
 
----
+**Cross-instance identity.** A user's wallet address becomes their portable identity. Any Mu instance can verify an on-chain balance without trusting the originating instance. Authentication reduces to a signature challenge: prove you control this address.
 
-## 9. Toward a Blockchain Layer
+**Cross-instance transfers.** Credit transfers between users on different instances become standard token transfers on the shared ledger. No bilateral trust or federation protocol is required between instances — the blockchain is the common substrate.
 
-### 9.1 Current State
+**Marketplace settlement.** Service providers register their MCP endpoints in an on-chain registry readable by any instance. Agents discover services by querying the registry and pay providers directly via token transfer or x402, without routing through a central platform.
 
-Today, Mu runs as a single-server application with in-memory or JSON/SQLite storage. Payments are processed via Stripe (centralised) or x402 (on-chain, but only for API payments). The wallet is a centralised ledger.
+### 7.3 Network Topology
 
-### 9.2 The Case for Decentralisation
+The resulting architecture is a network of independent Mu nodes sharing a common economic layer:
 
-Several aspects of Mu would benefit from a decentralised settlement layer:
+Each node runs the full Mu binary with local storage and local service execution. Nodes do not need to communicate directly with each other. They share state only through the settlement layer: wallet balances, service registrations, and reputation data are on-chain; content federation uses ActivityPub; everything else remains local.
 
-**Wallet as on-chain state.** Credits currently exist in a JSON file on one server. If credits were tokens on a blockchain, users would have true ownership — portable, verifiable, and not dependent on any single server.
+This preserves the single-binary simplicity of each node while enabling network-level interoperability where it matters: payments, identity, and service discovery.
 
-**Cross-instance transfers.** Self-hosted Mu instances are currently isolated. A shared ledger would enable credit transfers between instances, creating a network of interconnected nodes.
+### 7.4 Implementation Sequencing
 
-**Marketplace settlement.** The services marketplace currently requires Mu as a payment intermediary. On-chain settlement would allow direct provider payments with transparent, auditable transactions.
+This transition does not require a single coordinated migration. Each capability can be deployed independently:
 
-**Verifiable usage records.** Transaction history on-chain provides an immutable audit trail that neither the platform nor the user can dispute.
+1. Deploy the credit token contract on Base. Mirror existing wallet balances on-chain. Continue operating the local wallet as a cache.
+2. Accept the token for credit purchases alongside Stripe and raw stablecoins. Existing payment flows remain unchanged.
+3. Enable cross-instance transfers by reading and writing balances from the chain rather than local storage.
+4. Deploy the marketplace service registry contract. Enable any instance to discover and route to registered providers.
 
-### 9.3 Potential Architecture
+The centralised system continues to function at each stage. Blockchain settlement is additive, not replacing the existing infrastructure but extending it.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Mu Instances (self-hosted nodes)                       │
-│                                                         │
-│  Each runs the full Mu binary with local storage        │
-│  Connected via shared settlement layer                  │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│  Settlement Layer                                       │
-│                                                         │
-│  - Credit token (ERC-20 or native)                      │
-│  - Wallet balances as on-chain state                    │
-│  - Cross-instance transfers                             │
-│  - Marketplace service payments                         │
-│  - Usage metering and verification                      │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│  Base Layer (L2)                                        │
-│                                                         │
-│  - Low-cost transactions                                │
-│  - USDC/EURC stablecoin settlement                      │
-│  - x402 protocol compatibility                          │
-│  - Smart contract infrastructure                        │
-└─────────────────────────────────────────────────────────┘
-```
+## 8. Security
 
-### 9.4 Credit Token
+**Authentication.** The system supports WebAuthn passkeys (phishing-resistant, passwordless), bcrypt-hashed passwords, session cookies, personal access tokens for API use, and x402 wallet-address identity for agents. Each mechanism is appropriate for a different client type.
 
-A Mu credit token would represent the unit of value across the network:
+**Wallet integrity.** Balance deductions are performed under a mutex with an explicit sufficiency check. The balance cannot go negative. All transactions are recorded with unique identifiers, timestamps, and cross-referencing metadata. Stripe webhook payloads are verified by HMAC-SHA256 signature. x402 payments are verified by an on-chain facilitator.
 
-- **Minting:** Credits are minted when users top up via card (Stripe) or stablecoin (x402)
-- **Burning:** Credits are burned when consumed by service usage
-- **Transfer:** Users can transfer credits to any address on the network
-- **Staking:** Marketplace providers could stake credits as a quality guarantee
+**Content safety.** An administrative moderation queue with user-initiated flagging provides content review. Rate limiting is applied to all write operations. Input validation occurs at system boundaries.
 
-The token would be pegged to a stable value (1 credit = £0.01 or $0.01) to maintain predictable pricing.
+## 9. Related Work
 
-### 9.5 Decentralised Marketplace
+The separation of service provision from advertising revenue has been explored in various contexts. Brave Browser [3] replaces third-party ads with a privacy-preserving attention token. Kagi [4] offers paid web search without tracking. Neither provides a unified multi-service platform or programmatic agent access.
 
-With on-chain settlement, the marketplace becomes permissionless:
+The Model Context Protocol [5] standardises tool access for AI agents. Several platforms expose individual services via MCP, but none provide a bundled service network with integrated micropayments.
 
-1. **Service registration** — providers register their MCP endpoint on-chain
-2. **Discovery** — any Mu instance can read the registry
-3. **Payment** — agents pay providers directly via x402 or token transfer
-4. **Reputation** — service ratings stored on-chain, tamper-proof
-5. **Disputes** — smart contract arbitration for failed service calls
+The x402 protocol [2] draws on earlier work in HTTP payment negotiation (RFC 7235, HTTP 402 status code) and applies it to blockchain-settled micropayments. Mu is among the first production systems to integrate x402 for service access by autonomous agents.
 
-### 9.6 Network of Nodes
+ActivityPub [6] provides the federation layer for content distribution, complementing the economic federation described in Section 7.
 
-Self-hosted Mu instances could form a network:
+## 10. Conclusion
 
-- **Shared identity** — one account works across all instances
-- **Credit portability** — wallet balance usable anywhere
-- **Content federation** — blog posts and messages flow between instances (already enabled via ActivityPub)
-- **Service routing** — the closest or cheapest provider is selected automatically
+Mu demonstrates that a viable alternative to advertising-funded internet services can be constructed from three components: a composable service architecture, a standard protocol for tool access, and native micropayment mechanisms for both human users and autonomous agents.
 
-### 9.7 Implementation Path
+The system currently operates as a single self-hostable binary serving a dozen integrated services through a unified MCP endpoint, with card and cryptocurrency payment support. The architecture admits extension to a federated network of nodes sharing a common settlement layer, enabling cross-instance identity, portable credits, and a permissionless service marketplace — without sacrificing the simplicity of individual node deployment.
 
-The blockchain layer is not required for Mu to function. The current centralised model works well for a single hosted instance. Decentralisation becomes valuable when:
+The software is open source under the AGPL-3.0 licence.
 
-1. Multiple self-hosted instances want to interoperate
-2. The marketplace grows beyond a single operator
-3. Users demand verifiable ownership of their credits
-4. Cross-instance payments become a common use case
+## References
 
-The path forward:
+[1] Zuboff, S. *The Age of Surveillance Capitalism.* PublicAffairs, 2019.
 
-1. **Phase 1 (Current):** Centralised wallet with Stripe and x402 payments
-2. **Phase 2:** Credit token on Base L2, wallet balances mirrored on-chain
-3. **Phase 3:** Cross-instance transfers via token, decentralised marketplace registry
-4. **Phase 4:** Full network of nodes with shared settlement and routing
+[2] x402 Protocol. https://x402.org
 
----
+[3] Brave Software. *Basic Attention Token.* https://basicattentiontoken.org
 
-## 10. Security Model
+[4] Kagi Inc. *Kagi Search.* https://kagi.com
 
-### 10.1 Authentication
+[5] Model Context Protocol. https://modelcontextprotocol.io
 
-Multiple authentication methods:
-
-- **Passkeys (WebAuthn)** — passwordless, phishing-resistant
-- **Username/password** — traditional login with bcrypt hashing
-- **Session tokens** — cookie-based browser sessions
-- **Personal Access Tokens (PAT)** — for programmatic API access
-- **x402 payments** — agent identity via wallet address (no account needed)
-
-### 10.2 Wallet Security
-
-- Balances can never go negative
-- All transactions have a full audit trail
-- Transfer amounts are capped (max £500 per transfer)
-- Stripe webhooks verified via HMAC-SHA256 signatures
-- x402 payments verified via on-chain settlement through a facilitator
-
-### 10.3 Content Safety
-
-- AI-assisted content moderation
-- Admin moderation queue with flagging system
-- Rate limiting on all write operations
-- Input validation at system boundaries
-
----
-
-## 11. Comparison
-
-| | Traditional Platforms | Mu |
-|---|---|---|
-| Revenue model | Ads + data mining | Usage credits |
-| Content ranking | Algorithmic | Chronological |
-| User tracking | Extensive | None |
-| API access | Per-provider signup | Single MCP endpoint |
-| Agent payments | API keys + subscriptions | x402 per-request |
-| Self-hosting | Not possible | Full self-host support |
-| Source code | Proprietary | Open source (AGPL-3.0) |
-| Federation | Walled gardens | ActivityPub |
-| Marketplace | Platform-controlled | Permissionless (x402) |
-
----
-
-## 12. Roadmap
-
-### Delivered
-- Core services (news, video, chat, blog, mail, markets, weather, places, search)
-- MCP server with 30+ tools
-- Wallet with Stripe and x402 payments
-- Wallet transfers between users
-- ActivityPub federation
-- App builder with AI generation
-- Progressive Web App
-- Self-hosting support
-
-### In Progress
-- Services marketplace (registry and discovery)
-- Agent orchestration improvements
-
-### Planned
-- Credit token on Base L2
-- Cross-instance wallet transfers
-- Decentralised marketplace registry
-- Network of self-hosted nodes
-- Mobile-native apps (optional)
-
----
-
-## 13. Conclusion
-
-Mu is an attempt to build internet services the way they should have been built: as tools that serve users, not platforms that exploit them. The combination of MCP for universal tool access, x402 for frictionless payments, and a potential blockchain settlement layer creates infrastructure for a new kind of network — one where services are permissionless, payments are transparent, and users own their data.
-
-The code is open source. The platform is self-hostable. The protocol is standard. What remains is to build the network.
-
----
-
-**Website:** [mu.xyz](https://mu.xyz)
-**Source:** [github.com/micro/mu](https://github.com/micro/mu)
-**MCP Endpoint:** [mu.xyz/mcp](https://mu.xyz/mcp)
-**License:** AGPL-3.0
+[6] Lemmer-Webber, C. et al. *ActivityPub.* W3C Recommendation, 2018. https://www.w3.org/TR/activitypub/

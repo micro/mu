@@ -36,6 +36,7 @@ import (
 	"mu/video"
 	"mu/wallet"
 	"mu/weather"
+	"mu/work"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -89,6 +90,9 @@ func main() {
 
 	// load apps
 	apps.Load()
+
+	// load work (task bounties)
+	work.Load()
 
 	// load social
 	social.Load()
@@ -463,6 +467,7 @@ func main() {
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
+		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
 		"/search":    false, // Public - local data index search
 		"/web":       false, // Public page, auth checked in handler (paid Brave web search)
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
@@ -605,6 +610,10 @@ func main() {
 	// serve apps
 	http.HandleFunc("/apps", apps.Handler)
 	http.HandleFunc("/apps/", apps.Handler)
+
+	// serve work (task bounties)
+	http.HandleFunc("/work", work.Handler)
+	http.HandleFunc("/work/", work.Handler)
 
 	// auth
 	http.HandleFunc("/login", app.Login)
