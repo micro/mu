@@ -21,8 +21,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 
 	users := auth.GetAllAccounts()
 
-	content := `<h2>Admin Dashboard</h2>
-	<div class="admin-links">
+	content := `<div class="admin-links">
 		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 		<a href="/admin/moderate">Moderation Queue</a>
 		<a href="/admin/blocklist">Mail Blocklist</a>

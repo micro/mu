@@ -324,7 +324,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				tagsHTML = " · " + htmlpkg.EscapeString(a.Tags)
 			}
 			controls := app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "/apps/"+a.Slug+"/edit", "/apps/"+a.Slug+"/delete")
-			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;">
+			sb.WriteString(fmt.Sprintf(`<div style="position:relative;border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;">
 <img src="/apps/%s/icon.svg" width="32" height="32" style="flex-shrink:0;margin-top:2px;">
 <div>
 <h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>

@@ -1288,6 +1288,7 @@ body:has(#messages) #chat-back-link {
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
   padding: var(--item-padding);
+  padding-right: 60px;
   background: var(--card-background);
   margin-bottom: var(--spacing-md);
 }
@@ -1473,6 +1474,7 @@ body:has(#messages) #chat-back-link {
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
   padding: var(--item-padding);
+  padding-right: 60px;
   background: var(--card-background);
   margin-bottom: var(--spacing-md);
 }
