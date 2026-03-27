@@ -315,6 +315,65 @@ var tools = []Tool{
 			{Name: "assign", Type: "boolean", Description: "Assign task to AI agent (tasks only)", Required: false},
 		},
 	},
+	// Content controls
+	{
+		Name:        "flag",
+		Description: "Flag content for moderation",
+		Method:      "POST",
+		Path:        "/app/flag",
+		Params: []ToolParam{
+			{Name: "type", Type: "string", Description: "Content type (e.g. post, work, app)", Required: true},
+			{Name: "id", Type: "string", Description: "Content ID", Required: true},
+		},
+	},
+	{
+		Name:        "save",
+		Description: "Bookmark content for later",
+		Method:      "POST",
+		Path:        "/app/save",
+		Params: []ToolParam{
+			{Name: "type", Type: "string", Description: "Content type (e.g. post, work, app)", Required: true},
+			{Name: "id", Type: "string", Description: "Content ID", Required: true},
+		},
+	},
+	{
+		Name:        "unsave",
+		Description: "Remove a saved bookmark",
+		Method:      "POST",
+		Path:        "/app/unsave",
+		Params: []ToolParam{
+			{Name: "type", Type: "string", Description: "Content type", Required: true},
+			{Name: "id", Type: "string", Description: "Content ID", Required: true},
+		},
+	},
+	{
+		Name:        "dismiss",
+		Description: "Hide content from your view",
+		Method:      "POST",
+		Path:        "/app/dismiss",
+		Params: []ToolParam{
+			{Name: "type", Type: "string", Description: "Content type", Required: true},
+			{Name: "id", Type: "string", Description: "Content ID", Required: true},
+		},
+	},
+	{
+		Name:        "block_user",
+		Description: "Block a user — hides all their content from your view",
+		Method:      "POST",
+		Path:        "/app/block",
+		Params: []ToolParam{
+			{Name: "user", Type: "string", Description: "User ID to block", Required: true},
+		},
+	},
+	{
+		Name:        "unblock_user",
+		Description: "Unblock a previously blocked user",
+		Method:      "POST",
+		Path:        "/app/unblock",
+		Params: []ToolParam{
+			{Name: "user", Type: "string", Description: "User ID to unblock", Required: true},
+		},
+	},
 	{
 		Name:        "places_search",
 		Description: "Search for places by name or category, optionally near a location",

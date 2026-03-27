@@ -65,11 +65,11 @@ func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID,
 	// Anyone logged in (on other people's content)
 	if !isOwner {
 		actions = append(actions, Action{
-			Label: "Flag", URL: fmt.Sprintf("/controls/flag?type=%s&id=%s", contentType, contentID),
+			Label: "Flag", URL: fmt.Sprintf("/app/flag?type=%s&id=%s", contentType, contentID),
 			Confirm: "Flag this content?",
 		})
 		actions = append(actions, Action{
-			Label: "Block", URL: fmt.Sprintf("/controls/block?user=%s", authorID),
+			Label: "Block", URL: fmt.Sprintf("/app/block?user=%s", authorID),
 			Confirm: fmt.Sprintf("Block this user? You won't see their content."),
 		})
 	}
@@ -77,16 +77,16 @@ func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID,
 	// Any logged in user
 	if IsSaved(userID, contentType, contentID) {
 		actions = append(actions, Action{
-			Label: "Unsave", URL: fmt.Sprintf("/controls/unsave?type=%s&id=%s", contentType, contentID),
+			Label: "Unsave", URL: fmt.Sprintf("/app/unsave?type=%s&id=%s", contentType, contentID),
 		})
 	} else {
 		actions = append(actions, Action{
-			Label: "Save", URL: fmt.Sprintf("/controls/save?type=%s&id=%s", contentType, contentID),
+			Label: "Save", URL: fmt.Sprintf("/app/save?type=%s&id=%s", contentType, contentID),
 		})
 	}
 
 	actions = append(actions, Action{
-		Label: "Dismiss", URL: fmt.Sprintf("/controls/dismiss?type=%s&id=%s", contentType, contentID),
+		Label: "Dismiss", URL: fmt.Sprintf("/app/dismiss?type=%s&id=%s", contentType, contentID),
 	})
 
 	// Share (client-side)

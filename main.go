@@ -629,7 +629,7 @@ func main() {
 	http.HandleFunc("/work/", work.Handler)
 
 	// content controls (flag, save, dismiss, block, share)
-	http.HandleFunc("/controls/", app.ControlsHandler)
+	http.HandleFunc("/app/", app.ControlsHandler)
 
 	// auth
 	http.HandleFunc("/login", app.Login)
