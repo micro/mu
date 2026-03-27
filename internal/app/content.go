@@ -131,7 +131,7 @@ func renderActions(icons []Action, menu []Action) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(`<span style="position:absolute;top:12px;right:12px">`)
+	sb.WriteString(`<span class="item-controls" style="position:absolute;top:10px;right:10px;line-height:1">`)
 
 	iconStyle := "text-decoration:none;font-size:14px;color:#bbb;cursor:pointer;margin-left:8px"
 
