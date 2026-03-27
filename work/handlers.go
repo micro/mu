@@ -59,7 +59,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	// Header
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Work</h3>`)
 	sb.WriteString(`<p>Share your work, get feedback, or post tasks with credit bounties.</p>`)
 	if sess != nil {
 		sb.WriteString(`<p><a href="/work/post" class="btn">Post</a></p>`)
@@ -169,7 +168,6 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Post detail
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(fmt.Sprintf(`<h3>%s</h3>`, post.Title))
 
 	kindLabel := "Show"
 	if post.Kind == KindTask {
@@ -327,7 +325,6 @@ func handlePostForm(w http.ResponseWriter, r *http.Request) {
 	var sb strings.Builder
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Share Work</h3>`)
 	if errMsg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
