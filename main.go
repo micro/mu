@@ -94,6 +94,15 @@ func main() {
 	// load work (task bounties)
 	work.Load()
 
+	// Wire work → apps builder (avoids direct import between building blocks)
+	work.BuildApp = func(prompt, authorID, authorName string) (string, string, error) {
+		a, err := apps.BuildAndSave(prompt, authorID, authorName)
+		if err != nil {
+			return "", "", err
+		}
+		return a.Slug, a.Name, nil
+	}
+
 	// load social
 	social.Load()
 
