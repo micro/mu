@@ -25,12 +25,20 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	prevOutput := r.URL.Query().Get("output")
+	prevCmd := r.URL.Query().Get("cmd")
+
 	var sb strings.Builder
 	sb.WriteString(`<div class="card">
-<form method="POST" action="/admin/console" id="console-form">
-<input type="text" name="cmd" id="console-input" placeholder="Type a command..." class="form-input w-full" autocomplete="off" autofocus>
-</form>
-<pre id="console-output" style="margin-top:12px;font-size:13px;white-space:pre-wrap;max-height:500px;overflow-y:auto"></pre>
+<form method="POST" action="/admin/console" id="console-form" style="display:flex;gap:8px">
+<input type="text" name="cmd" id="console-input" placeholder="Type a command..." class="form-input" style="flex:1" autocomplete="off" autofocus>
+<button type="submit">Run</button>
+</form>`)
+	if prevOutput != "" {
+		sb.WriteString(fmt.Sprintf(`<pre style="margin-top:12px;font-size:13px;white-space:pre-wrap">&gt; %s
+%s</pre>`, prevCmd, prevOutput))
+	}
+	sb.WriteString(`<pre id="console-output" style="margin-top:12px;font-size:13px;white-space:pre-wrap;max-height:500px;overflow-y:auto"></pre>
 </div>
 
 <div class="card">
@@ -96,15 +104,18 @@ func handleConsoleCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req struct {
-		Cmd string `json:"cmd"`
+	var cmd string
+	if r.Header.Get("Content-Type") == "application/json" {
+		var req struct {
+			Cmd string `json:"cmd"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		cmd = req.Cmd
+	} else {
+		r.ParseForm()
+		cmd = r.FormValue("cmd")
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		app.RespondJSON(w, map[string]string{"output": "invalid request"})
-		return
-	}
-
-	cmd := strings.TrimSpace(req.Cmd)
+	cmd = strings.TrimSpace(cmd)
 	parts := strings.Fields(cmd)
 	if len(parts) == 0 {
 		app.RespondJSON(w, map[string]string{"output": ""})
@@ -186,5 +197,10 @@ func handleConsoleCommand(w http.ResponseWriter, r *http.Request) {
 		output = fmt.Sprintf("Unknown command: %s. Type 'help' for commands.", parts[0])
 	}
 
-	app.RespondJSON(w, map[string]string{"output": output})
+	if r.Header.Get("Content-Type") == "application/json" {
+		app.RespondJSON(w, map[string]string{"output": output})
+	} else {
+		// Regular form submit — redirect back with output
+		http.Redirect(w, r, "/admin/console?output="+strings.ReplaceAll(output, "\n", "%0A")+"&cmd="+cmd, http.StatusSeeOther)
+	}
 }
