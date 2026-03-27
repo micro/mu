@@ -215,6 +215,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(path, "/sdk/store"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/store")
 		handleSDKStore(w, r, slug)
+	case strings.HasSuffix(path, "/delete") && r.Method == "POST":
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/delete")
+		handleDelete(w, r, slug)
 	default:
 		slug := strings.TrimPrefix(path, "/")
 		if r.Method == "DELETE" {
