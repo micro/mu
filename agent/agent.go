@@ -218,7 +218,7 @@ function showResponse(prompt,html,flowId){
     +'</div>';
   conv.appendChild(turn);
   result.innerHTML=html;
-  if(flowId){document.getElementById('agent-context').value=flowId;}
+  if(flowId){document.getElementById('agent-context').value=flowId;history.replaceState(null,'','/agent?continue='+flowId);}
   document.getElementById('agent-prompt').value='';
   document.getElementById('agent-prompt').placeholder='Tell the agent what to do next...';
   var formCard=document.getElementById('agent-form-card');
@@ -506,10 +506,10 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 		b.WriteString(`</div>`)
 	}
 
-	// Action buttons
-	b.WriteString(`<div class="card" style="display:flex;gap:12px;align-items:center;">`)
-	b.WriteString(`<a href="/agent?continue=` + f.ID + `" class="link">Continue →</a>`)
-	b.WriteString(`<span style="color:#888;font-size:13px;">Share this URL to let others view this result</span>`)
+	// Actions — no card wrapper, just links
+	b.WriteString(`<div style="display:flex;gap:12px;align-items:center;margin-top:12px;font-size:13px;">`)
+	b.WriteString(`<a href="/agent?continue=` + f.ID + `">Continue →</a>`)
+	b.WriteString(`<a href="#" onclick="var u=location.href;if(navigator.share){navigator.share({url:u})}else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){this.textContent='Copied!'}.bind(this))}else{prompt('Copy:',u)};return false;">Share</a>`)
 	b.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest("Agent", "Saved agent query: "+htmlEsc(f.Prompt), b.String(), r)
