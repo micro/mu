@@ -139,7 +139,7 @@ func renderMenu(actions []Action) string {
 
 		switch {
 		case a.Label == "Share":
-			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="navigator.clipboard.writeText(location.origin+'%s').then(function(){this.textContent='Copied!'}.bind(this));setTimeout(function(){this.textContent='Share'}.bind(this),1500);return false;">Share</a>`, style, a.URL))
+			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="var u=location.origin+'%s';if(navigator.share){navigator.share({url:u})}else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){this.textContent='Copied!'}.bind(this))}else{prompt('Copy link:',u)};return false;">Share</a>`, style, a.URL))
 		case a.Label == "Edit":
 			sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s">Edit</a>`, a.URL, style))
 		case a.Confirm != "":
