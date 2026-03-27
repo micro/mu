@@ -77,21 +77,21 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	// Filter tabs
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<div class="d-flex gap-2">`)
+	sb.WriteString(`<div style="display:flex;gap:6px">`)
 	for _, f := range []struct{ val, label string }{
 		{"", "All"},
 		{"show", "Show"},
 		{"task", "Tasks"},
 	} {
-		cls := "btn btn-secondary"
+		style := "padding:4px 12px;border-radius:12px;font-size:13px;text-decoration:none;color:#555"
 		if f.val == kind {
-			cls = "btn"
+			style = "padding:4px 12px;border-radius:12px;font-size:13px;text-decoration:none;background:#000;color:#fff"
 		}
 		href := "/work"
 		if f.val != "" {
 			href += "?kind=" + f.val
 		}
-		sb.WriteString(fmt.Sprintf(`<a href="%s" class="%s">%s</a>`, href, cls, f.label))
+		sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s">%s</a>`, href, style, f.label))
 	}
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</div>`)
