@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"mu/internal/auth"
+	"mu/internal/data"
 	"mu/internal/flag"
 )
 
@@ -164,25 +165,41 @@ func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 			if u == "" {
 				u = "#"
 			}
-			label := typeLabels[ct]
-			if label == "" {
-				label = ct
+
+			// Try to get the title from the search index
+			title := ""
+			if entry := data.GetByID(cid); entry != nil {
+				title = entry.Title
 			}
-			items = append(items, item{ct: ct, cid: cid, url: u, label: label, time: t.Format("2 Jan 15:04")})
+			if title == "" {
+				// Try with type prefix (video_id, etc.)
+				if entry := data.GetByID(ct + "_" + cid); entry != nil {
+					title = entry.Title
+				}
+			}
+			if title == "" {
+				label := typeLabels[ct]
+				if label == "" {
+					label = ct
+				}
+				title = label
+			}
+
+			items = append(items, item{ct: ct, cid: cid, url: u, label: title, time: t.Format("2 Jan 15:04")})
 		}
 		sort.Slice(items, func(i, j int) bool {
 			return items[i].time > items[j].time
 		})
 
 		for _, it := range items {
-			displayID := it.cid
-			if len(displayID) > 40 {
-				displayID = displayID[:40] + "..."
+			typeLabel := typeLabels[it.ct]
+			if typeLabel == "" {
+				typeLabel = it.ct
 			}
 			sb.WriteString(fmt.Sprintf(`<div class="card">
-				<p><a href="%s"><strong>%s</strong> — %s</a></p>
-				<p class="text-sm text-muted">Saved %s · <a href="#" onclick="fetch('/app/unsave?type=%s&id=%s',{method:'POST'}).then(function(){location.reload()});return false;">Remove</a></p>
-			</div>`, it.url, it.label, displayID, it.time, it.ct, it.cid))
+				<p><a href="%s">%s</a></p>
+				<p class="text-sm text-muted">%s · Saved %s · <a href="#" onclick="fetch('/app/unsave?type=%s&id=%s',{method:'POST'}).then(function(){location.reload()});return false;">Remove</a></p>
+			</div>`, it.url, it.label, typeLabel, it.time, it.ct, it.cid))
 		}
 	}
 

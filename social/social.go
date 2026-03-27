@@ -975,6 +975,13 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 	}
 
 	for _, p := range visible {
+		var viewerID string
+		if acc != nil {
+			viewerID = acc.ID
+		}
+		if viewerID != "" && (app.IsBlocked(viewerID, p.AuthorID) || app.IsDismissed(viewerID, "social", p.ID)) {
+			continue
+		}
 		content := htmlpkg.EscapeString(p.Content)
 
 		// Extract first URL for card rendering, then linkify remaining

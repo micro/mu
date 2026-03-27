@@ -101,6 +101,9 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, post := range allPosts {
+		if userID != "" && (app.IsBlocked(userID, post.AuthorID) || app.IsDismissed(userID, "work", post.ID)) {
+			continue
+		}
 		sb.WriteString(`<div class="card">`)
 
 		kindLabel := "Show"
