@@ -120,8 +120,17 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		kindLabel := "Show"
 		if post.Kind == KindTask {
 			kindLabel = "Task"
-			if post.Status != "" {
-				kindLabel += " · " + post.Status
+			switch post.Status {
+			case StatusClaimed:
+				kindLabel += " · building"
+			case StatusDelivered:
+				kindLabel += " · delivered"
+			case StatusCompleted:
+				kindLabel += " · completed"
+			case StatusCancelled:
+				kindLabel += " · cancelled"
+			case StatusOpen:
+				kindLabel += " · open"
 			}
 		}
 
@@ -197,7 +206,11 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			sb.WriteString(fmt.Sprintf(`<p><strong>Budget:</strong> %d credits · <strong>Spent:</strong> %d credits</p>`, post.Cost, post.Spent))
 		}
 		if post.Status != "" {
-			sb.WriteString(fmt.Sprintf(`<p><strong>Status:</strong> %s</p>`, post.Status))
+			statusLabel := post.Status
+			if post.Status == StatusClaimed {
+				statusLabel = "building"
+			}
+			sb.WriteString(fmt.Sprintf(`<p><strong>Status:</strong> %s</p>`, statusLabel))
 		}
 	}
 	if post.Tips > 0 {
@@ -206,8 +219,10 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 	if post.Link != "" {
 		sb.WriteString(fmt.Sprintf(`<p><strong>Link:</strong> <a href="%s">%s</a></p>`, post.Link, post.Link))
 	}
-	if post.Worker != "" {
-		sb.WriteString(fmt.Sprintf(`<p><strong>Claimed by:</strong> <a href="/@%s">%s</a></p>`, post.Worker, post.Worker))
+	if post.Worker == "agent" {
+		sb.WriteString(`<p><strong>Assigned to:</strong> Agent</p>`)
+	} else if post.Worker != "" {
+		sb.WriteString(fmt.Sprintf(`<p><strong>Assigned to:</strong> <a href="/@%s">%s</a></p>`, post.Worker, post.Worker))
 	}
 	sb.WriteString(`</div>`)
 
