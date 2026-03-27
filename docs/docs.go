@@ -43,6 +43,7 @@ var catalog = []Document{
 
 	// Developer (accessible but not prominent)
 	{Slug: "system-design", Filename: "SYSTEM_DESIGN.md", Title: "System Design", Description: "Architecture overview", Category: "Developer"},
+	{Slug: "whitepaper", Filename: "WHITEPAPER.md", Title: "Whitepaper", Description: "Full network overview and future direction", Category: "Developer"},
 }
 
 // Load initializes the docs building block.

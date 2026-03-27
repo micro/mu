@@ -468,9 +468,10 @@ func main() {
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
-		"/status": false, // Public - server health status
-		"/docs":   false, // Public - documentation
-		"/mcp":    false, // Public - MCP tools page
+		"/status":     false, // Public - server health status
+		"/docs":       false, // Public - documentation
+		"/whitepaper": false, // Public - whitepaper
+		"/mcp":        false, // Public - MCP tools page
 		"/agent":  false, // Public page, auth checked in handler
 	}
 
@@ -622,6 +623,10 @@ func main() {
 	// public status page - service health checks
 	app.HealthCheckFunc = runHealthChecks
 	http.HandleFunc("/status", app.StatusHandler)
+
+	// whitepaper
+	http.HandleFunc("/whitepaper", docs.WhitepaperHandler)
+	http.HandleFunc("/whitepaper.pdf", docs.WhitepaperHandler)
 
 	// documentation
 	http.HandleFunc("/docs", docs.Handler)
