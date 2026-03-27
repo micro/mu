@@ -342,7 +342,7 @@ func PasskeyListHTML(accountID string) string {
 	}
 
 	return fmt.Sprintf(`<div class="card">
-<h3>Passkeys</h3>
+<h4>Passkeys</h4>
 <p>Sign in without a password using your device's biometrics or security key.</p>
 <div style="overflow-x: auto;">
 <table>
