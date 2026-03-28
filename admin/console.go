@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -22,18 +23,23 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 
 	// POST: run command and return result
 	if r.Method == "POST" {
-		r.ParseForm()
-		cmd := strings.TrimSpace(r.FormValue("cmd"))
+		var cmd string
+		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+			var req struct{ Cmd string `json:"cmd"` }
+			json.NewDecoder(r.Body).Decode(&req)
+			cmd = strings.TrimSpace(req.Cmd)
+		} else {
+			r.ParseForm()
+			cmd = strings.TrimSpace(r.FormValue("cmd"))
+		}
 		output := ""
 		if cmd != "" {
 			output = runCommand(cmd)
 		}
-		// If Accept: application/json, return JSON
-		if app.WantsJSON(r) || r.Header.Get("Content-Type") == "application/json" {
+		if app.WantsJSON(r) || strings.Contains(r.Header.Get("Content-Type"), "application/json") {
 			app.RespondJSON(w, map[string]string{"output": output})
 			return
 		}
-		// Fallback: redirect
 		http.Redirect(w, r, "/admin/console?cmd="+url.QueryEscape(cmd)+"&output="+url.QueryEscape(output), http.StatusSeeOther)
 		return
 	}
@@ -79,7 +85,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
     hi=-1;
     out.innerHTML+='<span style="color:#888">&gt; '+esc(cmd)+'</span>\n';
     input.value='';
-    fetch('/admin/console',{method:'POST',body:'cmd='+encodeURIComponent(cmd),headers:{'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'}})
+    fetch('/admin/console',{method:'POST',body:JSON.stringify({cmd:cmd}),headers:{'Content-Type':'application/json'}})
     .then(function(r){return r.json()})
     .then(function(j){
       out.innerHTML+=esc(j.output)+'\n';
