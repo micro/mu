@@ -170,7 +170,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("balance") == "1" {
 		sess, _ := auth.TrySession(r)
 		if sess == nil {
-			app.RespondJSON(w, map[string]int{"balance": 0})
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error":"authentication required"}`))
 			return
 		}
 		balance := GetBalance(sess.Account)
