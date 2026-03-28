@@ -61,7 +61,7 @@ func AIUsageHandler(w http.ResponseWriter, r *http.Request) {
 
 	sb.WriteString(`</tbody></table></div>`)
 
-	html := app.RenderHTMLForRequest("Admin", "Usage", sb.String(), r)
+	html := app.RenderHTMLForRequest("API Usage", "API Usage", sb.String(), r)
 	w.Write([]byte(html))
 }
 
