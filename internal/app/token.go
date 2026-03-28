@@ -70,181 +70,107 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID string) {
-	tokens := auth.ListTokens(accountID)
-
-	var tokenRows string
-	for _, token := range tokens {
-		expiresStr := "Never"
-		if !token.ExpiresAt.IsZero() {
-			expiresStr = TimeAgo(token.ExpiresAt)
-		}
-		lastUsedStr := "Never"
-		if !token.LastUsed.IsZero() {
-			lastUsedStr = TimeAgo(token.LastUsed)
-		}
-
-		perms := strings.Join(token.Permissions, ", ")
-
-		tokenRows += fmt.Sprintf(`
-			<tr>
-				<td>%s</td>
-				<td>%s</td>
-				<td>%s</td>
-				<td>%s</td>
-				<td>
-					<form method="POST" action="/token?id=%s" style="display: inline;" onsubmit="return confirm('Delete this token?');">
-						<input type="hidden" name="_method" value="DELETE">
-						<button type="submit">Delete</button>
-					</form>
-				</td>
-			</tr>`,
-			token.Name,
-			perms,
-			lastUsedStr,
-			expiresStr,
-			token.ID,
-		)
-	}
-
-	if tokenRows == "" {
-		tokenRows = `<tr><td colspan="5" style="padding: 20px; text-align: center; color: #666;">No tokens yet. Create one below.</td></tr>`
-	}
-
-	// Show newly created client credentials
 	newClientID := r.URL.Query().Get("new_client_id")
 	newClientSecret := r.URL.Query().Get("new_client_secret")
 
-	// OAuth Clients section
+	var sb strings.Builder
+
+	// === OAuth Clients ===
+	sb.WriteString(`<h3>OAuth Clients</h3>`)
+	sb.WriteString(`<p style="color:#666;font-size:13px">For connecting Claude, MCP clients, or other apps via OAuth 2.1.</p>`)
+
+	if newClientID != "" {
+		sb.WriteString(fmt.Sprintf(`<div style="margin:15px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">
+			<strong>Client Created</strong>
+			<p>Copy these now — the secret won't be shown again.</p>
+			<p><strong>Client ID:</strong> <code>%s</code></p>
+			<p><strong>Client Secret:</strong> <code>%s</code></p>
+		</div>`, newClientID, newClientSecret))
+	}
+
+	sb.WriteString(`<table><thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead><tbody>`)
 	oauthClients := auth.GetAllOAuthClients()
-	var clientRows string
+	if len(oauthClients) == 0 {
+		sb.WriteString(`<tr><td colspan="4" style="padding:20px;text-align:center;color:#666">No OAuth clients yet.</td></tr>`)
+	}
 	for _, c := range oauthClients {
-		clientRows += fmt.Sprintf(`
-			<tr>
-				<td>%s</td>
-				<td><code style="font-size:12px">%s</code></td>
-				<td>%s</td>
-				<td>
-					<form method="POST" action="/token?delete_client=%s" style="display:inline" onsubmit="return confirm('Delete this client?');">
-						<input type="hidden" name="_method" value="DELETE">
-						<button type="submit">Delete</button>
-					</form>
-				</td>
-			</tr>`, c.Name, c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID)
+		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td><code style="font-size:12px">%s</code></td><td>%s</td><td>
+			<form method="POST" action="/token?delete_client=%s" style="display:inline" onsubmit="return confirm('Delete?')">
+			<input type="hidden" name="_method" value="DELETE"><button type="submit">Delete</button></form></td></tr>`,
+			c.Name, c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID))
 	}
-	if clientRows == "" {
-		clientRows = `<tr><td colspan="4" style="padding:20px;text-align:center;color:#666">No OAuth clients. Create one to connect Claude or other MCP clients.</td></tr>`
+	sb.WriteString(`</tbody></table>`)
+
+	sb.WriteString(`<h4 style="margin-top:20px">Create OAuth Client</h4>`)
+	sb.WriteString(`<form method="POST" action="/token?create_client=1">`)
+	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="client_name" placeholder="e.g. Claude" required></div>`)
+	sb.WriteString(`<button type="submit">Create Client</button></form>`)
+
+	sb.WriteString(`<hr style="margin:30px 0;border:none;border-top:1px solid #eee">`)
+
+	// === Personal Access Tokens ===
+	sb.WriteString(`<h3>Personal Access Tokens</h3>`)
+	sb.WriteString(`<p style="color:#666;font-size:13px">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
+
+	sb.WriteString(`<div id="token-result" style="display:none;margin:20px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">`)
+	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
+	sb.WriteString(`<pre id="new-token" style="background:#fff;padding:10px;border:1px solid #c3e6cb;border-radius:3px;overflow-x:auto;white-space:pre-wrap;word-break:break-all"></pre></div>`)
+
+	sb.WriteString(`<table><thead><tr><th>Name</th><th>Permissions</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
+	tokens := auth.ListTokens(accountID)
+	if len(tokens) == 0 {
+		sb.WriteString(`<tr><td colspan="5" style="padding:20px;text-align:center;color:#666">No tokens yet.</td></tr>`)
 	}
-
-	content := fmt.Sprintf(`
-		<h3>OAuth Clients</h3>
-		<p style="color:#666;font-size:13px">For connecting Claude, MCP clients, or other apps via OAuth 2.1.</p>
-		<table>
-			<thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead>
-			<tbody>%s</tbody>
-		</table>
-
-		<h4 style="margin-top:20px">Create OAuth Client</h4>
-		<form method="POST" action="/token?create_client=1">
-			<div style="margin-bottom:10px">
-				<input type="text" name="client_name" placeholder="e.g. Claude Code" required style="width:100%%">
-			</div>
-			<button type="submit">Create Client</button>
-		</form>
-
-		` + func() string {
-		if newClientID != "" {
-			return fmt.Sprintf(`<div style="margin:15px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">
-				<strong>✓ Client Created!</strong>
-				<p>Copy these credentials now — the secret won't be shown again.</p>
-				<p><strong>Client ID:</strong> <code>%s</code></p>
-				<p><strong>Client Secret:</strong> <code>%s</code></p>
-			</div>`, newClientID, newClientSecret)
+	for _, token := range tokens {
+		expires := "Never"
+		if !token.ExpiresAt.IsZero() {
+			expires = TimeAgo(token.ExpiresAt)
 		}
-		return ""
-	}() + `
-
-		<hr style="margin:30px 0;border:none;border-top:1px solid #eee">
-
-		<h3>Personal Access Tokens</h3>
-		<p style="color:#666;font-size:13px">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>
-		
-		<div id="token-result" style="display: none; margin: 20px 0; padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px;">
-			<strong>✓ Token Created!</strong>
-			<p style="margin: 10px 0;">Copy this token now - you won't see it again:</p>
-			<pre id="new-token" style="background: #fff; padding: 10px; border: 1px solid #c3e6cb; border-radius: 3px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;"></pre>
-		</div>
-
-		<h3 style="margin-top: 30px;">Your Tokens</h3>
-		<table>
-			<thead>
-				<tr>
-					<th>Name</th>
-					<th>Permissions</th>
-					<th>Last Used</th>
-					<th>Expires</th>
-					<th>Actions</th>
-				</tr>
-			</thead>
-			<tbody>
-				%s
-			</tbody>
-		</table>
-
-		<h3 style="margin-top: 40px;">Create New Token</h3>
-		<form id="create-token-form" onsubmit="createToken(event)" style="margin: 20px 0;">
-			<div style="margin-bottom: 15px;">
-				<label style="display: block; margin-bottom: 5px;">Token Name *</label>
-				<input type="text" name="name" required placeholder="e.g., CI/CD Pipeline">
-				<small style="color: #666;">Descriptive name to identify this token</small>
-			</div>
-			
-			<div style="margin-bottom: 15px;">
-				<label style="display: block; margin-bottom: 5px;">Expiration</label>
-				<select name="expires_in">
-					<option value="0">Never</option>
-					<option value="7">7 days</option>
-					<option value="30">30 days</option>
-					<option value="90" selected>90 days</option>
-					<option value="365">1 year</option>
-				</select>
-			</div>
-			
-			<button type="submit">Generate Token</button>
-		</form>
-
-		<p style="margin-top: 20px;"><a href="/account">← Back to Account</a> · <a href="/api">API Docs</a></p>
-
-		<script>
-		async function createToken(e) {
-			e.preventDefault();
-			const form = e.target;
-			const data = {
-				name: form.name.value,
-				expires_in: parseInt(form.expires_in.value),
-				permissions: ['read', 'write']
-			};
-
-			const res = await fetch('/token', {
-				method: 'POST',
-				headers: {'Content-Type': 'application/json'},
-				body: JSON.stringify(data)
-			});
-
-			const result = await res.json();
-			if (result.success) {
-				document.getElementById('new-token').textContent = result.token;
-				document.getElementById('token-result').style.display = 'block';
-				setTimeout(() => location.reload(), 5000);
-			} else {
-				alert('Failed to create token');
-			}
+		lastUsed := "Never"
+		if !token.LastUsed.IsZero() {
+			lastUsed = TimeAgo(token.LastUsed)
 		}
-		</script>
-	`, tokenRows)
+		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>
+			<form method="POST" action="/token?id=%s" style="display:inline" onsubmit="return confirm('Delete?')">
+			<input type="hidden" name="_method" value="DELETE"><button type="submit">Delete</button></form></td></tr>`,
+			token.Name, strings.Join(token.Permissions, ", "), lastUsed, expires, token.ID))
+	}
+	sb.WriteString(`</tbody></table>`)
 
-	html := RenderHTML("API Credentials", "Manage API credentials", content)
+	sb.WriteString(`<h4 style="margin-top:20px">Create Token</h4>`)
+	sb.WriteString(`<form id="create-token-form" onsubmit="createToken(event)">`)
+	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="name" required placeholder="e.g. CI/CD"></div>`)
+	sb.WriteString(`<div style="margin-bottom:10px"><select name="expires_in">`)
+	sb.WriteString(`<option value="0">Never</option><option value="7">7 days</option><option value="30">30 days</option>`)
+	sb.WriteString(`<option value="90" selected>90 days</option><option value="365">1 year</option></select></div>`)
+	sb.WriteString(`<button type="submit">Generate Token</button></form>`)
+
+	sb.WriteString(`<p style="margin-top:20px"><a href="/account">← Account</a> · <a href="/api">API Docs</a></p>`)
+
+	sb.WriteString(`<script>
+async function createToken(e) {
+	e.preventDefault();
+	var form = e.target;
+	var res = await fetch('/token', {
+		method: 'POST',
+		headers: {'Content-Type': 'application/json'},
+		body: JSON.stringify({name: form.name.value, expires_in: parseInt(form.expires_in.value), permissions: ['read', 'write']})
+	});
+	var result = await res.json();
+	if (result.success) {
+		document.getElementById('new-token').textContent = result.token;
+		document.getElementById('token-result').style.display = 'block';
+		setTimeout(function() { location.reload(); }, 5000);
+	} else {
+		alert('Failed to create token');
+	}
+}
+</script>`)
+
+	html := RenderHTML("API Credentials", "Manage API credentials", sb.String())
 	w.Write([]byte(html))
 }
+
 
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {
 	tokens := auth.ListTokens(accountID)
