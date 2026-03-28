@@ -175,6 +175,12 @@ func ToolDocs() string {
 // tools is the list of MCP tools derived from API endpoints
 var tools = []Tool{
 	{
+		Name:        "me",
+		Description: "Get the current authenticated user's identity, account ID, and admin status",
+		Method:      "GET",
+		Path:        "/session",
+	},
+	{
 		Name:        "chat",
 		Description: "Chat with AI assistant",
 		Method:      "POST",
