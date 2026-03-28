@@ -510,8 +510,8 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		kind = KindShow
 	}
 
-	// Validate budget
-	if kind == KindTask && cost > 0 && sess.Account != "micro" {
+	// Validate budget (skip for admin)
+	if kind == KindTask && cost > 0 && !acc.Admin {
 		wal := wallet.GetWallet(sess.Account)
 		if wal.Balance < cost {
 			respondError(w, r, "/work?kind=task", fmt.Sprintf("Insufficient credits (%d available, %d budget)", wal.Balance, cost))
