@@ -5,10 +5,32 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/internal/auth"
 )
+
+// Flash storage — one-time values shown after redirect, then deleted.
+var (
+	flashMu   sync.Mutex
+	flashData = map[string]string{} // "sessionID:key" → value
+)
+
+func setFlash(sessionID, key, value string) {
+	flashMu.Lock()
+	flashData[sessionID+":"+key] = value
+	flashMu.Unlock()
+}
+
+func getFlash(sessionID, key string) string {
+	flashMu.Lock()
+	defer flashMu.Unlock()
+	k := sessionID + ":" + key
+	v := flashData[k]
+	delete(flashData, k)
+	return v
+}
 
 // TokenHandler manages Personal Access Tokens (PATs)
 // GET /token - List all tokens for the authenticated user
@@ -36,9 +58,11 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 			if name == "" {
 				name = "MCP Client"
 			}
-			client := auth.RegisterOAuthClient(name, []string{"http://localhost:0/callback"})
-			// Show credentials on the page
-			http.Redirect(w, r, "/token?new_client_id="+client.ClientID+"&new_client_secret="+client.ClientSecret, http.StatusSeeOther)
+			client := auth.RegisterOAuthClient(name, []string{})
+			// Store credentials in session flash (not URL)
+			setFlash(sess.ID, "client_id", client.ClientID)
+			setFlash(sess.ID, "client_secret", client.ClientSecret)
+			http.Redirect(w, r, "/token?created=1", http.StatusSeeOther)
 			return
 		}
 		if clientID := r.URL.Query().Get("delete_client"); clientID != "" && r.FormValue("_method") == "DELETE" {
@@ -58,7 +82,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			handleListTokensJSON(w, r, acc.ID)
 		} else {
-			handleTokenPage(w, r, acc.ID)
+			handleTokenPage(w, r, acc.ID, sess.ID)
 		}
 	case "POST":
 		handleCreateToken(w, r, acc.ID)
@@ -69,9 +93,9 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID string) {
-	newClientID := r.URL.Query().Get("new_client_id")
-	newClientSecret := r.URL.Query().Get("new_client_secret")
+func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionID string) {
+	newClientID := getFlash(sessionID, "client_id")
+	newClientSecret := getFlash(sessionID, "client_secret")
 
 	var sb strings.Builder
 
