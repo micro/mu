@@ -177,13 +177,23 @@ func generateRandomString(n int) string {
 	return base64.RawURLEncoding.EncodeToString(b)[:n]
 }
 
-// OAuthMetadataHandler serves /.well-known/oauth-authorization-server
-func OAuthMetadataHandler(w http.ResponseWriter, r *http.Request) {
+func getIssuer(r *http.Request) string {
+	host := r.Host
+	if fh := r.Header.Get("X-Forwarded-Host"); fh != "" {
+		host = fh
+	}
 	scheme := "https"
-	if r.TLS == nil && !strings.Contains(r.Host, "mu.xyz") {
+	if fp := r.Header.Get("X-Forwarded-Proto"); fp != "" {
+		scheme = fp
+	} else if r.TLS == nil && !strings.Contains(host, ".") {
 		scheme = "http"
 	}
-	issuer := scheme + "://" + r.Host
+	return scheme + "://" + host
+}
+
+// OAuthMetadataHandler serves /.well-known/oauth-authorization-server
+func OAuthMetadataHandler(w http.ResponseWriter, r *http.Request) {
+	issuer := getIssuer(r)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -201,11 +211,7 @@ func OAuthMetadataHandler(w http.ResponseWriter, r *http.Request) {
 
 // OAuthResourceHandler serves /.well-known/oauth-protected-resource
 func OAuthResourceHandler(w http.ResponseWriter, r *http.Request) {
-	scheme := "https"
-	if r.TLS == nil && !strings.Contains(r.Host, "mu.xyz") {
-		scheme = "http"
-	}
-	issuer := scheme + "://" + r.Host
+	issuer := getIssuer(r)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
