@@ -12,7 +12,7 @@ import (
 	"mu/wallet"
 )
 
-// ConsoleHandler provides an admin console for managing the system.
+// ConsoleHandler provides an admin console.
 func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	_, _, err := auth.RequireAdmin(r)
 	if err != nil {
@@ -20,54 +20,105 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle command
-	cmd := ""
-	output := ""
+	// POST: run command and return result
 	if r.Method == "POST" {
 		r.ParseForm()
-		cmd = strings.TrimSpace(r.FormValue("cmd"))
+		cmd := strings.TrimSpace(r.FormValue("cmd"))
+		output := ""
 		if cmd != "" {
 			output = runCommand(cmd)
 		}
-		// Redirect with results to prevent form resubmission
+		// If Accept: application/json, return JSON
+		if app.WantsJSON(r) || r.Header.Get("Content-Type") == "application/json" {
+			app.RespondJSON(w, map[string]string{"output": output})
+			return
+		}
+		// Fallback: redirect
 		http.Redirect(w, r, "/admin/console?cmd="+url.QueryEscape(cmd)+"&output="+url.QueryEscape(output), http.StatusSeeOther)
 		return
 	}
 
-	// GET — show form + results from redirect
+	// GET: render page
 	prevCmd := r.URL.Query().Get("cmd")
 	prevOutput := r.URL.Query().Get("output")
 
 	var sb strings.Builder
+	sb.WriteString(`<div class="card" style="background:#1a1a1a;color:#e0e0e0;font-family:'SF Mono','Fira Code',monospace;padding:16px;border:none">`)
 
-	// Form
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<form method="POST" action="/admin/console" style="display:flex;gap:8px">`)
-	sb.WriteString(fmt.Sprintf(`<input type="text" name="cmd" value="%s" placeholder="Type a command..." class="form-input" style="flex:1" autocomplete="off" autofocus>`, htmlEsc(prevCmd)))
-	sb.WriteString(`<button type="submit">Run</button>`)
-	sb.WriteString(`</form>`)
-
-	// Output
+	// Output area
+	sb.WriteString(`<div id="cout" style="font-size:13px;white-space:pre-wrap;max-height:60vh;overflow-y:auto;margin-bottom:12px">`)
 	if prevOutput != "" {
-		sb.WriteString(fmt.Sprintf(`<pre style="margin-top:12px;font-size:13px;white-space:pre-wrap;background:#f9f9f9;padding:12px;border-radius:6px">%s</pre>`, htmlEsc(prevOutput)))
+		sb.WriteString(fmt.Sprintf(`<span style="color:#888">&gt; %s</span>
+%s`, esc(prevCmd), esc(prevOutput)))
 	}
 	sb.WriteString(`</div>`)
 
-	// Help
-	sb.WriteString(`<div class="card">
-<p class="text-sm text-muted">search &lt;query&gt; · delete &lt;type&gt; &lt;id&gt; · user &lt;id&gt; · wallet &lt;id&gt; · types · stats</p>
-</div>`)
+	// Input — form for fallback, JS for interactive
+	sb.WriteString(`<form method="POST" action="/admin/console" id="cf" style="display:flex;gap:8px">`)
+	sb.WriteString(`<span style="color:#888;line-height:32px">&gt;</span>`)
+	sb.WriteString(`<input type="text" name="cmd" id="ci" autocomplete="off" autofocus style="flex:1;background:transparent;border:none;color:#e0e0e0;font-family:inherit;font-size:13px;outline:none;padding:6px 0">`)
+	sb.WriteString(`<button type="submit" id="cb" style="background:#333;color:#e0e0e0;border:none;border-radius:4px;padding:4px 12px;font-family:inherit;font-size:12px;cursor:pointer">run</button>`)
+	sb.WriteString(`</form>`)
+
+	sb.WriteString(`<div style="margin-top:8px;font-size:11px;color:#555">search · delete · user · wallet · types · stats · help</div>`)
+	sb.WriteString(`</div>`)
+
+	// JS: intercept form, use fetch, append output inline
+	sb.WriteString(`<script>
+(function(){
+  var form=document.getElementById('cf');
+  var input=document.getElementById('ci');
+  var out=document.getElementById('cout');
+  var hist=[];
+  var hi=-1;
+
+  function run(){
+    var cmd=input.value.trim();
+    if(!cmd)return;
+    hist.unshift(cmd);
+    hi=-1;
+    out.innerHTML+='<span style="color:#888">&gt; '+esc(cmd)+'</span>\n';
+    input.value='';
+    var fd=new FormData();
+    fd.append('cmd',cmd);
+    fetch('/admin/console',{method:'POST',body:fd,headers:{'Accept':'application/json'}})
+    .then(function(r){return r.json()})
+    .then(function(j){
+      out.innerHTML+=esc(j.output)+'\n';
+      out.scrollTop=out.scrollHeight;
+    })
+    .catch(function(e){
+      out.innerHTML+='<span style="color:#c00">Error: '+esc(e.message)+'</span>\n';
+    });
+  }
+
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    run();
+  });
+
+  input.addEventListener('keydown',function(e){
+    if(e.key==='ArrowUp'&&hist.length>0){
+      hi=Math.min(hi+1,hist.length-1);
+      input.value=hist[hi];
+      e.preventDefault();
+    }else if(e.key==='ArrowDown'){
+      hi=Math.max(hi-1,-1);
+      input.value=hi>=0?hist[hi]:'';
+      e.preventDefault();
+    }
+  });
+
+  function esc(s){
+    var d=document.createElement('div');
+    d.textContent=s;
+    return d.innerHTML;
+  }
+})();
+</script>`)
 
 	html := app.RenderHTMLForRequest("Console", "Admin Console", sb.String(), r)
 	w.Write([]byte(html))
-}
-
-func htmlEsc(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, `"`, "&quot;")
-	return s
 }
 
 func runCommand(cmd string) string {
@@ -135,9 +186,17 @@ func runCommand(cmd string) string {
 		return fmt.Sprintf("Index entries: %d\nSQLite: %v", stats.TotalEntries, stats.UsingSQLite)
 
 	case "help":
-		return "search <query> · delete <type> <id> · user <id> · wallet <id> · types · stats"
+		return "search <query>  — search indexed content\ndelete <type> <id>  — delete by type and ID\nuser <id>  — view user details\nwallet <id>  — view wallet balance\ntypes  — list deletable content types\nstats  — index stats"
 
 	default:
-		return fmt.Sprintf("Unknown command: %s", parts[0])
+		return fmt.Sprintf("Unknown: %s. Type help for commands.", parts[0])
 	}
+}
+
+func esc(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, `"`, "&quot;")
+	return s
 }
