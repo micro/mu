@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 
+	"mu/apps"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/flag"
 	"mu/wallet"
+	"mu/work"
 )
 
 // ConsoleHandler provides an admin console.
@@ -66,7 +70,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<button type="submit" id="cb" style="background:#333;color:#e0e0e0;border:none;border-radius:4px;padding:4px 12px;font-family:inherit;font-size:12px;cursor:pointer">run</button>`)
 	sb.WriteString(`</form>`)
 
-	sb.WriteString(`<div style="margin-top:8px;font-size:11px;color:#555">search · delete · user · wallet · types · stats · help</div>`)
+	sb.WriteString(`<div style="margin-top:8px;font-size:11px;color:#555">help · users · apps · tasks · search · stats</div>`)
 	sb.WriteString(`</div>`)
 
 	// JS: intercept form, use fetch, append output inline
@@ -131,13 +135,134 @@ func runCommand(cmd string) string {
 		return ""
 	}
 
+	arg := func(i int) string {
+		if i < len(parts) {
+			return parts[i]
+		}
+		return ""
+	}
+	rest := func(i int) string {
+		if i < len(parts) {
+			return strings.Join(parts[i:], " ")
+		}
+		return ""
+	}
+
 	switch parts[0] {
+
+	// --- Users ---
+	case "users":
+		accounts := auth.GetAllAccounts()
+		sort.Slice(accounts, func(i, j int) bool { return accounts[i].Created.After(accounts[j].Created) })
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%d users\n", len(accounts)))
+		for _, a := range accounts {
+			admin := ""
+			if a.Admin {
+				admin = " [admin]"
+			}
+			sb.WriteString(fmt.Sprintf("  %s (%s) — %s%s\n", a.ID, a.Name, a.Created.Format("2 Jan 2006"), admin))
+		}
+		return sb.String()
+
+	case "user":
+		if arg(1) == "" {
+			return "usage: user <id>"
+		}
+		acc, err := auth.GetAccount(arg(1))
+		if err != nil {
+			return "User not found"
+		}
+		w := wallet.GetWallet(acc.ID)
+		return fmt.Sprintf("ID: %s\nName: %s\nAdmin: %v\nCreated: %s\nBalance: %d credits",
+			acc.ID, acc.Name, acc.Admin, acc.Created.Format("2 Jan 2006 15:04"), w.Balance)
+
+	// --- Wallet ---
+	case "wallet":
+		if arg(1) == "" {
+			return "usage: wallet <user_id>"
+		}
+		w := wallet.GetWallet(arg(1))
+		usage := wallet.GetDailyUsage(arg(1))
+		txns := wallet.GetTransactions(arg(1), 10)
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Balance: %d credits\nDaily usage: %d / %d free\n", w.Balance, usage.Used, wallet.FreeDailyQuota))
+		if len(txns) > 0 {
+			sb.WriteString("\nRecent transactions:\n")
+			for _, tx := range txns {
+				sb.WriteString(fmt.Sprintf("  %s  %+d  %s  bal:%d\n", tx.CreatedAt.Format("2 Jan 15:04"), tx.Amount, tx.Operation, tx.Balance))
+			}
+		}
+		return sb.String()
+
+	case "credit":
+		if arg(1) == "" || arg(2) == "" {
+			return "usage: credit <user_id> <amount>"
+		}
+		var amount int
+		fmt.Sscanf(arg(2), "%d", &amount)
+		if amount <= 0 {
+			return "Amount must be positive"
+		}
+		wallet.AddCredits(arg(1), amount, "admin_grant", nil)
+		return fmt.Sprintf("Added %d credits to %s", amount, arg(1))
+
+	// --- Apps ---
+	case "apps":
+		allApps := apps.GetPublicApps()
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%d public apps\n", len(allApps)))
+		for _, a := range allApps {
+			sb.WriteString(fmt.Sprintf("  %s — %s (by %s, %d launches)\n", a.Slug, a.Name, a.Author, a.Installs))
+		}
+		return sb.String()
+
+	case "app":
+		if arg(1) == "" {
+			return "usage: app <slug>"
+		}
+		a := apps.GetApp(arg(1))
+		if a == nil {
+			return "App not found"
+		}
+		return fmt.Sprintf("Slug: %s\nName: %s\nAuthor: %s (%s)\nPublic: %v\nInstalls: %d\nCreated: %s\nHTML: %d bytes",
+			a.Slug, a.Name, a.Author, a.AuthorID, a.Public, a.Installs, a.CreatedAt.Format("2 Jan 2006"), len(a.HTML))
+
+	// --- Work ---
+	case "tasks":
+		posts := work.ListPosts("task", "", 20)
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%d tasks\n", len(posts)))
+		for _, p := range posts {
+			sb.WriteString(fmt.Sprintf("  [%s] %s — %s (budget:%d spent:%d)\n", p.Status, p.ID[:8], p.Title, p.Cost, p.Spent))
+		}
+		return sb.String()
+
+	case "task":
+		if arg(1) == "" {
+			return "usage: task <id>"
+		}
+		p := work.GetPost(arg(1))
+		if p == nil {
+			return "Task not found"
+		}
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("ID: %s\nTitle: %s\nStatus: %s\nAuthor: %s\nBudget: %d\nSpent: %d\nApp: %s\n",
+			p.ID, p.Title, p.Status, p.AuthorID, p.Cost, p.Spent, p.AppSlug))
+		if len(p.Log) > 0 {
+			sb.WriteString(fmt.Sprintf("\nLog (%d entries):\n", len(p.Log)))
+			for _, e := range p.Log {
+				sb.WriteString(fmt.Sprintf("  %s [%s] %s\n", e.CreatedAt.Format("15:04:05"), e.Step, e.Message))
+			}
+		}
+		return sb.String()
+
+	// --- Content ---
 	case "search":
-		if len(parts) < 2 {
+		if arg(1) == "" {
 			return "usage: search <query>"
 		}
-		query := strings.Join(parts[1:], " ")
-		results := data.Search(query, 20)
+		results := data.Search(rest(1), 20)
 		if len(results) == 0 {
 			return "No results."
 		}
@@ -148,52 +273,47 @@ func runCommand(cmd string) string {
 		return sb.String()
 
 	case "delete":
-		if len(parts) < 3 {
+		if arg(1) == "" || arg(2) == "" {
 			return "usage: delete <type> <id>"
 		}
-		contentType := parts[1]
-		id := strings.Join(parts[2:], " ")
-		if err := data.Delete(contentType, id); err != nil {
+		if err := data.Delete(arg(1), rest(2)); err != nil {
 			return "Error: " + err.Error()
 		}
-		return fmt.Sprintf("Deleted %s %s", contentType, id)
+		return fmt.Sprintf("Deleted %s %s", arg(1), rest(2))
 
-	case "user":
-		if len(parts) < 2 {
-			return "usage: user <id>"
+	case "flags":
+		flagged := flag.GetAll()
+		if len(flagged) == 0 {
+			return "No flagged content."
 		}
-		acc, err := auth.GetAccount(parts[1])
-		if err != nil {
-			return "User not found"
+		var sb strings.Builder
+		for _, f := range flagged {
+			sb.WriteString(fmt.Sprintf("[%s] %s — %d flags, hidden: %v\n", f.ContentType, f.ContentID, f.FlagCount, f.Flagged))
 		}
-		return fmt.Sprintf("ID: %s\nName: %s\nAdmin: %v\nCreated: %s",
-			acc.ID, acc.Name, acc.Admin, acc.Created.Format("2 Jan 2006 15:04"))
+		return sb.String()
 
-	case "wallet":
-		if len(parts) < 2 {
-			return "usage: wallet <user_id>"
-		}
-		w := wallet.GetWallet(parts[1])
-		usage := wallet.GetDailyUsage(parts[1])
-		return fmt.Sprintf("Balance: %d credits\nDaily usage: %d / %d free",
-			w.Balance, usage.Used, wallet.FreeDailyQuota)
-
-	case "types":
-		types := data.DeleteTypes()
-		if len(types) == 0 {
-			return "No deletable types registered."
-		}
-		return strings.Join(types, ", ")
-
+	// --- System ---
 	case "stats":
 		stats := data.GetStats()
-		return fmt.Sprintf("Index entries: %d\nSQLite: %v", stats.TotalEntries, stats.UsingSQLite)
+		accounts := auth.GetAllAccounts()
+		allApps := apps.GetPublicApps()
+		tasks := work.ListPosts("task", "", 100)
+		return fmt.Sprintf("Users: %d\nApps: %d\nTasks: %d\nIndex: %d entries\nSQLite: %v",
+			len(accounts), len(allApps), len(tasks), stats.TotalEntries, stats.UsingSQLite)
+
+	case "types":
+		return strings.Join(data.DeleteTypes(), ", ")
 
 	case "help":
-		return "search <query>  — search indexed content\ndelete <type> <id>  — delete by type and ID\nuser <id>  — view user details\nwallet <id>  — view wallet balance\ntypes  — list deletable content types\nstats  — index stats"
+		return `Users:    users · user <id> · credit <id> <amount>
+Wallet:   wallet <id>
+Apps:     apps · app <slug>
+Tasks:    tasks · task <id>
+Content:  search <query> · delete <type> <id> · flags
+System:   stats · types · help`
 
 	default:
-		return fmt.Sprintf("Unknown: %s. Type help for commands.", parts[0])
+		return fmt.Sprintf("Unknown: %s. Type help.", parts[0])
 	}
 }
 
