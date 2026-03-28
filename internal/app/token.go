@@ -28,9 +28,24 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check for _method override for DELETE
+	// Handle OAuth client actions
 	if r.Method == "POST" {
 		r.ParseForm()
+		if r.URL.Query().Get("create_client") == "1" {
+			name := r.FormValue("client_name")
+			if name == "" {
+				name = "MCP Client"
+			}
+			client := auth.RegisterOAuthClient(name, []string{"http://localhost:0/callback"})
+			// Show credentials on the page
+			http.Redirect(w, r, "/token?new_client_id="+client.ClientID+"&new_client_secret="+client.ClientSecret, http.StatusSeeOther)
+			return
+		}
+		if clientID := r.URL.Query().Get("delete_client"); clientID != "" && r.FormValue("_method") == "DELETE" {
+			auth.DeleteOAuthClient(clientID)
+			http.Redirect(w, r, "/token", http.StatusSeeOther)
+			return
+		}
 		if r.FormValue("_method") == "DELETE" {
 			handleDeleteToken(w, r, acc.ID)
 			return
@@ -95,8 +110,63 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID string) {
 		tokenRows = `<tr><td colspan="5" style="padding: 20px; text-align: center; color: #666;">No tokens yet. Create one below.</td></tr>`
 	}
 
+	// Show newly created client credentials
+	newClientID := r.URL.Query().Get("new_client_id")
+	newClientSecret := r.URL.Query().Get("new_client_secret")
+
+	// OAuth Clients section
+	oauthClients := auth.GetAllOAuthClients()
+	var clientRows string
+	for _, c := range oauthClients {
+		clientRows += fmt.Sprintf(`
+			<tr>
+				<td>%s</td>
+				<td><code style="font-size:12px">%s</code></td>
+				<td>%s</td>
+				<td>
+					<form method="POST" action="/token?delete_client=%s" style="display:inline" onsubmit="return confirm('Delete this client?');">
+						<input type="hidden" name="_method" value="DELETE">
+						<button type="submit">Delete</button>
+					</form>
+				</td>
+			</tr>`, c.Name, c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID)
+	}
+	if clientRows == "" {
+		clientRows = `<tr><td colspan="4" style="padding:20px;text-align:center;color:#666">No OAuth clients. Create one to connect Claude or other MCP clients.</td></tr>`
+	}
+
 	content := fmt.Sprintf(`
-		<p>Personal Access Tokens (PATs) for API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>
+		<h3>OAuth Clients</h3>
+		<p style="color:#666;font-size:13px">For connecting Claude, MCP clients, or other apps via OAuth 2.1.</p>
+		<table>
+			<thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead>
+			<tbody>%s</tbody>
+		</table>
+
+		<h4 style="margin-top:20px">Create OAuth Client</h4>
+		<form method="POST" action="/token?create_client=1">
+			<div style="margin-bottom:10px">
+				<input type="text" name="client_name" placeholder="e.g. Claude Code" required style="width:100%%">
+			</div>
+			<button type="submit">Create Client</button>
+		</form>
+
+		` + func() string {
+		if newClientID != "" {
+			return fmt.Sprintf(`<div style="margin:15px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">
+				<strong>✓ Client Created!</strong>
+				<p>Copy these credentials now — the secret won't be shown again.</p>
+				<p><strong>Client ID:</strong> <code>%s</code></p>
+				<p><strong>Client Secret:</strong> <code>%s</code></p>
+			</div>`, newClientID, newClientSecret)
+		}
+		return ""
+	}() + `
+
+		<hr style="margin:30px 0;border:none;border-top:1px solid #eee">
+
+		<h3>Personal Access Tokens</h3>
+		<p style="color:#666;font-size:13px">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>
 		
 		<div id="token-result" style="display: none; margin: 20px 0; padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px;">
 			<strong>✓ Token Created!</strong>
@@ -172,7 +242,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID string) {
 		</script>
 	`, tokenRows)
 
-	html := RenderHTML("API Tokens", "Manage your API tokens", content)
+	html := RenderHTML("API Credentials", "Manage API credentials", content)
 	w.Write([]byte(html))
 }
 
