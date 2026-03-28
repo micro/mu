@@ -79,9 +79,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
     hi=-1;
     out.innerHTML+='<span style="color:#888">&gt; '+esc(cmd)+'</span>\n';
     input.value='';
-    var fd=new FormData();
-    fd.append('cmd',cmd);
-    fetch('/admin/console',{method:'POST',body:fd,headers:{'Accept':'application/json'}})
+    fetch('/admin/console',{method:'POST',body:'cmd='+encodeURIComponent(cmd),headers:{'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'}})
     .then(function(r){return r.json()})
     .then(function(j){
       out.innerHTML+=esc(j.output)+'\n';

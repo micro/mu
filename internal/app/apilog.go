@@ -1,32 +1,55 @@
 package app
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
+
+	"mu/internal/data"
 )
 
-const apiLogMaxEntries = 200
+const apiLogMaxEntries = 500
 
 // APILogEntry records a single external API call.
 type APILogEntry struct {
-	Time         time.Time
-	Service      string
-	Method       string
-	URL          string
-	Status       int
-	Duration     time.Duration
-	Error        string
-	RequestBody  string
-	ResponseBody string
+	Time         time.Time     `json:"time"`
+	Service      string        `json:"service"`
+	Method       string        `json:"method"`
+	URL          string        `json:"url"`
+	Status       int           `json:"status"`
+	Duration     time.Duration `json:"duration"`
+	Error        string        `json:"error,omitempty"`
+	RequestBody  string        `json:"-"` // not persisted — too large
+	ResponseBody string        `json:"-"` // not persisted — too large
 }
 
 var (
 	apiLogMu      sync.Mutex
 	apiLogEntries []*APILogEntry
+	apiLogDirty   bool
 )
 
-// RecordAPICall appends an external API call record to the in-memory log.
-// When the log exceeds apiLogMaxEntries the oldest entry is dropped.
+func init() {
+	b, err := data.LoadFile("api_log.json")
+	if err == nil && len(b) > 0 {
+		json.Unmarshal(b, &apiLogEntries)
+	}
+	// Start background saver
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			apiLogMu.Lock()
+			if apiLogDirty {
+				data.SaveJSON("api_log.json", apiLogEntries)
+				apiLogDirty = false
+			}
+			apiLogMu.Unlock()
+		}
+	}()
+}
+
+// RecordAPICall appends an external API call record.
+// Persisted to disk every 10 seconds, capped at 500 entries.
 func RecordAPICall(service, method, url string, status int, duration time.Duration, callErr error, reqBody, respBody string) {
 	entry := &APILogEntry{
 		Time:         time.Now(),
@@ -46,6 +69,7 @@ func RecordAPICall(service, method, url string, status int, duration time.Durati
 	if len(apiLogEntries) > apiLogMaxEntries {
 		apiLogEntries = apiLogEntries[len(apiLogEntries)-apiLogMaxEntries:]
 	}
+	apiLogDirty = true
 	apiLogMu.Unlock()
 }
 
