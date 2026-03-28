@@ -8,6 +8,7 @@ import (
 	"mu/apps"
 	"mu/internal/ai"
 	"mu/internal/api"
+	"mu/internal/auth"
 	"mu/internal/event"
 	"mu/work"
 )
@@ -471,14 +472,18 @@ func errText(text string, err error) string {
 }
 
 func spendCredit(post *work.Post, postID string) bool {
+	// Admin bypasses budget and credit checks
+	if acc, err := auth.GetAccount(post.AuthorID); err == nil && acc.Admin {
+		return true
+	}
 	if post.Cost > 0 && work.BudgetRemaining(postID) < creditPerCall {
 		work.AddLog(postID, "budget", "Budget exceeded", 0)
 		return false
 	}
 	if work.SpendCredits != nil {
-		err := work.SpendCredits(post.AuthorID, creditPerCall, "work_agent")
-		if err != nil {
-			work.AddLog(postID, "info", fmt.Sprintf("Credit deduction skipped: %v", err), 0)
+		if err := work.SpendCredits(post.AuthorID, creditPerCall, "work_agent"); err != nil {
+			work.AddLog(postID, "budget", "Insufficient credits", 0)
+			return false
 		}
 	}
 	return true
