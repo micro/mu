@@ -658,6 +658,13 @@ func main() {
 	http.HandleFunc("/token", app.TokenHandler)
 	http.HandleFunc("/passkey/", app.PasskeyHandler)
 
+	// OAuth 2.1 for MCP authentication
+	http.HandleFunc("/.well-known/oauth-authorization-server", auth.OAuthMetadataHandler)
+	http.HandleFunc("/.well-known/oauth-protected-resource", auth.OAuthResourceHandler)
+	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
+	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)
+	http.HandleFunc("/oauth/token", auth.OAuthTokenHandler)
+
 	// internal status (injected into admin server page)
 	app.DKIMStatusFunc = mail.DKIMStatus
 	app.DigestStatusFunc = digest.Status
@@ -863,7 +870,8 @@ func main() {
 				isWebhook := r.URL.Path == "/wallet/stripe/webhook"
 				// Skip CSRF for login/signup (no session yet)
 				isAuth := r.URL.Path == "/login" || r.URL.Path == "/signup" ||
-					strings.HasPrefix(r.URL.Path, "/passkey/")
+					strings.HasPrefix(r.URL.Path, "/passkey/") ||
+					strings.HasPrefix(r.URL.Path, "/oauth/")
 				// Skip CSRF for SMTP/ActivityPub inbound
 				isInbound := strings.HasSuffix(r.URL.Path, "/inbox")
 

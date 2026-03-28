@@ -663,7 +663,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <div class="card">
 <h4>Settings</h4>
 %s
-<p><a href="/token">API Tokens →</a></p>
+<p><a href="/token">API Credentials →</a></p>
 <p><a href="/app/blocked">Blocked Users →</a></p>
 <p><a href="/app/saved">Saved →</a></p>
 <p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
