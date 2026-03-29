@@ -180,7 +180,7 @@ function saveApp(){
 }
 
 function feedback(sid,ok,result,error,dom){
-  fetch('/agent/exec/result',{
+  fetch('/agent/exec',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({session_id:sid,ok:ok,result:result,error:error,dom:dom})
