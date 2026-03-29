@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	creditPerCall     = 3
+	creditPerCall     = 100
 	maxFixAttempts    = 3
 )
 
