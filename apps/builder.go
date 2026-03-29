@@ -761,18 +761,26 @@ func editPageHTML(a *App) string {
   .save-bar input { width: 100%%; }
   .prompt-bar { flex-direction: column; }
   .prompt-bar input, .prompt-bar button { width: 100%%; box-sizing: border-box; }
+  .edit-panels { flex-direction: column !important; }
+  .edit-panels > div { min-width: auto !important; }
 }
 </style>
 
 <div class="builder">
-  <p class="card-desc">Edit your app — modify with AI or update the code directly.</p>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+    <p class="card-desc" style="margin:0">Edit your app</p>
+    <div style="display:flex;gap:8px;align-items:center;font-size:13px">
+      <a href="/apps/%s/run" style="color:#333;text-decoration:none;padding:4px 12px;border:1px solid #e0e0e0;border-radius:6px">Open App</a>
+      <button onclick="deleteApp()" style="padding:4px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;color:#c00;cursor:pointer;font-size:13px;font-family:inherit">Delete</button>
+    </div>
+  </div>
 
   <div class="prompt-bar">
     <input type="text" id="prompt" placeholder="Describe changes... e.g. add a dark mode toggle" onkeydown="if(event.key==='Enter')generate()">
     <button id="genBtn" onclick="generate()">Modify</button>
   </div>
 
-  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+  <div class="edit-panels" style="display:flex;gap:12px;flex-wrap:wrap;">
     <div style="flex:1;min-width:300px;">
       <div class="code-header" style="margin-bottom:6px;">
         <h3>Code</h3>
@@ -951,5 +959,12 @@ function copyCode() {
     setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 2000);
   });
 }
-</script>`, savedAt, versionLink, escapedIcon, escapedSlug, escapedSDK, escapedCode, escapedName, escapedDesc, escapedTags)
+
+function deleteApp() {
+  if (!confirm('Delete this app? This cannot be undone.')) return;
+  fetch('/apps/' + editSlug + '/delete', { method: 'POST' })
+  .then(function(r) { if (r.ok) window.location.href = '/apps'; else throw new Error('Delete failed'); })
+  .catch(function(e) { document.getElementById('statusMsg').textContent = e.message; });
+}
+</script>`, htmlpkg.EscapeString(a.Slug), savedAt, versionLink, escapedIcon, escapedSlug, escapedSDK, escapedCode, escapedName, escapedDesc, escapedTags)
 }
