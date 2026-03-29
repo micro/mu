@@ -31,21 +31,21 @@ func WorkspaceHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<style>
 #ws{display:flex;flex-direction:column;height:calc(100vh - 60px);max-width:900px;margin:0 auto}
 #ws-log{flex:1;overflow-y:auto;padding:8px 0}
-#ws-preview{border:1px solid #e0e0e0;border-radius:6px;min-height:200px;display:none;margin-bottom:12px;padding:16px;background:#fff}
+#ws-preview{border:1px solid #e0e0e0;border-radius:6px;min-height:300px;display:none;margin-bottom:12px;background:#fff}
 #ws-input{display:flex;gap:8px;padding:8px 0}
 #ws-input input{flex:1;padding:10px 14px;border:1px solid #e0e0e0;border-radius:6px;font-size:15px;font-family:inherit}
 #ws-input button{padding:10px 24px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:15px}
 #ws-input button:disabled{background:#ccc;cursor:not-allowed}
-.ws-msg{margin:4px 0;font-size:14px}
+.ws-msg{margin:4px 0;font-size:14px;line-height:1.5}
 .ws-user{color:#1a1a1a;font-weight:600}
 .ws-agent{color:#555}
 .ws-status{color:#888;font-size:13px}
 .ws-error{color:#c00;font-size:13px}
-.ws-code{font-family:'SF Mono',monospace;font-size:12px;background:#f5f5f5;padding:8px;border-radius:4px;margin:4px 0;overflow-x:auto;white-space:pre-wrap}
+.ws-step{color:#555;font-size:13px;padding:2px 0;border-left:2px solid #e0e0e0;padding-left:8px;margin:2px 0}
 </style>
 <div id="ws">
 <div id="ws-log"></div>
-<div id="ws-preview"></div>
+<iframe id="ws-preview" style="width:100%;border:1px solid #e0e0e0;border-radius:6px;min-height:300px;display:none;background:#fff"></iframe>
 <div id="ws-input">
 <input type="text" id="ws-prompt" placeholder="Tell the agent what to do..." autofocus>
 <button id="ws-btn" onclick="send()">Go</button>
@@ -66,18 +66,18 @@ function addMsg(cls,text){
   log.scrollTop=log.scrollHeight;
 }
 
-function addHTML(cls,html){
+function addStep(text){
   var d=document.createElement('div');
-  d.className='ws-msg '+cls;
-  d.innerHTML=html;
+  d.className='ws-step';
+  d.textContent=text;
   log.appendChild(d);
   log.scrollTop=log.scrollHeight;
 }
 
-function addCode(code){
-  var d=document.createElement('pre');
-  d.className='ws-code';
-  d.textContent=code.length>500?code.slice(0,500)+'...':code;
+function addHTML(cls,html){
+  var d=document.createElement('div');
+  d.className='ws-msg '+cls;
+  d.innerHTML=html;
   log.appendChild(d);
   log.scrollTop=log.scrollHeight;
 }
@@ -90,6 +90,7 @@ function send(){
   addMsg('ws-user',prompt);
   input.value='';
   btn.disabled=true;
+  addStep('Planning...');
 
   var es=new EventSource('/agent/workspace?prompt='+encodeURIComponent(prompt)+'&flow_id='+flowId);
 
@@ -101,38 +102,48 @@ function send(){
         flowId=ev.flow_id;
       }
       else if(ev.type==='status'){
-        addMsg('ws-status',ev.message);
+        addStep(ev.message);
       }
       else if(ev.type==='exec'){
-        // Execute code in the preview context
-        addMsg('ws-status','Executing code...');
         if(ev.html){
+          addStep('Rendering app...');
           preview.style.display='block';
-          preview.innerHTML=ev.html;
-          // Execute any scripts in the injected HTML
-          var scripts=preview.querySelectorAll('script');
-          scripts.forEach(function(s){
-            var ns=document.createElement('script');
-            ns.textContent=s.textContent;
-            preview.appendChild(ns);
-            s.remove();
-          });
+          // Write full HTML into iframe (same-origin, no sandbox)
+          var doc=preview.contentDocument||preview.contentWindow.document;
+          doc.open();
+          doc.write(ev.html);
+          doc.close();
+          // Wait a moment for scripts to run, then send feedback
+          setTimeout(function(){
+            try{
+              var errs=preview.contentWindow.mu&&preview.contentWindow.mu.errors;
+              if(errs&&errs.length>0){
+                addMsg('ws-error','Runtime error: '+errs[0].message);
+                feedback(flowId,false,'',errs[0].message,doc.body?doc.body.textContent.slice(0,500):'');
+              } else {
+                addStep('App rendered');
+                feedback(flowId,true,'rendered','',doc.body?doc.body.textContent.slice(0,500):'');
+              }
+            }catch(ex){
+              feedback(flowId,true,'rendered','','');
+            }
+          },1000);
         }
         if(ev.code){
-          addCode(ev.code);
-          // Wrap in async IIFE so await works
+          addStep('Executing code...');
           (async function(){
             try{
               var result=await eval('(async function(){'+ev.code+'})()');
-              feedback(flowId,true,String(result||'ok'),'',preview.textContent.slice(0,500));
+              addStep('Code executed');
+              feedback(flowId,true,String(result||'ok'),'','');
             }catch(err){
               addMsg('ws-error','Error: '+err.message);
-              feedback(flowId,false,'',err.message,preview.textContent.slice(0,500));
+              feedback(flowId,false,'',err.message,'');
             }
           })();
-        } else {
-          // HTML only, no code to eval
-          feedback(flowId,true,'rendered','',preview.textContent.slice(0,500));
+        }
+        if(!ev.html&&!ev.code){
+          feedback(flowId,true,'ok','','');
         }
       }
       else if(ev.type==='response'){
@@ -144,9 +155,6 @@ function send(){
       else if(ev.type==='done'){
         btn.disabled=false;
         es.close();
-      }
-      else if(ev.type==='save'){
-        addHTML('ws-agent','<a href="/apps/'+ev.slug+'/run" style="font-weight:600">Open App: '+ev.name+'</a>');
       }
     }catch(ex){console.error('parse error',ex)}
   };
@@ -274,6 +282,22 @@ Output ONLY a JSON array. No other text.`
 		sseSend(map[string]any{"type": "response", "message": planResult})
 		sseSend(map[string]any{"type": "done"})
 		return
+	}
+
+	// Describe what we're about to do
+	for _, s := range steps {
+		switch s.Type {
+		case "exec":
+			if s.HTML != "" {
+				sseSend(map[string]any{"type": "status", "message": "Building app..."})
+			} else if s.Code != "" {
+				sseSend(map[string]any{"type": "status", "message": "Running code..."})
+			}
+		case "tool":
+			sseSend(map[string]any{"type": "status", "message": "Will fetch: " + s.Name})
+		case "respond":
+			// nothing to announce
+		}
 	}
 
 	// Step 2: Execute steps
