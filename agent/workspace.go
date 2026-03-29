@@ -120,13 +120,16 @@ function send(){
         }
         if(ev.code){
           addCode(ev.code);
-          try{
-            var result=eval(ev.code);
-            feedback(flowId,true,String(result||'ok'),'',preview.textContent.slice(0,500));
-          }catch(err){
-            addMsg('ws-error','Error: '+err.message);
-            feedback(flowId,false,'',err.message,preview.textContent.slice(0,500));
-          }
+          // Wrap in async IIFE so await works
+          (async function(){
+            try{
+              var result=await eval('(async function(){'+ev.code+'})()');
+              feedback(flowId,true,String(result||'ok'),'',preview.textContent.slice(0,500));
+            }catch(err){
+              addMsg('ws-error','Error: '+err.message);
+              feedback(flowId,false,'',err.message,preview.textContent.slice(0,500));
+            }
+          })();
         } else {
           // HTML only, no code to eval
           feedback(flowId,true,'rendered','',preview.textContent.slice(0,500));
@@ -278,7 +281,8 @@ Output ONLY the JSON array.`
 	for _, s := range steps {
 		switch s.Type {
 		case "exec":
-			sseSend(map[string]any{"type": "exec", "code": s.Code, "html": s.HTML})
+			code := stripCodeFences(s.Code)
+			sseSend(map[string]any{"type": "exec", "code": code, "html": s.HTML})
 			// Wait for browser feedback
 			fb := waitForFeedback(flow.ID, 15*time.Second)
 			if fb != nil {
@@ -287,14 +291,14 @@ Output ONLY the JSON array.`
 					sseSend(map[string]any{"type": "status", "message": "Error: " + fb.Error})
 					// Try to fix
 					fixResult, fixErr := ai.Ask(&ai.Prompt{
-						System:   "Fix this JavaScript error. Output ONLY the corrected code, no explanation.",
+						System:   "Fix this JavaScript error. Output ONLY the corrected JavaScript code. No markdown, no fences, no explanation. Just the code.",
 						Question: fmt.Sprintf("Error: %s\n\nCode that failed:\n%s", fb.Error, s.Code),
 						Priority: ai.PriorityHigh,
 						Caller:   "workspace-fix",
 					})
 					if fixErr == nil {
 						sseSend(map[string]any{"type": "status", "message": "Fixing..."})
-						sseSend(map[string]any{"type": "exec", "code": fixResult})
+						sseSend(map[string]any{"type": "exec", "code": stripCodeFences(fixResult)})
 						fb2 := waitForFeedback(flow.ID, 15*time.Second)
 						if fb2 != nil {
 							lastExecResult = fb2
@@ -348,4 +352,23 @@ Output ONLY the JSON array.`
 	})
 
 	sseSend(map[string]any{"type": "done"})
+}
+
+// stripCodeFences removes markdown code fences from AI output.
+func stripCodeFences(s string) string {
+	s = strings.TrimSpace(s)
+	// Remove opening fence: ```js, ```javascript, ```
+	for _, prefix := range []string{"```javascript\n", "```js\n", "```html\n", "```\n"} {
+		if strings.HasPrefix(s, prefix) {
+			s = s[len(prefix):]
+			break
+		}
+	}
+	// Remove closing fence
+	if strings.HasSuffix(s, "\n```") {
+		s = s[:len(s)-4]
+	} else if strings.HasSuffix(s, "```") {
+		s = s[:len(s)-3]
+	}
+	return strings.TrimSpace(s)
 }
