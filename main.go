@@ -97,33 +97,14 @@ func main() {
 
 	// Wire work → apps builder (avoids direct import between building blocks)
 	work.BuildApp = func(prompt, authorID, authorName string) (string, string, error) {
-		a, err := apps.BuildAndSave(prompt+"\n\n"+apps.SDKDocs(), authorID, authorName)
+		a, err := apps.BuildAndSave(prompt, authorID, authorName)
 		if err != nil {
 			return "", "", err
 		}
 		return a.Slug, a.Name, nil
 	}
 	work.RebuildApp = func(slug, feedback string) error {
-		a := apps.GetApp(slug)
-		if a == nil {
-			return fmt.Errorf("app not found: %s", slug)
-		}
-		// Ask AI to update the app based on feedback
-		result, err := ai.Ask(&ai.Prompt{
-			System:   apps.BuilderSystemPrompt(),
-			Question: fmt.Sprintf("Update this app based on the feedback below.\n\nOriginal requirements:\n%s\n\nFeedback:\n%s\n\nCurrent app HTML:\n%s\n\n%s", a.Description, feedback, a.HTML, apps.SDKDocs()),
-			Priority: ai.PriorityHigh,
-			Caller:   "work-rebuild",
-		})
-		if err != nil {
-			return fmt.Errorf("AI update failed: %v", err)
-		}
-		// Parse and update
-		html := apps.CleanGeneratedHTML(result)
-		if html == "" {
-			return fmt.Errorf("AI returned empty HTML")
-		}
-		_, err = apps.UpdateApp(slug, "", "", "", html, "")
+		_, err := apps.EditApp(slug, feedback, "work")
 		return err
 	}
 	work.VerifyApp = func(appSlug string) (string, bool) {

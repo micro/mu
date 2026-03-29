@@ -169,16 +169,16 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build the AI prompt — include SDK docs so the builder knows about platform APIs
-	question := req.Prompt + "\n\n" + SDKDocs()
+	// Build the AI prompt
+	question := req.Prompt
 	var rag []string
 	if req.Code != "" {
 		rag = append(rag, "Current app HTML that the user wants to modify:\n```html\n"+req.Code+"\n```")
-		question = "Modify this existing app: " + req.Prompt + "\n\n" + SDKDocs()
+		question = "Modify this existing app: " + req.Prompt
 	}
 
 	prompt := &ai.Prompt{
-		System:   builderSystemPrompt,
+		System:   builderSystemPrompt + "\n\n" + SDKDocs(),
 		Rag:      rag,
 		Question: question,
 		Priority: ai.PriorityHigh,
@@ -222,7 +222,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 // Used by the MCP apps_build tool so the agent can create apps in one step.
 func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 	aiPrompt := &ai.Prompt{
-		System:   builderSystemPrompt,
+		System:   builderSystemPrompt + "\n\n" + SDKDocs(),
 		Question: prompt,
 		Priority: ai.PriorityHigh,
 		Caller:   "app-builder",
@@ -306,10 +306,10 @@ func EditApp(slug, prompt, accountID string) (*App, error) {
 		return nil, fmt.Errorf("app not found: %s", slug)
 	}
 
-	// Ask AI to fix the app — include SDK docs and current HTML as context
-	question := fmt.Sprintf("Here is the current app HTML:\n\n%s\n\nModification requested: %s\n\n%s", a.HTML, prompt, SDKDocs())
+	// Ask AI to fix the app with current HTML as context
+	question := fmt.Sprintf("Here is the current app HTML:\n\n%s\n\nModification requested: %s", a.HTML, prompt)
 	aiPrompt := &ai.Prompt{
-		System:   builderSystemPrompt,
+		System:   builderSystemPrompt + "\n\n" + SDKDocs(),
 		Question: question,
 		Priority: ai.PriorityHigh,
 		Caller:   "app-edit",
