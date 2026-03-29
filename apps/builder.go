@@ -99,6 +99,52 @@ func matchTemplate(prompt string) *Template {
 	return nil
 }
 
+// findAppReference checks if the prompt mentions an existing app by slug or name.
+// Looks for patterns like "like bitcoin-tracker", "based on my-app", "fork weather".
+func findAppReference(prompt string) string {
+	lower := strings.ToLower(prompt)
+
+	// Check for explicit references: "like X", "based on X", "fork X", "from X"
+	for _, prefix := range []string{"like ", "based on ", "fork ", "from ", "use ", "start from "} {
+		idx := strings.Index(lower, prefix)
+		if idx < 0 {
+			continue
+		}
+		// Extract the word(s) after the prefix
+		rest := strings.TrimSpace(lower[idx+len(prefix):])
+		// Try the first 1-3 words as a potential slug
+		words := strings.Fields(rest)
+		for n := min(3, len(words)); n >= 1; n-- {
+			candidate := strings.Join(words[:n], "-")
+			candidate = strings.Trim(candidate, ".,!?\"'")
+			if a := GetApp(candidate); a != nil {
+				return a.HTML
+			}
+		}
+	}
+
+	// Also try matching any app name mentioned in the prompt
+	mutex.RLock()
+	defer mutex.RUnlock()
+	for _, a := range apps {
+		if a.HTML == "" {
+			continue
+		}
+		name := strings.ToLower(a.Name)
+		if len(name) >= 4 && strings.Contains(lower, name) {
+			return a.HTML
+		}
+	}
+	return ""
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // builderSystemPromptWithDocs returns the builder prompt with auto-generated API docs appended.
 func builderSystemPromptWithDocs() string {
 	// The typed SDK docs are already in the prompt (mu.weather, mu.news, etc.)
@@ -145,8 +191,9 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Prompt string `json:"prompt"`
-		Code   string `json:"code"` // Existing code for follow-on prompts
+		Prompt   string `json:"prompt"`
+		Code     string `json:"code"`     // Existing code for follow-on prompts
+		Template string `json:"template"` // Slug of an existing app to use as base
 	}
 	if err := app.DecodeJSON(r, &req); err != nil {
 		app.RespondError(w, http.StatusBadRequest, "Invalid JSON")
@@ -164,9 +211,32 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		rag = append(rag, "Current app HTML that the user wants to modify:\n```html\n"+req.Code+"\n```")
 		question = "Modify this existing app: " + req.Prompt
 	} else {
-		// For new builds, include a matching template as a starting reference
-		if t := matchTemplate(req.Prompt); t != nil {
-			rag = append(rag, "Here is a working reference template you can use as a base. Adapt it to match the user's request:\n```html\n"+t.HTML+"\n```")
+		// For new builds, find a starting reference
+		var baseHTML string
+
+		// 1. Explicit template slug (existing app or built-in template)
+		if req.Template != "" {
+			if a := GetApp(req.Template); a != nil {
+				baseHTML = a.HTML
+			} else if t := GetTemplate(req.Template); t != nil {
+				baseHTML = t.HTML
+			}
+		}
+
+		// 2. Check if prompt mentions an existing app slug (e.g. "like bitcoin-tracker")
+		if baseHTML == "" {
+			baseHTML = findAppReference(req.Prompt)
+		}
+
+		// 3. Fall back to keyword-matched built-in template
+		if baseHTML == "" {
+			if t := matchTemplate(req.Prompt); t != nil {
+				baseHTML = t.HTML
+			}
+		}
+
+		if baseHTML != "" {
+			rag = append(rag, "Here is a working reference app you can use as a base. Adapt it to match the user's request:\n```html\n"+baseHTML+"\n```")
 		}
 	}
 
