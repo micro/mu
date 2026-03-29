@@ -238,7 +238,7 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 
 	// === App preview ===
 	if post.AppSlug != "" {
-		appURL := "/apps/" + post.AppSlug + "/run"
+		appURL := "/apps/" + post.AppSlug
 		sb.WriteString(fmt.Sprintf(`<div class="card">
 			<p><a href="%s">Launch App →</a></p>
 			<iframe src="%s?raw=1" style="width:100%%;min-height:400px;border:1px solid #eee;border-radius:8px;margin-top:8px" sandbox="allow-scripts"></iframe>
