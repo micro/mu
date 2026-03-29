@@ -30,10 +30,10 @@
   /* Button colors */
   --btn-primary: #000;
   --btn-primary-hover: #333;
-  --btn-danger: #dc3545;
-  --btn-danger-hover: #c82333;
-  --btn-success: #28a745;
-  --btn-success-hover: #218838;
+  --btn-danger: #c00;
+  --btn-danger-hover: #a00;
+  --btn-success: #1a7f37;
+  --btn-success-hover: #156b2d;
   
   /* Spacing - consistent scale */
   --spacing-xs: 4px;
@@ -2578,8 +2578,8 @@ a.highlight {
 .text-right { text-align: right; }
 
 /* Text colors */
-.text-error { color: #c00; }
-.text-success { color: #22c55e; }
+.text-error { color: var(--btn-danger); }
+.text-success { color: var(--btn-success); }
 .text-warning { color: #d97706; }
 .text-muted { color: var(--text-muted, #888); }
 .text-secondary { color: var(--text-secondary, #666); }

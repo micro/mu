@@ -188,8 +188,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
   color:#555;border-bottom:1px solid #f5f5f5;}
 .agent-step:last-child{border-bottom:none;}
 .agent-step.done{color:#28a745;}
-.agent-step.error{color:#dc3545;}
-.step-icon{font-size:16px;flex-shrink:0;}
+.agent-step.error{color:#c00;}
+.step-icon{font-size:13px;flex-shrink:0;font-weight:600;color:#888;min-width:60px;}
 #agent-form-card.sticky-bottom{position:sticky;bottom:0;z-index:10;
   background:#fff;border-top:1px solid #eee;margin-bottom:0;}
 </style>
@@ -238,7 +238,7 @@ function pollFlow(flowId,prompt){
   var btn=document.getElementById('agent-submit');
   // Show recovery UI
   prog.style.display='block';
-  steps.innerHTML='<div class="agent-step"><span class="step-icon">🔄</span><span>Connection lost — waiting for result…</span></div>';
+  steps.innerHTML='<div class="agent-step"><span class="step-icon">waiting</span><span>Connection lost — waiting for result…</span></div>';
   var attempts=0;
   function check(){
     attempts++;
@@ -249,13 +249,13 @@ function pollFlow(flowId,prompt){
         showResponse(prompt,data.html,flowId);
       } else if(data.status==='error'){
         prog.style.display='none';
-        result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(data.error||'Agent query failed')+'</p></div>';
+        result.innerHTML='<div class="card"><p style="color:#c00;">'+esc(data.error||'Agent query failed')+'</p></div>';
         btn.disabled=false;btn.textContent='Do';
       } else if(attempts<30){
         setTimeout(check,2000);
       } else {
         prog.style.display='none';
-        result.innerHTML='<div class="card"><p style="color:#dc3545;">Query is still processing. <a href="/agent/flow/'+flowId+'">View result when ready →</a></p></div>';
+        result.innerHTML='<div class="card"><p style="color:#c00;">Query is still processing. <a href="/agent/flow/'+flowId+'">View result when ready →</a></p></div>';
         btn.disabled=false;btn.textContent='Do';
       }
     })
@@ -322,25 +322,25 @@ form.addEventListener('submit',function(e){
             } else if(ev.type==='thinking'){
               var d=document.createElement('div');
               d.className='agent-step';
-              d.innerHTML='<span class="step-icon">🤔</span><span>'+esc(ev.message)+'</span>';
+              d.innerHTML='<span class="step-icon">thinking</span><span>'+esc(ev.message)+'</span>';
               steps.appendChild(d);
             } else if(ev.type==='tool_start'){
               var d=document.createElement('div');
               d.id='step-'+ev.name;d.className='agent-step';
-              d.innerHTML='<span class="step-icon">⚙️</span><span>'+esc(ev.message)+'</span>';
+              d.innerHTML='<span class="step-icon">running</span><span>'+esc(ev.message)+'</span>';
               steps.appendChild(d);
             } else if(ev.type==='tool_done'){
               var d=document.getElementById('step-'+ev.name);
               if(d){
                 d.className='agent-step done';
-                d.innerHTML='<span class="step-icon">✓</span><span>'+esc(ev.message)+'</span>';
+                d.innerHTML='<span class="step-icon" style="color:#1a1a1a">done</span><span>'+esc(ev.message)+'</span>';
               }
             } else if(ev.type==='response'){
               gotResponse=true;
               showResponse(prompt,ev.html,ev.flow_id);
             } else if(ev.type==='error'){
               prog.style.display='none';
-              result.innerHTML='<div class="card"><p style="color:#dc3545;">'+esc(ev.message)+'</p></div>';
+              result.innerHTML='<div class="card"><p style="color:#c00;">'+esc(ev.message)+'</p></div>';
             } else if(ev.type==='done'){
               btn.disabled=false;btn.textContent='Do';
             }
@@ -357,7 +357,7 @@ form.addEventListener('submit',function(e){
       pollFlow(currentFlowId,prompt);
     } else {
       prog.style.display='none';
-      result.innerHTML='<div class="card"><p style="color:#dc3545;">Error: '+esc(err.message)+'</p></div>';
+      result.innerHTML='<div class="card"><p style="color:#c00;">Error: '+esc(err.message)+'</p></div>';
       btn.disabled=false;btn.textContent='Do';
     }
   });
@@ -546,7 +546,7 @@ func ToolsDropdownHTML() string {
 <div style="position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.1);padding:8px 0;z-index:100;min-width:220px;font-size:13px;">
 <div style="padding:4px 12px;color:#555;font-weight:600;border-bottom:1px solid #eee;margin-bottom:4px;">Available Tools</div>
 <div style="padding:3px 12px;">📰 News</div>
-<div style="padding:3px 12px;">🔍 News Search</div>
+<div style="padding:3px 12px;">News Search</div>
 <div style="padding:3px 12px;">🌐 Web Search</div>
 <div style="padding:3px 12px;">📄 Web Fetch</div>
 <div style="padding:3px 12px;">🎬 Video Search</div>
@@ -897,7 +897,7 @@ func toolLabel(tool string) string {
 	case "news":
 		return "📰 Reading latest news"
 	case "news_search":
-		return "🔍 Searching news"
+		return "Searching news"
 	case "web_search":
 		return "🌐 Searching the web"
 	case "web_fetch":
@@ -915,7 +915,7 @@ func toolLabel(tool string) string {
 	case "reminder":
 		return "📿 Getting daily reminder"
 	case "search":
-		return "🔍 Searching Mu"
+		return "Searching Mu"
 	case "blog_list":
 		return "📝 Reading blog posts"
 	case "wallet_balance":
@@ -1092,7 +1092,7 @@ func renderMarketsCard(result string) string {
 			color := "#28a745"
 			if item.Change24h < 0 {
 				sign = ""
-				color = "#dc3545"
+				color = "#c00"
 			}
 			chg = fmt.Sprintf(`<span style="font-size:11px;color:%s;">%s%.1f%%</span>`, color, sign, item.Change24h)
 		}

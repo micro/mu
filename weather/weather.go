@@ -330,7 +330,7 @@ func renderWeatherPage(r *http.Request) string {
         // Health recommendations row
         if (p.HealthRecs && p.HealthRecs.length > 0) {
           pollen += '<tr><td colspan="4" style="font-size:0.8em;color:var(--text-secondary);padding-top:0;">';
-          pollen += '💡 ' + p.HealthRecs.slice(0, 2).map(escHtml).join(' · '); // show top 2 recommendations
+          pollen += p.HealthRecs.slice(0, 2).map(escHtml).join(' · '); // show top 2 recommendations
           pollen += '</td></tr>';
         }
       });
