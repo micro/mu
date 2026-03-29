@@ -279,7 +279,7 @@ Output ONLY a JSON array. No other text.`
 	// Step 2: Execute steps
 	var lastExecResult *ExecFeedback
 	var toolResults []string
-	needsSynth := false
+	responded := false
 
 	for _, s := range steps {
 		switch s.Type {
@@ -324,17 +324,13 @@ Output ONLY a JSON array. No other text.`
 			sseSend(map[string]any{"type": "status", "message": s.Name + " done"})
 
 		case "respond":
-			if len(toolResults) > 0 && len(s.Message) < 50 {
-				// Short respond after tools = synthesise from results
-				needsSynth = true
-			} else {
-				sseSend(map[string]any{"type": "response", "message": s.Message, "html": app.RenderString(s.Message)})
-			}
+			responded = true
+			sseSend(map[string]any{"type": "response", "message": s.Message, "html": app.RenderString(s.Message)})
 		}
 	}
 
-	// Step 3: Synthesise from tool results if needed
-	if len(toolResults) > 0 && needsSynth {
+	// Always synthesise if we have tool results and haven't responded
+	if len(toolResults) > 0 && !responded {
 		sseSend(map[string]any{"type": "status", "message": "Composing answer..."})
 		answer, err := ai.Ask(&ai.Prompt{
 			System:   "Summarise the results. Use markdown.",
