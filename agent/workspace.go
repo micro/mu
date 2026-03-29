@@ -225,22 +225,24 @@ func handleWorkspaceQuery(w http.ResponseWriter, r *http.Request) {
 	sseSend(map[string]any{"type": "status", "message": "Processing..."})
 
 	// Step 1: Plan — ask AI what to do
-	planSystem := `You are an AI agent operating a browser-based platform. You can:
-1. Execute JavaScript code in the browser (use type:"exec" with code)
-2. Render HTML in the preview area (use type:"exec" with html)
-3. Call platform APIs via mu.* (mu.weather, mu.news, mu.search, mu.blog, mu.agent, etc.)
-4. Build and save apps
+	planSystem := `You are an AI agent on a browser-based app platform.
 
-Given the user's request, output a JSON array of steps:
-[{"type":"exec","code":"..."}, {"type":"exec","html":"<div>...</div>"}, {"type":"tool","name":"web_search","args":{"q":"..."}}, {"type":"respond","message":"..."}]
+STEP TYPES:
+1. {"type":"tool","name":"TOOL","args":{}} — fetch data server-side
+2. {"type":"exec","html":"..."} — render HTML in browser preview
+3. {"type":"exec","code":"..."} — run JS in browser (has window.mu SDK)
+4. {"type":"respond","message":"markdown text"} — text answer
 
-For building apps: generate the full HTML and use {"type":"exec","html":"<!DOCTYPE html>..."} then iterate.
-For research: use tool calls then respond with a summary.
-For simple questions: just respond.
+TOOLS (for fetching data):
+` + agentToolsDesc + `
 
-Available mu.* functions: mu.weather({lat,lon}), mu.news(), mu.markets(), mu.blog.list(), mu.blog.create({title,content}), mu.places.search({q,near}), mu.chat(prompt), mu.search(query), mu.ai(prompt), mu.store.set/get/del
+RULES:
+- Questions about data → use TOOLS then RESPOND with a summary
+- Building apps → use EXEC with complete HTML document
+- Simple questions → just RESPOND
+- NEVER use exec to fetch data. Tools are for data, exec is for rendering.
 
-Output ONLY the JSON array.`
+Output ONLY a JSON array. No other text.`
 
 	planResult, err := ai.Ask(&ai.Prompt{
 		System:   planSystem,
@@ -277,6 +279,7 @@ Output ONLY the JSON array.`
 	// Step 2: Execute steps
 	var lastExecResult *ExecFeedback
 	var toolResults []string
+	needsSynth := false
 
 	for _, s := range steps {
 		switch s.Type {
@@ -321,12 +324,17 @@ Output ONLY the JSON array.`
 			sseSend(map[string]any{"type": "status", "message": s.Name + " done"})
 
 		case "respond":
-			sseSend(map[string]any{"type": "response", "message": s.Message, "html": app.RenderString(s.Message)})
+			if len(toolResults) > 0 && len(s.Message) < 50 {
+				// Short respond after tools = synthesise from results
+				needsSynth = true
+			} else {
+				sseSend(map[string]any{"type": "response", "message": s.Message, "html": app.RenderString(s.Message)})
+			}
 		}
 	}
 
-	// Step 3: If we have tool results but no response yet, synthesise
-	if len(toolResults) > 0 {
+	// Step 3: Synthesise from tool results if needed
+	if len(toolResults) > 0 && needsSynth {
 		sseSend(map[string]any{"type": "status", "message": "Composing answer..."})
 		answer, err := ai.Ask(&ai.Prompt{
 			System:   "Summarise the results. Use markdown.",
