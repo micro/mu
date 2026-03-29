@@ -164,3 +164,20 @@ Output ONLY a JSON array.`
 
 	sseSend(map[string]any{"type": "done"})
 }
+
+// stripCodeFences removes markdown code fences from AI output.
+func stripCodeFences(s string) string {
+	s = strings.TrimSpace(s)
+	for _, prefix := range []string{"```javascript\n", "```js\n", "```html\n", "```\n"} {
+		if strings.HasPrefix(s, prefix) {
+			s = s[len(prefix):]
+			break
+		}
+	}
+	if strings.HasSuffix(s, "\n```") {
+		s = s[:len(s)-4]
+	} else if strings.HasSuffix(s, "```") {
+		s = s[:len(s)-3]
+	}
+	return strings.TrimSpace(s)
+}
