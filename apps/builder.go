@@ -448,6 +448,7 @@ func cleanGeneratedHTML(s string) string {
 // builderPageHTML returns the HTML for the app builder interface.
 func builderPageHTML(initialCode string) string {
 	escapedCode, _ := json.Marshal(initialCode)
+	escapedSDK, _ := json.Marshal(NativeSDK("_preview"))
 
 	// Build template buttons
 	var templateButtons strings.Builder
@@ -521,7 +522,8 @@ func builderPageHTML(initialCode string) string {
       <p>Your app preview will appear here.</p>
       <p>Type a prompt above or pick a template.</p>
     </div>
-    <iframe id="preview" class="preview-frame" sandbox="allow-scripts" allow="geolocation" style="display:none;"></iframe>
+    <iframe id="preview" class="preview-frame" allow="geolocation" style="display:none;"></iframe>
+    <div id="errorBar" style="display:none;padding:8px 12px;background:#fff0f0;border:1px solid #fcc;border-radius:6px;margin-top:6px;font-size:13px;color:#c00;cursor:pointer" onclick="fixErrors()" title="Click to auto-fix"></div>
   </div>
 
   <div class="code-section" id="codeSection">
@@ -548,6 +550,7 @@ var codeEl = document.getElementById('code');
 var preview = document.getElementById('preview');
 var emptyState = document.getElementById('emptyState');
 var appIcon = '';
+var previewSDK = %s;
 var initialCode = %s;
 if (initialCode) { codeEl.value = initialCode; showPreview(); }
 
@@ -561,15 +564,41 @@ codeEl.addEventListener('keydown', function(e) {
   }
 });
 
+var lastErrors = [];
+
 function showPreview() {
   var html = codeEl.value;
   if (!html.trim()) return;
   emptyState.style.display = 'none';
   preview.style.display = '';
-  preview.srcdoc = html;
+  document.getElementById('errorBar').style.display = 'none';
+  lastErrors = [];
+  // Inject SDK and write HTML directly (same origin, no sandbox)
+  var pdoc = preview.contentDocument || preview.contentWindow.document;
+  pdoc.open(); pdoc.write(previewSDK + html); pdoc.close();
+  // Check for errors after app loads
+  setTimeout(function() {
+    try {
+      var iwin = preview.contentWindow;
+      if (iwin && iwin.mu && iwin.mu.errors && iwin.mu.errors.length > 0) {
+        lastErrors = iwin.mu.errors;
+        var msgs = lastErrors.map(function(e){ return e.message; }).join('; ');
+        var bar = document.getElementById('errorBar');
+        bar.textContent = msgs.slice(0, 200) + ' — click to fix';
+        bar.style.display = 'block';
+      }
+    } catch(e) {}
+  }, 2500);
 }
 
 function updatePreview() { showPreview(); }
+
+function fixErrors() {
+  if (lastErrors.length === 0) return;
+  var msgs = lastErrors.map(function(e){ return e.message; }).join('; ');
+  document.getElementById('prompt').value = 'Fix these errors: ' + msgs;
+  generate();
+}
 
 function toggleCode() {
   var section = document.getElementById('codeSection');
@@ -666,7 +695,7 @@ function copyCode() {
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50);
 }
-</script>`, templateButtons.String(), string(escapedCode))
+</script>`, templateButtons.String(), string(escapedSDK), string(escapedCode))
 }
 
 // editPageHTML returns the HTML for editing an existing app (reuses builder UI).
@@ -677,6 +706,7 @@ func editPageHTML(a *App) string {
 	escapedTags, _ := json.Marshal(a.Tags)
 	escapedIcon, _ := json.Marshal(a.Icon)
 	escapedSlug, _ := json.Marshal(a.Slug)
+	escapedSDK, _ := json.Marshal(NativeSDK(a.Slug))
 
 	savedAt := "Last saved " + a.UpdatedAt.Format("2 Jan 2006 15:04")
 	versionLink := ""
@@ -744,7 +774,8 @@ func editPageHTML(a *App) string {
         <h3>Preview</h3>
         <button class="code-toggle" onclick="updatePreview()">Refresh</button>
       </div>
-      <iframe id="preview" class="preview-frame" sandbox="allow-scripts" allow="geolocation" style="min-height:50vh;"></iframe>
+      <iframe id="preview" class="preview-frame" allow="geolocation" style="min-height:50vh;"></iframe>
+      <div id="errorBar" style="display:none;padding:8px 12px;background:#fff0f0;border:1px solid #fcc;border-radius:6px;margin-top:6px;font-size:13px;color:#c00;cursor:pointer" onclick="fixErrors()" title="Click to auto-fix"></div>
     </div>
   </div>
 
@@ -766,6 +797,8 @@ var codeEl = document.getElementById('code');
 var preview = document.getElementById('preview');
 var appIcon = %s;
 var editSlug = %s;
+var previewSDK = %s;
+var lastErrors = [];
 
 // Pre-populate fields
 codeEl.value = %s;
@@ -787,10 +820,32 @@ function showPreview() {
   var html = codeEl.value;
   if (!html.trim()) return;
   preview.style.display = '';
-  preview.srcdoc = html;
+  document.getElementById('errorBar').style.display = 'none';
+  lastErrors = [];
+  var pdoc = preview.contentDocument || preview.contentWindow.document;
+  pdoc.open(); pdoc.write(previewSDK + html); pdoc.close();
+  setTimeout(function() {
+    try {
+      var iwin = preview.contentWindow;
+      if (iwin && iwin.mu && iwin.mu.errors && iwin.mu.errors.length > 0) {
+        lastErrors = iwin.mu.errors;
+        var msgs = lastErrors.map(function(e){ return e.message; }).join('; ');
+        var bar = document.getElementById('errorBar');
+        bar.textContent = msgs.slice(0, 200) + ' — click to fix';
+        bar.style.display = 'block';
+      }
+    } catch(e) {}
+  }, 2500);
 }
 
 function updatePreview() { showPreview(); }
+
+function fixErrors() {
+  if (lastErrors.length === 0) return;
+  var msgs = lastErrors.map(function(e){ return e.message; }).join('; ');
+  document.getElementById('prompt').value = 'Fix these errors: ' + msgs;
+  generate();
+}
 
 function toggleCode() {
   var section = document.getElementById('codeSection');
@@ -871,5 +926,5 @@ function copyCode() {
     setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 2000);
   });
 }
-</script>`, savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags)
+</script>`, savedAt, versionLink, escapedIcon, escapedSlug, escapedSDK, escapedCode, escapedName, escapedDesc, escapedTags)
 }
