@@ -210,58 +210,19 @@ func editApp(post *work.Post, postID, feedback string) {
 	work.AddLog(postID, "build", "App updated", 0)
 }
 
-// verifyApp asks the AI to review the app against requirements.
+// verifyApp tests the app by checking structure and executing API calls.
 // Returns issues string (empty = passed).
 func verifyApp(post *work.Post, postID string) string {
-	html := readAppHTML(post.AuthorID, post.AppSlug)
-	if html == "" {
-		return "Could not read app HTML"
+	result := apps.TestApp(post.AppSlug, post.AuthorID)
+	if result == nil {
+		return "Could not test app"
 	}
 
-	// Basic structural checks
-	htmlLower := strings.ToLower(html)
-	if len(html) < 100 {
-		return "App HTML is too short — likely incomplete"
-	}
-	if !strings.Contains(htmlLower, "<body") {
-		return "Missing <body> tag"
-	}
-	if !strings.Contains(htmlLower, "<script") && strings.Contains(strings.ToLower(post.Description), "app") {
-		return "No JavaScript — app likely has no interactivity"
+	if len(result.Issues) > 0 {
+		return strings.Join(result.Issues, "; ")
 	}
 
-	// Check for common API usage mistakes
-	apiIssues := checkAPIUsage(html)
-	if apiIssues != "" {
-		return apiIssues
-	}
-
-	// AI review with API context
-	result, err := ai.Ask(&ai.Prompt{
-		System: `You are a code reviewer checking a web app. Given the requirements and HTML, check for functional issues.
-
-IMPORTANT API rules to verify:
-- /weather requires lat=NUMBER&lon=NUMBER (NOT a city name or ?q=)
-- mu.api.get/mu.api.post must be used (NOT fetch())
-- Apps cannot load external scripts (sandboxed iframe)
-
-Reply with ONLY one of:
-- "PASS" if the app should work correctly based on the code
-- "FAIL: <one-line description of the main issue>"
-Be strict. Check that the app actually implements the core functionality, not just the UI.`,
-		Question: fmt.Sprintf("Requirements:\n%s\n\nHTML:\n%s", post.Description, truncateStr(html, 4000)),
-		Priority: ai.PriorityHigh,
-		Caller:   "work-verify",
-	})
-	if err != nil {
-		return "" // AI failed, assume pass
-	}
-
-	result = strings.TrimSpace(result)
-	if strings.HasPrefix(strings.ToUpper(result), "PASS") {
-		return ""
-	}
-	return strings.TrimPrefix(strings.TrimPrefix(result, "FAIL:"), "FAIL: ")
+	return ""
 }
 
 // fixApp fixes issues in an existing app.
@@ -417,28 +378,6 @@ func getAppBySlug(authorID, slug string) *struct {
 		return nil
 	}
 	return &result
-}
-
-// checkAPIUsage looks for common API misuse patterns in app HTML.
-func checkAPIUsage(html string) string {
-	lower := strings.ToLower(html)
-
-	// Check for /weather?q= (wrong — needs lat/lon)
-	if strings.Contains(lower, "/weather?q=") || strings.Contains(lower, "/weather?city=") {
-		return "Weather API requires lat and lon parameters, not q or city. Use navigator.geolocation or geocode the city name first."
-	}
-
-	// Check for direct fetch() calls (blocked by CSP)
-	if strings.Contains(html, "fetch('http") || strings.Contains(html, `fetch("http`) || strings.Contains(html, "fetch(`http") {
-		return "App uses fetch() to call external URLs directly. This is blocked by the sandbox. Use mu.api.get() or mu.api.post() instead."
-	}
-
-	// Check for external script loads (blocked by CSP)
-	if strings.Contains(lower, `<script src="http`) || strings.Contains(lower, `<script src='http`) {
-		return "App loads external scripts which is blocked by the sandbox. All code must be inline."
-	}
-
-	return ""
 }
 
 // cleanHTML strips markdown fences and leading/trailing whitespace from AI HTML output.
