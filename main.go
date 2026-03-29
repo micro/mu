@@ -630,8 +630,10 @@ func main() {
 
 	// serve the agent
 	http.HandleFunc("/agent", agent.Handler)
-	http.HandleFunc("/agent/", agent.Handler) // Handle sub-routes like /agent/flow/...
+	http.HandleFunc("/agent/", agent.Handler)
 	http.HandleFunc("/agent/run", agent.RunHandler)
+	http.HandleFunc("/agent/workspace", agent.WorkspaceHandler)
+	http.HandleFunc("/agent/feedback", agent.FeedbackHandler)
 
 	// serve mail inbox
 	http.HandleFunc("/mail", mail.Handler)
