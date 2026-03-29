@@ -52,6 +52,9 @@ Platform APIs (all return Promises with JSON):
 - mu.ai(prompt) — ask AI, returns response text
 - mu.user() — current user info
 
+Agent (for complex queries that need multiple data sources):
+- mu.agent(prompt) — runs the full agent: plans tools, executes, returns synthesised answer
+
 Storage (persistent, namespaced per app):
 - mu.store.set(key, value) / mu.store.get(key) / mu.store.del(key) / mu.store.keys()
 

@@ -181,6 +181,16 @@ var tools = []Tool{
 		Path:        "/session",
 	},
 	{
+		Name:        "agent",
+		Description: "Run the AI agent — plans which tools to use, executes them, and synthesises an answer. Use for complex queries that need multiple data sources.",
+		Method:      "POST",
+		Path:        "/agent/run",
+		WalletOp:    "agent_query",
+		Params: []ToolParam{
+			{Name: "prompt", Type: "string", Description: "What you want the agent to do", Required: true},
+		},
+	},
+	{
 		Name:        "chat",
 		Description: "Chat with AI assistant",
 		Method:      "POST",
