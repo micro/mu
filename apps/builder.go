@@ -169,12 +169,12 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build the AI prompt
-	question := req.Prompt
+	// Build the AI prompt — include SDK docs so the builder knows about platform APIs
+	question := req.Prompt + "\n\n" + SDKDocs()
 	var rag []string
 	if req.Code != "" {
 		rag = append(rag, "Current app HTML that the user wants to modify:\n```html\n"+req.Code+"\n```")
-		question = "Modify this existing app: " + req.Prompt
+		question = "Modify this existing app: " + req.Prompt + "\n\n" + SDKDocs()
 	}
 
 	prompt := &ai.Prompt{
