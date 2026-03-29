@@ -797,8 +797,10 @@ func NativeSDK(slug string) string {
 (function(){
   var slug=%q;
   var j='application/json';
-  function get(p){return fetch(p,{headers:{Accept:j}}).then(function(r){return r.json()})}
-  function post(p,b){return fetch(p,{method:'POST',headers:{'Content-Type':j,Accept:j},body:JSON.stringify(b)}).then(function(r){return r.json()})}
+  var log=[];
+  function truncLog(v){var s=JSON.stringify(v);return s&&s.length>500?s.slice(0,500)+'…':s}
+  function get(p){return fetch(p,{headers:{Accept:j}}).then(function(r){return r.json()}).then(function(d){log.push({call:'GET '+p,response:truncLog(d)});return d})}
+  function post(p,b){return fetch(p,{method:'POST',headers:{'Content-Type':j,Accept:j},body:JSON.stringify(b)}).then(function(r){return r.json()}).then(function(d){log.push({call:'POST '+p,response:truncLog(d)});return d})}
   function sdk(op,body){return post('/apps/'+slug+'/sdk/'+op,body)}
 
   window.mu={
@@ -834,13 +836,23 @@ func NativeSDK(slug string) string {
     get:function(p){return get(p)},
     post:function(p,b){return post(p,b)},
     errors:[],
+    log:log,
     eval:function(code){
       try{var r=eval(code);return{ok:true,result:String(r)}}
       catch(e){return{ok:false,error:e.message}}
     },
   };
-  window.onerror=function(msg,src,line){mu.errors.push({type:'error',message:msg,source:src,line:line});};
-  window.onunhandledrejection=function(e){mu.errors.push({type:'promise',message:String(e.reason)});};
+  window.onerror=function(msg,src,line,col,err){
+    var entry={type:'error',message:msg,source:src,line:line};
+    if(err&&err.stack)entry.stack=err.stack.split('\n').slice(0,5).join('\n');
+    mu.errors.push(entry);
+  };
+  window.onunhandledrejection=function(e){
+    var msg=e.reason&&e.reason.message?e.reason.message:String(e.reason);
+    var entry={type:'promise',message:msg};
+    if(e.reason&&e.reason.stack)entry.stack=e.reason.stack.split('\n').slice(0,5).join('\n');
+    mu.errors.push(entry);
+  };
 })();
 </script>`, slug)
 }

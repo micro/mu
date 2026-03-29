@@ -16,8 +16,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// builderSystemPrompt is a generic HTML app builder — no platform-specific knowledge.
-// SDK docs are passed as context by the caller when needed.
+// builderSystemPrompt is a vanilla HTML app builder. No platform SDK, no external APIs.
 const builderSystemPrompt = `You are an app builder. You generate complete, self-contained HTML apps.
 
 Output format:
@@ -34,8 +33,10 @@ Style:
 - Responsive and mobile-friendly
 
 Rules:
+- The app MUST be completely self-contained — all data, logic, and UI in one HTML file
+- No external API calls, no fetch(), no XMLHttpRequest — everything runs locally
 - The app MUST have working JavaScript — not just a UI shell
-- Always check for errors and null-check nested properties
+- If the app needs sample data, hardcode realistic example data directly in the code
 - If using geolocation, provide a manual fallback input
 - When modifying an existing app, return the complete updated JSON (not a diff)`
 
@@ -178,7 +179,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	prompt := &ai.Prompt{
-		System:   builderSystemPrompt + "\n\n" + SDKDocs(),
+		System:   builderSystemPrompt,
 		Rag:      rag,
 		Question: question,
 		Model:    "claude-opus-4-20250514",
@@ -223,7 +224,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 // Used by the MCP apps_build tool so the agent can create apps in one step.
 func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 	aiPrompt := &ai.Prompt{
-		System:   builderSystemPrompt + "\n\n" + SDKDocs(),
+		System:   builderSystemPrompt,
 		Question: prompt,
 		Model:    "claude-opus-4-20250514",
 		Priority: ai.PriorityHigh,
@@ -311,7 +312,7 @@ func EditApp(slug, prompt, accountID string) (*App, error) {
 	// Ask AI to fix the app with current HTML as context
 	question := fmt.Sprintf("Here is the current app HTML:\n\n%s\n\nModification requested: %s", a.HTML, prompt)
 	aiPrompt := &ai.Prompt{
-		System:   builderSystemPrompt + "\n\n" + SDKDocs(),
+		System:   builderSystemPrompt,
 		Question: question,
 		Model:    "claude-opus-4-20250514",
 		Priority: ai.PriorityHigh,
@@ -595,8 +596,20 @@ function updatePreview() { showPreview(); }
 
 function fixErrors() {
   if (lastErrors.length === 0) return;
-  var msgs = lastErrors.map(function(e){ return e.message; }).join('; ');
-  document.getElementById('prompt').value = 'Fix these errors: ' + msgs;
+  var parts = ['Fix these runtime errors:'];
+  lastErrors.forEach(function(e){
+    parts.push('- ' + e.message);
+    if (e.stack) parts.push('  Stack: ' + e.stack.split('\n').slice(0,3).join(' | '));
+  });
+  // Include actual API responses so the AI can see the real data shape
+  try {
+    var iwin = preview.contentWindow;
+    if (iwin && iwin.mu && iwin.mu.log && iwin.mu.log.length > 0) {
+      parts.push('\nAPI responses received:');
+      iwin.mu.log.forEach(function(l){ parts.push('- ' + l.call + ' returned: ' + l.response); });
+    }
+  } catch(e) {}
+  document.getElementById('prompt').value = parts.join('\n');
   generate();
 }
 
@@ -842,8 +855,20 @@ function updatePreview() { showPreview(); }
 
 function fixErrors() {
   if (lastErrors.length === 0) return;
-  var msgs = lastErrors.map(function(e){ return e.message; }).join('; ');
-  document.getElementById('prompt').value = 'Fix these errors: ' + msgs;
+  var parts = ['Fix these runtime errors:'];
+  lastErrors.forEach(function(e){
+    parts.push('- ' + e.message);
+    if (e.stack) parts.push('  Stack: ' + e.stack.split('\n').slice(0,3).join(' | '));
+  });
+  // Include actual API responses so the AI can see the real data shape
+  try {
+    var iwin = preview.contentWindow;
+    if (iwin && iwin.mu && iwin.mu.log && iwin.mu.log.length > 0) {
+      parts.push('\nAPI responses received:');
+      iwin.mu.log.forEach(function(l){ parts.push('- ' + l.call + ' returned: ' + l.response); });
+    }
+  } catch(e) {}
+  document.getElementById('prompt').value = parts.join('\n');
   generate();
 }
 
