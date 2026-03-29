@@ -170,7 +170,7 @@ Be concise. Focus on functional issues, not style.`,
 		if w.Balance < amount {
 			return fmt.Errorf("insufficient credits (%d available, %d needed)", w.Balance, amount)
 		}
-		wallet.ConsumeQuota(userID, wallet.OpChatQuery)
+		wallet.ConsumeQuota(userID, wallet.OpAppBuild)
 		return nil
 	}
 	work.Notify = func(toUserID, subject, body, threadID string) {
@@ -485,7 +485,7 @@ Be concise. Focus on functional issues, not style.`,
 	api.RegisterTool(api.Tool{
 		Name:        "apps_build",
 		Description: "AI-generate an app from a natural language description, save it, and return the app details with URL",
-		WalletOp:    "chat_query",
+		WalletOp:    "app_build",
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Description of the app to build (e.g. 'a pomodoro timer with lap counter')", Required: true},
 		},

@@ -361,7 +361,7 @@ func spendCredits(post *Post, authorID string, amount int) bool {
 
 const (
 	maxAgentIterations = 5
-	creditPerStep      = 3 // credits per AI call
+	creditPerStep      = 15 // credits per AI call (Opus)
 )
 
 // AssignToAgent assigns an open task to the AI agent.
