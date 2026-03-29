@@ -104,7 +104,7 @@ Output ONLY a JSON array.`
 			code := stripCodeFences(s.Code)
 			sseSend(map[string]any{"type": "exec", "code": code, "html": s.HTML})
 			// Wait for browser feedback
-			fb := waitForFeedback(flow.ID, 15*time.Second)
+			fb := waitForExecResult(flow.ID, 15*time.Second)
 			if fb != nil && !fb.OK && fb.Error != "" {
 				sseSend(map[string]any{"type": "thinking", "message": "Fixing: " + fb.Error})
 				fixResult, fixErr := ai.Ask(&ai.Prompt{
@@ -115,7 +115,7 @@ Output ONLY a JSON array.`
 				})
 				if fixErr == nil {
 					sseSend(map[string]any{"type": "exec", "code": stripCodeFences(fixResult), "html": ""})
-					waitForFeedback(flow.ID, 15*time.Second)
+					waitForExecResult(flow.ID, 15*time.Second)
 				}
 			}
 

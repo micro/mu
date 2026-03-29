@@ -180,10 +180,10 @@ function saveApp(){
 }
 
 function feedback(sid,ok,result,error,dom){
-  fetch('/agent/feedback',{
+  fetch('/agent/exec/result',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({flow_id:sid,ok:ok,result:result,error:error,dom:dom})
+    body:JSON.stringify({session_id:sid,ok:ok,result:result,error:error,dom:dom})
   }).catch(function(){});
 }
 </script>`)
@@ -309,7 +309,7 @@ Output ONLY a JSON array. No other text.`
 	}
 
 	// Step 2: Execute steps
-	var lastExecResult *ExecFeedback
+	var lastExecResult *ExecResult
 	var toolResults []string
 	responded := false
 
@@ -319,7 +319,7 @@ Output ONLY a JSON array. No other text.`
 			code := stripCodeFences(s.Code)
 			sseSend(map[string]any{"type": "exec", "code": code, "html": s.HTML})
 			// Wait for browser feedback
-			fb := waitForFeedback(sessionID, 15*time.Second)
+			fb := waitForExecResult(sessionID, 15*time.Second)
 			if fb != nil {
 				lastExecResult = fb
 				if !fb.OK {
@@ -334,7 +334,7 @@ Output ONLY a JSON array. No other text.`
 					if fixErr == nil {
 						sseSend(map[string]any{"type": "status", "message": "Fixing..."})
 						sseSend(map[string]any{"type": "exec", "code": stripCodeFences(fixResult)})
-						fb2 := waitForFeedback(sessionID, 15*time.Second)
+						fb2 := waitForExecResult(sessionID, 15*time.Second)
 						if fb2 != nil {
 							lastExecResult = fb2
 						}

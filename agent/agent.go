@@ -372,8 +372,8 @@ form.addEventListener('submit',function(e){
                 steps.appendChild(sd);
                 // Send feedback
                 setTimeout(function(){
-                  fetch('/agent/feedback',{method:'POST',headers:{'Content-Type':'application/json'},
-                    body:JSON.stringify({flow_id:currentFlowId,ok:true,result:'rendered',dom:pdoc.body?pdoc.body.textContent.slice(0,500):''})
+                  fetch('/agent/exec/result',{method:'POST',headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({session_id:currentFlowId,ok:true,result:'rendered',dom:pdoc.body?pdoc.body.textContent.slice(0,500):''})
                   }).catch(function(){});
                 },1000);
               }
@@ -381,15 +381,15 @@ form.addEventListener('submit',function(e){
                 (async function(){
                   try{
                     var r=await eval('(async function(){'+ev.code+'})()');
-                    fetch('/agent/feedback',{method:'POST',headers:{'Content-Type':'application/json'},
-                      body:JSON.stringify({flow_id:currentFlowId,ok:true,result:String(r||'ok')})
+                    fetch('/agent/exec/result',{method:'POST',headers:{'Content-Type':'application/json'},
+                      body:JSON.stringify({session_id:currentFlowId,ok:true,result:String(r||'ok')})
                     }).catch(function(){});
                   }catch(err){
                     var sd=document.createElement('div');sd.className='agent-step';
                     sd.innerHTML='<span class="step-icon" style="color:#c00">error</span><span>'+esc(err.message)+'</span>';
                     steps.appendChild(sd);
-                    fetch('/agent/feedback',{method:'POST',headers:{'Content-Type':'application/json'},
-                      body:JSON.stringify({flow_id:currentFlowId,ok:false,error:err.message})
+                    fetch('/agent/exec/result',{method:'POST',headers:{'Content-Type':'application/json'},
+                      body:JSON.stringify({session_id:currentFlowId,ok:false,error:err.message})
                     }).catch(function(){});
                   }
                 })();
