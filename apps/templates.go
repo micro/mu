@@ -67,6 +67,27 @@ var Templates = []Template{
 		Category:    "Tools",
 		HTML:        templateAITool,
 	},
+	{
+		ID:          "weather",
+		Name:        "Weather",
+		Description: "Weather forecast using mu.weather() with geolocation",
+		Category:    "Data",
+		HTML:        templateWeather,
+	},
+	{
+		ID:          "markets",
+		Name:        "Markets",
+		Description: "Live crypto prices using mu.markets()",
+		Category:    "Data",
+		HTML:        templateMarkets,
+	},
+	{
+		ID:          "news",
+		Name:        "News",
+		Description: "Latest news feed using mu.news()",
+		Category:    "Data",
+		HTML:        templateNews,
+	},
 }
 
 // GetTemplate returns a template by ID.
@@ -376,6 +397,179 @@ function saveNotes() {
 
 // Auto-save every 30 seconds
 setInterval(function() { if (editor.value) saveNotes(); }, 30000);
+</script>
+</body>
+</html>`
+
+const templateWeather = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 480px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.current { padding: 20px; background: #f8f8f8; border-radius: 8px; margin-bottom: 16px; text-align: center; }
+.temp { font-size: 48px; font-weight: 700; }
+.desc { color: #666; margin-top: 4px; }
+.details { display: flex; justify-content: center; gap: 24px; margin-top: 12px; font-size: 13px; color: #888; }
+.forecast { display: flex; flex-direction: column; gap: 8px; }
+.day { display: flex; justify-content: space-between; padding: 10px 12px; border: 1px solid #eee; border-radius: 6px; font-size: 14px; }
+.loading { text-align: center; color: #999; padding: 32px; }
+.error { color: #c00; padding: 16px; text-align: center; }
+.fallback { margin-bottom: 16px; display: flex; gap: 8px; }
+.fallback input { flex: 1; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; }
+.fallback button { padding: 8px 16px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+</style>
+</head>
+<body>
+<h2>Weather</h2>
+<div class="fallback">
+  <input type="text" id="city" placeholder="Enter city name...">
+  <button onclick="searchCity()">Search</button>
+</div>
+<div id="content"><div class="loading">Getting your location...</div></div>
+<script>
+function showWeather(lat, lon) {
+  document.getElementById('content').innerHTML = '<div class="loading">Loading forecast...</div>';
+  mu.weather({lat: lat, lon: lon}).then(function(data) {
+    if (!data || data.error || !data.forecast) { showError(data && data.error || 'No forecast data'); return; }
+    var f = data.forecast;
+    var c = f.Current;
+    var html = '<div class="current">';
+    html += '<div class="temp">' + Math.round(c.TempC) + '°C</div>';
+    html += '<div class="desc">' + (c.Description || '') + '</div>';
+    html += '<div class="details"><span>Feels ' + Math.round(c.FeelsLikeC) + '°C</span><span>Humidity ' + c.Humidity + '%</span>';
+    if (c.WindKph) html += '<span>Wind ' + Math.round(c.WindKph) + ' km/h</span>';
+    html += '</div></div>';
+    if (f.DailyItems && f.DailyItems.length > 0) {
+      html += '<div class="forecast">';
+      f.DailyItems.forEach(function(d) {
+        html += '<div class="day"><span>' + (d.Description || 'N/A') + '</span><span>' + Math.round(d.MaxTempC) + '° / ' + Math.round(d.MinTempC) + '°</span></div>';
+      });
+      html += '</div>';
+    }
+    document.getElementById('content').innerHTML = html;
+  }).catch(function(e) { showError(e.message); });
+}
+function showError(msg) { document.getElementById('content').innerHTML = '<div class="error">' + msg + '</div>'; }
+function searchCity() {
+  var city = document.getElementById('city').value.trim();
+  if (!city) return;
+  mu.places.search({q: city, near: city}).then(function(data) {
+    if (data && data.results && data.results.length > 0) {
+      var p = data.results[0];
+      showWeather(p.lat || p.latitude, p.lon || p.longitude);
+    } else { showError('City not found'); }
+  }).catch(function(e) { showError(e.message); });
+}
+// Try geolocation first
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    function(pos) { showWeather(pos.coords.latitude, pos.coords.longitude); },
+    function() { document.getElementById('content').innerHTML = '<div class="loading">Enter a city above</div>'; }
+  );
+} else { document.getElementById('content').innerHTML = '<div class="loading">Enter a city above</div>'; }
+</script>
+</body>
+</html>`
+
+const templateMarkets = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 600px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tabs button { padding: 6px 16px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-family: inherit; font-size: 13px; }
+.tabs button.active { background: #000; color: #fff; border-color: #000; }
+.coin { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; }
+.coin-name { font-weight: 600; }
+.coin-price { font-variant-numeric: tabular-nums; }
+.coin-change { font-size: 13px; font-weight: 500; }
+.up { color: #16a34a; }
+.down { color: #dc2626; }
+.loading { text-align: center; color: #999; padding: 32px; }
+.error { color: #c00; padding: 16px; text-align: center; }
+</style>
+</head>
+<body>
+<h2>Markets</h2>
+<div class="tabs">
+  <button class="active" onclick="load('crypto',this)">Crypto</button>
+  <button onclick="load('futures',this)">Futures</button>
+  <button onclick="load('commodities',this)">Commodities</button>
+</div>
+<div id="content"><div class="loading">Loading...</div></div>
+<script>
+function load(category, btn) {
+  if (btn) { document.querySelectorAll('.tabs button').forEach(function(b){b.className='';}); btn.className='active'; }
+  document.getElementById('content').innerHTML = '<div class="loading">Loading...</div>';
+  mu.markets({category: category}).then(function(data) {
+    if (!data || data.error) { showError(data && data.error || 'Failed to load'); return; }
+    var items = data.data;
+    if (!items || !items.length) { showError('No data available'); return; }
+    var html = '';
+    items.forEach(function(item) {
+      var change = item.change_24h || 0;
+      var cls = change >= 0 ? 'up' : 'down';
+      var sign = change >= 0 ? '+' : '';
+      var price = item.price >= 1 ? '$' + item.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : '$' + item.price.toFixed(4);
+      html += '<div class="coin"><div><span class="coin-name">' + item.symbol + '</span></div><div style="text-align:right"><div class="coin-price">' + price + '</div><div class="coin-change ' + cls + '">' + sign + change.toFixed(2) + '%</div></div></div>';
+    });
+    document.getElementById('content').innerHTML = html;
+  }).catch(function(e) { showError(e.message); });
+}
+function showError(msg) { document.getElementById('content').innerHTML = '<div class="error">' + msg + '</div>'; }
+load('crypto', null);
+</script>
+</body>
+</html>`
+
+const templateNews = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 600px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.article { padding: 12px 0; border-bottom: 1px solid #eee; }
+.article:last-child { border-bottom: none; }
+.article h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.article h3 a { color: #333; text-decoration: none; }
+.article h3 a:hover { color: #000; }
+.article p { font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 4px; }
+.article .meta { font-size: 12px; color: #999; }
+.loading { text-align: center; color: #999; padding: 32px; }
+.error { color: #c00; padding: 16px; text-align: center; }
+</style>
+</head>
+<body>
+<h2>News</h2>
+<div id="content"><div class="loading">Loading...</div></div>
+<script>
+mu.news().then(function(data) {
+  if (!data || data.error) { showError(data && data.error || 'Failed to load'); return; }
+  var items = data.feed;
+  if (!items || !items.length) { showError('No news available'); return; }
+  var html = '';
+  items.slice(0, 20).forEach(function(item) {
+    html += '<div class="article">';
+    html += '<h3><a href="' + (item.url || '#') + '" target="_blank">' + esc(item.title) + '</a></h3>';
+    if (item.description) html += '<p>' + esc(item.description.slice(0, 200)) + '</p>';
+    html += '<div class="meta">' + esc(item.category || '') + (item.published ? ' · ' + new Date(item.published).toLocaleDateString() : '') + '</div>';
+    html += '</div>';
+  });
+  document.getElementById('content').innerHTML = html;
+}).catch(function(e) { showError(e.message); });
+function showError(msg) { document.getElementById('content').innerHTML = '<div class="error">' + msg + '</div>'; }
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 </script>
 </body>
 </html>`
