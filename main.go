@@ -97,7 +97,7 @@ func main() {
 
 	// Wire work → apps builder (avoids direct import between building blocks)
 	work.BuildApp = func(prompt, authorID, authorName string) (string, string, error) {
-		a, err := apps.BuildAndSave(prompt, authorID, authorName)
+		a, err := apps.BuildAndSave(prompt+"\n\n"+apps.SDKDocs(), authorID, authorName)
 		if err != nil {
 			return "", "", err
 		}
@@ -111,7 +111,7 @@ func main() {
 		// Ask AI to update the app based on feedback
 		result, err := ai.Ask(&ai.Prompt{
 			System:   apps.BuilderSystemPrompt(),
-			Question: fmt.Sprintf("Update this app based on the feedback below.\n\nOriginal requirements:\n%s\n\nFeedback:\n%s\n\nCurrent app HTML:\n%s", a.Description, feedback, a.HTML),
+			Question: fmt.Sprintf("Update this app based on the feedback below.\n\nOriginal requirements:\n%s\n\nFeedback:\n%s\n\nCurrent app HTML:\n%s\n\n%s", a.Description, feedback, a.HTML, apps.SDKDocs()),
 			Priority: ai.PriorityHigh,
 			Caller:   "work-rebuild",
 		})
