@@ -1076,17 +1076,50 @@ func handleIcon(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
-	icon := a.Icon
-	if icon == "" || !strings.HasPrefix(strings.TrimSpace(icon), "<svg") {
-		icon = defaultAppIcon
-	}
-
+	icon := cleanIcon(a.Icon)
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.Write([]byte(icon))
 }
 
 // handleSDK serves the SDK JavaScript file.
+// cleanIcon fixes common AI-generated SVG issues and falls back to default.
+func cleanIcon(icon string) string {
+	icon = strings.TrimSpace(icon)
+
+	// Strip markdown fences
+	if strings.HasPrefix(icon, "```") {
+		icon = strings.TrimPrefix(icon, "```svg\n")
+		icon = strings.TrimPrefix(icon, "```xml\n")
+		icon = strings.TrimPrefix(icon, "```\n")
+		icon = strings.TrimSuffix(icon, "\n```")
+		icon = strings.TrimSuffix(icon, "```")
+		icon = strings.TrimSpace(icon)
+	}
+
+	// Must start with <svg (case insensitive)
+	if !strings.HasPrefix(strings.ToLower(icon), "<svg") {
+		return defaultAppIcon
+	}
+
+	// Add xmlns if missing — browsers won't render SVG without it
+	if !strings.Contains(icon, "xmlns") {
+		icon = strings.Replace(icon, "<svg", `<svg xmlns="http://www.w3.org/2000/svg"`, 1)
+	}
+
+	// Add viewBox if missing
+	if !strings.Contains(icon, "viewBox") {
+		icon = strings.Replace(icon, "<svg", `<svg viewBox="0 0 32 32"`, 1)
+	}
+
+	// Add width/height if missing
+	if !strings.Contains(icon, "width=") {
+		icon = strings.Replace(icon, "<svg", `<svg width="32" height="32"`, 1)
+	}
+
+	return icon
+}
+
 func handleSDK(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
