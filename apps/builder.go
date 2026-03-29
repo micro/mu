@@ -78,17 +78,44 @@ mu.store.keys()
 mu.get(path)          — GET, returns JSON
 mu.post(path, body)   — POST, returns JSON
 
-## Response shapes
+## Response shapes (EXACT — use these field names)
 
-Weather: {Current:{TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems:[{MaxTempC, MinTempC, Description}]}
-Markets: array of {Symbol, Price, Change, ChangePercent}
+Weather:
+  var data = await mu.weather({lat: 51.5, lon: -0.12})
+  data.forecast.Current.TempC          // number, e.g. 15.0
+  data.forecast.Current.FeelsLikeC     // number
+  data.forecast.Current.Description    // string, e.g. "Partly cloudy"
+  data.forecast.Current.Humidity       // number, e.g. 65
+  data.forecast.Current.WindKph        // number
+  data.forecast.DailyItems             // array of {MaxTempC, MinTempC, Description, WillRain, RainMM}
+  data.forecast.HourlyItems            // array of {TempC, Description}
+
+Markets:
+  var data = await mu.markets({category: 'crypto'})
+  data.category                        // string, e.g. "crypto"
+  data.data                            // array of items:
+  data.data[0].symbol                  // string, e.g. "BTC"
+  data.data[0].price                   // number, e.g. 66556.03
+  data.data[0].change_24h              // number, e.g. -0.68 (percentage)
+  data.data[0].type                    // string, e.g. "crypto"
+
+News:
+  var data = await mu.news()
+  data.feed                            // array of items:
+  data.feed[0].title                   // string
+  data.feed[0].description             // string
+  data.feed[0].url                     // string
+  data.feed[0].category                // string
+  data.feed[0].published               // string (date)
+  data.feed[0].image                   // string (URL, may be empty)
 
 ## Important notes
 
 - mu.weather() requires lat/lon — use geolocation or mu.places.search() to geocode city names
 - Do NOT add <script src="/apps/sdk.js"> — the SDK is already injected
 - Do NOT load external scripts or CDN links
-- Always handle errors: if(data.error){showError(data.error);return}`
+- Always handle errors: if(!data || data.error){showError(data.error||'Failed to load');return}
+- Markets data is in data.data (array), news is in data.feed (array) — always check the wrapper`
 }
 
 // handleBuilder serves the app builder page.
