@@ -33,8 +33,8 @@ var (
 	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
 	CostSocialSearch      = getEnvInt("CREDIT_COST_SOCIAL", 1)
-	CostAppBuild          = getEnvInt("CREDIT_COST_APP_BUILD", 15)
-	CostAppEdit           = getEnvInt("CREDIT_COST_APP_EDIT", 10)
+	CostAppBuild          = getEnvInt("CREDIT_COST_APP_BUILD", 100)
+	CostAppEdit           = getEnvInt("CREDIT_COST_APP_EDIT", 50)
 	FreeDailyQuota        = getEnvInt("FREE_DAILY_QUOTA", 20)
 )
 
