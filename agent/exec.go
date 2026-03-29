@@ -106,8 +106,11 @@ func runWorkspaceFlow(w http.ResponseWriter, r *http.Request, flow *Flow, prompt
 
 	sseSend(map[string]any{"type": "thinking", "message": "Building…"})
 
-	// Build the app directly
-	a, err := apps.BuildAndSave(prompt, flow.AccountID, "Agent")
+	// Include SDK docs so the builder knows about platform APIs
+	buildPrompt := prompt + "\n\n" + apps.SDKDocs()
+
+	// Build the app
+	a, err := apps.BuildAndSave(buildPrompt, flow.AccountID, "Agent")
 	if err != nil {
 		errMsg := err.Error()
 		if len(errMsg) > 200 {

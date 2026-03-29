@@ -624,6 +624,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - wallet_topup: Get available topup options to add credits to your wallet (no args)
 - apps_search: Search apps directory (args: {"q":"search term","tag":"productivity"})
 - apps_read: Read details of a specific app (args: {"slug":"app-slug"})
+- mu_sdk: Get Mu platform SDK docs — call this before building/editing apps that need platform features like weather, news, markets, etc. (no args)
 - apps_build: AI-generate an app from a description (args: {"prompt":"a pomodoro timer with lap counter"})
 - apps_edit: Edit an existing app — update name, description, tags, icon, or HTML (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"}). Use for calculations, data transforms, or any computation. Code runs as a function body — use 'return' to produce output.`
@@ -964,6 +965,8 @@ func toolLabel(tool string) string {
 		return "💳 Checking wallet balance"
 	case "wallet_topup":
 		return "💳 Getting topup options"
+	case "mu_sdk":
+		return "📖 Reading SDK docs"
 	case "apps_search":
 		return "📱 Searching apps"
 	case "apps_read":

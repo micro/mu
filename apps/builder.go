@@ -16,8 +16,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// builderSystemPrompt instructs the AI to generate app HTML.
-const builderSystemPrompt = `You are an app builder for the Mu platform. You generate complete, self-contained HTML apps.
+// builderSystemPrompt is a generic HTML app builder — no platform-specific knowledge.
+// SDK docs are passed as context by the caller when needed.
+const builderSystemPrompt = `You are an app builder. You generate complete, self-contained HTML apps.
 
 Output format:
 - Output ONLY valid JSON: {"name":"Short Name","icon":"<svg>...</svg>","html":"<!DOCTYPE html>..."}
@@ -30,50 +31,65 @@ Style:
 - Clean minimal design: #fff background, #333 text, #e0e0e0 borders, 6px radius
 - Buttons: padding 8-10px 20-24px, radius 6px, primary: background #000 color #fff
 - No external dependencies, CDN links, or images
+- Responsive and mobile-friendly
 
-Mu SDK (auto-injected via window.mu — do NOT add script tags):
-Apps run as full pages on the same origin. The SDK provides typed access to every platform building block.
+Rules:
+- The app MUST have working JavaScript — not just a UI shell
+- Always check for errors and null-check nested properties
+- If using geolocation, provide a manual fallback input
+- When modifying an existing app, return the complete updated JSON (not a diff)`
 
-Platform APIs (all return Promises with JSON):
-- mu.weather({lat: NUMBER, lon: NUMBER}) — weather forecast
-- mu.news() — latest news feed
-- mu.markets({category: 'crypto'|'futures'|'commodities'}) — market prices
-- mu.video() — latest videos
-- mu.blog.list() — blog posts
-- mu.blog.read(id) — single post
-- mu.blog.create({title, content}) — create post
-- mu.social() — social threads
-- mu.places.search({q: 'cafe', near: 'London'}) — search places
-- mu.places.nearby({address: 'London', radius: 1000}) — nearby places
-- mu.chat(prompt) — AI chat
-- mu.search(query) — search all content
-- mu.apps.list() — list apps
-- mu.ai(prompt) — ask AI, returns response text
-- mu.user() — current user info
+// SDKDocs returns the Mu platform SDK reference documentation.
+// This is the single source of truth — used by the mu_sdk tool and
+// passed to the builder as context when the app needs platform APIs.
+func SDKDocs() string {
+	return `# Mu SDK Reference
 
-Agent (for complex queries that need multiple data sources):
-- mu.agent(prompt) — runs the full agent: plans tools, executes, returns synthesised answer
+Apps run as full pages on the same origin. The SDK is auto-injected as window.mu — do NOT add script tags for it.
 
-Storage (persistent, namespaced per app):
-- mu.store.set(key, value) / mu.store.get(key) / mu.store.del(key) / mu.store.keys()
+## Platform APIs (all return Promises with JSON)
 
-Raw fetch (for any endpoint):
-- mu.get(path) — GET, returns JSON
-- mu.post(path, body) — POST, returns JSON
+mu.weather({lat, lon})        — weather forecast (requires lat/lon numbers, not city name)
+mu.news()                     — latest news feed
+mu.markets({category})        — market prices (category: 'crypto'|'futures'|'commodities')
+mu.video()                    — latest videos
+mu.blog.list()                — blog posts
+mu.blog.read(id)              — single post
+mu.blog.create({title, content}) — create post
+mu.social()                   — social threads
+mu.places.search({q, near})   — search places (e.g. {q:'cafe', near:'London'})
+mu.places.nearby({address, radius}) — nearby places
+mu.chat(prompt)               — AI chat
+mu.search(query)              — search all content
+mu.apps.list()                — list apps
+mu.ai(prompt)                 — ask AI, returns response text
+mu.agent(prompt)              — full agent: plans tools, executes, returns answer
+mu.user()                     — current user info
 
-Geolocation:
-- navigator.geolocation works — ALWAYS provide a manual fallback input
+## Storage (persistent, namespaced per app)
 
-ABSOLUTE RULES:
-1. Do NOT add <script src="/apps/sdk.js"> — the SDK is auto-injected.
-2. Do NOT load external scripts or CDN links.
-3. mu.weather() requires lat/lon — NOT a city name. Use geolocation or mu.places.search() to geocode.
-4. Weather response shape: {Current:{TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems:[{MaxTempC, MinTempC, Description}]}
-5. Always check for errors: if(data.error){showError(data.error);return}
-6. Always null-check nested properties before access.
-7. The app MUST have working JavaScript that implements full functionality, not just a UI shell.
+mu.store.set(key, value)
+mu.store.get(key)
+mu.store.del(key)
+mu.store.keys()
 
-When modifying an existing app, return the complete updated JSON (not a diff).`
+## Raw fetch (for any endpoint on the platform)
+
+mu.get(path)          — GET, returns JSON
+mu.post(path, body)   — POST, returns JSON
+
+## Response shapes
+
+Weather: {Current:{TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems:[{MaxTempC, MinTempC, Description}]}
+Markets: array of {Symbol, Price, Change, ChangePercent}
+
+## Important notes
+
+- mu.weather() requires lat/lon — use geolocation or mu.places.search() to geocode city names
+- Do NOT add <script src="/apps/sdk.js"> — the SDK is already injected
+- Do NOT load external scripts or CDN links
+- Always handle errors: if(data.error){showError(data.error);return}`
+}
 
 // handleBuilder serves the app builder page.
 func handleBuilder(w http.ResponseWriter, r *http.Request) {
@@ -263,8 +279,8 @@ func EditApp(slug, prompt, accountID string) (*App, error) {
 		return nil, fmt.Errorf("app not found: %s", slug)
 	}
 
-	// Ask AI to fix the app with current HTML as context
-	question := fmt.Sprintf("Here is the current app HTML:\n\n%s\n\nModification requested: %s", a.HTML, prompt)
+	// Ask AI to fix the app — include SDK docs and current HTML as context
+	question := fmt.Sprintf("Here is the current app HTML:\n\n%s\n\nModification requested: %s\n\n%s", a.HTML, prompt, SDKDocs())
 	aiPrompt := &ai.Prompt{
 		System:   builderSystemPrompt,
 		Question: question,

@@ -465,6 +465,14 @@ Be concise. Focus on functional issues, not style.`,
 		},
 	})
 	api.RegisterTool(api.Tool{
+		Name:        "mu_sdk",
+		Description: "Get the Mu platform SDK documentation. Call this when building or editing apps that need platform features like weather, news, markets, places, storage, AI, etc.",
+		Params:      []api.ToolParam{},
+		Handle: func(args map[string]any) (string, error) {
+			return apps.SDKDocs(), nil
+		},
+	})
+	api.RegisterTool(api.Tool{
 		Name:        "apps_edit",
 		Description: "Edit an existing app — update its name, description, tags, icon, or HTML code",
 		Params: []api.ToolParam{
