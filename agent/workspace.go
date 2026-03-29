@@ -30,8 +30,16 @@ func WorkspaceHandler(w http.ResponseWriter, r *http.Request) {
 	var sb strings.Builder
 	sb.WriteString(`<style>
 #ws{display:flex;flex-direction:column;height:calc(100vh - 60px);max-width:900px;margin:0 auto}
+#ws-tabs{display:flex;gap:0;border-bottom:1px solid #e0e0e0;margin-bottom:8px}
+#ws-tabs button{padding:8px 16px;border:none;background:none;font-family:inherit;font-size:13px;cursor:pointer;color:#888;border-bottom:2px solid transparent}
+#ws-tabs button.active{color:#1a1a1a;border-bottom-color:#1a1a1a}
+#ws-chat{flex:1;overflow-y:auto;display:flex;flex-direction:column}
 #ws-log{flex:1;overflow-y:auto;padding:8px 0}
-#ws-preview{border:1px solid #e0e0e0;border-radius:6px;min-height:300px;display:none;margin-bottom:12px;background:#fff}
+#ws-app{flex:1;display:none;flex-direction:column}
+#ws-preview{width:100%;flex:1;border:none;min-height:50vh;background:#fff}
+#ws-save-bar{display:flex;gap:8px;padding:8px 0;align-items:center}
+#ws-save-bar input{flex:1;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px}
+#ws-save-bar button{padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px}
 #ws-input{display:flex;gap:8px;padding:8px 0}
 #ws-input input{flex:1;padding:10px 14px;border:1px solid #e0e0e0;border-radius:6px;font-size:15px;font-family:inherit}
 #ws-input button{padding:10px 24px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:15px}
@@ -39,13 +47,24 @@ func WorkspaceHandler(w http.ResponseWriter, r *http.Request) {
 .ws-msg{margin:4px 0;font-size:14px;line-height:1.5}
 .ws-user{color:#1a1a1a;font-weight:600}
 .ws-agent{color:#555}
-.ws-status{color:#888;font-size:13px}
+.ws-step{color:#888;font-size:13px;padding:2px 0;border-left:2px solid #e0e0e0;padding-left:8px;margin:2px 0}
 .ws-error{color:#c00;font-size:13px}
-.ws-step{color:#555;font-size:13px;padding:2px 0;border-left:2px solid #e0e0e0;padding-left:8px;margin:2px 0}
 </style>
 <div id="ws">
+<div id="ws-tabs">
+<button class="active" onclick="showTab('chat')">Chat</button>
+<button onclick="showTab('app')">Preview</button>
+</div>
+<div id="ws-chat">
 <div id="ws-log"></div>
-<iframe id="ws-preview" style="width:100%;border:1px solid #e0e0e0;border-radius:6px;min-height:300px;display:none;background:#fff"></iframe>
+</div>
+<div id="ws-app">
+<iframe id="ws-preview"></iframe>
+<div id="ws-save-bar" style="display:none">
+<input type="text" id="ws-app-name" placeholder="App name">
+<button onclick="saveApp()">Save as App</button>
+</div>
+</div>
 <div id="ws-input">
 <input type="text" id="ws-prompt" placeholder="Tell the agent what to do..." autofocus>
 <button id="ws-btn" onclick="send()">Go</button>
@@ -56,30 +75,29 @@ var log=document.getElementById('ws-log');
 var preview=document.getElementById('ws-preview');
 var input=document.getElementById('ws-prompt');
 var btn=document.getElementById('ws-btn');
-var flowId='';
+var chatTab=document.getElementById('ws-chat');
+var appTab=document.getElementById('ws-app');
+var tabs=document.querySelectorAll('#ws-tabs button');
+var sessionId='';
+var lastHTML='';
+
+function showTab(name){
+  tabs.forEach(function(t){t.className=''});
+  if(name==='chat'){chatTab.style.display='flex';appTab.style.display='none';tabs[0].className='active'}
+  else{chatTab.style.display='none';appTab.style.display='flex';tabs[1].className='active'}
+}
 
 function addMsg(cls,text){
-  var d=document.createElement('div');
-  d.className='ws-msg '+cls;
-  d.textContent=text;
-  log.appendChild(d);
-  log.scrollTop=log.scrollHeight;
+  var d=document.createElement('div');d.className='ws-msg '+cls;d.textContent=text;
+  log.appendChild(d);log.scrollTop=log.scrollHeight;
 }
-
 function addStep(text){
-  var d=document.createElement('div');
-  d.className='ws-step';
-  d.textContent=text;
-  log.appendChild(d);
-  log.scrollTop=log.scrollHeight;
+  var d=document.createElement('div');d.className='ws-step';d.textContent=text;
+  log.appendChild(d);log.scrollTop=log.scrollHeight;
 }
-
 function addHTML(cls,html){
-  var d=document.createElement('div');
-  d.className='ws-msg '+cls;
-  d.innerHTML=html;
-  log.appendChild(d);
-  log.scrollTop=log.scrollHeight;
+  var d=document.createElement('div');d.className='ws-msg '+cls;d.innerHTML=html;
+  log.appendChild(d);log.scrollTop=log.scrollHeight;
 }
 
 input.addEventListener('keydown',function(e){if(e.key==='Enter')send()});
@@ -92,41 +110,33 @@ function send(){
   btn.disabled=true;
   addStep('Planning...');
 
-  var es=new EventSource('/agent/workspace?prompt='+encodeURIComponent(prompt)+'&flow_id='+flowId);
+  var es=new EventSource('/agent/workspace?prompt='+encodeURIComponent(prompt)+'&session_id='+sessionId);
 
   es.onmessage=function(e){
     try{
       var ev=JSON.parse(e.data);
 
-      if(ev.type==='flow_id'){
-        flowId=ev.flow_id;
-      }
-      else if(ev.type==='status'){
-        addStep(ev.message);
-      }
+      if(ev.type==='flow_id'){sessionId=ev.flow_id}
+      else if(ev.type==='status'){addStep(ev.message)}
       else if(ev.type==='exec'){
         if(ev.html){
+          lastHTML=ev.html;
           addStep('Rendering app...');
-          preview.style.display='block';
-          // Write full HTML into iframe (same-origin, no sandbox)
+          showTab('app');
           var doc=preview.contentDocument||preview.contentWindow.document;
-          doc.open();
-          doc.write(ev.html);
-          doc.close();
-          // Wait a moment for scripts to run, then send feedback
+          doc.open();doc.write(ev.html);doc.close();
+          document.getElementById('ws-save-bar').style.display='flex';
           setTimeout(function(){
             try{
               var errs=preview.contentWindow.mu&&preview.contentWindow.mu.errors;
               if(errs&&errs.length>0){
-                addMsg('ws-error','Runtime error: '+errs[0].message);
-                feedback(flowId,false,'',errs[0].message,doc.body?doc.body.textContent.slice(0,500):'');
+                addStep('Runtime error: '+errs[0].message);
+                feedback(sessionId,false,'',errs[0].message,doc.body?doc.body.textContent.slice(0,500):'');
               } else {
                 addStep('App rendered');
-                feedback(flowId,true,'rendered','',doc.body?doc.body.textContent.slice(0,500):'');
+                feedback(sessionId,true,'rendered','',doc.body?doc.body.textContent.slice(0,500):'');
               }
-            }catch(ex){
-              feedback(flowId,true,'rendered','','');
-            }
+            }catch(ex){feedback(sessionId,true,'rendered','','')}
           },1000);
         }
         if(ev.code){
@@ -135,41 +145,45 @@ function send(){
             try{
               var result=await eval('(async function(){'+ev.code+'})()');
               addStep('Code executed');
-              feedback(flowId,true,String(result||'ok'),'','');
+              feedback(sessionId,true,String(result||'ok'),'','');
             }catch(err){
               addMsg('ws-error','Error: '+err.message);
-              feedback(flowId,false,'',err.message,'');
+              feedback(sessionId,false,'',err.message,'');
             }
           })();
         }
-        if(!ev.html&&!ev.code){
-          feedback(flowId,true,'ok','','');
-        }
+        if(!ev.html&&!ev.code){feedback(sessionId,true,'ok','','')}
       }
-      else if(ev.type==='response'){
-        addHTML('ws-agent',ev.html||ev.message||'');
-      }
-      else if(ev.type==='error'){
-        addMsg('ws-error',ev.message);
-      }
-      else if(ev.type==='done'){
-        btn.disabled=false;
-        es.close();
-      }
+      else if(ev.type==='response'){addHTML('ws-agent',ev.html||ev.message||'')}
+      else if(ev.type==='error'){addMsg('ws-error',ev.message)}
+      else if(ev.type==='done'){btn.disabled=false;es.close()}
     }catch(ex){console.error('parse error',ex)}
   };
-
-  es.onerror=function(){
-    btn.disabled=false;
-    es.close();
-  };
+  es.onerror=function(){btn.disabled=false;es.close()};
 }
 
-function feedback(fid,ok,result,error,dom){
+function saveApp(){
+  if(!lastHTML){addMsg('ws-error','Nothing to save');return}
+  var name=document.getElementById('ws-app-name').value.trim()||'Untitled App';
+  addStep('Saving app...');
+  fetch('/apps',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:name,html:lastHTML,public:true})
+  }).then(function(r){return r.json()}).then(function(j){
+    if(j.slug){
+      addHTML('ws-agent','Saved: <a href="/apps/'+j.slug+'/run">'+j.name+'</a>');
+    } else {
+      addMsg('ws-error','Save failed: '+(j.error||'unknown error'));
+    }
+  }).catch(function(e){addMsg('ws-error','Save failed: '+e.message)});
+}
+
+function feedback(sid,ok,result,error,dom){
   fetch('/agent/feedback',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({flow_id:fid,ok:ok,result:result,error:error,dom:dom})
+    body:JSON.stringify({flow_id:sid,ok:ok,result:result,error:error,dom:dom})
   }).catch(function(){});
 }
 </script>`)
