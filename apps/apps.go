@@ -564,27 +564,27 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 		forkedInfo,
 	))
 
-	// Run button + Fork button
-	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:4px;text-decoration:none;">Launch App</a>`, htmlpkg.EscapeString(a.Slug)))
+	// Action buttons
+	sb.WriteString(fmt.Sprintf(`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
+<a href="/apps/%s/run" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;">Launch App</a>`, htmlpkg.EscapeString(a.Slug)))
 	_, detailAcc, detailErr := auth.RequireSession(r)
 	if detailErr == nil {
-		sb.WriteString(fmt.Sprintf(` <a href="/apps/%s/fork" style="display:inline-block;padding:8px 24px;background:#fff;color:#333;border:1px solid #ccc;border-radius:4px;text-decoration:none;margin-left:8px;">Fork</a>`,
+		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/fork" style="display:inline-block;padding:8px 24px;background:#fff;color:#333;border:1px solid #e0e0e0;border-radius:6px;text-decoration:none;font-size:14px;">Fork</a>`,
 			htmlpkg.EscapeString(a.Slug)))
 	}
-	sb.WriteString(`</p>`)
+	sb.WriteString(`</div>`)
 
-	// Controls (edit, delete, save, flag, etc.)
+	// Owner/admin controls
 	var detailUserID string
 	var detailAdmin bool
 	if detailErr == nil {
 		detailUserID = detailAcc.ID
 		detailAdmin = detailAcc.Admin
 	}
-	// Admin/author controls as plain text links
 	if detailAdmin || detailUserID == a.AuthorID {
-		sb.WriteString(`<p style="margin-top:16px;font-size:13px">`)
-		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit" class="text-muted">Edit</a>`, htmlpkg.EscapeString(a.Slug)))
-		sb.WriteString(fmt.Sprintf(` · <a href="#" class="text-error" onclick="if(confirm('Delete this app?')){fetch('/apps/%s',{method:'DELETE'}).then(function(){window.location='/apps'})}return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(`<p style="font-size:13px">`)
+		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit" style="color:#888;text-decoration:none">Edit</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(fmt.Sprintf(` · <a href="#" style="color:#c00;text-decoration:none" onclick="if(confirm('Delete this app?')){fetch('/apps/%s/delete',{method:'POST'}).then(function(){window.location='/apps'})}return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
 		sb.WriteString(`</p>`)
 	}
 
@@ -908,12 +908,15 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 	html = strings.ReplaceAll(html, `<script src='/apps/sdk.js'></script>`, "")
 	html = injectSDK(html, nativeSDK)
 
+	// Ensure viewport meta tag for mobile rendering
+	viewport := `<meta name="viewport" content="width=device-width, initial-scale=1">`
+
 	// Add a minimal top bar with back link
-	topBar := fmt.Sprintf(`<div style="position:fixed;top:0;left:0;right:0;background:#fff;border-bottom:1px solid #eee;padding:6px 16px;font-size:13px;font-family:'Nunito Sans',sans-serif;z-index:10000;display:flex;justify-content:space-between;align-items:center">
+	topBar := fmt.Sprintf(`%s<div style="position:fixed;top:0;left:0;right:0;background:#fff;border-bottom:1px solid #eee;padding:8px 16px;font-size:14px;font-family:'Nunito Sans',sans-serif;z-index:10000;display:flex;justify-content:space-between;align-items:center">
 <div><a href="/apps" style="color:#888;text-decoration:none">Apps</a> · <strong>%s</strong></div>
 <div><a href="/apps/%s/edit" style="color:#888;text-decoration:none">Edit</a></div>
 </div>
-<div style="height:36px"></div>`, htmlpkg.EscapeString(a.Name), htmlpkg.EscapeString(a.Slug))
+<div style="height:40px"></div>`, viewport, htmlpkg.EscapeString(a.Name), htmlpkg.EscapeString(a.Slug))
 
 	html = injectSDK(html, topBar) // inject after head (or at top)
 
