@@ -64,6 +64,11 @@ func Load() {}
 // Handler dispatches GET (page) and POST (query) at /agent and /agent/*.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
+	// /agent/exec — receive exec results from browser
+	if path == "/agent/exec" {
+		ExecResultHandler(w, r)
+		return
+	}
 	// /agent/flow/<id>  — view or delete a saved flow
 	if strings.HasPrefix(path, "/agent/flow/") {
 		id := strings.TrimPrefix(path, "/agent/flow/")
@@ -169,6 +174,10 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 <h4 style="margin:0 0 12px;">Working…</h4>
 <div id="agent-steps"></div>
 </div>
+</div>
+
+<div id="agent-preview-container" style="display:none;margin:12px 0">
+<iframe id="agent-preview" style="width:100%;min-height:50vh;border:1px solid #e0e0e0;border-radius:6px;background:#fff"></iframe>
 </div>
 
 <div id="agent-result"></div>`
@@ -334,6 +343,33 @@ form.addEventListener('submit',function(e){
               if(d){
                 d.className='agent-step done';
                 d.innerHTML='<span class="step-icon">✓</span><span>'+esc(ev.message)+'</span>';
+              }
+            } else if(ev.type==='exec'){
+              var pc=document.getElementById('agent-preview-container');
+              var pf=document.getElementById('agent-preview');
+              if(ev.html){
+                pc.style.display='block';
+                window._lastAppHTML=ev.html;
+                var pdoc=pf.contentDocument||pf.contentWindow.document;
+                pdoc.open();pdoc.write(ev.html);pdoc.close();
+                var sd=document.createElement('div');sd.className='agent-step';
+                sd.innerHTML='<span class="step-icon">✓</span><span>App rendered</span>';
+                steps.appendChild(sd);
+                setTimeout(function(){
+                  var iwin=pf.contentWindow;
+                  var errors=[];
+                  try{if(iwin&&iwin.mu&&iwin.mu.errors)errors=iwin.mu.errors}catch(e){}
+                  var hasErr=errors.length>0;
+                  var errMsg=hasErr?errors.map(function(e){return e.message}).join('; '):'';
+                  if(hasErr){
+                    var ed=document.createElement('div');ed.className='agent-step';
+                    ed.innerHTML='<span class="step-icon" style="color:#c00">✗</span><span>'+esc(errMsg.slice(0,120))+'</span>';
+                    steps.appendChild(ed);
+                  }
+                  fetch('/agent/exec',{method:'POST',headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({session_id:currentFlowId,ok:!hasErr,result:hasErr?'':'rendered',error:errMsg,dom:pdoc.body?pdoc.body.textContent.slice(0,500):''})
+                  }).catch(function(){});
+                },2000);
               }
             } else if(ev.type==='response'){
               gotResponse=true;
@@ -660,6 +696,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	// Send flow_id immediately so the client can recover on disconnect.
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID})
+
+	// Shortcut: if this looks like a build request, route to workspace flow
+	if looksLikeExecRequest(req.Prompt) {
+		runWorkspaceFlow(w, r, flow, req.Prompt, model)
+		return
+	}
 
 	// --- Step 1: plan tool calls ---
 	type toolCall struct {

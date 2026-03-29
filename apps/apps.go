@@ -790,6 +790,76 @@ func handleFork(w http.ResponseWriter, r *http.Request, slug string) {
 }
 
 // handleRun renders the app in a sandboxed iframe.
+// NativeSDK returns the inline <script> that defines window.mu for a given app slug.
+// It runs synchronously so all platform APIs are available to subsequent scripts.
+func NativeSDK(slug string) string {
+	return fmt.Sprintf(`<script>
+(function(){
+  var slug=%q;
+  var j='application/json';
+  function get(p){return fetch(p,{headers:{Accept:j}}).then(function(r){return r.json()})}
+  function post(p,b){return fetch(p,{method:'POST',headers:{'Content-Type':j,Accept:j},body:JSON.stringify(b)}).then(function(r){return r.json()})}
+  function sdk(op,body){return post('/apps/'+slug+'/sdk/'+op,body)}
+
+  window.mu={
+    weather:function(o){return get('/weather?lat='+o.lat+'&lon='+o.lon+(o.pollen?'&pollen=1':''))},
+    news:function(){return get('/news')},
+    markets:function(o){return get('/markets'+(o&&o.category?'?category='+o.category:''))},
+    video:function(){return get('/video')},
+    blog:{
+      list:function(){return get('/blog')},
+      read:function(id){return get('/blog/post?id='+id)},
+      create:function(o){return post('/blog',o)},
+    },
+    social:function(){return get('/social')},
+    places:{
+      search:function(o){return post('/places/search',o)},
+      nearby:function(o){return post('/places/nearby',o)},
+    },
+    chat:function(prompt){return post('/chat',{prompt:prompt})},
+    search:function(q){return get('/search?q='+encodeURIComponent(q))},
+    apps:{
+      list:function(){return get('/apps')},
+      read:function(s){return get('/apps/'+s)},
+    },
+    ai:function(prompt,opts){return sdk('ai',{prompt:prompt,options:opts||{}}).then(function(j){return j.result||j})},
+    agent:function(prompt){return post('/agent/run',{prompt:prompt}).then(function(j){return j.answer||j})},
+    user:function(){return get('/session')},
+    store:{
+      set:function(k,v){return sdk('store',{op:'set',key:k,value:v})},
+      get:function(k){return sdk('store',{op:'get',key:k}).then(function(j){return j.result})},
+      del:function(k){return sdk('store',{op:'del',key:k})},
+      keys:function(){return sdk('store',{op:'keys'}).then(function(j){return j.result})},
+    },
+    get:function(p){return get(p)},
+    post:function(p,b){return post(p,b)},
+    errors:[],
+    eval:function(code){
+      try{var r=eval(code);return{ok:true,result:String(r)}}
+      catch(e){return{ok:false,error:e.message}}
+    },
+  };
+  window.onerror=function(msg,src,line){mu.errors.push({type:'error',message:msg,source:src,line:line});};
+  window.onunhandledrejection=function(e){mu.errors.push({type:'promise',message:String(e.reason)});};
+})();
+</script>`, slug)
+}
+
+// InjectSDK injects a script/HTML block after <head> or at the top of the document.
+func InjectSDK(html, sdk string) string {
+	if idx := strings.Index(strings.ToLower(html), "<head>"); idx >= 0 {
+		return html[:idx+6] + sdk + html[idx+6:]
+	}
+	if idx := strings.Index(strings.ToLower(html), "<body"); idx >= 0 {
+		end := strings.Index(html[idx:], ">")
+		if end >= 0 {
+			pos := idx + end + 1
+			return html[:pos] + sdk + html[pos:]
+		}
+	}
+	return sdk + html
+}
+
 func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 	mutex.RLock()
 	a, ok := apps[slug]
@@ -799,111 +869,34 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
-	// Count launch (non-raw only, skip author's own launches)
-	if r.URL.Query().Get("raw") != "1" {
-		_, acc, _ := auth.RequireSession(r)
-		if acc == nil || acc.ID != a.AuthorID {
-			mutex.Lock()
-			a.Installs++
-			mutex.Unlock()
-			save()
-		}
+	// Count launches (skip author's own)
+	_, acc, _ := auth.RequireSession(r)
+	if acc == nil || acc.ID != a.AuthorID {
+		mutex.Lock()
+		a.Installs++
+		mutex.Unlock()
+		save()
 	}
 
-	// Serve raw HTML for iframe src (with sandbox origin isolation)
-	if r.URL.Query().Get("raw") == "1" {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Content-Security-Policy", "default-src 'unsafe-inline' 'self' data: blob:; script-src 'unsafe-inline'; style-src 'unsafe-inline';")
-		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+	// Full page app — no iframe, no sandbox
+	// The SDK is injected inline and uses direct fetch() (same origin, authenticated via session cookie)
+	sdk := NativeSDK(a.Slug)
+	html := a.HTML
+	// Strip any old SDK script tags the AI may have generated
+	html = strings.ReplaceAll(html, `<script src="/apps/sdk.js"></script>`, "")
+	html = strings.ReplaceAll(html, `<script src='/apps/sdk.js'></script>`, "")
+	html = InjectSDK(html, sdk)
 
-		// Inject SDK bridge script before closing </head> or at start
-		sdkBridge := `<script>
-window.mu={_id:0,_cb:{},
-_send:function(t,d){var id=++this._id;return new Promise(function(ok,fail){mu._cb[id]={ok:ok,fail:fail};window.parent.postMessage({type:'mu:'+t,id:id,data:d},'*');})},
-ai:function(p,o){return this._send('ai',{prompt:p,options:o||{}})},
-fetch:function(u){return this._send('fetch',{url:u})},
-user:function(){return this._send('user',{})},
-run:function(result){window.parent.postMessage({type:'mu:run',result:result},'*');},
-store:{
-set:function(k,v){return mu._send('store',{op:'set',key:k,value:v})},
-get:function(k){return mu._send('store',{op:'get',key:k})},
-del:function(k){return mu._send('store',{op:'del',key:k})},
-keys:function(){return mu._send('store',{op:'keys'})}
-}};
-window.addEventListener('message',function(e){var d=e.data;if(d&&d.type&&d.type.indexOf('mu:')===0&&d.id&&mu._cb[d.id]){if(d.error){mu._cb[d.id].fail(new Error(d.error))}else{mu._cb[d.id].ok(d.result)}delete mu._cb[d.id];}});
-</script>`
-		html := a.HTML
-		if idx := strings.Index(strings.ToLower(html), "<head>"); idx >= 0 {
-			html = html[:idx+6] + sdkBridge + html[idx+6:]
-		} else if idx := strings.Index(strings.ToLower(html), "<html"); idx >= 0 {
-			// Find the end of the <html> tag
-			end := strings.Index(html[idx:], ">")
-			if end >= 0 {
-				pos := idx + end + 1
-				html = html[:pos] + sdkBridge + html[pos:]
-			}
-		} else {
-			html = sdkBridge + html
-		}
-		w.Write([]byte(html))
-		return
-	}
+	// Add a minimal top bar
+	topBar := fmt.Sprintf(`<div style="position:fixed;top:0;left:0;right:0;background:#fff;border-bottom:1px solid #eee;padding:6px 16px;font-size:13px;font-family:'Nunito Sans',sans-serif;z-index:10000;display:flex;justify-content:space-between;align-items:center">
+<div><a href="/apps" style="color:#888;text-decoration:none">Apps</a> · <strong>%s</strong></div>
+<div><a href="/apps/%s/edit" style="color:#888;text-decoration:none">Edit</a></div>
+</div>
+<div style="height:36px"></div>`, htmlpkg.EscapeString(a.Name), htmlpkg.EscapeString(a.Slug))
+	html = InjectSDK(html, topBar)
 
-	// Render the run page with iframe
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">&larr; %s</a></p>`,
-		htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Name)))
-	sb.WriteString(fmt.Sprintf(`<iframe src="/apps/%s/run?raw=1" sandbox="allow-scripts" allow="geolocation" style="width:100%%;min-height:70vh;border:1px solid #eee;border-radius:8px;background:#fff;"></iframe>`,
-		htmlpkg.EscapeString(a.Slug)))
-
-	// SDK bridge in parent page: listens for postMessage from iframe and proxies to backend
-	sb.WriteString(fmt.Sprintf(`<script>
-window.addEventListener('message',function(e){
-var d=e.data;if(!d||!d.type||d.type.indexOf('mu:')!==0)return;
-var t=d.type.replace('mu:','');
-var slug=%q;
-var url='/apps/'+slug+'/sdk/';
-if(t==='ai'){url+='ai'}
-else if(t==='fetch'){url+='ai'}
-else if(t==='store'){url+='store'}
-else if(t==='api'){
-var method=d.data.method||'GET';
-var path=d.data.path||'/';
-var opts={method:method,headers:{'Content-Type':'application/json','Accept':'application/json'}};
-if(d.data.body)opts.body=JSON.stringify(d.data.body);
-fetch(path,opts).then(function(r){return r.json()}).then(function(j){
-var iframe=document.querySelector('iframe');
-iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,result:j},'*');
-}).catch(function(err){
-var iframe=document.querySelector('iframe');
-iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,error:err.message},'*');
-});return;
-}
-else if(t==='user'){
-fetch('/session').then(function(r){return r.json()}).then(function(j){
-var iframe=document.querySelector('iframe');
-iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,result:j},'*');
-});return;
-}
-fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d.data)})
-.then(function(r){return r.json()})
-.then(function(j){
-var iframe=document.querySelector('iframe');
-var res=(j&&j.result!==undefined)?j.result:j;
-iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,result:res},'*');
-})
-.catch(function(err){
-var iframe=document.querySelector('iframe');
-iframe.contentWindow.postMessage({type:d.type+':res',id:d.id,error:err.message},'*');
-});
-});
-</script>`, a.Slug))
-
-	app.Respond(w, r, app.Response{
-		Title:       a.Name,
-		Description: a.Description,
-		HTML:        sb.String(),
-	})
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
 }
 
 // handleUpdate processes PATCH requests to update an app.

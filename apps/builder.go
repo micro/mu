@@ -19,37 +19,61 @@ import (
 // builderSystemPrompt instructs the AI to generate app HTML.
 const builderSystemPrompt = `You are an app builder for the Mu platform. You generate complete, self-contained HTML apps.
 
-Rules:
-- Output ONLY valid JSON with this exact structure: {"name":"Short App Name","icon":"<svg>...</svg>","html":"<complete HTML document>"}
-- The name should be short and descriptive (2-4 words, max 50 chars). E.g. "Pomodoro Timer", "Unit Converter", "Habit Tracker"
-- The icon must be an SVG icon matching this exact style:
-  - viewBox="0 0 32 32" width="32" height="32"
-  - xmlns="http://www.w3.org/2000/svg"
-  - Stroke-based outlines only: stroke="#555", fill="none"
-  - stroke-width between 1.2 and 2.5, stroke-linecap="round" where appropriate
-  - Simple geometric shapes (circles, rects, lines, paths) — no text, no gradients, no filters
-  - Represent the app's purpose with a clear, minimal symbol
-  - Examples: a clock face for timer, grid of squares for calculator, checkmark for tracker
-- The html must be a complete HTML document: <!DOCTYPE html><html><head>...</head><body>...</body></html>
-- All CSS must be inline in a <style> tag in <head>
-- All JavaScript must be inline in a <script> tag before </body>
-- Use the font: font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif
-- Style guidelines: clean, minimal design. Use subtle borders (#e0e0e0), 6px border-radius, 16-24px padding, #333 text, #fff background
-- Button style: padding 8-10px 20-24px, border-radius 6px, primary buttons use background #000 color #fff
-- Keep it simple and functional — no external dependencies, no CDN links, no images
-- The app runs in a sandboxed iframe with geolocation enabled — no access to parent page
-- If the app uses geolocation (navigator.geolocation), ALWAYS provide a graceful fallback: show a manual location input or a sensible default when the user denies permission or the API fails. Never let the app be blank or broken if location is unavailable.
-- If the app needs AI features, include <script src="/apps/sdk.js"></script> and use mu.ai(prompt)
-- If the app needs persistent storage, use mu.store.set(key, value) and mu.store.get(key)
-- If the app needs platform data, include <script src="/apps/sdk.js"></script> and use:
-  - mu.api.get(path) — GET request to Mu API (e.g. mu.api.get('/weather?q=London'))
-  - mu.api.post(path, body) — POST request to Mu API (e.g. mu.api.post('/places/search', {q:'cafe',near:'London'}))
-  - Available APIs: /weather?q=, /places/search, /places/nearby, /news, /markets, /video, /chat
-- Maximum 256KB HTML
-- Make it responsive and mobile-friendly
-- Use semantic HTML and accessible patterns
+Output format:
+- Output ONLY valid JSON: {"name":"Short Name","icon":"<svg>...</svg>","html":"<!DOCTYPE html>..."}
+- The name should be 2-4 words (max 50 chars)
+- The icon: SVG, viewBox="0 0 32 32", stroke="#555", fill="none", stroke-width 1.2-2.5
+- The html: complete document with <!DOCTYPE html><html><head><style>...</style></head><body>...<script>...</script></body></html>
 
-When the user asks to modify an existing app, return the complete updated JSON (not a diff). Keep the same name and icon unless the user asks to change them.`
+Style:
+- Font: 'Nunito Sans', sans-serif
+- Clean minimal design: #fff background, #333 text, #e0e0e0 borders, 6px radius
+- Buttons: padding 8-10px 20-24px, radius 6px, primary: background #000 color #fff
+- No external dependencies, CDN links, or images
+
+Mu SDK (auto-injected via window.mu — do NOT add script tags):
+Apps run as full pages on the same origin. The SDK provides typed access to every platform building block.
+
+Platform APIs (all return Promises with JSON):
+- mu.weather({lat: NUMBER, lon: NUMBER}) — weather forecast
+- mu.news() — latest news feed
+- mu.markets({category: 'crypto'|'futures'|'commodities'}) — market prices
+- mu.video() — latest videos
+- mu.blog.list() — blog posts
+- mu.blog.read(id) — single post
+- mu.blog.create({title, content}) — create post
+- mu.social() — social threads
+- mu.places.search({q: 'cafe', near: 'London'}) — search places
+- mu.places.nearby({address: 'London', radius: 1000}) — nearby places
+- mu.chat(prompt) — AI chat
+- mu.search(query) — search all content
+- mu.apps.list() — list apps
+- mu.ai(prompt) — ask AI, returns response text
+- mu.user() — current user info
+
+Agent (for complex queries that need multiple data sources):
+- mu.agent(prompt) — runs the full agent: plans tools, executes, returns synthesised answer
+
+Storage (persistent, namespaced per app):
+- mu.store.set(key, value) / mu.store.get(key) / mu.store.del(key) / mu.store.keys()
+
+Raw fetch (for any endpoint):
+- mu.get(path) — GET, returns JSON
+- mu.post(path, body) — POST, returns JSON
+
+Geolocation:
+- navigator.geolocation works — ALWAYS provide a manual fallback input
+
+ABSOLUTE RULES:
+1. Do NOT add <script src="/apps/sdk.js"> — the SDK is auto-injected.
+2. Do NOT load external scripts or CDN links.
+3. mu.weather() requires lat/lon — NOT a city name. Use geolocation or mu.places.search() to geocode.
+4. Weather response shape: {Current:{TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems:[{MaxTempC, MinTempC, Description}]}
+5. Always check for errors: if(data.error){showError(data.error);return}
+6. Always null-check nested properties before access.
+7. The app MUST have working JavaScript that implements full functionality, not just a UI shell.
+
+When modifying an existing app, return the complete updated JSON (not a diff).`
 
 // handleBuilder serves the app builder page.
 func handleBuilder(w http.ResponseWriter, r *http.Request) {
@@ -226,6 +250,62 @@ func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 
 	app.Log("apps", "Agent built app %q for %s", name, authorID)
 	event.Publish(event.Event{Type: "apps_updated"})
+	return a, nil
+}
+
+// EditApp uses AI to fix/modify an existing app based on a prompt.
+// Returns the updated app or an error.
+func EditApp(slug, prompt, accountID string) (*App, error) {
+	mutex.RLock()
+	a, ok := apps[slug]
+	mutex.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("app not found: %s", slug)
+	}
+
+	// Ask AI to fix the app with current HTML as context
+	question := fmt.Sprintf("Here is the current app HTML:\n\n%s\n\nModification requested: %s", a.HTML, prompt)
+	aiPrompt := &ai.Prompt{
+		System:   builderSystemPrompt,
+		Question: question,
+		Priority: ai.PriorityHigh,
+		Caller:   "app-edit",
+	}
+	result, err := ai.Ask(aiPrompt)
+	if err != nil {
+		return nil, fmt.Errorf("AI edit failed: %v", err)
+	}
+
+	result = cleanGeneratedJSON(result)
+	var generated struct {
+		Name string `json:"name"`
+		Icon string `json:"icon"`
+		HTML string `json:"html"`
+	}
+	if err := json.Unmarshal([]byte(result), &generated); err != nil {
+		generated.HTML = cleanGeneratedHTML(result)
+	}
+	if generated.HTML == "" {
+		generated.HTML = cleanGeneratedHTML(result)
+	}
+	if generated.HTML == "" {
+		return nil, fmt.Errorf("AI returned empty HTML")
+	}
+
+	mutex.Lock()
+	a.HTML = generated.HTML
+	if generated.Name != "" {
+		a.Name = generated.Name
+	}
+	if generated.Icon != "" {
+		a.Icon = generated.Icon
+	}
+	a.UpdatedAt = time.Now()
+	snapshotVersion(a, prompt)
+	mutex.Unlock()
+	save()
+
+	app.Log("apps", "Agent edited app %q for %s", a.Name, accountID)
 	return a, nil
 }
 
