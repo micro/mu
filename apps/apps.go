@@ -871,7 +871,20 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
     // Raw fetch helpers (for any endpoint)
     get:function(p){return get(p)},
     post:function(p,b){return post(p,b)},
+
+    // Error capture — agent can read these to see what went wrong
+    errors:[],
+
+    // REPL — eval code in this page's context, return result
+    eval:function(code){
+      try{var r=eval(code);return{ok:true,result:String(r)}}
+      catch(e){return{ok:false,error:e.message}}
+    },
   };
+
+  // Capture runtime errors
+  window.onerror=function(msg,src,line){mu.errors.push({type:'error',message:msg,source:src,line:line});};
+  window.onunhandledrejection=function(e){mu.errors.push({type:'promise',message:String(e.reason)});};
 })();
 </script>`, a.Slug)
 
