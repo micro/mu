@@ -15,10 +15,20 @@ type Action struct {
 	Class   string
 }
 
-// Controls renders a ⋯ dropdown with actions. Only shows if user is admin or author.
-func Controls(userID, authorID string, isAdmin bool, actions ...Action) string {
-	if !isAdmin && userID != authorID {
+
+// ItemControls renders a ⋯ dropdown with all applicable controls for a content item.
+func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID, editURL, deleteURL string) string {
+	isOwner := userID == authorID
+	if !isOwner && !isAdmin {
 		return ""
+	}
+
+	var actions []Action
+	if editURL != "" {
+		actions = append(actions, Action{Label: "Edit", URL: editURL})
+	}
+	if deleteURL != "" {
+		actions = append(actions, Action{Label: "Delete", URL: deleteURL, Confirm: "Delete this?", Class: "text-error"})
 	}
 	if len(actions) == 0 {
 		return ""
@@ -26,59 +36,9 @@ func Controls(userID, authorID string, isAdmin bool, actions ...Action) string {
 	return renderMenu(actions)
 }
 
-// ItemControls renders a ⋯ dropdown with all applicable controls for a content item.
-func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID, editURL, deleteURL string) string {
-	var actions []Action
-
-	// Save/unsave
-	if IsSaved(userID, contentType, contentID) {
-		actions = append(actions, Action{Label: "Unsave", URL: fmt.Sprintf("/app/unsave?type=%s&id=%s", contentType, contentID)})
-	} else {
-		actions = append(actions, Action{Label: "Save", URL: fmt.Sprintf("/app/save?type=%s&id=%s", contentType, contentID)})
-	}
-
-	// Share
-	u := contentURL(contentType, contentID)
-	if u != "" {
-		actions = append(actions, Action{Label: "Share", URL: u})
-	}
-
-	// Owner/admin
-	isOwner := userID == authorID
-	if isOwner || isAdmin {
-		if editURL != "" {
-			actions = append(actions, Action{Label: "Edit", URL: editURL})
-		}
-		if deleteURL != "" {
-			actions = append(actions, Action{Label: "Delete", URL: deleteURL, Confirm: "Delete this?", Class: "text-error"})
-		}
-	}
-
-	// Others
-	if userID != "" && !isOwner {
-		actions = append(actions, Action{Label: "Flag", URL: fmt.Sprintf("/app/flag?type=%s&id=%s", contentType, contentID), Confirm: "Flag this content?"})
-		actions = append(actions, Action{Label: "Block", URL: fmt.Sprintf("/app/block?user=%s", authorID), Confirm: "Block this user?"})
-	}
-
-	return renderMenu(actions)
-}
-
-// ExternalControls renders a ⋯ dropdown for external content (video, news, web).
+// ExternalControls is a no-op — external content doesn't need per-item controls.
 func ExternalControls(userID, contentType, contentID string) string {
-	var actions []Action
-
-	if userID != "" && IsSaved(userID, contentType, contentID) {
-		actions = append(actions, Action{Label: "Unsave", URL: fmt.Sprintf("/app/unsave?type=%s&id=%s", contentType, contentID)})
-	} else {
-		actions = append(actions, Action{Label: "Save", URL: fmt.Sprintf("/app/save?type=%s&id=%s", contentType, contentID)})
-	}
-
-	u := contentURL(contentType, contentID)
-	if u != "" {
-		actions = append(actions, Action{Label: "Share", URL: u})
-	}
-
-	return renderMenu(actions)
+	return ""
 }
 
 // StaticControls is a no-op — cached content (news, video, blog listings)
