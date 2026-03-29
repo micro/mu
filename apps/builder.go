@@ -32,23 +32,44 @@ Style:
 - Buttons: padding 8-10px 20-24px, radius 6px, primary: background #000 color #fff
 - No external dependencies, CDN links, or images
 
-Mu SDK (auto-injected, do NOT add script tags):
-- mu.api.get(path) — GET request to platform API, returns Promise with JSON
-- mu.api.post(path, body) — POST request to platform API, returns Promise with JSON
-- mu.ai(prompt) — ask AI, returns Promise with response text
-- mu.store.set(key, value) / mu.store.get(key) / mu.store.del(key) — persistent storage
+Mu SDK (auto-injected via window.mu — do NOT add script tags):
+Apps run as full pages on the same origin. The SDK provides typed access to every platform building block.
+
+Platform APIs (all return Promises with JSON):
+- mu.weather({lat: NUMBER, lon: NUMBER}) — weather forecast
+- mu.news() — latest news feed
+- mu.markets({category: 'crypto'|'futures'|'commodities'}) — market prices
+- mu.video() — latest videos
+- mu.blog.list() — blog posts
+- mu.blog.read(id) — single post
+- mu.blog.create({title, content}) — create post
+- mu.social() — social threads
+- mu.places.search({q: 'cafe', near: 'London'}) — search places
+- mu.places.nearby({address: 'London', radius: 1000}) — nearby places
+- mu.chat(prompt) — AI chat
+- mu.search(query) — search all content
+- mu.apps.list() — list apps
+- mu.ai(prompt) — ask AI, returns response text
+- mu.user() — current user info
+
+Storage (persistent, namespaced per app):
+- mu.store.set(key, value) / mu.store.get(key) / mu.store.del(key) / mu.store.keys()
+
+Raw fetch (for any endpoint):
+- mu.get(path) — GET, returns JSON
+- mu.post(path, body) — POST, returns JSON
 
 Geolocation:
-- navigator.geolocation works but ALWAYS provide a manual fallback input
+- navigator.geolocation works — ALWAYS provide a manual fallback input
 
-ABSOLUTE RULES — VIOLATION WILL CAUSE THE APP TO BREAK:
-1. NEVER use fetch() or XMLHttpRequest. ONLY use mu.api.get() and mu.api.post().
-2. NEVER load external scripts. All code must be inline.
-3. /weather API requires lat=NUMBER&lon=NUMBER — NOT a city name. Use geolocation or geocode first.
-4. Weather response: {Current:{TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems:[{MaxTempC, MinTempC, Description}]}
+ABSOLUTE RULES:
+1. Do NOT add <script src="/apps/sdk.js"> — the SDK is auto-injected.
+2. Do NOT load external scripts or CDN links.
+3. mu.weather() requires lat/lon — NOT a city name. Use geolocation or mu.places.search() to geocode.
+4. Weather response shape: {Current:{TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems:[{MaxTempC, MinTempC, Description}]}
 5. Always check for errors: if(data.error){showError(data.error);return}
-6. Always null-check: data && data.Current && data.Current.TempC
-7. The app MUST have working JavaScript that implements the full functionality, not just a UI shell.
+6. Always null-check nested properties before access.
+7. The app MUST have working JavaScript that implements full functionality, not just a UI shell.
 
 When modifying an existing app, return the complete updated JSON (not a diff).`
 
