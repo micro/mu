@@ -171,7 +171,15 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 </div>
 </div>
 
-<div id="agent-result"></div>`
+<div id="agent-result"></div>
+
+<div id="agent-preview-container" style="display:none;margin:12px 0">
+<iframe id="agent-preview" style="width:100%;min-height:50vh;border:1px solid #e0e0e0;border-radius:6px;background:#fff"></iframe>
+<div style="display:flex;gap:8px;padding:8px 0;align-items:center">
+<input type="text" id="agent-app-name" placeholder="App name" style="flex:1;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px">
+<button onclick="saveApp()" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px">Save as App</button>
+</div>
+</div>`
 
 	// Layout: conversation mode puts the form at the bottom; landing puts it at the top.
 	isConversation := contextID != ""
@@ -201,6 +209,21 @@ if(!form)return;
 
 function esc(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function saveApp(){
+  if(!window._lastAppHTML){alert('Nothing to save');return}
+  var name=document.getElementById('agent-app-name').value.trim()||'Untitled App';
+  fetch('/apps',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:name,html:window._lastAppHTML,public:true})
+  }).then(function(r){return r.json()}).then(function(j){
+    if(j.slug){
+      var result=document.getElementById('agent-result');
+      result.innerHTML='<div class="card"><p>Saved: <a href="/apps/'+j.slug+'/run">'+esc(j.name)+'</a></p></div>';
+    } else {
+      alert('Save failed: '+(j.error||'unknown'));
+    }
+  }).catch(function(e){alert('Save failed: '+e.message)});
 }
 
 // showResponse displays a completed response and enters conversation mode.
@@ -334,6 +357,42 @@ form.addEventListener('submit',function(e){
               if(d){
                 d.className='agent-step done';
                 d.innerHTML='<span class="step-icon" style="color:#1a1a1a">done</span><span>'+esc(ev.message)+'</span>';
+              }
+            } else if(ev.type==='exec'){
+              // Render HTML or execute code in preview
+              var pc=document.getElementById('agent-preview-container');
+              var pf=document.getElementById('agent-preview');
+              if(ev.html){
+                pc.style.display='block';
+                window._lastAppHTML=ev.html;
+                var pdoc=pf.contentDocument||pf.contentWindow.document;
+                pdoc.open();pdoc.write(ev.html);pdoc.close();
+                var sd=document.createElement('div');sd.className='agent-step';
+                sd.innerHTML='<span class="step-icon">done</span><span>App rendered</span>';
+                steps.appendChild(sd);
+                // Send feedback
+                setTimeout(function(){
+                  fetch('/agent/feedback',{method:'POST',headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({flow_id:currentFlowId,ok:true,result:'rendered',dom:pdoc.body?pdoc.body.textContent.slice(0,500):''})
+                  }).catch(function(){});
+                },1000);
+              }
+              if(ev.code){
+                (async function(){
+                  try{
+                    var r=await eval('(async function(){'+ev.code+'})()');
+                    fetch('/agent/feedback',{method:'POST',headers:{'Content-Type':'application/json'},
+                      body:JSON.stringify({flow_id:currentFlowId,ok:true,result:String(r||'ok')})
+                    }).catch(function(){});
+                  }catch(err){
+                    var sd=document.createElement('div');sd.className='agent-step';
+                    sd.innerHTML='<span class="step-icon" style="color:#c00">error</span><span>'+esc(err.message)+'</span>';
+                    steps.appendChild(sd);
+                    fetch('/agent/feedback',{method:'POST',headers:{'Content-Type':'application/json'},
+                      body:JSON.stringify({flow_id:currentFlowId,ok:false,error:err.message})
+                    }).catch(function(){});
+                  }
+                })();
               }
             } else if(ev.type==='response'){
               gotResponse=true;
@@ -660,6 +719,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	// Send flow_id immediately so the client can recover on disconnect.
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID})
+
+	// If this is a build/create request, use the workspace exec flow
+	if looksLikeExecRequest(req.Prompt) {
+		runWorkspaceFlow(w, r, flow, req.Prompt, model)
+		return
+	}
 
 	// --- Step 1: plan tool calls ---
 	type toolCall struct {
