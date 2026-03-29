@@ -17,7 +17,7 @@ import (
 )
 
 // builderSystemPrompt instructs the AI to generate app HTML.
-const builderSystemPrompt = `You are an app builder for the Mu platform. You generate complete, self-contained HTML apps.
+const builderSystemPrompt = `You are an app builder. You generate complete, self-contained HTML apps.
 
 Output format:
 - Output ONLY valid JSON: {"name":"Short Name","icon":"<svg>...</svg>","html":"<!DOCTYPE html>..."}
@@ -30,48 +30,47 @@ Style:
 - Clean minimal design: #fff background, #333 text, #e0e0e0 borders, 6px radius
 - Buttons: padding 8-10px 20-24px, radius 6px, primary: background #000 color #fff
 - No external dependencies, CDN links, or images
+- Responsive and mobile-friendly
 
-Mu SDK (auto-injected via window.mu — do NOT add script tags):
-Apps run as full pages on the same origin. The SDK provides typed access to every platform building block.
+Mu SDK (auto-injected via window.mu — do NOT add script tags for it):
+Apps run as full pages on the same origin. The SDK is available if you need platform data.
 
 Platform APIs (all return Promises with JSON):
-- mu.weather({lat: NUMBER, lon: NUMBER}) — weather forecast
-- mu.news() — latest news feed
-- mu.markets({category: 'crypto'|'futures'|'commodities'}) — market prices
-- mu.video() — latest videos
-- mu.blog.list() — blog posts
-- mu.blog.read(id) — single post
-- mu.blog.create({title, content}) — create post
-- mu.social() — social threads
-- mu.places.search({q: 'cafe', near: 'London'}) — search places
-- mu.places.nearby({address: 'London', radius: 1000}) — nearby places
-- mu.chat(prompt) — AI chat
-- mu.search(query) — search all content
-- mu.apps.list() — list apps
-- mu.ai(prompt) — ask AI, returns response text
-- mu.user() — current user info
-
-Agent (for complex queries that need multiple data sources):
-- mu.agent(prompt) — runs the full agent: plans tools, executes, returns synthesised answer
-
-Storage (persistent, namespaced per app):
+- mu.weather({lat, lon})        — weather forecast
+- mu.news()                     — latest news feed
+- mu.markets({category})        — market prices (category: 'crypto'|'futures'|'commodities')
+- mu.video()                    — latest videos
+- mu.blog.list() / mu.blog.read(id) / mu.blog.create({title, content})
+- mu.social()                   — social threads
+- mu.places.search({q, near})   — search places
+- mu.places.nearby({address, radius}) — nearby places
+- mu.chat(prompt) / mu.search(query) / mu.ai(prompt) / mu.agent(prompt)
+- mu.apps.list() / mu.user()
 - mu.store.set(key, value) / mu.store.get(key) / mu.store.del(key) / mu.store.keys()
+- mu.get(path) / mu.post(path, body) — raw fetch helpers
 
-Raw fetch (for any endpoint):
-- mu.get(path) — GET, returns JSON
-- mu.post(path, body) — POST, returns JSON
+RESPONSE SHAPES (use these EXACT field paths):
 
-Geolocation:
-- navigator.geolocation works — ALWAYS provide a manual fallback input
+mu.markets({category:'crypto'}) returns:
+  { category: "crypto", data: [ {symbol:"BTC", price:66556, change_24h:-0.68, type:"crypto"}, ... ] }
+  ACCESS: data.data[0].symbol, data.data[0].price, data.data.forEach(...)
 
-ABSOLUTE RULES:
-1. Do NOT add <script src="/apps/sdk.js"> — the SDK is auto-injected.
-2. Do NOT load external scripts or CDN links.
-3. mu.weather() requires lat/lon — NOT a city name. Use geolocation or mu.places.search() to geocode.
-4. Weather response shape: {Current:{TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems:[{MaxTempC, MinTempC, Description}]}
-5. Always check for errors: if(data.error){showError(data.error);return}
-6. Always null-check nested properties before access.
-7. The app MUST have working JavaScript that implements full functionality, not just a UI shell.
+mu.news() returns:
+  { feed: [ {title:"...", description:"...", url:"...", category:"...", published:"...", image:"..."}, ... ] }
+  ACCESS: data.feed[0].title, data.feed.forEach(...)
+
+mu.weather({lat,lon}) returns:
+  { forecast: { Current: {TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems: [{MaxTempC, MinTempC, Description}], HourlyItems: [{TempC, Description}] } }
+  ACCESS: data.forecast.Current.TempC, data.forecast.DailyItems.forEach(...)
+
+RULES:
+1. Do NOT add <script src="/apps/sdk.js"> — the SDK is auto-injected
+2. Do NOT load external scripts or CDN links
+3. mu.weather() requires lat/lon numbers — use geolocation or mu.places.search() to geocode
+4. Markets array is data.data (NOT data directly). News array is data.feed (NOT data directly)
+5. Always check: if(!data || data.error){showError(data.error||'Failed');return}
+6. Always null-check nested properties before access
+7. The app MUST have working JavaScript — not just a UI shell
 
 When modifying an existing app, return the complete updated JSON (not a diff).`
 
@@ -145,6 +144,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		System:   builderSystemPromptWithDocs(),
 		Rag:      rag,
 		Question: question,
+		Model:    "claude-opus-4-20250514",
 		Priority: ai.PriorityHigh,
 		Caller:   "app-builder",
 	}
@@ -188,6 +188,7 @@ func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 	aiPrompt := &ai.Prompt{
 		System:   builderSystemPromptWithDocs(),
 		Question: prompt,
+		Model:    "claude-opus-4-20250514",
 		Priority: ai.PriorityHigh,
 		Caller:   "app-builder",
 	}

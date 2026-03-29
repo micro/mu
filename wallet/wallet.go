@@ -33,6 +33,8 @@ var (
 	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
 	CostSocialSearch      = getEnvInt("CREDIT_COST_SOCIAL", 1)
+	CostAppBuild          = getEnvInt("CREDIT_COST_APP_BUILD", 15)
+	CostAppEdit           = getEnvInt("CREDIT_COST_APP_EDIT", 10)
 	FreeDailyQuota        = getEnvInt("FREE_DAILY_QUOTA", 20)
 )
 
@@ -59,6 +61,8 @@ const (
 	OpAgentQuery        = "agent_query"
 	OpAgentQueryPremium = "agent_query_premium"
 	OpSocialSearch      = "social_search"
+	OpAppBuild          = "app_build"
+	OpAppEdit           = "app_edit"
 	OpTopup             = "topup"
 	OpRefund            = "refund"
 	OpTransfer          = "transfer"
@@ -445,6 +449,10 @@ func GetOperationCost(operation string) int {
 		return CostAgentQueryPremium
 	case OpSocialSearch:
 		return CostSocialSearch
+	case OpAppBuild:
+		return CostAppBuild
+	case OpAppEdit:
+		return CostAppEdit
 	default:
 		return 1
 	}
