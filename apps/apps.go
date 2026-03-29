@@ -801,6 +801,55 @@ func handleFork(w http.ResponseWriter, r *http.Request, slug string) {
 	http.Redirect(w, r, "/apps/"+newSlug+"/edit", http.StatusSeeOther)
 }
 
+// ForkApp creates a copy of an app under a new owner. Used by the apps_fork MCP tool.
+func ForkApp(slug, newSlug, authorID, authorName string) (*App, error) {
+	mutex.RLock()
+	a, ok := apps[slug]
+	mutex.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("app not found: %s", slug)
+	}
+
+	if newSlug == "" {
+		newSlug = slug
+	}
+	newSlug = slugify(newSlug)
+	if len(newSlug) < 3 {
+		newSlug = "app-" + newSlug
+	}
+
+	mutex.Lock()
+	base := newSlug
+	for i := 2; apps[newSlug] != nil; i++ {
+		newSlug = fmt.Sprintf("%s-%d", base, i)
+	}
+
+	now := time.Now()
+	forked := &App{
+		ID:          uuid.New().String(),
+		Slug:        newSlug,
+		Name:        a.Name,
+		Description: a.Description,
+		AuthorID:    authorID,
+		Author:      authorName,
+		Icon:        a.Icon,
+		HTML:        a.HTML,
+		Tags:        a.Tags,
+		Public:      true,
+		ForkedFrom:  slug,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	snapshotVersion(forked, "Forked from "+a.Name)
+	apps[newSlug] = forked
+	mutex.Unlock()
+	save()
+
+	app.Log("apps", "Forked app %q -> %q by %s", slug, newSlug, authorID)
+	event.Publish(event.Event{Type: "apps_updated"})
+	return forked, nil
+}
+
 // handleRun renders the app in a sandboxed iframe.
 func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 	mutex.RLock()
@@ -961,6 +1010,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 
 	var req struct {
 		Name        *string `json:"name"`
+		Slug        *string `json:"slug"`
 		Icon        *string `json:"icon"`
 		Description *string `json:"description"`
 		Tags        *string `json:"tags"`
@@ -969,6 +1019,29 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 	if err := app.DecodeJSON(r, &req); err != nil {
 		app.RespondError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	// Handle slug change (rename)
+	if req.Slug != nil && *req.Slug != "" && *req.Slug != slug {
+		newSlug := slugify(*req.Slug)
+		if !slugRe.MatchString(newSlug) {
+			app.RespondError(w, http.StatusBadRequest, "Invalid slug: 3-50 chars, lowercase letters, numbers, hyphens")
+			return
+		}
+		mutex.Lock()
+		if _, exists := apps[newSlug]; exists {
+			mutex.Unlock()
+			app.RespondError(w, http.StatusConflict, "Slug already taken")
+			return
+		}
+		delete(apps, slug)
+		a.Slug = newSlug
+		apps[newSlug] = a
+		a.UpdatedAt = time.Now()
+		mutex.Unlock()
+		save()
+		app.RespondJSON(w, map[string]string{"slug": newSlug, "status": "renamed"})
 		return
 	}
 
