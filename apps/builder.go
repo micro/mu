@@ -662,6 +662,7 @@ func editPageHTML(a *App) string {
 
   <div class="save-bar">
     <input class="name" type="text" id="appName" placeholder="App name">
+    <input type="text" id="appSlugInput" placeholder="slug" style="width:140px;font-size:13px;color:#888;">
     <input type="text" id="appDesc" placeholder="Description" style="flex:1;min-width:120px;">
     <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
     <label style="display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap"><input type="checkbox" id="appPublic" style="width:auto;margin:0"> Public</label>
@@ -683,6 +684,7 @@ var editSlug = %s;
 // Pre-populate fields
 codeEl.value = %s;
 document.getElementById('appName').value = %s;
+document.getElementById('appSlugInput').value = editSlug;
 document.getElementById('appDesc').value = %s;
 document.getElementById('appTags').value = %s;
 document.getElementById('appPublic').checked = %s;
@@ -746,12 +748,30 @@ function generate() {
 
 function saveApp() {
   var name = document.getElementById('appName').value.trim();
+  var newSlug = document.getElementById('appSlugInput').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'').replace(/^-|-$/g,'');
   var desc = document.getElementById('appDesc').value.trim();
   var tags = (document.getElementById('appTags').value || '').trim();
   var html = codeEl.value.trim();
   if (!name) { document.getElementById('statusMsg').textContent = 'App name is required'; return; }
   if (!html) { document.getElementById('statusMsg').textContent = 'No code to save'; return; }
 
+  // If slug changed, rename first
+  if (newSlug && newSlug !== editSlug) {
+    document.getElementById('statusMsg').textContent = 'Renaming...';
+    fetch('/apps/' + editSlug, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: newSlug })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
+      editSlug = data.slug || newSlug;
+      document.getElementById('appSlugInput').value = editSlug;
+      doSave();
+    }).catch(function(e){ document.getElementById('statusMsg').textContent = e.message; });
+    return;
+  }
+  doSave();
+  function doSave() {
   document.getElementById('statusMsg').textContent = 'Saving...';
   fetch('/apps/' + editSlug, {
     method: 'PATCH',
@@ -777,6 +797,7 @@ function saveApp() {
     setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 3000);
   })
   .catch(function(e) { document.getElementById('statusMsg').textContent = e.message || 'Save failed'; });
+  } // end doSave
 }
 
 function copyCode() {

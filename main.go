@@ -432,6 +432,34 @@ func main() {
 		})
 		return string(b), nil
 	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "apps_fork",
+		Description: "Fork an existing app — creates a copy under your account that you can modify independently",
+		Params: []api.ToolParam{
+			{Name: "slug", Type: "string", Description: "Slug of the app to fork", Required: true},
+			{Name: "new_slug", Type: "string", Description: "Slug for the forked copy (optional, auto-generated if empty)", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		slug, _ := args["slug"].(string)
+		newSlug, _ := args["new_slug"].(string)
+		if slug == "" {
+			return `{"error":"slug is required"}`, fmt.Errorf("missing slug")
+		}
+		authorName := "Agent"
+		if acc, err := auth.GetAccount(accountID); err == nil {
+			authorName = acc.Name
+		}
+		a, err := apps.ForkApp(slug, newSlug, accountID, authorName)
+		if err != nil {
+			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
+		}
+		b, _ := json.Marshal(map[string]string{
+			"name": a.Name,
+			"slug": a.Slug,
+			"url":  "/apps/" + a.Slug,
+		})
+		return string(b), nil
+	})
 	api.RegisterTool(api.Tool{
 		Name:        "apps_run",
 		Description: "Run JavaScript code in a sandboxed environment and return the result. Use for calculations, data processing, or any computation the user needs.",
