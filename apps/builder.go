@@ -181,6 +181,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		System:   builderSystemPrompt + "\n\n" + SDKDocs(),
 		Rag:      rag,
 		Question: question,
+		Model:    "claude-opus-4-20250514",
 		Priority: ai.PriorityHigh,
 		Caller:   "app-builder",
 	}
@@ -224,6 +225,7 @@ func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 	aiPrompt := &ai.Prompt{
 		System:   builderSystemPrompt + "\n\n" + SDKDocs(),
 		Question: prompt,
+		Model:    "claude-opus-4-20250514",
 		Priority: ai.PriorityHigh,
 		Caller:   "app-builder",
 	}
@@ -311,6 +313,7 @@ func EditApp(slug, prompt, accountID string) (*App, error) {
 	aiPrompt := &ai.Prompt{
 		System:   builderSystemPrompt + "\n\n" + SDKDocs(),
 		Question: question,
+		Model:    "claude-opus-4-20250514",
 		Priority: ai.PriorityHigh,
 		Caller:   "app-edit",
 	}
