@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"mu/internal/ai"
-	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
@@ -78,7 +77,9 @@ When modifying an existing app, return the complete updated JSON (not a diff).`
 
 // builderSystemPromptWithDocs returns the builder prompt with auto-generated API docs appended.
 func builderSystemPromptWithDocs() string {
-	return builderSystemPrompt + "\n\n" + api.ToolDocs()
+	// The typed SDK docs are already in the prompt (mu.weather, mu.news, etc.)
+	// Don't append raw ToolDocs — it's 50+ tools of noise that slows generation.
+	return builderSystemPrompt
 }
 
 // handleBuilder serves the app builder page.
@@ -241,7 +242,7 @@ func BuildAndSave(prompt, authorID, authorName string) (*App, error) {
 		Description: prompt,
 		AuthorID:    authorID,
 		Author:      authorName,
-		Icon:        generated.Icon,
+		Icon:        cleanIcon(generated.Icon),
 		HTML:        generated.HTML,
 		Public:      true,
 		CreatedAt:   now,
