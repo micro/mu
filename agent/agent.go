@@ -322,7 +322,7 @@ form.addEventListener('submit',function(e){
             } else if(ev.type==='thinking'){
               var d=document.createElement('div');
               d.className='agent-step';
-              d.innerHTML='<span class="step-icon">thinking</span><span>'+esc(ev.message)+'</span>';
+              d.innerHTML='<span>'+esc(ev.message)+'</span>';
               steps.appendChild(d);
             } else if(ev.type==='tool_start'){
               var d=document.createElement('div');
@@ -548,7 +548,7 @@ func ToolsDropdownHTML() string {
 <div style="padding:3px 12px;">📰 News</div>
 <div style="padding:3px 12px;">News Search</div>
 <div style="padding:3px 12px;">🌐 Web Search</div>
-<div style="padding:3px 12px;">📄 Web Fetch</div>
+<div style="padding:3px 12px;">Web Fetch</div>
 <div style="padding:3px 12px;">🎬 Video Search</div>
 <div style="padding:3px 12px;">📈 Markets</div>
 <div style="padding:3px 12px;">🌤 Weather</div>
@@ -901,7 +901,7 @@ func toolLabel(tool string) string {
 	case "web_search":
 		return "🌐 Searching the web"
 	case "web_fetch":
-		return "📄 Fetching web page"
+		return "Fetching web page"
 	case "video_search":
 		return "🎬 Searching videos"
 	case "markets":
