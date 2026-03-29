@@ -632,7 +632,7 @@ func main() {
 	http.HandleFunc("/agent", agent.Handler)
 	http.HandleFunc("/agent/", agent.Handler)
 	http.HandleFunc("/agent/run", agent.RunHandler)
-	http.HandleFunc("/agent/exec/result", agent.ExecResultHandler)
+	http.HandleFunc("/agent/exec", agent.ExecResultHandler)
 
 	// serve mail inbox
 	http.HandleFunc("/mail", mail.Handler)
