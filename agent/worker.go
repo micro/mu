@@ -102,7 +102,7 @@ func runAppTask(post *work.Post, postID, feedback string) {
 
 		issues := verifyApp(post, postID)
 		if issues == "" {
-			work.AddLog(postID, "verify", "App looks good ✓", 0)
+			work.AddLog(postID, "verify", "App verified", 0)
 			break
 		}
 

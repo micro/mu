@@ -279,7 +279,7 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			case "error", "budget":
 				color = "#c00"
 			case "complete":
-				color = "#28a745"
+				color = "#1a7f37"
 			case "info":
 				color = "#888"
 			}
@@ -287,7 +287,7 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
 			if entry.Credits > 0 {
 				credits = fmt.Sprintf(` · %dc`, entry.Credits)
 			}
-			sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;margin:2px 0;color:#666"><span style="color:%s;font-weight:600">%s</span> %s%s</p>`,
+			sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;margin:2px 0;color:#888"><span style="color:%s;font-weight:600">%s</span> %s%s</p>`,
 				color, entry.Step, entry.Message, credits))
 		}
 		sb.WriteString(`</div>`)
@@ -327,7 +327,7 @@ func handleDetail(w http.ResponseWriter, r *http.Request) {
       if (p.log && p.log.length > lastCount) {
         for (var i = lastCount; i < p.log.length; i++) {
           var e = p.log[i];
-          var color = e.step==='error'||e.step==='budget'?'#c00':e.step==='complete'?'#28a745':'#555';
+          var color = e.step==='error'||e.step==='budget'?'#c00':e.step==='complete'?'#1a7f37':'#555';
           var credits = e.credits > 0 ? ' · '+e.credits+' credits' : '';
           var ts = e.created_at ? new Date(e.created_at).toLocaleTimeString() : '';
           if (logEl.children.length > 0) {

@@ -120,15 +120,15 @@ func renderMenu(actions []Action) string {
 	id := fmt.Sprintf("cm%d", menuCounter.Add(1))
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<span style="position:absolute;top:10px;right:10px"><a href="#" style="text-decoration:none;font-size:18px;color:#999;line-height:1" onclick="var m=document.getElementById('%s');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();return false;">⋯</a>`, id))
+	sb.WriteString(fmt.Sprintf(`<span style="position:absolute;top:10px;right:10px"><a href="#" style="text-decoration:none;font-size:18px;color:#888;line-height:1" onclick="var m=document.getElementById('%s');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();return false;">⋯</a>`, id))
 	sb.WriteString(fmt.Sprintf(`<div id="%s" class="ctrl-menu" style="display:none;position:absolute;right:0;top:24px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:100;min-width:130px;padding:4px 0">`, id))
 
-	itemStyle := "display:block;padding:8px 16px;font-size:13px;text-decoration:none;white-space:nowrap;cursor:pointer;color:#333"
+	itemStyle := "display:block;padding:8px 16px;font-size:13px;text-decoration:none;white-space:nowrap;cursor:pointer;color:#555"
 
 	for _, a := range actions {
 		style := itemStyle
 		if a.Class == "text-error" {
-			style = strings.Replace(style, "color:#333", "color:#c00", 1)
+			style = strings.Replace(style, "color:#555", "color:#c00", 1)
 		}
 
 		switch {
@@ -141,7 +141,7 @@ func renderMenu(actions []Action) string {
 		case a.Confirm != "":
 			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST'}).then(function(){location.reload()})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
 		default:
-			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="var el=this;fetch('%s',{method:'POST'}).then(function(){el.textContent='%s ✓';el.style.color='#28a745'});event.stopPropagation();return false;">%s</a>`, style, a.URL, a.Label, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="var el=this;fetch('%s',{method:'POST'}).then(function(){el.textContent='Done';el.style.color='#1a7f37'});event.stopPropagation();return false;">%s</a>`, style, a.URL, a.Label, a.Label))
 		}
 	}
 
