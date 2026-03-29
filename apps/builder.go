@@ -184,7 +184,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, acc, err := auth.RequireSession(r)
+	_, _, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
 		return
@@ -270,52 +270,6 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	if generated.HTML == "" {
 		generated.HTML = cleanGeneratedHTML(result)
-	}
-
-	// Test the generated HTML — check SDK calls work and field access is correct
-	testResult := TestHTML(generated.HTML, acc.ID)
-	if !testResult.OK && len(testResult.Issues) > 0 {
-		// Build a fix prompt with the real issues and actual API responses
-		var fixContext strings.Builder
-		fixContext.WriteString("The generated app has issues that need fixing:\n\n")
-		for _, issue := range testResult.Issues {
-			fixContext.WriteString("- " + issue + "\n")
-		}
-		for _, t := range testResult.APITests {
-			if t.Response != "" {
-				fixContext.WriteString(fmt.Sprintf("\nActual response from %s:\n%s\n", t.Call, t.Response))
-			}
-		}
-		fixContext.WriteString("\nFix the code to work with the actual response shapes shown above.")
-
-		fixPrompt := &ai.Prompt{
-			System:   builderSystemPromptWithDocs(),
-			Rag:      []string{"Original app HTML that needs fixing:\n```html\n" + generated.HTML + "\n```"},
-			Question: fixContext.String(),
-			Model:    "claude-opus-4-20250514",
-			Priority: ai.PriorityHigh,
-			Caller:   "app-builder-fix",
-		}
-		fixResult, fixErr := ai.Ask(fixPrompt)
-		if fixErr == nil {
-			fixResult = cleanGeneratedJSON(fixResult)
-			var fixed struct {
-				HTML string `json:"html"`
-				Name string `json:"name"`
-				Icon string `json:"icon"`
-			}
-			if json.Unmarshal([]byte(fixResult), &fixed) == nil && fixed.HTML != "" {
-				generated.HTML = fixed.HTML
-				if fixed.Name != "" {
-					generated.Name = fixed.Name
-				}
-				if fixed.Icon != "" {
-					generated.Icon = fixed.Icon
-				}
-			} else if h := cleanGeneratedHTML(fixResult); h != "" {
-				generated.HTML = h
-			}
-		}
 	}
 
 	resp := map[string]string{"html": generated.HTML}
