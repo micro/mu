@@ -224,8 +224,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			handleDelete(w, r, slug)
 		} else if r.Method == "PATCH" || (r.Method == "POST" && app.SendsJSON(r)) {
 			handleUpdate(w, r, slug)
-		} else {
+		} else if app.WantsJSON(r) {
 			handleView(w, r, slug)
+		} else {
+			// /apps/slug serves the app directly
+			handleRun(w, r, slug)
 		}
 	}
 }
@@ -336,9 +339,9 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			sb.WriteString(fmt.Sprintf(`<div style="position:relative;border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;">
 <img src="/apps/%s/icon.svg" width="32" height="32" style="flex-shrink:0;margin-top:2px;">
 <div>
-<h3 style="margin:0 0 4px 0;"><a href="/apps/%s/run">%s</a></h3>
+<h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
-<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d launches · <a href="/apps/%s/run">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s</p>
+<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d launches · <a href="/apps/%s">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s</p>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
@@ -562,7 +565,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	))
 
 	// Run button + Fork button
-	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s/run" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:4px;text-decoration:none;">Launch App</a>`, htmlpkg.EscapeString(a.Slug)))
+	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:4px;text-decoration:none;">Launch App</a>`, htmlpkg.EscapeString(a.Slug)))
 	_, detailAcc, detailErr := auth.RequireSession(r)
 	if detailErr == nil {
 		sb.WriteString(fmt.Sprintf(` <a href="/apps/%s/fork" style="display:inline-block;padding:8px 24px;background:#fff;color:#333;border:1px solid #ccc;border-radius:4px;text-decoration:none;margin-left:8px;">Fork</a>`,

@@ -81,11 +81,11 @@ func runWorkspaceFlow(w http.ResponseWriter, r *http.Request, flow *Flow, prompt
 	}
 
 	// Send response with link
-	rendered := app.RenderString(fmt.Sprintf("Built **%s** — [Open App](/apps/%s/run) · [Edit](/apps/%s/edit)", appResult.Name, appResult.Slug, appResult.Slug))
+	rendered := app.RenderString(fmt.Sprintf("Built **%s** — [Open App](/apps/%s) · [Edit](/apps/%s/edit)", appResult.Name, appResult.Slug, appResult.Slug))
 	sseSend(map[string]any{"type": "response", "html": rendered, "flow_id": flow.ID})
 	updateFlow(flow.ID, func(f *Flow) {
 		f.Status = "done"
-		f.Answer = fmt.Sprintf("Built %s — /apps/%s/run", appResult.Name, appResult.Slug)
+		f.Answer = fmt.Sprintf("Built %s — /apps/%s", appResult.Name, appResult.Slug)
 		f.HTML = rendered
 	})
 
