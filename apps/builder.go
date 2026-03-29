@@ -74,6 +74,31 @@ RULES:
 
 When modifying an existing app, return the complete updated JSON (not a diff).`
 
+// matchTemplate returns a template that matches the user's prompt, or nil.
+func matchTemplate(prompt string) *Template {
+	lower := strings.ToLower(prompt)
+	matches := map[string][]string{
+		"weather":     {"weather", "forecast", "temperature", "climate"},
+		"markets":     {"market", "crypto", "bitcoin", "price", "stock", "trading", "coin"},
+		"news":        {"news", "feed", "headlines", "articles"},
+		"notes":       {"note", "notepad", "journal"},
+		"timer":       {"timer", "pomodoro", "countdown", "stopwatch"},
+		"calculator":  {"calculator", "calc", "math"},
+		"tracker":     {"track", "habit", "counter", "streak"},
+		"converter":   {"convert", "unit", "conversion"},
+		"flashcards":  {"flashcard", "quiz", "study"},
+		"ai-tool":     {"summarise", "summarize", "translate", "ai tool"},
+	}
+	for id, keywords := range matches {
+		for _, kw := range keywords {
+			if strings.Contains(lower, kw) {
+				return GetTemplate(id)
+			}
+		}
+	}
+	return nil
+}
+
 // builderSystemPromptWithDocs returns the builder prompt with auto-generated API docs appended.
 func builderSystemPromptWithDocs() string {
 	// The typed SDK docs are already in the prompt (mu.weather, mu.news, etc.)
@@ -138,6 +163,11 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	if req.Code != "" {
 		rag = append(rag, "Current app HTML that the user wants to modify:\n```html\n"+req.Code+"\n```")
 		question = "Modify this existing app: " + req.Prompt
+	} else {
+		// For new builds, include a matching template as a starting reference
+		if t := matchTemplate(req.Prompt); t != nil {
+			rag = append(rag, "Here is a working reference template you can use as a base. Adapt it to match the user's request:\n```html\n"+t.HTML+"\n```")
+		}
 	}
 
 	prompt := &ai.Prompt{
