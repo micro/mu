@@ -852,8 +852,10 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
       read:function(s){return get('/apps/'+s)},
     },
 
-    // AI
+    // AI — simple one-shot question
     ai:function(prompt,opts){return sdk('ai',{prompt:prompt,options:opts||{}}).then(function(j){return j.result||j})},
+    // Agent — plans tools, executes, synthesises (for complex multi-source queries)
+    agent:function(prompt){return post('/agent/run',{prompt:prompt}).then(function(j){return j.answer||j})},
 
     // User
     user:function(){return get('/session')},
