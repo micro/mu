@@ -212,14 +212,8 @@ func handleWorkspaceQuery(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
 
-	flow := &Flow{
-		ID:        newFlowID(),
-		AccountID: acc.ID,
-		Prompt:    prompt,
-		Status:    "running",
-		CreatedAt: time.Now().UTC(),
-	}
-	saveFlow(flow)
+	// Use a session ID for the feedback channel (not a saved flow)
+	sessionID := newFlowID()
 
 	sseSend := func(v any) {
 		b, _ := json.Marshal(v)
@@ -229,7 +223,7 @@ func handleWorkspaceQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sseSend(map[string]any{"type": "flow_id", "flow_id": flow.ID})
+	sseSend(map[string]any{"type": "flow_id", "flow_id": sessionID})
 	sseSend(map[string]any{"type": "status", "message": "Processing..."})
 
 	// Step 1: Plan — ask AI what to do
@@ -311,7 +305,7 @@ Output ONLY a JSON array. No other text.`
 			code := stripCodeFences(s.Code)
 			sseSend(map[string]any{"type": "exec", "code": code, "html": s.HTML})
 			// Wait for browser feedback
-			fb := waitForFeedback(flow.ID, 15*time.Second)
+			fb := waitForFeedback(sessionID, 15*time.Second)
 			if fb != nil {
 				lastExecResult = fb
 				if !fb.OK {
@@ -326,7 +320,7 @@ Output ONLY a JSON array. No other text.`
 					if fixErr == nil {
 						sseSend(map[string]any{"type": "status", "message": "Fixing..."})
 						sseSend(map[string]any{"type": "exec", "code": stripCodeFences(fixResult)})
-						fb2 := waitForFeedback(flow.ID, 15*time.Second)
+						fb2 := waitForFeedback(sessionID, 15*time.Second)
 						if fb2 != nil {
 							lastExecResult = fb2
 						}
@@ -373,11 +367,6 @@ Output ONLY a JSON array. No other text.`
 	if lastExecResult != nil && lastExecResult.OK && lastExecResult.DOM != "" {
 		sseSend(map[string]any{"type": "status", "message": "App rendered successfully"})
 	}
-
-	updateFlow(flow.ID, func(f *Flow) {
-		f.Status = "done"
-		f.Answer = prompt
-	})
 
 	sseSend(map[string]any{"type": "done"})
 }
