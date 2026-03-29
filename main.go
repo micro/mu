@@ -453,6 +453,21 @@ func main() {
 			return string(b), nil
 		},
 	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "apps_test",
+		Description: "Test an app by checking its HTML structure and executing its mu.api calls server-side. Returns which API calls work and which fail.",
+		Params: []api.ToolParam{
+			{Name: "slug", Type: "string", Description: "The app's URL slug", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		slug, _ := args["slug"].(string)
+		if slug == "" {
+			return `{"error":"slug required"}`, fmt.Errorf("missing slug")
+		}
+		result := apps.TestApp(slug, accountID)
+		b, _ := json.Marshal(result)
+		return string(b), nil
+	})
 
 	// Start the agent worker after all tools are registered
 	agent.StartWorker()
