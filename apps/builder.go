@@ -78,16 +78,20 @@ When modifying an existing app, return the complete updated JSON (not a diff).`
 func matchTemplate(prompt string) *Template {
 	lower := strings.ToLower(prompt)
 	matches := map[string][]string{
-		"weather":     {"weather", "forecast", "temperature", "climate"},
-		"markets":     {"market", "crypto", "bitcoin", "price", "stock", "trading", "coin"},
-		"news":        {"news", "feed", "headlines", "articles"},
-		"notes":       {"note", "notepad", "journal"},
-		"timer":       {"timer", "pomodoro", "countdown", "stopwatch"},
-		"calculator":  {"calculator", "calc", "math"},
-		"tracker":     {"track", "habit", "counter", "streak"},
-		"converter":   {"convert", "unit", "conversion"},
-		"flashcards":  {"flashcard", "quiz", "study"},
-		"ai-tool":     {"summarise", "summarize", "translate", "ai tool"},
+		"weather":        {"weather", "forecast", "temperature", "climate"},
+		"markets":        {"market", "crypto", "bitcoin", "price", "stock", "trading", "coin"},
+		"news":           {"news", "feed", "headlines", "articles"},
+		"notes":          {"note", "notepad", "journal"},
+		"timer":          {"timer", "pomodoro", "countdown", "stopwatch"},
+		"calculator":     {"calculator", "calc", "math"},
+		"tracker":        {"track", "habit", "counter", "streak"},
+		"converter":      {"convert", "unit", "conversion"},
+		"flashcards":     {"flashcard", "quiz", "study"},
+		"ai-tool":        {"summarise", "summarize", "translate", "ai tool"},
+		"dashboard":      {"dashboard", "overview", "home screen", "all in one"},
+		"search-hub":     {"search hub", "search engine", "search app", "web search"},
+		"place-explorer": {"place", "nearby", "restaurant", "cafe", "explore", "local"},
+		"portfolio":      {"portfolio", "holdings", "my crypto", "watchlist"},
 	}
 	for id, keywords := range matches {
 		for _, kw := range keywords {
