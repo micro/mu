@@ -88,6 +88,34 @@ var Templates = []Template{
 		Category:    "Data",
 		HTML:        templateNews,
 	},
+	{
+		ID:          "dashboard",
+		Name:        "Dashboard",
+		Description: "Markets + news + weather in a single view",
+		Category:    "Composite",
+		HTML:        templateDashboard,
+	},
+	{
+		ID:          "search-hub",
+		Name:        "Search Hub",
+		Description: "Search the web + AI summarise results",
+		Category:    "Composite",
+		HTML:        templateSearchHub,
+	},
+	{
+		ID:          "place-explorer",
+		Name:        "Place Explorer",
+		Description: "Find places nearby + local weather",
+		Category:    "Composite",
+		HTML:        templatePlaceExplorer,
+	},
+	{
+		ID:          "portfolio",
+		Name:        "Portfolio",
+		Description: "Track crypto portfolio with live prices + news",
+		Category:    "Composite",
+		HTML:        templatePortfolio,
+	},
 }
 
 // GetTemplate returns a template by ID.
@@ -619,6 +647,403 @@ function run(instruction) {
     out.textContent = 'Error: ' + e.message;
   });
 }
+</script>
+</body>
+</html>`
+
+const templateDashboard = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 16px; background: #fff; color: #333; }
+h2 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+.panel { border: 1px solid #eee; border-radius: 8px; padding: 16px; }
+.panel h3 { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #555; }
+.loading { color: #999; font-size: 13px; }
+.error { color: #c00; font-size: 13px; }
+.coin { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+.coin:last-child { border-bottom: none; }
+.up { color: #16a34a; } .down { color: #dc2626; }
+.article { padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+.article:last-child { border-bottom: none; }
+.article a { color: #333; text-decoration: none; font-size: 14px; font-weight: 500; }
+.article a:hover { color: #000; }
+.article .meta { font-size: 12px; color: #999; margin-top: 2px; }
+.weather-current { text-align: center; padding: 12px 0; }
+.weather-temp { font-size: 36px; font-weight: 700; }
+.weather-desc { color: #666; font-size: 14px; }
+.weather-details { display: flex; justify-content: center; gap: 16px; font-size: 12px; color: #888; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h2>Dashboard</h2>
+<div class="grid">
+  <div class="panel" id="markets-panel">
+    <h3>Markets</h3>
+    <div class="loading">Loading prices...</div>
+  </div>
+  <div class="panel" id="weather-panel">
+    <h3>Weather</h3>
+    <div class="loading">Getting location...</div>
+  </div>
+  <div class="panel" style="grid-column: 1 / -1;" id="news-panel">
+    <h3>News</h3>
+    <div class="loading">Loading headlines...</div>
+  </div>
+</div>
+<script>
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// Markets
+mu.markets({category: 'crypto'}).then(function(data) {
+  if (!data || data.error || !data.data) { document.querySelector('#markets-panel .loading').className = 'error'; document.querySelector('#markets-panel .error').textContent = 'Failed to load'; return; }
+  var html = '';
+  data.data.slice(0, 8).forEach(function(item) {
+    var change = item.change_24h || 0;
+    var cls = change >= 0 ? 'up' : 'down';
+    var sign = change >= 0 ? '+' : '';
+    var price = item.price >= 1 ? '$' + item.price.toLocaleString(undefined, {maximumFractionDigits:2}) : '$' + item.price.toFixed(4);
+    html += '<div class="coin"><span>' + item.symbol + '</span><span>' + price + ' <span class="' + cls + '">' + sign + change.toFixed(1) + '%</span></span></div>';
+  });
+  document.getElementById('markets-panel').innerHTML = '<h3>Markets</h3>' + html;
+}).catch(function(e) { document.querySelector('#markets-panel .loading').textContent = e.message; });
+
+// Weather
+function loadWeather(lat, lon) {
+  mu.weather({lat: lat, lon: lon}).then(function(data) {
+    if (!data || data.error || !data.forecast) { document.querySelector('#weather-panel .loading').textContent = 'No forecast'; return; }
+    var c = data.forecast.Current;
+    var html = '<h3>Weather</h3><div class="weather-current">';
+    html += '<div class="weather-temp">' + Math.round(c.TempC) + '°C</div>';
+    html += '<div class="weather-desc">' + esc(c.Description || '') + '</div>';
+    html += '<div class="weather-details"><span>Feels ' + Math.round(c.FeelsLikeC) + '°</span><span>' + c.Humidity + '% humidity</span></div>';
+    html += '</div>';
+    document.getElementById('weather-panel').innerHTML = html;
+  }).catch(function(e) { document.querySelector('#weather-panel .loading').textContent = e.message; });
+}
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    function(pos) { loadWeather(pos.coords.latitude, pos.coords.longitude); },
+    function() { loadWeather(51.5, -0.12); } // Default London
+  );
+} else { loadWeather(51.5, -0.12); }
+
+// News
+mu.news().then(function(data) {
+  if (!data || data.error || !data.feed) { document.querySelector('#news-panel .loading').textContent = 'Failed to load'; return; }
+  var html = '<h3>News</h3>';
+  data.feed.slice(0, 8).forEach(function(item) {
+    html += '<div class="article"><a href="' + esc(item.url || '#') + '" target="_blank">' + esc(item.title) + '</a>';
+    html += '<div class="meta">' + esc(item.category || '') + '</div></div>';
+  });
+  document.getElementById('news-panel').innerHTML = html;
+}).catch(function(e) { document.querySelector('#news-panel .loading').textContent = e.message; });
+</script>
+</body>
+</html>`
+
+const templateSearchHub = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 640px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.search-bar input { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; }
+.search-bar button { padding: 10px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; }
+.search-bar button:disabled { background: #ccc; }
+.summary { padding: 16px; background: #f8f8f8; border-radius: 8px; margin-bottom: 16px; line-height: 1.6; font-size: 14px; display: none; }
+.summary h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #555; }
+.results { display: flex; flex-direction: column; gap: 12px; }
+.result { padding: 12px; border: 1px solid #eee; border-radius: 6px; }
+.result a { color: #333; text-decoration: none; font-weight: 500; font-size: 15px; }
+.result a:hover { color: #000; }
+.result p { font-size: 13px; color: #666; margin-top: 4px; line-height: 1.4; }
+.result .url { font-size: 12px; color: #999; margin-top: 4px; }
+.loading { text-align: center; color: #999; padding: 24px; display: none; }
+</style>
+</head>
+<body>
+<h2>Search Hub</h2>
+<div class="search-bar">
+  <input type="text" id="query" placeholder="Search anything..." onkeydown="if(event.key==='Enter')doSearch()">
+  <button id="btn" onclick="doSearch()">Search</button>
+</div>
+<div class="summary" id="summary"></div>
+<div class="loading" id="loading">Searching...</div>
+<div class="results" id="results"></div>
+<script>
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function doSearch() {
+  var q = document.getElementById('query').value.trim();
+  if (!q) return;
+  var btn = document.getElementById('btn');
+  btn.disabled = true;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('summary').style.display = 'none';
+
+  // Search platform content and web in parallel
+  Promise.all([
+    mu.search(q).catch(function() { return {results: []}; }),
+    mu.get('/web?q=' + encodeURIComponent(q)).catch(function() { return {results: []}; })
+  ]).then(function(responses) {
+    var local = responses[0];
+    var web = responses[1];
+    var html = '';
+
+    // Show local results
+    var localItems = (local && local.results) || [];
+    localItems.slice(0, 5).forEach(function(r) {
+      html += '<div class="result"><a href="' + esc(r.url || '#') + '">' + esc(r.title || r.name || 'Result') + '</a>';
+      if (r.description) html += '<p>' + esc(r.description.slice(0, 150)) + '</p>';
+      html += '</div>';
+    });
+
+    // Show web results
+    var webItems = (web && web.results) || [];
+    webItems.slice(0, 5).forEach(function(r) {
+      html += '<div class="result"><a href="' + esc(r.url || '#') + '" target="_blank">' + esc(r.title || 'Result') + '</a>';
+      if (r.description) html += '<p>' + esc(r.description.slice(0, 150)) + '</p>';
+      html += '<div class="url">' + esc(r.url || '') + '</div></div>';
+    });
+
+    document.getElementById('results').innerHTML = html || '<p style="color:#999">No results found.</p>';
+    document.getElementById('loading').style.display = 'none';
+    btn.disabled = false;
+
+    // AI summary
+    if (localItems.length > 0 || webItems.length > 0) {
+      var context = (localItems.concat(webItems)).slice(0, 5).map(function(r) { return (r.title || '') + ': ' + (r.description || ''); }).join('\n');
+      mu.ai('Based on these search results, give a brief 2-3 sentence summary answering: ' + q + '\n\nResults:\n' + context).then(function(answer) {
+        var el = document.getElementById('summary');
+        el.innerHTML = '<h3>AI Summary</h3>' + esc(typeof answer === 'string' ? answer : JSON.stringify(answer));
+        el.style.display = 'block';
+      });
+    }
+  });
+}
+</script>
+</body>
+</html>`
+
+const templatePlaceExplorer = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 600px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.search-bar input { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; }
+.search-bar button { padding: 10px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+.weather-bar { padding: 12px 16px; background: #f8f8f8; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+.weather-bar .temp { font-size: 24px; font-weight: 700; }
+.place { padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; }
+.place h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.place p { font-size: 13px; color: #666; }
+.place .meta { font-size: 12px; color: #999; margin-top: 4px; }
+.loading { text-align: center; color: #999; padding: 24px; }
+.quick-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.quick-tags button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 12px; background: #fff; cursor: pointer; font-size: 12px; font-family: inherit; }
+.quick-tags button:hover { background: #f5f5f5; }
+</style>
+</head>
+<body>
+<h2>Place Explorer</h2>
+<div class="search-bar">
+  <input type="text" id="location" placeholder="Enter a city or address..." value="">
+  <button onclick="explore()">Explore</button>
+</div>
+<div class="quick-tags">
+  <button onclick="searchFor('coffee')">Coffee</button>
+  <button onclick="searchFor('restaurant')">Food</button>
+  <button onclick="searchFor('park')">Parks</button>
+  <button onclick="searchFor('mosque')">Mosques</button>
+  <button onclick="searchFor('gym')">Gyms</button>
+  <button onclick="searchFor('library')">Libraries</button>
+</div>
+<div class="weather-bar" id="weather"></div>
+<div id="results"></div>
+<script>
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+var currentLocation = '';
+var currentQuery = 'coffee';
+
+function explore() {
+  currentLocation = document.getElementById('location').value.trim();
+  if (!currentLocation) return;
+  loadWeather();
+  searchFor(currentQuery);
+}
+
+function loadWeather() {
+  mu.places.search({q: currentLocation, near: currentLocation}).then(function(data) {
+    if (data && data.results && data.results.length > 0) {
+      var p = data.results[0];
+      var lat = p.lat || p.latitude;
+      var lon = p.lon || p.longitude;
+      if (lat && lon) {
+        mu.weather({lat: lat, lon: lon}).then(function(w) {
+          if (w && w.forecast && w.forecast.Current) {
+            var c = w.forecast.Current;
+            var el = document.getElementById('weather');
+            el.innerHTML = '<span class="temp">' + Math.round(c.TempC) + '°C</span> · ' + esc(c.Description || '') + ' · Humidity ' + c.Humidity + '%';
+            el.style.display = 'block';
+          }
+        });
+      }
+    }
+  });
+}
+
+function searchFor(query) {
+  currentQuery = query;
+  if (!currentLocation) { document.getElementById('results').innerHTML = '<div class="loading">Enter a location above</div>'; return; }
+  document.getElementById('results').innerHTML = '<div class="loading">Searching for ' + esc(query) + '...</div>';
+  mu.places.search({q: query, near: currentLocation}).then(function(data) {
+    if (!data || data.error) { document.getElementById('results').innerHTML = '<div class="loading">' + esc(data && data.error || 'No results') + '</div>'; return; }
+    var places = data.results || [];
+    if (places.length === 0) { document.getElementById('results').innerHTML = '<div class="loading">No places found</div>'; return; }
+    var html = '';
+    places.slice(0, 10).forEach(function(p) {
+      html += '<div class="place"><h3>' + esc(p.name) + '</h3>';
+      if (p.address) html += '<p>' + esc(p.address) + '</p>';
+      var meta = [];
+      if (p.rating) meta.push('Rating: ' + p.rating);
+      if (p.distance) meta.push(p.distance);
+      if (meta.length) html += '<div class="meta">' + esc(meta.join(' · ')) + '</div>';
+      html += '</div>';
+    });
+    document.getElementById('results').innerHTML = html;
+  }).catch(function(e) { document.getElementById('results').innerHTML = '<div class="loading">' + esc(e.message) + '</div>'; });
+}
+</script>
+</body>
+</html>`
+
+const templatePortfolio = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 600px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.total { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+.total-change { font-size: 14px; margin-bottom: 20px; }
+.up { color: #16a34a; } .down { color: #dc2626; }
+.holding { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; }
+.holding-left { display: flex; align-items: center; gap: 12px; }
+.holding-symbol { font-weight: 600; }
+.holding-amount { font-size: 13px; color: #888; }
+.holding-right { text-align: right; }
+.holding-value { font-weight: 500; font-variant-numeric: tabular-nums; }
+.holding-change { font-size: 13px; }
+.add-form { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.add-form input, .add-form select { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; }
+.add-form button { padding: 8px 16px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+.news-section { margin-top: 24px; }
+.news-section h3 { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 10px; }
+.news-item { padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+.news-item a { color: #333; text-decoration: none; }
+.news-item a:hover { color: #000; }
+.news-item .meta { font-size: 12px; color: #999; }
+.loading { text-align: center; color: #999; padding: 24px; }
+</style>
+</head>
+<body>
+<h2>Portfolio</h2>
+<div class="total" id="totalValue">$0.00</div>
+<div class="total-change" id="totalChange"></div>
+<div id="holdings"></div>
+<div class="add-form">
+  <select id="addSymbol"><option value="">Add coin...</option></select>
+  <input type="number" id="addAmount" placeholder="Amount" step="any" style="width:100px;">
+  <button onclick="addHolding()">Add</button>
+</div>
+<div class="news-section">
+  <h3>Crypto News</h3>
+  <div id="news"><div class="loading">Loading...</div></div>
+</div>
+<script>
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+var portfolio = JSON.parse(localStorage.getItem('mu_portfolio') || '[]');
+var prices = {};
+
+function savePortfolio() { localStorage.setItem('mu_portfolio', JSON.stringify(portfolio)); }
+
+function render() {
+  var html = '';
+  var totalVal = 0, totalPrev = 0;
+  portfolio.forEach(function(h, i) {
+    var p = prices[h.symbol];
+    if (!p) { html += '<div class="holding"><span>' + h.symbol + ': ' + h.amount + '</span><span>—</span></div>'; return; }
+    var val = h.amount * p.price;
+    var prevVal = h.amount * (p.price / (1 + (p.change_24h || 0) / 100));
+    totalVal += val;
+    totalPrev += prevVal;
+    var cls = p.change_24h >= 0 ? 'up' : 'down';
+    var sign = p.change_24h >= 0 ? '+' : '';
+    html += '<div class="holding"><div class="holding-left"><div><div class="holding-symbol">' + h.symbol + '</div><div class="holding-amount">' + h.amount + '</div></div></div>';
+    html += '<div class="holding-right"><div class="holding-value">$' + val.toLocaleString(undefined,{maximumFractionDigits:2}) + '</div>';
+    html += '<div class="holding-change ' + cls + '">' + sign + (p.change_24h||0).toFixed(1) + '%</div></div></div>';
+  });
+  document.getElementById('holdings').innerHTML = html || '<p style="color:#999;font-size:14px">No holdings yet. Add some below.</p>';
+  document.getElementById('totalValue').textContent = '$' + totalVal.toLocaleString(undefined,{maximumFractionDigits:2});
+  var totalChange = totalPrev > 0 ? ((totalVal - totalPrev) / totalPrev * 100) : 0;
+  var tcCls = totalChange >= 0 ? 'up' : 'down';
+  var tcSign = totalChange >= 0 ? '+' : '';
+  document.getElementById('totalChange').innerHTML = '<span class="' + tcCls + '">' + tcSign + totalChange.toFixed(2) + '% today</span>';
+}
+
+function addHolding() {
+  var sym = document.getElementById('addSymbol').value;
+  var amt = parseFloat(document.getElementById('addAmount').value);
+  if (!sym || isNaN(amt) || amt <= 0) return;
+  var existing = portfolio.find(function(h) { return h.symbol === sym; });
+  if (existing) { existing.amount += amt; } else { portfolio.push({symbol: sym, amount: amt}); }
+  savePortfolio();
+  document.getElementById('addAmount').value = '';
+  render();
+}
+
+// Load prices
+mu.markets({category: 'crypto'}).then(function(data) {
+  if (!data || !data.data) return;
+  var sel = document.getElementById('addSymbol');
+  data.data.forEach(function(item) {
+    prices[item.symbol] = item;
+    var opt = document.createElement('option');
+    opt.value = item.symbol; opt.textContent = item.symbol + ' ($' + (item.price >= 1 ? item.price.toFixed(2) : item.price.toFixed(4)) + ')';
+    sel.appendChild(opt);
+  });
+  render();
+});
+
+// Load news
+mu.news().then(function(data) {
+  if (!data || !data.feed) { document.getElementById('news').innerHTML = '<p style="color:#999">No news</p>'; return; }
+  var crypto = data.feed.filter(function(a) { return (a.category || '').toLowerCase().indexOf('crypto') >= 0 || (a.title || '').toLowerCase().match(/bitcoin|crypto|eth|defi/); });
+  if (crypto.length === 0) crypto = data.feed.slice(0, 5);
+  var html = '';
+  crypto.slice(0, 5).forEach(function(a) {
+    html += '<div class="news-item"><a href="' + esc(a.url || '#') + '" target="_blank">' + esc(a.title) + '</a><div class="meta">' + esc(a.category || '') + '</div></div>';
+  });
+  document.getElementById('news').innerHTML = html;
+});
 </script>
 </body>
 </html>`
