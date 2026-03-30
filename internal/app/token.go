@@ -99,28 +99,42 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	var sb strings.Builder
 
+	// Mobile-friendly table styles
+	sb.WriteString(`<style>
+.token-table { width:100%; border-collapse:collapse; font-size:14px; }
+.token-table th { text-align:left; padding:8px; border-bottom:2px solid #eee; font-size:13px; color:#555; }
+.token-table td { padding:8px; border-bottom:1px solid #f5f5f5; vertical-align:top; }
+.token-table code { font-size:11px; word-break:break-all; }
+@media (max-width: 640px) {
+  .token-table thead { display:none; }
+  .token-table tr { display:block; padding:12px 0; border-bottom:1px solid #eee; }
+  .token-table td { display:block; padding:4px 0; border:none; }
+  .token-table td:before { content:attr(data-label); font-weight:600; font-size:12px; color:#888; display:block; margin-bottom:2px; }
+}
+</style>`)
+
 	// === OAuth Clients ===
 	sb.WriteString(`<h3>OAuth Clients</h3>`)
 	sb.WriteString(`<p style="color:#666;font-size:13px">For connecting Claude, MCP clients, or other apps via OAuth 2.1.</p>`)
 
 	if newClientID != "" {
-		sb.WriteString(fmt.Sprintf(`<div style="margin:15px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">
+		sb.WriteString(fmt.Sprintf(`<div style="margin:15px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:6px;overflow:hidden">
 			<strong>Client Created</strong>
 			<p>Copy these now — the secret won't be shown again.</p>
-			<p><strong>Client ID:</strong> <code>%s</code></p>
-			<p><strong>Client Secret:</strong> <code>%s</code></p>
+			<p><strong>Client ID:</strong><br><code style="font-size:12px;word-break:break-all">%s</code></p>
+			<p><strong>Client Secret:</strong><br><code style="font-size:12px;word-break:break-all">%s</code></p>
 		</div>`, newClientID, newClientSecret))
 	}
 
-	sb.WriteString(`<table><thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead><tbody>`)
+	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead><tbody>`)
 	oauthClients := auth.GetAllOAuthClients()
 	if len(oauthClients) == 0 {
 		sb.WriteString(`<tr><td colspan="4" style="padding:20px;text-align:center;color:#666">No OAuth clients yet.</td></tr>`)
 	}
 	for _, c := range oauthClients {
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td><code style="font-size:12px">%s</code></td><td>%s</td><td>
+		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Client ID"><code>%s</code></td><td data-label="Created">%s</td><td>
 			<form method="POST" action="/token?delete_client=%s" style="display:inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE"><button type="submit">Delete</button></form></td></tr>`,
+			<input type="hidden" name="_method" value="DELETE"><button type="submit" style="font-size:13px">Delete</button></form></td></tr>`,
 			c.Name, c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID))
 	}
 	sb.WriteString(`</tbody></table>`)
@@ -140,7 +154,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
 	sb.WriteString(`<pre id="new-token" style="background:#fff;padding:10px;border:1px solid #c3e6cb;border-radius:3px;overflow-x:auto;white-space:pre-wrap;word-break:break-all"></pre></div>`)
 
-	sb.WriteString(`<table><thead><tr><th>Name</th><th>Permissions</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
+	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>Permissions</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
 	tokens := auth.ListTokens(accountID)
 	if len(tokens) == 0 {
 		sb.WriteString(`<tr><td colspan="5" style="padding:20px;text-align:center;color:#666">No tokens yet.</td></tr>`)
@@ -154,9 +168,9 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		if !token.LastUsed.IsZero() {
 			lastUsed = TimeAgo(token.LastUsed)
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>
+		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Permissions">%s</td><td data-label="Last Used">%s</td><td data-label="Expires">%s</td><td>
 			<form method="POST" action="/token?id=%s" style="display:inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE"><button type="submit">Delete</button></form></td></tr>`,
+			<input type="hidden" name="_method" value="DELETE"><button type="submit" style="font-size:13px">Delete</button></form></td></tr>`,
 			token.Name, strings.Join(token.Permissions, ", "), lastUsed, expires, token.ID))
 	}
 	sb.WriteString(`</tbody></table>`)
