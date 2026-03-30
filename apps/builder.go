@@ -88,6 +88,7 @@ RULES:
 5. Always check: if(!data || data.error){showError(data.error||'Failed');return}
 6. Always null-check nested properties before access
 7. The app MUST have working JavaScript — not just a UI shell
+8. When modifying existing code: make MINIMAL changes. Do NOT rewrite the app. Do NOT add comments explaining changes. Return the complete HTML with only the necessary fix applied. The output must be working code, not annotated code.
 
 When modifying an existing app, return the complete updated JSON (not a diff).`
 
