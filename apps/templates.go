@@ -1060,7 +1060,7 @@ const templateMuApp = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/apps/mu-app.css">
+<link rel="stylesheet" href="/apps/sdk.css">
 </head>
 <body>
 <div class="mu-app-shell">
@@ -1071,7 +1071,7 @@ const templateMuApp = `<!DOCTYPE html>
   </div>
   <div id="mu-app"></div>
 </div>
-<script src="/apps/mu-app.js"></script>
+<script src="/apps/sdk.js"></script>
 <script>
 // --- Configure your app ---
 app.config({

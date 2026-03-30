@@ -1,5 +1,40 @@
-// mu-app runtime — provides standard layouts, components, and lifecycle
-// Apps declare config + data functions, the runtime handles everything else
+// Mu SDK — platform APIs + app framework runtime
+// One import for everything: window.mu (platform), window.app (framework)
+
+// --- Platform SDK (window.mu) ---
+// Slug is set by the server at render time via data attribute or inline var
+(function() {
+  var slug = document.body ? document.body.getAttribute('data-slug') || '' : '';
+  if (window.mu) { return; } // Already injected inline by server
+  var j = 'application/json';
+  function get(p){return fetch(p,{headers:{Accept:j}}).then(function(r){return r.json()})}
+  function post(p,b){return fetch(p,{method:'POST',headers:{'Content-Type':j,Accept:j},body:JSON.stringify(b)}).then(function(r){return r.json()})}
+  function sdk(op,body){return post('/apps/'+slug+'/sdk/'+op,body)}
+  window.mu={
+    weather:function(o){return get('/weather?lat='+o.lat+'&lon='+o.lon+(o.pollen?'&pollen=1':''))},
+    news:function(){return get('/news')},
+    markets:function(o){return get('/markets'+(o&&o.category?'?category='+o.category:''))},
+    video:function(){return get('/video')},
+    blog:{list:function(){return get('/blog')},read:function(id){return get('/blog/post?id='+id)},create:function(o){return post('/blog',o)}},
+    social:function(){return get('/social')},
+    places:{search:function(o){return post('/places/search',o)},nearby:function(o){return post('/places/nearby',o)}},
+    chat:function(prompt){return post('/chat',{prompt:prompt})},
+    search:function(q){return get('/search?q='+encodeURIComponent(q))},
+    apps:{list:function(){return get('/apps')},read:function(s){return get('/apps/'+s)}},
+    ai:function(prompt,opts){return sdk('ai',{prompt:prompt,options:opts||{}}).then(function(j){return j.result||j})},
+    agent:function(prompt){return post('/agent/run',{prompt:prompt}).then(function(j){return j.answer||j})},
+    user:function(){return get('/session')},
+    store:{set:function(k,v){return sdk('store',{op:'set',key:k,value:v})},get:function(k){return sdk('store',{op:'get',key:k}).then(function(j){return j.result})},del:function(k){return sdk('store',{op:'del',key:k})},keys:function(){return sdk('store',{op:'keys'}).then(function(j){return j.result})}},
+    get:function(p){return get(p)},
+    post:function(p,b){return post(p,b)},
+    errors:[],
+    log:[],
+  };
+  window.onerror=function(msg,src,line,col,err){var e={type:'error',message:msg,line:line};if(err&&err.stack)e.stack=err.stack;mu.errors.push(e)};
+  window.onunhandledrejection=function(e){mu.errors.push({type:'promise',message:e.reason&&e.reason.message||String(e.reason)})};
+})();
+
+// --- App Framework Runtime (window.app) ---
 (function() {
   'use strict';
 

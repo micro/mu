@@ -105,7 +105,7 @@ func (a *App) RenderHTML() string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/apps/mu-app.css">
+<link rel="stylesheet" href="/apps/sdk.css">
 </head>
 <body>
 <div class="mu-app-shell">
@@ -116,7 +116,7 @@ func (a *App) RenderHTML() string {
   </div>
   <div id="mu-app"></div>
 </div>
-<script src="/apps/mu-app.js"></script>
+<script src="/apps/sdk.js"></script>
 <script>
 `)
 
@@ -282,10 +282,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleCodeRun(w, r)
 	case path == "/sdk.js":
 		handleSDK(w, r)
-	case path == "/mu-app.js":
-		handleStaticFile(w, "apps/static/mu-app.js", "application/javascript")
-	case path == "/mu-app.css":
-		handleStaticFile(w, "apps/static/mu-app.css", "text/css")
+	case path == "/sdk.css":
+		handleStaticFile(w, "apps/static/sdk.css", "text/css")
 	case strings.HasSuffix(path, "/edit"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/edit")
 		handleEdit(w, r, slug)
@@ -1289,9 +1287,7 @@ func cleanIcon(icon string) string {
 }
 
 func handleSDK(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/javascript")
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-	w.Write([]byte(sdkJS))
+	handleStaticFile(w, "apps/static/sdk.js", "application/javascript")
 }
 
 func handleStaticFile(w http.ResponseWriter, path, contentType string) {
