@@ -89,6 +89,13 @@ var Templates = []Template{
 		HTML:        templateNews,
 	},
 	{
+		ID:          "mu-app",
+		Name:        "Mu App",
+		Description: "Mini app framework — declare data, the runtime handles everything else",
+		Category:    "Framework",
+		HTML:        templateMuApp,
+	},
+	{
 		ID:          "dashboard",
 		Name:        "Dashboard",
 		Description: "Markets + news + weather in a single view",
@@ -1043,6 +1050,106 @@ mu.news().then(function(data) {
     html += '<div class="news-item"><a href="' + esc(a.url || '#') + '" target="_blank">' + esc(a.title) + '</a><div class="meta">' + esc(a.category || '') + '</div></div>';
   });
   document.getElementById('news').innerHTML = html;
+});
+</script>
+</body>
+</html>`
+
+const templateMuApp = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/apps/mu-app.css">
+</head>
+<body>
+<div class="mu-app-shell">
+  <h2 class="mu-app-header" id="mu-app-header"></h2>
+  <div class="mu-app-tabs" id="mu-app-tabs"></div>
+  <div class="mu-app-search" id="mu-app-search">
+    <input type="text" id="mu-search-input" placeholder="Search...">
+  </div>
+  <div id="mu-app"></div>
+</div>
+<script src="/apps/mu-app.js"></script>
+<script>
+// --- Configure your app ---
+app.config({
+  name: 'My App',
+  layout: 'dashboard',
+  tabs: [
+    {id: 'crypto', label: 'Crypto'},
+    {id: 'futures', label: 'Futures'},
+  ],
+  onTab: function(tabId) {
+    loadMarkets(tabId);
+  }
+});
+
+// --- Stats section ---
+app.section('stats', {
+  type: 'stats',
+  order: 0,
+  load: function() {
+    return mu.markets({category: 'crypto'}).then(function(data) {
+      if (!data || !data.data) return {error: 'No data'};
+      var btc = data.data.find(function(c) { return c.symbol === 'BTC'; });
+      var eth = data.data.find(function(c) { return c.symbol === 'ETH'; });
+      return {
+        items: [
+          {label: 'BTC', value: '$' + (btc ? btc.price.toLocaleString(undefined,{maximumFractionDigits:0}) : '-'), change: btc ? (btc.change_24h >= 0 ? '+' : '') + btc.change_24h.toFixed(1) + '%' : ''},
+          {label: 'ETH', value: '$' + (eth ? eth.price.toLocaleString(undefined,{maximumFractionDigits:0}) : '-'), change: eth ? (eth.change_24h >= 0 ? '+' : '') + eth.change_24h.toFixed(1) + '%' : ''},
+          {label: 'Coins', value: String(data.data.length)},
+        ]
+      };
+    });
+  }
+});
+
+// --- Markets list ---
+function loadMarkets(category) {
+  app.section('markets', {
+    title: 'Prices',
+    order: 1,
+    load: function() {
+      return mu.markets({category: category || 'crypto'}).then(function(data) {
+        if (!data || !data.data) return {error: 'Failed to load'};
+        return {
+          items: data.data.map(function(coin) {
+            var price = coin.price >= 1 ? '$' + coin.price.toLocaleString(undefined,{maximumFractionDigits:2}) : '$' + coin.price.toFixed(4);
+            return {
+              title: coin.symbol,
+              subtitle: coin.type,
+              value: price,
+              badge: (coin.change_24h >= 0 ? '+' : '') + coin.change_24h.toFixed(1) + '%',
+              badgeColor: coin.change_24h >= 0 ? 'green' : 'red',
+            };
+          })
+        };
+      });
+    }
+  });
+}
+loadMarkets('crypto');
+
+// --- News section ---
+app.section('news', {
+  title: 'Headlines',
+  order: 2,
+  load: function() {
+    return mu.news().then(function(data) {
+      if (!data || !data.feed) return {error: 'No news'};
+      return {
+        items: data.feed.slice(0, 5).map(function(a) {
+          return {
+            title: a.title,
+            subtitle: a.category,
+            description: (a.description || '').slice(0, 100),
+          };
+        })
+      };
+    });
+  }
 });
 </script>
 </body>
