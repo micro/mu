@@ -49,19 +49,36 @@ Platform APIs (all return Promises with JSON):
 - mu.store.set(key, value) / mu.store.get(key) / mu.store.del(key) / mu.store.keys()
 - mu.get(path) / mu.post(path, body) — raw fetch helpers
 
-RESPONSE SHAPES (use these EXACT field paths):
+SAMPLE API RESPONSES (this is the exact JSON you will receive):
 
-mu.markets({category:'crypto'}) returns:
-  { category: "crypto", data: [ {symbol:"BTC", price:66556, change_24h:-0.68, type:"crypto"}, ... ] }
-  ACCESS: data.data[0].symbol, data.data[0].price, data.data.forEach(...)
+mu.markets({category:'crypto'}) response:
+{"category":"crypto","data":[{"symbol":"BTC","price":66556.03,"change_24h":-0.68,"type":"crypto"},{"symbol":"ETH","price":1999.31,"change_24h":-1.34,"type":"crypto"},{"symbol":"SOL","price":81.72,"change_24h":-2.23,"type":"crypto"}]}
 
-mu.news() returns:
-  { feed: [ {title:"...", description:"...", url:"...", category:"...", published:"...", image:"..."}, ... ] }
-  ACCESS: data.feed[0].title, data.feed.forEach(...)
+Example usage:
+  var data = await mu.markets({category:'crypto'});
+  data.data.forEach(function(coin) {
+    console.log(coin.symbol, coin.price, coin.change_24h);
+  });
 
-mu.weather({lat,lon}) returns:
-  { forecast: { Current: {TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems: [{MaxTempC, MinTempC, Description}], HourlyItems: [{TempC, Description}] } }
-  ACCESS: data.forecast.Current.TempC, data.forecast.DailyItems.forEach(...)
+mu.news() response:
+{"feed":[{"title":"Crypto's CLARITY Act could be a headwind for DeFi","description":"The proposed restriction on yield would shift value...","url":"https://example.com/article","published":"2026-03-29T16:00:00Z","category":"Crypto","image":"https://example.com/img.jpg"}]}
+
+Example usage:
+  var data = await mu.news();
+  data.feed.forEach(function(article) {
+    console.log(article.title, article.category);
+  });
+
+mu.weather({lat:51.5,lon:-0.12}) response:
+{"forecast":{"Location":"London","Current":{"TempC":15,"FeelsLikeC":13,"Description":"Partly cloudy","Humidity":65,"WindKph":20},"DailyItems":[{"MaxTempC":18,"MinTempC":12,"Description":"Cloudy","WillRain":true,"RainMM":2.5}],"HourlyItems":[{"TempC":15,"Description":"Partly cloudy"}]}}
+
+Example usage:
+  var data = await mu.weather({lat:51.5, lon:-0.12});
+  var current = data.forecast.Current;
+  console.log(current.TempC, current.Description);
+  data.forecast.DailyItems.forEach(function(day) {
+    console.log(day.MaxTempC, day.MinTempC, day.Description);
+  });
 
 RULES:
 1. Do NOT add <script src="/apps/sdk.js"> — the SDK is auto-injected
@@ -181,21 +198,28 @@ app.section(id, {title, type, order, load})
     error: {error: "message"}
 
 Platform APIs (via window.mu — all return Promises):
-  mu.markets({category:'crypto'}) → {category, data: [{symbol, price, change_24h}]}
-  mu.news() → {feed: [{title, description, url, category, published}]}
-  mu.weather({lat, lon}) → {forecast: {Current: {TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems: [...]}}
-  mu.places.search({q, near}) → {results: [{name, address}]}
-  mu.ai(prompt) → response text
-  mu.search(query) → results
-  mu.store.set(key, val) / mu.store.get(key) — persistent storage
+
+mu.markets({category:'crypto'}) returns exactly:
+  {"category":"crypto","data":[{"symbol":"BTC","price":66556.03,"change_24h":-0.68,"type":"crypto"},{"symbol":"ETH","price":1999.31,"change_24h":-1.34,"type":"crypto"}]}
+  Usage: data.data.forEach(function(coin) { coin.symbol, coin.price, coin.change_24h })
+
+mu.news() returns exactly:
+  {"feed":[{"title":"Article title","description":"...","url":"https://...","category":"Crypto","published":"2026-03-29T16:00:00Z"}]}
+  Usage: data.feed.forEach(function(a) { a.title, a.description, a.category })
+
+mu.weather({lat:51.5,lon:-0.12}) returns exactly:
+  {"forecast":{"Current":{"TempC":15,"FeelsLikeC":13,"Description":"Partly cloudy","Humidity":65,"WindKph":20},"DailyItems":[{"MaxTempC":18,"MinTempC":12,"Description":"Cloudy"}]}}
+  Usage: data.forecast.Current.TempC, data.forecast.DailyItems.forEach(...)
+
+mu.places.search({q, near}) → {results: [{name, address}]}
+mu.ai(prompt) → response text
+mu.search(query) → results
+mu.store.set(key, val) / mu.store.get(key) — persistent storage
 
 RULES:
 1. Each block = one app.section() call
-2. Markets array is data.data[] NOT data directly
-3. News array is data.feed[] NOT data directly
-4. Weather is data.forecast.Current NOT data.Current
-5. Always: if(!data || data.error) return {error: data.error || 'Failed'}
-6. One data source per block — keep blocks small
+2. Always: if(!data || data.error) return {error: data.error || 'Failed'}
+3. One data source per block — keep blocks small
 
 For edits: you'll receive existing blocks. Return ONLY the changed block(s) in the same JSON format.`
 
