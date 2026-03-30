@@ -5,6 +5,7 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"net/http"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -194,6 +195,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleCodeRun(w, r)
 	case path == "/sdk.js":
 		handleSDK(w, r)
+	case path == "/mu-app.js":
+		handleStaticFile(w, "apps/static/mu-app.js", "application/javascript")
+	case path == "/mu-app.css":
+		handleStaticFile(w, "apps/static/mu-app.css", "text/css")
 	case strings.HasSuffix(path, "/edit"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/edit")
 		handleEdit(w, r, slug)
@@ -1200,6 +1205,17 @@ func handleSDK(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
 	w.Write([]byte(sdkJS))
+}
+
+func handleStaticFile(w http.ResponseWriter, path, contentType string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		http.Error(w, "Not found", 404)
+		return
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Write(data)
 }
 
 // handleSDKAI proxies AI requests from apps.
