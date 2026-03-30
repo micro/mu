@@ -20,6 +20,36 @@ func SysLogHandler(w http.ResponseWriter, r *http.Request) {
 
 	entries := app.GetSysLog()
 
+	// JSON API
+	if app.WantsJSON(r) {
+		type logEntry struct {
+			Time    string `json:"time"`
+			Package string `json:"package"`
+			Message string `json:"message"`
+		}
+		out := make([]logEntry, len(entries))
+		for i, e := range entries {
+			out[i] = logEntry{
+				Time:    e.Time.Format("15:04:05"),
+				Package: e.Package,
+				Message: e.Message,
+			}
+		}
+		// Optional filter
+		pkg := r.URL.Query().Get("pkg")
+		if pkg != "" {
+			var filtered []logEntry
+			for _, e := range out {
+				if e.Package == pkg {
+					filtered = append(filtered, e)
+				}
+			}
+			out = filtered
+		}
+		app.RespondJSON(w, out)
+		return
+	}
+
 	var content strings.Builder
 	content.WriteString(`<div class="card">`)
 	content.WriteString(fmt.Sprintf(`<h3>System Log <span class="count">%d</span></h3>`, len(entries)))
