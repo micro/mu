@@ -364,7 +364,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 			System:   editPrompt,
 			Rag:      rag,
 			Question: question,
-			Model:    "claude-opus-4-20250514",
+			Model:    "claude-sonnet-4-20250514",
 			Priority: ai.PriorityHigh,
 			Caller:   "app-editor",
 		}
