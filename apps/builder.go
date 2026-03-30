@@ -725,7 +725,7 @@ func builderPageHTML(initialCode string) string {
 <style>
 .builder { display: flex; flex-direction: column; gap: 12px; }
 .prompt-bar { display: flex; gap: 8px; }
-.prompt-bar input { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; }
+.prompt-bar textarea { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; resize: none; overflow: hidden; min-height: 42px; line-height: 1.4; }
 .prompt-bar button { padding: 10px 24px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; white-space: nowrap; }
 .prompt-bar button:disabled { background: #ccc; cursor: not-allowed; }
 .templates { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -757,7 +757,7 @@ func builderPageHTML(initialCode string) string {
   .save-bar input.name { width: 100%%; min-width: auto; }
   .save-bar input { width: 100%%; }
   .prompt-bar { flex-direction: column; }
-  .prompt-bar input, .prompt-bar button { width: 100%%; box-sizing: border-box; }
+  .prompt-bar textarea, .prompt-bar button { width: 100%%; box-sizing: border-box; }
 }
 </style>
 
@@ -769,7 +769,7 @@ func builderPageHTML(initialCode string) string {
   </div>
 
   <div class="prompt-bar">
-    <input type="text" id="prompt" placeholder="Build me a pomodoro timer with sound alerts..." onkeydown="if(event.key==='Enter')generate()">
+    <textarea id="prompt" rows="1" placeholder="Build me a pomodoro timer with sound alerts..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();generate()}" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
     <button id="genBtn" onclick="generate()">Generate</button>
   </div>
 
@@ -951,7 +951,7 @@ func editPageHTML(a *App) string {
 <style>
 .builder { display: flex; flex-direction: column; gap: 12px; }
 .prompt-bar { display: flex; gap: 8px; }
-.prompt-bar input { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; }
+.prompt-bar textarea { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; resize: none; overflow: hidden; min-height: 42px; line-height: 1.4; }
 .prompt-bar button { padding: 10px 24px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; white-space: nowrap; }
 .prompt-bar button:disabled { background: #ccc; cursor: not-allowed; }
 .preview-area { display: flex; flex-direction: column; min-height: 60vh; }
@@ -978,7 +978,7 @@ func editPageHTML(a *App) string {
   .save-bar input.name { width: 100%%; min-width: auto; }
   .save-bar input { width: 100%%; }
   .prompt-bar { flex-direction: column; }
-  .prompt-bar input, .prompt-bar button { width: 100%%; box-sizing: border-box; }
+  .prompt-bar textarea, .prompt-bar button { width: 100%%; box-sizing: border-box; }
 }
 </style>
 
@@ -992,7 +992,7 @@ func editPageHTML(a *App) string {
   </div>
 
   <div class="prompt-bar">
-    <input type="text" id="prompt" placeholder="Describe changes... e.g. add a dark mode toggle" onkeydown="if(event.key==='Enter')generate()">
+    <textarea id="prompt" rows="1" placeholder="Describe changes... e.g. add a dark mode toggle" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();generate()}" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
     <button id="genBtn" onclick="generate()">Modify</button>
   </div>
 
