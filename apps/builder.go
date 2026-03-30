@@ -149,6 +149,56 @@ func min(a, b int) int {
 	return b
 }
 
+// frameworkBuilderPrompt is the system prompt for framework mode.
+const frameworkBuilderPrompt = `You build apps using the Mu App framework. You generate ONLY the app logic — the framework handles layout, styling, loading states, and error handling.
+
+Output format — return ONLY valid JSON:
+{
+  "name": "App Name",
+  "description": "What it does",
+  "icon": "<svg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg' stroke='#555' fill='none' stroke-width='2'>...</svg>",
+  "config": {"layout": "list"},
+  "blocks": [
+    {"id": "block-name", "description": "What this block does", "code": "app.section('block-name', { ... });"}
+  ]
+}
+
+Framework API:
+
+app.config({name, layout, tabs, onTab})
+  layout: "list" | "grid" | "dashboard"
+  tabs: [{id, label}] — optional
+  onTab: function(tabId) — called on tab click
+
+app.section(id, {title, type, order, load})
+  type: "list" (cards) | "stats" (stat boxes) | "table" | "html" (raw)
+  order: number (lower = higher)
+  load: function returning Promise that resolves to:
+    list:  {items: [{title, subtitle, description, value, badge, badgeColor}]}
+    stats: {items: [{label, value, change}]}
+    table: {data: {columns: ["Col1"], rows: [{Col1: "val"}]}}
+    html:  {html: "<div>...</div>"}
+    error: {error: "message"}
+
+Platform APIs (via window.mu — all return Promises):
+  mu.markets({category:'crypto'}) → {category, data: [{symbol, price, change_24h}]}
+  mu.news() → {feed: [{title, description, url, category, published}]}
+  mu.weather({lat, lon}) → {forecast: {Current: {TempC, FeelsLikeC, Description, Humidity, WindKph}, DailyItems: [...]}}
+  mu.places.search({q, near}) → {results: [{name, address}]}
+  mu.ai(prompt) → response text
+  mu.search(query) → results
+  mu.store.set(key, val) / mu.store.get(key) — persistent storage
+
+RULES:
+1. Each block = one app.section() call
+2. Markets array is data.data[] NOT data directly
+3. News array is data.feed[] NOT data directly
+4. Weather is data.forecast.Current NOT data.Current
+5. Always: if(!data || data.error) return {error: data.error || 'Failed'}
+6. One data source per block — keep blocks small
+
+For edits: you'll receive existing blocks. Return ONLY the changed block(s) in the same JSON format.`
+
 // builderSystemPromptWithDocs returns the builder prompt with auto-generated API docs appended.
 func builderSystemPromptWithDocs() string {
 	// The typed SDK docs are already in the prompt (mu.weather, mu.news, etc.)
@@ -284,6 +334,90 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		resp["icon"] = generated.Icon
 	}
 	app.RespondJSON(w, resp)
+}
+
+// handleFrameworkGenerate processes AI generation for framework apps.
+// Returns structured blocks instead of raw HTML.
+func handleFrameworkGenerate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		app.MethodNotAllowed(w, r)
+		return
+	}
+
+	_, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	var req struct {
+		Prompt string  `json:"prompt"`
+		Blocks []Block `json:"blocks"` // Existing blocks for editing
+		Block  string  `json:"block"`  // Specific block to edit
+	}
+	if err := app.DecodeJSON(r, &req); err != nil {
+		app.RespondError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	if strings.TrimSpace(req.Prompt) == "" {
+		app.RespondError(w, http.StatusBadRequest, "Prompt is required")
+		return
+	}
+
+	question := req.Prompt
+	var rag []string
+
+	if req.Block != "" && len(req.Blocks) > 0 {
+		// Editing a specific block — send only that block as context
+		for _, b := range req.Blocks {
+			if b.ID == req.Block {
+				rag = append(rag, fmt.Sprintf("Current code for block %q:\n```js\n%s\n```\nEdit this block based on the user's request.", b.ID, b.Code))
+				question = fmt.Sprintf("Edit the %q block: %s", b.ID, req.Prompt)
+				break
+			}
+		}
+	} else if len(req.Blocks) > 0 {
+		// Editing the whole app — send all blocks
+		var blockList strings.Builder
+		blockList.WriteString("Current app blocks:\n")
+		for _, b := range req.Blocks {
+			blockList.WriteString(fmt.Sprintf("\n--- Block: %s (%s) ---\n%s\n", b.ID, b.Description, b.Code))
+		}
+		rag = append(rag, blockList.String())
+		question = "Modify this app: " + req.Prompt
+	}
+
+	prompt := &ai.Prompt{
+		System:   frameworkBuilderPrompt,
+		Rag:      rag,
+		Question: question,
+		Model:    "claude-opus-4-20250514",
+		Priority: ai.PriorityHigh,
+		Caller:   "app-framework-builder",
+	}
+
+	result, err := ai.Ask(prompt)
+	if err != nil {
+		app.Log("apps", "Framework AI generation error: %v", err)
+		app.RespondError(w, http.StatusInternalServerError, "Failed to generate. Please try again.")
+		return
+	}
+
+	result = cleanGeneratedJSON(result)
+
+	var generated struct {
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Icon        string    `json:"icon"`
+		Config      *AppConfig `json:"config"`
+		Blocks      []Block   `json:"blocks"`
+	}
+	if err := json.Unmarshal([]byte(result), &generated); err != nil {
+		app.RespondError(w, http.StatusBadRequest, "AI returned invalid JSON: "+err.Error())
+		return
+	}
+
+	app.RespondJSON(w, generated)
 }
 
 // BuildAndSave generates an app from a prompt, saves it, and returns the app.

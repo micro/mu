@@ -43,6 +43,26 @@ type Version struct {
 const MaxVersions = 50
 
 // App represents an app.
+// Block is a named, independent unit of app logic.
+// Framework apps are assembled from blocks instead of a single HTML blob.
+type Block struct {
+	ID          string `json:"id"`
+	Code        string `json:"code"`        // JS code for this block
+	Description string `json:"description"` // What this block does
+}
+
+// AppConfig holds framework app configuration.
+type AppConfig struct {
+	Layout string   `json:"layout,omitempty"` // list, grid, dashboard
+	Tabs   []AppTab `json:"tabs,omitempty"`
+}
+
+// AppTab defines a tab in a framework app.
+type AppTab struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
 type App struct {
 	ID          string    `json:"id"`
 	Slug        string    `json:"slug"`
@@ -51,11 +71,14 @@ type App struct {
 	AuthorID    string    `json:"author_id"`
 	Author      string    `json:"author"`
 	Icon        string    `json:"icon"`
-	HTML        string    `json:"html"`
-	Tags        string    `json:"tags"` // Comma-separated tags
+	HTML        string    `json:"html"`                  // Raw mode: complete HTML
+	Mode        string    `json:"mode,omitempty"`        // "" or "raw" = HTML blob, "framework" = blocks
+	Config      *AppConfig `json:"config,omitempty"`     // Framework mode config
+	Blocks      []Block   `json:"blocks,omitempty"`      // Framework mode blocks
+	Tags        string    `json:"tags"`
 	Public      bool      `json:"public"`
 	Installs    int       `json:"installs"`
-	ForkedFrom  string    `json:"forked_from,omitempty"` // slug of original app
+	ForkedFrom  string    `json:"forked_from,omitempty"`
 	Versions    []Version `json:"versions,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -67,6 +90,68 @@ var (
 
 	slugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$`)
 )
+
+// RenderHTML returns the full HTML for an app. For raw mode, returns HTML as-is.
+// For framework mode, assembles the shell + blocks into a complete page.
+func (a *App) RenderHTML() string {
+	if a.Mode != "framework" || len(a.Blocks) == 0 {
+		return a.HTML
+	}
+
+	// Assemble framework app from blocks
+	var sb strings.Builder
+	sb.WriteString(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/apps/mu-app.css">
+</head>
+<body>
+<div class="mu-app-shell">
+  <h2 class="mu-app-header" id="mu-app-header"></h2>
+  <div class="mu-app-tabs" id="mu-app-tabs"></div>
+  <div class="mu-app-search" id="mu-app-search">
+    <input type="text" id="mu-search-input" placeholder="Search...">
+  </div>
+  <div id="mu-app"></div>
+</div>
+<script src="/apps/mu-app.js"></script>
+<script>
+`)
+
+	// Write config
+	layout := "list"
+	if a.Config != nil && a.Config.Layout != "" {
+		layout = a.Config.Layout
+	}
+	sb.WriteString(fmt.Sprintf("app.config({name:%q,layout:%q", a.Name, layout))
+	if a.Config != nil && len(a.Config.Tabs) > 0 {
+		sb.WriteString(",tabs:[")
+		for i, t := range a.Config.Tabs {
+			if i > 0 {
+				sb.WriteString(",")
+			}
+			sb.WriteString(fmt.Sprintf("{id:%q,label:%q}", t.ID, t.Label))
+		}
+		sb.WriteString("]")
+	}
+	sb.WriteString("});\n\n")
+
+	// Write each block
+	for _, block := range a.Blocks {
+		sb.WriteString("// Block: " + block.ID)
+		if block.Description != "" {
+			sb.WriteString(" — " + block.Description)
+		}
+		sb.WriteString("\n")
+		sb.WriteString(block.Code)
+		sb.WriteString("\n\n")
+	}
+
+	sb.WriteString("</script>\n</body>\n</html>")
+	return sb.String()
+}
 
 // snapshotVersion saves the current state as a new version. Must be called with mutex held.
 func snapshotVersion(a *App, summary string) {
@@ -186,6 +271,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleBuilder(w, r)
 	case path == "/build/generate":
 		handleGenerate(w, r)
+	case path == "/build/framework":
+		handleFrameworkGenerate(w, r)
 	case path == "/build/templates":
 		handleTemplateList(w, r)
 	case strings.HasPrefix(path, "/build/templates/"):
@@ -948,16 +1035,16 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 	if r.URL.Query().Get("raw") == "1" {
 		// Serve raw HTML — used by edit page preview
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		html := a.HTML
-		html = strings.ReplaceAll(html, `<script src="/apps/sdk.js"></script>`, "")
-		html = strings.ReplaceAll(html, `<script src='/apps/sdk.js'></script>`, "")
-		html = injectSDK(html, nativeSDK)
-		w.Write([]byte(html))
+		rawHTML := a.RenderHTML()
+		rawHTML = strings.ReplaceAll(rawHTML, `<script src="/apps/sdk.js"></script>`, "")
+		rawHTML = strings.ReplaceAll(rawHTML, `<script src='/apps/sdk.js'></script>`, "")
+		rawHTML = injectSDK(rawHTML, nativeSDK)
+		w.Write([]byte(rawHTML))
 		return
 	}
 
 	// Full page run — inject SDK, serve with nav bar
-	html := a.HTML
+	html := a.RenderHTML()
 	html = strings.ReplaceAll(html, `<script src="/apps/sdk.js"></script>`, "")
 	html = strings.ReplaceAll(html, `<script src='/apps/sdk.js'></script>`, "")
 	html = injectSDK(html, nativeSDK)
