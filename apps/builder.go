@@ -90,7 +90,26 @@ RULES:
 7. The app MUST have working JavaScript — not just a UI shell
 8. When modifying existing code: make MINIMAL changes. Do NOT rewrite the app. Do NOT add comments explaining changes. Return the complete HTML with only the necessary fix applied. The output must be working code, not annotated code.
 
-When modifying an existing app, return the complete updated JSON (not a diff).`
+When creating a new app, return the complete JSON.`
+
+// editPrompt is the system prompt for editing existing apps via patches.
+const editPrompt = `You edit apps by returning search-and-replace patches. Do NOT return the full HTML.
+
+Output format — return ONLY valid JSON:
+{
+  "description": "Brief description of what changed",
+  "patches": [
+    {"search": "exact string to find", "replace": "replacement string"}
+  ]
+}
+
+RULES:
+1. Each patch "search" must be an EXACT substring of the current HTML — copy it precisely, including whitespace
+2. Keep patches small and focused — change only what's needed
+3. Do NOT return the full app HTML
+4. Do NOT add comments explaining changes
+5. If adding new code, use an existing line as the search anchor and include it plus the new code as the replacement
+6. Test your search strings mentally — if the string appears more than once, include more surrounding context to make it unique`
 
 // matchTemplate returns a template that matches the user's prompt, or nil.
 func matchTemplate(prompt string) *Template {
@@ -272,6 +291,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Prompt   string `json:"prompt"`
 		Code     string `json:"code"`     // Existing code for follow-on prompts
+		Slug     string `json:"slug"`     // App slug for edit context (description, history)
 		Template string `json:"template"` // Slug of an existing app to use as base
 	}
 	if err := app.DecodeJSON(r, &req); err != nil {
@@ -287,8 +307,27 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	question := req.Prompt
 	var rag []string
 	if req.Code != "" {
+		// Include app context if we have the slug
+		var context string
+		if req.Slug != "" {
+			if a := GetApp(req.Slug); a != nil {
+				context = fmt.Sprintf("App: %s\nOriginal description: %s\n", a.Name, a.Description)
+				if len(a.Versions) > 0 {
+					context += "Edit history:\n"
+					for _, v := range a.Versions {
+						if v.Summary != "" {
+							context += fmt.Sprintf("  v%d: %s\n", v.Number, v.Summary)
+						}
+					}
+				}
+			}
+		}
 		rag = append(rag, "Current app HTML that the user wants to modify:\n```html\n"+req.Code+"\n```")
-		question = "Modify this existing app: " + req.Prompt
+		if context != "" {
+			question = context + "\nChange requested: " + req.Prompt
+		} else {
+			question = "Modify this existing app: " + req.Prompt
+		}
 	} else {
 		// For new builds, find a starting reference
 		var baseHTML string
@@ -319,6 +358,59 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Edit mode: use patch prompt, apply diffs
+	if req.Code != "" {
+		patchPrompt := &ai.Prompt{
+			System:   editPrompt,
+			Rag:      rag,
+			Question: question,
+			Model:    "claude-opus-4-20250514",
+			Priority: ai.PriorityHigh,
+			Caller:   "app-editor",
+		}
+		patchResult, err := ai.Ask(patchPrompt)
+		if err != nil {
+			app.Log("apps", "AI edit error: %v", err)
+			app.RespondError(w, http.StatusInternalServerError, "Failed to edit. Please try again.")
+			return
+		}
+		patchResult = cleanGeneratedJSON(patchResult)
+
+		var patchResp struct {
+			Description string `json:"description"`
+			Patches     []struct {
+				Search  string `json:"search"`
+				Replace string `json:"replace"`
+			} `json:"patches"`
+		}
+		if err := json.Unmarshal([]byte(patchResult), &patchResp); err != nil {
+			// Fallback: treat as full HTML regeneration
+			app.Log("apps", "Patch parse failed, falling back to full regen: %v", err)
+			goto fullRegen
+		}
+
+		// Apply patches
+		html := req.Code
+		applied := 0
+		for _, p := range patchResp.Patches {
+			if p.Search == "" {
+				continue
+			}
+			if strings.Contains(html, p.Search) {
+				html = strings.Replace(html, p.Search, p.Replace, 1)
+				applied++
+			}
+		}
+		if applied > 0 {
+			resp := map[string]any{"html": html, "description": patchResp.Description, "patches": applied}
+			app.RespondJSON(w, resp)
+			return
+		}
+		// No patches applied — fall through to full regen
+		app.Log("apps", "No patches matched, falling back to full regen")
+	}
+
+fullRegen:
 	prompt := &ai.Prompt{
 		System:   builderSystemPromptWithDocs(),
 		Rag:      rag,
@@ -995,7 +1087,7 @@ function generate() {
   fetch('/apps/build/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: p, code: codeEl.value })
+    body: JSON.stringify({ prompt: p, code: codeEl.value, slug: editSlug })
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
