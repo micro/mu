@@ -1051,11 +1051,8 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 	viewport := `<meta name="viewport" content="width=device-width, initial-scale=1">`
 
 	// Add a minimal top bar with back link
-	topBar := fmt.Sprintf(`%s<div style="position:fixed;top:0;left:0;right:0;background:#fff;border-bottom:1px solid #eee;padding:8px 16px;font-size:14px;font-family:'Nunito Sans',sans-serif;z-index:10000;display:flex;justify-content:space-between;align-items:center">
-<div><a href="/apps" style="color:#888;text-decoration:none">Apps</a> · <strong>%s</strong></div>
-<div><a href="/apps/%s/edit" style="color:#888;text-decoration:none">Edit</a></div>
-</div>
-<div style="height:40px"></div>`, viewport, htmlpkg.EscapeString(a.Name), htmlpkg.EscapeString(a.Slug))
+	topBar := fmt.Sprintf(`%s<style>body{padding-top:44px !important;}.mu-topbar{position:fixed;top:0;left:0;right:0;height:44px;background:#fff;border-bottom:1px solid #eee;padding:0 16px;font-size:14px;font-family:'Nunito Sans',sans-serif;z-index:10000;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;}</style>
+<div class="mu-topbar"><div><a href="/apps" style="color:#888;text-decoration:none">Apps</a> · <strong>%s</strong></div><div><a href="/apps/%s/edit" style="color:#888;text-decoration:none">Edit</a></div></div>`, viewport, htmlpkg.EscapeString(a.Name), htmlpkg.EscapeString(a.Slug))
 
 	html = injectSDK(html, topBar) // inject after head (or at top)
 
