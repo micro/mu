@@ -1038,8 +1038,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Back link - go to filtered view if viewing a spam message
 		backToMail := "/mail"
+		spamActions := ""
 		if msg.Spam {
 			backToMail = "/mail?view=filtered"
+			spamActions = fmt.Sprintf(`
+			<div style="padding:12px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+				<span style="font-size:14px;color:#856404">This message was filtered as spam (score: %d)</span>
+				<div style="display:flex;gap:8px">
+					<form method="POST" action="/mail?view=filtered" style="display:inline">
+						<input type="hidden" name="action" value="not_spam">
+						<input type="hidden" name="msg_id" value="%s">
+						<button type="submit" style="padding:6px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit">Not Spam</button>
+					</form>
+					<form method="POST" action="/mail?view=filtered" style="display:inline">
+						<input type="hidden" name="action" value="delete_spam">
+						<input type="hidden" name="msg_id" value="%s">
+						<button type="submit" style="padding:6px 16px;background:#fff;color:#c00;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit">Delete</button>
+					</form>
+				</div>
+			</div>`, msg.SpamScore, msg.ID, msg.ID)
 		}
 
 		// Get the root ID for reply threading - this is the ID of the latest message being replied to
@@ -1047,6 +1064,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		replyToID := latestMsg.ID
 
 		messageView := fmt.Sprintf(`
+	%s
 	<div class="text-muted text-sm mb-5">Thread with: %s</div>
 	%s
 	<div class="mt-6 border-t pt-5">
@@ -1067,7 +1085,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<a href="%s" class="text-muted">← Back to mail</a>
 		</div>
 	</div>
-`, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton, backToMail)
+`, spamActions, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton, backToMail)
 		w.Write([]byte(app.RenderHTML(decodedSubject, "", messageView)))
 		return
 	}
