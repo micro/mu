@@ -1147,6 +1147,48 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		view = "inbox"
 	}
 
+	// Handle search
+	if q := r.URL.Query().Get("q"); q != "" {
+		results := searchMail(acc.ID, q)
+		var content string
+		if len(results) == 0 {
+			content = fmt.Sprintf(`<p class="text-muted">No results for "%s"</p>`, html.EscapeString(q))
+		} else {
+			content = fmt.Sprintf(`<p class="text-muted" style="margin-bottom:12px">%d results for "%s"</p>`, len(results), html.EscapeString(q))
+			for _, msg := range results {
+				from := msg.From
+				if from == "" {
+					from = msg.FromID
+				}
+				subject := msg.Subject
+				if subject == "" {
+					subject = "(no subject)"
+				}
+				body := msg.Body
+				if len(body) > 100 {
+					body = body[:100] + "..."
+				}
+				content += fmt.Sprintf(`<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="window.location.href='/mail?id=%s'">
+<div style="font-weight:600;font-size:14px">%s</div>
+<div style="font-size:13px;color:#666">%s</div>
+<div style="font-size:13px;color:#999;margin-top:4px">%s</div>
+</div>`, msg.ID, html.EscapeString(subject), html.EscapeString(from), html.EscapeString(body))
+			}
+		}
+		searchQuery := q
+		searchBar := fmt.Sprintf(`<form action="/mail" method="GET" style="margin-bottom:12px;display:flex;gap:8px">
+<input type="text" name="q" value="%s" placeholder="Search mail..." style="flex:1;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px">
+<button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px">Search</button>
+</form>`, html.EscapeString(searchQuery))
+		pageHTML := app.Page(app.PageOpts{
+			Action:  "/mail?compose=true",
+			Label:   "+ Compose",
+			Content: searchBar + content,
+		})
+		w.Write([]byte(app.RenderHTML("Mail — Search", "", pageHTML)))
+		return
+	}
+
 	// Check if requesting unread count only
 	if r.URL.Query().Get("unread") == "count" {
 		mutex.RLock()
@@ -1374,11 +1416,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	tabs := fmt.Sprintf(`<div class="mail-tabs"><a href="/mail" class="%s">%s</a><a href="/mail?view=sent" class="%s">Sent</a><a href="/mail?view=filtered" class="%s">%s</a></div>`,
 		inboxClass, inboxLabel, sentClass, filteredClass, filteredLabel)
 
+	// Search bar
+	searchQuery := r.URL.Query().Get("q")
+	searchBar := fmt.Sprintf(`<form action="/mail" method="GET" style="margin-bottom:12px;display:flex;gap:8px">
+<input type="text" name="q" value="%s" placeholder="Search mail..." style="flex:1;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px">
+<button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px">Search</button>
+</form>`, html.EscapeString(searchQuery))
+
 	pageHTML := app.Page(app.PageOpts{
 		Action:  "/mail?compose=true",
 		Label:   "+ Compose",
 		Filters: tabs,
-		Content: `<div id="mailbox">` + content + `</div>`,
+		Content: searchBar + `<div id="mailbox">` + content + `</div>`,
 	})
 
 	w.Write([]byte(app.RenderHTML(title, "Your messages", pageHTML)))
@@ -1525,6 +1574,44 @@ func NotSpamMessage(userID, msgID string) error {
 		}
 	}
 	return fmt.Errorf("spam message not found")
+}
+
+// searchMail finds messages matching a query for a user.
+func searchMail(userID, query string) []*Message {
+	query = strings.ToLower(query)
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var results []*Message
+	seen := map[string]bool{}
+	for _, msg := range messages {
+		if msg.ToID != userID && msg.FromID != userID {
+			continue
+		}
+		if msg.Spam {
+			continue
+		}
+		if seen[msg.ID] {
+			continue
+		}
+		if strings.Contains(strings.ToLower(msg.Subject), query) ||
+			strings.Contains(strings.ToLower(msg.From), query) ||
+			strings.Contains(strings.ToLower(msg.FromID), query) ||
+			strings.Contains(strings.ToLower(msg.Body), query) {
+			results = append(results, msg)
+			seen[msg.ID] = true
+		}
+	}
+
+	// Sort by newest first
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].CreatedAt.After(results[j].CreatedAt)
+	})
+
+	if len(results) > 50 {
+		results = results[:50]
+	}
+	return results
 }
 
 // GetRecentThreadsPreview returns HTML preview of recent threads for account page
