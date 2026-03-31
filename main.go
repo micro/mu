@@ -762,6 +762,12 @@ func main() {
 	server := &http.Server{
 		Addr: *AddressFlag,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Block known bot paths silently
+			if strings.HasPrefix(r.URL.Path, "/audio/") {
+				http.NotFound(w, r)
+				return
+			}
+
 			// Set Onion-Location header for Tor Browser discovery
 			if onion := os.Getenv("TOR_ONION"); onion != "" {
 				w.Header().Set("Onion-Location", "http://"+onion+r.URL.RequestURI())
