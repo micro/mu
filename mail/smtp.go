@@ -905,8 +905,24 @@ func verifySPF(from string, ip string) bool {
 		if strings.HasPrefix(token, "ip4:") {
 			allowedIP := strings.TrimPrefix(token, "ip4:")
 			if strings.Contains(allowedIP, "/") {
-				// CIDR notation - would need proper CIDR matching
-				app.Log("mail", "SPF CIDR check not fully implemented: %s", allowedIP)
+				_, cidr, err := net.ParseCIDR(allowedIP)
+				if err == nil && cidr.Contains(net.ParseIP(ip)) {
+					app.Log("mail", "SPF passed: IP %s matches CIDR %s", ip, allowedIP)
+					return true
+				}
+			} else if allowedIP == ip {
+				app.Log("mail", "SPF passed: IP %s matches %s", ip, allowedIP)
+				return true
+			}
+		}
+		if strings.HasPrefix(token, "ip6:") {
+			allowedIP := strings.TrimPrefix(token, "ip6:")
+			if strings.Contains(allowedIP, "/") {
+				_, cidr, err := net.ParseCIDR(allowedIP)
+				if err == nil && cidr.Contains(net.ParseIP(ip)) {
+					app.Log("mail", "SPF passed: IP %s matches CIDR %s", ip, allowedIP)
+					return true
+				}
 			} else if allowedIP == ip {
 				app.Log("mail", "SPF passed: IP %s matches %s", ip, allowedIP)
 				return true
@@ -924,10 +940,14 @@ func verifySPF(from string, ip string) bool {
 				}
 			}
 		}
-		// "+all" or "~all" or "?all" - permissive policies
+		// "all" mechanism - check qualifier
 		if token == "+all" || token == "~all" || token == "?all" {
 			app.Log("mail", "SPF permissive policy: %s", token)
 			return true
+		}
+		if token == "-all" || token == "all" {
+			app.Log("mail", "SPF hard fail: IP %s not authorized by %s (policy: %s)", ip, domain, token)
+			return false
 		}
 	}
 
