@@ -403,6 +403,20 @@ func (s *Session) Data(r io.Reader) error {
 		fromAddr = &mail.Address{Address: from}
 	}
 
+	// ANTI-SPOOFING: Reject external mail where the From header claims our domain.
+	// The envelope MAIL FROM check (in Mail()) catches direct spoofing, but attackers
+	// can use a different envelope sender and forge the From: header in the body.
+	if !s.isLocalhost {
+		headerParts := strings.Split(fromAddr.Address, "@")
+		if len(headerParts) == 2 && strings.EqualFold(headerParts[1], GetConfiguredDomain()) {
+			app.Log("mail", "Rejected header spoofing: external IP %s with From header %s", s.remoteIP, fromAddr.Address)
+			return &smtpd.SMTPError{
+				Code:    550,
+				Message: "Sender address rejected: not authorized to send from this domain",
+			}
+		}
+	}
+
 	// Parse body based on content type
 	var body string
 	if strings.Contains(contentType, "multipart/") {
@@ -917,9 +931,8 @@ func verifySPF(from string, ip string) bool {
 		}
 	}
 
-	app.Log("mail", "SPF check inconclusive for %s from IP %s (record: %s)", from, ip, spfRecord)
-	// Return true for now - we don't want to be too strict initially
-	return true
+	app.Log("mail", "SPF check failed for %s from IP %s (record: %s)", from, ip, spfRecord)
+	return false
 }
 
 // cleanupRateLimits periodically removes old rate limit entries
