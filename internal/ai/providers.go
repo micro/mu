@@ -18,7 +18,7 @@ import (
 var (
 	// Limit concurrent LLM requests to prevent memory bloat
 	llmSemaphore = semaphore.NewWeighted(5)
-	llmTimeout   = 60 * time.Second
+	llmTimeout   = 120 * time.Second
 
 	// Anthropic cache stats
 	cacheStatsMu        sync.Mutex
