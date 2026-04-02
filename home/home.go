@@ -275,11 +275,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(statuses) > 0 {
 			avatarColors := []string{
-				"#5c9ecf", // blue
-				"#8e7cc3", // purple
-				"#e06c75", // rose
-				"#d4954b", // amber
 				"#56a8a1", // teal
+				"#8e7cc3", // purple
+				"#e8a87c", // pastel orange
+				"#5c9ecf", // blue
+				"#e06c75", // rose
 				"#c2785c", // terracotta
 				"#7bab6e", // sage
 				"#9e7db8", // lavender
