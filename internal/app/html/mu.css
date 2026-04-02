@@ -1284,6 +1284,20 @@ body:has(#messages) #chat-back-link {
   align-self: flex-start;
 }
 
+.profile-app-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.profile-app-icon svg {
+  width: 20px;
+  height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+}
 .post-item {
   position: relative;
   border: var(--border-width) solid var(--card-border);
