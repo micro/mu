@@ -111,7 +111,13 @@ func scheduler() {
 	time.Sleep(5 * time.Second)
 	generate()
 	for {
-		time.Sleep(time.Hour)
+		// Run once per day — sleep until next 6am UTC
+		now := time.Now().UTC()
+		next := time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, time.UTC)
+		if !next.After(now) {
+			next = next.Add(24 * time.Hour)
+		}
+		time.Sleep(time.Until(next))
 		generate()
 	}
 }
