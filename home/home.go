@@ -277,13 +277,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Pastel bg + darker text pairs
 			type avatarColor struct{ bg, fg string }
 			avatarColors := []avatarColor{
-				{"#fce4ec", "#c62828"}, // pink
-				{"#e3f2fd", "#1565c0"}, // blue
-				{"#e8f5e9", "#2e7d32"}, // green
-				{"#f3e5f5", "#6a1b9a"}, // purple
-				{"#fff3e0", "#e65100"}, // orange
 				{"#e0f2f1", "#00695c"}, // teal
+				{"#f3e5f5", "#6a1b9a"}, // purple
+				{"#e3f2fd", "#1565c0"}, // blue
+				{"#fff3e0", "#e65100"}, // orange
+				{"#fce4ec", "#c62828"}, // pink
 				{"#fff9c4", "#f57f17"}, // yellow
+				{"#e8f5e9", "#2e7d32"}, // green
 				{"#fce4ec", "#ad1457"}, // rose
 			}
 			sc.WriteString(`<div id="home-statuses">`)
