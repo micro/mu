@@ -625,15 +625,14 @@ body.page-home #page-title ~ #customize-link {
   font-weight: 600;
   flex-shrink: 0;
 }
-.home-status-mine .home-status-avatar {
-  background: #111;
-}
 .home-status-body {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+.home-status-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .home-status-name {
   font-weight: 600;
@@ -647,7 +646,6 @@ body.page-home #page-title ~ #customize-link {
   text-decoration: none;
   color: #ccc;
   font-size: 11px;
-  margin-left: 4px;
   opacity: 0;
   transition: opacity 0.15s;
 }
@@ -657,13 +655,17 @@ body.page-home #page-title ~ #customize-link {
 .home-status-clear:hover {
   color: #dc3545;
 }
-.home-status-text {
-  color: #555;
-}
 .home-status-time {
   color: #bbb;
   font-size: 12px;
-  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.home-status-text {
+  color: #555;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
