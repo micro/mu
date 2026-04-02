@@ -215,6 +215,7 @@ var Template = `
       <div id="brand">
         <a href="/">Mu</a>
       </div>
+      <a id="head-mail" href="/mail" aria-label="Mail"></a>
     </div>
 
     <div id="nav-overlay" onclick="toggleMenu()"></div>

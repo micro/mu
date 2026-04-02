@@ -473,22 +473,50 @@ td {
 }
 
 #nav-mail-badge {
-  background: #e53935;
+  background: #555;
   color: white;
   font-size: 11px;
-  min-width: 18px;
-  height: 18px;
-  line-height: 18px;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
   text-align: center;
-  padding: 0 5px;
-  border-radius: 9px;
-  font-weight: bold;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-weight: 600;
   margin-left: auto;
   display: none;
 }
 
 #nav-mail-badge:not(:empty) {
   display: inline-block;
+}
+
+/* Header mail indicator — hidden on desktop, visible on mobile */
+#head-mail {
+  display: none;
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  text-decoration: none;
+}
+#head-mail[data-count]::after {
+  content: attr(data-count);
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #555;
+  color: white;
+  font-size: 11px;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-weight: 600;
 }
 
 #nav-logged-out {
@@ -2103,7 +2131,7 @@ a.highlight {
   #menu-toggle {
     display: flex;
   }
-  
+
   #head {
     padding: 6px 15px;
     border-bottom: 1px solid #ddd;
@@ -2111,6 +2139,10 @@ a.highlight {
     position: fixed;
     height: 44px;
     box-sizing: border-box;
+  }
+
+  #head-mail {
+    display: block;
   }
   
   #brand a {
