@@ -274,7 +274,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			sc.WriteString(`<form id="home-status-form" method="POST" action="/user/status"><input type="text" name="status" placeholder="What's your status?" maxlength="100" id="home-status-input"></form>`)
 		}
 		if len(statuses) > 0 {
-			avatarColors := []string{"#e74c3c", "#3498db", "#2ecc71", "#9b59b6", "#e67e22", "#1abc9c", "#34495e", "#d35400"}
+			// Pastel bg + darker text pairs
+			type avatarColor struct{ bg, fg string }
+			avatarColors := []avatarColor{
+				{"#fce4ec", "#c62828"}, // pink
+				{"#e3f2fd", "#1565c0"}, // blue
+				{"#e8f5e9", "#2e7d32"}, // green
+				{"#f3e5f5", "#6a1b9a"}, // purple
+				{"#fff3e0", "#e65100"}, // orange
+				{"#e0f2f1", "#00695c"}, // teal
+				{"#fff9c4", "#f57f17"}, // yellow
+				{"#fce4ec", "#ad1457"}, // rose
+			}
 			sc.WriteString(`<div id="home-statuses">`)
 			for _, s := range statuses {
 				initial := "?"
@@ -294,8 +305,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					clearBtn = ` <a href="/user/status" onclick="event.preventDefault();fetch('/user/status',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'status='}).then(()=>location.reload())" class="home-status-clear" title="Clear status">✕</a>`
 				}
 				sc.WriteString(fmt.Sprintf(
-					`<div class="%s"><div class="home-status-avatar" style="background:%s">%s</div><div class="home-status-body"><div class="home-status-header"><a href="/@%s" class="home-status-name">%s</a>%s<span class="home-status-time">%s</span></div><div class="home-status-text">%s</div></div></div>`,
-					entryClass, color, initial, htmlEsc(s.UserID), htmlEsc(s.Name), clearBtn, app.TimeAgo(s.UpdatedAt), htmlEsc(s.Status)))
+					`<div class="%s"><div class="home-status-avatar" style="background:%s;color:%s;border-color:%s">%s</div><div class="home-status-body"><div class="home-status-header"><a href="/@%s" class="home-status-name">%s</a>%s<span class="home-status-time">%s</span></div><div class="home-status-text">%s</div></div></div>`,
+					entryClass, color.bg, color.fg, color.fg, initial, htmlEsc(s.UserID), htmlEsc(s.Name), clearBtn, app.TimeAgo(s.UpdatedAt), htmlEsc(s.Status)))
 			}
 			sc.WriteString(`</div>`)
 		}
