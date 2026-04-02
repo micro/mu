@@ -618,6 +618,7 @@ body.page-home #page-title ~ #customize-link {
   border-radius: 50%;
   background: #333;
   color: #fff;
+  border: 1.5px solid #333;
   display: flex;
   align-items: center;
   justify-content: center;
