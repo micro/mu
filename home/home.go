@@ -262,25 +262,38 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	b.WriteString(fmt.Sprintf(`<p id="home-date">%s</p>`, now.Format("Monday, 2 January 2006")))
 
-	// Status section
+	// Status card
 	var viewerID string
 	if sess, _ := auth.TrySession(r); sess != nil {
 		viewerID = sess.Account
 	}
-	if viewerID != "" {
-		if p := user.GetProfile(viewerID); p != nil && p.Status != "" {
-			b.WriteString(fmt.Sprintf(`<p id="home-my-status">"%s" <a href="/user/status" onclick="event.preventDefault();fetch('/user/status',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'status='}).then(()=>location.reload())" class="home-status-clear" title="Clear status">✕</a></p>`, htmlEsc(p.Status)))
+	statuses := user.RecentStatuses(viewerID, 10)
+	if viewerID != "" || len(statuses) > 0 {
+		var sc strings.Builder
+		if viewerID != "" {
+			sc.WriteString(`<form id="home-status-form" method="POST" action="/user/status"><input type="text" name="status" placeholder="What's your status?" maxlength="100" id="home-status-input"></form>`)
 		}
-		b.WriteString(`<form id="home-status-form" method="POST" action="/user/status"><input type="text" name="status" placeholder="What's your status?" maxlength="100" id="home-status-input"></form>`)
-	}
-	if statuses := user.RecentStatuses(viewerID, 5); len(statuses) > 0 {
-		b.WriteString(`<div id="home-statuses">`)
-		for _, s := range statuses {
-			b.WriteString(fmt.Sprintf(
-				`<div class="home-status"><a href="/@%s" class="home-status-name">%s</a> <span class="home-status-text">"%s"</span> <span class="home-status-time">%s</span></div>`,
-				htmlEsc(s.UserID), htmlEsc(s.Name), htmlEsc(s.Status), app.TimeAgo(s.UpdatedAt)))
+		if len(statuses) > 0 {
+			sc.WriteString(`<div id="home-statuses">`)
+			for _, s := range statuses {
+				initial := "?"
+				if s.Name != "" {
+					initial = strings.ToUpper(s.Name[:1])
+				}
+				isMe := s.UserID == viewerID
+				entryClass := "home-status-entry"
+				clearBtn := ""
+				if isMe {
+					entryClass += " home-status-mine"
+					clearBtn = ` <a href="/user/status" onclick="event.preventDefault();fetch('/user/status',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'status='}).then(()=>location.reload())" class="home-status-clear" title="Clear status">✕</a>`
+				}
+				sc.WriteString(fmt.Sprintf(
+					`<div class="%s"><div class="home-status-avatar">%s</div><div class="home-status-body"><div class="home-status-header"><a href="/@%s" class="home-status-name">%s</a>%s</div><div class="home-status-text">%s</div><div class="home-status-time">%s</div></div></div>`,
+					entryClass, initial, htmlEsc(s.UserID), htmlEsc(s.Name), clearBtn, htmlEsc(s.Status), app.TimeAgo(s.UpdatedAt)))
+			}
+			sc.WriteString(`</div>`)
 		}
-		b.WriteString(`</div>`)
+		b.WriteString(fmt.Sprintf(app.CardTemplate, "status", "status", "Status", sc.String()))
 	}
 
 	// Feed section — existing home cards below the agent
