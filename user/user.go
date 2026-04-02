@@ -480,7 +480,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				if len(desc) > 80 {
 					desc = desc[:80] + "..."
 				}
-				appsSB.WriteString(fmt.Sprintf(`<div class="post-item"><h3><a href="/apps/%s/run"><span style="display:inline-block;width:24px;height:24px;font-size:18px;line-height:24px;vertical-align:middle;overflow:hidden">%s</span> %s</a></h3><p class="info">%s</p></div>`, a.Slug, icon, a.Name, desc))
+				appsSB.WriteString(fmt.Sprintf(`<div class="post-item"><h3><a href="/apps/%s/run" style="display:flex;align-items:center;gap:8px"><span class="profile-app-icon">%s</span> %s</a></h3><p class="info">%s</p></div>`, a.Slug, icon, a.Name, desc))
 			}
 			appsSection = appsSB.String()
 		}
