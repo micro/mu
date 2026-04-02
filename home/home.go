@@ -288,8 +288,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					clearBtn = ` <a href="/user/status" onclick="event.preventDefault();fetch('/user/status',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'status='}).then(()=>location.reload())" class="home-status-clear" title="Clear status">✕</a>`
 				}
 				sc.WriteString(fmt.Sprintf(
-					`<div class="%s"><div class="home-status-avatar">%s</div><div class="home-status-body"><div class="home-status-header"><a href="/@%s" class="home-status-name">%s</a>%s</div><div class="home-status-text">%s</div><div class="home-status-time">%s</div></div></div>`,
-					entryClass, initial, htmlEsc(s.UserID), htmlEsc(s.Name), clearBtn, htmlEsc(s.Status), app.TimeAgo(s.UpdatedAt)))
+					`<div class="%s"><div class="home-status-avatar">%s</div><div class="home-status-body"><a href="/@%s" class="home-status-name">%s</a> <span class="home-status-text">%s</span>%s</div><span class="home-status-time">%s</span></div>`,
+					entryClass, initial, htmlEsc(s.UserID), htmlEsc(s.Name), htmlEsc(s.Status), clearBtn, app.TimeAgo(s.UpdatedAt)))
 			}
 			sc.WriteString(`</div>`)
 		}

@@ -600,8 +600,9 @@ body.page-home #page-title ~ #customize-link {
 }
 .home-status-entry {
   display: flex;
-  gap: 10px;
-  padding: 10px 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
   border-bottom: 1px solid #f0f0f0;
 }
 .home-status-entry:last-child {
@@ -612,15 +613,15 @@ body.page-home #page-title ~ #customize-link {
   padding-top: 0;
 }
 .home-status-avatar {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: #333;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -630,15 +631,12 @@ body.page-home #page-title ~ #customize-link {
 .home-status-body {
   flex: 1;
   min-width: 0;
-}
-.home-status-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .home-status-name {
   font-weight: 600;
-  font-size: 13px;
   color: #333;
   text-decoration: none;
 }
@@ -649,6 +647,7 @@ body.page-home #page-title ~ #customize-link {
   text-decoration: none;
   color: #ccc;
   font-size: 11px;
+  margin-left: 4px;
   opacity: 0;
   transition: opacity 0.15s;
 }
@@ -660,14 +659,12 @@ body.page-home #page-title ~ #customize-link {
 }
 .home-status-text {
   color: #555;
-  font-size: 14px;
-  margin-top: 2px;
-  word-break: break-word;
 }
 .home-status-time {
   color: #bbb;
   font-size: 12px;
-  margin-top: 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 #home {
