@@ -109,7 +109,10 @@ func GetLatestDigest() bool {
 func scheduler() {
 	// Wait for blog callbacks to be wired in main.go
 	time.Sleep(5 * time.Second)
-	generate()
+	// Only create a digest on startup if one doesn't exist for today
+	if GetTodayDigest() == nil {
+		generate()
+	}
 	for {
 		// Run once per day — sleep until next 6am UTC
 		now := time.Now().UTC()
