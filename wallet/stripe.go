@@ -182,14 +182,17 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify webhook signature if secret is configured
-	if stripeWebhookSecret != "" {
-		sig := r.Header.Get("Stripe-Signature")
-		if !verifyStripeSignature(body, sig, stripeWebhookSecret) {
-			app.Log("stripe", "webhook signature verification failed")
-			http.Error(w, "invalid signature", http.StatusBadRequest)
-			return
-		}
+	// Verify webhook signature — REQUIRED for security
+	if stripeWebhookSecret == "" {
+		app.Log("stripe", "CRITICAL: STRIPE_WEBHOOK_SECRET not configured, rejecting webhook")
+		http.Error(w, "webhook not configured", http.StatusServiceUnavailable)
+		return
+	}
+	sig := r.Header.Get("Stripe-Signature")
+	if !verifyStripeSignature(body, sig, stripeWebhookSecret) {
+		app.Log("stripe", "webhook signature verification failed")
+		http.Error(w, "invalid signature", http.StatusBadRequest)
+		return
 	}
 
 	// Parse event

@@ -1303,8 +1303,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Check if user is the author
-		if post.AuthorID != acc.ID {
+		// Check if user is the author or admin
+		if post.AuthorID != acc.ID && !acc.Admin {
 			app.Forbidden(w, r, "You can only edit your own posts")
 			return
 		}
@@ -1377,8 +1377,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Check if user is the author
-		if post.AuthorID != acc.ID {
+		// Check if user is the author or admin
+		if post.AuthorID != acc.ID && !acc.Admin {
 			app.Forbidden(w, r, "You can only delete your own posts")
 			return
 		}
