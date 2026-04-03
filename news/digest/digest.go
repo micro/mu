@@ -248,10 +248,12 @@ Rules:
 - Write in plain, direct prose — no bullet points, no lists, no headings
 - Do NOT start with a title or heading
 - Do NOT include preamble like "Here is today's briefing"
-- Do NOT include a references section
+- Do NOT include a references section at the end
+- Link to sources INLINE as you mention them using markdown links, e.g. "[Google released Gemma 4](https://...)" — use the URLs provided in the input
+- Every major claim or event should link to its source
 - Write dollar amounts as plain numbers like $94 or $1.2 trillion — NEVER use LaTeX formatting, backslashes, or math notation
 - Keep it human and readable — like a morning briefing email
-- CRITICAL: Keep under 1500 characters total.`,
+- CRITICAL: Keep under 2000 characters total.`,
 		Question: context,
 		Priority: ai.PriorityLow,
 		Caller:   "daily-digest",
@@ -289,7 +291,7 @@ func gatherContext() (string, []ref) {
 			}
 			for _, item := range items[:count] {
 				refs = append(refs, ref{item.Title, item.URL})
-				sb.WriteString(fmt.Sprintf("- %s: %s\n", item.Title, item.Description))
+				sb.WriteString(fmt.Sprintf("- [%s](%s): %s\n", item.Title, item.URL, item.Description))
 			}
 			sb.WriteString("\n")
 		}
@@ -326,7 +328,7 @@ func gatherContext() (string, []ref) {
 		sb.WriteString("## Videos\n\n")
 		for _, v := range videos {
 			refs = append(refs, ref{v.Title, v.URL})
-			sb.WriteString(fmt.Sprintf("- %s by %s\n", v.Title, v.Channel))
+			sb.WriteString(fmt.Sprintf("- [%s](%s) by %s\n", v.Title, v.URL, v.Channel))
 		}
 		sb.WriteString("\n")
 	}
