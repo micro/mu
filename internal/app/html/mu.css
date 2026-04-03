@@ -2147,7 +2147,7 @@ a.highlight {
     box-sizing: border-box;
   }
 
-  #head-mail {
+  #head-mail.has-mail {
     display: block;
   }
   
