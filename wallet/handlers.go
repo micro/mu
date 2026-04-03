@@ -202,6 +202,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleTransfer(w, r)
 	case path == "/wallet/transfer" && r.Method == "GET":
 		handleTransferPage(w, r)
+	case path == "/wallet/pricing":
+		handlePricing(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -588,5 +590,65 @@ func handleStripeSuccess(w http.ResponseWriter, r *http.Request) {
 		<p><a href="/wallet" class="btn">View Wallet</a></p>
 	</div>`
 	html := app.RenderHTMLForRequest("Payment Complete", "Credits added", content, r)
+	w.Write([]byte(html))
+}
+
+type pricingItem struct {
+	Operation   string `json:"operation"`
+	Description string `json:"description"`
+	Cost        int    `json:"cost"`
+	Unit        string `json:"unit"`
+}
+
+func getPricingData() []pricingItem {
+	return []pricingItem{
+		{OpNewsSearch, "News search", CostNewsSearch, "credits"},
+		{OpVideoSearch, "Video search", CostVideoSearch, "credits"},
+		{OpSocialSearch, "Social search", CostSocialSearch, "credits"},
+		{OpBlogCreate, "Blog post", CostBlogCreate, "credits"},
+		{OpChatQuery, "Chat query", CostChatQuery, "credits"},
+		{OpAgentQuery, "Agent (standard)", CostAgentQuery, "credits"},
+		{OpAgentQueryPremium, "Agent (premium)", CostAgentQueryPremium, "credits"},
+		{OpWeatherForecast, "Weather forecast", CostWeatherForecast, "credits"},
+		{OpWeatherPollen, "Weather pollen", CostWeatherPollen, "credits"},
+		{OpPlacesSearch, "Places search", CostPlacesSearch, "credits"},
+		{OpPlacesNearby, "Places nearby", CostPlacesNearby, "credits"},
+		{OpMailSend, "Send mail", CostMailSend, "credits"},
+		{OpExternalEmail, "External email", CostExternalEmail, "credits"},
+		{OpWebSearch, "Web search", CostWebSearch, "credits"},
+		{OpWebFetch, "Web fetch", CostWebFetch, "credits"},
+		{OpAppBuild, "App build (AI)", CostAppBuild, "credits"},
+		{OpAppEdit, "App edit (AI)", CostAppEdit, "credits"},
+	}
+}
+
+func handlePricing(w http.ResponseWriter, r *http.Request) {
+	items := getPricingData()
+
+	if app.WantsJSON(r) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"currency":        "GBP",
+			"credit_value":    "£0.01",
+			"free_daily_quota": FreeDailyQuota,
+			"operations":      items,
+		})
+		return
+	}
+
+	var sb strings.Builder
+	sb.WriteString(`<div class="max-w-xl"><div class="card">`)
+	sb.WriteString(`<h3>Pricing</h3>`)
+	sb.WriteString(`<p class="info">1 credit = £0.01. Free daily quota: ` + fmt.Sprintf("%d", FreeDailyQuota) + ` credits.</p>`)
+	sb.WriteString(`<table class="stats-table">`)
+	sb.WriteString(`<tr><td>News, blogs, videos</td><td>free</td></tr>`)
+	for _, item := range items {
+		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%d</td></tr>`, item.Description, item.Cost))
+	}
+	sb.WriteString(`</table>`)
+	sb.WriteString(`<p class="info mt-3">JSON: <code>curl -H "Accept: application/json" /wallet/pricing</code></p>`)
+	sb.WriteString(`</div></div>`)
+
+	html := app.RenderHTMLForRequest("Pricing", "Platform pricing and costs", sb.String(), r)
 	w.Write([]byte(html))
 }
