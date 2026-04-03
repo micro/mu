@@ -1508,11 +1508,13 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		timeInfo = "Updated " + app.TimeAgo(post.UpdatedAt)
 	}
 
+	shareButton := ` · <a href="#" class="share-btn" onclick="event.preventDefault();if(navigator.share){navigator.share({title:document.title,url:location.href})}else{navigator.clipboard.writeText(location.href).then(()=>{this.textContent='Copied!';setTimeout(()=>{this.textContent='Share'},2000)})}" title="Share this post">Share</a>`
+
 	var contentSB strings.Builder
 	contentSB.WriteString(`<div id="blog">`)
 	contentSB.WriteString(tagsDisplay)
 	contentSB.WriteString(`<div class="info">`)
-	contentSB.WriteString(timeInfo + ` · ` + authorLink + editButton)
+	contentSB.WriteString(timeInfo + ` · ` + authorLink + shareButton + editButton)
 	contentSB.WriteString(`</div>`)
 	contentSB.WriteString(`<hr class="my-5 border-t">`)
 	contentSB.WriteString(`<div class="mb-5">` + contentHTML + `</div>`)
