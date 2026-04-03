@@ -509,7 +509,10 @@ td {
   display: none;
 }
 #head-mail-badge:not(:empty) {
-  display: inline-block;
+  display: block;
+  position: absolute;
+  top: -6px;
+  right: -8px;
   background: #555;
   color: white;
   font-size: 10px;
@@ -520,8 +523,6 @@ td {
   padding: 0 3px;
   border-radius: 7px;
   font-weight: 600;
-  margin-left: 4px;
-  vertical-align: middle;
 }
 
 #nav-logged-out {
