@@ -665,6 +665,7 @@ function setSession() {
         navUsername.style.display = 'block';
       }
       // Fetch unread mail count for badge
+      var headMail = document.getElementById("head-mail");
       var headMailBadge = document.getElementById("head-mail-badge");
       fetch('/mail?unread=count')
         .then(res => res.json())
@@ -673,6 +674,7 @@ function setSession() {
             var label = data.count > 9 ? '9+' : data.count;
             if (navMailBadge) navMailBadge.textContent = label;
             if (headMailBadge) headMailBadge.textContent = label;
+            if (headMail) headMail.classList.add('has-mail');
           }
         })
         .catch(() => {});
