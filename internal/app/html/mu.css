@@ -498,25 +498,30 @@ td {
   right: 15px;
   top: 50%;
   transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
   text-decoration: none;
+  color: #555;
+  line-height: 0;
 }
-#head-mail[data-count]::after {
-  content: attr(data-count);
-  position: absolute;
-  top: 0;
-  right: 0;
+#head-mail svg {
+  vertical-align: middle;
+}
+#head-mail-badge {
+  display: none;
+}
+#head-mail-badge:not(:empty) {
+  display: inline-block;
   background: #555;
   color: white;
-  font-size: 11px;
-  min-width: 16px;
-  height: 16px;
-  line-height: 16px;
+  font-size: 10px;
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
   text-align: center;
-  padding: 0 4px;
-  border-radius: 8px;
+  padding: 0 3px;
+  border-radius: 7px;
   font-weight: 600;
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
 #nav-logged-out {

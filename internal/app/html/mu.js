@@ -665,13 +665,14 @@ function setSession() {
         navUsername.style.display = 'block';
       }
       // Fetch unread mail count for badge
-      var headMail = document.getElementById("head-mail");
+      var headMailBadge = document.getElementById("head-mail-badge");
       fetch('/mail?unread=count')
         .then(res => res.json())
         .then(data => {
           if (data.count > 0) {
-            if (navMailBadge) navMailBadge.textContent = data.count > 9 ? '9+' : data.count;
-            if (headMail) headMail.setAttribute('data-count', data.count > 9 ? '9+' : data.count);
+            var label = data.count > 9 ? '9+' : data.count;
+            if (navMailBadge) navMailBadge.textContent = label;
+            if (headMailBadge) headMailBadge.textContent = label;
           }
         })
         .catch(() => {});
