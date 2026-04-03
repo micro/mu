@@ -262,7 +262,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	b.WriteString(fmt.Sprintf(`<p id="home-date">%s</p>`, now.Format("Monday, 2 January 2006")))
 
-	// Status card
+	// Status card content (will be prepended to left column)
+	var statusCardHTML string
 	var viewerID string
 	if sess, _ := auth.TrySession(r); sess != nil {
 		viewerID = sess.Account
@@ -308,11 +309,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			sc.WriteString(`</div>`)
 		}
-		b.WriteString(fmt.Sprintf(app.CardTemplate, "status", "status", "Status", sc.String()))
+		statusCardHTML = fmt.Sprintf(app.CardTemplate, "status", "status", "Status", sc.String())
 	}
 
 	// Feed section — existing home cards below the agent
 	var leftHTML []string
+	if statusCardHTML != "" {
+		leftHTML = append(leftHTML, statusCardHTML)
+	}
 	var rightHTML []string
 
 	tooltips := map[string]string{
