@@ -51,10 +51,7 @@ func main() {
 		return
 	}
 
-	// render the api markdwon
-	md := api.Markdown()
-	apiDoc := app.Render([]byte(md))
-	apiHTML := app.RenderHTML("API", "API documentation", string(apiDoc))
+	// api page is now dynamic (rendered in api.APIPageHandler)
 
 	// load the data index
 	data.Load()
@@ -750,7 +747,7 @@ func main() {
 	})
 
 	// serve the api doc
-	http.Handle("/api", app.ServeHTML(apiHTML))
+	http.HandleFunc("/api", api.APIPageHandler)
 
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
 	http.HandleFunc("/mcp", api.MCPHandler)
