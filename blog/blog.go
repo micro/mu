@@ -406,13 +406,21 @@ func updateCacheUnlocked() {
 		// Use pre-rendered HTML, truncate for preview
 		content := post.Content
 
-		// Truncate plain text before rendering
+		// Truncate plain text before rendering, but avoid breaking markdown links
 		if len(content) > 300 {
 			lastSpace := 300
-			for i := 299; i >= 0 && i < len(content); i-- {
-				if content[i] == ' ' {
-					lastSpace = i
-					break
+			// Don't cut inside a markdown link [text](url)
+			openBracket := strings.LastIndex(content[:300], "[")
+			closeParen := strings.Index(content[openBracket:], ")")
+			if openBracket > 0 && (closeParen < 0 || openBracket+closeParen > 300) {
+				// We'd cut inside a link — truncate before the link
+				lastSpace = openBracket
+			} else {
+				for i := 299; i >= 0 && i < len(content); i-- {
+					if content[i] == ' ' {
+						lastSpace = i
+						break
+					}
 				}
 			}
 			content = content[:lastSpace] + "..."
