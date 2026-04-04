@@ -785,13 +785,23 @@ func StripLatexDollars(s string) string {
 	s = strings.ReplaceAll(s, `&#x5c;[`, "")
 	s = strings.ReplaceAll(s, `&#x5c;]`, "")
 	s = strings.ReplaceAll(s, `&#x5c;$`, "$")
-	// Raw backslash variants: \( \) \[ \] are math delimiters — strip them
+	// Escaped dollar sign: \$ → $ (do this BEFORE stripping \( \) to avoid
+	// consuming the backslash from \$ and leaving a bare $)
+	s = strings.ReplaceAll(s, `\$`, "$")
+	// \( or \) before a digit is a dollar sign: \(112 → $112, \)4,703 → $4,703
+	s = regexp.MustCompile(`\\\((\d)`).ReplaceAllString(s, "$$$1")
+	s = regexp.MustCompile(`\\\)(\d)`).ReplaceAllString(s, "$$$1")
+	// \) after a digit is just a closing delimiter: 4,703\) → 4,703
+	s = regexp.MustCompile(`(\d)\\\)`).ReplaceAllString(s, "$1")
+	// Remaining \( \) \[ \] are math delimiters — strip them
 	s = strings.ReplaceAll(s, `\(`, "")
 	s = strings.ReplaceAll(s, `\)`, "")
 	s = strings.ReplaceAll(s, `\[`, "")
 	s = strings.ReplaceAll(s, `\]`, "")
-	// Escaped dollar sign: \$ → $
-	s = strings.ReplaceAll(s, `\$`, "$")
+	// \text{...} → content (LaTeX text command)
+	s = regexp.MustCompile(`\\text\{([^}]*)\}`).ReplaceAllString(s, "$1")
+	// \mathrm{...} → content
+	s = regexp.MustCompile(`\\mathrm\{([^}]*)\}`).ReplaceAllString(s, "$1")
 	// LaTeX display math around prices: $$94.63$$ → $94.63 (keep one $ as currency)
 	s = displayPriceRe.ReplaceAllString(s, `$$$1`)
 	// General display math: $$content$$ → content
