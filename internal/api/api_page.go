@@ -29,23 +29,12 @@ func APIPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<select id="api-endpoint" onchange="apiSelectEndpoint()" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:4px;margin-bottom:12px">`)
 	b.WriteString(`<option value="">Select an endpoint...</option>`)
 	for i, ep := range Endpoints {
-		methodColor := "#1a7f37"
-		switch ep.Method {
-		case "POST":
-			methodColor = "#cf8e00"
-		case "PATCH":
-			methodColor = "#8250df"
-		case "DELETE":
-			methodColor = "#cf222e"
-		}
-		b.WriteString(fmt.Sprintf(`<option value="%d" data-method="%s">%s %s — %s</option>`,
+		b.WriteString(fmt.Sprintf(`<option value="%d">%s %s — %s</option>`,
 			i,
-			html.EscapeString(ep.Method),
 			html.EscapeString(ep.Method),
 			html.EscapeString(ep.Path),
 			html.EscapeString(ep.Name),
 		))
-		_ = methodColor
 	}
 	b.WriteString(`</select>`)
 
