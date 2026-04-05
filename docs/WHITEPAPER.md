@@ -74,13 +74,13 @@ Each service does one thing. There are no social feeds combining heterogeneous c
 
 The revenue model determines platform behaviour. Advertising-funded platforms are structurally incentivised to maximise attention. Subscription platforms are incentivised to maximise perceived value, which leads to feature bloat and engagement optimisation.
 
-Mu uses per-use micropayments. The platform is incentivised to build tools that solve the user's problem as quickly as possible — the opposite of engagement maximisation. Browsing is free. Only operations that consume infrastructure (API calls, LLM inference, SMTP delivery) carry a cost. The free daily quota ensures casual use requires no payment.
+Mu uses per-use micropayments. The platform is incentivised to build tools that solve the user's problem as quickly as possible — the opposite of engagement maximisation. Browsing is included. Only operations that consume infrastructure (API calls, LLM inference, SMTP delivery) carry a cost. Every account includes a daily quota for casual use.
 
-Operations that create public content or reach external systems (email, blog posts, web fetching) always require real credits, even within the free quota. This prevents the free tier from being used for spam.
+Operations that create public content or reach external systems (email, blog posts, web fetching) always require real credits, even within the daily quota. This prevents abuse at scale.
 
 ### 2.4 Self-Hosting
 
-The system is designed to run as a single binary with no external dependencies. This is a deliberate architectural constraint, not a limitation. It means any individual or organisation can run their own instance with full functionality, no vendor lock-in, and no ongoing costs beyond hosting. When no payment provider is configured, all quotas are disabled — the self-hosted instance is completely free.
+The system is designed to run as a single binary with no external dependencies. This is a deliberate architectural constraint, not a limitation. It means any individual or organisation can run their own instance with full functionality, no vendor lock-in, and no ongoing costs beyond hosting. When no payment provider is configured, all quotas are disabled — the self-hosted instance runs without restrictions.
 
 ## 4. Architecture
 
@@ -136,9 +136,9 @@ Each operation has a fixed credit cost determined by the underlying infrastructu
 
 Read-only operations — browsing news feeds, reading blog posts, watching videos, viewing market prices — carry no cost.
 
-### 3.3 Free Quota
+### 3.3 Daily Quota
 
-Each registered user receives a daily allocation of twenty free queries, resetting at midnight UTC. This quota is sufficient for casual utility use. When the free quota is exhausted, subsequent operations consume credits from the user's wallet. This model ensures accessibility while covering infrastructure costs for heavy usage.
+Each account includes a daily allocation of twenty queries, resetting at midnight UTC. This quota is sufficient for casual utility use. When the daily quota is exhausted, subsequent operations consume credits from the user's wallet. This model ensures accessibility while covering infrastructure costs for heavy usage.
 
 ### 3.4 Incentive Alignment
 
@@ -199,7 +199,7 @@ This creates a spectrum of integration: providers who want distribution and bill
 
 Blog posts are published as ActivityPub objects with WebFinger discovery. Users on federated platforms — Mastodon, Threads, and other ActivityPub implementations — can follow Mu authors, receive posts in their feeds, and interact through the standard ActivityPub inbox/outbox mechanism.
 
-Internal messages between Mu users are free. External email is delivered via SMTP with DKIM signing, at a credit cost that reflects delivery infrastructure.
+Internal messages between Mu users are included. External email is delivered via SMTP with DKIM signing, at a credit cost that reflects delivery infrastructure.
 
 ## 9. Toward a Federated Network
 

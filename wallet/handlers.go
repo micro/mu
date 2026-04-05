@@ -15,7 +15,7 @@ import (
 func WalletPage(userID string) string {
 	wallet := GetWallet(userID)
 	usage := GetDailyUsage(userID)
-	freeRemaining := GetFreeQuotaRemaining(userID)
+	freeRemaining := GetQuotaRemaining(userID)
 	transactions := GetTransactions(userID, 20)
 
 	// Check if user is admin
@@ -43,21 +43,21 @@ func WalletPage(userID string) string {
 	if !isAdmin {
 		// Daily quota
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Free Queries</h3>`)
-		usedPct := float64(usage.Used) / float64(FreeDailyQuota) * 100
+		sb.WriteString(`<h3>Daily Queries</h3>`)
+		usedPct := float64(usage.Used) / float64(DailyQuota) * 100
 		if usedPct > 100 {
 			usedPct = 100
 		}
 		sb.WriteString(`<div class="progress">`)
 		sb.WriteString(fmt.Sprintf(`<div class="progress-bar" style="width: %.0f%%;"></div>`, usedPct))
 		sb.WriteString(`</div>`)
-		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, FreeDailyQuota))
+		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, DailyQuota))
 		sb.WriteString(`</div>`)
 
 		// Self-hosting note
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Self-Host</h3>`)
-		sb.WriteString(`<p class="text-sm text-muted">Want unlimited and free? <a href="https://github.com/micro/mu">Self-host your own instance</a>.</p>`)
+		sb.WriteString(`<p class="text-sm text-muted">Want unlimited? <a href="https://github.com/micro/mu">Self-host your own instance</a>.</p>`)
 		sb.WriteString(`</div>`)
 	}
 
@@ -65,7 +65,7 @@ func WalletPage(userID string) string {
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Costs</h3>`)
 	sb.WriteString(`<table class="stats-table">`)
-	sb.WriteString(`<tr><td>News, blogs, videos</td><td>free</td></tr>`)
+	sb.WriteString(`<tr><td>News, blogs, videos</td><td>included</td></tr>`)
 	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td>%dp</td></tr>`, CostNewsSearch))
 	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td>%dp</td></tr>`, CostVideoSearch))
 	sb.WriteString(fmt.Sprintf(`<tr><td>Social search</td><td>%dp</td></tr>`, CostSocialSearch))
@@ -114,7 +114,7 @@ func WalletPage(userID string) string {
 			}
 			var amountStr string
 			if tx.Amount == 0 {
-				amountStr = "free"
+				amountStr = "included"
 			} else if tx.Amount > 0 {
 				amountStr = fmt.Sprintf("+%d", tx.Amount)
 			} else {
@@ -141,10 +141,10 @@ func QuotaExceededPage(operation string, cost int) string {
 
 	sb.WriteString(`<div class="card center-card-md">`)
 	sb.WriteString(`<h2>Daily Limit Reached</h2>`)
-	sb.WriteString(`<p>You've used your free queries for today.</p>`)
+	sb.WriteString(`<p>You've used your daily queries.</p>`)
 	sb.WriteString(`<h3 class="mt-5">Options</h3>`)
 	sb.WriteString(`<ul class="options-list">`)
-	sb.WriteString(`<li>Wait until midnight UTC for more free queries</li>`)
+	sb.WriteString(`<li>Wait until midnight UTC for your quota to reset</li>`)
 	sb.WriteString(fmt.Sprintf(`<li><a href="/wallet">Use credits</a> (%d credit%s for this)</li>`, cost, pluralize(cost)))
 	sb.WriteString(`<li><a href="/wallet/topup">Add credits</a></li>`)
 	sb.WriteString(`</ul>`)
@@ -230,15 +230,15 @@ func PublicWalletPage() string {
 	// Intro
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Credits &amp; Pricing</h3>`)
-	sb.WriteString(`<p>Mu is free with ` + fmt.Sprintf("%d", FreeDailyQuota) + ` queries/day. Need more? Top up and pay as you go — no subscription required.</p>`)
-	sb.WriteString(`<p><a href="/login" class="btn">Login to view your balance</a>&nbsp;<a href="/signup" class="btn btn-secondary">Sign up free</a></p>`)
+	sb.WriteString(`<p>Every account includes ` + fmt.Sprintf("%d", DailyQuota) + ` queries/day. Need more? Top up and pay as you go — no subscription required.</p>`)
+	sb.WriteString(`<p><a href="/login" class="btn">Login to view your balance</a>&nbsp;<a href="/signup" class="btn btn-secondary">Sign up</a></p>`)
 	sb.WriteString(`</div>`)
 
 	// Credit costs
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Costs</h3>`)
 	sb.WriteString(`<table class="stats-table">`)
-	sb.WriteString(`<tr><td>News, blogs, videos</td><td>free</td></tr>`)
+	sb.WriteString(`<tr><td>News, blogs, videos</td><td>included</td></tr>`)
 	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td>%dp</td></tr>`, CostNewsSearch))
 	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td>%dp</td></tr>`, CostVideoSearch))
 	sb.WriteString(fmt.Sprintf(`<tr><td>Blog post</td><td>%dp</td></tr>`, CostBlogCreate))
@@ -277,7 +277,7 @@ func PublicWalletPage() string {
 	// Self-hosting note
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Self-Host</h3>`)
-	sb.WriteString(`<p class="text-sm text-muted">Want unlimited and free? <a href="https://github.com/micro/mu">Self-host your own instance</a>.</p>`)
+	sb.WriteString(`<p class="text-sm text-muted">Want unlimited? <a href="https://github.com/micro/mu">Self-host your own instance</a>.</p>`)
 	sb.WriteString(`</div>`)
 
 	return sb.String()
@@ -630,7 +630,7 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"currency":        "GBP",
 			"credit_value":    "£0.01",
-			"free_daily_quota": FreeDailyQuota,
+			"daily_allowance": DailyQuota,
 			"operations":      items,
 		})
 		return
@@ -639,9 +639,9 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	var sb strings.Builder
 	sb.WriteString(`<div class="max-w-xl"><div class="card">`)
 	sb.WriteString(`<h3>Pricing</h3>`)
-	sb.WriteString(`<p class="info">1 credit = £0.01. Free daily quota: ` + fmt.Sprintf("%d", FreeDailyQuota) + ` credits.</p>`)
+	sb.WriteString(`<p class="info">1 credit = £0.01. Daily allowance: ` + fmt.Sprintf("%d", DailyQuota) + ` credits.</p>`)
 	sb.WriteString(`<table class="stats-table">`)
-	sb.WriteString(`<tr><td>News, blogs, videos</td><td>free</td></tr>`)
+	sb.WriteString(`<tr><td>News, blogs, videos</td><td>included</td></tr>`)
 	for _, item := range items {
 		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%d</td></tr>`, item.Description, item.Cost))
 	}

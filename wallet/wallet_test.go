@@ -97,8 +97,8 @@ func TestDefaultCosts(t *testing.T) {
 	if CostExternalEmail <= CostMailSend {
 		t.Error("external email should cost more than internal mail")
 	}
-	if FreeDailyQuota < 1 {
-		t.Error("free daily quota should be >= 1")
+	if DailyQuota < 1 {
+		t.Error("daily quota should be >= 1")
 	}
 }
 

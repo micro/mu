@@ -12,7 +12,7 @@ The tools people use every day — news, search, email, chat, markets — are sc
 
 ## What Mu Does
 
-Mu brings together the daily tools people actually use in one place, with zero ads and zero tracking. Browsing is free. AI features use credits at 1p each. You get 20 free per day.
+Mu brings together the daily tools people actually use in one place, with zero ads and zero tracking. Browsing is included. AI features use credits at 1p each. Every account includes 20 per day.
 
 It runs as a single Go binary. Self-host it on your own server or use the hosted version.
 
@@ -39,7 +39,7 @@ Every design choice follows from a simple question: does this serve the user or 
 
 **No ads, no tracking.** Revenue comes from usage credits, not attention. There's no incentive to maximise screen time.
 
-**Pay for what you use.** Browsing is free. Actions that cost infrastructure — search, AI, posting — cost credits. 1 credit = 1p. You get 20 free per day, and credits never expire.
+**Pay for the tools, not with your attention.** Browsing is included. Actions that cost infrastructure — search, AI, posting — cost credits. 1 credit = 1p. Every account includes 20 per day, and credits never expire.
 
 **Single binary.** Mu runs as one Go binary with no external dependencies. Self-host it on your own server or use the hosted version.
 
@@ -113,8 +113,8 @@ The [services marketplace](MARKETPLACE.md) extends this further. Third-party dev
 
 ## Pricing
 
-- **Free to browse** — news, blogs, videos, markets, all of it
-- **20 free credits per day** — covers search, chat, and AI features
+- **Browsing included** — news, blogs, videos, markets, all of it
+- **20 credits per day** — covers search, chat, and AI features
 - **Pay as you go** — 1 credit = 1p, top up via card
 - **Pay with crypto** — AI agents pay per-request with USDC via [x402](https://x402.org)
 - **Self-host for free** — run your own instance, unlimited
