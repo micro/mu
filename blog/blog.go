@@ -411,10 +411,12 @@ func updateCacheUnlocked() {
 			lastSpace := 300
 			// Don't cut inside a markdown link [text](url)
 			openBracket := strings.LastIndex(content[:300], "[")
-			closeParen := strings.Index(content[openBracket:], ")")
-			if openBracket > 0 && (closeParen < 0 || openBracket+closeParen > 300) {
-				// We'd cut inside a link — truncate before the link
-				lastSpace = openBracket
+			if openBracket > 0 {
+				closeParen := strings.Index(content[openBracket:], ")")
+				if closeParen < 0 || openBracket+closeParen > 300 {
+					// We'd cut inside a link — truncate before the link
+					lastSpace = openBracket
+				}
 			} else {
 				for i := 299; i >= 0 && i < len(content); i-- {
 					if content[i] == ' ' {
