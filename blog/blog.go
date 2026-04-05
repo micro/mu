@@ -1488,7 +1488,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		userID = acc.ID
 		isAdmin = acc.Admin
 	}
-	editButton := app.ItemControls(userID, isAdmin, "post", post.ID, post.AuthorID, "/blog/post?id="+post.ID+"&edit=true", "/post?id="+post.ID)
+	editButton := app.ItemControls(userID, isAdmin, "post", post.ID, post.AuthorID, "/blog/post?id="+post.ID+"&edit=true", "/blog/post?id="+post.ID)
 
 	tagsHtml := ""
 	if post.Tags != "" {
