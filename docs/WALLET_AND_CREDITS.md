@@ -6,7 +6,7 @@ Mu is a tool, not a destination. Like Google Search in 2000 — you arrive with 
 
 Credits are a straightforward way to pay for what you use. No dark patterns, no pressure to upgrade, no "unlimited" tiers that incentivize us to maximize your engagement.
 
-- **Free tier**: 10 AI queries/day - enough for casual utility use
+- **Daily allowance**: 10 AI queries/day — enough for casual utility use
 - **Pay-as-you-go**: Top up with a card or pay per-request with crypto
 - **Self-host**: Run your own instance for free, forever
 
@@ -21,9 +21,9 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 - Top up via card payment (Stripe) or pay per-request with crypto (x402)
 - Credits never expire
 
-### Daily Free Quota
+### Daily Allowance
 
-Every registered user gets **10 free AI queries per day**:
+Every account includes **10 AI queries per day**:
 - Resets at midnight UTC
 - Covers news search, video search, and chat AI queries
 - No payment required
@@ -46,14 +46,14 @@ This should be enough if you're using Mu as a utility. If you need more, pay-as-
 | Weather Forecast | 1 credit (1p) | Weather API cost |
 | Weather Pollen | 1 credit (1p) | Pollen data add-on |
 
-**Note:** Internal messages (user-to-user within Mu) are free. Only external email (to addresses outside Mu) costs credits.
+**Note:** Internal messages (user-to-user within Mu) are included. Only external email (to addresses outside Mu) costs credits.
 
 ### Who Pays What
 
-| User Type | Daily Free | Credits | Notes |
+| User Type | Daily Allowance | Credits | Notes |
 |-----------|------------|---------|-------|
 | Guest | 0 | N/A | Must register |
-| Registered | 10 queries | Pay-as-you-go | When free quota exceeded |
+| Registered | 10 queries | Pay-as-you-go | When daily allowance used |
 | Admin | Unlimited | Not needed | Site administrators |
 
 ## Why No "Unlimited" Tier?
@@ -181,7 +181,7 @@ type Transaction struct {
 type DailyUsage struct {
     UserID string `json:"user_id"`
     Date   string `json:"date"` // "2006-01-02"
-    Used   int    `json:"used"` // Free quota used today
+    Used   int    `json:"used"` // Quota used today
 }
 ```
 
@@ -216,7 +216,7 @@ X402_NETWORK="eip155:8453"
 X402_ASSET="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
 # Quota (optional - these are defaults)
-FREE_DAILY_QUOTA="10"
+DAILY_QUOTA="10"
 CREDIT_COST_NEWS="1"
 CREDIT_COST_NEWS_SUMMARY="1"
 CREDIT_COST_VIDEO="2"
@@ -238,7 +238,7 @@ CREDIT_COST_WEATHER_POLLEN="1"
 1. User initiates search/chat
 2. Check for x402 payment header → verify and settle on-chain (no account needed)
 3. Check if admin → allow (no charge)
-4. Check daily free quota → allow if available, decrement
+4. Check daily quota → allow if available, decrement
 5. Check wallet balance → allow if sufficient, deduct credits
 6. Otherwise → return 402 with payment requirements (if x402 enabled) or show "quota exceeded"
 

@@ -108,7 +108,7 @@ type Tool struct {
 	Method      string
 	Path        string
 	Params      []ToolParam
-	WalletOp    string                                          // Wallet operation for credit gating (empty = free)
+	WalletOp    string                                          // Wallet operation for credit gating (empty = included)
 	Handle      func(map[string]any) (string, error)            // Optional direct handler (bypasses HTTP dispatch)
 	HandleAuth  func(map[string]any, string) (string, error)    // Like Handle but receives the account ID
 }

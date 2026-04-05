@@ -233,7 +233,7 @@ Live financial data.
 
 Credit-based usage metering.
 
-- **Pay as you go** - 20 free credits/day, then 1 credit = 1p
+- **Pay as you go** — 20 credits/day included, then 1 credit = 1p
 - **Stripe payments** - Card top-up
 - **Quota enforcement** - Integrated with API and agent
 - **Transaction tracking** - Usage history
@@ -327,6 +327,6 @@ All user-configurable data lives in JSON files (embedded at build time):
 
 ## Economic Model
 
-Users can self-host or use the hosted version at mu.xyz. Browsing is free. Searching, posting,
-and AI features use credits. 20 free credits per day, then pay as you go at 1 credit = 1p.
+Users can self-host or use the hosted version at mu.xyz. Browsing is included. Searching, posting,
+and AI features use credits. 20 credits/day included, then pay as you go at 1 credit = 1p.
 This supports development while keeping the platform accessible for casual use.

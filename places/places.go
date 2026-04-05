@@ -466,7 +466,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	// Consume quota after successful operation
 	if useFree {
-		wallet.UseFreeQuota(acc.ID)
+		wallet.UseQuota(acc.ID)
 	} else if cost > 0 {
 		wallet.DeductCredits(acc.ID, cost, wallet.OpPlacesSearch, map[string]interface{}{"query": query})
 	}
@@ -585,7 +585,7 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 
 	// Consume quota after successful operation
 	if useFree {
-		wallet.UseFreeQuota(acc.ID)
+		wallet.UseQuota(acc.ID)
 	} else if cost > 0 {
 		wallet.DeductCredits(acc.ID, cost, wallet.OpPlacesNearby, map[string]interface{}{
 			"lat": lat, "lon": lon, "radius": radius,

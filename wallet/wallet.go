@@ -15,7 +15,7 @@ import (
 )
 
 // Credit costs per operation (in credits/pennies)
-// Read-only operations (news reading, blog reading, video watching, chat viewing) are free.
+// Read-only operations (news reading, blog reading, video watching, chat viewing) are included.
 // Only actions that create content, trigger searches, or use external APIs are charged.
 var (
 	CostNewsSearch        = getEnvInt("CREDIT_COST_NEWS", 1)
@@ -35,11 +35,11 @@ var (
 	CostSocialSearch      = getEnvInt("CREDIT_COST_SOCIAL", 1)
 	CostAppBuild          = getEnvInt("CREDIT_COST_APP_BUILD", 100)
 	CostAppEdit           = getEnvInt("CREDIT_COST_APP_EDIT", 50)
-	FreeDailyQuota        = getEnvInt("FREE_DAILY_QUOTA", 20)
+	DailyQuota            = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 20))
 )
 
 // PaymentsEnabled returns true if payments are configured
-// When false, quotas are disabled (unlimited free usage)
+// When false, quotas are disabled (self-hosted, no restrictions)
 func PaymentsEnabled() bool {
 	return StripeEnabled() || X402Enabled()
 }
@@ -106,11 +106,11 @@ type Transaction struct {
 	CreatedAt time.Time              `json:"created_at"`
 }
 
-// DailyUsage tracks free quota used per day
+// DailyUsage tracks quota used per day
 type DailyUsage struct {
 	UserID string `json:"user_id"`
 	Date   string `json:"date"` // "2006-01-02" format
-	Used   int    `json:"used"` // Free quota used today
+	Used   int    `json:"used"` // Quota used today
 }
 
 func init() {
@@ -372,24 +372,24 @@ func GetDailyUsage(userID string) *DailyUsage {
 	return usage
 }
 
-// HasFreeQuota checks if user has free quota remaining today
-func HasFreeQuota(userID string) bool {
+// HasQuota checks if user has daily quota remaining
+func HasQuota(userID string) bool {
 	usage := GetDailyUsage(userID)
-	return usage.Used < FreeDailyQuota
+	return usage.Used < DailyQuota
 }
 
-// GetFreeQuotaRemaining returns remaining free quota for today
-func GetFreeQuotaRemaining(userID string) int {
+// GetQuotaRemaining returns remaining daily quota
+func GetQuotaRemaining(userID string) int {
 	usage := GetDailyUsage(userID)
-	remaining := FreeDailyQuota - usage.Used
+	remaining := DailyQuota - usage.Used
 	if remaining < 0 {
 		return 0
 	}
 	return remaining
 }
 
-// UseFreeQuota consumes one free quota unit
-func UseFreeQuota(userID string) error {
+// UseQuota consumes one daily quota unit
+func UseQuota(userID string) error {
 	today := time.Now().UTC().Format("2006-01-02")
 	key := userID + ":" + today
 
@@ -406,8 +406,8 @@ func UseFreeQuota(userID string) error {
 		dailyUsage[key] = usage
 	}
 
-	if usage.Used >= FreeDailyQuota {
-		return errors.New("daily free quota exhausted")
+	if usage.Used >= DailyQuota {
+		return errors.New("daily quota exhausted")
 	}
 
 	usage.Used++
@@ -458,7 +458,7 @@ func GetOperationCost(operation string) int {
 	}
 }
 
-// paidOnly lists operations that cannot use the free daily quota
+// paidOnly lists operations that cannot use the daily quota
 // and always require real credits. These are actions with spam or
 // abuse potential: sending messages, publishing content, or using
 // the server as a proxy to fetch external URLs.
@@ -471,7 +471,7 @@ func paidOnly(operation string) bool {
 }
 
 // CheckQuota checks if a user can perform an operation
-// Returns: canProceed, useFreeQuota, creditCost, error
+// Returns: canProceed, useQuota, creditCost, error
 func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// Get account to check admin status
 	acc, err := auth.GetAccount(userID)
@@ -484,7 +484,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 		return true, false, 0, nil
 	}
 
-	// If payments not configured, no quotas (self-hosted/free instance)
+	// If payments not configured, no quotas (self-hosted instance)
 	if !PaymentsEnabled() {
 		return true, false, 0, nil
 	}
@@ -492,7 +492,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	cost := GetOperationCost(operation)
 
 	// Some operations always require real credits (e.g. email)
-	if !paidOnly(operation) && HasFreeQuota(userID) {
+	if !paidOnly(operation) && HasQuota(userID) {
 		return true, true, 0, nil
 	}
 
@@ -506,7 +506,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	return false, false, cost, errors.New("insufficient credits")
 }
 
-// RecordUsage records a zero-cost usage transaction (for admins and free-tier tracking)
+// RecordUsage records a zero-cost usage transaction (for admins and quota tracking)
 func RecordUsage(userID string, operation string) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -543,15 +543,15 @@ func ConsumeQuota(userID string, operation string) error {
 		return errors.New("account not found")
 	}
 
-	// Admins get free access but usage is tracked
+	// Admins get unlimited access but usage is tracked
 	if acc.Admin {
 		RecordUsage(userID, operation)
 		return nil
 	}
 
-	// Try free quota first
-	if HasFreeQuota(userID) {
-		return UseFreeQuota(userID)
+	// Try daily quota first
+	if HasQuota(userID) {
+		return UseQuota(userID)
 	}
 
 	// Deduct credits

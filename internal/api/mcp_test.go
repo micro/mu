@@ -385,7 +385,7 @@ func TestMCPHandler_QuotaCheckAllows(t *testing.T) {
 	}
 }
 
-func TestMCPHandler_FreeToolsSkipQuotaCheck(t *testing.T) {
+func TestMCPHandler_IncludedToolsSkipQuotaCheck(t *testing.T) {
 	// Set up QuotaCheck that should NOT be called for free tools
 	origQuotaCheck := QuotaCheck
 	quotaCalled := false
