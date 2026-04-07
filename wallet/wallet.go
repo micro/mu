@@ -20,7 +20,7 @@ import (
 var (
 	CostNewsSearch        = getEnvInt("CREDIT_COST_NEWS", 1)
 	CostVideoSearch       = getEnvInt("CREDIT_COST_VIDEO", 2)
-	CostChatQuery         = getEnvInt("CREDIT_COST_CHAT", 3)
+	CostChatQuery         = getEnvInt("CREDIT_COST_CHAT", 5)
 	CostBlogCreate        = getEnvInt("CREDIT_COST_BLOG_CREATE", 1)
 	CostMailSend          = getEnvInt("CREDIT_COST_MAIL", 1)  // Internal mail send
 	CostExternalEmail     = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
@@ -35,7 +35,7 @@ var (
 	CostSocialSearch      = getEnvInt("CREDIT_COST_SOCIAL", 1)
 	CostAppBuild          = getEnvInt("CREDIT_COST_APP_BUILD", 100)
 	CostAppEdit           = getEnvInt("CREDIT_COST_APP_EDIT", 50)
-	DailyQuota            = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 20))
+	DailyQuota            = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 100))
 )
 
 // PaymentsEnabled returns true if payments are configured

@@ -6,7 +6,7 @@ Mu is a tool, not a destination. Like Google Search in 2000 — you arrive with 
 
 Credits are a straightforward way to pay for what you use. No dark patterns, no pressure to upgrade, no "unlimited" tiers that incentivize us to maximize your engagement.
 
-- **Daily allowance**: 10 AI queries/day — enough for casual utility use
+- **Daily allowance**: 100 AI queries/day — enough for daily use
 - **Pay-as-you-go**: Top up with a card or pay per-request with crypto
 - **Self-host**: Run your own instance for free, forever
 
@@ -23,7 +23,7 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 
 ### Daily Allowance
 
-Every account includes **10 AI queries per day**:
+Every account includes **100 credits per day**:
 - Resets at midnight UTC
 - Covers news search, video search, and chat AI queries
 - No payment required
@@ -38,7 +38,7 @@ This should be enough if you're using Mu as a utility. If you need more, pay-as-
 | News Summary | 1 credit (1p) | AI-generated summary |
 | Video Search | 2 credits (2p) | YouTube API cost |
 | Video Watch | Free | No value added over YouTube |
-| Chat AI Query | 3 credits (3p) | LLM inference cost |
+| Chat AI Query | 5 credits (5p) | LLM inference cost |
 | Chat Room | 1 credit (1p) | Room creation |
 | Places Search | 5 credits (5p) | Google Places API cost |
 | Places Nearby | 2 credits (2p) | Google Places API cost |
@@ -53,7 +53,7 @@ This should be enough if you're using Mu as a utility. If you need more, pay-as-
 | User Type | Daily Allowance | Credits | Notes |
 |-----------|------------|---------|-------|
 | Guest | 0 | N/A | Must register |
-| Registered | 10 queries | Pay-as-you-go | When daily allowance used |
+| Registered | 100 credits | Pay-as-you-go | When daily allowance used |
 | Admin | Unlimited | Not needed | Site administrators |
 
 ## Why No "Unlimited" Tier?
@@ -216,7 +216,7 @@ X402_NETWORK="eip155:8453"
 X402_ASSET="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
 # Quota (optional - these are defaults)
-DAILY_QUOTA="10"
+DAILY_QUOTA="100"
 CREDIT_COST_NEWS="1"
 CREDIT_COST_NEWS_SUMMARY="1"
 CREDIT_COST_VIDEO="2"

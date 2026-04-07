@@ -120,7 +120,7 @@ Both return a session token. Use it in subsequent requests:
 Authorization: Bearer SESSION_TOKEN
 ```
 
-Every account includes **20 credits per day** and can top up with a card via Stripe.
+Every account includes **100 credits per day** and can top up with a card via Stripe.
 
 ## Available Tools
 
@@ -128,7 +128,7 @@ Every account includes **20 credits per day** and can top up with a card via Str
 |------|-------------|-------------|
 | `login` | Log in and get session token | Free |
 | `signup` | Create account and get session token | Free |
-| `chat` | Chat with AI assistant | 3 credits |
+| `chat` | Chat with AI assistant | 5 credits |
 | `news` | Read the latest news feed | Free |
 | `news_search` | Search for news articles | 1 credit |
 | `blog_list` | Get all blog posts | Free |
@@ -210,7 +210,7 @@ curl -X POST https://mu.xyz/mcp \
 | Auth header | `X-PAYMENT` | `Authorization: Bearer` |
 | Payment model | Per request | Pre-paid credits |
 | Currency | USDC | GBP |
-| Daily allowance | No | 10 queries/day |
+| Daily allowance | No | 100 queries/day |
 | Best for | Autonomous agents | Human users, MCP clients |
 
 ## Self-Hosting
