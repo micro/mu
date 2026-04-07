@@ -15,24 +15,37 @@ import (
 func Load() {}
 
 // CardHTML returns the weather card for the home screen.
-// Renders a shell that populates via JS using the browser's geolocation.
+// Only fetches for logged-in users. Caches in localStorage for 30 min.
+// First visit: user clicks to enable location. After that, auto-refreshes.
 func CardHTML() string {
 	return `<div id="weather-card">
 <div id="weather-card-content" style="font-size:13px;color:#888">
-<span id="weather-card-loading">Checking weather...</span>
+<span id="weather-card-loading"></span>
 </div>
 <script>
 (function(){
 var el=document.getElementById('weather-card-content');
 var load=document.getElementById('weather-card-loading');
-var cached=sessionStorage.getItem('mu_weather');
-if(cached){el.innerHTML=cached;return}
-if(!navigator.geolocation){load.textContent='Enable location for weather';return}
+var KEY='mu_weather',KEY_TS='mu_weather_ts',TTL=1800000;
+function isLoggedIn(){return document.cookie.indexOf('session=')!==-1}
+if(!isLoggedIn()){load.innerHTML='<a href="/login" style="color:#888">Log in</a> for weather';return}
+var cached=localStorage.getItem(KEY);
+var ts=parseInt(localStorage.getItem(KEY_TS)||'0');
+if(cached&&(Date.now()-ts)<TTL){el.innerHTML=cached;return}
+var enabled=localStorage.getItem('mu_weather_enabled');
+if(!enabled){
+load.innerHTML='<a href="#" onclick="muWeatherEnable();return false" style="color:#555">Enable location for weather</a>';
+window.muWeatherEnable=function(){localStorage.setItem("mu_weather_enabled","1");load.textContent="Checking weather...";muWeatherFetch()};
+return}
+load.textContent='Checking weather...';
+muWeatherFetch();
+function muWeatherFetch(){
+if(!navigator.geolocation){load.textContent='Location not available';return}
 navigator.geolocation.getCurrentPosition(function(pos){
 var lat=pos.coords.latitude.toFixed(4);
 var lon=pos.coords.longitude.toFixed(4);
 fetch('/weather?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'}})
-.then(function(r){return r.json()})
+.then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})
 .then(function(d){
 var f=d.forecast;
 if(!f||!f.Current){load.textContent='Weather unavailable';return}
@@ -52,9 +65,11 @@ h+='<span>'+name+' '+Math.round(day.MaxTempC)+'°/'+Math.round(day.MinTempC)+'°
 h+='</div>';
 }
 el.innerHTML=h;
-sessionStorage.setItem('mu_weather',h);
+localStorage.setItem(KEY,h);
+localStorage.setItem(KEY_TS,String(Date.now()));
 }).catch(function(){load.textContent='Weather unavailable'});
-},function(){load.textContent='Enable location for weather'},{timeout:5000});
+},function(){load.textContent='Location not available';localStorage.removeItem('mu_weather_enabled')},{timeout:5000});
+}
 })();
 </script>
 </div>`
