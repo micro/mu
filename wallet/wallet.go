@@ -685,8 +685,8 @@ func ChargeAppUse(userID, authorID, appSlug string, price int) error {
 		wallets[authorID] = author
 	}
 
-	// Calculate split: author gets 70%, platform gets 30%
-	authorShare := (price * 70) / 100
+	// Calculate split: author gets 90%, platform gets 10%
+	authorShare := (price * 90) / 100
 	if authorShare < 1 && price > 0 {
 		authorShare = 1 // Minimum 1 credit to author
 	}
