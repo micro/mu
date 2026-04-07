@@ -68,7 +68,8 @@ type Message struct {
 // Load messages from disk
 // Load messages from disk and configure SMTP/DKIM
 func Load() {
-	// Loaded
+	// Initialize encryption
+	initEncryption()
 
 	b, err := data.LoadFile("mail.json")
 	if err != nil {
@@ -79,6 +80,13 @@ func Load() {
 		inboxes = make(map[string]*Inbox)
 	} else {
 		app.Log("mail", "Loaded %d messages", len(messages))
+
+		// Decrypt messages loaded from disk
+		for _, m := range messages {
+			if err := decryptMessage(m); err != nil {
+				app.Log("mail", "WARNING: Failed to decrypt message %s: %v", m.ID, err)
+			}
+		}
 
 		// Fix threading for any messages with broken chains
 		fixThreading()
@@ -247,7 +255,19 @@ func addMessageToInbox(inbox *Inbox, msg *Message, userID string) {
 
 // Save messages to disk (caller must hold mutex)
 func save() error {
-	b, err := json.Marshal(messages)
+	// Make copies with encrypted fields for storage
+	encrypted := make([]*Message, len(messages))
+	for i, m := range messages {
+		cp := *m
+		if err := encryptMessage(&cp); err != nil {
+			app.Log("mail", "WARNING: Failed to encrypt message %s: %v", m.ID, err)
+			encrypted[i] = m // fall back to unencrypted
+			continue
+		}
+		encrypted[i] = &cp
+	}
+
+	b, err := json.Marshal(encrypted)
 	if err != nil {
 		return err
 	}

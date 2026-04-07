@@ -138,7 +138,7 @@ Read-only operations — browsing news feeds, reading blog posts, watching video
 
 ### 3.3 Daily Quota
 
-Each account includes a daily allocation of twenty queries, resetting at midnight UTC. This quota is sufficient for casual utility use. When the daily quota is exhausted, subsequent operations consume credits from the user's wallet. This model ensures accessibility while covering infrastructure costs for heavy usage.
+Each account includes a daily allocation of one hundred queries, resetting at midnight UTC. This quota is sufficient for casual utility use. When the daily quota is exhausted, subsequent operations consume credits from the user's wallet. This model ensures accessibility while covering infrastructure costs for heavy usage.
 
 ### 3.4 Incentive Alignment
 

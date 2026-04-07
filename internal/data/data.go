@@ -43,7 +43,7 @@ func SaveFile(key, val string) error {
 	file := filepath.Join(path, key)
 	// Create all parent directories including subdirectories in key
 	os.MkdirAll(filepath.Dir(file), 0700)
-	os.WriteFile(file, []byte(val), 0644)
+	os.WriteFile(file, []byte(val), 0600)
 	return nil
 }
 
