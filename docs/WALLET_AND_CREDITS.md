@@ -6,9 +6,8 @@ Mu is a tool, not a destination. Like Google Search in 2000 — you arrive with 
 
 Credits are a straightforward way to pay for what you use. No dark patterns, no pressure to upgrade, no "unlimited" tiers that incentivize us to maximize your engagement.
 
-- **Daily allowance**: 100 AI queries/day — enough for daily use
-- **Pay-as-you-go**: Top up with a card or pay per-request with crypto
-- **Self-host**: Run your own instance for free, forever
+- **Pay as you go**: Top up with a card or pay per-request with crypto
+- **Self-host**: Run your own instance, no restrictions
 
 We charge because LLMs and APIs cost money. Here's our actual cost breakdown — we're not extracting margin, just covering infrastructure.
 
@@ -20,15 +19,6 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 - Credits stored as integers to avoid floating-point issues
 - Top up via card payment (Stripe) or pay per-request with crypto (x402)
 - Credits never expire
-
-### Daily Allowance
-
-Every account includes **100 credits per day**:
-- Resets at midnight UTC
-- Covers news search, video search, and chat AI queries
-- No payment required
-
-This should be enough if you're using Mu as a utility. If you need more, pay-as-you-go.
 
 ### Credit Costs
 
@@ -50,11 +40,11 @@ This should be enough if you're using Mu as a utility. If you need more, pay-as-
 
 ### Who Pays What
 
-| User Type | Daily Allowance | Credits | Notes |
-|-----------|------------|---------|-------|
-| Guest | 0 | N/A | Must register |
-| Registered | 100 credits | Pay-as-you-go | When daily allowance used |
-| Admin | Unlimited | Not needed | Site administrators |
+| User Type | Credits | Notes |
+|-----------|---------|-------|
+| Guest | N/A | Must register |
+| Registered | Pay as you go | Top up via card or crypto |
+| Admin | Unlimited | Site administrators |
 
 ## Why No "Unlimited" Tier?
 
@@ -175,16 +165,6 @@ type Transaction struct {
 }
 ```
 
-### Daily Usage
-
-```go
-type DailyUsage struct {
-    UserID string `json:"user_id"`
-    Date   string `json:"date"` // "2006-01-02"
-    Used   int    `json:"used"` // Quota used today
-}
-```
-
 ---
 
 ## API Endpoints
@@ -215,8 +195,7 @@ X402_FACILITATOR_URL="https://x402.org/facilitator"
 X402_NETWORK="eip155:8453"
 X402_ASSET="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
-# Quota (optional - these are defaults)
-DAILY_QUOTA="100"
+# Credit costs (optional - these are defaults)
 CREDIT_COST_NEWS="1"
 CREDIT_COST_NEWS_SUMMARY="1"
 CREDIT_COST_VIDEO="2"
@@ -238,9 +217,8 @@ CREDIT_COST_WEATHER_POLLEN="1"
 1. User initiates search/chat
 2. Check for x402 payment header → verify and settle on-chain (no account needed)
 3. Check if admin → allow (no charge)
-4. Check daily quota → allow if available, decrement
-5. Check wallet balance → allow if sufficient, deduct credits
-6. Otherwise → return 402 with payment requirements (if x402 enabled) or show "quota exceeded"
+4. Check wallet balance → allow if sufficient, deduct credits
+5. Otherwise → return 402 with payment requirements (if x402 enabled) or show "credits required"
 
 ---
 

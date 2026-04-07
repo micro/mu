@@ -74,9 +74,7 @@ Each service does one thing. There are no social feeds combining heterogeneous c
 
 The revenue model determines platform behaviour. Advertising-funded platforms are structurally incentivised to maximise attention. Subscription platforms are incentivised to maximise perceived value, which leads to feature bloat and engagement optimisation.
 
-Mu uses per-use micropayments. The platform is incentivised to build tools that solve the user's problem as quickly as possible — the opposite of engagement maximisation. Browsing is included. Only operations that consume infrastructure (API calls, LLM inference, SMTP delivery) carry a cost. Every account includes a daily quota for casual use.
-
-Operations that create public content or reach external systems (email, blog posts, web fetching) always require real credits, even within the daily quota. This prevents abuse at scale.
+Mu uses per-use micropayments. The platform is incentivised to build tools that solve the user's problem as quickly as possible — the opposite of engagement maximisation. Browsing is included. Only operations that consume infrastructure (API calls, LLM inference, SMTP delivery) carry a cost. Users pay for what they use, nothing more.
 
 ### 2.4 Self-Hosting
 
@@ -138,7 +136,7 @@ Read-only operations — browsing news feeds, reading blog posts, watching video
 
 ### 3.3 Daily Quota
 
-Each account includes a daily allocation of one hundred queries, resetting at midnight UTC. This quota is sufficient for casual utility use. When the daily quota is exhausted, subsequent operations consume credits from the user's wallet. This model ensures accessibility while covering infrastructure costs for heavy usage.
+All metered operations consume credits from the user's wallet. Browsing (news, blogs, videos, markets) is included at no cost. Operations that require infrastructure — AI inference, web search, email delivery — cost credits. This model ensures sustainability while keeping the platform accessible.
 
 ### 3.4 Incentive Alignment
 

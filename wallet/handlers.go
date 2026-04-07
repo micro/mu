@@ -14,8 +14,6 @@ import (
 // WalletPage renders the wallet page HTML
 func WalletPage(userID string) string {
 	wallet := GetWallet(userID)
-	usage := GetDailyUsage(userID)
-	freeRemaining := GetQuotaRemaining(userID)
 	transactions := GetTransactions(userID, 20)
 
 	// Check if user is admin
@@ -41,19 +39,6 @@ func WalletPage(userID string) string {
 	sb.WriteString(`</div>`)
 
 	if !isAdmin {
-		// Daily quota
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Daily Queries</h3>`)
-		usedPct := float64(usage.Used) / float64(DailyQuota) * 100
-		if usedPct > 100 {
-			usedPct = 100
-		}
-		sb.WriteString(`<div class="progress">`)
-		sb.WriteString(fmt.Sprintf(`<div class="progress-bar" style="width: %.0f%%;"></div>`, usedPct))
-		sb.WriteString(`</div>`)
-		sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%d of %d remaining · Resets midnight UTC</p>`, freeRemaining, DailyQuota))
-		sb.WriteString(`</div>`)
-
 		// Self-hosting note
 		sb.WriteString(`<div class="card">`)
 		sb.WriteString(`<h3>Self-Host</h3>`)
@@ -140,14 +125,10 @@ func QuotaExceededPage(operation string, cost int) string {
 	var sb strings.Builder
 
 	sb.WriteString(`<div class="card center-card-md">`)
-	sb.WriteString(`<h2>Daily Limit Reached</h2>`)
-	sb.WriteString(`<p>You've used your daily queries.</p>`)
-	sb.WriteString(`<h3 class="mt-5">Options</h3>`)
-	sb.WriteString(`<ul class="options-list">`)
-	sb.WriteString(`<li>Wait until midnight UTC for your quota to reset</li>`)
-	sb.WriteString(fmt.Sprintf(`<li><a href="/wallet">Use credits</a> (%d credit%s for this)</li>`, cost, pluralize(cost)))
-	sb.WriteString(`<li><a href="/wallet/topup">Add credits</a></li>`)
-	sb.WriteString(`</ul>`)
+	sb.WriteString(`<h2>Credits Required</h2>`)
+	sb.WriteString(fmt.Sprintf(`<p>This costs %d credit%s. `, cost, pluralize(cost)))
+	sb.WriteString(`<a href="/wallet/topup">Add credits</a> to continue.</p>`)
+	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · <a href="/wallet">View wallet</a></p>`)
 	sb.WriteString(`</div>`)
 
 	return sb.String()
@@ -230,7 +211,7 @@ func PublicWalletPage() string {
 	// Intro
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Credits &amp; Pricing</h3>`)
-	sb.WriteString(`<p>Every account includes ` + fmt.Sprintf("%d", DailyQuota) + ` queries/day. Need more? Top up and pay as you go — no subscription required.</p>`)
+	sb.WriteString(`<p>Browsing is included. AI and search features use credits. Top up and pay as you go — no subscription required.</p>`)
 	sb.WriteString(`<p><a href="/login" class="btn">Login to view your balance</a>&nbsp;<a href="/signup" class="btn btn-secondary">Sign up</a></p>`)
 	sb.WriteString(`</div>`)
 
@@ -630,8 +611,7 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"currency":        "GBP",
 			"credit_value":    "£0.01",
-			"daily_allowance": DailyQuota,
-			"operations":      items,
+			"operations": items,
 		})
 		return
 	}
@@ -639,7 +619,7 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	var sb strings.Builder
 	sb.WriteString(`<div class="max-w-xl"><div class="card">`)
 	sb.WriteString(`<h3>Pricing</h3>`)
-	sb.WriteString(`<p class="info">1 credit = £0.01. Daily allowance: ` + fmt.Sprintf("%d", DailyQuota) + ` credits.</p>`)
+	sb.WriteString(`<p class="info">1 credit = £0.01. Browsing included. AI and search use credits.</p>`)
 	sb.WriteString(`<table class="stats-table">`)
 	sb.WriteString(`<tr><td>News, blogs, videos</td><td>included</td></tr>`)
 	for _, item := range items {

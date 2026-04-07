@@ -183,10 +183,9 @@ func runCommand(cmd string) string {
 			return "usage: wallet <user_id>"
 		}
 		w := wallet.GetWallet(arg(1))
-		usage := wallet.GetDailyUsage(arg(1))
 		txns := wallet.GetTransactions(arg(1), 10)
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("Balance: %d credits\nDaily usage: %d / %d\n", w.Balance, usage.Used, wallet.DailyQuota))
+		sb.WriteString(fmt.Sprintf("Balance: %d credits\n", w.Balance))
 		if len(txns) > 0 {
 			sb.WriteString("\nRecent transactions:\n")
 			for _, tx := range txns {

@@ -458,20 +458,9 @@ func GetOperationCost(operation string) int {
 	}
 }
 
-// paidOnly lists operations that cannot use the daily quota
-// and always require real credits. These are actions with spam or
-// abuse potential: sending messages, publishing content, or using
-// the server as a proxy to fetch external URLs.
-func paidOnly(operation string) bool {
-	switch operation {
-	case OpMailSend, OpExternalEmail, OpBlogCreate, OpWebFetch:
-		return true
-	}
-	return false
-}
 
 // CheckQuota checks if a user can perform an operation
-// Returns: canProceed, useQuota, creditCost, error
+// Returns: canProceed, useQuota (always false now), creditCost, error
 func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// Get account to check admin status
 	acc, err := auth.GetAccount(userID)
@@ -490,11 +479,6 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	}
 
 	cost := GetOperationCost(operation)
-
-	// Some operations always require real credits (e.g. email)
-	if !paidOnly(operation) && HasQuota(userID) {
-		return true, true, 0, nil
-	}
 
 	// Check if user has sufficient credits
 	balance := GetBalance(userID)
@@ -547,11 +531,6 @@ func ConsumeQuota(userID string, operation string) error {
 	if acc.Admin {
 		RecordUsage(userID, operation)
 		return nil
-	}
-
-	// Try daily quota first
-	if HasQuota(userID) {
-		return UseQuota(userID)
 	}
 
 	// Deduct credits
