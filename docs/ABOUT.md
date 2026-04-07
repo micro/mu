@@ -1,78 +1,45 @@
-**The Micro Network — apps without ads, algorithms, or tracking.**
+# About Mu
+
+**Your personal dashboard. No ads. No tracking. No algorithm.**
 
 ## What is Mu?
 
-Mu is a collection of apps for everyday use. While other platforms monetize your attention with infinite feeds and targeted ads, Mu gives you simple utilities that respect your time.
+Mu is a personal dashboard that brings together the things you check every day — news, markets, weather, mail, chat — in one place.
 
-Think of Mu as the opposite of what the internet has become:
-
-| The Internet Today | Mu |
-|-------------------|-----|
-| Infinite scroll | Finite, curated content |
-| Algorithmic feeds | Chronological, you choose |
-| Ad-supported everything | No ads |
-| Engagement metrics | Intentional use |
-| Screen time maximisation | Get in, get out |
-| Data mining | No tracking |
-| Walled gardens | Self-hostable, open source |
+No infinite scroll. No algorithmic feeds. No ads. No tracking. Just the information you want, at a glance.
 
 ## Why Mu Exists
 
-The internet was supposed to connect us and make life better. Instead, platforms have optimized for addiction and extraction:
+Every platform monetises your attention. Infinite scroll keeps you hooked. Algorithms decide what you see. Ads follow you everywhere. Your data gets mined and sold.
 
-- **Click bait** to keep you scrolling
-- **Notifications** to pull you back
-- **Likes/followers** to gamify your worth
-- **Ads** disguised as content
-- **Algorithms** that decide what you see
+Mu was built on a different principle: **pay for the tools, not with your attention.**
 
-Mu was built to fix this problem.
+## What's on the dashboard
 
-## Our Approach
-
-### Services That Do One Thing
-
-Each service does one thing well:
-
-- **News** — Headlines and articles from RSS feeds, chronological, with AI summaries
+- **News** — Headlines from RSS feeds, chronological, with AI summaries
 - **Markets** — Live crypto, futures, and commodity prices
+- **Weather** — Forecasts and conditions
 - **Video** — YouTube without ads, algorithms, or shorts
 - **Web** — Search the web without tracking
 - **Blog** — Microblogging with daily AI-generated digests
 - **Chat** — AI-powered conversation on any topic
 - **Mail** — Private messaging and email
-- **Apps** — Build and use small, useful tools — or ask the agent to build one
-- **Agent** — AI assistant that can search, answer, and build across every service
+- **Agent** — AI assistant that searches, answers, and builds across every service
+- **Apps** — Build and use small, useful tools
 
-### Build Your Own
+## What we don't do
 
-Need a tool that doesn't exist? Describe it in plain English and the agent builds it — a working app in seconds. Or use the [app builder](/apps/build) with templates, AI generation, and a live preview. Apps are just HTML — no frameworks, no app store, no tracking. The simplest possible way to put a useful tool on the web.
+- **No likes** — your worth isn't a number
+- **No followers** — quality over popularity
+- **No infinite scroll** — there's always an end
+- **No push notifications** — you come when you want
+- **No algorithmic ranking** — chronological, transparent
+- **No tracking** — we don't profile you
+- **No ads** — we don't sell your attention
 
-### No Addiction Mechanics
+## Technology
 
-We deliberately exclude features that drive addiction:
-
-- **No likes** — Your worth isn't a number
-- **No followers** — Quality over popularity
-- **No infinite scroll** — There's always an end
-- **No push notifications** — You come when you want
-- **No algorithmic ranking** — Chronological, transparent
-
-### Privacy by Design
-
-- **Your server, your data** — Self-host if you want
-- **No tracking** — We don't profile you
-- **No ads** — We don't sell your attention
-
-## AI Features
-
-Some features are enhanced with AI:
-
-- **Blog** — Daily digests generated from trending news
-- **News** — AI summaries of articles
-- **Chat** — AI-powered conversation on any topic
-- **Agent** — Searches across every service to answer your questions
-- **Apps** — Describe what you need and the agent builds a working tool
+Mu runs as a single Go binary. Self-host on your own server or use [mu.xyz](https://mu.xyz). Open source under AGPL-3.0.
 
 ---
 

@@ -1,56 +1,43 @@
 # mu
 
-The Micro Network — apps without ads, algorithms, or tracking.
+Your personal dashboard — news, markets, weather, AI, mail, and more. No ads. No tracking. No algorithm.
 
 ## Overview
 
-Mu is a place to browse the news, track markets, watch videos, search the web and more — all in one place, without ads, algorithms, or tracking.
+Mu is a self-hosted dashboard that brings together the things you check every day — news, markets, weather, mail, chat — in one place, without ads, algorithms, or tracking.
 
-Pay for the tools, not with your attention. Browsing is included. Searching, posting, and AI features use credits — 20/day with every account, then pay as you go from 1p.
+Pay for the tools, not with your attention.
 
-### Services
+### What's on the dashboard
 
-- **Agent** — AI assistant that can search, answer, and build across every service
-- **Apps** — Build and use small, useful tools — or ask the agent to build one
+- **News** — Headlines from RSS feeds, chronological, with AI summaries
+- **Markets** — Live crypto, futures, and commodity prices
+- **Weather** — Forecasts and conditions
+- **Mail** — Private messaging and email
 - **Blog** — Microblogging with daily AI-generated digests
 - **Chat** — AI-powered conversation on any topic
-- **Mail** — Private messaging and email
-- **Markets** — Live crypto, futures, and commodity prices
-- **News** — Headlines and articles from RSS feeds, chronological, with AI summaries
 - **Video** — YouTube without ads, algorithms, or shorts
-- **Wallet** — Pay as you go — 1 credit = 1p
 - **Web** — Search the web without tracking
+- **Agent** — AI assistant that can search, answer, and build across every service
+- **Apps** — Build and use small, useful tools
 
-Mu runs as a single Go binary on your own server or use the hosted version at [mu.xyz](https://mu.xyz).
+Runs as a single Go binary. Self-host or use [mu.xyz](https://mu.xyz).
 
-## Roadmap
+## Screenshots
 
-- [x] API - Basic API
-- [x] App - Basic PWA
-- [x] Home - Overview
-- [x] Agent - AI assistant
-- [x] Blog - Daily digests
-- [x] Chat - Discussion rooms
-- [x] News - RSS news feed
-- [x] Video - YouTube search
-- [x] Mail - Private messaging
-- [x] Markets - Live prices
-- [x] Web - Web search, no Ads
-- [x] Wallet - Card & crypto payments
-- [x] Apps - Build and launch small web apps
-- [ ] Services - Marketplace, etc
+### Home
 
-### AI Features
+<img width="3728" height="1765" alt="image" src="https://github.com/user-attachments/assets/75e029f8-5802-49aa-9449-4902be5da805" />
 
-- **Blog** — Daily digests generated from trending news
-- **News** — AI summaries of articles
-- **Chat** — AI-powered conversation on any topic
-- **Agent** — Searches news, markets, video and more to answer your questions
-- **Apps** — Describe what you need, the agent builds it. "Build me a unit converter" → working app in seconds
+[View more](docs/SCREENSHOTS.md)
 
-### MCP — AI Agent Integration
+## How it works
 
-Mu exposes a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server at `/mcp` so AI agents and tools (e.g. Claude Desktop, Cursor, or any MCP-compatible client) can connect directly.
+The home screen shows **cards** — a summary of each service. Each card links to a full page. News card shows headlines, links to `/news`. Markets card shows prices, links to `/markets`. Everything at a glance, details one tap away.
+
+## For developers
+
+Mu exposes a REST API and [MCP](https://modelcontextprotocol.io) server at `/mcp` so AI agents and tools can connect directly.
 
 ```json
 {
@@ -62,176 +49,52 @@ Mu exposes a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) ser
 }
 ```
 
-See [MCP Server docs](docs/MCP.md) for available tools and usage.
+30+ tools — news, search, weather, places, video, email, markets — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay.
 
-### For AI Agents
+See [API docs](https://mu.xyz/api) · [MCP docs](docs/MCP.md)
 
-Mu is an API for the real world that AI agents can pay for on the fly. 30+ tools — news, search, weather, places, video, email, markets — accessible via MCP with per-request crypto payments through the [x402 protocol](https://x402.org).
+## Pricing
 
-**No API keys. No accounts. Just call and pay.**
+Browsing is included. AI features use credits — 20/day with every account, then pay as you go from 1p per query.
 
-An autonomous agent can search the web ($0.05), check the weather ($0.01), look up nearby restaurants ($0.05), and send an email ($0.04) — paying for each request with USDC from its own wallet. Zero onboarding friction.
+- **Card** — Top up via Stripe. 1 credit = 1p.
+- **Crypto** — AI agents pay per-request with USDC via [x402](https://x402.org). No account needed.
+
+See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
+
+## Self-hosting
 
 ```bash
-# Call any tool — if payment is required, the server returns 402 with pricing
-curl -X POST https://mu.xyz/mcp \
-  -H "Content-Type: application/json" \
-  -H "X-PAYMENT: <payment-payload>" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"..."}}}'
-```
-
-See [MCP Server docs](docs/MCP.md) for the full x402 payment flow and tool list.
-
-## Screenshots
-
-### Home
-
-<img width="3728" height="1765" alt="image" src="https://github.com/user-attachments/assets/75e029f8-5802-49aa-9449-4902be5da805" />
-
-[View more](docs/SCREENSHOTS.md)
-
-## Concepts
-
-The app contains **cards** displayed on the home screen. These are a summary or overview. Each card links to a feature page or external website. For example the Video card links to the /video page with videos by channel and search.
-
-## Hosting
-
-**Mu is free to browse**. See [mu.xyz](https://mu.xyz). Create an account and start using it immediately.
-
-### Self Hosting
-
-Ensure you have [Go](https://go.dev/doc/install) installed
-
-Set your Go bin
-```
-export PATH=$HOME/go/bin:$PATH
-```
-
-Download and install Mu
-
-```
+# Install
 git clone https://github.com/micro/mu
 cd mu && go install
-```
 
-### Configuration
+# Configure
+export ANTHROPIC_API_KEY=xxx    # AI features (Claude)
+export YOUTUBE_API_KEY=xxx      # Video search
 
-To reconfigure prompts, topics, cards, etc you can adjust the following json files. 
-
-Note: The binary will need to be recompiled as they are embedded at build time.
-
-#### Chat Prompts
-
-Set the chat prompts in chat/prompts.json
-
-#### Home Cards
-
-Set the home cards in home/cards.json
-
-#### News Feed
-
-Set the RSS news feeds in news/feeds.json
-
-#### Places
-
-Set the saved search categories in `places/locations.json`.
-
-When `GOOGLE_API_KEY` is set, Places uses the [Google Places API (New)](https://developers.google.com/maps/documentation/places/web-service/overview) for richer results. Without it, Places falls back to free OpenStreetMap data.
-
-```
-export GOOGLE_API_KEY=xxx
-```
-
-#### Video Channels
-
-Set the YouTube video channels in video/channels.json
-
-### API Keys
-
-We need API keys for the following
-
-#### Video Search
-
-- [Youtube Data](https://developers.google.com/youtube/v3)
-
-```
-export YOUTUBE_API_KEY=xxx
-```
-
-#### Chat Model
-
-Mu uses Anthropic Claude for all AI features:
-
-```
-export ANTHROPIC_API_KEY=xxx
-export ANTHROPIC_MODEL=claude-sonnet-4-20250514  # Optional, this is the default
-```
-
-### Data Storage
-
-By default, Mu stores the search index in JSON files loaded into memory. For production use, enable SQLite with FTS5 full-text search:
-
-```
-export MU_USE_SQLITE=1
-```
-
-This stores the search index in SQLite (`~/.mu/data/index.db`) with FTS5 for fast full-text search. Migration from JSON happens automatically on first startup.
-
-### Run
-
-Then run the app
-
-```
+# Run
 mu --serve
 ```
 
-Go to localhost:8081
+Go to localhost:8081. See [Installation guide](docs/INSTALLATION.md) for full setup.
+
+### Configuration
+
+Customise feeds, prompts, and cards by editing JSON files:
+
+- `news/feeds.json` — RSS news feeds
+- `chat/prompts.json` — Chat topics
+- `home/cards.json` — Home screen cards
+- `video/channels.json` — YouTube channels
+- `places/locations.json` — Saved locations
+
+See [Environment Variables](docs/ENVIRONMENT_VARIABLES.md) for all options.
 
 ## Documentation
 
-**On the web:** [mu.xyz/docs](https://mu.xyz/docs) 
-
-Full documentation is available in the [docs](docs/) folder and at `/docs` on any Mu instance:
-
-**Getting Started**
-- [About](docs/ABOUT.md) - What Mu is and why it exists
-- [Principles](docs/PRINCIPLES.md) - Guiding principles for AI and technology
-- [Installation](docs/INSTALLATION.md) - Self-hosting and deployment guide
-
-**Features**
-- [Apps](docs/APPS.md) - Build and launch small web apps
-- [ActivityPub](docs/ACTIVITYPUB.md) - Federation with Mastodon, Threads, etc.
-- [Messaging](docs/MESSAGING_SYSTEM.md) - Email and messaging setup
-- [Wallet & Credits](docs/WALLET_AND_CREDITS.md) - Credit system for metered usage
-**Reference**
-- [Configuration](docs/ENVIRONMENT_VARIABLES.md) - All environment variables
-- [API Reference](docs/API_COVERAGE.md) - REST API endpoints
-- [MCP Server](docs/MCP.md) - AI tool integration via MCP
-- [Screenshots](docs/SCREENSHOTS.md) - Application screenshots
-
-## Development 
-
-### Git Hooks
-
-Install git hooks to run tests before commits:
-
-```bash
-./scripts/install-hooks.sh
-```
-
-This will prevent commits if tests fail, helping catch regressions early. See [scripts/README.md](scripts/README.md) for more details.
-
-## Payments
-
-Mu uses Stripe for card payments and the [x402 protocol](https://x402.org) for crypto payments.
-
-- **Card** — Top up with a credit or debit card via Stripe. Pay-as-you-go with credits. 1 credit = 1p.
-- **Crypto (x402)** — External clients (AI agents, apps) can pay per-request with USDC stablecoins. No account needed.
-
-Set `X402_PAY_TO` to your wallet address to enable crypto payments. See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
+Full docs at [mu.xyz/docs](https://mu.xyz/docs) or in the [docs](docs/) folder.
 
 ## License
 
-Mu is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
-
-This means you are free to use, modify, and distribute this software, but if you run a modified version on a server and let others interact with it, you must make your modified source code available under the same license.
+[AGPL-3.0](LICENSE) — use, modify, distribute. If you run a modified version as a service, share the source.
