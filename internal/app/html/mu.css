@@ -112,11 +112,12 @@ button {
   color: #fff;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 6px 12px;
+  padding: 10px 16px;
   cursor: pointer;
   font-size: 14px;
   line-height: 1.4;
   text-decoration: none;
+  min-height: 44px;
   transition: all var(--transition-fast);
 }
 
@@ -134,8 +135,9 @@ a.btn {
   color: #fff !important;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 6px 12px;
+  padding: 10px 16px;
   cursor: pointer;
+  min-height: 44px;
   font-size: 14px;
   font-weight: normal;
   line-height: 1.4;
@@ -391,10 +393,11 @@ td {
   color: var(--text-primary);
   font-weight: var(--font-weight-medium);
   text-decoration: none;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-radius: var(--border-radius);
   display: flex;
   align-items: center;
+  min-height: 44px;
   transition: all var(--transition-fast);
 }
 
@@ -2194,8 +2197,9 @@ a.highlight {
   }
 
   #nav a {
-    padding: 8px 14px;
+    padding: 12px 14px;
     flex-direction: row;
+    min-height: 44px;
   }
 
   #nav img {
@@ -4915,4 +4919,44 @@ a.btn-secondary:hover, .btn-secondary:hover {
   .system-info {
     grid-template-columns: 1fr;
   }
+}
+
+/* ============================================
+   DISPLAY / KIOSK MODE
+   Activated via ?mode=display on /home
+   Hides nav, header, footer for wall-mounted displays
+   ============================================ */
+body.display-mode #head,
+body.display-mode #nav-container,
+body.display-mode #nav-overlay,
+body.display-mode #footer,
+body.display-mode #menu-toggle,
+body.display-mode #page-title,
+body.display-mode #home-status-form,
+body.display-mode #head-mail {
+  display: none !important;
+}
+
+body.display-mode #container {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+}
+
+body.display-mode #content {
+  margin: 0;
+  padding: 16px;
+  max-width: 100%;
+}
+
+body.display-mode #home {
+  gap: 16px;
+}
+
+body.display-mode .card {
+  font-size: 15px;
+}
+
+body.display-mode .card h4 {
+  font-size: 16px;
 }

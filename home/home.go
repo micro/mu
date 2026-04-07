@@ -255,6 +255,33 @@ func RefreshHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// JSON endpoint for auto-refresh polling
+	if app.WantsJSON(r) {
+		RefreshCards()
+		cacheMutex.RLock()
+		type cardData struct {
+			ID      string `json:"id"`
+			Title   string `json:"title"`
+			HTML    string `json:"html"`
+			Column  string `json:"column"`
+		}
+		var result []cardData
+		for _, card := range Cards {
+			if strings.TrimSpace(card.CachedHTML) == "" {
+				continue
+			}
+			result = append(result, cardData{
+				ID:     card.ID,
+				Title:  card.Title,
+				HTML:   card.CachedHTML,
+				Column: card.Column,
+			})
+		}
+		cacheMutex.RUnlock()
+		app.RespondJSON(w, result)
+		return
+	}
+
 	// Refresh cards if cache expired (2 minute TTL)
 	RefreshCards()
 
@@ -356,10 +383,49 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			strings.Join(rightHTML, "\n")))
 	}
 
-	// Use RenderHTMLWithLang directly to inject a body class that hides the page title,
-	// keeping the agent prompt as the primary visual element.
+	// Auto-refresh: poll every 2 minutes, update card content in-place
+	displayMode := r.URL.Query().Get("mode") == "display"
+	refreshInterval := 120000 // 2 minutes
+	if displayMode {
+		refreshInterval = 60000 // 1 minute in display mode
+	}
+	wakeLockJS := ""
+	if displayMode {
+		wakeLockJS = `
+  // Screen Wake Lock — keep display on in kiosk mode
+  if('wakeLock' in navigator){
+    var wl=null;
+    function reqWake(){navigator.wakeLock.request('screen').then(function(l){wl=l;l.addEventListener('release',function(){setTimeout(reqWake,1000)})}).catch(function(){})}
+    reqWake();document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reqWake()});
+  }`
+	}
+	b.WriteString(fmt.Sprintf(`<script>
+(function(){
+  var interval = %d;
+  setInterval(function(){
+    fetch('/home', {headers:{Accept:'application/json'}})
+    .then(function(r){return r.json()})
+    .then(function(cards){
+      cards.forEach(function(c){
+        var el = document.getElementById(c.id);
+        if(el){
+          var content = el.querySelector('.card-content');
+          if(content) content.innerHTML = c.html;
+        }
+      });
+    }).catch(function(){});
+  }, interval);%s
+})();
+</script>`, refreshInterval, wakeLockJS))
+
+	// Display mode: hide nav, header, footer for kiosk/wall display
+	bodyClass := ` class="page-home"`
+	if displayMode {
+		bodyClass = ` class="page-home display-mode"`
+	}
+
 	lang := app.GetUserLanguage(r)
-	html := app.RenderHTMLWithLangAndBody("Home", "The home screen", b.String(), lang, ` class="page-home"`)
+	html := app.RenderHTMLWithLangAndBody("Home", "The home screen", b.String(), lang, bodyClass)
 	w.Write([]byte(html))
 }
 
