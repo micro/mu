@@ -799,9 +799,11 @@ func builderPageHTML(initialCode string) string {
   <div class="save-bar">
     <input class="name" type="text" id="appName" placeholder="App name">
     <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
+    <input type="number" id="appPrice" placeholder="Price (0 = free)" style="width:140px;font-size:13px;" min="0" max="1000" value="0" title="Credits per use (0 = free)">
     <button onclick="saveApp()">Save & Launch</button>
     <span class="status-msg" id="statusMsg"></span>
   </div>
+  <p style="font-size:12px;color:#999;margin-top:4px;">Set a price to earn 90%% of every use. Leave at 0 for free.</p>
 </div>
 
 <script>
@@ -898,7 +900,7 @@ function saveApp() {
   fetch('/apps/new', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name, slug: slug, icon: appIcon, description: name, tags: tags, html: html, public: true })
+    body: JSON.stringify({ name: name, slug: slug, icon: appIcon, description: name, tags: tags, html: html, public: true, price: parseInt(document.getElementById('appPrice').value)||0 })
   })
   .then(function(r) {
     if (!r.ok) {
