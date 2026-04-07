@@ -1020,6 +1020,7 @@ func editPageHTML(a *App) string {
     <input type="text" id="appSlugInput" placeholder="slug" style="width:140px;font-size:13px;color:#888;">
     <input type="text" id="appDesc" placeholder="Description" style="flex:1;min-width:120px;">
     <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
+    <input type="number" id="appPrice" placeholder="Price (credits)" style="width:130px;font-size:13px;" min="0" max="1000" title="Credits charged per request (0 = free)">
     <label style="display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap"><input type="checkbox" id="appPublic" style="width:auto;margin:0"> Public</label>
     <button onclick="saveApp()">Save</button>
     <span class="status-msg" id="statusMsg"></span>
@@ -1043,6 +1044,7 @@ document.getElementById('appSlugInput').value = editSlug;
 document.getElementById('appDesc').value = %s;
 document.getElementById('appTags').value = %s;
 document.getElementById('appPublic').checked = %s;
+document.getElementById('appPrice').value = %d;
 showPreview();
 
 codeEl.addEventListener('keydown', function(e) {
@@ -1131,7 +1133,7 @@ function saveApp() {
   fetch('/apps/' + editSlug, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name, icon: appIcon, description: desc, tags: tags, html: html, public: document.getElementById('appPublic').checked })
+    body: JSON.stringify({ name: name, icon: appIcon, description: desc, tags: tags, html: html, public: document.getElementById('appPublic').checked, price: parseInt(document.getElementById('appPrice').value)||0 })
   })
   .then(function(r) {
     if (!r.ok) {
@@ -1168,5 +1170,5 @@ function deleteApp() {
   .then(function(r) { if (r.ok) window.location.href = '/apps'; else throw new Error('Delete failed'); })
   .catch(function(e) { document.getElementById('statusMsg').textContent = e.message; });
 }
-</script>`, htmlpkg.EscapeString(a.Slug), savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags, fmt.Sprintf("%v", a.Public))
+</script>`, htmlpkg.EscapeString(a.Slug), savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags, fmt.Sprintf("%v", a.Public), a.Price)
 }

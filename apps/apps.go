@@ -16,6 +16,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/wallet"
 
 	"github.com/google/uuid"
 )
@@ -76,6 +77,8 @@ type App struct {
 	Config      *AppConfig `json:"config,omitempty"`     // Framework mode config
 	Blocks      []Block   `json:"blocks,omitempty"`      // Framework mode blocks
 	Tags        string    `json:"tags"`
+	Price       int       `json:"price"`                   // Credits per request (0 = free)
+	Earnings    int       `json:"earnings"`                // Total credits earned by author
 	Public      bool      `json:"public"`
 	Installs    int       `json:"installs"`
 	ForkedFrom  string    `json:"forked_from,omitempty"`
@@ -349,6 +352,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			Description string `json:"description"`
 			Author      string `json:"author"`
 			Tags        string `json:"tags"`
+			Price       int    `json:"price"`
 			Installs    int    `json:"installs"`
 		}
 		summaries := make([]appSummary, len(list))
@@ -359,6 +363,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				Description: a.Description,
 				Author:      a.Author,
 				Tags:        a.Tags,
+				Price:       a.Price,
 				Installs:    a.Installs,
 			}
 		}
@@ -425,13 +430,19 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			if a.Tags != "" {
 				tagsHTML = " · " + htmlpkg.EscapeString(a.Tags)
 			}
+			priceHTML := ""
+			if a.Price > 0 {
+				priceHTML = fmt.Sprintf(` · <span style="color:#c60;font-weight:600;">%d credits/use</span>`, a.Price)
+			} else {
+				priceHTML = ` · <span style="color:#090;">Free</span>`
+			}
 			controls := app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "/apps/"+a.Slug+"/edit", "/apps/"+a.Slug+"/delete")
 			sb.WriteString(fmt.Sprintf(`<div style="position:relative;border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;">
 <img src="/apps/%s/icon.svg" width="32" height="32" style="flex-shrink:0;margin-top:2px;">
 <div>
 <h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
-<p style="margin:0;font-size:13px;color:#999;">by %s%s · %d launches · <a href="/apps/%s">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s</p>
+<p style="margin:0;font-size:13px;color:#999;">by %s%s%s · %d launches · <a href="/apps/%s">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s</p>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
@@ -440,6 +451,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				htmlpkg.EscapeString(a.Description),
 				htmlpkg.EscapeString(a.Author),
 				tagsHTML,
+				priceHTML,
 				a.Installs,
 				htmlpkg.EscapeString(a.Slug),
 				htmlpkg.EscapeString(a.Slug),
@@ -502,6 +514,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	var name, slug, icon, description, tags, html string
 	var public bool
+	var price int
 
 	if app.SendsJSON(r) {
 		var req struct {
@@ -513,6 +526,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 			Category    string `json:"category"` // backward compat
 			HTML        string `json:"html"`
 			Public      *bool  `json:"public"`
+			Price       int    `json:"price"`
 		}
 		if err := app.DecodeJSON(r, &req); err != nil {
 			app.RespondError(w, http.StatusBadRequest, "Invalid JSON")
@@ -532,6 +546,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		} else {
 			public = true
 		}
+		price = req.Price
 	} else {
 		r.ParseForm()
 		name = strings.TrimSpace(r.FormValue("name"))
@@ -540,6 +555,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		tags = strings.TrimSpace(r.FormValue("tags"))
 		html = r.FormValue("html")
 		public = r.FormValue("public") == "1"
+		fmt.Sscanf(r.FormValue("price"), "%d", &price)
 	}
 
 	// Derive slug from name if not provided
@@ -574,6 +590,14 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	mutex.RUnlock()
 
+	// Clamp price to 0-1000
+	if price < 0 {
+		price = 0
+	}
+	if price > 1000 {
+		price = 1000
+	}
+
 	now := time.Now()
 	newApp := &App{
 		ID:          uuid.New().String(),
@@ -585,6 +609,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		Icon:        icon,
 		HTML:        html,
 		Tags:        tags,
+		Price:       price,
 		Public:      public,
 		Installs:    0,
 		CreatedAt:   now,
@@ -645,9 +670,16 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	if len(a.Versions) > 1 {
 		versionInfo = fmt.Sprintf(` · <a href="/apps/%s/versions">v%d</a>`, htmlpkg.EscapeString(a.Slug), a.Versions[len(a.Versions)-1].Number)
 	}
-	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s · %d launches%s%s%s</p>`,
+	priceInfo := ""
+	if a.Price > 0 {
+		priceInfo = fmt.Sprintf(` · <span style="color:#c60;font-weight:600;">%d credits/use</span>`, a.Price)
+	} else {
+		priceInfo = ` · <span style="color:#090;">Free</span>`
+	}
+	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s%s · %d launches%s%s%s</p>`,
 		htmlpkg.EscapeString(a.Author),
 		tagsInfo,
+		priceInfo,
 		a.Installs,
 		savedInfo,
 		versionInfo,
@@ -655,8 +687,12 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	))
 
 	// Action buttons
+	launchLabel := "Launch App"
+	if a.Price > 0 {
+		launchLabel = fmt.Sprintf("Launch App (%d credits)", a.Price)
+	}
 	sb.WriteString(fmt.Sprintf(`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
-<a href="/apps/%s/run" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;">Launch App</a>`, htmlpkg.EscapeString(a.Slug)))
+<a href="/apps/%s/run" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;">%s</a>`, htmlpkg.EscapeString(a.Slug), launchLabel))
 	_, detailAcc, detailErr := auth.RequireSession(r)
 	if detailErr == nil {
 		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/fork" style="display:inline-block;padding:8px 24px;background:#fff;color:#333;border:1px solid #e0e0e0;border-radius:6px;text-decoration:none;font-size:14px;">Fork</a>`,
@@ -954,6 +990,21 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 	if r.URL.Query().Get("raw") != "1" {
 		_, acc, _ := auth.RequireSession(r)
 		if acc == nil || acc.ID != a.AuthorID {
+			// Charge for paid apps
+			if a.Price > 0 {
+				if acc == nil {
+					app.Error(w, r, http.StatusUnauthorized, fmt.Sprintf("This app costs %d credits per use. Sign in to continue.", a.Price))
+					return
+				}
+				if err := wallet.ChargeAppUse(acc.ID, a.AuthorID, a.Slug, a.Price); err != nil {
+					app.Error(w, r, http.StatusPaymentRequired, fmt.Sprintf("This app costs %d credits per use. Please top up your wallet.", a.Price))
+					return
+				}
+				// Track earnings on the app
+				mutex.Lock()
+				a.Earnings += a.Price
+				mutex.Unlock()
+			}
 			mutex.Lock()
 			a.Installs++
 			mutex.Unlock()
@@ -1097,6 +1148,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 		Tags        *string `json:"tags"`
 		HTML        *string `json:"html"`
 		Public      *bool   `json:"public"`
+		Price       *int    `json:"price"`
 	}
 	if err := app.DecodeJSON(r, &req); err != nil {
 		app.RespondError(w, http.StatusBadRequest, "Invalid JSON")
@@ -1158,6 +1210,16 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 	if req.Public != nil {
 		a.Public = *req.Public
+	}
+	if req.Price != nil {
+		p := *req.Price
+		if p < 0 {
+			p = 0
+		}
+		if p > 1000 {
+			p = 1000
+		}
+		a.Price = p
 	}
 	if changed {
 		snapshotVersion(a, "")
