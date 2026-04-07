@@ -27,7 +27,7 @@ func CardHTML() string {
 var el=document.getElementById('weather-card-content');
 var load=document.getElementById('weather-card-loading');
 var KEY='mu_weather',KEY_TS='mu_weather_ts',TTL=1800000;
-function isLoggedIn(){return document.cookie.indexOf('session=')!==-1}
+function isLoggedIn(){return document.cookie.indexOf('csrf_token=')!==-1}
 if(!isLoggedIn()){load.innerHTML='<a href="/login" style="color:#888">Log in</a> for weather';return}
 var cached=localStorage.getItem(KEY);
 var ts=parseInt(localStorage.getItem(KEY_TS)||'0');
