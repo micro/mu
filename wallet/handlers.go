@@ -38,6 +38,21 @@ func WalletPage(userID string) string {
 	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a> · <a href="/wallet/transfer">Transfer →</a></p>`)
 	sb.WriteString(`</div>`)
 
+	// App earnings summary
+	var totalEarnings int
+	for _, tx := range transactions {
+		if tx.Operation == OpAppRevenue {
+			totalEarnings += tx.Amount
+		}
+	}
+	if totalEarnings > 0 {
+		sb.WriteString(`<div class="card">`)
+		sb.WriteString(`<h3>App Earnings</h3>`)
+		sb.WriteString(fmt.Sprintf(`<p>%d credits earned from your apps (recent)</p>`, totalEarnings))
+		sb.WriteString(`<p class="text-sm text-muted">You keep 90%% of every sale. <a href="/apps">Manage your apps →</a></p>`)
+		sb.WriteString(`</div>`)
+	}
+
 	if !isAdmin {
 		// Self-hosting note
 		sb.WriteString(`<div class="card">`)
@@ -80,7 +95,19 @@ func WalletPage(userID string) string {
 
 		for _, tx := range transactions {
 			typeLabel := tx.Operation
-			if tx.Type == TxTopup {
+			if tx.Operation == OpAppUse {
+				if appSlug, ok := tx.Metadata["app"].(string); ok {
+					typeLabel = "App: " + appSlug
+				} else {
+					typeLabel = "App usage"
+				}
+			} else if tx.Operation == OpAppRevenue {
+				if appSlug, ok := tx.Metadata["app"].(string); ok {
+					typeLabel = "Earned: " + appSlug
+				} else {
+					typeLabel = "App revenue"
+				}
+			} else if tx.Type == TxTopup {
 				typeLabel = "Deposit"
 			} else if tx.Type == TxTransfer {
 				if tx.Amount > 0 {
@@ -626,8 +653,23 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%d</td></tr>`, item.Description, item.Cost))
 	}
 	sb.WriteString(`</table>`)
+	sb.WriteString(`</div>`)
+
+	// App marketplace pricing
+	sb.WriteString(`<div class="card">`)
+	sb.WriteString(`<h3>App Marketplace</h3>`)
+	sb.WriteString(`<p class="info">Build apps and charge per use. You set the price, you earn the revenue.</p>`)
+	sb.WriteString(`<table class="stats-table">`)
+	sb.WriteString(`<tr><td>Price range</td><td>0–1000 credits per use</td></tr>`)
+	sb.WriteString(`<tr><td>Creator share</td><td>90%</td></tr>`)
+	sb.WriteString(`<tr><td>Platform fee</td><td>10%</td></tr>`)
+	sb.WriteString(`<tr><td>Free apps</td><td>No charge</td></tr>`)
+	sb.WriteString(`</table>`)
+	sb.WriteString(`<p class="info mt-3"><a href="/apps/build">Build an app →</a></p>`)
+	sb.WriteString(`</div>`)
+
 	sb.WriteString(`<p class="info mt-3">JSON: <code>curl -H "Accept: application/json" /wallet/pricing</code></p>`)
-	sb.WriteString(`</div></div>`)
+	sb.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest("Pricing", "Platform pricing and costs", sb.String(), r)
 	w.Write([]byte(html))
