@@ -549,7 +549,10 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<input type="text" name="tags" maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="productivity, timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>HTML (your app — max 256KB)</label><br>`)
 	sb.WriteString(`<textarea name="html" required style="width:100%;min-height:300px;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:monospace;font-size:13px;" placeholder="<h1>Hello World</h1>"></textarea></div>`)
+	sb.WriteString(`<div style="margin-bottom:12px;"><label>Price per use <span style="color:#999;font-size:12px;">(credits, 0 = free)</span></label><br>`)
+	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="0"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="public" value="1" checked style="width:auto;margin:0"> Public</label></div>`)
+	sb.WriteString(`<p style="margin-bottom:12px;font-size:13px;color:#999;">Set a price and earn 90% of every sale. Free apps cost nothing to use.</p>`)
 	sb.WriteString(`<button type="submit" style="padding:8px 24px;background:#000;color:#fff;border:none;border-radius:4px;cursor:pointer;">Create App</button>`)
 	sb.WriteString(`</form>`)
 
@@ -1517,7 +1520,7 @@ func GetApp(slug string) *App {
 
 // UpdateApp updates an existing app's fields. Only non-empty values are applied.
 // Returns the updated app or an error.
-func UpdateApp(slug, name, description, tags, html, icon string) (*App, error) {
+func UpdateApp(slug, name, description, tags, html, icon string, price int) (*App, error) {
 	mutex.Lock()
 	a, ok := apps[slug]
 	if !ok {
@@ -1543,6 +1546,12 @@ func UpdateApp(slug, name, description, tags, html, icon string) (*App, error) {
 			return nil, fmt.Errorf("HTML content exceeds 256KB limit")
 		}
 		a.HTML = html
+	}
+	if price >= 0 {
+		if price > 1000 {
+			price = 1000
+		}
+		a.Price = price
 	}
 	if changed {
 		snapshotVersion(a, "")
