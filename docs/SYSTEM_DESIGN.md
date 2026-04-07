@@ -233,7 +233,7 @@ Live financial data.
 
 Credit-based usage metering.
 
-- **Pay as you go** — 100 credits/day included, then 1 credit = 1p
+- **Pay as you go** — 1 credit = 1p, browsing included
 - **Stripe payments** - Card top-up
 - **Quota enforcement** - Integrated with API and agent
 - **Transaction tracking** - Usage history

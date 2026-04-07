@@ -395,7 +395,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check quota
-	canProceed, useFree, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpPlacesSearch)
+	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpPlacesSearch)
 	if !canProceed {
 		if app.WantsJSON(r) {
 			app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
@@ -464,10 +464,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	sortBy := formValue("sort")
 	sortPlaces(results, sortBy)
 
-	// Consume quota after successful operation
-	if useFree {
-		wallet.UseQuota(acc.ID)
-	} else if cost > 0 {
+	// Deduct credits
+	if cost > 0 {
 		wallet.DeductCredits(acc.ID, cost, wallet.OpPlacesSearch, map[string]interface{}{"query": query})
 	}
 
@@ -516,7 +514,7 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check quota
-	canProceed, useFree, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpPlacesNearby)
+	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpPlacesNearby)
 	if !canProceed {
 		if app.WantsJSON(r) {
 			app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
@@ -583,10 +581,8 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	sortBy := formValue("sort")
 	sortPlaces(results, sortBy)
 
-	// Consume quota after successful operation
-	if useFree {
-		wallet.UseQuota(acc.ID)
-	} else if cost > 0 {
+	// Deduct credits
+	if cost > 0 {
 		wallet.DeductCredits(acc.ID, cost, wallet.OpPlacesNearby, map[string]interface{}{
 			"lat": lat, "lon": lon, "radius": radius,
 		})

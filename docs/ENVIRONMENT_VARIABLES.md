@@ -122,8 +122,7 @@ export DONATION_URL="https://gocardless.com/your-donation-link"
 ## Quota Configuration
 
 ```bash
-# Daily AI queries per account (default: 10)
-export DAILY_QUOTA="100"
+# Credit costs per operation (defaults shown)
 
 # Credit costs per operation (default values shown)
 export CREDIT_COST_NEWS="1"        # News search (1p)
@@ -190,7 +189,6 @@ export MAIL_SELECTOR="default"
 | `X402_ASSETS` | `USDC,EURC` | Accepted tokens (comma-separated symbols) |
 | `X402_FACILITATOR_URL` | `https://x402.org/facilitator` | x402 facilitator endpoint |
 | `X402_NETWORK` | `eip155:8453` | Blockchain network for x402 payments |
-| `DAILY_QUOTA` | `100` | Daily AI queries per account |
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
 | `CREDIT_COST_VIDEO_WATCH` | `0` | Credits per video watch (free by default) |

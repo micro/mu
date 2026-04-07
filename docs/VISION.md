@@ -60,8 +60,7 @@ AI agents can pay per-request with USDC through the [x402 protocol](https://x402
 ## Pricing
 
 - **Browsing included** — news, blogs, videos, markets
-- **100 credits per day** — covers search, chat, and AI features
-- **Pay as you go** — 1 credit = 1p, top up via card
+- **Pay as you go** — AI and search use credits, 1 credit = 1p
 - **Crypto** — AI agents pay per-request via [x402](https://x402.org)
 - **Self-host** — run your own instance, no restrictions
 

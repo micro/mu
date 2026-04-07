@@ -55,7 +55,7 @@ See [API docs](https://mu.xyz/api) · [MCP docs](docs/MCP.md)
 
 ## Pricing
 
-Browsing is included. AI features use credits — 100/day with every account, then pay as you go from 1p per query.
+Browsing is included. AI and search features use credits — 1 credit = 1p, pay as you go.
 
 - **Card** — Top up via Stripe. 1 credit = 1p.
 - **Crypto** — AI agents pay per-request with USDC via [x402](https://x402.org). No account needed.

@@ -112,8 +112,8 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 
 	includePollen := r.URL.Query().Get("pollen") == "1"
 
-	// Check quota for weather forecast
-	canProceed, useFree, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpWeatherForecast)
+	// Check credits
+	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpWeatherForecast)
 	if !canProceed {
 		app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
 		return
@@ -126,10 +126,8 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Consume weather quota
-	if useFree {
-		wallet.UseQuota(acc.ID)
-	} else if cost > 0 {
+	// Deduct credits
+	if cost > 0 {
 		wallet.DeductCredits(acc.ID, cost, wallet.OpWeatherForecast, nil)
 	}
 
@@ -139,14 +137,12 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch pollen if requested and quota allows
 	if includePollen {
-		canPollenProceed, usePollenFree, pollenCost, _ := wallet.CheckQuota(acc.ID, wallet.OpWeatherPollen)
+		canPollenProceed, _, pollenCost, _ := wallet.CheckQuota(acc.ID, wallet.OpWeatherPollen)
 		if canPollenProceed {
 			pollen, pollenErr := FetchPollen(lat, lon)
 			if pollenErr == nil {
 				result["pollen"] = pollen
-				if usePollenFree {
-					wallet.UseQuota(acc.ID)
-				} else if pollenCost > 0 {
+				if pollenCost > 0 {
 					wallet.DeductCredits(acc.ID, pollenCost, wallet.OpWeatherPollen, nil)
 				}
 			}
