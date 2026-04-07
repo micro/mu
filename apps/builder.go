@@ -1015,13 +1015,35 @@ func editPageHTML(a *App) string {
     </div>
   </div>
 
-  <div class="save-bar">
-    <input class="name" type="text" id="appName" placeholder="App name">
-    <input type="text" id="appSlugInput" placeholder="slug" style="width:140px;font-size:13px;color:#888;">
-    <input type="text" id="appDesc" placeholder="Description" style="flex:1;min-width:120px;">
-    <input type="text" id="appTags" placeholder="Tags (optional)" style="width:140px;">
-    <label style="display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap"><input type="checkbox" id="appPublic" style="width:auto;margin:0"> Public</label>
-    <button onclick="saveApp()">Save</button>
+  <div class="save-bar" style="display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:end;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+      <div style="flex:1;min-width:150px;">
+        <label for="appName" style="font-size:12px;color:#666;display:block;margin-bottom:2px;">Name</label>
+        <input class="name" type="text" id="appName" placeholder="App name" style="width:100%%;box-sizing:border-box;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px;">
+      </div>
+      <div style="width:140px;">
+        <label for="appSlugInput" style="font-size:12px;color:#666;display:block;margin-bottom:2px;">Slug</label>
+        <input type="text" id="appSlugInput" placeholder="slug" style="width:100%%;box-sizing:border-box;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#888;">
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <label for="appDesc" style="font-size:12px;color:#666;display:block;margin-bottom:2px;">Description</label>
+        <input type="text" id="appDesc" placeholder="What does this app do?" style="width:100%%;box-sizing:border-box;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px;">
+      </div>
+      <div style="width:140px;">
+        <label for="appTags" style="font-size:12px;color:#666;display:block;margin-bottom:2px;">Tags</label>
+        <input type="text" id="appTags" placeholder="e.g. productivity" style="width:100%%;box-sizing:border-box;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px;">
+      </div>
+      <div style="width:130px;">
+        <label for="appPrice" style="font-size:12px;color:#666;display:block;margin-bottom:2px;">Price (credits)</label>
+        <input type="number" id="appPrice" placeholder="0 = free" style="width:100%%;box-sizing:border-box;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;" min="0" max="1000" title="Credits charged per use (0 = free)">
+      </div>
+      <label style="display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap;padding:8px 0;"><input type="checkbox" id="appPublic" style="width:auto;margin:0"> Public</label>
+    </div>
+    <div style="display:flex;gap:8px;align-items:end;">
+      <button onclick="saveApp()" style="padding:8px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;white-space:nowrap;">Save</button>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
     <span class="status-msg" id="statusMsg"></span>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#999;">
@@ -1043,6 +1065,7 @@ document.getElementById('appSlugInput').value = editSlug;
 document.getElementById('appDesc').value = %s;
 document.getElementById('appTags').value = %s;
 document.getElementById('appPublic').checked = %s;
+document.getElementById('appPrice').value = %d;
 showPreview();
 
 codeEl.addEventListener('keydown', function(e) {
@@ -1131,7 +1154,7 @@ function saveApp() {
   fetch('/apps/' + editSlug, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name, icon: appIcon, description: desc, tags: tags, html: html, public: document.getElementById('appPublic').checked })
+    body: JSON.stringify({ name: name, icon: appIcon, description: desc, tags: tags, html: html, public: document.getElementById('appPublic').checked, price: parseInt(document.getElementById('appPrice').value)||0 })
   })
   .then(function(r) {
     if (!r.ok) {
@@ -1168,5 +1191,5 @@ function deleteApp() {
   .then(function(r) { if (r.ok) window.location.href = '/apps'; else throw new Error('Delete failed'); })
   .catch(function(e) { document.getElementById('statusMsg').textContent = e.message; });
 }
-</script>`, htmlpkg.EscapeString(a.Slug), savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags, fmt.Sprintf("%v", a.Public))
+</script>`, htmlpkg.EscapeString(a.Slug), savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags, fmt.Sprintf("%v", a.Public), a.Price)
 }

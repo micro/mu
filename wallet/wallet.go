@@ -63,6 +63,8 @@ const (
 	OpSocialSearch      = "social_search"
 	OpAppBuild          = "app_build"
 	OpAppEdit           = "app_edit"
+	OpAppUse            = "app_use"
+	OpAppRevenue        = "app_revenue"
 	OpTopup             = "topup"
 	OpRefund            = "refund"
 	OpTransfer          = "transfer"
@@ -647,6 +649,85 @@ func RefundEscrow(userID string, amount int, taskID string) error {
 	}
 	transactions[userID] = append(transactions[userID], tx)
 
+	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("transactions.json", transactions)
+
+	return nil
+}
+
+// ChargeAppUse charges a user for using a paid app and pays the author.
+// Returns error if user has insufficient credits. Author gets 70%, platform gets 30%.
+func ChargeAppUse(userID, authorID, appSlug string, price int) error {
+	if price <= 0 {
+		return nil // Free app
+	}
+	if userID == authorID {
+		return nil // Authors don't pay for their own apps
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Check sender has sufficient balance
+	user, exists := wallets[userID]
+	if !exists || user.Balance < price {
+		return errors.New("insufficient credits")
+	}
+
+	// Get or create author wallet
+	author, exists := wallets[authorID]
+	if !exists {
+		author = &Wallet{
+			UserID:   authorID,
+			Balance:  0,
+			Currency: "GBP",
+		}
+		wallets[authorID] = author
+	}
+
+	// Calculate split: author gets 90%, platform gets 10%
+	authorShare := (price * 90) / 100
+	if authorShare < 1 && price > 0 {
+		authorShare = 1 // Minimum 1 credit to author
+	}
+
+	// Deduct from user
+	user.Balance -= price
+	user.UpdatedAt = time.Now()
+
+	// Credit author
+	author.Balance += authorShare
+	author.UpdatedAt = time.Now()
+
+	now := time.Now()
+
+	// Record user spend
+	userTx := &Transaction{
+		ID:        uuid.New().String(),
+		UserID:    userID,
+		Type:      TxSpend,
+		Amount:    -price,
+		Balance:   user.Balance,
+		Operation: OpAppUse,
+		Metadata:  map[string]interface{}{"app": appSlug, "author": authorID},
+		CreatedAt: now,
+	}
+	transactions[userID] = append(transactions[userID], userTx)
+
+	// Record author revenue
+	authorTx := &Transaction{
+		ID:        uuid.New().String(),
+		UserID:    authorID,
+		Type:      TxTopup,
+		Amount:    authorShare,
+		Balance:   author.Balance,
+		Operation: OpAppRevenue,
+		Metadata:  map[string]interface{}{"app": appSlug, "from": userID, "price": price},
+		CreatedAt: now,
+	}
+	transactions[authorID] = append(transactions[authorID], authorTx)
+
+	// Persist
 	data.SaveJSON("wallets.json", wallets)
 	data.SaveJSON("transactions.json", transactions)
 
