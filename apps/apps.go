@@ -248,14 +248,30 @@ func Preview() string {
 		limit = len(public)
 	}
 	for _, a := range public[:limit] {
-		sb.WriteString(fmt.Sprintf(`<p style="display:flex;align-items:center;gap:8px;"><img src="/apps/%s/icon.svg" width="20" height="20"><a href="/apps/%s">%s</a> — %s</p>`,
+		priceTag := `<span style="color:#090;font-size:12px;">Free</span>`
+		if a.Price > 0 {
+			priceTag = fmt.Sprintf(`<span style="color:#c60;font-size:12px;">%d credits</span>`, a.Price)
+		}
+		sb.WriteString(fmt.Sprintf(`<p style="display:flex;align-items:center;gap:8px;"><img src="/apps/%s/icon.svg" width="20" height="20"><a href="/apps/%s">%s</a> — %s %s</p>`,
 			htmlpkg.EscapeString(a.Slug),
 			htmlpkg.EscapeString(a.Slug),
 			htmlpkg.EscapeString(a.Name),
-			htmlpkg.EscapeString(truncate(a.Description, 60)),
+			htmlpkg.EscapeString(truncate(a.Description, 50)),
+			priceTag,
 		))
 	}
-	sb.WriteString(fmt.Sprintf(`<p class="card-desc">%d apps available · <a href="/apps/build">Build new</a></p>`, len(public)))
+	paidCount := 0
+	for _, a := range public {
+		if a.Price > 0 {
+			paidCount++
+		}
+	}
+	sb.WriteString(fmt.Sprintf(`<p class="card-desc">%d apps available`, len(public)))
+	if paidCount > 0 {
+		sb.WriteString(fmt.Sprintf(` · %d paid`, paidCount))
+	}
+	sb.WriteString(` · <a href="/apps/build">Build new</a></p>`)
+	sb.WriteString(`<p style="font-size:12px;color:#999;">Build apps, set your price, earn 90%% of every sale.</p>`)
 	return sb.String()
 }
 
@@ -381,7 +397,10 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	// HTML
 	var sb strings.Builder
-	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. No ads, no tracking, no bloat.</p>`)
+	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. Build apps, set your price, earn 90% of every sale.</p>`)
+
+	// Pricing filter
+	pricing := r.URL.Query().Get("pricing")
 
 	// Tag filter
 	tag := r.URL.Query().Get("tag")
@@ -408,11 +427,48 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`</div>`)
 	}
 
+	// Pricing filter pills
+	hasPaid := false
+	hasFree := false
+	for _, a := range list {
+		if a.Price > 0 {
+			hasPaid = true
+		} else {
+			hasFree = true
+		}
+	}
+	if hasPaid && hasFree {
+		sb.WriteString(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">`)
+		sb.WriteString(fmt.Sprintf(`<a href="/apps" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">All</a>`, pillStyle(pricing == "")))
+		sb.WriteString(fmt.Sprintf(`<a href="/apps?pricing=free" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">Free</a>`, pillStyle(pricing == "free")))
+		sb.WriteString(fmt.Sprintf(`<a href="/apps?pricing=paid" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">Paid</a>`, pillStyle(pricing == "paid")))
+		sb.WriteString(`</div>`)
+	}
+
 	// Filter by tag
 	if tag != "" {
 		var filtered []*App
 		for _, a := range list {
 			if hasTag(a.Tags, tag) {
+				filtered = append(filtered, a)
+			}
+		}
+		list = filtered
+	}
+
+	// Filter by pricing
+	if pricing == "free" {
+		var filtered []*App
+		for _, a := range list {
+			if a.Price == 0 {
+				filtered = append(filtered, a)
+			}
+		}
+		list = filtered
+	} else if pricing == "paid" {
+		var filtered []*App
+		for _, a := range list {
+			if a.Price > 0 {
 				filtered = append(filtered, a)
 			}
 		}
