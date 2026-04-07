@@ -283,7 +283,7 @@ var CardTemplate = `
 <!-- %s -->
 <div id="%s" class="card">
   <h4>%s</h4>
-  <div class="card-content">%s</div>
+  <div class="card-body">%s</div>
 </div>
 `
 
