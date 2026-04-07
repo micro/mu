@@ -112,12 +112,11 @@ button {
   color: #fff;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 10px 16px;
+  padding: 6px 12px;
   cursor: pointer;
   font-size: 14px;
   line-height: 1.4;
   text-decoration: none;
-  min-height: 44px;
   transition: all var(--transition-fast);
 }
 
@@ -135,9 +134,8 @@ a.btn {
   color: #fff !important;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 10px 16px;
+  padding: 6px 12px;
   cursor: pointer;
-  min-height: 44px;
   font-size: 14px;
   font-weight: normal;
   line-height: 1.4;
@@ -393,11 +391,10 @@ td {
   color: var(--text-primary);
   font-weight: var(--font-weight-medium);
   text-decoration: none;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-radius: var(--border-radius);
   display: flex;
   align-items: center;
-  min-height: 44px;
   transition: all var(--transition-fast);
 }
 
@@ -2197,9 +2194,8 @@ a.highlight {
   }
 
   #nav a {
-    padding: 12px 14px;
+    padding: 8px 14px;
     flex-direction: row;
-    min-height: 44px;
   }
 
   #nav img {

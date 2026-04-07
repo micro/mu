@@ -409,7 +409,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
       cards.forEach(function(c){
         var el = document.getElementById(c.id);
         if(el){
-          var content = el.querySelector('.card-content');
+          var content = el.querySelector('.card-body');
           if(content) content.innerHTML = c.html;
         }
       });
