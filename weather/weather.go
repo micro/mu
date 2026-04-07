@@ -14,6 +14,52 @@ import (
 // Load initialises the weather package (placeholder for future caching).
 func Load() {}
 
+// CardHTML returns the weather card for the home screen.
+// Renders a shell that populates via JS using the browser's geolocation.
+func CardHTML() string {
+	return `<div id="weather-card">
+<div id="weather-card-content" style="font-size:13px;color:#888">
+<span id="weather-card-loading">Checking weather...</span>
+</div>
+<script>
+(function(){
+var el=document.getElementById('weather-card-content');
+var load=document.getElementById('weather-card-loading');
+var cached=sessionStorage.getItem('mu_weather');
+if(cached){el.innerHTML=cached;return}
+if(!navigator.geolocation){load.textContent='Enable location for weather';return}
+navigator.geolocation.getCurrentPosition(function(pos){
+var lat=pos.coords.latitude.toFixed(4);
+var lon=pos.coords.longitude.toFixed(4);
+fetch('/weather?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'}})
+.then(function(r){return r.json()})
+.then(function(d){
+var f=d.forecast;
+if(!f||!f.Current){load.textContent='Weather unavailable';return}
+var c=f.Current;
+var h='<div style="display:flex;align-items:center;gap:8px">';
+h+='<span style="font-size:22px;font-weight:600;color:#333">'+Math.round(c.TempC)+'°C</span>';
+h+='<span style="color:#666">'+c.Description+'</span>';
+h+='</div>';
+if(f.Location)h+='<div style="font-size:12px;color:#999;margin-top:2px">'+f.Location+'</div>';
+if(f.DailyItems&&f.DailyItems.length>0){
+h+='<div style="display:flex;gap:12px;margin-top:6px;font-size:12px;color:#888">';
+for(var i=0;i<Math.min(3,f.DailyItems.length);i++){
+var day=f.DailyItems[i];
+var name=new Date(day.Date).toLocaleDateString('en',{weekday:'short'});
+h+='<span>'+name+' '+Math.round(day.MaxTempC)+'°/'+Math.round(day.MinTempC)+'°</span>';
+}
+h+='</div>';
+}
+el.innerHTML=h;
+sessionStorage.setItem('mu_weather',h);
+}).catch(function(){load.textContent='Weather unavailable'});
+},function(){load.textContent='Enable location for weather'},{timeout:5000});
+})();
+</script>
+</div>`
+}
+
 // Handler handles /weather requests.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if app.WantsJSON(r) {

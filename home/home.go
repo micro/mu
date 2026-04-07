@@ -23,6 +23,7 @@ import (
 	"mu/reminder"
 	"mu/user"
 	"mu/video"
+	"mu/weather"
 )
 
 //go:embed cards.json
@@ -124,6 +125,7 @@ func Load() {
 		"video":    video.Latest,
 		"apps":     apps.Preview,
 		"social":   social.CardHTML,
+		"weather":  weather.CardHTML,
 	}
 
 	// Build Cards array from config
