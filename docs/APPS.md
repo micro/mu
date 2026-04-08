@@ -137,8 +137,8 @@ SDK calls consume credits from the user's wallet:
 |--------|------|
 | `mu.ai()` | 1 credit |
 | `mu.fetch()` | 1 credit |
-| `mu.store.*` | Free |
-| `mu.user()` | Free |
+| `mu.store.*` | Included |
+| `mu.user()` | Included |
 
 ## Discovery
 

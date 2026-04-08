@@ -108,7 +108,7 @@ export X402_NETWORK="eip155:8453"  # Default: Base mainnet
 
 ## Payment Configuration (Optional)
 
-Enable donations to support your instance. All variables are optional - leave empty for a free instance.
+Enable donations to support your instance. All variables are optional - leave empty for a self-hosted instance.
 
 ```bash
 # One-time donation URL
@@ -127,7 +127,7 @@ export DONATION_URL="https://gocardless.com/your-donation-link"
 # Credit costs per operation (default values shown)
 export CREDIT_COST_NEWS="1"        # News search (1p)
 export CREDIT_COST_VIDEO="2"       # Video search (2p) - YouTube API cost
-export CREDIT_COST_VIDEO_WATCH="0" # Video watch (free) - no value added over YouTube
+export CREDIT_COST_VIDEO_WATCH="0" # Video watch (included) - no value added over YouTube
 export CREDIT_COST_CHAT="3"        # Chat AI query (3p) - LLM cost
 export CREDIT_COST_EMAIL="4"       # External email (4p) - SMTP delivery cost
 export CREDIT_COST_PLACES_SEARCH="5"  # Places text search (5p) - Google Places API cost
@@ -191,7 +191,7 @@ export MAIL_SELECTOR="default"
 | `X402_NETWORK` | `eip155:8453` | Blockchain network for x402 payments |
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
-| `CREDIT_COST_VIDEO_WATCH` | `0` | Credits per video watch (free by default) |
+| `CREDIT_COST_VIDEO_WATCH` | `0` | Credits per video watch (included by default) |
 | `CREDIT_COST_CHAT` | `3` | Credits per chat query |
 | `CREDIT_COST_EMAIL` | `4` | Credits per external email |
 | `CREDIT_COST_PLACES_SEARCH` | `5` | Credits per places text search |
@@ -221,7 +221,7 @@ MAIL_SELECTOR=default
 # STRIPE_PUBLISHABLE_KEY=pk_live_...
 # STRIPE_WEBHOOK_SECRET=whsec_...
 
-# Donations (optional - leave empty for free instance)
+# Donations (optional - leave empty for self-hosted instance)
 DONATION_URL=https://gocardless.com/your-donation-link
 ```
 

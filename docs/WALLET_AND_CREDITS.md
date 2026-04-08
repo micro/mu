@@ -27,7 +27,7 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 | News Search | 1 credit (1p) | Indexed search |
 | News Summary | 1 credit (1p) | AI-generated summary |
 | Video Search | 2 credits (2p) | YouTube API cost |
-| Video Watch | Free | No value added over YouTube |
+| Video Watch | Included | No value added over YouTube |
 | Chat AI Query | 5 credits (5p) | LLM inference cost |
 | Chat Room | 1 credit (1p) | Room creation |
 | Places Search | 5 credits (5p) | Google Places API cost |
@@ -36,7 +36,7 @@ We charge because LLMs and APIs cost money. Here's our actual cost breakdown —
 | Weather Forecast | 1 credit (1p) | Weather API cost |
 | Weather Pollen | 1 credit (1p) | Pollen data add-on |
 
-**Note:** Internal messages (user-to-user within Mu) are included. Only external email (to addresses outside Mu) costs credits.
+**Note:** Internal messages (user-to-user within Mu) are included at no cost. Only external email (to addresses outside Mu) costs credits.
 
 ### Who Pays What
 
@@ -52,7 +52,7 @@ Unlimited tiers create misaligned incentives. If you pay a flat fee for unlimite
 
 Pay-as-you-go keeps us honest: we want to build efficient tools that solve your problem quickly, not sticky products that maximize your screen time.
 
-If you want truly unlimited and free — self-host. The code is open source.
+If you want truly unlimited usage — self-host. The code is open source (AGPL-3.0).
 
 ---
 
@@ -67,13 +67,13 @@ When Stripe is configured (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`), users
 
 **Rate:** 1 credit = 1p — flat, no bonuses or tiers.
 
-Configure a webhook in the Stripe Dashboard pointing to `https://your-domain.com/wallet/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` to the signing secret. The webhook listens for `checkout.session.completed` events.
+Configure a webhook in the Stripe admin panel pointing to `https://your-domain.com/wallet/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` to the signing secret. The webhook listens for `checkout.session.completed` events.
 
 ---
 
 ## Crypto Payments (x402)
 
-The [x402 protocol](https://x402.org) enables account-free, per-request payments with stablecoins. This is designed for AI agents and programmatic clients that want to pay for API access without creating a Mu account.
+The [x402 protocol](https://x402.org) enables per-request payments with stablecoins without needing a Mu account. This is designed for AI agents and programmatic clients that want to pay for API access directly.
 
 ### How It Works
 

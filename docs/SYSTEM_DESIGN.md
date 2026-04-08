@@ -94,7 +94,7 @@ mu/
 ├── places/               # Location search (Google Places / OSM)
 ├── weather/              # Weather forecasts
 ├── search/               # Web search (Brave API), URL fetching
-├── home/                 # Dashboard cards
+├── home/                 # Home screen cards
 ├── user/                 # User profiles, presence tracking
 │
 │   Agents (compose building blocks)
@@ -215,7 +215,7 @@ YouTube integration without ads or tracking.
 
 Private messaging with full email capability.
 
-- **Internal messaging** - User-to-user, free
+- **Internal messaging** - User-to-user, included
 - **External email** - SMTP delivery, costs credits
 - **SMTP server** - Receives incoming internet mail
 - **DKIM signing** - Outbound authentication
@@ -243,7 +243,7 @@ Credit-based usage metering.
 Location search and discovery.
 
 - **Google Places API** - Rich results when API key configured
-- **OpenStreetMap fallback** - Free location data
+- **OpenStreetMap fallback** - Open location data
 - **Saved categories** - Configurable in `places/locations.json`
 
 ### Weather (`weather/`)
@@ -263,7 +263,7 @@ Web search without tracking.
 
 ### Home (`home/`)
 
-Dashboard overview.
+Home screen overview.
 
 - **Cards** - Configurable summary widgets via `home/cards.json`
 - **At-a-glance** - Quick access to all building blocks
@@ -328,5 +328,5 @@ All user-configurable data lives in JSON files (embedded at build time):
 ## Economic Model
 
 Users can self-host or use the hosted version at mu.xyz. Browsing is included. Searching, posting,
-and AI features use credits. 20 credits/day included, then pay as you go at 1 credit = 1p.
-This supports development while keeping the platform accessible for casual use.
+and AI features use credits. Pay as you go at 1 credit = 1p, top up from £5.
+This supports development while keeping the platform accessible.

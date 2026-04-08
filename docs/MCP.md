@@ -77,7 +77,7 @@ Metered tools are priced at **1 credit = $0.01 USD** via x402:
 | `apps_build` | $0.03 |
 | `apps_run` | $0.03 |
 
-Free tools (news, blog_list, blog_read, video, markets, social, search, quran, hadith, reminder, etc.) don't require payment.
+Included tools (news, blog_list, blog_read, video, markets, social, search, quran, hadith, reminder, etc.) don't require payment.
 
 ## Account-Based Authentication
 
@@ -126,39 +126,39 @@ Accounts can top up credits with a card via Stripe.
 
 | Tool | Description | Credit Cost |
 |------|-------------|-------------|
-| `login` | Log in and get session token | Free |
-| `signup` | Create account and get session token | Free |
+| `login` | Log in and get session token | Included |
+| `signup` | Create account and get session token | Included |
 | `chat` | Chat with AI assistant | 5 credits |
-| `news` | Read the latest news feed | Free |
+| `news` | Read the latest news feed | Included |
 | `news_search` | Search for news articles | 1 credit |
-| `blog_list` | Get all blog posts | Free |
-| `blog_read` | Read a specific blog post | Free |
+| `blog_list` | Get all blog posts | Included |
+| `blog_read` | Read a specific blog post | Included |
 | `blog_create` | Create a new blog post | 1 credit |
-| `blog_update` | Update a blog post | Free |
-| `blog_delete` | Delete a blog post | Free |
-| `video` | Get the latest videos | Free |
+| `blog_update` | Update a blog post | Included |
+| `blog_delete` | Delete a blog post | Included |
+| `video` | Get the latest videos | Included |
 | `video_search` | Search for videos | 2 credits |
-| `social` | Read the social feed | Free |
+| `social` | Read the social feed | Included |
 | `social_search` | Search social posts | 1 credit |
 | `places_search` | Search for places by name or category | 5 credits |
 | `places_nearby` | Find places of interest near a location | 2 credits |
-| `mail_read` | Read mail inbox | Free |
+| `mail_read` | Read mail inbox | Included |
 | `mail_send` | Send a mail message | 4 credits |
-| `search` | Search across all content | Free |
-| `wallet_balance` | Get wallet credit balance | Free |
-| `wallet_topup` | Get wallet topup payment methods | Free |
-| `markets` | Get live market prices | Free |
-| `reminder` | Get the daily Islamic reminder | Free |
-| `quran` | Look up a Quran chapter or verse | Free |
-| `hadith` | Look up hadith from Sahih Al Bukhari | Free |
-| `quran_search` | Semantic search across Quran and Hadith | Free |
+| `search` | Search across all content | Included |
+| `wallet_balance` | Get wallet credit balance | Included |
+| `wallet_topup` | Get wallet topup payment methods | Included |
+| `markets` | Get live market prices | Included |
+| `reminder` | Get the daily Islamic reminder | Included |
+| `quran` | Look up a Quran chapter or verse | Included |
+| `hadith` | Look up hadith from Sahih Al Bukhari | Included |
+| `quran_search` | Semantic search across Quran and Hadith | Included |
 | `weather_forecast` | Get the weather forecast for a location | 1 credit |
 | `web_search` | Search the web for current information | 5 credits |
 | `web_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
-| `apps_search` | Search the apps directory | Free |
-| `apps_read` | Read details of a specific app | Free |
-| `apps_create` | Create a new app | Free |
-| `apps_edit` | Edit an existing app | Free |
+| `apps_search` | Search the apps directory | Included |
+| `apps_read` | Read details of a specific app | Included |
+| `apps_create` | Create a new app | Included |
+| `apps_edit` | Edit an existing app | Included |
 | `apps_build` | AI-generate an app from a description | 3 credits |
 | `apps_run` | Run JavaScript code in a sandbox | 3 credits |
 
