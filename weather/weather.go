@@ -31,16 +31,18 @@ function isLoggedIn(){return document.cookie.indexOf('csrf_token=')!==-1}
 if(!isLoggedIn()){load.innerHTML='<a href="/login" style="color:#888">Log in</a> for weather';return}
 var cached=localStorage.getItem(KEY);
 var ts=parseInt(localStorage.getItem(KEY_TS)||'0');
-if(cached&&(Date.now()-ts)<TTL){el.innerHTML=cached;return}
+var stale=!cached||(Date.now()-ts)>=TTL;
+if(cached){el.innerHTML=cached}
+if(!stale){return}
 var enabled=localStorage.getItem('mu_weather_enabled');
 if(!enabled){
-load.innerHTML='<a href="#" onclick="muWeatherEnable();return false" style="color:#555">Enable location for weather</a>';
+if(!cached){load.innerHTML='<a href="#" onclick="muWeatherEnable();return false" style="color:#555">Enable location for weather</a>'}
 window.muWeatherEnable=function(){localStorage.setItem("mu_weather_enabled","1");load.textContent="Checking weather...";muWeatherFetch()};
 return}
-load.textContent='Checking weather...';
+if(!cached){load.textContent='Checking weather...'}
 muWeatherFetch();
 function muWeatherFetch(){
-if(!navigator.geolocation){load.textContent='Location not available';return}
+if(!navigator.geolocation){if(!cached){load.textContent='Location not available'};return}
 navigator.geolocation.getCurrentPosition(function(pos){
 var lat=pos.coords.latitude.toFixed(4);
 var lon=pos.coords.longitude.toFixed(4);
@@ -48,7 +50,7 @@ fetch('/weather?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'}})
 .then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})
 .then(function(d){
 var f=d.forecast;
-if(!f||!f.Current){load.textContent='Weather unavailable';return}
+if(!f||!f.Current){if(!cached){load.textContent='Weather unavailable'};return}
 var c=f.Current;
 var h='<div style="display:flex;align-items:center;gap:8px">';
 h+='<span style="font-size:22px;font-weight:600;color:#333">'+Math.round(c.TempC)+'°C</span>';
@@ -67,8 +69,8 @@ h+='</div>';
 el.innerHTML=h;
 localStorage.setItem(KEY,h);
 localStorage.setItem(KEY_TS,String(Date.now()));
-}).catch(function(){load.textContent='Weather unavailable'});
-},function(){load.textContent='Location not available';localStorage.removeItem('mu_weather_enabled')},{timeout:5000});
+}).catch(function(){if(!cached){load.textContent='Weather unavailable'}});
+},function(){if(!cached){load.textContent='Location not available'};localStorage.removeItem('mu_weather_enabled')},{timeout:5000});
 }
 })();
 </script>
