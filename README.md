@@ -1,10 +1,10 @@
 # mu
 
-Your personal dashboard — news, markets, weather, AI, mail, and more. No ads. No tracking. No algorithm.
+A personal app server — news, markets, weather, AI, mail, and more. No ads. No tracking. No algorithm.
 
 ## Overview
 
-Mu is a self-hosted dashboard that brings together the things you check every day — news, markets, weather, mail, chat — in one place, without ads, algorithms, or tracking.
+Mu is a self-hosted app platform that brings together the things you do every day on the internet — news, markets, weather, mail, chat — in one place, without ads, algorithms, or tracking.
 
 Pay for the tools, not with your attention.
 
