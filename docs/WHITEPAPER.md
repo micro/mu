@@ -134,9 +134,9 @@ Each operation has a fixed credit cost determined by the underlying infrastructu
 
 Read-only operations — browsing news feeds, reading blog posts, watching videos, viewing market prices — carry no cost.
 
-### 3.3 Daily Quota
+### 3.3 Pay As You Go
 
-All metered operations consume credits from the user's wallet. Browsing (news, blogs, videos, markets) is included at no cost. Operations that require infrastructure — AI inference, web search, email delivery — cost credits. This model ensures sustainability while keeping the platform accessible.
+All metered operations consume credits from the user's wallet. Browsing (news, blogs, videos, markets) is included at no cost. Operations that require infrastructure — AI inference, web search, email delivery — cost credits. Top up from £5. This model ensures sustainability while keeping the platform accessible.
 
 ### 3.4 Incentive Alignment
 
@@ -185,7 +185,7 @@ The transfer mechanism enables peer-to-peer payments between users, creator tipp
 
 The building block architecture is designed for extensibility. A third-party developer can implement an MCP-compatible service — a server that responds to `tools/list` and `tools/call` — and register it in a central marketplace directory.
 
-When a user invokes a marketplace service, the Mu instance acts as a proxy: it verifies the user's credit balance, forwards the MCP tool call to the provider's endpoint, and upon successful response, deducts credits from the user and credits the provider. The default revenue split is 70% to the provider and 30% to the platform.
+When a user invokes a marketplace service, the Mu instance acts as a proxy: it verifies the user's credit balance, forwards the MCP tool call to the provider's endpoint, and upon successful response, deducts credits from the user and credits the provider. The default revenue split is 90% to the provider and 10% to the platform.
 
 ### 5.2 Direct Settlement
 
@@ -197,7 +197,7 @@ This creates a spectrum of integration: providers who want distribution and bill
 
 Blog posts are published as ActivityPub objects with WebFinger discovery. Users on federated platforms — Mastodon, Threads, and other ActivityPub implementations — can follow Mu authors, receive posts in their feeds, and interact through the standard ActivityPub inbox/outbox mechanism.
 
-Internal messages between Mu users are included. External email is delivered via SMTP with DKIM signing, at a credit cost that reflects delivery infrastructure.
+Internal messages between Mu users are included at no cost. External email is delivered via SMTP with DKIM signing, at a credit cost that reflects delivery infrastructure.
 
 ## 9. Toward a Federated Network
 

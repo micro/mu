@@ -14,12 +14,12 @@ mu/
 │   ├── auth/               # Sessions, accounts, passkeys, presence
 │   ├── data/               # File persistence, indexing, event pub/sub
 │   └── moderation/         # Content flagging, hiding, auto-moderation
-├── admin/                  # Content moderation, flagging, admin dashboard
+├── admin/                  # Content moderation, flagging, admin panel
 ├── agent/                  # AI agent (plans + executes via MCP tools)
 ├── blog/                   # Posts, comments, opinions, ActivityPub federation
 ├── chat/                   # Real-time chat rooms with AI
 ├── docs/                   # Documentation pages
-├── home/                   # Dashboard cards (composition layer)
+├── home/                   # Home screen cards (composition layer)
 ├── mail/                   # Email inbox, SMTP server, DKIM, spam filtering
 ├── markets/                # Crypto/stock market data
 ├── news/                   # RSS feed aggregation
@@ -89,7 +89,7 @@ Most building blocks also import `wallet` for quota checking on metered operatio
 Some packages act as **composition layers** that aggregate content from multiple
 building blocks to render combined views:
 
-- **`home/`** — renders dashboard cards by importing `blog`, `news`, `markets`,
+- **`home/`** — renders home screen cards by importing `blog`, `news`, `markets`,
   `reminder`, `social`, `video`, `agent`. This is intentional: home is a
   read-only aggregation view.
 
@@ -131,7 +131,7 @@ reminder.Load()   // Daily briefing
 wallet.Load()     // Credit balances
 apps.Load()       // User apps
 social.Load()     // Social feeds
-home.Load()       // Dashboard cards
+home.Load()       // Home screen cards
 agent.Load()      // (no-op)
 digest.Load()     // Digest scheduler
 user.Load()       // Presence tracking
@@ -186,4 +186,4 @@ wallet.ConsumeQuota(accountID, wallet.OpSomeAction)
 3. **Building blocks should not import each other** — except documented composition layers
 4. **`wallet` is the one cross-cutting building block** — most blocks import it for quota
 5. **`admin` imports `mail`** — for spam filter and blocklist management in the
-   admin dashboard. This is an acceptable coupling since admin is a management UI
+   admin panel. This is an acceptable coupling since admin is a management UI

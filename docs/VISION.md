@@ -1,18 +1,18 @@
 # Vision
 
-**Your personal dashboard. No ads. No tracking. No algorithm.**
+**Pay for the tools, not with your attention.**
 
 ## The Problem
 
 The tools people use every day — news, search, email, chat, markets — are scattered across dozens of platforms, each competing for your time and data. Every platform monetises your attention. Infinite scroll keeps you hooked. Algorithms decide what you see. Ads follow you everywhere.
 
-There's no single place that brings it all together without the noise.
+The internet became addictive. There's no single place that brings it all together without the noise.
 
 ## What Mu Is
 
-Mu is a personal dashboard. News, markets, weather, mail, chat, AI — one screen, one account. Like iGoogle or Netvibes, but modern, self-hostable, and backed by an API that AI agents can use too.
+Mu is the everything app. News, markets, weather, mail, chat, AI — everything in one place. Your home on the internet. Like iGoogle or Netvibes, but modern, self-hostable, and backed by an API that AI agents can use too.
 
-Pay for the tools, not with your attention.
+Technology should serve people — not use them. When you pay for tools, incentives are aligned. We build the tools, you use them. That's it.
 
 ## Design Choices
 
@@ -26,7 +26,7 @@ Pay for the tools, not with your attention.
 
 **Single binary.** One Go binary, no external dependencies. Self-host or use [mu.xyz](https://mu.xyz).
 
-## What's on the dashboard
+## What's included
 
 | Service | What it does |
 |---------|-------------|

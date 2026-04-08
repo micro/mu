@@ -1,14 +1,14 @@
 # mu
 
-A personal app platform — blog, chat, news, mail, weather and more. No ads. No tracking. No algorithm.
+The everything app — blog, chat, news, mail, weather and more — all in one place. No ads. No tracking. No algorithm.
 
 ## Overview
 
-Mu is a self-hosted app platform that brings together the things you do every day on the internet — news, markets, weather, mail, chat — in one place, without ads, algorithms, or tracking.
+Micro is the everything app. Blog, chat, news, mail, and more — all in one place. No ads, no tracking, no algorithms. Built in the open. We call the app Mu for short.
 
 Pay for the tools, not with your attention.
 
-### What's on the dashboard
+### What's included
 
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
 - **Markets** — Live crypto, futures, and commodity prices

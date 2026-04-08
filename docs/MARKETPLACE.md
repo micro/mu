@@ -152,12 +152,12 @@ A simple split:
 
 | Recipient | Share | Rationale |
 |-----------|-------|-----------|
-| Provider  | 70%   | They built and host the service |
-| Platform  | 30%   | Registry, billing, discovery, trust |
+| Provider  | 90%   | They built and host the service |
+| Platform  | 10%   | Registry, billing, discovery, trust |
 
 Providers set their own per-call price in credits. The platform fee is transparent — no hidden charges.
 
-For the initial launch, the split could be more generous (80/20 or even 90/10) to attract providers.
+Builders keep 90% of everything. The platform takes 10%.
 
 ## Agent Integration
 
@@ -311,7 +311,7 @@ Build the community layer around services.
 
 Help providers build and test services.
 
-- Provider dashboard with call analytics and revenue
+- Provider analytics panel with call data and revenue
 - Service health monitoring
 - Test sandbox for development
 - Documentation and examples
@@ -320,7 +320,7 @@ Help providers build and test services.
 
 ### For Mu
 
-- **Revenue**: 30% of every marketplace transaction without hosting costs
+- **Revenue**: 10% of every marketplace transaction without hosting costs
 - **Network effects**: More services attract more users, more users attract more providers
 - **Differentiation**: No other platform combines MCP tools + AI agent + per-use billing in this way
 - **Aligned incentives**: We succeed when providers build useful services, not when users are addicted
