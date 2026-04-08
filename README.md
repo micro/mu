@@ -1,6 +1,6 @@
 # mu
 
-A personal app server — news, markets, weather, AI, mail, and more. No ads. No tracking. No algorithm.
+A personal app platform — blog, chat, news, mail, weather and more. No ads. No tracking. No algorithm.
 
 ## Overview
 
