@@ -52,6 +52,21 @@ localStorage.setItem(KEY_LON,lon);
 fetchWeather(lat,lon);
 },function(){},{timeout:5000});
 }
+function renderWeather(h){
+h+='<div style="margin-top:4px"><a href="#" onclick="muWeatherRefresh();return false" style="font-size:11px;color:#aaa">Refresh</a></div>';
+el.innerHTML=h;
+localStorage.setItem(KEY,h);
+localStorage.setItem(KEY_TS,String(Date.now()));
+}
+window.muWeatherRefresh=function(){
+localStorage.removeItem(KEY);localStorage.removeItem(KEY_TS);localStorage.removeItem(KEY_LAT);localStorage.removeItem(KEY_LON);
+el.innerHTML='<span style="color:#888">Refreshing weather...</span>';
+if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(pos){
+var lat=pos.coords.latitude.toFixed(4);var lon=pos.coords.longitude.toFixed(4);
+localStorage.setItem(KEY_LAT,lat);localStorage.setItem(KEY_LON,lon);
+fetchWeather(lat,lon);
+},function(){el.innerHTML='<span style="color:#888">Location not available</span>'},{timeout:5000})}
+};
 function fetchWeather(lat,lon){
 fetch('/weather?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'}})
 .then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})
@@ -73,9 +88,7 @@ h+='<span>'+name+' '+Math.round(day.MaxTempC)+'°/'+Math.round(day.MinTempC)+'°
 }
 h+='</div>';
 }
-el.innerHTML=h;
-localStorage.setItem(KEY,h);
-localStorage.setItem(KEY_TS,String(Date.now()));
+renderWeather(h);
 }).catch(function(){});
 }
 })();
