@@ -38,10 +38,10 @@ var savedLat=localStorage.getItem(KEY_LAT);
 var savedLon=localStorage.getItem(KEY_LON);
 if(savedLat&&savedLon){fetchWeather(savedLat,savedLon);return}
 if(!navigator.geolocation){if(!cached){load.textContent='Location not available'};return}
-if(!cached){load.textContent='Checking weather...'}
-window.muWeatherEnable=function(){localStorage.setItem('mu_weather_enabled','1');load.textContent='Checking weather...';getLocation()};
-var enabled=localStorage.getItem('mu_weather_enabled');
-if(!enabled){if(!cached){load.innerHTML='<a href="#" onclick="muWeatherEnable();return false" style="color:#555">Enable location for weather</a>'};return}
+if(!cached){
+load.innerHTML='<a href="#" onclick="muWeatherEnable();return false" style="color:#555">Enable location for weather</a>';
+window.muWeatherEnable=function(){load.textContent='Checking weather...';getLocation()};
+return}
 getLocation();
 function getLocation(){
 navigator.geolocation.getCurrentPosition(function(pos){
@@ -50,8 +50,23 @@ var lon=pos.coords.longitude.toFixed(4);
 localStorage.setItem(KEY_LAT,lat);
 localStorage.setItem(KEY_LON,lon);
 fetchWeather(lat,lon);
-},function(){if(!cached){load.textContent='Location not available'}},{timeout:5000});
+},function(){},{timeout:5000});
 }
+function renderWeather(h){
+h='<div style="position:relative">'+h+'<a href="#" onclick="muWeatherRefresh();return false" style="position:absolute;top:0;right:0;font-size:11px;color:#aaa">Refresh</a></div>';
+el.innerHTML=h;
+localStorage.setItem(KEY,h);
+localStorage.setItem(KEY_TS,String(Date.now()));
+}
+window.muWeatherRefresh=function(){
+localStorage.removeItem(KEY);localStorage.removeItem(KEY_TS);localStorage.removeItem(KEY_LAT);localStorage.removeItem(KEY_LON);
+el.innerHTML='<span style="color:#888">Refreshing weather...</span>';
+if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(pos){
+var lat=pos.coords.latitude.toFixed(4);var lon=pos.coords.longitude.toFixed(4);
+localStorage.setItem(KEY_LAT,lat);localStorage.setItem(KEY_LON,lon);
+fetchWeather(lat,lon);
+},function(){el.innerHTML='<span style="color:#888">Location not available</span>'},{timeout:5000})}
+};
 function fetchWeather(lat,lon){
 fetch('/weather?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'}})
 .then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})
@@ -73,9 +88,7 @@ h+='<span>'+name+' '+Math.round(day.MaxTempC)+'°/'+Math.round(day.MinTempC)+'°
 }
 h+='</div>';
 }
-el.innerHTML=h;
-localStorage.setItem(KEY,h);
-localStorage.setItem(KEY_TS,String(Date.now()));
+renderWeather(h);
 }).catch(function(){});
 }
 })();
