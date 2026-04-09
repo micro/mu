@@ -53,7 +53,7 @@ fetchWeather(lat,lon);
 },function(){},{timeout:5000});
 }
 function renderWeather(h){
-h+='<div style="margin-top:4px"><a href="#" onclick="muWeatherRefresh();return false" style="font-size:11px;color:#aaa">Refresh</a></div>';
+h='<div style="position:relative">'+h+'<a href="#" onclick="muWeatherRefresh();return false" style="position:absolute;top:0;right:0;font-size:11px;color:#aaa">Refresh</a></div>';
 el.innerHTML=h;
 localStorage.setItem(KEY,h);
 localStorage.setItem(KEY_TS,String(Date.now()));
