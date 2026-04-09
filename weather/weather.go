@@ -38,10 +38,10 @@ var savedLat=localStorage.getItem(KEY_LAT);
 var savedLon=localStorage.getItem(KEY_LON);
 if(savedLat&&savedLon){fetchWeather(savedLat,savedLon);return}
 if(!navigator.geolocation){if(!cached){load.textContent='Location not available'};return}
-if(!cached){load.textContent='Checking weather...'}
-window.muWeatherEnable=function(){localStorage.setItem('mu_weather_enabled','1');load.textContent='Checking weather...';getLocation()};
-var enabled=localStorage.getItem('mu_weather_enabled');
-if(!enabled){if(!cached){load.innerHTML='<a href="#" onclick="muWeatherEnable();return false" style="color:#555">Enable location for weather</a>'};return}
+if(!cached){
+load.innerHTML='<a href="#" onclick="muWeatherEnable();return false" style="color:#555">Enable location for weather</a>';
+window.muWeatherEnable=function(){load.textContent='Checking weather...';getLocation()};
+return}
 getLocation();
 function getLocation(){
 navigator.geolocation.getCurrentPosition(function(pos){
@@ -50,7 +50,7 @@ var lon=pos.coords.longitude.toFixed(4);
 localStorage.setItem(KEY_LAT,lat);
 localStorage.setItem(KEY_LON,lon);
 fetchWeather(lat,lon);
-},function(){if(!cached){load.textContent='Location not available'}},{timeout:5000});
+},function(){},{timeout:5000});
 }
 function fetchWeather(lat,lon){
 fetch('/weather?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'}})
