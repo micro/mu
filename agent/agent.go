@@ -61,6 +61,94 @@ var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 // Load initialises the agent package (no-op for now; reserved for future use).
 func Load() {}
 
+// Query runs the agent pipeline synchronously for MCP callers: plan tool calls,
+// execute them, synthesize an answer, and return the text result.
+func Query(accountID, prompt string) (string, error) {
+	model := Models[0] // standard
+
+	// --- Plan ---
+	type toolCall struct {
+		Tool string         `json:"tool"`
+		Args map[string]any `json:"args"`
+	}
+	var toolCalls []toolCall
+
+	if tc := shortcutToolCalls(prompt); len(tc) > 0 {
+		for _, s := range tc {
+			toolCalls = append(toolCalls, toolCall{Tool: s.Tool, Args: s.Args})
+		}
+	} else {
+		planPrompt := &ai.Prompt{
+			System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
+				agentToolsDesc +
+				"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. If no tools are needed output [].",
+			Question: prompt,
+			Priority: ai.PriorityHigh,
+			Provider: model.Provider,
+			Model:    model.Model,
+			Caller:   "agent-plan",
+		}
+		planResult, err := ai.Ask(planPrompt)
+		if err != nil {
+			return "", fmt.Errorf("planning failed: %w", err)
+		}
+		planJSON := extractJSONArray(planResult)
+		json.Unmarshal([]byte(planJSON), &toolCalls)
+	}
+
+	// --- Execute ---
+	type toolResult struct {
+		Name      string
+		Result    string
+		Args      map[string]any
+		Formatted string
+	}
+	var results []toolResult
+
+	for _, tc := range toolCalls {
+		if tc.Tool == "" {
+			continue
+		}
+		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
+		if execErr != nil || isErr {
+			continue
+		}
+		if len(text) > 8000 {
+			text = text[:8000] + "…"
+		}
+		results = append(results, toolResult{Name: tc.Tool, Result: text, Args: tc.Args})
+	}
+
+	// --- Synthesize ---
+	var ragParts []string
+	for i, res := range results {
+		ragText := formatToolResult(res.Name, res.Result, res.Args)
+		results[i].Formatted = ragText
+		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
+	}
+
+	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
+	synthPrompt := &ai.Prompt{
+		System: "You are a helpful assistant. Today's date is " + today + ". " +
+			"Answer the user's question using ONLY the tool results provided below.\n\n" +
+			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
+			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data.\n\n" +
+			"Use markdown formatting. Be concise.",
+		Rag:      ragParts,
+		Question: prompt,
+		Priority: ai.PriorityHigh,
+		Provider: model.Provider,
+		Model:    model.Model,
+		Caller:   "agent-synth",
+	}
+
+	answer, err := ai.Ask(synthPrompt)
+	if err != nil {
+		return "", fmt.Errorf("synthesis failed: %w", err)
+	}
+	return app.StripLatexDollars(answer), nil
+}
+
 // Handler dispatches GET (page) and POST (query) at /agent and /agent/*.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path

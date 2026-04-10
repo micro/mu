@@ -500,6 +500,26 @@ func main() {
 		return string(b), nil
 	})
 
+	// Register agent MCP tool
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "agent",
+		Description: "Ask the AI agent a question. The agent can search news, markets, web, video, weather, places, and more to answer your question.",
+		WalletOp:    "agent_query",
+		Params: []api.ToolParam{
+			{Name: "prompt", Type: "string", Description: "Your question or request", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		prompt, _ := args["prompt"].(string)
+		if prompt == "" {
+			return `{"error":"prompt is required"}`, fmt.Errorf("missing prompt")
+		}
+		answer, err := agent.Query(accountID, prompt)
+		if err != nil {
+			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
+		}
+		return answer, nil
+	})
+
 	// Start the agent worker after all tools are registered
 	agent.StartWorker()
 

@@ -161,6 +161,7 @@ Accounts can top up credits with a card via Stripe.
 | `apps_edit` | Edit an existing app | Included |
 | `apps_build` | AI-generate an app from a description | 3 credits |
 | `apps_run` | Run JavaScript code in a sandbox | 3 credits |
+| `agent` | Ask the AI agent a question — searches news, markets, web, and more | 3 credits |
 
 ## Protocol
 
