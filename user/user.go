@@ -3,7 +3,9 @@ package user
 import (
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -59,7 +61,7 @@ type StatusHistory struct {
 }
 
 // maxStatusHistory is the number of past statuses to keep per user.
-const maxStatusHistory = 20
+const maxStatusHistory = 100
 
 // Presence tracking
 var (
@@ -214,20 +216,39 @@ func GetProfile(userID string) *Profile {
 	return profile
 }
 
-// UpdateProfile saves a user's profile. If the status changed and the
-// previous status was non-empty, it's pushed onto the history.
+// UpdateProfile saves a user's profile. Every non-empty previous
+// status is pushed onto the history so the full timeline of what a
+// user has said is preserved. Empty updates (clearing a status) are
+// never pushed.
+//
+// To avoid a whole class of "caller forgot to carry over history"
+// bugs, this function always merges with whatever is already stored
+// under the same UserID — you can pass a freshly-constructed
+// &Profile{UserID: ..., Status: ...} and history is still preserved.
 func UpdateProfile(profile *Profile) error {
 	profileMutex.Lock()
 	defer profileMutex.Unlock()
 
-	// Record previous status in history if it changed
-	if old, ok := profiles[profile.UserID]; ok && old.Status != "" && old.Status != profile.Status {
-		profile.History = append([]StatusHistory{{Status: old.Status, SetAt: old.UpdatedAt}}, profile.History...)
-		if len(profile.History) > maxStatusHistory {
-			profile.History = profile.History[:maxStatusHistory]
-		}
+	// Start from the existing history in the map rather than whatever
+	// the caller passed. If the caller supplied extra history entries
+	// (tests / migrations), keep them at the front.
+	existing, hasExisting := profiles[profile.UserID]
+	mergedHistory := append([]StatusHistory{}, profile.History...)
+	if hasExisting {
+		mergedHistory = append(mergedHistory, existing.History...)
 	}
 
+	// Record previous status in history — always, not just on change.
+	// The home card renders the combined stream, so the history is
+	// where the conversation actually lives. Repeating yourself is OK.
+	if hasExisting && existing.Status != "" {
+		mergedHistory = append([]StatusHistory{{Status: existing.Status, SetAt: existing.UpdatedAt}}, mergedHistory...)
+	}
+
+	if len(mergedHistory) > maxStatusHistory {
+		mergedHistory = mergedHistory[:maxStatusHistory]
+	}
+	profile.History = mergedHistory
 	profile.UpdatedAt = time.Now()
 	profiles[profile.UserID] = profile
 	data.SaveJSON("profiles.json", profiles)
@@ -270,18 +291,77 @@ func RecentStatuses(viewerID string, max int) []StatusEntry {
 		})
 	}
 	// Sort newest first
-	for i := 0; i < len(entries); i++ {
-		for j := i + 1; j < len(entries); j++ {
-			if entries[j].UpdatedAt.After(entries[i].UpdatedAt) {
-				entries[i], entries[j] = entries[j], entries[i]
-			}
-		}
-	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].UpdatedAt.After(entries[j].UpdatedAt)
+	})
 	if len(entries) > max {
 		entries = entries[:max]
 	}
 	return entries
 }
+
+// StatusStream returns a flat chronological feed of every status ever
+// posted (current + history), newest first. This is the home card data
+// source — it turns what was an accidental chat surface into an honest
+// live stream. Older entries beyond statusMaxAge are dropped.
+func StatusStream(max int) []StatusEntry {
+	profileMutex.RLock()
+	defer profileMutex.RUnlock()
+
+	cutoff := time.Now().Add(-statusMaxAge)
+	var entries []StatusEntry
+	for _, p := range profiles {
+		name := p.UserID
+		if acc, err := auth.GetAccount(p.UserID); err == nil {
+			name = acc.Name
+		} else if p.UserID == app.SystemUserID {
+			name = app.SystemUserName
+		}
+		// Current status — latest entry for this user.
+		if p.Status != "" && !p.UpdatedAt.Before(cutoff) {
+			entries = append(entries, StatusEntry{
+				UserID:    p.UserID,
+				Name:      name,
+				Status:    p.Status,
+				UpdatedAt: p.UpdatedAt,
+			})
+		}
+		// History entries — also within cutoff.
+		for _, h := range p.History {
+			if h.SetAt.Before(cutoff) {
+				continue
+			}
+			entries = append(entries, StatusEntry{
+				UserID:    p.UserID,
+				Name:      name,
+				Status:    h.Status,
+				UpdatedAt: h.SetAt,
+			})
+		}
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].UpdatedAt.After(entries[j].UpdatedAt)
+	})
+	if len(entries) > max {
+		entries = entries[:max]
+	}
+	return entries
+}
+
+// MaxStatusLength is the upper bound on a single status message. Larger
+// than a tweet, smaller than an essay — enough room for a short thought
+// or an @micro question without inviting wall-of-text posts.
+const MaxStatusLength = 512
+
+// MicroMention is the token that triggers an AI response in the status
+// stream. Posting "@micro what's the btc price?" queues a background
+// agent call whose answer is posted as a status from the system user.
+const MicroMention = "@micro"
+
+// AIReplyHook is wired from main.go. It receives (askerID, prompt) and
+// should call the agent, then post the answer as a status from the
+// system user. Kept as a callback to avoid a user→agent import cycle.
+var AIReplyHook func(askerID, prompt string)
 
 // StatusHandler handles POST /user/status to update the current user's status.
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
@@ -295,14 +375,21 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := r.FormValue("status")
-	if len(status) > 100 {
-		status = status[:100]
+	status := strings.TrimSpace(r.FormValue("status"))
+	if len(status) > MaxStatusLength {
+		status = status[:MaxStatusLength]
 	}
 
 	profile := GetProfile(sess.Account)
 	profile.Status = status
 	UpdateProfile(profile)
+
+	// If the user @mentioned the system agent, fire off a background
+	// agent call that will post the answer as a status from @micro.
+	// Skipped when the system user is mentioning itself.
+	if status != "" && sess.Account != app.SystemUserID && AIReplyHook != nil && containsMention(status, MicroMention) {
+		go AIReplyHook(sess.Account, status)
+	}
 
 	// Redirect back to referrer or home
 	ref := r.Header.Get("Referer")
@@ -319,6 +406,57 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.Redirect(w, r, ref, http.StatusSeeOther)
+}
+
+// PostSystemStatus posts a status from the system user (@micro) without
+// the usual auth checks. Used by the AI reply hook.
+func PostSystemStatus(text string) error {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil
+	}
+	if len(text) > MaxStatusLength {
+		text = text[:MaxStatusLength-1] + "…"
+	}
+	profile := GetProfile(app.SystemUserID)
+	profile.Status = text
+	return UpdateProfile(profile)
+}
+
+// containsMention returns true when the mention token appears in the
+// text as a standalone word (not inside another word like "@microsoft").
+func containsMention(text, mention string) bool {
+	idx := 0
+	for {
+		i := strings.Index(text[idx:], mention)
+		if i < 0 {
+			return false
+		}
+		pos := idx + i
+		// Left boundary — start of string or whitespace/punct.
+		if pos > 0 {
+			c := text[pos-1]
+			if !isMentionBoundary(c) {
+				idx = pos + len(mention)
+				continue
+			}
+		}
+		// Right boundary — end of string or whitespace/punct (not a
+		// word char, so "@microwave" doesn't match).
+		after := pos + len(mention)
+		if after < len(text) {
+			c := text[after]
+			if !isMentionBoundary(c) {
+				idx = after
+				continue
+			}
+		}
+		return true
+	}
+}
+
+func isMentionBoundary(c byte) bool {
+	return !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-')
 }
 
 // Handler renders a user profile page at /@username
@@ -347,14 +485,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		status := r.FormValue("status")
-		if len(status) > 100 {
-			status = status[:100]
+		status := strings.TrimSpace(r.FormValue("status"))
+		if len(status) > MaxStatusLength {
+			status = status[:MaxStatusLength]
 		}
 
 		profile := GetProfile(sess.Account)
 		profile.Status = status
 		UpdateProfile(profile)
+
+		if status != "" && sess.Account != app.SystemUserID && AIReplyHook != nil && containsMention(status, MicroMention) {
+			go AIReplyHook(sess.Account, status)
+		}
 
 		// Redirect back to profile
 		http.Redirect(w, r, "/@"+sess.Account, http.StatusSeeOther)
@@ -513,4 +655,86 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Use name as page title
 	html := app.RenderHTML(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content)
 	w.Write([]byte(html))
+}
+
+// avatarColors are the palette used for status card avatars.
+var avatarColors = []string{
+	"#56a8a1", // teal
+	"#8e7cc3", // purple
+	"#e8a87c", // pastel orange
+	"#5c9ecf", // blue
+	"#e06c75", // rose
+	"#c2785c", // terracotta
+	"#7bab6e", // sage
+	"#9e7db8", // lavender
+}
+
+// StatusStreamMax is the maximum number of entries rendered on the home
+// status card. The card is scrollable, so this mostly caps memory/render
+// cost rather than what the user can see.
+const StatusStreamMax = 50
+
+// RenderStatusStream renders the inner markup of the home status card:
+// the compose form (when a viewer is logged in) plus the scrollable
+// stream of recent statuses. Extracted so the fragment endpoint and
+// the home card can share one code path.
+func RenderStatusStream(viewerID string) string {
+	entries := StatusStream(StatusStreamMax)
+
+	var sb strings.Builder
+	if viewerID != "" {
+		sb.WriteString(fmt.Sprintf(
+			`<form id="home-status-form" method="POST" action="/user/status"><input type="text" name="status" placeholder="What's on your mind? Mention @micro to ask the AI." maxlength="%d" id="home-status-input" autocomplete="off"></form>`,
+			MaxStatusLength))
+	}
+	sb.WriteString(`<div id="home-statuses">`)
+	if len(entries) == 0 {
+		sb.WriteString(`<p class="text-muted" style="margin:8px 4px;font-size:13px;">No statuses yet. Be the first.</p>`)
+	}
+	for _, s := range entries {
+		initial := "?"
+		if s.Name != "" {
+			initial = strings.ToUpper(s.Name[:1])
+		}
+		colorIdx := 0
+		for _, c := range s.UserID {
+			colorIdx += int(c)
+		}
+		color := avatarColors[colorIdx%len(avatarColors)]
+		entryClass := "home-status-entry"
+		if s.UserID == viewerID {
+			entryClass += " home-status-mine"
+		}
+		if s.UserID == app.SystemUserID {
+			entryClass += " home-status-system"
+		}
+		sb.WriteString(fmt.Sprintf(
+			`<div class="%s"><div class="home-status-avatar" style="background:%s">%s</div><div class="home-status-body"><div class="home-status-header"><a href="/@%s" class="home-status-name">%s</a><span class="home-status-time">%s</span></div><div class="home-status-text">%s</div></div></div>`,
+			entryClass,
+			color,
+			htmlpkg.EscapeString(initial),
+			htmlpkg.EscapeString(s.UserID),
+			htmlpkg.EscapeString(s.Name),
+			app.TimeAgo(s.UpdatedAt),
+			htmlpkg.EscapeString(s.Status)))
+	}
+	sb.WriteString(`</div>`)
+	return sb.String()
+}
+
+// StatusStreamHandler returns the rendered status stream as an HTML
+// fragment at GET /user/status/stream. Polled by the home card for
+// near-real-time updates without a full page reload.
+func StatusStreamHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	viewerID := ""
+	if sess, _ := auth.TrySession(r); sess != nil {
+		viewerID = sess.Account
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write([]byte(RenderStatusStream(viewerID)))
 }

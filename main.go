@@ -189,6 +189,31 @@ func main() {
 		return result
 	}
 	user.LinkifyContent = blog.Linkify
+
+	// Wire @micro mention handling in the status stream. When a user
+	// posts a status containing "@micro ...", run the agent against
+	// the sender's wallet and post the reply as a status from the
+	// system user. Runs async so the POST /user/status handler returns
+	// immediately. We never fire this for the system user itself.
+	user.AIReplyHook = func(askerID, prompt string) {
+		if askerID == app.SystemUserID {
+			return
+		}
+		answer, err := agent.Query(askerID, prompt)
+		if err != nil {
+			app.Log("status", "@micro agent error for %s: %v", askerID, err)
+			// Post a short apology rather than leaving the mention silent.
+			_ = user.PostSystemStatus("I couldn't answer that one — try again in a moment.")
+			return
+		}
+		answer = strings.TrimSpace(answer)
+		if answer == "" {
+			return
+		}
+		if err := user.PostSystemStatus(answer); err != nil {
+			app.Log("status", "failed to post @micro reply: %v", err)
+		}
+	}
 	user.GetUserApps = func(authorID string) []user.UserApp {
 		appList := apps.GetAppsByAuthor(authorID)
 		result := make([]user.UserApp, len(appList))
@@ -740,6 +765,7 @@ func main() {
 	http.HandleFunc("/social", social.Handler)
 	http.HandleFunc("/social/thread", social.ThreadHandler)
 	http.HandleFunc("/user/status", user.StatusHandler)
+	http.HandleFunc("/user/status/stream", user.StatusStreamHandler)
 
 	// redirect /reminder to reminder.dev
 	http.HandleFunc("/reminder", reminder.Handler)

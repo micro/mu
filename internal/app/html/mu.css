@@ -629,14 +629,26 @@ body.page-home #page-title ~ #customize-link {
 #home-status-input::placeholder {
   color: #aaa;
 }
+#home-status-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 #home-statuses {
   margin: 0;
+  /* Stream is scrollable. Capped at ~55vh on mobile (so the card never
+     takes the whole screen) and 420px on desktop. Overflowing entries
+     scroll inside the card rather than expanding the layout. */
+  max-height: min(55vh, 420px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 4px;
 }
 .home-status-entry {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  padding: 6px 0;
+  padding: 8px 0;
   border-bottom: 1px solid #f0f0f0;
 }
 .home-status-entry:last-child {
@@ -675,19 +687,6 @@ body.page-home #page-title ~ #customize-link {
 .home-status-name:hover {
   text-decoration: underline;
 }
-.home-status-clear {
-  text-decoration: none;
-  color: #ccc;
-  font-size: 11px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.home-status-entry:hover .home-status-clear {
-  opacity: 1;
-}
-.home-status-clear:hover {
-  color: #dc3545;
-}
 .home-status-time {
   color: #bbb;
   font-size: 12px;
@@ -697,9 +696,18 @@ body.page-home #page-title ~ #customize-link {
 .home-status-text {
   color: #555;
   margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Wrap long lines naturally and break any ultra-long unbroken
+     strings (URLs, code) so nothing can widen the card. */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.home-status-system .home-status-name {
+  color: #1f7a4a;
+}
+.home-status-system .home-status-avatar {
+  background: #1f7a4a !important;
 }
 
 #home {
