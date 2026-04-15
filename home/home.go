@@ -291,55 +291,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	b.WriteString(fmt.Sprintf(`<p id="home-date">%s</p>`, now.Format("Monday, 2 January 2006")))
 
-	// Status card content (will be prepended to left column)
-	var statusCardHTML string
+	// Status card content (will be prepended to left column).
+	// Built by user.RenderStatusStream so the fragment endpoint and the
+	// home card share one code path. The #home-status-wrap element is
+	// polled every ~10 seconds for near-real-time updates, and the
+	// compose form submits via fetch so the stream refreshes in place.
 	var viewerID string
 	if sess, _ := auth.TrySession(r); sess != nil {
 		viewerID = sess.Account
 	}
-	statuses := user.RecentStatuses(viewerID, 10)
-	if viewerID != "" || len(statuses) > 0 {
-		var sc strings.Builder
-		if viewerID != "" {
-			sc.WriteString(`<form id="home-status-form" method="POST" action="/user/status"><input type="text" name="status" placeholder="What's your status?" maxlength="100" id="home-status-input"></form>`)
-		}
-		if len(statuses) > 0 {
-			avatarColors := []string{
-				"#56a8a1", // teal
-				"#8e7cc3", // purple
-				"#e8a87c", // pastel orange
-				"#5c9ecf", // blue
-				"#e06c75", // rose
-				"#c2785c", // terracotta
-				"#7bab6e", // sage
-				"#9e7db8", // lavender
-			}
-			sc.WriteString(`<div id="home-statuses">`)
-			for _, s := range statuses {
-				initial := "?"
-				if s.Name != "" {
-					initial = strings.ToUpper(s.Name[:1])
-				}
-				colorIdx := 0
-				for _, c := range s.UserID {
-					colorIdx += int(c)
-				}
-				color := avatarColors[colorIdx%len(avatarColors)]
-				isMe := s.UserID == viewerID
-				entryClass := "home-status-entry"
-				clearBtn := ""
-				if isMe {
-					entryClass += " home-status-mine"
-					clearBtn = ` <a href="/user/status" onclick="event.preventDefault();fetch('/user/status',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'status='}).then(()=>location.reload())" class="home-status-clear" title="Clear status">✕</a>`
-				}
-				sc.WriteString(fmt.Sprintf(
-					`<div class="%s"><div class="home-status-avatar" style="background:%s">%s</div><div class="home-status-body"><div class="home-status-header"><a href="/@%s" class="home-status-name">%s</a>%s<span class="home-status-time">%s</span></div><div class="home-status-text">%s</div></div></div>`,
-					entryClass, color, initial, htmlEsc(s.UserID), htmlEsc(s.Name), clearBtn, app.TimeAgo(s.UpdatedAt), htmlEsc(s.Status)))
-			}
-			sc.WriteString(`</div>`)
-		}
-		statusCardHTML = fmt.Sprintf(app.CardTemplate, "status", "status", "Status", sc.String())
-	}
+	statusInner := user.RenderStatusStream(viewerID)
+	statusCardBody := `<div id="home-status-wrap">` + statusInner + `</div>` + statusCardScript
+	statusCardHTML := fmt.Sprintf(
+		app.CardTemplate,
+		"status", "status", "Status",
+		statusCardBody,
+	)
 
 	// Feed section — existing home cards below the agent
 	var leftHTML []string
@@ -438,3 +405,103 @@ func htmlEsc(s string) string {
 	s = strings.ReplaceAll(s, "'", "&#39;")
 	return s
 }
+
+// statusCardScript wires the status card for live updates:
+//
+//   - Polls /user/status/stream every 10 seconds and swaps the inner
+//     markup of #home-status-wrap, preserving whatever the user is
+//     currently typing in the compose input.
+//   - Intercepts the compose form submit so it POSTs via fetch and
+//     then refreshes the stream in place (no full page reload).
+//   - Keeps the stream scrolled to the top after a refresh so new
+//     messages are always visible.
+//
+// The script is defensive: if anything throws, the form still falls
+// back to its native POST + redirect behaviour.
+const statusCardScript = `<script>
+(function(){
+  var wrap = document.getElementById('home-status-wrap');
+  if (!wrap) return;
+  var pollInterval = 10000;
+  var inflight = false;
+
+  function csrfToken() {
+    var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  function currentInput() {
+    var el = document.getElementById('home-status-input');
+    return el ? { value: el.value, focused: document.activeElement === el } : null;
+  }
+  function restoreInput(saved) {
+    if (!saved) return;
+    var el = document.getElementById('home-status-input');
+    if (!el) return;
+    el.value = saved.value;
+    if (saved.focused) {
+      el.focus();
+      try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){}
+    }
+  }
+
+  function refresh() {
+    if (inflight) return;
+    inflight = true;
+    fetch('/user/status/stream', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.text() : null; })
+      .then(function(html){
+        if (html == null) return;
+        var saved = currentInput();
+        wrap.innerHTML = html;
+        restoreInput(saved);
+        bindForm();
+      })
+      .catch(function(){})
+      .then(function(){ inflight = false; });
+  }
+
+  function bindForm() {
+    var form = document.getElementById('home-status-form');
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = '1';
+    form.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var input = document.getElementById('home-status-input');
+      if (!input) return;
+      var text = input.value.trim();
+      if (!text) return;
+      var body = new URLSearchParams();
+      body.set('status', text);
+      var headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      var tok = csrfToken();
+      if (tok) headers['X-CSRF-Token'] = tok;
+      fetch('/user/status', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers,
+        body: body.toString()
+      }).then(function(){
+        input.value = '';
+        refresh();
+      }).catch(function(){
+        // Fall back to a native form submit on network error.
+        form.submit();
+      });
+    });
+  }
+
+  bindForm();
+
+  // Poll while the tab is visible.
+  setInterval(function(){
+    if (document.hidden) return;
+    refresh();
+  }, pollInterval);
+
+  // Fetch immediately when the tab regains focus.
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) refresh();
+  });
+})();
+</script>`
