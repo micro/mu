@@ -21,6 +21,7 @@ import (
 	"mu/internal/auth"
 	"mu/blog"
 	"mu/chat"
+	"mu/cli"
 	"mu/internal/data"
 	"mu/docs"
 	"mu/home"
@@ -44,6 +45,16 @@ var ServeFlag = flag.Bool("serve", false, "Run the server")
 var AddressFlag = flag.String("address", ":8080", "Address for server")
 
 func main() {
+	// Server vs CLI dispatch — any invocation that includes `--serve`
+	// (or `-serve`) runs the full server exactly as before. Anything
+	// else is treated as a CLI command and handed to the cli package,
+	// which talks to /mcp over HTTP and never touches server state.
+	// This keeps the existing `mu --serve` deployment completely
+	// unaffected while adding `mu news`, `mu chat "hi"`, etc.
+	if !isServerMode(os.Args[1:]) {
+		os.Exit(cli.Run(os.Args[1:]))
+	}
+
 	flag.Parse()
 
 	if !*ServeFlag {
@@ -1040,6 +1051,23 @@ func main() {
 	}
 
 	app.Log("main", "Server stopped")
+}
+
+// isServerMode returns true when the argument list contains the
+// `--serve` flag. This is the single signal that switches between the
+// server and CLI entry points — kept deliberately simple so it can't
+// accidentally divert the production deployment.
+func isServerMode(args []string) bool {
+	for _, a := range args {
+		if a == "--serve" || a == "-serve" {
+			return true
+		}
+		// Allow `--serve=true` / `--serve=false` for completeness.
+		if strings.HasPrefix(a, "--serve=") || strings.HasPrefix(a, "-serve=") {
+			return true
+		}
+	}
+	return false
 }
 
 // runHealthChecks performs lightweight health checks on public-facing services

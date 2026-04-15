@@ -105,6 +105,25 @@ var pkgColors = map[string]string{
 	"mail":  colorRed,
 }
 
+// cliMode is set at init time when the process is invoked without
+// --serve, i.e. as a CLI rather than the server. It suppresses the
+// package startup logs so they don't contaminate CLI stdout.
+var cliMode bool
+
+func init() {
+	// Detect CLI mode without importing the cli package. The rule
+	// mirrors isServerMode in main.go: any --serve means server.
+	server := false
+	for _, a := range os.Args[1:] {
+		if a == "--serve" || a == "-serve" ||
+			strings.HasPrefix(a, "--serve=") || strings.HasPrefix(a, "-serve=") {
+			server = true
+			break
+		}
+	}
+	cliMode = !server
+}
+
 // Log prints a formatted log message with a colored package prefix
 // and stores it in the in-memory system log ring buffer.
 func Log(pkg string, format string, args ...interface{}) {
@@ -114,7 +133,9 @@ func Log(pkg string, format string, args ...interface{}) {
 	}
 	timestamp := time.Now().Format("15:04:05")
 	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
-	fmt.Printf(prefix+format+"\n", args...)
+	if !cliMode {
+		fmt.Printf(prefix+format+"\n", args...)
+	}
 	appendSysLog(pkg, format, args...)
 }
 

@@ -53,6 +53,44 @@ Mu exposes a REST API and [MCP](https://modelcontextprotocol.io) server at `/mcp
 
 See [API docs](https://mu.xyz/api) · [MCP docs](docs/MCP.md)
 
+## CLI
+
+Every MCP tool is also available as a `mu` subcommand. The same binary runs the server (`mu --serve`) and the CLI — with no arguments it becomes a thin client that talks to `/mcp`.
+
+```bash
+mu news                                 # latest news feed
+mu news_search "ai safety"              # search news
+mu chat "hello"                         # chat with the AI
+mu agent "what is the btc price?"       # run the full agent
+mu web_search "claude code"             # search the web
+mu weather_forecast --lat 51.5 --lon -0.12
+mu blog_create --title "Hi" --content "..."
+mu apps_build --prompt "a pomodoro timer"
+mu me                                   # your account
+mu help                                 # full tool list
+mu help apps_build                      # parameters for a specific tool
+```
+
+The CLI is registry-driven — every tool added to the MCP server automatically becomes a CLI command. Flags map to tool parameters.
+
+### Authentication
+
+```bash
+mu login                  # opens /token in your browser, paste the PAT back
+mu config set token xxx   # or set it directly
+export MU_TOKEN=xxx       # or use the environment
+```
+
+### Config
+
+Loaded from `$XDG_CONFIG_HOME/mu/config.json` (default `~/.config/mu/config.json`). Override with `MU_URL` / `MU_TOKEN` or `--url` / `--token` flags.
+
+### Output
+
+Pretty-printed JSON when attached to a terminal, raw JSON when piped — so `mu news | jq '.feed[0]'` works. Use `--table` to render list results as a text table.
+
+See [CLI docs](docs/CLI.md) for more.
+
 ## Pricing
 
 Browsing is included. AI and search features use credits — 1 credit = 1p, pay as you go.
