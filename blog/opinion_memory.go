@@ -500,7 +500,7 @@ Rules:
 		return
 	}
 
-	err = CreateComment(post.ID, response, app.SystemUserName, app.SystemUserID)
+	_, err = CreateComment(post.ID, response, app.SystemUserName, app.SystemUserID)
 	if err != nil {
 		app.Log("opinion", "Failed to add comment: %v", err)
 		return

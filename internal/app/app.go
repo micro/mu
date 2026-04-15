@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/internal/auth"
@@ -21,6 +22,63 @@ import (
 	"github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
 )
+
+// Signup rate limiting per IP — defends against bulk account creation.
+// Configurable via SIGNUP_MAX_PER_IP and SIGNUP_WINDOW_HOURS env vars.
+var (
+	signupMu       sync.Mutex
+	signupAttempts = map[string]*signupBucket{}
+)
+
+type signupBucket struct {
+	count    int
+	resetAt  time.Time
+}
+
+// SignupRateLimit returns true if the IP is allowed to sign up.
+// It also records the attempt against the bucket on success.
+// Configurable via SIGNUP_MAX_PER_IP (default 3) and SIGNUP_WINDOW_HOURS (default 24).
+func SignupRateLimit(ip string) bool {
+	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
+		return true // never rate-limit localhost (self-hosted, dev)
+	}
+	maxPerIP := envInt("SIGNUP_MAX_PER_IP", 3)
+	window := time.Duration(envInt("SIGNUP_WINDOW_HOURS", 24)) * time.Hour
+
+	signupMu.Lock()
+	defer signupMu.Unlock()
+
+	now := time.Now()
+	b, ok := signupAttempts[ip]
+	if !ok || now.After(b.resetAt) {
+		b = &signupBucket{count: 0, resetAt: now.Add(window)}
+		signupAttempts[ip] = b
+	}
+	if b.count >= maxPerIP {
+		return false
+	}
+	b.count++
+
+	// Opportunistic GC to avoid unbounded growth.
+	if len(signupAttempts) > 10000 {
+		for k, v := range signupAttempts {
+			if now.After(v.resetAt) {
+				delete(signupAttempts, k)
+			}
+		}
+	}
+	return true
+}
+
+func envInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		var n int
+		if _, err := fmt.Sscanf(v, "%d", &n); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
+}
 
 // Version for cache busting static assets (generated at startup)
 var Version = fmt.Sprintf("%d", time.Now().Unix())
@@ -538,6 +596,14 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		r.ParseForm()
+
+		// Per-IP signup rate limit (defends against bulk account creation).
+		ip := ClientIP(r)
+		if !SignupRateLimit(ip) {
+			Log("auth", "Signup rate limit hit for IP: %s", ip)
+			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Too many sign-ups from your network. Please try again later.</p>`)))
+			return
+		}
 
 		id := r.Form.Get("id")
 		name := r.Form.Get("name")

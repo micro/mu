@@ -119,6 +119,11 @@ type Tool struct {
 // Set by main.go to wire in auth + wallet packages without import cycles.
 var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 
+// ToolGuard is called before executing any tool — used for tool-specific
+// pre-checks (e.g. signup rate limiting per IP). Returning an error blocks
+// the call and the error message is returned to the caller. Set by main.go.
+var ToolGuard func(r *http.Request, toolName string) error
+
 // PaymentRequiredResponse is called when quota check fails to build x402 payment
 // requirements. Returns nil if x402 is not enabled. Set by main.go.
 var PaymentRequiredResponse func(w http.ResponseWriter, op string, resource string)
@@ -659,6 +664,14 @@ func handleToolsCall(w http.ResponseWriter, originalReq *http.Request, req jsonr
 	if tool == nil {
 		writeError(w, req.ID, -32602, fmt.Sprintf("Unknown tool: %s", params.Name))
 		return
+	}
+
+	// Tool-specific pre-checks (e.g. signup rate limit per IP).
+	if ToolGuard != nil {
+		if err := ToolGuard(originalReq, tool.Name); err != nil {
+			writeError(w, req.ID, -32000, err.Error())
+			return
+		}
 	}
 
 	// Check wallet quota for metered tools

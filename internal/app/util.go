@@ -2,8 +2,34 @@ package app
 
 import (
 	"fmt"
+	"net"
+	"net/http"
+	"strings"
 	"time"
 )
+
+// ClientIP returns the originating client IP for a request, honouring
+// X-Forwarded-For (first hop) and X-Real-IP when present, falling back
+// to RemoteAddr. The returned value is the IP only (no port).
+func ClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if i := strings.Index(xff, ","); i > 0 {
+			xff = xff[:i]
+		}
+		ip := strings.TrimSpace(xff)
+		if ip != "" {
+			return ip
+		}
+	}
+	if xr := strings.TrimSpace(r.Header.Get("X-Real-IP")); xr != "" {
+		return xr
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
 
 func TimeAgo(d time.Time) string {
 	// Handle zero time

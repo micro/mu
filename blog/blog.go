@@ -1007,8 +1007,8 @@ func autoTagPost(postID, title, content string) {
 	})
 }
 
-// CreateComment adds a comment to a post
-func CreateComment(postID, content, author, authorID string) error {
+// CreateComment adds a comment to a post and returns the new comment.
+func CreateComment(postID, content, author, authorID string) (*Comment, error) {
 	comment := &Comment{
 		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
 		PostID:    postID,
@@ -1030,7 +1030,10 @@ func CreateComment(postID, content, author, authorID string) error {
 	mutex.Unlock()
 
 	// Save to disk
-	return data.SaveJSON("comments.json", comments)
+	if err := data.SaveJSON("comments.json", comments); err != nil {
+		return nil, err
+	}
+	return comment, nil
 }
 
 // GetComments retrieves all comments for a post
@@ -1576,8 +1579,13 @@ func renderComments(postID string, r *http.Request) string {
 
 	commentsHTML.WriteString(`<div class="mt-5">`)
 	// Display newest comments first
+	isAdmin := acc != nil && acc.Admin
 	for i := len(postComments) - 1; i >= 0; i-- {
 		comment := postComments[i]
+		// Skip flagged/hidden comments unless viewer is admin.
+		if !isAdmin && flag.IsHidden("comment", comment.ID) {
+			continue
+		}
 		authorLink := comment.Author
 		if comment.AuthorID != "" {
 			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, comment.AuthorID, comment.Author)
@@ -1793,15 +1801,46 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// New accounts must wait before commenting (anti-spam).
+	if !auth.CanPost(acc.ID) {
+		app.Forbidden(w, r, "New accounts must wait 30 minutes before commenting.")
+		return
+	}
+
+	// Charge per comment — makes spam expensive.
+	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpBlogComment)
+	if !canProceed {
+		if app.SendsJSON(r) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(402)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "insufficient_credits",
+				"message": fmt.Sprintf("Comments require %d credit. Top up at /wallet", cost),
+				"cost":    cost,
+			})
+			return
+		}
+		app.Forbidden(w, r, fmt.Sprintf("Comments require %d credit. Top up at /wallet", cost))
+		return
+	}
+	if err := wallet.ConsumeQuota(acc.ID, wallet.OpBlogComment); err != nil {
+		app.Forbidden(w, r, err.Error())
+		return
+	}
+
 	// Get the authenticated user
 	author := acc.Name
 	authorID := acc.ID
 
 	// Create the comment
-	if err := CreateComment(postID, content, author, authorID); err != nil {
+	comment, err := CreateComment(postID, content, author, authorID)
+	if err != nil {
 		app.ServerError(w, r, "Failed to save comment")
 		return
 	}
+
+	// Async content moderation — uses the comment's ID, not the post's.
+	go flag.CheckContent("comment", comment.ID, "", content)
 
 	// Redirect back to the post
 	http.Redirect(w, r, "/blog/post?id="+postID, http.StatusSeeOther)
