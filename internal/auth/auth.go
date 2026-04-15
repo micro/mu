@@ -450,12 +450,19 @@ func GetOnlineUsers() []string {
 	return online
 }
 
+// VerificationRequired is set by main.go and reports whether email
+// verification is currently required to post on this instance. When it
+// returns false (e.g. mail isn't configured) CanPost falls back to the
+// older "any account can post" rule. Defaults to false (no verification)
+// so self-hosters without mail aren't accidentally locked out.
+var VerificationRequired func() bool
+
 // CanPost checks if an account is allowed to create content.
 // Rules:
 //   - Admins and approved accounts can always post.
+//   - If verification is not required on this instance (no mail
+//     configured), any account can post.
 //   - Otherwise the account must have a verified email address.
-// The 30-minute age check has been replaced by email verification — a
-// verified account is considered trustworthy regardless of age.
 func CanPost(accountID string) bool {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -466,6 +473,10 @@ func CanPost(accountID string) bool {
 	}
 
 	if acc.Admin || acc.Approved {
+		return true
+	}
+
+	if VerificationRequired == nil || !VerificationRequired() {
 		return true
 	}
 
@@ -483,6 +494,9 @@ func PostBlockReason(accountID string) string {
 		return "Account not found"
 	}
 	if acc.Admin || acc.Approved {
+		return ""
+	}
+	if VerificationRequired == nil || !VerificationRequired() {
 		return ""
 	}
 	if !acc.EmailVerified {

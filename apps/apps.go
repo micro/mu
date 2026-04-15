@@ -571,6 +571,15 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !auth.CanPost(acc.ID) {
+		app.Forbidden(w, r, auth.PostBlockReason(acc.ID))
+		return
+	}
+	if err := auth.CheckPostRate(acc.ID); err != nil {
+		app.Forbidden(w, r, err.Error())
+		return
+	}
+
 	var name, slug, icon, description, tags, html string
 	var public bool
 	var price int

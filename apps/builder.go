@@ -289,6 +289,11 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !auth.CanPost(acc.ID) {
+		app.RespondError(w, http.StatusForbidden, auth.PostBlockReason(acc.ID))
+		return
+	}
+
 	var req struct {
 		Prompt   string `json:"prompt"`
 		Code     string `json:"code"`     // Existing code for follow-on prompts
@@ -486,6 +491,11 @@ func handleFrameworkGenerate(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
+		return
+	}
+
+	if !auth.CanPost(acc.ID) {
+		app.RespondError(w, http.StatusForbidden, auth.PostBlockReason(acc.ID))
 		return
 	}
 

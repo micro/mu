@@ -229,7 +229,8 @@ func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
 		return
 	}
 
-	// HTML response
+	// HTML response — RenderHTMLForRequest already prepends the verify
+	// banner for unverified users on verification-gated instances.
 	html := RenderHTMLForRequest(resp.Title, resp.Description, resp.HTML, r)
 	w.Write([]byte(html))
 }
@@ -1077,10 +1078,40 @@ func RenderHTML(title, desc, html string) string {
 	return RenderHTMLWithLang(title, desc, html, "en")
 }
 
-// RenderHTMLForRequest renders the given html in a template using the user's language preference
+// RenderHTMLForRequest renders the given html in a template using the
+// user's language preference. Prepends the verify-to-post banner if the
+// authenticated user has an unverified account on a verification-gated
+// instance.
 func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	lang := GetUserLanguage(r)
+	if banner := VerifyBanner(r); banner != "" {
+		html = banner + html
+	}
 	return RenderHTMLWithLang(title, desc, html, lang)
+}
+
+// VerifyBanner returns banner HTML inviting the user to verify their
+// email address, or an empty string if the banner doesn't apply (no
+// session, admin, already verified, or verification not required on
+// this instance).
+func VerifyBanner(r *http.Request) string {
+	if EmailSender == nil {
+		return ""
+	}
+	_, acc := auth.TrySession(r)
+	if acc == nil || acc.Admin || acc.Approved || acc.EmailVerified {
+		return ""
+	}
+	// Don't show the banner on the account page itself — the verify
+	// form is right there.
+	if r.URL.Path == "/account" || r.URL.Path == "/verify" {
+		return ""
+	}
+	return `<div class="verify-banner" style="background:#fff8e1;border:1px solid #f1d68c;border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px;color:#5b4a00;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<strong>Verify your email to post.</strong>
+<span>Add and confirm an email on your account to unlock status updates, replies, comments and posts.</span>
+<a href="/account" style="margin-left:auto;background:#000;color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px">Verify →</a>
+</div>`
 }
 
 // RenderHTMLWithLang renders the given html in a template with specified language

@@ -262,10 +262,22 @@ func main() {
 
 	// Wire email sending for verification mails. Uses the platform's own
 	// SMTP relay so verification mails come from no-reply@<MAIL_DOMAIN>.
-	app.EmailSender = func(to, subject, plain, html string) error {
-		from := "no-reply@" + mail.GetConfiguredDomain()
-		_, err := mail.SendExternalEmail("Mu", from, to, subject, plain, html, "")
-		return err
+	// Only enabled when MAIL_DOMAIN is configured to a real domain —
+	// instances without mail configured skip the verification gate
+	// entirely (see auth.VerificationRequired below).
+	if domain := mail.GetConfiguredDomain(); domain != "" && domain != "localhost" {
+		app.EmailSender = func(to, subject, plain, html string) error {
+			from := "no-reply@" + domain
+			_, err := mail.SendExternalEmail("Mu", from, to, subject, plain, html, "")
+			return err
+		}
+	}
+
+	// Verification is only required when we can actually send verification
+	// emails. Self-hosted instances without mail configured fall back to
+	// the legacy "any account can post" rule.
+	auth.VerificationRequired = func() bool {
+		return app.EmailSender != nil
 	}
 
 	// Register MCP auth tools
