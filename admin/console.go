@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	"mu/apps"
 	"mu/internal/app"
@@ -174,8 +175,66 @@ func runCommand(cmd string) string {
 			return "User not found"
 		}
 		w := wallet.GetWallet(acc.ID)
-		return fmt.Sprintf("ID: %s\nName: %s\nAdmin: %v\nCreated: %s\nBalance: %d credits",
-			acc.ID, acc.Name, acc.Admin, acc.Created.Format("2 Jan 2006 15:04"), w.Balance)
+		emailLine := "Email: (not set)"
+		if acc.Email != "" {
+			verified := "unverified"
+			if acc.EmailVerified {
+				verified = "verified"
+			}
+			emailLine = fmt.Sprintf("Email: %s (%s)", acc.Email, verified)
+		}
+		return fmt.Sprintf("ID: %s\nName: %s\nAdmin: %v\nApproved: %v\n%s\nCreated: %s\nBalance: %d credits",
+			acc.ID, acc.Name, acc.Admin, acc.Approved, emailLine, acc.Created.Format("2 Jan 2006 15:04"), w.Balance)
+
+	case "approve":
+		if arg(1) == "" {
+			return "usage: approve <user_id>  (bypasses email verification)"
+		}
+		if err := auth.ApproveAccount(arg(1)); err != nil {
+			return "approve failed: " + err.Error()
+		}
+		return fmt.Sprintf("Approved %s", arg(1))
+
+	case "unapprove":
+		if arg(1) == "" {
+			return "usage: unapprove <user_id>"
+		}
+		acc, err := auth.GetAccount(arg(1))
+		if err != nil {
+			return "User not found"
+		}
+		acc.Approved = false
+		if err := auth.UpdateAccount(acc); err != nil {
+			return "unapprove failed: " + err.Error()
+		}
+		return fmt.Sprintf("Unapproved %s", arg(1))
+
+	case "approve-old":
+		// Bulk-approve accounts older than the given number of days.
+		// Useful after enabling email verification to grandfather users
+		// who joined before the change. Defaults to 7 days.
+		days := 7
+		if arg(1) != "" {
+			fmt.Sscanf(arg(1), "%d", &days)
+		}
+		if days < 1 {
+			return "days must be >= 1"
+		}
+		cutoff := time.Now().AddDate(0, 0, -days)
+		accounts := auth.GetAllAccounts()
+		count := 0
+		for _, a := range accounts {
+			if a.Approved || a.Admin {
+				continue
+			}
+			if a.Created.Before(cutoff) {
+				a.Approved = true
+				if err := auth.UpdateAccount(a); err == nil {
+					count++
+				}
+			}
+		}
+		return fmt.Sprintf("Approved %d accounts older than %d days", count, days)
 
 	// --- Wallet ---
 	case "wallet":

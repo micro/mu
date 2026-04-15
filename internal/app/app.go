@@ -474,6 +474,7 @@ var SignupTemplate = `<html lang="en">
 	  <input id="id" name="id" placeholder="Username (4-24 chars, lowercase)" required>
 	  <input id="name" name="name" placeholder="Name (optional)">
   	  <input id="secret" name="secret" type="password" placeholder="Password (min 6 chars)" required>
+	  %s
 	  <br>
 	  <button>Signup</button>
 	</form>
@@ -483,6 +484,30 @@ var SignupTemplate = `<html lang="en">
   </body>
 </html>
 `
+
+// renderSignup renders the signup template with a fresh captcha challenge
+// and the given error HTML (or empty string).
+func renderSignup(errHTML string) string {
+	c := NewCaptchaChallenge()
+	return fmt.Sprintf(SignupTemplate, errHTML, CaptchaHTML(c))
+}
+
+// EmailSender is set by main.go and called to deliver verification
+// emails. It's a callback to avoid an import cycle (mail imports app).
+// If nil, email verification is unavailable on this instance.
+var EmailSender func(to, subject, bodyPlain, bodyHTML string) error
+
+// PublicURL returns the externally-reachable base URL for the instance.
+// Falls back to relative paths when not configured.
+func PublicURL() string {
+	if v := os.Getenv("PUBLIC_URL"); v != "" {
+		return strings.TrimRight(v, "/")
+	}
+	if v := os.Getenv("MAIL_DOMAIN"); v != "" {
+		return "https://" + v
+	}
+	return ""
+}
 
 func Link(name, ref string) string {
 	return fmt.Sprintf(`<a href="%s" class="link">%s →</a>`, ref, name)
@@ -590,18 +615,25 @@ func Login(w http.ResponseWriter, r *http.Request) {
 // Signup handler
 func Signup(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		w.Write([]byte(fmt.Sprintf(SignupTemplate, "")))
+		w.Write([]byte(renderSignup("")))
 		return
 	}
 
 	if r.Method == "POST" {
 		r.ParseForm()
 
+		// Captcha is checked before the IP rate limit so that a failed
+		// captcha doesn't burn an attempt against the IP bucket.
+		if err := VerifyCaptchaRequest(r); err != nil {
+			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
+			return
+		}
+
 		// Per-IP signup rate limit (defends against bulk account creation).
 		ip := ClientIP(r)
 		if !SignupRateLimit(ip) {
 			Log("auth", "Signup rate limit hit for IP: %s", ip)
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Too many sign-ups from your network. Please try again later.</p>`)))
+			w.Write([]byte(renderSignup(`<p class="text-error">Too many sign-ups from your network. Please try again later.</p>`)))
 			return
 		}
 
@@ -614,22 +646,22 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		usernameRegex := regexp.MustCompile(usernamePattern)
 
 		if len(id) == 0 {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Username is required</p>`)))
+			w.Write([]byte(renderSignup(`<p class="text-error">Username is required</p>`)))
 			return
 		}
 
 		if !usernameRegex.MatchString(id) {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`)))
+			w.Write([]byte(renderSignup(`<p class="text-error">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`)))
 			return
 		}
 
 		if len(secret) == 0 {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Password is required</p>`)))
+			w.Write([]byte(renderSignup(`<p class="text-error">Password is required</p>`)))
 			return
 		}
 
 		if len(secret) < 6 {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Password must be at least 6 characters</p>`)))
+			w.Write([]byte(renderSignup(`<p class="text-error">Password must be at least 6 characters</p>`)))
 			return
 		}
 
@@ -644,14 +676,14 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			Name:    name,
 			Created: time.Now(),
 		}); err != nil {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
+			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
 			return
 		}
 
 		// login
 		sess, err := auth.Login(id, secret)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf(SignupTemplate, `<p class="text-error">Account created but login failed. Please try logging in.</p>`)))
+			w.Write([]byte(renderSignup(`<p class="text-error">Account created but login failed. Please try logging in.</p>`)))
 			return
 		}
 
@@ -685,14 +717,26 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle POST to update language
+	// Handle POST to update language or request email verification
 	if r.Method == "POST" {
 		r.ParseForm()
-		newLang := r.Form.Get("language")
-		if _, ok := SupportedLanguages[newLang]; ok {
-			acc.Language = newLang
-			auth.UpdateAccount(acc)
+
+		// Language update
+		if newLang := r.Form.Get("language"); newLang != "" {
+			if _, ok := SupportedLanguages[newLang]; ok {
+				acc.Language = newLang
+				auth.UpdateAccount(acc)
+			}
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
 		}
+
+		// Email verification request
+		if email := strings.TrimSpace(r.Form.Get("email")); email != "" {
+			handleVerifyStart(w, r, acc, email)
+			return
+		}
+
 		http.Redirect(w, r, "/account", http.StatusSeeOther)
 		return
 	}
@@ -717,11 +761,16 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		adminLinks = `<p><a href="/admin">Admin Dashboard →</a></p>`
 	}
 
+	// Email verification card
+	emailCard := renderEmailCard(acc)
+
 	content := fmt.Sprintf(`<div class="card">
 <h4>Profile</h4>
 <p><strong>%s</strong> · %s · Joined %s</p>
 <p><a href="/@%s">Public profile →</a></p>
 </div>
+
+%s
 
 <div class="card">
 <h4>Language</h4>
@@ -745,6 +794,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
 		acc.ID,
+		emailCard,
 		languageOptions,
 		PasskeyListHTML(acc.ID),
 		adminLinks,
@@ -752,6 +802,125 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	html := RenderHTML("Account", "Account", content)
 	w.Write([]byte(html))
+}
+
+// renderEmailCard renders the email verification card on the account
+// page. The card looks different depending on whether the email is set,
+// pending, or verified — and whether email sending is configured at all.
+func renderEmailCard(acc *auth.Account) string {
+	if acc.Admin || acc.Approved {
+		// Admins/approved users don't need verification.
+		if acc.EmailVerified {
+			return fmt.Sprintf(`<div class="card"><h4>Email</h4><p>%s — verified</p></div>`, htmlpkg.EscapeString(acc.Email))
+		}
+		return ""
+	}
+
+	if EmailSender == nil {
+		return `<div class="card"><h4>Email</h4><p class="text-muted">Email verification is not configured on this instance.</p></div>`
+	}
+
+	if acc.EmailVerified {
+		return fmt.Sprintf(`<div class="card">
+<h4>Email</h4>
+<p><strong>%s</strong> — verified ✓</p>
+</div>`, htmlpkg.EscapeString(acc.Email))
+	}
+
+	pending := ""
+	if acc.Email != "" {
+		pending = fmt.Sprintf(`<p class="text-muted text-sm">A verification link was sent to <strong>%s</strong>. Click it to unlock posting. Submit again to resend.</p>`, htmlpkg.EscapeString(acc.Email))
+	}
+
+	return fmt.Sprintf(`<div class="card">
+<h4>Verify your email to post</h4>
+<p class="text-sm">Verifying your email unlocks status updates, replies, comments and blog posts. We do not share or sell your address.</p>
+%s
+<form action="/account" method="POST" class="d-flex items-center gap-3" style="margin-top:8px">
+	<input type="email" name="email" placeholder="you@example.com" value="%s" required>
+	<button type="submit">Send verification</button>
+</form>
+</div>`, pending, htmlpkg.EscapeString(acc.Email))
+}
+
+// handleVerifyStart processes the email submission on /account, generates
+// a verification token, and sends an email containing the verify link.
+func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account, email string) {
+	if EmailSender == nil {
+		Forbidden(w, r, "Email verification is not configured on this instance.")
+		return
+	}
+	if !validEmail(email) {
+		BadRequest(w, r, "Please enter a valid email address.")
+		return
+	}
+
+	// Persist the pending email so the UI can show it.
+	if err := auth.SetAccountEmail(acc.ID, email); err != nil {
+		ServerError(w, r, "Failed to save email")
+		return
+	}
+
+	tok, err := auth.CreateEmailVerificationToken(acc.ID, email)
+	if err != nil {
+		ServerError(w, r, "Failed to create verification token")
+		return
+	}
+
+	link := PublicURL() + "/verify?token=" + tok
+	plain := fmt.Sprintf("Hi %s,\n\nClick the link below to verify your email and unlock posting on Mu:\n\n%s\n\nThis link expires in 24 hours. If you didn't request this, you can ignore this email.\n\n— Mu", acc.Name, link)
+	html := fmt.Sprintf(`<p>Hi %s,</p><p>Click the link below to verify your email and unlock posting on Mu:</p><p><a href="%s">%s</a></p><p>This link expires in 24 hours. If you didn't request this, you can ignore this email.</p><p>— Mu</p>`, htmlpkg.EscapeString(acc.Name), link, link)
+
+	if err := EmailSender(email, "Verify your Mu account", plain, html); err != nil {
+		Log("auth", "Failed to send verification email to %s: %v", email, err)
+		ServerError(w, r, "Failed to send verification email. Please try again.")
+		return
+	}
+	Log("auth", "Sent verification email to %s for account %s", email, acc.ID)
+	http.Redirect(w, r, "/account", http.StatusSeeOther)
+}
+
+// Verify handles GET /verify?token=XXX — consumes a verification token
+// and marks the account as verified.
+func Verify(w http.ResponseWriter, r *http.Request) {
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	if token == "" {
+		BadRequest(w, r, "Missing verification token")
+		return
+	}
+	acc, err := auth.ConsumeEmailVerificationToken(token)
+	if err != nil {
+		BadRequest(w, r, err.Error())
+		return
+	}
+	Log("auth", "Email verified for account %s (%s)", acc.ID, acc.Email)
+
+	body := fmt.Sprintf(`<div class="card">
+<h4>Email verified ✓</h4>
+<p>Thanks, <strong>%s</strong>. Your email is verified and you can now post.</p>
+<p><a href="/home" class="btn">Go home</a> &nbsp; <a href="/account">Account →</a></p>
+</div>`, htmlpkg.EscapeString(acc.Name))
+	html := RenderHTML("Verified", "Email verified", body)
+	w.Write([]byte(html))
+}
+
+// validEmail performs minimal sanity checking — the real check is whether
+// the verification email actually arrives and is clicked.
+func validEmail(s string) bool {
+	if len(s) < 5 || len(s) > 254 {
+		return false
+	}
+	at := strings.Index(s, "@")
+	if at < 1 || at == len(s)-1 {
+		return false
+	}
+	if strings.Contains(s, " ") {
+		return false
+	}
+	if !strings.Contains(s[at+1:], ".") {
+		return false
+	}
+	return true
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {

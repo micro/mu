@@ -333,7 +333,11 @@ func handleCreateThread(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !auth.CanPost(acc.ID) {
-		app.BadRequest(w, r, "Your account is too new to start a thread. Please wait a bit.")
+		app.BadRequest(w, r, auth.PostBlockReason(acc.ID))
+		return
+	}
+	if err := auth.CheckPostRate(acc.ID); err != nil {
+		app.Forbidden(w, r, err.Error())
 		return
 	}
 
@@ -434,7 +438,11 @@ func handleJSONRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !auth.CanPost(acc.ID) {
-		http.Error(w, "Account too new to start threads", http.StatusForbidden)
+		http.Error(w, auth.PostBlockReason(acc.ID), http.StatusForbidden)
+		return
+	}
+	if err := auth.CheckPostRate(acc.ID); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
 
@@ -605,7 +613,11 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !auth.CanPost(acc.ID) {
-		app.BadRequest(w, r, "Your account is too new to send messages. Please wait a bit.")
+		app.BadRequest(w, r, auth.PostBlockReason(acc.ID))
+		return
+	}
+	if err := auth.CheckPostRate(acc.ID); err != nil {
+		app.Forbidden(w, r, err.Error())
 		return
 	}
 
