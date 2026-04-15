@@ -1252,11 +1252,13 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Check if account can post (30 minute minimum)
+		// Verified email is required to post.
 		if !auth.CanPost(acc.ID) {
-			accountAge := time.Since(acc.Created).Round(time.Minute)
-			remaining := (30*time.Minute - time.Since(acc.Created)).Round(time.Minute)
-			app.Forbidden(w, r, fmt.Sprintf("New accounts must wait 30 minutes before posting. Your account is %v old. Please wait %v more.", accountAge, remaining))
+			app.Forbidden(w, r, auth.PostBlockReason(acc.ID))
+			return
+		}
+		if err := auth.CheckPostRate(acc.ID); err != nil {
+			app.Forbidden(w, r, err.Error())
 			return
 		}
 
@@ -1801,9 +1803,13 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// New accounts must wait before commenting (anti-spam).
+	// Verified email is required to post.
 	if !auth.CanPost(acc.ID) {
-		app.Forbidden(w, r, "New accounts must wait 30 minutes before commenting.")
+		app.Forbidden(w, r, auth.PostBlockReason(acc.ID))
+		return
+	}
+	if err := auth.CheckPostRate(acc.ID); err != nil {
+		app.Forbidden(w, r, err.Error())
 		return
 	}
 

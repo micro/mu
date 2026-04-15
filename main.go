@@ -260,6 +260,26 @@ func main() {
 		return nil
 	}
 
+	// Wire email sending for verification mails. Uses the platform's own
+	// SMTP relay so verification mails come from no-reply@<MAIL_DOMAIN>.
+	// Only enabled when MAIL_DOMAIN is configured to a real domain —
+	// instances without mail configured skip the verification gate
+	// entirely (see auth.VerificationRequired below).
+	if domain := mail.GetConfiguredDomain(); domain != "" && domain != "localhost" {
+		app.EmailSender = func(to, subject, plain, html string) error {
+			from := "no-reply@" + domain
+			_, err := mail.SendExternalEmail("Mu", from, to, subject, plain, html, "")
+			return err
+		}
+	}
+
+	// Verification is only required when we can actually send verification
+	// emails. Self-hosted instances without mail configured fall back to
+	// the legacy "any account can post" rule.
+	auth.VerificationRequired = func() bool {
+		return app.EmailSender != nil
+	}
+
 	// Register MCP auth tools
 	api.RegisterTool(api.Tool{
 		Name:        "signup",
@@ -550,6 +570,7 @@ func main() {
 		"/mail":            true,  // Require auth for inbox
 		"/logout":          true,
 		"/account":         true,
+		"/verify":          false, // Public — token in URL is the credential
 		"/token":           true,  // PAT token management
 		"/passkey":         false, // Passkey login/register (auth checked in handler)
 		"/session":         false, // Public - used to check auth status
@@ -735,6 +756,7 @@ func main() {
 	http.HandleFunc("/logout", app.Logout)
 	http.HandleFunc("/signup", app.Signup)
 	http.HandleFunc("/account", app.Account)
+	http.HandleFunc("/verify", app.Verify)
 	http.HandleFunc("/session", app.Session)
 	http.HandleFunc("/token", app.TokenHandler)
 	http.HandleFunc("/passkey/", app.PasskeyHandler)

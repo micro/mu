@@ -486,10 +486,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Verified badge — green tick for accounts with a verified email,
+	// admins, or admin-approved accounts. Skipped on instances without
+	// email verification configured.
+	verifiedBadge := ""
+	if acc.Admin || acc.Approved || acc.EmailVerified {
+		verifiedBadge = ` <span title="Verified" aria-label="Verified" style="display:inline-block;vertical-align:middle;width:16px;height:16px;background:#22c55e;color:#fff;border-radius:50%;text-align:center;line-height:16px;font-size:11px;font-weight:700">✓</span>`
+	}
+
 	// Build the profile page content
 	content := fmt.Sprintf(`<div class="max-w-xl">
 <div class="mb-6" style="padding-bottom: 20px; border-bottom: 2px solid #333;">
-<p class="info m-0">@%s</p>
+<p class="info m-0">@%s%s</p>
 <p class="info mt-3">Joined %s</p>
 %s
 %s
@@ -500,7 +508,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 <h3 class="mb-5">Posts (%d)</h3>
 %s
-</div>`, acc.ID, acc.Created.Format("January 2006"), statusSection, statusEditForm, messageLink, appsSection, postCount, userPosts)
+</div>`, acc.ID, verifiedBadge, acc.Created.Format("January 2006"), statusSection, statusEditForm, messageLink, appsSection, postCount, userPosts)
 
 	// Use name as page title
 	html := app.RenderHTML(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content)

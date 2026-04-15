@@ -26,14 +26,17 @@ var presenceMutex sync.RWMutex
 var userPresence = map[string]time.Time{} // username -> last seen time
 
 type Account struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"`
-	Secret   string    `json:"secret"`
-	Created  time.Time `json:"created"`
-	Admin    bool      `json:"admin"`
-	Language string    `json:"language"`
-	Widgets  []string  `json:"widgets,omitempty"`  // App IDs to show as home widgets
-	Approved bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	Secret          string    `json:"secret"`
+	Created         time.Time `json:"created"`
+	Admin           bool      `json:"admin"`
+	Language        string    `json:"language"`
+	Widgets         []string  `json:"widgets,omitempty"`  // App IDs to show as home widgets
+	Approved        bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
+	Email           string    `json:"email,omitempty"`
+	EmailVerified   bool      `json:"email_verified,omitempty"`
+	EmailVerifiedAt time.Time `json:"email_verified_at,omitempty"`
 }
 
 type Session struct {
@@ -447,7 +450,19 @@ func GetOnlineUsers() []string {
 	return online
 }
 
-// CanPost checks if an account is old enough to post (30 minutes)
+// VerificationRequired is set by main.go and reports whether email
+// verification is currently required to post on this instance. When it
+// returns false (e.g. mail isn't configured) CanPost falls back to the
+// older "any account can post" rule. Defaults to false (no verification)
+// so self-hosters without mail aren't accidentally locked out.
+var VerificationRequired func() bool
+
+// CanPost checks if an account is allowed to create content.
+// Rules:
+//   - Admins and approved accounts can always post.
+//   - If verification is not required on this instance (no mail
+//     configured), any account can post.
+//   - Otherwise the account must have a verified email address.
 func CanPost(accountID string) bool {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -457,13 +472,37 @@ func CanPost(accountID string) bool {
 		return false
 	}
 
-	// Admins can always post
-	if acc.Admin {
+	if acc.Admin || acc.Approved {
 		return true
 	}
 
-	// Account must be at least 30 minutes old
-	return time.Since(acc.Created) >= 30*time.Minute
+	if VerificationRequired == nil || !VerificationRequired() {
+		return true
+	}
+
+	return acc.EmailVerified
+}
+
+// PostBlockReason returns a human-readable reason an account cannot post,
+// or an empty string if it can. Used by handlers to render helpful errors.
+func PostBlockReason(accountID string) string {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	acc, exists := accounts[accountID]
+	if !exists {
+		return "Account not found"
+	}
+	if acc.Admin || acc.Approved {
+		return ""
+	}
+	if VerificationRequired == nil || !VerificationRequired() {
+		return ""
+	}
+	if !acc.EmailVerified {
+		return "Verify your email at /account before posting."
+	}
+	return ""
 }
 
 // IsNewAccount checks if account is less than 24 hours old
