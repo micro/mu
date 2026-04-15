@@ -5,6 +5,7 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -304,7 +305,23 @@ func RecentStatuses(viewerID string, max int) []StatusEntry {
 // posted (current + history), newest first. This is the home card data
 // source — it turns what was an accidental chat surface into an honest
 // live stream. Older entries beyond statusMaxAge are dropped.
+//
+// Two caps are applied:
+//   - perUser: within any one user's contribution, only the most recent
+//     perUser entries are eligible. This stops a single chatty user
+//     (or a long @micro conversation) from flooding the feed.
+//   - max: the final chronological merge is trimmed to max total
+//     entries.
+//
+// Pass 0 for either cap to disable it.
 func StatusStream(max int) []StatusEntry {
+	return StatusStreamCapped(max, StatusStreamPerUser)
+}
+
+// StatusStreamCapped is the underlying implementation with explicit
+// per-user and total caps. Exported so the profile page and any future
+// callers can pick their own shape.
+func StatusStreamCapped(maxTotal, maxPerUser int) []StatusEntry {
 	profileMutex.RLock()
 	defer profileMutex.RUnlock()
 
@@ -317,33 +334,45 @@ func StatusStream(max int) []StatusEntry {
 		} else if p.UserID == app.SystemUserID {
 			name = app.SystemUserName
 		}
-		// Current status — latest entry for this user.
+
+		// Collect this user's eligible entries (current + history),
+		// newest first. We apply the per-user cap to this collection
+		// BEFORE merging, so an older entry from a flooding user can't
+		// push a more recent entry from another user off the end.
+		var userEntries []StatusEntry
 		if p.Status != "" && !p.UpdatedAt.Before(cutoff) {
-			entries = append(entries, StatusEntry{
+			userEntries = append(userEntries, StatusEntry{
 				UserID:    p.UserID,
 				Name:      name,
 				Status:    p.Status,
 				UpdatedAt: p.UpdatedAt,
 			})
 		}
-		// History entries — also within cutoff.
 		for _, h := range p.History {
 			if h.SetAt.Before(cutoff) {
 				continue
 			}
-			entries = append(entries, StatusEntry{
+			userEntries = append(userEntries, StatusEntry{
 				UserID:    p.UserID,
 				Name:      name,
 				Status:    h.Status,
 				UpdatedAt: h.SetAt,
 			})
 		}
+		// History is stored newest-first already, and the current
+		// status (if present) is always newer than any history entry,
+		// so userEntries is already in the right order.
+		if maxPerUser > 0 && len(userEntries) > maxPerUser {
+			userEntries = userEntries[:maxPerUser]
+		}
+		entries = append(entries, userEntries...)
 	}
+
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].UpdatedAt.After(entries[j].UpdatedAt)
 	})
-	if len(entries) > max {
-		entries = entries[:max]
+	if maxTotal > 0 && len(entries) > maxTotal {
+		entries = entries[:maxTotal]
 	}
 	return entries
 }
@@ -670,9 +699,26 @@ var avatarColors = []string{
 }
 
 // StatusStreamMax is the maximum number of entries rendered on the home
-// status card. The card is scrollable, so this mostly caps memory/render
-// cost rather than what the user can see.
-const StatusStreamMax = 50
+// status card. The card is scrollable but past ~30 entries the scroll
+// becomes noise rather than signal, so we cap below the visual ceiling.
+// Overridable via the STATUS_STREAM_LIMIT environment variable.
+var StatusStreamMax = envInt("STATUS_STREAM_LIMIT", 30)
+
+// StatusStreamPerUser caps how many entries from any one user appear in
+// the visible stream. Without this, a single chatty user (or a long
+// @micro conversation) will flood the feed and push everyone else off.
+// Overridable via STATUS_STREAM_LIMIT_PER_USER.
+var StatusStreamPerUser = envInt("STATUS_STREAM_LIMIT_PER_USER", 10)
+
+func envInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		var n int
+		if _, err := fmt.Sscanf(v, "%d", &n); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
+}
 
 // RenderStatusStream renders the inner markup of the home status card:
 // the compose form (when a viewer is logged in) plus the scrollable

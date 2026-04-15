@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -78,6 +79,80 @@ func TestStatusStream_ChronologicalOrder(t *testing.T) {
 	for i, w := range wantOrder {
 		if stream[i].Status != w {
 			t.Errorf("stream[%d].Status = %q, want %q", i, stream[i].Status, w)
+		}
+	}
+}
+
+func TestStatusStream_PerUserCapPreventsFlood(t *testing.T) {
+	profileMutex.Lock()
+	saved := profiles
+	profiles = map[string]*Profile{}
+	profileMutex.Unlock()
+	t.Cleanup(func() {
+		profileMutex.Lock()
+		profiles = saved
+		profileMutex.Unlock()
+	})
+
+	now := time.Now()
+
+	// Alice is an active chatter with 20 recent messages.
+	var aliceHistory []StatusHistory
+	for i := 0; i < 20; i++ {
+		aliceHistory = append(aliceHistory, StatusHistory{
+			Status: fmt.Sprintf("alice %d", i),
+			SetAt:  now.Add(-time.Duration(i+1) * time.Minute),
+		})
+	}
+	profileMutex.Lock()
+	profiles["alice"] = &Profile{
+		UserID:    "alice",
+		Status:    "alice now",
+		UpdatedAt: now,
+		History:   aliceHistory,
+	}
+	// Bob posted once half an hour ago — should still appear even
+	// though Alice has 20 messages in between.
+	profiles["bob"] = &Profile{
+		UserID:    "bob",
+		Status:    "bob says hi",
+		UpdatedAt: now.Add(-30 * time.Minute),
+	}
+	profileMutex.Unlock()
+
+	// Cap: 10 total, 3 per user. Alice should contribute at most 3.
+	stream := StatusStreamCapped(10, 3)
+
+	aliceCount := 0
+	bobCount := 0
+	for _, e := range stream {
+		if e.UserID == "alice" {
+			aliceCount++
+		}
+		if e.UserID == "bob" {
+			bobCount++
+		}
+	}
+	if aliceCount > 3 {
+		t.Errorf("alice contributed %d entries, want at most 3", aliceCount)
+	}
+	if bobCount != 1 {
+		t.Errorf("bob contributed %d entries, want 1", bobCount)
+	}
+	// Alice's 3 entries should be her 3 most recent, not random.
+	var aliceStatuses []string
+	for _, e := range stream {
+		if e.UserID == "alice" {
+			aliceStatuses = append(aliceStatuses, e.Status)
+		}
+	}
+	want := []string{"alice now", "alice 0", "alice 1"}
+	if len(aliceStatuses) != len(want) {
+		t.Fatalf("got %d alice entries, want %d", len(aliceStatuses), len(want))
+	}
+	for i, w := range want {
+		if aliceStatuses[i] != w {
+			t.Errorf("aliceStatuses[%d] = %q, want %q", i, aliceStatuses[i], w)
 		}
 	}
 }
