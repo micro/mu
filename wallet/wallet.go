@@ -33,6 +33,9 @@ var (
 	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
 	CostSocialSearch      = getEnvInt("CREDIT_COST_SOCIAL", 1)
+	CostSocialPost        = getEnvInt("CREDIT_COST_SOCIAL_POST", 1)
+	CostSocialReply       = getEnvInt("CREDIT_COST_SOCIAL_REPLY", 1)
+	CostBlogComment       = getEnvInt("CREDIT_COST_BLOG_COMMENT", 1)
 	CostAppBuild          = getEnvInt("CREDIT_COST_APP_BUILD", 100)
 	CostAppEdit           = getEnvInt("CREDIT_COST_APP_EDIT", 50)
 	DailyQuota            = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 100))
@@ -61,6 +64,9 @@ const (
 	OpAgentQuery        = "agent_query"
 	OpAgentQueryPremium = "agent_query_premium"
 	OpSocialSearch      = "social_search"
+	OpSocialPost        = "social_post"
+	OpSocialReply       = "social_reply"
+	OpBlogComment       = "blog_comment"
 	OpAppBuild          = "app_build"
 	OpAppEdit           = "app_edit"
 	OpAppUse            = "app_use"
@@ -451,6 +457,12 @@ func GetOperationCost(operation string) int {
 		return CostAgentQueryPremium
 	case OpSocialSearch:
 		return CostSocialSearch
+	case OpSocialPost:
+		return CostSocialPost
+	case OpSocialReply:
+		return CostSocialReply
+	case OpBlogComment:
+		return CostBlogComment
 	case OpAppBuild:
 		return CostAppBuild
 	case OpAppEdit:

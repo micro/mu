@@ -247,6 +247,19 @@ func main() {
 		api.PaymentRequiredResponse = wallet.WritePaymentRequired
 	}
 
+	// Wire tool-specific guards. Currently rate-limits the signup tool by IP
+	// to defend against bulk account creation via MCP.
+	api.ToolGuard = func(r *http.Request, toolName string) error {
+		if toolName == "signup" {
+			ip := app.ClientIP(r)
+			if !app.SignupRateLimit(ip) {
+				app.Log("auth", "MCP signup rate limit hit for IP: %s", ip)
+				return fmt.Errorf("too many sign-ups from your network. Please try again later")
+			}
+		}
+		return nil
+	}
+
 	// Register MCP auth tools
 	api.RegisterTool(api.Tool{
 		Name:        "signup",

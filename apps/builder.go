@@ -12,6 +12,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
+	"mu/wallet"
 
 	"github.com/google/uuid"
 )
@@ -282,7 +283,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _, err := auth.RequireSession(r)
+	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
 		return
@@ -300,6 +301,27 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.TrimSpace(req.Prompt) == "" {
 		app.RespondError(w, http.StatusBadRequest, "Prompt is required")
+		return
+	}
+
+	// Charge for AI generation — edit if there's existing code, otherwise build.
+	op := wallet.OpAppBuild
+	if req.Code != "" {
+		op = wallet.OpAppEdit
+	}
+	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, op)
+	if !canProceed {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(402)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error":   "insufficient_credits",
+			"message": fmt.Sprintf("AI generation requires %d credits. Top up at /wallet", cost),
+			"cost":    cost,
+		})
+		return
+	}
+	if err := wallet.ConsumeQuota(acc.ID, op); err != nil {
+		app.RespondError(w, http.StatusForbidden, err.Error())
 		return
 	}
 
@@ -461,7 +483,7 @@ func handleFrameworkGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _, err := auth.RequireSession(r)
+	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
 		return
@@ -478,6 +500,27 @@ func handleFrameworkGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.TrimSpace(req.Prompt) == "" {
 		app.RespondError(w, http.StatusBadRequest, "Prompt is required")
+		return
+	}
+
+	// Charge for AI generation — edit if blocks present, otherwise build.
+	op := wallet.OpAppBuild
+	if len(req.Blocks) > 0 {
+		op = wallet.OpAppEdit
+	}
+	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, op)
+	if !canProceed {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(402)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error":   "insufficient_credits",
+			"message": fmt.Sprintf("AI generation requires %d credits. Top up at /wallet", cost),
+			"cost":    cost,
+		})
+		return
+	}
+	if err := wallet.ConsumeQuota(acc.ID, op); err != nil {
+		app.RespondError(w, http.StatusForbidden, err.Error())
 		return
 	}
 

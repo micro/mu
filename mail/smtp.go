@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -702,15 +703,22 @@ func parseMultipartRecursive(body io.Reader, boundary string, depth int) string 
 		} else if strings.Contains(contentType, "text/html") && !isAttachment {
 			textHTML = string(partBody)
 			app.Log("mail", "Found text/html part (%d bytes)", len(partBody))
-		} else if isAttachment || strings.Contains(contentType, "application/") {
+		} else if isAttachment || strings.Contains(contentType, "application/") ||
+			strings.HasPrefix(contentType, "image/") ||
+			strings.HasPrefix(contentType, "audio/") ||
+			strings.HasPrefix(contentType, "video/") {
 			// Store attachment info (we'll only use it if there's no text body)
 			attachmentBody = partBody
 			attachmentContentType = contentType
 			app.Log("mail", "Found attachment: %s (%d bytes)", contentType, len(partBody))
 		} else {
-			// Unknown part type - preserve it
-			app.Log("mail", "Unknown part type: %s (%d bytes) - preserving", contentType, len(partBody))
-			allParts = append(allParts, fmt.Sprintf("\n\n[%s]\n%s", contentType, string(partBody)))
+			// Unknown part type - skip binary content, preserve text-like parts only
+			if utf8.Valid(partBody) {
+				app.Log("mail", "Unknown part type: %s (%d bytes) - preserving", contentType, len(partBody))
+				allParts = append(allParts, fmt.Sprintf("\n\n[%s]\n%s", contentType, string(partBody)))
+			} else {
+				app.Log("mail", "Unknown part type: %s (%d bytes) - skipping (binary)", contentType, len(partBody))
+			}
 		}
 	}
 

@@ -110,8 +110,10 @@ Respond with just the single word.`
 	fmt.Printf("Content moderation: %s %s -> %s\n", contentType, itemID, resp)
 
 	if resp == "SPAM" || resp == "TEST" || resp == "LOW_QUALITY" || resp == "HARMFUL" {
-		Add(contentType, itemID, "system")
-		fmt.Printf("Auto-flagged %s: %s (reason: %s)\n", contentType, itemID, resp)
+		// System auto-flag immediately hides the content — do NOT wait for
+		// 3 user flags. Otherwise spam stays visible until users find it.
+		AdminFlag(contentType, itemID, "system:"+strings.ToLower(resp))
+		fmt.Printf("Auto-hidden %s: %s (reason: %s)\n", contentType, itemID, resp)
 	}
 }
 
