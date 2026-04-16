@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -477,6 +478,11 @@ func CanPost(accountID string) bool {
 		return true
 	}
 
+	// Must be at least 24 hours old.
+	if time.Since(acc.Created) < 24*time.Hour {
+		return false
+	}
+
 	if VerificationRequired == nil || !VerificationRequired() {
 		return true
 	}
@@ -497,10 +503,11 @@ func PostBlockReason(accountID string) string {
 	if acc.Admin || acc.Approved {
 		return ""
 	}
-	if VerificationRequired == nil || !VerificationRequired() {
-		return ""
+	if time.Since(acc.Created) < 24*time.Hour {
+		remaining := (24*time.Hour - time.Since(acc.Created)).Round(time.Minute)
+		return fmt.Sprintf("New accounts must wait 24 hours before posting. %s remaining.", remaining)
 	}
-	if !acc.EmailVerified {
+	if VerificationRequired != nil && VerificationRequired() && !acc.EmailVerified {
 		return "Verify your email at /account before posting."
 	}
 	return ""

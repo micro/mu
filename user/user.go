@@ -603,15 +603,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle POST request for status update (legacy, profile page form)
+	// Handle POST request for status update (legacy, profile page form).
+	// Same gates as StatusHandler — CanPost, rate limit, wallet charge.
 	if r.Method == "POST" {
-		sess, _, err := auth.RequireSession(r)
+		sess, acc, err := auth.RequireSession(r)
 		if err != nil {
 			app.Unauthorized(w, r)
 			return
 		}
-
-		// Only allow updating own status
 		if sess.Account != username {
 			app.Forbidden(w, r, "")
 			return
@@ -622,13 +621,35 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			status = status[:MaxStatusLength]
 		}
 
-		UpdateStatus(sess.Account, status)
-
-		if status != "" && sess.Account != app.SystemUserID && AIReplyHook != nil && containsMention(status, MicroMention) {
-			go AIReplyHook(sess.Account, status)
+		if status != "" {
+			if !auth.CanPost(acc.ID) {
+				app.Forbidden(w, r, auth.PostBlockReason(acc.ID))
+				return
+			}
+			if err := auth.CheckPostRate(acc.ID); err != nil {
+				app.Forbidden(w, r, err.Error())
+				return
+			}
+			canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpSocialPost)
+			if !canProceed {
+				app.Forbidden(w, r, fmt.Sprintf("Status updates cost %d credit. Top up at /wallet", cost))
+				return
+			}
+			if err := wallet.ConsumeQuota(acc.ID, wallet.OpSocialPost); err != nil {
+				app.Forbidden(w, r, err.Error())
+				return
+			}
 		}
 
-		// Redirect back to profile
+		UpdateStatus(sess.Account, status)
+
+		if status != "" {
+			go moderateStatus(sess.Account, status)
+			if sess.Account != app.SystemUserID && AIReplyHook != nil && containsMention(status, MicroMention) {
+				go AIReplyHook(sess.Account, status)
+			}
+		}
+
 		http.Redirect(w, r, "/@"+sess.Account, http.StatusSeeOther)
 		return
 	}
