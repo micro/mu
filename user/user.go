@@ -483,12 +483,11 @@ func PostSystemStatus(text string) error {
 // The user is never told they've been muted — from their perspective
 // everything looks normal.
 func moderateStatus(accountID, text string) {
+	// Never moderate or ban admins.
+	if acc, err := auth.GetAccount(accountID); err == nil && acc.Admin {
+		return
+	}
 	flag.CheckContent("status", accountID, "", text)
-	// CheckContent already calls AdminFlag on detection, which hides
-	// the individual piece. But for status we want escalation: if the
-	// LLM says SPAM/HARMFUL, ban the entire account. We can
-	// piggyback on the same LLM result by checking whether the flag
-	// was set within the last second (i.e. we just created it).
 	item := flag.GetItem("status", accountID)
 	if item != nil && item.Flagged {
 		app.Log("moderation", "Auto-banning %s after status flagged", accountID)
@@ -496,10 +495,13 @@ func moderateStatus(accountID, text string) {
 	}
 }
 
-// moderateAIResponse checks an AI-generated response BEFORE it's posted
+// ModerateAIResponse checks an AI-generated response BEFORE it's posted
 // as a status. Returns true if the response is safe to post. If the
-// content is flagged, the requesting user is banned.
+// content is flagged, the requesting user is banned (admins are exempt).
 func ModerateAIResponse(askerID, response string) bool {
+	if acc, err := auth.GetAccount(askerID); err == nil && acc.Admin {
+		return true
+	}
 	flag.CheckContent("ai_response", askerID, "", response)
 	item := flag.GetItem("ai_response", askerID)
 	if item != nil && item.Flagged {
