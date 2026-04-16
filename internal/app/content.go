@@ -97,7 +97,7 @@ func renderMenu(actions []Action) string {
 		case a.Label == "Edit":
 			sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s">Edit</a>`, a.URL, style))
 		case a.Label == "Delete" && a.Confirm != "":
-			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'DELETE'}).then(function(){window.location='/blog'})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'DELETE'}).then(function(){window.location=document.referrer||'/'})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
 		case a.Confirm != "":
 			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST'}).then(function(){location.reload()})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
 		default:

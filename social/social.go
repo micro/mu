@@ -537,15 +537,16 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	copy(all, messages)
 	mutex.RUnlock()
 
-	// Filter out flagged messages and replies (only show threads in feed)
+	// Filter out flagged/shadowbanned messages and replies (only show threads in feed)
 	var visible []*Message
 	for _, p := range all {
 		if p.ReplyTo != "" {
 			continue
 		}
-		if !flag.IsHidden("social", p.ID) {
-			visible = append(visible, p)
+		if flag.IsHidden("social", p.ID) || auth.IsShadowbanned(p.AuthorID) {
+			continue
 		}
+		visible = append(visible, p)
 	}
 
 	if app.WantsJSON(r) {
@@ -783,7 +784,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 
 	// Messages (chronological — oldest first, so conversation reads naturally)
 	for _, reply := range replies {
-		if flag.IsHidden("social", reply.ID) {
+		if flag.IsHidden("social", reply.ID) || auth.IsShadowbanned(reply.AuthorID) {
 			continue
 		}
 		rc := htmlpkg.EscapeString(reply.Content)
@@ -933,7 +934,7 @@ func generateCardHTML(allMessages []*Message) string {
 		if p.ReplyTo != "" {
 			continue // skip replies in home card
 		}
-		if flag.IsHidden("social", p.ID) {
+		if flag.IsHidden("social", p.ID) || auth.IsShadowbanned(p.AuthorID) {
 			continue
 		}
 		if p.AuthorID == "_system" {

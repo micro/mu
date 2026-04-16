@@ -14,6 +14,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/flag"
+	"mu/user"
 	"mu/wallet"
 	"mu/work"
 )
@@ -183,8 +184,12 @@ func runCommand(cmd string) string {
 			}
 			emailLine = fmt.Sprintf("Email: %s (%s)", acc.Email, verified)
 		}
-		return fmt.Sprintf("ID: %s\nName: %s\nAdmin: %v\nApproved: %v\n%s\nCreated: %s\nBalance: %d credits",
-			acc.ID, acc.Name, acc.Admin, acc.Approved, emailLine, acc.Created.Format("2 Jan 2006 15:04"), w.Balance)
+		shadowbanLine := ""
+		if acc.Shadowban {
+			shadowbanLine = "\nShadowban: YES"
+		}
+		return fmt.Sprintf("ID: %s\nName: %s\nAdmin: %v\nApproved: %v\n%s%s\nCreated: %s\nBalance: %d credits",
+			acc.ID, acc.Name, acc.Admin, acc.Approved, emailLine, shadowbanLine, acc.Created.Format("2 Jan 2006 15:04"), w.Balance)
 
 	case "approve":
 		if arg(1) == "" {
@@ -235,6 +240,31 @@ func runCommand(cmd string) string {
 			}
 		}
 		return fmt.Sprintf("Approved %d accounts older than %d days", count, days)
+
+	case "shadowban":
+		if arg(1) == "" {
+			return "usage: shadowban <user_id>  (silently mutes — they don't know)"
+		}
+		if err := auth.ShadowbanAccount(arg(1)); err != nil {
+			return "shadowban failed: " + err.Error()
+		}
+		return fmt.Sprintf("Shadowbanned %s — their content is now invisible to everyone else", arg(1))
+
+	case "unshadowban":
+		if arg(1) == "" {
+			return "usage: unshadowban <user_id>"
+		}
+		if err := auth.UnshadowbanAccount(arg(1)); err != nil {
+			return "unshadowban failed: " + err.Error()
+		}
+		return fmt.Sprintf("Unshadowbanned %s", arg(1))
+
+	case "clear-status":
+		if arg(1) == "" {
+			return "usage: clear-status <user_id>  (clears status + full history)"
+		}
+		user.ClearStatusHistory(arg(1))
+		return fmt.Sprintf("Cleared all status history for %s", arg(1))
 
 	// --- Wallet ---
 	case "wallet":
