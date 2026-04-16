@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -39,115 +41,90 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-// UsersHandler shows and manages users
+// UsersHandler shows and manages users with tabs: All, Banned, New.
 func UsersHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if user is admin
 	_, acc, err := auth.RequireAdmin(r)
 	if err != nil {
 		app.Forbidden(w, r, "Admin access required")
 		return
 	}
-
-	// Handle POST requests for user management actions
 	if r.Method == "POST" {
-		if err := r.ParseForm(); err != nil {
-			app.BadRequest(w, r, "Failed to parse form")
-			return
-		}
-
+		r.ParseForm()
 		action := r.FormValue("action")
 		userID := r.FormValue("user_id")
-
 		if userID == "" {
 			app.BadRequest(w, r, "User ID required")
 			return
 		}
-
-		targetUser, err := auth.GetAccount(userID)
-		if err != nil {
-			app.NotFound(w, r, "User not found")
-			return
-		}
-
 		switch action {
 		case "toggle_admin":
-			targetUser.Admin = !targetUser.Admin
-			auth.UpdateAccount(targetUser)
-		case "delete":
-			if err := auth.DeleteAccount(userID); err != nil {
-				http.Error(w, "Failed to delete user", http.StatusInternalServerError)
-				return
+			if u, err := auth.GetAccount(userID); err == nil {
+				u.Admin = !u.Admin
+				auth.UpdateAccount(u)
 			}
+		case "delete":
+			if userID != acc.ID { auth.DeleteAccount(userID) }
+		case "ban":
+			auth.BanAccount(userID)
+		case "unban":
+			auth.UnbanAccount(userID)
+		case "approve":
+			auth.ApproveAccount(userID)
 		}
-
-		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+		tab := r.FormValue("tab")
+		redir := "/admin/users"
+		if tab != "" { redir += "?tab=" + tab }
+		http.Redirect(w, r, redir, http.StatusSeeOther)
 		return
 	}
-
-	// GET request - show user list
 	users := auth.GetAllAccounts()
-
-	// Sort users by created date (newest first)
-	sort.Slice(users, func(i, j int) bool {
-		return users[i].Created.After(users[j].Created)
-	})
-
-	content := `<p><a href="/admin">← Admin</a></p>
-	<h2>Users</h2>
-	<p>Total: ` + fmt.Sprintf("%d", len(users)) + `</p>
-	<table class="admin-table">
-		<thead>
-			<tr>
-				<th>Username</th>
-				<th>Name</th>
-				<th class="created-col">Created</th>
-				<th class="center">Admin</th>
-				<th class="center">Actions</th>
-			</tr>
-		</thead>
-		<tbody>`
-
-	for _, user := range users {
-		createdStr := user.Created.Format("2006-01-02")
-
-		// Don't allow deleting yourself
-		deleteButton := ""
-		if user.ID != acc.ID {
-			deleteButton = `<form method="POST" class="d-inline" onsubmit="return confirm('Delete user ` + user.ID + `?');">
-				<input type="hidden" name="action" value="delete">
-				<input type="hidden" name="user_id" value="` + user.ID + `">
-				<button type="submit" class="btn-danger">Delete</button>
-			</form>`
-		}
-
-		content += `
-			<tr>
-				<td><strong><a href="/@` + user.ID + `">` + user.ID + `</a></strong></td>
-				<td>` + user.Name + `</td>
-				<td class="created-col">` + createdStr + `</td>
-				<td class="center">
-					<form method="POST" class="d-inline">
-						<input type="hidden" name="action" value="toggle_admin">
-						<input type="hidden" name="user_id" value="` + user.ID + `">
-						<input type="checkbox" ` + func() string {
-			if user.Admin {
-				return "checked"
-			}
-			return ""
-		}() + ` onchange="this.form.submit()" class="cursor-pointer" style="width: 18px; height: 18px;">
-					</form>
-				</td>
-				<td class="center">
-					` + deleteButton + `
-				</td>
-			</tr>`
+	sort.Slice(users, func(i, j int) bool { return users[i].Created.After(users[j].Created) })
+	tab := r.URL.Query().Get("tab")
+	if tab == "" { tab = "all" }
+	var sb strings.Builder
+	sb.WriteString(`<p><a href="/admin">← Admin</a></p><h2>Users</h2>`)
+	sb.WriteString(`<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">`)
+	for _, t := range []struct{ id, label string }{{"all", "All"}, {"banned", "Banned"}, {"new", "New (24h)"}} {
+		style := "padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;color:#555"
+		if t.id == tab { style = "padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;background:#000;color:#fff" }
+		sb.WriteString(fmt.Sprintf(`<a href="/admin/users?tab=%s" style="%s">%s</a>`, t.id, style, t.label))
 	}
-
-	content += `
-		</tbody>
-	</table>`
-
-	html := app.RenderHTMLForRequest("Admin", "Users", content, r)
+	sb.WriteString(`</div>`)
+	var filtered []*auth.Account
+	for _, u := range users {
+		switch tab {
+		case "banned":
+			if u.Banned { filtered = append(filtered, u) }
+		case "new":
+			if time.Since(u.Created) < 24*time.Hour { filtered = append(filtered, u) }
+		default:
+			filtered = append(filtered, u)
+		}
+	}
+	sb.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%d users</p>`, len(filtered)))
+	sb.WriteString(`<table class="admin-table"><thead><tr><th>Username</th><th>Name</th><th class="created-col">Created</th><th>Status</th><th class="center">Actions</th></tr></thead><tbody>`)
+	for _, u := range filtered {
+		created := u.Created.Format("2006-01-02")
+		var badges []string
+		if u.Admin { badges = append(badges, `<span style="background:#000;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">admin</span>`) }
+		if u.Banned { badges = append(badges, `<span style="background:#c00;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">banned</span>`) }
+		if u.EmailVerified { badges = append(badges, `<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">verified</span>`) }
+		if u.Approved { badges = append(badges, `<span style="background:#06b;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">approved</span>`) }
+		statusHTML := strings.Join(badges, " ")
+		if statusHTML == "" { statusHTML = `<span class="text-muted" style="font-size:12px">—</span>` }
+		var actions []string
+		if u.ID != acc.ID {
+			if u.Banned {
+				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="unban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #22c55e;background:#fff;color:#22c55e;cursor:pointer">Unban</button></form>`, u.ID, tab))
+			} else {
+				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #c00;background:#fff;color:#c00;cursor:pointer" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
+			}
+			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="btn-danger" style="font-size:12px;padding:2px 8px">Delete</button></form>`, u.ID, u.ID, tab))
+		}
+		sb.WriteString(fmt.Sprintf(`<tr><td><strong><a href="/@%s">%s</a></strong></td><td>%s</td><td class="created-col">%s</td><td>%s</td><td class="center" style="white-space:nowrap">%s</td></tr>`, u.ID, u.ID, u.Name, created, statusHTML, strings.Join(actions, " ")))
+	}
+	sb.WriteString(`</tbody></table>`)
+	html := app.RenderHTMLForRequest("Admin", "Users", sb.String(), r)
 	w.Write([]byte(html))
 }
 

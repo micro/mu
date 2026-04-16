@@ -685,14 +685,27 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	app.Log("apps", "Created app %q by %s", name, acc.ID)
 
-	// Async content moderation — flags and auto-bans on detection.
-	go func(authorID, appName, appDesc string) {
-		flag.CheckContent("app", slug, appName, appDesc)
-		if item := flag.GetItem("app", slug); item != nil && item.Flagged {
-			app.Log("moderation", "Auto-banning %s after app %q flagged", authorID, appName)
+	// Async content moderation — check name, description, AND the HTML
+	// body for inappropriate content. The HTML is stripped to text + URLs
+	// before being sent to the classifier. Auto-bans on detection.
+	go func(authorID, appSlug, appName, appDesc, appHTML string) {
+		// Moderate name + description.
+		flag.CheckContent("app", appSlug, appName, appDesc)
+		if item := flag.GetItem("app", appSlug); item != nil && item.Flagged {
+			app.Log("moderation", "Auto-banning %s after app %q name/desc flagged", authorID, appName)
 			auth.BanAccount(authorID)
+			return
 		}
-	}(acc.ID, name, description)
+		// Moderate the HTML body — extract readable text + URLs.
+		body := extractAppText(appHTML)
+		if body != "" {
+			flag.CheckContent("app_content", appSlug, appName, body)
+			if item := flag.GetItem("app_content", appSlug); item != nil && item.Flagged {
+				app.Log("moderation", "Auto-banning %s after app %q content flagged", authorID, appName)
+				auth.BanAccount(authorID)
+			}
+		}
+	}(acc.ID, slug, name, description, html)
 
 	// Notify home dashboard to refresh
 	event.Publish(event.Event{Type: "apps_updated"})
@@ -1685,6 +1698,62 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+// extractAppText strips HTML tags from app content and returns readable
+// text plus any URLs found. Capped at 2000 chars to keep the LLM
+// moderation call cheap. Used by the post-creation moderation goroutine.
+func extractAppText(html string) string {
+	if html == "" {
+		return ""
+	}
+	var sb strings.Builder
+
+	// Extract URLs (href="..." and src="...").
+	for _, attr := range []string{`href="`, `src="`, `href='`, `src='`} {
+		idx := 0
+		for {
+			i := strings.Index(html[idx:], attr)
+			if i < 0 {
+				break
+			}
+			start := idx + i + len(attr)
+			quote := html[idx+i+len(attr)-1]
+			end := strings.IndexByte(html[start:], quote)
+			if end < 0 {
+				break
+			}
+			url := html[start : start+end]
+			if strings.HasPrefix(url, "http") {
+				sb.WriteString(url)
+				sb.WriteByte(' ')
+			}
+			idx = start + end
+		}
+	}
+
+	// Strip tags — simple state machine, no dependency needed.
+	inTag := false
+	for _, c := range html {
+		if c == '<' {
+			inTag = true
+			continue
+		}
+		if c == '>' {
+			inTag = false
+			sb.WriteByte(' ')
+			continue
+		}
+		if !inTag {
+			sb.WriteRune(c)
+		}
+	}
+
+	text := strings.Join(strings.Fields(sb.String()), " ")
+	if len(text) > 2000 {
+		text = text[:2000]
+	}
+	return text
 }
 
 // SDK JavaScript served at /apps/sdk.js
