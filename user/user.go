@@ -413,6 +413,30 @@ func StatusStreamCapped(maxTotal, maxPerUser int, viewerID string) []StatusEntry
 	return entries
 }
 
+// StatusCountSince returns how many status entries are newer than the
+// given timestamp. Used by the /updates endpoint to tell the client
+// whether it needs to refresh the stream.
+func StatusCountSince(since time.Time, viewerID string) int {
+	profileMutex.RLock()
+	defer profileMutex.RUnlock()
+
+	count := 0
+	for _, p := range profiles {
+		if auth.IsBanned(p.UserID) && p.UserID != viewerID {
+			continue
+		}
+		if !p.UpdatedAt.IsZero() && p.UpdatedAt.After(since) {
+			count++
+		}
+		for _, h := range p.History {
+			if h.SetAt.After(since) {
+				count++
+			}
+		}
+	}
+	return count
+}
+
 // MaxStatusLength is the upper bound on a single status message. Larger
 // than a tweet, smaller than an essay — enough room for a short thought
 // or an @micro question without inviting wall-of-text posts.

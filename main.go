@@ -820,6 +820,7 @@ func main() {
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/verify", app.Verify)
 	http.HandleFunc("/session", app.Session)
+	http.HandleFunc("/updates", updatesHandler)
 	http.HandleFunc("/token", app.TokenHandler)
 	http.HandleFunc("/passkey/", app.PasskeyHandler)
 
@@ -1167,6 +1168,65 @@ func main() {
 	}
 
 	app.Log("main", "Server stopped")
+}
+
+// updatesHandler serves GET /updates?since=<unix> — a single lightweight
+// endpoint the client polls for change counts. Returns JSON:
+//
+//	{"mail":3,"status":2,"social":1,"ts":1713254400}
+//
+// The client stores ts and sends it back on the next poll. If since is
+// omitted, returns current totals (unread mail, stream size, etc.).
+func updatesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var viewerID string
+	if sess, _ := auth.TrySession(r); sess != nil {
+		viewerID = sess.Account
+	}
+
+	now := time.Now()
+
+	// Parse the "since" parameter — unix timestamp.
+	var since time.Time
+	if s := r.URL.Query().Get("since"); s != "" {
+		var n int64
+		if _, err := fmt.Sscanf(s, "%d", &n); err == nil {
+			since = time.Unix(n, 0)
+		}
+	}
+
+	result := map[string]interface{}{
+		"ts": now.Unix(),
+	}
+
+	// Mail — always unread count (personal, independent of since).
+	if viewerID != "" {
+		result["mail"] = mail.GetUnreadCount(viewerID)
+	} else {
+		result["mail"] = 0
+	}
+
+	// Status — new entries since last poll.
+	if since.IsZero() {
+		result["status"] = 0
+	} else {
+		result["status"] = user.StatusCountSince(since, viewerID)
+	}
+
+	// Social — new messages since last poll.
+	if since.IsZero() {
+		result["social"] = 0
+	} else {
+		result["social"] = social.CountSince(since)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(result)
 }
 
 // chargedWriteOp maps a request method + path to the wallet operation
