@@ -506,15 +506,32 @@ const statusCardScript = `<script>
 
   bindForm();
 
-  // Poll while the tab is visible.
-  setInterval(function(){
-    if (document.hidden) return;
-    refresh();
-  }, pollInterval);
+  // Unified poll via /updates — only refreshes the status stream when
+  // there are actual new entries, and updates mail badge from the same
+  // call. Much cheaper than fetching the full HTML fragment every 10s.
+  var lastTS = Math.floor(Date.now() / 1000);
 
-  // Fetch immediately when the tab regains focus.
+  function checkUpdates() {
+    if (document.hidden) return;
+    fetch('/updates?since=' + lastTS, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(data){
+        if (!data) return;
+        lastTS = data.ts || lastTS;
+        // Refresh status stream only when new entries exist.
+        if (data.status > 0) refresh();
+        // Update mail badges in the header/nav.
+        var badges = [document.getElementById('head-mail-badge'), document.getElementById('nav-mail-badge')];
+        for (var i = 0; i < badges.length; i++) {
+          if (badges[i]) badges[i].textContent = data.mail > 0 ? data.mail : '';
+        }
+      })
+      .catch(function(){});
+  }
+
+  setInterval(checkUpdates, pollInterval);
   document.addEventListener('visibilitychange', function(){
-    if (!document.hidden) refresh();
+    if (!document.hidden) checkUpdates();
   });
 })();
 </script>`
