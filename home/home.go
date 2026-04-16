@@ -287,14 +287,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	// Date header + admin actions
+	// Date header: date + inline weather summary + admin actions
 	now := time.Now()
 	_, viewerAcc := auth.TrySession(r)
-	inviteLink := ""
+	inviteHTML := ""
 	if viewerAcc != nil && viewerAcc.Admin && auth.InviteOnly() {
-		inviteLink = ` <a href="/admin/invite" style="float:right;font-size:13px;color:#555;text-decoration:none">+ Invite user</a>`
+		inviteHTML = `<span id="home-date-actions"><a href="/admin/invite" style="color:#555;text-decoration:none">+ Invite</a></span>`
 	}
-	b.WriteString(fmt.Sprintf(`<p id="home-date">%s%s</p>`, now.Format("Monday, 2 January 2006"), inviteLink))
+	b.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML))
+	// Inline script reads cached weather summary from localStorage
+	// and renders "10°C ☁️" next to the date. No fetch — reads what
+	// the weather card already cached.
+	b.WriteString(`<script>(function(){
+var w;try{w=JSON.parse(localStorage.getItem('mu_weather_now'))}catch(e){}
+if(!w||w.temp==null)return;
+var emoji={'clear':'☀️','sunny':'☀️','cloud':'☁️','overcast':'☁️','partly':'⛅','rain':'🌧️','drizzle':'🌧️','snow':'❄️','thunder':'⛈️','storm':'⛈️','fog':'🌫️','mist':'🌫️','haze':'🌫️','wind':'💨'};
+var e='';var d=(w.desc||'').toLowerCase();for(var k in emoji){if(d.indexOf(k)>=0){e=emoji[k];break}}
+document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
+})()</script>`)
 
 	// Status card content (will be prepended to left column).
 	// Built by user.RenderStatusStream so the fragment endpoint and the

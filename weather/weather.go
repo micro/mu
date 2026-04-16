@@ -74,6 +74,7 @@ fetch('/weather?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'}})
 var f=d.forecast;
 if(!f||!f.Current){return}
 var c=f.Current;
+try{localStorage.setItem('mu_weather_now',JSON.stringify({temp:Math.round(c.TempC),desc:c.Description||''}))}catch(e){}
 var h='<div style="display:flex;align-items:center;gap:8px">';
 h+='<span style="font-size:22px;font-weight:600;color:#333">'+Math.round(c.TempC)+'°C</span>';
 h+='<span style="color:#666">'+c.Description+'</span>';

@@ -611,6 +611,21 @@ body.page-home #page-title ~ #customize-link {
 #home-date {
   color: #888;
   margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#home-date-text {
+  white-space: nowrap;
+}
+#home-date-weather {
+  font-size: 13px;
+  color: #999;
+}
+#home-date-actions {
+  margin-left: auto;
+  font-size: 13px;
 }
 
 #home-status-form {
@@ -2371,7 +2386,7 @@ a.highlight {
     display: contents;
   }
   #home-date {
-    text-align: center;
+    justify-content: center;
   }
 
   /* Compact cards on mobile */
