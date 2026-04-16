@@ -467,13 +467,14 @@ const statusCardScript = `<script>
       .then(function(r){ return r.ok ? r.text() : null; })
       .then(function(html){
         if (html == null) return;
-        var saved = currentInput();
-        // Preserve scroll position unless we explicitly want to
-        // scroll to top (e.g. after posting a new status).
+        // After posting (scrollToTop=true), don't restore input — we
+        // want it cleared. On background polls, preserve what the
+        // user is typing.
+        var saved = scrollToTop ? null : currentInput();
         var feed = document.getElementById('home-statuses');
         var scrollPos = feed ? feed.scrollTop : 0;
         wrap.innerHTML = html;
-        restoreInput(saved);
+        if (saved) restoreInput(saved);
         var newFeed = document.getElementById('home-statuses');
         if (newFeed) {
           newFeed.scrollTop = scrollToTop ? 0 : scrollPos;
