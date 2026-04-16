@@ -326,22 +326,23 @@ func RecentStatuses(viewerID string, max int) []StatusEntry {
 //     entries.
 //
 // Pass 0 for either cap to disable it.
-func StatusStream(max int) []StatusEntry {
-	return StatusStreamCapped(max, StatusStreamPerUser)
+func StatusStream(max int, viewerID string) []StatusEntry {
+	return StatusStreamCapped(max, StatusStreamPerUser, viewerID)
 }
 
 // StatusStreamCapped is the underlying implementation with explicit
-// per-user and total caps. Exported so the profile page and any future
-// callers can pick their own shape.
-func StatusStreamCapped(maxTotal, maxPerUser int) []StatusEntry {
+// per-user and total caps. viewerID is the current viewer — a banned
+// user's own posts are included so they don't realise they're muted.
+func StatusStreamCapped(maxTotal, maxPerUser int, viewerID string) []StatusEntry {
 	profileMutex.RLock()
 	defer profileMutex.RUnlock()
 
 	cutoff := time.Now().Add(-statusMaxAge)
 	var entries []StatusEntry
 	for _, p := range profiles {
-		// Banned users are invisible to everyone.
-		if auth.IsBanned(p.UserID) {
+		// Banned users are invisible to everyone — except themselves,
+		// so they don't realise they've been muted.
+		if auth.IsBanned(p.UserID) && p.UserID != viewerID {
 			continue
 		}
 		name := p.UserID
@@ -387,6 +388,25 @@ func StatusStreamCapped(maxTotal, maxPerUser int) []StatusEntry {
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].UpdatedAt.After(entries[j].UpdatedAt)
 	})
+
+	// Dedupe adjacent identical entries from the same user. If user A
+	// posts "hello" three times in a row because they didn't realise
+	// it went through, collapse to one. But if another user's message
+	// appears in between, both copies stay — the interleaving means
+	// they're separate conversational moments.
+	if len(entries) > 1 {
+		deduped := entries[:1]
+		for i := 1; i < len(entries); i++ {
+			prev := deduped[len(deduped)-1]
+			cur := entries[i]
+			if cur.UserID == prev.UserID && cur.Status == prev.Status {
+				continue // skip adjacent duplicate from same user
+			}
+			deduped = append(deduped, cur)
+		}
+		entries = deduped
+	}
+
 	if maxTotal > 0 && len(entries) > maxTotal {
 		entries = entries[:maxTotal]
 	}
@@ -811,7 +831,7 @@ func envInt(key string, def int) int {
 // stream of recent statuses. Extracted so the fragment endpoint and
 // the home card can share one code path.
 func RenderStatusStream(viewerID string) string {
-	entries := StatusStream(StatusStreamMax)
+	entries := StatusStream(StatusStreamMax, viewerID)
 	app.Log("status", "RenderStatusStream: %d entries for viewer %s", len(entries), viewerID)
 
 	var sb strings.Builder
