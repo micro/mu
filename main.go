@@ -199,15 +199,25 @@ func main() {
 		if askerID == app.SystemUserID {
 			return
 		}
+		// If the asker is already banned, don't spend AI credits.
+		if auth.IsBanned(askerID) {
+			return
+		}
 		answer, err := agent.Query(askerID, prompt)
 		if err != nil {
 			app.Log("status", "@micro agent error for %s: %v", askerID, err)
-			// Post a short apology rather than leaving the mention silent.
 			_ = user.PostSystemStatus("I couldn't answer that one — try again in a moment.")
 			return
 		}
 		answer = strings.TrimSpace(answer)
 		if answer == "" {
+			return
+		}
+		// Moderate the AI response before posting — if the question
+		// tricked the AI into producing harmful content, the asker
+		// is banned and the response is silently dropped.
+		if !user.ModerateAIResponse(askerID, answer) {
+			app.Log("status", "AI response for %s blocked by moderation", askerID)
 			return
 		}
 		if err := user.PostSystemStatus(answer); err != nil {

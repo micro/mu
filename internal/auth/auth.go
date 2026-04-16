@@ -37,6 +37,7 @@ type Account struct {
 	Email           string    `json:"email,omitempty"`
 	EmailVerified   bool      `json:"email_verified,omitempty"`
 	EmailVerifiedAt time.Time `json:"email_verified_at,omitempty"`
+	Banned       bool      `json:"banned,omitempty"` // Silently hidden from everyone except themselves
 }
 
 type Session struct {
@@ -521,6 +522,46 @@ func IsNewAccount(accountID string) bool {
 	}
 
 	return time.Since(acc.Created) < 24*time.Hour
+}
+
+// IsBanned returns true if the account is banned. Content from banned
+// users is silently hidden from everyone except the user themselves —
+// they don't know they're muted.
+func IsBanned(accountID string) bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+	acc, exists := accounts[accountID]
+	if !exists {
+		return false
+	}
+	return acc.Banned
+}
+
+// BanAccount silently mutes a user. Their content is hidden from
+// all other users, but they can still browse and post (to themselves).
+func BanAccount(accountID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	acc, exists := accounts[accountID]
+	if !exists {
+		return errors.New("account not found")
+	}
+	acc.Banned = true
+	data.SaveJSON("accounts.json", accounts)
+	return nil
+}
+
+// UnbanAccount lifts a ban.
+func UnbanAccount(accountID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	acc, exists := accounts[accountID]
+	if !exists {
+		return errors.New("account not found")
+	}
+	acc.Banned = false
+	data.SaveJSON("accounts.json", accounts)
+	return nil
 }
 
 // ApproveAccount marks an account as approved, bypassing new account restrictions

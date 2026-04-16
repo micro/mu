@@ -14,6 +14,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/flag"
+	"mu/user"
 	"mu/wallet"
 	"mu/work"
 )
@@ -183,8 +184,12 @@ func runCommand(cmd string) string {
 			}
 			emailLine = fmt.Sprintf("Email: %s (%s)", acc.Email, verified)
 		}
-		return fmt.Sprintf("ID: %s\nName: %s\nAdmin: %v\nApproved: %v\n%s\nCreated: %s\nBalance: %d credits",
-			acc.ID, acc.Name, acc.Admin, acc.Approved, emailLine, acc.Created.Format("2 Jan 2006 15:04"), w.Balance)
+		banLine := ""
+		if acc.Banned {
+			banLine = "\nBanned: YES"
+		}
+		return fmt.Sprintf("ID: %s\nName: %s\nAdmin: %v\nApproved: %v\n%s%s\nCreated: %s\nBalance: %d credits",
+			acc.ID, acc.Name, acc.Admin, acc.Approved, emailLine, banLine, acc.Created.Format("2 Jan 2006 15:04"), w.Balance)
 
 	case "approve":
 		if arg(1) == "" {
@@ -235,6 +240,35 @@ func runCommand(cmd string) string {
 			}
 		}
 		return fmt.Sprintf("Approved %d accounts older than %d days", count, days)
+
+	case "ban":
+		if arg(1) == "" {
+			return "usage: ban <user_id>  (silently mutes — they don't know)"
+		}
+		if err := auth.BanAccount(arg(1)); err != nil {
+			return "ban failed: " + err.Error()
+		}
+		return fmt.Sprintf("Banned %s — their content is now invisible to everyone else", arg(1))
+
+	case "unban":
+		if arg(1) == "" {
+			return "usage: unban <user_id>"
+		}
+		if err := auth.UnbanAccount(arg(1)); err != nil {
+			return "unban failed: " + err.Error()
+		}
+		return fmt.Sprintf("Unbanned %s", arg(1))
+
+	case "clear-status":
+		if arg(1) == "" {
+			return "usage: clear-status <user_id|all>  (clears status + full history)"
+		}
+		if arg(1) == "all" {
+			user.ClearAllStatuses()
+			return "Cleared all status history for all users"
+		}
+		user.ClearStatusHistory(arg(1))
+		return fmt.Sprintf("Cleared all status history for %s", arg(1))
 
 	// --- Wallet ---
 	case "wallet":

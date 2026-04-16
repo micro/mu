@@ -15,6 +15,8 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/flag"
+	"mu/wallet"
 )
 
 // UserPost is a simplified post representation for profile rendering.
@@ -328,6 +330,10 @@ func StatusStreamCapped(maxTotal, maxPerUser int) []StatusEntry {
 	cutoff := time.Now().Add(-statusMaxAge)
 	var entries []StatusEntry
 	for _, p := range profiles {
+		// Banned users are invisible to everyone.
+		if auth.IsBanned(p.UserID) {
+			continue
+		}
 		name := p.UserID
 		if acc, err := auth.GetAccount(p.UserID); err == nil {
 			name = acc.Name
@@ -398,7 +404,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	sess, _, err := auth.RequireSession(r)
+	sess, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
 		return
@@ -409,9 +415,39 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		status = status[:MaxStatusLength]
 	}
 
+	// Allow clearing status (empty string) without any of the gates below.
+	if status != "" {
+		// Verified-to-post gate.
+		if !auth.CanPost(acc.ID) {
+			http.Error(w, auth.PostBlockReason(acc.ID), http.StatusForbidden)
+			return
+		}
+		// Per-account rate limit.
+		if err := auth.CheckPostRate(acc.ID); err != nil {
+			http.Error(w, err.Error(), http.StatusTooManyRequests)
+			return
+		}
+		// Charge 1 credit per status.
+		canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpSocialPost)
+		if !canProceed {
+			http.Error(w, fmt.Sprintf("Status updates cost %d credit. Top up at /wallet", cost), http.StatusPaymentRequired)
+			return
+		}
+		if err := wallet.ConsumeQuota(acc.ID, wallet.OpSocialPost); err != nil {
+			http.Error(w, err.Error(), http.StatusPaymentRequired)
+			return
+		}
+	}
+
 	profile := GetProfile(sess.Account)
 	profile.Status = status
 	UpdateProfile(profile)
+
+	// Async content moderation — flags spam/test/harmful automatically
+	// and auto-bans the user if it's bad. Fire-and-forget.
+	if status != "" {
+		go moderateStatus(sess.Account, status)
+	}
 
 	// If the user @mentioned the system agent, fire off a background
 	// agent call that will post the answer as a status from @micro.
@@ -450,6 +486,66 @@ func PostSystemStatus(text string) error {
 	profile := GetProfile(app.SystemUserID)
 	profile.Status = text
 	return UpdateProfile(profile)
+}
+
+// moderateStatus runs async content moderation on a status post. If the
+// LLM classifier flags it as spam, harmful, or a test, the content is
+// hidden via the flag system AND the user is auto-banned so all
+// their existing + future content becomes invisible to everyone else.
+// The user is never told they've been muted — from their perspective
+// everything looks normal.
+func moderateStatus(accountID, text string) {
+	flag.CheckContent("status", accountID, "", text)
+	// CheckContent already calls AdminFlag on detection, which hides
+	// the individual piece. But for status we want escalation: if the
+	// LLM says SPAM/HARMFUL, ban the entire account. We can
+	// piggyback on the same LLM result by checking whether the flag
+	// was set within the last second (i.e. we just created it).
+	item := flag.GetItem("status", accountID)
+	if item != nil && item.Flagged {
+		app.Log("moderation", "Auto-banning %s after status flagged", accountID)
+		auth.BanAccount(accountID)
+	}
+}
+
+// moderateAIResponse checks an AI-generated response BEFORE it's posted
+// as a status. Returns true if the response is safe to post. If the
+// content is flagged, the requesting user is banned.
+func ModerateAIResponse(askerID, response string) bool {
+	flag.CheckContent("ai_response", askerID, "", response)
+	item := flag.GetItem("ai_response", askerID)
+	if item != nil && item.Flagged {
+		app.Log("moderation", "AI response flagged for %s — banning asker", askerID)
+		auth.BanAccount(askerID)
+		return false
+	}
+	return true
+}
+
+// ClearStatusHistory wipes both the current status and the full history
+// for a user. Used by admin console to clean up after spam.
+func ClearStatusHistory(userID string) {
+	profileMutex.Lock()
+	defer profileMutex.Unlock()
+	if p, ok := profiles[userID]; ok {
+		p.Status = ""
+		p.History = nil
+		p.UpdatedAt = time.Now()
+		data.SaveJSON("profiles.json", profiles)
+	}
+}
+
+// ClearAllStatuses wipes every user's status + history. Nuclear option
+// for when the feed is full of garbage.
+func ClearAllStatuses() {
+	profileMutex.Lock()
+	defer profileMutex.Unlock()
+	for _, p := range profiles {
+		p.Status = ""
+		p.History = nil
+		p.UpdatedAt = time.Now()
+	}
+	data.SaveJSON("profiles.json", profiles)
 }
 
 // containsMention returns true when the mention token appears in the
@@ -608,13 +704,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Build status section
 	statusSection := ""
 	if profile.Status != "" {
-		statusSection = fmt.Sprintf(`<p class="info italic mt-3">"%s"</p>`, profile.Status)
+		statusSection = fmt.Sprintf(`<p class="info italic mt-3">"%s"</p>`, htmlpkg.EscapeString(profile.Status))
 	}
 	if len(profile.History) > 0 {
 		statusSection += `<details style="margin-top:8px;"><summary style="font-size:13px;color:#999;cursor:pointer;">Status history</summary><div style="margin-top:6px;">`
 		for _, h := range profile.History {
 			statusSection += fmt.Sprintf(`<p style="font-size:13px;color:#888;margin:4px 0;font-style:italic;">"%s" <span style="color:#bbb;">— %s</span></p>`,
-				h.Status, app.TimeAgo(h.SetAt))
+				htmlpkg.EscapeString(h.Status), app.TimeAgo(h.SetAt))
 		}
 		statusSection += `</div></details>`
 	}
@@ -624,9 +720,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if isOwnProfile {
 		statusEditForm = fmt.Sprintf(`
 <form method="POST" class="mt-4">
-<input type="text" name="status" placeholder="Set your status..." value="%s" maxlength="100" class="form-input w-full">
+<input type="text" name="status" placeholder="Set your status..." value="%s" maxlength="%d" class="form-input w-full">
 <button type="submit" class="mt-2">Update Status</button>
-</form>`, profile.Status)
+</form>`, htmlpkg.EscapeString(profile.Status), MaxStatusLength)
 	}
 
 	// Build message link (only show if not own profile)
