@@ -80,21 +80,16 @@ func CheckContent(contentType, itemID, title, content string) {
 		return
 	}
 
-	prompt := `You are a content moderator for a community that values purposeful, respectful discussion. Every post should be meaningful — this is not a place to waste time.
+	prompt := `You are a strict content moderator for a family-friendly community. Every post should be meaningful and respectful. This is not a place to waste time, troll, or post crude content.
 
 Classify the content with ONLY ONE WORD:
 - SPAM (promotional spam, advertising, repetitive junk)
-- TEST (test posts like "test", "hello world", etc.)
-- LOW_QUALITY (low-effort content, memes, nonsensical, no substance)
-- HARMFUL (gossip, backbiting, slander, personal attacks, mocking others, trolling)
-- OK (meaningful, on-topic, respectful content)
+- TEST (test posts like "test", "hello world", meaningless typing)
+- LOW_QUALITY (low-effort, memes, nonsensical, no substance, gibberish, single words)
+- HARMFUL (vulgar, crude, sexual, obscene, gossip, slander, personal attacks, mocking, trolling, shock content)
+- OK (meaningful, on-topic, respectful content that adds value)
 
-Community principles:
-- Stay on topic and contribute something meaningful
-- Be respectful — disagree with ideas, not people
-- No gossip or backbiting (speaking ill of someone behind their back)
-- No personal attacks, mockery, or belittling
-- Religious and political discussion is welcome when done with sincerity and good manners
+When in doubt, flag it. Better to flag something borderline than let inappropriate content through.
 
 Respond with just the single word.`
 

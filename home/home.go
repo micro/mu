@@ -445,7 +445,7 @@ const statusCardScript = `<script>
     }
   }
 
-  function refresh() {
+  function refresh(scrollToTop) {
     if (inflight) return;
     inflight = true;
     fetch('/user/status/stream', { credentials: 'same-origin', cache: 'no-store' })
@@ -453,8 +453,16 @@ const statusCardScript = `<script>
       .then(function(html){
         if (html == null) return;
         var saved = currentInput();
+        // Preserve scroll position unless we explicitly want to
+        // scroll to top (e.g. after posting a new status).
+        var feed = document.getElementById('home-statuses');
+        var scrollPos = feed ? feed.scrollTop : 0;
         wrap.innerHTML = html;
         restoreInput(saved);
+        var newFeed = document.getElementById('home-statuses');
+        if (newFeed) {
+          newFeed.scrollTop = scrollToTop ? 0 : scrollPos;
+        }
         bindForm();
       })
       .catch(function(){})
@@ -483,7 +491,7 @@ const statusCardScript = `<script>
         body: body.toString()
       }).then(function(){
         input.value = '';
-        refresh();
+        refresh(true);
       }).catch(function(){
         // Fall back to a native form submit on network error.
         form.submit();
