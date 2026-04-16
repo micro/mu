@@ -16,7 +16,6 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/flag"
-	"mu/wallet"
 )
 
 // UserPost is a simplified post representation for profile rendering.
@@ -410,12 +409,14 @@ const MicroMention = "@micro"
 var AIReplyHook func(askerID, prompt string)
 
 // StatusHandler handles POST /user/status to update the current user's status.
+// Auth, CanPost, rate limit, and wallet charging are handled by the
+// middleware in main.go — this handler only does the domain logic.
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	sess, acc, err := auth.RequireSession(r)
+	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
 		return
@@ -424,30 +425,6 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	status := strings.TrimSpace(r.FormValue("status"))
 	if len(status) > MaxStatusLength {
 		status = status[:MaxStatusLength]
-	}
-
-	// Allow clearing status (empty string) without any of the gates below.
-	if status != "" {
-		// Verified-to-post gate.
-		if !auth.CanPost(acc.ID) {
-			http.Error(w, auth.PostBlockReason(acc.ID), http.StatusForbidden)
-			return
-		}
-		// Per-account rate limit.
-		if err := auth.CheckPostRate(acc.ID); err != nil {
-			http.Error(w, err.Error(), http.StatusTooManyRequests)
-			return
-		}
-		// Charge 1 credit per status.
-		canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpSocialPost)
-		if !canProceed {
-			http.Error(w, fmt.Sprintf("Status updates cost %d credit. Top up at /wallet", cost), http.StatusPaymentRequired)
-			return
-		}
-		if err := wallet.ConsumeQuota(acc.ID, wallet.OpSocialPost); err != nil {
-			http.Error(w, err.Error(), http.StatusPaymentRequired)
-			return
-		}
 	}
 
 	UpdateStatus(sess.Account, status)
@@ -604,9 +581,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle POST request for status update (legacy, profile page form).
-	// Same gates as StatusHandler — CanPost, rate limit, wallet charge.
+	// Auth, CanPost, rate limit, and wallet charge are handled by the
+	// middleware in main.go before this handler is called.
 	if r.Method == "POST" {
-		sess, acc, err := auth.RequireSession(r)
+		sess, _, err := auth.RequireSession(r)
 		if err != nil {
 			app.Unauthorized(w, r)
 			return
@@ -619,26 +597,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		status := strings.TrimSpace(r.FormValue("status"))
 		if len(status) > MaxStatusLength {
 			status = status[:MaxStatusLength]
-		}
-
-		if status != "" {
-			if !auth.CanPost(acc.ID) {
-				app.Forbidden(w, r, auth.PostBlockReason(acc.ID))
-				return
-			}
-			if err := auth.CheckPostRate(acc.ID); err != nil {
-				app.Forbidden(w, r, err.Error())
-				return
-			}
-			canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpSocialPost)
-			if !canProceed {
-				app.Forbidden(w, r, fmt.Sprintf("Status updates cost %d credit. Top up at /wallet", cost))
-				return
-			}
-			if err := wallet.ConsumeQuota(acc.ID, wallet.OpSocialPost); err != nil {
-				app.Forbidden(w, r, err.Error())
-				return
-			}
 		}
 
 		UpdateStatus(sess.Account, status)

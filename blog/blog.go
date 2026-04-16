@@ -16,7 +16,6 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
-	"mu/wallet"
 )
 
 //go:embed topics.json
@@ -1233,44 +1232,12 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		author := acc.Name
 		authorID := acc.ID
 
-		// Check quota for blog creation
-		canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpBlogCreate)
-		if !canProceed {
-			if app.SendsJSON(r) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(402)
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"error":   "quota_exceeded",
-					"message": "Daily limit reached. Please top up credits at /wallet",
-					"cost":    cost,
-				})
-				return
-			}
-			content := wallet.QuotaExceededPage(wallet.OpBlogCreate, cost)
-			html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
-			w.Write([]byte(html))
-			return
-		}
-
-		// Verified email is required to post.
-		if !auth.CanPost(acc.ID) {
-			app.Forbidden(w, r, auth.PostBlockReason(acc.ID))
-			return
-		}
-		if err := auth.CheckPostRate(acc.ID); err != nil {
-			app.Forbidden(w, r, err.Error())
-			return
-		}
-
 		// Create post
 		postID := fmt.Sprintf("%d", time.Now().UnixNano())
 		if err := CreatePost(title, content, author, authorID, tags, private); err != nil {
 			http.Error(w, "Failed to save post", http.StatusInternalServerError)
 			return
 		}
-
-		// Consume quota for blog creation
-		wallet.ConsumeQuota(acc.ID, wallet.OpBlogCreate)
 
 		// Run async LLM-based content moderation
 		go flag.CheckContent("post", postID, title, content)
@@ -1800,37 +1767,6 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	content := strings.TrimSpace(r.FormValue("content"))
 	if content == "" {
 		app.BadRequest(w, r, "Comment content is required")
-		return
-	}
-
-	// Verified email is required to post.
-	if !auth.CanPost(acc.ID) {
-		app.Forbidden(w, r, auth.PostBlockReason(acc.ID))
-		return
-	}
-	if err := auth.CheckPostRate(acc.ID); err != nil {
-		app.Forbidden(w, r, err.Error())
-		return
-	}
-
-	// Charge per comment — makes spam expensive.
-	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpBlogComment)
-	if !canProceed {
-		if app.SendsJSON(r) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(402)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "insufficient_credits",
-				"message": fmt.Sprintf("Comments require %d credit. Top up at /wallet", cost),
-				"cost":    cost,
-			})
-			return
-		}
-		app.Forbidden(w, r, fmt.Sprintf("Comments require %d credit. Top up at /wallet", cost))
-		return
-	}
-	if err := wallet.ConsumeQuota(acc.ID, wallet.OpBlogComment); err != nil {
-		app.Forbidden(w, r, err.Error())
 		return
 	}
 

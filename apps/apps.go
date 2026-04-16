@@ -16,6 +16,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/internal/flag"
 	"mu/wallet"
 
 	"github.com/google/uuid"
@@ -571,15 +572,6 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.CanPost(acc.ID) {
-		app.Forbidden(w, r, auth.PostBlockReason(acc.ID))
-		return
-	}
-	if err := auth.CheckPostRate(acc.ID); err != nil {
-		app.Forbidden(w, r, err.Error())
-		return
-	}
-
 	var name, slug, icon, description, tags, html string
 	var public bool
 	var price int
@@ -692,6 +684,15 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	save()
 
 	app.Log("apps", "Created app %q by %s", name, acc.ID)
+
+	// Async content moderation — flags and auto-bans on detection.
+	go func(authorID, appName, appDesc string) {
+		flag.CheckContent("app", slug, appName, appDesc)
+		if item := flag.GetItem("app", slug); item != nil && item.Flagged {
+			app.Log("moderation", "Auto-banning %s after app %q flagged", authorID, appName)
+			auth.BanAccount(authorID)
+		}
+	}(acc.ID, name, description)
 
 	// Notify home dashboard to refresh
 	event.Publish(event.Event{Type: "apps_updated"})
@@ -1579,9 +1580,14 @@ func GetPublicApps() []*App {
 
 	var list []*App
 	for _, a := range apps {
-		if a.Public {
-			list = append(list, a)
+		if !a.Public {
+			continue
 		}
+		// Hide apps from banned users and flagged apps.
+		if auth.IsBanned(a.AuthorID) || flag.IsHidden("app", a.Slug) {
+			continue
+		}
+		list = append(list, a)
 	}
 	sort.Slice(list, func(i, j int) bool {
 		if list[i].Installs != list[j].Installs {

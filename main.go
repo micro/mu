@@ -329,21 +329,31 @@ func main() {
 	// Register MCP auth tools
 	api.RegisterTool(api.Tool{
 		Name:        "signup",
-		Description: "Create a new account and return a session token",
+		Description: "Create a new account and return a session token. When invite-only mode is enabled, a valid invite code is required.",
 		Params: []api.ToolParam{
 			{Name: "id", Type: "string", Description: "Username (4-24 chars, lowercase, starts with letter)", Required: true},
 			{Name: "secret", Type: "string", Description: "Password (minimum 6 characters)", Required: true},
 			{Name: "name", Type: "string", Description: "Display name (optional, defaults to username)", Required: false},
+			{Name: "invite", Type: "string", Description: "Invite code (required when instance is invite-only)", Required: false},
 		},
 		Handle: func(args map[string]any) (string, error) {
 			id, _ := args["id"].(string)
 			secret, _ := args["secret"].(string)
 			name, _ := args["name"].(string)
+			invite, _ := args["invite"].(string)
 			if id == "" || secret == "" {
 				return "username and password are required", fmt.Errorf("missing fields")
 			}
 			if len(secret) < 6 {
 				return "password must be at least 6 characters", fmt.Errorf("short password")
+			}
+			if reason := auth.ValidateUsername(id); reason != "" {
+				return reason, fmt.Errorf("banned username")
+			}
+			if auth.InviteOnly() {
+				if err := auth.ValidateInvite(invite); err != nil {
+					return err.Error(), err
+				}
 			}
 			if name == "" {
 				name = id
@@ -352,6 +362,9 @@ func main() {
 				ID: id, Secret: secret, Name: name, Created: time.Now(),
 			}); err != nil {
 				return err.Error(), err
+			}
+			if invite != "" {
+				auth.ConsumeInvite(invite, id)
 			}
 			sess, err := auth.Login(id, secret)
 			if err != nil {
@@ -635,6 +648,7 @@ func main() {
 		"/admin/usage":   true,
 		"/admin/delete":  true,
 		"/admin/console": true,
+		"/admin/invite": true,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
@@ -736,6 +750,7 @@ func main() {
 
 	// admin console
 	http.HandleFunc("/admin/console", admin.ConsoleHandler)
+	http.HandleFunc("/admin/invite", admin.InviteHandler)
 
 	// wallet - credits and payments
 	http.HandleFunc("/wallet", wallet.Handler)
@@ -1007,8 +1022,36 @@ func main() {
 					return
 				}
 
-				// Otherwise serve the HTML profile page
+				// Otherwise serve the HTML profile page.
+				// POST /@username updates status — run through the
+				// same write gate as every other content path.
 				if !strings.Contains(rest, "/") {
+					if r.Method == "POST" {
+						op := wallet.OpSocialPost
+						sess, err := auth.GetSession(r)
+						if err != nil {
+							http.Error(w, "authentication required", http.StatusUnauthorized)
+							return
+						}
+						if !auth.CanPost(sess.Account) {
+							http.Error(w, auth.PostBlockReason(sess.Account), http.StatusForbidden)
+							return
+						}
+						if err := auth.CheckPostRate(sess.Account); err != nil {
+							http.Error(w, err.Error(), http.StatusTooManyRequests)
+							return
+						}
+						canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
+						if !canProceed {
+							http.Error(w, fmt.Sprintf("This costs %d credit(s). Top up at /wallet", cost), http.StatusPaymentRequired)
+							return
+						}
+						if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
+							http.Error(w, err.Error(), http.StatusPaymentRequired)
+							return
+						}
+						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, wallet.GetOperationCost(op), rest)
+					}
 					user.Handler(w, r)
 					return
 				}
@@ -1035,6 +1078,43 @@ func main() {
 					http.Error(w, `{"error":"invalid CSRF token"}`, http.StatusForbidden)
 					return
 				}
+			}
+
+			// ── Centralised write gate ──────────────────────────────
+			// Every content-creating POST is charged, rate-limited,
+			// and moderated from ONE place. Individual handlers do
+			// NOT call CheckQuota/ConsumeQuota — the middleware does
+			// it so nothing can be forgotten.
+			if op := chargedWriteOp(r); op != "" {
+				sess, err := auth.GetSession(r)
+				if err != nil {
+					http.Error(w, "authentication required", http.StatusUnauthorized)
+					return
+				}
+				if !auth.CanPost(sess.Account) {
+					msg := auth.PostBlockReason(sess.Account)
+					http.Error(w, msg, http.StatusForbidden)
+					return
+				}
+				if err := auth.CheckPostRate(sess.Account); err != nil {
+					http.Error(w, err.Error(), http.StatusTooManyRequests)
+					return
+				}
+				canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
+				if !canProceed {
+					http.Error(w, fmt.Sprintf("This costs %d credit(s). Top up at /wallet", cost), http.StatusPaymentRequired)
+					return
+				}
+				// Charge up-front. The handler runs only if the
+				// user can afford it. Failed handler calls (panics,
+				// 5xx) are rare enough that the lost credit is
+				// acceptable — and it's the only way to guarantee
+				// we never forget to charge.
+				if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
+					http.Error(w, err.Error(), http.StatusPaymentRequired)
+					return
+				}
+				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, wallet.GetOperationCost(op), r.Method, r.URL.Path)
 			}
 
 			http.DefaultServeMux.ServeHTTP(w, r)
@@ -1087,6 +1167,41 @@ func main() {
 	}
 
 	app.Log("main", "Server stopped")
+}
+
+// chargedWriteOp maps a request method + path to the wallet operation
+// that should be charged. Returns "" for routes that don't cost credits
+// (reads, auth, payments, MCP — MCP has its own QuotaCheck). This is
+// the SINGLE source of truth for what costs money on the web/API side.
+func chargedWriteOp(r *http.Request) string {
+	if r.Method != "POST" {
+		return ""
+	}
+	path := r.URL.Path
+	switch {
+	// Status updates
+	case path == "/user/status":
+		return wallet.OpSocialPost
+	// Social threads and replies
+	case path == "/social":
+		return wallet.OpSocialPost
+	case path == "/social/thread":
+		return wallet.OpSocialReply
+	// Blog — only CREATE is charged (no id param). Updates are free.
+	case path == "/blog" && r.URL.Query().Get("id") == "":
+		return wallet.OpBlogCreate
+	case strings.HasPrefix(path, "/blog/post/") && strings.HasSuffix(path, "/comment"):
+		return wallet.OpBlogComment
+	// Apps
+	case path == "/apps/new":
+		return wallet.OpSocialPost
+	case path == "/apps/build/generate", path == "/apps/framework/generate":
+		return wallet.OpAppBuild
+	// Work
+	case path == "/work/post":
+		return wallet.OpSocialPost
+	}
+	return ""
 }
 
 // isServerMode returns true when the argument list contains the

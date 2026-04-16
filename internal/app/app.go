@@ -497,6 +497,7 @@ var SignupTemplate = `<html lang="en">
 	  <input id="name" name="name" placeholder="Name (optional)">
   	  <input id="secret" name="secret" type="password" placeholder="Password (min 6 chars)" required>
 	  %s
+	  %s
 	  <br>
 	  <button>Signup</button>
 	</form>
@@ -507,11 +508,19 @@ var SignupTemplate = `<html lang="en">
 </html>
 `
 
+// inviteCode is a package-level var used to thread the invite code
+// through signup renders without changing every call site.
+var currentInviteCode string
+
 // renderSignup renders the signup template with a fresh captcha challenge
 // and the given error HTML (or empty string).
 func renderSignup(errHTML string) string {
 	c := NewCaptchaChallenge()
-	return fmt.Sprintf(SignupTemplate, errHTML, CaptchaHTML(c))
+	inviteField := ""
+	if currentInviteCode != "" {
+		inviteField = fmt.Sprintf(`<input type="hidden" name="invite" value="%s">`, currentInviteCode)
+	}
+	return fmt.Sprintf(SignupTemplate, errHTML, CaptchaHTML(c), inviteField)
 }
 
 // EmailSender is set by main.go and called to deliver verification
@@ -636,6 +645,28 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 // Signup handler
 func Signup(w http.ResponseWriter, r *http.Request) {
+	// Thread the invite code through renders so the hidden field persists.
+	invCode := r.URL.Query().Get("invite")
+	if r.Method == "POST" {
+		if v := r.FormValue("invite"); v != "" {
+			invCode = v
+		}
+	}
+	currentInviteCode = invCode
+
+	// Invite-only mode: reject if no valid code is provided.
+	if auth.InviteOnly() {
+		if err := auth.ValidateInvite(invCode); err != nil {
+			if r.Method == "GET" && invCode == "" {
+				body := `<div class="card"><h3>Invite only</h3><p>Mu is currently invite-only. Ask an existing member for an invitation.</p></div>`
+				w.Write([]byte(RenderHTML("Invite Only", "Signup is invite-only", body)))
+				return
+			}
+			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
+			return
+		}
+	}
+
 	if r.Method == "GET" {
 		w.Write([]byte(renderSignup("")))
 		return
@@ -677,6 +708,11 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if reason := auth.ValidateUsername(id); reason != "" {
+			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, reason))))
+			return
+		}
+
 		if len(secret) == 0 {
 			w.Write([]byte(renderSignup(`<p class="text-error">Password is required</p>`)))
 			return
@@ -700,6 +736,11 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
 			return
+		}
+
+		// Consume invite code if present (marks it as used).
+		if invCode != "" {
+			auth.ConsumeInvite(invCode, id)
 		}
 
 		// login

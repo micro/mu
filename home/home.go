@@ -287,9 +287,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	// Date header
+	// Date header + admin actions
 	now := time.Now()
-	b.WriteString(fmt.Sprintf(`<p id="home-date">%s</p>`, now.Format("Monday, 2 January 2006")))
+	_, viewerAcc := auth.TrySession(r)
+	inviteLink := ""
+	if viewerAcc != nil && viewerAcc.Admin && auth.InviteOnly() {
+		inviteLink = ` <a href="/admin/invite" style="float:right;font-size:13px;color:#555;text-decoration:none">+ Invite user</a>`
+	}
+	b.WriteString(fmt.Sprintf(`<p id="home-date">%s%s</p>`, now.Format("Monday, 2 January 2006"), inviteLink))
 
 	// Status card content (will be prepended to left column).
 	// Built by user.RenderStatusStream so the fragment endpoint and the
