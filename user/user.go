@@ -427,7 +427,11 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		status = status[:MaxStatusLength]
 	}
 
-	UpdateStatus(sess.Account, status)
+	if err := UpdateStatus(sess.Account, status); err != nil {
+		app.Log("status", "UpdateStatus failed for %s: %v", sess.Account, err)
+	} else {
+		app.Log("status", "Status updated for %s: %q", sess.Account, status)
+	}
 
 	// Async content moderation — flags spam/test/harmful automatically
 	// and auto-bans the user if it's bad. Fire-and-forget.
@@ -806,6 +810,7 @@ func envInt(key string, def int) int {
 // the home card can share one code path.
 func RenderStatusStream(viewerID string) string {
 	entries := StatusStream(StatusStreamMax)
+	app.Log("status", "RenderStatusStream: %d entries for viewer %s", len(entries), viewerID)
 
 	var sb strings.Builder
 	if viewerID != "" {
