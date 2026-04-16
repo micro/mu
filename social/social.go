@@ -332,15 +332,6 @@ func handleCreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.CanPost(acc.ID) {
-		app.BadRequest(w, r, auth.PostBlockReason(acc.ID))
-		return
-	}
-	if err := auth.CheckPostRate(acc.ID); err != nil {
-		app.Forbidden(w, r, err.Error())
-		return
-	}
-
 	if err := r.ParseForm(); err != nil {
 		app.BadRequest(w, r, "Failed to parse form")
 		return
@@ -357,27 +348,6 @@ func handleCreateThread(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(strings.Fields(content)) < 2 {
 		app.BadRequest(w, r, "Message must contain at least 2 words")
-		return
-	}
-
-	// Charge per post — makes spam expensive.
-	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpSocialPost)
-	if !canProceed {
-		if app.SendsJSON(r) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(402)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "insufficient_credits",
-				"message": fmt.Sprintf("Posting requires %d credit. Top up at /wallet", cost),
-				"cost":    cost,
-			})
-			return
-		}
-		app.Forbidden(w, r, fmt.Sprintf("Posting requires %d credit. Top up at /wallet", cost))
-		return
-	}
-	if err := wallet.ConsumeQuota(acc.ID, wallet.OpSocialPost); err != nil {
-		app.Forbidden(w, r, err.Error())
 		return
 	}
 
@@ -437,34 +407,8 @@ func handleJSONRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.CanPost(acc.ID) {
-		http.Error(w, auth.PostBlockReason(acc.ID), http.StatusForbidden)
-		return
-	}
-	if err := auth.CheckPostRate(acc.ID); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
-
 	if len(content) > 500 {
 		http.Error(w, "Messages must be 500 characters or less", 400)
-		return
-	}
-
-	// Charge per post.
-	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpSocialPost)
-	if !canProceed {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(402)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error":   "insufficient_credits",
-			"message": fmt.Sprintf("Posting requires %d credit. Top up at /wallet", cost),
-			"cost":    cost,
-		})
-		return
-	}
-	if err := wallet.ConsumeQuota(acc.ID, wallet.OpSocialPost); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
 
@@ -613,15 +557,6 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.CanPost(acc.ID) {
-		app.BadRequest(w, r, auth.PostBlockReason(acc.ID))
-		return
-	}
-	if err := auth.CheckPostRate(acc.ID); err != nil {
-		app.Forbidden(w, r, err.Error())
-		return
-	}
-
 	if err := r.ParseForm(); err != nil {
 		app.BadRequest(w, r, "Failed to parse form")
 		return
@@ -649,27 +584,6 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 	mutex.RUnlock()
 	if parent == nil {
 		app.BadRequest(w, r, "Thread not found")
-		return
-	}
-
-	// Charge per reply.
-	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpSocialReply)
-	if !canProceed {
-		if app.SendsJSON(r) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(402)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "insufficient_credits",
-				"message": fmt.Sprintf("Replies require %d credit. Top up at /wallet", cost),
-				"cost":    cost,
-			})
-			return
-		}
-		app.Forbidden(w, r, fmt.Sprintf("Replies require %d credit. Top up at /wallet", cost))
-		return
-	}
-	if err := wallet.ConsumeQuota(acc.ID, wallet.OpSocialReply); err != nil {
-		app.Forbidden(w, r, err.Error())
 		return
 	}
 

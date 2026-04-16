@@ -97,7 +97,9 @@ func renderMenu(actions []Action) string {
 		case a.Label == "Edit":
 			sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s">Edit</a>`, a.URL, style))
 		case a.Label == "Delete" && a.Confirm != "":
-			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'DELETE'}).then(function(){window.location=document.referrer||'/'})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
+			// Use POST (not DELETE) — handlers check for POST.
+			// Redirect to the parent listing page, derived from the URL pattern.
+			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST'}).then(function(){var p='%s';if(p.indexOf('/apps/')===0)window.location='/apps';else if(p.indexOf('/social')===0)window.location='/social';else if(p.indexOf('/work/')===0)window.location='/work';else window.location=document.referrer||'/'})};return false;">%s</a>`, style, a.Confirm, a.URL, a.URL, a.Label))
 		case a.Confirm != "":
 			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST'}).then(function(){location.reload()})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
 		default:

@@ -472,15 +472,6 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.CanPost(acc.ID) {
-		respondError(w, r, "/work", auth.PostBlockReason(acc.ID))
-		return
-	}
-	if err := auth.CheckPostRate(acc.ID); err != nil {
-		respondError(w, r, "/work", err.Error())
-		return
-	}
-
 	var kind, title, description, link string
 	var cost int
 

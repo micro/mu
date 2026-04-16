@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -18,6 +19,60 @@ import (
 	"mu/wallet"
 	"mu/work"
 )
+
+// InviteHandler serves the admin invite page at /admin/invite.
+func InviteHandler(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireAdmin(r)
+	if err != nil {
+		app.Forbidden(w, r, "Admin access required")
+		return
+	}
+
+	if r.Method == "POST" {
+		r.ParseForm()
+		email := strings.TrimSpace(r.FormValue("email"))
+		if email == "" {
+			app.BadRequest(w, r, "Email is required")
+			return
+		}
+		code, err := auth.CreateInvite(email, sess.Account)
+		if err != nil {
+			app.ServerError(w, r, "Failed to create invite: "+err.Error())
+			return
+		}
+		base := app.PublicURL()
+		link := base + "/signup?invite=" + code
+
+		// Try to email the invite. If mail isn't configured, show the link.
+		if app.EmailSender != nil {
+			plain := fmt.Sprintf("You've been invited to join Mu.\n\nSign up here: %s\n\nThis link is single-use.", link)
+			html := fmt.Sprintf(`<p>You've been invited to join Mu.</p><p><a href="%s">Sign up here</a></p><p>This link is single-use.</p>`, link)
+			if err := app.EmailSender(email, "You're invited to Mu", plain, html); err != nil {
+				app.Log("admin", "Failed to email invite to %s: %v", email, err)
+			}
+		}
+
+		content := fmt.Sprintf(`<div class="card">
+<h4>Invite sent</h4>
+<p>Invite created for <strong>%s</strong></p>
+<p><a href="%s">%s</a></p>
+<p class="text-muted text-sm">Link has been emailed (if mail is configured). Single use.</p>
+<p><a href="/admin/invite">Invite another →</a> · <a href="/home">Home →</a></p>
+</div>`, email, link, link)
+		w.Write([]byte(app.RenderHTML("Invite Sent", "Invite sent", content)))
+		return
+	}
+
+	content := `<div class="card">
+<h4>Invite a user</h4>
+<p class="text-sm">Enter their email address. They'll receive a single-use signup link.</p>
+<form method="POST" action="/admin/invite" class="mt-4">
+	<input type="email" name="email" placeholder="user@example.com" required class="form-input">
+	<button type="submit" class="mt-2">Send invite</button>
+</form>
+</div>`
+	w.Write([]byte(app.RenderHTML("Invite User", "Invite a user", content)))
+}
 
 // ConsoleHandler provides an admin console.
 func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
@@ -269,6 +324,40 @@ func runCommand(cmd string) string {
 		}
 		user.ClearStatusHistory(arg(1))
 		return fmt.Sprintf("Cleared all status history for %s", arg(1))
+
+	case "invite":
+		if arg(1) == "" {
+			return "usage: invite <email>"
+		}
+		email := arg(1)
+		// Use "admin" as the admin ID for console-created invites
+		code, err := auth.CreateInvite(email, "admin")
+		if err != nil {
+			return "invite failed: " + err.Error()
+		}
+		url := ""
+		if v := os.Getenv("PUBLIC_URL"); v != "" {
+			url = v
+		} else if v := os.Getenv("MAIL_DOMAIN"); v != "" {
+			url = "https://" + v
+		}
+		link := url + "/signup?invite=" + code
+		return fmt.Sprintf("Invite created for %s\nCode: %s\nLink: %s", email, code, link)
+
+	case "invites":
+		list := auth.ListInvites()
+		if len(list) == 0 {
+			return "No invites"
+		}
+		var sb strings.Builder
+		for _, inv := range list {
+			used := "unused"
+			if inv.UsedBy != "" {
+				used = "used by " + inv.UsedBy
+			}
+			sb.WriteString(fmt.Sprintf("  %s → %s (%s, %s)\n", inv.Code[:8]+"...", inv.Email, used, inv.CreatedAt.Format("2 Jan 15:04")))
+		}
+		return sb.String()
 
 	// --- Wallet ---
 	case "wallet":

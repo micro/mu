@@ -572,25 +572,6 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.CanPost(acc.ID) {
-		app.Forbidden(w, r, auth.PostBlockReason(acc.ID))
-		return
-	}
-	if err := auth.CheckPostRate(acc.ID); err != nil {
-		app.Forbidden(w, r, err.Error())
-		return
-	}
-	// Charge 1 credit to create an app (prevents free spam).
-	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpSocialPost)
-	if !canProceed {
-		app.Forbidden(w, r, fmt.Sprintf("Creating an app costs %d credit. Top up at /wallet", cost))
-		return
-	}
-	if err := wallet.ConsumeQuota(acc.ID, wallet.OpSocialPost); err != nil {
-		app.Forbidden(w, r, err.Error())
-		return
-	}
-
 	var name, slug, icon, description, tags, html string
 	var public bool
 	var price int
