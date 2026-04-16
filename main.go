@@ -199,8 +199,8 @@ func main() {
 		if askerID == app.SystemUserID {
 			return
 		}
-		// If the asker is already shadowbanned, don't spend AI credits.
-		if auth.IsShadowbanned(askerID) {
+		// If the asker is already banned, don't spend AI credits.
+		if auth.IsBanned(askerID) {
 			return
 		}
 		answer, err := agent.Query(askerID, prompt)
@@ -215,7 +215,7 @@ func main() {
 		}
 		// Moderate the AI response before posting — if the question
 		// tricked the AI into producing harmful content, the asker
-		// is shadowbanned and the response is silently dropped.
+		// is banned and the response is silently dropped.
 		if !user.ModerateAIResponse(askerID, answer) {
 			app.Log("status", "AI response for %s blocked by moderation", askerID)
 			return

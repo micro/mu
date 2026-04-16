@@ -184,12 +184,12 @@ func runCommand(cmd string) string {
 			}
 			emailLine = fmt.Sprintf("Email: %s (%s)", acc.Email, verified)
 		}
-		shadowbanLine := ""
-		if acc.Shadowban {
-			shadowbanLine = "\nShadowban: YES"
+		banLine := ""
+		if acc.Banned {
+			banLine = "\nBanned: YES"
 		}
 		return fmt.Sprintf("ID: %s\nName: %s\nAdmin: %v\nApproved: %v\n%s%s\nCreated: %s\nBalance: %d credits",
-			acc.ID, acc.Name, acc.Admin, acc.Approved, emailLine, shadowbanLine, acc.Created.Format("2 Jan 2006 15:04"), w.Balance)
+			acc.ID, acc.Name, acc.Admin, acc.Approved, emailLine, banLine, acc.Created.Format("2 Jan 2006 15:04"), w.Balance)
 
 	case "approve":
 		if arg(1) == "" {
@@ -241,27 +241,31 @@ func runCommand(cmd string) string {
 		}
 		return fmt.Sprintf("Approved %d accounts older than %d days", count, days)
 
-	case "shadowban":
+	case "ban":
 		if arg(1) == "" {
-			return "usage: shadowban <user_id>  (silently mutes — they don't know)"
+			return "usage: ban <user_id>  (silently mutes — they don't know)"
 		}
-		if err := auth.ShadowbanAccount(arg(1)); err != nil {
-			return "shadowban failed: " + err.Error()
+		if err := auth.BanAccount(arg(1)); err != nil {
+			return "ban failed: " + err.Error()
 		}
-		return fmt.Sprintf("Shadowbanned %s — their content is now invisible to everyone else", arg(1))
+		return fmt.Sprintf("Banned %s — their content is now invisible to everyone else", arg(1))
 
-	case "unshadowban":
+	case "unban":
 		if arg(1) == "" {
-			return "usage: unshadowban <user_id>"
+			return "usage: unban <user_id>"
 		}
-		if err := auth.UnshadowbanAccount(arg(1)); err != nil {
-			return "unshadowban failed: " + err.Error()
+		if err := auth.UnbanAccount(arg(1)); err != nil {
+			return "unban failed: " + err.Error()
 		}
-		return fmt.Sprintf("Unshadowbanned %s", arg(1))
+		return fmt.Sprintf("Unbanned %s", arg(1))
 
 	case "clear-status":
 		if arg(1) == "" {
-			return "usage: clear-status <user_id>  (clears status + full history)"
+			return "usage: clear-status <user_id|all>  (clears status + full history)"
+		}
+		if arg(1) == "all" {
+			user.ClearAllStatuses()
+			return "Cleared all status history for all users"
 		}
 		user.ClearStatusHistory(arg(1))
 		return fmt.Sprintf("Cleared all status history for %s", arg(1))

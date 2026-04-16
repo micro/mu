@@ -298,7 +298,7 @@ func GetNewAccountBlogPosts() []flag.PostContent {
 	var result []flag.PostContent
 	for _, post := range posts {
 		// Skip flagged/hidden posts
-		if flag.IsHidden("post", post.ID) || auth.IsShadowbanned(post.AuthorID) {
+		if flag.IsHidden("post", post.ID) || auth.IsBanned(post.AuthorID) {
 			continue
 		}
 
@@ -390,7 +390,7 @@ func updateCacheUnlocked() {
 	for i := 0; i < len(posts) && count < 1; i++ {
 		post := posts[i]
 		// Skip flagged posts
-		if flag.IsHidden("post", post.ID) || auth.IsShadowbanned(post.AuthorID) {
+		if flag.IsHidden("post", post.ID) || auth.IsBanned(post.AuthorID) {
 			continue
 		}
 		// Skip private posts (home page shows only public posts)
@@ -495,7 +495,7 @@ func updateCacheUnlocked() {
 	var fullList []string
 	for _, post := range posts {
 		// Skip flagged posts
-		if flag.IsHidden("post", post.ID) || auth.IsShadowbanned(post.AuthorID) {
+		if flag.IsHidden("post", post.ID) || auth.IsBanned(post.AuthorID) {
 			continue
 		}
 
@@ -618,7 +618,7 @@ func previewUncached() string {
 	for i := 0; i < len(posts) && count < 1; i++ {
 		post := posts[i]
 		// Skip flagged posts
-		if flag.IsHidden("post", post.ID) || auth.IsShadowbanned(post.AuthorID) {
+		if flag.IsHidden("post", post.ID) || auth.IsBanned(post.AuthorID) {
 			continue
 		}
 		// Skip posts from new accounts (< 24 hours old)
@@ -761,7 +761,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		// Filter out flagged posts and private posts (unless admin)
 		var visiblePosts []*Post
 		for _, post := range posts {
-			if !flag.IsHidden("post", post.ID) || auth.IsShadowbanned(post.AuthorID) {
+			if !flag.IsHidden("post", post.ID) || auth.IsBanned(post.AuthorID) {
 				// Skip private posts for non-admins
 				if post.Private && !isAdmin {
 					continue

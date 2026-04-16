@@ -330,8 +330,8 @@ func StatusStreamCapped(maxTotal, maxPerUser int) []StatusEntry {
 	cutoff := time.Now().Add(-statusMaxAge)
 	var entries []StatusEntry
 	for _, p := range profiles {
-		// Shadowbanned users are invisible to everyone.
-		if auth.IsShadowbanned(p.UserID) {
+		// Banned users are invisible to everyone.
+		if auth.IsBanned(p.UserID) {
 			continue
 		}
 		name := p.UserID
@@ -444,7 +444,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	UpdateProfile(profile)
 
 	// Async content moderation — flags spam/test/harmful automatically
-	// and auto-shadowbans the user if it's bad. Fire-and-forget.
+	// and auto-bans the user if it's bad. Fire-and-forget.
 	if status != "" {
 		go moderateStatus(sess.Account, status)
 	}
@@ -490,7 +490,7 @@ func PostSystemStatus(text string) error {
 
 // moderateStatus runs async content moderation on a status post. If the
 // LLM classifier flags it as spam, harmful, or a test, the content is
-// hidden via the flag system AND the user is auto-shadowbanned so all
+// hidden via the flag system AND the user is auto-banned so all
 // their existing + future content becomes invisible to everyone else.
 // The user is never told they've been muted — from their perspective
 // everything looks normal.
@@ -498,25 +498,25 @@ func moderateStatus(accountID, text string) {
 	flag.CheckContent("status", accountID, "", text)
 	// CheckContent already calls AdminFlag on detection, which hides
 	// the individual piece. But for status we want escalation: if the
-	// LLM says SPAM/HARMFUL, shadowban the entire account. We can
+	// LLM says SPAM/HARMFUL, ban the entire account. We can
 	// piggyback on the same LLM result by checking whether the flag
 	// was set within the last second (i.e. we just created it).
 	item := flag.GetItem("status", accountID)
 	if item != nil && item.Flagged {
-		app.Log("moderation", "Auto-shadowbanning %s after status flagged", accountID)
-		auth.ShadowbanAccount(accountID)
+		app.Log("moderation", "Auto-banning %s after status flagged", accountID)
+		auth.BanAccount(accountID)
 	}
 }
 
 // moderateAIResponse checks an AI-generated response BEFORE it's posted
 // as a status. Returns true if the response is safe to post. If the
-// content is flagged, the requesting user is shadowbanned.
+// content is flagged, the requesting user is banned.
 func ModerateAIResponse(askerID, response string) bool {
 	flag.CheckContent("ai_response", askerID, "", response)
 	item := flag.GetItem("ai_response", askerID)
 	if item != nil && item.Flagged {
-		app.Log("moderation", "AI response flagged for %s — shadowbanning asker", askerID)
-		auth.ShadowbanAccount(askerID)
+		app.Log("moderation", "AI response flagged for %s — banning asker", askerID)
+		auth.BanAccount(askerID)
 		return false
 	}
 	return true
@@ -533,6 +533,19 @@ func ClearStatusHistory(userID string) {
 		p.UpdatedAt = time.Now()
 		data.SaveJSON("profiles.json", profiles)
 	}
+}
+
+// ClearAllStatuses wipes every user's status + history. Nuclear option
+// for when the feed is full of garbage.
+func ClearAllStatuses() {
+	profileMutex.Lock()
+	defer profileMutex.Unlock()
+	for _, p := range profiles {
+		p.Status = ""
+		p.History = nil
+		p.UpdatedAt = time.Now()
+	}
+	data.SaveJSON("profiles.json", profiles)
 }
 
 // containsMention returns true when the mention token appears in the
