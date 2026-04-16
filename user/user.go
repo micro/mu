@@ -219,6 +219,17 @@ func GetProfile(userID string) *Profile {
 	return profile
 }
 
+// UpdateStatus is the safe way to change a user's status. It passes a
+// fresh Profile to UpdateProfile so the existing map entry isn't
+// aliased — UpdateProfile reads the old status from the map correctly
+// and pushes it to history before storing the new one.
+func UpdateStatus(userID, newStatus string) error {
+	return UpdateProfile(&Profile{
+		UserID: userID,
+		Status: newStatus,
+	})
+}
+
 // UpdateProfile saves a user's profile. Every non-empty previous
 // status is pushed onto the history so the full timeline of what a
 // user has said is preserved. Empty updates (clearing a status) are
@@ -439,9 +450,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	profile := GetProfile(sess.Account)
-	profile.Status = status
-	UpdateProfile(profile)
+	UpdateStatus(sess.Account, status)
 
 	// Async content moderation — flags spam/test/harmful automatically
 	// and auto-bans the user if it's bad. Fire-and-forget.
@@ -483,9 +492,7 @@ func PostSystemStatus(text string) error {
 	if len(text) > MaxStatusLength {
 		text = text[:MaxStatusLength-1] + "…"
 	}
-	profile := GetProfile(app.SystemUserID)
-	profile.Status = text
-	return UpdateProfile(profile)
+	return UpdateStatus(app.SystemUserID, text)
 }
 
 // moderateStatus runs async content moderation on a status post. If the
@@ -615,9 +622,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			status = status[:MaxStatusLength]
 		}
 
-		profile := GetProfile(sess.Account)
-		profile.Status = status
-		UpdateProfile(profile)
+		UpdateStatus(sess.Account, status)
 
 		if status != "" && sess.Account != app.SystemUserID && AIReplyHook != nil && containsMention(status, MicroMention) {
 			go AIReplyHook(sess.Account, status)
