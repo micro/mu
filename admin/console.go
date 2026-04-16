@@ -30,9 +30,15 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		r.ParseForm()
+		action := r.FormValue("action")
 		email := strings.TrimSpace(r.FormValue("email"))
 		if email == "" {
 			app.BadRequest(w, r, "Email is required")
+			return
+		}
+		if action == "reject" {
+			auth.DeleteInviteRequest(email)
+			http.Redirect(w, r, "/admin/invite", http.StatusSeeOther)
 			return
 		}
 		code, err := auth.CreateInvite(email, sess.Account)
@@ -43,35 +49,87 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 		base := app.PublicURL()
 		link := base + "/signup?invite=" + code
 
-		// Try to email the invite. If mail isn't configured, show the link.
+		emailSent := false
 		if app.EmailSender != nil {
 			plain := fmt.Sprintf("You've been invited to join Mu.\n\nSign up here: %s\n\nThis link is single-use.", link)
 			html := fmt.Sprintf(`<p>You've been invited to join Mu.</p><p><a href="%s">Sign up here</a></p><p>This link is single-use.</p>`, link)
 			if err := app.EmailSender(email, "You're invited to Mu", plain, html); err != nil {
 				app.Log("admin", "Failed to email invite to %s: %v", email, err)
+			} else {
+				emailSent = true
 			}
 		}
+		// Mark any pending request as fulfilled.
+		auth.MarkInviteRequestSent(email)
 
+		emailedMsg := `<p class="text-muted text-sm">Mail is not configured — copy the link above and send it manually.</p>`
+		if emailSent {
+			emailedMsg = `<p class="text-muted text-sm">Link has been emailed to them. Single use.</p>`
+		}
 		content := fmt.Sprintf(`<div class="card">
 <h4>Invite sent</h4>
 <p>Invite created for <strong>%s</strong></p>
 <p><a href="%s">%s</a></p>
-<p class="text-muted text-sm">Link has been emailed (if mail is configured). Single use.</p>
-<p><a href="/admin/invite">Invite another →</a> · <a href="/home">Home →</a></p>
-</div>`, email, link, link)
+%s
+<p><a href="/admin/invite">Back to invites →</a></p>
+</div>`, email, link, link, emailedMsg)
 		w.Write([]byte(app.RenderHTML("Invite Sent", "Invite sent", content)))
 		return
 	}
 
-	content := `<div class="card">
-<h4>Invite a user</h4>
-<p class="text-sm">Enter their email address. They'll receive a single-use signup link.</p>
+	// GET: show pending requests + ad-hoc invite form.
+	var sb strings.Builder
+	sb.WriteString(`<p><a href="/admin">← Admin</a></p>`)
+
+	requests := auth.ListInviteRequests()
+	pending := 0
+	for _, req := range requests {
+		if !req.Invited {
+			pending++
+		}
+	}
+
+	sb.WriteString(fmt.Sprintf(`<div class="card"><h4>Invite requests (%d pending)</h4>`, pending))
+	if len(requests) == 0 {
+		sb.WriteString(`<p class="text-muted">No requests yet.</p>`)
+	} else {
+		sb.WriteString(`<table class="admin-table"><thead><tr><th>Email</th><th>Reason</th><th>When</th><th>Status</th><th class="center">Actions</th></tr></thead><tbody>`)
+		for _, req := range requests {
+			reason := req.Reason
+			if reason == "" {
+				reason = `<span class="text-muted">—</span>`
+			}
+			status := `pending`
+			if req.Invited {
+				status = fmt.Sprintf(`invited %s`, req.InvitedAt.Format("2 Jan"))
+			}
+			actions := ""
+			if !req.Invited {
+				actions = fmt.Sprintf(
+					`<form method="POST" class="d-inline"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #22c55e;background:#fff;color:#22c55e;cursor:pointer">Send invite</button></form> <form method="POST" class="d-inline" onsubmit="return confirm('Reject %s?')"><input type="hidden" name="action" value="reject"><input type="hidden" name="email" value="%s"><button type="submit" class="btn-danger" style="font-size:12px;padding:2px 8px">Reject</button></form>`,
+					req.Email, req.Email, req.Email)
+			} else {
+				actions = fmt.Sprintf(
+					`<form method="POST" class="d-inline" onsubmit="return confirm('Resend invite to %s?')"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:2px 8px">Resend</button></form>`,
+					req.Email, req.Email)
+			}
+			sb.WriteString(fmt.Sprintf(`<tr><td><strong>%s</strong></td><td style="max-width:300px">%s</td><td class="text-muted text-sm">%s</td><td>%s</td><td class="center">%s</td></tr>`,
+				req.Email, reason, req.RequestedAt.Format("2 Jan 15:04"), status, actions))
+		}
+		sb.WriteString(`</tbody></table>`)
+	}
+	sb.WriteString(`</div>`)
+
+	sb.WriteString(`<div class="card" style="margin-top:16px">
+<h4>Invite someone directly</h4>
+<p class="text-sm">Enter an email — they'll get a single-use signup link.</p>
 <form method="POST" action="/admin/invite" class="mt-4">
 	<input type="email" name="email" placeholder="user@example.com" required class="form-input">
 	<button type="submit" class="mt-2">Send invite</button>
 </form>
-</div>`
-	w.Write([]byte(app.RenderHTML("Invite User", "Invite a user", content)))
+</div>`)
+
+	w.Write([]byte(app.RenderHTML("Invites", "Invite requests and send invites", sb.String())))
 }
 
 // ConsoleHandler provides an admin console.

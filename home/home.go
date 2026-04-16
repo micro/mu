@@ -292,7 +292,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	_, viewerAcc := auth.TrySession(r)
 	inviteHTML := ""
 	if viewerAcc != nil && viewerAcc.Admin && auth.InviteOnly() {
-		inviteHTML = `<span id="home-date-actions"><a href="/admin/invite" style="color:#555;text-decoration:none">+ Invite</a></span>`
+		pending := 0
+		for _, req := range auth.ListInviteRequests() {
+			if !req.Invited {
+				pending++
+			}
+		}
+		label := "+ Invite"
+		if pending > 0 {
+			label = fmt.Sprintf("+ Invite (%d waiting)", pending)
+		}
+		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="/admin/invite" style="color:#555;text-decoration:none">%s</a></span>`, label)
 	}
 	b.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML))
 	// Inline script reads cached weather summary from localStorage
