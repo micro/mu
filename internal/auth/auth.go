@@ -546,12 +546,16 @@ func IsBanned(accountID string) bool {
 
 // BanAccount silently mutes a user. Their content is hidden from
 // all other users, but they can still browse and post (to themselves).
+// Admins can never be banned — this is a hard safety guard.
 func BanAccount(accountID string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	acc, exists := accounts[accountID]
 	if !exists {
 		return errors.New("account not found")
+	}
+	if acc.Admin {
+		return errors.New("cannot ban an admin account")
 	}
 	acc.Banned = true
 	data.SaveJSON("accounts.json", accounts)

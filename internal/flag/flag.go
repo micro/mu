@@ -83,13 +83,12 @@ func CheckContent(contentType, itemID, title, content string) {
 	prompt := `You are a strict content moderator for a family-friendly community. Every post should be meaningful and respectful. This is not a place to waste time, troll, or post crude content.
 
 Classify the content with ONLY ONE WORD:
-- SPAM (promotional spam, advertising, repetitive junk)
-- TEST (test posts like "test", "hello world", meaningless typing)
-- LOW_QUALITY (low-effort, memes, nonsensical, no substance, gibberish, single words)
-- HARMFUL (vulgar, crude, sexual, obscene, gossip, slander, personal attacks, mocking, trolling, shock content)
-- OK (meaningful, on-topic, respectful content that adds value)
+- SPAM (promotional spam, advertising, repetitive junk, SEO content)
+- LOW_QUALITY (gibberish, random characters, meaningless typing like "asdf", single letters)
+- HARMFUL (vulgar, crude, sexual, obscene, gossip, slander, personal attacks, mocking, trolling, shock content, swear words)
+- OK (everything else — status updates, opinions, questions, short messages, work updates, casual conversation)
 
-When in doubt, flag it. Better to flag something borderline than let inappropriate content through.
+IMPORTANT: Short personal status updates like "Working on X", "Good morning", "Just shipped Y", "Having lunch" are ALWAYS OK. They are normal status messages, not spam or low quality. Only flag content that is clearly abusive, vulgar, or spam. When in doubt, say OK.
 
 Respond with just the single word.`
 
@@ -104,7 +103,7 @@ Respond with just the single word.`
 	resp = strings.TrimSpace(strings.ToUpper(resp))
 	fmt.Printf("Content moderation: %s %s -> %s\n", contentType, itemID, resp)
 
-	if resp == "SPAM" || resp == "TEST" || resp == "LOW_QUALITY" || resp == "HARMFUL" {
+	if resp == "SPAM" || resp == "LOW_QUALITY" || resp == "HARMFUL" {
 		// System auto-flag immediately hides the content — do NOT wait for
 		// 3 user flags. Otherwise spam stays visible until users find it.
 		AdminFlag(contentType, itemID, "system:"+strings.ToLower(resp))
