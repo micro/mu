@@ -817,6 +817,7 @@ func main() {
 	http.HandleFunc("/login", app.Login)
 	http.HandleFunc("/logout", app.Logout)
 	http.HandleFunc("/signup", app.Signup)
+	http.HandleFunc("/request-invite", app.RequestInvite)
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/verify", app.Verify)
 	http.HandleFunc("/session", app.Session)
@@ -1070,6 +1071,7 @@ func main() {
 				isWebhook := r.URL.Path == "/wallet/stripe/webhook"
 				// Skip CSRF for login/signup (no session yet)
 				isAuth := r.URL.Path == "/login" || r.URL.Path == "/signup" ||
+					r.URL.Path == "/request-invite" ||
 					strings.HasPrefix(r.URL.Path, "/passkey/") ||
 					strings.HasPrefix(r.URL.Path, "/oauth/")
 				// Skip CSRF for SMTP/ActivityPub inbound

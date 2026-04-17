@@ -523,6 +523,76 @@ func renderSignup(errHTML string) string {
 	return fmt.Sprintf(SignupTemplate, errHTML, CaptchaHTML(c), inviteField)
 }
 
+// renderRequestInvitePage shows the "request an invite" form that
+// replaces the dead-end "invite only" page. Captcha-protected and
+// rate-limited by IP so it can't be flooded.
+func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message string) {
+	c := NewCaptchaChallenge()
+	msg := message
+	if msg == "" {
+		msg = `<p>Mu is currently invite-only. Leave your email and we'll send you an invite when we open up more seats.</p>`
+	}
+	body := fmt.Sprintf(`<div class="card" style="max-width:440px;margin:0 auto">
+<h3>Request an invite</h3>
+%s
+<form method="POST" action="/request-invite" style="margin-top:12px">
+  <input type="email" name="email" placeholder="your@email.com" required style="width:100%%;margin-bottom:8px">
+  <input type="text" name="reason" placeholder="Why you'd like to join (optional)" maxlength="500" style="width:100%%;margin-bottom:8px">
+  %s
+  <button type="submit">Request invite</button>
+</form>
+<p class="text-muted text-sm mt-3">Already have an invite? <a href="/login">Log in</a> or paste your link.</p>
+</div>`, msg, CaptchaHTML(c))
+	w.Write([]byte(RenderHTML("Request an Invite", "Request an invite to Mu", body)))
+}
+
+// RequestInvite handles POST /request-invite — someone is asking to
+// join. Validates captcha + rate limit, stores the request for admin
+// review.
+func RequestInvite(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		renderRequestInvitePage(w, r, "")
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	r.ParseForm()
+
+	if err := VerifyCaptchaRequest(r); err != nil {
+		renderRequestInvitePage(w, r, fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))
+		return
+	}
+
+	// Per-IP rate limit reuses the signup bucket — same spam concern.
+	ip := ClientIP(r)
+	if !SignupRateLimit(ip) {
+		renderRequestInvitePage(w, r, `<p class="text-error">Too many requests from your network. Please try again later.</p>`)
+		return
+	}
+
+	email := strings.TrimSpace(r.FormValue("email"))
+	reason := strings.TrimSpace(r.FormValue("reason"))
+	if email == "" || !strings.Contains(email, "@") {
+		renderRequestInvitePage(w, r, `<p class="text-error">Please enter a valid email address.</p>`)
+		return
+	}
+
+	if err := auth.CreateInviteRequest(email, reason, ip); err != nil {
+		renderRequestInvitePage(w, r, fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))
+		return
+	}
+	Log("auth", "Invite request from %s (%s)", email, ip)
+
+	body := fmt.Sprintf(`<div class="card" style="max-width:440px;margin:0 auto">
+<h3>Thanks — we got your request</h3>
+<p>We'll email <strong>%s</strong> if we have a seat for you.</p>
+<p class="mt-3"><a href="/">← Back</a></p>
+</div>`, htmlpkg.EscapeString(email))
+	w.Write([]byte(RenderHTML("Request Received", "Invite request received", body)))
+}
+
 // EmailSender is set by main.go and called to deliver verification
 // emails. It's a callback to avoid an import cycle (mail imports app).
 // If nil, email verification is unavailable on this instance.
@@ -654,12 +724,12 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	currentInviteCode = invCode
 
-	// Invite-only mode: reject if no valid code is provided.
+	// Invite-only mode: reject if no valid code is provided, but show
+	// a request-invite form instead of a dead end.
 	if auth.InviteOnly() {
 		if err := auth.ValidateInvite(invCode); err != nil {
-			if r.Method == "GET" && invCode == "" {
-				body := `<div class="card"><h3>Invite only</h3><p>Mu is currently invite-only. Ask an existing member for an invitation.</p></div>`
-				w.Write([]byte(RenderHTML("Invite Only", "Signup is invite-only", body)))
+			if invCode == "" {
+				renderRequestInvitePage(w, r, "")
 				return
 			}
 			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
