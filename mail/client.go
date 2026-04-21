@@ -178,9 +178,12 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 	// Apply DKIM signing if configured
 	if dkimConfig != nil {
 		options := &dkim.SignOptions{
-			Domain:   dkimConfig.Domain,
-			Selector: dkimConfig.Selector,
-			Signer:   dkimConfig.PrivateKey,
+			Domain:                 dkimConfig.Domain,
+			Selector:               dkimConfig.Selector,
+			Signer:                 dkimConfig.PrivateKey,
+			HeaderCanonicalization: dkim.CanonicalizationRelaxed,
+			BodyCanonicalization:   dkim.CanonicalizationRelaxed,
+			HeaderKeys:             []string{"from", "to", "subject", "date", "message-id", "mime-version", "content-type"},
 		}
 
 		var signedBuf bytes.Buffer
@@ -188,7 +191,7 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 			app.Log("dkim", "WARNING: DKIM signing failed: %v", err)
 		} else {
 			message = signedBuf.Bytes()
-			app.Log("dkim", "✓ Email signed with DKIM successfully")
+			app.Log("dkim", "Signed with DKIM (d=%s s=%s relaxed/relaxed)", dkimConfig.Domain, dkimConfig.Selector)
 		}
 	}
 
