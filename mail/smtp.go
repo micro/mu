@@ -125,16 +125,41 @@ func (s *Session) Mail(from string, opts *smtpd.MailOptions) error {
 
 	app.Log("mail", "Mail from: %s (IP: %s)", from, s.remoteIP)
 
-	// Reject external senders claiming to be from our domain (anti-spoofing)
+	// Parse and validate the sender address.
 	fromAddr, _ := mail.ParseAddress(from)
-	if fromAddr != nil {
-		fromParts := strings.Split(fromAddr.Address, "@")
-		if len(fromParts) == 2 && strings.EqualFold(fromParts[1], GetConfiguredDomain()) {
-			app.Log("mail", "Rejected domain spoofing: external IP %s claiming to send from %s", s.remoteIP, from)
-			return &smtpd.SMTPError{
-				Code:    550,
-				Message: "Sender address rejected: not authorized to send from this domain",
-			}
+	if fromAddr == nil {
+		app.Log("mail", "Rejected invalid sender address: %s", from)
+		return &smtpd.SMTPError{
+			Code:    550,
+			Message: "Sender address rejected: invalid format",
+		}
+	}
+	fromParts := strings.Split(fromAddr.Address, "@")
+	if len(fromParts) != 2 || fromParts[1] == "" {
+		app.Log("mail", "Rejected sender without domain: %s", from)
+		return &smtpd.SMTPError{
+			Code:    550,
+			Message: "Sender address rejected: missing domain",
+		}
+	}
+	senderDomain := fromParts[1]
+
+	// Reject domains without a dot — "wetransfer" is not an FQDN,
+	// "wetransfer.com" is. This blocks a common spam pattern.
+	if !strings.Contains(senderDomain, ".") {
+		app.Log("mail", "Rejected non-FQDN sender domain: %s (from %s)", senderDomain, from)
+		return &smtpd.SMTPError{
+			Code:    550,
+			Message: "Sender address rejected: domain must be fully qualified",
+		}
+	}
+
+	// Reject external senders claiming to be from our domain (anti-spoofing)
+	if strings.EqualFold(senderDomain, GetConfiguredDomain()) {
+		app.Log("mail", "Rejected domain spoofing: external IP %s claiming to send from %s", s.remoteIP, from)
+		return &smtpd.SMTPError{
+			Code:    550,
+			Message: "Sender address rejected: not authorized to send from this domain",
 		}
 	}
 
