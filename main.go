@@ -33,6 +33,7 @@ import (
 	"mu/places"
 	"mu/search"
 	"mu/social"
+	"mu/stream"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -173,6 +174,9 @@ func main() {
 	// load user presence tracking
 	user.Load()
 
+	// Load the stream (platform event timeline).
+	stream.Load()
+
 	// Wire user → blog callback (avoids direct import between building blocks)
 	user.GetUserPosts = func(authorName string) []user.UserPost {
 		posts := blog.GetPostsByAuthor(authorName)
@@ -224,6 +228,29 @@ func main() {
 			app.Log("status", "failed to post @micro reply: %v", err)
 		}
 	}
+	// Wire stream @micro replies — same agent, posts into the stream
+	// instead of the status profile.
+	stream.AIReplyHook = func(askerID, prompt string) {
+		if auth.IsBanned(askerID) {
+			return
+		}
+		answer, err := agent.Query(askerID, prompt)
+		if err != nil {
+			app.Log("stream", "@micro agent error for %s: %v", askerID, err)
+			stream.PostAgent("I couldn't answer that one — try again in a moment.")
+			return
+		}
+		answer = strings.TrimSpace(answer)
+		if answer == "" {
+			return
+		}
+		if !user.ModerateAIResponse(askerID, answer) {
+			app.Log("stream", "AI response for %s blocked by moderation", askerID)
+			return
+		}
+		stream.PostAgent(answer)
+	}
+
 	user.GetUserApps = func(authorID string) []user.UserApp {
 		appList := apps.GetAppsByAuthor(authorID)
 		result := make([]user.UserApp, len(appList))
@@ -792,6 +819,10 @@ func main() {
 	http.HandleFunc("/user/status", user.StatusHandler)
 	http.HandleFunc("/user/status/stream", user.StatusStreamHandler)
 
+	// Stream (console) routes
+	http.HandleFunc("/stream", stream.Handler)
+	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
+
 	// redirect /reminder to reminder.dev
 	http.HandleFunc("/reminder", reminder.Handler)
 
@@ -1212,18 +1243,14 @@ func updatesHandler(w http.ResponseWriter, r *http.Request) {
 		result["mail"] = 0
 	}
 
-	// Status — new entries since last poll.
 	if since.IsZero() {
 		result["status"] = 0
+		result["social"] = 0
+		result["stream"] = 0
 	} else {
 		result["status"] = user.StatusCountSince(since, viewerID)
-	}
-
-	// Social — new messages since last poll.
-	if since.IsZero() {
-		result["social"] = 0
-	} else {
 		result["social"] = social.CountSince(since)
+		result["stream"] = stream.CountSince(since)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1261,6 +1288,9 @@ func chargedWriteOp(r *http.Request) string {
 		return wallet.OpAppBuild
 	// Work
 	case path == "/work/post":
+		return wallet.OpSocialPost
+	// Stream (console)
+	case path == "/stream":
 		return wallet.OpSocialPost
 	}
 	return ""

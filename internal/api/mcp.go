@@ -373,6 +373,23 @@ var tools = []Tool{
 			{Name: "cost", Type: "number", Description: "Budget in credits — max spend for agent (required for tasks)", Required: false},
 		},
 	},
+	// Stream (console)
+	{
+		Name:        "stream",
+		Description: "Read the platform event stream — user messages, agent responses, system events (markets, news, reminders)",
+		Method:      "GET",
+		Path:        "/stream",
+	},
+	{
+		Name:        "stream_post",
+		Description: "Post a message to the stream. Mention @micro to get an AI response. Costs 1 credit.",
+		Method:      "POST",
+		Path:        "/stream",
+		WalletOp:    "social_post",
+		Params: []ToolParam{
+			{Name: "content", Type: "string", Description: "Message text (max 1024 chars). Use @micro to invoke the AI agent.", Required: true},
+		},
+	},
 	// Content controls
 	{
 		Name:        "flag",
