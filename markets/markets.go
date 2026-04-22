@@ -11,8 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"math"
+
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/stream"
 
 	"github.com/piquette/finance-go/future"
 	"github.com/piquette/finance-go/quote"
@@ -102,6 +105,12 @@ func refreshMarkets() {
 	for {
 		prices, priceData := fetchPrices()
 		if prices != nil {
+			// Detect significant price moves BEFORE overwriting the cache.
+			marketsMutex.RLock()
+			oldPrices := cachedPrices
+			marketsMutex.RUnlock()
+			surfaceMarketMoves(oldPrices, prices, priceData)
+
 			marketsMutex.Lock()
 			cachedPrices = prices
 			cachedPriceData = priceData
@@ -292,6 +301,51 @@ func generateMarketsCardHTML(prices map[string]float64) string {
 	}
 	sb.WriteString(`</table>`)
 	return sb.String()
+}
+
+// surfaceMarketMoves posts to the stream when a tracked asset moves
+// more than the threshold since the last refresh. Only fires for a
+// small set of key tickers to avoid flooding the stream.
+func surfaceMarketMoves(oldPrices, newPrices map[string]float64, pd map[string]PriceData) {
+	if len(oldPrices) == 0 {
+		return // first fetch, no comparison
+	}
+	// Only surface moves for these tickers.
+	tracked := []string{"BTC", "ETH", "SOL", "GOLD", "OIL"}
+	threshold := 0.02 // 2%
+
+	for _, ticker := range tracked {
+		oldP, okOld := oldPrices[ticker]
+		newP, okNew := newPrices[ticker]
+		if !okOld || !okNew || oldP == 0 {
+			continue
+		}
+		pctChange := (newP - oldP) / oldP
+		if math.Abs(pctChange) < threshold {
+			continue
+		}
+		direction := "+"
+		if pctChange < 0 {
+			direction = ""
+		}
+		content := fmt.Sprintf("%s %s%.1f%% ($%s)", ticker, direction, pctChange*100, formatPrice(newP))
+		change24h := float64(0)
+		if d, ok := pd[ticker]; ok {
+			change24h = d.Change24h
+		}
+		stream.Publish(&stream.Event{
+			Type:     stream.TypeMarket,
+			AuthorID: app.SystemUserID,
+			Content:  content,
+			Metadata: map[string]any{
+				"ticker":     ticker,
+				"price":      newP,
+				"change_pct": pctChange * 100,
+				"change_24h": change24h,
+			},
+		})
+		app.Log("markets", "Stream: %s", content)
+	}
 }
 
 func indexMarketPrices(prices map[string]float64) {

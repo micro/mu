@@ -12,6 +12,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/stream"
 )
 
 var (
@@ -81,6 +82,14 @@ func fetchReminder() {
 	data.SaveFile("reminder.html", html)
 	reminderMutex.Unlock()
 	event.Publish(event.Event{Type: "reminder_updated"})
+
+	// Post the verse to the platform stream so it appears in the console.
+	stream.Publish(&stream.Event{
+		Type:     stream.TypeReminder,
+		AuthorID: app.SystemUserID,
+		Content:  strings.TrimSpace(verseText),
+		Metadata: map[string]any{"url": moreURL},
+	})
 
 	// Extract message and updated for indexing
 	message := ""
