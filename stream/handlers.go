@@ -5,6 +5,7 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -186,20 +187,24 @@ var avatarColors = []string{
 	"#e06c75", "#c2785c", "#7bab6e", "#9e7db8",
 }
 
+// urlPattern matches URLs in text for linkification and OG embeds.
+var urlPattern = regexp.MustCompile(`https?://[^\s<>"]+`)
+
+// renderEvent produces the chat-bubble HTML for a single event. Every
+// event type uses the same bubble layout (avatar + name + content) so
+// the stream reads like a chat. System events get a compact variant.
+// URLs in content are linkified and news/system events with a URL in
+// metadata get an OG-preview embed via a lazy-loading iframe.
 func renderEvent(e *Event, viewerID string) string {
-	// Pick style based on event type.
+	var avatar, name, nameColor, bubbleBg string
 	switch e.Type {
 	case TypeAgent:
-		return fmt.Sprintf(`<div class="stream-event stream-agent" style="padding:8px 0;border-bottom:1px solid #f0f0f0">
-<div style="display:flex;align-items:flex-start;gap:8px">
-<div style="width:32px;height:32px;border-radius:50%%;background:#1f7a4a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0">M</div>
-<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;color:#1f7a4a">Micro</span><span style="color:#bbb;font-size:12px">%s</span></div>
-<div style="color:#333;margin-top:2px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.4">%s</div></div></div></div>`,
-			app.TimeAgo(e.CreatedAt), htmlpkg.EscapeString(e.Content))
-
+		avatar = `<div style="width:28px;height:28px;border-radius:50%;background:#1f7a4a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">M</div>`
+		name = "Micro"
+		nameColor = "#1f7a4a"
+		bubbleBg = "#f0faf5"
 	case TypeSystem, TypeMarket, TypeNews, TypeReminder:
 		icon := "•"
-		color := "#666"
 		switch e.Type {
 		case TypeMarket:
 			icon = "📊"
@@ -207,41 +212,73 @@ func renderEvent(e *Event, viewerID string) string {
 			icon = "📰"
 		case TypeReminder:
 			icon = "🕌"
+		case TypeSystem:
+			icon = "⚙️"
 		}
-		content := htmlpkg.EscapeString(e.Content)
-		if e.Metadata != nil {
-			if u, ok := e.Metadata["url"].(string); ok && u != "" {
-				content = fmt.Sprintf(`<a href="%s" style="color:#333;text-decoration:underline">%s</a>`, htmlpkg.EscapeString(u), content)
-			}
-		}
-		return fmt.Sprintf(`<div class="stream-event stream-system" style="padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;color:%s;display:flex;gap:6px;align-items:baseline">
-<span>%s</span><span style="flex:1">%s</span><span style="color:#ccc;font-size:11px;white-space:nowrap">%s</span></div>`,
-			color, icon, content, app.TimeAgo(e.CreatedAt))
-
+		avatar = fmt.Sprintf(`<div style="width:28px;height:28px;border-radius:50%%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">%s</div>`, icon)
+		name = "Micro"
+		nameColor = "#999"
+		bubbleBg = "#fafafa"
 	default: // TypeUser
 		initial := "?"
-		name := e.Author
-		if name == "" {
-			name = e.AuthorID
+		nm := e.Author
+		if nm == "" {
+			nm = e.AuthorID
 		}
-		if name != "" {
-			initial = strings.ToUpper(name[:1])
+		if nm != "" {
+			initial = strings.ToUpper(nm[:1])
 		}
 		colorIdx := 0
 		for _, c := range e.AuthorID {
 			colorIdx += int(c)
 		}
-		bgColor := avatarColors[colorIdx%len(avatarColors)]
-
-		return fmt.Sprintf(`<div class="stream-event stream-user" style="padding:8px 0;border-bottom:1px solid #f0f0f0">
-<div style="display:flex;align-items:flex-start;gap:8px">
-<div style="width:32px;height:32px;border-radius:50%%;background:%s;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0">%s</div>
-<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px"><a href="/@%s" style="font-weight:600;color:#333;text-decoration:none">%s</a><span style="color:#bbb;font-size:12px">%s</span></div>
-<div style="color:#555;margin-top:2px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.4">%s</div></div></div></div>`,
-			bgColor, htmlpkg.EscapeString(initial),
-			htmlpkg.EscapeString(e.AuthorID), htmlpkg.EscapeString(name),
-			app.TimeAgo(e.CreatedAt), htmlpkg.EscapeString(e.Content))
+		bg := avatarColors[colorIdx%len(avatarColors)]
+		avatar = fmt.Sprintf(`<div style="width:28px;height:28px;border-radius:50%%;background:%s;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">%s</div>`, bg, htmlpkg.EscapeString(initial))
+		name = nm
+		nameColor = "#333"
+		bubbleBg = "#fff"
 	}
+
+	// Build content — escape then linkify URLs.
+	escaped := htmlpkg.EscapeString(e.Content)
+	linked := urlPattern.ReplaceAllStringFunc(escaped, func(u string) string {
+		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener" style="color:#06c;word-break:break-all">%s</a>`, u, u)
+	})
+
+	// OG embed for events that have a URL in metadata — news headlines,
+	// links shared by the system. The embed is a small preview card
+	// loaded lazily via an iframe hitting /web/read which renders the
+	// page's OG tags.
+	ogEmbed := ""
+	if e.Metadata != nil {
+		if u, ok := e.Metadata["url"].(string); ok && u != "" {
+			ogEmbed = fmt.Sprintf(`<div style="margin-top:6px;border:1px solid #e8e8e8;border-radius:8px;overflow:hidden;max-width:400px"><a href="%s" target="_blank" rel="noopener" style="display:block;padding:10px 12px;text-decoration:none;color:#333;font-size:13px;line-height:1.3">`, htmlpkg.EscapeString(u))
+			if cat, ok := e.Metadata["category"].(string); ok && cat != "" {
+				ogEmbed += fmt.Sprintf(`<span style="color:#999;font-size:11px;text-transform:uppercase">%s</span><br>`, htmlpkg.EscapeString(cat))
+			}
+			ogEmbed += fmt.Sprintf(`<strong>%s</strong>`, htmlpkg.EscapeString(e.Content))
+			if desc, ok := e.Metadata["description"].(string); ok && desc != "" {
+				if len(desc) > 120 {
+					desc = desc[:117] + "..."
+				}
+				ogEmbed += fmt.Sprintf(`<br><span style="color:#666;font-size:12px">%s</span>`, htmlpkg.EscapeString(desc))
+			}
+			ogEmbed += `</a></div>`
+		}
+	}
+
+	nameLink := htmlpkg.EscapeString(name)
+	if e.AuthorID != "" && e.Type == TypeUser {
+		nameLink = fmt.Sprintf(`<a href="/@%s" style="color:%s;text-decoration:none;font-weight:600">%s</a>`, htmlpkg.EscapeString(e.AuthorID), nameColor, htmlpkg.EscapeString(name))
+	} else {
+		nameLink = fmt.Sprintf(`<span style="color:%s;font-weight:600">%s</span>`, nameColor, htmlpkg.EscapeString(name))
+	}
+
+	return fmt.Sprintf(`<div style="display:flex;gap:8px;padding:8px 0">%s
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:baseline;gap:6px">%s<span style="color:#bbb;font-size:11px">%s</span></div>
+<div style="margin-top:3px;padding:8px 10px;background:%s;border-radius:0 12px 12px 12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere">%s</div>%s
+</div></div>`, avatar, nameLink, app.TimeAgo(e.CreatedAt), bubbleBg, linked, ogEmbed)
 }
 
 const streamScript = `<script>
