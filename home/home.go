@@ -322,7 +322,7 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 		viewerID = sess.Account
 	}
 	b.WriteString(`<div id="home-tabs" style="display:flex;gap:6px;margin-bottom:14px">`)
-	for _, t := range []struct{ id, label string }{{"console", "Console"}, {"cards", "Overview"}} {
+	for _, t := range []struct{ id, label string }{{"cards", "Overview"}, {"console", "Console"}} {
 		b.WriteString(fmt.Sprintf(`<a href="#" data-tab="%s" class="home-tab" style="padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;color:#555">%s</a>`, t.id, t.label))
 	}
 	b.WriteString(`</div>`)
@@ -330,17 +330,17 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 	// ── Console view (stream) ──
 	consoleEvents := stream.Recent(stream.StreamLimit, viewerID)
 	consoleEvents = stream.DedupeAdjacent(consoleEvents)
-	b.WriteString(`<div id="home-console" style="display:none">`)
-	// Compose box (logged-in only).
+	b.WriteString(`<div id="home-console" style="display:none;display:none;flex-direction:column;height:calc(100vh - 120px);max-height:calc(100vh - 120px)">`)
+	b.WriteString(`<div id="stream-events" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px">`)
+	b.WriteString(stream.RenderEventList(consoleEvents, viewerID))
+	b.WriteString(`</div>`)
+	// Compose box pinned at bottom (logged-in only).
 	if viewerID != "" {
-		b.WriteString(fmt.Sprintf(`<form id="stream-form" method="POST" action="/stream" style="margin-bottom:12px;display:flex;gap:8px">
+		b.WriteString(fmt.Sprintf(`<form id="stream-form" method="POST" action="/stream" style="display:flex;gap:8px;padding:8px 0;border-top:1px solid #eee;background:#fff;flex-shrink:0">
 <input type="text" name="content" id="stream-input" placeholder="Ask @micro anything or post an update..." maxlength="%d" autocomplete="off" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px">
 <button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">Send</button>
 </form>`, stream.MaxContentLength))
 	}
-	b.WriteString(`<div id="stream-events" style="max-height:min(70vh,600px);overflow-y:auto;-webkit-overflow-scrolling:touch">`)
-	b.WriteString(stream.RenderEventList(consoleEvents, viewerID))
-	b.WriteString(`</div>`)
 	b.WriteString(consoleScript)
 	b.WriteString(`</div>`)
 
@@ -395,7 +395,7 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
   var cards=document.getElementById('home-cards');
   var key='mu_home_view';
   function show(id){
-    console.style.display=id==='console'?'block':'none';
+    console.style.display=id==='console'?'flex':'none';
     cards.style.display=id==='cards'?'block':'none';
     tabs.forEach(function(t){t.style.background=t.dataset.tab===id?'#000':'';t.style.color=t.dataset.tab===id?'#fff':'#555'});
     try{localStorage.setItem(key,id)}catch(e){}
