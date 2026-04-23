@@ -322,7 +322,7 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 		viewerID = sess.Account
 	}
 	b.WriteString(`<div id="home-tabs" style="display:flex;gap:6px;margin-bottom:14px">`)
-	for _, t := range []struct{ id, label string }{{"console", "Console"}, {"cards", "Cards"}} {
+	for _, t := range []struct{ id, label string }{{"console", "Console"}, {"cards", "Overview"}} {
 		b.WriteString(fmt.Sprintf(`<a href="#" data-tab="%s" class="home-tab" style="padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;color:#555">%s</a>`, t.id, t.label))
 	}
 	b.WriteString(`</div>`)
@@ -401,7 +401,7 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
     try{localStorage.setItem(key,id)}catch(e){}
   }
   tabs.forEach(function(t){t.addEventListener('click',function(e){e.preventDefault();show(t.dataset.tab)})});
-  show(localStorage.getItem(key)||'console');
+  show(localStorage.getItem(key)||'cards');
 })();
 </script>`)
 
