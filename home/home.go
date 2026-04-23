@@ -19,9 +19,9 @@ import (
 	"mu/internal/event"
 	"mu/news"
 	"mu/social"
+	"mu/stream"
 	"mu/markets"
 	"mu/reminder"
-	"mu/user"
 	"mu/video"
 	"mu/weather"
 )
@@ -316,28 +316,38 @@ var e='';var d=(w.desc||'').toLowerCase();for(var k in emoji){if(d.indexOf(k)>=0
 document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 })()</script>`)
 
-	// Status card content (will be prepended to left column).
-	// Built by user.RenderStatusStream so the fragment endpoint and the
-	// home card share one code path. The #home-status-wrap element is
-	// polled every ~10 seconds for near-real-time updates, and the
-	// compose form submits via fetch so the stream refreshes in place.
+	// View toggle — Console (stream) or Cards (dashboard)
 	var viewerID string
 	if sess, _ := auth.TrySession(r); sess != nil {
 		viewerID = sess.Account
 	}
-	statusInner := user.RenderStatusStream(viewerID)
-	statusCardBody := `<div id="home-status-wrap">` + statusInner + `</div>` + statusCardScript
-	statusCardHTML := fmt.Sprintf(
-		app.CardTemplate,
-		"status", "status", "Status",
-		statusCardBody,
-	)
-
-	// Feed section — existing home cards below the agent
-	var leftHTML []string
-	if statusCardHTML != "" {
-		leftHTML = append(leftHTML, statusCardHTML)
+	b.WriteString(`<div id="home-tabs" style="display:flex;gap:6px;margin-bottom:14px">`)
+	for _, t := range []struct{ id, label string }{{"console", "Console"}, {"cards", "Cards"}} {
+		b.WriteString(fmt.Sprintf(`<a href="#" data-tab="%s" class="home-tab" style="padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;color:#555">%s</a>`, t.id, t.label))
 	}
+	b.WriteString(`</div>`)
+
+	// ── Console view (stream) ──
+	consoleEvents := stream.Recent(stream.StreamLimit, viewerID)
+	consoleEvents = stream.DedupeAdjacent(consoleEvents)
+	b.WriteString(`<div id="home-console" style="display:none">`)
+	// Compose box (logged-in only).
+	if viewerID != "" {
+		b.WriteString(fmt.Sprintf(`<form id="stream-form" method="POST" action="/stream" style="margin-bottom:12px;display:flex;gap:8px">
+<input type="text" name="content" id="stream-input" placeholder="Ask @micro anything or post an update..." maxlength="%d" autocomplete="off" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px">
+<button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">Send</button>
+</form>`, stream.MaxContentLength))
+	}
+	b.WriteString(`<div id="stream-events" style="max-height:min(70vh,600px);overflow-y:auto;-webkit-overflow-scrolling:touch">`)
+	b.WriteString(stream.RenderEventList(consoleEvents, viewerID))
+	b.WriteString(`</div>`)
+	b.WriteString(consoleScript)
+	b.WriteString(`</div>`)
+
+	// ── Cards view (dashboard) ──
+	b.WriteString(`<div id="home-cards">`)
+
+	var leftHTML []string
 	var rightHTML []string
 
 	tooltips := map[string]string{
@@ -374,6 +384,26 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 			strings.Join(leftHTML, "\n"),
 			strings.Join(rightHTML, "\n")))
 	}
+
+	b.WriteString(`</div>`) // close #home-cards
+
+	// Tab toggle JS — persists choice in localStorage.
+	b.WriteString(`<script>
+(function(){
+  var tabs=document.querySelectorAll('.home-tab');
+  var console=document.getElementById('home-console');
+  var cards=document.getElementById('home-cards');
+  var key='mu_home_view';
+  function show(id){
+    console.style.display=id==='console'?'block':'none';
+    cards.style.display=id==='cards'?'block':'none';
+    tabs.forEach(function(t){t.style.background=t.dataset.tab===id?'#000':'';t.style.color=t.dataset.tab===id?'#fff':'#555'});
+    try{localStorage.setItem(key,id)}catch(e){}
+  }
+  tabs.forEach(function(t){t.addEventListener('click',function(e){e.preventDefault();show(t.dataset.tab)})});
+  show(localStorage.getItem(key)||'console');
+})();
+</script>`)
 
 	// Auto-refresh: poll every 2 minutes, update card content in-place
 	displayMode := r.URL.Query().Get("mode") == "display"
@@ -443,6 +473,64 @@ func htmlEsc(s string) string {
 //
 // The script is defensive: if anything throws, the form still falls
 // back to its native POST + redirect behaviour.
+// consoleScript handles polling + form submit for the console stream
+// embedded on the home page.
+const consoleScript = `<script>
+(function(){
+  var eventsEl = document.getElementById('stream-events');
+  var formEl = document.getElementById('stream-form');
+  if (!eventsEl) return;
+  var pollInterval = 10000;
+  var inflight = false;
+
+  function csrfToken() {
+    var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  function refresh(clear) {
+    if (inflight) return;
+    inflight = true;
+    fetch('/stream/fragment', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.text() : null; })
+      .then(function(html){
+        if (html == null) return;
+        var scroll = eventsEl.scrollTop;
+        eventsEl.innerHTML = html;
+        if (!clear) eventsEl.scrollTop = scroll;
+      })
+      .catch(function(){})
+      .then(function(){ inflight = false; });
+  }
+
+  if (formEl) {
+    formEl.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var input = document.getElementById('stream-input');
+      if (!input) return;
+      var text = input.value.trim();
+      if (!text) return;
+      var body = new URLSearchParams();
+      body.set('content', text);
+      var headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      var tok = csrfToken();
+      if (tok) headers['X-CSRF-Token'] = tok;
+      input.value = '';
+      fetch('/stream', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers,
+        body: body.toString()
+      }).then(function(){ refresh(true); })
+        .catch(function(){ formEl.submit(); });
+    });
+  }
+
+  setInterval(function(){ if (!document.hidden) refresh(); }, pollInterval);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) refresh(); });
+})();
+</script>`
+
 const statusCardScript = `<script>
 (function(){
   var wrap = document.getElementById('home-status-wrap');
