@@ -287,9 +287,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	// Date header: date + inline weather summary + admin actions
+	// Date header + weather + invite — Overview only, built here
+	// and injected into the cards div below.
 	now := time.Now()
 	_, viewerAcc := auth.TrySession(r)
+	var dateLine strings.Builder
 	inviteHTML := ""
 	if viewerAcc != nil && viewerAcc.Admin && auth.InviteOnly() {
 		pending := 0
@@ -304,17 +306,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="/admin/invite" style="color:#555;text-decoration:none">%s</a></span>`, label)
 	}
-	b.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML))
-	// Inline script reads cached weather summary from localStorage
-	// and renders "10°C ☁️" next to the date. No fetch — reads what
-	// the weather card already cached.
-	b.WriteString(`<script>(function(){
+	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML))
+	dateLine.WriteString(`<script>(function(){
 var w;try{w=JSON.parse(localStorage.getItem('mu_weather_now'))}catch(e){}
 if(!w||w.temp==null)return;
 var emoji={'clear':'☀️','sunny':'☀️','cloud':'☁️','overcast':'☁️','partly':'⛅','rain':'🌧️','drizzle':'🌧️','snow':'❄️','thunder':'⛈️','storm':'⛈️','fog':'🌫️','mist':'🌫️','haze':'🌫️','wind':'💨'};
 var e='';var d=(w.desc||'').toLowerCase();for(var k in emoji){if(d.indexOf(k)>=0){e=emoji[k];break}}
 document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 })()</script>`)
+	dateHTML := dateLine.String()
 
 	// View toggle — Console (stream) or Cards (dashboard)
 	var viewerID string
@@ -330,15 +330,15 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 	// ── Console view (stream) ──
 	consoleEvents := stream.Recent(stream.StreamLimit, viewerID)
 	consoleEvents = stream.DedupeAdjacent(consoleEvents)
-	b.WriteString(`<div id="home-console" style="display:none;display:none;flex-direction:column;height:calc(100vh - 120px);max-height:calc(100vh - 120px)">`)
+	b.WriteString(`<div id="home-console" style="display:none;flex-direction:column;height:calc(100vh - 120px);max-height:calc(100vh - 120px)">`)
 	b.WriteString(`<div id="stream-events" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px">`)
 	b.WriteString(stream.RenderEventList(consoleEvents, viewerID))
 	b.WriteString(`</div>`)
 	// Compose box pinned at bottom (logged-in only).
 	if viewerID != "" {
-		b.WriteString(fmt.Sprintf(`<form id="stream-form" method="POST" action="/stream" style="display:flex;gap:8px;padding:8px 0;border-top:1px solid #eee;background:#fff;flex-shrink:0">
-<input type="text" name="content" id="stream-input" placeholder="Ask @micro anything or post an update..." maxlength="%d" autocomplete="off" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px">
-<button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">Send</button>
+		b.WriteString(fmt.Sprintf(`<form id="stream-form" method="POST" action="/stream" style="display:flex;gap:6px;padding:8px 0;border-top:1px solid #eee;background:#fff;flex-shrink:0;min-width:0">
+<input type="text" name="content" id="stream-input" placeholder="Message @micro..." maxlength="%d" autocomplete="off" style="flex:1;min-width:0;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">
+<button type="submit" style="padding:8px 12px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;flex-shrink:0;white-space:nowrap">Send</button>
 </form>`, stream.MaxContentLength))
 	}
 	b.WriteString(consoleScript)
@@ -346,6 +346,7 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 
 	// ── Cards view (dashboard) ──
 	b.WriteString(`<div id="home-cards">`)
+	b.WriteString(dateHTML)
 
 	var leftHTML []string
 	var rightHTML []string
