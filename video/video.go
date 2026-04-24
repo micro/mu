@@ -1078,32 +1078,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// render watch page
 	if len(id) > 0 {
-		youtubeURL := "https://www.youtube.com/watch?v=" + id
-		thumbnailURL := "https://img.youtube.com/vi/" + id + "/maxresdefault.jpg"
-
-		// Check if user is authenticated
-		sess, _ := auth.TrySession(r)
-		isGuest := sess == nil
-
-		// For guests: show thumbnail with options to login or go to YouTube
-		if isGuest {
-			guestHtml := fmt.Sprintf(`
-				<div class="card text-center p-10" style="max-width: 640px; margin: 40px auto;">
-					<img src="%s" class="w-full rounded mb-5" onerror="this.src='https://img.youtube.com/vi/%s/hqdefault.jpg'">
-					<h2>Watch Video</h2>
-					<p class="text-muted my-5">Login to watch ad-free, or view on YouTube.</p>
-					<p class="my-5">
-						<a href="/login?redirect=/video?id=%s" class="btn btn-primary mr-3">Login to watch</a>
-						<a href="%s" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Watch on YouTube →</a>
-					</p>
-					<p class="mt-5"><a href="/video">← Back to videos</a></p>
-				</div>
-			`, thumbnailURL, id, id, youtubeURL)
-			pageHTML := app.RenderHTML("Video", "Video", guestHtml)
-			w.Write([]byte(pageHTML))
-			return
-		}
-
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
