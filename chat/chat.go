@@ -1043,11 +1043,12 @@ func Load() {
 			if okUri && okContent && okType {
 				app.Log("chat", "Received summary generation request for %s (%s)", uri, eventType)
 
-				// Generate summary using LLM (low priority - background task)
+				// Generate summary using LLM (low priority - background task, Haiku for cost)
 				prompt := &ai.Prompt{
 					System:   "You are a helpful assistant that creates concise summaries. Provide only the summary content itself without any introductory phrases like 'Here is a summary' or 'This article is about'. Just write 2-3 clear sentences that capture the key points. Report what the article says without editorialising, fact-checking, or adding commentary about whether claims are true or false. Never add disclaimers, caveats, or corrections.",
 					Question: fmt.Sprintf("Summarize this article:\n\n%s", content),
 					Priority: ai.PriorityLow,
+					Model:    "claude-haiku-4-5-20251001",
 					Caller:   "article-summary",
 				}
 
@@ -1105,6 +1106,7 @@ func Load() {
 					System:   fmt.Sprintf("You are a content categorization assistant. Your task is to categorize posts into ONE of these categories ONLY: %s. If the post does not clearly fit into any of these categories, respond with 'None'. Respond with ONLY the category name or 'None', nothing else.", strings.Join(topics, ", ")),
 					Question: fmt.Sprintf("Categorize this post:\n\nTitle: %s\n\nContent: %s\n\nWhich single category best fits this post?", title, content),
 					Priority: ai.PriorityLow,
+					Model:    "claude-haiku-4-5-20251001",
 					Caller:   "auto-tag-post",
 				}
 
@@ -1159,6 +1161,7 @@ func Load() {
 					System:   "You are a note organization assistant. Given a note, suggest ONE short tag (1-2 words, lowercase) that best categorizes it. Examples: 'work', 'ideas', 'shopping', 'todo', 'recipe', 'travel', 'health', 'finance'. Respond with ONLY the tag, nothing else. If the note is too short or unclear, respond with 'personal'.",
 					Question: content,
 					Priority: ai.PriorityLow,
+					Model:    "claude-haiku-4-5-20251001",
 					Caller:   "auto-tag-note",
 				}
 
@@ -1216,6 +1219,7 @@ func generateSummaries() {
 			Rag:      ragContext,
 			Question: prompt,
 			Priority: ai.PriorityMedium,
+			Model:    "claude-haiku-4-5-20251001",
 			Caller:   "topic-summary",
 		})
 
@@ -1589,12 +1593,10 @@ func handlePostChat(w http.ResponseWriter, r *http.Request) {
 type llmAnalyzer struct{}
 
 func (a *llmAnalyzer) Analyze(promptText, question string) (string, error) {
-	// Create a simple prompt for analysis
 	prompt := &ai.Prompt{
 		System:   promptText,
 		Question: question,
-		Context:  nil,
-		Rag:      nil,
+		Model:    "claude-haiku-4-5-20251001",
 	}
 	return askLLM(prompt)
 }

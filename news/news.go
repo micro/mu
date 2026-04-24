@@ -528,13 +528,7 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 		if isHN {
 			age := time.Since(time.Unix(0, cached.Created))
 			if age < time.Hour {
-				// Request summary if we don't have one yet, with smart retry
-				if cached.Summary == "" {
-					shouldRetry := shouldRequestSummary(cached)
-					if shouldRetry {
-						go requestArticleSummary(uri, cached)
-					}
-				}
+				// Summaries generated on-demand when article is viewed.
 				return cached, false, nil // false = from cache
 			}
 			app.Log("news", "HN metadata cache expired for %s (age: %v), refetching comments", uri, age.Round(time.Minute))
@@ -547,13 +541,7 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 					uri, cachedTime.Format(time.RFC3339), publishedAt.Format(time.RFC3339))
 			} else {
 				// Cache is still valid
-				// Request summary if we don't have one yet, with smart retry
-				if cached.Summary == "" {
-					shouldRetry := shouldRequestSummary(cached)
-					if shouldRetry {
-						go requestArticleSummary(uri, cached)
-					}
-				}
+				// Summaries generated on-demand when article is viewed.
 				return cached, false, nil
 			}
 		}
@@ -1555,10 +1543,19 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 		}
 	}
 
-	app.Log("news", "Final title='%s', desc='%s'", title, description)
+	// On-demand summary generation: if the article has no summary yet,
+	// request one now that someone is actually reading it. Uses Haiku
+	// for cost efficiency. Previously this ran proactively for every
+	// article in the feed.
+	if summary == "" && articleURL != "" {
+		if cached, exists := loadCachedMetadata(articleURL); exists && cached.Summary == "" {
+			if shouldRequestSummary(cached) {
+				go requestArticleSummary(articleURL, cached)
+			}
+		}
+	}
 
-	// Don't fall back to entry.Content for description - that might contain AI-generated summary
-	// Keep description and summary clearly separated
+	app.Log("news", "Final title='%s', desc='%s'", title, description)
 
 	// Build the article page
 	imageSection := ""
