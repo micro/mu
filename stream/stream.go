@@ -50,7 +50,18 @@ const MaxContentLength = 1024
 var (
 	mu     sync.RWMutex
 	events []*Event // newest first
+
+	// lastSystemEvent tracks the last time each system event type was
+	// published. Used to throttle — the console is conversational, not
+	// a news ticker. No lock needed, only accessed from Publish which
+	// holds mu.
+	lastSystemEvent = map[string]time.Time{}
 )
+
+// systemCooldown is the minimum interval between system events of the
+// same type. Prevents flooding the stream with e.g. 10 headlines at
+// once. User and agent events are never throttled.
+var systemCooldown = 30 * time.Minute
 
 func init() {
 	b, err := data.LoadFile("stream.json")
@@ -76,10 +87,21 @@ func save() {
 
 // Publish appends an event to the stream. This is the single entry
 // point — every publisher (user, agent, system, markets, news,
-// reminder) calls this.
+// reminder) calls this. System events are throttled per type so the
+// console doesn't flood with automated content.
 func Publish(e *Event) {
 	if e.Content == "" {
 		return
+	}
+	// Throttle system event types — max one per cooldown period.
+	// User and agent events are never throttled.
+	if e.Type != TypeUser && e.Type != TypeAgent {
+		mu.RLock()
+		last, exists := lastSystemEvent[e.Type]
+		mu.RUnlock()
+		if exists && time.Since(last) < systemCooldown {
+			return // too soon, skip silently
+		}
 	}
 	if len(e.Content) > MaxContentLength {
 		e.Content = e.Content[:MaxContentLength-1] + "…"
@@ -101,6 +123,9 @@ func Publish(e *Event) {
 	}
 
 	mu.Lock()
+	if e.Type != TypeUser && e.Type != TypeAgent {
+		lastSystemEvent[e.Type] = time.Now()
+	}
 	events = append([]*Event{e}, events...)
 	if len(events) > MaxEvents {
 		events = events[:MaxEvents]
