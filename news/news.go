@@ -1521,55 +1521,9 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	title := entry.Title
 
-	// Check if user is authenticated
-	sess, _ := auth.TrySession(r)
-	isGuest := sess == nil
-
-	// For guests: show article preview but hide AI summary
-	if isGuest {
-		imageSection := ""
-		if image != "" {
-			imageSection = fmt.Sprintf(`<img src="%s" class="article-image" referrerpolicy="no-referrer" onerror="this.style.display='none'">`, image)
-		}
-
-		categoryBadge := ""
-		if category != "" {
-			categoryBadge = fmt.Sprintf(` · <a href="/news#%s" class="category">%s</a>`, category, category)
-		}
-
-		descriptionSection := ""
-		if description != "" {
-			descriptionSection = fmt.Sprintf(`<div class="article-description"><p>%s</p></div>`, description)
-		}
-
-		// Show login prompt instead of AI summary
-		summarySection := `
-			<div class="article-summary bg-light" style="border: 1px dashed #ddd;">
-				<h3>AI Summary</h3>
-				<p class="text-muted"><a href="/login?redirect=/news?id=` + articleID + `">Login</a> to read the AI-generated summary.</p>
-			</div>`
-
-		articleHtml := fmt.Sprintf(`
-			<div id="news-article">
-				%s
-				<div class="article-meta">
-					<span><span data-timestamp="%d">%s</span> · Source: <i>%s</i>%s</span>
-				</div>
-				%s
-				%s
-				<div class="article-actions">
-					<a href="%s" target="_blank" rel="noopener noreferrer">Read Original →</a>
-				</div>
-				<div class="article-back">
-					<a href="/news">← Back to news</a>
-				</div>
-			</div>
-		`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, articleURL)
-
-		pageHTML := app.RenderHTML(title, title, articleHtml)
-		w.Write([]byte(pageHTML))
-		return
-	}
+	// Previously gated AI summaries behind login, but summaries are
+	// pre-generated and cached — no cost to serve. Open to all so
+	// content can be shared and discovered.
 
 	// Debug logging
 	app.Log("news", "Article view: ID=%s, Title='%s', URL='%s'", articleID, title, articleURL)
