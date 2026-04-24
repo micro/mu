@@ -239,31 +239,19 @@ func renderEvent(e *Event, viewerID string) string {
 		bubbleBg = "#fff"
 	}
 
-	// Build content — escape then linkify URLs.
+	// Build content — escape then linkify URLs. Links are inline in the
+	// text, not separate preview cards. The console is conversational,
+	// not a feed — keep it tight.
 	escaped := htmlpkg.EscapeString(e.Content)
 	linked := urlPattern.ReplaceAllStringFunc(escaped, func(u string) string {
 		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener" style="color:#06c;word-break:break-all">%s</a>`, u, u)
 	})
 
-	// OG embed for events that have a URL in metadata — news headlines,
-	// links shared by the system. The embed is a small preview card
-	// loaded lazily via an iframe hitting /web/read which renders the
-	// page's OG tags.
-	ogEmbed := ""
+	// For news/system events with a URL in metadata, append a subtle
+	// link if the URL isn't already in the content text.
 	if e.Metadata != nil {
-		if u, ok := e.Metadata["url"].(string); ok && u != "" {
-			ogEmbed = fmt.Sprintf(`<div style="margin-top:6px;border:1px solid #e8e8e8;border-radius:8px;overflow:hidden;max-width:400px"><a href="%s" target="_blank" rel="noopener" style="display:block;padding:10px 12px;text-decoration:none;color:#333;font-size:13px;line-height:1.3">`, htmlpkg.EscapeString(u))
-			if cat, ok := e.Metadata["category"].(string); ok && cat != "" {
-				ogEmbed += fmt.Sprintf(`<span style="color:#999;font-size:11px;text-transform:uppercase">%s</span><br>`, htmlpkg.EscapeString(cat))
-			}
-			ogEmbed += fmt.Sprintf(`<strong>%s</strong>`, htmlpkg.EscapeString(e.Content))
-			if desc, ok := e.Metadata["description"].(string); ok && desc != "" {
-				if len(desc) > 120 {
-					desc = desc[:117] + "..."
-				}
-				ogEmbed += fmt.Sprintf(`<br><span style="color:#666;font-size:12px">%s</span>`, htmlpkg.EscapeString(desc))
-			}
-			ogEmbed += `</a></div>`
+		if u, ok := e.Metadata["url"].(string); ok && u != "" && !strings.Contains(e.Content, u) {
+			linked += fmt.Sprintf(` <a href="%s" target="_blank" rel="noopener" style="color:#999;font-size:12px">→ read</a>`, htmlpkg.EscapeString(u))
 		}
 	}
 
@@ -277,8 +265,8 @@ func renderEvent(e *Event, viewerID string) string {
 	return fmt.Sprintf(`<div style="display:flex;gap:8px;padding:8px 0">%s
 <div style="flex:1;min-width:0">
 <div style="display:flex;align-items:baseline;gap:6px">%s<span style="color:#bbb;font-size:11px">%s</span></div>
-<div style="margin-top:3px;padding:8px 10px;background:%s;border-radius:0 12px 12px 12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere">%s</div>%s
-</div></div>`, avatar, nameLink, app.TimeAgo(e.CreatedAt), bubbleBg, linked, ogEmbed)
+<div style="margin-top:3px;padding:8px 10px;background:%s;border-radius:0 12px 12px 12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere">%s</div>
+</div></div>`, avatar, nameLink, app.TimeAgo(e.CreatedAt), bubbleBg, linked)
 }
 
 const streamScript = `<script>
