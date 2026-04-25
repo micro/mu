@@ -870,6 +870,15 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Home card preferences
+		if r.Form.Get("home_cards") != "" || r.Form.Get("save_cards") != "" {
+			selected := r.Form["cards"]
+			acc.HomeCards = selected
+			auth.UpdateAccount(acc)
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+
 		http.Redirect(w, r, "/account", http.StatusSeeOther)
 		return
 	}
@@ -897,6 +906,39 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// Email verification card
 	emailCard := renderEmailCard(acc)
 
+	// Home card preferences
+	allCards := []struct{ id, label string }{
+		{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
+		{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
+	}
+	activeCards := map[string]bool{}
+	if len(acc.HomeCards) > 0 {
+		for _, id := range acc.HomeCards {
+			activeCards[id] = true
+		}
+	} else {
+		for _, c := range allCards {
+			activeCards[c.id] = true
+		}
+	}
+	var cardsCheckboxes string
+	for _, c := range allCards {
+		checked := ""
+		if activeCards[c.id] {
+			checked = " checked"
+		}
+		cardsCheckboxes += fmt.Sprintf(`<label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:14px"><input type="checkbox" name="cards" value="%s"%s> %s</label>`, c.id, checked, c.label)
+	}
+	homeCardsCard := fmt.Sprintf(`<div class="card">
+<h4>Home Screen</h4>
+<p class="text-sm text-muted">Choose which cards to show on your home overview.</p>
+<form action="/account" method="POST" style="margin-top:8px">
+<input type="hidden" name="save_cards" value="1">
+<div style="display:flex;flex-wrap:wrap;gap:4px 0;margin-bottom:8px">%s</div>
+<button type="submit">Save</button>
+</form>
+</div>`, cardsCheckboxes)
+
 	content := fmt.Sprintf(`<div class="card">
 <h4>Profile</h4>
 <p><strong>%s</strong> · %s · Joined %s</p>
@@ -915,6 +957,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 %s
 
+%s
+
 <div class="card">
 <h4>Settings</h4>
 %s
@@ -929,6 +973,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.ID,
 		emailCard,
 		languageOptions,
+		homeCardsCard,
 		PasskeyListHTML(acc.ID),
 		adminLinks,
 	)
