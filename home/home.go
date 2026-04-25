@@ -311,12 +311,48 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		gearHTML = ` <a href="#" id="home-gear" onclick="var p=document.getElementById('home-card-prefs');p.style.display=p.style.display==='none'?'block':'none';return false" style="color:#bbb;text-decoration:none;font-size:16px" title="Customise cards">⚙</a>`
 	}
 	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML, gearHTML))
+	// Inline weather: reads cached summary, and refreshes it in the
+	// background if stale (>1 hour). This runs independently of the
+	// weather card — even if the card is hidden, the date-line temp
+	// stays current.
 	dateLine.WriteString(`<script>(function(){
-var w;try{w=JSON.parse(localStorage.getItem('mu_weather_now'))}catch(e){}
-if(!w||w.temp==null)return;
+var KEY='mu_weather_now',KEY_TS='mu_weather_now_ts',KEY_LAT='mu_weather_lat',KEY_LON='mu_weather_lon',TTL=3600000;
 var emoji={'clear':'☀️','sunny':'☀️','cloud':'☁️','overcast':'☁️','partly':'⛅','rain':'🌧️','drizzle':'🌧️','snow':'❄️','thunder':'⛈️','storm':'⛈️','fog':'🌫️','mist':'🌫️','haze':'🌫️','wind':'💨'};
-var e='';var d=(w.desc||'').toLowerCase();for(var k in emoji){if(d.indexOf(k)>=0){e=emoji[k];break}}
-document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
+function show(w){
+  if(!w||w.temp==null)return;
+  var e='';var d=(w.desc||'').toLowerCase();for(var k in emoji){if(d.indexOf(k)>=0){e=emoji[k];break}}
+  document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
+}
+// Show cached immediately.
+var cached;try{cached=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+show(cached);
+// Refresh in background if stale or missing.
+var ts=parseInt(localStorage.getItem(KEY_TS)||'0');
+if(Date.now()-ts<TTL)return;
+var lat=localStorage.getItem(KEY_LAT);
+var lon=localStorage.getItem(KEY_LON);
+if(!lat||!lon){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(function(pos){
+    lat=pos.coords.latitude.toFixed(4);lon=pos.coords.longitude.toFixed(4);
+    localStorage.setItem(KEY_LAT,lat);localStorage.setItem(KEY_LON,lon);
+    fetchW(lat,lon);
+  },function(){},{timeout:5000});
+  return;
+}
+fetchW(lat,lon);
+function fetchW(la,lo){
+  fetch('/weather?lat='+la+'&lon='+lo,{headers:{'Accept':'application/json'},credentials:'same-origin'})
+  .then(function(r){return r.ok?r.json():null})
+  .then(function(d){
+    if(!d||!d.forecast||!d.forecast.Current)return;
+    var c=d.forecast.Current;
+    var w={temp:Math.round(c.TempC),desc:c.Description||''};
+    localStorage.setItem(KEY,JSON.stringify(w));
+    localStorage.setItem(KEY_TS,String(Date.now()));
+    show(w);
+  }).catch(function(){});
+}
 })()</script>`)
 	dateHTML := dateLine.String()
 
