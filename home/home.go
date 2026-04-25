@@ -327,19 +327,20 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 	}
 	b.WriteString(`</div>`)
 
-	// ── Console view (stream) ──
-	consoleEvents := stream.Recent(stream.StreamLimit, viewerID)
-	consoleEvents = stream.DedupeAdjacent(consoleEvents)
-	b.WriteString(`<div id="home-console" style="display:none;flex-direction:column;height:calc(100vh - 120px);max-height:calc(100vh - 120px)">`)
-	b.WriteString(`<div id="stream-events" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px">`)
-	b.WriteString(stream.RenderEventList(consoleEvents, viewerID))
+	// ── Console view — stateless command prompt ──
+	// Like Alexa: ask a question, get an answer. No persistent history,
+	// no feed of system events. Just a prompt and a response area.
+	b.WriteString(`<div id="home-console" style="display:none;flex-direction:column;height:calc(100vh - 120px)">`)
+	b.WriteString(`<div id="console-response" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 0;display:flex;align-items:center;justify-content:center">`)
+	b.WriteString(`<p style="color:#bbb;font-size:15px">Ask Micro anything</p>`)
 	b.WriteString(`</div>`)
-	// Compose box pinned at bottom (logged-in only).
 	if viewerID != "" {
-		b.WriteString(fmt.Sprintf(`<form id="stream-form" method="POST" action="/stream" style="display:flex;gap:6px;padding:8px 0;border-top:1px solid #eee;background:#fff;flex-shrink:0;min-width:0">
-<input type="text" name="content" id="stream-input" placeholder="Message @micro..." maxlength="%d" autocomplete="off" style="flex:1;min-width:0;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">
-<button type="submit" style="padding:8px 12px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;flex-shrink:0;white-space:nowrap">Send</button>
+		b.WriteString(fmt.Sprintf(`<form id="console-form" style="display:flex;gap:6px;padding:8px 0;border-top:1px solid #eee;background:#fff;flex-shrink:0;min-width:0">
+<input type="text" id="console-input" placeholder="What's the BTC price? What's in my mail? Summarise the news..." maxlength="%d" autocomplete="off" style="flex:1;min-width:0;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box">
+<button type="submit" style="padding:10px 14px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;flex-shrink:0">Ask</button>
 </form>`, stream.MaxContentLength))
+	} else {
+		b.WriteString(`<p style="padding:8px 0;color:#999;font-size:13px;text-align:center"><a href="/login">Log in</a> to use the console</p>`)
 	}
 	b.WriteString(consoleScript)
 	b.WriteString(`</div>`)
@@ -474,61 +475,76 @@ func htmlEsc(s string) string {
 //
 // The script is defensive: if anything throws, the form still falls
 // back to its native POST + redirect behaviour.
-// consoleScript handles polling + form submit for the console stream
-// embedded on the home page.
+// consoleScript — stateless command prompt. Sends the question to the
+// agent endpoint, shows a thinking indicator, then renders the answer.
+// Each new question clears the previous answer. No history, no polling.
 const consoleScript = `<script>
 (function(){
-  var eventsEl = document.getElementById('stream-events');
-  var formEl = document.getElementById('stream-form');
-  if (!eventsEl) return;
-  var pollInterval = 10000;
-  var inflight = false;
+  var form = document.getElementById('console-form');
+  var resp = document.getElementById('console-response');
+  if (!form || !resp) return;
 
   function csrfToken() {
     var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
     return m ? decodeURIComponent(m[1]) : '';
   }
 
-  function refresh(clear) {
-    if (inflight) return;
-    inflight = true;
-    fetch('/stream/fragment', { credentials: 'same-origin', cache: 'no-store' })
-      .then(function(r){ return r.ok ? r.text() : null; })
-      .then(function(html){
-        if (html == null) return;
-        var scroll = eventsEl.scrollTop;
-        eventsEl.innerHTML = html;
-        if (!clear) eventsEl.scrollTop = scroll;
-      })
-      .catch(function(){})
-      .then(function(){ inflight = false; });
-  }
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var input = document.getElementById('console-input');
+    if (!input) return;
+    var q = input.value.trim();
+    if (!q) return;
 
-  if (formEl) {
-    formEl.addEventListener('submit', function(ev){
-      ev.preventDefault();
-      var input = document.getElementById('stream-input');
-      if (!input) return;
-      var text = input.value.trim();
-      if (!text) return;
-      var body = new URLSearchParams();
-      body.set('content', text);
-      var headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
-      var tok = csrfToken();
-      if (tok) headers['X-CSRF-Token'] = tok;
-      input.value = '';
-      fetch('/stream', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: headers,
-        body: body.toString()
-      }).then(function(){ refresh(true); })
-        .catch(function(){ formEl.submit(); });
+    // Show thinking state.
+    resp.style.alignItems = 'flex-start';
+    resp.style.justifyContent = 'flex-start';
+    resp.innerHTML = '<div style="padding:12px 0"><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><p style="color:#999">Thinking...</p></div>';
+    input.value = '';
+
+    var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    var tok = csrfToken();
+    if (tok) headers['X-CSRF-Token'] = tok;
+
+    fetch('/stream', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: headers,
+      body: JSON.stringify({ content: '@micro ' + q })
+    }).then(function(r) {
+      if (!r.ok) return r.text().then(function(t){ throw new Error(t) });
+      // Poll for the agent response — it's async, so we check every 2s.
+      var attempts = 0;
+      var maxAttempts = 30;
+      function poll() {
+        attempts++;
+        fetch('/stream?format=json&since=' + Math.floor(Date.now()/1000 - 60), { credentials: 'same-origin' })
+          .then(function(r){ return r.json() })
+          .then(function(data){
+            if (!data.events) { if (attempts < maxAttempts) setTimeout(poll, 2000); return; }
+            // Find the latest agent response.
+            for (var i = 0; i < data.events.length; i++) {
+              if (data.events[i].type === 'agent') {
+                resp.innerHTML = '<div style="padding:12px 0"><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><div style="color:#555;line-height:1.6;white-space:pre-wrap;word-wrap:break-word">' + escHtml(data.events[i].content) + '</div></div>';
+                return;
+              }
+            }
+            if (attempts < maxAttempts) setTimeout(poll, 2000);
+            else resp.innerHTML = '<div style="padding:12px 0"><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><p style="color:#c00">Timed out waiting for a response. Try again.</p></div>';
+          })
+          .catch(function(){ if (attempts < maxAttempts) setTimeout(poll, 2000); });
+      }
+      setTimeout(poll, 2000);
+    }).catch(function(err){
+      resp.innerHTML = '<div style="padding:12px 0"><p style="color:#c00">' + escHtml(err.message || 'Something went wrong') + '</p></div>';
     });
-  }
+  });
 
-  setInterval(function(){ if (!document.hidden) refresh(); }, pollInterval);
-  document.addEventListener('visibilitychange', function(){ if (!document.hidden) refresh(); });
+  function escHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
 })();
 </script>`
 

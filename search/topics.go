@@ -94,6 +94,7 @@ func regenerateTopics() {
 Return exactly 10 topics, one per line. Nothing else.`,
 		Question: "Extract 10 trending search topics from these recent headlines:\n\n" + strings.Join(headlines, "\n"),
 		Priority: ai.PriorityLow,
+		Model:    "claude-haiku-4-5-20251001",
 		Caller:   "topic-generation",
 	}
 

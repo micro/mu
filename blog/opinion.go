@@ -90,8 +90,7 @@ func opinionEngageLoop() {
 }
 
 // maxDailyOpinions limits how many opinion posts are generated per day.
-// Reduced from 8 (one per category) to control API costs while no users are active.
-const maxDailyOpinions = 2
+const maxDailyOpinions = 1
 
 // publishNextOpinion finds the next category that needs an opinion today
 // and publishes it, respecting the spacing between posts.

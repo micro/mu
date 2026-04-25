@@ -19,7 +19,6 @@ import (
 	"mu/internal/event"
 	"mu/internal/flag"
 	"mu/news"
-	"mu/stream"
 	"mu/wallet"
 )
 
@@ -221,14 +220,6 @@ func SurfaceBreaking(category, title, link string) {
 		AuthorID: "_system",
 		Content:  content,
 		PostedAt: time.Now(),
-	})
-
-	// Also post to the platform stream so it appears in the console.
-	stream.Publish(&stream.Event{
-		Type:     stream.TypeNews,
-		AuthorID: app.SystemUserID,
-		Content:  title,
-		Metadata: map[string]any{"url": link, "category": category},
 	})
 }
 
