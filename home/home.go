@@ -499,7 +499,7 @@ const consoleScript = `<script>
     // Show thinking state.
     resp.style.alignItems = 'flex-start';
     resp.style.justifyContent = 'flex-start';
-    resp.innerHTML = '<div style="padding:12px 0"><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><p style="color:#999">Thinking...</p></div>';
+    resp.innerHTML = '<div style="padding:12px 0"><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><p style="color:#999">Working...</p></div>';
     input.value = '';
 
     var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };

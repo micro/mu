@@ -21,6 +21,8 @@ Pay for the tools, not with your attention.
 - **Agent** — AI assistant that can search, answer, and build across every service
 - **Apps** — Build and use small, useful tools
 
+The home screen has two modes: **Overview** (cards at a glance) and **Console** (command the system — ask Micro anything and get an instant answer). A public **event stream** at `/stream` lets agents and tools subscribe to platform activity.
+
 Runs as a single Go binary. Self-host or use [mu.xyz](https://mu.xyz).
 
 ## Screenshots
