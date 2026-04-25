@@ -306,7 +306,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="/admin/invite" style="color:#555;text-decoration:none">%s</a></span>`, label)
 	}
-	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML))
+	gearHTML := ""
+	if viewerAcc != nil {
+		gearHTML = ` <a href="#" id="home-gear" onclick="var p=document.getElementById('home-card-prefs');p.style.display=p.style.display==='none'?'block':'none';return false" style="color:#bbb;text-decoration:none;font-size:16px" title="Customise cards">⚙</a>`
+	}
+	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML, gearHTML))
 	dateLine.WriteString(`<script>(function(){
 var w;try{w=JSON.parse(localStorage.getItem('mu_weather_now'))}catch(e){}
 if(!w||w.temp==null)return;
@@ -324,6 +328,38 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 	// ── Cards (always visible) ──
 	b.WriteString(`<div id="home-cards">`)
 	b.WriteString(dateHTML)
+
+	// Inline card preferences panel — toggled by the ⚙ icon.
+	if viewerAcc != nil {
+		allCardDefs := []struct{ id, label string }{
+			{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
+			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
+		}
+		activeSet := map[string]bool{}
+		if len(viewerAcc.HomeCards) > 0 {
+			for _, id := range viewerAcc.HomeCards {
+				activeSet[id] = true
+			}
+		} else {
+			for _, c := range allCardDefs {
+				activeSet[c.id] = true
+			}
+		}
+		var checkboxes string
+		for _, c := range allCardDefs {
+			checked := ""
+			if activeSet[c.id] {
+				checked = " checked"
+			}
+			checkboxes += fmt.Sprintf(`<label style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:13px"><input type="checkbox" name="cards" value="%s"%s onchange="this.form.submit()"> %s</label>`, c.id, checked, c.label)
+		}
+		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:8px 12px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
+<form method="POST" action="/account" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">
+<input type="hidden" name="save_cards" value="1">
+%s
+</form>
+</div>`, checkboxes))
+	}
 
 	// User card preferences — if set, only show cards in the user's
 	// chosen order. Empty = show all in default order.
@@ -386,15 +422,15 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 	// full-screen command overlay. Like Spotlight or Cmd+K.
 	if viewerID != "" {
 		b.WriteString(fmt.Sprintf(`
-<div id="console-bar" onclick="document.getElementById('console-overlay').style.display='flex';document.getElementById('console-input').focus()" style="position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:#fff;border-top:1px solid #e0e0e0;cursor:pointer;z-index:900;display:flex;align-items:center;gap:8px;box-shadow:0 -1px 4px rgba(0,0,0,0.05)">
+<div id="console-bar" onclick="muOpenConsole()" style="position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:#fff;border-top:1px solid #e0e0e0;cursor:pointer;z-index:900;display:flex;align-items:center;gap:8px;box-shadow:0 -1px 4px rgba(0,0,0,0.05)">
 <span style="color:#bbb;font-size:14px;flex:1">Ask Micro anything...</span>
 <span style="background:#000;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px">⌘</span>
 </div>
 
-<div id="console-overlay" style="display:none;position:fixed;inset:0;z-index:1000;background:#fff;flex-direction:column">
+<div id="console-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;background:#fff;flex-direction:column;height:100dvh;height:100vh">
 <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #eee">
 <span style="font-weight:600;font-size:15px;flex:1">Console</span>
-<a href="#" onclick="document.getElementById('console-overlay').style.display='none';return false" style="color:#999;text-decoration:none;font-size:20px;padding:4px 8px">✕</a>
+<a href="#" onclick="muCloseConsole();return false" style="color:#999;text-decoration:none;font-size:20px;padding:4px 8px">✕</a>
 </div>
 <div id="console-response" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;display:flex;align-items:center;justify-content:center">
 <p style="color:#bbb;font-size:15px">Ask Micro anything</p>
@@ -483,10 +519,21 @@ func htmlEsc(s string) string {
 //
 // The script is defensive: if anything throws, the form still falls
 // back to its native POST + redirect behaviour.
-// consoleScript — stateless command prompt. Sends the question to the
-// agent endpoint, shows a thinking indicator, then renders the answer.
-// Each new question clears the previous answer. No history, no polling.
+// consoleScript — stateless command prompt. Fixed bottom bar opens a
+// full-screen overlay. Ask a question, get an answer. Escape closes.
 const consoleScript = `<script>
+window.muOpenConsole=function(){
+  document.getElementById('console-overlay').style.display='flex';
+  document.getElementById('console-bar').style.display='none';
+  setTimeout(function(){document.getElementById('console-input').focus()},50);
+};
+window.muCloseConsole=function(){
+  document.getElementById('console-overlay').style.display='none';
+  document.getElementById('console-bar').style.display='flex';
+};
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&document.getElementById('console-overlay').style.display==='flex') muCloseConsole();
+});
 (function(){
   var form = document.getElementById('console-form');
   var resp = document.getElementById('console-response');
