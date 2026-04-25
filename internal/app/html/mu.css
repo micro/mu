@@ -2406,11 +2406,11 @@ a.highlight {
     font-size: 12px;
   }
 
-  /* Alphabetical card order on mobile */
-  #blog { order: 1; }
+  /* Card order on mobile — reminder first, then useful content */
+  #reminder { order: 1; }
   #markets { order: 2; }
-  #news { order: 3; }
-  #reminder { order: 4; }
+  #blog { order: 3; }
+  #news { order: 4; }
   #social { order: 5; }
   #video { order: 6; }
   #home-chat { order: 7; }

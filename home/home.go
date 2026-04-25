@@ -351,10 +351,12 @@ document.getElementById('home-date-weather').textContent=w.temp+'°C '+(e||'');
 			if activeSet[c.id] {
 				checked = " checked"
 			}
-			checkboxes += fmt.Sprintf(`<label style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:13px"><input type="checkbox" name="cards" value="%s"%s onchange="this.form.submit()"> %s</label>`, c.id, checked, c.label)
+			checkboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s onchange="this.form.submit()" style="width:18px;height:18px"> %s</label>`, c.id, checked, c.label)
 		}
-		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:8px 12px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
-<form method="POST" action="/account" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">
+		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
+<p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
+<p style="font-size:12px;color:#999;margin:0 0 8px">Show or hide cards on your overview.</p>
+<form method="POST" action="/account">
 <input type="hidden" name="save_cards" value="1">
 %s
 </form>
