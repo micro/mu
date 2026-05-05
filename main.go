@@ -38,7 +38,6 @@ import (
 	"mu/video"
 	"mu/wallet"
 	"mu/weather"
-	"mu/work"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -100,22 +99,8 @@ func main() {
 	// load apps
 	apps.Load()
 
-	// load work (task bounties)
-	work.Load()
 
-	// Wire work credit spending
-	work.SpendCredits = func(userID string, amount int, operation string) error {
-		return wallet.DeductCredits(userID, amount, operation, nil)
-	}
 
-	// Wire work notifications
-	work.Notify = func(toUserID, subject, body, threadID string) {
-		acc, err := auth.GetAccount(toUserID)
-		if err != nil {
-			return
-		}
-		mail.SendMessage("Mu", "micro", acc.Name, toUserID, subject, body, threadID, "")
-	}
 
 
 
@@ -639,9 +624,6 @@ func main() {
 		return answer, nil
 	})
 
-	// Start the agent worker after all tools are registered
-	agent.StartWorker()
-
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features
 		"/news":            false, // Public viewing, auth for search
@@ -838,8 +820,6 @@ func main() {
 	http.HandleFunc("/apps/", apps.Handler)
 
 	// serve work (task bounties)
-	http.HandleFunc("/work", work.Handler)
-	http.HandleFunc("/work/", work.Handler)
 
 	// content controls (flag, save, dismiss, block, share)
 	http.HandleFunc("/app/", app.ControlsHandler)
@@ -1286,9 +1266,6 @@ func chargedWriteOp(r *http.Request) string {
 		return wallet.OpSocialPost
 	case path == "/apps/build/generate", path == "/apps/framework/generate":
 		return wallet.OpAppBuild
-	// Work
-	case path == "/work/post":
-		return wallet.OpSocialPost
 	// Stream (console)
 	case path == "/stream":
 		return wallet.OpSocialPost

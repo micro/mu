@@ -351,28 +351,6 @@ var tools = []Tool{
 		Method:      "GET",
 		Path:        "/wallet/topup",
 	},
-	{
-		Name:        "work_list",
-		Description: "List work posts — show (people sharing work) and tasks (bounties for work needed)",
-		Method:      "GET",
-		Path:        "/work",
-		Params: []ToolParam{
-			{Name: "kind", Type: "string", Description: "Filter by kind: task or show (default: all)", Required: false},
-		},
-	},
-	{
-		Name:        "work_post",
-		Description: "Post work — show something you built or post a task with a credit cost",
-		Method:      "POST",
-		Path:        "/work/post",
-		Params: []ToolParam{
-			{Name: "kind", Type: "string", Description: "Post kind: show or task (default: show)", Required: false},
-			{Name: "title", Type: "string", Description: "Title", Required: true},
-			{Name: "description", Type: "string", Description: "Description of the work", Required: true},
-			{Name: "link", Type: "string", Description: "URL or app slug (optional, for show posts)", Required: false},
-			{Name: "cost", Type: "number", Description: "Budget in credits — max spend for agent (required for tasks)", Required: false},
-		},
-	},
 	// Stream (console)
 	{
 		Name:        "stream",

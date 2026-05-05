@@ -17,7 +17,6 @@ import (
 	"mu/internal/flag"
 	"mu/user"
 	"mu/wallet"
-	"mu/work"
 )
 
 // InviteHandler serves the admin invite page at /admin/invite.
@@ -185,7 +184,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<button type="submit" id="cb" style="background:#333;color:#e0e0e0;border:none;border-radius:4px;padding:4px 12px;font-family:inherit;font-size:12px;cursor:pointer">run</button>`)
 	sb.WriteString(`</form>`)
 
-	sb.WriteString(`<div style="margin-top:8px;font-size:11px;color:#555">help · users · apps · tasks · search · stats</div>`)
+	sb.WriteString(`<div style="margin-top:8px;font-size:11px;color:#555">help · users · apps · search · stats</div>`)
 	sb.WriteString(`</div>`)
 
 	// JS: intercept form, use fetch, append output inline
@@ -467,35 +466,6 @@ func runCommand(cmd string) string {
 		return fmt.Sprintf("Slug: %s\nName: %s\nAuthor: %s (%s)\nPublic: %v\nInstalls: %d\nCreated: %s\nHTML: %d bytes",
 			a.Slug, a.Name, a.Author, a.AuthorID, a.Public, a.Installs, a.CreatedAt.Format("2 Jan 2006"), len(a.HTML))
 
-	// --- Work ---
-	case "tasks":
-		posts := work.ListPosts("task", "", 20)
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d tasks\n", len(posts)))
-		for _, p := range posts {
-			sb.WriteString(fmt.Sprintf("  [%s] %s — %s (budget:%d spent:%d)\n", p.Status, p.ID[:8], p.Title, p.Cost, p.Spent))
-		}
-		return sb.String()
-
-	case "task":
-		if arg(1) == "" {
-			return "usage: task <id>"
-		}
-		p := work.GetPost(arg(1))
-		if p == nil {
-			return "Task not found"
-		}
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("ID: %s\nTitle: %s\nStatus: %s\nAuthor: %s\nBudget: %d\nSpent: %d\nApp: %s\n",
-			p.ID, p.Title, p.Status, p.AuthorID, p.Cost, p.Spent, p.AppSlug))
-		if len(p.Log) > 0 {
-			sb.WriteString(fmt.Sprintf("\nLog (%d entries):\n", len(p.Log)))
-			for _, e := range p.Log {
-				sb.WriteString(fmt.Sprintf("  %s [%s] %s\n", e.CreatedAt.Format("15:04:05"), e.Step, e.Message))
-			}
-		}
-		return sb.String()
-
 	// --- Content ---
 	case "search":
 		if arg(1) == "" {
@@ -536,9 +506,8 @@ func runCommand(cmd string) string {
 		stats := data.GetStats()
 		accounts := auth.GetAllAccounts()
 		allApps := apps.GetPublicApps()
-		tasks := work.ListPosts("task", "", 100)
-		return fmt.Sprintf("Users: %d\nApps: %d\nTasks: %d\nIndex: %d entries\nSQLite: %v",
-			len(accounts), len(allApps), len(tasks), stats.TotalEntries, stats.UsingSQLite)
+		return fmt.Sprintf("Users: %d\nApps: %d\nIndex: %d entries\nSQLite: %v",
+			len(accounts), len(allApps), stats.TotalEntries, stats.UsingSQLite)
 
 	case "types":
 		return strings.Join(data.DeleteTypes(), ", ")
@@ -547,7 +516,6 @@ func runCommand(cmd string) string {
 		return `Users:    users · user <id> · credit <id> <amount>
 Wallet:   wallet <id>
 Apps:     apps · app <slug>
-Tasks:    tasks · task <id>
 Content:  search <query> · delete <type> <id> · flags
 System:   stats · types · help`
 
