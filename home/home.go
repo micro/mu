@@ -618,7 +618,7 @@ document.addEventListener('keydown',function(e){
             // Find the latest agent response.
             for (var i = 0; i < data.events.length; i++) {
               if (data.events[i].type === 'agent') {
-                resp.innerHTML = '<div style="padding:12px 0"><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><div style="color:#555;line-height:1.6;white-space:pre-wrap;word-wrap:break-word">' + escHtml(data.events[i].content) + '</div></div>';
+                resp.innerHTML = '<div style="padding:12px 0"><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><div class="console-answer" style="color:#555;line-height:1.6;word-wrap:break-word">' + renderMd(data.events[i].content) + '</div></div>';
                 return;
               }
             }
@@ -637,6 +637,25 @@ document.addEventListener('keydown',function(e){
     var d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
+  }
+  function renderMd(s) {
+    s = escHtml(s);
+    var bt = String.fromCharCode(96);
+    var codeBlockRe = new RegExp(bt+bt+bt+'(\\w*)\\n([\\s\\S]*?)'+bt+bt+bt, 'g');
+    var inlineCodeRe = new RegExp(bt+'([^'+bt+']+)'+bt, 'g');
+    s = s.replace(codeBlockRe, '<pre style="background:#f5f5f5;padding:10px;border-radius:6px;overflow-x:auto;font-size:13px"><code>$2</code></pre>');
+    s = s.replace(inlineCodeRe, '<code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:13px">$1</code>');
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:#06c">$1</a>');
+    s = s.replace(/^### (.+)$/gm, '<strong style="font-size:14px">$1</strong>');
+    s = s.replace(/^## (.+)$/gm, '<strong style="font-size:15px">$1</strong>');
+    s = s.replace(/^# (.+)$/gm, '<strong style="font-size:16px">$1</strong>');
+    s = s.replace(/^[-*] (.+)$/gm, '<li style="margin-left:16px;list-style:disc">$1</li>');
+    s = s.replace(/^\d+\. (.+)$/gm, '<li style="margin-left:16px;list-style:decimal">$1</li>');
+    s = s.replace(/\n\n/g, '</p><p style="margin:8px 0">');
+    s = s.replace(/\n/g, '<br>');
+    return '<p style="margin:8px 0">' + s + '</p>';
   }
 })();
 </script>`
