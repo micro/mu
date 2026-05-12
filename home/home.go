@@ -371,7 +371,7 @@ function fetchW(la,lo){
 		b.WriteString(fmt.Sprintf(`
 <div id="console-prompt" style="margin:0 0 16px;position:relative">
 <form id="console-form">
-<textarea id="console-input" placeholder="Ask Micro anything..." maxlength="%d" rows="1" style="width:100%%%%;padding:12px 48px 12px 14px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
+<textarea id="console-input" placeholder="Ask Micro anything..." maxlength="%d" rows="1" style="width:100%%;padding:12px 48px 12px 14px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
 <button type="submit" style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0;line-height:1">&#x2191;</button>
 </form>
 </div>`, stream.MaxContentLength))
@@ -481,7 +481,7 @@ function fetchW(la,lo){
 <div style="padding:10px 16px;border-top:1px solid #eee;background:#fff;flex-shrink:0">
 <div style="max-width:600px;margin:0 auto;position:relative">
 <form id="console-form-overlay">
-<textarea id="console-input-overlay" placeholder="Ask a follow-up..." maxlength="%d" rows="1" style="width:100%%%%;padding:12px 48px 12px 14px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event(\'submit\'))}"></textarea>
+<textarea id="console-input-overlay" placeholder="Ask a follow-up..." maxlength="%d" rows="1" style="width:100%%;padding:12px 48px 12px 14px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event(\'submit\'))}"></textarea>
 <button type="submit" style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0;line-height:1">&#x2191;</button>
 </form>
 </div>
