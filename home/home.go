@@ -365,6 +365,18 @@ function fetchW(la,lo){
 	b.WriteString(`<div id="home-cards">`)
 	b.WriteString(dateHTML)
 
+	// Console prompt — inline at the top, before cards. Claude-style
+	// rounded textarea with send button inside.
+	if viewerID != "" {
+		b.WriteString(fmt.Sprintf(`
+<div id="console-prompt" style="margin:0 0 16px;position:relative">
+<form id="console-form">
+<textarea id="console-input" placeholder="Ask Micro anything..." maxlength="%d" rows="1" style="width:100%%%%;padding:12px 48px 12px 14px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
+<button type="submit" style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0;line-height:1">&#x2191;</button>
+</form>
+</div>`, stream.MaxContentLength))
+	}
+
 	// Inline card preferences panel — toggled by the ⚙ icon.
 	if viewerAcc != nil {
 		allCardDefs := []struct{ id, label string }{
@@ -455,17 +467,9 @@ function fetchW(la,lo){
 
 	b.WriteString(`</div>`) // close #home-cards
 
-	// ── Console: fixed bottom bar + full-screen overlay ──
-	// Always visible as a bar at the bottom. Tap to expand into a
-	// full-screen command overlay. Like Spotlight or Cmd+K.
+	// Console overlay + script (prompt is now inline above the cards).
 	if viewerID != "" {
 		b.WriteString(fmt.Sprintf(`
-<div id="console-prompt" style="max-width:600px;margin:24px auto 0;position:relative">
-<form id="console-form">
-<textarea id="console-input" placeholder="Ask Micro anything..." maxlength="%d" rows="1" style="width:100%%%%;padding:12px 48px 12px 14px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event(\'submit\'))}"></textarea>
-<button type="submit" style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0;line-height:1">&#x2191;</button>
-</form>
-</div>
 
 <div id="console-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;background:#fff;flex-direction:column;height:100dvh;height:100vh">
 <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #eee">
