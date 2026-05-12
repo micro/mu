@@ -371,8 +371,8 @@ function fetchW(la,lo){
 		b.WriteString(fmt.Sprintf(`
 <div id="console-prompt" style="margin:0 0 16px;position:relative">
 <form id="console-form">
-<textarea id="console-input" placeholder="Ask Micro anything..." maxlength="%d" rows="1" style="width:100%%;padding:12px 48px 12px 14px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
-<button type="submit" style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0;line-height:1">&#x2191;</button>
+<textarea id="console-input" placeholder="Ask Micro anything..." maxlength="%d" rows="1" style="width:100%%;padding:10px 40px 10px 12px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
+<button type="submit" style="position:absolute;right:6px;top:50%%;transform:translateY(-50%%);width:28px;height:28px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;padding:0">&#x2192;</button>
 </form>
 </div>`, stream.MaxContentLength))
 	}
@@ -473,16 +473,16 @@ function fetchW(la,lo){
 
 <div id="console-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;background:#fff;flex-direction:column;height:100dvh;height:100vh">
 <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #eee">
-<span style="font-weight:600;font-size:15px;flex:1">Console</span>
+<span style="font-weight:600;font-size:15px;flex:1">Micro</span>
 <a href="#" onclick="muCloseConsole();return false" style="color:#999;text-decoration:none;font-size:20px;padding:4px 8px">&#x2715;</a>
 </div>
-<div id="console-response" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px">
+<div id="console-response" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;max-width:700px;margin:0 auto;width:100%%">
 </div>
 <div style="padding:10px 16px;border-top:1px solid #eee;background:#fff;flex-shrink:0">
 <div style="max-width:600px;margin:0 auto;position:relative">
 <form id="console-form-overlay">
-<textarea id="console-input-overlay" placeholder="Ask a follow-up..." maxlength="%d" rows="1" style="width:100%%;padding:12px 48px 12px 14px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event(\'submit\'))}"></textarea>
-<button type="submit" style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0;line-height:1">&#x2191;</button>
+<textarea id="console-input-overlay" placeholder="Ask a follow-up..." maxlength="%d" rows="1" style="width:100%%;padding:10px 40px 10px 12px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event(\'submit\'))}"></textarea>
+<button type="submit" style="position:absolute;right:6px;top:50%%;transform:translateY(-50%%);width:28px;height:28px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;padding:0">&#x2192;</button>
 </form>
 </div>
 </div>
@@ -586,6 +586,10 @@ document.addEventListener('keydown',function(e){
     resp.innerHTML = '<div><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><p style="color:#999">Working...</p></div>';
     if (inputEl) { inputEl.value = ''; inputEl.style.height = 'auto'; }
 
+    // Capture timestamp BEFORE submitting so we only accept agent
+    // responses that arrive AFTER our question was posted.
+    var sinceTs = Math.floor(Date.now()/1000);
+
     var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
     var tok = csrfToken();
     if (tok) headers['X-CSRF-Token'] = tok;
@@ -600,7 +604,7 @@ document.addEventListener('keydown',function(e){
       var attempts = 0;
       function poll() {
         attempts++;
-        fetch('/stream?format=json&since=' + Math.floor(Date.now()/1000 - 60), { credentials: 'same-origin' })
+        fetch('/stream?format=json&since=' + sinceTs, { credentials: 'same-origin' })
           .then(function(r){ return r.json() })
           .then(function(data){
             if (!data.events) { if (attempts < 30) setTimeout(poll, 2000); return; }
