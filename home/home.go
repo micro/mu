@@ -371,7 +371,7 @@ function fetchW(la,lo){
 		b.WriteString(fmt.Sprintf(`
 <div id="console-prompt" style="margin:0 0 16px">
 <form id="console-form" style="position:relative">
-<textarea id="console-input" placeholder="Ask Micro anything..." maxlength="%d" rows="1" style="width:100%%;padding:10px 40px 10px 12px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden"></textarea>
+<textarea id="console-input" placeholder="Ask Micro" maxlength="%d" rows="1" style="width:100%%;padding:10px 40px 10px 12px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden"></textarea>
 <button type="submit" style="position:absolute;right:6px;top:50%%;transform:translateY(-50%%);width:28px;height:28px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;padding:0">&#x2192;</button>
 </form>
 <div id="console-response" style="display:none;margin-top:12px;padding:14px;background:#f9f9f9;border-radius:10px"></div>
@@ -379,7 +379,92 @@ function fetchW(la,lo){
 		b.WriteString(consoleScript)
 	}
 
+	// Inline card preferences panel
+	if viewerAcc != nil {
+		allCardDefs := []struct{ id, label string }{
+			{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
+			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
+		}
+		activeSet := map[string]bool{}
+		if len(viewerAcc.HomeCards) > 0 {
+			for _, id := range viewerAcc.HomeCards {
+				activeSet[id] = true
+			}
+		} else {
+			for _, c := range allCardDefs {
+				activeSet[c.id] = true
+			}
+		}
+		var checkboxes string
+		for _, c := range allCardDefs {
+			checked := ""
+			if activeSet[c.id] {
+				checked = " checked"
+			}
+			checkboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s onchange="this.form.submit()" style="width:18px;height:18px"> %s</label>`, c.id, checked, c.label)
+		}
+		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
+<p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
+<p style="font-size:12px;color:#999;margin:0 0 8px">Show or hide cards on your overview.</p>
+<form method="POST" action="/account">
+<input type="hidden" name="save_cards" value="1">
+%s
+</form>
+</div>`, checkboxes))
+	}
 
+	var userCards map[string]int
+	if viewerAcc != nil && len(viewerAcc.HomeCards) > 0 {
+		userCards = make(map[string]int, len(viewerAcc.HomeCards))
+		for i, id := range viewerAcc.HomeCards {
+			userCards[id] = i
+		}
+	}
+
+	var leftHTML []string
+	var rightHTML []string
+
+	tooltips := map[string]string{
+		"blog":     "Microblog posts with daily AI-generated digests",
+		"news":     "Headlines from RSS feeds, sorted by time",
+		"markets":  "Live crypto, futures, and commodity prices",
+		"reminder": "Daily Islamic reminder with verse and hadith",
+		"social":   "Public discussion threads",
+		"video":    "Latest videos from curated channels",
+	}
+
+	for _, card := range Cards {
+		if userCards != nil {
+			if _, ok := userCards[card.ID]; !ok {
+				continue
+			}
+		}
+		content := card.CachedHTML
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
+		if card.Link != "" {
+			content += app.Link("More", card.Link)
+		}
+		title := card.Title
+		if tip, ok := tooltips[card.ID]; ok {
+			title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
+		}
+		html := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
+		if card.Column == "left" {
+			leftHTML = append(leftHTML, html)
+		} else {
+			rightHTML = append(rightHTML, html)
+		}
+	}
+
+	if len(leftHTML) > 0 || len(rightHTML) > 0 {
+		b.WriteString(fmt.Sprintf(Template,
+			strings.Join(leftHTML, "\n"),
+			strings.Join(rightHTML, "\n")))
+	}
+
+	b.WriteString(`</div>`) // close #home-cards
 
 
 	// Auto-refresh: poll every 2 minutes, update card content in-place
@@ -479,7 +564,8 @@ const consoleScript = `<script>
     if (!q) return;
 
     resp.style.display = 'block';
-    resp.innerHTML = '<p style="color:#333;font-weight:600;margin:0 0 6px">' + escHtml(q) + '</p><p style="color:#999;margin:0">Working...</p>';
+    var qid = 'q' + Date.now();
+    resp.innerHTML += '<div id="'+qid+'" style="margin-top:12px;padding-bottom:12px;border-bottom:1px solid #eee"><p style="color:#333;font-weight:600;margin:0 0 6px">' + escHtml(q) + '</p><p style="color:#999;margin:0" id="'+qid+'-a">Working...</p></div>';
     input.value = '';
     input.style.height = 'auto';
 
@@ -497,9 +583,9 @@ const consoleScript = `<script>
       return r.json();
     }).then(function(data){
       var answer = (data && data.answer) ? data.answer : (typeof data === 'string' ? data : JSON.stringify(data));
-      resp.innerHTML = '<p style="color:#333;font-weight:600;margin:0 0 6px">' + escHtml(q) + '</p><div style="color:#555;line-height:1.6;word-wrap:break-word">' + renderMd(answer) + '</div>';
+      var ae = document.getElementById(qid+'-a'); if(ae) ae.outerHTML = '<div style="color:#555;line-height:1.6;word-wrap:break-word">' + renderMd(answer) + '</div>';
     }).catch(function(err){
-      resp.innerHTML = '<p style="color:#c00;margin:0">' + escHtml(err.message || 'Something went wrong') + '</p>';
+      var ee = document.getElementById(qid+'-a'); if(ee) ee.outerHTML = '<p style="color:#c00;margin:0">' + escHtml(err.message || 'Something went wrong') + '</p>';
     });
   });
 
