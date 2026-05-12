@@ -476,7 +476,7 @@ function fetchW(la,lo){
 <span style="font-weight:600;font-size:15px;flex:1">Micro</span>
 <a href="#" onclick="muCloseConsole();return false" style="color:#999;text-decoration:none;font-size:20px;padding:4px 8px">&#x2715;</a>
 </div>
-<div id="console-response" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px">
+<div id="console-response" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;max-width:700px;margin:0 auto;width:100%%">
 </div>
 <div style="padding:10px 16px;border-top:1px solid #eee;background:#fff;flex-shrink:0">
 <div style="max-width:600px;margin:0 auto;position:relative">
