@@ -15,13 +15,15 @@ import (
 
 // RunRequest is the input for the synchronous agent endpoint.
 type RunRequest struct {
-	Prompt string `json:"prompt"`
-	Model  string `json:"model"`
+	Prompt    string `json:"prompt"`
+	Model     string `json:"model"`
+	ContextID string `json:"context_id"` // prior flow ID for follow-ups
 }
 
 // RunResponse is the output of the synchronous agent endpoint.
 type RunResponse struct {
 	Answer string     `json:"answer"`
+	FlowID string     `json:"flow_id,omitempty"`
 	Tools  []ToolUsed `json:"tools,omitempty"`
 	Error  string     `json:"error,omitempty"`
 }
@@ -146,5 +148,23 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	answer = app.StripLatexDollars(answer)
-	app.RespondJSON(w, RunResponse{Answer: answer, Tools: toolsUsed})
+
+	// Save as a flow so it appears in the agent history at /agent.
+	var steps []FlowStep
+	for _, tu := range toolsUsed {
+		steps = append(steps, FlowStep{Tool: tu.Name})
+	}
+	flow := &Flow{
+		ID:        newFlowID(),
+		AccountID: acc.ID,
+		Prompt:    req.Prompt,
+		Steps:     steps,
+		Answer:    answer,
+		Status:    "done",
+		ParentID:  req.ContextID,
+		CreatedAt: time.Now().UTC(),
+	}
+	saveFlow(flow)
+
+	app.RespondJSON(w, RunResponse{Answer: answer, FlowID: flow.ID, Tools: toolsUsed})
 }
