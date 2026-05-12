@@ -371,7 +371,7 @@ function fetchW(la,lo){
 		b.WriteString(fmt.Sprintf(`
 <div id="console-prompt" style="margin:0 0 16px">
 <form id="console-form" style="position:relative">
-<textarea id="console-input" placeholder="Ask Micro" maxlength="%d" rows="1" style="width:100%%;padding:10px 40px 10px 12px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden"></textarea>
+<textarea id="console-input" placeholder="Search or look up..." maxlength="%d" rows="1" style="width:100%%;padding:10px 40px 10px 12px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden"></textarea>
 <button type="submit" style="position:absolute;right:6px;top:50%%;transform:translateY(-50%%);width:28px;height:28px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;padding:0">&#x2192;</button>
 </form>
 <div id="console-response" style="display:none;margin-top:12px;padding:14px;background:#f9f9f9;border-radius:10px"></div>
