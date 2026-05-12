@@ -369,125 +369,13 @@ function fetchW(la,lo){
 	// rounded textarea with send button inside.
 	if viewerID != "" {
 		b.WriteString(fmt.Sprintf(`
-<div id="console-prompt" style="margin:0 0 16px;position:relative">
-<form id="console-form">
-<textarea id="console-input" placeholder="Ask Micro anything..." maxlength="%d" rows="1" style="width:100%%;padding:10px 40px 10px 12px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
+<div id="console-prompt" style="margin:0 0 16px">
+<form id="console-form" style="position:relative">
+<textarea id="console-input" placeholder="Ask Micro anything..." maxlength="%d" rows="1" style="width:100%%;padding:10px 40px 10px 12px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden"></textarea>
 <button type="submit" style="position:absolute;right:6px;top:50%%;transform:translateY(-50%%);width:28px;height:28px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;padding:0">&#x2192;</button>
 </form>
+<div id="console-response" style="display:none;margin-top:12px;padding:14px;background:#f9f9f9;border-radius:10px"></div>
 </div>`, stream.MaxContentLength))
-	}
-
-	// Inline card preferences panel — toggled by the ⚙ icon.
-	if viewerAcc != nil {
-		allCardDefs := []struct{ id, label string }{
-			{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
-			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
-		}
-		activeSet := map[string]bool{}
-		if len(viewerAcc.HomeCards) > 0 {
-			for _, id := range viewerAcc.HomeCards {
-				activeSet[id] = true
-			}
-		} else {
-			for _, c := range allCardDefs {
-				activeSet[c.id] = true
-			}
-		}
-		var checkboxes string
-		for _, c := range allCardDefs {
-			checked := ""
-			if activeSet[c.id] {
-				checked = " checked"
-			}
-			checkboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s onchange="this.form.submit()" style="width:18px;height:18px"> %s</label>`, c.id, checked, c.label)
-		}
-		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
-<p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
-<p style="font-size:12px;color:#999;margin:0 0 8px">Show or hide cards on your overview.</p>
-<form method="POST" action="/account">
-<input type="hidden" name="save_cards" value="1">
-%s
-</form>
-</div>`, checkboxes))
-	}
-
-	// User card preferences — if set, only show cards in the user's
-	// chosen order. Empty = show all in default order.
-	var userCards map[string]int // card ID → display order
-	if viewerAcc != nil && len(viewerAcc.HomeCards) > 0 {
-		userCards = make(map[string]int, len(viewerAcc.HomeCards))
-		for i, id := range viewerAcc.HomeCards {
-			userCards[id] = i
-		}
-	}
-
-	var leftHTML []string
-	var rightHTML []string
-
-	tooltips := map[string]string{
-		"blog":     "Microblog posts with daily AI-generated digests",
-		"news":     "Headlines from RSS feeds, sorted by time",
-		"markets":  "Live crypto, futures, and commodity prices",
-		"reminder": "Daily Islamic reminder with verse and hadith",
-		"social":   "Public discussion threads",
-		"video":    "Latest videos from curated channels",
-	}
-
-	for _, card := range Cards {
-		// If user has card preferences, skip cards not in their list.
-		if userCards != nil {
-			if _, ok := userCards[card.ID]; !ok {
-				continue
-			}
-		}
-		content := card.CachedHTML
-		if strings.TrimSpace(content) == "" {
-			continue
-		}
-		if card.Link != "" {
-			content += app.Link("More", card.Link)
-		}
-		title := card.Title
-		if tip, ok := tooltips[card.ID]; ok {
-			title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
-		}
-		html := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
-		if card.Column == "left" {
-			leftHTML = append(leftHTML, html)
-		} else {
-			rightHTML = append(rightHTML, html)
-		}
-	}
-
-	if len(leftHTML) > 0 || len(rightHTML) > 0 {
-		b.WriteString(fmt.Sprintf(Template,
-			strings.Join(leftHTML, "\n"),
-			strings.Join(rightHTML, "\n")))
-	}
-
-	b.WriteString(`</div>`) // close #home-cards
-
-	// Console overlay + script (prompt is now inline above the cards).
-	if viewerID != "" {
-		b.WriteString(fmt.Sprintf(`
-
-<div id="console-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;background:#fff;flex-direction:column;height:100dvh;height:100vh">
-<div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #eee">
-<span style="font-weight:600;font-size:15px;flex:1">Micro</span>
-<a href="#" onclick="muCloseConsole();return false" style="color:#999;text-decoration:none;font-size:20px;padding:4px 8px">&#x2715;</a>
-</div>
-<div id="console-response" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;max-width:700px;margin:0 auto;width:100%%">
-</div>
-<div style="padding:10px 16px;border-top:1px solid #eee;background:#fff;flex-shrink:0">
-<div style="max-width:600px;margin:0 auto;position:relative">
-<form id="console-form-overlay">
-<textarea id="console-input-overlay" placeholder="Ask a follow-up..." maxlength="%d" rows="1" style="width:100%%;padding:10px 40px 10px 12px;border:1px solid #ddd;border-radius:12px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event(\'submit\'))}"></textarea>
-<button type="submit" style="position:absolute;right:6px;top:50%%;transform:translateY(-50%%);width:28px;height:28px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;padding:0">&#x2192;</button>
-</form>
-</div>
-</div>
-</div>
-`, stream.MaxContentLength))
 		b.WriteString(consoleScript)
 	}
 
@@ -565,84 +453,54 @@ func htmlEsc(s string) string {
 // consoleScript — stateless command prompt. Fixed bottom bar opens a
 // full-screen overlay. Ask a question, get an answer. Escape closes.
 // consoleScript — Claude-style inline prompt with overlay for responses.
+// consoleScript calls the agent API directly. No stream, no polling,
+// no overlay. Question → POST /agent/run → response inline.
 const consoleScript = `<script>
-window.muCloseConsole=function(){
-  document.getElementById('console-overlay').style.display='none';
-};
-document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'&&document.getElementById('console-overlay').style.display==='flex') muCloseConsole();
-});
 (function(){
+  var form = document.getElementById('console-form');
   var resp = document.getElementById('console-response');
-  var overlay = document.getElementById('console-overlay');
+  if (!form || !resp) return;
 
   function csrfToken() {
     var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
     return m ? decodeURIComponent(m[1]) : '';
   }
 
-  function ask(q, inputEl) {
-    overlay.style.display = 'flex';
-    resp.innerHTML = '<div><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><p style="color:#999">Working...</p></div>';
-    if (inputEl) { inputEl.value = ''; inputEl.style.height = 'auto'; }
+  var input = document.getElementById('console-input');
+  if (input) {
+    input.addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'; });
+    input.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();form.dispatchEvent(new Event('submit',{cancelable:true}));} });
+  }
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var input = document.getElementById('console-input');
+    if (!input) return;
+    var q = input.value.trim();
+    if (!q) return;
 
-    // Capture timestamp BEFORE submitting so we only accept agent
-    // responses that arrive AFTER our question was posted.
-    var sinceTs = Math.floor(Date.now()/1000);
+    resp.style.display = 'block';
+    resp.innerHTML = '<p style="color:#333;font-weight:600;margin:0 0 6px">' + escHtml(q) + '</p><p style="color:#999;margin:0">Working...</p>';
+    input.value = '';
+    input.style.height = 'auto';
 
     var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
     var tok = csrfToken();
     if (tok) headers['X-CSRF-Token'] = tok;
 
-    fetch('/stream', {
+    fetch('/agent/run', {
       method: 'POST',
       credentials: 'same-origin',
       headers: headers,
-      body: JSON.stringify({ content: '@micro ' + q })
-    }).then(function(r) {
+      body: JSON.stringify({ prompt: q })
+    }).then(function(r){
       if (!r.ok) return r.text().then(function(t){ throw new Error(t) });
-      var attempts = 0;
-      function poll() {
-        attempts++;
-        fetch('/stream?format=json&since=' + sinceTs, { credentials: 'same-origin' })
-          .then(function(r){ return r.json() })
-          .then(function(data){
-            if (!data.events) { if (attempts < 30) setTimeout(poll, 2000); return; }
-            for (var i = 0; i < data.events.length; i++) {
-              if (data.events[i].type === 'agent') {
-                resp.innerHTML = '<div><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><div style="color:#555;line-height:1.6;word-wrap:break-word">' + renderMd(data.events[i].content) + '</div></div>';
-                return;
-              }
-            }
-            if (attempts < 30) setTimeout(poll, 2000);
-            else resp.innerHTML = '<div><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><p style="color:#c00">Timed out. Try again.</p></div>';
-          })
-          .catch(function(){ if (attempts < 30) setTimeout(poll, 2000); });
-      }
-      setTimeout(poll, 2000);
+      return r.json();
+    }).then(function(data){
+      var answer = (data && data.answer) ? data.answer : (typeof data === 'string' ? data : JSON.stringify(data));
+      resp.innerHTML = '<p style="color:#333;font-weight:600;margin:0 0 6px">' + escHtml(q) + '</p><div style="color:#555;line-height:1.6;word-wrap:break-word">' + renderMd(answer) + '</div>';
     }).catch(function(err){
-      resp.innerHTML = '<div><p style="color:#c00">' + escHtml(err.message || 'Error') + '</p></div>';
+      resp.innerHTML = '<p style="color:#c00;margin:0">' + escHtml(err.message || 'Something went wrong') + '</p>';
     });
-  }
-
-  // Inline form (home page).
-  var form = document.getElementById('console-form');
-  if (form) form.addEventListener('submit', function(ev){
-    ev.preventDefault();
-    var input = document.getElementById('console-input');
-    if (!input) return;
-    var q = input.value.trim();
-    if (q) ask(q, input);
-  });
-
-  // Overlay follow-up form.
-  var formO = document.getElementById('console-form-overlay');
-  if (formO) formO.addEventListener('submit', function(ev){
-    ev.preventDefault();
-    var input = document.getElementById('console-input-overlay');
-    if (!input) return;
-    var q = input.value.trim();
-    if (q) ask(q, input);
   });
 
   function escHtml(s) {
@@ -655,8 +513,8 @@ document.addEventListener('keydown',function(e){
     var bt = String.fromCharCode(96);
     var codeBlockRe = new RegExp(bt+bt+bt+'(\\w*)\\n([\\s\\S]*?)'+bt+bt+bt, 'g');
     var inlineCodeRe = new RegExp(bt+'([^'+bt+']+)'+bt, 'g');
-    s = s.replace(codeBlockRe, '<pre style="background:#f5f5f5;padding:10px;border-radius:6px;overflow-x:auto;font-size:13px"><code>$2</code></pre>');
-    s = s.replace(inlineCodeRe, '<code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:13px">$1</code>');
+    s = s.replace(codeBlockRe, '<pre style="background:#f0f0f0;padding:10px;border-radius:6px;overflow-x:auto;font-size:13px"><code>$2</code></pre>');
+    s = s.replace(inlineCodeRe, '<code style="background:#eee;padding:1px 4px;border-radius:3px;font-size:13px">$1</code>');
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
     s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:#06c">$1</a>');
