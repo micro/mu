@@ -544,6 +544,7 @@ const consoleScript = `<script>
 (function(){
   var form = document.getElementById('console-form');
   var resp = document.getElementById('console-response');
+  var currentFlowId = '';
   if (!form || !resp) return;
 
   function csrfToken() {
@@ -577,12 +578,13 @@ const consoleScript = `<script>
       method: 'POST',
       credentials: 'same-origin',
       headers: headers,
-      body: JSON.stringify({ prompt: q })
+      body: JSON.stringify({ prompt: q, context_id: currentFlowId })
     }).then(function(r){
       if (!r.ok) return r.text().then(function(t){ throw new Error(t) });
       return r.json();
     }).then(function(data){
       var answer = (data && data.answer) ? data.answer : (typeof data === 'string' ? data : JSON.stringify(data));
+      if (data && data.flow_id) currentFlowId = data.flow_id;
       var ae = document.getElementById(qid+'-a'); if(ae) ae.outerHTML = '<div style="color:#555;line-height:1.6;word-wrap:break-word">' + renderMd(answer) + '</div>';
     }).catch(function(err){
       var ee = document.getElementById(qid+'-a'); if(ee) ee.outerHTML = '<p style="color:#c00;margin:0">' + escHtml(err.message || 'Something went wrong') + '</p>';
