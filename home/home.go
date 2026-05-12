@@ -586,6 +586,10 @@ document.addEventListener('keydown',function(e){
     resp.innerHTML = '<div><p style="color:#333;font-weight:600;margin-bottom:8px">' + escHtml(q) + '</p><p style="color:#999">Working...</p></div>';
     if (inputEl) { inputEl.value = ''; inputEl.style.height = 'auto'; }
 
+    // Capture timestamp BEFORE submitting so we only accept agent
+    // responses that arrive AFTER our question was posted.
+    var sinceTs = Math.floor(Date.now()/1000);
+
     var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
     var tok = csrfToken();
     if (tok) headers['X-CSRF-Token'] = tok;
@@ -600,7 +604,7 @@ document.addEventListener('keydown',function(e){
       var attempts = 0;
       function poll() {
         attempts++;
-        fetch('/stream?format=json&since=' + Math.floor(Date.now()/1000 - 60), { credentials: 'same-origin' })
+        fetch('/stream?format=json&since=' + sinceTs, { credentials: 'same-origin' })
           .then(function(r){ return r.json() })
           .then(function(data){
             if (!data.events) { if (attempts < 30) setTimeout(poll, 2000); return; }
