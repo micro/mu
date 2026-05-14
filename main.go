@@ -266,8 +266,15 @@ func main() {
 
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
-		// Check for x402 payment (bypasses auth + credits)
+		// Check for x402 payment (bypasses auth + credits).
+		// Free trial: first 10 calls per wallet address are free —
+		// no payment header needed if within the trial.
 		if r.Context().Value(wallet.X402ContextKey) != nil {
+			// Try free trial first (by wallet address from payment header).
+			payAddr := r.Header.Get("X-Wallet-Address")
+			if payAddr != "" && wallet.X402UseTrialCall(payAddr) {
+				return true, 0, nil
+			}
 			_, err := wallet.VerifyAndSettle(r, op, r.URL.Path)
 			if err != nil {
 				return false, 0, fmt.Errorf("x402 payment failed: %w", err)

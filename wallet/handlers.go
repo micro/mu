@@ -203,6 +203,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleTopupJSON(w, r)
 	case path == "/wallet/topup" && r.Method == "GET":
 		handleDepositPage(w, r)
+	case path == "/wallet/stripe/subscribe" && r.Method == "POST":
+		handleStripeSubscribe(w, r)
 	case path == "/wallet/stripe/checkout" && r.Method == "POST":
 		handleStripeCheckout(w, r)
 	case path == "/wallet/stripe/success" && r.Method == "GET":
@@ -323,7 +325,19 @@ func renderStripeDeposit(userID, errMsg string) string {
 	if errMsg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
-	sb.WriteString("<span>Topup via card</span>")
+	// Monthly subscription plans.
+	sb.WriteString(`<h4>Monthly Plan</h4>`)
+	sb.WriteString(`<p class="text-sm text-muted mb-2">Subscribe for monthly credits — auto-renews via Stripe.</p>`)
+	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
+	for _, plan := range SubscriptionPlans {
+		sb.WriteString(fmt.Sprintf(
+			`<form method="POST" action="/wallet/stripe/subscribe" style="display:inline"><input type="hidden" name="plan" value="%s"><button type="submit" class="btn">%s</button></form>`,
+			plan.ID, plan.Label))
+	}
+	sb.WriteString(`</div>`)
+	sb.WriteString(`<hr style="border:none;border-top:1px solid #eee;margin:16px 0">`)
+
+	sb.WriteString("<h4>One-time top-up</h4>")
 	sb.WriteString(`<form method="POST" action="/wallet/stripe/checkout">`)
 
 	// Preset quick-select buttons
@@ -531,6 +545,37 @@ func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
 	app.RespondJSON(w, map[string]interface{}{
 		"methods": methods,
 	})
+}
+
+func handleStripeSubscribe(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+	r.ParseForm()
+	planID := r.FormValue("plan")
+	if planID == "" {
+		http.Redirect(w, r, "/wallet/topup?error=plan+required", http.StatusSeeOther)
+		return
+	}
+	scheme := "https"
+	if r.Header.Get("X-Forwarded-Proto") == "" {
+		scheme = "http"
+	}
+	base := scheme + "://" + r.Host
+	url, err := CreateSubscriptionSession(
+		sess.Account,
+		planID,
+		base+"/wallet?success=subscribed",
+		base+"/wallet/topup",
+	)
+	if err != nil {
+		app.Log("stripe", "subscribe error: %v", err)
+		http.Redirect(w, r, "/wallet/topup?error="+err.Error(), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, url, http.StatusSeeOther)
 }
 
 func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {

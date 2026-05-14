@@ -29,6 +29,101 @@ func StripeEnabled() bool {
 	return stripeSecretKey != "" && stripePublicKey != ""
 }
 
+// Subscription plans — monthly credit bundles via Stripe.
+type SubscriptionPlan struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Price   int    `json:"price"`   // Monthly price in pence
+	Credits int    `json:"credits"` // Credits granted each month
+	Label   string `json:"label"`
+}
+
+var SubscriptionPlans = []SubscriptionPlan{
+	{ID: "starter", Name: "Starter", Price: 500, Credits: 500, Label: "£5/month — 500 credits"},
+	{ID: "pro", Name: "Pro", Price: 1000, Credits: 1200, Label: "£10/month — 1,200 credits"},
+}
+
+// CreateSubscriptionSession creates a Stripe Checkout Session for a
+// recurring subscription. Credits are granted on each successful payment
+// via the invoice.payment_succeeded webhook.
+func CreateSubscriptionSession(userID, planID, successURL, cancelURL string) (string, error) {
+	if !StripeEnabled() {
+		return "", fmt.Errorf("stripe not configured")
+	}
+
+	var plan *SubscriptionPlan
+	for i := range SubscriptionPlans {
+		if SubscriptionPlans[i].ID == planID {
+			plan = &SubscriptionPlans[i]
+			break
+		}
+	}
+	if plan == nil {
+		return "", fmt.Errorf("unknown plan: %s", planID)
+	}
+
+	data := map[string]interface{}{
+		"mode":        "subscription",
+		"success_url": successURL,
+		"cancel_url":  cancelURL,
+		"line_items": []map[string]interface{}{
+			{
+				"price_data": map[string]interface{}{
+					"currency": "gbp",
+					"recurring": map[string]interface{}{
+						"interval": "month",
+					},
+					"unit_amount": plan.Price,
+					"product_data": map[string]interface{}{
+						"name":        plan.Name + " Plan",
+						"description": fmt.Sprintf("%d credits/month", plan.Credits),
+					},
+				},
+				"quantity": 1,
+			},
+		},
+		"metadata": map[string]string{
+			"user_id": userID,
+			"plan_id": plan.ID,
+			"credits": fmt.Sprintf("%d", plan.Credits),
+		},
+		"subscription_data": map[string]interface{}{
+			"metadata": map[string]string{
+				"user_id": userID,
+				"plan_id": plan.ID,
+				"credits": fmt.Sprintf("%d", plan.Credits),
+			},
+		},
+	}
+
+	formData := jsonToForm(data)
+
+	req, err := http.NewRequest("POST", "https://api.stripe.com/v1/checkout/sessions", strings.NewReader(formData))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+stripeSecretKey)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		URL   string `json:"url"`
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	json.NewDecoder(resp.Body).Decode(&result)
+	if result.Error.Message != "" {
+		return "", fmt.Errorf("stripe: %s", result.Error.Message)
+	}
+	return result.URL, nil
+}
+
 // StripeTopupTier represents a Stripe topup option
 type StripeTopupTier struct {
 	Amount  int    `json:"amount"`  // Price in pence (e.g., 500 = £5)
@@ -254,6 +349,55 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 				} else {
 					app.Log("stripe", "credited %d to user %s (session %s)", credits, userID, session.ID)
 				}
+			}
+		}
+	}
+
+	// Handle invoice.payment_succeeded — subscription renewal credits.
+	if event.Type == "invoice.payment_succeeded" {
+		var invoice struct {
+			ID               string `json:"id"`
+			SubscriptionData struct {
+				Metadata struct {
+					UserID  string `json:"user_id"`
+					Credits string `json:"credits"`
+					PlanID  string `json:"plan_id"`
+				} `json:"metadata"`
+			} `json:"subscription_details"`
+			Subscription string `json:"subscription"`
+		}
+		if err := json.Unmarshal(event.Data.Object, &invoice); err != nil {
+			app.Log("stripe", "invoice parse error: %v", err)
+			http.Error(w, "parse error", http.StatusBadRequest)
+			return
+		}
+
+		userID := invoice.SubscriptionData.Metadata.UserID
+		var credits int
+		fmt.Sscanf(invoice.SubscriptionData.Metadata.Credits, "%d", &credits)
+
+		if userID != "" && credits > 0 {
+			// Dedup by invoice ID.
+			mutex.Lock()
+			if processedSessions[invoice.ID] {
+				mutex.Unlock()
+				app.Log("stripe", "invoice %s already processed, skipping", invoice.ID)
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			processedSessions[invoice.ID] = true
+			mutex.Unlock()
+
+			err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
+				"source":       "stripe_subscription",
+				"invoice_id":   invoice.ID,
+				"subscription": invoice.Subscription,
+				"plan":         invoice.SubscriptionData.Metadata.PlanID,
+			})
+			if err != nil {
+				app.Log("stripe", "failed to credit subscriber %s: %v", userID, err)
+			} else {
+				app.Log("stripe", "subscription: credited %d to %s (invoice %s)", credits, userID, invoice.ID)
 			}
 		}
 	}
