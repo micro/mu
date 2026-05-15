@@ -29,6 +29,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/blocklist">Blocklist</a>
 		<a href="/admin/console">Console</a>
 		<a href="/admin/env">Environment</a>
+		<a href="/admin/invite">Invites</a>
 		<a href="/admin/email">Mail Log</a>
 		<a href="/admin/moderate">Moderation</a>
 		<a href="/admin/server">Server</a>

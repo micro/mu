@@ -92,30 +92,28 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 	if len(requests) == 0 {
 		sb.WriteString(`<p class="text-muted">No requests yet.</p>`)
 	} else {
-		sb.WriteString(`<table class="admin-table"><thead><tr><th>Email</th><th>Reason</th><th>When</th><th>Status</th><th class="center">Actions</th></tr></thead><tbody>`)
 		for _, req := range requests {
-			reason := req.Reason
-			if reason == "" {
-				reason = `<span class="text-muted">—</span>`
+			reason := ""
+			if req.Reason != "" {
+				reason = fmt.Sprintf(`<p style="font-size:13px;color:#666;margin:4px 0">%s</p>`, req.Reason)
 			}
-			status := `pending`
+			status := `<span style="color:#c90;font-size:12px">pending</span>`
 			if req.Invited {
-				status = fmt.Sprintf(`invited %s`, req.InvitedAt.Format("2 Jan"))
+				status = fmt.Sprintf(`<span style="color:#22c55e;font-size:12px">invited %s</span>`, req.InvitedAt.Format("2 Jan"))
 			}
 			actions := ""
 			if !req.Invited {
 				actions = fmt.Sprintf(
-					`<form method="POST" class="d-inline"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #22c55e;background:#fff;color:#22c55e;cursor:pointer">Send invite</button></form> <form method="POST" class="d-inline" onsubmit="return confirm('Reject %s?')"><input type="hidden" name="action" value="reject"><input type="hidden" name="email" value="%s"><button type="submit" class="btn-danger" style="font-size:12px;padding:2px 8px">Reject</button></form>`,
-					req.Email, req.Email, req.Email)
+					`<div style="display:flex;gap:6px;margin-top:6px"><form method="POST"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:4px 10px;border-radius:4px;border:1px solid #22c55e;background:#fff;color:#22c55e;cursor:pointer">Send invite</button></form><form method="POST" onsubmit="return confirm('Reject?')"><input type="hidden" name="action" value="reject"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:4px 10px;border-radius:4px;border:1px solid #c00;background:#fff;color:#c00;cursor:pointer">Reject</button></form></div>`,
+					req.Email, req.Email)
 			} else {
 				actions = fmt.Sprintf(
-					`<form method="POST" class="d-inline" onsubmit="return confirm('Resend invite to %s?')"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:2px 8px">Resend</button></form>`,
-					req.Email, req.Email)
+					`<div style="margin-top:6px"><form method="POST" onsubmit="return confirm('Resend?')"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:4px 10px">Resend</button></form></div>`,
+					req.Email)
 			}
-			sb.WriteString(fmt.Sprintf(`<tr><td><strong>%s</strong></td><td style="max-width:300px">%s</td><td class="text-muted text-sm">%s</td><td>%s</td><td class="center">%s</td></tr>`,
-				req.Email, reason, req.RequestedAt.Format("2 Jan 15:04"), status, actions))
+			sb.WriteString(fmt.Sprintf(`<div style="padding:10px 0;border-bottom:1px solid #f0f0f0"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><strong style="font-size:14px">%s</strong>%s<span style="color:#bbb;font-size:12px">%s</span></div>%s%s</div>`,
+				req.Email, status, req.RequestedAt.Format("2 Jan 15:04"), reason, actions))
 		}
-		sb.WriteString(`</tbody></table>`)
 	}
 	sb.WriteString(`</div>`)
 

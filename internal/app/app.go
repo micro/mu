@@ -574,13 +574,14 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 		body := fmt.Sprintf(`<div class="card">
 <h4>Invite sent</h4>
 <p>Invite sent to <strong>%s</strong></p>
-<p><a href="/invite">Invite another →</a> · <a href="/home">Home →</a></p>
+<p><a href="/invite">Invite another</a> · <a href="/home">Home</a></p>
 </div>`, htmlpkg.EscapeString(email))
 		w.Write([]byte(RenderHTML("Invite Sent", "Invite sent", body)))
 		return
 	}
 
-	body := `<div class="card">
+	body := `<p><a href="/home">← Home</a></p>
+<div class="card">
 <h4>Invite someone to Mu</h4>
 <p class="text-sm">Enter their email — they'll get a signup link.</p>
 <form method="POST" action="/invite" style="margin-top:8px">
