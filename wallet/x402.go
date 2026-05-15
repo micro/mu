@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"mu/internal/app"
 	"os"
 	"strings"
 	"time"
@@ -85,6 +87,41 @@ func init() {
 // X402Enabled returns true if x402 payments are configured
 func X402Enabled() bool {
 	return x402PayTo != ""
+}
+
+// x402 free trial — first N calls per wallet address are free.
+// Tracked in memory (resets on restart, which is fine for a trial).
+var (
+	x402TrialLimit = 10
+	x402TrialUsage = map[string]int{} // wallet address → call count
+)
+
+// X402TrialRemaining returns how many free calls the address has left.
+// Returns 0 if the trial is exhausted.
+func X402TrialRemaining(walletAddr string) int {
+	if walletAddr == "" {
+		return 0
+	}
+	used := x402TrialUsage[walletAddr]
+	remaining := x402TrialLimit - used
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+// X402UseTrialCall records a free trial call. Returns true if the call
+// was within the trial, false if the trial is exhausted.
+func X402UseTrialCall(walletAddr string) bool {
+	if walletAddr == "" {
+		return false
+	}
+	if x402TrialUsage[walletAddr] >= x402TrialLimit {
+		return false
+	}
+	x402TrialUsage[walletAddr]++
+	app.Log("x402", "Free trial call %d/%d for %s", x402TrialUsage[walletAddr], x402TrialLimit, walletAddr)
+	return true
 }
 
 // PaymentRequirement describes what payment is needed for a resource

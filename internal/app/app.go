@@ -723,14 +723,15 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	currentInviteCode = invCode
 
-	// Invite-only mode: reject if no valid code is provided, but show
-	// a request-invite form instead of a dead end.
-	if auth.InviteOnly() {
+	// Invite codes are optional — if one is provided (referral link),
+	// it's consumed after signup for tracking. Signup works without one.
+	// When INVITE_ONLY=true, a valid code IS required.
+	if auth.InviteOnly() && invCode == "" {
+		renderRequestInvitePage(w, r, "")
+		return
+	}
+	if auth.InviteOnly() && invCode != "" {
 		if err := auth.ValidateInvite(invCode); err != nil {
-			if invCode == "" {
-				renderRequestInvitePage(w, r, "")
-				return
-			}
 			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
 			return
 		}
