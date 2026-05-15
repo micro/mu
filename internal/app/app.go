@@ -545,6 +545,52 @@ func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message str
 	w.Write([]byte(RenderHTML("Request an Invite", "Request an invite to Mu", body)))
 }
 
+// InviteHandler lets any logged-in user invite someone by email.
+func InviteHandler(w http.ResponseWriter, r *http.Request) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		RedirectToLogin(w, r)
+		return
+	}
+
+	if r.Method == "POST" {
+		r.ParseForm()
+		email := strings.TrimSpace(r.FormValue("email"))
+		if email == "" {
+			BadRequest(w, r, "Email is required")
+			return
+		}
+		code, err := auth.CreateInvite(email, acc.ID)
+		if err != nil {
+			ServerError(w, r, "Failed to create invite: "+err.Error())
+			return
+		}
+		link := PublicURL() + "/signup?invite=" + code
+		if EmailSender != nil {
+			plain := fmt.Sprintf("%s invited you to join Mu.\n\nSign up here: %s", acc.Name, link)
+			html := fmt.Sprintf(`<p>%s invited you to join Mu.</p><p><a href="%s">Sign up here</a></p>`, htmlpkg.EscapeString(acc.Name), link)
+			EmailSender(email, acc.Name+" invited you to Mu", plain, html)
+		}
+		body := fmt.Sprintf(`<div class="card">
+<h4>Invite sent</h4>
+<p>Invite sent to <strong>%s</strong></p>
+<p><a href="/invite">Invite another →</a> · <a href="/home">Home →</a></p>
+</div>`, htmlpkg.EscapeString(email))
+		w.Write([]byte(RenderHTML("Invite Sent", "Invite sent", body)))
+		return
+	}
+
+	body := `<div class="card">
+<h4>Invite someone to Mu</h4>
+<p class="text-sm">Enter their email — they'll get a signup link.</p>
+<form method="POST" action="/invite" style="margin-top:8px">
+	<input type="email" name="email" placeholder="friend@example.com" required class="form-input" style="width:100%">
+	<button type="submit" class="mt-2">Send invite</button>
+</form>
+</div>`
+	w.Write([]byte(RenderHTML("Invite", "Invite someone to Mu", body)))
+}
+
 // RequestInvite handles POST /request-invite — someone is asking to
 // join. Validates captcha + rate limit, stores the request for admin
 // review.
