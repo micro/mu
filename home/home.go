@@ -293,7 +293,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	_, viewerAcc := auth.TrySession(r)
 	var dateLine strings.Builder
 	inviteHTML := ""
-	if viewerAcc != nil && viewerAcc.Admin && auth.InviteOnly() {
+	if viewerAcc != nil && viewerAcc.Admin {
 		pending := 0
 		for _, req := range auth.ListInviteRequests() {
 			if !req.Invited {
