@@ -293,18 +293,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	_, viewerAcc := auth.TrySession(r)
 	var dateLine strings.Builder
 	inviteHTML := ""
-	if viewerAcc != nil && viewerAcc.Admin && auth.InviteOnly() {
-		pending := 0
-		for _, req := range auth.ListInviteRequests() {
-			if !req.Invited {
-				pending++
-			}
-		}
+	if viewerAcc != nil {
 		label := "+ Invite"
-		if pending > 0 {
-			label = fmt.Sprintf("+ Invite (%d waiting)", pending)
+		link := "/invite"
+		if viewerAcc.Admin {
+			pending := 0
+			for _, req := range auth.ListInviteRequests() {
+				if !req.Invited {
+					pending++
+				}
+			}
+			if pending > 0 {
+				label = fmt.Sprintf("+ Invite (%d waiting)", pending)
+			}
+			link = "/admin/invite"
 		}
-		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="/admin/invite" style="color:#555;text-decoration:none">%s</a></span>`, label)
+		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="%s" style="color:#555;text-decoration:none">%s</a></span>`, link, label)
 	}
 	gearHTML := ""
 	if viewerAcc != nil {

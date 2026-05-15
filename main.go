@@ -836,6 +836,7 @@ func main() {
 	http.HandleFunc("/logout", app.Logout)
 	http.HandleFunc("/signup", app.Signup)
 	http.HandleFunc("/request-invite", app.RequestInvite)
+	http.HandleFunc("/invite", app.InviteHandler)
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/verify", app.Verify)
 	http.HandleFunc("/session", app.Session)
