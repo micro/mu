@@ -17,6 +17,7 @@ import (
 	"mu/internal/auth"
 	"mu/blog"
 	"mu/internal/event"
+	"mu/mail"
 	"mu/news"
 	"mu/social"
 	"mu/stream"
@@ -388,6 +389,7 @@ function fetchW(la,lo){
 		allCardDefs := []struct{ id, label string }{
 			{"blog", "Blog"}, {"news", "News"},
 			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
+			{"mail", "Mail"}, {"web", "Web Search"},
 		}
 		activeSet := map[string]bool{}
 		if len(viewerAcc.HomeCards) > 0 {
@@ -407,14 +409,41 @@ function fetchW(la,lo){
 			}
 			checkboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s onchange="this.form.submit()" style="width:18px;height:18px"> %s</label>`, c.id, checked, c.label)
 		}
+		// App widget checkboxes — any public app can be pinned as a card.
+		var widgetCheckboxes string
+		activeWidgets := map[string]bool{}
+		if viewerAcc != nil {
+			for _, w := range viewerAcc.Widgets {
+				activeWidgets[w] = true
+			}
+		}
+		publicApps := apps.GetPublicApps()
+		if len(publicApps) > 0 {
+			for _, a := range publicApps {
+				checked := ""
+				if activeWidgets[a.Slug] {
+					checked = " checked"
+				}
+				widgetCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="widgets" value="%s"%s onchange="this.form.submit()" style="width:18px;height:18px"> %s</label>`, htmlEsc(a.Slug), checked, htmlEsc(a.Name))
+			}
+		}
+
 		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
 <p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
-<p style="font-size:12px;color:#999;margin:0 0 8px">Show or hide cards on your overview.</p>
+<p style="font-size:12px;color:#999;margin:0 0 8px">Show or hide cards.</p>
 <form method="POST" action="/account">
 <input type="hidden" name="save_cards" value="1">
 %s
-</form>
-</div>`, checkboxes))
+</form>`, checkboxes))
+		if widgetCheckboxes != "" {
+			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">App widgets</p>
+<p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps as cards on your home screen.</p>
+<form method="POST" action="/account">
+<input type="hidden" name="save_widgets" value="1">
+%s
+</form>`, widgetCheckboxes))
+		}
+		b.WriteString(`</div>`)
 	}
 
 	var userCards map[string]int
@@ -459,6 +488,42 @@ function fetchW(la,lo){
 			leftHTML = append(leftHTML, html)
 		} else {
 			rightHTML = append(rightHTML, html)
+		}
+	}
+
+	// User-specific cards — rendered per-request, not cached.
+	if viewerID != "" {
+		isCardEnabled := func(id string) bool {
+			if userCards == nil {
+				return false // mail/web are opt-in, not in default set
+			}
+			_, ok := userCards[id]
+			return ok
+		}
+
+		// Mail card — recent messages.
+		if isCardEnabled("mail") {
+			mailContent := mail.GetRecentThreadsPreview(viewerID, 3)
+			mailContent += app.Link("More", "/mail")
+			rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "mail", "mail", "Mail", mailContent))
+		}
+
+		// Web search card.
+		if isCardEnabled("web") {
+			webContent := `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
+			rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "web", "web", "Web Search", webContent))
+		}
+
+		// App widgets — user-selected apps rendered as iframe cards.
+		if viewerAcc != nil && len(viewerAcc.Widgets) > 0 {
+			for _, slug := range viewerAcc.Widgets {
+				a := apps.GetApp(slug)
+				if a == nil {
+					continue
+				}
+				widgetContent := fmt.Sprintf(`<iframe src="/apps/%s" style="width:100%%;height:300px;border:none;border-radius:6px" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>`, htmlEsc(a.Slug))
+				rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "app-"+a.Slug, "app-"+a.Slug, htmlEsc(a.Name), widgetContent))
+			}
 		}
 	}
 
