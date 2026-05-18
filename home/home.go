@@ -386,7 +386,7 @@ function fetchW(la,lo){
 	// Inline card preferences panel
 	if viewerAcc != nil {
 		allCardDefs := []struct{ id, label string }{
-			{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
+			{"blog", "Blog"}, {"news", "News"},
 			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 		}
 		activeSet := map[string]bool{}
