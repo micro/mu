@@ -922,7 +922,19 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			selected := r.Form["cards"]
 			acc.HomeCards = selected
 			auth.UpdateAccount(acc)
-			// Redirect back to where the form was submitted from.
+			ref := r.Header.Get("Referer")
+			if ref != "" && (strings.Contains(ref, "/home") || strings.HasSuffix(ref, "/")) {
+				http.Redirect(w, r, "/home", http.StatusSeeOther)
+			} else {
+				http.Redirect(w, r, "/account", http.StatusSeeOther)
+			}
+			return
+		}
+
+		// App widget preferences
+		if r.Form.Get("save_widgets") != "" {
+			acc.Widgets = r.Form["widgets"]
+			auth.UpdateAccount(acc)
 			ref := r.Header.Get("Referer")
 			if ref != "" && (strings.Contains(ref, "/home") || strings.HasSuffix(ref, "/")) {
 				http.Redirect(w, r, "/home", http.StatusSeeOther)
@@ -963,6 +975,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	allCards := []struct{ id, label string }{
 		{"blog", "Blog"}, {"news", "News"},
 		{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
+		{"mail", "Mail"}, {"web", "Web Search"},
 	}
 	activeCards := map[string]bool{}
 	if len(acc.HomeCards) > 0 {
