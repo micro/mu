@@ -973,7 +973,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	// Home card preferences
 	allCards := []struct{ id, label string }{
-		{"blog", "Blog"}, {"news", "News"},
+		{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
 		{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 		{"mail", "Mail"}, {"web", "Web Search"},
 	}

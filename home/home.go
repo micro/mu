@@ -387,7 +387,7 @@ function fetchW(la,lo){
 	// Inline card preferences panel
 	if viewerAcc != nil {
 		allCardDefs := []struct{ id, label string }{
-			{"blog", "Blog"}, {"news", "News"},
+			{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
 			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 			{"mail", "Mail"}, {"web", "Web Search"},
 		}
