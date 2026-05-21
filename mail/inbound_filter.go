@@ -146,6 +146,8 @@ var domainWhitelist = map[string]bool{
 	"gov.uk": true, "nhs.uk": true, "hmrc.gov.uk": true,
 	// Security
 	"letsencrypt.org": true, "cloudflare.net": true,
+	// Email infrastructure (DMARC reports, etc.)
+	"dmarc.yahoo.com": true,
 	// Mu
 	"mu.xyz": true, "micro.mu": true, "reminder.dev": true,
 }
