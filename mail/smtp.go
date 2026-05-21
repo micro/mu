@@ -443,6 +443,20 @@ func (s *Session) Data(r io.Reader) error {
 		}
 	}
 
+	// ── Strict inbound filter ──────────────────────────────────
+	// Only allow: replies to our mail, whitelisted domains, or
+	// addresses we've previously sent to. Everything else rejected.
+	if !s.isLocalhost {
+		reason, allowed := CheckInboundAllowed(fromAddr.Address, inReplyTo, references)
+		if !allowed {
+			app.Log("mail", "Rejected inbound from %s: %s", fromAddr.Address, reason)
+			return &smtpd.SMTPError{
+				Code:    550,
+				Message: "Mail rejected: " + reason,
+			}
+		}
+	}
+
 	// Parse body based on content type
 	var body string
 	if strings.Contains(contentType, "multipart/") {
