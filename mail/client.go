@@ -195,6 +195,10 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 		}
 	}
 
+	// Auto-whitelist: record outbound message ID + recipient so replies
+	// and future mail from this address are allowed through.
+	RecordOutbound(messageID, to)
+
 	app.Log("mail", "=== Direct Relay (Internal) ===")
 	app.Log("mail", "From: %s <%s>", displayName, from)
 	app.Log("mail", "To: %s", to)
