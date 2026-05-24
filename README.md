@@ -1,10 +1,10 @@
 # mu
 
-The everything app — blog, chat, news, mail, weather and more — all in one place. No ads. No tracking. No algorithm.
+The everything app — blog, chat, news, mail, video and more.
 
 ## Overview
 
-Micro is the everything app. Blog, chat, news, mail, and more — all in one place. No ads, no tracking, no algorithms. Built in the open. We call the app Mu for short.
+Mu is the everything app. Blog, chat, news, mail, and more — all in one place. No ads, no tracking, no algorithms. Built in the open. We call the app Mu for short.
 
 Pay for the tools, not with your attention.
 
