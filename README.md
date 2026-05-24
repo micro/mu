@@ -1,12 +1,11 @@
 # mu
 
-The everything app — blog, chat, news, mail, video and more.
+A personal app platform — blog, chat, news, mail, video and more.
 
 ## Overview
 
-Mu is the everything app. Blog, chat, news, mail, and more — all in one place. No ads, no tracking, no algorithms. Built in the open. We call the app Mu for short.
-
-Pay for the tools, not with your attention.
+The current tech ecosystem is totally broken. All the app platform are filled with ads and addictive content. I'm tired of it. You probably are too. 
+So here's a personal app platform. Blog, chat, news, mail, video and more. No ads, no tracking, no algorithms. Built in the open. It's called Mu for short.
 
 ### What's included
 
