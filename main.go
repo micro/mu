@@ -254,6 +254,18 @@ func main() {
 	admin.GetNewAccountBlog = blog.GetNewAccountBlogPosts
 	admin.RefreshBlogCache = blog.RefreshCache
 
+	// Register account deletion hooks — each package cleans up its own data.
+	auth.AccountDeleteHooks = append(auth.AccountDeleteHooks,
+		blog.DeletePostsByAuthor,
+		social.DeleteByAuthor,
+		apps.DeleteAppsByAuthor,
+		stream.ClearByAuthor,
+		user.ClearStatusHistory,
+		mail.DeleteInbox,
+		func(id string) { wallet.DeleteWallet(id) },
+		func(id string) { app.ClearUserPrefs(id) },
+	)
+
 	// Enable indexing after all content is loaded
 	// This allows the priority queue to process new items first
 	data.StartIndexing()
