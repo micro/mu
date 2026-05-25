@@ -1820,3 +1820,15 @@ const sdkJS = `// Mu App SDK
   });
 })();
 `
+
+// DeleteAppsByAuthor removes all apps by a user.
+func DeleteAppsByAuthor(authorID string) {
+	mutex.Lock()
+	for slug, a := range apps {
+		if a.AuthorID == authorID {
+			delete(apps, slug)
+		}
+	}
+	mutex.Unlock()
+	save()
+}

@@ -1236,3 +1236,18 @@ func FetchExternalPost(rawURL string) (*Message, error) {
 		PostedAt: time.Now(),
 	}, nil
 }
+
+// DeleteByAuthor removes all messages by a user.
+func DeleteByAuthor(authorID string) {
+	mutex.Lock()
+	var kept []*Message
+	for _, m := range messages {
+		if m.AuthorID != authorID {
+			kept = append(kept, m)
+		}
+	}
+	messages = kept
+	updateCacheLocked()
+	mutex.Unlock()
+	save()
+}

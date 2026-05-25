@@ -1787,3 +1787,33 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Redirect back to the post
 	http.Redirect(w, r, "/blog/post?id="+postID, http.StatusSeeOther)
 }
+
+// DeletePostsByAuthor removes all posts and comments by a user.
+// Called when an account is deleted.
+func DeletePostsByAuthor(authorID string) {
+	mutex.Lock()
+	var kept []*Post
+	for _, p := range posts {
+		if p.AuthorID != authorID {
+			kept = append(kept, p)
+		}
+	}
+	posts = kept
+	postsMap = make(map[string]*Post)
+	for _, p := range posts {
+		postsMap[p.ID] = p
+	}
+	// Remove comments by this author.
+	var keptComments []*Comment
+	for _, c := range comments {
+		if c.AuthorID != authorID {
+			keptComments = append(keptComments, c)
+		}
+	}
+	comments = keptComments
+	populateComments()
+	updateCache()
+	mutex.Unlock()
+	save()
+	data.SaveJSON("comments.json", comments)
+}

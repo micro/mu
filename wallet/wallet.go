@@ -752,3 +752,13 @@ func FormatCredits(credits int) string {
 	pence := credits % 100
 	return fmt.Sprintf("£%d.%02d", pounds, pence)
 }
+
+// DeleteWallet removes a user's wallet and transaction history.
+func DeleteWallet(userID string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	delete(wallets, userID)
+	delete(transactions, userID)
+	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("transactions.json", transactions)
+}

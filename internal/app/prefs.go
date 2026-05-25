@@ -146,3 +146,11 @@ func GetBlockedUsers(userID string) map[string]time.Time {
 	}
 	return p.Blocked
 }
+
+// ClearUserPrefs removes all preferences for a deleted user.
+func ClearUserPrefs(userID string) {
+	prefsMu.Lock()
+	defer prefsMu.Unlock()
+	delete(prefs, userID)
+	savePrefs()
+}
