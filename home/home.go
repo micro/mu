@@ -238,6 +238,93 @@ func ForceRefresh() {
 	RefreshCards()
 }
 
+// CardHandler serves individual card HTML fragments at /home/card/{id}.
+// Each card loads independently so one slow/broken card can't block
+// the entire home page.
+func CardHandler(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/home/card/")
+	if id == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// User-specific cards that need session context.
+	if id == "mail" || id == "web" {
+		viewerID := ""
+		if sess, _ := auth.TrySession(r); sess != nil {
+			viewerID = sess.Account
+		}
+		if viewerID == "" {
+			w.WriteHeader(204)
+			return
+		}
+		switch id {
+		case "mail":
+			content := mail.GetRecentThreadsPreview(viewerID, 3)
+			content += app.Link("More", "/mail")
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, app.CardTemplate, "mail", "mail", "Mail", content)
+		case "web":
+			content := `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, app.CardTemplate, "web", "web", "Web Search", content)
+		}
+		return
+	}
+
+	// App widget cards.
+	if strings.HasPrefix(id, "app-") {
+		slug := strings.TrimPrefix(id, "app-")
+		a := apps.GetApp(slug)
+		if a == nil {
+			http.NotFound(w, r)
+			return
+		}
+		content := fmt.Sprintf(`<iframe src="/apps/%s" style="width:100%%;height:300px;border:none;border-radius:6px" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>`, slug)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, app.CardTemplate, id, id, a.Name, content)
+		return
+	}
+
+	// Standard cached cards — serve with a 3-second timeout to prevent
+	// deadlocks from blocking the response.
+	done := make(chan string, 1)
+	go func() {
+		RefreshCards()
+		cacheMutex.RLock()
+		defer cacheMutex.RUnlock()
+		for _, card := range Cards {
+			if card.ID == id {
+				content := card.CachedHTML
+				if strings.TrimSpace(content) == "" {
+					done <- ""
+					return
+				}
+				if card.Link != "" {
+					content += app.Link("More", card.Link)
+				}
+				done <- fmt.Sprintf(app.CardTemplate, card.ID, card.ID, card.Title, content)
+				return
+			}
+		}
+		done <- ""
+	}()
+
+	select {
+	case html := <-done:
+		if html == "" {
+			w.WriteHeader(204)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write([]byte(html))
+	case <-time.After(3 * time.Second):
+		app.Log("home", "Card %s timed out", id)
+		w.WriteHeader(204)
+	}
+}
+
 // RefreshHandler clears the last_visit cookie to show all cards again
 func RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	// Clear the cookie
