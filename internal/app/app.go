@@ -993,15 +993,15 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		if activeCards[c.id] {
 			checked = " checked"
 		}
-		cardsCheckboxes += fmt.Sprintf(`<label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:14px"><input type="checkbox" name="cards" value="%s"%s> %s</label>`, c.id, checked, c.label)
+		cardsCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s style="width:18px;height:18px"> %s</label>`, c.id, checked, c.label)
 	}
 	homeCardsCard := fmt.Sprintf(`<div class="card">
 <h4>Home Screen</h4>
-<p class="text-sm text-muted">Choose which cards to show on your home overview.</p>
+<p class="text-sm text-muted">Choose which cards to show on your home screen.</p>
 <form action="/account" method="POST" style="margin-top:8px">
 <input type="hidden" name="save_cards" value="1">
-<div style="display:flex;flex-wrap:wrap;gap:4px 0;margin-bottom:8px">%s</div>
-<button type="submit">Save</button>
+%s
+<button type="submit" class="mt-2">Save</button>
 </form>
 </div>`, cardsCheckboxes)
 

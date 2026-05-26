@@ -407,7 +407,7 @@ function fetchW(la,lo){
 			if activeSet[c.id] {
 				checked = " checked"
 			}
-			checkboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s onchange="this.form.submit()" style="width:18px;height:18px"> %s</label>`, c.id, checked, c.label)
+			checkboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s style="width:18px;height:18px"> %s</label>`, c.id, checked, c.label)
 		}
 		// App widget checkboxes — any public app can be pinned as a card.
 		var widgetCheckboxes string
@@ -424,26 +424,40 @@ function fetchW(la,lo){
 				if activeWidgets[a.Slug] {
 					checked = " checked"
 				}
-				widgetCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="widgets" value="%s"%s onchange="this.form.submit()" style="width:18px;height:18px"> %s</label>`, htmlEsc(a.Slug), checked, htmlEsc(a.Name))
+				widgetCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="widgets" value="%s"%s style="width:18px;height:18px"> %s</label>`, htmlEsc(a.Slug), checked, htmlEsc(a.Name))
 			}
 		}
 
 		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
 <p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
 <p style="font-size:12px;color:#999;margin:0 0 8px">Show or hide cards.</p>
-<form method="POST" action="/account">
-<input type="hidden" name="save_cards" value="1">
-%s
-</form>`, checkboxes))
+<div id="card-checkboxes">%s</div>`, checkboxes))
 		if widgetCheckboxes != "" {
 			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">App widgets</p>
-<p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps as cards on your home screen.</p>
-<form method="POST" action="/account">
-<input type="hidden" name="save_widgets" value="1">
-%s
-</form>`, widgetCheckboxes))
+<p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps as cards.</p>
+<div id="widget-checkboxes">%s</div>`, widgetCheckboxes))
 		}
-		b.WriteString(`</div>`)
+		b.WriteString(`<script>
+(function(){
+  function csrfToken(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
+  function savePrefs(type,containerId){
+    var checks=document.querySelectorAll('#'+containerId+' input[type=checkbox]');
+    var body=new URLSearchParams();
+    body.set(type==='cards'?'save_cards':'save_widgets','1');
+    checks.forEach(function(c){if(c.checked)body.append(type==='cards'?'cards':'widgets',c.value)});
+    var h={'Content-Type':'application/x-www-form-urlencoded'};
+    var tok=csrfToken();if(tok)h['X-CSRF-Token']=tok;
+    fetch('/account',{method:'POST',credentials:'same-origin',headers:h,body:body.toString()})
+    .then(function(){location.reload()});
+  }
+  document.querySelectorAll('#card-checkboxes input').forEach(function(c){
+    c.addEventListener('change',function(){savePrefs('cards','card-checkboxes')});
+  });
+  document.querySelectorAll('#widget-checkboxes input').forEach(function(c){
+    c.addEventListener('change',function(){savePrefs('widgets','widget-checkboxes')});
+  });
+})();
+</script></div>`)
 	}
 
 	var userCards map[string]int
