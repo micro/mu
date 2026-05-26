@@ -190,17 +190,18 @@ func handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var steps []step
+	restartSteps := []step{
+		{"restart service", "sudo", []string{"systemctl", "restart", "mu"}},
+	}
+
 	switch req.Action {
 	case "restart":
-		steps = []step{
-			{"restart service", "sudo", []string{"-n", "systemctl", "restart", "mu"}},
-		}
+		steps = restartSteps
 	default: // "update"
-		steps = []step{
+		steps = append([]step{
 			{"git pull", "git", []string{"pull", "origin", "main"}},
 			{"go install", "go", []string{"install", "."}},
-			{"restart service", "sudo", []string{"-n", "systemctl", "restart", "mu"}},
-		}
+		}, restartSteps...)
 	}
 
 	for _, s := range steps {
