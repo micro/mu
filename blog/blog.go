@@ -1803,7 +1803,6 @@ func DeletePostsByAuthor(authorID string) {
 	for _, p := range posts {
 		postsMap[p.ID] = p
 	}
-	// Remove comments by this author.
 	var keptComments []*Comment
 	for _, c := range comments {
 		if c.AuthorID != authorID {
@@ -1812,8 +1811,9 @@ func DeletePostsByAuthor(authorID string) {
 	}
 	comments = keptComments
 	populateComments()
-	updateCache()
+	updateCacheUnlocked()
 	mutex.Unlock()
 	save()
 	data.SaveJSON("comments.json", comments)
+	event.Publish(event.Event{Type: "blog_updated"})
 }
