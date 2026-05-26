@@ -441,12 +441,16 @@ function fetchW(la,lo){
     fetch('/account',{method:'POST',credentials:'same-origin',headers:h,body:body.toString()})
     .then(function(){location.reload()});
   }
-  document.querySelectorAll('#card-checkboxes input').forEach(function(c){
-    c.addEventListener('change',function(){savePrefs('cards','card-checkboxes')});
-  });
-  document.querySelectorAll('#widget-checkboxes input').forEach(function(c){
-    c.addEventListener('change',function(){savePrefs('widgets','widget-checkboxes')});
-  });
+  // Delay listener attachment so browser form-restore doesn't
+  // trigger an immediate save+reload loop.
+  setTimeout(function(){
+    document.querySelectorAll('#card-checkboxes input').forEach(function(c){
+      c.addEventListener('change',function(){savePrefs('cards','card-checkboxes')});
+    });
+    document.querySelectorAll('#widget-checkboxes input').forEach(function(c){
+      c.addEventListener('change',function(){savePrefs('widgets','widget-checkboxes')});
+    });
+  }, 500);
 })();
 </script></div>`)
 	}
