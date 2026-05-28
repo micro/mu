@@ -153,7 +153,9 @@ func generate() {
 	if existing == nil {
 		createDigest()
 	} else {
-		updateDigest(existing)
+		// Digest already created for today — don't regenerate.
+		app.Log("digest", "Digest already exists for today (%s), skipping", existing.ID)
+		setSuccess()
 	}
 }
 
