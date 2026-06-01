@@ -43,11 +43,8 @@ const (
 )
 
 // DefaultModel is the model used for interactive queries (chat, agent).
-// Falls back to Anthropic Sonnet if Atlas Cloud is not configured.
+// Always uses Anthropic for speed — Atlas Cloud is for background only.
 func DefaultModel() string {
-	if atlasAPIKey != "" {
-		return ModelDeepSeekPro
-	}
 	m := os.Getenv("ANTHROPIC_MODEL")
 	if m != "" {
 		return m
@@ -167,13 +164,17 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 	httpReq.Header.Set("anthropic-beta", "prompt-caching-2024-07-31")
 
 	client := &http.Client{Timeout: llmTimeout}
+	start := time.Now()
 	resp, err := client.Do(httpReq)
+	duration := time.Since(start)
 	if err != nil {
+		app.RecordAPICall("anthropic", "POST", "api.anthropic.com/v1/messages", 0, duration, err, "", "")
 		return "", fmt.Errorf("failed to connect to Anthropic: %v", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
+	app.RecordAPICall("anthropic", "POST", "api.anthropic.com/v1/messages ["+model+"]", resp.StatusCode, duration, nil, "", "")
 
 	var result struct {
 		Content []struct {
@@ -253,10 +254,17 @@ func generateAtlas(apiKey, model, systemPrompt string, messages []map[string]str
 		}
 	}
 
+	// Use shorter max_tokens for background tasks to reduce latency.
+	maxTokens := 4096
+	switch caller {
+	case "article-summary", "auto-tag-post", "auto-tag-note", "topic-generation", "topic-summary":
+		maxTokens = 512
+	}
+
 	req := map[string]interface{}{
 		"model":      model,
 		"messages":   apiMessages,
-		"max_tokens": 4096,
+		"max_tokens": maxTokens,
 	}
 
 	body, _ := json.Marshal(req)
@@ -265,13 +273,17 @@ func generateAtlas(apiKey, model, systemPrompt string, messages []map[string]str
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 
 	client := &http.Client{Timeout: llmTimeout}
+	start := time.Now()
 	resp, err := client.Do(httpReq)
+	duration := time.Since(start)
 	if err != nil {
+		app.RecordAPICall("atlas", "POST", "api.atlascloud.ai/v1/chat/completions", 0, duration, err, "", "")
 		return "", fmt.Errorf("atlas cloud connection failed: %v", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
+	app.RecordAPICall("atlas", "POST", "api.atlascloud.ai ["+model+"]", resp.StatusCode, duration, nil, "", "")
 
 	var result struct {
 		Choices []struct {
