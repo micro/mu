@@ -43,11 +43,8 @@ const (
 )
 
 // DefaultModel is the model used for interactive queries (chat, agent).
-// Falls back to Anthropic Sonnet if Atlas Cloud is not configured.
+// Always uses Anthropic for speed — Atlas Cloud is for background only.
 func DefaultModel() string {
-	if atlasAPIKey != "" {
-		return ModelDeepSeekPro
-	}
 	m := os.Getenv("ANTHROPIC_MODEL")
 	if m != "" {
 		return m
