@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,7 +27,51 @@ var (
 	cacheMisses         int
 	cacheReadTokens     int
 	cacheCreationTokens int
+
+	// Atlas Cloud config
+	atlasAPIKey = os.Getenv("ATLAS_API_KEY")
+	atlasBaseURL = "https://api.atlascloud.ai/v1"
 )
+
+// Atlas Cloud model aliases — used to route requests to Atlas Cloud
+// instead of Anthropic. Any model string starting with "deepseek" or
+// "qwen" is routed to Atlas Cloud automatically.
+const (
+	ModelDeepSeekPro   = "deepseek-v4-pro"
+	ModelDeepSeekFlash = "deepseek-v4-flash"
+	ModelQwenPlus      = "qwen3.6-plus"
+)
+
+// DefaultModel is the model used for interactive queries (chat, agent).
+// Falls back to Anthropic Sonnet if Atlas Cloud is not configured.
+func DefaultModel() string {
+	if atlasAPIKey != "" {
+		return ModelDeepSeekPro
+	}
+	m := os.Getenv("ANTHROPIC_MODEL")
+	if m != "" {
+		return m
+	}
+	return "claude-sonnet-4-20250514"
+}
+
+// BackgroundModel is the model used for cheap background tasks
+// (summaries, tags, moderation, topics).
+func BackgroundModel() string {
+	if atlasAPIKey != "" {
+		return ModelDeepSeekFlash
+	}
+	return "claude-haiku-4-5-20251001"
+}
+
+// isAtlasModel returns true if the model should be routed to Atlas Cloud.
+func isAtlasModel(model string) bool {
+	return strings.HasPrefix(model, "deepseek") ||
+		strings.HasPrefix(model, "qwen") ||
+		strings.HasPrefix(model, "glm") ||
+		strings.HasPrefix(model, "kimi") ||
+		strings.HasPrefix(model, "minimax")
+}
 
 // generate sends a prompt to the configured LLM provider
 func generate(prompt *Prompt) (string, error) {
@@ -64,16 +109,19 @@ func generate(prompt *Prompt) (string, error) {
 
 	model := prompt.Model
 	if model == "" {
-		model = os.Getenv("ANTHROPIC_MODEL")
-	}
-	if model == "" {
-		model = "claude-sonnet-4-20250514"
+		model = DefaultModel()
 	}
 
 	caller := prompt.Caller
 	if caller == "" {
 		caller = "unknown"
 	}
+
+	// Route to Atlas Cloud for supported models.
+	if isAtlasModel(model) && atlasAPIKey != "" {
+		return generateAtlas(atlasAPIKey, model, systemPromptText, messages, caller)
+	}
+
 	return generateAnthropic(key, model, systemPromptText, messages, caller)
 }
 
@@ -185,6 +233,76 @@ func GetCacheStats() (hits, misses, readTokens, creationTokens int) {
 	cacheStatsMu.Lock()
 	defer cacheStatsMu.Unlock()
 	return cacheHits, cacheMisses, cacheReadTokens, cacheCreationTokens
+}
+
+// generateAtlas sends a request to Atlas Cloud's OpenAI-compatible API.
+func generateAtlas(apiKey, model, systemPrompt string, messages []map[string]string, caller string) (string, error) {
+	app.Log("ai", "[LLM] Using Atlas Cloud with model %s", model)
+
+	var apiMessages []map[string]string
+	if systemPrompt != "" {
+		apiMessages = append(apiMessages, map[string]string{
+			"role":    "system",
+			"content": systemPrompt,
+		})
+	}
+	for _, msg := range messages {
+		if msg["role"] != "system" {
+			apiMessages = append(apiMessages, msg)
+		}
+	}
+
+	req := map[string]interface{}{
+		"model":      model,
+		"messages":   apiMessages,
+		"max_tokens": 4096,
+	}
+
+	body, _ := json.Marshal(req)
+	httpReq, _ := http.NewRequest("POST", atlasBaseURL+"/chat/completions", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+
+	client := &http.Client{Timeout: llmTimeout}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("atlas cloud connection failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+		Usage struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+		} `json:"usage"`
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	json.Unmarshal(respBody, &result)
+
+	if result.Error.Message != "" {
+		return "", fmt.Errorf("atlas cloud error: %s", result.Error.Message)
+	}
+
+	// Record usage.
+	recordUsage(caller, model,
+		result.Usage.PromptTokens, result.Usage.CompletionTokens, 0, 0)
+
+	app.Log("ai", "[LLM] Usage [%s]: input=%d output=%d (atlas cloud)",
+		caller, result.Usage.PromptTokens, result.Usage.CompletionTokens)
+
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("atlas cloud returned no choices")
+	}
+	return result.Choices[0].Message.Content, nil
 }
 
 func truncateLog(s string, maxLen int) string {
