@@ -257,10 +257,17 @@ func generateAtlas(apiKey, model, systemPrompt string, messages []map[string]str
 		}
 	}
 
+	// Use shorter max_tokens for background tasks to reduce latency.
+	maxTokens := 4096
+	switch caller {
+	case "article-summary", "auto-tag-post", "auto-tag-note", "topic-generation", "topic-summary":
+		maxTokens = 512
+	}
+
 	req := map[string]interface{}{
 		"model":      model,
 		"messages":   apiMessages,
-		"max_tokens": 4096,
+		"max_tokens": maxTokens,
 	}
 
 	body, _ := json.Marshal(req)
