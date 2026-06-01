@@ -37,9 +37,9 @@ var (
 // instead of Anthropic. Any model string starting with "deepseek" or
 // "qwen" is routed to Atlas Cloud automatically.
 const (
-	ModelDeepSeekPro   = "deepseek-v4-pro"
-	ModelDeepSeekFlash = "deepseek-v4-flash"
-	ModelQwenPlus      = "qwen3.6-plus"
+	ModelDeepSeekPro   = "deepseek-ai/deepseek-v4-pro"
+	ModelDeepSeekFlash = "deepseek-ai/deepseek-v4-flash"
+	ModelQwenPlus      = "qwen/qwen3.6-plus"
 )
 
 // DefaultModel is the model used for interactive queries (chat, agent).
@@ -68,6 +68,7 @@ func BackgroundModel() string {
 func isAtlasModel(model string) bool {
 	return strings.HasPrefix(model, "deepseek") ||
 		strings.HasPrefix(model, "qwen") ||
+		strings.HasPrefix(model, "Qwen") ||
 		strings.HasPrefix(model, "glm") ||
 		strings.HasPrefix(model, "kimi") ||
 		strings.HasPrefix(model, "minimax")
