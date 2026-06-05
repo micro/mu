@@ -389,11 +389,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="%s" style="color:#555;text-decoration:none">%s</a></span>`, link, label)
 	}
-	gearHTML := ""
-	if viewerAcc != nil {
-		gearHTML = ` <a href="#" id="home-gear" onclick="var p=document.getElementById('home-card-prefs');p.style.display=p.style.display==='none'?'block':'none';return false" style="color:#bbb;text-decoration:none;font-size:16px" title="Customise cards">⚙</a>`
-	}
-	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML, gearHTML))
+	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML))
 	// Inline weather: reads cached summary, and refreshes it in the
 	// background if stale (>1 hour). This runs independently of the
 	// weather card — even if the card is hidden, the date-line temp
@@ -449,18 +445,43 @@ function fetchW(la,lo){
 
 	// AI prompt — the primary interface. First thing on screen.
 	if viewerID != "" {
+		// Build contextual suggestions based on user state.
+		var suggestions []string
+		if unread := mail.GetUnreadCount(viewerID); unread > 0 {
+			suggestions = append(suggestions, fmt.Sprintf("%d unread email(s)", unread))
+		}
+		if movers := markets.TopMovers(2); movers != "" {
+			suggestions = append(suggestions, movers)
+		}
+		suggestions = append(suggestions, "Today's news")
+		suggestions = append(suggestions, "What's happening?")
+
+		var suggestHTML string
+		for _, s := range suggestions {
+			suggestHTML += fmt.Sprintf(`<button type="button" class="console-suggest" onclick="document.getElementById('console-input').value=this.textContent;document.getElementById('console-form').dispatchEvent(new Event('submit',{cancelable:true}))" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:20px;background:#fff;font-size:13px;color:#555;cursor:pointer;white-space:nowrap">%s</button>`, htmlEsc(s))
+		}
+
 		b.WriteString(fmt.Sprintf(`
 <div id="console-prompt" style="margin:0 0 20px;padding:24px 0 0">
 <form id="console-form" style="position:relative">
 <textarea id="console-input" placeholder="What do you need?" maxlength="%d" rows="1" style="width:100%%;padding:14px 44px 14px 16px;border:1px solid #ddd;border-radius:14px;font-size:16px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden;background:#fff"></textarea>
 <button type="submit" style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0">&#x2192;</button>
 </form>
+<div id="console-suggestions" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">%s</div>
 <div id="console-response" style="display:none;margin-top:14px;padding:16px;background:#f9f9f9;border-radius:12px"></div>
-</div>`, stream.MaxContentLength))
+</div>`, stream.MaxContentLength, suggestHTML))
 		b.WriteString(consoleScript)
 	}
 
+	// Date + browse section — cards are secondary to the AI prompt.
 	b.WriteString(dateHTML)
+	b.WriteString(`<div style="margin:8px 0 12px;display:flex;align-items:center;gap:8px">`)
+	b.WriteString(`<span style="font-size:12px;color:#bbb;text-transform:uppercase;letter-spacing:1px">Browse</span>`)
+	b.WriteString(`<div style="flex:1;height:1px;background:#eee"></div>`)
+	if viewerAcc != nil {
+		b.WriteString(` <a href="#" id="home-gear" onclick="var p=document.getElementById('home-card-prefs');p.style.display=p.style.display==='none'?'block':'none';return false" style="color:#ccc;text-decoration:none;font-size:14px" title="Customise">⚙</a>`)
+	}
+	b.WriteString(`</div>`)
 
 	// Inline card preferences panel
 	if viewerAcc != nil {
@@ -705,12 +726,24 @@ func htmlEsc(s string) string {
 // consoleScript — Claude-style inline prompt with overlay for responses.
 // consoleScript calls the agent API directly. No stream, no polling,
 // no overlay. Question → POST /agent/run → response inline.
+// consoleScript — AI prompt with persistent last response, contextual
+// suggestions, and typing indicator.
 const consoleScript = `<script>
 (function(){
   var form = document.getElementById('console-form');
   var resp = document.getElementById('console-response');
-  var currentFlowId = '';
+  var suggestions = document.getElementById('console-suggestions');
   if (!form || !resp) return;
+  var currentFlowId = '';
+  var STORE_KEY = 'mu_last_response';
+
+  // Restore last response from localStorage.
+  var saved = localStorage.getItem(STORE_KEY);
+  if (saved) {
+    resp.style.display = 'block';
+    resp.innerHTML = saved;
+    if (suggestions) suggestions.style.display = 'none';
+  }
 
   function csrfToken() {
     var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
@@ -729,11 +762,16 @@ const consoleScript = `<script>
     var q = input.value.trim();
     if (!q) return;
 
+    // Hide suggestions, show response area with typing indicator.
+    if (suggestions) suggestions.style.display = 'none';
     resp.style.display = 'block';
     var qid = 'q' + Date.now();
-    resp.innerHTML += '<div id="'+qid+'" style="margin-top:12px;padding-bottom:12px;border-bottom:1px solid #eee"><p style="color:#333;font-weight:600;margin:0 0 6px">' + escHtml(q) + '</p><p style="color:#999;margin:0" id="'+qid+'-a">Working...</p></div>';
+    resp.innerHTML += '<div id="'+qid+'" style="margin-top:12px;padding-bottom:12px;border-bottom:1px solid #eee"><p style="color:#333;font-weight:600;margin:0 0 6px">' + escHtml(q) + '</p><p style="color:#999;margin:0" id="'+qid+'-a"><span class="typing-dot">&#8226;</span><span class="typing-dot">&#8226;</span><span class="typing-dot">&#8226;</span></p></div>';
     input.value = '';
     input.style.height = 'auto';
+
+    // Scroll response into view.
+    resp.scrollIntoView({behavior:'smooth',block:'nearest'});
 
     var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
     var tok = csrfToken();
@@ -751,6 +789,8 @@ const consoleScript = `<script>
       var answer = (data && data.answer) ? data.answer : (typeof data === 'string' ? data : JSON.stringify(data));
       if (data && data.flow_id) currentFlowId = data.flow_id;
       var ae = document.getElementById(qid+'-a'); if(ae) ae.outerHTML = '<div style="color:#555;line-height:1.6;word-wrap:break-word">' + renderMd(answer) + '</div>';
+      // Persist the response area.
+      localStorage.setItem(STORE_KEY, resp.innerHTML);
     }).catch(function(err){
       var ee = document.getElementById(qid+'-a'); if(ee) ee.outerHTML = '<p style="color:#c00;margin:0">' + escHtml(err.message || 'Something went wrong') + '</p>';
     });
