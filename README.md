@@ -6,36 +6,31 @@ Your personal AI — news, mail, markets, weather, search and more, all through 
 
 Mu is a personal AI platform. Ask it anything — it checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer. Every service is a tool the AI can use on your behalf.
 
+The AI remembers your preferences across sessions, surfaces contextual suggestions based on your data, and learns what you care about over time.
+
 Built in the open. Pay for the tools, not with your attention.
+
+### How it works
+
+Open Mu and you see a prompt: **"What do you need?"** Below it, contextual suggestions based on your current state — unread emails, market movements, latest news. Ask a question or tap a suggestion. The AI checks your services, composes an answer, and shows it inline.
+
+Below the AI, cards give you an at-a-glance overview of everything: news headlines, market prices, blog posts, social threads, video. Cards are configurable — show or hide what you care about.
 
 ### What's included
 
+- **AI Agent** — Ask anything. It searches news, checks markets, reads your mail, fetches weather, searches the web, and synthesises an answer. Remembers your preferences.
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
 - **Markets** — Live crypto, futures, and commodity prices
-- **Weather** — Forecasts and conditions
 - **Mail** — Private messaging and email
 - **Blog** — Microblogging with daily AI-generated digests
-- **Chat** — AI-powered conversation on any topic
+- **Chat** — Conversational AI with session history
 - **Video** — YouTube without ads, algorithms, or shorts
 - **Web** — Search the web without tracking
-- **Agent** — AI assistant that can search, answer, and build across every service
-- **Apps** — Build and use small, useful tools
-
-The home screen has two modes: **Overview** (cards at a glance) and **Console** (command the system — ask Micro anything and get an instant answer). A public **event stream** at `/stream` lets agents and tools subscribe to platform activity.
+- **Weather** — Forecasts and conditions
+- **Apps** — Build and use small, useful tools — any app can be pinned as a home card
+- **Stream** — Public event feed for agents and tools to subscribe to
 
 Runs as a single Go binary. Self-host or use [mu.xyz](https://mu.xyz).
-
-## Screenshots
-
-### Home
-
-<img width="3728" height="1765" alt="image" src="https://github.com/user-attachments/assets/75e029f8-5802-49aa-9449-4902be5da805" />
-
-[View more](docs/SCREENSHOTS.md)
-
-## How it works
-
-The home screen shows **cards** — a summary of each service. Each card links to a full page. News card shows headlines, links to `/news`. Markets card shows prices, links to `/markets`. Everything at a glance, details one tap away.
 
 ## For developers
 
@@ -51,13 +46,13 @@ Mu exposes a REST API and [MCP](https://modelcontextprotocol.io) server at `/mcp
 }
 ```
 
-30+ tools — news, search, weather, places, video, email, markets — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay.
+30+ tools — news, search, weather, places, video, email, markets — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay. First 10 calls per wallet are free.
 
 See [API docs](https://mu.xyz/api) · [MCP docs](docs/MCP.md)
 
 ## CLI
 
-Every MCP tool is also available as a `mu` subcommand. The same binary runs the server (`mu --serve`) and the CLI — with no arguments it becomes a thin client that talks to `/mcp`.
+Every MCP tool is also available as a `mu` subcommand. The same binary runs the server (`mu --serve`) and the CLI.
 
 ```bash
 mu news                                 # latest news feed
@@ -66,14 +61,11 @@ mu chat "hello"                         # chat with the AI
 mu agent "what is the btc price?"       # run the full agent
 mu web_search "claude code"             # search the web
 mu weather_forecast --lat 51.5 --lon -0.12
-mu blog_create --title "Hi" --content "..."
-mu apps_build --prompt "a pomodoro timer"
 mu me                                   # your account
 mu help                                 # full tool list
-mu help apps_build                      # parameters for a specific tool
 ```
 
-The CLI is registry-driven — every tool added to the MCP server automatically becomes a CLI command. Flags map to tool parameters.
+The CLI is registry-driven — every tool added to the MCP server automatically becomes a CLI command.
 
 ### Authentication
 
@@ -83,22 +75,17 @@ mu config set token xxx   # or set it directly
 export MU_TOKEN=xxx       # or use the environment
 ```
 
-### Config
-
-Loaded from `$XDG_CONFIG_HOME/mu/config.json` (default `~/.config/mu/config.json`). Override with `MU_URL` / `MU_TOKEN` or `--url` / `--token` flags.
-
-### Output
-
-Pretty-printed JSON when attached to a terminal, raw JSON when piped — so `mu news | jq '.feed[0]'` works. Use `--table` to render list results as a text table.
-
 See [CLI docs](docs/CLI.md) for more.
 
 ## Pricing
 
 Browsing is included. AI and search features use credits — 1 credit = 1p, pay as you go.
 
-- **Card** — Top up via Stripe. 1 credit = 1p.
-- **Crypto** — AI agents pay per-request with USDC via [x402](https://x402.org). No account needed.
+- **Starter** — £5/month, 500 credits
+- **Pro** — £10/month, 1,200 credits
+- **Pay as you go** — Top up any amount via Stripe
+- **Crypto** — AI agents pay per-request with USDC via [x402](https://x402.org). First 10 calls free.
+- **Self-host** — Unlimited. Run your own instance with local models.
 
 See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
 
@@ -109,9 +96,11 @@ See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
 git clone https://github.com/micro/mu
 cd mu && go install
 
-# Configure
-export ANTHROPIC_API_KEY=xxx    # AI features (Claude)
-export YOUTUBE_API_KEY=xxx      # Video search
+# Configure (choose your AI provider)
+export ANTHROPIC_API_KEY=xxx              # Anthropic Claude
+# or
+export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama / local models
+export OPENAI_API_KEY=ollama
 
 # Run
 mu --serve

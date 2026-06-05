@@ -4993,3 +4993,44 @@ body.display-mode .card h4 {
   0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-4px); }
 }
+
+/* Console prompt mobile optimisation */
+#console-prompt {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+#console-input {
+  min-height: 44px;
+}
+#console-response {
+  overflow-x: auto;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+#console-response pre {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.console-suggest {
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  #console-prompt {
+    padding-top: 12px !important;
+  }
+  #console-input {
+    font-size: 15px !important;
+    padding: 12px 40px 12px 12px !important;
+  }
+  #console-suggestions {
+    gap: 4px !important;
+  }
+  .console-suggest {
+    padding: 5px 10px !important;
+    font-size: 12px !important;
+  }
+  #console-response {
+    padding: 12px !important;
+    font-size: 14px;
+  }
+}
