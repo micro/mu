@@ -11,7 +11,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/memory"
+	"mu/internal/memory"
 )
 
 // extractMemory checks if the user's prompt contains something to

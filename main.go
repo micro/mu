@@ -26,7 +26,7 @@ import (
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
-	"mu/memory"
+	"mu/internal/memory"
 	"mu/news"
 	"mu/news/digest"
 	"mu/markets"
