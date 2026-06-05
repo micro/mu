@@ -98,6 +98,46 @@ func Load() {
 	go refreshMarkets()
 }
 
+// TopMovers returns a short string summarising the N biggest movers
+// by 24h change. Used by the agent context to give price awareness.
+func TopMovers(n int) string {
+	marketsMutex.RLock()
+	defer marketsMutex.RUnlock()
+
+	if len(cachedPriceData) == 0 {
+		return ""
+	}
+
+	type mover struct {
+		symbol string
+		price  float64
+		change float64
+	}
+	tracked := []string{"BTC", "ETH", "SOL", "GOLD", "OIL"}
+	var movers []mover
+	for _, sym := range tracked {
+		if pd, ok := cachedPriceData[sym]; ok {
+			movers = append(movers, mover{sym, pd.Price, pd.Change24h})
+		}
+	}
+	if len(movers) == 0 {
+		return ""
+	}
+	if n > len(movers) {
+		n = len(movers)
+	}
+
+	var parts []string
+	for _, m := range movers[:n] {
+		dir := "+"
+		if m.change < 0 {
+			dir = ""
+		}
+		parts = append(parts, fmt.Sprintf("%s $%.0f (%s%.1f%%)", m.symbol, m.price, dir, m.change))
+	}
+	return strings.Join(parts, ", ")
+}
+
 func refreshMarkets() {
 	for {
 		prices, priceData := fetchPrices()

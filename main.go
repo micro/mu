@@ -26,6 +26,7 @@ import (
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
+	"mu/internal/memory"
 	"mu/news"
 	"mu/news/digest"
 	"mu/markets"
@@ -130,6 +131,14 @@ func main() {
 		bal := wallet.GetBalance(accountID)
 		if bal > 0 {
 			parts = append(parts, fmt.Sprintf("- Wallet: %d credits", bal))
+		}
+		// Market prices — top movers.
+		if prices := markets.TopMovers(3); prices != "" {
+			parts = append(parts, "- Markets: "+prices)
+		}
+		// Persistent memory — things the user has told you to remember.
+		if mem := memory.ForContext(accountID); mem != "" {
+			parts = append(parts, "User preferences/notes:\n"+mem)
 		}
 		if len(parts) == 0 {
 			return ""
@@ -282,6 +291,7 @@ func main() {
 		mail.DeleteInbox,
 		func(id string) { wallet.DeleteWallet(id) },
 		func(id string) { app.ClearUserPrefs(id) },
+		memory.Clear,
 	)
 
 	// Enable indexing after all content is loaded
