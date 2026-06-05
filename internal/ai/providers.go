@@ -28,9 +28,20 @@ var (
 	cacheReadTokens     int
 	cacheCreationTokens int
 
-	// Atlas Cloud config
-	atlasAPIKey = os.Getenv("ATLAS_API_KEY")
-	atlasBaseURL = "https://api.atlascloud.ai/v1"
+	// Atlas Cloud / OpenAI-compatible config.
+	// Set OPENAI_BASE_URL to use a local model server (Ollama, llama.cpp, etc.)
+	atlasAPIKey  = func() string {
+		if v := os.Getenv("ATLAS_API_KEY"); v != "" {
+			return v
+		}
+		return os.Getenv("OPENAI_API_KEY")
+	}()
+	atlasBaseURL = func() string {
+		if v := os.Getenv("OPENAI_BASE_URL"); v != "" {
+			return strings.TrimRight(v, "/")
+		}
+		return "https://api.atlascloud.ai/v1"
+	}()
 )
 
 // Atlas Cloud model aliases — used to route requests to Atlas Cloud

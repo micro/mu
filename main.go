@@ -119,6 +119,24 @@ func main() {
 	// load agent
 	agent.Load()
 
+	// Wire user context into the agent — personalises responses.
+	agent.UserContextFunc = func(accountID string) string {
+		var parts []string
+		// Unread mail count.
+		if unread := mail.GetUnreadCount(accountID); unread > 0 {
+			parts = append(parts, fmt.Sprintf("- %d unread email(s)", unread))
+		}
+		// Wallet balance.
+		bal := wallet.GetBalance(accountID)
+		if bal > 0 {
+			parts = append(parts, fmt.Sprintf("- Wallet: %d credits", bal))
+		}
+		if len(parts) == 0 {
+			return ""
+		}
+		return strings.Join(parts, "\n")
+	}
+
 	// Wire digest → blog callbacks (digest publishes as blog post)
 	digest.PublishBlogPost = func(title, content, author, authorID, tags string) (string, error) {
 		err := blog.CreatePost(title, content, author, authorID, tags, false)
