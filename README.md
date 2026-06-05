@@ -1,11 +1,12 @@
 # mu
 
-A personal app platform — blog, chat, news, mail, video and more.
+Your personal AI — news, mail, markets, weather, search and more, all through one interface. No ads. No tracking. No algorithm.
 
 ## Overview
 
-The current tech ecosystem is totally broken. All the app platform are filled with ads and addictive content. I'm tired of it. You probably are too. 
-So here's a personal app platform. Blog, chat, news, mail, video and more. No ads, no tracking, no algorithms. Built in the open. It's called Mu for short.
+Mu is a personal AI platform. Ask it anything — it checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer. Every service is a tool the AI can use on your behalf.
+
+Built in the open. Pay for the tools, not with your attention.
 
 ### What's included
 

@@ -13,7 +13,11 @@ import (
 	"mu/internal/auth"
 )
 
-// RunRequest is the input for the synchronous agent endpoint.
+// UserContextFunc is set by main.go to provide personalised context
+// for the agent's responses. Returns a string with the user's current
+// state (unread mail, market prices, etc.) that gets injected into the
+// synthesis prompt.
+var UserContextFunc func(accountID string) string
 type RunRequest struct {
 	Prompt    string `json:"prompt"`
 	Model     string `json:"model"`
@@ -130,11 +134,19 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		toolsUsed = append(toolsUsed, ToolUsed{Name: tc.Tool, Status: "ok"})
 	}
 
-	// Step 3: Synthesise
+	// Step 3: Synthesise with user context.
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
+	userCtx := ""
+	if UserContextFunc != nil {
+		userCtx = UserContextFunc(acc.ID)
+	}
+	synthSystem := "You are Micro, a personal AI assistant. Today is " + today + ". " +
+		"Answer concisely using the tool results below. Use markdown."
+	if userCtx != "" {
+		synthSystem += "\n\nUser context:\n" + userCtx
+	}
 	answer, err := ai.Ask(&ai.Prompt{
-		System: "You are a helpful assistant. Today's date is " + today + ". " +
-			"Answer using ONLY the tool results below. Use markdown.",
+		System: synthSystem,
 		Rag:      ragParts,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
