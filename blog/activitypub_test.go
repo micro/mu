@@ -44,7 +44,7 @@ func TestAPBaseURL(t *testing.T) {
 	origMU := os.Getenv("MU_DOMAIN")
 	defer os.Setenv("MU_DOMAIN", origMU)
 
-	os.Setenv("MU_DOMAIN", "mu.xyz")
+	os.Setenv("MU_DOMAIN", "micro.mu")
 	if got := apBaseURL(); got != "https://your-instance.com" {
 		t.Errorf("apBaseURL() = %q, want %q", got, "https://your-instance.com")
 	}
@@ -115,7 +115,7 @@ func TestWebFingerHandler_InvalidAcct(t *testing.T) {
 func TestWebFingerHandler_WrongDomain(t *testing.T) {
 	origMU := os.Getenv("MU_DOMAIN")
 	defer os.Setenv("MU_DOMAIN", origMU)
-	os.Setenv("MU_DOMAIN", "mu.xyz")
+	os.Setenv("MU_DOMAIN", "micro.mu")
 
 	r := httptest.NewRequest("GET", "/.well-known/webfinger?resource=acct:alice@wrong.com", nil)
 	w := httptest.NewRecorder()
