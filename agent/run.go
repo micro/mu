@@ -133,10 +133,19 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	_ = acc // authenticated
 
 	// Step 1: Plan
+	userCtx := ""
+	if UserContextFunc != nil {
+		userCtx = UserContextFunc(acc.ID)
+	}
+	planSystem := "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls.\n\n" +
+		agentToolsDesc +
+		"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. Output [] if no tools needed." +
+		"\n\nIMPORTANT: For personal questions like 'do I have mail', 'what's the weather', 'news today', 'btc price' — ALWAYS use the appropriate tool. Never say you can't access something. You have tools for everything."
+	if userCtx != "" {
+		planSystem += "\n\nUser context:\n" + userCtx
+	}
 	planResult, err := ai.Ask(&ai.Prompt{
-		System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls.\n\n" +
-			agentToolsDesc +
-			"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. Output [] if no tools needed.",
+		System:   planSystem,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
 		Provider: model.Provider,
@@ -186,12 +195,9 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Step 3: Synthesise with user context.
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
-	userCtx := ""
-	if UserContextFunc != nil {
-		userCtx = UserContextFunc(acc.ID)
-	}
 	synthSystem := "You are Micro, a personal AI assistant. Today is " + today + ". " +
-		"Answer concisely using the tool results below. Use markdown."
+		"Answer concisely using the tool results and user context below. Use markdown. " +
+		"If the user context already contains the answer (e.g. unread mail count), use it directly."
 	if userCtx != "" {
 		synthSystem += "\n\nUser context:\n" + userCtx
 	}
