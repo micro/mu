@@ -46,7 +46,7 @@ Below the AI, cards give you an at-a-glance overview. Cards are configurable —
 
 ## Technology
 
-Mu runs as a single Go binary. Self-host on your own server or use [mu.xyz](https://mu.xyz). Open source under AGPL-3.0.
+Mu runs as a single Go binary. Self-host on your own server. Open source under AGPL-3.0.
 
 Supports Anthropic Claude, Atlas Cloud (DeepSeek, Qwen), or local models via any OpenAI-compatible API (Ollama, vLLM, llama.cpp).
 
@@ -54,4 +54,4 @@ When you pay for tools, incentives are aligned. We build the tools, you use them
 
 ---
 
-**Get started** at [mu.xyz](https://mu.xyz) or read our [Principles](/docs/principles).
+**Get started** at [github.com/micro/mu](https://github.com/micro/mu)

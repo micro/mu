@@ -30,7 +30,7 @@ Technology should serve people — not use them. When you pay for tools, incenti
 
 **No ads, no tracking.** Revenue comes from usage credits, not attention.
 
-**Single binary.** One Go binary, no external dependencies. Self-host or use [mu.xyz](https://mu.xyz).
+**Single binary.** One Go binary, no external dependencies. Self-host your own instance.
 
 **Local models.** Self-hosters can use Ollama or any OpenAI-compatible server. No cloud dependency required.
 
@@ -58,7 +58,7 @@ Every service is available via REST API and MCP. Connect Claude Desktop, Cursor,
 {
   "mcpServers": {
     "mu": {
-      "url": "https://mu.xyz/mcp"
+      "url": "https://your-instance.com/mcp"
     }
   }
 }

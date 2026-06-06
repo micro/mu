@@ -126,7 +126,7 @@ func searchNominatim(query string) ([]*Place, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Mu/1.0 (https://mu.xyz)")
+	req.Header.Set("User-Agent", "Mu/1.0 (https://your-instance.com)")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {

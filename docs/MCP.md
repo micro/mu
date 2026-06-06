@@ -19,7 +19,7 @@ When x402 is enabled on the server (`X402_PAY_TO` is set), any metered tool call
 **1. Call a tool without payment:**
 
 ```bash
-curl -X POST https://mu.xyz/mcp \
+curl -X POST https://your-instance.com/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest AI news"}}}'
 ```
@@ -48,7 +48,7 @@ X-PAYMENT-REQUIRED: eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsi...
 **3. Agent pays on-chain and retries with payment proof:**
 
 ```bash
-curl -X POST https://mu.xyz/mcp \
+curl -X POST https://your-instance.com/mcp \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: <base64-encoded-payment-payload>" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest AI news"}}}'
@@ -87,7 +87,7 @@ For human users or agents that prefer account-based billing, authenticate with a
 {
   "mcpServers": {
     "mu": {
-      "url": "https://mu.xyz/mcp",
+      "url": "https://your-instance.com/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_TOKEN"
       }
@@ -101,7 +101,7 @@ Replace `YOUR_TOKEN` with a session token from the `login` tool or a Personal Ac
 ### Sign Up
 
 ```bash
-curl -X POST https://mu.xyz/mcp \
+curl -X POST https://your-instance.com/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"signup","arguments":{"id":"myagent","secret":"password123","name":"My Agent"}}}'
 ```
@@ -109,7 +109,7 @@ curl -X POST https://mu.xyz/mcp \
 ### Log In
 
 ```bash
-curl -X POST https://mu.xyz/mcp \
+curl -X POST https://your-instance.com/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"login","arguments":{"id":"myagent","secret":"password123"}}}'
 ```
@@ -172,7 +172,7 @@ The MCP server uses the Streamable HTTP transport. Clients send JSON-RPC 2.0 req
 ### Initialize
 
 ```bash
-curl -X POST https://mu.xyz/mcp \
+curl -X POST https://your-instance.com/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"example","version":"1.0"},"capabilities":{}}}'
 ```
@@ -180,7 +180,7 @@ curl -X POST https://mu.xyz/mcp \
 ### List Tools
 
 ```bash
-curl -X POST https://mu.xyz/mcp \
+curl -X POST https://your-instance.com/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 ```
@@ -190,7 +190,7 @@ curl -X POST https://mu.xyz/mcp \
 With x402 payment:
 
 ```bash
-curl -X POST https://mu.xyz/mcp \
+curl -X POST https://your-instance.com/mcp \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: <payment-payload>" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest news"}}}'
@@ -199,7 +199,7 @@ curl -X POST https://mu.xyz/mcp \
 With account token:
 
 ```bash
-curl -X POST https://mu.xyz/mcp \
+curl -X POST https://your-instance.com/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"news","arguments":{}}}'

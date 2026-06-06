@@ -153,7 +153,7 @@ out center;`, radiusM, lat, lon, radiusM, lat, lon, radiusM, lat, lon, radiusM, 
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "Mu/1.0 (https://mu.xyz)")
+	req.Header.Set("User-Agent", "Mu/1.0 (https://your-instance.com)")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -283,7 +283,7 @@ out center;`, safe, radiusM, lat, lon, safe, radiusM, lat, lon)
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "Mu/1.0 (https://mu.xyz)")
+	req.Header.Set("User-Agent", "Mu/1.0 (https://your-instance.com)")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
