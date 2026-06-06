@@ -58,7 +58,7 @@ Every service is available via REST API and MCP. Connect Claude Desktop, Cursor,
 {
   "mcpServers": {
     "mu": {
-      "url": "https://your-instance.com/mcp"
+      "url": "https://micro.mu/mcp"
     }
   }
 }

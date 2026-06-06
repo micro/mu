@@ -16,7 +16,7 @@ import (
 )
 
 // DefaultURL is used when nothing else is configured.
-const DefaultURL = "http://localhost:8080"
+const DefaultURL = "https://micro.mu"
 
 // Config is the on-disk configuration loaded from
 // $XDG_CONFIG_HOME/mu/config.json (or ~/.config/mu/config.json).

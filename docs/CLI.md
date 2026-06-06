@@ -71,7 +71,7 @@ Clears the stored token. Env vars and `--token` flag overrides are unaffected.
 
 ## Pointing at a different instance
 
-By default the CLI talks to `https://your-instance.com`. To point at your own self-hosted instance:
+By default the CLI talks to `https://micro.mu`. To point at your own self-hosted instance:
 
 ```bash
 # Persistent
@@ -148,7 +148,7 @@ These can appear before or after the tool name:
 
 | Flag              | Purpose                                                  |
 |-------------------|----------------------------------------------------------|
-| `--url URL`       | Mu instance URL (env: `MU_URL`, default: `https://your-instance.com`) |
+| `--url URL`       | Mu instance URL (env: `MU_URL`, default: `https://micro.mu`) |
 | `--token TOKEN`   | Session or PAT token (env: `MU_TOKEN`)                   |
 | `--pretty`        | Force pretty-printed output                              |
 | `--raw`           | Force raw/compact JSON output                            |
