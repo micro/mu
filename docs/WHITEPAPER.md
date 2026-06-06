@@ -2,9 +2,9 @@
 
 Asim Aslam
 
-asim@mu.xyz
+asim@aslam.me
 
-mu.xyz
+github.com/micro/mu
 
 **Abstract.** The dominant model for internet services relies on advertising revenue, which creates a structural incentive to maximise user engagement rather than user utility. We propose Mu, a unified network of composable services — including news aggregation, web search, messaging, financial data, weather, location services, and AI — accessible through a single protocol endpoint and funded by direct per-use micropayments rather than advertising. Services are exposed via the Model Context Protocol (MCP), a JSON-RPC 2.0 interface that serves both human users and autonomous AI agents. Payments are handled through two complementary mechanisms: traditional card payments for account-holding users, and the x402 HTTP payment protocol for account-free, per-request settlement using on-chain stablecoins. The system is implemented as a single self-hostable binary. We describe the architecture, the credit-based economic model, the payment protocols, a mechanism for peer-to-peer credit transfer, and a path toward a federated network of nodes sharing a common settlement layer.
 

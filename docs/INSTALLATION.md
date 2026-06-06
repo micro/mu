@@ -169,7 +169,7 @@ If you use passkeys, add the .onion origin so WebAuthn works on both domains:
 export PASSKEY_EXTRA_ORIGINS="http://your-onion-address.onion"
 ```
 
-Note: Passkeys registered on `mu.xyz` won't work on the `.onion` address (WebAuthn spec limitation). Users can register separate passkeys for each origin, or use password login over Tor.
+Note: Passkeys registered on `your-instance` won't work on the `.onion` address (WebAuthn spec limitation). Users can register separate passkeys for each origin, or use password login over Tor.
 
 ### 4. Nginx for .onion (optional)
 

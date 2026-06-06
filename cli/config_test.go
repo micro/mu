@@ -87,7 +87,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
 
-	want := &Config{URL: "https://mu.xyz", Token: "tok123"}
+	want := &Config{URL: "https://your-instance.com", Token: "tok123"}
 	if err := SaveConfig(want); err != nil {
 		t.Fatalf("save: %v", err)
 	}

@@ -30,7 +30,7 @@ Below the AI, cards give you an at-a-glance overview of everything: news headlin
 - **Apps** — Build and use small, useful tools — any app can be pinned as a home card
 - **Stream** — Public event feed for agents and tools to subscribe to
 
-Runs as a single Go binary. Self-host or use [mu.xyz](https://mu.xyz).
+Runs as a single Go binary. Self-host your own instance.
 
 ## For developers
 
@@ -40,7 +40,7 @@ Mu exposes a REST API and [MCP](https://modelcontextprotocol.io) server at `/mcp
 {
   "mcpServers": {
     "mu": {
-      "url": "https://mu.xyz/mcp"
+      "url": "https://your-instance.com/mcp"
     }
   }
 }
@@ -48,7 +48,7 @@ Mu exposes a REST API and [MCP](https://modelcontextprotocol.io) server at `/mcp
 
 30+ tools — news, search, weather, places, video, email, markets — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay. First 10 calls per wallet are free.
 
-See [API docs](https://mu.xyz/api) · [MCP docs](docs/MCP.md)
+See [MCP docs](docs/MCP.md)
 
 ## CLI
 
@@ -122,7 +122,7 @@ See [Environment Variables](docs/ENVIRONMENT_VARIABLES.md) for all options.
 
 ## Documentation
 
-Full docs at [mu.xyz/docs](https://mu.xyz/docs) or in the [docs](docs/) folder.
+Full docs in the [docs](docs/) folder.
 
 ## License
 

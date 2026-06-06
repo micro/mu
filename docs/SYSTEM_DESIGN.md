@@ -327,6 +327,6 @@ All user-configurable data lives in JSON files (embedded at build time):
 
 ## Economic Model
 
-Users can self-host or use the hosted version at mu.xyz. Browsing is included. Searching, posting,
+Users can self-host or use a hosted instance. Browsing is included. Searching, posting,
 and AI features use credits. Pay as you go at 1 credit = 1p, top up from £5.
 This supports development while keeping the platform accessible.

@@ -149,7 +149,7 @@ var domainWhitelist = map[string]bool{
 	// Email infrastructure (DMARC reports, etc.)
 	"dmarc.yahoo.com": true,
 	// Mu
-	"mu.xyz": true, "micro.mu": true, "reminder.dev": true,
+	"micro.mu": true, "reminder.dev": true,
 }
 
 // Custom whitelist additions (persisted, managed by admin).

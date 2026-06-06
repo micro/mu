@@ -24,7 +24,7 @@ func APDomain() string {
 	return "localhost"
 }
 
-// apBaseURL returns the base URL for the instance (e.g. "https://mu.xyz").
+// apBaseURL returns the base URL for the instance (e.g. "https://your-instance.com").
 func apBaseURL() string {
 	d := APDomain()
 	if d == "localhost" {

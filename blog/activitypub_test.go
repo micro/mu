@@ -45,8 +45,8 @@ func TestAPBaseURL(t *testing.T) {
 	defer os.Setenv("MU_DOMAIN", origMU)
 
 	os.Setenv("MU_DOMAIN", "mu.xyz")
-	if got := apBaseURL(); got != "https://mu.xyz" {
-		t.Errorf("apBaseURL() = %q, want %q", got, "https://mu.xyz")
+	if got := apBaseURL(); got != "https://your-instance.com" {
+		t.Errorf("apBaseURL() = %q, want %q", got, "https://your-instance.com")
 	}
 
 	os.Setenv("MU_DOMAIN", "localhost")
@@ -164,17 +164,17 @@ func TestPostToObject(t *testing.T) {
 		Name: "Alice",
 	}
 
-	obj := postToObject("https://mu.xyz", acc, post)
+	obj := postToObject("https://your-instance.com", acc, post)
 
 	// Check basic fields
 	if obj["type"] != "Note" {
 		t.Errorf("type = %v, want Note", obj["type"])
 	}
-	if obj["id"] != "https://mu.xyz/blog/post?id=123" {
-		t.Errorf("id = %v, want https://mu.xyz/blog/post?id=123", obj["id"])
+	if obj["id"] != "https://your-instance.com/blog/post?id=123" {
+		t.Errorf("id = %v, want https://your-instance.com/blog/post?id=123", obj["id"])
 	}
-	if obj["attributedTo"] != "https://mu.xyz/@alice" {
-		t.Errorf("attributedTo = %v, want https://mu.xyz/@alice", obj["attributedTo"])
+	if obj["attributedTo"] != "https://your-instance.com/@alice" {
+		t.Errorf("attributedTo = %v, want https://your-instance.com/@alice", obj["attributedTo"])
 	}
 	if obj["name"] != "Test Post" {
 		t.Errorf("name = %v, want Test Post", obj["name"])
@@ -215,7 +215,7 @@ func TestPostToObject_NoTitle(t *testing.T) {
 	}
 	acc := &auth.Account{ID: "bob", Name: "Bob"}
 
-	obj := postToObject("https://mu.xyz", acc, post)
+	obj := postToObject("https://your-instance.com", acc, post)
 
 	if _, hasName := obj["name"]; hasName {
 		t.Error("name should not be set for posts without title")

@@ -618,7 +618,7 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 		baseURL = "https://" + fwdHost
 	} else {
 		scheme := "https"
-		if r.TLS == nil && !strings.Contains(r.Host, "mu.xyz") {
+		if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
 			scheme = "http"
 		}
 		baseURL = fmt.Sprintf("%s://%s", scheme, r.Host)
