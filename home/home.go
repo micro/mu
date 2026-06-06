@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -20,7 +21,6 @@ import (
 	"mu/mail"
 	"mu/news"
 	"mu/social"
-	"mu/stream"
 	"mu/markets"
 	"mu/reminder"
 	"mu/video"
@@ -389,7 +389,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="%s" style="color:#555;text-decoration:none">%s</a></span>`, link, label)
 	}
-	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML))
+	gearHTML := ""
+	if viewerAcc != nil {
+		gearHTML = ` <a href="#" onclick="var p=document.getElementById('home-card-prefs');if(p)p.style.display=p.style.display==='none'?'block':'none';return false" style="color:#ccc;text-decoration:none;font-size:14px" title="Customise">⚙</a>`
+	}
+	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML, gearHTML))
 	// Inline weather: reads cached summary, and refreshes it in the
 	// background if stale (>1 hour). This runs independently of the
 	// weather card — even if the card is hidden, the date-line temp
@@ -443,9 +447,8 @@ function fetchW(la,lo){
 	// ── Cards (always visible) ──
 	b.WriteString(`<div id="home-cards">`)
 
-	// AI prompt — the primary interface. First thing on screen.
+	// AI prompt — submits to agent page. No inline response.
 	if viewerID != "" {
-		// Build contextual suggestions based on user state.
 		var suggestions []string
 		if unread := mail.GetUnreadCount(viewerID); unread > 0 {
 			suggestions = append(suggestions, fmt.Sprintf("%d unread email(s)", unread))
@@ -458,32 +461,21 @@ function fetchW(la,lo){
 
 		var suggestHTML string
 		for _, s := range suggestions {
-			suggestHTML += fmt.Sprintf(`<button type="button" class="console-suggest" onclick="document.getElementById('console-input').value=this.textContent;document.getElementById('console-form').dispatchEvent(new Event('submit',{cancelable:true}))" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:20px;background:#fff;font-size:13px;color:#555;cursor:pointer;white-space:nowrap">%s</button>`, htmlEsc(s))
+			suggestHTML += fmt.Sprintf(`<a href="/agent?prompt=%s" class="console-suggest" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:20px;background:#fff;font-size:13px;color:#555;text-decoration:none;white-space:nowrap">%s</a>`, htmlEsc(url.QueryEscape(s)), htmlEsc(s))
 		}
 
 		b.WriteString(fmt.Sprintf(`
 <div id="console-prompt" style="margin:0 0 20px;padding:24px 0 0">
-<div id="console-initial" style="text-align:center">
-<div id="console-suggestions" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:14px">%s</div>
-</div>
-<div id="console-response" style="display:none;margin-bottom:14px;padding:16px;background:#f9f9f9;border-radius:12px"></div>
-<form id="console-form" style="position:relative">
-<textarea id="console-input" placeholder="What do you need?" maxlength="%d" rows="1" style="width:100%%;padding:14px 44px 14px 16px;border:1px solid #ddd;border-radius:14px;font-size:16px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden;background:#fff"></textarea>
+<form action="/agent" method="GET" style="position:relative">
+<textarea name="prompt" id="console-input" placeholder="What do you need?" maxlength="1024" rows="1" style="width:100%%;padding:14px 44px 14px 16px;border:1px solid #ddd;border-radius:14px;font-size:16px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden;background:#fff" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.submit()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
 <button type="submit" style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0">&#x2192;</button>
 </form>
-</div>`, suggestHTML, stream.MaxContentLength))
-		b.WriteString(consoleScript)
+<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px">%s</div>
+</div>`, suggestHTML))
 	}
 
-	// Date + browse section — cards are secondary to the AI prompt.
+	// Date + cards
 	b.WriteString(dateHTML)
-	b.WriteString(`<div style="margin:8px 0 12px;display:flex;align-items:center;gap:8px">`)
-	b.WriteString(`<span style="font-size:12px;color:#bbb;text-transform:uppercase;letter-spacing:1px">Browse</span>`)
-	b.WriteString(`<div style="flex:1;height:1px;background:#eee"></div>`)
-	if viewerAcc != nil {
-		b.WriteString(` <a href="#" id="home-gear" onclick="var p=document.getElementById('home-card-prefs');p.style.display=p.style.display==='none'?'block':'none';return false" style="color:#ccc;text-decoration:none;font-size:14px" title="Customise">⚙</a>`)
-	}
-	b.WriteString(`</div>`)
 
 	// Inline card preferences panel
 	if viewerAcc != nil {
@@ -732,103 +724,6 @@ func htmlEsc(s string) string {
 // suggestions, and typing indicator.
 // consoleScript — AI prompt with flip layout (input moves below response),
 // persistent last response, typing dots, suggestion pills.
-const consoleScript = `<script>
-(function(){
-  var form = document.getElementById('console-form');
-  var resp = document.getElementById('console-response');
-  var initial = document.getElementById('console-initial');
-  if (!form || !resp) return;
-  var currentFlowId = '';
-  var STORE_KEY = 'mu_last_response';
-
-  // Restore last response from localStorage.
-  var saved = localStorage.getItem(STORE_KEY);
-  if (saved) {
-    resp.style.display = 'block';
-    resp.innerHTML = saved;
-    if (initial) initial.style.display = 'none';
-    // Scroll input into view after restore.
-    setTimeout(function(){ form.scrollIntoView({behavior:'smooth',block:'center'}); }, 100);
-  }
-
-  function csrfToken() {
-    var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
-    return m ? decodeURIComponent(m[1]) : '';
-  }
-
-  var input = document.getElementById('console-input');
-  if (input) {
-    input.addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'; });
-    input.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();form.dispatchEvent(new Event('submit',{cancelable:true}));} });
-  }
-  form.addEventListener('submit', function(ev){
-    ev.preventDefault();
-    var input = document.getElementById('console-input');
-    if (!input) return;
-    var q = input.value.trim();
-    if (!q) return;
-
-    // Hide initial suggestions, show response.
-    if (initial) initial.style.display = 'none';
-    resp.style.display = 'block';
-    var qid = 'q' + Date.now();
-    resp.innerHTML += '<div id="'+qid+'" style="margin-top:12px;padding-bottom:12px;border-bottom:1px solid #eee"><p style="color:#333;font-weight:600;margin:0 0 6px">' + escHtml(q) + '</p><p style="color:#999;margin:0" id="'+qid+'-a"><span class="typing-dot">&#8226;</span><span class="typing-dot">&#8226;</span><span class="typing-dot">&#8226;</span></p></div>';
-    input.value = '';
-    input.style.height = 'auto';
-
-    // Scroll input into view so user can see both response and type next.
-    form.scrollIntoView({behavior:'smooth',block:'center'});
-
-    var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-    var tok = csrfToken();
-    if (tok) headers['X-CSRF-Token'] = tok;
-
-    fetch('/agent/run', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: headers,
-      body: JSON.stringify({ prompt: q, context_id: currentFlowId })
-    }).then(function(r){
-      if (!r.ok) return r.text().then(function(t){ throw new Error(t) });
-      return r.json();
-    }).then(function(data){
-      var answer = (data && data.answer) ? data.answer : (typeof data === 'string' ? data : JSON.stringify(data));
-      if (data && data.flow_id) currentFlowId = data.flow_id;
-      var ae = document.getElementById(qid+'-a'); if(ae) ae.outerHTML = '<div style="color:#555;line-height:1.6;word-wrap:break-word">' + renderMd(answer) + '</div>';
-      localStorage.setItem(STORE_KEY, resp.innerHTML);
-      // Scroll to the input after answer renders.
-      setTimeout(function(){ form.scrollIntoView({behavior:'smooth',block:'center'}); }, 50);
-    }).catch(function(err){
-      var ee = document.getElementById(qid+'-a'); if(ee) ee.outerHTML = '<p style="color:#c00;margin:0">' + escHtml(err.message || 'Something went wrong') + '</p>';
-    });
-  });
-
-  function escHtml(s) {
-    var d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
-  function renderMd(s) {
-    s = escHtml(s);
-    var bt = String.fromCharCode(96);
-    var codeBlockRe = new RegExp(bt+bt+bt+'(\\w*)\\n([\\s\\S]*?)'+bt+bt+bt, 'g');
-    var inlineCodeRe = new RegExp(bt+'([^'+bt+']+)'+bt, 'g');
-    s = s.replace(codeBlockRe, '<pre style="background:#f0f0f0;padding:10px;border-radius:6px;overflow-x:auto;font-size:13px"><code>$2</code></pre>');
-    s = s.replace(inlineCodeRe, '<code style="background:#eee;padding:1px 4px;border-radius:3px;font-size:13px">$1</code>');
-    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:#06c">$1</a>');
-    s = s.replace(/^### (.+)$/gm, '<strong style="font-size:14px">$1</strong>');
-    s = s.replace(/^## (.+)$/gm, '<strong style="font-size:15px">$1</strong>');
-    s = s.replace(/^# (.+)$/gm, '<strong style="font-size:16px">$1</strong>');
-    s = s.replace(/^[-*] (.+)$/gm, '<li style="margin-left:16px;list-style:disc">$1</li>');
-    s = s.replace(/^\d+\. (.+)$/gm, '<li style="margin-left:16px;list-style:decimal">$1</li>');
-    s = s.replace(/\n\n/g, '</p><p style="margin:8px 0">');
-    s = s.replace(/\n/g, '<br>');
-    return '<p style="margin:8px 0">' + s + '</p>';
-  }
-})();
-</script>`
 
 
 const statusCardScript = `<script>
