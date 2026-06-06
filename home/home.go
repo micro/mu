@@ -463,13 +463,15 @@ function fetchW(la,lo){
 
 		b.WriteString(fmt.Sprintf(`
 <div id="console-prompt" style="margin:0 0 20px;padding:24px 0 0">
+<div id="console-initial" style="text-align:center">
+<div id="console-suggestions" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:14px">%s</div>
+</div>
+<div id="console-response" style="display:none;margin-bottom:14px;padding:16px;background:#f9f9f9;border-radius:12px"></div>
 <form id="console-form" style="position:relative">
 <textarea id="console-input" placeholder="What do you need?" maxlength="%d" rows="1" style="width:100%%;padding:14px 44px 14px 16px;border:1px solid #ddd;border-radius:14px;font-size:16px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden;background:#fff"></textarea>
 <button type="submit" style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0">&#x2192;</button>
 </form>
-<div id="console-suggestions" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">%s</div>
-<div id="console-response" style="display:none;margin-top:14px;padding:16px;background:#f9f9f9;border-radius:12px"></div>
-</div>`, stream.MaxContentLength, suggestHTML))
+</div>`, suggestHTML, stream.MaxContentLength))
 		b.WriteString(consoleScript)
 	}
 
@@ -728,11 +730,13 @@ func htmlEsc(s string) string {
 // no overlay. Question → POST /agent/run → response inline.
 // consoleScript — AI prompt with persistent last response, contextual
 // suggestions, and typing indicator.
+// consoleScript — AI prompt with flip layout (input moves below response),
+// persistent last response, typing dots, suggestion pills.
 const consoleScript = `<script>
 (function(){
   var form = document.getElementById('console-form');
   var resp = document.getElementById('console-response');
-  var suggestions = document.getElementById('console-suggestions');
+  var initial = document.getElementById('console-initial');
   if (!form || !resp) return;
   var currentFlowId = '';
   var STORE_KEY = 'mu_last_response';
@@ -742,7 +746,9 @@ const consoleScript = `<script>
   if (saved) {
     resp.style.display = 'block';
     resp.innerHTML = saved;
-    if (suggestions) suggestions.style.display = 'none';
+    if (initial) initial.style.display = 'none';
+    // Scroll input into view after restore.
+    setTimeout(function(){ form.scrollIntoView({behavior:'smooth',block:'center'}); }, 100);
   }
 
   function csrfToken() {
@@ -762,16 +768,16 @@ const consoleScript = `<script>
     var q = input.value.trim();
     if (!q) return;
 
-    // Hide suggestions, show response area with typing indicator.
-    if (suggestions) suggestions.style.display = 'none';
+    // Hide initial suggestions, show response.
+    if (initial) initial.style.display = 'none';
     resp.style.display = 'block';
     var qid = 'q' + Date.now();
     resp.innerHTML += '<div id="'+qid+'" style="margin-top:12px;padding-bottom:12px;border-bottom:1px solid #eee"><p style="color:#333;font-weight:600;margin:0 0 6px">' + escHtml(q) + '</p><p style="color:#999;margin:0" id="'+qid+'-a"><span class="typing-dot">&#8226;</span><span class="typing-dot">&#8226;</span><span class="typing-dot">&#8226;</span></p></div>';
     input.value = '';
     input.style.height = 'auto';
 
-    // Scroll response into view.
-    resp.scrollIntoView({behavior:'smooth',block:'nearest'});
+    // Scroll input into view so user can see both response and type next.
+    form.scrollIntoView({behavior:'smooth',block:'center'});
 
     var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
     var tok = csrfToken();
@@ -789,8 +795,9 @@ const consoleScript = `<script>
       var answer = (data && data.answer) ? data.answer : (typeof data === 'string' ? data : JSON.stringify(data));
       if (data && data.flow_id) currentFlowId = data.flow_id;
       var ae = document.getElementById(qid+'-a'); if(ae) ae.outerHTML = '<div style="color:#555;line-height:1.6;word-wrap:break-word">' + renderMd(answer) + '</div>';
-      // Persist the response area.
       localStorage.setItem(STORE_KEY, resp.innerHTML);
+      // Scroll to the input after answer renders.
+      setTimeout(function(){ form.scrollIntoView({behavior:'smooth',block:'center'}); }, 50);
     }).catch(function(err){
       var ee = document.getElementById(qid+'-a'); if(ee) ee.outerHTML = '<p style="color:#c00;margin:0">' + escHtml(err.message || 'Something went wrong') + '</p>';
     });
