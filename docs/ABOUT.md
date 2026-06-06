@@ -54,4 +54,4 @@ When you pay for tools, incentives are aligned. We build the tools, you use them
 
 ---
 
-**Get started** at [github.com/micro/mu](https://github.com/micro/mu)
+**Try it** at [micro.mu](https://micro.mu) — or self-host from [github.com/micro/mu](https://github.com/micro/mu)

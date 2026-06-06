@@ -34,7 +34,7 @@ MANAGEMENT
   mu help [tool]                 Full tool list, or help for a tool
 
 FLAGS (any command)
-  --url URL        Mu instance URL (env: MU_URL, default: https://your-instance.com)
+  --url URL        Mu instance URL (env: MU_URL, default: https://micro.mu)
   --token TOKEN    Session or PAT token (env: MU_TOKEN)
   --pretty         Force pretty-printed output
   --raw            Force raw JSON output
