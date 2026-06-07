@@ -715,6 +715,7 @@ func main() {
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
 		"/status":     false, // Public - server health status
+		"/pricing":    false, // Public - pricing page
 		"/docs":       false, // Public - documentation
 		"/whitepaper": false, // Public - whitepaper
 		"/mcp":        false, // Public - MCP tools page
@@ -829,6 +830,7 @@ func main() {
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
+	http.HandleFunc("/pricing", home.PricingHandler)
 
 	// serve the agent
 	http.HandleFunc("/agent", agent.Handler)

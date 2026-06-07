@@ -407,7 +407,11 @@ form.addEventListener('submit',function(e){
   .then(function(resp){
     if(!resp.ok&&resp.status===401){
       prog.style.display='none';
-      result.innerHTML='<div class="card"><p>Please <a href="/login?redirect=/agent">login</a> to use the agent.</p></div>';
+      resp.json().then(function(j){
+        result.innerHTML='<div class="card"><p>'+(j.error||'Authentication required')+'</p><p style="margin-top:8px"><a href="/signup" class="btn">Sign up</a> <a href="/login?redirect=/agent" style="margin-left:8px">or log in</a></p></div>';
+      }).catch(function(){
+        result.innerHTML='<div class="card"><p>Please <a href="/login?redirect=/agent">login</a> to use the agent.</p></div>';
+      });
       btn.disabled=false;btn.textContent='Do';
       return;
     }
@@ -751,11 +755,18 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Require authentication
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
-		return
+	_, acc := auth.TrySession(r)
+	isGuest := acc == nil
+
+	if isGuest {
+		ip := app.ClientIP(r)
+		if !guestQueryAllowed(ip) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error":"Sign up to keep using the AI agent. 3 free queries per day."}`))
+			return
+		}
+		guestQueryRecord(ip)
 	}
 
 	// Resolve model
@@ -767,8 +778,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check wallet quota before starting
-	if QuotaCheck != nil {
+	// Check wallet quota (authenticated users only)
+	if !isGuest && QuotaCheck != nil {
 		canProceed, _, err := QuotaCheck(r, model.WalletOp)
 		if !canProceed {
 			msg := "Insufficient credits for agent query. Top up at /wallet."
@@ -788,16 +799,22 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	// Create flow early so progress is saved server-side even if the
 	// SSE connection drops (e.g. mobile browser suspends the tab).
+	accountID := ""
+	if acc != nil {
+		accountID = acc.ID
+	}
 	flow := &Flow{
 		ID:        newFlowID(),
-		AccountID: acc.ID,
+		AccountID: accountID,
 		Prompt:    req.Prompt,
 		Status:    "running",
 		ParentID:  req.ContextID,
 		CreatedAt: time.Now().UTC(),
 	}
-	if err := saveFlow(flow); err != nil {
-		app.Log("agent", "Failed to create flow: %v", err)
+	if !isGuest {
+		if err := saveFlow(flow); err != nil {
+			app.Log("agent", "Failed to create flow: %v", err)
+		}
 	}
 
 	// Start SSE stream

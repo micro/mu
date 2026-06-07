@@ -102,14 +102,20 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		w.WriteHeader(401)
-		app.RespondJSON(w, RunResponse{Error: "authentication required"})
-		return
+	_, acc := auth.TrySession(r)
+	isGuest := acc == nil
+
+	if isGuest {
+		ip := app.ClientIP(r)
+		if !guestQueryAllowed(ip) {
+			w.WriteHeader(401)
+			app.RespondJSON(w, RunResponse{Error: "Sign up to keep using the AI agent. 3 free queries per day."})
+			return
+		}
+		guestQueryRecord(ip)
 	}
 
-	// Check quota
+	// Check quota (authenticated users only)
 	model := Models[0]
 	for _, m := range Models {
 		if m.ID == req.Model {
@@ -117,7 +123,7 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	if QuotaCheck != nil {
+	if !isGuest && QuotaCheck != nil {
 		canProceed, _, err := QuotaCheck(r, model.WalletOp)
 		if !canProceed {
 			w.WriteHeader(402)
@@ -130,11 +136,9 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_ = acc // authenticated
-
 	// Step 1: Plan
 	userCtx := ""
-	if UserContextFunc != nil {
+	if !isGuest && UserContextFunc != nil {
 		userCtx = UserContextFunc(acc.ID)
 	}
 	planSystem := "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls.\n\n" +
@@ -217,10 +221,13 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 
 	answer = app.StripLatexDollars(answer)
 
-	// Check if the user asked to remember something.
+	if isGuest {
+		app.RespondJSON(w, RunResponse{Answer: answer, Tools: toolsUsed})
+		return
+	}
+
 	go extractMemory(acc.ID, req.Prompt)
 
-	// Save as a flow so it appears in the agent history at /agent.
 	var steps []FlowStep
 	for _, tu := range toolsUsed {
 		steps = append(steps, FlowStep{Tool: tu.Name})
