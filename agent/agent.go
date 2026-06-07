@@ -738,6 +738,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - video_search: Search for videos (args: {"query":"search term"})
 - markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
+- mail_read: Read inbox messages (no args)
 - places_search: Search for places (args: {"q":"search name","near":"location"})
 - places_nearby: Find places near a location (args: {"address":"location","radius":number})
 - reminder: Get today's daily Islamic reminder with verse, hadith, and name of Allah (no args)
@@ -753,6 +754,25 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_build: AI-generate an app from a description (args: {"prompt":"a pomodoro timer with lap counter"})
 - apps_edit: Edit an existing app — update name, description, tags, icon, or HTML (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"}). Use for calculations, data transforms, or any computation. Code runs as a function body — use 'return' to produce output.`
+
+const guestToolsDesc = `Available tools (use exact name):
+- news: Get latest news feed (no args)
+- news_search: Search news articles (args: {"query":"search term"})
+- web_search: Search the web for current information (args: {"q":"search term"})
+- web_fetch: Fetch a web page and get its cleaned readable content (args: {"url":"https://example.com/page"})
+- video_search: Search for videos (args: {"query":"search term"})
+- markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
+- weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
+- places_search: Search for places (args: {"q":"search name","near":"location"})
+- places_nearby: Find places near a location (args: {"address":"location","radius":number})
+- reminder: Get today's daily Islamic reminder with verse, hadith, and name of Allah (no args)
+- quran: Look up a Quran chapter or verse (args: {"chapter":1,"verse":1} — verse is optional)
+- hadith: Look up hadith from Sahih Al Bukhari (args: {"book":1} — optional book number)
+- quran_search: Semantic search across the Quran, Hadith, and names of Allah (args: {"q":"what does the quran say about patience"})
+- search: Search all Mu content (args: {"q":"search term"})
+- blog_list: Get recent blog posts (no args)
+- apps_search: Search apps directory (args: {"q":"search term","tag":"productivity"})
+- apps_read: Read details of a specific app (args: {"slug":"app-slug"})`
 
 // handleQuery processes an agent query request with SSE streaming.
 func handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -869,9 +889,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			convCtx.WriteString("New question: " + req.Prompt)
 			planQuestion = convCtx.String()
 		}
+		toolsForPlan := agentToolsDesc
+		if isGuest {
+			toolsForPlan = guestToolsDesc
+		}
 		planPrompt := &ai.Prompt{
 			System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
-				agentToolsDesc +
+				toolsForPlan +
 				"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. When the question asks for cross-source insights or correlations (e.g. news + markets, news + video), call multiple relevant tools. If the question is a follow-up that can be answered from prior conversation context without new tools, output []. If no tools are needed output [].",
 			Question: planQuestion,
 			Priority: ai.PriorityHigh,
@@ -904,6 +928,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	for _, tc := range toolCalls {
 		if tc.Tool == "" {
+			continue
+		}
+		if isGuest && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
 		msg := toolLabel(tc.Tool)
@@ -1072,7 +1099,13 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"any new email":            {{Tool: "mail_read", Args: map[string]any{}}},
 		"any mail":                 {{Tool: "mail_read", Args: map[string]any{}}},
 		"unread mail":              {{Tool: "mail_read", Args: map[string]any{}}},
+		"unread email":             {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my mail":             {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my email":            {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my unread email":     {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my unread emails":    {{Tool: "mail_read", Args: map[string]any{}}},
 		"my mail":                  {{Tool: "mail_read", Args: map[string]any{}}},
+		"my email":                 {{Tool: "mail_read", Args: map[string]any{}}},
 		"btc price":                {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
 		"bitcoin price":            {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
 		"eth price":                {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
@@ -1088,9 +1121,18 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
 		"show me today's islamic reminder":              {{Tool: "reminder", Args: map[string]any{}}},
 	}
-	if tc, ok := aliases[strings.ToLower(strings.TrimSpace(prompt))]; ok {
+	lower := strings.ToLower(strings.TrimSpace(prompt))
+	if tc, ok := aliases[lower]; ok {
 		return tc
 	}
+
+	// Fuzzy matches for prompts with dynamic content (e.g. "Read my 3 unread emails")
+	if strings.Contains(lower, "unread email") || strings.Contains(lower, "unread mail") ||
+		(strings.Contains(lower, "read") && strings.Contains(lower, "mail")) ||
+		(strings.Contains(lower, "read") && strings.Contains(lower, "email")) {
+		return []shortcutToolCall{{Tool: "mail_read", Args: map[string]any{}}}
+	}
+
 	return nil
 }
 
