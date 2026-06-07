@@ -14,9 +14,7 @@ func serveGuestHome(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	// AI prompt — guest trial (3 free queries tracked by IP)
 	b.WriteString(`<div style="text-align:center;padding:32px 0 0">`)
-	b.WriteString(`<h2 style="font-size:1.5rem;margin:0 0 6px">Your personal AI</h2>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 20px">Ask anything. Try it free.</p>`)
 	b.WriteString(`</div>`)
 
@@ -63,6 +61,6 @@ func serveGuestHome(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<a href="/signup" style="display:inline-block;padding:10px 24px;border:1px solid #000;color:#000;text-decoration:none;border-radius:8px;font-size:15px">Sign up</a>`)
 	b.WriteString(`</div>`)
 
-	html := app.RenderHTMLWithLangAndBody("Mu — Your Personal AI", "News, mail, markets, search and more through one AI", b.String(), "en", ` class="page-home"`)
+	html := app.RenderHTMLWithLangAndBody("Your personal AI", "News, mail, markets, search and more through one AI", b.String(), "en", ` class="page-home"`)
 	w.Write([]byte(html))
 }

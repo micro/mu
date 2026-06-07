@@ -103,3 +103,10 @@ func BuildSystemPrompt(p *Prompt) (string, error) {
 func Ask(prompt *Prompt) (string, error) {
 	return generate(prompt)
 }
+
+// AskStream sends a prompt to the LLM and streams tokens via the callback.
+// Each call to onToken receives a chunk of text as it arrives. The full
+// response is returned when streaming completes.
+func AskStream(prompt *Prompt, onToken func(token string)) (string, error) {
+	return generateStream(prompt, onToken)
+}
