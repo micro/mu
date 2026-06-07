@@ -1072,7 +1072,13 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"any new email":            {{Tool: "mail_read", Args: map[string]any{}}},
 		"any mail":                 {{Tool: "mail_read", Args: map[string]any{}}},
 		"unread mail":              {{Tool: "mail_read", Args: map[string]any{}}},
+		"unread email":             {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my mail":             {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my email":            {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my unread email":     {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my unread emails":    {{Tool: "mail_read", Args: map[string]any{}}},
 		"my mail":                  {{Tool: "mail_read", Args: map[string]any{}}},
+		"my email":                 {{Tool: "mail_read", Args: map[string]any{}}},
 		"btc price":                {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
 		"bitcoin price":            {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
 		"eth price":                {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
@@ -1088,9 +1094,18 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
 		"show me today's islamic reminder":              {{Tool: "reminder", Args: map[string]any{}}},
 	}
-	if tc, ok := aliases[strings.ToLower(strings.TrimSpace(prompt))]; ok {
+	lower := strings.ToLower(strings.TrimSpace(prompt))
+	if tc, ok := aliases[lower]; ok {
 		return tc
 	}
+
+	// Fuzzy matches for prompts with dynamic content (e.g. "Read my 3 unread emails")
+	if strings.Contains(lower, "unread email") || strings.Contains(lower, "unread mail") ||
+		(strings.Contains(lower, "read") && strings.Contains(lower, "mail")) ||
+		(strings.Contains(lower, "read") && strings.Contains(lower, "email")) {
+		return []shortcutToolCall{{Tool: "mail_read", Args: map[string]any{}}}
+	}
+
 	return nil
 }
 

@@ -457,7 +457,11 @@ function fetchW(la,lo){
 	if viewerID != "" {
 		var suggestions []string
 		if unread := mail.GetUnreadCount(viewerID); unread > 0 {
-			suggestions = append(suggestions, fmt.Sprintf("%d unread email(s)", unread))
+			if unread == 1 {
+				suggestions = append(suggestions, "Read my unread email")
+			} else {
+				suggestions = append(suggestions, fmt.Sprintf("Read my %d unread emails", unread))
+			}
 		}
 		if movers := markets.TopMovers(2); movers != "" {
 			suggestions = append(suggestions, movers)
