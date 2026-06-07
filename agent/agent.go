@@ -962,10 +962,18 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
 
-	synthPrompt := &ai.Prompt{
-		System: "You are a helpful assistant. Today's date is " + today + ". " +
+	var synthSystem string
+	if len(results) == 0 {
+		synthSystem = "You are Micro, the AI assistant on Mu — a personal AI platform at micro.mu. Today's date is " + today + ".\n\n" +
+			"Mu is your personal AI. It checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer. " +
+			"It includes: AI agent, news, markets, weather, mail, blog, chat, video, web search, and apps. " +
+			"No ads, no tracking, no algorithm. Pay for the tools, not with your attention.\n\n" +
+			"Answer the user's question conversationally. Be helpful and concise. Use markdown formatting.\n\n" +
+			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\)."
+	} else {
+		synthSystem = "You are a helpful assistant. Today's date is " + today + ". " +
 			"The tool results below come from live data feeds — treat them as current information and use the article publication dates when reasoning about recency.\n\n" +
-			"Answer the user's question using ONLY the tool results provided below.\n\n" +
+			"Answer the user's question using the tool results provided below.\n\n" +
 			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
 			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data — " +
 			"it will be outdated. If no tool result contains the requested real-time data, say it is unavailable.\n\n" +
@@ -973,7 +981,11 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"connections and correlations between them — for example, how a market move relates to a news story, " +
 			"or how videos cover the same topic appearing in the news.\n\n" +
 			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data.\n\n" +
-			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\).",
+			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\)."
+	}
+
+	synthPrompt := &ai.Prompt{
+		System: synthSystem,
 		Rag:      ragParts,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
