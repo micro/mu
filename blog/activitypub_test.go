@@ -45,8 +45,8 @@ func TestAPBaseURL(t *testing.T) {
 	defer os.Setenv("MU_DOMAIN", origMU)
 
 	os.Setenv("MU_DOMAIN", "micro.mu")
-	if got := apBaseURL(); got != "https://your-instance.com" {
-		t.Errorf("apBaseURL() = %q, want %q", got, "https://your-instance.com")
+	if got := apBaseURL(); got != "https://micro.mu" {
+		t.Errorf("apBaseURL() = %q, want %q", got, "https://micro.mu")
 	}
 
 	os.Setenv("MU_DOMAIN", "localhost")
