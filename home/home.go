@@ -370,15 +370,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Guest landing page for unauthenticated visitors.
-	_, viewerAcc := auth.TrySession(r)
-	if viewerAcc == nil {
-		serveGuestHome(w, r)
-		return
-	}
-
 	// Refresh cards if cache expired (2 minute TTL)
 	RefreshCards()
+
+	_, viewerAcc := auth.TrySession(r)
 
 	var b strings.Builder
 

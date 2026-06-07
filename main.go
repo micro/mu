@@ -1060,7 +1060,11 @@ func main() {
 						}
 					}
 				} else if r.URL.Path == "/" {
-					http.Redirect(w, r, "/home", 302)
+					if _, acc := auth.TrySession(r); acc != nil {
+						http.Redirect(w, r, "/home", 302)
+					} else {
+						home.LandingHandler(w, r)
+					}
 					return
 				}
 			}
