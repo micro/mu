@@ -15,7 +15,7 @@ func serveGuestHome(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
 	b.WriteString(`<div style="text-align:center;padding:32px 0 0">`)
-	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 20px">Ask anything. Try it free.</p>`)
+	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 20px">Ask anything. Try it free.</p>`)
 	b.WriteString(`</div>`)
 
 	b.WriteString(`<div style="max-width:560px;margin:0 auto 24px">`)
@@ -33,26 +33,36 @@ func serveGuestHome(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>`)
 	b.WriteString(`</div>`)
 
-	// Public content cards — show a taste of what's available
-	b.WriteString(`<div id="home-cards">`)
-
-	// News preview
+	// Public content cards in two-column layout
+	var leftHTML, rightHTML []string
 	cacheMutex.RLock()
 	for _, card := range Cards {
-		if card.ID == "news" || card.ID == "markets" || card.ID == "blog" || card.ID == "reminder" {
-			content := card.CachedHTML
-			if strings.TrimSpace(content) == "" {
-				continue
-			}
-			if card.Link != "" {
-				content += app.Link("More", card.Link)
-			}
-			b.WriteString(fmt.Sprintf(app.CardTemplate, card.ID, card.ID, card.Title, content))
+		if card.ID != "news" && card.ID != "markets" && card.ID != "blog" && card.ID != "reminder" {
+			continue
+		}
+		content := card.CachedHTML
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
+		if card.Link != "" {
+			content += app.Link("More", card.Link)
+		}
+		cardHTML := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, card.Title, content)
+		if card.Column == "left" {
+			leftHTML = append(leftHTML, cardHTML)
+		} else {
+			rightHTML = append(rightHTML, cardHTML)
 		}
 	}
 	cacheMutex.RUnlock()
 
-	b.WriteString(`</div>`)
+	if len(leftHTML) > 0 || len(rightHTML) > 0 {
+		b.WriteString(`<div id="home">`)
+		b.WriteString(fmt.Sprintf(Template,
+			strings.Join(leftHTML, "\n"),
+			strings.Join(rightHTML, "\n")))
+		b.WriteString(`</div>`)
+	}
 
 	// CTA
 	b.WriteString(`<div style="text-align:center;padding:24px 0;border-top:1px solid #eee;margin-top:16px">`)
