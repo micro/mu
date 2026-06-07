@@ -141,8 +141,12 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	if !isGuest && UserContextFunc != nil {
 		userCtx = UserContextFunc(acc.ID)
 	}
+	toolsForPlan := agentToolsDesc
+	if isGuest {
+		toolsForPlan = guestToolsDesc
+	}
 	planSystem := "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls.\n\n" +
-		agentToolsDesc +
+		toolsForPlan +
 		"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. Output [] if no tools needed." +
 		"\n\nIMPORTANT: For personal questions like 'do I have mail', 'what's the weather', 'news today', 'btc price' — ALWAYS use the appropriate tool. Never say you can't access something. You have tools for everything."
 	if userCtx != "" {
@@ -183,6 +187,9 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, tc := range toolCalls {
 		if tc.Tool == "" {
+			continue
+		}
+		if isGuest && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
 		text, isErr, execErr := api.ExecuteTool(r, tc.Tool, tc.Args)
