@@ -288,6 +288,9 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 .step-icon{font-size:13px;flex-shrink:0;font-weight:600;color:#888;min-width:60px;}
 #agent-form-card.sticky-bottom{position:sticky;bottom:0;z-index:10;
   background:#fff;border-top:1px solid #eee;margin-bottom:0;}
+.agent-cursor{display:inline-block;width:2px;height:1em;background:#000;vertical-align:text-bottom;
+  animation:blink 0.8s step-end infinite;margin-left:2px;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 </style>
 
 <script>
@@ -486,6 +489,14 @@ form.addEventListener('submit',function(e){
                   }
                 })();
               }
+            } else if(ev.type==='stream_start'){
+              prog.style.display='none';
+              result.innerHTML='<div class="card" id="agent-stream-card"><div id="agent-stream-text" style="white-space:pre-wrap;font-size:14px;line-height:1.6"></div><span class="agent-cursor"></span></div>';
+            } else if(ev.type==='stream_token'){
+              var st=document.getElementById('agent-stream-text');
+              if(st)st.textContent+=ev.token;
+              var sc=document.getElementById('agent-stream-card');
+              if(sc)sc.scrollIntoView({behavior:'smooth',block:'end'});
             } else if(ev.type==='response'){
               gotResponse=true;
               showResponse(prompt,ev.html,ev.flow_id);
@@ -971,7 +982,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Caller:   "agent-synth",
 	}
 
-	answer, err := ai.Ask(synthPrompt)
+	// Stream tokens to the client as they arrive from the LLM.
+	sse(w, map[string]any{"type": "stream_start"})
+
+	answer, err := ai.AskStream(synthPrompt, func(token string) {
+		sse(w, map[string]any{"type": "stream_token", "token": token})
+	})
 	if err != nil {
 		updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
 		sse(w, map[string]any{"type": "error", "message": "Could not generate response: " + err.Error()})
@@ -980,18 +996,15 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	answer = app.StripLatexDollars(answer)
 
-	// Render markdown answer wrapped in a card, then append typed result cards
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
 
-	// Append typed cards for structured tool results
 	for _, res := range results {
 		if card := renderResultCard(res.Name, res.Result, res.Args); card != "" {
 			html += card
 		}
 	}
 
-	// Append expandable tool call references
 	if len(results) > 0 {
 		html += `<div class="card" style="font-size:13px;"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`
 		for _, res := range results {
@@ -1000,12 +1013,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		html += `</div>`
 	}
 
-	// Append a "Save & share" link for the saved flow.
-	html += `<div class="card" style="font-size:13px;display:flex;gap:16px;align-items:center;">` +
-		`<a href="/agent/flow/` + flow.ID + `" class="link">View saved flow ↗</a>` +
-		`</div>`
+	if !isGuest {
+		html += `<div class="card" style="font-size:13px;display:flex;gap:16px;align-items:center;">` +
+			`<a href="/agent/flow/` + flow.ID + `" class="link">View saved flow ↗</a>` +
+			`</div>`
+	}
 
-	// Mark flow complete with answer and rendered HTML
 	updateFlow(flow.ID, func(f *Flow) {
 		f.Answer = answer
 		f.HTML = html

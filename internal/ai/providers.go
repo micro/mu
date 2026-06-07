@@ -134,8 +134,57 @@ func generate(prompt *Prompt) (string, error) {
 	return generateAnthropic(key, model, systemPromptText, messages, caller)
 }
 
+func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), llmTimeout+5*time.Second)
+	defer cancel()
+
+	if err := llmSemaphore.Acquire(ctx, 1); err != nil {
+		return "", fmt.Errorf("LLM request queue full, please try again later")
+	}
+	defer llmSemaphore.Release(1)
+
+	systemPromptText, err := BuildSystemPrompt(prompt)
+	if err != nil {
+		return "", err
+	}
+
+	msgs := []map[string]string{
+		{"role": "system", "content": systemPromptText},
+	}
+	for _, v := range prompt.Context {
+		msgs = append(msgs, map[string]string{"role": "user", "content": v.Prompt})
+		msgs = append(msgs, map[string]string{"role": "assistant", "content": v.Answer})
+	}
+	msgs = append(msgs, map[string]string{"role": "user", "content": prompt.Question})
+
+	key := os.Getenv("ANTHROPIC_API_KEY")
+	if key == "" {
+		return "", fmt.Errorf("ANTHROPIC_API_KEY not set")
+	}
+
+	mdl := prompt.Model
+	if mdl == "" {
+		mdl = DefaultModel()
+	}
+
+	clr := prompt.Caller
+	if clr == "" {
+		clr = "unknown"
+	}
+
+	if isAtlasModel(mdl) && atlasAPIKey != "" {
+		return generateAtlas(atlasAPIKey, mdl, systemPromptText, msgs, clr)
+	}
+
+	return generateAnthropicInternal(key, mdl, systemPromptText, msgs, clr, onToken)
+}
+
 func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string]string, caller string) (string, error) {
-	app.Log("ai", "[LLM] Using Anthropic Claude with model %s", model)
+	return generateAnthropicInternal(apiKey, model, systemPrompt, messages, caller, nil)
+}
+
+func generateAnthropicInternal(apiKey, model, systemPrompt string, messages []map[string]string, caller string, onToken func(string)) (string, error) {
+	app.Log("ai", "[LLM] Using Anthropic Claude with model %s (stream=%v)", model, onToken != nil)
 
 	var anthropicMessages []map[string]interface{}
 	for _, msg := range messages {
@@ -147,16 +196,17 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 		}
 	}
 
-	req := map[string]interface{}{
+	reqBody := map[string]interface{}{
 		"model":      model,
 		"max_tokens": 4096,
 		"messages":   anthropicMessages,
 	}
+	if onToken != nil {
+		reqBody["stream"] = true
+	}
 
-	// Use array format for system prompt with cache_control for prompt caching
-	// This caches the system prompt for 5+ minutes, saving ~90% on repeated calls
 	if systemPrompt != "" {
-		req["system"] = []map[string]interface{}{
+		reqBody["system"] = []map[string]interface{}{
 			{
 				"type": "text",
 				"text": systemPrompt,
@@ -167,7 +217,7 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 		}
 	}
 
-	body, _ := json.Marshal(req)
+	body, _ := json.Marshal(reqBody)
 	httpReq, _ := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(body))
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("x-api-key", apiKey)
@@ -183,6 +233,10 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 		return "", fmt.Errorf("failed to connect to Anthropic: %v", err)
 	}
 	defer resp.Body.Close()
+
+	if onToken != nil {
+		return readAnthropicStream(resp, caller, model, start, onToken)
+	}
 
 	respBody, _ := io.ReadAll(resp.Body)
 	app.RecordAPICall("anthropic", "POST", "api.anthropic.com/v1/messages ["+model+"]", resp.StatusCode, duration, nil, "", "")
@@ -208,22 +262,16 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 		return "", fmt.Errorf("anthropic error: %s", result.Error.Message)
 	}
 
-	// Track and log cache status
 	cacheStatsMu.Lock()
 	if result.Usage.CacheReadInputTokens > 0 {
 		cacheHits++
 		cacheReadTokens += result.Usage.CacheReadInputTokens
-		app.Log("ai", "[LLM] Cache HIT: %d tokens from cache, %d new input tokens",
-			result.Usage.CacheReadInputTokens, result.Usage.InputTokens)
 	} else if result.Usage.CacheCreationInputTokens > 0 {
 		cacheMisses++
 		cacheCreationTokens += result.Usage.CacheCreationInputTokens
-		app.Log("ai", "[LLM] Cache WRITE: %d tokens cached for future requests",
-			result.Usage.CacheCreationInputTokens)
 	}
 	cacheStatsMu.Unlock()
 
-	// Record usage for tracking
 	recordUsage(caller, model,
 		result.Usage.InputTokens, result.Usage.OutputTokens,
 		result.Usage.CacheReadInputTokens, result.Usage.CacheCreationInputTokens)
@@ -239,6 +287,96 @@ func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string
 		}
 	}
 	return content, nil
+}
+
+func readAnthropicStream(resp *http.Response, caller, model string, start time.Time, onToken func(string)) (string, error) {
+	defer resp.Body.Close()
+
+	duration := time.Since(start)
+	app.RecordAPICall("anthropic", "POST", "api.anthropic.com/v1/messages ["+model+"] (stream)", resp.StatusCode, duration, nil, "", "")
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("anthropic stream error (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+
+	var full strings.Builder
+	var inputTokens, outputTokens, cacheRead, cacheWrite int
+	buf := make([]byte, 4096)
+	var lineBuf strings.Builder
+
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			lineBuf.Write(buf[:n])
+			for {
+				text := lineBuf.String()
+				idx := strings.Index(text, "\n")
+				if idx < 0 {
+					break
+				}
+				line := text[:idx]
+				lineBuf.Reset()
+				lineBuf.WriteString(text[idx+1:])
+
+				if !strings.HasPrefix(line, "data: ") {
+					continue
+				}
+				data := line[6:]
+				if data == "[DONE]" {
+					continue
+				}
+
+				var ev struct {
+					Type  string `json:"type"`
+					Delta struct {
+						Type string `json:"type"`
+						Text string `json:"text"`
+					} `json:"delta"`
+					Usage struct {
+						InputTokens              int `json:"input_tokens"`
+						OutputTokens             int `json:"output_tokens"`
+						CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+						CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+					} `json:"usage"`
+				}
+				json.Unmarshal([]byte(data), &ev)
+
+				switch ev.Type {
+				case "content_block_delta":
+					if ev.Delta.Text != "" {
+						full.WriteString(ev.Delta.Text)
+						onToken(ev.Delta.Text)
+					}
+				case "message_start":
+					inputTokens = ev.Usage.InputTokens
+					cacheRead = ev.Usage.CacheReadInputTokens
+					cacheWrite = ev.Usage.CacheCreationInputTokens
+				case "message_delta":
+					outputTokens = ev.Usage.OutputTokens
+				}
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
+
+	cacheStatsMu.Lock()
+	if cacheRead > 0 {
+		cacheHits++
+		cacheReadTokens += cacheRead
+	} else if cacheWrite > 0 {
+		cacheMisses++
+		cacheCreationTokens += cacheWrite
+	}
+	cacheStatsMu.Unlock()
+
+	recordUsage(caller, model, inputTokens, outputTokens, cacheRead, cacheWrite)
+	app.Log("ai", "[LLM] Usage [%s]: input=%d output=%d cache_read=%d cache_write=%d (streamed)",
+		caller, inputTokens, outputTokens, cacheRead, cacheWrite)
+
+	return full.String(), nil
 }
 
 // GetCacheStats returns Anthropic prompt cache statistics
