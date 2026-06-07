@@ -370,6 +370,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Guest landing page for unauthenticated visitors.
+	_, viewerAcc := auth.TrySession(r)
+	if viewerAcc == nil {
+		serveGuestHome(w, r)
+		return
+	}
+
 	// Refresh cards if cache expired (2 minute TTL)
 	RefreshCards()
 
@@ -378,7 +385,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Date header + weather + invite — Overview only, built here
 	// and injected into the cards div below.
 	now := time.Now()
-	_, viewerAcc := auth.TrySession(r)
 	var dateLine strings.Builder
 	inviteHTML := ""
 	if viewerAcc != nil {
