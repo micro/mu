@@ -199,9 +199,17 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Step 3: Synthesise with user context.
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
-	synthSystem := "You are Micro, a personal AI assistant. Today is " + today + ". " +
-		"Answer concisely using the tool results and user context below. Use markdown. " +
-		"If the user context already contains the answer (e.g. unread mail count), use it directly."
+	var synthSystem string
+	if len(ragParts) == 0 && userCtx == "" {
+		synthSystem = "You are Micro, the AI assistant on Mu — a personal AI platform at micro.mu. Today is " + today + ". " +
+			"Mu checks your mail, looks up prices, searches the web, reads the news, and gives personalised answers. " +
+			"It includes: AI agent, news, markets, weather, mail, blog, chat, video, web search, and apps. " +
+			"No ads, no tracking. Answer conversationally. Be helpful and concise. Use markdown."
+	} else {
+		synthSystem = "You are Micro, a personal AI assistant. Today is " + today + ". " +
+			"Answer concisely using the tool results and user context below. Use markdown. " +
+			"If the user context already contains the answer (e.g. unread mail count), use it directly."
+	}
 	if userCtx != "" {
 		synthSystem += "\n\nUser context:\n" + userCtx
 	}
