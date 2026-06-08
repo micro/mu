@@ -93,20 +93,10 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		// Swap form
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Swap</h3>`)
-		b.WriteString(`<form method="POST" action="/trade/swap">`)
-		b.WriteString(`<div style="display:flex;gap:8px;margin-bottom:12px">`)
+		b.WriteString(`<form method="POST" action="/trade/swap" id="swap-form">`)
+		b.WriteString(`<div style="display:flex;gap:8px;margin-bottom:8px;align-items:end">`)
 		b.WriteString(`<div style="flex:1"><label style="font-size:12px;color:#888;display:block;margin-bottom:4px">From</label>`)
-		b.WriteString(`<select name="from" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
-		for _, symbol := range tokenOrder {
-			sel := ""
-			if symbol == "USDC" {
-				sel = " selected"
-			}
-			b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, symbol, sel, symbol))
-		}
-		b.WriteString(`</select></div>`)
-		b.WriteString(`<div style="flex:1"><label style="font-size:12px;color:#888;display:block;margin-bottom:4px">To</label>`)
-		b.WriteString(`<select name="to" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
+		b.WriteString(`<select name="from" id="swap-from" onchange="updateMax()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
 		for _, symbol := range tokenOrder {
 			sel := ""
 			if symbol == "ETH" {
@@ -115,11 +105,42 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, symbol, sel, symbol))
 		}
 		b.WriteString(`</select></div>`)
+		b.WriteString(`<button type="button" onclick="flipTokens()" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:16px;margin-bottom:1px" title="Swap direction">⇄</button>`)
+		b.WriteString(`<div style="flex:1"><label style="font-size:12px;color:#888;display:block;margin-bottom:4px">To</label>`)
+		b.WriteString(`<select name="to" id="swap-to" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
+		for _, symbol := range tokenOrder {
+			sel := ""
+			if symbol == "USDC" {
+				sel = " selected"
+			}
+			b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, symbol, sel, symbol))
+		}
+		b.WriteString(`</select></div>`)
 		b.WriteString(`</div>`)
 		b.WriteString(`<label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Amount</label>`)
-		b.WriteString(`<input type="text" name="amount" placeholder="0.00" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:monospace">`)
+		b.WriteString(`<div style="position:relative">`)
+		b.WriteString(`<input type="text" name="amount" id="swap-amount" placeholder="0.00" required style="width:100%;padding:8px 50px 8px 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:monospace">`)
+		b.WriteString(`<button type="button" onclick="setMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:2px 8px;font-size:12px;border:1px solid #ddd;border-radius:4px;background:#f5f5f5;cursor:pointer;color:#555">MAX</button>`)
+		b.WriteString(`</div>`)
 		b.WriteString(`<button type="submit" class="btn" style="width:100%;margin-top:12px">Get Quote</button>`)
 		b.WriteString(`</form>`)
+
+		// Build JS balance map for max button
+		b.WriteString(`<script>`)
+		b.WriteString(`var balMap={`)
+		for _, symbol := range tokenOrder {
+			amount := balances[symbol]
+			if amount == "" {
+				amount = "0"
+			}
+			b.WriteString(fmt.Sprintf(`"%s":"%s",`, symbol, amount))
+		}
+		b.WriteString(`};`)
+		b.WriteString(`function flipTokens(){var f=document.getElementById('swap-from'),t=document.getElementById('swap-to');var fv=f.value;f.value=t.value;t.value=fv;updateMax()}`)
+		b.WriteString(`function updateMax(){var s=document.getElementById('swap-from').value;document.getElementById('swap-amount').placeholder=balMap[s]||'0.00'}`)
+		b.WriteString(`function setMax(){var s=document.getElementById('swap-from').value;var v=balMap[s]||'0';document.getElementById('swap-amount').value=v}`)
+		b.WriteString(`updateMax();`)
+		b.WriteString(`</script>`)
 		b.WriteString(`</div>`)
 
 		// Strategies
