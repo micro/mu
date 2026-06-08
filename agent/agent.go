@@ -753,7 +753,10 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_read: Read details of a specific app (args: {"slug":"app-slug"})
 - apps_build: AI-generate an app from a description (args: {"prompt":"a pomodoro timer with lap counter"})
 - apps_edit: Edit an existing app — update name, description, tags, icon, or HTML (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
-- apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"}). Use for calculations, data transforms, or any computation. Code runs as a function body — use 'return' to produce output.`
+- apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"}). Use for calculations, data transforms, or any computation. Code runs as a function body — use 'return' to produce output.
+- trade_quote: Get a swap price quote for tokens on Base via Uniswap V3 (args: {"from":"ETH","to":"USDC","amount":"0.1"})
+- trade_swap: Execute a token swap on Base via Uniswap V3 (args: {"from":"ETH","to":"USDC","amount":"0.1"})
+- trade_wallet: Get your trading wallet address and token balances on Base (no args)`
 
 const guestToolsDesc = `Available tools (use exact name):
 - news: Get latest news feed (no args)
@@ -1120,6 +1123,12 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"what's the weather like in london today?":      {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
 		"show me today's islamic reminder":              {{Tool: "reminder", Args: map[string]any{}}},
+		// Trade
+		"trade":          {{Tool: "trade_wallet", Args: map[string]any{}}},
+		"trading":        {{Tool: "trade_wallet", Args: map[string]any{}}},
+		"my wallet":      {{Tool: "trade_wallet", Args: map[string]any{}}},
+		"wallet balance":  {{Tool: "trade_wallet", Args: map[string]any{}}},
+		"trading wallet":  {{Tool: "trade_wallet", Args: map[string]any{}}},
 	}
 	lower := strings.ToLower(strings.TrimSpace(prompt))
 	if tc, ok := aliases[lower]; ok {

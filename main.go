@@ -37,6 +37,7 @@ import (
 	"mu/stream"
 	"mu/user"
 	"mu/video"
+	"mu/trade"
 	"mu/wallet"
 	"mu/weather"
 )
@@ -96,6 +97,7 @@ func main() {
 	markets.Load()
 	reminder.Load()
 	wallet.Load()
+	trade.Load()
 
 	// load apps
 	apps.Load()
@@ -290,6 +292,7 @@ func main() {
 		user.ClearStatusHistory,
 		mail.DeleteInbox,
 		func(id string) { wallet.DeleteWallet(id) },
+		func(id string) { trade.DeleteWallet(id) },
 		func(id string) { app.ClearUserPrefs(id) },
 		memory.Clear,
 	)
@@ -671,6 +674,62 @@ func main() {
 		return answer, nil
 	})
 
+	// Trade tools
+	api.RegisterTool(api.Tool{
+		Name:        "trade_quote",
+		Description: "Get a swap price quote for tokens on Base via Uniswap V3",
+		Params: []api.ToolParam{
+			{Name: "from", Type: "string", Description: "Token to sell (ETH, WETH, USDC)", Required: true},
+			{Name: "to", Type: "string", Description: "Token to buy (ETH, WETH, USDC)", Required: true},
+			{Name: "amount", Type: "string", Description: "Amount to sell (e.g. 0.1 for 0.1 ETH)", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			from, _ := args["from"].(string)
+			to, _ := args["to"].(string)
+			amount, _ := args["amount"].(string)
+			q, err := trade.GetQuote(from, to, amount)
+			if err != nil {
+				return "", err
+			}
+			b, _ := json.Marshal(q)
+			return string(b), nil
+		},
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "trade_swap",
+		Description: "Execute a token swap on Base via Uniswap V3",
+		Params: []api.ToolParam{
+			{Name: "from", Type: "string", Description: "Token to sell (ETH, WETH, USDC)", Required: true},
+			{Name: "to", Type: "string", Description: "Token to buy (ETH, WETH, USDC)", Required: true},
+			{Name: "amount", Type: "string", Description: "Amount to sell", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		from, _ := args["from"].(string)
+		to, _ := args["to"].(string)
+		amount, _ := args["amount"].(string)
+		t, err := trade.ExecuteSwap(accountID, from, to, amount)
+		if err != nil {
+			return "", err
+		}
+		b, _ := json.Marshal(t)
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "trade_wallet",
+		Description: "Get your trading wallet address and token balances on Base",
+	}, func(args map[string]any, accountID string) (string, error) {
+		info := trade.GetWalletInfo(accountID)
+		if info == nil {
+			return `{"error":"No trading wallet. Create one at /trade."}`, nil
+		}
+		result := map[string]any{"address": info.Address}
+		if trade.Enabled() {
+			result["balances"] = trade.GetBalances(info.Address)
+		}
+		b, _ := json.Marshal(result)
+		return string(b), nil
+	})
+
 	authenticated := map[string]bool{
 		"/video":           false, // Public viewing, auth for interactive features
 		"/news":            false, // Public viewing, auth for search
@@ -705,6 +764,7 @@ func main() {
 		"/admin/delete":  true,
 		"/admin/console": true,
 		"/admin/invite": true,
+		"/trade":           true,  // Require auth for trading
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
@@ -812,6 +872,10 @@ func main() {
 	// wallet - credits and payments
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
+
+	// serve trading page
+	http.HandleFunc("/trade", trade.Handler)
+	http.HandleFunc("/trade/", trade.Handler)
 
 	// serve search page (local + Brave web search)
 	http.HandleFunc("/search", search.Handler)
