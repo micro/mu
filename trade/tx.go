@@ -326,6 +326,30 @@ func sendRawTransaction(signedTx []byte) (string, error) {
 	return strings.Trim(string(result), `"`), nil
 }
 
+func waitForReceiptOnce(txHash string) (string, error) {
+	url := rpcURL()
+	req := rpcRequest{JSONRPC: "2.0", Method: "eth_getTransactionReceipt", Params: []any{txHash}, ID: 1}
+	result, err := doRPC(url, req)
+	if err != nil {
+		return "", err
+	}
+	raw := strings.TrimSpace(string(result))
+	if raw == "null" || raw == "" {
+		return "", fmt.Errorf("no receipt yet")
+	}
+	var receipt struct {
+		Status  string `json:"status"`
+		GasUsed string `json:"gasUsed"`
+	}
+	if err := json.Unmarshal(result, &receipt); err != nil {
+		return "", err
+	}
+	if receipt.Status == "0x1" || receipt.Status == "1" {
+		return receipt.GasUsed, nil
+	}
+	return "", fmt.Errorf("transaction reverted")
+}
+
 func waitForReceipt(txHash string) (string, error) {
 	url := rpcURL()
 	for i := 0; i < 60; i++ {

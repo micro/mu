@@ -432,4 +432,29 @@ func GetWalletInfo(accountID string) *WalletInfo {
 	return &WalletInfo{Address: w.Address}
 }
 
+// RecheckTrades looks up any pending/failed trades with a tx hash
+// and corrects their status from on-chain data.
+func RecheckTrades(accountID string) int {
+	walletMu.Lock()
+	defer walletMu.Unlock()
+
+	fixed := 0
+	for _, t := range trades[accountID] {
+		if t.TxHash == "" || t.Status == "confirmed" {
+			continue
+		}
+		gasUsed, err := waitForReceiptOnce(t.TxHash)
+		if err != nil {
+			continue
+		}
+		t.Status = "confirmed"
+		t.GasUsed = gasUsed
+		fixed++
+	}
+	if fixed > 0 {
+		data.SaveJSON("trade_history.json", trades)
+	}
+	return fixed
+}
+
 var _ = json.Marshal
