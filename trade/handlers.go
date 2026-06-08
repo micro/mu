@@ -40,6 +40,8 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	RecheckTrades(acc.ID)
+
 	errMsg := r.URL.Query().Get("error")
 
 	var b strings.Builder
@@ -133,7 +135,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<input type="text" name="amount" id="swap-amount" placeholder="0.00" value="`+htmlEsc(prevAmount)+`" required style="width:100%;padding:8px 50px 8px 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:monospace">`)
 		b.WriteString(`<button type="button" onclick="setMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:2px 8px;font-size:12px;border:1px solid #ddd;border-radius:4px;background:#f5f5f5;cursor:pointer;color:#555">MAX</button>`)
 		b.WriteString(`</div>`)
-		b.WriteString(`<button type="submit" class="btn" style="width:100%;margin-top:12px">Get Quote</button>`)
+		b.WriteString(`<button type="submit" class="btn" style="width:100%;margin-top:12px">Swap</button>`)
 		b.WriteString(`</form>`)
 
 		// Build JS balance map for max button
