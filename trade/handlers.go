@@ -21,6 +21,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleQuote(w, r)
 	case path == "/trade/swap" && r.Method == "POST":
 		handleSwap(w, r)
+	case path == "/trade/strategy" && r.Method == "POST":
+		handleCreateStrategy(w, r)
+	case path == "/trade/strategy/toggle" && r.Method == "POST":
+		handleToggleStrategy(w, r)
+	case path == "/trade/strategy/delete" && r.Method == "POST":
+		handleDeleteStrategy(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -33,93 +39,192 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	errMsg := r.URL.Query().Get("error")
+
 	var b strings.Builder
+
+	if errMsg != "" {
+		b.WriteString(fmt.Sprintf(`<div class="card"><p style="color:#c00">%s</p></div>`, errMsg))
+	}
 
 	wallet := GetWallet(acc.ID)
 
 	if wallet == nil {
-		// No wallet yet — show setup
-		b.WriteString(`<div class="card" style="max-width:480px">`)
-		b.WriteString(`<h3>Trading</h3>`)
-		b.WriteString(`<p>Trade tokens on Base via Uniswap. To get started, create a trading wallet.</p>`)
-		b.WriteString(`<form method="POST" action="/trade/wallet">`)
-		b.WriteString(`<button type="submit" class="btn" style="margin-top:12px">Create Wallet</button>`)
+		b.WriteString(`<div class="card">`)
+		b.WriteString(`<h3>Get Started</h3>`)
+		b.WriteString(`<p>Trade tokens on Base via Uniswap. Create a wallet to start.</p>`)
+		b.WriteString(`<form method="POST" action="/trade/wallet" style="margin-top:12px">`)
+		b.WriteString(`<button type="submit" class="btn">Create Wallet</button>`)
 		b.WriteString(`</form>`)
-		b.WriteString(`<p class="text-sm text-muted" style="margin-top:12px">Or import an existing wallet:</p>`)
+		b.WriteString(`<details style="margin-top:16px"><summary style="font-size:13px;color:#888;cursor:pointer">Import existing wallet</summary>`)
 		b.WriteString(`<form method="POST" action="/trade/wallet" style="margin-top:8px">`)
-		b.WriteString(`<input type="text" name="private_key" placeholder="Private key (hex)" class="form-input w-full" style="font-size:13px">`)
+		b.WriteString(`<input type="text" name="private_key" placeholder="Private key (hex)" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;font-family:monospace">`)
 		b.WriteString(`<button type="submit" class="btn btn-secondary" style="margin-top:8px">Import</button>`)
-		b.WriteString(`</form>`)
+		b.WriteString(`</form></details>`)
 		b.WriteString(`</div>`)
 	} else {
-		// Wallet exists — show balances and trade form
+		// Wallet
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Wallet</h3>`)
-		b.WriteString(fmt.Sprintf(`<p class="text-sm" style="word-break:break-all"><strong>Address:</strong> %s</p>`, wallet.Address))
-
-		if Enabled() {
-			balances := GetBalances(wallet.Address)
-			if len(balances) > 0 {
-				b.WriteString(`<table class="stats-table" style="margin-top:8px">`)
-				for symbol, amount := range balances {
-					b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td></tr>`, symbol, amount))
-				}
-				b.WriteString(`</table>`)
-			} else {
-				b.WriteString(`<p class="text-sm text-muted" style="margin-top:8px">No balances. Send ETH or USDC to your wallet address to start trading.</p>`)
-			}
-		} else {
-			b.WriteString(`<p class="text-sm text-muted" style="margin-top:8px">Set TRADE_RPC_URL to enable balance fetching and trading.</p>`)
+		shortAddr := wallet.Address
+		if len(shortAddr) > 10 {
+			shortAddr = shortAddr[:6] + "..." + shortAddr[len(shortAddr)-4:]
 		}
+		b.WriteString(fmt.Sprintf(`<p style="font-size:13px"><a href="https://basescan.org/address/%s" target="_blank" style="font-family:monospace;word-break:break-all">%s</a></p>`, wallet.Address, shortAddr))
+
+		// Fund wallet buttons
+		onrampURL := fmt.Sprintf(`https://pay.coinbase.com/buy/select-asset?addresses={"0x%s":["base"]}&assets=["ETH","USDC"]`, strings.TrimPrefix(wallet.Address, "0x"))
+		b.WriteString(`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">`)
+		b.WriteString(fmt.Sprintf(`<a href="%s" target="_blank" class="btn" style="font-size:13px;padding:6px 14px">Buy ETH</a>`, onrampURL))
+		b.WriteString(`<button onclick="copyAddr()" class="btn btn-secondary" style="font-size:13px;padding:6px 14px">Copy Address</button>`)
+		b.WriteString(`</div>`)
+		b.WriteString(fmt.Sprintf(`<script>function copyAddr(){navigator.clipboard.writeText('%s');var b=event.target;b.textContent='Copied!';setTimeout(function(){b.textContent='Copy Address'},1500)}</script>`, wallet.Address))
+
+		balances := GetBalances(wallet.Address)
+		b.WriteString(`<table style="width:100%;margin-top:12px;font-size:14px;border-collapse:collapse">`)
+		for _, symbol := range tokenOrder {
+			amount := balances[symbol]
+			if amount == "" {
+				amount = "0"
+			}
+			b.WriteString(fmt.Sprintf(`<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:6px 0;color:#555">%s</td><td style="padding:6px 0;text-align:right;font-family:monospace">%s</td></tr>`, symbol, amount))
+		}
+		b.WriteString(`</table>`)
 		b.WriteString(`</div>`)
 
 		// Swap form
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Swap</h3>`)
-		if !Enabled() {
-			b.WriteString(`<p class="text-sm text-muted">Trading requires TRADE_RPC_URL to be configured.</p>`)
-		} else {
-			b.WriteString(`<form method="POST" action="/trade/swap">`)
-			b.WriteString(`<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">`)
-			b.WriteString(`<div><label class="text-sm">Amount</label><input type="text" name="amount" placeholder="100" required class="form-input" style="width:120px"></div>`)
-			b.WriteString(`<div><label class="text-sm">From</label><select name="from" class="form-input">`)
-			for symbol := range Tokens {
-				b.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, symbol, symbol))
+		b.WriteString(`<form method="POST" action="/trade/swap">`)
+		b.WriteString(`<div style="display:flex;gap:8px;margin-bottom:12px">`)
+		b.WriteString(`<div style="flex:1"><label style="font-size:12px;color:#888;display:block;margin-bottom:4px">From</label>`)
+		b.WriteString(`<select name="from" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
+		for _, symbol := range tokenOrder {
+			sel := ""
+			if symbol == "USDC" {
+				sel = " selected"
 			}
-			b.WriteString(`</select></div>`)
-			b.WriteString(`<div style="padding:8px;font-size:18px">→</div>`)
-			b.WriteString(`<div><label class="text-sm">To</label><select name="to" class="form-input">`)
-			for symbol := range Tokens {
-				b.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, symbol, symbol))
+			b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, symbol, sel, symbol))
+		}
+		b.WriteString(`</select></div>`)
+		b.WriteString(`<div style="flex:1"><label style="font-size:12px;color:#888;display:block;margin-bottom:4px">To</label>`)
+		b.WriteString(`<select name="to" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
+		for _, symbol := range tokenOrder {
+			sel := ""
+			if symbol == "ETH" {
+				sel = " selected"
 			}
-			b.WriteString(`</select></div>`)
-			b.WriteString(`<button type="submit" class="btn">Get Quote</button>`)
-			b.WriteString(`</div>`)
-			b.WriteString(`</form>`)
+			b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, symbol, sel, symbol))
+		}
+		b.WriteString(`</select></div>`)
+		b.WriteString(`</div>`)
+		b.WriteString(`<label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Amount</label>`)
+		b.WriteString(`<input type="text" name="amount" placeholder="0.00" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:monospace">`)
+		b.WriteString(`<button type="submit" class="btn" style="width:100%;margin-top:12px">Get Quote</button>`)
+		b.WriteString(`</form>`)
+		b.WriteString(`</div>`)
+
+		// Strategies
+		strats := GetStrategies(acc.ID)
+		b.WriteString(`<div class="card">`)
+		b.WriteString(`<h3>Strategies</h3>`)
+		if len(strats) > 0 {
+			for _, s := range strats {
+				statusLabel := "Active"
+				statusColor := "#28a745"
+				if !s.Active {
+					statusLabel = "Paused"
+					statusColor = "#888"
+				}
+				b.WriteString(`<div style="padding:10px 0;border-bottom:1px solid #f0f0f0">`)
+				b.WriteString(fmt.Sprintf(`<div style="display:flex;justify-content:space-between;align-items:start">
+					<div style="flex:1;min-width:0"><p style="font-size:14px;margin:0 0 4px">%s</p>
+					<p style="font-size:12px;color:#888;margin:0">%s · max %s/trade · %s/week</p></div>
+					<span style="font-size:12px;color:%s;white-space:nowrap">%s</span></div>`,
+					htmlEsc(s.Description), s.Mode, s.MaxPerTrade, s.MaxPerWeek, statusColor, statusLabel))
+				b.WriteString(fmt.Sprintf(`<div style="display:flex;gap:6px;margin-top:6px">
+					<form method="POST" action="/trade/strategy/toggle"><input type="hidden" name="id" value="%s"><button type="submit" style="font-size:12px;padding:3px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer">%s</button></form>
+					<form method="POST" action="/trade/strategy/delete"><input type="hidden" name="id" value="%s"><button type="submit" style="font-size:12px;padding:3px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;color:#c00">Delete</button></form>
+					</div>`, s.ID, func() string { if s.Active { return "Pause" }; return "Resume" }(), s.ID))
+				b.WriteString(`</div>`)
+			}
+		}
+		b.WriteString(`<details style="margin-top:12px"><summary style="font-size:13px;cursor:pointer">New strategy</summary>`)
+		b.WriteString(`<div style="margin-top:10px">`)
+		for _, preset := range strategyPresets {
+			b.WriteString(fmt.Sprintf(`<form method="POST" action="/trade/strategy" style="display:inline">
+				<input type="hidden" name="description" value="%s">
+				<input type="hidden" name="mode" value="alert">
+				<input type="hidden" name="max_per_trade" value="50">
+				<input type="hidden" name="max_per_week" value="200">
+				<button type="submit" style="display:block;width:100%%;text-align:left;padding:10px 12px;margin-bottom:6px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:inherit">
+				<strong>%s</strong><br><span style="color:#888;font-size:12px">%s</span>
+				</button></form>`, htmlEsc(preset.Description), htmlEsc(preset.Name), htmlEsc(preset.Description)))
 		}
 		b.WriteString(`</div>`)
+		b.WriteString(`<details style="margin-top:8px"><summary style="font-size:12px;color:#888;cursor:pointer">Custom strategy</summary>`)
+		b.WriteString(`<form method="POST" action="/trade/strategy" style="margin-top:8px">`)
+		b.WriteString(`<textarea name="description" placeholder="Describe your strategy in plain English..." required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;font-family:inherit;resize:vertical" rows="2"></textarea>`)
+		b.WriteString(`<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">`)
+		b.WriteString(`<div><label style="font-size:12px;color:#888;display:block;margin-bottom:2px">Mode</label><select name="mode" style="padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px"><option value="alert">Alert only</option><option value="confirm">Confirm first</option><option value="auto">Auto-execute</option></select></div>`)
+		b.WriteString(`<div><label style="font-size:12px;color:#888;display:block;margin-bottom:2px">Max/trade</label><input type="text" name="max_per_trade" value="50" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px"></div>`)
+		b.WriteString(`<div><label style="font-size:12px;color:#888;display:block;margin-bottom:2px">Max/week</label><input type="text" name="max_per_week" value="200" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px"></div>`)
+		b.WriteString(`</div>`)
+		b.WriteString(`<button type="submit" class="btn" style="margin-top:8px">Create</button>`)
+		b.WriteString(`</form></details>`)
+		b.WriteString(`</details>`)
+		b.WriteString(`</div>`)
+
+		// Signals
+		sigs := GetSignals(acc.ID, 10)
+		if len(sigs) > 0 {
+			b.WriteString(`<div class="card">`)
+			b.WriteString(`<h3>Signals</h3>`)
+			for i := len(sigs) - 1; i >= 0; i-- {
+				sig := sigs[i]
+				icon := "→"
+				if sig.Executed {
+					icon = "✓"
+				}
+				date := sig.CreatedAt
+				if len(date) > 16 {
+					date = date[:16]
+				}
+				b.WriteString(fmt.Sprintf(`<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
+					<div><strong>%s %s %s %s</strong></div>
+					<div style="color:#555;margin-top:2px">%s</div>
+					<div style="color:#888;font-size:12px;margin-top:2px">%s</div>
+					</div>`, icon, sig.Action, sig.Amount, sig.Token, htmlEsc(sig.Reason), date))
+			}
+			b.WriteString(`</div>`)
+		}
 
 		// Trade history
 		trades := GetTrades(acc.ID, 20)
 		if len(trades) > 0 {
 			b.WriteString(`<div class="card">`)
 			b.WriteString(`<h3>History</h3>`)
-			b.WriteString(`<table class="data-table">`)
-			b.WriteString(`<tr><th>Date</th><th>Swap</th><th>Status</th></tr>`)
 			for i := len(trades) - 1; i >= 0; i-- {
 				t := trades[i]
 				date := t.CreatedAt
-				if len(date) > 16 {
-					date = date[:16]
+				if len(date) > 10 {
+					date = date[:10]
 				}
-				swap := t.AmountIn + " → " + t.AmountOut
-				status := t.Status
+				statusColor := "#888"
+				if t.Status == "confirmed" {
+					statusColor = "#28a745"
+				} else if t.Status == "failed" {
+					statusColor = "#c00"
+				}
+				b.WriteString(fmt.Sprintf(`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:14px">`))
+				b.WriteString(fmt.Sprintf(`<div><strong>%s → %s</strong><br><span style="font-size:12px;color:#888">%s</span></div>`, t.AmountIn, t.AmountOut, date))
 				if t.TxHash != "" {
-					status = fmt.Sprintf(`<a href="https://basescan.org/tx/%s" target="_blank">%s</a>`, t.TxHash, t.Status)
+					b.WriteString(fmt.Sprintf(`<a href="https://basescan.org/tx/%s" target="_blank" style="color:%s;font-size:13px">%s</a>`, t.TxHash, statusColor, t.Status))
+				} else {
+					b.WriteString(fmt.Sprintf(`<span style="color:%s;font-size:13px">%s</span>`, statusColor, t.Status))
 				}
-				b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td></tr>`, date, swap, status))
+				b.WriteString(`</div>`)
 			}
-			b.WriteString(`</table>`)
 			b.WriteString(`</div>`)
 		}
 	}
@@ -202,4 +307,52 @@ func handleSwap(w http.ResponseWriter, r *http.Request) {
 
 	html := app.RenderHTMLForRequest("Swap Quote", "Trade result", b.String(), r)
 	w.Write([]byte(html))
+}
+
+func handleCreateStrategy(w http.ResponseWriter, r *http.Request) {
+	sess, _ := auth.TrySession(r)
+	if sess == nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+
+	desc := strings.TrimSpace(r.FormValue("description"))
+	mode := ExecutionMode(r.FormValue("mode"))
+	maxPerTrade := r.FormValue("max_per_trade")
+	maxPerWeek := r.FormValue("max_per_week")
+
+	if _, err := CreateStrategy(sess.Account, desc, mode, maxPerTrade, maxPerWeek); err != nil {
+		http.Redirect(w, r, "/trade?error="+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+}
+
+func handleToggleStrategy(w http.ResponseWriter, r *http.Request) {
+	sess, _ := auth.TrySession(r)
+	if sess == nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+	PauseStrategy(sess.Account, r.FormValue("id"))
+	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+}
+
+func handleDeleteStrategy(w http.ResponseWriter, r *http.Request) {
+	sess, _ := auth.TrySession(r)
+	if sess == nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+	DeleteStrategy(sess.Account, r.FormValue("id"))
+	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+}
+
+func htmlEsc(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, `"`, "&#34;")
+	return s
 }

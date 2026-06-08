@@ -32,6 +32,8 @@ var Tokens = map[string]Token{
 	"USDC": {Symbol: "USDC", Name: "USD Coin", Decimals: 6, Address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"},
 }
 
+var tokenOrder = []string{"ETH", "USDC", "WETH"}
+
 // Uniswap V3 contract addresses on Base.
 const (
 	UniswapRouterAddr = "0x2626664c2603336E57B271c5C0b26F421741e481"
@@ -75,6 +77,8 @@ var (
 func Load() {
 	data.LoadJSON("trade_wallets.json", &wallets)
 	data.LoadJSON("trade_history.json", &trades)
+	loadStrategies()
+	StartSignalLoop()
 }
 
 // Enabled returns true. Trading uses Base mainnet by default.
