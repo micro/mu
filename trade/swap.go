@@ -52,12 +52,12 @@ func GetQuote(fromSymbol, toSymbol, amount string) (*Quote, error) {
 	fee := big.NewInt(3000) // 0.3% pool
 	callData := buildQuoteCalldata(fromAddr, toAddr, amountIn, fee)
 
-	result, err := ethCall(UniswapQuoterAddr, callData)
+	result, err := ethCall(UniswapQuoterAddr(), callData)
 	if err != nil {
 		// Try 0.05% pool (500) for stablecoin pairs
 		fee = big.NewInt(500)
 		callData = buildQuoteCalldata(fromAddr, toAddr, amountIn, fee)
-		result, err = ethCall(UniswapQuoterAddr, callData)
+		result, err = ethCall(UniswapQuoterAddr(), callData)
 		if err != nil {
 			return nil, fmt.Errorf("quote failed: %w", err)
 		}
@@ -168,7 +168,7 @@ func ExecuteSwap(accountID, fromSymbol, toSymbol, amount string) (*Trade, error)
 
 	// Step 1: Approve token if ERC20 (not native ETH)
 	if !from.Native {
-		if err := ensureApproval(w, from.Address, UniswapRouterAddr, amountIn); err != nil {
+		if err := ensureApproval(w, from.Address, UniswapRouterAddr(), amountIn); err != nil {
 			return nil, fmt.Errorf("approval failed: %w", err)
 		}
 	}
@@ -209,18 +209,18 @@ func ExecuteSwap(accountID, fromSymbol, toSymbol, amount string) (*Trade, error)
 		return nil, fmt.Errorf("get gas fees: %w", err)
 	}
 
-	gasLimit, err := estimateGas(w.Address, UniswapRouterAddr, txValue, callData)
+	gasLimit, err := estimateGas(w.Address, UniswapRouterAddr(), txValue, callData)
 	if err != nil {
 		return nil, fmt.Errorf("estimate gas: %w", err)
 	}
 
 	tx := &Transaction{
-		ChainID:              big.NewInt(BaseChainID),
+		ChainID:              big.NewInt(activeChain().ChainID),
 		Nonce:                nonce,
 		MaxPriorityFeePerGas: maxPriorityFee,
 		MaxFeePerGas:         maxFee,
 		GasLimit:             gasLimit,
-		To:                   UniswapRouterAddr,
+		To:                   UniswapRouterAddr(),
 		Value:                txValue,
 		Data:                 callData,
 	}
@@ -314,7 +314,7 @@ func ensureApproval(w *Wallet, tokenAddr, spender string, amount *big.Int) error
 	}
 
 	tx := &Transaction{
-		ChainID:              big.NewInt(BaseChainID),
+		ChainID:              big.NewInt(activeChain().ChainID),
 		Nonce:                nonce,
 		MaxPriorityFeePerGas: maxPriorityFee,
 		MaxFeePerGas:         maxFee,
