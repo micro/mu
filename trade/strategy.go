@@ -248,13 +248,10 @@ type StrategyPreset struct {
 }
 
 var strategyPresets = []StrategyPreset{
+	// Price action
 	{
 		Name:        "Buy the dip",
 		Description: "Buy ETH when the price drops more than 5% in 24 hours and recent news sentiment is not negative",
-	},
-	{
-		Name:        "News-driven ETH",
-		Description: "Buy ETH when there are positive Ethereum news headlines (upgrades, ETF, adoption) and the price hasn't already pumped more than 3% today",
 	},
 	{
 		Name:        "BTC momentum",
@@ -264,8 +261,48 @@ var strategyPresets = []StrategyPreset{
 		Name:        "Sell the rally",
 		Description: "Sell ETH for USDC when the price rises more than 8% in 24 hours — take profits on sharp moves up",
 	},
+	// News-driven
 	{
-		Name:        "Stablecoin on fear",
-		Description: "Sell ETH for USDC when there are multiple negative crypto news headlines (regulation, hacks, crashes) and the price is already dropping",
+		Name:        "News-driven ETH",
+		Description: "Buy ETH when there are positive Ethereum news headlines (upgrades, ETF approvals, institutional adoption) and the price hasn't already pumped more than 3% today",
+	},
+	{
+		Name:        "Regulation fear",
+		Description: "Sell ETH for USDC when there are news headlines about crypto regulation, SEC enforcement, exchange shutdowns, or government crackdowns",
+	},
+	// Geopolitical
+	{
+		Name:        "Flight to safety",
+		Description: "Sell ETH for USDC when news headlines indicate military conflict, war escalation, sanctions, or major geopolitical crisis — risk assets typically fall during uncertainty",
+	},
+	{
+		Name:        "Sanctions play",
+		Description: "Buy ETH when news reports new economic sanctions on major economies — crypto historically rises as sanctioned populations seek alternative financial rails",
+	},
+	{
+		Name:        "De-dollarisation",
+		Description: "Buy ETH when news headlines discuss BRICS currency alternatives, countries dropping the US dollar, or central bank digital currency launches — signals weakening dollar confidence",
+	},
+	// Macro
+	{
+		Name:        "Rate cut rally",
+		Description: "Buy ETH when news reports central bank interest rate cuts, dovish monetary policy, or quantitative easing — loose money flows into risk assets",
+	},
+	{
+		Name:        "Inflation hedge",
+		Description: "Buy BTC when news headlines report higher than expected inflation, rising consumer prices, or currency devaluation — BTC is positioned as digital gold",
+	},
+	{
+		Name:        "Risk-off",
+		Description: "Sell ETH for USDC when news headlines indicate recession fears, banking crises, stock market crashes, or major corporate bankruptcies",
+	},
+	// Crypto-specific
+	{
+		Name:        "ETF momentum",
+		Description: "Buy ETH when news reports positive Bitcoin or Ethereum ETF developments — new approvals, record inflows, or new institutional products",
+	},
+	{
+		Name:        "Hack dump",
+		Description: "Sell ETH for USDC when news reports a major exchange hack, DeFi exploit, or bridge attack exceeding $50M — market typically drops on large security incidents",
 	},
 }
