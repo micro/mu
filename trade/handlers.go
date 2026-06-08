@@ -65,7 +65,14 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 			shortAddr = shortAddr[:6] + "..." + shortAddr[len(shortAddr)-4:]
 		}
 		b.WriteString(fmt.Sprintf(`<p style="font-size:13px"><a href="https://basescan.org/address/%s" target="_blank" style="font-family:monospace;word-break:break-all">%s</a></p>`, wallet.Address, shortAddr))
-		b.WriteString(`<p style="font-size:12px;color:#888;margin-top:4px">Send ETH or USDC on Base to this address to fund your wallet.</p>`)
+
+		// Fund wallet buttons
+		onrampURL := fmt.Sprintf(`https://pay.coinbase.com/buy/select-asset?addresses={"0x%s":["base"]}&assets=["ETH","USDC"]`, strings.TrimPrefix(wallet.Address, "0x"))
+		b.WriteString(`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">`)
+		b.WriteString(fmt.Sprintf(`<a href="%s" target="_blank" class="btn" style="font-size:13px;padding:6px 14px">Buy ETH</a>`, onrampURL))
+		b.WriteString(`<button onclick="copyAddr()" class="btn btn-secondary" style="font-size:13px;padding:6px 14px">Copy Address</button>`)
+		b.WriteString(`</div>`)
+		b.WriteString(fmt.Sprintf(`<script>function copyAddr(){navigator.clipboard.writeText('%s');var b=event.target;b.textContent='Copied!';setTimeout(function(){b.textContent='Copy Address'},1500)}</script>`, wallet.Address))
 
 		balances := GetBalances(wallet.Address)
 		b.WriteString(`<table style="width:100%;margin-top:12px;font-size:14px;border-collapse:collapse">`)
