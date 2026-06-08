@@ -21,6 +21,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleQuote(w, r)
 	case path == "/trade/swap" && r.Method == "POST":
 		handleSwap(w, r)
+	case path == "/trade/strategy" && r.Method == "POST":
+		handleCreateStrategy(w, r)
+	case path == "/trade/strategy/toggle" && r.Method == "POST":
+		handleToggleStrategy(w, r)
+	case path == "/trade/strategy/delete" && r.Method == "POST":
+		handleDeleteStrategy(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -117,6 +123,67 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<button type="submit" class="btn" style="width:100%;margin-top:12px">Get Quote</button>`)
 		b.WriteString(`</form>`)
 		b.WriteString(`</div>`)
+
+		// Strategies
+		strats := GetStrategies(acc.ID)
+		b.WriteString(`<div class="card">`)
+		b.WriteString(`<h3>Strategies</h3>`)
+		if len(strats) > 0 {
+			for _, s := range strats {
+				statusLabel := "Active"
+				statusColor := "#28a745"
+				if !s.Active {
+					statusLabel = "Paused"
+					statusColor = "#888"
+				}
+				b.WriteString(`<div style="padding:10px 0;border-bottom:1px solid #f0f0f0">`)
+				b.WriteString(fmt.Sprintf(`<div style="display:flex;justify-content:space-between;align-items:start">
+					<div style="flex:1;min-width:0"><p style="font-size:14px;margin:0 0 4px">%s</p>
+					<p style="font-size:12px;color:#888;margin:0">%s · max %s/trade · %s/week</p></div>
+					<span style="font-size:12px;color:%s;white-space:nowrap">%s</span></div>`,
+					htmlEsc(s.Description), s.Mode, s.MaxPerTrade, s.MaxPerWeek, statusColor, statusLabel))
+				b.WriteString(fmt.Sprintf(`<div style="display:flex;gap:6px;margin-top:6px">
+					<form method="POST" action="/trade/strategy/toggle"><input type="hidden" name="id" value="%s"><button type="submit" style="font-size:12px;padding:3px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer">%s</button></form>
+					<form method="POST" action="/trade/strategy/delete"><input type="hidden" name="id" value="%s"><button type="submit" style="font-size:12px;padding:3px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;color:#c00">Delete</button></form>
+					</div>`, s.ID, func() string { if s.Active { return "Pause" }; return "Resume" }(), s.ID))
+				b.WriteString(`</div>`)
+			}
+		}
+		b.WriteString(`<details style="margin-top:12px"><summary style="font-size:13px;cursor:pointer">New strategy</summary>`)
+		b.WriteString(`<form method="POST" action="/trade/strategy" style="margin-top:8px">`)
+		b.WriteString(`<textarea name="description" placeholder="Buy ETH when there's positive Ethereum news and price is down more than 3% today" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;font-family:inherit;resize:vertical" rows="2"></textarea>`)
+		b.WriteString(`<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">`)
+		b.WriteString(`<div><label style="font-size:12px;color:#888;display:block;margin-bottom:2px">Mode</label><select name="mode" style="padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px"><option value="alert">Alert only</option><option value="confirm">Confirm first</option><option value="auto">Auto-execute</option></select></div>`)
+		b.WriteString(`<div><label style="font-size:12px;color:#888;display:block;margin-bottom:2px">Max/trade</label><input type="text" name="max_per_trade" value="50" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px"></div>`)
+		b.WriteString(`<div><label style="font-size:12px;color:#888;display:block;margin-bottom:2px">Max/week</label><input type="text" name="max_per_week" value="200" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px"></div>`)
+		b.WriteString(`</div>`)
+		b.WriteString(`<button type="submit" class="btn" style="margin-top:8px">Create Strategy</button>`)
+		b.WriteString(`</form></details>`)
+		b.WriteString(`</div>`)
+
+		// Signals
+		sigs := GetSignals(acc.ID, 10)
+		if len(sigs) > 0 {
+			b.WriteString(`<div class="card">`)
+			b.WriteString(`<h3>Signals</h3>`)
+			for i := len(sigs) - 1; i >= 0; i-- {
+				sig := sigs[i]
+				icon := "→"
+				if sig.Executed {
+					icon = "✓"
+				}
+				date := sig.CreatedAt
+				if len(date) > 16 {
+					date = date[:16]
+				}
+				b.WriteString(fmt.Sprintf(`<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
+					<div><strong>%s %s %s %s</strong></div>
+					<div style="color:#555;margin-top:2px">%s</div>
+					<div style="color:#888;font-size:12px;margin-top:2px">%s</div>
+					</div>`, icon, sig.Action, sig.Amount, sig.Token, htmlEsc(sig.Reason), date))
+			}
+			b.WriteString(`</div>`)
+		}
 
 		// Trade history
 		trades := GetTrades(acc.ID, 20)
@@ -226,4 +293,52 @@ func handleSwap(w http.ResponseWriter, r *http.Request) {
 
 	html := app.RenderHTMLForRequest("Swap Quote", "Trade result", b.String(), r)
 	w.Write([]byte(html))
+}
+
+func handleCreateStrategy(w http.ResponseWriter, r *http.Request) {
+	sess, _ := auth.TrySession(r)
+	if sess == nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+
+	desc := strings.TrimSpace(r.FormValue("description"))
+	mode := ExecutionMode(r.FormValue("mode"))
+	maxPerTrade := r.FormValue("max_per_trade")
+	maxPerWeek := r.FormValue("max_per_week")
+
+	if _, err := CreateStrategy(sess.Account, desc, mode, maxPerTrade, maxPerWeek); err != nil {
+		http.Redirect(w, r, "/trade?error="+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+}
+
+func handleToggleStrategy(w http.ResponseWriter, r *http.Request) {
+	sess, _ := auth.TrySession(r)
+	if sess == nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+	PauseStrategy(sess.Account, r.FormValue("id"))
+	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+}
+
+func handleDeleteStrategy(w http.ResponseWriter, r *http.Request) {
+	sess, _ := auth.TrySession(r)
+	if sess == nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+	DeleteStrategy(sess.Account, r.FormValue("id"))
+	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+}
+
+func htmlEsc(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, `"`, "&#34;")
+	return s
 }

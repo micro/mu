@@ -756,7 +756,8 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"}). Use for calculations, data transforms, or any computation. Code runs as a function body — use 'return' to produce output.
 - trade_quote: Get a swap price quote for tokens on Base via Uniswap V3 (args: {"from":"ETH","to":"USDC","amount":"0.1"})
 - trade_swap: Execute a token swap on Base via Uniswap V3 (args: {"from":"ETH","to":"USDC","amount":"0.1"})
-- trade_wallet: Get your trading wallet address and token balances on Base (no args)`
+- trade_wallet: Get your trading wallet address and token balances on Base (no args)
+- trade_strategy: Create an automated trading strategy that monitors news and prices (args: {"description":"Buy ETH when positive news and price dips 3%","mode":"auto","max_per_trade":"50","max_per_week":"200"})`
 
 const guestToolsDesc = `Available tools (use exact name):
 - news: Get latest news feed (no args)

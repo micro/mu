@@ -292,7 +292,7 @@ func main() {
 		user.ClearStatusHistory,
 		mail.DeleteInbox,
 		func(id string) { wallet.DeleteWallet(id) },
-		func(id string) { trade.DeleteWallet(id) },
+		func(id string) { trade.DeleteWallet(id); trade.DeleteStrategies(id) },
 		func(id string) { app.ClearUserPrefs(id) },
 		memory.Clear,
 	)
@@ -727,6 +727,30 @@ func main() {
 			result["balances"] = trade.GetBalances(info.Address)
 		}
 		b, _ := json.Marshal(result)
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "trade_strategy",
+		Description: "Create an automated trading strategy. The AI evaluates news and prices every 15 minutes and trades when conditions are met.",
+		Params: []api.ToolParam{
+			{Name: "description", Type: "string", Description: "Strategy in plain English (e.g. 'Buy ETH when positive news and price dips 3%')", Required: true},
+			{Name: "mode", Type: "string", Description: "Execution mode: alert (notify only), confirm (propose trade), auto (execute automatically)", Required: false},
+			{Name: "max_per_trade", Type: "string", Description: "Maximum USDC per trade (default 50)", Required: false},
+			{Name: "max_per_week", Type: "string", Description: "Maximum USDC per week (default 500)", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		desc, _ := args["description"].(string)
+		mode, _ := args["mode"].(string)
+		if mode == "" {
+			mode = "alert"
+		}
+		maxTrade, _ := args["max_per_trade"].(string)
+		maxWeek, _ := args["max_per_week"].(string)
+		s, err := trade.CreateStrategy(accountID, desc, trade.ExecutionMode(mode), maxTrade, maxWeek)
+		if err != nil {
+			return "", err
+		}
+		b, _ := json.Marshal(s)
 		return string(b), nil
 	})
 

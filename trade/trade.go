@@ -77,6 +77,8 @@ var (
 func Load() {
 	data.LoadJSON("trade_wallets.json", &wallets)
 	data.LoadJSON("trade_history.json", &trades)
+	loadStrategies()
+	StartSignalLoop()
 }
 
 // Enabled returns true. Trading uses Base mainnet by default.
