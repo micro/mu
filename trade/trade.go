@@ -77,16 +77,16 @@ func Load() {
 	data.LoadJSON("trade_history.json", &trades)
 }
 
-// Enabled returns true if trading is configured (RPC URL available).
+// Enabled returns true. Trading uses Base mainnet by default.
 func Enabled() bool {
-	return rpcURL() != ""
+	return true
 }
 
 func rpcURL() string {
 	if v := os.Getenv("TRADE_RPC_URL"); v != "" {
 		return v
 	}
-	return ""
+	return BaseRPCURL
 }
 
 // GetWallet returns the trading wallet for a user, or nil.
