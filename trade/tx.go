@@ -55,6 +55,10 @@ func SignTransaction(tx *Transaction, privKeyHex string) ([]byte, error) {
 
 func rlpEncodeTx(tx *Transaction) []byte {
 	toBytes, _ := hex.DecodeString(strings.TrimPrefix(tx.To, "0x"))
+	txData := tx.Data
+	if txData == nil {
+		txData = []byte{}
+	}
 	items := []any{
 		bigIntBytes(tx.ChainID),
 		uint64Bytes(tx.Nonce),
@@ -63,7 +67,7 @@ func rlpEncodeTx(tx *Transaction) []byte {
 		uint64Bytes(tx.GasLimit),
 		toBytes,
 		bigIntBytes(tx.Value),
-		tx.Data,
+		txData,
 		[]any{}, // accessList (empty)
 	}
 	return rlpEncodeList(items)
@@ -71,6 +75,15 @@ func rlpEncodeTx(tx *Transaction) []byte {
 
 func rlpEncodeSignedTx(tx *Transaction, v byte, r, s *big.Int) []byte {
 	toBytes, _ := hex.DecodeString(strings.TrimPrefix(tx.To, "0x"))
+	txData := tx.Data
+	if txData == nil {
+		txData = []byte{}
+	}
+	// yParity: 0 encodes as empty bytes, 1 encodes as [0x01]
+	var vBytes []byte
+	if v > 0 {
+		vBytes = []byte{v}
+	}
 	items := []any{
 		bigIntBytes(tx.ChainID),
 		uint64Bytes(tx.Nonce),
@@ -79,11 +92,11 @@ func rlpEncodeSignedTx(tx *Transaction, v byte, r, s *big.Int) []byte {
 		uint64Bytes(tx.GasLimit),
 		toBytes,
 		bigIntBytes(tx.Value),
-		tx.Data,
-		[]any{},          // accessList
-		[]byte{v},        // yParity
-		r.Bytes(),        // r
-		s.Bytes(),        // s
+		txData,
+		[]any{},    // accessList
+		vBytes,     // yParity
+		r.Bytes(),  // r
+		s.Bytes(),  // s
 	}
 	return rlpEncodeList(items)
 }
