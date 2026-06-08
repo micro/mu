@@ -33,70 +33,82 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	errMsg := r.URL.Query().Get("error")
+
 	var b strings.Builder
+
+	if errMsg != "" {
+		b.WriteString(fmt.Sprintf(`<div class="card"><p style="color:#c00">%s</p></div>`, errMsg))
+	}
 
 	wallet := GetWallet(acc.ID)
 
 	if wallet == nil {
-		// No wallet yet — show setup
-		b.WriteString(`<div class="card" style="max-width:480px">`)
-		b.WriteString(`<h3>Trading</h3>`)
-		b.WriteString(`<p>Trade tokens on Base via Uniswap. To get started, create a trading wallet.</p>`)
-		b.WriteString(`<form method="POST" action="/trade/wallet">`)
-		b.WriteString(`<button type="submit" class="btn" style="margin-top:12px">Create Wallet</button>`)
+		b.WriteString(`<div class="card">`)
+		b.WriteString(`<h3>Get Started</h3>`)
+		b.WriteString(`<p>Trade tokens on Base via Uniswap. Create a wallet to start.</p>`)
+		b.WriteString(`<form method="POST" action="/trade/wallet" style="margin-top:12px">`)
+		b.WriteString(`<button type="submit" class="btn">Create Wallet</button>`)
 		b.WriteString(`</form>`)
-		b.WriteString(`<p class="text-sm text-muted" style="margin-top:12px">Or import an existing wallet:</p>`)
+		b.WriteString(`<details style="margin-top:16px"><summary style="font-size:13px;color:#888;cursor:pointer">Import existing wallet</summary>`)
 		b.WriteString(`<form method="POST" action="/trade/wallet" style="margin-top:8px">`)
-		b.WriteString(`<input type="text" name="private_key" placeholder="Private key (hex)" class="form-input w-full" style="font-size:13px">`)
+		b.WriteString(`<input type="text" name="private_key" placeholder="Private key (hex)" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;font-family:monospace">`)
 		b.WriteString(`<button type="submit" class="btn btn-secondary" style="margin-top:8px">Import</button>`)
-		b.WriteString(`</form>`)
+		b.WriteString(`</form></details>`)
 		b.WriteString(`</div>`)
 	} else {
-		// Wallet exists — show balances and trade form
+		// Wallet
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Wallet</h3>`)
-		b.WriteString(fmt.Sprintf(`<p class="text-sm" style="word-break:break-all"><strong>Address:</strong> %s</p>`, wallet.Address))
-
-		if Enabled() {
-			balances := GetBalances(wallet.Address)
-			if len(balances) > 0 {
-				b.WriteString(`<table class="stats-table" style="margin-top:8px">`)
-				for symbol, amount := range balances {
-					b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td></tr>`, symbol, amount))
-				}
-				b.WriteString(`</table>`)
-			} else {
-				b.WriteString(`<p class="text-sm text-muted" style="margin-top:8px">No balances. Send ETH or USDC to your wallet address to start trading.</p>`)
-			}
-		} else {
-			b.WriteString(`<p class="text-sm text-muted" style="margin-top:8px">Set TRADE_RPC_URL to enable balance fetching and trading.</p>`)
+		shortAddr := wallet.Address
+		if len(shortAddr) > 10 {
+			shortAddr = shortAddr[:6] + "..." + shortAddr[len(shortAddr)-4:]
 		}
+		b.WriteString(fmt.Sprintf(`<p style="font-size:13px"><a href="https://basescan.org/address/%s" target="_blank" style="font-family:monospace;word-break:break-all">%s</a></p>`, wallet.Address, shortAddr))
+		b.WriteString(`<p style="font-size:12px;color:#888;margin-top:4px">Send ETH or USDC on Base to this address to fund your wallet.</p>`)
+
+		balances := GetBalances(wallet.Address)
+		b.WriteString(`<table style="width:100%;margin-top:12px;font-size:14px;border-collapse:collapse">`)
+		for _, symbol := range tokenOrder {
+			amount := balances[symbol]
+			if amount == "" {
+				amount = "0"
+			}
+			b.WriteString(fmt.Sprintf(`<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:6px 0;color:#555">%s</td><td style="padding:6px 0;text-align:right;font-family:monospace">%s</td></tr>`, symbol, amount))
+		}
+		b.WriteString(`</table>`)
 		b.WriteString(`</div>`)
 
 		// Swap form
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Swap</h3>`)
-		if !Enabled() {
-			b.WriteString(`<p class="text-sm text-muted">Trading requires TRADE_RPC_URL to be configured.</p>`)
-		} else {
-			b.WriteString(`<form method="POST" action="/trade/swap">`)
-			b.WriteString(`<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">`)
-			b.WriteString(`<div><label class="text-sm">Amount</label><input type="text" name="amount" placeholder="100" required class="form-input" style="width:120px"></div>`)
-			b.WriteString(`<div><label class="text-sm">From</label><select name="from" class="form-input">`)
-			for symbol := range Tokens {
-				b.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, symbol, symbol))
+		b.WriteString(`<form method="POST" action="/trade/swap">`)
+		b.WriteString(`<div style="display:flex;gap:8px;margin-bottom:12px">`)
+		b.WriteString(`<div style="flex:1"><label style="font-size:12px;color:#888;display:block;margin-bottom:4px">From</label>`)
+		b.WriteString(`<select name="from" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
+		for _, symbol := range tokenOrder {
+			sel := ""
+			if symbol == "USDC" {
+				sel = " selected"
 			}
-			b.WriteString(`</select></div>`)
-			b.WriteString(`<div style="padding:8px;font-size:18px">→</div>`)
-			b.WriteString(`<div><label class="text-sm">To</label><select name="to" class="form-input">`)
-			for symbol := range Tokens {
-				b.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, symbol, symbol))
-			}
-			b.WriteString(`</select></div>`)
-			b.WriteString(`<button type="submit" class="btn">Get Quote</button>`)
-			b.WriteString(`</div>`)
-			b.WriteString(`</form>`)
+			b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, symbol, sel, symbol))
 		}
+		b.WriteString(`</select></div>`)
+		b.WriteString(`<div style="flex:1"><label style="font-size:12px;color:#888;display:block;margin-bottom:4px">To</label>`)
+		b.WriteString(`<select name="to" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
+		for _, symbol := range tokenOrder {
+			sel := ""
+			if symbol == "ETH" {
+				sel = " selected"
+			}
+			b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, symbol, sel, symbol))
+		}
+		b.WriteString(`</select></div>`)
+		b.WriteString(`</div>`)
+		b.WriteString(`<label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Amount</label>`)
+		b.WriteString(`<input type="text" name="amount" placeholder="0.00" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:monospace">`)
+		b.WriteString(`<button type="submit" class="btn" style="width:100%;margin-top:12px">Get Quote</button>`)
+		b.WriteString(`</form>`)
 		b.WriteString(`</div>`)
 
 		// Trade history
@@ -104,22 +116,27 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		if len(trades) > 0 {
 			b.WriteString(`<div class="card">`)
 			b.WriteString(`<h3>History</h3>`)
-			b.WriteString(`<table class="data-table">`)
-			b.WriteString(`<tr><th>Date</th><th>Swap</th><th>Status</th></tr>`)
 			for i := len(trades) - 1; i >= 0; i-- {
 				t := trades[i]
 				date := t.CreatedAt
-				if len(date) > 16 {
-					date = date[:16]
+				if len(date) > 10 {
+					date = date[:10]
 				}
-				swap := t.AmountIn + " → " + t.AmountOut
-				status := t.Status
+				statusColor := "#888"
+				if t.Status == "confirmed" {
+					statusColor = "#28a745"
+				} else if t.Status == "failed" {
+					statusColor = "#c00"
+				}
+				b.WriteString(fmt.Sprintf(`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:14px">`))
+				b.WriteString(fmt.Sprintf(`<div><strong>%s → %s</strong><br><span style="font-size:12px;color:#888">%s</span></div>`, t.AmountIn, t.AmountOut, date))
 				if t.TxHash != "" {
-					status = fmt.Sprintf(`<a href="https://basescan.org/tx/%s" target="_blank">%s</a>`, t.TxHash, t.Status)
+					b.WriteString(fmt.Sprintf(`<a href="https://basescan.org/tx/%s" target="_blank" style="color:%s;font-size:13px">%s</a>`, t.TxHash, statusColor, t.Status))
+				} else {
+					b.WriteString(fmt.Sprintf(`<span style="color:%s;font-size:13px">%s</span>`, statusColor, t.Status))
 				}
-				b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td></tr>`, date, swap, status))
+				b.WriteString(`</div>`)
 			}
-			b.WriteString(`</table>`)
 			b.WriteString(`</div>`)
 		}
 	}
