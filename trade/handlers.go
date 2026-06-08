@@ -15,6 +15,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case path == "/trade" && r.Method == "GET":
+		http.Redirect(w, r, "/markets?category=trade", http.StatusSeeOther)
+	case (path == "/trade" || path == "/markets") && r.Method == "GET":
 		handlePage(w, r)
 	case path == "/trade/wallet" && r.Method == "POST":
 		handleCreateWallet(w, r)
@@ -261,7 +263,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	html := app.RenderHTMLForRequest("Trade", "DEX trading via Uniswap on Base", b.String(), r)
+	html := app.RenderHTMLForRequest("Markets", "DEX trading via Uniswap", b.String(), r)
 	w.Write([]byte(html))
 }
 
@@ -275,17 +277,17 @@ func handleCreateWallet(w http.ResponseWriter, r *http.Request) {
 	privKey := strings.TrimSpace(r.FormValue("private_key"))
 	if privKey != "" {
 		if _, err := ImportWallet(sess.Account, privKey); err != nil {
-			http.Redirect(w, r, "/trade?error="+err.Error(), http.StatusSeeOther)
+			http.Redirect(w, r, "/markets?category=trade&error="+err.Error(), http.StatusSeeOther)
 			return
 		}
 	} else {
 		if _, err := CreateWallet(sess.Account); err != nil {
-			http.Redirect(w, r, "/trade?error="+err.Error(), http.StatusSeeOther)
+			http.Redirect(w, r, "/markets?category=trade&error="+err.Error(), http.StatusSeeOther)
 			return
 		}
 	}
 
-	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+	http.Redirect(w, r, "/markets?category=trade", http.StatusSeeOther)
 }
 
 func handleQuote(w http.ResponseWriter, r *http.Request) {
@@ -320,11 +322,12 @@ func handleSwap(w http.ResponseWriter, r *http.Request) {
 	trade, err := ExecuteSwap(sess.Account, from, to, amount)
 	if err != nil {
 		q := url.Values{}
+		q.Set("category", "trade")
 		q.Set("error", err.Error())
 		q.Set("from", from)
 		q.Set("to", to)
 		q.Set("amount", amount)
-		http.Redirect(w, r, "/trade?"+q.Encode(), http.StatusSeeOther)
+		http.Redirect(w, r, "/markets?"+q.Encode(), http.StatusSeeOther)
 		return
 	}
 
@@ -339,7 +342,7 @@ func handleSwap(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<h3>Swap Quote</h3>`)
 	b.WriteString(fmt.Sprintf(`<p><strong>%s</strong> → <strong>%s</strong></p>`, trade.AmountIn, trade.AmountOut))
 	b.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">Status: %s</p>`, trade.Status))
-	b.WriteString(`<p style="margin-top:12px"><a href="/trade">← Back to Trade</a></p>`)
+	b.WriteString(`<p style="margin-top:12px"><a href="/markets?category=trade">← Back to Markets</a></p>`)
 	b.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest("Swap Quote", "Trade result", b.String(), r)
@@ -359,11 +362,11 @@ func handleCreateStrategy(w http.ResponseWriter, r *http.Request) {
 	maxPerWeek := r.FormValue("max_per_week")
 
 	if _, err := CreateStrategy(sess.Account, desc, mode, maxPerTrade, maxPerWeek); err != nil {
-		http.Redirect(w, r, "/trade?error="+err.Error(), http.StatusSeeOther)
+		http.Redirect(w, r, "/markets?category=trade&error="+err.Error(), http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+	http.Redirect(w, r, "/markets?category=trade", http.StatusSeeOther)
 }
 
 func handleToggleStrategy(w http.ResponseWriter, r *http.Request) {
@@ -373,7 +376,7 @@ func handleToggleStrategy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	PauseStrategy(sess.Account, r.FormValue("id"))
-	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+	http.Redirect(w, r, "/markets?category=trade", http.StatusSeeOther)
 }
 
 func handleDeleteStrategy(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +386,7 @@ func handleDeleteStrategy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	DeleteStrategy(sess.Account, r.FormValue("id"))
-	http.Redirect(w, r, "/trade", http.StatusSeeOther)
+	http.Redirect(w, r, "/markets?category=trade", http.StatusSeeOther)
 }
 
 func htmlEsc(s string) string {
