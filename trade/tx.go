@@ -328,24 +328,34 @@ func sendRawTransaction(signedTx []byte) (string, error) {
 
 func waitForReceipt(txHash string) (string, error) {
 	url := rpcURL()
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 60; i++ {
 		req := rpcRequest{JSONRPC: "2.0", Method: "eth_getTransactionReceipt", Params: []any{txHash}, ID: 1}
 		result, err := doRPC(url, req)
 		if err != nil {
-			return "", err
+			// RPC error — retry, don't fail immediately
+			time.Sleep(2 * time.Second)
+			continue
 		}
-		if string(result) != "null" {
-			var receipt struct {
-				Status  string `json:"status"`
-				GasUsed string `json:"gasUsed"`
-			}
-			json.Unmarshal(result, &receipt)
-			if receipt.Status == "0x1" {
-				return receipt.GasUsed, nil
-			}
+		raw := strings.TrimSpace(string(result))
+		if raw == "null" || raw == "" {
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		var receipt struct {
+			Status  string `json:"status"`
+			GasUsed string `json:"gasUsed"`
+		}
+		if err := json.Unmarshal(result, &receipt); err != nil {
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		if receipt.Status == "0x1" || receipt.Status == "1" {
+			return receipt.GasUsed, nil
+		}
+		if receipt.Status == "0x0" || receipt.Status == "0" {
 			return "", fmt.Errorf("transaction reverted")
 		}
-		time.Sleep(2 * time.Second)
+		return receipt.GasUsed, nil
 	}
-	return "", fmt.Errorf("receipt timeout after 60 seconds")
+	return "", fmt.Errorf("receipt timeout after 2 minutes")
 }
