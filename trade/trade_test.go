@@ -73,6 +73,7 @@ func TestAddressFromKnownKey(t *testing.T) {
 }
 
 func TestListTokens(t *testing.T) {
+	initTokens()
 	tokens := ListTokens()
 	if len(tokens) == 0 {
 		t.Error("ListTokens() returned empty")

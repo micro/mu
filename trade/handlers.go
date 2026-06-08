@@ -65,12 +65,12 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Wallet
 		b.WriteString(`<div class="card">`)
-		b.WriteString(`<h3>Wallet</h3>`)
+		b.WriteString(fmt.Sprintf(`<h3>Wallet <span style="font-size:12px;font-weight:400;color:#888">· %s</span></h3>`, ActiveChainName()))
 		shortAddr := wallet.Address
 		if len(shortAddr) > 10 {
 			shortAddr = shortAddr[:6] + "..." + shortAddr[len(shortAddr)-4:]
 		}
-		b.WriteString(fmt.Sprintf(`<p style="font-size:13px"><a href="https://basescan.org/address/%s" target="_blank" style="font-family:monospace;word-break:break-all">%s</a></p>`, wallet.Address, shortAddr))
+		b.WriteString(fmt.Sprintf(`<p style="font-size:13px"><a href="`+ChainExplorer()+`/address/%s" target="_blank" style="font-family:monospace;word-break:break-all">%s</a></p>`, wallet.Address, shortAddr))
 
 		b.WriteString(`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">`)
 		b.WriteString(`<button onclick="copyAddr()" class="btn" style="font-size:13px;padding:6px 14px">Copy Address</button>`)
@@ -217,7 +217,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 				b.WriteString(fmt.Sprintf(`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:14px">`))
 				b.WriteString(fmt.Sprintf(`<div><strong>%s → %s</strong><br><span style="font-size:12px;color:#888">%s</span></div>`, t.AmountIn, t.AmountOut, date))
 				if t.TxHash != "" {
-					b.WriteString(fmt.Sprintf(`<a href="https://basescan.org/tx/%s" target="_blank" style="color:%s;font-size:13px">%s</a>`, t.TxHash, statusColor, t.Status))
+					b.WriteString(fmt.Sprintf(`<a href="`+ChainExplorer()+`/tx/%s" target="_blank" style="color:%s;font-size:13px">%s</a>`, t.TxHash, statusColor, t.Status))
 				} else {
 					b.WriteString(fmt.Sprintf(`<span style="color:%s;font-size:13px">%s</span>`, statusColor, t.Status))
 				}

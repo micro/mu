@@ -14,31 +14,76 @@ import (
 	"strings"
 	"sync"
 
+	"mu/internal/app"
 	"mu/internal/data"
 
 	"golang.org/x/crypto/sha3"
 )
 
-// Base chain constants.
-const (
-	BaseChainID = 8453
-	BaseRPCURL  = "https://mainnet.base.org"
-)
-
-// Well-known token addresses on Base.
-var Tokens = map[string]Token{
-	"ETH": {Symbol: "ETH", Name: "Ether", Decimals: 18, Address: "0x0000000000000000000000000000000000000000", Native: true},
-	"WETH": {Symbol: "WETH", Name: "Wrapped Ether", Decimals: 18, Address: "0x4200000000000000000000000000000000000006"},
-	"USDC": {Symbol: "USDC", Name: "USD Coin", Decimals: 6, Address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"},
+// Chain configuration. Defaults to Ethereum mainnet.
+// Set TRADE_CHAIN=base for Base L2.
+type ChainConfig struct {
+	Name      string
+	ChainID   int64
+	RPCURL    string
+	WETH      string
+	USDC      string
+	Router    string
+	Quoter    string
+	Explorer  string
 }
 
+var chains = map[string]ChainConfig{
+	"ethereum": {
+		Name:     "Ethereum",
+		ChainID:  1,
+		RPCURL:   "https://eth.llamarpc.com",
+		WETH:     "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+		USDC:     "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+		Router:   "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+		Quoter:   "0x61fFE014bA17989E743c5F6cB21bF9697530B21e",
+		Explorer: "https://etherscan.io",
+	},
+	"base": {
+		Name:     "Base",
+		ChainID:  8453,
+		RPCURL:   "https://mainnet.base.org",
+		WETH:     "0x4200000000000000000000000000000000000006",
+		USDC:     "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+		Router:   "0x2626664c2603336E57B271c5C0b26F421741e481",
+		Quoter:   "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a",
+		Explorer: "https://basescan.org",
+	},
+}
+
+func activeChain() ChainConfig {
+	name := os.Getenv("TRADE_CHAIN")
+	if name == "" {
+		name = "ethereum"
+	}
+	if c, ok := chains[name]; ok {
+		return c
+	}
+	return chains["ethereum"]
+}
+
+func ActiveChainName() string { return activeChain().Name }
+func ChainExplorer() string   { return activeChain().Explorer }
+
+var Tokens map[string]Token
 var tokenOrder = []string{"ETH", "USDC", "WETH"}
 
-// Uniswap V3 contract addresses on Base.
-const (
-	UniswapRouterAddr = "0x2626664c2603336E57B271c5C0b26F421741e481"
-	UniswapQuoterAddr = "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a"
-)
+func initTokens() {
+	c := activeChain()
+	Tokens = map[string]Token{
+		"ETH":  {Symbol: "ETH", Name: "Ether", Decimals: 18, Address: "0x0000000000000000000000000000000000000000", Native: true},
+		"WETH": {Symbol: "WETH", Name: "Wrapped Ether", Decimals: 18, Address: c.WETH},
+		"USDC": {Symbol: "USDC", Name: "USD Coin", Decimals: 6, Address: c.USDC},
+	}
+}
+
+func UniswapRouterAddr() string { return activeChain().Router }
+func UniswapQuoterAddr() string { return activeChain().Quoter }
 
 type Token struct {
 	Symbol   string `json:"symbol"`
@@ -75,10 +120,12 @@ var (
 )
 
 func Load() {
+	initTokens()
 	data.LoadJSON("trade_wallets.json", &wallets)
 	data.LoadJSON("trade_history.json", &trades)
 	loadStrategies()
 	StartSignalLoop()
+	app.Log("trade", "Trading on %s (chain ID %d)", activeChain().Name, activeChain().ChainID)
 }
 
 // Enabled returns true. Trading uses Base mainnet by default.
@@ -90,7 +137,7 @@ func rpcURL() string {
 	if v := os.Getenv("TRADE_RPC_URL"); v != "" {
 		return v
 	}
-	return BaseRPCURL
+	return activeChain().RPCURL
 }
 
 // GetWallet returns the trading wallet for a user, or nil.
