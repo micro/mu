@@ -150,15 +150,29 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		b.WriteString(`<details style="margin-top:12px"><summary style="font-size:13px;cursor:pointer">New strategy</summary>`)
+		b.WriteString(`<div style="margin-top:10px">`)
+		for _, preset := range strategyPresets {
+			b.WriteString(fmt.Sprintf(`<form method="POST" action="/trade/strategy" style="display:inline">
+				<input type="hidden" name="description" value="%s">
+				<input type="hidden" name="mode" value="alert">
+				<input type="hidden" name="max_per_trade" value="50">
+				<input type="hidden" name="max_per_week" value="200">
+				<button type="submit" style="display:block;width:100%%;text-align:left;padding:10px 12px;margin-bottom:6px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:inherit">
+				<strong>%s</strong><br><span style="color:#888;font-size:12px">%s</span>
+				</button></form>`, htmlEsc(preset.Description), htmlEsc(preset.Name), htmlEsc(preset.Description)))
+		}
+		b.WriteString(`</div>`)
+		b.WriteString(`<details style="margin-top:8px"><summary style="font-size:12px;color:#888;cursor:pointer">Custom strategy</summary>`)
 		b.WriteString(`<form method="POST" action="/trade/strategy" style="margin-top:8px">`)
-		b.WriteString(`<textarea name="description" placeholder="Buy ETH when there's positive Ethereum news and price is down more than 3% today" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;font-family:inherit;resize:vertical" rows="2"></textarea>`)
+		b.WriteString(`<textarea name="description" placeholder="Describe your strategy in plain English..." required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;font-family:inherit;resize:vertical" rows="2"></textarea>`)
 		b.WriteString(`<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">`)
 		b.WriteString(`<div><label style="font-size:12px;color:#888;display:block;margin-bottom:2px">Mode</label><select name="mode" style="padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px"><option value="alert">Alert only</option><option value="confirm">Confirm first</option><option value="auto">Auto-execute</option></select></div>`)
 		b.WriteString(`<div><label style="font-size:12px;color:#888;display:block;margin-bottom:2px">Max/trade</label><input type="text" name="max_per_trade" value="50" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px"></div>`)
 		b.WriteString(`<div><label style="font-size:12px;color:#888;display:block;margin-bottom:2px">Max/week</label><input type="text" name="max_per_week" value="200" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px"></div>`)
 		b.WriteString(`</div>`)
-		b.WriteString(`<button type="submit" class="btn" style="margin-top:8px">Create Strategy</button>`)
+		b.WriteString(`<button type="submit" class="btn" style="margin-top:8px">Create</button>`)
 		b.WriteString(`</form></details>`)
+		b.WriteString(`</details>`)
 		b.WriteString(`</div>`)
 
 		// Signals

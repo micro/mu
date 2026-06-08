@@ -241,3 +241,31 @@ func DeleteStrategies(accountID string) {
 }
 
 var _ = json.Marshal
+
+type StrategyPreset struct {
+	Name        string
+	Description string
+}
+
+var strategyPresets = []StrategyPreset{
+	{
+		Name:        "Buy the dip",
+		Description: "Buy ETH when the price drops more than 5% in 24 hours and recent news sentiment is not negative",
+	},
+	{
+		Name:        "News-driven ETH",
+		Description: "Buy ETH when there are positive Ethereum news headlines (upgrades, ETF, adoption) and the price hasn't already pumped more than 3% today",
+	},
+	{
+		Name:        "BTC momentum",
+		Description: "Buy BTC when the price is up more than 2% in 24 hours and there are bullish crypto news headlines suggesting continued momentum",
+	},
+	{
+		Name:        "Sell the rally",
+		Description: "Sell ETH for USDC when the price rises more than 8% in 24 hours — take profits on sharp moves up",
+	},
+	{
+		Name:        "Stablecoin on fear",
+		Description: "Sell ETH for USDC when there are multiple negative crypto news headlines (regulation, hacks, crashes) and the price is already dropping",
+	},
+}
