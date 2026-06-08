@@ -3,6 +3,7 @@ package trade
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/internal/app"
@@ -90,7 +91,17 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</table>`)
 		b.WriteString(`</div>`)
 
-		// Swap form
+		// Swap form — restore values from query params on error redirect
+		prevFrom := r.URL.Query().Get("from")
+		prevTo := r.URL.Query().Get("to")
+		prevAmount := r.URL.Query().Get("amount")
+		if prevFrom == "" {
+			prevFrom = "ETH"
+		}
+		if prevTo == "" {
+			prevTo = "USDC"
+		}
+
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Swap</h3>`)
 		b.WriteString(`<form method="POST" action="/trade/swap" id="swap-form">`)
@@ -99,7 +110,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<select name="from" id="swap-from" onchange="updateMax()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
 		for _, symbol := range tokenOrder {
 			sel := ""
-			if symbol == "ETH" {
+			if symbol == prevFrom {
 				sel = " selected"
 			}
 			b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, symbol, sel, symbol))
@@ -110,7 +121,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<select name="to" id="swap-to" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit">`)
 		for _, symbol := range tokenOrder {
 			sel := ""
-			if symbol == "USDC" {
+			if symbol == prevTo {
 				sel = " selected"
 			}
 			b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, symbol, sel, symbol))
@@ -119,7 +130,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</div>`)
 		b.WriteString(`<label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Amount</label>`)
 		b.WriteString(`<div style="position:relative">`)
-		b.WriteString(`<input type="text" name="amount" id="swap-amount" placeholder="0.00" required style="width:100%;padding:8px 50px 8px 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:monospace">`)
+		b.WriteString(`<input type="text" name="amount" id="swap-amount" placeholder="0.00" value="`+htmlEsc(prevAmount)+`" required style="width:100%;padding:8px 50px 8px 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:monospace">`)
 		b.WriteString(`<button type="button" onclick="setMax()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:2px 8px;font-size:12px;border:1px solid #ddd;border-radius:4px;background:#f5f5f5;cursor:pointer;color:#555">MAX</button>`)
 		b.WriteString(`</div>`)
 		b.WriteString(`<button type="submit" class="btn" style="width:100%;margin-top:12px">Get Quote</button>`)
@@ -138,7 +149,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`};`)
 		b.WriteString(`function flipTokens(){var f=document.getElementById('swap-from'),t=document.getElementById('swap-to');var fv=f.value;f.value=t.value;t.value=fv;updateMax()}`)
 		b.WriteString(`function updateMax(){var s=document.getElementById('swap-from').value;document.getElementById('swap-amount').placeholder=balMap[s]||'0.00'}`)
-		b.WriteString(`function setMax(){var s=document.getElementById('swap-from').value;var v=balMap[s]||'0';document.getElementById('swap-amount').value=v}`)
+		b.WriteString(`function setMax(){var s=document.getElementById('swap-from').value;var v=parseFloat(balMap[s]||'0');if(s==='ETH'&&v>0.001)v=(v-0.001).toFixed(6);document.getElementById('swap-amount').value=v}`)
 		b.WriteString(`updateMax();`)
 		b.WriteString(`</script>`)
 		b.WriteString(`</div>`)
@@ -306,7 +317,12 @@ func handleSwap(w http.ResponseWriter, r *http.Request) {
 
 	trade, err := ExecuteSwap(sess.Account, from, to, amount)
 	if err != nil {
-		http.Redirect(w, r, "/trade?error="+err.Error(), http.StatusSeeOther)
+		q := url.Values{}
+		q.Set("error", err.Error())
+		q.Set("from", from)
+		q.Set("to", to)
+		q.Set("amount", amount)
+		http.Redirect(w, r, "/trade?"+q.Encode(), http.StatusSeeOther)
 		return
 	}
 
