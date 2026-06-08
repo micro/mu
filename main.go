@@ -720,7 +720,7 @@ func main() {
 	}, func(args map[string]any, accountID string) (string, error) {
 		info := trade.GetWalletInfo(accountID)
 		if info == nil {
-			return `{"error":"No trading wallet. Create one at /trade."}`, nil
+			return `{"error":"No trading wallet. Create one at /markets?category=trade"}`, nil
 		}
 		result := map[string]any{"address": info.Address}
 		if trade.Enabled() {
@@ -788,7 +788,6 @@ func main() {
 		"/admin/delete":  true,
 		"/admin/console": true,
 		"/admin/invite": true,
-		"/trade":           true,  // Require auth for trading
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
@@ -898,8 +897,7 @@ func main() {
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
 
 	// serve trading page
-	http.HandleFunc("/trade", trade.Handler)
-	http.HandleFunc("/trade/", trade.Handler)
+	http.HandleFunc("/trade/", trade.Handler) // form submissions (swap, wallet, strategy)
 
 	// serve search page (local + Brave web search)
 	http.HandleFunc("/search", search.Handler)
@@ -930,6 +928,7 @@ func main() {
 	http.HandleFunc("/mail", mail.Handler)
 
 	// serve markets page
+	markets.TradeHandler = trade.Handler
 	http.HandleFunc("/markets", markets.Handler)
 
 	// serve social page
