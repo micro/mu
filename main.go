@@ -20,6 +20,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/blog"
+	"mu/discord"
 	"mu/chat"
 	"mu/cli"
 	"mu/internal/data"
@@ -98,6 +99,7 @@ func main() {
 	reminder.Load()
 	wallet.Load()
 	trade.Load()
+	discord.Load()
 
 	// load apps
 	apps.Load()
@@ -293,6 +295,7 @@ func main() {
 		mail.DeleteInbox,
 		func(id string) { wallet.DeleteWallet(id) },
 		func(id string) { trade.DeleteWallet(id); trade.DeleteStrategies(id) },
+		func(id string) { discord.DeleteLinks(id) },
 		func(id string) { app.ClearUserPrefs(id) },
 		memory.Clear,
 	)
