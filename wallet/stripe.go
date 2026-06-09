@@ -8,25 +8,23 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/settings"
 )
 
 var (
-	stripeSecretKey     = os.Getenv("STRIPE_SECRET_KEY")
-	stripePublicKey     = os.Getenv("STRIPE_PUBLISHABLE_KEY")
-	stripeWebhookSecret = os.Getenv("STRIPE_WEBHOOK_SECRET")
-
-	// Track processed sessions to prevent duplicates
 	processedSessions = make(map[string]bool)
 )
 
-// StripeEnabled returns true if Stripe is configured
+func stripeSecret() string    { return settings.Get("STRIPE_SECRET_KEY") }
+func stripePublic() string    { return settings.Get("STRIPE_PUBLISHABLE_KEY") }
+func stripeWebhook() string   { return settings.Get("STRIPE_WEBHOOK_SECRET") }
+
 func StripeEnabled() bool {
-	return stripeSecretKey != "" && stripePublicKey != ""
+	return stripeSecret() != "" && stripePublic() != ""
 }
 
 // Subscription plans — monthly credit bundles via Stripe.
@@ -102,7 +100,7 @@ func CreateSubscriptionSession(userID, planID, successURL, cancelURL string) (st
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Authorization", "Bearer "+stripeSecretKey)
+	req.Header.Set("Authorization", "Bearer "+stripeSecret())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -185,7 +183,7 @@ func CreateCheckoutSession(userID string, amount int, successURL, cancelURL stri
 		return "", err
 	}
 
-	req.SetBasicAuth(stripeSecretKey, "")
+	req.SetBasicAuth(stripeSecret(), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -278,13 +276,13 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify webhook signature — REQUIRED for security
-	if stripeWebhookSecret == "" {
+	if stripeWebhook() == "" {
 		app.Log("stripe", "CRITICAL: STRIPE_WEBHOOK_SECRET not configured, rejecting webhook")
 		http.Error(w, "webhook not configured", http.StatusServiceUnavailable)
 		return
 	}
 	sig := r.Header.Get("Stripe-Signature")
-	if !verifyStripeSignature(body, sig, stripeWebhookSecret) {
+	if !verifyStripeSignature(body, sig, stripeWebhook()) {
 		app.Log("stripe", "webhook signature verification failed")
 		http.Error(w, "invalid signature", http.StatusBadRequest)
 		return
