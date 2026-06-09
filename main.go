@@ -104,6 +104,7 @@ func main() {
 	wallet.Load()
 	trade.Load()
 	trade.NotifyFunc = discord.NotifyUser
+	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
 	discord.Load()
 
 	// load apps

@@ -22,7 +22,6 @@ import (
 
 	"mu/agent"
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/settings"
 
@@ -258,19 +257,20 @@ func handleMessage(m discordMessage) {
 	content = strings.TrimSpace(content)
 
 	if content == "" {
-		sendMessage(m.ChannelID, "Ask me anything — I'm your personal AI. Type `link <username>` to connect your Mu account.")
+		sendMessage(m.ChannelID, "Ask me anything — I'm your personal AI. To connect your account, go to `/account` on Mu and generate a link code, then paste it here.")
 		return
 	}
 
-	// Handle link command
+	// Handle link command — accepts a one-time code, not a username
 	if strings.HasPrefix(strings.ToLower(content), "link ") {
-		username := strings.TrimSpace(content[5:])
-		if _, err := auth.GetAccount(username); err != nil {
-			sendMessage(m.ChannelID, fmt.Sprintf("Account `%s` not found.", username))
+		code := strings.TrimSpace(content[5:])
+		accountID, ok := redeemCode(code)
+		if !ok {
+			sendMessage(m.ChannelID, "Invalid or expired code. Generate a new one at `/account` on Mu.")
 			return
 		}
-		LinkAccount(m.Author.ID, username)
-		sendMessage(m.ChannelID, fmt.Sprintf("Linked to **%s**. I'll run as your account from now on.", username))
+		LinkAccount(m.Author.ID, accountID)
+		sendMessage(m.ChannelID, fmt.Sprintf("Linked to **%s**. I'll run as your account from now on.", accountID))
 		return
 	}
 
