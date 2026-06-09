@@ -35,7 +35,27 @@ var (
 
 	linkMu   sync.RWMutex
 	links    = map[string]string{} // discord user ID → mu account ID
+
+	historyMu sync.RWMutex
+	histories = map[string][]agent.QueryMessage{} // discord user ID → recent messages
 )
+
+const maxHistory = 10
+
+func getHistory(discordID string) []agent.QueryMessage {
+	historyMu.RLock()
+	defer historyMu.RUnlock()
+	return histories[discordID]
+}
+
+func addHistory(discordID string, role, text string) {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+	histories[discordID] = append(histories[discordID], agent.QueryMessage{Role: role, Text: text})
+	if len(histories[discordID]) > maxHistory {
+		histories[discordID] = histories[discordID][len(histories[discordID])-maxHistory:]
+	}
+}
 
 func Load() {
 	data.LoadJSON("discord_links.json", &links)
@@ -266,8 +286,9 @@ func handleMessage(m discordMessage) {
 	// Show typing indicator
 	showTyping(m.ChannelID)
 
-	// Run agent
-	answer, err := agent.Query(accountID, content)
+	// Get conversation history and run agent with context
+	history := getHistory(m.Author.ID)
+	answer, err := agent.Query(accountID, content, history...)
 	if err != nil {
 		app.Log("discord", "Agent error for %s: %v", accountID, err)
 		sendMessage(m.ChannelID, "Sorry, something went wrong: "+err.Error())
@@ -278,6 +299,10 @@ func handleMessage(m discordMessage) {
 		sendMessage(m.ChannelID, "I couldn't generate a response. Try rephrasing your question.")
 		return
 	}
+
+	// Save conversation history
+	addHistory(m.Author.ID, "user", content)
+	addHistory(m.Author.ID, "assistant", answer)
 
 	app.Log("discord", "Reply to %s: %.100s", m.Author.Username, answer)
 
