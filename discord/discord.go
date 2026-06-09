@@ -12,6 +12,8 @@
 package discord
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,6 +24,7 @@ import (
 
 	"mu/agent"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/settings"
 
@@ -91,6 +94,56 @@ func DeleteLinks(muAccount string) {
 		}
 	}
 	data.SaveJSON("discord_links.json", links)
+}
+
+// autoCreateAccount creates a Mu account from a Discord user and links it.
+func autoCreateAccount(discordID, username string) string {
+	// Sanitise Discord username for Mu (lowercase, alphanumeric, 4-24 chars)
+	id := strings.ToLower(username)
+	id = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
+			return r
+		}
+		return -1
+	}, id)
+	if len(id) < 4 {
+		id = id + discordID[len(discordID)-4:]
+	}
+	if len(id) > 24 {
+		id = id[:24]
+	}
+
+	// Check if username is taken — append digits if so
+	baseID := id
+	for i := 0; i < 100; i++ {
+		if _, err := auth.GetAccount(id); err != nil {
+			break // not taken
+		}
+		id = fmt.Sprintf("%s%d", baseID, i+1)
+		if len(id) > 24 {
+			id = id[:24]
+		}
+	}
+
+	// Generate a random password (user doesn't need it — they auth via Discord)
+	passBytes := make([]byte, 16)
+	rand.Read(passBytes)
+	pass := hex.EncodeToString(passBytes)
+
+	acc := &auth.Account{
+		ID:      id,
+		Name:    username,
+		Secret:  pass,
+		Created: time.Now(),
+	}
+	if err := auth.Create(acc); err != nil {
+		app.Log("discord", "Auto-create account failed for %s: %v", username, err)
+		return ""
+	}
+
+	LinkAccount(discordID, id)
+	app.Log("discord", "Auto-created account %s for Discord user %s", id, username)
+	return id
 }
 
 // ── Discord Gateway ──
@@ -257,11 +310,11 @@ func handleMessage(m discordMessage) {
 	content = strings.TrimSpace(content)
 
 	if content == "" {
-		sendMessage(m.ChannelID, "Ask me anything — I'm your personal AI. To connect your account, go to `/account` on Mu and generate a link code, then paste it here.")
+		sendMessage(m.ChannelID, "Ask me anything — I'm your personal AI.")
 		return
 	}
 
-	// Handle link command — accepts a one-time code, not a username
+	// Handle link command — links an existing Mu account via one-time code
 	if strings.HasPrefix(strings.ToLower(content), "link ") {
 		code := strings.TrimSpace(content[5:])
 		accountID, ok := redeemCode(code)
@@ -279,15 +332,19 @@ func handleMessage(m discordMessage) {
 		delete(links, m.Author.ID)
 		data.SaveJSON("discord_links.json", links)
 		linkMu.Unlock()
-		sendMessage(m.ChannelID, "Unlinked. Send `link <username>` to connect a different account.")
+		sendMessage(m.ChannelID, "Unlinked.")
 		return
 	}
 
-	// Look up linked account
+	// Look up or auto-create account
 	accountID := GetLinkedAccount(m.Author.ID)
 	if accountID == "" {
-		sendMessage(m.ChannelID, "Send `link <username>` to connect your Mu account first.")
-		return
+		accountID = autoCreateAccount(m.Author.ID, m.Author.Username)
+		if accountID == "" {
+			sendMessage(m.ChannelID, "Couldn't create your account. Try again later.")
+			return
+		}
+		sendMessage(m.ChannelID, fmt.Sprintf("Welcome! I've created your account **%s**. Ask me anything.", accountID))
 	}
 
 	app.Log("discord", "Message from %s (%s): %s", m.Author.Username, accountID, content)
