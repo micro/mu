@@ -71,15 +71,43 @@ func ActiveChainName() string { return activeChain().Name }
 func ChainExplorer() string   { return activeChain().Explorer }
 
 var Tokens map[string]Token
-var tokenOrder = []string{"ETH", "USDC", "WETH"}
+var tokenOrder []string
 
 func initTokens() {
 	c := activeChain()
+
+	// Common tokens shared across chains
 	Tokens = map[string]Token{
 		"ETH":  {Symbol: "ETH", Name: "Ether", Decimals: 18, Address: "0x0000000000000000000000000000000000000000", Native: true},
 		"WETH": {Symbol: "WETH", Name: "Wrapped Ether", Decimals: 18, Address: c.WETH},
 		"USDC": {Symbol: "USDC", Name: "USD Coin", Decimals: 6, Address: c.USDC},
 	}
+
+	// Chain-specific tokens
+	if c.ChainID == 1 { // Ethereum mainnet
+		Tokens["USDT"] = Token{Symbol: "USDT", Name: "Tether", Decimals: 6, Address: "0xdAC17F958D2ee523a2206206994597C13D831ec7"}
+		Tokens["DAI"] = Token{Symbol: "DAI", Name: "Dai", Decimals: 18, Address: "0x6B175474E89094C44Da98b954EedeAC495271d0F"}
+		Tokens["WBTC"] = Token{Symbol: "WBTC", Name: "Wrapped Bitcoin", Decimals: 8, Address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"}
+		Tokens["UNI"] = Token{Symbol: "UNI", Name: "Uniswap", Decimals: 18, Address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"}
+		Tokens["LINK"] = Token{Symbol: "LINK", Name: "Chainlink", Decimals: 18, Address: "0x514910771AF9Ca656af840dff83E8264EcF986CA"}
+		Tokens["AAVE"] = Token{Symbol: "AAVE", Name: "Aave", Decimals: 18, Address: "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9"}
+		Tokens["MKR"] = Token{Symbol: "MKR", Name: "Maker", Decimals: 18, Address: "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2"}
+		Tokens["PEPE"] = Token{Symbol: "PEPE", Name: "Pepe", Decimals: 18, Address: "0x6982508145454Ce325dDbE47a25d4ec3d2311933"}
+		Tokens["SHIB"] = Token{Symbol: "SHIB", Name: "Shiba Inu", Decimals: 18, Address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE"}
+	} else if c.ChainID == 8453 { // Base
+		Tokens["DAI"] = Token{Symbol: "DAI", Name: "Dai", Decimals: 18, Address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb"}
+		Tokens["cbETH"] = Token{Symbol: "cbETH", Name: "Coinbase ETH", Decimals: 18, Address: "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22"}
+	}
+
+	tokenOrder = []string{"ETH", "USDC", "USDT", "DAI", "WBTC", "UNI", "LINK", "AAVE", "MKR", "PEPE", "SHIB", "WETH", "cbETH"}
+	// Filter to only tokens that exist on this chain
+	var filtered []string
+	for _, s := range tokenOrder {
+		if _, ok := Tokens[s]; ok {
+			filtered = append(filtered, s)
+		}
+	}
+	tokenOrder = filtered
 }
 
 func UniswapRouterAddr() string { return activeChain().Router }
