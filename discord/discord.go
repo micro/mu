@@ -207,7 +207,7 @@ func handleMessage(m discordMessage) {
 		return
 	}
 
-	// Only respond to DMs or mentions
+	// Respond to DMs, mentions, or any message in a channel with the bot
 	isDM := m.GuildID == ""
 	isMention := false
 	for _, mention := range m.Mentions {
@@ -219,6 +219,8 @@ func handleMessage(m discordMessage) {
 	if !isDM && !isMention {
 		return
 	}
+
+	app.Log("discord", "Received message (DM=%v mention=%v guild=%s): %.100s", isDM, isMention, m.GuildID, m.Content)
 
 	// Strip bot mention from content
 	content := m.Content
@@ -259,15 +261,25 @@ func handleMessage(m discordMessage) {
 		return
 	}
 
+	app.Log("discord", "Message from %s (%s): %s", m.Author.Username, accountID, content)
+
 	// Show typing indicator
 	showTyping(m.ChannelID)
 
 	// Run agent
 	answer, err := agent.Query(accountID, content)
 	if err != nil {
+		app.Log("discord", "Agent error for %s: %v", accountID, err)
 		sendMessage(m.ChannelID, "Sorry, something went wrong: "+err.Error())
 		return
 	}
+
+	if strings.TrimSpace(answer) == "" {
+		sendMessage(m.ChannelID, "I couldn't generate a response. Try rephrasing your question.")
+		return
+	}
+
+	app.Log("discord", "Reply to %s: %.100s", m.Author.Username, answer)
 
 	// Discord has a 2000 char limit
 	if len(answer) > 1900 {
