@@ -38,17 +38,12 @@ var (
 )
 
 func Load() {
-	botToken = settings.Get("DISCORD_BOT_TOKEN")
-	if botToken == "" {
-		return
-	}
 	data.LoadJSON("discord_links.json", &links)
 	go run()
-	app.Log("discord", "Bot starting")
 }
 
 func Enabled() bool {
-	return botToken != ""
+	return settings.Get("DISCORD_BOT_TOKEN") != ""
 }
 
 // LinkAccount maps a Discord user ID to a Mu account.
@@ -82,15 +77,21 @@ func DeleteLinks(muAccount string) {
 
 func run() {
 	for {
-		if err := connect(); err != nil {
+		token := settings.Get("DISCORD_BOT_TOKEN")
+		if token == "" {
+			time.Sleep(30 * time.Second)
+			continue
+		}
+		if err := connect(token); err != nil {
 			app.Log("discord", "Connection error: %v — reconnecting in 10s", err)
 			time.Sleep(10 * time.Second)
 		}
 	}
 }
 
-func connect() error {
-	// Get gateway URL
+func connect(token string) error {
+	botToken = token
+
 	gatewayURL, err := getGatewayURL()
 	if err != nil {
 		return fmt.Errorf("get gateway: %w", err)
