@@ -79,6 +79,14 @@ export MU_TOKEN=xxx       # or use the environment
 
 See [CLI docs](docs/CLI.md) for more.
 
+## Discord
+
+Add the Mu bot to your Discord server and talk to the AI agent directly from chat.
+
+[Add to Discord](https://discord.com/oauth2/authorize?client_id=1513790281013792808&scope=bot&permissions=2048)
+
+DM the bot or @mention it in a channel. Slash commands: `/news`, `/markets`, `/weather`, `/swap`, `/agent`.
+
 ## Pricing
 
 Browsing is included. AI and search features use credits — 1 credit = 1p, pay as you go.
