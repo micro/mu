@@ -61,10 +61,32 @@ var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 // Load initialises the agent package (no-op for now; reserved for future use).
 func Load() {}
 
-// Query runs the agent pipeline synchronously for MCP callers: plan tool calls,
-// execute them, synthesize an answer, and return the text result.
-func Query(accountID, prompt string) (string, error) {
+// QueryMessage is a single turn in a conversation.
+type QueryMessage struct {
+	Role string // "user" or "assistant"
+	Text string
+}
+
+// Query runs the agent pipeline synchronously for MCP and bot callers.
+// Pass conversation history for multi-turn context.
+func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 	model := Models[0] // standard
+
+	// Build conversation context for the planner
+	var convContext string
+	if len(history) > 0 {
+		var cb strings.Builder
+		cb.WriteString("Conversation so far:\n")
+		for _, m := range history {
+			if m.Role == "user" {
+				cb.WriteString("User: " + m.Text + "\n")
+			} else {
+				cb.WriteString("Assistant: " + truncate(m.Text, 300) + "\n")
+			}
+		}
+		cb.WriteString("\nNew message: " + prompt)
+		convContext = cb.String()
+	}
 
 	// --- Plan ---
 	type toolCall struct {
@@ -78,11 +100,28 @@ func Query(accountID, prompt string) (string, error) {
 			toolCalls = append(toolCalls, toolCall{Tool: s.Tool, Args: s.Args})
 		}
 	} else {
+		planQuestion := prompt
+		if convContext != "" {
+			planQuestion = convContext
+		}
+
+		// Include user context for better planning
+		userCtx := ""
+		if UserContextFunc != nil {
+			userCtx = UserContextFunc(accountID)
+		}
+		planSystem := "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
+			agentToolsDesc +
+			"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. If no tools are needed output []." +
+			"\n\nIMPORTANT: For personal questions like 'do I have mail', 'what's the weather', 'news today', 'btc price' — ALWAYS use the appropriate tool. " +
+			"If the user says 'weather' without a location, use their location from user context, or default to London (lat:51.5074, lon:-0.1278)."
+		if userCtx != "" {
+			planSystem += "\n\nUser context:\n" + userCtx
+		}
+
 		planPrompt := &ai.Prompt{
-			System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
-				agentToolsDesc +
-				"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. If no tools are needed output [].",
-			Question: prompt,
+			System:   planSystem,
+			Question: planQuestion,
 			Priority: ai.PriorityHigh,
 			Provider: model.Provider,
 			Model:    model.Model,
@@ -128,12 +167,42 @@ func Query(accountID, prompt string) (string, error) {
 	}
 
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
+
+	// Include conversation history in RAG context
+	if len(history) > 0 {
+		var hb strings.Builder
+		hb.WriteString("### Conversation history\n")
+		for _, m := range history {
+			if m.Role == "user" {
+				hb.WriteString("**User:** " + m.Text + "\n\n")
+			} else {
+				hb.WriteString("**Assistant:** " + truncate(m.Text, 500) + "\n\n")
+			}
+		}
+		ragParts = append([]string{hb.String()}, ragParts...)
+	}
+
+	var synthSystem string
+	if len(results) == 0 {
+		synthSystem = "You are Micro, the AI assistant on Mu — a personal AI platform. Today is " + today + ". " +
+			"Answer conversationally. Be helpful and concise."
+	} else {
+		synthSystem = "You are Micro, a personal AI assistant. Today is " + today + ". " +
+			"Answer using the tool results provided. Be concise. " +
+			"For prices, weather, and live data, use the exact values from tool results."
+	}
+
+	// Add user context
+	userCtx := ""
+	if UserContextFunc != nil {
+		userCtx = UserContextFunc(accountID)
+	}
+	if userCtx != "" {
+		synthSystem += "\n\nUser context:\n" + userCtx
+	}
+
 	synthPrompt := &ai.Prompt{
-		System: "You are a helpful assistant. Today's date is " + today + ". " +
-			"Answer the user's question using ONLY the tool results provided below.\n\n" +
-			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
-			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data.\n\n" +
-			"Use markdown formatting. Be concise.",
+		System:   synthSystem,
 		Rag:      ragParts,
 		Question: prompt,
 		Priority: ai.PriorityHigh,
