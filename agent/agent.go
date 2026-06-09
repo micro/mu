@@ -818,7 +818,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - web_fetch: Fetch a web page and get its cleaned readable content (args: {"url":"https://example.com/page"})
 - places_search: Search for places (args: {"q":"search name","near":"location"})
 - places_nearby: Find places near a location (args: {"address":"location","radius":number})
-- reminder: Get today's daily Islamic reminder with verse, hadith, and name of Allah (no args)
+- reminder: Get today's daily Islamic reminder with verse, hadith, and name of Allah (no args) — response includes a "date" field, always mention it
 - quran: Look up a Quran chapter or verse (args: {"chapter":1,"verse":1} — verse is optional)
 - hadith: Look up hadith from Sahih Al Bukhari (args: {"book":1} — optional book number)
 - quran_search: Semantic search across the Quran, Hadith, and names of Allah (args: {"q":"what does the quran say about patience"})
