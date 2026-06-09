@@ -103,6 +103,7 @@ func main() {
 	reminder.Load()
 	wallet.Load()
 	trade.Load()
+	trade.NotifyFunc = discord.NotifyUser
 	discord.Load()
 
 	// load apps

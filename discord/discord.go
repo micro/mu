@@ -32,6 +32,7 @@ import (
 var (
 	botToken string
 	botID    string
+	botAppID string
 
 	linkMu   sync.RWMutex
 	links    = map[string]string{} // discord user ID → mu account ID
@@ -192,15 +193,23 @@ func connect(token string) error {
 					ID       string `json:"id"`
 					Username string `json:"username"`
 				} `json:"user"`
+				Application struct {
+					ID string `json:"id"`
+				} `json:"application"`
 			}
 			json.Unmarshal(event.D, &ready)
 			botID = ready.User.ID
+			botAppID = ready.Application.ID
 			app.Log("discord", "Connected as %s (%s)", ready.User.Username, botID)
+			go registerSlashCommands(botAppID)
 
 		case "MESSAGE_CREATE":
 			var m discordMessage
 			json.Unmarshal(event.D, &m)
 			go handleMessage(m)
+
+		case "INTERACTION_CREATE":
+			go handleInteraction(event.D)
 		}
 	}
 }
@@ -306,12 +315,8 @@ func handleMessage(m discordMessage) {
 
 	app.Log("discord", "Reply to %s: %.100s", m.Author.Username, answer)
 
-	// Discord has a 2000 char limit
-	if len(answer) > 1900 {
-		answer = answer[:1900] + "\n…"
-	}
-
-	sendMessage(m.ChannelID, answer)
+	embed := formatAsEmbed(content, answer)
+	sendEmbed(m.ChannelID, embed)
 }
 
 // ── Discord HTTP API ──

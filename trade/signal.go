@@ -14,6 +14,10 @@ import (
 
 const evalInterval = 15 * time.Minute
 
+// NotifyFunc is called when a signal is generated (alert/confirm mode).
+// Set by the discord package to send DM notifications.
+var NotifyFunc func(accountID, message string)
+
 func StartSignalLoop() {
 	go func() {
 		for {
@@ -152,6 +156,14 @@ Rules:
 		executeSignal(s, sig)
 	case ModeConfirm, ModeAlert:
 		RecordSignal(sig)
+		if NotifyFunc != nil {
+			emoji := "📈"
+			if sig.Action == "sell" {
+				emoji = "📉"
+			}
+			msg := fmt.Sprintf("%s **Signal: %s %s %s**\n%s", emoji, sig.Action, sig.Amount, sig.Token, sig.Reason)
+			NotifyFunc(s.Account, msg)
+		}
 	}
 }
 
@@ -179,6 +191,11 @@ func executeSignal(s *Strategy, sig *Signal) {
 	updateStrategySpend(s.ID, sig.Amount)
 
 	app.Log("trade", "Auto-executed %s %s %s for strategy %s (tx: %s)", sig.Action, sig.Amount, sig.Token, s.ID, t.TxHash)
+
+	if NotifyFunc != nil {
+		msg := fmt.Sprintf("✅ **Executed: %s %s %s**\n%s\nTx: %s", sig.Action, sig.Amount, sig.Token, sig.Reason, t.TxHash)
+		NotifyFunc(s.Account, msg)
+	}
 }
 
 func extractJSON(s string) string {
