@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/sync/semaphore"
 	"mu/internal/app"
+	"mu/internal/settings"
 )
 
 var (
@@ -27,22 +27,21 @@ var (
 	cacheMisses         int
 	cacheReadTokens     int
 	cacheCreationTokens int
-
-	// Atlas Cloud / OpenAI-compatible config.
-	// Set OPENAI_BASE_URL to use a local model server (Ollama, llama.cpp, etc.)
-	atlasAPIKey  = func() string {
-		if v := os.Getenv("ATLAS_API_KEY"); v != "" {
-			return v
-		}
-		return os.Getenv("OPENAI_API_KEY")
-	}()
-	atlasBaseURL = func() string {
-		if v := os.Getenv("OPENAI_BASE_URL"); v != "" {
-			return strings.TrimRight(v, "/")
-		}
-		return "https://api.atlascloud.ai/v1"
-	}()
 )
+
+func getAtlasAPIKey() string {
+	if v := settings.Get("ATLAS_API_KEY"); v != "" {
+		return v
+	}
+	return settings.Get("OPENAI_API_KEY")
+}
+
+func getAtlasBaseURL() string {
+	if v := settings.Get("OPENAI_BASE_URL"); v != "" {
+		return strings.TrimRight(v, "/")
+	}
+	return "https://api.atlascloud.ai/v1"
+}
 
 // Atlas Cloud model aliases — used to route requests to Atlas Cloud
 // instead of Anthropic. Any model string starting with "deepseek" or
@@ -56,7 +55,7 @@ const (
 // DefaultModel is the model used for interactive queries (chat, agent).
 // Always uses Anthropic for speed — Atlas Cloud is for background only.
 func DefaultModel() string {
-	m := os.Getenv("ANTHROPIC_MODEL")
+	m := settings.Get("ANTHROPIC_MODEL")
 	if m != "" {
 		return m
 	}
@@ -66,7 +65,7 @@ func DefaultModel() string {
 // BackgroundModel is the model used for cheap background tasks
 // (summaries, tags, moderation, topics).
 func BackgroundModel() string {
-	if atlasAPIKey != "" {
+	if getAtlasAPIKey() != "" {
 		return ModelDeepSeekFlash
 	}
 	return "claude-haiku-4-5-20251001"
@@ -111,7 +110,7 @@ func generate(prompt *Prompt) (string, error) {
 
 	messages = append(messages, map[string]string{"role": "user", "content": prompt.Question})
 
-	key := os.Getenv("ANTHROPIC_API_KEY")
+	key := settings.Get("ANTHROPIC_API_KEY")
 	if key == "" {
 		return "", fmt.Errorf("ANTHROPIC_API_KEY not set")
 	}
@@ -127,8 +126,8 @@ func generate(prompt *Prompt) (string, error) {
 	}
 
 	// Route to Atlas Cloud for supported models.
-	if isAtlasModel(model) && atlasAPIKey != "" {
-		return generateAtlas(atlasAPIKey, model, systemPromptText, messages, caller)
+	if isAtlasModel(model) && getAtlasAPIKey() != "" {
+		return generateAtlas(getAtlasAPIKey(), model, systemPromptText, messages, caller)
 	}
 
 	return generateAnthropic(key, model, systemPromptText, messages, caller)
@@ -157,7 +156,7 @@ func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
 	}
 	msgs = append(msgs, map[string]string{"role": "user", "content": prompt.Question})
 
-	key := os.Getenv("ANTHROPIC_API_KEY")
+	key := settings.Get("ANTHROPIC_API_KEY")
 	if key == "" {
 		return "", fmt.Errorf("ANTHROPIC_API_KEY not set")
 	}
@@ -172,8 +171,8 @@ func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
 		clr = "unknown"
 	}
 
-	if isAtlasModel(mdl) && atlasAPIKey != "" {
-		return generateAtlas(atlasAPIKey, mdl, systemPromptText, msgs, clr)
+	if isAtlasModel(mdl) && getAtlasAPIKey() != "" {
+		return generateAtlas(getAtlasAPIKey(), mdl, systemPromptText, msgs, clr)
 	}
 
 	return generateAnthropicInternal(key, mdl, systemPromptText, msgs, clr, onToken)
@@ -417,7 +416,7 @@ func generateAtlas(apiKey, model, systemPrompt string, messages []map[string]str
 	}
 
 	body, _ := json.Marshal(req)
-	httpReq, _ := http.NewRequest("POST", atlasBaseURL+"/chat/completions", bytes.NewReader(body))
+	httpReq, _ := http.NewRequest("POST", getAtlasBaseURL()+"/chat/completions", bytes.NewReader(body))
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 

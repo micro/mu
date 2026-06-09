@@ -19,10 +19,12 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/data"
 	"mu/blog"
+	"mu/discord"
 	"mu/chat"
 	"mu/cli"
-	"mu/internal/data"
+	"mu/internal/settings"
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
@@ -66,6 +68,9 @@ func main() {
 
 	// api page is now dynamic (rendered in api.APIPageHandler)
 
+	// load settings first so other packages can use them
+	settings.Load()
+
 	// load the data index
 	data.Load()
 
@@ -98,6 +103,7 @@ func main() {
 	reminder.Load()
 	wallet.Load()
 	trade.Load()
+	discord.Load()
 
 	// load apps
 	apps.Load()
@@ -293,6 +299,7 @@ func main() {
 		mail.DeleteInbox,
 		func(id string) { wallet.DeleteWallet(id) },
 		func(id string) { trade.DeleteWallet(id); trade.DeleteStrategies(id) },
+		func(id string) { discord.DeleteLinks(id) },
 		func(id string) { app.ClearUserPrefs(id) },
 		memory.Clear,
 	)

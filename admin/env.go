@@ -3,64 +3,62 @@ package admin
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/settings"
 )
 
-// knownEnvVars lists the environment variables the application may use.
-// Values are never shown; only whether each variable is set.
-var knownEnvVars = []string{
-	// Core
-	"MU_DOMAIN",
-	"MU_USE_SQLITE",
-	"DATA_DIR",
-	// LLM
-	"ANTHROPIC_API_KEY",
-	"ANTHROPIC_MODEL",
-	// Search
-	"BRAVE_API_KEY",
-	// External APIs
-	"YOUTUBE_API_KEY",
-	"GOOGLE_API_KEY",
-	// Mail (outbound relay)
-	"SMTP_HOST",
-	"SMTP_PORT",
-	"SMTP_USER",
-	"SMTP_PASS",
-	"SMTP_FROM",
-	// Mail (inbound)
-	"MAIL_DOMAIN",
-	"MAIL_PORT",
-	"MAIL_SELECTOR",
-	"DKIM_PRIVATE_KEY",
-	// Auth / passkeys
-	"PASSKEY_ORIGIN",
-	"PASSKEY_RP_ID",
-	"PASSKEY_EXTRA_ORIGINS",
-	// Payments
-	"STRIPE_SECRET_KEY",
-	"STRIPE_PUBLISHABLE_KEY",
-	"STRIPE_WEBHOOK_SECRET",
-	"GOCARDLESS_ACCESS_TOKEN",
-	// x402 crypto payments
-	"X402_PAY_TO",
-	"X402_FACILITATOR_URL",
-	"X402_NETWORK",
-	"X402_ASSET",
-	// Tor
-	"TOR_ONION",
-	// Misc
-	"DONATION_URL",
-	"DOMAIN",
-	"GPG_HOME",
-	"GPG_KEYRING",
-	"GNUPGHOME",
+type settingGroup struct {
+	Name string
+	Vars []string
 }
 
-// EnvHandler shows which environment variables are configured (without leaking values).
+var settingGroups = []settingGroup{
+	{"AI", []string{
+		"ANTHROPIC_API_KEY",
+		"ANTHROPIC_MODEL",
+		"ATLAS_API_KEY",
+		"OPENAI_BASE_URL",
+		"OPENAI_API_KEY",
+	}},
+	{"Search", []string{
+		"BRAVE_API_KEY",
+		"YOUTUBE_API_KEY",
+		"GOOGLE_API_KEY",
+	}},
+	{"Mail", []string{
+		"MAIL_DOMAIN",
+		"MAIL_PORT",
+		"MAIL_SELECTOR",
+		"DKIM_PRIVATE_KEY",
+		"SMTP_HOST",
+		"SMTP_PORT",
+		"SMTP_USER",
+		"SMTP_PASS",
+	}},
+	{"Payments", []string{
+		"STRIPE_SECRET_KEY",
+		"STRIPE_PUBLISHABLE_KEY",
+		"STRIPE_WEBHOOK_SECRET",
+		"X402_PAY_TO",
+	}},
+	{"Trading", []string{
+		"TRADE_RPC_URL",
+		"TRADE_CHAIN",
+	}},
+	{"Discord", []string{
+		"DISCORD_BOT_TOKEN",
+	}},
+	{"Platform", []string{
+		"MU_DOMAIN",
+		"DATA_DIR",
+		"PASSKEY_ORIGIN",
+		"PASSKEY_RP_ID",
+	}},
+}
+
 func EnvHandler(w http.ResponseWriter, r *http.Request) {
 	_, _, err := auth.RequireAdmin(r)
 	if err != nil {
@@ -68,26 +66,72 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var content strings.Builder
-	content.WriteString(`<div class="card">`)
-	content.WriteString(`<h3>Environment Variables</h3>`)
-	content.WriteString(`<p class="text-muted">Shows whether each variable is set. Values are never displayed.</p>`)
-	content.WriteString(`<table class="admin-table">`)
-	content.WriteString(`<thead><tr><th>Variable</th><th>Status</th></tr></thead><tbody>`)
-
-	for _, name := range knownEnvVars {
-		val := os.Getenv(name)
-		status := `<span style="color:#c0392b;">✗ not set</span>`
-		if val != "" {
-			status = fmt.Sprintf(`<span style="color:#27ae60;">✓ set (%d chars)</span>`, len(val))
+	if r.Method == "POST" {
+		r.ParseForm()
+		for _, group := range settingGroups {
+			for _, key := range group.Vars {
+				val := r.FormValue(key)
+				if val == "••••••" || val == "" {
+					continue
+				}
+				settings.Set(key, val)
+			}
 		}
-		content.WriteString(fmt.Sprintf(`<tr><td><code>%s</code></td><td>%s</td></tr>`, name, status))
+		http.Redirect(w, r, "/admin/env?saved=1", http.StatusSeeOther)
+		return
 	}
 
-	content.WriteString(`</tbody></table>`)
-	content.WriteString(`</div>`)
-	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
+	var b strings.Builder
 
-	pageHTML := app.RenderHTMLForRequest("Env Vars", "Environment Variables", content.String(), r)
-	w.Write([]byte(pageHTML))
+	if r.URL.Query().Get("saved") == "1" {
+		b.WriteString(`<div class="card" style="background:#f0fff0;border-color:#a3d9a5"><p style="color:#27ae60;margin:0">Settings saved. Restart to apply changes to env-loaded services.</p></div>`)
+	}
+
+	b.WriteString(`<form method="POST" action="/admin/env">`)
+
+	for _, group := range settingGroups {
+		b.WriteString(`<div class="card">`)
+		b.WriteString(fmt.Sprintf(`<h3>%s</h3>`, group.Name))
+
+		for _, key := range group.Vars {
+			source := settings.Source(key)
+			val := settings.Get(key)
+
+			displayVal := ""
+			badge := `<span style="font-size:11px;color:#c00">not set</span>`
+			if source == "env" {
+				displayVal = "••••••"
+				badge = `<span style="font-size:11px;color:#27ae60">env</span>`
+			} else if source == "saved" {
+				displayVal = "••••••"
+				badge = `<span style="font-size:11px;color:#2980b9">saved</span>`
+			}
+
+			_ = val
+
+			isSecret := strings.Contains(strings.ToUpper(key), "KEY") ||
+				strings.Contains(strings.ToUpper(key), "SECRET") ||
+				strings.Contains(strings.ToUpper(key), "TOKEN") ||
+				strings.Contains(strings.ToUpper(key), "PASS")
+
+			inputType := "text"
+			if isSecret {
+				inputType = "password"
+			}
+
+			b.WriteString(fmt.Sprintf(`<div style="margin-bottom:10px">
+				<label style="font-size:12px;color:#888;display:block;margin-bottom:2px"><code>%s</code> %s</label>
+				<input type="%s" name="%s" value="%s" placeholder="not set" autocomplete="off"
+					style="width:100%%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box;font-family:monospace">
+				</div>`, key, badge, inputType, key, displayVal))
+		}
+		b.WriteString(`</div>`)
+	}
+
+	b.WriteString(`<button type="submit" class="btn" style="margin-bottom:16px">Save Settings</button>`)
+	b.WriteString(`</form>`)
+	b.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
+
+	html := app.RenderHTMLForRequest("Settings", "Platform configuration", b.String(), r)
+	w.Write([]byte(html))
 }
