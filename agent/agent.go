@@ -804,7 +804,8 @@ const agentToolsDesc = `Available tools (use exact name):
 - news_search: Search news articles (args: {"query":"search term"})
 - web_search: Search the web for current information (args: {"q":"search term"})
 - web_fetch: Fetch a web page and get its cleaned readable content (args: {"url":"https://example.com/page"})
-- video_search: Search for videos (args: {"query":"search term"})
+- video: Get the latest videos from curated channels (no args) — use this for "latest videos", "show me videos", etc.
+- video_search: Search YouTube for videos (args: {"query":"search term"}) — use this only when the user wants to search for something specific
 - markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
 - mail_read: Read inbox messages (no args)
@@ -833,7 +834,8 @@ const guestToolsDesc = `Available tools (use exact name):
 - news_search: Search news articles (args: {"query":"search term"})
 - web_search: Search the web for current information (args: {"q":"search term"})
 - web_fetch: Fetch a web page and get its cleaned readable content (args: {"url":"https://example.com/page"})
-- video_search: Search for videos (args: {"query":"search term"})
+- video: Get the latest videos from curated channels (no args) — use this for "latest videos", "show me videos", etc.
+- video_search: Search YouTube for videos (args: {"query":"search term"}) — use this only when the user wants to search for something specific
 - markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
 - places_search: Search for places (args: {"q":"search name","near":"location"})
@@ -1156,8 +1158,10 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"markets":  {{Tool: "markets", Args: map[string]any{}}},
 		"market":   {{Tool: "markets", Args: map[string]any{}}},
 		"prices":   {{Tool: "markets", Args: map[string]any{}}},
-		"video":    {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
-		"videos":   {{Tool: "video_search", Args: map[string]any{"query": "latest"}}},
+		"video":    {{Tool: "video", Args: map[string]any{}}},
+		"videos":   {{Tool: "video", Args: map[string]any{}}},
+		"latest videos": {{Tool: "video", Args: map[string]any{}}},
+		"latest video":  {{Tool: "video", Args: map[string]any{}}},
 		"weather":  {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
 		"reminder": {{Tool: "reminder", Args: map[string]any{}}},
 		"apps":     {{Tool: "apps_search", Args: map[string]any{}}},
