@@ -10,12 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
 	"strings"
 	"sync"
 
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/internal/settings"
 
 	"golang.org/x/crypto/sha3"
 )
@@ -57,7 +57,7 @@ var chains = map[string]ChainConfig{
 }
 
 func activeChain() ChainConfig {
-	name := os.Getenv("TRADE_CHAIN")
+	name := settings.Get("TRADE_CHAIN")
 	if name == "" {
 		name = "ethereum"
 	}
@@ -160,7 +160,7 @@ func Enabled() bool {
 }
 
 func rpcURL() string {
-	if v := os.Getenv("TRADE_RPC_URL"); v != "" {
+	if v := settings.Get("TRADE_RPC_URL"); v != "" {
 		return v
 	}
 	return activeChain().RPCURL

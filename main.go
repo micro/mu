@@ -19,11 +19,12 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/data"
 	"mu/blog"
 	"mu/discord"
 	"mu/chat"
 	"mu/cli"
-	"mu/internal/data"
+	"mu/internal/settings"
 	"mu/docs"
 	"mu/home"
 	"mu/mail"
@@ -66,6 +67,9 @@ func main() {
 	}
 
 	// api page is now dynamic (rendered in api.APIPageHandler)
+
+	// load settings first so other packages can use them
+	settings.Load()
 
 	// load the data index
 	data.Load()

@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +24,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/settings"
 
 	"github.com/gorilla/websocket"
 )
@@ -38,7 +38,7 @@ var (
 )
 
 func Load() {
-	botToken = os.Getenv("DISCORD_BOT_TOKEN")
+	botToken = settings.Get("DISCORD_BOT_TOKEN")
 	if botToken == "" {
 		return
 	}
