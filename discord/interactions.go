@@ -111,6 +111,23 @@ func handleInteraction(raw json.RawMessage) {
 		}
 	case "mail":
 		prompt = "read my email"
+	case "apps":
+		q := inter.getOption("query")
+		if q != "" {
+			prompt = "search apps for " + q
+		} else {
+			prompt = "show me available apps"
+		}
+	case "social":
+		prompt = "show the social feed"
+	case "video":
+		q := inter.getOption("query")
+		prompt = "search videos for " + q
+	case "blog":
+		prompt = "latest blog posts"
+	case "search":
+		q := inter.getOption("query")
+		prompt = "search for " + q
 	case "swap":
 		from := inter.getOption("from")
 		to := inter.getOption("to")

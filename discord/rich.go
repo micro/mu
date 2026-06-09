@@ -180,6 +180,35 @@ var slashCommands = []SlashCommand{
 		Name:        "balance",
 		Description: "Check your trading wallet balance",
 	},
+	{
+		Name:        "apps",
+		Description: "Search or browse apps",
+		Options: []SlashCommandOption{
+			{Name: "query", Description: "Search term", Type: OptionString},
+		},
+	},
+	{
+		Name:        "social",
+		Description: "View the social feed",
+	},
+	{
+		Name:        "video",
+		Description: "Search for videos",
+		Options: []SlashCommandOption{
+			{Name: "query", Description: "Search term", Type: OptionString, Required: true},
+		},
+	},
+	{
+		Name:        "blog",
+		Description: "View latest blog posts",
+	},
+	{
+		Name:        "search",
+		Description: "Search across all content",
+		Options: []SlashCommandOption{
+			{Name: "query", Description: "Search term", Type: OptionString, Required: true},
+		},
+	},
 }
 
 func registerSlashCommands(appID string) {
@@ -283,6 +312,14 @@ func formatAsEmbed(prompt, answer string) Embed {
 		color = ColorRed
 	case strings.Contains(lower, "swap") || strings.Contains(lower, "trade"):
 		color = ColorGold
+	case strings.Contains(lower, "video"):
+		color = ColorRed
+	case strings.Contains(lower, "app"):
+		color = ColorPurple
+	case strings.Contains(lower, "social") || strings.Contains(lower, "blog"):
+		color = ColorBlue
+	case strings.Contains(lower, "search"):
+		color = ColorGray
 	}
 
 	desc := answer

@@ -81,11 +81,11 @@ See [CLI docs](docs/CLI.md) for more.
 
 ## Discord
 
-Add the Mu bot to your Discord server and talk to the AI agent directly from chat.
+Talk to the AI agent directly from Discord. Ask questions, check markets, get news, trade — all from chat.
 
-[Add to Discord](https://discord.com/oauth2/authorize?client_id=1513790281013792808&scope=bot&permissions=2048)
+[Join the Discord](https://discord.gg/WeMU5AGxD)
 
-DM the bot or @mention it in a channel. Slash commands: `/news`, `/markets`, `/weather`, `/swap`, `/agent`.
+Slash commands: `/news`, `/markets`, `/weather`, `/swap`, `/agent`.
 
 ## Pricing
 
