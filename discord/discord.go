@@ -314,16 +314,33 @@ func handleMessage(m discordMessage) {
 		return
 	}
 
-	// Handle link command — links an existing Mu account via one-time code
+	// Handle link command — one-time code or username+password
 	if strings.HasPrefix(strings.ToLower(content), "link ") {
-		code := strings.TrimSpace(content[5:])
-		accountID, ok := redeemCode(code)
-		if !ok {
-			sendMessage(m.ChannelID, "Invalid or expired code. Generate a new one at `/account` on Mu.")
+		parts := strings.Fields(content[5:])
+		if len(parts) == 1 {
+			// One-time code
+			code := strings.TrimSpace(parts[0])
+			accountID, ok := redeemCode(code)
+			if !ok {
+				sendMessage(m.ChannelID, "Invalid or expired code. Try `link <username> <password>` instead.")
+				return
+			}
+			LinkAccount(m.Author.ID, accountID)
+			sendMessage(m.ChannelID, fmt.Sprintf("Linked to **%s**.", accountID))
+			return
+		} else if len(parts) >= 2 && isDM {
+			// Username + password (DMs only for security)
+			username := parts[0]
+			password := strings.Join(parts[1:], " ")
+			if _, err := auth.Login(username, password); err != nil {
+				sendMessage(m.ChannelID, "Invalid username or password.")
+				return
+			}
+			LinkAccount(m.Author.ID, username)
+			sendMessage(m.ChannelID, fmt.Sprintf("Linked to **%s**.", username))
 			return
 		}
-		LinkAccount(m.Author.ID, accountID)
-		sendMessage(m.ChannelID, fmt.Sprintf("Linked to **%s**. I'll run as your account from now on.", accountID))
+		sendMessage(m.ChannelID, "Usage: `link <code>` or DM me `link <username> <password>`")
 		return
 	}
 
