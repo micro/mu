@@ -92,14 +92,12 @@ func initTokens() {
 		Tokens["LINK"] = Token{Symbol: "LINK", Name: "Chainlink", Decimals: 18, Address: "0x514910771AF9Ca656af840dff83E8264EcF986CA"}
 		Tokens["AAVE"] = Token{Symbol: "AAVE", Name: "Aave", Decimals: 18, Address: "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9"}
 		Tokens["MKR"] = Token{Symbol: "MKR", Name: "Maker", Decimals: 18, Address: "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2"}
-		Tokens["PEPE"] = Token{Symbol: "PEPE", Name: "Pepe", Decimals: 18, Address: "0x6982508145454Ce325dDbE47a25d4ec3d2311933"}
-		Tokens["SHIB"] = Token{Symbol: "SHIB", Name: "Shiba Inu", Decimals: 18, Address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE"}
 	} else if c.ChainID == 8453 { // Base
 		Tokens["DAI"] = Token{Symbol: "DAI", Name: "Dai", Decimals: 18, Address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb"}
 		Tokens["cbETH"] = Token{Symbol: "cbETH", Name: "Coinbase ETH", Decimals: 18, Address: "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22"}
 	}
 
-	tokenOrder = []string{"ETH", "USDC", "USDT", "DAI", "WBTC", "UNI", "LINK", "AAVE", "MKR", "PEPE", "SHIB", "WETH", "cbETH"}
+	tokenOrder = []string{"ETH", "USDC", "USDT", "DAI", "WBTC", "UNI", "LINK", "AAVE", "MKR", "WETH", "cbETH"}
 	// Filter to only tokens that exist on this chain
 	var filtered []string
 	for _, s := range tokenOrder {
