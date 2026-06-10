@@ -44,7 +44,8 @@ Platform APIs (all return Promises with JSON):
 - mu.social()                   — social threads
 - mu.places.search({q, near})   — search places
 - mu.places.nearby({address, radius}) — nearby places
-- mu.chat(prompt) / mu.search(query) / mu.ai(prompt) / mu.agent(prompt)
+- mu.ai(prompt, {context})       — call the AI with a prompt, returns {result: "answer text"}. Use for: summarising, translating, generating content, analysing text, answering questions. The optional context parameter gives the AI background info.
+- mu.chat(prompt) / mu.search(query) / mu.agent(prompt)
 - mu.apps.list() / mu.user()
 - mu.store.set(key, value) / mu.store.get(key) / mu.store.del(key) / mu.store.keys()
 - mu.get(path) / mu.post(path, body) — raw fetch helpers
@@ -79,6 +80,16 @@ Example usage:
   data.forecast.DailyItems.forEach(function(day) {
     console.log(day.MaxTempC, day.MinTempC, day.Description);
   });
+
+mu.ai(prompt) response:
+{"result":"The summary of the text you provided is..."}
+
+Example usage:
+  var response = await mu.ai("Summarise this: " + userText);
+  document.getElementById('output').textContent = response.result;
+
+  // With context:
+  var response = await mu.ai("Translate to French", {context: "The weather is nice today"});
 
 RULES:
 1. Do NOT add <script src="/apps/sdk.js"> — the SDK is auto-injected

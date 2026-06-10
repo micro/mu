@@ -364,6 +364,8 @@ func main() {
 		return canProceed, cost, err
 	}
 
+	apps.QuotaCheck = agent.QuotaCheck
+
 	// Wire x402 payment required response for MCP
 	if wallet.X402Enabled() {
 		api.PaymentRequiredResponse = wallet.WritePaymentRequired

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -87,6 +88,9 @@ type App struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
+
+// QuotaCheck is set by main.go to check wallet credits before AI calls.
+var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 
 var (
 	mutex sync.RWMutex
@@ -1458,11 +1462,42 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 		app.RespondError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
+	if strings.TrimSpace(req.Prompt) == "" {
+		app.RespondError(w, http.StatusBadRequest, "Prompt is required")
+		return
+	}
 
-	// For now, return a placeholder — this will be wired to the AI subsystem
-	app.RespondJSON(w, map[string]string{
-		"result": "AI integration coming soon. Prompt: " + truncate(req.Prompt, 100),
+	// Check quota — uses chat query credits
+	if QuotaCheck != nil {
+		canProceed, _, err := QuotaCheck(r, "chat_query")
+		if !canProceed {
+			msg := "Insufficient credits"
+			if err != nil {
+				msg = err.Error()
+			}
+			app.RespondError(w, http.StatusPaymentRequired, msg)
+			return
+		}
+	}
+
+	system := "You are an AI assistant embedded in an app called '" + slug + "'. Be concise and helpful."
+	if req.Options.Context != "" {
+		system += "\n\nApp context: " + req.Options.Context
+	}
+
+	result, err := ai.Ask(&ai.Prompt{
+		System:   system,
+		Question: req.Prompt,
+		Model:    ai.BackgroundModel(),
+		Priority: ai.PriorityHigh,
+		Caller:   "app-sdk-ai-" + slug,
 	})
+	if err != nil {
+		app.RespondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	app.RespondJSON(w, map[string]string{"result": result})
 }
 
 // handleSDKStore handles key-value storage for apps.
