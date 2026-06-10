@@ -89,6 +89,7 @@ func handleInteraction(raw json.RawMessage) {
 	}
 
 	app.Log("discord", "Slash /%s from %s (%s)", inter.Data.Name, inter.username(), accountID)
+	trackQuery(accountID)
 
 	var prompt string
 	switch inter.Data.Name {

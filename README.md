@@ -89,15 +89,12 @@ Slash commands: `/news`, `/markets`, `/weather`, `/swap`, `/agent`.
 
 ## Pricing
 
-Browsing is included. AI and search features use credits — 1 credit = 1p, pay as you go.
+**Free to use.** Join the [Discord](https://discord.gg/WeMU5AGxD) and start talking to the AI — no account, no payment, no limits.
 
-- **Starter** — £5/month, 500 credits
-- **Pro** — £10/month, 1,200 credits
-- **Pay as you go** — Top up any amount via Stripe
-- **Crypto** — AI agents pay per-request with USDC via [x402](https://x402.org). First 10 calls free.
-- **Self-host** — Unlimited. Run your own instance with local models.
-
-See [Wallet & Credits](docs/WALLET_AND_CREDITS.md) for details.
+- **Discord** — free, unlimited
+- **Web** — free browsing, 3 free AI queries for guests, credits for more
+- **MCP / API** — pay per-request with USDC via [x402](https://x402.org)
+- **Self-host** — unlimited, run your own instance with local models
 
 ## Self-hosting
 

@@ -62,6 +62,7 @@ func addHistory(discordID string, role, text string) {
 
 func Load() {
 	data.LoadJSON("discord_links.json", &links)
+	loadUsage()
 	go run()
 }
 
@@ -365,6 +366,7 @@ func handleMessage(m discordMessage) {
 	}
 
 	app.Log("discord", "Message from %s (%s): %s", m.Author.Username, accountID, content)
+	trackQuery(accountID)
 
 	// Show typing indicator
 	showTyping(m.ChannelID)
