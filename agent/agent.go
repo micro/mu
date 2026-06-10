@@ -67,17 +67,27 @@ type QueryMessage struct {
 	Text string
 }
 
+// QueryOpts controls what context is included in agent queries.
+type QueryOpts struct {
+	History []QueryMessage
+	Public  bool // if true, skip private context (mail, wallet, etc.)
+}
+
 // Query runs the agent pipeline synchronously for MCP and bot callers.
-// Pass conversation history for multi-turn context.
 func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
+	return QueryWithOpts(accountID, prompt, QueryOpts{History: history})
+}
+
+// QueryWithOpts runs the agent with explicit options.
+func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	model := Models[0] // standard
 
 	// Build conversation context for the planner
 	var convContext string
-	if len(history) > 0 {
+	if len(opts.History) > 0 {
 		var cb strings.Builder
 		cb.WriteString("Conversation so far:\n")
-		for _, m := range history {
+		for _, m := range opts.History {
 			if m.Role == "user" {
 				cb.WriteString("User: " + m.Text + "\n")
 			} else {
@@ -105,13 +115,16 @@ func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 			planQuestion = convContext
 		}
 
-		// Include user context for better planning
 		userCtx := ""
-		if UserContextFunc != nil {
+		if !opts.Public && UserContextFunc != nil {
 			userCtx = UserContextFunc(accountID)
 		}
+		toolsDesc := agentToolsDesc
+		if opts.Public {
+			toolsDesc = guestToolsDesc
+		}
 		planSystem := "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
-			agentToolsDesc +
+			toolsDesc +
 			"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. If no tools are needed output []." +
 			"\n\nIMPORTANT: For personal questions like 'do I have mail', 'what's the weather', 'news today', 'btc price' — ALWAYS use the appropriate tool. " +
 			"If the user says 'weather' without a location, use their location from user context, or default to London (lat:51.5074, lon:-0.1278)."
@@ -148,6 +161,9 @@ func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 		if tc.Tool == "" {
 			continue
 		}
+		if opts.Public && !isGuestAllowedTool(tc.Tool) {
+			continue
+		}
 		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
 			continue
@@ -169,10 +185,10 @@ func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
 
 	// Include conversation history in RAG context
-	if len(history) > 0 {
+	if len(opts.History) > 0 {
 		var hb strings.Builder
 		hb.WriteString("### Conversation history\n")
-		for _, m := range history {
+		for _, m := range opts.History {
 			if m.Role == "user" {
 				hb.WriteString("**User:** " + m.Text + "\n\n")
 			} else {
@@ -192,13 +208,14 @@ func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 			"For prices, weather, and live data, use the exact values from tool results."
 	}
 
-	// Add user context
-	userCtx := ""
-	if UserContextFunc != nil {
-		userCtx = UserContextFunc(accountID)
-	}
-	if userCtx != "" {
-		synthSystem += "\n\nUser context:\n" + userCtx
+	if !opts.Public {
+		synthUserCtx := ""
+		if UserContextFunc != nil {
+			synthUserCtx = UserContextFunc(accountID)
+		}
+		if synthUserCtx != "" {
+			synthSystem += "\n\nUser context:\n" + synthUserCtx
+		}
 	}
 
 	synthPrompt := &ai.Prompt{

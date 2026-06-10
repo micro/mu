@@ -78,6 +78,7 @@ func handleInteraction(raw json.RawMessage) {
 
 	discordID := inter.userID()
 	accountID := GetLinkedAccount(discordID)
+	isChannelCmd := inter.Member != nil
 
 	// Defer the response — tell Discord we're thinking
 	deferResponse(inter.ID, inter.Token)
@@ -110,6 +111,10 @@ func handleInteraction(raw json.RawMessage) {
 			prompt = "weather forecast"
 		}
 	case "mail":
+		if isChannelCmd {
+			editResponse(inter.Token, "Mail is private — use this command in a DM.")
+			return
+		}
 		prompt = "read my email"
 	case "apps":
 		q := inter.getOption("query")
@@ -129,6 +134,10 @@ func handleInteraction(raw json.RawMessage) {
 		q := inter.getOption("query")
 		prompt = "search for " + q
 	case "swap":
+		if isChannelCmd {
+			editResponse(inter.Token, "Trading is private — use this command in a DM.")
+			return
+		}
 		from := inter.getOption("from")
 		to := inter.getOption("to")
 		amount := inter.getOption("amount")
@@ -152,6 +161,10 @@ func handleInteraction(raw json.RawMessage) {
 		}
 		prompt = "swap " + amount + " " + from + " for " + to
 	case "balance":
+		if isChannelCmd {
+			editResponse(inter.Token, "Wallet balance is private — use this command in a DM.")
+			return
+		}
 		info := trade.GetWalletInfo(accountID)
 		if info == nil {
 			editResponse(inter.Token, "No trading wallet. Create one at /markets?category=trade")
@@ -183,7 +196,10 @@ func handleInteraction(raw json.RawMessage) {
 	}
 
 	history := getHistory(discordID)
-	answer, err := agent.Query(accountID, prompt, history...)
+	answer, err := agent.QueryWithOpts(accountID, prompt, agent.QueryOpts{
+		History: history,
+		Public:  isChannelCmd,
+	})
 	if err != nil {
 		editResponse(inter.Token, "Error: "+err.Error())
 		return

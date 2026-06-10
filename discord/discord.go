@@ -369,9 +369,13 @@ func handleMessage(m discordMessage) {
 	// Show typing indicator
 	showTyping(m.ChannelID)
 
-	// Get conversation history and run agent with context
+	// Get conversation history and run agent with context.
+	// Channel messages are public — skip private data (mail, wallet).
 	history := getHistory(m.Author.ID)
-	answer, err := agent.Query(accountID, content, history...)
+	answer, err := agent.QueryWithOpts(accountID, content, agent.QueryOpts{
+		History: history,
+		Public:  !isDM,
+	})
 	if err != nil {
 		app.Log("discord", "Agent error for %s: %v", accountID, err)
 		sendMessage(m.ChannelID, "Sorry, something went wrong: "+err.Error())
