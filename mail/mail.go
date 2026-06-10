@@ -1537,8 +1537,17 @@ func SendMessageTagged(from, fromID, to, toID, subject, body, replyTo, messageID
 		updateStats(msg)
 	}
 
+	// Notify on new inbound mail (non-spam, to a local user)
+	if !spam && toID != "" && OnNewMail != nil {
+		go OnNewMail(toID, from, subject, body)
+	}
+
 	return err
 }
+
+// OnNewMail is called when a new non-spam message is delivered to a user.
+// Set by main.go to trigger Discord notifications, email summaries, etc.
+var OnNewMail func(accountID, from, subject, body string)
 
 // GetUnreadCount returns the number of unread messages for a user
 func GetUnreadCount(userID string) int {

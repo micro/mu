@@ -106,6 +106,11 @@ func main() {
 	trade.NotifyFunc = discord.NotifyUser
 	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
 	discord.Load()
+	discord.StartBriefingLoop()
+	mail.OnNewMail = func(accountID, from, subject, body string) {
+		summary := discord.SummariseEmail(from, subject, body)
+		discord.NotifyNewMail(accountID, from, subject, summary)
+	}
 
 	// load apps
 	apps.Load()

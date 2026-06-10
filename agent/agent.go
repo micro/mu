@@ -123,8 +123,8 @@ func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 			System:   planSystem,
 			Question: planQuestion,
 			Priority: ai.PriorityHigh,
-			Provider: model.Provider,
-			Model:    model.Model,
+			Provider: "",
+			Model:    ai.BackgroundModel(),
 			Caller:   "agent-plan",
 		}
 		planResult, err := ai.Ask(planPrompt)
@@ -981,8 +981,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 				"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. When the question asks for cross-source insights or correlations (e.g. news + markets, news + video), call multiple relevant tools. If the question is a follow-up that can be answered from prior conversation context without new tools, output []. If no tools are needed output [].",
 			Question: planQuestion,
 			Priority: ai.PriorityHigh,
-			Provider: model.Provider,
-			Model:    model.Model,
+			Provider: "",
+			Model:    ai.BackgroundModel(),
 			Caller:   "agent-plan",
 		}
 

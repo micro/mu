@@ -156,8 +156,8 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		System:   planSystem,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
-		Provider: model.Provider,
-		Model:    model.Model,
+		Provider: "",
+		Model:    ai.BackgroundModel(),
 		Caller:   "agent-run-plan",
 	})
 

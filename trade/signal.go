@@ -105,6 +105,7 @@ Rules:
 	result, err := ai.Ask(&ai.Prompt{
 		System:   "You are a trading signal evaluator. Respond with ONLY JSON, no other text.",
 		Question: prompt,
+		Model:    ai.BackgroundModel(),
 		Priority: ai.PriorityLow,
 		Caller:   "trade-signal",
 	})
