@@ -28,12 +28,12 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 .brand{font-size:2.5rem;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
 .tagline{color:#666;font-size:16px;margin-bottom:32px}
 .prompt-wrap{width:100%%;max-width:560px;margin-bottom:12px}
-.prompt-wrap form{display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:24px;background:#fff;padding:4px 4px 4px 16px;transition:border-color 0.2s}
+.prompt-wrap form{display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;background:#fff;padding:4px 4px 4px 12px;transition:border-color 0.2s}
 .prompt-wrap form:focus-within{border-color:#999}
 .prompt-wrap textarea{flex:1;padding:10px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
-.prompt-wrap button{flex-shrink:0;width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:50%%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
+.prompt-wrap button{flex-shrink:0;width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
 .pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:40px}
-.pills a{padding:8px 16px;border:1px solid #e0e0e0;border-radius:20px;font-size:13px;color:#555;text-decoration:none;white-space:nowrap;transition:background 0.15s}
+.pills a{padding:8px 16px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#555;text-decoration:none;white-space:nowrap;transition:background 0.15s}
 .pills a:hover{background:#f5f5f5}
 .footer{padding:20px;text-align:center;font-size:13px;color:#999}
 .footer a{color:#555;text-decoration:none;margin:0 10px}

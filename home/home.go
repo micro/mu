@@ -466,14 +466,14 @@ function fetchW(la,lo){
 
 		var suggestHTML string
 		for _, s := range suggestions {
-			suggestHTML += fmt.Sprintf(`<a href="/agent?prompt=%s" class="console-suggest" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:20px;background:#fff;font-size:13px;color:#555;text-decoration:none;white-space:nowrap">%s</a>`, htmlEsc(url.QueryEscape(s)), htmlEsc(s))
+			suggestHTML += fmt.Sprintf(`<a href="/agent?prompt=%s" class="console-suggest" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;font-size:13px;color:#555;text-decoration:none;white-space:nowrap">%s</a>`, htmlEsc(url.QueryEscape(s)), htmlEsc(s))
 		}
 
 		b.WriteString(fmt.Sprintf(`
 <div id="console-prompt" style="margin:0 0 20px;padding:24px 0 0">
 <form action="/agent" method="GET" style="position:relative">
-<textarea name="prompt" id="console-input" placeholder="What do you need?" maxlength="1024" rows="1" style="width:100%%;padding:14px 44px 14px 16px;border:1px solid #ddd;border-radius:14px;font-size:16px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden;background:#fff" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.submit()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
-<button type="submit" style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0">&#x2192;</button>
+<textarea name="prompt" id="console-input" placeholder="What do you need?" maxlength="1024" rows="1" style="width:100%%;padding:14px 44px 14px 16px;border:1px solid #ddd;border-radius:6px;font-size:16px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden;background:#fff" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.submit()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+<button type="submit" style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0">&#x2192;</button>
 </form>
 <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px">%s</div>
 </div>`, suggestHTML))
