@@ -209,6 +209,10 @@ var slashCommands = []SlashCommand{
 			{Name: "query", Description: "Search term", Type: OptionString, Required: true},
 		},
 	},
+	{
+		Name:        "usage",
+		Description: "View your query usage stats",
+	},
 }
 
 func registerSlashCommands(appID string) {

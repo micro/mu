@@ -187,6 +187,25 @@ func handleInteraction(raw json.RawMessage) {
 		}
 		editResponseEmbed(inter.Token, embed)
 		return
+	case "usage":
+		u := GetUserUsage(accountID)
+		embed := Embed{
+			Title: "Your Usage",
+			Color: ColorBlue,
+			Fields: []EmbedField{
+				{Name: "Today", Value: fmt.Sprintf("%d queries", u.DailyCount), Inline: true},
+				{Name: "All time", Value: fmt.Sprintf("%d queries", u.Queries), Inline: true},
+				{Name: "Last query", Value: func() string {
+					if u.LastQuery.IsZero() {
+						return "never"
+					}
+					return u.LastQuery.Format("2 Jan 15:04")
+				}(), Inline: true},
+			},
+			Footer: &EmbedFooter{Text: accountID},
+		}
+		editResponseEmbed(inter.Token, embed)
+		return
 	default:
 		prompt = inter.Data.Name
 	}
