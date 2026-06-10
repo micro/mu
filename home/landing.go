@@ -27,8 +27,9 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 .landing{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px}
 .brand{font-size:2.5rem;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
 .tagline{color:#666;font-size:16px;margin-bottom:32px}
-.prompt-wrap{width:100%%;max-width:560px;position:relative;margin-bottom:12px}
-.prompt-wrap textarea{width:100%%;padding:14px 48px 14px 16px;border:1px solid #ddd;border-radius:24px;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:#fff;outline:none;transition:border-color 0.2s}
+.prompt-wrap{width:100%%;max-width:560px;margin-bottom:12px}
+.prompt-wrap form{position:relative}
+.prompt-wrap textarea{width:100%%;padding:14px 48px 14px 16px;border:1px solid #ddd;border-radius:24px;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:#fff;outline:none;transition:border-color 0.2s;box-sizing:border-box}
 .prompt-wrap textarea:focus{border-color:#999}
 .prompt-wrap button{position:absolute;right:8px;top:50%%;transform:translateY(-50%%);width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:50%%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
 .pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:40px}
