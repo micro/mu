@@ -423,12 +423,13 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 
 fullRegen:
 	prompt := &ai.Prompt{
-		System:   builderSystemPromptWithDocs(),
-		Rag:      rag,
-		Question: question,
-		Model:    "claude-opus-4-20250514",
-		Priority: ai.PriorityHigh,
-		Caller:   "app-builder",
+		System:    builderSystemPromptWithDocs(),
+		Rag:       rag,
+		Question:  question,
+		Model:     "claude-sonnet-4-20250514",
+		Priority:  ai.PriorityHigh,
+		Caller:    "app-builder",
+		MaxTokens: 16384,
 	}
 
 	result, err := ai.Ask(prompt)
@@ -871,7 +872,10 @@ function generate() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: p, code: codeEl.value })
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r) {
+    if (!r.ok) return r.text().then(function(t) { throw new Error(t || 'Request failed'); });
+    return r.json();
+  })
   .then(function(data) {
     if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
     codeEl.value = data.html;
@@ -1125,7 +1129,10 @@ function generate() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: p, code: codeEl.value, slug: editSlug })
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r) {
+    if (!r.ok) return r.text().then(function(t) { throw new Error(t || 'Request failed'); });
+    return r.json();
+  })
   .then(function(data) {
     if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
     codeEl.value = data.html;

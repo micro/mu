@@ -32,15 +32,16 @@ const (
 
 // Prompt represents a request to the LLM
 type Prompt struct {
-	System   string   // System prompt override
-	Topic    string   // User-selected topic/context
-	Rag      []string // RAG context sources
-	Context  History  // Conversation history
-	Question string   // User's question
-	Priority int      // Request priority (0=high, 1=medium, 2=low)
-	Provider string   // Force specific provider (empty = default)
-	Model    string   // Force specific model (empty = provider default)
-	Caller   string   // Identifies the calling feature for usage tracking
+	System    string   // System prompt override
+	Topic     string   // User-selected topic/context
+	Rag       []string // RAG context sources
+	Context   History  // Conversation history
+	Question  string   // User's question
+	Priority  int      // Request priority (0=high, 1=medium, 2=low)
+	Provider  string   // Force specific provider (empty = default)
+	Model     string   // Force specific model (empty = provider default)
+	Caller    string   // Identifies the calling feature for usage tracking
+	MaxTokens int      // Max output tokens (0 = default 4096)
 }
 
 // systemPromptData is the data passed to the system prompt template

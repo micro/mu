@@ -125,12 +125,17 @@ func generate(prompt *Prompt) (string, error) {
 		caller = "unknown"
 	}
 
-	// Route to Atlas Cloud for supported models.
-	if isAtlasModel(model) && getAtlasAPIKey() != "" {
-		return generateAtlas(getAtlasAPIKey(), model, systemPromptText, messages, caller)
+	maxTok := prompt.MaxTokens
+	if maxTok == 0 {
+		maxTok = 4096
 	}
 
-	return generateAnthropic(key, model, systemPromptText, messages, caller)
+	// Route to Atlas Cloud for supported models.
+	if isAtlasModel(model) && getAtlasAPIKey() != "" {
+		return generateAtlas(getAtlasAPIKey(), model, systemPromptText, messages, caller, maxTok)
+	}
+
+	return generateAnthropicInternal(key, model, systemPromptText, messages, caller, nil, maxTok)
 }
 
 func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
@@ -171,18 +176,23 @@ func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
 		clr = "unknown"
 	}
 
-	if isAtlasModel(mdl) && getAtlasAPIKey() != "" {
-		return generateAtlas(getAtlasAPIKey(), mdl, systemPromptText, msgs, clr)
+	maxTok := prompt.MaxTokens
+	if maxTok == 0 {
+		maxTok = 4096
 	}
 
-	return generateAnthropicInternal(key, mdl, systemPromptText, msgs, clr, onToken)
+	if isAtlasModel(mdl) && getAtlasAPIKey() != "" {
+		return generateAtlas(getAtlasAPIKey(), mdl, systemPromptText, msgs, clr, maxTok)
+	}
+
+	return generateAnthropicInternal(key, mdl, systemPromptText, msgs, clr, onToken, maxTok)
 }
 
 func generateAnthropic(apiKey, model, systemPrompt string, messages []map[string]string, caller string) (string, error) {
-	return generateAnthropicInternal(apiKey, model, systemPrompt, messages, caller, nil)
+	return generateAnthropicInternal(apiKey, model, systemPrompt, messages, caller, nil, 4096)
 }
 
-func generateAnthropicInternal(apiKey, model, systemPrompt string, messages []map[string]string, caller string, onToken func(string)) (string, error) {
+func generateAnthropicInternal(apiKey, model, systemPrompt string, messages []map[string]string, caller string, onToken func(string), maxTokens int) (string, error) {
 	app.Log("ai", "[LLM] Using Anthropic Claude with model %s (stream=%v)", model, onToken != nil)
 
 	var anthropicMessages []map[string]interface{}
@@ -197,7 +207,7 @@ func generateAnthropicInternal(apiKey, model, systemPrompt string, messages []ma
 
 	reqBody := map[string]interface{}{
 		"model":      model,
-		"max_tokens": 4096,
+		"max_tokens": maxTokens,
 		"messages":   anthropicMessages,
 	}
 	if onToken != nil {
@@ -386,7 +396,7 @@ func GetCacheStats() (hits, misses, readTokens, creationTokens int) {
 }
 
 // generateAtlas sends a request to Atlas Cloud's OpenAI-compatible API.
-func generateAtlas(apiKey, model, systemPrompt string, messages []map[string]string, caller string) (string, error) {
+func generateAtlas(apiKey, model, systemPrompt string, messages []map[string]string, caller string, maxTokens ...int) (string, error) {
 	app.Log("ai", "[LLM] Using Atlas Cloud with model %s", model)
 
 	var apiMessages []map[string]string
@@ -403,16 +413,19 @@ func generateAtlas(apiKey, model, systemPrompt string, messages []map[string]str
 	}
 
 	// Use shorter max_tokens for background tasks to reduce latency.
-	maxTokens := 4096
+	tokLimit := 4096
+	if len(maxTokens) > 0 && maxTokens[0] > 0 {
+		tokLimit = maxTokens[0]
+	}
 	switch caller {
 	case "article-summary", "auto-tag-post", "auto-tag-note", "topic-generation", "topic-summary":
-		maxTokens = 512
+		tokLimit = 512
 	}
 
 	req := map[string]interface{}{
 		"model":      model,
 		"messages":   apiMessages,
-		"max_tokens": maxTokens,
+		"max_tokens": tokLimit,
 	}
 
 	body, _ := json.Marshal(req)
