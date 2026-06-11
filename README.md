@@ -79,13 +79,16 @@ export MU_TOKEN=xxx       # or use the environment
 
 See [CLI docs](docs/CLI.md) for more.
 
-## Discord
+## Discord & Telegram
 
-Talk to the AI agent directly from Discord. Ask questions, check markets, get news, trade — all from chat.
+Talk to the AI agent from Discord or Telegram. Ask questions, check markets, get news, trade — all from chat.
 
 [Join the Discord](https://discord.gg/WeMU5AGxD)
 
-Slash commands: `/news`, `/markets`, `/weather`, `/swap`, `/agent`.
+Discord slash commands: `/news`, `/markets`, `/weather`, `/swap`, `/agent`.
+Telegram commands: `/ask`, `/news`, `/markets`, `/weather`.
+
+See [Discord docs](docs/DISCORD.md) and [Telegram docs](docs/TELEGRAM.md) for setup.
 
 ## Pricing
 
