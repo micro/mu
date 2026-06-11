@@ -101,22 +101,44 @@ See [Discord docs](docs/DISCORD.md) and [Telegram docs](docs/TELEGRAM.md) for se
 
 ## Self-hosting
 
+### One-command install
+
 ```bash
-# Install
+curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
+```
+
+### Docker
+
+```bash
+git clone https://github.com/micro/mu && cd mu
+docker compose up
+```
+
+### From source
+
+```bash
 git clone https://github.com/micro/mu
 cd mu && go install
-
-# Configure (choose your AI provider)
-export ANTHROPIC_API_KEY=xxx              # Anthropic Claude
-# or
-export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama / local models
-export OPENAI_API_KEY=ollama
-
-# Run
 mu --serve
 ```
 
-Go to localhost:8081. See [Installation guide](docs/INSTALLATION.md) for full setup.
+### Choose your AI
+
+```bash
+# Ollama (local, free, private)
+ollama serve &
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_API_KEY=ollama
+mu --serve
+
+# or Claude (cloud)
+export ANTHROPIC_API_KEY=xxx
+mu --serve
+```
+
+Open http://localhost:8081. Configure everything else from `/admin/env` in the browser.
+
+See [Installation guide](docs/INSTALLATION.md) for full setup.
 
 ### Configuration
 
