@@ -62,7 +62,27 @@ func run() {
 
 var httpClient = &http.Client{Timeout: 35 * time.Second}
 
+func registerCommands(token string) {
+	commands := []map[string]string{
+		{"command": "ask", "description": "Ask the AI agent anything"},
+		{"command": "news", "description": "Latest news headlines"},
+		{"command": "markets", "description": "Live market prices"},
+		{"command": "weather", "description": "Weather forecast"},
+		{"command": "usage", "description": "Your usage stats"},
+	}
+	body, _ := json.Marshal(map[string]any{"commands": commands})
+	url := "https://api.telegram.org/bot" + token + "/setMyCommands"
+	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
+	if err != nil {
+		return
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	app.Log("telegram", "Registered bot commands")
+}
+
 func poll(token string) {
+	registerCommands(token)
 	baseURL := "https://api.telegram.org/bot" + token
 	offset := 0
 
@@ -89,7 +109,12 @@ func poll(token string) {
 						ID   int64  `json:"id"`
 						Type string `json:"type"`
 					} `json:"chat"`
-					Text string `json:"text"`
+					Text     string `json:"text"`
+					Entities []struct {
+						Type   string `json:"type"`
+						Offset int    `json:"offset"`
+						Length int    `json:"length"`
+					} `json:"entities"`
 				} `json:"message"`
 			} `json:"result"`
 		}
@@ -104,9 +129,26 @@ func poll(token string) {
 
 		for _, update := range result.Result {
 			offset = update.UpdateID + 1
-			if update.Message != nil && update.Message.Text != "" {
-				go handleMessage(token, update.Message.From.ID, update.Message.From.Username, update.Message.From.FirstName, update.Message.Chat.ID, update.Message.Chat.Type, update.Message.Text)
+			if update.Message == nil || update.Message.Text == "" {
+				continue
 			}
+			m := update.Message
+
+			// Check if this is a bot command or mention
+			isBotCommand := false
+			for _, e := range m.Entities {
+				if e.Type == "bot_command" || e.Type == "mention" {
+					isBotCommand = true
+					break
+				}
+			}
+
+			isDM := m.Chat.Type == "private"
+			if !isDM && !isBotCommand {
+				continue
+			}
+
+			go handleMessage(token, m.From.ID, m.From.Username, m.From.FirstName, m.Chat.ID, m.Chat.Type, m.Text)
 		}
 	}
 }
@@ -115,14 +157,56 @@ func handleMessage(token string, userID int64, username, firstName string, chatI
 	telegramID := fmt.Sprintf("%d", userID)
 	isDM := chatType == "private"
 
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return
+	// Strip bot commands: /ask@botname query → query
+	if strings.HasPrefix(text, "/") {
+		parts := strings.SplitN(text, " ", 2)
+		cmd := strings.Split(parts[0], "@")[0] // remove @botname
+		switch cmd {
+		case "/start":
+			sendTelegram(token, chatID, "Hi! I'm Micro — your personal AI. Ask me anything.\n\nIn groups, use /ask followed by your question.")
+			return
+		case "/ask", "/mu", "/agent":
+			if len(parts) > 1 {
+				text = parts[1]
+			} else {
+				sendTelegram(token, chatID, "Usage: `"+cmd+" your question here`")
+				return
+			}
+		case "/news":
+			text = "latest news"
+		case "/markets":
+			text = "crypto market prices"
+		case "/weather":
+			if len(parts) > 1 {
+				text = "weather in " + parts[1]
+			} else {
+				text = "weather forecast"
+			}
+		case "/usage":
+			text = "" // handled below
+		default:
+			if len(parts) > 1 {
+				text = parts[1]
+			} else {
+				text = ""
+			}
+		}
 	}
 
-	// Strip /start command
-	if text == "/start" {
-		sendTelegram(token, chatID, "Hi! I'm Micro — your personal AI. Ask me anything.")
+	// Strip @mentions
+	text = strings.TrimSpace(text)
+	// Remove @botname from text
+	words := strings.Fields(text)
+	var cleaned []string
+	for _, w := range words {
+		if !strings.HasPrefix(w, "@") {
+			cleaned = append(cleaned, w)
+		}
+	}
+	text = strings.Join(cleaned, " ")
+
+	if text == "" {
+		sendTelegram(token, chatID, "Ask me anything! In groups use `/ask your question`.")
 		return
 	}
 
