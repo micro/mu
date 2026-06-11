@@ -7,7 +7,6 @@ import (
 
 	"mu/internal/ai"
 	"mu/internal/app"
-	"mu/internal/settings"
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
@@ -36,9 +35,9 @@ func sendMorningBriefings() {
 		return
 	}
 
-	// Post public briefing to the configured channel
-	channelID := settings.Get("DISCORD_BRIEFING_CHANNEL")
-	if channelID != "" {
+	// Post to every server's configured briefing channel
+	channels := getBriefingChannels()
+	for _, channelID := range channels {
 		embed := Embed{
 			Title:       "☀️ Morning Briefing",
 			Description: briefing,
@@ -46,7 +45,9 @@ func sendMorningBriefings() {
 			Footer:      &EmbedFooter{Text: time.Now().Format("Monday, 2 January 2006")},
 		}
 		sendEmbed(channelID, embed)
-		app.Log("discord", "Posted morning briefing to channel %s", channelID)
+	}
+	if len(channels) > 0 {
+		app.Log("discord", "Posted morning briefing to %d channels", len(channels))
 	}
 
 	// Send personal context (unread mail, etc.) as DMs

@@ -17,6 +17,7 @@ type interaction struct {
 	Token     string `json:"token"`
 	Type      int    `json:"type"`
 	ChannelID string `json:"channel_id"`
+	GuildID   string `json:"guild_id"`
 	Member    *struct {
 		User struct {
 			ID       string `json:"id"`
@@ -77,8 +78,35 @@ func handleInteraction(raw json.RawMessage) {
 	}
 
 	discordID := inter.userID()
-	accountID := GetLinkedAccount(discordID)
 	isChannelCmd := inter.Member != nil
+
+	// Handle setup command (server admin only, no Mu account needed)
+	if inter.Data.Name == "setup" {
+		deferResponse(inter.ID, inter.Token)
+		if !isChannelCmd {
+			editResponse(inter.Token, "This command can only be used in a server.")
+			return
+		}
+		// Check if user has admin/manage server permission
+		channelID := inter.getOption("briefing_channel")
+		if channelID == "" {
+			editResponse(inter.Token, "Please specify a channel.")
+			return
+		}
+		guildID := ""
+		if inter.GuildID != "" {
+			guildID = inter.GuildID
+		}
+		if guildID == "" {
+			editResponse(inter.Token, "Could not determine server.")
+			return
+		}
+		setGuildBriefingChannel(guildID, channelID)
+		editResponse(inter.Token, fmt.Sprintf("Morning briefings will be posted to <#%s> daily at 7am UTC.", channelID))
+		return
+	}
+
+	accountID := GetLinkedAccount(discordID)
 
 	// Defer the response — tell Discord we're thinking
 	deferResponse(inter.ID, inter.Token)

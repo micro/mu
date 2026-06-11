@@ -63,6 +63,7 @@ func addHistory(discordID string, role, text string) {
 func Load() {
 	data.LoadJSON("discord_links.json", &links)
 	loadUsage()
+	loadGuildConfigs()
 	go run()
 }
 

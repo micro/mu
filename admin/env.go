@@ -50,7 +50,6 @@ var settingGroups = []settingGroup{
 	}},
 	{"Discord", []string{
 		"DISCORD_BOT_TOKEN",
-		"DISCORD_BRIEFING_CHANNEL",
 	}},
 	{"Platform", []string{
 		"MU_DOMAIN",
