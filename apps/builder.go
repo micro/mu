@@ -417,11 +417,44 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, resp)
 			return
 		}
-		// No patches applied — fall through to full regen
-		app.Log("apps", "No patches matched, falling back to full regen")
+		app.Log("apps", "No patches matched (%d attempted), falling back to full regen", len(patchResp.Patches))
 	}
 
 fullRegen:
+	// For edits where patches failed, include existing code and ask for full HTML back
+	if req.Code != "" {
+		regenPrompt := &ai.Prompt{
+			System: `You are an app editor. The user wants to modify an existing app. Return the COMPLETE updated HTML with the requested changes applied.
+
+Return ONLY valid JSON: {"html":"<complete updated html>","description":"what changed"}
+
+Do NOT return partial code. Do NOT add comments. Return the full working app HTML with changes applied.`,
+			Rag:       []string{"Current app HTML:\n```html\n" + req.Code + "\n```"},
+			Question:  req.Prompt,
+			Model:     "claude-sonnet-4-20250514",
+			Priority:  ai.PriorityHigh,
+			Caller:    "app-editor-regen",
+			MaxTokens: 16384,
+		}
+		regenResult, err := ai.Ask(regenPrompt)
+		if err != nil {
+			app.RespondError(w, http.StatusInternalServerError, "Failed to edit. Please try again.")
+			return
+		}
+		regenResult = cleanGeneratedJSON(regenResult)
+		var regenResp struct {
+			HTML        string `json:"html"`
+			Description string `json:"description"`
+		}
+		if err := json.Unmarshal([]byte(regenResult), &regenResp); err != nil {
+			regenResp.HTML = cleanGeneratedHTML(regenResult)
+		}
+		if regenResp.HTML != "" {
+			app.RespondJSON(w, map[string]any{"html": regenResp.HTML, "description": regenResp.Description})
+			return
+		}
+	}
+
 	prompt := &ai.Prompt{
 		System:    builderSystemPromptWithDocs(),
 		Rag:       rag,
