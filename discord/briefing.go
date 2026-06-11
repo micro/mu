@@ -7,6 +7,7 @@ import (
 
 	"mu/internal/ai"
 	"mu/internal/app"
+	"mu/internal/settings"
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
@@ -30,6 +31,25 @@ func StartBriefingLoop() {
 }
 
 func sendMorningBriefings() {
+	briefing := buildBriefing()
+	if briefing == "" {
+		return
+	}
+
+	// Post public briefing to the configured channel
+	channelID := settings.Get("DISCORD_BRIEFING_CHANNEL")
+	if channelID != "" {
+		embed := Embed{
+			Title:       "☀️ Morning Briefing",
+			Description: briefing,
+			Color:       ColorGold,
+			Footer:      &EmbedFooter{Text: time.Now().Format("Monday, 2 January 2006")},
+		}
+		sendEmbed(channelID, embed)
+		app.Log("discord", "Posted morning briefing to channel %s", channelID)
+	}
+
+	// Send personal context (unread mail, etc.) as DMs
 	linkMu.RLock()
 	userMap := make(map[string]string, len(links))
 	for discordID, muAccount := range links {
@@ -37,29 +57,16 @@ func sendMorningBriefings() {
 	}
 	linkMu.RUnlock()
 
-	if len(userMap) == 0 {
-		return
-	}
-
-	briefing := buildBriefing()
-	if briefing == "" {
-		return
-	}
-
 	for discordID, muAccount := range userMap {
-		personalBriefing := addPersonalContext(briefing, muAccount)
-		channelID := getDMChannel(discordID)
-		if channelID == "" {
+		personal := personalContext(muAccount)
+		if personal == "" {
 			continue
 		}
-		embed := Embed{
-			Title:       "☀️ Morning Briefing",
-			Description: personalBriefing,
-			Color:       ColorGold,
-			Footer:      &EmbedFooter{Text: time.Now().Format("Monday, 2 January 2006")},
+		dmChannel := getDMChannel(discordID)
+		if dmChannel == "" {
+			continue
 		}
-		sendEmbed(channelID, embed)
-		app.Log("discord", "Sent morning briefing to %s", muAccount)
+		sendMessage(dmChannel, personal)
 	}
 }
 
@@ -116,10 +123,9 @@ func buildBriefing() string {
 	return result
 }
 
-func addPersonalContext(briefing, accountID string) string {
+func personalContext(accountID string) string {
 	var extras []string
 
-	// Unread mail count
 	if unread := mail.GetUnreadCount(accountID); unread > 0 {
 		extras = append(extras, fmt.Sprintf("📬 You have %d unread email%s.", unread, func() string {
 			if unread == 1 {
@@ -130,9 +136,9 @@ func addPersonalContext(briefing, accountID string) string {
 	}
 
 	if len(extras) > 0 {
-		return briefing + "\n\n" + strings.Join(extras, "\n")
+		return strings.Join(extras, "\n")
 	}
-	return briefing
+	return ""
 }
 
 // SummariseEmail generates a short summary of an email using DeepSeek.
