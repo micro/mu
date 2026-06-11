@@ -111,9 +111,6 @@ func generate(prompt *Prompt) (string, error) {
 	messages = append(messages, map[string]string{"role": "user", "content": prompt.Question})
 
 	key := settings.Get("ANTHROPIC_API_KEY")
-	if key == "" {
-		return "", fmt.Errorf("ANTHROPIC_API_KEY not set")
-	}
 
 	model := prompt.Model
 	if model == "" {
@@ -133,6 +130,28 @@ func generate(prompt *Prompt) (string, error) {
 	// Route to Atlas Cloud for supported models.
 	if isAtlasModel(model) && getAtlasAPIKey() != "" {
 		return generateAtlas(getAtlasAPIKey(), model, systemPromptText, messages, caller, maxTok)
+	}
+
+	// Route to local/OpenAI-compatible server if configured and no Anthropic key
+	if key == "" {
+		localURL := settings.Get("OPENAI_BASE_URL")
+		localKey := settings.Get("OPENAI_API_KEY")
+		if localURL == "" {
+			localURL = detectOllama()
+		}
+		if localURL != "" {
+			if localKey == "" {
+				localKey = "ollama"
+			}
+			localModel := model
+			if strings.HasPrefix(localModel, "claude") {
+				localModel = detectLocalModel(localURL, localKey)
+			}
+			if localModel != "" {
+				return generateLocalOpenAI(localURL, localKey, localModel, systemPromptText, messages, caller, maxTok)
+			}
+		}
+		return "", fmt.Errorf("no AI provider configured — set ANTHROPIC_API_KEY or OPENAI_BASE_URL (Ollama)")
 	}
 
 	return generateAnthropicInternal(key, model, systemPromptText, messages, caller, nil, maxTok)
@@ -162,9 +181,6 @@ func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
 	msgs = append(msgs, map[string]string{"role": "user", "content": prompt.Question})
 
 	key := settings.Get("ANTHROPIC_API_KEY")
-	if key == "" {
-		return "", fmt.Errorf("ANTHROPIC_API_KEY not set")
-	}
 
 	mdl := prompt.Model
 	if mdl == "" {
@@ -183,6 +199,28 @@ func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
 
 	if isAtlasModel(mdl) && getAtlasAPIKey() != "" {
 		return generateAtlas(getAtlasAPIKey(), mdl, systemPromptText, msgs, clr, maxTok)
+	}
+
+	// Fall through to local model if no Anthropic key
+	if key == "" {
+		localURL := settings.Get("OPENAI_BASE_URL")
+		localKey := settings.Get("OPENAI_API_KEY")
+		if localURL == "" {
+			localURL = detectOllama()
+		}
+		if localURL != "" {
+			if localKey == "" {
+				localKey = "ollama"
+			}
+			localModel := mdl
+			if strings.HasPrefix(localModel, "claude") {
+				localModel = detectLocalModel(localURL, localKey)
+			}
+			if localModel != "" {
+				return generateLocalOpenAI(localURL, localKey, localModel, systemPromptText, msgs, clr, maxTok)
+			}
+		}
+		return "", fmt.Errorf("no AI provider configured")
 	}
 
 	return generateAnthropicInternal(key, mdl, systemPromptText, msgs, clr, onToken, maxTok)
@@ -484,6 +522,135 @@ func truncateLog(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+// ── Local model support (Ollama, llama.cpp, vLLM, etc.) ──
+
+// detectOllama checks if Ollama is running on the default port.
+func detectOllama() string {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get("http://localhost:11434/api/tags")
+	if err != nil {
+		return ""
+	}
+	resp.Body.Close()
+	if resp.StatusCode == 200 {
+		app.Log("ai", "Auto-detected Ollama at localhost:11434")
+		return "http://localhost:11434/v1"
+	}
+	return ""
+}
+
+// detectLocalModel finds the best available model from a local server.
+func detectLocalModel(baseURL, apiKey string) string {
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, _ := http.NewRequest("GET", baseURL+"/models", nil)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	json.NewDecoder(resp.Body).Decode(&result)
+
+	// Prefer larger models, then any available
+	preferred := []string{"llama3", "llama3.1", "llama3.2", "mistral", "qwen", "gemma", "phi"}
+	for _, pref := range preferred {
+		for _, m := range result.Data {
+			if strings.Contains(strings.ToLower(m.ID), pref) {
+				app.Log("ai", "Using local model: %s", m.ID)
+				return m.ID
+			}
+		}
+	}
+	if len(result.Data) > 0 {
+		app.Log("ai", "Using local model: %s", result.Data[0].ID)
+		return result.Data[0].ID
+	}
+	return ""
+}
+
+// generateLocalOpenAI sends a request to a local OpenAI-compatible server.
+func generateLocalOpenAI(baseURL, apiKey, model, systemPrompt string, messages []map[string]string, caller string, maxTokens int) (string, error) {
+	app.Log("ai", "[LLM] Using local model %s at %s", model, baseURL)
+
+	var apiMessages []map[string]string
+	if systemPrompt != "" {
+		apiMessages = append(apiMessages, map[string]string{
+			"role":    "system",
+			"content": systemPrompt,
+		})
+	}
+	for _, msg := range messages {
+		if msg["role"] != "system" {
+			apiMessages = append(apiMessages, msg)
+		}
+	}
+
+	reqBody := map[string]interface{}{
+		"model":      model,
+		"messages":   apiMessages,
+		"max_tokens": maxTokens,
+	}
+
+	body, _ := json.Marshal(reqBody)
+	httpReq, _ := http.NewRequest("POST", strings.TrimRight(baseURL, "/")+"/chat/completions", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+
+	client := &http.Client{Timeout: llmTimeout}
+	start := time.Now()
+	resp, err := client.Do(httpReq)
+	duration := time.Since(start)
+	if err != nil {
+		app.RecordAPICall("local", "POST", baseURL, 0, duration, err, "", "")
+		return "", fmt.Errorf("local model connection failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	app.RecordAPICall("local", "POST", baseURL+" ["+model+"]", resp.StatusCode, duration, nil, "", "")
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+		Usage struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+		} `json:"usage"`
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	json.Unmarshal(respBody, &result)
+
+	if result.Error.Message != "" {
+		return "", fmt.Errorf("local model error: %s", result.Error.Message)
+	}
+
+	recordUsage(caller, model, result.Usage.PromptTokens, result.Usage.CompletionTokens, 0, 0)
+
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("local model returned no choices")
+	}
+	return result.Choices[0].Message.Content, nil
+}
+
+// LocalModelAvailable returns true if a local model server is reachable.
+func LocalModelAvailable() bool {
+	if settings.Get("OPENAI_BASE_URL") != "" {
+		return true
+	}
+	return detectOllama() != ""
 }
 
 func init() {

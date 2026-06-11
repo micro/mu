@@ -43,7 +43,7 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 <body>
 <div class="landing">
   <div class="brand">Mu</div>
-  <div class="tagline">Your personal AI</div>
+  <div class="tagline">Your personal AI — runs locally, no cloud required</div>
   <div class="prompt-wrap">
     <form action="/agent" method="GET">
       <textarea name="prompt" placeholder="Ask anything..." maxlength="512" rows="1"
