@@ -51,6 +51,9 @@ var settingGroups = []settingGroup{
 	{"Discord", []string{
 		"DISCORD_BOT_TOKEN",
 	}},
+	{"Telegram", []string{
+		"TELEGRAM_BOT_TOKEN",
+	}},
 	{"Platform", []string{
 		"MU_DOMAIN",
 		"DATA_DIR",

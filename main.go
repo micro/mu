@@ -39,6 +39,7 @@ import (
 	"mu/stream"
 	"mu/user"
 	"mu/video"
+	"mu/telegram"
 	"mu/trade"
 	"mu/wallet"
 	"mu/weather"
@@ -103,13 +104,18 @@ func main() {
 	reminder.Load()
 	wallet.Load()
 	trade.Load()
-	trade.NotifyFunc = discord.NotifyUser
+	trade.NotifyFunc = func(accountID, message string) {
+		discord.NotifyUser(accountID, message)
+		telegram.NotifyUser(accountID, message)
+	}
 	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
 	discord.Load()
 	discord.StartBriefingLoop()
+	telegram.Load()
 	mail.OnNewMail = func(accountID, from, subject, body string) {
 		summary := discord.SummariseEmail(from, subject, body)
 		discord.NotifyNewMail(accountID, from, subject, summary)
+		telegram.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
 	}
 
 	// load apps
@@ -307,6 +313,7 @@ func main() {
 		func(id string) { wallet.DeleteWallet(id) },
 		func(id string) { trade.DeleteWallet(id); trade.DeleteStrategies(id) },
 		func(id string) { discord.DeleteLinks(id) },
+		func(id string) { telegram.DeleteLinks(id) },
 		func(id string) { app.ClearUserPrefs(id) },
 		memory.Clear,
 	)
