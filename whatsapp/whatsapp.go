@@ -105,15 +105,20 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	var payload webhookPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
+		app.Log("whatsapp", "Payload parse error: %v", err)
 		return
 	}
 
+	app.Log("whatsapp", "Webhook received: %d entries, raw: %.200s", len(payload.Entry), string(body))
+
 	for _, entry := range payload.Entry {
 		for _, change := range entry.Changes {
+			app.Log("whatsapp", "Change: field=%s msgs=%d", change.Field, len(change.Value.Messages))
 			if change.Field != "messages" {
 				continue
 			}
 			for _, msg := range change.Value.Messages {
+				app.Log("whatsapp", "Message: from=%s type=%s body=%.100s", msg.From, msg.Type, msg.Text.Body)
 				if msg.Type != "text" || msg.Text.Body == "" {
 					continue
 				}
