@@ -54,6 +54,12 @@ var settingGroups = []settingGroup{
 	{"Telegram", []string{
 		"TELEGRAM_BOT_TOKEN",
 	}},
+	{"WhatsApp", []string{
+		"WHATSAPP_TOKEN",
+		"WHATSAPP_PHONE_ID",
+		"WHATSAPP_VERIFY_TOKEN",
+		"WHATSAPP_APP_SECRET",
+	}},
 	{"Platform", []string{
 		"MU_DOMAIN",
 		"DATA_DIR",

@@ -42,6 +42,7 @@ import (
 	"mu/telegram"
 	"mu/trade"
 	"mu/wallet"
+	"mu/whatsapp"
 	"mu/weather"
 )
 
@@ -107,15 +108,18 @@ func main() {
 	trade.NotifyFunc = func(accountID, message string) {
 		discord.NotifyUser(accountID, message)
 		telegram.NotifyUser(accountID, message)
+		whatsapp.NotifyUser(accountID, message)
 	}
 	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
 	discord.Load()
 	discord.StartBriefingLoop()
 	telegram.Load()
+	whatsapp.Load()
 	mail.OnNewMail = func(accountID, from, subject, body string) {
 		summary := discord.SummariseEmail(from, subject, body)
 		discord.NotifyNewMail(accountID, from, subject, summary)
 		telegram.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
+		whatsapp.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
 	}
 
 	// load apps
@@ -314,6 +318,7 @@ func main() {
 		func(id string) { trade.DeleteWallet(id); trade.DeleteStrategies(id) },
 		func(id string) { discord.DeleteLinks(id) },
 		func(id string) { telegram.DeleteLinks(id) },
+		func(id string) { whatsapp.DeleteLinks(id) },
 		func(id string) { app.ClearUserPrefs(id) },
 		memory.Clear,
 	)
@@ -824,7 +829,8 @@ func main() {
 		"/pricing":    false, // Public - pricing page
 		"/docs":       false, // Public - documentation
 		"/whitepaper": false, // Public - whitepaper
-		"/mcp":        false, // Public - MCP tools page
+		"/mcp":              false, // Public - MCP tools page
+		"/whatsapp/webhook": false, // Public - WhatsApp webhook
 		"/agent":  false, // Public page, auth checked in handler
 	}
 
@@ -921,6 +927,9 @@ func main() {
 
 	// serve trading page
 	http.HandleFunc("/trade/", trade.Handler) // form submissions (swap, wallet, strategy)
+
+	// serve whatsapp webhook
+	http.HandleFunc("/whatsapp/webhook", whatsapp.Handler)
 
 	// serve search page (local + Brave web search)
 	http.HandleFunc("/search", search.Handler)
