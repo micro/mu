@@ -1186,7 +1186,6 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"videos":   {{Tool: "video", Args: map[string]any{}}},
 		"latest videos": {{Tool: "video", Args: map[string]any{}}},
 		"latest video":  {{Tool: "video", Args: map[string]any{}}},
-		"weather":  {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
 		"reminder": {{Tool: "reminder", Args: map[string]any{}}},
 		"apps":     {{Tool: "apps_search", Args: map[string]any{}}},
 		"mail":     {{Tool: "mail_read", Args: map[string]any{}}},
@@ -1218,7 +1217,6 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"what's in the news?":                           {{Tool: "news", Args: map[string]any{}}},
 		"what are the latest crypto and market prices?": {{Tool: "markets", Args: map[string]any{}}},
 		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
-		"what's the weather like in london today?":      {{Tool: "weather_forecast", Args: map[string]any{"lat": 51.5074, "lon": -0.1278}}},
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
 		"show me today's islamic reminder":              {{Tool: "reminder", Args: map[string]any{}}},
 		// Trade
@@ -1233,7 +1231,7 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		return tc
 	}
 
-	// Fuzzy matches for prompts with dynamic content (e.g. "Read my 3 unread emails")
+	// Fuzzy matches for prompts with dynamic content
 	if strings.Contains(lower, "unread email") || strings.Contains(lower, "unread mail") ||
 		(strings.Contains(lower, "read") && strings.Contains(lower, "mail")) ||
 		(strings.Contains(lower, "read") && strings.Contains(lower, "email")) {
