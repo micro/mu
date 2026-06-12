@@ -117,7 +117,12 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 				if msg.Type != "text" || msg.Text.Body == "" {
 					continue
 				}
-				go handleMessage(msg.From, msg.Text.Body)
+				isGroup := msg.GroupID != ""
+				replyTo := ""
+				if msg.Context != nil {
+					replyTo = msg.Context.From
+				}
+				go handleMessage(msg.From, msg.Text.Body, isGroup, replyTo)
 			}
 		}
 	}
@@ -129,11 +134,15 @@ type webhookPayload struct {
 			Field string `json:"field"`
 			Value struct {
 				Messages []struct {
-					From string `json:"from"`
-					Type string `json:"type"`
-					Text struct {
+					From    string `json:"from"`
+					Type    string `json:"type"`
+					Text    struct {
 						Body string `json:"body"`
 					} `json:"text"`
+					Context *struct {
+						From string `json:"from"`
+					} `json:"context"`
+					GroupID string `json:"group_id"`
 				} `json:"messages"`
 				Contacts []struct {
 					WaID    string `json:"wa_id"`
@@ -141,19 +150,52 @@ type webhookPayload struct {
 						Name string `json:"name"`
 					} `json:"profile"`
 				} `json:"contacts"`
+				Metadata struct {
+					PhoneNumberID string `json:"phone_number_id"`
+				} `json:"metadata"`
 			} `json:"value"`
 		} `json:"changes"`
 	} `json:"entry"`
 }
 
-func handleMessage(from, text string) {
+func handleMessage(from, text string, isGroup bool, replyTo string) {
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return
 	}
 
-	// Handle link command
-	if strings.HasPrefix(strings.ToLower(text), "link ") {
+	// In groups, only respond to:
+	// 1. Messages starting with "mu " or "/ask "
+	// 2. Replies to the bot's messages
+	if isGroup {
+		lower := strings.ToLower(text)
+		botPhoneID := settings.Get("WHATSAPP_PHONE_ID")
+		isReplyToBot := replyTo == botPhoneID
+		hasTrigger := strings.HasPrefix(lower, "mu ") ||
+			strings.HasPrefix(lower, "/ask ") ||
+			strings.HasPrefix(lower, "@mu ") ||
+			lower == "mu" || lower == "/ask"
+
+		if !hasTrigger && !isReplyToBot {
+			return
+		}
+
+		// Strip prefix
+		if strings.HasPrefix(lower, "mu ") {
+			text = strings.TrimSpace(text[3:])
+		} else if strings.HasPrefix(lower, "/ask ") {
+			text = strings.TrimSpace(text[5:])
+		} else if strings.HasPrefix(lower, "@mu ") {
+			text = strings.TrimSpace(text[4:])
+		}
+		if text == "" {
+			sendMessage(from, "Ask me anything! Start with *mu* followed by your question.")
+			return
+		}
+	}
+
+	// Handle link command (DMs only)
+	if !isGroup && strings.HasPrefix(strings.ToLower(text), "link ") {
 		parts := strings.Fields(text[5:])
 		if len(parts) >= 2 {
 			username := parts[0]
@@ -190,13 +232,13 @@ func handleMessage(from, text string) {
 		sendMessage(from, fmt.Sprintf("Welcome! I've created your account *%s*. Ask me anything.", accountID))
 	}
 
-	app.Log("whatsapp", "Message from %s (%s): %s", from, accountID, text)
+	app.Log("whatsapp", "Message from %s (%s, group=%v): %s", from, accountID, isGroup, text)
 
-	// Run agent with conversation context — always private (WhatsApp is DM)
+	// Groups are public context, DMs are private
 	history := getHistory(from)
 	answer, err := agent.QueryWithOpts(accountID, text, agent.QueryOpts{
 		History: history,
-		Public:  false,
+		Public:  isGroup,
 	})
 	if err != nil {
 		app.Log("whatsapp", "Agent error for %s: %v", accountID, err)
