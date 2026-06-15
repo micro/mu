@@ -177,6 +177,30 @@ func ToolDocs() string {
 	return sb.String()
 }
 
+// ToolDescriptions returns a simple "- name: description" list of all tools,
+// suitable for agent planning prompts.
+func ToolDescriptions() string {
+	var sb strings.Builder
+	for _, t := range tools {
+		if t.Name == "" {
+			continue
+		}
+		sb.WriteString(fmt.Sprintf("- %s: %s", t.Name, t.Description))
+		if len(t.Params) > 0 {
+			sb.WriteString(" (args: {")
+			for i, p := range t.Params {
+				if i > 0 {
+					sb.WriteString(", ")
+				}
+				sb.WriteString(fmt.Sprintf(`"%s":"%s"`, p.Name, p.Type))
+			}
+			sb.WriteString("})")
+		}
+		sb.WriteString("\n")
+	}
+	return sb.String()
+}
+
 // tools is the list of MCP tools derived from API endpoints
 var tools = []Tool{
 	{

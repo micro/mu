@@ -15,6 +15,7 @@ import (
 
 	"mu/admin"
 	"mu/agent"
+	"mu/agent/micro"
 	"mu/apps"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -146,7 +147,7 @@ func main() {
 	agent.Load()
 
 	// Wire user context into the agent — personalises responses.
-	agent.UserContextFunc = func(accountID string) string {
+	userCtxFunc := func(accountID string) string {
 		var parts []string
 		// Unread mail count.
 		if unread := mail.GetUnreadCount(accountID); unread > 0 {
@@ -170,6 +171,8 @@ func main() {
 		}
 		return strings.Join(parts, "\n")
 	}
+	agent.UserContextFunc = userCtxFunc
+	micro.UserContextFunc = userCtxFunc
 
 	// Wire digest → blog callbacks (digest publishes as blog post)
 	digest.PublishBlogPost = func(title, content, author, authorID, tags string) (string, error) {

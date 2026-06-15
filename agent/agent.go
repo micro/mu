@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/agent/micro"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -79,7 +80,23 @@ func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 }
 
 // QueryWithOpts runs the agent with explicit options.
+// Routes to specialised micro-agents when possible.
 func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
+	// Check for direct agent addressing
+	if agentID := micro.MatchDirectAddress(prompt); agentID != "" {
+		cleanPrompt := micro.StripAddress(prompt)
+		return micro.Orchestrate(accountID, cleanPrompt, []string{agentID}, opts.Public)
+	}
+
+	// Route to specialist agent(s)
+	agentIDs := micro.Route(prompt)
+
+	// If router picks specialist(s), use the multi-agent system
+	if len(agentIDs) > 0 && agentIDs[0] != "micro" {
+		return micro.Orchestrate(accountID, prompt, agentIDs, opts.Public)
+	}
+
+	// Fall through to the existing monolithic agent for "micro" (catch-all)
 	model := Models[0] // standard
 
 	// Build conversation context for the planner

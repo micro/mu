@@ -122,6 +122,32 @@ func ForContext(userID string) string {
 	return sb.String()
 }
 
+// ForScopedContext returns memory entries relevant to a specific agent scope.
+// Includes all global entries (no ":" prefix) plus entries in the given scope.
+func ForScopedContext(userID, scope string) string {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	entries := store[userID]
+	if len(entries) == 0 {
+		return ""
+	}
+
+	prefix := scope + ":"
+	var sb strings.Builder
+	for _, e := range entries {
+		// Include global entries and scope-matching entries
+		if !strings.Contains(e.Key, ":") || strings.HasPrefix(e.Key, prefix) {
+			sb.WriteString("- ")
+			sb.WriteString(strings.TrimPrefix(e.Key, prefix))
+			sb.WriteString(": ")
+			sb.WriteString(e.Value)
+			sb.WriteString("\n")
+		}
+	}
+	return sb.String()
+}
+
 // Delete removes a memory entry.
 func Delete(userID, key string) {
 	mu.Lock()
