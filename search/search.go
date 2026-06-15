@@ -339,7 +339,7 @@ func entryLink(entry *data.IndexEntry) string {
 			return u
 		}
 		return "/video"
-	case "blog":
+	case "blog", "post":
 		return "/blog/post?id=" + url.QueryEscape(entry.ID)
 	default:
 		return "/" + entry.Type
