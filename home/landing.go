@@ -43,7 +43,7 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 <body>
 <div class="landing">
   <div class="brand">Mu</div>
-  <div class="tagline">Your personal AI — runs locally, no cloud required</div>
+  <div class="tagline">Your personal AI</div>
   <div class="prompt-wrap">
     <form action="/agent" method="GET">
       <textarea name="prompt" placeholder="Ask anything..." maxlength="512" rows="1"
@@ -55,14 +55,20 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
   <div class="pills">` +
 		landingPills() + `
   </div>
+  <div style="text-align:center;margin-bottom:32px;font-size:14px;color:#888">
+    <span>Also available on</span>
+    <a href="https://discord.gg/WeMU5AGxD" style="color:#5865F2;text-decoration:none;margin-left:8px;font-weight:600">Discord</a>
+    <span style="margin:0 4px">·</span>
+    <a href="https://t.me/MicroMuBot" style="color:#229ED9;text-decoration:none;font-weight:600">Telegram</a>
+  </div>
 </div>
 <div class="footer">
   <a href="/news">News</a>
   <a href="/markets">Markets</a>
   <a href="/blog">Blog</a>
   <a href="/pricing">Pricing</a>
+  <a href="/docs">Docs</a>
   <a href="/login">Log in</a>
-  <a href="/signup">Sign up</a>
 </div>
 </body>
 </html>`
