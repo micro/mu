@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"mu/a2a"
 	"mu/admin"
 	"mu/agent"
 	"mu/agent/micro"
@@ -833,7 +834,9 @@ func main() {
 		"/docs":       false, // Public - documentation
 		"/whitepaper": false, // Public - whitepaper
 		"/mcp":              false, // Public - MCP tools page
-		"/whatsapp/webhook": false, // Public - WhatsApp webhook
+		"/whatsapp/webhook":       false, // Public - WhatsApp webhook
+		"/.well-known/agent.json": false, // Public - A2A agent card
+		"/a2a":                    false, // Public - A2A protocol
 		"/agent":  false, // Public page, auth checked in handler
 	}
 
@@ -933,6 +936,18 @@ func main() {
 
 	// serve whatsapp webhook
 	http.HandleFunc("/whatsapp/webhook", whatsapp.Handler)
+
+	// A2A protocol endpoints
+	domain := settings.Get("MU_DOMAIN")
+	if domain == "" {
+		domain = "localhost:8080"
+	}
+	if !strings.HasPrefix(domain, "http") {
+		domain = "https://" + domain
+	}
+	a2a.BaseURL = domain
+	http.HandleFunc("/.well-known/agent.json", a2a.AgentCardHandler)
+	http.HandleFunc("/a2a", a2a.Handler)
 
 	// serve search page (local + Brave web search)
 	http.HandleFunc("/search", search.Handler)
