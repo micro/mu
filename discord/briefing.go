@@ -74,28 +74,35 @@ func sendMorningBriefings() {
 func buildBriefing() string {
 	var parts []string
 
-	// Market summary
+	// Top news (lead with this)
+	feed := news.GetFeed()
+	if len(feed) > 10 {
+		feed = feed[:10]
+	}
+	if len(feed) > 0 {
+		var headlines []string
+		for _, p := range feed {
+			headlines = append(headlines, "- "+p.Title)
+		}
+		parts = append(parts, "**Headlines:**\n"+strings.Join(headlines, "\n"))
+	}
+
+	// Market movers (only significant moves, not the full ticker)
 	priceData := markets.GetAllPriceData()
 	if len(priceData) > 0 {
 		var movers []string
 		for symbol, pd := range priceData {
-			if pd.Change24h > 3 || pd.Change24h < -3 {
+			if pd.Change24h > 5 || pd.Change24h < -5 {
 				dir := "up"
 				if pd.Change24h < 0 {
 					dir = "down"
 				}
-				movers = append(movers, fmt.Sprintf("%s %s %.1f%% ($%.2f)", symbol, dir, pd.Change24h, pd.Price))
+				movers = append(movers, fmt.Sprintf("%s %s %.1f%%", symbol, dir, pd.Change24h))
 			}
 		}
 		if len(movers) > 0 {
-			parts = append(parts, "**Markets:** "+strings.Join(movers, ", "))
+			parts = append(parts, "**Market movers:** "+strings.Join(movers, ", "))
 		}
-	}
-
-	// Top news
-	feed := news.GetFeed()
-	if len(feed) > 5 {
-		feed = feed[:5]
 	}
 	if len(feed) > 0 {
 		var headlines []string
@@ -112,7 +119,7 @@ func buildBriefing() string {
 	// Use DeepSeek to synthesise into a concise briefing
 	raw := strings.Join(parts, "\n\n")
 	result, err := ai.Ask(&ai.Prompt{
-		System:   "You are a personal assistant. Summarise this morning's data into a brief, conversational update. 3-4 sentences max. Mention specific numbers.",
+		System:   "You are a personal assistant writing a morning briefing. Lead with the most important news stories across all topics — tech, world events, business, science. Only mention markets if there are significant moves (5%+). Keep it conversational, 3-5 sentences. Don't lead with crypto unless it's genuinely the biggest story.",
 		Question: raw,
 		Model:    ai.BackgroundModel(),
 		Priority: ai.PriorityLow,
