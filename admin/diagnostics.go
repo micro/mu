@@ -211,12 +211,30 @@ func checkMarkets() healthCheck {
 
 func checkDigest() healthCheck {
 	ok, details := digest.Status()
+
+	// If requested, run a live test
+	testResult := ""
 	if !ok {
+		test, err := digest.TestGenerate()
+		if err != nil {
+			testResult = "Test failed: " + err.Error()
+		} else if test == "" {
+			testResult = "Test returned empty"
+		} else {
+			testResult = fmt.Sprintf("Test succeeded (%d chars) — the pipeline works, the scheduler may be stuck", len(test))
+		}
+	}
+
+	if !ok {
+		fix := "Check AI provider status"
+		if testResult != "" {
+			fix = testResult
+		}
 		return healthCheck{
 			Name:   "Daily Digest",
 			Status: "error",
 			Detail: details,
-			Fix:    "Try forcing a digest from /admin/console or check AI provider",
+			Fix:    fix,
 		}
 	}
 

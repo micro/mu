@@ -112,6 +112,16 @@ func GetLatestDigest() bool {
 	return !lastDigest.IsZero()
 }
 
+// TestGenerate runs the digest pipeline synchronously and returns the
+// result or error. Used by diagnostics to test without publishing.
+func TestGenerate() (string, error) {
+	context, _ := gatherContext()
+	if context == "" {
+		return "", fmt.Errorf("no content available (news feed may be empty)")
+	}
+	return generateDigestContent(context)
+}
+
 func scheduler() {
 	// Wait for blog callbacks to be wired in main.go
 	time.Sleep(5 * time.Second)
@@ -265,10 +275,17 @@ Rules:
 - CRITICAL: Keep under 2000 characters total.`,
 		Question: context,
 		Priority: ai.PriorityLow,
+		Model:    ai.BackgroundModel(),
 		Caller:   "daily-digest",
 	}
 
+	app.Log("digest", "Calling AI with %d chars of context", len(context))
 	draft, err := ai.Ask(prompt)
+	if err != nil {
+		app.Log("digest", "AI call failed: %v", err)
+		return "", err
+	}
+	app.Log("digest", "AI returned %d chars", len(draft))
 	if err != nil {
 		return "", err
 	}
