@@ -35,11 +35,12 @@ var UpdateBlogPost func(id, title, content, tags string) error
 var FindTodayBlogDigest func() *DigestPost
 
 var (
-	mu         sync.Mutex
-	running    bool
-	lastDigest time.Time
-	lastError  string
-	lastStatus string // "ok", "error", "running", "pending"
+	mu           sync.Mutex
+	running      bool
+	runStarted   time.Time
+	lastDigest   time.Time
+	lastError    string
+	lastStatus   string // "ok", "error", "running", "pending"
 )
 
 // Load starts the daily digest scheduler.
@@ -85,8 +86,13 @@ func Status() (ok bool, details string) {
 func Generate() bool {
 	mu.Lock()
 	if running {
-		mu.Unlock()
-		return false
+		if time.Since(runStarted) > 5*time.Minute {
+			app.Log("digest", "Resetting stuck running state (started %s ago)", time.Since(runStarted))
+			running = false
+		} else {
+			mu.Unlock()
+			return false
+		}
 	}
 	mu.Unlock()
 	go generate()
@@ -137,6 +143,7 @@ func generate() {
 		return
 	}
 	running = true
+	runStarted = time.Now()
 	mu.Unlock()
 
 	defer func() {
@@ -151,9 +158,9 @@ func generate() {
 
 	existing := GetTodayDigest()
 	if existing == nil {
+		app.Log("digest", "No existing digest for today, creating new one")
 		createDigest()
 	} else {
-		// Digest already created for today — don't regenerate.
 		app.Log("digest", "Digest already exists for today (%s), skipping", existing.ID)
 		setSuccess()
 	}
