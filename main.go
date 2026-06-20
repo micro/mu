@@ -819,6 +819,7 @@ func main() {
 		"/admin/usage":   true,
 		"/admin/delete":  true,
 		"/admin/console": true,
+		"/admin/diagnostics": true,
 		"/admin/invite": true,
 		"/wallet":          false, // Public - shows wallet info; auth checked in handler
 
@@ -925,6 +926,7 @@ func main() {
 
 	// admin console
 	http.HandleFunc("/admin/console", admin.ConsoleHandler)
+	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
 	http.HandleFunc("/admin/invite", admin.InviteHandler)
 
 	// wallet - credits and payments
