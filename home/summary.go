@@ -10,17 +10,28 @@ import (
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/mail"
 	"mu/markets"
 	"mu/news"
 )
 
 var (
-	summaryMu    sync.RWMutex
-	summaryCache string
+	summaryMu       sync.RWMutex
+	summaryCache    string
 	summaryCachedAt time.Time
-	summaryTTL   = 10 * time.Minute
+	summaryTTL      = 10 * time.Minute
+	summaryRunning  bool
 )
+
+// StartSummaryLoop generates the home summary in the background on a timer.
+func StartSummaryLoop() {
+	go func() {
+		generateSummary()
+		for {
+			time.Sleep(summaryTTL)
+			generateSummary()
+		}
+	}()
+}
 
 func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.TrySession(r)
@@ -30,15 +41,27 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	summaryMu.RLock()
-	if time.Since(summaryCachedAt) < summaryTTL && summaryCache != "" {
-		s := summaryCache
-		summaryMu.RUnlock()
-		app.RespondJSON(w, map[string]string{"summary": s})
-		return
-	}
+	s := summaryCache
 	summaryMu.RUnlock()
 
-	// Build context
+	app.RespondJSON(w, map[string]string{"summary": s})
+}
+
+func generateSummary() {
+	summaryMu.Lock()
+	if summaryRunning {
+		summaryMu.Unlock()
+		return
+	}
+	summaryRunning = true
+	summaryMu.Unlock()
+
+	defer func() {
+		summaryMu.Lock()
+		summaryRunning = false
+		summaryMu.Unlock()
+	}()
+
 	var parts []string
 
 	feed := news.GetFeed()
@@ -66,18 +89,13 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if unread := mail.GetUnreadCount(sess.Account); unread > 0 {
-		parts = append(parts, fmt.Sprintf("%d unread email(s)", unread))
-	}
-
 	if len(parts) == 0 {
-		app.RespondJSON(w, map[string]string{"summary": ""})
 		return
 	}
 
 	context := strings.Join(parts, ". ")
 	result, err := ai.Ask(&ai.Prompt{
-		System:    "Write a 1-2 sentence personal briefing based on this context. Be conversational and concise. No bullet points. Just a natural sentence or two about what's happening right now.",
+		System:    "Write a 1-2 sentence briefing based on this context. Be conversational and concise. No bullet points.",
 		Question:  context,
 		Model:     ai.BackgroundModel(),
 		Priority:  ai.PriorityLow,
@@ -85,7 +103,6 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 		MaxTokens: 256,
 	})
 	if err != nil {
-		app.RespondJSON(w, map[string]string{"summary": ""})
 		return
 	}
 
@@ -93,6 +110,4 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	summaryCache = strings.TrimSpace(result)
 	summaryCachedAt = time.Now()
 	summaryMu.Unlock()
-
-	app.RespondJSON(w, map[string]string{"summary": strings.TrimSpace(result)})
 }

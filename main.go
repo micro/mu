@@ -970,6 +970,7 @@ func main() {
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
 	http.HandleFunc("/home/summary", home.SummaryHandler)
+	home.StartSummaryLoop()
 	http.HandleFunc("/pricing", home.PricingHandler)
 
 	// serve the agent
