@@ -23,7 +23,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/blog"
-	"mu/discord"
+	"mu/client/discord"
 	"mu/chat"
 	"mu/cli"
 	"mu/internal/settings"
@@ -41,10 +41,10 @@ import (
 	"mu/stream"
 	"mu/user"
 	"mu/video"
-	"mu/telegram"
+	"mu/client/telegram"
 	"mu/trade"
 	"mu/wallet"
-	"mu/whatsapp"
+	"mu/client/whatsapp"
 	"mu/weather"
 )
 

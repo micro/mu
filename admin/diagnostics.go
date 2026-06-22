@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/discord"
+	"mu/client/discord"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -14,8 +14,8 @@ import (
 	"mu/markets"
 	"mu/news"
 	"mu/news/digest"
-	"mu/telegram"
-	"mu/whatsapp"
+	"mu/client/telegram"
+	"mu/client/whatsapp"
 )
 
 type healthCheck struct {
