@@ -95,11 +95,10 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 		var b strings.Builder
 		b.WriteString(`<div id="news-article">`)
 		if cached != nil && cached.Title != "" {
-			b.WriteString(fmt.Sprintf(`<h2>%s</h2>`, html.EscapeString(cached.Title)))
 			if cached.Description != "" {
-				b.WriteString(fmt.Sprintf(`<p style="color:#555;line-height:1.6;margin:12px 0">%s</p>`, html.EscapeString(cached.Description)))
+				b.WriteString(fmt.Sprintf(`<p style="color:#555;line-height:1.6;margin:0 0 12px">%s</p>`, html.EscapeString(cached.Description)))
 			}
-			b.WriteString(fmt.Sprintf(`<p style="color:#888;font-size:13px;margin:12px 0">The full page content couldn't be loaded. You can visit the original site below.</p>`))
+			b.WriteString(`<p style="color:#888;font-size:13px;margin:0 0 12px">The full page content couldn't be loaded. You can visit the original site below.</p>`)
 		} else {
 			b.WriteString(fmt.Sprintf(`<p style="color:#888">This page couldn't be loaded.</p>`))
 		}
