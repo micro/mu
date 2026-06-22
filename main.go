@@ -952,7 +952,14 @@ func main() {
 	http.HandleFunc("/a2a", a2a.Handler)
 
 	// serve search page (local + Brave web search)
-	http.HandleFunc("/search", search.Handler)
+	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("q")
+		if q != "" {
+			http.Redirect(w, r, "/web?q="+q, http.StatusSeeOther)
+		} else {
+			http.Redirect(w, r, "/web", http.StatusSeeOther)
+		}
+	})
 
 	// serve web search page (Brave-powered, paid)
 	http.HandleFunc("/web", search.WebHandler)

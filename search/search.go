@@ -225,7 +225,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 
 		landing.WriteString(webRecentSearchesScript)
 		content := landing.String()
-		w.Write([]byte(app.RenderHTMLForRequest("Web Search", "Web Search", content, r)))
+		w.Write([]byte(app.RenderHTMLForRequest("Search", "Search the web", content, r)))
 		return
 	}
 
@@ -254,7 +254,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		content := searchBar + wallet.QuotaExceededPage(wallet.OpWebSearch, cost)
-		w.Write([]byte(app.RenderHTMLForRequest("Web Search", "Web Search", content, r)))
+		w.Write([]byte(app.RenderHTMLForRequest("Search", "Search the web", content, r)))
 		return
 	}
 
@@ -313,7 +313,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 	})();
 	</script>`)
 
-	pageHTML := app.RenderHTMLForRequest("Web: "+query, "Web results for "+query, b.String(), r)
+	pageHTML := app.RenderHTMLForRequest("Search: "+query, "Results for "+query, b.String(), r)
 	w.Write([]byte(pageHTML))
 }
 
