@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"mu/a2a"
+	"mu/internal/a2a"
 	"mu/admin"
 	"mu/agent"
 	"mu/agent/micro"
@@ -25,7 +25,7 @@ import (
 	"mu/blog"
 	"mu/client/discord"
 	"mu/chat"
-	"mu/cli"
+	"mu/internal/cli"
 	"mu/internal/settings"
 	"mu/docs"
 	"mu/home"
@@ -1201,7 +1201,7 @@ func main() {
 					}
 				} else if r.URL.Path == "/" {
 					if _, acc := auth.TrySession(r); acc != nil {
-						agent.Handler(w, r)
+						home.AssistantHandler(w, r)
 					} else {
 						home.LandingHandler(w, r)
 					}
