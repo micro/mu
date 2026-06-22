@@ -825,8 +825,8 @@ func main() {
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
-		"/search":    false, // Public - local data index search
-		"/web":       false, // Public page, auth checked in handler (paid Brave web search)
+		"/search":    false, // Public - web search
+		"/web":       false, // Redirect to /search
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
@@ -952,17 +952,11 @@ func main() {
 	http.HandleFunc("/a2a", a2a.Handler)
 
 	// serve search page (local + Brave web search)
-	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query().Get("q")
-		if q != "" {
-			http.Redirect(w, r, "/web?q="+q, http.StatusSeeOther)
-		} else {
-			http.Redirect(w, r, "/web", http.StatusSeeOther)
-		}
+	// serve search page
+	http.HandleFunc("/search", search.WebHandler)
+	http.HandleFunc("/web", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/search?"+r.URL.RawQuery, http.StatusMovedPermanently)
 	})
-
-	// serve web search page (Brave-powered, paid)
-	http.HandleFunc("/web", search.WebHandler)
 	http.HandleFunc("/web/preview", search.PreviewHandler)
 
 	// serve web fetch page (fetch and clean a URL)
