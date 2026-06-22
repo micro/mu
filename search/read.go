@@ -87,17 +87,34 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	// HTML — render as a clean article page
 	if fetchErr != nil {
 		app.Log("read", "Fetch error for %s: %v", rawURL, fetchErr)
-		errHTML := fmt.Sprintf(`
-			<div id="news-article">
-				<p class="empty">Could not load this page: %s</p>
-				<div class="article-actions">
-					<a href="%s" target="_blank" rel="noopener noreferrer">Try visiting the original site →</a>
-				</div>
-				<div class="article-back">
-					<a href="javascript:history.back()">← Back to results</a>
-				</div>
-			</div>`, html.EscapeString(fetchErr.Error()), html.EscapeString(rawURL))
-		w.Write([]byte(app.RenderHTMLForRequest("Read", "Read Page", errHTML, r)))
+
+		// Try to show cached search result data instead of a bare error
+		resultID := r.URL.Query().Get("id")
+		cached := GetCachedResult(resultID)
+
+		var b strings.Builder
+		b.WriteString(`<div id="news-article">`)
+		if cached != nil && cached.Title != "" {
+			b.WriteString(fmt.Sprintf(`<h2>%s</h2>`, html.EscapeString(cached.Title)))
+			if cached.Description != "" {
+				b.WriteString(fmt.Sprintf(`<p style="color:#555;line-height:1.6;margin:12px 0">%s</p>`, html.EscapeString(cached.Description)))
+			}
+			b.WriteString(fmt.Sprintf(`<p style="color:#888;font-size:13px;margin:12px 0">The full page content couldn't be loaded. You can visit the original site below.</p>`))
+		} else {
+			b.WriteString(fmt.Sprintf(`<p style="color:#888">This page couldn't be loaded.</p>`))
+		}
+		b.WriteString(fmt.Sprintf(`<div class="article-actions" style="margin-top:16px">
+			<a href="%s" target="_blank" rel="noopener noreferrer" style="font-weight:600">Visit original site →</a>
+			<span style="margin:0 8px;color:#ddd">·</span>
+			<a href="javascript:history.back()">← Back to results</a>
+		</div>`, html.EscapeString(rawURL)))
+		b.WriteString(`</div>`)
+
+		pageTitle := "Read"
+		if cached != nil && cached.Title != "" {
+			pageTitle = cached.Title
+		}
+		w.Write([]byte(app.RenderHTMLForRequest(pageTitle, "Read Page", b.String(), r)))
 		return
 	}
 

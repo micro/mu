@@ -30,6 +30,42 @@ type BraveResult struct {
 	Age         string `json:"age"`
 }
 
+// resultCache stores search results so the read page can show metadata
+// when the full page content can't be fetched.
+var (
+	resultCacheMu sync.RWMutex
+	resultCache   = map[string]*BraveResult{} // url hash → result
+)
+
+func cacheResult(r BraveResult) string {
+	id := fmt.Sprintf("%x", len(r.URL)+len(r.Title))
+	// Simple hash from URL
+	h := uint32(0)
+	for _, c := range r.URL {
+		h = h*31 + uint32(c)
+	}
+	id = fmt.Sprintf("%08x", h)
+	resultCacheMu.Lock()
+	resultCache[id] = &r
+	if len(resultCache) > 500 {
+		for k := range resultCache {
+			delete(resultCache, k)
+			if len(resultCache) <= 250 {
+				break
+			}
+		}
+	}
+	resultCacheMu.Unlock()
+	return id
+}
+
+// GetCachedResult returns a cached search result by ID.
+func GetCachedResult(id string) *BraveResult {
+	resultCacheMu.RLock()
+	defer resultCacheMu.RUnlock()
+	return resultCache[id]
+}
+
 // BraveResponse is the top-level Brave Search API response
 type BraveResponse struct {
 	Web struct {
@@ -285,8 +321,9 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="empty">No web results found.</p>`)
 	} else {
 		for _, result := range braveResults {
+			rid := cacheResult(result)
 			b.WriteString(`<div class="card" style="margin-bottom:12px;">`)
-			readURL := "/web/read?url=" + url.QueryEscape(result.URL)
+			readURL := "/web/read?id=" + rid + "&url=" + url.QueryEscape(result.URL)
 			b.WriteString(`<div><a href="` + html.EscapeString(readURL) +
 				`" class="card-title">` +
 				html.EscapeString(result.Title) + `</a></div>`)
