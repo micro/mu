@@ -448,6 +448,9 @@ function fetchW(la,lo){
 	// ── Cards ──
 	b.WriteString(`<div id="home-cards">`)
 
+	// Date + invite/settings above the input
+	b.WriteString(dateHTML)
+
 	// AI prompt — submits to agent page. No inline response.
 	if viewerID != "" {
 		var suggestions []string
@@ -488,9 +491,6 @@ fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-o
 .then(function(d){if(d&&d.summary)document.getElementById('home-summary').textContent=d.summary})
 .catch(function(){});
 })()</script>`)
-
-	// Date + cards
-	b.WriteString(dateHTML)
 
 	// Inline card preferences panel
 	if viewerAcc != nil {
