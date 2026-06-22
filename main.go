@@ -1201,7 +1201,7 @@ func main() {
 					}
 				} else if r.URL.Path == "/" {
 					if _, acc := auth.TrySession(r); acc != nil {
-						home.AssistantHandler(w, r)
+						agent.Handler(w, r)
 					} else {
 						home.LandingHandler(w, r)
 					}
