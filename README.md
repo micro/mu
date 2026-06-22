@@ -10,8 +10,6 @@ The AI remembers your preferences across sessions, surfaces contextual suggestio
 
 Built in the open. Pay for the tools, not with your attention.
 
-**Live at [micro.mu](https://micro.mu)** — or self-host your own instance.
-
 ### How it works
 
 Open Mu and you see a prompt: **"What do you need?"** Below it, contextual suggestions based on your current state — unread emails, market movements, latest news. Ask a question or tap a suggestion. The AI checks your services, composes an answer, and shows it inline.
