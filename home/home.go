@@ -445,19 +445,8 @@ function fetchW(la,lo){
 		viewerID = sess.Account
 	}
 
-	// ── AI Summary + Cards ──
+	// ── Cards ──
 	b.WriteString(`<div id="home-cards">`)
-
-	// AI-generated contextual summary (loads async)
-	b.WriteString(`<div id="home-summary" style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;min-height:20px"></div>`)
-	b.WriteString(`<script>(function(){
-fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-origin'})
-.then(function(r){return r.ok?r.json():null})
-.then(function(d){if(d&&d.summary)document.getElementById('home-summary').textContent=d.summary})
-.catch(function(){});
-})()</script>`)
-
-	b.WriteString(`<h2 style="font-size:1.1rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px">At a Glance</h2>`)
 
 	// AI prompt — submits to agent page. No inline response.
 	if viewerID != "" {
@@ -489,6 +478,16 @@ fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-o
 <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px">%s</div>
 </div>`, suggestHTML))
 	}
+
+	// At a Glance heading + AI summary
+	b.WriteString(`<h2 style="font-size:1.1rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">At a Glance</h2>`)
+	b.WriteString(`<div id="home-summary" style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;min-height:20px"></div>`)
+	b.WriteString(`<script>(function(){
+fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-origin'})
+.then(function(r){return r.ok?r.json():null})
+.then(function(d){if(d&&d.summary)document.getElementById('home-summary').textContent=d.summary})
+.catch(function(){});
+})()</script>`)
 
 	// Date + cards
 	b.WriteString(dateHTML)
