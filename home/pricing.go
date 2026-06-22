@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/wallet"
 )
 
@@ -85,9 +86,11 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="font-size:14px"><a href="https://github.com/micro/mu">github.com/micro/mu</a></p>`)
 	b.WriteString(`</div>`)
 
-	// Login link
-	b.WriteString(`<p style="text-align:center;font-size:14px;color:#888;margin:16px 0">Already have an account? <a href="/login">Log in</a></p>`)
+	// Login link (only when not logged in)
+	if sess, _ := auth.TrySession(r); sess == nil {
+		b.WriteString(`<p style="text-align:center;font-size:14px;color:#888;margin:16px 0">Already have an account? <a href="/login">Log in</a></p>`)
+	}
 
-	html := app.RenderHTML("Pricing", "Personal AI — plans and pricing", b.String())
+	html := app.RenderHTMLForRequest("Pricing", "Personal AI — plans and pricing", b.String(), r)
 	w.Write([]byte(html))
 }

@@ -102,36 +102,49 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func renderIndex(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
-	content.WriteString(`<p>Documentation for using and self-hosting Mu.</p>`)
+	content.WriteString(`<p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:24px">Learn how to use Mu — your personal AI for news, mail, markets, and more.</p>`)
 
-	// Group by category
+	// Start here
+	essentials := []string{"about", "installation", "discord", "telegram", "mcp"}
+	content.WriteString(`<h3 style="margin-bottom:12px">Start here</h3>`)
+	content.WriteString(`<div style="margin-bottom:32px">`)
+	for _, slug := range essentials {
+		for _, doc := range catalog {
+			if doc.Slug == slug {
+				content.WriteString(fmt.Sprintf(`<div style="margin-bottom:12px"><a href="/docs/%s" style="font-weight:600;font-size:15px">%s</a><br><span style="color:#666;font-size:13px">%s</span></div>`, doc.Slug, doc.Title, doc.Description))
+			}
+		}
+	}
+	content.WriteString(`</div>`)
+
+	// Group remaining by category
 	categories := make(map[string][]Document)
 	categoryOrder := []string{}
+	essentialSet := map[string]bool{}
+	for _, s := range essentials {
+		essentialSet[s] = true
+	}
 
 	for _, doc := range catalog {
+		if essentialSet[doc.Slug] {
+			continue
+		}
 		if _, exists := categories[doc.Category]; !exists {
 			categoryOrder = append(categoryOrder, doc.Category)
 		}
 		categories[doc.Category] = append(categories[doc.Category], doc)
 	}
 
-	// Render each category
 	for _, cat := range categoryOrder {
 		docs := categories[cat]
 		sort.Slice(docs, func(i, j int) bool {
 			return docs[i].Title < docs[j].Title
 		})
 
-		content.WriteString(fmt.Sprintf(`<div class="docs-category"><h3>%s</h3><div class="docs-grid">`, cat))
-
+		content.WriteString(fmt.Sprintf(`<h3 style="margin:24px 0 8px">%s</h3>`, cat))
 		for _, doc := range docs {
-			content.WriteString(fmt.Sprintf(`<a href="/docs/%s" class="docs-card">
-<h4>%s</h4>
-<p>%s</p>
-</a>`, doc.Slug, doc.Title, doc.Description))
+			content.WriteString(fmt.Sprintf(`<div style="margin-bottom:8px"><a href="/docs/%s" style="font-size:14px">%s</a> <span style="color:#888;font-size:13px">— %s</span></div>`, doc.Slug, doc.Title, doc.Description))
 		}
-
-		content.WriteString(`</div></div>`)
 	}
 
 	html := app.RenderHTMLForRequest("Documentation", "Mu documentation and guides", content.String(), r)

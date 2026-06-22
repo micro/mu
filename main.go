@@ -968,6 +968,7 @@ func main() {
 
 	// serve the home screen
 	http.HandleFunc("/home", home.Handler)
+	http.HandleFunc("/home/summary", home.SummaryHandler)
 	http.HandleFunc("/pricing", home.PricingHandler)
 
 	// serve the agent
@@ -1200,7 +1201,7 @@ func main() {
 					}
 				} else if r.URL.Path == "/" {
 					if _, acc := auth.TrySession(r); acc != nil {
-						http.Redirect(w, r, "/home", 302)
+						agent.Handler(w, r)
 					} else {
 						home.LandingHandler(w, r)
 					}

@@ -24,10 +24,12 @@ func LandingHandler(w http.ResponseWriter, r *http.Request) {
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:100vh;display:flex;flex-direction:column}
-.landing{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px}
+.landing{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px;position:relative}
 .brand{font-size:2.5rem;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
 .tagline{color:#666;font-size:16px;margin-bottom:32px}
-.prompt-wrap{width:100%%;max-width:560px;margin-bottom:12px}
+.login-link{position:absolute;top:20px;right:20px}
+.login-link a{color:#555;text-decoration:none;font-size:14px;font-weight:600}
+.prompt-wrap{width:100%%;max-width:720px;margin-bottom:12px}
 .prompt-wrap form{display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;background:#fff;padding:4px 4px 4px 12px;transition:border-color 0.2s}
 .prompt-wrap form:focus-within{border-color:#999}
 .prompt-wrap textarea{flex:1;padding:10px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
@@ -42,6 +44,7 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 </head>
 <body>
 <div class="landing">
+  <div class="login-link"><a href="/login">Log in</a></div>
   <div class="brand">Mu</div>
   <div class="tagline">Your personal AI</div>
   <div class="prompt-wrap">
