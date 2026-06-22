@@ -1,12 +1,12 @@
 # mu
 
-Your personal AI — news, mail, markets, weather, search and more, all through one interface. No ads. No tracking. No algorithm.
+A personal AI agent — news, mail, markets, weather, search and more, all through one interface. No ads. No tracking. No algorithm.
 
 ## Overview
 
-Mu is a personal AI platform. Ask it anything — it checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer. Every service is a tool the AI can use on your behalf.
+Mu is a personal AI agent. Ask it anything — it checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer. Every service is a tool the AI can use on your behalf.
 
-The AI remembers your preferences across sessions, surfaces contextual suggestions based on your data, and learns what you care about over time.
+The agent remembers your preferences across sessions, surfaces contextual suggestions based on your data, and learns what you care about over time.
 
 Built in the open. Pay for the tools, not with your attention.
 
@@ -18,7 +18,7 @@ Below the AI, cards give you an at-a-glance overview of everything: news headlin
 
 ### What's included
 
-- **AI Agent** — Ask anything. It searches news, checks markets, reads your mail, fetches weather, searches the web, and synthesises an answer. Remembers your preferences.
+- **Agent** — Ask anything. It searches news, checks markets, reads your mail, fetches weather, searches the web, and synthesises an answer. Remembers your preferences.
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
 - **Markets** — Live crypto, futures, and commodity prices
 - **Mail** — Private messaging and email
