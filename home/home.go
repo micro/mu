@@ -473,7 +473,7 @@ function fetchW(la,lo){
 		}
 
 		b.WriteString(fmt.Sprintf(`
-<div id="console-prompt" style="margin:0 0 20px;padding:24px 0 0">
+<div id="console-prompt" style="margin:0 0 16px;padding:0">
 <form action="/agent" method="GET" style="position:relative">
 <textarea name="prompt" id="console-input" placeholder="What do you need?" maxlength="1024" rows="1" style="width:100%%;padding:14px 44px 14px 16px;border:1px solid #ddd;border-radius:6px;font-size:16px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden;background:#fff" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.submit()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
 <button type="submit" style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0">&#x2192;</button>

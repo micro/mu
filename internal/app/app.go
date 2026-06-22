@@ -308,8 +308,8 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav-search">
-          <form action="/search" method="GET">
-            <input type="text" name="q" placeholder="Search..." aria-label="Search">
+          <form action="/" method="GET" id="nav-assist-form">
+            <input type="text" name="q" placeholder="Talk to Micro..." aria-label="Ask Micro" id="nav-assist-input">
           </form>
         </div>
         <div id="nav">

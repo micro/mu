@@ -7,6 +7,9 @@ import (
 )
 
 func AssistantHandler(w http.ResponseWriter, r *http.Request) {
+	// Pick up query from sidebar input
+	prefill := r.URL.Query().Get("q")
+
 	content := `<div style="max-width:680px;margin:0 auto">
 <div style="margin-bottom:24px">
   <form id="ask-form" style="display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;padding:4px 4px 4px 12px">
@@ -105,6 +108,16 @@ form.addEventListener('submit',function(e){
 });
 })();
 </script>`
+
+	// Inject prefill if query param provided
+	if prefill != "" {
+		escaped := htmlEsc(prefill)
+		content += `<script>(function(){
+var input=document.getElementById('ask-input');
+if(input){input.value="` + escaped + `";document.getElementById('ask-form').dispatchEvent(new Event('submit'));}
+history.replaceState(null,'','/');
+})()</script>`
+	}
 
 	html := app.RenderHTMLForRequest("Mu", "Your personal AI", content, r)
 	w.Write([]byte(html))
