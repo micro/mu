@@ -10,7 +10,7 @@ func AssistantHandler(w http.ResponseWriter, r *http.Request) {
 	// Pick up query from sidebar input
 	prefill := r.URL.Query().Get("q")
 
-	content := `<div style="max-width:680px;margin:0 auto">
+	content := `<div>
 <div style="margin-bottom:24px">
   <form id="ask-form" style="display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;padding:4px 4px 4px 12px">
     <textarea id="ask-input" placeholder="Ask anything..." maxlength="1024" rows="1"
