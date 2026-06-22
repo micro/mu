@@ -119,6 +119,6 @@ history.replaceState(null,'','/');
 })()</script>`
 	}
 
-	html := app.RenderHTMLForRequest("Micro", "Your personal AI", content, r)
+	html := app.RenderHTMLForRequest("Micro", "Your personal AI agent", content, r)
 	w.Write([]byte(html))
 }

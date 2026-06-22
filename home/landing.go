@@ -13,7 +13,7 @@ func LandingHandler(w http.ResponseWriter, r *http.Request) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mu — Your personal AI</title>
+<title>Mu — Your personal AI agent</title>
 <meta name="description" content="News, mail, markets, search and more through one AI">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,7 +46,7 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 <div class="landing">
   <div class="login-link"><a href="/login">Log in</a></div>
   <div class="brand">Mu</div>
-  <div class="tagline">Your personal AI</div>
+  <div class="tagline">Your personal AI agent</div>
   <div class="prompt-wrap">
     <form action="/agent" method="GET">
       <textarea name="prompt" placeholder="Ask anything..." maxlength="512" rows="1"
