@@ -174,7 +174,7 @@ All content types have "Discuss" links:
 
 ### Environment Variables
 - `ANTHROPIC_API_KEY` - Required for AI features
-- `ANTHROPIC_MODEL` - Model selection (default: claude-sonnet-4-20250514)
+- `ANTHROPIC_MODEL` - Model selection (default: claude-sonnet-4-6)
 
 ### Tunable Parameters
 

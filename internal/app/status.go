@@ -393,7 +393,7 @@ func checkLLMConfig() (provider string, configured bool) {
 	}
 	model := os.Getenv("ANTHROPIC_MODEL")
 	if model == "" {
-		model = "claude-sonnet-4-20250514"
+		model = "claude-sonnet-4-6"
 	}
 	return fmt.Sprintf("Anthropic/%s", model), true
 }

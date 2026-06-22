@@ -59,7 +59,7 @@ func DefaultModel() string {
 	if m != "" {
 		return m
 	}
-	return "claude-sonnet-4-20250514"
+	return "claude-sonnet-4-6"
 }
 
 // BackgroundModel is the model used for cheap background tasks

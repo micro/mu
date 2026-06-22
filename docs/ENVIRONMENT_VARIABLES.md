@@ -6,7 +6,7 @@ Mu uses Anthropic Claude for all AI features.
 
 ```bash
 export ANTHROPIC_API_KEY="your-anthropic-api-key"
-export ANTHROPIC_MODEL="claude-sonnet-4-20250514"  # Default model
+export ANTHROPIC_MODEL="claude-sonnet-4-6"  # Default model
 ```
 
 ## YouTube Configuration
@@ -171,7 +171,7 @@ export MAIL_SELECTOR="default"
 | `MU_DOMAIN` | `localhost` | Domain for ActivityPub federation (falls back to `MAIL_DOMAIN`) |
 | `MU_USE_SQLITE` | - | Set to `1` to store search index in SQLite with FTS5 |
 | `ANTHROPIC_API_KEY` | - | Anthropic API key for AI features (required) |
-| `ANTHROPIC_MODEL` | `claude-sonnet-4-20250514` | Anthropic model name |
+| `ANTHROPIC_MODEL` | `claude-sonnet-4-6` | Anthropic model name |
 | `YOUTUBE_API_KEY` | - | YouTube API key for video functionality |
 | `GOOGLE_API_KEY` | - | Google Places API key for enhanced places search |
 | `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |
