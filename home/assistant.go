@@ -91,7 +91,7 @@ form.addEventListener('submit',function(e){
               if(el)el.textContent=streamText;
               agentDiv.scrollIntoView({behavior:'smooth',block:'end'});
             } else if(ev.type==='response'){
-              agentDiv.innerHTML='<div class="card">'+ev.html+'</div>';
+              agentDiv.innerHTML=ev.html;
             } else if(ev.type==='error'){
               agentDiv.innerHTML='<div class="card" style="color:#c00">'+ev.message+'</div>';
             }
