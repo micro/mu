@@ -469,12 +469,12 @@ function fetchW(la,lo){
 
 		var suggestHTML string
 		for _, s := range suggestions {
-			suggestHTML += fmt.Sprintf(`<a href="/agent?prompt=%s" class="console-suggest" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;font-size:13px;color:#555;text-decoration:none;white-space:nowrap">%s</a>`, htmlEsc(url.QueryEscape(s)), htmlEsc(s))
+			suggestHTML += fmt.Sprintf(`<a href="/?q=%s" class="console-suggest" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;font-size:13px;color:#555;text-decoration:none;white-space:nowrap">%s</a>`, htmlEsc(url.QueryEscape(s)), htmlEsc(s))
 		}
 
 		b.WriteString(fmt.Sprintf(`
 <div id="console-prompt" style="margin:0 0 16px;padding:0">
-<form action="/agent" method="GET" style="position:relative">
+<form action="/" method="GET" style="position:relative">
 <textarea name="prompt" id="console-input" placeholder="What do you need?" maxlength="1024" rows="1" style="width:100%%;padding:14px 44px 14px 16px;border:1px solid #ddd;border-radius:6px;font-size:16px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden;background:#fff" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.submit()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
 <button type="submit" style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0">&#x2192;</button>
 </form>
@@ -483,7 +483,7 @@ function fetchW(la,lo){
 	}
 
 	// At a Glance heading + AI summary
-	b.WriteString(`<h2 style="font-size:1.1rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">At a Glance</h2>`)
+	b.WriteString(`<h3 style="font-size:14px;font-weight:600;color:#888;margin:16px 0 8px">At a glance</h3>`)
 	b.WriteString(`<div id="home-summary" style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;min-height:20px"></div>`)
 	b.WriteString(`<script>(function(){
 fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-origin'})

@@ -86,6 +86,7 @@ func main() {
 
 	// load the news
 	news.Load()
+	news.StartSentimentLoop()
 
 	// load the videos
 	video.Load()
