@@ -291,8 +291,11 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		_ = preFillPrompt // keep zero
 	}
 
-	// Pre-fill from query params (e.g. home page agent card).
+	// Pre-fill from query params (e.g. home page agent card). Accept both
+	// ?prompt= and the shorter ?q= alias used by external entry points.
 	if p := r.URL.Query().Get("prompt"); p != "" {
+		preFillPrompt = htmlEsc(p)
+	} else if p := r.URL.Query().Get("q"); p != "" {
 		preFillPrompt = htmlEsc(p)
 	}
 	preSelectModel := r.URL.Query().Get("model") // "standard" or "premium"
@@ -896,6 +899,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Prompt    string `json:"prompt"`
 		Model     string `json:"model"`
 		ContextID string `json:"context_id"` // optional: prior flow to continue from
+		// History is an optional client-supplied conversation thread used by
+		// the inline chat (landing + assistant). It gives multi-turn context
+		// without server-side persistence, so guests get follow-up memory too.
+		History []struct {
+			Prompt string `json:"prompt"`
+			Answer string `json:"answer"`
+		} `json:"history"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Prompt) == "" {
 		http.Error(w, `{"error":"prompt required"}`, http.StatusBadRequest)
@@ -938,10 +948,29 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Load conversation history when continuing a conversation.
+	// Load conversation history when continuing a conversation. A saved flow
+	// (context_id) takes precedence; otherwise fall back to the client-supplied
+	// inline history used by the stateless inline chat.
 	var conversationHistory []*Flow
 	if req.ContextID != "" {
 		conversationHistory = getConversationHistory(req.ContextID, 5)
+	}
+	if len(conversationHistory) == 0 && len(req.History) > 0 {
+		const maxTurns = 6
+		hist := req.History
+		if len(hist) > maxTurns {
+			hist = hist[len(hist)-maxTurns:]
+		}
+		for _, h := range hist {
+			if strings.TrimSpace(h.Prompt) == "" {
+				continue
+			}
+			ans := h.Answer
+			if len(ans) > 1500 {
+				ans = ans[:1500] + "…"
+			}
+			conversationHistory = append(conversationHistory, &Flow{Prompt: h.Prompt, Answer: ans})
+		}
 	}
 
 	// Create flow early so progress is saved server-side even if the
