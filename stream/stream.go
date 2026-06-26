@@ -247,6 +247,7 @@ func DedupeAdjacent(events []*Event) []*Event {
 func Clear() {
 	mu.Lock()
 	events = nil
+	lastSystemEvent = map[string]time.Time{}
 	save()
 	mu.Unlock()
 }
