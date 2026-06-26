@@ -23,8 +23,8 @@ type Entry struct {
 const MaxEntriesPerUser = 50
 
 var (
-	mu      sync.RWMutex
-	store   = map[string][]*Entry{} // userID → entries
+	mu    sync.RWMutex
+	store = map[string][]*Entry{} // userID → entries
 )
 
 func init() {
@@ -96,7 +96,10 @@ func All(userID string) []*Entry {
 
 	entries := store[userID]
 	result := make([]*Entry, len(entries))
-	copy(result, entries)
+	for i, entry := range entries {
+		copy := *entry
+		result[i] = &copy
+	}
 	return result
 }
 
