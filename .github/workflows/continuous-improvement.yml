@@ -1,0 +1,56 @@
+name: Continuous Improvement
+
+# Autonomous improvement loop for Mu.
+#
+# On a schedule, opens a fresh tracking issue and dispatches Codex to
+# implement one improvement increment. Codex runs the change, verifies
+# it builds and passes tests, opens a PR, and enables auto-merge so it
+# lands when CI is green.
+#
+# Each run opens a FRESH issue so Codex gets a unique branch name
+# (codex/increment-<issue-num>) and a clean PR. The dispatch asks
+# Codex to "Closes #<issue>" so tracking issues auto-close on merge.
+#
+# Gated on CODEX_TRIGGER_TOKEN — Codex ignores comments from the
+# github-actions bot, so a PAT for a user account Codex follows is
+# required. Without the secret the workflow no-ops cleanly.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "29 * * * *" # hourly, off-minute
+
+permissions:
+  issues: write
+
+concurrency:
+  group: continuous-improvement
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open a fresh increment issue and dispatch Codex
+        env:
+          GH_TOKEN: ${{ secrets.CODEX_TRIGGER_TOKEN || github.token }}
+          HAS_TRIGGER_TOKEN: ${{ secrets.CODEX_TRIGGER_TOKEN != '' }}
+          REPO: ${{ github.repository }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          if [ "$HAS_TRIGGER_TOKEN" != "true" ]; then
+            echo "CODEX_TRIGGER_TOKEN is not set — skipping dispatch."
+            echo "Add a CODEX_TRIGGER_TOKEN secret (a PAT for a user account"
+            echo "Codex follows) to activate the loop."
+            exit 0
+          fi
+
+          ISSUE_URL=$(gh issue create --repo "$REPO" \
+            --title "Continuous improvement increment #$RUN_NUMBER" \
+            --body "Autonomous continuous-improvement increment. Charter: internal/docs/CONTINUOUS_IMPROVEMENT.md.")
+
+          ISSUE_NUM="${ISSUE_URL##*/}"
+          echo "Opened issue #$ISSUE_NUM — dispatching Codex."
+
+          gh issue comment "$ISSUE_NUM" --repo "$REPO" --body \
+          "@codex Run one continuous-improvement increment per internal/docs/CONTINUOUS_IMPROVEMENT.md. Read CLAUDE.md for project context. Pick the single highest-value item from the priority list in the charter (bug fixes > test coverage > code quality > feature improvements > infrastructure). Implement it and verify \`go build ./...\`, \`go test ./... -short\`, and \`go vet ./...\` all pass. Then open the PR YOURSELF from the shell — do NOT use the make_pr tool (it only records metadata and never creates a PR). Create a uniquely-named branch: \`git switch -c codex/increment-$ISSUE_NUM\`, then \`git push -u origin codex/increment-$ISSUE_NUM\`, then \`gh pr create --base main --label codex --title \"<title>\" --body \"<body, including 'Closes #$ISSUE_NUM'>\"\`. Finally enable auto-merge: \`gh pr merge --squash --auto --delete-branch\`. The gh CLI is installed and authenticated. One concern per PR; stay out of brand/positioning copy and breaking public API."
