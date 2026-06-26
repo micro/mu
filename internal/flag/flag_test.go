@@ -181,6 +181,24 @@ func TestAdminFlag(t *testing.T) {
 	}
 }
 
+func TestAdminFlag_SameAdminDoesNotDuplicateFlagger(t *testing.T) {
+	resetFlags()
+
+	AdminFlag("post", "admin-flag", "admin_user")
+	AdminFlag("post", "admin-flag", "admin_user")
+
+	item := GetItem("post", "admin-flag")
+	if item == nil {
+		t.Fatal("expected item after admin flag")
+	}
+	if got, want := len(item.FlaggedBy), 1; got != want {
+		t.Fatalf("expected %d flagger, got %d: %v", want, got, item.FlaggedBy)
+	}
+	if got, want := item.FlaggedBy[0], "admin_user (admin)"; got != want {
+		t.Errorf("expected admin flagger %q, got %q", want, got)
+	}
+}
+
 func TestAdminFlag_ExistingItem(t *testing.T) {
 	resetFlags()
 

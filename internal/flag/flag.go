@@ -220,11 +220,12 @@ func AdminFlag(contentType, contentID, username string) error {
 	key := contentType + ":" + contentID
 
 	mutex.Lock()
+	adminFlagger := username + " (admin)"
 	if item, exists := flags[key]; exists {
 		item.FlagCount = 3
 		item.Flagged = true
-		if !contains(item.FlaggedBy, username) {
-			item.FlaggedBy = append(item.FlaggedBy, username+" (admin)")
+		if !contains(item.FlaggedBy, adminFlagger) {
+			item.FlaggedBy = append(item.FlaggedBy, adminFlagger)
 		}
 	} else {
 		flags[key] = &FlaggedItem{
@@ -232,7 +233,7 @@ func AdminFlag(contentType, contentID, username string) error {
 			ContentID:   contentID,
 			FlagCount:   3,
 			Flagged:     true,
-			FlaggedBy:   []string{username + " (admin)"},
+			FlaggedBy:   []string{adminFlagger},
 			FlaggedAt:   time.Now(),
 		}
 	}
