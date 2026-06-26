@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"sort"
 	"strings"
@@ -64,7 +65,9 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 				auth.UpdateAccount(u)
 			}
 		case "delete":
-			if userID != acc.ID { auth.DeleteAccount(userID) }
+			if userID != acc.ID {
+				auth.DeleteAccount(userID)
+			}
 		case "ban":
 			auth.BanAccount(userID)
 		case "unban":
@@ -74,20 +77,26 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		tab := r.FormValue("tab")
 		redir := "/admin/users"
-		if tab != "" { redir += "?tab=" + tab }
+		if tab != "" {
+			redir += "?tab=" + tab
+		}
 		http.Redirect(w, r, redir, http.StatusSeeOther)
 		return
 	}
 	users := auth.GetAllAccounts()
 	sort.Slice(users, func(i, j int) bool { return users[i].Created.After(users[j].Created) })
 	tab := r.URL.Query().Get("tab")
-	if tab == "" { tab = "all" }
+	if tab == "" {
+		tab = "all"
+	}
 	var sb strings.Builder
 	sb.WriteString(`<p><a href="/admin">← Admin</a></p><h2>Users</h2>`)
 	sb.WriteString(`<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">`)
 	for _, t := range []struct{ id, label string }{{"all", "All"}, {"banned", "Banned"}, {"new", "New (24h)"}} {
 		style := "padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;color:#555"
-		if t.id == tab { style = "padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;background:#000;color:#fff" }
+		if t.id == tab {
+			style = "padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;background:#000;color:#fff"
+		}
 		sb.WriteString(fmt.Sprintf(`<a href="/admin/users?tab=%s" style="%s">%s</a>`, t.id, style, t.label))
 	}
 	sb.WriteString(`</div>`)
@@ -95,9 +104,13 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	for _, u := range users {
 		switch tab {
 		case "banned":
-			if u.Banned { filtered = append(filtered, u) }
+			if u.Banned {
+				filtered = append(filtered, u)
+			}
 		case "new":
-			if time.Since(u.Created) < 24*time.Hour { filtered = append(filtered, u) }
+			if time.Since(u.Created) < 24*time.Hour {
+				filtered = append(filtered, u)
+			}
 		default:
 			filtered = append(filtered, u)
 		}
@@ -107,12 +120,22 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	for _, u := range filtered {
 		created := u.Created.Format("2006-01-02")
 		var badges []string
-		if u.Admin { badges = append(badges, `<span style="background:#000;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">admin</span>`) }
-		if u.Banned { badges = append(badges, `<span style="background:#c00;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">banned</span>`) }
-		if u.EmailVerified { badges = append(badges, `<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">verified</span>`) }
-		if u.Approved { badges = append(badges, `<span style="background:#06b;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">approved</span>`) }
+		if u.Admin {
+			badges = append(badges, `<span style="background:#000;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">admin</span>`)
+		}
+		if u.Banned {
+			badges = append(badges, `<span style="background:#c00;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">banned</span>`)
+		}
+		if u.EmailVerified {
+			badges = append(badges, `<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">verified</span>`)
+		}
+		if u.Approved {
+			badges = append(badges, `<span style="background:#06b;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">approved</span>`)
+		}
 		statusHTML := strings.Join(badges, " ")
-		if statusHTML == "" { statusHTML = `<span class="text-muted" style="font-size:12px">—</span>` }
+		if statusHTML == "" {
+			statusHTML = `<span class="text-muted" style="font-size:12px">—</span>`
+		}
 		var actions []string
 		if u.ID != acc.ID {
 			if u.Banned {
@@ -217,17 +240,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			<tbody>`
 
 		for _, email := range bl.Emails {
-			content += `
-				<tr>
-					<td><code>` + email + `</code></td>
-					<td class="text-center">
-						<form method="POST" class="d-inline">
-							<input type="hidden" name="action" value="unblock_email">
-							<input type="hidden" name="email" value="` + email + `">
-							<button type="submit" class="btn-success">Unblock</button>
-						</form>
-					</td>
-				</tr>`
+			content += blocklistEmailRow(email)
 		}
 
 		content += `</tbody></table>`
@@ -258,17 +271,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			<tbody>`
 
 		for _, ip := range bl.IPs {
-			content += `
-				<tr>
-					<td><code>` + ip + `</code></td>
-					<td class="text-center">
-						<form method="POST" class="d-inline">
-							<input type="hidden" name="action" value="unblock_ip">
-							<input type="hidden" name="ip" value="` + ip + `">
-							<button type="submit" class="btn-success">Unblock</button>
-						</form>
-					</td>
-				</tr>`
+			content += blocklistIPRow(ip)
 		}
 
 		content += `</tbody></table>`
@@ -283,6 +286,36 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 
 	html := app.RenderHTMLForRequest("Admin", "Mail Blocklist", content, r)
 	w.Write([]byte(html))
+}
+
+func blocklistEmailRow(email string) string {
+	escapedEmail := html.EscapeString(email)
+	return `
+				<tr>
+					<td><code>` + escapedEmail + `</code></td>
+					<td class="text-center">
+						<form method="POST" class="d-inline">
+							<input type="hidden" name="action" value="unblock_email">
+							<input type="hidden" name="email" value="` + escapedEmail + `">
+							<button type="submit" class="btn-success">Unblock</button>
+						</form>
+					</td>
+				</tr>`
+}
+
+func blocklistIPRow(ip string) string {
+	escapedIP := html.EscapeString(ip)
+	return `
+				<tr>
+					<td><code>` + escapedIP + `</code></td>
+					<td class="text-center">
+						<form method="POST" class="d-inline">
+							<input type="hidden" name="action" value="unblock_ip">
+							<input type="hidden" name="ip" value="` + escapedIP + `">
+							<button type="submit" class="btn-success">Unblock</button>
+						</form>
+					</td>
+				</tr>`
 }
 
 // SpamFilterHandler shows and manages the spam filter settings
