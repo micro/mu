@@ -39,12 +39,12 @@ var nitterInstance = "nitter.poast.org"
 
 // Message represents a message in a thread (or the thread-starting message itself)
 type Message struct {
-	ID        string    `json:"id"`
-	Author    string    `json:"author"`     // display name
-	AuthorID  string    `json:"author_id"`  // account ID
-	Content   string    `json:"content"`
-	ReplyTo   string    `json:"reply_to,omitempty"` // parent thread ID (empty = thread starter)
-	PostedAt  time.Time `json:"posted_at"`
+	ID       string    `json:"id"`
+	Author   string    `json:"author"`    // display name
+	AuthorID string    `json:"author_id"` // account ID
+	Content  string    `json:"content"`
+	ReplyTo  string    `json:"reply_to,omitempty"` // parent thread ID (empty = thread starter)
+	PostedAt time.Time `json:"posted_at"`
 }
 
 // addMessage adds a message to the feed (prepend, dedup, cap, save)
@@ -1156,7 +1156,6 @@ func firstSentences(text string, n int) string {
 	return text
 }
 
-
 // stripHTML removes HTML tags from a string
 func stripHTML(s string) string {
 	re := regexp.MustCompile(`<[^>]*>`)
@@ -1167,7 +1166,7 @@ func stripHTML(s string) string {
 
 // DetectSocialURLs finds social media URLs in text content
 func DetectSocialURLs(content string) []string {
-	re := regexp.MustCompile(`https?://(?:(?:www\.)?(?:twitter\.com|x\.com)|(?:truthsocial\.com))/[^\s"'<>\])+]+`)
+	re := regexp.MustCompile(`https?://(?:(?:(?:www|mobile)\.)?(?:twitter\.com|x\.com)|(?:(?:www\.)?truthsocial\.com))/[^\s"'<>\])+]+`)
 	matches := re.FindAllString(content, -1)
 
 	seen := map[string]bool{}

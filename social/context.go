@@ -3,6 +3,8 @@ package social
 import (
 	"fmt"
 	htmlpkg "html"
+	"net/url"
+	"strings"
 
 	"mu/internal/app"
 )
@@ -63,9 +65,14 @@ func FetchContext(articleURL, articleContent string) *SocialContext {
 	return &SocialContext{Posts: ctxPosts}
 }
 
-// DetectTruthSocial checks if a URL is from Truth Social
+// DetectTruthSocial checks if a URL is from Truth Social.
 func DetectTruthSocial(u string) bool {
-	return len(u) > 0 && (len(u) > 20 && u[:20] == "https://truthsocial." || len(u) > 19 && u[:19] == "http://truthsocial.")
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return false
+	}
+	host := strings.ToLower(parsed.Hostname())
+	return host == "truthsocial.com" || strings.HasSuffix(host, ".truthsocial.com")
 }
 
 // RenderContextHTML renders social context as HTML blockquotes for embedding in news articles
