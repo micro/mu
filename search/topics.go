@@ -66,7 +66,7 @@ func regenerateTopics() {
 		headlines = append(headlines, item.Title)
 	}
 
-	blogItems := data.GetByType("blog", 10)
+	blogItems := data.GetByType("post", 10)
 	for _, item := range blogItems {
 		headlines = append(headlines, item.Title)
 	}
