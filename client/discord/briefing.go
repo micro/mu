@@ -104,14 +104,6 @@ func buildBriefing() string {
 			parts = append(parts, "**Market movers:** "+strings.Join(movers, ", "))
 		}
 	}
-	if len(feed) > 0 {
-		var headlines []string
-		for _, p := range feed {
-			headlines = append(headlines, "- "+p.Title)
-		}
-		parts = append(parts, "**Headlines:**\n"+strings.Join(headlines, "\n"))
-	}
-
 	if len(parts) == 0 {
 		return ""
 	}
