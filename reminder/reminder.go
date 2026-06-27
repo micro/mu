@@ -83,14 +83,8 @@ func fetchReminder() {
 	event.Publish(event.Event{Type: "reminder_updated"})
 
 	// Extract message and updated for indexing
-	message := ""
-	if m, ok := val["message"]; ok {
-		message = m.(string)
-	}
-	updated := ""
-	if u, ok := val["updated"]; ok {
-		updated = u.(string)
-	}
+	message := stringField(val, "message")
+	updated := stringField(val, "updated")
 
 	// Index with just the message summary. The full content (verse, hadith, name)
 	// contains markdown that doesn't render well in chat threads, and it changes
@@ -115,6 +109,13 @@ func fetchReminder() {
 	)
 
 	app.Log("reminder", "Updated reminder")
+}
+
+func stringField(val map[string]interface{}, key string) string {
+	if s, ok := val[key].(string); ok {
+		return s
+	}
+	return ""
 }
 
 // ReminderHTML returns the rendered reminder card HTML
@@ -237,4 +238,3 @@ func deduplicateVerseName(text string) string {
 
 	return header + rest
 }
-
