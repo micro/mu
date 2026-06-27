@@ -22,7 +22,6 @@ import (
 	"github.com/mmcdole/gofeed"
 	"github.com/mrz1836/go-sanitize"
 	nethtml "golang.org/x/net/html"
-	"mu/core"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -1302,7 +1301,6 @@ func parseFeed() {
 }
 
 func Load() {
-	core.Register(core.Capability{ID: "news", Title: "📰 News", Card: Headlines, Tools: []string{"news_headlines"}})
 	// Loaded
 
 	// Subscribe to refresh events

@@ -736,6 +736,17 @@ func main() {
 		},
 	})
 
+	// Attach visual cards to the tools that have a dashboard-style renderer, so
+	// an agent answer (and the daily brief) can carry both text and the same
+	// card the home screen shows. Cards render from each service's live data;
+	// wiring them here keeps internal/api free of service imports.
+	api.SetCard("markets", "📈 Markets", markets.MarketsHTML)
+	api.SetCard("news_headlines", "📰 News", news.Headlines)
+	api.SetCard("social", "💬 Social", social.CardHTML)
+	api.SetCard("video", "📺 Videos", video.Latest)
+	api.SetCard("blog_list", "✍️ Blog", blog.Preview)
+	api.SetCard("reminder", "☪️ Reminder", reminder.ReminderHTML)
+
 	// Register apps MCP tools
 	api.RegisterTool(api.Tool{
 		Name:        "apps_search",

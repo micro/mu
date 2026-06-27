@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"mu/core"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -132,7 +131,6 @@ func parseTags(input string) string {
 
 // Load initializes the blog package and sets up event subscriptions
 func Load() {
-	core.Register(core.Capability{ID: "blog", Title: "✍️ Blog", Card: Preview, Tools: []string{"blog_list"}})
 	// Register tools
 
 	// Load topics from embedded JSON

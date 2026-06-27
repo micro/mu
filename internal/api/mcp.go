@@ -103,14 +103,17 @@ type mcpContent struct {
 
 // Tool defines an MCP tool with its HTTP mapping
 type Tool struct {
-	Name        string
-	Description string
-	Method      string
-	Path        string
-	Params      []ToolParam
-	WalletOp    string                                          // Wallet operation for credit gating (empty = included)
-	Handle      func(map[string]any) (string, error)            // Optional direct handler (bypasses HTTP dispatch)
-	HandleAuth  func(map[string]any, string) (string, error)    // Like Handle but receives the account ID
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Title       string      `json:"title,omitempty"` // display title for the visual card
+	Icon        string      `json:"icon,omitempty"`
+	Method      string      `json:"method,omitempty"`
+	Path        string      `json:"path,omitempty"`
+	Params      []ToolParam `json:"params,omitempty"`
+	WalletOp    string      `json:"walletOp,omitempty"`                          // Wallet operation for credit gating (empty = included)
+	Handle      func(map[string]any) (string, error)            `json:"-"` // Optional direct handler (bypasses HTTP dispatch)
+	HandleAuth  func(map[string]any, string) (string, error)    `json:"-"` // Like Handle but receives the account ID
+	Card        func() string                                   `json:"-"` // Optional visual card body, rendered from live data
 }
 
 // QuotaCheck is called before executing a metered tool.
@@ -130,10 +133,20 @@ var PaymentRequiredResponse func(w http.ResponseWriter, op string, resource stri
 
 // ToolParam defines a parameter for an MCP tool
 type ToolParam struct {
-	Name        string
-	Type        string
-	Description string
-	Required    bool
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	Required    bool   `json:"required"`
+}
+
+// Result is the unified value a tool/capability can return: model-ready text
+// for the LLM and chat, an optional rich HTML card for the visual surface, and
+// optional structured data. Tools that have both an explanation and a visual
+// should return this so one handler feeds both the agent and the feed.
+type Result struct {
+	Text string `json:"text,omitempty"`
+	HTML string `json:"html,omitempty"`
+	Data any    `json:"data,omitempty"`
 }
 
 // RegisterTool adds a tool to the MCP server.

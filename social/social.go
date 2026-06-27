@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"mu/core"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -72,7 +71,6 @@ func addMessage(p *Message) {
 }
 
 func Load() {
-	core.Register(core.Capability{ID: "social", Title: "💬 Social", Card: CardHTML, Tools: []string{"social"}})
 	// Load saved messages (migrate from social_posts.json if needed)
 	b, err := data.LoadFile("social.json")
 	if err != nil {

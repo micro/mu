@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"mu/core"
 	"mu/internal/app"
 	"mu/internal/data"
 
@@ -64,7 +63,6 @@ var futuresKeys = []string{"OIL", "OATS", "COFFEE", "WHEAT", "GOLD"}
 
 // Load initializes the markets data
 func Load() {
-	core.Register(core.Capability{ID: "markets", Title: "📈 Markets", Card: MarketsHTML, Tools: []string{"markets"}})
 	// Load cached prices
 	b, err := data.LoadFile("prices.json")
 	if err == nil {

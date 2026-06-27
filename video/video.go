@@ -16,7 +16,6 @@ import (
 
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
-	"mu/core"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -277,7 +276,6 @@ func loadChannels() {
 
 // Load videos
 func Load() {
-	core.Register(core.Capability{ID: "video", Title: "📺 Videos", Card: Latest, Tools: []string{"video"}})
 	// Loaded
 
 	// load channels

@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"mu/core"
 	"mu/internal/app"
 	"mu/internal/data"
 	"mu/internal/event"
@@ -22,7 +21,6 @@ var (
 
 // Load initializes the reminder data
 func Load() {
-	core.Register(core.Capability{ID: "reminder", Title: "☪️ Reminder", Card: ReminderHTML, Tools: []string{"reminder"}})
 	// Load cached HTML
 	b, err := data.LoadFile("reminder.html")
 	if err == nil {

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"mu/agent/micro"
-	"mu/core"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -1395,8 +1394,8 @@ func renderResultCard(toolName, result string, args map[string]any) string {
 		return renderRunCard(result)
 	}
 	// Service-sourced dashboard cards (markets, news_headlines, social, …),
-	// pulled from the capability registry each service self-registers into.
-	return core.CardForTool(toolName)
+	// pulled from the same tool registry, attached via api.SetCard in main.go.
+	return api.CardForTool(toolName)
 }
 
 // --- typed card renderers ---

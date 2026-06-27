@@ -3,7 +3,7 @@ package home
 import (
 	"strings"
 
-	"mu/core"
+	"mu/internal/api"
 	"mu/internal/app"
 )
 
@@ -31,10 +31,10 @@ func MorningBriefHTML() string {
 	}
 	b.WriteString(`</div>`)
 
-	// Every self-registered capability with a card contributes to the brief —
-	// the same cards as the dashboard and the inline chat, from one registry.
-	for _, c := range core.All() {
-		b.WriteString(core.CardHTML(c.ID))
+	// Every tool that exposes a card contributes to the brief — the same cards
+	// as the inline chat (and, soon, the dashboard), from one registry.
+	for _, t := range api.CardTools() {
+		b.WriteString(api.CardForTool(t.Name))
 	}
 	return b.String()
 }
