@@ -17,6 +17,11 @@ func TestRouteDirectAddressAvoidsLLM(t *testing.T) {
 			want:   []string{"markets"},
 		},
 		{
+			name:   "at mention with punctuation",
+			prompt: "@markets, what is ETH doing today?",
+			want:   []string{"markets"},
+		},
+		{
 			name:   "ask the agent",
 			prompt: "ask the weather agent about Lisbon tomorrow",
 			want:   []string{"weather"},
