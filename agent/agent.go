@@ -1386,10 +1386,6 @@ func renderResultCard(toolName, result string, args map[string]any) string {
 		return renderNewsCard(result)
 	case "video_search":
 		return renderVideoCard(result)
-	case "markets":
-		return renderMarketsCard(result)
-	case "weather_forecast":
-		return renderWeatherCard(result)
 	case "places_search", "places_nearby":
 		return renderPlacesCard(result, args)
 	case "apps_search":
@@ -1485,94 +1481,6 @@ type videoItem struct {
 	Channel   string `json:"channel"`
 }
 
-func renderMarketsCard(result string) string {
-	var data struct {
-		Data []marketItem `json:"data"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil {
-		return ""
-	}
-	if len(data.Data) == 0 {
-		return ""
-	}
-	items := data.Data
-	if len(items) > 6 {
-		items = items[:6]
-	}
-
-	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>📈 Markets</h4>`)
-	b.WriteString(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">`)
-	for _, item := range items {
-		chg := ""
-		if item.Change24h != 0 {
-			sign := "+"
-			color := "#28a745"
-			if item.Change24h < 0 {
-				sign = ""
-				color = "#c00"
-			}
-			chg = fmt.Sprintf(`<span style="font-size:11px;color:%s;">%s%.1f%%</span>`, color, sign, item.Change24h)
-		}
-		price := formatPrice(item.Price)
-		b.WriteString(fmt.Sprintf(
-			`<div style="background:#f9f9f9;border-radius:6px;padding:8px;text-align:center;">
-<div style="font-size:11px;font-weight:700;color:#555;">%s</div>
-<div style="font-size:15px;font-weight:800;">%s %s</div>
-</div>`,
-			htmlEsc(item.Symbol), price, chg,
-		))
-	}
-	b.WriteString(`</div><a href="/markets" class="link" style="display:inline-block;margin-top:8px;">More →</a></div>`)
-	return b.String()
-}
-
-type marketItem struct {
-	Symbol    string  `json:"symbol"`
-	Price     float64 `json:"price"`
-	Change24h float64 `json:"change_24h"`
-}
-
-func renderWeatherCard(result string) string {
-	var data struct {
-		Forecast struct {
-			Current struct {
-				TempC       float64 `json:"TempC"`
-				FeelsLikeC  float64 `json:"FeelsLikeC"`
-				Description string  `json:"Description"`
-				Humidity    int     `json:"Humidity"`
-				WindKph     float64 `json:"WindKph"`
-			} `json:"Current"`
-			Location string `json:"Location"`
-		} `json:"forecast"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil {
-		return ""
-	}
-	cur := data.Forecast.Current
-	if cur.Description == "" {
-		return ""
-	}
-
-	loc := data.Forecast.Location
-	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>🌤 Weather`)
-	if loc != "" {
-		b.WriteString(` — ` + htmlEsc(loc))
-	}
-	b.WriteString(`</h4>`)
-	b.WriteString(fmt.Sprintf(
-		`<p style="font-size:28px;font-weight:800;margin:4px 0;">%.0f°C</p>`,
-		cur.TempC,
-	))
-	b.WriteString(`<p style="color:#555;">` + htmlEsc(cur.Description) + `</p>`)
-	b.WriteString(fmt.Sprintf(
-		`<p style="font-size:13px;color:#888;">Feels like %.0f°C · Humidity %d%% · Wind %.0f km/h</p>`,
-		cur.FeelsLikeC, cur.Humidity, cur.WindKph,
-	))
-	b.WriteString(`<a href="/weather" class="link" style="display:inline-block;margin-top:8px;">Full forecast →</a></div>`)
-	return b.String()
-}
 
 func renderPlacesCard(result string, args map[string]any) string {
 	var data struct {
@@ -1659,20 +1567,12 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatNewsResult(result)
 	case "video_search":
 		return formatVideoResult(result)
-	case "weather_forecast":
-		return formatWeatherResult(result)
 	case "reminder":
 		return formatReminderResult(result)
 	case "search":
 		return formatSearchResult(result)
-	case "blog_list":
-		return formatBlogResult(result)
-	case "web_search":
-		return formatWebSearchResult(result)
 	case "web_fetch":
 		return formatWebFetchResult(result)
-	case "markets":
-		return formatMarketsResult(result)
 	case "places_search", "places_nearby":
 		return formatPlacesResult(result, args)
 	case "wallet_balance":

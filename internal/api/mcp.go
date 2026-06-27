@@ -245,12 +245,9 @@ var tools = []Tool{
 			{Name: "query", Type: "string", Description: "News search query", Required: true},
 		},
 	},
-	{
-		Name:        "blog_list",
-		Description: "Get all blog posts",
-		Method:      "GET",
-		Path:        "/blog",
-	},
+	// blog_list, social, video, weather_forecast and markets are registered in
+	// main.go as AI-first tools (clean Go handlers returning model-ready text),
+	// not as page-backed entries here.
 	{
 		Name:        "blog_read",
 		Description: "Read a specific blog post by ID",
@@ -292,12 +289,6 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "social",
-		Description: "Get the latest social media posts from followed accounts",
-		Method:      "GET",
-		Path:        "/social",
-	},
-	{
 		Name:        "social_search",
 		Description: "Search social media posts",
 		Method:      "POST",
@@ -306,12 +297,6 @@ var tools = []Tool{
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Search query for social posts", Required: true},
 		},
-	},
-	{
-		Name:        "video",
-		Description: "Get the latest videos",
-		Method:      "GET",
-		Path:        "/video",
 	},
 	{
 		Name:        "video_search",
@@ -476,27 +461,6 @@ var tools = []Tool{
 			{Name: "lat", Type: "number", Description: "Latitude of the search location", Required: false},
 			{Name: "lon", Type: "number", Description: "Longitude of the search location", Required: false},
 			{Name: "radius", Type: "number", Description: "Search radius in metres, 100–5000 (default 500)", Required: false},
-		},
-	},
-	{
-		Name:        "weather_forecast",
-		Description: "Get the weather forecast for a location. Returns current conditions, hourly and daily forecast. Optionally includes pollen data.",
-		Method:      "GET",
-		Path:        "/weather",
-		WalletOp:    "weather_forecast",
-		Params: []ToolParam{
-			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
-			{Name: "lon", Type: "number", Description: "Longitude of the location", Required: true},
-			{Name: "pollen", Type: "string", Description: "Set to 1 to include pollen forecast (+1 credit)", Required: false},
-		},
-	},
-	{
-		Name:        "markets",
-		Description: "Get live market prices for cryptocurrencies, futures, and commodities",
-		Method:      "GET",
-		Path:        "/markets",
-		Params: []ToolParam{
-			{Name: "category", Type: "string", Description: "Category of markets: crypto, futures, or commodities (default: crypto)", Required: false},
 		},
 	},
 	{

@@ -107,6 +107,21 @@ func recallFirstLine(s string, max int) string {
 	return s
 }
 
+// argFloat coerces a tool argument (JSON number or string) to a float64.
+func argFloat(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int:
+		return float64(n)
+	case string:
+		var f float64
+		fmt.Sscanf(n, "%g", &f)
+		return f
+	}
+	return 0
+}
+
 // recallStripTags removes HTML tags without pulling in a dependency.
 func recallStripTags(s string) string {
 	var b strings.Builder
@@ -563,15 +578,17 @@ func main() {
 		},
 	})
 
-	// web_search tool registered via MCP
+	// web_search — cached Brave web search, returned as model-ready text (AI-first).
 	api.RegisterTool(api.Tool{
 		Name:        "web_search",
 		Description: "Search the web for current information and news",
-		Method:      "GET",
-		Path:        "/web",
 		WalletOp:    "web_search",
 		Params: []api.ToolParam{
 			{Name: "q", Type: "string", Description: "Search query", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			q, _ := args["q"].(string)
+			return search.WebSearchText(q, 0), nil
 		},
 	})
 
@@ -655,6 +672,65 @@ func main() {
 			}
 		}
 		return recallSearch(accountID, strings.TrimSpace(query), limit), nil
+	})
+
+	// markets — live prices, returned as model-ready text (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "markets",
+		Description: "Get live market prices for cryptocurrencies, futures, commodities and currencies.",
+		Params: []api.ToolParam{
+			{Name: "category", Type: "string", Description: "crypto, futures, commodities or currencies (default crypto)", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			category, _ := args["category"].(string)
+			return markets.MarketsText(category), nil
+		},
+	})
+
+	// weather_forecast — current conditions plus the next few days (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "weather_forecast",
+		Description: "Get the weather forecast for a location (current conditions plus the next few days).",
+		WalletOp:    "weather_forecast",
+		Params: []api.ToolParam{
+			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
+			{Name: "lon", Type: "number", Description: "Longitude of the location", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			lat := argFloat(args["lat"])
+			lon := argFloat(args["lon"])
+			if lat == 0 && lon == 0 {
+				return "Provide lat and lon for the location.", fmt.Errorf("missing coordinates")
+			}
+			return weather.ForecastText(lat, lon), nil
+		},
+	})
+
+	// social — latest social feed (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "social",
+		Description: "Get the latest social posts from the network.",
+		Handle: func(args map[string]any) (string, error) {
+			return social.FeedText(0), nil
+		},
+	})
+
+	// video — latest videos from curated channels (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "video",
+		Description: "Get the latest videos from curated channels.",
+		Handle: func(args map[string]any) (string, error) {
+			return video.LatestText(0), nil
+		},
+	})
+
+	// blog_list — recent blog posts (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "blog_list",
+		Description: "Get recent blog posts (titles, snippets and ids; use blog_read for one in full).",
+		Handle: func(args map[string]any) (string, error) {
+			return blog.RecentText(0), nil
+		},
 	})
 
 	// Register apps MCP tools
