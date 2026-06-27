@@ -1087,7 +1087,15 @@ func main() {
 	// serve news
 	http.HandleFunc("/news", news.Handler)
 	// serve chat
-	http.HandleFunc("/chat", chat.Handler)
+	// /chat is subsumed by the assistant at /. Bare visits redirect there;
+	// contextual discussions (/chat?id=...) from article pages still work.
+	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("id") == "" {
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
+		chat.Handler(w, r)
+	})
 
 	// serve blog (full list)
 	http.HandleFunc("/blog", blog.Handler)
@@ -1203,7 +1211,15 @@ func main() {
 	// serve fact-check page and API
 
 	// serve the home screen
-	http.HandleFunc("/home", home.Handler)
+	// The old card dashboard is subsumed by the assistant home (/) and its
+	// daily brief. Bare visits redirect to /; kiosk/display mode is preserved.
+	http.HandleFunc("/home", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("mode") != "display" {
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
+		home.Handler(w, r)
+	})
 	http.HandleFunc("/home/summary", home.SummaryHandler)
 	home.StartSummaryLoop()
 	http.HandleFunc("/pricing", home.PricingHandler)
