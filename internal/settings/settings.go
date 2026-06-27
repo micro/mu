@@ -16,7 +16,14 @@ var (
 )
 
 func Load() {
-	data.LoadJSON("settings.json", &values)
+	loaded := map[string]string{}
+	if err := data.LoadJSON("settings.json", &loaded); err != nil {
+		return
+	}
+
+	mu.Lock()
+	values = loaded
+	mu.Unlock()
 }
 
 // Get returns the value for a key. Environment variable takes precedence
