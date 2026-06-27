@@ -194,11 +194,23 @@ func llmRoute(prompt string) []string {
 		return []string{"micro"}
 	}
 
-	// Validate agent IDs
-	var valid []string
+	return validateAgentIDs(ids)
+}
+
+func validateAgentIDs(ids []string) []string {
+	valid := make([]string, 0, min(len(ids), 3))
+	seen := map[string]bool{}
 	for _, id := range ids {
-		if _, ok := Registry[id]; ok {
-			valid = append(valid, id)
+		if seen[id] {
+			continue
+		}
+		if _, ok := Registry[id]; !ok {
+			continue
+		}
+		seen[id] = true
+		valid = append(valid, id)
+		if len(valid) == 3 {
+			break
 		}
 	}
 	if len(valid) == 0 {

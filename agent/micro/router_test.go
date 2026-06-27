@@ -102,3 +102,19 @@ func TestAllExcludesFallbackAgent(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateAgentIDsDeduplicatesAndLimits(t *testing.T) {
+	got := validateAgentIDs([]string{"markets", "bogus", "markets", "news", "weather", "mail"})
+	want := []string{"markets", "news", "weather"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("validateAgentIDs() = %v, want %v", got, want)
+	}
+}
+
+func TestValidateAgentIDsFallsBackToMicro(t *testing.T) {
+	got := validateAgentIDs([]string{"bogus"})
+	want := []string{"micro"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("validateAgentIDs() = %v, want %v", got, want)
+	}
+}
