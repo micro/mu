@@ -841,6 +841,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - news_read: Read one news article in full by its id from news_headlines (args: {"id":"<article id>"})
 - news: Get the raw latest news feed grouped by category (no args) — only when you specifically need the full per-category feed
 - news_search: Search news articles (args: {"query":"search term"})
+- recall: Search across everything — indexed news, blog, social, video AND the user's own mail — for 'do you remember', 'what did I get about X', and cross-source lookups (args: {"query":"search term"}). Returns ids you can open with the matching tool.
 - blog_list: Get recent blog posts (no args)
 - blog_read: Read a specific blog post (args: {"id":"post-id"})
 - social: View the social feed (no args)
@@ -878,6 +879,7 @@ const guestToolsDesc = `Available tools (use exact name):
 - news_read: Read one news article in full by its id from news_headlines (args: {"id":"<article id>"})
 - news: Get the raw latest news feed grouped by category (no args)
 - news_search: Search news articles (args: {"query":"search term"})
+- recall: Search across indexed news, blog, social and video for cross-source lookups (args: {"query":"search term"})
 - blog_list: Get recent blog posts (no args)
 - blog_read: Read a specific blog post (args: {"id":"post-id"})
 - social: View the social feed (no args)
@@ -1312,6 +1314,8 @@ func toolLabel(tool string) string {
 		return "📖 Reading article"
 	case "news_search":
 		return "Searching news"
+	case "recall":
+		return "🧠 Searching your world"
 	case "web_search":
 		return "🌐 Searching the web"
 	case "web_fetch":

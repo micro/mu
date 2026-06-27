@@ -52,6 +52,80 @@ var EnvFlag = flag.String("env", "dev", "Set the environment")
 var ServeFlag = flag.Bool("serve", false, "Run the server")
 var AddressFlag = flag.String("address", ":8080", "Address for server")
 
+// recallSearch powers the recall tool: it merges the public indexed corpus
+// with the caller's own mail into a compact, model-ready list. Public content
+// is searched without an owner scope (private entries are excluded by default);
+// mail is searched live and strictly scoped to accountID, so nothing leaks
+// across users and mail bodies never need to live in the shared index.
+func recallSearch(accountID, query string, limit int) string {
+	pub := data.Search(query, limit)
+	var mails []*mail.Message
+	if accountID != "" {
+		mails = mail.Search(accountID, query, 6)
+	}
+
+	if len(pub) == 0 && len(mails) == 0 {
+		return fmt.Sprintf("No matches found for %q.", query)
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "Results for %q:\n\n", query)
+	for _, m := range mails {
+		fmt.Fprintf(&b, "[mail] %s — from %s: %s (id: %s)\n",
+			recallFirstLine(m.Subject, 120), recallFirstLine(m.From, 60), recallSnippet(m.Body, 160), m.ID)
+	}
+	for _, e := range pub {
+		t := e.Type
+		if t == "post" {
+			t = "blog"
+		}
+		fmt.Fprintf(&b, "[%s] %s — %s (id: %s)\n", t, recallFirstLine(e.Title, 120), recallSnippet(e.Content, 160), e.ID)
+	}
+	return b.String()
+}
+
+// recallSnippet strips tags, collapses whitespace and truncates to max runes.
+func recallSnippet(s string, max int) string {
+	s = strings.Join(strings.Fields(recallStripTags(s)), " ")
+	r := []rune(s)
+	if len(r) > max {
+		return string(r[:max]) + "…"
+	}
+	return s
+}
+
+// recallFirstLine trims to the first line and truncates to max runes.
+func recallFirstLine(s string, max int) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexAny(s, "\r\n"); i >= 0 {
+		s = strings.TrimSpace(s[:i])
+	}
+	r := []rune(s)
+	if len(r) > max {
+		return string(r[:max]) + "…"
+	}
+	return s
+}
+
+// recallStripTags removes HTML tags without pulling in a dependency.
+func recallStripTags(s string) string {
+	var b strings.Builder
+	inTag := false
+	for _, r := range s {
+		switch r {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		default:
+			if !inTag {
+				b.WriteRune(r)
+			}
+		}
+	}
+	return b.String()
+}
+
 func main() {
 	// Server vs CLI dispatch — any invocation that includes `--serve`
 	// (or `-serve`) runs the full server exactly as before. Anything
@@ -552,6 +626,35 @@ func main() {
 			}
 			return text, nil
 		},
+	})
+
+	// recall tool — unified search across everything mu knows for the caller:
+	// the public indexed corpus (news, blog, social, video) plus their own mail.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "recall",
+		Description: "Search across everything mu knows — indexed news, blog, social and video, plus the user's own mail — and return the most relevant items with ids. Use for 'do you remember', 'what did I get about X', 'search my stuff' and cross-source lookups.",
+		Params: []api.ToolParam{
+			{Name: "query", Type: "string", Description: "What to look for", Required: true},
+			{Name: "limit", Type: "string", Description: "Optional max results (default 12)", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		query, _ := args["query"].(string)
+		if strings.TrimSpace(query) == "" {
+			return "query is required", fmt.Errorf("missing query")
+		}
+		limit := 12
+		switch v := args["limit"].(type) {
+		case float64:
+			if int(v) > 0 {
+				limit = int(v)
+			}
+		case string:
+			var n int
+			if _, e := fmt.Sscanf(v, "%d", &n); e == nil && n > 0 {
+				limit = n
+			}
+		}
+		return recallSearch(accountID, strings.TrimSpace(query), limit), nil
 	})
 
 	// Register apps MCP tools

@@ -117,6 +117,11 @@ func ArticleText(idOrURL string) (string, error) {
 		url = idOrURL
 		entry = data.GetByID(articleID(idOrURL))
 	}
+	// Only ever expose news entries through this tool — never another type
+	// (e.g. a private mail entry) that happens to share an id space.
+	if entry != nil && entry.Type != "news" {
+		entry = nil
+	}
 
 	title, category, description, summary := "", "", "", ""
 	var postedAt time.Time

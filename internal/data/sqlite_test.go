@@ -88,17 +88,17 @@ func TestSQLiteSearch(t *testing.T) {
 	db = nil
 
 	// Initialize and add some entries
-	err := IndexSQLite("search1", "news", "AI Revolution in Tech", "Artificial intelligence is transforming the technology industry.", nil)
+	err := IndexSQLite("search1", "news", "AI Revolution in Tech", "Artificial intelligence is transforming the technology industry.", "", nil)
 	if err != nil {
 		t.Fatalf("IndexSQLite failed: %v", err)
 	}
 
-	err = IndexSQLite("search2", "news", "Sports Update", "Football season kicks off with exciting matches.", nil)
+	err = IndexSQLite("search2", "news", "Sports Update", "Football season kicks off with exciting matches.", "", nil)
 	if err != nil {
 		t.Fatalf("IndexSQLite failed: %v", err)
 	}
 
-	err = IndexSQLite("search3", "video", "Machine Learning Tutorial", "Learn about neural networks and deep learning.", nil)
+	err = IndexSQLite("search3", "video", "Machine Learning Tutorial", "Learn about neural networks and deep learning.", "", nil)
 	if err != nil {
 		t.Fatalf("IndexSQLite failed: %v", err)
 	}
@@ -139,13 +139,13 @@ func TestSQLiteIndexUpdate(t *testing.T) {
 	db = nil
 
 	// Add entry
-	err := IndexSQLite("update1", "news", "Original Title", "Original content.", map[string]interface{}{"version": 1})
+	err := IndexSQLite("update1", "news", "Original Title", "Original content.", "", map[string]interface{}{"version": 1})
 	if err != nil {
 		t.Fatalf("IndexSQLite failed: %v", err)
 	}
 
 	// Update entry
-	err = IndexSQLite("update1", "news", "Updated Title", "Updated content.", map[string]interface{}{"version": 2})
+	err = IndexSQLite("update1", "news", "Updated Title", "Updated content.", "", map[string]interface{}{"version": 2})
 	if err != nil {
 		t.Fatalf("IndexSQLite update failed: %v", err)
 	}
@@ -177,9 +177,9 @@ func TestFTS5Search(t *testing.T) {
 	db = nil
 
 	// Add entries
-	IndexSQLite("fts1", "news", "Bitcoin Hits All-Time High", "Bitcoin reached a new record price amid growing institutional adoption.", nil)
-	IndexSQLite("fts2", "news", "Ethereum Upgrade Complete", "The Ethereum network completed its latest upgrade successfully.", nil)
-	IndexSQLite("fts3", "news", "Sports News Today", "Football league results and highlights from this weekend.", nil)
+	IndexSQLite("fts1", "news", "Bitcoin Hits All-Time High", "Bitcoin reached a new record price amid growing institutional adoption.", "", nil)
+	IndexSQLite("fts2", "news", "Ethereum Upgrade Complete", "The Ethereum network completed its latest upgrade successfully.", "", nil)
+	IndexSQLite("fts3", "news", "Sports News Today", "Football league results and highlights from this weekend.", "", nil)
 
 	// FTS5 should find this via full-text search
 	results, err := SearchSQLite("bitcoin institutional", 10)

@@ -49,6 +49,7 @@ func initDB() error {
 				type TEXT NOT NULL,
 				title TEXT NOT NULL,
 				content TEXT NOT NULL,
+				owner TEXT NOT NULL DEFAULT '',
 				metadata TEXT,
 				indexed_at DATETIME DEFAULT CURRENT_TIMESTAMP
 			);
@@ -59,6 +60,11 @@ func initDB() error {
 			initErr = fmt.Errorf("failed to create tables: %w", err)
 			return
 		}
+
+		// Add owner column for databases created before owner scoping existed.
+		// Errors ("duplicate column name") are expected on up-to-date schemas.
+		db.Exec(`ALTER TABLE index_entries ADD COLUMN owner TEXT NOT NULL DEFAULT ''`)
+		db.Exec(`CREATE INDEX IF NOT EXISTS idx_owner ON index_entries(owner)`)
 
 		// Create FTS5 virtual table for full-text search
 		_, err = db.Exec(`
@@ -87,8 +93,9 @@ func getDB() (*sql.DB, error) {
 	return db, nil
 }
 
-// IndexSQLite adds or updates an entry in the SQLite index
-func IndexSQLite(id, entryType, title, content string, metadata map[string]interface{}) error {
+// IndexSQLite adds or updates an entry in the SQLite index. A non-empty owner
+// marks the entry private (see WithOwner).
+func IndexSQLite(id, entryType, title, content, owner string, metadata map[string]interface{}) error {
 	db, err := getDB()
 	if err != nil {
 		return err
@@ -103,15 +110,16 @@ func IndexSQLite(id, entryType, title, content string, metadata map[string]inter
 	db.Exec(`DELETE FROM index_fts WHERE rowid = (SELECT rowid FROM index_entries WHERE id = ?)`, id)
 
 	_, err = db.Exec(`
-		INSERT INTO index_entries (id, type, title, content, metadata, indexed_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO index_entries (id, type, title, content, owner, metadata, indexed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			type = excluded.type,
 			title = excluded.title,
 			content = excluded.content,
+			owner = excluded.owner,
 			metadata = excluded.metadata,
 			indexed_at = excluded.indexed_at
-	`, id, entryType, title, content, string(metadataJSON), time.Now())
+	`, id, entryType, title, content, owner, string(metadataJSON), time.Now())
 
 	if err == nil {
 		// Insert into FTS index
@@ -138,12 +146,13 @@ func GetByIDSQLite(id string) (*IndexEntry, error) {
 
 	var entry IndexEntry
 	var metadataJSON sql.NullString
+	var owner sql.NullString
 	var indexedAt time.Time
 
 	err = db.QueryRow(`
-		SELECT id, type, title, content, metadata, indexed_at
+		SELECT id, type, title, content, owner, metadata, indexed_at
 		FROM index_entries WHERE id = ?
-	`, id).Scan(&entry.ID, &entry.Type, &entry.Title, &entry.Content, &metadataJSON, &indexedAt)
+	`, id).Scan(&entry.ID, &entry.Type, &entry.Title, &entry.Content, &owner, &metadataJSON, &indexedAt)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -152,6 +161,7 @@ func GetByIDSQLite(id string) (*IndexEntry, error) {
 		return nil, err
 	}
 
+	entry.Owner = owner.String
 	entry.IndexedAt = indexedAt
 	if metadataJSON.Valid && metadataJSON.String != "" {
 		json.Unmarshal([]byte(metadataJSON.String), &entry.Metadata)
@@ -194,7 +204,7 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 	ftsQuery := buildFTS5Query(words)
 	if ftsQuery != "" {
 		ftsSQL := `
-			SELECT e.id, e.type, e.title, e.content, e.metadata, e.indexed_at
+			SELECT e.id, e.type, e.title, e.content, e.owner, e.metadata, e.indexed_at
 			FROM index_fts f
 			JOIN index_entries e ON e.rowid = f.rowid
 			WHERE index_fts MATCH ?`
@@ -204,6 +214,9 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 			ftsSQL += ` AND e.type = ?`
 			ftsArgs = append(ftsArgs, options.Type)
 		}
+		// Owner scoping: public entries (owner='') plus the caller's own.
+		ftsSQL += ` AND (e.owner = '' OR e.owner = ?)`
+		ftsArgs = append(ftsArgs, options.Owner)
 		ftsSQL += ` ORDER BY rank LIMIT 50`
 
 		rows, err := db.Query(ftsSQL, ftsArgs...)
@@ -211,8 +224,10 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 			for rows.Next() {
 				var e IndexEntry
 				var meta sql.NullString
+				var owner sql.NullString
 				var idx time.Time
-				if rows.Scan(&e.ID, &e.Type, &e.Title, &e.Content, &meta, &idx) == nil {
+				if rows.Scan(&e.ID, &e.Type, &e.Title, &e.Content, &owner, &meta, &idx) == nil {
+					e.Owner = owner.String
 					e.IndexedAt = idx
 					if meta.Valid {
 						json.Unmarshal([]byte(meta.String), &e.Metadata)
@@ -244,17 +259,22 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 				where = "(" + where + ") AND type = ?"
 				likeArgs = append(likeArgs, options.Type)
 			}
+			// Owner scoping: public entries (owner='') plus the caller's own.
+			where = "(" + where + ") AND (owner = '' OR owner = ?)"
+			likeArgs = append(likeArgs, options.Owner)
 			likeArgs = append(likeArgs, 50)
 			rows, err := db.Query(fmt.Sprintf(`
-				SELECT id, type, title, content, metadata, indexed_at
+				SELECT id, type, title, content, owner, metadata, indexed_at
 				FROM index_entries WHERE %s
 				ORDER BY indexed_at DESC LIMIT ?`, where), likeArgs...)
 			if err == nil {
 				for rows.Next() {
 					var e IndexEntry
 					var meta sql.NullString
+					var owner sql.NullString
 					var idx time.Time
-					if rows.Scan(&e.ID, &e.Type, &e.Title, &e.Content, &meta, &idx) == nil {
+					if rows.Scan(&e.ID, &e.Type, &e.Title, &e.Content, &owner, &meta, &idx) == nil {
+						e.Owner = owner.String
 						e.IndexedAt = idx
 						if meta.Valid {
 							json.Unmarshal([]byte(meta.String), &e.Metadata)
@@ -433,10 +453,11 @@ func GetByTypeSQLite(entryType string, limit int) ([]*IndexEntry, error) {
 		return nil, err
 	}
 
+	// Public-only: private (owned) entries are never returned by type lookups.
 	rows, err := db.Query(`
-		SELECT id, type, title, content, metadata, indexed_at
+		SELECT id, type, title, content, owner, metadata, indexed_at
 		FROM index_entries
-		WHERE type = ?
+		WHERE type = ? AND owner = ''
 		ORDER BY indexed_at DESC
 		LIMIT ?
 	`, entryType, limit)
@@ -449,13 +470,15 @@ func GetByTypeSQLite(entryType string, limit int) ([]*IndexEntry, error) {
 	for rows.Next() {
 		var entry IndexEntry
 		var metadataJSON sql.NullString
+		var owner sql.NullString
 		var indexedAt time.Time
 
-		err := rows.Scan(&entry.ID, &entry.Type, &entry.Title, &entry.Content, &metadataJSON, &indexedAt)
+		err := rows.Scan(&entry.ID, &entry.Type, &entry.Title, &entry.Content, &owner, &metadataJSON, &indexedAt)
 		if err != nil {
 			continue
 		}
 
+		entry.Owner = owner.String
 		entry.IndexedAt = indexedAt
 		if metadataJSON.Valid && metadataJSON.String != "" {
 			json.Unmarshal([]byte(metadataJSON.String), &entry.Metadata)
@@ -512,8 +535,8 @@ func MigrateFromJSON() error {
 	}
 
 	stmt, err := tx.Prepare(`
-		INSERT OR REPLACE INTO index_entries (id, type, title, content, metadata, indexed_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT OR REPLACE INTO index_entries (id, type, title, content, owner, metadata, indexed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		tx.Rollback()
@@ -528,7 +551,8 @@ func MigrateFromJSON() error {
 			metadataJSON, _ = json.Marshal(entry.Metadata)
 		}
 
-		_, err := stmt.Exec(id, entry.Type, entry.Title, entry.Content, string(metadataJSON), entry.IndexedAt)
+		// Pre-owner entries are all public content.
+		_, err := stmt.Exec(id, entry.Type, entry.Title, entry.Content, "", string(metadataJSON), entry.IndexedAt)
 		if err != nil {
 			fmt.Printf("[data] Failed to migrate entry %s: %v\n", id, err)
 			continue

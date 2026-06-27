@@ -16,7 +16,8 @@ import (
 // SearchOptions configures search behavior
 type SearchOptions struct {
 	Type        string
-	KeywordOnly bool // Use keyword matching only
+	Owner       string // Account scope for private entries (see WithOwner)
+	KeywordOnly bool   // Use keyword matching only
 }
 
 // SearchOption is a functional option for configuring search
@@ -26,6 +27,19 @@ type SearchOption func(*SearchOptions)
 func WithType(entryType string) SearchOption {
 	return func(opts *SearchOptions) {
 		opts.Type = entryType
+	}
+}
+
+// WithOwner scopes a search to the given account for private entries.
+//
+// Index entries with an empty Owner are public and always returned. Entries
+// with a non-empty Owner are private and are ONLY returned when the caller
+// passes WithOwner(thatAccount). The safe default (no WithOwner) therefore
+// excludes ALL private entries, so existing callers can never surface another
+// account's private content (e.g. mail) by accident.
+func WithOwner(accountID string) SearchOption {
+	return func(opts *SearchOptions) {
+		opts.Owner = accountID
 	}
 }
 
@@ -147,6 +161,7 @@ type IndexWork struct {
 	Type     string
 	Title    string
 	Content  string
+	Owner    string
 	Metadata map[string]interface{}
 }
 
@@ -169,6 +184,7 @@ type IndexEntry struct {
 	Type      string                 `json:"type"` // "news", "video", "market", "reminder"
 	Title     string                 `json:"title"`
 	Content   string                 `json:"content"`
+	Owner     string                 `json:"owner,omitempty"` // account scope; empty = public
 	Metadata  map[string]interface{} `json:"metadata"`
 	IndexedAt time.Time              `json:"indexed_at"`
 }
@@ -179,35 +195,39 @@ type SearchResult struct {
 	Score float64
 }
 
-// Index queues an entry to be added or updated in the search index
+// Index queues a public entry to be added or updated in the search index.
 func Index(id, entryType, title, content string, metadata map[string]interface{}) {
+	IndexOwned(id, entryType, title, content, "", metadata)
+}
+
+// IndexOwned indexes an entry scoped to a specific account. A non-empty owner
+// marks the entry private: it is only returned by searches that pass
+// WithOwner(owner). Pass an empty owner for public content.
+func IndexOwned(id, entryType, title, content, owner string, metadata map[string]interface{}) {
 	// Use SQLite backend if enabled
 	if UseSQLite {
-		if err := IndexSQLite(id, entryType, title, content, metadata); err != nil {
+		if err := IndexSQLite(id, entryType, title, content, owner, metadata); err != nil {
 			fmt.Printf("[data] SQLite index error: %v\n", err)
 		}
 		return
 	}
 
-	// Queue the work instead of processing immediately
-	select {
-	case indexWorkQueue <- IndexWork{
+	work := IndexWork{
 		ID:       id,
 		Type:     entryType,
 		Title:    title,
 		Content:  content,
+		Owner:    owner,
 		Metadata: metadata,
-	}:
+	}
+
+	// Queue the work instead of processing immediately
+	select {
+	case indexWorkQueue <- work:
 		// Work queued successfully
 	default:
 		// Queue full, process synchronously to avoid dropping
-		processIndexWork(IndexWork{
-			ID:       id,
-			Type:     entryType,
-			Title:    title,
-			Content:  content,
-			Metadata: metadata,
-		})
+		processIndexWork(work)
 	}
 }
 
@@ -250,6 +270,7 @@ func processIndexWork(work IndexWork) {
 		Type:      work.Type,
 		Title:     work.Title,
 		Content:   work.Content,
+		Owner:     work.Owner,
 		Metadata:  work.Metadata,
 		IndexedAt: time.Now(),
 	}
@@ -337,6 +358,12 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 			continue
 		}
 
+		// Owner scoping: never surface another account's private entries.
+		// Public entries (empty Owner) are always eligible.
+		if entry.Owner != "" && entry.Owner != options.Owner {
+			continue
+		}
+
 		score := 0.0
 		titleLower := strings.ToLower(entry.Title)
 		contentLower := strings.ToLower(entry.Content)
@@ -390,7 +417,9 @@ func GetByType(entryType string, limit int) []*IndexEntry {
 
 	var entries []*IndexEntry
 	for _, entry := range index {
-		if entry.Type == entryType {
+		// GetByType is public-only: private entries are excluded so callers
+		// (e.g. topic generation) can never pull another account's content.
+		if entry.Type == entryType && entry.Owner == "" {
 			entries = append(entries, entry)
 		}
 	}
