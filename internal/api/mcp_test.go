@@ -567,3 +567,63 @@ func TestRegisterTool(t *testing.T) {
 		t.Error("Registered tool not found in tools list")
 	}
 }
+
+func TestReminderAPIHelpersRejectNonSuccessStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/daily" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		http.Error(w, "upstream unavailable", http.StatusBadGateway)
+	}))
+	defer server.Close()
+
+	origBase := reminderAPIBase
+	origClient := reminderHTTPClient
+	reminderAPIBase = server.URL + "/"
+	reminderHTTPClient = server.Client()
+	defer func() {
+		reminderAPIBase = origBase
+		reminderHTTPClient = origClient
+	}()
+
+	_, err := getReminderAPI("/daily")
+	if err == nil {
+		t.Fatal("expected non-success status to return an error")
+	}
+	if !strings.Contains(err.Error(), "status 502") {
+		t.Fatalf("expected status code in error, got %v", err)
+	}
+}
+
+func TestReminderAPIHelpersUseConfiguredBaseAndClient(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		if r.URL.Path != "/api/search" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if got := r.Header.Get("Content-Type"); got != "application/json" {
+			t.Fatalf("unexpected content type: %s", got)
+		}
+		w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	origBase := reminderAPIBase
+	origClient := reminderHTTPClient
+	reminderAPIBase = server.URL + "/api/"
+	reminderHTTPClient = server.Client()
+	defer func() {
+		reminderAPIBase = origBase
+		reminderHTTPClient = origClient
+	}()
+
+	got, err := postReminderAPI("/search", "application/json", `{"q":"test"}`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != `{"ok":true}` {
+		t.Fatalf("unexpected body: %s", got)
+	}
+}
