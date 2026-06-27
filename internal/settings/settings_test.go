@@ -77,6 +77,22 @@ func TestLoadReadsPersistedSettings(t *testing.T) {
 	}
 }
 
+func TestLoadKeepsExistingSettingsOnInvalidJSON(t *testing.T) {
+	resetForTest(t)
+
+	Set("MU_TEST_SETTING", "saved-value")
+	path := filepath.Join(os.Getenv("HOME"), ".mu", "data", "settings.json")
+	if err := os.WriteFile(path, []byte(`{"MU_TEST_SETTING":`), 0600); err != nil {
+		t.Fatalf("write invalid settings: %v", err)
+	}
+
+	Load()
+
+	if got := Get("MU_TEST_SETTING"); got != "saved-value" {
+		t.Fatalf("Get after invalid Load = %q, want saved-value", got)
+	}
+}
+
 func TestAllReturnsCopyOfSavedSettings(t *testing.T) {
 	resetForTest(t)
 
