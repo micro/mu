@@ -33,7 +33,7 @@ func MatchDirectAddress(prompt string) string {
 	if strings.HasPrefix(lower, "@") {
 		parts := strings.Fields(lower)
 		if len(parts) > 0 {
-			id := strings.TrimPrefix(parts[0], "@")
+			id := strings.Trim(strings.TrimPrefix(parts[0], "@"), ` .,:;!?()[]{}<>"'`)
 			if _, ok := Registry[id]; ok {
 				return id
 			}
@@ -98,21 +98,21 @@ func keywordRoute(prompt string) []string {
 
 	// Single-domain keywords
 	routes := map[string][]string{
-		"mail":      {"mail"},
-		"email":     {"mail"},
-		"inbox":     {"mail"},
-		"unread":    {"mail"},
-		"quran":     {"faith"},
-		"hadith":    {"faith"},
-		"reminder":  {"faith"},
-		"surah":     {"faith"},
-		"verse":     {"faith"},
-		"coworking": {"places"},
-		"nearby":    {"places"},
+		"mail":       {"mail"},
+		"email":      {"mail"},
+		"inbox":      {"mail"},
+		"unread":     {"mail"},
+		"quran":      {"faith"},
+		"hadith":     {"faith"},
+		"reminder":   {"faith"},
+		"surah":      {"faith"},
+		"verse":      {"faith"},
+		"coworking":  {"places"},
+		"nearby":     {"places"},
 		"restaurant": {"places"},
-		"cafe":      {"places"},
-		"blog":      {"social"},
-		"post":      {"social"},
+		"cafe":       {"places"},
+		"blog":       {"social"},
+		"post":       {"social"},
 	}
 
 	for keyword, ids := range routes {
