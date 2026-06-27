@@ -28,8 +28,8 @@ import (
 )
 
 var (
-	linkMu   sync.RWMutex
-	links    = map[string]string{} // telegram user ID → mu account ID
+	linkMu sync.RWMutex
+	links  = map[string]string{} // telegram user ID → mu account ID
 
 	historyMu sync.RWMutex
 	histories = map[string][]agent.QueryMessage{} // telegram user ID → recent messages
@@ -375,7 +375,7 @@ func DeleteLinks(muAccount string) {
 	data.SaveJSON("telegram_links.json", links)
 }
 
-func autoCreateAccount(telegramID, username, displayName string) string {
+func sanitizeAccountID(telegramID, username string) string {
 	id := strings.ToLower(username)
 	id = strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
@@ -389,20 +389,46 @@ func autoCreateAccount(telegramID, username, displayName string) string {
 	if len(id) > 24 {
 		id = id[:24]
 	}
+	return id
+}
 
-	baseID := id
-	for i := 0; i < 100; i++ {
-		if _, err := auth.GetAccount(id); err != nil {
-			break
+func uniqueAccountID(baseID string, exists func(string) bool) string {
+	if !exists(baseID) {
+		return baseID
+	}
+	for i := 1; i < 100; i++ {
+		suffix := fmt.Sprintf("%d", i)
+		prefixLen := 24 - len(suffix)
+		if prefixLen <= 0 {
+			return ""
 		}
-		id = fmt.Sprintf("%s%d", baseID, i+1)
-		if len(id) > 24 {
-			id = id[:24]
+		candidate := baseID
+		if len(candidate) > prefixLen {
+			candidate = candidate[:prefixLen]
 		}
+		candidate += suffix
+		if !exists(candidate) {
+			return candidate
+		}
+	}
+	return ""
+}
+
+func autoCreateAccount(telegramID, username, displayName string) string {
+	id := uniqueAccountID(sanitizeAccountID(telegramID, username), func(id string) bool {
+		_, err := auth.GetAccount(id)
+		return err == nil
+	})
+	if id == "" {
+		app.Log("telegram", "Auto-create failed for %s: no available account ID", username)
+		return ""
 	}
 
 	passBytes := make([]byte, 16)
-	rand.Read(passBytes)
+	if _, err := rand.Read(passBytes); err != nil {
+		app.Log("telegram", "Auto-create failed for %s: %v", username, err)
+		return ""
+	}
 	pass := hex.EncodeToString(passBytes)
 
 	acc := &auth.Account{
@@ -424,7 +450,7 @@ func autoCreateAccount(telegramID, username, displayName string) string {
 func getHistory(telegramID string) []agent.QueryMessage {
 	historyMu.RLock()
 	defer historyMu.RUnlock()
-	return histories[telegramID]
+	return append([]agent.QueryMessage(nil), histories[telegramID]...)
 }
 
 func addHistory(telegramID string, role, text string) {
