@@ -78,3 +78,32 @@ func TestForScopedContextIncludesGlobalAndMatchingScope(t *testing.T) {
 		t.Fatalf("ForScopedContext() = %q, included unrelated scope", got)
 	}
 }
+
+func TestDeleteAndClearRemoveStoredEntries(t *testing.T) {
+	resetStore(t)
+
+	Set("user-1", "timezone", "UTC")
+	Set("user-1", "theme", "dark")
+	Set("user-2", "timezone", "PST")
+
+	Delete("user-1", "TIMEZONE")
+
+	if got := Get("user-1", "timezone"); got != "" {
+		t.Fatalf("Delete() left removed entry value %q", got)
+	}
+	if got := Get("user-1", "theme"); got != "dark" {
+		t.Fatalf("Delete() removed unrelated entry, got %q", got)
+	}
+	if got := Get("user-2", "timezone"); got != "PST" {
+		t.Fatalf("Delete() affected another user, got %q", got)
+	}
+
+	Clear("user-1")
+
+	if got := All("user-1"); len(got) != 0 {
+		t.Fatalf("Clear() left %d entries, want 0", len(got))
+	}
+	if got := Get("user-2", "timezone"); got != "PST" {
+		t.Fatalf("Clear() affected another user, got %q", got)
+	}
+}
