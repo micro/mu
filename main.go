@@ -513,6 +513,47 @@ func main() {
 		},
 	})
 
+	// news_headlines tool — topic-balanced headlines for scanning before reading
+	api.RegisterTool(api.Tool{
+		Name:        "news_headlines",
+		Description: "Get recent news headlines with short summaries balanced across all topics (not dominated by one topic like crypto). Use for general news and briefing requests, then news_read for any article worth expanding.",
+		Params: []api.ToolParam{
+			{Name: "topic", Type: "string", Description: "Optional topic/category filter (e.g. tech, world, business)", Required: false},
+			{Name: "limit", Type: "string", Description: "Optional max number of headlines (default 30)", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			topic, _ := args["topic"].(string)
+			limit := 0
+			switch v := args["limit"].(type) {
+			case float64:
+				limit = int(v)
+			case string:
+				fmt.Sscanf(v, "%d", &limit)
+			}
+			return news.HeadlinesText(topic, limit), nil
+		},
+	})
+
+	// news_read tool — fetch one full article by id (from news_headlines) or URL
+	api.RegisterTool(api.Tool{
+		Name:        "news_read",
+		Description: "Read one news article in full (title, source, summary and body) by its id from news_headlines, or by article URL.",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "Article id (from news_headlines) or article URL", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			id, _ := args["id"].(string)
+			if id == "" {
+				id, _ = args["url"].(string)
+			}
+			text, err := news.ArticleText(id)
+			if err != nil {
+				return err.Error(), err
+			}
+			return text, nil
+		},
+	})
+
 	// Register apps MCP tools
 	api.RegisterTool(api.Tool{
 		Name:        "apps_search",

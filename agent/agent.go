@@ -837,7 +837,9 @@ func ToolsDropdownHTML() string {
 
 // agentToolsDesc is the tool catalogue shown to the AI planner.
 const agentToolsDesc = `Available tools (use exact name):
-- news: Get latest news feed (no args)
+- news_headlines: Get recent news headlines + short summaries balanced across ALL topics (args optional: {"topic":"tech","limit":30}). PREFER this for general news, "what's happening" and morning-briefing requests so coverage isn't dominated by one topic like crypto. Then use news_read for any article worth expanding.
+- news_read: Read one news article in full by its id from news_headlines (args: {"id":"<article id>"})
+- news: Get the raw latest news feed grouped by category (no args) — only when you specifically need the full per-category feed
 - news_search: Search news articles (args: {"query":"search term"})
 - blog_list: Get recent blog posts (no args)
 - blog_read: Read a specific blog post (args: {"id":"post-id"})
@@ -872,7 +874,9 @@ const agentToolsDesc = `Available tools (use exact name):
 - stream: Read the public event stream (no args)`
 
 const guestToolsDesc = `Available tools (use exact name):
-- news: Get latest news feed (no args)
+- news_headlines: Get recent news headlines + short summaries balanced across ALL topics (args optional: {"topic":"tech","limit":30}). PREFER this for general news and briefing requests so coverage isn't dominated by one topic like crypto. Then use news_read for any article worth expanding.
+- news_read: Read one news article in full by its id from news_headlines (args: {"id":"<article id>"})
+- news: Get the raw latest news feed grouped by category (no args)
 - news_search: Search news articles (args: {"query":"search term"})
 - blog_list: Get recent blog posts (no args)
 - blog_read: Read a specific blog post (args: {"id":"post-id"})
@@ -1224,7 +1228,7 @@ type shortcutToolCall struct {
 func shortcutToolCalls(prompt string) []shortcutToolCall {
 	aliases := map[string][]shortcutToolCall{
 		// Short aliases
-		"news":     {{Tool: "news", Args: map[string]any{}}},
+		"news":     {{Tool: "news_headlines", Args: map[string]any{}}},
 		"markets":  {{Tool: "markets", Args: map[string]any{}}},
 		"market":   {{Tool: "markets", Args: map[string]any{}}},
 		"prices":   {{Tool: "markets", Args: map[string]any{}}},
@@ -1255,12 +1259,12 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"btc price":                {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
 		"bitcoin price":            {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
 		"eth price":                {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"what's happening":         {{Tool: "news", Args: map[string]any{}}},
-		"what's happening?":        {{Tool: "news", Args: map[string]any{}}},
-		"today's news":             {{Tool: "news", Args: map[string]any{}}},
+		"what's happening":         {{Tool: "news_headlines", Args: map[string]any{}}},
+		"what's happening?":        {{Tool: "news_headlines", Args: map[string]any{}}},
+		"today's news":             {{Tool: "news_headlines", Args: map[string]any{}}},
 		// Starter pill phrases
-		"give me a summary of today's top news":         {{Tool: "news", Args: map[string]any{}}},
-		"what's in the news?":                           {{Tool: "news", Args: map[string]any{}}},
+		"give me a summary of today's top news":         {{Tool: "news_headlines", Args: map[string]any{}}},
+		"what's in the news?":                           {{Tool: "news_headlines", Args: map[string]any{}}},
 		"what are the latest crypto and market prices?": {{Tool: "markets", Args: map[string]any{}}},
 		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
@@ -1302,6 +1306,10 @@ func toolLabel(tool string) string {
 	switch tool {
 	case "news":
 		return "📰 Reading latest news"
+	case "news_headlines":
+		return "📰 Scanning headlines"
+	case "news_read":
+		return "📖 Reading article"
 	case "news_search":
 		return "Searching news"
 	case "web_search":

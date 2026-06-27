@@ -9,6 +9,8 @@ const guestDailyLimit = 3
 
 var guestAllowedTools = map[string]bool{
 	"news":            true,
+	"news_headlines":  true,
+	"news_read":       true,
 	"news_search":     true,
 	"markets":         true,
 	"weather_forecast": true,
