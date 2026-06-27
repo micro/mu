@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mu/agent/micro"
+	"mu/core"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -1378,20 +1379,6 @@ func renderToolCallRef(name string, args map[string]any, formattedResult string)
 		`</details>`
 }
 
-// CardRenderer attaches a rich visual card (rendered from the service's own
-// live data — NOT by parsing tool output) to an agent answer.
-type CardRenderer struct {
-	Title  string
-	Render func() string // returns the card body HTML
-}
-
-// CardRenderers maps a tool name to a visual card sourced from the matching
-// service's dashboard renderer. Populated by main.go (which imports the service
-// packages) so the agent package stays decoupled from them. This is what lets
-// "show me the markets" return both a text explanation and the same visual card
-// the home dashboard uses.
-var CardRenderers = map[string]CardRenderer{}
-
 // renderResultCard returns an HTML card to attach after the AI answer, or "" if
 // the tool has no visual card.
 func renderResultCard(toolName, result string, args map[string]any) string {
@@ -1407,15 +1394,9 @@ func renderResultCard(toolName, result string, args map[string]any) string {
 	case "apps_run":
 		return renderRunCard(result)
 	}
-	// Service-sourced dashboard cards (markets, news_headlines, social, …).
-	if cr, ok := CardRenderers[toolName]; ok && cr.Render != nil {
-		body := strings.TrimSpace(cr.Render())
-		if body == "" {
-			return ""
-		}
-		return `<div class="card">` + "<h4>" + htmlEsc(cr.Title) + "</h4>" + body + `</div>`
-	}
-	return ""
+	// Service-sourced dashboard cards (markets, news_headlines, social, …),
+	// pulled from the capability registry each service self-registers into.
+	return core.CardForTool(toolName)
 }
 
 // --- typed card renderers ---

@@ -472,18 +472,8 @@ func main() {
 
 	apps.QuotaCheck = agent.QuotaCheck
 
-	// Wire the agent's inline visual cards to the same self-contained renderers
-	// the home dashboard uses, so an answer can carry both a text explanation
-	// and the matching live card. Rendered from each service's own cached data,
-	// not by re-parsing tool output.
-	agent.CardRenderers = map[string]agent.CardRenderer{
-		"markets":        {Title: "📈 Markets", Render: markets.MarketsHTML},
-		"news_headlines": {Title: "📰 News", Render: news.Headlines},
-		"social":         {Title: "💬 Social", Render: social.CardHTML},
-		"video":          {Title: "📺 Videos", Render: video.Latest},
-		"blog_list":      {Title: "✍️ Blog", Render: blog.Preview},
-		"reminder":       {Title: "☪️ Reminder", Render: reminder.ReminderHTML},
-	}
+	// Inline visual cards now come from the capability registry (core), which
+	// each service self-registers into from its Load(). No central wiring here.
 
 	// Wire x402 payment required response for MCP
 	if wallet.X402Enabled() {

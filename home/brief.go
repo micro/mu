@@ -3,10 +3,8 @@ package home
 import (
 	"strings"
 
+	"mu/core"
 	"mu/internal/app"
-	"mu/markets"
-	"mu/news"
-	"mu/reminder"
 )
 
 // Summary returns the cached at-a-glance summary text (may be empty).
@@ -33,18 +31,10 @@ func MorningBriefHTML() string {
 	}
 	b.WriteString(`</div>`)
 
-	cards := []struct {
-		title  string
-		render func() string
-	}{
-		{"☪️ Reminder", reminder.ReminderHTML},
-		{"📈 Markets", markets.MarketsHTML},
-		{"📰 News", news.Headlines},
-	}
-	for _, c := range cards {
-		if body := strings.TrimSpace(c.render()); body != "" {
-			b.WriteString(`<div class="card"><h4>` + c.title + `</h4>` + body + `</div>`)
-		}
+	// Every self-registered capability with a card contributes to the brief —
+	// the same cards as the dashboard and the inline chat, from one registry.
+	for _, c := range core.All() {
+		b.WriteString(core.CardHTML(c.ID))
 	}
 	return b.String()
 }
