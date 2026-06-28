@@ -14,25 +14,16 @@ func Summary() string {
 	return summaryCache
 }
 
-// MorningBriefHTML assembles a card-rich daily brief from the same live data
-// the home dashboard uses: a short AI summary plus the reminder, markets and
-// news cards. Returns "" if there is nothing worth showing yet.
-//
-// It deliberately reuses the self-contained service card renderers so the brief
-// stays in sync with the dashboard and the inline chat cards — one source,
-// presented as a daily digest.
-func MorningBriefHTML() string {
+// HomeOverviewHTML is the always-on summary that makes `/` a home rather than a
+// blank chat box: a short AI "at a glance" line plus every capability's live
+// card (reminder, markets, news, social, video, blog) — the same cards as the
+// inline chat, from one registry. Returns "" only when nothing is available yet.
+func HomeOverviewHTML() string {
 	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>Good morning ☀️</h4>`)
-	if s := strings.TrimSpace(Summary()); s != "" {
-		b.WriteString(app.RenderString(s))
-	} else {
-		b.WriteString(`<p style="color:#666;margin:0;">Here's your brief for today.</p>`)
-	}
-	b.WriteString(`</div>`)
 
-	// Every tool that exposes a card contributes to the brief — the same cards
-	// as the inline chat (and, soon, the dashboard), from one registry.
+	if s := strings.TrimSpace(Summary()); s != "" {
+		b.WriteString(`<div class="card"><h4>At a glance</h4>` + app.RenderString(s) + `</div>`)
+	}
 	for _, t := range api.CardTools() {
 		b.WriteString(api.CardForTool(t.Name))
 	}
