@@ -227,6 +227,10 @@ func GetTrades(accountID string, limit int) []*Trade {
 	walletMu.RLock()
 	defer walletMu.RUnlock()
 
+	if limit <= 0 {
+		return nil
+	}
+
 	t := trades[accountID]
 	if len(t) <= limit {
 		return t
