@@ -43,13 +43,17 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 // separately, prior turns become conversation history, and the final user
 // message is the prompt.
 //
-// maxTok is accepted for parity with mu's request shape but not yet applied:
-// go-micro's ai package has no per-request max-tokens option (tracked as a
-// follow-up); providers use their defaults, which return full responses.
+// maxTok caps the response length (via go-micro's WithMaxTokens). Cheap
+// background callers get a tighter cap to reduce latency and cost.
 func generateViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int) (string, error) {
 	provider, apiKey, baseURL, err := resolveProvider(model)
 	if err != nil {
 		return "", err
+	}
+
+	switch caller {
+	case "article-summary", "auto-tag-post", "auto-tag-note", "topic-generation", "topic-summary":
+		maxTok = 512
 	}
 
 	useModel := model
@@ -63,6 +67,9 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 	opts := []gmai.Option{gmai.WithAPIKey(apiKey), gmai.WithModel(useModel)}
 	if baseURL != "" {
 		opts = append(opts, gmai.WithBaseURL(baseURL))
+	}
+	if maxTok > 0 {
+		opts = append(opts, gmai.WithMaxTokens(maxTok))
 	}
 	m := gmai.New(provider, opts...)
 
