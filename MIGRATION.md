@@ -91,10 +91,10 @@ or improve test coverage; never break `main`.
 6. **A2A gateway** **[NEEDS SUPERVISION for the swap]**: same as #5 for `/a2a`.
 7. **[SAFE]** Register the remaining agent-facing domains as go-micro services
    (mail, places, reminder, chat) — additive; consumers/gateway come later.
-8. **[SAFE]** Streaming usage: go-micro stream responses don't surface token
-   usage, so `recordUsage` records 0 for streamed calls. Fix upstream via the
-   dogfood loop (add Usage to the final stream chunk / a Usage() on the stream),
-   release, then record it in `streamViaMicro`. Verify before releasing.
+8. ✅ **Streaming usage**: go-micro v6.3.4 (#3304) surfaces token usage on
+   streams (atlascloud/openai request `stream_options.include_usage` and return
+   the final usage chunk). `streamViaMicro` now records it — closes the
+   usage-accounting regression from routing streams through go-micro.
 
 ## Notes / gaps filed or to file in go-micro
 

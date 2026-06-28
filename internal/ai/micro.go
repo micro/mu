@@ -174,6 +174,7 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 
 	app.Log("ai", "[LLM] streaming via go-micro %s/%s", provider, useModel)
 	var sb strings.Builder
+	var usage gmai.Usage
 	for {
 		resp, rerr := stream.Recv()
 		if rerr == io.EOF {
@@ -188,6 +189,13 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 				onToken(resp.Reply)
 			}
 		}
+		// The final chunk carries token usage (no content).
+		if resp.Usage.TotalTokens > 0 || resp.Usage.InputTokens > 0 || resp.Usage.OutputTokens > 0 {
+			usage = resp.Usage
+		}
 	}
+	recordUsage(caller, useModel, usage.InputTokens, usage.OutputTokens, 0, 0)
+	app.Log("ai", "[LLM] Usage [%s]: input=%d output=%d (go-micro %s stream)",
+		caller, usage.InputTokens, usage.OutputTokens, provider)
 	return sb.String(), nil
 }
