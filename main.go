@@ -1202,9 +1202,16 @@ func main() {
 
 	// serve fact-check page and API
 
-	// serve the home screen (the dashboard). Also served at / for logged-in
-	// users; the query experience folds into / via ?q= / ?prompt=.
-	http.HandleFunc("/home", home.Handler)
+	// The home is /, the canonical root. /home is a legacy alias that
+	// permanently redirects there (preserving the query so ?mode=display etc.
+	// still work). The dashboard itself is served by home.Handler at /.
+	http.HandleFunc("/home", func(w http.ResponseWriter, r *http.Request) {
+		target := "/"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
+	})
 	http.HandleFunc("/home/summary", home.SummaryHandler)
 	home.StartSummaryLoop()
 	http.HandleFunc("/pricing", home.PricingHandler)

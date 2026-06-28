@@ -111,8 +111,6 @@ function ask(q){
   q=String(q||'').trim();
   if(!q)return;
   sugDiv.innerHTML='';
-  var ov=document.getElementById('mu-overview');
-  if(ov)ov.style.display='none';
   var u=document.createElement('div');u.className='mu-user';u.textContent=q;conv.appendChild(u);
   var a=document.createElement('div');a.className='mu-agent';a.innerHTML='<div class="mu-think">Thinking…</div>';conv.appendChild(a);
   input.value='';input.style.height='auto';input.focus();
