@@ -267,7 +267,7 @@ func CardHandler(w http.ResponseWriter, r *http.Request) {
 		case "web":
 			content := `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
 			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprintf(w, app.CardTemplate, "web", "web", "Web Search", content)
+			fmt.Fprintf(w, app.CardTemplate, "web", "web", "Search", content)
 		}
 		return
 	}
@@ -497,7 +497,7 @@ fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-o
 		allCardDefs := []struct{ id, label string }{
 			{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
 			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
-			{"mail", "Mail"}, {"web", "Web Search"},
+			{"mail", "Mail"}, {"web", "Search"},
 		}
 		activeSet := map[string]bool{}
 		if len(viewerAcc.HomeCards) > 0 {
@@ -637,7 +637,7 @@ fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-o
 		// Web search card.
 		if isCardEnabled("web") {
 			webContent := `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
-			rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "web", "web", "Web Search", webContent))
+			rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "web", "web", "Search", webContent))
 		}
 
 		// App widgets — user-selected apps rendered as iframe cards.
