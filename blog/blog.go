@@ -194,6 +194,11 @@ func Load() {
 		}
 	}()
 
+	// Initialise the lookup map up front so it is never nil, even when
+	// there are no posts on disk yet (fresh install). Otherwise the first
+	// CreatePost — e.g. the news digest on startup — panics on a nil map.
+	postsMap = make(map[string]*Post)
+
 	// Load existing posts from disk
 	b, err := data.LoadFile("blog.json")
 	if err != nil {
