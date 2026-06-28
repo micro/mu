@@ -14,13 +14,18 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/mesh"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/wallet"
 )
 
 // Load initializes the search building block.
-func Load() {}
+func Load() {
+	if err := mesh.Register("search", new(Server)); err != nil {
+		app.Log("search", "mesh register failed: %v", err)
+	}
+}
 
 // BraveResult represents a single result from the Brave Search API
 type BraveResult struct {

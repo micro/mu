@@ -596,7 +596,12 @@ func main() {
 		},
 		Handle: func(args map[string]any) (string, error) {
 			q, _ := args["q"].(string)
-			return search.WebSearchText(q, 0), nil
+			var rsp search.SearchResponse
+			if err := mesh.Call(context.Background(), "search", "Server.Search",
+				&search.SearchRequest{Query: q}, &rsp); err != nil {
+				return "", err
+			}
+			return rsp.Text, nil
 		},
 	})
 
