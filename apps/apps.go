@@ -291,6 +291,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleList(w, r)
 	case path == "/new":
 		handleNew(w, r)
+	case path == "/generate":
+		handleMicroGenerate(w, r)
 	case path == "/run":
 		handleCodeRun(w, r)
 	case path == "/sdk.js":
@@ -533,8 +535,18 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(`<p class="card-desc">Create an app — a small, self-contained HTML tool.</p>`)
-	sb.WriteString(`<form method="POST" action="/apps/new" style="max-width:600px;">`)
+
+	// AI describe box — the primary path. Describe an app in plain language
+	// and the constrained micro-app generator builds a working tool.
+	sb.WriteString(`<p class="card-desc">Describe an app and we'll build it — a tracker, checklist, or counter that just works.</p>`)
+	sb.WriteString(`<form method="POST" action="/apps/generate" style="max-width:600px;margin-bottom:8px;">`)
+	sb.WriteString(`<div style="display:flex;gap:8px;">`)
+	sb.WriteString(`<input type="text" name="description" required maxlength="200" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;" placeholder="an expense tracker, a packing checklist, a water counter…">`)
+	sb.WriteString(`<button type="submit" style="padding:10px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">Build it</button>`)
+	sb.WriteString(`</div>`)
+	sb.WriteString(`</form>`)
+	sb.WriteString(`<details style="max-width:600px;margin-top:20px;"><summary style="cursor:pointer;color:#666;font-size:14px;">Write the HTML yourself</summary>`)
+	sb.WriteString(`<form method="POST" action="/apps/new" style="margin-top:16px;">`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Name</label><br>`)
 	sb.WriteString(`<input type="text" name="name" required maxlength="60" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="Pomodoro Timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Description</label><br>`)
@@ -549,6 +561,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p style="margin-bottom:12px;font-size:13px;color:#999;">Set a price and earn 90% of every sale. Free apps cost nothing to use.</p>`)
 	sb.WriteString(`<button type="submit" style="padding:8px 24px;background:#000;color:#fff;border:none;border-radius:4px;cursor:pointer;">Create App</button>`)
 	sb.WriteString(`</form>`)
+	sb.WriteString(`</details>`)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Create App",

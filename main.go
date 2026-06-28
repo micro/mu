@@ -829,10 +829,10 @@ func main() {
 	})
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "apps_build",
-		Description: "AI-generate an app from a natural language description, save it, and return the app details with URL",
+		Description: "Build a small app from a natural language description, save it, and return the app details with URL. Apps are one of: a tracker (a list you add entries to, optionally totalling a number), a checklist, or a counter.",
 		WalletOp:    "app_build",
 		Params: []api.ToolParam{
-			{Name: "prompt", Type: "string", Description: "Description of the app to build (e.g. 'a pomodoro timer with lap counter')", Required: true},
+			{Name: "prompt", Type: "string", Description: "Description of the app to build (e.g. 'an expense tracker', 'a packing checklist', 'a water intake counter')", Required: true},
 		},
 	}, func(args map[string]any, accountID string) (string, error) {
 		prompt, _ := args["prompt"].(string)
@@ -844,7 +844,7 @@ func main() {
 		if acc, err := auth.GetAccount(accountID); err == nil {
 			authorName = acc.Name
 		}
-		a, err := apps.BuildAndSave(prompt, accountID, authorName)
+		a, err := apps.BuildMicroApp(prompt, accountID, authorName)
 		if err != nil {
 			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
 		}
