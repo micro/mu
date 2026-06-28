@@ -6,6 +6,24 @@ import (
 	"testing"
 )
 
+func TestGetTradesHandlesNonPositiveLimit(t *testing.T) {
+	walletMu.Lock()
+	trades = map[string][]*Trade{
+		"acct": {
+			{ID: "oldest"},
+			{ID: "newest"},
+		},
+	}
+	walletMu.Unlock()
+
+	if got := GetTrades("acct", 0); len(got) != 0 {
+		t.Fatalf("GetTrades limit 0 returned %d trades, want 0", len(got))
+	}
+	if got := GetTrades("acct", -1); len(got) != 0 {
+		t.Fatalf("GetTrades negative limit returned %d trades, want 0", len(got))
+	}
+}
+
 func TestParseAmount(t *testing.T) {
 	tests := []struct {
 		amount   string
