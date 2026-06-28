@@ -56,9 +56,19 @@ when go-micro is missing something, fix it upstream (we own it).
    not a direct mesh.Call reroute. `apps_fork`/`apps_run`/`apps_create`/
    `apps_edit` have handlers and could get service methods later if needed.
 4. **Agent pipeline**: route `agent.Query` (the `agent` tool + assistant) through
-   a go-micro agent (`agent.New(agent.Services(...))`) over the registered
-   services, instead of the hand-rolled planner in `agent/` + `agent/micro/`.
-   This is the big one — verify carefully, keep behavior sane.
+   a go-micro agent over the registered services, instead of the hand-rolled
+   planner in `agent/` + `agent/micro/`. This is the big one — verify carefully.
+   - ◑ Foundation done: `mesh.NewAgent(name, prompt, provider, key, services)`
+     builds a go-micro agent on the in-process mesh (shares registry/client/
+     store). Live-verified: an agent over a registered service calls its method
+     and answers from the result (internal/mesh/agent_live_test.go).
+   - TODO: wire `agent.Query` (main.go `agent` tool + the assistant) to use
+     `mesh.NewAgent` over the registered domain services, with the user's
+     account context; compare answers/behaviour against the existing pipeline
+     before removing `agent/micro`. Pick the model deepseek-v4-pro on Atlas
+     (the default llama-3.3-70b is weak at tool-result synthesis).
+   - NOTE confirmed go-micro handler rules: the handler type AND its method
+     request/response types must be exported, or rpc.Register rejects them.
 5. **MCP gateway**: replace the hand-rolled `/mcp` (`internal/api`) with
    go-micro `gateway/mcp`, tools auto-derived from the registered services.
 6. **A2A gateway**: replace `/a2a` with go-micro `gateway/a2a`.
