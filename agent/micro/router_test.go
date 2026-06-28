@@ -118,3 +118,14 @@ func TestValidateAgentIDsFallsBackToMicro(t *testing.T) {
 		t.Fatalf("validateAgentIDs() = %v, want %v", got, want)
 	}
 }
+
+func TestKeywordRouteSingleDomainPriorityIsDeterministic(t *testing.T) {
+	prompt := "summarize unread email about the team lunch restaurant"
+	want := []string{"mail"}
+
+	for i := 0; i < 100; i++ {
+		if got := keywordRoute(prompt); !reflect.DeepEqual(got, want) {
+			t.Fatalf("keywordRoute() iteration %d = %v, want %v", i, got, want)
+		}
+	}
+}
