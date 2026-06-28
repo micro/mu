@@ -26,6 +26,7 @@ import (
 	"mu/client/discord"
 	"mu/chat"
 	"mu/internal/cli"
+	"mu/internal/mesh"
 	"mu/internal/settings"
 	"mu/docs"
 	"mu/home"
@@ -160,6 +161,10 @@ func main() {
 	}
 
 	// api page is now dynamic (rendered in api.APIPageHandler)
+
+	// bring up the go-micro runtime core first, so domain services can
+	// register themselves as they load.
+	mesh.Init()
 
 	// load settings first so other packages can use them
 	settings.Load()
