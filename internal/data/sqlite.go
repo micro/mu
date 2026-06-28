@@ -250,7 +250,8 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 			if len(word) < 2 {
 				continue
 			}
-			likeConds = append(likeConds, "LOWER(title) LIKE ?")
+			likeConds = append(likeConds, "(LOWER(title) LIKE ? OR LOWER(content) LIKE ?)")
+			likeArgs = append(likeArgs, "%"+word+"%")
 			likeArgs = append(likeArgs, "%"+word+"%")
 		}
 		if len(likeConds) > 0 {
@@ -489,8 +490,6 @@ func GetByTypeSQLite(entryType string, limit int) ([]*IndexEntry, error) {
 
 	return results, nil
 }
-
-
 
 // MigrateFromJSON migrates existing JSON data to SQLite
 func MigrateFromJSON() error {

@@ -131,6 +131,34 @@ func TestSQLiteSearch(t *testing.T) {
 	}
 }
 
+func TestSQLiteSearchFindsPartialContentMatches(t *testing.T) {
+	tempDir := t.TempDir()
+	os.Setenv("HOME", tempDir)
+
+	dbOnce = sync.Once{}
+	db = nil
+
+	err := IndexSQLite("partial1", "news", "Space Telescope", "Astronomers photographed galaxies in ultraviolet light.", "", nil)
+	if err != nil {
+		t.Fatalf("IndexSQLite failed: %v", err)
+	}
+	err = IndexSQLite("partial2", "news", "Garden Notes", "Tomatoes need steady watering.", "", nil)
+	if err != nil {
+		t.Fatalf("IndexSQLite failed: %v", err)
+	}
+
+	results, err := SearchSQLite("ultravio", 10)
+	if err != nil {
+		t.Fatalf("SearchSQLite failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 partial content match, got %d", len(results))
+	}
+	if results[0].ID != "partial1" {
+		t.Fatalf("Expected partial1, got %s", results[0].ID)
+	}
+}
+
 func TestSQLiteIndexUpdate(t *testing.T) {
 	tempDir := t.TempDir()
 	os.Setenv("HOME", tempDir)
