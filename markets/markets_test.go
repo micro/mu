@@ -145,6 +145,36 @@ func TestGetAllPrices_ReturnsDefensiveCopy(t *testing.T) {
 	}
 }
 
+func TestParseCoinbaseRates(t *testing.T) {
+	rates, err := parseCoinbaseRates([]byte(`{"data":{"rates":{"BTC":"0.000010","ETH":"0.000300"}}}`))
+	if err != nil {
+		t.Fatalf("parseCoinbaseRates returned error: %v", err)
+	}
+	if rates["BTC"] != "0.000010" {
+		t.Fatalf("BTC rate = %q, want %q", rates["BTC"], "0.000010")
+	}
+}
+
+func TestParseCoinbaseRatesRejectsMalformedPayloads(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "invalid json", body: `{`},
+		{name: "missing data", body: `{}`},
+		{name: "missing rates", body: `{"data":{}}`},
+		{name: "wrong rate shape", body: `{"data":{"rates":[]}}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := parseCoinbaseRates([]byte(tt.body)); err == nil {
+				t.Fatalf("parseCoinbaseRates(%s) returned nil error", tt.body)
+			}
+		})
+	}
+}
+
 func TestGetAllPriceData_ReturnsDefensiveCopy(t *testing.T) {
 	marketsMutex.Lock()
 	cachedPriceData = map[string]PriceData{
