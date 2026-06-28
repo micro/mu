@@ -44,7 +44,7 @@ func TestChargedWriteOp(t *testing.T) {
 		{name: "new blog post", method: "POST", path: "/blog", want: wallet.OpBlogCreate},
 		{name: "blog update free", method: "POST", path: "/blog?id=post-1", want: ""},
 		{name: "blog comment", method: "POST", path: "/blog/post/post-1/comment", want: wallet.OpBlogComment},
-		{name: "app generation", method: "POST", path: "/apps/build/generate", want: wallet.OpAppBuild},
+		{name: "app generation", method: "POST", path: "/apps/generate", want: wallet.OpAppBuild},
 		{name: "uncharged post", method: "POST", path: "/mail", want: ""},
 	}
 
