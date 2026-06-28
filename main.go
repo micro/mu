@@ -921,15 +921,16 @@ func main() {
 		if acc, err := auth.GetAccount(accountID); err == nil {
 			authorName = acc.Name
 		}
-		a, err := apps.BuildMicroApp(prompt, accountID, authorName)
-		if err != nil {
+		var rsp apps.BuildResponse
+		if err := mesh.Call(context.Background(), "apps", "Server.Build",
+			&apps.BuildRequest{Prompt: prompt, AuthorID: accountID, AuthorName: authorName}, &rsp); err != nil {
 			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
 		}
 		b, _ := json.Marshal(map[string]string{
-			"name": a.Name,
-			"slug": a.Slug,
-			"url":  "/apps/" + a.Slug,
-			"run":  "/apps/" + a.Slug + "/run",
+			"name": rsp.Name,
+			"slug": rsp.Slug,
+			"url":  rsp.URL,
+			"run":  rsp.Run,
 		})
 		return string(b), nil
 	})

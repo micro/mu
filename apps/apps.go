@@ -18,6 +18,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
+	"mu/internal/mesh"
 	"mu/wallet"
 
 	"github.com/google/uuid"
@@ -184,6 +185,10 @@ func snapshotVersion(a *App, summary string) {
 
 // Load initialises the apps package and loads cached data.
 func Load() {
+	if err := mesh.Register("apps", new(Server)); err != nil {
+		app.Log("apps", "mesh register failed: %v", err)
+	}
+
 	b, err := data.LoadFile("apps.json")
 	if err != nil {
 		return

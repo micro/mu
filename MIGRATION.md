@@ -50,8 +50,11 @@ when go-micro is missing something, fix it upstream (we own it).
    `readAnthropicStream`, `generateLocalOpenAI`) + dead imports (−353 lines).
 2. ✅ **recall**: `RecallServer.Search` registered via mesh (handler in main,
    wraps `recallSearch` over data + mail); the `recall` tool calls it over RPC.
-3. **apps**: expose the apps/micro-app capabilities (search/read/build) as a
-   go-micro service; route `apps_*` tools through it.
+3. ◑ **apps**: `apps.Server.Build` registered via mesh; the `apps_build` tool
+   calls it over RPC. NOTE: `apps_search`/`apps_read` are HTTP-path tools
+   (Method/Path, no Go handler) — they belong with the MCP gateway work (#5),
+   not a direct mesh.Call reroute. `apps_fork`/`apps_run`/`apps_create`/
+   `apps_edit` have handlers and could get service methods later if needed.
 4. **Agent pipeline**: route `agent.Query` (the `agent` tool + assistant) through
    a go-micro agent (`agent.New(agent.Services(...))`) over the registered
    services, instead of the hand-rolled planner in `agent/` + `agent/micro/`.
