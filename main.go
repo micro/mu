@@ -629,7 +629,12 @@ func main() {
 			case string:
 				fmt.Sscanf(v, "%d", &limit)
 			}
-			return news.HeadlinesText(topic, limit), nil
+			var rsp news.HeadlinesResponse
+			if err := mesh.Call(context.Background(), "news", "Server.Headlines",
+				&news.HeadlinesRequest{Topic: topic, Limit: limit}, &rsp); err != nil {
+				return "", err
+			}
+			return rsp.Text, nil
 		},
 	})
 
@@ -645,11 +650,12 @@ func main() {
 			if id == "" {
 				id, _ = args["url"].(string)
 			}
-			text, err := news.ArticleText(id)
-			if err != nil {
+			var rsp news.ReadResponse
+			if err := mesh.Call(context.Background(), "news", "Server.Read",
+				&news.ReadRequest{ID: id}, &rsp); err != nil {
 				return err.Error(), err
 			}
-			return text, nil
+			return rsp.Text, nil
 		},
 	})
 
@@ -691,7 +697,12 @@ func main() {
 		},
 		Handle: func(args map[string]any) (string, error) {
 			category, _ := args["category"].(string)
-			return markets.MarketsText(category), nil
+			var rsp markets.PricesResponse
+			if err := mesh.Call(context.Background(), "markets", "Server.Prices",
+				&markets.PricesRequest{Category: category}, &rsp); err != nil {
+				return "", err
+			}
+			return rsp.Text, nil
 		},
 	})
 

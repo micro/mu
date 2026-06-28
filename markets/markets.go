@@ -13,6 +13,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/internal/mesh"
 
 	"github.com/piquette/finance-go/future"
 	"github.com/piquette/finance-go/quote"
@@ -63,6 +64,11 @@ var futuresKeys = []string{"OIL", "OATS", "COFFEE", "WHEAT", "GOLD"}
 
 // Load initializes the markets data
 func Load() {
+	// Register the go-micro service.
+	if err := mesh.Register("markets", new(Server)); err != nil {
+		app.Log("markets", "mesh register failed: %v", err)
+	}
+
 	// Load cached prices
 	b, err := data.LoadFile("prices.json")
 	if err == nil {
