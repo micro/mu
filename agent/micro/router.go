@@ -96,28 +96,33 @@ func StripAddress(prompt string) string {
 func keywordRoute(prompt string) []string {
 	lower := strings.ToLower(prompt)
 
-	// Single-domain keywords
-	routes := map[string][]string{
-		"mail":       {"mail"},
-		"email":      {"mail"},
-		"inbox":      {"mail"},
-		"unread":     {"mail"},
-		"quran":      {"faith"},
-		"hadith":     {"faith"},
-		"reminder":   {"faith"},
-		"surah":      {"faith"},
-		"verse":      {"faith"},
-		"coworking":  {"places"},
-		"nearby":     {"places"},
-		"restaurant": {"places"},
-		"cafe":       {"places"},
-		"blog":       {"social"},
-		"post":       {"social"},
+	// Single-domain keywords are checked in a fixed order so prompts that
+	// contain more than one keyword route predictably instead of depending on
+	// Go's randomized map iteration order.
+	routes := []struct {
+		keyword string
+		ids     []string
+	}{
+		{keyword: "mail", ids: []string{"mail"}},
+		{keyword: "email", ids: []string{"mail"}},
+		{keyword: "inbox", ids: []string{"mail"}},
+		{keyword: "unread", ids: []string{"mail"}},
+		{keyword: "quran", ids: []string{"faith"}},
+		{keyword: "hadith", ids: []string{"faith"}},
+		{keyword: "reminder", ids: []string{"faith"}},
+		{keyword: "surah", ids: []string{"faith"}},
+		{keyword: "verse", ids: []string{"faith"}},
+		{keyword: "coworking", ids: []string{"places"}},
+		{keyword: "nearby", ids: []string{"places"}},
+		{keyword: "restaurant", ids: []string{"places"}},
+		{keyword: "cafe", ids: []string{"places"}},
+		{keyword: "blog", ids: []string{"social"}},
+		{keyword: "post", ids: []string{"social"}},
 	}
 
-	for keyword, ids := range routes {
-		if strings.Contains(lower, keyword) {
-			return ids
+	for _, route := range routes {
+		if strings.Contains(lower, route.keyword) {
+			return route.ids
 		}
 	}
 
