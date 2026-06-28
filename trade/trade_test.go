@@ -43,7 +43,8 @@ func TestParseAmountRejectsInvalidAmounts(t *testing.T) {
 		{"negative", "-1", 6},
 		{"positive sign", "+1", 6},
 		{"invalid fractional", "1.a", 6},
-		{"too many decimals", "1.2.3", 6},
+		{"too many decimal separators", "1.2.3", 6},
+		{"too many fractional digits", "0.0000001", 6},
 		{"negative decimals", "1", -1},
 	}
 	for _, tt := range tests {

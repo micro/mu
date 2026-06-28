@@ -270,7 +270,7 @@ func ParseAmount(amount string, decimals int) (*big.Int, error) {
 	}
 
 	if len(frac) > decimals {
-		frac = frac[:decimals]
+		return nil, errors.New("too many decimal places")
 	}
 	for len(frac) < decimals {
 		frac += "0"
