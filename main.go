@@ -56,6 +56,33 @@ var AddressFlag = flag.String("address", ":8080", "Address for server")
 // recallSearch powers the recall tool: it merges the public indexed corpus
 // with the caller's own mail into a compact, model-ready list. Public content
 // is searched without an owner scope (private entries are excluded by default);
+// RecallServer is the go-micro service handler for cross-source recall.
+type RecallServer struct{}
+
+// RecallRequest searches everything mu knows for an account.
+type RecallRequest struct {
+	AccountID string `json:"account_id" description:"Account whose mail to include (optional)"`
+	Query     string `json:"query" description:"What to look for"`
+	Limit     int    `json:"limit" description:"Max results (default 12)"`
+}
+
+// RecallResponse is a model-ready list of matches.
+type RecallResponse struct {
+	Text string `json:"text" description:"Most relevant items with ids"`
+}
+
+// Search searches indexed news, blog, social and video, plus the account's own
+// mail, and returns the most relevant items with ids.
+// @example {"query": "bitcoin"}
+func (RecallServer) Search(_ context.Context, req *RecallRequest, rsp *RecallResponse) error {
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 12
+	}
+	rsp.Text = recallSearch(req.AccountID, req.Query, limit)
+	return nil
+}
+
 // mail is searched live and strictly scoped to accountID, so nothing leaks
 // across users and mail bodies never need to live in the shared index.
 func recallSearch(accountID, query string, limit int) string {
@@ -666,6 +693,9 @@ func main() {
 
 	// recall tool — unified search across everything mu knows for the caller:
 	// the public indexed corpus (news, blog, social, video) plus their own mail.
+	if err := mesh.Register("recall", RecallServer{}); err != nil {
+		app.Log("main", "recall mesh register failed: %v", err)
+	}
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "recall",
 		Description: "Search across everything mu knows — indexed news, blog, social and video, plus the user's own mail — and return the most relevant items with ids. Use for 'do you remember', 'what did I get about X', 'search my stuff' and cross-source lookups.",
@@ -690,7 +720,12 @@ func main() {
 				limit = n
 			}
 		}
-		return recallSearch(accountID, strings.TrimSpace(query), limit), nil
+		var rsp RecallResponse
+		if err := mesh.Call(context.Background(), "recall", "RecallServer.Search",
+			&RecallRequest{AccountID: accountID, Query: strings.TrimSpace(query), Limit: limit}, &rsp); err != nil {
+			return "", err
+		}
+		return rsp.Text, nil
 	})
 
 	// markets — live prices, returned as model-ready text (AI-first).

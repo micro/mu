@@ -48,8 +48,8 @@ when go-micro is missing something, fix it upstream (we own it).
 1. ✅ **Cleanup** `internal/ai/providers.go`: removed the now-unused native
    funcs (`generateAtlas`, `generateAnthropic`, `generateAnthropicInternal`,
    `readAnthropicStream`, `generateLocalOpenAI`) + dead imports (−353 lines).
-2. **recall** tool (main.go, auth-scoped, calls `recallSearch`): move the search
-   into a go-micro service (e.g. `corpus`/`recall`) and route the tool through it.
+2. ✅ **recall**: `RecallServer.Search` registered via mesh (handler in main,
+   wraps `recallSearch` over data + mail); the `recall` tool calls it over RPC.
 3. **apps**: expose the apps/micro-app capabilities (search/read/build) as a
    go-micro service; route `apps_*` tools through it.
 4. **Agent pipeline**: route `agent.Query` (the `agent` tool + assistant) through
