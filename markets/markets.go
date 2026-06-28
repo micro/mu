@@ -169,18 +169,16 @@ func fetchPrices() (map[string]float64, map[string]PriceData) {
 	defer rsp.Body.Close()
 
 	b, _ := ioutil.ReadAll(rsp.Body)
-	var res map[string]interface{}
-	json.Unmarshal(b, &res)
-	if res == nil {
+	rates, err := parseCoinbaseRates(b)
+	if err != nil {
+		app.Log("markets", "Error parsing crypto prices: %v", err)
 		return nil, nil
 	}
-
-	rates := res["data"].(map[string]interface{})["rates"].(map[string]interface{})
 	prices := map[string]float64{}
 	priceData := map[string]PriceData{}
 
 	for k, t := range rates {
-		val, err := strconv.ParseFloat(t.(string), 64)
+		val, err := strconv.ParseFloat(t, 64)
 		if err != nil {
 			continue
 		}
@@ -260,6 +258,21 @@ func fetchPrices() (map[string]float64, map[string]PriceData) {
 
 	app.Log("markets", "Finished fetching prices")
 	return prices, priceData
+}
+
+func parseCoinbaseRates(body []byte) (map[string]string, error) {
+	var res struct {
+		Data struct {
+			Rates map[string]string `json:"rates"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &res); err != nil {
+		return nil, err
+	}
+	if len(res.Data.Rates) == 0 {
+		return nil, fmt.Errorf("missing rates")
+	}
+	return res.Data.Rates, nil
 }
 
 // fetchCoinGeckoChanges fetches 24h price changes from CoinGecko for all crypto assets
