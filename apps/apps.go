@@ -230,7 +230,7 @@ func Preview() string {
 	defer mutex.RUnlock()
 
 	if len(apps) == 0 {
-		return `<p><a href="/apps/build">+ Create your first app</a></p>`
+		return `<p><a href="/apps/new">+ Create your first app</a></p>`
 	}
 
 	// Show 3 most recent public apps
@@ -241,7 +241,7 @@ func Preview() string {
 		}
 	}
 	if len(public) == 0 {
-		return `<p><a href="/apps/build">+ Create your first app</a></p>`
+		return `<p><a href="/apps/new">+ Create your first app</a></p>`
 	}
 	sort.Slice(public, func(i, j int) bool {
 		return public[i].CreatedAt.After(public[j].CreatedAt)
@@ -275,7 +275,7 @@ func Preview() string {
 	if paidCount > 0 {
 		sb.WriteString(fmt.Sprintf(` · %d paid`, paidCount))
 	}
-	sb.WriteString(` · <a href="/apps/build">Build new</a></p>`)
+	sb.WriteString(`</p>`)
 	sb.WriteString(`<p style="font-size:12px;color:#999;">Build apps, set your price, earn 90%% of every sale.</p>`)
 	return sb.String()
 }
@@ -291,17 +291,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleList(w, r)
 	case path == "/new":
 		handleNew(w, r)
-	case path == "/build":
-		handleBuilder(w, r)
-	case path == "/build/generate":
-		handleGenerate(w, r)
-	case path == "/build/framework":
-		handleFrameworkGenerate(w, r)
-	case path == "/build/templates":
-		handleTemplateList(w, r)
-	case strings.HasPrefix(path, "/build/templates/"):
-		id := strings.TrimPrefix(path, "/build/templates/")
-		handleTemplateGet(w, r, id)
 	case path == "/run":
 		handleCodeRun(w, r)
 	case path == "/sdk.js":
@@ -521,7 +510,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sb.WriteString(`<p><a href="/apps/build">Build with AI</a> · <a href="/apps/new">Create manually</a></p>`)
+	sb.WriteString(`<p><a href="/apps/new">Create an app</a></p>`)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Apps",
