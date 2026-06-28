@@ -89,8 +89,14 @@ or improve test coverage; never break `main`.
    external contract. Safe now: stand up go-micro `gateway/mcp` on a side path
    and diff its tool list against the current `/mcp`. Swap only when supervised.
 6. **A2A gateway** **[NEEDS SUPERVISION for the swap]**: same as #5 for `/a2a`.
-7. **[SAFE]** Register the remaining agent-facing domains as go-micro services
-   (mail, places, reminder, chat) — additive; consumers/gateway come later.
+7. ◑ **[SAFE]** Register the remaining agent-facing domains as go-micro services.
+   - ✅ **mail**: `mail.Server.Search` (rune-safe formatting) registered via
+     mesh; added to the native agent's services so it can search mail directly
+     (account id injected via the WrapTool middleware). Round-trip test added.
+   - TODO: places, reminder, chat lack clean AI-first text accessors (places
+     search is HTTP-handler-based; reminder only has ReminderHTML; chat is
+     HTTP). Each needs a small text accessor written before a service wrapper —
+     lower value (overlap with existing tools), do when convenient.
 8. ✅ **Streaming usage**: go-micro v6.3.4 (#3304) surfaces token usage on
    streams (atlascloud/openai request `stream_options.include_usage` and return
    the final usage chunk). `streamViaMicro` now records it — closes the

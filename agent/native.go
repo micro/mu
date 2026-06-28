@@ -30,7 +30,7 @@ func nativeServices(public bool) []string {
 	if public {
 		return pub
 	}
-	return append(pub, "trade", "recall", "apps")
+	return append(pub, "trade", "recall", "apps", "mail")
 }
 
 // injectAccount is a tool wrapper that supplies the caller's account id to

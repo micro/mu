@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/mesh"
 	"mu/internal/auth"
 	"mu/internal/data"
 
@@ -68,6 +69,11 @@ type Message struct {
 // Load messages from disk
 // Load messages from disk and configure SMTP/DKIM
 func Load() {
+	// Register the go-micro service.
+	if err := mesh.Register("mail", new(Server)); err != nil {
+		app.Log("mail", "mesh register failed: %v", err)
+	}
+
 	// Initialize encryption
 	initEncryption()
 
