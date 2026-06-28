@@ -110,8 +110,6 @@ func generate(prompt *Prompt) (string, error) {
 
 	messages = append(messages, map[string]string{"role": "user", "content": prompt.Question})
 
-	key := settings.Get("ANTHROPIC_API_KEY")
-
 	model := prompt.Model
 	if model == "" {
 		model = DefaultModel()
@@ -127,34 +125,8 @@ func generate(prompt *Prompt) (string, error) {
 		maxTok = 4096
 	}
 
-	// Route to Atlas Cloud for supported models.
-	if isAtlasModel(model) && getAtlasAPIKey() != "" {
-		return generateAtlas(getAtlasAPIKey(), model, systemPromptText, messages, caller, maxTok)
-	}
-
-	// Route to local/OpenAI-compatible server if configured and no Anthropic key
-	if key == "" {
-		localURL := settings.Get("OPENAI_BASE_URL")
-		localKey := settings.Get("OPENAI_API_KEY")
-		if localURL == "" {
-			localURL = detectOllama()
-		}
-		if localURL != "" {
-			if localKey == "" {
-				localKey = "ollama"
-			}
-			localModel := model
-			if strings.HasPrefix(localModel, "claude") {
-				localModel = detectLocalModel(localURL, localKey)
-			}
-			if localModel != "" {
-				return generateLocalOpenAI(localURL, localKey, localModel, systemPromptText, messages, caller, maxTok)
-			}
-		}
-		return "", fmt.Errorf("no AI provider configured — set ANTHROPIC_API_KEY or OPENAI_BASE_URL (Ollama)")
-	}
-
-	return generateAnthropicInternal(key, model, systemPromptText, messages, caller, nil, maxTok)
+	// Every non-streaming model call goes through go-micro's ai package.
+	return generateViaMicro(model, systemPromptText, messages, caller, maxTok)
 }
 
 func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
