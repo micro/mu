@@ -1087,15 +1087,7 @@ func main() {
 	// serve news
 	http.HandleFunc("/news", news.Handler)
 	// serve chat
-	// /chat is subsumed by the assistant at /. Bare visits redirect there;
-	// contextual discussions (/chat?id=...) from article pages still work.
-	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("id") == "" {
-			http.Redirect(w, r, "/", http.StatusFound)
-			return
-		}
-		chat.Handler(w, r)
-	})
+	http.HandleFunc("/chat", chat.Handler)
 
 	// serve blog (full list)
 	http.HandleFunc("/blog", blog.Handler)
@@ -1210,16 +1202,9 @@ func main() {
 
 	// serve fact-check page and API
 
-	// serve the home screen
-	// The old card dashboard is subsumed by the assistant home (/) and its
-	// daily brief. Bare visits redirect to /; kiosk/display mode is preserved.
-	http.HandleFunc("/home", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("mode") != "display" {
-			http.Redirect(w, r, "/", http.StatusFound)
-			return
-		}
-		home.Handler(w, r)
-	})
+	// serve the home screen (the dashboard). Also served at / for logged-in
+	// users; the query experience folds into / via ?q= / ?prompt=.
+	http.HandleFunc("/home", home.Handler)
 	http.HandleFunc("/home/summary", home.SummaryHandler)
 	home.StartSummaryLoop()
 	http.HandleFunc("/pricing", home.PricingHandler)
@@ -1454,7 +1439,14 @@ func main() {
 					}
 				} else if r.URL.Path == "/" {
 					if _, acc := auth.TrySession(r); acc != nil {
-						home.AssistantHandler(w, r)
+						// The home is the dashboard that already works; a query
+						// (?q= / ?prompt=) folds into the assistant to answer it.
+						q := r.URL.Query()
+						if q.Get("q") != "" || q.Get("prompt") != "" {
+							home.AssistantHandler(w, r)
+						} else {
+							home.Handler(w, r)
+						}
 					} else {
 						home.LandingHandler(w, r)
 					}
