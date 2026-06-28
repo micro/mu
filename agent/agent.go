@@ -837,8 +837,11 @@ func ToolsDropdownHTML() string {
 
 // agentToolsDesc is the tool catalogue shown to the AI planner.
 const agentToolsDesc = `Available tools (use exact name):
-- news: Get latest news feed (no args)
+- news_headlines: Get recent news headlines + short summaries balanced across ALL topics (args optional: {"topic":"tech","limit":30}). PREFER this for general news, "what's happening" and morning-briefing requests so coverage isn't dominated by one topic like crypto. Then use news_read for any article worth expanding.
+- news_read: Read one news article in full by its id from news_headlines (args: {"id":"<article id>"})
+- news: Get the raw latest news feed grouped by category (no args) — only when you specifically need the full per-category feed
 - news_search: Search news articles (args: {"query":"search term"})
+- recall: Search across everything — indexed news, blog, social, video AND the user's own mail — for 'do you remember', 'what did I get about X', and cross-source lookups (args: {"query":"search term"}). Returns ids you can open with the matching tool.
 - blog_list: Get recent blog posts (no args)
 - blog_read: Read a specific blog post (args: {"id":"post-id"})
 - social: View the social feed (no args)
@@ -872,8 +875,11 @@ const agentToolsDesc = `Available tools (use exact name):
 - stream: Read the public event stream (no args)`
 
 const guestToolsDesc = `Available tools (use exact name):
-- news: Get latest news feed (no args)
+- news_headlines: Get recent news headlines + short summaries balanced across ALL topics (args optional: {"topic":"tech","limit":30}). PREFER this for general news and briefing requests so coverage isn't dominated by one topic like crypto. Then use news_read for any article worth expanding.
+- news_read: Read one news article in full by its id from news_headlines (args: {"id":"<article id>"})
+- news: Get the raw latest news feed grouped by category (no args)
 - news_search: Search news articles (args: {"query":"search term"})
+- recall: Search across indexed news, blog, social and video for cross-source lookups (args: {"query":"search term"})
 - blog_list: Get recent blog posts (no args)
 - blog_read: Read a specific blog post (args: {"id":"post-id"})
 - social: View the social feed (no args)
@@ -1157,7 +1163,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	synthPrompt := &ai.Prompt{
-		System: synthSystem,
+		System:   synthSystem,
 		Rag:      ragParts,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
@@ -1224,43 +1230,43 @@ type shortcutToolCall struct {
 func shortcutToolCalls(prompt string) []shortcutToolCall {
 	aliases := map[string][]shortcutToolCall{
 		// Short aliases
-		"news":     {{Tool: "news", Args: map[string]any{}}},
-		"markets":  {{Tool: "markets", Args: map[string]any{}}},
-		"market":   {{Tool: "markets", Args: map[string]any{}}},
-		"prices":   {{Tool: "markets", Args: map[string]any{}}},
-		"video":    {{Tool: "video", Args: map[string]any{}}},
-		"videos":   {{Tool: "video", Args: map[string]any{}}},
+		"news":          {{Tool: "news_headlines", Args: map[string]any{}}},
+		"markets":       {{Tool: "markets", Args: map[string]any{}}},
+		"market":        {{Tool: "markets", Args: map[string]any{}}},
+		"prices":        {{Tool: "markets", Args: map[string]any{}}},
+		"video":         {{Tool: "video", Args: map[string]any{}}},
+		"videos":        {{Tool: "video", Args: map[string]any{}}},
 		"latest videos": {{Tool: "video", Args: map[string]any{}}},
 		"latest video":  {{Tool: "video", Args: map[string]any{}}},
-		"reminder": {{Tool: "reminder", Args: map[string]any{}}},
-		"apps":     {{Tool: "apps_search", Args: map[string]any{}}},
-		"mail":     {{Tool: "mail_read", Args: map[string]any{}}},
+		"reminder":      {{Tool: "reminder", Args: map[string]any{}}},
+		"apps":          {{Tool: "apps_search", Args: map[string]any{}}},
+		"mail":          {{Tool: "mail_read", Args: map[string]any{}}},
 		// Personal queries
-		"do i have mail":           {{Tool: "mail_read", Args: map[string]any{}}},
-		"do i have unread mail":    {{Tool: "mail_read", Args: map[string]any{}}},
-		"do i have email":          {{Tool: "mail_read", Args: map[string]any{}}},
-		"check my mail":            {{Tool: "mail_read", Args: map[string]any{}}},
-		"check my email":           {{Tool: "mail_read", Args: map[string]any{}}},
-		"any new mail":             {{Tool: "mail_read", Args: map[string]any{}}},
-		"any new email":            {{Tool: "mail_read", Args: map[string]any{}}},
-		"any mail":                 {{Tool: "mail_read", Args: map[string]any{}}},
-		"unread mail":              {{Tool: "mail_read", Args: map[string]any{}}},
-		"unread email":             {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my mail":             {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my email":            {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my unread email":     {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my unread emails":    {{Tool: "mail_read", Args: map[string]any{}}},
-		"my mail":                  {{Tool: "mail_read", Args: map[string]any{}}},
-		"my email":                 {{Tool: "mail_read", Args: map[string]any{}}},
-		"btc price":                {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"bitcoin price":            {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"eth price":                {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"what's happening":         {{Tool: "news", Args: map[string]any{}}},
-		"what's happening?":        {{Tool: "news", Args: map[string]any{}}},
-		"today's news":             {{Tool: "news", Args: map[string]any{}}},
+		"do i have mail":        {{Tool: "mail_read", Args: map[string]any{}}},
+		"do i have unread mail": {{Tool: "mail_read", Args: map[string]any{}}},
+		"do i have email":       {{Tool: "mail_read", Args: map[string]any{}}},
+		"check my mail":         {{Tool: "mail_read", Args: map[string]any{}}},
+		"check my email":        {{Tool: "mail_read", Args: map[string]any{}}},
+		"any new mail":          {{Tool: "mail_read", Args: map[string]any{}}},
+		"any new email":         {{Tool: "mail_read", Args: map[string]any{}}},
+		"any mail":              {{Tool: "mail_read", Args: map[string]any{}}},
+		"unread mail":           {{Tool: "mail_read", Args: map[string]any{}}},
+		"unread email":          {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my mail":          {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my email":         {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my unread email":  {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my unread emails": {{Tool: "mail_read", Args: map[string]any{}}},
+		"my mail":               {{Tool: "mail_read", Args: map[string]any{}}},
+		"my email":              {{Tool: "mail_read", Args: map[string]any{}}},
+		"btc price":             {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
+		"bitcoin price":         {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
+		"eth price":             {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
+		"what's happening":      {{Tool: "news_headlines", Args: map[string]any{}}},
+		"what's happening?":     {{Tool: "news_headlines", Args: map[string]any{}}},
+		"today's news":          {{Tool: "news_headlines", Args: map[string]any{}}},
 		// Starter pill phrases
-		"give me a summary of today's top news":         {{Tool: "news", Args: map[string]any{}}},
-		"what's in the news?":                           {{Tool: "news", Args: map[string]any{}}},
+		"give me a summary of today's top news":         {{Tool: "news_headlines", Args: map[string]any{}}},
+		"what's in the news?":                           {{Tool: "news_headlines", Args: map[string]any{}}},
 		"what are the latest crypto and market prices?": {{Tool: "markets", Args: map[string]any{}}},
 		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
@@ -1269,8 +1275,8 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"trade":          {{Tool: "trade_wallet", Args: map[string]any{}}},
 		"trading":        {{Tool: "trade_wallet", Args: map[string]any{}}},
 		"my wallet":      {{Tool: "trade_wallet", Args: map[string]any{}}},
-		"wallet balance":  {{Tool: "trade_wallet", Args: map[string]any{}}},
-		"trading wallet":  {{Tool: "trade_wallet", Args: map[string]any{}}},
+		"wallet balance": {{Tool: "trade_wallet", Args: map[string]any{}}},
+		"trading wallet": {{Tool: "trade_wallet", Args: map[string]any{}}},
 	}
 	lower := strings.ToLower(strings.TrimSpace(prompt))
 	if tc, ok := aliases[lower]; ok {
@@ -1302,8 +1308,14 @@ func toolLabel(tool string) string {
 	switch tool {
 	case "news":
 		return "📰 Reading latest news"
+	case "news_headlines":
+		return "📰 Scanning headlines"
+	case "news_read":
+		return "📖 Reading article"
 	case "news_search":
 		return "Searching news"
+	case "recall":
+		return "🧠 Searching your world"
 	case "web_search":
 		return "🌐 Searching the web"
 	case "web_fetch":
@@ -1366,18 +1378,14 @@ func renderToolCallRef(name string, args map[string]any, formattedResult string)
 		`</details>`
 }
 
-// renderResultCard parses a tool's JSON result and returns an HTML card, or "" if
-// the result type is not handled (the AI summary card is always shown).
+// renderResultCard returns an HTML card to attach after the AI answer, or "" if
+// the tool has no visual card.
 func renderResultCard(toolName, result string, args map[string]any) string {
 	switch toolName {
 	case "news", "news_search":
 		return renderNewsCard(result)
 	case "video_search":
 		return renderVideoCard(result)
-	case "markets":
-		return renderMarketsCard(result)
-	case "weather_forecast":
-		return renderWeatherCard(result)
 	case "places_search", "places_nearby":
 		return renderPlacesCard(result, args)
 	case "apps_search":
@@ -1385,7 +1393,9 @@ func renderResultCard(toolName, result string, args map[string]any) string {
 	case "apps_run":
 		return renderRunCard(result)
 	}
-	return ""
+	// Service-sourced dashboard cards (markets, news_headlines, social, …),
+	// pulled from the same tool registry, attached via api.SetCard in main.go.
+	return api.CardForTool(toolName)
 }
 
 // --- typed card renderers ---
@@ -1473,95 +1483,6 @@ type videoItem struct {
 	Channel   string `json:"channel"`
 }
 
-func renderMarketsCard(result string) string {
-	var data struct {
-		Data []marketItem `json:"data"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil {
-		return ""
-	}
-	if len(data.Data) == 0 {
-		return ""
-	}
-	items := data.Data
-	if len(items) > 6 {
-		items = items[:6]
-	}
-
-	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>📈 Markets</h4>`)
-	b.WriteString(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">`)
-	for _, item := range items {
-		chg := ""
-		if item.Change24h != 0 {
-			sign := "+"
-			color := "#28a745"
-			if item.Change24h < 0 {
-				sign = ""
-				color = "#c00"
-			}
-			chg = fmt.Sprintf(`<span style="font-size:11px;color:%s;">%s%.1f%%</span>`, color, sign, item.Change24h)
-		}
-		price := formatPrice(item.Price)
-		b.WriteString(fmt.Sprintf(
-			`<div style="background:#f9f9f9;border-radius:6px;padding:8px;text-align:center;">
-<div style="font-size:11px;font-weight:700;color:#555;">%s</div>
-<div style="font-size:15px;font-weight:800;">%s %s</div>
-</div>`,
-			htmlEsc(item.Symbol), price, chg,
-		))
-	}
-	b.WriteString(`</div><a href="/markets" class="link" style="display:inline-block;margin-top:8px;">More →</a></div>`)
-	return b.String()
-}
-
-type marketItem struct {
-	Symbol    string  `json:"symbol"`
-	Price     float64 `json:"price"`
-	Change24h float64 `json:"change_24h"`
-}
-
-func renderWeatherCard(result string) string {
-	var data struct {
-		Forecast struct {
-			Current struct {
-				TempC       float64 `json:"TempC"`
-				FeelsLikeC  float64 `json:"FeelsLikeC"`
-				Description string  `json:"Description"`
-				Humidity    int     `json:"Humidity"`
-				WindKph     float64 `json:"WindKph"`
-			} `json:"Current"`
-			Location string `json:"Location"`
-		} `json:"forecast"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil {
-		return ""
-	}
-	cur := data.Forecast.Current
-	if cur.Description == "" {
-		return ""
-	}
-
-	loc := data.Forecast.Location
-	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>🌤 Weather`)
-	if loc != "" {
-		b.WriteString(` — ` + htmlEsc(loc))
-	}
-	b.WriteString(`</h4>`)
-	b.WriteString(fmt.Sprintf(
-		`<p style="font-size:28px;font-weight:800;margin:4px 0;">%.0f°C</p>`,
-		cur.TempC,
-	))
-	b.WriteString(`<p style="color:#555;">` + htmlEsc(cur.Description) + `</p>`)
-	b.WriteString(fmt.Sprintf(
-		`<p style="font-size:13px;color:#888;">Feels like %.0f°C · Humidity %d%% · Wind %.0f km/h</p>`,
-		cur.FeelsLikeC, cur.Humidity, cur.WindKph,
-	))
-	b.WriteString(`<a href="/weather" class="link" style="display:inline-block;margin-top:8px;">Full forecast →</a></div>`)
-	return b.String()
-}
-
 func renderPlacesCard(result string, args map[string]any) string {
 	var data struct {
 		Results []placeItem `json:"results"`
@@ -1647,20 +1568,12 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatNewsResult(result)
 	case "video_search":
 		return formatVideoResult(result)
-	case "weather_forecast":
-		return formatWeatherResult(result)
 	case "reminder":
 		return formatReminderResult(result)
 	case "search":
 		return formatSearchResult(result)
-	case "blog_list":
-		return formatBlogResult(result)
-	case "web_search":
-		return formatWebSearchResult(result)
 	case "web_fetch":
 		return formatWebFetchResult(result)
-	case "markets":
-		return formatMarketsResult(result)
 	case "places_search", "places_nearby":
 		return formatPlacesResult(result, args)
 	case "wallet_balance":
@@ -1823,69 +1736,6 @@ func formatVideoResult(result string) string {
 	return sb.String()
 }
 
-// formatWeatherResult converts a raw JSON weather forecast result into
-// human-readable text for the AI synthesis RAG context.
-func formatWeatherResult(result string) string {
-	var data struct {
-		Forecast struct {
-			Location string `json:"Location"`
-			Current  struct {
-				TempC       float64 `json:"TempC"`
-				FeelsLikeC  float64 `json:"FeelsLikeC"`
-				Description string  `json:"Description"`
-				Humidity    int     `json:"Humidity"`
-				WindKph     float64 `json:"WindKph"`
-			} `json:"Current"`
-			DailyItems []struct {
-				Date        string  `json:"Date"`
-				MaxTempC    float64 `json:"MaxTempC"`
-				MinTempC    float64 `json:"MinTempC"`
-				Description string  `json:"Description"`
-				WillRain    bool    `json:"WillRain"`
-				RainMM      float64 `json:"RainMM"`
-			} `json:"DailyItems"`
-		} `json:"forecast"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil {
-		return result
-	}
-	cur := data.Forecast.Current
-	if cur.Description == "" && cur.TempC == 0 {
-		return "Weather data unavailable."
-	}
-	var sb strings.Builder
-	if data.Forecast.Location != "" {
-		sb.WriteString(fmt.Sprintf("Weather for %s:\n", data.Forecast.Location))
-	} else {
-		sb.WriteString("Current weather:\n")
-	}
-	sb.WriteString(fmt.Sprintf("- Temperature: %.0f°C (feels like %.0f°C)\n", cur.TempC, cur.FeelsLikeC))
-	if cur.Description != "" {
-		sb.WriteString(fmt.Sprintf("- Conditions: %s\n", cur.Description))
-	}
-	if cur.Humidity > 0 {
-		sb.WriteString(fmt.Sprintf("- Humidity: %d%%\n", cur.Humidity))
-	}
-	if cur.WindKph > 0 {
-		sb.WriteString(fmt.Sprintf("- Wind: %.0f km/h\n", cur.WindKph))
-	}
-	if len(data.Forecast.DailyItems) > 0 {
-		sb.WriteString("Forecast:\n")
-		days := data.Forecast.DailyItems
-		if len(days) > 5 {
-			days = days[:5]
-		}
-		for _, d := range days {
-			line := fmt.Sprintf("- %.0f°C / %.0f°C, %s", d.MaxTempC, d.MinTempC, d.Description)
-			if d.WillRain {
-				line += fmt.Sprintf(" (rain: %.1fmm)", d.RainMM)
-			}
-			sb.WriteString(line + "\n")
-		}
-	}
-	return sb.String()
-}
-
 // formatReminderResult converts a raw JSON reminder result into
 // human-readable text for the AI synthesis RAG context.
 func formatReminderResult(result string) string {
@@ -1955,84 +1805,6 @@ func formatSearchResult(result string) string {
 	}
 	// Fall back: strip HTML tags to extract plain text
 	return stripHTMLTags(result)
-}
-
-// formatBlogResult converts a raw JSON blog list result into
-// human-readable text for the AI synthesis RAG context.
-func formatBlogResult(result string) string {
-	var posts []struct {
-		Title     string `json:"title"`
-		Author    string `json:"author"`
-		Tags      string `json:"tags"`
-		CreatedAt string `json:"created_at"`
-		Content   string `json:"content"`
-	}
-	if err := json.Unmarshal([]byte(result), &posts); err != nil {
-		return result
-	}
-	if len(posts) == 0 {
-		return "No blog posts available."
-	}
-	if len(posts) > 10 {
-		posts = posts[:10]
-	}
-	var sb strings.Builder
-	sb.WriteString("Recent blog posts:\n")
-	for i, p := range posts {
-		line := fmt.Sprintf("%d. %s", i+1, p.Title)
-		if p.Author != "" {
-			line += fmt.Sprintf(" by %s", p.Author)
-		}
-		if p.Tags != "" {
-			line += fmt.Sprintf(" [%s]", p.Tags)
-		}
-		if p.Content != "" {
-			snippet := p.Content
-			if len(snippet) > 120 {
-				snippet = snippet[:120] + "…"
-			}
-			line += " — " + snippet
-		}
-		sb.WriteString(line + "\n")
-	}
-	return sb.String()
-}
-
-// formatWebSearchResult converts a raw JSON web search result into
-// human-readable text for the AI synthesis RAG context.
-func formatWebSearchResult(result string) string {
-	var data struct {
-		Results []struct {
-			Title   string `json:"title"`
-			URL     string `json:"url"`
-			Snippet string `json:"snippet"`
-		} `json:"results"`
-		Query string `json:"query"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil {
-		return result
-	}
-	if len(data.Results) == 0 {
-		return "No web results found."
-	}
-	items := data.Results
-	if len(items) > 10 {
-		items = items[:10]
-	}
-	var sb strings.Builder
-	if data.Query != "" {
-		sb.WriteString(fmt.Sprintf("Web search results for %q:\n", data.Query))
-	} else {
-		sb.WriteString("Web search results:\n")
-	}
-	for i, r := range items {
-		line := fmt.Sprintf("%d. %s", i+1, r.Title)
-		if r.Snippet != "" {
-			line += " — " + r.Snippet
-		}
-		sb.WriteString(line + "\n")
-	}
-	return sb.String()
 }
 
 // formatWebFetchResult converts a raw JSON web fetch result into
@@ -2145,40 +1917,6 @@ type placeItem struct {
 	Address  string  `json:"address"`
 	Lat      float64 `json:"lat"`
 	Lon      float64 `json:"lon"`
-}
-
-// formatMarketsResult converts a raw JSON markets result into a human-readable
-// text summary suitable for inclusion in the AI synthesis RAG context.
-func formatMarketsResult(result string) string {
-	var data struct {
-		Category string `json:"category"`
-		Data     []struct {
-			Symbol    string  `json:"symbol"`
-			Price     float64 `json:"price"`
-			Change24h float64 `json:"change_24h"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil {
-		return result
-	}
-	if len(data.Data) == 0 {
-		return "No market data available."
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Live %s market prices:\n", data.Category))
-	for _, item := range data.Data {
-		line := fmt.Sprintf("- %s: $%.2f", item.Symbol, item.Price)
-		if item.Change24h != 0 {
-			sign := "+"
-			if item.Change24h < 0 {
-				sign = ""
-			}
-			line += fmt.Sprintf(" (24h change: %s%.2f%%)", sign, item.Change24h)
-		}
-		sb.WriteString(line + "\n")
-	}
-	return sb.String()
 }
 
 // formatWalletBalanceResult converts a raw JSON wallet balance result into

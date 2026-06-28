@@ -52,6 +52,95 @@ var EnvFlag = flag.String("env", "dev", "Set the environment")
 var ServeFlag = flag.Bool("serve", false, "Run the server")
 var AddressFlag = flag.String("address", ":8080", "Address for server")
 
+// recallSearch powers the recall tool: it merges the public indexed corpus
+// with the caller's own mail into a compact, model-ready list. Public content
+// is searched without an owner scope (private entries are excluded by default);
+// mail is searched live and strictly scoped to accountID, so nothing leaks
+// across users and mail bodies never need to live in the shared index.
+func recallSearch(accountID, query string, limit int) string {
+	pub := data.Search(query, limit)
+	var mails []*mail.Message
+	if accountID != "" {
+		mails = mail.Search(accountID, query, 6)
+	}
+
+	if len(pub) == 0 && len(mails) == 0 {
+		return fmt.Sprintf("No matches found for %q.", query)
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "Results for %q:\n\n", query)
+	for _, m := range mails {
+		fmt.Fprintf(&b, "[mail] %s — from %s: %s (id: %s)\n",
+			recallFirstLine(m.Subject, 120), recallFirstLine(m.From, 60), recallSnippet(m.Body, 160), m.ID)
+	}
+	for _, e := range pub {
+		t := e.Type
+		if t == "post" {
+			t = "blog"
+		}
+		fmt.Fprintf(&b, "[%s] %s — %s (id: %s)\n", t, recallFirstLine(e.Title, 120), recallSnippet(e.Content, 160), e.ID)
+	}
+	return b.String()
+}
+
+// recallSnippet strips tags, collapses whitespace and truncates to max runes.
+func recallSnippet(s string, max int) string {
+	s = strings.Join(strings.Fields(recallStripTags(s)), " ")
+	r := []rune(s)
+	if len(r) > max {
+		return string(r[:max]) + "…"
+	}
+	return s
+}
+
+// recallFirstLine trims to the first line and truncates to max runes.
+func recallFirstLine(s string, max int) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexAny(s, "\r\n"); i >= 0 {
+		s = strings.TrimSpace(s[:i])
+	}
+	r := []rune(s)
+	if len(r) > max {
+		return string(r[:max]) + "…"
+	}
+	return s
+}
+
+// argFloat coerces a tool argument (JSON number or string) to a float64.
+func argFloat(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int:
+		return float64(n)
+	case string:
+		var f float64
+		fmt.Sscanf(n, "%g", &f)
+		return f
+	}
+	return 0
+}
+
+// recallStripTags removes HTML tags without pulling in a dependency.
+func recallStripTags(s string) string {
+	var b strings.Builder
+	inTag := false
+	for _, r := range s {
+		switch r {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		default:
+			if !inTag {
+				b.WriteRune(r)
+			}
+		}
+	}
+	return b.String()
+}
+
 func main() {
 	// Server vs CLI dispatch — any invocation that includes `--serve`
 	// (or `-serve`) runs the full server exactly as before. Anything
@@ -383,6 +472,9 @@ func main() {
 
 	apps.QuotaCheck = agent.QuotaCheck
 
+	// Inline visual cards now come from the capability registry (core), which
+	// each service self-registers into from its Load(). No central wiring here.
+
 	// Wire x402 payment required response for MCP
 	if wallet.X402Enabled() {
 		api.PaymentRequiredResponse = wallet.WritePaymentRequired
@@ -489,15 +581,17 @@ func main() {
 		},
 	})
 
-	// web_search tool registered via MCP
+	// web_search — cached Brave web search, returned as model-ready text (AI-first).
 	api.RegisterTool(api.Tool{
 		Name:        "web_search",
 		Description: "Search the web for current information and news",
-		Method:      "GET",
-		Path:        "/web",
 		WalletOp:    "web_search",
 		Params: []api.ToolParam{
 			{Name: "q", Type: "string", Description: "Search query", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			q, _ := args["q"].(string)
+			return search.WebSearchText(q, 0), nil
 		},
 	})
 
@@ -512,6 +606,146 @@ func main() {
 			{Name: "url", Type: "string", Description: "The URL to fetch", Required: true},
 		},
 	})
+
+	// news_headlines tool — topic-balanced headlines for scanning before reading
+	api.RegisterTool(api.Tool{
+		Name:        "news_headlines",
+		Description: "Get recent news headlines with short summaries balanced across all topics (not dominated by one topic like crypto). Use for general news and briefing requests, then news_read for any article worth expanding.",
+		Params: []api.ToolParam{
+			{Name: "topic", Type: "string", Description: "Optional topic/category filter (e.g. tech, world, business)", Required: false},
+			{Name: "limit", Type: "string", Description: "Optional max number of headlines (default 30)", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			topic, _ := args["topic"].(string)
+			limit := 0
+			switch v := args["limit"].(type) {
+			case float64:
+				limit = int(v)
+			case string:
+				fmt.Sscanf(v, "%d", &limit)
+			}
+			return news.HeadlinesText(topic, limit), nil
+		},
+	})
+
+	// news_read tool — fetch one full article by id (from news_headlines) or URL
+	api.RegisterTool(api.Tool{
+		Name:        "news_read",
+		Description: "Read one news article in full (title, source, summary and body) by its id from news_headlines, or by article URL.",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "Article id (from news_headlines) or article URL", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			id, _ := args["id"].(string)
+			if id == "" {
+				id, _ = args["url"].(string)
+			}
+			text, err := news.ArticleText(id)
+			if err != nil {
+				return err.Error(), err
+			}
+			return text, nil
+		},
+	})
+
+	// recall tool — unified search across everything mu knows for the caller:
+	// the public indexed corpus (news, blog, social, video) plus their own mail.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "recall",
+		Description: "Search across everything mu knows — indexed news, blog, social and video, plus the user's own mail — and return the most relevant items with ids. Use for 'do you remember', 'what did I get about X', 'search my stuff' and cross-source lookups.",
+		Params: []api.ToolParam{
+			{Name: "query", Type: "string", Description: "What to look for", Required: true},
+			{Name: "limit", Type: "string", Description: "Optional max results (default 12)", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		query, _ := args["query"].(string)
+		if strings.TrimSpace(query) == "" {
+			return "query is required", fmt.Errorf("missing query")
+		}
+		limit := 12
+		switch v := args["limit"].(type) {
+		case float64:
+			if int(v) > 0 {
+				limit = int(v)
+			}
+		case string:
+			var n int
+			if _, e := fmt.Sscanf(v, "%d", &n); e == nil && n > 0 {
+				limit = n
+			}
+		}
+		return recallSearch(accountID, strings.TrimSpace(query), limit), nil
+	})
+
+	// markets — live prices, returned as model-ready text (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "markets",
+		Description: "Get live market prices for cryptocurrencies, futures, commodities and currencies.",
+		Params: []api.ToolParam{
+			{Name: "category", Type: "string", Description: "crypto, futures, commodities or currencies (default crypto)", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			category, _ := args["category"].(string)
+			return markets.MarketsText(category), nil
+		},
+	})
+
+	// weather_forecast — current conditions plus the next few days (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "weather_forecast",
+		Description: "Get the weather forecast for a location (current conditions plus the next few days).",
+		WalletOp:    "weather_forecast",
+		Params: []api.ToolParam{
+			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
+			{Name: "lon", Type: "number", Description: "Longitude of the location", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			lat := argFloat(args["lat"])
+			lon := argFloat(args["lon"])
+			if lat == 0 && lon == 0 {
+				return "Provide lat and lon for the location.", fmt.Errorf("missing coordinates")
+			}
+			return weather.ForecastText(lat, lon), nil
+		},
+	})
+
+	// social — latest social feed (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "social",
+		Description: "Get the latest social posts from the network.",
+		Handle: func(args map[string]any) (string, error) {
+			return social.FeedText(0), nil
+		},
+	})
+
+	// video — latest videos from curated channels (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "video",
+		Description: "Get the latest videos from curated channels.",
+		Handle: func(args map[string]any) (string, error) {
+			return video.LatestText(0), nil
+		},
+	})
+
+	// blog_list — recent blog posts (AI-first).
+	api.RegisterTool(api.Tool{
+		Name:        "blog_list",
+		Description: "Get recent blog posts (titles, snippets and ids; use blog_read for one in full).",
+		Handle: func(args map[string]any) (string, error) {
+			return blog.RecentText(0), nil
+		},
+	})
+
+	// Attach visual cards to the tools that have a dashboard-style renderer, so
+	// an agent answer (and the daily brief) can carry both text and the same
+	// card the home screen shows. Cards render from each service's live data;
+	// wiring them here keeps internal/api free of service imports.
+	api.SetCard("markets", "Markets", markets.MarketsHTML)
+	api.SetCard("news_headlines", "News", news.Headlines)
+	api.SetCard("social", "Social", social.CardHTML)
+	api.SetCard("video", "Videos", video.Latest)
+	api.SetCard("blog_list", "Blog", blog.Preview)
+	api.SetCard("reminder", "Reminder", reminder.ReminderHTML)
 
 	// Register apps MCP tools
 	api.RegisterTool(api.Tool{
@@ -968,8 +1202,16 @@ func main() {
 
 	// serve fact-check page and API
 
-	// serve the home screen
-	http.HandleFunc("/home", home.Handler)
+	// The home is /, the canonical root. /home is a legacy alias that
+	// permanently redirects there (preserving the query so ?mode=display etc.
+	// still work). The dashboard itself is served by home.Handler at /.
+	http.HandleFunc("/home", func(w http.ResponseWriter, r *http.Request) {
+		target := "/"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
+	})
 	http.HandleFunc("/home/summary", home.SummaryHandler)
 	home.StartSummaryLoop()
 	http.HandleFunc("/pricing", home.PricingHandler)
@@ -1204,7 +1446,14 @@ func main() {
 					}
 				} else if r.URL.Path == "/" {
 					if _, acc := auth.TrySession(r); acc != nil {
-						home.AssistantHandler(w, r)
+						// The home is the dashboard that already works; a query
+						// (?q= / ?prompt=) folds into the assistant to answer it.
+						q := r.URL.Query()
+						if q.Get("q") != "" || q.Get("prompt") != "" {
+							home.AssistantHandler(w, r)
+						} else {
+							home.Handler(w, r)
+						}
 					} else {
 						home.LandingHandler(w, r)
 					}

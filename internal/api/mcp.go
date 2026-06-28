@@ -144,14 +144,17 @@ type mcpContent struct {
 
 // Tool defines an MCP tool with its HTTP mapping
 type Tool struct {
-	Name        string
-	Description string
-	Method      string
-	Path        string
-	Params      []ToolParam
-	WalletOp    string                                       // Wallet operation for credit gating (empty = included)
-	Handle      func(map[string]any) (string, error)         // Optional direct handler (bypasses HTTP dispatch)
-	HandleAuth  func(map[string]any, string) (string, error) // Like Handle but receives the account ID
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Title       string      `json:"title,omitempty"` // display title for the visual card
+	Icon        string      `json:"icon,omitempty"`
+	Method      string      `json:"method,omitempty"`
+	Path        string      `json:"path,omitempty"`
+	Params      []ToolParam `json:"params,omitempty"`
+	WalletOp    string      `json:"walletOp,omitempty"`                          // Wallet operation for credit gating (empty = included)
+	Handle      func(map[string]any) (string, error)            `json:"-"` // Optional direct handler (bypasses HTTP dispatch)
+	HandleAuth  func(map[string]any, string) (string, error)    `json:"-"` // Like Handle but receives the account ID
+	Card        func() string                                   `json:"-"` // Optional visual card body, rendered from live data
 }
 
 // QuotaCheck is called before executing a metered tool.
@@ -171,10 +174,20 @@ var PaymentRequiredResponse func(w http.ResponseWriter, op string, resource stri
 
 // ToolParam defines a parameter for an MCP tool
 type ToolParam struct {
-	Name        string
-	Type        string
-	Description string
-	Required    bool
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	Required    bool   `json:"required"`
+}
+
+// Result is the unified value a tool/capability can return: model-ready text
+// for the LLM and chat, an optional rich HTML card for the visual surface, and
+// optional structured data. Tools that have both an explanation and a visual
+// should return this so one handler feeds both the agent and the feed.
+type Result struct {
+	Text string `json:"text,omitempty"`
+	HTML string `json:"html,omitempty"`
+	Data any    `json:"data,omitempty"`
 }
 
 // RegisterTool adds a tool to the MCP server.
@@ -286,12 +299,9 @@ var tools = []Tool{
 			{Name: "query", Type: "string", Description: "News search query", Required: true},
 		},
 	},
-	{
-		Name:        "blog_list",
-		Description: "Get all blog posts",
-		Method:      "GET",
-		Path:        "/blog",
-	},
+	// blog_list, social, video, weather_forecast and markets are registered in
+	// main.go as AI-first tools (clean Go handlers returning model-ready text),
+	// not as page-backed entries here.
 	{
 		Name:        "blog_read",
 		Description: "Read a specific blog post by ID",
@@ -333,12 +343,6 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "social",
-		Description: "Get the latest social media posts from followed accounts",
-		Method:      "GET",
-		Path:        "/social",
-	},
-	{
 		Name:        "social_search",
 		Description: "Search social media posts",
 		Method:      "POST",
@@ -347,12 +351,6 @@ var tools = []Tool{
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Search query for social posts", Required: true},
 		},
-	},
-	{
-		Name:        "video",
-		Description: "Get the latest videos",
-		Method:      "GET",
-		Path:        "/video",
 	},
 	{
 		Name:        "video_search",
@@ -517,27 +515,6 @@ var tools = []Tool{
 			{Name: "lat", Type: "number", Description: "Latitude of the search location", Required: false},
 			{Name: "lon", Type: "number", Description: "Longitude of the search location", Required: false},
 			{Name: "radius", Type: "number", Description: "Search radius in metres, 100–5000 (default 500)", Required: false},
-		},
-	},
-	{
-		Name:        "weather_forecast",
-		Description: "Get the weather forecast for a location. Returns current conditions, hourly and daily forecast. Optionally includes pollen data.",
-		Method:      "GET",
-		Path:        "/weather",
-		WalletOp:    "weather_forecast",
-		Params: []ToolParam{
-			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
-			{Name: "lon", Type: "number", Description: "Longitude of the location", Required: true},
-			{Name: "pollen", Type: "string", Description: "Set to 1 to include pollen forecast (+1 credit)", Required: false},
-		},
-	},
-	{
-		Name:        "markets",
-		Description: "Get live market prices for cryptocurrencies, futures, and commodities",
-		Method:      "GET",
-		Path:        "/markets",
-		Params: []ToolParam{
-			{Name: "category", Type: "string", Description: "Category of markets: crypto, futures, or commodities (default: crypto)", Required: false},
 		},
 	},
 	{

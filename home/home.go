@@ -682,7 +682,7 @@ fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-o
 (function(){
   var interval = %d;
   setInterval(function(){
-    fetch('/home', {headers:{Accept:'application/json'}})
+    fetch('/', {headers:{Accept:'application/json'}})
     .then(function(r){return r.json()})
     .then(function(cards){
       cards.forEach(function(c){

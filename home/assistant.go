@@ -6,6 +6,10 @@ import (
 	"mu/internal/app"
 )
 
+// AssistantHandler answers a query at /?q=... (or /?prompt=...). The home
+// itself is the dashboard (home.Handler); this is just the prompt-to-answer
+// experience folded into /, reusing the shared chat component which streams
+// the answer and keeps the conversation.
 func AssistantHandler(w http.ResponseWriter, r *http.Request) {
 	prefill := r.URL.Query().Get("q")
 	if prefill == "" {

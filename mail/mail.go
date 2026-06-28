@@ -1560,6 +1560,75 @@ func GetUnreadCount(userID string) int {
 	return 0
 }
 
+// Search returns up to limit non-spam messages belonging to userID (as sender
+// or recipient) that match the query, most relevant first. It searches the
+// in-memory (decrypted) messages directly and is strictly scoped to the
+// account, so mail is never read across users and its body never has to be
+// persisted to the shared search index in plaintext.
+func Search(userID, query string, limit int) []*Message {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if userID == "" || query == "" {
+		return nil
+	}
+	words := strings.Fields(query)
+
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	type scored struct {
+		msg   *Message
+		score int
+	}
+	var hits []scored
+	for _, msg := range messages {
+		if msg.Spam {
+			continue
+		}
+		if msg.ToID != userID && msg.FromID != userID {
+			continue
+		}
+		subject := strings.ToLower(msg.Subject)
+		from := strings.ToLower(msg.From)
+		body := strings.ToLower(msg.Body)
+
+		score := 0
+		if strings.Contains(subject, query) {
+			score += 5
+		}
+		if strings.Contains(from, query) {
+			score += 3
+		}
+		if strings.Contains(body, query) {
+			score += 2
+		}
+		// Fall back to per-word matches so multi-word queries still hit.
+		for _, w := range words {
+			if strings.Contains(subject, w) || strings.Contains(from, w) || strings.Contains(body, w) {
+				score++
+			}
+		}
+		if score > 0 {
+			hits = append(hits, scored{msg, score})
+		}
+	}
+
+	sort.Slice(hits, func(i, j int) bool {
+		if hits[i].score != hits[j].score {
+			return hits[i].score > hits[j].score
+		}
+		return hits[i].msg.CreatedAt.After(hits[j].msg.CreatedAt)
+	})
+
+	if limit > 0 && len(hits) > limit {
+		hits = hits[:limit]
+	}
+	out := make([]*Message, len(hits))
+	for i, h := range hits {
+		out[i] = h.msg
+	}
+	return out
+}
+
 // GetSpamMessages returns spam-flagged messages for a user
 func GetSpamMessages(userID string) []*Message {
 	mutex.RLock()
