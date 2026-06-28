@@ -105,6 +105,22 @@ func TestKeywordRouteTradeTakesPrecedenceOverMarkets(t *testing.T) {
 	}
 }
 
+func TestKeywordRouteRequiresTermBoundaries(t *testing.T) {
+	falsePositivePrompts := []string{
+		"please postpone the team lunch",
+		"this surprise party is busy",
+		"watchtower status update",
+	}
+
+	for _, prompt := range falsePositivePrompts {
+		t.Run(prompt, func(t *testing.T) {
+			if got := keywordRoute(prompt); len(got) != 0 {
+				t.Fatalf("keywordRoute(%q) = %v, want no keyword route", prompt, got)
+			}
+		})
+	}
+}
+
 func TestAllExcludesFallbackAgent(t *testing.T) {
 	for _, agent := range All() {
 		if agent.ID == "micro" {
