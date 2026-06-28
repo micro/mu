@@ -8,11 +8,16 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/mesh"
 	"mu/wallet"
 )
 
-// Load initialises the weather package (placeholder for future caching).
-func Load() {}
+// Load initialises the weather package and registers its go-micro service.
+func Load() {
+	if err := mesh.Register("weather", new(Server)); err != nil {
+		app.Log("weather", "mesh register failed: %v", err)
+	}
+}
 
 // CardHTML returns the weather card for the home screen.
 // Only fetches for logged-in users. Caches in localStorage for 30 min.

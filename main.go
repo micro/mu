@@ -710,7 +710,13 @@ func main() {
 			if lat == 0 && lon == 0 {
 				return "Provide lat and lon for the location.", fmt.Errorf("missing coordinates")
 			}
-			return weather.ForecastText(lat, lon), nil
+			// Call the weather capability through go-micro.
+			var rsp weather.ForecastResponse
+			if err := mesh.Call(context.Background(), "weather", "Server.Forecast",
+				&weather.ForecastRequest{Lat: lat, Lon: lon}, &rsp); err != nil {
+				return "", err
+			}
+			return rsp.Summary, nil
 		},
 	})
 

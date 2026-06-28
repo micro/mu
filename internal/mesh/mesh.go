@@ -13,6 +13,8 @@ package mesh
 
 import (
 	"context"
+	"os"
+	"strings"
 	"sync"
 
 	"go-micro.dev/v6/broker"
@@ -23,6 +25,29 @@ import (
 	"go-micro.dev/v6/service"
 	"go-micro.dev/v6/store"
 )
+
+func init() {
+	// In-process services advertise loopback and are reached over loopback.
+	// If an HTTP(S)_PROXY is configured, Go's transport would otherwise route
+	// those loopback dials through the proxy, which hijacks them. Ensure
+	// loopback always bypasses the proxy. Runs at package init, before any
+	// request is made, so the proxy-env cache reads the updated value.
+	bypassProxyForLoopback()
+}
+
+func bypassProxyForLoopback() {
+	const loopback = "127.0.0.1,localhost,::1,0.0.0.0"
+	for _, key := range []string{"NO_PROXY", "no_proxy"} {
+		cur := os.Getenv(key)
+		if cur == "" {
+			os.Setenv(key, loopback)
+			continue
+		}
+		if !strings.Contains(cur, "127.0.0.1") {
+			os.Setenv(key, cur+","+loopback)
+		}
+	}
+}
 
 var (
 	mu       sync.Mutex
@@ -82,6 +107,7 @@ func Register(name string, handlers ...any) error {
 	ensure()
 	svc := service.New(
 		service.Name(name),
+		service.Address("127.0.0.1:0"), // in-process: advertise loopback only
 		service.Registry(reg),
 		service.Client(cl),
 		service.Broker(br),
