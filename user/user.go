@@ -52,7 +52,7 @@ var profiles = map[string]*Profile{}
 type Profile struct {
 	UserID    string          `json:"user_id"`
 	Status    string          `json:"status"`     // User's custom status message
-	History   []StatusHistory `json:"history"`     // Past statuses, newest first
+	History   []StatusHistory `json:"history"`    // Past statuses, newest first
 	UpdatedAt time.Time       `json:"updated_at"` // When the profile was last updated
 }
 
@@ -420,16 +420,17 @@ func StatusCountSince(since time.Time, viewerID string) int {
 	profileMutex.RLock()
 	defer profileMutex.RUnlock()
 
+	cutoff := time.Now().Add(-statusMaxAge)
 	count := 0
 	for _, p := range profiles {
 		if auth.IsBanned(p.UserID) && p.UserID != viewerID {
 			continue
 		}
-		if !p.UpdatedAt.IsZero() && p.UpdatedAt.After(since) {
+		if !p.UpdatedAt.IsZero() && !p.UpdatedAt.Before(cutoff) && p.UpdatedAt.After(since) {
 			count++
 		}
 		for _, h := range p.History {
-			if h.SetAt.After(since) {
+			if !h.SetAt.Before(cutoff) && h.SetAt.After(since) {
 				count++
 			}
 		}
