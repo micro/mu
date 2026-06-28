@@ -73,12 +73,16 @@ or improve test coverage; never break `main`.
      builds a go-micro agent on the in-process mesh (shares registry/client/
      store). Live-verified: an agent over a registered service calls its method
      and answers from the result (internal/mesh/agent_live_test.go).
-   - TODO **[NEEDS SUPERVISION — do not merge unsupervised]**: wire `agent.Query`
-     (main.go `agent` tool + the assistant) to use `mesh.NewAgent` over the
-     registered domain services, with the user's account context; compare
-     answers/behaviour against the existing pipeline before removing
-     `agent/micro`. Use deepseek-v4-pro on Atlas (default llama-3.3-70b is weak
-     at tool-result synthesis).
+   - ◑ Wired (opt-in): `agent/native.go` `queryNative` — when `AGENT_NATIVE` is
+     set, the catch-all `agent.Query` uses a go-micro agent (`mesh.NewAgent`,
+     deepseek-v4-pro, MaxSteps 6) over the registered services. Account context
+     is injected into account-scoped tool calls via a `WrapTool` middleware, so
+     recall/trade stay correctly scoped. User context + history + guest service
+     filtering preserved. Default OFF = no regression. Live-verified end to end.
+   - TODO **[SUPERVISED]**: enable `AGENT_NATIVE` (via /admin/env), compare
+     answers/latency vs the hand-rolled path across query types (weather, news,
+     prices, recall, guest), tune the system prompt to parity, then flip the
+     default and retire the hand-rolled planner + (eventually) `agent/micro`.
    - NOTE confirmed go-micro handler rules: the handler type AND its method
      request/response types must be exported, or rpc.Register rejects them.
 5. **MCP gateway** **[NEEDS SUPERVISION for the swap]**: changing `/mcp` is an

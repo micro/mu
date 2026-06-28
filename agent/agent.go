@@ -96,6 +96,19 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		return micro.Orchestrate(accountID, prompt, agentIDs, opts.Public)
 	}
 
+	// Native go-micro agent path (opt-in via AGENT_NATIVE): the LLM does
+	// native tool-calling over the registered domain services instead of the
+	// hand-rolled plan/execute/synthesize below. Falls back transparently if
+	// no native provider is configured.
+	if nativeEnabled() {
+		if answer, handled, err := queryNative(accountID, prompt, opts); handled {
+			if err != nil {
+				return "", err
+			}
+			return answer, nil
+		}
+	}
+
 	// Fall through to the existing monolithic agent for "micro" (catch-all)
 	model := Models[0] // standard
 
