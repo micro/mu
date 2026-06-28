@@ -43,6 +43,17 @@ when go-micro is missing something, fix it upstream (we own it).
   (Atlas/Anthropic/local), history + per-caller token caps preserved.
 - ✅ Services: weather, news, markets, social, video, blog, search, trade.
 
+## Overnight / unsupervised policy
+
+Only do **additive, low-risk** work unsupervised: new services, new tests,
+framework fixes via the dogfood loop (verify before release), cleanups. These
+keep mu's behaviour identical. **Do NOT merge behaviour-changing or
+contract-changing swaps unsupervised** — specifically: replacing `agent.Query`
+with a go-micro agent, and replacing the hand-rolled `/mcp` and `/a2a` gateways.
+Build their foundations and tests additively, document the cutover, but leave
+the actual swap for a supervised session. When in doubt, pick a SAFE item below
+or improve test coverage; never break `main`.
+
 ## Remaining (do in order; one increment per commit/merge)
 
 1. ✅ **Cleanup** `internal/ai/providers.go`: removed the now-unused native
@@ -62,20 +73,24 @@ when go-micro is missing something, fix it upstream (we own it).
      builds a go-micro agent on the in-process mesh (shares registry/client/
      store). Live-verified: an agent over a registered service calls its method
      and answers from the result (internal/mesh/agent_live_test.go).
-   - TODO: wire `agent.Query` (main.go `agent` tool + the assistant) to use
-     `mesh.NewAgent` over the registered domain services, with the user's
-     account context; compare answers/behaviour against the existing pipeline
-     before removing `agent/micro`. Pick the model deepseek-v4-pro on Atlas
-     (the default llama-3.3-70b is weak at tool-result synthesis).
+   - TODO **[NEEDS SUPERVISION — do not merge unsupervised]**: wire `agent.Query`
+     (main.go `agent` tool + the assistant) to use `mesh.NewAgent` over the
+     registered domain services, with the user's account context; compare
+     answers/behaviour against the existing pipeline before removing
+     `agent/micro`. Use deepseek-v4-pro on Atlas (default llama-3.3-70b is weak
+     at tool-result synthesis).
    - NOTE confirmed go-micro handler rules: the handler type AND its method
      request/response types must be exported, or rpc.Register rejects them.
-5. **MCP gateway**: replace the hand-rolled `/mcp` (`internal/api`) with
-   go-micro `gateway/mcp`, tools auto-derived from the registered services.
-6. **A2A gateway**: replace `/a2a` with go-micro `gateway/a2a`.
-7. **Other domains** worth registering as services if agent-facing: mail,
-   places, reminder, chat.
-8. **Streaming usage**: go-micro stream responses don't return token usage;
-   consider a follow-up go-micro fix so `recordUsage` is accurate for streams.
+5. **MCP gateway** **[NEEDS SUPERVISION for the swap]**: changing `/mcp` is an
+   external contract. Safe now: stand up go-micro `gateway/mcp` on a side path
+   and diff its tool list against the current `/mcp`. Swap only when supervised.
+6. **A2A gateway** **[NEEDS SUPERVISION for the swap]**: same as #5 for `/a2a`.
+7. **[SAFE]** Register the remaining agent-facing domains as go-micro services
+   (mail, places, reminder, chat) — additive; consumers/gateway come later.
+8. **[SAFE]** Streaming usage: go-micro stream responses don't surface token
+   usage, so `recordUsage` records 0 for streamed calls. Fix upstream via the
+   dogfood loop (add Usage to the final stream chunk / a Usage() on the stream),
+   release, then record it in `streamViaMicro`. Verify before releasing.
 
 ## Notes / gaps filed or to file in go-micro
 
