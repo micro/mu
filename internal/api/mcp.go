@@ -16,6 +16,47 @@ import (
 // MCP protocol version
 const MCPVersion = "2025-03-26"
 
+var (
+	reminderHTTPClient = &http.Client{Timeout: 10 * time.Second}
+	reminderAPIBase    = "https://reminder.dev/api"
+)
+
+func reminderAPIURL(path string) string {
+	return strings.TrimRight(reminderAPIBase, "/") + path
+}
+
+func getReminderAPI(path string) (string, error) {
+	resp, err := reminderHTTPClient.Get(reminderAPIURL(path))
+	if err != nil {
+		return "", fmt.Errorf("reminder API error: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("reminder API returned status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading reminder response: %w", err)
+	}
+	return string(body), nil
+}
+
+func postReminderAPI(path, contentType, body string) (string, error) {
+	resp, err := reminderHTTPClient.Post(reminderAPIURL(path), contentType, strings.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("reminder API error: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("reminder API returned status %d", resp.StatusCode)
+	}
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading reminder response: %w", err)
+	}
+	return string(b), nil
+}
+
 // JSON-RPC types
 type jsonrpcRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
@@ -480,17 +521,7 @@ var tools = []Tool{
 		Name:        "reminder",
 		Description: "Get today's daily Islamic reminder with verse, hadith, and name of Allah",
 		Handle: func(args map[string]any) (string, error) {
-			client := &http.Client{Timeout: 10 * time.Second}
-			resp, err := client.Get("https://reminder.dev/api/daily")
-			if err != nil {
-				return "", fmt.Errorf("reminder API error: %v", err)
-			}
-			defer resp.Body.Close()
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return "", fmt.Errorf("reading reminder response: %v", err)
-			}
-			return string(body), nil
+			return getReminderAPI("/daily")
 		},
 	},
 	{
@@ -508,17 +539,11 @@ var tools = []Tool{
 			if chapter == "" {
 				return "", fmt.Errorf("chapter is required")
 			}
-			url := "https://reminder.dev/api/quran/" + chapter
+			path := "/quran/" + chapter
 			if v, ok := args["verse"].(float64); ok && v > 0 {
-				url += fmt.Sprintf("/%d", int(v))
+				path += fmt.Sprintf("/%d", int(v))
 			}
-			resp, err := http.Get(url)
-			if err != nil {
-				return "", err
-			}
-			defer resp.Body.Close()
-			b, _ := io.ReadAll(resp.Body)
-			return string(b), nil
+			return getReminderAPI(path)
 		},
 	},
 	{
@@ -528,17 +553,11 @@ var tools = []Tool{
 			{Name: "book", Type: "number", Description: "Book number", Required: false},
 		},
 		Handle: func(args map[string]any) (string, error) {
-			url := "https://reminder.dev/api/hadith"
+			path := "/hadith"
 			if b, ok := args["book"].(float64); ok && b > 0 {
-				url += fmt.Sprintf("/%d", int(b))
+				path += fmt.Sprintf("/%d", int(b))
 			}
-			resp, err := http.Get(url)
-			if err != nil {
-				return "", err
-			}
-			defer resp.Body.Close()
-			b, _ := io.ReadAll(resp.Body)
-			return string(b), nil
+			return getReminderAPI(path)
 		},
 	},
 	{
@@ -554,13 +573,7 @@ var tools = []Tool{
 				return "", fmt.Errorf("query is required")
 			}
 			body := fmt.Sprintf(`{"q":%q}`, q)
-			resp, err := http.Post("https://reminder.dev/api/search", "application/json", strings.NewReader(body))
-			if err != nil {
-				return "", err
-			}
-			defer resp.Body.Close()
-			b, _ := io.ReadAll(resp.Body)
-			return string(b), nil
+			return postReminderAPI("/search", "application/json", body)
 		},
 	},
 }

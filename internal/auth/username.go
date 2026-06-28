@@ -16,9 +16,13 @@ var bannedWords = []string{
 
 // ValidateUsername returns an error string if the username is not
 // allowed, or "" if it's fine. Called from both web signup and MCP
-// signup. This is in addition to the regex format check — a username
-// can be well-formed but still banned.
+// signup, so it enforces the shared username format as well as the
+// blocklist and reserved names.
 func ValidateUsername(username string) string {
+	if !validUsernameFormat(username) {
+		return "Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores"
+	}
+
 	lower := strings.ToLower(username)
 	for _, w := range bannedWords {
 		if strings.Contains(lower, w) {
@@ -31,4 +35,23 @@ func ValidateUsername(username string) string {
 		return "That username is reserved."
 	}
 	return ""
+}
+
+func validUsernameFormat(username string) bool {
+	if len(username) < 4 || len(username) > 24 {
+		return false
+	}
+	for i, r := range username {
+		if i == 0 {
+			if r < 'a' || r > 'z' {
+				return false
+			}
+			continue
+		}
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
+			continue
+		}
+		return false
+	}
+	return true
 }

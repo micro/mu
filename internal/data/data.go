@@ -56,9 +56,10 @@ func SaveFile(key, val string) error {
 	path := filepath.Join(dir, "data")
 	file := filepath.Join(path, key)
 	// Create all parent directories including subdirectories in key
-	os.MkdirAll(filepath.Dir(file), 0700)
-	os.WriteFile(file, []byte(val), 0600)
-	return nil
+	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+		return err
+	}
+	return os.WriteFile(file, []byte(val), 0600)
 }
 
 // LoadFile loads a file from disk
@@ -88,11 +89,10 @@ func SaveJSON(key string, val interface{}) error {
 
 	// Create all parent directories
 	fileDir := filepath.Dir(file)
-	os.MkdirAll(fileDir, 0700)
-
-	os.WriteFile(file, b, 0644)
-
-	return nil
+	if err := os.MkdirAll(fileDir, 0700); err != nil {
+		return err
+	}
+	return os.WriteFile(file, b, 0644)
 }
 
 func LoadJSON(key string, val interface{}) error {
@@ -310,7 +310,6 @@ func indexWorker(id int) {
 		processIndexWork(work)
 	}
 }
-
 
 // GetByID retrieves an entry by its exact ID
 func GetByID(id string) *IndexEntry {

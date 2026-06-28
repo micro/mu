@@ -17,6 +17,8 @@ func AssistantHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := `<div style="margin-bottom:24px">` + chatComponent(false) + `</div>`
+
+	// Auto-submit if a query param was provided (e.g. from a deep link).
 	if prefill != "" {
 		content += `<script>(function(){
 var input=document.getElementById('mu-chat-input');

@@ -33,7 +33,7 @@ func MatchDirectAddress(prompt string) string {
 	if strings.HasPrefix(lower, "@") {
 		parts := strings.Fields(lower)
 		if len(parts) > 0 {
-			id := strings.TrimPrefix(parts[0], "@")
+			id := strings.Trim(strings.TrimPrefix(parts[0], "@"), ` .,:;!?()[]{}<>"'`)
 			if _, ok := Registry[id]; ok {
 				return id
 			}
@@ -98,21 +98,21 @@ func keywordRoute(prompt string) []string {
 
 	// Single-domain keywords
 	routes := map[string][]string{
-		"mail":      {"mail"},
-		"email":     {"mail"},
-		"inbox":     {"mail"},
-		"unread":    {"mail"},
-		"quran":     {"faith"},
-		"hadith":    {"faith"},
-		"reminder":  {"faith"},
-		"surah":     {"faith"},
-		"verse":     {"faith"},
-		"coworking": {"places"},
-		"nearby":    {"places"},
+		"mail":       {"mail"},
+		"email":      {"mail"},
+		"inbox":      {"mail"},
+		"unread":     {"mail"},
+		"quran":      {"faith"},
+		"hadith":     {"faith"},
+		"reminder":   {"faith"},
+		"surah":      {"faith"},
+		"verse":      {"faith"},
+		"coworking":  {"places"},
+		"nearby":     {"places"},
 		"restaurant": {"places"},
-		"cafe":      {"places"},
-		"blog":      {"social"},
-		"post":      {"social"},
+		"cafe":       {"places"},
+		"blog":       {"social"},
+		"post":       {"social"},
 	}
 
 	for keyword, ids := range routes {
@@ -194,11 +194,23 @@ func llmRoute(prompt string) []string {
 		return []string{"micro"}
 	}
 
-	// Validate agent IDs
-	var valid []string
+	return validateAgentIDs(ids)
+}
+
+func validateAgentIDs(ids []string) []string {
+	valid := make([]string, 0, min(len(ids), 3))
+	seen := map[string]bool{}
 	for _, id := range ids {
-		if _, ok := Registry[id]; ok {
-			valid = append(valid, id)
+		if seen[id] {
+			continue
+		}
+		if _, ok := Registry[id]; !ok {
+			continue
+		}
+		seen[id] = true
+		valid = append(valid, id)
+		if len(valid) == 3 {
+			break
 		}
 	}
 	if len(valid) == 0 {

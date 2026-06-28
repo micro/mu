@@ -4,14 +4,19 @@ import (
 	"testing"
 )
 
-func resetFlags() {
+func resetFlags(t *testing.T) {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir())
+
 	mutex.Lock()
 	flags = make(map[string]*FlaggedItem)
+	deleters = make(map[string]ContentDeleter)
+	analyzer = nil
 	mutex.Unlock()
 }
 
 func TestAdd_FirstFlag(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	count, alreadyFlagged, err := Add("post", "123", "alice")
 	if err != nil {
@@ -26,7 +31,7 @@ func TestAdd_FirstFlag(t *testing.T) {
 }
 
 func TestAdd_DuplicateFlag(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	Add("post", "123", "alice")
 	count, alreadyFlagged, err := Add("post", "123", "alice")
@@ -42,7 +47,7 @@ func TestAdd_DuplicateFlag(t *testing.T) {
 }
 
 func TestAdd_ThreeFlags_HidesContent(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	Add("post", "456", "alice")
 	Add("post", "456", "bob")
@@ -58,7 +63,7 @@ func TestAdd_ThreeFlags_HidesContent(t *testing.T) {
 }
 
 func TestGetFlags(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	count, flagged := GetFlags("post", "nonexistent")
 	if count != 0 {
@@ -79,7 +84,7 @@ func TestGetFlags(t *testing.T) {
 }
 
 func TestGetCount(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	if GetCount("post", "nonexistent") != 0 {
 		t.Error("expected 0 for nonexistent")
@@ -93,7 +98,7 @@ func TestGetCount(t *testing.T) {
 }
 
 func TestGetItem(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	if GetItem("post", "nonexistent") != nil {
 		t.Error("expected nil for nonexistent")
@@ -113,7 +118,7 @@ func TestGetItem(t *testing.T) {
 }
 
 func TestGetAll(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	Add("post", "1", "alice")
 	Add("thread", "2", "bob")
@@ -125,7 +130,7 @@ func TestGetAll(t *testing.T) {
 }
 
 func TestApprove(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	Add("post", "approve-me", "alice")
 	Add("post", "approve-me", "bob")
@@ -146,7 +151,7 @@ func TestApprove(t *testing.T) {
 }
 
 func TestIsHidden(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	if IsHidden("post", "none") {
 		t.Error("nonexistent should not be hidden")
@@ -162,7 +167,7 @@ func TestIsHidden(t *testing.T) {
 }
 
 func TestAdminFlag(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	AdminFlag("post", "admin-flag", "admin_user")
 
@@ -182,7 +187,7 @@ func TestAdminFlag(t *testing.T) {
 }
 
 func TestAdminFlag_SameAdminDoesNotDuplicateFlagger(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	AdminFlag("post", "admin-flag", "admin_user")
 	AdminFlag("post", "admin-flag", "admin_user")
@@ -200,7 +205,7 @@ func TestAdminFlag_SameAdminDoesNotDuplicateFlagger(t *testing.T) {
 }
 
 func TestAdminFlag_ExistingItem(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	Add("post", "existing", "alice")
 	AdminFlag("post", "existing", "admin_user")
@@ -227,7 +232,7 @@ func TestContains(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 
 	Add("post", "delete-me", "alice")
 	Delete("post", "delete-me")
@@ -244,9 +249,112 @@ func TestRegisterDeleter(t *testing.T) {
 	}
 }
 
+type stubAnalyzer struct {
+	response string
+	err      error
+}
+
+func (s stubAnalyzer) Analyze(prompt, question string) (string, error) {
+	return s.response, s.err
+}
+
+func TestCheckContent_AutoFlagsSuspiciousContent(t *testing.T) {
+	resetFlags(t)
+	SetAnalyzer(stubAnalyzer{response: " spam "})
+
+	CheckContent("post", "spam-post", "Cheap stuff", "Buy now")
+
+	item := GetItem("post", "spam-post")
+	if item == nil {
+		t.Fatal("expected suspicious content to be flagged")
+	}
+	if !item.Flagged {
+		t.Error("expected suspicious content to be hidden immediately")
+	}
+	if got, want := item.FlagCount, 3; got != want {
+		t.Errorf("expected flag count %d, got %d", want, got)
+	}
+	if got, want := item.FlaggedBy[0], "system:spam (admin)"; got != want {
+		t.Errorf("expected flagger %q, got %q", want, got)
+	}
+}
+
+func TestCheckContent_OKDoesNotFlag(t *testing.T) {
+	resetFlags(t)
+	SetAnalyzer(stubAnalyzer{response: "OK"})
+
+	CheckContent("post", "normal-post", "Daily update", "Working on tests")
+
+	if item := GetItem("post", "normal-post"); item != nil {
+		t.Fatalf("expected OK content to remain unflagged, got %#v", item)
+	}
+}
+
 func TestCheckContent_NilAnalyzer(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 	SetAnalyzer(nil)
 	// Should not panic
 	CheckContent("post", "1", "title", "content")
+}
+
+type recordingDeleter struct {
+	deleted      []string
+	deleteErr    error
+	refreshCount int
+	content      map[string]interface{}
+}
+
+func (d *recordingDeleter) Delete(id string) error {
+	d.deleted = append(d.deleted, id)
+	return d.deleteErr
+}
+
+func (d *recordingDeleter) Get(id string) interface{} {
+	if d.content == nil {
+		return nil
+	}
+	return d.content[id]
+}
+
+func (d *recordingDeleter) RefreshCache() {
+	d.refreshCount++
+}
+
+func TestApprove_RefreshesRegisteredDeleterCache(t *testing.T) {
+	resetFlags(t)
+	deleter := &recordingDeleter{}
+	RegisterDeleter("post", deleter)
+
+	Add("post", "approve-with-deleter", "alice")
+	if err := Approve("post", "approve-with-deleter"); err != nil {
+		t.Fatalf("unexpected approve error: %v", err)
+	}
+
+	if got, want := deleter.refreshCount, 1; got != want {
+		t.Fatalf("expected refresh count %d, got %d", want, got)
+	}
+	if _, ok := GetDeleter("post"); !ok {
+		t.Fatal("expected registered deleter to be available")
+	}
+}
+
+func TestDelete_CallsRegisteredDeleter(t *testing.T) {
+	resetFlags(t)
+	deleter := &recordingDeleter{}
+	RegisterDeleter("post", deleter)
+
+	Add("post", "delete-with-deleter", "alice")
+	if err := Delete("post", "delete-with-deleter"); err != nil {
+		t.Fatalf("unexpected delete error: %v", err)
+	}
+
+	if got, want := len(deleter.deleted), 1; got != want {
+		t.Fatalf("expected %d deleted item, got %d", want, got)
+	}
+	if got, want := deleter.deleted[0], "delete-with-deleter"; got != want {
+		t.Fatalf("expected deleted id %q, got %q", want, got)
+	}
+	if item := GetItem("post", "delete-with-deleter"); item != nil {
+		t.Fatalf("expected flag state to be removed, got %#v", item)
+	}
 }

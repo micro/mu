@@ -6,6 +6,24 @@ import (
 	"testing"
 )
 
+func TestGetTradesHandlesNonPositiveLimit(t *testing.T) {
+	walletMu.Lock()
+	trades = map[string][]*Trade{
+		"acct": {
+			{ID: "oldest"},
+			{ID: "newest"},
+		},
+	}
+	walletMu.Unlock()
+
+	if got := GetTrades("acct", 0); len(got) != 0 {
+		t.Fatalf("GetTrades limit 0 returned %d trades, want 0", len(got))
+	}
+	if got := GetTrades("acct", -1); len(got) != 0 {
+		t.Fatalf("GetTrades negative limit returned %d trades, want 0", len(got))
+	}
+}
+
 func TestParseAmount(t *testing.T) {
 	tests := []struct {
 		amount   string
@@ -16,6 +34,9 @@ func TestParseAmount(t *testing.T) {
 		{"0.5", 18, "500000000000000000"},
 		{"1.23", 6, "1230000"},
 		{"0.000001", 6, "1"},
+		{".5", 6, "500000"},
+		{"1.", 6, "1000000"},
+		{" 2.5 ", 6, "2500000"},
 	}
 	for _, tt := range tests {
 		got, err := ParseAmount(tt.amount, tt.decimals)
@@ -26,6 +47,30 @@ func TestParseAmount(t *testing.T) {
 		if got.String() != tt.want {
 			t.Errorf("ParseAmount(%q, %d) = %s, want %s", tt.amount, tt.decimals, got.String(), tt.want)
 		}
+	}
+}
+
+func TestParseAmountRejectsInvalidAmounts(t *testing.T) {
+	tests := []struct {
+		name     string
+		amount   string
+		decimals int
+	}{
+		{"empty", "", 6},
+		{"just decimal", ".", 6},
+		{"negative", "-1", 6},
+		{"positive sign", "+1", 6},
+		{"invalid fractional", "1.a", 6},
+		{"too many decimal separators", "1.2.3", 6},
+		{"too many fractional digits", "0.0000001", 6},
+		{"negative decimals", "1", -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, err := ParseAmount(tt.amount, tt.decimals); err == nil {
+				t.Fatalf("ParseAmount(%q, %d) = %s, want error", tt.amount, tt.decimals, got)
+			}
+		})
 	}
 }
 

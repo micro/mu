@@ -23,14 +23,14 @@ import (
 // Chain configuration. Defaults to Ethereum mainnet.
 // Set TRADE_CHAIN=base for Base L2.
 type ChainConfig struct {
-	Name      string
-	ChainID   int64
-	RPCURL    string
-	WETH      string
-	USDC      string
-	Router    string
-	Quoter    string
-	Explorer  string
+	Name     string
+	ChainID  int64
+	RPCURL   string
+	WETH     string
+	USDC     string
+	Router   string
+	Quoter   string
+	Explorer string
 }
 
 var chains = map[string]ChainConfig{
@@ -127,21 +127,21 @@ type Wallet struct {
 
 // Trade records a completed or pending swap.
 type Trade struct {
-	ID        string  `json:"id"`
-	Account   string  `json:"account"`
-	FromToken string  `json:"from_token"`
-	ToToken   string  `json:"to_token"`
-	AmountIn  string  `json:"amount_in"`
-	AmountOut string  `json:"amount_out"`
-	TxHash    string  `json:"tx_hash,omitempty"`
-	Status    string  `json:"status"` // pending, confirmed, failed
-	CreatedAt string  `json:"created_at"`
-	GasUsed   string  `json:"gas_used,omitempty"`
+	ID        string `json:"id"`
+	Account   string `json:"account"`
+	FromToken string `json:"from_token"`
+	ToToken   string `json:"to_token"`
+	AmountIn  string `json:"amount_in"`
+	AmountOut string `json:"amount_out"`
+	TxHash    string `json:"tx_hash,omitempty"`
+	Status    string `json:"status"` // pending, confirmed, failed
+	CreatedAt string `json:"created_at"`
+	GasUsed   string `json:"gas_used,omitempty"`
 }
 
 var (
 	walletMu sync.RWMutex
-	wallets  = map[string]*Wallet{} // accountID → wallet
+	wallets  = map[string]*Wallet{}  // accountID → wallet
 	trades   = map[string][]*Trade{} // accountID → trades
 )
 
@@ -227,6 +227,10 @@ func GetTrades(accountID string, limit int) []*Trade {
 	walletMu.RLock()
 	defer walletMu.RUnlock()
 
+	if limit <= 0 {
+		return nil
+	}
+
 	t := trades[accountID]
 	if len(t) <= limit {
 		return t
@@ -247,6 +251,11 @@ func saveTrade(accountID string, t *Trade) {
 // ParseAmount converts a human-readable amount (e.g. "100") to the
 // token's smallest unit based on decimals.
 func ParseAmount(amount string, decimals int) (*big.Int, error) {
+	if decimals < 0 {
+		return nil, errors.New("invalid decimals")
+	}
+
+	amount = strings.TrimSpace(amount)
 	parts := strings.Split(amount, ".")
 	if len(parts) > 2 {
 		return nil, errors.New("invalid amount")
@@ -257,20 +266,38 @@ func ParseAmount(amount string, decimals int) (*big.Int, error) {
 	if len(parts) == 2 {
 		frac = parts[1]
 	}
+	if whole == "" && frac == "" {
+		return nil, errors.New("invalid amount")
+	}
+	if !allDigits(whole) || !allDigits(frac) {
+		return nil, errors.New("invalid number")
+	}
 
 	if len(frac) > decimals {
-		frac = frac[:decimals]
+		return nil, errors.New("too many decimal places")
 	}
 	for len(frac) < decimals {
 		frac += "0"
 	}
 
 	combined := whole + frac
+	if combined == "" {
+		combined = "0"
+	}
 	val, ok := new(big.Int).SetString(combined, 10)
 	if !ok {
 		return nil, errors.New("invalid number")
 	}
 	return val, nil
+}
+
+func allDigits(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // FormatAmount converts a raw token amount to human-readable form.
