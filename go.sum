@@ -324,10 +324,10 @@ github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1/go.mod h1:Ohn+xnUBi
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
-go-micro.dev/v6 v6.3.1 h1:MShcTAFEhrHenLWKA4xcaBR4BaBEXMNaYGFRjzEMJYQ=
-go-micro.dev/v6 v6.3.1/go.mod h1:mcxNW6TGoeD3NV7jzOXKYU9bE2mv5DhEx5yEsX/WDus=
 go-micro.dev/v6 v6.3.2 h1:3bcMg03d4rRILyJER7ki6f51IK152sIXr/j1drj3sKU=
 go-micro.dev/v6 v6.3.2/go.mod h1:mcxNW6TGoeD3NV7jzOXKYU9bE2mv5DhEx5yEsX/WDus=
+go-micro.dev/v6 v6.3.3 h1:lVUZmxFdmhdFzEFKzVjFgAsRcoBQAEiA7YwAUdljKms=
+go-micro.dev/v6 v6.3.3/go.mod h1:mcxNW6TGoeD3NV7jzOXKYU9bE2mv5DhEx5yEsX/WDus=
 go.etcd.io/bbolt v1.4.0 h1:TU77id3TnN/zKr7CO/uk+fBCwF2jGcMuw2B/FMAzYIk=
 go.etcd.io/bbolt v1.4.0/go.mod h1:AsD+OCi/qPN1giOX1aiLAha3o1U8rAz65bvN4j0sRuk=
 go.etcd.io/etcd/api/v3 v3.5.21 h1:A6O2/JDb3tvHhiIz3xf9nJ7REHvtEFJJ3veW3FbCnS8=
