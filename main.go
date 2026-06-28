@@ -996,8 +996,9 @@ func main() {
 			from, _ := args["from"].(string)
 			to, _ := args["to"].(string)
 			amount, _ := args["amount"].(string)
-			q, err := trade.GetQuote(from, to, amount)
-			if err != nil {
+			var q trade.Quote
+			if err := mesh.Call(context.Background(), "trade", "Server.Quote",
+				&trade.QuoteRequest{From: from, To: to, Amount: amount}, &q); err != nil {
 				return "", err
 			}
 			b, _ := json.Marshal(q)
@@ -1016,8 +1017,9 @@ func main() {
 		from, _ := args["from"].(string)
 		to, _ := args["to"].(string)
 		amount, _ := args["amount"].(string)
-		t, err := trade.ExecuteSwap(accountID, from, to, amount)
-		if err != nil {
+		var t trade.Trade
+		if err := mesh.Call(context.Background(), "trade", "Server.Swap",
+			&trade.SwapRequest{AccountID: accountID, From: from, To: to, Amount: amount}, &t); err != nil {
 			return "", err
 		}
 		b, _ := json.Marshal(t)
@@ -1027,8 +1029,9 @@ func main() {
 		Name:        "trade_wallet",
 		Description: "Get your trading wallet address and token balances on Base",
 	}, func(args map[string]any, accountID string) (string, error) {
-		info := trade.GetWalletInfo(accountID)
-		if info == nil {
+		var info trade.WalletInfo
+		if err := mesh.Call(context.Background(), "trade", "Server.Wallet",
+			&trade.WalletRequest{AccountID: accountID}, &info); err != nil {
 			return `{"error":"No trading wallet. Create one at /markets?category=trade"}`, nil
 		}
 		result := map[string]any{"address": info.Address}
