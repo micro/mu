@@ -27,6 +27,7 @@ func Route(prompt string) []string {
 // MatchDirectAddress checks if the user explicitly addresses an agent.
 // e.g. "ask the markets agent about ETH" or "@markets ETH price"
 func MatchDirectAddress(prompt string) string {
+	prompt = strings.TrimSpace(prompt)
 	lower := strings.ToLower(prompt)
 
 	// "@agent" pattern
@@ -57,6 +58,7 @@ func MatchDirectAddress(prompt string) string {
 
 // StripAddress removes the agent address prefix from a prompt.
 func StripAddress(prompt string) string {
+	prompt = strings.TrimSpace(prompt)
 	lower := strings.ToLower(prompt)
 
 	if strings.HasPrefix(lower, "@") {

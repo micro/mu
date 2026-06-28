@@ -22,6 +22,11 @@ func TestRouteDirectAddressAvoidsLLM(t *testing.T) {
 			want:   []string{"markets"},
 		},
 		{
+			name:   "at mention with leading whitespace",
+			prompt: "  @markets what is ETH doing today?",
+			want:   []string{"markets"},
+		},
+		{
 			name:   "ask the agent",
 			prompt: "ask the weather agent about Lisbon tomorrow",
 			want:   []string{"weather"},
@@ -57,6 +62,11 @@ func TestStripAddress(t *testing.T) {
 			name:   "ask agent about",
 			prompt: "ask the weather agent about Lisbon tomorrow",
 			want:   "Lisbon tomorrow",
+		},
+		{
+			name:   "at mention with leading whitespace",
+			prompt: "  @markets what is ETH doing today?",
+			want:   "what is ETH doing today?",
 		},
 		{
 			name:   "use agent",
