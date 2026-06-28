@@ -45,10 +45,9 @@ when go-micro is missing something, fix it upstream (we own it).
 
 ## Remaining (do in order; one increment per commit/merge)
 
-1. **Cleanup** `internal/ai/providers.go`: the native funcs `generateAtlas`,
-   `generateAnthropic`, `generateAnthropicInternal`, `generateLocalOpenAI` are
-   now unused (AI core goes through go-micro). Remove them + any now-dead
-   imports/helpers. Build+test+merge.
+1. ✅ **Cleanup** `internal/ai/providers.go`: removed the now-unused native
+   funcs (`generateAtlas`, `generateAnthropic`, `generateAnthropicInternal`,
+   `readAnthropicStream`, `generateLocalOpenAI`) + dead imports (−353 lines).
 2. **recall** tool (main.go, auth-scoped, calls `recallSearch`): move the search
    into a go-micro service (e.g. `corpus`/`recall`) and route the tool through it.
 3. **apps**: expose the apps/micro-app capabilities (search/read/build) as a
