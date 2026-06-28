@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/mesh"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
@@ -71,6 +72,10 @@ func addMessage(p *Message) {
 }
 
 func Load() {
+	if err := mesh.Register("social", new(Server)); err != nil {
+		app.Log("social", "mesh register failed: %v", err)
+	}
+
 	// Load saved messages (migrate from social_posts.json if needed)
 	b, err := data.LoadFile("social.json")
 	if err != nil {

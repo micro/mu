@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/mesh"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
@@ -131,6 +132,10 @@ func parseTags(input string) string {
 
 // Load initializes the blog package and sets up event subscriptions
 func Load() {
+	if err := mesh.Register("blog", new(Server)); err != nil {
+		app.Log("blog", "mesh register failed: %v", err)
+	}
+
 	// Register tools
 
 	// Load topics from embedded JSON

@@ -736,7 +736,12 @@ func main() {
 		Name:        "social",
 		Description: "Get the latest social posts from the network.",
 		Handle: func(args map[string]any) (string, error) {
-			return social.FeedText(0), nil
+			var rsp social.FeedResponse
+			if err := mesh.Call(context.Background(), "social", "Server.Feed",
+				&social.FeedRequest{}, &rsp); err != nil {
+				return "", err
+			}
+			return rsp.Text, nil
 		},
 	})
 
@@ -745,7 +750,12 @@ func main() {
 		Name:        "video",
 		Description: "Get the latest videos from curated channels.",
 		Handle: func(args map[string]any) (string, error) {
-			return video.LatestText(0), nil
+			var rsp video.LatestResponse
+			if err := mesh.Call(context.Background(), "video", "Server.Latest",
+				&video.LatestRequest{}, &rsp); err != nil {
+				return "", err
+			}
+			return rsp.Text, nil
 		},
 	})
 
@@ -754,7 +764,12 @@ func main() {
 		Name:        "blog_list",
 		Description: "Get recent blog posts (titles, snippets and ids; use blog_read for one in full).",
 		Handle: func(args map[string]any) (string, error) {
-			return blog.RecentText(0), nil
+			var rsp blog.RecentResponse
+			if err := mesh.Call(context.Background(), "blog", "Server.Recent",
+				&blog.RecentRequest{}, &rsp); err != nil {
+				return "", err
+			}
+			return rsp.Text, nil
 		},
 	})
 
