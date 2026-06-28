@@ -864,7 +864,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - quran_search: Semantic search across the Quran, Hadith, and names of Allah (args: {"q":"what does the quran say about patience"})
 - apps_search: Search apps directory (args: {"q":"search term","tag":"productivity"})
 - apps_read: Read details of a specific app (args: {"slug":"app-slug"})
-- apps_build: AI-generate an app from a description (args: {"prompt":"a pomodoro timer with lap counter"})
+- apps_build: build a small app (a tracker, checklist, or counter) from a description (args: {"prompt":"an expense tracker"})
 - apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"})
 - wallet_balance: Check your wallet credit balance (no args)
@@ -1006,12 +1006,6 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	// Send flow_id immediately so the client can recover on disconnect.
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID})
-
-	// If this is a build/create request, use the workspace exec flow
-	if looksLikeExecRequest(req.Prompt) {
-		runWorkspaceFlow(w, r, flow, req.Prompt, model)
-		return
-	}
 
 	// --- Step 1: plan tool calls ---
 	type toolCall struct {

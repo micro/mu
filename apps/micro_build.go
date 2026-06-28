@@ -96,18 +96,8 @@ func handleMicroGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Gate on chat credits — generation makes one LLM call.
-	if QuotaCheck != nil {
-		canProceed, _, qerr := QuotaCheck(r, "chat_query")
-		if !canProceed {
-			msg := "Insufficient credits"
-			if qerr != nil {
-				msg = qerr.Error()
-			}
-			app.Error(w, r, http.StatusPaymentRequired, msg)
-			return
-		}
-	}
+	// Credits for generation are charged by the wallet middleware
+	// (walletOpForPath maps /apps/generate -> app_build).
 
 	description := strings.TrimSpace(r.FormValue("description"))
 	if description == "" {

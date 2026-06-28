@@ -30,15 +30,13 @@ type App struct {
 
 There are several ways to create an app:
 
-**The builder** at `/apps/build` — a split-pane interface with a code editor on the left and live preview on the right. Describe what you want in the prompt bar and AI generates the complete app. Use follow-on prompts to iterate ("add dark mode", "make the timer play a sound"). Or start from a template and customise.
-
-**Templates** — 8 built-in starters: Blank, Timer, Calculator, Tracker, Converter, Flashcards, Notes, and AI Tool. Each comes with Mu's card styling and is ready to customise.
-
-**The web form** at `/apps/new` — paste or write HTML directly.
+**Describe it** at `/apps/new` — type what you want ("an expense tracker", "a packing checklist", "a water intake counter") and Mu builds it. Generation is constrained: the model emits a small spec for one of a few known shapes (tracker, checklist, counter) and a deterministic renderer turns it into a working app. There is no free-form HTML for the model to get wrong.
 
 **The agent** — ask it to build an app and it creates one via MCP (`apps_build` tool). One step: describe it, get a working app with a URL.
 
-**The API** — `POST /apps/new` with JSON.
+**Write the HTML yourself** — `/apps/new` also has a disclosure for pasting or writing HTML directly, and the editor at `/apps/{slug}/edit` lets you hand-edit any app.
+
+**The API** — `POST /apps/new` (manual HTML) or `POST /apps/generate` (describe) with form fields or JSON.
 
 ## Running Apps
 
@@ -153,12 +151,12 @@ Apps ship with 6 built-in seed apps: Timer, Calculator, Unit Converter, Flashcar
 | GET | `/apps` | Browse all public apps (HTML + JSON) |
 | GET | `/apps/{slug}` | View app details |
 | GET | `/apps/{slug}/run` | Run app in sandboxed iframe |
-| POST | `/apps/new` | Create a new app |
+| GET | `/apps/new` | Create form (describe or write HTML) |
+| POST | `/apps/new` | Create a new app from HTML |
+| POST | `/apps/generate` | Build an app from a description |
+| GET | `/apps/{slug}/edit` | Edit an app's HTML |
 | PATCH | `/apps/{slug}` | Update your app |
 | DELETE | `/apps/{slug}` | Delete your app |
-| GET | `/apps/build` | Interactive app builder |
-| POST | `/apps/build/generate` | AI generation endpoint |
-| GET | `/apps/build/templates` | List available templates |
 | POST | `/apps/run` | Create a scratch code execution |
 | GET | `/apps/run?id=xxx` | Run scratch code |
 | GET | `/apps/sdk.js` | SDK JavaScript |
@@ -170,7 +168,7 @@ Five tools for agent integration:
 - **`apps_search`** — Search the apps directory by name, description, or tag
 - **`apps_read`** — Read a specific app's details by slug
 - **`apps_create`** — Create a new app with name, slug, description, tags, and HTML
-- **`apps_build`** — AI-generate an app from a natural language description
+- **`apps_build`** — Build a small app (tracker, checklist, or counter) from a natural language description
 - **`apps_run`** — Run JavaScript code in a sandbox and return the result
 
 ## Security

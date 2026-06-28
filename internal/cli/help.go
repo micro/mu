@@ -50,7 +50,7 @@ EXAMPLES
   mu news | jq '.feed[0]'
   mu news_search --query "bitcoin" --table
   mu blog_create --title "Hi" --content "..."
-  mu apps_build --prompt "a pomodoro timer with lap counter"
+  mu apps_build --prompt "an expense tracker"
 `
 
 // printShortHelp prints the summary help text.

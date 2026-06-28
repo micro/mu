@@ -1710,7 +1710,7 @@ func chargedWriteOp(r *http.Request) string {
 	// Apps
 	case path == "/apps/new":
 		return wallet.OpSocialPost
-	case path == "/apps/build/generate", path == "/apps/framework/generate":
+	case path == "/apps/generate":
 		return wallet.OpAppBuild
 	// Stream (console)
 	case path == "/stream":

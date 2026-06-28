@@ -809,7 +809,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	})
 }
 
-// handleEdit shows the builder pre-populated with the app's data for editing.
+// handleEdit shows the editor pre-populated with the app's data for editing.
 func handleEdit(w http.ResponseWriter, r *http.Request, slug string) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {

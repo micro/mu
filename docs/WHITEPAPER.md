@@ -88,7 +88,7 @@ Mu is implemented as a single Go binary comprising three layers:
 
 **Subsystems** provide infrastructure primitives: HTTP rendering, API dispatch, LLM integration, data storage with full-text search, authentication, and administration.
 
-**Building blocks** are user-facing services. Each building block is a self-contained Go package that uses the subsystem primitives. Current building blocks include news aggregation (RSS with AI summarisation), video (YouTube integration without advertising), web search (via Brave Search API), microblogging (with ActivityPub federation), AI chat, messaging (with SMTP and DKIM), financial markets (cryptocurrency and commodity prices via Coinbase API), weather forecasts, location search, a work board, and an application builder.
+**Building blocks** are user-facing services. Each building block is a self-contained Go package that uses the subsystem primitives. Current building blocks include news aggregation (RSS with AI summarisation), video (YouTube integration without advertising), web search (via Brave Search API), microblogging (with ActivityPub federation), AI chat, messaging (with SMTP and DKIM), financial markets (cryptocurrency and commodity prices via Coinbase API), weather forecasts, location search, a work board, and micro-apps (constrained, spec-driven mini tools).
 
 **Agents** are autonomous processes that compose building blocks. An agent receives a natural language instruction and executes a sequence of tool calls across multiple building blocks to fulfil it. Agents operate through the same MCP interface available to external clients.
 

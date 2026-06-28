@@ -159,7 +159,7 @@ Accounts can top up credits with a card via Stripe.
 | `apps_read` | Read details of a specific app | Included |
 | `apps_create` | Create a new app | Included |
 | `apps_edit` | Edit an existing app | Included |
-| `apps_build` | AI-generate an app from a description | 3 credits |
+| `apps_build` | Build a small app (tracker, checklist, counter) from a description | 3 credits |
 | `apps_run` | Run JavaScript code in a sandbox | 3 credits |
 | `agent` | Ask the AI agent a question — searches news, markets, web, and more | 3 credits |
 | `stream` | Read the public event stream — system events, user posts, agent responses | Included |

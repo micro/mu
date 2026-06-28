@@ -189,7 +189,7 @@ mu weather_forecast --lat 51.52 --lon -0.10
 ### Build an app from a prompt
 
 ```bash
-mu apps_build --prompt "a pomodoro timer with lap counter"
+mu apps_build --prompt "an expense tracker"
 # → returns slug + URL you can open in a browser
 ```
 
