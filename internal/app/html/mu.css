@@ -832,7 +832,7 @@ body.page-home #page-title ~ #customize-link {
 .home-left .card .headline,
 .home-right .card .headline,
 #mu-chat .card .headline,
-#mu-brief .card .headline {
+#mu-overview .card .headline {
   border: none;
   border-bottom: 1px solid var(--border-color, #f0f0f0);
   border-radius: 0;
@@ -844,7 +844,7 @@ body.page-home #page-title ~ #customize-link {
 .home-left .card .headline:last-of-type,
 .home-right .card .headline:last-of-type,
 #mu-chat .card .headline:last-of-type,
-#mu-brief .card .headline:last-of-type {
+#mu-overview .card .headline:last-of-type {
   border-bottom: none;
   padding-bottom: 0;
 }
@@ -852,7 +852,7 @@ body.page-home #page-title ~ #customize-link {
 .home-left .card .headline:first-of-type,
 .home-right .card .headline:first-of-type,
 #mu-chat .card .headline:first-of-type,
-#mu-brief .card .headline:first-of-type {
+#mu-overview .card .headline:first-of-type {
   padding-top: 0;
 }
 
@@ -865,9 +865,9 @@ body.page-home #page-title ~ #customize-link {
 #mu-chat .card .item,
 #mu-chat .card .post-item,
 #mu-chat .card .thumbnail,
-#mu-brief .card .item,
-#mu-brief .card .post-item,
-#mu-brief .card .thumbnail {
+#mu-overview .card .item,
+#mu-overview .card .post-item,
+#mu-overview .card .thumbnail {
   border: none;
   padding: 0;
   background: transparent;
