@@ -22,6 +22,11 @@ func TestRouteDirectAddressAvoidsLLM(t *testing.T) {
 			want:   []string{"markets"},
 		},
 		{
+			name:   "at mention with leading whitespace",
+			prompt: "  @markets what is ETH doing today?",
+			want:   []string{"markets"},
+		},
+		{
 			name:   "ask the agent",
 			prompt: "ask the weather agent about Lisbon tomorrow",
 			want:   []string{"weather"},
@@ -57,6 +62,11 @@ func TestStripAddress(t *testing.T) {
 			name:   "ask agent about",
 			prompt: "ask the weather agent about Lisbon tomorrow",
 			want:   "Lisbon tomorrow",
+		},
+		{
+			name:   "at mention with leading whitespace",
+			prompt: "  @markets what is ETH doing today?",
+			want:   "what is ETH doing today?",
 		},
 		{
 			name:   "use agent",
@@ -116,5 +126,16 @@ func TestValidateAgentIDsFallsBackToMicro(t *testing.T) {
 	want := []string{"micro"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("validateAgentIDs() = %v, want %v", got, want)
+	}
+}
+
+func TestKeywordRouteSingleDomainPriorityIsDeterministic(t *testing.T) {
+	prompt := "summarize unread email about the team lunch restaurant"
+	want := []string{"mail"}
+
+	for i := 0; i < 100; i++ {
+		if got := keywordRoute(prompt); !reflect.DeepEqual(got, want) {
+			t.Fatalf("keywordRoute() iteration %d = %v, want %v", i, got, want)
+		}
 	}
 }

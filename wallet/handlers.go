@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"strings"
 
@@ -506,8 +507,8 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg := fmt.Sprintf("Transferred+%d+credits+to+%s", amount, recipient.Name)
-	http.Redirect(w, r, "/wallet/transfer?success="+msg, http.StatusSeeOther)
+	msg := fmt.Sprintf("Transferred %d credits to %s", amount, recipient.Name)
+	http.Redirect(w, r, "/wallet/transfer?success="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }
 
 func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
@@ -515,7 +516,7 @@ func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
 		app.RespondJSON(w, map[string]string{"error": msg})
 		return
 	}
-	http.Redirect(w, r, "/wallet/transfer?error="+strings.ReplaceAll(msg, " ", "+"), http.StatusSeeOther)
+	http.Redirect(w, r, "/wallet/transfer?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }
 
 // maxTopupPounds is the maximum allowed top-up amount in whole pounds
@@ -572,7 +573,7 @@ func handleStripeSubscribe(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		app.Log("stripe", "subscribe error: %v", err)
-		http.Redirect(w, r, "/wallet/topup?error="+err.Error(), http.StatusSeeOther)
+		http.Redirect(w, r, "/wallet/topup?error="+neturl.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, url, http.StatusSeeOther)
@@ -690,9 +691,9 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	if app.WantsJSON(r) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"currency":        "GBP",
-			"credit_value":    "£0.01",
-			"operations": items,
+			"currency":     "GBP",
+			"credit_value": "£0.01",
+			"operations":   items,
 		})
 		return
 	}

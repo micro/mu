@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -209,7 +210,6 @@ async function createToken(e) {
 	w.Write([]byte(html))
 }
 
-
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {
 	tokens := auth.ListTokens(accountID)
 
@@ -241,6 +241,42 @@ func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID stri
 	})
 }
 
+func parseTokenPermissions(permStr string) []string {
+	if permStr == "" {
+		return nil
+	}
+
+	parts := strings.Split(permStr, ",")
+	permissions := make([]string, 0, len(parts))
+	for _, part := range parts {
+		perm := strings.TrimSpace(part)
+		if perm != "" {
+			permissions = append(permissions, perm)
+		}
+	}
+	return permissions
+}
+
+func parseTokenExpiresIn(exp string) int {
+	exp = strings.TrimSpace(exp)
+	if exp == "" {
+		return 0
+	}
+
+	if days, err := strconv.Atoi(exp); err == nil {
+		if days > 0 {
+			return days
+		}
+		return 0
+	}
+
+	if _, err := time.Parse("2006-01-02", exp); err == nil {
+		return 365
+	}
+
+	return 0
+}
+
 func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string) {
 	var name string
 	var permissions []string
@@ -265,21 +301,8 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 			return
 		}
 		name = strings.TrimSpace(r.FormValue("name"))
-		permStr := r.FormValue("permissions")
-		if permStr != "" {
-			permissions = strings.Split(permStr, ",")
-			for i := range permissions {
-				permissions[i] = strings.TrimSpace(permissions[i])
-			}
-		}
-		// Parse expires_in from form
-		if exp := r.FormValue("expires_in"); exp != "" {
-			var err error
-			_, err = time.Parse("2006-01-02", exp)
-			if err == nil {
-				expiresIn = 365 // Default to 1 year if date format provided
-			}
-		}
+		permissions = parseTokenPermissions(r.FormValue("permissions"))
+		expiresIn = parseTokenExpiresIn(r.FormValue("expires_in"))
 	}
 
 	// Validate

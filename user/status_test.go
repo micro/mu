@@ -229,3 +229,41 @@ func TestUpdateProfile_AlwaysAppendsHistory(t *testing.T) {
 		t.Errorf("after third update, history = %+v, want ['world', 'hello']", p3.History)
 	}
 }
+
+func TestStatusCountSince_IgnoresExpiredEntries(t *testing.T) {
+	profileMutex.Lock()
+	saved := profiles
+	profiles = map[string]*Profile{}
+	profileMutex.Unlock()
+	t.Cleanup(func() {
+		profileMutex.Lock()
+		profiles = saved
+		profileMutex.Unlock()
+	})
+
+	now := time.Now()
+	expired := now.Add(-statusMaxAge - time.Hour)
+	profileMutex.Lock()
+	profiles["alice"] = &Profile{
+		UserID:    "alice",
+		Status:    "expired current",
+		UpdatedAt: expired,
+		History: []StatusHistory{
+			{Status: "expired history", SetAt: expired.Add(-time.Minute)},
+		},
+	}
+	profiles["bob"] = &Profile{
+		UserID:    "bob",
+		Status:    "fresh current",
+		UpdatedAt: now,
+		History: []StatusHistory{
+			{Status: "fresh history", SetAt: now.Add(-time.Minute)},
+		},
+	}
+	profileMutex.Unlock()
+
+	count := StatusCountSince(now.Add(-2*statusMaxAge), "")
+	if count != 2 {
+		t.Fatalf("StatusCountSince counted %d entries, want only the 2 fresh entries", count)
+	}
+}
