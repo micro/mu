@@ -1,7 +1,14 @@
 package apps
 
 import (
+	"regexp"
 	"strings"
+)
+
+var (
+	externalRedirectRe = regexp.MustCompile(`(?i)window\.location(?:\.href)?\s*=\s*['\"]https?://`)
+	externalScriptRe   = regexp.MustCompile(`(?i)<script\b[^>]*\bsrc\s*=\s*['\"]https?://`)
+	evalCallRe         = regexp.MustCompile(`(?i)\beval\s*\(`)
 )
 
 // ScanApp checks app HTML for security issues before saving.
@@ -16,28 +23,22 @@ func ScanApp(html string) []string {
 	}
 
 	// Block credential harvesting
-	if strings.Contains(html, "XMLHttpRequest") && (strings.Contains(lower, "password") || strings.Contains(lower, "credential")) {
+	if strings.Contains(lower, "xmlhttprequest") && (strings.Contains(lower, "password") || strings.Contains(lower, "credential")) {
 		issues = append(issues, "Suspicious credential harvesting pattern")
 	}
 
-	// Block redirecting to external sites for phishing
-	if strings.Contains(lower, "window.location") && strings.Contains(html, "http") {
-		// Allow relative redirects, block absolute
-		for _, pattern := range []string{"window.location='http", `window.location="http`, "window.location.href='http", `window.location.href="http`} {
-			if strings.Contains(lower, pattern) {
-				issues = append(issues, "Redirecting to external URLs is not allowed")
-				break
-			}
-		}
+	// Block redirecting to external sites for phishing.
+	if externalRedirectRe.MatchString(html) {
+		issues = append(issues, "Redirecting to external URLs is not allowed")
 	}
 
-	// Block loading external scripts
-	if strings.Contains(lower, `<script src="http`) || strings.Contains(lower, `<script src='http`) {
+	// Block loading external scripts.
+	if externalScriptRe.MatchString(html) {
 		issues = append(issues, "Loading external scripts is not allowed")
 	}
 
-	// Block eval with string concatenation (code injection)
-	if strings.Contains(html, "eval(") && !strings.Contains(html, "// safe-eval") {
+	// Block eval with string concatenation (code injection).
+	if evalCallRe.MatchString(html) && !strings.Contains(lower, "// safe-eval") {
 		issues = append(issues, "eval() is not allowed")
 	}
 
