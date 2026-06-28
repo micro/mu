@@ -296,3 +296,65 @@ func TestCheckContent_NilAnalyzer(t *testing.T) {
 	// Should not panic
 	CheckContent("post", "1", "title", "content")
 }
+
+type recordingDeleter struct {
+	deleted      []string
+	deleteErr    error
+	refreshCount int
+	content      map[string]interface{}
+}
+
+func (d *recordingDeleter) Delete(id string) error {
+	d.deleted = append(d.deleted, id)
+	return d.deleteErr
+}
+
+func (d *recordingDeleter) Get(id string) interface{} {
+	if d.content == nil {
+		return nil
+	}
+	return d.content[id]
+}
+
+func (d *recordingDeleter) RefreshCache() {
+	d.refreshCount++
+}
+
+func TestApprove_RefreshesRegisteredDeleterCache(t *testing.T) {
+	resetFlags(t)
+	deleter := &recordingDeleter{}
+	RegisterDeleter("post", deleter)
+
+	Add("post", "approve-with-deleter", "alice")
+	if err := Approve("post", "approve-with-deleter"); err != nil {
+		t.Fatalf("unexpected approve error: %v", err)
+	}
+
+	if got, want := deleter.refreshCount, 1; got != want {
+		t.Fatalf("expected refresh count %d, got %d", want, got)
+	}
+	if _, ok := GetDeleter("post"); !ok {
+		t.Fatal("expected registered deleter to be available")
+	}
+}
+
+func TestDelete_CallsRegisteredDeleter(t *testing.T) {
+	resetFlags(t)
+	deleter := &recordingDeleter{}
+	RegisterDeleter("post", deleter)
+
+	Add("post", "delete-with-deleter", "alice")
+	if err := Delete("post", "delete-with-deleter"); err != nil {
+		t.Fatalf("unexpected delete error: %v", err)
+	}
+
+	if got, want := len(deleter.deleted), 1; got != want {
+		t.Fatalf("expected %d deleted item, got %d", want, got)
+	}
+	if got, want := deleter.deleted[0], "delete-with-deleter"; got != want {
+		t.Fatalf("expected deleted id %q, got %q", want, got)
+	}
+	if item := GetItem("post", "delete-with-deleter"); item != nil {
+		t.Fatalf("expected flag state to be removed, got %#v", item)
+	}
+}
