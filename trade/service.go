@@ -59,3 +59,27 @@ func (Server) Wallet(_ context.Context, req *WalletRequest, rsp *WalletInfo) err
 	*rsp = *info
 	return nil
 }
+
+// StrategyRequest creates an automated trading strategy.
+type StrategyRequest struct {
+	AccountID   string `json:"account_id" description:"Account that owns the strategy"`
+	Description string `json:"description" description:"Strategy in plain English"`
+	Mode        string `json:"mode" description:"alert, confirm or auto"`
+	MaxPerTrade string `json:"max_per_trade" description:"Maximum USDC per trade"`
+	MaxPerWeek  string `json:"max_per_week" description:"Maximum USDC per week"`
+}
+
+// Strategy creates an automated trading strategy that the system evaluates on a
+// schedule and acts on when conditions are met.
+func (Server) Strategy(_ context.Context, req *StrategyRequest, rsp *Strategy) error {
+	mode := ExecutionMode(req.Mode)
+	if mode == "" {
+		mode = ModeAlert
+	}
+	s, err := CreateStrategy(req.AccountID, req.Description, mode, req.MaxPerTrade, req.MaxPerWeek)
+	if err != nil {
+		return err
+	}
+	*rsp = *s
+	return nil
+}

@@ -1058,8 +1058,9 @@ func main() {
 		}
 		maxTrade, _ := args["max_per_trade"].(string)
 		maxWeek, _ := args["max_per_week"].(string)
-		s, err := trade.CreateStrategy(accountID, desc, trade.ExecutionMode(mode), maxTrade, maxWeek)
-		if err != nil {
+		var s trade.Strategy
+		if err := mesh.Call(context.Background(), "trade", "Server.Strategy",
+			&trade.StrategyRequest{AccountID: accountID, Description: desc, Mode: mode, MaxPerTrade: maxTrade, MaxPerWeek: maxWeek}, &s); err != nil {
 			return "", err
 		}
 		b, _ := json.Marshal(s)
