@@ -21,9 +21,9 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#749 First-run experience.](https://github.com/micro/mu/issues/749)** A new visitor understands what Mu is and gets value
-   from one prompt without an account — tighten the guest landing, suggestions,
-   and the sign-up moment (when the free limit is hit) for clarity, not friction.
+1. **[#763 Complete agent answers after tool calls.](https://github.com/micro/mu/issues/763)** The core ask → answer loop returns
+   a complete, useful answer for multi-tool prompts (markets/news/search) or a
+   clear unavailable-state — never just progress narration like “let me pull data.”
 2. **[#750 Answer formatting quality.](https://github.com/micro/mu/issues/750)** Rendered answers (news, markets, weather) look
    right everywhere they appear — web (guest + signed-in), Discord, Telegram —
    with consistent spacing, headings, and links.
