@@ -21,9 +21,10 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#763 Complete agent answers after tool calls.](https://github.com/micro/mu/issues/763)** The core ask → answer loop returns
+1. **[#768 Fix live multi-tool answers that stop after progress narration.](https://github.com/micro/mu/issues/768)** The live core ask → answer loop returns
    a complete, useful answer for multi-tool prompts (markets/news/search) or a
-   clear unavailable-state — never just progress narration like “let me pull data.”
+   clear unavailable-state for any unavailable slice — never just progress
+   narration like “let me pull data.”
 2. **[#750 Answer formatting quality.](https://github.com/micro/mu/issues/750)** Rendered answers (news, markets, weather) look
    right everywhere they appear — web (guest + signed-in), Discord, Telegram —
    with consistent spacing, headings, and links.
