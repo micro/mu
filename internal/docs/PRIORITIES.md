@@ -21,8 +21,7 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#773 Produce complete synthesized answers from successful tool calls.](https://github.com/micro/mu/issues/773)** When the live agent successfully calls tools for a prompt, it synthesizes a useful final answer from those results instead of returning the generic incomplete-answer fallback; unavailable slices are named clearly.
-2. **[#750 Normalize answer formatting across web and chat clients.](https://github.com/micro/mu/issues/750)** Rendered answers (news, markets, weather, search) look right everywhere they appear — guest web, signed-in web, Discord, Telegram — with consistent spacing, headings, links, and readable list/table fallbacks.
+1. **[#750 Normalize answer formatting across web and chat clients.](https://github.com/micro/mu/issues/750)** Rendered answers (news, markets, weather, search) look right everywhere they appear — guest web, signed-in web, Discord, Telegram — with consistent spacing, headings, links, and readable list/table fallbacks.
 
 ### Already shipped (do not re-queue)
 
