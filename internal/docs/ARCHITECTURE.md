@@ -38,6 +38,35 @@ cached with a TTL). We keep that. Two distinct planes:
   (updated by a broker subscription) — a memory read, same cost as today. No
   per-render RPC fan-out.
 
+## Durability (no external infrastructure)
+
+The shared store (`service.Store()`) is the **file store** — bbolt under
+`~/.mu/store` — not memory. So data written through it survives a restart with no
+infrastructure to run. Today that means the card **snapshots persist**: on boot
+`snapshot.New` primes the mirror from the store, so cards are warm immediately
+instead of blank until the first refresh. If the file store can't open, snapshots
+fall back to locally-generated HTML (no regression).
+
+**Events** are different: the memory **broker** is ephemeral (anything in flight
+at restart is lost). go-micro's **`events`** package is the durable answer —
+store-backed `Publish`/`Consume` with replay-by-offset — but its `NewStream`
+hardcoded an in-memory store. We fixed that upstream (**go-micro v6.3.9**:
+`events.WithStore`), so an events stream can now be backed by the file store and
+replay across restarts. Adopting it for `internal/event` is the **next step**, and
+it is a deliberate one because:
+- The events stream's delivery differs from the broker (async, per-event
+  goroutines, unbuffered) — the current channel-based API and its timing-
+  sensitive tests need adapting.
+- Without per-consumer acks (our consumers are fire-and-forget), "process only
+  the *unprocessed* events" needs either a retention/replay-window policy
+  (idempotent re-delivery) or an ack-delete queue. A decision, not a default.
+- In practice the exposure is small: mu's events are idempotent regeneration
+  triggers that the hourly background loops re-derive anyway, so a lost in-flight
+  event self-heals on the next pass.
+
+Plan: back `internal/event` with `events.NewStream(events.WithStore(fileStore))`,
+replay a bounded recent window on startup, prune by age. Tracked, not auto-merged.
+
 ### Query plane (actions) — live, agent-routed
 - Real queries — news search, video search, weather-for-a-location, "ask Mu" —
   are dispatched live. Today they go through `service.Call`; the direction is to

@@ -76,8 +76,20 @@ func Init() {
 		client.Selector(selector.NewSelector(selector.Registry(reg))),
 		client.Broker(br),
 	)
-	st = store.NewMemoryStore()
+	st = newDurableStore()
 	inited = true
+}
+
+// newDurableStore returns a file-backed store (bbolt under ~/.mu/store) so data
+// written through the shared store — snapshots today, durable events next —
+// survives a restart with no external infrastructure. Falls back to an
+// in-memory store if the directory can't be created.
+func newDurableStore() store.Store {
+	dir := os.ExpandEnv("$HOME/.mu/store")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return store.NewMemoryStore()
+	}
+	return store.NewFileStore(store.DirOption(dir))
 }
 
 func ensure() {
