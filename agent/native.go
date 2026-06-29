@@ -15,12 +15,17 @@ import (
 	"mu/internal/settings"
 )
 
-// nativeEnabled reports whether the native go-micro agent path is on. When off,
-// QueryWithOpts uses the hand-rolled plan/execute/synthesize pipeline. This
-// keeps the change reversible while we confirm parity.
+// nativeEnabled reports whether the native go-micro agent path is on. mu is an
+// agent platform, so the go-micro agent is the default. Set AGENT_NATIVE to a
+// falsey value (off/false/0/no) to fall back to the hand-rolled
+// plan/execute/synthesize pipeline. If no LLM provider is configured the native
+// path no-ops and the hand-rolled path runs regardless.
 func nativeEnabled() bool {
-	v := strings.ToLower(strings.TrimSpace(settings.Get("AGENT_NATIVE")))
-	return v == "1" || v == "true" || v == "on" || v == "yes"
+	switch strings.ToLower(strings.TrimSpace(settings.Get("AGENT_NATIVE"))) {
+	case "off", "false", "0", "no":
+		return false
+	}
+	return true
 }
 
 // nativeServices are the registered go-micro domain services the native agent

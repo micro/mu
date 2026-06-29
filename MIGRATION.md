@@ -79,10 +79,14 @@ or improve test coverage; never break `main`.
      is injected into account-scoped tool calls via a `WrapTool` middleware, so
      recall/trade stay correctly scoped. User context + history + guest service
      filtering preserved. Default OFF = no regression. Live-verified end to end.
-   - TODO **[SUPERVISED]**: enable `AGENT_NATIVE` (via /admin/env), compare
-     answers/latency vs the hand-rolled path across query types (weather, news,
-     prices, recall, guest), tune the system prompt to parity, then flip the
-     default and retire the hand-rolled planner + (eventually) `agent/micro`.
+   - ✅ **Default on.** The go-micro agent is now the default for the catch-all
+     path (it's an agent platform). `AGENT_NATIVE=off` opts out. If no LLM
+     provider is configured, or a native run errors, it falls through to the
+     hand-rolled pipeline so a query never hard-fails.
+   - TODO: validate answer quality/latency vs the hand-rolled path on real
+     traffic and tune the system prompt; then retire the hand-rolled planner +
+     (eventually) `agent/micro`. web_fetch and apps_search/read aren't services
+     yet, so the native agent can't reach them — convert or expose as needed.
    - NOTE confirmed go-micro handler rules: the handler type AND its method
      request/response types must be exported, or rpc.Register rejects them.
 5. ◑ **MCP gateway** **[NEEDS SUPERVISION for the swap]**: changing `/mcp` is an
