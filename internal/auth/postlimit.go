@@ -183,6 +183,7 @@ func SetAccountEmail(accountID, email string) error {
 	}
 	acc.Email = email
 	acc.EmailVerified = false
+	acc.EmailVerifiedAt = time.Time{}
 	return saveAccountsUnlocked()
 }
 

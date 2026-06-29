@@ -100,6 +100,23 @@ func TestValidCSRFValidatesHeaderAndFormTokens(t *testing.T) {
 	}
 }
 
+func TestSetCSRFCookieUsesSecureForDirectTLS(t *testing.T) {
+	_, sess := resetCSRFTestState(t)
+	req := httptest.NewRequest(http.MethodPost, "https://example.com/", nil)
+	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	rec := httptest.NewRecorder()
+
+	SetCSRFCookie(rec, req)
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("SetCSRFCookie wrote %d cookies, want 1", len(cookies))
+	}
+	if !cookies[0].Secure {
+		t.Fatal("SetCSRFCookie did not mark cookie secure for direct TLS")
+	}
+}
+
 func TestSetCSRFCookieUsesSecureForwardedProto(t *testing.T) {
 	_, sess := resetCSRFTestState(t)
 	req := requestWithSession(t, sess)

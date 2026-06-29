@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"mu/internal/ai"
 )
@@ -123,19 +125,19 @@ func keywordRoute(prompt string) []string {
 	}
 
 	for _, route := range routes {
-		if strings.Contains(lower, route.keyword) {
+		if containsRouteTerm(lower, route.keyword) {
 			return route.ids
 		}
 	}
 
 	// Multi-signal detection
-	hasWeather := strings.Contains(lower, "weather") || strings.Contains(lower, "forecast") || strings.Contains(lower, "temperature")
-	hasNews := strings.Contains(lower, "news") || strings.Contains(lower, "headline") || strings.Contains(lower, "happening")
-	hasMarkets := strings.Contains(lower, "price") || strings.Contains(lower, "market") || strings.Contains(lower, "btc") || strings.Contains(lower, "eth") || strings.Contains(lower, "crypto")
-	hasTrade := strings.Contains(lower, "swap") || strings.Contains(lower, "trade") || strings.Contains(lower, "buy") || strings.Contains(lower, "sell") || strings.Contains(lower, "strategy")
-	hasVideo := strings.Contains(lower, "video") || strings.Contains(lower, "watch") || strings.Contains(lower, "youtube")
-	hasSearch := strings.Contains(lower, "search") || strings.Contains(lower, "look up") || strings.Contains(lower, "find out")
-	hasApps := strings.Contains(lower, "build me") || strings.Contains(lower, "build an app") || strings.Contains(lower, "create an app")
+	hasWeather := containsAnyRouteTerm(lower, "weather", "forecast", "temperature")
+	hasNews := containsAnyRouteTerm(lower, "news", "headline", "happening")
+	hasMarkets := containsAnyRouteTerm(lower, "price", "market", "btc", "eth", "crypto")
+	hasTrade := containsAnyRouteTerm(lower, "swap", "trade", "buy", "sell", "strategy")
+	hasVideo := containsAnyRouteTerm(lower, "video", "watch", "youtube")
+	hasSearch := containsAnyRouteTerm(lower, "search", "look up", "find out")
+	hasApps := containsAnyRouteTerm(lower, "build me", "build an app", "create an app")
 
 	var ids []string
 	if hasWeather {
@@ -164,6 +166,51 @@ func keywordRoute(prompt string) []string {
 		ids = ids[:3]
 	}
 	return ids
+}
+
+func containsAnyRouteTerm(prompt string, terms ...string) bool {
+	for _, term := range terms {
+		if containsRouteTerm(prompt, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsRouteTerm(prompt, term string) bool {
+	if term == "" {
+		return false
+	}
+
+	start := 0
+	for {
+		idx := strings.Index(prompt[start:], term)
+		if idx == -1 {
+			return false
+		}
+		idx += start
+		end := idx + len(term)
+		if isRouteStartBoundary(prompt, idx) && isRouteEndBoundary(prompt, end) {
+			return true
+		}
+		start = idx + 1
+	}
+}
+
+func isRouteStartBoundary(s string, idx int) bool {
+	if idx <= 0 {
+		return true
+	}
+	r, _ := utf8.DecodeLastRuneInString(s[:idx])
+	return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+}
+
+func isRouteEndBoundary(s string, idx int) bool {
+	if idx >= len(s) {
+		return true
+	}
+	r, _ := utf8.DecodeRuneInString(s[idx:])
+	return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 }
 
 // llmRoute uses the background model to classify the query.
