@@ -308,12 +308,13 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav-search">
-          <form action="/" method="GET" id="nav-assist-form">
+          <form action="/agent" method="GET" id="nav-assist-form">
             <input type="text" name="q" placeholder="Talk to Micro..." aria-label="Ask Micro" id="nav-assist-input">
           </form>
         </div>
         <div id="nav">
-          <a href="/"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
+          <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
+          <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
           <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
           <a id="nav-mail" href="/mail"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>

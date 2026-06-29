@@ -1301,15 +1301,15 @@ func main() {
 
 	// serve fact-check page and API
 
-	// The home is /, the canonical root. /home is a legacy alias that
-	// permanently redirects there (preserving the query so ?mode=display etc.
-	// still work). The dashboard itself is served by home.Handler at /.
+	// The dashboard lives at the named URL /home, consistent with every other
+	// section (/news, /mail, /agent …). The root / redirects logged-in users
+	// here; guests at /home fall back to the landing page.
 	http.HandleFunc("/home", func(w http.ResponseWriter, r *http.Request) {
-		target := "/"
-		if r.URL.RawQuery != "" {
-			target += "?" + r.URL.RawQuery
+		if _, acc := auth.TrySession(r); acc != nil {
+			home.Handler(w, r)
+		} else {
+			home.LandingHandler(w, r)
 		}
-		http.Redirect(w, r, target, http.StatusMovedPermanently)
 	})
 	http.HandleFunc("/home/summary", home.SummaryHandler)
 	home.StartSummaryLoop()
@@ -1551,14 +1551,14 @@ func main() {
 					}
 				} else if r.URL.Path == "/" {
 					if _, acc := auth.TrySession(r); acc != nil {
-						// The home is the dashboard; a query (?q= / ?prompt=) opens
-						// the unified chat surface (/agent) so there is one AI view
-						// with sessions, not a separate inline one.
+						// Every section has a named URL: the dashboard is /home and a
+						// query goes to the agent (/agent). The root just funnels
+						// logged-in users to the right named place.
 						q := r.URL.Query()
 						if q.Get("q") != "" || q.Get("prompt") != "" {
 							http.Redirect(w, r, "/agent?"+r.URL.RawQuery, http.StatusFound)
 						} else {
-							home.Handler(w, r)
+							http.Redirect(w, r, "/home", http.StatusFound)
 						}
 					} else {
 						home.LandingHandler(w, r)

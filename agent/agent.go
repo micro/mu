@@ -339,7 +339,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'','/agent');})()</script>`
 	}
 
-	html := app.RenderHTMLForRequest("Chat", "Chat with Mu — news, mail, markets, weather, search and more", content, r)
+	html := app.RenderHTMLForRequest("Agent", "Ask the Mu agent — news, mail, markets, weather, search and more, with tools", content, r)
 	w.Write([]byte(html))
 }
 
@@ -380,9 +380,12 @@ func renderSessionsRail(accountID, currentID string) string {
 }
 
 const chatLayoutCSS = `<style>
-.chat-layout{display:flex;gap:24px;align-items:flex-start;max-width:1040px;margin:0 auto}
+.chat-layout{display:flex;gap:24px;align-items:flex-start}
 .chat-rail{width:240px;flex-shrink:0}
 .chat-main{flex:1;min-width:0}
+/* The conversation fills the main pane here (the 760px readability cap only
+   applies to the chat embedded on the landing/home page). */
+.chat-main #mu-chat{max-width:none}
 .chat-new{width:100%;padding:9px 12px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
 .chat-sess-list{display:flex;flex-direction:column;gap:2px}
 .chat-sess{display:block;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
