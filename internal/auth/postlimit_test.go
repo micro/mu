@@ -108,3 +108,35 @@ func TestConsumeEmailVerificationTokenRejectsExpiredToken(t *testing.T) {
 		t.Fatalf("ConsumeEmailVerificationToken expired token = %v, want expired error", err)
 	}
 }
+
+func TestSetAccountEmailClearsVerificationState(t *testing.T) {
+	resetPostLimitStateForTest(t)
+
+	verifiedAt := time.Now().Add(-time.Hour)
+	mutex.Lock()
+	accounts["acct-1"] = &Account{
+		ID:              "acct-1",
+		Created:         time.Now(),
+		Email:           "old@example.com",
+		EmailVerified:   true,
+		EmailVerifiedAt: verifiedAt,
+	}
+	mutex.Unlock()
+
+	if err := SetAccountEmail("acct-1", "new@example.com"); err != nil {
+		t.Fatalf("SetAccountEmail returned error: %v", err)
+	}
+
+	mutex.Lock()
+	acc := accounts["acct-1"]
+	mutex.Unlock()
+	if acc.Email != "new@example.com" {
+		t.Fatalf("SetAccountEmail email = %q, want new@example.com", acc.Email)
+	}
+	if acc.EmailVerified {
+		t.Fatal("SetAccountEmail left EmailVerified true")
+	}
+	if !acc.EmailVerifiedAt.IsZero() {
+		t.Fatalf("SetAccountEmail EmailVerifiedAt = %v, want zero time", acc.EmailVerifiedAt)
+	}
+}
