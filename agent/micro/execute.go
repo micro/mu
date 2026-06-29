@@ -30,7 +30,7 @@ func (a *Agent) Execute(accountID, prompt string, public bool) (string, error) {
 	app.Log("micro", "Agent %s handling: %.80s", a.ID, prompt)
 
 	// Build tool list description for planning
-	toolsDesc := a.buildToolsDesc()
+	toolsDesc := a.buildToolsDesc(public)
 
 	// User context (skip for public/guest queries)
 	userCtx := ""
@@ -87,6 +87,9 @@ func (a *Agent) Execute(accountID, prompt string, public bool) (string, error) {
 		if !a.hasTool(tc.Tool) {
 			continue
 		}
+		if public && !isGuestAllowedTool(tc.Tool) {
+			continue
+		}
 		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
 			continue
@@ -126,16 +129,14 @@ func (a *Agent) Execute(accountID, prompt string, public bool) (string, error) {
 	return app.StripLatexDollars(answer), nil
 }
 
-func (a *Agent) buildToolsDesc() string {
+func (a *Agent) buildToolsDesc(public bool) string {
 	// All tools descriptions from the MCP registry
 	allDescs := api.ToolDescriptions()
-	if a.Tools == nil {
-		return allDescs // "micro" agent gets everything
-	}
-
 	allowed := map[string]bool{}
-	for _, t := range a.Tools {
-		allowed[t] = true
+	if a.Tools != nil {
+		for _, t := range a.Tools {
+			allowed[t] = true
+		}
 	}
 
 	var sb strings.Builder
@@ -152,11 +153,47 @@ func (a *Agent) buildToolsDesc() string {
 			continue
 		}
 		name := strings.TrimSpace(rest[:colonIdx])
-		if allowed[name] {
-			sb.WriteString(line + "\n")
+		if a.Tools != nil && !allowed[name] {
+			continue
 		}
+		if public && !isGuestAllowedTool(name) {
+			continue
+		}
+		sb.WriteString(line + "\n")
 	}
 	return sb.String()
+}
+
+var guestAllowedTools = map[string]bool{
+	"news":             true,
+	"news_headlines":   true,
+	"news_read":        true,
+	"news_search":      true,
+	"recall":           true,
+	"markets":          true,
+	"weather_forecast": true,
+	"video":            true,
+	"video_search":     true,
+	"web_search":       true,
+	"web_fetch":        true,
+	"social":           true,
+	"social_search":    true,
+	"blog_list":        true,
+	"blog_read":        true,
+	"apps_search":      true,
+	"apps_read":        true,
+	"search":           true,
+	"reminder":         true,
+	"quran":            true,
+	"hadith":           true,
+	"quran_search":     true,
+	"stream":           true,
+	"places_search":    true,
+	"places_nearby":    true,
+}
+
+func isGuestAllowedTool(name string) bool {
+	return guestAllowedTools[name]
 }
 
 func (a *Agent) hasTool(name string) bool {

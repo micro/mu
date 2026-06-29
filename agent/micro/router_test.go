@@ -155,3 +155,25 @@ func TestKeywordRouteSingleDomainPriorityIsDeterministic(t *testing.T) {
 		}
 	}
 }
+
+func TestKeywordRouteCoreAskAnswerSmokeCoverage(t *testing.T) {
+	tests := []struct {
+		name   string
+		prompt string
+		want   []string
+	}{
+		{name: "weather", prompt: "what's the weather in London?", want: []string{"weather"}},
+		{name: "news", prompt: "what's happening in the news today?", want: []string{"news"}},
+		{name: "markets", prompt: "what is the BTC price?", want: []string{"markets"}},
+		{name: "mail", prompt: "do I have unread mail?", want: []string{"mail"}},
+		{name: "search", prompt: "search the web for go-micro agents", want: []string{"search"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := keywordRoute(tt.prompt); !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("keywordRoute(%q) = %v, want %v", tt.prompt, got, tt.want)
+			}
+		})
+	}
+}
