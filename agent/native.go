@@ -30,6 +30,23 @@ func nativeEnabled() bool {
 	return true
 }
 
+// nativeStreamEnabled reports whether the STREAMING /agent path uses the native
+// go-micro agent (StreamAsk). Default OFF: StreamAsk currently mis-resolves tool
+// names mid-run on some providers, producing degraded answers ("the tool name
+// wasn't quite right"), so the streaming UI stays on the hand-rolled pipeline
+// until that's fixed upstream. Opt in with AGENT_NATIVE_STREAM=on. The
+// non-streaming agent.Query path uses the native agent regardless (it works).
+func nativeStreamEnabled() bool {
+	if !nativeEnabled() {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(settings.Get("AGENT_NATIVE_STREAM"))) {
+	case "on", "true", "1", "yes":
+		return true
+	}
+	return false
+}
+
 // Mode reports the active agent engine: "native" (go-micro agent) or "planner"
 // (the hand-rolled pipeline). Surfaced on /version and /status.
 func Mode() string {

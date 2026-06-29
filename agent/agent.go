@@ -1088,12 +1088,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// Send flow_id immediately so the client can recover on disconnect.
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID})
 
-	// Native go-micro agent path (default): the LLM does native tool-calling
-	// over the registered services and streams the answer, emitting tool
-	// start/end events as it goes — replacing the hand-rolled plan/execute/
-	// synthesize pipeline below. Falls through to that pipeline only if no
-	// native provider is configured or it fails before producing any output.
-	if nativeEnabled() {
+	// Native go-micro agent path (opt-in via AGENT_NATIVE_STREAM while the
+	// upstream StreamAsk tool-name bug is fixed): the LLM does native
+	// tool-calling over the registered services and streams the answer,
+	// emitting tool start/end events. Falls through to the hand-rolled
+	// pipeline below if disabled, no provider is configured, or it fails
+	// before producing any output.
+	if nativeStreamEnabled() {
 		nopts := QueryOpts{Public: isGuest}
 		for _, f := range conversationHistory {
 			if strings.TrimSpace(f.Prompt) == "" {
