@@ -21,40 +21,32 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-> Seeded from the North Star. The product-review pass files a tracking issue for
-> each unlinked item on its first run (`gh issue create --label codex`) and links
-> it here; until then the continuous-improvement loop falls back to picking the
-> highest-value item itself.
-
-1. **Fully onto go-micro — reference vertical: markets.** Per
-   [ARCHITECTURE.md](ARCHITECTURE.md), prove the read-plane pattern on one
-   surface: the markets service owns its background refresh and publishes a
-   snapshot to the go-micro store; the card/page renders from a broker-fed local
-   mirror (a memory read — no per-render RPC fan-out). Measure render latency
-   before/after to prove parity. Sets the pattern for the rest. *(Needs issue.)*
-2. **Unify events onto the go-micro broker.** Make `internal/event` a thin wrapper
-   over the broker (preserve Subscribe/Publish ergonomics) so there is one bus,
-   not a hand-rolled one beside the framework's. Behaviour identical; verify.
-   *(Needs issue.)*
-3. **Replicate the snapshot read-model** to news, video, social, blog — one
-   service per increment, each verified for render-latency parity. *(Needs issue.)*
-4. **[#747 Harden the core ask → answer loop end to end.](https://github.com/micro/mu/issues/747)** A guest and a signed-in user
-   should get a correct, well-formatted, fast answer on web and on the chat
-   clients. Add integration/smoke coverage of the ask → tool → answer path across
-   the core services (weather, news, markets, mail, search) so regressions in the
-   most important flow are caught.
-5. **[#748 Every service degrades gracefully.](https://github.com/micro/mu/issues/748)** Audit each home card and each
+1. **[#748 Every service degrades gracefully.](https://github.com/micro/mu/issues/748)** Audit each home card and each
    agent-callable service for the provider-down case — no dead cards, no silent
    failures, a clear "unavailable" instead. One service per increment.
-6. **[#749 First-run experience.](https://github.com/micro/mu/issues/749)** A new visitor understands what Mu is and gets value
+2. **[#749 First-run experience.](https://github.com/micro/mu/issues/749)** A new visitor understands what Mu is and gets value
    from one prompt without an account — tighten the guest landing, suggestions,
    and the sign-up moment (when the free limit is hit) for clarity, not friction.
-7. **[#750 Answer formatting quality.](https://github.com/micro/mu/issues/750)** Rendered answers (news, markets, weather) look
+3. **[#750 Answer formatting quality.](https://github.com/micro/mu/issues/750)** Rendered answers (news, markets, weather) look
    right everywhere they appear — web (guest + signed-in), Discord, Telegram —
    with consistent spacing, headings, and links.
 
 ### Human-supervised (architectural — not for the auto-merge loop)
 
+- **Fully onto go-micro — reference vertical: markets.** Per
+  [ARCHITECTURE.md](ARCHITECTURE.md), prove the read-plane pattern on one
+  surface: the markets service owns its background refresh and publishes a
+  snapshot to the go-micro store; the card/page renders from a broker-fed local
+  mirror (a memory read — no per-render RPC fan-out). Measure render latency
+  before/after to prove parity. Sets the pattern for the rest. Surface findings;
+  do not auto-merge.
+- **Unify events onto the go-micro broker.** Make `internal/event` a thin wrapper
+  over the broker (preserve Subscribe/Publish ergonomics) so there is one bus,
+  not a hand-rolled one beside the framework's. Behaviour identical; verify.
+  Surface findings; do not auto-merge.
+- **Replicate the snapshot read-model** to news, video, social, blog — one
+  service per increment, each verified for render-latency parity. Surface
+  findings; do not auto-merge.
 - **Agent-routed query plane.** Run specialist agents as services and route/
   delegate the query plane to the most relevant agent (go-micro `Agent.Chat` /
   `delegate` / chat routing), retiring the hand-rolled `agent/micro`. Gated on
