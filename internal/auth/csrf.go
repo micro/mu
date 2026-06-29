@@ -48,7 +48,7 @@ func SetCSRFCookie(w http.ResponseWriter, r *http.Request) {
 	if token == "" {
 		return
 	}
-	secure := r.Header.Get("X-Forwarded-Proto") == "https"
+	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
 		Value:    token,
