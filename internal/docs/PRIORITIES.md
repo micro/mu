@@ -21,7 +21,7 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#750 Normalize answer formatting across web and chat clients.](https://github.com/micro/mu/issues/750)** Rendered answers (news, markets, weather, search) look right everywhere they appear — guest web, signed-in web, Discord, Telegram — with consistent spacing, headings, links, and readable list/table fallbacks.
+1. **[#787 Fix malformed bold text in streamed agent answer lists.](https://github.com/micro/mu/issues/787)** The highest-value live regression is in the core guest ask → answer loop: a brief weather answer streams correctly, then final HTML can show stray markdown delimiters (for example `*London today:** ...`). Fix the markdown normalization/conversion path and cover it with CI-verifiable tests so web and chat clients show clean answers.
 
 ### Already shipped (do not re-queue)
 
