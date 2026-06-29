@@ -85,9 +85,18 @@ or improve test coverage; never break `main`.
      default and retire the hand-rolled planner + (eventually) `agent/micro`.
    - NOTE confirmed go-micro handler rules: the handler type AND its method
      request/response types must be exported, or rpc.Register rejects them.
-5. **MCP gateway** **[NEEDS SUPERVISION for the swap]**: changing `/mcp` is an
-   external contract. Safe now: stand up go-micro `gateway/mcp` on a side path
-   and diff its tool list against the current `/mcp`. Swap only when supervised.
+5. ◑ **MCP gateway** **[NEEDS SUPERVISION for the swap]**: changing `/mcp` is an
+   external contract.
+   - ✅ Side-by-side (additive, opt-in): `mesh.StartMCPGateway(addr)` runs
+     go-micro's `gateway/mcp` on a separate port; main starts it when
+     `MCP_GATEWAY_ADDR` is set (default off, real `/mcp` untouched). It
+     auto-exposes every registered service as an MCP tool. Verified:
+     `/health` → `{"status":"ok","tools":N}`, `/mcp/tools` lists the services'
+     methods (schemas from the handler signatures + `@example`), plus go-micro's
+     built-in store/broker tools.
+   - TODO **[SUPERVISED]**: compare its tool list against the current `/mcp`,
+     close gaps (auth scoping, the path-based apps_search/read tools), then swap
+     `/mcp` over to it.
 6. **A2A gateway** **[NEEDS SUPERVISION for the swap]**: same as #5 for `/a2a`.
 7. ◑ **[SAFE]** Register the remaining agent-facing domains as go-micro services.
    - ✅ **mail**: `mail.Server.Search` (rune-safe formatting) registered via

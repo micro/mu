@@ -340,6 +340,18 @@ func main() {
 	// Load the stream (platform event timeline).
 	stream.Load()
 
+	// Optionally run go-micro's MCP gateway alongside mu's existing /mcp, on a
+	// separate port. It auto-exposes every registered service as an MCP tool.
+	// Off unless MCP_GATEWAY_ADDR is set — additive, no change to /mcp.
+	if addr := settings.Get("MCP_GATEWAY_ADDR"); addr != "" {
+		go func() {
+			app.Log("main", "starting go-micro MCP gateway on %s", addr)
+			if err := mesh.StartMCPGateway(addr); err != nil {
+				app.Log("main", "MCP gateway stopped: %v", err)
+			}
+		}()
+	}
+
 	// Wire user → blog callback (avoids direct import between building blocks)
 	user.GetUserPosts = func(authorName string) []user.UserPost {
 		posts := blog.GetPostsByAuthor(authorName)

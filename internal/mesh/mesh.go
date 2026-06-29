@@ -19,6 +19,7 @@ import (
 
 	"go-micro.dev/v6/broker"
 	"go-micro.dev/v6/client"
+	gwmcp "go-micro.dev/v6/gateway/mcp"
 	"go-micro.dev/v6/registry"
 	"go-micro.dev/v6/selector"
 	"go-micro.dev/v6/server"
@@ -150,6 +151,20 @@ func HandlerOpts(name string, h any, opts ...server.HandlerOption) error {
 func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
 	ensure()
 	return cl.Call(ctx, cl.NewRequest(svcName, endpoint, req), rsp)
+}
+
+// StartMCPGateway runs go-micro's MCP gateway on addr (e.g. ":4100"),
+// exposing every registered service's methods as MCP tools — schemas derived
+// from the handler signatures and @example doc-comments. It blocks; run it in a
+// goroutine. This is additive: it stands the framework's gateway up alongside
+// mu's existing /mcp for comparison, on its own port.
+func StartMCPGateway(addr string) error {
+	ensure()
+	return gwmcp.Serve(gwmcp.Options{
+		Registry: reg,
+		Client:   cl,
+		Address:  addr,
+	})
 }
 
 // Stop shuts down all hosted services. Used on graceful shutdown.
