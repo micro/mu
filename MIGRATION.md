@@ -40,10 +40,14 @@ when go-micro is missing something, fix it upstream (we own it).
 
 go-micro v6 is the core of mu in production (verified via `curl micro.mu/version`
 → `agent:native`, `mcp:go-micro/gateway`, `go_micro:v6.3.8`, 11 services; auto-
-deploys on every merge to `main`). What remains is deliberately deferred, not
-pending: (a) retiring the hand-rolled planner + `agent/micro` — held until the
-native agent's answer quality is validated on real traffic, since it's the
-fallback; (b) the `/a2a` cutover — would regress (see #6). The dogfood loop shipped
+deploys on every merge to `main`). The native agent's answer quality is now
+**validated on live traffic** (weather, market prices, news — exact tool values
+quoted). What remains is gated on two upstream go-micro features, both filed and
+queued (the "longer-term features → roadmap, architect plans it out" path):
+(a) retiring the hand-rolled **streaming** planner needs streaming-`Ask`-with-
+tool-events (micro/go-micro#3341); (b) the `/a2a` cutover needs multi-skill
+agent cards (micro/go-micro#3342 — task lifecycle already shipped upstream).
+`agent/micro` stays load-bearing until both land. The dogfood loop shipped
 **8 go-micro releases (v6.3.1–v6.3.8)**, all consumed live.
 
 ## Done
@@ -100,9 +104,20 @@ or improve test coverage; never break `main`.
      (web_fetch) and `apps.Server.Search`/`apps.Server.Read` (apps_search/read).
      The search and apps services are in nativeServices, so the agent
      auto-discovers these methods.
-   - TODO: validate answer quality/latency vs the hand-rolled path on real
-     traffic and tune the system prompt; then retire the hand-rolled planner +
-     (eventually) `agent/micro`.
+   - ✅ Validated on live traffic (micro.mu): the native agent answers weather,
+     market prices, and news correctly end to end (exact tool values quoted).
+   - **Planner retirement is gated on one upstream go-micro feature.** Two
+     consumers of the hand-rolled planner remain:
+     - The **non-streaming** `agent.Query` already runs native (planner is only
+       the fallback) — nothing to retire there beyond keeping the safety net.
+     - The **streaming** `/agent` SSE handler (`agent.Handler`) is still 100%
+       hand-rolled. It can't cut over without a UX regression because go-micro's
+       agent today is either tool-orchestrating (`Ask`, returns the whole answer)
+       OR token-streaming (`Stream`, runs no tools) — never both. Surfacing
+       `tool_start`/`tool_done` events AND streaming the final answer needs the
+       framework feature filed as **micro/go-micro#3341** (queued #1 in
+       go-micro's PRIORITIES.md). Once #3341 lands, the streaming handler can
+       delegate to the native agent and the planner retires.
    - NOTE confirmed go-micro handler rules: the handler type AND its method
      request/response types must be exported, or rpc.Register rejects them.
 5. ◑ **MCP gateway** **[NEEDS SUPERVISION for the swap]**: changing `/mcp` is an
@@ -128,15 +143,20 @@ or improve test coverage; never break `main`.
      + named not-found).
    - ✅ Cleanup done: removed the now-dead `mcpPostHandler`/`handleInitialize`/
      `handleToolsList`/`handleToolsCall` (~192 lines) from internal/api/mcp.go.
-6. ⛔ **A2A gateway — deliberately deferred (would regress).** go-micro's
-   `gateway/a2a` (`NewAgentHandler(card, invoke)`) is a **single-agent** model:
-   one card + one `invoke(text)→string`. mu's `internal/a2a` (382 lines) is
-   richer — **multi-skill** routing built from the registered micro-agents plus
-   task lifecycle (`message/send`, `tasks/get`, `tasks/cancel`). Cutting `/a2a`
-   over to go-micro now would drop skills and task management. Revisit only if
-   go-micro's a2a gateway grows multi-skill + task support (an upstream project),
-   or if A2A usage justifies it. mu's `/a2a` stays as-is — and it already runs
-   on top of the (now go-micro-backed) AI core and services.
+6. ◑ **A2A gateway — gap narrowed to one upstream feature.** When this was
+   deferred, go-micro's `gateway/a2a` was single-agent (`NewAgentHandler(card,
+   invoke)`, one `invoke(text)→string`). It has since grown the **full task
+   lifecycle**: `message/send`, `message/stream`, `tasks/get`, `tasks/cancel`,
+   `tasks/resubscribe`, push-notification config, multi-turn continuation, and
+   input-required handoffs (verified in v6.3.8 source). So the task-management
+   half of the regression is gone. The **one** remaining gap is skill
+   granularity: `Card()` always advertises a single synthetic `chat` skill with
+   the managed services flattened into its tags, whereas mu's `internal/a2a`
+   advertises **multiple typed skills** (one per micro-agent domain) and routes
+   per skill. Filed as **micro/go-micro#3342** (queued in go-micro's
+   PRIORITIES.md). Once #3342 lands, mu's `/a2a` can cut over to the gateway
+   without dropping skills or task management. Until then mu's `/a2a` stays —
+   and it already runs on the (go-micro-backed) AI core and services.
 7. ◑ **[SAFE]** Register the remaining agent-facing domains as go-micro services.
    - ✅ **mail**: `mail.Server.Search` (rune-safe formatting) registered via
      mesh; added to the native agent's services so it can search mail directly
@@ -152,5 +172,20 @@ or improve test coverage; never break `main`.
 
 ## Notes / gaps filed or to file in go-micro
 
-- Token usage on streaming responses is not surfaced (mu records 0 for streamed
-  calls). Candidate for a v6.3.x fix.
+- ✅ Token usage on streaming responses — fixed upstream (v6.3.4 / #3304),
+  consumed live.
+- **micro/go-micro#3341** — Agent: streaming `Ask` with tool-execution events
+  (ToolStart/ToolEnd + streamed final turn). Blocks retiring mu's hand-rolled
+  streaming `/agent` planner without UX regression. Seeded #1 in go-micro
+  PRIORITIES.md (PR #3343, merged); the architecture-review pass re-ranks.
+- **micro/go-micro#3342** — `gateway/a2a`: multiple typed skills per agent card
+  + per-skill routing. Last blocker for mu's `/a2a` cutover (task lifecycle is
+  already upstream). Seeded in go-micro PRIORITIES.md.
+
+These two are exactly the "longer-term features → go-micro roadmap, the
+architect plans it out" path: filed as scoped `codex`+`enhancement` issues, the
+hourly architecture-review pass ranks them into PRIORITIES.md, and the
+continuous-improvement loop builds the top open item. mu's planner retirement
+and `/a2a` cutover (and eventually removing `agent/micro`, still load-bearing for
+`/a2a` multi-skill routing) are gated on them landing — to be done in a
+supervised session per the policy above.
