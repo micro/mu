@@ -83,10 +83,13 @@ or improve test coverage; never break `main`.
      path (it's an agent platform). `AGENT_NATIVE=off` opts out. If no LLM
      provider is configured, or a native run errors, it falls through to the
      hand-rolled pipeline so a query never hard-fails.
+   - ✅ Full tool coverage for the native agent: added `search.Server.Fetch`
+     (web_fetch) and `apps.Server.Search`/`apps.Server.Read` (apps_search/read).
+     The search and apps services are in nativeServices, so the agent
+     auto-discovers these methods.
    - TODO: validate answer quality/latency vs the hand-rolled path on real
      traffic and tune the system prompt; then retire the hand-rolled planner +
-     (eventually) `agent/micro`. web_fetch and apps_search/read aren't services
-     yet, so the native agent can't reach them — convert or expose as needed.
+     (eventually) `agent/micro`.
    - NOTE confirmed go-micro handler rules: the handler type AND its method
      request/response types must be exported, or rpc.Register rejects them.
 5. ◑ **MCP gateway** **[NEEDS SUPERVISION for the swap]**: changing `/mcp` is an
