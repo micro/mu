@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -634,27 +635,14 @@ func collapseWhitespace(s string) string {
 
 // isPrivateHost returns true if the host looks like a private/internal address.
 func isPrivateHost(host string) bool {
-	if host == "localhost" || host == "" {
+	host = strings.TrimSpace(strings.Trim(host, "[]"))
+	if host == "" || strings.EqualFold(host, "localhost") {
 		return true
 	}
-	if strings.HasPrefix(host, "127.") || strings.HasPrefix(host, "10.") ||
-		strings.HasPrefix(host, "192.168.") || host == "::1" || host == "0.0.0.0" {
-		return true
+
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified()
 	}
-	// Block 172.16.0.0/12
-	if strings.HasPrefix(host, "172.") {
-		parts := strings.SplitN(host, ".", 3)
-		if len(parts) >= 2 {
-			var second int
-			fmt.Sscanf(parts[1], "%d", &second)
-			if second >= 16 && second <= 31 {
-				return true
-			}
-		}
-	}
-	// Block metadata endpoints
-	if host == "169.254.169.254" || host == "metadata.google.internal" {
-		return true
-	}
-	return false
+
+	return strings.EqualFold(host, "metadata.google.internal")
 }
