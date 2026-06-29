@@ -1,18 +1,18 @@
 # Vision
 
-**Your personal AI — not another dashboard.**
+**Own your services — not another dashboard.**
 
 ## The Problem
 
-The tools people use every day — news, search, email, chat, markets — are scattered across dozens of platforms, each competing for your time and data. Every platform monetises your attention. Infinite scroll keeps you hooked. Algorithms decide what you see.
+The everyday internet runs on services — news, search, email, chat, markets, video — and a handful of platforms own all of them. Google, Apple, Amazon, Meta: each is a service for everything, and each sits at the centre of what you do. They're scattered across dozens of apps, all competing for your time and data. Every one monetises your attention: infinite scroll keeps you hooked, algorithms decide what you see.
 
-The internet became addictive. And no single place brings it all together without the noise.
+The internet became addictive, and the services at the core of it belong to someone else. No single place brings them all together without the noise — and without an owner extracting from you.
 
 ## What Mu Is
 
-Mu is a personal AI platform. Instead of browsing separate apps, you ask one AI that has access to all your services. It checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer.
+Mu is the personal alternative to that stack: the same everyday services, owned by you. Instead of renting each one from a different platform, you run them yourself — and instead of browsing separate apps, you ask one AI that operates all of them. It checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer.
 
-The AI remembers what you care about. It surfaces relevant information before you ask. Over time, it learns your preferences and becomes more useful.
+The AI remembers what you care about. It surfaces relevant information before you ask. Over time, it learns your preferences and becomes more useful. It isn't a chatbot on a website — it's the interface to a stack of services that are yours.
 
 Technology should serve people — not use them. When you pay for tools, incentives are aligned. We build the tools, you use them. That's it.
 
@@ -30,7 +30,9 @@ Technology should serve people — not use them. When you pay for tools, incenti
 
 **No ads, no tracking.** Revenue comes from usage credits, not attention.
 
-**Single binary.** One Go binary, no external dependencies. Self-host your own instance.
+**Services, not features.** Every capability is a real [go-micro](https://go-micro.dev) service — news, mail, weather, markets and the rest — discoverable and callable over REST, MCP, A2A or the CLI. The agent is a go-micro agent that operates them. You own the whole stack, not a bundle of UI features.
+
+**Single binary.** One Go binary built on go-micro, no external dependencies. Services run in-process today; the same handlers can be split across machines later by swapping the registry, with no code changes. Self-host your own instance.
 
 **Local models.** Self-hosters can use Ollama or any OpenAI-compatible server. No cloud dependency required.
 

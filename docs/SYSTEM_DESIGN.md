@@ -4,9 +4,10 @@ This document covers the design philosophy, architecture, and technical decision
 
 ## Vision
 
-Mu is a personal AI platform that attempts to rectify deficiencies with existing social platforms like Twitter, Facebook, and YouTube.
-The primary issue is exploitation and addiction. American-owned corporations exploit their users with click/rage bait, advertising,
-and algorithms to drive engagement and profit. Their number one goal isn't user satisfaction—it's making money.
+Mu lets you own your services. The everyday internet — news, mail, search, weather, video, markets — runs on services, and a handful of
+platforms own all of them and sit at the centre of what you do. The primary issue is exploitation and addiction: these corporations exploit
+their users with click/rage bait, advertising, and algorithms to drive engagement and profit. Their number one goal isn't user satisfaction—it's making money.
+Mu is the personal alternative — the same stack of services, owned by you, with an AI agent across all of them.
 
 The goal is to build an alternative platform that removes these exploits:
 - No algorithmic feeds
@@ -21,12 +22,13 @@ we integrate useful AI chat, curated news headlines, and videos from select chan
 
 ## Architecture Overview
 
-Mu is built as a **single Go binary** that runs on one server. This architectural simplicity provides:
+Mu is built as a **single Go binary** that runs on one server, on top of [Go Micro](https://go-micro.dev) — an agent harness and service framework. Every domain capability registers as an in-process go-micro service; the HTTP layer and the AI agent reach them by calling the service through the framework, so go-micro is the spine and HTTP is only a front. This gives:
 
 - **Single language stack** - Everything in Go (backend, templates, API)
-- **No distributed complexity** - Single process, single server
+- **Services without distribution** - Each capability is a go-micro service, but they run in-process behind an in-memory registry. No distributed complexity today; the same handlers split across machines later by swapping the registry, with no code changes.
+- **Protocols for free** - REST, MCP (go-micro's gateway), A2A and the CLI all front the same registered services.
 - **Progressive Web App** - Mobile-friendly without app stores
-- **Monolithic simplicity** - Easy to understand, deploy, and maintain
+- **Monolithic simplicity** - One binary: easy to understand, deploy, and maintain
 
 ### Layering Model
 

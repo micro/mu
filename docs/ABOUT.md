@@ -1,20 +1,20 @@
 # About Mu
 
-**Your personal AI — not another attention farm.**
+**Own your services — not another attention farm.**
 
 ## What is Mu?
 
-Mu is a personal AI platform. Ask it anything — it checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer. Every service is a tool the AI can use on your behalf.
+News, mail, search, weather, video, markets — the everyday internet runs on services, and a handful of platforms own all of them. They sit at the centre of everything you do. Mu is that same stack, owned by you: the services you use every day, running on your own instance, with an AI agent across all of them.
 
-The AI remembers your preferences, surfaces contextual suggestions, and learns what you care about over time.
+Ask it anything — it checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer. Each service is real, and the agent operates them on your behalf. The AI remembers your preferences, surfaces contextual suggestions, and learns what you care about over time.
 
 Technology should serve people — not use them.
 
 ## Why Mu Exists
 
-Every platform monetises your attention. Infinite scroll keeps you hooked. Algorithms decide what you see. Ads follow you everywhere. Your data gets mined and sold.
+The big platforms have a service for everything — and they own it. Every one monetises your attention: infinite scroll keeps you hooked, algorithms decide what you see, ads follow you everywhere, and your data gets mined and sold. The thing at the centre of your life isn't yours.
 
-Mu was built on a different principle: **pay for the tools, not with your attention.**
+Mu was built on a different principle: **own your services, and pay for the tools, not with your attention.**
 
 ## How it works
 
@@ -24,7 +24,7 @@ Below the AI, cards give you an at-a-glance overview. Cards are configurable —
 
 ## What's included
 
-- **AI Agent** — Ask anything. Searches, checks, fetches, and synthesises across all services. Remembers your preferences.
+- **AI Agent** — Ask anything. A go-micro agent that calls, checks, fetches, and synthesises across all the services below. Remembers your preferences.
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
 - **Markets** — Live crypto, futures, and commodity prices
 - **Weather** — Forecasts and conditions
@@ -46,7 +46,7 @@ Below the AI, cards give you an at-a-glance overview. Cards are configurable —
 
 ## Technology
 
-Mu runs as a single Go binary. Self-host on your own server. Open source under AGPL-3.0.
+Mu runs as a single Go binary, built on [Go Micro](https://go-micro.dev) — an agent harness and service framework. Every capability (news, markets, weather, mail, search, video…) is a go-micro service; the assistant is a go-micro agent that calls them; `/mcp` is served by go-micro's MCP gateway. One runtime, one binary — and a real-world reference app that dogfoods the framework. Self-host on your own server. Open source under AGPL-3.0.
 
 Supports Anthropic Claude, Atlas Cloud (DeepSeek, Qwen), or local models via any OpenAI-compatible API (Ollama, vLLM, llama.cpp).
 

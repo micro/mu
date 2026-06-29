@@ -84,13 +84,13 @@ The system is designed to run as a single binary with no external dependencies. 
 
 ### 3.1 Layered Structure
 
-Mu is implemented as a single Go binary comprising three layers:
+Mu is implemented as a single Go binary, built on the [Go Micro](https://go-micro.dev) agent harness and service framework, comprising three layers:
 
 **Subsystems** provide infrastructure primitives: HTTP rendering, API dispatch, LLM integration, data storage with full-text search, authentication, and administration.
 
-**Building blocks** are user-facing services. Each building block is a self-contained Go package that uses the subsystem primitives. Current building blocks include news aggregation (RSS with AI summarisation), video (YouTube integration without advertising), web search (via Brave Search API), microblogging (with ActivityPub federation), AI chat, messaging (with SMTP and DKIM), financial markets (cryptocurrency and commodity prices via Coinbase API), weather forecasts, location search, a work board, and micro-apps (constrained, spec-driven mini tools).
+**Building blocks** are user-facing services. Each is registered as an in-process Go Micro service exposing typed methods, reached by the HTTP layer and the agent through the framework rather than by direct package imports. Current building blocks include news aggregation (RSS with AI summarisation), video (YouTube integration without advertising), web search (via Brave Search API), microblogging (with ActivityPub federation), AI chat, messaging (with SMTP and DKIM), financial markets (cryptocurrency and commodity prices via Coinbase API), weather forecasts, location search, a work board, and micro-apps (constrained, spec-driven mini tools).
 
-**Agents** are autonomous processes that compose building blocks. An agent receives a natural language instruction and executes a sequence of tool calls across multiple building blocks to fulfil it. Agents operate through the same MCP interface available to external clients.
+**Agents** are autonomous processes that compose building blocks. The default agent is a Go Micro agent that performs native tool-calling over the registered services, discovering each service's methods as tools. It receives a natural language instruction and executes a sequence of tool calls across multiple building blocks to fulfil it, operating through the same registry and protocol interfaces available to external clients.
 
 ### 3.2 Binary and Storage
 
@@ -98,11 +98,11 @@ All static assets — HTML, CSS, JavaScript, icons — are embedded at compile t
 
 ### 3.3 Communication
 
-Building blocks communicate through an internal publish-subscribe event bus. This avoids direct coupling between packages: the news system publishes article events that the blog system subscribes to for digest generation; the chat system publishes URL references that trigger metadata refresh in the news system; the agent system issues tool calls that the wallet system intercepts for quota enforcement. No building block imports another directly.
+Building blocks are reached by calling their service methods through Go Micro's client and an in-memory registry, and they also communicate asynchronously through the framework's message broker — a publish-subscribe event bus. This avoids direct coupling between packages: the news system publishes article events that the blog system subscribes to for digest generation; the chat system publishes URL references that trigger metadata refresh in the news system; the agent system issues tool calls that the wallet system intercepts for quota enforcement. No building block imports another directly. Because services sit behind the registry, the same handlers could later be split across separate processes by swapping the in-memory registry for a networked one, with no changes to the building blocks themselves.
 
 ### 3.4 Protocol Interface
 
-Every building block is exposed as a tool through the Model Context Protocol at a single HTTP endpoint. MCP defines a JSON-RPC 2.0 interface for tool discovery (`tools/list`) and invocation (`tools/call`). The Mu MCP server currently exposes over thirty tools spanning information retrieval, search, content creation, communication, and account management.
+Every building block is exposed as a tool through the Model Context Protocol at a single HTTP endpoint, served by Go Micro's MCP gateway with Mu's authentication, metering, and documentation in front of it. MCP defines a JSON-RPC 2.0 interface for tool discovery (`tools/list`) and invocation (`tools/call`). The Mu MCP server currently exposes over thirty tools spanning information retrieval, search, content creation, communication, and account management. The same services are also reachable over the A2A protocol and the command line.
 
 An MCP client — whether a human-operated AI assistant or an autonomous agent — connects to the endpoint and receives a complete catalogue of available tools with typed parameter schemas. Tool invocations are dispatched internally to the corresponding building block handler. Authentication is forwarded from the outer HTTP request via session cookies, bearer tokens, or x402 payment headers.
 

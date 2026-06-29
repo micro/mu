@@ -163,7 +163,7 @@ func handleMessage(token string, userID int64, username, firstName string, chatI
 		cmd := strings.Split(parts[0], "@")[0] // remove @botname
 		switch cmd {
 		case "/start":
-			sendTelegram(token, chatID, "Hi! I'm Micro — your personal AI. Ask me anything.\n\nIn groups, use /ask followed by your question.")
+			sendTelegram(token, chatID, "Hi! I'm Micro — your agent across news, mail, markets, weather, search and more. Ask me anything.\n\nIn groups, use /ask followed by your question.")
 			return
 		case "/ask", "/mu", "/agent":
 			if len(parts) > 1 {

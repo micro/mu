@@ -341,6 +341,6 @@ func formatAsEmbed(prompt, answer string) Embed {
 	return Embed{
 		Description: desc,
 		Color:       color,
-		Footer:      &EmbedFooter{Text: "Mu — Your personal AI"},
+		Footer:      &EmbedFooter{Text: "Mu — Own your services"},
 	}
 }

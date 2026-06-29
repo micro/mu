@@ -1,6 +1,6 @@
 # Mu
 
-A personal AI agent platform built in Go. Single binary, self-hostable.
+Own your services. The everyday internet — news, mail, search, weather, video, markets — runs on services the big platforms own; Mu is that same stack owned by you, with an AI agent across all of it. Built on go-micro: every capability is a go-micro service, the assistant is a go-micro agent. Single binary, self-hostable.
 
 ## Architecture
 
