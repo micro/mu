@@ -414,13 +414,14 @@ func resolveBaseURL(htmlStr string, pageURL string) *url.URL {
 // Returns the absolute URL string, or the original href if resolution fails.
 func resolveLink(href string, base *url.URL) string {
 	href = strings.TrimSpace(href)
-	// Skip fragment-only, javascript:, mailto:, tel: links
+	// Keep fragment-only and contact links unchanged, but neutralize script/data URLs.
 	if href == "" || strings.HasPrefix(href, "#") ||
-		strings.HasPrefix(href, "javascript:") ||
-		strings.HasPrefix(href, "mailto:") ||
-		strings.HasPrefix(href, "tel:") ||
-		strings.HasPrefix(href, "data:") {
+		hasHrefScheme(href, "mailto") ||
+		hasHrefScheme(href, "tel") {
 		return href
+	}
+	if isUnsafeHref(href) {
+		return "#"
 	}
 	ref, err := url.Parse(href)
 	if err != nil {
@@ -433,15 +434,25 @@ func resolveLink(href string, base *url.URL) string {
 // isProxyableLink returns true if the link should be routed through the reader.
 // Only proxy http/https links to external web pages, not fragments, mailto, etc.
 func isProxyableLink(href string) bool {
-	if href == "" || strings.HasPrefix(href, "#") ||
-		strings.HasPrefix(href, "javascript:") ||
-		strings.HasPrefix(href, "mailto:") ||
-		strings.HasPrefix(href, "tel:") ||
-		strings.HasPrefix(href, "data:") {
+	href = strings.TrimSpace(href)
+	if href == "" || strings.HasPrefix(href, "#") || isUnsafeHref(href) ||
+		hasHrefScheme(href, "mailto") || hasHrefScheme(href, "tel") {
 		return false
 	}
-	// Only proxy http/https URLs
-	return strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://")
+	// Only proxy http/https URLs.
+	return hasHrefScheme(href, "http") || hasHrefScheme(href, "https")
+}
+
+func isUnsafeHref(href string) bool {
+	return hasHrefScheme(href, "javascript") || hasHrefScheme(href, "data")
+}
+
+func hasHrefScheme(href, scheme string) bool {
+	colon := strings.IndexByte(href, ':')
+	if colon < 0 {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(href[:colon]), scheme)
 }
 
 // rewriteTwitterURL rewrites twitter.com and x.com URLs to use a Nitter instance
@@ -482,16 +493,16 @@ func extractTitle(htmlStr string) string {
 // Tags and patterns to remove before extracting text
 var (
 	// Remove script, style, nav, header, footer, aside, noscript elements and their content
-	removeScriptRe  = regexp.MustCompile(`(?is)<script[^>]*>.*?</script>`)
-	removeStyleRe   = regexp.MustCompile(`(?is)<style[^>]*>.*?</style>`)
+	removeScriptRe   = regexp.MustCompile(`(?is)<script[^>]*>.*?</script>`)
+	removeStyleRe    = regexp.MustCompile(`(?is)<style[^>]*>.*?</style>`)
 	removeNoscriptRe = regexp.MustCompile(`(?is)<noscript[^>]*>.*?</noscript>`)
-	removeIframeRe  = regexp.MustCompile(`(?is)<iframe[^>]*>.*?</iframe>`)
-	removeSvgRe     = regexp.MustCompile(`(?is)<svg[^>]*>.*?</svg>`)
-	removeNavRe     = regexp.MustCompile(`(?is)<nav[^>]*>.*?</nav>`)
-	removeHeaderRe  = regexp.MustCompile(`(?is)<header[^>]*>.*?</header>`)
-	removeFooterRe  = regexp.MustCompile(`(?is)<footer[^>]*>.*?</footer>`)
-	removeAsideRe   = regexp.MustCompile(`(?is)<aside[^>]*>.*?</aside>`)
-	removeFormRe    = regexp.MustCompile(`(?is)<form[^>]*>.*?</form>`)
+	removeIframeRe   = regexp.MustCompile(`(?is)<iframe[^>]*>.*?</iframe>`)
+	removeSvgRe      = regexp.MustCompile(`(?is)<svg[^>]*>.*?</svg>`)
+	removeNavRe      = regexp.MustCompile(`(?is)<nav[^>]*>.*?</nav>`)
+	removeHeaderRe   = regexp.MustCompile(`(?is)<header[^>]*>.*?</header>`)
+	removeFooterRe   = regexp.MustCompile(`(?is)<footer[^>]*>.*?</footer>`)
+	removeAsideRe    = regexp.MustCompile(`(?is)<aside[^>]*>.*?</aside>`)
+	removeFormRe     = regexp.MustCompile(`(?is)<form[^>]*>.*?</form>`)
 	// Remove HTML comments
 	commentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 	// Remove all HTML tags
