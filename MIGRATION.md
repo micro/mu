@@ -94,9 +94,21 @@ or improve test coverage; never break `main`.
      `/health` → `{"status":"ok","tools":N}`, `/mcp/tools` lists the services'
      methods (schemas from the handler signatures + `@example`), plus go-micro's
      built-in store/broker tools.
-   - TODO **[SUPERVISED]**: compare its tool list against the current `/mcp`,
-     close gaps (auth scoping, the path-based apps_search/read tools), then swap
-     `/mcp` over to it.
+   - ✅ **Cutover done (default on, no env var).** `POST /mcp` is served by
+     go-micro's `gateway/mcp` via a **manual resolver** of mu's tools
+     (`internal/api/mcp_micro.go`): go-micro owns the MCP protocol/transport;
+     mu keeps the per-IP guard, wallet metering, auth and dispatch
+     (`ExecuteTool`). `GET /mcp` still renders mu's own doc page. No framework
+     internals exposed. Every prior behaviour preserved (notifications→204,
+     tool errors→isError results, quota→-32000, protocolVersion 2025-03-26,
+     serverInfo name=mu, named not-found). Full suite green.
+   - Dogfood releases this required: **v6.3.6** (Resolver + mountable JSON-RPC
+     `NewHandler`), **v6.3.7** (richer `Call` → `CallResult`/isError + coded
+     `RPCError`; notifications), **v6.3.8** (`WithServerInfo`/`WithProtocolVersion`
+     + named not-found).
+   - TODO cleanup: the now-unused `mcpPostHandler`/`handleInitialize`/
+     `handleToolsList`/`handleToolsCall` in internal/api/mcp.go can be removed
+     once nothing references them.
 6. **A2A gateway** **[NEEDS SUPERVISION for the swap]**: same as #5 for `/a2a`.
 7. ◑ **[SAFE]** Register the remaining agent-facing domains as go-micro services.
    - ✅ **mail**: `mail.Server.Search` (rune-safe formatting) registered via

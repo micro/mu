@@ -27,7 +27,8 @@ func MCPHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mcpPostHandler(w, r)
+	// Protocol served by go-micro's gateway/mcp; tools + metering stay mu's.
+	serveMCP(w, r)
 }
 
 // mcpPageHandler renders the HTML page listing MCP tools
