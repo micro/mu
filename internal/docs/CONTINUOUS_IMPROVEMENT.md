@@ -1,21 +1,45 @@
 # Continuous Improvement
 
-Mu uses an autonomous improvement loop driven by Codex. On a schedule,
-a GitHub Action opens a tracking issue, dispatches Codex, and Codex
-implements one improvement increment — then opens a PR with auto-merge
-enabled. When CI passes, the PR lands automatically.
+Mu runs an autonomous loop driven by Codex. Three scheduled GitHub Actions each
+open a fresh tracking issue and dispatch Codex with a role; Codex does the work
+and opens a PR with auto-merge, so safe changes land when CI is green. All three
+are gated on the `CODEX_TRIGGER_TOKEN` secret (a PAT for a user account Codex
+follows — Codex ignores comments from the github-actions bot), and all three
+align to the North Star in [THESIS.md](THESIS.md).
 
-## How It Works
+## The three agents
 
-1. GitHub Action runs on schedule (hourly)
-2. Opens a fresh issue titled "Continuous improvement increment #N"
-3. Posts an @codex comment with instructions
-4. Codex picks one item, implements it, runs tests, opens PR
-5. GitHub auto-merge lands the PR when CI is green
+The shape mirrors go-micro's loop, recast for **Mu the product**:
+
+| Pass | Role | Cadence | Output |
+|------|------|---------|--------|
+| **product-review** (`.github/workflows/product-review.yml`) | Head of product — *where to next, what to refine* | hourly `:59` | maintains the ranked queue in [PRIORITIES.md](PRIORITIES.md) + an assessment |
+| **continuous-improvement** (`.github/workflows/continuous-improvement.yml`) | Builder — *ship one increment* | hourly `:29` | a PR that builds the top open item in PRIORITIES.md |
+| **marketing-review** (`.github/workflows/marketing-review.yml`) | Marketing / evangelism — *tell the story* | daily `07:00 UTC` | public-surface coherence fixes + blog drafts (per [MARKETING.md](MARKETING.md)) |
+
+So the **product agent decides what**, the **increment loop builds it**, and the
+**marketing agent keeps the outside world coherent and supplied with things worth
+writing about**. The product pass runs just before the increment pass each hour so
+the builder always works against a fresh queue.
+
+This phase's bias (see THESIS.md): **product-market fit through refinement** —
+make what already exists work seamlessly before adding surface area.
+
+## How a build increment works
+
+1. The hourly action opens a fresh issue (unique → unique `codex/` branch).
+2. It posts an `@codex` comment pointing at PRIORITIES.md.
+3. Codex takes the highest-ranked item whose issue is still open (or falls back
+   to the charter categories below), implements it, runs the checks, opens a PR.
+4. GitHub auto-merge lands the PR when CI is green; `Closes #<issue>` removes the
+   item from the queue.
 
 ## What Codex Should Work On
 
-Priority order — pick the single highest-value item:
+The queue in [PRIORITIES.md](PRIORITIES.md) is the source of truth — the increment
+loop builds the top item whose issue is still open. The categories below are the
+**fallback** ordering for when the queue is empty or fully closed: pick the single
+highest-value item.
 
 ### 1. Bug Fixes
 - Fix any failing tests

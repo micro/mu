@@ -1,0 +1,50 @@
+name: Marketing Review
+
+# The MARKETING / EVANGELISM lens of Mu's autonomous loop — the analog of
+# go-micro's DevRel pass, for the product (see internal/docs/MARKETING.md and
+# internal/docs/CONTINUOUS_IMPROVEMENT.md). A daily higher-altitude pass over the
+# PUBLIC surface: keep README / docs / landing coherent with what actually
+# shipped, and keep a steady supply of true, concrete things worth writing about,
+# drafted for the human to publish.
+#
+# Like the other passes it opens a fresh issue and dispatches Codex via
+# CODEX_TRIGGER_TOKEN (Codex ignores Actions-bot comments). Autonomy boundary:
+# SAFE factual-alignment / crispness fixes auto-merge; brand/positioning copy and
+# blog drafts are surfaced for the human, never auto-merged or auto-published.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 7 * * *" # daily, 07:00 UTC (tunable)
+
+permissions:
+  issues: write
+
+concurrency:
+  group: marketing-review
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open a marketing review issue and dispatch Codex
+        env:
+          GH_TOKEN: ${{ secrets.CODEX_TRIGGER_TOKEN || github.token }}
+          HAS_TRIGGER_TOKEN: ${{ secrets.CODEX_TRIGGER_TOKEN != '' }}
+          REPO: ${{ github.repository }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          if [ "$HAS_TRIGGER_TOKEN" != "true" ]; then
+            echo "CODEX_TRIGGER_TOKEN is not set — skipping (Codex ignores Actions-bot comments)."
+            exit 0
+          fi
+          # Ensure the label the loop uses exists (idempotent).
+          gh label create codex --repo "$REPO" --color 5319e7 --description "Autonomous loop (Codex)" 2>/dev/null || true
+          ISSUE_URL=$(gh issue create --repo "$REPO" \
+            --title "Marketing review #$RUN_NUMBER" \
+            --body "Daily marketing / evangelism pass over README, docs, and landing copy, plus blog drafts from shipped work. North Star: internal/docs/THESIS.md; charter: internal/docs/MARKETING.md.")
+          ISSUE_NUM="${ISSUE_URL##*/}"
+          echo "Opened issue #$ISSUE_NUM — dispatching Codex (Marketing)."
+          gh issue comment "$ISSUE_NUM" --repo "$REPO" --body \
+          "@codex Act as marketing / evangelism for Mu per internal/docs/MARKETING.md, aligned to the North Star in internal/docs/THESIS.md (an agent for everyday) and the voice in docs/PRINCIPLES.md. Read CLAUDE.md for context. Each run do all of: (1) COHERENCE — audit the public surface (README.md, docs/ served at /docs, and the landing/home copy in home/landing.go, home/home.go, home/pricing.go, home/assistant.go) for contradictions, staleness, or claims that no longer match the code or recently merged PRs. (2) FIND THE STORY — from recently shipped work and how the live product is actually used (micro.mu), identify 1-3 genuinely true, concrete things worth a blog post or short announcement; prefer 'here is a real thing that now works' over abstract positioning. (3) DRAFT — write each post as a Markdown draft under internal/docs/blog/ named YYYY-MM-DD-slug.md, in Mu's plain, concrete, honest voice (no growth-hacky tone). (4) REPORT — post a concise findings comment on this issue (#$ISSUE_NUM): what is aligned, what drifted, what you fixed, and the drafts proposed. Then, for SAFE factual-alignment and crispness fixes ONLY (NOT brand/positioning rewrites, NOT pricing, NOT publishing content), open one PR: \`git switch -c codex/marketing-$ISSUE_NUM\`, \`git push -u origin codex/marketing-$ISSUE_NUM\`, \`gh pr create --base main --label codex --title \"<title>\" --body \"<summary, Closes #$ISSUE_NUM>\"\`, then \`gh pr merge --squash --auto --delete-branch\`. Blog drafts and brand/positioning copy are committed on that branch only as DRAFTS for the human to review — describe them in the report; do NOT auto-publish them anywhere. If you touch code, verify go build/test/vet. Do not make breaking public-contract changes. Do not use the make_pr tool (it is a no-op stub)."
