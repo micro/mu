@@ -26,18 +26,18 @@ and publishing marketing content. Those go to the human.
 > it here; until then the continuous-improvement loop falls back to picking the
 > highest-value item itself.
 
-1. **Harden the core ask → answer loop end to end.** A guest and a signed-in user
+1. **[#747 Harden the core ask → answer loop end to end.](https://github.com/micro/mu/issues/747)** A guest and a signed-in user
    should get a correct, well-formatted, fast answer on web and on the chat
    clients. Add integration/smoke coverage of the ask → tool → answer path across
    the core services (weather, news, markets, mail, search) so regressions in the
    most important flow are caught.
-2. **Every service degrades gracefully.** Audit each home card and each
+2. **[#748 Every service degrades gracefully.](https://github.com/micro/mu/issues/748)** Audit each home card and each
    agent-callable service for the provider-down case — no dead cards, no silent
    failures, a clear "unavailable" instead. One service per increment.
-3. **First-run experience.** A new visitor understands what Mu is and gets value
+3. **[#749 First-run experience.](https://github.com/micro/mu/issues/749)** A new visitor understands what Mu is and gets value
    from one prompt without an account — tighten the guest landing, suggestions,
    and the sign-up moment (when the free limit is hit) for clarity, not friction.
-4. **Answer formatting quality.** Rendered answers (news, markets, weather) look
+4. **[#750 Answer formatting quality.](https://github.com/micro/mu/issues/750)** Rendered answers (news, markets, weather) look
    right everywhere they appear — web (guest + signed-in), Discord, Telegram —
    with consistent spacing, headings, and links.
 
