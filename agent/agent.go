@@ -832,10 +832,12 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	streaming := false
 	emitted := false
 	var captured strings.Builder
+	var nativeTools []string
 
 	answer, handled, err := streamNative(accountID, prompt, opts, StreamHooks{
 		ToolStart: func(label string) {
 			emitted = true
+			nativeTools = append(nativeTools, label)
 			sse(w, map[string]any{"type": "tool_start", "name": label, "message": label})
 		},
 		ToolEnd: func(label string) {
@@ -872,6 +874,7 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	if answer == "" {
 		answer = app.StripLatexDollars(captured.String())
 	}
+	answer = completeNativeToolAnswer(answer, nativeTools)
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
 	if !isGuest {

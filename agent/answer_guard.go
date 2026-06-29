@@ -28,6 +28,20 @@ func completeToolAnswer(answer string, ragParts []string) string {
 	return b.String()
 }
 
+// completeNativeToolAnswer provides the same safety net for the native
+// go-micro agent path. That path streams tool lifecycle events but not raw tool
+// payloads, so when it stops at progress narration after using tools we can at
+// least return a clear unavailable state instead of leaving the user with
+// “let me check” as the final answer.
+func completeNativeToolAnswer(answer string, toolLabels []string) string {
+	trimmed := strings.TrimSpace(answer)
+	if len(toolLabels) == 0 || !isProgressOnlyAnswer(trimmed) {
+		return answer
+	}
+
+	return "I checked the live sources, but couldn't produce a complete final answer from the available tool results. Please try again in a moment; if one source is unavailable, ask for the specific slice (news, markets, weather, or search) and I'll show what is reachable."
+}
+
 func isProgressOnlyAnswer(answer string) bool {
 	if answer == "" {
 		return true

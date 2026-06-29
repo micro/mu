@@ -620,3 +620,21 @@ func TestCompleteToolAnswerWithoutToolsDoesNotOverride(t *testing.T) {
 		t.Fatalf("expected no override without tool results, got %q", got)
 	}
 }
+
+func TestCompleteNativeToolAnswerReplacesProgressWithUnavailableState(t *testing.T) {
+	got := completeNativeToolAnswer("I'll check the latest market and news data now.", []string{"📈 Checking market prices", "📰 Scanning headlines"})
+	if strings.Contains(strings.ToLower(got), "i'll check") {
+		t.Fatalf("expected progress narration to be replaced, got %q", got)
+	}
+	if !strings.Contains(got, "couldn't produce a complete final answer") {
+		t.Fatalf("expected clear unavailable state, got %q", got)
+	}
+}
+
+func TestCompleteNativeToolAnswerKeepsProgressWithoutTools(t *testing.T) {
+	want := "I'll check what that means."
+	got := completeNativeToolAnswer(want, nil)
+	if got != want {
+		t.Fatalf("expected no override without native tool use, got %q", got)
+	}
+}
