@@ -33,12 +33,13 @@ func chatComponent(guest bool) string {
 
 	html := `<div id="mu-chat">
   <form id="mu-chat-form">
-    <textarea id="mu-chat-input" placeholder="Ask anything..." maxlength="1024" rows="1"
+    <textarea id="mu-chat-input" placeholder="Try: give me a morning brief" maxlength="1024" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.getElementById('mu-chat-form').dispatchEvent(new Event('submit'))}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"></textarea>
     <button type="submit" aria-label="Send">&#x2192;</button>
   </form>
   <div id="mu-chat-suggest"></div>
+  <div id="mu-chat-hint"></div>
   <div id="mu-chat-conv"></div>
 </div>
 
@@ -49,6 +50,7 @@ func chatComponent(guest bool) string {
 #mu-chat-input{flex:1;padding:10px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 #mu-chat-form button{flex-shrink:0;width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
 #mu-chat-suggest{margin-top:16px}
+#mu-chat-hint{margin-top:10px;text-align:center;font-size:13px;color:#777}
 .mu-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .mu-pills a{padding:8px 14px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#555;text-decoration:none;cursor:pointer}
 .mu-pills a:hover{background:#f5f5f5}
@@ -90,6 +92,7 @@ var form=document.getElementById('mu-chat-form');
 var input=document.getElementById('mu-chat-input');
 var conv=document.getElementById('mu-chat-conv');
 var sugDiv=document.getElementById('mu-chat-suggest');
+var hintDiv=document.getElementById('mu-chat-hint');
 if(!form)return;
 var CKEY='mu_chat_conv';
 var HKEY='mu_chat_hist';
@@ -104,9 +107,10 @@ try{
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-var SUGGEST=['Today\'s news','Bitcoin price','Weather forecast','What is Mu?'];
+var SUGGEST=['Give me a morning brief','What is moving in markets?','Weather in San Francisco','Find today\'s AI news'];
 function showSuggestions(){
-  if(conv.innerHTML.trim()){sugDiv.innerHTML='';return;}
+  if(conv.innerHTML.trim()){sugDiv.innerHTML='';if(hintDiv)hintDiv.innerHTML='';return;}
+  if(GUEST&&hintDiv)hintDiv.innerHTML='No account needed for your first 3 questions. Sign up only when you want to keep going.';
   var h='<div class="mu-pills">';
   SUGGEST.forEach(function(s){h+='<a href="#" data-q="'+esc(s)+'">'+esc(s)+'</a>';});
   h+='</div>';
@@ -157,7 +161,7 @@ function ask(q){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();
         var msg=esc(j.error||'Sign up to keep using the AI agent.');
-        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up free →</a></div>';
+        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up free →</a> <a href="/login?redirect=/agent" style="margin-left:10px">Log in</a></div>';
         save();
         throw 'handled';
       });
