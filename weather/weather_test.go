@@ -37,3 +37,36 @@ func TestToCelsius_UnknownUnit(t *testing.T) {
 		t.Errorf("toCelsius(100, KELVIN) = %v, want 100", got)
 	}
 }
+
+func TestValidCoordinates(t *testing.T) {
+	tests := []struct {
+		name string
+		lat  float64
+		lon  float64
+		want bool
+	}{
+		{name: "origin", lat: 0, lon: 0, want: true},
+		{name: "north edge", lat: 90, lon: 180, want: true},
+		{name: "south edge", lat: -90, lon: -180, want: true},
+		{name: "lat too high", lat: 90.1, lon: 0, want: false},
+		{name: "lat too low", lat: -90.1, lon: 0, want: false},
+		{name: "lon too high", lat: 0, lon: 180.1, want: false},
+		{name: "lon too low", lat: 0, lon: -180.1, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := validCoordinates(tt.lat, tt.lon); got != tt.want {
+				t.Fatalf("validCoordinates(%v, %v) = %v, want %v", tt.lat, tt.lon, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestForecastTextInvalidCoordinatesDoesNotFetch(t *testing.T) {
+	got := ForecastText(91, 0)
+	want := "Weather is unavailable because the requested coordinates are invalid."
+	if got != want {
+		t.Fatalf("ForecastText invalid coordinates = %q, want %q", got, want)
+	}
+}
