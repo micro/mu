@@ -26,7 +26,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
-	"mu/internal/mesh"
+	"mu/internal/service"
 
 	"mu/wallet"
 )
@@ -1303,8 +1303,8 @@ func parseFeed() {
 
 func Load() {
 	// Register the go-micro service.
-	if err := mesh.Register("news", new(Server)); err != nil {
-		app.Log("news", "mesh register failed: %v", err)
+	if err := service.Register("news", new(Server)); err != nil {
+		app.Log("news", "service register failed: %v", err)
 	}
 
 	// Subscribe to refresh events

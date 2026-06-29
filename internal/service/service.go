@@ -1,4 +1,4 @@
-// Package mesh is mu's go-micro runtime core.
+// Package service is mu's go-micro runtime core.
 //
 // It owns the shared go-micro infrastructure — registry, client, broker,
 // store — and hosts mu's domain capabilities as in-process go-micro services.
@@ -9,7 +9,7 @@
 // Services run in-process behind an in-memory registry: adopting go-micro does
 // not force mu to physically distribute. The same handlers can later be split
 // into separate processes by swapping the registry, with no handler changes.
-package mesh
+package service
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 	"go-micro.dev/v6/registry"
 	"go-micro.dev/v6/selector"
 	"go-micro.dev/v6/server"
-	"go-micro.dev/v6/service"
+	gomicro "go-micro.dev/v6/service"
 	"go-micro.dev/v6/store"
 )
 
@@ -57,7 +57,7 @@ var (
 	cl       client.Client
 	br       broker.Broker
 	st       store.Store
-	services []service.Service
+	services []gomicro.Service
 )
 
 // Init builds the shared go-micro infrastructure. It is idempotent and safe to
@@ -106,12 +106,12 @@ func Store() store.Store { ensure(); return st }
 // It returns once the service is registered and reachable.
 func Register(name string, handlers ...any) error {
 	ensure()
-	svc := service.New(
-		service.Name(name),
-		service.Address("127.0.0.1:0"), // in-process: advertise loopback only
-		service.Registry(reg),
-		service.Client(cl),
-		service.Broker(br),
+	svc := gomicro.New(
+		gomicro.Name(name),
+		gomicro.Address("127.0.0.1:0"), // in-process: advertise loopback only
+		gomicro.Registry(reg),
+		gomicro.Client(cl),
+		gomicro.Broker(br),
 	)
 	for _, h := range handlers {
 		if err := svc.Handle(h); err != nil {
@@ -131,7 +131,7 @@ func Register(name string, handlers ...any) error {
 // metadata). Most callers want Register.
 func HandlerOpts(name string, h any, opts ...server.HandlerOption) error {
 	ensure()
-	svc := service.New(service.Name(name), service.Registry(reg), service.Client(cl), service.Broker(br))
+	svc := gomicro.New(gomicro.Name(name), gomicro.Registry(reg), gomicro.Client(cl), gomicro.Broker(br))
 	if err := svc.Handle(h, opts...); err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func HandlerOpts(name string, h any, opts ...server.HandlerOption) error {
 // Call invokes a service endpoint with typed request/response values.
 //
 //	var rsp weather.ForecastResponse
-//	mesh.Call(ctx, "weather", "Weather.Forecast", &weather.ForecastRequest{...}, &rsp)
+//	service.Call(ctx, "weather", "Weather.Forecast", &weather.ForecastRequest{...}, &rsp)
 func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
 	ensure()
 	return cl.Call(ctx, cl.NewRequest(svcName, endpoint, req), rsp)

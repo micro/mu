@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"mu/internal/mesh"
+	"mu/internal/service"
 	"mu/internal/settings"
 )
 
@@ -36,7 +36,7 @@ func TestQueryNativeLive(t *testing.T) {
 		t.Skip("set ATLAS_API_KEY to run")
 	}
 	settings.Set("ATLAS_API_KEY", key)
-	if err := mesh.Register("weather", WxProbe{}); err != nil {
+	if err := service.Register("weather", WxProbe{}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 

@@ -22,7 +22,7 @@ when go-micro is missing something, fix it upstream (we own it).
   `replace` against a live test, then branch+PR+merge+release via the API
   (API commits are GitHub-verified), bump mu with `go get go-micro.dev/v6@vX`.
   Already shipped: v6.3.1 (Messages), v6.3.2 (WithMaxTokens), v6.3.3 (Atlas streaming).
-- **Proxy:** `internal/mesh` bypasses HTTP(S)_PROXY for loopback automatically;
+- **Proxy:** `internal/service` bypasses HTTP(S)_PROXY for loopback automatically;
   in-process RPC works without external NO_PROXY. Live AI tests need
   `ATLAS_API_KEY` (the user's test key has been used inline; rotate later).
 
@@ -31,9 +31,9 @@ when go-micro is missing something, fix it upstream (we own it).
 1. `pkg/service.go`: a `Server` struct with typed methods
    `func (Server) M(ctx, *Req, *Rsp) error` wrapping existing logic, each with a
    doc-comment + `@example` (go-micro derives the AI-tool schema from these).
-2. In `pkg.Load()`: `mesh.Register("pkg", new(Server))`.
+2. In `pkg.Load()`: `service.Register("pkg", new(Server))`.
 3. In `main.go`: reroute the agent tool handler to call the service via
-   `mesh.Call(context.Background(), "pkg", "Server.M", &Req{...}, &rsp)`.
+   `service.Call(context.Background(), "pkg", "Server.M", &Req{...}, &rsp)`.
 4. Add a `pkg/service_test.go` round-trip test.
 
 ## Status: core migration COMPLETE and LIVE on micro.mu
@@ -52,7 +52,7 @@ agent cards (micro/go-micro#3342 — task lifecycle already shipped upstream).
 
 ## Done
 
-- ✅ `internal/mesh` runtime core (registry/client/broker/store, Register, Call, loopback proxy bypass).
+- ✅ `internal/service` runtime core (registry/client/broker/store, Register, Call, loopback proxy bypass).
 - ✅ AI core: `internal/ai.Ask` and `AskStream` both run through go-micro `ai`
   (Atlas/Anthropic/local), history + per-caller token caps preserved.
 - ✅ Services (11): weather, news, markets, social, video, blog, search, trade, recall, apps, mail.
@@ -76,22 +76,22 @@ or improve test coverage; never break `main`.
 1. ✅ **Cleanup** `internal/ai/providers.go`: removed the now-unused native
    funcs (`generateAtlas`, `generateAnthropic`, `generateAnthropicInternal`,
    `readAnthropicStream`, `generateLocalOpenAI`) + dead imports (−353 lines).
-2. ✅ **recall**: `RecallServer.Search` registered via mesh (handler in main,
+2. ✅ **recall**: `RecallServer.Search` registered via the service registry (handler in main,
    wraps `recallSearch` over data + mail); the `recall` tool calls it over RPC.
-3. ◑ **apps**: `apps.Server.Build` registered via mesh; the `apps_build` tool
+3. ◑ **apps**: `apps.Server.Build` registered via the service registry; the `apps_build` tool
    calls it over RPC. NOTE: `apps_search`/`apps_read` are HTTP-path tools
    (Method/Path, no Go handler) — they belong with the MCP gateway work (#5),
-   not a direct mesh.Call reroute. `apps_fork`/`apps_run`/`apps_create`/
+   not a direct service.Call reroute. `apps_fork`/`apps_run`/`apps_create`/
    `apps_edit` have handlers and could get service methods later if needed.
 4. **Agent pipeline**: route `agent.Query` (the `agent` tool + assistant) through
    a go-micro agent over the registered services, instead of the hand-rolled
    planner in `agent/` + `agent/micro/`. This is the big one — verify carefully.
-   - ◑ Foundation done: `mesh.NewAgent(name, prompt, provider, key, services)`
-     builds a go-micro agent on the in-process mesh (shares registry/client/
+   - ◑ Foundation done: `service.NewAgent(name, prompt, provider, key, services)`
+     builds a go-micro agent on the in-process service runtime (shares registry/client/
      store). Live-verified: an agent over a registered service calls its method
-     and answers from the result (internal/mesh/agent_live_test.go).
+     and answers from the result (internal/service/agent_live_test.go).
    - ◑ Wired (opt-in): `agent/native.go` `queryNative` — when `AGENT_NATIVE` is
-     set, the catch-all `agent.Query` uses a go-micro agent (`mesh.NewAgent`,
+     set, the catch-all `agent.Query` uses a go-micro agent (`service.NewAgent`,
      deepseek-v4-pro, MaxSteps 6) over the registered services. Account context
      is injected into account-scoped tool calls via a `WrapTool` middleware, so
      recall/trade stay correctly scoped. User context + history + guest service
@@ -122,7 +122,7 @@ or improve test coverage; never break `main`.
      request/response types must be exported, or rpc.Register rejects them.
 5. ◑ **MCP gateway** **[NEEDS SUPERVISION for the swap]**: changing `/mcp` is an
    external contract.
-   - ✅ Side-by-side (additive, opt-in): `mesh.StartMCPGateway(addr)` runs
+   - ✅ Side-by-side (additive, opt-in): `service.StartMCPGateway(addr)` runs
      go-micro's `gateway/mcp` on a separate port; main starts it when
      `MCP_GATEWAY_ADDR` is set (default off, real `/mcp` untouched). It
      auto-exposes every registered service as an MCP tool. Verified:
@@ -158,8 +158,7 @@ or improve test coverage; never break `main`.
    without dropping skills or task management. Until then mu's `/a2a` stays —
    and it already runs on the (go-micro-backed) AI core and services.
 7. ◑ **[SAFE]** Register the remaining agent-facing domains as go-micro services.
-   - ✅ **mail**: `mail.Server.Search` (rune-safe formatting) registered via
-     mesh; added to the native agent's services so it can search mail directly
+   - ✅ **mail**: `mail.Server.Search` (rune-safe formatting) registered via the service registry; added to the native agent's services so it can search mail directly
      (account id injected via the WrapTool middleware). Round-trip test added.
    - TODO: places, reminder, chat lack clean AI-first text accessors (places
      search is HTTP-handler-based; reminder only has ReminderHTML; chat is

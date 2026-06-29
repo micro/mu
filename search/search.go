@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/mesh"
+	"mu/internal/service"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/wallet"
@@ -22,8 +22,8 @@ import (
 
 // Load initializes the search building block.
 func Load() {
-	if err := mesh.Register("search", new(Server)); err != nil {
-		app.Log("search", "mesh register failed: %v", err)
+	if err := service.Register("search", new(Server)); err != nil {
+		app.Log("search", "service register failed: %v", err)
 	}
 }
 

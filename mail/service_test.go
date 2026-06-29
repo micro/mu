@@ -5,16 +5,16 @@ import (
 	"strings"
 	"testing"
 
-	"mu/internal/mesh"
+	"mu/internal/service"
 )
 
 // TestMailSearchViaMesh verifies the mail service RPC round-trip and endpoint.
 func TestMailSearchViaMesh(t *testing.T) {
-	if err := mesh.Register("mail", new(Server)); err != nil {
+	if err := service.Register("mail", new(Server)); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp SearchResponse
-	if err := mesh.Call(context.Background(), "mail", "Server.Search",
+	if err := service.Call(context.Background(), "mail", "Server.Search",
 		&SearchRequest{AccountID: "nobody", Query: "invoice", Limit: 5}, &rsp); err != nil {
 		t.Fatalf("call (endpoint/transport?): %v", err)
 	}

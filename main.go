@@ -27,7 +27,7 @@ import (
 	"mu/client/discord"
 	"mu/chat"
 	"mu/internal/cli"
-	"mu/internal/mesh"
+	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/docs"
 	"mu/home"
@@ -192,7 +192,7 @@ func main() {
 
 	// bring up the go-micro runtime core first, so domain services can
 	// register themselves as they load.
-	mesh.Init()
+	service.Init()
 
 	// load settings first so other packages can use them
 	settings.Load()
@@ -347,7 +347,7 @@ func main() {
 	if addr := settings.Get("MCP_GATEWAY_ADDR"); addr != "" {
 		go func() {
 			app.Log("main", "starting go-micro MCP gateway on %s", addr)
-			if err := mesh.StartMCPGateway(addr); err != nil {
+			if err := service.StartMCPGateway(addr); err != nil {
 				app.Log("main", "MCP gateway stopped: %v", err)
 			}
 		}()
@@ -637,7 +637,7 @@ func main() {
 		Handle: func(args map[string]any) (string, error) {
 			q, _ := args["q"].(string)
 			var rsp search.SearchResponse
-			if err := mesh.Call(context.Background(), "search", "Server.Search",
+			if err := service.Call(context.Background(), "search", "Server.Search",
 				&search.SearchRequest{Query: q}, &rsp); err != nil {
 				return "", err
 			}
@@ -675,7 +675,7 @@ func main() {
 				fmt.Sscanf(v, "%d", &limit)
 			}
 			var rsp news.HeadlinesResponse
-			if err := mesh.Call(context.Background(), "news", "Server.Headlines",
+			if err := service.Call(context.Background(), "news", "Server.Headlines",
 				&news.HeadlinesRequest{Topic: topic, Limit: limit}, &rsp); err != nil {
 				return "", err
 			}
@@ -696,7 +696,7 @@ func main() {
 				id, _ = args["url"].(string)
 			}
 			var rsp news.ReadResponse
-			if err := mesh.Call(context.Background(), "news", "Server.Read",
+			if err := service.Call(context.Background(), "news", "Server.Read",
 				&news.ReadRequest{ID: id}, &rsp); err != nil {
 				return err.Error(), err
 			}
@@ -706,8 +706,8 @@ func main() {
 
 	// recall tool — unified search across everything mu knows for the caller:
 	// the public indexed corpus (news, blog, social, video) plus their own mail.
-	if err := mesh.Register("recall", RecallServer{}); err != nil {
-		app.Log("main", "recall mesh register failed: %v", err)
+	if err := service.Register("recall", RecallServer{}); err != nil {
+		app.Log("main", "recall service register failed: %v", err)
 	}
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "recall",
@@ -734,7 +734,7 @@ func main() {
 			}
 		}
 		var rsp RecallResponse
-		if err := mesh.Call(context.Background(), "recall", "RecallServer.Search",
+		if err := service.Call(context.Background(), "recall", "RecallServer.Search",
 			&RecallRequest{AccountID: accountID, Query: strings.TrimSpace(query), Limit: limit}, &rsp); err != nil {
 			return "", err
 		}
@@ -751,7 +751,7 @@ func main() {
 		Handle: func(args map[string]any) (string, error) {
 			category, _ := args["category"].(string)
 			var rsp markets.PricesResponse
-			if err := mesh.Call(context.Background(), "markets", "Server.Prices",
+			if err := service.Call(context.Background(), "markets", "Server.Prices",
 				&markets.PricesRequest{Category: category}, &rsp); err != nil {
 				return "", err
 			}
@@ -776,7 +776,7 @@ func main() {
 			}
 			// Call the weather capability through go-micro.
 			var rsp weather.ForecastResponse
-			if err := mesh.Call(context.Background(), "weather", "Server.Forecast",
+			if err := service.Call(context.Background(), "weather", "Server.Forecast",
 				&weather.ForecastRequest{Lat: lat, Lon: lon}, &rsp); err != nil {
 				return "", err
 			}
@@ -790,7 +790,7 @@ func main() {
 		Description: "Get the latest social posts from the network.",
 		Handle: func(args map[string]any) (string, error) {
 			var rsp social.FeedResponse
-			if err := mesh.Call(context.Background(), "social", "Server.Feed",
+			if err := service.Call(context.Background(), "social", "Server.Feed",
 				&social.FeedRequest{}, &rsp); err != nil {
 				return "", err
 			}
@@ -804,7 +804,7 @@ func main() {
 		Description: "Get the latest videos from curated channels.",
 		Handle: func(args map[string]any) (string, error) {
 			var rsp video.LatestResponse
-			if err := mesh.Call(context.Background(), "video", "Server.Latest",
+			if err := service.Call(context.Background(), "video", "Server.Latest",
 				&video.LatestRequest{}, &rsp); err != nil {
 				return "", err
 			}
@@ -818,7 +818,7 @@ func main() {
 		Description: "Get recent blog posts (titles, snippets and ids; use blog_read for one in full).",
 		Handle: func(args map[string]any) (string, error) {
 			var rsp blog.RecentResponse
-			if err := mesh.Call(context.Background(), "blog", "Server.Recent",
+			if err := service.Call(context.Background(), "blog", "Server.Recent",
 				&blog.RecentRequest{}, &rsp); err != nil {
 				return "", err
 			}
@@ -935,7 +935,7 @@ func main() {
 			authorName = acc.Name
 		}
 		var rsp apps.BuildResponse
-		if err := mesh.Call(context.Background(), "apps", "Server.Build",
+		if err := service.Call(context.Background(), "apps", "Server.Build",
 			&apps.BuildRequest{Prompt: prompt, AuthorID: accountID, AuthorName: authorName}, &rsp); err != nil {
 			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
 		}
@@ -1046,7 +1046,7 @@ func main() {
 			to, _ := args["to"].(string)
 			amount, _ := args["amount"].(string)
 			var q trade.Quote
-			if err := mesh.Call(context.Background(), "trade", "Server.Quote",
+			if err := service.Call(context.Background(), "trade", "Server.Quote",
 				&trade.QuoteRequest{From: from, To: to, Amount: amount}, &q); err != nil {
 				return "", err
 			}
@@ -1067,7 +1067,7 @@ func main() {
 		to, _ := args["to"].(string)
 		amount, _ := args["amount"].(string)
 		var t trade.Trade
-		if err := mesh.Call(context.Background(), "trade", "Server.Swap",
+		if err := service.Call(context.Background(), "trade", "Server.Swap",
 			&trade.SwapRequest{AccountID: accountID, From: from, To: to, Amount: amount}, &t); err != nil {
 			return "", err
 		}
@@ -1079,7 +1079,7 @@ func main() {
 		Description: "Get your trading wallet address and token balances on Base",
 	}, func(args map[string]any, accountID string) (string, error) {
 		var info trade.WalletInfo
-		if err := mesh.Call(context.Background(), "trade", "Server.Wallet",
+		if err := service.Call(context.Background(), "trade", "Server.Wallet",
 			&trade.WalletRequest{AccountID: accountID}, &info); err != nil {
 			return `{"error":"No trading wallet. Create one at /markets?category=trade"}`, nil
 		}
@@ -1108,7 +1108,7 @@ func main() {
 		maxTrade, _ := args["max_per_trade"].(string)
 		maxWeek, _ := args["max_per_week"].(string)
 		var s trade.Strategy
-		if err := mesh.Call(context.Background(), "trade", "Server.Strategy",
+		if err := service.Call(context.Background(), "trade", "Server.Strategy",
 			&trade.StrategyRequest{AccountID: accountID, Description: desc, Mode: mode, MaxPerTrade: maxTrade, MaxPerWeek: maxWeek}, &s); err != nil {
 			return "", err
 		}
@@ -1846,7 +1846,7 @@ func versionInfo() map[string]any {
 		"go":       runtime.Version(),
 		"agent":    agent.Mode(),         // "native" (go-micro agent) or "planner"
 		"mcp":      "go-micro/gateway",   // /mcp served by go-micro's gateway
-		"services": mesh.Services(),      // in-process go-micro services
+		"services": service.Services(),      // in-process go-micro services
 		"go_micro": "unknown",
 	}
 	if bi, ok := debug.ReadBuildInfo(); ok {
@@ -1887,7 +1887,7 @@ func runHealthChecks() []app.ServiceHealth {
 		{"Mail", "/mail", func() bool { return os.Getenv("MAIL_DOMAIN") != "" }},
 		{"Markets", "/markets", func() bool { return len(markets.GetAllPrices()) > 0 }},
 		{"Social", "/social", func() bool { return len(social.GetThreads()) > 0 }},
-		{"go-micro", "/version", func() bool { return len(mesh.Services()) > 0 }},
+		{"go-micro", "/version", func() bool { return len(service.Services()) > 0 }},
 	}
 
 	results := make([]app.ServiceHealth, len(checks))

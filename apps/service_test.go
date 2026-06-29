@@ -5,18 +5,18 @@ import (
 	"strings"
 	"testing"
 
-	"mu/internal/mesh"
+	"mu/internal/service"
 )
 
 // TestAppsBuildViaMesh verifies the apps service RPC round-trip and endpoint
 // name. Without an AI provider configured, Build returns an AI error — which
 // still proves the request reached the handler (not a transport/endpoint error).
 func TestAppsBuildViaMesh(t *testing.T) {
-	if err := mesh.Register("apps", new(Server)); err != nil {
+	if err := service.Register("apps", new(Server)); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp BuildResponse
-	err := mesh.Call(context.Background(), "apps", "Server.Build",
+	err := service.Call(context.Background(), "apps", "Server.Build",
 		&BuildRequest{Prompt: "a water counter", AuthorID: "u1", AuthorName: "U"}, &rsp)
 	if err == nil {
 		return // an AI provider was configured and it built — also fine

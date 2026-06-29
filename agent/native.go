@@ -11,7 +11,7 @@ import (
 
 	"mu/internal/ai"
 	"mu/internal/app"
-	"mu/internal/mesh"
+	"mu/internal/service"
 	"mu/internal/settings"
 )
 
@@ -105,7 +105,7 @@ func queryNative(accountID, prompt string, opts QueryOpts) (string, bool, error)
 		question = hb.String()
 	}
 
-	a := mesh.NewAgent("assistant", sys, "atlascloud", key, nativeServices(opts.Public),
+	a := service.NewAgent("assistant", sys, "atlascloud", key, nativeServices(opts.Public),
 		gmagent.Model(ai.ModelDeepSeekPro),
 		gmagent.MaxSteps(6),
 		gmagent.WrapTool(injectAccount(accountID)))

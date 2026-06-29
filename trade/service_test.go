@@ -5,18 +5,18 @@ import (
 	"strings"
 	"testing"
 
-	"mu/internal/mesh"
+	"mu/internal/service"
 )
 
 // TestTradeViaMesh verifies the go-micro RPC round-trip for the trade service.
 // An unknown account has no wallet, so the service returns a clean error — which
 // confirms the request reached the handler and the response routed back.
 func TestTradeViaMesh(t *testing.T) {
-	if err := mesh.Register("trade", new(Server)); err != nil {
+	if err := service.Register("trade", new(Server)); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var info WalletInfo
-	err := mesh.Call(context.Background(), "trade", "Server.Wallet",
+	err := service.Call(context.Background(), "trade", "Server.Wallet",
 		&WalletRequest{AccountID: "nonexistent-account"}, &info)
 	if err == nil {
 		t.Fatal("expected an error for an unknown account")

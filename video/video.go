@@ -17,7 +17,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 	"mu/internal/app"
-	"mu/internal/mesh"
+	"mu/internal/service"
 	"mu/internal/auth"
 	"mu/internal/data"
 
@@ -277,8 +277,8 @@ func loadChannels() {
 
 // Load videos
 func Load() {
-	if err := mesh.Register("video", new(Server)); err != nil {
-		app.Log("video", "mesh register failed: %v", err)
+	if err := service.Register("video", new(Server)); err != nil {
+		app.Log("video", "service register failed: %v", err)
 	}
 
 	// Loaded

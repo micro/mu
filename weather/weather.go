@@ -8,14 +8,14 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/mesh"
+	"mu/internal/service"
 	"mu/wallet"
 )
 
 // Load initialises the weather package and registers its go-micro service.
 func Load() {
-	if err := mesh.Register("weather", new(Server)); err != nil {
-		app.Log("weather", "mesh register failed: %v", err)
+	if err := service.Register("weather", new(Server)); err != nil {
+		app.Log("weather", "service register failed: %v", err)
 	}
 }
 

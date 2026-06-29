@@ -14,7 +14,7 @@ import (
 	"sync"
 
 	"mu/internal/app"
-	"mu/internal/mesh"
+	"mu/internal/service"
 	"mu/internal/data"
 	"mu/internal/settings"
 
@@ -148,8 +148,8 @@ var (
 
 func Load() {
 	initTokens()
-	if err := mesh.Register("trade", new(Server)); err != nil {
-		app.Log("trade", "mesh register failed: %v", err)
+	if err := service.Register("trade", new(Server)); err != nil {
+		app.Log("trade", "service register failed: %v", err)
 	}
 	data.LoadJSON("trade_wallets.json", &wallets)
 	data.LoadJSON("trade_history.json", &trades)

@@ -1,4 +1,4 @@
-package mesh
+package service
 
 import (
 	"go-micro.dev/v6/agent"
