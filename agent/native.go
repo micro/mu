@@ -28,6 +28,15 @@ func nativeEnabled() bool {
 	return true
 }
 
+// Mode reports the active agent engine: "native" (go-micro agent) or "planner"
+// (the hand-rolled pipeline). Surfaced on /version and /status.
+func Mode() string {
+	if nativeEnabled() {
+		return "native"
+	}
+	return "planner"
+}
+
 // nativeServices are the registered go-micro domain services the native agent
 // may use as tools. Guests get the public subset (no account-scoped data).
 func nativeServices(public bool) []string {

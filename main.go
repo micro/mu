@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -1411,6 +1412,12 @@ func main() {
 		w.Write([]byte(fmt.Sprintf(`{"status":"ok","online":%d}`, onlineCount)))
 	})
 
+	// /version — what's deployed and how it's wired, for verifying releases.
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(versionInfo())
+	})
+
 	// serve the api doc
 	http.HandleFunc("/api", api.APIPageHandler)
 
@@ -1831,6 +1838,37 @@ func isServerMode(args []string) bool {
 }
 
 // runHealthChecks performs lightweight health checks on public-facing services
+// versionInfo reports the running build and how the system is wired, so a
+// deploy can be verified with `curl micro.mu/version`.
+func versionInfo() map[string]any {
+	info := map[string]any{
+		"version":  app.Version, // per-process id (start time)
+		"go":       runtime.Version(),
+		"agent":    agent.Mode(),         // "native" (go-micro agent) or "planner"
+		"mcp":      "go-micro/gateway",   // /mcp served by go-micro's gateway
+		"services": mesh.Services(),      // in-process go-micro services
+		"go_micro": "unknown",
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		for _, s := range bi.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				info["commit"] = s.Value
+			case "vcs.time":
+				info["commit_time"] = s.Value
+			case "vcs.modified":
+				info["dirty"] = s.Value == "true"
+			}
+		}
+		for _, dep := range bi.Deps {
+			if dep.Path == "go-micro.dev/v6" {
+				info["go_micro"] = dep.Version
+			}
+		}
+	}
+	return info
+}
+
 func runHealthChecks() []app.ServiceHealth {
 	type result struct {
 		index int
@@ -1849,6 +1887,7 @@ func runHealthChecks() []app.ServiceHealth {
 		{"Mail", "/mail", func() bool { return os.Getenv("MAIL_DOMAIN") != "" }},
 		{"Markets", "/markets", func() bool { return len(markets.GetAllPrices()) > 0 }},
 		{"Social", "/social", func() bool { return len(social.GetThreads()) > 0 }},
+		{"go-micro", "/version", func() bool { return len(mesh.Services()) > 0 }},
 	}
 
 	results := make([]app.ServiceHealth, len(checks))

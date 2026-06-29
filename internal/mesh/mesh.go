@@ -167,6 +167,17 @@ func StartMCPGateway(addr string) error {
 	})
 }
 
+// Services returns the names of the registered in-process go-micro services.
+func Services() []string {
+	mu.Lock()
+	defer mu.Unlock()
+	out := make([]string, 0, len(services))
+	for _, s := range services {
+		out = append(out, s.Name())
+	}
+	return out
+}
+
 // Stop shuts down all hosted services. Used on graceful shutdown.
 func Stop() {
 	mu.Lock()
