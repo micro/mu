@@ -27,9 +27,14 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/service"
+	"mu/internal/snapshot"
 
 	"mu/wallet"
 )
+
+// cardSnap is the go-micro read-plane channel for the news card (store +
+// broker); see internal/snapshot and internal/docs/ARCHITECTURE.md.
+var cardSnap *snapshot.Snapshot
 
 //go:embed feeds.json
 var f embed.FS
@@ -1297,8 +1302,8 @@ func parseFeed() {
 	mutex.Unlock()
 
 	// Publish the new snapshot to the go-micro store + broker; Headlines serves
-	// it from a mirror (see snapshot.go / ARCHITECTURE.md).
-	publishSnapshot(headlineHtml)
+	// it from a mirror (see internal/snapshot, ARCHITECTURE.md).
+	cardSnap.Publish(headlineHtml)
 
 	// Wait an hour and go again
 	time.Sleep(time.Hour)
@@ -1410,10 +1415,10 @@ func Load() {
 	// load the feeds
 	loadFeed()
 
-	// Read plane: subscribe to snapshot updates, then warm the mirror with the
+	// Read plane: start the snapshot channel, then warm the mirror with the
 	// disk-primed headlines so renders are served from the go-micro data plane.
-	startSnapshotConsumer()
-	publishSnapshot(headlinesHtml)
+	cardSnap = snapshot.New("news")
+	cardSnap.Publish(headlinesHtml)
 
 	go parseFeed()
 }
@@ -1421,7 +1426,7 @@ func Load() {
 func Headlines() string {
 	// Serve the broker-fed snapshot mirror (the go-micro read plane); fall back
 	// to the locally-cached HTML if no snapshot has arrived yet.
-	if s := snapshot(); s != "" {
+	if s := cardSnap.Get(); s != "" {
 		return s
 	}
 	mutex.RLock()

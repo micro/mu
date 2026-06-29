@@ -15,6 +15,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/service"
+	"mu/internal/snapshot"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
@@ -22,6 +23,10 @@ import (
 	"mu/news"
 	"mu/wallet"
 )
+
+// cardSnap is the go-micro read-plane channel for the social card (store +
+// broker); see internal/snapshot and internal/docs/ARCHITECTURE.md.
+var cardSnap *snapshot.Snapshot
 
 var mutex sync.RWMutex
 
@@ -75,6 +80,10 @@ func Load() {
 	if err := service.Register("social", new(Server)); err != nil {
 		app.Log("social", "service register failed: %v", err)
 	}
+
+	// Read plane: start the snapshot channel before the cache is first built
+	// (below) so the rebuild publishes to the go-micro store + broker.
+	cardSnap = snapshot.New("social")
 
 	// Load saved messages (migrate from social_posts.json if needed)
 	b, err := data.LoadFile("social.json")
@@ -240,10 +249,19 @@ func save() error {
 func updateCacheLocked() {
 	cardHTML = generateCardHTML(messages)
 	pageBodyHTML = "" // invalidate, regenerated on next request
+
+	// Publish the rebuilt card snapshot to the go-micro store + broker; runs
+	// under the caller's write lock (nil-safe before Load wires cardSnap).
+	cardSnap.Publish(cardHTML)
 }
 
 // CardHTML returns cached dashboard card HTML
 func CardHTML() string {
+	// Serve the broker-fed snapshot mirror (go-micro read plane); fall back to
+	// the locally-cached HTML if no snapshot has arrived yet.
+	if s := cardSnap.Get(); s != "" {
+		return s
+	}
 	mutex.RLock()
 	defer mutex.RUnlock()
 	return cardHTML

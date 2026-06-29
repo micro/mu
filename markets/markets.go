@@ -14,10 +14,15 @@ import (
 	"mu/internal/app"
 	"mu/internal/data"
 	"mu/internal/service"
+	"mu/internal/snapshot"
 
 	"github.com/piquette/finance-go/future"
 	"github.com/piquette/finance-go/quote"
 )
+
+// cardSnap is the go-micro read-plane channel for the markets card (store +
+// broker); see internal/snapshot and internal/docs/ARCHITECTURE.md.
+var cardSnap *snapshot.Snapshot
 
 // PriceData holds price and 24h change for an asset
 type PriceData struct {
@@ -100,13 +105,13 @@ func Load() {
 		marketsMutex.Unlock()
 	}
 
-	// Read plane: subscribe to snapshot updates, then warm the mirror with the
+	// Read plane: start the snapshot channel, then warm the mirror with the
 	// disk-primed card so renders are served from the go-micro data plane.
-	startSnapshotConsumer()
+	cardSnap = snapshot.New("markets")
 	marketsMutex.RLock()
 	warm := marketsHTML
 	marketsMutex.RUnlock()
-	publishSnapshot(warm)
+	cardSnap.Publish(warm)
 
 	// Start background refresh
 	go refreshMarkets()
@@ -164,8 +169,8 @@ func refreshMarkets() {
 			marketsMutex.Unlock()
 
 			// Publish the new snapshot to the go-micro store + broker; the read
-			// path serves it from a mirror (see snapshot.go / ARCHITECTURE.md).
-			publishSnapshot(html)
+			// path serves it from a mirror (see internal/snapshot, ARCHITECTURE.md).
+			cardSnap.Publish(html)
 
 			indexMarketPrices(prices)
 			data.SaveFile("markets.html", html)
@@ -388,7 +393,7 @@ func indexMarketPrices(prices map[string]float64) {
 // snapshot mirror (the go-micro read plane); if no snapshot has arrived yet it
 // falls back to the locally-generated HTML so a render never regresses.
 func MarketsHTML() string {
-	if s := snapshot(); s != "" {
+	if s := cardSnap.Get(); s != "" {
 		return s
 	}
 	marketsMutex.RLock()

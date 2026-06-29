@@ -18,11 +18,16 @@ import (
 	"google.golang.org/api/youtube/v3"
 	"mu/internal/app"
 	"mu/internal/service"
+	"mu/internal/snapshot"
 	"mu/internal/auth"
 	"mu/internal/data"
 
 	"mu/wallet"
 )
+
+// cardSnap is the go-micro read-plane channel for the video card (store +
+// broker); see internal/snapshot and internal/docs/ARCHITECTURE.md.
+var cardSnap *snapshot.Snapshot
 
 //go:embed channels.json
 var f embed.FS
@@ -306,6 +311,14 @@ func Load() {
 		app.Log("video", "No cached JSON, loaded HTML files")
 	}
 
+	// Read plane: start the snapshot channel and warm the mirror with the
+	// disk/JSON-primed card so renders are served from the go-micro data plane.
+	cardSnap = snapshot.New("video")
+	mutex.RLock()
+	warm := latestHtml
+	mutex.RUnlock()
+	cardSnap.Publish(warm)
+
 	// load fresh videos
 	go loadVideos()
 }
@@ -404,6 +417,9 @@ func regenerateHTML() {
 	}
 
 	videosHtml = app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String()))
+
+	// Publish the rebuilt card snapshot (nil-safe before Load wires cardSnap).
+	cardSnap.Publish(latestHtml)
 }
 
 func loadVideos() {
@@ -521,7 +537,11 @@ func loadVideos() {
 	}
 	videos = vids
 	videosHtml = vidHtml
+	lh := latestHtml
 	mutex.Unlock()
+
+	// Publish the refreshed card snapshot to the go-micro store + broker.
+	cardSnap.Publish(lh)
 
 	time.Sleep(time.Hour)
 	go loadVideos()
@@ -751,10 +771,13 @@ func getResults(query, channel string) (string, []*Result, error) {
 }
 
 func Latest() string {
-	// Use cached HTML for efficiency
+	// Serve the broker-fed snapshot mirror (go-micro read plane); fall back to
+	// the locally-cached HTML if no snapshot has arrived yet.
+	if s := cardSnap.Get(); s != "" {
+		return s
+	}
 	mutex.RLock()
 	defer mutex.RUnlock()
-
 	return latestHtml
 }
 

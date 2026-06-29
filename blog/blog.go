@@ -13,6 +13,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/service"
+	"mu/internal/snapshot"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
@@ -21,6 +22,10 @@ import (
 
 //go:embed topics.json
 var topicsJSON []byte
+
+// cardSnap is the go-micro read-plane channel for the blog preview card (store +
+// broker); see internal/snapshot and internal/docs/ARCHITECTURE.md.
+var cardSnap *snapshot.Snapshot
 
 var mutex sync.RWMutex
 
@@ -135,6 +140,10 @@ func Load() {
 	if err := service.Register("blog", new(Server)); err != nil {
 		app.Log("blog", "service register failed: %v", err)
 	}
+
+	// Read plane: start the snapshot channel early so the first cache build
+	// (below, async) publishes to the go-micro store + broker.
+	cardSnap = snapshot.New("blog")
 
 	// Register tools
 
@@ -604,14 +613,21 @@ func updateCacheUnlocked() {
 	} else {
 		postsList = strings.Join(fullList, "\n")
 	}
+
+	// Publish the rebuilt preview snapshot to the go-micro store + broker; runs
+	// under the caller's lock (nil-safe before Load wires cardSnap).
+	cardSnap.Publish(postsPreviewHtml)
 }
 
 // Preview returns HTML preview of latest posts for home page
 func Preview() string {
-	// Use cached HTML for efficiency
+	// Serve the broker-fed snapshot mirror (go-micro read plane); fall back to
+	// the locally-cached HTML if no snapshot has arrived yet.
+	if s := cardSnap.Get(); s != "" {
+		return s
+	}
 	mutex.RLock()
 	defer mutex.RUnlock()
-
 	return postsPreviewHtml
 }
 

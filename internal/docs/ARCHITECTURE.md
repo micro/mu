@@ -68,18 +68,17 @@ things that are genuinely Mu-specific.
    publishes its rendered card to the go-micro store + broker; `MarketsHTML()`
    serves a broker-fed mirror with a fallback to locally-generated HTML. Render
    stays a memory read.
-2. ◑ **Replicate the snapshot read-model** to the other display cards — one
-   service at a time, each verified.
-   - ✅ **news** — `news/snapshot.go`; `Headlines()` serves the mirror.
-   - TODO **video, social, blog.** Caveat learned: markets/news each have a
-     single cache-update site, so one `publishSnapshot` covers them. video sets
-     `latestHtml` in several places, social updates via `updateCacheLocked`, blog
-     via `RefreshCache` (+ others) — publish from every update site (or
-     centralize the cache write first) or the snapshot goes stale. Add the
-     round-trip + fallback tests each time.
-3. **Unify events onto the broker.** Make `internal/event` a thin wrapper over the
-   go-micro broker (preserve Subscribe/Publish ergonomics) so there is one bus.
-   **Caveat:** the broker carries `[]byte`, so wrapping JSON-marshals each
+2. ✅ **Replicate the snapshot read-model** to every display card. Done — the
+   pattern was extracted into a shared helper, **`internal/snapshot`** (one tested
+   `Snapshot` type: `New(name)` subscribes + primes from the store, `Publish`
+   writes store + broker, `Get` reads the mirror). All five cards use it:
+   **markets, news, video, social, blog** — each serves `Get()` with a fallback
+   to its locally-cached HTML, each with round-trip + fallback tests. Publish is
+   hooked at every cache-rebuild site (video's two finalize points; social's
+   `updateCacheLocked`; blog's `updateCacheUnlocked`).
+3. ◑ **Unify events onto the broker.** Make `internal/event` a thin wrapper over
+   the go-micro broker (preserve Subscribe/Publish ergonomics) so there is one
+   bus. **Caveat:** the broker carries `[]byte`, so wrapping JSON-marshals each
    `Event.Data` map — numbers come back as `float64`. Audit every consumer's type
    assertions before cutting over (today they appear string-only).
 4. **Agent-routed queries.** Run specialist agents as services; route/delegate the
