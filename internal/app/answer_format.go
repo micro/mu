@@ -1,8 +1,10 @@
 package app
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // NormalizeAnswerMarkdown prepares assistant answers for every Mu surface before
@@ -48,6 +50,7 @@ func NormalizeAnswerMarkdown(answer string) string {
 }
 
 func normalizeMarkdownLine(line string) string {
+	line = repairMalformedLeadingBold(line)
 	if heading, rest, ok := strings.Cut(line, " "); ok && isMarkdownHeading(heading) {
 		return heading + " " + strings.TrimSpace(rest)
 	}
@@ -62,8 +65,11 @@ func normalizeMarkdownLine(line string) string {
 		}
 	}
 
-	for _, prefix := range []string{"-", "*", "+", ">"} {
-		if rest, ok := strings.CutPrefix(line, prefix); ok {
+	if rest, ok := strings.CutPrefix(line, ">"); ok {
+		return "> " + strings.TrimSpace(rest)
+	}
+	for _, prefix := range []string{"-", "*", "+"} {
+		if rest, ok := strings.CutPrefix(line, prefix); ok && startsMarkdownListRest(rest) {
 			return prefix + " " + strings.TrimSpace(rest)
 		}
 	}
@@ -74,6 +80,20 @@ func normalizeMarkdownLine(line string) string {
 		return normalizeTableLine(line)
 	}
 	return line
+}
+
+var malformedLeadingBoldRe = regexp.MustCompile(`^\*([^*\n]+?:)\*\*(\s|$)`)
+
+func repairMalformedLeadingBold(line string) string {
+	return malformedLeadingBoldRe.ReplaceAllString(line, `**$1**$2`)
+}
+
+func startsMarkdownListRest(rest string) bool {
+	if rest == "" {
+		return false
+	}
+	r, _ := utf8.DecodeRuneInString(rest)
+	return unicode.IsSpace(r)
 }
 
 func isMarkdownHeading(s string) bool {
