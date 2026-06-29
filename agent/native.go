@@ -98,6 +98,8 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts) (a gmagent.Agent
 		"Use the available tools for live or personal data (weather, news, market prices, " +
 		"social, video, blog, web search, trading, and recall of the user's own news/mail). " +
 		"Quote exact values from tool results. Be concise and conversational. " +
+		"After using tools, always provide the final answer or state exactly what is unavailable; " +
+		"never stop at progress narration like let me check or I will pull that data. " +
 		"If the user asks about weather without a location, default to London (lat 51.5074, lon -0.1278)."
 	if !opts.Public && UserContextFunc != nil {
 		if uc := UserContextFunc(accountID); uc != "" {
