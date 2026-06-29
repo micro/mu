@@ -153,7 +153,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 	// Fetch weather
 	forecast, err := FetchWeather(lat, lon)
 	if err != nil {
-		app.RespondError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch weather: %v", err))
+		app.RespondError(w, http.StatusServiceUnavailable, weatherUnavailableMessage)
 		return
 	}
 
@@ -288,7 +288,7 @@ func renderWeatherPage(r *http.Request) string {
       fetchWeather(parseFloat(data[0].lat), parseFloat(data[0].lon), name);
     }).catch(function() {
       showLoading(false);
-      showError('Failed to find location.');
+      showError('Location search is unavailable right now. Please try again later.');
     });
   }
 
@@ -307,7 +307,7 @@ func renderWeatherPage(r *http.Request) string {
       })
       .catch(function(err) {
         showLoading(false);
-        var msg = (err && err.error) ? err.error : 'Failed to load weather data.';
+        var msg = (err && err.error) ? err.error : 'Weather is unavailable right now. Please try again later.';
         if (msg.indexOf('Insufficient credits') !== -1) {
           msg += ' <a href="/wallet/topup">Top up your wallet</a>.';
         }
