@@ -80,10 +80,15 @@ bugs, rough edges) interleave by value.
 - **May**, unsupervised: refinements, bug fixes, test coverage, error-message and
   formatting polish, factual doc alignment, performance — anything that makes the
   existing product more seamless without changing its contract.
+- **May**, on the live platform: Mu posts its own evangelism content to its own
+  blog via the in-process loop (`blog/evangelism.go`), grounded in canon and low
+  cadence — the same autonomy the opinion/digest loops already have. Toggle with
+  `EVANGELISM=off`.
 - **May not**, without the human: brand/positioning copy and taglines; breaking
   changes to public contracts (MCP tool names, A2A protocol, webhook/REST
-  endpoints, env var names); pricing; large architectural rewrites; publishing
-  marketing/blog content (draft and surface it, never auto-publish).
+  endpoints, env var names); pricing; large architectural rewrites; and
+  publishing marketing content **off** Mu's own blog (long-form drafts are
+  surfaced for the human, not auto-posted elsewhere).
 
 When unsure, pick the smaller, safer, more reversible change — and keep `main`
 green (`go build ./...`, `go test ./... -short`, `go vet ./...`).

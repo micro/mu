@@ -1,9 +1,10 @@
-# Blog drafts
+# Blog drafts (long-form, human-published)
 
-Marketing/evangelism drafts produced by the **marketing-review** pass (see
-[../MARKETING.md](../MARKETING.md)). One file per draft, named
-`YYYY-MM-DD-slug.md`.
+Mu's routine evangelism is published **live, on Mu's own blog**, by the
+in-process loop in `blog/evangelism.go` (see [../MARKETING.md](../MARKETING.md)).
+That is the primary channel — actual content on the actual platform.
 
-These are **drafts for human review** — nothing here is published automatically.
-The human decides what goes live and where. Until Mu has a dedicated public
-"writing/changelog" surface, this directory is the staging area.
+This directory is only for **long-form drafts** the marketing pass proposes that
+are too big or too positioning-heavy for the live loop — staged here for a human
+to review and post. One file per draft, `YYYY-MM-DD-slug.md`. Nothing here
+publishes automatically.
