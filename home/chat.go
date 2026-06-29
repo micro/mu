@@ -62,9 +62,25 @@ func chatComponent(guest bool) string {
 .mu-cta a{color:#111;font-weight:600;text-decoration:none}
 .mu-cursor{display:inline-block;width:2px;height:1em;background:#000;vertical-align:text-bottom;animation:mublink .8s step-end infinite;margin-left:2px}
 @keyframes mublink{0%,100%{opacity:1}50%{opacity:0}}
-#mu-chat .card{max-width:100%;border:1px solid #e0e0e0;border-radius:8px;padding:14px 16px;margin-bottom:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+#mu-chat .card{max-width:100%;border:1px solid #e0e0e0;border-radius:8px;padding:16px 18px;margin-bottom:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 #mu-chat .card h4{margin:0 0 8px;font-size:1em;font-weight:600}
 #mu-chat .card a,#mu-chat .link,#mu-chat a.link{color:#111}
+/* Self-contained typography so rendered answers look right even where mu.css
+   isn't loaded (e.g. the guest landing page). */
+#mu-chat .card h1,#mu-chat .card h2,#mu-chat .card h3{margin:16px 0 8px;line-height:1.3;font-weight:700}
+#mu-chat .card h1{font-size:1.3em}
+#mu-chat .card h2{font-size:1.15em}
+#mu-chat .card h3{font-size:1.02em}
+#mu-chat .card>h1:first-child,#mu-chat .card>h2:first-child,#mu-chat .card>h3:first-child,#mu-chat .card>p:first-child{margin-top:0}
+#mu-chat .card p{margin:0 0 10px}
+#mu-chat .card ul,#mu-chat .card ol{margin:0 0 12px;padding-left:22px}
+#mu-chat .card li{margin:0 0 5px}
+#mu-chat .card hr{border:none;border-top:1px solid #eee;margin:14px 0}
+#mu-chat .card>*:last-child{margin-bottom:0}
+.mu-think{display:flex;align-items:center}
+.mu-spin{display:inline-block;width:11px;height:11px;border:2px solid #ddd;border-top-color:#666;border-radius:50%;animation:muspin .7s linear infinite;margin-right:8px;flex-shrink:0}
+@keyframes muspin{to{transform:rotate(360deg)}}
+.mu-think-t{color:#bbb;font-size:12px;margin-left:6px}
 </style>
 
 <script>
@@ -112,29 +128,47 @@ function ask(q){
   if(!q)return;
   sugDiv.innerHTML='';
   var u=document.createElement('div');u.className='mu-user';u.textContent=q;conv.appendChild(u);
-  var a=document.createElement('div');a.className='mu-agent';a.innerHTML='<div class="mu-think">Thinking…</div>';conv.appendChild(a);
+  var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
   input.value='';input.style.height='auto';input.focus();
+
+  // Animated progress indicator: a spinner + label + elapsed time, ticking
+  // until the answer renders. The response often arrives in one chunk rather
+  // than token-by-token, so this is what tells the user something is happening.
+  var workLabel='Processing';
+  var t0=Date.now();
+  var timer=null;
+  function renderWork(){
+    var dots=['.','..','...'][Math.floor((Date.now()-t0)/450)%3];
+    var secs=Math.round((Date.now()-t0)/1000);
+    a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>'+esc(workLabel)+dots+'</span>'+(secs>=1?'<span class="mu-think-t">'+secs+'s</span>':'')+'</div>';
+  }
+  function startWork(label){if(label)workLabel=label;renderWork();if(!timer)timer=setInterval(renderWork,450);}
+  function stopWork(){if(timer){clearInterval(timer);timer=null;}}
+  startWork('Processing');
+
   save();
   a.scrollIntoView({behavior:'smooth',block:'end'});
   var streamText='';
+  var streaming=false;
   var body=JSON.stringify({prompt:q,model:'standard',history:history.slice(-6)});
   fetch('/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:body,credentials:'same-origin'})
   .then(function(resp){
     if(resp.status===401){
       return resp.json().catch(function(){return {};}).then(function(j){
+        stopWork();
         var msg=esc(j.error||'Sign up to keep using the AI agent.');
         a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up free →</a></div>';
         save();
         throw 'handled';
       });
     }
-    if(!resp.ok||!resp.body){a.innerHTML='<div class="mu-err">Something went wrong. Please try again.</div>';save();throw 'handled';}
+    if(!resp.ok||!resp.body){stopWork();a.innerHTML='<div class="mu-err">Something went wrong. Please try again.</div>';save();throw 'handled';}
     var reader=resp.body.getReader();
     var decoder=new TextDecoder();
     var buf='';
     function read(){
       return reader.read().then(function(chunk){
-        if(chunk.done){save();return;}
+        if(chunk.done){stopWork();save();return;}
         buf+=decoder.decode(chunk.value,{stream:true});
         var lines=buf.split('\n');
         buf=lines.pop();
@@ -143,20 +177,28 @@ function ask(q){
           try{
             var ev=JSON.parse(line.slice(6));
             if(ev.type==='thinking'){
-              a.innerHTML='<div class="mu-think">'+esc(ev.message)+'</div>';
+              // Keep the animated indicator; just update its label.
+              startWork(ev.message);
             }else if(ev.type==='stream_start'){
-              streamText='';
-              a.innerHTML='<div style="white-space:pre-wrap"><span id="mu-stream-out"></span><span class="mu-cursor"></span></div>';
+              // Don't blank to a bare cursor — keep the progress indicator
+              // running until the first token actually arrives.
+              streamText='';streaming=false;startWork('Composing');
             }else if(ev.type==='stream_token'){
               streamText+=ev.token;
+              if(!streaming){
+                streaming=true;stopWork();
+                a.innerHTML='<div style="white-space:pre-wrap"><span id="mu-stream-out"></span><span class="mu-cursor"></span></div>';
+              }
               var el=document.getElementById('mu-stream-out');
               if(el)el.textContent=streamText;
               a.scrollIntoView({behavior:'smooth',block:'end'});
             }else if(ev.type==='response'){
+              stopWork();
               a.innerHTML=ev.html;
               history.push({prompt:q,answer:streamText});
               save();
             }else if(ev.type==='error'){
+              stopWork();
               a.innerHTML='<div class="mu-err">'+esc(ev.message)+'</div>';
               save();
             }
@@ -168,6 +210,7 @@ function ask(q){
     return read();
   })
   .catch(function(err){
+    stopWork();
     if(err==='handled')return;
     a.innerHTML='<div class="mu-err">Error: '+esc(err&&err.message||err)+'</div>';
     save();
