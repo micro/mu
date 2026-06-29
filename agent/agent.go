@@ -18,9 +18,6 @@ import (
 	"mu/internal/auth"
 )
 
-// historyLimit is the maximum number of history items shown on the agent page.
-const historyLimit = 20
-
 // Model represents an available LLM model tier for agent queries.
 type Model struct {
 	ID       string
@@ -274,7 +271,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(path, "/agent/flow/")
 		switch r.Method {
 		case "GET":
-			serveFlowPage(w, r, id)
+			// Saved flows are conversations now — reopen in the unified chat.
+			if id != "" && r.URL.Query().Get("json") != "1" {
+				http.Redirect(w, r, "/agent?session="+id, http.StatusFound)
+				return
+			}
+			serveFlowPage(w, r, id) // ?json=1 still returns the flow JSON for polling
 		case "DELETE":
 			handleDeleteFlow(w, r, id)
 		default:
@@ -292,412 +294,103 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// servePage renders the agent chat page, including query history for logged-in users.
+// servePage renders the unified chat surface: a sessions rail (logged-in users)
+// beside the shared chat component, in the standard app shell. Reopening a saved
+// session loads its turns in place and continues the same conversation. This is
+// the single AI surface — the home assistant and guest landing render the same
+// chat component.
 func servePage(w http.ResponseWriter, r *http.Request) {
-	// Pre-fill prompt and context when continuing a saved flow.
-	contextID := r.URL.Query().Get("continue")
-	preFillPrompt := ""
-	if contextID != "" {
-		// Don't pre-fill the prompt — show prior conversation as context instead
-		if f := getFlow(contextID); f == nil {
-			contextID = "" // invalid flow
-		}
-		_ = preFillPrompt // keep zero
+	_, acc := auth.TrySession(r)
+	guest := acc == nil
+	accountID := ""
+	if acc != nil {
+		accountID = acc.ID
 	}
 
-	// Pre-fill from query params (e.g. home page agent card). Accept both
-	// ?prompt= and the shorter ?q= alias used by external entry points.
-	if p := r.URL.Query().Get("prompt"); p != "" {
-		preFillPrompt = htmlEsc(p)
-	} else if p := r.URL.Query().Get("q"); p != "" {
-		preFillPrompt = htmlEsc(p)
+	// Reopen a saved session (?session=, or legacy ?continue=).
+	sessionID := r.URL.Query().Get("session")
+	if sessionID == "" {
+		sessionID = r.URL.Query().Get("continue")
 	}
-	preSelectModel := r.URL.Query().Get("model") // "standard" or "premium"
-	autoSubmit := preFillPrompt != "" && contextID == ""
-
-	var modelOpts strings.Builder
-	for _, m := range Models {
-		sel := ""
-		if m.ID == preSelectModel {
-			sel = " selected"
-		}
-		modelOpts.WriteString(fmt.Sprintf(
-			`<option value="%s"%s>%s</option>`, m.ID, sel, m.Name,
-		))
-	}
-
-	// Render prior conversation turns when continuing.
-	var priorHTML string
-	if contextID != "" {
-		history := getConversationHistory(contextID, 5)
-		if len(history) > 0 {
-			var hb strings.Builder
-			hb.WriteString(`<div id="agent-conversation">`)
-			for _, f := range history {
-				hb.WriteString(`<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;">`)
-				hb.WriteString(`<div style="font-size:12px;color:#888;margin-bottom:6px;">You said:</div>`)
-				hb.WriteString(`<div style="font-size:14px;font-weight:600;margin-bottom:10px;">` + htmlEsc(f.Prompt) + `</div>`)
-				hb.WriteString(`<div style="font-size:14px;">` + app.RenderString(f.Answer) + `</div>`)
-				hb.WriteString(`</div>`)
-			}
-			hb.WriteString(`</div>`)
-			priorHTML = hb.String()
+	cfg := app.ChatConfig{Guest: guest}
+	if sessionID != "" && !guest {
+		turns := SessionTurns(sessionID)
+		if len(turns) > 0 && turns[len(turns)-1].AccountID == accountID {
+			cfg.ContextID = sessionID
+			cfg.InitialConvHTML = renderSessionTurns(turns)
+		} else {
+			sessionID = "" // not found / not owned
 		}
 	}
 
-	// Build the form HTML (reused in both layouts).
-	formCardClass := "card"
-	if contextID != "" {
-		formCardClass = "card sticky-bottom"
-	}
-	formHTML := `<div class="` + formCardClass + `" id="agent-form-card">
-<form id="agent-form">
-<textarea id="agent-prompt" name="prompt" rows="3"
-  placeholder="` + func() string {
-		if contextID != "" {
-			return "Tell the agent what to do next..."
-		}
-		return "Tell the agent what to do..."
-	}() + `"
-  style="width:100%;box-sizing:border-box;padding:8px;font-family:inherit;font-size:15px;resize:vertical;border:1px solid #ddd;border-radius:4px;">` + preFillPrompt + `</textarea>
-<div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
-<select id="agent-model"
-  style="padding:6px 10px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">` +
-		modelOpts.String() + `</select>
-<button type="submit" id="agent-submit">Do</button>
-<span style="flex:1;"></span>` +
-		ToolsDropdownHTML() + `
-</div>
-<input type="hidden" id="agent-context" value="` + htmlEsc(contextID) + `">
-</form>
-</div>`
-
-	progressHTML := `<div id="agent-progress" style="display:none;">
-<div class="card">
-<h4 style="margin:0 0 12px;">Working…</h4>
-<div id="agent-steps"></div>
-</div>
-</div>
-
-<div id="agent-result"></div>
-
-<div id="agent-preview-container" style="display:none;margin:12px 0">
-<iframe id="agent-preview" style="width:100%;min-height:50vh;border:1px solid #e0e0e0;border-radius:6px;background:#fff"></iframe>
-<div style="display:flex;gap:8px;padding:8px 0;align-items:center">
-<input type="text" id="agent-app-name" placeholder="App name" style="flex:1;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px">
-<button onclick="saveApp()" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px">Save as App</button>
-</div>
-</div>`
-
-	// Layout: conversation mode puts the form at the bottom; landing puts it at the top.
-	isConversation := contextID != ""
-	var content string
-	if isConversation {
-		content = priorHTML + progressHTML + "\n" + formHTML
-	} else {
-		content = formHTML + "\n" + progressHTML + "\n" + renderHistorySection(r)
+	// Prefill prompt from ?q / ?prompt (e.g. home card deep-links).
+	prefill := r.URL.Query().Get("prompt")
+	if prefill == "" {
+		prefill = r.URL.Query().Get("q")
 	}
 
-	content += `
-<style>
-.agent-step{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px;
-  color:#555;border-bottom:1px solid #f5f5f5;}
-.agent-step:last-child{border-bottom:none;}
-.agent-step.done{color:#28a745;}
-.agent-step.error{color:#c00;}
-.step-icon{font-size:13px;flex-shrink:0;font-weight:600;color:#888;min-width:60px;}
-#agent-form-card.sticky-bottom{position:sticky;bottom:0;z-index:10;
-  background:#fff;border-top:1px solid #eee;margin-bottom:0;}
-.agent-cursor{display:inline-block;width:2px;height:1em;background:#000;vertical-align:text-bottom;
-  animation:blink 0.8s step-end infinite;margin-left:2px;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-</style>
-
-<script>
-(function(){
-var form=document.getElementById('agent-form');
-if(!form)return;
-
-function esc(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function saveApp(){
-  if(!window._lastAppHTML){alert('Nothing to save');return}
-  var name=document.getElementById('agent-app-name').value.trim()||'Untitled App';
-  fetch('/apps',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({name:name,html:window._lastAppHTML,public:true})
-  }).then(function(r){return r.json()}).then(function(j){
-    if(j.slug){
-      var result=document.getElementById('agent-result');
-      result.innerHTML='<div class="card"><p>Saved: <a href="/apps/'+j.slug+'/run">'+esc(j.name)+'</a></p></div>';
-    } else {
-      alert('Save failed: '+(j.error||'unknown'));
-    }
-  }).catch(function(e){alert('Save failed: '+e.message)});
-}
-
-// showResponse displays a completed response and enters conversation mode.
-function showResponse(prompt,html,flowId){
-  var prog=document.getElementById('agent-progress');
-  var result=document.getElementById('agent-result');
-  var btn=document.getElementById('agent-submit');
-  prog.style.display='none';
-  var conv=document.getElementById('agent-conversation');
-  if(!conv){conv=document.createElement('div');conv.id='agent-conversation';result.parentNode.insertBefore(conv,result);}
-  var turn=document.createElement('div');
-  turn.innerHTML='<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;">'
-    +'<div style="font-size:12px;color:#888;margin-bottom:6px;">You said:</div>'
-    +'<div style="font-size:14px;font-weight:600;margin-bottom:10px;">'+esc(prompt)+'</div>'
-    +'</div>';
-  conv.appendChild(turn);
-  result.innerHTML=html;
-  if(flowId){document.getElementById('agent-context').value=flowId;history.replaceState(null,'','/agent?continue='+flowId);}
-  document.getElementById('agent-prompt').value='';
-  document.getElementById('agent-prompt').placeholder='Tell the agent what to do next...';
-  var formCard=document.getElementById('agent-form-card');
-  var hist=document.getElementById('agent-history');
-  if(hist)hist.style.display='none';
-  if(formCard&&result.parentNode){result.parentNode.appendChild(formCard);}
-  formCard.classList.add('sticky-bottom');
-  result.scrollIntoView({behavior:'smooth',block:'start'});
-  btn.disabled=false;btn.textContent='Do';
-}
-
-// pollFlow polls a flow by ID until it completes, then displays the result.
-function pollFlow(flowId,prompt){
-  var prog=document.getElementById('agent-progress');
-  var steps=document.getElementById('agent-steps');
-  var result=document.getElementById('agent-result');
-  var btn=document.getElementById('agent-submit');
-  // Show recovery UI
-  prog.style.display='block';
-  steps.innerHTML='<div class="agent-step"><span class="step-icon">waiting</span><span>Connection lost — waiting for result…</span></div>';
-  var attempts=0;
-  function check(){
-    attempts++;
-    fetch('/agent/flow/'+flowId+'?json=1')
-    .then(function(r){return r.json();})
-    .then(function(data){
-      if(data.status==='done'&&data.html){
-        showResponse(prompt,data.html,flowId);
-      } else if(data.status==='error'){
-        prog.style.display='none';
-        result.innerHTML='<div class="card"><p style="color:#c00;">'+esc(data.error||'Agent query failed')+'</p></div>';
-        btn.disabled=false;btn.textContent='Do';
-      } else if(attempts<30){
-        setTimeout(check,2000);
-      } else {
-        prog.style.display='none';
-        result.innerHTML='<div class="card"><p style="color:#c00;">Query is still processing. <a href="/agent/flow/'+flowId+'">View result when ready →</a></p></div>';
-        btn.disabled=false;btn.textContent='Do';
-      }
-    })
-    .catch(function(){
-      if(attempts<30){setTimeout(check,3000);}
-      else{btn.disabled=false;btn.textContent='Do';}
-    });
-  }
-  setTimeout(check,2000);
-}
-
-form.addEventListener('submit',function(e){
-  e.preventDefault();
-  var prompt=document.getElementById('agent-prompt').value.trim();
-  var model=document.getElementById('agent-model').value;
-  var contextId=document.getElementById('agent-context').value;
-  if(!prompt)return;
-
-  var btn=document.getElementById('agent-submit');
-  btn.disabled=true;btn.textContent='Working…';
-
-  var prog=document.getElementById('agent-progress');
-  var steps=document.getElementById('agent-steps');
-  var result=document.getElementById('agent-result');
-  prog.style.display='block';steps.innerHTML='';result.innerHTML='';
-
-  var body={prompt:prompt,model:model};
-  if(contextId){body.context_id=contextId;}
-
-  var currentFlowId='';
-  var gotResponse=false;
-
-  fetch('/agent',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  })
-  .then(function(resp){
-    if(!resp.ok&&resp.status===401){
-      prog.style.display='none';
-      resp.json().then(function(j){
-        result.innerHTML='<div class="card"><p>'+(j.error||'Authentication required')+'</p><p style="margin-top:8px"><a href="/signup" class="btn">Sign up</a> <a href="/login?redirect=/agent" style="margin-left:8px">or log in</a></p></div>';
-      }).catch(function(){
-        result.innerHTML='<div class="card"><p>Please <a href="/login?redirect=/agent">login</a> to use the agent.</p></div>';
-      });
-      btn.disabled=false;btn.textContent='Do';
-      return;
-    }
-    var reader=resp.body.getReader();
-    var decoder=new TextDecoder();
-    var buf='';
-    function read(){
-      return reader.read().then(function(chunk){
-        if(chunk.done){
-          // Stream ended — if we never got a response, poll for it
-          if(!gotResponse&&currentFlowId){pollFlow(currentFlowId,prompt);}
-          return;
-        }
-        buf+=decoder.decode(chunk.value,{stream:true});
-        var lines=buf.split('\n');
-        buf=lines.pop();
-        lines.forEach(function(line){
-          if(!line.startsWith('data: '))return;
-          try{
-            var ev=JSON.parse(line.slice(6));
-            if(ev.type==='flow_id'){
-              currentFlowId=ev.flow_id;
-            } else if(ev.type==='thinking'){
-              var d=document.createElement('div');
-              d.className='agent-step';
-              d.innerHTML='<span>'+esc(ev.message)+'</span>';
-              steps.appendChild(d);
-            } else if(ev.type==='tool_start'){
-              var d=document.createElement('div');
-              d.id='step-'+ev.name;d.className='agent-step';
-              d.innerHTML='<span class="step-icon">running</span><span>'+esc(ev.message)+'</span>';
-              steps.appendChild(d);
-            } else if(ev.type==='tool_done'){
-              var d=document.getElementById('step-'+ev.name);
-              if(d){
-                d.className='agent-step done';
-                d.innerHTML='<span class="step-icon" style="color:#1a1a1a">done</span><span>'+esc(ev.message)+'</span>';
-              }
-            } else if(ev.type==='exec'){
-              // Render HTML or execute code in preview
-              var pc=document.getElementById('agent-preview-container');
-              var pf=document.getElementById('agent-preview');
-              if(ev.html){
-                pc.style.display='block';
-                window._lastAppHTML=ev.html;
-                var pdoc=pf.contentDocument||pf.contentWindow.document;
-                pdoc.open();pdoc.write(ev.html);pdoc.close();
-                var sd=document.createElement('div');sd.className='agent-step';
-                sd.innerHTML='<span class="step-icon">done</span><span>App rendered</span>';
-                steps.appendChild(sd);
-                // Send feedback
-                setTimeout(function(){
-                  fetch('/agent/exec',{method:'POST',headers:{'Content-Type':'application/json'},
-                    body:JSON.stringify({session_id:currentFlowId,ok:true,result:'rendered',dom:pdoc.body?pdoc.body.textContent.slice(0,500):''})
-                  }).catch(function(){});
-                },1000);
-              }
-              if(ev.code){
-                (async function(){
-                  try{
-                    var r=await eval('(async function(){'+ev.code+'})()');
-                    fetch('/agent/exec',{method:'POST',headers:{'Content-Type':'application/json'},
-                      body:JSON.stringify({session_id:currentFlowId,ok:true,result:String(r||'ok')})
-                    }).catch(function(){});
-                  }catch(err){
-                    var sd=document.createElement('div');sd.className='agent-step';
-                    sd.innerHTML='<span class="step-icon" style="color:#c00">error</span><span>'+esc(err.message)+'</span>';
-                    steps.appendChild(sd);
-                    fetch('/agent/exec',{method:'POST',headers:{'Content-Type':'application/json'},
-                      body:JSON.stringify({session_id:currentFlowId,ok:false,error:err.message})
-                    }).catch(function(){});
-                  }
-                })();
-              }
-            } else if(ev.type==='stream_start'){
-              prog.style.display='none';
-              result.innerHTML='<div class="card" id="agent-stream-card"><div id="agent-stream-text" style="white-space:pre-wrap;font-size:14px;line-height:1.6"></div><span class="agent-cursor"></span></div>';
-            } else if(ev.type==='stream_token'){
-              var st=document.getElementById('agent-stream-text');
-              if(st)st.textContent+=ev.token;
-              var sc=document.getElementById('agent-stream-card');
-              if(sc)sc.scrollIntoView({behavior:'smooth',block:'end'});
-            } else if(ev.type==='response'){
-              gotResponse=true;
-              showResponse(prompt,ev.html,ev.flow_id);
-            } else if(ev.type==='error'){
-              prog.style.display='none';
-              result.innerHTML='<div class="card"><p style="color:#c00;">'+esc(ev.message)+'</p></div>';
-            } else if(ev.type==='done'){
-              btn.disabled=false;btn.textContent='Do';
-            }
-          }catch(ex){console.error('agent event parse error',ex,line);}
-        });
-        return read();
-      });
-    }
-    return read();
-  })
-  .catch(function(err){
-    // Connection failed — if we have a flow ID, poll for the result
-    if(currentFlowId&&!gotResponse){
-      pollFlow(currentFlowId,prompt);
-    } else {
-      prog.style.display='none';
-      result.innerHTML='<div class="card"><p style="color:#c00;">Error: '+esc(err.message)+'</p></div>';
-      btn.disabled=false;btn.textContent='Do';
-    }
-  });
-});
-})();
-</script>`
-
-	if autoSubmit {
-		content += `<script>document.getElementById('agent-form').dispatchEvent(new Event('submit'));</script>`
+	rail := ""
+	if !guest {
+		rail = renderSessionsRail(accountID, sessionID)
 	}
 
-	html := app.RenderHTMLForRequest("Agent", "AI agent with access to all Mu tools", content, r)
+	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
+	if prefill != "" {
+		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'','/agent');})()</script>`
+	}
+
+	html := app.RenderHTMLForRequest("Chat", "Chat with Mu — news, mail, markets, weather, search and more", content, r)
 	w.Write([]byte(html))
 }
 
-// renderHistorySection returns an HTML block showing the user's recent query history,
-// or an empty string if the user is not authenticated.
-func renderHistorySection(r *http.Request) string {
-	_, acc := auth.TrySession(r)
-	if acc == nil {
-		return ""
-	}
-
-	flows := ListFlows(acc.ID)
-	if len(flows) == 0 {
-		return ""
-	}
-	if len(flows) > historyLimit {
-		flows = flows[:historyLimit]
-	}
-
+// renderSessionTurns renders a conversation's prior turns into the chat log.
+func renderSessionTurns(turns []*Flow) string {
 	var b strings.Builder
-	b.WriteString(`<div class="card" id="agent-history">`)
-	b.WriteString(`<h4 style="margin:0 0 12px;">Recent queries</h4>`)
-	for _, f := range flows {
-		age := time.Since(f.CreatedAt)
-		ageStr := FormatAge(age)
-		b.WriteString(`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;">`)
-		b.WriteString(`<div style="min-width:0;flex:1;">`)
-		b.WriteString(`<a href="/agent/flow/` + f.ID + `" style="font-size:14px;font-weight:600;display:block;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">` + htmlEsc(f.Prompt) + `</a>`)
-		b.WriteString(`<div style="font-size:12px;color:#888;margin-top:2px;">` + ageStr)
-		if len(f.Steps) > 0 {
-			tools := make([]string, 0, len(f.Steps))
-			for _, s := range f.Steps {
-				tools = append(tools, s.Tool)
-			}
-			b.WriteString(` · ` + strings.Join(tools, ", "))
-		}
-		b.WriteString(`</div></div>`)
-		b.WriteString(`<div style="display:flex;gap:8px;flex-shrink:0;margin-left:12px;">`)
-		b.WriteString(`<a href="/agent?continue=` + f.ID + `" class="link" style="font-size:12px;">Continue</a>`)
-		b.WriteString(`<a href="/agent/flow/` + f.ID + `" class="link" style="font-size:12px;">View</a>`)
-		b.WriteString(`</div>`)
-		b.WriteString(`</div>`)
+	for _, f := range turns {
+		b.WriteString(`<div class="mu-user">` + htmlEsc(f.Prompt) + `</div>`)
+		b.WriteString(`<div class="mu-agent"><div class="card" id="agent-response">` + app.RenderString(f.Answer) + `</div></div>`)
 	}
-	b.WriteString(`</div>`)
 	return b.String()
 }
+
+// renderSessionsRail renders the list of past conversations.
+func renderSessionsRail(accountID, currentID string) string {
+	sessions := ListSessions(accountID)
+	var b strings.Builder
+	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,'','/agent');document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New chat</button><div class="chat-sess-list">`)
+	if len(sessions) == 0 {
+		b.WriteString(`<div class="chat-sess-empty">No conversations yet.</div>`)
+	}
+	for _, s := range sessions {
+		cls := "chat-sess"
+		if s.HeadID == currentID {
+			cls += " active"
+		}
+		title := s.Title
+		if title == "" {
+			title = "Untitled"
+		}
+		if len(title) > 60 {
+			title = title[:60] + "…"
+		}
+		b.WriteString(`<a href="/agent?session=` + s.HeadID + `" class="` + cls + `">` + htmlEsc(title) + `</a>`)
+	}
+	b.WriteString(`</div></aside>`)
+	return b.String()
+}
+
+const chatLayoutCSS = `<style>
+.chat-layout{display:flex;gap:24px;align-items:flex-start;max-width:1040px;margin:0 auto}
+.chat-rail{width:240px;flex-shrink:0}
+.chat-main{flex:1;min-width:0}
+.chat-new{width:100%;padding:9px 12px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
+.chat-sess-list{display:flex;flex-direction:column;gap:2px}
+.chat-sess{display:block;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-sess:hover{background:#f5f5f5}
+.chat-sess.active{background:#eef0ff;color:#111;font-weight:600}
+.chat-sess-empty{color:#999;font-size:13px;padding:8px 10px}
+@media(max-width:760px){.chat-layout{flex-direction:column;gap:12px}.chat-rail{width:100%}.chat-sess-list{flex-direction:row;overflow-x:auto;flex-wrap:nowrap}.chat-sess{flex-shrink:0;max-width:160px}}
+</style>`
 
 // FormatAge returns a human-friendly string for an elapsed duration.
 func FormatAge(d time.Duration) string {
@@ -877,10 +570,6 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	answer = completeNativeToolAnswer(answer, nativeTools)
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
-	if !isGuest {
-		html += `<div class="card" style="font-size:13px;display:flex;gap:16px;align-items:center;">` +
-			`<a href="/agent/flow/` + flow.ID + `" class="link">View saved flow ↗</a></div>`
-	}
 	updateFlow(flow.ID, func(f *Flow) {
 		f.Answer = answer
 		f.HTML = html
@@ -1303,12 +992,6 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			html += renderToolCallRef(res.Name, res.Args, res.Formatted)
 		}
 		html += `</div>`
-	}
-
-	if !isGuest {
-		html += `<div class="card" style="font-size:13px;display:flex;gap:16px;align-items:center;">` +
-			`<a href="/agent/flow/` + flow.ID + `" class="link">View saved flow ↗</a>` +
-			`</div>`
 	}
 
 	updateFlow(flow.ID, func(f *Flow) {

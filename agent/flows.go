@@ -158,6 +158,57 @@ func newFlowID() string {
 	return uuid.New().String()
 }
 
+// Session is one chat conversation — a chain of turns linked by ParentID,
+// identified by its most recent turn (HeadID).
+type Session struct {
+	HeadID    string
+	Title     string // the conversation's first prompt
+	UpdatedAt time.Time
+	Turns     int
+}
+
+// ListSessions groups an account's flows into conversations (ParentID chains)
+// and returns one entry per conversation, newest first. A conversation's head
+// is its latest turn (a flow that is not any other flow's parent).
+func ListSessions(accountID string) []Session {
+	flows := ListFlows(accountID) // newest first
+	byID := make(map[string]*Flow, len(flows))
+	isParent := make(map[string]bool, len(flows))
+	for _, f := range flows {
+		byID[f.ID] = f
+		if f.ParentID != "" {
+			isParent[f.ParentID] = true
+		}
+	}
+	var sessions []Session
+	for _, f := range flows {
+		if isParent[f.ID] {
+			continue // not a leaf — a later turn continues it
+		}
+		title := f.Prompt
+		turns := 0
+		seen := map[string]bool{}
+		for id := f.ID; id != "" && !seen[id]; {
+			seen[id] = true
+			cur := byID[id]
+			if cur == nil {
+				break
+			}
+			turns++
+			title = cur.Prompt // ends at the root's prompt
+			id = cur.ParentID
+		}
+		sessions = append(sessions, Session{HeadID: f.ID, Title: title, UpdatedAt: f.CreatedAt, Turns: turns})
+	}
+	return sessions
+}
+
+// SessionTurns returns a conversation's turns (oldest first) given any flow ID
+// in the chain (typically the head).
+func SessionTurns(flowID string) []*Flow {
+	return getConversationHistory(flowID, 50)
+}
+
 // getConversationHistory walks the parent chain from a flow and returns
 // up to maxTurns prior turns in chronological order (oldest first).
 func getConversationHistory(flowID string, maxTurns int) []*Flow {
