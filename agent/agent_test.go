@@ -593,3 +593,30 @@ func TestRenderResultCard_AppsRun(t *testing.T) {
 		t.Errorf("expected iframe in result card, got %q", card)
 	}
 }
+
+func TestCompleteToolAnswerReplacesProgressOnlyWithResults(t *testing.T) {
+	rag := []string{"### markets\nBTC: $100,000", "### news\n- Bitcoin reaches new high"}
+	got := completeToolAnswer("Let me pull the latest market and news data for you.", rag)
+	if strings.Contains(strings.ToLower(got), "let me pull") {
+		t.Fatalf("expected progress narration to be replaced, got %q", got)
+	}
+	if !strings.Contains(got, "BTC: $100,000") || !strings.Contains(got, "Bitcoin reaches new high") {
+		t.Fatalf("expected fallback to include tool results, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerKeepsSubstantiveAnswer(t *testing.T) {
+	want := "BTC is at $100,000, and the latest news says it reached a new high."
+	got := completeToolAnswer(want, []string{"### markets\nBTC: $100,000"})
+	if got != want {
+		t.Fatalf("expected substantive answer unchanged, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerWithoutToolsDoesNotOverride(t *testing.T) {
+	want := "Let me think about that."
+	got := completeToolAnswer(want, nil)
+	if got != want {
+		t.Fatalf("expected no override without tool results, got %q", got)
+	}
+}

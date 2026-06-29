@@ -68,6 +68,7 @@ Examples:
 // state (unread mail, market prices, etc.) that gets injected into the
 // synthesis prompt.
 var UserContextFunc func(accountID string) string
+
 type RunRequest struct {
 	Prompt    string `json:"prompt"`
 	Model     string `json:"model"`
@@ -216,13 +217,14 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		synthSystem = "You are Micro, a personal AI assistant. Today is " + today + ". " +
 			"Answer concisely using the tool results and user context below. Use markdown. " +
+			"Do not answer with progress narration like 'let me check' or 'I'll pull the data'; the tools have already run, so provide the final answer or say exactly what is unavailable. " +
 			"If the user context already contains the answer (e.g. unread mail count), use it directly."
 	}
 	if userCtx != "" {
 		synthSystem += "\n\nUser context:\n" + userCtx
 	}
 	answer, err := ai.Ask(&ai.Prompt{
-		System: synthSystem,
+		System:   synthSystem,
 		Rag:      ragParts,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
@@ -236,6 +238,7 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	answer = app.StripLatexDollars(answer)
+	answer = completeToolAnswer(answer, ragParts)
 
 	if isGuest {
 		app.RespondJSON(w, RunResponse{Answer: answer, Tools: toolsUsed})

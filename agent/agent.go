@@ -1255,7 +1255,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"When results come from multiple sources (news, video, markets, weather, etc.), identify and highlight " +
 			"connections and correlations between them — for example, how a market move relates to a news story, " +
 			"or how videos cover the same topic appearing in the news.\n\n" +
-			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data.\n\n" +
+			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data. " +
+			"Do not answer with progress narration like 'let me check' or 'I'll pull the data'; the tools have already run, so provide the final answer or say exactly what is unavailable.\n\n" +
 			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\)."
 	}
 
@@ -1282,6 +1283,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	answer = app.StripLatexDollars(answer)
+	answer = completeToolAnswer(answer, ragParts)
 
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
