@@ -1,7 +1,7 @@
 # Blog drafts (long-form, human-published)
 
-Mu's routine evangelism is published **live, on Mu's own blog**, by the
-in-process loop in `blog/evangelism.go` (see [../MARKETING.md](../MARKETING.md)).
+Mu's routine notes is published **live, on Mu's own blog**, by the
+in-process loop in `blog/notes.go` (see [../MARKETING.md](../MARKETING.md)).
 That is the primary channel — actual content on the actual platform.
 
 This directory is only for **long-form drafts** the marketing pass proposes that

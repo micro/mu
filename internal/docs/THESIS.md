@@ -80,10 +80,10 @@ bugs, rough edges) interleave by value.
 - **May**, unsupervised: refinements, bug fixes, test coverage, error-message and
   formatting polish, factual doc alignment, performance — anything that makes the
   existing product more seamless without changing its contract.
-- **May**, on the live platform: Mu posts its own evangelism content to its own
-  blog via the in-process loop (`blog/evangelism.go`), grounded in canon and low
+- **May**, on the live platform: Mu posts its own notes to its own
+  blog via the in-process loop (`blog/notes.go`), grounded in canon and low
   cadence — the same autonomy the opinion/digest loops already have. Toggle with
-  `EVANGELISM=off`.
+  `NOTES=off`.
 - **May not**, without the human: brand/positioning copy and taglines; breaking
   changes to public contracts (MCP tool names, A2A protocol, webhook/REST
   endpoints, env var names); pricing; large architectural rewrites; and

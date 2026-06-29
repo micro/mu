@@ -170,7 +170,7 @@ export MAIL_SELECTOR="default"
 |----------|---------|-------------|
 | `MU_DOMAIN` | `localhost` | Domain for ActivityPub federation (falls back to `MAIL_DOMAIN`) |
 | `MU_USE_SQLITE` | - | Set to `1` to store search index in SQLite with FTS5 |
-| `EVANGELISM` | on | Mu posts its own story to its own blog on a low cadence; set to `off`/`false`/`0`/`no` to disable |
+| `NOTES` | on | Mu posts its own story to its own blog on a low cadence; set to `off`/`false`/`0`/`no` to disable |
 | `ANTHROPIC_API_KEY` | - | Anthropic API key for AI features (required) |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-6` | Anthropic model name |
 | `YOUTUBE_API_KEY` | - | YouTube API key for video functionality |

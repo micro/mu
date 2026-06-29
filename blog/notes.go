@@ -13,34 +13,34 @@ import (
 	"mu/internal/settings"
 )
 
-// Evangelism is Mu's own marketing/evangelism voice on its own blog: the
-// platform telling its story on the platform — actual content, actual usage.
+// Notes is Mu's own voice on its own blog: the platform telling its story on the
+// platform — actual content, actual usage.
 //
 // It is produced the same way as the daily brief (news/digest) and the opinion
 // pieces (blog/opinion.go): the voice lives in a System prompt here in code, the
-// SET of things to produce lives in an embedded JSON (evangelism.json, a
+// SET of things to produce lives in an embedded JSON (notes.json, a
 // name -> instruction map like chat/prompts.json), and each piece is generated
 // with ai.Ask (PriorityLow, BackgroundModel) and posted as the system account on
-// a cadence. Disable with the EVANGELISM setting (off/false/0/no).
+// a cadence. Disable with the NOTES setting (off/false/0/no).
 
-// evangelismJSON is the set of angles: a map of title -> writing instruction,
-// the same shape as chat/prompts.json. Edit this file (data) to manage what gets
+// notesJSON is the set of angles: a map of title -> writing instruction, the
+// same shape as chat/prompts.json. Edit this file (data) to manage what gets
 // produced — no code change needed.
 //
-//go:embed evangelism.json
-var evangelismJSON []byte
+//go:embed notes.json
+var notesJSON []byte
 
-const evangelismTag = "mu"
+const notesTag = "mu"
 
-// evangelismCadence is the minimum spacing between evangelism posts. Low on
-// purpose — this is brand content, not a feed.
-const evangelismCadence = 72 * time.Hour
+// notesCadence is the minimum spacing between notes. Low on purpose — this is
+// the platform's own voice, not a feed.
+const notesCadence = 72 * time.Hour
 
-// evangelismVoice is the editorial voice + grounding, kept in code like the
-// digest's System prompt and opinion's agentPurpose. The model may claim only
-// what the angle instruction and these core facts support — never invents
-// features, numbers, or users.
-const evangelismVoice = `You are Micro, the voice of Mu, writing a short piece for Mu's own blog about Mu itself.
+// notesVoice is the editorial voice + grounding, kept in code like the digest's
+// System prompt and opinion's agentPurpose. The model may claim only what the
+// angle instruction and these core facts support — never invents features,
+// numbers, or users.
+const notesVoice = `You are Micro, the voice of Mu, writing a short piece for Mu's own blog about Mu itself.
 
 Core facts you may rely on (claim nothing beyond these and the specific angle you are given):
 - Mu is an agent for everyday: you ask it in plain language and it calls real services — news, mail, search, weather, markets, video, blog — and gives a single answer. It remembers your preferences over time.
@@ -56,72 +56,72 @@ Line 1: the title only (no quotes, no "Blog:" prefix).
 Line 2: empty.
 Line 3+: the body — 3 to 5 short paragraphs of flowing prose. No bullet lists, no headings, no references section. Plain dollar signs if any. Under 2000 characters total.`
 
-// evangelismAngles loads the angle set from the embedded JSON. Returns nil on a
+// noteAngles loads the angle set from the embedded JSON. Returns nil on a
 // malformed file (logged) so a bad edit never panics the binary.
-func evangelismAngles() map[string]string {
+func noteAngles() map[string]string {
 	var angles map[string]string
-	if err := json.Unmarshal(evangelismJSON, &angles); err != nil {
-		app.Log("evangelism", "evangelism.json parse error: %v", err)
+	if err := json.Unmarshal(notesJSON, &angles); err != nil {
+		app.Log("notes", "notes.json parse error: %v", err)
 		return nil
 	}
 	return angles
 }
 
-// evangelismEnabled reports whether the loop should run. Default on; set
-// EVANGELISM to a falsey value to disable.
-func evangelismEnabled() bool {
-	switch strings.ToLower(strings.TrimSpace(settings.Get("EVANGELISM"))) {
+// notesEnabled reports whether the loop should run. Default on; set NOTES to a
+// falsey value to disable.
+func notesEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(settings.Get("NOTES"))) {
 	case "off", "false", "0", "no":
 		return false
 	}
 	return true
 }
 
-// StartEvangelism begins the background evangelism posting loop. Called from
-// main.go after the building blocks are loaded (next to StartOpinion).
-func StartEvangelism() {
-	go evangelismLoop()
+// StartNotes begins the background notes posting loop. Called from main.go after
+// the building blocks are loaded (next to StartOpinion).
+func StartNotes() {
+	go notesLoop()
 }
 
-func evangelismLoop() {
+func notesLoop() {
 	// Let the other services settle, and stagger after the opinion loop.
 	time.Sleep(90 * time.Second)
 	for {
-		publishNextEvangelism()
+		publishNextNote()
 		time.Sleep(6 * time.Hour) // actual pacing is time-based, see cadence
 	}
 }
 
-// publishNextEvangelism posts one evangelism piece if enabled and enough time
-// has passed since the last one.
-func publishNextEvangelism() {
-	if !evangelismEnabled() {
+// publishNextNote posts one note if enabled and enough time has passed since the
+// last one.
+func publishNextNote() {
+	if !notesEnabled() {
 		return
 	}
-	if last := latestEvangelismTime(); !last.IsZero() && time.Since(last) < evangelismCadence {
+	if last := latestNoteTime(); !last.IsZero() && time.Since(last) < notesCadence {
 		return // too soon
 	}
 
-	name, instruction := nextEvangelismAngle()
+	name, instruction := nextNote()
 	if name == "" {
 		return // no angles configured
 	}
-	title, body, err := generateEvangelism(name, instruction)
+	title, body, err := generateNote(name, instruction)
 	if err != nil {
-		app.Log("evangelism", "generation failed [%s]: %v", name, err)
+		app.Log("notes", "generation failed [%s]: %v", name, err)
 		return
 	}
-	if err := CreatePost(title, body, app.SystemUserName, app.SystemUserID, evangelismTag+",about", false); err != nil {
-		app.Log("evangelism", "failed to create post [%s]: %v", name, err)
+	if err := CreatePost(title, body, app.SystemUserName, app.SystemUserID, notesTag+",notes", false); err != nil {
+		app.Log("notes", "failed to create post [%s]: %v", name, err)
 		return
 	}
-	app.Log("evangelism", "published [%s]: %s", name, title)
+	app.Log("notes", "published [%s]: %s", name, title)
 }
 
-// nextEvangelismAngle rotates deterministically through the angles (sorted by
-// name) so consecutive posts differ, advancing one per cadence window.
-func nextEvangelismAngle() (string, string) {
-	angles := evangelismAngles()
+// nextNote rotates deterministically through the angles (sorted by name) so
+// consecutive posts differ, advancing one per cadence window.
+func nextNote() (string, string) {
+	angles := noteAngles()
 	if len(angles) == 0 {
 		return "", ""
 	}
@@ -130,17 +130,17 @@ func nextEvangelismAngle() (string, string) {
 		names = append(names, n)
 	}
 	sort.Strings(names)
-	window := time.Now().UTC().Unix() / int64(evangelismCadence/time.Second)
+	window := time.Now().UTC().Unix() / int64(notesCadence/time.Second)
 	name := names[int(window)%len(names)]
 	return name, angles[name]
 }
 
-// latestEvangelismTime returns the creation time of the most recent evangelism
-// post (tagged evangelismTag, authored by the system account), or zero.
-func latestEvangelismTime() time.Time {
+// latestNoteTime returns the creation time of the most recent note (tagged
+// notesTag, authored by the system account), or zero.
+func latestNoteTime() time.Time {
 	var latest time.Time
 	for _, post := range GetPostsByAuthor(app.SystemUserName) {
-		if !strings.EqualFold(post.AuthorID, app.SystemUserID) || !hasTag(post.Tags, evangelismTag) {
+		if !strings.EqualFold(post.AuthorID, app.SystemUserID) || !hasTag(post.Tags, notesTag) {
 			continue
 		}
 		if post.CreatedAt.After(latest) {
@@ -159,16 +159,16 @@ func hasTag(tags, want string) bool {
 	return false
 }
 
-// generateEvangelism writes one piece for the given angle. Same shape as the
-// digest and opinion generators: voice in System, the specific ask in Question,
+// generateNote writes one piece for the given angle. Same shape as the digest
+// and opinion generators: voice in System, the specific ask in Question,
 // PriorityLow + BackgroundModel.
-func generateEvangelism(name, instruction string) (string, string, error) {
+func generateNote(name, instruction string) (string, string, error) {
 	prompt := &ai.Prompt{
-		System:   evangelismVoice,
+		System:   notesVoice,
 		Question: "Write today's piece on this angle — \"" + name + "\":\n" + instruction,
 		Priority: ai.PriorityLow,
 		Model:    ai.BackgroundModel(),
-		Caller:   "evangelism-generate",
+		Caller:   "notes-generate",
 	}
 
 	resp, err := ai.Ask(prompt)

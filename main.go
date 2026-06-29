@@ -472,9 +472,9 @@ func main() {
 	// Start daily opinion generation (publishes as blog post)
 	blog.StartOpinion()
 
-	// Start the evangelism loop — Mu's own story, posted to its own blog as the
-	// system account (low cadence; disable with EVANGELISM=off).
-	blog.StartEvangelism()
+	// Start the notes loop — Mu's own story, posted to its own blog as the
+	// system account (low cadence; disable with NOTES=off).
+	blog.StartNotes()
 
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {

@@ -15,7 +15,7 @@ The shape mirrors go-micro's loop, recast for **Mu the product**:
 |------|------|---------|--------|
 | **product-review** (`.github/workflows/product-review.yml`) | Head of product — *where to next, what to refine* | hourly `:59` | maintains the ranked queue in [PRIORITIES.md](PRIORITIES.md) + an assessment |
 | **continuous-improvement** (`.github/workflows/continuous-improvement.yml`) | Builder — *ship one increment* | hourly `:29` | a PR that builds the top open item in PRIORITIES.md |
-| **marketing-review** (`.github/workflows/marketing-review.yml`) | Marketing / evangelism — *tell the story* | daily `07:00 UTC` | public-surface coherence fixes + blog drafts (per [MARKETING.md](MARKETING.md)) |
+| **marketing-review** (`.github/workflows/marketing-review.yml`) | Marketing — *tell the story* | daily `07:00 UTC` | public-surface coherence fixes + blog drafts (per [MARKETING.md](MARKETING.md)) |
 
 So the **product agent decides what**, the **increment loop builds it**, and the
 **marketing agent keeps the outside world coherent and supplied with things worth
