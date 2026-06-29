@@ -1,0 +1,8 @@
+{
+  "What Mu is": "Explain in plain terms that Mu is one agent for the everyday internet — you ask it in plain language and it handles news, mail, search, weather, markets and video for you, instead of an app and a tab for each. Make it concrete: show the kind of thing a person would ask.",
+  "Owning your everyday internet": "The big platforms own a service for everything and sit at the centre of what you do. Mu is the same everyday stack, but open source and self-hostable as a single Go binary, so a person can run it themselves instead of renting each piece. Be honest that self-hosting is a real, optional path, not a requirement.",
+  "Pay for the tools, not your attention": "Describe what it feels like to use a service with no ads, no tracking, and no algorithmic feed — finite, calm, no infinite scroll. Tie it to the principle: you pay for the tools, your attention isn't the product.",
+  "Built on Go Micro": "Explain that every capability in Mu is a real go-micro service and the assistant is a go-micro agent over them, reachable over REST, MCP and A2A. Explain why that architecture is what makes Mu ownable and self-hostable. Do not claim performance numbers or benchmarks.",
+  "One question, many services": "Show how the agent answers a single question by calling several services on your behalf — e.g. weather plus news plus markets — and composing one answer. Keep it concrete and grounded in what the agent actually does.",
+  "Run your own Mu": "Explain what self-hosting a single Go binary gives you that a hosted platform never can: your data stays yours, no account required, local models if you want them. Be honest about it being for people who want to run their own."
+}

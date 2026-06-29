@@ -1,7 +1,10 @@
 package blog
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -12,43 +15,60 @@ import (
 
 // Evangelism is Mu's own marketing/evangelism voice on its own blog: the
 // platform telling its story on the platform — actual content, actual usage.
-// It mirrors the opinion loop (in-process, posts as the system account) but its
-// subject is Mu itself, grounded strictly in the canon below so it states only
-// what is true and never invents features.
 //
-// Cadence is deliberately low (this is brand content, not a feed). Disable with
-// the EVANGELISM setting (off/false/0/no).
+// It is produced the same way as the daily brief (news/digest) and the opinion
+// pieces (blog/opinion.go): the voice lives in a System prompt here in code, the
+// SET of things to produce lives in an embedded JSON (evangelism.json, a
+// name -> instruction map like chat/prompts.json), and each piece is generated
+// with ai.Ask (PriorityLow, BackgroundModel) and posted as the system account on
+// a cadence. Disable with the EVANGELISM setting (off/false/0/no).
+
+// evangelismJSON is the set of angles: a map of title -> writing instruction,
+// the same shape as chat/prompts.json. Edit this file (data) to manage what gets
+// produced — no code change needed.
+//
+//go:embed evangelism.json
+var evangelismJSON []byte
 
 const evangelismTag = "mu"
 
-// evangelismCadence is the minimum spacing between evangelism posts.
+// evangelismCadence is the minimum spacing between evangelism posts. Low on
+// purpose — this is brand content, not a feed.
 const evangelismCadence = 72 * time.Hour
 
-// muFacts is the ground truth the evangelism voice may draw on. Keep this in
-// lockstep with the canon (README.md, docs/VISION.md, docs/PRINCIPLES.md,
-// internal/docs/THESIS.md). The model is told to claim nothing beyond it.
-const muFacts = `Mu — the ground truth (do not claim anything beyond this):
+// evangelismVoice is the editorial voice + grounding, kept in code like the
+// digest's System prompt and opinion's agentPurpose. The model may claim only
+// what the angle instruction and these core facts support — never invents
+// features, numbers, or users.
+const evangelismVoice = `You are Micro, the voice of Mu, writing a short piece for Mu's own blog about Mu itself.
 
-- What it is: an agent for everyday. The everyday internet — news, mail, search, weather, video, markets — runs on services, and a handful of platforms own all of them. Mu is the alternative: one agent across all the everyday things, each a real service.
-- The agent: you ask Mu in plain language and it calls the relevant services (weather, news, market prices, mail, web search, video, blog) and gives a single answer. It remembers your preferences over time.
-- Ownership: Mu is open source (AGPL-3.0) and self-hostable as a single Go binary, so a person can run the whole stack themselves instead of renting each piece from a different platform.
-- Built on Go Micro: every capability is a go-micro service; the assistant is a go-micro agent; the MCP and A2A endpoints are its gateways. Mu is also the reference application that proves the framework.
-- Values: no ads, no tracking, no algorithmic feed, no infinite scroll. You pay for the tools, not with your attention. AI assists, it does not replace — and it is honest when it does not know.
-- Where to use it: the web at micro.mu, plus Discord and Telegram. Developers can reach every service over REST, MCP (/mcp), A2A, and the CLI.`
+Core facts you may rely on (claim nothing beyond these and the specific angle you are given):
+- Mu is an agent for everyday: you ask it in plain language and it calls real services — news, mail, search, weather, markets, video, blog — and gives a single answer. It remembers your preferences over time.
+- Mu is open source (AGPL-3.0) and self-hostable as a single Go binary; running the whole stack yourself is a real, optional path.
+- Mu is built on Go Micro: every capability is a go-micro service, the assistant is a go-micro agent, and the MCP and A2A endpoints are its gateways.
+- Values: no ads, no tracking, no algorithmic feed, no infinite scroll. You pay for the tools, not with your attention. AI assists, it does not replace, and is honest when it does not know.
+- Available on the web at micro.mu, plus Discord and Telegram; developers reach every service over REST, MCP, A2A and the CLI.
 
-// evangelismAngles are the rotating subjects. Each is a true theme from the
-// canon; the model writes a fresh piece on one per cycle.
-var evangelismAngles = []string{
-	"What Mu is, in plain terms: one agent for the everyday internet, instead of an app and a tab for everything.",
-	"Owning your everyday internet: the platforms own a service for everything; Mu is the same stack, but self-hostable and yours.",
-	"Pay for the tools, not with your attention: what a service with no ads, no tracking, and no algorithm actually feels like to use.",
-	"Built on Go Micro: why every capability in Mu is a real service and the assistant is an agent over them — and why that makes Mu ownable.",
-	"One question, many services: how the agent answers by calling weather, news, markets, mail, search and video on your behalf.",
-	"Run your own Mu: what self-hosting a single Go binary gives you that a hosted platform never can.",
+Voice: plain, concrete, and honest. Lead with what a person actually gets. No hype, no superlatives, no exclamation marks, no growth-hacky tone — the same restraint Mu applies to its product (no dark patterns in the copy either). Name the trade-offs honestly. If unsure whether something is true, leave it out.
+
+Output format:
+Line 1: the title only (no quotes, no "Blog:" prefix).
+Line 2: empty.
+Line 3+: the body — 3 to 5 short paragraphs of flowing prose. No bullet lists, no headings, no references section. Plain dollar signs if any. Under 2000 characters total.`
+
+// evangelismAngles loads the angle set from the embedded JSON. Returns nil on a
+// malformed file (logged) so a bad edit never panics the binary.
+func evangelismAngles() map[string]string {
+	var angles map[string]string
+	if err := json.Unmarshal(evangelismJSON, &angles); err != nil {
+		app.Log("evangelism", "evangelism.json parse error: %v", err)
+		return nil
+	}
+	return angles
 }
 
-// evangelismEnabled reports whether the evangelism loop should run. Default on;
-// set EVANGELISM to a falsey value to disable.
+// evangelismEnabled reports whether the loop should run. Default on; set
+// EVANGELISM to a falsey value to disable.
 func evangelismEnabled() bool {
 	switch strings.ToLower(strings.TrimSpace(settings.Get("EVANGELISM"))) {
 	case "off", "false", "0", "no":
@@ -72,35 +92,47 @@ func evangelismLoop() {
 	}
 }
 
-// publishNextEvangelism posts one evangelism piece if enough time has passed
-// since the last one and the loop is enabled.
+// publishNextEvangelism posts one evangelism piece if enabled and enough time
+// has passed since the last one.
 func publishNextEvangelism() {
 	if !evangelismEnabled() {
 		return
 	}
-	// Need a configured AI provider to write anything.
 	if last := latestEvangelismTime(); !last.IsZero() && time.Since(last) < evangelismCadence {
 		return // too soon
 	}
 
-	angle := nextEvangelismAngle()
-	title, body, err := generateEvangelism(angle)
+	name, instruction := nextEvangelismAngle()
+	if name == "" {
+		return // no angles configured
+	}
+	title, body, err := generateEvangelism(name, instruction)
 	if err != nil {
-		app.Log("evangelism", "generation failed: %v", err)
+		app.Log("evangelism", "generation failed [%s]: %v", name, err)
 		return
 	}
 	if err := CreatePost(title, body, app.SystemUserName, app.SystemUserID, evangelismTag+",about", false); err != nil {
-		app.Log("evangelism", "failed to create post: %v", err)
+		app.Log("evangelism", "failed to create post [%s]: %v", name, err)
 		return
 	}
-	app.Log("evangelism", "published: %s", title)
+	app.Log("evangelism", "published [%s]: %s", name, title)
 }
 
-// nextEvangelismAngle rotates through the angles over time so consecutive posts
-// differ. Deterministic (no RNG): advances one angle per cadence window.
-func nextEvangelismAngle() string {
+// nextEvangelismAngle rotates deterministically through the angles (sorted by
+// name) so consecutive posts differ, advancing one per cadence window.
+func nextEvangelismAngle() (string, string) {
+	angles := evangelismAngles()
+	if len(angles) == 0 {
+		return "", ""
+	}
+	names := make([]string, 0, len(angles))
+	for n := range angles {
+		names = append(names, n)
+	}
+	sort.Strings(names)
 	window := time.Now().UTC().Unix() / int64(evangelismCadence/time.Second)
-	return evangelismAngles[int(window)%len(evangelismAngles)]
+	name := names[int(window)%len(names)]
+	return name, angles[name]
 }
 
 // latestEvangelismTime returns the creation time of the most recent evangelism
@@ -108,10 +140,7 @@ func nextEvangelismAngle() string {
 func latestEvangelismTime() time.Time {
 	var latest time.Time
 	for _, post := range GetPostsByAuthor(app.SystemUserName) {
-		if !strings.EqualFold(post.AuthorID, app.SystemUserID) {
-			continue
-		}
-		if !hasTag(post.Tags, evangelismTag) {
+		if !strings.EqualFold(post.AuthorID, app.SystemUserID) || !hasTag(post.Tags, evangelismTag) {
 			continue
 		}
 		if post.CreatedAt.After(latest) {
@@ -130,27 +159,15 @@ func hasTag(tags, want string) bool {
 	return false
 }
 
-// generateEvangelism writes one evangelism piece on the given angle, grounded
-// strictly in muFacts. Returns title and body.
-func generateEvangelism(angle string) (string, string, error) {
-	system := `You are Micro, the voice of Mu, writing a short piece for Mu's own blog about Mu itself.
-
-Voice: plain, concrete, and honest. Lead with what a person actually gets. No growth-hacky tone, no hype, no superlatives, no exclamation marks. You assist, you don't oversell — be honest about what Mu is and isn't. This is the same restraint Mu applies to its product: no dark patterns in the copy either.
-
-Ground rules:
-- Claim ONLY what the ground-truth facts below support. Do NOT invent features, numbers, users, or capabilities. If you're unsure, leave it out.
-- Write for a curious person, not an investor. Show the thing; don't pitch it.
-- It's fine — encouraged — to name the trade-off honestly (open/self-hostable, pay for tools not attention).
-
-Output format:
-Line 1: the title only (no quotes, no "Blog:" prefix).
-Line 2: empty.
-Line 3+: the body — 3 to 5 short paragraphs of flowing prose. No bullet lists, no headings, no references section. Plain dollar signs if any. Under 2000 characters total.`
-
+// generateEvangelism writes one piece for the given angle. Same shape as the
+// digest and opinion generators: voice in System, the specific ask in Question,
+// PriorityLow + BackgroundModel.
+func generateEvangelism(name, instruction string) (string, string, error) {
 	prompt := &ai.Prompt{
-		System:   system,
-		Question: muFacts + "\n\nWrite today's piece on this angle:\n" + angle,
+		System:   evangelismVoice,
+		Question: "Write today's piece on this angle — \"" + name + "\":\n" + instruction,
 		Priority: ai.PriorityLow,
+		Model:    ai.BackgroundModel(),
 		Caller:   "evangelism-generate",
 	}
 

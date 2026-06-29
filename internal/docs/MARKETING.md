@@ -17,10 +17,14 @@ account writes a short, canon-grounded piece about Mu on a low cadence, the same
 way the opinion and digest loops already post. Actual content, actual usage. No
 external token, no staging: it runs wherever Mu runs.
 
-That loop is grounded strictly in a `muFacts` block and a set of `angles` so it
-states only what is true and never invents features. Keeping those in lockstep
-with the canon (README, VISION, PRINCIPLES, THESIS) is the marketing pass's main
-ongoing code job.
+It is produced the same way as the daily brief (`news/digest`) and the opinion
+pieces: the **voice** lives in a `System` prompt constant in `blog/evangelism.go`,
+and the **set of things produced** lives in an embedded data file,
+`blog/evangelism.json` — a `name -> instruction` map, the same shape as
+`chat/prompts.json`. So managing what gets written is editing **data**, not code.
+Keep the angles (and the small grounding-facts block in the voice constant) in
+lockstep with the canon (README, VISION, PRINCIPLES, THESIS) so the live posts
+stay true.
 
 ## What the marketing pass does each run
 
@@ -29,14 +33,17 @@ ongoing code job.
    `home/home.go`, `home/pricing.go`, `home/assistant.go`) — for places where
    they contradict each other, are stale, or describe behaviour that has since
    changed. Cross-check against the code and recently merged PRs.
-2. **Keep the live voice accurate.** Check `blog/evangelism.go` — do `muFacts`
-   and `angles` still match the canon and recently shipped work? If the product
-   changed (new capability, changed positioning), update them so the live posts
-   stay true. This is a safe, CI-verifiable code change and may auto-merge.
+2. **Keep the live voice accurate.** The angles live in `blog/evangelism.json`
+   (data) and the grounding facts in the voice constant in `blog/evangelism.go`.
+   Do they still match the canon and recently shipped work? If the product
+   changed (new capability, changed positioning), update `evangelism.json` (and
+   the facts block if needed) so the live posts stay true. Editing the JSON is a
+   safe, CI-verifiable data change (a test validates it parses and is non-empty)
+   and may auto-merge.
 3. **Find the story.** From recently shipped work and how the live product is
    actually used (micro.mu), identify 1-3 genuinely true, concrete things worth
-   saying — either as a new evangelism angle (added to `evangelism.go`) or, for
-   long-form, a Markdown draft under `internal/docs/blog/` for a human to post.
+   saying — add them as new angles in `blog/evangelism.json`, or for long-form, a
+   Markdown draft under `internal/docs/blog/` for a human to post.
 4. **Report.** Post a concise findings comment on the dispatch issue: what is
    aligned, what drifted, what was fixed/updated, and any angles or drafts added.
 
@@ -51,9 +58,9 @@ ongoing code job.
 ## Autonomy boundary
 
 - **Auto-merge (safe):** factual-alignment and crispness fixes to README/docs;
-  and keeping `blog/evangelism.go` (`muFacts`, `angles`) accurate to the canon —
-  these make the live voice more correct without changing positioning. Verify
-  build/test when code is touched.
+  and keeping `blog/evangelism.json` (the angle set) and the facts block in the
+  voice constant accurate to the canon — these make the live voice more correct
+  without changing positioning. Verify build/test when touched.
 - **The live evangelism loop publishes autonomously** to Mu's own blog, like the
   opinion/digest loops — that is intended (it is grounded in canon and low
   cadence). It can be turned off entirely with `EVANGELISM=off`.
