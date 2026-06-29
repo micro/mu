@@ -82,7 +82,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	// Check for direct agent addressing
 	if agentID := micro.MatchDirectAddress(prompt); agentID != "" {
 		cleanPrompt := micro.StripAddress(prompt)
-		return micro.Orchestrate(accountID, cleanPrompt, []string{agentID}, opts.Public)
+		return normalizeQueryAnswer(micro.Orchestrate(accountID, cleanPrompt, []string{agentID}, opts.Public))
 	}
 
 	// Route to specialist agent(s)
@@ -90,7 +90,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 
 	// If router picks specialist(s), use the multi-agent system
 	if len(agentIDs) > 0 && agentIDs[0] != "micro" {
-		return micro.Orchestrate(accountID, prompt, agentIDs, opts.Public)
+		return normalizeQueryAnswer(micro.Orchestrate(accountID, prompt, agentIDs, opts.Public))
 	}
 
 	// Native go-micro agent path (default for this agent platform; set
@@ -101,7 +101,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	if nativeEnabled() {
 		if answer, handled, err := queryNative(accountID, prompt, opts); handled {
 			if err == nil {
-				return answer, nil
+				return app.NormalizeAnswerMarkdown(answer), nil
 			}
 			app.Log("agent", "native agent failed, falling back to planner: %v", err)
 		}
@@ -260,7 +260,14 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("synthesis failed: %w", err)
 	}
-	return app.StripLatexDollars(answer), nil
+	return app.NormalizeAnswerMarkdown(app.StripLatexDollars(answer)), nil
+}
+
+func normalizeQueryAnswer(answer string, err error) (string, error) {
+	if err != nil {
+		return "", err
+	}
+	return app.NormalizeAnswerMarkdown(answer), nil
 }
 
 // Handler dispatches GET (page) and POST (query) at /agent and /agent/*.
@@ -571,6 +578,7 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 		answer = app.StripLatexDollars(captured.String())
 	}
 	answer = completeNativeToolAnswer(answer, nativeTools)
+	answer = app.NormalizeAnswerMarkdown(answer)
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
 	updateFlow(flow.ID, func(f *Flow) {
@@ -977,8 +985,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		sse(w, map[string]any{"type": "done"})
 		return
 	}
-	answer = app.StripLatexDollars(answer)
+	answer = app.NormalizeAnswerMarkdown(app.StripLatexDollars(answer))
 	answer = completeToolAnswer(answer, ragParts)
+	answer = app.NormalizeAnswerMarkdown(answer)
 
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
