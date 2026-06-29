@@ -1551,11 +1551,12 @@ func main() {
 					}
 				} else if r.URL.Path == "/" {
 					if _, acc := auth.TrySession(r); acc != nil {
-						// The home is the dashboard that already works; a query
-						// (?q= / ?prompt=) folds into the assistant to answer it.
+						// The home is the dashboard; a query (?q= / ?prompt=) opens
+						// the unified chat surface (/agent) so there is one AI view
+						// with sessions, not a separate inline one.
 						q := r.URL.Query()
 						if q.Get("q") != "" || q.Get("prompt") != "" {
-							home.AssistantHandler(w, r)
+							http.Redirect(w, r, "/agent?"+r.URL.RawQuery, http.StatusFound)
 						} else {
 							home.Handler(w, r)
 						}
