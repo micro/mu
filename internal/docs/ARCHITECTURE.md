@@ -76,11 +76,13 @@ things that are genuinely Mu-specific.
    to its locally-cached HTML, each with round-trip + fallback tests. Publish is
    hooked at every cache-rebuild site (video's two finalize points; social's
    `updateCacheLocked`; blog's `updateCacheUnlocked`).
-3. ◑ **Unify events onto the broker.** Make `internal/event` a thin wrapper over
-   the go-micro broker (preserve Subscribe/Publish ergonomics) so there is one
-   bus. **Caveat:** the broker carries `[]byte`, so wrapping JSON-marshals each
-   `Event.Data` map — numbers come back as `float64`. Audit every consumer's type
-   assertions before cutting over (today they appear string-only).
+3. ✅ **Unify events onto the broker.** Done — `internal/event` is now a thin
+   wrapper over the go-micro broker: `Publish` JSON-encodes `Event.Data` onto the
+   broker topic; `Subscribe` keeps the same buffered-channel API, fed by a
+   broker subscription (guarded against send-on-closed for `Close`). One bus, no
+   hand-rolled pub/sub beside the framework's. Verified the JSON round-trip is
+   lossless: all 17 consumer assertions on `Event.Data` are `.(string)`. The
+   existing event test-suite and the consumers pass (incl. `-race`).
 4. **Agent-routed queries.** Run specialist agents as services; route/delegate the
    query plane to the most relevant agent; retire `agent/micro`. *(Architectural —
    human-supervised, not auto-merged. Gated on go-micro#3341 for the streaming

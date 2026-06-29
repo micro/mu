@@ -1,10 +1,20 @@
-// Package event provides a pub/sub event system for decoupling
-// background operations across packages.
+// Package event provides a pub/sub event system for decoupling background
+// operations across packages.
+//
+// It is a thin wrapper over the go-micro broker (mu/internal/service): there is
+// one bus for the whole system, not a hand-rolled one beside the framework's.
+// The channel-based API (Subscribe → Subscription.Chan, Publish, Close) is
+// preserved so callers are unchanged. Event payloads are JSON-encoded onto the
+// broker; all consumers read string values, so the round-trip is lossless.
 package event
 
 import (
-	"fmt"
+	"encoding/json"
 	"sync"
+
+	"go-micro.dev/v6/broker"
+
+	"mu/internal/service"
 )
 
 // Event types
@@ -18,77 +28,70 @@ const (
 	EventTagGenerated       = "tag_generated"
 )
 
-// Event represents a data event
+// Event represents a data event.
 type Event struct {
 	Type string
 	Data map[string]interface{}
 }
 
-// Subscription represents an active subscription
+// Subscription represents an active subscription. Callers range over Chan.
 type Subscription struct {
-	Chan      chan Event
-	eventType string
-	id        string
+	Chan chan Event
+
+	sub    broker.Subscriber
+	mu     sync.Mutex
+	closed bool
 }
 
-var (
-	mu              sync.RWMutex
-	subscribers     = make(map[string]map[string]chan Event) // eventType -> subscriberID -> channel
-	subscriberIDSeq int
-)
-
-// Subscribe creates a channel-based subscription for a specific event type
+// Subscribe creates a channel-based subscription for a specific event type,
+// backed by a broker subscription on that topic.
 func Subscribe(eventType string) *Subscription {
-	mu.Lock()
-	defer mu.Unlock()
+	s := &Subscription{Chan: make(chan Event, 10)}
 
-	// Generate unique subscriber ID
-	subscriberIDSeq++
-	id := fmt.Sprintf("sub_%d", subscriberIDSeq)
+	sub, err := service.Broker().Subscribe(eventType, func(e broker.Event) error {
+		var data map[string]interface{}
+		if m := e.Message(); m != nil && len(m.Body) > 0 {
+			_ = json.Unmarshal(m.Body, &data)
+		}
+		ev := Event{Type: eventType, Data: data}
 
-	// Create buffered channel to prevent blocking
-	ch := make(chan Event, 10)
-
-	// Initialize map if needed
-	if subscribers[eventType] == nil {
-		subscribers[eventType] = make(map[string]chan Event)
+		// Non-blocking send, guarded so a concurrent Close can't cause a send on
+		// a closed channel. Preserves the original drop-if-full semantics.
+		s.mu.Lock()
+		if !s.closed {
+			select {
+			case s.Chan <- ev:
+			default:
+			}
+		}
+		s.mu.Unlock()
+		return nil
+	})
+	if err == nil {
+		s.sub = sub
 	}
-
-	subscribers[eventType][id] = ch
-
-	return &Subscription{
-		Chan:      ch,
-		eventType: eventType,
-		id:        id,
-	}
+	return s
 }
 
-// Close closes the channel and removes the subscription
+// Close stops delivery and closes the channel so a ranging consumer exits.
 func (s *Subscription) Close() {
-	mu.Lock()
-	defer mu.Unlock()
+	s.mu.Lock()
+	if !s.closed {
+		s.closed = true
+		close(s.Chan)
+	}
+	s.mu.Unlock()
 
-	if subs, ok := subscribers[s.eventType]; ok {
-		if ch, ok := subs[s.id]; ok {
-			close(ch)
-			delete(subs, s.id)
-		}
+	if s.sub != nil {
+		_ = s.sub.Unsubscribe()
 	}
 }
 
-// Publish sends an event to all subscribers
+// Publish sends an event to all subscribers of its type via the broker.
 func Publish(e Event) {
-	mu.RLock()
-	subs := subscribers[e.Type]
-	mu.RUnlock()
-
-	// Send to channel subscribers (non-blocking)
-	for _, ch := range subs {
-		select {
-		case ch <- e:
-			// Sent successfully
-		default:
-			// Channel full, skip (subscriber should have buffer or be reading)
-		}
+	body, err := json.Marshal(e.Data)
+	if err != nil {
+		body = nil
 	}
+	_ = service.Broker().Publish(e.Type, &broker.Message{Body: body})
 }
