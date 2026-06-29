@@ -26,20 +26,38 @@ and publishing marketing content. Those go to the human.
 > it here; until then the continuous-improvement loop falls back to picking the
 > highest-value item itself.
 
-1. **Harden the core ask → answer loop end to end.** A guest and a signed-in user
+1. **Fully onto go-micro — reference vertical: markets.** Per
+   [ARCHITECTURE.md](ARCHITECTURE.md), prove the read-plane pattern on one
+   surface: the markets service owns its background refresh and publishes a
+   snapshot to the go-micro store; the card/page renders from a broker-fed local
+   mirror (a memory read — no per-render RPC fan-out). Measure render latency
+   before/after to prove parity. Sets the pattern for the rest.
+2. **Unify events onto the go-micro broker.** Make `internal/event` a thin wrapper
+   over the broker (preserve Subscribe/Publish ergonomics) so there is one bus,
+   not a hand-rolled one beside the framework's. Behaviour identical; verify.
+3. **Replicate the snapshot read-model** to news, video, social, blog — one
+   service per increment, each verified for render-latency parity.
+4. **Harden the core ask → answer loop end to end.** A guest and a signed-in user
    should get a correct, well-formatted, fast answer on web and on the chat
    clients. Add integration/smoke coverage of the ask → tool → answer path across
-   the core services (weather, news, markets, mail, search) so regressions in the
-   most important flow are caught.
-2. **Every service degrades gracefully.** Audit each home card and each
+   the core services so regressions in the most important flow are caught.
+5. **Every service degrades gracefully.** Audit each home card and each
    agent-callable service for the provider-down case — no dead cards, no silent
    failures, a clear "unavailable" instead. One service per increment.
-3. **First-run experience.** A new visitor understands what Mu is and gets value
+6. **First-run experience.** A new visitor understands what Mu is and gets value
    from one prompt without an account — tighten the guest landing, suggestions,
    and the sign-up moment (when the free limit is hit) for clarity, not friction.
-4. **Answer formatting quality.** Rendered answers (news, markets, weather) look
-   right everywhere they appear — web (guest + signed-in), Discord, Telegram —
-   with consistent spacing, headings, and links.
+7. **Answer formatting quality.** Rendered answers (news, markets, weather) look
+   right everywhere they appear — web (guest + signed-in), Discord, Telegram.
+
+### Human-supervised (architectural — not for the auto-merge loop)
+
+- **Agent-routed query plane.** Run specialist agents as services and route/
+  delegate the query plane to the most relevant agent (go-micro `Agent.Chat` /
+  `delegate` / chat routing), retiring the hand-rolled `agent/micro`. Gated on
+  go-micro#3341 (streaming agent with tool events) for the streaming `/agent`
+  path. Surface findings; do not auto-merge.
+- **A2A cutover** once go-micro#3342 (multi-skill agent cards) lands.
 
 _Seeded by Claude Code from the North Star; thereafter maintained by the
 product-review pass._
