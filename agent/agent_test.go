@@ -600,8 +600,22 @@ func TestCompleteToolAnswerReplacesProgressOnlyWithResults(t *testing.T) {
 	if strings.Contains(strings.ToLower(got), "let me pull") {
 		t.Fatalf("expected progress narration to be replaced, got %q", got)
 	}
-	if !strings.Contains(got, "BTC: $100,000") || !strings.Contains(got, "Bitcoin reaches new high") {
-		t.Fatalf("expected fallback to include tool results, got %q", got)
+	if strings.Contains(strings.ToLower(got), "couldn't synthesize") {
+		t.Fatalf("expected synthesized fallback instead of generic incomplete-answer copy, got %q", got)
+	}
+	if !strings.Contains(got, "**markets**") || !strings.Contains(got, "BTC: $100,000") || !strings.Contains(got, "**news**") || !strings.Contains(got, "Bitcoin reaches new high") {
+		t.Fatalf("expected fallback to include organized tool results, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerNamesUnavailableSlices(t *testing.T) {
+	rag := []string{"### weather\nNo weather data unavailable right now.", "### news\nLatest news:\n1. Useful headline"}
+	got := completeToolAnswer("I'll check that now.", rag)
+	if !strings.Contains(got, "Useful headline") {
+		t.Fatalf("expected available slice in fallback, got %q", got)
+	}
+	if !strings.Contains(got, "Unavailable: weather.") {
+		t.Fatalf("expected unavailable slice to be named clearly, got %q", got)
 	}
 }
 
