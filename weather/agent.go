@@ -8,6 +8,10 @@ import (
 // ForecastText returns a compact, model-ready weather summary for a location.
 // It is the AI-first accessor behind the weather_forecast agent tool.
 func ForecastText(lat, lon float64) string {
+	if !validCoordinates(lat, lon) {
+		return "Weather is unavailable because the requested coordinates are invalid."
+	}
+
 	wf, err := FetchWeather(lat, lon)
 	if err != nil || wf == nil {
 		return "Weather is unavailable right now."
@@ -35,5 +39,13 @@ func ForecastText(lat, lon float64) string {
 				d.Date.Format("Mon 2 Jan"), d.MinTempC, d.MaxTempC, d.Description, rain)
 		}
 	}
+	if sb.Len() == 0 {
+		return "Weather is unavailable right now."
+	}
 	return sb.String()
+}
+
+func validCoordinates(lat, lon float64) bool {
+	return lat == lat && lon == lon &&
+		lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
 }
