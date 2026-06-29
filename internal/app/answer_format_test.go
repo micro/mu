@@ -23,3 +23,11 @@ func TestNormalizeAnswerMarkdownPreservesCodeFenceSpacing(t *testing.T) {
 		t.Fatalf("extra blank lines leaked outside code fence: %q", got)
 	}
 }
+
+func TestNormalizeAnswerMarkdownNormalizesCommonBlocks(t *testing.T) {
+	input := "##Weather\n1.Sunny today\n>quoted\n| City | Temp|Notes |\n|---| --- |---|"
+	want := "## Weather\n1. Sunny today\n> quoted\n| City | Temp | Notes |\n| --- | --- | --- |"
+	if got := NormalizeAnswerMarkdown(input); got != want {
+		t.Fatalf("NormalizeAnswerMarkdown() = %q, want %q", got, want)
+	}
+}
