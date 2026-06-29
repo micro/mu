@@ -821,6 +821,73 @@ func sse(w http.ResponseWriter, event map[string]any) {
 	}
 }
 
+// streamNativeSSE drives the native go-micro agent and translates its stream
+// into the SSE events the chat UI expects (tool_start/tool_done, stream_start/
+// stream_token, response, done). It returns true when it handled the request.
+// It returns false only when no native provider is configured, or the agent
+// failed before producing any user-visible output — in which case nothing but
+// the already-sent flow_id was emitted, so the caller can fall back to the
+// hand-rolled pipeline cleanly.
+func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, isGuest bool) bool {
+	streaming := false
+	emitted := false
+	var captured strings.Builder
+
+	answer, handled, err := streamNative(accountID, prompt, opts, StreamHooks{
+		ToolStart: func(label string) {
+			emitted = true
+			sse(w, map[string]any{"type": "tool_start", "name": label, "message": label})
+		},
+		ToolEnd: func(label string) {
+			sse(w, map[string]any{"type": "tool_done", "name": label, "message": label + " — done"})
+		},
+		Token: func(tok string) {
+			if !streaming {
+				streaming = true
+				emitted = true
+				sse(w, map[string]any{"type": "stream_start"})
+			}
+			captured.WriteString(tok)
+			sse(w, map[string]any{"type": "stream_token", "token": tok})
+		},
+	})
+
+	if !handled {
+		return false // no native provider — fall back to the planner
+	}
+	if err != nil {
+		if !emitted {
+			// Nothing user-visible was sent yet (only flow_id); fall back to the
+			// hand-rolled pipeline so the query still gets answered.
+			app.Log("agent", "native stream failed before output, falling back: %v", err)
+			return false
+		}
+		app.Log("agent", "native stream error mid-answer: %v", err)
+		updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
+		sse(w, map[string]any{"type": "error", "message": "Could not generate response: " + err.Error()})
+		sse(w, map[string]any{"type": "done"})
+		return true
+	}
+
+	if answer == "" {
+		answer = app.StripLatexDollars(captured.String())
+	}
+	rendered := app.RenderString(answer)
+	html := `<div class="card" id="agent-response">` + rendered + `</div>`
+	if !isGuest {
+		html += `<div class="card" style="font-size:13px;display:flex;gap:16px;align-items:center;">` +
+			`<a href="/agent/flow/` + flow.ID + `" class="link">View saved flow ↗</a></div>`
+	}
+	updateFlow(flow.ID, func(f *Flow) {
+		f.Answer = answer
+		f.HTML = html
+		f.Status = "done"
+	})
+	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
+	sse(w, map[string]any{"type": "done"})
+	return true
+}
+
 // ToolsDropdownHTML returns an inline clickable dropdown listing the agent's available tools.
 func ToolsDropdownHTML() string {
 	return `<details class="agent-tools-dropdown" style="display:inline-block;position:relative;">
@@ -1020,6 +1087,26 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	// Send flow_id immediately so the client can recover on disconnect.
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID})
+
+	// Native go-micro agent path (default): the LLM does native tool-calling
+	// over the registered services and streams the answer, emitting tool
+	// start/end events as it goes — replacing the hand-rolled plan/execute/
+	// synthesize pipeline below. Falls through to that pipeline only if no
+	// native provider is configured or it fails before producing any output.
+	if nativeEnabled() {
+		nopts := QueryOpts{Public: isGuest}
+		for _, f := range conversationHistory {
+			if strings.TrimSpace(f.Prompt) == "" {
+				continue
+			}
+			nopts.History = append(nopts.History,
+				QueryMessage{Role: "user", Text: f.Prompt},
+				QueryMessage{Role: "assistant", Text: f.Answer})
+		}
+		if streamNativeSSE(w, accountID, req.Prompt, nopts, flow, isGuest) {
+			return
+		}
+	}
 
 	// --- Step 1: plan tool calls ---
 	type toolCall struct {

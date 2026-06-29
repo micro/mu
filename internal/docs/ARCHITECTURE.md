@@ -112,10 +112,21 @@ things that are genuinely Mu-specific.
    hand-rolled pub/sub beside the framework's. Verified the JSON round-trip is
    lossless: all 17 consumer assertions on `Event.Data` are `.(string)`. The
    existing event test-suite and the consumers pass (incl. `-race`).
-4. **Agent-routed queries.** Run specialist agents as services; route/delegate the
-   query plane to the most relevant agent; retire `agent/micro`. *(Architectural —
-   human-supervised, not auto-merged. Gated on go-micro#3341 for the streaming
-   path.)*
+4. ◑ **Query plane on the native agent.** In progress.
+   - ✅ **Streaming `/agent` cut over.** go-micro#3341 shipped as `agent.StreamAsk`
+     (in v6.3.9): the agent runs its tool loop, emits `tool_start`/`tool_end`
+     events, and streams the final answer in chunks. mu's streaming handler now
+     drives it (`agent/native.go` `streamNative` + `agent/agent.go`
+     `streamNativeSSE`): tool events → `tool_start`/`tool_done`, answer →
+     `stream_start`/`stream_token` (now genuinely incremental, where it used to
+     arrive in one chunk). The hand-rolled plan/execute/synthesize pipeline
+     remains only as a **fallback** — used when no native provider is configured
+     or the agent fails before any output. `AGENT_NATIVE=off` forces the planner.
+     Trade-off: native mode renders the answer inline but not the planner's
+     per-tool "reference" cards (the answer itself is the content).
+   - TODO: retire the hand-rolled planner and `agent/micro` once the native path
+     has proven out on real traffic; route to **multiple specialist agents** via
+     `delegate`/chat routing rather than one assistant agent.
 5. **A2A cutover** once go-micro#3342 lands.
 
 **Autonomy note:** steps 1–3 are scoped and safe enough for the loop. Steps 4–5
