@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -68,5 +69,21 @@ func TestForecastTextInvalidCoordinatesDoesNotFetch(t *testing.T) {
 	want := "Weather is unavailable because the requested coordinates are invalid."
 	if got != want {
 		t.Fatalf("ForecastText invalid coordinates = %q, want %q", got, want)
+	}
+}
+
+func TestForecastTextProviderUnavailableIsClear(t *testing.T) {
+	t.Setenv("GOOGLE_API_KEY", "")
+
+	got := ForecastText(51.5074, -0.1278)
+	if got != weatherUnavailableMessage {
+		t.Fatalf("ForecastText provider unavailable = %q, want %q", got, weatherUnavailableMessage)
+	}
+}
+
+func TestCardHTMLShowsWeatherUnavailableOnFetchFailure(t *testing.T) {
+	got := CardHTML()
+	if !strings.Contains(got, "Weather unavailable") {
+		t.Fatalf("CardHTML should show a clear unavailable state on fetch failure, got %q", got)
 	}
 }
