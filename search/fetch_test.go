@@ -1,7 +1,9 @@
 package search
 
 import (
+	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -91,5 +93,36 @@ func TestIsPrivateHostAllowsPublicHosts(t *testing.T) {
 		if isPrivateHost(host) {
 			t.Errorf("isPrivateHost(%q) = true; want false", host)
 		}
+	}
+}
+
+func TestFetchAndExtractRejectsPrivateURLsBeforeRequest(t *testing.T) {
+	for _, rawURL := range []string{
+		"http://127.0.0.1/private",
+		"http://169.254.169.254/latest/meta-data/",
+		"http://metadata.google.internal/computeMetadata/v1/",
+	} {
+		_, _, err := FetchAndExtract(rawURL)
+		if err == nil || !strings.Contains(strings.ToLower(err.Error()), "private or internal") {
+			t.Fatalf("FetchAndExtract(%q) error = %v; want private/internal rejection", rawURL, err)
+		}
+	}
+}
+
+func TestFetchClientRejectsRedirectsToPrivateURLs(t *testing.T) {
+	redirectURL, err := url.Parse("http://127.0.0.1/admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	publicURL, err := url.Parse("https://example.com/start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := &http.Request{URL: redirectURL}
+	via := []*http.Request{{URL: publicURL}}
+
+	err = fetchClient.CheckRedirect(req, via)
+	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "private or internal") {
+		t.Fatalf("CheckRedirect() error = %v; want private/internal rejection", err)
 	}
 }

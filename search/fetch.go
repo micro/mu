@@ -27,6 +27,9 @@ var fetchClient = &http.Client{
 		if len(via) >= 5 {
 			return fmt.Errorf("too many redirects")
 		}
+		if err := validateFetchURL(req.URL); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -147,6 +150,9 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 func FetchAndExtract(rawURL string) (string, string, error) {
 	// Rewrite Twitter/X URLs to Nitter for static HTML
 	fetchURL, _ := rewriteTwitterURL(rawURL)
+	if err := validateRawFetchURL(fetchURL); err != nil {
+		return "", "", err
+	}
 
 	req, err := http.NewRequest("GET", fetchURL, nil)
 	if err != nil {
@@ -208,6 +214,9 @@ func FetchAndExtractHTMLProxied(rawURL string) (string, string, error) {
 func fetchAndSanitize(rawURL string, proxy bool) (string, string, error) {
 	// Rewrite Twitter/X URLs to Nitter for static HTML
 	fetchURL, _ := rewriteTwitterURL(rawURL)
+	if err := validateRawFetchURL(fetchURL); err != nil {
+		return "", "", err
+	}
 
 	req, err := http.NewRequest("GET", fetchURL, nil)
 	if err != nil {
@@ -631,6 +640,24 @@ func stripTags(s string) string {
 // collapseWhitespace replaces runs of whitespace with a single space.
 func collapseWhitespace(s string) string {
 	return multiSpaceRe.ReplaceAllString(s, " ")
+}
+
+func validateRawFetchURL(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return err
+	}
+	return validateFetchURL(parsed)
+}
+
+func validateFetchURL(parsed *url.URL) error {
+	if parsed == nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return fmt.Errorf("invalid URL: must use http or https")
+	}
+	if isPrivateHost(strings.ToLower(parsed.Hostname())) {
+		return fmt.Errorf("cannot fetch private or internal URL")
+	}
+	return nil
 }
 
 // isPrivateHost returns true if the host looks like a private/internal address.
