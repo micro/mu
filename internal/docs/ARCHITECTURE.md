@@ -64,13 +64,24 @@ things that are genuinely Mu-specific.
 
 ## Migration order (incremental, no regression; verify each)
 
-1. **Reference vertical: markets.** Move refresh into the service, publish a
-   snapshot to the store, render the card/page from a broker-fed mirror. Measure
-   render latency before/after to prove parity. This sets the pattern.
-2. **Unify events onto the broker.** Make `internal/event` a thin wrapper over the
+1. ✅ **Reference vertical: markets.** Done — `markets/snapshot.go`: the service
+   publishes its rendered card to the go-micro store + broker; `MarketsHTML()`
+   serves a broker-fed mirror with a fallback to locally-generated HTML. Render
+   stays a memory read.
+2. ◑ **Replicate the snapshot read-model** to the other display cards — one
+   service at a time, each verified.
+   - ✅ **news** — `news/snapshot.go`; `Headlines()` serves the mirror.
+   - TODO **video, social, blog.** Caveat learned: markets/news each have a
+     single cache-update site, so one `publishSnapshot` covers them. video sets
+     `latestHtml` in several places, social updates via `updateCacheLocked`, blog
+     via `RefreshCache` (+ others) — publish from every update site (or
+     centralize the cache write first) or the snapshot goes stale. Add the
+     round-trip + fallback tests each time.
+3. **Unify events onto the broker.** Make `internal/event` a thin wrapper over the
    go-micro broker (preserve Subscribe/Publish ergonomics) so there is one bus.
-3. **Replicate the snapshot read-model** to news, video, social, blog — one at a
-   time, each verified for parity.
+   **Caveat:** the broker carries `[]byte`, so wrapping JSON-marshals each
+   `Event.Data` map — numbers come back as `float64`. Audit every consumer's type
+   assertions before cutting over (today they appear string-only).
 4. **Agent-routed queries.** Run specialist agents as services; route/delegate the
    query plane to the most relevant agent; retire `agent/micro`. *(Architectural —
    human-supervised, not auto-merged. Gated on go-micro#3341 for the streaming
