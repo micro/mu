@@ -95,7 +95,7 @@ h+='<span>'+name+' '+Math.round(day.MaxTempC)+'°/'+Math.round(day.MinTempC)+'°
 h+='</div>';
 }
 renderWeather(h);
-}).catch(function(){});
+}).catch(function(){if(!cached){el.innerHTML='<span style="color:#888">Weather unavailable</span>';}});
 }
 })();
 </script>
@@ -134,6 +134,10 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 	lon, err := strconv.ParseFloat(lonStr, 64)
 	if err != nil {
 		app.RespondError(w, http.StatusBadRequest, "invalid lon")
+		return
+	}
+	if !validCoordinates(lat, lon) {
+		app.RespondError(w, http.StatusBadRequest, "lat must be between -90 and 90 and lon must be between -180 and 180")
 		return
 	}
 
