@@ -14,7 +14,7 @@ func ForecastText(lat, lon float64) string {
 
 	wf, err := FetchWeather(lat, lon)
 	if err != nil || wf == nil {
-		return "Weather is unavailable right now."
+		return weatherUnavailableMessage
 	}
 
 	var sb strings.Builder
@@ -40,7 +40,7 @@ func ForecastText(lat, lon float64) string {
 		}
 	}
 	if sb.Len() == 0 {
-		return "Weather is unavailable right now."
+		return weatherUnavailableMessage
 	}
 	return sb.String()
 }
