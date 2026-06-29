@@ -24,8 +24,8 @@ history.replaceState(null,'','/');
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mu — Own your services</title>
-<meta name="description" content="News, mail, markets, weather, search and video — the everyday internet, owned by you, with an AI agent across all of it.">
+<title>Mu — An agent for everyday</title>
+<meta name="description" content="An agent for everyday — news, mail, search, weather, markets and video, handled by one AI you just talk to.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
@@ -37,7 +37,8 @@ history.replaceState(null,'','/');
 body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:100vh;display:flex;flex-direction:column}
 .landing{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14vh 20px 40px;position:relative}
 .brand{font-size:2.5rem;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
-.tagline{color:#666;font-size:16px;margin-bottom:32px}
+.tagline{color:#111;font-size:18px;font-weight:700;margin-bottom:6px}
+.subtag{color:#666;font-size:15px;margin-bottom:32px;max-width:460px;text-align:center;line-height:1.5}
 .login-link{position:absolute;top:20px;right:20px}
 .login-link a{color:#555;text-decoration:none;font-size:14px;font-weight:600}
 .also{text-align:center;margin:32px 0;font-size:14px;color:#888}
@@ -50,7 +51,8 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 <div class="landing">
   <div class="login-link"><a href="/login">Log in</a></div>
   <div class="brand">Mu</div>
-  <div class="tagline">Own your services</div>
+  <div class="tagline">An agent for everyday</div>
+  <div class="subtag">News, mail, search, weather, markets, video — the everyday internet, handled by one agent you just talk to.</div>
   ` + chatComponent(true) + `
   <div class="also">
     <span>Also available on</span>

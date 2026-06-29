@@ -27,6 +27,6 @@ history.replaceState(null,'','/');
 })()</script>`
 	}
 
-	html := app.RenderHTMLForRequest("Micro", "Own your services — an AI agent across news, mail, markets, weather, search and video.", content, r)
+	html := app.RenderHTMLForRequest("Micro", "An agent for everyday — news, mail, search, weather, markets and video, handled by one AI you just talk to.", content, r)
 	w.Write([]byte(html))
 }

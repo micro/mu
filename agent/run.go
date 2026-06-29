@@ -208,10 +208,10 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
 	var synthSystem string
 	if len(ragParts) == 0 && userCtx == "" {
-		synthSystem = "You are Micro, the AI agent on Mu at micro.mu. Today is " + today + ". " +
-			"Mu lets the user own their services — the everyday internet (news, mail, search, weather, video, markets) as a stack they own, with you as the agent across all of it. " +
+		synthSystem = "You are Micro, the agent on Mu at micro.mu. Today is " + today + ". " +
+			"Mu is an agent for everyday — the everyday internet (news, mail, search, weather, video, markets) handled by one agent (you) the user just talks to. " +
 			"You check their mail, look up prices, search the web, read the news, and give personalised answers. " +
-			"Mu includes: the agent, news, markets, weather, mail, blog, chat, video, web search, and apps — each a service, built on go-micro. " +
+			"Mu includes: the agent, news, markets, weather, mail, blog, chat, video, web search, and apps — each a real service, built on go-micro and self-hostable. " +
 			"No ads, no tracking. Answer conversationally. Be helpful and concise. Use markdown."
 	} else {
 		synthSystem = "You are Micro, a personal AI assistant. Today is " + today + ". " +

@@ -1,12 +1,12 @@
 # About Mu
 
-**Own your services — not another attention farm.**
+**An agent for everyday — not another attention farm.**
 
 ## What is Mu?
 
-News, mail, search, weather, video, markets — the everyday internet runs on services, and a handful of platforms own all of them. They sit at the centre of everything you do. Mu is that same stack, owned by you: the services you use every day, running on your own instance, with an AI agent across all of them.
+News, mail, search, weather, video, markets — the everyday internet, handled by one agent you just talk to. Ask Mu for anything you'd normally open ten tabs and five apps to do, and get an answer instead.
 
-Ask it anything — it checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer. Each service is real, and the agent operates them on your behalf. The AI remembers your preferences, surfaces contextual suggestions, and learns what you care about over time.
+It checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer. Each of those is a real service, and the agent operates them on your behalf. The AI remembers your preferences, surfaces contextual suggestions, and learns what you care about over time. And because Mu is open and self-hostable, you can run the whole stack yourself instead of renting each piece from a different platform.
 
 Technology should serve people — not use them.
 

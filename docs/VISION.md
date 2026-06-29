@@ -1,6 +1,6 @@
 # Vision
 
-**Own your services — not another dashboard.**
+**An agent for everyday — not another dashboard.**
 
 ## The Problem
 

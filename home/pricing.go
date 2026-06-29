@@ -15,8 +15,8 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Hero
 	b.WriteString(`<div style="max-width:560px;margin:0 auto;text-align:center;padding:24px 0 0">`)
-	b.WriteString(`<h2 style="font-size:1.6rem;margin:0 0 8px">Own your services</h2>`)
-	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">News, mail, markets, search, weather, video — the everyday internet, owned by you, with an AI agent across all of it.</p>`)
+	b.WriteString(`<h2 style="font-size:1.6rem;margin:0 0 8px">An agent for everyday</h2>`)
+	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">News, mail, search, weather, markets, video — the everyday internet, handled by one agent you just talk to.</p>`)
 	b.WriteString(`</div>`)
 
 	// Plans

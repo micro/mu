@@ -1,14 +1,14 @@
 # mu
 
-**Own your services.**
+**An agent for everyday.**
 
-News, mail, search, weather, video, markets — the everyday internet runs on services, and a handful of platforms own all of them. They sit at the centre of everything you do, and the price is your attention and your data. Mu is that same stack, owned by you: one Go binary, every capability a service, and an AI agent across all of them.
+News, mail, search, weather, markets, video — the everyday internet, handled by one agent you just talk to. Ask Mu for anything you'd normally open ten tabs and five apps to do, and get an answer instead.
 
 No ads. No tracking. No algorithm. Pay for the tools, not with your attention.
 
 ## Overview
 
-The platforms have a service for everything — and they own it. Mu is the personal alternative: the services you use every day, running on your own instance instead of theirs. News, mail, markets, weather, search, video, blog, social — each one a real service, all reachable through a single AI agent that operates them on your behalf.
+The big platforms have a service for everything — and they own it, and they monetise your attention to do it. Mu is the alternative: one agent across all the everyday things — news, mail, markets, weather, search, video, blog, social — each a real service the agent operates on your behalf. And because it's open and self-hostable, you can run the whole stack yourself instead of renting each piece from someone else.
 
 The agent remembers your preferences across sessions, surfaces contextual suggestions based on your data, and learns what you care about over time. It isn't a chatbot bolted onto a website — it's the interface to a stack of services that are yours.
 

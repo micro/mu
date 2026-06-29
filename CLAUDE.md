@@ -1,6 +1,6 @@
 # Mu
 
-Own your services. The everyday internet — news, mail, search, weather, video, markets — runs on services the big platforms own; Mu is that same stack owned by you, with an AI agent across all of it. Built on go-micro: every capability is a go-micro service, the assistant is a go-micro agent. Single binary, self-hostable.
+An agent for everyday. News, mail, search, weather, markets, video — the everyday internet, handled by one agent you talk to. The big platforms own a service for everything; Mu is the alternative — one agent across all the everyday things, each a real service, and open/self-hostable so you can run the whole stack yourself. Built on go-micro: every capability is a go-micro service, the assistant is a go-micro agent. Single binary, self-hostable.
 
 ## Architecture
 
