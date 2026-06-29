@@ -31,22 +31,23 @@ and publishing marketing content. Those go to the human.
    right everywhere they appear — web (guest + signed-in), Discord, Telegram —
    with consistent spacing, headings, and links.
 
+### Already shipped (do not re-queue)
+
+- ✅ **Read plane on go-micro for every display card.** Shared `internal/snapshot`
+  helper (store + broker, broker-fed mirror); markets, news, video, social, blog
+  all serve from it with a fallback. No per-render RPC fan-out.
+- ✅ **One event bus.** `internal/event` is now a thin wrapper over the go-micro
+  broker (no hand-rolled pub/sub beside the framework's).
+- ✅ **Durable shared store.** `service.Store()` is file-backed (`~/.mu/store`),
+  so snapshots persist across restart (warm cards on boot); memory fallback.
+
 ### Human-supervised (architectural — not for the auto-merge loop)
 
-- **Fully onto go-micro — reference vertical: markets.** Per
-  [ARCHITECTURE.md](ARCHITECTURE.md), prove the read-plane pattern on one
-  surface: the markets service owns its background refresh and publishes a
-  snapshot to the go-micro store; the card/page renders from a broker-fed local
-  mirror (a memory read — no per-render RPC fan-out). Measure render latency
-  before/after to prove parity. Sets the pattern for the rest. Surface findings;
-  do not auto-merge.
-- **Unify events onto the go-micro broker.** Make `internal/event` a thin wrapper
-  over the broker (preserve Subscribe/Publish ergonomics) so there is one bus,
-  not a hand-rolled one beside the framework's. Behaviour identical; verify.
-  Surface findings; do not auto-merge.
-- **Replicate the snapshot read-model** to news, video, social, blog — one
-  service per increment, each verified for render-latency parity. Surface
-  findings; do not auto-merge.
+- **Durable event bus.** Back `internal/event` with a file-backed events stream
+  (`events.NewStream(events.WithStore(fileStore))`, shipped in go-micro v6.3.9),
+  replay a bounded recent window on startup, prune by age. Deliberate: the events
+  stream's delivery differs from the broker and the replay/retention policy is a
+  decision (see ARCHITECTURE.md "Durability"). Surface findings; do not auto-merge.
 - **Agent-routed query plane.** Run specialist agents as services and route/
   delegate the query plane to the most relevant agent (go-micro `Agent.Chat` /
   `delegate` / chat routing), retiring the hand-rolled `agent/micro`. Gated on
