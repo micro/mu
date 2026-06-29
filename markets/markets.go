@@ -100,6 +100,14 @@ func Load() {
 		marketsMutex.Unlock()
 	}
 
+	// Read plane: subscribe to snapshot updates, then warm the mirror with the
+	// disk-primed card so renders are served from the go-micro data plane.
+	startSnapshotConsumer()
+	marketsMutex.RLock()
+	warm := marketsHTML
+	marketsMutex.RUnlock()
+	publishSnapshot(warm)
+
 	// Start background refresh
 	go refreshMarkets()
 }
@@ -148,14 +156,19 @@ func refreshMarkets() {
 	for {
 		prices, priceData := fetchPrices()
 		if prices != nil {
+			html := generateMarketsCardHTML(prices)
 			marketsMutex.Lock()
 			cachedPrices = prices
 			cachedPriceData = priceData
-			marketsHTML = generateMarketsCardHTML(prices)
+			marketsHTML = html
 			marketsMutex.Unlock()
 
+			// Publish the new snapshot to the go-micro store + broker; the read
+			// path serves it from a mirror (see snapshot.go / ARCHITECTURE.md).
+			publishSnapshot(html)
+
 			indexMarketPrices(prices)
-			data.SaveFile("markets.html", marketsHTML)
+			data.SaveFile("markets.html", html)
 			data.SaveJSON("prices.json", cachedPrices)
 			data.SaveJSON("price_data.json", cachedPriceData)
 		}
@@ -371,8 +384,13 @@ func indexMarketPrices(prices map[string]float64) {
 	}
 }
 
-// MarketsHTML returns the rendered markets card HTML
+// MarketsHTML returns the rendered markets card HTML. It serves the broker-fed
+// snapshot mirror (the go-micro read plane); if no snapshot has arrived yet it
+// falls back to the locally-generated HTML so a render never regresses.
 func MarketsHTML() string {
+	if s := snapshot(); s != "" {
+		return s
+	}
 	marketsMutex.RLock()
 	defer marketsMutex.RUnlock()
 	return marketsHTML
