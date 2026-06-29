@@ -1296,6 +1296,10 @@ func parseFeed() {
 	data.SaveJSON("feed.json", feed)
 	mutex.Unlock()
 
+	// Publish the new snapshot to the go-micro store + broker; Headlines serves
+	// it from a mirror (see snapshot.go / ARCHITECTURE.md).
+	publishSnapshot(headlineHtml)
+
 	// Wait an hour and go again
 	time.Sleep(time.Hour)
 	go parseFeed()
@@ -1406,14 +1410,22 @@ func Load() {
 	// load the feeds
 	loadFeed()
 
+	// Read plane: subscribe to snapshot updates, then warm the mirror with the
+	// disk-primed headlines so renders are served from the go-micro data plane.
+	startSnapshotConsumer()
+	publishSnapshot(headlinesHtml)
+
 	go parseFeed()
 }
 
 func Headlines() string {
-	// Use cached HTML for efficiency
+	// Serve the broker-fed snapshot mirror (the go-micro read plane); fall back
+	// to the locally-cached HTML if no snapshot has arrived yet.
+	if s := snapshot(); s != "" {
+		return s
+	}
 	mutex.RLock()
 	defer mutex.RUnlock()
-
 	return headlinesHtml
 }
 
