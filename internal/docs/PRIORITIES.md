@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#812 Make web-search answers preserve query intent and cite sources.](https://github.com/micro/mu/issues/812)** The top remaining core-loop friction is truthfulness for web-search-backed answers: on 2026-06-30 the live guest `/agent/run` loop answered “Search the web for micro mu…” with a generic metric-prefix definition even though the product context should have been preserved or qualified. Keep the existing public contracts unchanged, make `web_search` synthesis reflect the returned result set with source context, and return an explicit low-confidence/refinement state when results do not support the intended answer.
+1. **[#819 Make news answers cite source links instead of opaque ids.](https://github.com/micro/mu/issues/819)** The top remaining core-loop friction is verifiability for latest/topic news answers: on 2026-06-30 the live guest `/agent` loop returned a dated, well-structured AI-news brief, but the story evidence appeared as opaque internal ids instead of human-readable source names and article links. Keep the existing public contracts unchanged, preserve the shipped request-date/staleness behavior, and make news-backed synthesis cite grounded source context or return an explicit unavailable/refinement state when results do not support the requested topic.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Grounded web-search answers.** Web-search synthesis now preserves query intent, includes source URLs in the model-ready context, and asks for refinement when weak results do not support an answer, closing #812 / #814 / PR #815.
 - ✅ **Grounded topic news search.** Latest/topic news prompts now use grounded feed-backed results or an explicit unavailable state instead of plausible placeholder headlines after provider errors, closing #807 / PR #810.
 - ✅ **Request-date anchoring for live agent answers.** Weather, news, markets, and other `today/latest/current` answers now anchor to the request date or disclose provider staleness, closing the stale-date friction found on 2026-06-30 (#802 / PR #805).
 - ✅ **Real news answers instead of progress-only search fallbacks.** Guest news prompts now synthesize actual news/search results or show an explicit unavailable state instead of ending on progress narration (#797 / PR #800).
