@@ -679,6 +679,40 @@ func TestCompleteToolAnswerNamesUnavailableSlices(t *testing.T) {
 	}
 }
 
+func TestCompleteToolAnswerUsesAvailableWebWhenNewsUnavailable(t *testing.T) {
+	rag := []string{
+		"### news\n" + unavailableToolMessage("news"),
+		`### web_search
+Web results for "latest AI news":
+Query intent: answer the user's original query "latest AI news"; do not replace it with a broader or different meaning.
+Confidence: high — synthesize only what the listed sources support.
+Sources:
+1. AI lab releases new model — Company announced a new assistant release. (https://example.com/ai-model)
+2. Chip supplier expands AI capacity — Demand for AI chips is rising. (https://example.com/ai-chips)`,
+	}
+	got := completeToolAnswer("Let me search the web for more AI stories to round this out.", rag)
+	if strings.Contains(got, `{"`) || strings.Contains(got, "Query intent:") {
+		t.Fatalf("expected readable fallback without raw/internal search context, got %q", got)
+	}
+	if !strings.Contains(got, "AI lab releases new model") || !strings.Contains(got, "https://example.com/ai-model") {
+		t.Fatalf("expected available web sources in fallback, got %q", got)
+	}
+	if !strings.Contains(got, "Unavailable: news.") {
+		t.Fatalf("expected unavailable news disclosure, got %q", got)
+	}
+}
+
+func TestFormatToolResultNewsHeadlinesStaysReadable(t *testing.T) {
+	result := "Latest headlines — 1 across 1 topics.\n\n[tech] AI lab releases a new model — Useful summary (source: Example, url: https://example.com/ai)"
+	got := formatToolResult("news_headlines", result, nil)
+	if !strings.Contains(got, "Current request date:") {
+		t.Fatalf("expected current date context, got %q", got)
+	}
+	if !strings.Contains(got, "AI lab releases a new model") || strings.Contains(got, `{"`) {
+		t.Fatalf("expected readable news_headlines context, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerKeepsSubstantiveAnswer(t *testing.T) {
 	want := "BTC is at $100,000, and the latest news says it reached a new high."
 	got := completeToolAnswer(want, []string{"### markets\nBTC: $100,000"})
