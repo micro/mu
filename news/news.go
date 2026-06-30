@@ -100,6 +100,69 @@ type Metadata struct {
 	SummaryAttempts    int    // Number of times we've requested a summary
 }
 
+func canonicalPostKey(post *Post) string {
+	if post == nil {
+		return ""
+	}
+	if post.URL != "" {
+		if u, err := url.Parse(strings.TrimSpace(post.URL)); err == nil {
+			u.Fragment = ""
+			q := u.Query()
+			for _, key := range []string{"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "fbclid", "gclid"} {
+				q.Del(key)
+			}
+			u.RawQuery = q.Encode()
+			return "url:" + strings.ToLower(strings.TrimRight(u.String(), "/"))
+		}
+		return "url:" + strings.ToLower(strings.TrimRight(strings.TrimSpace(post.URL), "/"))
+	}
+	return "title:" + strings.Join(strings.Fields(strings.ToLower(post.Title)), " ")
+}
+
+func dedupePosts(posts []*Post) []*Post {
+	seen := map[string]*Post{}
+	var deduped []*Post
+	for _, post := range posts {
+		key := canonicalPostKey(post)
+		if key == "" {
+			continue
+		}
+		if existing, ok := seen[key]; ok {
+			if existing.URL == "" && post.URL != "" {
+				existing.URL = post.URL
+			}
+			if existing.ID == "" && post.ID != "" {
+				existing.ID = post.ID
+			}
+			if existing.Description == "" && post.Description != "" {
+				existing.Description = post.Description
+			}
+			if post.PostedAt.After(existing.PostedAt) {
+				existing.PostedAt = post.PostedAt
+				existing.Published = post.Published
+			}
+			continue
+		}
+		copyPost := *post
+		seen[key] = &copyPost
+		deduped = append(deduped, &copyPost)
+	}
+	return deduped
+}
+
+func displayNewsCategory(category string) string {
+	cat := strings.TrimSpace(category)
+	if cat == "" {
+		return ""
+	}
+	switch strings.ToLower(cat) {
+	case "reminder", "reminders", "mail", "email", "calendar", "todo", "task", "tasks":
+		return cat + " · non-news"
+	default:
+		return cat
+	}
+}
+
 // htmlToText converts HTML to plain text with proper spacing
 func htmlToText(html string) string {
 	if html == "" {
@@ -218,7 +281,7 @@ func getCategoryBadge(post *Post) string {
 	if post.Category == "" {
 		return ""
 	}
-	return fmt.Sprintf(`<a href="/news#%s" class="category">%s</a>`, post.Category, post.Category)
+	return fmt.Sprintf(`<a href="/news#%s" class="category">%s</a>`, post.Category, displayNewsCategory(post.Category))
 }
 
 // ContentParser functions clean up feed descriptions
@@ -328,8 +391,8 @@ func generateNewsHtml() string {
 	var content []byte
 	var categories = make(map[string][]*Post)
 
-	// Group posts by category
-	for _, post := range feed {
+	// Group canonical posts by category so repeated provider entries collapse on /news.
+	for _, post := range dedupePosts(feed) {
 		categories[post.Category] = append(categories[post.Category], post)
 	}
 
@@ -356,7 +419,7 @@ func generateNewsHtml() string {
 
 		content = append(content, []byte(`<div class=section>`)...)
 		content = append(content, []byte(`<hr id="`+cat+`" class="anchor">`)...)
-		content = append(content, []byte(`<h1>`+cat+`</h1>`)...)
+		content = append(content, []byte(`<h1>`+displayNewsCategory(cat)+`</h1>`)...)
 
 		for _, post := range posts {
 			cleanDescription := strings.TrimSpace(post.Description)
@@ -378,7 +441,7 @@ func generateNewsHtml() string {
 			controls := app.StaticControls("news", post.ID)
 			categoryBadge := ""
 			if post.Category != "" {
-				categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
+				categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
 			}
 
 			var val string
@@ -461,7 +524,7 @@ func generateHeadlinesHtml() string {
 
 		categoryBadge := ""
 		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, h.Category)
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, displayNewsCategory(h.Category))
 		}
 		summary := getSummary(h)
 
@@ -1069,7 +1132,7 @@ func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
 func formatFeedItemHTML(post *Post, itemGUID string) string {
 	categoryBadge := ""
 	if post.Category != "" {
-		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, post.Category)
+		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
 	}
 	summary := getSummary(post)
 
@@ -1154,7 +1217,7 @@ func processFeedCategory(name, feedURL string, p *gofeed.Parser, stats map[strin
 
 	content = append(content, []byte(`<div class=section>`)...)
 	content = append(content, []byte(`<hr id="`+name+`" class="anchor">`)...)
-	content = append(content, []byte(`<h1>`+name+`</h1>`)...)
+	content = append(content, []byte(`<h1>`+displayNewsCategory(name)+`</h1>`)...)
 
 	for i, item := range f.Items {
 		if i >= 10 {
@@ -1190,7 +1253,7 @@ func generateHeadlinesHTML(headlines []*Post) string {
 
 		categoryBadge := ""
 		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, h.Category)
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, displayNewsCategory(h.Category))
 		}
 		summary := getSummary(h)
 
@@ -1264,6 +1327,9 @@ func parseFeed() {
 			allNews = append(allNews, headlines...)
 		}
 	}
+
+	allNews = dedupePosts(allNews)
+	allHeadlines = dedupePosts(allHeadlines)
 
 	// Generate headlines HTML - filter to one per category (the latest from each)
 	// First, build a map of category -> latest post
@@ -1440,7 +1506,7 @@ func GetFeed() []*Post {
 	defer mutex.RUnlock()
 	result := make([]*Post, len(feed))
 	copy(result, feed)
-	return result
+	return dedupePosts(result)
 }
 
 func formatSummary(text string) string {
