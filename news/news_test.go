@@ -211,6 +211,66 @@ func TestHtmlToText(t *testing.T) {
 	}
 }
 
+func TestNewsSearchArticlesFallsBackToLiveFeed(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	now := time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "ai-1",
+			Title:       "Open model lab ships safer AI assistant",
+			Description: "New evaluations and rollout notes for the assistant.",
+			URL:         "https://example.com/ai",
+			Category:    "Tech",
+			PostedAt:    now,
+		},
+		{
+			ID:          "markets-1",
+			Title:       "Markets close higher",
+			Description: "Equities rally into the close.",
+			URL:         "https://example.com/markets",
+			Category:    "Business",
+			PostedAt:    now.Add(-1 * time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("latest AI news", nil, 20)
+	if len(got) != 1 {
+		t.Fatalf("expected one grounded live feed result, got %d: %#v", len(got), got)
+	}
+	if got[0]["title"] != "Open model lab ships safer AI assistant" {
+		t.Fatalf("expected AI headline, got %#v", got[0])
+	}
+	if got[0]["url"] != "/news?id=ai-1" {
+		t.Fatalf("expected local news URL for agent grounding, got %#v", got[0]["url"])
+	}
+}
+
+func TestNewsSearchArticlesReturnsExplicitEmptyResults(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	mutex.Lock()
+	feed = []*Post{{ID: "weather-1", Title: "Storm clears", Category: "Weather"}}
+	mutex.Unlock()
+
+	got := newsSearchArticles("semiconductor earnings", nil, 20)
+	if len(got) != 0 {
+		t.Fatalf("expected explicit empty result set, got %#v", got)
+	}
+}
+
 func TestGetDomain(t *testing.T) {
 	tests := []struct {
 		name     string
