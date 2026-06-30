@@ -716,3 +716,72 @@ func TestFormatSummaryLabel(t *testing.T) {
 		t.Error("formatSummary should not add its own labels or headers")
 	}
 }
+
+func TestDedupePostsCollapsesCanonicalURLsAndKeepsSource(t *testing.T) {
+	newer := time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC)
+	older := newer.Add(-time.Hour)
+	posts := []*Post{
+		{ID: "wire-1", Title: "AI lab ships safer assistant", URL: "https://example.com/story?utm_source=rss#comments", Category: "Tech", PostedAt: older},
+		{ID: "wire-2", Title: "AI lab ships safer assistant", URL: "https://example.com/story", Category: "Tech", Description: "Rollout notes", PostedAt: newer},
+	}
+
+	got := dedupePosts(posts)
+	if len(got) != 1 {
+		t.Fatalf("expected duplicate URLs to collapse to one item, got %d", len(got))
+	}
+	if got[0].URL == "" {
+		t.Fatalf("expected deduped item to retain a source URL")
+	}
+	if got[0].PostedAt != newer {
+		t.Fatalf("expected deduped item to retain newest timestamp, got %v", got[0].PostedAt)
+	}
+}
+
+func TestGenerateNewsHtmlLabelsNonNewsFeedEntries(t *testing.T) {
+	oldFeed := feed
+	oldHeadlines := headlinesHtml
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		headlinesHtml = oldHeadlines
+		mutex.Unlock()
+	}()
+
+	mutex.Lock()
+	feed = []*Post{{
+		ID:          "reminder-1",
+		Title:       "Call Sam tomorrow",
+		Description: "Personal reminder imported from a mixed feed.",
+		URL:         "https://example.com/reminder",
+		Category:    "Reminder",
+		PostedAt:    time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC),
+	}}
+	headlinesHtml = ""
+	mutex.Unlock()
+
+	got := generateNewsHtml()
+	if !strings.Contains(got, "Reminder · non-news") {
+		t.Fatalf("expected mixed non-news entries to be clearly labeled, got %q", got)
+	}
+}
+
+func TestGetFeedReturnsDedupedFeedForAgentContext(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	mutex.Lock()
+	feed = []*Post{
+		{ID: "a", Title: "Same story", URL: "https://example.com/story?utm_campaign=one", Category: "Tech"},
+		{ID: "b", Title: "Same story", URL: "https://example.com/story", Category: "Tech"},
+	}
+	mutex.Unlock()
+
+	got := GetFeed()
+	if len(got) != 1 {
+		t.Fatalf("expected agent-facing feed to collapse duplicates, got %#v", got)
+	}
+}
