@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#797 Return real news answers instead of progress-only search fallbacks.](https://github.com/micro/mu/issues/797)** The highest-value live regression is still in the core guest ask → answer loop: a common news prompt can finish with only search/progress narration (for example, `Let me search the web for more AI stories to round this out.`) instead of headlines, sources, or a clear provider-unavailable message. Ensure news/search tool results are synthesized into the final answer, or show an explicit graceful unavailable state, with CI-verifiable coverage.
+1. **[#802 Keep live agent answers anchored to the current date.](https://github.com/micro/mu/issues/802)** The top remaining core-loop friction is freshness/truthfulness for time-sensitive prompts: on 2026-06-30 the live guest `/agent` loop returned useful weather and news answers, but labelled both as Monday, 29 June 2026. Ensure weather, news, markets, and other `today/latest/current` answers use the request date or explicitly disclose provider staleness, with CI-verifiable coverage and no public-contract changes.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Real news answers instead of progress-only search fallbacks.** Guest news prompts now synthesize actual news/search results or show an explicit unavailable state instead of ending on progress narration (#797 / PR #800).
 - ✅ **Read plane on go-micro for every display card.** Shared `internal/snapshot`
   helper (store + broker, broker-fed mirror); markets, news, video, social, blog
   all serve from it with a fallback. No per-render RPC fan-out.
