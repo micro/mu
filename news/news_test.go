@@ -248,8 +248,36 @@ func TestNewsSearchArticlesFallsBackToLiveFeed(t *testing.T) {
 	if got[0]["title"] != "Open model lab ships safer AI assistant" {
 		t.Fatalf("expected AI headline, got %#v", got[0])
 	}
-	if got[0]["url"] != "/news?id=ai-1" {
-		t.Fatalf("expected local news URL for agent grounding, got %#v", got[0]["url"])
+	if got[0]["url"] != "https://example.com/ai" {
+		t.Fatalf("expected source URL for agent citations, got %#v", got[0]["url"])
+	}
+}
+
+func TestHeadlinesTextIncludesSourceURLWithID(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	mutex.Lock()
+	feed = []*Post{{
+		ID:          "ai-1",
+		Title:       "Open model lab ships safer AI assistant",
+		Description: "New evaluations and rollout notes for the assistant.",
+		URL:         "https://example.com/ai",
+		Category:    "Tech",
+		PostedAt:    time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC),
+	}}
+	mutex.Unlock()
+
+	got := HeadlinesText("tech", 10)
+	if !strings.Contains(got, "source: example.com, url: https://example.com/ai") {
+		t.Fatalf("expected source domain and URL in headline context, got %q", got)
+	}
+	if !strings.Contains(got, "id: ai-1") {
+		t.Fatalf("expected id to remain available for news_read, got %q", got)
 	}
 }
 

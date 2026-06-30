@@ -1768,7 +1768,7 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 			"id":          post.ID,
 			"title":       post.Title,
 			"description": htmlToText(post.Description),
-			"url":         postURL(post),
+			"url":         post.URL,
 			"category":    post.Category,
 			"image":       post.Image,
 			"posted_at":   post.PostedAt,
