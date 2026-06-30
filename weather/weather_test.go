@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -86,6 +87,23 @@ func TestCardHTMLShowsWeatherUnavailableOnFetchFailure(t *testing.T) {
 	got := CardHTML()
 	if !strings.Contains(got, "Weather unavailable") {
 		t.Fatalf("CardHTML should show a clear unavailable state on fetch failure, got %q", got)
+	}
+}
+
+func TestRenderWeatherPageGuestShowsAgentPathAndLoginScope(t *testing.T) {
+	got := renderWeatherPage(httptest.NewRequest("GET", "/weather", nil))
+	for _, want := range []string{
+		"Weather forecasts are available through Mu's agent for guests",
+		`href="/agent?q=Weather%20in%20San%20Francisco"`,
+		"saved location forecasts, pollen, and credit-backed refreshes require an account",
+		`href="/login"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("guest weather page missing %q in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "Please <a href=\"/login\">log in</a> to use Weather") {
+		t.Fatalf("guest weather page should not be a dead-end login prompt:\n%s", got)
 	}
 }
 
