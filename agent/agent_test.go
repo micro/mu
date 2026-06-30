@@ -244,13 +244,34 @@ func TestCurrentDateContextIncludesISORequestDate(t *testing.T) {
 }
 
 func TestFormatToolResultAddsCurrentDateToLiveResults(t *testing.T) {
-	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`
-	got := formatToolResult("news", newsResult, nil)
-	if !strings.Contains(got, "Current request date:") {
-		t.Fatalf("expected current request date in news tool context, got %q", got)
+	for _, tt := range []struct {
+		name   string
+		tool   string
+		result string
+	}{
+		{name: "news", tool: "news", result: `{"feed":[{"title":"Test headline","category":"tech"}]}`},
+		{name: "weather", tool: "weather_forecast", result: "Weather for London.\nNow: 18°C, cloudy."},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatToolResult(tt.tool, tt.result, nil)
+			if !strings.Contains(got, "Current request date:") {
+				t.Fatalf("expected current request date in %s tool context, got %q", tt.tool, got)
+			}
+			if !strings.Contains(got, time.Now().UTC().Format("2006-01-02")) {
+				t.Fatalf("expected today's ISO date in %s tool context, got %q", tt.tool, got)
+			}
+		})
 	}
-	if !strings.Contains(got, time.Now().UTC().Format("2006-01-02")) {
-		t.Fatalf("expected today's ISO date in news tool context, got %q", got)
+}
+
+func TestFormatToolResultKeepsExistingCurrentDateContext(t *testing.T) {
+	result := "Current request date: Tuesday, 30 June 2026 (2026-06-30, UTC).\nWeather for London."
+	got := formatToolResult("weather_forecast", result, nil)
+	if strings.Count(got, "Current request date:") != 1 {
+		t.Fatalf("expected one current request date context, got %q", got)
+	}
+	if !strings.Contains(got, "2026-06-30") {
+		t.Fatalf("expected existing request date to be preserved, got %q", got)
 	}
 }
 
