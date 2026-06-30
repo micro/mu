@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#841 Restore live news-backed agent answers when feeds are unavailable.](https://github.com/micro/mu/issues/841)** The top remaining core-loop friction is current-events usefulness: on 2026-06-30 fresh guest `/agent` prompts for “What are the top technology news stories today?” and “Give me the latest AI news headlines” completed quickly and gracefully, but returned only “requested data is unavailable right now” instead of useful source-linked headlines. Keep the public `/agent` contract unchanged, preserve the existing no-fabrication/degraded-state behavior, and make news prompts synthesize grounded results whenever any feed/search provider has usable context.
+1. **[#846 Preserve article links in live news agent answers.](https://github.com/micro/mu/issues/846)** The top remaining core-loop friction is actionability and trust in current-events answers: on 2026-06-30 a fresh guest `/agent` prompt for “What are the top technology news stories today?” now completes quickly and synthesizes readable, grounded headlines, but the final answer names sources without article URLs. Keep the public `/agent` contract unchanged, preserve the existing no-fabrication/degraded-state behavior, and carry upstream article URLs through topic/fallback synthesis into the rendered answer whenever links are available.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **News-backed answers restored when feeds are partially unavailable.** Live guest technology-news prompts now complete with readable headlines from usable provider context instead of only an unavailable-state response, closing #841 / PR #844.
 - ✅ **Fresh guest prompt isolation.** Independent guest `/agent` requests no longer leak prior topic context into unrelated prompts, closing #836 / PR #839.
 - ✅ **Mixed-provider news fallback made user-readable.** News-backed agent answers now synthesize readable output from usable provider context and disclose unavailable providers without raw internal payloads, closing #831 / PR #834.
 - ✅ **Impossible weather dates fixed.** Weather-backed synthesis now anchors forecast context to real provider dates and avoids fabricated invalid calendar dates, closing #824 / PR #827 / PR #829.
