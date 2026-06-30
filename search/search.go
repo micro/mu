@@ -404,8 +404,9 @@ var webRecentSearchesScript = `
   const STORAGE_KEY = 'mu_recent_web_searches';
 
   function escapeHTML(text) {
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-               .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
   }
 
   function loadRecentSearches() {
@@ -442,7 +443,7 @@ var webRecentSearchesScript = `
     let h = '<div class="recent-searches"><h3>Recent Searches</h3><div class="recent-searches-scroll">';
     searches.forEach(function(search) {
       const escaped = escapeHTML(search);
-      h += '<span class="recent-search-item" data-query="' + escaped + '">'
+      h += '<span class="recent-search-item" data-query="' + encodeURIComponent(search) + '">'
          + '<span class="recent-search-label">' + escaped + '</span>'
          + '<span class="recent-search-close" title="Remove">&times;</span>'
          + '</span>';
@@ -456,7 +457,7 @@ var webRecentSearchesScript = `
       if (label) {
         label.addEventListener('click', function(e) {
           e.preventDefault(); e.stopPropagation();
-          var q = item.getAttribute('data-query');
+          var q = decodeURIComponent(item.getAttribute('data-query') || '');
           saveRecentSearch(q);
           window.location.href = '/web?q=' + encodeURIComponent(q);
         });
@@ -464,7 +465,7 @@ var webRecentSearchesScript = `
       if (close) {
         close.addEventListener('click', function(e) {
           e.preventDefault(); e.stopPropagation();
-          removeRecentSearch(item.getAttribute('data-query'));
+          removeRecentSearch(decodeURIComponent(item.getAttribute('data-query') || ''));
         });
       }
     });
