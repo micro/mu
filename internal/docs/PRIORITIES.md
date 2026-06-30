@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#802 Keep live agent answers anchored to the current date.](https://github.com/micro/mu/issues/802)** The top remaining core-loop friction is freshness/truthfulness for time-sensitive prompts: on 2026-06-30 the live guest `/agent` loop returned useful weather and news answers, but labelled both as Monday, 29 June 2026. Ensure weather, news, markets, and other `today/latest/current` answers use the request date or explicitly disclose provider staleness, with CI-verifiable coverage and no public-contract changes.
+1. **[#807 Make topic news searches return grounded live results.](https://github.com/micro/mu/issues/807)** The top remaining core-loop friction is truthfulness for latest/topic news prompts: on 2026-06-30 the live guest `/agent/run` loop answered a latest AI-news prompt with plausible but unsourced placeholder headlines after `news_search` errored, even though the `/news` page had fresh items. Make topic news search use grounded live/stubbed results when available and otherwise return an explicit unavailable/no-results state, with CI-verifiable coverage and no public-contract changes.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Request-date anchoring for live agent answers.** Weather, news, markets, and other `today/latest/current` answers now anchor to the request date or disclose provider staleness, closing the stale-date friction found on 2026-06-30 (#802 / PR #805).
 - ✅ **Real news answers instead of progress-only search fallbacks.** Guest news prompts now synthesize actual news/search results or show an explicit unavailable state instead of ending on progress narration (#797 / PR #800).
 - ✅ **Read plane on go-micro for every display card.** Shared `internal/snapshot`
   helper (store + broker, broker-fed mirror); markets, news, video, social, blog
