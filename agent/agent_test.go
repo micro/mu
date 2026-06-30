@@ -1,9 +1,12 @@
 package agent
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
+
+	gmai "go-micro.dev/v6/ai"
 )
 
 func TestPlacesMapURL_QueryAndNear(t *testing.T) {
@@ -608,6 +611,21 @@ func TestCompleteToolAnswerReplacesProgressOnlyWithResults(t *testing.T) {
 	}
 }
 
+func TestCompleteToolAnswerReplacesSearchProgressWithNewsResults(t *testing.T) {
+	rag := []string{`### news
+News results for "AI":
+1. Open model lab ships safer assistant [tech] /news?id=ai-1 — New evals and rollout notes.
+2. Chipmakers expand data-center capacity [business] /news?id=ai-2 — Suppliers report stronger demand.`}
+	got := completeToolAnswer("Let me search the web for more AI stories to round this out.", rag)
+	lower := strings.ToLower(got)
+	if strings.Contains(lower, "let me search") || strings.Contains(lower, "round this out") {
+		t.Fatalf("expected search progress narration to be replaced, got %q", got)
+	}
+	if !strings.Contains(got, "Open model lab ships safer assistant") || !strings.Contains(got, "/news?id=ai-1") {
+		t.Fatalf("expected fallback to include news headlines and sources, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerNamesUnavailableSlices(t *testing.T) {
 	rag := []string{"### weather\nNo weather data unavailable right now.", "### news\nLatest news:\n1. Useful headline"}
 	got := completeToolAnswer("I'll check that now.", rag)
@@ -632,6 +650,38 @@ func TestCompleteToolAnswerWithoutToolsDoesNotOverride(t *testing.T) {
 	got := completeToolAnswer(want, nil)
 	if got != want {
 		t.Fatalf("expected no override without tool results, got %q", got)
+	}
+}
+
+func TestNativeToolRecorderFeedsProgressFallback(t *testing.T) {
+	recorder := newNativeToolRecorder()
+	handler := recorder.wrap(func(_ context.Context, call gmai.ToolCall) gmai.ToolResult {
+		return gmai.ToolResult{Content: "{\"summary\":\"Weather for London. Now: 14C, light rain.\"}"}
+	})
+
+	handler(context.Background(), gmai.ToolCall{Name: "weather_Forecast"})
+	got := completeToolAnswer("Let me pull the latest for you.", recorder.ragParts())
+	if strings.Contains(strings.ToLower(got), "let me pull") {
+		t.Fatalf("expected weather tool payload to replace progress narration, got %q", got)
+	}
+	if !strings.Contains(got, "**weather**") || !strings.Contains(got, "14C") {
+		t.Fatalf("expected fallback to include weather result, got %q", got)
+	}
+}
+
+func TestNativeToolRecorderFormatsNewsPayloads(t *testing.T) {
+	recorder := newNativeToolRecorder()
+	handler := recorder.wrap(func(_ context.Context, call gmai.ToolCall) gmai.ToolResult {
+		return gmai.ToolResult{Content: `{"query":"AI","results":[{"title":"AI headline","description":"Useful context","category":"tech","url":"/news?id=1"}],"count":1}`}
+	})
+
+	handler(context.Background(), gmai.ToolCall{Name: "news_Search"})
+	got := completeToolAnswer("Let me search the web for more AI stories to round this out.", recorder.ragParts())
+	if strings.Contains(strings.ToLower(got), "let me search") {
+		t.Fatalf("expected native progress narration to be replaced, got %q", got)
+	}
+	if !strings.Contains(got, "News results for") || !strings.Contains(got, "AI headline") || strings.Contains(got, `{"query"`) {
+		t.Fatalf("expected native fallback to use formatted news results, got %q", got)
 	}
 }
 

@@ -1,6 +1,11 @@
 package app
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
 
 // NormalizeAnswerMarkdown prepares assistant answers for every Mu surface before
 // they are rendered as HTML or sent to chat clients. It keeps markdown intact,
@@ -45,10 +50,91 @@ func NormalizeAnswerMarkdown(answer string) string {
 }
 
 func normalizeMarkdownLine(line string) string {
+	line = repairMalformedLeadingBold(line)
+	if heading, rest, ok := strings.Cut(line, " "); ok && isMarkdownHeading(heading) {
+		return heading + " " + strings.TrimSpace(rest)
+	}
+	if isMarkdownHeading(line) {
+		return line
+	}
+	if strings.HasPrefix(line, "#") {
+		trimmed := strings.TrimLeft(line, "#")
+		level := len(line) - len(trimmed)
+		if level > 0 && level <= 6 {
+			return strings.Repeat("#", level) + " " + strings.TrimSpace(trimmed)
+		}
+	}
+
+	if rest, ok := strings.CutPrefix(line, ">"); ok {
+		return "> " + strings.TrimSpace(rest)
+	}
 	for _, prefix := range []string{"-", "*", "+"} {
-		if rest, ok := strings.CutPrefix(line, prefix); ok {
+		if rest, ok := strings.CutPrefix(line, prefix); ok && startsMarkdownListRest(rest) {
 			return prefix + " " + strings.TrimSpace(rest)
 		}
 	}
+	if numbered := normalizeNumberedListLine(line); numbered != "" {
+		return numbered
+	}
+	if strings.Contains(line, "|") {
+		return normalizeTableLine(line)
+	}
 	return line
+}
+
+var malformedLeadingBoldRe = regexp.MustCompile(`^\*([^*\n]+?:)\*\*(\s|$)`)
+
+func repairMalformedLeadingBold(line string) string {
+	return malformedLeadingBoldRe.ReplaceAllString(line, `**$1**$2`)
+}
+
+func startsMarkdownListRest(rest string) bool {
+	if rest == "" {
+		return false
+	}
+	r, _ := utf8.DecodeRuneInString(rest)
+	return unicode.IsSpace(r)
+}
+
+func isMarkdownHeading(s string) bool {
+	if s == "" || len(s) > 6 {
+		return false
+	}
+	for _, r := range s {
+		if r != '#' {
+			return false
+		}
+	}
+	return true
+}
+
+func normalizeNumberedListLine(line string) string {
+	dot := strings.IndexByte(line, '.')
+	if dot <= 0 {
+		return ""
+	}
+	for _, r := range line[:dot] {
+		if !unicode.IsDigit(r) {
+			return ""
+		}
+	}
+	return line[:dot+1] + " " + strings.TrimSpace(line[dot+1:])
+}
+
+func normalizeTableLine(line string) string {
+	leadingPipe := strings.HasPrefix(line, "|")
+	trailingPipe := strings.HasSuffix(line, "|")
+	body := strings.Trim(line, "|")
+	cells := strings.Split(body, "|")
+	for i, cell := range cells {
+		cells[i] = strings.TrimSpace(cell)
+	}
+	out := strings.Join(cells, " | ")
+	if leadingPipe {
+		out = "| " + out
+	}
+	if trailingPipe {
+		out += " |"
+	}
+	return out
 }

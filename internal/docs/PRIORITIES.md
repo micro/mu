@@ -21,7 +21,7 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#750 Normalize answer formatting across web and chat clients.](https://github.com/micro/mu/issues/750)** Rendered answers (news, markets, weather, search) look right everywhere they appear — guest web, signed-in web, Discord, Telegram — with consistent spacing, headings, links, and readable list/table fallbacks.
+1. **[#797 Return real news answers instead of progress-only search fallbacks.](https://github.com/micro/mu/issues/797)** The highest-value live regression is still in the core guest ask → answer loop: a common news prompt can finish with only search/progress narration (for example, `Let me search the web for more AI stories to round this out.`) instead of headlines, sources, or a clear provider-unavailable message. Ensure news/search tool results are synthesized into the final answer, or show an explicit graceful unavailable state, with CI-verifiable coverage.
 
 ### Already shipped (do not re-queue)
 

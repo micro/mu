@@ -90,25 +90,25 @@ func NewButton(label, customID string, style int) Button {
 }
 
 const (
-	ButtonPrimary = 1
-	ButtonDanger  = 4
+	ButtonPrimary   = 1
+	ButtonDanger    = 4
 	ButtonSecondary = 2
 )
 
 // ── Slash Commands ──
 
 type SlashCommand struct {
-	Name        string              `json:"name"`
-	Description string              `json:"description"`
+	Name        string               `json:"name"`
+	Description string               `json:"description"`
 	Options     []SlashCommandOption `json:"options,omitempty"`
 }
 
 type SlashCommandOption struct {
-	Name        string                `json:"name"`
-	Description string                `json:"description"`
-	Type        int                   `json:"type"`
-	Required    bool                  `json:"required,omitempty"`
-	Choices     []SlashCommandChoice  `json:"choices,omitempty"`
+	Name        string               `json:"name"`
+	Description string               `json:"description"`
+	Type        int                  `json:"type"`
+	Required    bool                 `json:"required,omitempty"`
+	Choices     []SlashCommandChoice `json:"choices,omitempty"`
 }
 
 type SlashCommandChoice struct {
@@ -117,8 +117,8 @@ type SlashCommandChoice struct {
 }
 
 const (
-	OptionString  = 3
-	OptionNumber  = 10
+	OptionString = 3
+	OptionNumber = 10
 )
 
 var slashCommands = []SlashCommand{
@@ -333,7 +333,7 @@ func formatAsEmbed(prompt, answer string) Embed {
 		color = ColorGray
 	}
 
-	desc := answer
+	desc := app.NormalizeAnswerMarkdown(answer)
 	if len(desc) > 4096 {
 		desc = desc[:4093] + "…"
 	}
