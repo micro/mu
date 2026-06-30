@@ -1710,16 +1710,49 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Search indexed news articles with type filter (keyword-only for speed)
+	// Search indexed news articles first, then merge in the live in-memory feed.
+	// The live feed powers /news and is the most truthful fallback when the
+	// search index is cold or stale, which can happen just after startup.
 	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
+	articles := newsSearchArticles(query, results, 20)
 
 	// Consume quota after successful search
 	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
 
-	// Format results for JSON response
+	app.RespondJSON(w, map[string]interface{}{
+		"query":   query,
+		"results": articles,
+		"count":   len(articles),
+	})
+}
+
+func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []map[string]interface{} {
+	if limit <= 0 {
+		limit = 20
+	}
+	seen := map[string]bool{}
 	var articles []map[string]interface{}
-	for _, entry := range results {
-		article := map[string]interface{}{
+	add := func(article map[string]interface{}) {
+		if len(articles) >= limit {
+			return
+		}
+		id := fmt.Sprintf("%v", article["id"])
+		url := fmt.Sprintf("%v", article["url"])
+		key := id
+		if key == "" {
+			key = url
+		}
+		if key != "" {
+			if seen[key] {
+				return
+			}
+			seen[key] = true
+		}
+		articles = append(articles, article)
+	}
+
+	for _, entry := range indexed {
+		add(map[string]interface{}{
 			"id":          entry.ID,
 			"title":       entry.Title,
 			"description": htmlToText(entry.Content),
@@ -1727,15 +1760,78 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 			"category":    entry.Metadata["category"],
 			"image":       entry.Metadata["image"],
 			"posted_at":   entry.Metadata["posted_at"],
-		}
-		articles = append(articles, article)
+		})
 	}
 
-	app.RespondJSON(w, map[string]interface{}{
-		"query":   query,
-		"results": articles,
-		"count":   len(articles),
+	for _, post := range liveFeedSearch(query, limit) {
+		add(map[string]interface{}{
+			"id":          post.ID,
+			"title":       post.Title,
+			"description": htmlToText(post.Description),
+			"url":         postURL(post),
+			"category":    post.Category,
+			"image":       post.Image,
+			"posted_at":   post.PostedAt,
+		})
+	}
+	return articles
+}
+
+func liveFeedSearch(query string, limit int) []*Post {
+	terms := strings.Fields(strings.ToLower(query))
+	if len(terms) == 0 {
+		return nil
+	}
+	mutex.RLock()
+	currentFeed := append([]*Post(nil), feed...)
+	mutex.RUnlock()
+
+	type match struct {
+		post  *Post
+		score int
+	}
+	var matches []match
+	for _, post := range currentFeed {
+		haystack := strings.ToLower(strings.Join([]string{
+			post.Title,
+			post.Description,
+			post.Content,
+			post.Category,
+		}, " "))
+		score := 0
+		for _, term := range terms {
+			if strings.Contains(haystack, term) {
+				score++
+			}
+		}
+		if score > 0 {
+			matches = append(matches, match{post: post, score: score})
+		}
+	}
+	sort.SliceStable(matches, func(i, j int) bool {
+		if matches[i].score != matches[j].score {
+			return matches[i].score > matches[j].score
+		}
+		return matches[i].post.PostedAt.After(matches[j].post.PostedAt)
 	})
+	if limit > 0 && len(matches) > limit {
+		matches = matches[:limit]
+	}
+	out := make([]*Post, 0, len(matches))
+	for _, match := range matches {
+		out = append(out, match.post)
+	}
+	return out
+}
+
+func postURL(post *Post) string {
+	if post == nil {
+		return ""
+	}
+	if post.ID != "" {
+		return "/news?id=" + post.ID
+	}
+	return post.URL
 }
 
 // handleGetFeed handles GET /news - returns feed as JSON or HTML
