@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Clarify guest chat authentication before submit** ([#870](https://github.com/micro/mu/issues/870)). Guest `/chat` is observable from the product surface and renders an ask box, but submitting while signed out falls through to a raw `401 Authentication required` response. Keep the public `/agent` first-run loop as the no-account path, and make `/chat` degrade gracefully with an inline login/signup explanation plus a route back to trying Mu.
+1. **Tighten agent news topic relevance** ([#875](https://github.com/micro/mu/issues/875)). The live guest ask → answer loop is fast, streams tool progress, and preserves source links, but a prompt for a latest technology headline can be satisfied by an adjacent politics/finance story that only mentions crypto. Keep news-backed answers grounded and either pick a clearly topic-matching headline or disclose when only adjacent results are available.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Guest chat authentication clarified.** Guest `/chat` now shows an inline account-required explanation with login/signup and public-agent paths instead of submitting to a raw `401 Authentication required` response, closing #870 / PR #873.
 - ✅ **Guest search query rendering fixed.** Guest `/search` recent searches now preserve spaces while still escaping HTML-sensitive characters, closing #861 / PR #864.
 - ✅ **Guest weather access clarified.** The guest `/weather` page now gives an actionable agent-backed weather path and explains which saved-location/pollen/refresh features require login, closing #856 / PR #859.
 - ✅ **Deduplicated mixed-source news surfaces.** Mixed-source news cleanup shipped in #851 / PR #854, so the queue now moves to the next highest-value first-run/service-access refinement.
