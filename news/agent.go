@@ -82,6 +82,7 @@ func HeadlinesText(topic string, limit int) string {
 	}
 
 	var sb strings.Builder
+	fmt.Fprintf(&sb, "Current request date: %s.\n", time.Now().UTC().Format("Monday, 2 January 2006 (2006-01-02, UTC)"))
 	if topic != "" {
 		fmt.Fprintf(&sb, "Latest %q headlines (%d). Use news_read with an id to read one in full.\n\n", topic, len(picked))
 	} else {
