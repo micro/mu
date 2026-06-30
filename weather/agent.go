@@ -3,6 +3,7 @@ package weather
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // ForecastText returns a compact, model-ready weather summary for a location.
@@ -18,6 +19,7 @@ func ForecastText(lat, lon float64) string {
 	}
 
 	var sb strings.Builder
+	fmt.Fprintf(&sb, "Current request date: %s.\n", time.Now().UTC().Format("Monday, 2 January 2006 (2006-01-02, UTC)"))
 	if wf.Location != "" {
 		fmt.Fprintf(&sb, "Weather for %s.\n", wf.Location)
 	}

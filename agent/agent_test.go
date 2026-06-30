@@ -233,6 +233,27 @@ func TestFormatSearchResult_JSON(t *testing.T) {
 	}
 }
 
+func TestCurrentDateContextIncludesISORequestDate(t *testing.T) {
+	got := currentDateContext(time.Date(2026, 6, 30, 23, 59, 0, 0, time.FixedZone("BST", 3600)))
+	if !strings.Contains(got, "Tuesday, 30 June 2026") {
+		t.Fatalf("expected human-readable UTC date, got %q", got)
+	}
+	if !strings.Contains(got, "2026-06-30") {
+		t.Fatalf("expected ISO date anchor, got %q", got)
+	}
+}
+
+func TestFormatToolResultAddsCurrentDateToLiveResults(t *testing.T) {
+	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`
+	got := formatToolResult("news", newsResult, nil)
+	if !strings.Contains(got, "Current request date:") {
+		t.Fatalf("expected current request date in news tool context, got %q", got)
+	}
+	if !strings.Contains(got, time.Now().UTC().Format("2006-01-02")) {
+		t.Fatalf("expected today's ISO date in news tool context, got %q", got)
+	}
+}
+
 func TestFormatToolResult_Dispatch(t *testing.T) {
 	// Ensure the dispatcher calls the right formatter
 	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`

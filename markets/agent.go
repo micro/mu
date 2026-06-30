@@ -3,6 +3,7 @@ package markets
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // MarketsText returns a compact, model-ready snapshot of live prices for the
@@ -19,6 +20,7 @@ func MarketsText(category string) string {
 	assets := getAssetsForCategory(category)
 
 	var sb strings.Builder
+	fmt.Fprintf(&sb, "Current request date: %s.\n", time.Now().UTC().Format("Monday, 2 January 2006 (2006-01-02, UTC)"))
 	fmt.Fprintf(&sb, "Live %s prices:\n", category)
 	found := 0
 	for _, symbol := range assets {

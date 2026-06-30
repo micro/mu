@@ -210,7 +210,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
 	}
 
-	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
+	today := currentDateContext(time.Now().UTC())
 
 	// Include conversation history in RAG context
 	if len(opts.History) > 0 {
@@ -937,7 +937,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
 	}
 
-	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
+	today := currentDateContext(time.Now().UTC())
 
 	var synthSystem string
 	if len(results) == 0 {
@@ -950,7 +950,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\)."
 	} else {
 		synthSystem = "You are a helpful assistant. Today's date is " + today + ". " +
-			"The tool results below come from live data feeds — treat them as current information and use the article publication dates when reasoning about recency.\n\n" +
+			"The tool results below come from live data feeds. For prompts about today, latest, current, or now, anchor the answer to the current date above; do not label today as a different date unless a provider timestamp explicitly proves staleness, and disclose that staleness. Use article publication dates when reasoning about recency.\n\n" +
 			"Answer the user's question using the tool results provided below.\n\n" +
 			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
 			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data — " +
@@ -1362,13 +1362,13 @@ func placesMapURL(args map[string]any, items []placeItem) string {
 func formatToolResult(toolName, result string, args map[string]any) string {
 	switch toolName {
 	case "news", "news_search":
-		return formatNewsResult(result)
+		return withCurrentDateContext(formatNewsResult(result))
 	case "video_search":
 		return formatVideoResult(result)
 	case "reminder":
 		return formatReminderResult(result)
 	case "search":
-		return formatSearchResult(result)
+		return withCurrentDateContext(formatSearchResult(result))
 	case "web_fetch":
 		return formatWebFetchResult(result)
 	case "places_search", "places_nearby":

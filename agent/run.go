@@ -206,7 +206,7 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Step 3: Synthesise with user context.
-	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
+	today := currentDateContext(time.Now().UTC())
 	var synthSystem string
 	if len(ragParts) == 0 && userCtx == "" {
 		synthSystem = "You are Micro, the agent on Mu at micro.mu. Today is " + today + ". " +
