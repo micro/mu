@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Tighten agent news topic relevance** ([#875](https://github.com/micro/mu/issues/875)). The live guest ask → answer loop is fast, streams tool progress, and preserves source links, but a prompt for a latest technology headline can be satisfied by an adjacent politics/finance story that only mentions crypto. Keep news-backed answers grounded and either pick a clearly topic-matching headline or disclose when only adjacent results are available.
+1. **Render market-moving agent answers cleanly** ([#880](https://github.com/micro/mu/issues/880)). The live guest ask → answer loop is fast and weather/news prompts stream usable answers, but `What is moving in markets?` currently falls back to a raw tool payload with JSON text and MathJax-mangled dollar prices. Keep the existing markets surface, but ensure market-moving prompts synthesize readable movers, prices, and 24h changes, with the same request-date anchoring and graceful unavailable-state behavior as other services.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Tightened agent news topic relevance.** Latest technology-news prompts now prefer clearly topic-matching headlines or disclose adjacent-only coverage, closing #875 / PR #878.
 - ✅ **Guest chat authentication clarified.** Guest `/chat` now shows an inline account-required explanation with login/signup and public-agent paths instead of submitting to a raw `401 Authentication required` response, closing #870 / PR #873.
 - ✅ **Guest search query rendering fixed.** Guest `/search` recent searches now preserve spaces while still escaping HTML-sensitive characters, closing #861 / PR #864.
 - ✅ **Guest weather access clarified.** The guest `/weather` page now gives an actionable agent-backed weather path and explains which saved-location/pollen/refresh features require login, closing #856 / PR #859.
