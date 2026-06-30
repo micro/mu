@@ -4202,11 +4202,16 @@ a.btn-secondary:hover, .btn-secondary:hover {
   padding: 0;
   background: #000;
   overflow: hidden;
+  height: 100vh;   /* fallback */
+  height: 100dvh;  /* mobile-safe: excludes the browser toolbars so the bar stays on-screen */
+  display: flex;
+  flex-direction: column;
 }
 .video-embed {
   position: relative;
   width: 100%;
-  height: calc(100vh - 48px);
+  flex: 1;
+  min-height: 0;
 }
 .video-embed iframe {
   position: absolute;
@@ -4222,6 +4227,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 .video-bar {
   height: 48px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;

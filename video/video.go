@@ -1121,7 +1121,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Video | Mu</title>
-    <link rel="stylesheet" href="/mu.css">
+    <link rel="stylesheet" href="/mu.css?%s">
   </head>
   <body class="video-player-body">
     <div class="video-embed">
@@ -1181,7 +1181,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
   </body>
 </html>
 `
-		html := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay))
+		html := fmt.Sprintf(tmpl, app.Version, embedVideoWithAutoplay(id, autoplay))
 		w.Write([]byte(html))
 
 		return
