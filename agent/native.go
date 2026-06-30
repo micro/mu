@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	gmagent "go-micro.dev/v6/agent"
@@ -87,7 +88,7 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 // buildNativeAgent constructs the go-micro agent and the question (history +
 // prompt) shared by queryNative and streamNative. ok is false when no native
 // provider is configured, signalling the caller to fall back.
-func buildNativeAgent(accountID, prompt string, opts QueryOpts) (a gmagent.Agent, question string, ok bool) {
+func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai.ToolWrapper) (a gmagent.Agent, question string, ok bool) {
 	key := settings.Get("ATLAS_API_KEY")
 	if key == "" {
 		return nil, "", false
@@ -122,10 +123,11 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts) (a gmagent.Agent
 		question = hb.String()
 	}
 
+	toolWrappers := append([]gmai.ToolWrapper{injectAccount(accountID)}, wrappers...)
 	a = service.NewAgent("assistant", sys, "atlascloud", key, nativeServices(opts.Public),
 		gmagent.Model(ai.ModelDeepSeekPro),
 		gmagent.MaxSteps(6),
-		gmagent.WrapTool(injectAccount(accountID)))
+		gmagent.WrapTool(toolWrappers...))
 	return a, question, true
 }
 
@@ -136,7 +138,8 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts) (a gmagent.Agent
 // It returns (answer, true) when it handled the request, or ("", false) to
 // signal the caller to fall back to the hand-rolled path (e.g. no Atlas key).
 func queryNative(accountID, prompt string, opts QueryOpts) (string, bool, error) {
-	a, question, ok := buildNativeAgent(accountID, prompt, opts)
+	recorder := newNativeToolRecorder()
+	a, question, ok := buildNativeAgent(accountID, prompt, opts, recorder.wrap)
 	if !ok {
 		return "", false, nil
 	}
@@ -146,7 +149,9 @@ func queryNative(accountID, prompt string, opts QueryOpts) (string, bool, error)
 	if err != nil {
 		return "", true, fmt.Errorf("native agent: %w", err)
 	}
-	return app.StripLatexDollars(resp.Reply), true, nil
+	answer := app.StripLatexDollars(resp.Reply)
+	answer = completeToolAnswer(answer, recorder.ragParts())
+	return answer, true, nil
 }
 
 // StreamHooks receives streaming events from the native agent: tool lifecycle
@@ -162,7 +167,8 @@ type StreamHooks struct {
 // Returns (answer, true, err) when it handled the request, or ("", false, nil)
 // to signal the caller to fall back (no provider).
 func streamNative(accountID, prompt string, opts QueryOpts, hooks StreamHooks) (string, bool, error) {
-	a, question, ok := buildNativeAgent(accountID, prompt, opts)
+	recorder := newNativeToolRecorder()
+	a, question, ok := buildNativeAgent(accountID, prompt, opts, recorder.wrap)
 	if !ok {
 		return "", false, nil
 	}
@@ -209,7 +215,77 @@ func streamNative(accountID, prompt string, opts QueryOpts, hooks StreamHooks) (
 	if final == "" {
 		final = reply.String()
 	}
-	return app.StripLatexDollars(final), true, nil
+	answer := app.StripLatexDollars(final)
+	answer = completeToolAnswer(answer, recorder.ragParts())
+	return answer, true, nil
+}
+
+// nativeToolRecorder keeps the raw tool payloads produced by go-micro's native
+// agent path. If the model stops at progress narration after tools finish, the
+// answer guard can synthesize a useful final answer from these payloads instead
+// of returning a placeholder.
+type nativeToolRecorder struct {
+	mu    sync.Mutex
+	parts []string
+}
+
+func newNativeToolRecorder() *nativeToolRecorder {
+	return &nativeToolRecorder{}
+}
+
+func (r *nativeToolRecorder) wrap(next gmai.ToolHandler) gmai.ToolHandler {
+	return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+		res := next(ctx, call)
+		if res.Content == "" {
+			return res
+		}
+		title := nativeToolTitle(call.Name)
+		r.mu.Lock()
+		r.parts = append(r.parts, "### "+title+"\n"+res.Content)
+		r.mu.Unlock()
+		return res
+	}
+}
+
+func (r *nativeToolRecorder) ragParts() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	parts := make([]string, len(r.parts))
+	copy(parts, r.parts)
+	return parts
+}
+
+func nativeToolTitle(name string) string {
+	svc := name
+	if i := strings.IndexByte(name, '_'); i > 0 {
+		svc = name[:i]
+	}
+	switch svc {
+	case "weather":
+		return "weather"
+	case "news":
+		return "news"
+	case "markets":
+		return "markets"
+	case "social":
+		return "social"
+	case "video":
+		return "video"
+	case "blog":
+		return "blog"
+	case "search":
+		return "search"
+	case "trade":
+		return "trade"
+	case "recall":
+		return "memory"
+	case "apps":
+		return "apps"
+	case "mail":
+		return "mail"
+	default:
+		return "results"
+	}
 }
 
 // nativeToolLabel maps a go-micro tool name (service_Method) to a friendly
