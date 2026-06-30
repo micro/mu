@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#819 Make news answers cite source links instead of opaque ids.](https://github.com/micro/mu/issues/819)** The top remaining core-loop friction is verifiability for latest/topic news answers: on 2026-06-30 the live guest `/agent` loop returned a dated, well-structured AI-news brief, but the story evidence appeared as opaque internal ids instead of human-readable source names and article links. Keep the existing public contracts unchanged, preserve the shipped request-date/staleness behavior, and make news-backed synthesis cite grounded source context or return an explicit unavailable/refinement state when results do not support the requested topic.
+1. **[#824 Fix impossible dates in weather answers.](https://github.com/micro/mu/issues/824)** The top remaining core-loop friction is temporal correctness in weather answers: on 2026-06-30 the live guest `/agent` loop answered “what is the weather in London today?” with “Wednesday, 31 June 2026” before self-correcting that June has only 30 days. Keep public contracts and provider integrations unchanged, preserve the request-date/staleness behavior, and make weather-backed synthesis anchor to the actual request date or disclose ambiguity instead of fabricating impossible calendar dates.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Source-linked news answers.** News-backed synthesis now includes readable source names and URLs instead of opaque internal ids, closing #819 / PR #822.
 - ✅ **Grounded web-search answers.** Web-search synthesis now preserves query intent, includes source URLs in the model-ready context, and asks for refinement when weak results do not support an answer, closing #812 / #814 / PR #815.
 - ✅ **Grounded topic news search.** Latest/topic news prompts now use grounded feed-backed results or an explicit unavailable state instead of plausible placeholder headlines after provider errors, closing #807 / PR #810.
 - ✅ **Request-date anchoring for live agent answers.** Weather, news, markets, and other `today/latest/current` answers now anchor to the request date or disclose provider staleness, closing the stale-date friction found on 2026-06-30 (#802 / PR #805).
