@@ -39,6 +39,7 @@ import (
 	"mu/reminder"
 	"mu/places"
 	"mu/search"
+	"mu/setup"
 	"mu/social"
 	"mu/stream"
 	"mu/user"
@@ -1173,6 +1174,7 @@ func main() {
 		"/.well-known/agent.json": false, // Public - A2A agent card
 		"/a2a":                    false, // Public - A2A protocol
 		"/agent":  false, // Public page, auth checked in handler
+		"/setup":  false, // First-run setup (open only until an admin exists)
 	}
 
 	// Static assets should not require authentication
@@ -1314,6 +1316,9 @@ func main() {
 	http.HandleFunc("/home/summary", home.SummaryHandler)
 	home.StartSummaryLoop()
 	http.HandleFunc("/pricing", home.PricingHandler)
+
+	// first-run setup wizard (open only until an admin exists)
+	http.HandleFunc("/setup", setup.Handler)
 
 	// serve the agent
 	http.HandleFunc("/agent", agent.Handler)
@@ -1550,6 +1555,12 @@ func main() {
 						}
 					}
 				} else if r.URL.Path == "/" {
+					// Fresh instance with no admin yet → guide the operator
+					// through the one-time setup wizard.
+					if setup.Needed() {
+						http.Redirect(w, r, "/setup", http.StatusSeeOther)
+						return
+					}
 					if _, acc := auth.TrySession(r); acc != nil {
 						// Every section has a named URL: the dashboard is /home and a
 						// query goes to the agent (/agent). The root just funnels

@@ -98,6 +98,8 @@ func Run(args []string) int {
 		return runLogout(rest, &rc)
 	case "config":
 		return runConfig(rest, &rc)
+	case "setup":
+		return runSetup(rest)
 	case "version", "--version":
 		fmt.Println("mu cli (registry-driven, talks to /mcp)")
 		return 0

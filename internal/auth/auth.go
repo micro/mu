@@ -179,6 +179,19 @@ func GetAllAccounts() []*Account {
 	return list
 }
 
+// AdminExists reports whether any account has admin rights. Used to gate the
+// first-run setup flow: while no admin exists the instance is unconfigured.
+func AdminExists() bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+	for _, acc := range accounts {
+		if acc.Admin {
+			return true
+		}
+	}
+	return false
+}
+
 // GetAccountByName finds an account by username (case-insensitive)
 func GetAccountByName(name string) (*Account, error) {
 	mutex.Lock()

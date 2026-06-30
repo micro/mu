@@ -1199,6 +1199,14 @@ func Load() {
 }
 
 func generateSummaries() {
+	// On a fresh instance with no AI provider yet, skip quietly instead of
+	// failing once per topic — the setup flow (/setup or `mu setup`) prompts
+	// for a provider, after which summaries resume on the next cycle.
+	if !ai.Configured() {
+		app.Log("chat", "Skipping topic summaries — no AI provider configured (run setup or set a provider key)")
+		return
+	}
+
 	app.Log("chat", "Generating summaries at %s", time.Now().String())
 
 	newSummaries := map[string]string{}

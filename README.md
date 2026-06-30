@@ -137,39 +137,29 @@ cd mu && go install
 mu --serve
 ```
 
-### Choose your AI
+### First-run setup
+
+Open **http://localhost:8080** and Mu walks you through a one-time setup: create
+your admin account and pick an AI provider (Claude, Atlas Cloud, or a local
+Ollama / OpenAI-compatible endpoint). That's enough to have a working agent.
+
+Prefer the terminal? Configure the provider headless, then start the server:
 
 ```bash
-# Ollama (local, free, private)
-ollama serve &
-export OPENAI_BASE_URL=http://localhost:11434/v1
-export OPENAI_API_KEY=ollama
-mu --serve
+mu setup        # pick a provider, paste a key
+mu --serve      # first account you create becomes admin
+```
 
-# or Claude (cloud)
-export ANTHROPIC_API_KEY=xxx
-mu --serve
+Or set everything by hand if you'd rather:
 
-# or Atlas Cloud / any OpenAI-compatible endpoint
-export ATLAS_API_KEY=xxx
+```bash
+export ADMIN=you@example.com          # who's admin (else: first account)
+export ATLAS_API_KEY=xxx              # or ANTHROPIC_API_KEY, or OPENAI_BASE_URL
 mu --serve
 ```
 
-Open http://localhost:8080.
-
-### Become the admin
-
-Configuration lives at `/admin/env`, which needs an admin account. Name yourself
-admin before first run, then sign up with that username/email:
-
-```bash
-export ADMIN=you@example.com   # comma-separated ids/usernames/emails
-mu --serve
-```
-
-If `ADMIN` is unset, the **first account** created on a fresh instance becomes
-admin automatically. Either way, once you're admin you can set every other key
-(YouTube, Brave search, weather, mail/DKIM…) from `/admin/env` in the browser.
+Once you're admin, every other key (YouTube, Brave search, weather, mail/DKIM…)
+is configurable from `/admin/env` in the browser.
 
 See [Installation guide](docs/INSTALLATION.md) for full setup.
 

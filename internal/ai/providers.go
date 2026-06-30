@@ -34,6 +34,22 @@ func getAtlasAPIKey() string {
 	return settings.Get("OPENAI_API_KEY")
 }
 
+// Configured reports whether at least one AI provider is available — a key or
+// endpoint set via env/settings, or a local Ollama detected. Used to gate the
+// agent/chat and to decide whether a fresh instance still needs setup.
+func Configured() bool {
+	if settings.Get("ANTHROPIC_API_KEY") != "" {
+		return true
+	}
+	if getAtlasAPIKey() != "" {
+		return true
+	}
+	if settings.Get("OPENAI_BASE_URL") != "" {
+		return true
+	}
+	return detectOllama() != ""
+}
+
 func getAtlasBaseURL() string {
 	if v := settings.Get("OPENAI_BASE_URL"); v != "" {
 		return strings.TrimRight(v, "/")
