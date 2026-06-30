@@ -117,13 +117,13 @@ The rendering and presentation layer. Every building block uses `app/` to serve 
 - **Static assets** - CSS, JavaScript, embedded at build time
 - **Response handling** - JSON for API calls, HTML for browser requests
 
-### API (`api/`)
+### API (`internal/api/`)
 
 The interface layer. Defines REST endpoints and exposes the MCP server for AI agent integration.
 
-- **REST API** - Documented endpoints for all building blocks (see `api/api.go`)
-- **MCP Server** - Model Context Protocol at `/mcp` for AI tool integration (see `api/mcp.go`)
-  - 20+ tools: signup, login, chat, search, blog CRUD, mail, markets, weather, etc.
+- **REST API** - Documented endpoints for all building blocks (see `internal/api/api.go`)
+- **MCP Server** - Model Context Protocol at `/mcp` for AI tool integration (see `internal/api/mcp.go`)
+  - 30+ tools: signup, login, chat, search, blog CRUD, mail, markets, weather, places, apps, etc.
   - JSON-RPC 2.0 protocol
   - Integrated quota checking via wallet
 - **Authentication middleware** - Bearer tokens, session cookies, PAT tokens
