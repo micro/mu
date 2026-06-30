@@ -281,6 +281,44 @@ func TestHeadlinesTextIncludesSourceURLWithID(t *testing.T) {
 	}
 }
 
+func TestHeadlinesTextTopicMatchesArticleTextAndSynonyms(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "ai-1",
+			Title:       "Open model lab ships safer AI assistant",
+			Description: "New evaluations and rollout notes for the assistant.",
+			URL:         "https://example.com/ai",
+			Category:    "Dev",
+			PostedAt:    time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC),
+		},
+		{
+			ID:          "sports-1",
+			Title:       "Club wins cup final",
+			Description: "A late goal settled the match.",
+			URL:         "https://example.com/sports",
+			Category:    "Sports",
+			PostedAt:    time.Date(2026, 6, 30, 11, 0, 0, 0, time.UTC),
+		},
+	}
+	mutex.Unlock()
+
+	got := HeadlinesText("technology", 10)
+	if !strings.Contains(got, "Open model lab ships safer AI assistant") {
+		t.Fatalf("expected technology topic to match tech/AI headline text, got %q", got)
+	}
+	if strings.Contains(got, "Club wins cup final") {
+		t.Fatalf("expected unrelated headline to stay out of topic-filtered results, got %q", got)
+	}
+}
+
 func TestNewsSearchArticlesReturnsExplicitEmptyResults(t *testing.T) {
 	oldFeed := feed
 	defer func() {
