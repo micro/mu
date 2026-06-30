@@ -102,6 +102,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		"Use the available tools for live or personal data (weather, news, market prices, " +
 		"social, video, blog, web search, trading, and recall of the user's own news/mail). " +
 		"Quote exact values from tool results. Be concise and conversational. " +
+		"For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one. " +
 		"After using tools, always provide the final answer or state exactly what is unavailable; " +
 		"never stop at progress narration like let me check or I will pull that data. " +
 		"If the user asks about weather without a location, default to London (lat 51.5074, lon -0.1278)."
