@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#807 Make topic news searches return grounded live results.](https://github.com/micro/mu/issues/807)** The top remaining core-loop friction is truthfulness for latest/topic news prompts: on 2026-06-30 the live guest `/agent/run` loop answered a latest AI-news prompt with plausible but unsourced placeholder headlines after `news_search` errored, even though the `/news` page had fresh items. Make topic news search use grounded live/stubbed results when available and otherwise return an explicit unavailable/no-results state, with CI-verifiable coverage and no public-contract changes.
+1. **[#812 Make web-search answers preserve query intent and cite sources.](https://github.com/micro/mu/issues/812)** The top remaining core-loop friction is truthfulness for web-search-backed answers: on 2026-06-30 the live guest `/agent/run` loop answered “Search the web for micro mu…” with a generic metric-prefix definition even though the product context should have been preserved or qualified. Keep the existing public contracts unchanged, make `web_search` synthesis reflect the returned result set with source context, and return an explicit low-confidence/refinement state when results do not support the intended answer.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Grounded topic news search.** Latest/topic news prompts now use grounded feed-backed results or an explicit unavailable state instead of plausible placeholder headlines after provider errors, closing #807 / PR #810.
 - ✅ **Request-date anchoring for live agent answers.** Weather, news, markets, and other `today/latest/current` answers now anchor to the request date or disclose provider staleness, closing the stale-date friction found on 2026-06-30 (#802 / PR #805).
 - ✅ **Real news answers instead of progress-only search fallbacks.** Guest news prompts now synthesize actual news/search results or show an explicit unavailable state instead of ending on progress narration (#797 / PR #800).
 - ✅ **Read plane on go-micro for every display card.** Shared `internal/snapshot`
