@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#824 Fix impossible dates in weather answers.](https://github.com/micro/mu/issues/824)** The top remaining core-loop friction is temporal correctness in weather answers: on 2026-06-30 the live guest `/agent` loop answered “what is the weather in London today?” with “Wednesday, 31 June 2026” before self-correcting that June has only 30 days. Keep public contracts and provider integrations unchanged, preserve the request-date/staleness behavior, and make weather-backed synthesis anchor to the actual request date or disclose ambiguity instead of fabricating impossible calendar dates.
+1. **[#831 Make news-backed agent answers user-readable when one provider is unavailable.](https://github.com/micro/mu/issues/831)** The top remaining core-loop friction is graceful mixed-provider synthesis: on 2026-06-30 the live guest `/agent` loop for “What are the latest AI news headlines today?” called news and web search, but returned raw escaped search context plus “Unavailable: news” instead of readable source-linked bullets. Keep public contracts and provider integrations unchanged, synthesize from any usable provider context, and disclose unavailable providers without exposing JSON or internal model-ready payloads.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Impossible weather dates fixed.** Weather-backed synthesis now anchors forecast context to real provider dates and avoids fabricated invalid calendar dates, closing #824 / PR #827 / PR #829.
 - ✅ **Source-linked news answers.** News-backed synthesis now includes readable source names and URLs instead of opaque internal ids, closing #819 / PR #822.
 - ✅ **Grounded web-search answers.** Web-search synthesis now preserves query intent, includes source URLs in the model-ready context, and asks for refinement when weak results do not support an answer, closing #812 / #814 / PR #815.
 - ✅ **Grounded topic news search.** Latest/topic news prompts now use grounded feed-backed results or an explicit unavailable state instead of plausible placeholder headlines after provider errors, closing #807 / PR #810.
