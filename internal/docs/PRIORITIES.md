@@ -21,7 +21,7 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-_No open codex-owned product queue items at this review point. The next product-review pass should add the highest-value Now-phase refinement only after it is verified against the live ask → answer loop and is not already in flight._
+1. **Clarify guest chat authentication before submit** ([#870](https://github.com/micro/mu/issues/870)). Guest `/chat` is observable from the product surface and renders an ask box, but submitting while signed out falls through to a raw `401 Authentication required` response. Keep the public `/agent` first-run loop as the no-account path, and make `/chat` degrade gracefully with an inline login/signup explanation plus a route back to trying Mu.
 
 ### Already shipped (do not re-queue)
 
