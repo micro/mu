@@ -1818,7 +1818,7 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 	}
 
 	for _, entry := range indexed {
-		add(map[string]interface{}{
+		article := map[string]interface{}{
 			"id":          entry.ID,
 			"title":       entry.Title,
 			"description": htmlToText(entry.Content),
@@ -1826,7 +1826,10 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 			"category":    entry.Metadata["category"],
 			"image":       entry.Metadata["image"],
 			"posted_at":   entry.Metadata["posted_at"],
-		})
+		}
+		if articleMatchesNewsQuery(query, article) {
+			add(article)
+		}
 	}
 
 	for _, post := range liveFeedSearch(query, limit) {
@@ -1844,13 +1847,19 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 }
 
 func liveFeedSearch(query string, limit int) []*Post {
-	terms := strings.Fields(strings.ToLower(query))
-	if len(terms) == 0 {
-		return nil
-	}
+	terms := meaningfulNewsQueryTerms(query)
 	mutex.RLock()
 	currentFeed := append([]*Post(nil), feed...)
 	mutex.RUnlock()
+	if len(terms) == 0 {
+		sort.SliceStable(currentFeed, func(i, j int) bool {
+			return currentFeed[i].PostedAt.After(currentFeed[j].PostedAt)
+		})
+		if limit > 0 && len(currentFeed) > limit {
+			currentFeed = currentFeed[:limit]
+		}
+		return currentFeed
+	}
 
 	type match struct {
 		post  *Post
@@ -1858,12 +1867,7 @@ func liveFeedSearch(query string, limit int) []*Post {
 	}
 	var matches []match
 	for _, post := range currentFeed {
-		haystack := strings.ToLower(strings.Join([]string{
-			post.Title,
-			post.Description,
-			post.Content,
-			post.Category,
-		}, " "))
+		haystack := newsSearchHaystack(post.Title, post.Description, post.Content, post.Category)
 		score := 0
 		for _, term := range terms {
 			if strings.Contains(haystack, term) {
@@ -1888,6 +1892,62 @@ func liveFeedSearch(query string, limit int) []*Post {
 		out = append(out, match.post)
 	}
 	return out
+}
+
+func articleMatchesNewsQuery(query string, article map[string]interface{}) bool {
+	terms := meaningfulNewsQueryTerms(query)
+	if len(terms) == 0 {
+		return true
+	}
+	haystack := newsSearchHaystack(
+		fmt.Sprintf("%v", article["title"]),
+		fmt.Sprintf("%v", article["description"]),
+		fmt.Sprintf("%v", article["category"]),
+	)
+	for _, term := range terms {
+		if strings.Contains(haystack, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func newsSearchHaystack(parts ...string) string {
+	return strings.ToLower(strings.Join(parts, " "))
+}
+
+func meaningfulNewsQueryTerms(query string) []string {
+	stop := map[string]bool{
+		"a": true, "an": true, "and": true, "any": true, "for": true, "from": true,
+		"give": true, "headline": true, "headlines": true, "latest": true, "me": true,
+		"news": true, "of": true, "on": true, "show": true, "the": true, "today": true,
+		"top": true, "update": true, "updates": true, "what": true, "whats": true,
+	}
+	seen := map[string]bool{}
+	var terms []string
+	add := func(term string) {
+		term = strings.TrimSpace(strings.ToLower(term))
+		if term == "" || stop[term] || seen[term] {
+			return
+		}
+		seen[term] = true
+		terms = append(terms, term)
+	}
+	clean := strings.NewReplacer("-", " ", "_", " ", "/", " ").Replace(strings.ToLower(query))
+	for _, field := range strings.Fields(clean) {
+		add(strings.Trim(field, `.,:;!?()[]{}"'`))
+	}
+	if strings.Contains(clean, "technology") || strings.Contains(clean, "tech") {
+		for _, term := range []string{"tech", "technology", "ai", "artificial intelligence", "machine learning", "model", "software", "semiconductor", "chip"} {
+			add(term)
+		}
+	}
+	if strings.Contains(clean, "ai") || strings.Contains(clean, "artificial intelligence") {
+		for _, term := range []string{"ai", "artificial intelligence", "machine learning", "llm", "model"} {
+			add(term)
+		}
+	}
+	return terms
 }
 
 func postURL(post *Post) string {
