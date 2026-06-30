@@ -1370,7 +1370,7 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatReminderResult(result)
 	case "search":
 		return withCurrentDateContext(formatSearchResult(result))
-	case "web_search":
+	case "web_search", "weather_forecast":
 		return withCurrentDateContext(result)
 	case "web_fetch":
 		return formatWebFetchResult(result)
