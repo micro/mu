@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#856 Clarify guest weather service access.](https://github.com/micro/mu/issues/856)** The top remaining refinement gap is graceful first-run service access: on 2026-06-30 guest `/agent` weather prompts returned a fast, dated San Francisco forecast, but the guest `/weather` service page showed only "Please log in to use Weather." Keep public routes and API contracts unchanged, preserve the signed-in weather experience, and give signed-out visitors an actionable limited/empty state (for example a location prompt, sample agent prompt, or clear explanation of what requires login) so an agent-callable service does not feel like a dead end.
+1. **[#861 Fix guest search UI escaping and input rendering.](https://github.com/micro/mu/issues/861)** The top remaining first-run refinement gap is a small but visible guest Search page polish issue: on 2026-06-30 the live `/search` page loaded for guests and exposed useful trending topics, but its client-side escaping helper converts spaces to `&gt;` when rendering recent/typed queries. Keep public routes, API contracts, and provider behavior unchanged; preserve the guest search flow; and add a focused regression so multi-word searches render with spaces intact while HTML-sensitive characters remain escaped.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Guest weather access clarified.** The guest `/weather` page now gives an actionable agent-backed weather path and explains which saved-location/pollen/refresh features require login, closing #856 / PR #859.
 - ✅ **Deduplicated mixed-source news surfaces.** Mixed-source news cleanup shipped in #851 / PR #854, so the queue now moves to the next highest-value first-run/service-access refinement.
 - ✅ **Article links preserved in live news agent answers.** Fresh guest technology-news prompts now complete quickly with readable, grounded headlines and article URLs in the final answer, closing #846 / PR #849.
 - ✅ **News-backed answers restored when feeds are partially unavailable.** Live guest technology-news prompts now complete with readable headlines from usable provider context instead of only an unavailable-state response, closing #841 / PR #844.
