@@ -18,8 +18,17 @@ func ForecastText(lat, lon float64) string {
 		return weatherUnavailableMessage
 	}
 
+	return formatForecastText(wf, time.Now().UTC())
+}
+
+func formatForecastText(wf *WeatherForecast, now time.Time) string {
+	if wf == nil {
+		return weatherUnavailableMessage
+	}
+
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "Current request date: %s.\n", time.Now().UTC().Format("Monday, 2 January 2006 (2006-01-02, UTC)"))
+	fmt.Fprintf(&sb, "Current request date: %s.\n", now.UTC().Format("Monday, 2 January 2006 (2006-01-02, UTC)"))
+	sb.WriteString("Calendar rule: anchor relative words like today/tomorrow to the request date above, use only the dated forecast rows below, and do not invent dates. If a requested day is not listed, say it is unavailable.\n")
 	if wf.Location != "" {
 		fmt.Fprintf(&sb, "Weather for %s.\n", wf.Location)
 	}
@@ -28,7 +37,7 @@ func ForecastText(lat, lon float64) string {
 			c.TempC, c.FeelsLikeC, c.Description, c.Humidity, c.WindKph)
 	}
 	if len(wf.DailyItems) > 0 {
-		sb.WriteString("Next days:\n")
+		sb.WriteString("Dated daily forecast (provider timestamps):\n")
 		for i, d := range wf.DailyItems {
 			if i >= 5 {
 				break
@@ -38,7 +47,7 @@ func ForecastText(lat, lon float64) string {
 				rain = fmt.Sprintf(", rain %.0fmm", d.RainMM)
 			}
 			fmt.Fprintf(&sb, "%s: %.0f–%.0f°C, %s%s\n",
-				d.Date.Format("Mon 2 Jan"), d.MinTempC, d.MaxTempC, d.Description, rain)
+				d.Date.Format("Monday, 2 January 2006 (2006-01-02)"), d.MinTempC, d.MaxTempC, d.Description, rain)
 		}
 	}
 	if sb.Len() == 0 {
