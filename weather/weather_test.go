@@ -3,6 +3,7 @@ package weather
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestToCelsius_Fahrenheit(t *testing.T) {
@@ -85,5 +86,37 @@ func TestCardHTMLShowsWeatherUnavailableOnFetchFailure(t *testing.T) {
 	got := CardHTML()
 	if !strings.Contains(got, "Weather unavailable") {
 		t.Fatalf("CardHTML should show a clear unavailable state on fetch failure, got %q", got)
+	}
+}
+
+func TestFormatForecastTextAnchorsDatesToRealCalendarRows(t *testing.T) {
+	wf := &WeatherForecast{
+		Location: "London",
+		Current: &CurrentConditions{
+			TempC:       18,
+			FeelsLikeC:  17,
+			Description: "cloudy",
+			Humidity:    70,
+			WindKph:     12,
+		},
+		DailyItems: []DailyItem{
+			{Date: time.Date(2026, time.June, 30, 0, 0, 0, 0, time.UTC), MinTempC: 13, MaxTempC: 21, Description: "showers", RainMM: 2, WillRain: true},
+			{Date: time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC), MinTempC: 12, MaxTempC: 20, Description: "bright spells"},
+		},
+	}
+
+	got := formatForecastText(wf, time.Date(2026, time.June, 30, 9, 0, 0, 0, time.UTC))
+	for _, want := range []string{
+		"Current request date: Tuesday, 30 June 2026 (2026-06-30, UTC).",
+		"Calendar rule: anchor relative words like today/tomorrow to the request date above",
+		"Tuesday, 30 June 2026 (2026-06-30): 13–21°C, showers, rain 2mm",
+		"Wednesday, 1 July 2026 (2026-07-01): 12–20°C, bright spells",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("formatForecastText missing %q in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "31 June") {
+		t.Fatalf("formatForecastText invented impossible calendar date in:\n%s", got)
 	}
 }
