@@ -201,7 +201,11 @@ func renderWeatherPage(r *http.Request) string {
 	var sb strings.Builder
 
 	if !isAuthed {
-		sb.WriteString(`<p>Please <a href="/login">log in</a> to use Weather.</p>`)
+		sb.WriteString(`<div class="card">
+  <p class="card-desc">Weather forecasts are available through Mu's agent for guests, while saved location forecasts, pollen, and credit-backed refreshes require an account.</p>
+  <p>Try asking the agent: <a href="/agent?q=Weather%20in%20San%20Francisco">Weather in San Francisco</a>.</p>
+  <p class="card-meta">Want the full weather page with location search and pollen? <a href="/login">Log in</a> to continue.</p>
+</div>`)
 		return sb.String()
 	}
 
