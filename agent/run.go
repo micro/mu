@@ -217,6 +217,7 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		synthSystem = "You are Micro, a personal AI assistant. Today is " + today + ". " +
 			"Answer concisely using the tool results and user context below. Use markdown. " +
+			"For web_search results, preserve the user's query intent exactly, cite the listed source URLs, and if confidence is low say the results do not clearly support the requested answer and ask for a refinement. " +
 			"Do not answer with progress narration like 'let me check' or 'I'll pull the data'; the tools have already run, so provide the final answer or say exactly what is unavailable. " +
 			"If the user context already contains the answer (e.g. unread mail count), use it directly."
 	}

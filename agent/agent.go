@@ -952,6 +952,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		synthSystem = "You are a helpful assistant. Today's date is " + today + ". " +
 			"The tool results below come from live data feeds. For prompts about today, latest, current, or now, anchor the answer to the current date above; do not label today as a different date unless a provider timestamp explicitly proves staleness, and disclose that staleness. Use article publication dates when reasoning about recency.\n\n" +
 			"Answer the user's question using the tool results provided below.\n\n" +
+			"For web_search results, preserve the user's query intent exactly, cite the listed source URLs, and if confidence is low say the results do not clearly support the requested answer and ask for a refinement.\n\n" +
 			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
 			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data — " +
 			"it will be outdated. If no tool result contains the requested real-time data, say it is unavailable.\n\n" +
@@ -1369,6 +1370,8 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatReminderResult(result)
 	case "search":
 		return withCurrentDateContext(formatSearchResult(result))
+	case "web_search":
+		return withCurrentDateContext(result)
 	case "web_fetch":
 		return formatWebFetchResult(result)
 	case "places_search", "places_nearby":

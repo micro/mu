@@ -2,7 +2,9 @@ package search
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
+	"unicode"
 )
 
 // WebSearchText runs a cached web search and returns model-ready results.
@@ -23,14 +25,85 @@ func WebSearchText(query string, limit int) string {
 		return fmt.Sprintf("No web results for %q.", query)
 	}
 
+	return formatWebSearchResults(query, results)
+}
+
+func formatWebSearchResults(query string, results []BraveResult) string {
+	confidence := webSearchConfidence(query, results)
+
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Web results for %q:\n", query)
-	for _, r := range results {
+	fmt.Fprintf(&sb, "Query intent: answer the user's original query %q; do not replace it with a broader or different meaning.\n", query)
+	if confidence == "low" {
+		fmt.Fprintf(&sb, "Confidence: low — the returned snippets only partially match the query intent. Say that the search results do not clearly support an answer and ask the user to refine the query before making unsupported claims.\n")
+	} else {
+		fmt.Fprintf(&sb, "Confidence: %s — synthesize only what the listed sources support.\n", confidence)
+	}
+	fmt.Fprintf(&sb, "Sources:\n")
+	for i, r := range results {
 		desc := strings.Join(strings.Fields(r.Description), " ")
-		if len(desc) > 200 {
-			desc = desc[:200] + "…"
+		if len(desc) > 220 {
+			desc = desc[:220] + "…"
 		}
-		fmt.Fprintf(&sb, "%s — %s (%s)\n", strings.TrimSpace(r.Title), desc, r.URL)
+		title := strings.TrimSpace(r.Title)
+		if title == "" {
+			title = sourceHost(r.URL)
+		}
+		fmt.Fprintf(&sb, "%d. %s — %s (%s)\n", i+1, title, desc, r.URL)
 	}
 	return sb.String()
+}
+
+func webSearchConfidence(query string, results []BraveResult) string {
+	terms := meaningfulQueryTerms(query)
+	if len(terms) == 0 || len(results) == 0 {
+		return "low"
+	}
+	matches := 0
+	for term := range terms {
+		for _, r := range results {
+			haystack := strings.ToLower(r.Title + " " + r.Description + " " + r.URL)
+			if strings.Contains(haystack, term) {
+				matches++
+				break
+			}
+		}
+	}
+	ratio := float64(matches) / float64(len(terms))
+	switch {
+	case ratio >= 0.75:
+		return "high"
+	case ratio >= 0.67:
+		return "medium"
+	default:
+		return "low"
+	}
+}
+
+func meaningfulQueryTerms(query string) map[string]struct{} {
+	stop := map[string]struct{}{
+		"a": {}, "an": {}, "and": {}, "are": {}, "for": {}, "from": {}, "how": {}, "is": {}, "me": {}, "of": {}, "on": {}, "or": {}, "search": {}, "show": {}, "the": {}, "to": {}, "web": {}, "what": {}, "whats": {}, "with": {},
+	}
+	terms := make(map[string]struct{})
+	for _, field := range strings.FieldsFunc(strings.ToLower(query), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	}) {
+		field = strings.TrimSpace(field)
+		if len(field) < 2 {
+			continue
+		}
+		if _, ok := stop[field]; ok {
+			continue
+		}
+		terms[field] = struct{}{}
+	}
+	return terms
+}
+
+func sourceHost(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return strings.TrimSpace(raw)
+	}
+	return u.Host
 }
