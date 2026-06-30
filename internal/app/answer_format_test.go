@@ -58,3 +58,11 @@ func TestNormalizeAnswerMarkdownDoesNotTreatEmphasisAsList(t *testing.T) {
 		t.Fatalf("NormalizeAnswerMarkdown() = %q, want %q", got, want)
 	}
 }
+
+func TestNormalizeAnswerMarkdownConvertsBulletGlyphs(t *testing.T) {
+	input := "•   Weather is clear\n• Bring sunglasses"
+	want := "- Weather is clear\n- Bring sunglasses"
+	if got := NormalizeAnswerMarkdown(input); got != want {
+		t.Fatalf("NormalizeAnswerMarkdown() = %q, want %q", got, want)
+	}
+}
