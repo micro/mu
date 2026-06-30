@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#861 Fix guest search UI escaping and input rendering.](https://github.com/micro/mu/issues/861)** The top remaining first-run refinement gap is a small but visible guest Search page polish issue: on 2026-06-30 the live `/search` page loaded for guests and exposed useful trending topics, but its client-side escaping helper converts spaces to `&gt;` when rendering recent/typed queries. Keep public routes, API contracts, and provider behavior unchanged; preserve the guest search flow; and add a focused regression so multi-word searches render with spaces intact while HTML-sensitive characters remain escaped.
+_No open codex-owned product queue items at this review point. The next product-review pass should add the highest-value Now-phase refinement only after it is verified against the live ask → answer loop and is not already in flight._
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Guest search query rendering fixed.** Guest `/search` recent searches now preserve spaces while still escaping HTML-sensitive characters, closing #861 / PR #864.
 - ✅ **Guest weather access clarified.** The guest `/weather` page now gives an actionable agent-backed weather path and explains which saved-location/pollen/refresh features require login, closing #856 / PR #859.
 - ✅ **Deduplicated mixed-source news surfaces.** Mixed-source news cleanup shipped in #851 / PR #854, so the queue now moves to the next highest-value first-run/service-access refinement.
 - ✅ **Article links preserved in live news agent answers.** Fresh guest technology-news prompts now complete quickly with readable, grounded headlines and article URLs in the final answer, closing #846 / PR #849.
