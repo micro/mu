@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#851 Deduplicate and label mixed-source news surfaces.](https://github.com/micro/mu/issues/851)** The top remaining refinement gap is trust and scanability in news surfaces, not the agent answer itself: on 2026-06-30 guest `/agent` prompts for technology news return current, linked, well-formatted answers quickly, but `/news` still shows duplicate stories and interleaves non-news/reminder-style entries as indistinguishable headlines. Keep the public `/agent` and `/news` contracts unchanged, preserve chronological/source-linked news, and make duplicate or mixed-source feed content collapse or label cleanly so the first-run news experience feels intentional instead of noisy.
+1. **[#856 Clarify guest weather service access.](https://github.com/micro/mu/issues/856)** The top remaining refinement gap is graceful first-run service access: on 2026-06-30 guest `/agent` weather prompts returned a fast, dated San Francisco forecast, but the guest `/weather` service page showed only "Please log in to use Weather." Keep public routes and API contracts unchanged, preserve the signed-in weather experience, and give signed-out visitors an actionable limited/empty state (for example a location prompt, sample agent prompt, or clear explanation of what requires login) so an agent-callable service does not feel like a dead end.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Deduplicated mixed-source news surfaces.** Mixed-source news cleanup shipped in #851 / PR #854, so the queue now moves to the next highest-value first-run/service-access refinement.
 - ✅ **Article links preserved in live news agent answers.** Fresh guest technology-news prompts now complete quickly with readable, grounded headlines and article URLs in the final answer, closing #846 / PR #849.
 - ✅ **News-backed answers restored when feeds are partially unavailable.** Live guest technology-news prompts now complete with readable headlines from usable provider context instead of only an unavailable-state response, closing #841 / PR #844.
 - ✅ **Fresh guest prompt isolation.** Independent guest `/agent` requests no longer leak prior topic context into unrelated prompts, closing #836 / PR #839.
