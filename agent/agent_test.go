@@ -244,13 +244,34 @@ func TestCurrentDateContextIncludesISORequestDate(t *testing.T) {
 }
 
 func TestFormatToolResultAddsCurrentDateToLiveResults(t *testing.T) {
-	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`
-	got := formatToolResult("news", newsResult, nil)
-	if !strings.Contains(got, "Current request date:") {
-		t.Fatalf("expected current request date in news tool context, got %q", got)
+	for _, tt := range []struct {
+		name   string
+		tool   string
+		result string
+	}{
+		{name: "news", tool: "news", result: `{"feed":[{"title":"Test headline","category":"tech"}]}`},
+		{name: "weather", tool: "weather_forecast", result: "Weather for London.\nNow: 18°C, cloudy."},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatToolResult(tt.tool, tt.result, nil)
+			if !strings.Contains(got, "Current request date:") {
+				t.Fatalf("expected current request date in %s tool context, got %q", tt.tool, got)
+			}
+			if !strings.Contains(got, time.Now().UTC().Format("2006-01-02")) {
+				t.Fatalf("expected today's ISO date in %s tool context, got %q", tt.tool, got)
+			}
+		})
 	}
-	if !strings.Contains(got, time.Now().UTC().Format("2006-01-02")) {
-		t.Fatalf("expected today's ISO date in news tool context, got %q", got)
+}
+
+func TestFormatToolResultKeepsExistingCurrentDateContext(t *testing.T) {
+	result := "Current request date: Tuesday, 30 June 2026 (2026-06-30, UTC).\nWeather for London."
+	got := formatToolResult("weather_forecast", result, nil)
+	if strings.Count(got, "Current request date:") != 1 {
+		t.Fatalf("expected one current request date context, got %q", got)
+	}
+	if !strings.Contains(got, "2026-06-30") {
+		t.Fatalf("expected existing request date to be preserved, got %q", got)
 	}
 }
 
@@ -655,6 +676,40 @@ func TestCompleteToolAnswerNamesUnavailableSlices(t *testing.T) {
 	}
 	if !strings.Contains(got, "Unavailable: weather.") {
 		t.Fatalf("expected unavailable slice to be named clearly, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerUsesAvailableWebWhenNewsUnavailable(t *testing.T) {
+	rag := []string{
+		"### news\n" + unavailableToolMessage("news"),
+		`### web_search
+Web results for "latest AI news":
+Query intent: answer the user's original query "latest AI news"; do not replace it with a broader or different meaning.
+Confidence: high — synthesize only what the listed sources support.
+Sources:
+1. AI lab releases new model — Company announced a new assistant release. (https://example.com/ai-model)
+2. Chip supplier expands AI capacity — Demand for AI chips is rising. (https://example.com/ai-chips)`,
+	}
+	got := completeToolAnswer("Let me search the web for more AI stories to round this out.", rag)
+	if strings.Contains(got, `{"`) || strings.Contains(got, "Query intent:") {
+		t.Fatalf("expected readable fallback without raw/internal search context, got %q", got)
+	}
+	if !strings.Contains(got, "AI lab releases new model") || !strings.Contains(got, "https://example.com/ai-model") {
+		t.Fatalf("expected available web sources in fallback, got %q", got)
+	}
+	if !strings.Contains(got, "Unavailable: news.") {
+		t.Fatalf("expected unavailable news disclosure, got %q", got)
+	}
+}
+
+func TestFormatToolResultNewsHeadlinesStaysReadable(t *testing.T) {
+	result := "Latest headlines — 1 across 1 topics.\n\n[tech] AI lab releases a new model — Useful summary (source: Example, url: https://example.com/ai)"
+	got := formatToolResult("news_headlines", result, nil)
+	if !strings.Contains(got, "Current request date:") {
+		t.Fatalf("expected current date context, got %q", got)
+	}
+	if !strings.Contains(got, "AI lab releases a new model") || strings.Contains(got, `{"`) {
+		t.Fatalf("expected readable news_headlines context, got %q", got)
 	}
 }
 

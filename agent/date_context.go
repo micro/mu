@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -16,6 +17,9 @@ func currentDateContext(now time.Time) string {
 func withCurrentDateContext(text string) string {
 	if text == "" {
 		return "Current request date: " + currentDateContext(time.Now().UTC()) + "."
+	}
+	if strings.Contains(text, "Current request date:") {
+		return text
 	}
 	return "Current request date: " + currentDateContext(time.Now().UTC()) + ".\n" + text
 }
