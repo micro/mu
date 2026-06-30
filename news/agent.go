@@ -97,7 +97,16 @@ func HeadlinesText(topic string, limit int) string {
 		if desc := strings.TrimSpace(p.Description); desc != "" {
 			line += " — " + desc
 		}
-		fmt.Fprintf(&sb, "%s (id: %s)\n", line, p.ID)
+		if p.URL != "" {
+			line += fmt.Sprintf(" (source: %s, url: %s", getDomain(p.URL), p.URL)
+			if p.ID != "" {
+				line += fmt.Sprintf(", id: %s", p.ID)
+			}
+			line += ")"
+		} else if p.ID != "" {
+			line += fmt.Sprintf(" (id: %s)", p.ID)
+		}
+		fmt.Fprintln(&sb, line)
 	}
 	return sb.String()
 }
