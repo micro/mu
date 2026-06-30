@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	gmagent "go-micro.dev/v6/agent"
@@ -17,6 +18,8 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 )
+
+var nativeAgentSeq atomic.Uint64
 
 // nativeEnabled reports whether the native go-micro agent path is on. mu is an
 // agent platform, so the go-micro agent is the default. Set AGENT_NATIVE to a
@@ -123,12 +126,19 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		question = hb.String()
 	}
 
+	// Use a fresh named agent for each request. Some go-micro providers keep
+	// per-agent conversation state keyed by name, so reusing a stable "assistant"
+	// name can leak prior independent prompts into fresh guest requests.
 	toolWrappers := append([]gmai.ToolWrapper{injectAccount(accountID)}, wrappers...)
-	a = service.NewAgent("assistant", sys, "atlascloud", key, nativeServices(opts.Public),
+	a = service.NewAgent(nativeAgentInstanceName(), sys, "atlascloud", key, nativeServices(opts.Public),
 		gmagent.Model(ai.ModelDeepSeekPro),
 		gmagent.MaxSteps(6),
 		gmagent.WrapTool(toolWrappers...))
 	return a, question, true
+}
+
+func nativeAgentInstanceName() string {
+	return fmt.Sprintf("assistant-%d-%d", time.Now().UTC().UnixNano(), nativeAgentSeq.Add(1))
 }
 
 // queryNative answers using a go-micro agent wired to the registered domain
