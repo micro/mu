@@ -109,7 +109,7 @@ func (a *Agent) Execute(accountID, prompt string, public bool) (string, error) {
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
 	synthSystem := a.SystemPrompt + "\n\nToday is " + today + "."
 	if len(results) > 0 {
-		synthSystem += "\n\nUse the tool results below to answer. Be concise."
+		synthSystem += "\n\nUse the tool results below to answer. Be concise. For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one."
 	}
 	if !public && userCtx != "" {
 		synthSystem += "\n\nUser context:\n" + userCtx

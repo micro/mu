@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	gmagent "go-micro.dev/v6/agent"
@@ -17,6 +18,8 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 )
+
+var nativeAgentSeq atomic.Uint64
 
 // nativeEnabled reports whether the native go-micro agent path is on. mu is an
 // agent platform, so the go-micro agent is the default. Set AGENT_NATIVE to a
@@ -99,6 +102,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		"Use the available tools for live or personal data (weather, news, market prices, " +
 		"social, video, blog, web search, trading, and recall of the user's own news/mail). " +
 		"Quote exact values from tool results. Be concise and conversational. " +
+		"For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one. " +
 		"After using tools, always provide the final answer or state exactly what is unavailable; " +
 		"never stop at progress narration like let me check or I will pull that data. " +
 		"If the user asks about weather without a location, default to London (lat 51.5074, lon -0.1278)."
@@ -123,12 +127,19 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		question = hb.String()
 	}
 
+	// Use a fresh named agent for each request. Some go-micro providers keep
+	// per-agent conversation state keyed by name, so reusing a stable "assistant"
+	// name can leak prior independent prompts into fresh guest requests.
 	toolWrappers := append([]gmai.ToolWrapper{injectAccount(accountID)}, wrappers...)
-	a = service.NewAgent("assistant", sys, "atlascloud", key, nativeServices(opts.Public),
+	a = service.NewAgent(nativeAgentInstanceName(), sys, "atlascloud", key, nativeServices(opts.Public),
 		gmagent.Model(ai.ModelDeepSeekPro),
 		gmagent.MaxSteps(6),
 		gmagent.WrapTool(toolWrappers...))
 	return a, question, true
+}
+
+func nativeAgentInstanceName() string {
+	return fmt.Sprintf("assistant-%d-%d", time.Now().UTC().UnixNano(), nativeAgentSeq.Add(1))
 }
 
 // queryNative answers using a go-micro agent wired to the registered domain

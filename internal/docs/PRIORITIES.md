@@ -21,10 +21,14 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#831 Make news-backed agent answers user-readable when one provider is unavailable.](https://github.com/micro/mu/issues/831)** The top remaining core-loop friction is graceful mixed-provider synthesis: on 2026-06-30 the live guest `/agent` loop for “What are the latest AI news headlines today?” called news and web search, but returned raw escaped search context plus “Unavailable: news” instead of readable source-linked bullets. Keep public contracts and provider integrations unchanged, synthesize from any usable provider context, and disclose unavailable providers without exposing JSON or internal model-ready payloads.
+1. **[#851 Deduplicate and label mixed-source news surfaces.](https://github.com/micro/mu/issues/851)** The top remaining refinement gap is trust and scanability in news surfaces, not the agent answer itself: on 2026-06-30 guest `/agent` prompts for technology news return current, linked, well-formatted answers quickly, but `/news` still shows duplicate stories and interleaves non-news/reminder-style entries as indistinguishable headlines. Keep the public `/agent` and `/news` contracts unchanged, preserve chronological/source-linked news, and make duplicate or mixed-source feed content collapse or label cleanly so the first-run news experience feels intentional instead of noisy.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Article links preserved in live news agent answers.** Fresh guest technology-news prompts now complete quickly with readable, grounded headlines and article URLs in the final answer, closing #846 / PR #849.
+- ✅ **News-backed answers restored when feeds are partially unavailable.** Live guest technology-news prompts now complete with readable headlines from usable provider context instead of only an unavailable-state response, closing #841 / PR #844.
+- ✅ **Fresh guest prompt isolation.** Independent guest `/agent` requests no longer leak prior topic context into unrelated prompts, closing #836 / PR #839.
+- ✅ **Mixed-provider news fallback made user-readable.** News-backed agent answers now synthesize readable output from usable provider context and disclose unavailable providers without raw internal payloads, closing #831 / PR #834.
 - ✅ **Impossible weather dates fixed.** Weather-backed synthesis now anchors forecast context to real provider dates and avoids fabricated invalid calendar dates, closing #824 / PR #827 / PR #829.
 - ✅ **Source-linked news answers.** News-backed synthesis now includes readable source names and URLs instead of opaque internal ids, closing #819 / PR #822.
 - ✅ **Grounded web-search answers.** Web-search synthesis now preserves query intent, includes source URLs in the model-ready context, and asks for refinement when weak results do not support an answer, closing #812 / #814 / PR #815.

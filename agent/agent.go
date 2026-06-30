@@ -963,6 +963,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"The tool results below come from live data feeds. For prompts about today, latest, current, or now, anchor the answer to the current date above; do not label today as a different date unless a provider timestamp explicitly proves staleness, and disclose that staleness. Use article publication dates when reasoning about recency. For weather, use the dated forecast rows exactly and never invent calendar dates or weekdays; if the date is ambiguous or absent, say so.\n\n" +
 			"Answer the user's question using the tool results provided below.\n\n" +
 			"For web_search results, preserve the user's query intent exactly, cite the listed source URLs, and if confidence is low say the results do not clearly support the requested answer and ask for a refinement.\n\n" +
+			"For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one.\n\n" +
 			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
 			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data — " +
 			"it will be outdated. If no tool result contains the requested real-time data, say it is unavailable.\n\n" +

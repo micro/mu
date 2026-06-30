@@ -35,7 +35,7 @@ func HeadlinesText(topic string, limit int) string {
 		if p == nil || strings.TrimSpace(p.Title) == "" {
 			continue
 		}
-		if topic != "" && !strings.Contains(strings.ToLower(p.Category), topic) {
+		if topic != "" && !postMatchesNewsTopic(p, topic) {
 			continue
 		}
 		if _, ok := byCat[p.Category]; !ok {
@@ -109,6 +109,44 @@ func HeadlinesText(topic string, limit int) string {
 		fmt.Fprintln(&sb, line)
 	}
 	return sb.String()
+}
+
+func postMatchesNewsTopic(p *Post, topic string) bool {
+	if p == nil {
+		return false
+	}
+	haystack := strings.ToLower(strings.Join([]string{
+		p.Category,
+		p.Title,
+		p.Description,
+		p.Content,
+	}, " "))
+	for _, term := range newsTopicTerms(topic) {
+		if strings.Contains(haystack, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func newsTopicTerms(topic string) []string {
+	topic = strings.TrimSpace(strings.ToLower(topic))
+	if topic == "" {
+		return nil
+	}
+	terms := []string{topic}
+	for _, field := range strings.Fields(topic) {
+		if field != topic {
+			terms = append(terms, field)
+		}
+	}
+	if strings.Contains(topic, "technology") {
+		terms = append(terms, "tech", "ai", "artificial intelligence", "machine learning", "model", "software")
+	}
+	if topic == "ai" || strings.Contains(topic, "artificial intelligence") {
+		terms = append(terms, "ai", "artificial intelligence", "machine learning", "model", "llm")
+	}
+	return terms
 }
 
 // ArticleText returns a single news article in full — title, source, summary

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"strings"
 	"testing"
 
 	"mu/internal/settings"
@@ -23,5 +24,20 @@ func TestNativeEnabledDefault(t *testing.T) {
 	settings.Set("AGENT_NATIVE", "on")
 	if !nativeEnabled() {
 		t.Fatal("AGENT_NATIVE=on should keep it enabled")
+	}
+}
+
+func TestNativeAgentInstanceNameIsUnique(t *testing.T) {
+	first := nativeAgentInstanceName()
+	second := nativeAgentInstanceName()
+
+	if first == "" || second == "" {
+		t.Fatal("native agent instance names should not be empty")
+	}
+	if first == second {
+		t.Fatalf("native agent instance names should be unique, got %q twice", first)
+	}
+	if !strings.HasPrefix(first, "assistant-") || !strings.HasPrefix(second, "assistant-") {
+		t.Fatalf("native agent instance names should keep assistant prefix, got %q and %q", first, second)
 	}
 }
