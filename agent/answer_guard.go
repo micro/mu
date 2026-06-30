@@ -2,6 +2,14 @@ package agent
 
 import "strings"
 
+func unavailableToolMessage(tool string) string {
+	name := strings.TrimSpace(tool)
+	if name == "" {
+		name = "source"
+	}
+	return name + " is unavailable right now. Use any other available live results to answer, and mention this unavailable source briefly without exposing internal payloads."
+}
+
 // completeToolAnswer prevents the agent from returning only progress narration
 // after tools have already produced usable live context. LLMs occasionally stop
 // at phrases like "Let me pull that data" even though the tool calls are done;
@@ -95,7 +103,7 @@ func meaningfulLines(body string, limit int) []string {
 			continue
 		}
 		line = strings.TrimLeft(line, "-• ")
-		if line == "" {
+		if line == "" || isFallbackMetadataLine(line) {
 			continue
 		}
 		if len([]rune(line)) > 280 {
@@ -108,6 +116,21 @@ func meaningfulLines(body string, limit int) []string {
 		}
 	}
 	return lines
+}
+
+func isFallbackMetadataLine(line string) bool {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	prefixes := []string{
+		"query intent:",
+		"confidence:",
+		"sources:",
+	}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func isUnavailableToolResult(body string) bool {

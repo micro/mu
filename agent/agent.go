@@ -184,6 +184,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		Formatted string
 	}
 	var results []toolResult
+	var unavailableTools []string
 
 	for _, tc := range toolCalls {
 		if tc.Tool == "" {
@@ -194,6 +195,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		}
 		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
+			unavailableTools = append(unavailableTools, tc.Tool)
 			continue
 		}
 		if len(text) > 8000 {
@@ -208,6 +210,9 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		ragText := formatToolResult(res.Name, res.Result, res.Args)
 		results[i].Formatted = ragText
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
+	}
+	for _, tool := range unavailableTools {
+		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", tool, unavailableToolMessage(tool)))
 	}
 
 	today := currentDateContext(time.Now().UTC())
@@ -875,6 +880,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Formatted string // pre-formatted RAG text, also used for reference rendering
 	}
 	var results []toolResult
+	var unavailableTools []string
 
 	for _, tc := range toolCalls {
 		if tc.Tool == "" {
@@ -889,6 +895,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		text, isErr, execErr := api.ExecuteTool(r, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
 			app.Log("agent", "Tool %s failed: err=%v isErr=%v response=%.200s", tc.Tool, execErr, isErr, text)
+			unavailableTools = append(unavailableTools, tc.Tool)
 			sse(w, map[string]any{
 				"type":    "tool_done",
 				"name":    tc.Tool,
@@ -935,6 +942,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		ragText := formatToolResult(res.Name, res.Result, res.Args)
 		results[i].Formatted = ragText
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
+	}
+	for _, tool := range unavailableTools {
+		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", tool, unavailableToolMessage(tool)))
 	}
 
 	today := currentDateContext(time.Now().UTC())
@@ -1364,6 +1374,8 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 	switch toolName {
 	case "news", "news_search":
 		return withCurrentDateContext(formatNewsResult(result))
+	case "news_headlines", "news_read":
+		return withCurrentDateContext(result)
 	case "video_search":
 		return formatVideoResult(result)
 	case "reminder":
