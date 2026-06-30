@@ -950,7 +950,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\)."
 	} else {
 		synthSystem = "You are a helpful assistant. Today's date is " + today + ". " +
-			"The tool results below come from live data feeds. For prompts about today, latest, current, or now, anchor the answer to the current date above; do not label today as a different date unless a provider timestamp explicitly proves staleness, and disclose that staleness. Use article publication dates when reasoning about recency.\n\n" +
+			"The tool results below come from live data feeds. For prompts about today, latest, current, or now, anchor the answer to the current date above; do not label today as a different date unless a provider timestamp explicitly proves staleness, and disclose that staleness. Use article publication dates when reasoning about recency. For weather, use the dated forecast rows exactly and never invent calendar dates or weekdays; if the date is ambiguous or absent, say so.\n\n" +
 			"Answer the user's question using the tool results provided below.\n\n" +
 			"For web_search results, preserve the user's query intent exactly, cite the listed source URLs, and if confidence is low say the results do not clearly support the requested answer and ask for a refinement.\n\n" +
 			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
