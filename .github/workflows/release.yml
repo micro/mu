@@ -1,15 +1,21 @@
 name: Release
 
-# Cut a release by pushing a version tag, e.g.:
-#   git tag v0.1.0 && git push origin v0.1.0
-# This cross-compiles the single Mu binary for linux/macOS (amd64+arm64) and
-# attaches them to the GitHub release as mu-<os>-<arch> — the exact names
-# install.sh downloads on machines without Go.
+# Cut a release one of two ways:
+#   - push a version tag:  git tag v0.30.0 && git push origin v0.30.0
+#   - or run this workflow manually (Actions tab / dispatch) with a tag input
+# Either way it cross-compiles the single Mu binary for linux/macOS
+# (amd64+arm64) and attaches them to the GitHub release as mu-<os>-<arch> —
+# the exact names install.sh downloads on machines without Go.
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to cut (e.g. v0.30.0)'
+        required: true
 
 permissions:
   contents: write
@@ -23,6 +29,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build binaries
         run: |
@@ -39,10 +54,12 @@ jobs:
       - name: Publish release with binaries
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          # Create the release if it doesn't exist yet; otherwise (re-run)
-          # overwrite the attached binaries.
-          gh release create "${GITHUB_REF_NAME}" dist/* \
-            --title "${GITHUB_REF_NAME}" \
+          # Creates the tag (at this commit) and release if missing; on a
+          # re-run, just overwrites the attached binaries.
+          gh release create "${TAG}" dist/* \
+            --target "${GITHUB_SHA}" \
+            --title "${TAG}" \
             --generate-notes \
-          || gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
+          || gh release upload "${TAG}" dist/* --clobber
