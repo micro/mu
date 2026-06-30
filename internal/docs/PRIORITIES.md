@@ -21,7 +21,7 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#787 Fix malformed bold text in streamed agent answer lists.](https://github.com/micro/mu/issues/787)** The highest-value live regression is in the core guest ask → answer loop: a brief weather answer streams correctly, then final HTML can show stray markdown delimiters (for example `*London today:** ...`). Fix the markdown normalization/conversion path and cover it with CI-verifiable tests so web and chat clients show clean answers.
+1. **[#792 Return real weather answers instead of progress-only fallbacks.](https://github.com/micro/mu/issues/792)** The highest-value live regression is still in the core guest ask → answer loop: a common weather prompt can finish with only a progress placeholder (for example, `Let me pull the latest for you.`) instead of conditions/forecast details. Ensure weather tool results are synthesized into the final answer, or show a clear provider-unavailable message, with CI-verifiable coverage.
 
 ### Already shipped (do not re-queue)
 
