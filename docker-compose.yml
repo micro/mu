@@ -2,15 +2,19 @@ services:
   mu:
     build: .
     ports:
-      - "8081:8081"
       - "8080:8080"
     volumes:
       - mu-data:/data
     environment:
       - DATA_DIR=/data
+      # Make yourself admin so /admin/env is reachable. Unset = the first
+      # account created on a fresh instance becomes admin automatically.
+      # - ADMIN=you@example.com
       # Choose one AI provider:
       # Claude (cloud)
       # - ANTHROPIC_API_KEY=your-key
+      # Atlas Cloud / any OpenAI-compatible endpoint
+      # - ATLAS_API_KEY=your-key
       # Ollama (local)
       # - OPENAI_BASE_URL=http://host.docker.internal:11434/v1
       # - OPENAI_API_KEY=ollama

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -88,10 +89,43 @@ func Create(acc *Account) error {
 
 	acc.Secret = string(hash)
 
+	// Admin bootstrap for self-hosting: without this a fresh instance has no
+	// admin and /admin/env is unreachable. The operator named in the ADMIN env
+	// var (comma-separated ids/usernames/emails) is made an admin; if ADMIN is
+	// unset, the very first account on a fresh instance becomes admin.
+	if shouldBootstrapAdmin(acc, len(accounts) == 0) {
+		acc.Admin = true
+	}
+
 	accounts[acc.ID] = acc
 	data.SaveJSON("accounts.json", accounts)
 
 	return nil
+}
+
+// shouldBootstrapAdmin reports whether a newly created account should be granted
+// admin. ADMIN (or MU_ADMIN) explicitly lists admins; when neither is set the
+// first account on an empty instance is bootstrapped so the operator can reach
+// /admin/env. An existing admin is never demoted (this only runs at creation).
+func shouldBootstrapAdmin(acc *Account, isFirst bool) bool {
+	list := os.Getenv("ADMIN")
+	if list == "" {
+		list = os.Getenv("MU_ADMIN")
+	}
+	if list == "" {
+		return isFirst // no explicit config — bootstrap the first account
+	}
+	for _, want := range strings.Split(list, ",") {
+		want = strings.ToLower(strings.TrimSpace(want))
+		if want == "" {
+			continue
+		}
+		if want == strings.ToLower(acc.ID) || want == strings.ToLower(acc.Name) ||
+			(acc.Email != "" && want == strings.ToLower(acc.Email)) {
+			return true
+		}
+	}
+	return false // ADMIN set but this account isn't on the list
 }
 
 func Delete(acc *Account) error {

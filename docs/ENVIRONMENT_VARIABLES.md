@@ -1,12 +1,40 @@
 # Environment Variables
 
-## AI/Chat Configuration
+## Admin
 
-Mu uses Anthropic Claude for all AI features.
+Configuration at `/admin/env` requires an admin account. Set `ADMIN` before
+first run, then sign up with a matching username/email; if `ADMIN` is unset the
+first account created on a fresh instance becomes admin automatically.
 
 ```bash
+export ADMIN="you@example.com"   # comma-separated ids/usernames/emails
+```
+
+## AI/Chat Configuration
+
+The agent and chat need **one** AI provider. Pick any of:
+
+```bash
+# Anthropic Claude (cloud)
 export ANTHROPIC_API_KEY="your-anthropic-api-key"
-export ANTHROPIC_MODEL="claude-sonnet-4-6"  # Default model
+export ANTHROPIC_MODEL="claude-sonnet-4-6"      # optional, default model
+
+# Atlas Cloud / DeepSeek (cloud)
+export ATLAS_API_KEY="your-atlas-api-key"
+
+# Ollama or any OpenAI-compatible endpoint (local, free, private)
+export OPENAI_BASE_URL="http://localhost:11434/v1"
+export OPENAI_API_KEY="ollama"
+```
+
+Without one of these, the agent, chat and AI summaries are disabled (the rest of
+the UI still works). micro.mu runs on Atlas Cloud.
+
+## Web Search Configuration
+
+```bash
+# Brave Search API key — required for web_search and the /search page
+export BRAVE_API_KEY="your-brave-api-key"
 ```
 
 ## YouTube Configuration
@@ -171,8 +199,13 @@ export MAIL_SELECTOR="default"
 | `MU_DOMAIN` | `localhost` | Domain for ActivityPub federation (falls back to `MAIL_DOMAIN`) |
 | `MU_USE_SQLITE` | - | Set to `1` to store search index in SQLite with FTS5 |
 | `NOTES` | on | Mu posts its own story to its own blog on a low cadence; set to `off`/`false`/`0`/`no` to disable |
-| `ANTHROPIC_API_KEY` | - | Anthropic API key for AI features (required) |
+| `ADMIN` | - | Comma-separated ids/usernames/emails granted admin (else first account is admin) |
+| `ANTHROPIC_API_KEY` | - | Anthropic API key (one AI provider required: this, `ATLAS_API_KEY`, or `OPENAI_BASE_URL`) |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-6` | Anthropic model name |
+| `ATLAS_API_KEY` | - | Atlas Cloud / DeepSeek API key (alternative AI provider) |
+| `OPENAI_BASE_URL` | - | OpenAI-compatible endpoint (e.g. Ollama at `http://localhost:11434/v1`) |
+| `OPENAI_API_KEY` | - | API key for the OpenAI-compatible endpoint (`ollama` for local Ollama) |
+| `BRAVE_API_KEY` | - | Brave Search API key — required for `web_search` and the `/search` page |
 | `YOUTUBE_API_KEY` | - | YouTube API key for video functionality |
 | `GOOGLE_API_KEY` | - | Google Places API key for enhanced places search |
 | `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |

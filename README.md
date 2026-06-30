@@ -149,9 +149,27 @@ mu --serve
 # or Claude (cloud)
 export ANTHROPIC_API_KEY=xxx
 mu --serve
+
+# or Atlas Cloud / any OpenAI-compatible endpoint
+export ATLAS_API_KEY=xxx
+mu --serve
 ```
 
-Open http://localhost:8081. Configure everything else from `/admin/env` in the browser.
+Open http://localhost:8080.
+
+### Become the admin
+
+Configuration lives at `/admin/env`, which needs an admin account. Name yourself
+admin before first run, then sign up with that username/email:
+
+```bash
+export ADMIN=you@example.com   # comma-separated ids/usernames/emails
+mu --serve
+```
+
+If `ADMIN` is unset, the **first account** created on a fresh instance becomes
+admin automatically. Either way, once you're admin you can set every other key
+(YouTube, Brave search, weather, mail/DKIM…) from `/admin/env` in the browser.
 
 See [Installation guide](docs/INSTALLATION.md) for full setup.
 
