@@ -802,6 +802,12 @@ func GetLatestVideos(n int) []*Result {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
+	// Don't let browsers (esp. mobile, which caches HTML heuristically when no
+	// cache headers are sent) hold a stale listing/search page. Older pages
+	// linked videos to YouTube directly; without this they keep serving those
+	// external links and miss the internal /video?id= watch page (audio mode).
+	w.Header().Set("Cache-Control", "no-cache")
+
 	ct := r.Header.Get("Content-Type")
 
 	// create head
