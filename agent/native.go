@@ -240,8 +240,9 @@ func (r *nativeToolRecorder) wrap(next gmai.ToolHandler) gmai.ToolHandler {
 			return res
 		}
 		title := nativeToolTitle(call.Name)
+		content := formatToolResult(nativeToolFormatterName(call.Name), res.Content, nil)
 		r.mu.Lock()
-		r.parts = append(r.parts, "### "+title+"\n"+res.Content)
+		r.parts = append(r.parts, "### "+title+"\n"+content)
 		r.mu.Unlock()
 		return res
 	}
@@ -255,11 +256,36 @@ func (r *nativeToolRecorder) ragParts() []string {
 	return parts
 }
 
+func nativeToolFormatterName(name string) string {
+	parts := strings.Split(strings.ToLower(strings.TrimSpace(name)), "_")
+	if len(parts) >= 2 {
+		svc, method := parts[0], parts[1]
+		switch svc {
+		case "news":
+			switch method {
+			case "search":
+				return "news_search"
+			case "headlines":
+				return "news_headlines"
+			default:
+				return "news"
+			}
+		case "search":
+			return "web_search"
+		}
+	}
+	if len(parts) > 0 && parts[0] != "" {
+		return parts[0]
+	}
+	return name
+}
+
 func nativeToolTitle(name string) string {
 	svc := name
 	if i := strings.IndexByte(name, '_'); i > 0 {
 		svc = name[:i]
 	}
+	svc = strings.ToLower(svc)
 	switch svc {
 	case "weather":
 		return "weather"
