@@ -1,6 +1,9 @@
 package chat
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestHandlePatternMatchRecognizesKnownPricePromptsWithoutData(t *testing.T) {
 	tests := []struct {
@@ -49,5 +52,21 @@ func TestHandlePatternMatchIgnoresUnsupportedPrompts(t *testing.T) {
 				t.Fatalf("handlePatternMatch(%q) = %q, want empty string", content, got)
 			}
 		})
+	}
+}
+
+func TestGuestChatAuthNoticeExplainsLoginAndAgentFallback(t *testing.T) {
+	html := guestChatAuthNotice()
+
+	for _, want := range []string{
+		"Sign in to use saved chat.",
+		"/agent",
+		"Try Mu without an account",
+		"/login?redirect=/chat",
+		"/signup?redirect=/chat",
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("guest chat auth notice missing %q in %s", want, html)
+		}
 	}
 }

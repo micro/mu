@@ -29,6 +29,7 @@ var Template = `
   <div class="topic-tabs">%s</div>
 </div>
 <div id="messages"></div>
+%s
 <form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
 <input id="context" name="context" type="hidden">
 <input id="topic" name="topic" type="hidden">
@@ -1372,11 +1373,24 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	summariesJSON, _ := json.Marshal(summariesData)
 	roomJSON, _ := json.Marshal(roomData)
 
-	tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs), r)
+	guestNotice := ""
+	if _, acc := auth.TrySession(r); acc == nil {
+		guestNotice = guestChatAuthNotice()
+	}
+
+	tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs, guestNotice), r)
 
 	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var roomData = %s;</script></body>`, summariesJSON, roomJSON), 1)
 
 	w.Write([]byte(tmpl))
+}
+
+func guestChatAuthNotice() string {
+	return `<div id="chat-auth-notice" class="notice">
+  <strong>Sign in to use saved chat.</strong>
+  <p>This room keeps conversation history for your account, so sending here needs a login. You can still try Mu without an account in the public agent.</p>
+  <p><a class="link" href="/agent">Try Mu without an account</a> · <a class="link" href="/login?redirect=/chat">Log in</a> · <a class="link" href="/signup?redirect=/chat">Sign up</a></p>
+</div>`
 }
 
 // handlePostChat handles POST /chat - send a chat message
