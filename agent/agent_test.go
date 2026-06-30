@@ -1,9 +1,12 @@
 package agent
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
+
+	gmai "go-micro.dev/v6/ai"
 )
 
 func TestPlacesMapURL_QueryAndNear(t *testing.T) {
@@ -632,6 +635,22 @@ func TestCompleteToolAnswerWithoutToolsDoesNotOverride(t *testing.T) {
 	got := completeToolAnswer(want, nil)
 	if got != want {
 		t.Fatalf("expected no override without tool results, got %q", got)
+	}
+}
+
+func TestNativeToolRecorderFeedsProgressFallback(t *testing.T) {
+	recorder := newNativeToolRecorder()
+	handler := recorder.wrap(func(_ context.Context, call gmai.ToolCall) gmai.ToolResult {
+		return gmai.ToolResult{Content: "{\"summary\":\"Weather for London. Now: 14C, light rain.\"}"}
+	})
+
+	handler(context.Background(), gmai.ToolCall{Name: "weather_Forecast"})
+	got := completeToolAnswer("Let me pull the latest for you.", recorder.ragParts())
+	if strings.Contains(strings.ToLower(got), "let me pull") {
+		t.Fatalf("expected weather tool payload to replace progress narration, got %q", got)
+	}
+	if !strings.Contains(got, "**weather**") || !strings.Contains(got, "14C") {
+		t.Fatalf("expected fallback to include weather result, got %q", got)
 	}
 }
 
