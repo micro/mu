@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#846 Preserve article links in live news agent answers.](https://github.com/micro/mu/issues/846)** The top remaining core-loop friction is actionability and trust in current-events answers: on 2026-06-30 a fresh guest `/agent` prompt for “What are the top technology news stories today?” now completes quickly and synthesizes readable, grounded headlines, but the final answer names sources without article URLs. Keep the public `/agent` contract unchanged, preserve the existing no-fabrication/degraded-state behavior, and carry upstream article URLs through topic/fallback synthesis into the rendered answer whenever links are available.
+1. **[#851 Deduplicate and label mixed-source news surfaces.](https://github.com/micro/mu/issues/851)** The top remaining refinement gap is trust and scanability in news surfaces, not the agent answer itself: on 2026-06-30 guest `/agent` prompts for technology news return current, linked, well-formatted answers quickly, but `/news` still shows duplicate stories and interleaves non-news/reminder-style entries as indistinguishable headlines. Keep the public `/agent` and `/news` contracts unchanged, preserve chronological/source-linked news, and make duplicate or mixed-source feed content collapse or label cleanly so the first-run news experience feels intentional instead of noisy.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Article links preserved in live news agent answers.** Fresh guest technology-news prompts now complete quickly with readable, grounded headlines and article URLs in the final answer, closing #846 / PR #849.
 - ✅ **News-backed answers restored when feeds are partially unavailable.** Live guest technology-news prompts now complete with readable headlines from usable provider context instead of only an unavailable-state response, closing #841 / PR #844.
 - ✅ **Fresh guest prompt isolation.** Independent guest `/agent` requests no longer leak prior topic context into unrelated prompts, closing #836 / PR #839.
 - ✅ **Mixed-provider news fallback made user-readable.** News-backed agent answers now synthesize readable output from usable provider context and disclose unavailable providers without raw internal payloads, closing #831 / PR #834.
