@@ -335,6 +335,25 @@ func TestShortcutToolCallsMarketMoversAvoidsNewsPlanning(t *testing.T) {
 	}
 }
 
+func TestShortcutToolCallsLatestTechnologyNews(t *testing.T) {
+	for _, prompt := range []string{
+		"latest technology news",
+		"What is the latest AI news today?",
+		"current artificial intelligence news",
+	} {
+		got := shortcutToolCalls(prompt)
+		if len(got) != 1 {
+			t.Fatalf("expected one shortcut tool call for %q, got %#v", prompt, got)
+		}
+		if got[0].Tool != "news_search" {
+			t.Fatalf("expected news_search shortcut for %q, got %#v", prompt, got)
+		}
+		if got[0].Args["query"] != "technology news" {
+			t.Fatalf("expected technology news query for %q, got %#v", prompt, got[0].Args)
+		}
+	}
+}
+
 func TestSkipMarketMoverCompanionToolFiltersUnrequestedNews(t *testing.T) {
 	prompt := "What is moving in markets today?"
 	for _, tool := range []string{"news", "news_headlines", "news_search", "web_search", "recall"} {

@@ -821,7 +821,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// emitting tool start/end events. Falls through to the hand-rolled
 	// pipeline below if disabled, no provider is configured, or it fails
 	// before producing any output.
-	if nativeStreamEnabled() {
+	// Guest starter/live-data prompts with deterministic tool shortcuts should
+	// skip the native agent's initial model planning turn. The hand-rolled
+	// pipeline below can start the relevant tool immediately, which improves
+	// first visible progress for the first-run core loop without changing any
+	// public endpoint or tool contract.
+	preferShortcutPlanner := isGuest && len(shortcutToolCalls(req.Prompt)) > 0
+	if nativeStreamEnabled() && !preferShortcutPlanner {
 		nopts := QueryOpts{Public: isGuest}
 		for _, f := range conversationHistory {
 			if strings.TrimSpace(f.Prompt) == "" {
@@ -1128,6 +1134,10 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 	}
 
 	// Fuzzy matches for prompts with dynamic content
+	if isLatestTechnologyNewsPrompt(lower) {
+		return []shortcutToolCall{{Tool: "news_search", Args: map[string]any{"query": "technology news"}}}
+	}
+
 	if strings.Contains(lower, "unread email") || strings.Contains(lower, "unread mail") ||
 		(strings.Contains(lower, "read") && strings.Contains(lower, "mail")) ||
 		(strings.Contains(lower, "read") && strings.Contains(lower, "email")) {
@@ -1135,6 +1145,22 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 	}
 
 	return nil
+}
+
+func isLatestTechnologyNewsPrompt(lower string) bool {
+	hasRecency := strings.Contains(lower, "latest") ||
+		strings.Contains(lower, "today") ||
+		strings.Contains(lower, "current") ||
+		strings.Contains(lower, "happening")
+	if !hasRecency || !strings.Contains(lower, "news") {
+		return false
+	}
+	for _, topic := range []string{"tech", "technology", "ai", "artificial intelligence"} {
+		if strings.Contains(lower, topic) {
+			return true
+		}
+	}
+	return false
 }
 
 func toolCallKey(tool string, args map[string]any) string {
