@@ -190,6 +190,9 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		if tc.Tool == "" {
 			continue
 		}
+		if skipMarketMoverCompanionTool(prompt, tc.Tool) {
+			continue
+		}
 		if opts.Public && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
@@ -886,6 +889,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		if tc.Tool == "" {
 			continue
 		}
+		if skipMarketMoverCompanionTool(req.Prompt, tc.Tool) {
+			continue
+		}
 		if isGuest && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
@@ -1110,6 +1116,33 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 }
 
 // extractJSONArray extracts the first JSON array `[…]` from text produced by the AI.
+// skipMarketMoverCompanionTool keeps market-mover answers focused on price
+// data unless the user explicitly asks for explanatory news or cross-source
+// correlation. Planning can otherwise add broad news tools for "today" prompts,
+// which lets unrelated headlines bleed into a simple movers answer.
+func skipMarketMoverCompanionTool(prompt, tool string) bool {
+	if tool == "markets" || !isMarketMoverPrompt(prompt) || wantsMarketMoverExplanation(prompt) {
+		return false
+	}
+	return tool == "news" || tool == "news_headlines" || tool == "news_search" || tool == "web_search" || tool == "recall"
+}
+
+func isMarketMoverPrompt(prompt string) bool {
+	lower := strings.ToLower(prompt)
+	return strings.Contains(lower, "market") &&
+		(strings.Contains(lower, "moving") || strings.Contains(lower, "mover") || strings.Contains(lower, "move"))
+}
+
+func wantsMarketMoverExplanation(prompt string) bool {
+	lower := strings.ToLower(prompt)
+	for _, term := range []string{"why", "because", "explain", "reason", "driving", "driver", "catalyst", "news", "headline", "correlat"} {
+		if strings.Contains(lower, term) {
+			return true
+		}
+	}
+	return false
+}
+
 func extractJSONArray(text string) string {
 	start := strings.Index(text, "[")
 	end := strings.LastIndex(text, "]")
