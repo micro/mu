@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mu/internal/auth"
 )
 
 func TestWantsJSON(t *testing.T) {
@@ -216,6 +218,28 @@ func TestRenderHTML(t *testing.T) {
 	}
 	if !strings.Contains(result, "<p>content</p>") {
 		t.Error("expected body content")
+	}
+}
+
+func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
+	result := RenderHTML("Test", "A test page", "<p>content</p>")
+	if strings.Contains(result, `id="nav-account"`) {
+		t.Fatalf("guest nav should not render account link: %s", result)
+	}
+	if strings.Contains(result, `id="nav-logout"`) {
+		t.Fatalf("guest nav should not render logout link: %s", result)
+	}
+	if !strings.Contains(result, `id="nav-login"`) {
+		t.Fatalf("guest nav should render login link")
+	}
+}
+
+func TestRenderHTMLWithAuthNavShowsSignedInActions(t *testing.T) {
+	result := RenderHTMLWithLangAndAuth("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
+	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `Signed in as @alice`} {
+		if !strings.Contains(result, want) {
+			t.Fatalf("signed-in nav missing %q", want)
+		}
 	}
 }
 
