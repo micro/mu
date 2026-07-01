@@ -2,6 +2,7 @@ package weather
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,8 +34,23 @@ func formatForecastText(wf *WeatherForecast, now time.Time) string {
 		fmt.Fprintf(&sb, "Weather for %s.\n", wf.Location)
 	}
 	if c := wf.Current; c != nil {
-		fmt.Fprintf(&sb, "Now: %.0f°C (feels %.0f°C), %s, humidity %d%%, wind %.0f km/h.\n",
-			c.TempC, c.FeelsLikeC, c.Description, c.Humidity, c.WindKph)
+		details := []string{fmt.Sprintf("%.0f°C", c.TempC)}
+		if c.FeelsLikeC != 0 || c.TempC == 0 {
+			details = append(details, fmt.Sprintf("feels %.0f°C", c.FeelsLikeC))
+		}
+		if c.Description != "" {
+			details = append(details, c.Description)
+		}
+		if c.HumidityAvailable {
+			details = append(details, "humidity "+strconv.Itoa(c.Humidity)+"%")
+		}
+		if c.WindKphAvailable {
+			details = append(details, fmt.Sprintf("wind %.0f km/h", c.WindKph))
+		}
+		if !c.HumidityAvailable || !c.WindKphAvailable {
+			details = append(details, "some current observations unavailable")
+		}
+		fmt.Fprintf(&sb, "Now: %s.\n", strings.Join(details, ", "))
 	}
 	if len(wf.DailyItems) > 0 {
 		sb.WriteString("Dated daily forecast (provider timestamps):\n")
