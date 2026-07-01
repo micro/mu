@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Keep market-mover agent answers concise and fast** ([#920](https://github.com/micro/mu/issues/920)). Guest market prompts now produce readable, source-linked answers, but live review still found a slow, overlong mixed markets/news digest for “What is moving in markets today?”. Preserve `/agent` and service contracts while prioritizing actual movers/prices, using directly explanatory news only, and keeping provider-unavailable disclosures human-readable.
+1. **Filter unrelated headlines from market-mover answers** ([#927](https://github.com/micro/mu/issues/927)). Guest market prompts are now readable and stream a structured answer, but live review still found the answer mixing unrelated business/tech headlines into “What is moving in markets today?”. Preserve `/agent` and service contracts while keeping movers/prices first and only including news that directly explains a listed mover, index/sector move, or named asset/company.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Concise market-mover agent answers.** Guest market prompts now produce readable, source-linked answers rather than raw market payloads, closing #920.
 - ✅ **Mixed-source agent answers synthesized instead of raw tool payloads.** Mixed blog/social/search/news prompts now guard against raw JSON-like provider payloads and keep unavailable-provider disclosures human-readable, closing #915 / PR #918.
 - ✅ **Weather freshness disclosed in agent summaries.** Weather-backed agent summaries now include source/freshness context and stale/unavailable handling, closing #910 / PR #913.
 - ✅ **Chat topic summary freshness disclosed.** Guest `/chat` topic summaries now expose generated-at/source/status metadata, closing #904 / PR #907.
