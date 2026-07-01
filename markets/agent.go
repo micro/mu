@@ -21,6 +21,8 @@ func MarketsText(category string) string {
 
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Current request date: %s.\n", time.Now().UTC().Format("Monday, 2 January 2006 (2006-01-02, UTC)"))
+	updatedAt, stale, missing := marketsFreshness(priceData, assets)
+	fmt.Fprintf(&sb, "%s.\n", marketsFreshnessText(updatedAt, stale, missing))
 	fmt.Fprintf(&sb, "Live %s prices:\n", category)
 	found := 0
 	for _, symbol := range assets {
