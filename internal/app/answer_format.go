@@ -50,6 +50,7 @@ func NormalizeAnswerMarkdown(answer string) string {
 }
 
 func normalizeMarkdownLine(line string) string {
+	line = protectCurrencyDollars(line)
 	line = repairMalformedLeadingBold(line)
 	if heading, rest, ok := strings.Cut(line, " "); ok && isMarkdownHeading(heading) {
 		return heading + " " + strings.TrimSpace(rest)
@@ -85,7 +86,14 @@ func normalizeMarkdownLine(line string) string {
 	return line
 }
 
-var malformedLeadingBoldRe = regexp.MustCompile(`^\*([^*\n]+?:)\*\*(\s|$)`)
+var (
+	malformedLeadingBoldRe = regexp.MustCompile(`^\*([^*\n]+?:)\*\*(\s|$)`)
+	currencyDollarRe       = regexp.MustCompile(`\$(\d)`)
+)
+
+func protectCurrencyDollars(line string) string {
+	return currencyDollarRe.ReplaceAllString(line, "$\u2060$1")
+}
 
 func repairMalformedLeadingBold(line string) string {
 	return malformedLeadingBoldRe.ReplaceAllString(line, `**$1**$2`)

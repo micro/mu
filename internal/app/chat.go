@@ -123,6 +123,7 @@ if(!SESSION){
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function protectCurrencyDollars(s){return String(s||'').replace(/\$(?=\d)/g,'$\u2060');}
 
 var SUGGEST=['Give me a morning brief','What is moving in markets?','Weather in San Francisco','Find today\'s AI news'];
 function showSuggestions(){
@@ -209,7 +210,7 @@ function ask(q){
                 a.innerHTML='<div style="white-space:pre-wrap"><span id="mu-stream-out"></span><span class="mu-cursor"></span></div>';
               }
               var el=document.getElementById('mu-stream-out');
-              if(el)el.textContent=streamText;
+              if(el)el.textContent=protectCurrencyDollars(streamText);
               a.scrollIntoView({behavior:'smooth',block:'end'});
             }else if(ev.type==='response'){
               stopWork();
