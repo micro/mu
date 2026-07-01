@@ -182,11 +182,17 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	// Step 2: Execute tools
 	var ragParts []string
 	var toolsUsed []ToolUsed
+	seenToolCalls := map[string]bool{}
 
 	for _, tc := range toolCalls {
 		if tc.Tool == "" {
 			continue
 		}
+		key := toolCallKey(tc.Tool, tc.Args)
+		if seenToolCalls[key] {
+			continue
+		}
+		seenToolCalls[key] = true
 		if isGuest && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}

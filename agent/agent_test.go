@@ -314,6 +314,17 @@ func TestFormatToolResultMarketsRESTDataIncludesFreshnessDisclosure(t *testing.T
 	}
 }
 
+func TestToolCallKeyDedupesEquivalentArgs(t *testing.T) {
+	first := toolCallKey("markets", map[string]any{"category": "crypto", "limit": float64(10)})
+	second := toolCallKey("markets", map[string]any{"limit": float64(10), "category": "crypto"})
+	if first != second {
+		t.Fatalf("expected equivalent tool args to share a dedupe key: %q vs %q", first, second)
+	}
+	if first == toolCallKey("markets", map[string]any{"category": "futures", "limit": float64(10)}) {
+		t.Fatal("expected distinct market categories to keep distinct dedupe keys")
+	}
+}
+
 func TestShortcutToolCallsMarketMoversAvoidsNewsPlanning(t *testing.T) {
 	got := shortcutToolCalls("What is moving in markets today?")
 	if len(got) != 1 {
