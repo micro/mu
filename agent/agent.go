@@ -185,11 +185,17 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	}
 	var results []toolResult
 	var unavailableTools []string
+	seenToolCalls := map[string]bool{}
 
 	for _, tc := range toolCalls {
 		if tc.Tool == "" {
 			continue
 		}
+		key := toolCallKey(tc.Tool, tc.Args)
+		if seenToolCalls[key] {
+			continue
+		}
+		seenToolCalls[key] = true
 		if skipMarketMoverCompanionTool(prompt, tc.Tool) {
 			continue
 		}
@@ -544,14 +550,24 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	emitted := false
 	var captured strings.Builder
 	var nativeTools []string
+	startedTools := map[string]bool{}
+	endedTools := map[string]bool{}
 
 	answer, handled, err := streamNative(accountID, prompt, opts, StreamHooks{
 		ToolStart: func(label string) {
+			if startedTools[label] {
+				return
+			}
+			startedTools[label] = true
 			emitted = true
 			nativeTools = append(nativeTools, label)
 			sse(w, map[string]any{"type": "tool_start", "name": label, "message": label})
 		},
 		ToolEnd: func(label string) {
+			if endedTools[label] {
+				return
+			}
+			endedTools[label] = true
 			sse(w, map[string]any{"type": "tool_done", "name": label, "message": label + " — done"})
 		},
 		Token: func(tok string) {
@@ -884,11 +900,17 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	var results []toolResult
 	var unavailableTools []string
+	seenToolCalls := map[string]bool{}
 
 	for _, tc := range toolCalls {
 		if tc.Tool == "" {
 			continue
 		}
+		key := toolCallKey(tc.Tool, tc.Args)
+		if seenToolCalls[key] {
+			continue
+		}
+		seenToolCalls[key] = true
 		if skipMarketMoverCompanionTool(req.Prompt, tc.Tool) {
 			continue
 		}
@@ -1113,6 +1135,17 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 	}
 
 	return nil
+}
+
+func toolCallKey(tool string, args map[string]any) string {
+	if len(args) == 0 {
+		return strings.TrimSpace(tool)
+	}
+	b, err := json.Marshal(args)
+	if err != nil {
+		return strings.TrimSpace(tool)
+	}
+	return strings.TrimSpace(tool) + "\x00" + string(b)
 }
 
 // extractJSONArray extracts the first JSON array `[…]` from text produced by the AI.
