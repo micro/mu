@@ -21,11 +21,12 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Prevent MathJax mangling dollar prices in agent answers** ([#934](https://github.com/micro/mu/issues/934)). The guest market loop is now focused on movers, but live review of “What is moving in markets today?” still rendered a combined BTC/ETH/PAXG price line as inline MathJax instead of plain dollar prices. Preserve `/agent` and service contracts while ensuring market-style USD prices render as readable text in streamed and final answers.
-2. **Prevent MathJax mangling dollar amounts in blog cards** ([#939](https://github.com/micro/mu/issues/939)). Live review of `/blog` found the Daily Digest splitting “$1 billion” into broken MathJax delimiters, so the same first-run readability bug now affects a home/card-adjacent surface. Keep this just behind the agent-answer version because ask → answer is still the core loop, but fix the shared blog/card rendering path with a regression test and no public-contract changes.
+1. **Avoid duplicate market tool calls in guest market answers** ([#944](https://github.com/micro/mu/issues/944)). Live guest review of “What is moving in markets today?” returned a readable, correctly date-anchored answer, but the stream emitted four identical market-price tool passes and took about 19s before synthesis. Keep this at the top because markets are the most-recently exercised first-run loop and speed/clarity in ask → answer ranks above new surface area; preserve `/agent` and service contracts while coalescing redundant work and progress events.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Blog currency amounts protected from MathJax.** Blog/card rendering now protects dollar amounts such as “$1 billion” from MathJax delimiters, closing #939 / PR #942.
+- ✅ **Agent market prices protected from MathJax.** Guest market answers now keep dollar prices readable in streamed and final answers, closing #934 / PR #937.
 - ✅ **Filtered unrelated market-mover headlines.** Market-mover answers now keep movers/prices first and avoid unrelated business/tech headlines, closing #927 / PR #930 / PR #932.
 - ✅ **Concise market-mover agent answers.** Guest market prompts now produce readable, source-linked answers rather than raw market payloads, closing #920.
 - ✅ **Mixed-source agent answers synthesized instead of raw tool payloads.** Mixed blog/social/search/news prompts now guard against raw JSON-like provider payloads and keep unavailable-provider disclosures human-readable, closing #915 / PR #918.
