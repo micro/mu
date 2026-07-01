@@ -21,11 +21,12 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Restore live news-backed agent answers** ([#959](https://github.com/micro/mu/issues/959)). Live guest review on 2026-07-01 after PR #957 found markets and weather now emit progress promptly and stream readable answers, but `Find today's AI news` hit `news_search — unavailable` and ended with generic off-product news-site suggestions plus broad “what has been big lately” filler rather than grounded current headlines. Rank this first because the North Star protects correct, well-formatted current answers and graceful provider degradation for first-run guests; preserve `/agent`, MCP/A2A/REST, and provider env contracts while making news unavailability concise and useful.
+1. **Keep unavailable news fallbacks topic-specific** ([#964](https://github.com/micro/mu/issues/964)). Live guest review on 2026-07-01 after PR #962 found the core loop is materially better: `Find today's AI news` emits progress immediately, discloses `news_search — unavailable`, falls back to web search, streams a dated Markdown answer, and includes source links. The remaining first-run friction is precision: the fallback context broadened the ask to “technology news” and the answer stretched broad tech/sports items into AI relevance. Rank this first because the Now phase protects correct, well-formatted, fast answers and graceful provider degradation; keep `/agent`, MCP/A2A/REST, and provider env contracts unchanged while making the fallback preserve the user's specific topic.
 
 ### Already shipped (do not re-queue)
 
-- ✅ **Guest agent answer latency reduced.** Market/weather/news prompts now emit early progress and PR #957 reduced first-token latency for the market-mover path, closing #951 / PR #957; remaining news-provider unavailability is tracked in #959.
+- ✅ **Live news fallback restored when news_search is unavailable.** Guest `Find today's AI news` now emits early progress, discloses the unavailable news provider, falls back to web results, and streams a readable source-linked answer, closing #959 / PR #962; remaining topic precision is tracked in #964.
+- ✅ **Guest agent answer latency reduced.** Market/weather/news prompts now emit early progress and PR #957 reduced first-token latency for the market-mover path, closing #951 / PR #957; remaining unavailable-news topic precision is tracked in #964.
 - ✅ **Guest agent planning latency reduced.** Tool-backed guest prompts now emit early progress and avoid some duplicated planning work, closing #949 / PR #953; remaining answer-token latency is tracked in #951.
 - ✅ **Duplicate market tool calls avoided.** Guest market answers now use a single market-price pass before synthesis instead of repeated identical calls, closing #944 / PR #947.
 - ✅ **Blog currency amounts protected from MathJax.** Blog/card rendering now protects dollar amounts such as “$1 billion” from MathJax delimiters, closing #939 / PR #942.
