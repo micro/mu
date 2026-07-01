@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -149,6 +150,9 @@ func TopMovers(n int) string {
 	if n > len(movers) {
 		n = len(movers)
 	}
+	sort.SliceStable(movers, func(i, j int) bool {
+		return math.Abs(movers[i].change) > math.Abs(movers[j].change)
+	})
 
 	var parts []string
 	for _, m := range movers[:n] {
