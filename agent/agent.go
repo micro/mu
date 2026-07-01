@@ -981,6 +981,41 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", tool, unavailableToolMessage(tool)))
 	}
 
+	hasMarketsTool := false
+	for _, tc := range toolCalls {
+		if tc.Tool == "markets" {
+			hasMarketsTool = true
+			break
+		}
+	}
+	if useFastToolFallback(req.Prompt, isGuest, hasMarketsTool, ragParts) {
+		answer := app.NormalizeAnswerMarkdown(app.StripLatexDollars(synthesizeToolFallback(ragParts)))
+		rendered := app.RenderString(answer)
+		html := `<div class="card" id="agent-response">` + rendered + `</div>`
+		for _, res := range results {
+			if card := renderResultCard(res.Name, res.Result, res.Args); card != "" {
+				html += card
+			}
+		}
+		if len(results) > 0 {
+			html += `<div class="card" style="font-size:13px;"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`
+			for _, res := range results {
+				html += renderToolCallRef(res.Name, res.Args, res.Formatted)
+			}
+			html += `</div>`
+		}
+		updateFlow(flow.ID, func(f *Flow) {
+			f.Answer = answer
+			f.HTML = html
+			f.Status = "done"
+		})
+		sse(w, map[string]any{"type": "stream_start"})
+		sse(w, map[string]any{"type": "stream_token", "token": answer})
+		sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
+		sse(w, map[string]any{"type": "done"})
+		return
+	}
+
 	today := currentDateContext(time.Now().UTC())
 
 	var synthSystem string
@@ -1161,6 +1196,16 @@ func isLatestTechnologyNewsPrompt(lower string) bool {
 		}
 	}
 	return false
+}
+
+func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, ragParts []string) bool {
+	if !isGuest || !hasMarketsTool || len(ragParts) == 0 || !isMarketMoverPrompt(prompt) {
+		return false
+	}
+	if wantsMarketMoverExplanation(prompt) {
+		return false
+	}
+	return true
 }
 
 func toolCallKey(tool string, args map[string]any) string {
