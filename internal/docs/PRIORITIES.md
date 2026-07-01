@@ -22,6 +22,7 @@ and publishing marketing content. Those go to the human.
 ## Work queue (ranked)
 
 1. **Prevent MathJax mangling dollar prices in agent answers** ([#934](https://github.com/micro/mu/issues/934)). The guest market loop is now focused on movers, but live review of “What is moving in markets today?” still rendered a combined BTC/ETH/PAXG price line as inline MathJax instead of plain dollar prices. Preserve `/agent` and service contracts while ensuring market-style USD prices render as readable text in streamed and final answers.
+2. **Prevent MathJax mangling dollar amounts in blog cards** ([#939](https://github.com/micro/mu/issues/939)). Live review of `/blog` found the Daily Digest splitting “$1 billion” into broken MathJax delimiters, so the same first-run readability bug now affects a home/card-adjacent surface. Keep this just behind the agent-answer version because ask → answer is still the core loop, but fix the shared blog/card rendering path with a regression test and no public-contract changes.
 
 ### Already shipped (do not re-queue)
 
