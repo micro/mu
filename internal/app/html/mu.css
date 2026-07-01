@@ -1158,6 +1158,14 @@ body:has(#messages) #chat-back-link {
   user-select: none;
 }
 
+.summary-meta {
+  display: block;
+  margin-top: 4px;
+  color: #777;
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .summary-header:hover {
   background: #f0f0f0;
   border-radius: 8px;

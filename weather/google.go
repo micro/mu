@@ -28,6 +28,9 @@ var httpClient = &http.Client{Timeout: 15 * time.Second}
 // WeatherForecast holds the parsed forecast data returned by the Google Weather API.
 type WeatherForecast struct {
 	Location    string
+	Source      string
+	GeneratedAt time.Time
+	ObservedAt  time.Time
 	Current     *CurrentConditions
 	HourlyItems []HourlyItem
 	DailyItems  []DailyItem
@@ -198,7 +201,10 @@ func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
 		return nil, fmt.Errorf("failed to parse hourly weather response: %w", err)
 	}
 
-	forecast := &WeatherForecast{}
+	forecast := &WeatherForecast{
+		Source:      "Google Weather",
+		GeneratedAt: time.Now().UTC(),
+	}
 
 	// Parse daily items
 	for _, day := range dailyData.ForecastDays {
@@ -250,6 +256,7 @@ func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
 	// Derive current conditions from first hourly item if available
 	if len(forecast.HourlyItems) > 0 {
 		first := forecast.HourlyItems[0]
+		forecast.ObservedAt = first.Time.UTC()
 		forecast.Current = &CurrentConditions{
 			TempC:       first.TempC,
 			FeelsLikeC:  first.TempC,

@@ -54,6 +54,21 @@ func askLLM(prompt *ai.Prompt) (string, error) {
 }
 
 var summaries = map[string]string{}
+var summaryMeta = SummaryMetadata{}
+
+// SummaryMetadata describes when and how the generated topic summaries were refreshed.
+type SummaryMetadata struct {
+	GeneratedAt time.Time `json:"generated_at,omitempty"`
+	Source      string    `json:"source"`
+	Status      string    `json:"status"`
+}
+
+func currentSummaryMeta() SummaryMetadata {
+	if summaryMeta.Status == "" {
+		return SummaryMetadata{Source: "Mu indexed public content", Status: "unavailable"}
+	}
+	return summaryMeta
+}
 
 var topics = []string{}
 
@@ -1030,6 +1045,14 @@ func Load() {
 			app.Log("chat", "Error loading summaries: %v", err)
 		} else {
 			app.Log("chat", "Loaded %d summaries from disk", len(summaries))
+			if len(summaries) > 0 {
+				summaryMeta = SummaryMetadata{Source: "Mu indexed public content", Status: "cached"}
+			}
+		}
+	}
+	if b, err := data.LoadFile("chat_summaries_meta.json"); err == nil {
+		if err := json.Unmarshal(b, &summaryMeta); err != nil {
+			app.Log("chat", "Error loading summary metadata: %v", err)
 		}
 	}
 
@@ -1244,6 +1267,7 @@ func generateSummaries() {
 
 	mutex.Lock()
 	summaries = newSummaries
+	summaryMeta = SummaryMetadata{GeneratedAt: time.Now().UTC(), Source: "Mu indexed public content", Status: "fresh"}
 	mutex.Unlock()
 
 	// Save summaries to disk
@@ -1251,6 +1275,9 @@ func generateSummaries() {
 		app.Log("chat", "Error saving summaries: %v", err)
 	} else {
 		app.Log("chat", "Saved %d summaries to disk", len(summaries))
+	}
+	if err := data.SaveJSON("chat_summaries_meta.json", summaryMeta); err != nil {
+		app.Log("chat", "Error saving summary metadata: %v", err)
 	}
 
 	// Generate topic summaries every 4 hours (not hourly) to reduce LLM calls
@@ -1353,13 +1380,15 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	mutex.RLock()
 	topicsData := topics
 	summariesData := summaries
+	summaryMetaData := currentSummaryMeta()
 	mutex.RUnlock()
 
 	// Return JSON if requested
 	if app.WantsJSON(r) {
 		response := map[string]interface{}{
-			"topics":    topicsData,
-			"summaries": summariesData,
+			"topics":       topicsData,
+			"summaries":    summariesData,
+			"summary_meta": summaryMetaData,
 		}
 		if len(roomData) > 0 {
 			response["room"] = roomData
@@ -1371,6 +1400,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	// Return HTML
 	topicTabs := app.Head("chat", topicsData)
 	summariesJSON, _ := json.Marshal(summariesData)
+	summaryMetaJSON, _ := json.Marshal(summaryMetaData)
 	roomJSON, _ := json.Marshal(roomData)
 
 	guestNotice := ""
@@ -1380,7 +1410,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 
 	tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs, guestNotice), r)
 
-	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var roomData = %s;</script></body>`, summariesJSON, roomJSON), 1)
+	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var summaryMeta = %s; var roomData = %s;</script></body>`, summariesJSON, summaryMetaJSON, roomJSON), 1)
 
 	w.Write([]byte(tmpl))
 }
