@@ -73,6 +73,9 @@ func normalizeMarkdownLine(line string) string {
 			return prefix + " " + strings.TrimSpace(rest)
 		}
 	}
+	if rest, ok := strings.CutPrefix(line, "•"); ok && startsMarkdownListRest(rest) {
+		return "- " + strings.TrimSpace(rest)
+	}
 	if numbered := normalizeNumberedListLine(line); numbered != "" {
 		return numbered
 	}

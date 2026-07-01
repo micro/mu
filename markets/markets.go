@@ -26,15 +26,18 @@ var cardSnap *snapshot.Snapshot
 
 // PriceData holds price and 24h change for an asset
 type PriceData struct {
-	Price     float64 `json:"price"`
-	Change24h float64 `json:"change_24h"`
+	Price     float64   `json:"price"`
+	Change24h float64   `json:"change_24h"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	Source    string    `json:"source,omitempty"`
 }
 
 var (
-	marketsMutex    sync.RWMutex
-	marketsHTML     string
-	cachedPrices    map[string]float64
-	cachedPriceData map[string]PriceData
+	marketsMutex     sync.RWMutex
+	marketsHTML      string
+	cachedPrices     map[string]float64
+	cachedPriceData  map[string]PriceData
+	lastPriceRefresh time.Time
 )
 
 // cryptoGeckoIDs maps ticker symbols to CoinGecko asset IDs
@@ -93,6 +96,7 @@ func Load() {
 		if json.Unmarshal(b, &pd) == nil {
 			marketsMutex.Lock()
 			cachedPriceData = pd
+			lastPriceRefresh = latestPriceUpdate(pd)
 			marketsMutex.Unlock()
 		}
 	}
@@ -165,6 +169,7 @@ func refreshMarkets() {
 			marketsMutex.Lock()
 			cachedPrices = prices
 			cachedPriceData = priceData
+			lastPriceRefresh = time.Now().UTC()
 			marketsHTML = html
 			marketsMutex.Unlock()
 
@@ -218,6 +223,8 @@ func fetchPrices() (map[string]float64, map[string]PriceData) {
 			if change, ok := geckoChanges[geckoID]; ok {
 				pd.Change24h = change
 			}
+			pd.UpdatedAt = time.Now().UTC()
+			pd.Source = "Coinbase + CoinGecko"
 			priceData[symbol] = pd
 		}
 	}
@@ -246,6 +253,8 @@ func fetchPrices() (map[string]float64, map[string]PriceData) {
 				priceData[key] = PriceData{
 					Price:     price,
 					Change24h: f.Quote.RegularMarketChangePercent,
+					UpdatedAt: time.Now().UTC(),
+					Source:    "Yahoo Finance",
 				}
 			}
 		}()
@@ -275,6 +284,8 @@ func fetchPrices() (map[string]float64, map[string]PriceData) {
 				priceData[currency] = PriceData{
 					Price:     price,
 					Change24h: q.RegularMarketChangePercent,
+					UpdatedAt: time.Now().UTC(),
+					Source:    "Yahoo Finance",
 				}
 			}
 		}()
@@ -425,10 +436,58 @@ func GetAllPriceData() map[string]PriceData {
 	// Fall back to plain prices for any symbol not in priceData
 	for k, price := range cachedPrices {
 		if _, ok := result[k]; !ok {
-			result[k] = PriceData{Price: price}
+			result[k] = PriceData{Price: price, UpdatedAt: lastPriceRefresh, Source: "cached price"}
 		}
 	}
 	return result
+}
+
+func latestPriceUpdate(priceData map[string]PriceData) time.Time {
+	var latest time.Time
+	for _, pd := range priceData {
+		if pd.UpdatedAt.After(latest) {
+			latest = pd.UpdatedAt
+		}
+	}
+	return latest
+}
+
+func marketsFreshness(priceData map[string]PriceData, assets []string) (time.Time, bool, bool) {
+	var latest time.Time
+	missing := false
+	for _, symbol := range assets {
+		pd, ok := priceData[symbol]
+		if !ok || pd.Price == 0 {
+			missing = true
+			continue
+		}
+		if pd.UpdatedAt.After(latest) {
+			latest = pd.UpdatedAt
+		}
+	}
+	if latest.IsZero() {
+		marketsMutex.RLock()
+		latest = lastPriceRefresh
+		marketsMutex.RUnlock()
+	}
+	stale := latest.IsZero() || time.Since(latest) > 2*time.Hour
+	return latest, stale, missing
+}
+
+func marketsFreshnessText(updatedAt time.Time, stale, missing bool) string {
+	parts := []string{}
+	if updatedAt.IsZero() {
+		parts = append(parts, "Last refresh: unavailable (cached fallback may be stale)")
+	} else {
+		parts = append(parts, fmt.Sprintf("Last refresh: %s UTC", updatedAt.UTC().Format("2006-01-02 15:04")))
+		if stale {
+			parts = append(parts, "data may be stale")
+		}
+	}
+	if missing {
+		parts = append(parts, "some symbols are unavailable from the current source")
+	}
+	return strings.Join(parts, "; ")
 }
 
 // Categories for market data
@@ -501,6 +560,8 @@ type MarketData struct {
 	Price     float64 `json:"price"`
 	Change24h float64 `json:"change_24h"`
 	Type      string  `json:"type"`
+	UpdatedAt string  `json:"updated_at,omitempty"`
+	Source    string  `json:"source,omitempty"`
 }
 
 // Handler handles /markets requests
@@ -552,12 +613,25 @@ func handleJSON(w http.ResponseWriter, r *http.Request, category string) {
 			Price:     pd.Price,
 			Change24h: pd.Change24h,
 			Type:      category,
+			Source:    pd.Source,
 		})
+		if !pd.UpdatedAt.IsZero() {
+			data[len(data)-1].UpdatedAt = pd.UpdatedAt.UTC().Format(time.RFC3339)
+		}
+	}
+	updatedAt, stale, missing := marketsFreshness(priceData, assets)
+	updatedAtText := ""
+	if !updatedAt.IsZero() {
+		updatedAtText = updatedAt.UTC().Format(time.RFC3339)
 	}
 
 	app.RespondJSON(w, map[string]interface{}{
-		"category": category,
-		"data":     data,
+		"category":   category,
+		"data":       data,
+		"updated_at": updatedAtText,
+		"stale":      stale,
+		"partial":    missing,
+		"freshness":  marketsFreshnessText(updatedAt, stale, missing),
 	})
 }
 
@@ -611,7 +685,7 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory string) 
 	sb.WriteString(`<thead><tr><th>Symbol</th><th>Price</th><th>24h Change</th><th>Chart</th></tr></thead>`)
 	sb.WriteString(`<tbody>`)
 
-	assets := getAssetsForCategory(activeCategory)
+	assets := append([]string{}, getAssetsForCategory(activeCategory)...)
 
 	// Sort assets alphabetically
 	sort.Strings(assets)
@@ -626,7 +700,8 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory string) 
 	// Data source information
 	sb.WriteString(`<div class="markets-footer">`)
 	sb.WriteString(`<p class="markets-source">Data sources: Coinbase, CoinGecko, Yahoo Finance</p>`)
-	sb.WriteString(`<p class="markets-note">Prices update hourly. For real-time trading, visit official exchanges.</p>`)
+	updatedAt, stale, missing := marketsFreshness(priceData, assets)
+	fmt.Fprintf(&sb, `<p class="markets-note">%s. Prices update hourly. For real-time trading, visit official exchanges.</p>`, marketsFreshnessText(updatedAt, stale, missing))
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`</div>`)

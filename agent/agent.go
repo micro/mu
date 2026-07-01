@@ -1385,6 +1385,8 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return withCurrentDateContext(formatSearchResult(result))
 	case "web_search", "weather_forecast":
 		return withCurrentDateContext(result)
+	case "markets":
+		return withCurrentDateContext(formatMarketsResult(result))
 	case "web_fetch":
 		return formatWebFetchResult(result)
 	case "places_search", "places_nearby":
@@ -1405,6 +1407,88 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatAppsRunResult(result)
 	}
 	return result
+}
+
+// formatMarketsResult converts raw markets tool JSON into readable price context
+// for synthesis. The go-micro markets tool usually returns {"text":"..."},
+// while the REST endpoint returns {"category":"...","data":[...]}; handle both so
+// market-moving prompts never expose raw JSON to users or the model fallback.
+func formatMarketsResult(result string) string {
+	var textData struct {
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal([]byte(result), &textData); err == nil && strings.TrimSpace(textData.Text) != "" {
+		return strings.TrimSpace(textData.Text)
+	}
+
+	var data struct {
+		Category  string `json:"category"`
+		UpdatedAt string `json:"updated_at"`
+		Stale     bool   `json:"stale"`
+		Partial   bool   `json:"partial"`
+		Freshness string `json:"freshness"`
+		Data      []struct {
+			Symbol    string  `json:"symbol"`
+			Price     float64 `json:"price"`
+			Change24h float64 `json:"change_24h"`
+			Type      string  `json:"type"`
+			UpdatedAt string  `json:"updated_at"`
+			Source    string  `json:"source"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return result
+	}
+	if len(data.Data) == 0 {
+		return "No market prices available right now."
+	}
+
+	category := strings.TrimSpace(data.Category)
+	if category == "" {
+		category = "market"
+	}
+
+	var b strings.Builder
+	if strings.TrimSpace(data.Freshness) != "" {
+		fmt.Fprintf(&b, "%s.\n", strings.TrimSuffix(strings.TrimSpace(data.Freshness), "."))
+	} else if strings.TrimSpace(data.UpdatedAt) != "" {
+		fmt.Fprintf(&b, "Last refresh: %s.\n", strings.TrimSpace(data.UpdatedAt))
+	}
+	if data.Stale {
+		b.WriteString("Disclosure: market data may be stale.\n")
+	}
+	if data.Partial {
+		b.WriteString("Disclosure: some requested symbols are unavailable from the current source.\n")
+	}
+	fmt.Fprintf(&b, "Live %s prices:\n", category)
+	count := 0
+	for _, item := range data.Data {
+		symbol := strings.TrimSpace(item.Symbol)
+		if symbol == "" || item.Price == 0 {
+			continue
+		}
+		if item.Change24h != 0 {
+			fmt.Fprintf(&b, "%s: $%s (%+.2f%% 24h)\n", symbol, formatMarketPrice(item.Price), item.Change24h)
+		} else {
+			fmt.Fprintf(&b, "%s: $%s\n", symbol, formatMarketPrice(item.Price))
+		}
+		count++
+	}
+	if count == 0 {
+		return fmt.Sprintf("No %s prices available right now.", category)
+	}
+	return strings.TrimSpace(b.String())
+}
+
+func formatMarketPrice(price float64) string {
+	switch {
+	case price >= 100:
+		return fmt.Sprintf("%.2f", price)
+	case price >= 1:
+		return fmt.Sprintf("%.3f", price)
+	default:
+		return fmt.Sprintf("%.6f", price)
+	}
 }
 
 // formatNewsResult converts a raw JSON news feed or search result into

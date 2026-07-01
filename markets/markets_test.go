@@ -3,6 +3,7 @@ package markets
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestFormatPrice(t *testing.T) {
@@ -190,6 +191,41 @@ func TestGetAllPriceData_ReturnsDefensiveCopy(t *testing.T) {
 	// BTC should fall back to plain price
 	if data["BTC"].Price != 97000 {
 		t.Errorf("expected BTC fallback price 97000, got %v", data["BTC"].Price)
+	}
+}
+
+func TestMarketsTextIncludesFreshnessDisclosure(t *testing.T) {
+	updated := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	marketsMutex.Lock()
+	cachedPriceData = map[string]PriceData{
+		"BTC": {Price: 97000, Change24h: 1.5, UpdatedAt: updated, Source: "Coinbase + CoinGecko"},
+	}
+	cachedPrices = nil
+	lastPriceRefresh = updated
+	marketsMutex.Unlock()
+
+	got := MarketsText(CategoryCrypto)
+	if !strings.Contains(got, "Last refresh: 2026-07-01 12:00 UTC") {
+		t.Fatalf("expected freshness disclosure, got %q", got)
+	}
+	if !strings.Contains(got, "some symbols are unavailable") {
+		t.Fatalf("expected partial-data disclosure, got %q", got)
+	}
+}
+
+func TestGenerateMarketsPageIncludesFreshnessDisclosure(t *testing.T) {
+	updated := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	priceData := map[string]PriceData{
+		"BTC": {Price: 97000, UpdatedAt: updated, Source: "Coinbase + CoinGecko"},
+		"ETH": {Price: 3500, UpdatedAt: updated, Source: "Coinbase + CoinGecko"},
+	}
+
+	html := generateMarketsPage(priceData, CategoryCrypto)
+	if !strings.Contains(html, "Last refresh: 2026-07-01 12:00 UTC") {
+		t.Fatalf("expected last-refresh metadata in markets page, got %q", html)
+	}
+	if !strings.Contains(html, "some symbols are unavailable") {
+		t.Fatalf("expected partial-source disclosure in markets page, got %q", html)
 	}
 }
 

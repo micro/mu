@@ -21,10 +21,17 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **[#861 Fix guest search UI escaping and input rendering.](https://github.com/micro/mu/issues/861)** The top remaining first-run refinement gap is a small but visible guest Search page polish issue: on 2026-06-30 the live `/search` page loaded for guests and exposed useful trending topics, but its client-side escaping helper converts spaces to `&gt;` when rendering recent/typed queries. Keep public routes, API contracts, and provider behavior unchanged; preserve the guest search flow; and add a focused regression so multi-word searches render with spaces intact while HTML-sensitive characters remain escaped.
+1. **Disclose freshness and sources for guest chat topic summaries** ([#904](https://github.com/micro/mu/issues/904)). The guest `/chat` page now explains saved chat requires login and points people to the public agent, but its topic summaries still read as current factual briefings without visible generated-at/source/degraded context. Preserve the existing chat routes and auth flow, but add freshness/source metadata or an explicit unavailable state so stale or weakly grounded summaries are not presented as authoritative.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Market data freshness disclosed.** Guest `/markets` now shows data sources and last refresh cadence, and markets-backed agent answers stream readable market tables, closing #899 / PR #902.
+- ✅ **Missing weather readings treated as unavailable.** Weather-backed agent answers now avoid presenting absent optional observations as real zeroes, closing #894 / PR #897.
+- ✅ **Guest navigation matches account state.** Signed-out pages now hide signed-in Account/Logout actions while preserving signed-in navigation, closing #889 / PR #892.
+- ✅ **Readable markets agent answers.** Guest `What is moving in markets?` prompts now stream synthesized movers, prices, and percentage moves instead of raw JSON/tool payloads or MathJax-mangled dollar prices, closing #880 / PR #887.
+- ✅ **Tightened agent news topic relevance.** Latest technology-news prompts now prefer clearly topic-matching headlines or disclose adjacent-only coverage, closing #875 / PR #878.
+- ✅ **Guest chat authentication clarified.** Guest `/chat` now shows an inline account-required explanation with login/signup and public-agent paths instead of submitting to a raw `401 Authentication required` response, closing #870 / PR #873.
+- ✅ **Guest search query rendering fixed.** Guest `/search` recent searches now preserve spaces while still escaping HTML-sensitive characters, closing #861 / PR #864.
 - ✅ **Guest weather access clarified.** The guest `/weather` page now gives an actionable agent-backed weather path and explains which saved-location/pollen/refresh features require login, closing #856 / PR #859.
 - ✅ **Deduplicated mixed-source news surfaces.** Mixed-source news cleanup shipped in #851 / PR #854, so the queue now moves to the next highest-value first-run/service-access refinement.
 - ✅ **Article links preserved in live news agent answers.** Fresh guest technology-news prompts now complete quickly with readable, grounded headlines and article URLs in the final answer, closing #846 / PR #849.

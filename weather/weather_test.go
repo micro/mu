@@ -111,11 +111,13 @@ func TestFormatForecastTextAnchorsDatesToRealCalendarRows(t *testing.T) {
 	wf := &WeatherForecast{
 		Location: "London",
 		Current: &CurrentConditions{
-			TempC:       18,
-			FeelsLikeC:  17,
-			Description: "cloudy",
-			Humidity:    70,
-			WindKph:     12,
+			TempC:             18,
+			FeelsLikeC:        17,
+			Description:       "cloudy",
+			Humidity:          70,
+			HumidityAvailable: true,
+			WindKph:           12,
+			WindKphAvailable:  true,
 		},
 		DailyItems: []DailyItem{
 			{Date: time.Date(2026, time.June, 30, 0, 0, 0, 0, time.UTC), MinTempC: 13, MaxTempC: 21, Description: "showers", RainMM: 2, WillRain: true},
@@ -136,5 +138,26 @@ func TestFormatForecastTextAnchorsDatesToRealCalendarRows(t *testing.T) {
 	}
 	if strings.Contains(got, "31 June") {
 		t.Fatalf("formatForecastText invented impossible calendar date in:\n%s", got)
+	}
+}
+
+func TestFormatForecastTextTreatsMissingCurrentObservationsAsUnavailable(t *testing.T) {
+	wf := &WeatherForecast{
+		Location: "New York",
+		Current: &CurrentConditions{
+			TempC:       24,
+			FeelsLikeC:  24,
+			Description: "partly cloudy",
+		},
+	}
+
+	got := formatForecastText(wf, time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC))
+	for _, notWant := range []string{"humidity 0%", "wind 0 km/h"} {
+		if strings.Contains(got, notWant) {
+			t.Fatalf("formatForecastText presented missing reading %q as fact in:\n%s", notWant, got)
+		}
+	}
+	if !strings.Contains(got, "some current observations unavailable") {
+		t.Fatalf("formatForecastText should disclose missing current observations in:\n%s", got)
 	}
 }

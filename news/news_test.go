@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mmcdole/gofeed"
+	"mu/internal/data"
 )
 
 func TestContentParsers_StripHNComments(t *testing.T) {
@@ -250,6 +251,37 @@ func TestNewsSearchArticlesFallsBackToLiveFeed(t *testing.T) {
 	}
 	if got[0]["url"] != "https://example.com/ai" {
 		t.Fatalf("expected source URL for agent citations, got %#v", got[0]["url"])
+	}
+}
+
+func TestNewsSearchArticlesFiltersAdjacentIndexedResults(t *testing.T) {
+	indexed := []*data.IndexEntry{
+		{
+			ID:      "finance-1",
+			Title:   "Crypto policy fight weighs on markets",
+			Content: "Lawmakers debate digital assets while equities drift lower.",
+			Metadata: map[string]interface{}{
+				"url":      "https://example.com/crypto-policy",
+				"category": "Business",
+			},
+		},
+		{
+			ID:      "tech-1",
+			Title:   "AI chip startup launches faster inference server",
+			Content: "The new semiconductor design targets model serving workloads.",
+			Metadata: map[string]interface{}{
+				"url":      "https://example.com/ai-chip",
+				"category": "Technology",
+			},
+		},
+	}
+
+	got := newsSearchArticles("latest technology headline", indexed, 20)
+	if len(got) != 1 {
+		t.Fatalf("expected only a clearly topic-matching indexed result, got %#v", got)
+	}
+	if got[0]["title"] != "AI chip startup launches faster inference server" {
+		t.Fatalf("expected technology headline, got %#v", got[0])
 	}
 }
 
