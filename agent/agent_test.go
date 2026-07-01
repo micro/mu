@@ -324,6 +324,25 @@ func TestShortcutToolCallsMarketMoversAvoidsNewsPlanning(t *testing.T) {
 	}
 }
 
+func TestSkipMarketMoverCompanionToolFiltersUnrequestedNews(t *testing.T) {
+	prompt := "What is moving in markets today?"
+	for _, tool := range []string{"news", "news_headlines", "news_search", "web_search", "recall"} {
+		if !skipMarketMoverCompanionTool(prompt, tool) {
+			t.Fatalf("expected %s to be skipped for market-mover prompt", tool)
+		}
+	}
+	if skipMarketMoverCompanionTool(prompt, "markets") {
+		t.Fatal("expected markets tool to remain available")
+	}
+}
+
+func TestSkipMarketMoverCompanionToolAllowsExplanatoryNews(t *testing.T) {
+	prompt := "What is moving in markets today, and what news explains the moves?"
+	if skipMarketMoverCompanionTool(prompt, "news_headlines") {
+		t.Fatal("expected explanatory market-mover prompt to allow news")
+	}
+}
+
 func TestFormatToolResult_Dispatch(t *testing.T) {
 	// Ensure the dispatcher calls the right formatter
 	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`
