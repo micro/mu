@@ -35,12 +35,14 @@ type WeatherForecast struct {
 
 // CurrentConditions holds current weather values.
 type CurrentConditions struct {
-	TempC       float64
-	FeelsLikeC  float64
-	Description string
-	Humidity    int
-	WindKph     float64
-	IconCode    string
+	TempC             float64
+	FeelsLikeC        float64
+	Description       string
+	Humidity          int
+	HumidityAvailable bool
+	WindKph           float64
+	WindKphAvailable  bool
+	IconCode          string
 }
 
 // HourlyItem holds one hour of forecast data.
