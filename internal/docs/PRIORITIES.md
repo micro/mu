@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Treat missing weather readings as unavailable in agent answers** ([#894](https://github.com/micro/mu/issues/894)). The live guest weather loop is fast and date-anchored, but current-condition details can still look falsely precise when optional provider readings are absent: the New York answer rendered humidity `0%` and wind `0 km/h` beside an otherwise plausible forecast. Preserve the existing weather route/API contract and forecast behavior, but make the weather agent context distinguish real zeroes from missing readings so answers omit or disclose unavailable current observations instead of presenting them as facts.
+1. **Show market data freshness and stale-source fallback** ([#899](https://github.com/micro/mu/issues/899)). The live guest markets loop is now readable and fast, but `/markets` and the markets-backed agent answer still present prices as live/current without visible refresh or degraded-source context. Preserve the existing markets routes, MCP/API contracts, and answer shape, but add source/freshness metadata to the page/card and model context so stale, incomplete, or fallback data is disclosed instead of silently treated as authoritative.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Missing weather readings treated as unavailable.** Weather-backed agent answers now avoid presenting absent optional observations as real zeroes, closing #894 / PR #897.
 - ✅ **Guest navigation matches account state.** Signed-out pages now hide signed-in Account/Logout actions while preserving signed-in navigation, closing #889 / PR #892.
 - ✅ **Readable markets agent answers.** Guest `What is moving in markets?` prompts now stream synthesized movers, prices, and percentage moves instead of raw JSON/tool payloads or MathJax-mangled dollar prices, closing #880 / PR #887.
 - ✅ **Tightened agent news topic relevance.** Latest technology-news prompts now prefer clearly topic-matching headlines or disclose adjacent-only coverage, closing #875 / PR #878.
