@@ -232,6 +232,20 @@ var isAuthenticated = false;
 var context = [];
 var topic = '';
 
+
+function summaryMetaText() {
+  if (typeof summaryMeta === 'undefined' || !summaryMeta) return 'Topic summaries unavailable: no freshness metadata was provided.';
+  if (summaryMeta.status === 'unavailable') return 'Topic summaries unavailable: no fresh generated summaries are available yet.';
+  const parts = [];
+  if (summaryMeta.generated_at) {
+    const d = new Date(summaryMeta.generated_at);
+    if (!isNaN(d.getTime())) parts.push('Generated ' + d.toLocaleString());
+  }
+  if (summaryMeta.source) parts.push('Sources: ' + summaryMeta.source);
+  if (summaryMeta.status === 'cached') parts.push('cached from a previous run');
+  return parts.join(' · ') || 'Freshness metadata unavailable.';
+}
+
 // Show all topic summaries with join links (landing page)
 function showTopicSummariesOverlay() {
   const messages = document.getElementById('messages');
@@ -241,7 +255,10 @@ function showTopicSummariesOverlay() {
   if (messages.querySelector('.summary-card')) return;
   
   const topics = Object.keys(summaries).sort();
-  if (topics.length === 0) return;
+  if (topics.length === 0) {
+    messages.innerHTML = '<div class="message summary-card"><strong>Today\'s Topics</strong><p class="summary-meta">' + summaryMetaText() + '</p></div>';
+    return;
+  }
   
   // Build summaries content using existing CSS classes
   let summariesHtml = '';
@@ -261,6 +278,7 @@ function showTopicSummariesOverlay() {
   card.innerHTML = `
     <div class="summary-header" onclick="toggleAllSummaries()">
       <strong>Today's Topics</strong>
+      <span class="summary-meta">${summaryMetaText()}</span>
       <span id="summary-toggle-icon">▶</span>
     </div>
     <div id="all-summaries" class="all-summaries" style="display: none;">
@@ -324,7 +342,7 @@ function showTopicContext(t) {
     contextMsg.className = 'context-message';
     let summaryHtml = '';
     if (typeof summaries !== 'undefined' && summaries[t]) {
-      summaryHtml = `<p class="topic-summary">${summaries[t]}</p>`;
+      summaryHtml = `<p class="topic-summary">${summaries[t]}</p><p class="summary-meta">${summaryMetaText()}</p>`;
     }
     contextMsg.innerHTML = '<strong>' + t + '</strong>' + summaryHtml;
     messages.appendChild(contextMsg);

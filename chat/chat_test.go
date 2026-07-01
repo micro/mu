@@ -70,3 +70,17 @@ func TestGuestChatAuthNoticeExplainsLoginAndAgentFallback(t *testing.T) {
 		}
 	}
 }
+
+func TestCurrentSummaryMetaDefaultsUnavailable(t *testing.T) {
+	oldMeta := summaryMeta
+	summaryMeta = SummaryMetadata{}
+	defer func() { summaryMeta = oldMeta }()
+
+	meta := currentSummaryMeta()
+	if meta.Status != "unavailable" {
+		t.Fatalf("Status = %q, want unavailable", meta.Status)
+	}
+	if meta.Source == "" {
+		t.Fatalf("Source should explain summary provenance")
+	}
+}
