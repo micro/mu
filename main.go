@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -1722,10 +1724,21 @@ func main() {
 		}
 	}()
 
-	// Start server in a goroutine
+	// Start server in a goroutine, preferring a systemd-activated socket so
+	// redeploys don't drop the listener (see serveListener).
 	go func() {
-		app.Log("main", "Starting server on %s", *AddressFlag)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		ln, activated, err := serveListener(*AddressFlag)
+		if err != nil {
+			app.Log("main", "Listen error on %s: %v", *AddressFlag, err)
+			quit <- syscall.SIGTERM
+			return
+		}
+		if activated {
+			app.Log("main", "Serving on systemd-activated socket (restarts queue, no 502)")
+		} else {
+			app.Log("main", "Starting server on %s", *AddressFlag)
+		}
+		if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 			app.Log("main", "Server error: %v", err)
 		}
 	}()
@@ -1834,6 +1847,30 @@ func chargedWriteOp(r *http.Request) string {
 		return wallet.OpSocialPost
 	}
 	return ""
+}
+
+// serveListener returns the TCP listener to serve on. When the process is
+// started via systemd socket activation (LISTEN_PID / LISTEN_FDS point at us),
+// it adopts the inherited listening socket instead of binding its own. That
+// lets the socket outlive the process across a redeploy: while the binary is
+// being restarted the kernel keeps accepting and queuing connections on the
+// held socket, so nginx sees a moment of latency rather than a connection
+// refusal (502). Without activation it just binds addr as before.
+//
+// systemd passes activated fds starting at 3 (SD_LISTEN_FDS_START); Mu uses a
+// single web socket, so fd 3 is the one.
+func serveListener(addr string) (net.Listener, bool, error) {
+	if pid, err := strconv.Atoi(os.Getenv("LISTEN_PID")); err == nil && pid == os.Getpid() {
+		if n, err := strconv.Atoi(os.Getenv("LISTEN_FDS")); err == nil && n >= 1 {
+			f := os.NewFile(uintptr(3), "systemd-mu-socket")
+			if ln, err := net.FileListener(f); err == nil {
+				return ln, true, nil
+			}
+			// Fall through to binding ourselves if the fd wasn't usable.
+		}
+	}
+	ln, err := net.Listen("tcp", addr)
+	return ln, false, err
 }
 
 // isServerMode returns true when the argument list contains the

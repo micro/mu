@@ -1,0 +1,24 @@
+[Unit]
+Description=Mu
+# The socket must exist first; it hands the listening fd to this service so the
+# port stays up across restarts (zero visible downtime on redeploy).
+Requires=mu.socket
+After=mu.socket network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mu
+WorkingDirectory=/home/mu/src/mu
+# API keys etc. (ANTHROPIC_API_KEY / ATLAS_API_KEY / BRAVE_API_KEY / ADMIN …).
+EnvironmentFile=/home/mu/.env
+# Path to the installed binary (adjust to your GOBIN / install dir).
+ExecStart=/home/mu/go/bin/mu --serve
+# Drain in-flight requests on stop; mu shuts its HTTP server down gracefully
+# within ~10s, so give it a little more before SIGKILL.
+TimeoutStopSec=20
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Mu web socket
+
+[Socket]
+# The address nginx proxies to. systemd owns this listening socket and keeps
+# it open across `systemctl restart mu.service`, so during a redeploy the
+# kernel queues incoming connections instead of refusing them — nginx sees a
+# brief latency, never a 502. Keep this in sync with mu's --address (:8080).
+ListenStream=127.0.0.1:8080
+Service=mu.service
+
+[Install]
+WantedBy=sockets.target
