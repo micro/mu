@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Synthesize mixed-source agent answers instead of raw tool payloads** ([#915](https://github.com/micro/mu/issues/915)). Guest prompts that fan out across blog/social/search/news can still fall back to raw JSON-like tool payloads when one provider is unavailable, even though usable source context is present. Preserve `/agent` and service contracts while turning mixed available/unavailable tool context into concise, source-linked prose and keeping unavailable-provider disclosure human-readable.
+1. **Keep market-mover agent answers concise and fast** ([#920](https://github.com/micro/mu/issues/920)). Guest market prompts now produce readable, source-linked answers, but live review still found a slow, overlong mixed markets/news digest for “What is moving in markets today?”. Preserve `/agent` and service contracts while prioritizing actual movers/prices, using directly explanatory news only, and keeping provider-unavailable disclosures human-readable.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Mixed-source agent answers synthesized instead of raw tool payloads.** Mixed blog/social/search/news prompts now guard against raw JSON-like provider payloads and keep unavailable-provider disclosures human-readable, closing #915 / PR #918.
 - ✅ **Weather freshness disclosed in agent summaries.** Weather-backed agent summaries now include source/freshness context and stale/unavailable handling, closing #910 / PR #913.
 - ✅ **Chat topic summary freshness disclosed.** Guest `/chat` topic summaries now expose generated-at/source/status metadata, closing #904 / PR #907.
 - ✅ **Market data freshness disclosed.** Guest `/markets` now shows data sources and last refresh cadence, and markets-backed agent answers stream readable market tables, closing #899 / PR #902.
