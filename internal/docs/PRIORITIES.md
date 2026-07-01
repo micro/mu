@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Reduce first-token latency for guest agent answers** ([#951](https://github.com/micro/mu/issues/951)). Live guest review on 2026-07-01 after PR #953 found the core loop emits progress promptly and returns readable, date-anchored market/weather answers, but first answer tokens for tool-backed prompts still arrive only after roughly 8–17s and the news provider can be unavailable. Rank this first because the North Star says the core ask → answer loop must be fast for first-run guests; preserve `/agent` and service contracts while improving latency/progress behavior.
+1. **Restore live news-backed agent answers** ([#959](https://github.com/micro/mu/issues/959)). Live guest review on 2026-07-01 after PR #957 found markets and weather now emit progress promptly and stream readable answers, but `Find today's AI news` hit `news_search — unavailable` and ended with generic off-product news-site suggestions plus broad “what has been big lately” filler rather than grounded current headlines. Rank this first because the North Star protects correct, well-formatted current answers and graceful provider degradation for first-run guests; preserve `/agent`, MCP/A2A/REST, and provider env contracts while making news unavailability concise and useful.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Guest agent answer latency reduced.** Market/weather/news prompts now emit early progress and PR #957 reduced first-token latency for the market-mover path, closing #951 / PR #957; remaining news-provider unavailability is tracked in #959.
 - ✅ **Guest agent planning latency reduced.** Tool-backed guest prompts now emit early progress and avoid some duplicated planning work, closing #949 / PR #953; remaining answer-token latency is tracked in #951.
 - ✅ **Duplicate market tool calls avoided.** Guest market answers now use a single market-price pass before synthesis instead of repeated identical calls, closing #944 / PR #947.
 - ✅ **Blog currency amounts protected from MathJax.** Blog/card rendering now protects dollar amounts such as “$1 billion” from MathJax delimiters, closing #939 / PR #942.
