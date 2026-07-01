@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Filter unrelated headlines from market-mover answers** ([#927](https://github.com/micro/mu/issues/927)). Guest market prompts are now readable and stream a structured answer, but live review still found the answer mixing unrelated business/tech headlines into “What is moving in markets today?”. Preserve `/agent` and service contracts while keeping movers/prices first and only including news that directly explains a listed mover, index/sector move, or named asset/company.
+1. **Prevent MathJax mangling dollar prices in agent answers** ([#934](https://github.com/micro/mu/issues/934)). The guest market loop is now focused on movers, but live review of “What is moving in markets today?” still rendered a combined BTC/ETH/PAXG price line as inline MathJax instead of plain dollar prices. Preserve `/agent` and service contracts while ensuring market-style USD prices render as readable text in streamed and final answers.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Filtered unrelated market-mover headlines.** Market-mover answers now keep movers/prices first and avoid unrelated business/tech headlines, closing #927 / PR #930 / PR #932.
 - ✅ **Concise market-mover agent answers.** Guest market prompts now produce readable, source-linked answers rather than raw market payloads, closing #920.
 - ✅ **Mixed-source agent answers synthesized instead of raw tool payloads.** Mixed blog/social/search/news prompts now guard against raw JSON-like provider payloads and keep unavailable-provider disclosures human-readable, closing #915 / PR #918.
 - ✅ **Weather freshness disclosed in agent summaries.** Weather-backed agent summaries now include source/freshness context and stale/unavailable handling, closing #910 / PR #913.
