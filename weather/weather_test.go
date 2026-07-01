@@ -109,7 +109,10 @@ func TestRenderWeatherPageGuestShowsAgentPathAndLoginScope(t *testing.T) {
 
 func TestFormatForecastTextAnchorsDatesToRealCalendarRows(t *testing.T) {
 	wf := &WeatherForecast{
-		Location: "London",
+		Location:    "London",
+		Source:      "Google Weather",
+		GeneratedAt: time.Date(2026, time.June, 30, 8, 59, 0, 0, time.UTC),
+		ObservedAt:  time.Date(2026, time.June, 30, 9, 0, 0, 0, time.UTC),
 		Current: &CurrentConditions{
 			TempC:             18,
 			FeelsLikeC:        17,
@@ -129,6 +132,8 @@ func TestFormatForecastTextAnchorsDatesToRealCalendarRows(t *testing.T) {
 	for _, want := range []string{
 		"Current request date: Tuesday, 30 June 2026 (2026-06-30, UTC).",
 		"Calendar rule: anchor relative words like today/tomorrow to the request date above",
+		"Freshness/source: source Google Weather; generated at 2026-06-30 08:59 UTC.",
+		"Current conditions observed at 2026-06-30 09:00 UTC.",
 		"Tuesday, 30 June 2026 (2026-06-30): 13–21°C, showers, rain 2mm",
 		"Wednesday, 1 July 2026 (2026-07-01): 12–20°C, bright spells",
 	} {
@@ -143,7 +148,8 @@ func TestFormatForecastTextAnchorsDatesToRealCalendarRows(t *testing.T) {
 
 func TestFormatForecastTextTreatsMissingCurrentObservationsAsUnavailable(t *testing.T) {
 	wf := &WeatherForecast{
-		Location: "New York",
+		Location:   "New York",
+		ObservedAt: time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC),
 		Current: &CurrentConditions{
 			TempC:       24,
 			FeelsLikeC:  24,
@@ -159,5 +165,28 @@ func TestFormatForecastTextTreatsMissingCurrentObservationsAsUnavailable(t *test
 	}
 	if !strings.Contains(got, "some current observations unavailable") {
 		t.Fatalf("formatForecastText should disclose missing current observations in:\n%s", got)
+	}
+}
+
+func TestFormatForecastTextMarksCurrentUnavailableWithoutObservation(t *testing.T) {
+	wf := &WeatherForecast{
+		Location:    "Paris",
+		Source:      "Google Weather",
+		GeneratedAt: time.Date(2026, time.July, 1, 12, 1, 0, 0, time.UTC),
+		Current: &CurrentConditions{
+			TempC:       22,
+			Description: "clear",
+		},
+		DailyItems: []DailyItem{
+			{Date: time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC), MinTempC: 16, MaxTempC: 25, Description: "sunny"},
+		},
+	}
+
+	got := formatForecastText(wf, time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC))
+	if !strings.Contains(got, "Current conditions status: unavailable") {
+		t.Fatalf("formatForecastText should mark unsupported current conditions unavailable in:\n%s", got)
+	}
+	if strings.Contains(got, "Now: 22°C") {
+		t.Fatalf("formatForecastText should not present current-weather claim without observed-at timestamp in:\n%s", got)
 	}
 }

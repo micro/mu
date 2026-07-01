@@ -27,13 +27,28 @@ func formatForecastText(wf *WeatherForecast, now time.Time) string {
 		return weatherUnavailableMessage
 	}
 
+	now = now.UTC()
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "Current request date: %s.\n", now.UTC().Format("Monday, 2 January 2006 (2006-01-02, UTC)"))
+	fmt.Fprintf(&sb, "Current request date: %s.\n", now.Format("Monday, 2 January 2006 (2006-01-02, UTC)"))
 	sb.WriteString("Calendar rule: anchor relative words like today/tomorrow to the request date above, use only the dated forecast rows below, and do not invent dates. If a requested day is not listed, say it is unavailable.\n")
 	if wf.Location != "" {
 		fmt.Fprintf(&sb, "Weather for %s.\n", wf.Location)
 	}
-	if c := wf.Current; c != nil {
+	source := strings.TrimSpace(wf.Source)
+	if source == "" {
+		source = "weather provider"
+	}
+	generatedAt := wf.GeneratedAt.UTC()
+	if generatedAt.IsZero() {
+		generatedAt = now
+	}
+	fmt.Fprintf(&sb, "Freshness/source: source %s; generated at %s.\n", source, generatedAt.Format("2006-01-02 15:04 UTC"))
+	if wf.ObservedAt.IsZero() {
+		sb.WriteString("Current conditions status: unavailable — provider did not return a current/hourly observation timestamp, so do not present a current-weather claim.\n")
+	} else {
+		fmt.Fprintf(&sb, "Current conditions observed at %s.\n", wf.ObservedAt.UTC().Format("2006-01-02 15:04 UTC"))
+	}
+	if c := wf.Current; c != nil && !wf.ObservedAt.IsZero() {
 		details := []string{fmt.Sprintf("%.0f°C", c.TempC)}
 		if c.FeelsLikeC != 0 || c.TempC == 0 {
 			details = append(details, fmt.Sprintf("feels %.0f°C", c.FeelsLikeC))
@@ -66,7 +81,7 @@ func formatForecastText(wf *WeatherForecast, now time.Time) string {
 				d.Date.Format("Monday, 2 January 2006 (2006-01-02)"), d.MinTempC, d.MaxTempC, d.Description, rain)
 		}
 	}
-	if sb.Len() == 0 {
+	if len(wf.DailyItems) == 0 && (wf.Current == nil || wf.ObservedAt.IsZero()) {
 		return weatherUnavailableMessage
 	}
 	return sb.String()
