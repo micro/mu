@@ -1184,7 +1184,7 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 
 	// Fuzzy matches for prompts with dynamic content
 	if isLatestTechnologyNewsPrompt(lower) {
-		return []shortcutToolCall{{Tool: "news_search", Args: map[string]any{"query": "technology news"}}}
+		return []shortcutToolCall{{Tool: "news_search", Args: map[string]any{"query": newsTopicQuery(lower)}}}
 	}
 
 	if strings.Contains(lower, "unread email") || strings.Contains(lower, "unread mail") ||
@@ -1200,11 +1200,28 @@ func fallbackNewsSearchToolCall(prompt, tool string, args map[string]any) (short
 	if tool != "news_search" || !isLatestTechnologyNewsPrompt(strings.ToLower(prompt)) {
 		return shortcutToolCall{}, false
 	}
-	query := "latest AI news"
+	query := newsTopicQuery(strings.ToLower(prompt))
 	if raw, ok := args["query"].(string); ok && strings.TrimSpace(raw) != "" {
 		query = strings.TrimSpace(raw)
 	}
+	if promptQuery := newsTopicQuery(strings.ToLower(prompt)); promptQuery != "technology news" && query == "technology news" {
+		query = promptQuery
+	}
 	return shortcutToolCall{Tool: "web_search", Args: map[string]any{"q": query}}, true
+}
+
+func newsTopicQuery(lower string) string {
+	if strings.Contains(lower, "artificial intelligence") {
+		return "artificial intelligence news"
+	}
+	for _, token := range strings.FieldsFunc(lower, func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+	}) {
+		if token == "ai" {
+			return "AI news"
+		}
+	}
+	return "technology news"
 }
 
 func isLatestTechnologyNewsPrompt(lower string) bool {
