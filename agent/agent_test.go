@@ -275,6 +275,35 @@ func TestFormatToolResultKeepsExistingCurrentDateContext(t *testing.T) {
 	}
 }
 
+func TestFormatToolResultMarketsTextStaysReadable(t *testing.T) {
+	result := `{"text":"Current request date: Tuesday, 30 June 2026 (2026-06-30, UTC).\nLive crypto prices:\nBTC: $100000.00 (+2.50% 24h)\nETH: $3000.00 (-1.25% 24h)"}`
+	got := formatToolResult("markets", result, nil)
+	if strings.Contains(got, `{"text"`) {
+		t.Fatalf("expected readable markets context instead of raw JSON, got %q", got)
+	}
+	if strings.Count(got, "Current request date:") != 1 {
+		t.Fatalf("expected one current request date context, got %q", got)
+	}
+	for _, want := range []string{"BTC: $100000.00 (+2.50% 24h)", "ETH: $3000.00 (-1.25% 24h)"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in readable markets context, got %q", want, got)
+		}
+	}
+}
+
+func TestFormatToolResultMarketsRESTDataStaysReadable(t *testing.T) {
+	result := `{"category":"crypto","data":[{"symbol":"BTC","price":100000,"change_24h":2.5},{"symbol":"DOGE","price":0.1234567,"change_24h":-4}]}`
+	got := formatToolResult("markets", result, nil)
+	if strings.Contains(got, `{"category"`) {
+		t.Fatalf("expected readable markets context instead of raw JSON, got %q", got)
+	}
+	for _, want := range []string{"Current request date:", "Live crypto prices:", "BTC: $100000.00 (+2.50% 24h)", "DOGE: $0.123457 (-4.00% 24h)"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in readable markets context, got %q", want, got)
+		}
+	}
+}
+
 func TestFormatToolResult_Dispatch(t *testing.T) {
 	// Ensure the dispatcher calls the right formatter
 	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`
