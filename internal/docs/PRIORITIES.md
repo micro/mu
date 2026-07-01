@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Render market-moving agent answers cleanly** ([#880](https://github.com/micro/mu/issues/880)). The live guest ask → answer loop is fast and weather/news prompts stream usable answers, but `What is moving in markets?` currently falls back to a raw tool payload with JSON text and MathJax-mangled dollar prices. Keep the existing markets surface, but ensure market-moving prompts synthesize readable movers, prices, and 24h changes, with the same request-date anchoring and graceful unavailable-state behavior as other services.
+1. **Hide signed-in nav actions from guest pages** ([#889](https://github.com/micro/mu/issues/889)). The live guest ask → answer loop now returns fast, readable weather, news, and markets answers, and the top remaining first-run friction is clarity around account state: signed-out core pages can still expose Account/Logout navigation in degraded or non-CSS renderings. Keep the existing routes and auth contract, but render guest navigation so public visitors only see the appropriate login/signup path while signed-in users keep Account/Logout.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Readable markets agent answers.** Guest `What is moving in markets?` prompts now stream synthesized movers, prices, and percentage moves instead of raw JSON/tool payloads or MathJax-mangled dollar prices, closing #880 / PR #887.
 - ✅ **Tightened agent news topic relevance.** Latest technology-news prompts now prefer clearly topic-matching headlines or disclose adjacent-only coverage, closing #875 / PR #878.
 - ✅ **Guest chat authentication clarified.** Guest `/chat` now shows an inline account-required explanation with login/signup and public-agent paths instead of submitting to a raw `401 Authentication required` response, closing #870 / PR #873.
 - ✅ **Guest search query rendering fixed.** Guest `/search` recent searches now preserve spaces while still escaping HTML-sensitive characters, closing #861 / PR #864.
