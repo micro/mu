@@ -741,6 +741,31 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerReplacesRawMixedSourcePayload(t *testing.T) {
+	rag := []string{
+		`### blog_list
+Recent blog posts:
+1. Mu daily note — Agent reliability improved. (/blog/mu-note)`,
+		"### social\n" + unavailableToolMessage("social"),
+		`### web_search
+Web results for "mu agent reliability":
+Sources:
+1. Reliability patterns for agents — Fallbacks should produce readable summaries. (https://example.com/agents)`,
+	}
+	raw := `{"results":[{"title":"Reliability patterns for agents","url":"https://example.com/agents"}],"error":"social unavailable","status":"partial"}`
+
+	got := completeToolAnswer(raw, rag)
+	if strings.Contains(got, `{"results"`) || strings.Contains(got, `"status":"partial"`) {
+		t.Fatalf("expected raw payload to be replaced, got %q", got)
+	}
+	if !strings.Contains(got, "Mu daily note") || !strings.Contains(got, "https://example.com/agents") {
+		t.Fatalf("expected available mixed-source context in fallback, got %q", got)
+	}
+	if !strings.Contains(got, "Unavailable: social.") {
+		t.Fatalf("expected unavailable source disclosure, got %q", got)
+	}
+}
+
 func TestFormatToolResultNewsHeadlinesStaysReadable(t *testing.T) {
 	result := "Latest headlines — 1 across 1 topics.\n\n[tech] AI lab releases a new model — Useful summary (source: Example, url: https://example.com/ai)"
 	got := formatToolResult("news_headlines", result, nil)

@@ -17,7 +17,7 @@ func unavailableToolMessage(tool string) string {
 // so the user still gets useful output and unavailable slices are explicit.
 func completeToolAnswer(answer string, ragParts []string) string {
 	trimmed := strings.TrimSpace(answer)
-	if len(ragParts) == 0 || !isProgressOnlyAnswer(trimmed) {
+	if len(ragParts) == 0 || (!isProgressOnlyAnswer(trimmed) && !isRawToolPayloadAnswer(trimmed)) {
 		return answer
 	}
 
@@ -203,4 +203,54 @@ func isProgressOnlyAnswer(answer string) bool {
 		}
 	}
 	return false
+}
+
+func isRawToolPayloadAnswer(answer string) bool {
+	if answer == "" {
+		return false
+	}
+
+	trimmed := strings.TrimSpace(answer)
+	if len([]rune(trimmed)) > 4000 {
+		return false
+	}
+
+	lower := strings.ToLower(trimmed)
+	if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
+		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
+		jsonMarkers := []string{
+			`"results"`,
+			`"feed"`,
+			`"items"`,
+			`"title"`,
+			`"url"`,
+			`"error"`,
+			`"text"`,
+			`"summary"`,
+			`"source"`,
+			`"status"`,
+		}
+		for _, marker := range jsonMarkers {
+			if strings.Contains(lower, marker) {
+				return true
+			}
+		}
+	}
+
+	payloadMarkers := []string{
+		`{"results":`,
+		`{"feed":`,
+		`[{"title":`,
+		`"error":`,
+		`"url":`,
+		`"source":`,
+		`"status":`,
+	}
+	matches := 0
+	for _, marker := range payloadMarkers {
+		if strings.Contains(lower, marker) {
+			matches++
+		}
+	}
+	return matches >= 2
 }
