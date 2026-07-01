@@ -336,6 +336,18 @@ func TestSkipMarketMoverCompanionToolFiltersUnrequestedNews(t *testing.T) {
 	}
 }
 
+func TestSkipMarketMoverCompanionToolFiltersAssetMoverPrompts(t *testing.T) {
+	for _, prompt := range []string{
+		"What crypto is moving today?",
+		"Which stocks are up today?",
+		"Any Bitcoin rally today?",
+	} {
+		if !skipMarketMoverCompanionTool(prompt, "news_headlines") {
+			t.Fatalf("expected unrequested news to be skipped for %q", prompt)
+		}
+	}
+}
+
 func TestSkipMarketMoverCompanionToolAllowsExplanatoryNews(t *testing.T) {
 	prompt := "What is moving in markets today, and what news explains the moves?"
 	if skipMarketMoverCompanionTool(prompt, "news_headlines") {

@@ -1129,8 +1129,22 @@ func skipMarketMoverCompanionTool(prompt, tool string) bool {
 
 func isMarketMoverPrompt(prompt string) bool {
 	lower := strings.ToLower(prompt)
-	return strings.Contains(lower, "market") &&
-		(strings.Contains(lower, "moving") || strings.Contains(lower, "mover") || strings.Contains(lower, "move"))
+	hasMoveIntent := strings.Contains(lower, "moving") ||
+		strings.Contains(lower, "mover") ||
+		strings.Contains(lower, "move") ||
+		strings.Contains(lower, "rally") ||
+		strings.Contains(lower, "selloff") ||
+		strings.Contains(lower, "up today") ||
+		strings.Contains(lower, "down today")
+	if !hasMoveIntent {
+		return false
+	}
+	for _, term := range []string{"market", "markets", "stock", "stocks", "equity", "equities", "crypto", "bitcoin", "btc", "eth", "ethereum", "index", "indices", "futures"} {
+		if strings.Contains(lower, term) {
+			return true
+		}
+	}
+	return false
 }
 
 func wantsMarketMoverExplanation(prompt string) bool {
