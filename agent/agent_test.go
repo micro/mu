@@ -335,6 +335,25 @@ func TestShortcutToolCallsMarketMoversAvoidsNewsPlanning(t *testing.T) {
 	}
 }
 
+func TestUseFastToolFallbackOnlyForGuestMarketMovers(t *testing.T) {
+	rag := []string{"### markets\nLive crypto prices:\nBTC: $97000.00 (+1.23% 24h)"}
+	if !useFastToolFallback("What is moving in markets today?", true, true, rag) {
+		t.Fatal("expected guest market-mover prompts with market data to use the fast fallback")
+	}
+	if useFastToolFallback("What is moving in markets today?", false, true, rag) {
+		t.Fatal("authenticated users should keep full synthesis")
+	}
+	if useFastToolFallback("Why is Bitcoin moving today?", true, true, rag) {
+		t.Fatal("explanation prompts should keep full synthesis")
+	}
+	if useFastToolFallback("What is moving in markets today?", true, false, rag) {
+		t.Fatal("fallback requires a market tool result")
+	}
+	if useFastToolFallback("What is moving in markets today?", true, true, nil) {
+		t.Fatal("fallback requires result context")
+	}
+}
+
 func TestShortcutToolCallsLatestTechnologyNews(t *testing.T) {
 	for _, prompt := range []string{
 		"latest technology news",
