@@ -31,8 +31,8 @@ var (
 )
 
 type signupBucket struct {
-	count    int
-	resetAt  time.Time
+	count   int
+	resetAt time.Time
 }
 
 // SignupRateLimit returns true if the IP is allowed to sign up.
@@ -326,10 +326,7 @@ var Template = `
 
         </div>
         <div class="nav-bottom">
-          <div id="nav-username" style="display: none;"></div>
-          <a id="nav-account" href="/account" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
-          <a id="nav-logout" href="/logout" style="display: none;"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
-          <a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>
+          %s
         </div>
       </div>
       <div id="content">
@@ -1263,7 +1260,6 @@ func Session(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-
 // Render a markdown document as html
 func Render(md []byte) []byte {
 	// Strip LaTeX dollar sign escapes before parsing markdown
@@ -1357,7 +1353,7 @@ func GetUserLanguage(r *http.Request) string {
 
 // RenderHTML renders the given html in a template with default language (English)
 func RenderHTML(title, desc, html string) string {
-	return RenderHTMLWithLang(title, desc, html, "en")
+	return RenderHTMLWithLangAndAuth(title, desc, html, "en", nil)
 }
 
 // RenderHTMLForRequest renders the given html in a template using the
@@ -1369,7 +1365,8 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	if banner := VerifyBanner(r); banner != "" {
 		html = banner + html
 	}
-	return RenderHTMLWithLang(title, desc, html, lang)
+	_, acc := auth.TrySession(r)
+	return RenderHTMLWithLangAndAuth(title, desc, html, lang, acc)
 }
 
 // VerifyBanner returns banner HTML inviting the user to verify their
@@ -1396,12 +1393,27 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
+func navAuthHTML(acc *auth.Account) string {
+	if acc == nil {
+		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
+	}
+	username := htmlpkg.EscapeString(acc.ID)
+	return `<div id="nav-username">Signed in as @` + username + `</div>
+          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
+          <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
+          <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
+}
+
 // RenderHTMLWithLang renders the given html in a template with specified language
 func RenderHTMLWithLang(title, desc, html, lang string) string {
+	return RenderHTMLWithLangAndAuth(title, desc, html, lang, nil)
+}
+
+func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account) string {
 	if lang == "" {
 		lang = "en"
 	}
-	return fmt.Sprintf(Template, lang, title, desc, "", title, html)
+	return fmt.Sprintf(Template, lang, title, desc, "", navAuthHTML(acc), title, html)
 }
 
 // RenderHTMLWithLangAndBody renders html with a custom body attribute string
@@ -1410,7 +1422,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string) string 
 	if lang == "" {
 		lang = "en"
 	}
-	return fmt.Sprintf(Template, lang, title, desc, bodyAttr, title, html)
+	return fmt.Sprintf(Template, lang, title, desc, bodyAttr, navAuthHTML(nil), title, html)
 }
 
 // RenderString renders a markdown string as html
@@ -1420,7 +1432,7 @@ func RenderString(v string) string {
 
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
-	return fmt.Sprintf(Template, "en", title, desc, "", title, RenderString(text))
+	return fmt.Sprintf(Template, "en", title, desc, "", navAuthHTML(nil), title, RenderString(text))
 }
 
 func ServeHTML(html string) http.Handler {
