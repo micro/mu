@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Avoid duplicate market tool calls in guest market answers** ([#944](https://github.com/micro/mu/issues/944)). Live guest review of “What is moving in markets today?” returned a readable, correctly date-anchored answer, but the stream emitted four identical market-price tool passes and took about 19s before synthesis. Keep this at the top because markets are the most-recently exercised first-run loop and speed/clarity in ask → answer ranks above new surface area; preserve `/agent` and service contracts while coalescing redundant work and progress events.
+1. **Reduce first-token latency for guest agent answers** ([#949](https://github.com/micro/mu/issues/949)). Live guest review on 2026-07-01 found the core loop now returns readable, date-anchored market/news/weather answers and market tool calls are no longer duplicated, but market and technology-news answers still took roughly 20–22s before synthesis. Rank this first because the North Star says the core ask → answer loop must be fast for first-run guests; preserve `/agent` and service contracts while improving latency/progress behavior.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Duplicate market tool calls avoided.** Guest market answers now use a single market-price pass before synthesis instead of repeated identical calls, closing #944 / PR #947.
 - ✅ **Blog currency amounts protected from MathJax.** Blog/card rendering now protects dollar amounts such as “$1 billion” from MathJax delimiters, closing #939 / PR #942.
 - ✅ **Agent market prices protected from MathJax.** Guest market answers now keep dollar prices readable in streamed and final answers, closing #934 / PR #937.
 - ✅ **Filtered unrelated market-mover headlines.** Market-mover answers now keep movers/prices first and avoid unrelated business/tech headlines, closing #927 / PR #930 / PR #932.
