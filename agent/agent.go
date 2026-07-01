@@ -187,7 +187,8 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	var unavailableTools []string
 	seenToolCalls := map[string]bool{}
 
-	for _, tc := range toolCalls {
+	for i := 0; i < len(toolCalls); i++ {
+		tc := toolCalls[i]
 		if tc.Tool == "" {
 			continue
 		}
@@ -205,6 +206,12 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
 			unavailableTools = append(unavailableTools, tc.Tool)
+			if fallback, ok := fallbackNewsSearchToolCall(prompt, tc.Tool, tc.Args); ok {
+				key := toolCallKey(fallback.Tool, fallback.Args)
+				if !seenToolCalls[key] && (!opts.Public || isGuestAllowedTool(fallback.Tool)) {
+					toolCalls = append(toolCalls, toolCall{Tool: fallback.Tool, Args: fallback.Args})
+				}
+			}
 			continue
 		}
 		if len(text) > 8000 {
@@ -908,7 +915,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	var unavailableTools []string
 	seenToolCalls := map[string]bool{}
 
-	for _, tc := range toolCalls {
+	for i := 0; i < len(toolCalls); i++ {
+		tc := toolCalls[i]
 		if tc.Tool == "" {
 			continue
 		}
@@ -935,6 +943,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 				"name":    tc.Tool,
 				"message": tc.Tool + " — unavailable",
 			})
+			if fallback, ok := fallbackNewsSearchToolCall(req.Prompt, tc.Tool, tc.Args); ok {
+				key := toolCallKey(fallback.Tool, fallback.Args)
+				if !seenToolCalls[key] && (!isGuest || isGuestAllowedTool(fallback.Tool)) {
+					toolCalls = append(toolCalls, toolCall{Tool: fallback.Tool, Args: fallback.Args})
+				}
+			}
 			continue
 		}
 
@@ -1180,6 +1194,17 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 	}
 
 	return nil
+}
+
+func fallbackNewsSearchToolCall(prompt, tool string, args map[string]any) (shortcutToolCall, bool) {
+	if tool != "news_search" || !isLatestTechnologyNewsPrompt(strings.ToLower(prompt)) {
+		return shortcutToolCall{}, false
+	}
+	query := "latest AI news"
+	if raw, ok := args["query"].(string); ok && strings.TrimSpace(raw) != "" {
+		query = strings.TrimSpace(raw)
+	}
+	return shortcutToolCall{Tool: "web_search", Args: map[string]any{"q": query}}, true
 }
 
 func isLatestTechnologyNewsPrompt(lower string) bool {
