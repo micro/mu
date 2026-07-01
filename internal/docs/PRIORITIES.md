@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Disclose freshness and source for weather agent answers** ([#910](https://github.com/micro/mu/issues/910)). Guest weather prompts now return correct, readable forecasts and avoid zero-value hallucinations, but the final answer still presents current conditions without visible observed-at/generated-at or provider context. Preserve the existing `/agent` and weather service contracts while adding concise freshness/source disclosure, and use an explicit unavailable/stale state when provider data cannot support a current-weather claim.
+1. **Synthesize mixed-source agent answers instead of raw tool payloads** ([#915](https://github.com/micro/mu/issues/915)). Guest prompts that fan out across blog/social/search/news can still fall back to raw JSON-like tool payloads when one provider is unavailable, even though usable source context is present. Preserve `/agent` and service contracts while turning mixed available/unavailable tool context into concise, source-linked prose and keeping unavailable-provider disclosure human-readable.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Weather freshness disclosed in agent summaries.** Weather-backed agent summaries now include source/freshness context and stale/unavailable handling, closing #910 / PR #913.
 - ✅ **Chat topic summary freshness disclosed.** Guest `/chat` topic summaries now expose generated-at/source/status metadata, closing #904 / PR #907.
 - ✅ **Market data freshness disclosed.** Guest `/markets` now shows data sources and last refresh cadence, and markets-backed agent answers stream readable market tables, closing #899 / PR #902.
 - ✅ **Missing weather readings treated as unavailable.** Weather-backed agent answers now avoid presenting absent optional observations as real zeroes, closing #894 / PR #897.
