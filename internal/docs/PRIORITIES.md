@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Reduce first-token latency for guest agent answers** ([#949](https://github.com/micro/mu/issues/949)). Live guest review on 2026-07-01 found the core loop now returns readable, date-anchored market/news/weather answers and market tool calls are no longer duplicated, but market and technology-news answers still took roughly 20–22s before synthesis. Rank this first because the North Star says the core ask → answer loop must be fast for first-run guests; preserve `/agent` and service contracts while improving latency/progress behavior.
+1. **Reduce first-token latency for guest agent answers** ([#951](https://github.com/micro/mu/issues/951)). Live guest review on 2026-07-01 after PR #953 found the core loop emits progress promptly and returns readable, date-anchored market/weather answers, but first answer tokens for tool-backed prompts still arrive only after roughly 8–17s and the news provider can be unavailable. Rank this first because the North Star says the core ask → answer loop must be fast for first-run guests; preserve `/agent` and service contracts while improving latency/progress behavior.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Guest agent planning latency reduced.** Tool-backed guest prompts now emit early progress and avoid some duplicated planning work, closing #949 / PR #953; remaining answer-token latency is tracked in #951.
 - ✅ **Duplicate market tool calls avoided.** Guest market answers now use a single market-price pass before synthesis instead of repeated identical calls, closing #944 / PR #947.
 - ✅ **Blog currency amounts protected from MathJax.** Blog/card rendering now protects dollar amounts such as “$1 billion” from MathJax delimiters, closing #939 / PR #942.
 - ✅ **Agent market prices protected from MathJax.** Guest market answers now keep dollar prices readable in streamed and final answers, closing #934 / PR #937.
