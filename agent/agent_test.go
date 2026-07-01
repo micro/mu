@@ -373,6 +373,28 @@ func TestShortcutToolCallsLatestTechnologyNews(t *testing.T) {
 	}
 }
 
+func TestFallbackNewsSearchToolCallUsesWebSearchForLatestAINews(t *testing.T) {
+	got, ok := fallbackNewsSearchToolCall("Find today's AI news", "news_search", map[string]any{"query": "technology news"})
+	if !ok {
+		t.Fatal("expected latest AI news prompts to fall back when news_search is unavailable")
+	}
+	if got.Tool != "web_search" {
+		t.Fatalf("expected web_search fallback, got %#v", got)
+	}
+	if got.Args["q"] != "technology news" {
+		t.Fatalf("expected fallback to preserve news query, got %#v", got.Args)
+	}
+}
+
+func TestFallbackNewsSearchToolCallIgnoresNonNewsSearchFailures(t *testing.T) {
+	if got, ok := fallbackNewsSearchToolCall("Find today's AI news", "weather_forecast", nil); ok {
+		t.Fatalf("expected non-news tool failures to be ignored, got %#v", got)
+	}
+	if got, ok := fallbackNewsSearchToolCall("old saved AI article", "news_search", map[string]any{"query": "AI"}); ok {
+		t.Fatalf("expected non-current news prompts to be ignored, got %#v", got)
+	}
+}
+
 func TestSkipMarketMoverCompanionToolFiltersUnrequestedNews(t *testing.T) {
 	prompt := "What is moving in markets today?"
 	for _, tool := range []string{"news", "news_headlines", "news_search", "web_search", "recall"} {
