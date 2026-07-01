@@ -304,6 +304,16 @@ func TestFormatToolResultMarketsRESTDataStaysReadable(t *testing.T) {
 	}
 }
 
+func TestFormatToolResultMarketsRESTDataIncludesFreshnessDisclosure(t *testing.T) {
+	result := `{"category":"crypto","updated_at":"2026-07-01T12:00:00Z","stale":true,"partial":true,"freshness":"Last refresh: 2026-07-01 12:00 UTC; data may be stale; some symbols are unavailable from the current source","data":[{"symbol":"BTC","price":97000,"change_24h":1.23,"source":"Coinbase + CoinGecko"}]}`
+	got := formatToolResult("markets", result, nil)
+	for _, want := range []string{"Last refresh: 2026-07-01 12:00 UTC", "market data may be stale", "some requested symbols are unavailable", "BTC: $97000.00 (+1.23% 24h)"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in readable markets context, got %q", want, got)
+		}
+	}
+}
+
 func TestFormatToolResult_Dispatch(t *testing.T) {
 	// Ensure the dispatcher calls the right formatter
 	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`

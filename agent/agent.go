@@ -1422,12 +1422,18 @@ func formatMarketsResult(result string) string {
 	}
 
 	var data struct {
-		Category string `json:"category"`
-		Data     []struct {
+		Category  string `json:"category"`
+		UpdatedAt string `json:"updated_at"`
+		Stale     bool   `json:"stale"`
+		Partial   bool   `json:"partial"`
+		Freshness string `json:"freshness"`
+		Data      []struct {
 			Symbol    string  `json:"symbol"`
 			Price     float64 `json:"price"`
 			Change24h float64 `json:"change_24h"`
 			Type      string  `json:"type"`
+			UpdatedAt string  `json:"updated_at"`
+			Source    string  `json:"source"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
@@ -1443,6 +1449,17 @@ func formatMarketsResult(result string) string {
 	}
 
 	var b strings.Builder
+	if strings.TrimSpace(data.Freshness) != "" {
+		fmt.Fprintf(&b, "%s.\n", strings.TrimSuffix(strings.TrimSpace(data.Freshness), "."))
+	} else if strings.TrimSpace(data.UpdatedAt) != "" {
+		fmt.Fprintf(&b, "Last refresh: %s.\n", strings.TrimSpace(data.UpdatedAt))
+	}
+	if data.Stale {
+		b.WriteString("Disclosure: market data may be stale.\n")
+	}
+	if data.Partial {
+		b.WriteString("Disclosure: some requested symbols are unavailable from the current source.\n")
+	}
 	fmt.Fprintf(&b, "Live %s prices:\n", category)
 	count := 0
 	for _, item := range data.Data {
