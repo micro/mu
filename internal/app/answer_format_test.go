@@ -66,3 +66,16 @@ func TestNormalizeAnswerMarkdownConvertsBulletGlyphs(t *testing.T) {
 		t.Fatalf("NormalizeAnswerMarkdown() = %q, want %q", got, want)
 	}
 }
+
+func TestNormalizeAnswerMarkdownProtectsCurrencyDollars(t *testing.T) {
+	input := "- BTC: $94,000\n- ETH: $4,703\n- PAXG: $3,942"
+	got := NormalizeAnswerMarkdown(input)
+	if strings.Contains(got, "$94") || strings.Contains(got, "$4") || strings.Contains(got, "$3") {
+		t.Fatalf("currency dollars were not protected from math rendering: %q", got)
+	}
+	for _, want := range []string{"$\u206094,000", "$\u20604,703", "$\u20603,942"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("NormalizeAnswerMarkdown() missing %q in %q", want, got)
+		}
+	}
+}
