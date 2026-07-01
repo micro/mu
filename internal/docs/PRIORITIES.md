@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Disclose freshness and sources for guest chat topic summaries** ([#904](https://github.com/micro/mu/issues/904)). The guest `/chat` page now explains saved chat requires login and points people to the public agent, but its topic summaries still read as current factual briefings without visible generated-at/source/degraded context. Preserve the existing chat routes and auth flow, but add freshness/source metadata or an explicit unavailable state so stale or weakly grounded summaries are not presented as authoritative.
+1. **Disclose freshness and source for weather agent answers** ([#910](https://github.com/micro/mu/issues/910)). Guest weather prompts now return correct, readable forecasts and avoid zero-value hallucinations, but the final answer still presents current conditions without visible observed-at/generated-at or provider context. Preserve the existing `/agent` and weather service contracts while adding concise freshness/source disclosure, and use an explicit unavailable/stale state when provider data cannot support a current-weather claim.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Chat topic summary freshness disclosed.** Guest `/chat` topic summaries now expose generated-at/source/status metadata, closing #904 / PR #907.
 - ✅ **Market data freshness disclosed.** Guest `/markets` now shows data sources and last refresh cadence, and markets-backed agent answers stream readable market tables, closing #899 / PR #902.
 - ✅ **Missing weather readings treated as unavailable.** Weather-backed agent answers now avoid presenting absent optional observations as real zeroes, closing #894 / PR #897.
 - ✅ **Guest navigation matches account state.** Signed-out pages now hide signed-in Account/Logout actions while preserving signed-in navigation, closing #889 / PR #892.
