@@ -21,10 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Show market data freshness and stale-source fallback** ([#899](https://github.com/micro/mu/issues/899)). The live guest markets loop is now readable and fast, but `/markets` and the markets-backed agent answer still present prices as live/current without visible refresh or degraded-source context. Preserve the existing markets routes, MCP/API contracts, and answer shape, but add source/freshness metadata to the page/card and model context so stale, incomplete, or fallback data is disclosed instead of silently treated as authoritative.
+1. **Disclose freshness and sources for guest chat topic summaries** ([#904](https://github.com/micro/mu/issues/904)). The guest `/chat` page now explains saved chat requires login and points people to the public agent, but its topic summaries still read as current factual briefings without visible generated-at/source/degraded context. Preserve the existing chat routes and auth flow, but add freshness/source metadata or an explicit unavailable state so stale or weakly grounded summaries are not presented as authoritative.
 
 ### Already shipped (do not re-queue)
 
+- ✅ **Market data freshness disclosed.** Guest `/markets` now shows data sources and last refresh cadence, and markets-backed agent answers stream readable market tables, closing #899 / PR #902.
 - ✅ **Missing weather readings treated as unavailable.** Weather-backed agent answers now avoid presenting absent optional observations as real zeroes, closing #894 / PR #897.
 - ✅ **Guest navigation matches account state.** Signed-out pages now hide signed-in Account/Logout actions while preserving signed-in navigation, closing #889 / PR #892.
 - ✅ **Readable markets agent answers.** Guest `What is moving in markets?` prompts now stream synthesized movers, prices, and percentage moves instead of raw JSON/tool payloads or MathJax-mangled dollar prices, closing #880 / PR #887.
