@@ -314,6 +314,16 @@ func TestFormatToolResultMarketsRESTDataIncludesFreshnessDisclosure(t *testing.T
 	}
 }
 
+func TestShortcutToolCallsMarketMoversAvoidsNewsPlanning(t *testing.T) {
+	got := shortcutToolCalls("What is moving in markets today?")
+	if len(got) != 1 {
+		t.Fatalf("expected one shortcut tool call, got %#v", got)
+	}
+	if got[0].Tool != "markets" {
+		t.Fatalf("expected markets-only shortcut, got %#v", got)
+	}
+}
+
 func TestFormatToolResult_Dispatch(t *testing.T) {
 	// Ensure the dispatcher calls the right formatter
 	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`
