@@ -7,14 +7,26 @@ import (
 	"testing"
 )
 
-func TestSQLiteMigration(t *testing.T) {
-	// Use a temp directory for test
-	tempDir := t.TempDir()
-	os.Setenv("HOME", tempDir)
+var sqliteTestMu sync.Mutex
 
-	// Reset singleton
+func resetSQLiteTestDB(t *testing.T) string {
+	t.Helper()
+	sqliteTestMu.Lock()
+	t.Cleanup(sqliteTestMu.Unlock)
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+	if db != nil {
+		_ = db.Close()
+	}
 	dbOnce = sync.Once{}
 	db = nil
+	dbPath = ""
+	return tempDir
+}
+
+func TestSQLiteMigration(t *testing.T) {
+	// Use an isolated temp directory for this test.
+	tempDir := resetSQLiteTestDB(t)
 
 	// Create test index.json
 	testIndex := `{
@@ -81,11 +93,7 @@ func TestSQLiteMigration(t *testing.T) {
 }
 
 func TestSQLiteSearch(t *testing.T) {
-	tempDir := t.TempDir()
-	os.Setenv("HOME", tempDir)
-
-	dbOnce = sync.Once{}
-	db = nil
+	resetSQLiteTestDB(t)
 
 	// Initialize and add some entries
 	err := IndexSQLite("search1", "news", "AI Revolution in Tech", "Artificial intelligence is transforming the technology industry.", "", nil)
@@ -132,11 +140,7 @@ func TestSQLiteSearch(t *testing.T) {
 }
 
 func TestSQLiteSearchFindsPartialContentMatches(t *testing.T) {
-	tempDir := t.TempDir()
-	os.Setenv("HOME", tempDir)
-
-	dbOnce = sync.Once{}
-	db = nil
+	resetSQLiteTestDB(t)
 
 	err := IndexSQLite("partial1", "news", "Space Telescope", "Astronomers photographed galaxies in ultraviolet light.", "", nil)
 	if err != nil {
@@ -160,11 +164,7 @@ func TestSQLiteSearchFindsPartialContentMatches(t *testing.T) {
 }
 
 func TestSQLiteIndexUpdate(t *testing.T) {
-	tempDir := t.TempDir()
-	os.Setenv("HOME", tempDir)
-
-	dbOnce = sync.Once{}
-	db = nil
+	resetSQLiteTestDB(t)
 
 	// Add entry
 	err := IndexSQLite("update1", "news", "Original Title", "Original content.", "", map[string]interface{}{"version": 1})
@@ -198,11 +198,7 @@ func TestSQLiteIndexUpdate(t *testing.T) {
 }
 
 func TestFTS5Search(t *testing.T) {
-	tempDir := t.TempDir()
-	os.Setenv("HOME", tempDir)
-
-	dbOnce = sync.Once{}
-	db = nil
+	resetSQLiteTestDB(t)
 
 	// Add entries
 	IndexSQLite("fts1", "news", "Bitcoin Hits All-Time High", "Bitcoin reached a new record price amid growing institutional adoption.", "", nil)

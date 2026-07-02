@@ -185,9 +185,19 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	}
 	var results []toolResult
 	var unavailableTools []string
+	seenToolCalls := map[string]bool{}
 
-	for _, tc := range toolCalls {
+	for i := 0; i < len(toolCalls); i++ {
+		tc := toolCalls[i]
 		if tc.Tool == "" {
+			continue
+		}
+		key := toolCallKey(tc.Tool, tc.Args)
+		if seenToolCalls[key] {
+			continue
+		}
+		seenToolCalls[key] = true
+		if skipMarketMoverCompanionTool(prompt, tc.Tool) {
 			continue
 		}
 		if opts.Public && !isGuestAllowedTool(tc.Tool) {
@@ -196,6 +206,12 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
 			unavailableTools = append(unavailableTools, tc.Tool)
+			if fallback, ok := fallbackNewsSearchToolCall(prompt, tc.Tool, tc.Args); ok {
+				key := toolCallKey(fallback.Tool, fallback.Args)
+				if !seenToolCalls[key] && (!opts.Public || isGuestAllowedTool(fallback.Tool)) {
+					toolCalls = append(toolCalls, toolCall{Tool: fallback.Tool, Args: fallback.Args})
+				}
+			}
 			continue
 		}
 		if len(text) > 8000 {
@@ -541,14 +557,24 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	emitted := false
 	var captured strings.Builder
 	var nativeTools []string
+	startedTools := map[string]bool{}
+	endedTools := map[string]bool{}
 
 	answer, handled, err := streamNative(accountID, prompt, opts, StreamHooks{
 		ToolStart: func(label string) {
+			if startedTools[label] {
+				return
+			}
+			startedTools[label] = true
 			emitted = true
 			nativeTools = append(nativeTools, label)
 			sse(w, map[string]any{"type": "tool_start", "name": label, "message": label})
 		},
 		ToolEnd: func(label string) {
+			if endedTools[label] {
+				return
+			}
+			endedTools[label] = true
 			sse(w, map[string]any{"type": "tool_done", "name": label, "message": label + " — done"})
 		},
 		Token: func(tok string) {
@@ -802,7 +828,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// emitting tool start/end events. Falls through to the hand-rolled
 	// pipeline below if disabled, no provider is configured, or it fails
 	// before producing any output.
-	if nativeStreamEnabled() {
+	// Guest starter/live-data prompts with deterministic tool shortcuts should
+	// skip the native agent's initial model planning turn. The hand-rolled
+	// pipeline below can start the relevant tool immediately, which improves
+	// first visible progress for the first-run core loop without changing any
+	// public endpoint or tool contract.
+	preferPlanner := isGuest && (len(shortcutToolCalls(req.Prompt)) > 0 || isSimpleWeatherPrompt(req.Prompt))
+	if nativeStreamEnabled() && !preferPlanner {
 		nopts := QueryOpts{Public: isGuest}
 		for _, f := range conversationHistory {
 			if strings.TrimSpace(f.Prompt) == "" {
@@ -881,9 +913,19 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	var results []toolResult
 	var unavailableTools []string
+	seenToolCalls := map[string]bool{}
 
-	for _, tc := range toolCalls {
+	for i := 0; i < len(toolCalls); i++ {
+		tc := toolCalls[i]
 		if tc.Tool == "" {
+			continue
+		}
+		key := toolCallKey(tc.Tool, tc.Args)
+		if seenToolCalls[key] {
+			continue
+		}
+		seenToolCalls[key] = true
+		if skipMarketMoverCompanionTool(req.Prompt, tc.Tool) {
 			continue
 		}
 		if isGuest && !isGuestAllowedTool(tc.Tool) {
@@ -901,6 +943,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 				"name":    tc.Tool,
 				"message": tc.Tool + " — unavailable",
 			})
+			if fallback, ok := fallbackNewsSearchToolCall(req.Prompt, tc.Tool, tc.Args); ok {
+				key := toolCallKey(fallback.Tool, fallback.Args)
+				if !seenToolCalls[key] && (!isGuest || isGuestAllowedTool(fallback.Tool)) {
+					toolCalls = append(toolCalls, toolCall{Tool: fallback.Tool, Args: fallback.Args})
+				}
+			}
 			continue
 		}
 
@@ -947,6 +995,44 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", tool, unavailableToolMessage(tool)))
 	}
 
+	hasMarketsTool := false
+	hasWeatherTool := false
+	for _, tc := range toolCalls {
+		switch tc.Tool {
+		case "markets":
+			hasMarketsTool = true
+		case "weather_forecast":
+			hasWeatherTool = true
+		}
+	}
+	if useFastToolFallback(req.Prompt, isGuest, hasMarketsTool, hasWeatherTool, ragParts) {
+		answer := app.NormalizeAnswerMarkdown(app.StripLatexDollars(synthesizeToolFallback(ragParts)))
+		rendered := app.RenderString(answer)
+		html := `<div class="card" id="agent-response">` + rendered + `</div>`
+		for _, res := range results {
+			if card := renderResultCard(res.Name, res.Result, res.Args); card != "" {
+				html += card
+			}
+		}
+		if len(results) > 0 {
+			html += `<div class="card" style="font-size:13px;"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`
+			for _, res := range results {
+				html += renderToolCallRef(res.Name, res.Args, res.Formatted)
+			}
+			html += `</div>`
+		}
+		updateFlow(flow.ID, func(f *Flow) {
+			f.Answer = answer
+			f.HTML = html
+			f.Status = "done"
+		})
+		sse(w, map[string]any{"type": "stream_start"})
+		sse(w, map[string]any{"type": "stream_token", "token": answer})
+		sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
+		sse(w, map[string]any{"type": "done"})
+		return
+	}
+
 	today := currentDateContext(time.Now().UTC())
 
 	var synthSystem string
@@ -967,6 +1053,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
 			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data — " +
 			"it will be outdated. If no tool result contains the requested real-time data, say it is unavailable.\n\n" +
+			"For market-mover prompts, prioritize the largest 24h movers and their prices first. Keep the answer to a brief bullets-only summary unless the user asks for depth. Only mention news when the tool results include directly explanatory headlines or sources; do not pad a market-mover answer with general market/news commentary.\n\n" +
 			"When results come from multiple sources (news, video, markets, weather, etc.), identify and highlight " +
 			"connections and correlations between them — for example, how a market move relates to a news story, " +
 			"or how videos cover the same topic appearing in the news.\n\n" +
@@ -1051,28 +1138,34 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"apps":          {{Tool: "apps_search", Args: map[string]any{}}},
 		"mail":          {{Tool: "mail_read", Args: map[string]any{}}},
 		// Personal queries
-		"do i have mail":        {{Tool: "mail_read", Args: map[string]any{}}},
-		"do i have unread mail": {{Tool: "mail_read", Args: map[string]any{}}},
-		"do i have email":       {{Tool: "mail_read", Args: map[string]any{}}},
-		"check my mail":         {{Tool: "mail_read", Args: map[string]any{}}},
-		"check my email":        {{Tool: "mail_read", Args: map[string]any{}}},
-		"any new mail":          {{Tool: "mail_read", Args: map[string]any{}}},
-		"any new email":         {{Tool: "mail_read", Args: map[string]any{}}},
-		"any mail":              {{Tool: "mail_read", Args: map[string]any{}}},
-		"unread mail":           {{Tool: "mail_read", Args: map[string]any{}}},
-		"unread email":          {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my mail":          {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my email":         {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my unread email":  {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my unread emails": {{Tool: "mail_read", Args: map[string]any{}}},
-		"my mail":               {{Tool: "mail_read", Args: map[string]any{}}},
-		"my email":              {{Tool: "mail_read", Args: map[string]any{}}},
-		"btc price":             {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"bitcoin price":         {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"eth price":             {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"what's happening":      {{Tool: "news_headlines", Args: map[string]any{}}},
-		"what's happening?":     {{Tool: "news_headlines", Args: map[string]any{}}},
-		"today's news":          {{Tool: "news_headlines", Args: map[string]any{}}},
+		"do i have mail":                   {{Tool: "mail_read", Args: map[string]any{}}},
+		"do i have unread mail":            {{Tool: "mail_read", Args: map[string]any{}}},
+		"do i have email":                  {{Tool: "mail_read", Args: map[string]any{}}},
+		"check my mail":                    {{Tool: "mail_read", Args: map[string]any{}}},
+		"check my email":                   {{Tool: "mail_read", Args: map[string]any{}}},
+		"any new mail":                     {{Tool: "mail_read", Args: map[string]any{}}},
+		"any new email":                    {{Tool: "mail_read", Args: map[string]any{}}},
+		"any mail":                         {{Tool: "mail_read", Args: map[string]any{}}},
+		"unread mail":                      {{Tool: "mail_read", Args: map[string]any{}}},
+		"unread email":                     {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my mail":                     {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my email":                    {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my unread email":             {{Tool: "mail_read", Args: map[string]any{}}},
+		"read my unread emails":            {{Tool: "mail_read", Args: map[string]any{}}},
+		"my mail":                          {{Tool: "mail_read", Args: map[string]any{}}},
+		"my email":                         {{Tool: "mail_read", Args: map[string]any{}}},
+		"btc price":                        {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
+		"bitcoin price":                    {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
+		"eth price":                        {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
+		"what's happening":                 {{Tool: "news_headlines", Args: map[string]any{}}},
+		"what's happening?":                {{Tool: "news_headlines", Args: map[string]any{}}},
+		"today's news":                     {{Tool: "news_headlines", Args: map[string]any{}}},
+		"what is moving in markets today":  {{Tool: "markets", Args: map[string]any{}}},
+		"what is moving in markets today?": {{Tool: "markets", Args: map[string]any{}}},
+		"what's moving in markets today":   {{Tool: "markets", Args: map[string]any{}}},
+		"what's moving in markets today?":  {{Tool: "markets", Args: map[string]any{}}},
+		"market movers today":              {{Tool: "markets", Args: map[string]any{}}},
+		"markets movers today":             {{Tool: "markets", Args: map[string]any{}}},
 		// Starter pill phrases
 		"give me a summary of today's top news":         {{Tool: "news_headlines", Args: map[string]any{}}},
 		"what's in the news?":                           {{Tool: "news_headlines", Args: map[string]any{}}},
@@ -1092,7 +1185,18 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		return tc
 	}
 
-	// Fuzzy matches for prompts with dynamic content
+	// Fuzzy matches for prompts with dynamic content. Simple market-mover
+	// prompts should reach the markets tool without an LLM planning turn so the
+	// first visible tool event is emitted as soon as possible. Explanation or
+	// cross-source requests still use the planner so they can add news/search.
+	if isMarketMoverPrompt(lower) && !wantsMarketMoverExplanation(lower) {
+		return []shortcutToolCall{{Tool: "markets", Args: map[string]any{}}}
+	}
+
+	if isLatestTechnologyNewsPrompt(lower) {
+		return []shortcutToolCall{{Tool: "news_search", Args: map[string]any{"query": newsTopicQuery(lower)}}}
+	}
+
 	if strings.Contains(lower, "unread email") || strings.Contains(lower, "unread mail") ||
 		(strings.Contains(lower, "read") && strings.Contains(lower, "mail")) ||
 		(strings.Contains(lower, "read") && strings.Contains(lower, "email")) {
@@ -1102,7 +1206,127 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 	return nil
 }
 
+func fallbackNewsSearchToolCall(prompt, tool string, args map[string]any) (shortcutToolCall, bool) {
+	if tool != "news_search" || !isLatestTechnologyNewsPrompt(strings.ToLower(prompt)) {
+		return shortcutToolCall{}, false
+	}
+	query := newsTopicQuery(strings.ToLower(prompt))
+	if raw, ok := args["query"].(string); ok && strings.TrimSpace(raw) != "" {
+		query = strings.TrimSpace(raw)
+	}
+	if promptQuery := newsTopicQuery(strings.ToLower(prompt)); promptQuery != "technology news" && query == "technology news" {
+		query = promptQuery
+	}
+	return shortcutToolCall{Tool: "web_search", Args: map[string]any{"q": query}}, true
+}
+
+func newsTopicQuery(lower string) string {
+	if strings.Contains(lower, "artificial intelligence") {
+		return "artificial intelligence news"
+	}
+	for _, token := range strings.FieldsFunc(lower, func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+	}) {
+		if token == "ai" {
+			return "AI news"
+		}
+	}
+	return "technology news"
+}
+
+func isLatestTechnologyNewsPrompt(lower string) bool {
+	hasRecency := strings.Contains(lower, "latest") ||
+		strings.Contains(lower, "today") ||
+		strings.Contains(lower, "current") ||
+		strings.Contains(lower, "happening")
+	if !hasRecency || !strings.Contains(lower, "news") {
+		return false
+	}
+	for _, topic := range []string{"tech", "technology", "ai", "artificial intelligence"} {
+		if strings.Contains(lower, topic) {
+			return true
+		}
+	}
+	return false
+}
+
+func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWeatherTool bool, ragParts []string) bool {
+	if !isGuest || len(ragParts) == 0 {
+		return false
+	}
+	if hasMarketsTool && isMarketMoverPrompt(prompt) && !wantsMarketMoverExplanation(prompt) {
+		return true
+	}
+	return hasWeatherTool && isSimpleWeatherPrompt(prompt)
+}
+
+func isSimpleWeatherPrompt(prompt string) bool {
+	lower := strings.ToLower(strings.TrimSpace(prompt))
+	if lower == "" || !strings.Contains(lower, "weather") {
+		return false
+	}
+	complexTerms := []string{"compare", "versus", " vs ", "and news", "market", "markets", "why", "explain", "impact", "affect"}
+	for _, term := range complexTerms {
+		if strings.Contains(lower, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func toolCallKey(tool string, args map[string]any) string {
+	if len(args) == 0 {
+		return strings.TrimSpace(tool)
+	}
+	b, err := json.Marshal(args)
+	if err != nil {
+		return strings.TrimSpace(tool)
+	}
+	return strings.TrimSpace(tool) + "\x00" + string(b)
+}
+
 // extractJSONArray extracts the first JSON array `[…]` from text produced by the AI.
+// skipMarketMoverCompanionTool keeps market-mover answers focused on price
+// data unless the user explicitly asks for explanatory news or cross-source
+// correlation. Planning can otherwise add broad news tools for "today" prompts,
+// which lets unrelated headlines bleed into a simple movers answer.
+func skipMarketMoverCompanionTool(prompt, tool string) bool {
+	if tool == "markets" || !isMarketMoverPrompt(prompt) || wantsMarketMoverExplanation(prompt) {
+		return false
+	}
+	return tool == "news" || tool == "news_headlines" || tool == "news_search" || tool == "web_search" || tool == "recall"
+}
+
+func isMarketMoverPrompt(prompt string) bool {
+	lower := strings.ToLower(prompt)
+	hasMoveIntent := strings.Contains(lower, "moving") ||
+		strings.Contains(lower, "mover") ||
+		strings.Contains(lower, "move") ||
+		strings.Contains(lower, "rally") ||
+		strings.Contains(lower, "selloff") ||
+		strings.Contains(lower, "up today") ||
+		strings.Contains(lower, "down today")
+	if !hasMoveIntent {
+		return false
+	}
+	for _, term := range []string{"market", "markets", "stock", "stocks", "equity", "equities", "crypto", "bitcoin", "btc", "eth", "ethereum", "index", "indices", "futures"} {
+		if strings.Contains(lower, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func wantsMarketMoverExplanation(prompt string) bool {
+	lower := strings.ToLower(prompt)
+	for _, term := range []string{"why", "because", "explain", "reason", "driving", "driver", "catalyst", "news", "headline", "correlat"} {
+		if strings.Contains(lower, term) {
+			return true
+		}
+	}
+	return false
+}
+
 func extractJSONArray(text string) string {
 	start := strings.Index(text, "[")
 	end := strings.LastIndex(text, "]")

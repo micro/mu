@@ -26,7 +26,7 @@ Each is a real [go-micro](https://go-micro.dev) service the agent can call — a
 
 - **Agent** — Ask anything. It calls news, markets, mail, weather, web search and more, then synthesises an answer. Remembers your preferences. (A go-micro agent over the services below.)
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
-- **Markets** — Live crypto, futures, and commodity prices
+- **Markets** — Live crypto, futures, commodity, and currency prices
 - **Mail** — Private messaging and email
 - **Blog** — Microblogging with daily AI-generated digests
 - **Chat** — Conversational AI with session history

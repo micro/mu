@@ -314,6 +314,152 @@ func TestFormatToolResultMarketsRESTDataIncludesFreshnessDisclosure(t *testing.T
 	}
 }
 
+func TestToolCallKeyDedupesEquivalentArgs(t *testing.T) {
+	first := toolCallKey("markets", map[string]any{"category": "crypto", "limit": float64(10)})
+	second := toolCallKey("markets", map[string]any{"limit": float64(10), "category": "crypto"})
+	if first != second {
+		t.Fatalf("expected equivalent tool args to share a dedupe key: %q vs %q", first, second)
+	}
+	if first == toolCallKey("markets", map[string]any{"category": "futures", "limit": float64(10)}) {
+		t.Fatal("expected distinct market categories to keep distinct dedupe keys")
+	}
+}
+
+func TestShortcutToolCallsMarketMoversAvoidsNewsPlanning(t *testing.T) {
+	for _, prompt := range []string{
+		"What is moving in markets today?",
+		"What is moving in markets?",
+		"Which stocks are moving?",
+	} {
+		got := shortcutToolCalls(prompt)
+		if len(got) != 1 {
+			t.Fatalf("%q: expected one shortcut tool call, got %#v", prompt, got)
+		}
+		if got[0].Tool != "markets" {
+			t.Fatalf("%q: expected markets-only shortcut, got %#v", prompt, got)
+		}
+	}
+}
+
+func TestShortcutToolCallsMarketMoverExplanationUsesPlanner(t *testing.T) {
+	if got := shortcutToolCalls("Why is Bitcoin moving today?"); len(got) != 0 {
+		t.Fatalf("expected explanation prompt to use planner, got %#v", got)
+	}
+	if got := shortcutToolCalls("What is moving in markets, and what news explains it?"); len(got) != 0 {
+		t.Fatalf("expected cross-source explanation prompt to use planner, got %#v", got)
+	}
+}
+
+func TestUseFastToolFallbackOnlyForGuestMarketMovers(t *testing.T) {
+	rag := []string{"### markets\nLive crypto prices:\nBTC: $97000.00 (+1.23% 24h)"}
+	if !useFastToolFallback("What is moving in markets today?", true, true, false, rag) {
+		t.Fatal("expected guest market-mover prompts with market data to use the fast fallback")
+	}
+	if useFastToolFallback("What is moving in markets today?", false, true, false, rag) {
+		t.Fatal("authenticated users should keep full synthesis")
+	}
+	if useFastToolFallback("Why is Bitcoin moving today?", true, true, false, rag) {
+		t.Fatal("explanation prompts should keep full synthesis")
+	}
+	if useFastToolFallback("What is moving in markets today?", true, false, false, rag) {
+		t.Fatal("fallback requires a market tool result")
+	}
+	if useFastToolFallback("What is moving in markets today?", true, true, false, nil) {
+		t.Fatal("fallback requires result context")
+	}
+}
+
+func TestUseFastToolFallbackForGuestSimpleWeather(t *testing.T) {
+	rag := []string{"### weather_forecast\nWeather for New York.\nNow: 21°C, partly cloudy.\nFreshness/source: source Google Weather; generated at 2026-07-02 12:00 UTC."}
+	if !useFastToolFallback("Weather in New York today", true, false, true, rag) {
+		t.Fatal("expected simple guest weather prompts with weather data to use the fast fallback")
+	}
+	if useFastToolFallback("Compare weather in New York and London", true, false, true, rag) {
+		t.Fatal("comparative weather prompts should keep full synthesis")
+	}
+	if useFastToolFallback("Weather in New York today", false, false, true, rag) {
+		t.Fatal("authenticated users should keep full synthesis")
+	}
+	if useFastToolFallback("Weather in New York today", true, false, false, rag) {
+		t.Fatal("fallback requires a weather tool result")
+	}
+}
+
+func TestShortcutToolCallsLatestTechnologyNews(t *testing.T) {
+	for _, tt := range []struct {
+		prompt string
+		query  string
+	}{
+		{prompt: "latest technology news", query: "technology news"},
+		{prompt: "What is the latest AI news today?", query: "AI news"},
+		{prompt: "current artificial intelligence news", query: "artificial intelligence news"},
+	} {
+		got := shortcutToolCalls(tt.prompt)
+		if len(got) != 1 {
+			t.Fatalf("expected one shortcut tool call for %q, got %#v", tt.prompt, got)
+		}
+		if got[0].Tool != "news_search" {
+			t.Fatalf("expected news_search shortcut for %q, got %#v", tt.prompt, got)
+		}
+		if got[0].Args["query"] != tt.query {
+			t.Fatalf("expected %q query for %q, got %#v", tt.query, tt.prompt, got[0].Args)
+		}
+	}
+}
+
+func TestFallbackNewsSearchToolCallUsesWebSearchForLatestAINews(t *testing.T) {
+	got, ok := fallbackNewsSearchToolCall("Find today's AI news", "news_search", map[string]any{"query": "technology news"})
+	if !ok {
+		t.Fatal("expected latest AI news prompts to fall back when news_search is unavailable")
+	}
+	if got.Tool != "web_search" {
+		t.Fatalf("expected web_search fallback, got %#v", got)
+	}
+	if got.Args["q"] != "AI news" {
+		t.Fatalf("expected fallback to preserve prompt topic, got %#v", got.Args)
+	}
+}
+
+func TestFallbackNewsSearchToolCallIgnoresNonNewsSearchFailures(t *testing.T) {
+	if got, ok := fallbackNewsSearchToolCall("Find today's AI news", "weather_forecast", nil); ok {
+		t.Fatalf("expected non-news tool failures to be ignored, got %#v", got)
+	}
+	if got, ok := fallbackNewsSearchToolCall("old saved AI article", "news_search", map[string]any{"query": "AI"}); ok {
+		t.Fatalf("expected non-current news prompts to be ignored, got %#v", got)
+	}
+}
+
+func TestSkipMarketMoverCompanionToolFiltersUnrequestedNews(t *testing.T) {
+	prompt := "What is moving in markets today?"
+	for _, tool := range []string{"news", "news_headlines", "news_search", "web_search", "recall"} {
+		if !skipMarketMoverCompanionTool(prompt, tool) {
+			t.Fatalf("expected %s to be skipped for market-mover prompt", tool)
+		}
+	}
+	if skipMarketMoverCompanionTool(prompt, "markets") {
+		t.Fatal("expected markets tool to remain available")
+	}
+}
+
+func TestSkipMarketMoverCompanionToolFiltersAssetMoverPrompts(t *testing.T) {
+	for _, prompt := range []string{
+		"What crypto is moving today?",
+		"Which stocks are up today?",
+		"Any Bitcoin rally today?",
+	} {
+		if !skipMarketMoverCompanionTool(prompt, "news_headlines") {
+			t.Fatalf("expected unrequested news to be skipped for %q", prompt)
+		}
+	}
+}
+
+func TestSkipMarketMoverCompanionToolAllowsExplanatoryNews(t *testing.T) {
+	prompt := "What is moving in markets today, and what news explains the moves?"
+	if skipMarketMoverCompanionTool(prompt, "news_headlines") {
+		t.Fatal("expected explanatory market-mover prompt to allow news")
+	}
+}
+
 func TestFormatToolResult_Dispatch(t *testing.T) {
 	// Ensure the dispatcher calls the right formatter
 	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`
@@ -738,6 +884,31 @@ Sources:
 	}
 	if !strings.Contains(got, "Unavailable: news.") {
 		t.Fatalf("expected unavailable news disclosure, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerReplacesRawMixedSourcePayload(t *testing.T) {
+	rag := []string{
+		`### blog_list
+Recent blog posts:
+1. Mu daily note — Agent reliability improved. (/blog/mu-note)`,
+		"### social\n" + unavailableToolMessage("social"),
+		`### web_search
+Web results for "mu agent reliability":
+Sources:
+1. Reliability patterns for agents — Fallbacks should produce readable summaries. (https://example.com/agents)`,
+	}
+	raw := `{"results":[{"title":"Reliability patterns for agents","url":"https://example.com/agents"}],"error":"social unavailable","status":"partial"}`
+
+	got := completeToolAnswer(raw, rag)
+	if strings.Contains(got, `{"results"`) || strings.Contains(got, `"status":"partial"`) {
+		t.Fatalf("expected raw payload to be replaced, got %q", got)
+	}
+	if !strings.Contains(got, "Mu daily note") || !strings.Contains(got, "https://example.com/agents") {
+		t.Fatalf("expected available mixed-source context in fallback, got %q", got)
+	}
+	if !strings.Contains(got, "Unavailable: social.") {
+		t.Fatalf("expected unavailable source disclosure, got %q", got)
 	}
 }
 

@@ -153,43 +153,46 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	if userCtx != "" {
 		planSystem += "\n\nUser context:\n" + userCtx
 	}
-	planResult, err := ai.Ask(&ai.Prompt{
-		System:   planSystem,
-		Question: req.Prompt,
-		Priority: ai.PriorityHigh,
-		Provider: "",
-		Model:    ai.BackgroundModel(),
-		Caller:   "agent-run-plan",
-	})
-
 	type toolCall struct {
 		Tool string         `json:"tool"`
 		Args map[string]any `json:"args"`
 	}
 	var toolCalls []toolCall
 
-	if err == nil {
-		planJSON := extractJSONArray(planResult)
-		json.Unmarshal([]byte(planJSON), &toolCalls)
-	}
-
 	// Shortcut for common queries
-	if len(toolCalls) == 0 {
-		if tc := shortcutToolCalls(req.Prompt); len(tc) > 0 {
-			for _, s := range tc {
-				toolCalls = append(toolCalls, toolCall{Tool: s.Tool, Args: s.Args})
-			}
+	if tc := shortcutToolCalls(req.Prompt); len(tc) > 0 {
+		for _, s := range tc {
+			toolCalls = append(toolCalls, toolCall{Tool: s.Tool, Args: s.Args})
+		}
+	} else {
+		planResult, err := ai.Ask(&ai.Prompt{
+			System:   planSystem,
+			Question: req.Prompt,
+			Priority: ai.PriorityHigh,
+			Provider: "",
+			Model:    ai.BackgroundModel(),
+			Caller:   "agent-run-plan",
+		})
+		if err == nil {
+			planJSON := extractJSONArray(planResult)
+			json.Unmarshal([]byte(planJSON), &toolCalls)
 		}
 	}
 
 	// Step 2: Execute tools
 	var ragParts []string
 	var toolsUsed []ToolUsed
+	seenToolCalls := map[string]bool{}
 
 	for _, tc := range toolCalls {
 		if tc.Tool == "" {
 			continue
 		}
+		key := toolCallKey(tc.Tool, tc.Args)
+		if seenToolCalls[key] {
+			continue
+		}
+		seenToolCalls[key] = true
 		if isGuest && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
@@ -219,6 +222,7 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 			"Answer concisely using the tool results and user context below. Use markdown. " +
 			"For web_search results, preserve the user's query intent exactly, cite the listed source URLs, and if confidence is low say the results do not clearly support the requested answer and ask for a refinement. " +
 			"For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one. " +
+			"For market-mover prompts, prioritize the largest 24h movers and their prices first. Keep the answer to a brief bullets-only summary unless the user asks for depth. Only mention news when the tool results include directly explanatory headlines or sources. " +
 			"Do not answer with progress narration like 'let me check' or 'I'll pull the data'; the tools have already run, so provide the final answer or say exactly what is unavailable. " +
 			"If the user context already contains the answer (e.g. unread mail count), use it directly."
 	}

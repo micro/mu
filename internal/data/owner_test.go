@@ -2,7 +2,6 @@ package data
 
 import (
 	"os"
-	"sync"
 	"testing"
 )
 
@@ -51,9 +50,7 @@ func TestOwnerScopingInMemory(t *testing.T) {
 
 // TestOwnerScopingSQLite verifies the same guarantees on the SQLite backend.
 func TestOwnerScopingSQLite(t *testing.T) {
-	os.Setenv("HOME", t.TempDir())
-	dbOnce = sync.Once{}
-	db = nil
+	resetSQLiteTestDB(t)
 
 	if err := IndexSQLite("pub1", "news", "Public bitcoin rally", "public news about bitcoin", "", nil); err != nil {
 		t.Fatalf("index pub: %v", err)

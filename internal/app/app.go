@@ -1262,11 +1262,15 @@ func Session(w http.ResponseWriter, r *http.Request) {
 
 // Render a markdown document as html
 func Render(md []byte) []byte {
-	// Strip LaTeX dollar sign escapes before parsing markdown
-	md = []byte(StripLatexDollars(string(md)))
+	// Strip LaTeX dollar sign escapes and protect plain currency before
+	// parsing markdown so downstream MathJax scanners do not treat blog cards
+	// or other rendered content as inline math.
+	md = []byte(protectCurrencyDollars(StripLatexDollars(string(md))))
 
-	// create markdown parser with extensions
-	extensions := parser.CommonExtensions | parser.AutoHeadingIDs | parser.NoEmptyLineBeforeBlock
+	// create markdown parser with extensions. MathJax is intentionally disabled:
+	// Mu renders everyday prose more often than formulas, and paired currency
+	// amounts such as "$1 billion ... $94,000" must remain readable text.
+	extensions := (parser.CommonExtensions &^ parser.MathJax) | parser.AutoHeadingIDs | parser.NoEmptyLineBeforeBlock
 	p := parser.NewWithExtensions(extensions)
 	doc := p.Parse(md)
 

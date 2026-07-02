@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -88,6 +89,39 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 	}
 }
 
+func dedupeNativeToolCalls() gmai.ToolWrapper {
+	var mu sync.Mutex
+	cache := map[string]gmai.ToolResult{}
+	return func(next gmai.ToolHandler) gmai.ToolHandler {
+		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+			key := nativeToolCallKey(call)
+			mu.Lock()
+			if res, ok := cache[key]; ok {
+				mu.Unlock()
+				return res
+			}
+			mu.Unlock()
+
+			res := next(ctx, call)
+			mu.Lock()
+			cache[key] = res
+			mu.Unlock()
+			return res
+		}
+	}
+}
+
+func nativeToolCallKey(call gmai.ToolCall) string {
+	if len(call.Input) == 0 {
+		return strings.TrimSpace(call.Name)
+	}
+	b, err := json.Marshal(call.Input)
+	if err != nil {
+		return strings.TrimSpace(call.Name)
+	}
+	return strings.TrimSpace(call.Name) + "\x00" + string(b)
+}
+
 // buildNativeAgent constructs the go-micro agent and the question (history +
 // prompt) shared by queryNative and streamNative. ok is false when no native
 // provider is configured, signalling the caller to fall back.
@@ -130,7 +164,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh guest requests.
-	toolWrappers := append([]gmai.ToolWrapper{injectAccount(accountID)}, wrappers...)
+	toolWrappers := append([]gmai.ToolWrapper{injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
 	a = service.NewAgent(nativeAgentInstanceName(), sys, "atlascloud", key, nativeServices(opts.Public),
 		gmagent.Model(ai.ModelDeepSeekPro),
 		gmagent.MaxSteps(6),
