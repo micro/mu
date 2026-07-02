@@ -31,10 +31,15 @@ const (
 // Coinbase's hosted facilitator; set X402_FACILITATOR_URL to the open
 // (testnet) facilitator to certify without real funds.
 var (
-	x402PayTo          = strings.TrimSpace(os.Getenv("X402_PAY_TO"))          // receiving address
+	x402PayTo          = strings.TrimSpace(os.Getenv("X402_PAY_TO")) // receiving address
 	x402FacilitatorURL = envOr("X402_FACILITATOR_URL", "https://api.cdp.coinbase.com/platform/v2/x402")
-	x402NetworkID      = normalizeNetwork(envOr("X402_NETWORK", "eip155:8453")) // CAIP-2, Base mainnet
-	x402Version        = envIntOr("X402_VERSION", 1)                            // advertised protocol version
+	// Advertised verbatim — the facilitator registers specific (network,
+	// version) pairs. CDP settles the "exact" scheme as base+v1 or
+	// eip155:8453+v2, so the defaults here (base, v1) match its v1 entry and
+	// what common x402 clients speak. Set X402_NETWORK=eip155:8453 +
+	// X402_VERSION=2 to use the v2 pair instead.
+	x402NetworkID = envOr("X402_NETWORK", "base")
+	x402Version   = envIntOr("X402_VERSION", 1) // advertised protocol version
 )
 
 func envOr(key, fallback string) string {
@@ -91,7 +96,7 @@ var x402AssetsByNetwork = map[string]map[string]x402Asset{
 // acceptedAssets returns the assets to advertise, honouring X402_ASSETS
 // (comma-separated symbols) and defaulting to USDC only.
 func acceptedAssets() []x402Asset {
-	known := x402AssetsByNetwork[x402NetworkID]
+	known := x402AssetsByNetwork[normalizeNetwork(x402NetworkID)]
 	if known == nil {
 		return nil
 	}
@@ -257,7 +262,7 @@ func VerifyAndSettle(r *http.Request, operation, resource string) (*SettleRespon
 		return nil, fmt.Errorf("no matching payment requirement for the presented payment")
 	}
 
-	body := map[string]any{"paymentPayload": payload, "paymentRequirements": req}
+	body := map[string]any{"x402Version": x402Version, "paymentPayload": payload, "paymentRequirements": req}
 
 	// Verify.
 	vres, err := facilitatorPost("/verify", body)
