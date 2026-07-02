@@ -111,7 +111,7 @@ func meaningfulLines(body string, limit int) []string {
 			continue
 		}
 		line = strings.TrimLeft(line, "-• ")
-		if line == "" || isFallbackMetadataLine(line) {
+		if line == "" || isFallbackMetadataLine(line) || isUnavailableLine(line) {
 			continue
 		}
 		if len([]rune(line)) > 280 {
@@ -142,7 +142,23 @@ func isFallbackMetadataLine(line string) bool {
 }
 
 func isUnavailableToolResult(body string) bool {
-	lower := strings.ToLower(strings.TrimSpace(body))
+	hasUnavailable := false
+	for _, raw := range strings.Split(body, "\n") {
+		line := strings.TrimSpace(strings.TrimLeft(raw, "-• "))
+		if line == "" || isFallbackMetadataLine(line) {
+			continue
+		}
+		if isUnavailableLine(line) {
+			hasUnavailable = true
+			continue
+		}
+		return false
+	}
+	return hasUnavailable
+}
+
+func isUnavailableLine(line string) bool {
+	lower := strings.ToLower(strings.TrimSpace(line))
 	unavailablePhrases := []string{
 		"unavailable",
 		"no news available",
