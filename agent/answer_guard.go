@@ -51,7 +51,6 @@ func synthesizeToolFallback(ragParts []string) string {
 
 	var b strings.Builder
 	if len(sections) > 0 {
-		b.WriteString("Here's what I found from the live results:\n\n")
 		b.WriteString(strings.Join(sections, "\n\n"))
 	} else {
 		b.WriteString("I checked the live sources, but the requested data is unavailable right now.")
@@ -60,8 +59,8 @@ func synthesizeToolFallback(ragParts []string) string {
 		if b.Len() > 0 {
 			b.WriteString("\n\n")
 		}
-		b.WriteString("Unavailable: ")
-		b.WriteString(strings.Join(unavailable, ", "))
+		b.WriteString("Unavailable right now: ")
+		b.WriteString(strings.Join(readableToolNames(unavailable), ", "))
 		b.WriteString(".")
 	}
 	return b.String()
@@ -96,9 +95,11 @@ func formatFallbackSection(title, body string) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("**")
-	b.WriteString(title)
-	b.WriteString("**\n")
+	if shouldShowFallbackHeading(title) {
+		b.WriteString("**")
+		b.WriteString(readableToolName(title))
+		b.WriteString("**\n")
+	}
 	for _, line := range lines {
 		b.WriteString("- ")
 		b.WriteString(line)
@@ -115,7 +116,6 @@ func formatWebSearchFallbackSection(body string) string {
 
 	limited := hasLowConfidenceWebEvidence(body)
 	var b strings.Builder
-	b.WriteString("**Web sources**\n")
 	if limited {
 		b.WriteString("- The available web results do not clearly prove a complete answer; here is the limited source-backed evidence I found.\n")
 	}
@@ -125,6 +125,48 @@ func formatWebSearchFallbackSection(body string) string {
 		b.WriteString("\n")
 	}
 	return strings.TrimSpace(b.String())
+}
+
+func shouldShowFallbackHeading(title string) bool {
+	switch canonicalToolTitle(title) {
+	case "web_search":
+		return false
+	default:
+		return true
+	}
+}
+
+func readableToolNames(names []string) []string {
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		out = append(out, readableToolName(name))
+	}
+	return out
+}
+
+func readableToolName(name string) string {
+	switch canonicalToolTitle(name) {
+	case "weather":
+		return "weather"
+	case "news":
+		return "news"
+	case "web_search":
+		return "web search"
+	case "markets":
+		return "markets"
+	case "video":
+		return "video"
+	case "blog":
+		return "blog"
+	case "social":
+		return "social"
+	case "places_search", "places_nearby":
+		return "places"
+	case "recall":
+		return "memory"
+	default:
+		return strings.ReplaceAll(strings.TrimSpace(name), "_", " ")
+	}
 }
 
 func hasLowConfidenceWebEvidence(body string) bool {
