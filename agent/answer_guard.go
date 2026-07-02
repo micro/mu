@@ -128,12 +128,11 @@ func formatWebSearchFallbackSection(body string) string {
 }
 
 func shouldShowFallbackHeading(title string) bool {
-	switch canonicalToolTitle(title) {
-	case "web_search":
-		return false
-	default:
-		return true
-	}
+	// The fallback answer is shown as the primary response when the model only
+	// produced progress narration or raw tool payloads. Keep it answer-first:
+	// implementation/service labels belong in the References card, not as the
+	// opening line of the user-facing answer.
+	return false
 }
 
 func readableToolNames(names []string) []string {
