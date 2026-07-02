@@ -337,20 +337,36 @@ func TestShortcutToolCallsMarketMoversAvoidsNewsPlanning(t *testing.T) {
 
 func TestUseFastToolFallbackOnlyForGuestMarketMovers(t *testing.T) {
 	rag := []string{"### markets\nLive crypto prices:\nBTC: $97000.00 (+1.23% 24h)"}
-	if !useFastToolFallback("What is moving in markets today?", true, true, rag) {
+	if !useFastToolFallback("What is moving in markets today?", true, true, false, rag) {
 		t.Fatal("expected guest market-mover prompts with market data to use the fast fallback")
 	}
-	if useFastToolFallback("What is moving in markets today?", false, true, rag) {
+	if useFastToolFallback("What is moving in markets today?", false, true, false, rag) {
 		t.Fatal("authenticated users should keep full synthesis")
 	}
-	if useFastToolFallback("Why is Bitcoin moving today?", true, true, rag) {
+	if useFastToolFallback("Why is Bitcoin moving today?", true, true, false, rag) {
 		t.Fatal("explanation prompts should keep full synthesis")
 	}
-	if useFastToolFallback("What is moving in markets today?", true, false, rag) {
+	if useFastToolFallback("What is moving in markets today?", true, false, false, rag) {
 		t.Fatal("fallback requires a market tool result")
 	}
-	if useFastToolFallback("What is moving in markets today?", true, true, nil) {
+	if useFastToolFallback("What is moving in markets today?", true, true, false, nil) {
 		t.Fatal("fallback requires result context")
+	}
+}
+
+func TestUseFastToolFallbackForGuestSimpleWeather(t *testing.T) {
+	rag := []string{"### weather_forecast\nWeather for New York.\nNow: 21°C, partly cloudy.\nFreshness/source: source Google Weather; generated at 2026-07-02 12:00 UTC."}
+	if !useFastToolFallback("Weather in New York today", true, false, true, rag) {
+		t.Fatal("expected simple guest weather prompts with weather data to use the fast fallback")
+	}
+	if useFastToolFallback("Compare weather in New York and London", true, false, true, rag) {
+		t.Fatal("comparative weather prompts should keep full synthesis")
+	}
+	if useFastToolFallback("Weather in New York today", false, false, true, rag) {
+		t.Fatal("authenticated users should keep full synthesis")
+	}
+	if useFastToolFallback("Weather in New York today", true, false, false, rag) {
+		t.Fatal("fallback requires a weather tool result")
 	}
 }
 
