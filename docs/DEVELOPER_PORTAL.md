@@ -68,6 +68,38 @@ server {
 Your consumer domain's vhost sets no such header and behaves normally. Both
 domains share one backend and one deploy.
 
+## Auth: the portal is logged-out; accounts live on the app
+
+The portal is a **logged-out front door**. There is no separate logged-in
+experience on the portal domain, and that's deliberate:
+
+- Different registrable domains (`micro.mu` vs `m3o.com`) can't share a cookie
+  session, so real logins on both would require cross-domain SSO — out of scope.
+- Developers don't need a session on the portal domain anyway. API access is
+  **token-based** (a PAT) or **wallet-based** (x402), which works against the
+  endpoint on any domain with no cookie. Only account/wallet/key management needs
+  a login, and that lives in one place: the canonical app.
+
+So the portal's "Sign in" / "Create an account" links point at the canonical
+consumer app, configured via **`APP_URL`**:
+
+```
+APP_URL=https://micro.mu
+```
+
+With `APP_URL` set, the portal's auth links are absolute (`https://micro.mu/signup`),
+so signup/login happen on one domain with one session — one account, no
+"second account," nothing to get back to. If `APP_URL` is empty (a single-domain
+self-host), the links are relative and resolve to the same origin, which is
+correct there.
+
+> If you run the portal on a **separate** domain, set `APP_URL` — otherwise the
+> auth links resolve to the portal domain and would create a second, separate
+> session there.
+
+The API/MCP endpoints themselves (`/mcp`, `/api`) are same-origin relative, so
+they work on whichever domain the caller hits — same backend.
+
 ## Self-host parity
 
 A developer running Mu gets the consumer app, the MCP endpoint (`/mcp`), the
