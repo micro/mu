@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	_ "mu/internal/env" // load ~/.env before x402 config is read at init
 )
 
 // x402 payment headers. Version 1 uses X-PAYMENT / X-PAYMENT-RESPONSE; version 2
