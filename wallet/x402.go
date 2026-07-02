@@ -257,14 +257,26 @@ func VerifyAndSettle(r *http.Request, operation, resource string) (*SettleRespon
 		return nil, fmt.Errorf("invalid payment payload: %w", err)
 	}
 
+	settle, err := settlePayload(payload, operation, resource)
+	if err != nil {
+		return nil, err
+	}
+	if h, ok := r.Context().Value(X402SettleKey).(*SettleHolder); ok && h != nil {
+		h.Resp = settle
+	}
+	return settle, nil
+}
+
+// settlePayload verifies then settles a decoded payment payload against the
+// requirements for operation. Shared by the server path (VerifyAndSettle) and
+// the custodial pay-with-wallet path (SettleFromUserWallet).
+func settlePayload(payload map[string]any, operation, resource string) (*SettleResponse, error) {
 	req := matchRequirement(BuildPaymentRequirements(operation, resource), payload)
 	if req == nil {
 		return nil, fmt.Errorf("no matching payment requirement for the presented payment")
 	}
-
 	body := map[string]any{"x402Version": x402Version, "paymentPayload": payload, "paymentRequirements": req}
 
-	// Verify.
 	vres, err := facilitatorPost("/verify", body)
 	if err != nil {
 		return nil, fmt.Errorf("verify: %w", err)
@@ -280,7 +292,6 @@ func VerifyAndSettle(r *http.Request, operation, resource string) (*SettleRespon
 		return nil, fmt.Errorf("payment invalid: %s", firstNonEmpty(verify.InvalidMessage, verify.InvalidReason, "rejected by facilitator"))
 	}
 
-	// Settle.
 	sres, err := facilitatorPost("/settle", body)
 	if err != nil {
 		return nil, fmt.Errorf("settle: %w", err)
@@ -290,12 +301,41 @@ func VerifyAndSettle(r *http.Request, operation, resource string) (*SettleRespon
 	if !settle.Success {
 		return nil, fmt.Errorf("settlement failed: %s", firstNonEmpty(settle.Message, settle.ErrorReason, "unknown"))
 	}
-
-	if h, ok := r.Context().Value(X402SettleKey).(*SettleHolder); ok && h != nil {
-		h.Resp = &settle
-	}
 	app.Log("x402", "settled %s: tx=%s payer=%s", operation, settle.Transaction, settle.Payer)
 	return &settle, nil
+}
+
+// SettleFromUserWallet transparently pays for operation from the account's own
+// Base wallet to the treasury (pay-with-wallet mode): sign an EIP-3009
+// authorization with the user's key and settle it. Returns true on success.
+func SettleFromUserWallet(accountID, operation, resource string) (bool, error) {
+	if !X402Enabled() {
+		return false, fmt.Errorf("x402 not configured")
+	}
+	bw := WalletFor(accountID)
+	if bw == nil {
+		return false, fmt.Errorf("no wallet")
+	}
+	reqs := BuildPaymentRequirements(operation, resource)
+	if len(reqs) == 0 {
+		return false, fmt.Errorf("no payment requirement")
+	}
+	payloadB64, err := SignX402Payment(bw, reqs[0])
+	if err != nil {
+		return false, err
+	}
+	raw, err := base64.StdEncoding.DecodeString(payloadB64)
+	if err != nil {
+		return false, err
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return false, err
+	}
+	if _, err := settlePayload(payload, operation, resource); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // matchRequirement picks the advertised requirement the payment was made
