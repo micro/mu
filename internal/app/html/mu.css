@@ -5071,19 +5071,18 @@ body.display-mode .card h4 {
 /* Endpoint reference with a sticky index rail (/mcp, /api). On desktop the
    index sits to the left and follows the scroll; on mobile it is hidden and the
    cards stack normally. */
-/* Reference pages get a wider column than the default/portal cap so the index
-   and cards both breathe. */
-#content:has(.ep-layout) { max-width: 1400px; }
-.mu-portal #content:has(.ep-layout) { max-width: 1180px; }
-/* Reference-page cards fill the widened column instead of the default 750px cap. */
+/* Reference pages (/mcp, /api) use the full page width — override the portal
+   cap so the index + cards aren't squeezed. */
+#content:has(.ep-layout),
+.mu-portal #content:has(.ep-layout) { max-width: none; }
 #content:has(.ep-layout) .card { max-width: none; }
 
 .ep-layout { display: flex; gap: 32px; align-items: flex-start; }
 .ep-main { flex: 1 1 auto; min-width: 0; }
 /* Clear any top overlay so an anchored card's header isn't hidden. */
-.ep-main .card { scroll-margin-top: 80px; }
+.ep-main .card { scroll-margin-top: 80px; position: relative; }
 .ep-nav {
-  position: sticky; top: 16px; flex: 0 0 230px;
+  position: sticky; top: 16px; flex: 0 0 240px;
   max-height: calc(100vh - 32px); overflow-y: auto;
   font-size: 13px; padding-right: 14px; border-right: 1px solid #ececec;
 }
@@ -5092,14 +5091,27 @@ body.display-mode .card h4 {
 .ep-nav a { display: flex; align-items: baseline; gap: 8px;
   padding: 5px 8px; color: #555; text-decoration: none; border-radius: 5px;
   line-height: 1.35; }
-.ep-nav a:hover { background: #f2f2f2; color: #111; }
+.ep-nav a:hover { background: #f4f4f5; color: #111; }
 .ep-nav .ep-path { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ep-nav .ep-price { margin-left: auto; padding-left: 6px; color: #1a7f37;
+.ep-nav .ep-price { margin-left: auto; padding-left: 6px; color: #6b7280;
   font-variant-numeric: tabular-nums; font-size: 12px; }
-.ep-nav .ep-method { flex: 0 0 auto; min-width: 32px; color: #8250df;
+.ep-nav .ep-method { flex: 0 0 auto; min-width: 32px; color: #9ca3af;
   font-size: 10px; font-weight: 700; letter-spacing: .03em; }
+
+/* Per-endpoint price badge, top-right of each card — visible on mobile too,
+   where the index rail is hidden. Neutral, not shouty. */
+.tool-price { position: absolute; top: 14px; right: 14px; z-index: 1;
+  font-size: 12px; color: #6b7280; background: #f4f4f5; border: 1px solid #e5e7eb;
+  border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tool-price b { color: #111; font-weight: 600; }
+.tool-price span { color: #9ca3af; }
+
+/* Un-squash the agent page: use a generous width even under the portal cap. */
+#content:has(.chat-layout),
+.mu-portal #content:has(.chat-layout) { max-width: 1200px; }
+
 @media (max-width: 900px) {
-  #content:has(.ep-layout), .mu-portal #content:has(.ep-layout) { max-width: 100%; }
   .ep-layout { display: block; }
   .ep-nav { display: none; }
+  .tool-price { position: static; display: inline-block; margin-bottom: 8px; }
 }

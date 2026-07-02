@@ -365,6 +365,9 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
+	if sel := r.URL.Query().Get("agent"); sel != "" && !guest {
+		content += `<script>window.muActiveAgent=` + app.JSString(sel) + `;history.replaceState(null,'','/agent');</script>`
+	}
 	if prefill != "" {
 		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'','/agent');})()</script>`
 	}

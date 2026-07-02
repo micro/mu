@@ -234,11 +234,18 @@ func mcpToolsHTML() string {
 	var b strings.Builder
 	for _, t := range tools {
 		b.WriteString(`<div class="card" id="tool-` + html.EscapeString(t.Name) + `">`)
+		if t.WalletOp != "" {
+			if price := wallet.X402PriceFor(t.WalletOp); price != "" {
+				b.WriteString(`<span class="tool-price"><b>` + price + `</b> <span>/ call</span></span>`)
+			} else {
+				b.WriteString(`<span class="tool-price">credits</span>`)
+			}
+		}
 		b.WriteString(`<span class="card-title">` + html.EscapeString(t.Name) + `</span>`)
 		b.WriteString(app.Desc(t.Description))
 		if t.WalletOp != "" {
 			if price := wallet.X402PriceFor(t.WalletOp); price != "" {
-				b.WriteString(`<p class="card-meta">Metered &mdash; ` + price + ` per call (x402) or credits</p>`)
+				b.WriteString(`<p class="card-meta">Pay per call with x402, or use credits when logged in.</p>`)
 			} else {
 				b.WriteString(`<p class="card-meta">Metered &mdash; requires credits</p>`)
 			}

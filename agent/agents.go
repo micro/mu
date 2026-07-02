@@ -2,11 +2,13 @@ package agent
 
 import (
 	"encoding/json"
+	"html"
 	"net/http"
 	"strings"
 
 	"mu/agent/micro"
 	"mu/internal/ai"
+	"mu/internal/app"
 	"mu/internal/auth"
 )
 
@@ -116,114 +118,165 @@ type agentErr struct{ s string }
 
 func (e *agentErr) Error() string { return e.s }
 
-// renderAgentsPanel renders the "Agents" card for the sessions rail: pick the
-// default agent or a custom one, and create/fork/delete your own.
+// renderAgentsPanel renders the lean "Agents" card for the rail: pick the
+// default or one of your agents. Creating/editing happens on /agent/new.
 func renderAgentsPanel() string {
 	return `<div class="agents-panel">
-  <div class="agents-head"><span>Agents</span><button type="button" class="agents-new" onclick="muAgentForm()">+ New</button></div>
-  <div class="agents-list" id="agents-list"><div class="agents-active" data-id="" onclick="muAgentPick('','Micro')">Micro <span class="agents-def">default</span></div></div>
-  <form class="agents-form" id="agents-form" hidden onsubmit="return muAgentSave(event)">
-    <input type="hidden" id="agf-id"><input type="hidden" id="agf-fork">
-    <div class="agents-gen">
-      <input id="agf-brief" placeholder="Describe your agent in a sentence…">
-      <button type="button" id="agf-genbtn" onclick="muAgentGen()">✨ Generate</button>
-    </div>
-    <input id="agf-name" placeholder="Agent name (e.g. Crypto Researcher)" maxlength="60" required>
-    <input id="agf-desc" placeholder="One-line description (optional)" maxlength="140">
-    <textarea id="agf-prompt" rows="5" placeholder="System prompt — who this agent is and how it should behave. e.g. 'You are a meticulous crypto research analyst. Always cite sources and quote exact prices.'" required></textarea>
-    <div class="agents-tools" id="agf-tools"></div>
-    <div class="agents-formactions">
-      <button type="submit">Save agent</button>
-      <button type="button" onclick="muAgentCancel()">Cancel</button>
-    </div>
-  </form>
+  <div class="agents-head"><span>Agents</span><a class="agents-new" href="/agent/new">+ New</a></div>
+  <div class="agents-list" id="agents-list"><div class="on" data-id="" onclick="muAgentPick('')">Micro <span class="agents-def">default</span></div></div>
 </div>
 <style>
 .agents-panel{border:1px solid var(--card-border,#e8e8e8);border-radius:8px;margin-bottom:12px;background:var(--card-background,#fff);overflow:hidden}
 .agents-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:14px;font-weight:600;border-bottom:1px solid var(--card-border,#eee)}
-.agents-new{border:0;background:none;color:#4f46e5;cursor:pointer;font-size:13px;font-weight:600}
+.agents-new{color:#4f46e5;text-decoration:none;font-size:13px;font-weight:600}
 .agents-list{padding:6px}
-.agents-list>div{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px}
+.agents-list>div{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#333}
 .agents-list>div:hover{background:#f4f4f5}
 .agents-list>div.on{background:#eef2ff;color:#3730a3;font-weight:600}
 .agents-def{color:#aaa;font-size:11px;font-weight:400}
-.agents-actions{display:flex;gap:4px;opacity:.6}
-.agents-actions button{border:0;background:none;cursor:pointer;font-size:12px;padding:0 2px}
-.agents-form{padding:10px 12px;border-top:1px solid var(--card-border,#eee);display:flex;flex-direction:column;gap:8px}
-.agents-form input,.agents-form textarea{width:100%;box-sizing:border-box;padding:7px 8px;font-size:13px;border:1px solid #ddd;border-radius:5px;font-family:inherit}
-.agents-formactions{display:flex;gap:6px}
-.agents-formactions button{flex:1;padding:7px;font-size:13px;border:1px solid #ddd;border-radius:5px;cursor:pointer;background:#fafafa}
-.agents-formactions button[type=submit]{background:#4f46e5;color:#fff;border-color:#4f46e5}
-.agents-gen{display:flex;gap:6px}
-.agents-gen input{flex:1}
-.agents-gen button{white-space:nowrap;padding:7px 10px;font-size:13px;border:1px solid #c7d2fe;border-radius:5px;cursor:pointer;background:#eef2ff;color:#4338ca}
-.agents-gen button[disabled]{opacity:.6;cursor:default}
-.agents-tools{display:flex;flex-wrap:wrap;gap:6px 10px}
-.agents-toolslabel{width:100%;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.04em}
-.agents-toolslabel span{text-transform:none;letter-spacing:0}
-.agents-tools label{display:flex;align-items:center;gap:4px;font-size:12px;color:#444;cursor:pointer}
+.agents-actions{display:flex;gap:2px;opacity:.55}
+.agents-actions a,.agents-actions button{border:0;background:none;cursor:pointer;font-size:12px;padding:0 2px;color:inherit;text-decoration:none}
 </style>
 <script>
 window.muActiveAgent=window.muActiveAgent||'';
 function muAgentCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
-function muAgentPick(id,name){window.muActiveAgent=id;document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===id);});}
-function muAgentForm(a){var f=document.getElementById('agents-form');f.hidden=false;
-  document.getElementById('agf-id').value=(a&&a.id&&!a._fork)?a.id:'';
-  document.getElementById('agf-fork').value=(a&&a._fork)?a.id:'';
-  document.getElementById('agf-name').value=a?(a._fork?('Copy of '+a.name):a.name):'';
-  document.getElementById('agf-desc').value=a?(a.description||''):'';
-  document.getElementById('agf-prompt').value=a?(a.prompt||''):'';
-  muAgentRenderTools(a?a.tools:[]);
-  document.getElementById('agf-name').focus();}
-function muAgentRenderTools(sel){var c=document.getElementById('agf-tools');if(!c)return;var s=sel||[];
-  var h='<div class="agents-toolslabel">Tools <span>(none selected = all)</span></div>';
-  (window._muTools||[]).forEach(function(t){h+='<label><input type="checkbox" name="agtool" value="'+t+'"'+(s.indexOf(t)>=0?' checked':'')+'>'+t+'</label>';});
-  c.innerHTML=h;}
-function muAgentCancel(){document.getElementById('agents-form').hidden=true;}
-function muAgentGen(){
-  var brief=document.getElementById('agf-brief').value.trim();if(!brief)return;
-  var btn=document.getElementById('agf-genbtn');btn.disabled=true;btn.textContent='Generating…';
-  var b=new URLSearchParams();b.append('action','generate');b.append('brief',brief);
-  fetch('/agent/agents',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':muAgentCsrf()},body:b.toString()})
-    .then(function(r){return r.json();}).then(function(d){
-      btn.disabled=false;btn.textContent='✨ Generate';
-      if(d.error){alert(d.error);return;}
-      if(d.name)document.getElementById('agf-name').value=d.name;
-      if(d.description)document.getElementById('agf-desc').value=d.description;
-      if(d.prompt)document.getElementById('agf-prompt').value=d.prompt;
-    }).catch(function(){btn.disabled=false;btn.textContent='✨ Generate';});
-}
-function muAgentSave(e){e.preventDefault();
-  var b=new URLSearchParams();b.append('action','save');
-  b.append('id',document.getElementById('agf-id').value);
-  b.append('fork',document.getElementById('agf-fork').value);
-  b.append('name',document.getElementById('agf-name').value);
-  b.append('description',document.getElementById('agf-desc').value);
-  b.append('prompt',document.getElementById('agf-prompt').value);
-  document.querySelectorAll('#agf-tools input:checked').forEach(function(el){b.append('tools',el.value);});
-  fetch('/agent/agents',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':muAgentCsrf()},body:b.toString()})
-    .then(function(r){return r.json();}).then(function(a){document.getElementById('agents-form').hidden=true;muAgentsLoad(function(){if(a&&a.id)muAgentPick(a.id,a.name);});}).catch(function(){});
-  return false;}
-function muAgentDelete(id,ev){ev.stopPropagation();if(!confirm('Delete this agent?'))return;
+function muAgentPick(id){window.muActiveAgent=id;document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===id);});}
+function muAgentEsc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function muAgentDelete(id,ev){ev.stopPropagation();ev.preventDefault();if(!confirm('Delete this agent?'))return;
   var b=new URLSearchParams();b.append('action','delete');b.append('id',id);
   fetch('/agent/agents',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':muAgentCsrf()},body:b.toString()})
-    .then(function(){if(window.muActiveAgent===id)muAgentPick('','Micro');muAgentsLoad();}).catch(function(){});}
-function muAgentEsc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function muAgentsLoad(cb){
+    .then(function(){if(window.muActiveAgent===id)muAgentPick('');muAgentsLoad();}).catch(function(){});}
+function muAgentsLoad(){
   fetch('/agent/agents',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
-    window._muTools=d.tools||window._muTools||[];
     var list=document.getElementById('agents-list');if(!list)return;
-    var h='<div class="'+(window.muActiveAgent?'':'on')+'" data-id="" onclick="muAgentPick(\'\',\'Micro\')">Micro <span class="agents-def">default</span></div>';
-    (d.agents||[]).forEach(function(a){
-      var aj=muAgentEsc(JSON.stringify(a));
-      h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+a.id+'" onclick="muAgentPick(\''+a.id+'\',\''+muAgentEsc(a.name)+'\')" title="'+muAgentEsc(a.description||'')+'"><span>'+muAgentEsc(a.name)+'</span><span class="agents-actions"><button type="button" title="Fork" onclick=\'event.stopPropagation();muAgentForm(Object.assign(JSON.parse(this.closest("[data-id]").getAttribute("data-a")),{_fork:true}))\'>⑂</button><button type="button" title="Edit" onclick=\'event.stopPropagation();muAgentForm(JSON.parse(this.closest("[data-id]").getAttribute("data-a")))\'>✎</button><button type="button" title="Delete" onclick="muAgentDelete(\''+a.id+'\',event)">✕</button></span></div>';
-      list.setAttribute&&0;
+    var h='<div class="'+(window.muActiveAgent?'':'on')+'" data-id="" onclick="muAgentPick(\'\')">Micro <span class="agents-def">default</span></div>';
+    (d.agents||[]).forEach(function(a){var id=muAgentEsc(a.id);
+      h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+id+'" onclick="muAgentPick(\''+id+'\')" title="'+muAgentEsc(a.description||'')+'"><span>'+muAgentEsc(a.name)+'</span><span class="agents-actions"><a title="Edit" href="/agent/new?id='+id+'" onclick="event.stopPropagation()">✎</a><a title="Fork" href="/agent/new?fork='+id+'" onclick="event.stopPropagation()">⑂</a><button type="button" title="Delete" onclick="muAgentDelete(\''+id+'\',event)">✕</button></span></div>';
     });
     list.innerHTML=h;
-    (d.agents||[]).forEach(function(a){var el=list.querySelector('[data-id="'+a.id+'"]');if(el)el.setAttribute('data-a',JSON.stringify(a));});
-    if(cb)cb();
   }).catch(function(){});
 }
 muAgentsLoad();
 </script>`
+}
+
+// NewAgentHandler renders the full-page agent builder at /agent/new, separate
+// from the chat. It handles new agents, ?id= (edit) and ?fork= (copy).
+func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
+	_, acc := auth.TrySession(r)
+	if acc == nil {
+		http.Redirect(w, r, "/login?next=/agent/new", http.StatusSeeOther)
+		return
+	}
+
+	var cur *micro.Agent
+	editID := ""
+	forkFrom := ""
+	if id := r.URL.Query().Get("id"); id != "" {
+		if a := micro.GetUserAgentFor(acc.ID, id); a != nil {
+			cur, editID = a, id
+		}
+	} else if fid := r.URL.Query().Get("fork"); fid != "" {
+		if a := micro.GetUserAgentFor(acc.ID, fid); a != nil {
+			cur, forkFrom = a, fid
+		}
+	}
+
+	name, desc, prompt := "", "", ""
+	var selTools []string
+	title := "New agent"
+	if cur != nil {
+		name, desc, prompt, selTools = cur.Name, cur.Description, cur.SystemPrompt, cur.Tools
+		if forkFrom != "" {
+			name = "Copy of " + name
+			title = "Fork agent"
+		} else {
+			title = "Edit agent"
+		}
+	}
+
+	selected := map[string]bool{}
+	for _, t := range selTools {
+		selected[t] = true
+	}
+	var toolsHTML strings.Builder
+	for _, t := range AllAgentTools() {
+		chk := ""
+		if selected[t] {
+			chk = " checked"
+		}
+		toolsHTML.WriteString(`<label><input type="checkbox" name="tool" value="` + t + `"` + chk + `> ` + t + `</label>`)
+	}
+
+	b := `<div class="builder">
+  <h2 id="page-title" style="margin-top:0">` + html.EscapeString(title) + `</h2>
+  <p class="builder-sub">Describe an agent and Mu will draft it, or write the system prompt yourself. Pick which tools it may use.</p>
+  <form id="bform" onsubmit="return bSave(event)">
+    <input type="hidden" id="b-id" value="` + html.EscapeString(editID) + `">
+    <input type="hidden" id="b-fork" value="` + html.EscapeString(forkFrom) + `">
+    <label class="b-label">Describe it (optional)</label>
+    <div class="b-gen">
+      <input id="b-brief" placeholder="e.g. a meticulous crypto research analyst that always cites sources">
+      <button type="button" id="b-genbtn" onclick="bGen()">✨ Generate</button>
+    </div>
+    <label class="b-label">Name</label>
+    <input id="b-name" maxlength="60" required value="` + html.EscapeString(name) + `">
+    <label class="b-label">Description</label>
+    <input id="b-desc" maxlength="140" value="` + html.EscapeString(desc) + `">
+    <label class="b-label">System prompt</label>
+    <textarea id="b-prompt" rows="9" required>` + html.EscapeString(prompt) + `</textarea>
+    <label class="b-label">Tools <span class="b-hint">— none selected means all tools</span></label>
+    <div class="b-tools">` + toolsHTML.String() + `</div>
+    <div class="b-actions">
+      <button type="submit" class="b-save">Save agent</button>
+      <a class="b-cancel" href="/agent">Cancel</a>
+    </div>
+  </form>
+</div>
+<style>
+.builder{max-width:720px}
+.builder-sub{color:#666;margin:0 0 18px}
+.b-label{display:block;font-size:13px;font-weight:600;color:#374151;margin:14px 0 6px}
+.b-hint{font-weight:400;color:#9ca3af}
+#bform input,#bform textarea{width:100%;box-sizing:border-box;padding:9px 11px;font-size:14px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit}
+#bform textarea{line-height:1.5;resize:vertical}
+.b-gen{display:flex;gap:8px}
+.b-gen input{flex:1}
+.b-gen button{white-space:nowrap;padding:9px 14px;font-size:14px;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;background:#eef2ff;color:#4338ca;font-weight:500}
+.b-gen button[disabled]{opacity:.6;cursor:default}
+.b-tools{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:2px}
+.b-tools label{display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer}
+.b-actions{display:flex;align-items:center;gap:12px;margin-top:22px}
+.b-save{padding:10px 22px;font-size:14px;font-weight:600;border:0;border-radius:6px;background:#4f46e5;color:#fff;cursor:pointer}
+.b-save:hover{background:#4338ca}
+.b-cancel{color:#6b7280;text-decoration:none;font-size:14px}
+.b-cancel:hover{color:#111}
+</style>
+<script>
+function bCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
+function bGen(){var brief=document.getElementById('b-brief').value.trim();if(!brief)return;
+  var btn=document.getElementById('b-genbtn');btn.disabled=true;btn.textContent='Generating…';
+  var b=new URLSearchParams();b.append('action','generate');b.append('brief',brief);
+  fetch('/agent/agents',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
+    .then(function(r){return r.json();}).then(function(d){btn.disabled=false;btn.textContent='✨ Generate';
+      if(d.error){alert(d.error);return;}
+      if(d.name)document.getElementById('b-name').value=d.name;
+      if(d.description)document.getElementById('b-desc').value=d.description;
+      if(d.prompt)document.getElementById('b-prompt').value=d.prompt;
+    }).catch(function(){btn.disabled=false;btn.textContent='✨ Generate';});}
+function bSave(e){e.preventDefault();
+  var b=new URLSearchParams();b.append('action','save');
+  b.append('id',document.getElementById('b-id').value);
+  b.append('fork',document.getElementById('b-fork').value);
+  b.append('name',document.getElementById('b-name').value);
+  b.append('description',document.getElementById('b-desc').value);
+  b.append('prompt',document.getElementById('b-prompt').value);
+  document.querySelectorAll('.b-tools input:checked').forEach(function(el){b.append('tools',el.value);});
+  fetch('/agent/agents',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
+    .then(function(r){return r.json();}).then(function(a){if(a.error){alert(a.error);return;}
+      location.href='/agent'+(a.id?('?agent='+encodeURIComponent(a.id)):'');}).catch(function(){});
+  return false;}
+</script>`
+
+	app.Respond(w, r, app.Response{Title: title, Description: "Build a custom agent", HTML: b})
 }
