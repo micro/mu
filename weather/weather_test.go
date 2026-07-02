@@ -1,6 +1,8 @@
 package weather
 
 import (
+	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -76,11 +78,79 @@ func TestForecastTextInvalidCoordinatesDoesNotFetch(t *testing.T) {
 
 func TestForecastTextProviderUnavailableIsClear(t *testing.T) {
 	t.Setenv("GOOGLE_API_KEY", "")
+	server := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(server.Close)
+	restoreNWSBaseURL(t, server.URL)
 
 	got := ForecastText(51.5074, -0.1278)
 	if got != weatherUnavailableMessage {
 		t.Fatalf("ForecastText provider unavailable = %q, want %q", got, weatherUnavailableMessage)
 	}
+}
+
+func TestForecastTextUsesNWSFallbackWithoutGoogleKey(t *testing.T) {
+	t.Setenv("GOOGLE_API_KEY", "")
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	restoreNWSBaseURL(t, server.URL+"/points")
+
+	mux.HandleFunc("/points/40.7128,-74.0060", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, `{
+			"properties": {
+				"forecastHourly": %q,
+				"forecast": %q,
+				"relativeLocation": {"properties": {"city": "New York", "state": "NY"}}
+			}
+		}`, server.URL+"/hourly", server.URL+"/daily")
+	})
+	mux.HandleFunc("/hourly", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{
+			"properties": {
+				"generatedAt": "2026-07-02T12:00:00Z",
+				"periods": [{
+					"startTime": "2026-07-02T12:00:00Z",
+					"temperature": 77,
+					"temperatureUnit": "F",
+					"windSpeed": "10 mph",
+					"shortForecast": "Partly Sunny"
+				}]
+			}
+		}`))
+	})
+	mux.HandleFunc("/daily", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{
+			"properties": {
+				"generatedAt": "2026-07-02T12:00:00Z",
+				"periods": [
+					{"name": "Today", "startTime": "2026-07-02T06:00:00Z", "isDaytime": true, "temperature": 82, "temperatureUnit": "F", "shortForecast": "Mostly Sunny"},
+					{"name": "Tonight", "startTime": "2026-07-02T18:00:00Z", "isDaytime": false, "temperature": 68, "temperatureUnit": "F", "shortForecast": "Clear"}
+				]
+			}
+		}`))
+	})
+
+	got := ForecastText(40.7128, -74.0060)
+	for _, want := range []string{
+		"Weather for New York, NY.",
+		"Freshness/source: source National Weather Service",
+		"Current conditions observed at 2026-07-02 12:00 UTC.",
+		"Now: 25°C, feels 25°C, Partly Sunny",
+		"wind 16 km/h",
+		"Thursday, 2 July 2026 (2026-07-02): 20–28°C, Mostly Sunny",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("ForecastText NWS fallback missing %q in:\n%s", want, got)
+		}
+	}
+}
+
+func restoreNWSBaseURL(t *testing.T, value string) {
+	t.Helper()
+	old := nwsBaseURL
+	nwsBaseURL = value
+	t.Cleanup(func() { nwsBaseURL = old })
 }
 
 func TestCardHTMLShowsWeatherUnavailableOnFetchFailure(t *testing.T) {
