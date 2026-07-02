@@ -5137,6 +5137,8 @@ body.display-mode .card h4 {
   border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tool-price b { color: #111; font-weight: 600; }
 .tool-price span { color: #9ca3af; }
+.api-method { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px;
+  font-weight: 700; letter-spacing: .03em; color: #fff; background: #6b7280; margin-right: 6px; }
 
 /* Agent page: match the standard content width (and override the narrower
    portal cap) so it's as wide as every other page. */
@@ -5146,5 +5148,6 @@ body.display-mode .card h4 {
 @media (max-width: 900px) {
   .ep-layout { display: block; }
   .ep-nav { display: none; }
-  .tool-price { position: static; display: inline-block; margin-bottom: 8px; }
 }
+/* Keep the card title clear of the top-right price badge on narrow cards. */
+.ep-main .card .card-title { padding-right: 96px; }

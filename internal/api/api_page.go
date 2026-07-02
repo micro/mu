@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/wallet"
 )
 
 // APIPageHandler renders the API documentation page with interactive playground
@@ -16,14 +17,14 @@ func APIPageHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h2>API</h2>`)
-	b.WriteString(`<p class="card-desc">REST API for programmatic access to Mu.</p>`)
-	b.WriteString(`<p>Authentication: <code>Authorization: Bearer YOUR_TOKEN</code> &mdash; <a href="/token">Get a token</a> | <a href="/mcp">MCP Server</a></p>`)
+	b.WriteString(`<p class="card-desc">The same services as the <a href="/mcp">MCP server</a>, over plain HTTP. Every tool is callable via <code>POST /mcp</code>; some also have a dedicated REST path. Metered tools show their per-call price below.</p>`)
+	b.WriteString(`<p>Authentication: <code>Authorization: Bearer YOUR_TOKEN</code> &mdash; <a href="/token">Get a token</a>, or pay per call with x402.</p>`)
 	b.WriteString(`</div>`)
 
 	// Playground
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>Playground</h3>`)
-	b.WriteString(`<p class="card-desc">Pick an endpoint, fill in parameters, and send the request.</p>`)
+	b.WriteString(`<p class="card-desc">Try the dedicated REST endpoints below. Every tool (see the full reference underneath) is also callable via the <a href="/mcp">MCP playground</a>.</p>`)
 
 	// Endpoint selector
 	b.WriteString(`<select id="api-endpoint" onchange="apiSelectEndpoint()" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:4px;margin-bottom:12px">`)
@@ -222,72 +223,76 @@ func apiEndpointsJSON() string {
 	return string(b)
 }
 
-// apiEndpointsSection renders the endpoint reference as a two-column layout: a
-// sticky index on the left (desktop only) anchoring to each endpoint card on
-// the right. On mobile the index is hidden and the cards stack normally.
+// apiEndpointsSection renders the reference from the same tool registry as the
+// MCP page, so the two are always the same set of services. Every tool is
+// callable over HTTP — via its dedicated REST path when it has one, otherwise
+// via POST /mcp — and metered tools show their per-call price.
 func apiEndpointsSection() string {
 	var nav strings.Builder
 	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Endpoints</div>`)
-	for i, ep := range Endpoints {
-		nav.WriteString(fmt.Sprintf(`<a href="#ep-%d"><span class="ep-method">%s</span><span class="ep-path">%s</span></a>`,
-			i, html.EscapeString(ep.Method), html.EscapeString(ep.Path)))
+	for _, t := range tools {
+		price := ""
+		if p := wallet.X402PriceFor(t.WalletOp); p != "" {
+			price = `<span class="ep-price">` + p + `</span>`
+		}
+		nav.WriteString(`<a href="#api-` + html.EscapeString(t.Name) + `"><span class="ep-path">` + html.EscapeString(t.Name) + `</span>` + price + `</a>`)
 	}
 	nav.WriteString(`</nav>`)
 	return `<div class="ep-layout">` + nav.String() + `<div class="ep-main">` + app.List(apiEndpointsHTML()) + `</div></div>`
 }
 
-// apiEndpointsHTML generates the reference listing of all API endpoints
+// apiEndpointsHTML lists every tool as an HTTP endpoint, with its price and a
+// ready-to-run call (REST path if it has one, else the POST /mcp JSON-RPC body).
 func apiEndpointsHTML() string {
 	var b strings.Builder
-	for i, ep := range Endpoints {
-		methodColor := "#1a7f37"
-		switch ep.Method {
-		case "POST":
-			methodColor = "#cf8e00"
-		case "PATCH":
-			methodColor = "#8250df"
-		case "DELETE":
-			methodColor = "#cf222e"
+	for _, t := range tools {
+		b.WriteString(`<div class="card" id="api-` + html.EscapeString(t.Name) + `">`)
+
+		if p := wallet.X402PriceFor(t.WalletOp); p != "" {
+			b.WriteString(`<span class="tool-price"><b>` + p + `</b> <span>/ call</span></span>`)
+		} else if t.WalletOp != "" {
+			b.WriteString(`<span class="tool-price">credits</span>`)
 		}
 
-		b.WriteString(fmt.Sprintf(`<div class="card" id="ep-%d">`, i))
-		b.WriteString(fmt.Sprintf(`<span class="card-title"><span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600;color:#fff;background:%s;margin-right:6px">%s</span> %s</span>`,
-			methodColor,
-			html.EscapeString(ep.Method),
-			html.EscapeString(ep.Path),
-		))
-		b.WriteString(app.Desc(ep.Name + " — " + ep.Description))
+		// Title: the REST method+path when the tool has one, else the tool name.
+		if t.Path != "" {
+			method := t.Method
+			if method == "" {
+				method = "GET"
+			}
+			b.WriteString(`<span class="card-title"><span class="api-method">` + html.EscapeString(method) + `</span> <code>` + html.EscapeString(t.Path) + `</code></span>`)
+		} else {
+			b.WriteString(`<span class="card-title">` + html.EscapeString(t.Name) + `</span>`)
+		}
+		b.WriteString(app.Desc(t.Description))
 
-		if len(ep.Params) > 0 {
+		if len(t.Params) > 0 {
 			b.WriteString(`<table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0">`)
 			b.WriteString(`<tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Param</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Type</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Description</th></tr>`)
-			for _, p := range ep.Params {
-				b.WriteString(fmt.Sprintf(`<tr><td style="padding:4px 8px">%s</td><td style="padding:4px 8px;color:#888">%s</td><td style="padding:4px 8px">%s</td></tr>`,
-					html.EscapeString(p.Name),
-					html.EscapeString(p.Value),
-					html.EscapeString(p.Description),
-				))
+			for _, p := range t.Params {
+				req := ""
+				if p.Required {
+					req = ` <span style="color:#e55">*</span>`
+				}
+				b.WriteString(fmt.Sprintf(`<tr><td style="padding:4px 8px">%s%s</td><td style="padding:4px 8px;color:#888">%s</td><td style="padding:4px 8px">%s</td></tr>`,
+					html.EscapeString(p.Name), req, html.EscapeString(p.Type), html.EscapeString(p.Description)))
 			}
 			b.WriteString(`</table>`)
 		}
 
-		if len(ep.Response) > 0 {
-			for _, resp := range ep.Response {
-				if len(resp.Params) > 0 {
-					b.WriteString(`<p style="font-size:12px;color:#888;margin:8px 0 4px 0">Response: ` + html.EscapeString(resp.Type) + `</p>`)
-					b.WriteString(`<table style="width:100%;border-collapse:collapse;font-size:13px;margin:0 0 8px 0">`)
-					b.WriteString(`<tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Field</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Type</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Description</th></tr>`)
-					for _, p := range resp.Params {
-						b.WriteString(fmt.Sprintf(`<tr><td style="padding:4px 8px">%s</td><td style="padding:4px 8px;color:#888">%s</td><td style="padding:4px 8px">%s</td></tr>`,
-							html.EscapeString(p.Name),
-							html.EscapeString(p.Value),
-							html.EscapeString(p.Description),
-						))
-					}
-					b.WriteString(`</table>`)
-				}
+		// Call example.
+		var call string
+		if t.Path != "" {
+			method := t.Method
+			if method == "" {
+				method = "GET"
 			}
+			call = "curl -H 'Authorization: Bearer $TOKEN' -X " + method + " " + t.Path
+		} else {
+			call = "curl -X POST /mcp -H 'Content-Type: application/json' \\\n  -d '" + exampleRequest(t) + "'"
 		}
+		esc := html.EscapeString(call)
+		b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-word">` + esc + `</pre>`)
 		b.WriteString(`</div>`)
 	}
 	return b.String()
