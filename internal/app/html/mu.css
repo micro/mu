@@ -5060,3 +5060,10 @@ body.display-mode .card h4 {
     font-size: 14px;
   }
 }
+
+/* Developer/API portal face: same app pages (/api, /mcp …) served on a portal
+   domain drop the consumer sidebar and header extras for a cohesive dev view. */
+.mu-portal #nav-container { display: none; }
+.mu-portal #head-mail { display: none; }
+.mu-portal #menu-toggle { display: none; }
+.mu-portal #content { max-width: 960px; }

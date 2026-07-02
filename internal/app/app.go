@@ -1371,12 +1371,15 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	}
 	_, acc := auth.TrySession(r)
 	out := RenderHTMLWithLangAndAuth(title, desc, html, lang, acc)
-	// On the developer/API face, brand the wordmark from the domain (m3o.com ->
-	// "M3O") instead of the consumer product name. Domain-agnostic: see PortalBrand.
+	// On the developer/API face (portal domain or /developers), keep every page
+	// cohesive: brand the wordmark from the domain (m3o.com -> "M3O") and drop the
+	// consumer sidebar so /api, /mcp etc. don't abruptly show the app nav.
+	// Domain-agnostic — see PortalMode / PortalBrand.
 	if PortalMode(r) {
 		out = strings.Replace(out,
 			`<a href="/">Mu</a>`,
 			`<a href="/">`+htmlpkg.EscapeString(PortalBrand(r))+`</a>`, 1)
+		out = strings.Replace(out, `<body>`, `<body class="mu-portal">`, 1)
 	}
 	return out
 }

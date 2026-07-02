@@ -1174,6 +1174,7 @@ func main() {
 		"/agent":                  false, // Public page, auth checked in handler
 		"/setup":                  false, // First-run setup (open only until an admin exists)
 		"/developers":             false, // Developer/API portal (public)
+		"/.portal/logo.svg":       false, // Portal wordmark (public)
 	}
 
 	// Static assets should not require authentication
@@ -1322,6 +1323,7 @@ func main() {
 	// developer/API face — always available at /developers; a proxy can also
 	// flag a whole domain with X-Mu-Portal to serve it at the root.
 	http.HandleFunc("/developers", portal.Handler)
+	http.HandleFunc("/.portal/logo.svg", portal.LogoHandler)
 
 	// serve the agent
 	http.HandleFunc("/agent", agent.Handler)
