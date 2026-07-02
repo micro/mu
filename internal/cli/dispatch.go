@@ -102,6 +102,8 @@ func Run(args []string) int {
 		return runSetup(rest)
 	case "wallet":
 		return runWallet(rest)
+	case "x402":
+		return runX402(rest)
 	case "version", "--version":
 		fmt.Println("mu cli (registry-driven, talks to /mcp)")
 		return 0

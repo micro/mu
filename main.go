@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -1702,6 +1704,30 @@ func main() {
 					return
 				}
 				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, wallet.GetOperationCost(op), r.Method, r.URL.Path)
+			}
+
+			// x402: gate metered MCP tool calls. /mcp is a public endpoint, so
+			// the payment handshake lives here where auth + wallet are in scope.
+			// A metered tools/call with no session gets the standard 402
+			// challenge; one bearing a payment header is routed to the
+			// facilitator for verify+settle by the tool's QuotaCheck.
+			if r.URL.Path == "/mcp" && r.Method == http.MethodPost && wallet.X402Enabled() {
+				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+				r.Body.Close()
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				if op := api.MCPWalletOp(body); op != "" {
+					resource := "https://" + r.Host + r.URL.Path
+					if wallet.HasPayment(r) {
+						holder := &wallet.SettleHolder{}
+						ctx := context.WithValue(r.Context(), wallet.X402ContextKey, true)
+						ctx = context.WithValue(ctx, wallet.X402SettleKey, holder)
+						r = r.WithContext(ctx)
+						w = wallet.NewSettleWriter(w, holder)
+					} else if err := auth.ValidateToken(token); err != nil {
+						wallet.WritePaymentRequired(w, op, resource)
+						return
+					}
+				}
 			}
 
 			http.DefaultServeMux.ServeHTTP(w, r)
