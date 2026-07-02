@@ -1185,7 +1185,14 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		return tc
 	}
 
-	// Fuzzy matches for prompts with dynamic content
+	// Fuzzy matches for prompts with dynamic content. Simple market-mover
+	// prompts should reach the markets tool without an LLM planning turn so the
+	// first visible tool event is emitted as soon as possible. Explanation or
+	// cross-source requests still use the planner so they can add news/search.
+	if isMarketMoverPrompt(lower) && !wantsMarketMoverExplanation(lower) {
+		return []shortcutToolCall{{Tool: "markets", Args: map[string]any{}}}
+	}
+
 	if isLatestTechnologyNewsPrompt(lower) {
 		return []shortcutToolCall{{Tool: "news_search", Args: map[string]any{"query": newsTopicQuery(lower)}}}
 	}
