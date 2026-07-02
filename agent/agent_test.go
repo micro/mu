@@ -352,36 +352,58 @@ func TestShortcutToolCallsMarketMoverExplanationUsesPlanner(t *testing.T) {
 
 func TestUseFastToolFallbackOnlyForGuestMarketMovers(t *testing.T) {
 	rag := []string{"### markets\nLive crypto prices:\nBTC: $97000.00 (+1.23% 24h)"}
-	if !useFastToolFallback("What is moving in markets today?", true, true, false, rag) {
+	if !useFastToolFallback("What is moving in markets today?", true, true, false, false, false, rag) {
 		t.Fatal("expected guest market-mover prompts with market data to use the fast fallback")
 	}
-	if useFastToolFallback("What is moving in markets today?", false, true, false, rag) {
+	if useFastToolFallback("What is moving in markets today?", false, true, false, false, false, rag) {
 		t.Fatal("authenticated users should keep full synthesis")
 	}
-	if useFastToolFallback("Why is Bitcoin moving today?", true, true, false, rag) {
+	if useFastToolFallback("Why is Bitcoin moving today?", true, true, false, false, false, rag) {
 		t.Fatal("explanation prompts should keep full synthesis")
 	}
-	if useFastToolFallback("What is moving in markets today?", true, false, false, rag) {
+	if useFastToolFallback("What is moving in markets today?", true, false, false, false, false, rag) {
 		t.Fatal("fallback requires a market tool result")
 	}
-	if useFastToolFallback("What is moving in markets today?", true, true, false, nil) {
+	if useFastToolFallback("What is moving in markets today?", true, true, false, false, false, nil) {
 		t.Fatal("fallback requires result context")
 	}
 }
 
 func TestUseFastToolFallbackForGuestSimpleWeather(t *testing.T) {
 	rag := []string{"### weather_forecast\nWeather for New York.\nNow: 21°C, partly cloudy.\nFreshness/source: source Google Weather; generated at 2026-07-02 12:00 UTC."}
-	if !useFastToolFallback("Weather in New York today", true, false, true, rag) {
+	if !useFastToolFallback("Weather in New York today", true, false, true, false, false, rag) {
 		t.Fatal("expected simple guest weather prompts with weather data to use the fast fallback")
 	}
-	if useFastToolFallback("Compare weather in New York and London", true, false, true, rag) {
+	if useFastToolFallback("Compare weather in New York and London", true, false, true, false, false, rag) {
 		t.Fatal("comparative weather prompts should keep full synthesis")
 	}
-	if useFastToolFallback("Weather in New York today", false, false, true, rag) {
+	if useFastToolFallback("Weather in New York today", false, false, true, false, false, rag) {
 		t.Fatal("authenticated users should keep full synthesis")
 	}
-	if useFastToolFallback("Weather in New York today", true, false, false, rag) {
+	if useFastToolFallback("Weather in New York today", true, false, false, false, false, rag) {
 		t.Fatal("fallback requires a weather tool result")
+	}
+}
+
+func TestUseFastToolFallbackForGuestUnavailableNewsWebFallback(t *testing.T) {
+	rag := []string{
+		"### web_search\nCurrent date context: request date is 2026-07-02 UTC.\nSearch results for \"AI news\":\n1. AI story — snippet grounded in the web result (https://example.com/ai)",
+		"### news_search\nnews_search is unavailable right now. Use any other available live results to answer, and mention this unavailable source briefly without exposing internal payloads.",
+	}
+	if !useFastToolFallback("Find today's AI news", true, false, false, true, true, rag) {
+		t.Fatal("expected guest latest-news web fallback to skip LLM synthesis")
+	}
+	if useFastToolFallback("Find today's AI news", false, false, false, true, true, rag) {
+		t.Fatal("authenticated users should keep full synthesis")
+	}
+	if useFastToolFallback("Find today's AI news", true, false, false, true, false, rag) {
+		t.Fatal("fallback requires unavailable news_search disclosure")
+	}
+	if useFastToolFallback("Find today's AI news", true, false, false, false, true, rag) {
+		t.Fatal("fallback requires available web_search context")
+	}
+	if useFastToolFallback("Find saved AI article", true, false, false, true, true, rag) {
+		t.Fatal("non-current news prompts should keep full synthesis")
 	}
 }
 
