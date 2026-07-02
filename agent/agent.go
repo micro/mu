@@ -997,15 +997,25 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	hasMarketsTool := false
 	hasWeatherTool := false
+	hasWebSearchTool := false
 	for _, tc := range toolCalls {
 		switch tc.Tool {
 		case "markets":
 			hasMarketsTool = true
 		case "weather_forecast":
 			hasWeatherTool = true
+		case "web_search":
+			hasWebSearchTool = true
 		}
 	}
-	if useFastToolFallback(req.Prompt, isGuest, hasMarketsTool, hasWeatherTool, ragParts) {
+	hasUnavailableNewsSearch := false
+	for _, tool := range unavailableTools {
+		if tool == "news_search" {
+			hasUnavailableNewsSearch = true
+			break
+		}
+	}
+	if useFastToolFallback(req.Prompt, isGuest, hasMarketsTool, hasWeatherTool, hasWebSearchTool, hasUnavailableNewsSearch, ragParts) {
 		answer := app.NormalizeAnswerMarkdown(app.StripLatexDollars(synthesizeToolFallback(ragParts)))
 		rendered := app.RenderString(answer)
 		html := `<div class="card" id="agent-response">` + rendered + `</div>`
@@ -1250,14 +1260,17 @@ func isLatestTechnologyNewsPrompt(lower string) bool {
 	return false
 }
 
-func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWeatherTool bool, ragParts []string) bool {
+func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWeatherTool bool, hasWebSearchTool bool, hasUnavailableNewsSearch bool, ragParts []string) bool {
 	if !isGuest || len(ragParts) == 0 {
 		return false
 	}
 	if hasMarketsTool && isMarketMoverPrompt(prompt) && !wantsMarketMoverExplanation(prompt) {
 		return true
 	}
-	return hasWeatherTool && isSimpleWeatherPrompt(prompt)
+	if hasWeatherTool && isSimpleWeatherPrompt(prompt) {
+		return true
+	}
+	return hasWebSearchTool && hasUnavailableNewsSearch && isLatestTechnologyNewsPrompt(strings.ToLower(prompt))
 }
 
 func isSimpleWeatherPrompt(prompt string) bool {
