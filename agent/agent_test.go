@@ -855,7 +855,7 @@ func TestCompleteToolAnswerReplacesProgressOnlyWithResults(t *testing.T) {
 	if strings.Contains(strings.ToLower(got), "couldn't synthesize") {
 		t.Fatalf("expected synthesized fallback instead of generic incomplete-answer copy, got %q", got)
 	}
-	if !strings.Contains(got, "**markets**") || !strings.Contains(got, "BTC: $100,000") || !strings.Contains(got, "**news**") || !strings.Contains(got, "Bitcoin reaches new high") {
+	if !strings.Contains(got, "**markets**") || !strings.Contains(got, "BTC: $100,000") || !strings.Contains(got, "**news**") || !strings.Contains(got, "Bitcoin reaches new high") || strings.Contains(got, "Here's what I found") {
 		t.Fatalf("expected fallback to include organized tool results, got %q", got)
 	}
 }
@@ -881,7 +881,7 @@ func TestCompleteToolAnswerNamesUnavailableSlices(t *testing.T) {
 	if !strings.Contains(got, "Useful headline") {
 		t.Fatalf("expected available slice in fallback, got %q", got)
 	}
-	if !strings.Contains(got, "Unavailable: weather.") {
+	if !strings.Contains(got, "Unavailable right now: weather.") {
 		t.Fatalf("expected unavailable slice to be named clearly, got %q", got)
 	}
 }
@@ -931,7 +931,7 @@ Sources:
 	if !strings.Contains(got, "AI lab releases new model") || !strings.Contains(got, "https://example.com/ai-model") {
 		t.Fatalf("expected available web sources in fallback, got %q", got)
 	}
-	if !strings.Contains(got, "Unavailable: news.") {
+	if !strings.Contains(got, "Unavailable right now: news.") {
 		t.Fatalf("expected unavailable news disclosure, got %q", got)
 	}
 }
@@ -956,10 +956,10 @@ Sources:
 			t.Fatalf("expected polished fallback to hide %q, got %q", internal, got)
 		}
 	}
-	if !strings.Contains(got, "**Web sources**") || !strings.Contains(got, "AI lab releases new model") || !strings.Contains(got, "https://example.com/ai-model") {
+	if strings.Contains(got, "**Web sources**") || !strings.Contains(got, "AI lab releases new model") || !strings.Contains(got, "https://example.com/ai-model") {
 		t.Fatalf("expected concise source-backed web summary, got %q", got)
 	}
-	if !strings.Contains(got, "Unavailable: news_search.") {
+	if !strings.Contains(got, "Unavailable right now: news.") {
 		t.Fatalf("expected human-readable unavailable news disclosure, got %q", got)
 	}
 }
@@ -1000,7 +1000,7 @@ Sources:
 	if !strings.Contains(got, "Mu daily note") || !strings.Contains(got, "https://example.com/agents") {
 		t.Fatalf("expected available mixed-source context in fallback, got %q", got)
 	}
-	if !strings.Contains(got, "Unavailable: social.") {
+	if !strings.Contains(got, "Unavailable right now: social.") {
 		t.Fatalf("expected unavailable source disclosure, got %q", got)
 	}
 }
