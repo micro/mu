@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"mu/internal/app"
@@ -15,6 +16,7 @@ const (
 	googleWeatherDailyURL  = "https://weather.googleapis.com/v1/forecast/days:lookup"
 	googleWeatherHourlyURL = "https://weather.googleapis.com/v1/forecast/hours:lookup"
 	googlePollenBaseURL    = "https://pollen.googleapis.com/v1/forecast:lookup"
+	nwsPointsBaseURL       = "https://api.weather.gov/points"
 )
 
 // googleAPIKey returns the Google API key from the environment.
@@ -24,6 +26,8 @@ func googleAPIKey() string {
 
 // httpClient is the shared HTTP client with timeout.
 var httpClient = &http.Client{Timeout: 15 * time.Second}
+
+var nwsBaseURL = nwsPointsBaseURL
 
 // WeatherForecast holds the parsed forecast data returned by the Google Weather API.
 type WeatherForecast struct {
@@ -128,6 +132,38 @@ type googleHourlyResponse struct {
 	ForecastHours []googleForecastHour `json:"forecastHours"`
 }
 
+type nwsPointsResponse struct {
+	Properties struct {
+		ForecastHourly   string `json:"forecastHourly"`
+		Forecast         string `json:"forecast"`
+		RelativeLocation *struct {
+			Properties struct {
+				City  string `json:"city"`
+				State string `json:"state"`
+			} `json:"properties"`
+		} `json:"relativeLocation"`
+	} `json:"properties"`
+}
+
+type nwsForecastResponse struct {
+	Properties struct {
+		GeneratedAt string      `json:"generatedAt"`
+		Periods     []nwsPeriod `json:"periods"`
+	} `json:"properties"`
+}
+
+type nwsPeriod struct {
+	Name             string  `json:"name"`
+	StartTime        string  `json:"startTime"`
+	EndTime          string  `json:"endTime"`
+	IsDaytime        bool    `json:"isDaytime"`
+	Temperature      float64 `json:"temperature"`
+	TemperatureUnit  string  `json:"temperatureUnit"`
+	WindSpeed        string  `json:"windSpeed"`
+	ShortForecast    string  `json:"shortForecast"`
+	DetailedForecast string  `json:"detailedForecast"`
+}
+
 type googleForecastHour struct {
 	Interval struct {
 		StartTime string `json:"startTime"`
@@ -170,7 +206,7 @@ type googlePollenTypeInfo struct {
 func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
 	key := googleAPIKey()
 	if key == "" {
-		return nil, fmt.Errorf("GOOGLE_API_KEY not configured")
+		return fetchNWSWeather(lat, lon)
 	}
 
 	// Fetch daily forecast (10 days)
@@ -179,7 +215,7 @@ func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
 
 	dailyResp, err := googleWeatherGet(dailyURL, "google_weather_daily")
 	if err != nil {
-		return nil, err
+		return fetchNWSWeatherFallback(lat, lon, err)
 	}
 
 	var dailyData googleWeatherResponse
@@ -193,7 +229,7 @@ func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
 
 	hourlyResp, err := googleWeatherGet(hourlyURL, "google_weather_hourly")
 	if err != nil {
-		return nil, err
+		return fetchNWSWeatherFallback(lat, lon, err)
 	}
 
 	var hourlyData googleHourlyResponse
@@ -274,6 +310,139 @@ func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
 	return forecast, nil
 }
 
+func fetchNWSWeatherFallback(lat, lon float64, originalErr error) (*WeatherForecast, error) {
+	wf, err := fetchNWSWeather(lat, lon)
+	if err == nil {
+		return wf, nil
+	}
+	return nil, originalErr
+}
+
+func fetchNWSWeather(lat, lon float64) (*WeatherForecast, error) {
+	pointsURL := fmt.Sprintf("%s/%0.4f,%0.4f", nwsBaseURL, lat, lon)
+	pointsResp, err := weatherGet(pointsURL, "nws_points")
+	if err != nil {
+		return nil, err
+	}
+
+	var points nwsPointsResponse
+	if err := json.Unmarshal(pointsResp, &points); err != nil {
+		return nil, fmt.Errorf("failed to parse NWS points response: %w", err)
+	}
+	if points.Properties.ForecastHourly == "" || points.Properties.Forecast == "" {
+		return nil, fmt.Errorf("NWS forecast links unavailable")
+	}
+
+	hourlyResp, err := weatherGet(points.Properties.ForecastHourly, "nws_hourly")
+	if err != nil {
+		return nil, err
+	}
+	dailyResp, err := weatherGet(points.Properties.Forecast, "nws_forecast")
+	if err != nil {
+		return nil, err
+	}
+
+	var hourlyData, dailyData nwsForecastResponse
+	if err := json.Unmarshal(hourlyResp, &hourlyData); err != nil {
+		return nil, fmt.Errorf("failed to parse NWS hourly response: %w", err)
+	}
+	if err := json.Unmarshal(dailyResp, &dailyData); err != nil {
+		return nil, fmt.Errorf("failed to parse NWS forecast response: %w", err)
+	}
+
+	generatedAt := time.Now().UTC()
+	if dailyData.Properties.GeneratedAt != "" {
+		if t, err := time.Parse(time.RFC3339, dailyData.Properties.GeneratedAt); err == nil {
+			generatedAt = t.UTC()
+		}
+	}
+	wf := &WeatherForecast{Source: "National Weather Service", GeneratedAt: generatedAt}
+	if loc := points.Properties.RelativeLocation; loc != nil {
+		city := strings.TrimSpace(loc.Properties.City)
+		state := strings.TrimSpace(loc.Properties.State)
+		switch {
+		case city != "" && state != "":
+			wf.Location = city + ", " + state
+		case city != "":
+			wf.Location = city
+		}
+	}
+
+	for _, p := range hourlyData.Properties.Periods {
+		t, err := time.Parse(time.RFC3339, p.StartTime)
+		if err != nil {
+			continue
+		}
+		item := HourlyItem{
+			Time:        t.UTC(),
+			TempC:       toCelsius(p.Temperature, p.TemperatureUnit),
+			Description: firstNonEmpty(p.ShortForecast, p.DetailedForecast),
+		}
+		wf.HourlyItems = append(wf.HourlyItems, item)
+		if wf.Current == nil {
+			wf.ObservedAt = item.Time
+			wf.Current = &CurrentConditions{
+				TempC:            item.TempC,
+				FeelsLikeC:       item.TempC,
+				Description:      item.Description,
+				WindKph:          parseNWSWindKph(p.WindSpeed),
+				WindKphAvailable: strings.TrimSpace(p.WindSpeed) != "",
+			}
+		}
+		if len(wf.HourlyItems) >= 24 {
+			break
+		}
+	}
+
+	for i := 0; i < len(dailyData.Properties.Periods) && len(wf.DailyItems) < 5; i++ {
+		day := dailyData.Properties.Periods[i]
+		if !day.IsDaytime {
+			continue
+		}
+		t, err := time.Parse(time.RFC3339, day.StartTime)
+		if err != nil {
+			continue
+		}
+		item := DailyItem{
+			Date:        t.UTC(),
+			MaxTempC:    toCelsius(day.Temperature, day.TemperatureUnit),
+			MinTempC:    toCelsius(day.Temperature, day.TemperatureUnit),
+			Description: firstNonEmpty(day.ShortForecast, day.DetailedForecast),
+		}
+		if i+1 < len(dailyData.Properties.Periods) {
+			night := dailyData.Properties.Periods[i+1]
+			if !night.IsDaytime {
+				item.MinTempC = toCelsius(night.Temperature, night.TemperatureUnit)
+			}
+		}
+		wf.DailyItems = append(wf.DailyItems, item)
+	}
+	if wf.Current == nil && len(wf.DailyItems) == 0 {
+		return nil, fmt.Errorf("NWS forecast response had no usable periods")
+	}
+	return wf, nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func parseNWSWindKph(wind string) float64 {
+	fields := strings.Fields(wind)
+	for _, field := range fields {
+		var mph float64
+		if _, err := fmt.Sscanf(field, "%f", &mph); err == nil {
+			return mph * 1.60934
+		}
+	}
+	return 0
+}
+
 // FetchPollen retrieves pollen forecast from the Google Pollen API.
 // Returns an error when GOOGLE_API_KEY is not set.
 func FetchPollen(lat, lon float64) ([]PollenForecast, error) {
@@ -337,8 +506,19 @@ func FetchPollen(lat, lon float64) ([]PollenForecast, error) {
 
 // googleWeatherGet performs a GET request and returns the response body.
 func googleWeatherGet(apiURL, service string) ([]byte, error) {
+	return weatherGet(apiURL, service)
+}
+
+func weatherGet(apiURL, service string) ([]byte, error) {
 	start := time.Now()
-	resp, err := httpClient.Get(apiURL)
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/geo+json, application/json")
+	req.Header.Set("User-Agent", "MuWeatherApp/1.0 (https://micro.mu)")
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		app.RecordAPICall(service, "GET", apiURL, 0, time.Since(start), err, "", "")
 		return nil, fmt.Errorf("%s request failed: %w", service, err)
@@ -364,7 +544,7 @@ func googleWeatherGet(apiURL, service string) ([]byte, error) {
 
 // toCelsius converts a temperature to Celsius.
 func toCelsius(degrees float64, unit string) float64 {
-	if unit == "FAHRENHEIT" {
+	if unit == "FAHRENHEIT" || unit == "F" {
 		return (degrees - 32) * 5 / 9
 	}
 	return degrees
