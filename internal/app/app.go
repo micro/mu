@@ -1366,7 +1366,15 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 		html = banner + html
 	}
 	_, acc := auth.TrySession(r)
-	return RenderHTMLWithLangAndAuth(title, desc, html, lang, acc)
+	out := RenderHTMLWithLangAndAuth(title, desc, html, lang, acc)
+	// On the developer/API face, brand the wordmark from the domain (m3o.com ->
+	// "M3O") instead of the consumer product name. Domain-agnostic: see PortalBrand.
+	if PortalMode(r) {
+		out = strings.Replace(out,
+			`<a href="/">Mu</a>`,
+			`<a href="/">`+htmlpkg.EscapeString(PortalBrand(r))+`</a>`, 1)
+	}
+	return out
 }
 
 // VerifyBanner returns banner HTML inviting the user to verify their

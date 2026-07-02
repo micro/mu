@@ -16,40 +16,41 @@ import (
 	"syscall"
 	"time"
 
-	"mu/internal/a2a"
 	"mu/admin"
 	"mu/agent"
 	"mu/agent/micro"
 	"mu/apps"
+	"mu/blog"
+	"mu/chat"
+	"mu/client/discord"
+	"mu/client/telegram"
+	"mu/client/whatsapp"
+	"mu/docs"
+	"mu/home"
+	"mu/internal/a2a"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/data"
-	"mu/blog"
-	"mu/client/discord"
-	"mu/chat"
 	"mu/internal/cli"
+	"mu/internal/data"
+	"mu/internal/memory"
 	"mu/internal/service"
 	"mu/internal/settings"
-	"mu/docs"
-	"mu/home"
 	"mu/mail"
-	"mu/internal/memory"
+	"mu/markets"
 	"mu/news"
 	"mu/news/digest"
-	"mu/markets"
-	"mu/reminder"
 	"mu/places"
+	"mu/portal"
+	"mu/reminder"
 	"mu/search"
 	"mu/setup"
 	"mu/social"
 	"mu/stream"
+	"mu/trade"
 	"mu/user"
 	"mu/video"
-	"mu/client/telegram"
-	"mu/trade"
 	"mu/wallet"
-	"mu/client/whatsapp"
 	"mu/weather"
 )
 
@@ -252,11 +253,6 @@ func main() {
 
 	// load apps
 	apps.Load()
-
-
-
-
-
 
 	// load social
 	social.Load()
@@ -1124,41 +1120,41 @@ func main() {
 	})
 
 	authenticated := map[string]bool{
-		"/video":           false, // Public viewing, auth for interactive features
-		"/news":            false, // Public viewing, auth for search
-		"/chat":            false, // Public viewing, auth for chatting
-		"/home":            false, // Public viewing
-		"/blog":            false, // Public viewing, auth for posting
-		"/markets":         false, // Public viewing
-		"/social":          false, // Public viewing, auth for search
-		"/social/thread":   false, // Public thread view, auth for messaging
-		"/places":          false, // Public map, auth for search
-		"/weather":         false, // Public page, auth for forecast lookup
-		"/mail":            true,  // Require auth for inbox
-		"/logout":          true,
-		"/account":         true,
-		"/verify":          false, // Public — token in URL is the credential
-		"/token":           true,  // PAT token management
-		"/passkey":         false, // Passkey login/register (auth checked in handler)
-		"/session":         false, // Public - used to check auth status
-		"/api":             false, // Public - API documentation
-		"/admin/flag":      true,
-		"/admin":           true,
-		"/admin/users":     true,
-		"/admin/moderate":  true,
-		"/admin/blocklist": true,
-		"/admin/spam":      true,
-		"/admin/email":     true,
-		"/admin/api":       true,
-		"/admin/log":       true,
-		"/admin/env":       true,
-		"/admin/server":    true,
-		"/admin/usage":   true,
-		"/admin/delete":  true,
-		"/admin/console": true,
+		"/video":             false, // Public viewing, auth for interactive features
+		"/news":              false, // Public viewing, auth for search
+		"/chat":              false, // Public viewing, auth for chatting
+		"/home":              false, // Public viewing
+		"/blog":              false, // Public viewing, auth for posting
+		"/markets":           false, // Public viewing
+		"/social":            false, // Public viewing, auth for search
+		"/social/thread":     false, // Public thread view, auth for messaging
+		"/places":            false, // Public map, auth for search
+		"/weather":           false, // Public page, auth for forecast lookup
+		"/mail":              true,  // Require auth for inbox
+		"/logout":            true,
+		"/account":           true,
+		"/verify":            false, // Public — token in URL is the credential
+		"/token":             true,  // PAT token management
+		"/passkey":           false, // Passkey login/register (auth checked in handler)
+		"/session":           false, // Public - used to check auth status
+		"/api":               false, // Public - API documentation
+		"/admin/flag":        true,
+		"/admin":             true,
+		"/admin/users":       true,
+		"/admin/moderate":    true,
+		"/admin/blocklist":   true,
+		"/admin/spam":        true,
+		"/admin/email":       true,
+		"/admin/api":         true,
+		"/admin/log":         true,
+		"/admin/env":         true,
+		"/admin/server":      true,
+		"/admin/usage":       true,
+		"/admin/delete":      true,
+		"/admin/console":     true,
 		"/admin/diagnostics": true,
-		"/admin/invite": true,
-		"/wallet":          false, // Public - shows wallet info; auth checked in handler
+		"/admin/invite":      true,
+		"/wallet":            false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
@@ -1167,16 +1163,17 @@ func main() {
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
-		"/status":     false, // Public - server health status
-		"/pricing":    false, // Public - pricing page
-		"/docs":       false, // Public - documentation
-		"/whitepaper": false, // Public - whitepaper
-		"/mcp":              false, // Public - MCP tools page
+		"/status":                 false, // Public - server health status
+		"/pricing":                false, // Public - pricing page
+		"/docs":                   false, // Public - documentation
+		"/whitepaper":             false, // Public - whitepaper
+		"/mcp":                    false, // Public - MCP tools page
 		"/whatsapp/webhook":       false, // Public - WhatsApp webhook
 		"/.well-known/agent.json": false, // Public - A2A agent card
 		"/a2a":                    false, // Public - A2A protocol
-		"/agent":  false, // Public page, auth checked in handler
-		"/setup":  false, // First-run setup (open only until an admin exists)
+		"/agent":                  false, // Public page, auth checked in handler
+		"/setup":                  false, // First-run setup (open only until an admin exists)
+		"/developers":             false, // Developer/API portal (public)
 	}
 
 	// Static assets should not require authentication
@@ -1322,6 +1319,10 @@ func main() {
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)
 
+	// developer/API face — always available at /developers; a proxy can also
+	// flag a whole domain with X-Mu-Portal to serve it at the root.
+	http.HandleFunc("/developers", portal.Handler)
+
 	// serve the agent
 	http.HandleFunc("/agent", agent.Handler)
 	http.HandleFunc("/agent/", agent.Handler)
@@ -1400,7 +1401,6 @@ func main() {
 	// documentation
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/docs/", docs.Handler)
-
 
 	// ActivityPub: WebFinger discovery
 	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
@@ -1557,6 +1557,12 @@ func main() {
 						}
 					}
 				} else if r.URL.Path == "/" {
+					// Developer/API face: a domain the proxy flagged with
+					// X-Mu-Portal renders the portal at its root (m3o.com etc.).
+					if app.PortalMode(r) {
+						portal.Handler(w, r)
+						return
+					}
 					// Fresh instance with no admin yet → guide the operator
 					// through the one-time setup wizard.
 					if setup.Needed() {
@@ -1897,9 +1903,9 @@ func versionInfo() map[string]any {
 	info := map[string]any{
 		"version":  app.Version, // per-process id (start time)
 		"go":       runtime.Version(),
-		"agent":    agent.Mode(),         // "native" (go-micro agent) or "planner"
-		"mcp":      "go-micro/gateway",   // /mcp served by go-micro's gateway
-		"services": service.Services(),      // in-process go-micro services
+		"agent":    agent.Mode(),       // "native" (go-micro agent) or "planner"
+		"mcp":      "go-micro/gateway", // /mcp served by go-micro's gateway
+		"services": service.Services(), // in-process go-micro services
 		"go_micro": "unknown",
 	}
 	if bi, ok := debug.ReadBuildInfo(); ok {
