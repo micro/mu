@@ -28,7 +28,9 @@ func cryptoWalletCard(userID string) string {
 	return fmt.Sprintf(`<div class="card">
   <h3>Crypto wallet</h3>
   <p class="text-sm text-muted">Fund with <b>USDC on Base</b> to pay per call via x402 — an alternative to credits, on this server or any x402 server.</p>
-  <p style="font-size:24px;margin:6px 0 12px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span></p>
+  <p style="font-size:24px;margin:6px 0 10px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span></p>
+  <button type="button" class="cw-convert" onclick="cwConvert(this)">Convert to credits →</button>
+  <p class="text-sm text-muted" style="margin:6px 0 12px">Moves your USDC into your credit balance (1 USDC = 100 credits). Or keep it as USDC and toggle per-call payment below.</p>
   <button type="button" class="cw-addr" data-addr="%s" onclick="cwCopy(this)">%s</button>
   <div class="cw-copied" id="cw-copied" hidden>Copied to clipboard ✓</div>
   <details class="cw-qrwrap"><summary>Show QR code</summary><div class="cw-qr" id="cw-qr"></div></details>
@@ -43,6 +45,9 @@ func cryptoWalletCard(userID string) string {
 .cw-qr{margin-top:8px}.cw-qr img{width:180px;height:180px;image-rendering:pixelated}
 .cw-toggle{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:#444;line-height:1.4;cursor:pointer}
 .cw-toggle input{margin-top:2px}
+.cw-convert{padding:9px 16px;font-size:14px;font-weight:600;border:0;border-radius:6px;background:#1a7f37;color:#fff;cursor:pointer}
+.cw-convert:hover{background:#166b2e}
+.cw-convert[disabled]{opacity:.6;cursor:default}
 </style>
 <script src="/qrcode.js"></script>
 <script>
@@ -54,6 +59,10 @@ function cwCopy(el){var a=el.getAttribute('data-addr');function done(){var c=doc
 function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(t);}
 function cwMode(on){var b=new URLSearchParams();b.append('crypto',on?'on':'off');
   fetch('/agent/wallet',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':cwCsrf()},body:b.toString()}).catch(function(){});}
+function cwConvert(el){el.disabled=true;var t=el.textContent;el.textContent='Converting…';
+  fetch('/wallet/convert',{method:'POST',headers:{'X-CSRF-Token':cwCsrf()}}).then(function(r){return r.json();}).then(function(d){
+    if(d.error){alert(d.error);el.disabled=false;el.textContent=t;return;}
+    location.reload();}).catch(function(){el.disabled=false;el.textContent=t;});}
 </script>`, usdc, htmlEsc(bw.Address), htmlEsc(bw.Address), checked)
 }
 
@@ -265,6 +274,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleStripeSuccess(w, r)
 	case path == "/wallet/stripe/webhook" && r.Method == "POST":
 		HandleStripeWebhook(w, r)
+	case path == "/wallet/convert" && r.Method == "POST":
+		handleConvert(w, r)
 	case path == "/wallet/transfer" && r.Method == "POST":
 		handleTransfer(w, r)
 	case path == "/wallet/transfer" && r.Method == "GET":
@@ -274,6 +285,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// handleConvert sweeps the user's USDC balance to the treasury and credits
+// their account (USDC → credits), then returns the new credit balance.
+func handleConvert(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	sess, _ := auth.TrySession(r)
+	if sess == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error":"login required"}`))
+		return
+	}
+	credited, err := ConvertUSDCToCredits(sess.Account)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"credited": credited, "balance": GetBalance(sess.Account)})
 }
 
 func handleWalletPage(w http.ResponseWriter, r *http.Request) {
