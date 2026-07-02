@@ -87,7 +87,7 @@ mu/
 │   Building Blocks (user-facing features)
 ├── blog/                 # Microblogging, markdown, ActivityPub
 ├── news/                 # RSS feeds, HN comments, AI summaries
-│   ├── markets/          # Crypto prices, futures (Coinbase API)
+│   ├── markets/          # Crypto, futures, commodities, currencies
 │   └── reminder/         # Daily reminders
 ├── chat/                 # AI chat with RAG, WebSocket streaming
 ├── video/                # YouTube search and playback
@@ -224,12 +224,12 @@ Private messaging with full email capability.
 - **Spam filtering** - Configurable blocklist
 - **Threading** - Conversation view with replies
 
-### Markets (`news/markets/`)
+### Markets (`markets/`)
 
 Live financial data.
 
-- **Crypto prices** - Via Coinbase API
-- **Futures/commodities** - Real-time market data
+- **Crypto prices** - Via Coinbase with CoinGecko 24h changes
+- **Futures/commodities/currencies** - Yahoo Finance market data
 
 ### Wallet (`wallet/`)
 

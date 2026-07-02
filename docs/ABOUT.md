@@ -26,7 +26,7 @@ Below the AI, cards give you an at-a-glance overview. Cards are configurable —
 
 - **AI Agent** — Ask anything. A go-micro agent that calls, checks, fetches, and synthesises across all the services below. Remembers your preferences.
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
-- **Markets** — Live crypto, futures, and commodity prices
+- **Markets** — Live crypto, futures, commodity, and currency prices
 - **Weather** — Forecasts and conditions
 - **Video** — YouTube without ads, algorithms, or shorts
 - **Web** — Search the web without tracking
