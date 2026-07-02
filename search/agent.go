@@ -29,6 +29,7 @@ func WebSearchText(query string, limit int) string {
 }
 
 func formatWebSearchResults(query string, results []BraveResult) string {
+	results = groundNewsWebResults(query, results)
 	confidence := webSearchConfidence(query, results)
 
 	var sb strings.Builder
@@ -38,6 +39,9 @@ func formatWebSearchResults(query string, results []BraveResult) string {
 		fmt.Fprintf(&sb, "Confidence: low — the returned snippets only partially match the query intent. Say that the search results do not clearly support an answer and ask the user to refine the query before making unsupported claims.\n")
 	} else {
 		fmt.Fprintf(&sb, "Confidence: %s — synthesize only what the listed sources support.\n", confidence)
+	}
+	if isNewsLikeWebQuery(query) {
+		fmt.Fprintf(&sb, "Grounding rule: treat each source as evidence only for facts named in its title or snippet; do not turn generic topic/category pages or weak snippets into specific news headlines. If the snippets are thin, say the evidence is limited.\n")
 	}
 	fmt.Fprintf(&sb, "Sources:\n")
 	for i, r := range results {
@@ -52,6 +56,46 @@ func formatWebSearchResults(query string, results []BraveResult) string {
 		fmt.Fprintf(&sb, "%d. %s — %s (%s)\n", i+1, title, desc, r.URL)
 	}
 	return sb.String()
+}
+
+func groundNewsWebResults(query string, results []BraveResult) []BraveResult {
+	if !isNewsLikeWebQuery(query) {
+		return results
+	}
+	terms := meaningfulQueryTerms(query)
+	if len(terms) == 0 {
+		return results
+	}
+	filtered := make([]BraveResult, 0, len(results))
+	for _, r := range results {
+		desc := strings.TrimSpace(r.Description)
+		if desc == "" {
+			continue
+		}
+		haystack := strings.ToLower(r.Title + " " + desc + " " + r.URL)
+		matchedTopic := false
+		for term := range terms {
+			if term == "news" || term == "latest" || term == "today" || term == "current" {
+				continue
+			}
+			if strings.Contains(haystack, term) {
+				matchedTopic = true
+				break
+			}
+		}
+		if matchedTopic {
+			filtered = append(filtered, r)
+		}
+	}
+	if len(filtered) == 0 {
+		return results
+	}
+	return filtered
+}
+
+func isNewsLikeWebQuery(query string) bool {
+	lower := strings.ToLower(query)
+	return strings.Contains(lower, "news") || strings.Contains(lower, "latest") || strings.Contains(lower, "today") || strings.Contains(lower, "current")
 }
 
 func webSearchConfidence(query string, results []BraveResult) string {
