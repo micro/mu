@@ -886,6 +886,20 @@ func TestCompleteToolAnswerNamesUnavailableSlices(t *testing.T) {
 	}
 }
 
+func TestCompleteToolAnswerPrefersSuccessfulWeatherOverUnavailableMarker(t *testing.T) {
+	rag := []string{
+		"### weather_forecast\nWeather for New York.\nNow: 21°C, partly cloudy.\nFreshness/source: Google Weather; generated at 2026-07-02 12:00 UTC.",
+		"### weather_forecast\n" + unavailableToolMessage("weather_forecast"),
+	}
+	got := completeToolAnswer("I'll check the weather now.", rag)
+	if !strings.Contains(got, "Now: 21°C, partly cloudy") {
+		t.Fatalf("expected successful weather result in fallback, got %q", got)
+	}
+	if strings.Contains(got, "Unavailable: weather_forecast") || strings.Contains(got, "Unavailable: weather") {
+		t.Fatalf("did not expect unavailable weather disclosure when weather data is usable, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerUsesAvailableWebWhenNewsUnavailable(t *testing.T) {
 	rag := []string{
 		"### news\n" + unavailableToolMessage("news"),
