@@ -229,7 +229,7 @@ func apiEndpointsSection() string {
 	var nav strings.Builder
 	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Endpoints</div>`)
 	for i, ep := range Endpoints {
-		nav.WriteString(fmt.Sprintf(`<a href="#ep-%d"><span class="ep-method">%s</span> %s</a>`,
+		nav.WriteString(fmt.Sprintf(`<a href="#ep-%d"><span class="ep-method">%s</span><span class="ep-path">%s</span></a>`,
 			i, html.EscapeString(ep.Method), html.EscapeString(ep.Path)))
 	}
 	nav.WriteString(`</nav>`)
