@@ -5106,9 +5106,10 @@ body.display-mode .card h4 {
 .tool-price b { color: #111; font-weight: 600; }
 .tool-price span { color: #9ca3af; }
 
-/* Un-squash the agent page: use a generous width even under the portal cap. */
+/* Agent page: match the standard content width (and override the narrower
+   portal cap) so it's as wide as every other page. */
 #content:has(.chat-layout),
-.mu-portal #content:has(.chat-layout) { max-width: 1200px; }
+.mu-portal #content:has(.chat-layout) { max-width: 1400px; }
 
 @media (max-width: 900px) {
   .ep-layout { display: block; }
