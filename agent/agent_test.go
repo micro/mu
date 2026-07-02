@@ -936,6 +936,50 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerPolishesNewsWebFallback(t *testing.T) {
+	rag := []string{
+		"### news_search\n" + unavailableToolMessage("news_search"),
+		`### web_search
+Current date context: request date is 2026-07-02 UTC.
+Search results for "AI news":
+Grounding rule: only use source-backed snippets.
+Query intent: answer the user's original query "AI news"; do not replace it with a broader or different meaning.
+Confidence: high — synthesize only what the listed sources support.
+Sources:
+1. AI lab releases new model — Company announced a new assistant release. (https://example.com/ai-model)
+2. Chip supplier expands AI capacity — Demand for AI chips is rising. (https://example.com/ai-chips)`,
+	}
+
+	got := completeToolAnswer("Let me search the web for more AI stories to round this out.", rag)
+	for _, internal := range []string{"Grounding rule:", "Query intent:", "Search results for", "Confidence:", "Sources:"} {
+		if strings.Contains(got, internal) {
+			t.Fatalf("expected polished fallback to hide %q, got %q", internal, got)
+		}
+	}
+	if !strings.Contains(got, "**Web sources**") || !strings.Contains(got, "AI lab releases new model") || !strings.Contains(got, "https://example.com/ai-model") {
+		t.Fatalf("expected concise source-backed web summary, got %q", got)
+	}
+	if !strings.Contains(got, "Unavailable: news_search.") {
+		t.Fatalf("expected human-readable unavailable news disclosure, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerDisclosesLimitedWebEvidence(t *testing.T) {
+	rag := []string{
+		`### web_search
+Confidence: low — generic category pages only.
+1. AI category page — A broad archive of AI articles. (https://example.com/ai)`,
+	}
+
+	got := completeToolAnswer("I'll search the web.", rag)
+	if !strings.Contains(got, "limited source-backed evidence") {
+		t.Fatalf("expected limited-evidence disclosure, got %q", got)
+	}
+	if !strings.Contains(got, "AI category page") {
+		t.Fatalf("expected available web result to remain visible, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerReplacesRawMixedSourcePayload(t *testing.T) {
 	rag := []string{
 		`### blog_list
