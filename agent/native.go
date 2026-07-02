@@ -140,6 +140,11 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		"After using tools, always provide the final answer or state exactly what is unavailable; " +
 		"never stop at progress narration like let me check or I will pull that data. " +
 		"If the user asks about weather without a location, default to London (lat 51.5074, lon -0.1278)."
+	// A user-defined agent supplies its own persona/instructions; keep the
+	// operational tool guidance so it still answers reliably.
+	if strings.TrimSpace(opts.System) != "" {
+		sys = opts.System + "\n\nToday is " + today + ". Use the available tools for live or personal data and quote exact values. After using tools, always give the final answer; never stop at progress narration."
+	}
 	if !opts.Public && UserContextFunc != nil {
 		if uc := UserContextFunc(accountID); uc != "" {
 			sys += "\n\nUser context:\n" + uc

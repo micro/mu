@@ -172,7 +172,7 @@ function ask(q){
   u.scrollIntoView({behavior:'smooth',block:'start'});
   var streamText='';
   var streaming=false;
-  var body=JSON.stringify({prompt:q,model:'standard',history:history.slice(-6),context_id:contextId||''});
+  var body=JSON.stringify({prompt:q,model:'standard',history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||'')});
   fetch('/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:body,credentials:'same-origin'})
   .then(function(resp){
     if(resp.status===401){

@@ -449,6 +449,7 @@ func main() {
 		mail.DeleteInbox,
 		func(id string) { wallet.DeleteWallet(id) },
 		func(id string) { wallet.DeleteBaseWallet(id) },
+		func(id string) { micro.DeleteUserAgents(id) },
 		func(id string) { discord.DeleteLinks(id) },
 		func(id string) { telegram.DeleteLinks(id) },
 		func(id string) { whatsapp.DeleteLinks(id) },
@@ -1300,6 +1301,7 @@ func main() {
 	http.HandleFunc("/agent", agent.Handler)
 	http.HandleFunc("/agent/", agent.Handler)
 	http.HandleFunc("/agent/wallet", agent.WalletHandler)
+	http.HandleFunc("/agent/agents", agent.AgentsHandler)
 	http.HandleFunc("/agent/run", agent.RunHandler)
 	http.HandleFunc("/agent/exec", agent.ExecResultHandler)
 

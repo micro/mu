@@ -68,7 +68,8 @@ type QueryMessage struct {
 // QueryOpts controls what context is included in agent queries.
 type QueryOpts struct {
 	History []QueryMessage
-	Public  bool // if true, skip private context (mail, wallet, etc.)
+	Public  bool   // if true, skip private context (mail, wallet, etc.)
+	System  string // optional custom system prompt (user-defined agent)
 }
 
 // Query runs the agent pipeline synchronously for MCP and bot callers.
@@ -359,7 +360,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 
 	rail := ""
 	if !guest {
-		rail = renderWalletPanel() + renderSessionsRail(accountID, sessionID)
+		rail = renderAgentsPanel() + renderWalletPanel() + renderSessionsRail(accountID, sessionID)
 	}
 
 	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
@@ -717,6 +718,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Prompt    string `json:"prompt"`
 		Model     string `json:"model"`
+		Agent     string `json:"agent"`      // optional: user-defined agent id to answer as
 		ContextID string `json:"context_id"` // optional: prior flow to continue from
 		// History is an optional client-supplied conversation thread used by
 		// the inline chat (landing + assistant). It gives multi-turn context
@@ -834,6 +836,11 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	preferPlanner := isGuest && (len(shortcutToolCalls(req.Prompt)) > 0 || isSimpleWeatherPrompt(req.Prompt))
 	if nativeStreamEnabled() && !preferPlanner {
 		nopts := QueryOpts{Public: isGuest}
+		if !isGuest && req.Agent != "" {
+			if ua := micro.GetUserAgentFor(accountID, req.Agent); ua != nil {
+				nopts.System = ua.SystemPrompt
+			}
+		}
 		for _, f := range conversationHistory {
 			if strings.TrimSpace(f.Prompt) == "" {
 				continue
