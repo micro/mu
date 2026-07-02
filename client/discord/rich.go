@@ -156,29 +156,8 @@ var slashCommands = []SlashCommand{
 		Description: "Check your inbox",
 	},
 	{
-		Name:        "swap",
-		Description: "Swap tokens via Uniswap",
-		Options: []SlashCommandOption{
-			{Name: "from", Description: "Token to sell", Type: OptionString, Required: true, Choices: []SlashCommandChoice{
-				{Name: "ETH", Value: "ETH"},
-				{Name: "USDC", Value: "USDC"},
-				{Name: "USDT", Value: "USDT"},
-				{Name: "WBTC", Value: "WBTC"},
-				{Name: "DAI", Value: "DAI"},
-			}},
-			{Name: "to", Description: "Token to buy", Type: OptionString, Required: true, Choices: []SlashCommandChoice{
-				{Name: "ETH", Value: "ETH"},
-				{Name: "USDC", Value: "USDC"},
-				{Name: "USDT", Value: "USDT"},
-				{Name: "WBTC", Value: "WBTC"},
-				{Name: "DAI", Value: "DAI"},
-			}},
-			{Name: "amount", Description: "Amount to sell", Type: OptionString, Required: true},
-		},
-	},
-	{
 		Name:        "balance",
-		Description: "Check your trading wallet balance",
+		Description: "Check your Base wallet USDC balance",
 	},
 	{
 		Name:        "apps",

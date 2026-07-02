@@ -49,7 +49,6 @@ import (
 	"mu/setup"
 	"mu/social"
 	"mu/stream"
-	"mu/trade"
 	"mu/user"
 	"mu/video"
 	"mu/wallet"
@@ -235,12 +234,6 @@ func main() {
 	markets.Load()
 	reminder.Load()
 	wallet.Load()
-	trade.Load()
-	trade.NotifyFunc = func(accountID, message string) {
-		discord.NotifyUser(accountID, message)
-		telegram.NotifyUser(accountID, message)
-		whatsapp.NotifyUser(accountID, message)
-	}
 	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
 	discord.Load()
 	discord.StartBriefingLoop()
@@ -455,7 +448,7 @@ func main() {
 		user.ClearStatusHistory,
 		mail.DeleteInbox,
 		func(id string) { wallet.DeleteWallet(id) },
-		func(id string) { trade.DeleteWallet(id); trade.DeleteStrategies(id) },
+		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { discord.DeleteLinks(id) },
 		func(id string) { telegram.DeleteLinks(id) },
 		func(id string) { whatsapp.DeleteLinks(id) },
@@ -1037,88 +1030,49 @@ func main() {
 		return answer, nil
 	})
 
-	// Trade tools
-	api.RegisterTool(api.Tool{
-		Name:        "trade_quote",
-		Description: "Get a swap price quote for tokens on Base via Uniswap V3",
-		Params: []api.ToolParam{
-			{Name: "from", Type: "string", Description: "Token to sell (ETH, WETH, USDC)", Required: true},
-			{Name: "to", Type: "string", Description: "Token to buy (ETH, WETH, USDC)", Required: true},
-			{Name: "amount", Type: "string", Description: "Amount to sell (e.g. 0.1 for 0.1 ETH)", Required: true},
-		},
-		Handle: func(args map[string]any) (string, error) {
-			from, _ := args["from"].(string)
-			to, _ := args["to"].(string)
-			amount, _ := args["amount"].(string)
-			var q trade.Quote
-			if err := service.Call(context.Background(), "trade", "Server.Quote",
-				&trade.QuoteRequest{From: from, To: to, Amount: amount}, &q); err != nil {
-				return "", err
-			}
-			b, _ := json.Marshal(q)
-			return string(b), nil
-		},
-	})
+	// Wallet: the user's x402 Base wallet — address + USDC balance.
 	api.RegisterToolWithAuth(api.Tool{
-		Name:        "trade_swap",
-		Description: "Execute a token swap on Base via Uniswap V3",
-		Params: []api.ToolParam{
-			{Name: "from", Type: "string", Description: "Token to sell (ETH, WETH, USDC)", Required: true},
-			{Name: "to", Type: "string", Description: "Token to buy (ETH, WETH, USDC)", Required: true},
-			{Name: "amount", Type: "string", Description: "Amount to sell", Required: true},
-		},
+		Name:        "wallet",
+		Description: "Get your Base wallet address and USDC balance. This wallet pays for metered MCP tools via x402.",
 	}, func(args map[string]any, accountID string) (string, error) {
-		from, _ := args["from"].(string)
-		to, _ := args["to"].(string)
-		amount, _ := args["amount"].(string)
-		var t trade.Trade
-		if err := service.Call(context.Background(), "trade", "Server.Swap",
-			&trade.SwapRequest{AccountID: accountID, From: from, To: to, Amount: amount}, &t); err != nil {
+		bw, err := wallet.GetOrCreateWallet(accountID)
+		if err != nil {
 			return "", err
 		}
-		b, _ := json.Marshal(t)
+		usdc, _ := wallet.USDCBalance(bw.Address)
+		b, _ := json.Marshal(map[string]any{"address": bw.Address, "network": "base", "usdc": usdc})
 		return string(b), nil
 	})
+
+	// Pay: call a tool on an MCP server (this one or another in the registry)
+	// and settle it from the user's Base wallet via x402.
 	api.RegisterToolWithAuth(api.Tool{
-		Name:        "trade_wallet",
-		Description: "Get your trading wallet address and token balances on Base",
-	}, func(args map[string]any, accountID string) (string, error) {
-		var info trade.WalletInfo
-		if err := service.Call(context.Background(), "trade", "Server.Wallet",
-			&trade.WalletRequest{AccountID: accountID}, &info); err != nil {
-			return `{"error":"No trading wallet. Create one at /markets?category=trade"}`, nil
-		}
-		result := map[string]any{"address": info.Address}
-		if trade.Enabled() {
-			result["balances"] = trade.GetBalances(info.Address)
-		}
-		b, _ := json.Marshal(result)
-		return string(b), nil
-	})
-	api.RegisterToolWithAuth(api.Tool{
-		Name:        "trade_strategy",
-		Description: "Create an automated trading strategy. The AI evaluates news and prices every 15 minutes and trades when conditions are met.",
+		Name:        "pay",
+		Description: "Call a metered tool on an MCP server and pay for it from your Base wallet via x402. Works on this server and any other server in the registry.",
 		Params: []api.ToolParam{
-			{Name: "description", Type: "string", Description: "Strategy in plain English (e.g. 'Buy ETH when positive news and price dips 3%')", Required: true},
-			{Name: "mode", Type: "string", Description: "Execution mode: alert (notify only), confirm (propose trade), auto (execute automatically)", Required: false},
-			{Name: "max_per_trade", Type: "string", Description: "Maximum USDC per trade (default 50)", Required: false},
-			{Name: "max_per_week", Type: "string", Description: "Maximum USDC per week (default 500)", Required: false},
+			{Name: "tool", Type: "string", Description: "Name of the tool to call", Required: true},
+			{Name: "server", Type: "string", Description: "Server name from the registry, or a base URL (default: self)", Required: false},
+			{Name: "arguments", Type: "object", Description: "Arguments to pass to the tool", Required: false},
 		},
 	}, func(args map[string]any, accountID string) (string, error) {
-		desc, _ := args["description"].(string)
-		mode, _ := args["mode"].(string)
-		if mode == "" {
-			mode = "alert"
+		toolName, _ := args["tool"].(string)
+		if toolName == "" {
+			return "", fmt.Errorf("tool is required")
 		}
-		maxTrade, _ := args["max_per_trade"].(string)
-		maxWeek, _ := args["max_per_week"].(string)
-		var s trade.Strategy
-		if err := service.Call(context.Background(), "trade", "Server.Strategy",
-			&trade.StrategyRequest{AccountID: accountID, Description: desc, Mode: mode, MaxPerTrade: maxTrade, MaxPerWeek: maxWeek}, &s); err != nil {
+		server, _ := args["server"].(string)
+		baseURL := server
+		if !strings.HasPrefix(server, "http") {
+			baseURL = wallet.ServerURL(server)
+		}
+		if baseURL == "" {
+			return "", fmt.Errorf("unknown server %q", server)
+		}
+		toolArgs, _ := args["arguments"].(map[string]any)
+		bw, err := wallet.GetOrCreateWallet(accountID)
+		if err != nil {
 			return "", err
 		}
-		b, _ := json.Marshal(s)
-		return string(b), nil
+		return wallet.PayAndCallMCP(context.Background(), baseURL, toolName, toolArgs, bw)
 	})
 
 	authenticated := map[string]bool{
@@ -1271,9 +1225,6 @@ func main() {
 	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
 
-	// serve trading page
-	http.HandleFunc("/trade/", trade.Handler) // form submissions (swap, wallet, strategy)
-
 	// serve whatsapp webhook
 	http.HandleFunc("/whatsapp/webhook", whatsapp.Handler)
 
@@ -1338,7 +1289,6 @@ func main() {
 	http.HandleFunc("/mail", mail.Handler)
 
 	// serve markets page
-	markets.TradeHandler = trade.Handler
 	http.HandleFunc("/markets", markets.Handler)
 
 	// serve social page

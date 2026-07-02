@@ -9,7 +9,7 @@ import (
 
 	"mu/agent"
 	"mu/internal/app"
-	"mu/trade"
+	"mu/wallet"
 )
 
 type interaction struct {
@@ -162,56 +162,22 @@ func handleInteraction(raw json.RawMessage) {
 	case "search":
 		q := inter.getOption("query")
 		prompt = "search for " + q
-	case "swap":
-		if isChannelCmd {
-			editResponse(inter.Token, "Trading is private — use this command in a DM.")
-			return
-		}
-		from := inter.getOption("from")
-		to := inter.getOption("to")
-		amount := inter.getOption("amount")
-		if from != "" && to != "" && amount != "" {
-			quote, err := trade.GetQuote(from, to, amount)
-			if err != nil {
-				editResponse(inter.Token, "Quote failed: "+err.Error())
-				return
-			}
-			embed := Embed{
-				Title:       "Swap Quote",
-				Description: fmt.Sprintf("**%s** → **%s**", quote.AmountIn, quote.AmountOut),
-				Color:       ColorGold,
-				Fields: []EmbedField{
-					{Name: "Pool Fee", Value: quote.PoolFee, Inline: true},
-				},
-				Footer: &EmbedFooter{Text: "Use the web UI at /markets?category=trade to execute"},
-			}
-			editResponseEmbed(inter.Token, embed)
-			return
-		}
-		prompt = "swap " + amount + " " + from + " for " + to
 	case "balance":
 		if isChannelCmd {
 			editResponse(inter.Token, "Wallet balance is private — use this command in a DM.")
 			return
 		}
-		info := trade.GetWalletInfo(accountID)
-		if info == nil {
-			editResponse(inter.Token, "No trading wallet. Create one at /markets?category=trade")
+		bw, err := wallet.GetOrCreateWallet(accountID)
+		if err != nil {
+			editResponse(inter.Token, "Wallet error: "+err.Error())
 			return
 		}
-		balances := trade.GetBalances(info.Address)
-		var fields []EmbedField
-		for symbol, amount := range balances {
-			fields = append(fields, EmbedField{Name: symbol, Value: amount, Inline: true})
-		}
-		if len(fields) == 0 {
-			fields = append(fields, EmbedField{Name: "Balance", Value: "No tokens found"})
-		}
+		usdc, _ := wallet.USDCBalance(bw.Address)
 		embed := Embed{
-			Title:  "Trading Wallet",
+			Title:  "Your Base Wallet",
 			Color:  ColorGreen,
-			Fields: fields,
-			Footer: &EmbedFooter{Text: info.Address},
+			Fields: []EmbedField{{Name: "USDC", Value: "$" + usdc, Inline: true}},
+			Footer: &EmbedFooter{Text: bw.Address},
 		}
 		editResponseEmbed(inter.Token, embed)
 		return

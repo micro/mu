@@ -683,10 +683,8 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"})
 - wallet_balance: Check your wallet credit balance (no args)
-- trade_quote: Get a swap price quote (args: {"from":"ETH","to":"USDC","amount":"0.1"})
-- trade_swap: Execute a token swap via Uniswap (args: {"from":"ETH","to":"USDC","amount":"0.1"})
-- trade_wallet: Get your trading wallet address and balances (no args)
-- trade_strategy: Create an automated trading strategy (args: {"description":"Buy ETH on dips","mode":"auto","max_per_trade":"50","max_per_week":"200"})
+- wallet: Get your Base wallet address and USDC balance (no args). This wallet pays for metered MCP tools via x402.
+- pay: Call a metered tool on an MCP server and pay from your Base wallet via x402 (args: {"tool":"news_search","server":"self","arguments":{"query":"ai"}})
 - stream: Read the public event stream (no args)`
 
 const guestToolsDesc = `Available tools (use exact name):
@@ -1183,12 +1181,11 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
 		"show me today's islamic reminder":              {{Tool: "reminder", Args: map[string]any{}}},
-		// Trade
-		"trade":          {{Tool: "trade_wallet", Args: map[string]any{}}},
-		"trading":        {{Tool: "trade_wallet", Args: map[string]any{}}},
-		"my wallet":      {{Tool: "trade_wallet", Args: map[string]any{}}},
-		"wallet balance": {{Tool: "trade_wallet", Args: map[string]any{}}},
-		"trading wallet": {{Tool: "trade_wallet", Args: map[string]any{}}},
+		// Wallet
+		"my wallet":      {{Tool: "wallet", Args: map[string]any{}}},
+		"wallet":         {{Tool: "wallet", Args: map[string]any{}}},
+		"wallet balance": {{Tool: "wallet", Args: map[string]any{}}},
+		"wallet address": {{Tool: "wallet", Args: map[string]any{}}},
 	}
 	lower := strings.ToLower(strings.TrimSpace(prompt))
 	if tc, ok := aliases[lower]; ok {

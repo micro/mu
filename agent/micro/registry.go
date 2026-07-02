@@ -24,17 +24,8 @@ func init() {
 		Name:        "Markets Agent",
 		Description: "Crypto prices, market data, price analysis",
 		SystemPrompt: `You are the Markets specialist on Mu. You track crypto, futures, commodities, and currencies. Always quote exact prices and 24h changes from tool data. Highlight significant moves. When asked about trends, correlate price action with news. Never speculate without data.`,
-		Tools:       []string{"markets", "trade_quote", "trade_wallet"},
+		Tools:       []string{"markets", "wallet"},
 		MemoryScope: "markets",
-	})
-
-	Register(&Agent{
-		ID:          "trade",
-		Name:        "Trading Agent",
-		Description: "Token swaps, trading strategies, portfolio management",
-		SystemPrompt: `You are the Trading specialist on Mu. You execute swaps via Uniswap, manage trading strategies, and monitor positions. Always confirm amounts and tokens before executing. Quote fees and slippage. Be precise with numbers — this is real money.`,
-		Tools:       []string{"trade_quote", "trade_swap", "trade_wallet", "trade_strategy", "markets"},
-		MemoryScope: "trade",
 	})
 
 	Register(&Agent{

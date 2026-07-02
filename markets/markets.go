@@ -576,12 +576,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		category = CategoryCrypto
 	}
 
-	// Route to trade page
-	if category == "trade" {
-		TradeHandler(w, r)
-		return
-	}
-
 	// Validate category
 	if category != CategoryCrypto && category != CategoryFutures && category != CategoryCommodities && category != CategoryCurrencies {
 		category = CategoryCrypto
@@ -596,9 +590,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// HTML response for browser
 	handleHTML(w, r, category)
 }
-
-// TradeHandler is set by the trade package to handle /markets?category=trade.
-var TradeHandler http.HandlerFunc
 
 // handleJSON returns market data as JSON
 func handleJSON(w http.ResponseWriter, r *http.Request, category string) {
@@ -681,7 +672,6 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory string) 
 	sb.WriteString(generateTab("Futures", CategoryFutures, activeCategory))
 	sb.WriteString(generateTab("Commodities", CategoryCommodities, activeCategory))
 	sb.WriteString(generateTab("Currencies", CategoryCurrencies, activeCategory))
-	sb.WriteString(generateTab("Trade", "trade", activeCategory))
 	sb.WriteString(`</div>`)
 
 	// Market data table
