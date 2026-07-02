@@ -833,8 +833,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// pipeline below can start the relevant tool immediately, which improves
 	// first visible progress for the first-run core loop without changing any
 	// public endpoint or tool contract.
-	preferShortcutPlanner := isGuest && len(shortcutToolCalls(req.Prompt)) > 0
-	if nativeStreamEnabled() && !preferShortcutPlanner {
+	preferPlanner := isGuest && (len(shortcutToolCalls(req.Prompt)) > 0 || isSimpleWeatherPrompt(req.Prompt))
+	if nativeStreamEnabled() && !preferPlanner {
 		nopts := QueryOpts{Public: isGuest}
 		for _, f := range conversationHistory {
 			if strings.TrimSpace(f.Prompt) == "" {
@@ -996,13 +996,16 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hasMarketsTool := false
+	hasWeatherTool := false
 	for _, tc := range toolCalls {
-		if tc.Tool == "markets" {
+		switch tc.Tool {
+		case "markets":
 			hasMarketsTool = true
-			break
+		case "weather_forecast":
+			hasWeatherTool = true
 		}
 	}
-	if useFastToolFallback(req.Prompt, isGuest, hasMarketsTool, ragParts) {
+	if useFastToolFallback(req.Prompt, isGuest, hasMarketsTool, hasWeatherTool, ragParts) {
 		answer := app.NormalizeAnswerMarkdown(app.StripLatexDollars(synthesizeToolFallback(ragParts)))
 		rendered := app.RenderString(answer)
 		html := `<div class="card" id="agent-response">` + rendered + `</div>`
@@ -1240,12 +1243,26 @@ func isLatestTechnologyNewsPrompt(lower string) bool {
 	return false
 }
 
-func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, ragParts []string) bool {
-	if !isGuest || !hasMarketsTool || len(ragParts) == 0 || !isMarketMoverPrompt(prompt) {
+func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWeatherTool bool, ragParts []string) bool {
+	if !isGuest || len(ragParts) == 0 {
 		return false
 	}
-	if wantsMarketMoverExplanation(prompt) {
+	if hasMarketsTool && isMarketMoverPrompt(prompt) && !wantsMarketMoverExplanation(prompt) {
+		return true
+	}
+	return hasWeatherTool && isSimpleWeatherPrompt(prompt)
+}
+
+func isSimpleWeatherPrompt(prompt string) bool {
+	lower := strings.ToLower(strings.TrimSpace(prompt))
+	if lower == "" || !strings.Contains(lower, "weather") {
 		return false
+	}
+	complexTerms := []string{"compare", "versus", " vs ", "and news", "market", "markets", "why", "explain", "impact", "affect"}
+	for _, term := range complexTerms {
+		if strings.Contains(lower, term) {
+			return false
+		}
 	}
 	return true
 }
