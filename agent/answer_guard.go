@@ -87,6 +87,10 @@ func splitRAGPart(part string) (string, string) {
 }
 
 func formatFallbackSection(title, body string) string {
+	if canonicalToolTitle(title) == "web_search" {
+		return formatWebSearchFallbackSection(body)
+	}
+
 	lines := meaningfulLines(body, 6)
 	if len(lines) == 0 {
 		return ""
@@ -103,6 +107,36 @@ func formatFallbackSection(title, body string) string {
 	return strings.TrimSpace(b.String())
 }
 
+func formatWebSearchFallbackSection(body string) string {
+	lines := meaningfulLines(body, 4)
+	if len(lines) == 0 {
+		return ""
+	}
+
+	limited := hasLowConfidenceWebEvidence(body)
+	var b strings.Builder
+	b.WriteString("**Web sources**\n")
+	if limited {
+		b.WriteString("- The available web results do not clearly prove a complete answer; here is the limited source-backed evidence I found.\n")
+	}
+	for _, line := range lines {
+		b.WriteString("- ")
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+	return strings.TrimSpace(b.String())
+}
+
+func hasLowConfidenceWebEvidence(body string) bool {
+	for _, raw := range strings.Split(body, "\n") {
+		lower := strings.ToLower(strings.TrimSpace(raw))
+		if strings.HasPrefix(lower, "confidence:") && (strings.Contains(lower, "low") || strings.Contains(lower, "limited")) {
+			return true
+		}
+	}
+	return false
+}
+
 func meaningfulLines(body string, limit int) []string {
 	var lines []string
 	for _, raw := range strings.Split(body, "\n") {
@@ -111,7 +145,7 @@ func meaningfulLines(body string, limit int) []string {
 			continue
 		}
 		line = strings.TrimLeft(line, "-• ")
-		if line == "" || isFallbackMetadataLine(line) || isUnavailableLine(line) {
+		if line == "" || isFallbackMetadataLine(line) || isUnavailableLine(line) || isSearchResultHeading(line) {
 			continue
 		}
 		if len([]rune(line)) > 280 {
@@ -126,12 +160,19 @@ func meaningfulLines(body string, limit int) []string {
 	return lines
 }
 
+func isSearchResultHeading(line string) bool {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	return strings.HasPrefix(lower, "search results for ") || lower == "search results:" || strings.HasPrefix(lower, "web results for ")
+}
+
 func isFallbackMetadataLine(line string) bool {
 	lower := strings.ToLower(strings.TrimSpace(line))
 	prefixes := []string{
 		"query intent:",
 		"confidence:",
 		"sources:",
+		"current date context:",
+		"grounding rule:",
 	}
 	for _, prefix := range prefixes {
 		if strings.HasPrefix(lower, prefix) {
@@ -285,6 +326,8 @@ func canonicalToolTitle(title string) string {
 		return "weather"
 	case "news_search", "news_headlines", "news_read":
 		return "news"
+	case "web_search":
+		return "web_search"
 	default:
 		return strings.TrimSpace(title)
 	}
