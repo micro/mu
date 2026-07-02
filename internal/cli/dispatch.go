@@ -100,6 +100,8 @@ func Run(args []string) int {
 		return runConfig(rest, &rc)
 	case "setup":
 		return runSetup(rest)
+	case "wallet":
+		return runWallet(rest)
 	case "version", "--version":
 		fmt.Println("mu cli (registry-driven, talks to /mcp)")
 		return 0

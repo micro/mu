@@ -14,8 +14,8 @@ import (
 	"sync"
 
 	"mu/internal/app"
-	"mu/internal/service"
 	"mu/internal/data"
+	"mu/internal/service"
 	"mu/internal/settings"
 
 	"golang.org/x/crypto/sha3"
@@ -342,6 +342,22 @@ func addressFromPrivateKey(privKey []byte) string {
 	pubKey := secp256k1PublicKey(privKey)
 	hash := keccak256(pubKey[1:]) // skip 0x04 prefix
 	return "0x" + hex.EncodeToString(hash[12:])
+}
+
+// AddressFromPrivateKeyHex derives the Ethereum address for a hex-encoded 32-byte
+// private key (0x optional). Exported so operators can verify which address a
+// stored key controls without exposing the key. Returns ("", false) if the hex
+// isn't a valid 32-byte key.
+func AddressFromPrivateKeyHex(hexKey string) (string, bool) {
+	hexKey = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(hexKey), "0x"))
+	if len(hexKey) != 64 {
+		return "", false
+	}
+	b, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return "", false
+	}
+	return addressFromPrivateKey(b), true
 }
 
 func keccak256(data []byte) []byte {
