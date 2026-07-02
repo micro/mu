@@ -359,7 +359,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 
 	rail := ""
 	if !guest {
-		rail = renderSessionsRail(accountID, sessionID)
+		rail = renderWalletPanel() + renderSessionsRail(accountID, sessionID)
 	}
 
 	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS

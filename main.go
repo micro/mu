@@ -1330,6 +1330,7 @@ func main() {
 	// serve the agent
 	http.HandleFunc("/agent", agent.Handler)
 	http.HandleFunc("/agent/", agent.Handler)
+	http.HandleFunc("/agent/wallet", agent.WalletHandler)
 	http.HandleFunc("/agent/run", agent.RunHandler)
 	http.HandleFunc("/agent/exec", agent.ExecResultHandler)
 
