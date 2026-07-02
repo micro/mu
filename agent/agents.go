@@ -209,7 +209,6 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b := `<div class="builder">
-  <h2 id="page-title" style="margin-top:0">` + html.EscapeString(title) + `</h2>
   <p class="builder-sub">Describe an agent and Mu will draft it, or write the system prompt yourself. Pick which tools it may use.</p>
   <form id="bform" onsubmit="return bSave(event)">
     <input type="hidden" id="b-id" value="` + html.EscapeString(editID) + `">

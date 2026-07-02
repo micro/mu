@@ -361,7 +361,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 
 	rail := ""
 	if !guest {
-		rail = renderAgentsPanel() + renderWalletPanel() + renderSessionsRail(accountID, sessionID)
+		rail = `<div class="chat-side">` + renderAgentsPanel() + renderWalletPanel() + renderSessionsRail(accountID, sessionID) + `</div>`
 	}
 
 	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
@@ -414,7 +414,9 @@ func renderSessionsRail(accountID, currentID string) string {
 
 const chatLayoutCSS = `<style>
 .chat-layout{display:flex;gap:24px;align-items:flex-start}
-.chat-rail{width:240px;flex-shrink:0}
+.chat-side{width:250px;flex-shrink:0;display:flex;flex-direction:column}
+.chat-side .chat-rail{width:auto}
+.chat-rail{width:250px;flex-shrink:0}
 .chat-main{flex:1;min-width:0}
 /* The conversation fills the main pane here (the 760px readability cap only
    applies to the chat embedded on the landing/home page). */
@@ -425,7 +427,7 @@ const chatLayoutCSS = `<style>
 .chat-sess:hover{background:#f5f5f5}
 .chat-sess.active{background:#eef0ff;color:#111;font-weight:600}
 .chat-sess-empty{color:#999;font-size:13px;padding:8px 10px}
-@media(max-width:760px){.chat-layout{flex-direction:column;gap:12px}.chat-rail{width:100%}.chat-sess-list{flex-direction:row;overflow-x:auto;flex-wrap:nowrap}.chat-sess{flex-shrink:0;max-width:160px}}
+@media(max-width:760px){.chat-layout{flex-direction:column;gap:12px}.chat-side,.chat-rail{width:100%}.chat-sess-list{flex-direction:row;overflow-x:auto;flex-wrap:nowrap}.chat-sess{flex-shrink:0;max-width:160px}}
 </style>`
 
 // FormatAge returns a human-friendly string for an elapsed duration.
