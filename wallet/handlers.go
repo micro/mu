@@ -12,6 +12,56 @@ import (
 	"mu/internal/auth"
 )
 
+// cryptoWalletCard renders the user's Base (USDC) wallet on the /wallet page:
+// balance, a tap-to-copy address, a fund QR, and the pay-with-wallet toggle —
+// so credits and crypto live in one place.
+func cryptoWalletCard(userID string) string {
+	bw, err := GetOrCreateWallet(userID)
+	if err != nil {
+		return ""
+	}
+	usdc, _ := USDCBalance(bw.Address)
+	checked := ""
+	if PayWithWallet(userID) {
+		checked = " checked"
+	}
+	return fmt.Sprintf(`<div class="card">
+  <h3>Crypto wallet</h3>
+  <p class="text-sm text-muted">Fund with <b>USDC on Base</b> to pay per call via x402 — an alternative to credits, on this server or any x402 server.</p>
+  <p style="font-size:24px;margin:6px 0 12px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span></p>
+  <button type="button" class="cw-addr" data-addr="%s" onclick="cwCopy(this)">%s</button>
+  <div class="cw-copied" id="cw-copied" hidden>Copied to clipboard ✓</div>
+  <details class="cw-qrwrap"><summary>Show QR code</summary><div class="cw-qr" id="cw-qr"></div></details>
+  <label class="cw-toggle"><input type="checkbox" id="cw-crypto"%s onchange="cwMode(this.checked)"> Pay for tools from this wallet (USDC) instead of credits</label>
+</div>
+<style>
+.cw-addr{display:block;width:100%%;text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222;cursor:pointer}
+.cw-addr:hover{background:#eef2ff;border-color:#c7d2fe}
+.cw-copied{font-size:12px;color:#1a7f37;margin-top:6px}
+.cw-qrwrap{margin-top:10px;font-size:13px;color:#666}
+.cw-qrwrap summary{cursor:pointer}
+.cw-qr{margin-top:8px}.cw-qr img{width:180px;height:180px;image-rendering:pixelated}
+.cw-toggle{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:#444;line-height:1.4;cursor:pointer}
+.cw-toggle input{margin-top:2px}
+</style>
+<script src="/qrcode.js"></script>
+<script>
+(function(){var addr=document.querySelector('.cw-addr');if(!addr)return;var a=addr.getAttribute('data-addr');
+var q=document.getElementById('cw-qr');if(q&&window.qrcode){try{var qr=qrcode(0,'M');qr.addData(a);qr.make();q.innerHTML=qr.createImgTag(4,8);}catch(e){}}})();
+function cwCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
+function cwCopy(el){var a=el.getAttribute('data-addr');function done(){var c=document.getElementById('cw-copied');if(c){c.hidden=false;setTimeout(function(){c.hidden=true;},1800);}}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(a).then(done).catch(function(){cwFallback(a,done);});}else{cwFallback(a,done);}}
+function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(t);}
+function cwMode(on){var b=new URLSearchParams();b.append('crypto',on?'on':'off');
+  fetch('/agent/wallet',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':cwCsrf()},body:b.toString()}).catch(function(){});}
+</script>`, usdc, htmlEsc(bw.Address), htmlEsc(bw.Address), checked)
+}
+
+func htmlEsc(s string) string {
+	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&#39;")
+	return r.Replace(s)
+}
+
 // WalletPage renders the wallet page HTML
 func WalletPage(userID string) string {
 	wallet := GetWallet(userID)
@@ -38,6 +88,9 @@ func WalletPage(userID string) string {
 	}
 	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a> · <a href="/wallet/transfer">Transfer →</a></p>`)
 	sb.WriteString(`</div>`)
+
+	// Crypto wallet — the other way to pay (USDC on Base via x402).
+	sb.WriteString(cryptoWalletCard(userID))
 
 	// App earnings summary
 	var totalEarnings int

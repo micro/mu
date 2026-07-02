@@ -361,7 +361,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 
 	rail := ""
 	if !guest {
-		rail = `<div class="chat-side">` + renderAgentsPanel() + renderWalletPanel() + renderSessionsRail(accountID, sessionID) + `</div>`
+		rail = `<div class="chat-side">` + renderAgentsPanel() + renderSessionsRail(accountID, sessionID) + `</div>`
 	}
 
 	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS

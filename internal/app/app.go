@@ -302,6 +302,7 @@ var Template = `
         <a href="/">Mu</a>
       </div>
       <a id="head-mail" href="/mail" aria-label="Mail"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg><span id="head-mail-badge"></span></a>
+      <a id="head-wallet" href="/wallet" aria-label="Wallet"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 12h-4a2 2 0 0 1 0-4h4"/></svg><span id="head-wallet-badge"></span></a>
     </div>
 
     <div id="nav-overlay" onclick="toggleMenu()"></div>

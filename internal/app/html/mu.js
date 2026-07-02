@@ -682,6 +682,18 @@ function setSession() {
         navUsername.textContent = 'Signed in as @' + sess.account;
         navUsername.style.display = 'block';
       }
+      // Show the wallet link and badge its credit balance for logged-in users.
+      var headWallet = document.getElementById("head-wallet");
+      if (headWallet) headWallet.style.display = 'inline-block';
+      fetch('/wallet', {headers:{'Accept':'application/json'}})
+        .then(res => res.json())
+        .then(data => {
+          var hb = document.getElementById("head-wallet-badge");
+          if (hb && typeof data.balance === 'number' && data.balance > 0) {
+            hb.textContent = data.balance > 999 ? '999+' : data.balance;
+          }
+        })
+        .catch(() => {});
       // Fetch unread mail count for badge
       var headMail = document.getElementById("head-mail");
       var headMailBadge = document.getElementById("head-mail-badge");
