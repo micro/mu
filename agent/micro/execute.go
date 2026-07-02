@@ -220,7 +220,7 @@ func extractJSONArray(text string) string {
 // Orchestrate runs one or more agents and merges their answers.
 func Orchestrate(accountID, prompt string, agentIDs []string, public bool) (string, error) {
 	if len(agentIDs) == 1 {
-		a := Get(agentIDs[0])
+		a := resolve(accountID, agentIDs[0])
 		if a == nil {
 			a = Get("micro")
 		}
@@ -236,7 +236,7 @@ func Orchestrate(accountID, prompt string, agentIDs []string, public bool) (stri
 	ch := make(chan result, len(agentIDs))
 	for _, id := range agentIDs {
 		go func(agentID string) {
-			a := Get(agentID)
+			a := resolve(accountID, agentID)
 			if a == nil {
 				a = Get("micro")
 			}
@@ -250,7 +250,7 @@ func Orchestrate(accountID, prompt string, agentIDs []string, public bool) (stri
 		r := <-ch
 		if r.Err == nil && strings.TrimSpace(r.Answer) != "" {
 			name := r.AgentID
-			if a := Get(r.AgentID); a != nil {
+			if a := resolve(accountID, r.AgentID); a != nil {
 				name = a.Name
 			}
 			parts = append(parts, fmt.Sprintf("### %s\n%s", name, r.Answer))
