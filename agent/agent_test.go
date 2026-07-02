@@ -855,8 +855,8 @@ func TestCompleteToolAnswerReplacesProgressOnlyWithResults(t *testing.T) {
 	if strings.Contains(strings.ToLower(got), "couldn't synthesize") {
 		t.Fatalf("expected synthesized fallback instead of generic incomplete-answer copy, got %q", got)
 	}
-	if !strings.Contains(got, "**markets**") || !strings.Contains(got, "BTC: $100,000") || !strings.Contains(got, "**news**") || !strings.Contains(got, "Bitcoin reaches new high") || strings.Contains(got, "Here's what I found") {
-		t.Fatalf("expected fallback to include organized tool results, got %q", got)
+	if strings.Contains(got, "**markets**") || strings.Contains(got, "**news**") || !strings.Contains(got, "BTC: $100,000") || !strings.Contains(got, "Bitcoin reaches new high") || strings.Contains(got, "Here's what I found") {
+		t.Fatalf("expected answer-first fallback to include results without implementation headings, got %q", got)
 	}
 }
 
@@ -1043,8 +1043,8 @@ func TestNativeToolRecorderFeedsProgressFallback(t *testing.T) {
 	if strings.Contains(strings.ToLower(got), "let me pull") {
 		t.Fatalf("expected weather tool payload to replace progress narration, got %q", got)
 	}
-	if !strings.Contains(got, "**weather**") || !strings.Contains(got, "14C") {
-		t.Fatalf("expected fallback to include weather result, got %q", got)
+	if strings.Contains(got, "**weather**") || !strings.Contains(got, "14C") {
+		t.Fatalf("expected fallback to include weather result without an implementation heading, got %q", got)
 	}
 }
 
