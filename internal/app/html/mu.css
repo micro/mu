@@ -5073,8 +5073,10 @@ body.display-mode .card h4 {
    cards stack normally. */
 /* Reference pages get a wider column than the default/portal cap so the index
    and cards both breathe. */
-#content:has(.ep-layout) { max-width: 1280px; }
+#content:has(.ep-layout) { max-width: 1400px; }
 .mu-portal #content:has(.ep-layout) { max-width: 1180px; }
+/* Reference-page cards fill the widened column instead of the default 750px cap. */
+#content:has(.ep-layout) .card { max-width: none; }
 
 .ep-layout { display: flex; gap: 32px; align-items: flex-start; }
 .ep-main { flex: 1 1 auto; min-width: 0; }
