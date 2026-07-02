@@ -57,7 +57,7 @@ func ChatComponent(cfg ChatConfig) string {
 
 <style>
 #mu-chat{max-width:760px;margin:0 auto;width:100%}
-#mu-chat-form{display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;background:#fff;padding:4px 4px 4px 12px;transition:border-color .2s}
+#mu-chat-form{display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;background:#fff;padding:4px 4px 4px 12px;transition:border-color .2s;position:sticky;top:8px;z-index:5}
 #mu-chat-form:focus-within{border-color:#999}
 #mu-chat-input{flex:1;padding:10px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 #mu-chat-form button{flex-shrink:0;width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
@@ -68,8 +68,8 @@ func ChatComponent(cfg ChatConfig) string {
 .mu-pills a:hover{background:#f5f5f5}
 #mu-chat-conv{margin-top:24px;font-size:15px;line-height:1.7;text-align:left}
 #mu-chat-conv:empty{margin-top:0}
-.mu-user{margin:0 0 12px;padding:10px 14px;background:#f5f5f5;border-radius:8px;font-size:14px;color:#333}
-.mu-agent{margin-bottom:24px}
+.mu-user{margin:0 0 12px;padding:10px 14px;background:#f5f5f5;border-radius:8px;font-size:14px;color:#333;scroll-margin-top:64px}
+.mu-agent{margin-bottom:24px;scroll-margin-top:64px}
 .mu-think{color:#888;font-size:14px}
 .mu-err{color:#c00}
 .mu-cta{padding:12px 14px;border:1px solid #e0e0e0;border-radius:8px;background:#fafafa;font-size:14px}
@@ -167,7 +167,9 @@ function ask(q){
   startWork('Processing');
 
   save();
-  a.scrollIntoView({behavior:'smooth',block:'end'});
+  // Anchor the new exchange just under the sticky input so it reads top-down;
+  // don't chase the bottom as the answer streams in.
+  u.scrollIntoView({behavior:'smooth',block:'start'});
   var streamText='';
   var streaming=false;
   var body=JSON.stringify({prompt:q,model:'standard',history:history.slice(-6),context_id:contextId||''});
@@ -211,7 +213,6 @@ function ask(q){
               }
               var el=document.getElementById('mu-stream-out');
               if(el)el.textContent=protectCurrencyDollars(streamText);
-              a.scrollIntoView({behavior:'smooth',block:'end'});
             }else if(ev.type==='response'){
               stopWork();
               a.innerHTML=ev.html;
