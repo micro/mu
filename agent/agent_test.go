@@ -326,12 +326,27 @@ func TestToolCallKeyDedupesEquivalentArgs(t *testing.T) {
 }
 
 func TestShortcutToolCallsMarketMoversAvoidsNewsPlanning(t *testing.T) {
-	got := shortcutToolCalls("What is moving in markets today?")
-	if len(got) != 1 {
-		t.Fatalf("expected one shortcut tool call, got %#v", got)
+	for _, prompt := range []string{
+		"What is moving in markets today?",
+		"What is moving in markets?",
+		"Which stocks are moving?",
+	} {
+		got := shortcutToolCalls(prompt)
+		if len(got) != 1 {
+			t.Fatalf("%q: expected one shortcut tool call, got %#v", prompt, got)
+		}
+		if got[0].Tool != "markets" {
+			t.Fatalf("%q: expected markets-only shortcut, got %#v", prompt, got)
+		}
 	}
-	if got[0].Tool != "markets" {
-		t.Fatalf("expected markets-only shortcut, got %#v", got)
+}
+
+func TestShortcutToolCallsMarketMoverExplanationUsesPlanner(t *testing.T) {
+	if got := shortcutToolCalls("Why is Bitcoin moving today?"); len(got) != 0 {
+		t.Fatalf("expected explanation prompt to use planner, got %#v", got)
+	}
+	if got := shortcutToolCalls("What is moving in markets, and what news explains it?"); len(got) != 0 {
+		t.Fatalf("expected cross-source explanation prompt to use planner, got %#v", got)
 	}
 }
 
