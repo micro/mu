@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/wallet"
 )
 
 // MCPHandler handles both GET (HTML page) and POST (JSON-RPC) at /mcp
@@ -165,8 +166,21 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</details>`)
 	b.WriteString(`</div>`)
 
-	// Tools list
-	b.WriteString(app.List(mcpToolsHTML()))
+	// Payments explainer + per-call prices, only when x402 is live.
+	if wallet.X402Enabled() {
+		b.WriteString(`<div class="card">`)
+		b.WriteString(`<h3>Payments</h3>`)
+		b.WriteString(`<p class="card-desc">Metered tools are pay-per-call. Two ways to pay:</p>`)
+		b.WriteString(`<ul style="margin:0;padding-left:20px;font-size:14px">`)
+		b.WriteString(`<li><strong>x402</strong> &mdash; agents pay per call in USDC on Base. Call a metered tool with no auth and you get an HTTP <code>402</code> whose body lists the price and pay-to address; pay and retry. No account needed.</li>`)
+		b.WriteString(`<li><strong>Credits</strong> &mdash; <a href="/token">log in with a token</a> and calls draw from your credit balance instead.</li>`)
+		b.WriteString(`</ul>`)
+		b.WriteString(`<p class="card-meta" style="margin-top:8px">Prices are shown per tool below.</p>`)
+		b.WriteString(`</div>`)
+	}
+
+	// Tools list with a sticky endpoint sidebar (desktop).
+	b.WriteString(mcpToolsSection())
 
 	app.Respond(w, r, app.Response{
 		Title:       "MCP",
@@ -198,15 +212,36 @@ func mcpToolsJSON() string {
 	return string(b)
 }
 
+// mcpToolsSection renders the tool reference as a two-column layout: a sticky
+// endpoint index on the left (desktop only) anchoring to each tool card on the
+// right. On mobile the index is hidden and the cards stack normally.
+func mcpToolsSection() string {
+	var nav strings.Builder
+	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Tools</div>`)
+	for _, t := range tools {
+		price := ""
+		if p := wallet.X402PriceFor(t.WalletOp); p != "" {
+			price = `<span class="ep-price">` + p + `</span>`
+		}
+		nav.WriteString(`<a href="#tool-` + html.EscapeString(t.Name) + `">` + html.EscapeString(t.Name) + price + `</a>`)
+	}
+	nav.WriteString(`</nav>`)
+	return `<div class="ep-layout">` + nav.String() + `<div class="ep-main">` + app.List(mcpToolsHTML()) + `</div></div>`
+}
+
 // mcpToolsHTML generates HTML listing all registered MCP tools
 func mcpToolsHTML() string {
 	var b strings.Builder
 	for _, t := range tools {
-		b.WriteString(`<div class="card">`)
+		b.WriteString(`<div class="card" id="tool-` + html.EscapeString(t.Name) + `">`)
 		b.WriteString(`<span class="card-title">` + html.EscapeString(t.Name) + `</span>`)
 		b.WriteString(app.Desc(t.Description))
 		if t.WalletOp != "" {
-			b.WriteString(`<p class="card-meta">Metered &mdash; requires credits</p>`)
+			if price := wallet.X402PriceFor(t.WalletOp); price != "" {
+				b.WriteString(`<p class="card-meta">Metered &mdash; ` + price + ` per call (x402) or credits</p>`)
+			} else {
+				b.WriteString(`<p class="card-meta">Metered &mdash; requires credits</p>`)
+			}
 		}
 		if len(t.Params) > 0 {
 			b.WriteString(`<table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0">`)

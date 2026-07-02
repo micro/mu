@@ -366,6 +366,21 @@ func facilitatorPost(path string, body map[string]any) ([]byte, error) {
 	return data, nil
 }
 
+// X402PriceFor returns the per-call price to invoke an operation via x402
+// (e.g. "$0.05"), or "" when x402 is disabled or the operation is free. Mu
+// treats 1 credit ≈ 1 US cent, so the agent price and the credit cost are the
+// same number shown two ways. Used to advertise per-endpoint pricing.
+func X402PriceFor(operation string) string {
+	if !X402Enabled() {
+		return ""
+	}
+	cost := GetOperationCost(operation)
+	if cost < 1 {
+		return ""
+	}
+	return fmt.Sprintf("$%d.%02d", cost/100, cost%100)
+}
+
 // X402Status returns a human-readable diagnostic of the x402 configuration
 // and, when CDP credentials are present, the facilitator's advertised support —
 // so an operator can certify auth on the box without exposing the secret.

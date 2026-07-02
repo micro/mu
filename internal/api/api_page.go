@@ -188,8 +188,8 @@ func APIPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</script>`)
 	b.WriteString(`</div>`)
 
-	// Endpoint reference list
-	b.WriteString(app.List(apiEndpointsHTML()))
+	// Endpoint reference list with a sticky endpoint index (desktop only).
+	b.WriteString(apiEndpointsSection())
 
 	app.Respond(w, r, app.Response{
 		Title:       "API",
@@ -222,10 +222,24 @@ func apiEndpointsJSON() string {
 	return string(b)
 }
 
+// apiEndpointsSection renders the endpoint reference as a two-column layout: a
+// sticky index on the left (desktop only) anchoring to each endpoint card on
+// the right. On mobile the index is hidden and the cards stack normally.
+func apiEndpointsSection() string {
+	var nav strings.Builder
+	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Endpoints</div>`)
+	for i, ep := range Endpoints {
+		nav.WriteString(fmt.Sprintf(`<a href="#ep-%d"><span class="ep-method">%s</span> %s</a>`,
+			i, html.EscapeString(ep.Method), html.EscapeString(ep.Path)))
+	}
+	nav.WriteString(`</nav>`)
+	return `<div class="ep-layout">` + nav.String() + `<div class="ep-main">` + app.List(apiEndpointsHTML()) + `</div></div>`
+}
+
 // apiEndpointsHTML generates the reference listing of all API endpoints
 func apiEndpointsHTML() string {
 	var b strings.Builder
-	for _, ep := range Endpoints {
+	for i, ep := range Endpoints {
 		methodColor := "#1a7f37"
 		switch ep.Method {
 		case "POST":
@@ -236,7 +250,7 @@ func apiEndpointsHTML() string {
 			methodColor = "#cf222e"
 		}
 
-		b.WriteString(`<div class="card">`)
+		b.WriteString(fmt.Sprintf(`<div class="card" id="ep-%d">`, i))
 		b.WriteString(fmt.Sprintf(`<span class="card-title"><span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600;color:#fff;background:%s;margin-right:6px">%s</span> %s</span>`,
 			methodColor,
 			html.EscapeString(ep.Method),

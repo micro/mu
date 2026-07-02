@@ -9,11 +9,12 @@ curl -sS -m 25 -X POST "$H/mcp" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | grep -q '"tools"' \
   && echo "  OK: MCP responding" || echo "  FAIL: no tool list"
 
-echo "\n[2] paid tool, no payment — expect HTTP 402 + X-PAYMENT-REQUIRED"
+echo "\n[2] paid tool, no payment — expect HTTP 402 with a conformant accepts body"
 resp=$(curl -sS -m 40 -D - -o /tmp/x402body -X POST "$H/mcp" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"news_search","arguments":{"query":"btc"}}}')
 echo "$resp" | grep -iq '^HTTP.*402' && echo "  OK: 402 challenge" || echo "  MISSING: no 402 status"
-echo "$resp" | grep -iq 'X-PAYMENT-REQUIRED' && echo "  OK: X-PAYMENT-REQUIRED header" || echo "  MISSING: no X-PAYMENT-REQUIRED header"
+grep -q '"accepts"' /tmp/x402body && echo "  OK: accepts[] body (x402 spec)" || echo "  MISSING: no accepts[] in body"
+grep -q '"maxAmountRequired"' /tmp/x402body && echo "  OK: atomic maxAmountRequired" || echo "  MISSING: no maxAmountRequired"
 grep -o '0x[0-9a-fA-F]\{40\}' /tmp/x402body | head -1 | sed 's/^/  pay-to advertised: /' || echo "  MISSING: no pay-to address advertised"
 
 echo "\n[3] paid tool WITH X-PAYMENT — expect settle attempt, not 'authentication required'"
