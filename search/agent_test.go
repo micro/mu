@@ -40,3 +40,24 @@ func TestFormatWebSearchResultsFlagsLowConfidenceMismatch(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatWebSearchResultsGroundsNewsFallbackInSnippets(t *testing.T) {
+	got := formatWebSearchResults("latest AI news", []BraveResult{
+		{Title: "Artificial Intelligence News", Description: "", URL: "https://example.com/ai"},
+		{Title: "AI chip supplier expands capacity", Description: "A chip supplier said demand from AI data centers is rising this quarter.", URL: "https://example.com/ai-chips"},
+		{Title: "Sports scores", Description: "Local football results from last night.", URL: "https://example.com/sports"},
+	})
+
+	if strings.Contains(got, "Artificial Intelligence News") || strings.Contains(got, "Sports scores") {
+		t.Fatalf("expected weak or unrelated news fallback sources to be filtered:\n%s", got)
+	}
+	for _, want := range []string{
+		"AI chip supplier expands capacity",
+		"Grounding rule:",
+		"do not turn generic topic/category pages or weak snippets into specific news headlines",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in grounded web search results:\n%s", want, got)
+		}
+	}
+}
