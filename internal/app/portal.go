@@ -1,6 +1,7 @@
 package app
 
 import (
+	"net"
 	"net/http"
 	"strings"
 )
@@ -36,14 +37,18 @@ func PortalBrand(r *http.Request) string {
 	if i := strings.IndexByte(host, ':'); i >= 0 {
 		host = host[:i] // strip port
 	}
+	// No meaningful public host (empty, localhost, a bare IP, or a single-label
+	// host) → the product's own name rather than a junk wordmark like "LOCALHOST".
+	// Note: a reverse proxy must forward the real Host (proxy_set_header Host
+	// $host) for a vanity domain to brand itself; otherwise this falls back to Mu.
+	if host == "" || strings.EqualFold(host, "localhost") || net.ParseIP(host) != nil || !strings.Contains(host, ".") {
+		return "Mu"
+	}
 	for _, p := range []string{"api.", "dev.", "developers.", "www."} {
 		host = strings.TrimPrefix(host, p)
 	}
 	labels := strings.Split(host, ".")
-	sld := host
-	if len(labels) >= 2 {
-		sld = labels[len(labels)-2] // second-to-last label
-	}
+	sld := labels[len(labels)-2] // second-to-last label
 	if sld == "" {
 		return "Mu"
 	}
