@@ -269,8 +269,7 @@ func VerifyAndSettle(r *http.Request, operation, resource string) (*SettleRespon
 }
 
 // settlePayload verifies then settles a decoded payment payload against the
-// requirements for operation. Shared by the server path (VerifyAndSettle) and
-// the custodial pay-with-wallet path (SettleFromUserWallet).
+// requirements for operation (the server-side x402 path, VerifyAndSettle).
 func settlePayload(payload map[string]any, operation, resource string) (*SettleResponse, error) {
 	req := matchRequirement(BuildPaymentRequirements(operation, resource), payload)
 	if req == nil {
@@ -311,39 +310,6 @@ func settleRequirement(payload map[string]any, req *PaymentRequirements) (*Settl
 	}
 	app.Log("x402", "settled %s: tx=%s payer=%s", req.Resource, settle.Transaction, settle.Payer)
 	return &settle, nil
-}
-
-// SettleFromUserWallet transparently pays for operation from the account's own
-// Base wallet to the treasury (pay-with-wallet mode): sign an EIP-3009
-// authorization with the user's key and settle it. Returns true on success.
-func SettleFromUserWallet(accountID, operation, resource string) (bool, error) {
-	if !X402Enabled() {
-		return false, fmt.Errorf("x402 not configured")
-	}
-	bw := WalletFor(accountID)
-	if bw == nil {
-		return false, fmt.Errorf("no wallet")
-	}
-	reqs := BuildPaymentRequirements(operation, resource)
-	if len(reqs) == 0 {
-		return false, fmt.Errorf("no payment requirement")
-	}
-	payloadB64, err := SignX402Payment(bw, reqs[0])
-	if err != nil {
-		return false, err
-	}
-	raw, err := base64.StdEncoding.DecodeString(payloadB64)
-	if err != nil {
-		return false, err
-	}
-	var payload map[string]any
-	if err := json.Unmarshal(raw, &payload); err != nil {
-		return false, err
-	}
-	if _, err := settlePayload(payload, operation, resource); err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 // usdcAtomicPerCredit is the 6-decimal USDC atomic amount for one credit

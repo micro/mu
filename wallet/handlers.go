@@ -21,20 +21,15 @@ func cryptoWalletCard(userID string) string {
 		return ""
 	}
 	usdc, _ := USDCBalance(bw.Address)
-	checked := ""
-	if PayWithWallet(userID) {
-		checked = " checked"
-	}
 	return fmt.Sprintf(`<div class="card">
   <h3>Crypto wallet</h3>
-  <p class="text-sm text-muted">Fund with <b>USDC on Base</b> to pay per call via x402 — an alternative to credits, on this server or any x402 server.</p>
+  <p class="text-sm text-muted">Fund with <b>USDC on Base</b>, then convert it into your credit balance — the other way to top up, alongside a card.</p>
   <p style="font-size:24px;margin:6px 0 10px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span></p>
   <button type="button" class="cw-convert" onclick="cwConvert(this)">Convert to credits →</button>
-  <p class="text-sm text-muted" style="margin:6px 0 12px">Moves your USDC into your credit balance (1 USDC = 100 credits). Or keep it as USDC and toggle per-call payment below.</p>
+  <p class="text-sm text-muted" style="margin:6px 0 12px">Moves your USDC into your credit balance (1 USDC = 100 credits), gas-free.</p>
   <button type="button" class="cw-addr" data-addr="%s" onclick="cwCopy(this)">%s</button>
   <div class="cw-copied" id="cw-copied" hidden>Copied to clipboard ✓</div>
   <details class="cw-qrwrap"><summary>Show QR code</summary><div class="cw-qr" id="cw-qr"></div></details>
-  <label class="cw-toggle"><input type="checkbox" id="cw-crypto"%s onchange="cwMode(this.checked)"> Pay for tools from this wallet (USDC) instead of credits</label>
 </div>
 <style>
 .cw-addr{display:block;width:100%%;text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222;cursor:pointer}
@@ -43,8 +38,6 @@ func cryptoWalletCard(userID string) string {
 .cw-qrwrap{margin-top:10px;font-size:13px;color:#666}
 .cw-qrwrap summary{cursor:pointer}
 .cw-qr{margin-top:8px}.cw-qr img{width:180px;height:180px;image-rendering:pixelated}
-.cw-toggle{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:#444;line-height:1.4;cursor:pointer}
-.cw-toggle input{margin-top:2px}
 .cw-convert{padding:9px 16px;font-size:14px;font-weight:600;border:0;border-radius:6px;background:#1a7f37;color:#fff;cursor:pointer}
 .cw-convert:hover{background:#166b2e}
 .cw-convert[disabled]{opacity:.6;cursor:default}
@@ -57,13 +50,11 @@ function cwCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);retu
 function cwCopy(el){var a=el.getAttribute('data-addr');function done(){var c=document.getElementById('cw-copied');if(c){c.hidden=false;setTimeout(function(){c.hidden=true;},1800);}}
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(a).then(done).catch(function(){cwFallback(a,done);});}else{cwFallback(a,done);}}
 function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(t);}
-function cwMode(on){var b=new URLSearchParams();b.append('crypto',on?'on':'off');
-  fetch('/agent/wallet',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':cwCsrf()},body:b.toString()}).catch(function(){});}
 function cwConvert(el){el.disabled=true;var t=el.textContent;el.textContent='Converting…';
   fetch('/wallet/convert',{method:'POST',headers:{'X-CSRF-Token':cwCsrf()}}).then(function(r){return r.json();}).then(function(d){
     if(d.error){alert(d.error);el.disabled=false;el.textContent=t;return;}
     location.reload();}).catch(function(){el.disabled=false;el.textContent=t;});}
-</script>`, usdc, htmlEsc(bw.Address), htmlEsc(bw.Address), checked)
+</script>`, usdc, htmlEsc(bw.Address), htmlEsc(bw.Address))
 }
 
 func htmlEsc(s string) string {

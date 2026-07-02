@@ -492,15 +492,6 @@ func main() {
 		if err != nil {
 			return false, 0, fmt.Errorf("authentication required")
 		}
-		// Pay-with-wallet: settle from the user's Base wallet (USDC) instead of
-		// credits when they've opted in. Falls back to credits on any failure.
-		if wallet.X402Enabled() && wallet.PayWithWallet(sess.Account) {
-			if ok, perr := wallet.SettleFromUserWallet(sess.Account, op, r.URL.Path); ok {
-				return true, 0, nil
-			} else if perr != nil {
-				app.Log("x402", "pay-with-wallet failed for %s (%s): %v — using credits", sess.Account, op, perr)
-			}
-		}
 		canProceed, _, cost, err := wallet.CheckQuota(sess.Account, op)
 		return canProceed, cost, err
 	}
@@ -518,15 +509,6 @@ func main() {
 		sess, err := auth.GetSession(r)
 		if err != nil {
 			return false, 0, fmt.Errorf("authentication required")
-		}
-		// Pay-with-wallet: settle from the user's Base wallet (USDC) instead of
-		// credits when they've opted in. Falls back to credits on any failure.
-		if wallet.X402Enabled() && wallet.PayWithWallet(sess.Account) {
-			if ok, perr := wallet.SettleFromUserWallet(sess.Account, op, r.URL.Path); ok {
-				return true, 0, nil
-			} else if perr != nil {
-				app.Log("x402", "pay-with-wallet failed for %s (%s): %v — using credits", sess.Account, op, perr)
-			}
 		}
 		canProceed, _, cost, err := wallet.CheckQuota(sess.Account, op)
 		return canProceed, cost, err
@@ -1300,7 +1282,6 @@ func main() {
 	// serve the agent
 	http.HandleFunc("/agent", agent.Handler)
 	http.HandleFunc("/agent/", agent.Handler)
-	http.HandleFunc("/agent/wallet", agent.WalletHandler)
 	http.HandleFunc("/agent/agents", agent.AgentsHandler)
 	http.HandleFunc("/agent/new", agent.NewAgentHandler)
 	http.HandleFunc("/agent/run", agent.RunHandler)
