@@ -27,18 +27,26 @@ func completeToolAnswer(answer string, ragParts []string) string {
 func synthesizeToolFallback(ragParts []string) string {
 	var sections []string
 	var unavailable []string
+	available := map[string]bool{}
 	for _, part := range ragParts {
 		title, body := splitRAGPart(part)
-		if body == "" {
-			continue
-		}
-		if isUnavailableToolResult(body) {
-			unavailable = append(unavailable, title)
+		if body == "" || isUnavailableToolResult(body) {
 			continue
 		}
 		if section := formatFallbackSection(title, body); section != "" {
 			sections = append(sections, section)
+			available[canonicalToolTitle(title)] = true
 		}
+	}
+	for _, part := range ragParts {
+		title, body := splitRAGPart(part)
+		if body == "" || !isUnavailableToolResult(body) {
+			continue
+		}
+		if available[canonicalToolTitle(title)] {
+			continue
+		}
+		unavailable = append(unavailable, title)
 	}
 
 	var b strings.Builder
@@ -253,4 +261,15 @@ func isRawToolPayloadAnswer(answer string) bool {
 		}
 	}
 	return matches >= 2
+}
+
+func canonicalToolTitle(title string) string {
+	switch strings.TrimSpace(title) {
+	case "weather_forecast":
+		return "weather"
+	case "news_search", "news_headlines", "news_read":
+		return "news"
+	default:
+		return strings.TrimSpace(title)
+	}
 }
