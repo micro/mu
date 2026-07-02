@@ -52,6 +52,7 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 				Name:         name,
 				Description:  strings.TrimSpace(r.FormValue("description")),
 				SystemPrompt: prompt,
+				Tools:        r.Form["tools"], // empty = all tools
 				ForkedFrom:   r.FormValue("fork"),
 			})
 			_ = json.NewEncoder(w).Encode(saved)
@@ -61,22 +62,17 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// GET: list
 	type lite struct {
-		ID          string `json:"id"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Prompt      string `json:"prompt,omitempty"`
+		ID          string   `json:"id"`
+		Name        string   `json:"name"`
+		Description string   `json:"description"`
+		Prompt      string   `json:"prompt,omitempty"`
+		Tools       []string `json:"tools,omitempty"`
 	}
 	var mine []lite
 	for _, a := range micro.UserAgentsFor(acc.ID) {
-		mine = append(mine, lite{a.ID, a.Name, a.Description, a.SystemPrompt})
+		mine = append(mine, lite{a.ID, a.Name, a.Description, a.SystemPrompt, a.Tools})
 	}
-	var builtins []lite
-	for _, a := range micro.All() {
-		if a.OwnerAccountID == "" {
-			builtins = append(builtins, lite{a.ID, a.Name, a.Description, ""})
-		}
-	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"agents": mine, "builtins": builtins})
+	_ = json.NewEncoder(w).Encode(map[string]any{"agents": mine, "tools": AllAgentTools()})
 }
 
 // generateAgentSpec turns a one-line brief into a full agent spec (name,
@@ -135,6 +131,7 @@ func renderAgentsPanel() string {
     <input id="agf-name" placeholder="Agent name (e.g. Crypto Researcher)" maxlength="60" required>
     <input id="agf-desc" placeholder="One-line description (optional)" maxlength="140">
     <textarea id="agf-prompt" rows="5" placeholder="System prompt — who this agent is and how it should behave. e.g. 'You are a meticulous crypto research analyst. Always cite sources and quote exact prices.'" required></textarea>
+    <div class="agents-tools" id="agf-tools"></div>
     <div class="agents-formactions">
       <button type="submit">Save agent</button>
       <button type="button" onclick="muAgentCancel()">Cancel</button>
@@ -161,6 +158,10 @@ func renderAgentsPanel() string {
 .agents-gen input{flex:1}
 .agents-gen button{white-space:nowrap;padding:7px 10px;font-size:13px;border:1px solid #c7d2fe;border-radius:5px;cursor:pointer;background:#eef2ff;color:#4338ca}
 .agents-gen button[disabled]{opacity:.6;cursor:default}
+.agents-tools{display:flex;flex-wrap:wrap;gap:6px 10px}
+.agents-toolslabel{width:100%;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.04em}
+.agents-toolslabel span{text-transform:none;letter-spacing:0}
+.agents-tools label{display:flex;align-items:center;gap:4px;font-size:12px;color:#444;cursor:pointer}
 </style>
 <script>
 window.muActiveAgent=window.muActiveAgent||'';
@@ -172,7 +173,12 @@ function muAgentForm(a){var f=document.getElementById('agents-form');f.hidden=fa
   document.getElementById('agf-name').value=a?(a._fork?('Copy of '+a.name):a.name):'';
   document.getElementById('agf-desc').value=a?(a.description||''):'';
   document.getElementById('agf-prompt').value=a?(a.prompt||''):'';
+  muAgentRenderTools(a?a.tools:[]);
   document.getElementById('agf-name').focus();}
+function muAgentRenderTools(sel){var c=document.getElementById('agf-tools');if(!c)return;var s=sel||[];
+  var h='<div class="agents-toolslabel">Tools <span>(none selected = all)</span></div>';
+  (window._muTools||[]).forEach(function(t){h+='<label><input type="checkbox" name="agtool" value="'+t+'"'+(s.indexOf(t)>=0?' checked':'')+'>'+t+'</label>';});
+  c.innerHTML=h;}
 function muAgentCancel(){document.getElementById('agents-form').hidden=true;}
 function muAgentGen(){
   var brief=document.getElementById('agf-brief').value.trim();if(!brief)return;
@@ -194,6 +200,7 @@ function muAgentSave(e){e.preventDefault();
   b.append('name',document.getElementById('agf-name').value);
   b.append('description',document.getElementById('agf-desc').value);
   b.append('prompt',document.getElementById('agf-prompt').value);
+  document.querySelectorAll('#agf-tools input:checked').forEach(function(el){b.append('tools',el.value);});
   fetch('/agent/agents',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':muAgentCsrf()},body:b.toString()})
     .then(function(r){return r.json();}).then(function(a){document.getElementById('agents-form').hidden=true;muAgentsLoad(function(){if(a&&a.id)muAgentPick(a.id,a.name);});}).catch(function(){});
   return false;}
@@ -204,6 +211,7 @@ function muAgentDelete(id,ev){ev.stopPropagation();if(!confirm('Delete this agen
 function muAgentEsc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function muAgentsLoad(cb){
   fetch('/agent/agents',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
+    window._muTools=d.tools||window._muTools||[];
     var list=document.getElementById('agents-list');if(!list)return;
     var h='<div class="'+(window.muActiveAgent?'':'on')+'" data-id="" onclick="muAgentPick(\'\',\'Micro\')">Micro <span class="agents-def">default</span></div>';
     (d.agents||[]).forEach(function(a){

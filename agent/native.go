@@ -67,7 +67,34 @@ func nativeServices(public bool) []string {
 	if public {
 		return pub
 	}
-	return append(pub, "trade", "recall", "apps", "mail")
+	return append(pub, "recall", "apps", "mail")
+}
+
+// AllAgentTools lists the service tools a user-defined agent may be scoped to.
+func AllAgentTools() []string {
+	return []string{"weather", "news", "markets", "social", "video", "blog", "search", "recall", "apps", "mail"}
+}
+
+// filterServices intersects the full service set with an agent's allowed tools,
+// preserving order. An empty allow list means all services.
+func filterServices(all, allow []string) []string {
+	if len(allow) == 0 {
+		return all
+	}
+	want := map[string]bool{}
+	for _, t := range allow {
+		want[strings.ToLower(strings.TrimSpace(t))] = true
+	}
+	var out []string
+	for _, s := range all {
+		if want[s] {
+			out = append(out, s)
+		}
+	}
+	if len(out) == 0 {
+		return all // never leave an agent with no tools
+	}
+	return out
 }
 
 // injectAccount is a tool wrapper that supplies the caller's account id to
@@ -170,7 +197,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh guest requests.
 	toolWrappers := append([]gmai.ToolWrapper{injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
-	a = service.NewAgent(nativeAgentInstanceName(), sys, "atlascloud", key, nativeServices(opts.Public),
+	a = service.NewAgent(nativeAgentInstanceName(), sys, "atlascloud", key, filterServices(nativeServices(opts.Public), opts.Tools),
 		gmagent.Model(ai.ModelDeepSeekPro),
 		gmagent.MaxSteps(6),
 		gmagent.WrapTool(toolWrappers...))

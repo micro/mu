@@ -68,8 +68,9 @@ type QueryMessage struct {
 // QueryOpts controls what context is included in agent queries.
 type QueryOpts struct {
 	History []QueryMessage
-	Public  bool   // if true, skip private context (mail, wallet, etc.)
-	System  string // optional custom system prompt (user-defined agent)
+	Public  bool     // if true, skip private context (mail, wallet, etc.)
+	System  string   // optional custom system prompt (user-defined agent)
+	Tools   []string // optional tool allow-list (user-defined agent); empty = all
 }
 
 // Query runs the agent pipeline synchronously for MCP and bot callers.
@@ -839,6 +840,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		if !isGuest && req.Agent != "" {
 			if ua := micro.GetUserAgentFor(accountID, req.Agent); ua != nil {
 				nopts.System = ua.SystemPrompt
+				nopts.Tools = ua.Tools
 			}
 		}
 		for _, f := range conversationHistory {
