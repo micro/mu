@@ -964,6 +964,43 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerLeadsWeatherWithCurrentCondition(t *testing.T) {
+	rag := []string{`### weather_forecast
+Current request date: Friday, 3 July 2026 (2026-07-03, UTC).
+Weather for New York today.
+Now: 32°C, clear.
+Forecast: Fri 2026-07-03: high 33°C, low 24°C.
+Freshness/source: Google Weather; generated at 2026-07-03 12:00 UTC.`}
+	got := completeToolAnswer("I'll check the weather now.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Now: 32°C, clear") {
+		t.Fatalf("expected weather fallback to lead with current conditions, got %q", got)
+	}
+	if !strings.Contains(got, "Weather for New York today") || !strings.Contains(got, "Freshness/source: Google Weather") {
+		t.Fatalf("expected location and freshness context to remain below the answer, got %q", got)
+	}
+	if strings.Contains(firstLine, "Current request date:") || strings.Contains(firstLine, "Freshness/source:") {
+		t.Fatalf("expected operational context below current condition, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerSkipsMarketSectionLabels(t *testing.T) {
+	rag := []string{`### markets
+Current request date: Friday, 3 July 2026 (2026-07-03, UTC).
+Live crypto prices:
+BTC: $97000.00 (+1.23% 24h)
+ETH: $3500.00 (-0.42% 24h)
+Last refresh: 2026-07-03 12:00 UTC.`}
+	got := completeToolAnswer("Let me pull the latest market data.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "BTC: $97000.00") {
+		t.Fatalf("expected market fallback to lead with prices, got %q", got)
+	}
+	if strings.Contains(got, "Live crypto prices:") || strings.Contains(firstLine, "Current request date:") {
+		t.Fatalf("expected market section labels and request context not to lead, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerMovesMarketsFreshnessAfterPrices(t *testing.T) {
 	rag := []string{`### markets
 Last refresh: 2026-07-03 12:00 UTC.
