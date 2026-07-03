@@ -1,0 +1,57 @@
+name: Security Review
+
+# The SECURITY lens of Mu's autonomous loop (alongside product and marketing;
+# see internal/docs/CONTINUOUS_IMPROVEMENT.md). A standing audit of the agent's
+# attack surface: because the LLM is an untrusted decision-maker and the content
+# it reads (email, web pages, apps) can carry prompt injection, the one thing we
+# must never regress is letting the model decide WHOSE data is used or HOW the
+# user's funds are spent. Identity and authorization are bound server-side from
+# the session, like a prepared statement — never from model input.
+#
+# The rubric and known-safe baseline live in internal/docs/SECURITY.md. Like the
+# other passes it opens a fresh issue and dispatches Codex via CODEX_TRIGGER_TOKEN
+# (Codex ignores Actions-bot comments).
+#
+# Autonomy boundary: security is NOT auto-merged. Findings are reported and filed
+# as issues; a clearly-correct, CI-verified, low-blast-radius hardening may open a
+# PR, but anything touching auth/wallet/identity binding is surfaced for a human
+# and must not auto-merge.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 3 * * *" # daily, 03:00 UTC (offset from the product/marketing passes)
+
+permissions:
+  issues: write
+
+concurrency:
+  group: security-review
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open a security review issue and dispatch Codex
+        env:
+          GH_TOKEN: ${{ secrets.CODEX_TRIGGER_TOKEN || github.token }}
+          HAS_TRIGGER_TOKEN: ${{ secrets.CODEX_TRIGGER_TOKEN != '' }}
+          REPO: ${{ github.repository }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          if [ "$HAS_TRIGGER_TOKEN" != "true" ]; then
+            echo "CODEX_TRIGGER_TOKEN is not set — skipping (Codex ignores Actions-bot comments)."
+            exit 0
+          fi
+          # Ensure the labels the loop uses exist (idempotent).
+          gh label create codex --repo "$REPO" --color 5319e7 --description "Autonomous loop (Codex)" 2>/dev/null || true
+          gh label create security --repo "$REPO" --color d73a4a --description "Security finding" 2>/dev/null || true
+          ISSUE_URL=$(gh issue create --repo "$REPO" \
+            --label security \
+            --title "Security review #$RUN_NUMBER" \
+            --body "Standing audit of the agent tool / auth / wallet surface against the invariants in internal/docs/SECURITY.md. Goal: no path where the model can decide whose data is used or how the user's funds are spent.")
+          ISSUE_NUM="${ISSUE_URL##*/}"
+          echo "Opened issue #$ISSUE_NUM — dispatching Codex (Security)."
+          gh issue comment "$ISSUE_NUM" --repo "$REPO" --body \
+          "@codex Act as the security reviewer for Mu. Read internal/docs/SECURITY.md FIRST (the threat model, the core invariant, the checklist, and the known-safe baseline), plus CLAUDE.md for architecture. The one invariant you are defending: the LLM is an untrusted decision-maker and tool content (email bodies, web pages, apps) can carry prompt injection, so identity/authorization/source-of-funds must be bound SERVER-SIDE from the authenticated session — like a prepared statement — never read from model tool arguments. Public data (search query, city, ticker) may be model-parameterized; account/owner/scope/wallet may not. Each run, execute the checklist in SECURITY.md: (1) ENUMERATE every tool and service handler — \`RegisterTool\` / \`RegisterToolWithAuth\` in main.go, static \`api.Tool{Path:...}\` in internal/api/mcp.go, and every \`service.Register\` handler's exported methods and their request structs. (2) CLASSIFY each as PUBLIC vs USER/ACCOUNT/WALLET/OWNED. (3) For each non-public tool VERIFY identity is session-bound: RegisterToolWithAuth (accountID from session) or a Path endpoint that calls auth.RequireSession and checks ownership — NOT a value read from args. (4) GREP native request structs for identity fields other than \`account_id\` (author_id, owner, user_id, from, address, scope, account) — the injectAccount wrapper only force-binds \`account_id\`, so any other identity field is model-controlled and is a bug. (5) Confirm every mutation checks session-owner == resource-owner (no IDOR), money paths are capped + allowlisted (wallet/spendlimit.go), and guests can reach nothing account-scoped. (6) Diff against the KNOWN-SAFE BASELINE in SECURITY.md and scan tools/services/handlers added since the last pass. OUTPUT: post a concise findings comment on this issue (#$ISSUE_NUM) — what you verified safe, any drift/regressions, and ranked findings with file:line and a concrete injection/IDOR scenario for each. For every CONFIRMED finding, file a scoped issue: \`gh issue create --label codex --label security --title \"<scoped task>\" --body \"<invariant broken, file:line, exploit scenario, fix direction, acceptance criteria>\"\`. Keep internal/docs/SECURITY.md's baseline and open-follow-ups list current: if it drifted from reality, open ONE PR updating just that doc (\`git switch -c codex/security-$ISSUE_NUM\`, push, \`gh pr create --base main --label codex --label security --title \"<title>\" --body \"<summary, Closes #$ISSUE_NUM>\"\`) and you may auto-merge the DOC-ONLY change. You MAY open a PR for a clearly-correct, CI-verified, low-blast-radius code hardening (prefer adding a regression test with it), but do NOT auto-merge any PR that touches auth, wallet, identity binding, or the injectAccount/spend-limit paths — leave those for a human (no \`gh pr merge --auto\`); describe them in the report. Verify go build/test/vet. If nothing is wrong and the baseline is accurate, do NOT open a code PR — just close this issue (\`gh issue close $ISSUE_NUM\`). Do not make breaking public-contract changes. Do not use the make_pr tool (it is a no-op stub)."

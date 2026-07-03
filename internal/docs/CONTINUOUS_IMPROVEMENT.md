@@ -1,13 +1,13 @@
 # Continuous Improvement
 
-Mu runs an autonomous loop driven by Codex. Three scheduled GitHub Actions each
-open a fresh tracking issue and dispatch Codex with a role; Codex does the work
-and opens a PR with auto-merge, so safe changes land when CI is green. All three
-are gated on the `CODEX_TRIGGER_TOKEN` secret (a PAT for a user account Codex
-follows — Codex ignores comments from the github-actions bot), and all three
-align to the North Star in [THESIS.md](THESIS.md).
+Mu runs an autonomous loop driven by Codex. Scheduled GitHub Actions each open a
+fresh tracking issue and dispatch Codex with a role; Codex does the work and (for
+safe changes) opens a PR with auto-merge, so safe changes land when CI is green.
+All are gated on the `CODEX_TRIGGER_TOKEN` secret (a PAT for a user account Codex
+follows — Codex ignores comments from the github-actions bot), and all align to
+the North Star in [THESIS.md](THESIS.md).
 
-## The three agents
+## The agents
 
 The shape mirrors go-micro's loop, recast for **Mu the product**:
 
@@ -16,6 +16,13 @@ The shape mirrors go-micro's loop, recast for **Mu the product**:
 | **product-review** (`.github/workflows/product-review.yml`) | Head of product — *where to next, what to refine* | hourly `:59` | maintains the ranked queue in [PRIORITIES.md](PRIORITIES.md) + an assessment |
 | **continuous-improvement** (`.github/workflows/continuous-improvement.yml`) | Builder — *ship one increment* | hourly `:29` | a PR that builds the top open item in PRIORITIES.md |
 | **marketing-review** (`.github/workflows/marketing-review.yml`) | Marketing — *tell the story* | daily `07:00 UTC` | public-surface coherence fixes + blog drafts (per [MARKETING.md](MARKETING.md)) |
+| **security-review** (`.github/workflows/security-review.yml`) | Security — *nothing like this again* | daily `03:00 UTC` | audits the agent tool/auth/wallet surface against [SECURITY.md](SECURITY.md); reports + files findings |
+
+The security pass is the odd one out on autonomy: it **does not auto-merge**
+code. It reports findings and files scoped issues; a clearly-correct, CI-verified
+hardening may open a PR, but anything touching auth, wallet, or identity binding
+is left for a human. Its job is to keep the core invariant true — the model can
+never decide whose data is used or how the user's funds are spent.
 
 So the **product agent decides what**, the **increment loop builds it**, and the
 **marketing agent keeps the outside world coherent and supplied with things worth
