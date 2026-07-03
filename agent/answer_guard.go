@@ -85,6 +85,7 @@ func hasOperationalFallbackLead(answer string) bool {
 		operationalPrefixes := []string{
 			"observation:",
 			"provider timestamp:",
+			"provider:",
 			"current request date:",
 			"current date context:",
 		}
@@ -179,7 +180,7 @@ func weatherAnswerLead(lines []string) string {
 	for _, line := range lines {
 		label, value := splitFallbackLabel(line)
 		switch strings.ToLower(label) {
-		case "now", "current", "current conditions", "conditions":
+		case "now", "current", "current conditions", "conditions", "temperature":
 			if now == "" {
 				now = value
 			}
@@ -219,7 +220,7 @@ func webSearchAnswerLead(lines []string) string {
 	if first == "" || second == "" {
 		return ""
 	}
-	return "The source-backed results I found center on " + first + " and " + second + "."
+	return "Top results: " + first + "; " + second + "."
 }
 
 func webSearchStoryTitle(line string) string {
@@ -349,7 +350,7 @@ func prioritizeCurrentWeatherLines(lines []string) []string {
 	for i, line := range lines {
 		label, _ := splitFallbackLabel(line)
 		switch strings.ToLower(label) {
-		case "now", "current", "current conditions", "conditions":
+		case "now", "current", "current conditions", "conditions", "temperature":
 			out = append(out, line)
 			used[i] = true
 		}
@@ -418,6 +419,10 @@ func isFallbackMetadataLine(line string) bool {
 		"current date context:",
 		"current request date:",
 		"grounding rule:",
+		"provider timestamp:",
+	}
+	if strings.HasPrefix(lower, "observation:") && !strings.Contains(lower, "°") {
+		return true
 	}
 	for _, prefix := range prefixes {
 		if strings.HasPrefix(lower, prefix) {
