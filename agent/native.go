@@ -98,18 +98,24 @@ func filterServices(all, allow []string) []string {
 }
 
 // injectAccount is a tool wrapper that supplies the caller's account id to
-// account-scoped service methods (recall, trade, …) — the LLM never sees it,
-// so this preserves the auth scoping the hand-rolled tools enforced.
+// account-scoped service methods (recall, mail, …) — the LLM never sees it, so
+// this preserves the auth scoping the hand-rolled tools enforced.
+//
+// Security: the caller's account id is forced unconditionally. We never trust an
+// account_id coming from the model, because it can be steered by prompt
+// injection in tool content (e.g. the body of an email it just read) into
+// scoping a tool to another user's data. For guests (no account) any
+// model-supplied account_id is stripped so they can't scope to anyone either.
 func injectAccount(accountID string) gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
 		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+			if call.Input == nil {
+				call.Input = map[string]any{}
+			}
 			if accountID != "" {
-				if call.Input == nil {
-					call.Input = map[string]any{}
-				}
-				if _, ok := call.Input["account_id"]; !ok {
-					call.Input["account_id"] = accountID
-				}
+				call.Input["account_id"] = accountID
+			} else {
+				delete(call.Input, "account_id")
 			}
 			return next(ctx, call)
 		}
