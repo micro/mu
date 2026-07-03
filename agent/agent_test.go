@@ -964,6 +964,42 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerRepairsOperationalWeatherLead(t *testing.T) {
+	rag := []string{`### weather_forecast
+Current request date: Friday, 3 July 2026 (2026-07-03, UTC).
+Weather for New York today.
+Observation: Google Weather current conditions are available.
+Now: 30°C, Sunny.
+Forecast: Fri 2026-07-03: high 33°C, low 24°C.
+Provider timestamp: 2026-07-03 12:00 UTC.
+Freshness/source: Google Weather; generated at 2026-07-03 12:00 UTC.`}
+	got := completeToolAnswer("- Observation: Google Weather data is available.\n- Provider timestamp: 2026-07-03 12:00 UTC.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Right now: 30°C, Sunny; today: Fri 2026-07-03: high 33°C, low 24°C.") {
+		t.Fatalf("expected weather fallback to repair operational lead with current condition, got %q", got)
+	}
+	if strings.Contains(firstLine, "Observation:") || strings.Contains(firstLine, "Provider timestamp:") {
+		t.Fatalf("expected operational context below the answer, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerRepairsSearchResultLead(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Search results for "AI news":
+Sources:
+1. AI lab releases new model — Company announced a new assistant release. (https://example.com/ai-model)
+2. Chip supplier expands AI capacity — Demand for AI chips is rising. (https://example.com/ai-chips)`}
+	got := completeToolAnswer("Search results for AI news:\n1. AI lab releases new model", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "source-backed results") || strings.Contains(firstLine, "Search results") {
+		t.Fatalf("expected search-result lead to be repaired into concise synthesis, got %q", got)
+	}
+	if !strings.Contains(got, "Unavailable right now: news.") {
+		t.Fatalf("expected unavailable news disclosure to remain, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerLeadsWeatherWithCurrentCondition(t *testing.T) {
 	rag := []string{`### weather_forecast
 Current request date: Friday, 3 July 2026 (2026-07-03, UTC).
