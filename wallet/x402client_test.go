@@ -40,7 +40,7 @@ func TestPayAndCallMCP(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	out, err := PayAndCallMCP(context.Background(), srv.URL, "news_search", map[string]any{"query": "btc"}, bw)
+	out, err := PayAndCallMCP(context.Background(), "acct-test", srv.URL, "news_search", map[string]any{"query": "btc"}, bw)
 	if err != nil {
 		t.Fatalf("PayAndCallMCP: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestPayAndCallMCPNoWallet(t *testing.T) {
 		_, _ = w.Write([]byte(`{"accepts":[]}`))
 	}))
 	defer srv.Close()
-	if _, err := PayAndCallMCP(context.Background(), srv.URL, "x", nil, nil); err == nil {
+	if _, err := PayAndCallMCP(context.Background(), "acct-test", srv.URL, "x", nil, nil); err == nil {
 		t.Error("expected error when payment required but no wallet")
 	}
 }

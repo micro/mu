@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -59,8 +60,10 @@ var payClient = &http.Client{Timeout: 60 * time.Second}
 
 // PayAndCallMCP calls tool on the MCP server at baseURL with args. If the server
 // answers HTTP 402, it signs a payment from bw for a payable requirement and
-// retries once. Returns the tool's text result.
-func PayAndCallMCP(ctx context.Context, baseURL, tool string, args map[string]any, bw *BaseWallet) (string, error) {
+// retries once. Returns the tool's text result. accountID is the authenticated
+// caller, used only to meter spend against the daily cap — never to choose the
+// source wallet (that is always bw).
+func PayAndCallMCP(ctx context.Context, accountID, baseURL, tool string, args map[string]any, bw *BaseWallet) (string, error) {
 	endpoint := strings.TrimRight(baseURL, "/") + "/mcp"
 	rpc := map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
@@ -79,6 +82,15 @@ func PayAndCallMCP(ctx context.Context, baseURL, tool string, args map[string]an
 		req, perr := choosePayable(body)
 		if perr != nil {
 			return "", perr
+		}
+		// Bound the payment: a server's challenge can never authorise more than
+		// the per-call/daily caps, so a misled agent can't drain the wallet.
+		amt, ok := new(big.Int).SetString(strings.TrimSpace(req.MaxAmountRequired), 10)
+		if !ok {
+			return "", fmt.Errorf("invalid payment amount %q", req.MaxAmountRequired)
+		}
+		if err := checkAndRecordSpend(accountID, amt); err != nil {
+			return "", err
 		}
 		payHeader, serr := SignX402Payment(bw, req)
 		if serr != nil {

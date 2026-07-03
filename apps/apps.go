@@ -1628,6 +1628,34 @@ func UpdateApp(slug, name, description, tags, html, icon string, price int) (*Ap
 	return a, nil
 }
 
+// UpdateAppOwned updates an app only when accountID owns it. This is the
+// agent/MCP-safe entry point: ownership is bound to the authenticated caller,
+// never to a model-supplied value. Guests (empty accountID) are rejected.
+func UpdateAppOwned(accountID, slug, name, description, tags, html, icon string, price int) (*App, error) {
+	if accountID == "" {
+		return nil, fmt.Errorf("authentication required")
+	}
+	mutex.RLock()
+	a, ok := apps[slug]
+	owner := ""
+	if ok {
+		owner = a.AuthorID
+	}
+	mutex.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("app not found")
+	}
+	if owner != accountID {
+		return nil, fmt.Errorf("not authorized to edit this app")
+	}
+	return UpdateApp(slug, name, description, tags, html, icon, price)
+}
+
+// AuthorNameFor resolves an account id to a display name for app attribution.
+// Bound server-side (set by main.go) so the author label comes from the
+// authenticated account, never from model input. Defaults to the id.
+var AuthorNameFor = func(accountID string) string { return accountID }
+
 // GetPublicApps returns all public apps sorted by installs.
 func GetPublicApps() []*App {
 	mutex.RLock()

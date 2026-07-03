@@ -249,6 +249,16 @@ func main() {
 	// load apps
 	apps.Load()
 
+	// Resolve app author display names server-side from the authenticated
+	// account, so the native apps.Build service never trusts a model-supplied
+	// author name.
+	apps.AuthorNameFor = func(accountID string) string {
+		if acc, err := auth.GetAccount(accountID); err == nil && acc.Name != "" {
+			return acc.Name
+		}
+		return accountID
+	}
+
 	// load social
 	social.Load()
 
@@ -882,9 +892,9 @@ func main() {
 			{Name: "price", Type: "number", Description: "Credits charged per use (0 = free, max 1000)", Required: false},
 		},
 	})
-	api.RegisterTool(api.Tool{
+	api.RegisterToolWithAuth(api.Tool{
 		Name:        "apps_edit",
-		Description: "Edit an existing app — update its name, description, tags, icon, HTML code, or price",
+		Description: "Edit an existing app you own — update its name, description, tags, icon, HTML code, or price",
 		Params: []api.ToolParam{
 			{Name: "slug", Type: "string", Description: "The app's URL slug (e.g. pomodoro-timer)", Required: true},
 			{Name: "name", Type: "string", Description: "New app name", Required: false},
@@ -894,27 +904,28 @@ func main() {
 			{Name: "icon", Type: "string", Description: "New SVG icon", Required: false},
 			{Name: "price", Type: "number", Description: "Credits charged per use (0 = free, max 1000)", Required: false},
 		},
-		Handle: func(args map[string]any) (string, error) {
-			slug, _ := args["slug"].(string)
-			if slug == "" {
-				return `{"error":"slug is required"}`, fmt.Errorf("missing slug")
-			}
-			name, _ := args["name"].(string)
-			description, _ := args["description"].(string)
-			tags, _ := args["tags"].(string)
-			html, _ := args["html"].(string)
-			icon, _ := args["icon"].(string)
-			price := -1 // -1 means "not set"
-			if p, ok := args["price"].(float64); ok {
-				price = int(p)
-			}
-			a, err := apps.UpdateApp(slug, name, description, tags, html, icon, price)
-			if err != nil {
-				return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
-			}
-			b, _ := json.Marshal(a)
-			return string(b), nil
-		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		slug, _ := args["slug"].(string)
+		if slug == "" {
+			return `{"error":"slug is required"}`, fmt.Errorf("missing slug")
+		}
+		name, _ := args["name"].(string)
+		description, _ := args["description"].(string)
+		tags, _ := args["tags"].(string)
+		html, _ := args["html"].(string)
+		icon, _ := args["icon"].(string)
+		price := -1 // -1 means "not set"
+		if p, ok := args["price"].(float64); ok {
+			price = int(p)
+		}
+		// Ownership is bound to the authenticated caller — a user can only edit
+		// their own app, never one named by slug alone.
+		a, err := apps.UpdateAppOwned(accountID, slug, name, description, tags, html, icon, price)
+		if err != nil {
+			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
+		}
+		b, _ := json.Marshal(a)
+		return string(b), nil
 	})
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "apps_build",
@@ -928,14 +939,11 @@ func main() {
 		if prompt == "" {
 			return `{"error":"prompt is required"}`, fmt.Errorf("missing prompt")
 		}
-		// Use the authenticated user as the app author
-		authorName := accountID
-		if acc, err := auth.GetAccount(accountID); err == nil {
-			authorName = acc.Name
-		}
+		// Owner is the authenticated caller; the author name is resolved
+		// server-side (see apps.AuthorNameFor), never taken from the model.
 		var rsp apps.BuildResponse
 		if err := service.Call(context.Background(), "apps", "Server.Build",
-			&apps.BuildRequest{Prompt: prompt, AuthorID: accountID, AuthorName: authorName}, &rsp); err != nil {
+			&apps.BuildRequest{Prompt: prompt, AccountID: accountID}, &rsp); err != nil {
 			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
 		}
 		b, _ := json.Marshal(map[string]string{
@@ -1060,20 +1068,20 @@ func main() {
 		if toolName == "" {
 			return "", fmt.Errorf("tool is required")
 		}
+		// Only servers in the operator-configured registry can be paid. We do
+		// NOT let the model supply an arbitrary URL — otherwise a prompt-injected
+		// agent could point payments at an attacker's address.
 		server, _ := args["server"].(string)
-		baseURL := server
-		if !strings.HasPrefix(server, "http") {
-			baseURL = wallet.ServerURL(server)
-		}
+		baseURL := wallet.ServerURL(server)
 		if baseURL == "" {
-			return "", fmt.Errorf("unknown server %q", server)
+			return "", fmt.Errorf("unknown server %q — only servers in the registry can be paid", server)
 		}
 		toolArgs, _ := args["arguments"].(map[string]any)
 		bw, err := wallet.GetOrCreateWallet(accountID)
 		if err != nil {
 			return "", err
 		}
-		return wallet.PayAndCallMCP(context.Background(), baseURL, toolName, toolArgs, bw)
+		return wallet.PayAndCallMCP(context.Background(), accountID, baseURL, toolName, toolArgs, bw)
 	})
 
 	authenticated := map[string]bool{
