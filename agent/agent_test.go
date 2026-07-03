@@ -1038,6 +1038,24 @@ Provider timestamp: 2026-07-03 12:00 UTC.`}
 	}
 }
 
+func TestCompleteToolAnswerRepairsProviderPrefaceWeatherLead(t *testing.T) {
+	rag := []string{`### weather_forecast
+Weather for New York today.
+Provider: Google Weather.
+Provider timestamp: 2026-07-03 12:00 UTC.
+Feels like: 31°C, sunny.
+High: 33°C, low 24°C.
+Freshness/source: Google Weather; generated at 2026-07-03 12:00 UTC.`}
+	got := completeToolAnswer("As of provider timestamp 2026-07-03 12:00 UTC, Google Weather has data for New York.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Right now: 31°C, sunny; today: 33°C, low 24°C.") {
+		t.Fatalf("expected provider-prefaced weather answer to be repaired into current conditions, got %q", got)
+	}
+	if strings.Contains(firstLine, "Provider") || strings.Contains(firstLine, "timestamp") {
+		t.Fatalf("expected provider metadata below the answer lead, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerSkipsMarketSectionLabels(t *testing.T) {
 	rag := []string{`### markets
 Current request date: Friday, 3 July 2026 (2026-07-03, UTC).
@@ -1164,6 +1182,25 @@ Sources:
 	}
 	if !strings.Contains(got, "Unavailable right now: news.") {
 		t.Fatalf("expected unavailable news disclosure to remain, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerPrefersCurrentStoriesOverOfficialNewsPages(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Search results for "AI news":
+Sources:
+1. OpenAI News — Company news and announcements. (https://openai.com/news/)
+2. Artificial Intelligence News — Latest news and headlines about artificial intelligence. (https://example.com/ai-category)
+3. AI safety bill advances — Lawmakers moved the proposal after new model-risk hearings. (https://example.com/ai-bill)
+4. Startup launches healthcare AI tool — The company says hospitals are piloting the assistant this week. (https://example.com/ai-health)`}
+	got := completeToolAnswer("Here are some search results for AI news.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Latest source-backed items: AI safety bill advances; Startup launches healthcare AI tool.") {
+		t.Fatalf("expected current story snippets to lead over generic news pages, got %q", got)
+	}
+	if strings.Contains(firstLine, "OpenAI News") || strings.Contains(firstLine, "Artificial Intelligence News") {
+		t.Fatalf("expected generic pages below the answer lead, got %q", got)
 	}
 }
 

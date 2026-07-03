@@ -87,6 +87,9 @@ func hasOperationalFallbackLead(answer string) bool {
 			"current conditions observed",
 			"provider timestamp:",
 			"provider:",
+			"as of provider",
+			"as of the provider",
+			"according to provider",
 			"current request date:",
 			"current date context:",
 		}
@@ -182,11 +185,11 @@ func weatherAnswerLead(lines []string) string {
 	for _, line := range lines {
 		label, value := splitFallbackLabel(line)
 		switch strings.ToLower(label) {
-		case "now", "current", "current conditions", "conditions", "temperature", "observation":
+		case "now", "current", "current conditions", "conditions", "temperature", "observation", "feels like":
 			if now == "" {
 				now = value
 			}
-		case "forecast", "today", "today's forecast":
+		case "forecast", "today", "today's forecast", "high", "daily forecast":
 			if forecast == "" {
 				forecast = value
 			}
@@ -352,7 +355,7 @@ func prioritizeCurrentWeatherLines(lines []string) []string {
 	for i, line := range lines {
 		label, _ := splitFallbackLabel(line)
 		switch strings.ToLower(label) {
-		case "now", "current", "current conditions", "conditions", "temperature", "observation":
+		case "now", "current", "current conditions", "conditions", "temperature", "observation", "feels like":
 			out = append(out, line)
 			used[i] = true
 		}
@@ -375,6 +378,8 @@ func isFallbackSecondaryContextLine(line string) bool {
 		"sources:",
 		"disclosure:",
 		"request date:",
+		"provider:",
+		"provider timestamp:",
 	}
 	for _, prefix := range prefixes {
 		if strings.HasPrefix(lower, prefix) {
@@ -447,6 +452,7 @@ func isGenericWebResultLine(line string) bool {
 		"latest news and headlines",
 		"breaking news, analysis",
 		"coverage of",
+		"company news and announcements",
 	}
 	for _, term := range genericSnippetTerms {
 		if strings.Contains(snippet, term) {
@@ -483,6 +489,9 @@ func isFallbackMetadataLine(line string) bool {
 		"provider timestamp:",
 	}
 	if strings.HasPrefix(lower, "observation:") && !strings.Contains(lower, "°") {
+		return true
+	}
+	if strings.HasPrefix(lower, "provider:") || strings.HasPrefix(lower, "provider timestamp:") {
 		return true
 	}
 	for _, prefix := range prefixes {
