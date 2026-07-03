@@ -1,6 +1,9 @@
 package agent
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 func unavailableToolMessage(tool string) string {
 	name := strings.TrimSpace(tool)
@@ -179,7 +182,8 @@ func hasLowConfidenceWebEvidence(body string) bool {
 }
 
 func meaningfulLines(body string, limit int) []string {
-	var lines []string
+	var primary []string
+	var context []string
 	for _, raw := range strings.Split(body, "\n") {
 		line := strings.TrimSpace(raw)
 		if line == "" {
@@ -189,16 +193,51 @@ func meaningfulLines(body string, limit int) []string {
 		if line == "" || isFallbackMetadataLine(line) || isUnavailableLine(line) || isSearchResultHeading(line) {
 			continue
 		}
+		line = cleanFallbackLine(line)
+		if line == "" {
+			continue
+		}
 		if len([]rune(line)) > 280 {
 			r := []rune(line)
 			line = string(r[:280]) + "…"
 		}
-		lines = append(lines, line)
-		if len(lines) >= limit {
-			break
+		if isFallbackSecondaryContextLine(line) {
+			context = append(context, line)
+		} else {
+			primary = append(primary, line)
 		}
 	}
+
+	lines := append(primary, context...)
+	if len(lines) > limit {
+		lines = lines[:limit]
+	}
 	return lines
+}
+
+var fallbackOrdinalPrefix = regexp.MustCompile(`^\d+[.)]\s+`)
+
+func cleanFallbackLine(line string) string {
+	return strings.TrimSpace(fallbackOrdinalPrefix.ReplaceAllString(line, ""))
+}
+
+func isFallbackSecondaryContextLine(line string) bool {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	prefixes := []string{
+		"freshness/source:",
+		"last refresh:",
+		"generated at ",
+		"source:",
+		"sources:",
+		"disclosure:",
+		"request date:",
+	}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func isSearchResultHeading(line string) bool {

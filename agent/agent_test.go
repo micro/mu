@@ -964,6 +964,40 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerMovesMarketsFreshnessAfterPrices(t *testing.T) {
+	rag := []string{`### markets
+Last refresh: 2026-07-03 12:00 UTC.
+Disclosure: market data may be stale.
+Live crypto prices:
+BTC: $97000.00 (+1.23% 24h)
+ETH: $3500.00 (-0.42% 24h)`}
+	got := completeToolAnswer("Let me pull the latest market data.", rag)
+	btc := strings.Index(got, "BTC: $97000.00")
+	freshness := strings.Index(got, "Last refresh:")
+	if btc < 0 || freshness < 0 || freshness < btc {
+		t.Fatalf("expected market fallback to lead with prices and keep freshness later, got %q", got)
+	}
+	if strings.HasPrefix(got, "- Last refresh:") {
+		t.Fatalf("expected first bullet to answer the market prompt, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerRemovesWebResultNumbering(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Search results for "AI news":
+Sources:
+1. AI lab releases new model — Company announced a new assistant release. (https://example.com/ai-model)
+2. Chip supplier expands AI capacity — Demand for AI chips is rising. (https://example.com/ai-chips)`}
+	got := completeToolAnswer("Let me search the web for more AI stories.", rag)
+	if strings.Contains(got, "- 1. AI lab") || strings.Contains(got, "- 2. Chip") {
+		t.Fatalf("expected web fallback to read like synthesized bullets, not numbered search results, got %q", got)
+	}
+	if !strings.Contains(got, "- AI lab releases new model") || !strings.Contains(got, "Unavailable right now: news.") {
+		t.Fatalf("expected concise source-backed bullets and unavailable disclosure, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerDisclosesLimitedWebEvidence(t *testing.T) {
 	rag := []string{
 		`### web_search
