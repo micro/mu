@@ -535,25 +535,18 @@ td {
   transform: translateY(-50%);
   text-decoration: none;
   color: #555;
-  line-height: 0;
+  line-height: 1;
+  white-space: nowrap;
 }
 #head-wallet svg { vertical-align: middle; }
-#head-wallet-badge { display: none; }
-#head-wallet-badge:not(:empty) {
-  display: block;
-  position: absolute;
-  top: -6px;
-  right: -8px;
-  background: #1a7f37;
-  color: #fff;
-  font-size: 10px;
-  min-width: 14px;
-  height: 14px;
-  line-height: 14px;
-  text-align: center;
-  padding: 0 3px;
-  border-radius: 7px;
+/* Credit balance shown inline next to the wallet icon. */
+#head-wallet-badge {
+  margin-left: 5px;
+  font-size: 13px;
   font-weight: 600;
+  color: #555;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
 }
 
 #nav-logged-out {

@@ -685,12 +685,12 @@ function setSession() {
       // Show the wallet link and badge its credit balance for logged-in users.
       var headWallet = document.getElementById("head-wallet");
       if (headWallet) headWallet.style.display = 'inline-block';
-      fetch('/wallet', {headers:{'Accept':'application/json'}})
+      fetch('/wallet?balance=1', {headers:{'Accept':'application/json'}})
         .then(res => res.json())
         .then(data => {
           var hb = document.getElementById("head-wallet-badge");
-          if (hb && typeof data.balance === 'number' && data.balance > 0) {
-            hb.textContent = data.balance > 999 ? '999+' : data.balance;
+          if (hb && typeof data.balance === 'number') {
+            hb.textContent = data.balance > 9999 ? '9999+' : data.balance;
           }
         })
         .catch(() => {});
