@@ -20,7 +20,10 @@ func unavailableToolMessage(tool string) string {
 // so the user still gets useful output and unavailable slices are explicit.
 func completeToolAnswer(answer string, ragParts []string) string {
 	trimmed := strings.TrimSpace(answer)
-	if len(ragParts) == 0 || (!isProgressOnlyAnswer(trimmed) && !isRawToolPayloadAnswer(trimmed)) {
+	if len(ragParts) == 0 {
+		return answer
+	}
+	if !isProgressOnlyAnswer(trimmed) && !isRawToolPayloadAnswer(trimmed) && !hasOperationalFallbackLead(trimmed) {
 		return answer
 	}
 
@@ -67,6 +70,32 @@ func synthesizeToolFallback(ragParts []string) string {
 		b.WriteString(".")
 	}
 	return b.String()
+}
+
+func hasOperationalFallbackLead(answer string) bool {
+	for _, raw := range strings.Split(answer, "\n") {
+		line := strings.TrimSpace(strings.TrimLeft(raw, "-• "))
+		if line == "" {
+			continue
+		}
+		lower := strings.ToLower(line)
+		if isFallbackMetadataLine(line) || isSearchResultHeading(line) || isFallbackSectionLabel(line) || isFallbackSecondaryContextLine(line) {
+			return true
+		}
+		operationalPrefixes := []string{
+			"observation:",
+			"provider timestamp:",
+			"current request date:",
+			"current date context:",
+		}
+		for _, prefix := range operationalPrefixes {
+			if strings.HasPrefix(lower, prefix) {
+				return true
+			}
+		}
+		return false
+	}
+	return false
 }
 
 func splitRAGPart(part string) (string, string) {
