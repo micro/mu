@@ -153,6 +153,7 @@ func formatFallbackSection(title, body string) string {
 
 func formatWebSearchFallbackSection(body string) string {
 	lines := meaningfulLines(body, 4)
+	lines = prioritizeSnippetBackedWebLines(lines)
 	if len(lines) == 0 {
 		return ""
 	}
@@ -180,7 +181,7 @@ func weatherAnswerLead(lines []string) string {
 	for _, line := range lines {
 		label, value := splitFallbackLabel(line)
 		switch strings.ToLower(label) {
-		case "now", "current", "current conditions", "conditions", "temperature":
+		case "now", "current", "current conditions", "conditions", "temperature", "observation":
 			if now == "" {
 				now = value
 			}
@@ -350,7 +351,7 @@ func prioritizeCurrentWeatherLines(lines []string) []string {
 	for i, line := range lines {
 		label, _ := splitFallbackLabel(line)
 		switch strings.ToLower(label) {
-		case "now", "current", "current conditions", "conditions", "temperature":
+		case "now", "current", "current conditions", "conditions", "temperature", "observation":
 			out = append(out, line)
 			used[i] = true
 		}
@@ -393,6 +394,65 @@ func isGenericSearchFallbackIntro(line string) bool {
 		strings.HasPrefix(lower, "here are some search results") ||
 		strings.HasPrefix(lower, "i found these search results") ||
 		strings.HasPrefix(lower, "these search results")
+}
+
+func prioritizeSnippetBackedWebLines(lines []string) []string {
+	if len(lines) < 2 {
+		return lines
+	}
+	var snippetBacked []string
+	var generic []string
+	for _, line := range lines {
+		if isGenericWebResultLine(line) {
+			generic = append(generic, line)
+			continue
+		}
+		snippetBacked = append(snippetBacked, line)
+	}
+	if len(snippetBacked) >= 2 {
+		return append(snippetBacked, generic...)
+	}
+	return lines
+}
+
+func isGenericWebResultLine(line string) bool {
+	cleaned := strings.ToLower(cleanFallbackLine(line))
+	title, snippet, hasSnippet := strings.Cut(cleaned, " — ")
+	if !hasSnippet {
+		title, snippet, hasSnippet = strings.Cut(cleaned, " - ")
+	}
+	genericTitleTerms := []string{
+		"category",
+		"archive",
+		"tag",
+		"search results",
+		"latest news and headlines",
+		"news &",
+		"artificial intelligence |",
+		"artificial intelligence news",
+	}
+	for _, term := range genericTitleTerms {
+		if strings.Contains(title, term) {
+			return true
+		}
+	}
+	if !hasSnippet {
+		return false
+	}
+	genericSnippetTerms := []string{
+		"articles about",
+		"archive of",
+		"category page",
+		"latest news and headlines",
+		"breaking news, analysis",
+		"coverage of",
+	}
+	for _, term := range genericSnippetTerms {
+		if strings.Contains(snippet, term) {
+			return true
+		}
+	}
+	return false
 }
 
 func isFallbackSectionLabel(line string) bool {
