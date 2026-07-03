@@ -20,6 +20,7 @@ type Flow struct {
 	HTML      string     `json:"html"`      // rendered HTML (set on completion)
 	Status    string     `json:"status"`    // "running", "done", "error"
 	Error     string     `json:"error"`     // error message if status is "error"
+	Agent     string     `json:"agent"`     // user-defined agent id used for this turn ("" = default)
 	ParentID  string     `json:"parent_id"` // prior flow ID for multi-turn chains
 	CreatedAt time.Time  `json:"created_at"`
 }

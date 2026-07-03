@@ -138,9 +138,18 @@ func renderAgentsPanel() string {
 .agents-actions a,.agents-actions button{border:0;background:none;cursor:pointer;font-size:12px;padding:0 2px;color:inherit;text-decoration:none}
 </style>
 <script>
-window.muActiveAgent=window.muActiveAgent||'';
+var MUAKEY='mu_active_agent';
+// Restore the in-tab agent selection so a reload keeps answering as the same
+// agent. A reopened session or ?agent= link overrides this via muSeedAgent.
+window.muActiveAgent=window.muActiveAgent||(function(){try{return sessionStorage.getItem(MUAKEY)||'';}catch(e){return '';}})();
 function muAgentCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
-function muAgentPick(id){window.muActiveAgent=id;document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===id);});}
+// Resolve an agent id to its display name from the loaded list ('' = default).
+function muAgentName(id){if(!id)return 'Micro';var d=document.querySelector('#agents-list>div[data-id="'+id+'"]');if(d){var s=d.querySelector('span');if(s&&s.textContent)return s.textContent;}return 'Micro';}
+function muAgentChip(){var c=document.getElementById('active-agent-chip');if(c)c.textContent='Agent: '+muAgentName(window.muActiveAgent);}
+function muAgentPick(id){window.muActiveAgent=id;document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===id);});try{sessionStorage.setItem(MUAKEY,id);}catch(e){}muAgentChip();}
+// Set the active agent from the server (session reopen / deep link) and persist
+// it; the list highlight + chip refresh once the agents finish loading.
+window.muSeedAgent=function(id){window.muActiveAgent=id||'';try{sessionStorage.setItem(MUAKEY,window.muActiveAgent);}catch(e){}document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===window.muActiveAgent);});muAgentChip();};
 function muAgentEsc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function muAgentDelete(id,ev){ev.stopPropagation();ev.preventDefault();if(!confirm('Delete this agent?'))return;
   var b=new URLSearchParams();b.append('action','delete');b.append('id',id);
@@ -154,6 +163,7 @@ function muAgentsLoad(){
       h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+id+'" onclick="muAgentPick(\''+id+'\')" title="'+muAgentEsc(a.description||'')+'"><span>'+muAgentEsc(a.name)+'</span><span class="agents-actions"><a title="Edit" href="/agent/new?id='+id+'" onclick="event.stopPropagation()">✎</a><a title="Fork" href="/agent/new?fork='+id+'" onclick="event.stopPropagation()">⑂</a><button type="button" title="Delete" onclick="muAgentDelete(\''+id+'\',event)">✕</button></span></div>';
     });
     list.innerHTML=h;
+    muAgentChip();
   }).catch(function(){});
 }
 muAgentsLoad();

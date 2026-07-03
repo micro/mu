@@ -344,14 +344,19 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	}
 	cfg := app.ChatConfig{Guest: guest}
 	activeRoot := "" // stable id of the reopened conversation, for rail highlight
+	reopened := false
+	reopenAgent := "" // agent id the reopened conversation was using
 	if sessionID != "" && !guest {
 		// Resolve the (possibly stale) id to the whole chain and its current head
 		// so follow-ups continue this conversation instead of branching it.
 		turns := sessionChain(accountID, sessionID)
 		if len(turns) > 0 && turns[len(turns)-1].AccountID == accountID {
-			cfg.ContextID = turns[len(turns)-1].ID // seed to the true head
+			head := turns[len(turns)-1]
+			cfg.ContextID = head.ID // seed to the true head
 			cfg.InitialConvHTML = renderSessionTurns(turns)
 			activeRoot = turns[0].ID
+			reopened = true
+			reopenAgent = head.Agent
 		}
 	}
 
@@ -366,9 +371,20 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		rail = `<div class="chat-side">` + renderAgentsPanel() + renderSessionsRail(accountID, activeRoot) + `</div>`
 	}
 
-	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
+	chip := ""
+	if !guest {
+		chip = `<div id="active-agent-chip" class="agent-chip">Agent: Micro</div>`
+	}
+	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + chip + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
+
+	// Seed the active agent so the panel highlights it and follow-ups continue
+	// with it: an explicit ?agent= selection (deep link) wins; otherwise a
+	// reopened session restores the agent it was using (blank resets to default,
+	// overriding any stale in-tab selection).
 	if sel := r.URL.Query().Get("agent"); sel != "" && !guest {
-		content += `<script>window.muActiveAgent=` + app.JSString(sel) + `;history.replaceState(null,'','/agent');</script>`
+		content += `<script>window.muSeedAgent(` + app.JSString(sel) + `);history.replaceState(null,'','/agent');</script>`
+	} else if reopened {
+		content += `<script>window.muSeedAgent(` + app.JSString(reopenAgent) + `);</script>`
 	}
 	if prefill != "" {
 		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'','/agent');})()</script>`
@@ -423,6 +439,8 @@ const chatLayoutCSS = `<style>
 /* The conversation fills the main pane here (the 760px readability cap only
    applies to the chat embedded on the landing/home page). */
 .chat-main #mu-chat{max-width:none}
+/* Which agent is answering — always visible above the conversation. */
+.agent-chip{display:inline-block;margin-bottom:10px;padding:3px 10px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .chat-new{width:100%;padding:9px 12px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
 .chat-sess-list{display:flex;flex-direction:column;gap:2px}
 .chat-sess{display:block;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -813,6 +831,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		AccountID: accountID,
 		Prompt:    req.Prompt,
 		Status:    "running",
+		Agent:     req.Agent,
 		ParentID:  req.ContextID,
 		CreatedAt: time.Now().UTC(),
 	}
