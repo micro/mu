@@ -530,13 +530,17 @@ td {
 #head-wallet {
   display: none;
   position: absolute;
-  right: 46px;
+  right: 15px;
   top: 50%;
   transform: translateY(-50%);
   text-decoration: none;
   color: #555;
   line-height: 1;
   white-space: nowrap;
+}
+/* When the mail icon is actually showing, shift the wallet left to clear it. */
+#head-mail.has-mail ~ #head-wallet {
+  right: 46px;
 }
 #head-wallet svg { vertical-align: middle; }
 /* Credit balance shown inline next to the wallet icon. */
