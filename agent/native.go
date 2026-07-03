@@ -161,7 +161,8 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
 	sys := "You are Micro, a personal AI assistant on Mu. Today is " + today + ". " +
 		"Use the available tools for live or personal data (weather, news, market prices, " +
-		"social, video, blog, web search, trading, and recall of the user's own news/mail). " +
+		"social, video, blog, web search, the user's own mail inbox, and recall across their news/mail). " +
+		"To read, check or list the user's mail, use the mail Inbox tool (no search term needed); only search mail when they give a specific term. " +
 		"Quote exact values from tool results. Be concise and conversational. " +
 		"For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one. " +
 		"After using tools, always provide the final answer or state exactly what is unavailable; " +

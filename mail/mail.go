@@ -1635,6 +1635,35 @@ func Search(userID, query string, limit int) []*Message {
 	return out
 }
 
+// ListMessages returns up to limit of the user's most recent non-spam received
+// messages, newest first. Unlike Search it needs no query, so it backs
+// "read my mail" / "what's in my inbox" requests that have no search term.
+func ListMessages(userID string, limit int) []*Message {
+	if userID == "" {
+		return nil
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var out []*Message
+	for _, msg := range messages {
+		if msg.Spam || msg.ToID != userID {
+			continue
+		}
+		out = append(out, msg)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].CreatedAt.After(out[j].CreatedAt)
+	})
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out
+}
+
 // GetSpamMessages returns spam-flagged messages for a user
 func GetSpamMessages(userID string) []*Message {
 	mutex.RLock()
