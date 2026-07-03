@@ -973,8 +973,8 @@ Forecast: Fri 2026-07-03: high 33°C, low 24°C.
 Freshness/source: Google Weather; generated at 2026-07-03 12:00 UTC.`}
 	got := completeToolAnswer("I'll check the weather now.", rag)
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "Now: 32°C, clear") {
-		t.Fatalf("expected weather fallback to lead with current conditions, got %q", got)
+	if !strings.Contains(firstLine, "Right now: 32°C, clear; today: Fri 2026-07-03: high 33°C, low 24°C.") {
+		t.Fatalf("expected weather fallback to lead with the current condition and today's forecast, got %q", got)
 	}
 	if !strings.Contains(got, "Weather for New York today") || !strings.Contains(got, "Freshness/source: Google Weather") {
 		t.Fatalf("expected location and freshness context to remain below the answer, got %q", got)
@@ -1029,6 +1029,10 @@ Sources:
 	got := completeToolAnswer("Let me search the web for more AI stories.", rag)
 	if strings.Contains(got, "- 1. AI lab") || strings.Contains(got, "- 2. Chip") {
 		t.Fatalf("expected web fallback to read like synthesized bullets, not numbered search results, got %q", got)
+	}
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "source-backed results") || strings.Contains(firstLine, "Search results") {
+		t.Fatalf("expected web fallback to open with concise synthesis, got %q", got)
 	}
 	if !strings.Contains(got, "- AI lab releases new model") || !strings.Contains(got, "Unavailable right now: news.") {
 		t.Fatalf("expected concise source-backed bullets and unavailable disclosure, got %q", got)

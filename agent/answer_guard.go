@@ -97,6 +97,9 @@ func formatFallbackSection(title, body string) string {
 	lines := meaningfulLines(body, 6)
 	if canonical == "weather" {
 		lines = prioritizeCurrentWeatherLines(lines)
+		if summary := weatherAnswerLead(lines); summary != "" {
+			lines = prependDistinctLine(summary, lines)
+		}
 	}
 	if len(lines) == 0 {
 		return ""
@@ -122,6 +125,11 @@ func formatWebSearchFallbackSection(body string) string {
 	}
 
 	limited := hasLowConfidenceWebEvidence(body)
+	if !limited {
+		if summary := webSearchAnswerLead(lines); summary != "" {
+			lines = prependDistinctLine(summary, lines)
+		}
+	}
 	var b strings.Builder
 	if limited {
 		b.WriteString("- The available web results do not clearly prove a complete answer; here is the limited source-backed evidence I found.\n")
@@ -132,6 +140,69 @@ func formatWebSearchFallbackSection(body string) string {
 		b.WriteString("\n")
 	}
 	return strings.TrimSpace(b.String())
+}
+
+func weatherAnswerLead(lines []string) string {
+	var now, forecast string
+	for _, line := range lines {
+		lower := strings.ToLower(strings.TrimSpace(line))
+		switch {
+		case now == "" && strings.HasPrefix(lower, "now:"):
+			now = strings.TrimSpace(strings.TrimPrefix(line, "Now:"))
+		case forecast == "" && strings.HasPrefix(lower, "forecast:"):
+			forecast = strings.TrimSpace(strings.TrimPrefix(line, "Forecast:"))
+		}
+	}
+	if now == "" {
+		return ""
+	}
+	if forecast != "" {
+		return "Right now: " + trimTrailingSentencePunctuation(now) + "; today: " + trimTrailingSentencePunctuation(forecast) + "."
+	}
+	return "Right now: " + trimTrailingSentencePunctuation(now) + "."
+}
+
+func trimTrailingSentencePunctuation(s string) string {
+	return strings.TrimRight(strings.TrimSpace(s), ".")
+}
+
+func webSearchAnswerLead(lines []string) string {
+	if len(lines) < 2 {
+		return ""
+	}
+	first := webSearchStoryTitle(lines[0])
+	second := webSearchStoryTitle(lines[1])
+	if first == "" || second == "" {
+		return ""
+	}
+	return "The source-backed results I found center on " + first + " and " + second + "."
+}
+
+func webSearchStoryTitle(line string) string {
+	line = cleanFallbackLine(line)
+	if title, _, ok := strings.Cut(line, " — "); ok {
+		return strings.TrimSpace(title)
+	}
+	if title, _, ok := strings.Cut(line, " - "); ok {
+		return strings.TrimSpace(title)
+	}
+	return ""
+}
+
+func prependDistinctLine(line string, lines []string) []string {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return lines
+	}
+	for _, existing := range lines {
+		if strings.EqualFold(strings.TrimSpace(existing), line) {
+			return lines
+		}
+	}
+	out := make([]string, 0, len(lines)+1)
+	out = append(out, line)
+	out = append(out, lines...)
+	return out
 }
 
 func shouldShowFallbackHeading(title string) bool {
