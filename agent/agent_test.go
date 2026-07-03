@@ -1075,6 +1075,41 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerLeadsWeatherWithCurrentConditionsLabel(t *testing.T) {
+	rag := []string{`### weather_forecast
+Current request date: Friday, 3 July 2026 (2026-07-03, UTC).
+Weather for New York today.
+Current conditions: 30°C, sunny.
+Today: high 33°C, low 24°C.
+Provider timestamp: 2026-07-03 12:00 UTC.
+Freshness/source: Google Weather; generated at 2026-07-03 12:00 UTC.`}
+	got := completeToolAnswer("- Observation: Google Weather current conditions are available.\n- Provider timestamp: 2026-07-03 12:00 UTC.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Right now: 30°C, sunny; today: high 33°C, low 24°C.") {
+		t.Fatalf("expected weather fallback to use current-conditions/today labels as the answer lead, got %q", got)
+	}
+	if strings.Contains(firstLine, "Observation:") || strings.Contains(firstLine, "Provider timestamp:") {
+		t.Fatalf("expected operational context below current conditions, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerRepairsGenericSearchResultIntro(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Search results for "AI news":
+Sources:
+1. AI lab releases new model — Company announced a new assistant release. (https://example.com/ai-model)
+2. Chip supplier expands AI capacity — Demand for AI chips is rising. (https://example.com/ai-chips)`}
+	got := completeToolAnswer("Here are the search results I found:\n1. AI lab releases new model\n2. Chip supplier expands AI capacity", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "source-backed results") || strings.Contains(firstLine, "Here are") {
+		t.Fatalf("expected generic search-result intro to be repaired into concise synthesis, got %q", got)
+	}
+	if strings.Contains(got, "- 1.") || !strings.Contains(got, "Unavailable right now: news.") {
+		t.Fatalf("expected de-numbered source bullets and unavailable disclosure, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerDisclosesLimitedWebEvidence(t *testing.T) {
 	rag := []string{
 		`### web_search

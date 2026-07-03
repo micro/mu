@@ -93,6 +93,9 @@ func hasOperationalFallbackLead(answer string) bool {
 				return true
 			}
 		}
+		if isGenericSearchFallbackIntro(line) {
+			return true
+		}
 		return false
 	}
 	return false
@@ -174,12 +177,16 @@ func formatWebSearchFallbackSection(body string) string {
 func weatherAnswerLead(lines []string) string {
 	var now, forecast string
 	for _, line := range lines {
-		lower := strings.ToLower(strings.TrimSpace(line))
-		switch {
-		case now == "" && strings.HasPrefix(lower, "now:"):
-			now = strings.TrimSpace(strings.TrimPrefix(line, "Now:"))
-		case forecast == "" && strings.HasPrefix(lower, "forecast:"):
-			forecast = strings.TrimSpace(strings.TrimPrefix(line, "Forecast:"))
+		label, value := splitFallbackLabel(line)
+		switch strings.ToLower(label) {
+		case "now", "current", "current conditions", "conditions":
+			if now == "" {
+				now = value
+			}
+		case "forecast", "today", "today's forecast":
+			if forecast == "" {
+				forecast = value
+			}
 		}
 	}
 	if now == "" {
@@ -189,6 +196,14 @@ func weatherAnswerLead(lines []string) string {
 		return "Right now: " + trimTrailingSentencePunctuation(now) + "; today: " + trimTrailingSentencePunctuation(forecast) + "."
 	}
 	return "Right now: " + trimTrailingSentencePunctuation(now) + "."
+}
+
+func splitFallbackLabel(line string) (string, string) {
+	label, value, ok := strings.Cut(strings.TrimSpace(line), ":")
+	if !ok {
+		return "", ""
+	}
+	return strings.TrimSpace(label), strings.TrimSpace(value)
 }
 
 func trimTrailingSentencePunctuation(s string) string {
@@ -332,7 +347,9 @@ func prioritizeCurrentWeatherLines(lines []string) []string {
 	out := make([]string, 0, len(lines))
 	used := make([]bool, len(lines))
 	for i, line := range lines {
-		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "now:") {
+		label, _ := splitFallbackLabel(line)
+		switch strings.ToLower(label) {
+		case "now", "current", "current conditions", "conditions":
 			out = append(out, line)
 			used[i] = true
 		}
@@ -367,6 +384,14 @@ func isFallbackSecondaryContextLine(line string) bool {
 func isSearchResultHeading(line string) bool {
 	lower := strings.ToLower(strings.TrimSpace(line))
 	return strings.HasPrefix(lower, "search results for ") || lower == "search results:" || strings.HasPrefix(lower, "web results for ")
+}
+
+func isGenericSearchFallbackIntro(line string) bool {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	return strings.HasPrefix(lower, "here are the search results") ||
+		strings.HasPrefix(lower, "here are some search results") ||
+		strings.HasPrefix(lower, "i found these search results") ||
+		strings.HasPrefix(lower, "these search results")
 }
 
 func isFallbackSectionLabel(line string) bool {
