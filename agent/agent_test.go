@@ -992,7 +992,7 @@ Sources:
 2. Chip supplier expands AI capacity — Demand for AI chips is rising. (https://example.com/ai-chips)`}
 	got := completeToolAnswer("Search results for Top results:\n1. AI lab releases new model", rag)
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "Top results:") || strings.Contains(firstLine, "Search results") {
+	if !strings.Contains(firstLine, "Latest source-backed items:") || strings.Contains(firstLine, "Search results") || strings.Contains(firstLine, "Top results:") {
 		t.Fatalf("expected search-result lead to be repaired into concise synthesis, got %q", got)
 	}
 	if !strings.Contains(got, "Unavailable right now: news.") {
@@ -1085,7 +1085,7 @@ Sources:
 		t.Fatalf("expected web fallback to read like synthesized bullets, not numbered search results, got %q", got)
 	}
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "Top results:") || strings.Contains(firstLine, "Search results") {
+	if !strings.Contains(firstLine, "Latest source-backed items:") || strings.Contains(firstLine, "Search results") || strings.Contains(firstLine, "Top results:") {
 		t.Fatalf("expected web fallback to open with concise synthesis, got %q", got)
 	}
 	if !strings.Contains(got, "- AI lab releases new model") || !strings.Contains(got, "Unavailable right now: news.") {
@@ -1137,7 +1137,7 @@ Sources:
 2. Chip supplier expands AI capacity — Demand for AI chips is rising. (https://example.com/ai-chips)`}
 	got := completeToolAnswer("Here are the search results I found:\n1. AI lab releases new model\n2. Chip supplier expands AI capacity", rag)
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "Top results:") || strings.Contains(firstLine, "Here are") {
+	if !strings.Contains(firstLine, "Latest source-backed items:") || strings.Contains(firstLine, "Here are") {
 		t.Fatalf("expected generic search-result intro to be repaired into concise synthesis, got %q", got)
 	}
 	if strings.Contains(got, "- 1.") || !strings.Contains(got, "Unavailable right now: news.") {
@@ -1156,7 +1156,7 @@ Sources:
 4. Chip supplier expands AI capacity — Demand for AI chips is rising this week. (https://example.com/ai-chips)`}
 	got := completeToolAnswer("Here are the search results I found.", rag)
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "Top results: AI lab releases new model; Chip supplier expands AI capacity.") {
+	if !strings.Contains(firstLine, "Latest source-backed items: AI lab releases new model; Chip supplier expands AI capacity.") {
 		t.Fatalf("expected snippet-backed current news to lead over generic web pages, got %q", got)
 	}
 	if strings.Contains(firstLine, "Artificial Intelligence News") || strings.Contains(firstLine, "AI archive") {
@@ -1282,5 +1282,41 @@ func TestCompleteNativeToolAnswerKeepsProgressWithoutTools(t *testing.T) {
 	got := completeNativeToolAnswer(want, nil)
 	if got != want {
 		t.Fatalf("expected no override without native tool use, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerRepairsDeployedWeatherObservedLead(t *testing.T) {
+	rag := []string{`### weather_forecast
+Current request date: Friday, 3 July 2026 (2026-07-03, UTC).
+Weather for New York today.
+Current conditions: 30°C, sunny.
+Today: high 33°C, low 24°C.
+Provider timestamp: 2026-07-03 12:00 UTC.
+Freshness/source: Google Weather; generated at 2026-07-03 12:00 UTC.`}
+	got := completeToolAnswer("- Current conditions observed via Google Weather at 2026-07-03 12:00 UTC.\n- Provider timestamp: 2026-07-03 12:00 UTC.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Right now: 30°C, sunny; today: high 33°C, low 24°C.") {
+		t.Fatalf("expected deployed observed-conditions lead to be repaired into weather answer, got %q", got)
+	}
+	if strings.Contains(firstLine, "Current conditions observed") || strings.Contains(firstLine, "Provider timestamp:") {
+		t.Fatalf("expected operational observation context below the direct answer, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerAvoidsGenericTopResultsNewsLead(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Search results for "AI news":
+Sources:
+1. Artificial Intelligence News — Latest news and headlines about artificial intelligence. (https://example.com/ai-category)
+2. AI lab releases new model — Company announced a new assistant release today. (https://example.com/ai-model)
+3. Chip supplier expands AI capacity — Demand for AI chips is rising this week. (https://example.com/ai-chips)`}
+	got := completeToolAnswer("Here are the search results I found.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Latest source-backed items: AI lab releases new model; Chip supplier expands AI capacity.") {
+		t.Fatalf("expected concise source-backed news lead, got %q", got)
+	}
+	if strings.Contains(firstLine, "Top results") || strings.Contains(firstLine, "Artificial Intelligence News") {
+		t.Fatalf("expected no generic top-results/category-page lead, got %q", got)
 	}
 }

@@ -84,6 +84,7 @@ func hasOperationalFallbackLead(answer string) bool {
 		}
 		operationalPrefixes := []string{
 			"observation:",
+			"current conditions observed",
 			"provider timestamp:",
 			"provider:",
 			"current request date:",
@@ -221,7 +222,7 @@ func webSearchAnswerLead(lines []string) string {
 	if first == "" || second == "" {
 		return ""
 	}
-	return "Top results: " + first + "; " + second + "."
+	return "Latest source-backed items: " + first + "; " + second + "."
 }
 
 func webSearchStoryTitle(line string) string {
