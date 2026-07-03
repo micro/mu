@@ -89,11 +89,15 @@ func splitRAGPart(part string) (string, string) {
 }
 
 func formatFallbackSection(title, body string) string {
-	if canonicalToolTitle(title) == "web_search" {
+	canonical := canonicalToolTitle(title)
+	if canonical == "web_search" {
 		return formatWebSearchFallbackSection(body)
 	}
 
 	lines := meaningfulLines(body, 6)
+	if canonical == "weather" {
+		lines = prioritizeCurrentWeatherLines(lines)
+	}
 	if len(lines) == 0 {
 		return ""
 	}
@@ -190,7 +194,7 @@ func meaningfulLines(body string, limit int) []string {
 			continue
 		}
 		line = strings.TrimLeft(line, "-• ")
-		if line == "" || isFallbackMetadataLine(line) || isUnavailableLine(line) || isSearchResultHeading(line) {
+		if line == "" || isFallbackMetadataLine(line) || isUnavailableLine(line) || isSearchResultHeading(line) || isFallbackSectionLabel(line) {
 			continue
 		}
 		line = cleanFallbackLine(line)
@@ -221,6 +225,26 @@ func cleanFallbackLine(line string) string {
 	return strings.TrimSpace(fallbackOrdinalPrefix.ReplaceAllString(line, ""))
 }
 
+func prioritizeCurrentWeatherLines(lines []string) []string {
+	if len(lines) < 2 {
+		return lines
+	}
+	out := make([]string, 0, len(lines))
+	used := make([]bool, len(lines))
+	for i, line := range lines {
+		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "now:") {
+			out = append(out, line)
+			used[i] = true
+		}
+	}
+	for i, line := range lines {
+		if !used[i] {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
 func isFallbackSecondaryContextLine(line string) bool {
 	lower := strings.ToLower(strings.TrimSpace(line))
 	prefixes := []string{
@@ -245,6 +269,21 @@ func isSearchResultHeading(line string) bool {
 	return strings.HasPrefix(lower, "search results for ") || lower == "search results:" || strings.HasPrefix(lower, "web results for ")
 }
 
+func isFallbackSectionLabel(line string) bool {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	labels := []string{
+		"live crypto prices:",
+		"latest news:",
+		"news results:",
+	}
+	for _, label := range labels {
+		if lower == label {
+			return true
+		}
+	}
+	return false
+}
+
 func isFallbackMetadataLine(line string) bool {
 	lower := strings.ToLower(strings.TrimSpace(line))
 	prefixes := []string{
@@ -252,6 +291,7 @@ func isFallbackMetadataLine(line string) bool {
 		"confidence:",
 		"sources:",
 		"current date context:",
+		"current request date:",
 		"grounding rule:",
 	}
 	for _, prefix := range prefixes {
