@@ -343,13 +343,15 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		sessionID = r.URL.Query().Get("continue")
 	}
 	cfg := app.ChatConfig{Guest: guest}
+	activeRoot := "" // stable id of the reopened conversation, for rail highlight
 	if sessionID != "" && !guest {
-		turns := SessionTurns(sessionID)
+		// Resolve the (possibly stale) id to the whole chain and its current head
+		// so follow-ups continue this conversation instead of branching it.
+		turns := sessionChain(accountID, sessionID)
 		if len(turns) > 0 && turns[len(turns)-1].AccountID == accountID {
-			cfg.ContextID = sessionID
+			cfg.ContextID = turns[len(turns)-1].ID // seed to the true head
 			cfg.InitialConvHTML = renderSessionTurns(turns)
-		} else {
-			sessionID = "" // not found / not owned
+			activeRoot = turns[0].ID
 		}
 	}
 
@@ -361,7 +363,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 
 	rail := ""
 	if !guest {
-		rail = `<div class="chat-side">` + renderAgentsPanel() + renderSessionsRail(accountID, sessionID) + `</div>`
+		rail = `<div class="chat-side">` + renderAgentsPanel() + renderSessionsRail(accountID, activeRoot) + `</div>`
 	}
 
 	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
@@ -396,7 +398,7 @@ func renderSessionsRail(accountID, currentID string) string {
 	}
 	for _, s := range sessions {
 		cls := "chat-sess"
-		if s.HeadID == currentID {
+		if s.RootID == currentID {
 			cls += " active"
 		}
 		title := s.Title
@@ -406,7 +408,7 @@ func renderSessionsRail(accountID, currentID string) string {
 		if len(title) > 60 {
 			title = title[:60] + "…"
 		}
-		b.WriteString(`<a href="/agent?session=` + s.HeadID + `" class="` + cls + `">` + htmlEsc(title) + `</a>`)
+		b.WriteString(`<a href="/agent?session=` + s.RootID + `" class="` + cls + `">` + htmlEsc(title) + `</a>`)
 	}
 	b.WriteString(`</div></aside>`)
 	return b.String()

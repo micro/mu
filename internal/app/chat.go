@@ -109,16 +109,21 @@ var hintDiv=document.getElementById('mu-chat-hint');
 if(!form)return;
 var CKEY='mu_chat_conv';
 var HKEY='mu_chat_hist';
+var TKEY='mu_chat_ctx';
 var history=[];
 
 // A reopened server session is authoritative; otherwise restore the guest's
-// in-tab conversation so a reload doesn't lose it.
+// in-tab conversation so a reload doesn't lose it — including the server thread
+// id (context_id), so a follow-up after a reload continues the same
+// conversation instead of starting a new one.
 if(!SESSION){
   try{
     var savedConv=sessionStorage.getItem(CKEY);
     if(savedConv)conv.innerHTML=savedConv;
     var savedHist=sessionStorage.getItem(HKEY);
     if(savedHist)history=JSON.parse(savedHist)||[];
+    var savedCtx=sessionStorage.getItem(TKEY);
+    if(savedCtx)contextId=savedCtx;
   }catch(e){}
 }
 
@@ -143,6 +148,7 @@ function save(){
   try{
     sessionStorage.setItem(CKEY,conv.innerHTML);
     sessionStorage.setItem(HKEY,JSON.stringify(history.slice(-6)));
+    sessionStorage.setItem(TKEY,contextId||'');
   }catch(e){}
 }
 
@@ -199,8 +205,10 @@ function ask(q){
           try{
             var ev=JSON.parse(line.slice(6));
             if(ev.type==='flow_id'){
-              // Continue this server session on the next message.
-              if(ev.flow_id)contextId=ev.flow_id;
+              // Continue this server session on the next message. Persist it now
+              // (it arrives before the answer) so a reload mid-stream still
+              // threads the follow-up onto this same conversation.
+              if(ev.flow_id){contextId=ev.flow_id;save();}
             }else if(ev.type==='thinking'){
               startWork(ev.message);
             }else if(ev.type==='stream_start'){
@@ -244,7 +252,7 @@ showSuggestions();
 // Start a fresh session (clears the log + thread id).
 window.muChatNew=function(){
   conv.innerHTML='';history=[];contextId='';
-  try{sessionStorage.removeItem(CKEY);sessionStorage.removeItem(HKEY);}catch(e){}
+  try{sessionStorage.removeItem(CKEY);sessionStorage.removeItem(HKEY);sessionStorage.removeItem(TKEY);}catch(e){}
   showSuggestions();input.focus();
 };
 // Exposed so server-rendered prefill (?q= / ?prompt=) can auto-submit.

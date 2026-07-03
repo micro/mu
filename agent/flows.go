@@ -158,10 +158,11 @@ func newFlowID() string {
 	return uuid.New().String()
 }
 
-// Session is one chat conversation — a chain of turns linked by ParentID,
-// identified by its most recent turn (HeadID).
+// Session is one chat conversation — a chain of turns linked by ParentID.
+// RootID (the first turn) is its stable identity; HeadID is the latest turn.
 type Session struct {
-	HeadID    string
+	RootID    string // stable id of the conversation's first turn
+	HeadID    string // latest turn in the chain
 	Title     string // the conversation's first prompt
 	UpdatedAt time.Time
 	Turns     int
@@ -186,6 +187,7 @@ func ListSessions(accountID string) []Session {
 			continue // not a leaf — a later turn continues it
 		}
 		title := f.Prompt
+		rootID := f.ID
 		turns := 0
 		seen := map[string]bool{}
 		for id := f.ID; id != "" && !seen[id]; {
@@ -196,11 +198,59 @@ func ListSessions(accountID string) []Session {
 			}
 			turns++
 			title = cur.Prompt // ends at the root's prompt
+			rootID = cur.ID    // ends at the root's id
 			id = cur.ParentID
 		}
-		sessions = append(sessions, Session{HeadID: f.ID, Title: title, UpdatedAt: f.CreatedAt, Turns: turns})
+		sessions = append(sessions, Session{RootID: rootID, HeadID: f.ID, Title: title, UpdatedAt: f.CreatedAt, Turns: turns})
 	}
 	return sessions
+}
+
+// sessionChain returns a conversation's turns (oldest first) given ANY flow id
+// in the chain. It walks up to the root, then forward to the newest leaf, so a
+// stale mid-chain id (e.g. an older head in a bookmarked URL) still resolves the
+// whole conversation and its current head.
+func sessionChain(accountID, anyID string) []*Flow {
+	// Walk up to the root.
+	seen := map[string]bool{}
+	root := getFlow(anyID)
+	for root != nil && root.ParentID != "" && !seen[root.ID] {
+		seen[root.ID] = true
+		p := getFlow(root.ParentID)
+		if p == nil {
+			break
+		}
+		root = p
+	}
+	if root == nil {
+		return nil
+	}
+	// Index children so we can walk forward to the newest leaf.
+	flows := ListFlows(accountID) // newest first
+	childrenOf := map[string][]*Flow{}
+	for _, f := range flows {
+		if f.ParentID != "" {
+			childrenOf[f.ParentID] = append(childrenOf[f.ParentID], f)
+		}
+	}
+	var chain []*Flow
+	visited := map[string]bool{}
+	for cur := root; cur != nil && !visited[cur.ID]; {
+		visited[cur.ID] = true
+		chain = append(chain, cur)
+		kids := childrenOf[cur.ID]
+		if len(kids) == 0 {
+			break
+		}
+		next := kids[0] // newest child (list is newest-first)
+		for _, k := range kids {
+			if k.CreatedAt.After(next.CreatedAt) {
+				next = k
+			}
+		}
+		cur = next
+	}
+	return chain
 }
 
 // SessionTurns returns a conversation's turns (oldest first) given any flow ID
