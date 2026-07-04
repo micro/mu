@@ -516,6 +516,58 @@ func TestMCPHandler_CustomHandlerError(t *testing.T) {
 	}
 }
 
+func TestMCPHandler_AuthHandlerRequiresSession(t *testing.T) {
+	origTools := make([]Tool, len(tools))
+	copy(origTools, tools)
+	called := false
+	RegisterToolWithAuth(Tool{
+		Name:        "test_auth_required",
+		Description: "Auth handler session guard test",
+	}, func(args map[string]any, accountID string) (string, error) {
+		called = true
+		return `{"accountID":"` + accountID + `"}`, nil
+	})
+	defer func() { tools = origTools }()
+
+	body := `{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"test_auth_required","arguments":{}}}`
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	MCPHandler(w, req)
+
+	if called {
+		t.Fatal("auth-bound handler should not be invoked without a valid session")
+	}
+
+	var resp jsonrpcResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Error != nil {
+		t.Fatalf("Expected tool error result, not JSON-RPC error: %s", resp.Error.Message)
+	}
+	result, ok := resp.Result.(map[string]any)
+	if !ok {
+		t.Fatal("Expected result object")
+	}
+	isError, _ := result["isError"].(bool)
+	if !isError {
+		t.Fatal("Expected isError=true for unauthenticated auth-bound tool")
+	}
+	content, ok := result["content"].([]any)
+	if !ok || len(content) == 0 {
+		t.Fatal("Expected content array")
+	}
+	first, ok := content[0].(map[string]any)
+	if !ok {
+		t.Fatal("Expected content item to be an object")
+	}
+	text, _ := first["text"].(string)
+	if !strings.Contains(strings.ToLower(text), "authentication required") {
+		t.Errorf("Expected authentication-required message, got: %s", text)
+	}
+}
+
 func TestMCPHandler_MeteredToolsHaveWalletOp(t *testing.T) {
 	// Verify that metered tools have WalletOp set
 	expected := map[string]string{
