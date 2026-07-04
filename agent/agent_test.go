@@ -964,6 +964,29 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerDatesTodayNewsWebFallback(t *testing.T) {
+	rag := []string{
+		"### news_search\n" + unavailableToolMessage("news_search"),
+		`### web_search
+Current request date: Saturday, 4 July 2026 (2026-07-04, UTC).
+Search results for "AI news":
+Grounding rule: only use source-backed snippets.
+Sources:
+1. Artificial Intelligence News — Latest news and headlines about artificial intelligence. (https://example.com/ai-directory)
+2. AI lab releases new model — Company announced a new assistant release today. (https://example.com/ai-model)
+3. Chip supplier expands AI capacity — Demand for AI chips is rising this week. (https://example.com/ai-chips)`,
+	}
+
+	got := completeToolAnswer("Here are the search results I found.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Latest source-backed items for Saturday, 4 July 2026 (2026-07-04): AI lab releases new model; Chip supplier expands AI capacity.") {
+		t.Fatalf("expected date-specific source-backed news lead, got %q", got)
+	}
+	if strings.Contains(firstLine, "Artificial Intelligence News") || strings.Contains(got, "Current request date:") {
+		t.Fatalf("expected generic directory and raw request-date metadata hidden from the lead, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerRepairsOperationalWeatherLead(t *testing.T) {
 	rag := []string{`### weather_forecast
 Current request date: Friday, 3 July 2026 (2026-07-03, UTC).
