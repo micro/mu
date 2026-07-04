@@ -144,17 +144,17 @@ type mcpContent struct {
 
 // Tool defines an MCP tool with its HTTP mapping
 type Tool struct {
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	Title       string      `json:"title,omitempty"` // display title for the visual card
-	Icon        string      `json:"icon,omitempty"`
-	Method      string      `json:"method,omitempty"`
-	Path        string      `json:"path,omitempty"`
-	Params      []ToolParam `json:"params,omitempty"`
-	WalletOp    string      `json:"walletOp,omitempty"`                          // Wallet operation for credit gating (empty = included)
-	Handle      func(map[string]any) (string, error)            `json:"-"` // Optional direct handler (bypasses HTTP dispatch)
-	HandleAuth  func(map[string]any, string) (string, error)    `json:"-"` // Like Handle but receives the account ID
-	Card        func() string                                   `json:"-"` // Optional visual card body, rendered from live data
+	Name        string                                       `json:"name"`
+	Description string                                       `json:"description"`
+	Title       string                                       `json:"title,omitempty"` // display title for the visual card
+	Icon        string                                       `json:"icon,omitempty"`
+	Method      string                                       `json:"method,omitempty"`
+	Path        string                                       `json:"path,omitempty"`
+	Params      []ToolParam                                  `json:"params,omitempty"`
+	WalletOp    string                                       `json:"walletOp,omitempty"` // Wallet operation for credit gating (empty = included)
+	Handle      func(map[string]any) (string, error)         `json:"-"`                  // Optional direct handler (bypasses HTTP dispatch)
+	HandleAuth  func(map[string]any, string) (string, error) `json:"-"`                  // Like Handle but receives the account ID
+	Card        func() string                                `json:"-"`                  // Optional visual card body, rendered from live data
 }
 
 // QuotaCheck is called before executing a metered tool.
@@ -600,7 +600,6 @@ var tools = []Tool{
 	},
 }
 
-
 // ExecuteToolAs calls a tool on behalf of a user account (no HTTP request needed).
 // Creates a temporary session for auth. Used by background agents.
 func ExecuteToolAs(accountID, name string, args map[string]any) (string, bool, error) {
@@ -631,12 +630,14 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 	}
 
 	if tool.HandleAuth != nil {
-		// Extract account ID from the request session
-		accountID := ""
-		if _, acc := auth.TrySession(r); acc != nil {
-			accountID = acc.ID
+		// Auth-bound tools must never run without a server-validated account
+		// binding. Optional auth helpers intentionally return nil for guests,
+		// so use the required session path before invoking the handler.
+		_, acc, err := auth.RequireSession(r)
+		if err != nil {
+			return "Authentication required", true, err
 		}
-		text, err := tool.HandleAuth(args, accountID)
+		text, err := tool.HandleAuth(args, acc.ID)
 		return text, err != nil, err
 	}
 
