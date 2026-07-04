@@ -84,6 +84,8 @@ func hasOperationalFallbackLead(answer string) bool {
 		}
 		operationalPrefixes := []string{
 			"observation:",
+			"observed at ",
+			"observation time:",
 			"current conditions observed",
 			"provider timestamp:",
 			"provider:",
@@ -391,7 +393,7 @@ func isFallbackSecondaryContextLine(line string) bool {
 
 func isSearchResultHeading(line string) bool {
 	lower := strings.ToLower(strings.TrimSpace(line))
-	return strings.HasPrefix(lower, "search results for ") || lower == "search results:" || strings.HasPrefix(lower, "web results for ")
+	return strings.HasPrefix(lower, "search results for ") || lower == "search results:" || strings.HasPrefix(lower, "web results for ") || strings.HasPrefix(lower, "top results")
 }
 
 func isGenericSearchFallbackIntro(line string) bool {
@@ -489,6 +491,9 @@ func isFallbackMetadataLine(line string) bool {
 		"provider timestamp:",
 	}
 	if strings.HasPrefix(lower, "observation:") && !strings.Contains(lower, "°") {
+		return true
+	}
+	if strings.HasPrefix(lower, "observed at ") || strings.HasPrefix(lower, "observation time:") || strings.HasPrefix(lower, "current conditions observed") {
 		return true
 	}
 	if strings.HasPrefix(lower, "provider:") || strings.HasPrefix(lower, "provider timestamp:") {
