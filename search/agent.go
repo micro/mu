@@ -50,6 +50,9 @@ func formatWebSearchResults(query string, results []BraveResult) string {
 			desc = desc[:220] + "…"
 		}
 		title := strings.TrimSpace(r.Title)
+		if isNewsLikeWebQuery(query) && !isArticleLevelNewsResult(r) && isGenericNewsResult(r) {
+			title = limitedEvidenceNewsTitle(r)
+		}
 		if title == "" {
 			title = sourceHost(r.URL)
 		}
@@ -141,6 +144,53 @@ func isArticleLevelNewsResult(r BraveResult) bool {
 		}
 	}
 	return storyWords >= 3 || len(segments) >= 3
+}
+
+func isGenericNewsResult(r BraveResult) bool {
+	title := strings.TrimSpace(strings.ToLower(r.Title))
+	if title == "" {
+		return true
+	}
+	genericPhrases := []string{
+		"artificial intelligence news",
+		"ai news",
+		"ai (artificial intelligence)",
+		"technology news",
+		"tech news",
+		"updates, products and reviews",
+	}
+	for _, phrase := range genericPhrases {
+		if strings.Contains(title, phrase) {
+			return true
+		}
+	}
+	if !strings.Contains(title, " ") && !strings.Contains(title, "-") && !strings.Contains(title, ":") {
+		return true
+	}
+	u, err := url.Parse(r.URL)
+	if err != nil {
+		return false
+	}
+	path := strings.Trim(strings.ToLower(u.EscapedPath()), "/")
+	if path == "" {
+		return true
+	}
+	segments := strings.Split(path, "/")
+	last := segments[len(segments)-1]
+	genericPath := map[string]struct{}{
+		"ai": {}, "artificial-intelligence": {}, "artificial_intelligence": {},
+		"news": {}, "tech": {}, "technology": {}, "topics": {}, "topic": {},
+	}
+	_, ok := genericPath[last]
+	return ok && len(segments) <= 2
+}
+
+func limitedEvidenceNewsTitle(r BraveResult) string {
+	host := sourceHost(r.URL)
+	if host == "" {
+		host = "this source"
+	}
+	return "Limited evidence from " + host
 }
 
 func containsDigit(s string) bool {
