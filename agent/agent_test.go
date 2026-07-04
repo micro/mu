@@ -1357,3 +1357,39 @@ Sources:
 		t.Fatalf("expected no generic top-results/category-page lead, got %q", got)
 	}
 }
+
+func TestCompleteToolAnswerRepairsObservedAtWeatherLead(t *testing.T) {
+	rag := []string{`### weather_forecast
+Current request date: Friday, 3 July 2026 (2026-07-03, UTC).
+Weather for New York today.
+Current conditions: 30°C, sunny.
+Today: high 33°C, low 24°C.
+Observed at 2026-07-03 12:00 UTC via Google Weather.
+Freshness/source: Google Weather; generated at 2026-07-03 12:00 UTC.`}
+	got := completeToolAnswer("Observed at 2026-07-03 12:00 UTC via Google Weather. Forecast metadata follows.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Right now: 30°C, sunny; today: high 33°C, low 24°C.") {
+		t.Fatalf("expected observed-at weather lead to be repaired into current conditions, got %q", got)
+	}
+	if strings.Contains(firstLine, "Observed at") || strings.Contains(firstLine, "Google Weather") {
+		t.Fatalf("expected observation metadata below the answer lead, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerRepairsTopResultsLead(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Search results for "AI news":
+Sources:
+1. Artificial Intelligence News — Latest news and headlines about artificial intelligence. (https://example.com/ai-category)
+2. AI lab releases new model — Company announced a new assistant release today. (https://example.com/ai-model)
+3. Chip supplier expands AI capacity — Demand for AI chips is rising this week. (https://example.com/ai-chips)`}
+	got := completeToolAnswer("Top results:\n1. Artificial Intelligence News\n2. AI lab releases new model", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Latest source-backed items: AI lab releases new model; Chip supplier expands AI capacity.") {
+		t.Fatalf("expected top-results lead to be repaired into source-backed stories, got %q", got)
+	}
+	if strings.Contains(firstLine, "Top results") || strings.Contains(firstLine, "Artificial Intelligence News") {
+		t.Fatalf("expected generic top-results/category-page lead to move below the direct answer, got %q", got)
+	}
+}
