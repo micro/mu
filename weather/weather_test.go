@@ -199,6 +199,16 @@ func TestFormatForecastTextAnchorsDatesToRealCalendarRows(t *testing.T) {
 	}
 
 	got := formatForecastText(wf, time.Date(2026, time.June, 30, 9, 0, 0, 0, time.UTC))
+	firstLine, rest, _ := strings.Cut(got, "\n")
+	if firstLine != "Weather for London." {
+		t.Fatalf("formatForecastText should start with the requested place, got first line %q in:\n%s", firstLine, got)
+	}
+	if !strings.HasPrefix(rest, "Now: 18°C") {
+		t.Fatalf("formatForecastText should put current conditions before metadata, got:\n%s", got)
+	}
+	if strings.Index(got, "Dated daily forecast (provider timestamps):") < strings.Index(got, "Freshness/source:") {
+		t.Fatalf("formatForecastText should keep provider forecast context below answer-first lines, got:\n%s", got)
+	}
 	for _, want := range []string{
 		"Current request date: Tuesday, 30 June 2026 (2026-06-30, UTC).",
 		"Calendar rule: anchor relative words like today/tomorrow to the request date above",
