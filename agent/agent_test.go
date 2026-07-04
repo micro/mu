@@ -1268,6 +1268,23 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerRepairsLookUpProgressNarration(t *testing.T) {
+	rag := []string{`### web_search
+Search results for "AI news":
+Sources:
+1. AI lab releases new model — Company announced a new assistant release today. (https://example.com/ai-model)
+2. Chip supplier expands AI capacity — Demand for AI chips is rising this week. (https://example.com/ai-chips)`}
+
+	got := completeToolAnswer("I'll look up the latest AI news now.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if strings.Contains(strings.ToLower(got), "look up") {
+		t.Fatalf("expected lookup progress narration to be replaced, got %q", got)
+	}
+	if !strings.Contains(firstLine, "Latest source-backed items: AI lab releases new model; Chip supplier expands AI capacity.") {
+		t.Fatalf("expected source-backed web fallback answer, got %q", got)
+	}
+}
+
 func TestFormatToolResultNewsHeadlinesStaysReadable(t *testing.T) {
 	result := "Latest headlines — 1 across 1 topics.\n\n[tech] AI lab releases a new model — Useful summary (source: Example, url: https://example.com/ai)"
 	got := formatToolResult("news_headlines", result, nil)
