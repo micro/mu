@@ -66,6 +66,7 @@ func groundNewsWebResults(query string, results []BraveResult) []BraveResult {
 	if len(terms) == 0 {
 		return results
 	}
+	storyLike := make([]BraveResult, 0, len(results))
 	filtered := make([]BraveResult, 0, len(results))
 	for _, r := range results {
 		desc := strings.TrimSpace(r.Description)
@@ -85,12 +86,70 @@ func groundNewsWebResults(query string, results []BraveResult) []BraveResult {
 		}
 		if matchedTopic {
 			filtered = append(filtered, r)
+			if isArticleLevelNewsResult(r) {
+				storyLike = append(storyLike, r)
+			}
 		}
+	}
+	if len(storyLike) > 0 {
+		return storyLike
 	}
 	if len(filtered) == 0 {
 		return results
 	}
 	return filtered
+}
+
+func isArticleLevelNewsResult(r BraveResult) bool {
+	if strings.TrimSpace(r.URL) == "" {
+		return false
+	}
+	u, err := url.Parse(r.URL)
+	if err != nil {
+		return false
+	}
+	path := strings.Trim(strings.ToLower(u.EscapedPath()), "/")
+	if path == "" {
+		return false
+	}
+	segments := strings.Split(path, "/")
+	last := strings.TrimSuffix(segments[len(segments)-1], ".html")
+	last = strings.TrimSuffix(last, ".amp")
+	genericLast := map[string]struct{}{
+		"ai": {}, "artificial-intelligence": {}, "artificial_intelligence": {},
+		"news": {}, "tech": {}, "technology": {}, "updates": {},
+		"category": {}, "topics": {}, "topic": {}, "reviews": {},
+	}
+	if _, ok := genericLast[last]; ok && len(segments) <= 2 {
+		return false
+	}
+	if strings.Contains(strings.ToLower(r.Title), "|") {
+		left := strings.TrimSpace(strings.Split(strings.ToLower(r.Title), "|")[0])
+		if _, ok := genericLast[strings.ReplaceAll(left, " ", "-")]; ok {
+			return false
+		}
+	}
+	for _, segment := range segments {
+		if len(segment) >= 4 && containsDigit(segment) {
+			return true
+		}
+	}
+	storyWords := 0
+	for _, field := range strings.FieldsFunc(last, func(r rune) bool { return r == '-' || r == '_' || r == '+' }) {
+		if len(field) > 2 {
+			storyWords++
+		}
+	}
+	return storyWords >= 3 || len(segments) >= 3
+}
+
+func containsDigit(s string) bool {
+	for _, r := range s {
+		if unicode.IsDigit(r) {
+			return true
+		}
+	}
+	return false
 }
 
 func isNewsLikeWebQuery(query string) bool {

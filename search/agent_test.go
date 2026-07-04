@@ -61,3 +61,18 @@ func TestFormatWebSearchResultsGroundsNewsFallbackInSnippets(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatWebSearchResultsPrefersArticleLevelNewsSources(t *testing.T) {
+	got := formatWebSearchResults("today's AI news", []BraveResult{
+		{Title: "The Information", Description: "Reporting on AI startup funding and model launches this week.", URL: "https://www.theinformation.com/"},
+		{Title: "AI News, Updates, Products and Reviews | Yahoo Tech", Description: "Meta is preparing new AI glasses as rivals race to ship wearable assistants.", URL: "https://www.yahoo.com/tech/ai/"},
+		{Title: "Meta prepares AI glasses for developers", Description: "Meta plans to show AI glasses to developers today, according to people familiar with the launch.", URL: "https://example.com/2026/07/04/meta-ai-glasses-developers"},
+	})
+
+	if strings.Contains(got, "The Information") || strings.Contains(got, "Yahoo Tech") {
+		t.Fatalf("expected generic/root AI-news sources to be dropped when article-level stories exist:\n%s", got)
+	}
+	if !strings.Contains(got, "Meta prepares AI glasses for developers") {
+		t.Fatalf("expected article-level AI-news source to remain:\n%s", got)
+	}
+}
