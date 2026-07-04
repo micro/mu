@@ -51,13 +51,14 @@ func formatForecastText(wf *WeatherForecast, now time.Time) string {
 		}
 		fmt.Fprintf(&sb, "Now: %s.\n", strings.Join(details, ", "))
 	}
-	if len(wf.DailyItems) > 0 {
-		d := wf.DailyItems[0]
+	if d, ok := dailyItemForDate(wf.DailyItems, now); ok {
 		rain := ""
 		if d.WillRain || d.RainMM > 0 {
 			rain = fmt.Sprintf(", rain %.0fmm", d.RainMM)
 		}
 		fmt.Fprintf(&sb, "Today: %s: %.0f–%.0f°C, %s%s.\n", d.Date.Format("Monday, 2 January 2006 (2006-01-02)"), d.MinTempC, d.MaxTempC, d.Description, rain)
+	} else if len(wf.DailyItems) > 0 {
+		fmt.Fprintf(&sb, "Today: forecast unavailable for the request date %s.\n", now.Format("Monday, 2 January 2006 (2006-01-02)"))
 	}
 	source := strings.TrimSpace(wf.Source)
 	if source == "" {
@@ -93,6 +94,16 @@ func formatForecastText(wf *WeatherForecast, now time.Time) string {
 		return weatherUnavailableMessage
 	}
 	return sb.String()
+}
+
+func dailyItemForDate(items []DailyItem, date time.Time) (DailyItem, bool) {
+	want := date.UTC().Format("2006-01-02")
+	for _, item := range items {
+		if item.Date.UTC().Format("2006-01-02") == want {
+			return item, true
+		}
+	}
+	return DailyItem{}, false
 }
 
 func validCoordinates(lat, lon float64) bool {

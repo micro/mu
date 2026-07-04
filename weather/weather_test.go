@@ -226,6 +226,53 @@ func TestFormatForecastTextAnchorsDatesToRealCalendarRows(t *testing.T) {
 	}
 }
 
+func TestFormatForecastTextUsesRequestDateForTodayLine(t *testing.T) {
+	wf := &WeatherForecast{
+		Location:    "New York",
+		Source:      "Google Weather",
+		GeneratedAt: time.Date(2026, time.July, 4, 10, 0, 0, 0, time.UTC),
+		ObservedAt:  time.Date(2026, time.July, 4, 10, 0, 0, 0, time.UTC),
+		Current: &CurrentConditions{
+			TempC:             27,
+			Description:       "partly cloudy",
+			HumidityAvailable: true,
+			WindKphAvailable:  true,
+		},
+		DailyItems: []DailyItem{
+			{Date: time.Date(2026, time.July, 3, 0, 0, 0, 0, time.UTC), MinTempC: 21, MaxTempC: 29, Description: "older provider row"},
+			{Date: time.Date(2026, time.July, 4, 0, 0, 0, 0, time.UTC), MinTempC: 22, MaxTempC: 31, Description: "request-date sunshine"},
+			{Date: time.Date(2026, time.July, 5, 0, 0, 0, 0, time.UTC), MinTempC: 23, MaxTempC: 30, Description: "tomorrow showers"},
+		},
+	}
+
+	got := formatForecastText(wf, time.Date(2026, time.July, 4, 12, 0, 0, 0, time.UTC))
+	if !strings.Contains(got, "Today: Saturday, 4 July 2026 (2026-07-04): 22–31°C, request-date sunshine.") {
+		t.Fatalf("formatForecastText should anchor Today to the request date, got:\n%s", got)
+	}
+	if strings.Contains(got, "Today: Friday, 3 July 2026") || strings.Contains(got, "Today: older provider row") {
+		t.Fatalf("formatForecastText should not label the first provider row as today when it predates the request, got:\n%s", got)
+	}
+}
+
+func TestFormatForecastTextDisclosesMissingRequestDateForecast(t *testing.T) {
+	wf := &WeatherForecast{
+		Location:    "New York",
+		Source:      "Google Weather",
+		GeneratedAt: time.Date(2026, time.July, 4, 10, 0, 0, 0, time.UTC),
+		DailyItems: []DailyItem{
+			{Date: time.Date(2026, time.July, 3, 0, 0, 0, 0, time.UTC), MinTempC: 21, MaxTempC: 29, Description: "stale row"},
+		},
+	}
+
+	got := formatForecastText(wf, time.Date(2026, time.July, 4, 12, 0, 0, 0, time.UTC))
+	if !strings.Contains(got, "Today: forecast unavailable for the request date Saturday, 4 July 2026 (2026-07-04).") {
+		t.Fatalf("formatForecastText should disclose missing request-date forecast, got:\n%s", got)
+	}
+	if strings.Contains(got, "Today: Friday, 3 July 2026") {
+		t.Fatalf("formatForecastText should not relabel a stale provider row as today, got:\n%s", got)
+	}
+}
+
 func TestFormatForecastTextTreatsMissingCurrentObservationsAsUnavailable(t *testing.T) {
 	wf := &WeatherForecast{
 		Location:   "New York",
