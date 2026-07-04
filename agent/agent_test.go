@@ -1274,6 +1274,25 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerPromotesSnippetStoryFromAINewsCategoryPage(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Current request date: Saturday, 4 July 2026 (2026-07-04, UTC).
+Search results for "AI news":
+Sources:
+1. AI News, Updates, Products and Reviews | Yahoo Tech — Meta announced new AI glasses today with an on-device assistant for live translation. (https://www.yahoo.com/tech/tag/artificial-intelligence/)
+2. Artificial Intelligence News — Latest news and headlines about artificial intelligence. (https://example.com/ai-category)`}
+
+	got := completeToolAnswer("Here are the search results I found.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Meta announced new AI glasses today with an on-device assistant for live translation") {
+		t.Fatalf("expected snippet-supported story lead instead of generic category title, got %q", got)
+	}
+	if strings.Contains(firstLine, "AI News, Updates, Products and Reviews | Yahoo Tech") || strings.Contains(firstLine, "Artificial Intelligence News") {
+		t.Fatalf("expected generic AI category titles to stay out of the answer lead, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerDisclosesLimitedWebEvidence(t *testing.T) {
 	rag := []string{
 		`### web_search

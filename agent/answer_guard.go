@@ -159,6 +159,7 @@ func formatFallbackSection(title, body string) string {
 
 func formatWebSearchFallbackSection(body string) string {
 	lines := meaningfulLines(body, 6)
+	lines = promoteSnippetBackedGenericWebStories(lines)
 	lines = prioritizeSnippetBackedWebLines(lines)
 	lines = filterGenericWebResultLines(lines, 4)
 	if len(lines) == 0 {
@@ -436,6 +437,79 @@ func isGenericSearchFallbackIntro(line string) bool {
 		strings.HasPrefix(lower, "these search results")
 }
 
+func promoteSnippetBackedGenericWebStories(lines []string) []string {
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		out = append(out, snippetBackedGenericWebStoryLine(line))
+	}
+	return out
+}
+
+func hasSnippetBackedWebStory(line string) bool {
+	cleaned := cleanFallbackLine(line)
+	_, snippet, hasSnippet := strings.Cut(cleaned, " — ")
+	if !hasSnippet {
+		_, snippet, hasSnippet = strings.Cut(cleaned, " - ")
+	}
+	return hasSnippet && !isGenericWebSnippet(snippet) && snippetStoryLead(snippet) != ""
+}
+
+func snippetBackedGenericWebStoryLine(line string) string {
+	cleaned := cleanFallbackLine(line)
+	_, snippet, hasSnippet := strings.Cut(cleaned, " — ")
+	if !hasSnippet {
+		_, snippet, hasSnippet = strings.Cut(cleaned, " - ")
+	}
+	if !hasSnippet || !isGenericWebResultLine(line) || isGenericWebSnippet(snippet) {
+		return line
+	}
+	snippet = strings.TrimSpace(strings.TrimSuffix(snippet, " ("+fallbackLineURL(cleaned)+")"))
+	story := snippetStoryLead(snippet)
+	if story == "" {
+		return line
+	}
+	url := fallbackLineURL(cleaned)
+	if url != "" {
+		return story + " — " + strings.TrimSpace(snippet) + " (" + url + ")"
+	}
+	return story + " — " + strings.TrimSpace(snippet)
+}
+
+func snippetStoryLead(snippet string) string {
+	snippet = strings.TrimSpace(strings.TrimSuffix(snippet, "."))
+	if snippet == "" {
+		return ""
+	}
+	if idx := strings.Index(snippet, ". "); idx > 0 {
+		snippet = strings.TrimSpace(snippet[:idx])
+	}
+	if len([]rune(snippet)) > 96 {
+		r := []rune(snippet)
+		snippet = strings.TrimSpace(string(r[:96]))
+	}
+	lower := strings.ToLower(snippet)
+	storyVerbs := []string{"announced", "launch", "launched", "unveiled", "released", "ships", "said", "reports", "raises", "signs", "expands", "debuts", "introduces", "plans", "faces"}
+	for _, verb := range storyVerbs {
+		if strings.Contains(lower, verb) {
+			return snippet
+		}
+	}
+	return ""
+}
+
+func fallbackLineURL(line string) string {
+	start := strings.LastIndex(line, "(")
+	end := strings.LastIndex(line, ")")
+	if start < 0 || end <= start {
+		return ""
+	}
+	url := strings.TrimSpace(line[start+1 : end])
+	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
+		return url
+	}
+	return ""
+}
+
 func prioritizeSnippetBackedWebLines(lines []string) []string {
 	if len(lines) < 2 {
 		return lines
@@ -461,7 +535,7 @@ func filterGenericWebResultLines(lines []string, limit int) []string {
 	}
 	kept := make([]string, 0, len(lines))
 	for _, line := range lines {
-		if !isGenericWebResultLine(line) {
+		if !isGenericWebResultLine(line) || hasSnippetBackedWebStory(line) {
 			kept = append(kept, line)
 		}
 	}
@@ -519,6 +593,25 @@ var (
 	webStoryMonthDatePattern   = regexp.MustCompile(`\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:,\s*20\d{2})?\b`)
 )
 
+func isGenericWebSnippet(snippet string) bool {
+	snippet = strings.ToLower(strings.TrimSpace(snippet))
+	genericSnippetTerms := []string{
+		"articles about",
+		"archive of",
+		"category page",
+		"latest news and headlines",
+		"breaking news, analysis",
+		"coverage of",
+		"company news and announcements",
+	}
+	for _, term := range genericSnippetTerms {
+		if strings.Contains(snippet, term) {
+			return true
+		}
+	}
+	return false
+}
+
 func isGenericWebResultLine(line string) bool {
 	cleaned := strings.ToLower(cleanFallbackLine(line))
 	title, snippet, hasSnippet := strings.Cut(cleaned, " — ")
@@ -554,21 +647,7 @@ func isGenericWebResultLine(line string) bool {
 	if !hasSnippet {
 		return false
 	}
-	genericSnippetTerms := []string{
-		"articles about",
-		"archive of",
-		"category page",
-		"latest news and headlines",
-		"breaking news, analysis",
-		"coverage of",
-		"company news and announcements",
-	}
-	for _, term := range genericSnippetTerms {
-		if strings.Contains(snippet, term) {
-			return true
-		}
-	}
-	return false
+	return isGenericWebSnippet(snippet)
 }
 
 func isFallbackSectionLabel(line string) bool {
