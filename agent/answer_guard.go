@@ -439,20 +439,65 @@ func prioritizeSnippetBackedWebLines(lines []string) []string {
 	if len(lines) < 2 {
 		return lines
 	}
-	var snippetBacked []string
-	var generic []string
+	buckets := make([][]string, 4)
 	for _, line := range lines {
-		if isGenericWebResultLine(line) {
-			generic = append(generic, line)
-			continue
-		}
-		snippetBacked = append(snippetBacked, line)
+		priority := webResultFallbackPriority(line)
+		buckets[priority] = append(buckets[priority], line)
 	}
-	if len(snippetBacked) >= 2 {
-		return append(snippetBacked, generic...)
+	if len(buckets[0])+len(buckets[1]) >= 2 {
+		out := make([]string, 0, len(lines))
+		for _, bucket := range buckets {
+			out = append(out, bucket...)
+		}
+		return out
 	}
 	return lines
 }
+
+func webResultFallbackPriority(line string) int {
+	if isGenericWebResultLine(line) {
+		return 3
+	}
+	if isDatedWebStoryLine(line) {
+		return 0
+	}
+	if hasWebResultSnippet(line) {
+		return 1
+	}
+	return 2
+}
+
+func hasWebResultSnippet(line string) bool {
+	cleaned := cleanFallbackLine(line)
+	if _, _, ok := strings.Cut(cleaned, " — "); ok {
+		return true
+	}
+	_, _, ok := strings.Cut(cleaned, " - ")
+	return ok
+}
+
+func isDatedWebStoryLine(line string) bool {
+	lower := strings.ToLower(cleanFallbackLine(line))
+	dateMarkers := []string{
+		"today",
+		"yesterday",
+		"this morning",
+		"this afternoon",
+		"this evening",
+		"this week",
+	}
+	for _, marker := range dateMarkers {
+		if strings.Contains(lower, marker) {
+			return true
+		}
+	}
+	return webStoryNumericDatePattern.MatchString(lower) || webStoryMonthDatePattern.MatchString(lower)
+}
+
+var (
+	webStoryNumericDatePattern = regexp.MustCompile(`\b(?:20\d{2}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]20\d{2})\b`)
+	webStoryMonthDatePattern   = regexp.MustCompile(`\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:,\s*20\d{2})?\b`)
+)
 
 func isGenericWebResultLine(line string) bool {
 	cleaned := strings.ToLower(cleanFallbackLine(line))
