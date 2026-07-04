@@ -987,6 +987,33 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerFiltersGenericAINewsDirectoryFallbacks(t *testing.T) {
+	rag := []string{
+		"### news_search\n" + unavailableToolMessage("news_search"),
+		`### web_search
+Current request date: Saturday, 4 July 2026 (2026-07-04, UTC).
+Search results for "AI news":
+Grounding rule: only use source-backed snippets.
+Sources:
+1. Artificial Intelligence News — Latest AI news and directory links. (https://artificialintelligence-news.com/)
+2. AI News - Artificial Intelligence — Breaking news, analysis and category coverage. (https://www.yahoo.com/news/tag/artificial-intelligence/)
+3. Artificial Intelligence | TechCrunch — AI startup and product coverage. (https://techcrunch.com/category/artificial-intelligence/)
+4. Model lab ships safer assistant — The company announced a new model release today. (https://example.com/model-release)
+5. Chip supplier expands AI capacity — Demand for inference hardware is rising this week. (https://example.com/chip-capacity)`,
+	}
+
+	got := completeToolAnswer("Here are the search results I found.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Model lab ships safer assistant; Chip supplier expands AI capacity") {
+		t.Fatalf("expected story-like AI news lead after directory filtering, got %q", got)
+	}
+	for _, generic := range []string{"artificialintelligence-news.com", "yahoo.com/news/tag/artificial-intelligence", "techcrunch.com/category/artificial-intelligence", "Artificial Intelligence | TechCrunch"} {
+		if strings.Contains(got, generic) {
+			t.Fatalf("expected generic AI directory result %q to be filtered, got %q", generic, got)
+		}
+	}
+}
+
 func TestCompleteToolAnswerRepairsOperationalWeatherLead(t *testing.T) {
 	rag := []string{`### weather_forecast
 Current request date: Friday, 3 July 2026 (2026-07-03, UTC).

@@ -158,8 +158,9 @@ func formatFallbackSection(title, body string) string {
 }
 
 func formatWebSearchFallbackSection(body string) string {
-	lines := meaningfulLines(body, 4)
+	lines := meaningfulLines(body, 6)
 	lines = prioritizeSnippetBackedWebLines(lines)
+	lines = filterGenericWebResultLines(lines, 4)
 	if len(lines) == 0 {
 		return ""
 	}
@@ -454,6 +455,25 @@ func prioritizeSnippetBackedWebLines(lines []string) []string {
 	return lines
 }
 
+func filterGenericWebResultLines(lines []string, limit int) []string {
+	if len(lines) == 0 {
+		return lines
+	}
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if !isGenericWebResultLine(line) {
+			kept = append(kept, line)
+		}
+	}
+	if len(kept) == 0 {
+		kept = lines
+	}
+	if len(kept) > limit {
+		kept = kept[:limit]
+	}
+	return kept
+}
+
 func webResultFallbackPriority(line string) int {
 	if isGenericWebResultLine(line) {
 		return 3
@@ -504,6 +524,17 @@ func isGenericWebResultLine(line string) bool {
 	title, snippet, hasSnippet := strings.Cut(cleaned, " — ")
 	if !hasSnippet {
 		title, snippet, hasSnippet = strings.Cut(cleaned, " - ")
+	}
+	genericURLTerms := []string{
+		"artificialintelligence-news.com",
+		"yahoo.com/news/tag/artificial-intelligence",
+		"yahoo.com/tech/tag/artificial-intelligence",
+		"techcrunch.com/category/artificial-intelligence",
+	}
+	for _, term := range genericURLTerms {
+		if strings.Contains(cleaned, term) {
+			return true
+		}
 	}
 	genericTitleTerms := []string{
 		"category",
