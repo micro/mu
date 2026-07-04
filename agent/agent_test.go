@@ -1219,11 +1219,31 @@ Sources:
 4. Startup launches healthcare AI tool — The company says hospitals are piloting the assistant this week. (https://example.com/ai-health)`}
 	got := completeToolAnswer("Here are some search results for AI news.", rag)
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "Latest source-backed items: AI safety bill advances; Startup launches healthcare AI tool.") {
+	if !strings.Contains(firstLine, "Latest source-backed items: Startup launches healthcare AI tool; AI safety bill advances.") {
 		t.Fatalf("expected current story snippets to lead over generic news pages, got %q", got)
 	}
 	if strings.Contains(firstLine, "OpenAI News") || strings.Contains(firstLine, "Artificial Intelligence News") {
 		t.Fatalf("expected generic pages below the answer lead, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerPrefersDatedNewsStories(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Current request date: Saturday, 4 July 2026 (2026-07-04, UTC)
+Search results for "AI news":
+Sources:
+1. AI newsletter roundup — A broad collection of AI links and analysis. (https://example.com/ai-roundup)
+2. Artificial Intelligence News — Latest news and headlines about artificial intelligence. (https://example.com/ai-directory)
+3. AI lab releases new reasoning model — July 4, 2026: the company announced a model update for enterprise assistants. (https://example.com/ai-model)
+4. Chipmaker signs AI supply deal — 2026-07-04: the supplier expanded capacity for accelerator customers. (https://example.com/ai-chips)`}
+	got := completeToolAnswer("Here are the search results I found.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Latest source-backed items for Saturday, 4 July 2026 (2026-07-04): AI lab releases new reasoning model; Chipmaker signs AI supply deal.") {
+		t.Fatalf("expected dated story sources to lead generic or undated AI pages, got %q", got)
+	}
+	if strings.Contains(firstLine, "AI newsletter roundup") || strings.Contains(firstLine, "Artificial Intelligence News") {
+		t.Fatalf("expected dated stories above generic and undated pages, got %q", got)
 	}
 }
 
