@@ -76,3 +76,30 @@ func TestFormatWebSearchResultsPrefersArticleLevelNewsSources(t *testing.T) {
 		t.Fatalf("expected article-level AI-news source to remain:\n%s", got)
 	}
 }
+
+func TestFormatWebSearchResultsLabelsGenericNewsSourcesAsLimitedEvidence(t *testing.T) {
+	got := formatWebSearchResults("today's AI news", []BraveResult{
+		{Title: "The Information", Description: "Reporting on AI startup funding and model launches this week.", URL: "https://www.theinformation.com/"},
+		{Title: "AI News, Updates, Products and Reviews | Yahoo Tech", Description: "Meta is preparing new AI glasses as rivals race to ship wearable assistants.", URL: "https://www.yahoo.com/tech/ai/"},
+		{Title: "AI (artificial intelligence) | The Guardian", Description: "Coverage of AI policy and product launches from around the world.", URL: "https://www.theguardian.com/technology/artificialintelligenceai"},
+	})
+
+	for _, unwanted := range []string{
+		"1. The Information —",
+		"AI News, Updates, Products and Reviews | Yahoo Tech",
+		"AI (artificial intelligence) | The Guardian",
+	} {
+		if strings.Contains(got, unwanted) {
+			t.Fatalf("expected generic source labels to be replaced with limited-evidence labels, still found %q:\n%s", unwanted, got)
+		}
+	}
+	for _, want := range []string{
+		"Limited evidence from www.theinformation.com",
+		"Limited evidence from www.yahoo.com",
+		"If the snippets are thin, say the evidence is limited.",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in limited-evidence web search results:\n%s", want, got)
+		}
+	}
+}
