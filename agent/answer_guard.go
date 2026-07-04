@@ -165,8 +165,9 @@ func formatWebSearchFallbackSection(body string) string {
 	}
 
 	limited := hasLowConfidenceWebEvidence(body)
+	requestDate := fallbackRequestDate(body)
 	if !limited {
-		if summary := webSearchAnswerLead(lines); summary != "" {
+		if summary := webSearchAnswerLead(lines, requestDate); summary != "" {
 			lines = prependDistinctLine(summary, lines)
 		}
 	}
@@ -218,7 +219,7 @@ func trimTrailingSentencePunctuation(s string) string {
 	return strings.TrimRight(strings.TrimSpace(s), ".")
 }
 
-func webSearchAnswerLead(lines []string) string {
+func webSearchAnswerLead(lines []string, requestDate string) string {
 	if len(lines) < 2 {
 		return ""
 	}
@@ -227,7 +228,37 @@ func webSearchAnswerLead(lines []string) string {
 	if first == "" || second == "" {
 		return ""
 	}
-	return "Latest source-backed items: " + first + "; " + second + "."
+	prefix := "Latest source-backed items"
+	if requestDate != "" {
+		prefix += " for " + requestDate
+	}
+	return prefix + ": " + first + "; " + second + "."
+}
+
+func fallbackRequestDate(body string) string {
+	for _, raw := range strings.Split(body, "\n") {
+		line := strings.TrimSpace(raw)
+		lower := strings.ToLower(line)
+		switch {
+		case strings.HasPrefix(lower, "current request date:"):
+			return cleanRequestDateLabel(strings.TrimSpace(line[len("Current request date:"):]))
+		case strings.HasPrefix(lower, "current date context: request date is "):
+			return cleanRequestDateLabel(strings.TrimSpace(line[len("Current date context: request date is "):]))
+		}
+	}
+	return ""
+}
+
+func cleanRequestDateLabel(value string) string {
+	value = strings.TrimSpace(strings.TrimSuffix(value, "."))
+	for _, suffix := range []string{", UTC)", " UTC)"} {
+		if strings.HasSuffix(value, suffix) {
+			return strings.TrimSpace(strings.TrimSuffix(value, suffix) + ")")
+		}
+	}
+	value = strings.TrimSuffix(value, ", UTC")
+	value = strings.TrimSuffix(value, " UTC")
+	return strings.TrimSpace(value)
 }
 
 func webSearchStoryTitle(line string) string {
