@@ -159,6 +159,7 @@ func isGenericNewsResult(r BraveResult) bool {
 		"artificial intelligence news",
 		"ai news",
 		"ai (artificial intelligence)",
+		"artificial intelligence |",
 		"technology news",
 		"tech news",
 		"updates, products and reviews",
@@ -179,6 +180,9 @@ func isGenericNewsResult(r BraveResult) bool {
 	if path == "" {
 		return true
 	}
+	if isGenericNewsURLPath(u.Host, path) {
+		return true
+	}
 	segments := strings.Split(path, "/")
 	last := segments[len(segments)-1]
 	genericPath := map[string]struct{}{
@@ -188,6 +192,21 @@ func isGenericNewsResult(r BraveResult) bool {
 	}
 	_, ok := genericPath[last]
 	return ok && len(segments) <= 2
+}
+
+func isGenericNewsURLPath(host, path string) bool {
+	host = strings.ToLower(host)
+	path = strings.Trim(path, "/")
+	genericPaths := []string{
+		"technology/artificial-intelligence",
+		"tech/ai",
+	}
+	for _, generic := range genericPaths {
+		if path == generic {
+			return true
+		}
+	}
+	return strings.Contains(host, "reuters.com") && path == "technology/artificial-intelligence"
 }
 
 func limitedEvidenceNewsTitle(r BraveResult) string {
