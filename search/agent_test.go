@@ -66,10 +66,12 @@ func TestFormatWebSearchResultsPrefersArticleLevelNewsSources(t *testing.T) {
 	got := formatWebSearchResults("today's AI news", []BraveResult{
 		{Title: "The Information", Description: "Reporting on AI startup funding and model launches this week.", URL: "https://www.theinformation.com/"},
 		{Title: "AI News, Updates, Products and Reviews | Yahoo Tech", Description: "Meta is preparing new AI glasses as rivals race to ship wearable assistants.", URL: "https://www.yahoo.com/tech/ai/"},
+		{Title: "AI (artificial intelligence) | The Guardian", Description: "Coverage of AI policy and product launches from around the world.", URL: "https://www.theguardian.com/technology/artificialintelligenceai"},
+		{Title: "Artificial Intelligence News | Bloomberg", Description: "Latest artificial intelligence stories, analysis and market coverage.", URL: "https://www.bloomberg.com/technology/ai"},
 		{Title: "Meta prepares AI glasses for developers", Description: "Meta plans to show AI glasses to developers today, according to people familiar with the launch.", URL: "https://example.com/2026/07/04/meta-ai-glasses-developers"},
 	})
 
-	if strings.Contains(got, "The Information") || strings.Contains(got, "Yahoo Tech") {
+	if strings.Contains(got, "The Information") || strings.Contains(got, "Yahoo Tech") || strings.Contains(got, "The Guardian") || strings.Contains(got, "Bloomberg") {
 		t.Fatalf("expected generic/root AI-news sources to be dropped when article-level stories exist:\n%s", got)
 	}
 	if !strings.Contains(got, "Meta prepares AI glasses for developers") {

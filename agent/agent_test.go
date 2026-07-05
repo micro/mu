@@ -1484,6 +1484,28 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerPrefersArticlesOverLiveAINewsCategoryPages(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Current request date: Sunday, 5 July 2026 (2026-07-05, UTC).
+Search results for "AI news":
+Sources:
+1. AI (artificial intelligence) | The Guardian — Coverage of AI policy and product launches from around the world. (https://www.theguardian.com/technology/artificialintelligenceai)
+2. Artificial Intelligence News | Bloomberg — Latest artificial intelligence stories, analysis and market coverage. (https://www.bloomberg.com/technology/ai)
+3. Robotics startup launches home assistant — The company launched a household AI robot today after a new funding round. (https://example.com/2026/07/05/robotics-startup-home-assistant)
+4. Lab releases compact AI model — July 5, 2026: researchers released a smaller model for on-device assistants. (https://example.com/2026/07/05/compact-ai-model)`}
+	got := completeToolAnswer("Top results:\n1. AI (artificial intelligence) | The Guardian\n2. Artificial Intelligence News | Bloomberg", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Latest source-backed items for Sunday, 5 July 2026 (2026-07-05): Robotics startup launches home assistant; Lab releases compact AI model.") {
+		t.Fatalf("expected article-level AI news sources in the lead, got %q", got)
+	}
+	for _, generic := range []string{"The Guardian", "Bloomberg", "theguardian.com/technology/artificialintelligenceai", "bloomberg.com/technology/ai"} {
+		if strings.Contains(got, generic) {
+			t.Fatalf("expected generic AI category page %q to be filtered, got %q", generic, got)
+		}
+	}
+}
+
 func TestCompleteToolAnswerRepairsObservedAtWeatherLead(t *testing.T) {
 	rag := []string{`### weather_forecast
 Current request date: Friday, 3 July 2026 (2026-07-03, UTC).

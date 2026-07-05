@@ -120,10 +120,14 @@ func isArticleLevelNewsResult(r BraveResult) bool {
 	last = strings.TrimSuffix(last, ".amp")
 	genericLast := map[string]struct{}{
 		"ai": {}, "artificial-intelligence": {}, "artificial_intelligence": {},
-		"news": {}, "tech": {}, "technology": {}, "updates": {},
+		"artificialintelligenceai": {},
+		"news":                     {}, "tech": {}, "technology": {}, "updates": {},
 		"category": {}, "topics": {}, "topic": {}, "reviews": {},
 	}
 	if _, ok := genericLast[last]; ok && len(segments) <= 2 {
+		return false
+	}
+	if isGenericNewsResult(r) {
 		return false
 	}
 	if strings.Contains(strings.ToLower(r.Title), "|") {
@@ -179,7 +183,8 @@ func isGenericNewsResult(r BraveResult) bool {
 	last := segments[len(segments)-1]
 	genericPath := map[string]struct{}{
 		"ai": {}, "artificial-intelligence": {}, "artificial_intelligence": {},
-		"news": {}, "tech": {}, "technology": {}, "topics": {}, "topic": {},
+		"artificialintelligenceai": {},
+		"news":                     {}, "tech": {}, "technology": {}, "topics": {}, "topic": {},
 	}
 	_, ok := genericPath[last]
 	return ok && len(segments) <= 2
