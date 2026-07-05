@@ -610,6 +610,15 @@ var tools = []Tool{
 // ExecuteToolAs calls a tool on behalf of a user account (no HTTP request needed).
 // Creates a temporary session for auth. Used by background agents.
 func ExecuteToolAs(accountID, name string, args map[string]any) (string, bool, error) {
+	if name == "news_search" && GuestNewsSearch != nil {
+		query := strings.TrimSpace(fmt.Sprintf("%v", args["query"]))
+		if query == "" {
+			return "query required", true, fmt.Errorf("query required")
+		}
+		text, err := GuestNewsSearch(query)
+		return text, err != nil, err
+	}
+
 	sess, err := auth.CreateSession(accountID)
 	if err != nil {
 		return "", true, fmt.Errorf("failed to create session: %v", err)

@@ -681,3 +681,22 @@ func TestReminderAPIHelpersUseConfiguredBaseAndClient(t *testing.T) {
 		t.Fatalf("unexpected body: %s", got)
 	}
 }
+
+func TestExecuteToolAsUsesDirectNewsSearchProvider(t *testing.T) {
+	oldGuestNewsSearch := GuestNewsSearch
+	GuestNewsSearch = func(query string) (string, error) {
+		if query != "AI news" {
+			t.Fatalf("expected trimmed query to reach news provider, got %q", query)
+		}
+		return `{"results":[{"title":"AI story","url":"https://example.com/ai"}]}`, nil
+	}
+	defer func() { GuestNewsSearch = oldGuestNewsSearch }()
+
+	text, isErr, err := ExecuteToolAs("guest-account-without-session", "news_search", map[string]any{"query": " AI news "})
+	if err != nil || isErr {
+		t.Fatalf("expected direct news_search provider to succeed, isErr=%v err=%v", isErr, err)
+	}
+	if !strings.Contains(text, "AI story") || !strings.Contains(text, "https://example.com/ai") {
+		t.Fatalf("expected provider text with source-linked article, got %s", text)
+	}
+}
