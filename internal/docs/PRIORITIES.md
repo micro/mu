@@ -21,9 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Prioritize truly current AI-news results for today prompts** ([#1172](https://github.com/micro/mu/issues/1172)). PR #1170 closed #1167 and improved the AI-news metadata/source rendering enough that the malformed category/date-link issue should not stay queued. The 2026-07-05 live guest review for #1171 still shows the highest-value Now-phase friction in the core ask → answer loop: `Find today's AI news` reaches `news_search`, completes in about 1s, and renders clean source URLs, but it still leads with March–May 2026 stories for a "today" prompt on Sunday, 5 July 2026 without clearly saying that no same-day/recent AI stories were returned. Keep the fast restored provider path and clean metadata; make current-news ranking/disclosure match the user's requested freshness window.
+1. **Surface freshness caveats in AI-news agent answers** ([#1177](https://github.com/micro/mu/issues/1177)). PR #1175 closed #1172 by adding freshness metadata/caveats to `news_search`, so #1172 should not stay queued. The 2026-07-05 live guest review for #1176 still shows the highest-value Now-phase friction in the core ask → answer loop: `Find today's AI news` reaches `news_search`, completes in under 1s, and keeps clean source URLs, but the rendered agent answer still leads with March–May 2026 stories for a "today" prompt on Sunday, 5 July 2026 without surfacing the no-same-day-results caveat. Keep the fast provider path and clean links; make the agent-facing answer carry the freshness disclosure before older fallback/background items.
 
 ### Already shipped (do not re-queue)
+
+- ✅ **News freshness caveat metadata shipped but agent answers still need to surface it.** PR #1175 closed #1172 by adding freshness caveats to `news_search`; the 2026-07-05 product review for #1176 still saw live guest `Find today's AI news` complete in under 1s while rendering March–May 2026 stories without the no-same-day-results disclosure, now tracked in #1177.
 
 - ✅ **AI-news metadata/source rendering polish shipped but today prompts still need freshness ranking.** PR #1170 closed #1167 by cleaning the category/date/source presentation after PR #1165; the 2026-07-05 product review for #1171 still saw `Find today's AI news` complete in about 1s while leading with March–May 2026 stories for a same-day prompt, now tracked in #1172.
 
