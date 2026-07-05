@@ -254,6 +254,38 @@ func TestNewsSearchArticlesFallsBackToLiveFeed(t *testing.T) {
 	}
 }
 
+func TestSearchToolTextReturnsLiveFeedResultsForAgent(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	now := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{{
+		ID:          "ai-live",
+		Title:       "AI lab releases safer assistant",
+		Description: "The release includes source-linked evaluation notes.",
+		URL:         "https://example.com/ai-live",
+		Category:    "Technology",
+		PostedAt:    now,
+	}}
+	mutex.Unlock()
+
+	text, err := SearchToolText("latest AI news")
+	if err != nil {
+		t.Fatalf("SearchToolText returned error: %v", err)
+	}
+	if !strings.Contains(text, "AI lab releases safer assistant") {
+		t.Fatalf("expected live feed headline in tool text, got %s", text)
+	}
+	if !strings.Contains(text, "https://example.com/ai-live") {
+		t.Fatalf("expected source URL in tool text, got %s", text)
+	}
+}
+
 func TestNewsSearchArticlesFiltersAdjacentIndexedResults(t *testing.T) {
 	indexed := []*data.IndexEntry{
 		{

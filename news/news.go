@@ -1792,6 +1792,31 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// SearchToolText returns model-ready JSON for news_search tool calls. It uses
+// the same indexed-plus-live-feed result selection as the authenticated /news
+// API search, but performs no quota mutation itself; callers that expose it over
+// public protocols remain responsible for auth/quota gates.
+func SearchToolText(query string) (string, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return "", fmt.Errorf("query required")
+	}
+	if len(query) > 256 {
+		return "", fmt.Errorf("search query must not exceed 256 characters")
+	}
+	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
+	articles := newsSearchArticles(query, results, 20)
+	b, err := json.Marshal(map[string]interface{}{
+		"query":   query,
+		"results": articles,
+		"count":   len(articles),
+	})
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []map[string]interface{} {
 	if limit <= 0 {
 		limit = 20

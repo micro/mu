@@ -481,6 +481,9 @@ func main() {
 	// system account (low cadence; disable with NOTES=off).
 	blog.StartNotes()
 
+	// Wire guest agent news search directly to the live feed-backed provider path.
+	api.GuestNewsSearch = news.SearchToolText
+
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		// Check for x402 payment (bypasses auth + credits).
