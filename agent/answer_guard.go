@@ -646,7 +646,10 @@ func isGenericWebResultLine(line string) bool {
 		"bloomberg.com/ai",
 		"bloomberg.com/technology/ai",
 		"theguardian.com/technology/artificialintelligenceai",
+		"reuters.com/technology/artificial-intelligence",
+		"tech.yahoo.com/ai",
 		"yahoo.com/news/tag/artificial-intelligence",
+		"yahoo.com/tech/ai",
 		"yahoo.com/tech/tag/artificial-intelligence",
 		"techcrunch.com/category/artificial-intelligence",
 	}

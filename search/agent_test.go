@@ -79,6 +79,21 @@ func TestFormatWebSearchResultsPrefersArticleLevelNewsSources(t *testing.T) {
 	}
 }
 
+func TestFormatWebSearchResultsDropsLiveAINewsCategoryPagesWhenArticlesExist(t *testing.T) {
+	got := formatWebSearchResults("today's AI news", []BraveResult{
+		{Title: "AI News, Updates, Products and Reviews | Yahoo Tech", Description: "The latest AI product coverage and reviews.", URL: "https://tech.yahoo.com/ai/"},
+		{Title: "Artificial Intelligence | Reuters", Description: "The latest artificial intelligence news and analysis.", URL: "https://www.reuters.com/technology/artificial-intelligence/"},
+		{Title: "Robotics startup launches home assistant", Description: "The company launched an AI household robot today after raising a new funding round.", URL: "https://example.com/2026/07/05/robotics-startup-home-assistant"},
+	})
+
+	if strings.Contains(got, "Yahoo Tech") || strings.Contains(got, "Reuters") || strings.Contains(got, "tech.yahoo.com/ai") || strings.Contains(got, "reuters.com/technology/artificial-intelligence") {
+		t.Fatalf("expected live AI-news category pages to be dropped when article-level stories exist:\n%s", got)
+	}
+	if !strings.Contains(got, "Robotics startup launches home assistant") {
+		t.Fatalf("expected article-level AI-news source to remain:\n%s", got)
+	}
+}
+
 func TestFormatWebSearchResultsLabelsGenericNewsSourcesAsLimitedEvidence(t *testing.T) {
 	got := formatWebSearchResults("today's AI news", []BraveResult{
 		{Title: "The Information", Description: "Reporting on AI startup funding and model launches this week.", URL: "https://www.theinformation.com/"},
