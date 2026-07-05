@@ -161,12 +161,13 @@ func formatWebSearchFallbackSection(body string) string {
 	lines := meaningfulLines(body, 6)
 	lines = promoteSnippetBackedGenericWebStories(lines)
 	lines = prioritizeSnippetBackedWebLines(lines)
+	genericOnly := hasOnlyGenericWebEvidence(lines)
 	lines = filterGenericWebResultLines(lines, 4)
 	if len(lines) == 0 {
 		return ""
 	}
 
-	limited := hasLowConfidenceWebEvidence(body)
+	limited := hasLowConfidenceWebEvidence(body) || genericOnly
 	requestDate := fallbackRequestDate(body)
 	if !limited {
 		if summary := webSearchAnswerLead(lines, requestDate); summary != "" {
@@ -375,8 +376,12 @@ func meaningfulLines(body string, limit int) []string {
 var fallbackOrdinalPrefix = regexp.MustCompile(`^\d+[.)]\s+`)
 
 func cleanFallbackLine(line string) string {
-	return strings.TrimSpace(fallbackOrdinalPrefix.ReplaceAllString(line, ""))
+	line = strings.TrimSpace(fallbackOrdinalPrefix.ReplaceAllString(line, ""))
+	line = fallbackHTMLTagPattern.ReplaceAllString(line, "")
+	return strings.TrimSpace(line)
 }
+
+var fallbackHTMLTagPattern = regexp.MustCompile(`</?(?:strong|b|em|i)\b[^>]*>`)
 
 func prioritizeCurrentWeatherLines(lines []string) []string {
 	if len(lines) < 2 {
@@ -571,6 +576,18 @@ func filterGenericWebResultLines(lines []string, limit int) []string {
 	return kept
 }
 
+func hasOnlyGenericWebEvidence(lines []string) bool {
+	if len(lines) == 0 {
+		return false
+	}
+	for _, line := range lines {
+		if !isGenericWebResultLine(line) || hasSnippetBackedWebStory(line) {
+			return false
+		}
+	}
+	return true
+}
+
 func webResultFallbackPriority(line string) int {
 	if isGenericWebResultLine(line) {
 		return 3
@@ -626,6 +643,8 @@ func isGenericWebSnippet(snippet string) bool {
 		"breaking news, analysis",
 		"coverage of",
 		"company news and announcements",
+		"industry coverage and topic pages",
+		"news and campus articles tagged",
 	}
 	for _, term := range genericSnippetTerms {
 		if strings.Contains(snippet, term) {
@@ -648,6 +667,8 @@ func isGenericWebResultLine(line string) bool {
 		"theguardian.com/technology/artificialintelligenceai",
 		"reuters.com/technology/artificial-intelligence",
 		"tech.yahoo.com/ai",
+		"news.mit.edu/topic/artificial-intelligence",
+		"aimagazine.com",
 		"yahoo.com/news/tag/artificial-intelligence",
 		"yahoo.com/tech/ai",
 		"yahoo.com/tech/tag/artificial-intelligence",

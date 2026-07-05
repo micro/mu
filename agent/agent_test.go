@@ -1329,6 +1329,42 @@ Confidence: low — generic category pages only.
 	}
 }
 
+func TestCompleteToolAnswerTreatsDirectoryOnlyAINewsAsLimitedEvidence(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Current request date: Sunday, 5 July 2026 (2026-07-05, UTC).
+Search results for "AI news":
+Sources:
+1. AI | MIT News — News and campus articles tagged artificial intelligence. (https://news.mit.edu/topic/artificial-intelligence2)
+2. AI Magazine — Artificial intelligence industry coverage and topic pages. (https://aimagazine.com/)
+3. AI News, Updates, Products and Reviews | Yahoo Tech — The latest AI product coverage and reviews. (https://tech.yahoo.com/ai/)`}
+
+	got := completeToolAnswer("Top results:\n1. AI | MIT News\n2. AI Magazine", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "limited source-backed evidence") {
+		t.Fatalf("expected directory-only AI news fallback to use limited-evidence framing, got %q", got)
+	}
+	if strings.Contains(firstLine, "Latest source-backed items") {
+		t.Fatalf("expected no latest-news lead from directory-only evidence, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerStripsInlineHTMLFromFallbackBullets(t *testing.T) {
+	rag := []string{`### web_search
+Search results for "AI news":
+Sources:
+1. <strong>AI roundup</strong> — <strong><strong>OpenAI released a model update today</strong></strong> for enterprise assistants. (https://example.com/ai-roundup)
+2. Chip supplier expands AI capacity — Demand for AI chips is rising this week. (https://example.com/ai-chips)`}
+
+	got := completeToolAnswer("Here are the search results I found.", rag)
+	if strings.Contains(got, "<strong>") || strings.Contains(got, "</strong>") {
+		t.Fatalf("expected fallback bullets to strip inline strong markup, got %q", got)
+	}
+	if !strings.Contains(got, "OpenAI released a model update today") {
+		t.Fatalf("expected cleaned snippet-backed story to remain, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerReplacesRawMixedSourcePayload(t *testing.T) {
 	rag := []string{
 		`### blog_list
