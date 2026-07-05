@@ -1851,18 +1851,22 @@ func formatNewsResult(result string) string {
 	}
 	for i, a := range items {
 		line := fmt.Sprintf("%d. %s", i+1, a.Title)
+		var meta []string
 		if a.Category != "" {
-			line += fmt.Sprintf(" [%s]", a.Category)
+			meta = append(meta, "category: "+a.Category)
 		}
 		if a.PostedAt != "" {
 			if t, err := time.Parse(time.RFC3339, a.PostedAt); err == nil {
-				line += fmt.Sprintf(" (%s)", t.Format("2 Jan 2006 15:04 UTC"))
+				meta = append(meta, "posted: "+t.Format("2 Jan 2006 15:04 UTC"))
 			}
 		} else if a.Published != "" {
-			line += fmt.Sprintf(" (%s)", a.Published)
+			meta = append(meta, "published: "+a.Published)
 		}
 		if a.URL != "" {
-			line += " " + a.URL
+			meta = append(meta, "source: "+a.URL)
+		}
+		if len(meta) > 0 {
+			line += " (" + strings.Join(meta, "; ") + ")"
 		}
 		if a.Description != "" {
 			desc := a.Description

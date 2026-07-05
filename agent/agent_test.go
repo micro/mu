@@ -592,6 +592,17 @@ func TestFormatNewsResult_SearchWithTimestamp(t *testing.T) {
 	}
 }
 
+func TestFormatNewsResultUsesCleanMetadataLabels(t *testing.T) {
+	result := `{"query":"AI news","results":[{"title":"AI lab ships update","description":"Fresh details","category":"Tech","url":"https://example.com/ai","posted_at":"2026-07-05T12:00:00Z"}],"count":1}`
+	got := formatNewsResult(result)
+	if !strings.Contains(got, "category: Tech; posted: 5 Jul 2026 12:00 UTC; source: https://example.com/ai") {
+		t.Fatalf("expected category/date/source metadata labels, got %q", got)
+	}
+	if strings.Contains(got, "[Tech]") {
+		t.Fatalf("expected metadata not to use markdown-link-like category brackets, got %q", got)
+	}
+}
+
 func TestRenderToolCallRef_NewsSearch(t *testing.T) {
 	args := map[string]any{"query": "Iran"}
 	formatted := "News results for \"Iran\":\n1. Iran crisis [world] (2 Mar 2026 10:00) — Conflict escalates\n"
