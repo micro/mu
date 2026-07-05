@@ -159,7 +159,6 @@ func formatFallbackSection(title, body string) string {
 
 func formatWebSearchFallbackSection(body string) string {
 	lines := meaningfulLines(body, 6)
-	lines = promoteSnippetBackedGenericWebStories(lines)
 	lines = prioritizeSnippetBackedWebLines(lines)
 	genericOnly := hasOnlyGenericWebEvidence(lines)
 	lines = filterGenericWebResultLines(lines, 4)
@@ -439,42 +438,16 @@ func isGenericSearchFallbackIntro(line string) bool {
 		strings.HasPrefix(lower, "these search results")
 }
 
-func promoteSnippetBackedGenericWebStories(lines []string) []string {
-	out := make([]string, 0, len(lines))
-	for _, line := range lines {
-		out = append(out, snippetBackedGenericWebStoryLine(line))
-	}
-	return out
-}
-
 func hasSnippetBackedWebStory(line string) bool {
+	if isGenericWebResultLine(line) {
+		return false
+	}
 	cleaned := cleanFallbackLine(line)
 	_, snippet, hasSnippet := strings.Cut(cleaned, " — ")
 	if !hasSnippet {
 		_, snippet, hasSnippet = strings.Cut(cleaned, " - ")
 	}
 	return hasSnippet && !isGenericWebSnippet(snippet) && snippetStoryLead(snippet) != ""
-}
-
-func snippetBackedGenericWebStoryLine(line string) string {
-	cleaned := cleanFallbackLine(line)
-	_, snippet, hasSnippet := strings.Cut(cleaned, " — ")
-	if !hasSnippet {
-		_, snippet, hasSnippet = strings.Cut(cleaned, " - ")
-	}
-	if !hasSnippet || !isGenericWebResultLine(line) || isGenericWebSnippet(snippet) {
-		return line
-	}
-	snippet = strings.TrimSpace(strings.TrimSuffix(snippet, " ("+fallbackLineURL(cleaned)+")"))
-	story := snippetStoryLead(snippet)
-	if story == "" {
-		return line
-	}
-	url := fallbackLineURL(cleaned)
-	if url != "" {
-		return story + " — " + strings.TrimSpace(snippet) + " (" + url + ")"
-	}
-	return story + " — " + strings.TrimSpace(snippet)
 }
 
 func snippetStoryLead(snippet string) string {

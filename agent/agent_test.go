@@ -1274,7 +1274,7 @@ Sources:
 	}
 }
 
-func TestCompleteToolAnswerPromotesSnippetStoryFromAINewsCategoryPage(t *testing.T) {
+func TestCompleteToolAnswerFramesSnippetOnlyAINewsCategoryPageAsLimitedEvidence(t *testing.T) {
 	rag := []string{`### news_search
 ` + unavailableToolMessage("news_search"), `### web_search
 Current request date: Saturday, 4 July 2026 (2026-07-04, UTC).
@@ -1285,11 +1285,32 @@ Sources:
 
 	got := completeToolAnswer("Here are the search results I found.", rag)
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "Meta announced new AI glasses today with an on-device assistant for live translation") {
-		t.Fatalf("expected snippet-supported story lead instead of generic category title, got %q", got)
+	if !strings.Contains(firstLine, "limited source-backed evidence") {
+		t.Fatalf("expected category-page snippet evidence to stay limited instead of becoming a lead story, got %q", got)
 	}
-	if strings.Contains(firstLine, "AI News, Updates, Products and Reviews | Yahoo Tech") || strings.Contains(firstLine, "Artificial Intelligence News") {
-		t.Fatalf("expected generic AI category titles to stay out of the answer lead, got %q", got)
+	if strings.Contains(firstLine, "Latest source-backed items") || strings.Contains(firstLine, "Meta announced new AI glasses") {
+		t.Fatalf("expected no latest-story lead from category-only evidence, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerKeepsYahooAICategorySnippetLimitedAndUnduplicated(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Current request date: Sunday, 5 July 2026 (2026-07-05, UTC).
+Search results for "AI news":
+Sources:
+1. AI News, Updates, Products and Reviews | Yahoo Tech — Meta announced new AI glasses today with an on-device assistant for live translation. (https://tech.yahoo.com/ai/)`}
+
+	got := completeToolAnswer("Top results:\n1. AI News, Updates, Products and Reviews | Yahoo Tech", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "limited source-backed evidence") {
+		t.Fatalf("expected Yahoo AI category fallback to use limited-evidence framing, got %q", got)
+	}
+	if strings.Contains(firstLine, "Latest source-backed items") {
+		t.Fatalf("expected no promoted lead story from category URL evidence, got %q", got)
+	}
+	if strings.Contains(got, "Meta announced new AI glasses today with an on-device assistant for live translation — Meta announced new AI glasses today") {
+		t.Fatalf("expected category snippet not to be duplicated around an em dash, got %q", got)
 	}
 }
 
