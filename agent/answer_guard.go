@@ -643,6 +643,9 @@ func isGenericWebResultLine(line string) bool {
 	}
 	genericURLTerms := []string{
 		"artificialintelligence-news.com",
+		"bloomberg.com/ai",
+		"bloomberg.com/technology/ai",
+		"theguardian.com/technology/artificialintelligenceai",
 		"yahoo.com/news/tag/artificial-intelligence",
 		"yahoo.com/tech/tag/artificial-intelligence",
 		"techcrunch.com/category/artificial-intelligence",
