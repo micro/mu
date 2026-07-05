@@ -1031,6 +1031,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	hasMarketsTool := false
 	hasWeatherTool := false
 	hasWebSearchTool := false
+	hasNewsSearchTool := false
 	for _, tc := range toolCalls {
 		switch tc.Tool {
 		case "markets":
@@ -1039,6 +1040,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			hasWeatherTool = true
 		case "web_search":
 			hasWebSearchTool = true
+		case "news_search":
+			hasNewsSearchTool = true
 		}
 	}
 	hasUnavailableNewsSearch := false
@@ -1048,7 +1051,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	if useFastToolFallback(req.Prompt, isGuest, hasMarketsTool, hasWeatherTool, hasWebSearchTool, hasUnavailableNewsSearch, ragParts) {
+	if useFastToolFallback(req.Prompt, isGuest, hasMarketsTool, hasWeatherTool, hasWebSearchTool, hasNewsSearchTool, hasUnavailableNewsSearch, ragParts) {
 		answer := app.NormalizeAnswerMarkdown(app.StripLatexDollars(synthesizeToolFallback(ragParts)))
 		rendered := app.RenderString(answer)
 		html := `<div class="card" id="agent-response">` + rendered + `</div>`
@@ -1292,7 +1295,7 @@ func isLatestTechnologyNewsPrompt(lower string) bool {
 	return false
 }
 
-func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWeatherTool bool, hasWebSearchTool bool, hasUnavailableNewsSearch bool, ragParts []string) bool {
+func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWeatherTool bool, hasWebSearchTool bool, hasNewsSearchTool bool, hasUnavailableNewsSearch bool, ragParts []string) bool {
 	if !isGuest || len(ragParts) == 0 {
 		return false
 	}
@@ -1302,7 +1305,10 @@ func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWe
 	if hasWeatherTool && isSimpleWeatherPrompt(prompt) {
 		return true
 	}
-	return hasWebSearchTool && hasUnavailableNewsSearch && isLatestTechnologyNewsPrompt(strings.ToLower(prompt))
+	if isLatestTechnologyNewsPrompt(strings.ToLower(prompt)) {
+		return hasNewsSearchTool || (hasWebSearchTool && hasUnavailableNewsSearch)
+	}
+	return false
 }
 
 func isSimpleWeatherPrompt(prompt string) bool {

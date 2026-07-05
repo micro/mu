@@ -849,3 +849,12 @@ func TestGetFeedReturnsDedupedFeedForAgentContext(t *testing.T) {
 		t.Fatalf("expected agent-facing feed to collapse duplicates, got %#v", got)
 	}
 }
+
+func TestCleanNewsArticleURLRejectsImageAssets(t *testing.T) {
+	if got := cleanNewsArticleURL("https://cdn.example.com/story.jpg?width=1200"); got != "" {
+		t.Fatalf("expected image asset URL to be dropped, got %q", got)
+	}
+	if got := cleanNewsArticleURL("https://example.com/ai/story?ref=mu"); got != "https://example.com/ai/story?ref=mu" {
+		t.Fatalf("expected article URL to be preserved, got %q", got)
+	}
+}

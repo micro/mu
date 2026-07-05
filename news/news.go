@@ -1804,8 +1804,8 @@ func SearchToolText(query string) (string, error) {
 	if len(query) > 256 {
 		return "", fmt.Errorf("search query must not exceed 256 characters")
 	}
-	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
-	articles := newsSearchArticles(query, results, 20)
+	results := data.Search(query, 8, data.WithType("news"), data.WithKeywordOnly())
+	articles := newsSearchArticles(query, results, 8)
 	b, err := json.Marshal(map[string]interface{}{
 		"query":   query,
 		"results": articles,
@@ -1847,9 +1847,8 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 			"id":          entry.ID,
 			"title":       entry.Title,
 			"description": htmlToText(entry.Content),
-			"url":         entry.Metadata["url"],
+			"url":         cleanNewsArticleURL(entry.Metadata["url"]),
 			"category":    entry.Metadata["category"],
-			"image":       entry.Metadata["image"],
 			"posted_at":   entry.Metadata["posted_at"],
 		}
 		if articleMatchesNewsQuery(query, article) {
@@ -1862,13 +1861,30 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 			"id":          post.ID,
 			"title":       post.Title,
 			"description": htmlToText(post.Description),
-			"url":         post.URL,
+			"url":         cleanNewsArticleURL(post.URL),
 			"category":    post.Category,
-			"image":       post.Image,
 			"posted_at":   post.PostedAt,
 		})
 	}
 	return articles
+}
+
+func cleanNewsArticleURL(raw interface{}) string {
+	u := strings.TrimSpace(fmt.Sprintf("%v", raw))
+	if u == "" || strings.EqualFold(u, "<nil>") {
+		return ""
+	}
+	withoutQuery := u
+	if parsed, err := url.Parse(u); err == nil {
+		withoutQuery = parsed.Path
+	}
+	lower := strings.ToLower(withoutQuery)
+	for _, suffix := range []string{".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".avif"} {
+		if strings.HasSuffix(lower, suffix) {
+			return ""
+		}
+	}
+	return u
 }
 
 func liveFeedSearch(query string, limit int) []*Post {
