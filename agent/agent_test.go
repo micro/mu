@@ -1454,6 +1454,19 @@ func TestFormatToolResultNewsHeadlinesStaysReadable(t *testing.T) {
 	}
 }
 
+func TestFormatToolResultNewsSearchSurfacesFreshnessCaveat(t *testing.T) {
+	result := `{"query":"AI news","freshness":{"status":"stale","requested_date":"2026-07-05","freshest_posted_at":"2026-05-20T12:00:00Z","notice":"No same-day news_search results were available for 2026-07-05; the freshest result is from 2026-05-20, so lead with a freshness caveat instead of presenting older stories as today's news."},"results":[{"title":"AI startup raises funding","description":"Artificial intelligence funding story from the archive.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
+	got := formatToolResult("news_search", result, nil)
+	firstCaveat := strings.Index(got, "Freshness caveat:")
+	firstStory := strings.Index(got, "1. AI startup raises funding")
+	if firstCaveat < 0 {
+		t.Fatalf("expected freshness caveat in news_search context, got %q", got)
+	}
+	if firstStory < 0 || firstStory < firstCaveat {
+		t.Fatalf("expected freshness caveat before older fallback stories, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerKeepsSubstantiveAnswer(t *testing.T) {
 	want := "BTC is at $100,000, and the latest news says it reached a new high."
 	got := completeToolAnswer(want, []string{"### markets\nBTC: $100,000"})
