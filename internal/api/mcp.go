@@ -172,6 +172,13 @@ var ToolGuard func(r *http.Request, toolName string) error
 // requirements. Returns nil if x402 is not enabled. Set by main.go.
 var PaymentRequiredResponse func(w http.ResponseWriter, op string, resource string)
 
+// GuestNewsSearch handles agent-initiated guest news_search calls without
+// routing through the authenticated HTML/API search endpoint. It is wired by
+// main.go to the news package so guest core-loop prompts can use the same live
+// feed-backed provider path as signed-in users while MCP/REST quota gates stay
+// unchanged.
+var GuestNewsSearch func(query string) (string, error)
+
 // ToolParam defines a parameter for an MCP tool
 type ToolParam struct {
 	Name        string `json:"name"`
@@ -627,6 +634,17 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 	}
 	if tool == nil {
 		return "", true, fmt.Errorf("unknown tool: %s", name)
+	}
+
+	if name == "news_search" && GuestNewsSearch != nil {
+		if _, _, err := auth.RequireSession(r); err != nil {
+			query := strings.TrimSpace(fmt.Sprintf("%v", args["query"]))
+			if query == "" {
+				return "query required", true, fmt.Errorf("query required")
+			}
+			text, err := GuestNewsSearch(query)
+			return text, err != nil, err
+		}
 	}
 
 	if tool.HandleAuth != nil {
