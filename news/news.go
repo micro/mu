@@ -1806,11 +1806,15 @@ func SearchToolText(query string) (string, error) {
 	}
 	results := data.Search(query, 8, data.WithType("news"), data.WithKeywordOnly())
 	articles := newsSearchArticles(query, results, 8)
-	b, err := json.Marshal(map[string]interface{}{
+	payload := map[string]interface{}{
 		"query":   query,
 		"results": articles,
 		"count":   len(articles),
-	})
+	}
+	if freshness := newsSearchFreshnessSummary(query, articles, time.Now().UTC()); freshness != nil {
+		payload["freshness"] = freshness
+	}
+	b, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}
@@ -1878,6 +1882,42 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 		add(article)
 	}
 	return articles
+}
+
+func newsSearchFreshnessSummary(query string, articles []map[string]interface{}, now time.Time) map[string]interface{} {
+	if !newsQueryWantsFreshness(query) {
+		return nil
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	now = now.UTC()
+	freshest := time.Time{}
+	for _, article := range articles {
+		posted := articlePostedAt(article)
+		if posted.After(freshest) {
+			freshest = posted
+		}
+	}
+	requestedDate := now.Format("2006-01-02")
+	freshness := map[string]interface{}{
+		"requested_date":   requestedDate,
+		"requested_window": "today/current",
+	}
+	if freshest.IsZero() {
+		freshness["status"] = "no_dated_results"
+		freshness["notice"] = fmt.Sprintf("No dated news_search results were available for %s; do not present these results as today's news without that caveat.", requestedDate)
+		return freshness
+	}
+	freshest = freshest.UTC()
+	freshness["freshest_posted_at"] = freshest.Format(time.RFC3339)
+	if freshest.Format("2006-01-02") == requestedDate {
+		freshness["status"] = "current"
+		return freshness
+	}
+	freshness["status"] = "stale"
+	freshness["notice"] = fmt.Sprintf("No same-day news_search results were available for %s; the freshest result is from %s, so lead with a freshness caveat instead of presenting older stories as today's news.", requestedDate, freshest.Format("2006-01-02"))
+	return freshness
 }
 
 func newsQueryWantsFreshness(query string) bool {
