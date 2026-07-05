@@ -96,7 +96,9 @@ regression:
 - blog update/delete — `RequireSession` + author check.
 - `apps_create` — author from session, slug auto-uniquified (never overwrites).
 - `apps_edit` — `RegisterToolWithAuth` + `UpdateAppOwned` ownership check.
-- `apps.Build` — owner bound via `account_id`; author name resolved server-side.
+- `apps_build` / native `apps.Build` — owner bound via `account_id`; author name resolved server-side.
+- `apps_fork` — `RegisterToolWithAuth`; fork owner and author name come from the authenticated session.
+- `apps_test` — `RegisterToolWithAuth`; app API test calls run with the authenticated session account.
 
 ## Open follow-ups (not yet done)
 
