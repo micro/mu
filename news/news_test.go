@@ -1,6 +1,7 @@
 package news
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
@@ -292,6 +293,40 @@ func TestNewsSearchArticlesFreshQueriesPreferNewestMatches(t *testing.T) {
 	}
 	if got[0]["title"] != "AI lab ships today's assistant update" {
 		t.Fatalf("expected newest matching item first for freshness query, got %#v", got)
+	}
+}
+
+func TestNewsSearchFreshnessSummaryCaveatsStaleTodayResults(t *testing.T) {
+	articles := []map[string]interface{}{{
+		"title":     "AI startup raises funding",
+		"posted_at": time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC),
+	}}
+	freshness := newsSearchFreshnessSummary("Find today's AI news", articles, time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC))
+	if freshness == nil {
+		t.Fatal("expected freshness summary for today query")
+	}
+	if freshness["status"] != "stale" {
+		t.Fatalf("expected stale status, got %#v", freshness)
+	}
+	if !strings.Contains(fmt.Sprint(freshness["notice"]), "No same-day news_search results") {
+		t.Fatalf("expected same-day caveat notice, got %#v", freshness)
+	}
+}
+
+func TestNewsSearchFreshnessSummaryCurrentForSameDayResults(t *testing.T) {
+	articles := []map[string]interface{}{{
+		"title":     "AI lab ships today's assistant update",
+		"posted_at": time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC),
+	}}
+	freshness := newsSearchFreshnessSummary("Find today's AI news", articles, time.Date(2026, 7, 5, 13, 0, 0, 0, time.UTC))
+	if freshness == nil {
+		t.Fatal("expected freshness summary for today query")
+	}
+	if freshness["status"] != "current" {
+		t.Fatalf("expected current status, got %#v", freshness)
+	}
+	if _, ok := freshness["notice"]; ok {
+		t.Fatalf("did not expect freshness caveat for same-day results, got %#v", freshness)
 	}
 }
 
