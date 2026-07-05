@@ -1785,6 +1785,12 @@ func formatNewsResult(result string) string {
 			URL         string `json:"url"`
 			PostedAt    string `json:"posted_at"`
 		} `json:"results"`
+		Freshness struct {
+			Status           string `json:"status"`
+			Notice           string `json:"notice"`
+			RequestedDate    string `json:"requested_date"`
+			FreshestPostedAt string `json:"freshest_posted_at"`
+		} `json:"freshness"`
 		Query string `json:"query"`
 	}
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
@@ -1848,6 +1854,29 @@ func formatNewsResult(result string) string {
 		sb.WriteString(fmt.Sprintf("News results for %q:\n", data.Query))
 	} else {
 		sb.WriteString("Latest news:\n")
+	}
+	if freshnessNotice := strings.TrimSpace(data.Freshness.Notice); freshnessNotice != "" {
+		sb.WriteString("Freshness caveat: " + freshnessNotice + "\n")
+	} else if data.Freshness.Status == "stale" || data.Freshness.Status == "no_dated_results" {
+		requestedDate := strings.TrimSpace(data.Freshness.RequestedDate)
+		if requestedDate == "" {
+			requestedDate = "the requested date"
+		}
+		if data.Freshness.Status == "no_dated_results" {
+			sb.WriteString("Freshness caveat: No dated news results were available for " + requestedDate + "; do not present these results as today's news without that caveat.\n")
+		} else {
+			freshest := strings.TrimSpace(data.Freshness.FreshestPostedAt)
+			if freshest != "" {
+				if t, err := time.Parse(time.RFC3339, freshest); err == nil {
+					freshest = t.UTC().Format("2006-01-02")
+				}
+			}
+			if freshest == "" {
+				sb.WriteString("Freshness caveat: No same-day news results were available for " + requestedDate + "; lead with a freshness caveat before older items.\n")
+			} else {
+				sb.WriteString("Freshness caveat: No same-day news results were available for " + requestedDate + "; the freshest result is from " + freshest + ", so lead with a freshness caveat before older items.\n")
+			}
+		}
 	}
 	for i, a := range items {
 		line := fmt.Sprintf("%d. %s", i+1, a.Title)
