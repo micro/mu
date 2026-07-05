@@ -254,6 +254,47 @@ func TestNewsSearchArticlesFallsBackToLiveFeed(t *testing.T) {
 	}
 }
 
+func TestNewsSearchArticlesFreshQueriesPreferNewestMatches(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	newer := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
+	older := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	indexed := []*data.IndexEntry{{
+		ID:      "old-ai",
+		Title:   "AI startup raises funding",
+		Content: "Artificial intelligence funding story from the archive.",
+		Metadata: map[string]interface{}{
+			"url":       "https://example.com/old-ai",
+			"category":  "Tech",
+			"posted_at": older.Format(time.RFC3339),
+		},
+	}}
+
+	mutex.Lock()
+	feed = []*Post{{
+		ID:          "new-ai",
+		Title:       "AI lab ships today's assistant update",
+		Description: "Fresh release notes for today's AI update.",
+		URL:         "https://example.com/new-ai",
+		Category:    "Tech",
+		PostedAt:    newer,
+	}}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", indexed, 20)
+	if len(got) < 2 {
+		t.Fatalf("expected indexed and live results, got %#v", got)
+	}
+	if got[0]["title"] != "AI lab ships today's assistant update" {
+		t.Fatalf("expected newest matching item first for freshness query, got %#v", got)
+	}
+}
+
 func TestSearchToolTextReturnsLiveFeedResultsForAgent(t *testing.T) {
 	oldFeed := feed
 	defer func() {

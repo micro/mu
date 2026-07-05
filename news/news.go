@@ -1842,6 +1842,7 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 		articles = append(articles, article)
 	}
 
+	var candidates []map[string]interface{}
 	for _, entry := range indexed {
 		article := map[string]interface{}{
 			"id":          entry.ID,
@@ -1852,12 +1853,12 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 			"posted_at":   entry.Metadata["posted_at"],
 		}
 		if articleMatchesNewsQuery(query, article) {
-			add(article)
+			candidates = append(candidates, article)
 		}
 	}
 
 	for _, post := range liveFeedSearch(query, limit) {
-		add(map[string]interface{}{
+		candidates = append(candidates, map[string]interface{}{
 			"id":          post.ID,
 			"title":       post.Title,
 			"description": htmlToText(post.Description),
@@ -1866,7 +1867,39 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 			"posted_at":   post.PostedAt,
 		})
 	}
+
+	if newsQueryWantsFreshness(query) {
+		sort.SliceStable(candidates, func(i, j int) bool {
+			return articlePostedAt(candidates[i]).After(articlePostedAt(candidates[j]))
+		})
+	}
+
+	for _, article := range candidates {
+		add(article)
+	}
 	return articles
+}
+
+func newsQueryWantsFreshness(query string) bool {
+	lower := strings.ToLower(query)
+	for _, token := range []string{"today", "latest", "current", "fresh", "recent"} {
+		if strings.Contains(lower, token) {
+			return true
+		}
+	}
+	return false
+}
+
+func articlePostedAt(article map[string]interface{}) time.Time {
+	switch v := article["posted_at"].(type) {
+	case time.Time:
+		return v
+	case string:
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
 }
 
 func cleanNewsArticleURL(raw interface{}) string {
