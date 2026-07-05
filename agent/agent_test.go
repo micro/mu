@@ -1309,6 +1309,26 @@ Confidence: low — generic category pages only.
 	}
 }
 
+func TestCompleteToolAnswerKeepsLimitedEvidenceURLsReadable(t *testing.T) {
+	longSnippet := strings.Repeat("detailed AI category context with broad archive evidence ", 8)
+	rag := []string{
+		`### web_search
+Confidence: low — generic category pages only.
+1. AI news archive — ` + longSnippet + `(https://www.yahoo.com/tech/tag/artificial-intelligence/)`,
+	}
+
+	got := completeToolAnswer("I'll search the web.", rag)
+	if !strings.Contains(got, "limited source-backed evidence") {
+		t.Fatalf("expected limited-evidence disclosure, got %q", got)
+	}
+	if !strings.Contains(got, "https://www.yahoo.com/tech/tag/artificial-intelligence/") {
+		t.Fatalf("expected full usable URL in limited-evidence fallback, got %q", got)
+	}
+	if strings.Contains(got, "https://www.…") || strings.Contains(got, "https://www.yahoo.com/tech/tag/artificial-intelligence/…") {
+		t.Fatalf("expected URL not to be ellipsized, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerReplacesRawMixedSourcePayload(t *testing.T) {
 	rag := []string{
 		`### blog_list

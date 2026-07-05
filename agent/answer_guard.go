@@ -357,10 +357,7 @@ func meaningfulLines(body string, limit int) []string {
 		if line == "" {
 			continue
 		}
-		if len([]rune(line)) > 280 {
-			r := []rune(line)
-			line = string(r[:280]) + "…"
-		}
+		line = truncateFallbackLinePreservingURL(line, 280)
 		if isFallbackSecondaryContextLine(line) {
 			context = append(context, line)
 		} else {
@@ -495,6 +492,32 @@ func snippetStoryLead(snippet string) string {
 		}
 	}
 	return ""
+}
+
+func truncateFallbackLinePreservingURL(line string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	if len([]rune(line)) <= limit {
+		return line
+	}
+	url := fallbackLineURL(line)
+	if url == "" {
+		r := []rune(line)
+		return string(r[:limit]) + "…"
+	}
+
+	suffix := " (" + url + ")"
+	prefix := strings.TrimSpace(strings.TrimSuffix(line, suffix))
+	budget := limit - len([]rune(suffix)) - 1
+	if budget < 24 {
+		return url
+	}
+	prefixRunes := []rune(prefix)
+	if len(prefixRunes) > budget {
+		prefix = strings.TrimSpace(string(prefixRunes[:budget])) + "…"
+	}
+	return prefix + suffix
 }
 
 func fallbackLineURL(line string) string {
