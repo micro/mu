@@ -93,6 +93,7 @@ regression:
 - `wallet_transfer` — source session-bound; £500/call cap. (No daily cap yet —
   candidate for hardening.)
 - `pay` — registry-only servers; per-call ($1) + daily ($10) caps.
+- `search`/`web_fetch` — public URL/query tools; literal private/loopback hosts and redirects are blocked before fetch.
 - blog update/delete — `RequireSession` + author check.
 - `apps_create` — author from session, slug auto-uniquified (never overwrites).
 - `apps_edit` — `RegisterToolWithAuth` + `UpdateAppOwned` ownership check.
@@ -106,8 +107,7 @@ regression:
 - `apps_run`: executes model-supplied JS in a sandbox — audit the sandbox
   boundary (SSRF, resource, escape); it touches no user identity but its safety
   rests entirely on the sandbox.
-- `search`/`web_fetch` fetch model-supplied URLs server-side — review for SSRF
-  (reaching internal addresses); out of scope for identity but real.
+- `search`/`web_fetch` fetch model-supplied URLs server-side. Literal private/loopback hosts and redirects are blocked, but DNS is not resolved before connect, so an attacker-controlled hostname that resolves to an internal IP remains a residual SSRF follow-up; out of scope for identity but real.
 
 ## Autonomy boundary for the security loop
 
