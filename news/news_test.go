@@ -296,6 +296,49 @@ func TestNewsSearchArticlesFreshQueriesPreferNewestMatches(t *testing.T) {
 	}
 }
 
+func TestNewsSearchArticlesFreshQueriesWidenLiveCandidatePool(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	older := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	today := time.Date(2026, 7, 6, 9, 0, 0, 0, time.UTC)
+	var posts []*Post
+	for i := 0; i < 12; i++ {
+		posts = append(posts, &Post{
+			ID:          fmt.Sprintf("old-ai-model-%d", i),
+			Title:       fmt.Sprintf("AI model archive item %d", i),
+			Description: "Older artificial intelligence model background.",
+			URL:         fmt.Sprintf("https://example.com/old-ai-model-%d", i),
+			Category:    "Tech",
+			PostedAt:    older.Add(time.Duration(i) * time.Hour),
+		})
+	}
+	posts = append(posts, &Post{
+		ID:          "same-day-ai",
+		Title:       "AI startup ships same-day assistant update",
+		Description: "Fresh AI product news from today.",
+		URL:         "https://example.com/same-day-ai",
+		Category:    "Tech",
+		PostedAt:    today,
+	})
+
+	mutex.Lock()
+	feed = posts
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) == 0 {
+		t.Fatal("expected live feed results")
+	}
+	if got[0]["title"] != "AI startup ships same-day assistant update" {
+		t.Fatalf("expected widened candidate pool to let same-day AI news lead, got %#v", got)
+	}
+}
+
 func TestNewsSearchFreshnessSummaryCaveatsStaleTodayResults(t *testing.T) {
 	articles := []map[string]interface{}{{
 		"title":     "AI startup raises funding",
