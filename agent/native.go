@@ -290,6 +290,9 @@ func streamNative(accountID, prompt string, opts QueryOpts, hooks StreamHooks) (
 			}
 		case gmagent.StreamEventToken:
 			reply.WriteString(ev.Token)
+			if shouldBufferNativeToken(recorder) {
+				continue
+			}
 			if hooks.Token != nil {
 				hooks.Token(ev.Token)
 			}
@@ -318,6 +321,17 @@ type nativeToolRecorder struct {
 
 func newNativeToolRecorder() *nativeToolRecorder {
 	return &nativeToolRecorder{}
+}
+
+func shouldBufferNativeToken(recorder *nativeToolRecorder) bool {
+	if recorder == nil {
+		return false
+	}
+	// Stale-only news answers need the guard to prepend an unmistakable caveat
+	// before any older story. Native streaming emits model tokens before the
+	// final answer guard runs, so buffer those tokens and let the final response
+	// replace them once the stale-news caveat/background labels are applied.
+	return staleNewsFreshnessCaveat(recorder.ragParts()) != ""
 }
 
 func (r *nativeToolRecorder) wrap(next gmai.ToolHandler) gmai.ToolHandler {

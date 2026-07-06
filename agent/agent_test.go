@@ -1501,6 +1501,20 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	}
 }
 
+func TestShouldBufferNativeTokenForStaleNewsCaveat(t *testing.T) {
+	recorder := newNativeToolRecorder()
+	if shouldBufferNativeToken(recorder) {
+		t.Fatal("empty recorder should not buffer native tokens")
+	}
+	recorder.parts = append(recorder.parts, `### news
+News results for "AI news":
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`)
+	if !shouldBufferNativeToken(recorder) {
+		t.Fatal("stale-only news recorder should buffer native tokens until the guarded final response")
+	}
+}
+
 func TestCompleteToolAnswerDoesNotDuplicateLeadingStaleNewsCaveat(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
