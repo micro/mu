@@ -1515,6 +1515,18 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	}
 }
 
+func TestShouldHoldNativeNewsStreamTokensForLatestNewsPrompt(t *testing.T) {
+	if !shouldHoldNativeNewsStreamTokens("Find today's AI news", []string{"news"}) {
+		t.Fatal("expected native latest-news tokens to be held once news tool starts")
+	}
+	if shouldHoldNativeNewsStreamTokens("Find today's AI news", []string{"weather"}) {
+		t.Fatal("did not expect non-news native tool tokens to be held")
+	}
+	if shouldHoldNativeNewsStreamTokens("What is moving in markets?", []string{"news"}) {
+		t.Fatal("did not expect non-latest-news prompts to hold native tokens")
+	}
+}
+
 func TestCompleteToolAnswerDoesNotDuplicateLeadingStaleNewsCaveat(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
