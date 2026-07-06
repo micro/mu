@@ -48,6 +48,7 @@ Core facts you may rely on (claim nothing beyond these and the specific angle yo
 - Mu is built on Go Micro: every capability is a go-micro service, the assistant is a go-micro agent, and the MCP and A2A endpoints are its gateways.
 - Values: no ads, no tracking, no algorithmic feed, no infinite scroll. You pay for the tools, not with your attention. AI assists, it does not replace, and is honest when it does not know.
 - Available on the web at micro.mu, plus Discord, Telegram, and WhatsApp when configured; developers reach every service over REST, MCP, A2A and the CLI.
+- For date-sensitive news, Mu should disclose freshness plainly: when only older news_search results are available, the answer leads with that caveat before listing stories.
 
 Voice: plain, concrete, and honest. Lead with what a person actually gets. No hype, no superlatives, no exclamation marks, no growth-hacky tone — the same restraint Mu applies to its product (no dark patterns in the copy either). Name the trade-offs honestly. If unsure whether something is true, leave it out.
 
