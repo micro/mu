@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"fmt"
 	"html"
 	"io"
@@ -21,13 +22,19 @@ import (
 // Nitter renders tweets as static HTML, which our extractor can parse.
 var nitterInstance = "nitter.poast.org"
 
+var fetchLookupIP = net.DefaultResolver.LookupIPAddr
+
 var fetchClient = &http.Client{
 	Timeout: 15 * time.Second,
+	Transport: &http.Transport{
+		Proxy:       http.ProxyFromEnvironment,
+		DialContext: fetchDialContext,
+	},
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 {
 			return fmt.Errorf("too many redirects")
 		}
-		if err := validateFetchURL(req.URL); err != nil {
+		if err := validateResolvedFetchURL(req.Context(), req.URL); err != nil {
 			return err
 		}
 		return nil
@@ -158,6 +165,9 @@ func FetchAndExtract(rawURL string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	if err := validateResolvedFetchURL(req.Context(), req.URL); err != nil {
+		return "", "", err
+	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Mu/1.0; +https://mu.al)")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
 
@@ -220,6 +230,9 @@ func fetchAndSanitize(rawURL string, proxy bool) (string, string, error) {
 
 	req, err := http.NewRequest("GET", fetchURL, nil)
 	if err != nil {
+		return "", "", err
+	}
+	if err := validateResolvedFetchURL(req.Context(), req.URL); err != nil {
 		return "", "", err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Mu/1.0; +https://mu.al)")
@@ -642,6 +655,64 @@ func collapseWhitespace(s string) string {
 	return multiSpaceRe.ReplaceAllString(s, " ")
 }
 
+func fetchDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	ips, err := resolvePublicFetchHost(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+
+	dialer := &net.Dialer{Timeout: 15 * time.Second}
+	var lastErr error
+	for _, ip := range ips {
+		conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("no resolved addresses for %s", host)
+}
+
+func validateResolvedFetchURL(ctx context.Context, parsed *url.URL) error {
+	if err := validateFetchURL(parsed); err != nil {
+		return err
+	}
+	_, err := resolvePublicFetchHost(ctx, parsed.Hostname())
+	return err
+}
+
+func resolvePublicFetchHost(ctx context.Context, host string) ([]net.IP, error) {
+	host = strings.TrimSpace(strings.Trim(host, "[]"))
+	if isPrivateHost(host) {
+		return nil, fmt.Errorf("cannot fetch private or internal URL")
+	}
+
+	addrs, err := fetchLookupIP(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("no addresses found for %s", host)
+	}
+
+	ips := make([]net.IP, 0, len(addrs))
+	for _, addr := range addrs {
+		ip := addr.IP
+		if isPrivateIP(ip) {
+			return nil, fmt.Errorf("cannot fetch private or internal URL")
+		}
+		ips = append(ips, ip)
+	}
+	return ips, nil
+}
+
 func validateRawFetchURL(rawURL string) error {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
@@ -668,8 +739,12 @@ func isPrivateHost(host string) bool {
 	}
 
 	if ip := net.ParseIP(host); ip != nil {
-		return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified()
+		return isPrivateIP(ip)
 	}
 
 	return strings.EqualFold(host, "metadata.google.internal")
+}
+
+func isPrivateIP(ip net.IP) bool {
+	return ip == nil || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
 }
