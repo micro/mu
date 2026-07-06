@@ -23,11 +23,15 @@ func completeToolAnswer(answer string, ragParts []string) string {
 	if len(ragParts) == 0 {
 		return answer
 	}
-	if caveat := staleNewsFreshnessCaveat(ragParts); caveat != "" && !answerLeadsWithFreshnessCaveat(trimmed) {
-		if trimmed == "" {
+	if caveat := staleNewsFreshnessCaveat(ragParts); caveat != "" {
+		guarded := labelStaleNewsAnswerStories(trimmed)
+		if answerLeadsWithFreshnessCaveat(trimmed) {
+			return guarded
+		}
+		if guarded == "" {
 			return caveat
 		}
-		return caveat + "\n\n" + trimmed
+		return caveat + "\n\n" + guarded
 	}
 
 	if !isProgressOnlyAnswer(trimmed) && !isRawToolPayloadAnswer(trimmed) && !hasOperationalFallbackLead(trimmed) {
@@ -55,6 +59,42 @@ func staleNewsFreshnessCaveat(ragParts []string) string {
 		}
 	}
 	return ""
+}
+
+func labelStaleNewsAnswerStories(answer string) string {
+	if strings.TrimSpace(answer) == "" {
+		return ""
+	}
+	lines := strings.Split(answer, "\n")
+	changed := false
+	for i, raw := range lines {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			continue
+		}
+		marker := ""
+		content := trimmed
+		for _, prefix := range []string{"- ", "* ", "• "} {
+			if strings.HasPrefix(content, prefix) {
+				marker = prefix
+				content = strings.TrimSpace(strings.TrimPrefix(content, prefix))
+				break
+			}
+		}
+		lower := strings.ToLower(content)
+		if strings.HasPrefix(lower, "background:") || strings.HasPrefix(lower, "no current") || strings.Contains(lower, "no same-day") || strings.Contains(lower, "freshness caveat") {
+			continue
+		}
+		if looksLikeNewsStoryLine(content) || regexp.MustCompile(`^\d+[.)]\s+`).MatchString(content) {
+			indent := raw[:len(raw)-len(strings.TrimLeft(raw, " \t"))]
+			lines[i] = indent + marker + "Background: " + content
+			changed = true
+		}
+	}
+	if !changed {
+		return answer
+	}
+	return strings.Join(lines, "\n")
 }
 
 func answerLeadsWithFreshnessCaveat(answer string) bool {
