@@ -605,6 +605,10 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			sse(w, map[string]any{"type": "tool_done", "name": label, "message": label + " — done"})
 		},
 		Token: func(tok string) {
+			if shouldHoldNativeNewsStreamTokens(prompt, nativeTools) {
+				captured.WriteString(tok)
+				return
+			}
 			if !streaming {
 				streaming = true
 				emitted = true
@@ -637,6 +641,12 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	}
 	answer = completeNativeToolAnswer(answer, nativeTools)
 	answer = app.NormalizeAnswerMarkdown(answer)
+	if !streaming && captured.Len() > 0 {
+		streaming = true
+		emitted = true
+		sse(w, map[string]any{"type": "stream_start"})
+		sse(w, map[string]any{"type": "stream_token", "token": answer})
+	}
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
 	updateFlow(flow.ID, func(f *Flow) {
@@ -1307,6 +1317,18 @@ func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWe
 	}
 	if isLatestTechnologyNewsPrompt(strings.ToLower(prompt)) {
 		return hasNewsSearchTool || (hasWebSearchTool && hasUnavailableNewsSearch)
+	}
+	return false
+}
+
+func shouldHoldNativeNewsStreamTokens(prompt string, nativeTools []string) bool {
+	if !isLatestTechnologyNewsPrompt(strings.ToLower(prompt)) {
+		return false
+	}
+	for _, tool := range nativeTools {
+		if canonicalToolTitle(tool) == "news" {
+			return true
+		}
 	}
 	return false
 }
