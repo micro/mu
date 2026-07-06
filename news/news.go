@@ -1861,7 +1861,16 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 		}
 	}
 
-	for _, post := range liveFeedSearch(query, limit) {
+	liveLimit := limit
+	if newsQueryWantsFreshness(query) {
+		// Freshness prompts ("today", "latest", "current") need a wider live-feed
+		// candidate pool than the final response size. liveFeedSearch ranks by
+		// textual relevance first, so a same-day story with a narrower term match
+		// can otherwise be trimmed before the final recency sort gets a chance to
+		// promote it above older, broader matches.
+		liveLimit = newsSearchFreshCandidateLimit(limit)
+	}
+	for _, post := range liveFeedSearch(query, liveLimit) {
 		candidates = append(candidates, map[string]interface{}{
 			"id":          post.ID,
 			"title":       post.Title,
@@ -1882,6 +1891,17 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 		add(article)
 	}
 	return articles
+}
+
+func newsSearchFreshCandidateLimit(limit int) int {
+	if limit <= 0 {
+		limit = 20
+	}
+	widened := limit * 4
+	if widened < 50 {
+		widened = 50
+	}
+	return widened
 }
 
 func newsSearchFreshnessSummary(query string, articles []map[string]interface{}, now time.Time) map[string]interface{} {
