@@ -1,6 +1,8 @@
 package search
 
 import (
+	"context"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -124,5 +126,35 @@ func TestFetchClientRejectsRedirectsToPrivateURLs(t *testing.T) {
 	err = fetchClient.CheckRedirect(req, via)
 	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "private or internal") {
 		t.Fatalf("CheckRedirect() error = %v; want private/internal rejection", err)
+	}
+}
+
+func TestResolvePublicFetchHostRejectsDNSPrivateAddresses(t *testing.T) {
+	oldLookup := fetchLookupIP
+	fetchLookupIP = func(ctx context.Context, host string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("169.254.169.254")}}, nil
+	}
+	defer func() { fetchLookupIP = oldLookup }()
+
+	_, err := resolvePublicFetchHost(context.Background(), "example.com")
+	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "private or internal") {
+		t.Fatalf("resolvePublicFetchHost() error = %v; want private/internal rejection", err)
+	}
+}
+
+func TestValidateResolvedFetchURLRejectsDNSPrivateAddresses(t *testing.T) {
+	oldLookup := fetchLookupIP
+	fetchLookupIP = func(ctx context.Context, host string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("10.0.0.5")}}, nil
+	}
+	defer func() { fetchLookupIP = oldLookup }()
+
+	parsed, err := url.Parse("https://public.example/article")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = validateResolvedFetchURL(context.Background(), parsed)
+	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "private or internal") {
+		t.Fatalf("validateResolvedFetchURL() error = %v; want private/internal rejection", err)
 	}
 }
