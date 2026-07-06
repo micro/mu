@@ -1467,6 +1467,34 @@ func TestFormatToolResultNewsSearchSurfacesFreshnessCaveat(t *testing.T) {
 	}
 }
 
+func TestCompleteToolAnswerPrependsStaleNewsCaveatToSubstantiveAnswer(t *testing.T) {
+	rag := []string{`### news_search
+News results for "AI news":
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
+	answer := "1. AI startup raises funding — an older archive item from May."
+	got := completeToolAnswer(answer, rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "No current news_search results:") || !strings.Contains(firstLine, "No same-day news_search results were available for 2026-07-06") {
+		t.Fatalf("expected stale-only disclosure before story list, got %q", got)
+	}
+	if strings.Index(got, "No current news_search results:") > strings.Index(got, "1. AI startup raises funding") {
+		t.Fatalf("expected stale-only disclosure to precede stories, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerDoesNotDuplicateLeadingStaleNewsCaveat(t *testing.T) {
+	rag := []string{`### news_search
+News results for "AI news":
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
+	answer := "No same-day news_search results were available for 2026-07-06. The freshest item is older."
+	got := completeToolAnswer(answer, rag)
+	if got != answer {
+		t.Fatalf("expected existing leading caveat to be preserved without duplication, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerKeepsSubstantiveAnswer(t *testing.T) {
 	want := "BTC is at $100,000, and the latest news says it reached a new high."
 	got := completeToolAnswer(want, []string{"### markets\nBTC: $100,000"})
