@@ -1478,8 +1478,26 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	if !strings.Contains(firstLine, "No current news_search results:") || !strings.Contains(firstLine, "No same-day news_search results were available for 2026-07-06") {
 		t.Fatalf("expected stale-only disclosure before story list, got %q", got)
 	}
-	if strings.Index(got, "No current news_search results:") > strings.Index(got, "1. AI startup raises funding") {
-		t.Fatalf("expected stale-only disclosure to precede stories, got %q", got)
+	if strings.Index(got, "No current news_search results:") > strings.Index(got, "Background: 1. AI startup raises funding") {
+		t.Fatalf("expected stale-only disclosure to precede background-labeled stories, got %q", got)
+	}
+	if !strings.Contains(got, "Background: 1. AI startup raises funding") {
+		t.Fatalf("expected stale-only substantive answer stories to be labeled as background, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerLabelsExistingStaleNewsCaveatStories(t *testing.T) {
+	rag := []string{`### news_search
+News results for "AI news":
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
+	answer := "No same-day news_search results were available for 2026-07-06. Older items only:\n- 1. AI startup raises funding — an archive item from May."
+	got := completeToolAnswer(answer, rag)
+	if strings.Count(got, "No current news_search results:") != 0 {
+		t.Fatalf("did not expect duplicate no-current caveat, got %q", got)
+	}
+	if !strings.Contains(got, "- Background: 1. AI startup raises funding") {
+		t.Fatalf("expected existing caveat answer stories to be labeled as background, got %q", got)
 	}
 }
 
