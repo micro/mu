@@ -21,9 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Surface freshness caveats in AI-news agent answers** ([#1177](https://github.com/micro/mu/issues/1177)). PR #1175 closed #1172 by adding freshness metadata/caveats to `news_search`, so #1172 should not stay queued. The 2026-07-05 live guest review for #1176 still shows the highest-value Now-phase friction in the core ask → answer loop: `Find today's AI news` reaches `news_search`, completes in under 1s, and keeps clean source URLs, but the rendered agent answer still leads with March–May 2026 stories for a "today" prompt on Sunday, 5 July 2026 without surfacing the no-same-day-results caveat. Keep the fast provider path and clean links; make the agent-facing answer carry the freshness disclosure before older fallback/background items.
+1. **Prioritize truly current AI-news results for today prompts** ([#1172](https://github.com/micro/mu/issues/1172)). PR #1180 closed #1177 by surfacing the `news_search` freshness caveat when stale fallback evidence is detected, so #1177 should not stay queued. The 2026-07-06 live guest review for #1181 still shows the highest-value Now-phase friction in the core ask → answer loop: `Find today's AI news` reaches `news_search`, completes in under 1s, and keeps clean source URLs, but the rendered answer still leads with March–May 2026 TechCrunch/CoinDesk stories for a "today" prompt on Monday, 6 July 2026 instead of ranking truly current evidence first or clearly framing every older item as fallback/background. Keep the fast provider path and clean links; make same-day/recent evidence win when available, and make stale-only result sets unmissable before the story list.
 
 ### Already shipped (do not re-queue)
+
+- ✅ **News freshness caveat surfacing shipped but stale-first ranking remains.** PR #1180 closed #1177 by making agent answers surface stale-result freshness caveats when the provider marks older fallback evidence; the 2026-07-06 live guest review for #1181 still saw `Find today's AI news` complete in under 1s while leading with March–May 2026 stories for a Monday, 6 July 2026 prompt, now tracked in #1172.
 
 - ✅ **News freshness caveat metadata shipped but agent answers still need to surface it.** PR #1175 closed #1172 by adding freshness caveats to `news_search`; the 2026-07-05 product review for #1176 still saw live guest `Find today's AI news` complete in under 1s while rendering March–May 2026 stories without the no-same-day-results disclosure, now tracked in #1177.
 
