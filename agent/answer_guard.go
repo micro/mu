@@ -173,6 +173,9 @@ func formatFallbackSection(title, body string) string {
 	}
 
 	lines := meaningfulLines(body, 6)
+	if canonical == "news" {
+		lines = prioritizeStaleNewsCaveatLines(lines)
+	}
 	if canonical == "weather" {
 		lines = prioritizeCurrentWeatherLines(lines)
 		if summary := weatherAnswerLead(lines); summary != "" {
@@ -274,6 +277,48 @@ func webSearchAnswerLead(lines []string, requestDate string) string {
 		prefix += " for " + requestDate
 	}
 	return prefix + ": " + first + "; " + second + "."
+}
+
+func prioritizeStaleNewsCaveatLines(lines []string) []string {
+	if len(lines) == 0 {
+		return lines
+	}
+	caveatIndex := -1
+	for i, line := range lines {
+		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "freshness caveat:") {
+			caveatIndex = i
+			break
+		}
+	}
+	if caveatIndex < 0 {
+		return lines
+	}
+	out := make([]string, 0, len(lines))
+	caveat := strings.TrimSpace(lines[caveatIndex])
+	caveat = strings.TrimSpace(caveat[len("Freshness caveat:"):])
+	out = append(out, "No current news_search results: "+caveat)
+	for i, line := range lines {
+		if i == caveatIndex {
+			continue
+		}
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || isSearchResultHeading(trimmed) {
+			continue
+		}
+		if looksLikeNewsStoryLine(trimmed) && !strings.HasPrefix(strings.ToLower(trimmed), "background:") {
+			trimmed = "Background: " + trimmed
+		}
+		out = append(out, trimmed)
+	}
+	return out
+}
+
+func looksLikeNewsStoryLine(line string) bool {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	if lower == "" || strings.HasPrefix(lower, "no current") || strings.HasPrefix(lower, "freshness caveat:") {
+		return false
+	}
+	return strings.Contains(lower, "posted:") || strings.Contains(lower, "source: http") || strings.Contains(line, " — ")
 }
 
 func fallbackRequestDate(body string) string {
@@ -466,7 +511,7 @@ func isFallbackSecondaryContextLine(line string) bool {
 
 func isSearchResultHeading(line string) bool {
 	lower := strings.ToLower(strings.TrimSpace(line))
-	return strings.HasPrefix(lower, "search results for ") || lower == "search results:" || strings.HasPrefix(lower, "web results for ") || strings.HasPrefix(lower, "top results")
+	return strings.HasPrefix(lower, "search results for ") || lower == "search results:" || strings.HasPrefix(lower, "web results for ") || strings.HasPrefix(lower, "news results for ") || strings.HasPrefix(lower, "top results")
 }
 
 func isGenericSearchFallbackIntro(line string) bool {

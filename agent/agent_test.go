@@ -1483,6 +1483,24 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	}
 }
 
+func TestSynthesizeToolFallbackLeadsStaleNewsWithCaveat(t *testing.T) {
+	rag := []string{`### news_search
+News results for "AI news":
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
+	got := synthesizeToolFallback(rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "No current news_search results:") {
+		t.Fatalf("expected stale-only disclosure to lead fallback answer, got %q", got)
+	}
+	if strings.Contains(got, "- News results for") {
+		t.Fatalf("did not expect tool-style news heading in fallback answer, got %q", got)
+	}
+	if !strings.Contains(got, "Background: AI startup raises funding") {
+		t.Fatalf("expected older stale stories to be labeled as background, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerDoesNotDuplicateLeadingStaleNewsCaveat(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
@@ -1538,7 +1556,7 @@ func TestNativeToolRecorderFormatsNewsPayloads(t *testing.T) {
 	if strings.Contains(strings.ToLower(got), "let me search") {
 		t.Fatalf("expected native progress narration to be replaced, got %q", got)
 	}
-	if !strings.Contains(got, "News results for") || !strings.Contains(got, "AI headline") || strings.Contains(got, `{"query"`) {
+	if !strings.Contains(got, "AI headline") || !strings.Contains(got, "Useful context") || strings.Contains(got, `{"query"`) {
 		t.Fatalf("expected native fallback to use formatted news results, got %q", got)
 	}
 }
