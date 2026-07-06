@@ -23,11 +23,50 @@ func completeToolAnswer(answer string, ragParts []string) string {
 	if len(ragParts) == 0 {
 		return answer
 	}
+	if caveat := staleNewsFreshnessCaveat(ragParts); caveat != "" && !answerLeadsWithFreshnessCaveat(trimmed) {
+		if trimmed == "" {
+			return caveat
+		}
+		return caveat + "\n\n" + trimmed
+	}
+
 	if !isProgressOnlyAnswer(trimmed) && !isRawToolPayloadAnswer(trimmed) && !hasOperationalFallbackLead(trimmed) {
 		return answer
 	}
 
 	return synthesizeToolFallback(ragParts)
+}
+
+func staleNewsFreshnessCaveat(ragParts []string) string {
+	for _, part := range ragParts {
+		title, body := splitRAGPart(part)
+		if canonicalToolTitle(title) != "news" {
+			continue
+		}
+		for _, raw := range strings.Split(body, "\n") {
+			line := strings.TrimSpace(strings.TrimLeft(raw, "-• "))
+			if line == "" {
+				continue
+			}
+			lower := strings.ToLower(line)
+			if strings.HasPrefix(lower, "freshness caveat:") {
+				return "No current news_search results: " + strings.TrimSpace(line[len("Freshness caveat:"):])
+			}
+		}
+	}
+	return ""
+}
+
+func answerLeadsWithFreshnessCaveat(answer string) bool {
+	for _, raw := range strings.Split(answer, "\n") {
+		line := strings.TrimSpace(strings.TrimLeft(raw, "-•#* "))
+		if line == "" {
+			continue
+		}
+		lower := strings.ToLower(line)
+		return strings.Contains(lower, "no current") || strings.Contains(lower, "no same-day") || strings.Contains(lower, "freshness caveat") || strings.Contains(lower, "stale")
+	}
+	return false
 }
 
 func synthesizeToolFallback(ragParts []string) string {
