@@ -21,9 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Add a daily cap or confirmation for wallet credit transfers** ([#1188](https://github.com/micro/mu/issues/1188)). Wallet transfer source binding is already session-scoped, but repeated model-initiated transfers are only bounded per call. Add a per-account daily budget and/or explicit human confirmation for large or repeated transfers, keeping guests unable to transfer and preserving `sess.Account` as the only source account. This is now the top open Now-phase refinement after the live AI-news freshness issue closed: it protects signed-in/payment-surface trust without adding new surface area or changing public contracts.
+1. **Keep stale AI-news results from leading latest/today answers** ([#1243](https://github.com/micro/mu/issues/1243)). The live 2026-07-07 guest review shows `Find today's AI news` is fast and source-linked through `news_search`, but it still leads with March-May 2026 stories before a newer 2 July item and no up-front mostly-stale/no-current-results caveat. This is the highest-value open Now-phase refinement because it directly affects the first-run ask → answer loop for a common freshness-sensitive prompt; it is narrower and more CI-verifiable than adding surface area.
 
 ### Already shipped (do not re-queue)
+
+- ✅ **Daily wallet credit transfer cap shipped.** PR #1241 closed #1188 by adding a per-account daily budget for wallet credit transfers, so the previous wallet trust item is no longer active. The 2026-07-07 product review for #1242 found no open codex PRs/issues after that merge, then re-opened the remaining live freshness friction as #1243.
 
 - ✅ **Native AI-news mostly-stale caveat shipped.** PR #1235 closed #1232 by holding the native news stream long enough to prepend freshness caveats before stale evidence reaches the user, so #1232 is no longer active; the 2026-07-07 live guest review for #1238 still shows fast, source-linked `news_search` output, but the closed issue should not remain in the ranked queue. PR #1237 later added marketing-note coverage for the same freshness-streaming angle.
 
