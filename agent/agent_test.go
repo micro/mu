@@ -1499,6 +1499,23 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	}
 }
 
+func TestCompleteToolAnswerPrependsMostlyStaleNewsCaveatToSubstantiveAnswer(t *testing.T) {
+	rag := []string{`### news_search
+News results for "AI news":
+Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-07; lead with a freshness caveat before listing older context as today's news.
+1. AI lab ships current update (category: Tech; posted: 07 Jul 2026 12:00 UTC; source: https://example.com/current-ai) — Current story.
+2. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
+	answer := "1. AI lab ships current update — current story.\n2. AI startup raises funding — older archive context."
+	got := completeToolAnswer(answer, rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "Mostly stale news_search results:") || !strings.Contains(firstLine, "Only 1 of 3 dated news_search results") {
+		t.Fatalf("expected mostly-stale disclosure before story list, got %q", got)
+	}
+	if strings.Index(got, "Mostly stale news_search results:") > strings.Index(got, "Background: 1. AI lab ships current update") {
+		t.Fatalf("expected mostly-stale disclosure to precede background-labeled stories, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerLabelsExistingStaleNewsCaveatStories(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
@@ -1511,6 +1528,17 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	}
 	if !strings.Contains(got, "- Background: 1. AI startup raises funding") {
 		t.Fatalf("expected existing caveat answer stories to be labeled as background, got %q", got)
+	}
+}
+
+func TestRenderNewsCardSurfacesMostlyStaleFreshnessCaveat(t *testing.T) {
+	result := `{"query":"AI news","freshness":{"status":"mostly_stale","notice":"Only 1 of 3 dated news_search results are from 2026-07-07; lead with a freshness caveat before listing older context as today's news."},"results":[{"title":"AI lab ships current update","category":"Tech","url":"https://example.com/current-ai"}]}`
+	got := renderNewsCard(result)
+	if !strings.Contains(got, "Mostly stale news_search results: Only 1 of 3 dated news_search results") {
+		t.Fatalf("expected mostly-stale caveat in news card html, got %q", got)
+	}
+	if strings.Index(got, "Mostly stale news_search results:") > strings.Index(got, "AI lab ships current update") {
+		t.Fatalf("expected news card caveat before story links, got %q", got)
 	}
 }
 

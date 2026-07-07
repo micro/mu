@@ -1508,8 +1508,12 @@ func renderResultCard(toolName, result string, args map[string]any) string {
 
 func renderNewsCard(result string) string {
 	var data struct {
-		Feed    []newsItem `json:"feed"`
-		Results []newsItem `json:"results"`
+		Feed      []newsItem `json:"feed"`
+		Results   []newsItem `json:"results"`
+		Freshness struct {
+			Status string `json:"status"`
+			Notice string `json:"notice"`
+		} `json:"freshness"`
 	}
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
 		return ""
@@ -1527,6 +1531,11 @@ func renderNewsCard(result string) string {
 
 	var b strings.Builder
 	b.WriteString(`<div class="card"><h4>📰 News</h4>`)
+	if notice := strings.TrimSpace(data.Freshness.Notice); notice != "" && (data.Freshness.Status == "stale" || data.Freshness.Status == "mostly_stale" || data.Freshness.Status == "no_dated_results") {
+		b.WriteString(`<div style="margin:0 0 8px;padding:8px;border-radius:4px;background:#fff7ed;color:#7c2d12;font-size:12px;">`)
+		b.WriteString(htmlEsc(newsFreshnessCardLead(data.Freshness.Status) + notice))
+		b.WriteString(`</div>`)
+	}
 	for _, item := range items {
 		link := item.URL
 		if item.ID != "" {
@@ -1541,6 +1550,13 @@ func renderNewsCard(result string) string {
 	}
 	b.WriteString(`<a href="/news" class="link" style="display:inline-block;margin-top:8px;">More news →</a></div>`)
 	return b.String()
+}
+
+func newsFreshnessCardLead(status string) string {
+	if status == "mostly_stale" {
+		return "Mostly stale news_search results: "
+	}
+	return "No current news_search results: "
 }
 
 type newsItem struct {
