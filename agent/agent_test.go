@@ -2,12 +2,18 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 
 	gmai "go-micro.dev/v6/ai"
 )
+
+func quoteJSONString(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
 
 func TestPlacesMapURL_QueryAndNear(t *testing.T) {
 	args := map[string]any{"q": "cafe", "near": "Hampton, UK"}
@@ -1451,6 +1457,18 @@ func TestFormatToolResultNewsHeadlinesStaysReadable(t *testing.T) {
 	}
 	if !strings.Contains(got, "AI lab releases a new model") || strings.Contains(got, `{"`) {
 		t.Fatalf("expected readable news_headlines context, got %q", got)
+	}
+}
+
+func TestFormatToolResultNewsSearchUnwrapsNativeServiceText(t *testing.T) {
+	inner := `{"query":"AI news","freshness":{"status":"stale","requested_date":"2026-07-07","freshest_posted_at":"2026-05-20T12:00:00Z","notice":"No same-day news_search results were available for 2026-07-07; the freshest result is from 2026-05-20, so lead with a freshness caveat instead of presenting older stories as today's news."},"results":[{"title":"AI startup raises funding","description":"Archive context.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
+	result := `{"text":` + quoteJSONString(inner) + `}`
+	got := formatToolResult("news_search", result, nil)
+	if !strings.Contains(got, "Freshness caveat: No same-day news_search results were available for 2026-07-07") {
+		t.Fatalf("expected native service text wrapper freshness caveat to surface, got %q", got)
+	}
+	if strings.Index(got, "Freshness caveat:") > strings.Index(got, "AI startup raises funding") {
+		t.Fatalf("expected freshness caveat before stale story, got %q", got)
 	}
 }
 

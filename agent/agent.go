@@ -1808,6 +1808,13 @@ func formatMarketPrice(price float64) string {
 // formatNewsResult converts a raw JSON news feed or search result into
 // human-readable text for the AI synthesis RAG context.
 func formatNewsResult(result string) string {
+	var textData struct {
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal([]byte(result), &textData); err == nil && strings.TrimSpace(textData.Text) != "" {
+		result = strings.TrimSpace(textData.Text)
+	}
+
 	var data struct {
 		Feed []struct {
 			Title       string `json:"title"`
