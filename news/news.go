@@ -1972,8 +1972,36 @@ func articlePostedAt(article map[string]interface{}) time.Time {
 	case time.Time:
 		return v
 	case string:
-		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			return t
+		return parseNewsArticleTime(v)
+	}
+	return time.Time{}
+}
+
+func parseNewsArticleTime(raw string) time.Time {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return time.Time{}
+	}
+	for _, layout := range []string{
+		time.RFC3339,
+		time.RFC3339Nano,
+		"2006-01-02 15:04:05 -0700 MST",
+		"2006-01-02 15:04:05 -0700",
+		"2006-01-02 15:04:05 MST",
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
+		"2006-01-02",
+		time.RFC1123Z,
+		time.RFC1123,
+		time.RFC822Z,
+		time.RFC822,
+		"2 Jan 2006 15:04 UTC",
+		"2 Jan 2006",
+		"Jan 2, 2006",
+		"January 2, 2006",
+	} {
+		if t, err := time.Parse(layout, raw); err == nil {
+			return t.UTC()
 		}
 	}
 	return time.Time{}
