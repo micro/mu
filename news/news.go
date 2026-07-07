@@ -1854,7 +1854,7 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 			"description": htmlToText(entry.Content),
 			"url":         cleanNewsArticleURL(entry.Metadata["url"]),
 			"category":    entry.Metadata["category"],
-			"posted_at":   entry.Metadata["posted_at"],
+			"posted_at":   indexedNewsArticlePostedAt(entry),
 		}
 		if articleMatchesNewsQuery(query, article) {
 			candidates = append(candidates, article)
@@ -1891,6 +1891,21 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 		add(article)
 	}
 	return articles
+}
+
+func indexedNewsArticlePostedAt(entry *data.IndexEntry) interface{} {
+	if entry == nil {
+		return nil
+	}
+	if entry.Metadata != nil {
+		if postedAt := entry.Metadata["posted_at"]; postedAt != nil {
+			return postedAt
+		}
+	}
+	if !entry.IndexedAt.IsZero() {
+		return entry.IndexedAt
+	}
+	return nil
 }
 
 func newsSearchFreshCandidateLimit(limit int) int {
