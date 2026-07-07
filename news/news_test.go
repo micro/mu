@@ -400,6 +400,25 @@ func TestNewsSearchFreshnessSummaryCaveatsMostlyStaleTodayResults(t *testing.T) 
 	}
 }
 
+func TestNewsSearchArticlesSortsNonRFCPostedAtForFreshnessQueries(t *testing.T) {
+	indexed := []*data.IndexEntry{
+		{ID: "older-ai", Title: "AI model archive", Content: "Older artificial intelligence model background.", Metadata: map[string]interface{}{
+			"url": "https://example.com/older-ai", "category": "Tech", "posted_at": "May 20, 2026",
+		}},
+		{ID: "newer-ai", Title: "AI lab ships July update", Content: "Newer artificial intelligence assistant update.", Metadata: map[string]interface{}{
+			"url": "https://example.com/newer-ai", "category": "Tech", "posted_at": "2026-07-02 09:00:00 +0000 UTC",
+		}},
+	}
+
+	got := newsSearchArticles("Find today's AI news", indexed, 8)
+	if len(got) < 2 {
+		t.Fatalf("expected indexed results, got %#v", got)
+	}
+	if got[0]["title"] != "AI lab ships July update" {
+		t.Fatalf("expected non-RFC posted_at to sort newest first, got %#v", got)
+	}
+}
+
 func TestSearchToolTextReturnsLiveFeedResultsForAgent(t *testing.T) {
 	oldFeed := feed
 	defer func() {
