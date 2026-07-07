@@ -1913,8 +1913,18 @@ func newsSearchFreshnessSummary(query string, articles []map[string]interface{},
 	}
 	now = now.UTC()
 	freshest := time.Time{}
+	dated := 0
+	sameDay := 0
 	for _, article := range articles {
 		posted := articlePostedAt(article)
+		if posted.IsZero() {
+			continue
+		}
+		posted = posted.UTC()
+		dated++
+		if posted.Format("2006-01-02") == now.Format("2006-01-02") {
+			sameDay++
+		}
 		if posted.After(freshest) {
 			freshest = posted
 		}
@@ -1932,6 +1942,13 @@ func newsSearchFreshnessSummary(query string, articles []map[string]interface{},
 	freshest = freshest.UTC()
 	freshness["freshest_posted_at"] = freshest.Format(time.RFC3339)
 	if freshest.Format("2006-01-02") == requestedDate {
+		freshness["same_day_results"] = sameDay
+		freshness["dated_results"] = dated
+		if dated > 1 && sameDay*2 < dated {
+			freshness["status"] = "mostly_stale"
+			freshness["notice"] = fmt.Sprintf("Only %d of %d dated news_search results are from %s; lead with a freshness caveat before listing older context as today's news.", sameDay, dated, requestedDate)
+			return freshness
+		}
 		freshness["status"] = "current"
 		return freshness
 	}
