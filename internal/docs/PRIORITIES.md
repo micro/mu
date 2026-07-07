@@ -21,9 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Ensure live AI-news freshness sorting reaches deployed answers** ([#1248](https://github.com/micro/mu/issues/1248)). The 2026-07-07 post-#1246 guest review shows `Find today's AI news` is still fast and source-linked through `news_search`, but the live answer continues to lead with March-May 2026 stories before a newer 2 July item and no up-front mostly-stale/no-current-results caveat. This remains the highest-value open Now-phase refinement because it directly affects the first-run ask → answer loop for a common freshness-sensitive prompt; the next increment should verify the deployed/native `news_search` path rather than only fallback formatting.
+1. **Restore live AI-news freshness ordering after metadata merge** ([#1253](https://github.com/micro/mu/issues/1253)). The 2026-07-07 product review for #1252 found #1248 closed by PR #1251, no open codex PRs/issues, and a still-fast guest `Find today's AI news` path through `news_search`; however the live answer still leads with May/March 2026 TechCrunch stories for a same-day request and no up-front mostly-stale/no-current-results caveat. This remains the highest-value Now-phase refinement because it is the clearest first-run ask → answer correctness gap after the metadata merge; the next increment should verify the deployed/native `news_search` answer path with freshness metadata end to end.
 
 ### Already shipped (do not re-queue)
+
+- ✅ **News search freshness metadata shipped but live output still leads stale.** PR #1251 closed #1248 by adding freshness metadata to the native news search API, so #1248 is not re-queued; the 2026-07-07 live guest review for #1252 still saw `Find today's AI news` complete in under 1s through `news_search` but lead with May/March 2026 stories and no up-front caveat, now tracked in #1253.
 
 - ✅ **AI-news freshness sorting robustness shipped but live output still leads stale.** PR #1246 closed #1243 by tightening freshness sorting around AI-news candidates, so #1243 is not re-queued; the 2026-07-07 post-merge live guest review still saw `Find today's AI news` complete in under 1s through `news_search` but lead with March-May 2026 stories before a 2 July item and no up-front caveat, now tracked in #1248.
 
