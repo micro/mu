@@ -1,10 +1,9 @@
 # Security charter — Mu
 
-The SECURITY lens of Mu's autonomous loop (alongside product and marketing; see
-`internal/docs/CONTINUOUS_IMPROVEMENT.md`). This is the rubric the security
-review runs against every pass, and the contract every new tool/service/handler
-must satisfy. If you add a capability that touches user data, money, or
-identity, it must still pass this document.
+Mu's security charter: the contract every tool, service, and handler that
+touches user data, money, or identity must satisfy, and the rubric for reviewing
+any change to that surface. If you add such a capability, it must still pass this
+document.
 
 ## Threat model
 
@@ -109,9 +108,8 @@ regression:
   rests entirely on the sandbox.
 - `search`/`web_fetch` fetch model-supplied URLs server-side. Literal private/loopback hosts and redirects are blocked, but DNS is not resolved before connect, so an attacker-controlled hostname that resolves to an internal IP remains a residual SSRF follow-up; out of scope for identity but real.
 
-## Autonomy boundary for the security loop
+## Reviewing changes
 
-Security is not auto-merged. The review REPORTS findings and files issues; for a
-clearly-correct, CI-verified, low-blast-radius hardening it may open a PR, but
-PRs touching auth, wallet, or identity binding are surfaced for **human review**
-and must not auto-merge. Prefer a regression test with every fix.
+Changes to auth, wallet, or identity binding get human review — this is exactly
+the surface where a subtle regression re-opens the class of bug above. Prefer a
+regression test with every fix.

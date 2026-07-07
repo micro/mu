@@ -1,13 +1,13 @@
 # Continuous Improvement
 
-Mu runs an autonomous loop driven by Codex. Scheduled GitHub Actions each open a
-fresh tracking issue and dispatch Codex with a role; Codex does the work and (for
-safe changes) opens a PR with auto-merge, so safe changes land when CI is green.
-All are gated on the `CODEX_TRIGGER_TOKEN` secret (a PAT for a user account Codex
-follows — Codex ignores comments from the github-actions bot), and all align to
-the North Star in [THESIS.md](THESIS.md).
+Mu runs an autonomous loop driven by Codex. Three scheduled GitHub Actions each
+open a fresh tracking issue and dispatch Codex with a role; Codex does the work
+and opens a PR with auto-merge, so safe changes land when CI is green. All three
+are gated on the `CODEX_TRIGGER_TOKEN` secret (a PAT for a user account Codex
+follows — Codex ignores comments from the github-actions bot), and all three
+align to the North Star in [THESIS.md](THESIS.md).
 
-## The agents
+## The three agents
 
 The shape mirrors go-micro's loop, recast for **Mu the product**:
 
@@ -16,25 +16,6 @@ The shape mirrors go-micro's loop, recast for **Mu the product**:
 | **product-review** (`.github/workflows/product-review.yml`) | Head of product — *where to next, what to refine* | hourly `:59` | maintains the ranked queue in [PRIORITIES.md](PRIORITIES.md) + an assessment |
 | **continuous-improvement** (`.github/workflows/continuous-improvement.yml`) | Builder — *ship one increment* | hourly `:29` | a PR that builds the top open item in PRIORITIES.md |
 | **marketing-review** (`.github/workflows/marketing-review.yml`) | Marketing — *tell the story* | daily `07:00 UTC` | public-surface coherence fixes + blog drafts (per [MARKETING.md](MARKETING.md)) |
-| **security-review** (`.github/workflows/security-review.yml`) | Security — *nothing like this again* | daily `03:00 UTC` | audits the agent tool/auth/wallet surface against [SECURITY.md](SECURITY.md); reports + files findings |
-| **operator** (spec — [OPERATOR.md](OPERATOR.md)) | Operations/SRE — *run it, release it safely, learn from prod* | on deploy (planned) | canary deploy + golden-signal digest → promote/rollback; routes production signal back into the queue |
-
-The security pass is the odd one out on autonomy: it **does not auto-merge**
-code. It reports findings and files scoped issues; a clearly-correct, CI-verified
-hardening may open a PR, but anything touching auth, wallet, or identity binding
-is left for a human. Its job is to keep the core invariant true — the model can
-never decide whose data is used or how the user's funds are spent.
-
-The **operator** is the ops/SRE lens (design in [OPERATOR.md](OPERATOR.md), not
-yet wired). Where the others evolve the source against synthetic tests, the
-operator closes the loop on the *running* system: it turns `deploy.yml` into
-progressive delivery (canary + golden-signal digest + automated rollback), runs a
-synthetic exerciser for live signal, and feeds production regressions back into
-the queue — the ordinary incident-to-backlog path. It also carries the disciplined
-channel for upstreaming library-level findings to go-micro (generalized,
-human-reviewed). Same autonomy boundary as security: it may promote/rollback a
-canary within SLO guardrails, but contracts, migrations, spend, and any go-micro
-write are human-gated.
 
 So the **product agent decides what**, the **increment loop builds it**, and the
 **marketing agent keeps the outside world coherent and supplied with things worth

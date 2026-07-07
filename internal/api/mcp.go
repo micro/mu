@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"mu/internal/auth"
-	"mu/internal/metrics"
 )
 
 // MCP protocol version
@@ -634,15 +633,7 @@ func ExecuteToolAs(accountID, name string, args map[string]any) (string, bool, e
 // forwarding authentication from r. It does NOT check wallet quota — the caller
 // is responsible for quota management.
 // Returns the tool output text, whether the response is an error, and any Go error.
-// It records golden-signal metrics (latency/errors) per tool for the operator.
 func ExecuteTool(r *http.Request, name string, args map[string]any) (string, bool, error) {
-	start := time.Now()
-	text, isErr, err := executeToolImpl(r, name, args)
-	metrics.Record("tool:"+name, time.Since(start), isErr || err != nil)
-	return text, isErr, err
-}
-
-func executeToolImpl(r *http.Request, name string, args map[string]any) (string, bool, error) {
 	var tool *Tool
 	for i := range tools {
 		if tools[i].Name == name {

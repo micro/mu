@@ -16,7 +16,6 @@ import (
 
 	"mu/internal/ai"
 	"mu/internal/app"
-	"mu/internal/metrics"
 	"mu/internal/service"
 	"mu/internal/settings"
 )
@@ -123,21 +122,6 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 	}
 }
 
-// recordToolMetrics times each native tool call and records golden-signal
-// metrics for the operator, keyed by the go-micro service.method name. Error
-// detection is coarse here (guardrail refusals); the MCP/planner path records
-// exact tool errors.
-func recordToolMetrics() gmai.ToolWrapper {
-	return func(next gmai.ToolHandler) gmai.ToolHandler {
-		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
-			start := time.Now()
-			res := next(ctx, call)
-			metrics.Record("tool:"+call.Name, time.Since(start), res.Refused != "")
-			return res
-		}
-	}
-}
-
 func dedupeNativeToolCalls() gmai.ToolWrapper {
 	var mu sync.Mutex
 	cache := map[string]gmai.ToolResult{}
@@ -222,7 +206,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh guest requests.
-	toolWrappers := append([]gmai.ToolWrapper{injectAccount(accountID), recordToolMetrics(), dedupeNativeToolCalls()}, wrappers...)
+	toolWrappers := append([]gmai.ToolWrapper{injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
 	a = service.NewAgent(nativeAgentInstanceName(), sys, "atlascloud", key, filterServices(nativeServices(opts.Public), opts.Tools),
 		gmagent.Model(ai.ModelDeepSeekPro),
 		gmagent.MaxSteps(6),

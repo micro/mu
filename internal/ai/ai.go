@@ -6,8 +6,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
-	"mu/internal/metrics"
 )
 
 // Priority levels for LLM requests
@@ -104,28 +102,12 @@ func BuildSystemPrompt(p *Prompt) (string, error) {
 
 // Ask sends a prompt to the LLM and returns the response
 func Ask(prompt *Prompt) (string, error) {
-	start := time.Now()
-	out, err := generate(prompt)
-	metrics.Record(llmOp(prompt), time.Since(start), err != nil)
-	return out, err
+	return generate(prompt)
 }
 
 // AskStream sends a prompt to the LLM and streams tokens via the callback.
 // Each call to onToken receives a chunk of text as it arrives. The full
 // response is returned when streaming completes.
 func AskStream(prompt *Prompt, onToken func(token string)) (string, error) {
-	start := time.Now()
-	out, err := generateStream(prompt, onToken)
-	metrics.Record(llmOp(prompt), time.Since(start), err != nil)
-	return out, err
-}
-
-// llmOp is the metrics operation name for an LLM call, broken down by caller
-// (e.g. "llm:agent-plan") so latency/errors are attributable. Caller is a fixed
-// set of internal labels, so cardinality stays bounded.
-func llmOp(prompt *Prompt) string {
-	if prompt != nil && strings.TrimSpace(prompt.Caller) != "" {
-		return "llm:" + prompt.Caller
-	}
-	return "llm"
+	return generateStream(prompt, onToken)
 }
