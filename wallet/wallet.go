@@ -41,6 +41,8 @@ var (
 	DailyQuota            = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 100))
 )
 
+const DailyTransferCap = 10000
+
 // PaymentsEnabled returns true if payments are configured
 // When false, quotas are disabled (self-hosted, no restrictions)
 func PaymentsEnabled() bool {
@@ -49,12 +51,12 @@ func PaymentsEnabled() bool {
 
 // Operation types
 const (
-	OpNewsSearch    = "news_search"
-	OpVideoSearch   = "video_search"
-	OpChatQuery     = "chat_query"
-	OpBlogCreate    = "blog_create"
-	OpMailSend      = "mail_send"
-	OpExternalEmail = "external_email"
+	OpNewsSearch        = "news_search"
+	OpVideoSearch       = "video_search"
+	OpChatQuery         = "chat_query"
+	OpBlogCreate        = "blog_create"
+	OpMailSend          = "mail_send"
+	OpExternalEmail     = "external_email"
 	OpPlacesSearch      = "places_search"
 	OpPlacesNearby      = "places_nearby"
 	OpWeatherForecast   = "weather_forecast"
@@ -259,6 +261,26 @@ func DeductCredits(userID string, amount int, operation string, metadata map[str
 	return nil
 }
 
+// DailyTransferTotal returns the number of credits transferred out by a user on the given UTC date.
+func DailyTransferTotal(userID string, day time.Time) int {
+	date := day.UTC().Format("2006-01-02")
+
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	total := 0
+	for _, tx := range transactions[userID] {
+		if tx == nil || tx.Type != TxTransfer || tx.Operation != OpTransfer || tx.Amount >= 0 {
+			continue
+		}
+		if tx.CreatedAt.UTC().Format("2006-01-02") != date {
+			continue
+		}
+		total += -tx.Amount
+	}
+	return total
+}
+
 // TransferCredits transfers credits from one user to another
 func TransferCredits(fromUserID, toUserID string, amount int) error {
 	if amount <= 0 {
@@ -270,6 +292,21 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 
 	mutex.Lock()
 	defer mutex.Unlock()
+
+	// Check sender has not exceeded the daily transfer cap.
+	today := time.Now().UTC().Format("2006-01-02")
+	dailyTotal := 0
+	for _, tx := range transactions[fromUserID] {
+		if tx == nil || tx.Type != TxTransfer || tx.Operation != OpTransfer || tx.Amount >= 0 {
+			continue
+		}
+		if tx.CreatedAt.UTC().Format("2006-01-02") == today {
+			dailyTotal += -tx.Amount
+		}
+	}
+	if dailyTotal+amount > DailyTransferCap {
+		return fmt.Errorf("daily transfer cap exceeded: maximum %d credits per day", DailyTransferCap)
+	}
 
 	// Check sender has sufficient balance
 	sender, exists := wallets[fromUserID]
@@ -471,7 +508,6 @@ func GetOperationCost(operation string) int {
 		return 1
 	}
 }
-
 
 // CheckQuota checks if a user can perform an operation
 // Returns: canProceed, useQuota (always false now), creditCost, error

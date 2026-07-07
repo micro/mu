@@ -7,6 +7,7 @@ import (
 	neturl "net/url"
 	"os"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -466,6 +467,11 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(fmt.Sprintf(`<p class="text-success">%s</p>`, successMsg))
 	}
 	sb.WriteString(fmt.Sprintf(`<p>Your balance: <strong>%d credits</strong></p>`, balance))
+	remaining := DailyTransferCap - DailyTransferTotal(sess.Account, time.Now())
+	if remaining < 0 {
+		remaining = 0
+	}
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">Daily transfer limit: %d credits. Remaining today: %d credits.</p>`, DailyTransferCap, remaining))
 	// Build datalist of usernames for autocomplete
 	allAccounts := auth.GetAllAccounts()
 	sb.WriteString(`<datalist id="user-list">`)
@@ -491,7 +497,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p. Transfers are instant and non-reversible.</p>`)
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">1 credit = 1p. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, DailyTransferCap))
 	sb.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest("Transfer Credits", "Send credits to another user", sb.String(), r)
