@@ -1776,20 +1776,12 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Search indexed news articles first, then merge in the live in-memory feed.
-	// The live feed powers /news and is the most truthful fallback when the
-	// search index is cold or stale, which can happen just after startup.
-	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
-	articles := newsSearchArticles(query, results, 20)
+	payload := newsSearchPayload(query, 20)
 
 	// Consume quota after successful search
 	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
 
-	app.RespondJSON(w, map[string]interface{}{
-		"query":   query,
-		"results": articles,
-		"count":   len(articles),
-	})
+	app.RespondJSON(w, payload)
 }
 
 // SearchToolText returns model-ready JSON for news_search tool calls. It uses
@@ -1804,8 +1796,20 @@ func SearchToolText(query string) (string, error) {
 	if len(query) > 256 {
 		return "", fmt.Errorf("search query must not exceed 256 characters")
 	}
-	results := data.Search(query, 8, data.WithType("news"), data.WithKeywordOnly())
-	articles := newsSearchArticles(query, results, 8)
+	payload := newsSearchPayload(query, 8)
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func newsSearchPayload(query string, limit int) map[string]interface{} {
+	// Search indexed news articles first, then merge in the live in-memory feed.
+	// The live feed powers /news and is the most truthful fallback when the
+	// search index is cold or stale, which can happen just after startup.
+	results := data.Search(query, limit, data.WithType("news"), data.WithKeywordOnly())
+	articles := newsSearchArticles(query, results, limit)
 	payload := map[string]interface{}{
 		"query":   query,
 		"results": articles,
@@ -1814,11 +1818,7 @@ func SearchToolText(query string) (string, error) {
 	if freshness := newsSearchFreshnessSummary(query, articles, time.Now().UTC()); freshness != nil {
 		payload["freshness"] = freshness
 	}
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
+	return payload
 }
 
 func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []map[string]interface{} {

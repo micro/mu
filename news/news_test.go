@@ -1023,3 +1023,35 @@ func TestCleanNewsArticleURLRejectsImageAssets(t *testing.T) {
 		t.Fatalf("expected article URL to be preserved, got %q", got)
 	}
 }
+
+func TestNewsSearchPayloadIncludesFreshnessForAPIPath(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	mutex.Lock()
+	feed = []*Post{{
+		ID:          "old-ai",
+		Title:       "AI archive funding story",
+		Description: "Older artificial intelligence funding context.",
+		URL:         "https://example.com/old-ai",
+		Category:    "Tech",
+		PostedAt:    time.Now().UTC().AddDate(0, -2, 0),
+	}}
+	mutex.Unlock()
+
+	payload := newsSearchPayload("Find today's AI news", 20)
+	freshness, ok := payload["freshness"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected freshness metadata in shared news_search payload, got %#v", payload)
+	}
+	if freshness["status"] != "stale" {
+		t.Fatalf("expected stale freshness status for old API-path results, got %#v", freshness)
+	}
+	if !strings.Contains(fmt.Sprint(freshness["notice"]), "No same-day news_search results") {
+		t.Fatalf("expected API-path same-day caveat notice, got %#v", freshness)
+	}
+}
