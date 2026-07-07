@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestFormatCredits(t *testing.T) {
@@ -265,6 +266,58 @@ func TestDeductCredits_NonexistentUser(t *testing.T) {
 	err := DeductCredits("nobody", 10, OpChatQuery, nil)
 	if err == nil {
 		t.Error("expected error for nonexistent user")
+	}
+}
+
+func TestTransferCreditsDailyCap(t *testing.T) {
+	mutex.Lock()
+	origWallets := wallets
+	origTx := transactions
+	wallets = map[string]*Wallet{
+		"sender":   {UserID: "sender", Balance: DailyTransferCap + 1000, Currency: "GBP"},
+		"receiver": {UserID: "receiver", Balance: 0, Currency: "GBP"},
+	}
+	transactions = map[string][]*Transaction{}
+	mutex.Unlock()
+	defer func() {
+		mutex.Lock()
+		wallets = origWallets
+		transactions = origTx
+		mutex.Unlock()
+	}()
+
+	if err := TransferCredits("sender", "receiver", DailyTransferCap); err != nil {
+		t.Fatalf("first transfer unexpected error: %v", err)
+	}
+	if err := TransferCredits("sender", "receiver", 1); err == nil {
+		t.Fatal("expected daily transfer cap error")
+	}
+	if got := GetBalance("sender"); got != 1000 {
+		t.Fatalf("sender balance after blocked transfer = %d, want 1000", got)
+	}
+}
+
+func TestDailyTransferTotalIgnoresIncomingAndOldTransfers(t *testing.T) {
+	mutex.Lock()
+	origTx := transactions
+	now := time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC)
+	transactions = map[string][]*Transaction{
+		"user": {
+			{Type: TxTransfer, Operation: OpTransfer, Amount: -25, CreatedAt: now},
+			{Type: TxTransfer, Operation: OpTransfer, Amount: 15, CreatedAt: now},
+			{Type: TxTransfer, Operation: OpTransfer, Amount: -40, CreatedAt: now.AddDate(0, 0, -1)},
+			{Type: TxSpend, Operation: OpAgentQuery, Amount: -3, CreatedAt: now},
+		},
+	}
+	mutex.Unlock()
+	defer func() {
+		mutex.Lock()
+		transactions = origTx
+		mutex.Unlock()
+	}()
+
+	if got := DailyTransferTotal("user", now); got != 25 {
+		t.Fatalf("daily transfer total = %d, want 25", got)
 	}
 }
 
