@@ -1467,6 +1467,19 @@ func TestFormatToolResultNewsSearchSurfacesFreshnessCaveat(t *testing.T) {
 	}
 }
 
+func TestFormatToolResultNewsSearchSurfacesMostlyStaleFreshnessCaveat(t *testing.T) {
+	result := `{"query":"AI news","freshness":{"status":"mostly_stale","requested_date":"2026-07-05","same_day_results":1,"dated_results":3,"freshest_posted_at":"2026-07-05T12:00:00Z","notice":"Only 1 of 3 dated news_search results are from 2026-07-05; lead with a freshness caveat before listing older context as today's news."},"results":[{"title":"AI lab ships today's assistant update","description":"Current AI story.","category":"Tech","url":"https://example.com/current-ai","posted_at":"2026-07-05T12:00:00Z"},{"title":"AI startup raises funding","description":"Archive story.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
+	got := formatToolResult("news_search", result, nil)
+	firstCaveat := strings.Index(got, "Freshness caveat:")
+	firstStory := strings.Index(got, "1. AI lab ships today's assistant update")
+	if firstCaveat < 0 || !strings.Contains(got, "Only 1 of 3 dated news_search results") {
+		t.Fatalf("expected mostly-stale freshness caveat in news_search context, got %q", got)
+	}
+	if firstStory < 0 || firstStory < firstCaveat {
+		t.Fatalf("expected mostly-stale caveat before story list, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerPrependsStaleNewsCaveatToSubstantiveAnswer(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":

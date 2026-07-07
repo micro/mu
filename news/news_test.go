@@ -373,6 +373,33 @@ func TestNewsSearchFreshnessSummaryCurrentForSameDayResults(t *testing.T) {
 	}
 }
 
+func TestNewsSearchFreshnessSummaryCaveatsMostlyStaleTodayResults(t *testing.T) {
+	articles := []map[string]interface{}{
+		{
+			"title":     "AI lab ships today's assistant update",
+			"posted_at": time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC),
+		},
+		{
+			"title":     "AI startup raises funding",
+			"posted_at": time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC),
+		},
+		{
+			"title":     "AI chip demand grows",
+			"posted_at": time.Date(2026, 3, 14, 12, 0, 0, 0, time.UTC),
+		},
+	}
+	freshness := newsSearchFreshnessSummary("Find today's AI news", articles, time.Date(2026, 7, 5, 13, 0, 0, 0, time.UTC))
+	if freshness == nil {
+		t.Fatal("expected freshness summary for today query")
+	}
+	if freshness["status"] != "mostly_stale" {
+		t.Fatalf("expected mostly_stale status, got %#v", freshness)
+	}
+	if !strings.Contains(fmt.Sprint(freshness["notice"]), "Only 1 of 3 dated news_search results") {
+		t.Fatalf("expected mostly-stale caveat notice, got %#v", freshness)
+	}
+}
+
 func TestSearchToolTextReturnsLiveFeedResultsForAgent(t *testing.T) {
 	oldFeed := feed
 	defer func() {
