@@ -419,6 +419,31 @@ func TestNewsSearchArticlesSortsNonRFCPostedAtForFreshnessQueries(t *testing.T) 
 	}
 }
 
+func TestNewsSearchArticlesFreshQueriesUseIndexedAtFallback(t *testing.T) {
+	older := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	today := time.Date(2026, 7, 7, 9, 0, 0, 0, time.UTC)
+	indexed := []*data.IndexEntry{
+		{ID: "old-ai", Title: "AI model archive", Content: "Older artificial intelligence model background.", IndexedAt: older, Metadata: map[string]interface{}{
+			"url": "https://example.com/old-ai", "category": "Tech", "posted_at": older.Format(time.RFC3339),
+		}},
+		{ID: "same-day-ai", Title: "AI lab ships current assistant update", Content: "Fresh artificial intelligence assistant update.", IndexedAt: today, Metadata: map[string]interface{}{
+			"url": "https://example.com/same-day-ai", "category": "Tech",
+		}},
+	}
+
+	got := newsSearchArticles("Find today's AI news", indexed, 8)
+	if len(got) < 2 {
+		t.Fatalf("expected indexed results, got %#v", got)
+	}
+	if got[0]["title"] != "AI lab ships current assistant update" {
+		t.Fatalf("expected IndexedAt fallback to let same-day result lead, got %#v", got)
+	}
+	freshness := newsSearchFreshnessSummary("Find today's AI news", got, time.Date(2026, 7, 7, 13, 0, 0, 0, time.UTC))
+	if freshness == nil || freshness["freshest_posted_at"] == nil {
+		t.Fatalf("expected freshness metadata from IndexedAt fallback, got %#v", freshness)
+	}
+}
+
 func TestSearchToolTextReturnsLiveFeedResultsForAgent(t *testing.T) {
 	oldFeed := feed
 	defer func() {
