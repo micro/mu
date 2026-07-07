@@ -1326,7 +1326,8 @@ func shouldHoldNativeNewsStreamTokens(prompt string, nativeTools []string) bool 
 		return false
 	}
 	for _, tool := range nativeTools {
-		if canonicalToolTitle(tool) == "news" {
+		lowerTool := strings.ToLower(strings.TrimSpace(tool))
+		if canonicalToolTitle(lowerTool) == "news" || strings.Contains(lowerTool, "news") || strings.Contains(lowerTool, "headline") {
 			return true
 		}
 	}
