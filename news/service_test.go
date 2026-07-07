@@ -2,6 +2,7 @@ package news
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"mu/internal/service"
@@ -18,4 +19,17 @@ func TestNewsViaMesh(t *testing.T) {
 		t.Fatalf("call: %v", err)
 	}
 	// Text may be empty without feeds loaded; the round-trip is what matters.
+}
+
+func TestNewsSearchServiceReturnsFreshnessPayload(t *testing.T) {
+	var rsp SearchResponse
+	if err := (Server{}).Search(context.Background(), &SearchRequest{Query: "Find today's AI news"}, &rsp); err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if rsp.Text == "" {
+		t.Fatal("expected search payload text")
+	}
+	if !strings.Contains(rsp.Text, `"query":"Find today`) || !strings.Contains(rsp.Text, `"results"`) {
+		t.Fatalf("expected JSON news_search payload, got %q", rsp.Text)
+	}
 }
