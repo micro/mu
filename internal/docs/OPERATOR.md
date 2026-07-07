@@ -103,6 +103,19 @@ search, a paid tool call. Two purposes:
 This is the "live stress test" — a smoke/synthetic suite exercising the real
 deployment, the same way an ops team runs synthetic probes against production.
 
+Built: `internal/exercise` + the `mu exercise` command. It drives a fixed battery
+of representative requests at a target (`mu exercise --target <url>`), repeats for
+latency percentiles (`--runs N`), optionally exercises the agent/LLM path
+(`--deep`), and prints a JSON report that exits non-zero on any failure — so CI or
+the operator can gate, and a canary-vs-stable check is a diff of two reports. The
+default battery is cheap public GETs (no LLM cost); `--deep` adds a guest agent
+query (token cost, rate-limited) for occasional canary checks.
+
+Note — same primitive, two consumers: this synthetic load driver is the same idea
+go-micro's own loop needs for an in-harness operator (below). One drives Mu's HTTP
+endpoints; the other would drive go-micro RPCs. Reuse the concept, not necessarily
+the code.
+
 ## Ops → dev handoff: incidents become backlog
 
 The operator is on-call. When the digest shows a regression, or the exerciser
@@ -130,6 +143,31 @@ on. This is the single most important discipline: production experience may
 *inform* the library, but only disciplined, generalized, reviewed changes are
 allowed to land in it.
 
+## Two operators, at two altitudes
+
+The persistent-deployment requirement above is an *application* property, not a
+*library* one. Mu (the app) needs a live phenotype because its fitness — real
+traffic, cost, emergent failures over days — is not reproducible. go-micro (the
+library) is different: its runtime fitness — throughput, RPC p50/p99, allocs/op,
+goroutine leaks, memory growth under sustained load, races under concurrency — is
+largely **reproducible**, so it can be measured in an **ephemeral harness** with
+no deployment at all. That is the right place for a go-micro operator:
+
+- **go-micro operator (in-harness):** a bench/soak/race regression gate in
+  go-micro's own loop — spin up example services + a synthetic load driver in CI,
+  measure the golden signals against the previous commit's baseline, and gate or
+  file a regression. No persistent target needed; the harness *is* the
+  environment. Fitness = bench deltas, not just "tests pass."
+- **Mu operator (over deployment):** this document — canary + live golden signals
+  over the running organism, for the emergent signal a harness can't reproduce.
+
+They connect: **Mu is go-micro's live soak test.** The `/internal/health` digest
+is, from go-micro's point of view, a second and richer fitness signal — the
+dogfooding organism running the genome in production, feeding regressions upstream
+via the reviewed-PR channel above. The harness catches reproducible regressions
+pre-merge; Mu catches emergent ones post-deploy. Two fitness functions, one at
+each altitude, neither leaking into the other.
+
 ## Guardrails — the most dangerous role, same discipline as security
 
 Autonomous deploy earns the treatment we gave the security lens:
@@ -151,10 +189,11 @@ Autonomous deploy earns the treatment we gave the security lens:
 The operator is blind without the fitness signal, so build that before any
 automation:
 
-1. **Runtime fitness report** — aggregate the golden signals (+cost, +provider
-   health) into a digest endpoint/file. Every later step depends on this
-   interface, so design it first.
-2. **Exerciser** — a scheduled synthetic battery feeding the digest.
+1. **Runtime fitness report** — DONE (`internal/metrics`, `/internal/health`):
+   golden signals per tool and LLM caller, saturation, cost, gated to an admin
+   session or `HEALTH_TOKEN` bearer.
+2. **Exerciser** — DONE (`internal/exercise`, `mu exercise`): synthetic battery
+   with latency percentiles and a pass/fail report for canary comparison.
 3. **`operator.yml` v0** — canary deploy + bake + compare + promote/rollback +
    report. No self-modification yet; just safe releases with a measured decision.
 4. **Incident faculty** — digest/exerciser regressions → issues into
