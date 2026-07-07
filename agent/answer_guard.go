@@ -54,7 +54,11 @@ func staleNewsFreshnessCaveat(ragParts []string) string {
 			}
 			lower := strings.ToLower(line)
 			if strings.HasPrefix(lower, "freshness caveat:") {
-				return "No current news_search results: " + strings.TrimSpace(line[len("Freshness caveat:"):])
+				notice := strings.TrimSpace(line[len("Freshness caveat:"):])
+				if strings.Contains(lower, "only ") && strings.Contains(lower, " dated news_search results") {
+					return "Mostly stale news_search results: " + notice
+				}
+				return "No current news_search results: " + notice
 			}
 		}
 	}
@@ -336,7 +340,11 @@ func prioritizeStaleNewsCaveatLines(lines []string) []string {
 	out := make([]string, 0, len(lines))
 	caveat := strings.TrimSpace(lines[caveatIndex])
 	caveat = strings.TrimSpace(caveat[len("Freshness caveat:"):])
-	out = append(out, "No current news_search results: "+caveat)
+	if lower := strings.ToLower(caveat); strings.Contains(lower, "only ") && strings.Contains(lower, " dated news_search results") {
+		out = append(out, "Mostly stale news_search results: "+caveat)
+	} else {
+		out = append(out, "No current news_search results: "+caveat)
+	}
 	for i, line := range lines {
 		if i == caveatIndex {
 			continue
