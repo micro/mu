@@ -1362,6 +1362,10 @@ func main() {
 	app.HealthCheckFunc = runHealthChecks
 	http.HandleFunc("/status", app.StatusHandler)
 
+	// runtime fitness digest (golden signals) for the operator loop — admin
+	// session or HEALTH_TOKEN bearer only.
+	http.HandleFunc("/internal/health", app.RuntimeReportHandler)
+
 	// whitepaper
 	http.HandleFunc("/whitepaper", docs.WhitepaperHandler)
 	http.HandleFunc("/whitepaper.pdf", docs.WhitepaperHandler)

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -13,6 +14,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/metrics"
 )
 
 var startTime = time.Now()
@@ -170,6 +172,52 @@ document.querySelectorAll('.status-item[data-path]').forEach(function(el) {
 
 	sb.WriteString(`</div>`)
 	return sb.String()
+}
+
+// RuntimeReportHandler serves the runtime fitness digest at /internal/health —
+// the golden-signal report the operator loop reads (see internal/docs/OPERATOR.md).
+// It is NOT public: access needs an admin session, or a bearer token matching the
+// HEALTH_TOKEN env var so an automated operator/exerciser can read it without an
+// interactive session. Read-only; exposes no user data.
+func RuntimeReportHandler(w http.ResponseWriter, r *http.Request) {
+	if !authorizeInternalReport(r) {
+		Unauthorized(w, r)
+		return
+	}
+
+	var services []ServiceHealth
+	if HealthCheckFunc != nil {
+		services = HealthCheckFunc()
+	}
+	healthy := true
+	for _, s := range services {
+		if !s.Status {
+			healthy = false
+			break
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(map[string]any{
+		"healthy":  healthy,
+		"services": services,
+		"runtime":  metrics.Snapshot(),
+	})
+}
+
+// authorizeInternalReport allows an admin session or a HEALTH_TOKEN bearer.
+func authorizeInternalReport(r *http.Request) bool {
+	if tok := strings.TrimSpace(os.Getenv("HEALTH_TOKEN")); tok != "" {
+		presented := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		if presented != "" && subtle.ConstantTimeCompare([]byte(presented), []byte(tok)) == 1 {
+			return true
+		}
+	}
+	if _, acc := auth.TrySession(r); acc != nil && acc.Admin {
+		return true
+	}
+	return false
 }
 
 // InternalStatusHandler handles the old /status endpoint (now at /admin/server)
