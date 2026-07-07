@@ -21,9 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Restore live AI-news freshness ordering after metadata merge** ([#1253](https://github.com/micro/mu/issues/1253)). The 2026-07-07 product review for #1252 found #1248 closed by PR #1251, no open codex PRs/issues, and a still-fast guest `Find today's AI news` path through `news_search`; however the live answer still leads with May/March 2026 TechCrunch stories for a same-day request and no up-front mostly-stale/no-current-results caveat. This remains the highest-value Now-phase refinement because it is the clearest first-run ask → answer correctness gap after the metadata merge; the next increment should verify the deployed/native `news_search` answer path with freshness metadata end to end.
+1. **Make live AI-news freshness guard effective after indexed timestamp fix** ([#1258](https://github.com/micro/mu/issues/1258)). The 2026-07-07 product review for #1257 found #1253 closed by PR #1256, no open codex PRs/issues, and the guest core loop still fast for weather (~3.7s), markets (~1.0s), and AI news (~0.5s). The top remaining first-run correctness gap is still `Find today's AI news`: the live `news_search` answer leads with May 2026 TechCrunch items for a July 7 same-day request and gives no up-front no-current-results/mostly-stale caveat. This stays highest-value in the Now phase because it is the clearest mismatch between the ask and answer on the public first-run loop; the next increment should trace the deployed/native agent path so the indexed timestamp fallback and stale-result guard affect streaming order and the first visible answer text.
 
 ### Already shipped (do not re-queue)
+
+- ✅ **Indexed news timestamps shipped but live AI-news output still leads stale.** PR #1256 closed #1253 and #1255 by using indexed timestamps when `posted_at` metadata is missing, so #1253 is not re-queued; the 2026-07-07 live guest review for #1257 still saw `Find today's AI news` complete in about 0.5s through `news_search` but lead with May 2026 stories for a July 7 request without an up-front freshness caveat, now tracked in #1258.
 
 - ✅ **News search freshness metadata shipped but live output still leads stale.** PR #1251 closed #1248 by adding freshness metadata to the native news search API, so #1248 is not re-queued; the 2026-07-07 live guest review for #1252 still saw `Find today's AI news` complete in under 1s through `news_search` but lead with May/March 2026 stories and no up-front caveat, now tracked in #1253.
 
