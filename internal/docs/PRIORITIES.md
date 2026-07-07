@@ -21,9 +21,11 @@ and publishing marketing content. Those go to the human.
 
 ## Work queue (ranked)
 
-1. **Keep stale AI-news results from leading latest/today answers** ([#1243](https://github.com/micro/mu/issues/1243)). The live 2026-07-07 guest review shows `Find today's AI news` is fast and source-linked through `news_search`, but it still leads with March-May 2026 stories before a newer 2 July item and no up-front mostly-stale/no-current-results caveat. This is the highest-value open Now-phase refinement because it directly affects the first-run ask → answer loop for a common freshness-sensitive prompt; it is narrower and more CI-verifiable than adding surface area.
+1. **Ensure live AI-news freshness sorting reaches deployed answers** ([#1248](https://github.com/micro/mu/issues/1248)). The 2026-07-07 post-#1246 guest review shows `Find today's AI news` is still fast and source-linked through `news_search`, but the live answer continues to lead with March-May 2026 stories before a newer 2 July item and no up-front mostly-stale/no-current-results caveat. This remains the highest-value open Now-phase refinement because it directly affects the first-run ask → answer loop for a common freshness-sensitive prompt; the next increment should verify the deployed/native `news_search` path rather than only fallback formatting.
 
 ### Already shipped (do not re-queue)
+
+- ✅ **AI-news freshness sorting robustness shipped but live output still leads stale.** PR #1246 closed #1243 by tightening freshness sorting around AI-news candidates, so #1243 is not re-queued; the 2026-07-07 post-merge live guest review still saw `Find today's AI news` complete in under 1s through `news_search` but lead with March-May 2026 stories before a 2 July item and no up-front caveat, now tracked in #1248.
 
 - ✅ **Daily wallet credit transfer cap shipped.** PR #1241 closed #1188 by adding a per-account daily budget for wallet credit transfers, so the previous wallet trust item is no longer active. The 2026-07-07 product review for #1242 found no open codex PRs/issues after that merge, then re-opened the remaining live freshness friction as #1243.
 
