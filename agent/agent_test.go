@@ -1578,6 +1578,9 @@ func TestShouldHoldNativeNewsStreamTokensForLatestNewsPrompt(t *testing.T) {
 	if !shouldHoldNativeNewsStreamTokens("Find today's AI news", []string{"news"}) {
 		t.Fatal("expected native latest-news tokens to be held once news tool starts")
 	}
+	if !shouldHoldNativeNewsStreamTokens("Find today's AI news", []string{"📰 Scanning headlines"}) {
+		t.Fatal("expected user-facing native news labels to hold latest-news tokens")
+	}
 	if shouldHoldNativeNewsStreamTokens("Find today's AI news", []string{"weather"}) {
 		t.Fatal("did not expect non-news native tool tokens to be held")
 	}
