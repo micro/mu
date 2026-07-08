@@ -1593,6 +1593,9 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 }
 
 func TestShouldHoldNativeNewsStreamTokensForLatestNewsPrompt(t *testing.T) {
+	if !shouldHoldNativeNewsStreamTokens("Find today's AI news", nil) {
+		t.Fatal("expected native latest-news tokens to be held before the news tool result is available")
+	}
 	if !shouldHoldNativeNewsStreamTokens("Find today's AI news", []string{"news"}) {
 		t.Fatal("expected native latest-news tokens to be held once news tool starts")
 	}

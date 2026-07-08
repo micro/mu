@@ -1325,6 +1325,14 @@ func shouldHoldNativeNewsStreamTokens(prompt string, nativeTools []string) bool 
 	if !isLatestTechnologyNewsPrompt(strings.ToLower(prompt)) {
 		return false
 	}
+	// Latest-news prompts are sensitive to recency caveats: the native model can
+	// emit answer text before the news.Search/dotted news tool payload has been
+	// recorded and guarded. Hold the stream from the first token, then emit the
+	// final guarded answer once completeToolAnswer has had a chance to prepend
+	// stale/mostly-stale disclosures.
+	if len(nativeTools) == 0 {
+		return true
+	}
 	for _, tool := range nativeTools {
 		lowerTool := strings.ToLower(strings.TrimSpace(tool))
 		if canonicalToolTitle(lowerTool) == "news" || strings.Contains(lowerTool, "news") || strings.Contains(lowerTool, "headline") {
