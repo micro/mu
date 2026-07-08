@@ -1052,14 +1052,26 @@ func isRawToolPayloadAnswer(answer string) bool {
 }
 
 func canonicalToolTitle(title string) string {
-	switch strings.TrimSpace(title) {
+	trimmed := strings.TrimSpace(title)
+	lower := strings.ToLower(trimmed)
+	switch lower {
 	case "weather_forecast":
 		return "weather"
-	case "news_search", "news_headlines", "news_read":
+	case "news", "news_search", "news_headlines", "news_read":
 		return "news"
 	case "web_search":
 		return "web_search"
-	default:
-		return strings.TrimSpace(title)
 	}
+
+	// Native go-micro tool names can arrive with service/method wrappers rather
+	// than the public MCP tool name (for example dotted service labels around
+	// news.Search). Treat those as news too so freshness caveats from the model-
+	// ready news_search payload are enforced consistently in streaming/final
+	// answer guards.
+	compact := strings.NewReplacer("-", "_", ".", "_", " ", "_", "/", "_").Replace(lower)
+	if strings.Contains(compact, "news_search") || strings.Contains(compact, "news_headlines") || strings.Contains(compact, "news_read") || strings.HasSuffix(compact, "_news") || strings.Contains(compact, "_news_") {
+		return "news"
+	}
+
+	return trimmed
 }
