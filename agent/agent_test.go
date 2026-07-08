@@ -1667,6 +1667,25 @@ func TestNativeToolRecorderFormatsNewsPayloads(t *testing.T) {
 	}
 }
 
+func TestNativeToolRecorderFormatsDottedNewsSearchPayloads(t *testing.T) {
+	recorder := newNativeToolRecorder()
+	handler := recorder.wrap(func(_ context.Context, call gmai.ToolCall) gmai.ToolResult {
+		return gmai.ToolResult{Content: `{"query":"AI news","freshness":{"status":"stale","notice":"No same-day news_search results were available for 2026-07-07; the freshest result is from 2026-05-20, so lead with a freshness caveat instead of presenting older stories as today's news."},"results":[{"title":"AI startup raises funding","description":"Archive context","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`}
+	})
+
+	handler(context.Background(), gmai.ToolCall{Name: "news.Search"})
+	got := completeToolAnswer("1. AI startup raises funding — Archive context.", recorder.ragParts())
+	if !strings.Contains(got, "No current news_search results: No same-day news_search results were available for 2026-07-07") {
+		t.Fatalf("expected dotted native news tool name to surface stale caveat, got %q", got)
+	}
+	if strings.Index(got, "No current news_search results:") > strings.Index(got, "Background: 1. AI startup raises funding") {
+		t.Fatalf("expected stale caveat to precede old story, got %q", got)
+	}
+	if strings.Contains(got, `{"query"`) {
+		t.Fatalf("expected dotted native news payload to be formatted, got %q", got)
+	}
+}
+
 func TestCompleteNativeToolAnswerReplacesProgressWithUnavailableState(t *testing.T) {
 	got := completeNativeToolAnswer("I'll check the latest market and news data now.", []string{"📈 Checking market prices", "📰 Scanning headlines"})
 	if strings.Contains(strings.ToLower(got), "i'll check") {
