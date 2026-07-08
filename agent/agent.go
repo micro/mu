@@ -641,7 +641,7 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	}
 	answer = completeNativeToolAnswer(answer, nativeTools)
 	answer = app.NormalizeAnswerMarkdown(answer)
-	if !streaming && captured.Len() > 0 {
+	if !streaming && shouldReplayFinalNativeAnswer(prompt, nativeTools, captured.Len()) {
 		streaming = true
 		emitted = true
 		sse(w, map[string]any{"type": "stream_start"})
@@ -1319,6 +1319,17 @@ func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWe
 		return hasNewsSearchTool || (hasWebSearchTool && hasUnavailableNewsSearch)
 	}
 	return false
+}
+
+func shouldReplayFinalNativeAnswer(prompt string, nativeTools []string, capturedLen int) bool {
+	if capturedLen > 0 {
+		return true
+	}
+	// streamNative buffers stale-news tokens internally once the tool payload
+	// proves a freshness caveat is needed. In that case streamNativeSSE's local
+	// capture is empty, so replay the guarded final answer as the first streamed
+	// text instead of relying only on the later response replacement event.
+	return shouldHoldNativeNewsStreamTokens(prompt, nativeTools)
 }
 
 func shouldHoldNativeNewsStreamTokens(prompt string, nativeTools []string) bool {
