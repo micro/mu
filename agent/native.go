@@ -358,7 +358,7 @@ func (r *nativeToolRecorder) ragParts() []string {
 }
 
 func nativeToolFormatterName(name string) string {
-	parts := strings.Split(strings.ToLower(strings.TrimSpace(name)), "_")
+	parts := nativeToolNameParts(name)
 	if len(parts) >= 2 {
 		svc, method := parts[0], parts[1]
 		switch svc {
@@ -382,11 +382,11 @@ func nativeToolFormatterName(name string) string {
 }
 
 func nativeToolTitle(name string) string {
-	svc := name
-	if i := strings.IndexByte(name, '_'); i > 0 {
-		svc = name[:i]
+	parts := nativeToolNameParts(name)
+	svc := strings.ToLower(strings.TrimSpace(name))
+	if len(parts) > 0 && parts[0] != "" {
+		svc = parts[0]
 	}
-	svc = strings.ToLower(svc)
 	switch svc {
 	case "weather":
 		return "weather"
@@ -423,9 +423,10 @@ func nativeToolLabel(name string) (label string, show bool) {
 	case "plan", "delegate", "human_input", "":
 		return "", false
 	}
-	svc := name
-	if i := strings.IndexByte(name, '_'); i > 0 {
-		svc = name[:i]
+	parts := nativeToolNameParts(name)
+	svc := strings.ToLower(strings.TrimSpace(name))
+	if len(parts) > 0 && parts[0] != "" {
+		svc = parts[0]
 	}
 	switch svc {
 	case "weather":
@@ -452,4 +453,10 @@ func nativeToolLabel(name string) (label string, show bool) {
 		return "📬 Checking your mail", true
 	}
 	return "⚙️ Working", true
+}
+
+func nativeToolNameParts(name string) []string {
+	return strings.FieldsFunc(strings.ToLower(strings.TrimSpace(name)), func(r rune) bool {
+		return r == '_' || r == '.' || r == '/'
+	})
 }
