@@ -23,6 +23,9 @@ type ChatConfig struct {
 	// into the log when reopening a session. When set, the component does not
 	// restore from sessionStorage.
 	InitialConvHTML string
+	// HideSuggestions suppresses the component's built-in suggestion pills — used
+	// where the host page supplies its own (e.g. Home's personalised chips).
+	HideSuggestions bool
 }
 
 // ChatComponent returns the single, shared chat UI used everywhere Mu talks to
@@ -101,6 +104,7 @@ func ChatComponent(cfg ChatConfig) string {
 var GUEST=` + guestJS + `;
 var contextId=` + JSString(cfg.ContextID) + `;
 var SESSION=` + boolJS(cfg.InitialConvHTML != "") + `;
+var HIDE_SUGGEST=` + boolJS(cfg.HideSuggestions) + `;
 var form=document.getElementById('mu-chat-form');
 var input=document.getElementById('mu-chat-input');
 var conv=document.getElementById('mu-chat-conv');
@@ -132,6 +136,7 @@ function protectCurrencyDollars(s){return String(s||'').replace(/\$(?=\d)/g,'$\u
 
 var SUGGEST=['Give me a morning brief','What is moving in markets?','Weather in San Francisco','Find today\'s AI news'];
 function showSuggestions(){
+  if(HIDE_SUGGEST){sugDiv.innerHTML='';if(hintDiv)hintDiv.innerHTML='';return;}
   if(conv.innerHTML.trim()){sugDiv.innerHTML='';if(hintDiv)hintDiv.innerHTML='';return;}
   if(GUEST&&hintDiv)hintDiv.innerHTML='No account needed for your first 3 questions. Sign up only when you want to keep going.';
   var h='<div class="mu-pills">';

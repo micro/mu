@@ -10,6 +10,7 @@ import (
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/mail"
 	"mu/markets"
 	"mu/news"
 )
@@ -44,7 +45,28 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	s := summaryCache
 	summaryMu.RUnlock()
 
-	app.RespondJSON(w, map[string]string{"summary": s})
+	// Personalise: lead with the viewer's own signals (cheap, per-request, no
+	// per-user LLM call), then the shared news/markets briefing.
+	var facts []string
+	if unread := mail.GetUnreadCount(sess.Account); unread > 0 {
+		suffix := "s"
+		if unread == 1 {
+			suffix = ""
+		}
+		facts = append(facts, fmt.Sprintf("%d unread email%s", unread, suffix))
+	}
+
+	brief := s
+	if len(facts) > 0 {
+		prefix := strings.Join(facts, " · ")
+		if brief != "" {
+			brief = prefix + ". " + brief
+		} else {
+			brief = prefix + "."
+		}
+	}
+
+	app.RespondJSON(w, map[string]string{"summary": brief})
 }
 
 func generateSummary() {

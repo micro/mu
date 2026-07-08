@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -451,7 +450,9 @@ function fetchW(la,lo){
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
 
-	// AI prompt — submits to agent page. No inline response.
+	// Inline agent — Home answers here rather than navigating away. The shared
+	// chat component is the same agent used on /agent and the landing page;
+	// personalised chips seed the prompt via its muChatAsk.
 	if viewerID != "" {
 		var suggestions []string
 		if unread := mail.GetUnreadCount(viewerID); unread > 0 {
@@ -464,22 +465,19 @@ function fetchW(la,lo){
 		if movers := markets.TopMovers(2); movers != "" {
 			suggestions = append(suggestions, movers)
 		}
-		suggestions = append(suggestions, "Today's news")
-		suggestions = append(suggestions, "What's happening?")
+		suggestions = append(suggestions, "Today's news", "What's happening?")
 
-		var suggestHTML string
+		var chips string
 		for _, s := range suggestions {
-			suggestHTML += fmt.Sprintf(`<a href="/?q=%s" class="console-suggest" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;font-size:13px;color:#555;text-decoration:none;white-space:nowrap">%s</a>`, htmlEsc(url.QueryEscape(s)), htmlEsc(s))
+			chips += fmt.Sprintf(`<button type="button" class="console-suggest" onclick="window.muChatAsk&&window.muChatAsk(%s)" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;font-size:13px;color:#555;cursor:pointer;white-space:nowrap;font-family:inherit">%s</button>`, app.JSString(s), htmlEsc(s))
 		}
 
-		b.WriteString(fmt.Sprintf(`
-<div id="console-prompt" style="margin:0 0 16px;padding:0">
-<form action="/" method="GET" style="position:relative">
-<textarea name="prompt" id="console-input" placeholder="What do you need?" maxlength="1024" rows="1" style="width:100%%;padding:14px 44px 14px 16px;border:1px solid #ddd;border-radius:6px;font-size:16px;font-family:inherit;resize:none;box-sizing:border-box;line-height:1.4;overflow:hidden;background:#fff" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.submit()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
-<button type="submit" style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);width:32px;height:32px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0">&#x2192;</button>
-</form>
-<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px">%s</div>
-</div>`, suggestHTML))
+		b.WriteString(`<div id="home-agent" style="margin:0 0 20px">`)
+		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: false, HideSuggestions: true}))
+		if chips != "" {
+			b.WriteString(fmt.Sprintf(`<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px">%s</div>`, chips))
+		}
+		b.WriteString(`</div>`)
 	}
 
 	// At a Glance heading + AI summary
@@ -538,7 +536,7 @@ fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-o
 
 		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
 <p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
-<p style="font-size:12px;color:#999;margin:0 0 8px">Show or hide cards.</p>
+<p style="font-size:12px;color:#999;margin:0 0 8px">Choose what your agent keeps an eye on.</p>
 <div id="card-checkboxes">%s</div>`, checkboxes))
 		if widgetCheckboxes != "" {
 			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">App widgets</p>
