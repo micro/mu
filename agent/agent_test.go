@@ -1509,10 +1509,10 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	if !strings.Contains(firstLine, "No current news_search results:") || !strings.Contains(firstLine, "No same-day news_search results were available for 2026-07-06") {
 		t.Fatalf("expected stale-only disclosure before story list, got %q", got)
 	}
-	if strings.Index(got, "No current news_search results:") > strings.Index(got, "Background: 1. AI startup raises funding") {
+	if strings.Index(got, "No current news_search results:") > strings.Index(got, "Background: AI startup raises funding") {
 		t.Fatalf("expected stale-only disclosure to precede background-labeled stories, got %q", got)
 	}
-	if !strings.Contains(got, "Background: 1. AI startup raises funding") {
+	if !strings.Contains(got, "Background: AI startup raises funding") {
 		t.Fatalf("expected stale-only substantive answer stories to be labeled as background, got %q", got)
 	}
 }
@@ -1529,7 +1529,7 @@ Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-07; lea
 	if !strings.Contains(firstLine, "Mostly stale news_search results:") || !strings.Contains(firstLine, "Only 1 of 3 dated news_search results") {
 		t.Fatalf("expected mostly-stale disclosure before story list, got %q", got)
 	}
-	if strings.Index(got, "Mostly stale news_search results:") > strings.Index(got, "Background: 1. AI lab ships current update") {
+	if strings.Index(got, "Mostly stale news_search results:") > strings.Index(got, "Background: AI lab ships current update") {
 		t.Fatalf("expected mostly-stale disclosure to precede background-labeled stories, got %q", got)
 	}
 }
@@ -1622,6 +1622,24 @@ func TestShouldHoldNativeNewsStreamTokensForLatestNewsPrompt(t *testing.T) {
 	}
 }
 
+func TestCompleteToolAnswerReplaysSortedFreshnessFallbackWhenAnswerLeadsStale(t *testing.T) {
+	rag := []string{`### news_search
+News results for "AI news":
+Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness caveat before listing older context as today's news.
+1. AI lab ships current update (category: Tech; posted: 8 Jul 2026 12:00 UTC; source: https://example.com/current-ai) — Current story.
+2. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
+	answer := "AI startup raises funding in May. AI lab ships current update today."
+	got := completeToolAnswer(answer, rag)
+	if !strings.HasPrefix(got, "- Mostly stale news_search results:") {
+		t.Fatalf("expected guarded fallback caveat to lead replayed answer, got %q", got)
+	}
+	current := strings.Index(got, "Background: AI lab ships current update")
+	old := strings.Index(got, "Background: AI startup raises funding")
+	if current < 0 || old < 0 || old < current {
+		t.Fatalf("expected replayed news context to keep current item ahead of stale background, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerDoesNotDuplicateLeadingStaleNewsCaveat(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
@@ -1693,7 +1711,7 @@ func TestNativeToolRecorderFormatsDottedNewsSearchPayloads(t *testing.T) {
 	if !strings.Contains(got, "No current news_search results: No same-day news_search results were available for 2026-07-07") {
 		t.Fatalf("expected dotted native news tool name to surface stale caveat, got %q", got)
 	}
-	if strings.Index(got, "No current news_search results:") > strings.Index(got, "Background: 1. AI startup raises funding") {
+	if strings.Index(got, "No current news_search results:") > strings.Index(got, "Background: AI startup raises funding") {
 		t.Fatalf("expected stale caveat to precede old story, got %q", got)
 	}
 	if strings.Contains(got, `{"query"`) {
