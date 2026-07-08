@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -1861,25 +1862,31 @@ func formatNewsResult(result string) string {
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
 		return result
 	}
-	type item struct {
-		Title       string
-		Description string
-		Category    string
-		URL         string
-		PostedAt    string
-		Published   string
-	}
-	var items []item
+	var items []formattedNewsItem
 	for _, a := range data.Results {
-		items = append(items, item{a.Title, a.Description, a.Category, a.URL, a.PostedAt, ""})
+		items = append(items, formattedNewsItem{a.Title, a.Description, a.Category, a.URL, a.PostedAt, ""})
 	}
 	if len(items) == 0 {
 		for _, a := range data.Feed {
-			items = append(items, item{a.Title, a.Description, a.Category, a.URL, a.PostedAt, a.Published})
+			items = append(items, formattedNewsItem{a.Title, a.Description, a.Category, a.URL, a.PostedAt, a.Published})
 		}
 	}
 	if len(items) == 0 {
 		return "No news available."
+	}
+
+	// Freshness-sensitive searches feed both the fast guest fallback and the
+	// native streaming/final synthesis paths. Keep dated current items ahead of
+	// older replayed context before any model sees the result list.
+	if data.Query != "" && (data.Freshness.Status == "mostly_stale" || data.Freshness.Status == "stale" || strings.TrimSpace(data.Freshness.Notice) != "") {
+		sort.SliceStable(items, func(i, j int) bool {
+			left := newsResultItemTime(items[i])
+			right := newsResultItemTime(items[j])
+			if left.IsZero() || right.IsZero() {
+				return false
+			}
+			return left.After(right)
+		})
 	}
 
 	// Interleave items across categories round-robin to ensure diversity.
@@ -1888,7 +1895,7 @@ func formatNewsResult(result string) string {
 	// round-robin order.
 	if data.Query == "" {
 		catOrder := []string{}
-		catItems := map[string][]item{}
+		catItems := map[string][]formattedNewsItem{}
 		for _, a := range items {
 			cat := a.Category
 			if cat == "" {
@@ -1899,7 +1906,7 @@ func formatNewsResult(result string) string {
 			}
 			catItems[cat] = append(catItems[cat], a)
 		}
-		var mixed []item
+		var mixed []formattedNewsItem
 		maxPerCat := 3
 		for round := 0; round < maxPerCat; round++ {
 			for _, cat := range catOrder {
@@ -1972,6 +1979,30 @@ func formatNewsResult(result string) string {
 		sb.WriteString(line + "\n")
 	}
 	return sb.String()
+}
+
+type formattedNewsItem struct {
+	Title       string
+	Description string
+	Category    string
+	URL         string
+	PostedAt    string
+	Published   string
+}
+
+func newsResultItemTime(item formattedNewsItem) time.Time {
+	for _, value := range []string{item.PostedAt, item.Published} {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		for _, layout := range []string{time.RFC3339, "2 Jan 2006 15:04 MST", "2 Jan 2006", "2006-01-02", "Jan 2, 2006"} {
+			if t, err := time.Parse(layout, value); err == nil {
+				return t.UTC()
+			}
+		}
+	}
+	return time.Time{}
 }
 
 // formatVideoResult converts a raw JSON video search result into
