@@ -1671,6 +1671,26 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	}
 }
 
+func TestCompleteToolAnswerReplaysSortedFallbackWhenCaveatAnswerLeadsStale(t *testing.T) {
+	rag := []string{`### news_search
+News results for "AI news":
+Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness caveat before listing older context as today's news.
+1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.
+2. AI chips adoption grows (category: Tech; posted: 14 Mar 2026 12:00 UTC; source: https://example.com/older-ai) — Older archive story.
+3. AI lab ships current update (category: Tech; posted: 8 Jul 2026 12:00 UTC; source: https://example.com/current-ai) — Current story.`}
+	answer := "Mostly stale news_search results: Only 1 of 3 dated news_search results are from 2026-07-08.\n1. AI startup raises funding — stale context.\n2. AI lab ships current update — current story."
+	got := completeToolAnswer(answer, rag)
+	if !strings.HasPrefix(got, "- Mostly stale news_search results:") {
+		t.Fatalf("expected replayed fallback to keep caveat first, got %q", got)
+	}
+	current := strings.Index(got, "Background: AI lab ships current update")
+	may := strings.Index(got, "Background: AI startup raises funding")
+	march := strings.Index(got, "Background: AI chips adoption grows")
+	if current < 0 || may < 0 || march < 0 || current > may || may > march {
+		t.Fatalf("expected freshness-sorted replay after leading caveat answer, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerKeepsSubstantiveAnswer(t *testing.T) {
 	want := "BTC is at $100,000, and the latest news says it reached a new high."
 	got := completeToolAnswer(want, []string{"### markets\nBTC: $100,000"})
