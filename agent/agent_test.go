@@ -1485,6 +1485,17 @@ func TestFormatToolResultNewsSearchSurfacesFreshnessCaveat(t *testing.T) {
 	}
 }
 
+func TestFormatToolResultNewsSearchSortsMostlyStaleResultsByFreshness(t *testing.T) {
+	result := `{"query":"AI news","freshness":{"status":"mostly_stale","requested_date":"2026-07-08","same_day_results":1,"dated_results":3,"freshest_posted_at":"2026-07-08T12:00:00Z","notice":"Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness caveat before listing older context as today's news."},"results":[{"title":"AI startup raises funding","description":"Archive story.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"},{"title":"AI chips adoption grows","description":"Older archive story.","category":"Tech","url":"https://example.com/older-ai","posted_at":"2026-03-14T12:00:00Z"},{"title":"AI lab ships current update","description":"Current story.","category":"Tech","url":"https://example.com/current-ai","posted_at":"2026-07-08T12:00:00Z"}]}`
+	got := formatToolResult("news_search", result, nil)
+	current := strings.Index(got, "1. AI lab ships current update")
+	may := strings.Index(got, "2. AI startup raises funding")
+	march := strings.Index(got, "3. AI chips adoption grows")
+	if current < 0 || may < 0 || march < 0 || current > may || may > march {
+		t.Fatalf("expected mostly-stale news_search context to be sorted freshest first, got %q", got)
+	}
+}
+
 func TestFormatToolResultNewsSearchSurfacesMostlyStaleFreshnessCaveat(t *testing.T) {
 	result := `{"query":"AI news","freshness":{"status":"mostly_stale","requested_date":"2026-07-05","same_day_results":1,"dated_results":3,"freshest_posted_at":"2026-07-05T12:00:00Z","notice":"Only 1 of 3 dated news_search results are from 2026-07-05; lead with a freshness caveat before listing older context as today's news."},"results":[{"title":"AI lab ships today's assistant update","description":"Current AI story.","category":"Tech","url":"https://example.com/current-ai","posted_at":"2026-07-05T12:00:00Z"},{"title":"AI startup raises funding","description":"Archive story.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
 	got := formatToolResult("news_search", result, nil)
