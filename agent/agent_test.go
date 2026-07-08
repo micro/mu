@@ -1592,6 +1592,18 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	}
 }
 
+func TestShouldReplayFinalNativeAnswerForBufferedLatestNews(t *testing.T) {
+	if !shouldReplayFinalNativeAnswer("Find today's AI news", []string{"news"}, 0) {
+		t.Fatal("expected buffered native latest-news answers to replay guarded final text")
+	}
+	if !shouldReplayFinalNativeAnswer("Weather in New York today", []string{"weather"}, 12) {
+		t.Fatal("expected captured native text to be replayed")
+	}
+	if shouldReplayFinalNativeAnswer("Weather in New York today", []string{"weather"}, 0) {
+		t.Fatal("did not expect unrelated empty native captures to replay")
+	}
+}
+
 func TestShouldHoldNativeNewsStreamTokensForLatestNewsPrompt(t *testing.T) {
 	if !shouldHoldNativeNewsStreamTokens("Find today's AI news", nil) {
 		t.Fatal("expected native latest-news tokens to be held before the news tool result is available")
