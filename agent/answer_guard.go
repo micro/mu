@@ -28,6 +28,11 @@ func completeToolAnswer(answer string, ragParts []string) string {
 	if caveat := staleNewsFreshnessCaveat(ragParts); caveat != "" {
 		guarded := labelStaleNewsAnswerStories(trimmed)
 		if answerLeadsWithFreshnessCaveat(trimmed) {
+			if strings.HasPrefix(strings.ToLower(caveat), "mostly stale") && answerContainsNewsStoryLine(guarded) {
+				if fallback := synthesizeToolFallback(ragParts); strings.TrimSpace(fallback) != "" {
+					return fallback
+				}
+			}
 			return guarded
 		}
 		if fallback := synthesizeToolFallback(ragParts); strings.TrimSpace(fallback) != "" {
@@ -104,6 +109,21 @@ func labelStaleNewsAnswerStories(answer string) string {
 		return answer
 	}
 	return strings.Join(lines, "\n")
+}
+
+func answerContainsNewsStoryLine(answer string) bool {
+	for _, raw := range strings.Split(answer, "\n") {
+		line := strings.TrimSpace(strings.TrimLeft(raw, "-•* "))
+		if line == "" {
+			continue
+		}
+		line = strings.TrimSpace(regexp.MustCompile(`^\d+[.)]\s+`).ReplaceAllString(line, ""))
+		line = strings.TrimSpace(strings.TrimPrefix(line, "Background:"))
+		if looksLikeNewsStoryLine(line) {
+			return true
+		}
+	}
+	return false
 }
 
 func answerLeadsWithFreshnessCaveat(answer string) bool {
