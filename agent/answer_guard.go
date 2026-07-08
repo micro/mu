@@ -2,7 +2,9 @@ package agent
 
 import (
 	"regexp"
+	"sort"
 	"strings"
+	"time"
 )
 
 func unavailableToolMessage(tool string) string {
@@ -348,6 +350,8 @@ func prioritizeStaleNewsCaveatLines(lines []string) []string {
 	} else {
 		out = append(out, "No current news_search results: "+caveat)
 	}
+	var storyLines []string
+	var otherLines []string
 	for i, line := range lines {
 		if i == caveatIndex {
 			continue
@@ -356,12 +360,47 @@ func prioritizeStaleNewsCaveatLines(lines []string) []string {
 		if trimmed == "" || isSearchResultHeading(trimmed) {
 			continue
 		}
-		if looksLikeNewsStoryLine(trimmed) && !strings.HasPrefix(strings.ToLower(trimmed), "background:") {
-			trimmed = "Background: " + trimmed
+		if looksLikeNewsStoryLine(trimmed) {
+			if !strings.HasPrefix(strings.ToLower(trimmed), "background:") {
+				trimmed = "Background: " + trimmed
+			}
+			storyLines = append(storyLines, trimmed)
+			continue
 		}
-		out = append(out, trimmed)
+		otherLines = append(otherLines, trimmed)
 	}
+	sort.SliceStable(storyLines, func(i, j int) bool {
+		left := fallbackNewsPostedAt(storyLines[i])
+		right := fallbackNewsPostedAt(storyLines[j])
+		if left.IsZero() || right.IsZero() {
+			return false
+		}
+		return left.After(right)
+	})
+	out = append(out, storyLines...)
+	out = append(out, otherLines...)
 	return out
+}
+
+func fallbackNewsPostedAt(line string) time.Time {
+	lower := strings.ToLower(line)
+	idx := strings.Index(lower, "posted:")
+	if idx < 0 {
+		return time.Time{}
+	}
+	posted := strings.TrimSpace(line[idx+len("posted:"):])
+	for _, sep := range []string{";", ")", " — "} {
+		if cut := strings.Index(posted, sep); cut >= 0 {
+			posted = strings.TrimSpace(posted[:cut])
+		}
+	}
+	posted = strings.TrimSpace(strings.Trim(posted, ".,"))
+	for _, layout := range []string{time.RFC3339, "2 Jan 2006 15:04 MST", "2 Jan 2006", "2006-01-02", "Jan 2, 2006"} {
+		if t, err := time.Parse(layout, posted); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Time{}
 }
 
 func looksLikeNewsStoryLine(line string) bool {

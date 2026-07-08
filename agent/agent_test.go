@@ -1640,6 +1640,25 @@ Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lea
 	}
 }
 
+func TestCompleteToolAnswerSortsMostlyStaleNewsFallbackByFreshness(t *testing.T) {
+	rag := []string{`### news_search
+News results for "AI news":
+Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness caveat before listing older context as today's news.
+1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.
+2. AI chips adoption grows (category: Tech; posted: 14 Mar 2026 12:00 UTC; source: https://example.com/older-ai) — Older archive story.
+3. AI lab ships current update (category: Tech; posted: 8 Jul 2026 12:00 UTC; source: https://example.com/current-ai) — Current story.`}
+	got := completeToolAnswer("AI startup raises funding in May. AI chips adoption grew in March. AI lab ships current update today.", rag)
+	if !strings.HasPrefix(got, "- Mostly stale news_search results:") {
+		t.Fatalf("expected guarded fallback caveat to lead answer, got %q", got)
+	}
+	current := strings.Index(got, "Background: AI lab ships current update")
+	may := strings.Index(got, "Background: AI startup raises funding")
+	march := strings.Index(got, "Background: AI chips adoption grows")
+	if current < 0 || may < 0 || march < 0 || current > may || may > march {
+		t.Fatalf("expected freshness-sorted background items after caveat, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerDoesNotDuplicateLeadingStaleNewsCaveat(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
