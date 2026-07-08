@@ -15,6 +15,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/service"
 	"mu/wallet"
 )
 
@@ -106,6 +107,9 @@ var httpClient = &http.Client{Timeout: 35 * time.Second}
 // Load initialises the places package
 func Load() {
 	initCities()
+	if err := service.Register("places", new(Server)); err != nil {
+		app.Log("places", "service register failed: %v", err)
+	}
 	if googleAPIKey() == "" {
 		loaded := loadCityCaches()
 		app.Log("places", "Places loaded: %d/%d cities in quadtree", loaded, len(cities))
