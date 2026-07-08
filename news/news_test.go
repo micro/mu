@@ -296,6 +296,45 @@ func TestNewsSearchArticlesFreshQueriesPreferNewestMatches(t *testing.T) {
 	}
 }
 
+func TestNewsSearchArticlesFreshQueriesPreferDatedCurrentItemsOverUndatedMatches(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 8, 9, 0, 0, 0, time.UTC)
+	indexed := []*data.IndexEntry{{
+		ID:      "undated-ai-directory",
+		Title:   "AI news archive and directory",
+		Content: "Artificial intelligence news background without a published date.",
+		Metadata: map[string]interface{}{
+			"url":      "https://example.com/ai-directory",
+			"category": "Tech",
+		},
+	}}
+
+	mutex.Lock()
+	feed = []*Post{{
+		ID:          "current-ai",
+		Title:       "AI lab ships current assistant update",
+		Description: "Fresh release notes for today's AI update.",
+		URL:         "https://example.com/current-ai",
+		Category:    "Tech",
+		PostedAt:    today,
+	}}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", indexed, 8)
+	if len(got) < 2 {
+		t.Fatalf("expected indexed and live results, got %#v", got)
+	}
+	if got[0]["title"] != "AI lab ships current assistant update" {
+		t.Fatalf("expected dated current item before undated match, got %#v", got)
+	}
+}
+
 func TestNewsSearchArticlesFreshQueriesWidenLiveCandidatePool(t *testing.T) {
 	oldFeed := feed
 	defer func() {

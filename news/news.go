@@ -1883,7 +1883,12 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 
 	if newsQueryWantsFreshness(query) {
 		sort.SliceStable(candidates, func(i, j int) bool {
-			return articlePostedAt(candidates[i]).After(articlePostedAt(candidates[j]))
+			left := articlePostedAt(candidates[i])
+			right := articlePostedAt(candidates[j])
+			if left.IsZero() || right.IsZero() {
+				return !left.IsZero() && right.IsZero()
+			}
+			return left.After(right)
 		})
 	}
 
