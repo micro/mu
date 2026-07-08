@@ -28,6 +28,9 @@ func completeToolAnswer(answer string, ragParts []string) string {
 		if answerLeadsWithFreshnessCaveat(trimmed) {
 			return guarded
 		}
+		if fallback := synthesizeToolFallback(ragParts); strings.TrimSpace(fallback) != "" {
+			return fallback
+		}
 		if guarded == "" {
 			return caveat
 		}
