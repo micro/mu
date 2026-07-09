@@ -624,6 +624,40 @@ func TestSearchToolTextReturnsLiveFeedResultsForAgent(t *testing.T) {
 	}
 }
 
+func TestSearchToolTextGuidesReadableAINewsBullets(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	mutex.Lock()
+	feed = []*Post{{
+		ID:          "ai-readable",
+		Title:       "AI lab ships safer assistant",
+		Description: "The rollout adds public evaluations for developers using your pu...",
+		URL:         "https://example.com/ai-readable?utm_source=rss#fragment",
+		Category:    "Technology",
+		PostedAt:    time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC),
+	}}
+	mutex.Unlock()
+
+	text, err := SearchToolText("Find today's AI news")
+	if err != nil {
+		t.Fatalf("SearchToolText returned error: %v", err)
+	}
+	if !strings.Contains(text, "concise source-linked news bullets") {
+		t.Fatalf("expected presentation guidance for readable answer bullets, got %s", text)
+	}
+	if strings.Contains(text, "using your pu") || strings.Contains(text, "...") {
+		t.Fatalf("expected clipped snippet fragments to be removed, got %s", text)
+	}
+	if !strings.Contains(text, "https://example.com/ai-readable") {
+		t.Fatalf("expected clean article URL to remain available for source links, got %s", text)
+	}
+}
+
 func TestNewsSearchArticlesFiltersAdjacentIndexedResults(t *testing.T) {
 	indexed := []*data.IndexEntry{
 		{
