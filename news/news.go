@@ -2065,8 +2065,12 @@ func liveFeedSearch(query string, limit int) []*Post {
 		score int
 	}
 	var matches []match
+	requireAI := newsQueryRequiresArtificialIntelligence(query)
 	for _, post := range currentFeed {
 		haystack := newsSearchHaystack(post.Title, post.Description, post.Content, post.Category)
+		if requireAI && !newsHaystackMatchesArtificialIntelligence(haystack) {
+			continue
+		}
 		score := 0
 		for _, term := range terms {
 			if newsSearchTermMatches(haystack, term) {
@@ -2103,6 +2107,9 @@ func articleMatchesNewsQuery(query string, article map[string]interface{}) bool 
 		fmt.Sprintf("%v", article["description"]),
 		fmt.Sprintf("%v", article["category"]),
 	)
+	if newsQueryRequiresArtificialIntelligence(query) && !newsHaystackMatchesArtificialIntelligence(haystack) {
+		return false
+	}
 	for _, term := range terms {
 		if newsSearchTermMatches(haystack, term) {
 			return true
@@ -2113,6 +2120,25 @@ func articleMatchesNewsQuery(query string, article map[string]interface{}) bool 
 
 func newsSearchHaystack(parts ...string) string {
 	return strings.ToLower(strings.Join(parts, " "))
+}
+
+func newsQueryRequiresArtificialIntelligence(query string) bool {
+	clean := strings.NewReplacer("-", " ", "_", " ", "/", " ", "'", "", "’", "").Replace(strings.ToLower(query))
+	for _, term := range []string{"ai", "artificial intelligence", "machine learning", "llm", "large language model"} {
+		if newsSearchTermMatches(clean, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func newsHaystackMatchesArtificialIntelligence(haystack string) bool {
+	for _, term := range []string{"ai", "artificial intelligence", "machine learning", "llm", "large language model", "generative ai", "openai", "anthropic"} {
+		if newsSearchTermMatches(haystack, term) {
+			return true
+		}
+	}
+	return false
 }
 
 func newsSearchTermMatches(haystack, term string) bool {
@@ -2136,8 +2162,8 @@ func newsSearchTermMatches(haystack, term string) bool {
 func meaningfulNewsQueryTerms(query string) []string {
 	stop := map[string]bool{
 		"a": true, "an": true, "and": true, "any": true, "for": true, "from": true,
-		"give": true, "headline": true, "headlines": true, "latest": true, "me": true,
-		"news": true, "of": true, "on": true, "show": true, "the": true, "today": true,
+		"find": true, "give": true, "headline": true, "headlines": true, "latest": true, "me": true,
+		"news": true, "of": true, "on": true, "show": true, "the": true, "today": true, "todays": true,
 		"top": true, "update": true, "updates": true, "what": true, "whats": true,
 	}
 	seen := map[string]bool{}
@@ -2150,7 +2176,7 @@ func meaningfulNewsQueryTerms(query string) []string {
 		seen[term] = true
 		terms = append(terms, term)
 	}
-	clean := strings.NewReplacer("-", " ", "_", " ", "/", " ").Replace(strings.ToLower(query))
+	clean := strings.NewReplacer("-", " ", "_", " ", "/", " ", "'", "", "’", "").Replace(strings.ToLower(query))
 	for _, field := range strings.Fields(clean) {
 		add(strings.Trim(field, `.,:;!?()[]{}"'`))
 	}
