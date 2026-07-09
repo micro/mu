@@ -426,6 +426,67 @@ func TestNewsSearchArticlesFreshAIQueryKeepsUnrelatedSameDayItemsBehindTopicMatc
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersBroadFinanceMovers(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 9, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "market-movers-ai",
+			Title:       "Midday stock movers: AI shares join broader rally",
+			Description: "A broad markets brief lists trading moves across equities.",
+			URL:         "https://example.com/stock-movers",
+			Category:    "Markets",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-data-center",
+			Title:       "AI data center startup expands inference platform",
+			Description: "The artificial intelligence company announced new model-serving capacity.",
+			URL:         "https://example.com/ai-data-center",
+			Category:    "Technology",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected broad finance AI-adjacent mover to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI data center startup expands inference platform" {
+		t.Fatalf("expected core AI story, got %#v", got[0])
+	}
+}
+
+func TestNewsSearchArticlesFreshAIQueryKeepsSpecificAIChipMarketStory(t *testing.T) {
+	indexed := []*data.IndexEntry{
+		{
+			ID:      "ai-chip-market",
+			Title:   "AI chip shares climb after new inference accelerator launch",
+			Content: "The semiconductor company said the processor targets model-serving workloads.",
+			Metadata: map[string]interface{}{
+				"url":      "https://example.com/ai-chip-market",
+				"category": "Markets",
+			},
+		},
+	}
+
+	got := newsSearchArticles("Find today's AI news", indexed, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected specific AI chip market story to remain, got %#v", got)
+	}
+	if got[0]["title"] != "AI chip shares climb after new inference accelerator launch" {
+		t.Fatalf("expected specific AI chip story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchFreshnessSummaryCaveatsStaleTodayResults(t *testing.T) {
 	articles := []map[string]interface{}{{
 		"title":     "AI startup raises funding",

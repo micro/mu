@@ -2068,8 +2068,13 @@ func liveFeedSearch(query string, limit int) []*Post {
 	requireAI := newsQueryRequiresArtificialIntelligence(query)
 	for _, post := range currentFeed {
 		haystack := newsSearchHaystack(post.Title, post.Description, post.Content, post.Category)
-		if requireAI && !newsHaystackMatchesArtificialIntelligence(haystack) {
-			continue
+		if requireAI {
+			if !newsHaystackMatchesArtificialIntelligence(haystack) {
+				continue
+			}
+			if newsAIArticleIsBroadFinance(post.Title, post.Description, post.Content, post.Category) {
+				continue
+			}
 		}
 		score := 0
 		for _, term := range terms {
@@ -2107,8 +2112,18 @@ func articleMatchesNewsQuery(query string, article map[string]interface{}) bool 
 		fmt.Sprintf("%v", article["description"]),
 		fmt.Sprintf("%v", article["category"]),
 	)
-	if newsQueryRequiresArtificialIntelligence(query) && !newsHaystackMatchesArtificialIntelligence(haystack) {
-		return false
+	if newsQueryRequiresArtificialIntelligence(query) {
+		if !newsHaystackMatchesArtificialIntelligence(haystack) {
+			return false
+		}
+		if newsAIArticleIsBroadFinance(
+			fmt.Sprintf("%v", article["title"]),
+			fmt.Sprintf("%v", article["description"]),
+			fmt.Sprintf("%v", article["content"]),
+			fmt.Sprintf("%v", article["category"]),
+		) {
+			return false
+		}
 	}
 	for _, term := range terms {
 		if newsSearchTermMatches(haystack, term) {
@@ -2139,6 +2154,39 @@ func newsHaystackMatchesArtificialIntelligence(haystack string) bool {
 		}
 	}
 	return false
+}
+
+func newsAIArticleIsBroadFinance(parts ...string) bool {
+	haystack := newsSearchHaystack(parts...)
+	if haystack == "" {
+		return false
+	}
+	financeTerms := []string{
+		"business", "finance", "financial", "market", "markets", "stock", "stocks", "shares", "equities",
+		"mover", "movers", "trading", "trader", "investor", "investors", "wall street", "nasdaq", "dow",
+		"s&p", "rate", "rates", "earnings", "futures", "crypto", "bitcoin",
+	}
+	hasFinance := false
+	for _, term := range financeTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasFinance = true
+			break
+		}
+	}
+	if !hasFinance {
+		return false
+	}
+	strongAITerms := []string{
+		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
+		"llm", "model", "models", "chip", "chips", "semiconductor", "data center", "datacenter",
+		"startup", "assistant", "product", "platform", "developer", "research", "robot", "robotics",
+	}
+	for _, term := range strongAITerms {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
+	}
+	return true
 }
 
 func newsSearchTermMatches(haystack, term string) bool {
