@@ -1277,17 +1277,29 @@ func fallbackNewsSearchToolCall(prompt, tool string, args map[string]any) (short
 }
 
 func newsTopicQuery(lower string) string {
-	if strings.Contains(lower, "artificial intelligence") {
-		return "artificial intelligence news"
+	prefix := ""
+	switch {
+	case strings.Contains(lower, "today"):
+		prefix = "today "
+	case strings.Contains(lower, "latest"):
+		prefix = "latest "
+	case strings.Contains(lower, "current") || strings.Contains(lower, "happening"):
+		prefix = "current "
 	}
-	for _, token := range strings.FieldsFunc(lower, func(r rune) bool {
-		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
-	}) {
-		if token == "ai" {
-			return "AI news"
+	topic := "technology news"
+	if strings.Contains(lower, "artificial intelligence") {
+		topic = "artificial intelligence news"
+	} else {
+		for _, token := range strings.FieldsFunc(lower, func(r rune) bool {
+			return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+		}) {
+			if token == "ai" {
+				topic = "AI news"
+				break
+			}
 		}
 	}
-	return "technology news"
+	return prefix + topic
 }
 
 func isLatestTechnologyNewsPrompt(lower string) bool {
