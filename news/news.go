@@ -2218,7 +2218,7 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 	}
 	strongAITerms := []string{
 		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
-		"llm", "model", "models", "chip", "chips", "semiconductor", "data center", "datacenter",
+		"llm", "ai model", "language model", "foundation model", "model-serving", "model serving", "chip", "chips", "semiconductor", "data center", "datacenter",
 		"startup", "assistant", "product", "platform", "developer", "research", "robot", "robotics",
 	}
 	for _, term := range strongAITerms {
