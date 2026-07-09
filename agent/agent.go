@@ -1249,6 +1249,10 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		return []shortcutToolCall{{Tool: "markets", Args: map[string]any{}}}
 	}
 
+	if tc := weatherShortcutToolCalls(lower); len(tc) > 0 {
+		return tc
+	}
+
 	if isLatestTechnologyNewsPrompt(lower) {
 		return []shortcutToolCall{{Tool: "news_search", Args: map[string]any{"query": newsTopicQuery(lower)}}}
 	}
@@ -1260,6 +1264,45 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 	}
 
 	return nil
+}
+
+func weatherShortcutToolCalls(lower string) []shortcutToolCall {
+	if !isSimpleWeatherPrompt(lower) {
+		return nil
+	}
+	locationAliases := map[string][2]float64{
+		"new york":       {40.7128, -74.0060},
+		"nyc":            {40.7128, -74.0060},
+		"san francisco":  {37.7749, -122.4194},
+		"sf":             {37.7749, -122.4194},
+		"london":         {51.5074, -0.1278},
+		"paris":          {48.8566, 2.3522},
+		"tokyo":          {35.6762, 139.6503},
+		"los angeles":    {34.0522, -118.2437},
+		"chicago":        {41.8781, -87.6298},
+		"miami":          {25.7617, -80.1918},
+		"seattle":        {47.6062, -122.3321},
+		"washington dc":  {38.9072, -77.0369},
+		"washington, dc": {38.9072, -77.0369},
+	}
+	for alias, coords := range locationAliases {
+		if containsLocationAlias(lower, alias) {
+			return []shortcutToolCall{{Tool: "weather_forecast", Args: map[string]any{"lat": coords[0], "lon": coords[1]}}}
+		}
+	}
+	return nil
+}
+
+func containsLocationAlias(prompt, alias string) bool {
+	if !strings.Contains(prompt, alias) {
+		return false
+	}
+	for _, marker := range []string{" in " + alias, " for " + alias, " at " + alias, " near " + alias} {
+		if strings.Contains(prompt, marker) {
+			return true
+		}
+	}
+	return strings.TrimSpace(prompt) == "weather "+alias || strings.TrimSpace(prompt) == alias+" weather"
 }
 
 func fallbackNewsSearchToolCall(prompt, tool string, args map[string]any) (shortcutToolCall, bool) {

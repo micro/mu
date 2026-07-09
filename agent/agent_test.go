@@ -356,6 +356,28 @@ func TestShortcutToolCallsMarketMoverExplanationUsesPlanner(t *testing.T) {
 	}
 }
 
+func TestShortcutToolCallsSimpleWeatherKnownLocation(t *testing.T) {
+	got := shortcutToolCalls("Weather in New York today")
+	if len(got) != 1 {
+		t.Fatalf("expected one weather shortcut, got %#v", got)
+	}
+	if got[0].Tool != "weather_forecast" {
+		t.Fatalf("expected weather_forecast shortcut, got %#v", got)
+	}
+	if got[0].Args["lat"] != 40.7128 || got[0].Args["lon"] != -74.0060 {
+		t.Fatalf("expected New York coordinates, got %#v", got[0].Args)
+	}
+}
+
+func TestShortcutToolCallsComplexWeatherUsesPlanner(t *testing.T) {
+	if got := shortcutToolCalls("Compare weather in New York and London"); len(got) != 0 {
+		t.Fatalf("expected comparative weather prompt to use planner, got %#v", got)
+	}
+	if got := shortcutToolCalls("Will New York weather affect markets today?"); len(got) != 0 {
+		t.Fatalf("expected cross-domain weather prompt to use planner, got %#v", got)
+	}
+}
+
 func TestUseFastToolFallbackOnlyForGuestMarketMovers(t *testing.T) {
 	rag := []string{"### markets\nLive crypto prices:\nBTC: $97000.00 (+1.23% 24h)"}
 	if !useFastToolFallback("What is moving in markets today?", true, true, false, false, false, false, rag) {
