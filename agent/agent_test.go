@@ -422,9 +422,9 @@ func TestShortcutToolCallsLatestTechnologyNews(t *testing.T) {
 		prompt string
 		query  string
 	}{
-		{prompt: "latest technology news", query: "technology news"},
-		{prompt: "What is the latest AI news today?", query: "AI news"},
-		{prompt: "current artificial intelligence news", query: "artificial intelligence news"},
+		{prompt: "latest technology news", query: "latest technology news"},
+		{prompt: "What is the latest AI news today?", query: "today AI news"},
+		{prompt: "current artificial intelligence news", query: "current artificial intelligence news"},
 	} {
 		got := shortcutToolCalls(tt.prompt)
 		if len(got) != 1 {
@@ -447,7 +447,7 @@ func TestFallbackNewsSearchToolCallUsesWebSearchForLatestAINews(t *testing.T) {
 	if got.Tool != "web_search" {
 		t.Fatalf("expected web_search fallback, got %#v", got)
 	}
-	if got.Args["q"] != "AI news" {
+	if got.Args["q"] != "today AI news" {
 		t.Fatalf("expected fallback to preserve prompt topic, got %#v", got.Args)
 	}
 }
