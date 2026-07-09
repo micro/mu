@@ -475,7 +475,7 @@ function fetchW(la,lo){
 		b.WriteString(`<div id="home-agent" style="margin:0 0 20px">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: false, HideSuggestions: true}))
 		if chips != "" {
-			b.WriteString(fmt.Sprintf(`<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px">%s</div>`, chips))
+			b.WriteString(fmt.Sprintf(`<div class="home-chips">%s</div>`, chips))
 		}
 		b.WriteString(`</div>`)
 	}

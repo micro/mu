@@ -906,10 +906,36 @@ body.page-home #page-title ~ #customize-link {
   #home {
     flex-direction: column;
   }
-  
+
   .home-right {
     width: 100%;
   }
+}
+
+/* Home: the inline agent spans the full column (not the 760px reading cap it
+   uses on the landing page), and when its input pins on scroll it clears the
+   fixed 50px header instead of hiding behind it. */
+#home-agent #mu-chat { max-width: none; }
+#home-agent #mu-chat-form { top: 58px; }
+
+/* Suggestion chips: wrap+centre on wide screens, scroll on one row on narrow
+   ones so they never break to an awkward 2-then-1 layout. */
+.home-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 12px;
+}
+@media only screen and (max-width: 600px) {
+  .home-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .home-chips .console-suggest { flex: 0 0 auto; }
 }
 
 /* ========================================

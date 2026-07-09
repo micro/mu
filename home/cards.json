@@ -1,28 +1,28 @@
 {
   "left": [
     {
-      "id": "reminder",
-      "title": "Reminder",
-      "type": "reminder",
-      "position": 0,
-      "link": "",
-      "icon": "/reminder.svg"
-    },
-    {
       "id": "blog",
       "title": "Blog",
       "type": "blog",
-      "position": 1,
+      "position": 0,
       "link": "/blog",
       "icon": "/post.png"
     },
     {
-      "id": "news",
-      "title": "News",
-      "type": "news",
+      "id": "reminder",
+      "title": "Reminder",
+      "type": "reminder",
+      "position": 1,
+      "link": "",
+      "icon": "/reminder.svg"
+    },
+    {
+      "id": "social",
+      "title": "Social",
+      "type": "social",
       "position": 2,
-      "link": "/news",
-      "icon": "/news.png"
+      "link": "/social",
+      "icon": ""
     }
   ],
   "right": [
@@ -35,12 +35,12 @@
       "icon": "/markets.svg"
     },
     {
-      "id": "social",
-      "title": "Social",
-      "type": "social",
+      "id": "news",
+      "title": "News",
+      "type": "news",
       "position": 1,
-      "link": "/social",
-      "icon": ""
+      "link": "/news",
+      "icon": "/news.png"
     },
     {
       "id": "video",

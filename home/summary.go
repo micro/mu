@@ -57,16 +57,45 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	brief := s
+	if brief == "" {
+		brief = fallbackBrief() // never leave the glance blank
+	}
 	if len(facts) > 0 {
-		prefix := strings.Join(facts, " · ")
-		if brief != "" {
-			brief = prefix + ". " + brief
-		} else {
-			brief = prefix + "."
-		}
+		brief = strings.Join(facts, " · ") + ". " + brief
 	}
 
 	app.RespondJSON(w, map[string]string{"summary": brief})
+}
+
+// fallbackBrief builds a cheap, non-AI one-liner so the glance is never empty
+// (e.g. before the background summary has run, or when no LLM is configured).
+func fallbackBrief() string {
+	var parts []string
+	if feed := news.GetFeed(); len(feed) > 0 {
+		n := len(feed)
+		if n > 99 {
+			n = 99
+		}
+		parts = append(parts, fmt.Sprintf("%d in the news", n))
+	}
+	var best string
+	var bestAbs float64
+	for sym, pd := range markets.GetAllPriceData() {
+		a := pd.Change24h
+		if a < 0 {
+			a = -a
+		}
+		if a > bestAbs {
+			bestAbs, best = a, fmt.Sprintf("%s %+.1f%%", sym, pd.Change24h)
+		}
+	}
+	if best != "" && bestAbs >= 1 {
+		parts = append(parts, best)
+	}
+	if len(parts) == 0 {
+		return "You're all caught up — ask me anything."
+	}
+	return strings.Join(parts, " · ")
 }
 
 func generateSummary() {
