@@ -9,10 +9,18 @@
       "icon": "/post.png"
     },
     {
+      "id": "news",
+      "title": "News",
+      "type": "news",
+      "position": 1,
+      "link": "/news",
+      "icon": "/news.png"
+    },
+    {
       "id": "reminder",
       "title": "Reminder",
       "type": "reminder",
-      "position": 1,
+      "position": 2,
       "link": "",
       "icon": "/reminder.svg"
     },
@@ -20,7 +28,7 @@
       "id": "social",
       "title": "Social",
       "type": "social",
-      "position": 2,
+      "position": 3,
       "link": "/social",
       "icon": ""
     },
@@ -28,7 +36,7 @@
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 3,
+      "position": 4,
       "link": "/video",
       "icon": "/video.png"
     }
@@ -41,14 +49,6 @@
       "position": 0,
       "link": "/markets",
       "icon": "/markets.svg"
-    },
-    {
-      "id": "news",
-      "title": "News",
-      "type": "news",
-      "position": 1,
-      "link": "/news",
-      "icon": "/news.png"
     }
   ]
 }
