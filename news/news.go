@@ -2069,7 +2069,7 @@ func liveFeedSearch(query string, limit int) []*Post {
 		haystack := newsSearchHaystack(post.Title, post.Description, post.Content, post.Category)
 		score := 0
 		for _, term := range terms {
-			if strings.Contains(haystack, term) {
+			if newsSearchTermMatches(haystack, term) {
 				score++
 			}
 		}
@@ -2104,7 +2104,7 @@ func articleMatchesNewsQuery(query string, article map[string]interface{}) bool 
 		fmt.Sprintf("%v", article["category"]),
 	)
 	for _, term := range terms {
-		if strings.Contains(haystack, term) {
+		if newsSearchTermMatches(haystack, term) {
 			return true
 		}
 	}
@@ -2113,6 +2113,24 @@ func articleMatchesNewsQuery(query string, article map[string]interface{}) bool 
 
 func newsSearchHaystack(parts ...string) string {
 	return strings.ToLower(strings.Join(parts, " "))
+}
+
+func newsSearchTermMatches(haystack, term string) bool {
+	term = strings.TrimSpace(strings.ToLower(term))
+	if term == "" {
+		return false
+	}
+	if strings.Contains(term, " ") {
+		return strings.Contains(haystack, term)
+	}
+	for _, token := range strings.FieldsFunc(haystack, func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+	}) {
+		if token == term {
+			return true
+		}
+	}
+	return false
 }
 
 func meaningfulNewsQueryTerms(query string) []string {
