@@ -504,6 +504,45 @@ func TestNewsSearchArticlesFreshAIQueryFiltersCryptoTokenMovers(t *testing.T) {
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersAIThemedTokenModelPortfolio(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 9, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "ai-token-portfolio",
+			Title:       "AI-themed tokens climb in crypto model portfolio",
+			Description: "A digital-assets brief tracks token prices, traders, and blockchain policy catalysts.",
+			URL:         "https://example.com/ai-token-portfolio",
+			Category:    "Crypto",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-model-safety",
+			Title:       "AI model safety benchmark gains lab support",
+			Description: "Artificial intelligence developers are testing a shared research evaluation standard.",
+			URL:         "https://example.com/ai-model-safety",
+			Category:    "Technology",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected token portfolio market brief to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI model safety benchmark gains lab support" {
+		t.Fatalf("expected core AI model story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryKeepsSpecificAIChipMarketStory(t *testing.T) {
 	indexed := []*data.IndexEntry{
 		{
