@@ -23,6 +23,14 @@
       "position": 2,
       "link": "/social",
       "icon": ""
+    },
+    {
+      "id": "video",
+      "title": "Video",
+      "type": "video",
+      "position": 3,
+      "link": "/video",
+      "icon": "/video.png"
     }
   ],
   "right": [
@@ -41,14 +49,6 @@
       "position": 1,
       "link": "/news",
       "icon": "/news.png"
-    },
-    {
-      "id": "video",
-      "title": "Video",
-      "type": "video",
-      "position": 2,
-      "link": "/video",
-      "icon": "/video.png"
     }
   ]
 }
