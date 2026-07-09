@@ -1811,9 +1811,10 @@ func newsSearchPayload(query string, limit int) map[string]interface{} {
 	results := data.Search(query, limit, data.WithType("news"), data.WithKeywordOnly())
 	articles := newsSearchArticles(query, results, limit)
 	payload := map[string]interface{}{
-		"query":   query,
-		"results": articles,
-		"count":   len(articles),
+		"query":        query,
+		"results":      articles,
+		"count":        len(articles),
+		"presentation": "Write concise source-linked news bullets: link the title or source name, do not expose category/feed metadata, raw URLs, ids, or clipped snippet fragments.",
 	}
 	if freshness := newsSearchFreshnessSummary(query, articles, time.Now().UTC()); freshness != nil {
 		payload["freshness"] = freshness
@@ -1851,7 +1852,7 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 		article := map[string]interface{}{
 			"id":          entry.ID,
 			"title":       entry.Title,
-			"description": htmlToText(entry.Content),
+			"description": newsSearchBriefDescription(entry.Content),
 			"url":         cleanNewsArticleURL(entry.Metadata["url"]),
 			"category":    entry.Metadata["category"],
 			"posted_at":   indexedNewsArticlePostedAt(entry),
@@ -1874,7 +1875,7 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 		candidates = append(candidates, map[string]interface{}{
 			"id":          post.ID,
 			"title":       post.Title,
-			"description": htmlToText(post.Description),
+			"description": newsSearchBriefDescription(post.Description),
 			"url":         cleanNewsArticleURL(post.URL),
 			"category":    post.Category,
 			"posted_at":   post.PostedAt,
@@ -1896,6 +1897,44 @@ func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []m
 		add(article)
 	}
 	return articles
+}
+
+func newsSearchBriefDescription(raw string) string {
+	desc := strings.TrimSpace(htmlToText(raw))
+	if desc == "" {
+		return ""
+	}
+	clipped := false
+	for _, marker := range []string{"...", "…"} {
+		if idx := strings.Index(desc, marker); idx >= 0 {
+			desc = strings.TrimSpace(desc[:idx])
+			clipped = true
+			break
+		}
+	}
+	if clipped && !strings.ContainsAny(desc, ".!?") {
+		return ""
+	}
+	const maxRunes = 180
+	runes := []rune(desc)
+	if len(runes) <= maxRunes {
+		return desc
+	}
+	window := string(runes[:maxRunes])
+	lastSentence := -1
+	for _, mark := range []string{". ", "! ", "? ", ".\n", "!\n", "?\n"} {
+		if idx := strings.LastIndex(window, mark); idx > lastSentence {
+			lastSentence = idx
+		}
+	}
+	if lastSentence > 0 {
+		return strings.TrimSpace(window[:lastSentence+1])
+	}
+	lastSpace := strings.LastIndex(window, " ")
+	if lastSpace > 80 {
+		return strings.TrimSpace(window[:lastSpace])
+	}
+	return strings.TrimSpace(window)
 }
 
 func indexedNewsArticlePostedAt(entry *data.IndexEntry) interface{} {
