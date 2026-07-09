@@ -2203,7 +2203,8 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 	financeTerms := []string{
 		"business", "finance", "financial", "market", "markets", "stock", "stocks", "shares", "equities",
 		"mover", "movers", "trading", "trader", "investor", "investors", "wall street", "nasdaq", "dow",
-		"s&p", "rate", "rates", "earnings", "futures", "crypto", "bitcoin",
+		"s&p", "rate", "rates", "earnings", "futures", "crypto", "bitcoin", "blockchain", "token",
+		"tokens", "digital asset", "digital assets",
 	}
 	hasFinance := false
 	for _, term := range financeTerms {

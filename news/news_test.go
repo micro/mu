@@ -465,6 +465,45 @@ func TestNewsSearchArticlesFreshAIQueryFiltersBroadFinanceMovers(t *testing.T) {
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersCryptoTokenMovers(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 9, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "ai-token-movers",
+			Title:       "AI token movers climb as crypto traders rotate",
+			Description: "A broad digital assets brief tracks token prices and crypto policy catalysts.",
+			URL:         "https://example.com/ai-token-movers",
+			Category:    "Crypto",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-policy",
+			Title:       "AI labs back new model evaluation standard",
+			Description: "Artificial intelligence developers are testing a shared research safety benchmark.",
+			URL:         "https://example.com/ai-policy",
+			Category:    "Technology",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected broad crypto token mover to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI labs back new model evaluation standard" {
+		t.Fatalf("expected core AI story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryKeepsSpecificAIChipMarketStory(t *testing.T) {
 	indexed := []*data.IndexEntry{
 		{
