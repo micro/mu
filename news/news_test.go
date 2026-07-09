@@ -378,6 +378,54 @@ func TestNewsSearchArticlesFreshQueriesWidenLiveCandidatePool(t *testing.T) {
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryKeepsUnrelatedSameDayItemsBehindTopicMatches(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 9, 9, 0, 0, 0, time.UTC)
+	yesterday := today.Add(-24 * time.Hour)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "faith-reminder",
+			Title:       "Daily Quran and hadith reminder",
+			Description: "A same-day reflection item with no technology reporting.",
+			URL:         "https://example.com/faith",
+			Category:    "Faith",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "finance-brief",
+			Title:       "Finance leaders await rate decision",
+			Description: "A same-day markets brief about rates and equities.",
+			URL:         "https://example.com/finance",
+			Category:    "Business",
+			PostedAt:    today.Add(time.Hour),
+		},
+		{
+			ID:          "ai-story",
+			Title:       "AI lab ships safer assistant",
+			Description: "Artificial intelligence product news from the latest release.",
+			URL:         "https://example.com/ai-story",
+			Category:    "Tech",
+			PostedAt:    yesterday,
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected only topic-relevant AI news, got %#v", got)
+	}
+	if got[0]["title"] != "AI lab ships safer assistant" {
+		t.Fatalf("expected AI topic match ahead of unrelated same-day items, got %#v", got)
+	}
+}
+
 func TestNewsSearchFreshnessSummaryCaveatsStaleTodayResults(t *testing.T) {
 	articles := []map[string]interface{}{{
 		"title":     "AI startup raises funding",
