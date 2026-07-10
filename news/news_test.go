@@ -604,6 +604,53 @@ func TestNewsSearchArticlesFreshAIQueryKeepsSpecificAIChipMarketStory(t *testing
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryRequiresExplicitAIRelevance(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "ai-ad-spam",
+			Title:       "Fake portable air-conditioner ads use AI images online",
+			Description: "A consumer-advertising brief tracks misleading internet ads for home gadgets.",
+			URL:         "https://example.com/ai-ad-spam",
+			Category:    "Internet",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "sk-hynix-ipo",
+			Title:       "SK Hynix IPO plans draw attention as AI demand lifts valuation",
+			Description: "A finance brief tracks investor appetite, shares, and market sentiment.",
+			URL:         "https://example.com/sk-hynix-ipo",
+			Category:    "Finance",
+			PostedAt:    today.Add(time.Hour),
+		},
+		{
+			ID:          "ai-agent-story",
+			Title:       "OpenAI agent update adds safer browsing controls",
+			Description: "The AI assistant release gives developers new controls for agent workflows.",
+			URL:         "https://example.com/ai-agent-story",
+			Category:    "Technology",
+			PostedAt:    today,
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected only explicitly AI-relevant news, got %#v", got)
+	}
+	if got[0]["title"] != "OpenAI agent update adds safer browsing controls" {
+		t.Fatalf("expected concrete AI-agent story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchFreshnessSummaryCaveatsStaleTodayResults(t *testing.T) {
 	articles := []map[string]interface{}{{
 		"title":     "AI startup raises funding",

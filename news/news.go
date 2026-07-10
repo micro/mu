@@ -2108,7 +2108,7 @@ func liveFeedSearch(query string, limit int) []*Post {
 	for _, post := range currentFeed {
 		haystack := newsSearchHaystack(post.Title, post.Description, post.Content, post.Category)
 		if requireAI {
-			if !newsHaystackMatchesArtificialIntelligence(haystack) {
+			if !newsHaystackHasExplicitAIRelevance(haystack) {
 				continue
 			}
 			if newsAIArticleIsBroadFinance(post.Title, post.Description, post.Content, post.Category) {
@@ -2152,7 +2152,7 @@ func articleMatchesNewsQuery(query string, article map[string]interface{}) bool 
 		fmt.Sprintf("%v", article["category"]),
 	)
 	if newsQueryRequiresArtificialIntelligence(query) {
-		if !newsHaystackMatchesArtificialIntelligence(haystack) {
+		if !newsHaystackHasExplicitAIRelevance(haystack) {
 			return false
 		}
 		if newsAIArticleIsBroadFinance(
@@ -2186,8 +2186,25 @@ func newsQueryRequiresArtificialIntelligence(query string) bool {
 	return false
 }
 
-func newsHaystackMatchesArtificialIntelligence(haystack string) bool {
-	for _, term := range []string{"ai", "artificial intelligence", "machine learning", "llm", "large language model", "generative ai", "openai", "anthropic"} {
+func newsHaystackHasExplicitAIRelevance(haystack string) bool {
+	for _, term := range []string{
+		"artificial intelligence", "machine learning", "large language model", "generative ai",
+		"openai", "anthropic", "llm", "ai model", "language model", "foundation model",
+		"model-serving", "model serving", "ai agent", "ai assistant", "ai lab", "ai startup",
+		"ai chip", "ai accelerator", "ai infrastructure", "ai data center", "ai datacenter",
+	} {
+		if newsSearchTermMatches(haystack, term) {
+			return true
+		}
+	}
+	if !newsSearchTermMatches(haystack, "ai") {
+		return false
+	}
+	for _, term := range []string{
+		"model", "models", "assistant", "agent", "agents", "lab", "labs", "startup", "developer", "research",
+		"robot", "robotics", "chip", "chips", "semiconductor", "accelerator", "inference", "training",
+		"data center", "datacenter", "gpu", "cloud", "safety", "benchmark", "regulation", "regulator",
+	} {
 		if newsSearchTermMatches(haystack, term) {
 			return true
 		}
@@ -2204,7 +2221,7 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 		"business", "finance", "financial", "market", "markets", "stock", "stocks", "shares", "equities",
 		"mover", "movers", "trading", "trader", "investor", "investors", "wall street", "nasdaq", "dow",
 		"s&p", "rate", "rates", "earnings", "futures", "crypto", "bitcoin", "blockchain", "token",
-		"tokens", "digital asset", "digital assets",
+		"tokens", "digital asset", "digital assets", "ipo", "valuation",
 	}
 	hasFinance := false
 	for _, term := range financeTerms {
