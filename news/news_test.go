@@ -543,6 +543,76 @@ func TestNewsSearchArticlesFreshAIQueryFiltersAIThemedTokenModelPortfolio(t *tes
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersCryptoMarketBackground(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "crypto-market-background",
+			Title:       "Crypto market movers rally as AI-themed tokens climb",
+			Description: "A broad digital-assets background brief tracks bitcoin prices, trader rotation, and token market sentiment.",
+			URL:         "https://example.com/crypto-market-background",
+			Category:    "Crypto",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "openai-agent-controls",
+			Title:       "OpenAI agent update adds safer browsing controls",
+			Description: "The AI assistant release gives developers new controls for agent workflows.",
+			URL:         "https://example.com/openai-agent-controls",
+			Category:    "Technology",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected crypto market background to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "OpenAI agent update adds safer browsing controls" {
+		t.Fatalf("expected concrete AI-agent story, got %#v", got[0])
+	}
+}
+
+func TestNewsSearchArticlesFreshAIQueryKeepsConcreteAICryptoStory(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "ai-agent-crypto",
+			Title:       "AI agent startup launches crypto wallet assistant",
+			Description: "The artificial intelligence product helps developers test blockchain payment workflows.",
+			URL:         "https://example.com/ai-agent-crypto",
+			Category:    "Technology",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected concrete AI crypto story to remain, got %#v", got)
+	}
+	if got[0]["title"] != "AI agent startup launches crypto wallet assistant" {
+		t.Fatalf("expected concrete AI crypto story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryFiltersAIChipStockMovers(t *testing.T) {
 	oldFeed := feed
 	defer func() {
