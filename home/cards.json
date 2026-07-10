@@ -9,20 +9,20 @@
       "icon": "/post.png"
     },
     {
-      "id": "news",
-      "title": "News",
-      "type": "news",
-      "position": 1,
-      "link": "/news",
-      "icon": "/news.png"
-    },
-    {
       "id": "reminder",
       "title": "Reminder",
       "type": "reminder",
-      "position": 2,
+      "position": 1,
       "link": "",
       "icon": "/reminder.svg"
+    },
+    {
+      "id": "news",
+      "title": "News",
+      "type": "news",
+      "position": 2,
+      "link": "/news",
+      "icon": "/news.png"
     }
   ],
   "right": [
