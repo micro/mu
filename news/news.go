@@ -2218,7 +2218,7 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 	}
 	strongAITerms := []string{
 		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
-		"llm", "ai model", "language model", "foundation model", "model-serving", "model serving", "chip", "chips", "semiconductor", "data center", "datacenter",
+		"llm", "ai model", "language model", "foundation model", "model-serving", "model serving",
 		"startup", "assistant", "product", "platform", "developer", "research", "robot", "robotics",
 	}
 	for _, term := range strongAITerms {
@@ -2226,7 +2226,32 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 			return false
 		}
 	}
+
+	// Chip and data-center wording is common in broad market-mover copy
+	// ("AI chip stocks", "data-center shares") that mentions AI only as a
+	// trading theme. Keep those stories only when they describe concrete AI
+	// infrastructure or product activity, not just share-price movement.
+	if newsHaystackHasAIInfrastructureTerm(haystack) {
+		for _, term := range []string{
+			"launch", "launches", "launched", "release", "releases", "released", "unveil", "unveils", "unveiled",
+			"expand", "expands", "expanded", "build", "builds", "built", "capacity", "processor", "accelerator",
+			"gpu", "server", "inference", "training", "model serving", "model-serving", "cloud",
+		} {
+			if newsSearchTermMatches(haystack, term) {
+				return false
+			}
+		}
+	}
 	return true
+}
+
+func newsHaystackHasAIInfrastructureTerm(haystack string) bool {
+	for _, term := range []string{"chip", "chips", "semiconductor", "data center", "datacenter"} {
+		if newsSearchTermMatches(haystack, term) {
+			return true
+		}
+	}
+	return false
 }
 
 func newsSearchTermMatches(haystack, term string) bool {

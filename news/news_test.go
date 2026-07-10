@@ -543,6 +543,45 @@ func TestNewsSearchArticlesFreshAIQueryFiltersAIThemedTokenModelPortfolio(t *tes
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersAIChipStockMovers(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "sk-hynix-stock",
+			Title:       "SK Hynix shares rally as AI chip stocks lift markets",
+			Description: "A broad finance brief tracks stock movers, investor rotation, and market sentiment.",
+			URL:         "https://example.com/sk-hynix-stock",
+			Category:    "Markets",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-chip-launch",
+			Title:       "AI chip startup launches faster inference server",
+			Description: "The semiconductor company released a new accelerator for model-serving workloads.",
+			URL:         "https://example.com/ai-chip-launch",
+			Category:    "Technology",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected broad AI-chip stock mover to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI chip startup launches faster inference server" {
+		t.Fatalf("expected concrete AI chip launch story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryKeepsSpecificAIChipMarketStory(t *testing.T) {
 	indexed := []*data.IndexEntry{
 		{
