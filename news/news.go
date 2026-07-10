@@ -2114,6 +2114,9 @@ func liveFeedSearch(query string, limit int) []*Post {
 			if newsAIArticleIsBroadFinance(post.Title, post.Description, post.Content, post.Category) {
 				continue
 			}
+			if newsAIArticleIsWeakAdjacentBackground(post.Title, post.Description, post.Content, post.Category) {
+				continue
+			}
 		}
 		score := 0
 		for _, term := range terms {
@@ -2156,6 +2159,14 @@ func articleMatchesNewsQuery(query string, article map[string]interface{}) bool 
 			return false
 		}
 		if newsAIArticleIsBroadFinance(
+			fmt.Sprintf("%v", article["title"]),
+			fmt.Sprintf("%v", article["description"]),
+			fmt.Sprintf("%v", article["content"]),
+			fmt.Sprintf("%v", article["category"]),
+		) {
+			return false
+		}
+		if newsAIArticleIsWeakAdjacentBackground(
 			fmt.Sprintf("%v", article["title"]),
 			fmt.Sprintf("%v", article["description"]),
 			fmt.Sprintf("%v", article["content"]),
@@ -2210,6 +2221,39 @@ func newsHaystackHasExplicitAIRelevance(haystack string) bool {
 		}
 	}
 	return false
+}
+
+func newsAIArticleIsWeakAdjacentBackground(parts ...string) bool {
+	haystack := newsSearchHaystack(parts...)
+	if haystack == "" {
+		return false
+	}
+	weakFrames := []string{
+		"essay", "opinion", "column", "maintainable code", "coding", "programming", "software engineering",
+		"windows tool", "utility", "gadget", "advertising", "ads", "election", "campaign", "parliament", "politics",
+	}
+	hasWeakFrame := false
+	for _, term := range weakFrames {
+		if newsSearchTermMatches(haystack, term) {
+			hasWeakFrame = true
+			break
+		}
+	}
+	if !hasWeakFrame {
+		return false
+	}
+	strongAITerms := []string{
+		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
+		"llm", "ai model", "language model", "foundation model", "model-serving", "model serving",
+		"ai agent", "ai assistant", "ai lab", "ai startup", "ai chip", "ai accelerator", "ai infrastructure",
+		"ai regulation", "ai regulator", "ai policy", "ai safety", "ai research", "ai product",
+	}
+	for _, term := range strongAITerms {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
+	}
+	return true
 }
 
 func newsAIArticleIsBroadFinance(parts ...string) bool {

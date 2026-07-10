@@ -721,6 +721,53 @@ func TestNewsSearchArticlesFreshAIQueryRequiresExplicitAIRelevance(t *testing.T)
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersWeakAdjacentSameDayBackground(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "maintainable-code-ai-era",
+			Title:       "Writing maintainable code in the AI era",
+			Description: "A same-day software engineering essay for developers with only broad AI-era framing.",
+			URL:         "https://example.com/maintainable-code-ai-era",
+			Category:    "Software",
+			PostedAt:    today.Add(3 * time.Hour),
+		},
+		{
+			ID:          "ir-tv-ai-tool",
+			Title:       "Windows IR TV-volume utility uses AI images in demo",
+			Description: "A same-day gadget tooling brief with weak artificial-intelligence evidence.",
+			URL:         "https://example.com/ir-tv-ai-tool",
+			Category:    "Tools",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "openai-agent-startup",
+			Title:       "OpenAI agent startup adds safer browsing controls",
+			Description: "The AI assistant product release gives developers new controls for agent workflows.",
+			URL:         "https://example.com/openai-agent-startup",
+			Category:    "Technology",
+			PostedAt:    today,
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected weak adjacent same-day background to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "OpenAI agent startup adds safer browsing controls" {
+		t.Fatalf("expected explicit AI story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchFreshnessSummaryCaveatsStaleTodayResults(t *testing.T) {
 	articles := []map[string]interface{}{{
 		"title":     "AI startup raises funding",
