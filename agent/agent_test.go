@@ -143,9 +143,6 @@ func TestFormatNewsResult_Feed(t *testing.T) {
 	if !strings.Contains(got, "Bitcoin hits new high") {
 		t.Errorf("expected article title, got %q", got)
 	}
-	if !strings.Contains(got, "crypto") {
-		t.Errorf("expected category, got %q", got)
-	}
 	if !strings.Contains(got, "BTC reaches $100k") {
 		t.Errorf("expected description, got %q", got)
 	}
@@ -620,14 +617,16 @@ func TestFormatNewsResult_SearchWithTimestamp(t *testing.T) {
 	}
 }
 
-func TestFormatNewsResultUsesCleanMetadataLabels(t *testing.T) {
-	result := `{"query":"AI news","results":[{"title":"AI lab ships update","description":"Fresh details","category":"Tech","url":"https://example.com/ai","posted_at":"2026-07-05T12:00:00Z"}],"count":1}`
+func TestFormatNewsResultUsesCleanStoryLabels(t *testing.T) {
+	result := `{"query":"AI news","results":[{"title":"AI lab ships update","description":"Fresh details...","category":"Tech","url":"https://www.example.com/ai","posted_at":"2026-07-05T12:00:00Z"}],"count":1}`
 	got := formatNewsResult(result)
-	if !strings.Contains(got, "category: Tech; posted: 5 Jul 2026 12:00 UTC; source: https://example.com/ai") {
-		t.Fatalf("expected category/date/source metadata labels, got %q", got)
+	if !strings.Contains(got, "1. AI lab ships update — Fresh details (example.com, 5 Jul 2026)") {
+		t.Fatalf("expected clean story source/date label, got %q", got)
 	}
-	if strings.Contains(got, "[Tech]") {
-		t.Fatalf("expected metadata not to use markdown-link-like category brackets, got %q", got)
+	for _, rough := range []string{"category:", "posted:", "source: http", "Fresh details..."} {
+		if strings.Contains(got, rough) {
+			t.Fatalf("expected polished story labels without %q, got %q", rough, got)
+		}
 	}
 }
 

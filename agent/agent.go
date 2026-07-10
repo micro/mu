@@ -2007,33 +2007,54 @@ func formatNewsResult(result string) string {
 	}
 	for i, a := range items {
 		line := fmt.Sprintf("%d. %s", i+1, a.Title)
-		var meta []string
-		if a.Category != "" {
-			meta = append(meta, "category: "+a.Category)
-		}
-		if a.PostedAt != "" {
-			if t, err := time.Parse(time.RFC3339, a.PostedAt); err == nil {
-				meta = append(meta, "posted: "+t.Format("2 Jan 2006 15:04 UTC"))
-			}
-		} else if a.Published != "" {
-			meta = append(meta, "published: "+a.Published)
-		}
-		if a.URL != "" {
-			meta = append(meta, "source: "+a.URL)
-		}
-		if len(meta) > 0 {
-			line += " (" + strings.Join(meta, "; ") + ")"
-		}
-		if a.Description != "" {
-			desc := a.Description
-			if len(desc) > 150 {
-				desc = desc[:150] + "…"
-			}
+		if desc := cleanNewsDescription(a.Description); desc != "" {
 			line += " — " + desc
+		}
+		if label := conciseNewsSourceDateLabel(a); label != "" {
+			line += " (" + label + ")"
 		}
 		sb.WriteString(line + "\n")
 	}
 	return sb.String()
+}
+
+func cleanNewsDescription(desc string) string {
+	desc = strings.TrimSpace(desc)
+	if desc == "" {
+		return ""
+	}
+	desc = strings.TrimRight(desc, " \t\n\r")
+	for strings.HasSuffix(desc, "...") || strings.HasSuffix(desc, "…") {
+		desc = strings.TrimSpace(strings.TrimSuffix(strings.TrimSuffix(desc, "..."), "…"))
+	}
+	return desc
+}
+
+func conciseNewsSourceDateLabel(item formattedNewsItem) string {
+	var parts []string
+	if source := newsSourceLabel(item.URL); source != "" {
+		parts = append(parts, source)
+	}
+	if date := newsDateLabel(item); date != "" {
+		parts = append(parts, date)
+	}
+	return strings.Join(parts, ", ")
+}
+
+func newsSourceLabel(rawURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || parsed.Hostname() == "" {
+		return ""
+	}
+	host := strings.TrimPrefix(strings.ToLower(parsed.Hostname()), "www.")
+	return host
+}
+
+func newsDateLabel(item formattedNewsItem) string {
+	if t := newsResultItemTime(item); !t.IsZero() {
+		return t.Format("2 Jan 2006")
+	}
+	return ""
 }
 
 type formattedNewsItem struct {
