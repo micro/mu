@@ -2233,6 +2233,9 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 	if !hasFinance {
 		return false
 	}
+	if newsAIArticleIsCryptoMarketBackground(haystack) {
+		return true
+	}
 	strongAITerms := []string{
 		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
 		"llm", "ai model", "language model", "foundation model", "model-serving", "model serving",
@@ -2257,6 +2260,50 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 			if newsSearchTermMatches(haystack, term) {
 				return false
 			}
+		}
+	}
+	return true
+}
+
+func newsAIArticleIsCryptoMarketBackground(haystack string) bool {
+	cryptoTerms := []string{
+		"crypto", "bitcoin", "blockchain", "token", "tokens", "digital asset", "digital assets",
+		"ethereum", "ether", "stablecoin", "altcoin", "defi",
+	}
+	hasCrypto := false
+	for _, term := range cryptoTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasCrypto = true
+			break
+		}
+	}
+	if !hasCrypto {
+		return false
+	}
+
+	marketTerms := []string{
+		"market", "markets", "mover", "movers", "price", "prices", "rally", "climb", "climbs",
+		"drop", "drops", "trading", "trader", "traders", "investor", "investors", "portfolio",
+	}
+	hasMarketFrame := false
+	for _, term := range marketTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasMarketFrame = true
+			break
+		}
+	}
+	if !hasMarketFrame {
+		return false
+	}
+
+	concreteAITerms := []string{
+		"artificial intelligence", "machine learning", "large language model", "generative ai",
+		"openai", "anthropic", "llm", "ai model", "language model", "foundation model",
+		"ai agent", "ai assistant", "ai lab", "model-serving", "model serving",
+	}
+	for _, term := range concreteAITerms {
+		if newsSearchTermMatches(haystack, term) {
+			return false
 		}
 	}
 	return true
