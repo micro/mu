@@ -272,12 +272,14 @@ func formatWebSearchFallbackSection(body string) string {
 	lines := meaningfulLines(body, 6)
 	lines = prioritizeSnippetBackedWebLines(lines)
 	genericOnly := hasOnlyGenericWebEvidence(lines)
+	adjacentOnly := hasOnlyAdjacentAIChipFinanceEvidence(lines)
+	lines = filterAdjacentAIChipFinanceLines(lines, 4)
 	lines = filterGenericWebResultLines(lines, 4)
 	if len(lines) == 0 {
 		return ""
 	}
 
-	limited := hasLowConfidenceWebEvidence(body) || genericOnly
+	limited := hasLowConfidenceWebEvidence(body) || genericOnly || adjacentOnly
 	requestDate := fallbackRequestDate(body)
 	if !limited {
 		if summary := webSearchAnswerLead(lines, requestDate); summary != "" {
@@ -743,6 +745,25 @@ func filterGenericWebResultLines(lines []string, limit int) []string {
 	return kept
 }
 
+func filterAdjacentAIChipFinanceLines(lines []string, limit int) []string {
+	if len(lines) == 0 {
+		return lines
+	}
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if !isAdjacentAIChipFinanceLine(line) {
+			kept = append(kept, line)
+		}
+	}
+	if len(kept) == 0 {
+		kept = lines
+	}
+	if len(kept) > limit {
+		kept = kept[:limit]
+	}
+	return kept
+}
+
 func hasOnlyGenericWebEvidence(lines []string) bool {
 	if len(lines) == 0 {
 		return false
@@ -755,7 +776,22 @@ func hasOnlyGenericWebEvidence(lines []string) bool {
 	return true
 }
 
+func hasOnlyAdjacentAIChipFinanceEvidence(lines []string) bool {
+	if len(lines) == 0 {
+		return false
+	}
+	for _, line := range lines {
+		if !isAdjacentAIChipFinanceLine(line) {
+			return false
+		}
+	}
+	return true
+}
+
 func webResultFallbackPriority(line string) int {
+	if isAdjacentAIChipFinanceLine(line) {
+		return 3
+	}
 	if isGenericWebResultLine(line) {
 		return 3
 	}
@@ -793,6 +829,35 @@ func isDatedWebStoryLine(line string) bool {
 		}
 	}
 	return webStoryNumericDatePattern.MatchString(lower) || webStoryMonthDatePattern.MatchString(lower)
+}
+
+func isAdjacentAIChipFinanceLine(line string) bool {
+	lower := strings.ToLower(cleanFallbackLine(line))
+	if !containsAny(lower, []string{"ai chip", "ai-chip", "artificial intelligence chip", "accelerator", "gpu", "nvidia", "semiconductor", "sk hynix", "hynix"}) {
+		return false
+	}
+	if !containsAny(lower, []string{"ipo", "nasdaq", "stock", "stocks", "share", "shares", "valuation", "market", "investor", "revenue", "sales", "profit", "earnings"}) {
+		return false
+	}
+	return !hasConcreteAIAction(lower)
+}
+
+func hasConcreteAIAction(lower string) bool {
+	concreteTerms := []string{
+		"ai model", "model update", "assistant", "agent", "training", "inference", "data center", "datacenter",
+		"accelerator customers", "gpu cluster", "capacity", "supply deal", "pilot", "deploy", "deployed",
+		"launch", "launched", "release", "released", "unveiled", "rollout", "rolls out", "tool",
+	}
+	return containsAny(lower, concreteTerms)
+}
+
+func containsAny(s string, terms []string) bool {
+	for _, term := range terms {
+		if strings.Contains(s, term) {
+			return true
+		}
+	}
+	return false
 }
 
 var (
