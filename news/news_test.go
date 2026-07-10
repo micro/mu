@@ -800,6 +800,53 @@ func TestNewsSearchArticlesFreshAIQueryFiltersAIChipStockMovers(t *testing.T) {
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersGenericHiringAndChipFinance(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "yc-hiring-ai",
+			Title:       "YC companies hiring for AI roles this summer",
+			Description: "A job-board roundup lists startups recruiting engineers and product talent.",
+			URL:         "https://example.com/yc-hiring-ai",
+			Category:    "Startups",
+			PostedAt:    today.Add(3 * time.Hour),
+		},
+		{
+			ID:          "sk-hynix-nasdaq",
+			Title:       "SK Hynix Nasdaq debut draws investors as AI demand lifts chip shares",
+			Description: "A broad finance brief tracks IPO demand, valuation, trading, and market sentiment.",
+			URL:         "https://example.com/sk-hynix-nasdaq",
+			Category:    "Markets",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "gemini-model-update",
+			Title:       "Gemini model update adds safer agent controls",
+			Description: "The AI model release gives developers new controls for assistant workflows.",
+			URL:         "https://example.com/gemini-model-update",
+			Category:    "Technology",
+			PostedAt:    today,
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected generic hiring and chip-finance items to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "Gemini model update adds safer agent controls" {
+		t.Fatalf("expected concrete AI model story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryKeepsSpecificAIChipMarketStory(t *testing.T) {
 	indexed := []*data.IndexEntry{
 		{
