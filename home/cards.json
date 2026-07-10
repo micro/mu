@@ -23,22 +23,6 @@
       "position": 2,
       "link": "",
       "icon": "/reminder.svg"
-    },
-    {
-      "id": "social",
-      "title": "Social",
-      "type": "social",
-      "position": 3,
-      "link": "/social",
-      "icon": ""
-    },
-    {
-      "id": "video",
-      "title": "Video",
-      "type": "video",
-      "position": 4,
-      "link": "/video",
-      "icon": "/video.png"
     }
   ],
   "right": [
@@ -49,6 +33,22 @@
       "position": 0,
       "link": "/markets",
       "icon": "/markets.svg"
+    },
+    {
+      "id": "social",
+      "title": "Social",
+      "type": "social",
+      "position": 1,
+      "link": "/social",
+      "icon": ""
+    },
+    {
+      "id": "video",
+      "title": "Video",
+      "type": "video",
+      "position": 2,
+      "link": "/video",
+      "icon": "/video.png"
     }
   ]
 }
