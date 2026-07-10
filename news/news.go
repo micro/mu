@@ -2117,6 +2117,9 @@ func liveFeedSearch(query string, limit int) []*Post {
 			if newsAIArticleIsWeakAdjacentBackground(post.Title, post.Description, post.Content, post.Category) {
 				continue
 			}
+			if newsAIArticleIsGenericHiringBackground(post.Title, post.Description, post.Content, post.Category) {
+				continue
+			}
 		}
 		score := 0
 		for _, term := range terms {
@@ -2167,6 +2170,14 @@ func articleMatchesNewsQuery(query string, article map[string]interface{}) bool 
 			return false
 		}
 		if newsAIArticleIsWeakAdjacentBackground(
+			fmt.Sprintf("%v", article["title"]),
+			fmt.Sprintf("%v", article["description"]),
+			fmt.Sprintf("%v", article["content"]),
+			fmt.Sprintf("%v", article["category"]),
+		) {
+			return false
+		}
+		if newsAIArticleIsGenericHiringBackground(
 			fmt.Sprintf("%v", article["title"]),
 			fmt.Sprintf("%v", article["description"]),
 			fmt.Sprintf("%v", article["content"]),
@@ -2249,6 +2260,42 @@ func newsAIArticleIsWeakAdjacentBackground(parts ...string) bool {
 		"ai regulation", "ai regulator", "ai policy", "ai safety", "ai research", "ai product",
 	}
 	for _, term := range strongAITerms {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func newsAIArticleIsGenericHiringBackground(parts ...string) bool {
+	haystack := newsSearchHaystack(parts...)
+	if haystack == "" {
+		return false
+	}
+	hiringTerms := []string{
+		"hiring", "hire", "hires", "jobs", "job", "careers", "recruiting", "recruit", "talent",
+		"job board", "job-board", "y combinator", "yc companies", "startup jobs",
+	}
+	hasHiringFrame := false
+	for _, term := range hiringTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasHiringFrame = true
+			break
+		}
+	}
+	if !hasHiringFrame {
+		return false
+	}
+
+	// Hiring roundups are usually generic company/background posts. Keep them
+	// only when the hiring item is also about a concrete AI release, model,
+	// safety/governance action, infrastructure launch, or user-impact change.
+	for _, term := range []string{
+		"launch", "launches", "launched", "release", "releases", "released", "rollout", "rolls out",
+		"unveil", "unveils", "unveiled", "open source", "model release", "benchmark", "evaluation",
+		"ai safety", "ai regulation", "ai regulator", "ai governance", "frontier model", "foundation model",
+		"ai chip", "ai accelerator", "inference server", "training cluster", "agent workflow", "assistant update",
+	} {
 		if newsSearchTermMatches(haystack, term) {
 			return false
 		}
