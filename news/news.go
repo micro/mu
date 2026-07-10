@@ -2280,16 +2280,6 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 	if newsAIArticleIsCryptoMarketBackground(haystack) {
 		return true
 	}
-	strongAITerms := []string{
-		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
-		"llm", "ai model", "language model", "foundation model", "model-serving", "model serving",
-		"startup", "assistant", "product", "platform", "developer", "research", "robot", "robotics",
-	}
-	for _, term := range strongAITerms {
-		if newsSearchTermMatches(haystack, term) {
-			return false
-		}
-	}
 
 	// Chip and data-center wording is common in broad market-mover copy
 	// ("AI chip stocks", "data-center shares") that mentions AI only as a
@@ -2306,7 +2296,31 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 			}
 		}
 	}
+	if newsAIArticleHasConcreteStoryEvidence(haystack) {
+		return false
+	}
 	return true
+}
+
+func newsAIArticleHasConcreteStoryEvidence(haystack string) bool {
+	for _, term := range []string{
+		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
+		"ai model", "language model", "foundation model", "model-serving", "model serving",
+		"ai agent", "ai assistant", "ai lab", "ai startup", "ai product", "ai platform", "ai research",
+		"ai regulation", "ai regulator", "ai safety",
+	} {
+		if newsSearchTermMatches(haystack, term) {
+			return true
+		}
+	}
+	if newsSearchTermMatches(haystack, "llm") {
+		for _, term := range []string{"model", "models", "assistant", "agent", "product", "platform", "research", "safety", "benchmark"} {
+			if newsSearchTermMatches(haystack, term) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func newsAIArticleIsCryptoMarketBackground(haystack string) bool {

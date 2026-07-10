@@ -582,6 +582,84 @@ func TestNewsSearchArticlesFreshAIQueryFiltersCryptoMarketBackground(t *testing.
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersBroadFinanceWithBareLLMMention(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "spacex-ipo-llm",
+			Title:       "SpaceX IPO interview lifts private-market shares after LLM aside",
+			Description: "A broad finance brief tracks investor appetite, valuation, and market sentiment while noting executives mentioned LLM demand.",
+			URL:         "https://example.com/spacex-ipo-llm",
+			Category:    "Finance",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-model-safety",
+			Title:       "AI model safety benchmark gains lab support",
+			Description: "Artificial intelligence developers are testing a shared research evaluation standard.",
+			URL:         "https://example.com/ai-model-safety",
+			Category:    "Technology",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected broad finance item with bare LLM aside to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI model safety benchmark gains lab support" {
+		t.Fatalf("expected concrete AI model story, got %#v", got[0])
+	}
+}
+
+func TestNewsSearchArticlesFreshAIQueryFiltersCryptoPolicyBackground(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "cbdc-crypto-policy",
+			Title:       "CBDC crypto-policy fight weighs on digital assets as AI firms watch",
+			Description: "A broad blockchain policy brief tracks token markets, central-bank rules, and investor rotation.",
+			URL:         "https://example.com/cbdc-crypto-policy",
+			Category:    "Policy",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "openai-governance",
+			Title:       "OpenAI backs new AI safety governance benchmark",
+			Description: "The artificial intelligence lab and researchers outlined model-evaluation rules for frontier systems.",
+			URL:         "https://example.com/openai-governance",
+			Category:    "Technology",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected crypto-policy background to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "OpenAI backs new AI safety governance benchmark" {
+		t.Fatalf("expected concrete AI governance story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryKeepsConcreteAICryptoStory(t *testing.T) {
 	oldFeed := feed
 	defer func() {
