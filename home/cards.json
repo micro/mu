@@ -9,18 +9,10 @@
       "icon": "/post.png"
     },
     {
-      "id": "reminder",
-      "title": "Reminder",
-      "type": "reminder",
-      "position": 1,
-      "link": "",
-      "icon": "/reminder.svg"
-    },
-    {
       "id": "news",
       "title": "News",
       "type": "news",
-      "position": 2,
+      "position": 1,
       "link": "/news",
       "icon": "/news.png"
     }
@@ -35,10 +27,18 @@
       "icon": "/markets.svg"
     },
     {
+      "id": "reminder",
+      "title": "Reminder",
+      "type": "reminder",
+      "position": 1,
+      "link": "",
+      "icon": "/reminder.svg"
+    },
+    {
       "id": "social",
       "title": "Social",
       "type": "social",
-      "position": 1,
+      "position": 2,
       "link": "/social",
       "icon": ""
     },
@@ -46,7 +46,7 @@
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 2,
+      "position": 3,
       "link": "/video",
       "icon": "/video.png"
     }
