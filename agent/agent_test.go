@@ -1316,6 +1316,48 @@ Sources:
 	}
 }
 
+func TestCompleteToolAnswerFiltersAdjacentAIChipFinanceFromAINewsLead(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Current request date: Friday, 10 July 2026 (2026-07-10, UTC).
+Search results for "AI news":
+Sources:
+1. SK Hynix shares jump before Nasdaq IPO — Investors cite Nvidia demand and the broad AI chip boom. (https://example.com/hynix-ipo)
+2. AI governance bill advances — Lawmakers moved the proposal after model-risk hearings. (https://example.com/ai-governance)
+3. Agent payments startup launches checkout tool — The company released an AI agent payment flow today. (https://example.com/agent-payments)`}
+
+	got := completeToolAnswer("Here are the search results I found.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if strings.Contains(got, "SK Hynix") || strings.Contains(firstLine, "AI chip boom") {
+		t.Fatalf("expected broad AI-chip finance to be filtered when concrete AI stories exist, got %q", got)
+	}
+	if !strings.Contains(firstLine, "Latest source-backed items for Friday, 10 July 2026 (2026-07-10): Agent payments startup launches checkout tool; AI governance bill advances.") {
+		t.Fatalf("expected concrete AI action/governance stories to lead, got %q", got)
+	}
+}
+
+func TestCompleteToolAnswerFramesOnlyAdjacentAIChipFinanceAsLimitedEvidence(t *testing.T) {
+	rag := []string{`### news_search
+` + unavailableToolMessage("news_search"), `### web_search
+Current request date: Friday, 10 July 2026 (2026-07-10, UTC).
+Search results for "AI news":
+Sources:
+1. SK Hynix IPO draws investor attention — The listing is framed by Nvidia demand and the broad AI chip boom. (https://example.com/hynix-ipo)
+2. Semiconductor shares climb — Markets rallied around expectations for artificial intelligence chip sales. (https://example.com/chip-stocks)`}
+
+	got := completeToolAnswer("Here are the search results I found.", rag)
+	firstLine, _, _ := strings.Cut(got, "\n")
+	if !strings.Contains(firstLine, "limited source-backed evidence") {
+		t.Fatalf("expected adjacent-only AI-chip finance to be caveated as limited evidence, got %q", got)
+	}
+	if strings.Contains(firstLine, "Latest source-backed items") {
+		t.Fatalf("expected no normal latest-AI-news lead from adjacent finance only, got %q", got)
+	}
+	if !strings.Contains(got, "SK Hynix IPO draws investor attention") {
+		t.Fatalf("expected limited adjacent evidence to remain visible after caveat, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerFramesSnippetOnlyAINewsCategoryPageAsLimitedEvidence(t *testing.T) {
 	rag := []string{`### news_search
 ` + unavailableToolMessage("news_search"), `### web_search
