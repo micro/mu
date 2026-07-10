@@ -50,6 +50,7 @@ Technology should serve people — not use them. When you pay for tools, incenti
 | **Chat** | Conversational AI with session history |
 | **Mail** | Private messaging and email |
 | **Apps** | Build and use small web tools — pin any app as a home card |
+| **Reminder** | Daily Islamic reminder surfaced on the home screen and through tools |
 | **Stream** | Public event feed for agents and tools |
 
 ## For Developers

@@ -8,7 +8,7 @@ No ads. No tracking. No algorithm. Pay for the tools, not with your attention.
 
 ## Overview
 
-The big platforms have a service for everything — and they own it, and they monetise your attention to do it. Mu is the alternative: one agent across all the everyday things — news, mail, markets, weather, search, video, blog, social — each a real service the agent operates on your behalf. And because it's open and self-hostable, you can run the whole stack yourself instead of renting each piece from someone else.
+The big platforms have a service for everything — and they own it, and they monetise your attention to do it. Mu is the alternative: one agent across all the everyday things — news, mail, markets, weather, search, video, blog, social, reminders — each a real service the agent operates on your behalf. And because it's open and self-hostable, you can run the whole stack yourself instead of renting each piece from someone else.
 
 The agent remembers your preferences across sessions, surfaces contextual suggestions based on your data, and learns what you care about over time. It isn't a chatbot bolted onto a website — it's the interface to a stack of services that are yours.
 
@@ -34,6 +34,7 @@ Each is a real [go-micro](https://go-micro.dev) service the agent can call — a
 - **Web** — Search the web without tracking
 - **Weather** — Forecasts and conditions
 - **Apps** — Build and use small, useful tools — any app can be pinned as a home card
+- **Reminder** — A daily Islamic reminder surfaced as a home card and MCP tool
 - **Stream** — Public event feed for agents and tools to subscribe to
 
 Runs as a single Go binary. Self-host your own instance.
