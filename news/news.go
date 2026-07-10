@@ -2265,7 +2265,8 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 		"business", "finance", "financial", "market", "markets", "stock", "stocks", "shares", "equities",
 		"mover", "movers", "trading", "trader", "investor", "investors", "wall street", "nasdaq", "dow",
 		"s&p", "rate", "rates", "earnings", "futures", "crypto", "bitcoin", "blockchain", "token",
-		"tokens", "digital asset", "digital assets", "ipo", "valuation",
+		"tokens", "digital asset", "digital assets", "stablecoin", "stablecoins", "ipo", "valuation",
+		"export control", "export controls", "sanctions", "cbdc", "central-bank",
 	}
 	hasFinance := false
 	for _, term := range financeTerms {
@@ -2278,6 +2279,9 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 		return false
 	}
 	if newsAIArticleIsCryptoMarketBackground(haystack) {
+		return true
+	}
+	if newsAIArticleIsGenericFinancePolicyBackground(haystack) {
 		return true
 	}
 
@@ -2298,6 +2302,41 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 	}
 	if newsAIArticleHasConcreteStoryEvidence(haystack) {
 		return false
+	}
+	return true
+}
+
+func newsAIArticleIsGenericFinancePolicyBackground(haystack string) bool {
+	policyTerms := []string{
+		"export control", "export controls", "sanctions", "stablecoin", "stablecoins", "binance",
+		"cbdc", "central-bank", "central bank", "digital asset", "digital assets", "crypto policy",
+	}
+	hasPolicyFrame := false
+	for _, term := range policyTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasPolicyFrame = true
+			break
+		}
+	}
+	if !hasPolicyFrame {
+		return false
+	}
+
+	// Keep true AI-governance stories, but do not let generic finance, crypto,
+	// or export-control policy pieces lead AI news just because they mention AI
+	// governance in passing. The story needs concrete AI actors, models,
+	// products, safety/evaluation work, or explicit AI-sector controls.
+	for _, term := range []string{
+		"openai", "anthropic", "ai lab", "ai startup", "ai company", "ai companies",
+		"artificial intelligence company", "artificial intelligence companies",
+		"ai model", "language model", "foundation model", "large language model", "llm",
+		"model evaluation", "model-evaluation", "benchmark", "frontier system", "frontier systems",
+		"ai safety", "ai agent", "ai assistant", "ai product", "ai platform",
+		"ai chip export", "ai chips export", "ai export control", "ai export controls",
+	} {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
 	}
 	return true
 }
