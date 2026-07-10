@@ -660,6 +660,76 @@ func TestNewsSearchArticlesFreshAIQueryFiltersCryptoPolicyBackground(t *testing.
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersGenericFinancePolicyBackground(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "uae-binance-policy",
+			Title:       "UAE export-control debate and Binance stablecoin rules test AI governance",
+			Description: "A finance-policy brief tracks sanctions, digital assets, and investor reaction while noting AI governance concerns.",
+			URL:         "https://example.com/uae-binance-policy",
+			Category:    "Policy",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-agent-payments",
+			Title:       "AI agent startup launches payment controls for assistants",
+			Description: "The artificial intelligence product update lets developers govern autonomous checkout workflows.",
+			URL:         "https://example.com/ai-agent-payments",
+			Category:    "Technology",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected generic finance-policy background to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI agent startup launches payment controls for assistants" {
+		t.Fatalf("expected concrete AI-agent payment story, got %#v", got[0])
+	}
+}
+
+func TestNewsSearchArticlesFreshAIQueryKeepsExplicitAIGovernancePolicy(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "ai-export-controls",
+			Title:       "AI export controls target frontier model training clusters",
+			Description: "Regulators proposed artificial intelligence safeguards for frontier systems and model-evaluation reporting.",
+			URL:         "https://example.com/ai-export-controls",
+			Category:    "Policy",
+			PostedAt:    today.Add(time.Hour),
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected explicit AI-governance policy to remain, got %#v", got)
+	}
+	if got[0]["title"] != "AI export controls target frontier model training clusters" {
+		t.Fatalf("expected explicit AI-governance story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryKeepsConcreteAICryptoStory(t *testing.T) {
 	oldFeed := feed
 	defer func() {
