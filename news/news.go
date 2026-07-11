@@ -2241,7 +2241,7 @@ func newsAIArticleIsWeakAdjacentBackground(parts ...string) bool {
 	}
 	weakFrames := []string{
 		"essay", "opinion", "column", "maintainable code", "coding", "programming", "software engineering",
-		"windows tool", "utility", "gadget", "advertising", "ads", "election", "campaign", "parliament", "politics",
+		"windows tool", "utility", "tooling", "developer tool", "browser", "freecad", "gadget", "advertising", "ads", "election", "campaign", "parliament", "politics",
 	}
 	hasWeakFrame := false
 	for _, term := range weakFrames {
@@ -2257,7 +2257,7 @@ func newsAIArticleIsWeakAdjacentBackground(parts ...string) bool {
 		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
 		"llm", "ai model", "language model", "foundation model", "model-serving", "model serving",
 		"ai agent", "ai assistant", "ai lab", "ai startup", "ai chip", "ai accelerator", "ai infrastructure",
-		"ai regulation", "ai regulator", "ai policy", "ai safety", "ai research", "ai product",
+		"ai regulation", "ai regulator", "ai policy", "ai safety", "ai research", "ai product", "ai-powered", "ai powered",
 	}
 	for _, term := range strongAITerms {
 		if newsSearchTermMatches(haystack, term) {
