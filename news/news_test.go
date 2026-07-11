@@ -847,6 +847,45 @@ func TestNewsSearchArticlesFreshAIQueryFiltersGenericHiringAndChipFinance(t *tes
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersGenericArtificialIntelligenceChipSales(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 11, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "chip-stocks-sales",
+			Title:       "Semiconductor shares climb on artificial intelligence chip sales optimism",
+			Description: "Markets rallied around investor expectations, valuation, and trading momentum for chipmakers.",
+			URL:         "https://example.com/chip-stocks-sales",
+			Category:    "Markets",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-agent-governance",
+			Title:       "AI agent platform adds model-risk governance controls",
+			Description: "The assistant product release gives enterprise users audit controls for agent workflows.",
+			URL:         "https://example.com/ai-agent-governance",
+			Category:    "Technology",
+			PostedAt:    today,
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected generic artificial-intelligence chip-sales finance item to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI agent platform adds model-risk governance controls" {
+		t.Fatalf("expected concrete AI agent/governance story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryKeepsSpecificAIChipMarketStory(t *testing.T) {
 	indexed := []*data.IndexEntry{
 		{

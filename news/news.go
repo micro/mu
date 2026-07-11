@@ -2335,17 +2335,22 @@ func newsAIArticleIsBroadFinance(parts ...string) bool {
 	// Chip and data-center wording is common in broad market-mover copy
 	// ("AI chip stocks", "data-center shares") that mentions AI only as a
 	// trading theme. Keep those stories only when they describe concrete AI
-	// infrastructure or product activity, not just share-price movement.
+	// infrastructure or product activity, not just share-price movement. Generic
+	// phrases such as "artificial intelligence chip sales" are still finance
+	// background unless the item names a launch, deployment, capacity buildout,
+	// accelerator/customer deal, or similar AI-infrastructure action.
 	if newsHaystackHasAIInfrastructureTerm(haystack) {
 		for _, term := range []string{
 			"launch", "launches", "launched", "release", "releases", "released", "unveil", "unveils", "unveiled",
 			"expand", "expands", "expanded", "build", "builds", "built", "capacity", "processor", "accelerator",
-			"gpu", "server", "inference", "training", "model serving", "model-serving", "cloud",
+			"gpu", "server", "inference", "training", "model serving", "model-serving", "cloud", "supply deal",
+			"accelerator customer", "accelerator customers", "deployment", "deploy", "deployed",
 		} {
 			if newsSearchTermMatches(haystack, term) {
 				return false
 			}
 		}
+		return true
 	}
 	if newsAIArticleHasConcreteStoryEvidence(haystack) {
 		return false
