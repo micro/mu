@@ -1111,6 +1111,53 @@ func TestNewsSearchArticlesFreshAIQueryFiltersGenericSoftwareToolPosts(t *testin
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersGenericJobMarketAndCompilerPosts(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 11, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "amazon-ai-job-market",
+			Title:       "Amazon layoffs renew debate over AI and the job market",
+			Description: "A same-day labor-market brief tracks headcount cuts, job listings, and hiring sentiment.",
+			URL:         "https://example.com/amazon-ai-job-market",
+			Category:    "Business",
+			PostedAt:    today.Add(3 * time.Hour),
+		},
+		{
+			ID:          "hotspot-jit-ai",
+			Title:       "HotSpot JIT compiler tuning in the AI era",
+			Description: "A same-day compiler and runtime post mentions AI-era developer workflows without reporting a substantive artificial-intelligence change.",
+			URL:         "https://example.com/hotspot-jit-ai",
+			Category:    "Software",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-agent-platform",
+			Title:       "AI agent platform adds model-risk governance controls",
+			Description: "The AI product release gives teams new evaluation and safety controls for agent workflows.",
+			URL:         "https://example.com/ai-agent-platform",
+			Category:    "Technology",
+			PostedAt:    today,
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected generic job-market and compiler posts to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI agent platform adds model-risk governance controls" {
+		t.Fatalf("expected concrete AI governance story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchFreshnessSummaryCaveatsStaleTodayResults(t *testing.T) {
 	articles := []map[string]interface{}{{
 		"title":     "AI startup raises funding",
