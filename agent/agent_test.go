@@ -1524,102 +1524,102 @@ func TestFormatToolResultNewsHeadlinesStaysReadable(t *testing.T) {
 }
 
 func TestFormatToolResultNewsSearchUnwrapsNativeServiceText(t *testing.T) {
-	inner := `{"query":"AI news","freshness":{"status":"stale","requested_date":"2026-07-07","freshest_posted_at":"2026-05-20T12:00:00Z","notice":"No same-day news_search results were available for 2026-07-07; the freshest result is from 2026-05-20, so lead with a freshness caveat instead of presenting older stories as today's news."},"results":[{"title":"AI startup raises funding","description":"Archive context.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
+	inner := `{"query":"AI news","freshness":{"status":"stale","requested_date":"2026-07-07","freshest_posted_at":"2026-05-20T12:00:00Z","notice":"No same-day news_search results were available for 2026-07-07; the freshest result is from 2026-05-20, so lead with a freshness summary instead of presenting older stories as today's news."},"results":[{"title":"AI startup raises funding","description":"Archive context.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
 	result := `{"text":` + quoteJSONString(inner) + `}`
 	got := formatToolResult("news_search", result, nil)
 	if !strings.Contains(got, "Freshness caveat: No same-day news_search results were available for 2026-07-07") {
-		t.Fatalf("expected native service text wrapper freshness caveat to surface, got %q", got)
+		t.Fatalf("expected native service text wrapper freshness summary to surface, got %q", got)
 	}
 	if strings.Index(got, "Freshness caveat:") > strings.Index(got, "AI startup raises funding") {
-		t.Fatalf("expected freshness caveat before stale story, got %q", got)
+		t.Fatalf("expected freshness summary before stale story, got %q", got)
 	}
 }
 
 func TestFormatToolResultNewsSearchSurfacesFreshnessCaveat(t *testing.T) {
-	result := `{"query":"AI news","freshness":{"status":"stale","requested_date":"2026-07-05","freshest_posted_at":"2026-05-20T12:00:00Z","notice":"No same-day news_search results were available for 2026-07-05; the freshest result is from 2026-05-20, so lead with a freshness caveat instead of presenting older stories as today's news."},"results":[{"title":"AI startup raises funding","description":"Artificial intelligence funding story from the archive.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
+	result := `{"query":"AI news","freshness":{"status":"stale","requested_date":"2026-07-05","freshest_posted_at":"2026-05-20T12:00:00Z","notice":"No same-day news_search results were available for 2026-07-05; the freshest result is from 2026-05-20, so lead with a freshness summary instead of presenting older stories as today's news."},"results":[{"title":"AI startup raises funding","description":"Artificial intelligence funding story from the archive.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
 	got := formatToolResult("news_search", result, nil)
 	firstCaveat := strings.Index(got, "Freshness caveat:")
 	firstStory := strings.Index(got, "1. AI startup raises funding")
 	if firstCaveat < 0 {
-		t.Fatalf("expected freshness caveat in news_search context, got %q", got)
+		t.Fatalf("expected freshness summary in news_search context, got %q", got)
 	}
 	if firstStory < 0 || firstStory < firstCaveat {
-		t.Fatalf("expected freshness caveat before older fallback stories, got %q", got)
+		t.Fatalf("expected freshness summary before older fallback stories, got %q", got)
 	}
 }
 
 func TestFormatToolResultNewsSearchSortsMostlyStaleResultsByFreshness(t *testing.T) {
-	result := `{"query":"AI news","freshness":{"status":"mostly_stale","requested_date":"2026-07-08","same_day_results":1,"dated_results":3,"freshest_posted_at":"2026-07-08T12:00:00Z","notice":"Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness caveat before listing older context as today's news."},"results":[{"title":"AI startup raises funding","description":"Archive story.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"},{"title":"AI chips adoption grows","description":"Older archive story.","category":"Tech","url":"https://example.com/older-ai","posted_at":"2026-03-14T12:00:00Z"},{"title":"AI lab ships current update","description":"Current story.","category":"Tech","url":"https://example.com/current-ai","posted_at":"2026-07-08T12:00:00Z"}]}`
+	result := `{"query":"AI news","freshness":{"status":"mostly_stale","requested_date":"2026-07-08","same_day_results":1,"dated_results":3,"freshest_posted_at":"2026-07-08T12:00:00Z","notice":"Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness summary before listing older context as today's news."},"results":[{"title":"AI startup raises funding","description":"Archive story.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"},{"title":"AI chips adoption grows","description":"Older archive story.","category":"Tech","url":"https://example.com/older-ai","posted_at":"2026-03-14T12:00:00Z"},{"title":"AI lab ships current update","description":"Current story.","category":"Tech","url":"https://example.com/current-ai","posted_at":"2026-07-08T12:00:00Z"}]}`
 	got := formatToolResult("news_search", result, nil)
 	current := strings.Index(got, "1. AI lab ships current update")
 	may := strings.Index(got, "2. AI startup raises funding")
 	march := strings.Index(got, "3. AI chips adoption grows")
 	if current < 0 || may < 0 || march < 0 || current > may || may > march {
-		t.Fatalf("expected mostly-stale news_search context to be sorted freshest first, got %q", got)
+		t.Fatalf("expected mixed-freshness news_search context to be sorted freshest first, got %q", got)
 	}
 }
 
 func TestFormatToolResultNewsSearchSurfacesMostlyStaleFreshnessCaveat(t *testing.T) {
-	result := `{"query":"AI news","freshness":{"status":"mostly_stale","requested_date":"2026-07-05","same_day_results":1,"dated_results":3,"freshest_posted_at":"2026-07-05T12:00:00Z","notice":"Only 1 of 3 dated news_search results are from 2026-07-05; lead with a freshness caveat before listing older context as today's news."},"results":[{"title":"AI lab ships today's assistant update","description":"Current AI story.","category":"Tech","url":"https://example.com/current-ai","posted_at":"2026-07-05T12:00:00Z"},{"title":"AI startup raises funding","description":"Archive story.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
+	result := `{"query":"AI news","freshness":{"status":"mostly_stale","requested_date":"2026-07-05","same_day_results":1,"dated_results":3,"freshest_posted_at":"2026-07-05T12:00:00Z","notice":"Only 1 of 3 dated news_search results are from 2026-07-05; lead with a freshness summary before listing older context as today's news."},"results":[{"title":"AI lab ships today's assistant update","description":"Current AI story.","category":"Tech","url":"https://example.com/current-ai","posted_at":"2026-07-05T12:00:00Z"},{"title":"AI startup raises funding","description":"Archive story.","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`
 	got := formatToolResult("news_search", result, nil)
 	firstCaveat := strings.Index(got, "Freshness caveat:")
 	firstStory := strings.Index(got, "1. AI lab ships today's assistant update")
 	if firstCaveat < 0 || !strings.Contains(got, "Only 1 of 3 dated news_search results") {
-		t.Fatalf("expected mostly-stale freshness caveat in news_search context, got %q", got)
+		t.Fatalf("expected mixed-freshness freshness summary in news_search context, got %q", got)
 	}
 	if firstStory < 0 || firstStory < firstCaveat {
-		t.Fatalf("expected mostly-stale caveat before story list, got %q", got)
+		t.Fatalf("expected mixed-freshness summary before story list, got %q", got)
 	}
 }
 
 func TestCompleteToolAnswerPrependsStaleNewsCaveatToSubstantiveAnswer(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
-Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness summary before older items.
 1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
 	answer := "1. AI startup raises funding — an older archive item from May."
 	got := completeToolAnswer(answer, rag)
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "No current news_search results:") || !strings.Contains(firstLine, "No same-day news_search results were available for 2026-07-06") {
-		t.Fatalf("expected stale-only disclosure before story list, got %q", got)
+	if !strings.Contains(firstLine, "No same-day AI news found") {
+		t.Fatalf("expected stale disclosure before story list, got %q", got)
 	}
-	if strings.Index(got, "No current news_search results:") > strings.Index(got, "Background: AI startup raises funding") {
-		t.Fatalf("expected stale-only disclosure to precede background-labeled stories, got %q", got)
+	if strings.Index(got, "No same-day AI news found") > strings.Index(got, "Context: AI startup raises funding") {
+		t.Fatalf("expected stale disclosure to precede context-labeled stories, got %q", got)
 	}
-	if !strings.Contains(got, "Background: AI startup raises funding") {
-		t.Fatalf("expected stale-only substantive answer stories to be labeled as background, got %q", got)
+	if !strings.Contains(got, "Context: AI startup raises funding") {
+		t.Fatalf("expected stale substantive answer stories to be labeled as context, got %q", got)
 	}
 }
 
 func TestCompleteToolAnswerPrependsMostlyStaleNewsCaveatToSubstantiveAnswer(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
-Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-07; lead with a freshness caveat before listing older context as today's news.
+Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-07; lead with a freshness summary before listing older context as today's news.
 1. AI lab ships current update (category: Tech; posted: 07 Jul 2026 12:00 UTC; source: https://example.com/current-ai) — Current story.
 2. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
 	answer := "1. AI lab ships current update — current story.\n2. AI startup raises funding — older archive context."
 	got := completeToolAnswer(answer, rag)
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "Mostly stale news_search results:") || !strings.Contains(firstLine, "Only 1 of 3 dated news_search results") {
-		t.Fatalf("expected mostly-stale disclosure before story list, got %q", got)
+	if !strings.Contains(firstLine, "Mixed freshness:") {
+		t.Fatalf("expected mixed-freshness disclosure before story list, got %q", got)
 	}
-	if strings.Index(got, "Mostly stale news_search results:") > strings.Index(got, "Background: AI lab ships current update") {
-		t.Fatalf("expected mostly-stale disclosure to precede background-labeled stories, got %q", got)
+	if strings.Index(got, "Mixed freshness:") > strings.Index(got, "Current: AI lab ships current update") {
+		t.Fatalf("expected mixed-freshness disclosure to precede context-labeled stories, got %q", got)
 	}
 }
 
 func TestCompleteToolAnswerLabelsExistingStaleNewsCaveatStories(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
-Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness summary before older items.
 1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
 	answer := "No same-day news_search results were available for 2026-07-06. Older items only:\n- 1. AI startup raises funding — an archive item from May."
 	got := completeToolAnswer(answer, rag)
-	if strings.Count(got, "No current news_search results:") != 0 {
+	if strings.Count(got, "No same-day AI news found") != 0 {
 		t.Fatalf("did not expect duplicate no-current caveat, got %q", got)
 	}
-	if !strings.Contains(got, "- Background: 1. AI startup raises funding") {
-		t.Fatalf("expected existing caveat answer stories to be labeled as background, got %q", got)
+	if !strings.Contains(got, "- Context: 1. AI startup raises funding") {
+		t.Fatalf("expected existing caveat answer stories to be labeled as context, got %q", got)
 	}
 }
 
@@ -1632,8 +1632,8 @@ func TestRenderNewsCardFiltersBroadAIChipFinanceForAIQueries(t *testing.T) {
 	if !strings.Contains(got, "AI agent platform adds model-risk governance controls") {
 		t.Fatalf("expected substantive AI story to remain in card, got %q", got)
 	}
-	if !strings.Contains(got, "No current news_search results: No same-day news_search results") {
-		t.Fatalf("expected freshness caveat to remain above filtered stories, got %q", got)
+	if !strings.Contains(got, "No same-day AI news found for 2026-07-11") {
+		t.Fatalf("expected freshness summary to remain above filtered stories, got %q", got)
 	}
 }
 
@@ -1646,12 +1646,12 @@ func TestRenderNewsCardKeepsConcreteAIChipInfrastructureStory(t *testing.T) {
 }
 
 func TestRenderNewsCardSurfacesMostlyStaleFreshnessCaveat(t *testing.T) {
-	result := `{"query":"AI news","freshness":{"status":"mostly_stale","notice":"Only 1 of 3 dated news_search results are from 2026-07-07; lead with a freshness caveat before listing older context as today's news."},"results":[{"title":"AI lab ships current update","category":"Tech","url":"https://example.com/current-ai"}]}`
+	result := `{"query":"AI news","freshness":{"status":"mostly_stale","notice":"Only 1 of 3 dated news_search results are from 2026-07-07; lead with a freshness summary before listing older context as today's news."},"results":[{"title":"AI lab ships current update","category":"Tech","url":"https://example.com/current-ai"}]}`
 	got := renderNewsCard(result)
-	if !strings.Contains(got, "Mostly stale news_search results: Only 1 of 3 dated news_search results") {
-		t.Fatalf("expected mostly-stale caveat in news card html, got %q", got)
+	if !strings.Contains(got, "Mixed freshness: only 1 of 3 dated AI-news results") {
+		t.Fatalf("expected mixed-freshness summary in news card html, got %q", got)
 	}
-	if strings.Index(got, "Mostly stale news_search results:") > strings.Index(got, "AI lab ships current update") {
+	if strings.Index(got, "Mixed freshness:") > strings.Index(got, "AI lab ships current update") {
 		t.Fatalf("expected news card caveat before story links, got %q", got)
 	}
 }
@@ -1659,18 +1659,18 @@ func TestRenderNewsCardSurfacesMostlyStaleFreshnessCaveat(t *testing.T) {
 func TestSynthesizeToolFallbackLeadsStaleNewsWithCaveat(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
-Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness summary before older items.
 1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
 	got := synthesizeToolFallback(rag)
 	firstLine, _, _ := strings.Cut(got, "\n")
-	if !strings.Contains(firstLine, "No current news_search results:") {
-		t.Fatalf("expected stale-only disclosure to lead fallback answer, got %q", got)
+	if !strings.Contains(firstLine, "No same-day AI news found") {
+		t.Fatalf("expected stale disclosure to lead fallback answer, got %q", got)
 	}
 	if strings.Contains(got, "- News results for") {
 		t.Fatalf("did not expect tool-style news heading in fallback answer, got %q", got)
 	}
-	if !strings.Contains(got, "Background: AI startup raises funding") {
-		t.Fatalf("expected older stale stories to be labeled as background, got %q", got)
+	if !strings.Contains(got, "Context: AI startup raises funding") {
+		t.Fatalf("expected older stale stories to be labeled as context, got %q", got)
 	}
 }
 
@@ -1681,7 +1681,7 @@ func TestShouldBufferNativeTokenForStaleNewsCaveat(t *testing.T) {
 	}
 	recorder.parts = append(recorder.parts, `### news
 News results for "AI news":
-Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness summary before older items.
 1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`)
 	if !shouldBufferNativeToken(recorder) {
 		t.Fatal("stale-only news recorder should buffer native tokens until the guarded final response")
@@ -1721,16 +1721,16 @@ func TestShouldHoldNativeNewsStreamTokensForLatestNewsPrompt(t *testing.T) {
 func TestCompleteToolAnswerReplaysSortedFreshnessFallbackWhenAnswerLeadsStale(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
-Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness caveat before listing older context as today's news.
+Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness summary before listing older context as today's news.
 1. AI lab ships current update (category: Tech; posted: 8 Jul 2026 12:00 UTC; source: https://example.com/current-ai) — Current story.
 2. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
 	answer := "AI startup raises funding in May. AI lab ships current update today."
 	got := completeToolAnswer(answer, rag)
-	if !strings.HasPrefix(got, "- Mostly stale news_search results:") {
+	if !strings.HasPrefix(got, "- Mixed freshness:") {
 		t.Fatalf("expected guarded fallback caveat to lead replayed answer, got %q", got)
 	}
-	current := strings.Index(got, "Background: AI lab ships current update")
-	old := strings.Index(got, "Background: AI startup raises funding")
+	current := strings.Index(got, "Current: AI lab ships current update")
+	old := strings.Index(got, "Context: AI startup raises funding")
 	if current < 0 || old < 0 || old < current {
 		t.Fatalf("expected replayed news context to keep current item ahead of stale background, got %q", got)
 	}
@@ -1739,17 +1739,17 @@ Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lea
 func TestCompleteToolAnswerSortsMostlyStaleNewsFallbackByFreshness(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
-Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness caveat before listing older context as today's news.
+Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness summary before listing older context as today's news.
 1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.
 2. AI chips adoption grows (category: Tech; posted: 14 Mar 2026 12:00 UTC; source: https://example.com/older-ai) — Older archive story.
 3. AI lab ships current update (category: Tech; posted: 8 Jul 2026 12:00 UTC; source: https://example.com/current-ai) — Current story.`}
 	got := completeToolAnswer("AI startup raises funding in May. AI chips adoption grew in March. AI lab ships current update today.", rag)
-	if !strings.HasPrefix(got, "- Mostly stale news_search results:") {
+	if !strings.HasPrefix(got, "- Mixed freshness:") {
 		t.Fatalf("expected guarded fallback caveat to lead answer, got %q", got)
 	}
-	current := strings.Index(got, "Background: AI lab ships current update")
-	may := strings.Index(got, "Background: AI startup raises funding")
-	march := strings.Index(got, "Background: AI chips adoption grows")
+	current := strings.Index(got, "Current: AI lab ships current update")
+	may := strings.Index(got, "Context: AI startup raises funding")
+	march := strings.Index(got, "Context: AI chips adoption grows")
 	if current < 0 || may < 0 || march < 0 || current > may || may > march {
 		t.Fatalf("expected freshness-sorted background items after caveat, got %q", got)
 	}
@@ -1758,19 +1758,19 @@ Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lea
 func TestCompleteToolAnswerFiltersStaleAIChipFinanceBackground(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
-Freshness caveat: No same-day news_search results were available for 2026-07-11; the freshest result is from 2026-07-10, so lead with a freshness caveat instead of presenting older stories as today's news.
+Freshness caveat: No same-day news_search results were available for 2026-07-11; the freshest result is from 2026-07-10, so lead with a freshness summary instead of presenting older stories as today's news.
 1. SK Hynix Nasdaq debut draws investors as AI demand lifts chip shares (category: Markets; posted: 10 Jul 2026 12:00 UTC; source: https://example.com/sk-hynix) — IPO demand, valuation, trading, and market sentiment.
 2. AI agent startup launches safer workflow controls (category: Tech; posted: 9 Jul 2026 12:00 UTC; source: https://example.com/agent-controls) — Product update for assistant workflows.
 3. Frontier AI lab updates model-governance evaluations (category: Tech; posted: 8 Jul 2026 12:00 UTC; source: https://example.com/model-governance) — Governance and safety update.`}
 	got := completeToolAnswer("SK Hynix led background before AI agent and governance items.", rag)
-	if !strings.HasPrefix(got, "- No current news_search results:") {
+	if !strings.HasPrefix(got, "- No same-day AI news found") {
 		t.Fatalf("expected stale caveat to lead answer, got %q", got)
 	}
 	if strings.Contains(got, "SK Hynix Nasdaq debut") {
 		t.Fatalf("expected broad AI-chip finance background to be omitted when concrete AI stories exist, got %q", got)
 	}
-	agent := strings.Index(got, "Background: AI agent startup launches safer workflow controls")
-	governance := strings.Index(got, "Background: Frontier AI lab updates model-governance evaluations")
+	agent := strings.Index(got, "Context: AI agent startup launches safer workflow controls")
+	governance := strings.Index(got, "Context: Frontier AI lab updates model-governance evaluations")
 	if agent < 0 || governance < 0 || governance < agent {
 		t.Fatalf("expected concrete AI background to remain in freshness order, got %q", got)
 	}
@@ -1779,7 +1779,7 @@ Freshness caveat: No same-day news_search results were available for 2026-07-11;
 func TestCompleteToolAnswerDoesNotDuplicateLeadingStaleNewsCaveat(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
-Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness caveat before older items.
+Freshness caveat: No same-day news_search results were available for 2026-07-06; the freshest result is from 2026-05-20, so lead with a freshness summary before older items.
 1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.`}
 	answer := "No same-day news_search results were available for 2026-07-06. The freshest item is older."
 	got := completeToolAnswer(answer, rag)
@@ -1791,18 +1791,18 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 func TestCompleteToolAnswerReplaysSortedFallbackWhenCaveatAnswerLeadsStale(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
-Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness caveat before listing older context as today's news.
+Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness summary before listing older context as today's news.
 1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.
 2. AI chips adoption grows (category: Tech; posted: 14 Mar 2026 12:00 UTC; source: https://example.com/older-ai) — Older archive story.
 3. AI lab ships current update (category: Tech; posted: 8 Jul 2026 12:00 UTC; source: https://example.com/current-ai) — Current story.`}
-	answer := "Mostly stale news_search results: Only 1 of 3 dated news_search results are from 2026-07-08.\n1. AI startup raises funding — stale context.\n2. AI lab ships current update — current story."
+	answer := "Mixed freshness: Only 1 of 3 dated news_search results are from 2026-07-08.\n1. AI startup raises funding — stale context.\n2. AI lab ships current update — current story."
 	got := completeToolAnswer(answer, rag)
-	if !strings.HasPrefix(got, "- Mostly stale news_search results:") {
+	if !strings.HasPrefix(got, "- Mixed freshness:") {
 		t.Fatalf("expected replayed fallback to keep caveat first, got %q", got)
 	}
-	current := strings.Index(got, "Background: AI lab ships current update")
-	may := strings.Index(got, "Background: AI startup raises funding")
-	march := strings.Index(got, "Background: AI chips adoption grows")
+	current := strings.Index(got, "Current: AI lab ships current update")
+	may := strings.Index(got, "Context: AI startup raises funding")
+	march := strings.Index(got, "Context: AI chips adoption grows")
 	if current < 0 || may < 0 || march < 0 || current > may || may > march {
 		t.Fatalf("expected freshness-sorted replay after leading caveat answer, got %q", got)
 	}
@@ -1811,17 +1811,17 @@ Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lea
 func TestCompleteToolAnswerGuardsDottedNativeNewsSearchFreshness(t *testing.T) {
 	rag := []string{`### go.micro.service.news.Search
 News results for "AI news":
-Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness caveat before listing older context as today's news.
+Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lead with a freshness summary before listing older context as today's news.
 1. AI startup raises funding (category: Tech; posted: 20 May 2026 12:00 UTC; source: https://example.com/old-ai) — Archive story.
 2. AI chips adoption grows (category: Tech; posted: 14 Mar 2026 12:00 UTC; source: https://example.com/older-ai) — Older archive story.
 3. AI lab ships current update (category: Tech; posted: 8 Jul 2026 12:00 UTC; source: https://example.com/current-ai) — Current story.`}
 	got := completeToolAnswer("AI startup raises funding in May. AI lab ships current update today.", rag)
-	if !strings.HasPrefix(got, "- Mostly stale news_search results:") {
-		t.Fatalf("expected dotted native news_search result to lead with freshness caveat, got %q", got)
+	if !strings.HasPrefix(got, "- Mixed freshness:") {
+		t.Fatalf("expected dotted native news_search result to lead with freshness summary, got %q", got)
 	}
-	current := strings.Index(got, "Background: AI lab ships current update")
-	may := strings.Index(got, "Background: AI startup raises funding")
-	march := strings.Index(got, "Background: AI chips adoption grows")
+	current := strings.Index(got, "Current: AI lab ships current update")
+	may := strings.Index(got, "Context: AI startup raises funding")
+	march := strings.Index(got, "Context: AI chips adoption grows")
 	if current < 0 || may < 0 || march < 0 || current > may || may > march {
 		t.Fatalf("expected dotted native fallback to keep fresh dated item first, got %q", got)
 	}
@@ -1878,15 +1878,15 @@ func TestNativeToolRecorderFormatsNewsPayloads(t *testing.T) {
 func TestNativeToolRecorderFormatsDottedNewsSearchPayloads(t *testing.T) {
 	recorder := newNativeToolRecorder()
 	handler := recorder.wrap(func(_ context.Context, call gmai.ToolCall) gmai.ToolResult {
-		return gmai.ToolResult{Content: `{"query":"AI news","freshness":{"status":"stale","notice":"No same-day news_search results were available for 2026-07-07; the freshest result is from 2026-05-20, so lead with a freshness caveat instead of presenting older stories as today's news."},"results":[{"title":"AI startup raises funding","description":"Archive context","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`}
+		return gmai.ToolResult{Content: `{"query":"AI news","freshness":{"status":"stale","notice":"No same-day news_search results were available for 2026-07-07; the freshest result is from 2026-05-20, so lead with a freshness summary instead of presenting older stories as today's news."},"results":[{"title":"AI startup raises funding","description":"Archive context","category":"Tech","url":"https://example.com/old-ai","posted_at":"2026-05-20T12:00:00Z"}]}`}
 	})
 
 	handler(context.Background(), gmai.ToolCall{Name: "news.Search"})
 	got := completeToolAnswer("1. AI startup raises funding — Archive context.", recorder.ragParts())
-	if !strings.Contains(got, "No current news_search results: No same-day news_search results were available for 2026-07-07") {
+	if !strings.Contains(got, "No same-day AI news found for 2026-07-07") {
 		t.Fatalf("expected dotted native news tool name to surface stale caveat, got %q", got)
 	}
-	if strings.Index(got, "No current news_search results:") > strings.Index(got, "Background: AI startup raises funding") {
+	if strings.Index(got, "No same-day AI news found") > strings.Index(got, "Context: AI startup raises funding") {
 		t.Fatalf("expected stale caveat to precede old story, got %q", got)
 	}
 	if strings.Contains(got, `{"query"`) {

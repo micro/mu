@@ -101,7 +101,7 @@ func labelStaleNewsAnswerStories(answer string) string {
 		}
 		if looksLikeNewsStoryLine(content) || regexp.MustCompile(`^\d+[.)]\s+`).MatchString(content) {
 			indent := raw[:len(raw)-len(strings.TrimLeft(raw, " \t"))]
-			lines[i] = indent + marker + "Background: " + content
+			lines[i] = indent + marker + "Context: " + content
 			changed = true
 		}
 	}
@@ -367,11 +367,8 @@ func prioritizeStaleNewsCaveatLines(lines []string) []string {
 	out := make([]string, 0, len(lines))
 	caveat := strings.TrimSpace(lines[caveatIndex])
 	caveat = strings.TrimSpace(caveat[len("Freshness caveat:"):])
-	if lower := strings.ToLower(caveat); strings.Contains(lower, "only ") && strings.Contains(lower, " dated news_search results") {
-		out = append(out, "Mostly stale news_search results: "+caveat)
-	} else {
-		out = append(out, "No current news_search results: "+caveat)
-	}
+	out = append(out, userFacingNewsFreshnessSummary(caveat))
+	requestedDate := requestDateFromFreshnessCaveat(caveat)
 	var storyLines []string
 	var otherLines []string
 	for i, line := range lines {
@@ -383,9 +380,7 @@ func prioritizeStaleNewsCaveatLines(lines []string) []string {
 			continue
 		}
 		if looksLikeNewsStoryLine(trimmed) {
-			if !strings.HasPrefix(strings.ToLower(trimmed), "background:") {
-				trimmed = "Background: " + trimmed
-			}
+			trimmed = labelNewsStoryForFreshness(trimmed, requestedDate)
 			storyLines = append(storyLines, trimmed)
 			continue
 		}
@@ -403,6 +398,56 @@ func prioritizeStaleNewsCaveatLines(lines []string) []string {
 	out = append(out, storyLines...)
 	out = append(out, otherLines...)
 	return out
+}
+
+func userFacingNewsFreshnessSummary(caveat string) string {
+	caveat = strings.TrimSpace(caveat)
+	requestedDate := requestDateFromFreshnessCaveat(caveat)
+	lead := caveat
+	if before, _, ok := strings.Cut(lead, ";"); ok {
+		lead = before
+	}
+	lead = strings.ReplaceAll(lead, "news_search results", "AI-news results")
+	lead = strings.ReplaceAll(lead, "news_search result", "AI-news result")
+	if strings.Contains(strings.ToLower(caveat), "only ") && strings.Contains(strings.ToLower(caveat), " dated news_search results") {
+		if lead != "" {
+			return "Mixed freshness: " + lowerFirst(lead) + "; older items are included as context."
+		}
+		if requestedDate != "" {
+			return "Mixed freshness: some AI news is current for " + requestedDate + "; older items are included as context."
+		}
+		return "Mixed freshness: some AI news is current; older items are included as context."
+	}
+	if requestedDate != "" {
+		return "No same-day AI news found for " + requestedDate + "; these older items are included as context."
+	}
+	return "No current AI news found; these older items are included as context."
+}
+
+func lowerFirst(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	return strings.ToLower(s[:1]) + s[1:]
+}
+
+func requestDateFromFreshnessCaveat(caveat string) string {
+	re := regexp.MustCompile(`\b20\d{2}-\d{2}-\d{2}\b`)
+	return re.FindString(caveat)
+}
+
+func labelNewsStoryForFreshness(line, requestedDate string) string {
+	trimmed := strings.TrimSpace(line)
+	lower := strings.ToLower(trimmed)
+	if strings.HasPrefix(lower, "current:") || strings.HasPrefix(lower, "context:") || strings.HasPrefix(lower, "background:") {
+		return trimmed
+	}
+	posted := fallbackNewsPostedAt(trimmed)
+	if requestedDate != "" && !posted.IsZero() && posted.Format("2006-01-02") == requestedDate {
+		return "Current: " + trimmed
+	}
+	return "Context: " + trimmed
 }
 
 func fallbackNewsPostedAt(line string) time.Time {
