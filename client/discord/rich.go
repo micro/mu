@@ -300,8 +300,6 @@ func formatAsEmbed(prompt, answer string) Embed {
 		color = ColorGreen
 	case strings.Contains(lower, "mail") || strings.Contains(lower, "email"):
 		color = ColorRed
-	case strings.Contains(lower, "swap") || strings.Contains(lower, "trade"):
-		color = ColorGold
 	case strings.Contains(lower, "video"):
 		color = ColorRed
 	case strings.Contains(lower, "app"):

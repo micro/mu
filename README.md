@@ -12,7 +12,7 @@ The big platforms have a service for everything — and they own it, and they mo
 
 The agent remembers your preferences across sessions, surfaces contextual suggestions based on your data, and learns what you care about over time. It isn't a chatbot bolted onto a website — it's the interface to a stack of services that are yours.
 
-Built in the open, on [Go Micro](https://go-micro.dev). Self-host the whole thing.
+Built in the open, on [Go Micro](https://github.com/micro/go-micro). Self-host the whole thing.
 
 ### How it works
 
@@ -22,9 +22,9 @@ Below the AI, cards give you an at-a-glance overview of everything: news headlin
 
 ### The services
 
-Each is a real [go-micro](https://go-micro.dev) service the agent can call — and that you can call directly over REST, MCP, A2A, or the CLI.
+Each is a service the agent can call — most registered as [Go Micro](https://github.com/micro/go-micro) services — and reachable directly over REST, MCP, A2A, or the CLI.
 
-- **Agent** — Ask anything. It calls news, markets, mail, weather, web search and more, then synthesises an answer. Remembers your preferences. (A go-micro agent over the services below.)
+- **Agent** — Ask anything. It calls news, markets, mail, weather, web search and more, then synthesises an answer. Remembers your preferences.
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
 - **Markets** — Live crypto, futures, commodity, and currency prices
 - **Mail** — Private messaging and email
@@ -42,18 +42,17 @@ Runs as a single Go binary. Self-host your own instance.
 
 ## Built on Go Micro
 
-Mu is built on [Go Micro](https://go-micro.dev), an agent harness and service framework for Go — and it dogfoods the framework as a real-world reference application.
+Mu is built on [Go Micro](https://github.com/micro/go-micro) and dogfoods it as a real-world reference app. Each domain — news, markets, weather, mail, search, video, blog, social and more — is registered as a Go Micro service, so the agent can call it and it's reachable over REST, MCP, A2A, and the CLI from one registry.
 
-- **Every capability is a service.** News, markets, weather, mail, search, video, blog, social, trade and more each register as an in-process go-micro service. The HTTP layer and the agent reach them by calling the service through the framework, so go-micro is the spine and HTTP is only a front.
-- **The assistant is a go-micro agent.** The default agent is a go-micro agent that does native tool-calling over the registered services — discovering each service's methods as tools — instead of a hand-rolled planner.
-- **The protocols come for free.** `/mcp` is served by go-micro's MCP gateway (mu keeps its own auth, metering and doc page in front); `/a2a` exposes the agent over A2A; both ride the same service registry.
-- **One runtime, one binary.** Services run in-process behind an in-memory registry, so adopting go-micro doesn't force mu to distribute — the same handlers can later be split across processes by swapping the registry, with no code changes.
+- **Each capability is a Go Micro service**, registered in-process.
+- **The agent calls those services** and composes an answer.
+- **One binary.** Everything runs in-process behind an in-memory registry, so self-hosting is a single Go binary — the same services can later be split across processes by swapping the registry.
 
-The model in one line: a service for everything, like the big platforms — except the runtime is open and the instance is yours.
+A service for everything, like the big platforms — except the runtime is open and the instance is yours.
 
 ## For developers
 
-Because every capability is a go-micro service, it's reachable however you like. Mu exposes a REST API and an [MCP](https://modelcontextprotocol.io) server at `/mcp` — served by go-micro's MCP gateway — so AI agents and tools can connect directly.
+Because every capability is a service, it's reachable however you like. Mu exposes a REST API and an [MCP](https://modelcontextprotocol.io) server at `/mcp`, so AI agents and tools can connect directly.
 
 ```json
 {
@@ -98,11 +97,11 @@ See [CLI docs](docs/CLI.md) for more.
 
 ## Discord & Telegram
 
-Talk to the AI agent from Discord or Telegram. Ask questions, check markets, get news, trade — all from chat.
+Talk to the AI agent from Discord or Telegram. Ask questions, check markets, get news — all from chat.
 
 [Join the Discord](https://discord.gg/WeMU5AGxD)
 
-Discord slash commands: `/news`, `/markets`, `/weather`, `/swap`, `/agent`.
+Discord slash commands: `/agent`, `/news`, `/markets`, `/weather`, `/mail`.
 Telegram commands: `/ask`, `/news`, `/markets`, `/weather`.
 
 See [Discord docs](docs/DISCORD.md) and [Telegram docs](docs/TELEGRAM.md) for setup.

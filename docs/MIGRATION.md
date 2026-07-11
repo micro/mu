@@ -55,7 +55,7 @@ agent cards (micro/go-micro#3342 — task lifecycle already shipped upstream).
 - ✅ `internal/service` runtime core (registry/client/broker/store, Register, Call, loopback proxy bypass).
 - ✅ AI core: `internal/ai.Ask` and `AskStream` both run through go-micro `ai`
   (Atlas/Anthropic/local), history + per-caller token caps preserved.
-- ✅ Services (11): weather, news, markets, social, video, blog, search, trade, recall, apps, mail.
+- ✅ Services (11): weather, news, markets, social, video, blog, search, places, recall, apps, mail.
 - ✅ Native go-micro agent is the **default** for `agent.Query` (AGENT_NATIVE=off opts out), full tool coverage.
 - ✅ `/mcp` served by go-micro's `gateway/mcp` (manual resolver of mu's tools; metering/auth preserved).
 - ✅ `/version` + `/status` for deploy verification.
@@ -94,7 +94,7 @@ or improve test coverage; never break `main`.
      set, the catch-all `agent.Query` uses a go-micro agent (`service.NewAgent`,
      deepseek-v4-pro, MaxSteps 6) over the registered services. Account context
      is injected into account-scoped tool calls via a `WrapTool` middleware, so
-     recall/trade stay correctly scoped. User context + history + guest service
+     recall/mail stay correctly scoped. User context + history + guest service
      filtering preserved. Default OFF = no regression. Live-verified end to end.
    - ✅ **Default on.** The go-micro agent is now the default for the catch-all
      path (it's an agent platform). `AGENT_NATIVE=off` opts out. If no LLM

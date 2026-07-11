@@ -1,6 +1,6 @@
 # Discord
 
-Mu includes a Discord bot that gives you access to the AI agent directly from chat. Ask questions, check markets, get news, trade tokens — all without leaving Discord.
+Mu includes a Discord bot that gives you access to the AI agent directly from chat. Ask questions, check markets, get news — all without leaving Discord.
 
 ## Setup (Self-hosting)
 
@@ -45,7 +45,6 @@ DM or @mention the bot with anything:
 - "Read my email"
 - "Today's news"
 - "Weather in London"
-- "Swap 0.1 ETH for USDC"
 
 The bot remembers the last 10 messages for conversation context, so follow-ups work naturally.
 
@@ -60,8 +59,7 @@ The bot registers these slash commands automatically:
 | `/markets` | Live market prices (crypto, futures, commodities) |
 | `/weather` | Weather forecast with optional location |
 | `/mail` | Check your inbox |
-| `/swap` | Get a swap quote with token dropdowns |
-| `/balance` | Trading wallet balances |
+| `/balance` | Your wallet balance |
 | `/apps` | Browse or search apps |
 | `/social` | Social feed |
 | `/video` | Search videos |
@@ -78,7 +76,6 @@ DM the bot `unlink` to disconnect your Discord from your Mu account.
 
 The bot proactively DMs you when:
 - A **trading strategy signal** triggers (alert or confirm mode)
-- A **trade auto-executes** (auto mode) — includes the reason and tx hash
 
 ## Rich Embeds
 
@@ -94,7 +91,7 @@ Responses are formatted as Discord embeds with color coding:
 - **Auto-created accounts** get a random password. The user authenticates via Discord — they never need the password unless they want to log in on the web.
 - **Link with credentials** only works in DMs, never in channels.
 - **Link codes** expire after 5 minutes and are single-use.
-- All data access is scoped to the linked Mu account — one user can't access another's mail, wallet, or trades.
+- All data access is scoped to the linked Mu account — one user can't access another's mail or wallet.
 
 ## Multiple Servers
 

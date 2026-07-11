@@ -97,14 +97,6 @@ func TestKeywordRouteMultiSignalOrdering(t *testing.T) {
 	}
 }
 
-func TestKeywordRouteTradeTakesPrecedenceOverMarkets(t *testing.T) {
-	got := keywordRoute("should I buy BTC after this price move?")
-	want := []string{"trade"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("keywordRoute() = %v, want %v", got, want)
-	}
-}
-
 func TestKeywordRouteRequiresTermBoundaries(t *testing.T) {
 	falsePositivePrompts := []string{
 		"please postpone the team lunch",

@@ -134,7 +134,6 @@ func keywordRoute(prompt string) []string {
 	hasWeather := containsAnyRouteTerm(lower, "weather", "forecast", "temperature")
 	hasNews := containsAnyRouteTerm(lower, "news", "headline", "happening")
 	hasMarkets := containsAnyRouteTerm(lower, "price", "market", "btc", "eth", "crypto")
-	hasTrade := containsAnyRouteTerm(lower, "swap", "trade", "buy", "sell", "strategy")
 	hasVideo := containsAnyRouteTerm(lower, "video", "watch", "youtube")
 	hasSearch := containsAnyRouteTerm(lower, "search", "look up", "find out")
 	hasApps := containsAnyRouteTerm(lower, "build me", "build an app", "create an app")
@@ -146,11 +145,8 @@ func keywordRoute(prompt string) []string {
 	if hasNews {
 		ids = append(ids, "news")
 	}
-	if hasMarkets && !hasTrade {
+	if hasMarkets {
 		ids = append(ids, "markets")
-	}
-	if hasTrade {
-		ids = append(ids, "trade")
 	}
 	if hasVideo {
 		ids = append(ids, "video")

@@ -5,7 +5,7 @@ An agent for everyday. News, mail, search, weather, markets, video — the every
 ## Architecture
 
 - **Single Go binary** — `mu --serve` starts the web server, `mu <command>` runs CLI
-- **Services** — each domain (news, markets, mail, weather, blog, social, video, trade, search, places, reminder) is a package under the top level
+- **Services** — each domain (news, markets, mail, weather, blog, social, video, search, places, reminder) is a package under the top level
 - **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM
 - **Channels** — Discord (`client/discord/`), Telegram (`client/telegram/`), WhatsApp (`client/whatsapp/`)
 - **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, x402 crypto payments
@@ -20,7 +20,6 @@ An agent for everyday. News, mail, search, weather, markets, video — the every
 | `agent/micro/` | Multi-agent system — registry, router, executor, orchestrator |
 | `news/` | RSS feed aggregation, sentiment tagging |
 | `markets/` | Crypto, futures, commodities, currencies via CoinGecko/Yahoo |
-| `trade/` | DEX trading via Uniswap, automated strategies |
 | `mail/` | SMTP server, DKIM, inbound filtering |
 | `blog/` | Microblogging with AI-generated daily digests |
 | `internal/ai/` | LLM abstraction — Anthropic, Atlas Cloud, local models |
@@ -47,7 +46,7 @@ go vet ./...            # vet
 
 ## Conventions
 
-- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `trade/tx.go`)
+- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `wallet/evm.go`)
 - Settings via `internal/settings/` — reads env vars first, falls back to stored values
 - Background loops use goroutines started in `Load()` or `main.go`
 - Agent tools registered in `internal/api/mcp.go` (static) and `main.go` (dynamic with handlers)

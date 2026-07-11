@@ -403,8 +403,6 @@ func nativeToolTitle(name string) string {
 		return "blog"
 	case "search":
 		return "search"
-	case "trade":
-		return "trade"
 	case "recall":
 		return "memory"
 	case "apps":
@@ -444,8 +442,6 @@ func nativeToolLabel(name string) (label string, show bool) {
 		return "📝 Reading the blog", true
 	case "search":
 		return "🔎 Searching the web", true
-	case "trade":
-		return "💱 Checking trade", true
 	case "recall":
 		return "🧠 Recalling your data", true
 	case "apps":

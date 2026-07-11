@@ -1,6 +1,6 @@
 # Telegram
 
-Mu includes a Telegram bot that gives you access to the AI agent directly from chat. Ask questions, check markets, get news, trade tokens — all from Telegram.
+Mu includes a Telegram bot that gives you access to the AI agent directly from chat. Ask questions, check markets, get news — all from Telegram.
 
 ## Setup (Self-hosting)
 
@@ -30,7 +30,6 @@ Just send any message to the bot:
 - "What's the BTC price?"
 - "Read my email"
 - "Today's news"
-- "Swap 0.1 ETH for USDC"
 
 ### Groups
 
@@ -64,11 +63,10 @@ DM the bot `unlink` to disconnect your Telegram from your Mu account.
 The bot DMs you when:
 - You receive a **new email** (with AI-generated summary)
 - A **trading strategy signal** triggers
-- A **trade auto-executes**
 
 ## Privacy
 
-- **Direct messages** have full access to your data (mail, wallet, trades)
+- **Direct messages** have full access to your data (mail, wallet)
 - **Group messages** are public — no private data is included in responses
 - **Credentials** (`link` command) only work in DMs, never in groups
 - **Auto-created accounts** get a random password — you authenticate via Telegram
