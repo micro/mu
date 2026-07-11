@@ -2252,7 +2252,7 @@ func newsAIArticleIsWeakAdjacentBackground(parts ...string) bool {
 	}
 	weakFrames := []string{
 		"essay", "opinion", "column", "maintainable code", "coding", "programming", "software engineering",
-		"windows tool", "utility", "tooling", "developer tool", "browser", "freecad", "gadget", "advertising", "ads", "election", "campaign", "parliament", "politics",
+		"compiler", "jit", "runtime", "windows tool", "utility", "tooling", "developer tool", "browser", "freecad", "gadget", "advertising", "ads", "election", "campaign", "parliament", "politics",
 	}
 	hasWeakFrame := false
 	for _, term := range weakFrames {
@@ -2323,7 +2323,8 @@ func newsAIArticleIsGenericHiringBackground(parts ...string) bool {
 	}
 	hiringTerms := []string{
 		"hiring", "hire", "hires", "jobs", "job", "careers", "recruiting", "recruit", "talent",
-		"job board", "job-board", "y combinator", "yc companies", "startup jobs",
+		"job market", "job board", "job-board", "layoff", "layoffs", "laid off", "workforce", "headcount",
+		"y combinator", "yc companies", "startup jobs",
 	}
 	hasHiringFrame := false
 	for _, term := range hiringTerms {
