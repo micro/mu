@@ -399,6 +399,7 @@ func prioritizeStaleNewsCaveatLines(lines []string) []string {
 		}
 		return left.After(right)
 	})
+	storyLines = filterAdjacentAIChipFinanceLines(storyLines, len(storyLines))
 	out = append(out, storyLines...)
 	out = append(out, otherLines...)
 	return out
