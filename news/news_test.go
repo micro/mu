@@ -869,6 +869,37 @@ func TestNewsSearchArticlesFreshAIQueryKeepsSpecificAIChipMarketStory(t *testing
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersIndexedGenericHiringBackground(t *testing.T) {
+	indexed := []*data.IndexEntry{
+		{
+			ID:      "yc-hiring-ai",
+			Title:   "YC companies hiring for AI roles this summer",
+			Content: "A job-board roundup lists startups recruiting engineers and product talent.",
+			Metadata: map[string]interface{}{
+				"url":      "https://example.com/yc-hiring-ai",
+				"category": "Startups",
+			},
+		},
+		{
+			ID:      "ai-governance",
+			Title:   "Frontier AI lab updates model-evaluation rules",
+			Content: "The artificial intelligence lab and researchers outlined model-evaluation rules for frontier systems.",
+			Metadata: map[string]interface{}{
+				"url":      "https://example.com/ai-governance",
+				"category": "Technology",
+			},
+		},
+	}
+
+	got := newsSearchArticles("Find today's AI news", indexed, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected indexed generic hiring background to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "Frontier AI lab updates model-evaluation rules" {
+		t.Fatalf("expected concrete AI governance story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryRequiresExplicitAIRelevance(t *testing.T) {
 	oldFeed := feed
 	defer func() {
