@@ -1584,6 +1584,7 @@ func renderResultCard(toolName, result string, args map[string]any) string {
 
 func renderNewsCard(result string) string {
 	var data struct {
+		Query     string     `json:"query"`
 		Feed      []newsItem `json:"feed"`
 		Results   []newsItem `json:"results"`
 		Freshness struct {
@@ -1597,6 +1598,12 @@ func renderNewsCard(result string) string {
 	items := data.Results
 	if len(items) == 0 {
 		items = data.Feed
+	}
+	if len(items) == 0 {
+		return ""
+	}
+	if newsCardQueryRequiresAI(data.Query) {
+		items = filterNewsCardAIItems(items)
 	}
 	if len(items) == 0 {
 		return ""
@@ -1636,10 +1643,84 @@ func newsFreshnessCardLead(status string) string {
 }
 
 type newsItem struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	URL      string `json:"url"`
-	Category string `json:"category"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Content     string `json:"content"`
+	URL         string `json:"url"`
+	Category    string `json:"category"`
+}
+
+func filterNewsCardAIItems(items []newsItem) []newsItem {
+	filtered := items[:0]
+	for _, item := range items {
+		if newsCardAIItemIsBroadChipFinance(item) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
+func newsCardQueryRequiresAI(query string) bool {
+	clean := strings.NewReplacer("-", " ", "_", " ", "/", " ", "'", "", "’", "").Replace(strings.ToLower(query))
+	return newsCardTermMatches(clean, "ai") || strings.Contains(clean, "artificial intelligence") || strings.Contains(clean, "machine learning") || newsCardTermMatches(clean, "llm")
+}
+
+func newsCardAIItemIsBroadChipFinance(item newsItem) bool {
+	haystack := strings.ToLower(strings.Join([]string{item.Title, item.Description, item.Content, item.Category}, " "))
+	if haystack == "" {
+		return false
+	}
+	hasChipFrame := false
+	for _, term := range []string{"chip", "chips", "semiconductor", "sk hynix", "nvidia", "data center", "datacenter"} {
+		if newsCardTermMatches(haystack, term) || strings.Contains(haystack, term) {
+			hasChipFrame = true
+			break
+		}
+	}
+	if !hasChipFrame {
+		return false
+	}
+	hasFinanceFrame := false
+	for _, term := range []string{"market", "markets", "stock", "stocks", "shares", "trading", "investor", "investors", "nasdaq", "ipo", "valuation", "rally", "climb", "debut"} {
+		if newsCardTermMatches(haystack, term) {
+			hasFinanceFrame = true
+			break
+		}
+	}
+	if !hasFinanceFrame {
+		return false
+	}
+	for _, term := range []string{
+		"launch", "launches", "launched", "release", "releases", "released", "unveil", "unveils", "unveiled",
+		"deploy", "deploys", "deployed", "deployment", "build", "builds", "built", "capacity", "processor",
+		"accelerator", "gpu", "server", "inference", "training", "model serving", "model-serving", "cloud",
+		"ai product", "ai model", "ai agent", "ai assistant", "ai safety", "ai governance", "ai infrastructure",
+	} {
+		if newsCardTermMatches(haystack, term) || strings.Contains(haystack, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func newsCardTermMatches(haystack, term string) bool {
+	term = strings.TrimSpace(strings.ToLower(term))
+	if term == "" {
+		return false
+	}
+	if strings.Contains(term, " ") {
+		return strings.Contains(haystack, term)
+	}
+	for _, token := range strings.FieldsFunc(haystack, func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+	}) {
+		if token == term {
+			return true
+		}
+	}
+	return false
 }
 
 func renderVideoCard(result string) string {

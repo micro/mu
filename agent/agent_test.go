@@ -1623,6 +1623,28 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	}
 }
 
+func TestRenderNewsCardFiltersBroadAIChipFinanceForAIQueries(t *testing.T) {
+	result := `{"query":"Find today's AI news","freshness":{"status":"stale","notice":"No same-day news_search results were available for 2026-07-11."},"results":[{"title":"SK Hynix Nasdaq debut draws investors as AI demand lifts chip shares","description":"A broad finance brief tracks IPO demand, valuation, trading, and market sentiment.","category":"Markets","url":"https://example.com/sk-hynix"},{"title":"AI agent platform adds model-risk governance controls","description":"The assistant product release gives enterprise users audit controls for agent workflows.","category":"Technology","url":"https://example.com/ai-agent"}]}`
+	got := renderNewsCard(result)
+	if strings.Contains(got, "SK Hynix Nasdaq debut") {
+		t.Fatalf("expected broad AI-chip finance story to be hidden from AI-news card, got %q", got)
+	}
+	if !strings.Contains(got, "AI agent platform adds model-risk governance controls") {
+		t.Fatalf("expected substantive AI story to remain in card, got %q", got)
+	}
+	if !strings.Contains(got, "No current news_search results: No same-day news_search results") {
+		t.Fatalf("expected freshness caveat to remain above filtered stories, got %q", got)
+	}
+}
+
+func TestRenderNewsCardKeepsConcreteAIChipInfrastructureStory(t *testing.T) {
+	result := `{"query":"Find today's AI news","results":[{"title":"AI chip startup launches faster inference server","description":"The semiconductor company released a new accelerator for model-serving workloads.","category":"Markets","url":"https://example.com/ai-chip"}]}`
+	got := renderNewsCard(result)
+	if !strings.Contains(got, "AI chip startup launches faster inference server") {
+		t.Fatalf("expected concrete AI infrastructure story to remain in card, got %q", got)
+	}
+}
+
 func TestRenderNewsCardSurfacesMostlyStaleFreshnessCaveat(t *testing.T) {
 	result := `{"query":"AI news","freshness":{"status":"mostly_stale","notice":"Only 1 of 3 dated news_search results are from 2026-07-07; lead with a freshness caveat before listing older context as today's news."},"results":[{"title":"AI lab ships current update","category":"Tech","url":"https://example.com/current-ai"}]}`
 	got := renderNewsCard(result)
