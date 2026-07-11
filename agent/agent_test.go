@@ -1733,6 +1733,27 @@ Freshness caveat: Only 1 of 3 dated news_search results are from 2026-07-08; lea
 	}
 }
 
+func TestCompleteToolAnswerFiltersStaleAIChipFinanceBackground(t *testing.T) {
+	rag := []string{`### news_search
+News results for "AI news":
+Freshness caveat: No same-day news_search results were available for 2026-07-11; the freshest result is from 2026-07-10, so lead with a freshness caveat instead of presenting older stories as today's news.
+1. SK Hynix Nasdaq debut draws investors as AI demand lifts chip shares (category: Markets; posted: 10 Jul 2026 12:00 UTC; source: https://example.com/sk-hynix) — IPO demand, valuation, trading, and market sentiment.
+2. AI agent startup launches safer workflow controls (category: Tech; posted: 9 Jul 2026 12:00 UTC; source: https://example.com/agent-controls) — Product update for assistant workflows.
+3. Frontier AI lab updates model-governance evaluations (category: Tech; posted: 8 Jul 2026 12:00 UTC; source: https://example.com/model-governance) — Governance and safety update.`}
+	got := completeToolAnswer("SK Hynix led background before AI agent and governance items.", rag)
+	if !strings.HasPrefix(got, "- No current news_search results:") {
+		t.Fatalf("expected stale caveat to lead answer, got %q", got)
+	}
+	if strings.Contains(got, "SK Hynix Nasdaq debut") {
+		t.Fatalf("expected broad AI-chip finance background to be omitted when concrete AI stories exist, got %q", got)
+	}
+	agent := strings.Index(got, "Background: AI agent startup launches safer workflow controls")
+	governance := strings.Index(got, "Background: Frontier AI lab updates model-governance evaluations")
+	if agent < 0 || governance < 0 || governance < agent {
+		t.Fatalf("expected concrete AI background to remain in freshness order, got %q", got)
+	}
+}
+
 func TestCompleteToolAnswerDoesNotDuplicateLeadingStaleNewsCaveat(t *testing.T) {
 	rag := []string{`### news_search
 News results for "AI news":
