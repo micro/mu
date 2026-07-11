@@ -383,6 +383,7 @@ td {
   flex-direction: column;
   gap: 5px;
   flex: 1;
+  min-height: 0; /* let overflow-y:auto scroll instead of pushing .nav-bottom off-screen */
   overflow-y: auto;
   position: relative;
 }
