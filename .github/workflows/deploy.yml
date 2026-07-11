@@ -24,6 +24,6 @@ jobs:
             go install
             # One-time: switch to socket activation for zero-downtime restarts.
             # Idempotent, self-verifying, and guarded so it can never fail a deploy.
-            sh deploy/enable-zero-downtime.sh || true
+            sh scripts/deploy/enable-zero-downtime.sh || true
             sudo -n systemctl restart mu
             echo "Deploy complete"

@@ -19,8 +19,8 @@ same binary works with or without socket activation.
 
 ```bash
 # adjust User/paths in mu.service to match your box, then:
-sudo cp deploy/systemd/mu.socket   /etc/systemd/system/mu.socket
-sudo cp deploy/systemd/mu.service  /etc/systemd/system/mu.service
+sudo cp scripts/deploy/systemd/mu.socket   /etc/systemd/system/mu.socket
+sudo cp scripts/deploy/systemd/mu.service  /etc/systemd/system/mu.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now mu.socket   # opens the socket
 sudo systemctl start mu.service         # starts Mu on it
