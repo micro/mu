@@ -1616,7 +1616,7 @@ func renderNewsCard(result string) string {
 	b.WriteString(`<div class="card"><h4>📰 News</h4>`)
 	if notice := strings.TrimSpace(data.Freshness.Notice); notice != "" && (data.Freshness.Status == "stale" || data.Freshness.Status == "mostly_stale" || data.Freshness.Status == "no_dated_results") {
 		b.WriteString(`<div style="margin:0 0 8px;padding:8px;border-radius:4px;background:#fff7ed;color:#7c2d12;font-size:12px;">`)
-		b.WriteString(htmlEsc(newsFreshnessCardLead(data.Freshness.Status) + notice))
+		b.WriteString(htmlEsc(newsFreshnessCardNotice(data.Freshness.Status, notice)))
 		b.WriteString(`</div>`)
 	}
 	for _, item := range items {
@@ -1635,11 +1635,12 @@ func renderNewsCard(result string) string {
 	return b.String()
 }
 
-func newsFreshnessCardLead(status string) string {
+func newsFreshnessCardNotice(status, notice string) string {
+	notice = strings.TrimSpace(notice)
 	if status == "mostly_stale" {
-		return "Mostly stale news_search results: "
+		return userFacingNewsFreshnessSummary(notice)
 	}
-	return "No current news_search results: "
+	return userFacingNewsFreshnessSummary(notice)
 }
 
 type newsItem struct {
