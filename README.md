@@ -33,6 +33,7 @@ Each is a real [go-micro](https://go-micro.dev) service the agent can call — a
 - **Video** — YouTube without ads, algorithms, or shorts
 - **Web** — Search the web without tracking
 - **Weather** — Forecasts and conditions
+- **Places** — Search places and nearby results with configured providers and open-data fallbacks
 - **Apps** — Build and use small, useful tools — any app can be pinned as a home card
 - **Reminder** — A daily Islamic reminder surfaced as a home card and MCP tool
 - **Stream** — Public event feed for agents and tools to subscribe to
