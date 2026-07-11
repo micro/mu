@@ -1033,6 +1033,45 @@ func TestNewsSearchArticlesFreshAIQueryFiltersWeakAdjacentSameDayBackground(t *t
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersNoveltyDemoPages(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 11, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "anti-ai-font",
+			Title:       "Designer releases anti-AI font demo",
+			Description: "A same-day typography showcase says the font confuses artificial intelligence scrapers.",
+			URL:         "https://example.com/anti-ai-font",
+			Category:    "Design",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-governance-story",
+			Title:       "AI agent platform adds model-governance controls",
+			Description: "The AI product release gives teams new safety and evaluation controls for agent workflows.",
+			URL:         "https://example.com/ai-governance-story",
+			Category:    "Technology",
+			PostedAt:    today,
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected novelty/demo page to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI agent platform adds model-governance controls" {
+		t.Fatalf("expected concrete AI governance story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchArticlesFreshAIQueryFiltersGenericSoftwareToolPosts(t *testing.T) {
 	oldFeed := feed
 	defer func() {

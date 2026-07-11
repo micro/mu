@@ -2120,6 +2120,9 @@ func liveFeedSearch(query string, limit int) []*Post {
 			if newsAIArticleIsGenericHiringBackground(post.Title, post.Description, post.Content, post.Category) {
 				continue
 			}
+			if newsAIArticleIsNoveltyDemoBackground(post.Title, post.Description, post.Content, post.Category) {
+				continue
+			}
 		}
 		score := 0
 		for _, term := range terms {
@@ -2178,6 +2181,14 @@ func articleMatchesNewsQuery(query string, article map[string]interface{}) bool 
 			return false
 		}
 		if newsAIArticleIsGenericHiringBackground(
+			fmt.Sprintf("%v", article["title"]),
+			fmt.Sprintf("%v", article["description"]),
+			fmt.Sprintf("%v", article["content"]),
+			fmt.Sprintf("%v", article["category"]),
+		) {
+			return false
+		}
+		if newsAIArticleIsNoveltyDemoBackground(
 			fmt.Sprintf("%v", article["title"]),
 			fmt.Sprintf("%v", article["description"]),
 			fmt.Sprintf("%v", article["content"]),
@@ -2260,6 +2271,44 @@ func newsAIArticleIsWeakAdjacentBackground(parts ...string) bool {
 		"ai regulation", "ai regulator", "ai policy", "ai safety", "ai research", "ai product", "ai-powered", "ai powered",
 	}
 	for _, term := range strongAITerms {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func newsAIArticleIsNoveltyDemoBackground(parts ...string) bool {
+	haystack := newsSearchHaystack(parts...)
+	if haystack == "" {
+		return false
+	}
+	noveltyTerms := []string{
+		"font", "fonts", "typeface", "typography", "demo", "demos", "prototype", "showcase",
+		"experiment", "toy", "novelty", "anti ai", "anti-ai", "gimmick", "art project",
+	}
+	hasNoveltyFrame := false
+	for _, term := range noveltyTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasNoveltyFrame = true
+			break
+		}
+	}
+	if !hasNoveltyFrame {
+		return false
+	}
+
+	// Same-day AI searches should not promote novelty/demo pages as top news just
+	// because they mention AI. Keep them only when the item also reports concrete
+	// product, model, agent, infrastructure, governance, safety, or user-impact
+	// activity.
+	for _, term := range []string{
+		"open source model", "model release", "benchmark", "evaluation",
+		"ai safety", "ai regulation", "ai regulator", "ai governance", "frontier model", "foundation model",
+		"ai model", "language model", "large language model", "llm", "ai agent", "ai assistant",
+		"ai product", "ai platform", "ai infrastructure", "ai chip", "ai accelerator", "training cluster",
+		"inference server", "data center", "datacenter", "deploy", "deployed", "user impact", "customer",
+	} {
 		if newsSearchTermMatches(haystack, term) {
 			return false
 		}
