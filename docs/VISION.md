@@ -46,6 +46,7 @@ Technology should serve people — not use them. When you pay for tools, incenti
 | **Weather** | Forecasts and conditions |
 | **Video** | YouTube without ads, algorithms, or shorts |
 | **Web** | Search the web without tracking |
+| **Places** | Search places and nearby results with configured providers and open-data fallbacks |
 | **Blog** | Microblogging with daily AI-generated digests |
 | **Chat** | Conversational AI with session history |
 | **Mail** | Private messaging and email |
