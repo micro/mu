@@ -25,6 +25,7 @@ import (
 	"go-micro.dev/v6/server"
 	gomicro "go-micro.dev/v6/service"
 	"go-micro.dev/v6/store"
+	"go-micro.dev/v6/transport"
 )
 
 func init() {
@@ -57,6 +58,7 @@ var (
 	cl       client.Client
 	br       broker.Broker
 	st       store.Store
+	tr       transport.Transport
 	services []gomicro.Service
 )
 
@@ -71,10 +73,16 @@ func Init() {
 	reg = registry.NewMemoryRegistry()
 	br = broker.NewMemoryBroker()
 	_ = br.Connect()
+	// In-memory transport: services are in-process, so calls pass messages over
+	// channels instead of a loopback TCP/HTTP socket. Client and every server
+	// must share this one instance. This is what keeps a service.Call cheap
+	// (single-digit µs) rather than a ~400µs HTTP round-trip.
+	tr = transport.NewMemoryTransport()
 	cl = client.NewClient(
 		client.Registry(reg),
 		client.Selector(selector.NewSelector(selector.Registry(reg))),
 		client.Broker(br),
+		client.Transport(tr),
 	)
 	st = newDurableStore()
 	inited = true
@@ -124,6 +132,7 @@ func Register(name string, handlers ...any) error {
 		gomicro.Registry(reg),
 		gomicro.Client(cl),
 		gomicro.Broker(br),
+		gomicro.Transport(tr),
 	)
 	for _, h := range handlers {
 		if err := svc.Handle(h); err != nil {
@@ -143,7 +152,7 @@ func Register(name string, handlers ...any) error {
 // metadata). Most callers want Register.
 func HandlerOpts(name string, h any, opts ...server.HandlerOption) error {
 	ensure()
-	svc := gomicro.New(gomicro.Name(name), gomicro.Registry(reg), gomicro.Client(cl), gomicro.Broker(br))
+	svc := gomicro.New(gomicro.Name(name), gomicro.Registry(reg), gomicro.Client(cl), gomicro.Broker(br), gomicro.Transport(tr))
 	if err := svc.Handle(h, opts...); err != nil {
 		return err
 	}
