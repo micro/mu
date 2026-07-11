@@ -22,7 +22,7 @@ import (
 )
 
 // cardSnap is the go-micro read-plane channel for the markets card (store +
-// broker); see internal/snapshot and internal/docs/ARCHITECTURE.md.
+// broker); see internal/snapshot and docs/GO_MICRO_ARCHITECTURE.md.
 var cardSnap *snapshot.Snapshot
 
 // PriceData holds price and 24h change for an asset
@@ -178,7 +178,7 @@ func refreshMarkets() {
 			marketsMutex.Unlock()
 
 			// Publish the new snapshot to the go-micro store + broker; the read
-			// path serves it from a mirror (see internal/snapshot, ARCHITECTURE.md).
+			// path serves it from a mirror (see internal/snapshot, docs/GO_MICRO_ARCHITECTURE.md).
 			cardSnap.Publish(html)
 
 			indexMarketPrices(prices)

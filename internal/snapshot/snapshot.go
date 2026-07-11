@@ -1,5 +1,5 @@
 // Package snapshot implements the go-micro read-plane pattern for display cards
-// (see internal/docs/ARCHITECTURE.md).
+// (see docs/GO_MICRO_ARCHITECTURE.md).
 //
 // A producer Publishes a rendered HTML snapshot, which is written to the shared
 // go-micro store (durable) and announced on the broker. The read path reads a

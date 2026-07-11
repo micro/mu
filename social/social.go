@@ -25,7 +25,7 @@ import (
 )
 
 // cardSnap is the go-micro read-plane channel for the social card (store +
-// broker); see internal/snapshot and internal/docs/ARCHITECTURE.md.
+// broker); see internal/snapshot and docs/GO_MICRO_ARCHITECTURE.md.
 var cardSnap *snapshot.Snapshot
 
 var mutex sync.RWMutex

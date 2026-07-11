@@ -26,7 +26,7 @@ import (
 )
 
 // cardSnap is the go-micro read-plane channel for the video card (store +
-// broker); see internal/snapshot and internal/docs/ARCHITECTURE.md.
+// broker); see internal/snapshot and docs/GO_MICRO_ARCHITECTURE.md.
 var cardSnap *snapshot.Snapshot
 
 //go:embed channels.json
