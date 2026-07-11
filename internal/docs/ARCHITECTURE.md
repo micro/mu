@@ -1,9 +1,9 @@
 # Architecture — fully onto Go Micro (target model)
 
-Companion to [THESIS.md](THESIS.md). The North Star says *why* (an agent for
-everyday, on go-micro). This says *how the system is shaped* as we finish moving
-Mu entirely onto go-micro — without degrading performance and without a
-half-migrated blend.
+This describes *how the system is shaped* as we finish moving Mu entirely onto
+go-micro — without degrading performance and without a half-migrated blend. The
+product direction (an agent for everyday, on go-micro) lives in the README and
+docs/VISION.md.
 
 ## Where go-micro is going: an agent harness
 
