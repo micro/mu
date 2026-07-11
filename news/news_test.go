@@ -994,6 +994,45 @@ func TestNewsSearchArticlesFreshAIQueryFiltersWeakAdjacentSameDayBackground(t *t
 	}
 }
 
+func TestNewsSearchArticlesFreshAIQueryFiltersGenericSoftwareToolPosts(t *testing.T) {
+	oldFeed := feed
+	defer func() {
+		mutex.Lock()
+		feed = oldFeed
+		mutex.Unlock()
+	}()
+
+	today := time.Date(2026, 7, 11, 9, 0, 0, 0, time.UTC)
+	mutex.Lock()
+	feed = []*Post{
+		{
+			ID:          "freecad-browser",
+			Title:       "FreeCAD in the Browser",
+			Description: "A developer-tool post mentions AI-era workflows but is mainly about running CAD software in a web browser.",
+			URL:         "https://example.com/freecad-browser",
+			Category:    "Software",
+			PostedAt:    today.Add(2 * time.Hour),
+		},
+		{
+			ID:          "ai-model-story",
+			Title:       "AI lab ships safer model controls",
+			Description: "The AI model release gives developers new controls for assistant workflows.",
+			URL:         "https://example.com/ai-model-story",
+			Category:    "Technology",
+			PostedAt:    today,
+		},
+	}
+	mutex.Unlock()
+
+	got := newsSearchArticles("Find today's AI news", nil, 8)
+	if len(got) != 1 {
+		t.Fatalf("expected generic software tool post to be filtered, got %#v", got)
+	}
+	if got[0]["title"] != "AI lab ships safer model controls" {
+		t.Fatalf("expected concrete AI model story, got %#v", got[0])
+	}
+}
+
 func TestNewsSearchFreshnessSummaryCaveatsStaleTodayResults(t *testing.T) {
 	articles := []map[string]interface{}{{
 		"title":     "AI startup raises funding",
