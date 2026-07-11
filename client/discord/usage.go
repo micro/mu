@@ -10,8 +10,8 @@ import (
 type UserUsage struct {
 	Queries    int       `json:"queries"`
 	LastQuery  time.Time `json:"last_query"`
-	DailyCount int      `json:"daily_count"`
-	DayReset   string   `json:"day_reset"`
+	DailyCount int       `json:"daily_count"`
+	DayReset   string    `json:"day_reset"`
 }
 
 var (

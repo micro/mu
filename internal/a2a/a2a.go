@@ -4,8 +4,9 @@
 // Spec: https://github.com/google/A2A
 //
 // Endpoints:
-//   GET  /.well-known/agent.json  — Agent Card (discovery)
-//   POST /a2a                     — JSON-RPC 2.0 (task execution)
+//
+//	GET  /.well-known/agent.json  — Agent Card (discovery)
+//	POST /a2a                     — JSON-RPC 2.0 (task execution)
 package a2a
 
 import (
@@ -26,15 +27,15 @@ import (
 // ── Agent Card ──
 
 type AgentCard struct {
-	Name                string        `json:"name"`
-	Description         string        `json:"description"`
-	Version             string        `json:"version"`
-	Provider            Provider      `json:"provider"`
-	SupportedInterfaces []Interface   `json:"supportedInterfaces"`
-	Capabilities        Capabilities  `json:"capabilities"`
-	DefaultInputModes   []string      `json:"defaultInputModes"`
-	DefaultOutputModes  []string      `json:"defaultOutputModes"`
-	Skills              []Skill       `json:"skills"`
+	Name                string       `json:"name"`
+	Description         string       `json:"description"`
+	Version             string       `json:"version"`
+	Provider            Provider     `json:"provider"`
+	SupportedInterfaces []Interface  `json:"supportedInterfaces"`
+	Capabilities        Capabilities `json:"capabilities"`
+	DefaultInputModes   []string     `json:"defaultInputModes"`
+	DefaultOutputModes  []string     `json:"defaultOutputModes"`
+	Skills              []Skill      `json:"skills"`
 }
 
 type Provider struct {
@@ -143,9 +144,9 @@ type rpcRequest struct {
 }
 
 type rpcResponse struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      any    `json:"id"`
-	Result  any    `json:"result,omitempty"`
+	JSONRPC string    `json:"jsonrpc"`
+	ID      any       `json:"id"`
+	Result  any       `json:"result,omitempty"`
 	Error   *rpcError `json:"error,omitempty"`
 }
 
@@ -240,7 +241,7 @@ func handleSendMessage(w http.ResponseWriter, req rpcRequest) {
 			State:     "TASK_STATE_WORKING",
 			Timestamp: now,
 		},
-		History: []Message{params.Message},
+		History:   []Message{params.Message},
 		CreatedAt: now,
 	}
 

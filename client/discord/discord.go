@@ -36,8 +36,8 @@ var (
 	botID    string
 	botAppID string
 
-	linkMu   sync.RWMutex
-	links    = map[string]string{} // discord user ID → mu account ID
+	linkMu sync.RWMutex
+	links  = map[string]string{} // discord user ID → mu account ID
 
 	historyMu sync.RWMutex
 	histories = map[string][]agent.QueryMessage{} // discord user ID → recent messages
@@ -229,10 +229,10 @@ func connect(token string) error {
 		}
 
 		var event struct {
-			Op int              `json:"op"`
-			T  string           `json:"t"`
-			S  *int             `json:"s"`
-			D  json.RawMessage  `json:"d"`
+			Op int             `json:"op"`
+			T  string          `json:"t"`
+			S  *int            `json:"s"`
+			D  json.RawMessage `json:"d"`
 		}
 		json.Unmarshal(msg, &event)
 
@@ -277,9 +277,9 @@ type discordMessage struct {
 		Username string `json:"username"`
 		Bot      bool   `json:"bot"`
 	} `json:"author"`
-	GuildID     string `json:"guild_id"`
-	MentionEveryone bool `json:"mention_everyone"`
-	Mentions    []struct {
+	GuildID         string `json:"guild_id"`
+	MentionEveryone bool   `json:"mention_everyone"`
+	Mentions        []struct {
 		ID string `json:"id"`
 	} `json:"mentions"`
 }

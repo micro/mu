@@ -35,12 +35,12 @@ var UpdateBlogPost func(id, title, content, tags string) error
 var FindTodayBlogDigest func() *DigestPost
 
 var (
-	mu           sync.Mutex
-	running      bool
-	runStarted   time.Time
-	lastDigest   time.Time
-	lastError    string
-	lastStatus   string // "ok", "error", "running", "pending"
+	mu         sync.Mutex
+	running    bool
+	runStarted time.Time
+	lastDigest time.Time
+	lastError  string
+	lastStatus string // "ok", "error", "running", "pending"
 )
 
 // Load starts the daily digest scheduler.

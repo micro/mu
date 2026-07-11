@@ -20,9 +20,9 @@ type TestResult struct {
 
 // APITestResult records one SDK call test with the actual response.
 type APITestResult struct {
-	Call     string `json:"call"`              // e.g. "mu.markets({category:'crypto'})"
-	Path     string `json:"path"`              // e.g. "/markets?category=crypto"
-	Status   int    `json:"status"`            // HTTP status code
+	Call     string `json:"call"`               // e.g. "mu.markets({category:'crypto'})"
+	Path     string `json:"path"`               // e.g. "/markets?category=crypto"
+	Status   int    `json:"status"`             // HTTP status code
 	Response string `json:"response,omitempty"` // truncated JSON response
 	Error    string `json:"error,omitempty"`
 }

@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/service"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/service"
 	"mu/wallet"
 )
 

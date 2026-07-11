@@ -249,7 +249,6 @@ func CheckSpam(from, subject, body, ip string, spfPass, dkimPass bool) SpamResul
 	return result
 }
 
-
 // --- Public API for admin management ---
 
 // GetSpamFilter returns a copy of the current spam filter config

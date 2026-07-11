@@ -20,7 +20,7 @@ import (
 // Invite stores a pending invitation.
 type Invite struct {
 	Code      string    `json:"code"`
-	Email     string    `json:"email"`     // who it was sent to (informational)
+	Email     string    `json:"email"`      // who it was sent to (informational)
 	CreatedBy string    `json:"created_by"` // admin who created it
 	CreatedAt time.Time `json:"created_at"`
 	UsedBy    string    `json:"used_by,omitempty"` // account ID that consumed it

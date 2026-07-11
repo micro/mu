@@ -17,10 +17,10 @@ import (
 
 // OAuthClient represents a registered OAuth client (e.g. Claude Code).
 type OAuthClient struct {
-	ClientID     string   `json:"client_id"`
-	ClientSecret string   `json:"client_secret,omitempty"`
-	Name         string   `json:"name"`
-	RedirectURIs []string `json:"redirect_uris"`
+	ClientID     string    `json:"client_id"`
+	ClientSecret string    `json:"client_secret,omitempty"`
+	Name         string    `json:"name"`
+	RedirectURIs []string  `json:"redirect_uris"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -197,14 +197,14 @@ func OAuthMetadataHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"issuer":                             issuer,
-		"authorization_endpoint":             issuer + "/oauth/authorize",
-		"token_endpoint":                     issuer + "/oauth/token",
-		"registration_endpoint":              issuer + "/oauth/register",
-		"scopes_supported":                   []string{"read", "write"},
-		"response_types_supported":           []string{"code"},
-		"grant_types_supported":              []string{"authorization_code"},
-		"code_challenge_methods_supported":    []string{"S256", "plain"},
+		"issuer":                                issuer,
+		"authorization_endpoint":                issuer + "/oauth/authorize",
+		"token_endpoint":                        issuer + "/oauth/token",
+		"registration_endpoint":                 issuer + "/oauth/register",
+		"scopes_supported":                      []string{"read", "write"},
+		"response_types_supported":              []string{"code"},
+		"grant_types_supported":                 []string{"authorization_code"},
+		"code_challenge_methods_supported":      []string{"S256", "plain"},
 		"token_endpoint_auth_methods_supported": []string{"none"},
 	})
 }
@@ -215,9 +215,9 @@ func OAuthResourceHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"resource":                issuer,
-		"authorization_servers":   []string{issuer},
-		"scopes_supported":       []string{"read", "write"},
+		"resource":              issuer,
+		"authorization_servers": []string{issuer},
+		"scopes_supported":      []string{"read", "write"},
 	})
 }
 
@@ -248,12 +248,12 @@ func OAuthRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"client_id":                client.ClientID,
-		"client_secret":            client.ClientSecret,
-		"client_name":              client.Name,
-		"redirect_uris":            client.RedirectURIs,
-		"grant_types":              []string{"authorization_code"},
-		"response_types":           []string{"code"},
+		"client_id":                  client.ClientID,
+		"client_secret":              client.ClientSecret,
+		"client_name":                client.Name,
+		"redirect_uris":              client.RedirectURIs,
+		"grant_types":                []string{"authorization_code"},
+		"response_types":             []string{"code"},
 		"token_endpoint_auth_method": "none",
 	})
 }

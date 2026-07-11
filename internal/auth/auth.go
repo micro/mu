@@ -34,13 +34,13 @@ type Account struct {
 	Created         time.Time `json:"created"`
 	Admin           bool      `json:"admin"`
 	Language        string    `json:"language"`
-	Widgets         []string  `json:"widgets,omitempty"`   // App IDs to show as home widgets
+	Widgets         []string  `json:"widgets,omitempty"`    // App IDs to show as home widgets
 	HomeCards       []string  `json:"home_cards,omitempty"` // Ordered card IDs to show on home (empty = all)
-	Approved        bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
+	Approved        bool      `json:"approved,omitempty"`   // Admin-approved, bypasses new account restrictions
 	Email           string    `json:"email,omitempty"`
 	EmailVerified   bool      `json:"email_verified,omitempty"`
 	EmailVerifiedAt time.Time `json:"email_verified_at,omitempty"`
-	Banned       bool      `json:"banned,omitempty"` // Silently hidden from everyone except themselves
+	Banned          bool      `json:"banned,omitempty"` // Silently hidden from everyone except themselves
 }
 
 type Session struct {

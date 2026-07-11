@@ -14,12 +14,12 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/service"
-	"mu/internal/snapshot"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
+	"mu/internal/service"
+	"mu/internal/snapshot"
 	"mu/news"
 	"mu/wallet"
 )

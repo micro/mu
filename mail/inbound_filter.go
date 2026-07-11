@@ -21,9 +21,9 @@ import (
 // We record every Message-ID we generate so we can recognise replies.
 
 var (
-	sentMu    sync.RWMutex
-	sentMsgIDs = map[string]bool{}    // Message-ID → true
-	sentToAddr = map[string]bool{}    // email addresses we've sent to
+	sentMu     sync.RWMutex
+	sentMsgIDs = map[string]bool{} // Message-ID → true
+	sentToAddr = map[string]bool{} // email addresses we've sent to
 )
 
 func init() {
@@ -158,7 +158,6 @@ var (
 	customWhitelist   = map[string]bool{}
 )
 
-
 // WhitelistDomain adds a domain to the custom whitelist.
 func WhitelistDomain(domain string) {
 	customWhitelistMu.Lock()
@@ -249,4 +248,3 @@ func SaveSentIDs() {
 	data.SaveJSON("mail_sent_ids.json", sentMsgIDs)
 	data.SaveJSON("mail_sent_to.json", sentToAddr)
 }
-

@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/service"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/service"
 
 	"mu/wallet"
 )
@@ -47,22 +47,22 @@ type Thread struct {
 var inboxes map[string]*Inbox
 
 type Message struct {
-	ID        string    `json:"id"`
-	From      string    `json:"from"`    // Sender username
-	FromID    string    `json:"from_id"` // Sender account ID
-	To        string    `json:"to"`      // Recipient username
-	ToID      string    `json:"to_id"`   // Recipient account ID
-	Subject   string    `json:"subject"`
-	Body      string    `json:"body"`
-	Read      bool      `json:"read"`
-	ReplyTo   string    `json:"reply_to"`   // ID of message this is replying to
-	ThreadID  string    `json:"thread_id"`  // Root message ID for O(1) thread grouping
+	ID          string    `json:"id"`
+	From        string    `json:"from"`    // Sender username
+	FromID      string    `json:"from_id"` // Sender account ID
+	To          string    `json:"to"`      // Recipient username
+	ToID        string    `json:"to_id"`   // Recipient account ID
+	Subject     string    `json:"subject"`
+	Body        string    `json:"body"`
+	Read        bool      `json:"read"`
+	ReplyTo     string    `json:"reply_to"`               // ID of message this is replying to
+	ThreadID    string    `json:"thread_id"`              // Root message ID for O(1) thread grouping
 	MessageID   string    `json:"message_id"`             // Email Message-ID header for threading
-	Spam        bool      `json:"spam,omitempty"`          // Whether this message was flagged as spam
-	SpamScore   int       `json:"spam_score,omitempty"`    // Spam detection score
-	SpamReasons []string  `json:"spam_reasons,omitempty"`  // Why it was flagged
-	SenderIP    string    `json:"sender_ip,omitempty"`     // IP address of sending server
-	RawHeaders  string    `json:"raw_headers,omitempty"`   // Original email headers for View Raw
+	Spam        bool      `json:"spam,omitempty"`         // Whether this message was flagged as spam
+	SpamScore   int       `json:"spam_score,omitempty"`   // Spam detection score
+	SpamReasons []string  `json:"spam_reasons,omitempty"` // Why it was flagged
+	SenderIP    string    `json:"sender_ip,omitempty"`    // IP address of sending server
+	RawHeaders  string    `json:"raw_headers,omitempty"`  // Original email headers for View Raw
 	CreatedAt   time.Time `json:"created_at"`
 }
 

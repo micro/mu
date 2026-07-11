@@ -11,8 +11,8 @@ import (
 // UserPrefs stores per-user content preferences (saves, dismissals, blocks)
 type UserPrefs struct {
 	Saved     map[string]time.Time `json:"saved"`     // "type:id" → saved time
-	Dismissed map[string]time.Time `json:"dismissed"`  // "type:id" → dismissed time
-	Blocked   map[string]time.Time `json:"blocked"`    // userID → blocked time
+	Dismissed map[string]time.Time `json:"dismissed"` // "type:id" → dismissed time
+	Blocked   map[string]time.Time `json:"blocked"`   // userID → blocked time
 }
 
 var (

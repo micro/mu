@@ -15,7 +15,6 @@ type Action struct {
 	Class   string
 }
 
-
 // ItemControls renders a ⋯ dropdown with all applicable controls for a content item.
 func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID, editURL, deleteURL string) string {
 	isOwner := userID == authorID

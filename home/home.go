@@ -13,15 +13,15 @@ import (
 
 	"mu/agent"
 	"mu/apps"
+	"mu/blog"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/blog"
 	"mu/internal/event"
 	"mu/mail"
-	"mu/news"
-	"mu/social"
 	"mu/markets"
+	"mu/news"
 	"mu/reminder"
+	"mu/social"
 	"mu/video"
 	"mu/weather"
 )
@@ -347,10 +347,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		RefreshCards()
 		cacheMutex.RLock()
 		type cardData struct {
-			ID      string `json:"id"`
-			Title   string `json:"title"`
-			HTML    string `json:"html"`
-			Column  string `json:"column"`
+			ID     string `json:"id"`
+			Title  string `json:"title"`
+			HTML   string `json:"html"`
+			Column string `json:"column"`
 		}
 		var result []cardData
 		for _, card := range Cards {
@@ -659,7 +659,6 @@ fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-o
 
 	b.WriteString(`</div>`) // close #home-cards
 
-
 	// Auto-refresh: poll every 2 minutes, update card content in-place
 	displayMode := r.URL.Query().Get("mode") == "display"
 	refreshInterval := 120000 // 2 minutes
@@ -737,7 +736,6 @@ func htmlEsc(s string) string {
 // suggestions, and typing indicator.
 // consoleScript — AI prompt with flip layout (input moves below response),
 // persistent last response, typing dots, suggestion pills.
-
 
 const statusCardScript = `<script>
 (function(){

@@ -19,9 +19,9 @@ var (
 	processedSessions = make(map[string]bool)
 )
 
-func stripeSecret() string    { return settings.Get("STRIPE_SECRET_KEY") }
-func stripePublic() string    { return settings.Get("STRIPE_PUBLISHABLE_KEY") }
-func stripeWebhook() string   { return settings.Get("STRIPE_WEBHOOK_SECRET") }
+func stripeSecret() string  { return settings.Get("STRIPE_SECRET_KEY") }
+func stripePublic() string  { return settings.Get("STRIPE_PUBLISHABLE_KEY") }
+func stripeWebhook() string { return settings.Get("STRIPE_WEBHOOK_SECRET") }
 
 func StripeEnabled() bool {
 	return stripeSecret() != "" && stripePublic() != ""

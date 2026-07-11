@@ -35,12 +35,12 @@ const MaxStoreKeys = 100
 
 // Version represents a snapshot of an app at a point in time.
 type Version struct {
-	Number    int       `json:"number"`
-	HTML      string    `json:"html"`
-	Name      string    `json:"name"`
-	Icon      string    `json:"icon,omitempty"`
-	SavedAt   time.Time `json:"saved_at"`
-	Summary   string    `json:"summary,omitempty"` // optional change description
+	Number  int       `json:"number"`
+	HTML    string    `json:"html"`
+	Name    string    `json:"name"`
+	Icon    string    `json:"icon,omitempty"`
+	SavedAt time.Time `json:"saved_at"`
+	Summary string    `json:"summary,omitempty"` // optional change description
 }
 
 // MaxVersions is the maximum number of versions kept per app.
@@ -68,26 +68,26 @@ type AppTab struct {
 }
 
 type App struct {
-	ID          string    `json:"id"`
-	Slug        string    `json:"slug"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	AuthorID    string    `json:"author_id"`
-	Author      string    `json:"author"`
-	Icon        string    `json:"icon"`
-	HTML        string    `json:"html"`                  // Raw mode: complete HTML
-	Mode        string    `json:"mode,omitempty"`        // "" or "raw" = HTML blob, "framework" = blocks
-	Config      *AppConfig `json:"config,omitempty"`     // Framework mode config
-	Blocks      []Block   `json:"blocks,omitempty"`      // Framework mode blocks
-	Tags        string    `json:"tags"`
-	Price       int       `json:"price"`                   // Credits per request (0 = free)
-	Earnings    int       `json:"earnings"`                // Total credits earned by author
-	Public      bool      `json:"public"`
-	Installs    int       `json:"installs"`
-	ForkedFrom  string    `json:"forked_from,omitempty"`
-	Versions    []Version `json:"versions,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          string     `json:"id"`
+	Slug        string     `json:"slug"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	AuthorID    string     `json:"author_id"`
+	Author      string     `json:"author"`
+	Icon        string     `json:"icon"`
+	HTML        string     `json:"html"`             // Raw mode: complete HTML
+	Mode        string     `json:"mode,omitempty"`   // "" or "raw" = HTML blob, "framework" = blocks
+	Config      *AppConfig `json:"config,omitempty"` // Framework mode config
+	Blocks      []Block    `json:"blocks,omitempty"` // Framework mode blocks
+	Tags        string     `json:"tags"`
+	Price       int        `json:"price"`    // Credits per request (0 = free)
+	Earnings    int        `json:"earnings"` // Total credits earned by author
+	Public      bool       `json:"public"`
+	Installs    int        `json:"installs"`
+	ForkedFrom  string     `json:"forked_from,omitempty"`
+	Versions    []Version  `json:"versions,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 // QuotaCheck is set by main.go to check wallet credits before AI calls.

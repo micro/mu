@@ -36,8 +36,8 @@ import (
 const apiBase = "https://graph.facebook.com/v21.0"
 
 var (
-	linkMu    sync.RWMutex
-	links     = map[string]string{} // whatsapp phone number → mu account ID
+	linkMu sync.RWMutex
+	links  = map[string]string{} // whatsapp phone number → mu account ID
 
 	historyMu sync.RWMutex
 	histories = map[string][]agent.QueryMessage{}
@@ -139,9 +139,9 @@ type webhookPayload struct {
 			Field string `json:"field"`
 			Value struct {
 				Messages []struct {
-					From    string `json:"from"`
-					Type    string `json:"type"`
-					Text    struct {
+					From string `json:"from"`
+					Type string `json:"type"`
+					Text struct {
 						Body string `json:"body"`
 					} `json:"text"`
 					Context *struct {

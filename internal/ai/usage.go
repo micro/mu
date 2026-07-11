@@ -14,9 +14,9 @@ type modelPricing struct {
 
 var knownPricing = map[string]modelPricing{
 	// Anthropic
-	"claude-opus-4":    {15.0, 75.0},
-	"claude-sonnet-4":  {3.0, 15.0},
-	"claude-haiku-4":   {0.80, 4.0},
+	"claude-opus-4":   {15.0, 75.0},
+	"claude-sonnet-4": {3.0, 15.0},
+	"claude-haiku-4":  {0.80, 4.0},
 	// Atlas Cloud / DeepSeek
 	"deepseek-v4-pro":   {1.68, 3.38},
 	"deepseek-v4-flash": {0.14, 0.28},

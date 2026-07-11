@@ -141,7 +141,9 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		var cmd string
 		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
-			var req struct{ Cmd string `json:"cmd"` }
+			var req struct {
+				Cmd string `json:"cmd"`
+			}
 			json.NewDecoder(r.Body).Decode(&req)
 			cmd = strings.TrimSpace(req.Cmd)
 		} else {

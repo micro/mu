@@ -12,10 +12,10 @@ import (
 )
 
 type Sentiment struct {
-	Title     string   `json:"title"`
-	Score     float64  `json:"score"`     // -1.0 to 1.0
-	Topics   []string  `json:"topics"`
-	Summary  string    `json:"summary"`   // one-line
+	Title   string   `json:"title"`
+	Score   float64  `json:"score"` // -1.0 to 1.0
+	Topics  []string `json:"topics"`
+	Summary string   `json:"summary"` // one-line
 }
 
 var (

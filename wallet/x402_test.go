@@ -13,9 +13,9 @@ func TestCreditsToAtomic(t *testing.T) {
 		credits, decimals int
 		want              string
 	}{
-		{5, 6, "50000"},  // $0.05 USDC
-		{1, 6, "10000"},  // $0.01 USDC
-		{0, 6, "10000"},  // floored to 1 credit
+		{5, 6, "50000"},     // $0.05 USDC
+		{1, 6, "10000"},     // $0.01 USDC
+		{0, 6, "10000"},     // floored to 1 credit
 		{100, 6, "1000000"}, // $1.00
 	}
 	for _, c := range cases {
@@ -27,11 +27,11 @@ func TestCreditsToAtomic(t *testing.T) {
 
 func TestNormalizeNetwork(t *testing.T) {
 	for in, want := range map[string]string{
-		"base":          "eip155:8453",
-		"eip155:8453":   "eip155:8453",
-		"base-sepolia":  "eip155:84532",
-		"eip155:84532":  "eip155:84532",
-		"solana":        "solana", // passthrough
+		"base":         "eip155:8453",
+		"eip155:8453":  "eip155:8453",
+		"base-sepolia": "eip155:84532",
+		"eip155:84532": "eip155:84532",
+		"solana":       "solana", // passthrough
 	} {
 		if got := normalizeNetwork(in); got != want {
 			t.Errorf("normalizeNetwork(%q)=%q want %q", in, got, want)

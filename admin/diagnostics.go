@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"mu/client/discord"
+	"mu/client/telegram"
+	"mu/client/whatsapp"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -14,15 +16,13 @@ import (
 	"mu/markets"
 	"mu/news"
 	"mu/news/digest"
-	"mu/client/telegram"
-	"mu/client/whatsapp"
 )
 
 type healthCheck struct {
-	Name    string
-	Status  string // "ok", "warning", "error"
-	Detail  string
-	Fix     string // actionable suggestion
+	Name   string
+	Status string // "ok", "warning", "error"
+	Detail string
+	Fix    string // actionable suggestion
 }
 
 func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {

@@ -17,10 +17,10 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 	"mu/internal/app"
-	"mu/internal/service"
-	"mu/internal/snapshot"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/service"
+	"mu/internal/snapshot"
 
 	"mu/wallet"
 )
