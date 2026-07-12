@@ -1,28 +1,32 @@
 # mu
 
-**An agent for everyday.**
+**Your everyday internet — one home you own.**
 
-News, mail, search, weather, markets, video — the everyday internet, handled by one agent you just talk to. Ask Mu for anything you'd normally open ten tabs and five apps to do, and get an answer instead.
-
-No ads. No tracking. No algorithm. Pay for the tools, not with your attention.
+News, mail, markets, weather, video, search — the everyday things, on one screen that's yours. Glance at your day; ask the agent when a glance isn't enough. No ads, no algorithm, no attention economy. Open and self-hostable, so the whole stack is yours.
 
 ## Overview
 
-The big platforms have a service for everything — and they own it, and they monetise your attention to do it. Mu is the alternative: one agent across all the everyday things — news, mail, markets, weather, search, video, blog, social, reminders — each a real service the agent operates on your behalf. And because it's open and self-hostable, you can run the whole stack yourself instead of renting each piece from someone else.
+Most of the everyday internet is glanceable — headlines, prices, the weather, what's unread. You don't want a conversation for that; you want to *look*. So Mu is a home screen first: cards that show you your day at a glance, the way a dashboard should.
 
-The agent remembers your preferences across sessions, surfaces contextual suggestions based on your data, and learns what you care about over time. It isn't a chatbot bolted onto a website — it's the interface to a stack of services that are yours.
+But some things a glance can't do — reply to that email, explain why the market moved, plan the trip, pull a thread together. That's the agent's job. It isn't a chatbot bolted on the side; it's woven through, right where you're already looking, so seeing turns into doing without switching tools.
 
-Built in the open, on [Go Micro](https://github.com/micro/go-micro). Self-host the whole thing.
+And the whole thing is yours. Every capability — news, mail, markets, weather, search, video, blog, social, reminders — is a real service you can run yourself, on your own machine, with your own data. The big platforms rent you a service for everything and take your attention as the fee. Mu is the opposite: open, self-hostable, no ads, no tracking.
+
+Three ideas, one product:
+
+- **Glance is the habit** — cards give you a reason to open it every day.
+- **The agent is the value** — it does the things a widget can't.
+- **Ownership is the moat** — it's your stack, not rented from a platform.
 
 ### How it works
 
-Open Mu and you see a prompt: **"What do you need?"** Below it, contextual suggestions based on your current state — unread emails, market movements, latest news. Ask a question or tap a suggestion. The AI calls your services, composes an answer, and shows it inline.
+Open Mu and you see your day: news, markets, mail, weather — whatever you keep, laid out to glance at, not to read. Pin the apps and cards you care about; hide the rest.
 
-Below the AI, cards give you an at-a-glance overview of everything: news headlines, market prices, blog posts, social threads, video. Cards are configurable — show or hide what you care about.
+When a glance isn't enough, the agent is right there. Ask it anything and it calls your services — news, markets, mail, weather, search and more — does the work, and answers in place. It remembers what you care about across sessions, so it gets more useful the more you use it.
 
 ### The services
 
-Each is a service the agent can call — most registered as [Go Micro](https://github.com/micro/go-micro) services — and reachable directly over REST, MCP, A2A, or the CLI.
+Each is a real service — reachable in the app, and directly over REST, MCP, A2A, or the CLI. The agent calls them on your behalf; you can also use any of them on its own.
 
 - **Agent** — Ask anything. It calls news, markets, mail, weather, web search and more, then synthesises an answer. Remembers your preferences.
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
@@ -34,23 +38,15 @@ Each is a service the agent can call — most registered as [Go Micro](https://g
 - **Web** — Search the web without tracking
 - **Weather** — Forecasts and conditions
 - **Places** — Search places and nearby results with configured providers and open-data fallbacks
-- **Apps** — Build and use small, useful tools — any app can be pinned as a home card
+- **Apps** — Build and use small, useful tools — pin any app to the top of your home screen
 - **Reminder** — A daily Islamic reminder surfaced as a home card and MCP tool
 - **Stream** — Public event feed for agents and tools to subscribe to
 
 Runs as a single Go binary. Self-host your own instance.
 
-## Built on Go Micro
-
-Mu is built on [Go Micro](https://github.com/micro/go-micro) and dogfoods it as a real-world reference app. Each domain — news, markets, weather, mail, search, video, blog, social and more — is registered as a Go Micro service, so the agent can call it and it's reachable over REST, MCP, A2A, and the CLI from one registry.
-
-- **Each capability is a Go Micro service**, registered in-process.
-- **The agent calls those services** and composes an answer.
-- **One binary.** Everything runs in-process behind an in-memory registry, so self-hosting is a single Go binary — the same services can later be split across processes by swapping the registry.
-
-A service for everything, like the big platforms — except the runtime is open and the instance is yours.
-
 ## For developers
+
+Under the hood, every capability is a service. Mu runs them in-process behind an in-memory registry — built on [Go Micro](https://github.com/micro/go-micro) — so the whole thing self-hosts as a single Go binary, and the same services can later be split across processes by swapping the registry.
 
 Because every capability is a service, it's reachable however you like. Mu exposes a REST API and an [MCP](https://modelcontextprotocol.io) server at `/mcp`, so AI agents and tools can connect directly.
 

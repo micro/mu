@@ -688,7 +688,7 @@ function fetchW(la,lo){
 	}
 
 	lang := app.GetUserLanguage(r)
-	html := app.RenderHTMLWithLangAndBody("Home", "The home screen", b.String(), lang, bodyClass)
+	html := app.RenderHTMLWithLangAndBody("Home", "The home screen", b.String(), lang, bodyClass, viewerAcc)
 	w.Write([]byte(html))
 }
 

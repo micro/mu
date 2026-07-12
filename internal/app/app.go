@@ -1434,12 +1434,13 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 }
 
 // RenderHTMLWithLangAndBody renders html with a custom body attribute string
-// (e.g. ` class="page-home"` to enable page-specific CSS).
-func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string) string {
+// (e.g. ` class="page-home"` to enable page-specific CSS). Pass the viewer's
+// account so the sidebar shows Account/Logout when signed in (nil for guests).
+func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *auth.Account) string {
 	if lang == "" {
 		lang = "en"
 	}
-	return fmt.Sprintf(Template, lang, title, desc, bodyAttr, navAuthHTML(nil), title, html)
+	return fmt.Sprintf(Template, lang, title, desc, bodyAttr, navAuthHTML(acc), title, html)
 }
 
 // RenderString renders a markdown string as html
