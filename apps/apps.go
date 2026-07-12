@@ -189,24 +189,27 @@ func Load() {
 		app.Log("apps", "service register failed: %v", err)
 	}
 
-	b, err := data.LoadFile("apps.json")
-	if err != nil {
-		return
+	// Load persisted apps if the file exists. A missing file is not an error —
+	// it just means a fresh install, which falls through to seeding below.
+	if b, err := data.LoadFile("apps.json"); err == nil {
+		var loaded []*App
+		if jerr := json.Unmarshal(b, &loaded); jerr != nil {
+			app.Log("apps", "Failed to load apps.json: %v", jerr)
+		} else {
+			mutex.Lock()
+			for _, a := range loaded {
+				apps[a.Slug] = a
+			}
+			mutex.Unlock()
+			app.Log("apps", "Loaded %d apps", len(loaded))
+		}
 	}
-	var loaded []*App
-	if err := json.Unmarshal(b, &loaded); err != nil {
-		app.Log("apps", "Failed to load apps.json: %v", err)
-		return
-	}
-	mutex.Lock()
-	for _, a := range loaded {
-		apps[a.Slug] = a
-	}
-	mutex.Unlock()
-	app.Log("apps", "Loaded %d apps", len(loaded))
 
-	// Seed built-in apps on first run
-	if len(loaded) == 0 {
+	// Seed built-in apps on first run (no apps.json, or an empty one).
+	mutex.RLock()
+	n := len(apps)
+	mutex.RUnlock()
+	if n == 0 {
 		seedApps()
 	}
 

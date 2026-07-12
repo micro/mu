@@ -8,6 +8,41 @@ import (
 	"github.com/google/uuid"
 )
 
+// helloWorldHTML is the complete page for the built-in "Hello World" app — a
+// self-contained raw-mode example with no dependencies.
+const helloWorldHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hello World</title>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#fafafa;color:#111}
+  .card{text-align:center;padding:40px}
+  h1{font-size:32px;margin:0 0 8px}
+  p{color:#666;margin:0 0 20px}
+  button{font:inherit;padding:8px 18px;border:1px solid #111;border-radius:8px;background:#111;color:#fff;cursor:pointer}
+  button:hover{opacity:.85}
+  #out{margin-top:16px;color:#333;min-height:20px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Hello, World 👋</h1>
+    <p>A minimal Mu app.</p>
+    <button id="btn">Say hello</button>
+    <div id="out"></div>
+  </div>
+  <script>
+    var n=0;
+    document.getElementById('btn').addEventListener('click',function(){
+      n++;
+      document.getElementById('out').textContent='Hello #'+n+' — '+new Date().toLocaleTimeString();
+    });
+  </script>
+</body>
+</html>`
+
 // seedApps creates a set of built-in apps on first run so the directory
 // has immediate value. These ship with the platform and are authored by "mu".
 func seedApps() {
@@ -108,6 +143,34 @@ func seedApps() {
 
 	now := time.Now()
 	count := 0
+
+	// A minimal raw-HTML app — the "hello world" of the apps platform. Unlike the
+	// template-backed seeds above, it ships its own complete HTML page, so it also
+	// serves as the simplest possible example of a raw-mode app.
+	hello := &App{
+		ID:          uuid.New().String(),
+		Slug:        "hello-world",
+		Name:        "Hello World",
+		Description: "A minimal example app — the hello world of Mu apps",
+		AuthorID:    "mu",
+		Author:      "mu",
+		Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <circle cx="16" cy="16" r="12" fill="none" stroke="#555" stroke-width="2"/>
+  <ellipse cx="16" cy="16" rx="5" ry="12" fill="none" stroke="#555" stroke-width="2"/>
+  <line x1="4" y1="16" x2="28" y2="16" stroke="#555" stroke-width="2"/>
+</svg>`,
+		Mode:      "raw",
+		HTML:      helloWorldHTML,
+		Tags:      "example, hello-world",
+		Public:    true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	mutex.Lock()
+	apps[hello.Slug] = hello
+	mutex.Unlock()
+	count++
+
 	for _, s := range seeds {
 		t := GetTemplate(s.TemplateID)
 		if t == nil {
