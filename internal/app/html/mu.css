@@ -756,10 +756,9 @@ body.page-home #page-title ~ #customize-link {
 
 #home {
   margin-bottom: 25px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
+  display: flex;
   gap: 20px;
+  height: 100%;
 }
 
 /* Pinned apps: a quick-launch strip at the top of home, below the chips. */
@@ -782,17 +781,6 @@ body.page-home #page-title ~ #customize-link {
 }
 .home-app:hover {
   border-color: #bbb;
-}
-
-/* Drag-to-reorder: cards are grabbed by their header. */
-.card-grip {
-  cursor: grab;
-}
-#home > .card.dragging {
-  opacity: 0.4;
-}
-#home > .card[draggable="true"] {
-  cursor: grabbing;
 }
 
 .card-tooltip {
@@ -868,11 +856,27 @@ body.page-home #page-title ~ #customize-link {
   margin-top: 0;
 }
 
-#home > .card {
+.home-left, .home-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.home-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-right {
+  width: 370px;
+  flex-shrink: 0;
+}
+
+.home-left .card, .home-right .card {
   margin: 0;
   float: none;
-  min-width: 0;
-  max-width: none;  /* Allow cards to fill their grid column */
+  min-width: 350px;
+  max-width: none;  /* Allow cards to expand in home columns */
 }
 
 /* Home page: cards have borders, but content inside does not */
@@ -917,7 +921,11 @@ body.page-home #page-title ~ #customize-link {
 /* Switch to a single column when there's not enough room for two + sidebar */
 @media only screen and (max-width: 1100px) {
   #home {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .home-right {
+    width: 100%;
   }
 }
 
@@ -2460,30 +2468,43 @@ a.highlight {
   
   /* Home page layout — flatten columns on mobile for unified card ordering */
   #home {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 8px;
     height: auto;
+  }
+  .home-left, .home-right {
+    display: contents;
   }
   #home-date {
     justify-content: center;
   }
 
   /* Compact cards on mobile */
-  #home > .card {
+  .home-left .card, .home-right .card {
     padding: 12px;
     margin-bottom: 0;
     width: 100%;
     min-width: auto;
   }
 
-  #home .card h3 {
+  .home-left .card h3 {
     font-size: 14px;
     margin-bottom: 8px;
   }
 
-  #home .card-link {
+  .home-left .card-link {
     font-size: 12px;
   }
+
+  /* Card order on mobile — reminder first, then useful content */
+  #reminder { order: 1; }
+  #markets { order: 2; }
+  #blog { order: 3; }
+  #news { order: 4; }
+  #social { order: 5; }
+  #video { order: 6; }
+  #home-chat { order: 7; }
 
   .cover {
     display: block;
