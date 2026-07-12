@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"mu/blog"
 	"mu/internal/ai"
 	"mu/internal/app"
+	"mu/internal/settings"
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
@@ -35,6 +37,12 @@ func sendMorningBriefings() {
 	briefing := buildBriefing()
 	if briefing == "" {
 		return
+	}
+	// Hook: the sharp brief above, then one line into the day's richer read on
+	// the blog (the opinion piece, else the digest) — the wall of text lives
+	// there, not in the chat message.
+	if hook := briefHook(); hook != "" {
+		briefing += "\n\n" + hook
 	}
 
 	// Post to every server's configured briefing channel
@@ -125,6 +133,27 @@ func buildBriefing() string {
 		return strings.TrimSpace(b.String())
 	}
 	return strings.TrimSpace(result)
+}
+
+// briefHook returns a one-line link into the day's richer blog read — the
+// opinion piece if there is one, otherwise the digest — or "" if neither exists.
+func briefHook() string {
+	post := blog.FindTodayOpinion()
+	if post == nil {
+		post = blog.FindTodayDigest()
+	}
+	if post == nil || post.ID == "" {
+		return ""
+	}
+	base := strings.TrimRight(settings.Get("APP_URL"), "/")
+	if base == "" {
+		base = "https://micro.mu"
+	}
+	title := strings.TrimSpace(post.Title)
+	if title == "" {
+		title = "Today on the blog"
+	}
+	return fmt.Sprintf("→ [%s](%s/blog/post?id=%s)", title, base, post.ID)
 }
 
 // diverseHeadlines spreads the pick across news categories so a single
