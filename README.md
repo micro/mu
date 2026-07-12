@@ -1,32 +1,18 @@
 # mu
 
-**Your everyday internet — one home you own.**
+A self-hostable personal server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, video, blog, social, places, reminders — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
 
-News, mail, markets, weather, video, search — the everyday things, on one screen that's yours. Glance at your day; ask the agent when a glance isn't enough. No ads, no algorithm, no attention economy. Open and self-hostable, so the whole stack is yours.
+## What it is
 
-## Overview
-
-Most of the everyday internet is glanceable — headlines, prices, the weather, what's unread. You don't want a conversation for that; you want to *look*. So Mu is a home screen first: cards that show you your day at a glance, the way a dashboard should.
-
-But some things a glance can't do — reply to that email, explain why the market moved, plan the trip, pull a thread together. That's the agent's job. It isn't a chatbot bolted on the side; it's woven through, right where you're already looking, so seeing turns into doing without switching tools.
-
-And the whole thing is yours. Every capability — news, mail, markets, weather, search, video, blog, social, reminders — is a real service you can run yourself, on your own machine, with your own data. The big platforms rent you a service for everything and take your attention as the fee. Mu is the opposite: open, self-hostable, no ads, no tracking.
-
-Three ideas, one product:
-
-- **Glance is the habit** — cards give you a reason to open it every day.
-- **The agent is the value** — it does the things a widget can't.
-- **Ownership is the moat** — it's your stack, not rented from a platform.
-
-### How it works
-
-Open Mu and you see your day: news, markets, mail, weather — whatever you keep, laid out to glance at, not to read. Pin the apps and cards you care about; hide the rest.
-
-When a glance isn't enough, the agent is right there. Ask it anything and it calls your services — news, markets, mail, weather, search and more — does the work, and answers in place. It remembers what you care about across sessions, so it gets more useful the more you use it.
+- **A set of services in one process.** Each domain (news, markets, mail, weather, …) is a Go Micro service with typed handlers, registered in-process behind an in-memory registry. One binary, no external infrastructure; the same handlers can later be split across processes by swapping the registry.
+- **An agent over those services.** An LLM — Claude, Atlas Cloud (DeepSeek), or a local Ollama / OpenAI-compatible endpoint — calls the services as tools, composes answers, and keeps per-user memory across sessions.
+- **A web UI that's a home screen.** Cards render each service at a glance (headlines, prices, weather, unread mail); the agent sits inline to act on what you're looking at. Logged-out visitors get a public version with live public data.
+- **Several front doors to the same services.** A REST API, an MCP server at `/mcp`, an A2A endpoint at `/a2a`, and a CLI where every tool is a subcommand. API and MCP callers can pay per request in USDC via [x402](https://x402.org).
+- **Self-hosted.** Your instance, your data, no ads or tracking. Runs locally or on your own host.
 
 ### The services
 
-Each is a real service — reachable in the app, and directly over REST, MCP, A2A, or the CLI. The agent calls them on your behalf; you can also use any of them on its own.
+Each is a service, reachable in the web app and directly over REST, MCP, A2A, or the CLI. The agent calls them as tools; each is also usable on its own.
 
 - **Agent** — Ask anything. It calls news, markets, mail, weather, web search and more, then synthesises an answer. Remembers your preferences.
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
@@ -45,8 +31,6 @@ Each is a real service — reachable in the app, and directly over REST, MCP, A2
 Runs as a single Go binary. Self-host your own instance.
 
 ## For developers
-
-Under the hood, every capability is a service. Mu runs them in-process behind an in-memory registry — built on [Go Micro](https://github.com/micro/go-micro) — so the whole thing self-hosts as a single Go binary, and the same services can later be split across processes by swapping the registry.
 
 Because every capability is a service, it's reachable however you like. Mu exposes a REST API and an [MCP](https://modelcontextprotocol.io) server at `/mcp`, so AI agents and tools can connect directly.
 
