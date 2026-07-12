@@ -756,9 +756,43 @@ body.page-home #page-title ~ #customize-link {
 
 #home {
   margin-bottom: 25px;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 20px;
-  height: 100%;
+}
+
+/* Pinned apps: a quick-launch strip at the top of home, below the chips. */
+#home-apps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.home-app {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  color: #333;
+  text-decoration: none;
+}
+.home-app:hover {
+  border-color: #bbb;
+}
+
+/* Drag-to-reorder: cards are grabbed by their header. */
+.card-grip {
+  cursor: grab;
+}
+#home > .card.dragging {
+  opacity: 0.4;
+}
+#home > .card[draggable="true"] {
+  cursor: grabbing;
 }
 
 .card-tooltip {
@@ -834,32 +868,15 @@ body.page-home #page-title ~ #customize-link {
   margin-top: 0;
 }
 
-.home-left, .home-right {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.home-left {
-  flex: 1;
-  min-width: 0;
-}
-
-.home-right {
-  width: 370px;
-  flex-shrink: 0;
-}
-
-.home-left .card, .home-right .card {
+#home > .card {
   margin: 0;
   float: none;
-  min-width: 350px;
-  max-width: none;  /* Allow cards to expand in home columns */
+  min-width: 0;
+  max-width: none;  /* Allow cards to fill their grid column */
 }
 
 /* Home page: cards have borders, but content inside does not */
-.home-left .card .headline,
-.home-right .card .headline,
+#home .card .headline,
 #mu-chat .card .headline,
 #mu-overview .card .headline {
   border: none;
@@ -870,27 +887,22 @@ body.page-home #page-title ~ #customize-link {
   background: transparent;
 }
 
-.home-left .card .headline:last-of-type,
-.home-right .card .headline:last-of-type,
+#home .card .headline:last-of-type,
 #mu-chat .card .headline:last-of-type,
 #mu-overview .card .headline:last-of-type {
   border-bottom: none;
   padding-bottom: 0;
 }
 
-.home-left .card .headline:first-of-type,
-.home-right .card .headline:first-of-type,
+#home .card .headline:first-of-type,
 #mu-chat .card .headline:first-of-type,
 #mu-overview .card .headline:first-of-type {
   padding-top: 0;
 }
 
-.home-left .card .item,
-.home-left .card .post-item,
-.home-left .card .thumbnail,
-.home-right .card .item,
-.home-right .card .post-item,
-.home-right .card .thumbnail,
+#home .card .item,
+#home .card .post-item,
+#home .card .thumbnail,
 #mu-chat .card .item,
 #mu-chat .card .post-item,
 #mu-chat .card .thumbnail,
@@ -902,14 +914,10 @@ body.page-home #page-title ~ #customize-link {
   background: transparent;
 }
 
-/* Switch to single column when there's not enough space for two columns + sidebar */
+/* Switch to a single column when there's not enough room for two + sidebar */
 @media only screen and (max-width: 1100px) {
   #home {
-    flex-direction: column;
-  }
-
-  .home-right {
-    width: 100%;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2452,43 +2460,30 @@ a.highlight {
   
   /* Home page layout — flatten columns on mobile for unified card ordering */
   #home {
-    display: flex;
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 8px;
     height: auto;
-  }
-  .home-left, .home-right {
-    display: contents;
   }
   #home-date {
     justify-content: center;
   }
 
   /* Compact cards on mobile */
-  .home-left .card, .home-right .card {
+  #home > .card {
     padding: 12px;
     margin-bottom: 0;
     width: 100%;
     min-width: auto;
   }
 
-  .home-left .card h3 {
+  #home .card h3 {
     font-size: 14px;
     margin-bottom: 8px;
   }
 
-  .home-left .card-link {
+  #home .card-link {
     font-size: 12px;
   }
-
-  /* Card order on mobile — reminder first, then useful content */
-  #reminder { order: 1; }
-  #markets { order: 2; }
-  #blog { order: 3; }
-  #news { order: 4; }
-  #social { order: 5; }
-  #video { order: 6; }
-  #home-chat { order: 7; }
 
   .cover {
     display: block;

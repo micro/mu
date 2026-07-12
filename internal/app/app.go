@@ -988,7 +988,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	allCards := []struct{ id, label string }{
 		{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
 		{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
-		{"mail", "Mail"}, {"web", "Web Search"},
+		{"mail", "Mail"}, {"web", "Search"},
 	}
 	activeCards := map[string]bool{}
 	if len(acc.HomeCards) > 0 {

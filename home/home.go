@@ -29,10 +29,54 @@ import (
 //go:embed cards.json
 var f embed.FS
 
-var Template = `<div id="home">
-  <div class="home-left">%s</div>
-  <div class="home-right">%s</div>
-</div>`
+// Template is the home cards container: a single grid the user can drag to
+// reorder. Cards flow row-major across two columns on desktop, one on mobile.
+var Template = `<div id="home" class="home-grid">%s</div>`
+
+// dragReorderScript makes the home cards draggable by their header and saves the
+// new order to the account (HomeCards). Logged-in only; touch devices fall back
+// to the saved order without live reordering.
+const dragReorderScript = `<script>
+(function(){
+  var grid=document.getElementById('home');
+  if(!grid) return;
+  function cards(){return Array.prototype.slice.call(grid.querySelectorAll(':scope > .card'));}
+  var dragEl=null, saveTimer=null;
+  function persist(){
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(function(){
+      var body=new URLSearchParams(); body.set('save_cards','1');
+      cards().forEach(function(c){body.append('cards',c.id);});
+      var h={'Content-Type':'application/x-www-form-urlencoded'};
+      var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+      if(m)h['X-CSRF-Token']=decodeURIComponent(m[1]);
+      fetch('/account',{method:'POST',credentials:'same-origin',headers:h,body:body.toString()});
+    },400);
+  }
+  document.addEventListener('mouseup',function(){cards().forEach(function(c){c.removeAttribute('draggable');});});
+  cards().forEach(function(card){
+    var head=card.querySelector('h4');
+    if(head){
+      head.classList.add('card-grip');
+      head.addEventListener('mousedown',function(){card.setAttribute('draggable','true');});
+    }
+    card.addEventListener('dragstart',function(e){dragEl=card;card.classList.add('dragging');if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',card.id);}});
+    card.addEventListener('dragend',function(){card.classList.remove('dragging');card.removeAttribute('draggable');dragEl=null;persist();});
+  });
+  grid.addEventListener('dragover',function(e){
+    if(!dragEl) return;
+    e.preventDefault();
+    var x=e.clientX, y=e.clientY;
+    var target=cards().filter(function(c){return c!==dragEl;}).find(function(c){
+      var r=c.getBoundingClientRect();
+      var cy=r.top+r.height/2, cx=r.left+r.width/2;
+      return (y < cy-6) || (Math.abs(y-cy) <= r.height/2 && x < cx);
+    });
+    if(target){ grid.insertBefore(dragEl,target); }
+    else { grid.appendChild(dragEl); }
+  });
+})();
+</script>`
 
 func newsCard() string {
 	return news.Headlines()
@@ -105,6 +149,12 @@ type CardConfig struct {
 }
 
 var Cards []Card
+
+// defaultCardOrder is the home grid order for a fresh account with no saved
+// preference. Cards flow row-major across the two columns, so this reads
+// blog|markets / news|reminder / social|video. mail and web are opt-in and so
+// are absent here.
+var defaultCardOrder = []string{"blog", "markets", "news", "reminder", "social", "video"}
 
 func Load() {
 	b, _ := f.ReadFile("cards.json")
@@ -480,6 +530,22 @@ function fetchW(la,lo){
 		b.WriteString(`</div>`)
 	}
 
+	// Pinned apps — a quick-launch strip at the top, just below the suggestion
+	// chips. Selected in the preferences panel; opens the app on click.
+	if viewerAcc != nil && len(viewerAcc.Widgets) > 0 {
+		var tiles string
+		for _, slug := range viewerAcc.Widgets {
+			a := apps.GetApp(slug)
+			if a == nil {
+				continue
+			}
+			tiles += fmt.Sprintf(`<a class="home-app" href="/apps/%s">%s</a>`, htmlEsc(a.Slug), htmlEsc(a.Name))
+		}
+		if tiles != "" {
+			b.WriteString(fmt.Sprintf(`<div id="home-apps">%s</div>`, tiles))
+		}
+	}
+
 	// Inline card preferences panel
 	if viewerAcc != nil {
 		allCardDefs := []struct{ id, label string }{
@@ -529,8 +595,8 @@ function fetchW(la,lo){
 <p style="font-size:12px;color:#999;margin:0 0 8px">Choose what your agent keeps an eye on.</p>
 <div id="card-checkboxes">%s</div>`, checkboxes))
 		if widgetCheckboxes != "" {
-			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">App widgets</p>
-<p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps as cards.</p>
+			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">Apps</p>
+<p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps to the top of your home screen.</p>
 <div id="widget-checkboxes">%s</div>`, widgetCheckboxes))
 		}
 		b.WriteString(`<script>
@@ -560,16 +626,17 @@ function fetchW(la,lo){
 </script></div>`)
 	}
 
-	var userCards map[string]int
+	// Cards render in a single grid the user can drag to reorder; the order is
+	// saved to the account (HomeCards). Build each enabled card's HTML, then emit
+	// in the saved order — or a sensible default for a fresh account.
+	order := defaultCardOrder
 	if viewerAcc != nil && len(viewerAcc.HomeCards) > 0 {
-		userCards = make(map[string]int, len(viewerAcc.HomeCards))
-		for i, id := range viewerAcc.HomeCards {
-			userCards[id] = i
-		}
+		order = viewerAcc.HomeCards
 	}
-
-	var leftHTML []string
-	var rightHTML []string
+	want := make(map[string]bool, len(order))
+	for _, id := range order {
+		want[id] = true
+	}
 
 	tooltips := map[string]string{
 		"blog":     "Microblog posts with daily AI-generated digests",
@@ -580,11 +647,10 @@ function fetchW(la,lo){
 		"video":    "Latest videos from curated channels",
 	}
 
+	cardHTML := map[string]string{}
 	for _, card := range Cards {
-		if userCards != nil {
-			if _, ok := userCards[card.ID]; !ok {
-				continue
-			}
+		if !want[card.ID] {
+			continue
 		}
 		content := card.CachedHTML
 		if strings.TrimSpace(content) == "" {
@@ -597,54 +663,37 @@ function fetchW(la,lo){
 		if tip, ok := tooltips[card.ID]; ok {
 			title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
 		}
-		html := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
-		if card.Column == "left" {
-			leftHTML = append(leftHTML, html)
-		} else {
-			rightHTML = append(rightHTML, html)
-		}
+		cardHTML[card.ID] = fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
 	}
 
-	// User-specific cards — rendered per-request, not cached.
+	// Per-user cards (opt-in): mail and web search.
 	if viewerID != "" {
-		isCardEnabled := func(id string) bool {
-			if userCards == nil {
-				return false // mail/web are opt-in, not in default set
-			}
-			_, ok := userCards[id]
-			return ok
-		}
-
-		// Mail card — recent messages.
-		if isCardEnabled("mail") {
+		if want["mail"] {
 			mailContent := mail.GetRecentThreadsPreview(viewerID, 3)
 			mailContent += app.Link("More", "/mail")
-			rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "mail", "mail", "Mail", mailContent))
+			cardHTML["mail"] = fmt.Sprintf(app.CardTemplate, "mail", "mail", "Mail", mailContent)
 		}
-
-		// Web search card.
-		if isCardEnabled("web") {
+		if want["web"] {
 			webContent := `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
-			rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "web", "web", "Search", webContent))
-		}
-
-		// App widgets — user-selected apps rendered as iframe cards.
-		if viewerAcc != nil && len(viewerAcc.Widgets) > 0 {
-			for _, slug := range viewerAcc.Widgets {
-				a := apps.GetApp(slug)
-				if a == nil {
-					continue
-				}
-				widgetContent := fmt.Sprintf(`<iframe src="/apps/%s" style="width:100%%;height:300px;border:none;border-radius:6px" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>`, htmlEsc(a.Slug))
-				rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "app-"+a.Slug, "app-"+a.Slug, htmlEsc(a.Name), widgetContent))
-			}
+			cardHTML["web"] = fmt.Sprintf(app.CardTemplate, "web", "web", "Search", webContent)
 		}
 	}
 
-	if len(leftHTML) > 0 || len(rightHTML) > 0 {
-		b.WriteString(fmt.Sprintf(Template,
-			strings.Join(leftHTML, "\n"),
-			strings.Join(rightHTML, "\n")))
+	var cardsHTML []string
+	for _, id := range order {
+		if h, ok := cardHTML[id]; ok {
+			cardsHTML = append(cardsHTML, h)
+		}
+	}
+
+	if len(cardsHTML) > 0 {
+		b.WriteString(fmt.Sprintf(Template, strings.Join(cardsHTML, "\n")))
+	}
+
+	// Drag-to-reorder (logged-in only): grab a card by its header to move it and
+	// the new order is saved to the account.
+	if viewerAcc != nil {
+		b.WriteString(dragReorderScript)
 	}
 
 	b.WriteString(`</div>`) // close #home-cards
