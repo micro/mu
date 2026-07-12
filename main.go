@@ -136,7 +136,6 @@ func main() {
 	wallet.Load()
 	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
 	discord.Load()
-	discord.StartBriefingLoop()
 	telegram.Load()
 	whatsapp.Load()
 	mail.OnNewMail = func(accountID, from, subject, body string) {
@@ -1178,8 +1177,6 @@ func main() {
 			home.LandingHandler(w, r)
 		}
 	})
-	http.HandleFunc("/home/summary", home.SummaryHandler)
-	home.StartSummaryLoop()
 	http.HandleFunc("/pricing", home.PricingHandler)
 
 	// first-run setup wizard (open only until an admin exists)

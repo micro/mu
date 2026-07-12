@@ -192,13 +192,6 @@ var slashCommands = []SlashCommand{
 		Name:        "usage",
 		Description: "View your query usage stats",
 	},
-	{
-		Name:        "setup",
-		Description: "Configure the bot for this server (admin only)",
-		Options: []SlashCommandOption{
-			{Name: "briefing_channel", Description: "Channel for morning briefings", Type: 7, Required: true}, // type 7 = CHANNEL
-		},
-	},
 }
 
 func registerSlashCommands(appID string) {

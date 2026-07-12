@@ -480,16 +480,6 @@ function fetchW(la,lo){
 		b.WriteString(`</div>`)
 	}
 
-	// At a Glance heading + AI summary
-	b.WriteString(`<h3 style="font-size:14px;font-weight:600;color:#888;margin:16px 0 8px">At a glance</h3>`)
-	b.WriteString(`<div id="home-summary" style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;min-height:20px"></div>`)
-	b.WriteString(`<script>(function(){
-fetch('/home/summary',{headers:{'Accept':'application/json'},credentials:'same-origin'})
-.then(function(r){return r.ok?r.json():null})
-.then(function(d){if(d&&d.summary)document.getElementById('home-summary').textContent=d.summary})
-.catch(function(){});
-})()</script>`)
-
 	// Inline card preferences panel
 	if viewerAcc != nil {
 		allCardDefs := []struct{ id, label string }{

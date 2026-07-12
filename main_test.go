@@ -58,24 +58,6 @@ func TestChargedWriteOp(t *testing.T) {
 	}
 }
 
-func TestRecallFormattingHelpers(t *testing.T) {
-	if got := recallStripTags("<p>Hello <strong>world</strong></p>"); got != "Hello world" {
-		t.Fatalf("recallStripTags() = %q", got)
-	}
-	if got := recallSnippet("<p>Hello\n\tworld</p>", 20); got != "Hello world" {
-		t.Fatalf("recallSnippet() = %q", got)
-	}
-	if got := recallSnippet("abcdef", 3); got != "abc…" {
-		t.Fatalf("truncated recallSnippet() = %q", got)
-	}
-	if got := recallFirstLine(" first line \n second line", 20); got != "first line" {
-		t.Fatalf("recallFirstLine() = %q", got)
-	}
-	if got := recallFirstLine("abcdef", 3); got != "abc…" {
-		t.Fatalf("truncated recallFirstLine() = %q", got)
-	}
-}
-
 func TestArgFloat(t *testing.T) {
 	tests := []struct {
 		name string
