@@ -1168,15 +1168,10 @@ func main() {
 	// serve fact-check page and API
 
 	// The dashboard lives at the named URL /home, consistent with every other
-	// section (/news, /mail, /agent …). The root / redirects logged-in users
-	// here; guests at /home fall back to the landing page.
-	http.HandleFunc("/home", func(w http.ResponseWriter, r *http.Request) {
-		if _, acc := auth.TrySession(r); acc != nil {
-			home.Handler(w, r)
-		} else {
-			home.LandingHandler(w, r)
-		}
-	})
+	// section (/news, /mail, /agent …). It renders for everyone: logged out, the
+	// home screen is the public face — real cards plus the agent — so a visitor
+	// sees the product rather than a separate marketing page.
+	http.HandleFunc("/home", home.Handler)
 	http.HandleFunc("/pricing", home.PricingHandler)
 
 	// first-run setup wizard (open only until an admin exists)
@@ -1445,7 +1440,9 @@ func main() {
 							http.Redirect(w, r, "/home", http.StatusFound)
 						}
 					} else {
-						home.LandingHandler(w, r)
+						// Logged out, the home screen is the landing: real cards
+						// plus the agent, so the root shows the product itself.
+						home.Handler(w, r)
 					}
 					return
 				}

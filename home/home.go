@@ -390,6 +390,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			link = "/admin/invite"
 		}
 		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="%s" style="color:#555;text-decoration:none">%s</a></span>`, link, label)
+	} else {
+		// Logged out: the home screen doubles as the landing, so offer a clear
+		// way in right where the "+ Invite" action sits for signed-in users.
+		inviteHTML = `<span id="home-date-actions"><a href="/login" style="color:#555;text-decoration:none;font-weight:600">Log in</a></span>`
 	}
 	gearHTML := ""
 	if viewerAcc != nil {
@@ -452,16 +456,18 @@ function fetchW(la,lo){
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
 
-	// Inline agent — Home answers here rather than navigating away. The shared
-	// chat component is the same agent used on /agent and the landing page;
-	// personalised chips seed the prompt via its muChatAsk.
-	if viewerID != "" {
+	// Inline agent — Home answers here rather than navigating away, and it renders
+	// for everyone: logged out, this is the public face of the product. Signed-in
+	// users get personalised chips; guests get generic starters and the guest chat.
+	{
 		var suggestions []string
-		if unread := mail.GetUnreadCount(viewerID); unread > 0 {
-			if unread == 1 {
-				suggestions = append(suggestions, "Read my unread email")
-			} else {
-				suggestions = append(suggestions, fmt.Sprintf("Read my %d unread emails", unread))
+		if viewerID != "" {
+			if unread := mail.GetUnreadCount(viewerID); unread > 0 {
+				if unread == 1 {
+					suggestions = append(suggestions, "Read my unread email")
+				} else {
+					suggestions = append(suggestions, fmt.Sprintf("Read my %d unread emails", unread))
+				}
 			}
 		}
 		if movers := markets.TopMovers(2); movers != "" {
@@ -475,7 +481,7 @@ function fetchW(la,lo){
 		}
 
 		b.WriteString(`<div id="home-agent" style="margin:0 0 20px">`)
-		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: false, HideSuggestions: true}))
+		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true}))
 		if chips != "" {
 			b.WriteString(fmt.Sprintf(`<div class="home-chips">%s</div>`, chips))
 		}
@@ -680,6 +686,16 @@ function fetchW(la,lo){
   }, interval);%s
 })();
 </script>`, refreshInterval, wakeLockJS))
+
+	// Deep-link prefill: /?q=... or /home?prompt=... seeds the agent and submits
+	// it, so a shared link lands on the home screen with the answer already coming.
+	prefill := r.URL.Query().Get("q")
+	if prefill == "" {
+		prefill = r.URL.Query().Get("prompt")
+	}
+	if prefill != "" {
+		b.WriteString(`<script>(function(){var v=` + app.JSString(prefill) + `;var f=function(){if(window.muChatAsk){window.muChatAsk(v);history.replaceState(null,'','` + r.URL.Path + `');}else{setTimeout(f,60);}};f();})()</script>`)
+	}
 
 	// Display mode: hide nav, header, footer for kiosk/wall display
 	bodyClass := ` class="page-home"`
