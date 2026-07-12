@@ -1,10 +1,14 @@
 # mu
 
-A self-hostable personal server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, video, blog, social, places, reminders — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
+A personal app server
 
-## What it is
+## Overview
 
-- **A set of services in one process.** Each domain (news, markets, mail, weather, …) is a Go Micro service with typed handlers, registered in-process behind an in-memory registry. One binary, no external infrastructure; the same handlers can later be split across processes by swapping the registry.
+A self-hostable personal app server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, video, blog, social, places, reminders — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
+
+## Features
+
+- **All services in one process.** Each domain (news, markets, mail, weather, …) is a Go Micro service with typed handlers, registered in-process behind an in-memory registry. One binary, no external infrastructure; the same handlers can later be split across processes by swapping the registry.
 - **An agent over those services.** An LLM — Claude, Atlas Cloud (DeepSeek), or a local Ollama / OpenAI-compatible endpoint — calls the services as tools, composes answers, and keeps per-user memory across sessions.
 - **A web UI that's a home screen.** Cards render each service at a glance (headlines, prices, weather, unread mail); the agent sits inline to act on what you're looking at. Logged-out visitors get a public version with live public data.
 - **Several front doors to the same services.** A REST API, an MCP server at `/mcp`, an A2A endpoint at `/a2a`, and a CLI where every tool is a subcommand. API and MCP callers can pay per request in USDC via [x402](https://x402.org).
