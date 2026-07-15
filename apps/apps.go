@@ -328,6 +328,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(path, "/sdk/store"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/store")
 		handleSDKStore(w, r, slug)
+	case strings.HasSuffix(path, "/sdk/db"):
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/db")
+		handleSDKDB(w, r, slug)
 	case strings.HasSuffix(path, "/delete") && r.Method == "POST":
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/delete")
 		handleDelete(w, r, slug)
@@ -1149,12 +1152,27 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
     // User
     user:function(){return get('/session')},
 
-    // Storage (namespaced per app)
+    // Storage (namespaced per app) — flat key/value scoped to the current user.
     store:{
       set:function(k,v){return sdk('store',{op:'set',key:k,value:v})},
       get:function(k){return sdk('store',{op:'get',key:k}).then(function(j){return j.result})},
       del:function(k){return sdk('store',{op:'del',key:k})},
       keys:function(){return sdk('store',{op:'keys'}).then(function(j){return j.result})},
+    },
+
+    // Database (namespaced per app) — collections of records with an owner and a
+    // private/public flag. create/update/del act on the current user's records;
+    // list scopes to 'mine' (default), 'public', or 'all' (mine + public).
+    //   mu.db.create('notes', {title:'x', body:'y'})            // private to me
+    //   mu.db.create('notes', {title:'x'}, {public:true})       // shared publicly
+    //   mu.db.list('notes')                                     // my notes
+    //   mu.db.list('notes', {scope:'public', sort:'title', order:'asc'})
+    db:{
+      create:function(c,d,o){return sdk('db',{op:'create',collection:c,data:d,public:!!(o&&o.public)}).then(function(j){return j.record})},
+      get:function(c,id){return sdk('db',{op:'get',collection:c,id:id}).then(function(j){return j.record})},
+      list:function(c,o){o=o||{};return sdk('db',{op:'list',collection:c,scope:o.scope||'mine',where:o.where||null,sort:o.sort||'',order:o.order||'desc',limit:o.limit||0}).then(function(j){return j.records||[]})},
+      update:function(c,id,d,o){var b={op:'update',collection:c,id:id,data:d,public:!!(o&&o.public)};return sdk('db',b).then(function(j){return j.record})},
+      del:function(c,id){return sdk('db',{op:'delete',collection:c,id:id})},
     },
 
     // Raw fetch helpers (for any endpoint)

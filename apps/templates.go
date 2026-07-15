@@ -398,40 +398,127 @@ const templateNotes = `<!DOCTYPE html>
 <script src="/apps/sdk.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; }
-h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
-textarea { width: 100%; min-height: 300px; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; line-height: 1.6; resize: vertical; }
-.toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
-.status { font-size: 13px; color: #999; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; background: #fff; color: #222; }
+h2 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.tabs button { padding: 6px 14px; border: 1px solid #e0e0e0; background: #fff; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; color: #555; }
+.tabs button.active { background: #111; color: #fff; border-color: #111; }
+.layout { display: grid; grid-template-columns: 220px 1fr; gap: 18px; }
+.list { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }
+.item { padding: 8px 10px; border: 1px solid #eee; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.item:hover { border-color: #ccc; }
+.item.sel { border-color: #111; }
+.item .pub { color: #999; font-size: 11px; }
+.item .by { color: #aaa; font-size: 11px; }
+.empty { color: #aaa; font-size: 13px; padding: 8px 0; }
+.editor input[type=text] { width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font: inherit; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.editor textarea { width: 100%; min-height: 240px; padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; font: inherit; font-size: 14px; line-height: 1.6; resize: vertical; }
+.row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.row label { font-size: 13px; color: #555; display: flex; align-items: center; gap: 6px; }
+button.act { padding: 7px 16px; background: #111; color: #fff; border: none; border-radius: 6px; cursor: pointer; font: inherit; }
+button.ghost { background: #fff; color: #555; border: 1px solid #e0e0e0; }
+.status { font-size: 13px; color: #999; margin-left: auto; }
+.ro { color: #999; font-size: 13px; }
+@media (max-width: 560px) { .layout { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <h2>Notes</h2>
-<textarea id="editor" placeholder="Start typing..."></textarea>
-<div class="toolbar">
-  <span class="status" id="status"></span>
-  <button onclick="saveNotes()">Save</button>
+<div class="tabs">
+  <button id="tab-mine" class="active" onclick="setTab('mine')">My notes</button>
+  <button id="tab-public" onclick="setTab('public')">Public</button>
+</div>
+<div class="layout">
+  <div class="list" id="list"></div>
+  <div class="editor">
+    <input type="text" id="title" placeholder="Title">
+    <textarea id="body" placeholder="Write a note..."></textarea>
+    <div class="row">
+      <label><input type="checkbox" id="public"> Public</label>
+      <button class="act" id="save" onclick="saveNote()">Save</button>
+      <button class="ghost" onclick="newNote()">New</button>
+      <button class="ghost" id="del" onclick="delNote()" style="display:none">Delete</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div class="ro" id="ro" style="display:none">Read-only — this note belongs to another user.</div>
+  </div>
 </div>
 <script>
-var editor = document.getElementById('editor');
-var status = document.getElementById('status');
+var tab = 'mine', current = null, me = null;
 
-// Load saved notes on start
-mu.store.get('notes').then(function(val) {
-  if (val) editor.value = val;
-  status.textContent = 'Loaded';
-}).catch(function() { status.textContent = 'Ready'; });
+// Records are owned server-side; knowing my account lets the UI show which
+// public notes I can edit (the server enforces it regardless).
+mu.user().then(function(u){ me = u && u.account; load(); });
 
-function saveNotes() {
-  status.textContent = 'Saving...';
-  mu.store.set('notes', editor.value).then(function() {
-    status.textContent = 'Saved';
-  }).catch(function(e) { status.textContent = 'Error: ' + e.message; });
+function setTab(t){
+  tab = t;
+  document.getElementById('tab-mine').className = t==='mine' ? 'active' : '';
+  document.getElementById('tab-public').className = t==='public' ? 'active' : '';
+  newNote(); load();
 }
 
-// Auto-save every 30 seconds
-setInterval(function() { if (editor.value) saveNotes(); }, 30000);
+function load(){
+  mu.db.list('notes', {scope: tab, sort: 'title', order: 'asc'}).then(function(recs){
+    var el = document.getElementById('list'); el.innerHTML = '';
+    if(!recs.length){ el.innerHTML = '<div class="empty">No notes yet.</div>'; return; }
+    recs.forEach(function(r){
+      var d = document.createElement('div'); d.className = 'item';
+      var mine = r.owner === me;
+      d.innerHTML = (esc(r.data.title) || 'Untitled') +
+        (r.public ? ' <span class="pub">public</span>' : '') +
+        (tab==='public' && !mine ? ' <span class="by">by '+esc(r.owner)+'</span>' : '');
+      d.onclick = function(){ openNote(r); };
+      el.appendChild(d);
+    });
+  });
+}
+
+function openNote(r){
+  current = r;
+  document.getElementById('title').value = r.data.title || '';
+  document.getElementById('body').value = r.data.body || '';
+  document.getElementById('public').checked = !!r.public;
+  var editable = r.owner === me;
+  setEditable(editable);
+  document.getElementById('del').style.display = editable ? '' : 'none';
+  status('');
+}
+
+function newNote(){
+  current = null;
+  document.getElementById('title').value = '';
+  document.getElementById('body').value = '';
+  document.getElementById('public').checked = false;
+  setEditable(true);
+  document.getElementById('del').style.display = 'none';
+  status('');
+}
+
+function setEditable(on){
+  document.getElementById('title').readOnly = !on;
+  document.getElementById('body').readOnly = !on;
+  document.getElementById('public').disabled = !on;
+  document.getElementById('save').style.display = on ? '' : 'none';
+  document.getElementById('ro').style.display = on ? 'none' : '';
+}
+
+function saveNote(){
+  var data = { title: document.getElementById('title').value, body: document.getElementById('body').value };
+  var pub = document.getElementById('public').checked;
+  status('Saving...');
+  var p = current ? mu.db.update('notes', current.id, data, {public: pub})
+                  : mu.db.create('notes', data, {public: pub});
+  p.then(function(rec){ current = rec; status('Saved'); document.getElementById('del').style.display=''; load(); })
+   .catch(function(){ status('Error saving'); });
+}
+
+function delNote(){
+  if(!current) return;
+  mu.db.del('notes', current.id).then(function(){ newNote(); load(); });
+}
+
+function status(s){ document.getElementById('status').textContent = s; }
+function esc(s){ var d=document.createElement('div'); d.textContent = s==null?'':String(s); return d.innerHTML; }
 </script>
 </body>
 </html>`
