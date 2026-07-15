@@ -1,188 +1,219 @@
 # Apps
 
-Small, self-contained web apps hosted on Mu. A timer. A calculator. A habit tracker. A unit converter. Just HTML that does something useful — no frameworks, no app store, no tracking.
+Small, self-contained web apps hosted on Mu — a timer, a notes app, an expense
+tracker, a dashboard for some API. Plain HTML, CSS and JavaScript, with a
+JavaScript SDK that gives the page real backend building blocks: per-user and
+public storage, server-side fetch, the AI and the full agent, and every Mu
+service. No frameworks, no build step, no app store, no tracking.
 
-## What is an App?
+Apps are how you extend Mu without touching the core: build a productivity tool
+for yourself, or a universal app others can use — each user's data kept under
+their own account, with a public set everyone can see.
 
-An app is a single HTML document (with inline CSS and JavaScript) that runs in a sandboxed iframe. It has a name, description, author, tags, and a URL-friendly slug. Max 256KB.
+## What is an app?
 
-No server-side code. No build tools. No dependencies. Just HTML.
+An app is an HTML document (with inline CSS and JavaScript). It has a name,
+description, author, tags, and a URL-friendly slug. Max 256KB of HTML.
+
+It renders as a full page at `/apps/{slug}/run` with the SDK injected. SDK calls
+go to same-origin, authenticated endpoints (`/apps/{slug}/sdk/...`) — the app
+acts as the signed-in user, and the server binds identity server-side, so an app
+can never read or write another user's private data.
 
 ```go
 type App struct {
-    ID          string    `json:"id"`
-    Slug        string    `json:"slug"`
-    Name        string    `json:"name"`
-    Description string    `json:"description"`
-    AuthorID    string    `json:"author_id"`
-    Author      string    `json:"author"`
-    Icon        string    `json:"icon"`
-    HTML        string    `json:"html"`
-    Tags        string    `json:"tags"`
-    Public      bool      `json:"public"`
-    Installs    int       `json:"installs"`
-    CreatedAt   time.Time `json:"created_at"`
-    UpdatedAt   time.Time `json:"updated_at"`
+    ID          string
+    Slug        string
+    Name        string
+    Description string
+    AuthorID    string
+    Author      string
+    Icon        string
+    HTML        string   // raw mode: a complete HTML page
+    Mode        string   // "" / "raw" = HTML blob, "framework" = blocks + SDK
+    Blocks      []Block  // framework mode
+    Tags        string
+    Price       int      // credits per use (0 = free)
+    Public      bool
+    Installs    int
+    Versions    []Version
+    CreatedAt   time.Time
+    UpdatedAt   time.Time
 }
 ```
 
-## Creating Apps
+## Creating an app
 
-There are several ways to create an app:
+- **Describe it** at `/apps/new` — type what you want ("an expense tracker", "a
+  packing checklist") and Mu builds it.
+- **Ask the agent** — "build me a notes app" — it creates one via the
+  `apps_create` / `apps_build` MCP tools and gives you a URL.
+- **Write it yourself** — `/apps/new` takes raw HTML, and `/apps/{slug}/edit`
+  hand-edits any app you own.
+- **The API** — `POST /apps/new` (raw HTML) or `POST /apps/generate` (describe).
 
-**Describe it** at `/apps/new` — type what you want ("an expense tracker", "a packing checklist", "a water intake counter") and Mu builds it. Generation is constrained: the model emits a small spec for one of a few known shapes (tracker, checklist, counter) and a deterministic renderer turns it into a working app. There is no free-form HTML for the model to get wrong.
-
-**The agent** — ask it to build an app and it creates one via MCP (`apps_build` tool). One step: describe it, get a working app with a URL.
-
-**Write the HTML yourself** — `/apps/new` also has a disclosure for pasting or writing HTML directly, and the editor at `/apps/{slug}/edit` lets you hand-edit any app.
-
-**The API** — `POST /apps/new` (manual HTML) or `POST /apps/generate` (describe) with form fields or JSON.
-
-## Running Apps
-
-Visit `/apps/{slug}` to see the app page with description and author info. The app renders at `/apps/{slug}/run` inside a sandboxed iframe — isolated from Mu's session, cookies, and DOM.
-
-The iframe sandbox allows scripts (for interactivity) but blocks everything else:
-
-- No access to parent page cookies or storage
-- No form submission to external URLs
-- No popups or navigation of the parent frame
-- No downloads
-
-Content is served with strict CSP headers.
-
-## Code Execution
-
-The agent can run JavaScript in a sandboxed environment using the `apps_run` MCP tool. This is how the agent does calculations, data processing, and computation.
-
-The code runs as a function body — use `return` to output a value. It executes in the same sandboxed iframe environment as apps, with access to SDK features.
-
-```
-Agent: "What's 15% tip on £47.50?"
-→ apps_run: return (47.50 * 0.15).toFixed(2)
-→ Result: "7.13"
-```
-
-Scratch code is temporary (auto-cleaned after 1 hour, max 1000 in memory).
-
-## SDK
-
-Apps can access Mu platform features through a lightweight JavaScript SDK. Include it with:
+Include the SDK in your HTML:
 
 ```html
 <script src="/apps/sdk.js"></script>
 ```
 
-This injects a global `mu` object:
+That injects a global `mu` object.
 
-### AI
+## The SDK
 
-```javascript
-const answer = await mu.ai("What's the capital of France?");
-const summary = await mu.ai("Summarise this", { context: articleText });
-```
+### Storage — `mu.store` (key/value)
 
-### Storage
-
-Persistent key-value store scoped to the app + user (max 100 keys, 64KB per value):
+A flat key/value store scoped to this app **and the current user** (max 100 keys,
+64KB per value). Good for preferences and small state.
 
 ```javascript
-await mu.store.set("prefs", { theme: "dark" });
-const prefs = await mu.store.get("prefs");
-await mu.store.del("prefs");
+await mu.store.set('prefs', { theme: 'dark' });
+const prefs = await mu.store.get('prefs');
+await mu.store.del('prefs');
 const keys = await mu.store.keys();
 ```
 
-### Fetch
+### Database — `mu.db` (collections, private/public)
 
-Fetch URLs through Mu's proxy (avoids CORS issues):
-
-```javascript
-const data = await mu.fetch("https://api.example.com/data");
-```
-
-### User
+Named collections of JSON records. Every record has a **server-set owner** (the
+signed-in user) and a **public** flag, so one app can hold each user's private
+data plus a shared public set. This is the building block for real apps — notes,
+lists, posts, trackers — where "mine" and "public" both matter.
 
 ```javascript
-const user = await mu.user();
-// { id: "alice", name: "Alice" }
+// Create — private to me, or shared publicly
+const note   = await mu.db.create('notes', { title: 'Idea', body: '...' });
+const shared = await mu.db.create('notes', { title: 'Public tip' }, { public: true });
+
+// List — scope: 'mine' (default), 'public', or 'all' (mine + public)
+const mine   = await mu.db.list('notes');
+const public = await mu.db.list('notes', { scope: 'public', sort: 'title', order: 'asc' });
+const both   = await mu.db.list('notes', { scope: 'all', where: { done: false }, limit: 50 });
+
+const one = await mu.db.get('notes', id);
+await mu.db.update('notes', id, { title: 'Edited' }, { public: false }); // owner only
+await mu.db.del('notes', id);                                            // owner only
 ```
 
-### Run
+Scoping rules (enforced server-side):
 
-Return structured data to the parent page (used by the agent for code execution):
+- **owner** is always the authenticated account — never taken from the client.
+- **create / update / delete** require a signed-in user and only touch their own
+  records (editing someone else's record is refused).
+- **list / get** may be used by guests too, but a guest only ever sees `public`
+  records; `mine` and `all` need a session.
+- Limits: 2000 records per app+collection, 64KB per record.
+
+`list` options: `scope` (`mine`|`public`|`all`), `where` (equality match on data
+fields), `sort` (a data field), `order` (`asc`|`desc`), `limit`.
+
+### Server-side fetch — `mu.server.fetch`
+
+Fetch an external URL from the server, so you avoid CORS and can keep keys off
+the client. Returns `{ status, body, headers }`.
 
 ```javascript
-mu.run({ bmi: 23.1, category: "normal" });
+const res  = await mu.server.fetch('https://api.example.com/data');
+const data = JSON.parse(res.body);
+
+// with method / headers / body
+await mu.server.fetch(url, { method: 'POST', headers: { Authorization: 'Bearer …' }, body: '…' });
 ```
 
-### How It Works
+Guarded against SSRF: `http`/`https` only, and the destination must resolve to a
+**public** address — loopback, private ranges, link-local (including the
+`169.254.169.254` cloud-metadata endpoint) and multicast are refused, on the
+initial URL and every redirect. Responses are capped (2 MiB, 10s). Requires a
+signed-in user.
 
-The SDK uses `window.parent.postMessage` to send requests to Mu's parent page. The parent proxies requests to the backend on the user's behalf. The iframe never sees the session token.
+For same-origin Mu endpoints, use `mu.get(path)` / `mu.post(path, body)` instead.
+
+### AI and the agent
+
+```javascript
+const answer = await mu.ai('Summarise this', { context: text }); // one-shot
+const result = await mu.agent('What changed in the markets today and why?'); // plans, calls tools, synthesises
+```
+
+### The user
+
+```javascript
+const u = await mu.user();   // { account: 'alice', admin: false, ... } — or { type: 'guest' }
+```
+
+### Services
+
+Every Mu service is a typed wrapper:
+
+```javascript
+mu.weather({ lat, lon });          mu.news();
+mu.markets({ category: 'crypto' }); mu.video();
+mu.social();                        mu.search('query');
+mu.places.search({ ... });          mu.places.nearby({ ... });
+mu.blog.list();  mu.blog.read(id);  mu.blog.create({ ... });
+mu.apps.list();  mu.apps.read(slug);
+```
+
+### How it works
+
+The app is served as a full page; `mu.*` calls hit same-origin endpoints under
+`/apps/{slug}/sdk/...`, authenticated by the session cookie. The server sets the
+owner/identity on every write from the session — the app never sees or supplies a
+token or account id.
 
 ```
-App (iframe)              Mu Parent Page            Mu Backend
-    |                          |                         |
-    |-- postMessage ---------->|                         |
-    |   { type: "mu:ai" }     |-- POST /apps/.../ai --->|
-    |                          |<-- { result: "..." } ---|
-    |<-- postMessage ----------|                         |
+App page (/apps/{slug}/run)        Mu backend
+    |                                  |
+    |-- POST /apps/{slug}/sdk/db ----->|  owner = session account (server-set)
+    |<-- { records: [...] } -----------|
 ```
 
-SDK calls consume credits from the user's wallet:
+Credits: `mu.ai` and `mu.agent` consume credits from the user's wallet; `mu.db`,
+`mu.store`, `mu.server.fetch` and `mu.user` are included.
 
-| Method | Cost |
-|--------|------|
-| `mu.ai()` | 1 credit |
-| `mu.fetch()` | 1 credit |
-| `mu.store.*` | Included |
-| `mu.user()` | Included |
+## Running and discovery
 
-## Discovery
+- `/apps/{slug}` — the app's page (description, author, launch button)
+- `/apps/{slug}/run` — the running app
+- `/apps` — browse and search public apps
+- Pin any app to the top of your home screen from the home settings.
 
-Browse all public apps at `/apps`. Search by name, description, or tag. The agent can suggest apps when relevant.
-
-Apps ship with 6 built-in seed apps: Timer, Calculator, Unit Converter, Flashcards, Notes, and Habit Tracker.
+Apps ship with built-in seeds: Hello World, Timer, Calculator, Unit Converter,
+Flashcards, Notes (a full private/public example on `mu.db`), and Habit Tracker.
 
 ## API
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/apps` | Browse all public apps (HTML + JSON) |
-| GET | `/apps/{slug}` | View app details |
-| GET | `/apps/{slug}/run` | Run app in sandboxed iframe |
-| GET | `/apps/new` | Create form (describe or write HTML) |
-| POST | `/apps/new` | Create a new app from HTML |
-| POST | `/apps/generate` | Build an app from a description |
-| GET | `/apps/{slug}/edit` | Edit an app's HTML |
-| PATCH | `/apps/{slug}` | Update your app |
-| DELETE | `/apps/{slug}` | Delete your app |
-| POST | `/apps/run` | Create a scratch code execution |
-| GET | `/apps/run?id=xxx` | Run scratch code |
-| GET | `/apps/sdk.js` | SDK JavaScript |
+| GET | `/apps` | Browse public apps (HTML + JSON) |
+| GET | `/apps/{slug}` | App details |
+| GET | `/apps/{slug}/run` | Run the app |
+| GET/POST | `/apps/new` | Create form / create from raw HTML |
+| POST | `/apps/generate` | Build from a description |
+| GET | `/apps/{slug}/edit` | Edit an app you own |
+| PATCH / DELETE | `/apps/{slug}` | Update / delete your app |
+| POST | `/apps/{slug}/sdk/db` | `mu.db` — collections data |
+| POST | `/apps/{slug}/sdk/store` | `mu.store` — key/value |
+| POST | `/apps/{slug}/sdk/fetch` | `mu.server.fetch` — guarded external fetch |
+| POST | `/apps/{slug}/sdk/ai` | `mu.ai` |
+| GET | `/apps/sdk.js` | The SDK |
 
-## MCP Tools
+## MCP tools
 
-Five tools for agent integration:
-
-- **`apps_search`** — Search the apps directory by name, description, or tag
-- **`apps_read`** — Read a specific app's details by slug
-- **`apps_create`** — Create a new app with name, slug, description, tags, and HTML
-- **`apps_build`** — Build a small app (tracker, checklist, or counter) from a natural language description
-- **`apps_run`** — Run JavaScript code in a sandbox and return the result
+- **`apps_search`** — search the directory
+- **`apps_read`** — read an app by slug
+- **`apps_create`** — create an app (name, slug, description, tags, HTML)
+- **`apps_build`** — build a small app from a description
+- **`apps_run`** — run JavaScript in a sandbox and return the result
 
 ## Security
 
-Apps run in sandboxed iframes:
-
-```
-sandbox="allow-scripts"
-```
-
-- Scripts allowed for interactivity, but contained
-- No access to Mu cookies, storage, or DOM
-- No form submission, popups, or navigation of parent
-- SDK requests authenticated via parent page session
-- Storage namespaced per app + user
-- HTML size limited to 256KB
-- Rate limiting applies per user
+- Apps run as the signed-in user; the server binds identity from the session, so
+  identity and ownership can never be spoofed by app code.
+- `mu.db` and `mu.store` are scoped per app + owner; private records are invisible
+  to other users; only owners can modify their records.
+- `mu.server.fetch` is SSRF-guarded (public destinations only) and needs a
+  session, so an instance can't be used as an open proxy.
+- HTML is limited to 256KB; storage and fetch are size/time capped; rate limits
+  apply per user.
