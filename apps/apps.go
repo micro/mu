@@ -331,6 +331,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(path, "/sdk/db"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/db")
 		handleSDKDB(w, r, slug)
+	case strings.HasSuffix(path, "/sdk/fetch"):
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/fetch")
+		handleSDKFetch(w, r, slug)
 	case strings.HasSuffix(path, "/delete") && r.Method == "POST":
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/delete")
 		handleDelete(w, r, slug)
@@ -1175,9 +1178,18 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
       del:function(c,id){return sdk('db',{op:'delete',collection:c,id:id})},
     },
 
-    // Raw fetch helpers (for any endpoint)
+    // Raw fetch helpers (for any Mu endpoint, same origin)
     get:function(p){return get(p)},
     post:function(p,b){return post(p,b)},
+
+    // Server-side fetch of external URLs — no CORS, keys stay server-side.
+    // SSRF-guarded (public hosts only) and requires a signed-in user.
+    //   mu.server.fetch('https://api.example.com/x').then(function(r){
+    //     return JSON.parse(r.body); // r = {status, body, headers}
+    //   })
+    server:{
+      fetch:function(url,opts){opts=opts||{};return sdk('fetch',{url:url,method:opts.method||'GET',headers:opts.headers||null,body:opts.body||''})},
+    },
 
     // Error capture — agent can read these to see what went wrong
     errors:[],
