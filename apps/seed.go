@@ -112,6 +112,16 @@ func seedApps() {
 </svg>`,
 		},
 		{
+			Slug:        "bookmarks",
+			Name:        "Bookmarks",
+			Description: "Save links privately or publicly — an example app on mu.db and mu.web.fetch",
+			Tags:        "productivity, bookmarks, example",
+			TemplateID:  "bookmarks",
+			Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <path d="M9 5h14a1 1 0 0 1 1 1v21l-8-5-8 5V6a1 1 0 0 1 1-1z" fill="none" stroke="#555" stroke-width="2" stroke-linejoin="round"/>
+</svg>`,
+		},
+		{
 			Slug:        "notes",
 			Name:        "Notes",
 			Description: "Quick notes that save automatically",

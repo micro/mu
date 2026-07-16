@@ -56,9 +56,16 @@ var Templates = []Template{
 	{
 		ID:          "notes",
 		Name:        "Notes",
-		Description: "Quick notes with local persistence via the SDK",
+		Description: "Notes with private/public records via mu.db",
 		Category:    "Productivity",
 		HTML:        templateNotes,
+	},
+	{
+		ID:          "bookmarks",
+		Name:        "Bookmarks",
+		Description: "Save links privately or publicly — titles fetched via mu.web.fetch, stored in mu.db",
+		Category:    "Productivity",
+		HTML:        templateBookmarks,
 	},
 	{
 		ID:          "ai-tool",
@@ -519,6 +526,107 @@ function delNote(){
 
 function status(s){ document.getElementById('status').textContent = s; }
 function esc(s){ var d=document.createElement('div'); d.textContent = s==null?'':String(s); return d.innerHTML; }
+</script>
+</body>
+</html>`
+
+// templateBookmarks is a reference app for the SDK: it saves links as mu.db
+// records (private by default, or public to share), fetches each page's title
+// server-side with mu.web.fetch, and lists "mine" vs "public".
+const templateBookmarks = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/apps/sdk.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, sans-serif; padding: 20px; background: #fff; color: #222; max-width: 640px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.tabs button { padding: 6px 14px; border: 1px solid #e0e0e0; background: #fff; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; color: #555; }
+.tabs button.active { background: #111; color: #fff; border-color: #111; }
+.add { display: flex; gap: 8px; margin-bottom: 8px; }
+.add input[type=url] { flex: 1; padding: 9px; border: 1px solid #e0e0e0; border-radius: 6px; font: inherit; font-size: 14px; }
+.add button { padding: 9px 16px; background: #111; color: #fff; border: none; border-radius: 6px; cursor: pointer; font: inherit; }
+.opt { font-size: 13px; color: #555; display: flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+.item { display: flex; align-items: baseline; gap: 8px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+.item a { color: #111; text-decoration: none; font-weight: 600; font-size: 15px; }
+.item a:hover { text-decoration: underline; }
+.item .host { color: #999; font-size: 12px; }
+.item .pub { color: #999; font-size: 11px; border: 1px solid #eee; border-radius: 4px; padding: 1px 5px; }
+.item .del { margin-left: auto; color: #c5221f; cursor: pointer; font-size: 12px; background: none; border: none; }
+.empty { color: #aaa; font-size: 14px; padding: 12px 0; }
+.status { font-size: 13px; color: #999; min-height: 18px; }
+</style>
+</head>
+<body>
+<h2>Bookmarks</h2>
+<div class="tabs">
+  <button id="tab-mine" class="active" onclick="setTab('mine')">Mine</button>
+  <button id="tab-public" onclick="setTab('public')">Public</button>
+</div>
+<div class="add">
+  <input type="url" id="url" placeholder="https://...">
+  <button onclick="add()">Add</button>
+</div>
+<label class="opt"><input type="checkbox" id="public"> Share publicly</label>
+<div class="status" id="status"></div>
+<div id="list"></div>
+<script>
+var tab = 'mine', me = null;
+mu.user().then(function(u){ me = u && u.account; load(); });
+
+function setTab(t){
+  tab = t;
+  document.getElementById('tab-mine').className = t==='mine' ? 'active' : '';
+  document.getElementById('tab-public').className = t==='public' ? 'active' : '';
+  load();
+}
+
+function hostOf(u){ try { return new URL(u).host.replace(/^www\./,''); } catch(e){ return ''; } }
+
+function add(){
+  var url = document.getElementById('url').value.trim();
+  if(!url) return;
+  if(!/^https?:\/\//.test(url)) url = 'https://' + url;
+  var pub = document.getElementById('public').checked;
+  status('Fetching title…');
+  // Server-side fetch (no CORS, SSRF-guarded) to read the page <title>.
+  mu.web.fetch(url).then(function(res){
+    var m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(res.body || '');
+    var title = m ? m[1].trim() : hostOf(url);
+    return mu.db.create('bookmarks', { url: url, title: title }, { public: pub });
+  }).then(function(){
+    document.getElementById('url').value = '';
+    status(''); load();
+  }).catch(function(){ status('Could not add that link.'); });
+}
+
+function load(){
+  mu.db.list('bookmarks', { scope: tab, sort: 'title', order: 'asc' }).then(function(recs){
+    var el = document.getElementById('list'); el.innerHTML = '';
+    if(!recs.length){ el.innerHTML = '<div class="empty">No bookmarks yet.</div>'; return; }
+    recs.forEach(function(r){
+      var mine = r.owner === me;
+      var row = document.createElement('div'); row.className = 'item';
+      row.innerHTML =
+        '<a href="' + attr(r.data.url) + '" target="_blank" rel="noopener">' + esc(r.data.title || r.data.url) + '</a>' +
+        '<span class="host">' + esc(hostOf(r.data.url)) + '</span>' +
+        (r.public ? '<span class="pub">public</span>' : '');
+      if(mine){
+        var del = document.createElement('button'); del.className = 'del'; del.textContent = 'delete';
+        del.onclick = function(){ mu.db.del('bookmarks', r.id).then(load); };
+        row.appendChild(del);
+      }
+      el.appendChild(row);
+    });
+  });
+}
+
+function status(s){ document.getElementById('status').textContent = s; }
+function esc(s){ var d=document.createElement('div'); d.textContent = s==null?'':String(s); return d.innerHTML; }
+function attr(s){ return esc(s).replace(/"/g,'&quot;'); }
 </script>
 </body>
 </html>`
