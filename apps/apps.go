@@ -1546,6 +1546,10 @@ func handleSDKStore(w http.ResponseWriter, r *http.Request, slug string) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
+	if !slugRe.MatchString(slug) {
+		app.RespondError(w, http.StatusBadRequest, "Invalid app")
+		return
+	}
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.RespondError(w, http.StatusUnauthorized, "Authentication required")

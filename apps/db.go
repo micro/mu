@@ -66,6 +66,10 @@ func handleSDKDB(w http.ResponseWriter, r *http.Request, slug string) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
+	if !slugRe.MatchString(slug) {
+		app.RespondError(w, http.StatusBadRequest, "Invalid app")
+		return
+	}
 	_, acc := auth.TrySession(r)
 
 	var req struct {

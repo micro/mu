@@ -50,11 +50,27 @@ func WithKeywordOnly() SearchOption {
 	}
 }
 
+// dataPath resolves key under the data dir and confines it there, rejecting any
+// key that would escape the store (via "..", an absolute path, etc.). This is a
+// defense-in-depth guard: callers that build keys from user-influenced input
+// (app slugs, collection names) cannot cause reads or writes outside the store,
+// even if a caller forgets to validate its inputs.
+func dataPath(key string) (string, error) {
+	base := filepath.Join(os.ExpandEnv("$HOME/.mu"), "data")
+	file := filepath.Join(base, key)
+	rel, err := filepath.Rel(base, file)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("data: invalid key %q", key)
+	}
+	return file, nil
+}
+
 // SaveFile saves data to disk
 func SaveFile(key, val string) error {
-	dir := os.ExpandEnv("$HOME/.mu")
-	path := filepath.Join(dir, "data")
-	file := filepath.Join(path, key)
+	file, err := dataPath(key)
+	if err != nil {
+		return err
+	}
 	// Create all parent directories including subdirectories in key
 	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 		return err
@@ -64,16 +80,18 @@ func SaveFile(key, val string) error {
 
 // LoadFile loads a file from disk
 func LoadFile(key string) ([]byte, error) {
-	dir := os.ExpandEnv("$HOME/.mu")
-	path := filepath.Join(dir, "data")
-	file := filepath.Join(path, key)
+	file, err := dataPath(key)
+	if err != nil {
+		return nil, err
+	}
 	return os.ReadFile(file)
 }
 
 func DeleteFile(key string) error {
-	dir := os.ExpandEnv("$HOME/.mu")
-	path := filepath.Join(dir, "data")
-	file := filepath.Join(path, key)
+	file, err := dataPath(key)
+	if err != nil {
+		return err
+	}
 	return os.Remove(file)
 }
 
@@ -82,29 +100,26 @@ func SaveJSON(key string, val interface{}) error {
 	if err != nil {
 		return err
 	}
-
-	dir := os.ExpandEnv("$HOME/.mu")
-	path := filepath.Join(dir, "data")
-	file := filepath.Join(path, key)
-
+	file, err := dataPath(key)
+	if err != nil {
+		return err
+	}
 	// Create all parent directories
-	fileDir := filepath.Dir(file)
-	if err := os.MkdirAll(fileDir, 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 		return err
 	}
 	return os.WriteFile(file, b, 0644)
 }
 
 func LoadJSON(key string, val interface{}) error {
-	dir := os.ExpandEnv("$HOME/.mu")
-	path := filepath.Join(dir, "data")
-	file := filepath.Join(path, key)
-
+	file, err := dataPath(key)
+	if err != nil {
+		return err
+	}
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
-
 	return json.Unmarshal(b, val)
 }
 
