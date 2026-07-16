@@ -213,17 +213,16 @@ func Load() {
 	// CreatePost — e.g. the news digest on startup — panics on a nil map.
 	postsMap = make(map[string]*Post)
 
-	// Load existing posts from disk
-	b, err := data.LoadFile("blog.json")
-	if err != nil {
+	// Load existing posts from disk. A missing or unreadable file just means no
+	// posts yet — fall through so seeding and cache-building still run.
+	if b, err := data.LoadFile("blog.json"); err != nil {
 		posts = []*Post{}
-		return
+	} else if err := json.Unmarshal(b, &posts); err != nil {
+		posts = []*Post{}
 	}
 
-	if err := json.Unmarshal(b, &posts); err != nil {
-		posts = []*Post{}
-		return
-	}
+	// Publish the built-in announcement post if it isn't already there.
+	ensureSeedPosts()
 
 	// Sort posts by most recent activity (updated or created) newest first
 	sort.Slice(posts, func(i, j int) bool {
