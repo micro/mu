@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"fmt"
 	"net/http"
 
 	"mu/internal/app"
@@ -37,6 +38,19 @@ func handleSDKFetch(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
+	// Metered: an external fetch has a real cost, so gate on the user's balance.
+	if QuotaCheck != nil {
+		canProceed, cost, qerr := QuotaCheck(r, "web_fetch")
+		if !canProceed {
+			msg := "Insufficient credits"
+			if qerr != nil {
+				msg = qerr.Error()
+			}
+			app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("%s (costs %d credits)", msg, cost))
+			return
+		}
+	}
+
 	resp, err := safefetch.Fetch(r.Context(), req.URL, safefetch.Options{
 		Method:  req.Method,
 		Headers: req.Headers,
@@ -45,6 +59,9 @@ func handleSDKFetch(w http.ResponseWriter, r *http.Request, slug string) {
 	if err != nil {
 		app.RespondError(w, http.StatusBadGateway, err.Error())
 		return
+	}
+	if ChargeQuota != nil {
+		ChargeQuota(r, "web_fetch")
 	}
 	app.RespondJSON(w, resp)
 }

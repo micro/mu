@@ -90,8 +90,14 @@ type App struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
-// QuotaCheck is set by main.go to check wallet credits before AI calls.
+// QuotaCheck is set by main.go to check wallet credits before a metered call.
 var QuotaCheck func(r *http.Request, op string) (bool, int, error)
+
+// ChargeQuota is set by main.go to deduct credits from the session user's wallet
+// after a successful metered call (mu.ai, mu.web.fetch). Charging the acting user
+// — not the app's owner — is deliberate: an app author never pays for other
+// people's usage, so universal apps scale.
+var ChargeQuota func(r *http.Request, op string)
 
 var (
 	mutex sync.RWMutex
@@ -1531,6 +1537,9 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 	if err != nil {
 		app.RespondError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if ChargeQuota != nil {
+		ChargeQuota(r, "chat_query")
 	}
 
 	app.RespondJSON(w, map[string]string{"result": result})
