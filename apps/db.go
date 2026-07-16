@@ -119,8 +119,16 @@ func handleSDKDB(w http.ResponseWriter, r *http.Request, slug string) {
 		dbMu.Lock()
 		defer dbMu.Unlock()
 		recs := loadRecords(key)
-		if len(recs) >= MaxDBRecords {
-			app.RespondError(w, http.StatusBadRequest, "Collection is full")
+		// Cap per owner, not globally: a universal app shared by everyone must
+		// scale across users — one user can't fill the collection for the rest.
+		owned := 0
+		for i := range recs {
+			if recs[i].Owner == caller {
+				owned++
+			}
+		}
+		if owned >= MaxDBRecords {
+			app.RespondError(w, http.StatusBadRequest, "You have too many records in this collection")
 			return
 		}
 		now := time.Now()
