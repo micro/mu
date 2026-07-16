@@ -43,9 +43,29 @@ const helloWorldHTML = `<!DOCTYPE html>
 </body>
 </html>`
 
-// seedApps creates a set of built-in apps on first run so the directory
-// has immediate value. These ship with the platform and are authored by "mu".
-func seedApps() {
+// ensureBuiltins makes sure every built-in ("mu"-authored) app exists. It runs
+// on every startup — not just first run — so a newly-added built-in appears on
+// existing instances too. It only fills gaps: it never overwrites a user's app,
+// or a user's in-place edits to a built-in. Think of these as the apps that ship
+// with the OS; you can still build and run your own on top.
+func ensureBuiltins() {
+	added := 0
+	mutex.Lock()
+	for _, a := range builtinApps() {
+		if _, exists := apps[a.Slug]; !exists {
+			apps[a.Slug] = a
+			added++
+		}
+	}
+	mutex.Unlock()
+	if added > 0 {
+		save()
+		app.Log("apps", "Added %d built-in apps", added)
+	}
+}
+
+// builtinApps returns the definitions of the apps that ship with every instance.
+func builtinApps() []*App {
 	seeds := []struct {
 		Slug        string
 		Name        string
@@ -152,12 +172,12 @@ func seedApps() {
 	}
 
 	now := time.Now()
-	count := 0
+	out := make([]*App, 0, len(seeds)+1)
 
 	// A minimal raw-HTML app — the "hello world" of the apps platform. Unlike the
 	// template-backed seeds above, it ships its own complete HTML page, so it also
 	// serves as the simplest possible example of a raw-mode app.
-	hello := &App{
+	out = append(out, &App{
 		ID:          uuid.New().String(),
 		Slug:        "hello-world",
 		Name:        "Hello World",
@@ -175,19 +195,14 @@ func seedApps() {
 		Public:    true,
 		CreatedAt: now,
 		UpdatedAt: now,
-	}
-	mutex.Lock()
-	apps[hello.Slug] = hello
-	mutex.Unlock()
-	count++
+	})
 
 	for _, s := range seeds {
 		t := GetTemplate(s.TemplateID)
 		if t == nil {
 			continue
 		}
-
-		a := &App{
+		out = append(out, &App{
 			ID:          uuid.New().String(),
 			Slug:        s.Slug,
 			Name:        s.Name,
@@ -200,16 +215,8 @@ func seedApps() {
 			Public:      true,
 			CreatedAt:   now,
 			UpdatedAt:   now,
-		}
-
-		mutex.Lock()
-		apps[a.Slug] = a
-		mutex.Unlock()
-		count++
+		})
 	}
 
-	if count > 0 {
-		save()
-		app.Log("apps", "Seeded %d built-in apps", count)
-	}
+	return out
 }

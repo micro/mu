@@ -205,13 +205,9 @@ func Load() {
 		}
 	}
 
-	// Seed built-in apps on first run (no apps.json, or an empty one).
-	mutex.RLock()
-	n := len(apps)
-	mutex.RUnlock()
-	if n == 0 {
-		seedApps()
-	}
+	// Ensure the built-in apps exist. Runs every startup so newly-added
+	// built-ins reach existing instances too; it only fills gaps.
+	ensureBuiltins()
 
 	data.RegisterDeleter("app", DeleteApp)
 }
