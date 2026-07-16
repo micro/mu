@@ -105,20 +105,33 @@ Scoping rules (enforced server-side):
   records; `mine` and `all` need a session.
 - Limits: 2000 records per app+collection, 64KB per record.
 
-`list` options: `scope` (`mine`|`public`|`all`), `where` (equality match on data
-fields), `sort` (a data field), `order` (`asc`|`desc`), `limit`.
+`list` options: `scope` (`mine`|`public`|`all`), `where` (filter on data fields),
+`sort` (a data field), `order` (`asc`|`desc`), `limit`.
 
-### Server-side fetch — `mu.server.fetch`
+`where` matches a scalar for equality, or an operator object per field —
+`eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `contains` (substring, or array membership),
+`in` (any of a list), `exists` (bool). Multiple operators on a field are ANDed:
+
+```javascript
+mu.db.list('tasks', { where: {
+  done: false,                     // equality
+  priority: { gte: 2 },            // number range
+  title: { contains: 'report' },   // substring
+  tag: { in: ['work', 'urgent'] }, // membership
+} });
+```
+
+### Server-side fetch — `mu.web.fetch`
 
 Fetch an external URL from the server, so you avoid CORS and can keep keys off
 the client. Returns `{ status, body, headers }`.
 
 ```javascript
-const res  = await mu.server.fetch('https://api.example.com/data');
+const res  = await mu.web.fetch('https://api.example.com/data');
 const data = JSON.parse(res.body);
 
 // with method / headers / body
-await mu.server.fetch(url, { method: 'POST', headers: { Authorization: 'Bearer …' }, body: '…' });
+await mu.web.fetch(url, { method: 'POST', headers: { Authorization: 'Bearer …' }, body: '…' });
 ```
 
 Guarded against SSRF: `http`/`https` only, and the destination must resolve to a
@@ -170,7 +183,7 @@ App page (/apps/{slug}/run)        Mu backend
 ```
 
 Credits: `mu.ai` and `mu.agent` consume credits from the user's wallet; `mu.db`,
-`mu.store`, `mu.server.fetch` and `mu.user` are included.
+`mu.store`, `mu.web.fetch` and `mu.user` are included.
 
 ## Running and discovery
 
@@ -195,7 +208,7 @@ Flashcards, Notes (a full private/public example on `mu.db`), and Habit Tracker.
 | PATCH / DELETE | `/apps/{slug}` | Update / delete your app |
 | POST | `/apps/{slug}/sdk/db` | `mu.db` — collections data |
 | POST | `/apps/{slug}/sdk/store` | `mu.store` — key/value |
-| POST | `/apps/{slug}/sdk/fetch` | `mu.server.fetch` — guarded external fetch |
+| POST | `/apps/{slug}/sdk/fetch` | `mu.web.fetch` — guarded external fetch |
 | POST | `/apps/{slug}/sdk/ai` | `mu.ai` |
 | GET | `/apps/sdk.js` | The SDK |
 
@@ -213,7 +226,7 @@ Flashcards, Notes (a full private/public example on `mu.db`), and Habit Tracker.
   identity and ownership can never be spoofed by app code.
 - `mu.db` and `mu.store` are scoped per app + owner; private records are invisible
   to other users; only owners can modify their records.
-- `mu.server.fetch` is SSRF-guarded (public destinations only) and needs a
+- `mu.web.fetch` is SSRF-guarded (public destinations only) and needs a
   session, so an instance can't be used as an open proxy.
 - HTML is limited to 256KB; storage and fetch are size/time capped; rate limits
   apply per user.

@@ -63,6 +63,40 @@ func TestFilterWhere(t *testing.T) {
 	}
 }
 
+func TestWhereOperators(t *testing.T) {
+	rec := Record{Data: map[string]interface{}{
+		"age":   float64(30),
+		"title": "My Note",
+		"tags":  []interface{}{"work", "ideas"},
+		"done":  false,
+	}}
+	cases := []struct {
+		name  string
+		where map[string]interface{}
+		want  bool
+	}{
+		{"eq scalar", map[string]interface{}{"age": float64(30)}, true},
+		{"eq scalar miss", map[string]interface{}{"age": float64(31)}, false},
+		{"gte", map[string]interface{}{"age": map[string]interface{}{"gte": float64(30)}}, true},
+		{"gt fail", map[string]interface{}{"age": map[string]interface{}{"gt": float64(30)}}, false},
+		{"lt", map[string]interface{}{"age": map[string]interface{}{"lt": float64(40)}}, true},
+		{"ne true", map[string]interface{}{"done": map[string]interface{}{"ne": true}}, true},
+		{"contains substr", map[string]interface{}{"title": map[string]interface{}{"contains": "note"}}, true},
+		{"contains array", map[string]interface{}{"tags": map[string]interface{}{"contains": "ideas"}}, true},
+		{"contains array miss", map[string]interface{}{"tags": map[string]interface{}{"contains": "food"}}, false},
+		{"in", map[string]interface{}{"age": map[string]interface{}{"in": []interface{}{float64(20), float64(30)}}}, true},
+		{"exists true", map[string]interface{}{"title": map[string]interface{}{"exists": true}}, true},
+		{"exists false", map[string]interface{}{"missing": map[string]interface{}{"exists": false}}, true},
+		{"exists false fail", map[string]interface{}{"title": map[string]interface{}{"exists": false}}, false},
+		{"combined", map[string]interface{}{"age": map[string]interface{}{"gte": float64(18), "lt": float64(65)}}, true},
+	}
+	for _, c := range cases {
+		if got := matchesWhere(rec, c.where); got != c.want {
+			t.Errorf("%s: matchesWhere = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
 func TestSortRecordsByField(t *testing.T) {
 	rs := []Record{
 		{ID: "1", Data: map[string]interface{}{"n": float64(3)}},

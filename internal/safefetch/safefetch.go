@@ -145,9 +145,19 @@ func Fetch(ctx context.Context, raw string, opt Options) (*Response, error) {
 		req.Header.Set(k, v)
 	}
 
+	transport := &http.Transport{Proxy: http.ProxyFromEnvironment}
+	// When the request goes direct (no proxy), pin the connection to a resolved
+	// public IP at dial time — this closes the DNS-rebinding gap the pre-flight
+	// check alone can't (a host that resolves public now, private at connect).
+	// When a proxy is configured we trust it for egress (and it may itself be a
+	// loopback address), so the pre-flight + redirect checks are the guard.
+	if p, _ := http.ProxyFromEnvironment(req); p == nil {
+		transport.DialContext = guardedDial
+	}
+
 	client := &http.Client{
 		Timeout:   timeout,
-		Transport: &http.Transport{Proxy: http.ProxyFromEnvironment},
+		Transport: transport,
 		CheckRedirect: func(r *http.Request, via []*http.Request) error {
 			if len(via) >= maxRedirects {
 				return fmt.Errorf("too many redirects")
@@ -170,4 +180,40 @@ func Fetch(ctx context.Context, raw string, opt Options) (*Response, error) {
 		headers["Content-Type"] = ct
 	}
 	return &Response{Status: resp.StatusCode, Body: string(data), Headers: headers}, nil
+}
+
+// guardedDial resolves the target and connects only to a public IP, rejecting
+// private/loopback/link-local addresses at dial time. Installed on the transport
+// only for direct (non-proxied) requests.
+func guardedDial(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	dialer := &net.Dialer{Timeout: DefaultTimeout}
+	if ip := net.ParseIP(host); ip != nil {
+		if isBlockedIP(ip) {
+			return nil, ErrBlocked
+		}
+		return dialer.DialContext(ctx, network, address)
+	}
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	var lastErr error
+	for _, a := range addrs {
+		if isBlockedIP(a.IP) {
+			return nil, ErrBlocked
+		}
+		conn, derr := dialer.DialContext(ctx, network, net.JoinHostPort(a.IP.String(), port))
+		if derr == nil {
+			return conn, nil
+		}
+		lastErr = derr
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, ErrBlocked
 }

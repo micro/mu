@@ -1184,10 +1184,10 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 
     // Server-side fetch of external URLs — no CORS, keys stay server-side.
     // SSRF-guarded (public hosts only) and requires a signed-in user.
-    //   mu.server.fetch('https://api.example.com/x').then(function(r){
+    //   mu.web.fetch('https://api.example.com/x').then(function(r){
     //     return JSON.parse(r.body); // r = {status, body, headers}
     //   })
-    server:{
+    web:{
       fetch:function(url,opts){opts=opts||{};return sdk('fetch',{url:url,method:opts.method||'GET',headers:opts.headers||null,body:opts.body||''})},
     },
 

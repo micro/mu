@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -246,15 +247,116 @@ func filterRecords(recs []Record, scope, caller string, where map[string]interfa
 	return out
 }
 
-// matchesWhere reports whether every key in where equals the record's data.
+// matchesWhere reports whether a record satisfies every field condition. A
+// condition is either a scalar (equality) or an operator object, e.g.
+// {"age":{"gte":18},"title":{"contains":"note"},"done":{"ne":true}}.
 func matchesWhere(rec Record, where map[string]interface{}) bool {
-	for k, want := range where {
-		got, ok := rec.Data[k]
-		if !ok || !jsonEqual(got, want) {
+	for field, cond := range where {
+		got, present := rec.Data[field]
+		if !matchField(got, present, cond) {
 			return false
 		}
 	}
 	return true
+}
+
+var whereOps = map[string]bool{
+	"eq": true, "ne": true, "gt": true, "gte": true, "lt": true,
+	"lte": true, "contains": true, "in": true, "exists": true,
+}
+
+// opMap returns cond as an operator object when every key is a known operator;
+// otherwise the condition is a plain equality match.
+func opMap(cond interface{}) (map[string]interface{}, bool) {
+	m, ok := cond.(map[string]interface{})
+	if !ok || len(m) == 0 {
+		return nil, false
+	}
+	for k := range m {
+		if !whereOps[k] {
+			return nil, false
+		}
+	}
+	return m, true
+}
+
+func matchField(got interface{}, present bool, cond interface{}) bool {
+	ops, isOps := opMap(cond)
+	if !isOps {
+		return present && jsonEqual(got, cond)
+	}
+	for op, val := range ops {
+		if !applyOp(got, present, op, val) {
+			return false
+		}
+	}
+	return true
+}
+
+func applyOp(got interface{}, present bool, op string, val interface{}) bool {
+	switch op {
+	case "exists":
+		want, _ := val.(bool)
+		return present == want
+	case "eq":
+		return present && jsonEqual(got, val)
+	case "ne":
+		return !present || !jsonEqual(got, val)
+	case "gt":
+		return present && cmpValue(got, val) > 0
+	case "gte":
+		return present && cmpValue(got, val) >= 0
+	case "lt":
+		return present && cmpValue(got, val) < 0
+	case "lte":
+		return present && cmpValue(got, val) <= 0
+	case "contains":
+		if !present {
+			return false
+		}
+		if arr, ok := got.([]interface{}); ok {
+			for _, e := range arr {
+				if jsonEqual(e, val) {
+					return true
+				}
+			}
+			return false
+		}
+		return strings.Contains(strings.ToLower(toStr(got)), strings.ToLower(toStr(val)))
+	case "in":
+		if !present {
+			return false
+		}
+		arr, ok := val.([]interface{})
+		if !ok {
+			return false
+		}
+		for _, e := range arr {
+			if jsonEqual(got, e) {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
+// cmpValue orders two decoded-JSON values: numbers numerically, else by string.
+func cmpValue(a, b interface{}) int {
+	if af, ok := a.(float64); ok {
+		if bf, ok := b.(float64); ok {
+			switch {
+			case af < bf:
+				return -1
+			case af > bf:
+				return 1
+			default:
+				return 0
+			}
+		}
+	}
+	as, bs := toStr(a), toStr(b)
+	return strings.Compare(as, bs)
 }
 
 // jsonEqual compares two decoded-JSON values for equality.
