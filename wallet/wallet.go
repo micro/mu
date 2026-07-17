@@ -30,6 +30,7 @@ var (
 	CostWeatherPollen     = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
 	CostWebSearch         = getEnvInt("CREDIT_COST_SEARCH", 5)
 	CostWebFetch          = getEnvInt("CREDIT_COST_FETCH", 3)
+	CostDBWrite           = getEnvInt("CREDIT_COST_DB_WRITE", 1)
 	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
 	CostSocialSearch      = getEnvInt("CREDIT_COST_SOCIAL", 1)
@@ -63,6 +64,7 @@ const (
 	OpWeatherPollen     = "weather_pollen"
 	OpWebSearch         = "web_search"
 	OpWebFetch          = "web_fetch"
+	OpDBWrite           = "db_write"
 	OpAgentQuery        = "agent_query"
 	OpAgentQueryPremium = "agent_query_premium"
 	OpSocialSearch      = "social_search"
@@ -488,6 +490,8 @@ func GetOperationCost(operation string) int {
 		return CostWebSearch
 	case OpWebFetch:
 		return CostWebFetch
+	case OpDBWrite:
+		return CostDBWrite
 	case OpAgentQuery:
 		return CostAgentQuery
 	case OpAgentQueryPremium:

@@ -164,6 +164,35 @@ Accounts can top up credits with a card via Stripe.
 | `agent` | Ask the AI agent a question — searches news, markets, web, and more | 3 credits |
 | `stream` | Read the public event stream — system events, user posts, agent responses | Included |
 | `stream_post` | Post a message to the event stream | 1 credit |
+| `me` | Get your account identity and admin status | Included |
+| `db_set` | Store a record in a collection (private, or `public: true`) | 1 credit |
+| `db_get` | Get one record by id (yours, or public) | Included |
+| `db_list` | List records — `scope`: mine / public / all, with `where` / `sort` / `limit` | Included |
+| `db_del` | Delete a record you own | Included |
+
+## Your data (`db_*`)
+
+The `db_*` tools give an agent a personal database — the same collections and
+private/public model as the app SDK's `mu.db`, scoped to your account. Store
+records in named collections, keep them private or share them publicly, and
+query with a `where` filter (`eq`, `ne`, `gt`/`gte`/`lt`/`lte`, `contains`, `in`,
+`exists`).
+
+```bash
+# Store a private record
+curl -X POST https://micro.mu/mcp \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"db_set","arguments":{"collection":"tasks","data":{"title":"Ship it","done":false}}}}'
+
+# List your open tasks
+curl -X POST https://micro.mu/mcp \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"db_list","arguments":{"collection":"tasks","where":{"done":false}}}}'
+```
+
+The owner is bound from your session, so records are isolated per account —
+another user can't read or change your private records. Data written through the
+`db_*` tools lives in your account's namespace, separate from any app's own data.
 
 ## Protocol
 

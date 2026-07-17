@@ -40,6 +40,7 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/setup"
+	"mu/internal/userdb"
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
@@ -659,6 +660,97 @@ func main() {
 		return rsp.Text, nil
 	})
 
+	// db_* — a personal database over MCP/REST: the same collections + owner /
+	// private-public model as the app SDK's mu.db, scoped to the caller's account
+	// under the shared "api" namespace. Owner is bound from the session.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "db_set",
+		Description: "Store a record in your database (a named collection). Private by default; set public=true to share it. Pass an id to update a record you own.",
+		Method:      "POST",
+		Path:        "/db",
+		WalletOp:    "db_write",
+		Params: []api.ToolParam{
+			{Name: "collection", Type: "string", Description: "Collection name (e.g. notes, tasks)", Required: true},
+			{Name: "data", Type: "object", Description: "The record's fields as a JSON object", Required: true},
+			{Name: "public", Type: "boolean", Description: "Share the record publicly (default false)", Required: false},
+			{Name: "id", Type: "string", Description: "Existing record id to update (optional)", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		coll, _ := args["collection"].(string)
+		dataObj, _ := args["data"].(map[string]any)
+		public, _ := args["public"].(bool)
+		id, _ := args["id"].(string)
+		var rec *userdb.Record
+		var err error
+		if strings.TrimSpace(id) != "" {
+			rec, err = userdb.Update("api", accountID, coll, id, dataObj, public)
+		} else {
+			rec, err = userdb.Create("api", accountID, coll, dataObj, public)
+		}
+		if err != nil {
+			return "", err
+		}
+		b, _ := json.Marshal(rec)
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "db_get",
+		Description: "Get one record by id from a collection (must be yours, or public).",
+		Params: []api.ToolParam{
+			{Name: "collection", Type: "string", Description: "Collection name", Required: true},
+			{Name: "id", Type: "string", Description: "Record id", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		coll, _ := args["collection"].(string)
+		id, _ := args["id"].(string)
+		rec, err := userdb.Get("api", accountID, coll, id)
+		if err != nil {
+			return "", err
+		}
+		b, _ := json.Marshal(rec)
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "db_list",
+		Description: "List records in a collection. scope: 'mine' (default), 'public', or 'all' (mine + public). Optional where filter, sort field and limit.",
+		Params: []api.ToolParam{
+			{Name: "collection", Type: "string", Description: "Collection name", Required: true},
+			{Name: "scope", Type: "string", Description: "mine | public | all (default mine)", Required: false},
+			{Name: "where", Type: "object", Description: "Filter on data fields, e.g. {\"done\":false,\"priority\":{\"gte\":2}}", Required: false},
+			{Name: "sort", Type: "string", Description: "Data field to sort by", Required: false},
+			{Name: "order", Type: "string", Description: "asc | desc (default desc)", Required: false},
+			{Name: "limit", Type: "number", Description: "Max records (default 50, max 200)", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		coll, _ := args["collection"].(string)
+		scope, _ := args["scope"].(string)
+		where, _ := args["where"].(map[string]any)
+		sortField, _ := args["sort"].(string)
+		order, _ := args["order"].(string)
+		limit := int(argFloat(args["limit"]))
+		recs, err := userdb.List("api", accountID, coll, scope, where, sortField, order, limit)
+		if err != nil {
+			return "", err
+		}
+		b, _ := json.Marshal(recs)
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "db_del",
+		Description: "Delete a record you own by id.",
+		Params: []api.ToolParam{
+			{Name: "collection", Type: "string", Description: "Collection name", Required: true},
+			{Name: "id", Type: "string", Description: "Record id", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		coll, _ := args["collection"].(string)
+		id, _ := args["id"].(string)
+		if err := userdb.Delete("api", accountID, coll, id); err != nil {
+			return "", err
+		}
+		return `{"status":"ok"}`, nil
+	})
+
 	// markets — live prices, returned as model-ready text (AI-first).
 	api.RegisterTool(api.Tool{
 		Name:        "markets",
@@ -896,7 +988,7 @@ func main() {
 		Description: "Run JavaScript code in a sandboxed environment and return the result. Use for calculations, data processing, or any computation the user needs.",
 		WalletOp:    "agent_query",
 		Params: []api.ToolParam{
-			{Name: "code", Type: "string", Description: "JavaScript code to execute. The code runs as a function body — use 'return' to output a value. Has access to mu.ai(), mu.fetch(), mu.store for platform features.", Required: true},
+			{Name: "code", Type: "string", Description: "JavaScript code to execute. The code runs as a function body — use 'return' to output a value. Has access to mu.ai(), mu.web.fetch(), mu.db and mu.store for platform features.", Required: true},
 		},
 		Handle: func(args map[string]any) (string, error) {
 			code, _ := args["code"].(string)
@@ -928,10 +1020,12 @@ func main() {
 		return string(b), nil
 	})
 
-	// Register agent MCP tool
+	// Register agent MCP tool (also exposed as POST /agent/run on the REST page).
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "agent",
 		Description: "Ask the AI agent a question. The agent can search news, markets, web, video, weather, places, and more to answer your question.",
+		Method:      "POST",
+		Path:        "/agent/run",
 		WalletOp:    "agent_query",
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Your question or request", Required: true},

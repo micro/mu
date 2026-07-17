@@ -103,10 +103,15 @@ Scoping rules (enforced server-side):
   records (editing someone else's record is refused).
 - **list / get** may be used by guests too, but a guest only ever sees `public`
   records; `mine` and `all` need a session.
-- Limits: 2000 records per app+collection, 64KB per record.
+- Limits: 2000 records per owner per collection, 64KB per record.
 
 `list` options: `scope` (`mine`|`public`|`all`), `where` (filter on data fields),
 `sort` (a data field), `order` (`asc`|`desc`), `limit`.
+
+The same store is reachable outside apps: agents can use the `db_set` / `db_get`
+/ `db_list` / `db_del` tools over MCP and REST (see [MCP docs](MCP.md)). Owner
+scoping and the private/public model are identical; an app's data and a user's
+API data live in separate namespaces.
 
 `where` matches a scalar for equality, or an operator object per field —
 `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `contains` (substring, or array membership),
