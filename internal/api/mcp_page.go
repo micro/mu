@@ -42,16 +42,29 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p>Endpoint: <code>/mcp</code> &mdash; <a href="/api">API Docs</a></p>`)
 	b.WriteString(`</div>`)
 
-	// Authentication section
+	// Authentication section. Kept consistent with /developers and /api: when
+	// x402 is enabled there are two ways to call (pay-per-call with no login, or
+	// a token/credits); otherwise it's token-only.
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>Authentication</h3>`)
-	b.WriteString(`<p>Pass a token in the <code>Authorization</code> header with each request:</p>`)
-	b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">Authorization: Bearer YOUR_TOKEN</pre>`)
-	b.WriteString(`<p>Two ways to obtain a token:</p>`)
-	b.WriteString(`<ol>`)
-	b.WriteString(`<li><strong>Personal Access Token (PAT)</strong> &mdash; create one at <a href="/token">/token</a> after logging in.</li>`)
-	b.WriteString(`<li><strong>Signup / Login</strong> &mdash; the agent can call the <code>signup</code> or <code>login</code> tool to obtain a session token programmatically.</li>`)
-	b.WriteString(`</ol>`)
+	if wallet.X402Enabled() {
+		b.WriteString(`<p>Two ways to call, the same as the REST API:</p>`)
+		b.WriteString(`<ol>`)
+		b.WriteString(`<li><strong>Pay per call (x402)</strong> &mdash; no login. Call a metered tool with no auth and you get an HTTP <code>402</code> with the price and pay-to address; your x402 wallet pays in USDC and retries. Your first calls per wallet are free.</li>`)
+		b.WriteString(`<li><strong>Token &amp; credits</strong> &mdash; log in and pass a token; metered calls draw from your credit balance:`)
+		b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">Authorization: Bearer YOUR_TOKEN</pre>`)
+		b.WriteString(`Create a <a href="/token">Personal Access Token</a>, or call the <code>signup</code> / <code>login</code> tool to get one programmatically.</li>`)
+		b.WriteString(`</ol>`)
+		b.WriteString(`<p>Non-metered tools are free to call. A few tools that touch your account (wallet, mail, editing your apps) always need a logged-in session.</p>`)
+	} else {
+		b.WriteString(`<p>Pass a token in the <code>Authorization</code> header with each request:</p>`)
+		b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">Authorization: Bearer YOUR_TOKEN</pre>`)
+		b.WriteString(`<p>Two ways to obtain a token:</p>`)
+		b.WriteString(`<ol>`)
+		b.WriteString(`<li><strong>Personal Access Token (PAT)</strong> &mdash; create one at <a href="/token">/token</a> after logging in.</li>`)
+		b.WriteString(`<li><strong>Signup / Login</strong> &mdash; the agent can call the <code>signup</code> or <code>login</code> tool to obtain a session token programmatically.</li>`)
+		b.WriteString(`</ol>`)
+	}
 	b.WriteString(`</div>`)
 
 	// Interactive playground
