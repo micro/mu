@@ -5132,21 +5132,10 @@ body.display-mode .card h4 {
   }
 }
 
-/* Developer/API portal face: same app pages (/api, /mcp …) served on a portal
-   domain drop the consumer sidebar and header extras for a cohesive dev view. */
-.mu-portal #nav-container { display: none; }
-.mu-portal #head-mail { display: none; }
-.mu-portal #head-wallet { display: none; }
-.mu-portal #menu-toggle { display: none; }
-.mu-portal #content { max-width: 960px; }
-
 /* Endpoint reference with a sticky index rail (/mcp, /api). On desktop the
    index sits to the left and follows the scroll; on mobile it is hidden and the
    cards stack normally. */
-/* Reference pages (/mcp, /api) use the full page width — override the portal
-   cap so the index + cards aren't squeezed. */
-#content:has(.ep-layout),
-.mu-portal #content:has(.ep-layout) { max-width: none; }
+#content:has(.ep-layout) { max-width: none; }
 #content:has(.ep-layout) .card { max-width: none; }
 
 .ep-layout { display: flex; gap: 32px; align-items: flex-start; }
@@ -5180,10 +5169,8 @@ body.display-mode .card h4 {
 .api-method { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px;
   font-weight: 700; letter-spacing: .03em; color: #fff; background: #6b7280; margin-right: 6px; }
 
-/* Agent page: match the standard content width (and override the narrower
-   portal cap) so it's as wide as every other page. */
-#content:has(.chat-layout),
-.mu-portal #content:has(.chat-layout) { max-width: 1400px; }
+/* Agent page: match the standard content width so it's as wide as every other page. */
+#content:has(.chat-layout) { max-width: 1400px; }
 
 @media (max-width: 900px) {
   .ep-layout { display: block; }

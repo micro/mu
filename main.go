@@ -30,13 +30,13 @@ import (
 	"mu/docs"
 	"mu/home"
 	"mu/internal/a2a"
+	"mu/internal/agents"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/cli"
 	"mu/internal/data"
 	"mu/internal/memory"
-	"mu/internal/portal"
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/setup"
@@ -1141,8 +1141,8 @@ func main() {
 		"/a2a":                    false, // Public - A2A protocol
 		"/agent":                  false, // Public page, auth checked in handler
 		"/setup":                  false, // First-run setup (open only until an admin exists)
-		"/developers":             false, // Developer/API portal (public)
-		"/.portal/logo.svg":       false, // Portal wordmark (public)
+		"/agents":                 false, // API face for agents (public)
+		"/developers":             false, // Legacy alias → /agents (public)
 	}
 
 	// Static assets should not require authentication
@@ -1278,10 +1278,12 @@ func main() {
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)
 
-	// developer/API face — always available at /developers; a proxy can also
-	// flag a whole domain with X-Mu-Portal to serve it at the root.
-	http.HandleFunc("/developers", portal.Handler)
-	http.HandleFunc("/.portal/logo.svg", portal.LogoHandler)
+	// The API face for agents: MCP + REST, pay-per-call over x402.
+	http.HandleFunc("/agents", agents.Handler)
+	// Redirect the old path so existing links keep working.
+	http.HandleFunc("/developers", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/agents", http.StatusMovedPermanently)
+	})
 
 	// serve the agent
 	http.HandleFunc("/agent", agent.Handler)
@@ -1518,12 +1520,6 @@ func main() {
 						}
 					}
 				} else if r.URL.Path == "/" {
-					// Developer/API face: a domain the proxy flagged with
-					// X-Mu-Portal renders the portal at its root (m3o.com etc.).
-					if app.PortalMode(r) {
-						portal.Handler(w, r)
-						return
-					}
 					// Fresh instance with no admin yet → guide the operator
 					// through the one-time setup wizard.
 					if setup.Needed() {

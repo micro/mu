@@ -1,37 +1,30 @@
-// Package portal renders Mu's developer/API face: the same go-micro services,
-// presented for machine consumers — every capability as an MCP tool and REST
-// endpoint, pay-per-call over x402. It is a logged-out front door on the same
-// backend, not a separate product. Account/wallet/keys live on the canonical
-// consumer app (APP_URL); API access itself is token/wallet-based, so no
-// cross-domain session is needed. The wordmark is derived from the domain.
-// Nothing domain-specific is baked in — see docs/DEVELOPER_PORTAL.md.
-package portal
+// Package agents renders Mu's API face at /agents: the same services, presented
+// for machine consumers — every capability as an MCP tool and REST endpoint,
+// pay-per-call over x402. It's a logged-out front door on the same backend, not
+// a separate product.
+package agents
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"mu/internal/app"
 	"mu/internal/settings"
 )
 
-// canonical returns the base URL of the consumer app (where accounts, wallet and
-// sign-in live) for links from the portal, which may be on a different domain.
-// Configured via APP_URL; empty means same-origin relative links (correct for a
-// single-domain self-host).
+// canonical returns the base URL for sign-in/account links. Configured via
+// APP_URL; empty means same-origin relative links (the single-domain default).
 func canonical() string {
 	return strings.TrimRight(settings.Get("APP_URL"), "/")
 }
 
-// Handler renders the developer portal landing.
+// Handler renders the agents / API landing page.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	brand := htmlEscape(app.PortalBrand(r))
 	base := canonical() // "" => same-origin
 
 	body := `<p style="max-width:560px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 28px">
 Every capability, as a service your agents can call — news, markets, weather, web search,
-video, mail and more. Reachable over <a href="/mcp" style="color:#111">MCP</a> and REST, paid
+video, mail, your own database and more. Reachable over <a href="/mcp" style="color:#111">MCP</a> and REST, paid
 per request with <a href="https://x402.org" style="color:#111">x402</a> stablecoin micropayments.</p>
 
 <div class="pcards">
@@ -71,59 +64,20 @@ per request with <a href="https://x402.org" style="color:#111">x402</a> stableco
 </style>`
 
 	page := app.RenderLanding(app.Landing{
-		Title:       brand + " — APIs for agents",
+		Title:       "Mu — APIs for agents",
 		Description: "Every Mu capability as an MCP tool and REST API, paid per call over x402.",
-		Brand:       brand,
+		Brand:       "Mu",
 		Tagline:     "APIs for agents",
 		TopRight:    `<a href="` + base + `/login">Sign in →</a>`,
 		Body:        body,
-		Image:       "/.portal/logo.svg",
 		Footer: `<a href="/mcp">MCP</a>
   <a href="/api">API</a>
+  <a href="/docs">Docs</a>
   <a href="https://x402.org">x402</a>
-  <a href="https://go-micro.dev">Go Micro</a>
   <a href="` + base + `/login">Sign in</a>`,
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Write([]byte(page))
-}
-
-// LogoHandler serves a square wordmark derived from the domain, used as the
-// portal's favicon and link-preview image so a shared link shows e.g. "M3O"
-// rather than the Mu logo. Domain-agnostic — the text comes from the Host.
-func LogoHandler(w http.ResponseWriter, r *http.Request) {
-	brand := htmlEscape(app.PortalBrand(r))
-	n := len([]rune(app.PortalBrand(r)))
-	size := 200
-	if n > 3 {
-		size = 200 * 3 / n
-		if size < 64 {
-			size = 64
-		}
-	}
-	w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-	w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
-<rect width="600" height="600" fill="#111"/>
-<text x="300" y="300" fill="#fff" font-family="Nunito Sans,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="800" font-size="` + strconv.Itoa(size) + `" text-anchor="middle" dominant-baseline="central">` + brand + `</text>
-</svg>`))
-}
-
-func htmlEscape(s string) string {
-	r := ""
-	for _, c := range s {
-		switch c {
-		case '&':
-			r += "&amp;"
-		case '<':
-			r += "&lt;"
-		case '>':
-			r += "&gt;"
-		default:
-			r += string(c)
-		}
-	}
-	return r
 }
