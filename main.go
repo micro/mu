@@ -429,12 +429,14 @@ func main() {
 
 	apps.QuotaCheck = agent.QuotaCheck
 
-	// Deduct credits from the acting user after a successful metered SDK call.
-	apps.ChargeQuota = func(r *http.Request, op string) {
+	// Deduct credits from the acting user for a metered call (SDK or the agent).
+	chargeUser := func(r *http.Request, op string) {
 		if sess, err := auth.GetSession(r); err == nil {
 			_ = wallet.ConsumeQuota(sess.Account, op)
 		}
 	}
+	apps.ChargeQuota = chargeUser
+	agent.ChargeQuota = chargeUser
 
 	// Inline visual cards now come from the capability registry (core), which
 	// each service self-registers into from its Load(). No central wiring here.

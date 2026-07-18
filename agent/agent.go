@@ -57,6 +57,11 @@ var Models = []Model{
 // import cycle. Signature matches api.QuotaCheck.
 var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 
+// ChargeQuota is set by main.go to deduct credits from the acting user's wallet
+// once an agent query is admitted. Charging the user who runs the agent (not any
+// app owner) is deliberate. Admins and self-hosted instances are unaffected.
+var ChargeQuota func(r *http.Request, op string)
+
 // Load initialises the agent package (no-op for now; reserved for future use).
 func Load() {}
 
@@ -793,7 +798,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check wallet quota (authenticated users only)
+	// Check wallet quota (authenticated users only), then charge up-front: the
+	// agent is our most expensive op, so it's metered like web_fetch and chat.
 	if !isGuest && QuotaCheck != nil {
 		canProceed, _, err := QuotaCheck(r, model.WalletOp)
 		if !canProceed {
@@ -803,6 +809,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			}
 			http.Error(w, `{"error":"`+msg+`"}`, http.StatusPaymentRequired)
 			return
+		}
+		if ChargeQuota != nil {
+			ChargeQuota(r, model.WalletOp)
 		}
 	}
 

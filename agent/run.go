@@ -135,6 +135,9 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, RunResponse{Error: msg})
 			return
 		}
+		if ChargeQuota != nil {
+			ChargeQuota(r, model.WalletOp)
+		}
 	}
 
 	// Step 1: Plan
