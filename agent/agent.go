@@ -1054,7 +1054,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	hasNewsSearchTool := false
 	for _, tc := range toolCalls {
 		switch tc.Tool {
-		case "markets":
+		case "markets", "markets_list":
 			hasMarketsTool = true
 		case "weather_forecast":
 			hasWeatherTool = true
@@ -1449,10 +1449,10 @@ func toolCallKey(tool string, args map[string]any) string {
 // correlation. Planning can otherwise add broad news tools for "today" prompts,
 // which lets unrelated headlines bleed into a simple movers answer.
 func skipMarketMoverCompanionTool(prompt, tool string) bool {
-	if tool == "markets" || !isMarketMoverPrompt(prompt) || wantsMarketMoverExplanation(prompt) {
+	if tool == "markets" || tool == "markets_list" || !isMarketMoverPrompt(prompt) || wantsMarketMoverExplanation(prompt) {
 		return false
 	}
-	return tool == "news" || tool == "news_headlines" || tool == "news_search" || tool == "web_search" || tool == "recall"
+	return tool == "news" || tool == "news_headlines" || tool == "news_list" || tool == "news_search" || tool == "web_search" || tool == "recall"
 }
 
 func isMarketMoverPrompt(prompt string) bool {
@@ -1499,7 +1499,7 @@ func toolLabel(tool string) string {
 	switch tool {
 	case "news":
 		return "📰 Reading latest news"
-	case "news_headlines":
+	case "news_headlines", "news_list":
 		return "📰 Scanning headlines"
 	case "news_read":
 		return "📖 Reading article"
@@ -1513,7 +1513,7 @@ func toolLabel(tool string) string {
 		return "Fetching web page"
 	case "video_search":
 		return "🎬 Searching videos"
-	case "markets":
+	case "markets", "markets_list":
 		return "📈 Checking market prices"
 	case "weather_forecast":
 		return "🌤 Getting weather forecast"
@@ -1855,7 +1855,7 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 	switch toolName {
 	case "news", "news_search":
 		return withCurrentDateContext(formatNewsResult(result))
-	case "news_headlines", "news_read":
+	case "news_headlines", "news_list", "news_read":
 		return withCurrentDateContext(result)
 	case "video_search":
 		return formatVideoResult(result)
@@ -1865,7 +1865,7 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return withCurrentDateContext(formatSearchResult(result))
 	case "web_search", "weather_forecast":
 		return withCurrentDateContext(result)
-	case "markets":
+	case "markets", "markets_list":
 		return withCurrentDateContext(formatMarketsResult(result))
 	case "web_fetch":
 		return formatWebFetchResult(result)

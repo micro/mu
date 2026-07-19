@@ -582,7 +582,8 @@ func main() {
 
 	// news_headlines tool — topic-balanced headlines for scanning before reading
 	api.RegisterTool(api.Tool{
-		Name:        "news_headlines",
+		Name:        "news_list",
+		Aliases:     []string{"news_headlines"},
 		Description: "Get recent news headlines with short summaries balanced across all topics (not dominated by one topic like crypto). Use for general news and briefing requests, then news_read for any article worth expanding.",
 		Params: []api.ToolParam{
 			{Name: "topic", Type: "string", Description: "Optional topic/category filter (e.g. tech, world, business)", Required: false},
@@ -757,7 +758,8 @@ func main() {
 
 	// markets — live prices, returned as model-ready text (AI-first).
 	api.RegisterTool(api.Tool{
-		Name:        "markets",
+		Name:        "markets_list",
+		Aliases:     []string{"markets"},
 		Description: "Get live market prices for cryptocurrencies, futures, commodities and currencies.",
 		Params: []api.ToolParam{
 			{Name: "category", Type: "string", Description: "crypto, futures, commodities or currencies (default crypto)", Required: false},
@@ -846,7 +848,8 @@ func main() {
 
 	// social — latest social feed (AI-first).
 	api.RegisterTool(api.Tool{
-		Name:        "social",
+		Name:        "social_list",
+		Aliases:     []string{"social"},
 		Description: "Get the latest social posts from the network.",
 		Handle: func(args map[string]any) (string, error) {
 			var rsp social.FeedResponse
@@ -860,7 +863,8 @@ func main() {
 
 	// video — latest videos from curated channels (AI-first).
 	api.RegisterTool(api.Tool{
-		Name:        "video",
+		Name:        "video_list",
+		Aliases:     []string{"video"},
 		Description: "Get the latest videos from curated channels.",
 		Handle: func(args map[string]any) (string, error) {
 			var rsp video.LatestResponse
@@ -890,10 +894,10 @@ func main() {
 	// an agent answer (and the daily brief) can carry both text and the same
 	// card the home screen shows. Cards render from each service's live data;
 	// wiring them here keeps internal/api free of service imports.
-	api.SetCard("markets", "Markets", markets.MarketsHTML)
-	api.SetCard("news_headlines", "News", news.Headlines)
-	api.SetCard("social", "Social", social.CardHTML)
-	api.SetCard("video", "Videos", video.Latest)
+	api.SetCard("markets_list", "Markets", markets.MarketsHTML)
+	api.SetCard("news_list", "News", news.Headlines)
+	api.SetCard("social_list", "Social", social.CardHTML)
+	api.SetCard("video_list", "Videos", video.Latest)
 	api.SetCard("blog_list", "Blog", blog.Preview)
 	api.SetCard("reminder", "Reminder", reminder.ReminderHTML)
 

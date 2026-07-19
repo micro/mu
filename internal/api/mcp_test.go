@@ -585,7 +585,7 @@ func TestMCPHandler_MeteredToolsHaveWalletOp(t *testing.T) {
 	}
 
 	// Verify free tools don't have WalletOp
-	freeTtools := []string{"news", "blog_list", "blog_read", "video", "search"}
+	freeTtools := []string{"news", "blog_list", "blog_read", "video_list", "search"}
 	for _, tool := range tools {
 		for _, free := range freeTtools {
 			if tool.Name == free && tool.WalletOp != "" {

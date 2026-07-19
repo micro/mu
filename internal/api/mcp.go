@@ -145,6 +145,7 @@ type mcpContent struct {
 // Tool defines an MCP tool with its HTTP mapping
 type Tool struct {
 	Name        string                                       `json:"name"`
+	Aliases     []string                                     `json:"-"` // legacy names that still resolve to this tool (not shown in listings)
 	Description string                                       `json:"description"`
 	Title       string                                       `json:"title,omitempty"` // display title for the visual card
 	Icon        string                                       `json:"icon,omitempty"`
@@ -212,11 +213,26 @@ func MCPWalletOp(body []byte) string {
 		return ""
 	}
 	for i := range tools {
-		if tools[i].Name == req.Params.Name {
+		if toolMatches(tools[i], req.Params.Name) {
 			return tools[i].WalletOp
 		}
 	}
 	return ""
+}
+
+// toolMatches reports whether name is the tool's canonical name or one of its
+// legacy aliases. Aliases let a renamed tool keep resolving old callers (agent
+// shortcuts, existing integrations) without appearing in listings.
+func toolMatches(t Tool, name string) bool {
+	if t.Name == name {
+		return true
+	}
+	for _, a := range t.Aliases {
+		if a == name {
+			return true
+		}
+	}
+	return false
 }
 
 // RegisterTool adds a tool to the MCP server.
@@ -626,7 +642,7 @@ func ExecuteToolAs(accountID, name string, args map[string]any) (string, bool, e
 func ExecuteTool(r *http.Request, name string, args map[string]any) (string, bool, error) {
 	var tool *Tool
 	for i := range tools {
-		if tools[i].Name == name {
+		if toolMatches(tools[i], name) {
 			tool = &tools[i]
 			break
 		}

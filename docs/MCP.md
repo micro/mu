@@ -129,25 +129,26 @@ Accounts can top up credits with a card via Stripe.
 | `login` | Log in and get session token | Included |
 | `signup` | Create account and get session token | Included |
 | `chat` | Chat with AI assistant | 5 credits |
-| `news` | Read the latest news feed | Included |
+| `news` | Read the raw latest news feed | Included |
+| `news_list` | Recent headlines with summaries, balanced across topics | Included |
 | `news_search` | Search for news articles | 1 credit |
 | `blog_list` | Get all blog posts | Included |
 | `blog_read` | Read a specific blog post | Included |
 | `blog_create` | Create a new blog post | 1 credit |
 | `blog_update` | Update a blog post | Included |
 | `blog_delete` | Delete a blog post | Included |
-| `video` | Get the latest videos | Included |
+| `video_list` | Get the latest videos | Included |
 | `video_search` | Search for videos | 2 credits |
-| `social` | Read the social feed | Included |
+| `social_list` | Read the social feed | Included |
 | `social_search` | Search social posts | 1 credit |
 | `places_search` | Search for places by name or category | 5 credits |
-| `places_nearby` | Find places of interest near a location | 2 credits |
+| `places_nearby` | Find places of interest near a location | 4 credits |
 | `mail_read` | Read mail inbox | Included |
 | `mail_send` | Send a mail message | 4 credits |
 | `search` | Search across all content | Included |
 | `wallet_balance` | Get wallet credit balance | Included |
 | `wallet_topup` | Get wallet topup payment methods | Included |
-| `markets` | Get live market prices | Included |
+| `markets_list` | Get live market prices | Included |
 | `reminder` | Get the daily Islamic reminder | Included |
 | `quran` | Look up a Quran chapter or verse | Included |
 | `hadith` | Look up hadith from Sahih Al Bukhari | Included |
