@@ -1539,9 +1539,9 @@ func main() {
 							http.Redirect(w, r, "/home", http.StatusFound)
 						}
 					} else {
-						// Logged out, the home screen is the landing: real cards
-						// plus the agent, so the root shows the product itself.
-						home.Handler(w, r)
+						// Logged out: show an actual landing that says what Mu is
+						// and points at the ways in (sign in / sign up / agents).
+						home.Landing(w, r)
 					}
 					return
 				}
