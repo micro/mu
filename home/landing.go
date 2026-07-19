@@ -34,7 +34,7 @@ no ads, no tracking. Open source and self-hostable, so you can run the whole sta
 </div>
 
 <p class="lagents">Building agents? Every capability is also an API.
-<a href="/agents">See the agent &amp; developer page →</a></p>
+<a href="/agents">See the agents page →</a></p>
 
 <style>
 .lead{max-width:560px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 30px}
