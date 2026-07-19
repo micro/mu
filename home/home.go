@@ -14,6 +14,7 @@ import (
 	"mu/agent"
 	"mu/apps"
 	"mu/blog"
+	"mu/images"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
@@ -128,6 +129,7 @@ func Load() {
 		"apps":     apps.Preview,
 		"social":   social.CardHTML,
 		"weather":  weather.CardHTML,
+		"images":   images.CardHTML,
 	}
 
 	// Build Cards array from config

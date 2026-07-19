@@ -29,6 +29,7 @@ import (
 	"mu/client/whatsapp"
 	"mu/docs"
 	"mu/home"
+	"mu/images"
 	"mu/internal/a2a"
 	"mu/internal/agents"
 	"mu/internal/api"
@@ -134,6 +135,7 @@ func main() {
 	// load markets, reminder, wallet
 	markets.Load()
 	reminder.Load()
+	images.Load()
 	wallet.Load()
 	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
 	discord.Load()
@@ -771,6 +773,25 @@ func main() {
 		},
 	})
 
+	// image_generate — text-to-image via Atlas Cloud (metered, per-user).
+	// Charging happens inside images.Generate so every path bills exactly once;
+	// WalletOp here gates affordability and advertises the per-call price.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "image_generate",
+		Description: "Generate an image from a text prompt. Returns a URL to the generated image.",
+		WalletOp:    "image_generate",
+		Params: []api.ToolParam{
+			{Name: "prompt", Type: "string", Description: "Describe the image to generate", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		prompt, _ := args["prompt"].(string)
+		url, err := images.Generate(accountID, prompt)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("Generated image: %s\n\n![image](%s)", url, url), nil
+	})
+
 	// weather_forecast — current conditions plus the next few days (AI-first).
 	api.RegisterTool(api.Tool{
 		Name:        "weather_forecast",
@@ -1096,6 +1117,7 @@ func main() {
 		"/home":              false, // Public viewing
 		"/blog":              false, // Public viewing, auth for posting
 		"/markets":           false, // Public viewing
+		"/images":            false, // Public daily image; generation needs login
 		"/social":            false, // Public viewing, auth for search
 		"/social/thread":     false, // Public thread view, auth for messaging
 		"/places":            false, // Public map, auth for search
@@ -1300,6 +1322,7 @@ func main() {
 
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
+	http.HandleFunc("/images", images.Handler)
 
 	// serve social page
 	http.HandleFunc("/social", social.Handler)

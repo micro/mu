@@ -37,6 +37,7 @@ var (
 	CostSocialPost        = getEnvInt("CREDIT_COST_SOCIAL_POST", 1)
 	CostSocialReply       = getEnvInt("CREDIT_COST_SOCIAL_REPLY", 1)
 	CostBlogComment       = getEnvInt("CREDIT_COST_BLOG_COMMENT", 1)
+	CostImageGenerate     = getEnvInt("CREDIT_COST_IMAGE", 15)
 	CostAppBuild          = getEnvInt("CREDIT_COST_APP_BUILD", 100)
 	CostAppEdit           = getEnvInt("CREDIT_COST_APP_EDIT", 50)
 	DailyQuota            = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 100))
@@ -65,6 +66,7 @@ const (
 	OpWebSearch         = "web_search"
 	OpWebFetch          = "web_fetch"
 	OpDBWrite           = "db_write"
+	OpImageGenerate     = "image_generate"
 	OpAgentQuery        = "agent_query"
 	OpAgentQueryPremium = "agent_query_premium"
 	OpSocialSearch      = "social_search"
@@ -492,6 +494,8 @@ func GetOperationCost(operation string) int {
 		return CostWebFetch
 	case OpDBWrite:
 		return CostDBWrite
+	case OpImageGenerate:
+		return CostImageGenerate
 	case OpAgentQuery:
 		return CostAgentQuery
 	case OpAgentQueryPremium:

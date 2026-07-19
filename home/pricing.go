@@ -76,6 +76,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<table class="stats-table" style="font-size:14px">`)
 	b.WriteString(`<tr><td>AI agent</td><td>` + fmt.Sprintf("%d", wallet.CostAgentQuery) + `</td></tr>`)
 	b.WriteString(`<tr><td>Chat</td><td>` + fmt.Sprintf("%d", wallet.CostChatQuery) + `</td></tr>`)
+	b.WriteString(`<tr><td>Image generation</td><td>` + fmt.Sprintf("%d", wallet.CostImageGenerate) + `</td></tr>`)
 	b.WriteString(`<tr><td>Web search</td><td>` + fmt.Sprintf("%d", wallet.CostWebSearch) + `</td></tr>`)
 	b.WriteString(`<tr><td>Weather</td><td>` + fmt.Sprintf("%d", wallet.CostWeatherForecast) + `</td></tr>`)
 	b.WriteString(`<tr><td>Mail</td><td>` + fmt.Sprintf("%d", wallet.CostMailSend) + `</td></tr>`)

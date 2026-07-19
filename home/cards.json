@@ -49,6 +49,14 @@
       "position": 3,
       "link": "/video",
       "icon": "/video.png"
+    },
+    {
+      "id": "images",
+      "title": "Images",
+      "type": "images",
+      "position": 4,
+      "link": "/images",
+      "icon": "/images.svg"
     }
   ]
 }
