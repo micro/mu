@@ -58,6 +58,7 @@ no ads, no tracking. Open source and self-hostable, so you can run the whole sta
 		Body:        body,
 		TopRight:    `<a href="/login">Sign in →</a>`,
 		Footer: `<a href="/agents">Agents</a>
+  <a href="/pricing">Pricing</a>
   <a href="/api">API</a>
   <a href="/docs">Docs</a>
   <a href="/mcp">MCP</a>
