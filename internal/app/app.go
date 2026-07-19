@@ -319,7 +319,7 @@ var Template = `
           <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>
           <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
           <a href="/markets"><img src="/markets.svg?` + Version + `"><span class="label">Markets</span></a>
-          <a href="/weather"><img src="/weather.png?` + Version + `"><span class="label">Weather</span></a>
+          <a href="/weather"><img src="/weather.svg?` + Version + `"><span class="label">Weather</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
           <a id="nav-mail" href="/mail"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
           <a href="/social"><img src="/social.svg?` + Version + `"><span class="label">Social</span></a>
