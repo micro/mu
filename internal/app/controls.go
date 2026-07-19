@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -144,73 +145,80 @@ var typeLabels = map[string]string{
 	"web":    "Web page",
 }
 
-func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
+// SavedEntry is one saved (bookmarked) item resolved to a link and a title.
+type SavedEntry struct {
+	Type    string    `json:"type"`
+	ID      string    `json:"id"`
+	URL     string    `json:"url"`
+	Title   string    `json:"title"`
+	SavedAt time.Time `json:"saved_at"`
+}
+
+// GetSavedList returns a user's saved items, newest first, each resolved to a
+// URL and a human title from the content index. Shared by the Saved page, its
+// JSON view and the saved_list tool so all three stay in sync.
+func GetSavedList(userID string) []SavedEntry {
 	saved := GetSavedItems(userID)
+	var out []SavedEntry
+	for key, t := range saved {
+		parts := strings.SplitN(key, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		ct, cid := parts[0], parts[1]
+		u := contentURL(ct, cid)
+		if u == "" {
+			u = "#"
+		}
+		out = append(out, SavedEntry{Type: ct, ID: cid, URL: u, Title: savedTitle(ct, cid), SavedAt: t})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SavedAt.After(out[j].SavedAt) })
+	return out
+}
+
+// savedTitle resolves a human title for a saved item from the content index,
+// falling back to the decoded URL (web) or the content-type label.
+func savedTitle(ct, cid string) string {
+	if entry := data.GetByID(cid); entry != nil && entry.Title != "" {
+		return entry.Title
+	}
+	if entry := data.GetByID(ct + "_" + cid); entry != nil && entry.Title != "" {
+		return entry.Title
+	}
+	if ct == "web" {
+		if decoded, err := url.QueryUnescape(cid); err == nil {
+			return decoded
+		}
+		return cid
+	}
+	if label := typeLabels[ct]; label != "" {
+		return label
+	}
+	return ct
+}
+
+func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
+	items := GetSavedList(userID)
+
+	if WantsJSON(r) {
+		RespondJSON(w, map[string]interface{}{"saved": items})
+		return
+	}
 
 	var sb strings.Builder
-
-	if len(saved) == 0 {
+	if len(items) == 0 {
 		sb.WriteString(`<div class="card"><p class="text-muted">Nothing saved yet. Use the ☆ icon on any content to save it.</p></div>`)
 	} else {
-		type item struct {
-			ct, cid, url, label, time string
-		}
-		var items []item
-		for key, t := range saved {
-			parts := strings.SplitN(key, ":", 2)
-			if len(parts) != 2 {
-				continue
-			}
-			ct, cid := parts[0], parts[1]
-			u := contentURL(ct, cid)
-			if u == "" {
-				u = "#"
-			}
-
-			// Try to get the title from the search index
-			title := ""
-			if entry := data.GetByID(cid); entry != nil {
-				title = entry.Title
-			}
-			if title == "" {
-				// Try with type prefix (video_id, etc.)
-				if entry := data.GetByID(ct + "_" + cid); entry != nil {
-					title = entry.Title
-				}
-			}
-			if title == "" {
-				// For web pages, decode the URL and use it as the title
-				if ct == "web" {
-					if decoded, err := url.QueryUnescape(cid); err == nil {
-						title = decoded
-					} else {
-						title = cid
-					}
-				} else {
-					label := typeLabels[ct]
-					if label == "" {
-						label = ct
-					}
-					title = label
-				}
-			}
-
-			items = append(items, item{ct: ct, cid: cid, url: u, label: title, time: t.Format("2 Jan 15:04")})
-		}
-		sort.Slice(items, func(i, j int) bool {
-			return items[i].time > items[j].time
-		})
-
 		sb.WriteString(`<div class="card">`)
 		for _, it := range items {
-			typeLabel := typeLabels[it.ct]
+			typeLabel := typeLabels[it.Type]
 			if typeLabel == "" {
-				typeLabel = it.ct
+				typeLabel = it.Type
 			}
 			sb.WriteString(fmt.Sprintf(`<div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
 				<a href="%s">%s</a>
 				<span class="text-sm text-muted"> · %s · %s · <a href="#" onclick="fetch('/app/unsave?type=%s&id=%s',{method:'POST'}).then(function(){location.reload()});return false;">remove</a></span>
-			</div>`, it.url, it.label, typeLabel, it.time, it.ct, it.cid))
+			</div>`, it.URL, it.Title, typeLabel, it.SavedAt.Format("2 Jan 15:04"), it.Type, it.ID))
 		}
 		sb.WriteString(`</div>`)
 	}

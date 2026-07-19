@@ -794,6 +794,23 @@ func main() {
 		return fmt.Sprintf("Generated image: %s\n\n![image](%s)", url, url), nil
 	})
 
+	// saved_list — the items you've bookmarked for later, with links. Read-only,
+	// per-user, free; the save/unsave tools already exist for writing.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "saved_list",
+		Description: "List the items you've saved for later (bookmarks), with their links.",
+	}, func(args map[string]any, accountID string) (string, error) {
+		items := app.GetSavedList(accountID)
+		if len(items) == 0 {
+			return "You have no saved items.", nil
+		}
+		var sb strings.Builder
+		for _, it := range items {
+			sb.WriteString(fmt.Sprintf("- %s (%s)\n  %s\n", it.Title, it.Type, it.URL))
+		}
+		return sb.String(), nil
+	})
+
 	// image_search — search the public image stock pool by description. No auth:
 	// public stock is reusable by anyone or any agent. Free.
 	api.RegisterTool(api.Tool{
