@@ -66,16 +66,9 @@ func fetchReminder() {
 	// Deduplicate header when Arabic and English names match
 	// e.g. "Muhammad - Muhammad - 47:1" → "Muhammad - 47:1"
 	verseText = deduplicateVerseName(verseText)
+	// Card body is just the verse; the home card framework appends its own
+	// "More" link to /islam, so a second link here would be redundant.
 	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, verseText)
-
-	// Link to the specific verse on reminder.dev
-	moreURL := "https://reminder.dev"
-	if links, ok := val["links"].(map[string]interface{}); ok {
-		if verse, ok := links["verse"].(string); ok && verse != "" {
-			moreURL = "https://reminder.dev" + verse
-		}
-	}
-	html += app.Link("More", moreURL)
 
 	reminderMutex.Lock()
 	reminderHTML = html
