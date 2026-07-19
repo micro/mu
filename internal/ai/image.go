@@ -12,8 +12,10 @@ import (
 )
 
 // ImageModelID is the Atlas Cloud text-to-image model Mu generates with.
-// Override with the IMAGE_MODEL setting if you prefer another Atlas model.
-const ImageModelID = "google/nano-banana-2-lite"
+// Atlas model ids are vendor/model/task (cf. the provider's default
+// "openai/gpt-image-2/text-to-image"); the "/text-to-image" suffix is required
+// or Atlas answers 400 "not found". Override with the IMAGE_MODEL setting.
+const ImageModelID = "google/nano-banana-2-lite/text-to-image"
 
 // imageModel returns the configured image model id.
 func imageModel() string {
