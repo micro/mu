@@ -3,6 +3,7 @@ package reminder
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -135,23 +136,63 @@ type ReminderData struct {
 	Links   map[string]interface{} `json:"links"`
 }
 
-// Handler serves /reminder in-app: today's verse, hadith and name of Allah,
-// rather than bouncing out to reminder.dev. JSON on request.
+// Handler serves /islam in-app: today's full reminder — verse, name of Allah,
+// hadith and reflection — rather than bouncing out to reminder.dev. JSON on
+// request returns the complete payload.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, GetReminderData())
 		return
 	}
-	body := ReminderHTML()
-	if strings.TrimSpace(body) == "" {
-		body = `<div class="card"><p class="text-muted">Today's reminder is loading — check back shortly.</p></div>`
-	}
-	body += `<p style="font-size:13px;color:#999;margin-top:12px">Daily verse, hadith and names via <a href="https://reminder.dev">reminder.dev</a>. Ask the agent to look up any Quran verse or hadith.</p>`
 	app.Respond(w, r, app.Response{
 		Title:       "Islam",
-		Description: "A daily verse, hadith and name of Allah",
-		HTML:        body,
+		Description: "A daily verse, name of Allah, hadith and reflection",
+		HTML:        renderIslamPage(GetReminderData()),
 	})
+}
+
+// splitTitleBody splits reminder.dev's "Header\n\nBody" fields into a bold
+// header and the body text.
+func splitTitleBody(s string) (string, string) {
+	parts := strings.SplitN(strings.TrimSpace(s), "\n\n", 2)
+	if len(parts) == 2 {
+		return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+	}
+	return "", strings.TrimSpace(s)
+}
+
+// renderIslamPage renders the whole reminder payload: verse, name of Allah,
+// hadith and reflection, each with a link to its source on reminder.dev.
+func renderIslamPage(rd *ReminderData) string {
+	if rd == nil {
+		return `<div class="card"><p class="text-muted">Today's reminder is loading — check back shortly.</p></div>`
+	}
+	var b strings.Builder
+	section := func(title, content, linkKey, linkLabel string) {
+		if strings.TrimSpace(content) == "" {
+			return
+		}
+		head, body := splitTitleBody(content)
+		b.WriteString(`<div class="card"><h3>` + title + `</h3>`)
+		if head != "" {
+			b.WriteString(`<p style="font-weight:600;margin:0 0 6px">` + html.EscapeString(head) + `</p>`)
+		}
+		b.WriteString(`<p style="white-space:pre-line;margin:0;line-height:1.6">` + html.EscapeString(body) + `</p>`)
+		if linkKey != "" && rd.Links != nil {
+			if p, ok := rd.Links[linkKey].(string); ok && p != "" {
+				b.WriteString(`<p style="margin:10px 0 0"><a href="https://reminder.dev` + html.EscapeString(p) + `" target="_blank">` + linkLabel + ` &rarr;</a></p>`)
+			}
+		}
+		b.WriteString(`</div>`)
+	}
+	section("Verse of the day", rd.Verse, "verse", "Read in the Quran")
+	section("Name of Allah", rd.Name, "name", "The 99 names")
+	section("Hadith", rd.Hadith, "hadith", "Read the hadith")
+	if strings.TrimSpace(rd.Message) != "" {
+		b.WriteString(`<div class="card"><h3>Reflection</h3><p style="margin:0;line-height:1.6">` + html.EscapeString(rd.Message) + `</p></div>`)
+	}
+	b.WriteString(`<p style="font-size:12px;color:#999">Daily verse, name of Allah, and hadith via <a href="https://reminder.dev">reminder.dev</a>. Ask the agent to look up any Quran verse or hadith.</p>`)
+	return b.String()
 }
 
 // GetReminderData loads the cached reminder data (from api/latest, rotates hourly)

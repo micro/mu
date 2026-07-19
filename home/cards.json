@@ -28,10 +28,10 @@
     },
     {
       "id": "reminder",
-      "title": "Reminder",
+      "title": "Islam",
       "type": "reminder",
       "position": 1,
-      "link": "",
+      "link": "/islam",
       "icon": "/reminder.svg"
     },
     {

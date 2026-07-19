@@ -1165,6 +1165,7 @@ func main() {
 		"/home":              false, // Public viewing
 		"/blog":              false, // Public viewing, auth for posting
 		"/markets":           false, // Public viewing
+		"/islam":             false, // Public daily verse, hadith and names
 		"/images":            false, // Public daily image; generation needs login
 		"/social":            false, // Public viewing, auth for search
 		"/social/thread":     false, // Public thread view, auth for messaging
@@ -1383,7 +1384,11 @@ func main() {
 	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
 
 	// redirect /reminder to reminder.dev
-	http.HandleFunc("/reminder", reminder.Handler)
+	http.HandleFunc("/islam", reminder.Handler)
+	// Back-compat: the page used to live at /reminder.
+	http.HandleFunc("/reminder", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/islam", http.StatusMovedPermanently)
+	})
 
 	// serve places page
 	http.HandleFunc("/places", places.Handler)
