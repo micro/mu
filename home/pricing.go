@@ -13,8 +13,12 @@ import (
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
+	// Everything sits in one centered column so the hero, plan cards and the
+	// info cards below share a single width and centre line.
+	b.WriteString(`<div style="max-width:620px;margin:0 auto">`)
+
 	// Hero
-	b.WriteString(`<div style="max-width:560px;margin:0 auto;text-align:center;padding:24px 0 0">`)
+	b.WriteString(`<div style="text-align:center;padding:24px 0 0">`)
 	b.WriteString(`<h2 style="font-size:1.6rem;margin:0 0 8px">An agent for everyday</h2>`)
 	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">News, mail, search, weather, markets, video — the everyday internet, handled by one agent you just talk to.</p>`)
 	b.WriteString(`</div>`)
@@ -53,7 +57,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>`)
 
 	// What's included (free)
-	b.WriteString(`<div class="card" style="max-width:560px;margin:0 auto 16px">`)
+	b.WriteString(`<div class="card" style="margin:0 0 16px">`)
 	b.WriteString(`<h3>Included for everyone</h3>`)
 	b.WriteString(`<p style="font-size:14px;color:#666">Browse without an account. No ads, no tracking.</p>`)
 	b.WriteString(`<ul style="list-style:none;padding:0;font-size:14px;line-height:2;margin:8px 0 0">`)
@@ -66,7 +70,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>`)
 
 	// Credit costs
-	b.WriteString(`<div class="card" style="max-width:560px;margin:0 auto 16px">`)
+	b.WriteString(`<div class="card" style="margin:0 0 16px">`)
 	b.WriteString(`<h3>Credit costs</h3>`)
 	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px">1 credit = 1p. Pay for what you use.</p>`)
 	b.WriteString(`<table class="stats-table" style="font-size:14px">`)
@@ -80,7 +84,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>`)
 
 	// Self-host
-	b.WriteString(`<div class="card" style="max-width:560px;margin:0 auto 16px">`)
+	b.WriteString(`<div class="card" style="margin:0 0 16px">`)
 	b.WriteString(`<h3>Self-host</h3>`)
 	b.WriteString(`<p style="font-size:14px;color:#666">Run your own instance with no limits. Single Go binary, bring your own AI provider.</p>`)
 	b.WriteString(`<p style="font-size:14px"><a href="https://github.com/micro/mu">github.com/micro/mu</a></p>`)
@@ -90,6 +94,8 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	if sess, _ := auth.TrySession(r); sess == nil {
 		b.WriteString(`<p style="text-align:center;font-size:14px;color:#888;margin:16px 0">Already have an account? <a href="/login">Log in</a></p>`)
 	}
+
+	b.WriteString(`</div>`) // close centered column
 
 	html := app.RenderHTMLForRequest("Pricing", "Personal AI — plans and pricing", b.String(), r)
 	w.Write([]byte(html))
