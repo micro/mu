@@ -29,7 +29,7 @@ func APIPageHandler(w http.ResponseWriter, r *http.Request) {
 	// Endpoint selector
 	b.WriteString(`<select id="api-endpoint" onchange="apiSelectEndpoint()" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:4px;margin-bottom:12px">`)
 	b.WriteString(`<option value="">Select an endpoint...</option>`)
-	for i, ep := range Endpoints {
+	for i, ep := range sortedEndpoints() {
 		b.WriteString(fmt.Sprintf(`<option value="%d">%s %s — %s</option>`,
 			i,
 			html.EscapeString(ep.Method),
@@ -202,7 +202,7 @@ func APIPageHandler(w http.ResponseWriter, r *http.Request) {
 // apiEndpointsJSON returns endpoint metadata as JSON for the playground JS
 func apiEndpointsJSON() string {
 	var eps []map[string]any
-	for _, ep := range Endpoints {
+	for _, ep := range sortedEndpoints() {
 		params := []map[string]any{}
 		for _, p := range ep.Params {
 			params = append(params, map[string]any{
@@ -230,7 +230,7 @@ func apiEndpointsJSON() string {
 func apiEndpointsSection() string {
 	var nav strings.Builder
 	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Endpoints</div>`)
-	for _, t := range tools {
+	for _, t := range sortedTools() {
 		price := ""
 		if p := wallet.X402PriceFor(t.WalletOp); p != "" {
 			price = `<span class="ep-price">` + p + `</span>`
@@ -245,7 +245,7 @@ func apiEndpointsSection() string {
 // ready-to-run call (REST path if it has one, else the POST /mcp JSON-RPC body).
 func apiEndpointsHTML() string {
 	var b strings.Builder
-	for _, t := range tools {
+	for _, t := range sortedTools() {
 		b.WriteString(`<div class="card" id="api-` + html.EscapeString(t.Name) + `">`)
 
 		if p := wallet.X402PriceFor(t.WalletOp); p != "" {

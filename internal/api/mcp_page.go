@@ -75,7 +75,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	// Tool selector
 	b.WriteString(`<select id="mcp-tool" onchange="mcpSelectTool()" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:4px;margin-bottom:12px">`)
 	b.WriteString(`<option value="">Select a tool...</option>`)
-	for _, t := range tools {
+	for _, t := range sortedTools() {
 		metered := ""
 		if t.WalletOp != "" {
 			metered = " (metered)"
@@ -231,7 +231,7 @@ func mcpToolsJSON() string {
 func mcpToolsSection() string {
 	var nav strings.Builder
 	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Tools</div>`)
-	for _, t := range tools {
+	for _, t := range sortedTools() {
 		price := ""
 		if p := wallet.X402PriceFor(t.WalletOp); p != "" {
 			price = `<span class="ep-price">` + p + `</span>`
@@ -245,7 +245,7 @@ func mcpToolsSection() string {
 // mcpToolsHTML generates HTML listing all registered MCP tools
 func mcpToolsHTML() string {
 	var b strings.Builder
-	for _, t := range tools {
+	for _, t := range sortedTools() {
 		b.WriteString(`<div class="card" id="tool-` + html.EscapeString(t.Name) + `">`)
 		if t.WalletOp != "" {
 			if price := wallet.X402PriceFor(t.WalletOp); price != "" {
