@@ -31,7 +31,7 @@ var (
 	CostWebSearch         = getEnvInt("CREDIT_COST_SEARCH", 5)
 	CostWebFetch          = getEnvInt("CREDIT_COST_FETCH", 3)
 	CostDBWrite           = getEnvInt("CREDIT_COST_DB_WRITE", 1)
-	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 3)
+	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 7)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
 	CostSocialSearch      = getEnvInt("CREDIT_COST_SOCIAL", 1)
 	CostSocialPost        = getEnvInt("CREDIT_COST_SOCIAL_POST", 1)
