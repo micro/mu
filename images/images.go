@@ -76,7 +76,16 @@ func scheduler() {
 		if !have {
 			generateDaily()
 		}
-		// Sleep until the next 06:00 UTC.
+		// If we still don't have today's image (no provider yet, a transient
+		// model error), retry within the hour so it self-heals once the Atlas
+		// key is set — don't wait a whole day. Otherwise sleep until 06:00 UTC.
+		dailyMu.RLock()
+		ok := daily.Date == today() && daily.URL != ""
+		dailyMu.RUnlock()
+		if !ok {
+			time.Sleep(time.Hour)
+			continue
+		}
 		now := time.Now().UTC()
 		next := time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, time.UTC)
 		if !next.After(now) {
