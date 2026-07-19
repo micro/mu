@@ -324,6 +324,7 @@ var Template = `
           <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
           <a href="/images"><img src="/images.svg?` + Version + `"><span class="label">Images</span></a>
           <a href="/search"><img src="/search.svg?` + Version + `"><span class="label">Search</span></a>
+          <a href="/places"><img src="/places.svg?` + Version + `"><span class="label">Places</span></a>
           <a href="/apps"><img src="/apps.svg?` + Version + `"><span class="label">Apps</span></a>
           <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
 
