@@ -18,9 +18,9 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body := `<p class="lead">One agent for the everyday internet — news, mail, search, weather,
-markets and video, all handled by an assistant you just talk to. No feeds to doomscroll,
-no ads, no tracking. Open source and self-hostable, so you can run the whole stack yourself.</p>
+	body := `<p class="lead">Your personal home server for the everyday internet — news, mail, search,
+weather, markets and video, all handled by one agent you talk to and run yourself. No feeds to
+doomscroll, no ads, no tracking. A single binary you host.</p>
 
 <div class="lcards">
   <div class="lcard"><h3>One agent, everything</h3><p>Ask for the news, your mail, a price, the forecast. Mu picks the right service and answers — you just talk to it.</p></div>
@@ -51,10 +51,10 @@ no ads, no tracking. Open source and self-hostable, so you can run the whole sta
 </style>`
 
 	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — an agent for everyday",
-		Description: "One agent for the everyday internet: news, mail, search, weather, markets and video. Open source and self-hostable.",
+		Title:       "Mu — a personal home server",
+		Description: "Your personal home server for the everyday internet: news, mail, search, weather, markets and video, handled by one agent. Open source and self-hostable.",
 		Brand:       "Mu",
-		Tagline:     "An agent for everyday",
+		Tagline:     "Your personal home server",
 		Body:        body,
 		TopRight:    `<a href="/login">Sign in →</a>`,
 		Footer: `<a href="/agents">Agents</a>

@@ -102,7 +102,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func renderIndex(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
-	content.WriteString(`<p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:24px">Learn how to use Mu — an agent for everyday: news, mail, markets, weather, search and video, handled by one AI you just talk to.</p>`)
+	content.WriteString(`<p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:24px">Learn how to use Mu — your personal home server for the everyday internet: news, mail, markets, weather, search and video, handled by one AI you talk to and run yourself.</p>`)
 
 	// Start here
 	essentials := []string{"about", "installation", "discord", "telegram", "mcp"}

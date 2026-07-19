@@ -1,10 +1,10 @@
 # mu
 
-A personal app server
+A personal home server
 
 ## Overview
 
-A self-hostable personal app server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, video, blog, social, places, reminders — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
+A self-hostable personal home server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, video, blog, social, places, reminders — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
 
 ## Features
 

@@ -4,7 +4,7 @@ This document covers the design philosophy, architecture, and technical decision
 
 ## Vision
 
-Mu is an agent for everyday — the everyday internet (news, mail, search, weather, video, markets) handled by one agent you just talk to. Those
+Mu is a personal home server — the everyday internet (news, mail, search, weather, video, markets) handled by one agent you talk to and run yourself. Those
 services are the same ones a handful of platforms own and sit at the centre of what you do. The primary issue is exploitation and addiction: these
 corporations exploit their users with click/rage bait, advertising, and algorithms to drive engagement and profit. Their number one goal isn't user
 satisfaction—it's making money. Mu is the alternative — one agent across all the everyday things, each a real service, and open/self-hostable so you can run the whole stack yourself.

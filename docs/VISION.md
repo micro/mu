@@ -1,6 +1,6 @@
 # Vision
 
-**An agent for everyday — not another dashboard.**
+**Your personal home server for the everyday internet — not another dashboard.**
 
 ## The Problem
 

@@ -1,6 +1,6 @@
 # About Mu
 
-**An agent for everyday — not another attention farm.**
+**Your personal home server for the everyday internet — not another attention farm.**
 
 ## What is Mu?
 

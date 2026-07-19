@@ -135,16 +135,23 @@ type ReminderData struct {
 	Links   map[string]interface{} `json:"links"`
 }
 
-// Handler redirects /reminder to the current verse on reminder.dev
+// Handler serves /reminder in-app: today's verse, hadith and name of Allah,
+// rather than bouncing out to reminder.dev. JSON on request.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	url := "https://reminder.dev"
-	rd := GetReminderData()
-	if rd != nil {
-		if v, ok := rd.Links["verse"].(string); ok && v != "" {
-			url = "https://reminder.dev" + v
-		}
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, GetReminderData())
+		return
 	}
-	http.Redirect(w, r, url, http.StatusFound)
+	body := ReminderHTML()
+	if strings.TrimSpace(body) == "" {
+		body = `<div class="card"><p class="text-muted">Today's reminder is loading — check back shortly.</p></div>`
+	}
+	body += `<p style="font-size:13px;color:#999;margin-top:12px">Daily verse, hadith and names via <a href="https://reminder.dev">reminder.dev</a>. Ask the agent to look up any Quran verse or hadith.</p>`
+	app.Respond(w, r, app.Response{
+		Title:       "Islam",
+		Description: "A daily verse, hadith and name of Allah",
+		HTML:        body,
+	})
 }
 
 // GetReminderData loads the cached reminder data (from api/latest, rotates hourly)

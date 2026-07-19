@@ -2,7 +2,7 @@
 
 This describes *how the system is shaped* as we finish moving Mu entirely onto
 go-micro — without degrading performance and without a half-migrated blend. The
-product direction (an agent for everyday, on go-micro) lives in the README and
+product direction (a personal home server, on go-micro) lives in the README and
 docs/VISION.md.
 
 ## Where go-micro is going: an agent harness
