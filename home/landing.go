@@ -33,7 +33,7 @@ no ads, no tracking. Open source and self-hostable, so you can run the whole sta
   <a class="lcta lcta-alt" href="/login">Sign in</a>
 </div>
 
-<p class="lagents">Building agents or apps? Every capability is also an API.
+<p class="lagents">Building agents? Every capability is also an API.
 <a href="/agents">See the agent &amp; developer page →</a></p>
 
 <style>
