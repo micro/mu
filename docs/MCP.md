@@ -168,7 +168,7 @@ Accounts can top up credits with a card via Stripe.
 | `db_set` | Store a record in a collection (private, or `public: true`) | 1 credit |
 | `db_get` | Get one record by id (yours, or public) | Included |
 | `db_list` | List records — `scope`: mine / public / all, with `where` / `sort` / `limit` | Included |
-| `db_del` | Delete a record you own | Included |
+| `db_delete` | Delete a record you own | Included |
 
 ## Your data (`db_*`)
 

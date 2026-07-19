@@ -109,7 +109,7 @@ Scoping rules (enforced server-side):
 `sort` (a data field), `order` (`asc`|`desc`), `limit`.
 
 The same store is reachable outside apps: agents can use the `db_set` / `db_get`
-/ `db_list` / `db_del` tools over MCP and REST (see [MCP docs](MCP.md)). Owner
+/ `db_list` / `db_delete` tools over MCP and REST (see [MCP docs](MCP.md)). Owner
 scoping and the private/public model are identical; an app's data and a user's
 API data live in separate namespaces.
 

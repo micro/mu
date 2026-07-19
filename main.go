@@ -738,7 +738,7 @@ func main() {
 		return string(b), nil
 	})
 	api.RegisterToolWithAuth(api.Tool{
-		Name:        "db_del",
+		Name:        "db_delete",
 		Description: "Delete a record you own by id.",
 		Params: []api.ToolParam{
 			{Name: "collection", Type: "string", Description: "Collection name", Required: true},
