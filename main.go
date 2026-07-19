@@ -792,6 +792,33 @@ func main() {
 		return fmt.Sprintf("Generated image: %s\n\n![image](%s)", url, url), nil
 	})
 
+	// image_search — search the public image stock pool by description. No auth:
+	// public stock is reusable by anyone or any agent. Free.
+	api.RegisterTool(api.Tool{
+		Name:        "image_search",
+		Description: "Search the public image library (community stock) by description. Returns image URLs to reuse.",
+		Params: []api.ToolParam{
+			{Name: "q", Type: "string", Description: "Search text", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			q, _ := args["q"].(string)
+			recs := images.Search("", q)
+			if len(recs) == 0 {
+				return "No matching images in the stock pool.", nil
+			}
+			var sb strings.Builder
+			for i, rec := range recs {
+				if i >= 20 {
+					break
+				}
+				url, _ := rec.Data["url"].(string)
+				prompt, _ := rec.Data["prompt"].(string)
+				sb.WriteString(fmt.Sprintf("- %s\n  %s\n", prompt, url))
+			}
+			return sb.String(), nil
+		},
+	})
+
 	// weather_forecast — current conditions plus the next few days (AI-first).
 	api.RegisterTool(api.Tool{
 		Name:        "weather_forecast",

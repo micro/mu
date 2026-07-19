@@ -181,6 +181,37 @@ func gallery(owner string) []userdb.Record {
 	return recs
 }
 
+// Search finds generated images by prompt text. With an empty caller it
+// searches only the public stock pool; with a caller it searches that user's
+// own images plus everyone's public ones. An empty query lists recent images.
+func Search(caller, query string) []userdb.Record {
+	query = strings.TrimSpace(query)
+	var where map[string]interface{}
+	if query != "" {
+		where = map[string]interface{}{"prompt": map[string]interface{}{"contains": query}}
+	}
+	scope := "all"
+	if caller == "" {
+		scope = "public"
+	}
+	recs, err := userdb.List(ns, caller, collection, scope, where, "", "desc", 48)
+	if err != nil {
+		return nil
+	}
+	return recs
+}
+
+// SetPublic shares one of the caller's images into the stock pool (or pulls it
+// back private). Owner-only, enforced by userdb.
+func SetPublic(owner, id string, public bool) error {
+	rec, err := userdb.Get(ns, owner, collection, id)
+	if err != nil {
+		return err
+	}
+	_, err = userdb.Update(ns, owner, collection, id, rec.Data, public)
+	return err
+}
+
 // CardHTML renders the home card: today's ambient image with its theme.
 func CardHTML() string {
 	d := getDaily()
@@ -203,7 +234,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		handleHTML(w, r)
 	case http.MethodPost:
-		handleGenerate(w, r)
+		handlePost(w, r)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -211,15 +242,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 func handleJSON(w http.ResponseWriter, r *http.Request) {
 	_, acc := auth.TrySession(r)
-	out := map[string]interface{}{"daily": getDaily()}
+	caller := ""
+	if acc != nil {
+		caller = acc.ID
+	}
+	// Search mode: /images?q=... searches own + public (or public-only for guests).
+	if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" {
+		app.RespondJSON(w, map[string]interface{}{"query": q, "results": Search(caller, q)})
+		return
+	}
+	out := map[string]interface{}{"daily": getDaily(), "stock": Search("", "")}
 	if acc != nil {
 		out["images"] = gallery(acc.ID)
 	}
 	app.RespondJSON(w, out)
 }
 
-// handleGenerate handles POST /images {"prompt":"..."} → {"url":"..."}.
-func handleGenerate(w http.ResponseWriter, r *http.Request) {
+// handlePost handles POST /images: {"prompt":"..."} generates a new image;
+// {"id":"...","public":true} shares/unshares an existing one to the stock pool.
+func handlePost(w http.ResponseWriter, r *http.Request) {
 	_, acc := auth.TrySession(r)
 	if acc == nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -228,8 +269,22 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		Prompt string `json:"prompt"`
+		ID     string `json:"id"`
+		Public bool   `json:"public"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	// Publish toggle.
+	if strings.TrimSpace(req.ID) != "" {
+		if err := SetPublic(acc.ID, req.ID, req.Public); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			app.RespondJSON(w, map[string]string{"error": err.Error()})
+			return
+		}
+		app.RespondJSON(w, map[string]interface{}{"id": req.ID, "public": req.Public})
+		return
+	}
+
 	url, err := Generate(acc.ID, req.Prompt)
 	if err != nil {
 		w.WriteHeader(http.StatusPaymentRequired)
@@ -239,11 +294,54 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	app.RespondJSON(w, map[string]string{"url": url, "prompt": strings.TrimSpace(req.Prompt)})
 }
 
+// imageGrid renders a responsive grid of image records (link to full image,
+// prompt as the hover title). Used for search results and the stock pool.
+func imageGrid(recs []userdb.Record) string {
+	var b strings.Builder
+	b.WriteString(`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px">`)
+	for _, rec := range recs {
+		url, _ := rec.Data["url"].(string)
+		prompt, _ := rec.Data["prompt"].(string)
+		if url == "" {
+			continue
+		}
+		b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" style="width:100%;border-radius:8px;display:block" loading="lazy"></a>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
 func handleHTML(w http.ResponseWriter, r *http.Request) {
 	_, acc := auth.TrySession(r)
+	caller := ""
+	if acc != nil {
+		caller = acc.ID
+	}
 	price := wallet.CostImageGenerate
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	var b strings.Builder
+
+	// Search box — searches your images plus the public stock pool.
+	b.WriteString(`<div class="card"><form method="GET" action="/images" style="display:flex;gap:8px;margin:0">`)
+	b.WriteString(`<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images by description…" style="flex:1;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:6px">`)
+	b.WriteString(`<button type="submit" style="padding:8px 16px;font-size:14px">Search</button>`)
+	b.WriteString(`</form></div>`)
+
+	// Search results.
+	if q != "" {
+		res := Search(caller, q)
+		b.WriteString(`<div class="card"><h3>Results for &ldquo;` + html.EscapeString(q) + `&rdquo;</h3>`)
+		if len(res) == 0 {
+			b.WriteString(`<p style="color:#888;font-size:14px">No matching images.</p>`)
+		} else {
+			b.WriteString(imageGrid(res))
+		}
+		b.WriteString(`</div>`)
+		b.WriteString(`<p style="margin:0 0 12px"><a href="/images">← Back to Images</a></p>`)
+		app.Respond(w, r, app.Response{Title: "Images", Description: "Search generated images", HTML: b.String()})
+		return
+	}
 
 	// Daily image hero.
 	d := getDaily()
@@ -271,12 +369,13 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`</div>`)
 
-	// Gallery.
+	// Your images — each with a share-to-stock toggle.
 	if acc != nil {
 		recs := gallery(acc.ID)
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Your images</h3>`)
-		b.WriteString(`<div id="img-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px">`)
+		b.WriteString(`<p class="card-desc">Share an image to the public stock pool so others (and their agents) can find and reuse it.</p>`)
+		b.WriteString(`<div id="img-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px">`)
 		if len(recs) == 0 {
 			b.WriteString(`<p style="color:#888;font-size:14px;grid-column:1/-1" id="img-empty">Nothing yet — generate your first image above.</p>`)
 		}
@@ -286,12 +385,29 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 			if url == "" {
 				continue
 			}
+			label, next := "Share", "true"
+			if rec.Public {
+				label, next = "Shared ✓", "false"
+			}
+			b.WriteString(`<div style="position:relative">`)
 			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" style="width:100%;border-radius:8px;display:block" loading="lazy"></a>`)
+			b.WriteString(`<button data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" onclick="imgShare(this)" style="position:absolute;bottom:6px;right:6px;font-size:11px;padding:3px 8px;border:none;border-radius:5px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer">` + label + `</button>`)
+			b.WriteString(`</div>`)
 		}
 		b.WriteString(`</div></div>`)
 	}
 
-	// Generate JS: posts JSON with the CSRF header, prepends the result.
+	// Community stock — public images anyone can reuse.
+	stock := Search("", "")
+	if len(stock) > 0 {
+		b.WriteString(`<div class="card">`)
+		b.WriteString(`<h3>Community stock</h3>`)
+		b.WriteString(`<p class="card-desc">Public images shared by the community — free to reuse.</p>`)
+		b.WriteString(imageGrid(stock))
+		b.WriteString(`</div>`)
+	}
+
+	// JS: generate, and toggle sharing to the stock pool.
 	b.WriteString(`<script>
 function imgCookie(n){var m=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return m?m.pop():'';}
 function imgGenerate(){
@@ -306,17 +422,27 @@ function imgGenerate(){
   if(!res.ok||res.j.error){st.textContent=res.j.error||'Failed';return;}
   st.textContent='';
   var g=document.getElementById('img-gallery'),e=document.getElementById('img-empty');if(e)e.remove();
-  var a=document.createElement('a');a.href=res.j.url;a.target='_blank';a.title=p;
-  a.innerHTML='<img src="'+res.j.url+'" style="width:100%;border-radius:8px;display:block">';
   document.getElementById('img-result').innerHTML='<img src="'+res.j.url+'" style="width:100%;border-radius:10px;display:block">';
-  if(g)g.insertBefore(a,g.firstChild);
+  if(g){location.reload();}
  }).catch(function(err){btn.disabled=false;st.textContent='Error: '+err;});
+}
+function imgShare(btn){
+ var id=btn.dataset.id,next=btn.dataset.next==='true';
+ btn.disabled=true;
+ fetch('/images',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':imgCookie('csrf_token')},credentials:'same-origin',body:JSON.stringify({id:id,public:next})})
+ .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+ .then(function(res){
+  btn.disabled=false;
+  if(!res.ok||res.j.error){return;}
+  if(next){btn.textContent='Shared ✓';btn.dataset.next='false';}
+  else{btn.textContent='Share';btn.dataset.next='true';}
+ }).catch(function(){btn.disabled=false;});
 }
 </script>`)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Images",
-		Description: "Generate images and see a calming daily image",
+		Description: "Generate images, search your library, and browse community stock",
 		HTML:        b.String(),
 	})
 }
