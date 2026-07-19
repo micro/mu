@@ -12,9 +12,8 @@ A self-hostable personal app server. One Go binary runs a set of everyday servic
 - **An agent over those services.** An LLM — Claude, Atlas Cloud (DeepSeek), or a local Ollama / OpenAI-compatible endpoint — calls the services as tools, composes answers, and keeps per-user memory across sessions.
 - **A web UI that's a home screen.** Cards render each service at a glance (headlines, prices, weather, unread mail); the agent sits inline to act on what you're looking at. Logged-out visitors get a public version with live public data.
 - **Several front doors to the same services.** A REST API, an MCP server at `/mcp`, an A2A endpoint at `/a2a`, and a CLI where every tool is a subcommand. API and MCP callers can pay per request in USDC via [x402](https://x402.org).
-- **Self-hosted.** Your instance, your data, no ads or tracking. Runs locally or on your own host.
 
-### The services
+### Services
 
 Each is a service, reachable in the web app and directly over REST, MCP, A2A, or the CLI. The agent calls them as tools; each is also usable on its own.
 
@@ -34,7 +33,7 @@ Each is a service, reachable in the web app and directly over REST, MCP, A2A, or
 
 Runs as a single Go binary. Self-host your own instance.
 
-## For developers
+## For Agents
 
 Because every capability is a service, it's reachable however you like. Mu exposes a REST API and an [MCP](https://modelcontextprotocol.io) server at `/mcp`, so AI agents and tools can connect directly.
 
@@ -89,15 +88,6 @@ Discord slash commands: `/agent`, `/news`, `/markets`, `/weather`, `/mail`.
 Telegram commands: `/ask`, `/news`, `/markets`, `/weather`.
 
 See [Discord docs](docs/DISCORD.md) and [Telegram docs](docs/TELEGRAM.md) for setup.
-
-## Pricing
-
-**Free to use.** Join the [Discord](https://discord.gg/WeMU5AGxD) and start talking to the AI — no account, no payment, no limits.
-
-- **Discord** — free, unlimited
-- **Web** — free browsing, 3 free AI queries for guests, credits for more
-- **MCP / API** — pay per-request with USDC via [x402](https://x402.org)
-- **Self-host** — unlimited, run your own instance with local models
 
 ## Self-hosting
 
