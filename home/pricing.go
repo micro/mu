@@ -15,7 +15,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Everything sits in one centered column so the hero, plan cards and the
 	// info cards below share a single width and centre line.
-	b.WriteString(`<div style="max-width:620px;margin:0 auto">`)
+	b.WriteString(`<div style="max-width:760px;margin:0 auto">`)
 
 	// Hero
 	b.WriteString(`<div style="text-align:center;padding:24px 0 0">`)
@@ -23,26 +23,41 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">News, mail, search, weather, markets, video — the everyday internet, handled by one agent you talk to and run yourself.</p>`)
 	b.WriteString(`</div>`)
 
-	// Plans
-	b.WriteString(`<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin:0 0 24px">`)
+	// Plans — three tiers: Free, Starter, Pro.
+	b.WriteString(`<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:0 0 24px">`)
+
+	// Free plan
+	b.WriteString(`<div class="card" style="flex:1;min-width:200px;max-width:240px;text-align:center">`)
+	b.WriteString(`<h3 style="margin:0 0 4px">Free</h3>`)
+	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">£0</p>`)
+	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">No account needed</p>`)
+	b.WriteString(`<ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:2">`)
+	b.WriteString(`<li>&#10003; News, markets, weather</li>`)
+	b.WriteString(`<li>&#10003; Blog, social, video</li>`)
+	b.WriteString(`<li>&#10003; Daily image &amp; verse</li>`)
+	b.WriteString(`<li>&#10003; 3 AI questions a day</li>`)
+	b.WriteString(`<li>&#10003; No ads, no tracking</li>`)
+	b.WriteString(`</ul>`)
+	b.WriteString(`<a href="/" style="display:block;text-align:center;padding:8px;border:1px solid #ccc;border-radius:6px;color:#111;text-decoration:none">Browse free</a>`)
+	b.WriteString(`</div>`)
 
 	// Starter plan
-	b.WriteString(`<div class="card" style="flex:1;min-width:240px;max-width:300px;text-align:center">`)
+	b.WriteString(`<div class="card" style="flex:1;min-width:200px;max-width:240px;text-align:center">`)
 	b.WriteString(`<h3 style="margin:0 0 4px">Starter</h3>`)
 	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">£5<span style="font-size:14px;font-weight:400;color:#888">/month</span></p>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">500 credits</p>`)
 	b.WriteString(`<ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:2">`)
+	b.WriteString(`<li>&#10003; Everything in Free</li>`)
 	b.WriteString(`<li>&#10003; AI agent with memory</li>`)
-	b.WriteString(`<li>&#10003; News, markets, weather</li>`)
 	b.WriteString(`<li>&#10003; Mail and messaging</li>`)
-	b.WriteString(`<li>&#10003; Web search</li>`)
+	b.WriteString(`<li>&#10003; Web search &amp; images</li>`)
 	b.WriteString(`<li>&#10003; Build apps with AI</li>`)
 	b.WriteString(`</ul>`)
 	b.WriteString(`<a href="/signup" class="btn" style="display:block">Get started</a>`)
 	b.WriteString(`</div>`)
 
 	// Pro plan
-	b.WriteString(`<div class="card" style="flex:1;min-width:240px;max-width:300px;text-align:center;border:2px solid #000">`)
+	b.WriteString(`<div class="card" style="flex:1;min-width:200px;max-width:240px;text-align:center;border:2px solid #000">`)
 	b.WriteString(`<h3 style="margin:0 0 4px">Pro</h3>`)
 	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">£10<span style="font-size:14px;font-weight:400;color:#888">/month</span></p>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">1,200 credits</p>`)
@@ -54,19 +69,6 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<a href="/signup" class="btn" style="display:block">Get started</a>`)
 	b.WriteString(`</div>`)
 
-	b.WriteString(`</div>`)
-
-	// What's included (free)
-	b.WriteString(`<div class="card" style="margin:0 0 16px">`)
-	b.WriteString(`<h3>Included for everyone</h3>`)
-	b.WriteString(`<p style="font-size:14px;color:#666">Browse without an account. No ads, no tracking.</p>`)
-	b.WriteString(`<ul style="list-style:none;padding:0;font-size:14px;line-height:2;margin:8px 0 0">`)
-	b.WriteString(`<li>&#10003; News headlines and feeds</li>`)
-	b.WriteString(`<li>&#10003; Market prices</li>`)
-	b.WriteString(`<li>&#10003; Blog posts and social</li>`)
-	b.WriteString(`<li>&#10003; Video</li>`)
-	b.WriteString(`<li>&#10003; 3 free AI questions as a guest</li>`)
-	b.WriteString(`</ul>`)
 	b.WriteString(`</div>`)
 
 	// Credit costs
