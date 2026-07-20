@@ -1167,6 +1167,8 @@ func main() {
 		"/markets":           false, // Public viewing
 		"/islam":             false, // Public daily verse, hadith and names
 		"/about":             false, // Public "what is Mu" pitch
+		"/oauth2/google":     false, // Google sign-in start (no session yet)
+		"/oauth2/callback":   false, // Google sign-in callback (no session yet)
 		"/images":            false, // Public daily image; generation needs login
 		"/social":            false, // Public viewing, auth for search
 		"/social/thread":     false, // Public thread view, auth for messaging
@@ -1424,6 +1426,10 @@ func main() {
 	// OAuth 2.1 for MCP authentication
 	http.HandleFunc("/.well-known/oauth-authorization-server", auth.OAuthMetadataHandler)
 	http.HandleFunc("/.well-known/oauth-protected-resource", auth.OAuthResourceHandler)
+	// Google sign-in (Mu as an OAuth client of Google).
+	http.HandleFunc("/oauth2/google", app.GoogleLogin)
+	http.HandleFunc("/oauth2/callback", app.GoogleCallback)
+
 	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
 	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)
 	http.HandleFunc("/oauth/token", auth.OAuthTokenHandler)

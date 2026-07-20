@@ -192,6 +192,23 @@ func AdminExists() bool {
 	return false
 }
 
+// GetAccountByEmail finds an account by email (case-insensitive). Used for
+// OAuth sign-in, where the email is the stable identity across providers.
+func GetAccountByEmail(email string) (*Account, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return nil, errors.New("email required")
+	}
+	mutex.Lock()
+	defer mutex.Unlock()
+	for _, acc := range accounts {
+		if strings.ToLower(acc.Email) == email {
+			return acc, nil
+		}
+	}
+	return nil, errors.New("account not found")
+}
+
 // GetAccountByName finds an account by username (case-insensitive)
 func GetAccountByName(name string) (*Account, error) {
 	mutex.Lock()

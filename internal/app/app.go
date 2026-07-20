@@ -523,7 +523,11 @@ func renderSignup(errHTML string) string {
 	if currentInviteCode != "" {
 		inviteField = fmt.Sprintf(`<input type="hidden" name="invite" value="%s">`, currentInviteCode)
 	}
-	return fmt.Sprintf(SignupTemplate, errHTML, CaptchaHTML(c), inviteField)
+	html := fmt.Sprintf(SignupTemplate, errHTML, CaptchaHTML(c), inviteField)
+	if btn := googleButtonHTML("Continue with Google"); btn != "" {
+		html = strings.Replace(html, `<form id="signup"`, btn+`<form id="signup"`, 1)
+	}
+	return html
 }
 
 // renderRequestInvitePage shows the "request an invite" form that
@@ -709,7 +713,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		if redirect := r.URL.Query().Get("redirect"); redirect != "" {
 			redirectParam = "?redirect=" + url.QueryEscape(redirect)
 		}
-		w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, "")))
+		w.Write([]byte(loginPage(redirectParam, "")))
 		return
 	}
 
@@ -726,17 +730,17 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(id) == 0 {
-			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p class="text-error">Username is required</p>`)))
+			w.Write([]byte(loginPage(redirectParam, `<p class="text-error">Username is required</p>`)))
 			return
 		}
 		if len(secret) == 0 {
-			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p class="text-error">Password is required</p>`)))
+			w.Write([]byte(loginPage(redirectParam, `<p class="text-error">Password is required</p>`)))
 			return
 		}
 
 		sess, err := auth.Login(id, secret)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf(LoginTemplate, redirectParam, `<p class="text-error">Invalid username or password</p>`)))
+			w.Write([]byte(loginPage(redirectParam, `<p class="text-error">Invalid username or password</p>`)))
 			return
 		}
 
