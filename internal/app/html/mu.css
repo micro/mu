@@ -2276,8 +2276,12 @@ a.highlight {
     top: 0;
     width: 260px;
     height: 100vh;
-    height: 100svh;
-    padding: 48px 20px 40px 20px;
+    /* dvh tracks the *currently visible* height as Safari's toolbar collapses,
+       so the drawer's bottom always lands at the real bottom of the screen —
+       svh (small) left a gap and vh (large) hid the bottom under the toolbar,
+       which is why reachability changed "depending on the screen". */
+    height: 100dvh;
+    padding: 48px 20px calc(40px + env(safe-area-inset-bottom, 0px)) 20px;
     background: white;
     border-right: 1px solid #e0e0e0;
     z-index: 200;
@@ -2432,21 +2436,6 @@ a.highlight {
   #messages ~ #chat-form {
     margin-bottom: 0;
     flex-shrink: 0;
-  }
-  body:has(#messages) {
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-    height: 100svh; /* Use svh to prevent jump on keyboard open */
-  }
-  body:has(#messages) #container {
-    overflow: hidden;
-    height: 100svh;
-    box-sizing: border-box;
-  }
-  body:has(#messages) #footer,
-  body:has(#messages) #chat-back-link {
-    display: none;
   }
   #chat-form {
     flex: 0 0 auto;
