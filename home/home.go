@@ -509,18 +509,17 @@ function fetchW(la,lo){
 	// Inline card preferences panel
 	if viewerAcc != nil {
 		allCardDefs := []struct{ id, label string }{
-			{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
+			{"reminder", "Islam"}, {"blog", "Blog"}, {"news", "News"},
 			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
-			{"mail", "Mail"}, {"web", "Search"},
+			{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
 		}
+		optIn := map[string]bool{"mail": true, "web": true}
 		activeSet := map[string]bool{}
-		if len(viewerAcc.HomeCards) > 0 {
-			for _, id := range viewerAcc.HomeCards {
-				activeSet[id] = true
-			}
-		} else {
-			for _, c := range allCardDefs {
-				activeSet[c.id] = true
+		for _, c := range allCardDefs {
+			if optIn[c.id] {
+				activeSet[c.id] = viewerAcc.HomeCardActive(c.id)
+			} else {
+				activeSet[c.id] = viewerAcc.ShowHomeCard(c.id)
 			}
 		}
 		var checkboxes string
@@ -586,20 +585,21 @@ function fetchW(la,lo){
 </script></div>`)
 	}
 
-	// Which cards to show. HomeCards is a membership filter; when empty (a fresh
-	// account) every default card shows. Order and column come from cards.json.
-	var enabled map[string]bool
-	if viewerAcc != nil && len(viewerAcc.HomeCards) > 0 {
-		enabled = make(map[string]bool, len(viewerAcc.HomeCards))
-		for _, id := range viewerAcc.HomeCards {
-			enabled[id] = true
+	// Which cards to show. Default cards (cards.json) show unless the user has
+	// deselected them; cards added after the user last customised default to
+	// visible (see auth.Account.ShowHomeCard). Order and column come from
+	// cards.json. mail/web are opt-in and off unless explicitly enabled.
+	showDefault := func(id string) bool {
+		if viewerAcc == nil {
+			return true // logged out → every default card shows
 		}
+		return viewerAcc.ShowHomeCard(id)
 	}
 	isCardEnabled := func(id string) bool {
-		if enabled == nil {
+		if viewerAcc == nil {
 			return false // mail/web are opt-in, never in the default set
 		}
-		return enabled[id]
+		return viewerAcc.HomeCardActive(id)
 	}
 
 	tooltips := map[string]string{
@@ -613,7 +613,7 @@ function fetchW(la,lo){
 
 	var leftHTML, rightHTML []string
 	for _, card := range Cards {
-		if enabled != nil && !enabled[card.ID] {
+		if !showDefault(card.ID) {
 			continue
 		}
 		content := card.CachedHTML

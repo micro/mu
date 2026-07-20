@@ -362,6 +362,14 @@ var Template = `
 </html>
 `
 
+// homeCardUniverse lists every card the customise panels can toggle. It is
+// saved into an account's HomeCardsSeen when preferences are saved, so cards
+// introduced later can default to visible instead of being hidden by the
+// HomeCards allowlist. Keep in sync with the panels and home/cards.json.
+var homeCardUniverse = []string{
+	"blog", "news", "markets", "reminder", "social", "video", "images", "mail", "web",
+}
+
 var CardTemplate = `
 <!-- %s -->
 <div id="%s" class="card">
@@ -933,6 +941,9 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		if r.Form.Get("home_cards") != "" || r.Form.Get("save_cards") != "" {
 			selected := r.Form["cards"]
 			acc.HomeCards = selected
+			// Record the full set the panel offered so cards added later can
+			// default to visible rather than being hidden by this allowlist.
+			acc.HomeCardsSeen = append([]string(nil), homeCardUniverse...)
 			auth.UpdateAccount(acc)
 			ref := r.Header.Get("Referer")
 			if ref != "" && (strings.Contains(ref, "/home") || strings.HasSuffix(ref, "/")) {
@@ -1000,18 +1011,17 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	// Home card preferences
 	allCards := []struct{ id, label string }{
-		{"reminder", "Reminder"}, {"blog", "Blog"}, {"news", "News"},
+		{"reminder", "Islam"}, {"blog", "Blog"}, {"news", "News"},
 		{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 		{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
 	}
+	optInCards := map[string]bool{"mail": true, "web": true}
 	activeCards := map[string]bool{}
-	if len(acc.HomeCards) > 0 {
-		for _, id := range acc.HomeCards {
-			activeCards[id] = true
-		}
-	} else {
-		for _, c := range allCards {
-			activeCards[c.id] = true
+	for _, c := range allCards {
+		if optInCards[c.id] {
+			activeCards[c.id] = acc.HomeCardActive(c.id)
+		} else {
+			activeCards[c.id] = acc.ShowHomeCard(c.id)
 		}
 	}
 	var cardsCheckboxes string

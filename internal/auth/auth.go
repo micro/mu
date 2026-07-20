@@ -34,13 +34,60 @@ type Account struct {
 	Created         time.Time `json:"created"`
 	Admin           bool      `json:"admin"`
 	Language        string    `json:"language"`
-	Widgets         []string  `json:"widgets,omitempty"`    // App IDs to show as home widgets
-	HomeCards       []string  `json:"home_cards,omitempty"` // Ordered card IDs to show on home (empty = all)
-	Approved        bool      `json:"approved,omitempty"`   // Admin-approved, bypasses new account restrictions
+	Widgets         []string  `json:"widgets,omitempty"`         // App IDs to show as home widgets
+	HomeCards       []string  `json:"home_cards,omitempty"`      // Card IDs the user has chosen to show (empty = all defaults)
+	HomeCardsSeen   []string  `json:"home_cards_seen,omitempty"` // Card IDs the customise panel has offered this user; anything newer defaults to visible
+	Approved        bool      `json:"approved,omitempty"`        // Admin-approved, bypasses new account restrictions
 	Email           string    `json:"email,omitempty"`
 	EmailVerified   bool      `json:"email_verified,omitempty"`
 	EmailVerifiedAt time.Time `json:"email_verified_at,omitempty"`
 	Banned          bool      `json:"banned,omitempty"` // Silently hidden from everyone except themselves
+}
+
+// preHomeCardsSeen is the set of home cards that existed before per-user
+// "seen" tracking was added. Accounts saved earlier have an empty
+// HomeCardsSeen; we treat them as having been offered exactly these, so any
+// card introduced afterwards (images, and future cards) defaults to visible
+// instead of being silently hidden by the HomeCards allowlist.
+var preHomeCardsSeen = map[string]bool{
+	"blog": true, "news": true, "markets": true, "reminder": true,
+	"social": true, "video": true, "mail": true, "web": true,
+}
+
+// ShowHomeCard reports whether a default home card (one defined in cards.json)
+// should render for this account. A card the user explicitly selected shows; a
+// card they deselected (present in their seen set but not their allowlist)
+// hides; a card newer than anything they've been offered defaults to visible.
+func (a *Account) ShowHomeCard(id string) bool {
+	if len(a.HomeCards) == 0 {
+		return true // no customization yet → all defaults show
+	}
+	for _, c := range a.HomeCards {
+		if c == id {
+			return true
+		}
+	}
+	seen := a.HomeCardsSeen
+	if len(seen) == 0 {
+		return !preHomeCardsSeen[id] // legacy account → only genuinely new cards
+	}
+	for _, c := range seen {
+		if c == id {
+			return false // offered before and not selected → deliberately hidden
+		}
+	}
+	return true // never offered → new card, default on
+}
+
+// HomeCardActive reports whether an opt-in card (mail, web) is explicitly
+// enabled. Unlike default cards these are off unless the user turns them on.
+func (a *Account) HomeCardActive(id string) bool {
+	for _, c := range a.HomeCards {
+		if c == id {
+			return true
+		}
+	}
+	return false
 }
 
 type Session struct {
