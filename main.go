@@ -1159,46 +1159,47 @@ func main() {
 	})
 
 	authenticated := map[string]bool{
-		"/video":             false, // Public viewing, auth for interactive features
-		"/news":              false, // Public viewing, auth for search
-		"/chat":              false, // Public viewing, auth for chatting
-		"/home":              false, // Public viewing
-		"/blog":              false, // Public viewing, auth for posting
-		"/markets":           false, // Public viewing
-		"/islam":             false, // Public daily verse, hadith and names
-		"/about":             false, // Public "what is Mu" pitch
-		"/oauth2/google":     false, // Google sign-in start (no session yet)
-		"/oauth2/callback":   false, // Google sign-in callback (no session yet)
-		"/images":            false, // Public daily image; generation needs login
-		"/social":            false, // Public viewing, auth for search
-		"/social/thread":     false, // Public thread view, auth for messaging
-		"/places":            false, // Public map, auth for search
-		"/weather":           false, // Public page, auth for forecast lookup
-		"/mail":              true,  // Require auth for inbox
-		"/logout":            true,
-		"/account":           true,
-		"/verify":            false, // Public — token in URL is the credential
-		"/token":             true,  // PAT token management
-		"/passkey":           false, // Passkey login/register (auth checked in handler)
-		"/session":           false, // Public - used to check auth status
-		"/api":               false, // Public - API documentation
-		"/admin/flag":        true,
-		"/admin":             true,
-		"/admin/users":       true,
-		"/admin/moderate":    true,
-		"/admin/blocklist":   true,
-		"/admin/spam":        true,
-		"/admin/email":       true,
-		"/admin/api":         true,
-		"/admin/log":         true,
-		"/admin/env":         true,
-		"/admin/server":      true,
-		"/admin/usage":       true,
-		"/admin/delete":      true,
-		"/admin/console":     true,
-		"/admin/diagnostics": true,
-		"/admin/invite":      true,
-		"/wallet":            false, // Public - shows wallet info; auth checked in handler
+		"/video":                 false, // Public viewing, auth for interactive features
+		"/news":                  false, // Public viewing, auth for search
+		"/chat":                  false, // Public viewing, auth for chatting
+		"/home":                  false, // Public viewing
+		"/blog":                  false, // Public viewing, auth for posting
+		"/markets":               false, // Public viewing
+		"/islam":                 false, // Public daily verse, hadith and names
+		"/about":                 false, // Public "what is Mu" pitch
+		"/oauth2/google":         false, // Google sign-in start (no session yet)
+		"/oauth2/google/connect": true,  // Link Google to the current account
+		"/oauth2/callback":       false, // Google sign-in callback (no session yet)
+		"/images":                false, // Public daily image; generation needs login
+		"/social":                false, // Public viewing, auth for search
+		"/social/thread":         false, // Public thread view, auth for messaging
+		"/places":                false, // Public map, auth for search
+		"/weather":               false, // Public page, auth for forecast lookup
+		"/mail":                  true,  // Require auth for inbox
+		"/logout":                true,
+		"/account":               true,
+		"/verify":                false, // Public — token in URL is the credential
+		"/token":                 true,  // PAT token management
+		"/passkey":               false, // Passkey login/register (auth checked in handler)
+		"/session":               false, // Public - used to check auth status
+		"/api":                   false, // Public - API documentation
+		"/admin/flag":            true,
+		"/admin":                 true,
+		"/admin/users":           true,
+		"/admin/moderate":        true,
+		"/admin/blocklist":       true,
+		"/admin/spam":            true,
+		"/admin/email":           true,
+		"/admin/api":             true,
+		"/admin/log":             true,
+		"/admin/env":             true,
+		"/admin/server":          true,
+		"/admin/usage":           true,
+		"/admin/delete":          true,
+		"/admin/console":         true,
+		"/admin/diagnostics":     true,
+		"/admin/invite":          true,
+		"/wallet":                false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
@@ -1428,6 +1429,7 @@ func main() {
 	http.HandleFunc("/.well-known/oauth-protected-resource", auth.OAuthResourceHandler)
 	// Google sign-in (Mu as an OAuth client of Google).
 	http.HandleFunc("/oauth2/google", app.GoogleLogin)
+	http.HandleFunc("/oauth2/google/connect", app.GoogleConnect)
 	http.HandleFunc("/oauth2/callback", app.GoogleCallback)
 
 	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)

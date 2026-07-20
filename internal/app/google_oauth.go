@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"net/http"
 	"net/url"
 	"strings"
@@ -47,17 +48,40 @@ func requestSecure(r *http.Request) bool {
 	return r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 }
 
-// GoogleLogin starts the OAuth flow: set a signed state cookie and bounce the
-// user to Google's consent screen.
-func GoogleLogin(w http.ResponseWriter, r *http.Request) {
+// GoogleLogin starts sign-in via Google (find-or-create an account).
+func GoogleLogin(w http.ResponseWriter, r *http.Request) { startGoogle(w, r, false) }
+
+// GoogleConnect links Google to the *current* logged-in account so they can
+// sign in with Google afterwards. Requires a session.
+func GoogleConnect(w http.ResponseWriter, r *http.Request) {
+	if _, _, err := auth.RequireSession(r); err != nil {
+		RedirectToLogin(w, r)
+		return
+	}
+	startGoogle(w, r, true)
+}
+
+// startGoogle sets the CSRF state cookie (and, in link mode, a g_link cookie so
+// the callback knows to link rather than sign in) and bounces to Google.
+func startGoogle(w http.ResponseWriter, r *http.Request, link bool) {
 	if !GoogleConfigured() {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 	state := randToken(16)
+	secure := requestSecure(r)
 	http.SetCookie(w, &http.Cookie{
 		Name: "g_state", Value: state, Path: "/", MaxAge: 600,
-		HttpOnly: true, Secure: requestSecure(r), SameSite: http.SameSiteLaxMode,
+		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
+	})
+	linkVal := ""
+	linkAge := -1
+	if link {
+		linkVal, linkAge = "1", 600
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: "g_link", Value: linkVal, Path: "/", MaxAge: linkAge,
+		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
 	})
 	q := url.Values{}
 	q.Set("client_id", googleClientID())
@@ -100,6 +124,14 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	if err != nil || info.Email == "" {
 		Log("auth", "google userinfo failed: %v", err)
 		http.Error(w, "Google sign-in failed, please try again", http.StatusBadGateway)
+		return
+	}
+
+	// Link mode: attach this Google identity to the current account instead of
+	// signing in / creating one.
+	if c, cerr := r.Cookie("g_link"); cerr == nil && c.Value == "1" {
+		http.SetCookie(w, &http.Cookie{Name: "g_link", Value: "", Path: "/", MaxAge: -1})
+		linkGoogleToCurrentAccount(w, r, info)
 		return
 	}
 
@@ -249,15 +281,59 @@ func uniqueUsernameFromEmail(email string) string {
 	return base + randToken(2)
 }
 
+// linkGoogleToCurrentAccount attaches the Google identity to the logged-in
+// account by setting its verified email — so future Google sign-ins resolve
+// here. Refuses if another account already owns that email.
+func linkGoogleToCurrentAccount(w http.ResponseWriter, r *http.Request, info *googleUser) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		RedirectToLogin(w, r)
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(info.Email))
+	if other, e := auth.GetAccountByEmail(email); e == nil && other != nil && other.ID != acc.ID {
+		http.Error(w, "That Google account ("+email+") is already linked to another Mu account (@"+other.ID+"). Delete or unlink that account first, then connect.", http.StatusConflict)
+		return
+	}
+	acc.Email = email
+	acc.EmailVerified = true
+	acc.EmailVerifiedAt = time.Now()
+	if err := auth.UpdateAccount(acc); err != nil {
+		Log("auth", "google link failed for %s: %v", acc.ID, err)
+		http.Error(w, "Could not link your Google account, please try again", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/account?linked=google", http.StatusFound)
+}
+
+// googleGlyph is the multicolour Google "G" mark.
+func googleGlyph() string {
+	return `<svg width="18" height="18" viewBox="0 0 48 48" style="vertical-align:middle;flex:none"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.4 6.6-16.1z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9h-7.3v5.7C8 40.3 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.3c-.4-1.3-.7-2.7-.7-4.3s.3-3 .7-4.3v-5.7H4.5C3 17.1 2 20.4 2 24s1 6.9 2.5 10l7.3-5.7z"/><path fill="#EA4335" d="M24 10.7c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.1 29.9 2 24 2 15.4 2 8 7.7 4.5 14l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg>`
+}
+
 // googleButtonHTML returns the "Continue with Google" button, or "" when Google
 // sign-in isn't configured.
 func googleButtonHTML(text string) string {
 	if !GoogleConfigured() {
 		return ""
 	}
-	g := `<svg width="18" height="18" viewBox="0 0 48 48" style="vertical-align:middle"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.4 6.6-16.1z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9h-7.3v5.7C8 40.3 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.3c-.4-1.3-.7-2.7-.7-4.3s.3-3 .7-4.3v-5.7H4.5C3 17.1 2 20.4 2 24s1 6.9 2.5 10l7.3-5.7z"/><path fill="#EA4335" d="M24 10.7c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.1 29.9 2 24 2 15.4 2 8 7.7 4.5 14l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg>`
-	return `<a href="/oauth2/google" style="display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid #ddd;border-radius:6px;padding:10px 12px;text-decoration:none;color:#111;font-weight:600;margin:0 0 14px">` + g + `<span>` + text + `</span></a>
+	return `<a href="/oauth2/google" style="display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid #ddd;border-radius:6px;padding:10px 12px;text-decoration:none;color:#111;font-weight:600;margin:0 0 14px">` + googleGlyph() + `<span>` + text + `</span></a>
 <div style="text-align:center;color:#999;font-size:13px;margin:0 0 14px">or</div>`
+}
+
+// renderGoogleCard shows the Google link state on the account page and a Connect
+// button. Shown only when Google sign-in is configured.
+func renderGoogleCard(acc *auth.Account) string {
+	if !GoogleConfigured() {
+		return ""
+	}
+	if acc.EmailVerified && acc.Email != "" {
+		return `<div class="card"><h4>Google</h4><p>You can sign in with Google using <strong>` + htmlpkg.EscapeString(acc.Email) + `</strong>.</p></div>`
+	}
+	return `<div class="card"><h4>Connect Google</h4>
+<p class="text-sm text-muted">Link Google so you can sign in with it next time. This just sets your verified email — it doesn't change your username or password.</p>
+<a href="/oauth2/google/connect" style="display:inline-flex;align-items:center;gap:8px;border:1px solid #ddd;border-radius:6px;padding:8px 14px;text-decoration:none;color:#111;font-weight:600;margin-top:8px">` + googleGlyph() + ` Connect Google</a>
+</div>`
 }
 
 // loginPage renders the login template with the Google button injected above

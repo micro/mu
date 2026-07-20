@@ -991,8 +991,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		adminLinks = `<p><a href="/admin">Admin Dashboard →</a></p>`
 	}
 
-	// Email verification card
+	// Email verification card + Google connect card
 	emailCard := renderEmailCard(acc)
+	googleCard := renderGoogleCard(acc)
+	if r.URL.Query().Get("linked") == "google" {
+		googleCard = `<div class="card" style="border-color:#1a7f37"><p style="margin:0;color:#1a7f37">✓ Google connected. You can now sign in with Google.</p></div>` + googleCard
+	}
 
 	// Home card preferences
 	allCards := []struct{ id, label string }{
@@ -1058,6 +1062,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 %s
 
+%s
+
 <div class="card">
 <h4>Language</h4>
 <form action="/account" method="POST" class="d-flex items-center gap-3">
@@ -1085,6 +1091,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.Created.Format("January 2, 2006"),
 		acc.ID,
 		emailCard,
+		googleCard,
 		languageOptions,
 		homeCardsCard,
 		PasskeyListHTML(acc.ID),
