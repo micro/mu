@@ -1166,6 +1166,7 @@ func main() {
 		"/blog":              false, // Public viewing, auth for posting
 		"/markets":           false, // Public viewing
 		"/islam":             false, // Public daily verse, hadith and names
+		"/about":             false, // Public "what is Mu" pitch
 		"/images":            false, // Public daily image; generation needs login
 		"/social":            false, // Public viewing, auth for search
 		"/social/thread":     false, // Public thread view, auth for messaging
@@ -1346,6 +1347,7 @@ func main() {
 	// home screen is the public face — real cards plus the agent — so a visitor
 	// sees the product rather than a separate marketing page.
 	http.HandleFunc("/home", home.Handler)
+	http.HandleFunc("/about", home.Landing) // the "what is Mu" pitch, no longer the front door
 	http.HandleFunc("/pricing", home.PricingHandler)
 
 	// first-run setup wizard (open only until an admin exists)
@@ -1615,9 +1617,12 @@ func main() {
 							http.Redirect(w, r, "/home", http.StatusFound)
 						}
 					} else {
-						// Logged out: show an actual landing that says what Mu is
-						// and points at the ways in (sign in / sign up / agents).
-						home.Landing(w, r)
+						// Logged out: the live home IS the front door — real cards
+						// plus a working guest agent — so visitors can use Mu
+						// immediately and sign up once they've felt the value,
+						// rather than bouncing off a sign-in wall. The "what is
+						// this" pitch lives at /about.
+						home.Handler(w, r)
 					}
 					return
 				}

@@ -4,20 +4,12 @@ import (
 	"net/http"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 )
 
-// Landing renders the logged-out front door: a plain landing page that says
-// what Mu is and points at the ways in (sign in, create an account, and the
-// /agents API face). Signed-in requests never reach here — the root handler
-// funnels them to /home — but we guard anyway so a direct hit on the landing
-// still does the right thing.
+// Landing renders the "what is Mu" pitch, served at /about. The live home is
+// the front door (immediate usage drives signups); this page is for visitors
+// who want the explanation. Viewable signed-in or out.
 func Landing(w http.ResponseWriter, r *http.Request) {
-	if _, acc := auth.TrySession(r); acc != nil {
-		http.Redirect(w, r, "/home", http.StatusFound)
-		return
-	}
-
 	body := `<p class="lead">Your personal home server for the everyday internet — news, mail, search,
 weather, markets and video, all handled by one agent you talk to and run yourself. No feeds to
 doomscroll, no ads, no tracking. A single binary you host.</p>
@@ -29,8 +21,8 @@ doomscroll, no ads, no tracking. A single binary you host.</p>
 </div>
 
 <div class="lctas">
-  <a class="lcta" href="/signup">Create your account →</a>
-  <a class="lcta lcta-alt" href="/login">Sign in</a>
+  <a class="lcta" href="/">Open Mu →</a>
+  <a class="lcta lcta-alt" href="/signup">Create your account</a>
 </div>
 
 <p class="lagents">Building agents? Every capability is also an API.

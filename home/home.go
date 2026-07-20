@@ -393,9 +393,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="%s" style="color:#555;text-decoration:none">%s</a></span>`, link, label)
 	} else {
-		// Logged out: the home screen doubles as the landing, so offer a clear
-		// way in right where the "+ Invite" action sits for signed-in users.
-		inviteHTML = `<span id="home-date-actions"><a href="/login" style="color:#555;text-decoration:none;font-weight:600">Log in</a></span>`
+		// Logged out: the home screen IS the landing, so once a visitor has
+		// used it, offer a clear free sign-up (primary) plus log in.
+		inviteHTML = `<span id="home-date-actions"><a href="/signup" style="color:#111;text-decoration:none;font-weight:700">Sign up free</a> <a href="/login" style="color:#888;text-decoration:none;margin-left:10px">Log in</a></span>`
 	}
 	gearHTML := ""
 	if viewerAcc != nil {
