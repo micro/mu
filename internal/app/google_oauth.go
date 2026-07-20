@@ -265,7 +265,7 @@ func googleButtonHTML(text string) string {
 func loginPage(redirectParam, errHTML string) string {
 	html := fmt.Sprintf(LoginTemplate, redirectParam, errHTML)
 	if btn := googleButtonHTML("Continue with Google"); btn != "" {
-		html = strings.Replace(html, `<form id="login"`, btn+`<form id="login"`, 1)
+		html = strings.Replace(html, `<h1>Login</h1>`, `<h1>Login</h1>`+btn, 1)
 	}
 	return html
 }

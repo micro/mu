@@ -525,7 +525,7 @@ func renderSignup(errHTML string) string {
 	}
 	html := fmt.Sprintf(SignupTemplate, errHTML, CaptchaHTML(c), inviteField)
 	if btn := googleButtonHTML("Continue with Google"); btn != "" {
-		html = strings.Replace(html, `<form id="signup"`, btn+`<form id="signup"`, 1)
+		html = strings.Replace(html, `<h1>Signup</h1>`, `<h1>Signup</h1>`+btn, 1)
 	}
 	return html
 }
