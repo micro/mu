@@ -2277,7 +2277,7 @@ a.highlight {
     width: 260px;
     height: 100vh;
     height: 100svh;
-    padding: 48px 20px 20px 20px;
+    padding: 48px 20px 40px 20px;
     background: white;
     border-right: 1px solid #e0e0e0;
     z-index: 200;
@@ -2285,11 +2285,18 @@ a.highlight {
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+    /* Scroll the WHOLE sidebar on mobile. Relying on an inner #nav scroll plus
+       a bottom-pinned .nav-bottom left Account/Logout behind the browser
+       toolbar on short viewports; scrolling the container reaches everything. */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   #nav {
-    flex: 1;
-    overflow-y: auto;
+    flex: 0 0 auto;
+    overflow-y: visible;
+    min-height: 0;
   }
   
   /* Show sidebar when menu is open */
