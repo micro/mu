@@ -15,9 +15,9 @@ Use it hosted at [micro.mu](https://micro.mu), or self-host the single binary �
 - **A web UI that's a home screen.** Cards render each service at a glance (headlines, prices, weather, unread mail); the agent sits inline to act on what you're looking at. Logged-out visitors get a public version with live public data.
 - **Several front doors to the same services.** A REST API, an MCP server at `/mcp`, an A2A endpoint at `/a2a`, and a CLI where every tool is a subcommand. API and MCP callers can pay per request in USDC via [x402](https://x402.org).
 
-### Services
+## Services
 
-Each is a service, reachable in the web app and directly over REST, MCP, A2A, or the CLI. The agent calls them as tools; each is also usable on its own.
+Each is reachable in the web app and directly over REST, MCP, A2A, or the CLI. The agent calls them as tools; each is also usable on its own.
 
 - **Agent** — Ask anything. It calls news, markets, mail, weather, search and more, then synthesises an answer. Remembers your preferences.
 - **Chat** — Conversational AI with session history
@@ -35,9 +35,7 @@ Each is a service, reachable in the web app and directly over REST, MCP, A2A, or
 - **Apps** — Build and use small, useful tools (like **Saved**, a built-in read-later list) — pin any app to the top of your home screen
 - **Stream** — Public event feed for agents and tools to subscribe to
 
-Runs as a single Go binary. Use the hosted instance, or self-host your own.
-
-### Accounts & sign-in
+## Accounts & sign-in
 
 Sign in to the web app with a username and password, a **passkey** (WebAuthn), or **Google**. Already have an account? Link Google to it from **Account** settings and use Google sign-in from then on. For the API and CLI, generate a Personal Access Token at `/token`.
 
