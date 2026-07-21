@@ -32,8 +32,7 @@ Each is a service, reachable in the web app and directly over REST, MCP, A2A, or
 - **Search** — Search the web without tracking, with a clean reader view
 - **Places** — Search places and nearby results with configured providers and open-data fallbacks
 - **Islam** — A daily Islamic reminder (verse, hadith, reflection), also an MCP tool
-- **Saved** — Save links and notes to read later
-- **Apps** — Build and use small, useful tools — pin any app to the top of your home screen
+- **Apps** — Build and use small, useful tools (like **Saved**, a built-in read-later list) — pin any app to the top of your home screen
 - **Stream** — Public event feed for agents and tools to subscribe to
 
 Runs as a single Go binary. Use the hosted instance, or self-host your own.
