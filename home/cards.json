@@ -9,10 +9,18 @@
       "icon": "/post.png"
     },
     {
+      "id": "reminder",
+      "title": "Islam",
+      "type": "reminder",
+      "position": 1,
+      "link": "/islam",
+      "icon": "/reminder.svg"
+    },
+    {
       "id": "news",
       "title": "News",
       "type": "news",
-      "position": 1,
+      "position": 2,
       "link": "/news",
       "icon": "/news.png"
     }
@@ -27,12 +35,12 @@
       "icon": "/markets.svg"
     },
     {
-      "id": "reminder",
-      "title": "Islam",
-      "type": "reminder",
+      "id": "images",
+      "title": "Images",
+      "type": "images",
       "position": 1,
-      "link": "/islam",
-      "icon": "/reminder.svg"
+      "link": "/images",
+      "icon": "/images.svg"
     },
     {
       "id": "social",
@@ -49,14 +57,6 @@
       "position": 3,
       "link": "/video",
       "icon": "/video.png"
-    },
-    {
-      "id": "images",
-      "title": "Images",
-      "type": "images",
-      "position": 4,
-      "link": "/images",
-      "icon": "/images.svg"
     }
   ]
 }

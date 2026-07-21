@@ -2493,14 +2493,17 @@ a.highlight {
     font-size: 12px;
   }
 
-  /* Card order on mobile — reminder first, then useful content */
+  /* Card order on mobile — reminder first, then useful content. Every card
+     needs an explicit order: a card with none defaults to order:0 and jumps
+     ahead of everything (that was Images landing first, above the fold). */
   #reminder { order: 1; }
   #markets { order: 2; }
   #blog { order: 3; }
   #news { order: 4; }
-  #social { order: 5; }
-  #video { order: 6; }
-  #home-chat { order: 7; }
+  #images { order: 5; }
+  #social { order: 6; }
+  #video { order: 7; }
+  #home-chat { order: 8; }
 
   .cover {
     display: block;
