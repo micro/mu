@@ -20,7 +20,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// Hero
 	b.WriteString(`<div style="text-align:center;padding:24px 0 0">`)
 	b.WriteString(`<h2 style="font-size:1.6rem;margin:0 0 8px">Your personal home server</h2>`)
-	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">News, mail, search, weather, markets, video — the everyday internet, handled by one agent you talk to and run yourself.</p>`)
+	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">News, mail, search, weather, markets, video — the everyday internet, handled by one agent you talk to. Use it hosted below, or self-host for free.</p>`)
 	b.WriteString(`</div>`)
 
 	// Plans — three tiers: Free, Starter, Pro.
