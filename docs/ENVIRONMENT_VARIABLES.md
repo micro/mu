@@ -215,6 +215,9 @@ export MAIL_SELECTOR="default"
 | `PASSKEY_ORIGIN` | `http://localhost:8080` | Primary origin for WebAuthn passkeys |
 | `PASSKEY_RP_ID` | `localhost` | Relying Party ID for WebAuthn passkeys |
 | `PASSKEY_EXTRA_ORIGINS` | - | Additional WebAuthn origins, comma-separated (e.g., for Tor .onion access) |
+| `GOOGLE_CLIENT_ID` | - | Google OAuth client ID — enables "Sign in with Google" when set with the secret |
+| `GOOGLE_CLIENT_SECRET` | - | Google OAuth client secret (server-side only; never expose to clients) |
+| `GOOGLE_REDIRECT_URI` | `<origin>/oauth2/callback` | Google OAuth redirect URI; must match the one registered in Google Cloud Console |
 | `DONATION_URL` | - | Payment link for one-time donations (optional) |
 | `STRIPE_SECRET_KEY` | - | Stripe secret key for card payments |
 | `STRIPE_PUBLISHABLE_KEY` | - | Stripe publishable key for card payments |

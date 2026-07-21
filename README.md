@@ -4,7 +4,9 @@ A personal home server
 
 ## Overview
 
-A self-hostable personal home server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, video, blog, social, places, reminders — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
+A personal home server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, images, video, blog, social, places, reminders — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
+
+Use it hosted at [micro.mu](https://micro.mu), or self-host the single binary — same product either way. Open source, AGPL-3.0.
 
 ## Features
 
@@ -17,21 +19,30 @@ A self-hostable personal home server. One Go binary runs a set of everyday servi
 
 Each is a service, reachable in the web app and directly over REST, MCP, A2A, or the CLI. The agent calls them as tools; each is also usable on its own.
 
-- **Agent** — Ask anything. It calls news, markets, mail, weather, web search and more, then synthesises an answer. Remembers your preferences.
+- **Agent** — Ask anything. It calls news, markets, mail, weather, search and more, then synthesises an answer. Remembers your preferences.
+- **Chat** — Conversational AI with session history
 - **News** — Headlines from RSS feeds, chronological, with AI summaries
 - **Markets** — Live crypto, futures, commodity, and currency prices
-- **Mail** — Private messaging and email
-- **Blog** — Microblogging with daily AI-generated digests
-- **Chat** — Conversational AI with session history
-- **Video** — YouTube without ads, algorithms, or shorts
-- **Web** — Search the web without tracking
 - **Weather** — Forecasts and conditions
+- **Mail** — Private messaging and email (SMTP server with DKIM, inbound filtering)
+- **Social** — Public discussion threads
+- **Blog** — Microblogging with daily AI-generated digests
+- **Video** — YouTube without ads, algorithms, or shorts
+- **Images** — Generate images from a prompt, plus a daily nature / mindful image
+- **Search** — Search the web without tracking, with a clean reader view
 - **Places** — Search places and nearby results with configured providers and open-data fallbacks
+- **Islam** — A daily Islamic reminder (verse, hadith, reflection), also an MCP tool
+- **Saved** — Save links and notes to read later
 - **Apps** — Build and use small, useful tools — pin any app to the top of your home screen
-- **Reminder** — A daily Islamic reminder surfaced as a home card and MCP tool
 - **Stream** — Public event feed for agents and tools to subscribe to
 
-Runs as a single Go binary. Self-host your own instance.
+Runs as a single Go binary. Use the hosted instance, or self-host your own.
+
+### Accounts & sign-in
+
+Sign in to the web app with a username and password, a **passkey** (WebAuthn), or **Google**. Already have an account? Link Google to it from **Account** settings and use Google sign-in from then on. For the API and CLI, generate a Personal Access Token at `/token`.
+
+Passkeys work out of the box. To enable Google sign-in when self-hosting, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (and optionally `GOOGLE_REDIRECT_URI`, which defaults to `<your-origin>/oauth2/callback`) from `/admin/env` or the environment.
 
 ## For Agents
 
@@ -47,7 +58,7 @@ Because every capability is a service, it's reachable however you like. Mu expos
 }
 ```
 
-30+ tools — news, search, weather, places, video, email, markets — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay. First 10 calls per wallet are free.
+40+ tools — news, search, weather, places, video, email, markets, images — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay. First 10 calls per wallet are free.
 
 See [MCP docs](docs/MCP.md)
 
@@ -84,8 +95,8 @@ Talk to the AI agent from Discord or Telegram. Ask questions, check markets, get
 
 [Join the Discord](https://discord.gg/WeMU5AGxD)
 
-Discord slash commands: `/agent`, `/news`, `/markets`, `/weather`, `/mail`.
-Telegram commands: `/ask`, `/news`, `/markets`, `/weather`.
+Discord slash commands: `/agent`, `/news`, `/markets`, `/weather`, `/mail`, `/social`, `/blog`, `/video`, `/search`, `/apps`, `/balance`, `/usage`.
+Telegram commands: `/agent`, `/ask`, `/news`, `/markets`, `/weather`, `/usage`.
 
 See [Discord docs](docs/DISCORD.md) and [Telegram docs](docs/TELEGRAM.md) for setup.
 
@@ -133,8 +144,8 @@ export ATLAS_API_KEY=xxx              # or ANTHROPIC_API_KEY, or OPENAI_BASE_URL
 mu --serve
 ```
 
-Once you're admin, every other key (YouTube, Brave search, weather, mail/DKIM…)
-is configurable from `/admin/env` in the browser.
+Once you're admin, every other key (YouTube, Brave search, weather, mail/DKIM,
+Google sign-in…) is configurable from `/admin/env` in the browser.
 
 See [Installation guide](docs/INSTALLATION.md) for full setup.
 
