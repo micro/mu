@@ -16,6 +16,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/service"
 	"mu/internal/userdb"
 	"mu/wallet"
 )
@@ -53,6 +54,9 @@ var dailyThemes = []struct {
 
 // Load restores the last daily image and starts the daily generator.
 func Load() {
+	if err := service.Register("images", new(Server)); err != nil {
+		app.Log("images", "service register failed: %v", err)
+	}
 	var d Daily
 	if err := data.LoadJSON(dailyKey, &d); err == nil && d.URL != "" {
 		dailyMu.Lock()

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -60,19 +61,65 @@ func Mode() string {
 	return "planner"
 }
 
-// nativeServices are the registered go-micro domain services the native agent
-// may use as tools. Guests get the public subset (no account-scoped data).
-func nativeServices(public bool) []string {
-	pub := []string{"weather", "news", "markets", "social", "video", "blog", "search", "places"}
-	if public {
-		return pub
-	}
-	return append(pub, "recall", "apps", "mail")
+// nonPublicServices are the registered services a guest (public) agent may NOT
+// use: account-scoped data (mail, recall) and metered generation (images).
+// Everything else registered is available to guests.
+var nonPublicServices = map[string]bool{
+	"mail":   true,
+	"recall": true,
+	"images": true,
 }
 
-// AllAgentTools lists the service tools a user-defined agent may be scoped to.
+// nativeServices are the registered go-micro domain services the native agent
+// may use as tools. Guests get the public subset. Derived from the live
+// registry so a newly registered service becomes available to the agent (and
+// the /agent/new tool picker) without editing a hardcoded list here.
+func nativeServices(public bool) []string {
+	all := service.Services()
+	sort.Strings(all)
+	out := make([]string, 0, len(all))
+	for _, s := range all {
+		if public && nonPublicServices[s] {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// AllAgentTools lists the service tools a user-defined agent may be scoped to —
+// every registered service (the private superset).
 func AllAgentTools() []string {
-	return []string{"weather", "news", "markets", "social", "video", "blog", "search", "places", "recall", "apps", "mail"}
+	return nativeServices(false)
+}
+
+// agentToolLabels gives human-friendly names for the service ids shown in the
+// /agent/new tool picker. Unlisted ids fall back to a title-cased id.
+var agentToolLabels = map[string]string{
+	"weather":  "Weather",
+	"news":     "News",
+	"markets":  "Markets",
+	"social":   "Social",
+	"video":    "Video",
+	"blog":     "Blog",
+	"search":   "Web search",
+	"places":   "Places",
+	"recall":   "Memory",
+	"apps":     "Apps",
+	"mail":     "Mail",
+	"images":   "Images",
+	"reminder": "Islam",
+}
+
+// AgentToolLabel returns a friendly display label for a service tool id.
+func AgentToolLabel(id string) string {
+	if l, ok := agentToolLabels[id]; ok {
+		return l
+	}
+	if id == "" {
+		return id
+	}
+	return strings.ToUpper(id[:1]) + id[1:]
 }
 
 // filterServices intersects the full service set with an agent's allowed tools,

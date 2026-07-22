@@ -215,7 +215,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 		if selected[t] {
 			chk = " checked"
 		}
-		toolsHTML.WriteString(`<label><input type="checkbox" name="tool" value="` + t + `"` + chk + `> ` + t + `</label>`)
+		toolsHTML.WriteString(`<label><input type="checkbox" name="tool" value="` + t + `"` + chk + `> ` + html.EscapeString(AgentToolLabel(t)) + `</label>`)
 	}
 
 	b := `<div class="builder">

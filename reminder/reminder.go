@@ -13,6 +13,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/internal/service"
 )
 
 var (
@@ -22,6 +23,10 @@ var (
 
 // Load initializes the reminder data
 func Load() {
+	if err := service.Register("reminder", new(Server)); err != nil {
+		app.Log("reminder", "service register failed: %v", err)
+	}
+
 	// Load cached HTML
 	b, err := data.LoadFile("reminder.html")
 	if err == nil {
