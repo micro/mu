@@ -46,6 +46,12 @@ var (
 // not import the client packages (and to avoid an import cycle).
 var OnFire func(accountID, title, note string)
 
+// OnCreate is called when an event is scheduled. main.go sets it to email the
+// owner an .ics calendar invite (if they have a verified email — e.g. from
+// Google sign-in), so the event also lands in their real calendar. Kept as a
+// hook so this package doesn't import mail/auth.
+var OnCreate func(e *Event)
+
 // Load reads persisted events, registers the go-micro service (which makes
 // Create/List available to the agent, MCP and REST), and starts the scheduler.
 func Load() {
@@ -102,6 +108,11 @@ func Create(owner, title string, when time.Time, note string) (*Event, error) {
 	events[e.ID] = e
 	saveLocked()
 	mu.Unlock()
+
+	if OnCreate != nil {
+		cp := *e
+		go OnCreate(&cp)
+	}
 	return e, nil
 }
 

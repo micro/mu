@@ -216,6 +216,77 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 	return messageID, nil
 }
 
+// SendCalendarInvite sends an email carrying an iCalendar (.ics) invite so the
+// event lands in the recipient's real calendar (Gmail/Google Calendar, Apple,
+// Outlook). The message is multipart/mixed: an HTML body plus a text/calendar
+// attachment. Sent and DKIM-signed from a Mu address (deliverable), with the
+// event itself attributed to the user inside the .ics.
+func SendCalendarInvite(displayName, from, to, subject, bodyHTML, ics string) (string, error) {
+	username := from
+	if strings.Contains(from, "@") {
+		username = strings.Split(from, "@")[0]
+	}
+	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, GetConfiguredDomain())
+	boundary := fmt.Sprintf("----=_Mixed_%d", time.Now().UnixNano())
+
+	var msg bytes.Buffer
+	fromHeader := from
+	if displayName != "" {
+		fromHeader = fmt.Sprintf("%s <%s>", displayName, from)
+	}
+	msg.WriteString(fmt.Sprintf("From: %s\r\n", fromHeader))
+	msg.WriteString(fmt.Sprintf("To: %s\r\n", to))
+	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
+	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
+	msg.WriteString("MIME-Version: 1.0\r\n")
+	msg.WriteString(fmt.Sprintf("Content-Type: multipart/mixed; boundary=\"%s\"\r\n", boundary))
+	msg.WriteString("\r\n")
+
+	// HTML body part.
+	msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	msg.WriteString("Content-Type: text/html; charset=utf-8\r\n")
+	msg.WriteString("Content-Transfer-Encoding: 7bit\r\n\r\n")
+	bodyHTML = strings.ReplaceAll(bodyHTML, "\r\n", "\n")
+	bodyHTML = strings.ReplaceAll(bodyHTML, "\n", "\r\n")
+	msg.WriteString(bodyHTML)
+	msg.WriteString("\r\n\r\n")
+
+	// Calendar attachment part.
+	msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	msg.WriteString("Content-Type: text/calendar; charset=utf-8; method=PUBLISH; name=\"invite.ics\"\r\n")
+	msg.WriteString("Content-Transfer-Encoding: 7bit\r\n")
+	msg.WriteString("Content-Disposition: attachment; filename=\"invite.ics\"\r\n\r\n")
+	msg.WriteString(ics)
+	msg.WriteString("\r\n\r\n")
+
+	msg.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+
+	message := msg.Bytes()
+	if dkimConfig != nil {
+		options := &dkim.SignOptions{
+			Domain:                 dkimConfig.Domain,
+			Selector:               dkimConfig.Selector,
+			Signer:                 dkimConfig.PrivateKey,
+			HeaderCanonicalization: dkim.CanonicalizationRelaxed,
+			BodyCanonicalization:   dkim.CanonicalizationRelaxed,
+			HeaderKeys:             []string{"from", "to", "subject", "date", "message-id", "mime-version", "content-type"},
+		}
+		var signedBuf bytes.Buffer
+		if err := dkim.Sign(&signedBuf, bytes.NewReader(message), options); err != nil {
+			app.Log("dkim", "WARNING: DKIM signing failed: %v", err)
+		} else {
+			message = signedBuf.Bytes()
+		}
+	}
+
+	RecordOutbound(messageID, to)
+	if err := RelayToExternal(from, to, message); err != nil {
+		return "", fmt.Errorf("failed to relay calendar invite: %v", err)
+	}
+	return messageID, nil
+}
+
 // IsExternalEmail checks if an email address is external (contains @domain)
 func IsExternalEmail(email string) bool {
 	return strings.Contains(email, "@")

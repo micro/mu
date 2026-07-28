@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"net/http"
@@ -146,6 +147,30 @@ func main() {
 		discord.NotifyUser(accountID, msg)
 		telegram.NotifyUser(accountID, msg)
 		whatsapp.NotifyUser(accountID, msg)
+	}
+	// When an event is scheduled, email the owner an .ics invite so it also
+	// lands in their real calendar. Only for users with a verified email (e.g.
+	// via Google sign-in) and only when this instance can send mail.
+	events.OnCreate = func(e *events.Event) {
+		domain := mail.GetConfiguredDomain()
+		if domain == "" || domain == "localhost" {
+			return
+		}
+		acc, err := auth.GetAccount(e.Owner)
+		if err != nil || acc.Email == "" || !acc.EmailVerified {
+			return
+		}
+		when := e.When.Local().Format("Mon 2 Jan 2006, 15:04 MST")
+		body := fmt.Sprintf(`<p>You asked Mu to remind you:</p><p style="font-size:16px"><strong>%s</strong><br>%s</p>`,
+			html.EscapeString(e.Title), html.EscapeString(when))
+		if e.Note != "" {
+			body += `<p>` + html.EscapeString(e.Note) + `</p>`
+		}
+		body += `<p style="color:#888;font-size:13px">Added to your calendar from the attached invite.</p>`
+		ics := events.ICS(e, acc.Email)
+		if _, err := mail.SendCalendarInvite("Mu Events", "no-reply@"+domain, acc.Email, "Reminder: "+e.Title, body, ics); err != nil {
+			app.Log("events", "calendar invite to %s failed: %v", acc.Email, err)
+		}
 	}
 	wallet.Load()
 	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
