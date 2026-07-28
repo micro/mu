@@ -34,7 +34,7 @@ func cryptoWalletCard(userID string) string {
 </div>
 <style>
 .cw-addr{display:block;width:100%%;text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222;cursor:pointer}
-.cw-addr:hover{background:#eef2ff;border-color:#c7d2fe}
+.cw-addr:hover{background:var(--hover-background,#f5f5f5);border-color:var(--border-color,#ddd)}
 .cw-copied{font-size:12px;color:#1a7f37;margin-top:6px}
 .cw-qrwrap{margin-top:10px;font-size:13px;color:#666}
 .cw-qrwrap summary{cursor:pointer}

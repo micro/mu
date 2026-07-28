@@ -446,7 +446,7 @@ const chatLayoutCSS = `<style>
    applies to the chat embedded on the landing/home page). */
 .chat-main #mu-chat{max-width:none}
 /* Which agent is answering — always visible above the conversation. */
-.agent-chip{display:inline-block;margin-bottom:10px;padding:3px 10px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.agent-chip{display:inline-block;margin-bottom:10px;padding:3px 10px;border-radius:999px;background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .chat-new{width:100%;padding:9px 12px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
 .chat-sess-list{display:flex;flex-direction:column;gap:2px}
 .chat-sess{display:block;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

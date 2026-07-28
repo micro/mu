@@ -128,11 +128,11 @@ func renderAgentsPanel() string {
 <style>
 .agents-panel{border:1px solid var(--card-border,#e8e8e8);border-radius:8px;margin-bottom:12px;background:var(--card-background,#fff);overflow:hidden}
 .agents-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:14px;font-weight:600;border-bottom:1px solid var(--card-border,#eee)}
-.agents-new{color:#4f46e5;text-decoration:none;font-size:13px;font-weight:600}
+.agents-new{color:var(--btn-primary,#000);text-decoration:none;font-size:13px;font-weight:600}
 .agents-list{padding:6px}
 .agents-list>div{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#333}
 .agents-list>div:hover{background:#f4f4f5}
-.agents-list>div.on{background:#eef2ff;color:#3730a3;font-weight:600}
+.agents-list>div.on{background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-weight:600}
 .agents-def{color:#aaa;font-size:11px;font-weight:400}
 .agents-actions{display:flex;gap:2px;opacity:.55}
 .agents-actions a,.agents-actions button{border:0;background:none;cursor:pointer;font-size:12px;padding:0 2px;color:inherit;text-decoration:none}
@@ -251,13 +251,13 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 #bform textarea{line-height:1.5;resize:vertical}
 .b-gen{display:flex;gap:8px}
 .b-gen input{flex:1}
-.b-gen button{white-space:nowrap;padding:9px 14px;font-size:14px;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;background:#eef2ff;color:#4338ca;font-weight:500}
+.b-gen button{white-space:nowrap;padding:9px 14px;font-size:14px;border:1px solid var(--border-color,#ddd);border-radius:var(--border-radius,6px);cursor:pointer;background:#fff;color:var(--text-primary,#111);font-weight:500}
 .b-gen button[disabled]{opacity:.6;cursor:default}
 .b-tools{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:2px}
 .b-tools label{display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer}
 .b-actions{display:flex;align-items:center;gap:12px;margin-top:22px}
-.b-save{padding:10px 22px;font-size:14px;font-weight:600;border:0;border-radius:6px;background:#4f46e5;color:#fff;cursor:pointer}
-.b-save:hover{background:#4338ca}
+.b-save{padding:10px 22px;font-size:14px;font-weight:600;border:0;border-radius:var(--border-radius,6px);background:var(--btn-primary,#000);color:#fff;cursor:pointer}
+.b-save:hover{background:var(--btn-primary-hover,#333)}
 .b-cancel{color:#6b7280;text-decoration:none;font-size:14px}
 .b-cancel:hover{color:#111}
 </style>

@@ -55,7 +55,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<input type="text" name="title" placeholder="Remind me to…" required maxlength="140" style="padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit">`)
 	b.WriteString(`<div style="display:flex;gap:8px;flex-wrap:wrap">`)
 	b.WriteString(`<input type="datetime-local" name="whenlocal" required style="flex:1;min-width:200px;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit">`)
-	b.WriteString(`<button type="submit" style="padding:9px 20px;background:#4f46e5;color:#fff;border:0;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">Schedule</button>`)
+	b.WriteString(`<button type="submit">Schedule</button>`)
 	b.WriteString(`</div>`)
 	b.WriteString(`<input type="text" name="note" placeholder="Note (optional)" maxlength="280" style="padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit">`)
 	b.WriteString(`</form>`)
@@ -84,7 +84,7 @@ func eventRow(e *Event, csrf string) string {
 	return fmt.Sprintf(`<div style="display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px">
 <div style="flex:1">
   <div style="font-weight:600;font-size:14px">%s</div>
-  <div style="font-size:13px;color:#4f46e5">%s</div>
+  <div style="font-size:13px;color:var(--link,#0066cc)">%s</div>
   %s
 </div>
 <a href="%s" target="_blank" rel="noopener" title="Add to Google Calendar" style="font-size:12px;color:#888;text-decoration:none;white-space:nowrap">+ Calendar</a>
