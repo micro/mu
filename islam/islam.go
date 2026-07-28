@@ -247,17 +247,13 @@ func prayerTimesHTML() string {
         // else is world-referenced and turns beneath it, so aligning is
         // "bring Q up to the marker". Hidden until a live heading exists,
         // because without one the dial is a north-up diagram, not a compass.
-        '<polygon id="qibla-index" points="48,4 44,12 52,12" fill="#111" style="display:none"/>'+
+        '<line id="qibla-index" x1="48" y1="2" x2="48" y2="9" stroke="#111" stroke-width="2" stroke-linecap="round" style="display:none"/>'+
         '<circle cx="48" cy="48" r="38" fill="none" stroke="#e0e0e0" stroke-width="1.5"/>'+
-        '<g id="qibla-rose">'+
-          '<line x1="48" y1="12" x2="48" y2="18" stroke="#ccc" stroke-width="1.5"/>'+
-          '<line x1="84" y1="48" x2="78" y2="48" stroke="#eee" stroke-width="1.5"/>'+
-          '<line x1="48" y1="84" x2="48" y2="78" stroke="#eee" stroke-width="1.5"/>'+
-          '<line x1="12" y1="48" x2="18" y2="48" stroke="#eee" stroke-width="1.5"/>'+
-          '<g id="qibla-needle" transform="rotate('+q.bearing+' 48 48)">'+
-            '<line x1="48" y1="48" x2="48" y2="26" stroke="#111" stroke-width="2" stroke-linecap="round"/>'+
-            '<polygon points="48,20 43,30 53,30" fill="#111"/>'+
-          '</g>'+
+        // Just the needle. Tick marks collided with the N label and added
+        // nothing the labels don't already say.
+        '<g id="qibla-needle" transform="rotate('+q.bearing+' 48 48)">'+
+          '<line x1="48" y1="48" x2="48" y2="26" stroke="#111" stroke-width="2" stroke-linecap="round"/>'+
+          '<polygon points="48,20 43,30 53,30" fill="#111"/>'+
         '</g>'+
         '<circle cx="48" cy="48" r="2.5" fill="#111"/>'+
         '<text id="qibla-q" text-anchor="middle" font-size="11" font-weight="700" fill="#111">Q</text>'+
@@ -303,11 +299,7 @@ func prayerTimesHTML() string {
         smoothed=(smoothed+d*0.18+360)%360;
       }
       var qAngle=(bearing-smoothed+360)%360;
-      // The rose is world-referenced: turn it by the heading so the ticks and
-      // needle move together beneath the fixed index at the top.
-      var rose=document.getElementById('qibla-rose');
-      if(rose){rose.setAttribute('transform','rotate('+((360-smoothed)%360).toFixed(1)+' 48 48)');}
-      needle.setAttribute('transform','rotate('+bearing.toFixed(1)+' 48 48)');
+      needle.setAttribute('transform','rotate('+qAngle.toFixed(1)+' 48 48)');
       placeMarks(qAngle,(360-smoothed)%360);
       var idx=document.getElementById('qibla-index');
       if(idx){idx.style.display='';}
