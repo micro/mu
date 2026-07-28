@@ -50,6 +50,7 @@ func (Server) Today(_ context.Context, _ *TodayRequest, rsp *TodayResponse) erro
 type PrayerRequest struct {
 	Lat float64 `json:"lat" description:"Latitude of the location"`
 	Lon float64 `json:"lon" description:"Longitude of the location"`
+	TZ  string  `json:"tz" description:"IANA timezone of the location, e.g. Europe/London (defaults to UTC)"`
 }
 
 // PrayerResponse is the day's prayer schedule as model-ready text.
@@ -60,8 +61,8 @@ type PrayerResponse struct {
 // Prayer returns today's prayer times for a location (Fajr, Dhuhr, Asr,
 // Maghrib and Isha, plus sunrise), and which prayer comes next.
 // @example {"lat": 51.5074, "lon": -0.1278}
-func (Server) Prayer(ctx context.Context, req *PrayerRequest, rsp *PrayerResponse) error {
-	pt, err := GetPrayerTimes(ctx, req.Lat, req.Lon)
+func (Server) Prayer(_ context.Context, req *PrayerRequest, rsp *PrayerResponse) error {
+	pt, err := GetPrayerTimes(req.Lat, req.Lon, req.TZ)
 	if err != nil {
 		return err
 	}

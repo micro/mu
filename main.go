@@ -877,6 +877,7 @@ func main() {
 		Params: []api.ToolParam{
 			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
 			{Name: "lon", Type: "number", Description: "Longitude of the location", Required: true},
+			{Name: "tz", Type: "string", Description: "IANA timezone of the location, e.g. Europe/London"},
 		},
 		Handle: func(args map[string]any) (string, error) {
 			lat := argFloat(args["lat"])
@@ -884,9 +885,10 @@ func main() {
 			if lat == 0 && lon == 0 {
 				return "Provide lat and lon for the location.", fmt.Errorf("missing coordinates")
 			}
+			tz, _ := args["tz"].(string)
 			var rsp islam.PrayerResponse
 			if err := service.Call(context.Background(), "islam", "Server.Prayer",
-				&islam.PrayerRequest{Lat: lat, Lon: lon}, &rsp); err != nil {
+				&islam.PrayerRequest{Lat: lat, Lon: lon, TZ: tz}, &rsp); err != nil {
 				return "", err
 			}
 			return rsp.Times, nil

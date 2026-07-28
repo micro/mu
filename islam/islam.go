@@ -160,7 +160,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Prayer times need an upstream call; the qibla is pure maths, so a
 		// timings outage should still leave the compass working.
-		if pt, err := GetPrayerTimes(r.Context(), lat, lon); err == nil {
+		if pt, err := GetPrayerTimes(lat, lon, r.URL.Query().Get("tz")); err == nil {
 			next, at := pt.Next(time.Now())
 			payload["times"] = pt
 			payload["next"] = next
@@ -263,7 +263,7 @@ func prayerTimesHTML() string {
     window.addEventListener('deviceorientation',onOrient,true);
   }
   function load(lat,lon){
-    fetch('/islam?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'},credentials:'same-origin'})
+    fetch('/islam?lat='+lat+'&lon='+lon+'&tz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||''),{headers:{'Accept':'application/json'},credentials:'same-origin'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(d){ if(d&&(d.times||d.qibla)){render(d)} else {body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'} })
       .catch(function(){body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'});
