@@ -453,7 +453,11 @@ const chatLayoutCSS = `<style>
 .chat-sess:hover{background:#f5f5f5}
 .chat-sess.active{background:#eef0ff;color:#111;font-weight:600}
 .chat-sess-empty{color:#999;font-size:13px;padding:8px 10px}
-@media(max-width:760px){.chat-layout{flex-direction:column;gap:12px}.chat-side,.chat-rail{width:100%}.chat-sess-list{flex-direction:row;overflow-x:auto;flex-wrap:nowrap}.chat-sess{flex-shrink:0;max-width:160px}}
+/* Stacking the layout turns align-items:flex-start into *horizontal*
+   alignment, so children size to their content rather than the screen — a wide
+   answer then pushed the column (and the input with it) past the viewport.
+   Stretch them back to full width. */
+@media(max-width:760px){.chat-layout{flex-direction:column;gap:12px;align-items:stretch}.chat-side,.chat-rail,.chat-main{width:100%;min-width:0;max-width:100%}.chat-sess-list{flex-direction:row;overflow-x:auto;flex-wrap:nowrap}.chat-sess{flex-shrink:0;max-width:160px}}
 </style>`
 
 // FormatAge returns a human-friendly string for an elapsed duration.

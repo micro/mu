@@ -84,6 +84,15 @@ func ChatComponent(cfg ChatConfig) string {
 .mu-cta a{color:#111;font-weight:600;text-decoration:none}
 .mu-cursor{display:inline-block;width:2px;height:1em;background:#000;vertical-align:text-bottom;animation:mublink .8s step-end infinite;margin-left:2px}
 @keyframes mublink{0%,100%{opacity:1}50%{opacity:0}}
+/* Answer content must never widen the chat column. Without this a long code
+   block, an unbroken URL or a wide table stretches the flex item, which drags
+   the input off-screen on mobile — the column ends up wider than the viewport.
+   Each kind of wide content is contained in its own block instead. */
+#mu-chat,#mu-chat-conv,#mu-chat-form{min-width:0;max-width:100%}
+#mu-chat-conv,.mu-user{overflow-wrap:break-word}
+#mu-chat-conv pre{overflow-x:auto;max-width:100%}
+#mu-chat-conv table{display:block;overflow-x:auto;max-width:100%}
+#mu-chat-conv img{max-width:100%;height:auto}
 #mu-chat .card{max-width:100%;border:1px solid #e0e0e0;border-radius:8px;padding:16px 18px;margin-bottom:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 #mu-chat .card h4{margin:0 0 8px;font-size:1em;font-weight:600}
 #mu-chat .card a,#mu-chat .link,#mu-chat a.link{color:#111}
