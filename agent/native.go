@@ -61,16 +61,6 @@ func Mode() string {
 	return "planner"
 }
 
-// nonPublicServices are the registered services a guest (public) agent may NOT
-// use: account-scoped data (mail, recall) and metered generation (images).
-// Everything else registered is available to guests.
-var nonPublicServices = map[string]bool{
-	"mail":   true,
-	"recall": true,
-	"images": true,
-	"events": true,
-}
-
 // nativeServices are the registered go-micro domain services the native agent
 // may use as tools. Guests get the public subset. Derived from the live
 // registry so a newly registered service becomes available to the agent (and
@@ -80,7 +70,9 @@ func nativeServices(public bool) []string {
 	sort.Strings(all)
 	out := make([]string, 0, len(all))
 	for _, s := range all {
-		if public && nonPublicServices[s] {
+		// Guests can't reach account-scoped or metered services; the policy
+		// lives in internal/service so the agent and the app SDK share it.
+		if public && service.AccountScoped(s) {
 			continue
 		}
 		out = append(out, s)

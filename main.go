@@ -831,6 +831,41 @@ func main() {
 		return fmt.Sprintf("Generated image: %s\n\n![image](%s)", url, url), nil
 	})
 
+	// events_create / events_list — personal scheduling. Account-scoped: the
+	// caller's id is bound by the platform, never supplied by the model.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "events_create",
+		Description: "Schedule a reminder or event to fire at a given time. Use whenever the user asks to be reminded of something or to schedule an event.",
+		Params: []api.ToolParam{
+			{Name: "title", Type: "string", Description: "What to be reminded about", Required: true},
+			{Name: "when", Type: "string", Description: "When to fire, RFC3339 with timezone offset, e.g. 2026-07-22T15:00:00+01:00", Required: true},
+			{Name: "note", Type: "string", Description: "Optional extra detail"},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		title, _ := args["title"].(string)
+		when, _ := args["when"].(string)
+		note, _ := args["note"].(string)
+		var rsp events.CreateResponse
+		if err := service.Call(context.Background(), "events", "Server.Create",
+			&events.CreateRequest{AccountID: accountID, Title: title, When: when, Note: note},
+			&rsp); err != nil {
+			return "", err
+		}
+		return rsp.Result, nil
+	})
+
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "events_list",
+		Description: "List your upcoming scheduled events and reminders, soonest first.",
+	}, func(args map[string]any, accountID string) (string, error) {
+		var rsp events.ListResponse
+		if err := service.Call(context.Background(), "events", "Server.List",
+			&events.ListRequest{AccountID: accountID}, &rsp); err != nil {
+			return "", err
+		}
+		return rsp.Events, nil
+	})
+
 	// saved_list — the items you've bookmarked for later, with links. Read-only,
 	// per-user, free; the save/unsave tools already exist for writing.
 	api.RegisterToolWithAuth(api.Tool{

@@ -336,6 +336,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(path, "/sdk/fetch"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/fetch")
 		handleSDKFetch(w, r, slug)
+	case strings.HasSuffix(path, "/sdk/services"):
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/services")
+		handleSDKServices(w, r, slug)
+	case strings.HasSuffix(path, "/sdk/service"):
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/service")
+		handleSDKService(w, r, slug)
 	case strings.HasSuffix(path, "/delete") && r.Method == "POST":
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/delete")
 		handleDelete(w, r, slug)
