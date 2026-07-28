@@ -319,6 +319,7 @@ var Template = `
           <a href="/apps"><img src="/apps.svg?` + Version + `"><span class="label">Apps</span></a>
           <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
           <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>
+          <a href="/events"><img src="/events.svg?` + Version + `"><span class="label">Events</span></a>
           <a href="/images"><img src="/images.svg?` + Version + `"><span class="label">Images</span></a>
           <a href="/islam"><img src="/reminder.svg?` + Version + `"><span class="label">Islam</span></a>
           <a id="nav-mail" href="/mail"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>

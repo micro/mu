@@ -28,6 +28,7 @@ import (
 	"mu/client/telegram"
 	"mu/client/whatsapp"
 	"mu/docs"
+	"mu/events"
 	"mu/home"
 	"mu/images"
 	"mu/internal/a2a"
@@ -136,6 +137,16 @@ func main() {
 	markets.Load()
 	reminder.Load()
 	images.Load()
+	events.Load()
+	events.OnFire = func(accountID, title, note string) {
+		msg := "⏰ Reminder: " + title
+		if note != "" {
+			msg += "\n" + note
+		}
+		discord.NotifyUser(accountID, msg)
+		telegram.NotifyUser(accountID, msg)
+		whatsapp.NotifyUser(accountID, msg)
+	}
 	wallet.Load()
 	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
 	discord.Load()
@@ -1171,6 +1182,7 @@ func main() {
 		"/oauth2/google/connect": true,  // Link Google to the current account
 		"/oauth2/callback":       false, // Google sign-in callback (no session yet)
 		"/images":                false, // Public daily image; generation needs login
+		"/events":                true,  // Personal scheduled reminders — sign-in required
 		"/social":                false, // Public viewing, auth for search
 		"/social/thread":         false, // Public thread view, auth for messaging
 		"/places":                false, // Public map, auth for search
@@ -1377,6 +1389,7 @@ func main() {
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
 	http.HandleFunc("/images", images.Handler)
+	http.HandleFunc("/events", events.Handler)
 
 	// serve social page
 	http.HandleFunc("/social", social.Handler)

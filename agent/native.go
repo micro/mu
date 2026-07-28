@@ -68,6 +68,7 @@ var nonPublicServices = map[string]bool{
 	"mail":   true,
 	"recall": true,
 	"images": true,
+	"events": true,
 }
 
 // nativeServices are the registered go-micro domain services the native agent
@@ -109,6 +110,7 @@ var agentToolLabels = map[string]string{
 	"mail":     "Mail",
 	"images":   "Images",
 	"reminder": "Islam",
+	"events":   "Events",
 }
 
 // AgentToolLabel returns a friendly display label for a service tool id.
