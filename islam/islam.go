@@ -212,7 +212,7 @@ func prayerTimesHTML() string {
     if(!t.fajr){h='<p class="text-muted" style="margin:0 0 10px;font-size:14px">Prayer times unavailable right now.</p>';}
     if(d.qibla){h+=qiblaHTML(d.qibla);}
     body.innerHTML=h;
-    if(d.qibla){startCompass();}
+    if(d.qibla){startCompass(d.qibla.bearing);}
   }
   function qiblaHTML(q){
     return '<div style="margin-top:16px;padding-top:14px;border-top:1px solid #eee">'+
@@ -234,16 +234,48 @@ func prayerTimesHTML() string {
   }
   // Where the device reports its heading, rotate the dial so the needle points
   // at the qibla in the real world rather than just showing a fixed bearing.
-  function startCompass(){
+  // Rotate the dial so the needle points at the qibla in the real world.
+  // Only absolute headings are usable: plain deviceorientation alpha is
+  // relative to wherever the device started, not to north.
+  function startCompass(bearing){
     var needle=document.getElementById('qibla-needle');
     var hint=document.getElementById('qibla-hint');
     if(!needle||!window.DeviceOrientationEvent)return;
-    var base=parseFloat((needle.getAttribute('transform')||'').replace(/[^0-9.\-]/g,''))||0;
-    function onOrient(e){
-      var heading=(typeof e.webkitCompassHeading==='number')?e.webkitCompassHeading:(e.alpha!=null?360-e.alpha:null);
-      if(heading==null||isNaN(heading))return;
-      needle.setAttribute('transform','rotate('+((base-heading+360)%360)+' 48 48)');
+    var smoothed=null,pending=null,frame=null;
+    function draw(){
+      frame=null;
+      if(pending==null)return;
+      // Low-pass filter across the 0/360 wrap, so sensor noise doesn't jitter
+      // the needle. Without this the dial visibly shakes when you move.
+      if(smoothed==null){smoothed=pending;}
+      else{
+        var d=((pending-smoothed+540)%360)-180;
+        smoothed=(smoothed+d*0.18+360)%360;
+      }
+      needle.setAttribute('transform','rotate('+((bearing-smoothed+360)%360).toFixed(1)+' 48 48)');
       if(hint){hint.textContent='Following your compass \u2014 turn until the needle points up.';}
+    }
+    function onOrient(e){
+      var h=null;
+      if(typeof e.webkitCompassHeading==='number'){h=e.webkitCompassHeading;}
+      else if(e.absolute===true&&e.alpha!=null){h=360-e.alpha;}
+      if(h==null||isNaN(h))return;
+      // The heading is of the device; the dial is drawn in screen space, so
+      // correct for however the screen is rotated.
+      var so=0;
+      if(window.screen&&screen.orientation&&typeof screen.orientation.angle==='number'){so=screen.orientation.angle;}
+      else if(typeof window.orientation==='number'){so=window.orientation;}
+      pending=(h+so+360)%360;
+      if(!frame){frame=requestAnimationFrame(draw);}
+    }
+    function listen(){
+      // One listener only. Registering both absolute and relative events makes
+      // them alternate with different reference frames, which flickers.
+      if('ondeviceorientationabsolute' in window){
+        window.addEventListener('deviceorientationabsolute',onOrient,true);
+      }else{
+        window.addEventListener('deviceorientation',onOrient,true);
+      }
     }
     if(typeof DeviceOrientationEvent.requestPermission==='function'){
       // iOS: needs a user gesture, so ask on tap rather than silently failing.
@@ -253,14 +285,13 @@ func prayerTimesHTML() string {
         if(hint){hint.textContent='Tap the dial to use your compass.';}
         dial.addEventListener('click',function(){
           DeviceOrientationEvent.requestPermission().then(function(p){
-            if(p==='granted'){window.addEventListener('deviceorientation',onOrient,true);}
+            if(p==='granted'){listen();}
           }).catch(function(){});
         });
       }
       return;
     }
-    window.addEventListener('deviceorientationabsolute',onOrient,true);
-    window.addEventListener('deviceorientation',onOrient,true);
+    listen();
   }
   function load(lat,lon){
     fetch('/islam?lat='+lat+'&lon='+lon+'&tz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||''),{headers:{'Accept':'application/json'},credentials:'same-origin'})
