@@ -2053,7 +2053,7 @@ body:has(#messages) #chat-back-link {
 }
 
 /* Legacy markets card styles (for /markets page) */
-#markets, #reminder, #video {
+#markets, #islam, #video {
   max-width: 100%;
   float: none;
   margin-right: 0;
@@ -2449,7 +2449,7 @@ a.highlight {
   .post-show {
     margin-top: 10px;
   }
-  .card, #reminder, #video {
+  .card, #islam, #video {
     float: none;
     display: block;
     width: 100%;
@@ -2493,12 +2493,13 @@ a.highlight {
     font-size: 12px;
   }
 
-  /* Card order on mobile — reminder first, then useful content. Every card
-     needs an explicit order: a card with none defaults to order:0 and jumps
-     ahead of everything (that was Images landing first, above the fold). */
-  #reminder { order: 1; }
-  #markets { order: 2; }
-  #blog { order: 3; }
+  /* Card order on mobile. Every card needs an explicit order: one with none
+     defaults to order:0 and jumps ahead of everything — which is what happened
+     when Images was added, and again when the reminder card became #islam and
+     this selector stopped matching. Keep these ids in step with cards.json. */
+  #blog { order: 1; }
+  #islam { order: 2; }
+  #markets { order: 3; }
   #news { order: 4; }
   #images { order: 5; }
   #social { order: 6; }

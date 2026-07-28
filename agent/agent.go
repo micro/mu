@@ -1058,7 +1058,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			hasMarketsTool = true
 		case "weather_forecast":
 			hasWeatherTool = true
-		case "web_search":
+		case "web_search", "search_web":
 			hasWebSearchTool = true
 		case "news_search":
 			hasNewsSearchTool = true
@@ -1452,7 +1452,7 @@ func skipMarketMoverCompanionTool(prompt, tool string) bool {
 	if tool == "markets" || tool == "markets_list" || !isMarketMoverPrompt(prompt) || wantsMarketMoverExplanation(prompt) {
 		return false
 	}
-	return tool == "news" || tool == "news_headlines" || tool == "news_list" || tool == "news_search" || tool == "web_search" || tool == "recall"
+	return tool == "news" || tool == "news_headlines" || tool == "news_list" || tool == "news_search" || tool == "web_search" || tool == "search_web" || tool == "recall"
 }
 
 func isMarketMoverPrompt(prompt string) bool {
@@ -1507,9 +1507,9 @@ func toolLabel(tool string) string {
 		return "Searching news"
 	case "recall":
 		return "🧠 Searching your world"
-	case "web_search":
+	case "web_search", "search_web":
 		return "🌐 Searching the web"
-	case "web_fetch":
+	case "web_fetch", "search_fetch":
 		return "Fetching web page"
 	case "video_search":
 		return "🎬 Searching videos"
@@ -1863,11 +1863,11 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatReminderResult(result)
 	case "search":
 		return withCurrentDateContext(formatSearchResult(result))
-	case "web_search", "weather_forecast":
+	case "web_search", "search_web", "weather_forecast":
 		return withCurrentDateContext(result)
 	case "markets", "markets_list":
 		return withCurrentDateContext(formatMarketsResult(result))
-	case "web_fetch":
+	case "web_fetch", "search_fetch":
 		return formatWebFetchResult(result)
 	case "places_search", "places_nearby":
 		return formatPlacesResult(result, args)

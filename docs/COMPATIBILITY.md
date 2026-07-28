@@ -72,7 +72,10 @@ When something stable has to change:
 3. It is removed no earlier than the next **major** version.
 
 MCP tool renames are the worked example: `markets` became `markets_list`, and
-`markets` still resolves. That is the pattern for every rename.
+`markets` still resolves. Likewise `web_search`/`web_fetch` are now
+`search_web`/`search_fetch`, `image_generate`/`image_search` are
+`images_generate`/`images_search`, and `reminder` is `islam` — every old name
+still works. That is the pattern for every rename.
 
 ## Known exceptions
 

@@ -17,8 +17,10 @@ var guestAllowedTools = map[string]bool{
 	"weather_forecast": true,
 	"video":            true,
 	"video_search":     true,
-	"web_search":       true,
-	"web_fetch":        true,
+	"web_search":       true, // legacy alias of search_web
+	"search_web":       true,
+	"web_fetch":        true, // legacy alias of search_fetch
+	"search_fetch":     true,
 	"social":           true,
 	"social_search":    true,
 	"blog_list":        true,

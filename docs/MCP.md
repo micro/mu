@@ -21,7 +21,7 @@ When x402 is enabled on the server (`X402_PAY_TO` is set), any metered tool call
 ```bash
 curl -X POST https://micro.mu/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest AI news"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_web","arguments":{"query":"latest AI news"}}}'
 ```
 
 **2. Server returns 402 with payment requirements:**
@@ -37,7 +37,7 @@ X-PAYMENT-REQUIRED: eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsi...
     "network": "eip155:8453",
     "maxAmountRequired": "$0.05",
     "resource": "/mcp",
-    "description": "Access to web_search",
+    "description": "Access to search_web",
     "payTo": "0x...",
     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
   }],
@@ -51,7 +51,7 @@ X-PAYMENT-REQUIRED: eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsi...
 curl -X POST https://micro.mu/mcp \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: <base64-encoded-payment-payload>" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest AI news"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_web","arguments":{"query":"latest AI news"}}}'
 ```
 
 **4. Server verifies, settles, and returns the result.**
@@ -68,8 +68,8 @@ Metered tools are priced at **1 credit = $0.01 USD** via x402:
 | `video_search` | $0.02 |
 | `social_search` | $0.01 |
 | `chat` | $0.03 |
-| `web_search` | $0.05 |
-| `web_fetch` | $0.03 |
+| `search_web` | $0.05 |
+| `search_fetch` | $0.03 |
 | `weather_forecast` | $0.01 |
 | `places_search` | $0.05 |
 | `places_nearby` | $0.02 |
@@ -154,8 +154,8 @@ Accounts can top up credits with a card via Stripe.
 | `hadith` | Look up hadith from Sahih Al Bukhari | Included |
 | `quran_search` | Semantic search across Quran and Hadith | Included |
 | `weather_forecast` | Get the weather forecast for a location | 1 credit |
-| `web_search` | Search the web for current information | 5 credits |
-| `web_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
+| `search_web` | Search the web for current information | 5 credits |
+| `search_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
 | `apps_search` | Search the apps directory | Included |
 | `apps_read` | Read details of a specific app | Included |
 | `apps_create` | Create a new app | Included |
@@ -163,8 +163,8 @@ Accounts can top up credits with a card via Stripe.
 | `apps_build` | Build a small app (tracker, checklist, counter) from a description | 3 credits |
 | `apps_run` | Run JavaScript code in a sandbox | 3 credits |
 | `agent` | Ask the AI agent a question — searches news, markets, web, and more | 7 credits |
-| `image_generate` | Generate an image from a text prompt (Atlas Cloud nano-banana) | 15 credits |
-| `image_search` | Search the public image stock pool by description | Included |
+| `images_generate` | Generate an image from a text prompt (Atlas Cloud nano-banana) | 15 credits |
+| `images_search` | Search the public image stock pool by description | Included |
 | `stream` | Read the public event stream — system events, user posts, agent responses | Included |
 | `stream_post` | Post a message to the event stream | 1 credit |
 | `me` | Get your account identity and admin status | Included |
@@ -225,7 +225,7 @@ With x402 payment:
 curl -X POST https://micro.mu/mcp \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: <payment-payload>" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest news"}}}'
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search_web","arguments":{"query":"latest news"}}}'
 ```
 
 With account token:

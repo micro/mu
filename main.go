@@ -588,7 +588,8 @@ func main() {
 
 	// web_search — cached Brave web search, returned as model-ready text (AI-first).
 	api.RegisterTool(api.Tool{
-		Name:        "web_search",
+		Name:        "search_web",
+		Aliases:     []string{"web_search"},
 		Description: "Search the web for current information and news",
 		WalletOp:    "web_search",
 		Params: []api.ToolParam{
@@ -607,7 +608,8 @@ func main() {
 
 	// web_fetch tool — fetch a URL and return cleaned readable content
 	api.RegisterTool(api.Tool{
-		Name:        "web_fetch",
+		Name:        "search_fetch",
+		Aliases:     []string{"web_fetch"},
 		Description: "Fetch a web page and return its cleaned readable content (strips ads, popups, navigation)",
 		Method:      "GET",
 		Path:        "/web/fetch",
@@ -816,7 +818,8 @@ func main() {
 	// Charging happens inside images.Generate so every path bills exactly once;
 	// WalletOp here gates affordability and advertises the per-call price.
 	api.RegisterToolWithAuth(api.Tool{
-		Name:        "image_generate",
+		Name:        "images_generate",
+		Aliases:     []string{"image_generate"},
 		Description: "Generate an image from a text prompt. Returns a URL to the generated image.",
 		WalletOp:    "image_generate",
 		Params: []api.ToolParam{
@@ -886,7 +889,8 @@ func main() {
 	// image_search — search the public image stock pool by description. No auth:
 	// public stock is reusable by anyone or any agent. Free.
 	api.RegisterTool(api.Tool{
-		Name:        "image_search",
+		Name:        "images_search",
+		Aliases:     []string{"image_search"},
 		Description: "Search the public image library (community stock) by description. Returns image URLs to reuse.",
 		Params: []api.ToolParam{
 			{Name: "q", Type: "string", Description: "Search text", Required: true},

@@ -68,7 +68,7 @@ mu news                                 # latest news feed
 mu news_search "ai safety"              # search news
 mu chat "hello"                         # chat with the AI
 mu agent "what is the btc price?"       # run the full agent
-mu web_search "claude code"             # search the web
+mu search_web "claude code"             # search the web
 mu weather_forecast --lat 51.5 --lon -0.12
 mu me                                   # your account
 mu help                                 # full tool list

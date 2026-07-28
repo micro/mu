@@ -24,7 +24,7 @@ mu news                                 # latest news feed
 mu news_search "ai safety"              # search news
 mu chat "hello, what's up?"             # chat with the AI
 mu agent "summarise today's markets"    # run the full agent
-mu web_search "claude code"
+mu search_web "claude code"
 mu weather_forecast --lat 51.5 --lon -0.12
 mu apps_search "pomodoro"
 mu me                                   # your account (requires login)
@@ -98,7 +98,7 @@ For a small set of well-known tools, a single positional argument is treated as 
 ```bash
 mu chat "hello"                  # same as --prompt "hello"
 mu news_search "bitcoin"         # same as --query "bitcoin"
-mu web_search "claude code"      # same as --q "claude code"
+mu search_web "claude code"      # same as --q "claude code"
 mu apps_build "a pomodoro timer" # same as --prompt "..."
 ```
 
@@ -202,9 +202,9 @@ mu agent "find me three interesting AI papers from the last week and summarise t
 ### Search then tail the first result
 
 ```bash
-mu web_search "open source self-hosted email" --raw \
+mu search_web "open source self-hosted email" --raw \
   | jq -r '.results[0].url' \
-  | xargs -I {} mu web_fetch --url {}
+  | xargs -I {} mu search_fetch --url {}
 ```
 
 ## How it works
