@@ -44,6 +44,7 @@ import (
 	"mu/internal/settings"
 	"mu/internal/setup"
 	"mu/internal/userdb"
+	"mu/internal/version"
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
@@ -2013,7 +2014,8 @@ func isServerMode(args []string) bool {
 // deploy can be verified with `curl micro.mu/version`.
 func versionInfo() map[string]any {
 	info := map[string]any{
-		"version":  app.Version, // per-process id (start time)
+		"version":  version.String(), // release version (tag), or dev+commit
+		"build":    app.Version,      // per-process id (start time), for cache busting
 		"go":       runtime.Version(),
 		"agent":    agent.Mode(),       // "native" (go-micro agent) or "planner"
 		"mcp":      "go-micro/gateway", // /mcp served by go-micro's gateway

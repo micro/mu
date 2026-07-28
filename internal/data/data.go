@@ -65,17 +65,61 @@ func dataPath(key string) (string, error) {
 	return file, nil
 }
 
+// writeAtomic writes b to file durably: it writes a temp file in the same
+// directory, fsyncs it, then renames it into place. Rename within a directory
+// is atomic on POSIX, so a crash, a full disk, or a concurrent reader can never
+// observe a half-written file — the previous contents survive intact instead.
+//
+// This matters because the store keeps whole-file blobs: without this, an
+// interrupted write to accounts.json or wallets.json truncates every account or
+// balance in it. Mode is 0600 throughout: these files hold credentials,
+// sessions, tokens, passkeys and wallet state.
+func writeAtomic(file string, b []byte) error {
+	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(file), "."+filepath.Base(file)+".tmp*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	// Best-effort cleanup if we fail before the rename succeeds.
+	defer func() {
+		if tmpName != "" {
+			os.Remove(tmpName)
+		}
+	}()
+
+	if err := tmp.Chmod(0600); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(b); err != nil {
+		tmp.Close()
+		return err
+	}
+	// fsync before rename so the data is on disk, not just in the page cache.
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, file); err != nil {
+		return err
+	}
+	tmpName = "" // renamed; nothing to clean up
+	return nil
+}
+
 // SaveFile saves data to disk
 func SaveFile(key, val string) error {
 	file, err := dataPath(key)
 	if err != nil {
 		return err
 	}
-	// Create all parent directories including subdirectories in key
-	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		return err
-	}
-	return os.WriteFile(file, []byte(val), 0600)
+	return writeAtomic(file, []byte(val))
 }
 
 // LoadFile loads a file from disk
@@ -104,11 +148,7 @@ func SaveJSON(key string, val interface{}) error {
 	if err != nil {
 		return err
 	}
-	// Create all parent directories
-	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		return err
-	}
-	return os.WriteFile(file, b, 0644)
+	return writeAtomic(file, b)
 }
 
 func LoadJSON(key string, val interface{}) error {

@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"mu/internal/version"
 )
 
 // Run is the entry point called from main.go. It receives argv[1:]
@@ -105,7 +107,7 @@ func Run(args []string) int {
 	case "x402":
 		return runX402(rest)
 	case "version", "--version":
-		fmt.Println("mu cli (registry-driven, talks to /mcp)")
+		fmt.Printf("mu %s\n", version.String())
 		return 0
 	}
 
