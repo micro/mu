@@ -97,7 +97,7 @@ var agentToolLabels = map[string]string{
 	"blog":    "Blog",
 	"search":  "Web search",
 	"places":  "Places",
-	"recall":  "Memory",
+	"recall":  "Search everything",
 	"apps":    "Apps",
 	"mail":    "Mail",
 	"images":  "Images",
