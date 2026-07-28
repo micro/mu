@@ -21,6 +21,7 @@ removed or given incompatible behaviour, and additions are backwards compatible.
 | **Environment variables** | Names and meanings are stable. Defaults may change only where the old default was a bug (a security or data-loss fix); such changes are called out in the release notes. |
 | **On-disk data** | See [Your data](#your-data) below. |
 | **A2A** (`/a2a`) | Stable as an endpoint. See [Known exceptions](#known-exceptions). |
+| **App SDK** (`mu.*`) | `mu.db`, `mu.ai`, `mu.store`, `mu.fetch` and `mu.service` keep working. The set of services `mu.service` can reach grows over time; it never shrinks within a major version. |
 
 ## What is not stable
 

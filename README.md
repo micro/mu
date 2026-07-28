@@ -4,7 +4,7 @@ A personal home server
 
 ## Overview
 
-A personal home server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, images, video, blog, social, places, reminders — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
+A personal home server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, images, video, blog, social, places, events — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
 
 Use it hosted at [micro.mu](https://micro.mu), or self-host the single binary — same product either way. Open source, AGPL-3.0.
 
@@ -31,9 +31,37 @@ Each is reachable in the web app and directly over REST, MCP, A2A, or the CLI. T
 - **Images** — Generate images from a prompt, plus a daily nature / mindful image
 - **Search** — Search the web without tracking, with a clean reader view
 - **Places** — Search places and nearby results with configured providers and open-data fallbacks
-- **Islam** — A daily Islamic reminder (verse, hadith, reflection), also an MCP tool
-- **Apps** — Build and use small, useful tools — pin any app to the top of your home screen
+- **Islam** — Prayer times and a qibla compass, plus a Quran verse, hadith and reflection
+- **Events** — Schedule reminders by asking the agent; delivered to your channels, with a calendar invite
+- **Apps** — Build and use small, useful tools — pin any app to the top of your home screen. Apps can call every service above through the SDK, so a new service is available to them the moment it registers
 - **Stream** — Public event feed for agents and tools to subscribe to
+
+## Building on it
+
+Every capability is a service behind one registry, and that registry is what
+everything else reads. Register a service and it becomes available, in the same
+moment and with no extra wiring, to:
+
+- **the agent**, as a tool it can call;
+- **custom agents**, in the tool picker at `/agent/new`;
+- **the MCP server**, for Claude Desktop, Cursor or any MCP client;
+- **the REST API** and the **CLI**, where each tool is a subcommand;
+- **apps**, through `mu.service(name, method, args)` in the SDK.
+
+So extending Mu is adding an element, not wiring N integrations. Apps and agents
+are the two things built *on* the services — an agent is a system prompt plus a
+chosen subset of tools; an app is a page with the SDK. Both get new capabilities
+for free as the service set grows.
+
+```js
+// inside an app — any registered service, no SDK change needed
+const { times } = await mu.service('islam', 'prayer', { lat, lon, tz })
+const { summary } = await mu.service('weather', 'forecast', { lat, lon })
+```
+
+Identity is bound server-side: an app never names whose data it wants, and
+account-scoped services (mail, recall, images, events) require a signed-in
+caller.
 
 ## Accounts & sign-in
 
@@ -55,7 +83,7 @@ Because every capability is a service, it's reachable however you like. Mu expos
 }
 ```
 
-30+ tools — news, search, weather, places, video, email, markets, images — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay. First 10 calls per wallet are free.
+30+ tools — news, search, weather, places, video, email, markets, images, events — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay. First 10 calls per wallet are free.
 
 See [MCP docs](docs/MCP.md)
 
