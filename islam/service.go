@@ -2,7 +2,9 @@ package islam
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 )
 
 // Server is the go-micro service handler for the daily Islamic reminder. Its
@@ -41,5 +43,61 @@ func (Server) Today(_ context.Context, _ *TodayRequest, rsp *TodayResponse) erro
 		b.WriteString("\nReflection: " + d.Message)
 	}
 	rsp.Reminder = strings.TrimSpace(b.String())
+	return nil
+}
+
+// PrayerRequest asks for prayer times at a location.
+type PrayerRequest struct {
+	Lat float64 `json:"lat" description:"Latitude of the location"`
+	Lon float64 `json:"lon" description:"Longitude of the location"`
+}
+
+// PrayerResponse is the day's prayer schedule as model-ready text.
+type PrayerResponse struct {
+	Times string `json:"times" description:"Today's prayer times, and which prayer is next"`
+}
+
+// Prayer returns today's prayer times for a location (Fajr, Dhuhr, Asr,
+// Maghrib and Isha, plus sunrise), and which prayer comes next.
+// @example {"lat": 51.5074, "lon": -0.1278}
+func (Server) Prayer(ctx context.Context, req *PrayerRequest, rsp *PrayerResponse) error {
+	pt, err := GetPrayerTimes(ctx, req.Lat, req.Lon)
+	if err != nil {
+		return err
+	}
+	var b strings.Builder
+	if pt.Date != "" {
+		b.WriteString(pt.Date + "\n")
+	}
+	for _, e := range pt.Ordered() {
+		if e.Time == "" {
+			continue
+		}
+		b.WriteString(e.Name + ": " + e.Time + "\n")
+	}
+	next, at := pt.Next(time.Now())
+	b.WriteString("\nNext prayer: " + next + " at " + at)
+	rsp.Times = strings.TrimSpace(b.String())
+	return nil
+}
+
+// QiblaRequest asks for the qibla direction at a location.
+type QiblaRequest struct {
+	Lat float64 `json:"lat" description:"Latitude of the location"`
+	Lon float64 `json:"lon" description:"Longitude of the location"`
+}
+
+// QiblaResponse is the direction to face for prayer.
+type QiblaResponse struct {
+	Direction string `json:"direction" description:"Compass bearing to the Kaaba, and the distance to Mecca"`
+}
+
+// Qibla returns the direction to face for prayer — the compass bearing from
+// true north to the Kaaba in Mecca — and how far away Mecca is.
+// @example {"lat": 51.5074, "lon": -0.1278}
+func (Server) Qibla(_ context.Context, req *QiblaRequest, rsp *QiblaResponse) error {
+	b := QiblaBearing(req.Lat, req.Lon)
+	rsp.Direction = fmt.Sprintf("Qibla: %.1f° (%s) from true north. Mecca is %.0f km away.",
+		b, CompassPoint(b), DistanceToMeccaKm(req.Lat, req.Lon))
 	return nil
 }

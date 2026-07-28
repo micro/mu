@@ -869,6 +869,53 @@ func main() {
 		return rsp.Events, nil
 	})
 
+	// islam_prayer — today's prayer times for a location. Public: no account
+	// data involved, same as weather.
+	api.RegisterTool(api.Tool{
+		Name:        "islam_prayer",
+		Description: "Get today's Islamic prayer times (Fajr, Dhuhr, Asr, Maghrib, Isha) for a location, and which prayer is next.",
+		Params: []api.ToolParam{
+			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
+			{Name: "lon", Type: "number", Description: "Longitude of the location", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			lat := argFloat(args["lat"])
+			lon := argFloat(args["lon"])
+			if lat == 0 && lon == 0 {
+				return "Provide lat and lon for the location.", fmt.Errorf("missing coordinates")
+			}
+			var rsp islam.PrayerResponse
+			if err := service.Call(context.Background(), "islam", "Server.Prayer",
+				&islam.PrayerRequest{Lat: lat, Lon: lon}, &rsp); err != nil {
+				return "", err
+			}
+			return rsp.Times, nil
+		},
+	})
+
+	// islam_qibla — direction to face for prayer. Pure computation, public.
+	api.RegisterTool(api.Tool{
+		Name:        "islam_qibla",
+		Description: "Get the qibla direction (compass bearing to the Kaaba in Mecca) for a location, and the distance to Mecca.",
+		Params: []api.ToolParam{
+			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
+			{Name: "lon", Type: "number", Description: "Longitude of the location", Required: true},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			lat := argFloat(args["lat"])
+			lon := argFloat(args["lon"])
+			if lat == 0 && lon == 0 {
+				return "Provide lat and lon for the location.", fmt.Errorf("missing coordinates")
+			}
+			var rsp islam.QiblaResponse
+			if err := service.Call(context.Background(), "islam", "Server.Qibla",
+				&islam.QiblaRequest{Lat: lat, Lon: lon}, &rsp); err != nil {
+				return "", err
+			}
+			return rsp.Direction, nil
+		},
+	})
+
 	// saved_list — the items you've bookmarked for later, with links. Read-only,
 	// per-user, free; the save/unsave tools already exist for writing.
 	api.RegisterToolWithAuth(api.Tool{

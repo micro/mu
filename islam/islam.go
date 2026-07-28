@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"html"
 	"io/ioutil"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -138,15 +140,150 @@ type ReminderData struct {
 // hadith and reflection — rather than bouncing out to reminder.dev. JSON on
 // request returns the complete payload.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// Prayer times need a location, which only the browser knows. ?lat&lon
+	// returns just the timings as JSON; the page fetches it after asking for
+	// geolocation, the same way the weather card does.
+	if r.URL.Query().Get("lat") != "" {
+		lat, err1 := strconv.ParseFloat(r.URL.Query().Get("lat"), 64)
+		lon, err2 := strconv.ParseFloat(r.URL.Query().Get("lon"), 64)
+		if err1 != nil || err2 != nil {
+			app.RespondError(w, http.StatusBadRequest, "Invalid coordinates")
+			return
+		}
+		bearing := QiblaBearing(lat, lon)
+		payload := map[string]any{
+			"qibla": map[string]any{
+				"bearing":  math.Round(bearing*10) / 10,
+				"point":    CompassPoint(bearing),
+				"distance": math.Round(DistanceToMeccaKm(lat, lon)),
+			},
+		}
+		// Prayer times need an upstream call; the qibla is pure maths, so a
+		// timings outage should still leave the compass working.
+		if pt, err := GetPrayerTimes(r.Context(), lat, lon); err == nil {
+			next, at := pt.Next(time.Now())
+			payload["times"] = pt
+			payload["next"] = next
+			payload["next_at"] = at
+		}
+		app.RespondJSON(w, payload)
+		return
+	}
+
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, GetReminderData())
 		return
 	}
 	app.Respond(w, r, app.Response{
 		Title:       "Islam",
-		Description: "A daily verse, name of Allah, hadith and reflection",
-		HTML:        renderIslamPage(GetReminderData()),
+		Description: "Prayer times, a daily verse, name of Allah, hadith and reflection",
+		HTML:        prayerTimesHTML() + renderIslamPage(GetReminderData()),
 	})
+}
+
+// prayerTimesHTML renders the prayer-times card. Times are location-specific,
+// so the card asks the browser for coordinates (cached in localStorage, shared
+// with the weather card) and fills itself in. Without permission it stays a
+// quiet prompt rather than an error.
+func prayerTimesHTML() string {
+	return `<div class="card" id="prayer-card">
+  <h3>Prayer times</h3>
+  <div id="prayer-body"><p class="text-muted" style="margin:0;font-size:14px">Loading…</p></div>
+</div>
+<script>
+(function(){
+  var body=document.getElementById('prayer-body');
+  if(!body)return;
+  var KEY_LAT='mu_weather_lat',KEY_LON='mu_weather_lon';
+  function render(d){
+    var t=d.times||{};
+    var rows=[['Fajr',t.fajr],['Sunrise',t.sunrise],['Dhuhr',t.dhuhr],['Asr',t.asr],['Maghrib',t.maghrib],['Isha',t.isha]];
+    var h='';
+    if(d.next){h+='<p style="margin:0 0 10px;font-size:14px">Next: <strong>'+d.next+'</strong> at '+d.next_at+'</p>';}
+    h+='<table style="width:100%;font-size:14px;border-collapse:collapse">';
+    rows.forEach(function(r){
+      if(!r[1])return;
+      var isNext=(r[0]===d.next);
+      h+='<tr><td style="padding:4px 0;color:'+(isNext?'#111':'#666')+';font-weight:'+(isNext?'600':'400')+'">'+r[0]+'</td>'+
+         '<td style="padding:4px 0;text-align:right;font-weight:'+(isNext?'600':'400')+'">'+r[1]+'</td></tr>';
+    });
+    h+='</table>';
+    if(t.date){h+='<p style="margin:10px 0 0;font-size:12px;color:#999">'+t.date+'</p>';}
+    if(!t.fajr){h='<p class="text-muted" style="margin:0 0 10px;font-size:14px">Prayer times unavailable right now.</p>';}
+    if(d.qibla){h+=qiblaHTML(d.qibla);}
+    body.innerHTML=h;
+    if(d.qibla){startCompass();}
+  }
+  function qiblaHTML(q){
+    return '<div style="margin-top:16px;padding-top:14px;border-top:1px solid #eee">'+
+      '<p style="margin:0 0 10px;font-size:14px">Qibla: <strong>'+q.bearing+'\u00B0 '+q.point+'</strong>'+
+      ' <span style="color:#999">\u00B7 '+q.distance+'km to Mecca</span></p>'+
+      '<div style="display:flex;align-items:center;gap:14px">'+
+      '<svg id="qibla-dial" width="96" height="96" viewBox="0 0 96 96" style="flex:0 0 auto">'+
+        '<circle cx="48" cy="48" r="44" fill="none" stroke="#e0e0e0" stroke-width="1.5"/>'+
+        '<text x="48" y="14" text-anchor="middle" font-size="10" fill="#999">N</text>'+
+        '<g id="qibla-needle" transform="rotate('+q.bearing+' 48 48)">'+
+          '<line x1="48" y1="48" x2="48" y2="14" stroke="#111" stroke-width="2" stroke-linecap="round"/>'+
+          '<polygon points="48,8 43,18 53,18" fill="#111"/>'+
+        '</g>'+
+        '<circle cx="48" cy="48" r="2.5" fill="#111"/>'+
+      '</svg>'+
+      '<p id="qibla-hint" style="margin:0;font-size:12px;color:#999;line-height:1.5">'+
+        'Bearing from true north. Hold your phone flat and turn until the needle points up.</p>'+
+      '</div></div>';
+  }
+  // Where the device reports its heading, rotate the dial so the needle points
+  // at the qibla in the real world rather than just showing a fixed bearing.
+  function startCompass(){
+    var needle=document.getElementById('qibla-needle');
+    var hint=document.getElementById('qibla-hint');
+    if(!needle||!window.DeviceOrientationEvent)return;
+    var base=parseFloat((needle.getAttribute('transform')||'').replace(/[^0-9.\-]/g,''))||0;
+    function onOrient(e){
+      var heading=(typeof e.webkitCompassHeading==='number')?e.webkitCompassHeading:(e.alpha!=null?360-e.alpha:null);
+      if(heading==null||isNaN(heading))return;
+      needle.setAttribute('transform','rotate('+((base-heading+360)%360)+' 48 48)');
+      if(hint){hint.textContent='Following your compass \u2014 turn until the needle points up.';}
+    }
+    if(typeof DeviceOrientationEvent.requestPermission==='function'){
+      // iOS: needs a user gesture, so ask on tap rather than silently failing.
+      var dial=document.getElementById('qibla-dial');
+      if(dial){
+        dial.style.cursor='pointer';
+        if(hint){hint.textContent='Tap the dial to use your compass.';}
+        dial.addEventListener('click',function(){
+          DeviceOrientationEvent.requestPermission().then(function(p){
+            if(p==='granted'){window.addEventListener('deviceorientation',onOrient,true);}
+          }).catch(function(){});
+        });
+      }
+      return;
+    }
+    window.addEventListener('deviceorientationabsolute',onOrient,true);
+    window.addEventListener('deviceorientation',onOrient,true);
+  }
+  function load(lat,lon){
+    fetch('/islam?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'},credentials:'same-origin'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){ if(d&&(d.times||d.qibla)){render(d)} else {body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'} })
+      .catch(function(){body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'});
+  }
+  var lat=localStorage.getItem(KEY_LAT),lon=localStorage.getItem(KEY_LON);
+  if(lat&&lon){load(lat,lon);return}
+  if(!navigator.geolocation){
+    body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Location unavailable, so prayer times can\'t be shown.</p>';return;
+  }
+  body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Allow location to see prayer times for where you are.</p>';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var la=pos.coords.latitude.toFixed(4),lo=pos.coords.longitude.toFixed(4);
+    localStorage.setItem(KEY_LAT,la);localStorage.setItem(KEY_LON,lo);
+    body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Loading…</p>';
+    load(la,lo);
+  },function(){
+    body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Location declined, so prayer times can\'t be shown.</p>';
+  },{timeout:8000});
+})();
+</script>`
 }
 
 // splitTitleBody splits reminder.dev's "Header\n\nBody" fields into a bold
