@@ -160,7 +160,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Prayer times need an upstream call; the qibla is pure maths, so a
 		// timings outage should still leave the compass working.
-		if pt, err := GetPrayerTimes(lat, lon, r.URL.Query().Get("tz")); err == nil {
+		if pt, err := GetPrayerTimes(lat, lon, r.URL.Query().Get("tz"), r.URL.Query().Get("method")); err == nil {
 			next, at := pt.Next(time.Now())
 			payload["times"] = pt
 			payload["next"] = next
@@ -186,15 +186,38 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // with the weather card) and fills itself in. Without permission it stays a
 // quiet prompt rather than an error.
 func prayerTimesHTML() string {
+	var opts strings.Builder
+	for _, c := range ConventionNames() {
+		sel := ""
+		if c.ID == DefaultConvention {
+			sel = " selected"
+		}
+		opts.WriteString(`<option value="` + c.ID + `"` + sel + `>` + html.EscapeString(c.Label) + `</option>`)
+	}
 	return `<div class="card" id="prayer-card">
   <h3>Prayer times</h3>
   <div id="prayer-body"><p class="text-muted" style="margin:0;font-size:14px">Loading…</p></div>
+  <p style="margin:12px 0 0;font-size:12px;color:#999">
+    Calculation
+    <select id="prayer-method" style="font-family:inherit;font-size:12px;padding:2px 4px;margin-left:4px;border:1px solid #ddd;border-radius:4px;background:#fff">` + opts.String() + `</select>
+  </p>
 </div>
 <script>
 (function(){
   var body=document.getElementById('prayer-body');
   if(!body)return;
-  var KEY_LAT='mu_weather_lat',KEY_LON='mu_weather_lon';
+  var KEY_LAT='mu_weather_lat',KEY_LON='mu_weather_lon',KEY_M='mu_prayer_method';
+  var sel=document.getElementById('prayer-method');
+  // Fajr and Isha depend on the twilight angle, and conventions differ by up to
+  // an hour, so remember which one this reader uses.
+  var saved=null;try{saved=localStorage.getItem(KEY_M);}catch(e){}
+  if(sel&&saved){sel.value=saved;}
+  function method(){return (sel&&sel.value)||saved||'';}
+  if(sel){sel.addEventListener('change',function(){
+    try{localStorage.setItem(KEY_M,sel.value);}catch(e){}
+    var la=localStorage.getItem(KEY_LAT),lo=localStorage.getItem(KEY_LON);
+    if(la&&lo){load(la,lo);}
+  });}
   function render(d){
     var t=d.times||{};
     var rows=[['Fajr',t.fajr],['Sunrise',t.sunrise],['Dhuhr',t.dhuhr],['Asr',t.asr],['Maghrib',t.maghrib],['Isha',t.isha]];
@@ -220,17 +243,28 @@ func prayerTimesHTML() string {
       ' <span style="color:#999">\u00B7 '+q.distance+'km to Mecca</span></p>'+
       '<div style="display:flex;align-items:center;gap:14px">'+
       '<svg id="qibla-dial" width="96" height="96" viewBox="0 0 96 96" style="flex:0 0 auto">'+
-        '<circle cx="48" cy="48" r="43" fill="none" stroke="#e0e0e0" stroke-width="1.5"/>'+
-        '<g id="qibla-needle" transform="rotate('+q.bearing+' 48 48)">'+
-          '<line x1="48" y1="48" x2="48" y2="26" stroke="#111" stroke-width="2" stroke-linecap="round"/>'+
-          '<polygon points="48,20 43,30 53,30" fill="#111"/>'+
+        // Fixed index at the top: the way the phone is pointing. Everything
+        // else is world-referenced and turns beneath it, so aligning is
+        // "bring Q up to the marker". Hidden until a live heading exists,
+        // because without one the dial is a north-up diagram, not a compass.
+        '<polygon id="qibla-index" points="48,4 44,12 52,12" fill="#111" style="display:none"/>'+
+        '<circle cx="48" cy="48" r="38" fill="none" stroke="#e0e0e0" stroke-width="1.5"/>'+
+        '<g id="qibla-rose">'+
+          '<line x1="48" y1="12" x2="48" y2="18" stroke="#ccc" stroke-width="1.5"/>'+
+          '<line x1="84" y1="48" x2="78" y2="48" stroke="#eee" stroke-width="1.5"/>'+
+          '<line x1="48" y1="84" x2="48" y2="78" stroke="#eee" stroke-width="1.5"/>'+
+          '<line x1="12" y1="48" x2="18" y2="48" stroke="#eee" stroke-width="1.5"/>'+
+          '<g id="qibla-needle" transform="rotate('+q.bearing+' 48 48)">'+
+            '<line x1="48" y1="48" x2="48" y2="26" stroke="#111" stroke-width="2" stroke-linecap="round"/>'+
+            '<polygon points="48,20 43,30 53,30" fill="#111"/>'+
+          '</g>'+
         '</g>'+
         '<circle cx="48" cy="48" r="2.5" fill="#111"/>'+
         '<text id="qibla-q" text-anchor="middle" font-size="11" font-weight="700" fill="#111">Q</text>'+
         '<text id="qibla-n" text-anchor="middle" font-size="10" fill="#bbb">N</text>'+
       '</svg>'+
       '<p id="qibla-hint" style="margin:0;font-size:12px;color:#999;line-height:1.5">'+
-        'Q marks the qibla, N is true north. Hold your phone flat and turn until the needle points up.</p>'+
+        'Q marks the qibla, N is true north.</p>'+
       '</div></div>';
   }
   // Place the Q and N markers on the rim by angle. They are positioned rather
@@ -269,9 +303,15 @@ func prayerTimesHTML() string {
         smoothed=(smoothed+d*0.18+360)%360;
       }
       var qAngle=(bearing-smoothed+360)%360;
-      needle.setAttribute('transform','rotate('+qAngle.toFixed(1)+' 48 48)');
+      // The rose is world-referenced: turn it by the heading so the ticks and
+      // needle move together beneath the fixed index at the top.
+      var rose=document.getElementById('qibla-rose');
+      if(rose){rose.setAttribute('transform','rotate('+((360-smoothed)%360).toFixed(1)+' 48 48)');}
+      needle.setAttribute('transform','rotate('+bearing.toFixed(1)+' 48 48)');
       placeMarks(qAngle,(360-smoothed)%360);
-      if(hint){hint.textContent='Following your compass \u2014 turn until the needle points up.';}
+      var idx=document.getElementById('qibla-index');
+      if(idx){idx.style.display='';}
+      if(hint){hint.textContent='Turn until Q reaches the marker at the top.';}
     }
     function onOrient(e){
       var h=null;
@@ -312,7 +352,7 @@ func prayerTimesHTML() string {
     listen();
   }
   function load(lat,lon){
-    fetch('/islam?lat='+lat+'&lon='+lon+'&tz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||''),{headers:{'Accept':'application/json'},credentials:'same-origin'})
+    fetch('/islam?lat='+lat+'&lon='+lon+'&tz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||'')+'&method='+encodeURIComponent(method()),{headers:{'Accept':'application/json'},credentials:'same-origin'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(d){ if(d&&(d.times||d.qibla)){render(d)} else {body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'} })
       .catch(function(){body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'});

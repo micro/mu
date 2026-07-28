@@ -2,6 +2,7 @@ package islam
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,9 +11,48 @@ import (
 
 // Prayer times are computed locally from the sun's position — no API call, so
 // the page cannot hang on an upstream and a self-hosted instance works with no
-// network at all. Convention is Muslim World League (the most widely used
-// default) with the Shafii asr rule, and an angle-based adapter for high
-// latitudes where the sun never reaches the twilight angle.
+// network at all.
+//
+// Fajr and Isha depend on a twilight angle, and the conventions disagree by up
+// to an hour, so the convention is the caller's choice. The default is ISNA;
+// midday and sunset prayers are solar and identical under every convention.
+
+// Conventions offered to callers, keyed by the name used in the API and UI.
+var conventions = map[string]func() *goprayer.TwilightConvention{
+	"isna":    goprayer.ISNA,    // 15° / 15°
+	"mwl":     goprayer.MWL,     // 18° / 17°
+	"egypt":   goprayer.Egypt,   // 19.5° / 17.5°
+	"karachi": goprayer.Karachi, // 18° / 18°
+	"gulf":    goprayer.Gulf,    // 19.5° / 90 min after maghrib
+	"diyanet": goprayer.Diyanet, // Turkey
+	"muis":    goprayer.MUIS,    // Singapore
+	"jakim":   goprayer.JAKIM,   // Malaysia
+}
+
+// DefaultConvention is used when the caller does not specify one.
+const DefaultConvention = "isna"
+
+// ConventionNames lists the selectable conventions with display labels, in the
+// order they should appear.
+func ConventionNames() []struct{ ID, Label string } {
+	return []struct{ ID, Label string }{
+		{"isna", "ISNA (15°)"},
+		{"mwl", "Muslim World League (18°)"},
+		{"egypt", "Egyptian Authority (19.5°)"},
+		{"karachi", "Karachi (18°)"},
+		{"gulf", "Gulf (19.5°)"},
+		{"diyanet", "Diyanet (Turkey)"},
+		{"muis", "MUIS (Singapore)"},
+		{"jakim", "JAKIM (Malaysia)"},
+	}
+}
+
+func convention(name string) func() *goprayer.TwilightConvention {
+	if c, ok := conventions[strings.ToLower(strings.TrimSpace(name))]; ok {
+		return c
+	}
+	return conventions[DefaultConvention]
+}
 
 // PrayerTimes is a day's prayer schedule for one location.
 type PrayerTimes struct {
@@ -66,7 +106,7 @@ var (
 // timezone name (e.g. "Europe/London") supplied by the browser; an unknown or
 // empty value falls back to UTC, which still gives correct instants, just
 // labelled in UTC.
-func GetPrayerTimes(lat, lon float64, tz string) (*PrayerTimes, error) {
+func GetPrayerTimes(lat, lon float64, tz, method string) (*PrayerTimes, error) {
 	loc, err := time.LoadLocation(tz)
 	if err != nil || tz == "" {
 		loc = time.UTC
@@ -76,7 +116,7 @@ func GetPrayerTimes(lat, lon float64, tz string) (*PrayerTimes, error) {
 
 	// One decimal place (~11km) is ample for prayer times and stops the cache
 	// fragmenting on GPS jitter.
-	key := fmt.Sprintf("%.1f:%.1f:%s", lat, lon, loc.String())
+	key := fmt.Sprintf("%.1f:%.1f:%s:%s", lat, lon, loc.String(), strings.ToLower(method))
 
 	prayerMu.RLock()
 	if e, ok := prayerCache[key]; ok && e.day == day {
@@ -89,7 +129,7 @@ func GetPrayerTimes(lat, lon float64, tz string) (*PrayerTimes, error) {
 		Latitude:            lat,
 		Longitude:           lon,
 		Timezone:            loc,
-		TwilightConvention:  goprayer.MWL(),
+		TwilightConvention:  convention(method)(),
 		AsrConvention:       goprayer.Shafii,
 		HighLatitudeAdapter: goprayer.AngleBased(),
 	}, now.Year())

@@ -7,7 +7,7 @@ import (
 
 // Prayer times are computed locally, so this must hold with no network at all.
 func TestGetPrayerTimesIsLocalAndOrdered(t *testing.T) {
-	pt, err := GetPrayerTimes(51.5074, -0.1278, "Europe/London")
+	pt, err := GetPrayerTimes(51.5074, -0.1278, "Europe/London", "")
 	if err != nil {
 		t.Fatalf("GetPrayerTimes: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestGetPrayerTimesIsLocalAndOrdered(t *testing.T) {
 // An unknown or empty timezone must degrade to UTC rather than erroring.
 func TestGetPrayerTimesUnknownTimezoneFallsBack(t *testing.T) {
 	for _, tz := range []string{"", "Not/AZone"} {
-		if _, err := GetPrayerTimes(51.5074, -0.1278, tz); err != nil {
+		if _, err := GetPrayerTimes(51.5074, -0.1278, tz, ""); err != nil {
 			t.Errorf("tz %q: %v", tz, err)
 		}
 	}
@@ -49,5 +49,31 @@ func TestNextPrayerSkipsSunrise(t *testing.T) {
 	late, _ := time.Parse("15:04", "23:30")
 	if name, _ := pt.Next(late); name != "Fajr" {
 		t.Errorf("next after 23:30 = %q, want Fajr", name)
+	}
+}
+
+// Fajr and Isha depend on the twilight angle, so the convention must actually
+// change them — while the solar prayers stay put.
+func TestConventionChangesTwilightPrayersOnly(t *testing.T) {
+	isna, err := GetPrayerTimes(51.5074, -0.1278, "Europe/London", "isna")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mwl, err := GetPrayerTimes(51.5074, -0.1278, "Europe/London", "mwl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isna.Fajr == mwl.Fajr || isna.Isha == mwl.Isha {
+		t.Errorf("convention did not change Fajr/Isha: isna=%s/%s mwl=%s/%s",
+			isna.Fajr, isna.Isha, mwl.Fajr, mwl.Isha)
+	}
+	if isna.Dhuhr != mwl.Dhuhr || isna.Maghrib != mwl.Maghrib {
+		t.Errorf("solar prayers must not depend on convention: dhuhr %s/%s maghrib %s/%s",
+			isna.Dhuhr, mwl.Dhuhr, isna.Maghrib, mwl.Maghrib)
+	}
+	// An unknown convention falls back to the default rather than erroring.
+	def, err := GetPrayerTimes(51.5074, -0.1278, "Europe/London", "nonsense")
+	if err != nil || def.Fajr != isna.Fajr {
+		t.Errorf("unknown convention should fall back to %s: %v", DefaultConvention, err)
 	}
 }
