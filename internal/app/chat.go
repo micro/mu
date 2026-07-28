@@ -26,6 +26,11 @@ type ChatConfig struct {
 	// HideSuggestions suppresses the component's built-in suggestion pills — used
 	// where the host page supplies its own (e.g. Home's personalised chips).
 	HideSuggestions bool
+	// StorageNS namespaces the component's sessionStorage keys so different
+	// surfaces (Home, /agent) keep separate in-tab conversations and never show
+	// each other's. When empty the component is ephemeral: it neither restores
+	// nor saves, so it always starts clean (used for Home's quick-ask box).
+	StorageNS string
 }
 
 // ChatComponent returns the single, shared chat UI used everywhere Mu talks to
@@ -111,16 +116,21 @@ var conv=document.getElementById('mu-chat-conv');
 var sugDiv=document.getElementById('mu-chat-suggest');
 var hintDiv=document.getElementById('mu-chat-hint');
 if(!form)return;
-var CKEY='mu_chat_conv';
-var HKEY='mu_chat_hist';
-var TKEY='mu_chat_ctx';
+var NS=` + JSString(cfg.StorageNS) + `;
+// Persistence is per-surface and opt-in. With no namespace the component is
+// ephemeral (Home's quick-ask box) so it never restores or leaks a
+// conversation — in particular it must not show the /agent app's thread.
+var PERSIST=!!NS;
+var CKEY='mu_chat_conv:'+NS;
+var HKEY='mu_chat_hist:'+NS;
+var TKEY='mu_chat_ctx:'+NS;
 var history=[];
 
-// A reopened server session is authoritative; otherwise restore the guest's
-// in-tab conversation so a reload doesn't lose it — including the server thread
-// id (context_id), so a follow-up after a reload continues the same
+// A reopened server session is authoritative; otherwise restore this surface's
+// own in-tab conversation so a reload doesn't lose it — including the server
+// thread id (context_id), so a follow-up after a reload continues the same
 // conversation instead of starting a new one.
-if(!SESSION){
+if(!SESSION && PERSIST){
   try{
     var savedConv=sessionStorage.getItem(CKEY);
     if(savedConv)conv.innerHTML=savedConv;
@@ -149,7 +159,7 @@ function showSuggestions(){
 }
 
 function save(){
-  if(SESSION)return; // server owns reopened sessions
+  if(SESSION||!PERSIST)return; // server owns reopened sessions; ephemeral surfaces don't save
   try{
     sessionStorage.setItem(CKEY,conv.innerHTML);
     sessionStorage.setItem(HKEY,JSON.stringify(history.slice(-6)));

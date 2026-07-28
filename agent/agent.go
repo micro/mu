@@ -348,7 +348,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if sessionID == "" {
 		sessionID = r.URL.Query().Get("continue")
 	}
-	cfg := app.ChatConfig{Guest: guest}
+	cfg := app.ChatConfig{Guest: guest, StorageNS: "agent"}
 	activeRoot := "" // stable id of the reopened conversation, for rail highlight
 	reopened := false
 	reopenAgent := "" // agent id the reopened conversation was using
