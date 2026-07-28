@@ -212,7 +212,7 @@ func prayerTimesHTML() string {
     if(!t.fajr){h='<p class="text-muted" style="margin:0 0 10px;font-size:14px">Prayer times unavailable right now.</p>';}
     if(d.qibla){h+=qiblaHTML(d.qibla);}
     body.innerHTML=h;
-    if(d.qibla){startCompass(d.qibla.bearing);}
+    if(d.qibla){placeMarks(d.qibla.bearing,0);startCompass(d.qibla.bearing);}
   }
   function qiblaHTML(q){
     return '<div style="margin-top:16px;padding-top:14px;border-top:1px solid #eee">'+
@@ -220,17 +220,33 @@ func prayerTimesHTML() string {
       ' <span style="color:#999">\u00B7 '+q.distance+'km to Mecca</span></p>'+
       '<div style="display:flex;align-items:center;gap:14px">'+
       '<svg id="qibla-dial" width="96" height="96" viewBox="0 0 96 96" style="flex:0 0 auto">'+
-        '<circle cx="48" cy="48" r="44" fill="none" stroke="#e0e0e0" stroke-width="1.5"/>'+
-        '<text x="48" y="14" text-anchor="middle" font-size="10" fill="#999">N</text>'+
+        '<circle cx="48" cy="48" r="43" fill="none" stroke="#e0e0e0" stroke-width="1.5"/>'+
         '<g id="qibla-needle" transform="rotate('+q.bearing+' 48 48)">'+
-          '<line x1="48" y1="48" x2="48" y2="14" stroke="#111" stroke-width="2" stroke-linecap="round"/>'+
-          '<polygon points="48,8 43,18 53,18" fill="#111"/>'+
+          '<line x1="48" y1="48" x2="48" y2="26" stroke="#111" stroke-width="2" stroke-linecap="round"/>'+
+          '<polygon points="48,20 43,30 53,30" fill="#111"/>'+
         '</g>'+
         '<circle cx="48" cy="48" r="2.5" fill="#111"/>'+
+        '<text id="qibla-q" text-anchor="middle" font-size="11" font-weight="700" fill="#111">Q</text>'+
+        '<text id="qibla-n" text-anchor="middle" font-size="10" fill="#bbb">N</text>'+
       '</svg>'+
       '<p id="qibla-hint" style="margin:0;font-size:12px;color:#999;line-height:1.5">'+
-        'Bearing from true north. Hold your phone flat and turn until the needle points up.</p>'+
+        'Q marks the qibla, N is true north. Hold your phone flat and turn until the needle points up.</p>'+
       '</div></div>';
+  }
+  // Place the Q and N markers on the rim by angle. They are positioned rather
+  // than rotated so the letters always read upright, and N shows where north
+  // actually is — on a live compass the top of the dial is the way you are
+  // facing, not north.
+  function placeMarks(qAngle,nAngle){
+    var set=function(id,ang){
+      var el=document.getElementById(id);
+      if(!el)return;
+      var r=ang*Math.PI/180;
+      el.setAttribute('x',(48+37*Math.sin(r)).toFixed(1));
+      el.setAttribute('y',(48-37*Math.cos(r)+3.6).toFixed(1));
+    };
+    set('qibla-q',qAngle);
+    set('qibla-n',nAngle);
   }
   // Where the device reports its heading, rotate the dial so the needle points
   // at the qibla in the real world rather than just showing a fixed bearing.
@@ -252,7 +268,9 @@ func prayerTimesHTML() string {
         var d=((pending-smoothed+540)%360)-180;
         smoothed=(smoothed+d*0.18+360)%360;
       }
-      needle.setAttribute('transform','rotate('+((bearing-smoothed+360)%360).toFixed(1)+' 48 48)');
+      var qAngle=(bearing-smoothed+360)%360;
+      needle.setAttribute('transform','rotate('+qAngle.toFixed(1)+' 48 48)');
+      placeMarks(qAngle,(360-smoothed)%360);
       if(hint){hint.textContent='Following your compass \u2014 turn until the needle points up.';}
     }
     function onOrient(e){
@@ -351,7 +369,7 @@ func renderIslamPage(rd *ReminderData) string {
 		}
 		b.WriteString(`</div>`)
 	}
-	section("Verse of the day", rd.Verse, "verse", "Read in the Quran")
+	section("Quran", rd.Verse, "verse", "Read in the Quran")
 	section("Name of Allah", rd.Name, "name", "The 99 names")
 	section("Hadith", rd.Hadith, "hadith", "Read the hadith")
 	if strings.TrimSpace(rd.Message) != "" {
