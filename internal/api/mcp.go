@@ -553,7 +553,8 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "reminder",
+		Name:        "islam",
+		Aliases:     []string{"reminder"},
 		Description: "Get today's daily Islamic reminder with verse, hadith, and name of Allah",
 		Handle: func(args map[string]any) (string, error) {
 			return getReminderAPI("/daily")

@@ -18,10 +18,10 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
+	"mu/islam"
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
-	"mu/reminder"
 	"mu/social"
 	"mu/video"
 	"mu/weather"
@@ -119,17 +119,17 @@ func Load() {
 
 	// Map of card types to their content functions
 	cardFunctions := map[string]func() string{
-		"agent":    AgentCard,
-		"blog":     blog.Preview,
-		"chat":     ChatCard,
-		"news":     newsCard,
-		"markets":  markets.MarketsHTML,
-		"reminder": reminder.ReminderHTML,
-		"video":    video.Latest,
-		"apps":     apps.Preview,
-		"social":   social.CardHTML,
-		"weather":  weather.CardHTML,
-		"images":   images.CardHTML,
+		"agent":   AgentCard,
+		"blog":    blog.Preview,
+		"chat":    ChatCard,
+		"news":    newsCard,
+		"markets": markets.MarketsHTML,
+		"islam":   islam.ReminderHTML,
+		"video":   video.Latest,
+		"apps":    apps.Preview,
+		"social":  social.CardHTML,
+		"weather": weather.CardHTML,
+		"images":  images.CardHTML,
 	}
 
 	// Build Cards array from config
@@ -509,7 +509,7 @@ function fetchW(la,lo){
 	// Inline card preferences panel
 	if viewerAcc != nil {
 		allCardDefs := []struct{ id, label string }{
-			{"reminder", "Islam"}, {"blog", "Blog"}, {"news", "News"},
+			{"islam", "Islam"}, {"blog", "Blog"}, {"news", "News"},
 			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 			{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
 		}
@@ -603,12 +603,12 @@ function fetchW(la,lo){
 	}
 
 	tooltips := map[string]string{
-		"blog":     "Microblog posts with daily AI-generated digests",
-		"news":     "Headlines from RSS feeds, sorted by time",
-		"markets":  "Live crypto, futures, and commodity prices",
-		"reminder": "Daily Islamic reminder with verse and hadith",
-		"social":   "Public discussion threads",
-		"video":    "Latest videos from curated channels",
+		"blog":    "Microblog posts with daily AI-generated digests",
+		"news":    "Headlines from RSS feeds, sorted by time",
+		"markets": "Live crypto, futures, and commodity prices",
+		"islam":   "Daily Islamic reminder with verse and hadith",
+		"social":  "Public discussion threads",
+		"video":   "Latest videos from curated channels",
 	}
 
 	var leftHTML, rightHTML []string

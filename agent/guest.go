@@ -26,7 +26,7 @@ var guestAllowedTools = map[string]bool{
 	"apps_search":      true,
 	"apps_read":        true,
 	"search":           true,
-	"reminder":         true,
+	"islam":            true,
 	"quran":            true,
 	"hadith":           true,
 	"quran_search":     true,

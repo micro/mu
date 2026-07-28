@@ -9,9 +9,9 @@ import (
 
 	"mu/internal/ai"
 	"mu/internal/app"
+	"mu/islam"
 	"mu/markets"
 	"mu/news"
-	"mu/reminder"
 	"mu/search"
 	"mu/video"
 )
@@ -395,7 +395,7 @@ func gatherCategoryContext(category string) string {
 		sb.WriteString("\n")
 	}
 
-	rd := reminder.GetReminderData()
+	rd := islam.GetReminderData()
 	if rd != nil {
 		sb.WriteString("## Today's Islamic Reminder\n\n")
 		if rd.Message != "" {

@@ -89,20 +89,20 @@ func AllAgentTools() []string {
 // agentToolLabels gives human-friendly names for the service ids shown in the
 // /agent/new tool picker. Unlisted ids fall back to a title-cased id.
 var agentToolLabels = map[string]string{
-	"weather":  "Weather",
-	"news":     "News",
-	"markets":  "Markets",
-	"social":   "Social",
-	"video":    "Video",
-	"blog":     "Blog",
-	"search":   "Web search",
-	"places":   "Places",
-	"recall":   "Memory",
-	"apps":     "Apps",
-	"mail":     "Mail",
-	"images":   "Images",
-	"reminder": "Islam",
-	"events":   "Events",
+	"weather": "Weather",
+	"news":    "News",
+	"markets": "Markets",
+	"social":  "Social",
+	"video":   "Video",
+	"blog":    "Blog",
+	"search":  "Web search",
+	"places":  "Places",
+	"recall":  "Memory",
+	"apps":    "Apps",
+	"mail":    "Mail",
+	"images":  "Images",
+	"islam":   "Islam",
+	"events":  "Events",
 }
 
 // AgentToolLabel returns a friendly display label for a service tool id.

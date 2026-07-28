@@ -39,3 +39,27 @@ func TestHomeCardActiveOptIn(t *testing.T) {
 		t.Error("mail in HomeCards should be active")
 	}
 }
+
+// A card id that was renamed must keep resolving from stored preferences: an
+// account that saved "reminder" before the rename still sees the Islam card,
+// and a deliberate hide still sticks.
+func TestLegacyCardIDStillResolves(t *testing.T) {
+	seenOld := []string{"blog", "news", "markets", "reminder", "social", "video", "images", "mail", "web"}
+
+	selected := Account{HomeCards: []string{"blog", "reminder"}, HomeCardsSeen: seenOld}
+	if !selected.ShowHomeCard("islam") {
+		t.Error("stored \"reminder\" selection should show the islam card")
+	}
+
+	hidden := Account{HomeCards: []string{"blog"}, HomeCardsSeen: seenOld}
+	if hidden.ShowHomeCard("islam") {
+		t.Error("islam was offered as \"reminder\" and not selected — should stay hidden")
+	}
+
+	// Legacy account with no seen-set: islam is not a new card, so a
+	// customised account that dropped it must not have it reappear.
+	legacy := Account{HomeCards: []string{"blog", "news"}}
+	if legacy.ShowHomeCard("islam") {
+		t.Error("islam predates seen-tracking; should not resurface for a customised legacy account")
+	}
+}

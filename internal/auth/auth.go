@@ -50,8 +50,24 @@ type Account struct {
 // card introduced afterwards (images, and future cards) defaults to visible
 // instead of being silently hidden by the HomeCards allowlist.
 var preHomeCardsSeen = map[string]bool{
-	"blog": true, "news": true, "markets": true, "reminder": true,
+	"blog": true, "news": true, "markets": true, "islam": true,
 	"social": true, "video": true, "mail": true, "web": true,
+}
+
+// legacyCardIDs maps retired card ids to their current name. Accounts saved
+// before a rename still hold the old id, and the compatibility promise says an
+// upgrade never loses a preference — so stored ids are canonicalised on read
+// rather than migrated on disk.
+var legacyCardIDs = map[string]string{
+	"reminder": "islam",
+}
+
+// canonicalCardID resolves a stored card id to its current name.
+func canonicalCardID(id string) string {
+	if cur, ok := legacyCardIDs[id]; ok {
+		return cur
+	}
+	return id
 }
 
 // ShowHomeCard reports whether a default home card (one defined in cards.json)
@@ -62,8 +78,9 @@ func (a *Account) ShowHomeCard(id string) bool {
 	if len(a.HomeCards) == 0 {
 		return true // no customization yet → all defaults show
 	}
+	id = canonicalCardID(id)
 	for _, c := range a.HomeCards {
-		if c == id {
+		if canonicalCardID(c) == id {
 			return true
 		}
 	}
@@ -72,7 +89,7 @@ func (a *Account) ShowHomeCard(id string) bool {
 		return !preHomeCardsSeen[id] // legacy account → only genuinely new cards
 	}
 	for _, c := range seen {
-		if c == id {
+		if canonicalCardID(c) == id {
 			return false // offered before and not selected → deliberately hidden
 		}
 	}
@@ -82,8 +99,9 @@ func (a *Account) ShowHomeCard(id string) bool {
 // HomeCardActive reports whether an opt-in card (mail, web) is explicitly
 // enabled. Unlike default cards these are off unless the user turns them on.
 func (a *Account) HomeCardActive(id string) bool {
+	id = canonicalCardID(id)
 	for _, c := range a.HomeCards {
-		if c == id {
+		if canonicalCardID(c) == id {
 			return true
 		}
 	}

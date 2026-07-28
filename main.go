@@ -45,13 +45,13 @@ import (
 	"mu/internal/setup"
 	"mu/internal/userdb"
 	"mu/internal/version"
+	"mu/islam"
 	"mu/mail"
 	"mu/markets"
 	"mu/news"
 	"mu/news/digest"
 	"mu/places"
 	"mu/recall"
-	"mu/reminder"
 	"mu/search"
 	"mu/social"
 	"mu/stream"
@@ -137,7 +137,7 @@ func main() {
 
 	// load markets, reminder, wallet
 	markets.Load()
-	reminder.Load()
+	islam.Load()
 	images.Load()
 	events.Load()
 	events.OnFire = func(accountID, title, note string) {
@@ -988,7 +988,7 @@ func main() {
 	api.SetCard("social_list", "Social", social.CardHTML)
 	api.SetCard("video_list", "Videos", video.Latest)
 	api.SetCard("blog_list", "Blog", blog.Preview)
-	api.SetCard("reminder", "Reminder", reminder.ReminderHTML)
+	api.SetCard("reminder", "Reminder", islam.ReminderHTML)
 
 	// Register apps MCP tools
 	api.RegisterTool(api.Tool{
@@ -1463,7 +1463,7 @@ func main() {
 	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
 
 	// redirect /reminder to reminder.dev
-	http.HandleFunc("/islam", reminder.Handler)
+	http.HandleFunc("/islam", islam.Handler)
 	// Back-compat: the page used to live at /reminder.
 	http.HandleFunc("/reminder", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/islam", http.StatusMovedPermanently)

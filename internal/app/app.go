@@ -367,7 +367,7 @@ var Template = `
 // introduced later can default to visible instead of being hidden by the
 // HomeCards allowlist. Keep in sync with the panels and home/cards.json.
 var homeCardUniverse = []string{
-	"blog", "news", "markets", "reminder", "social", "video", "images", "mail", "web",
+	"blog", "news", "markets", "islam", "social", "video", "images", "mail", "web",
 }
 
 var CardTemplate = `
@@ -1011,7 +1011,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	// Home card preferences
 	allCards := []struct{ id, label string }{
-		{"reminder", "Islam"}, {"blog", "Blog"}, {"news", "News"},
+		{"islam", "Islam"}, {"blog", "Blog"}, {"news", "News"},
 		{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 		{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
 	}

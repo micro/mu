@@ -1,4 +1,4 @@
-package reminder
+package islam
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ var (
 
 // Load initializes the reminder data
 func Load() {
-	if err := service.Register("reminder", new(Server)); err != nil {
+	if err := service.Register("islam", new(Server)); err != nil {
 		app.Log("reminder", "service register failed: %v", err)
 	}
 

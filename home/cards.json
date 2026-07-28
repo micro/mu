@@ -9,9 +9,9 @@
       "icon": "/post.png"
     },
     {
-      "id": "reminder",
+      "id": "islam",
       "title": "Islam",
-      "type": "reminder",
+      "type": "islam",
       "position": 1,
       "link": "/islam",
       "icon": "/reminder.svg"

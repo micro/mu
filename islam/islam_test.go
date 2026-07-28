@@ -1,4 +1,4 @@
-package reminder
+package islam
 
 import "testing"
 
