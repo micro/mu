@@ -55,7 +55,7 @@ Because every capability is a service, it's reachable however you like. Mu expos
 }
 ```
 
-40+ tools — news, search, weather, places, video, email, markets, images — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay. First 10 calls per wallet are free.
+30+ tools — news, search, weather, places, video, email, markets, images — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay. First 10 calls per wallet are free.
 
 See [MCP docs](docs/MCP.md)
 

@@ -156,7 +156,7 @@ export DONATION_URL="https://gocardless.com/your-donation-link"
 export CREDIT_COST_NEWS="1"        # News search (1p)
 export CREDIT_COST_VIDEO="2"       # Video search (2p) - YouTube API cost
 export CREDIT_COST_VIDEO_WATCH="0" # Video watch (included) - no value added over YouTube
-export CREDIT_COST_CHAT="3"        # Chat AI query (3p) - LLM cost
+export CREDIT_COST_CHAT="5"        # Chat AI query (5p) - LLM cost
 export CREDIT_COST_EMAIL="4"       # External email (4p) - SMTP delivery cost
 export CREDIT_COST_PLACES_SEARCH="5"  # Places text search (5p) - Google Places API cost
 export CREDIT_COST_PLACES_NEARBY="2"  # Nearby places lookup (2p) - Google Places API cost
@@ -229,7 +229,7 @@ export MAIL_SELECTOR="default"
 | `CREDIT_COST_NEWS` | `1` | Credits per news search |
 | `CREDIT_COST_VIDEO` | `2` | Credits per video search |
 | `CREDIT_COST_VIDEO_WATCH` | `0` | Credits per video watch (included by default) |
-| `CREDIT_COST_CHAT` | `3` | Credits per chat query |
+| `CREDIT_COST_CHAT` | `5` | Credits per chat query |
 | `CREDIT_COST_EMAIL` | `4` | Credits per external email |
 | `CREDIT_COST_PLACES_SEARCH` | `5` | Credits per places text search |
 | `CREDIT_COST_PLACES_NEARBY` | `2` | Credits per nearby places lookup |

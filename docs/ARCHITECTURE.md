@@ -49,7 +49,7 @@ can import them — they are not features, they are plumbing.
 | `internal/app`    | HTTP response helpers, HTML rendering, logging | `auth`, `data`        |
 | `internal/ai`     | LLM provider abstraction (Anthropic API)      | `app`                 |
 | `internal/api`    | MCP server, tool registry, tool execution     | `app`                 |
-| `internal/moderation` | Content flagging, hiding, auto-moderation | `data`                |
+| `internal/flag` | Content flagging, hiding, auto-moderation | `data`                |
 
 **Layering rule:** Subsystems may only import other subsystems (and only downward:
 `data` ← `auth` ← `app` ← `ai`, `api`). Subsystems must **never** import building blocks.

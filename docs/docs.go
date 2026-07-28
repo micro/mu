@@ -41,6 +41,8 @@ var catalog = []Document{
 	// Reference
 	{Slug: "environment", Filename: "ENVIRONMENT_VARIABLES.md", Title: "Configuration", Description: "Environment variables", Category: "Reference"},
 	{Slug: "mcp", Filename: "MCP.md", Title: "MCP Server", Description: "AI tool integration via MCP", Category: "Reference"},
+	{Slug: "cli", Filename: "CLI.md", Title: "CLI", Description: "Every tool as a mu subcommand", Category: "Reference"},
+	{Slug: "security", Filename: "SECURITY.md", Title: "Security", Description: "Threat model and review checklist", Category: "Reference"},
 	{Slug: "screenshots", Filename: "SCREENSHOTS.md", Title: "Screenshots", Description: "Application screenshots", Category: "Reference"},
 
 	// Developer (accessible but not prominent)
