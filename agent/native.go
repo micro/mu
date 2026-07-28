@@ -213,11 +213,14 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		return nil, "", false
 	}
 
-	today := time.Now().UTC().Format("Monday, 2 January 2006 (UTC)")
-	sys := "You are Micro, a personal AI assistant on Mu. Today is " + today + ". " +
+	now := time.Now().UTC()
+	today := now.Format("Monday, 2 January 2006 15:04 MST")
+	nowRFC := now.Format(time.RFC3339)
+	sys := "You are Micro, a personal AI assistant on Mu. The current date and time is " + today + " (" + nowRFC + "). " +
 		"Use the available tools for live or personal data (weather, news, market prices, " +
 		"social, video, blog, web search, places and points of interest near a location, " +
-		"the user's own mail inbox, and recall across their news/mail). " +
+		"the user's own mail inbox, recall across their news/mail, and scheduling reminders/events). " +
+		"To schedule a reminder or event (e.g. \"remind me in 10 minutes\" or \"schedule X for Friday 3pm\"), use the events Create tool: compute the absolute time from the current time above and pass it as an RFC3339 timestamp; use events List only to show what is already scheduled. " +
 		"To read, check or list the user's mail, use the mail Inbox tool (no search term needed); only search mail when they give a specific term. " +
 		"Quote exact values from tool results. Be concise and conversational. " +
 		"For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one. " +
@@ -230,7 +233,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// A user-defined agent supplies its own persona/instructions; keep the
 	// operational tool guidance so it still answers reliably.
 	if strings.TrimSpace(opts.System) != "" {
-		sys = opts.System + "\n\nToday is " + today + ". Use the available tools for live or personal data and quote exact values. After using tools, always give the final answer; never stop at progress narration."
+		sys = opts.System + "\n\nThe current date and time is " + today + " (" + nowRFC + "). When scheduling a reminder/event, compute the absolute time from this and pass it to the events Create tool as an RFC3339 timestamp. Use the available tools for live or personal data and quote exact values. After using tools, always give the final answer; never stop at progress narration."
 	}
 	if !opts.Public && UserContextFunc != nil {
 		if uc := UserContextFunc(accountID); uc != "" {

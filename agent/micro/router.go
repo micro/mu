@@ -113,7 +113,6 @@ func keywordRoute(prompt string) []string {
 		{keyword: "unread", ids: []string{"mail"}},
 		{keyword: "quran", ids: []string{"faith"}},
 		{keyword: "hadith", ids: []string{"faith"}},
-		{keyword: "reminder", ids: []string{"faith"}},
 		{keyword: "surah", ids: []string{"faith"}},
 		{keyword: "verse", ids: []string{"faith"}},
 		{keyword: "coworking", ids: []string{"places"}},

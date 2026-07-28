@@ -140,7 +140,7 @@ func main() {
 	images.Load()
 	events.Load()
 	events.OnFire = func(accountID, title, note string) {
-		msg := "⏰ Reminder: " + title
+		msg := "⏰ Event: " + title
 		if note != "" {
 			msg += "\n" + note
 		}
@@ -168,7 +168,7 @@ func main() {
 		}
 		body += `<p style="color:#888;font-size:13px">Added to your calendar from the attached invite.</p>`
 		ics := events.ICS(e, acc.Email)
-		if _, err := mail.SendCalendarInvite("Mu Events", "no-reply@"+domain, acc.Email, "Reminder: "+e.Title, body, ics); err != nil {
+		if _, err := mail.SendCalendarInvite("Mu Events", "no-reply@"+domain, acc.Email, "Event: "+e.Title, body, ics); err != nil {
 			app.Log("events", "calendar invite to %s failed: %v", acc.Email, err)
 		}
 	}
