@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"sort"
 	"strings"
@@ -22,6 +23,8 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 
 	stats := mail.GetEmailStats()
 	messages := mail.GetRecentMessages(50)
+	relays := mail.RecentRelays(50)
+	relaySent, relayFailed := mail.RelayStats()
 
 	// Sort domains by count
 	type domainCount struct {
@@ -47,6 +50,46 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(fmt.Sprintf(`<tr><td>Outbound (local → external)</td><td>%d</td></tr>`, stats.Outbound))
 	content.WriteString(fmt.Sprintf(`<tr><td>Internal (local → local)</td><td>%d</td></tr>`, stats.Internal))
 	content.WriteString(`</table>`)
+	content.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">Counts stored messages. External relays (including system mail) are logged separately below: %d delivered, %d failed.</p>`, relaySent, relayFailed))
+	content.WriteString(`</div>`)
+
+	// Outbound relay log — every message handed to an external MX, including
+	// system mail (calendar invites, verification) that is never stored as a
+	// user message and so does not appear in Recent Messages.
+	content.WriteString(`<div class="card">`)
+	content.WriteString(`<h3>Outbound Relay</h3>`)
+	content.WriteString(`<p class="text-muted text-sm">Everything sent to an external mail server, including system mail. Last ` + fmt.Sprintf("%d", len(relays)) + `.</p>`)
+
+	if len(relays) == 0 {
+		content.WriteString(`<p class="text-muted">Nothing relayed yet.</p>`)
+	} else {
+		content.WriteString(`<table class="email-log">`)
+		content.WriteString(`<tr><th>Time</th><th>Status</th><th class="hide-mobile">From</th><th>To</th><th>Subject</th></tr>`)
+		for _, e := range relays {
+			statusClass, statusLabel := "dir-out", "→"
+			if !e.OK {
+				statusClass, statusLabel = "dir-in", "✗"
+			}
+			title := e.MessageID
+			if e.Error != "" {
+				title = e.Error
+			}
+			content.WriteString(fmt.Sprintf(`<tr>
+				<td>%s</td>
+				<td class="%s" title="%s">%s</td>
+				<td class="addr hide-mobile" title="%s">%s</td>
+				<td class="addr" title="%s">%s</td>
+				<td class="subject" title="%s">%s</td>
+			</tr>`,
+				e.Time.Format("Jan 2 15:04"),
+				statusClass, html.EscapeString(title), statusLabel,
+				html.EscapeString(e.From), html.EscapeString(truncate(e.From, 25)),
+				html.EscapeString(e.To), html.EscapeString(truncate(e.To, 25)),
+				html.EscapeString(e.Subject), html.EscapeString(truncate(e.Subject, 40)),
+			))
+		}
+		content.WriteString(`</table>`)
+	}
 	content.WriteString(`</div>`)
 
 	// Top domains
@@ -111,12 +154,12 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 				rowID,
 				msg.CreatedAt.Format("Jan 2 15:04"),
 				dirClass, dirLabel,
-				fromTitle, truncate(fromCell, 25),
-				toTitle, truncate(toCell, 25),
-				msg.Subject, truncate(msg.Subject, 40),
+				html.EscapeString(fromTitle), html.EscapeString(truncate(fromCell, 25)),
+				html.EscapeString(toTitle), html.EscapeString(truncate(toCell, 25)),
+				html.EscapeString(msg.Subject), html.EscapeString(truncate(msg.Subject, 40)),
 				rowID,
-				fromTitle, toTitle, msg.Subject,
-				msg.ID,
+				html.EscapeString(fromTitle), html.EscapeString(toTitle), html.EscapeString(msg.Subject),
+				html.EscapeString(msg.ID),
 			))
 		}
 
@@ -126,8 +169,8 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 
 	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 
-	html := app.RenderHTMLForRequest("Email", "Email activity", content.String(), r)
-	w.Write([]byte(html))
+	page := app.RenderHTMLForRequest("Email", "Email activity", content.String(), r)
+	w.Write([]byte(page))
 }
 
 func truncate(s string, max int) string {

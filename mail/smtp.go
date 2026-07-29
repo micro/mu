@@ -260,9 +260,18 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	return nil
 }
 
-// relayToExternal delivers email to an external SMTP server
-// RelayToExternal sends email directly to an external SMTP server (exported for internal use)
+// RelayToExternal sends email directly to an external SMTP server (exported
+// for internal use). Every outbound external message passes through here —
+// user mail, calendar invites, verification mail — so this is where the relay
+// log is written. See relay_log.go.
 func RelayToExternal(from, to string, data []byte) error {
+	err := relayToExternal(from, to, data)
+	recordRelay(from, to, data, err)
+	return err
+}
+
+// relayToExternal delivers email to an external SMTP server
+func relayToExternal(from, to string, data []byte) error {
 	// Extract domain from recipient address
 	parts := strings.Split(to, "@")
 	if len(parts) != 2 {
