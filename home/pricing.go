@@ -2,6 +2,7 @@ package home
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 
@@ -75,16 +76,15 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div class="card" style="margin:0 0 16px">`)
 	b.WriteString(`<h3>Credit costs</h3>`)
 	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px">1 credit = 1p. You only pay for AI, external calls and sending — reading the news, markets and weather, and browsing images, is free.</p>`)
+	// Rendered from wallet.Pricing() so this page and the wallet page can never
+	// disagree about what something costs.
 	b.WriteString(`<table class="stats-table" style="font-size:14px">`)
 	b.WriteString(`<tr><th style="text-align:left">Action</th><th style="text-align:right">Credits</th></tr>`)
-	b.WriteString(`<tr><td>AI agent</td><td>` + fmt.Sprintf("%d", wallet.CostAgentQuery) + `</td></tr>`)
-	b.WriteString(`<tr><td>Image generation</td><td>` + fmt.Sprintf("%d", wallet.CostImageGenerate) + `</td></tr>`)
-	b.WriteString(`<tr><td>Chat</td><td>` + fmt.Sprintf("%d", wallet.CostChatQuery) + `</td></tr>`)
-	b.WriteString(`<tr><td>Web search</td><td>` + fmt.Sprintf("%d", wallet.CostWebSearch) + `</td></tr>`)
-	b.WriteString(`<tr><td>Places search</td><td>` + fmt.Sprintf("%d", wallet.CostPlacesSearch) + `</td></tr>`)
-	b.WriteString(`<tr><td>Email (external)</td><td>` + fmt.Sprintf("%d", wallet.CostExternalEmail) + `</td></tr>`)
-	b.WriteString(`<tr><td>Weather forecast</td><td>` + fmt.Sprintf("%d", wallet.CostWeatherForecast) + `</td></tr>`)
-	b.WriteString(`<tr><td>News search</td><td>` + fmt.Sprintf("%d", wallet.CostNewsSearch) + `</td></tr>`)
+	b.WriteString(`<tr><td>News, blogs, videos, markets, weather</td><td>included</td></tr>`)
+	for _, it := range wallet.Pricing() {
+		b.WriteString(`<tr><td>` + html.EscapeString(it.Description) + `</td><td>` +
+			fmt.Sprintf("%d", it.Cost) + `</td></tr>`)
+	}
 	b.WriteString(`</table>`)
 	b.WriteString(`</div>`)
 
@@ -102,6 +102,6 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`</div>`) // close centered column
 
-	html := app.RenderHTMLForRequest("Pricing", "Personal AI — plans and pricing", b.String(), r)
-	w.Write([]byte(html))
+	page := app.RenderHTMLForRequest("Pricing", "Personal AI — plans and pricing", b.String(), r)
+	w.Write([]byte(page))
 }

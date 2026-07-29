@@ -33,6 +33,9 @@ type Daily struct {
 	Prompt string `json:"prompt"`
 	Theme  string `json:"theme"`
 	Date   string `json:"date"` // YYYY-MM-DD (UTC)
+	// File is the local storage key for the downloaded image, empty if the
+	// download failed and we are still relying on the provider URL.
+	File string `json:"file,omitempty"`
 }
 
 var (
@@ -57,11 +60,16 @@ func Load() {
 	if err := service.Register("images", new(Server)); err != nil {
 		app.Log("images", "service register failed: %v", err)
 	}
+	loadArchive()
 	var d Daily
 	if err := data.LoadJSON(dailyKey, &d); err == nil && d.URL != "" {
 		dailyMu.Lock()
 		daily = d
 		dailyMu.Unlock()
+		// The archive is newer than the daily record, so an instance upgrading
+		// from before it existed has a current image that was never archived.
+		// Pull it in, and fetch its bytes if the provider URL still resolves.
+		go backfill(d)
 	}
 	go scheduler()
 }
@@ -113,11 +121,20 @@ func generateDaily() {
 		return
 	}
 	d := Daily{URL: url, Prompt: theme.prompt, Theme: theme.name, Date: today()}
+	// Take our own copy of the bytes. The provider URL can expire, and without
+	// this the archive would fill up with links that stop resolving.
+	d.File = storeImage(url, d.Date)
+
 	dailyMu.Lock()
 	daily = d
 	dailyMu.Unlock()
 	if err := data.SaveJSON(dailyKey, d); err != nil {
 		app.Log("images", "failed to persist daily image: %v", err)
+	}
+	for _, old := range archiveDaily(d) {
+		if old.File != "" {
+			data.DeleteFile(old.File) //nolint:errcheck
+		}
 	}
 	app.Log("images", "generated daily %s image", theme.name)
 }
@@ -224,7 +241,7 @@ func CardHTML() string {
 	}
 	theme := html.EscapeString(strings.Title(d.Theme))
 	return `<a href="/images" style="text-decoration:none;color:inherit">
-<img src="` + html.EscapeString(d.URL) + `" alt="Daily ` + theme + ` image" style="width:100%;border-radius:8px;display:block" loading="lazy">
+<img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily ` + theme + ` image" style="width:100%;border-radius:8px;display:block" loading="lazy">
 <p style="font-size:13px;color:#888;margin:8px 0 0">Daily image · ` + theme + `</p></a>`
 }
 
@@ -255,7 +272,11 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, map[string]interface{}{"query": q, "results": Search(caller, q)})
 		return
 	}
-	out := map[string]interface{}{"daily": getDaily(), "stock": Search("", "")}
+	out := map[string]interface{}{
+		"daily":   getDaily(),
+		"archive": Archive(60),
+		"stock":   Search("", ""),
+	}
 	if acc != nil {
 		out["images"] = gallery(acc.ID)
 	}
@@ -352,12 +373,28 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>Image of the day</h3>`)
 	if d.URL != "" {
-		b.WriteString(`<img src="` + html.EscapeString(d.URL) + `" alt="Daily image" style="width:100%;border-radius:10px;display:block;margin:8px 0">`)
+		b.WriteString(`<img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily image" style="width:100%;border-radius:10px;display:block;margin:8px 0">`)
 		b.WriteString(`<p class="card-meta" style="color:#888;font-size:13px">` + html.EscapeString(strings.Title(d.Theme)) + ` · generated ` + html.EscapeString(d.Date) + `</p>`)
 	} else {
 		b.WriteString(`<p style="color:#888">Today's image is being generated — check back shortly.</p>`)
 	}
 	b.WriteString(`</div>`)
+
+	// Past dailies — the archive, newest first, today's excluded since it is
+	// already the hero above.
+	if past := pastDailies(d.Date, 60); len(past) > 0 {
+		b.WriteString(`<div class="card">`)
+		b.WriteString(`<h3>Past dailies</h3>`)
+		b.WriteString(`<p class="card-desc">Every daily image Mu has generated, kept on this server.</p>`)
+		b.WriteString(`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px">`)
+		for _, e := range past {
+			title := strings.Title(e.Theme) + " · " + e.Date
+			b.WriteString(`<a href="` + html.EscapeString(e.displayURL()) + `" target="_blank" title="` + html.EscapeString(title) + `">`)
+			b.WriteString(`<img src="` + html.EscapeString(e.displayURL()) + `" alt="Daily image for ` + html.EscapeString(e.Date) + `" style="width:100%;border-radius:8px;display:block" loading="lazy">`)
+			b.WriteString(`<span style="display:block;font-size:12px;color:#888;margin-top:4px">` + html.EscapeString(e.Date) + `</span></a>`)
+		}
+		b.WriteString(`</div></div>`)
+	}
 
 	// Generate panel.
 	b.WriteString(`<div class="card">`)

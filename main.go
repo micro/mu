@@ -1539,6 +1539,7 @@ func main() {
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
 	http.HandleFunc("/images", images.Handler)
+	http.HandleFunc("/images/daily/", images.DailyImageHandler)
 	http.HandleFunc("/events", events.Handler)
 
 	// serve social page

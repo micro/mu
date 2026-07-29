@@ -6,6 +6,7 @@ import (
 	"net/http"
 	neturl "net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -119,29 +120,7 @@ func WalletPage(userID string) string {
 	// Credit costs
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Costs</h3>`)
-	sb.WriteString(`<table class="stats-table">`)
-	sb.WriteString(`<tr><td>News, blogs, videos</td><td>included</td></tr>`)
-	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td>%dp</td></tr>`, CostNewsSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td>%dp</td></tr>`, CostVideoSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Social search</td><td>%dp</td></tr>`, CostSocialSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Status update</td><td>%dp</td></tr>`, CostSocialPost))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Reply</td><td>%dp</td></tr>`, CostSocialReply))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Blog post</td><td>%dp</td></tr>`, CostBlogCreate))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Blog comment</td><td>%dp</td></tr>`, CostBlogComment))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td>%dp</td></tr>`, CostChatQuery))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Agent (standard)</td><td>%dp</td></tr>`, CostAgentQuery))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Agent (premium)</td><td>%dp</td></tr>`, CostAgentQueryPremium))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Weather forecast</td><td>%dp</td></tr>`, CostWeatherForecast))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Weather + pollen</td><td>%dp</td></tr>`, CostWeatherForecast+CostWeatherPollen))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Places search</td><td>%dp</td></tr>`, CostPlacesSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Places nearby</td><td>%dp</td></tr>`, CostPlacesNearby))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Send mail</td><td>%dp</td></tr>`, CostMailSend))
-	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td>%dp</td></tr>`, CostExternalEmail))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Web search</td><td>%dp</td></tr>`, CostWebSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Web fetch</td><td>%dp</td></tr>`, CostWebFetch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>App build (AI)</td><td>%dp</td></tr>`, CostAppBuild))
-	sb.WriteString(fmt.Sprintf(`<tr><td>App edit (AI)</td><td>%dp</td></tr>`, CostAppEdit))
-	sb.WriteString(`</table>`)
+	sb.WriteString(PricingTableHTML())
 	sb.WriteString(`</div>`)
 
 	// Transaction history
@@ -326,22 +305,7 @@ func PublicWalletPage() string {
 	// Credit costs
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Costs</h3>`)
-	sb.WriteString(`<table class="stats-table">`)
-	sb.WriteString(`<tr><td>News, blogs, videos</td><td>included</td></tr>`)
-	sb.WriteString(fmt.Sprintf(`<tr><td>News search</td><td>%dp</td></tr>`, CostNewsSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Video search</td><td>%dp</td></tr>`, CostVideoSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Status update</td><td>%dp</td></tr>`, CostSocialPost))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Reply</td><td>%dp</td></tr>`, CostSocialReply))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Blog post</td><td>%dp</td></tr>`, CostBlogCreate))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Blog comment</td><td>%dp</td></tr>`, CostBlogComment))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Chat query</td><td>%dp</td></tr>`, CostChatQuery))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Places search</td><td>%dp</td></tr>`, CostPlacesSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Places nearby</td><td>%dp</td></tr>`, CostPlacesNearby))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Send mail</td><td>%dp</td></tr>`, CostMailSend))
-	sb.WriteString(fmt.Sprintf(`<tr><td>External email</td><td>%dp</td></tr>`, CostExternalEmail))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Web search</td><td>%dp</td></tr>`, CostWebSearch))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Web fetch</td><td>%dp</td></tr>`, CostWebFetch))
-	sb.WriteString(`</table>`)
+	sb.WriteString(PricingTableHTML())
 	sb.WriteString(`</div>`)
 
 	// Topup options
@@ -733,15 +697,28 @@ func handleStripeSuccess(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-type pricingItem struct {
+// PricingItem is one billable operation and what it costs.
+type PricingItem struct {
 	Operation   string `json:"operation"`
 	Description string `json:"description"`
 	Cost        int    `json:"cost"`
 	Unit        string `json:"unit"`
 }
 
-func getPricingData() []pricingItem {
-	return []pricingItem{
+// pricingItem is the pre-export name, kept as an alias so existing internal
+// references keep compiling.
+type pricingItem = PricingItem
+
+// Pricing returns every billable operation, cheapest first. This is the single
+// source of truth for what things cost: the wallet page, the signed-out wallet
+// page, the /wallet/pricing API and the public pricing page all render from it.
+// They each used to carry their own hardcoded table, which drifted — image
+// generation was the most expensive op a user could trigger and three of the
+// four tables omitted it entirely.
+//
+// Anything added to the Cost* vars belongs here too.
+func Pricing() []PricingItem {
+	items := []PricingItem{
 		{OpNewsSearch, "News search", CostNewsSearch, "credits"},
 		{OpVideoSearch, "Video search", CostVideoSearch, "credits"},
 		{OpSocialSearch, "Social search", CostSocialSearch, "credits"},
@@ -760,9 +737,30 @@ func getPricingData() []pricingItem {
 		{OpExternalEmail, "External email", CostExternalEmail, "credits"},
 		{OpWebSearch, "Web search", CostWebSearch, "credits"},
 		{OpWebFetch, "Web fetch", CostWebFetch, "credits"},
+		{OpImageGenerate, "Image generation", CostImageGenerate, "credits"},
+		{OpDBWrite, "Database write", CostDBWrite, "credits"},
 		{OpAppBuild, "App build (AI)", CostAppBuild, "credits"},
 		{OpAppEdit, "App edit (AI)", CostAppEdit, "credits"},
 	}
+	sort.SliceStable(items, func(i, j int) bool { return items[i].Cost < items[j].Cost })
+	return items
+}
+
+func getPricingData() []PricingItem { return Pricing() }
+
+// PricingTableHTML renders the shared cost table. Costs are whole pence
+// (1 credit = 1p), so the same figures serve both the credit and the currency
+// framing.
+func PricingTableHTML() string {
+	var sb strings.Builder
+	sb.WriteString(`<table class="stats-table">`)
+	sb.WriteString(`<tr><td>News, blogs, videos, markets, weather</td><td>included</td></tr>`)
+	for _, it := range Pricing() {
+		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%dp</td></tr>`,
+			htmlEsc(it.Description), it.Cost))
+	}
+	sb.WriteString(`</table>`)
+	return sb.String()
 }
 
 func handlePricing(w http.ResponseWriter, r *http.Request) {
