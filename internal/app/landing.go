@@ -79,8 +79,21 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 .login-link a{color:#555;text-decoration:none;font-size:14px;font-weight:600}
 .also{text-align:center;margin:32px 0;font-size:14px;color:#888}
 .footer{padding:20px;text-align:center;font-size:13px;color:#999}
-.footer a{color:#555;text-decoration:none;margin:0 10px}
+.footer a{color:#555;text-decoration:none;margin:0 6px}
 .footer a:hover{text-decoration:underline}
+/* The hero cards on these pages are capped at ~240px so three sit in a row on
+   desktop. Below that the cap left them stranded mid-screen, so let them fill
+   the column like every card elsewhere in the app. */
+/* Descendant selectors so these beat the per-page rules, which are emitted
+   after this block and would otherwise win on source order alone. */
+@media (max-width:600px){
+  .lcards,.pcards{flex-direction:column;align-items:stretch;gap:10px}
+  /* flex:1 1 220px sizes the main axis, which is the *height* once stacked —
+     that left every card padded out to 220px tall. Size to content instead. */
+  .lcards .lcard,.pcards .pcard{flex:0 0 auto;max-width:none;min-width:0;width:100%;box-sizing:border-box}
+  .lctas{flex-direction:column}
+  .lctas .lcta{width:100%;box-sizing:border-box;text-align:center}
+}
 </style>
 </head>
 <body>

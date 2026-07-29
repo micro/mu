@@ -259,6 +259,12 @@ func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
 //go:embed html/*
 var htmlFiles embed.FS
 
+// FooterLinks is the site footer, shared by the app shell and the sidebar-less
+// landing shell (/about, /agents) so every page shows the same links.
+func FooterLinks() string {
+	return `<a href="/about">About</a> · <a href="/agents">Agents</a> · <a href="/pricing">Pricing</a> · <a href="/api">API</a> · <a href="/docs">Docs</a> · <a href="/mcp">MCP</a> · <a href="/status">Status</a> · <a href="https://github.com/micro/mu">Source</a>` + torFooterLink()
+}
+
 func torFooterLink() string {
 	if onion := os.Getenv("TOR_ONION"); onion != "" {
 		return ` · <a href="http://` + onion + `" title="Tor Hidden Service">Tor</a>`
@@ -342,7 +348,7 @@ var Template = `
         %s
       </div>
       <div id="footer">
-        <a href="/about">About</a> · <a href="/agents">Agents</a> · <a href="/api">API</a> · <a href="/docs">Docs</a> · <a href="/mcp">MCP</a> · <a href="/status">Status</a>` + torFooterLink() + `
+        ` + FooterLinks() + `
       </div>
     </div>
   <script>

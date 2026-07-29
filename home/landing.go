@@ -49,13 +49,7 @@ no tracking. Use it hosted here, or self-host the single binary — same product
 		Tagline:     "Building blocks for life",
 		Body:        body,
 		TopRight:    `<a href="/login">Sign in →</a>`,
-		Footer: `<a href="/agents">Agents</a>
-  <a href="/pricing">Pricing</a>
-  <a href="/api">API</a>
-  <a href="/docs">Docs</a>
-  <a href="/mcp">MCP</a>
-  <a href="https://github.com/micro/mu">Source</a>
-  <a href="/login">Sign in</a>`,
+		Footer:      app.FooterLinks(),
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

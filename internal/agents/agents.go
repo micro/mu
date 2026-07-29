@@ -70,11 +70,7 @@ per request with <a href="https://x402.org" style="color:#111">x402</a> stableco
 		Tagline:     "APIs for agents",
 		TopRight:    `<a href="` + base + `/login">Sign in →</a>`,
 		Body:        body,
-		Footer: `<a href="/mcp">MCP</a>
-  <a href="/api">API</a>
-  <a href="/docs">Docs</a>
-  <a href="https://x402.org">x402</a>
-  <a href="` + base + `/login">Sign in</a>`,
+		Footer:      app.FooterLinks(),
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
