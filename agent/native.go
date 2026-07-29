@@ -97,7 +97,7 @@ var agentToolLabels = map[string]string{
 	"blog":    "Blog",
 	"search":  "Search",
 	"places":  "Places",
-	"recall":  "Index",
+	"index":   "Index",
 	"apps":    "Apps",
 	"mail":    "Mail",
 	"images":  "Images",
@@ -447,7 +447,7 @@ func nativeToolTitle(name string) string {
 		return "blog"
 	case "search":
 		return "search"
-	case "recall":
+	case "recall", "index":
 		return "memory"
 	case "apps":
 		return "apps"
@@ -486,7 +486,7 @@ func nativeToolLabel(name string) (label string, show bool) {
 		return "📝 Reading the blog", true
 	case "search":
 		return "🔎 Searching the web", true
-	case "recall":
+	case "recall", "index":
 		return "🧠 Recalling your data", true
 	case "apps":
 		return "🧩 Browsing apps", true

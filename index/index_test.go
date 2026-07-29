@@ -1,4 +1,4 @@
-package recall
+package index
 
 import (
 	"context"

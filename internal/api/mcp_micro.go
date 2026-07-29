@@ -68,7 +68,37 @@ func mcpResolver() gwmcp.Resolver {
 				return &gwmcp.CallResult{Text: text, IsError: isErr}, nil
 			})
 	}
-	return res
+	// Retired names must keep resolving. The gateway dispatches against the
+	// names it was handed, so aliases have to be mapped back here — registering
+	// them as tools would list them, which defeats the point of retiring them.
+	aliases := map[string]string{}
+	for i := range st {
+		for _, a := range st[i].Aliases {
+			aliases[a] = st[i].Name
+		}
+	}
+	if len(aliases) == 0 {
+		return res
+	}
+	return aliasResolver{inner: res, aliases: aliases}
+}
+
+// aliasResolver keeps renamed tools callable by their old names without showing
+// those names in the catalogue.
+type aliasResolver struct {
+	inner   gwmcp.Resolver
+	aliases map[string]string // retired name -> current name
+}
+
+func (a aliasResolver) List(ctx context.Context) ([]gwmcp.Tool, error) {
+	return a.inner.List(ctx)
+}
+
+func (a aliasResolver) Call(ctx context.Context, name string, args map[string]any) (*gwmcp.CallResult, error) {
+	if canonical, ok := a.aliases[name]; ok {
+		name = canonical
+	}
+	return a.inner.Call(ctx, name, args)
 }
 
 func formatCredits(name string, cost int) string {

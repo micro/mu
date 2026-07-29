@@ -1567,10 +1567,13 @@ func GetUnreadCount(userID string) int {
 }
 
 // Search returns up to limit non-spam messages belonging to userID (as sender
-// or recipient) that match the query, most relevant first. It searches the
-// in-memory (decrypted) messages directly and is strictly scoped to the
-// account, so mail is never read across users and its body never has to be
-// persisted to the shared search index in plaintext.
+// or recipient) that match the query, most relevant first.
+//
+// It scans the in-memory (decrypted) messages directly rather than consulting
+// the shared search index. That keeps mail strictly scoped to one account and
+// means message bodies never have to be persisted to the shared index in
+// plaintext — but note this is still a scan over at-rest data held in memory,
+// so it is O(all messages) per query, not a lookup.
 func Search(userID, query string, limit int) []*Message {
 	query = strings.ToLower(strings.TrimSpace(query))
 	if userID == "" || query == "" {

@@ -1,10 +1,13 @@
-// Package recall is the cross-source recall service: it merges the public
-// indexed corpus (news, blog, social, video) with the caller's own mail into a
-// compact, model-ready list. Public content is searched without an owner scope
-// (private entries excluded by default); mail is searched live and strictly
+// Package index searches everything Mu holds for a caller: it merges the
+// public indexed corpus (news, blog, social, video) with the caller's own mail
+// into a compact, model-ready list.
+//
+// Public content is searched through the shared index without an owner scope
+// (private entries excluded by default). Mail is scanned in memory and strictly
 // scoped to the account, so nothing leaks across users and mail bodies never
-// need to live in the shared index.
-package recall
+// need to live in the shared index in plaintext. Both halves are at-rest data —
+// they differ in scope and storage, not in whether they are indexed.
+package index
 
 import (
 	"context"

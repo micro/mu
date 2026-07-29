@@ -14,7 +14,7 @@ import (
 // it so the two can never drift apart.
 var accountScoped = map[string]bool{
 	"mail":   true, // the user's own inbox
-	"recall": true, // personal corpus across their news/mail
+	"index":  true, // searches the caller's own mail alongside public content
 	"images": true, // generation is metered against their wallet
 	"events": true, // personal schedule
 }

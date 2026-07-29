@@ -566,7 +566,7 @@ func readableToolName(name string) string {
 		return "social"
 	case "places_search", "places_nearby":
 		return "places"
-	case "recall":
+	case "recall", "index":
 		return "memory"
 	default:
 		return strings.ReplaceAll(strings.TrimSpace(name), "_", " ")

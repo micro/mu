@@ -32,6 +32,7 @@ import (
 	"mu/events"
 	"mu/home"
 	"mu/images"
+	"mu/index"
 	"mu/internal/a2a"
 	"mu/internal/agents"
 	"mu/internal/api"
@@ -51,7 +52,6 @@ import (
 	"mu/news"
 	"mu/news/digest"
 	"mu/places"
-	"mu/recall"
 	"mu/search"
 	"mu/social"
 	"mu/stream"
@@ -669,11 +669,12 @@ func main() {
 
 	// recall tool — unified search across everything mu knows for the caller:
 	// the public indexed corpus (news, blog, social, video) plus their own mail.
-	if err := service.Register("recall", recall.Server{}); err != nil {
+	if err := service.Register("index", index.Server{}); err != nil {
 		app.Log("main", "recall service register failed: %v", err)
 	}
 	api.RegisterToolWithAuth(api.Tool{
-		Name:        "recall",
+		Name:        "index",
+		Aliases:     []string{"recall"},
 		Description: "Search across everything mu knows — indexed news, blog, social and video, plus the user's own mail — and return the most relevant items with ids. Use for 'do you remember', 'what did I get about X', 'search my stuff' and cross-source lookups.",
 		Params: []api.ToolParam{
 			{Name: "query", Type: "string", Description: "What to look for", Required: true},
@@ -696,9 +697,9 @@ func main() {
 				limit = n
 			}
 		}
-		var rsp recall.Response
-		if err := service.Call(context.Background(), "recall", "Server.Search",
-			&recall.Request{AccountID: accountID, Query: strings.TrimSpace(query), Limit: limit}, &rsp); err != nil {
+		var rsp index.Response
+		if err := service.Call(context.Background(), "index", "Server.Search",
+			&index.Request{AccountID: accountID, Query: strings.TrimSpace(query), Limit: limit}, &rsp); err != nil {
 			return "", err
 		}
 		return rsp.Text, nil

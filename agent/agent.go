@@ -1456,7 +1456,7 @@ func skipMarketMoverCompanionTool(prompt, tool string) bool {
 	if tool == "markets" || tool == "markets_list" || !isMarketMoverPrompt(prompt) || wantsMarketMoverExplanation(prompt) {
 		return false
 	}
-	return tool == "news" || tool == "news_headlines" || tool == "news_list" || tool == "news_search" || tool == "web_search" || tool == "search_web" || tool == "recall"
+	return tool == "news" || tool == "news_headlines" || tool == "news_list" || tool == "news_search" || tool == "web_search" || tool == "search_web" || tool == "recall" || tool == "index"
 }
 
 func isMarketMoverPrompt(prompt string) bool {
@@ -1509,7 +1509,7 @@ func toolLabel(tool string) string {
 		return "📖 Reading article"
 	case "news_search":
 		return "Searching news"
-	case "recall":
+	case "recall", "index":
 		return "🧠 Searching your world"
 	case "web_search", "search_web":
 		return "🌐 Searching the web"
