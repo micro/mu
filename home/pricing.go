@@ -24,10 +24,10 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>`)
 
 	// Plans — three tiers: Free, Starter, Pro.
-	b.WriteString(`<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:0 0 24px">`)
+	b.WriteString(`<div class="plans">`)
 
 	// Free plan
-	b.WriteString(`<div class="card" style="flex:1;min-width:200px;max-width:240px;text-align:center">`)
+	b.WriteString(`<div class="card plan">`)
 	b.WriteString(`<h3 style="margin:0 0 4px">Free</h3>`)
 	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">£0</p>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">No account needed</p>`)
@@ -42,7 +42,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>`)
 
 	// Starter plan
-	b.WriteString(`<div class="card" style="flex:1;min-width:200px;max-width:240px;text-align:center">`)
+	b.WriteString(`<div class="card plan">`)
 	b.WriteString(`<h3 style="margin:0 0 4px">Starter</h3>`)
 	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">£5<span style="font-size:14px;font-weight:400;color:#888">/month</span></p>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">500 credits</p>`)
@@ -57,7 +57,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>`)
 
 	// Pro plan
-	b.WriteString(`<div class="card" style="flex:1;min-width:200px;max-width:240px;text-align:center;border:2px solid #000">`)
+	b.WriteString(`<div class="card plan plan-featured">`)
 	b.WriteString(`<h3 style="margin:0 0 4px">Pro</h3>`)
 	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">£10<span style="font-size:14px;font-weight:400;color:#888">/month</span></p>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">1,200 credits</p>`)

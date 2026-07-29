@@ -2241,6 +2241,30 @@ a.highlight {
   }
 }
 
+/* Pricing plans. These were inline styles, which no media query could override
+   — inline always beats the stylesheet — so they stayed 240px wide on a phone. */
+.plans {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0 0 24px;
+}
+.plan {
+  flex: 1 1 200px;
+  min-width: 200px;
+  max-width: 240px;
+  text-align: center;
+}
+.plan-featured {
+  border: 2px solid #000;
+}
+@media only screen and (max-width: 600px) {
+  .plans { flex-direction: column; align-items: stretch; }
+  /* flex-basis sizes the height once stacked, so reset it to fit content. */
+  .plan { flex: 0 0 auto; max-width: none; min-width: 0; width: 100%; }
+}
+
 /* Tablet/Mobile: hamburger menu with slide-out sidebar */
 @media only screen and (max-width: 900px) {
   body {

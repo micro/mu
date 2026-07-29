@@ -79,7 +79,10 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 .login-link a{color:#555;text-decoration:none;font-size:14px;font-weight:600}
 .also{text-align:center;margin:32px 0;font-size:14px;color:#888}
 .footer{padding:20px;text-align:center;font-size:13px;color:#999}
-.footer a{color:#555;text-decoration:none;margin:0 6px}
+/* No extra margin: FooterLinks already spaces the links with separators,
+   so adding margin here made the same six links wrap where the app shell fits
+   them on one line. */
+.footer a{color:#555;text-decoration:none}
 .footer a:hover{text-decoration:underline}
 /* The hero cards on these pages are capped at ~240px so three sit in a row on
    desktop. Below that the cap left them stranded mid-screen, so let them fill
