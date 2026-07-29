@@ -19,7 +19,7 @@ city, a ticker). It may never parameterize *identity or authorization*.
 
 ## The core invariant — bind identity like a prepared statement
 
-For anything account-scoped (mail, recall, memory, apps ownership, wallet), the
+For anything account-scoped (mail, index, memory, apps ownership, wallet), the
 account / owner / scope / source-of-funds is **bound server-side from the
 authenticated session**, exactly like a bound parameter in a prepared SQL query.
 It is never read from the model's tool arguments.
@@ -86,7 +86,7 @@ Concretely:
 As of the last audit these were verified correct — a finding here means a
 regression:
 
-- `mail` (Search/Inbox), `recall` — `account_id` force-bound; guests excluded.
+- `mail` (Search/Inbox), `index` — `account_id` force-bound; guests excluded.
 - `memory` — keyed by session account; scope is a static registry constant.
 - wallet `balance` / `convert` / `topup` — source is `sess.Account`.
 - `wallet_transfer` — source session-bound; £500/call cap. (No daily cap yet —
