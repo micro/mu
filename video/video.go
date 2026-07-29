@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	htmlpkg "html"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -551,7 +553,16 @@ func embedVideo(id string) string {
 	return embedVideoWithAutoplay(id, false)
 }
 
+// validVideoID matches a YouTube video ID. IDs reach here straight from
+// ?id= on /video, and the result is interpolated into an iframe src, so
+// anything outside this character set could close the attribute and inject
+// markup. Reject rather than escape: a non-conforming ID is never valid.
+var validVideoID = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
+
 func embedVideoWithAutoplay(id string, autoplay bool) string {
+	if !validVideoID.MatchString(id) {
+		return `<p class="text-muted">Invalid video ID.</p>`
+	}
 	u := "https://www.youtube.com/embed/" + id + "?enablejsapi=1&playsinline=1"
 	if autoplay {
 		u += "&autoplay=1"
@@ -859,7 +870,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Consume quota after successful search
 			wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
 
-			html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
+			html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results))
 			w.Write([]byte(html))
 			return
 		}
@@ -970,7 +981,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		head = ""
 
-		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, query, head, results))
+		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results))
 		w.Write([]byte(html))
 		return
 	}

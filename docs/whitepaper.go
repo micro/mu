@@ -82,7 +82,7 @@ func WhitepaperHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rendered := app.Render(content)
+	rendered := app.RenderTrusted(content)
 
 	html := `<div class="docs"><div class="docs-content">` + string(rendered) +
 		`<p style="margin-top:2em"><a href="/whitepaper.pdf">Download PDF</a></p></div></div>`

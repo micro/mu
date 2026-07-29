@@ -19,6 +19,7 @@ import (
 	"mu/internal/auth"
 
 	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/ast"
 	"github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
 )
@@ -1295,8 +1296,26 @@ func Session(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-// Render a markdown document as html
+// Render converts untrusted markdown to HTML. Use this for anything a user or
+// a remote server authored: blog posts and comments, federated ActivityPub
+// content, model output. Raw HTML in the source is dropped and link and image
+// destinations are restricted to safe schemes, so a post containing
+// <script>…</script> or [x](javascript:…) renders as inert text rather than
+// executing on the reader's session.
+//
+// For repo-shipped markdown that deliberately embeds HTML, use RenderTrusted.
 func Render(md []byte) []byte {
+	return render(md, false)
+}
+
+// RenderTrusted converts markdown to HTML with raw HTML passed through. Only
+// for content that ships in the binary (docs, whitepaper) — never for anything
+// that arrived over the network.
+func RenderTrusted(md []byte) []byte {
+	return render(md, true)
+}
+
+func render(md []byte, trusted bool) []byte {
 	// Strip LaTeX dollar sign escapes and protect plain currency before
 	// parsing markdown so downstream MathJax scanners do not treat blog cards
 	// or other rendered content as inline math.
@@ -1311,10 +1330,64 @@ func Render(md []byte) []byte {
 
 	// create HTML renderer with extensions
 	htmlFlags := html.CommonFlags | html.HrefTargetBlank
+	if !trusted {
+		// SkipHTML drops raw HTML blocks and inline tags; Safelink limits link
+		// destinations to http/https/mailto and friends. Safelink does not cover
+		// image destinations, so those are filtered on the parsed tree below.
+		htmlFlags |= html.SkipHTML | html.Safelink
+		stripUnsafeImages(doc)
+	}
 	opts := html.RendererOptions{Flags: htmlFlags}
 	renderer := html.NewRenderer(opts)
 
 	return markdown.Render(doc, renderer)
+}
+
+// safeImageSchemes are the URL schemes an untrusted image may point at.
+// Relative and protocol-relative URLs carry no scheme and are allowed.
+var safeImageSchemes = map[string]bool{"http": true, "https": true}
+
+// stripUnsafeImages blanks image destinations whose scheme is not known safe,
+// so markdown like ![x](javascript:…) cannot emit an executable src. The
+// renderer's Safelink flag only guards links, not images.
+func stripUnsafeImages(doc ast.Node) {
+	ast.WalkFunc(doc, func(node ast.Node, entering bool) ast.WalkStatus {
+		if !entering {
+			return ast.GoToNext
+		}
+		img, ok := node.(*ast.Image)
+		if !ok {
+			return ast.GoToNext
+		}
+		if !safeURL(string(img.Destination)) {
+			img.Destination = nil
+		}
+		return ast.GoToNext
+	})
+}
+
+// safeURL reports whether a destination is safe to emit as an image src.
+// A URL with no scheme (relative, or protocol-relative) is safe; one with a
+// scheme must be on the allowlist. Leading control characters and whitespace
+// are stripped first, since browsers ignore them when parsing the scheme.
+func safeURL(dest string) bool {
+	cleaned := strings.Map(func(r rune) rune {
+		if r <= 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, dest)
+
+	colon := strings.IndexByte(cleaned, ':')
+	if colon < 0 {
+		return true // no scheme — relative
+	}
+	// A slash, question mark or hash before the colon means the colon is in a
+	// path or query, not a scheme (e.g. "/a/b:c" or "?x=a:b").
+	if i := strings.IndexAny(cleaned, "/?#"); i >= 0 && i < colon {
+		return true
+	}
+	return safeImageSchemes[strings.ToLower(cleaned[:colon])]
 }
 
 // Regex patterns for LaTeX math delimiters around prices.
@@ -1453,7 +1526,17 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 	if lang == "" {
 		lang = "en"
 	}
+	title, desc = escapeMeta(title), escapeMeta(desc)
 	return fmt.Sprintf(Template, lang, title, desc, "", navAuthHTML(acc), title, html)
+}
+
+// escapeMeta escapes a page title or description. Handlers pass these through
+// from query strings and stored records (a search term, a post title, a
+// contact's name), and they land in <title>, a meta content attribute and an
+// <h1> — all text or attribute contexts where markup must not survive. The
+// body argument is deliberately not escaped: handlers build that as HTML.
+func escapeMeta(s string) string {
+	return htmlpkg.EscapeString(s)
 }
 
 // RenderHTMLWithLangAndBody renders html with a custom body attribute string
@@ -1463,6 +1546,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 	if lang == "" {
 		lang = "en"
 	}
+	title, desc = escapeMeta(title), escapeMeta(desc)
 	return fmt.Sprintf(Template, lang, title, desc, bodyAttr, navAuthHTML(acc), title, html)
 }
 
@@ -1473,7 +1557,9 @@ func RenderString(v string) string {
 
 // RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
-	return fmt.Sprintf(Template, "en", title, desc, "", navAuthHTML(nil), title, RenderString(text))
+	body := RenderString(text)
+	title, desc = escapeMeta(title), escapeMeta(desc)
+	return fmt.Sprintf(Template, "en", title, desc, "", navAuthHTML(nil), title, body)
 }
 
 func ServeHTML(html string) http.Handler {

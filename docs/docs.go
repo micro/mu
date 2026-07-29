@@ -87,7 +87,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Render markdown to HTML
-	rendered := app.Render(content)
+	rendered := app.RenderTrusted(content)
 
 	// Wrap in navigation
 	html := fmt.Sprintf(`<div class="docs">

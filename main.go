@@ -82,6 +82,39 @@ func argFloat(v any) float64 {
 	return 0
 }
 
+// setSecurityHeaders applies the site-wide response headers. Handlers that
+// need something stricter (the app sandbox at /apps/run) overwrite these.
+//
+// The script-src allows 'unsafe-inline' because the UI is built from server
+// generated markup with inline handlers and styles throughout; tightening that
+// means moving to nonces across every handler, which is a separate piece of
+// work. So this is not an XSS backstop — escaping at the point of output is.
+// What it does buy, cheaply: no attacker-hosted script can be pulled in, no
+// plugins, no injected <base> to repoint relative URLs, no framing by another
+// origin, and forms cannot be retargeted off-site to harvest credentials.
+func setSecurityHeaders(w http.ResponseWriter) {
+	h := w.Header()
+	h.Set("Content-Security-Policy", strings.Join([]string{
+		"default-src 'self'",
+		"script-src 'self' 'unsafe-inline'",
+		// The page template pulls Nunito Sans from Google Fonts.
+		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+		"font-src 'self' data: https://fonts.gstatic.com",
+		"img-src 'self' data: blob: https:",
+		"media-src 'self' data: blob: https:",
+		"connect-src 'self'",
+		// YouTube is the one third-party frame: /video embeds the player.
+		"frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+		"object-src 'none'",
+		"base-uri 'self'",
+		"form-action 'self'",
+		"frame-ancestors 'self'",
+	}, "; "))
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("X-Frame-Options", "SAMEORIGIN")
+	h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+}
+
 func main() {
 	// Server vs CLI dispatch — any invocation that includes `--serve`
 	// (or `-serve`) runs the full server exactly as before. Anything
@@ -1628,6 +1661,8 @@ func main() {
 				http.NotFound(w, r)
 				return
 			}
+
+			setSecurityHeaders(w)
 
 			// Set Onion-Location header for Tor Browser discovery
 			if onion := os.Getenv("TOR_ONION"); onion != "" {

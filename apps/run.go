@@ -104,7 +104,16 @@ func handleCodeRun(w http.ResponseWriter, r *http.Request) {
 	// Serve raw HTML if requested (for iframe embedding)
 	if r.URL.Query().Get("raw") == "1" {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Content-Security-Policy", "default-src 'unsafe-inline' 'self' data: blob:; script-src 'unsafe-inline'; style-src 'unsafe-inline';")
+		// This body is model- or user-authored code, so it must never run with
+		// the site's origin. The parent iframe carries sandbox="allow-scripts"
+		// (no allow-same-origin), but the URL can also be opened directly, and
+		// then the iframe attribute does not apply. The sandbox directive
+		// re-applies the same restriction on the response itself: scripts run,
+		// but in an opaque origin with no access to cookies or storage.
+		w.Header().Set("Content-Security-Policy",
+			"sandbox allow-scripts allow-forms allow-popups; "+
+				"default-src 'unsafe-inline' 'self' data: blob:; "+
+				"script-src 'unsafe-inline'; style-src 'unsafe-inline';")
 		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		w.Write([]byte(wrapCodeAsHTML(cr.Code)))
 		return

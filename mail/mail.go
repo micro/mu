@@ -950,7 +950,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					if content, err := io.ReadAll(reader); err == nil {
 						reader.Close()
 						if isValidUTF8Text(content) {
-							msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, string(content))
+							msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(string(content)))
 						}
 					}
 				}
