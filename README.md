@@ -61,7 +61,7 @@ const { summary } = await mu.service('weather', 'forecast', { lat, lon })
 ```
 
 Identity is bound server-side: an app never names whose data it wants, and
-account-scoped services (mail, recall, images, events) require a signed-in
+account-scoped services (mail, index, images, events) require a signed-in
 caller.
 
 ## Accounts & sign-in
