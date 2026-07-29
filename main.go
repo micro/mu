@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -35,6 +36,7 @@ import (
 	"mu/index"
 	"mu/internal/a2a"
 	"mu/internal/agents"
+	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -2137,20 +2139,51 @@ func runHealthChecks() []app.ServiceHealth {
 		check app.ServiceHealth
 	}
 
-	checks := []struct {
+	// Probes for services where there is a cheap signal that the thing actually
+	// works. Anything without one is reported on being registered and reachable,
+	// which is still a real check — the service failed to start otherwise.
+	probes := map[string]func() bool{
+		"news":    func() bool { return len(news.GetFeed()) > 0 },
+		"blog":    func() bool { return blog.GetTopics() != nil },
+		"video":   func() bool { return video.GetLatestVideos(1) != nil },
+		"markets": func() bool { return len(markets.GetAllPrices()) > 0 },
+		"social":  func() bool { return len(social.GetThreads()) > 0 },
+		"mail":    func() bool { return mail.GetConfiguredDomain() != "" },
+		"islam":   func() bool { return islam.GetReminderData() != nil },
+		"search":  func() bool { return settings.Get("BRAVE_API_KEY") != "" },
+	}
+	// Services with no page of their own.
+	noPage := map[string]bool{"index": true}
+
+	type check struct {
 		name string
 		path string
 		fn   func() bool
-	}{
-		{"News", "/news", func() bool { return len(news.GetFeed()) > 0 }},
-		{"Blog", "/blog", func() bool { return blog.GetTopics() != nil }},
-		{"Video", "/video", func() bool { return video.GetLatestVideos(1) != nil }},
-		{"Chat", "/chat", func() bool { return os.Getenv("ANTHROPIC_API_KEY") != "" }},
-		{"Mail", "/mail", func() bool { return os.Getenv("MAIL_DOMAIN") != "" }},
-		{"Markets", "/markets", func() bool { return len(markets.GetAllPrices()) > 0 }},
-		{"Social", "/social", func() bool { return len(social.GetThreads()) > 0 }},
-		{"go-micro", "/version", func() bool { return len(service.Services()) > 0 }},
 	}
+	var checks []check
+
+	// Derived from the registry rather than hardcoded: the previous list had
+	// drifted to 7 of 15 services, so most of what mu runs was unreported.
+	svcs := service.Services()
+	sort.Strings(svcs)
+	for _, name := range svcs {
+		path := "/" + name
+		if noPage[name] {
+			path = ""
+		}
+		fn := probes[name]
+		if fn == nil {
+			fn = func() bool { return true } // registered and serving
+		}
+		checks = append(checks,
+			check{name: strings.ToUpper(name[:1]) + name[1:], path: path, fn: fn})
+	}
+
+	// Cross-cutting checks that aren't domain services.
+	checks = append(checks,
+		check{"Agent", "/agent", func() bool { return ai.Configured() }},
+		check{"go-micro", "/version", func() bool { return len(service.Services()) > 0 }},
+	)
 
 	results := make([]app.ServiceHealth, len(checks))
 	ch := make(chan result, len(checks))
