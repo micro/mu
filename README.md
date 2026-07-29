@@ -30,6 +30,7 @@ Each is reachable in the web app and directly over REST, MCP, A2A, or the CLI. T
 - **Video** — YouTube without ads, algorithms, or shorts
 - **Images** — Generate images from a prompt, plus a daily nature / mindful image
 - **Search** — Search the web without tracking, with a clean reader view
+- **Index** — Search everything Mu holds for you: indexed news, blog, social and video, plus your own mail
 - **Places** — Search places and nearby results with configured providers and open-data fallbacks
 - **Islam** — Prayer times and a qibla compass, plus a Quran verse, hadith and reflection
 - **Events** — Schedule reminders by asking the agent; delivered to your channels, with a calendar invite
