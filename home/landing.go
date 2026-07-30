@@ -16,7 +16,7 @@ no tracking. Use it hosted here, or self-host the single binary — same product
 
 <div class="lcards">
   <div class="lcard"><h3>One agent, everything</h3><p>Ask for the news, your mail, a price, the forecast. Mu picks the right service and answers — you just talk to it.</p></div>
-  <div class="lcard"><h3>Real services, not widgets</h3><p>News, markets, mail, weather, blog, video and search — each a genuine service on go-micro, not a scraped feed.</p></div>
+  <div class="lcard"><h3>Real services, not widgets</h3><p>News, markets, mail, weather, blog, video and search — each a real service with its own API, not a scraped feed.</p></div>
   <div class="lcard"><h3>Yours to run</h3><p>Use the hosted instance, or self-host the single Go binary. Your account, your data — no lock-in either way.</p></div>
 </div>
 

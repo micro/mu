@@ -2218,7 +2218,9 @@ func runHealthChecks() []app.ServiceHealth {
 	// Cross-cutting checks that aren't domain services.
 	checks = append(checks,
 		check{"Agent", "/agent", func() bool { return ai.Configured() }},
-		check{"go-micro", "/version", func() bool { return len(service.Services()) > 0 }},
+		// Named for what the reader is being told, not for the library behind
+		// it — /status is linked from every page footer.
+		check{"runtime", "/version", func() bool { return len(service.Services()) > 0 }},
 	)
 
 	results := make([]app.ServiceHealth, len(checks))

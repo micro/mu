@@ -40,9 +40,9 @@ func postLimitFor(acc *Account) (int, time.Duration) {
 		return 1<<31 - 1, time.Hour
 	}
 	if time.Since(acc.Created) < 24*time.Hour {
-		// New account: 10 actions per hour by default. Also caps the
-		// theoretical 24h ceiling at 240 — combined with the per-action
-		// credit cost, this is enough to stop a runaway bot.
+		// New account: 10 actions per hour by default, so a 240 ceiling over
+		// the first day. This is the whole defence against a runaway bot —
+		// posting no longer costs credits, so nothing else throttles it.
 		return envIntAuth("NEW_POST_LIMIT_PER_HOUR", 10), time.Hour
 	}
 	return envIntAuth("POST_LIMIT_PER_HOUR", 60), time.Hour

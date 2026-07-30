@@ -752,10 +752,26 @@ func getPricingData() []PricingItem { return Pricing() }
 // (1 credit = 1p), so the same figures serve both the credit and the currency
 // framing.
 func PricingTableHTML() string {
+	var free []string
+	var charged []PricingItem
+	for _, it := range Pricing() {
+		if it.Cost == 0 {
+			free = append(free, it.Description)
+			continue
+		}
+		charged = append(charged, it)
+	}
+
 	var sb strings.Builder
 	sb.WriteString(`<table class="stats-table">`)
-	sb.WriteString(`<tr><td>News, blogs, videos, markets, weather</td><td>included</td></tr>`)
-	for _, it := range Pricing() {
+	sb.WriteString(`<tr><td>Reading news, blogs, videos, markets, weather</td><td>included</td></tr>`)
+	// Zero-cost operations are listed as included rather than as "0p" rows —
+	// a price of zero is not a price.
+	if len(free) > 0 {
+		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>included</td></tr>`,
+			htmlEsc(strings.Join(free, ", "))))
+	}
+	for _, it := range charged {
 		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%dp</td></tr>`,
 			htmlEsc(it.Description), it.Cost))
 	}

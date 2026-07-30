@@ -80,10 +80,13 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// disagree about what something costs.
 	b.WriteString(`<table class="stats-table" style="font-size:14px">`)
 	b.WriteString(`<tr><th style="text-align:left">Action</th><th style="text-align:right">Credits</th></tr>`)
-	b.WriteString(`<tr><td>News, blogs, videos, markets, weather</td><td>included</td></tr>`)
+	b.WriteString(`<tr><td>Reading news, blogs, videos, markets, weather</td><td>included</td></tr>`)
 	for _, it := range wallet.Pricing() {
-		b.WriteString(`<tr><td>` + html.EscapeString(it.Description) + `</td><td>` +
-			fmt.Sprintf("%d", it.Cost) + `</td></tr>`)
+		cost := fmt.Sprintf("%d", it.Cost)
+		if it.Cost == 0 {
+			cost = "free"
+		}
+		b.WriteString(`<tr><td>` + html.EscapeString(it.Description) + `</td><td>` + cost + `</td></tr>`)
 	}
 	b.WriteString(`</table>`)
 	b.WriteString(`</div>`)

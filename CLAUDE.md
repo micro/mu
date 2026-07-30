@@ -52,3 +52,44 @@ go vet ./...            # vet
 - Agent tools registered in `internal/api/mcp.go` (static) and `main.go` (dynamic with handlers)
 - All client integrations follow the same pattern: auto-create accounts, conversation history, public/private mode
 - The main branch is `main`
+
+## The go-micro relationship
+
+go-micro is the substrate Mu is built on. It has three roles, and they must stay separate.
+
+**One-way dependency.** Mu depends on go-micro. go-micro must never depend on Mu.
+go-micro changes when *framework users* need something — never because Mu needs
+something. If Mu needs a capability go-micro lacks, it goes in Mu's own code, or
+Mu vendors or forks. A PR to `micro/go-micro` whose justification is "Mu needs
+this" is the failure mode: reject it and put the code in `micro/mu`.
+
+This is a policy, not an architecture. It is cheap to hold, and it targets a
+specific failure already lived through once: in 2019 a business was built that
+*depended on* go-micro, so the framework had two masters — a library wants
+stability and generality, a runtime wants opinionated constraints — and the
+engineering budget went on reconciling them instead of shipping either.
+
+Mu pins a released go-micro version. Forking is permitted and expected.
+
+**Not in the product surface.** A Mu user should never meet the words *go-micro*,
+*microservice*, or *framework* in the UI, in onboarding, in marketing copy, or in
+anything the agent says about itself. If a user-visible string mentions them,
+that is a bug. This covers the agent's system prompts and the public status page,
+which are easy to forget.
+
+The word *service* is fine — it is ordinary English, and the internal convention
+(service name == route == nav label == tool prefix) is good and invisible to
+users. What is banned is implementation vocabulary, not the concept.
+
+The README and developer docs are exempt: they are the funnel, and they are
+facts. The distinction is developer-facing (say it) vs customer-facing (don't).
+
+## Pricing
+
+A credit is charged when an operation costs us something to run: a model call,
+or a paid third party (Atlas Cloud for inference and images, Brave for web
+search, Google for places). Operations that only touch this instance's own
+storage are free — see the comment on the cost block in `wallet/wallet.go`.
+
+Abuse control is `auth.CheckPostRate`, not the credit charge. Keep the two jobs
+separate: credits price real cost, rate limits stop bots.

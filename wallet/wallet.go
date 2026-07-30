@@ -14,33 +14,51 @@ import (
 	"github.com/google/uuid"
 )
 
-// Credit costs per operation (in credits/pennies)
-// Read-only operations (news reading, blog reading, video watching, chat viewing) are included.
-// Only actions that create content, trigger searches, or use external APIs are charged.
+// Credit costs per operation (in credits/pennies).
+//
+// A credit is charged when an operation costs us something to run: a model
+// call, or a third-party API we pay for (Atlas Cloud for inference and images,
+// Brave for web search, Google for places). Everything else is free.
+//
+// Actions that only touch this instance's own storage — writing a post, a
+// comment, a status update, internal mail between two local users — are 0.
+// They have no marginal cost, so charging for them was friction on exactly the
+// behaviour the product wants more of.
+//
+// Abuse control for those does not depend on the charge: auth.CheckPostRate
+// runs ahead of the quota check on every write in the central gate, and caps
+// new accounts at 10 actions/hour and established ones at 60. That limit was
+// always the real defence; the credit was a second, weaker one that also
+// taxed ordinary use.
 var (
+	// Charged — these call a paid third party.
 	CostNewsSearch        = getEnvInt("CREDIT_COST_NEWS", 1)
 	CostVideoSearch       = getEnvInt("CREDIT_COST_VIDEO", 2)
 	CostChatQuery         = getEnvInt("CREDIT_COST_CHAT", 5)
-	CostBlogCreate        = getEnvInt("CREDIT_COST_BLOG_CREATE", 1)
-	CostMailSend          = getEnvInt("CREDIT_COST_MAIL", 1)  // Internal mail send
-	CostExternalEmail     = getEnvInt("CREDIT_COST_EMAIL", 4) // External email (SMTP delivery cost)
+	CostExternalEmail     = getEnvInt("CREDIT_COST_EMAIL", 4) // SMTP delivery to an external host
 	CostPlacesSearch      = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5)
 	CostPlacesNearby      = getEnvInt("CREDIT_COST_PLACES_NEARBY", 4)
 	CostWeatherForecast   = getEnvInt("CREDIT_COST_WEATHER", 1)
 	CostWeatherPollen     = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
 	CostWebSearch         = getEnvInt("CREDIT_COST_SEARCH", 5)
 	CostWebFetch          = getEnvInt("CREDIT_COST_FETCH", 3)
-	CostDBWrite           = getEnvInt("CREDIT_COST_DB_WRITE", 1)
 	CostAgentQuery        = getEnvInt("CREDIT_COST_AGENT", 7)
 	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 9)
-	CostSocialSearch      = getEnvInt("CREDIT_COST_SOCIAL", 1)
-	CostSocialPost        = getEnvInt("CREDIT_COST_SOCIAL_POST", 1)
-	CostSocialReply       = getEnvInt("CREDIT_COST_SOCIAL_REPLY", 1)
-	CostBlogComment       = getEnvInt("CREDIT_COST_BLOG_COMMENT", 1)
 	CostImageGenerate     = getEnvInt("CREDIT_COST_IMAGE", 15)
 	CostAppBuild          = getEnvInt("CREDIT_COST_APP_BUILD", 100)
 	CostAppEdit           = getEnvInt("CREDIT_COST_APP_EDIT", 50)
-	DailyQuota            = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 100))
+
+	// Free — local storage only. Rate-limited rather than charged. Still
+	// overridable by env for operators who want a charge back.
+	CostBlogCreate   = getEnvInt("CREDIT_COST_BLOG_CREATE", 0)
+	CostBlogComment  = getEnvInt("CREDIT_COST_BLOG_COMMENT", 0)
+	CostSocialPost   = getEnvInt("CREDIT_COST_SOCIAL_POST", 0)
+	CostSocialReply  = getEnvInt("CREDIT_COST_SOCIAL_REPLY", 0)
+	CostSocialSearch = getEnvInt("CREDIT_COST_SOCIAL", 0)
+	CostMailSend     = getEnvInt("CREDIT_COST_MAIL", 0) // local user to local user
+	CostDBWrite      = getEnvInt("CREDIT_COST_DB_WRITE", 0)
+
+	DailyQuota = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 100))
 )
 
 const DailyTransferCap = 10000
