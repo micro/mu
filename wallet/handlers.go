@@ -722,8 +722,8 @@ func Pricing() []PricingItem {
 		{OpNewsSearch, "News search", CostNewsSearch, "credits"},
 		{OpVideoSearch, "Video search", CostVideoSearch, "credits"},
 		{OpSocialSearch, "Social search", CostSocialSearch, "credits"},
-		{OpSocialPost, "Status update", CostSocialPost, "credits"},
-		{OpSocialReply, "Reply", CostSocialReply, "credits"},
+		{OpSocialPost, "Post or status update", CostSocialPost, "credits"},
+		{OpSocialReply, "Reply to a post", CostSocialReply, "credits"},
 		{OpBlogCreate, "Blog post", CostBlogCreate, "credits"},
 		{OpBlogComment, "Blog comment", CostBlogComment, "credits"},
 		{OpChatQuery, "Chat query", CostChatQuery, "credits"},
@@ -733,12 +733,15 @@ func Pricing() []PricingItem {
 		{OpWeatherPollen, "Weather pollen", CostWeatherPollen, "credits"},
 		{OpPlacesSearch, "Places search", CostPlacesSearch, "credits"},
 		{OpPlacesNearby, "Places nearby", CostPlacesNearby, "credits"},
-		{OpMailSend, "Send mail", CostMailSend, "credits"},
+		// "Message" not "mail": this is user-to-user on the platform and is
+		// free. Sending a real email leaves the instance over SMTP and is
+		// charged separately as "External email".
+		{OpMailSend, "Send message", CostMailSend, "credits"},
 		{OpExternalEmail, "External email", CostExternalEmail, "credits"},
 		{OpWebSearch, "Web search", CostWebSearch, "credits"},
 		{OpWebFetch, "Web fetch", CostWebFetch, "credits"},
 		{OpImageGenerate, "Image generation", CostImageGenerate, "credits"},
-		{OpDBWrite, "Database write", CostDBWrite, "credits"},
+		{OpDBWrite, "App data storage", CostDBWrite, "credits"},
 		{OpAppBuild, "App build (AI)", CostAppBuild, "credits"},
 		{OpAppEdit, "App edit (AI)", CostAppEdit, "credits"},
 	}
