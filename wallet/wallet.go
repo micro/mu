@@ -33,6 +33,7 @@ import (
 var (
 	// Charged — these call a paid third party.
 	CostNewsSearch        = getEnvInt("CREDIT_COST_NEWS", 1)
+	CostQuranSearch       = getEnvInt("CREDIT_COST_QURAN_SEARCH", 1)
 	CostVideoSearch       = getEnvInt("CREDIT_COST_VIDEO", 2)
 	CostChatQuery         = getEnvInt("CREDIT_COST_CHAT", 5)
 	CostExternalEmail     = getEnvInt("CREDIT_COST_EMAIL", 4) // SMTP delivery to an external host
@@ -72,6 +73,7 @@ func PaymentsEnabled() bool {
 // Operation types
 const (
 	OpNewsSearch        = "news_search"
+	OpQuranSearch       = "quran_search"
 	OpVideoSearch       = "video_search"
 	OpChatQuery         = "chat_query"
 	OpBlogCreate        = "blog_create"
@@ -506,6 +508,8 @@ func GetOperationCost(operation string) int {
 		return CostWeatherForecast
 	case OpWeatherPollen:
 		return CostWeatherPollen
+	case OpQuranSearch:
+		return CostQuranSearch
 	case OpWebSearch:
 		return CostWebSearch
 	case OpWebFetch:

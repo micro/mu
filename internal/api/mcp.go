@@ -602,7 +602,7 @@ var tools = []Tool{
 		Params: []ToolParam{
 			{Name: "q", Type: "string", Description: "Question or search query", Required: true},
 		},
-		WalletOp: "search",
+		WalletOp: "quran_search", // wallet.OpQuranSearch — string to avoid an import cycle
 		Handle: func(args map[string]any) (string, error) {
 			q, _ := args["q"].(string)
 			if q == "" {

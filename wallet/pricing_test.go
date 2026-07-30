@@ -1,6 +1,9 @@
 package wallet
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -17,6 +20,7 @@ func TestPricingCoversEveryBillableOperation(t *testing.T) {
 		cost int
 	}{
 		{OpNewsSearch, CostNewsSearch},
+		{OpQuranSearch, CostQuranSearch},
 		{OpVideoSearch, CostVideoSearch},
 		{OpChatQuery, CostChatQuery},
 		{OpBlogCreate, CostBlogCreate},
@@ -37,7 +41,7 @@ func TestPricingCoversEveryBillableOperation(t *testing.T) {
 		{OpSocialReply, CostSocialReply},
 		{OpImageGenerate, CostImageGenerate},
 		{OpAppBuild, CostAppBuild},
-		{OpAppEdit, CostAppEdit},
+		// OpAppEdit is intentionally not published — nothing charges it.
 	}
 
 	listed := map[string]PricingItem{}
@@ -98,5 +102,57 @@ func TestPricingDataMatchesPricing(t *testing.T) {
 		if api[i] != catalogue[i] {
 			t.Errorf("item %d differs: API %+v, catalogue %+v", i, api[i], catalogue[i])
 		}
+	}
+}
+
+// The list above is hand-maintained, which is how "App edit (AI)" came to be
+// published at 50 credits while nothing charged it, and how paid-app usage
+// came to be charged while nothing published it. This test instead reads the
+// charge sites out of the source: operations are wired up with string literals
+// (WalletOp: "agent_query", QuotaCheck(r, "chat_query")), not the Op
+// constants, so nothing links a constant to its use and drift is invisible.
+//
+// Every operation string the code actually charges must appear in Pricing().
+func TestEveryChargedOperationIsPublished(t *testing.T) {
+	// Movements of credit rather than charges for work — these are recorded on
+	// transactions but are not prices, so they do not belong in a cost table.
+	notAPrice := map[string]bool{
+		"topup": true, "refund": true, "transfer": true,
+		"app_revenue": true, "app_use": true, // app_use is variable, noted separately
+		"escrow_hold": true, "escrow_release": true, "escrow_refund": true,
+	}
+
+	published := map[string]bool{}
+	for _, it := range Pricing() {
+		published[it.Operation] = true
+	}
+
+	// WalletOp: "..." and QuotaCheck(r, "...") are the two ways an operation
+	// gets charged outside this package.
+	pat := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)"([a-z_]+)"`)
+
+	root := ".."
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/wallet/") {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		for _, m := range pat.FindAllStringSubmatch(string(b), -1) {
+			op := m[1]
+			if notAPrice[op] || published[op] {
+				continue
+			}
+			t.Errorf("%s charges %q but Pricing() does not publish it", path, op)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk: %v", err)
 	}
 }

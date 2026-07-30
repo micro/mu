@@ -88,7 +88,9 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`<tr><td>` + html.EscapeString(it.Description) + `</td><td>` + cost + `</td></tr>`)
 	}
+	b.WriteString(`<tr><td>Using a paid app</td><td>set by its author</td></tr>`)
 	b.WriteString(`</table>`)
+	b.WriteString(`<p style="font-size:13px;color:#888;margin:8px 0 0">Most apps are free. Paid ones show their price before you run them; the author keeps 90%.</p>`)
 	b.WriteString(`</div>`)
 
 	// Self-host

@@ -720,6 +720,7 @@ type pricingItem = PricingItem
 func Pricing() []PricingItem {
 	items := []PricingItem{
 		{OpNewsSearch, "News search", CostNewsSearch, "credits"},
+		{OpQuranSearch, "Quran and hadith search", CostQuranSearch, "credits"},
 		{OpVideoSearch, "Video search", CostVideoSearch, "credits"},
 		{OpSocialSearch, "Social search", CostSocialSearch, "credits"},
 		{OpSocialPost, "Post or status update", CostSocialPost, "credits"},
@@ -743,7 +744,10 @@ func Pricing() []PricingItem {
 		{OpImageGenerate, "Image generation", CostImageGenerate, "credits"},
 		{OpDBWrite, "App data storage", CostDBWrite, "credits"},
 		{OpAppBuild, "App build (AI)", CostAppBuild, "credits"},
-		{OpAppEdit, "App edit (AI)", CostAppEdit, "credits"},
+		// OpAppEdit is deliberately absent: nothing charges it. /apps/<slug>/edit
+		// is a plain code editor with no model call, so editing is free, and
+		// publishing it at 50 credits told users otherwise. The constant and
+		// cost var are kept for when an AI edit flow exists.
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].Cost < items[j].Cost })
 	return items
@@ -778,7 +782,13 @@ func PricingTableHTML() string {
 		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%dp</td></tr>`,
 			htmlEsc(it.Description), it.Cost))
 	}
+	// Paid apps are charged per request at a price the app's author sets, so
+	// there is no fixed figure to list — but the mechanism exists (see
+	// ChargeAppUse) and a cost table that omits it is not the source of truth
+	// it claims to be.
+	sb.WriteString(`<tr><td>Using a paid app</td><td>set by its author</td></tr>`)
 	sb.WriteString(`</table>`)
+	sb.WriteString(`<p class="text-sm text-muted">Most apps are free. Paid ones show their price before you run them; the author keeps 90%.</p>`)
 	return sb.String()
 }
 
