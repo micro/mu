@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/wallet"
 )
 
 // MCP protocol version
@@ -313,7 +314,7 @@ var tools = []Tool{
 		Description: "Chat with AI assistant",
 		Method:      "POST",
 		Path:        "/chat",
-		WalletOp:    "chat_query",
+		WalletOp:    wallet.OpChatQuery,
 		Params: []ToolParam{
 			{Name: "prompt", Type: "string", Description: "The message to send to the AI", Required: true},
 		},
@@ -329,7 +330,7 @@ var tools = []Tool{
 		Description: "Search for news articles",
 		Method:      "POST",
 		Path:        "/news",
-		WalletOp:    "news_search",
+		WalletOp:    wallet.OpNewsSearch,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "News search query", Required: true},
 		},
@@ -351,7 +352,7 @@ var tools = []Tool{
 		Description: "Create a new blog post",
 		Method:      "POST",
 		Path:        "/blog/post",
-		WalletOp:    "blog_create",
+		WalletOp:    wallet.OpBlogCreate,
 		Params: []ToolParam{
 			{Name: "title", Type: "string", Description: "Post title", Required: false},
 			{Name: "content", Type: "string", Description: "Post content (minimum 50 characters)", Required: true},
@@ -382,7 +383,7 @@ var tools = []Tool{
 		Description: "Search social media posts",
 		Method:      "POST",
 		Path:        "/social",
-		WalletOp:    "social_search",
+		WalletOp:    wallet.OpSocialSearch,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Search query for social posts", Required: true},
 		},
@@ -392,7 +393,7 @@ var tools = []Tool{
 		Description: "Search for videos",
 		Method:      "POST",
 		Path:        "/video",
-		WalletOp:    "video_search",
+		WalletOp:    wallet.OpVideoSearch,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Video search query", Required: true},
 		},
@@ -408,7 +409,7 @@ var tools = []Tool{
 		Description: "Send a mail message",
 		Method:      "POST",
 		Path:        "/mail",
-		WalletOp:    "external_email",
+		WalletOp:    wallet.OpExternalEmail,
 		Params: []ToolParam{
 			{Name: "to", Type: "string", Description: "Recipient username or email", Required: true},
 			{Name: "subject", Type: "string", Description: "Message subject", Required: true},
@@ -461,7 +462,7 @@ var tools = []Tool{
 		Description: "Post a message to the stream. Mention @micro to get an AI response. Costs 1 credit.",
 		Method:      "POST",
 		Path:        "/stream",
-		WalletOp:    "social_post",
+		WalletOp:    wallet.OpSocialPost,
 		Params: []ToolParam{
 			{Name: "content", Type: "string", Description: "Message text (max 1024 chars). Use @micro to invoke the AI agent.", Required: true},
 		},
@@ -530,7 +531,7 @@ var tools = []Tool{
 		Description: "Search for places by name or category, optionally near a location",
 		Method:      "POST",
 		Path:        "/places/search",
-		WalletOp:    "places_search",
+		WalletOp:    wallet.OpPlacesSearch,
 		Params: []ToolParam{
 			{Name: "q", Type: "string", Description: "Search query (e.g. cafe, pharmacy, Boots)", Required: true},
 			{Name: "near", Type: "string", Description: "Location name or address to search near", Required: false},
@@ -544,7 +545,7 @@ var tools = []Tool{
 		Description: "Find all places of interest near a given location",
 		Method:      "POST",
 		Path:        "/places/nearby",
-		WalletOp:    "places_nearby",
+		WalletOp:    wallet.OpPlacesNearby,
 		Params: []ToolParam{
 			{Name: "address", Type: "string", Description: "Address or postcode to search near", Required: false},
 			{Name: "lat", Type: "number", Description: "Latitude of the search location", Required: false},
@@ -602,7 +603,7 @@ var tools = []Tool{
 		Params: []ToolParam{
 			{Name: "q", Type: "string", Description: "Question or search query", Required: true},
 		},
-		WalletOp: "quran_search", // wallet.OpQuranSearch — string to avoid an import cycle
+		WalletOp: wallet.OpQuranSearch,
 		Handle: func(args map[string]any) (string, error) {
 			q, _ := args["q"].(string)
 			if q == "" {

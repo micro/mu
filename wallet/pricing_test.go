@@ -39,6 +39,8 @@ func TestPricingCoversEveryBillableOperation(t *testing.T) {
 		{OpSocialSearch, CostSocialSearch},
 		{OpSocialPost, CostSocialPost},
 		{OpSocialReply, CostSocialReply},
+		{OpAppCreate, CostAppCreate},
+		{OpStreamPost, CostStreamPost},
 		{OpImageGenerate, CostImageGenerate},
 		{OpAppBuild, CostAppBuild},
 		// OpAppEdit is intentionally not published — nothing charges it.
@@ -105,21 +107,37 @@ func TestPricingDataMatchesPricing(t *testing.T) {
 	}
 }
 
-// The list above is hand-maintained, which is how "App edit (AI)" came to be
-// published at 50 credits while nothing charged it, and how paid-app usage
-// came to be charged while nothing published it. This test instead reads the
-// charge sites out of the source: operations are wired up with string literals
-// (WalletOp: "agent_query", QuotaCheck(r, "chat_query")), not the Op
-// constants, so nothing links a constant to its use and drift is invisible.
+// Charge sites live outside this package and are wired up as
+// WalletOp: wallet.OpX or QuotaCheck(r, wallet.OpX). Nothing else links a
+// constant to its use, so an operation can be charged without ever being
+// published — that is how paid-app usage and a misspelled "search" op both
+// escaped the cost table, and how "App edit (AI)" stayed published at 50
+// credits while nothing charged it.
 //
-// Every operation string the code actually charges must appear in Pricing().
+// This reads the constant block and the charge sites out of the source, so it
+// cannot drift the way a hand-maintained list does.
 func TestEveryChargedOperationIsPublished(t *testing.T) {
-	// Movements of credit rather than charges for work — these are recorded on
-	// transactions but are not prices, so they do not belong in a cost table.
+	// Movements of credit rather than prices for work. These appear on
+	// transactions but do not belong in a cost table.
 	notAPrice := map[string]bool{
-		"topup": true, "refund": true, "transfer": true,
-		"app_revenue": true, "app_use": true, // app_use is variable, noted separately
+		"topup": true, "refund": true, "transfer": true, "app_revenue": true,
 		"escrow_hold": true, "escrow_release": true, "escrow_refund": true,
+		// Charged per request at a price the app author sets, so it has no
+		// fixed figure to publish; the table notes it separately.
+		"app_use": true,
+	}
+
+	// Constant name -> operation string, read from the source of truth.
+	src, err := os.ReadFile("wallet.go")
+	if err != nil {
+		t.Fatalf("read wallet.go: %v", err)
+	}
+	opValue := map[string]string{}
+	for _, m := range regexp.MustCompile(`(Op[A-Za-z]+)\s*=\s*"([a-z_]+)"`).FindAllStringSubmatch(string(src), -1) {
+		opValue[m[1]] = m[2]
+	}
+	if len(opValue) == 0 {
+		t.Fatal("found no Op constants — the parser is broken, not the code")
 	}
 
 	published := map[string]bool{}
@@ -127,12 +145,11 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 		published[it.Operation] = true
 	}
 
-	// WalletOp: "..." and QuotaCheck(r, "...") are the two ways an operation
-	// gets charged outside this package.
-	pat := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)"([a-z_]+)"`)
+	// Both forms: the constant (current) and a bare string (a regression).
+	site := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)(?:wallet\.(Op[A-Za-z]+)|"([a-z_]+)")`)
 
-	root := ".."
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	found := 0
+	err = filepath.Walk("..", func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
@@ -143,8 +160,17 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 		if err != nil {
 			return nil
 		}
-		for _, m := range pat.FindAllStringSubmatch(string(b), -1) {
-			op := m[1]
+		for _, m := range site.FindAllStringSubmatch(string(b), -1) {
+			op := m[2] // bare string form
+			if m[1] != "" {
+				var ok bool
+				op, ok = opValue[m[1]]
+				if !ok {
+					t.Errorf("%s charges wallet.%s, which is not a declared operation", path, m[1])
+					continue
+				}
+			}
+			found++
 			if notAPrice[op] || published[op] {
 				continue
 			}
@@ -154,5 +180,9 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("walk: %v", err)
+	}
+	// Guards against the scan silently matching nothing.
+	if found < 15 {
+		t.Errorf("only found %d charge sites; the scan is probably not matching", found)
 	}
 }

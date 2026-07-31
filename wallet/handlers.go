@@ -725,6 +725,8 @@ func Pricing() []PricingItem {
 		{OpSocialSearch, "Social search", CostSocialSearch, "credits"},
 		{OpSocialPost, "Post or status update", CostSocialPost, "credits"},
 		{OpSocialReply, "Reply to a post", CostSocialReply, "credits"},
+		{OpAppCreate, "Create an app", CostAppCreate, "credits"},
+		{OpStreamPost, "Console post", CostStreamPost, "credits"},
 		{OpBlogCreate, "Blog post", CostBlogCreate, "credits"},
 		{OpBlogComment, "Blog comment", CostBlogComment, "credits"},
 		{OpChatQuery, "Chat query", CostChatQuery, "credits"},

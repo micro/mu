@@ -7,6 +7,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/safefetch"
+	"mu/wallet"
 )
 
 // handleSDKFetch serves mu.server.fetch at /apps/{slug}/sdk/fetch: a guarded
@@ -40,7 +41,7 @@ func handleSDKFetch(w http.ResponseWriter, r *http.Request, slug string) {
 
 	// Metered: an external fetch has a real cost, so gate on the user's balance.
 	if QuotaCheck != nil {
-		canProceed, cost, qerr := QuotaCheck(r, "web_fetch")
+		canProceed, cost, qerr := QuotaCheck(r, wallet.OpWebFetch)
 		if !canProceed {
 			msg := "Insufficient credits"
 			if qerr != nil {

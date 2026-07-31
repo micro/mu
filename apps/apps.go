@@ -1517,7 +1517,7 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 
 	// Check quota — uses chat query credits
 	if QuotaCheck != nil {
-		canProceed, _, err := QuotaCheck(r, "chat_query")
+		canProceed, _, err := QuotaCheck(r, wallet.OpChatQuery)
 		if !canProceed {
 			msg := "Insufficient credits"
 			if err != nil {

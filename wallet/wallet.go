@@ -55,6 +55,8 @@ var (
 	CostBlogComment  = getEnvInt("CREDIT_COST_BLOG_COMMENT", 0)
 	CostSocialPost   = getEnvInt("CREDIT_COST_SOCIAL_POST", 0)
 	CostSocialReply  = getEnvInt("CREDIT_COST_SOCIAL_REPLY", 0)
+	CostAppCreate    = getEnvInt("CREDIT_COST_APP_CREATE", 0)
+	CostStreamPost   = getEnvInt("CREDIT_COST_STREAM_POST", 0)
 	CostSocialSearch = getEnvInt("CREDIT_COST_SOCIAL", 0)
 	CostMailSend     = getEnvInt("CREDIT_COST_MAIL", 0) // local user to local user
 	CostDBWrite      = getEnvInt("CREDIT_COST_DB_WRITE", 0)
@@ -92,6 +94,8 @@ const (
 	OpSocialSearch      = "social_search"
 	OpSocialPost        = "social_post"
 	OpSocialReply       = "social_reply"
+	OpAppCreate         = "app_create"
+	OpStreamPost        = "stream_post"
 	OpBlogComment       = "blog_comment"
 	OpAppBuild          = "app_build"
 	OpAppEdit           = "app_edit"
@@ -528,6 +532,10 @@ func GetOperationCost(operation string) int {
 		return CostSocialPost
 	case OpSocialReply:
 		return CostSocialReply
+	case OpAppCreate:
+		return CostAppCreate
+	case OpStreamPost:
+		return CostStreamPost
 	case OpBlogComment:
 		return CostBlogComment
 	case OpAppBuild:

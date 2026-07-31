@@ -626,7 +626,7 @@ func main() {
 		Name:        "search_web",
 		Aliases:     []string{"web_search"},
 		Description: "Search the web for current information and news",
-		WalletOp:    "web_search",
+		WalletOp:    wallet.OpWebSearch,
 		Params: []api.ToolParam{
 			{Name: "q", Type: "string", Description: "Search query", Required: true},
 		},
@@ -648,7 +648,7 @@ func main() {
 		Description: "Fetch a web page and return its cleaned readable content (strips ads, popups, navigation)",
 		Method:      "GET",
 		Path:        "/web/fetch",
-		WalletOp:    "web_fetch",
+		WalletOp:    wallet.OpWebFetch,
 		Params: []api.ToolParam{
 			{Name: "url", Type: "string", Description: "The URL to fetch", Required: true},
 		},
@@ -748,7 +748,7 @@ func main() {
 		Description: "Store a record in your database (a named collection). Private by default; set public=true to share it. Pass an id to update a record you own.",
 		Method:      "POST",
 		Path:        "/db",
-		WalletOp:    "db_write",
+		WalletOp:    wallet.OpDBWrite,
 		Params: []api.ToolParam{
 			{Name: "collection", Type: "string", Description: "Collection name (e.g. notes, tasks)", Required: true},
 			{Name: "data", Type: "object", Description: "The record's fields as a JSON object", Required: true},
@@ -857,7 +857,7 @@ func main() {
 		Name:        "images_generate",
 		Aliases:     []string{"image_generate"},
 		Description: "Generate an image from a text prompt. Returns a URL to the generated image.",
-		WalletOp:    "image_generate",
+		WalletOp:    wallet.OpImageGenerate,
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Describe the image to generate", Required: true},
 		},
@@ -1003,7 +1003,7 @@ func main() {
 	api.RegisterTool(api.Tool{
 		Name:        "weather_forecast",
 		Description: "Get the weather forecast for a location (current conditions plus the next few days).",
-		WalletOp:    "weather_forecast",
+		WalletOp:    wallet.OpWeatherForecast,
 		Params: []api.ToolParam{
 			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
 			{Name: "lon", Type: "number", Description: "Longitude of the location", Required: true},
@@ -1163,7 +1163,7 @@ func main() {
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "apps_build",
 		Description: "Build a small app from a natural language description, save it, and return the app details with URL. Apps are one of: a tracker (a list you add entries to, optionally totalling a number), a checklist, or a counter.",
-		WalletOp:    "app_build",
+		WalletOp:    wallet.OpAppBuild,
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Description of the app to build (e.g. 'an expense tracker', 'a packing checklist', 'a water intake counter')", Required: true},
 		},
@@ -1218,7 +1218,7 @@ func main() {
 	api.RegisterTool(api.Tool{
 		Name:        "apps_run",
 		Description: "Run JavaScript code in a sandboxed environment and return the result. Use for calculations, data processing, or any computation the user needs.",
-		WalletOp:    "agent_query",
+		WalletOp:    wallet.OpAgentQuery,
 		Params: []api.ToolParam{
 			{Name: "code", Type: "string", Description: "JavaScript code to execute. The code runs as a function body — use 'return' to output a value. Has access to mu.ai(), mu.web.fetch(), mu.db and mu.store for platform features.", Required: true},
 		},
@@ -1258,7 +1258,7 @@ func main() {
 		Description: "Ask the AI agent a question. The agent can search news, markets, web, video, weather, places, and more to answer your question.",
 		Method:      "POST",
 		Path:        "/agent/run",
-		WalletOp:    "agent_query",
+		WalletOp:    wallet.OpAgentQuery,
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Your question or request", Required: true},
 		},
@@ -2085,12 +2085,12 @@ func chargedWriteOp(r *http.Request) string {
 		return wallet.OpBlogComment
 	// Apps
 	case path == "/apps/new":
-		return wallet.OpSocialPost
+		return wallet.OpAppCreate
 	case path == "/apps/generate":
 		return wallet.OpAppBuild
 	// Stream (console)
 	case path == "/stream":
-		return wallet.OpSocialPost
+		return wallet.OpStreamPost
 	}
 	return ""
 }

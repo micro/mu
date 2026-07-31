@@ -17,6 +17,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/wallet"
 )
 
 // Model represents an available LLM model tier for agent queries.
@@ -41,13 +42,13 @@ var Models = []Model{
 	{
 		ID:       "standard",
 		Name:     "Fast",
-		WalletOp: "agent_query",
+		WalletOp: wallet.OpAgentQuery,
 		Provider: ai.ProviderDefault,
 	},
 	{
 		ID:       "premium",
 		Name:     "Best",
-		WalletOp: "agent_query_premium",
+		WalletOp: wallet.OpAgentQueryPremium,
 		Provider: ai.ProviderAnthropic,
 		Model:    defaultPremiumModel,
 	},
