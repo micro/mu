@@ -105,20 +105,3 @@ func TestCallDynamicStampsIdentityWhenAbsent(t *testing.T) {
 		t.Errorf("handler saw account %v, want bob", rsp["saw_account"])
 	}
 }
-
-// Agent tools are derived from the registry, so a service is model-visible by
-// default. Anything whose side effects should only follow from a user's own
-// action must be excluded — the agent reads attacker-controlled text, so a tool
-// it holds is a tool prompt injection holds.
-func TestServicesWithUserOnlySideEffectsAreNotAgentTools(t *testing.T) {
-	for _, name := range []string{"wallet", "db"} {
-		if AgentExposed(name) {
-			t.Errorf("%q is exposed to the model; charging credits and deleting records must not be model-driven", name)
-		}
-	}
-	for _, name := range []string{"news", "weather", "web", "search", "mail"} {
-		if !AgentExposed(name) {
-			t.Errorf("%q should be an agent tool", name)
-		}
-	}
-}

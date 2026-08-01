@@ -70,11 +70,6 @@ func nativeServices(public bool) []string {
 	sort.Strings(all)
 	out := make([]string, 0, len(all))
 	for _, s := range all {
-		// Some services are callable by apps and other services but must never
-		// be model-driven — see internal/service.AgentExposed.
-		if !service.AgentExposed(s) {
-			continue
-		}
 		// Guests can't reach account-scoped or metered services; the policy
 		// lives in internal/service so the agent and the app SDK share it.
 		if public && service.AccountScoped(s) {
@@ -109,6 +104,8 @@ var agentToolLabels = map[string]string{
 	"islam":   "Islam",
 	"events":  "Events",
 	"web":     "Web",
+	"db":      "Storage",
+	"wallet":  "Wallet",
 }
 
 // AgentToolLabel returns a friendly display label for a service tool id.
@@ -170,6 +167,51 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 				delete(call.Input, "account_id")
 			}
 			return next(service.WithAccount(ctx, accountID), call)
+		}
+	}
+}
+
+// destructiveTools are the individual service methods the model may not call,
+// keyed "service.method".
+//
+// Every registered service becomes a tool — that is the point of deriving from
+// the registry, and withholding a whole service to protect one method was both
+// too blunt and inconsistent: the agent already spends credits every time it
+// generates an image. So the guard belongs on the method.
+//
+// What earns a place here is a side effect that is irreversible and that no
+// user asked for. The agent reads attacker-controlled text — an email body, a
+// page it just fetched — so a tool it holds is a tool prompt injection holds.
+// Reading a balance is fine. Spending one, or deleting records, is not.
+var destructiveTools = map[string]bool{
+	"wallet.charge": true, // spending must follow from the user's own action
+	"db.delete":     true, // irreversible; the user can delete from the app
+}
+
+// toolBlocked reports whether a tool call names a destructive method. go-micro
+// builds tool names from "service.Method" but providers sanitise separators
+// differently, so both forms are matched.
+func toolBlocked(name string) bool {
+	n := strings.ToLower(strings.TrimSpace(name))
+	if destructiveTools[n] {
+		return true
+	}
+	return destructiveTools[strings.ReplaceAll(n, "_", ".")]
+}
+
+// blockDestructiveTools refuses those calls before they run, telling the model
+// why so it can say so rather than silently looping.
+func blockDestructiveTools() gmai.ToolWrapper {
+	return func(next gmai.ToolHandler) gmai.ToolHandler {
+		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+			if toolBlocked(call.Name) {
+				return gmai.ToolResult{
+					ID:      call.ID,
+					Refused: "not_permitted",
+					Content: `{"error":"This action can only be taken by the user directly, not by the assistant."}`,
+				}
+			}
+			return next(ctx, call)
 		}
 	}
 }
@@ -262,7 +304,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh guest requests.
-	toolWrappers := append([]gmai.ToolWrapper{injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
+	toolWrappers := append([]gmai.ToolWrapper{blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
 	a = service.NewAgent(nativeAgentInstanceName(), sys, "atlascloud", key, filterServices(nativeServices(opts.Public), opts.Tools),
 		gmagent.Model(ai.ModelDeepSeekPro),
 		gmagent.MaxSteps(6),

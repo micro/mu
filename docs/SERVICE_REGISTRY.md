@@ -41,8 +41,8 @@ predates its service; both are the same capability with two surfaces.
 | `apps` | `/apps` | ✅ | | User apps: build, run, edit |
 | `index` | — | ✅ | ✅ | Search across the caller's own content |
 | `web` | — | ✅ | | Fetch a URL, return readable content |
-| `db` | — | ❌ | ✅ | Per-user records, for services and apps |
-| `wallet` | `/wallet` | ❌ | ✅ | Credit check, charge, balance |
+| `db` | — | ✅ | ✅ | Per-user records, for services and apps |
+| `wallet` | `/wallet` | ✅ | ✅ | Credit check, charge, balance |
 
 ## Account-scoped
 
@@ -55,19 +55,29 @@ Identity comes from the **call context**, never from a request field — see
 supplies and re-stamps it from the context, so no caller can scope a call to
 someone else by naming them.
 
-## Not exposed to the agent
+## Destructive methods
 
-Agent tools are derived from the registry, so **registering a service exposes it
-to the model by default**. Two are excluded (`AgentExposed`, same file):
+**Every registered service becomes an agent tool.** That is the point of
+deriving from the registry — register a service and the model can use it.
 
-- **`wallet`** — spending credits should follow from the user's own action
-- **`db`** — generic record CRUD including delete; apps use `mu.db` instead
+The guard is per *method*, not per service (`destructiveTools` in
+`agent/native.go`). Two are withheld:
 
-Not because these are dangerous in themselves. The agent reads
+- **`wallet.charge`** — spending should follow from the user's own action
+- **`db.delete`** — irreversible, and the user can delete from the app
+
+Everything else on those services is available: the agent can read a balance,
+check a cost, and create, list, get and update records.
+
+The reasoning is not that the services are dangerous. The agent reads
 attacker-controlled text — an email body, a page it just fetched — so any tool
-the agent holds is a tool prompt injection holds. A capability whose side
-effects should only ever follow from a deliberate user action does not belong in
-that set.
+it holds is a tool prompt injection holds. What earns a place on that list is an
+irreversible side effect nobody asked for. Note the agent *already* spends
+credits: generating an image costs 15. Withholding a whole service to protect
+one method would be both too blunt and inconsistent with that.
+
+A blocked call is refused before it runs and the model is told why, so it can
+explain rather than retry.
 
 ## Adding one
 
@@ -75,7 +85,8 @@ that set.
 2. Write `Server` with typed methods and `description` tags.
 3. `service.Register("name", new(Server))` from a `Load()`, called in `main.go`.
 4. If it holds per-user data or spends credits, add it to `accountScoped`.
-5. If its side effects should not be model-driven, add it to `notAgentTools`.
+5. If a method is irreversible and should only follow from a user's own
+   action, add it to `destructiveTools` in `agent/native.go`.
 6. Add a row above.
 
 Nothing else is needed. The agent, the picker, the app SDK and the status page
