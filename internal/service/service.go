@@ -13,7 +13,9 @@ package service
 
 import (
 	"context"
+	"log"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 
@@ -70,14 +72,47 @@ func Init() {
 	if inited {
 		return
 	}
-	reg = registry.NewMemoryRegistry()
+	// MU_REGISTRY selects how services find each other, and so whether a
+	// service can live outside this process at all.
+	//
+	//	unset / "memory"  — everything in one binary. The default: no ports, no
+	//	                    daemon, nothing to configure, and nothing external
+	//	                    can register.
+	//	"mdns"            — zero-config discovery on the local network. A
+	//	                    service run as its own process from any repo shows
+	//	                    up in Mu without Mu importing it.
+	//
+	// etcd, consul and nats registries exist in go-micro subpackages and are
+	// deliberately not imported: each drags a substantial dependency tree into
+	// a binary that mostly runs standalone. Add one here when an instance needs
+	// discovery beyond a single network.
+	//
+	// Anything other than memory means calls cross a process boundary, so the
+	// in-memory transport cannot be used.
+	//
+	// Note nothing authenticates a registry entry. On a shared registry,
+	// anything that can reach it can register under any name — see the guard in
+	// Services(), which keeps a remote node from taking over a local one, and
+	// treat the network itself as the trust boundary until there is a real one.
+	switch spec := registrySpec(); spec {
+	case "", "memory":
+		reg = registry.NewMemoryRegistry()
+		// In-memory transport: services are in-process, so calls pass messages
+		// over channels instead of a loopback TCP/HTTP socket. Client and every
+		// server must share this one instance. This is what keeps a
+		// service.Call cheap (single-digit µs) rather than a ~400µs HTTP
+		// round-trip.
+		tr = transport.NewMemoryTransport()
+	case "mdns":
+		reg = registry.NewMDNSRegistry()
+		tr = transport.NewHTTPTransport()
+	default:
+		log.Printf("service: unknown MU_REGISTRY %q, falling back to in-process", spec)
+		reg = registry.NewMemoryRegistry()
+		tr = transport.NewMemoryTransport()
+	}
 	br = broker.NewMemoryBroker()
 	_ = br.Connect()
-	// In-memory transport: services are in-process, so calls pass messages over
-	// channels instead of a loopback TCP/HTTP socket. Client and every server
-	// must share this one instance. This is what keeps a service.Call cheap
-	// (single-digit µs) rather than a ~400µs HTTP round-trip.
-	tr = transport.NewMemoryTransport()
 	cl = client.NewClient(
 		client.Registry(reg),
 		client.Selector(selector.NewSelector(selector.Registry(reg))),
@@ -86,6 +121,25 @@ func Init() {
 	)
 	st = newDurableStore()
 	inited = true
+}
+
+// registrySpec reads the registry selection. Env only: it is needed during
+// Init, before the settings store is loaded.
+func registrySpec() string {
+	return strings.TrimSpace(strings.ToLower(os.Getenv("MU_REGISTRY")))
+}
+
+// Advertise is the address an out-of-process service should be reachable on.
+// In-process services advertise loopback with an ephemeral port; when the
+// registry is networked, that address has to be one other hosts can dial.
+func advertiseAddress() string {
+	if addr := strings.TrimSpace(os.Getenv("MU_ADVERTISE")); addr != "" {
+		return addr
+	}
+	if spec := registrySpec(); spec != "" && spec != "memory" {
+		return ":0" // all interfaces, ephemeral port
+	}
+	return "127.0.0.1:0"
 }
 
 // newDurableStore returns a file-backed store (bbolt under ~/.mu/store) so data
@@ -128,7 +182,7 @@ func Register(name string, handlers ...any) error {
 	ensure()
 	svc := gomicro.New(
 		gomicro.Name(name),
-		gomicro.Address("127.0.0.1:0"), // in-process: advertise loopback only
+		gomicro.Address(advertiseAddress()), // loopback in-process; routable when networked
 		gomicro.Registry(reg),
 		gomicro.Client(cl),
 		gomicro.Broker(br),
@@ -190,12 +244,48 @@ func StartMCPGateway(addr string) error {
 
 // Services returns the names of the registered in-process go-micro services.
 func Services() []string {
+	ensure()
+
 	mu.Lock()
-	defer mu.Unlock()
-	out := make([]string, 0, len(services))
+	local := make(map[string]bool, len(services))
 	for _, s := range services {
-		out = append(out, s.Name())
+		local[s.Name()] = true
 	}
+	mu.Unlock()
+
+	// Read the registry, not just what this process hosts. With the default
+	// in-memory registry those are the same set. With a networked one they are
+	// not: a service running as its own process — from micro/xyz, or anything
+	// else — registers itself and appears here without Mu importing it or
+	// knowing it exists. Every surface downstream (agent tools, the picker, the
+	// app SDK, status) reads this function, so discovery lands everywhere at
+	// once.
+	seen := map[string]bool{}
+	out := make([]string, 0, len(local))
+	for name := range local {
+		seen[name] = true
+		out = append(out, name)
+	}
+
+	if svcs, err := reg.ListServices(); err == nil {
+		for _, s := range svcs {
+			name := s.Name
+			if name == "" || seen[name] {
+				continue
+			}
+			// A remote node must not take over a name this process hosts.
+			// Nothing authenticates a registry entry, so on a shared registry
+			// anything reachable could otherwise claim "mail" or "wallet".
+			// Local always wins, and the collision is worth knowing about.
+			if local[name] {
+				continue
+			}
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+
+	sort.Strings(out)
 	return out
 }
 
