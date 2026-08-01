@@ -29,6 +29,7 @@ import (
 	"mu/client/discord"
 	"mu/client/telegram"
 	"mu/client/whatsapp"
+	"mu/db"
 	"mu/docs"
 	"mu/events"
 	"mu/home"
@@ -61,6 +62,7 @@ import (
 	"mu/video"
 	"mu/wallet"
 	"mu/weather"
+	"mu/web"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -173,6 +175,8 @@ func main() {
 	// load markets, reminder, wallet
 	markets.Load()
 	islam.Load()
+	web.Load()
+	db.Load()
 	images.Load()
 	events.Load()
 	events.OnFire = func(accountID, title, note string) {
@@ -209,6 +213,7 @@ func main() {
 		}
 	}
 	wallet.Load()
+	wallet.LoadService()
 	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
 	discord.Load()
 	telegram.Load()
@@ -643,8 +648,8 @@ func main() {
 
 	// web_fetch tool — fetch a URL and return cleaned readable content
 	api.RegisterTool(api.Tool{
-		Name:        "search_fetch",
-		Aliases:     []string{"web_fetch"},
+		Name:        "web_fetch",
+		Aliases:     []string{"search_fetch"},
 		Description: "Fetch a web page and return its cleaned readable content (strips ads, popups, navigation)",
 		Method:      "GET",
 		Path:        "/web/fetch",

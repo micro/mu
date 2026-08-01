@@ -70,6 +70,11 @@ func nativeServices(public bool) []string {
 	sort.Strings(all)
 	out := make([]string, 0, len(all))
 	for _, s := range all {
+		// Some services are callable by apps and other services but must never
+		// be model-driven — see internal/service.AgentExposed.
+		if !service.AgentExposed(s) {
+			continue
+		}
 		// Guests can't reach account-scoped or metered services; the policy
 		// lives in internal/service so the agent and the app SDK share it.
 		if public && service.AccountScoped(s) {
@@ -103,6 +108,7 @@ var agentToolLabels = map[string]string{
 	"images":  "Images",
 	"islam":   "Islam",
 	"events":  "Events",
+	"web":     "Web",
 }
 
 // AgentToolLabel returns a friendly display label for a service tool id.

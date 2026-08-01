@@ -17,10 +17,31 @@ var accountScoped = map[string]bool{
 	"index":  true, // searches the caller's own mail alongside public content
 	"images": true, // generation is metered against their wallet
 	"events": true, // personal schedule
+	"db":     true, // per-user records
+	"wallet": true, // spends the caller's credits
 }
 
 // AccountScoped reports whether a service requires an authenticated caller.
 func AccountScoped(name string) bool { return accountScoped[strings.ToLower(name)] }
+
+// notAgentTools names services other code may call — apps through the SDK,
+// services through the client — but which must never be handed to the model as
+// tools.
+//
+// Agent tools are derived from the registry, so registering a service exposes
+// it to the model by default. That is right for capabilities (read the news,
+// fetch a page) and wrong for anything whose side effects should only ever
+// follow from a user's own action. The agent reads attacker-controlled text —
+// an email body, a fetched page — so a tool it holds is a tool prompt
+// injection holds.
+var notAgentTools = map[string]bool{
+	"wallet": true, // spending credits must not be model-driven
+	"db":     true, // generic record CRUD, including delete; apps use mu.db
+}
+
+// AgentExposed reports whether a registered service may be offered to the
+// model as a tool.
+func AgentExposed(name string) bool { return !notAgentTools[strings.ToLower(name)] }
 
 // Endpoints returns the RPC endpoint names a registered service exposes
 // (e.g. "Server.Forecast"), sorted. It reads the live registry, so the set is

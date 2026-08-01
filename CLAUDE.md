@@ -34,6 +34,9 @@ A personal home server. News, mail, search, weather, markets, video — the ever
 | `client/whatsapp/` | WhatsApp Business API integration |
 | `wallet/` | Credit system, Stripe, x402 |
 | `search/` | Brave web search, readability reader |
+| `db/` | Per-user records for services and apps (headless) |
+| `web/` | Fetch a URL and return readable content (headless) |
+| `index/` | Search across the caller's own content (headless) |
 | `docs/` | Embedded documentation served at /docs |
 
 ## Development
@@ -52,6 +55,9 @@ go vet ./...            # vet
 - Agent tools registered in `internal/api/mcp.go` (static) and `main.go` (dynamic with handlers)
 - All client integrations follow the same pattern: auto-create accounts, conversation history, public/private mode
 - The main branch is `main`
+- One service per top-level directory, named for the service. See
+  `docs/SERVICE_REGISTRY.md` for what is registered, which are headless, which
+  are account-scoped, and which are deliberately not exposed to the agent
 
 ## The go-micro relationship
 

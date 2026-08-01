@@ -1,10 +1,12 @@
 # The 100 everyday services
 
 Mu's thesis: the everyday internet, handled by one agent — each capability a
-real, self-hostable service, not a feature buried in a big platform. We ship
-about a dozen today (news, mail, markets, weather, search, video, social, blog,
-places, reminder, payments, apps, chat). This is the map of the ~100 services
-people use every day — the dozen we have, and the ~88 to build next.
+real, self-hostable service, not a feature buried in a big platform. This is the
+map of the ~100 services people use every day, and the ones to build next.
+
+For what is registered today and how the pieces differ, see
+[SERVICE_REGISTRY.md](SERVICE_REGISTRY.md) — that file is the source of truth
+for what exists; this one is the roadmap.
 
 The existing services are the template. Each new one is the same shape:
 
