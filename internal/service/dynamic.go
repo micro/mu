@@ -91,7 +91,14 @@ func methodNames(eps []string) []string {
 
 // CallDynamic invokes a service method known only by name, passing and
 // returning untyped maps. This is what lets a caller that has no compile-time
-// knowledge of a service — an app using the SDK — still use it.
+// knowledge of a service — an app using the SDK, the agent dispatching a tool,
+// a service calling another service — still use it.
+//
+// It is also the one place account identity is bound. Whatever the caller put
+// in args["account_id"] is discarded and replaced with the authenticated
+// account from the context, so no dynamic caller can scope a call to someone
+// else by naming them. Callers set identity with WithAccount at the boundary
+// where a session exists; everything downstream inherits it.
 func CallDynamic(ctx context.Context, svc, method string, args map[string]any) (map[string]any, error) {
 	ep, err := ResolveEndpoint(svc, method)
 	if err != nil {
@@ -100,6 +107,15 @@ func CallDynamic(ctx context.Context, svc, method string, args map[string]any) (
 	if args == nil {
 		args = map[string]any{}
 	}
+
+	// Identity comes from the context, never from the caller's arguments.
+	// Handlers still read account_id off their request struct, so it is stamped
+	// here rather than removed — but the value is Mu's, not the caller's.
+	delete(args, "account_id")
+	if acc := AccountFrom(ctx); acc != "" {
+		args["account_id"] = acc
+	}
+
 	var rsp map[string]any
 	if err := Call(ctx, svc, ep, &args, &rsp); err != nil {
 		return nil, err

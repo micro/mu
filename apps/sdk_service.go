@@ -24,7 +24,7 @@ const sdkServiceTimeout = 30 * time.Second
 // Security model, mirroring the agent's tool path:
 //   - the service set is the live registry, so an app can only reach real,
 //     registered capabilities;
-//   - account-scoped services (mail, recall, images, events) require a signed-in
+//   - account-scoped services (mail, index, images, events) require a signed-in
 //     caller, and the account id is bound from the session — an app can never
 //     name whose data it wants;
 //   - any account_id supplied by the app is discarded before dispatch.
@@ -69,20 +69,15 @@ func handleSDKService(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
-	// Bind identity server-side. Whatever the app sent for account_id is
-	// dropped; a signed-in caller's id is injected. An app must never be able
-	// to read or write another user's data by naming them.
+	// Bind identity server-side, on the context rather than in the arguments.
+	// CallDynamic stamps it into the request and drops anything the app sent,
+	// so an app can never read or write another user's data by naming them.
 	args := req.Args
 	if args == nil {
 		args = map[string]any{}
-	} else {
-		delete(args, "account_id")
-	}
-	if caller != "" {
-		args["account_id"] = caller
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), sdkServiceTimeout)
+	ctx, cancel := context.WithTimeout(service.WithAccount(r.Context(), caller), sdkServiceTimeout)
 	defer cancel()
 
 	rsp, err := service.CallDynamic(ctx, svc, req.Method, args)

@@ -153,12 +153,17 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 			if call.Input == nil {
 				call.Input = map[string]any{}
 			}
+			// Set both. The context is the mechanism handlers should move to,
+			// but the agent's tool calls are dispatched by go-micro straight to
+			// the service — not through CallDynamic — so the request field is
+			// still what today's handlers read. Either way the model's value is
+			// overwritten, never trusted.
 			if accountID != "" {
 				call.Input["account_id"] = accountID
 			} else {
 				delete(call.Input, "account_id")
 			}
-			return next(ctx, call)
+			return next(service.WithAccount(ctx, accountID), call)
 		}
 	}
 }
