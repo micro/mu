@@ -746,10 +746,9 @@ func Pricing() []PricingItem {
 		{OpImageGenerate, "Image generation", CostImageGenerate, "credits"},
 		{OpDBWrite, "App data storage", CostDBWrite, "credits"},
 		{OpAppBuild, "App build (AI)", CostAppBuild, "credits"},
-		// OpAppEdit is deliberately absent: nothing charges it. /apps/<slug>/edit
-		// is a plain code editor with no model call, so editing is free, and
-		// publishing it at 50 credits told users otherwise. The constant and
-		// cost var are kept for when an AI edit flow exists.
+		// Charged again now that /apps/<slug>/ai-edit exists. Plain manual
+		// editing at /apps/<slug>/edit remains free — only the model call costs.
+		{OpAppEdit, "App edit (AI)", CostAppEdit, "credits"},
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].Cost < items[j].Cost })
 	return items

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"strings"
+
+	"mu/wallet"
 )
 
 // slugify turns a name into a URL-safe slug.
@@ -37,6 +39,22 @@ func editPageHTML(a *App) string {
 	escapedIcon, _ := json.Marshal(a.Icon)
 	escapedSlug, _ := json.Marshal(a.Slug)
 
+	// Ask-for-a-change panel. Editing the stored spec keeps everything the
+	// instruction does not mention; regenerating from a description would not.
+	aiPanel := fmt.Sprintf(`<form method="POST" action="/apps/%s/ai-edit" class="ai-edit">
+  <label for="instruction">Change it with AI</label>
+  <div class="ai-edit-row">
+    <input type="text" id="instruction" name="instruction" required
+           placeholder="e.g. add a Notes field, or change the total to average">
+    <button type="submit">Apply</button>
+  </div>
+  <p class="ai-edit-note">%d credits. Your current version is saved first — undo any change from <a href="/apps/%s/versions">versions</a>.</p>
+</form>`, htmlpkg.EscapeString(a.Slug), wallet.CostAppEdit, htmlpkg.EscapeString(a.Slug))
+
+	if a.Spec == nil {
+		aiPanel = `<div class="ai-edit"><p class="ai-edit-note">This app was built before AI edits were supported, so there is no spec to change. Fork it to get an editable copy, or edit the code directly below.</p></div>`
+	}
+
 	savedAt := "Last saved " + a.UpdatedAt.Format("2 Jan 2006 15:04")
 	versionLink := ""
 	if len(a.Versions) > 0 {
@@ -65,6 +83,13 @@ func editPageHTML(a *App) string {
 .save-bar input.name { flex: 1; min-width: 150px; }
 .save-bar button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .status-msg { font-size: 13px; color: #999; margin-left: 8px; }
+.ai-edit { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa; }
+.ai-edit label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.ai-edit-row { display: flex; gap: 8px; }
+.ai-edit-row input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; }
+.ai-edit-row button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.ai-edit-note { font-size: 12px; color: #888; margin: 8px 0 0; }
+@media (max-width: 600px) { .ai-edit-row { flex-direction: column; } }
 @media (max-width: 768px) {
   .save-bar { flex-direction: column; align-items: stretch; }
   .save-bar input.name { width: 100%%; min-width: auto; }
@@ -80,6 +105,8 @@ func editPageHTML(a *App) string {
       <button onclick="deleteApp()" style="padding:4px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;color:#c00;cursor:pointer;font-size:13px;font-family:inherit">Delete</button>
     </div>
   </div>
+
+  %s
 
   <div style="display:flex;gap:12px;flex-wrap:wrap;">
     <div style="flex:1;min-width:300px;">
@@ -238,5 +265,5 @@ function deleteApp() {
   .then(function(r) { if (r.ok) window.location.href = '/apps'; else throw new Error('Delete failed'); })
   .catch(function(e) { document.getElementById('statusMsg').textContent = e.message; });
 }
-</script>`, htmlpkg.EscapeString(a.Slug), savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags, fmt.Sprintf("%v", a.Public), a.Price)
+</script>`, htmlpkg.EscapeString(a.Slug), aiPanel, savedAt, versionLink, escapedIcon, escapedSlug, escapedCode, escapedName, escapedDesc, escapedTags, fmt.Sprintf("%v", a.Public), a.Price)
 }

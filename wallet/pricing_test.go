@@ -43,7 +43,7 @@ func TestPricingCoversEveryBillableOperation(t *testing.T) {
 		{OpStreamPost, CostStreamPost},
 		{OpImageGenerate, CostImageGenerate},
 		{OpAppBuild, CostAppBuild},
-		// OpAppEdit is intentionally not published — nothing charges it.
+		{OpAppEdit, CostAppEdit},
 	}
 
 	listed := map[string]PricingItem{}

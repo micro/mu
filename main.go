@@ -2088,6 +2088,8 @@ func chargedWriteOp(r *http.Request) string {
 		return wallet.OpAppCreate
 	case path == "/apps/generate":
 		return wallet.OpAppBuild
+	case strings.HasPrefix(path, "/apps/") && strings.HasSuffix(path, "/ai-edit"):
+		return wallet.OpAppEdit
 	// Stream (console)
 	case path == "/stream":
 		return wallet.OpStreamPost

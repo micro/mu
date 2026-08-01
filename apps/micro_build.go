@@ -55,6 +55,7 @@ func BuildMicroApp(description, authorID, authorName string) (*App, error) {
 		Author:      authorName,
 		Icon:        emojiSVG(spec.Emoji),
 		HTML:        html,
+		Spec:        spec,
 		Tags:        spec.Type,
 		Public:      true,
 		CreatedAt:   now,
