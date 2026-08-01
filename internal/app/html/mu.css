@@ -2239,6 +2239,38 @@ a.highlight {
   #nav-container ~ #content {
     padding-left: 240px; /* Account for fixed sidebar */
   }
+
+  /* The hamburger is a mobile-only control by default; on desktop it becomes
+     a collapse toggle, since the sidebar is always present rather than an
+     overlay. Same button, different meaning per viewport. */
+  #menu-toggle {
+    display: flex;
+  }
+
+  #nav-container {
+    transition: transform 0.18s ease;
+  }
+  #nav-container ~ #content {
+    transition: padding-left 0.18s ease;
+  }
+
+  /* Collapsed: slide the sidebar off-canvas and reclaim its gutter. The
+     selector carries body.nav-collapsed so it outranks the padding rule
+     above rather than relying on source order. */
+  body.nav-collapsed #nav-container {
+    transform: translateX(-100%);
+  }
+  body.nav-collapsed #nav-container ~ #content {
+    padding-left: 40px;
+  }
+}
+
+/* Respect a user who has asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  #nav-container,
+  #nav-container ~ #content {
+    transition: none;
+  }
 }
 
 /* Pricing plans. These were inline styles, which no media query could override

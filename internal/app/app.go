@@ -303,6 +303,15 @@ var Template = `
     <script src="/mu.js?` + Version + `"></script>
   </head>
   <body%s>
+    <script>
+      // Restore the collapsed sidebar before anything paints. Doing this in a
+      // deferred script would show the sidebar for a frame and then yank it.
+      try {
+        if (localStorage.getItem('mu_nav_collapsed') === '1') {
+          document.body.classList.add('nav-collapsed');
+        }
+      } catch (e) {}
+    </script>
     <div id="head">
       <button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
       <div id="brand">
@@ -360,7 +369,15 @@ var Template = `
         );
       }
       
+      // One button, two meanings. On a phone the sidebar is an overlay that
+      // slides in, so this opens it. On desktop the sidebar is always there,
+      // so this collapses it out of the way and the choice is remembered.
       function toggleMenu() {
+        if (window.matchMedia('(min-width: 901px)').matches) {
+          var collapsed = document.body.classList.toggle('nav-collapsed');
+          try { localStorage.setItem('mu_nav_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+          return;
+        }
         document.body.classList.toggle('menu-open');
       }
       document.addEventListener('click',function(){document.querySelectorAll('.ctrl-menu').forEach(function(m){m.style.display='none'})});
