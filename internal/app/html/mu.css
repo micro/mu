@@ -1401,9 +1401,17 @@ body:has(#messages) #chat-back-link {
 /* ========================================
    BLOG PAGE
    ======================================== */
+/* Reading width for the /blog page. Scoped away from .card because the home
+   card reuses this id — an id beats .home-left .card on specificity, so
+   without :not(.card) the card sits narrower than its neighbours. The
+   equivalent #news and #video caps were deleted outright: those pages have no
+   element with that id, so the rules only ever hit the home cards. */
+#blog:not(.card) {
+  max-width: 900px;
+}
+
 #blog {
   position: relative;
-  max-width: 900px;
 }
 
 #blog h2 {
@@ -1650,10 +1658,6 @@ body:has(#messages) #chat-back-link {
 /* ========================================
    NEWS PAGE
    ======================================== */
-#news {
-  max-width: 750px;
-}
-
 #news h1 {
   margin-top: 15px;
 }
@@ -1949,7 +1953,6 @@ body:has(#messages) #chat-back-link {
    VIDEO PAGE
    ======================================== */
 #video {
-  max-width: 750px;
 }
 
 .thumbnail {
