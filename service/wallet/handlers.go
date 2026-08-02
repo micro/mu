@@ -726,6 +726,7 @@ func Pricing() []PricingItem {
 		{OpWeatherPollen, "Weather pollen", CostWeatherPollen, "credits"},
 		{OpPlacesSearch, "Places search", CostPlacesSearch, "credits"},
 		{OpPlacesNearby, "Places nearby", CostPlacesNearby, "credits"},
+		{OpPlacesETA, "Travel time between two places", CostPlacesETA, "credits"},
 		// "Message" not "mail": this is user-to-user on the platform and is
 		// free. Sending a real email leaves the instance over SMTP and is
 		// charged separately as "External email".

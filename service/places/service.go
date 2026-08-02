@@ -98,6 +98,59 @@ func (Server) Nearby(_ context.Context, req *NearbyRequest, rsp *PlacesResponse)
 	return nil
 }
 
+// ETARequest asks how long it takes to get from one place to another.
+type ETARequest struct {
+	From    string  `json:"from" description:"Where the journey starts, e.g. 'King's Cross, London' (or give from_lat/from_lon)"`
+	To      string  `json:"to" description:"Where the journey ends, e.g. 'Heathrow Airport'"`
+	FromLat float64 `json:"from_lat" description:"Optional start latitude, if already known"`
+	FromLon float64 `json:"from_lon" description:"Optional start longitude, if already known"`
+	ToLat   float64 `json:"to_lat" description:"Optional end latitude, if already known"`
+	ToLon   float64 `json:"to_lon" description:"Optional end longitude, if already known"`
+	Mode    string  `json:"mode" description:"How to travel: drive (default), walk, cycle or transit"`
+}
+
+// ETAResponse is how long the journey takes, as model-ready text.
+type ETAResponse struct {
+	Text string `json:"text" description:"Journey time and distance between the two places"`
+}
+
+// ETA gives the travel time and distance between two places, by road rather
+// than as the crow flies. Use it to answer whether somewhere is worth going to,
+// or when to leave.
+// @example {"from": "King's Cross, London", "to": "Heathrow Airport", "mode": "transit"}
+func (Server) ETA(_ context.Context, req *ETARequest, rsp *ETAResponse) error {
+	fromLat, fromLon, hasFrom := resolveLocation(req.From, req.FromLat, req.FromLon)
+	if !hasFrom {
+		rsp.Text = "Please say where the journey starts (a place name or coordinates)."
+		return nil
+	}
+	toLat, toLon, hasTo := resolveLocation(req.To, req.ToLat, req.ToLon)
+	if !hasTo {
+		rsp.Text = "Please say where the journey ends (a place name or coordinates)."
+		return nil
+	}
+
+	mode := travelMode(req.Mode)
+	r, err := computeRoute(fromLat, fromLon, toLat, toLon, mode)
+	if err != nil {
+		return err
+	}
+
+	from := locationLabel(req.From, fromLat, fromLon)
+	to := locationLabel(req.To, toLat, toLon)
+	verb := strings.ToLower(mode)
+	if verb == "bicycle" {
+		verb = "cycle"
+	}
+
+	rsp.Text = fmt.Sprintf("%s to %s by %s: %s, %s.",
+		from, to, verb, humanDuration(r.Duration), humanDistance(r.Metres))
+	if r.Estimate {
+		rsp.Text += " (Estimated from straight-line distance — this instance has no routing key, so treat it as approximate.)"
+	}
+	return nil
+}
+
 // GeocodeRequest resolves a place name or address to coordinates.
 type GeocodeRequest struct {
 	Address string `json:"address" description:"A place name or address to locate"`
@@ -210,6 +263,7 @@ var Spec = service.Spec{
 	Page:        "/places",
 	Icon:        "places.svg",
 	Endpoints: map[string]service.Endpoint{
+		"ETA":     {Doc: "How long it takes to travel between two places, by road rather than as the crow flies", Cost: wallet.OpPlacesETA},
 		"Geocode": {Doc: "Resolve a place name or address to coordinates"},
 		"Nearby":  {Doc: "List points of interest near a location", Cost: wallet.OpPlacesNearby},
 		"Search":  {Doc: "Find places by name or category, optionally near a location", Cost: wallet.OpPlacesSearch},

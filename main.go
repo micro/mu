@@ -586,6 +586,38 @@ func main() {
 		},
 	})
 
+	// places_eta — how long a journey takes, by road. Registered here rather
+	// than as a path-backed tool in mcp.go because it has no page of its own:
+	// it answers a question, it does not render anything.
+	api.RegisterTool(api.Tool{
+		Name:        "places_eta",
+		Description: "How long it takes to travel between two places, by road rather than as the crow flies. Use it to answer whether somewhere is worth going to, or when to leave.",
+		WalletOp:    wallet.OpPlacesETA,
+		Params: []api.ToolParam{
+			{Name: "from", Type: "string", Description: "Where the journey starts, e.g. \"King's Cross, London\"", Required: false},
+			{Name: "to", Type: "string", Description: "Where the journey ends, e.g. \"Heathrow Airport\"", Required: false},
+			{Name: "from_lat", Type: "number", Description: "Start latitude, if already known", Required: false},
+			{Name: "from_lon", Type: "number", Description: "Start longitude, if already known", Required: false},
+			{Name: "to_lat", Type: "number", Description: "End latitude, if already known", Required: false},
+			{Name: "to_lon", Type: "number", Description: "End longitude, if already known", Required: false},
+			{Name: "mode", Type: "string", Description: "How to travel: drive (default), walk, cycle or transit", Required: false},
+		},
+		Handle: func(args map[string]any) (string, error) {
+			num := func(k string) float64 { v, _ := args[k].(float64); return v }
+			str := func(k string) string { v, _ := args[k].(string); return v }
+			var rsp places.ETAResponse
+			err := service.Call(context.Background(), "places", "Server.ETA", &places.ETARequest{
+				From: str("from"), To: str("to"), Mode: str("mode"),
+				FromLat: num("from_lat"), FromLon: num("from_lon"),
+				ToLat: num("to_lat"), ToLon: num("to_lon"),
+			}, &rsp)
+			if err != nil {
+				return "", err
+			}
+			return rsp.Text, nil
+		},
+	})
+
 	// web_fetch tool — fetch a URL and return cleaned readable content
 	api.RegisterTool(api.Tool{
 		Name:        "web_fetch",

@@ -50,6 +50,12 @@ var removeVerbs = map[string]bool{
 	"cancel": true, "block": true,
 }
 
+// wholeTitles are verbs whose label is a complete title on its own, where
+// appending the service name reads worse rather than better.
+var wholeTitles = map[string]string{
+	"eta": "Travel time",
+}
+
 // verbLabels give a read verb a human phrasing for the title. "list" reads
 // better as "Browse" beside a service name, "get" as "Read".
 var verbLabels = map[string]string{
@@ -131,6 +137,12 @@ func toolTitle(t Tool, svc, verb string) string {
 		// Bare names (agent, hadith) title from themselves; a two-part name with
 		// no service behind it (saved_list) reads better whole than as its verb.
 		return humanise(t.Name)
+	}
+
+	// A few verbs are already a whole title; "Time to places" is worse than
+	// "Travel time".
+	if whole, ok := wholeTitles[verb]; ok {
+		return whole
 	}
 
 	label := strings.ToLower(service.Label(svc))

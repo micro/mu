@@ -39,6 +39,7 @@ var (
 	// Vendor APIs we are billed for per request.
 	CostPlacesSearch    = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5) // Google Places text search, ~2.5p
 	CostPlacesNearby    = getEnvInt("CREDIT_COST_PLACES_NEARBY", 4) // Google Places nearby, ~2.5p
+	CostPlacesETA       = getEnvInt("CREDIT_COST_PLACES_ETA", 3)    // Google Routes, ~0.5p
 	CostWeatherForecast = getEnvInt("CREDIT_COST_WEATHER", 1)       // Google Weather
 	CostWeatherPollen   = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
 	CostWebSearch       = getEnvInt("CREDIT_COST_SEARCH", 2) // Brave, ~0.4p — was 5, a 12x markup
@@ -116,6 +117,7 @@ const (
 	OpExternalEmail     = "external_email"
 	OpPlacesSearch      = "places_search"
 	OpPlacesNearby      = "places_nearby"
+	OpPlacesETA         = "places_eta"
 	OpWeatherForecast   = "weather_forecast"
 	OpWeatherPollen     = "weather_pollen"
 	OpWebSearch         = "web_search"
@@ -541,6 +543,8 @@ func GetOperationCost(operation string) int {
 		return CostPlacesSearch
 	case OpPlacesNearby:
 		return CostPlacesNearby
+	case OpPlacesETA:
+		return CostPlacesETA
 	case OpWeatherForecast:
 		return CostWeatherForecast
 	case OpWeatherPollen:

@@ -29,6 +29,7 @@ func TestPricingCoversEveryBillableOperation(t *testing.T) {
 		{OpExternalEmail, CostExternalEmail},
 		{OpPlacesSearch, CostPlacesSearch},
 		{OpPlacesNearby, CostPlacesNearby},
+		{OpPlacesETA, CostPlacesETA},
 		{OpWeatherForecast, CostWeatherForecast},
 		{OpWeatherPollen, CostWeatherPollen},
 		{OpWebSearch, CostWebSearch},
